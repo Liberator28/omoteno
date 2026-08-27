@@ -1,0 +1,1485 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Omoteno · Marken-Studio</title>
+<meta name="description" content="Stellen Sie Ihr Lokal ein und sehen Sie sofort, wie Ihr digitaler Tischhub aussieht.">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   DIE WERKBANK
+
+   Das Studio hat mit Absicht keine eigene Farbe. Der Grund ist
+   kühles Graphit, alle Bedienelemente sind unbunt — die einzige
+   gesättigte Farbe auf dem Schirm ist die des Kunden. Sonst sieht
+   man beim Einstellen unsere Marke statt seiner.
+
+   Aufbau am Telefon: Das Gerät steht fest im Bild, die Einstellungen
+   liegen als Blatt davor und lassen sich hoch- und runterziehen.
+   Vorher klebte die Vorschau oben fest und presste die Regler in
+   einen Streifen von zwei Fingerbreit — man sah nie, was man tat.
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --werk:#141619;
+  --werk-2:#1B1E23;
+  --werk-3:#23272D;
+  --werk-4:#2B3037;
+  --kante:#31363E;
+  --kante-hell:#464E59;
+  --schrift:#E9ECF0;
+  --schrift-leise:#98A0AB;
+  --schrift-still:#6B727C;
+
+  /* Wird vom Markenblatt gesetzt. Das Studio borgt sich die Farbe. */
+  --leih:#0F6E64;
+
+  --tempo:170ms;
+  --kurve:cubic-bezier(.22,.8,.3,1);
+  --blattkurve:cubic-bezier(.32,.72,0,1);
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+
+  --oben:env(safe-area-inset-top);
+  --unten:env(safe-area-inset-bottom);
+  --sicht:96px;          /* wie viel vom Blatt gerade zu sehen ist */
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0;height:100%;overflow:hidden}
+body{
+  background:var(--werk);color:var(--schrift);
+  font-family:var(--sans);font-size:15px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none;padding:0}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--leih);outline-offset:2px;border-radius:6px}
+
+/* ─── Kopfzeile ────────────────────────────────────────────── */
+.kopf{
+  position:fixed;top:0;left:0;right:0;z-index:30;
+  padding:calc(11px + var(--oben)) 16px 12px;
+  background:linear-gradient(to bottom, var(--werk) 60%, transparent);
+  pointer-events:none;
+}
+.wortmarke{
+  font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--schrift-leise);
+}
+.wortmarke i{font-style:normal;color:var(--leih);transition:color var(--tempo) var(--kurve)}
+
+/* ─── Die Bühne ────────────────────────────────────────────── */
+.buehne{
+  position:fixed;inset:0;z-index:10;
+  display:flex;align-items:center;justify-content:center;
+  padding:calc(50px + var(--oben)) 16px 150px;
+  background:radial-gradient(130% 80% at 50% 6%, rgba(255,255,255,.06), transparent 62%);
+}
+/* Das Gerät weicht nach oben aus, wenn das Blatt hochkommt. Es
+   verschwindet nicht, es tritt zurück. */
+.geraetraum{transition:transform 300ms var(--blattkurve);will-change:transform}
+.zieht .geraetraum{transition:none}
+
+.geraet{
+  border-radius:32px;padding:9px;
+  background:linear-gradient(160deg,#2C3138,#191C21);
+  box-shadow:0 26px 60px rgba(0,0,0,.6), 0 0 0 1px rgba(255,255,255,.05);
+}
+.schirm{
+  border-radius:24px;overflow:hidden;position:relative;
+  background:var(--h-grund);
+  width:268px;min-height:320px;
+  /* Zwei Zeilen mit Absicht: Safari auf dem iPhone rechnet bei 100vh
+     die ein- und ausfahrende Adressleiste mit. Das Gerät stand damit
+     unten über den Rand hinaus — genau das „Gequetschte". dvh misst
+     den wirklich sichtbaren Raum. Ältere Browser nehmen die erste
+     Zeile und fahren damit weiterhin gut. */
+  height:min(500px, calc(100vh - 250px));
+  height:min(500px, calc(100dvh - 250px));
+  display:flex;flex-direction:column;
+}
+
+/* Schirmwahl sitzt auf dem Blattrand und wandert mit ihm */
+.schirmwahl{
+  position:fixed;left:0;right:0;z-index:15;
+  bottom:calc(var(--sicht) + 14px);
+  display:flex;gap:6px;justify-content:center;flex-wrap:wrap;
+  padding:0 16px;
+  transition:opacity var(--tempo) var(--kurve);
+}
+.schirmwahl.weg{opacity:0;pointer-events:none}
+.schalt{
+  font-size:11px;letter-spacing:.07em;text-transform:uppercase;font-weight:600;
+  color:var(--schrift-leise);background:rgba(27,30,35,.92);
+  -webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+  border:1px solid var(--kante);border-radius:99px;padding:7px 13px;
+  transition:color var(--tempo),border-color var(--tempo);
+}
+.schalt[aria-pressed=true]{color:var(--schrift);border-color:var(--kante-hell);background:var(--werk-2)}
+
+/* ─── Das Einstellblatt ────────────────────────────────────── */
+.blatt{
+  position:fixed;left:0;right:0;bottom:0;z-index:20;
+  height:92vh;
+  height:92dvh;
+  background:var(--werk-2);
+  border-top:1px solid var(--kante-hell);
+  border-radius:20px 20px 0 0;
+  box-shadow:0 -20px 50px rgba(0,0,0,.5);
+  display:flex;flex-direction:column;
+  transform:translateY(calc(92vh - var(--sicht)));
+  transform:translateY(calc(92dvh - var(--sicht)));
+  transition:transform 300ms var(--blattkurve);
+  will-change:transform;
+}
+.zieht .blatt{transition:none}
+
+.griff{
+  flex-shrink:0;padding:9px 0 0;cursor:grab;
+  touch-action:none;              /* wir übernehmen die Geste selbst */
+  user-select:none;-webkit-user-select:none;
+}
+.griff:active{cursor:grabbing}
+.griffstrich{width:38px;height:4px;border-radius:99px;background:var(--kante-hell);margin:0 auto 10px}
+
+/* Abteilungsleiste, waagerecht scrollbar. Umbrechen würde auf
+   schmalen Geräten drei Zeilen erzeugen und das halbe Blatt kosten. */
+.reiter{display:flex;gap:6px;overflow-x:auto;padding:0 14px 11px;scrollbar-width:none}
+.reiter::-webkit-scrollbar{display:none}
+.reiter button{
+  flex:0 0 auto;font-size:13px;font-weight:600;
+  padding:7px 13px;border-radius:99px;white-space:nowrap;
+  background:var(--werk-3);border:1px solid transparent;color:var(--schrift-leise);
+  transition:color var(--tempo),background var(--tempo),border-color var(--tempo);
+}
+.reiter button[aria-current=true]{color:var(--schrift);background:var(--werk-4);border-color:var(--kante-hell)}
+.reiter .punkt{
+  display:inline-block;width:6px;height:6px;border-radius:50%;
+  background:#D8A63C;margin-left:6px;vertical-align:middle;
+}
+
+.blattinhalt{
+  flex:1;overflow-y:auto;overscroll-behavior:contain;
+  -webkit-overflow-scrolling:touch;
+  padding:2px 16px calc(40px + var(--unten));
+}
+
+/* ─── Abteilungen ──────────────────────────────────────────── */
+.abteilung{padding:12px 0 24px;border-bottom:1px solid var(--kante)}
+.abteilung:last-child{border-bottom:none;min-height:60vh}
+.abteilungstitel{
+  font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  color:var(--schrift-still);margin:0 0 5px;
+}
+.abteilungssatz{font-size:12.5px;color:var(--schrift-leise);margin:0 0 15px;line-height:1.55}
+
+/* Eine Regelzeile: Beschriftung oben, Bedienung darunter.
+   Vorher standen Beschriftung, Regler und Wert nebeneinander — auf
+   einem Telefon blieb für die Beschriftung eine Spalte von vier
+   Zeichen Breite, und der Text brach mitten im Wort um. */
+.stell{padding:11px 0}
+.stell .kopfzeile{display:flex;align-items:baseline;gap:12px;margin-bottom:9px}
+.stell .bez{flex:1;min-width:0;font-size:14px;font-weight:500}
+.stell .bez small{
+  display:block;font-size:12px;font-weight:400;color:var(--schrift-leise);
+  margin-top:2px;line-height:1.45;
+}
+.stell .wert{
+  font-size:12.5px;color:var(--schrift-leise);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.stell.mitwippe .kopfzeile{align-items:center;margin-bottom:0}
+
+.text{
+  width:100%;background:var(--werk-3);border:1px solid var(--kante);
+  border-radius:10px;padding:11px 13px;font-size:16px;
+  -webkit-appearance:none;appearance:none;
+  color:var(--schrift);-webkit-text-fill-color:var(--schrift);
+}
+.text:focus{border-color:var(--kante-hell)}
+
+.farbgitter{display:grid;grid-template-columns:repeat(auto-fill,minmax(146px,1fr));gap:9px}
+.farbe{
+  display:flex;align-items:center;gap:10px;
+  background:var(--werk-3);border:1px solid var(--kante);
+  border-radius:11px;padding:9px 11px;position:relative;
+}
+.farbe .fleck{width:28px;height:28px;border-radius:8px;flex-shrink:0;border:1px solid rgba(255,255,255,.16)}
+.farbe .fname{font-size:12.5px;line-height:1.3;min-width:0}
+.farbe .fwert{
+  display:block;font-size:10.5px;color:var(--schrift-still);
+  font-variant-numeric:tabular-nums;text-transform:uppercase;
+}
+.farbe input[type=color]{
+  position:absolute;inset:0;opacity:0;width:100%;height:100%;border:none;padding:0;cursor:pointer;
+}
+
+.wippe{
+  appearance:none;-webkit-appearance:none;margin:0;flex:0 0 48px;
+  width:48px;height:28px;border-radius:99px;
+  background:var(--werk-3);border:1px solid var(--kante);
+  position:relative;cursor:pointer;transition:background var(--tempo),border-color var(--tempo);
+}
+.wippe::after{
+  content:"";position:absolute;top:2px;left:2px;width:22px;height:22px;
+  border-radius:50%;background:var(--schrift-still);
+  transition:transform var(--tempo) var(--kurve),background var(--tempo);
+}
+.wippe:checked{background:color-mix(in srgb,var(--leih) 32%,transparent);border-color:var(--leih)}
+.wippe:checked::after{transform:translateX(20px);background:var(--leih)}
+
+.regler{
+  appearance:none;-webkit-appearance:none;width:100%;height:6px;
+  border-radius:99px;background:var(--werk-3);border:1px solid var(--kante);
+  outline:none;margin:0;
+}
+.regler::-webkit-slider-thumb{
+  -webkit-appearance:none;width:26px;height:26px;border-radius:50%;
+  margin-top:-11px;background:var(--leih);border:2px solid var(--werk-2);cursor:pointer;
+}
+.regler::-moz-range-thumb{
+  width:26px;height:26px;border-radius:50%;background:var(--leih);
+  border:2px solid var(--werk-2);cursor:pointer;
+}
+
+.wahl{display:flex;gap:7px;flex-wrap:wrap}
+.wahl button{
+  font-size:13.5px;padding:9px 14px;border-radius:9px;
+  background:var(--werk-3);border:1px solid var(--kante);color:var(--schrift-leise);
+  transition:color var(--tempo),border-color var(--tempo),background var(--tempo);
+}
+.wahl button[aria-pressed=true]{color:var(--schrift);border-color:var(--leih);background:var(--werk-4)}
+
+.vorlagen{display:grid;grid-template-columns:repeat(auto-fill,minmax(152px,1fr));gap:9px}
+.vorlage{
+  text-align:left;padding:13px;border-radius:12px;
+  background:var(--werk-3);border:1px solid var(--kante);
+  transition:border-color var(--tempo) var(--kurve),transform 120ms var(--kurve);
+}
+.vorlage:active{transform:scale(.985)}
+.vorlage[aria-pressed=true]{border-color:var(--leih)}
+.vorlage b{display:block;font-size:13.5px;font-weight:600;margin-bottom:2px}
+.vorlage span{display:block;font-size:11.5px;color:var(--schrift-leise)}
+.vorlage .streifen{display:flex;gap:3px;margin-top:10px}
+.vorlage .streifen i{width:17px;height:17px;border-radius:5px;display:block}
+
+/* ─── Bereiche zum Ziehen ──────────────────────────────────── */
+.bereichsliste{display:flex;flex-direction:column;gap:7px}
+.bposten{
+  display:flex;align-items:center;gap:11px;
+  background:var(--werk-3);border:1px solid var(--kante);
+  border-radius:11px;padding:10px 12px;
+  transition:border-color var(--tempo),opacity var(--tempo),transform 190ms var(--kurve);
+}
+.bposten.aus{opacity:.48}
+.bposten.faehrt{
+  border-color:var(--leih);box-shadow:0 12px 28px rgba(0,0,0,.5);
+  position:relative;z-index:5;transition:none;
+}
+.bposten .zieher{
+  flex:0 0 26px;height:38px;margin:-8px 0;
+  display:flex;align-items:center;justify-content:center;
+  color:var(--schrift-still);cursor:grab;touch-action:none;
+}
+.bposten .zieher:active{cursor:grabbing}
+.bposten .bild{font-size:19px;line-height:1;flex:0 0 24px;text-align:center}
+.bposten .btext{flex:1;min-width:0}
+.bposten .btext b{display:block;font-size:14px;font-weight:600;line-height:1.25}
+.bposten .btext small{
+  display:block;font-size:11.5px;color:var(--schrift-leise);
+  line-height:1.4;margin-top:1px;
+}
+
+/* ─── Hinweise ─────────────────────────────────────────────── */
+.merk,.warnung{
+  font-size:12.5px;color:var(--schrift-leise);line-height:1.55;
+  background:var(--werk-3);border:1px solid var(--kante);
+  border-radius:0 10px 10px 0;padding:11px 13px;margin:0 0 14px;
+}
+.merk{border-left:2px solid var(--leih)}
+.warnung{border-left:2px solid #D8A63C}
+.merk b,.warnung b{color:var(--schrift);font-weight:600}
+
+.knopf{
+  display:block;width:100%;padding:14px;border-radius:12px;
+  font-size:15px;font-weight:600;text-align:center;
+  background:var(--leih);color:#fff;margin-bottom:9px;
+  transition:transform 120ms var(--kurve);
+}
+.knopf:active{transform:scale(.985)}
+.knopf.leise{background:var(--werk-3);border:1px solid var(--kante);color:var(--schrift)}
+
+.ausgabe{
+  width:100%;height:190px;background:#0E1013;border:1px solid var(--kante);
+  border-radius:11px;padding:12px;font-size:12px;line-height:1.55;
+  font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  color:#C6CEDA;-webkit-text-fill-color:#C6CEDA;
+  white-space:pre;overflow:auto;resize:none;
+}
+
+.meldung{
+  position:fixed;left:50%;bottom:calc(24px + var(--unten));
+  transform:translate(-50%,14px);
+  background:var(--werk-4);border:1px solid var(--kante-hell);
+  border-radius:99px;padding:11px 19px;font-size:13.5px;
+  box-shadow:0 14px 36px rgba(0,0,0,.55);
+  opacity:0;pointer-events:none;z-index:90;
+  transition:opacity var(--tempo),transform var(--tempo) var(--kurve);
+}
+.meldung.an{opacity:1;transform:translate(-50%,0)}
+
+/* ─── Großer Schirm: nebeneinander statt übereinander ──────── */
+@media (min-width:920px){
+  html,body{overflow:hidden}
+  .buehne{width:46%;right:auto;padding:calc(56px + var(--oben)) 20px 80px}
+  .schirm{width:300px;
+    height:min(600px, calc(100vh - 200px));
+    height:min(600px, calc(100dvh - 200px));}
+  .schirmwahl{left:0;right:auto;width:46%;bottom:34px}
+  .blatt{
+    left:46%;right:0;top:0;bottom:0;height:100vh;height:100dvh;
+    transform:none !important;
+    border-radius:0;border-top:none;border-left:1px solid var(--kante);box-shadow:none;
+  }
+  .griff{display:none}
+  .reiter{padding-top:calc(16px + var(--oben))}
+  .geraetraum{transform:none !important}
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   DER HUB IN KLEIN
+   Dieselben Variablennamen wie im echten Hub. Was hier trägt,
+   trägt dort — nur mit mehr Inhalt.
+   ═══════════════════════════════════════════════════════════════ */
+.hub{
+  background:var(--h-grund);color:var(--h-tinte);font-family:var(--h-text);
+  height:100%;display:flex;flex-direction:column;overflow:hidden;
+  transition:background 260ms var(--kurve),color 260ms var(--kurve);
+}
+.hub *{transition:background-color 260ms var(--kurve),color 260ms var(--kurve),border-color 260ms var(--kurve)}
+
+.hband{background:var(--h-band);color:var(--h-bandtext);padding:13px var(--h-rand) 14px;flex-shrink:0}
+.hlogo{
+  font-family:var(--h-kopf);font-size:17px;font-weight:600;letter-spacing:-.01em;
+  line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.hclaim{font-size:10.5px;opacity:.74;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+.hinhalt{flex:1;overflow-y:auto;padding:13px var(--h-rand) 16px;scrollbar-width:none}
+.hinhalt::-webkit-scrollbar{display:none}
+
+.hgruss{font-family:var(--h-kopf);font-size:19px;font-weight:600;margin:2px 0 12px;line-height:1.2}
+
+.htipp{
+  display:flex;gap:10px;align-items:center;
+  background:var(--h-flaeche);border:1px solid var(--h-linie);
+  border-left:3px solid var(--h-akzent);
+  border-radius:var(--h-rundung);padding:10px 11px;margin-bottom:15px;
+  box-shadow:var(--h-schatten);
+}
+.htipp .tb{
+  flex:0 0 44px;height:44px;border-radius:9px;background:var(--h-flaeche2);
+  display:flex;align-items:center;justify-content:center;font-size:20px;
+}
+.htipp .tt{min-width:0;flex:1}
+/* Kürzer und mit weniger Laufweite: „EMPFEHLUNG DES HAUSES“ brach
+   vorher mitten im Wort um und riss die Karte auseinander. */
+.htipp .tk{
+  font-size:8px;letter-spacing:.1em;font-weight:700;color:var(--h-akzent);
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.htipp .tn{font-size:13.5px;font-weight:600;line-height:1.25;margin-top:2px}
+.htipp .tp{font-family:var(--h-kopf);font-size:12px;color:var(--h-akzent2);font-weight:600;margin-top:2px}
+
+.hbereich{
+  font-size:8.5px;letter-spacing:.16em;font-weight:700;text-transform:uppercase;
+  color:var(--h-tinteleise);margin:0 0 8px;
+}
+/* Gleich hohe Reihen. Vorher richtete sich jede Kachel nach ihrem
+   eigenen Text — bei drei Zeilen Untertitel stand die Nachbarkachel
+   halb leer daneben. */
+.hkacheln{display:grid;grid-template-columns:1fr 1fr;gap:8px;grid-auto-rows:1fr}
+.hkachel{
+  background:var(--h-flaeche);border:1px solid var(--h-linie);
+  border-radius:var(--h-rundung);padding:11px 10px;
+  box-shadow:var(--h-schatten);min-height:80px;
+  display:flex;flex-direction:column;
+}
+.hkachel .hi{font-size:17px;line-height:1;margin-bottom:auto;padding-bottom:7px}
+.hkachel strong{font-size:12.5px;font-weight:600;display:block;line-height:1.2;overflow-wrap:anywhere}
+.hkachel span{
+  font-size:10px;color:var(--h-tinteleise);display:-webkit-box;margin-top:3px;
+  line-height:1.35;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+
+.hkat{
+  font-size:8.5px;letter-spacing:.16em;font-weight:700;text-transform:uppercase;
+  color:var(--h-akzent);margin:14px 0 7px;padding-bottom:5px;border-bottom:1px solid var(--h-linie);
+}
+.hkat:first-child{margin-top:0}
+.hgericht{display:flex;gap:9px;align-items:center;padding:8px 0;border-bottom:1px solid var(--h-linie)}
+.hgericht .gb{
+  flex:0 0 38px;height:38px;border-radius:8px;background:var(--h-flaeche2);
+  display:flex;align-items:center;justify-content:center;font-size:17px;
+}
+.hgericht .gt{flex:1;min-width:0}
+.hgericht .gn{font-size:12.5px;font-weight:600;line-height:1.2}
+.hgericht .gd{
+  font-size:10px;color:var(--h-tinteleise);margin-top:2px;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;
+}
+.hgericht .gp{
+  font-family:var(--h-kopf);font-size:13px;font-weight:600;color:var(--h-akzent2);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+
+.hpass{
+  text-align:center;padding:20px 16px 18px;margin:2px 0 12px;
+  background:var(--h-flaeche);border:1px solid var(--h-gut);
+  border-radius:var(--h-rundung);box-shadow:var(--h-schatten);
+}
+.hpass .pz{font-size:34px;line-height:1;display:block;margin-bottom:8px;transform-origin:70% 80%}
+.hpass .pt{font-size:12px;font-weight:600;color:var(--h-tinteleise);margin-bottom:10px}
+.hpass .pn{
+  font-family:var(--h-kopf);font-size:38px;font-weight:700;line-height:1;
+  color:var(--h-gut);font-variant-numeric:tabular-nums;letter-spacing:-1px;
+}
+.hpass .pn small{
+  display:block;font-family:var(--h-text);font-size:8.5px;font-weight:700;
+  letter-spacing:1.4px;color:var(--h-tintestill);margin-bottom:5px;
+}
+.hstufen{display:flex;gap:5px;margin:0 0 12px}
+.hstufe{flex:1;text-align:center;min-width:0}
+.hstufe i{display:block;height:3px;border-radius:99px;background:var(--h-linie);margin-bottom:5px}
+.hstufe.an i{background:var(--h-gut)}
+.hstufe span{
+  font-size:8px;color:var(--h-tinteleise);display:block;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+
+.hknopf{
+  display:block;width:100%;text-align:center;
+  background:var(--h-akzent);color:var(--h-auf-akzent);
+  border-radius:var(--h-rundungklein);padding:11px;font-size:13px;font-weight:600;
+}
+.hbalken{
+  flex-shrink:0;background:var(--h-akzent);color:var(--h-auf-akzent);
+  padding:11px var(--h-rand);display:flex;justify-content:space-between;
+  align-items:center;font-size:12px;font-weight:600;gap:10px;
+}
+
+@keyframes pfanne{
+  0%,100%{transform:translateY(0) rotate(-7deg)}
+  50%    {transform:translateY(-4px) rotate(7deg)}
+}
+.hpass .pz.schwingt{animation:pfanne 1.6s ease-in-out infinite}
+
+@media (prefers-reduced-motion: reduce){
+  *{animation:none !important}
+  .hub,.hub *,.blatt,.geraetraum{transition:none !important}
+}
+</style>
+</head>
+<body>
+
+<div class="kopf"><div class="wortmarke">OMOTENO<i>·</i>STUDIO</div></div>
+
+<div class="buehne">
+  <div class="geraetraum" id="geraetraum">
+    <div class="geraet"><div class="schirm"><div class="hub" id="hub"></div></div></div>
+  </div>
+</div>
+
+<div class="schirmwahl" id="schirmwahl">
+  <button class="schalt" data-schirm="start"    aria-pressed="true">Start</button>
+  <button class="schalt" data-schirm="karte"    aria-pressed="false">Karte</button>
+  <button class="schalt" data-schirm="bestellt" aria-pressed="false">Bestellung</button>
+  <button class="schalt" data-abend             aria-pressed="false">Abend</button>
+</div>
+
+<div class="blatt" id="blatt">
+  <div class="griff" id="griff">
+    <div class="griffstrich"></div>
+    <nav class="reiter" id="reiter"></nav>
+  </div>
+  <div class="blattinhalt" id="blattinhalt">
+
+    <section class="abteilung" data-abt="vorlagen">
+      <h2 class="abteilungstitel">Schnellstart</h2>
+      <p class="abteilungssatz">Vier Häuser zum Antippen. Danach ist alles frei änderbar.</p>
+      <div class="vorlagen" id="vorlagen"></div>
+    </section>
+
+    <section class="abteilung" data-abt="haus">
+      <h2 class="abteilungstitel">Das Haus</h2>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Name</span></div>
+        <input class="text" id="fName" maxlength="40" autocomplete="off">
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Zeile darunter</span></div>
+        <input class="text" id="fClaim" maxlength="60" autocomplete="off">
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Begrüßung auf der Startseite</span></div>
+        <input class="text" id="fGruss" maxlength="60" autocomplete="off">
+      </div>
+    </section>
+
+    <section class="abteilung" data-abt="farben">
+      <h2 class="abteilungstitel">Farben bei Tag</h2>
+      <div id="warnungRaum"></div>
+      <div class="farbgitter" id="farbenTag"></div>
+    </section>
+
+    <section class="abteilung" data-abt="abend">
+      <h2 class="abteilungstitel">Abend</h2>
+      <div class="stell mitwippe">
+        <div class="kopfzeile">
+          <span class="bez">Abendvariante
+            <small>Ab einer Uhrzeit wechselt der Hub auf dunkel</small></span>
+          <input type="checkbox" class="wippe" id="fAbendAn">
+        </div>
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Wechsel ab</span>
+          <span class="wert" id="wAbendAb"></span></div>
+        <input type="range" class="regler" id="fAbendAb" min="15" max="22" step="1">
+      </div>
+      <div class="farbgitter" id="farbenAbend"></div>
+    </section>
+
+    <section class="abteilung" data-abt="form">
+      <h2 class="abteilungstitel">Form</h2>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Rundung der Karten</span>
+          <span class="wert" id="wRundung"></span></div>
+        <input type="range" class="regler" id="fRundung" min="0" max="24" step="1">
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Rundung der Knöpfe</span>
+          <span class="wert" id="wRundungK"></span></div>
+        <input type="range" class="regler" id="fRundungK" min="0" max="20" step="1">
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Seitenrand</span>
+          <span class="wert" id="wRand"></span></div>
+        <input type="range" class="regler" id="fRand" min="10" max="26" step="1">
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Karten</span></div>
+        <div class="wahl" id="fSchatten"></div>
+      </div>
+    </section>
+
+    <section class="abteilung" data-abt="schrift">
+      <h2 class="abteilungstitel">Schrift</h2>
+      <p class="abteilungssatz">Feste Auswahl statt freier Eingabe: Ein Tablet hinter dem
+        Tresen hat oft kein Netz zum Nachladen, und eine Schrift, die zu spät ankommt,
+        verschiebt beim Eintreffen die halbe Karte.</p>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Überschriften und Preise</span></div>
+        <div class="wahl" id="fKopf"></div>
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Fließtext</span></div>
+        <div class="wahl" id="fText"></div>
+      </div>
+      <div class="stell">
+        <div class="kopfzeile">
+          <span class="bez">Größe
+            <small>Größer hilft dort, wo abends wenig Licht ist</small></span>
+          <span class="wert" id="wGroesse"></span>
+        </div>
+        <input type="range" class="regler" id="fGroesse" min="94" max="112" step="2">
+      </div>
+    </section>
+
+    <section class="abteilung" data-abt="bereiche">
+      <h2 class="abteilungstitel">Was der Gast sieht</h2>
+      <p class="abteilungssatz">Am Griff links ziehen, um die Reihenfolge zu ändern —
+        die oberste Zeile steht auf der Startseite oben links.</p>
+      <div class="bereichsliste" id="bereichsliste"></div>
+    </section>
+
+    <section class="abteilung" data-abt="teilen">
+      <h2 class="abteilungstitel">Fertig?</h2>
+      <p class="merk"><b>Entwurf schicken</b> erzeugt eine Adresse, in der Ihre
+        Einstellungen vollständig enthalten sind. Wer sie öffnet, sieht genau diesen
+        Stand. Nichts wird gespeichert, nichts an einen Server geschickt.</p>
+      <button class="knopf" id="teilen">Entwurf schicken</button>
+      <button class="knopf leise" id="kopieren">Markenblatt kopieren</button>
+      <button class="knopf leise" id="einlesen">Markenblatt einlesen</button>
+      <div style="height:8px"></div>
+      <textarea class="ausgabe" id="ausgabe" readonly spellcheck="false"></textarea>
+    </section>
+
+  </div>
+</div>
+
+<div class="meldung" id="meldung" role="status" aria-live="polite"></div>
+
+<script>
+"use strict";
+
+/* ═══ Schriften ═════════════════════════════════════════════════ */
+var SCHRIFTEN = {
+  "system":          { name:"Neutral",   stapel:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif' },
+  "serif-klassisch": { name:"Klassisch", stapel:'"Iowan Old Style","Palatino Linotype",Palatino,Charter,Georgia,"Times New Roman",serif' },
+  "serif-eng":       { name:"Schmal",    stapel:'Charter,Georgia,Cambria,"Times New Roman",serif' },
+  "grotesk":         { name:"Sachlich",  stapel:'"Helvetica Neue",Helvetica,Arial,sans-serif' },
+  "rund":            { name:"Freundlich",stapel:'Avenir,"Avenir Next","Segoe UI",Nunito,system-ui,sans-serif' }
+};
+
+var SCHATTEN = {
+  weich: { name:"Weich", wert:"0 1px 2px rgba(0,0,0,.05), 0 8px 22px rgba(0,0,0,.07)" },
+  kante: { name:"Kante", wert:"0 2px 0 rgba(0,0,0,.14)" },
+  ohne:  { name:"Flach", wert:"none" }
+};
+
+var FARBFELDER = [
+  ["grund","Seitengrund"], ["flaeche","Karten"], ["flaeche2","Eingelassen"],
+  ["band","Kopfband"], ["bandText","Schrift im Band"],
+  ["tinte","Schrift"], ["tinteLeise","Nebentext"], ["tinteStill","Zierrat"],
+  ["linie","Linien"], ["linieStark","Linien kräftig"],
+  ["akzent","Hauptfarbe"], ["akzent2","Zweitfarbe"], ["gut","Bestätigung"]
+];
+var FARBFELDER_ABEND = FARBFELDER.filter(function(f){
+  return f[0] !== "bandText" && f[0] !== "linieStark";
+});
+
+/* Die Reihenfolge im Markenblatt bestimmt die Reihenfolge der
+   Kacheln auf der Startseite — deshalb eine Liste, keine Tabelle. */
+var BEREICH_TEXTE = {
+  speisekarte:  ["Speisekarte",   "\uD83C\uDF7D", "Die Karte zum Bestellen"],
+  getraenke:    ["Getränke",      "\u2615",       "Kaffee, Wein, Alkoholfreies"],
+  cocktails:    ["Cocktails",     "\uD83C\uDF79", "Eigene Karte für die Bar"],
+  reservierung: ["Tisch anfragen","\uD83D\uDCC5", "Anfrage ans Team"],
+  tischruf:     ["Service rufen", "\uD83D\uDD14", "Winken ohne zu winken"],
+  musikwunsch:  ["Musikwunsch",   "\uD83C\uDFB5", "Für Bars und lange Abende"],
+  quiz:         ["Quiz",          "\uD83C\uDFB2", "Beschäftigung beim Warten"],
+  trinkgeld:    ["Trinkgeld",     "\uD83D\uDC9B", "Freiwillig, direkt ans Team"]
+};
+var BEREICH_FOLGE = ["speisekarte","getraenke","cocktails","reservierung",
+                     "tischruf","musikwunsch","quiz","trinkgeld"];
+
+var ABTEILUNGEN = [
+  ["vorlagen","Vorlagen"], ["haus","Haus"], ["farben","Farben"], ["abend","Abend"],
+  ["form","Form"], ["schrift","Schrift"], ["bereiche","Bereiche"], ["teilen","Fertig"]
+];
+
+/* ═══ Vorlagen ══════════════════════════════════════════════════ */
+var VORLAGEN = {
+  nordstern: {
+    name:"Café Nordstern", claim:"Guter Kaffee, kurze Wege.",
+    gruss:"Schön, dass Sie da sind.", art:"Café am Wasser",
+    kopf:"serif-klassisch", text:"system", schatten:"weich",
+    rundung:16, rundungK:11, rand:18, groesse:100,
+    tag:{ grund:"#F6F3EE", flaeche:"#FFFFFF", flaeche2:"#EFEAE2",
+          band:"#1E3A3A", bandText:"#F4F9F8",
+          tinte:"#1C2321", tinteLeise:"#68756F", tinteStill:"#95A19D",
+          linie:"#E2DCD2", linieStark:"#CFC6B8",
+          akzent:"#0F6E64", akzent2:"#B0791A", gut:"#4F7A3D" },
+    abend:{ grund:"#121614", flaeche:"#1A201D", flaeche2:"#232B27", band:"#0E1A19",
+            tinte:"#F1F5F3", tinteLeise:"#9DAAA5", tinteStill:"#77837E",
+            linie:"#2A332F", akzent:"#5FC7B8", akzent2:"#E3B457", gut:"#8FBF74" },
+    reihe:["speisekarte","getraenke","reservierung","tischruf","trinkgeld"]
+  },
+  vespa: {
+    name:"Trattoria Vespa", claim:"Wie bei Nonna, nur lauter.",
+    gruss:"Benvenuti!", art:"Trattoria",
+    kopf:"serif-eng", text:"system", schatten:"kante",
+    rundung:8, rundungK:6, rand:18, groesse:102,
+    tag:{ grund:"#FBF7EF", flaeche:"#FFFFFF", flaeche2:"#F2EADD",
+          band:"#7A1F1B", bandText:"#FDF6EC",
+          tinte:"#231A16", tinteLeise:"#7C6A5E", tinteStill:"#A3948A",
+          linie:"#E8DDCB", linieStark:"#D6C6AE",
+          akzent:"#A32721", akzent2:"#3F6B2E", gut:"#3F6B2E" },
+    abend:{ grund:"#181211", flaeche:"#221A18", flaeche2:"#2C2220", band:"#4A1512",
+            tinte:"#FAF3EA", tinteLeise:"#B7A496", tinteStill:"#8A7A6E",
+            linie:"#332724", akzent:"#E8695F", akzent2:"#96C176", gut:"#96C176" },
+    reihe:["speisekarte","getraenke","reservierung","tischruf","trinkgeld"]
+  },
+  loft: {
+    name:"LOFT 21", claim:"Bar & Küche",
+    gruss:"Guten Abend.", art:"Bar",
+    kopf:"grotesk", text:"grotesk", schatten:"ohne",
+    rundung:2, rundungK:2, rand:16, groesse:98,
+    tag:{ grund:"#12120F", flaeche:"#1A1A16", flaeche2:"#232320",
+          band:"#0A0A08", bandText:"#F2F2EC",
+          tinte:"#F2F2EC", tinteLeise:"#9A9A90", tinteStill:"#6E6E66",
+          linie:"#2A2A25", linieStark:"#3C3C35",
+          akzent:"#D4FF3F", akzent2:"#F2F2EC", gut:"#D4FF3F" },
+    abend:{ grund:"#0A0A08", flaeche:"#141412", flaeche2:"#1D1D1A", band:"#000000",
+            tinte:"#F2F2EC", tinteLeise:"#9A9A90", tinteStill:"#6E6E66",
+            linie:"#242420", akzent:"#D4FF3F", akzent2:"#F2F2EC", gut:"#D4FF3F" },
+    reihe:["cocktails","speisekarte","musikwunsch","tischruf","reservierung"]
+  },
+  linde: {
+    name:"Gasthaus Linde", claim:"Seit 1904 am Markt.",
+    gruss:"Grüß Gott.", art:"Gasthaus",
+    kopf:"serif-klassisch", text:"system", schatten:"weich",
+    rundung:20, rundungK:14, rand:20, groesse:106,
+    tag:{ grund:"#F5F1E6", flaeche:"#FFFDF7", flaeche2:"#EAE3D2",
+          band:"#33422A", bandText:"#F6F3E7",
+          tinte:"#242A1E", tinteLeise:"#6F7663", tinteStill:"#98A08A",
+          linie:"#E0D8C3", linieStark:"#CBC0A5",
+          akzent:"#7A5C1E", akzent2:"#93321F", gut:"#4A6B33" },
+    abend:{ grund:"#14170F", flaeche:"#1D2116", flaeche2:"#262B1D", band:"#1A2013",
+            tinte:"#F6F3E7", tinteLeise:"#A9AF98", tinteStill:"#828872",
+            linie:"#2E3423", akzent:"#D8B45E", akzent2:"#E08064", gut:"#94BC72" },
+    reihe:["speisekarte","getraenke","reservierung","tischruf","quiz","trinkgeld"]
+  }
+};
+
+/* ═══ Zustand ═══════════════════════════════════════════════════ */
+var M = null, schirm = "start", abendAn = false, quelleName = "";
+
+function vorlageLaden(kennung){
+  var v = VORLAGEN[kennung];
+  quelleName = kennung;
+  var bereiche = {};
+  BEREICH_FOLGE.forEach(function(k){ bereiche[k] = v.reihe.indexOf(k) >= 0; });
+  M = {
+    version: 1,
+    betrieb: { name:v.name, claim:v.claim, begruessung:v.gruss },
+    farben:  Object.assign({}, v.tag),
+    abend:   Object.assign({ an:true, ab:18 }, v.abend),
+    form:    { rundung:v.rundung, rundungKlein:v.rundungK, rand:v.rand, schatten:v.schatten },
+    schrift: { kopf:v.kopf, text:v.text, groesse:v.groesse/100 },
+    logo:    { art:"text", text:v.name, bild:"", hoehe:30 },
+    reihe:   v.reihe.slice(),
+    bereiche: bereiche
+  };
+  /* Abgeschaltete Bereiche hängen hinten dran, damit man sie findet,
+     ohne suchen zu müssen. */
+  BEREICH_FOLGE.forEach(function(k){ if(M.reihe.indexOf(k) < 0) M.reihe.push(k); });
+}
+
+/* ═══ Farbe und Lesbarkeit ══════════════════════════════════════ */
+function mitAlpha(hex, alpha){
+  var x = String(hex || "").replace("#","");
+  if(x.length !== 6) return "transparent";
+  return "rgba(" + parseInt(x.slice(0,2),16) + "," + parseInt(x.slice(2,4),16) +
+         "," + parseInt(x.slice(4,6),16) + "," + alpha + ")";
+}
+function helligkeit(hex){
+  var x = String(hex || "").replace("#","");
+  if(x.length !== 6) return 0;
+  var v = [0,2,4].map(function(i){
+    var n = parseInt(x.slice(i,i+2),16)/255;
+    return n <= .03928 ? n/12.92 : Math.pow((n+.055)/1.055, 2.4);
+  });
+  return .2126*v[0] + .7152*v[1] + .0722*v[2];
+}
+/* Ausgerechnet, nicht eingestellt: Ein Kunde mit heller Hausfarbe
+   bekäme sonst weiße Schrift auf Hellgelb — unter 2:1, nicht lesbar. */
+function schriftAuf(flaeche){
+  var l = helligkeit(flaeche);
+  return (1.05/(l+.05)) >= ((l+.05)/.05579) ? "#FFFFFF" : "#111111";
+}
+function kontrast(a, b){
+  var l1 = helligkeit(a), l2 = helligkeit(b);
+  return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);
+}
+
+function markeAnwenden(ziel, mb, abend){
+  var f = (abend && mb.abend && mb.abend.an)
+    ? Object.assign({}, mb.farben, mb.abend) : mb.farben;
+  var s = ziel.style;
+  s.setProperty("--h-grund", f.grund);
+  s.setProperty("--h-flaeche", f.flaeche);
+  s.setProperty("--h-flaeche2", f.flaeche2);
+  s.setProperty("--h-band", f.band);
+  s.setProperty("--h-bandtext", f.bandText || mb.farben.bandText);
+  s.setProperty("--h-tinte", f.tinte);
+  s.setProperty("--h-tinteleise", f.tinteLeise);
+  s.setProperty("--h-tintestill", f.tinteStill);
+  s.setProperty("--h-linie", f.linie);
+  s.setProperty("--h-liniestark", f.linieStark || f.linie);
+  s.setProperty("--h-akzent", f.akzent);
+  s.setProperty("--h-akzent-flaeche", mitAlpha(f.akzent, abend ? .16 : .09));
+  s.setProperty("--h-akzent2", f.akzent2);
+  s.setProperty("--h-akzent2-flaeche", mitAlpha(f.akzent2, abend ? .18 : .16));
+  s.setProperty("--h-gut", f.gut);
+  s.setProperty("--h-gut-flaeche", mitAlpha(f.gut, abend ? .16 : .12));
+  s.setProperty("--h-auf-akzent", schriftAuf(f.akzent));
+  s.setProperty("--h-auf-gut", schriftAuf(f.gut));
+  s.setProperty("--h-rundung", mb.form.rundung + "px");
+  s.setProperty("--h-rundungklein", mb.form.rundungKlein + "px");
+  s.setProperty("--h-rand", mb.form.rand + "px");
+  s.setProperty("--h-schatten", (SCHATTEN[mb.form.schatten] || SCHATTEN.weich).wert);
+  s.setProperty("--h-kopf", (SCHRIFTEN[mb.schrift.kopf] || SCHRIFTEN.system).stapel);
+  s.setProperty("--h-text", (SCHRIFTEN[mb.schrift.text] || SCHRIFTEN.system).stapel);
+  s.setProperty("font-size", (14 * mb.schrift.groesse).toFixed(1) + "px");
+}
+
+/* ═══ Vorschau ══════════════════════════════════════════════════ */
+function $(id){ return document.getElementById(id); }
+function h(t){
+  return String(t == null ? "" : t).replace(/[&<>"']/g, function(z){
+    return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[z];
+  });
+}
+
+function bandHTML(){
+  var l = (M.logo.art === "bild" && M.logo.bild)
+    ? '<img src="' + h(M.logo.bild) + '" alt="' + h(M.betrieb.name) + '">'
+    : h(M.logo.text || M.betrieb.name);
+  return '<div class="hband"><div class="hlogo">' + l + '</div>' +
+         '<div class="hclaim">' + h(M.betrieb.claim) + '</div></div>';
+}
+
+function schirmStart(){
+  var an = M.reihe.filter(function(k){ return M.bereiche[k]; });
+  var kacheln = an.length
+    ? an.map(function(k){
+        var b = BEREICH_TEXTE[k];
+        return '<div class="hkachel"><div class="hi">' + b[1] + '</div>' +
+               '<strong>' + h(b[0]) + '</strong><span>' + h(b[2]) + '</span></div>';
+      }).join("")
+    : '<div class="hkachel" style="grid-column:1/-1"><strong>Noch nichts gewählt</strong>' +
+      '<span>Unter „Bereiche“ auswählen</span></div>';
+
+  return bandHTML() + '<div class="hinhalt">' +
+    '<div class="hgruss">' + h(M.betrieb.begruessung) + '</div>' +
+    '<div class="htipp"><span class="tb">\u2728</span><div class="tt">' +
+      '<div class="tk">EMPFEHLUNG DES HAUSES</div>' +
+      '<div class="tn">Tagesgericht</div><div class="tp">12,50 €</div></div></div>' +
+    '<div class="hbereich">Am Tisch</div>' +
+    '<div class="hkacheln">' + kacheln + '</div></div>';
+}
+
+function schirmKarte(){
+  function z(bild, name, was, preis){
+    return '<div class="hgericht"><span class="gb">' + bild + '</span>' +
+      '<div class="gt"><div class="gn">' + h(name) + '</div>' +
+      '<div class="gd">' + h(was) + '</div></div>' +
+      '<span class="gp">' + preis + '</span></div>';
+  }
+  return bandHTML() + '<div class="hinhalt">' +
+    '<div class="hkat">Zum Teilen</div>' +
+    z("\uD83E\uDED3","Brot &amp; Öl","Sauerteig, Olivenöl, Salz","6,50") +
+    z("\uD83E\uDDC0","Käseauswahl","Drei Sorten, Feigensenf","14,90") +
+    '<div class="hkat">Hauptgerichte</div>' +
+    z("\uD83C\uDF5D","Pasta des Tages","Was der Markt hergab","16,50") +
+    z("\uD83D\uDC1F","Fisch vom Grill","Zitrone, Fenchel, Kartoffeln","23,00") +
+    z("\uD83E\uDD57","Großer Salat","Saisonal, mit Ei oder ohne","13,50") + '</div>';
+}
+
+function schirmBestellt(){
+  return bandHTML() + '<div class="hinhalt">' +
+    '<div class="hpass"><span class="pz schwingt">\uD83C\uDF73</span>' +
+      '<div class="pt">Kommt in die Pfanne</div>' +
+      '<div class="pn"><small>IHRE NUMMER</small>213</div></div>' +
+    '<div class="hstufen">' +
+      '<div class="hstufe an"><i></i><span>Angenommen</span></div>' +
+      '<div class="hstufe an"><i></i><span>In der Küche</span></div>' +
+      '<div class="hstufe"><i></i><span>Unterwegs</span></div></div>' +
+    '<div class="hknopf">Noch etwas bestellen</div></div>' +
+    '<div class="hbalken"><span>Tisch 7</span><span>34,50 €</span></div>';
+}
+
+function vorschau(){
+  var hub = $("hub");
+  markeAnwenden(hub, M, abendAn);
+  hub.innerHTML = schirm === "karte" ? schirmKarte()
+                : schirm === "bestellt" ? schirmBestellt() : schirmStart();
+  document.documentElement.style.setProperty("--leih",
+    (abendAn && M.abend.an) ? M.abend.akzent : M.farben.akzent);
+  kontrastPruefen();
+  ausgabeSchreiben();
+}
+
+function kontrastPruefen(){
+  var f = (abendAn && M.abend.an) ? Object.assign({}, M.farben, M.abend) : M.farben;
+  var proben = [
+    ["Schrift auf dem Seitengrund", f.tinte, f.grund],
+    ["Nebentext auf den Karten",    f.tinteLeise, f.flaeche],
+    ["Schrift im Kopfband",         f.bandText || M.farben.bandText, f.band],
+    ["Hauptfarbe auf den Karten",   f.akzent, f.flaeche]
+  ];
+  var schwach = proben.map(function(p){ return { name:p[0], wert:kontrast(p[1], p[2]) }; })
+    .filter(function(x){ return x.wert < 4.5; })
+    .sort(function(a,b){ return a.wert - b.wert; });
+
+  var raum = $("warnungRaum");
+  var knopf = document.querySelector('[data-abtziel="farben"]');
+  if(!schwach.length){
+    raum.innerHTML = "";
+    if(knopf) knopf.innerHTML = "Farben";
+    return;
+  }
+  var s = schwach[0];
+  raum.innerHTML = '<div class="warnung"><b>' + h(s.name) + '</b> liegt bei ' +
+    s.wert.toFixed(1) + ':1. Für lesbaren Text sollten es 4,5:1 sein — abends und ' +
+    'auf einem Schirm voller Fingerabdrücke fällt das sofort auf.' +
+    (schwach.length > 1 ? ' Dazu ' + (schwach.length-1) +
+      (schwach.length === 2 ? ' weitere Stelle.' : ' weitere Stellen.') : '') + '</div>';
+  if(knopf) knopf.innerHTML = 'Farben<span class="punkt"></span>';
+}
+
+/* ═══ Bedienelemente ════════════════════════════════════════════ */
+function farbgitter(ziel, felder, wo){
+  ziel.innerHTML = felder.map(function(fp){
+    var k = fp[0];
+    var wert = (wo === "abend" ? M.abend[k] : M.farben[k]) || "#000000";
+    return '<label class="farbe"><span class="fleck" style="background:' + h(wert) + '"></span>' +
+      '<span class="fname">' + h(fp[1]) + '<span class="fwert">' + h(wert) + '</span></span>' +
+      '<input type="color" data-farbe="' + k + '" data-wo="' + wo + '" value="' + h(wert) + '"></label>';
+  }).join("");
+}
+
+function wahlBauen(ziel, eintraege, aktiv, kennung){
+  ziel.innerHTML = eintraege.map(function(e){
+    return '<button type="button" data-' + kennung + '="' + e[0] + '" aria-pressed="' +
+      (e[0] === aktiv) + '">' + h(e[1]) + '</button>';
+  }).join("");
+}
+
+var ZIEHSINN = '<svg width="12" height="18" viewBox="0 0 12 18" fill="currentColor" aria-hidden="true">' +
+  '<circle cx="3" cy="3" r="1.5"/><circle cx="9" cy="3" r="1.5"/>' +
+  '<circle cx="3" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/>' +
+  '<circle cx="3" cy="15" r="1.5"/><circle cx="9" cy="15" r="1.5"/></svg>';
+
+function bereicheBauen(){
+  $("bereichsliste").innerHTML = M.reihe.map(function(k){
+    var b = BEREICH_TEXTE[k];
+    return '<div class="bposten' + (M.bereiche[k] ? "" : " aus") + '" data-posten="' + k + '">' +
+      '<span class="zieher" data-zieher="' + k + '" role="button" tabindex="0" ' +
+        'aria-label="' + h(b[0]) + ' verschieben">' + ZIEHSINN + '</span>' +
+      '<span class="bild">' + b[1] + '</span>' +
+      '<span class="btext"><b>' + h(b[0]) + '</b><small>' + h(b[2]) + '</small></span>' +
+      '<input type="checkbox" class="wippe" data-bereich="' + k + '"' +
+        (M.bereiche[k] ? " checked" : "") + '></div>';
+  }).join("");
+}
+
+function vorlagenBauen(){
+  $("vorlagen").innerHTML = Object.keys(VORLAGEN).map(function(k){
+    var v = VORLAGEN[k];
+    var streifen = ["band","akzent","akzent2","grund"].map(function(f){
+      return '<i style="background:' + h(v.tag[f]) + '"></i>';
+    }).join("");
+    return '<button class="vorlage" data-vorlage="' + k + '" aria-pressed="' +
+      (k === quelleName) + '"><b>' + h(v.name) + '</b><span>' + h(v.art) + '</span>' +
+      '<span class="streifen">' + streifen + '</span></button>';
+  }).join("");
+}
+
+function reiterBauen(){
+  $("reiter").innerHTML = ABTEILUNGEN.map(function(a){
+    return '<button data-abtziel="' + a[0] + '" aria-current="' +
+      (a[0] === "vorlagen") + '">' + h(a[1]) + '</button>';
+  }).join("");
+}
+
+function reglerSchreiben(){
+  $("fRundung").value  = M.form.rundung;      $("wRundung").textContent  = M.form.rundung + " px";
+  $("fRundungK").value = M.form.rundungKlein; $("wRundungK").textContent = M.form.rundungKlein + " px";
+  $("fRand").value     = M.form.rand;         $("wRand").textContent     = M.form.rand + " px";
+  $("fAbendAb").value  = M.abend.ab;          $("wAbendAb").textContent  = M.abend.ab + " Uhr";
+  var g = Math.round(M.schrift.groesse * 100);
+  $("fGroesse").value  = g;                   $("wGroesse").textContent  = g + " %";
+}
+
+function alleBauen(){
+  $("fName").value  = M.betrieb.name;
+  $("fClaim").value = M.betrieb.claim;
+  $("fGruss").value = M.betrieb.begruessung;
+  $("fAbendAn").checked = !!M.abend.an;
+  farbgitter($("farbenTag"), FARBFELDER, "tag");
+  farbgitter($("farbenAbend"), FARBFELDER_ABEND, "abend");
+  wahlBauen($("fSchatten"), Object.keys(SCHATTEN).map(function(k){ return [k, SCHATTEN[k].name]; }),
+    M.form.schatten, "schatten");
+  wahlBauen($("fKopf"), Object.keys(SCHRIFTEN).map(function(k){ return [k, SCHRIFTEN[k].name]; }),
+    M.schrift.kopf, "kopf");
+  wahlBauen($("fText"), Object.keys(SCHRIFTEN).map(function(k){ return [k, SCHRIFTEN[k].name]; }),
+    M.schrift.text, "textschrift");
+  bereicheBauen();
+  vorlagenBauen();
+  reglerSchreiben();
+  vorschau();
+}
+
+/* ═══ Das ziehbare Blatt ════════════════════════════════════════
+   Drei Rasten statt freiem Stand: eingefahren, halb, ganz. Freies
+   Stehenbleiben klingt großzügig, führt aber dazu, dass das Blatt
+   nach jedem Wisch woanders steht und man nie weiß, wie viel man
+   gerade sieht.
+   ═══════════════════════════════════════════════════════════════ */
+var blatt = $("blatt");
+var rasten = [96, 400, 700], raste = 0, sicht = 96;
+
+function schmal(){ return window.innerWidth < 920; }
+
+function rastenRechnen(){
+  var hoehe = window.innerHeight;
+  rasten = [96, Math.round(hoehe*0.52), Math.round(hoehe*0.92)];
+}
+
+function sichtSetzen(px, sofort){
+  sicht = Math.max(0, Math.min(rasten[2], px));
+  document.documentElement.style.setProperty("--sicht", sicht + "px");
+  /* Das Gerät weicht ein knappes Drittel des Weges nach oben aus. */
+  var hebe = Math.max(0, (sicht - rasten[0]) * 0.30);
+  $("geraetraum").style.transform = "translateY(" + (-hebe) + "px)";
+  $("schirmwahl").classList.toggle("weg", sicht > rasten[1] + 30);
+  blatt.style.transform = sofort
+    ? "translateY(" + (blatt.offsetHeight - sicht) + "px)"
+    : "";
+}
+
+function zuRaste(i){
+  raste = Math.max(0, Math.min(2, i));
+  document.body.classList.remove("zieht");
+  sichtSetzen(rasten[raste], false);
+}
+
+function blattStarten(){
+  if(!schmal()){
+    document.documentElement.style.setProperty("--sicht", "0px");
+    $("geraetraum").style.transform = "";
+    blatt.style.transform = "";
+    $("schirmwahl").classList.remove("weg");
+    return;
+  }
+  rastenRechnen();
+  zuRaste(raste);
+}
+
+var zug = null;
+
+function zugStart(ev, ausInhalt){
+  if(!schmal()) return;
+  zug = { y:ev.clientY, start:sicht, zeit:Date.now(), ausInhalt:ausInhalt, aktiv:!ausInhalt };
+  if(!ausInhalt){
+    document.body.classList.add("zieht");
+    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch(e){}
+  }
+}
+
+/* Aus dem Inhalt heraus darf nur gezogen werden, wenn er ganz oben
+   steht und man nach unten wischt — sonst könnte man nie durch die
+   Einstellungen blättern. */
+function zugBewegen(ev){
+  if(!zug) return;
+  var weg = zug.y - ev.clientY;
+  if(zug.ausInhalt && !zug.aktiv){
+    if(weg < -10 && $("blattinhalt").scrollTop <= 0){
+      zug.aktiv = true;
+      document.body.classList.add("zieht");
+    } else return;
+  }
+  sichtSetzen(zug.start + weg, true);
+  if(ev.cancelable) ev.preventDefault();
+}
+
+function zugEnde(){
+  if(!zug) return;
+  var geschoben = Math.abs(sicht - zug.start);
+  var schnell = (Date.now() - zug.zeit) < 260 && geschoben > 40;
+  var ziel;
+  if(schnell){
+    ziel = sicht > zug.start ? Math.min(2, raste + 1) : Math.max(0, raste - 1);
+  } else {
+    var beste = 0, kuerzest = Infinity;
+    rasten.forEach(function(r, i){
+      var d = Math.abs(r - sicht);
+      if(d < kuerzest){ kuerzest = d; beste = i; }
+    });
+    ziel = beste;
+  }
+  zug = null;
+  zuRaste(ziel);
+}
+
+$("griff").addEventListener("pointerdown", function(e){ zugStart(e, false); });
+$("griff").addEventListener("pointermove", zugBewegen);
+$("griff").addEventListener("pointerup", zugEnde);
+$("griff").addEventListener("pointercancel", zugEnde);
+
+$("blattinhalt").addEventListener("pointerdown", function(e){
+  if(e.target.closest("[data-zieher]")) return;    /* das ist Sortieren */
+  zugStart(e, true);
+});
+$("blattinhalt").addEventListener("pointermove", zugBewegen, { passive:false });
+$("blattinhalt").addEventListener("pointerup", zugEnde);
+$("blattinhalt").addEventListener("pointercancel", zugEnde);
+
+window.addEventListener("resize", function(){ rastenRechnen(); blattStarten(); });
+
+/* ═══ Bereiche sortieren ════════════════════════════════════════
+   Bewusst ohne die HTML-eigene Ziehschnittstelle: Die kennt Safari
+   auf dem Telefon nicht. Mit Zeigerereignissen läuft es auf Finger
+   und Maus gleich.
+   ═══════════════════════════════════════════════════════════════ */
+var sortier = null;
+
+$("bereichsliste").addEventListener("pointerdown", function(ev){
+  var griff = ev.target.closest("[data-zieher]");
+  if(!griff) return;
+  var posten = griff.closest("[data-posten]");
+  var reihen = Array.prototype.slice.call($("bereichsliste").children);
+  sortier = {
+    von: reihen.indexOf(posten),
+    jetzt: null,
+    hoehe: posten.offsetHeight + 7,
+    startY: ev.clientY,
+    posten: posten
+  };
+  posten.classList.add("faehrt");
+  try { griff.setPointerCapture(ev.pointerId); } catch(e){}
+  if(ev.cancelable) ev.preventDefault();
+});
+
+$("bereichsliste").addEventListener("pointermove", function(ev){
+  if(!sortier) return;
+  var weg = ev.clientY - sortier.startY;
+  var neu = Math.max(0, Math.min(M.reihe.length - 1,
+    sortier.von + Math.round(weg / sortier.hoehe)));
+  sortier.posten.style.transform = "translateY(" + weg + "px)";
+
+  if(neu !== sortier.jetzt){
+    sortier.jetzt = neu;
+    /* Die übrigen Zeilen weichen aus, damit man die Lücke sieht,
+       in die man loslässt. */
+    Array.prototype.slice.call($("bereichsliste").children).forEach(function(el, i){
+      if(el === sortier.posten) return;
+      var v = 0;
+      if(sortier.von < neu && i > sortier.von && i <= neu) v = -sortier.hoehe;
+      if(sortier.von > neu && i >= neu && i < sortier.von) v =  sortier.hoehe;
+      el.style.transform = "translateY(" + v + "px)";
+    });
+  }
+  if(ev.cancelable) ev.preventDefault();
+});
+
+function sortierEnde(){
+  if(!sortier) return;
+  var neu = (sortier.jetzt == null) ? sortier.von : sortier.jetzt;
+  var k = M.reihe.splice(sortier.von, 1)[0];
+  M.reihe.splice(neu, 0, k);
+  sortier = null;
+  bereicheBauen();
+  vorschau();
+}
+$("bereichsliste").addEventListener("pointerup", sortierEnde);
+$("bereichsliste").addEventListener("pointercancel", sortierEnde);
+
+/* Ohne Finger: Griff anwählen, Pfeiltasten. */
+$("bereichsliste").addEventListener("keydown", function(ev){
+  var griff = ev.target.closest("[data-zieher]");
+  if(!griff) return;
+  var richtung = ev.key === "ArrowUp" ? -1 : ev.key === "ArrowDown" ? 1 : 0;
+  if(!richtung) return;
+  ev.preventDefault();
+  var i = M.reihe.indexOf(griff.dataset.zieher), j = i + richtung;
+  if(j < 0 || j >= M.reihe.length) return;
+  var k = M.reihe.splice(i,1)[0];
+  M.reihe.splice(j,0,k);
+  bereicheBauen();
+  vorschau();
+  var neu = document.querySelector('[data-zieher="' + k + '"]');
+  if(neu) neu.focus();
+});
+
+/* ═══ Abteilungen anspringen ════════════════════════════════════ */
+function abteilungZeigen(kennung){
+  var ziel = document.querySelector('[data-abt="' + kennung + '"]');
+  if(!ziel) return;
+  var warten = 0;
+  if(schmal() && raste < 2){ zuRaste(2); warten = 240; }
+  setTimeout(function(){
+    $("blattinhalt").scrollTo({ top: ziel.offsetTop - 6, behavior:"smooth" });
+  }, warten);
+  document.querySelectorAll("[data-abtziel]").forEach(function(b){
+    b.setAttribute("aria-current", b.dataset.abtziel === kennung);
+  });
+}
+
+var markUhr = null;
+$("blattinhalt").addEventListener("scroll", function(){
+  clearTimeout(markUhr);
+  markUhr = setTimeout(function(){
+    var oben = $("blattinhalt").scrollTop + 40, jetzt = ABTEILUNGEN[0][0];
+    document.querySelectorAll("[data-abt]").forEach(function(s){
+      if(s.offsetTop <= oben) jetzt = s.dataset.abt;
+    });
+    document.querySelectorAll("[data-abtziel]").forEach(function(b){
+      b.setAttribute("aria-current", b.dataset.abtziel === jetzt);
+    });
+  }, 90);
+});
+
+/* ═══ Ausgabe ═══════════════════════════════════════════════════ */
+function ausgabeSchreiben(){
+  function farbzeilen(obj, felder){
+    return felder.map(function(fp){
+      return "    " + (fp[0] + ":").padEnd(15) + '"' + (obj[fp[0]] || "") + '",';
+    }).join("\n");
+  }
+  var bereichzeilen = M.reihe.map(function(k){
+    return "    " + (k + ":").padEnd(15) + (M.bereiche[k] ? "true," : "false,") +
+      "   // " + BEREICH_TEXTE[k][0];
+  }).join("\n");
+
+  $("ausgabe").value =
+"/* \u2550\u2550\u2550 MARKENBLATT \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\n" +
+"   " + M.betrieb.name + "\n   Erstellt im Omoteno Marken-Studio.\n" +
+"   \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550 */\n" +
+"const MARKENBLATT = {\n  version: 1,\n\n  betrieb: {\n" +
+'    name:        "' + M.betrieb.name + '",\n' +
+'    claim:       "' + M.betrieb.claim + '",\n' +
+'    begruessung: "' + M.betrieb.begruessung + '",\n' +
+'    strasse:     "",\n    ort:         "",\n    slug:        ""\n  },\n\n' +
+"  farben: {\n" + farbzeilen(M.farben, FARBFELDER) + "\n  },\n\n" +
+"  abend: {\n    an:            " + (M.abend.an ? "true" : "false") + ",\n" +
+"    ab:            " + M.abend.ab + ",\n" + farbzeilen(M.abend, FARBFELDER_ABEND) + "\n  },\n\n" +
+"  form: {\n    rundung:      " + M.form.rundung + ",\n" +
+"    rundungKlein: " + M.form.rundungKlein + ",\n" +
+"    rand:         " + M.form.rand + ",\n" +
+'    schatten:     "' + M.form.schatten + '"\n  },\n\n' +
+'  schrift: {\n    kopf:    "' + M.schrift.kopf + '",\n' +
+'    text:    "' + M.schrift.text + '",\n' +
+"    groesse: " + M.schrift.groesse.toFixed(2) + "\n  },\n\n" +
+'  logo: {\n    art:   "' + M.logo.art + '",\n' +
+'    text:  "' + (M.logo.text || M.betrieb.name) + '",\n' +
+'    bild:  "' + (M.logo.bild || "") + '",\n' +
+"    hoehe: " + M.logo.hoehe + "\n  },\n\n" +
+"  /* Reihenfolge = Reihenfolge der Kacheln auf der Startseite */\n" +
+"  bereiche: {\n" + bereichzeilen + "\n  }\n};\n" +
+"/* \u25B2\u25B2\u25B2 AB HIER NICHTS \u00C4NDERN \u25B2\u25B2\u25B2 */";
+}
+
+/* ═══ Entwurf verschicken ═══════════════════════════════════════
+   Der ganze Stand steckt in der Adresse. Nichts wird gespeichert,
+   nichts übertragen — wer die Adresse öffnet, sieht genau das, was
+   der Absender gesehen hat.
+   ═══════════════════════════════════════════════════════════════ */
+function nachBase64(text){
+  var bytes = new TextEncoder().encode(text), roh = "";
+  bytes.forEach(function(b){ roh += String.fromCharCode(b); });
+  return btoa(roh).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
+}
+function ausBase64(kurz){
+  var s = kurz.replace(/-/g,"+").replace(/_/g,"/");
+  while(s.length % 4) s += "=";
+  var roh = atob(s), bytes = new Uint8Array(roh.length);
+  for(var i=0;i<roh.length;i++) bytes[i] = roh.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+function entwurfsAdresse(){
+  var knapp = {
+    b:[M.betrieb.name, M.betrieb.claim, M.betrieb.begruessung],
+    f:M.farben, a:M.abend, o:M.form, s:M.schrift,
+    r:M.reihe, e:M.reihe.map(function(k){ return M.bereiche[k] ? 1 : 0; })
+  };
+  return location.origin + location.pathname + "#m=" + nachBase64(JSON.stringify(knapp));
+}
+
+function entwurfLesen(){
+  var t = location.hash.match(/[#&]m=([^&]+)/);
+  if(!t) return false;
+  try{
+    var k = JSON.parse(ausBase64(t[1]));
+    if(!k.f || !k.o) return false;
+    M.betrieb = { name:k.b[0], claim:k.b[1], begruessung:k.b[2] };
+    M.farben  = Object.assign({}, M.farben, k.f);
+    M.abend   = Object.assign({}, M.abend, k.a);
+    M.form    = Object.assign({}, M.form, k.o);
+    M.schrift = Object.assign({}, M.schrift, k.s);
+    M.logo    = { art:"text", text:k.b[0], bild:"", hoehe:30 };
+    if(Array.isArray(k.r) && k.r.length){
+      M.reihe = k.r.filter(function(x){ return BEREICH_TEXTE[x]; });
+      BEREICH_FOLGE.forEach(function(x){ if(M.reihe.indexOf(x) < 0) M.reihe.push(x); });
+      M.bereiche = {};
+      M.reihe.forEach(function(x, i){ M.bereiche[x] = !!(k.e && k.e[i]); });
+    }
+    quelleName = "";
+    return true;
+  } catch(e){ return false; }
+}
+
+/* ═══ Meldungen ═════════════════════════════════════════════════ */
+var meldeUhr = null;
+function melde(text){
+  var m = $("meldung");
+  m.textContent = text;
+  m.classList.add("an");
+  clearTimeout(meldeUhr);
+  meldeUhr = setTimeout(function(){ m.classList.remove("an"); }, 2400);
+}
+
+function inZwischenablage(text, gut){
+  function ersatz(){
+    var feld = $("ausgabe"), merk = feld.value, ok = false;
+    feld.value = text;
+    feld.removeAttribute("readonly");
+    feld.select(); feld.setSelectionRange(0, 99999);
+    try { ok = document.execCommand("copy"); } catch(e){}
+    feld.setAttribute("readonly","");
+    if(!ok){ melde("Markiert — bitte selbst kopieren"); return; }
+    feld.value = merk;
+    melde(gut);
+  }
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(function(){ melde(gut); }, ersatz);
+  } else ersatz();
+}
+
+/* ═══ Verdrahtung ═══════════════════════════════════════════════ */
+document.addEventListener("input", function(e){
+  var z = e.target;
+  if(z.dataset.farbe){
+    (z.dataset.wo === "abend" ? M.abend : M.farben)[z.dataset.farbe] = z.value;
+    /* Nur Fleck und Wert nachziehen — ein Neuaufbau des Gitters
+       während des Ziehens würde den Farbwähler schließen. */
+    var karte = z.closest(".farbe");
+    karte.querySelector(".fleck").style.background = z.value;
+    karte.querySelector(".fwert").textContent = z.value.toUpperCase();
+    vorschau(); return;
+  }
+  if(z.id === "fName"){
+    M.betrieb.name = z.value;
+    if(M.logo.art === "text") M.logo.text = z.value;
+    vorschau(); return;
+  }
+  if(z.id === "fClaim"){ M.betrieb.claim = z.value; vorschau(); return; }
+  if(z.id === "fGruss"){ M.betrieb.begruessung = z.value; vorschau(); return; }
+  if(z.id === "fRundung"){ M.form.rundung = +z.value; reglerSchreiben(); vorschau(); return; }
+  if(z.id === "fRundungK"){ M.form.rundungKlein = +z.value; reglerSchreiben(); vorschau(); return; }
+  if(z.id === "fRand"){ M.form.rand = +z.value; reglerSchreiben(); vorschau(); return; }
+  if(z.id === "fAbendAb"){ M.abend.ab = +z.value; reglerSchreiben(); vorschau(); return; }
+  if(z.id === "fGroesse"){ M.schrift.groesse = +z.value/100; reglerSchreiben(); vorschau(); return; }
+});
+
+document.addEventListener("change", function(e){
+  var z = e.target;
+  if(z.id === "fAbendAn"){
+    M.abend.an = z.checked;
+    if(!z.checked && abendAn){ abendAn = false; abendZeichnen(); }
+    vorschau(); return;
+  }
+  if(z.dataset.bereich){
+    M.bereiche[z.dataset.bereich] = z.checked;
+    z.closest("[data-posten]").classList.toggle("aus", !z.checked);
+    vorschau(); return;
+  }
+});
+
+function abendZeichnen(){
+  document.querySelector("[data-abend]").setAttribute("aria-pressed", abendAn);
+}
+
+document.addEventListener("click", function(e){
+  var k = e.target.closest("button");
+  if(!k) return;
+
+  if(k.dataset.abtziel){ abteilungZeigen(k.dataset.abtziel); return; }
+
+  if(k.dataset.vorlage){
+    vorlageLaden(k.dataset.vorlage);
+    abendAn = false; abendZeichnen();
+    alleBauen();
+    melde(M.betrieb.name + " geladen");
+    return;
+  }
+  if(k.dataset.schirm){
+    schirm = k.dataset.schirm;
+    document.querySelectorAll("[data-schirm]").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.schirm === schirm);
+    });
+    vorschau(); return;
+  }
+  if(k.hasAttribute("data-abend")){
+    if(!M.abend.an){ melde("Abendvariante ist ausgeschaltet"); return; }
+    abendAn = !abendAn; abendZeichnen(); vorschau(); return;
+  }
+  if(k.dataset.schatten){
+    M.form.schatten = k.dataset.schatten;
+    wahlBauen($("fSchatten"), Object.keys(SCHATTEN).map(function(x){ return [x, SCHATTEN[x].name]; }),
+      M.form.schatten, "schatten");
+    vorschau(); return;
+  }
+  if(k.dataset.kopf){
+    M.schrift.kopf = k.dataset.kopf;
+    wahlBauen($("fKopf"), Object.keys(SCHRIFTEN).map(function(x){ return [x, SCHRIFTEN[x].name]; }),
+      M.schrift.kopf, "kopf");
+    vorschau(); return;
+  }
+  if(k.dataset.textschrift){
+    M.schrift.text = k.dataset.textschrift;
+    wahlBauen($("fText"), Object.keys(SCHRIFTEN).map(function(x){ return [x, SCHRIFTEN[x].name]; }),
+      M.schrift.text, "textschrift");
+    vorschau(); return;
+  }
+
+  if(k.id === "teilen"){
+    var adresse = entwurfsAdresse();
+    if(navigator.share){
+      navigator.share({ title:"Omoteno · " + M.betrieb.name, url:adresse })
+        .catch(function(){ inZwischenablage(adresse, "Adresse kopiert"); });
+    } else inZwischenablage(adresse, "Adresse kopiert");
+    return;
+  }
+  if(k.id === "kopieren"){ inZwischenablage($("ausgabe").value, "Markenblatt kopiert"); return; }
+
+  if(k.id === "einlesen"){
+    var roh = prompt("Markenblatt oder Adresse einfügen:");
+    if(!roh) return;
+    var tr = roh.match(/[#&]m=([^&\s]+)/);
+    if(tr){
+      location.hash = "m=" + tr[1];
+      if(entwurfLesen()){ alleBauen(); melde("Entwurf eingelesen"); }
+      else melde("Diese Adresse ließ sich nicht lesen");
+      return;
+    }
+    try{
+      /* Kein eval: Dieses Studio steht öffentlich auf der Landingpage. */
+      var von = roh.indexOf("{"), bis = roh.lastIndexOf("}");
+      if(von < 0 || bis < 0) throw new Error("kein Block");
+      var kern = roh.slice(von, bis+1)
+        .replace(/\/\*[\s\S]*?\*\//g,"").replace(/\/\/[^\n]*/g,"")
+        .replace(/([{,]\s*)([A-Za-z_][A-Za-z0-9_]*)\s*:/g,'$1"$2":')
+        .replace(/,(\s*[}\]])/g,"$1");
+      var neu = JSON.parse(kern);
+      if(!neu.farben || !neu.form) throw new Error("unvollständig");
+      M.betrieb = Object.assign({}, M.betrieb, neu.betrieb || {});
+      M.farben  = Object.assign({}, M.farben, neu.farben);
+      M.abend   = Object.assign({ an:false, ab:18 }, neu.abend || {});
+      M.form    = Object.assign({}, M.form, neu.form);
+      M.schrift = Object.assign({}, M.schrift, neu.schrift || {});
+      M.logo    = Object.assign({ art:"text", text:M.betrieb.name, bild:"", hoehe:30 }, neu.logo || {});
+      if(neu.bereiche){
+        M.reihe = Object.keys(neu.bereiche).filter(function(x){ return BEREICH_TEXTE[x]; });
+        BEREICH_FOLGE.forEach(function(x){ if(M.reihe.indexOf(x) < 0) M.reihe.push(x); });
+        var b = {};
+        M.reihe.forEach(function(x){ b[x] = !!neu.bereiche[x]; });
+        M.bereiche = b;
+      }
+      quelleName = "";
+      alleBauen();
+      melde("Markenblatt eingelesen");
+    } catch(err){ melde("Das war kein gültiges Markenblatt"); }
+    return;
+  }
+});
+
+/* ═══ Start ═════════════════════════════════════════════════════
+   Ein Beispiel-Lokal steht sofort da. Ein leeres Studio wäre auf der
+   Landingpage die schlechteste erste Sekunde: Der Besucher müsste
+   erst etwas bauen, bevor er sieht, worum es geht.
+   ═══════════════════════════════════════════════════════════════ */
+reiterBauen();
+vorlageLaden("nordstern");
+var ausAdresse = entwurfLesen();
+alleBauen();
+rastenRechnen();
+blattStarten();
+if(ausAdresse) melde("Entwurf geöffnet");
+</script>
+</body>
+</html>

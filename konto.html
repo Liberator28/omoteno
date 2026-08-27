@@ -1,0 +1,934 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Omoteno · Dein Konto</title>
+<meta name="theme-color" content="#12332B">
+<meta name="robots" content="noindex">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   DAS KONTO
+
+   Bewusst in der Papier-Welt der Landingpage, nicht im dunklen
+   Board. Der Kunde kommt von der Webseite hierher und soll nicht
+   das Gefühl haben, das Haus gewechselt zu haben. Und was hier
+   passiert — Vertrag, Rechnungen, Anschrift — ist Papierarbeit.
+   Ein dunkles Betriebsboard wäre der falsche Ton dafür.
+
+   Dieselben Farbnamen wie auf der Landingpage. Wer beide nebeneinander
+   öffnet, sieht dieselbe Marke.
+   ═══════════════════════════════════════════════════════════════ */
+:root{
+  --tisch:#12332B;
+  --tisch-tief:#0C241E;
+  --pappe:#E7E1D2;
+  --pappe-hell:#F0EBDD;
+  --weiss:#FBF9F3;
+  --tinte:#1A1913;
+  --tinte-leise:#5F5B4C;
+  --tinte-still:#8A8571;
+  --kuli:#2B44C7;
+  --kreide:#EDE7D9;
+  --kreide-leise:#9FB0A4;
+  --linie:#CDC4AC;
+  --linie-stark:#B5AB90;
+  --warn:#A8382C;
+  --gut:#3F6B2E;
+  --gold:#8A6512;
+
+  --r:14px;
+  --r-klein:10px;
+  --breite:840px;
+  --anlauf:cubic-bezier(.23,1,.32,1);
+  --schrift:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --schrift-beleg:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--pappe);color:var(--tinte);
+  font-family:var(--schrift);font-size:16px;line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  min-height:100vh;min-height:100dvh;
+}
+button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer;border:none;background:none}
+a{color:var(--kuli)}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--kuli);outline-offset:2px;border-radius:6px}
+
+/* ─── Kopf ─────────────────────────────────────────────────── */
+.kopf{
+  background:var(--tisch);color:var(--kreide);
+  padding:calc(16px + env(safe-area-inset-top)) 20px 16px;
+}
+.kopf-innen{
+  max-width:var(--breite);margin:0 auto;
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+}
+.wortmarke{font-size:15px;font-weight:700;letter-spacing:.02em}
+.wortmarke span{font-weight:400;color:var(--kreide-leise)}
+.kopf .rechts{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.abmelden{
+  font-size:13px;color:var(--kreide-leise);
+  border:1px solid rgba(237,231,217,.24);border-radius:99px;padding:6px 13px;
+}
+
+/* Zustandsmarke. Farbe trägt hier echte Bedeutung — deshalb ist sie
+   die einzige bunte Fläche im Kopf. */
+.zustand{
+  font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
+  padding:4px 10px;border-radius:99px;
+}
+.zustand.test     {background:rgba(226,182,71,.22);color:#E8C86A}
+.zustand.aktiv    {background:rgba(127,168,92,.22);color:#A9CE86}
+.zustand.pausiert {background:rgba(237,231,217,.14);color:var(--kreide-leise)}
+.zustand.gekuendigt{background:rgba(214,106,94,.2);color:#E79086}
+
+.innen{max-width:var(--breite);margin:0 auto;padding:26px 20px 80px}
+
+/* ─── Tor: Anmelden und Registrieren ───────────────────────── */
+.tor{max-width:420px;margin:0 auto;padding:40px 20px 80px}
+.tor h1{font-size:clamp(26px,5vw,34px);line-height:1.12;margin:0 0 10px;letter-spacing:-.02em}
+.tor .lead{color:var(--tinte-leise);font-size:15px;margin:0 0 26px}
+
+.wechsel{display:flex;gap:4px;background:var(--pappe-hell);border:1px solid var(--linie);
+  border-radius:99px;padding:4px;margin-bottom:22px}
+.wechsel button{
+  flex:1;padding:9px;border-radius:99px;font-size:14px;font-weight:600;
+  color:var(--tinte-leise);transition:background .2s var(--anlauf),color .2s var(--anlauf);
+}
+.wechsel button[aria-pressed=true]{background:var(--weiss);color:var(--tinte);
+  box-shadow:0 1px 2px rgba(26,25,19,.1)}
+
+/* ─── Formularteile ────────────────────────────────────────── */
+.feld{margin-bottom:16px}
+.feld label{display:block;font-size:12.5px;font-weight:600;color:var(--tinte-leise);
+  margin-bottom:6px;letter-spacing:.01em}
+.feld input,.feld textarea,.feld select{
+  width:100%;background:var(--weiss);border:1px solid var(--linie);
+  border-radius:var(--r-klein);padding:12px 13px;font-size:16px;
+  -webkit-appearance:none;appearance:none;
+  color:var(--tinte);-webkit-text-fill-color:var(--tinte);
+  transition:border-color .2s var(--anlauf);
+}
+.feld input:focus,.feld textarea:focus{border-color:var(--kuli)}
+.feld .hilfe{font-size:12.5px;color:var(--tinte-still);margin-top:6px;line-height:1.45}
+.feld .hilfe.gut{color:var(--gut)}
+.feld .hilfe.warn{color:var(--warn)}
+.zweispaltig{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 14px}
+
+.knopf{
+  width:100%;padding:14px;border-radius:var(--r-klein);
+  background:var(--tisch);color:var(--kreide);
+  font-size:15px;font-weight:600;
+  transition:transform .14s var(--anlauf),opacity .2s;
+}
+.knopf:active{transform:scale(.99)}
+.knopf:disabled{opacity:.5;cursor:not-allowed}
+.knopf.leise{background:none;border:1px solid var(--linie-stark);color:var(--tinte)}
+.knopf.schmal{width:auto;padding:11px 18px}
+
+.meldung{
+  border-radius:var(--r-klein);padding:12px 14px;font-size:14px;line-height:1.5;
+  margin-bottom:18px;border:1px solid;
+}
+.meldung.fehler{background:rgba(168,56,44,.08);border-color:rgba(168,56,44,.3);color:#7E2A20}
+.meldung.gut   {background:rgba(63,107,46,.08);border-color:rgba(63,107,46,.3);color:#2F5222}
+.meldung.info  {background:var(--pappe-hell);border-color:var(--linie);color:var(--tinte-leise)}
+.meldung[hidden]{display:none}
+
+/* ─── Abschnitte im Konto ──────────────────────────────────── */
+.reiter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:24px}
+.reiter button{
+  font-size:13.5px;padding:8px 15px;border-radius:99px;
+  border:1px solid var(--linie);background:var(--pappe-hell);color:var(--tinte-leise);
+  transition:border-color .2s var(--anlauf),color .2s var(--anlauf),background .2s var(--anlauf);
+}
+.reiter button[aria-pressed=true]{background:var(--tisch);border-color:var(--tisch);color:var(--kreide)}
+
+.tafel{
+  background:var(--weiss);border:1px solid var(--linie);
+  border-radius:var(--r);padding:20px;margin-bottom:16px;
+}
+.tafel h2{font-size:17px;margin:0 0 4px;letter-spacing:-.01em}
+.tafel .unter{font-size:13.5px;color:var(--tinte-leise);margin:0 0 16px;line-height:1.5}
+.tafel:last-child{margin-bottom:0}
+
+.zeile{
+  display:flex;align-items:baseline;justify-content:space-between;gap:12px;
+  padding:11px 0;border-bottom:1px solid var(--linie);flex-wrap:wrap;
+}
+.zeile:last-child{border-bottom:none;padding-bottom:0}
+.zeile .was{font-size:13.5px;color:var(--tinte-leise)}
+.zeile .wert{font-weight:600;font-variant-numeric:tabular-nums}
+.zeile .wert.beleg{font-family:var(--schrift-beleg);font-size:13.5px;font-weight:400}
+
+/* Testphase. Der Balken ist keine Zierde: Eine Zahl in Tagen liest
+   man, einen fast vollen Balken sieht man. */
+.frist{margin-top:4px}
+.frist .bahn{height:6px;border-radius:99px;background:var(--pappe);overflow:hidden;margin-top:9px}
+.frist .bahn i{display:block;height:100%;background:var(--gold);border-radius:99px}
+.frist.knapp .bahn i{background:var(--warn)}
+
+.adresse{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--pappe-hell);border:1px solid var(--linie);
+  border-radius:var(--r-klein);padding:12px 14px;margin-top:4px;
+}
+.adresse code{font-family:var(--schrift-beleg);font-size:14px;flex:1;min-width:0;
+  overflow-wrap:anywhere}
+
+.gitter{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
+.kachel{
+  display:block;text-decoration:none;color:inherit;
+  background:var(--pappe-hell);border:1px solid var(--linie);
+  border-radius:var(--r-klein);padding:14px;
+  transition:border-color .2s var(--anlauf),transform .14s var(--anlauf);
+}
+.kachel:active{transform:scale(.99)}
+.kachel:hover{border-color:var(--linie-stark)}
+.kachel b{display:block;font-size:14.5px;margin-bottom:2px}
+.kachel span{display:block;font-size:12.5px;color:var(--tinte-leise);line-height:1.4}
+
+/* Rechnungen */
+.rliste{border:1px solid var(--linie);border-radius:var(--r-klein);overflow:hidden}
+.rzeile{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:13px 14px;border-bottom:1px solid var(--linie);background:var(--weiss);
+}
+.rzeile:last-child{border-bottom:none}
+.rzeile .rnr{font-family:var(--schrift-beleg);font-size:13px;color:var(--tinte-leise)}
+.rzeile .rzeit{flex:1;min-width:120px;font-size:14px}
+.rzeile .rsumme{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
+.rmarke{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
+  padding:3px 9px;border-radius:99px}
+.rmarke.offen{background:rgba(138,101,18,.14);color:var(--gold)}
+.rmarke.bezahlt{background:rgba(63,107,46,.14);color:var(--gut)}
+.leerhinweis{font-size:13.5px;color:var(--tinte-still);padding:18px 0;text-align:center}
+
+/* Markenvorschau */
+.markenreihe{display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap}
+.markenreihe i{width:34px;height:34px;border-radius:9px;display:block;
+  border:1px solid rgba(26,25,19,.14)}
+
+.fuss{
+  max-width:var(--breite);margin:0 auto;padding:0 20px 40px;
+  font-size:12.5px;color:var(--tinte-still);line-height:1.6;
+}
+.fuss a{color:var(--tinte-leise)}
+
+@media (max-width:520px){
+  .zweispaltig{grid-template-columns:minmax(0,1fr)}
+}
+@media (prefers-reduced-motion: reduce){
+  *{transition:none !important;animation:none !important}
+}
+</style>
+</head>
+<body>
+
+<header class="kopf">
+  <div class="kopf-innen">
+    <div class="wortmarke">omoteno<span> · Konto</span></div>
+    <div class="rechts" id="kopfRechts" hidden>
+      <span class="zustand" id="kopfZustand"></span>
+      <button class="abmelden" id="abmelden">Abmelden</button>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ TOR ═══ -->
+<div class="tor" id="tor" hidden>
+  <h1 id="torTitel">Willkommen zurück.</h1>
+  <p class="lead" id="torText">Melde dich an, um deinen Hub zu verwalten.</p>
+
+  <div class="wechsel">
+    <button data-modus="anmelden"    aria-pressed="true">Anmelden</button>
+    <button data-modus="registrieren" aria-pressed="false">Neu hier</button>
+  </div>
+
+  <div class="meldung fehler" id="torMeldung" hidden></div>
+
+  <div class="feld">
+    <label for="fMail">E-Mail</label>
+    <input type="email" id="fMail" autocomplete="email" inputmode="email" autocapitalize="off">
+  </div>
+  <div class="feld">
+    <label for="fPass">Passwort</label>
+    <input type="password" id="fPass" autocomplete="current-password">
+    <p class="hilfe" id="passHilfe" hidden>Mindestens acht Zeichen.</p>
+  </div>
+
+  <div id="nurRegistrieren" hidden>
+    <div class="feld">
+      <label for="fBetrieb">Name des Betriebs</label>
+      <input type="text" id="fBetrieb" maxlength="80" autocomplete="organization">
+      <p class="hilfe" id="slugHilfe">Daraus entsteht deine Adresse.</p>
+    </div>
+    <div class="feld">
+      <label for="fOrt">Ort</label>
+      <input type="text" id="fOrt" maxlength="60" autocomplete="address-level2">
+    </div>
+  </div>
+
+  <button class="knopf" id="torKnopf">Anmelden</button>
+
+  <p class="hilfe" style="margin-top:16px;text-align:center;color:var(--tinte-still)">
+    <a href="#" id="passVergessen">Passwort vergessen?</a>
+  </p>
+</div>
+
+<!-- ═══ BETRIEB FEHLT ═══ -->
+<div class="innen" id="ohneBetrieb" hidden>
+  <div class="tafel">
+    <h2>Fast fertig.</h2>
+    <p class="unter">Dein Konto steht. Jetzt fehlt nur noch der Betrieb.</p>
+    <div class="meldung fehler" id="obMeldung" hidden></div>
+    <div class="feld">
+      <label for="obName">Name des Betriebs</label>
+      <input type="text" id="obName" maxlength="80">
+      <p class="hilfe" id="obSlug">Daraus entsteht deine Adresse.</p>
+    </div>
+    <div class="feld">
+      <label for="obOrt">Ort</label>
+      <input type="text" id="obOrt" maxlength="60">
+    </div>
+    <button class="knopf" id="obKnopf">Betrieb anlegen</button>
+  </div>
+</div>
+
+<!-- ═══ KONTO ═══ -->
+<div class="innen" id="konto" hidden>
+  <nav class="reiter" id="reiter">
+    <button data-blatt="uebersicht" aria-pressed="true">Übersicht</button>
+    <button data-blatt="marke"      aria-pressed="false">Marke</button>
+    <button data-blatt="rechnungen" aria-pressed="false">Rechnungen</button>
+    <button data-blatt="vertrag"    aria-pressed="false">Vertrag</button>
+  </nav>
+
+  <section data-blatt-inhalt="uebersicht">
+    <div class="tafel" id="fristTafel" hidden>
+      <h2 id="fristTitel">Testphase</h2>
+      <p class="unter" id="fristText"></p>
+      <div class="frist" id="frist"><div class="bahn"><i id="fristBalken"></i></div></div>
+    </div>
+
+    <div class="tafel">
+      <h2>Deine Adresse</h2>
+      <p class="unter">Das steht später auf Untersetzern und Aufstellern.</p>
+      <div class="adresse">
+        <code id="hubAdresse"></code>
+        <button class="knopf leise schmal" id="adresseKopieren">Kopieren</button>
+      </div>
+    </div>
+
+    <div class="tafel">
+      <h2>Alles an einem Ort</h2>
+      <p class="unter">Die vier Oberflächen, die zu deinem Hub gehören.</p>
+      <div class="gitter">
+        <a class="kachel" href="https://admin.omoteno.de" target="_blank" rel="noopener">
+          <b>Board</b><span>Bestellungen, Karte, Auswertung</span></a>
+        <a class="kachel" href="https://admin.omoteno.de/kueche.html" target="_blank" rel="noopener">
+          <b>Küche</b><span>Der Pass. Nur die Bons.</span></a>
+        <a class="kachel" href="/marken-studio.html" target="_blank" rel="noopener">
+          <b>Marken-Studio</b><span>Farben, Schrift, Form einstellen</span></a>
+        <a class="kachel" id="hubKachel" href="#" target="_blank" rel="noopener">
+          <b>Dein Hub</b><span>So sieht ihn dein Gast</span></a>
+      </div>
+    </div>
+  </section>
+
+  <section data-blatt-inhalt="marke" hidden>
+    <div class="tafel">
+      <h2>Dein Markenblatt</h2>
+      <p class="unter">
+        Im Marken-Studio einstellen, dort auf <b>Entwurf verschicken</b> tippen
+        und den Link hier einsetzen. Danach erscheint die Änderung beim nächsten
+        Erzeugen in deinem Hub.
+      </p>
+      <div class="meldung" id="markeMeldung" hidden></div>
+      <div class="feld">
+        <label for="markeLink">Entwurfslink aus dem Marken-Studio</label>
+        <input type="text" id="markeLink" placeholder="https://omoteno.de/marken-studio.html#m=…"
+               spellcheck="false" autocapitalize="off">
+      </div>
+      <button class="knopf" id="markeSpeichern">Markenblatt übernehmen</button>
+
+      <div id="markeStand" hidden>
+        <div class="zeile" style="margin-top:20px;border-top:1px solid var(--linie);padding-top:16px">
+          <span class="was">Zurzeit hinterlegt</span>
+          <span class="wert" id="markeName"></span>
+        </div>
+        <div class="markenreihe" id="markeFarben"></div>
+        <p class="hilfe" id="markeErzeugt" style="margin-top:10px"></p>
+      </div>
+    </div>
+  </section>
+
+  <section data-blatt-inhalt="rechnungen" hidden>
+    <div class="tafel">
+      <h2>Rechnungen</h2>
+      <p class="unter">Rechnungen von Omoteno an dich — nicht die Umsätze deines Betriebs.</p>
+      <div id="rechnungen"></div>
+    </div>
+  </section>
+
+  <section data-blatt-inhalt="vertrag" hidden>
+    <div class="tafel">
+      <h2>Vertrag</h2>
+      <p class="unter">Monatlich kündbar, keine Umsatzbeteiligung.</p>
+      <div class="zeile"><span class="was">Zustand</span><span class="wert" id="vZustand"></span></div>
+      <div class="zeile"><span class="was">Tarif</span><span class="wert" id="vPlan"></span></div>
+      <div class="zeile"><span class="was">Monatlich</span><span class="wert" id="vPreis"></span></div>
+      <div class="zeile"><span class="was">Läuft seit</span><span class="wert" id="vAb"></span></div>
+      <div class="zeile"><span class="was">Tische</span><span class="wert" id="vTische"></span></div>
+    </div>
+
+    <div class="tafel">
+      <h2>Rechnungsanschrift</h2>
+      <p class="unter">Steht so auf jeder Rechnung.</p>
+      <div class="meldung" id="raMeldung" hidden></div>
+      <div class="feld">
+        <label for="raFirma">Firma oder Inhaber</label>
+        <input type="text" id="raFirma" maxlength="120">
+      </div>
+      <div class="feld">
+        <label for="raStrasse">Straße und Hausnummer</label>
+        <input type="text" id="raStrasse" maxlength="120">
+      </div>
+      <div class="zweispaltig">
+        <div class="feld">
+          <label for="raPlz">PLZ</label>
+          <input type="text" id="raPlz" maxlength="10" inputmode="numeric">
+        </div>
+        <div class="feld">
+          <label for="raOrt">Ort</label>
+          <input type="text" id="raOrt" maxlength="80">
+        </div>
+      </div>
+      <div class="feld">
+        <label for="raUstid">Umsatzsteuer-Identifikationsnummer <span style="font-weight:400">(freiwillig)</span></label>
+        <input type="text" id="raUstid" maxlength="20" autocapitalize="characters">
+      </div>
+      <div class="feld">
+        <label for="raMail">Rechnungen an diese E-Mail</label>
+        <input type="email" id="raMail" maxlength="120" inputmode="email" autocapitalize="off">
+      </div>
+      <button class="knopf" id="raSpeichern">Anschrift speichern</button>
+    </div>
+
+    <div class="tafel">
+      <h2>Kündigen</h2>
+      <p class="unter">
+        Zum Ende des laufenden Monats, ohne Frist und ohne Begründung. Schreib
+        uns eine Zeile an <a href="mailto:hallo@omoteno.de">hallo@omoteno.de</a> —
+        wir bestätigen schriftlich und die Untersetzer darfst du behalten.
+      </p>
+    </div>
+  </section>
+</div>
+
+<footer class="fuss">
+  Omoteno · Elias Faber · Stadtallendorf ·
+  <a href="/impressum.html">Impressum</a> ·
+  <a href="/datenschutz.html">Datenschutz</a>
+</footer>
+
+<script>
+"use strict";
+
+/* ═══ EINSTELLUNGEN — nur diese zwei Zeilen anfassen ═══════════ */
+const SUPABASE_URL = "https://quxwweuvdqtjsdwgjdrh.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk";
+/* ═════════════════════════════════════════════════════════════ */
+
+const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+
+let betrieb = null;
+let modus   = "anmelden";
+
+/* ─── Kleine Helfer ───────────────────────────────────────────── */
+function h(t){
+  return String(t == null ? "" : t).replace(/[&<>"']/g, z =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[z]));
+}
+function euro(n){
+  return Number(n||0).toLocaleString("de-DE",
+    {minimumFractionDigits:2, maximumFractionDigits:2}) + " €";
+}
+function datum(d){
+  if(!d) return "—";
+  return new Date(d).toLocaleDateString("de-DE",
+    {day:"2-digit", month:"2-digit", year:"numeric"});
+}
+function melde(feld, text, art){
+  const el = $(feld);
+  el.className = "meldung " + (art || "info");
+  el.textContent = text;
+  el.hidden = !text;
+}
+
+/* Die Adresse aus dem Namen — dieselbe Umschrift wie in
+   betrieb_anlegen. Zwei Kopien sind eine zu viel, aber die Alternative
+   wäre, den Nutzer bis zum Absenden im Unklaren zu lassen, wie seine
+   Adresse heißen wird. Das ist es nicht wert. */
+function slugAus(name){
+  let s = String(name||"").toLowerCase().trim();
+  s = s.replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue")
+       .replace(/ß/g,"ss").replace(/æ/g,"ae").replace(/ø/g,"oe")
+       .replace(/&/g,"-und-");
+  s = s.normalize("NFD").replace(/[\u0300-\u036f]/g,"");
+  s = s.replace(/[^a-z0-9]+/g,"-").replace(/-{2,}/g,"-")
+       .replace(/^-|-$/g,"").slice(0,40).replace(/^-|-$/g,"");
+  return s;
+}
+
+/* Adressvorschau, während getippt wird. Absichtlich entprellt: Bei
+   jedem Tastendruck eine Anfrage zu stellen wäre unhöflich gegenüber
+   der Datenbank und langsam auf schlechtem Netz. */
+function adressvorschau(nameFeld, hilfeFeld){
+  let uhr = null;
+  $(nameFeld).addEventListener("input", () => {
+    const s = slugAus($(nameFeld).value);
+    const hilfe = $(hilfeFeld);
+    if(!s || s.length < 3){
+      hilfe.className = "hilfe";
+      hilfe.textContent = "Daraus entsteht deine Adresse.";
+      return;
+    }
+    hilfe.className = "hilfe";
+    hilfe.textContent = s + ".omoteno.de wird geprüft …";
+    clearTimeout(uhr);
+    uhr = setTimeout(async () => {
+      try{
+        const {data, error} = await db.rpc("slug_frei", {p_slug: s});
+        if(error) throw error;
+        hilfe.className = "hilfe " + (data ? "gut" : "warn");
+        hilfe.textContent = data
+          ? s + ".omoteno.de ist frei"
+          : s + ".omoteno.de ist schon vergeben — bitte den Namen anpassen";
+      }catch(e){
+        hilfe.className = "hilfe";
+        hilfe.textContent = s + ".omoteno.de";
+      }
+    }, 450);
+  });
+}
+adressvorschau("fBetrieb", "slugHilfe");
+adressvorschau("obName",   "obSlug");
+
+/* ─── Ansicht schalten ───────────────────────────────────────── */
+function zeige(welche){
+  ["tor","ohneBetrieb","konto"].forEach(id => $(id).hidden = (id !== welche));
+  $("kopfRechts").hidden = (welche === "tor");
+}
+
+/* ─── Tor ────────────────────────────────────────────────────── */
+document.querySelectorAll("[data-modus]").forEach(k => {
+  k.onclick = () => {
+    modus = k.dataset.modus;
+    document.querySelectorAll("[data-modus]").forEach(b =>
+      b.setAttribute("aria-pressed", b.dataset.modus === modus));
+    const neu = modus === "registrieren";
+    $("torTitel").textContent = neu ? "Zwei Wochen, ohne Haken." : "Willkommen zurück.";
+    $("torText").textContent  = neu
+      ? "Konto anlegen, Hub einrichten, ausprobieren. Erst danach entscheidest du."
+      : "Melde dich an, um deinen Hub zu verwalten.";
+    $("nurRegistrieren").hidden = !neu;
+    $("passHilfe").hidden = !neu;
+    $("torKnopf").textContent = neu ? "Konto anlegen" : "Anmelden";
+    $("fPass").setAttribute("autocomplete", neu ? "new-password" : "current-password");
+    melde("torMeldung", "");
+  };
+});
+
+$("torKnopf").onclick = async () => {
+  const mail = $("fMail").value.trim();
+  const pass = $("fPass").value;
+  const knopf = $("torKnopf");
+  melde("torMeldung", "");
+
+  if(!mail || !pass){ melde("torMeldung","Bitte E-Mail und Passwort eintragen.","fehler"); return; }
+  if(modus === "registrieren" && pass.length < 8){
+    melde("torMeldung","Das Passwort braucht mindestens acht Zeichen.","fehler"); return;
+  }
+  if(modus === "registrieren" && $("fBetrieb").value.trim().length < 2){
+    melde("torMeldung","Wie heißt dein Betrieb?","fehler"); return;
+  }
+
+  knopf.disabled = true;
+  knopf.textContent = "Einen Moment …";
+  try{
+    if(modus === "anmelden"){
+      const {error} = await db.auth.signInWithPassword({email:mail, password:pass});
+      if(error) throw error;
+    } else {
+      const {data, error} = await db.auth.signUp({email:mail, password:pass});
+      if(error) throw error;
+      /* Verlangt Supabase eine Bestätigungsmail, gibt es noch keine
+         Sitzung. Dann wird der Betrieb erst nach der Bestätigung
+         angelegt — die Eingaben werden so lange gemerkt. */
+      if(!data.session){
+        try{
+          sessionStorage.setItem("omoteno-neu", JSON.stringify({
+            name: $("fBetrieb").value.trim(), ort: $("fOrt").value.trim()
+          }));
+        }catch(e){}
+        melde("torMeldung",
+          "Fast geschafft. Wir haben dir eine E-Mail geschickt — bestätige die Adresse, " +
+          "dann geht es hier weiter.", "gut");
+        knopf.disabled = false;
+        knopf.textContent = "Konto anlegen";
+        return;
+      }
+      await betriebAnlegen($("fBetrieb").value.trim(), $("fOrt").value.trim());
+    }
+    await starten();
+  }catch(e){
+    melde("torMeldung", fehlertext(e), "fehler");
+    knopf.disabled = false;
+    knopf.textContent = modus === "registrieren" ? "Konto anlegen" : "Anmelden";
+  }
+};
+
+/* Supabase antwortet auf Englisch. Der Gastronom nicht. */
+function fehlertext(e){
+  const t = String((e && (e.message || e.error_description)) || e || "");
+  if(/Invalid login credentials/i.test(t)) return "E-Mail oder Passwort stimmen nicht.";
+  if(/Email not confirmed/i.test(t))       return "Bitte bestätige zuerst die E-Mail, die wir dir geschickt haben.";
+  if(/User already registered/i.test(t))   return "Für diese E-Mail gibt es schon ein Konto. Melde dich oben an.";
+  if(/Password should be at least/i.test(t)) return "Das Passwort ist zu kurz — mindestens acht Zeichen.";
+  if(/rate limit|Too many/i.test(t))       return "Zu viele Versuche. Bitte warte einen Moment.";
+  if(/Failed to fetch|NetworkError/i.test(t)) return "Keine Verbindung. Bitte Netz prüfen.";
+  return t || "Das hat nicht geklappt.";
+}
+
+$("passVergessen").onclick = async e => {
+  e.preventDefault();
+  const mail = $("fMail").value.trim();
+  if(!mail){ melde("torMeldung","Trag zuerst deine E-Mail ein, dann schicken wir dir einen Link.","info"); return; }
+  try{
+    const {error} = await db.auth.resetPasswordForEmail(mail, {redirectTo: location.href});
+    if(error) throw error;
+    melde("torMeldung","Wir haben dir einen Link geschickt. Er gilt eine Stunde.","gut");
+  }catch(err){ melde("torMeldung", fehlertext(err), "fehler"); }
+};
+
+$("abmelden").onclick = async () => {
+  await db.auth.signOut();
+  betrieb = null;
+  zeige("tor");
+};
+
+/* ─── Betrieb anlegen ────────────────────────────────────────── */
+async function betriebAnlegen(name, ort){
+  const {data, error} = await db.rpc("betrieb_anlegen",
+    {p_name:name, p_slug:null, p_ort:ort || null});
+  if(error) throw error;
+  return Array.isArray(data) ? data[0] : data;
+}
+
+$("obKnopf").onclick = async () => {
+  const knopf = $("obKnopf");
+  melde("obMeldung","");
+  if($("obName").value.trim().length < 2){
+    melde("obMeldung","Wie heißt dein Betrieb?","fehler"); return;
+  }
+  knopf.disabled = true; knopf.textContent = "Wird angelegt …";
+  try{
+    await betriebAnlegen($("obName").value.trim(), $("obOrt").value.trim());
+    await starten();
+  }catch(e){
+    melde("obMeldung", fehlertext(e), "fehler");
+    knopf.disabled = false; knopf.textContent = "Betrieb anlegen";
+  }
+};
+
+/* ─── Konto füllen ───────────────────────────────────────────── */
+const ZUSTAND_TEXT = {
+  test:"Testphase", aktiv:"Aktiv", pausiert:"Pausiert", gekuendigt:"Gekündigt"
+};
+
+async function kontoZeichnen(){
+  const z = betrieb.zustand || "test";
+  $("kopfZustand").textContent = ZUSTAND_TEXT[z] || z;
+  $("kopfZustand").className = "zustand " + z;
+
+  /* Übersicht */
+  const adresse = betrieb.slug + ".omoteno.de";
+  $("hubAdresse").textContent = adresse;
+  $("hubKachel").href = "https://" + adresse;
+
+  if(z === "test" && betrieb.test_bis){
+    const bis  = new Date(betrieb.test_bis);
+    const tage = Math.max(0, Math.ceil((bis - Date.now()) / 86400000));
+    const anteil = Math.max(0, Math.min(100, Math.round((tage / 14) * 100)));
+    $("fristTafel").hidden = false;
+    $("fristTitel").textContent = tage > 0 ? "Noch " + tage + (tage === 1 ? " Tag" : " Tage") + " im Test"
+                                           : "Testphase abgelaufen";
+    $("fristText").textContent = tage > 0
+      ? "Bis " + datum(bis) + ". Danach entscheidest du, ob es weitergeht — es passiert nichts von selbst."
+      : "Seit " + datum(bis) + ". Dein Hub nimmt gerade keine Bestellungen an. Melde dich, dann schalten wir ihn wieder frei.";
+    $("fristBalken").style.width = anteil + "%";
+    $("frist").className = "frist" + (tage <= 3 ? " knapp" : "");
+  } else {
+    $("fristTafel").hidden = true;
+  }
+
+  /* Marke */
+  const mb = betrieb.markenblatt;
+  if(mb && mb.farben){
+    $("markeStand").hidden = false;
+    $("markeName").textContent = (mb.betrieb && mb.betrieb.name) || betrieb.name;
+    $("markeFarben").innerHTML = ["band","akzent","akzent2","gut","grund"]
+      .filter(k => mb.farben[k])
+      .map(k => '<i style="background:' + h(mb.farben[k]) + '" title="' + k + '"></i>').join("");
+    $("markeErzeugt").textContent = betrieb.erzeugt_am
+      ? "Zuletzt in deinen Hub übernommen am " + datum(betrieb.erzeugt_am)
+      : "Noch nicht in deinen Hub übernommen.";
+  } else {
+    $("markeStand").hidden = true;
+  }
+
+  /* Vertrag */
+  $("vZustand").textContent = ZUSTAND_TEXT[z] || z;
+  $("vPlan").textContent    = betrieb.plan || "Noch nicht festgelegt";
+  $("vPreis").textContent   = betrieb.preis_monat != null ? euro(betrieb.preis_monat) : "—";
+  $("vAb").textContent      = datum(betrieb.vertrag_ab);
+
+  const ra = betrieb.rechnung_an || {};
+  $("raFirma").value   = ra.firma   || "";
+  $("raStrasse").value = ra.strasse || "";
+  $("raPlz").value     = ra.plz     || "";
+  $("raOrt").value     = ra.ort     || "";
+  $("raUstid").value   = ra.ustid   || "";
+  $("raMail").value    = ra.email   || "";
+
+  /* Tische und Rechnungen nachladen — beide dürfen scheitern, ohne
+     dass die Seite unbrauchbar wird. */
+  db.from("tische").select("id", {count:"exact", head:true})
+    .eq("betrieb_id", betrieb.id).eq("aktiv", true)
+    .then(({count}) => { $("vTische").textContent = (count || 0) + " angelegt"; })
+    .catch(() => { $("vTische").textContent = "—"; });
+
+  rechnungenZeichnen();
+}
+
+async function rechnungenZeichnen(){
+  const ziel = $("rechnungen");
+  ziel.innerHTML = '<p class="leerhinweis">Wird geladen …</p>';
+  try{
+    const {data, error} = await db.from("rechnungen")
+      .select("nummer,zeitraum_von,zeitraum_bis,brutto,bezahlt_am,datei")
+      .eq("betrieb_id", betrieb.id)
+      .order("gestellt_am", {ascending:false});
+    if(error) throw error;
+
+    if(!data || !data.length){
+      ziel.innerHTML = '<p class="leerhinweis">Noch keine Rechnung. ' +
+        'In der Testphase entsteht auch keine.</p>';
+      return;
+    }
+    ziel.innerHTML = '<div class="rliste">' + data.map(r =>
+      '<div class="rzeile">' +
+        '<span class="rnr">' + h(r.nummer) + '</span>' +
+        '<span class="rzeit">' + datum(r.zeitraum_von) + " – " + datum(r.zeitraum_bis) + '</span>' +
+        '<span class="rmarke ' + (r.bezahlt_am ? "bezahlt" : "offen") + '">' +
+          (r.bezahlt_am ? "bezahlt" : "offen") + '</span>' +
+        '<span class="rsumme">' + euro(r.brutto) + '</span>' +
+      '</div>').join("") + '</div>';
+  }catch(e){
+    ziel.innerHTML = '<p class="leerhinweis">Die Rechnungen konnten nicht geladen werden.</p>';
+  }
+}
+
+/* ─── Entwurfslink aus dem Marken-Studio lesen ────────────────
+   Das Studio schickt bewusst ein KURZES Format, damit der Link nicht
+   dreitausend Zeichen lang wird: b für Betrieb, f für Farben, o für
+   Form, s für Schrift, r für die Reihenfolge der Bereiche und e für
+   die dazugehörigen Schalter. Hier wird daraus wieder ein volles
+   Markenblatt.
+
+   Die Kodierung ist base64 in der URL-Fassung — Plus wird zu Minus,
+   Schrägstrich zu Unterstrich, Gleichheitszeichen fallen weg. Ohne
+   diesen Rückweg zerfällt jeder Umlaut. */
+function ausBase64(kurz){
+  let t = String(kurz).replace(/-/g,"+").replace(/_/g,"/");
+  while(t.length % 4) t += "=";
+  const roh = atob(t), bytes = new Uint8Array(roh.length);
+  for(let i=0;i<roh.length;i++) bytes[i] = roh.charCodeAt(i);
+  return new TextDecoder().decode(bytes);
+}
+
+const BEREICH_FOLGE = ["speisekarte","getraenke","cocktails","reservierung",
+                       "tischruf","musikwunsch","quiz","trinkgeld"];
+
+function ausEntwurf(link){
+  const t = String(link).match(/[#&]m=([^&\s]+)/);
+  if(!t) return null;
+  const k = JSON.parse(ausBase64(t[1]));
+  if(!k.f || !k.o) return null;
+
+  const bereiche = {};
+  const reihe = (Array.isArray(k.r) && k.r.length ? k.r : BEREICH_FOLGE)
+    .filter(x => BEREICH_FOLGE.indexOf(x) >= 0);
+  BEREICH_FOLGE.forEach(x => { if(reihe.indexOf(x) < 0) reihe.push(x); });
+  reihe.forEach((x,i) => { bereiche[x] = !!(k.e && k.e[i]); });
+
+  return {
+    version: 1,
+    betrieb: { name:(k.b&&k.b[0])||"", claim:(k.b&&k.b[1])||"",
+               begruessung:(k.b&&k.b[2])||"" },
+    farben: k.f,
+    abend:  k.a || {an:false},
+    form:   k.o,
+    schrift:k.s || {kopf:"system", text:"system", groesse:1},
+    logo:   { art:"text", text:(k.b&&k.b[0])||"", bild:"", hoehe:30 },
+    bereiche: bereiche,
+    reihe: reihe
+  };
+}
+
+/* ─── Markenblatt aus dem Entwurfslink ───────────────────────── */
+$("markeSpeichern").onclick = async () => {
+  const roh = $("markeLink").value.trim();
+  melde("markeMeldung","");
+  if(!roh){ melde("markeMeldung","Bitte den Entwurfslink einsetzen.","fehler"); return; }
+
+  let mb;
+  try{
+    mb = ausEntwurf(roh);
+    if(!mb) throw new Error("unvollständig");
+  }catch(e){
+    melde("markeMeldung",
+      "Das war kein gültiger Entwurfslink. Im Marken-Studio auf „Entwurf verschicken" +
+      "\u201C tippen und den ganzen Link einsetzen.", "fehler");
+    return;
+  }
+
+  /* Name und Adresse gehören dem Konto, nicht dem Entwurf. Sonst
+     könnte ein eingesetzter fremder Link den eigenen Betrieb
+     umbenennen. */
+  mb.version = 1;
+  mb.betrieb = Object.assign({}, mb.betrieb, {
+    name: betrieb.name, slug: betrieb.slug
+  });
+
+  const knopf = $("markeSpeichern");
+  knopf.disabled = true; knopf.textContent = "Wird übernommen …";
+  try{
+    const {error} = await db.from("betriebe")
+      .update({markenblatt: mb}).eq("id", betrieb.id);
+    if(error) throw error;
+    betrieb.markenblatt = mb;
+    $("markeLink").value = "";
+    kontoZeichnen();
+    melde("markeMeldung",
+      "Übernommen. Wir erzeugen deinen Hub damit neu — das dauert " +
+      "in der Regel weniger als einen Tag.", "gut");
+  }catch(e){
+    melde("markeMeldung", fehlertext(e), "fehler");
+  }
+  knopf.disabled = false; knopf.textContent = "Markenblatt übernehmen";
+};
+
+/* ─── Rechnungsanschrift ─────────────────────────────────────── */
+$("raSpeichern").onclick = async () => {
+  const knopf = $("raSpeichern");
+  melde("raMeldung","");
+  const ra = {
+    firma:   $("raFirma").value.trim(),
+    strasse: $("raStrasse").value.trim(),
+    plz:     $("raPlz").value.trim(),
+    ort:     $("raOrt").value.trim(),
+    ustid:   $("raUstid").value.trim().toUpperCase(),
+    email:   $("raMail").value.trim()
+  };
+  if(!ra.firma || !ra.strasse || !ra.plz || !ra.ort){
+    melde("raMeldung","Firma, Straße, PLZ und Ort brauchen wir für die Rechnung.","fehler");
+    return;
+  }
+  knopf.disabled = true; knopf.textContent = "Wird gespeichert …";
+  try{
+    const {error} = await db.from("betriebe")
+      .update({rechnung_an: ra}).eq("id", betrieb.id);
+    if(error) throw error;
+    betrieb.rechnung_an = ra;
+    melde("raMeldung","Gespeichert.","gut");
+  }catch(e){
+    melde("raMeldung", fehlertext(e), "fehler");
+  }
+  knopf.disabled = false; knopf.textContent = "Anschrift speichern";
+};
+
+/* ─── Adresse kopieren ───────────────────────────────────────── */
+$("adresseKopieren").onclick = () => {
+  const text = "https://" + betrieb.slug + ".omoteno.de";
+  const fertig = () => {
+    $("adresseKopieren").textContent = "Kopiert";
+    setTimeout(() => { $("adresseKopieren").textContent = "Kopieren"; }, 1800);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(fertig, () => {});
+  }
+};
+
+/* ─── Reiter ─────────────────────────────────────────────────── */
+$("reiter").onclick = e => {
+  const k = e.target.closest("[data-blatt]"); if(!k) return;
+  const b = k.dataset.blatt;
+  document.querySelectorAll("[data-blatt]").forEach(x =>
+    x.setAttribute("aria-pressed", x.dataset.blatt === b));
+  document.querySelectorAll("[data-blatt-inhalt]").forEach(x =>
+    x.hidden = (x.dataset.blattInhalt !== b));
+  window.scrollTo(0,0);
+};
+
+/* ─── Start ──────────────────────────────────────────────────── */
+async function starten(){
+  const {data:{session}} = await db.auth.getSession();
+  if(!session){ zeige("tor"); return; }
+
+  /* Nach der Bestätigungsmail: Betrieb jetzt nachholen. */
+  let gemerkt = null;
+  try{ gemerkt = JSON.parse(sessionStorage.getItem("omoteno-neu") || "null"); }catch(e){}
+
+  const {data:mit} = await db.from("betrieb_mitglieder")
+    .select("betrieb_id,rolle").limit(1);
+
+  if(!mit || !mit.length){
+    if(gemerkt && gemerkt.name){
+      try{
+        await betriebAnlegen(gemerkt.name, gemerkt.ort);
+        try{ sessionStorage.removeItem("omoteno-neu"); }catch(e){}
+        return starten();
+      }catch(e){ /* fällt unten auf das Formular zurück */ }
+    }
+    zeige("ohneBetrieb");
+    return;
+  }
+
+  const {data:b, error} = await db.from("betriebe")
+    .select("*").eq("id", mit[0].betrieb_id).single();
+  if(error || !b){ zeige("ohneBetrieb"); return; }
+
+  betrieb = b;
+  zeige("konto");
+  kontoZeichnen();
+}
+
+db.auth.onAuthStateChange((ereignis) => {
+  if(ereignis === "SIGNED_IN" || ereignis === "SIGNED_OUT") starten();
+});
+
+starten();
+</script>
+</body>
+</html>

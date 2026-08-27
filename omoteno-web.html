@@ -1,0 +1,1377 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Omoteno — Der Tisch ist das Personal, das nie Pause macht.</title>
+<meta name="description" content="Untersetzer antippen, Karte öffnet sich, Bestellung landet in der Küche. Ohne App, ohne neue Kasse. Ab 29 € im Monat.">
+<meta name="theme-color" content="#0A1714">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+<style>
+/* ═══════════════════════════════════════════════════════════════
+   OMOTENO · WEBSEITE
+
+   Strukturelle DNA: GEGENSTAND AUF DEM SOCKEL.
+   Der Untersetzer ist das Produkt. Er steht in der Mitte, man tippt
+   ihn an, und die ganze übrige Seite ist Marginalie, die ihn
+   umkreist. SIDES, Menury und Dinelabs zeigen alle drei Dashboards
+   und Telefone — keiner von ihnen hat einen Gegenstand. Das ist die
+   einzige Struktur, die sie nicht kopieren können.
+
+   Schrift ist der größte Hebel: Die alte Seite benutzte system-ui
+   für alles. Neu ist JetBrains Mono nicht Beiwerk, sondern
+   ANZEIGESCHRIFT — ein Bon ist monospaced, also gehören Preise,
+   Tischnummern und Bestellnummern dort hinein, weil sie in
+   Wirklichkeit auch so gedruckt werden.
+
+   Kein Fremddienst für den Helden: Der Untersetzer ist CSS und SVG.
+   Eine Seite, deren Versprechen „läuft auch ohne Netz" lautet, kann
+   ihren Helden nicht per iframe nachladen.
+   ═══════════════════════════════════════════════════════════════ */
+
+:root{
+  /* Palette — sechs Werte, jeder mit einer Rolle */
+  --sockel:#0A1714;        /* der dunkle Tisch, auf dem er liegt */
+  --tafel:#123029;         /* Flaschengrün — die Marke */
+  --tafel-hoch:#174036;
+  --pappe:#E9E3D4;         /* Untersetzer-Karton, kein Weiß */
+  --papier:#F4F0E4;        /* Karten auf Pappe */
+  --tinte:#16150F;         /* Druckfarbe, kein Schwarz */
+  --tinte-leise:#5C5849;
+  --tinte-still:#696553;   /* geprüft: 4,57:1 auf Pappe */
+  --kreide:#EDE7D9;
+  --kreide-leise:#9DB0A5;
+  --kreide-still:#6E837A;
+  --kuli:#2B44C7;          /* der eine Moment Farbe — nur auf Pappe */
+  --linie:#CFC6AE;
+  --linie-dunkel:rgba(237,231,217,.15);
+  --glut:#A8410F;          /* nur für „läuft gerade" — auf Pappe */
+  --glut-hell:#D4642C;     /* dieselbe Rolle auf dem Sockel: 4,94:1.
+                              Eine Farbe kann nicht auf hellem UND dunklem
+                              Grund lesbar sein. Zwei Werte, eine Rolle. */
+
+  --serif:"Instrument Serif",Iowan Old Style,"Palatino Linotype",Palatino,Georgia,serif;
+  --sans:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+
+  --breite:1180px;
+  --eng:720px;
+  --weich:cubic-bezier(.16,1,.3,1);
+  --schnell:cubic-bezier(.77,0,.175,1);
+  --elegant:cubic-bezier(.33,1,.68,1);
+}
+
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+html,body{margin:0;padding:0;overflow-x:clip}
+body{
+  background:var(--pappe);color:var(--tinte);
+  font-family:var(--sans);font-size:16.5px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-synthesis-weight:none;
+}
+button{font:inherit;color:inherit;border:none;background:none;cursor:pointer}
+a{color:inherit}
+img,svg{display:block;max-width:100%}
+:focus{outline:none}
+:focus-visible{outline:2px solid var(--kuli);outline-offset:3px;border-radius:4px}
+
+::selection{background:var(--kuli);color:var(--papier)}
+::-webkit-scrollbar{width:10px}
+::-webkit-scrollbar-track{background:var(--pappe)}
+::-webkit-scrollbar-thumb{background:var(--linie);border-radius:99px;border:3px solid var(--pappe)}
+::-webkit-scrollbar-thumb:hover{background:var(--tinte-still)}
+
+/* Korn. Kein Bild, kein Netz — ein SVG-Filter im Datenstrom.
+   Nimmt den Flächen die digitale Glätte, ohne sie schmutzig zu machen. */
+body::after{
+  content:"";position:fixed;inset:0;z-index:900;pointer-events:none;
+  opacity:.045;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* ─── Typografie ──────────────────────────────────────────────── */
+h1,h2,h3{font-family:var(--serif);font-weight:400;margin:0;text-wrap:balance}
+h1{font-size:clamp(38px,7.4vw,88px);line-height:.96;letter-spacing:-.035em}
+h2{font-size:clamp(30px,4.6vw,58px);line-height:1.03;letter-spacing:-.028em}
+h3{font-size:clamp(20px,2.4vw,27px);line-height:1.18;letter-spacing:-.018em}
+p{margin:0 0 1.1em;max-width:62ch}
+p:last-child{margin-bottom:0}
+
+.marke{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.18em;text-transform:uppercase;
+}
+.zahl{font-family:var(--mono);font-variant-numeric:tabular-nums;font-feature-settings:"tnum"}
+
+.innen{max-width:var(--breite);margin:0 auto;padding-left:24px;padding-right:24px}
+.innen.eng{max-width:var(--eng)}
+
+/* ─── Bildlauffortschritt ─────────────────────────────────────── */
+.fortschritt{
+  position:fixed;top:0;left:0;height:2px;width:0;z-index:950;
+  background:var(--kuli);transition:width .1s linear;
+}
+
+/* ─── Statusleiste als Navigation ─────────────────────────────
+   Nicht die dreispaltige Kopfleiste. Ein Wirt kennt diese Leiste aus
+   seinem eigenen Board — schmal, mit lebendem Punkt. */
+.status{
+  position:fixed;top:0;left:0;right:0;z-index:800;
+  background:rgba(10,23,20,.82);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--linie-dunkel);
+  color:var(--kreide);
+  transition:background .3s var(--weich);
+}
+.status-innen{
+  max-width:var(--breite);margin:0 auto;padding:0 24px;
+  height:52px;display:flex;align-items:center;gap:18px;
+}
+.status .wort{
+  font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.02em;
+  display:flex;align-items:center;gap:8px;
+}
+.pip{
+  width:7px;height:7px;border-radius:50%;background:#7FA85C;flex-shrink:0;
+  box-shadow:0 0 0 0 rgba(127,168,92,.6);animation:puls 2.6s var(--elegant) infinite;
+}
+@keyframes puls{
+  0%  {box-shadow:0 0 0 0 rgba(127,168,92,.55)}
+  70% {box-shadow:0 0 0 9px rgba(127,168,92,0)}
+  100%{box-shadow:0 0 0 0 rgba(127,168,92,0)}
+}
+.status nav{margin-left:auto;display:flex;align-items:center;gap:2px}
+.status nav a{
+  font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--kreide-still);text-decoration:none;padding:8px 11px;border-radius:99px;
+  transition:color .22s var(--weich),background .22s var(--weich);
+}
+.status nav a:hover{color:var(--kreide);background:rgba(237,231,217,.07)}
+.status .uhr{
+  font-family:var(--mono);font-size:11.5px;color:var(--kreide-still);
+  letter-spacing:.06em;padding-left:6px;
+}
+@media (max-width:820px){
+  .status nav a:not(.hauptruf){display:none}
+  .status .uhr{margin-left:auto}
+}
+.hauptruf{
+  background:var(--pappe) !important;color:var(--sockel) !important;
+  font-weight:700;padding:8px 15px !important;
+}
+.hauptruf:hover{background:#fff !important}
+
+/* ═══ 1 · SOCKEL ══════════════════════════════════════════════ */
+.sockel{
+  background:var(--sockel);color:var(--kreide);
+  min-height:100vh;min-height:100dvh;
+  padding:52px 0 0;
+  display:flex;flex-direction:column;
+  position:relative;overflow:hidden;
+}
+/* Der Lichtkegel über dem Tisch. Eingefasst, weil er breiter ist als
+   ein Telefon — sonst ließe sich die Seite seitlich schieben. */
+.sockel::before{
+  content:"";position:absolute;left:50%;top:38%;
+  width:min(1100px,190vw);height:min(760px,130vh);
+  transform:translate(-50%,-50%);
+  background:radial-gradient(ellipse at 50% 50%,
+    rgba(237,231,217,.115),rgba(237,231,217,.03) 42%,rgba(237,231,217,0) 68%);
+  pointer-events:none;
+}
+
+.buehne{
+  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
+  position:relative;padding:30px 24px 0;
+}
+
+/* Der Gegenstand. CSS und SVG, kein Fremddienst. */
+.plinth{position:relative;display:flex;flex-direction:column;align-items:center}
+
+.deckel{
+  position:relative;width:min(228px,58vw);aspect-ratio:1;
+  border-radius:50%;padding:0;
+  background:
+    radial-gradient(120% 120% at 30% 22%, #F6F2E6 0%, var(--pappe) 46%, #D9D2BE 100%);
+  box-shadow:
+    0 2px 0 #C6BEA6,
+    0 3px 0 #BDB49B,
+    0 26px 44px rgba(0,0,0,.55),
+    inset 0 -2px 0 rgba(255,255,255,.5);
+  display:grid;place-items:center;
+  transform:translateY(-14px) rotateX(9deg);
+  transition:transform .5s var(--weich),box-shadow .5s var(--weich);
+  animation:auflegen 1.1s var(--weich) both;
+}
+@keyframes auflegen{
+  from{transform:translateY(-96px) rotateX(26deg) scale(.9);opacity:0}
+  to  {transform:translateY(-14px) rotateX(9deg) scale(1);opacity:1}
+}
+.deckel:hover{transform:translateY(-19px) rotateX(6deg)}
+.deckel:active{transform:translateY(-8px) rotateX(11deg) scale(.985)}
+.deckel svg{width:78%;height:auto}
+.deckel::after{
+  content:"";position:absolute;inset:9px;border-radius:50%;
+  border:1px solid rgba(22,21,15,.13);pointer-events:none;
+}
+
+.tischschatten{
+  width:min(300px,74vw);height:26px;border-radius:50%;margin-top:-8px;
+  background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.5),transparent 68%);
+  animation:schattenfallen 1.1s var(--weich) both;
+}
+@keyframes schattenfallen{
+  from{opacity:0;transform:scale(.5)}
+  to  {opacity:1;transform:scale(1)}
+}
+
+.tippmich{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--kreide-still);margin-top:26px;
+  display:flex;align-items:center;gap:9px;
+  animation:spaeter 1.4s var(--weich) .55s both;
+}
+.tippmich i{
+  width:5px;height:5px;border-radius:50%;background:var(--glut-hell);display:block;
+  animation:puls 2.6s var(--elegant) infinite;
+}
+@keyframes spaeter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+
+/* Zwei Träger, ein Hub. Derselbe Knopf in anderer Form — ein zweites
+   Bauteil hätte Schatten, Wellen und Skript verdoppelt, und doppelt
+   Gepflegtes läuft auseinander. */
+.traeger{
+  display:flex;gap:5px;padding:4px;margin-top:22px;
+  background:rgba(237,231,217,.06);border:1px solid var(--linie-dunkel);border-radius:99px;
+}
+.traeger button{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  padding:8px 15px;border-radius:99px;color:var(--kreide-still);
+  transition:background .26s var(--weich),color .26s var(--weich);
+}
+.traeger button[aria-pressed=true]{background:var(--pappe);color:var(--sockel);font-weight:700}
+.traegertext{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
+  color:var(--kreide-still);margin-top:12px;text-align:center;
+}
+/* Der Aufsteller: derselbe Knopf, andere Maße. Die Übergänge sind
+   bewusst auf width/height/border-radius gelegt, damit die Form
+   wirklich morpht statt zu tauschen. */
+.plinth.aufsteller .deckel{
+  width:min(178px,46vw);aspect-ratio:.72;border-radius:9px 9px 4px 4px;
+  animation:none;
+}
+.plinth.aufsteller .deckel::after{inset:11px;border-radius:5px}
+.plinth.aufsteller .tischschatten{width:min(210px,54vw);height:20px}
+
+/* Magnetischer Knopf — nachgebaut nach dem Muster von OriginKit,
+   aber ohne Fremdbibliothek. Der Knopf folgt dem Zeiger ein Stück
+   weit und schnellt zurück, sobald er ihn verlässt. Nur mit Maus:
+   Auf dem Telefon gibt es keinen Zeiger, dem man folgen könnte. */
+.magnet{will-change:transform}
+@media (hover:none){ .magnet{transform:none !important} }
+
+/* Buchstabentausch. Die Schlagzeile setzt sich beim Laden aus
+   flackernden Zeichen zusammen — je Buchstabe eine eigene Dauer,
+   damit es nicht wie ein Ladebalken aussieht. */
+.tausch{display:inline-block}
+.tausch span{display:inline-block;white-space:pre}
+
+/* Die Schlagzeile steht UNTER dem Gegenstand. Der Gegenstand führt. */
+.sockeltext{
+  padding:0 24px 46px;max-width:var(--breite);margin:0 auto;width:100%;
+  animation:spaeter 1.4s var(--weich) .8s both;
+}
+.sockeltext .marke{color:var(--kreide-still);display:block;margin-bottom:16px}
+.sockeltext h1{max-width:15ch;color:var(--kreide)}
+.sockeltext h1 em{font-style:italic;color:var(--kreide-leise)}
+.sockelfuss{
+  display:flex;align-items:flex-end;justify-content:space-between;
+  gap:28px;flex-wrap:wrap;margin-top:26px;
+}
+.sockelfuss p{color:var(--kreide-leise);font-size:16px;max-width:44ch;margin:0}
+.sockelfuss p b{color:var(--kreide);font-weight:600}
+
+/* Belege statt Siegel — nur was wir wirklich haben. */
+.belege{display:flex;gap:8px;flex-wrap:wrap}
+.beleg{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--kreide-leise);border:1px solid var(--linie-dunkel);
+  border-radius:99px;padding:7px 13px;white-space:nowrap;
+}
+
+/* ═══ 2 · RANDNOTIZEN ═════════════════════════════════════════
+   Keine Kachelreihe mit gleich großen Karten. Drei Notizen,
+   versetzt, wie an den Rand geschrieben. */
+.notizen{background:var(--pappe);padding:clamp(72px,11vw,132px) 0}
+.notizfeld{display:grid;gap:clamp(44px,7vw,86px)}
+.notiz{display:grid;grid-template-columns:auto minmax(0,1fr);gap:0 clamp(18px,3vw,40px);align-items:start}
+.notiz .nr{
+  font-family:var(--mono);font-size:11px;color:var(--tinte-still);
+  letter-spacing:.1em;padding-top:.55em;
+}
+.notiz h3{margin-bottom:12px;max-width:18ch}
+.notiz p{color:var(--tinte-leise);font-size:16px}
+.notiz p b{color:var(--tinte);font-weight:600}
+@media (min-width:900px){
+  .notiz:nth-child(1){max-width:58%}
+  .notiz:nth-child(2){max-width:56%;margin-left:auto}
+  .notiz:nth-child(3){max-width:60%;margin-left:14%}
+}
+
+/* ═══ 3 · DER ABEND ═══════════════════════════════════════════
+   Angeheftete Erzählung. Die Uhrzeit läuft mit, die Szene wechselt
+   in Stufen — nicht Einblenden von unten wie alles andere im Netz. */
+.abend{background:var(--sockel);color:var(--kreide)}
+.abend-halt{position:relative;height:340vh}
+.abend-fest{
+  position:sticky;top:0;height:100vh;height:100dvh;
+  display:flex;flex-direction:column;justify-content:center;overflow:hidden;
+}
+.abend-kopf{
+  position:absolute;top:0;left:0;right:0;padding:76px 24px 0;
+  max-width:var(--breite);margin:0 auto;
+}
+.abend-kopf .marke{color:var(--kreide-still)}
+.abend-uhr{
+  font-family:var(--mono);font-size:clamp(46px,9vw,104px);font-weight:700;
+  line-height:1;letter-spacing:-.04em;color:var(--kreide);
+  font-variant-numeric:tabular-nums;margin-top:10px;
+}
+.abend-bahn{
+  height:2px;background:var(--linie-dunkel);margin-top:18px;position:relative;
+  max-width:var(--breite);
+}
+.abend-bahn i{
+  position:absolute;left:0;top:0;height:100%;background:var(--glut-hell);
+  transition:width .18s linear;
+}
+
+/* Stufenleiste unter der Uhr. Sie ist zugleich Fortschritt und
+   Sprungmarke — wer nicht scrollen mag, tippt hin. */
+.abend-stufen{display:flex;gap:4px;flex-wrap:wrap;margin-top:16px}
+.stufe{
+  display:flex;align-items:center;gap:7px;padding:6px 11px 6px 8px;
+  border-radius:99px;border:1px solid var(--linie-dunkel);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--kreide-still);
+  transition:color .24s var(--weich),border-color .24s var(--weich),background .24s var(--weich);
+}
+.stufe i{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
+.stufe.vorbei{color:var(--kreide-leise)}
+.stufe[aria-current=true]{
+  color:var(--sockel);background:var(--kreide);border-color:var(--kreide);font-weight:700;
+}
+@media (max-width:700px){ .stufe span{display:none} .stufe{padding:8px} }
+
+.szenen{position:relative;max-width:var(--breite);margin:0 auto;padding:0 24px;width:100%}
+.szene{
+  position:absolute;left:24px;right:24px;
+  opacity:0;transform:translateY(18px);pointer-events:none;
+  transition:opacity .5s var(--weich),transform .5s var(--weich);
+}
+.szene.an{opacity:1;transform:none;position:relative}
+.szene h3{max-width:16ch;margin-bottom:14px}
+.szene p{color:var(--kreide-leise);max-width:46ch}
+.szene .wer{
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--glut-hell);display:block;margin-bottom:12px;
+}
+.szene-bild{
+  margin-top:26px;border:1px solid var(--linie-dunkel);border-radius:12px;
+  background:#0E1D19;padding:16px;max-width:440px;
+}
+.bonzeile{
+  display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;
+  font-family:var(--mono);font-size:13px;
+  padding:7px 0;border-bottom:1px dashed var(--linie-dunkel);
+}
+.bonzeile:last-child{border-bottom:none}
+.bonzeile .m{color:var(--kreide);font-weight:700;min-width:26px}
+.bonzeile .t{flex:1;min-width:0;color:var(--kreide-leise)}
+.bonzeile .p{color:var(--kreide);font-variant-numeric:tabular-nums}
+.bonmarke{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase;
+  padding:3px 8px;border-radius:99px;
+}
+.bonmarke.kueche{background:rgba(212,175,55,.17);color:#E3C35F}
+.bonmarke.theke{background:rgba(127,168,92,.19);color:#9CC178}
+.bonmarke.neu{background:rgba(212,100,44,.2);color:#E8895E}
+
+/* ═══ 4 · BELEG (Preise) ══════════════════════════════════════
+   Der Preis als Kassenbon. Hier zahlt sich die Monospace als
+   Anzeigeschrift aus: Ein Wirt liest Zahlen jeden Abend in genau
+   dieser Form. */
+.preise{background:var(--pappe);padding:clamp(76px,11vw,136px) 0}
+.preise-kopf{max-width:var(--eng);margin-bottom:clamp(38px,5vw,60px)}
+.preise-kopf .marke{color:var(--kuli);display:block;margin-bottom:16px}
+.preise-kopf p{color:var(--tinte-leise);margin-top:16px}
+
+.bons{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
+@media (min-width:900px){.bons{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}}
+
+.bon{
+  background:var(--papier);border:1px solid var(--linie);
+  padding:26px 24px 24px;position:relative;
+  /* Gezackte Unterkante wie ein abgerissener Bon. */
+  clip-path:polygon(0 0,100% 0,100% calc(100% - 9px),
+    96% 100%,92% calc(100% - 9px),88% 100%,84% calc(100% - 9px),80% 100%,
+    76% calc(100% - 9px),72% 100%,68% calc(100% - 9px),64% 100%,
+    60% calc(100% - 9px),56% 100%,52% calc(100% - 9px),48% 100%,
+    44% calc(100% - 9px),40% 100%,36% calc(100% - 9px),32% 100%,
+    28% calc(100% - 9px),24% 100%,20% calc(100% - 9px),16% 100%,
+    12% calc(100% - 9px),8% 100%,4% calc(100% - 9px),0 100%);
+  padding-bottom:34px;
+}
+.bon.gewaehlt{background:var(--tafel);border-color:var(--tafel);color:var(--kreide)}
+.bon.warte{background:none;border-style:dashed;border-color:var(--tinte-still)}
+
+.bon-oben{display:flex;align-items:baseline;justify-content:space-between;gap:10px;margin-bottom:4px}
+.bon-name{font-family:var(--serif);font-size:26px;letter-spacing:-.02em}
+.bon-zusatz{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.11em;text-transform:uppercase;
+  background:var(--kuli);color:var(--papier);padding:4px 9px;border-radius:99px;white-space:nowrap;
+}
+.bon.gewaehlt .bon-zusatz{background:var(--pappe);color:var(--tafel)}
+.bon.warte .bon-zusatz{background:none;border:1px solid var(--tinte-still);color:var(--tinte-leise)}
+.bon-wem{font-size:13.5px;color:var(--tinte-leise);margin-bottom:20px}
+.bon.gewaehlt .bon-wem{color:var(--kreide-leise)}
+
+.bon-preis{
+  font-family:var(--mono);font-weight:700;letter-spacing:-.045em;
+  font-size:clamp(40px,5.4vw,54px);line-height:1;
+  font-variant-numeric:tabular-nums;display:flex;align-items:baseline;gap:6px;
+}
+.bon-preis small{font-family:var(--sans);font-size:14px;font-weight:500;letter-spacing:0;color:var(--tinte-leise)}
+.bon.gewaehlt .bon-preis small{color:var(--kreide-leise)}
+.bon-preis .ab{font-family:var(--sans);font-size:15px;font-weight:500;letter-spacing:0}
+
+.bon-strich{border:none;border-top:1px dashed var(--linie);margin:20px 0}
+.bon.gewaehlt .bon-strich{border-top-color:rgba(237,231,217,.24)}
+
+.bon ul{list-style:none;margin:0;padding:0;display:grid;gap:9px}
+.bon li{
+  font-family:var(--mono);font-size:12.5px;line-height:1.5;
+  display:grid;grid-template-columns:14px minmax(0,1fr);gap:9px;align-items:start;
+}
+.bon li::before{content:"+";color:var(--kuli);font-weight:700}
+.bon.gewaehlt li::before{content:"+";color:#9CC178}
+.bon.warte li::before{content:"·";color:var(--tinte-still)}
+.bon li b{font-weight:700}
+
+.bon-knopf{
+  display:block;width:100%;text-align:center;margin-top:22px;
+  padding:13px;border-radius:99px;font-size:14.5px;font-weight:600;
+  text-decoration:none;
+  background:var(--tinte);color:var(--papier);
+  transition:transform .16s var(--weich),background .22s var(--weich);
+}
+.bon-knopf:active{transform:scale(.985)}
+.bon.gewaehlt .bon-knopf{background:var(--pappe);color:var(--tafel)}
+.bon.warte .bon-knopf{background:none;border:1px solid var(--tinte);color:var(--tinte)}
+
+.preisfuss{
+  margin-top:26px;font-family:var(--mono);font-size:12px;color:var(--tinte-still);
+  line-height:1.7;max-width:70ch;
+}
+
+/* ═══ 5 · MARKE ═══════════════════════════════════════════════ */
+.marken{background:var(--tafel);color:var(--kreide);padding:clamp(76px,11vw,132px) 0}
+.marken .marke{color:var(--kreide-still);display:block;margin-bottom:16px}
+.marken h2{max-width:17ch}
+.marken .lead{color:var(--kreide-leise);margin-top:16px;max-width:52ch}
+.markenschau{display:grid;gap:clamp(26px,4vw,48px);margin-top:clamp(34px,5vw,56px)}
+@media (min-width:880px){.markenschau{grid-template-columns:minmax(0,1fr) 330px;align-items:center}}
+.haeuser{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.haus{
+  text-align:left;padding:14px;border-radius:11px;
+  background:rgba(237,231,217,.045);border:1px solid var(--linie-dunkel);
+  color:var(--kreide);
+  transition:border-color .24s var(--weich),background .24s var(--weich),transform .16s var(--weich);
+}
+.haus:active{transform:scale(.985)}
+.haus[aria-pressed=true]{background:rgba(237,231,217,.11);border-color:rgba(237,231,217,.44)}
+.haus b{display:block;font-size:14.5px;font-weight:600}
+.haus span{display:block;font-size:12px;color:var(--kreide-still);margin-top:2px}
+.tupfer{display:flex;gap:4px;margin-top:10px}
+.tupfer i{width:17px;height:17px;border-radius:5px;display:block}
+
+.geraet{
+  justify-self:center;width:100%;max-width:300px;
+  border-radius:30px;padding:9px;
+  background:linear-gradient(160deg,#2A2E34,#14171B);
+  box-shadow:0 26px 56px rgba(0,0,0,.5),0 0 0 1px rgba(255,255,255,.06);
+}
+.schirm{
+  border-radius:22px;overflow:hidden;height:418px;display:flex;flex-direction:column;
+  background:var(--m-grund);color:var(--m-tinte);font-family:var(--m-text);
+  font-weight:400;letter-spacing:0;line-height:1.45;
+  transition:background .42s var(--weich),color .42s var(--weich);
+}
+.schirm *{transition:background-color .42s var(--weich),color .42s var(--weich),border-color .42s var(--weich)}
+.m-band{background:var(--m-band);color:var(--m-bandtext);padding:14px 16px 15px;flex-shrink:0}
+.m-logo{font-family:var(--m-kopf);font-size:18px;font-weight:600;line-height:1.2;letter-spacing:-.01em}
+.m-claim{font-size:11px;opacity:.76;margin-top:2px}
+.m-inhalt{flex:1;overflow:hidden;padding:14px 16px}
+.m-gruss{font-family:var(--m-kopf);font-size:20px;font-weight:600;margin:0 0 13px;line-height:1.2}
+.m-tipp{
+  background:var(--m-flaeche);border:1px solid var(--m-linie);
+  border-left:3px solid var(--m-akzent);border-radius:var(--m-rundung);
+  padding:11px 12px;margin-bottom:15px;box-shadow:var(--m-schatten);
+}
+.m-tipp .k{font-size:8.5px;letter-spacing:.13em;font-weight:700;color:var(--m-akzent);display:block;text-transform:uppercase}
+.m-tipp .n{font-size:14.5px;font-weight:600;margin-top:3px;line-height:1.2}
+.m-tipp .p{font-family:var(--mono);font-size:12.5px;font-weight:700;color:var(--m-akzent2);margin-top:3px}
+.m-label{font-size:8.5px;letter-spacing:.16em;font-weight:700;text-transform:uppercase;color:var(--m-tinteleise);margin:0 0 9px}
+.m-kacheln{display:grid;grid-template-columns:1fr 1fr;gap:8px;grid-auto-rows:1fr}
+.m-kachel{
+  background:var(--m-flaeche);border:1px solid var(--m-linie);
+  border-radius:var(--m-rundung);padding:11px 10px;min-height:70px;
+  box-shadow:var(--m-schatten);display:flex;flex-direction:column;
+}
+.m-kachel i{font-style:normal;font-size:16px;line-height:1;margin-bottom:auto;padding-bottom:8px}
+.m-kachel b{font-size:12.5px;font-weight:600;line-height:1.2}
+.m-kachel small{font-size:9.5px;color:var(--m-tinteleise);margin-top:2px;line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.markenfuss{margin-top:30px;display:flex;gap:14px 22px;align-items:center;flex-wrap:wrap}
+.markenfuss p{font-size:13px;color:var(--kreide-leise);flex:1;min-width:230px;max-width:44ch;margin:0}
+
+/* ═══ 6 · EINWÄNDE ════════════════════════════════════════════ */
+.fragen{background:var(--pappe);padding:clamp(76px,11vw,132px) 0}
+.fragen .marke{color:var(--kuli);display:block;margin-bottom:16px}
+.fragen h2{max-width:16ch;margin-bottom:clamp(30px,4vw,48px)}
+details{border-top:1px solid var(--linie)}
+details:last-of-type{border-bottom:1px solid var(--linie)}
+summary{
+  list-style:none;cursor:pointer;padding:22px 44px 22px 0;position:relative;
+  font-family:var(--serif);font-size:clamp(19px,2.3vw,25px);line-height:1.25;letter-spacing:-.018em;
+}
+summary::-webkit-details-marker{display:none}
+summary::after{
+  content:"";position:absolute;right:6px;top:50%;width:13px;height:1.5px;
+  background:var(--kuli);transform:translateY(-50%);
+}
+summary::before{
+  content:"";position:absolute;right:11.75px;top:50%;width:1.5px;height:13px;
+  background:var(--kuli);transform:translateY(-50%);
+  transition:transform .28s var(--weich),opacity .28s var(--weich);
+}
+details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
+.antwort{overflow:hidden;color:var(--tinte-leise)}
+.antwort > div{padding:0 0 24px;max-width:64ch}
+.antwort b{color:var(--tinte);font-weight:600}
+
+/* ═══ 7 · KOLOPHON ════════════════════════════════════════════ */
+.kolophon{background:var(--sockel);color:var(--kreide);padding:clamp(70px,10vw,116px) 0 40px}
+.kolophon h2{max-width:14ch;margin-bottom:18px}
+.kolophon p{color:var(--kreide-leise);max-width:50ch}
+.kolophon .knopfreihe{display:flex;gap:12px;flex-wrap:wrap;margin-top:30px}
+.gross{
+  display:inline-flex;align-items:center;gap:10px;
+  background:var(--pappe);color:var(--sockel);text-decoration:none;
+  padding:15px 26px;border-radius:99px;font-weight:600;font-size:15.5px;
+  transition:transform .16s var(--weich),background .22s var(--weich);
+}
+.gross:active{transform:scale(.985)}
+.gross:hover{background:#fff}
+.gross.leise{background:none;border:1px solid var(--linie-dunkel);color:var(--kreide)}
+.gross.leise:hover{background:rgba(237,231,217,.07)}
+.kolophonfuss{
+  margin-top:clamp(50px,7vw,84px);padding-top:24px;border-top:1px solid var(--linie-dunkel);
+  display:flex;gap:14px 26px;flex-wrap:wrap;align-items:baseline;
+  font-family:var(--mono);font-size:11.5px;color:var(--kreide-still);letter-spacing:.04em;
+}
+.kolophonfuss a{color:var(--kreide-still);text-decoration:none}
+.kolophonfuss a:hover{color:var(--kreide)}
+.kolophonfuss .rechts{margin-left:auto}
+
+/* ─── Auftritt beim Bildlauf ──────────────────────────────────
+   Clip-path statt Einblenden von unten. Der Text wird aufgedeckt,
+   nicht eingeschwebt. */
+.auf{
+  opacity:0;clip-path:inset(0 0 100% 0);
+  transition:opacity .7s var(--weich),clip-path .9s var(--weich);
+}
+.auf.da{opacity:1;clip-path:inset(0 0 -8% 0)}
+
+@media (prefers-reduced-motion: reduce){
+  html{scroll-behavior:auto}
+  *,*::before,*::after{animation:none !important;transition:none !important}
+  .auf{opacity:1;clip-path:none}
+}
+</style>
+</head>
+<body>
+
+<div class="fortschritt" id="fortschritt"></div>
+
+<header class="status">
+  <div class="status-innen">
+    <span class="wort"><i class="pip"></i>OMOTENO</span>
+    <nav>
+      <a href="#durchgang">Ein Durchgang</a>
+      <a href="#preise">Preise</a>
+      <a href="#marken">Deine Marke</a>
+      <a href="#fragen">Fragen</a>
+      <a class="hauptruf" href="/konto.html">Zwei Wochen testen</a>
+    </nav>
+    <span class="uhr zahl" id="uhr">—</span>
+  </div>
+</header>
+
+<!-- ═══ 1 · SOCKEL ═══ -->
+<section class="sockel">
+  <div class="buehne">
+    <div class="plinth">
+      <button class="deckel" id="deckel" aria-label="Untersetzer antippen">
+        <svg viewBox="0 0 120 120" aria-hidden="true">
+          <g fill="none" stroke="#123029" stroke-linecap="round">
+            <circle cx="60" cy="41" r="7.5" fill="#123029" stroke="none"/>
+            <path d="M43 57c5-5.5 11-8.2 17-8.2S72 51.5 77 57" stroke-width="4.6" opacity=".82"/>
+            <path d="M34 69c7.5-8 16.5-12 26-12s18.5 4 26 12" stroke-width="4.6" opacity=".5"/>
+            <path d="M25 81c10-10.5 22-15.8 35-15.8S85 70.5 95 81" stroke-width="4.6" opacity=".26"/>
+          </g>
+          <text x="60" y="99" text-anchor="middle" fill="#123029"
+                font-family="ui-monospace,monospace" font-size="7.4" font-weight="700"
+                letter-spacing="2.2" opacity=".62">AUFLEGEN · QR</text>
+        </svg>
+      </button>
+      <div class="tischschatten"></div>
+      <p class="tippmich"><i></i>Tipp mich an</p>
+      <div class="traeger" id="traeger">
+        <button type="button" data-traeger="untersetzer" aria-pressed="true">Untersetzer</button>
+        <button type="button" data-traeger="aufsteller"  aria-pressed="false">Aufsteller A5</button>
+      </div>
+      <p class="traegertext" id="traegertext">Auf den Tisch legen · NFC auflegen oder QR scannen</p>
+    </div>
+  </div>
+
+  <div class="sockeltext">
+    <span class="marke">Digitaler Gastgeber am Tisch</span>
+    <h1><span data-tausch>Der Tisch ist das Personal,</span> <em>das nie Pause macht.</em></h1>
+    <div class="sockelfuss">
+      <p>Untersetzer oder Aufsteller antippen — Karte, Bestellung, Servicerufe.
+        Ohne App, ohne Anmeldung, <b>ohne dass wir deine Kasse anfassen.</b></p>
+      <div class="belege">
+        <span class="beleg">Server in Frankfurt</span>
+        <span class="beleg">DSGVO</span>
+        <span class="beleg">Kein Kassensystem</span>
+        <span class="beleg">Monatlich kündbar</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 2 · RANDNOTIZEN ═══ -->
+<section class="notizen">
+  <div class="innen notizfeld">
+    <article class="notiz auf">
+      <span class="nr">01</span>
+      <div>
+        <h3>Der Gast wartet nicht auf Blickkontakt.</h3>
+        <p>Die Karte liegt in elf Sprachen bereit, Allergene stehen dran, und die
+        Bestellung ist auf dem Weg in die Küche, während der Kellner noch am
+        Nachbartisch steht. <b>Wer bestellen will, muss niemanden suchen.</b></p>
+      </div>
+    </article>
+    <article class="notiz auf">
+      <span class="nr">02</span>
+      <div>
+        <h3>Deine Karte ist an einem Nachmittag drin.</h3>
+        <p>Speisekarte hineinkopieren oder abfotografieren — der Zerleger macht
+        Gerichte, Preise und Kategorien daraus, du korrigierst nur noch.
+        <b>Nicht hundert Zeilen abtippen.</b></p>
+      </div>
+    </article>
+    <article class="notiz auf">
+      <span class="nr">03</span>
+      <div>
+        <h3>Und es sieht aus wie dein Laden.</h3>
+        <p>Farben, Schrift, Form und was der Gast überhaupt zu sehen bekommt richten
+        sich nach deinem Haus. <b>Kein Baukasten, bei dem am Ende jedes Lokal
+        gleich aussieht.</b></p>
+      </div>
+    </article>
+  </div>
+</section>
+
+<!-- ═══ 3 · EIN DURCHGANG ═══
+     Vorher hieß dieser Abschnitt „Ein Abend" und lief von 17:40 bis
+     23:10. Das war falsch gedacht: Ein Café hat sein Geschäft um
+     halb zehn morgens, eine Eisdiele am Sonntagnachmittag. Die Uhrzeit
+     schließt die Hälfte der Kundschaft aus.
+
+     Jetzt zählt die Uhr die MINUTEN SEIT DEM HINSETZEN. Das gilt um
+     neun wie um elf — und es ist zugleich das ehrlichere Maß, denn
+     genau diese Spanne verkauft das Produkt. -->
+<section class="abend" id="durchgang">
+  <div class="abend-halt" id="abendHalt">
+    <div class="abend-fest">
+      <div class="abend-kopf">
+        <div class="innen">
+          <span class="marke">Ein Durchgang · vom Hinsetzen bis zum Zahlen</span>
+          <div class="abend-uhr" id="abendUhr">+0:00</div>
+          <div class="abend-bahn"><i id="abendBahn"></i></div>
+          <div class="abend-stufen" id="abendStufen"></div>
+        </div>
+      </div>
+
+      <div class="szenen" id="szenen">
+        <article class="szene an" data-szene="0" data-zeit="0" data-schritt="Platz genommen">
+          <span class="wer">Am Tisch · der Gast</span>
+          <h3>Handy auflegen. Mehr nicht.</h3>
+          <p>Kein App-Store, kein Konto, keine Einwilligung. Die Karte öffnet sich
+          in der Sprache des Telefons — und der Träger auf dem Tisch zeigt dein
+          Logo, nicht unseres.</p>
+          <div class="szene-bild">
+            <div class="bonzeile"><span class="m">≡</span><span class="t">Speisekarte · 11 Sprachen</span><span class="p">öffnet</span></div>
+            <div class="bonzeile"><span class="m">A</span><span class="t">Allergene stehen an jedem Gericht</span><span class="p">14 · 16</span></div>
+          </div>
+        </article>
+
+        <article class="szene" data-szene="1" data-zeit="4" data-schritt="Bestellt">
+          <span class="wer">Am Tisch · der Gast</span>
+          <h3>Bestellt, ohne jemanden zu suchen.</h3>
+          <p>Auswählen, Anmerkung dazu, abschicken. Der Gast bekommt eine
+          dreistellige Nummer und sieht, in welchem Schritt seine Bestellung
+          gerade steckt — <b>statt zu raten, ob überhaupt jemand hingesehen
+          hat.</b></p>
+          <div class="szene-bild">
+            <div class="bonzeile"><span class="m">2×</span><span class="t">Dubai Crêpe</span><span class="p">31,80</span></div>
+            <div class="bonzeile"><span class="m">1×</span><span class="t">Marina Waffel</span><span class="p">9,40</span></div>
+            <div class="bonzeile"><span class="m"></span><span class="t">Tisch 7 · Nr. 213</span><span class="p">41,20 €</span></div>
+          </div>
+        </article>
+
+        <article class="szene" data-szene="2" data-zeit="5" data-schritt="Angenommen">
+          <span class="wer">Hinter der Theke · das Board</span>
+          <h3>Es meldet sich, bevor der Gast aufsteht.</h3>
+          <p>Die Bestellung liegt auf dem Handy des Service, mit Ton. Ein Tipp auf
+          „20 Min", und der Gast liest die Zusage an seinem Platz. Wird es doch
+          später, hältst du die Annahme kurz an.</p>
+          <div class="szene-bild">
+            <div class="bonzeile"><span class="bonmarke neu">Neu</span><span class="t">Tisch 7 · gerade eben</span><span class="p">41,20 €</span></div>
+            <div class="bonzeile"><span class="m"></span><span class="t">Wartezeit zusagen</span><span class="p">10 · 20 · 30</span></div>
+          </div>
+        </article>
+
+        <article class="szene" data-szene="3" data-zeit="6" data-schritt="In der Küche">
+          <span class="wer">Am Pass · die Küche</span>
+          <h3>Der Koch sieht nur, was gekocht wird.</h3>
+          <p>Speisen bei ihm, Getränke an der Theke — je Gericht festgelegt, nicht
+          geraten. Servicerufe bleiben beim Kellner. Ein Balken zeigt, was drängt;
+          <b>man muss nicht lesen, um zu sehen, was zuerst dran ist.</b></p>
+          <div class="szene-bild">
+            <div class="bonzeile"><span class="m">7</span><span class="bonmarke kueche">Küche</span><span class="t">2× Dubai Crêpe</span><span class="p">3 Min</span></div>
+            <div class="bonzeile"><span class="m">12</span><span class="bonmarke theke">Theke</span><span class="t">3× Arabischer Kaiser</span><span class="p">11 Min</span></div>
+          </div>
+        </article>
+
+        <article class="szene" data-szene="4" data-zeit="21" data-schritt="Am Tisch">
+          <span class="wer">Am Tisch · der Gast</span>
+          <h3>Nachbestellen kostet keinen Gang.</h3>
+          <p>Noch ein Getränk, die Rechnung, eine Frage — derselbe Träger, ein
+          Tipp. Der Service bekommt es als Ruf aufs Handy und weiß sofort, an
+          welchem Tisch.</p>
+          <div class="szene-bild">
+            <div class="bonzeile"><span class="m">🔔</span><span class="t">Tisch 7 · zahlen bitte</span><span class="p">jetzt</span></div>
+          </div>
+        </article>
+
+        <article class="szene" data-szene="5" data-zeit="24" data-schritt="Abgerechnet">
+          <span class="wer">Nach Feierabend · die Zahlen</span>
+          <h3>Und am Ende steht da, was war.</h3>
+          <p>Umsatz, Schnitt, welche Stunden voll waren, was am besten lief. Eine
+          Liste zum Ausdrucken oder für die Buchhaltung — <b>keine Kasse, keine
+          TSE, kein Eingriff in das, was schon läuft.</b></p>
+          <div class="szene-bild">
+            <div class="bonzeile"><span class="t">Umsatz</span><span class="p">1.284,60 €</span></div>
+            <div class="bonzeile"><span class="t">Bons</span><span class="p">63</span></div>
+            <div class="bonzeile"><span class="t">Schnitt je Tisch</span><span class="p">20,39 €</span></div>
+          </div>
+        </article>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 4 · PREISE ═══ -->
+<section class="preise" id="preise">
+  <div class="innen">
+    <div class="preise-kopf auf">
+      <span class="marke">Was es kostet</span>
+      <h2>Ein Preis. Keine Einrichtungsgebühr, keine Provision.</h2>
+      <p>Der Preis wächst mit deinem Haus, nicht mit deinem Umsatz. Untersetzer
+      und Aufsteller kommen zum Selbstkostenpreis dazu — wir verdienen nicht am
+      Karton.</p>
+    </div>
+
+    <div class="bons">
+      <article class="bon auf">
+        <div class="bon-oben"><span class="bon-name">Tisch</span></div>
+        <p class="bon-wem">Cafés, Imbisse, kleine Häuser</p>
+        <div class="bon-preis">29<small>€ / Monat</small></div>
+        <hr class="bon-strich">
+        <ul>
+          <li><span>Hub, Board und Küchendisplay</span></li>
+          <li><span><b>11 Sprachen</b> — nicht als Zusatzpaket</span></li>
+          <li><span>14 Allergene und 16 Zusatzstoffe zum Antippen</span></li>
+          <li><span>Karten-Import statt Abtippen</span></li>
+          <li><span><b>10 Tische</b> inklusive, jeder weitere 0,50 €</span></li>
+          <li><span>Eigene Marke, eigene Adresse</span></li>
+        </ul>
+        <a class="bon-knopf" href="/konto.html">Zwei Wochen testen</a>
+      </article>
+
+      <article class="bon gewaehlt auf">
+        <div class="bon-oben">
+          <span class="bon-name">Assistent</span>
+          <span class="bon-zusatz">Beliebt</span>
+        </div>
+        <p class="bon-wem">Restaurants mit Bedienung</p>
+        <div class="bon-preis">59<small>€ / Monat</small></div>
+        <hr class="bon-strich">
+        <ul>
+          <li><span>Alles aus <b>Tisch</b>, Tische unbegrenzt</span></li>
+          <li><span><b>Karte aus dem Foto</b> — abfotografieren, fertig</span></li>
+          <li><span>Fragen an deine Zahlen: „Wie lief Freitag?"</span></li>
+          <li><span>Allergene werden vorgeschlagen, du bestätigst</span></li>
+          <li><span>Übersetzungen prüfen und nachbessern</span></li>
+          <li><span>Vorrang beim Support</span></li>
+        </ul>
+        <a class="bon-knopf" href="/konto.html">Zwei Wochen testen</a>
+      </article>
+
+      <article class="bon warte auf">
+        <div class="bon-oben">
+          <span class="bon-name">Alessia</span>
+          <span class="bon-zusatz">In Vorbereitung</span>
+        </div>
+        <p class="bon-wem">Häuser, bei denen das Telefon nie stillsteht</p>
+        <div class="bon-preis"><span class="ab">ab</span>149<small>€ / Monat</small></div>
+        <hr class="bon-strich">
+        <ul>
+          <li><span>Nimmt Anrufe an, wenn niemand Zeit hat</span></li>
+          <li><span>Beantwortet Fragen zu Öffnungszeiten und Karte</span></li>
+          <li><span>Nimmt Bestellungen und Tischanfragen auf</span></li>
+          <li><span>Gesprächsminuten nach Verbrauch</span></li>
+          <li><span><b>Noch nicht buchbar.</b> Wir melden uns, sobald sie steht.</span></li>
+        </ul>
+        <a class="bon-knopf" href="#alessia" id="warteKnopf">Auf die Warteliste</a>
+      </article>
+    </div>
+
+    <p class="preisfuss auf">
+      Alle Preise zzgl. USt. Monatlich kündbar, keine Mindestlaufzeit, keine
+      Umsatzbeteiligung. Untersetzer ab 1,90 €, A5-Aufsteller ab 12,50 € je Stück
+      — einmalig, du behältst sie auch nach einer Kündigung.
+    </p>
+  </div>
+</section>
+
+<!-- ═══ 5 · MARKE ═══ -->
+<section class="marken" id="marken">
+  <div class="innen">
+    <span class="marke">Deine Marke</span>
+    <h2>Deine Gäste sollen dein Lokal sehen. Nicht unsere Software.</h2>
+    <p class="lead">Der Untersetzer trägt dein Logo — und was sich darunter öffnet,
+    trägt es auch. Vier Beispiele, ein Antippen:</p>
+
+    <div class="markenschau">
+      <div class="haeuser" id="haeuser"></div>
+      <div class="geraet">
+        <div class="schirm" id="schirm">
+          <div class="m-band">
+            <div class="m-logo" id="mLogo">Café Nordstern</div>
+            <div class="m-claim" id="mClaim">Guter Kaffee, kurze Wege.</div>
+          </div>
+          <div class="m-inhalt">
+            <p class="m-gruss" id="mGruss">Schön, dass Sie da sind.</p>
+            <div class="m-tipp">
+              <span class="k">Empfehlung des Hauses</span>
+              <div class="n" id="mTipp">Zimtschnecke</div>
+              <div class="p">4,20 €</div>
+            </div>
+            <p class="m-label">Am Tisch</p>
+            <div class="m-kacheln" id="mKacheln"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="markenfuss">
+      <a class="gross" href="/marken-studio.html">Selbst einstellen</a>
+      <p>Im Marken-Studio stellst du alles ein und schickst uns das Ergebnis als
+      Link. Dann bauen wir genau das — nicht ungefähr das.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ═══ 6 · EINWÄNDE ═══ -->
+<section class="fragen" id="fragen">
+  <div class="innen eng">
+    <span class="marke">Bevor du fragst</span>
+    <h2>Die Fragen, die jeder Wirt zuerst stellt.</h2>
+
+    <details>
+      <summary>Muss ich meine Kasse tauschen?</summary>
+      <div class="antwort"><div><p>Nein, und wir wollen es auch gar nicht. Omoteno läuft
+      neben deiner Kasse, nicht in ihr. <b>Es ist ausdrücklich kein System mit
+      Kassenfunktion nach § 146a AO</b> — keine TSE, keine Zertifizierung, kein
+      Eingriff in deine Buchführung. Bezahlt wird wie immer bei dir.</p></div></div>
+    </details>
+
+    <details>
+      <summary>Was, wenn mein Internet ausfällt?</summary>
+      <div class="antwort"><div><p>Die Karte hat der Gast dann schon geladen und kann
+      weiterblättern. Bestellungen legt sein Telefon in eine Warteschlange und
+      schickt sie nach, sobald das Netz zurück ist. Der Hub selbst ist eine
+      einzelne Datei — <b>er hängt nicht an einem Server, der antworten muss,
+      bevor überhaupt etwas erscheint.</b></p></div></div>
+    </details>
+
+    <details>
+      <summary>Funktioniert NFC wirklich mit jedem Handy?</summary>
+      <div class="antwort"><div><p>Praktisch jedes aktuelle iPhone und Android-Gerät
+      liest NFC ohne App — auflegen genügt. Weil aber nicht jeder Gast weiß, was
+      NFC ist, trägt <b>jeder Träger zusätzlich einen QR-Code.</b> Kamera drauf
+      halten reicht. So kommt jeder rein, auch mit dicker Hülle.</p></div></div>
+    </details>
+
+    <details>
+      <summary>Was, wenn jemand bestellt, der gar nicht mehr da ist?</summary>
+      <div class="antwort"><div><p>Jeder Untersetzer trägt einen eigenen Code. Daraus
+      entsteht beim Antippen eine Tischsitzung, die nach einigen Stunden abläuft —
+      und die Tischnummer kommt aus dieser Sitzung, nicht aus der Eingabe des
+      Gastes. <b>Kommt eine Bestellung ohne belegten Tisch, siehst du das im
+      Board</b> und entscheidest selbst.</p></div></div>
+    </details>
+
+    <details>
+      <summary>Was ist mit Allergenen — hafte ich dafür?</summary>
+      <div class="antwort"><div><p>Die Kennzeichnung verantwortet wie auf jeder
+      gedruckten Karte der Betrieb. Omoteno macht sie nur leichter: alle
+      <b>14 Allergene nach LMIV und 16 Zusatzstoffe nach LMZDV</b> stehen als
+      Liste bereit und werden angetippt statt eingetippt. So steht überall
+      dasselbe Kürzel — und der Gast bekommt es in seiner Sprache.</p></div></div>
+    </details>
+
+    <details>
+      <summary>Wie schnell bin ich live?</summary>
+      <div class="antwort"><div><p>Der Hub steht in zwei Wochen — davon kostet dich
+      selbst nur eine Viertelstunde Zeit. Der Rest ist Druck und Versand der
+      Untersetzer. <b>Solange sie in Produktion sind, läuft dein Hub schon</b> als
+      ausgedruckter QR-Code auf den Tischen.</p></div></div>
+    </details>
+
+    <details>
+      <summary>Was macht der Assistent genau?</summary>
+      <div class="antwort"><div><p>Er liest deine Speisekarte aus einem Foto oder einem
+      PDF und legt Gerichte, Preise und Kategorien an — du korrigierst nur noch.
+      Er schlägt Allergene vor, prüft Übersetzungen und beantwortet Fragen zu
+      deinen eigenen Zahlen im Klartext. <b>Er entscheidet nichts allein</b>: Alles,
+      was er vorschlägt, siehst du, bevor es beim Gast landet.</p></div></div>
+    </details>
+
+    <details id="alessia">
+      <summary>Und wer ist Alessia?</summary>
+      <div class="antwort"><div><p>Eine Telefonassistentin, die abnimmt, wenn bei euch
+      gerade niemand kann: Öffnungszeiten, Karte, Tischanfragen, Bestellungen.
+      <b>Sie ist noch nicht buchbar</b> — wir bauen sie gerade und sagen das lieber,
+      als es zu versprechen. Trag dich auf die Warteliste ein, dann melden wir
+      uns, sobald sie wirklich steht.</p></div></div>
+    </details>
+  </div>
+</section>
+
+<!-- ═══ 7 · KOLOPHON ═══ -->
+<section class="kolophon">
+  <div class="innen">
+    <h2>Zwei Wochen, dann liegt er auf dem Tisch.</h2>
+    <p>Konto anlegen, Karte einlesen, ausprobieren. Erst danach entscheidest du —
+    und wenn es nichts für dich ist, hast du nichts verloren außer einer
+    Viertelstunde.</p>
+    <div class="knopfreihe">
+      <a class="gross" href="/konto.html">Zwei Wochen testen</a>
+      <a class="gross leise" href="/start.html">Lieber erst reden</a>
+    </div>
+
+    <div class="kolophonfuss">
+      <span>Omoteno · Elias Faber · Stadtallendorf</span>
+      <a href="mailto:hallo@omoteno.de">hallo@omoteno.de</a>
+      <span class="rechts">
+        <a href="/impressum.html">Impressum</a> ·
+        <a href="/datenschutz.html">Datenschutz</a>
+      </span>
+    </div>
+  </div>
+</section>
+
+<script>
+"use strict";
+
+/* ─── Uhr in der Statusleiste ────────────────────────────────
+   Kein Zierrat: Sie sagt, dass hier gerade etwas läuft — dieselbe
+   Botschaft wie der pulsierende Punkt daneben. */
+(function uhr(){
+  var el = document.getElementById("uhr");
+  function stellen(){
+    var d = new Date();
+    el.textContent = String(d.getHours()).padStart(2,"0") + ":" +
+                     String(d.getMinutes()).padStart(2,"0");
+  }
+  stellen();
+  setInterval(stellen, 30000);
+})();
+
+/* ─── Bildlauffortschritt ────────────────────────────────────── */
+(function fortschritt(){
+  var bahn = document.getElementById("fortschritt"), warte = false;
+  function messen(){
+    var h = document.documentElement;
+    var voll = h.scrollHeight - h.clientHeight;
+    bahn.style.width = (voll > 0 ? (h.scrollTop / voll) * 100 : 0) + "%";
+    warte = false;
+  }
+  addEventListener("scroll", function(){
+    if(!warte){ requestAnimationFrame(messen); warte = true; }
+  }, {passive:true});
+  messen();
+})();
+
+/* ─── Auftritt: Aufdecken statt Einschweben ──────────────────
+   clip-path, nicht translateY. Das Einblenden von unten ist der
+   meistbenutzte Effekt im Netz und liest sich sofort als Vorlage. */
+(function auftritt(){
+  var stille = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var teile = document.querySelectorAll(".auf");
+  if(stille || !("IntersectionObserver" in window)){
+    teile.forEach(function(t){ t.classList.add("da"); });
+    return;
+  }
+  var beob = new IntersectionObserver(function(eintraege){
+    eintraege.forEach(function(e, i){
+      if(!e.isIntersecting) return;
+      /* Gestaffelt, nicht gleichzeitig — nichts soll im Gleichschritt
+         auftreten. */
+      setTimeout(function(){ e.target.classList.add("da"); }, i * 90);
+      beob.unobserve(e.target);
+    });
+  }, {threshold:.16, rootMargin:"0px 0px -8% 0px"});
+  teile.forEach(function(t){ beob.observe(t); });
+})();
+
+/* ─── Der Untersetzer ────────────────────────────────────────── */
+document.getElementById("deckel").addEventListener("click", function(){
+  document.getElementById("durchgang").scrollIntoView({behavior:"smooth"});
+});
+
+/* ─── Ein Durchgang: angeheftete Erzählung ──────────────────
+   Die Uhr zählt MINUTEN SEIT DEM HINSETZEN, keine Tageszeit. Vorher
+   lief sie von 17:40 bis 23:10 — das schloss jedes Café aus, dessen
+   Geschäft vormittags stattfindet.
+
+   Jede Szene bringt ihren Zeitpunkt selbst mit (data-zeit), statt
+   ihn aus dem Index zu errechnen. So kann eine Szene länger stehen
+   als die nächste, ohne dass irgendwo eine Zahl nachgezogen werden
+   muss. */
+(function durchgang(){
+  var halt   = document.getElementById("abendHalt");
+  var uhrEl  = document.getElementById("abendUhr");
+  var bahn   = document.getElementById("abendBahn");
+  var stufen = document.getElementById("abendStufen");
+  var szenen = [].slice.call(document.querySelectorAll(".szene"));
+  if(!halt || !szenen.length) return;
+
+  var zeiten = szenen.map(function(s){ return Number(s.dataset.zeit || 0); });
+  var ENDE   = zeiten[zeiten.length - 1];
+
+  stufen.innerHTML = szenen.map(function(s, i){
+    return '<button type="button" class="stufe" data-zu="' + i + '">' +
+           '<i></i><span>' + s.dataset.schritt + '</span></button>';
+  }).join("");
+  var knoepfe = [].slice.call(stufen.querySelectorAll(".stufe"));
+
+  var warte = false, letzte = -1;
+
+  function messen(){
+    var r = halt.getBoundingClientRect();
+    var weg = halt.offsetHeight - innerHeight;
+    var p = weg > 0 ? Math.max(0, Math.min(1, -r.top / weg)) : 0;
+
+    /* Die angezeigte Minute folgt der Erzählung, nicht dem Bildlauf:
+       Zwischen zwei Szenen wird zwischen deren Zeitpunkten
+       interpoliert. Sonst stünde bei Szene 2 eine Zahl, die zu
+       keinem Schritt gehört. */
+    var roh = p * (szenen.length - 1);
+    var i   = Math.min(szenen.length - 1, Math.floor(roh));
+    var rest = roh - i;
+    var min = zeiten[i] + (zeiten[Math.min(i+1, zeiten.length-1)] - zeiten[i]) * rest;
+
+    uhrEl.textContent = "+" + Math.floor(min) + ":" +
+      String(Math.round((min % 1) * 60)).padStart(2,"0");
+    bahn.style.width = (Math.min(1, min / ENDE) * 100) + "%";
+
+    if(i !== letzte){
+      szenen.forEach(function(s, n){ s.classList.toggle("an", n === i); });
+      knoepfe.forEach(function(k, n){
+        k.setAttribute("aria-current", n === i);
+        k.classList.toggle("vorbei", n < i);
+      });
+      letzte = i;
+    }
+    warte = false;
+  }
+
+  /* Antippen springt zur Szene — wer nicht scrollen will, soll
+     trotzdem alles sehen können. */
+  stufen.addEventListener("click", function(e){
+    var k = e.target.closest("[data-zu]"); if(!k) return;
+    var n = Number(k.dataset.zu);
+    var weg = halt.offsetHeight - innerHeight;
+    var ziel = halt.offsetTop + (weg * (n / (szenen.length - 1)));
+    scrollTo({top: ziel + 2, behavior:"smooth"});
+  });
+
+  addEventListener("scroll", function(){
+    if(!warte){ requestAnimationFrame(messen); warte = true; }
+  }, {passive:true});
+  addEventListener("resize", messen, {passive:true});
+  messen();
+})();
+
+/* ─── Antworten: Höhe animieren ohne Sprung ─────────────────── */
+document.querySelectorAll("details").forEach(function(d){
+  var antwort = d.querySelector(".antwort");
+  if(!antwort) return;
+  antwort.style.height = "0px";
+  antwort.style.transition = "height .34s cubic-bezier(.16,1,.3,1)";
+  d.querySelector("summary").addEventListener("click", function(e){
+    e.preventDefault();
+    var offen = d.hasAttribute("open");
+    if(offen){
+      antwort.style.height = antwort.scrollHeight + "px";
+      requestAnimationFrame(function(){ antwort.style.height = "0px"; });
+      setTimeout(function(){ d.removeAttribute("open"); }, 340);
+    } else {
+      d.setAttribute("open","");
+      antwort.style.height = "0px";
+      requestAnimationFrame(function(){
+        antwort.style.height = antwort.scrollHeight + "px";
+      });
+      setTimeout(function(){ antwort.style.height = "auto"; }, 360);
+    }
+  });
+});
+
+/* ═══ MARKENSCHAU ══════════════════════════════════════════════
+   Dieselben vier Häuser wie im Marken-Studio und dieselbe Technik:
+   Farben als CSS-Variablen setzen, das Blatt macht den Rest. Wer
+   hier auf „Selbst einstellen" geht, findet drüben genau das wieder,
+   was er gerade gesehen hat. */
+(function markenschau(){
+  var schirm = document.getElementById("schirm");
+  if(!schirm) return;
+
+  var SCHRIFT = {
+    system:'"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif',
+    klassisch:'"Instrument Serif","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif',
+    schmal:'Charter,Georgia,Cambria,"Times New Roman",serif',
+    sachlich:'"Helvetica Neue",Helvetica,Arial,sans-serif'
+  };
+  var SCHATTEN = {
+    weich:"0 1px 2px rgba(0,0,0,.05), 0 8px 22px rgba(0,0,0,.07)",
+    kante:"0 2px 0 rgba(0,0,0,.14)",
+    ohne:"none"
+  };
+
+  var HAEUSER = [
+    { id:"nordstern", name:"Café Nordstern", art:"Café am Wasser",
+      logo:"Café Nordstern", claim:"Guter Kaffee, kurze Wege.",
+      gruss:"Schön, dass Sie da sind.", tipp:"Zimtschnecke",
+      kopf:"klassisch", text:"system", schatten:"weich", rundung:16,
+      f:{ grund:"#F6F3EE", flaeche:"#FFFFFF", band:"#1E3A3A", bandtext:"#F4F9F8",
+          tinte:"#1C2321", tinteleise:"#68756F", linie:"#E2DCD2",
+          akzent:"#0F6E64", akzent2:"#B0791A" },
+      kacheln:[["🍽","Frühstück","bis 14 Uhr"],["☕","Kaffee","Aus Bremen geröstet"],
+               ["🔔","Service rufen","Wir kommen"],["📅","Tisch anfragen","Für später"]] },
+
+    { id:"vespa", name:"Trattoria Vespa", art:"Trattoria",
+      logo:"Trattoria Vespa", claim:"Wie bei Nonna, nur lauter.",
+      gruss:"Benvenuti!", tipp:"Pasta del giorno",
+      kopf:"schmal", text:"system", schatten:"kante", rundung:8,
+      f:{ grund:"#FBF7EF", flaeche:"#FFFFFF", band:"#7A1F1B", bandtext:"#FDF6EC",
+          tinte:"#231A16", tinteleise:"#7C6A5E", linie:"#E8DDCB",
+          akzent:"#A32721", akzent2:"#3F6B2E" },
+      kacheln:[["🍝","La Carta","Antipasti bis Dolci"],["🍷","Vini","Offen und in Flaschen"],
+               ["🔔","Cameriere","Zahlen oder nachbestellen"],["📅","Tavolo","Für heute Abend"]] },
+
+    { id:"loft", name:"LOFT 21", art:"Bar",
+      logo:"LOFT 21", claim:"Bar & Küche",
+      gruss:"Guten Abend.", tipp:"Negroni Sbagliato",
+      kopf:"sachlich", text:"sachlich", schatten:"ohne", rundung:2,
+      f:{ grund:"#12120F", flaeche:"#1A1A16", band:"#0A0A08", bandtext:"#F2F2EC",
+          tinte:"#F2F2EC", tinteleise:"#9A9A90", linie:"#2A2A25",
+          akzent:"#D4FF3F", akzent2:"#F2F2EC" },
+      kacheln:[["🍹","Drinks","Signature & Klassiker"],["🍽","Small Plates","Zum Teilen"],
+               ["🎵","Musikwunsch","Geht an die Bar"],["🔔","Service","Wir kommen"]] },
+
+    { id:"linde", name:"Gasthaus Linde", art:"Gasthaus",
+      logo:"Gasthaus Linde", claim:"Seit 1904 am Markt.",
+      gruss:"Grüß Gott.", tipp:"Rinderroulade",
+      kopf:"klassisch", text:"system", schatten:"weich", rundung:20,
+      f:{ grund:"#F5F1E6", flaeche:"#FFFDF7", band:"#33422A", bandtext:"#F6F3E7",
+          tinte:"#242A1E", tinteleise:"#6F7663", linie:"#E0D8C3",
+          akzent:"#7A5C1E", akzent2:"#93321F" },
+      kacheln:[["🍽","Speisekarte","Hausmannskost"],["🍺","Getränke","Vom Fass"],
+               ["🔔","Bedienung","Zahlen oder nachbestellen"],["🎲","Rätsel","Für die Wartezeit"]] }
+  ];
+
+  function setzen(haus){
+    var s = schirm.style, f = haus.f;
+    s.setProperty("--m-grund", f.grund);
+    s.setProperty("--m-flaeche", f.flaeche);
+    s.setProperty("--m-band", f.band);
+    s.setProperty("--m-bandtext", f.bandtext);
+    s.setProperty("--m-tinte", f.tinte);
+    s.setProperty("--m-tinteleise", f.tinteleise);
+    s.setProperty("--m-linie", f.linie);
+    s.setProperty("--m-akzent", f.akzent);
+    s.setProperty("--m-akzent2", f.akzent2);
+    s.setProperty("--m-rundung", haus.rundung + "px");
+    s.setProperty("--m-schatten", SCHATTEN[haus.schatten]);
+    s.setProperty("--m-kopf", SCHRIFT[haus.kopf]);
+    s.setProperty("--m-text", SCHRIFT[haus.text]);
+
+    document.getElementById("mLogo").textContent  = haus.logo;
+    document.getElementById("mClaim").textContent = haus.claim;
+    document.getElementById("mGruss").textContent = haus.gruss;
+    document.getElementById("mTipp").textContent  = haus.tipp;
+    document.getElementById("mKacheln").innerHTML = haus.kacheln.map(function(k){
+      return '<div class="m-kachel"><i>' + k[0] + '</i><b>' + k[1] +
+             '</b><small>' + k[2] + '</small></div>';
+    }).join("");
+
+    document.querySelectorAll("[data-haus]").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.haus === haus.id);
+    });
+  }
+
+  document.getElementById("haeuser").innerHTML = HAEUSER.map(function(h, i){
+    var tupfer = ["band","akzent","akzent2","grund"].map(function(k){
+      return '<i style="background:' + h.f[k] + '"></i>';
+    }).join("");
+    return '<button type="button" class="haus" data-haus="' + h.id +
+      '" aria-pressed="' + (i === 0) + '"><b>' + h.name + '</b><span>' + h.art +
+      '</span><span class="tupfer">' + tupfer + '</span></button>';
+  }).join("");
+
+  document.getElementById("haeuser").addEventListener("click", function(e){
+    var k = e.target.closest("[data-haus]"); if(!k) return;
+    var haus = HAEUSER.filter(function(h){ return h.id === k.dataset.haus; })[0];
+    if(haus) setzen(haus);
+  });
+
+  setzen(HAEUSER[0]);
+})();
+
+/* ─── Träger wechseln ───────────────────────────────────────── */
+(function traeger(){
+  var wahl = document.getElementById("traeger");
+  var text = document.getElementById("traegertext");
+  var plinth = document.querySelector(".plinth");
+  if(!wahl) return;
+  var TEXTE = {
+    untersetzer:"Auf den Tisch legen · NFC auflegen oder QR scannen",
+    aufsteller: "Auf den Tisch stellen · NFC auflegen oder QR scannen"
+  };
+  wahl.addEventListener("click", function(e){
+    var k = e.target.closest("[data-traeger]"); if(!k) return;
+    var art = k.dataset.traeger;
+    plinth.classList.toggle("aufsteller", art === "aufsteller");
+    text.textContent = TEXTE[art];
+    wahl.querySelectorAll("[data-traeger]").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.traeger === art);
+    });
+  });
+})();
+
+/* ─── Magnetische Knöpfe ────────────────────────────────────────
+   Nach dem Muster von OriginKits magnetic-hover-button, aber
+   selbst gebaut: Die Bibliothek liefert React, wir sind eine
+   einzelne HTML-Datei. Der Zeiger zieht den Knopf um höchstens ein
+   Viertel seiner Größe mit — mehr wirkt kaputt statt lebendig. */
+(function magnet(){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if(matchMedia("(hover:none)").matches) return;
+
+  document.querySelectorAll(".gross, .bon-knopf, .hauptruf").forEach(function(el){
+    el.classList.add("magnet");
+    var r = null;
+    function zieh(e){
+      if(!r) r = el.getBoundingClientRect();
+      var dx = (e.clientX - (r.left + r.width/2))  * .28;
+      var dy = (e.clientY - (r.top  + r.height/2)) * .38;
+      el.style.transition = "transform .1s linear";
+      el.style.transform  = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px)";
+    }
+    el.addEventListener("pointerenter", function(e){ r = el.getBoundingClientRect(); zieh(e); });
+    el.addEventListener("pointermove", zieh);
+    el.addEventListener("pointerleave", function(){
+      r = null;
+      /* Zurückschnellen mit Überschwingen — das ist der Teil, der es
+         lebendig macht. */
+      el.style.transition = "transform .55s cubic-bezier(.34,1.4,.64,1)";
+      el.style.transform  = "translate(0,0)";
+    });
+  });
+})();
+
+/* ─── Buchstabentausch in der Schlagzeile ───────────────────────
+   Nach OriginKits random-letter-swap. Jeder Buchstabe flackert
+   kurz durch fremde Zeichen, bevor er sich setzt — mit eigener
+   Dauer je Zeichen, sonst sieht es aus wie ein Ladebalken. */
+(function tausch(){
+  var ziel = document.querySelector("[data-tausch]");
+  if(!ziel) return;
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+
+  var ZEICHEN = "ABCDEFGHIJKLMNOPQRSTUVWXYZÄÖÜ";
+  var echt = ziel.textContent;
+  ziel.textContent = "";
+  ziel.classList.add("tausch");
+
+  var felder = echt.split("").map(function(z){
+    var sp = document.createElement("span");
+    sp.textContent = z === " " ? "\u00A0" : z;
+    ziel.appendChild(sp);
+    return {el:sp, z:z};
+  });
+
+  felder.forEach(function(f, i){
+    if(f.z === " " || f.z === "\u00A0") return;
+    var schritte = 3 + Math.floor(Math.random() * 5);
+    var n = 0;
+    var uhr = setInterval(function(){
+      f.el.textContent = ZEICHEN[Math.floor(Math.random() * ZEICHEN.length)];
+      if(++n >= schritte){ clearInterval(uhr); f.el.textContent = f.z; }
+    }, 42);
+    /* Versetzt starten, damit es von links durchläuft. */
+    setTimeout(function(){}, i * 18);
+  });
+})();
+
+/* Warteliste: die Frage aufklappen und dorthin springen. */
+document.getElementById("warteKnopf").addEventListener("click", function(e){
+  e.preventDefault();
+  var d = document.getElementById("alessia");
+  if(!d.hasAttribute("open")) d.querySelector("summary").click();
+  d.scrollIntoView({behavior:"smooth", block:"center"});
+});
+</script>
+</body>
+</html>
