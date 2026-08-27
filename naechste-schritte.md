@@ -39,6 +39,14 @@ Alle Prüfskripte laufen sauber. Siehe `CLAUDE.md`.
   „+4:60", die Farbtupfer der Häuser standen untereinander, der
   Empfehlungspreis der Markenschau war fest verdrahtet.
 
+- **Der Untersetzer ist ein Körper.** Kein Bild einer Scheibe mehr,
+  sondern zwei Flächen und dreißig Randsegmente, die den Zylinder
+  ergeben — beim Aufsteller vier Kanten am Rechteck. Er dreht sich
+  langsam, beim Antippen läuft die Drehung aus, er richtet sich auf
+  und fährt heran; erst wenn er steht, öffnet sich der Hub. Ohne
+  Bibliothek, ohne Modellformat: CSS-Transformationen und Web
+  Animations.
+
 **Offen an der Webseite:** Der Demo-Hub ist eine Nachbildung, kein
 erzeugter Hub. Sobald ein Betrieb als Schaufenster erzeugt ist
 (`demo.omoteno.de`), gehört daneben ein Verweis „echten Hub öffnen" —
@@ -58,10 +66,17 @@ schreibt, erzeugt und nach Netlify legt. Danach `betriebe.erzeugt_am`
 setzen. Zugangsdaten als Repository-Geheimnisse.
 
 ### 2 · Anmeldeseite und Formular auf das neue System
-`konto.html` und `start.html` benutzen noch die alte Papier-Palette
-ohne die neuen Schriften. Sie müssen auf `omoteno-web.html` angeglichen
-werden: Instrument Serif / Instrument Sans / JetBrains Mono, dieselben
-Farbrollen, magnetische Knöpfe.
+**`konto.html` ist umgestellt.** Palette, Schriften und Knöpfe kommen
+jetzt aus demselben `:root` wie die Webseite — Werte übernommen, nicht
+geschätzt; die Bedeutungsfarben (warn, gut, gold) sind neu gerechnet,
+weil sie als Schrift auf getönten Flächen stehen. Überschriften in
+Instrument Serif, Beschriftungen und Beträge in JetBrains Mono,
+magnetische Knöpfe, Korn wie auf der Webseite.
+
+**`start.html` fehlt in diesem Verzeichnis.** Die Landingpage verweist
+darauf („Lieber erst reden"). Sobald die Datei hier liegt, bekommt sie
+dieselbe Behandlung — angelegt wurde sie bewusst nicht, um eine
+vorhandene Fassung nicht zu überschreiben.
 
 **Wichtig:** Farbwerte nicht raten — die geprüften Werte stehen im
 `:root` von `omoteno-web.html`, jeder mit Kontrastwert im Kommentar.

@@ -220,45 +220,134 @@ p:last-child{margin-bottom:0}
 .held-objekt{grid-area:objekt;display:flex;align-items:center;justify-content:center}
 .held-fuss{grid-area:fuss;animation:spaeter 1.2s var(--weich) .42s both}
 
-/* Der Gegenstand. CSS und SVG, kein Fremddienst. */
-.plinth{position:relative;display:flex;flex-direction:column;align-items:center}
+/* Der Gegenstand — ein echter Körper, kein Bild davon.
+   ══════════════════════════════════════════════════════════════
+   Vorher war der Untersetzer eine Scheibe mit Schlagschatten: ein
+   Foto in CSS. Jetzt ist er gebaut wie das Ding auf dem Tisch —
+   zwei Flächen und ein Rand aus dreißig Segmenten, die zusammen den
+   Zylinder ergeben. Er dreht sich langsam, und beim Antippen fährt
+   er heran und stellt sich auf, bevor sich der Hub öffnet.
 
-.deckel{
-  position:relative;width:min(228px,58vw);aspect-ratio:1;
-  border-radius:50%;padding:0;
-  background:
-    radial-gradient(120% 120% at 30% 22%, #F6F2E6 0%, var(--pappe) 46%, #D9D2BE 100%);
-  box-shadow:
-    0 2px 0 #C6BEA6,
-    0 3px 0 #BDB49B,
-    0 26px 44px rgba(0,0,0,.55),
-    inset 0 -2px 0 rgba(255,255,255,.5);
-  display:grid;place-items:center;
-  transform:translateY(-14px) rotateX(9deg);
-  transition:transform .5s var(--weich),box-shadow .5s var(--weich);
+   Kein three.js, kein Modellformat, kein Fremddienst: Eine Seite,
+   deren Versprechen „läuft auch ohne Netz" lautet, kann ihren
+   Helden nicht nachladen. Der Körper besteht aus Elementen, die der
+   Browser ohnehin zeichnet — das kostet keine 600 kB Bibliothek.
+
+   Alle Maße hängen an vier Variablen auf .plinth. Deshalb braucht
+   der Formwechsel kein Nachmessen im Skript: Es setzt eine Klasse,
+   die Kanten rechnen sich neu. */
+.plinth{
+  position:relative;display:flex;flex-direction:column;align-items:center;
+  --breit:min(228px,58vw);
+  --hoch:var(--breit);
+  --dick:11px;
+  --kanten:30;
+}
+.plinth.aufsteller{
+  --breit:min(168px,44vw);
+  --hoch:calc(var(--breit) / .707);   /* A5 steht hochkant */
+  --dick:6px;
+}
+
+.stueck{
+  display:block;padding:0;background:none;border:none;position:relative;
+  width:var(--breit);height:var(--hoch);
+}
+.tisch{
+  display:block;width:100%;height:100%;
+  perspective:1150px;perspective-origin:50% 42%;
   animation:auflegen 1.1s var(--weich) both;
 }
 @keyframes auflegen{
-  from{transform:translateY(-96px) rotateX(26deg) scale(.9);opacity:0}
-  to  {transform:translateY(-14px) rotateX(9deg) scale(1);opacity:1}
+  from{transform:translateY(-84px) scale(.9);opacity:0}
+  to  {transform:none;opacity:1}
 }
-.deckel:hover{transform:translateY(-19px) rotateX(6deg)}
-.deckel:active{transform:translateY(-8px) rotateX(11deg) scale(.985)}
-.deckel svg{width:78%;height:auto}
-.deckel::after{
-  content:"";position:absolute;inset:9px;border-radius:50%;
+.koerper{
+  position:absolute;inset:0;transform-style:preserve-3d;
+  /* Der Ausgangsstand. Sobald das Skript läuft, führt die Drehung
+     den Wert — ohne Skript bleibt es bei dieser Ansicht. */
+  transform:rotateX(52deg);
+}
+.plinth.aufsteller .koerper{transform:rotateX(8deg)}
+
+.seite{
+  position:absolute;inset:0;backface-visibility:hidden;
+  display:grid;place-items:center;border-radius:50%;
+  background:radial-gradient(120% 120% at 30% 22%, #F6F2E6 0%, var(--pappe) 46%, #D9D2BE 100%);
+  box-shadow:inset 0 0 0 1px rgba(22,21,15,.08);
+}
+.plinth.aufsteller .seite{border-radius:9px}
+.seite.oben{transform:translateZ(calc(var(--dick) / 2))}
+.seite.unten{
+  transform:translateZ(calc(var(--dick) / -2)) rotateY(180deg);
+  background:radial-gradient(120% 120% at 70% 24%, #E4DDCA 0%, #D5CDB6 52%, #BFB69C 100%);
+}
+.seite.oben::after{
+  content:"";position:absolute;inset:9px;border-radius:inherit;
   border:1px solid rgba(22,21,15,.13);pointer-events:none;
+}
+.plinth.aufsteller .seite.oben::after{inset:11px;border-radius:5px}
+.seite svg{width:78%;height:auto}
+.plinth.aufsteller .seite svg{width:66%}
+.praegung{
+  font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.22em;
+  color:rgba(22,21,15,.26);text-transform:uppercase;
+}
+
+/* Der Rand. Beim Untersetzer dreißig Segmente auf dem Kreis, beim
+   Aufsteller vier Kanten am Rechteck — dieselbe Klasse, andere
+   Rechnung. Das Verlaufsband gibt dem Karton seine Dicke: oben
+   hell, unten im Schatten. */
+.kante{
+  position:absolute;left:50%;top:50%;display:block;
+  background:linear-gradient(to bottom,#EDE6D3 0%,#C3BAA0 46%,#9A9077 100%);
+}
+.plinth:not(.aufsteller) .kante{
+  width:calc(3.1416 * var(--breit) / var(--kanten) + 1.2px);
+  height:var(--dick);
+  transform:
+    translate(-50%,-50%)
+    /* Rückfall 0: Die Segmente kommen aus dem Skript und bringen
+       ihren Index mit. Ohne Skript gibt es sie nicht — dann darf die
+       Regel trotzdem nicht ungültig sein. */
+    rotateZ(calc(var(--i,0) * (360deg / 30)))
+    translateY(calc(var(--breit) / -2))
+    rotateX(90deg);
+}
+.plinth.aufsteller .k-oben,.plinth.aufsteller .k-unten{
+  width:var(--breit);height:var(--dick);
+}
+.plinth.aufsteller .k-oben{
+  transform:translate(-50%,-50%) translateY(calc(var(--hoch) / -2)) rotateX(90deg);
+}
+.plinth.aufsteller .k-unten{
+  transform:translate(-50%,-50%) translateY(calc(var(--hoch) / 2)) rotateX(90deg);
+}
+.plinth.aufsteller .k-links,.plinth.aufsteller .k-rechts{
+  width:var(--hoch);height:var(--dick);
+}
+.plinth.aufsteller .k-links{
+  transform:translate(-50%,-50%) translateX(calc(var(--breit) / -2)) rotateZ(90deg) rotateX(90deg);
+}
+.plinth.aufsteller .k-rechts{
+  transform:translate(-50%,-50%) translateX(calc(var(--breit) / 2)) rotateZ(90deg) rotateX(90deg);
 }
 
 .tischschatten{
-  width:min(300px,74vw);height:26px;border-radius:50%;margin-top:-8px;
+  width:calc(var(--breit) * 1.22);height:26px;border-radius:50%;
+  margin-top:calc(var(--breit) * -.05);
   background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.5),transparent 68%);
   animation:schattenfallen 1.1s var(--weich) both;
+  transition:transform .74s var(--weich),opacity .74s var(--weich);
 }
 @keyframes schattenfallen{
   from{opacity:0;transform:scale(.5)}
   to  {opacity:1;transform:scale(1)}
 }
+/* Fährt der Gegenstand heran, rückt er vom Tisch ab: Der Schatten
+   wird kleiner und weicher, nicht größer. */
+.plinth.heran .tischschatten{transform:scale(.72);opacity:.5}
+.plinth.aufsteller .tischschatten{width:calc(var(--breit) * 1.3);height:18px;margin-top:4px}
 
 .tippmich{
   font-family:var(--mono);font-size:10.5px;letter-spacing:.16em;text-transform:uppercase;
@@ -272,9 +361,9 @@ p:last-child{margin-bottom:0}
 }
 @keyframes spaeter{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 
-/* Zwei Träger, ein Hub. Derselbe Knopf in anderer Form — ein zweites
-   Bauteil hätte Schatten, Wellen und Skript verdoppelt, und doppelt
-   Gepflegtes läuft auseinander. */
+/* Zwei Träger, ein Hub. Derselbe Körper in anderer Form — ein
+   zweites Bauteil hätte Kanten, Drehung und Skript verdoppelt, und
+   doppelt Gepflegtes läuft auseinander. */
 .traeger{
   display:flex;gap:5px;padding:4px;margin-top:22px;
   background:rgba(237,231,217,.06);border:1px solid var(--linie-dunkel);border-radius:99px;
@@ -289,15 +378,6 @@ p:last-child{margin-bottom:0}
   font-family:var(--mono);font-size:10.5px;letter-spacing:.06em;
   color:var(--kreide-still);margin-top:12px;text-align:center;
 }
-/* Der Aufsteller: derselbe Knopf, andere Maße. Die Übergänge sind
-   bewusst auf width/height/border-radius gelegt, damit die Form
-   wirklich morpht statt zu tauschen. */
-.plinth.aufsteller .deckel{
-  width:min(178px,46vw);aspect-ratio:.72;border-radius:9px 9px 4px 4px;
-  animation:none;
-}
-.plinth.aufsteller .deckel::after{inset:11px;border-radius:5px}
-.plinth.aufsteller .tischschatten{width:min(210px,54vw);height:20px}
 
 /* Magnetischer Knopf — nachgebaut nach dem Muster von OriginKit,
    aber ohne Fremdbibliothek. Der Knopf folgt dem Zeiger ein Stück
@@ -336,8 +416,8 @@ p:last-child{margin-bottom:0}
    Falz — und ein Ruf, den man erst suchen muss, ist keiner. */
 @media (max-width:640px){
   .held{gap:20px}
-  .deckel{width:min(196px,50vw)}
-  .plinth.aufsteller .deckel{width:min(152px,40vw)}
+  .plinth{--breit:min(196px,50vw);--dick:9px}
+  .plinth.aufsteller{--breit:min(146px,38vw);--dick:5px}
   .tippmich{margin-top:16px}
   .traeger{margin-top:14px}
   .traegertext{margin-top:9px}
@@ -852,6 +932,9 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
 .hub-summe{
   font-family:var(--mono);font-size:11px;color:var(--m-tinteleise,#68756F);
   line-height:1.3;min-width:0;
+  /* Lieber gekürzt als zweizeilig: Bricht die Zeile um, wächst die
+     Fußleiste und schiebt die Karte darüber zusammen. */
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .hub-tun{
   padding:10px 13px;border-radius:99px;font-size:12.5px;font-weight:700;white-space:nowrap;
@@ -967,19 +1050,29 @@ html.starr{overflow:hidden}
 
     <div class="held-objekt">
       <div class="plinth">
-        <button class="deckel" id="deckel" type="button" data-hub
+        <button class="stueck" id="deckel" type="button" data-hub
                   aria-haspopup="dialog" aria-label="Untersetzer antippen — Demo-Hub öffnen">
-          <svg viewBox="0 0 120 120" aria-hidden="true">
-            <g fill="none" stroke="#123029" stroke-linecap="round">
-              <circle cx="60" cy="41" r="7.5" fill="#123029" stroke="none"/>
-              <path d="M43 57c5-5.5 11-8.2 17-8.2S72 51.5 77 57" stroke-width="4.6" opacity=".82"/>
-              <path d="M34 69c7.5-8 16.5-12 26-12s18.5 4 26 12" stroke-width="4.6" opacity=".5"/>
-              <path d="M25 81c10-10.5 22-15.8 35-15.8S85 70.5 95 81" stroke-width="4.6" opacity=".26"/>
-            </g>
-            <text x="60" y="99" text-anchor="middle" fill="#123029"
-                  font-family="ui-monospace,monospace" font-size="7.4" font-weight="700"
-                  letter-spacing="2.2" opacity=".62">AUFLEGEN · QR</text>
-          </svg>
+          <span class="tisch">
+            <span class="koerper" id="koerper">
+              <span class="seite oben">
+                <svg viewBox="0 0 120 120" aria-hidden="true">
+                  <g fill="none" stroke="#123029" stroke-linecap="round">
+                    <circle cx="60" cy="41" r="7.5" fill="#123029" stroke="none"/>
+                    <path d="M43 57c5-5.5 11-8.2 17-8.2S72 51.5 77 57" stroke-width="4.6" opacity=".82"/>
+                    <path d="M34 69c7.5-8 16.5-12 26-12s18.5 4 26 12" stroke-width="4.6" opacity=".5"/>
+                    <path d="M25 81c10-10.5 22-15.8 35-15.8S85 70.5 95 81" stroke-width="4.6" opacity=".26"/>
+                  </g>
+                  <text x="60" y="99" text-anchor="middle" fill="#123029"
+                        font-family="ui-monospace,monospace" font-size="7.4" font-weight="700"
+                        letter-spacing="2.2" opacity=".62">AUFLEGEN · QR</text>
+                </svg>
+              </span>
+              <span class="seite unten"><span class="praegung">Omoteno</span></span>
+              <!-- Die Kanten setzt das Skript: dreißig auf dem Kreis,
+                   vier am Aufsteller. Ohne Skript bleibt der Körper
+                   flach — sichtbar bleibt er trotzdem. -->
+            </span>
+          </span>
         </button>
         <div class="tischschatten"></div>
         <p class="tippmich"><i></i>Antippen · Hub öffnen</p>
@@ -1798,25 +1891,188 @@ function hausWaehlen(id){
   });
 })();
 
-/* ─── Träger wechseln ───────────────────────────────────────── */
-(function traeger(){
-  var wahl = document.getElementById("traeger");
-  var text = document.getElementById("traegertext");
-  var plinth = document.querySelector(".plinth");
-  if(!wahl) return;
+/* ─── Der Gegenstand: drehen, heranfahren, öffnen ───────────────
+   Der Körper dreht sich langsam auf dem Tisch. Beim Antippen hört
+   die Drehung nicht auf, sondern läuft aus: Er nimmt noch eine
+   Umdrehung, richtet sich dabei zum Betrachter auf und fährt heran
+   — und erst wenn er steht, öffnet sich der Hub.
+
+   Warum Web Animations und nicht CSS: Beim Antippen muss die
+   Drehung dort weitergehen, wo sie GERADE steht. Eine CSS-Animation
+   kennt ihren Zwischenstand nicht; man müsste ihn aus der Matrix
+   zurückrechnen. Die laufende Animation kennt ihn.
+
+   Zwei Bewegungen, zwei Kurven: Die Drehung läuft aus (weich), der
+   Zoom zieht an (ease-in). Beide auf denselben Takt gelegt, sonst
+   sieht es aus wie zwei Sachen, die zufällig gleichzeitig
+   passieren. */
+(function gegenstand(){
+  var stueck  = document.getElementById("deckel");
+  var koerper = document.getElementById("koerper");
+  var plinth  = document.querySelector(".plinth");
+  var wahl    = document.getElementById("traeger");
+  var text    = document.getElementById("traegertext");
+  if(!stueck || !koerper || !plinth) return;
+
   var TEXTE = {
     untersetzer:"Auf den Tisch legen · NFC auflegen oder QR scannen",
     aufsteller: "Auf den Tisch stellen · NFC auflegen oder QR scannen"
   };
-  wahl.addEventListener("click", function(e){
-    var k = e.target.closest("[data-traeger]"); if(!k) return;
-    var art = k.dataset.traeger;
-    plinth.classList.toggle("aufsteller", art === "aufsteller");
-    text.textContent = TEXTE[art];
-    wahl.querySelectorAll("[data-traeger]").forEach(function(b){
-      b.setAttribute("aria-pressed", b.dataset.traeger === art);
+  var NEIGUNG = {untersetzer:52, aufsteller:8};
+  var KANTEN  = 30;
+  var RUNDE   = 17000;   /* eine Umdrehung, langsam genug zum Lesen */
+
+  var form  = "untersetzer";
+  var lauf  = null;              /* die endlose Drehung */
+  var zoomAn = null, drehAn = null;  /* die beiden haltenden Bewegungen */
+  var heran = false;
+  var stille = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var kannAnimieren = typeof koerper.animate === "function";
+
+  /* ─── Bauen ─── */
+  function kanten(){
+    koerper.querySelectorAll(".kante").forEach(function(k){ k.remove(); });
+    var teile = [];
+    if(form === "untersetzer"){
+      for(var i = 0; i < KANTEN; i++) teile.push('<i class="kante" style="--i:' + i + '"></i>');
+    } else {
+      ["oben","unten","links","rechts"].forEach(function(k){
+        teile.push('<i class="kante k-' + k + '"></i>');
+      });
+    }
+    koerper.insertAdjacentHTML("beforeend", teile.join(""));
+  }
+
+  /* Der Untersetzer liegt und dreht sich um seine Hochachse (Z nach
+     der Neigung), der Aufsteller steht und dreht sich um Y. */
+  function stand(winkel, neigung){
+    var n = (neigung === undefined ? NEIGUNG[form] : neigung) + "deg";
+    return form === "untersetzer"
+      ? "rotateX(" + n + ") rotateZ(" + winkel + "deg)"
+      : "rotateX(" + n + ") rotateY(" + winkel + "deg)";
+  }
+
+  function winkelJetzt(){
+    if(!lauf || lauf.currentTime == null) return 0;
+    return (Number(lauf.currentTime) / RUNDE) * 360;
+  }
+
+  function drehen(){
+    if(!kannAnimieren || stille) return;
+    if(lauf) lauf.cancel();
+    lauf = koerper.animate(
+      [{transform:stand(0)},{transform:stand(360)}],
+      {duration:RUNDE, iterations:Infinity, easing:"linear"}
+    );
+  }
+
+  /* ─── Heranfahren ─── */
+  function herankommen(fertig){
+    var von = winkelJetzt();
+    /* Bis zur nächsten vollen Umdrehung plus eine ganze — so steht
+       der Aufdruck am Ende wieder vorn, egal wo er gerade war. */
+    var bis = (Math.floor(von / 360) + 2) * 360;
+    if(lauf){ lauf.cancel(); lauf = null; }
+    heran = true;
+    plinth.classList.add("heran");
+
+    drehAn = koerper.animate(
+      [{transform:stand(von)},{transform:stand(bis, 16)}],
+      {duration:820, easing:"cubic-bezier(.16,1,.3,1)", fill:"forwards"}
+    );
+    zoomAn = stueck.animate(
+      [{transform:"scale(1)"},{transform:"scale(1.46)"}],
+      {duration:820, easing:"cubic-bezier(.55,0,.25,1)", fill:"forwards"}
+    );
+    zoomAn.onfinish = fertig;
+  }
+
+  /* Die beiden Bewegungen halten ihren Endstand (fill:forwards) —
+     sonst spränge der Körper zurück, sobald sie fertig sind.
+     Genau deshalb müssen sie beim Zurückfahren auch WEGGENOMMEN
+     werden: Ohne das blieb der Aufsteller nach dem Schließen
+     dauerhaft herangezoomt, weil die alte Bewegung unter der neuen
+     weiterhielt. Erst die Rückfahrt anlegen, dann die alte
+     zurücknehmen — in derselben Runde, also ohne Sprung. */
+  function haltenLoesen(){
+    if(drehAn){ drehAn.cancel(); drehAn = null; }
+    if(zoomAn){ zoomAn.cancel(); zoomAn = null; }
+  }
+
+  function zurueckfahren(){
+    if(!heran) return;
+    heran = false;
+    plinth.classList.remove("heran");
+    koerper.animate(
+      [{transform:stand(0, 16)},{transform:stand(0)}],
+      {duration:640, easing:"cubic-bezier(.16,1,.3,1)"}
+    );
+    var z = stueck.animate(
+      [{transform:"scale(1.46)"},{transform:"scale(1)"}],
+      {duration:640, easing:"cubic-bezier(.16,1,.3,1)"}
+    );
+    haltenLoesen();
+    z.onfinish = drehen;
+  }
+
+  /* ─── Antippen ───
+     In der Erfassungsphase am Elternteil: Das Fenster hat seinen
+     eigenen Zuhörer am selben Knopf, und am Ziel zählt die
+     Reihenfolge der Anmeldung, nicht die Phase. Nur hier oben ist
+     sicher, dass erst der Gegenstand dran ist. */
+  plinth.addEventListener("click", function(e){
+    if(!e.target.closest("#deckel")) return;
+    if(!kannAnimieren || stille || !hubOeffnen) return;   /* dann öffnet der andere Zuhörer */
+    e.preventDefault();
+    e.stopImmediatePropagation();
+    if(heran){ hubOeffnen({currentTarget:stueck, preventDefault:function(){}}); return; }
+    herankommen(function(){
+      hubOeffnen({currentTarget:stueck, preventDefault:function(){}});
     });
+  }, true);
+
+  var fenster = document.getElementById("hubfenster");
+  if(fenster) fenster.addEventListener("close", zurueckfahren);
+
+  /* Beim Überfahren zieht er an. Nur mit Zeiger — auf dem Telefon
+     gibt es kein Überfahren, nur ein Antippen. */
+  if(matchMedia("(hover:hover)").matches){
+    stueck.addEventListener("pointerenter", function(){ takt(2.6); });
+    stueck.addEventListener("pointerleave", function(){ takt(1); });
+  }
+  function takt(v){
+    if(!lauf) return;
+    if(lauf.updatePlaybackRate) lauf.updatePlaybackRate(v); else lauf.playbackRate = v;
+  }
+
+  /* Was nicht im Bild ist, muss sich nicht drehen. */
+  if("IntersectionObserver" in window){
+    new IntersectionObserver(function(e){
+      if(!lauf) return;
+      if(e[0].isIntersecting) lauf.play(); else lauf.pause();
+    }, {threshold:.05}).observe(stueck);
+  }
+
+  /* ─── Träger wechseln ─── */
+  if(wahl) wahl.addEventListener("click", function(e){
+    var k = e.target.closest("[data-traeger]"); if(!k) return;
+    form = k.dataset.traeger;
+    plinth.classList.toggle("aufsteller", form === "aufsteller");
+    stueck.setAttribute("aria-label",
+      (form === "aufsteller" ? "Aufsteller" : "Untersetzer") + " antippen — Demo-Hub öffnen");
+    if(text) text.textContent = TEXTE[form];
+    wahl.querySelectorAll("[data-traeger]").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.traeger === form);
+    });
+    kanten();
+    heran = false;
+    plinth.classList.remove("heran");
+    haltenLoesen();
+    drehen();
   });
+
+  kanten();
+  drehen();
 })();
 
 /* ─── Magnetische Knöpfe ────────────────────────────────────────
@@ -1894,6 +2150,10 @@ function hausWaehlen(id){
    nur die Menge in der einen Zeile und die Fußleiste. Ein voller
    Neuaufbau würde die Liste zurück nach oben springen lassen —
    genau der Fehler, der das Küchendisplay wackeln ließ. */
+/* Der Öffner des Fensters, damit ihn der Gegenstand aufrufen kann,
+   wenn er zu Ende gedreht hat. */
+var hubOeffnen = null;
+
 (function demohub(){
   var fenster = document.getElementById("hubfenster");
   var oeffner = [].slice.call(document.querySelectorAll("[data-hub]"));
@@ -2117,6 +2377,7 @@ function hausWaehlen(id){
     if(luecke > 0) document.documentElement.style.paddingRight = luecke + "px";
   }
   oeffner.forEach(function(k){ k.addEventListener("click", auf); });
+  hubOeffnen = auf;
 
   document.getElementById("hubZu").addEventListener("click", function(){ fenster.close(); });
   /* Klick auf den Grund neben dem Fenster schließt ebenfalls. */
