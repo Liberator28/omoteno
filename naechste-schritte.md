@@ -16,9 +16,33 @@ damit im Chat keine Tokens für Wiederholung draufgehen.
 | Marken-Studio | Fertig, mit Entwurfslink |
 | Erzeuger | `erzeuger/erzeuge-hub.js` — Hub aus Vorlage + Markenblatt |
 | Konto | Registrierung, Login, Markenblatt, Rechnungen, Vertrag |
-| Webseite | `omoteno-web.html` — neue Fassung, Gegenstand auf dem Sockel |
+| Webseite | `omoteno-web.html` — Gegenstand auf dem Sockel, Demo-Hub im Fenster |
 
 Alle Prüfskripte laufen sauber. Siehe `CLAUDE.md`.
+
+---
+
+## Zuletzt gemacht · Landingpage
+
+- **Sockel neu gesetzt.** Gegenstand und Schlagzeile stehen
+  nebeneinander statt untereinander; die Rufe („Zwei Wochen testen",
+  „Demo-Hub öffnen") stehen im ersten Bild statt darunter.
+- **Demo-Hub im Fenster.** Das Antippen des Untersetzers öffnet den
+  Gast-Hub mit Beispieldaten: Karte, Korb, Bestellpass mit
+  dreistelliger Nummer, laufende Schritte, Servicerufe. Zu erreichen
+  über den Untersetzer, die Kopfleiste, die Markenschau und das
+  Kolophon — jedes Element mit `data-hub` öffnet ihn.
+- **Häuser sind eine Quelle.** `HAEUSER` steht jetzt vor den Kapseln;
+  Markenschau und Fenster hören auf dasselbe Ereignis `hauswahl`.
+- **Gequetschtes behoben:** Kopf und Szene im Durchgang überlappten
+  auf dem Telefon (absolut über mittig gesetzt), die Uhr zeigte
+  „+4:60", die Farbtupfer der Häuser standen untereinander, der
+  Empfehlungspreis der Markenschau war fest verdrahtet.
+
+**Offen an der Webseite:** Der Demo-Hub ist eine Nachbildung, kein
+erzeugter Hub. Sobald ein Betrieb als Schaufenster erzeugt ist
+(`demo.omoteno.de`), gehört daneben ein Verweis „echten Hub öffnen" —
+die Nachbildung bleibt als schnelle Vorschau bestehen.
 
 ---
 

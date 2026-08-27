@@ -145,19 +145,30 @@ p:last-child{margin-bottom:0}
   100%{box-shadow:0 0 0 0 rgba(127,168,92,0)}
 }
 .status nav{margin-left:auto;display:flex;align-items:center;gap:2px}
-.status nav a{
+.status nav a,.status nav button{
   font-family:var(--mono);font-size:11.5px;letter-spacing:.09em;text-transform:uppercase;
   color:var(--kreide-still);text-decoration:none;padding:8px 11px;border-radius:99px;
   transition:color .22s var(--weich),background .22s var(--weich);
 }
-.status nav a:hover{color:var(--kreide);background:rgba(237,231,217,.07)}
+.status nav a:hover,.status nav button:hover{color:var(--kreide);background:rgba(237,231,217,.07)}
+/* Der zweite Ruf. Er bleibt auf dem Telefon stehen, weil ein Demo-Hub
+   dort mehr wert ist als vier Sprungmarken. */
+.nebenruf{border:1px solid var(--linie-dunkel);color:var(--kreide-leise) !important}
 .status .uhr{
   font-family:var(--mono);font-size:11.5px;color:var(--kreide-still);
   letter-spacing:.06em;padding-left:6px;
 }
 @media (max-width:820px){
   .status nav a:not(.hauptruf){display:none}
-  .status .uhr{margin-left:auto}
+  .status nav button:not(.nebenruf){display:none}
+}
+/* Auf dem schmalsten Schirm haben drei Dinge Platz, nicht vier:
+   Wortmarke, Demo, Testen. Die Uhr ist Zierrat und geht als Erste. */
+@media (max-width:600px){
+  .status .uhr{display:none}
+  .hauptruf .lang{display:none}
+  .status-innen{gap:10px;padding:0 16px}
+  .status nav a,.status nav button{padding:8px 9px;font-size:11px}
 }
 .hauptruf{
   background:var(--pappe) !important;color:var(--sockel) !important;
@@ -165,12 +176,18 @@ p:last-child{margin-bottom:0}
 }
 .hauptruf:hover{background:#fff !important}
 
-/* ═══ 1 · SOCKEL ══════════════════════════════════════════════ */
+/* ═══ 1 · SOCKEL ══════════════════════════════════════════════
+   Vorher nahm der Gegenstand eine ganze Bildschirmhöhe für sich und
+   die Schlagzeile stand darunter — man musste scrollen, um zu
+   erfahren, was der Untersetzer überhaupt soll. Jetzt stehen beide
+   in einem Satz nebeneinander: links, was es ist; rechts, was auf
+   dem Tisch liegt. Und das Antippen führt nicht mehr weiter nach
+   unten, sondern öffnet den Hub. */
 .sockel{
   background:var(--sockel);color:var(--kreide);
   min-height:100vh;min-height:100dvh;
-  padding:52px 0 0;
-  display:flex;flex-direction:column;
+  padding:calc(52px + clamp(26px,6vh,58px)) 0 clamp(38px,6vh,66px);
+  display:flex;align-items:center;
   position:relative;overflow:hidden;
 }
 /* Der Lichtkegel über dem Tisch. Eingefasst, weil er breiter ist als
@@ -184,10 +201,24 @@ p:last-child{margin-bottom:0}
   pointer-events:none;
 }
 
-.buehne{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  position:relative;padding:30px 24px 0;
+/* Ein Raster, zwei Rollen: Auf dem Telefon Kopf → Gegenstand →
+   Fuß untereinander, ab 980px der Gegenstand rechts über beide
+   Zeilen. Dieselbe Reihenfolge im Quelltext, nur anders gelegt. */
+.held{
+  display:grid;width:100%;gap:clamp(28px,5vh,48px);
+  grid-template-areas:"kopf" "objekt" "fuss";
 }
+@media (min-width:980px){
+  .held{
+    grid-template-areas:"kopf objekt" "fuss objekt";
+    grid-template-columns:minmax(0,1.02fr) minmax(0,.88fr);
+    column-gap:clamp(36px,5vw,76px);row-gap:clamp(18px,3vh,32px);
+    align-items:center;
+  }
+}
+.held-kopf{grid-area:kopf;animation:spaeter 1.2s var(--weich) .15s both}
+.held-objekt{grid-area:objekt;display:flex;align-items:center;justify-content:center}
+.held-fuss{grid-area:fuss;animation:spaeter 1.2s var(--weich) .42s both}
 
 /* Der Gegenstand. CSS und SVG, kein Fremddienst. */
 .plinth{position:relative;display:flex;flex-direction:column;align-items:center}
@@ -281,20 +312,16 @@ p:last-child{margin-bottom:0}
 .tausch{display:inline-block}
 .tausch span{display:inline-block;white-space:pre}
 
-/* Die Schlagzeile steht UNTER dem Gegenstand. Der Gegenstand führt. */
-.sockeltext{
-  padding:0 24px 46px;max-width:var(--breite);margin:0 auto;width:100%;
-  animation:spaeter 1.4s var(--weich) .8s both;
-}
-.sockeltext .marke{color:var(--kreide-still);display:block;margin-bottom:16px}
-.sockeltext h1{max-width:15ch;color:var(--kreide)}
-.sockeltext h1 em{font-style:italic;color:var(--kreide-leise)}
-.sockelfuss{
-  display:flex;align-items:flex-end;justify-content:space-between;
-  gap:28px;flex-wrap:wrap;margin-top:26px;
-}
-.sockelfuss p{color:var(--kreide-leise);font-size:16px;max-width:44ch;margin:0}
-.sockelfuss p b{color:var(--kreide);font-weight:600}
+.held-kopf .marke{color:var(--kreide-still);display:block;margin-bottom:16px}
+.held-kopf h1{max-width:14ch;color:var(--kreide)}
+.held-kopf h1 em{font-style:italic;color:var(--kreide-leise)}
+/* In der schmaleren Spalte darf die Schlagzeile nicht weiter mit
+   der Fensterbreite wachsen — sonst steht sie in vier Wörtern je
+   Zeile und reißt die Spalte auf. */
+@media (min-width:980px){ .held-kopf h1{font-size:clamp(46px,5vw,72px)} }
+.held-fuss p{color:var(--kreide-leise);font-size:16px;max-width:46ch;margin:0}
+.held-fuss p b{color:var(--kreide);font-weight:600}
+.rufreihe{display:flex;gap:11px;flex-wrap:wrap;margin:22px 0 20px}
 
 /* Belege statt Siegel — nur was wir wirklich haben. */
 .belege{display:flex;gap:8px;flex-wrap:wrap}
@@ -302,6 +329,21 @@ p:last-child{margin-bottom:0}
   font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
   color:var(--kreide-leise);border:1px solid var(--linie-dunkel);
   border-radius:99px;padding:7px 13px;white-space:nowrap;
+}
+
+/* Auf dem Telefon steht der Gegenstand zwischen Schlagzeile und
+   Rufen. Ohne diese Stufe schob er die beiden Knöpfe unter die
+   Falz — und ein Ruf, den man erst suchen muss, ist keiner. */
+@media (max-width:640px){
+  .held{gap:20px}
+  .deckel{width:min(196px,50vw)}
+  .plinth.aufsteller .deckel{width:min(152px,40vw)}
+  .tippmich{margin-top:16px}
+  .traeger{margin-top:14px}
+  .traegertext{margin-top:9px}
+  .held-fuss p{font-size:15.5px}
+  .rufreihe{margin:18px 0 16px}
+  .beleg{padding:6px 11px}
 }
 
 /* ═══ 2 · RANDNOTIZEN ═════════════════════════════════════════
@@ -328,14 +370,21 @@ p:last-child{margin-bottom:0}
    in Stufen — nicht Einblenden von unten wie alles andere im Netz. */
 .abend{background:var(--sockel);color:var(--kreide)}
 .abend-halt{position:relative;height:340vh}
+/* Der Kopf lag vorher absolut über der mittig gesetzten Szene. Auf
+   einem Telefon trafen sich beide: Die Uhr stand quer über
+   „Am Tisch · der Gast", die Überschrift über der Stufenleiste.
+   Genau das war das Gequetschte auf dem Bildschirmfoto.
+
+   Jetzt sind es zwei Zeilen eines Rasters — Kopf oben, Szene im
+   Rest. Was nicht überlappen darf, wird nicht übereinandergelegt. */
 .abend-fest{
   position:sticky;top:0;height:100vh;height:100dvh;
-  display:flex;flex-direction:column;justify-content:center;overflow:hidden;
+  display:grid;grid-template-rows:auto minmax(0,1fr);
+  gap:clamp(16px,3.2vh,38px);
+  padding:calc(52px + clamp(18px,4.4vh,50px)) 0 clamp(20px,4vh,50px);
+  overflow:hidden;
 }
-.abend-kopf{
-  position:absolute;top:0;left:0;right:0;padding:76px 24px 0;
-  max-width:var(--breite);margin:0 auto;
-}
+.abend-kopf{padding:0}
 .abend-kopf .marke{color:var(--kreide-still)}
 .abend-uhr{
   font-family:var(--mono);font-size:clamp(46px,9vw,104px);font-weight:700;
@@ -368,13 +417,63 @@ p:last-child{margin-bottom:0}
 }
 @media (max-width:700px){ .stufe span{display:none} .stufe{padding:8px} }
 
-.szenen{position:relative;max-width:var(--breite);margin:0 auto;padding:0 24px;width:100%}
+/* Auf niedrigen und schmalen Schirmen wird nichts weggelassen,
+   sondern enger gesetzt. Gerechnet für 390 × 664 — darunter greift
+   die zweite Stufe. */
+@media (max-width:640px),(max-height:780px){
+  .abend-uhr{font-size:clamp(38px,8.6vw,64px);margin-top:6px}
+  .abend-bahn{margin-top:14px}
+  .abend-stufen{margin-top:12px}
+  .szene h3{font-size:clamp(19px,5.4vw,25px)}
+  .szene p{font-size:15px;max-width:42ch}
+  .szene .wer{margin-bottom:9px}
+  .szene-bild{margin-top:16px;padding:12px}
+  .bonzeile{font-size:12px;padding:6px 0}
+}
+@media (max-height:700px){
+  .abend-fest{padding-top:calc(52px + 12px);padding-bottom:16px;gap:12px}
+  .abend-uhr{font-size:34px}
+  .abend-bahn{margin-top:10px}
+  .abend-stufen{margin-top:9px}
+  .szene p{font-size:14.5px}
+  .szene-bild{margin-top:12px}
+}
+
+/* Ab 900px steht der Beleg neben dem Text statt darunter. Vorher
+   lag die ganze Szene in der linken Hälfte und die rechte blieb
+   leer — bei einer Bühne, die den ganzen Schirm belegt, sieht das
+   nach vergessenem Inhalt aus. */
+@media (min-width:900px){
+  .szene{
+    display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);
+    column-gap:clamp(40px,6vw,88px);align-items:start;
+  }
+  .szene .wer{grid-column:1/-1}
+  /* Auf der Bühne ist die Zeile eine Schlagzeile, keine
+     Zwischenüberschrift — sonst steht sie dreizeilig und klein in
+     einer Spalte, die für das Doppelte reicht. */
+  .szene h3{grid-column:1;font-size:clamp(24px,3.1vw,40px);max-width:15ch}
+  .szene p{grid-column:1;font-size:17px;max-width:44ch}
+  .szene-bild{grid-column:2;grid-row:2/5;align-self:center;margin-top:0;max-width:none}
+}
+
+/* Alle Szenen liegen im SELBEN Rasterfeld übereinander. Vorher lag
+   die jeweils sichtbare im Fluss und die übrigen absolut — dadurch
+   sprang die Höhe des Blocks bei jedem Wechsel. Jetzt ist die Höhe
+   die der längsten Szene und steht still. */
+.szenen{
+  max-width:var(--breite);margin:0 auto;padding:0 24px;width:100%;
+  display:grid;align-content:center;align-content:safe center;
+  /* Jede Szene mittig in der Höhe der längsten — sonst klebt eine
+     kurze Szene oben und lässt darunter ein Loch. */
+  align-items:center;
+}
 .szene{
-  position:absolute;left:24px;right:24px;
+  grid-area:1/1;
   opacity:0;transform:translateY(18px);pointer-events:none;
   transition:opacity .5s var(--weich),transform .5s var(--weich);
 }
-.szene.an{opacity:1;transform:none;position:relative}
+.szene.an{opacity:1;transform:none;pointer-events:auto}
 .szene h3{max-width:16ch;margin-bottom:14px}
 .szene p{color:var(--kreide-leise);max-width:46ch}
 .szene .wer{
@@ -411,8 +510,11 @@ p:last-child{margin-bottom:0}
 .preise-kopf .marke{color:var(--kuli);display:block;margin-bottom:16px}
 .preise-kopf p{color:var(--tinte-leise);margin-top:16px}
 
-.bons{display:grid;grid-template-columns:minmax(0,1fr);gap:16px}
-@media (min-width:900px){.bons{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}}
+/* Drei Bons nebeneinander erst ab 980px. Bei 900 blieben je Bon
+   225px Innenmaß — die Mono-Zeilen brachen dort dreifach um und die
+   Karte sah aus wie ein Kassenzettel im Regen. */
+.bons{display:grid;grid-template-columns:minmax(0,1fr);gap:18px}
+@media (min-width:980px){.bons{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start;gap:16px}}
 
 .bon{
   background:var(--papier);border:1px solid var(--linie);
@@ -485,8 +587,12 @@ p:last-child{margin-bottom:0}
 .marken h2{max-width:17ch}
 .marken .lead{color:var(--kreide-leise);margin-top:16px;max-width:52ch}
 .markenschau{display:grid;gap:clamp(26px,4vw,48px);margin-top:clamp(34px,5vw,56px)}
-@media (min-width:880px){.markenschau{grid-template-columns:minmax(0,1fr) 330px;align-items:center}}
-.haeuser{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+/* Oben bündig statt mittig: Die Häuserkacheln sind halb so hoch wie
+   das Gerät daneben — zentriert ließen sie unter der Überschrift ein
+   Loch stehen. */
+@media (min-width:940px){.markenschau{grid-template-columns:minmax(0,1fr) minmax(0,330px);align-items:start}}
+.haeuser{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px}
+@media (max-width:430px){.haeuser{grid-template-columns:minmax(0,1fr)}}
 .haus{
   text-align:left;padding:14px;border-radius:11px;
   background:rgba(237,231,217,.045);border:1px solid var(--linie-dunkel);
@@ -497,8 +603,12 @@ p:last-child{margin-bottom:0}
 .haus[aria-pressed=true]{background:rgba(237,231,217,.11);border-color:rgba(237,231,217,.44)}
 .haus b{display:block;font-size:14.5px;font-weight:600}
 .haus span{display:block;font-size:12px;color:var(--kreide-still);margin-top:2px}
-.tupfer{display:flex;gap:4px;margin-top:10px}
-.tupfer i{width:17px;height:17px;border-radius:5px;display:block}
+/* .haus span setzt display:block und ist spezifischer als .tupfer —
+   deshalb standen die vier Farbtupfer untereinander statt
+   nebeneinander und jede Hauskachel war viermal so hoch wie nötig.
+   Angabe schlägt Reihenfolge nur bei gleicher Spezifität. */
+.haus .tupfer{display:flex;gap:4px;margin-top:10px}
+.tupfer i{width:17px;height:17px;border-radius:5px;display:block;flex-shrink:0}
 
 .geraet{
   justify-self:center;width:100%;max-width:300px;
@@ -589,6 +699,229 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
 .kolophonfuss a:hover{color:var(--kreide)}
 .kolophonfuss .rechts{margin-left:auto}
 
+/* ═══ 8 · DEMO-HUB IM FENSTER ══════════════════════════════════
+   Der Gegenstand allein zeigt die Verpackung. Was ihn verkauft, ist
+   das, was sich darunter öffnet — also öffnet es sich hier, auf
+   derselben Seite, ohne Formular davor.
+
+   Kein iframe und kein Fremddienst: Der echte Hub ist eine erzeugte
+   Datei je Kunde und hängt an einer Datenbank. Was hier läuft, ist
+   dieselbe Oberfläche mit Beispieldaten — und sie sagt das auch,
+   zweimal: im Kopf des Fensters und in der Spalte daneben.
+
+   Die Farben kommen aus denselben vier Häusern wie die Markenschau
+   weiter unten. Ein Datensatz, zwei Auftritte — sonst laufen sie
+   auseinander, sobald einer davon gepflegt wird. */
+.hubfenster{
+  border:none;padding:0;background:none;color:var(--kreide);
+  width:min(1020px,94vw);max-width:none;max-height:92dvh;overflow:visible;
+}
+.hubfenster::backdrop{
+  background:rgba(6,14,12,.74);
+  -webkit-backdrop-filter:blur(7px);backdrop-filter:blur(7px);
+}
+.hub-rahmen{
+  background:var(--sockel);border:1px solid var(--linie-dunkel);border-radius:22px;
+  padding:clamp(14px,2.4vw,22px);max-height:92dvh;overflow-y:auto;
+  box-shadow:0 40px 90px rgba(0,0,0,.62);
+  animation:hubauf .52s var(--weich) both;
+}
+@keyframes hubauf{
+  from{opacity:0;transform:translateY(26px) scale(.962)}
+  to  {opacity:1;transform:none}
+}
+@media (max-width:760px){
+  .hubfenster{width:100vw;max-height:100dvh;margin:0}
+  .hub-rahmen{border-radius:0;min-height:100dvh;max-height:100dvh}
+}
+
+/* Als Flex-Zeile rutschte der Schließer auf dem Telefon unter die
+   Häuserchips und stand allein in einer eigenen Zeile. Als Raster
+   liegt er fest oben rechts, die Chips nehmen die zweite Zeile. */
+.hub-kopf{
+  display:grid;align-items:center;gap:9px 14px;margin-bottom:14px;
+  grid-template-columns:minmax(0,1fr) auto;
+}
+.hub-kopf .marke{grid-area:1/1}
+.hub-zu{grid-area:1/2}
+.hub-haeuser{grid-area:2/1/3/3}
+@media (min-width:760px){
+  .hub-kopf{grid-template-columns:auto minmax(0,1fr) auto}
+  .hub-haeuser{grid-area:1/2}
+  .hub-zu{grid-area:1/3}
+}
+.hub-kopf .marke{color:var(--kreide-still)}
+.hub-haeuser{display:flex;gap:5px;flex-wrap:wrap}
+.hub-haus{
+  font-family:var(--mono);font-size:10px;letter-spacing:.09em;text-transform:uppercase;
+  padding:6px 10px;border-radius:99px;border:1px solid var(--linie-dunkel);
+  color:var(--kreide-still);
+  transition:color .22s var(--weich),background .22s var(--weich),border-color .22s var(--weich);
+}
+.hub-haus:hover{color:var(--kreide)}
+.hub-haus[aria-pressed=true]{background:var(--pappe);color:var(--sockel);border-color:var(--pappe);font-weight:700}
+.hub-zu{
+  justify-self:end;width:36px;height:36px;border-radius:50%;flex-shrink:0;
+  border:1px solid var(--linie-dunkel);color:var(--kreide-leise);
+  display:grid;place-items:center;font-size:19px;line-height:1;
+}
+.hub-zu:hover{background:rgba(237,231,217,.08);color:var(--kreide)}
+
+.hub-buehne{display:grid;gap:clamp(18px,3vw,30px);align-items:start}
+@media (min-width:860px){
+  .hub-buehne{grid-template-columns:minmax(0,320px) minmax(0,1fr)}
+}
+.hub-geraet{position:relative;justify-self:center;max-width:340px}
+
+/* Der Schirm. Dieselben --m-Variablen wie in der Markenschau, hier
+   mit Rückfallwert: Wenn das Skript nie läuft, steht trotzdem eine
+   lesbare Karte da statt einer durchsichtigen Fläche. */
+.hub-schirm{
+  border-radius:22px;overflow:hidden;
+  height:clamp(430px,62dvh,556px);display:flex;flex-direction:column;
+  background:var(--m-grund,#F6F3EE);color:var(--m-tinte,#1C2321);
+  font-family:var(--m-text,var(--sans));line-height:1.45;
+}
+.hub-schirm *{transition:background-color .42s var(--weich),color .42s var(--weich),border-color .42s var(--weich)}
+.hub-band{display:flex;align-items:flex-start;gap:10px;flex-wrap:wrap}
+.hub-band > div{flex:1;min-width:0}
+.hub-tisch{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  border:1px solid currentColor;border-radius:99px;padding:4px 8px;opacity:.72;white-space:nowrap;
+}
+.hub-tabs{display:flex;gap:5px;flex-wrap:wrap;padding:11px 13px 0;flex-shrink:0}
+.hub-tabs button{
+  font-size:11.5px;font-weight:600;padding:7px 13px;border-radius:99px;
+  border:1px solid var(--m-linie,#E2DCD2);color:var(--m-tinteleise,#68756F);
+  display:flex;align-items:center;gap:6px;
+}
+.hub-tabs button[aria-pressed=true]{
+  background:var(--m-akzent,#0F6E64);color:var(--m-aufakzent,#fff);border-color:transparent;
+}
+.hub-tabs i{
+  font-style:normal;font-family:var(--mono);font-size:9.5px;font-weight:700;
+  min-width:16px;height:16px;border-radius:99px;display:grid;place-items:center;
+  background:var(--m-akzent,#0F6E64);color:var(--m-aufakzent,#fff);
+}
+.hub-tabs button[aria-pressed=true] i{background:var(--m-aufakzent,#fff);color:var(--m-akzent,#0F6E64)}
+
+/* Die untere Kante wird ausgeblendet statt hart geschnitten: Eine
+   halb abgeschnittene Zeile sieht nach Fehler aus, eine
+   ausblendende nach „hier geht es weiter". */
+.hub-inhalt{
+  flex:1;overflow-y:auto;padding:12px 13px 10px;-webkit-overflow-scrolling:touch;
+  -webkit-mask-image:linear-gradient(to bottom,#000 calc(100% - 20px),transparent);
+  mask-image:linear-gradient(to bottom,#000 calc(100% - 20px),transparent);
+}
+.hub-kats{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px}
+.hub-kat{
+  font-family:var(--mono);font-size:9.5px;letter-spacing:.09em;text-transform:uppercase;font-weight:700;
+  padding:6px 10px;border-radius:99px;
+  border:1px solid var(--m-linie,#E2DCD2);color:var(--m-tinteleise,#68756F);
+}
+.hub-kat[aria-pressed=true]{background:var(--m-flaeche,#fff);color:var(--m-tinte,#1C2321);border-color:var(--m-tinte,#1C2321)}
+.hub-zeile{
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  padding:10px 0;border-bottom:1px solid var(--m-linie,#E2DCD2);
+}
+.hub-zeile:last-child{border-bottom:none}
+.hub-zeile .t{flex:1;min-width:120px}
+.hub-zeile b{display:block;font-size:13.5px;font-weight:600;line-height:1.25}
+.hub-zeile small{display:block;font-size:10px;color:var(--m-tinteleise,#68756F);margin-top:2px;line-height:1.4}
+.hub-zeile .p{
+  font-family:var(--mono);font-size:12.5px;font-weight:700;
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.hub-plus{
+  width:30px;height:30px;border-radius:50%;flex-shrink:0;
+  background:var(--m-akzent,#0F6E64);color:var(--m-aufakzent,#fff);
+  font-size:18px;font-weight:700;line-height:1;display:grid;place-items:center;
+  transition:transform .16s var(--weich);
+}
+.hub-plus:active{transform:scale(.9)}
+.hub-anzahl{
+  font-family:var(--mono);font-size:11.5px;font-weight:700;min-width:20px;text-align:right;
+  color:var(--m-akzent,#0F6E64);
+}
+
+.hub-fuss{
+  flex-shrink:0;padding:10px 12px;border-top:1px solid var(--m-linie,#E2DCD2);
+  background:var(--m-flaeche,#fff);
+  display:grid;grid-template-columns:minmax(0,1fr) auto auto;align-items:center;gap:8px;
+}
+.hub-summe{
+  font-family:var(--mono);font-size:11px;color:var(--m-tinteleise,#68756F);
+  line-height:1.3;min-width:0;
+}
+.hub-tun{
+  padding:10px 13px;border-radius:99px;font-size:12.5px;font-weight:700;white-space:nowrap;
+  background:var(--m-akzent,#0F6E64);color:var(--m-aufakzent,#fff);
+  transition:transform .16s var(--weich);
+}
+.hub-tun:active{transform:scale(.97)}
+.hub-tun.leise{background:none;border:1px solid var(--m-linie,#E2DCD2);color:var(--m-tinte,#1C2321)}
+.hub-tun[disabled]{opacity:.4;cursor:default}
+
+/* Der Bestellpass. Die Schritte werden NICHT neu gezeichnet, wenn
+   einer weiterspringt — es wechselt nur eine Klasse. */
+.hub-nr{
+  font-family:var(--mono);font-size:34px;font-weight:700;letter-spacing:-.035em;
+  line-height:1;font-variant-numeric:tabular-nums;
+}
+.hub-nrtext{font-size:11px;color:var(--m-tinteleise,#68756F);margin-top:4px}
+.hub-schritte{display:grid;margin:16px 0 4px}
+.hub-schritt{display:flex;gap:10px;align-items:flex-start;flex-wrap:wrap;padding:8px 0;opacity:.42}
+.hub-schritt b{font-size:12.5px;font-weight:600;line-height:1.3}
+.hub-schritt small{display:block;font-size:10px;color:var(--m-tinteleise,#68756F)}
+.hub-schritt i{
+  width:11px;height:11px;border-radius:50%;flex-shrink:0;margin-top:3px;
+  border:2px solid currentColor;color:var(--m-tinteleise,#68756F);
+}
+.hub-schritt.da{opacity:1}
+.hub-schritt.da i{background:var(--m-akzent,#0F6E64);border-color:var(--m-akzent,#0F6E64);color:var(--m-akzent,#0F6E64)}
+.hub-schritt.jetzt i{animation:hubpuls 2.2s var(--elegant) infinite}
+@keyframes hubpuls{
+  0%  {box-shadow:0 0 0 0 currentColor}
+  70% {box-shadow:0 0 0 8px transparent}
+  100%{box-shadow:0 0 0 0 transparent}
+}
+.hub-liste{border-top:1px solid var(--m-linie,#E2DCD2);margin-top:12px;padding-top:10px}
+
+.hub-toast{
+  position:absolute;left:50%;bottom:22px;transform:translate(-50%,12px);
+  background:var(--sockel);color:var(--kreide);border:1px solid var(--linie-dunkel);
+  font-family:var(--mono);font-size:11px;letter-spacing:.05em;
+  padding:9px 14px;border-radius:99px;white-space:nowrap;
+  opacity:0;pointer-events:none;
+  transition:opacity .3s var(--weich),transform .3s var(--weich);
+}
+.hub-toast.da{opacity:1;transform:translate(-50%,0)}
+
+.hub-seite h3{color:var(--kreide);margin-bottom:12px;max-width:20ch}
+.hub-seite p{color:var(--kreide-leise);font-size:14.5px;max-width:46ch}
+.hub-seite ul{list-style:none;margin:16px 0 0;padding:0;display:grid;gap:8px}
+.hub-seite li{
+  font-family:var(--mono);font-size:11.5px;line-height:1.5;color:var(--kreide-leise);
+  display:grid;grid-template-columns:13px minmax(0,1fr);gap:9px;align-items:start;
+}
+.hub-seite li::before{content:"+";color:var(--glut-hell);font-weight:700}
+.hub-seite .rufreihe{margin:22px 0 0}
+.hub-seite .gross{padding:12px 20px;font-size:14px}
+.hub-hinweis{
+  margin-top:18px;padding-top:14px;border-top:1px solid var(--linie-dunkel);
+  font-family:var(--mono);font-size:10.5px;line-height:1.65;color:var(--kreide-still);
+}
+
+/* Solange das Fenster offen ist, soll die Seite darunter nicht
+   mitscrollen — sonst steht man nach dem Schließen woanders.
+
+   Die Klasse gehört an <html>, nicht an <body>: Weil html hier
+   overflow-x:clip trägt, wird das overflow des body NICHT mehr auf
+   das Fenster übertragen. Mit der Regel am body scrollte die Seite
+   unter dem offenen Fenster fröhlich weiter — gemessen, nicht
+   vermutet. */
+html.starr{overflow:hidden}
+
 /* ─── Auftritt beim Bildlauf ──────────────────────────────────
    Clip-path statt Einblenden von unten. Der Text wird aufgedeckt,
    nicht eingeschwebt. */
@@ -617,7 +950,8 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
       <a href="#preise">Preise</a>
       <a href="#marken">Deine Marke</a>
       <a href="#fragen">Fragen</a>
-      <a class="hauptruf" href="/konto.html">Zwei Wochen testen</a>
+      <button class="nebenruf" type="button" data-hub>Demo-Hub</button>
+      <a class="hauptruf" href="/konto.html"><span class="lang">Zwei Wochen </span>testen</a>
     </nav>
     <span class="uhr zahl" id="uhr">—</span>
   </div>
@@ -625,37 +959,45 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
 
 <!-- ═══ 1 · SOCKEL ═══ -->
 <section class="sockel">
-  <div class="buehne">
-    <div class="plinth">
-      <button class="deckel" id="deckel" aria-label="Untersetzer antippen">
-        <svg viewBox="0 0 120 120" aria-hidden="true">
-          <g fill="none" stroke="#123029" stroke-linecap="round">
-            <circle cx="60" cy="41" r="7.5" fill="#123029" stroke="none"/>
-            <path d="M43 57c5-5.5 11-8.2 17-8.2S72 51.5 77 57" stroke-width="4.6" opacity=".82"/>
-            <path d="M34 69c7.5-8 16.5-12 26-12s18.5 4 26 12" stroke-width="4.6" opacity=".5"/>
-            <path d="M25 81c10-10.5 22-15.8 35-15.8S85 70.5 95 81" stroke-width="4.6" opacity=".26"/>
-          </g>
-          <text x="60" y="99" text-anchor="middle" fill="#123029"
-                font-family="ui-monospace,monospace" font-size="7.4" font-weight="700"
-                letter-spacing="2.2" opacity=".62">AUFLEGEN · QR</text>
-        </svg>
-      </button>
-      <div class="tischschatten"></div>
-      <p class="tippmich"><i></i>Tipp mich an</p>
-      <div class="traeger" id="traeger">
-        <button type="button" data-traeger="untersetzer" aria-pressed="true">Untersetzer</button>
-        <button type="button" data-traeger="aufsteller"  aria-pressed="false">Aufsteller A5</button>
-      </div>
-      <p class="traegertext" id="traegertext">Auf den Tisch legen · NFC auflegen oder QR scannen</p>
+  <div class="innen held">
+    <div class="held-kopf">
+      <span class="marke">Digitaler Gastgeber am Tisch</span>
+      <h1><span data-tausch>Der Tisch ist das Personal,</span> <em>das nie Pause macht.</em></h1>
     </div>
-  </div>
 
-  <div class="sockeltext">
-    <span class="marke">Digitaler Gastgeber am Tisch</span>
-    <h1><span data-tausch>Der Tisch ist das Personal,</span> <em>das nie Pause macht.</em></h1>
-    <div class="sockelfuss">
+    <div class="held-objekt">
+      <div class="plinth">
+        <button class="deckel" id="deckel" type="button" data-hub
+                  aria-haspopup="dialog" aria-label="Untersetzer antippen — Demo-Hub öffnen">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <g fill="none" stroke="#123029" stroke-linecap="round">
+              <circle cx="60" cy="41" r="7.5" fill="#123029" stroke="none"/>
+              <path d="M43 57c5-5.5 11-8.2 17-8.2S72 51.5 77 57" stroke-width="4.6" opacity=".82"/>
+              <path d="M34 69c7.5-8 16.5-12 26-12s18.5 4 26 12" stroke-width="4.6" opacity=".5"/>
+              <path d="M25 81c10-10.5 22-15.8 35-15.8S85 70.5 95 81" stroke-width="4.6" opacity=".26"/>
+            </g>
+            <text x="60" y="99" text-anchor="middle" fill="#123029"
+                  font-family="ui-monospace,monospace" font-size="7.4" font-weight="700"
+                  letter-spacing="2.2" opacity=".62">AUFLEGEN · QR</text>
+          </svg>
+        </button>
+        <div class="tischschatten"></div>
+        <p class="tippmich"><i></i>Antippen · Hub öffnen</p>
+        <div class="traeger" id="traeger">
+          <button type="button" data-traeger="untersetzer" aria-pressed="true">Untersetzer</button>
+          <button type="button" data-traeger="aufsteller"  aria-pressed="false">Aufsteller A5</button>
+        </div>
+        <p class="traegertext" id="traegertext">Auf den Tisch legen · NFC auflegen oder QR scannen</p>
+      </div>
+    </div>
+
+    <div class="held-fuss">
       <p>Untersetzer oder Aufsteller antippen — Karte, Bestellung, Servicerufe.
         Ohne App, ohne Anmeldung, <b>ohne dass wir deine Kasse anfassen.</b></p>
+      <div class="rufreihe">
+        <a class="gross" href="/konto.html">Zwei Wochen testen</a>
+        <button class="gross leise" type="button" data-hub>Demo-Hub öffnen</button>
+      </div>
       <div class="belege">
         <span class="beleg">Server in Frankfurt</span>
         <span class="beleg">DSGVO</span>
@@ -894,7 +1236,7 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
             <div class="m-tipp">
               <span class="k">Empfehlung des Hauses</span>
               <div class="n" id="mTipp">Zimtschnecke</div>
-              <div class="p">4,20 €</div>
+              <div class="p" id="mPreis">4,20 €</div>
             </div>
             <p class="m-label">Am Tisch</p>
             <div class="m-kacheln" id="mKacheln"></div>
@@ -904,7 +1246,8 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
     </div>
 
     <div class="markenfuss">
-      <a class="gross" href="/marken-studio.html">Selbst einstellen</a>
+      <button class="gross" type="button" data-hub>Diesen Hub öffnen</button>
+      <a class="gross leise" href="/marken-studio.html">Selbst einstellen</a>
       <p>Im Marken-Studio stellst du alles ein und schickst uns das Ergebnis als
       Link. Dann bauen wir genau das — nicht ungefähr das.</p>
     </div>
@@ -997,6 +1340,7 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
     Viertelstunde.</p>
     <div class="knopfreihe">
       <a class="gross" href="/konto.html">Zwei Wochen testen</a>
+      <button class="gross leise" type="button" data-hub>Erst den Hub ansehen</button>
       <a class="gross leise" href="/start.html">Lieber erst reden</a>
     </div>
 
@@ -1010,6 +1354,65 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
     </div>
   </div>
 </section>
+
+<!-- ═══ 8 · DEMO-HUB ═══
+     Liegt am Ende des Auszeichnungstextes, weil es überall auf der
+     Seite geöffnet werden kann: vom Untersetzer, aus der Kopfleiste,
+     aus der Markenschau, aus dem Kolophon. Jedes Element mit
+     data-hub öffnet es — ein Haken statt vier Verdrahtungen. -->
+<dialog class="hubfenster" id="hubfenster" aria-labelledby="hubTitel">
+  <div class="hub-rahmen">
+
+    <div class="hub-kopf">
+      <span class="marke" id="hubTitel">Demo-Hub · Beispieldaten</span>
+      <div class="hub-haeuser" id="hubHaeuser"></div>
+      <button class="hub-zu" id="hubZu" type="button" aria-label="Fenster schließen">×</button>
+    </div>
+
+    <div class="hub-buehne">
+      <div class="geraet hub-geraet">
+        <div class="hub-schirm" id="hubSchirm">
+          <div class="m-band hub-band">
+            <div>
+              <div class="m-logo" id="hubLogo">Café Nordstern</div>
+              <div class="m-claim" id="hubClaim">Guter Kaffee, kurze Wege.</div>
+            </div>
+            <span class="hub-tisch">Tisch 7</span>
+          </div>
+
+          <div class="hub-tabs" id="hubTabs">
+            <button type="button" data-tab="karte" aria-pressed="true">Karte</button>
+            <button type="button" data-tab="pass" aria-pressed="false">Bestellung <i id="hubAnzahl">0</i></button>
+          </div>
+
+          <div class="hub-inhalt" id="hubInhalt"></div>
+          <div class="hub-fuss" id="hubFuss"></div>
+        </div>
+        <div class="hub-toast" id="hubToast" role="status" aria-live="polite"></div>
+      </div>
+
+      <div class="hub-seite">
+        <h3>Das sieht dein Gast, wenn er auflegt.</h3>
+        <p>Tipp dich durch: Gericht wählen, bestellen, Nummer bekommen, Service rufen.
+        Oben wechselst du das Haus — Farben, Schrift und Karte wechseln mit.</p>
+        <ul>
+          <li><span>Keine App, kein Konto, keine Einwilligung</span></li>
+          <li><span>Allergene stehen an jedem Gericht</span></li>
+          <li><span>Der Gast sieht, in welchem Schritt seine Bestellung steckt</span></li>
+          <li><span>Nachbestellen und Zahlen ohne Kellnersuche</span></li>
+        </ul>
+        <div class="rufreihe">
+          <a class="gross" href="/konto.html">Zwei Wochen testen</a>
+          <a class="gross leise" href="/marken-studio.html">Eigene Farben einstellen</a>
+        </div>
+        <p class="hub-hinweis">Beispieldaten. Es geht nichts an eine Küche raus, es
+        wird nichts gespeichert. Der echte Hub liegt unter deiner eigenen Adresse
+        und hängt an deiner Karte.</p>
+      </div>
+    </div>
+
+  </div>
+</dialog>
 
 <script>
 "use strict";
@@ -1065,10 +1468,11 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
   teile.forEach(function(t){ beob.observe(t); });
 })();
 
-/* ─── Der Untersetzer ────────────────────────────────────────── */
-document.getElementById("deckel").addEventListener("click", function(){
-  document.getElementById("durchgang").scrollIntoView({behavior:"smooth"});
-});
+/* ─── Der Untersetzer ──────────────────────────────────────────
+   Er scrollte vorher nur nach unten. Das war die schwächste Antwort
+   auf ein Antippen, die ein Gegenstand geben kann. Er trägt jetzt
+   data-hub und öffnet den Demo-Hub — verdrahtet ist das weiter
+   unten, gemeinsam mit allen anderen Öffnern. */
 
 /* ─── Ein Durchgang: angeheftete Erzählung ──────────────────
    Die Uhr zählt MINUTEN SEIT DEM HINSETZEN, keine Tageszeit. Vorher
@@ -1112,8 +1516,12 @@ document.getElementById("deckel").addEventListener("click", function(){
     var rest = roh - i;
     var min = zeiten[i] + (zeiten[Math.min(i+1, zeiten.length-1)] - zeiten[i]) * rest;
 
-    uhrEl.textContent = "+" + Math.floor(min) + ":" +
-      String(Math.round((min % 1) * 60)).padStart(2,"0");
+    /* Erst runden, dann teilen. Andersherum stand bei min = 4,995
+       ein „+4:60" auf der Uhr: Die Minute wurde abgeschnitten, die
+       Sekunden aber auf 60 gerundet. */
+    var sek = Math.round(min * 60);
+    uhrEl.textContent = "+" + Math.floor(sek / 60) + ":" +
+      String(sek % 60).padStart(2,"0");
     bahn.style.width = (Math.min(1, min / ENDE) * 100) + "%";
 
     if(i !== letzte){
@@ -1168,100 +1576,194 @@ document.querySelectorAll("details").forEach(function(d){
   });
 });
 
+/* ═══ HÄUSER · eine Quelle für Markenschau und Demo-Hub ════════
+   Dieselben vier Häuser wie im Marken-Studio. Sie standen vorher in
+   der Kapsel der Markenschau — jetzt stehen sie davor, weil das
+   Fenster mit dem Demo-Hub dieselben Farben, dieselbe Schrift und
+   dieselbe Karte braucht. Zwei Kopien wären eine zu viel: Sie laufen
+   auseinander, sobald eine davon gepflegt wird.
+
+   Preise stehen in Cent, nicht als Text. Sonst müsste die Summe im
+   Bestellpass aus "12,80" zurückgerechnet werden — und genau dort
+   entstehen die stillen Rundungsfehler. */
+var SCHRIFT = {
+  system:'"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif',
+  klassisch:'"Instrument Serif","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif',
+  schmal:'Charter,Georgia,Cambria,"Times New Roman",serif',
+  sachlich:'"Helvetica Neue",Helvetica,Arial,sans-serif'
+};
+var SCHATTEN = {
+  weich:"0 1px 2px rgba(0,0,0,.05), 0 8px 22px rgba(0,0,0,.07)",
+  kante:"0 2px 0 rgba(0,0,0,.14)",
+  ohne:"none"
+};
+
+var HAEUSER = [
+  { id:"nordstern", name:"Café Nordstern", art:"Café am Wasser",
+    logo:"Café Nordstern", claim:"Guter Kaffee, kurze Wege.",
+    gruss:"Schön, dass Sie da sind.", tipp:"Zimtschnecke", tippPreis:420,
+    kopf:"klassisch", text:"system", schatten:"weich", rundung:16,
+    f:{ grund:"#F6F3EE", flaeche:"#FFFFFF", band:"#1E3A3A", bandtext:"#F4F9F8",
+        tinte:"#1C2321", tinteleise:"#68756F", linie:"#E2DCD2",
+        akzent:"#0F6E64", akzent2:"#B0791A" },
+    kacheln:[["🍽","Frühstück","bis 14 Uhr"],["☕","Kaffee","Aus Bremen geröstet"],
+             ["🔔","Service rufen","Wir kommen"],["📅","Tisch anfragen","Für später"]],
+    karte:[
+      {kat:"Frühstück", g:[
+        ["Nordstern-Frühstück","Ei, Käse, Obst, Brot · A,C,G",1280],
+        ["Porridge","Hafer, Apfel, Zimt · A,G",690],
+        ["Rührei auf Sauerteig","mit Schnittlauch · A,C,G",840]]},
+      {kat:"Kaffee", g:[
+        ["Filterkaffee","Aus Bremen geröstet",320],
+        ["Cappuccino","Hafermilch ohne Aufpreis · G",390],
+        ["Chai Latte","hausgemachte Mischung · G",420]]},
+      {kat:"Süßes", g:[
+        ["Zimtschnecke","backen wir morgens · A,C,G",420],
+        ["Käsekuchen","nach Familienrezept · A,C,G",450],
+        ["Bananenbrot","vegan · A,H",380]]}
+    ] },
+
+  { id:"vespa", name:"Trattoria Vespa", art:"Trattoria",
+    logo:"Trattoria Vespa", claim:"Wie bei Nonna, nur lauter.",
+    gruss:"Benvenuti!", tipp:"Pasta del giorno", tippPreis:1490,
+    kopf:"schmal", text:"system", schatten:"kante", rundung:8,
+    f:{ grund:"#FBF7EF", flaeche:"#FFFFFF", band:"#7A1F1B", bandtext:"#FDF6EC",
+        tinte:"#231A16", tinteleise:"#7C6A5E", linie:"#E8DDCB",
+        akzent:"#A32721", akzent2:"#3F6B2E" },
+    kacheln:[["🍝","La Carta","Antipasti bis Dolci"],["🍷","Vini","Offen und in Flaschen"],
+             ["🔔","Cameriere","Zahlen oder nachbestellen"],["📅","Tavolo","Für heute Abend"]],
+    karte:[
+      {kat:"Antipasti", g:[
+        ["Bruschetta al pomodoro","Sauerteig, Tomate, Basilikum · A",690],
+        ["Vitello tonnato","· C,D,G",1390],
+        ["Burrata","mit Olivenöl und Pfeffer · G",1190]]},
+      {kat:"Pasta", g:[
+        ["Pasta del giorno","Frag die Küche · A,C",1490],
+        ["Tagliatelle al ragù","zwölf Stunden · A,C,G",1690],
+        ["Cacio e pepe","· A,C,G",1390]]},
+      {kat:"Vini", g:[
+        ["Chianti","0,2 l · L",690],
+        ["Vermentino","0,2 l · L",650],
+        ["Acqua frizzante","0,75 l",490]]}
+    ] },
+
+  { id:"loft", name:"LOFT 21", art:"Bar",
+    logo:"LOFT 21", claim:"Bar & Küche",
+    gruss:"Guten Abend.", tipp:"Negroni Sbagliato", tippPreis:1200,
+    kopf:"sachlich", text:"sachlich", schatten:"ohne", rundung:2,
+    f:{ grund:"#12120F", flaeche:"#1A1A16", band:"#0A0A08", bandtext:"#F2F2EC",
+        tinte:"#F2F2EC", tinteleise:"#9A9A90", linie:"#2A2A25",
+        akzent:"#D4FF3F", akzent2:"#F2F2EC" },
+    kacheln:[["🍹","Drinks","Signature & Klassiker"],["🍽","Small Plates","Zum Teilen"],
+             ["🎵","Musikwunsch","Geht an die Bar"],["🔔","Service","Wir kommen"]],
+    karte:[
+      {kat:"Signature", g:[
+        ["Negroni Sbagliato","Campari, Vermouth, Spumante",1200],
+        ["Smoked Old Fashioned","Rye, Bitters, Rauch",1400],
+        ["Yuzu Sour","Gin, Yuzu, Eiweiß · C",1300]]},
+      {kat:"Small Plates", g:[
+        ["Padrón","Meersalz",700],
+        ["Beef Tatar","Sauerteigcracker · A,C",1600],
+        ["Edamame","Chili, Limette · F",600]]},
+      {kat:"Ohne Alkohol", g:[
+        ["Zero Spritz","Bitter ohne Alkohol",800],
+        ["Cold Brew Tonic","kalt gebrüht",700],
+        ["Wasser","still oder laut, 0,75 l",550]]}
+    ] },
+
+  { id:"linde", name:"Gasthaus Linde", art:"Gasthaus",
+    logo:"Gasthaus Linde", claim:"Seit 1904 am Markt.",
+    gruss:"Grüß Gott.", tipp:"Rinderroulade", tippPreis:1980,
+    kopf:"klassisch", text:"system", schatten:"weich", rundung:20,
+    f:{ grund:"#F5F1E6", flaeche:"#FFFDF7", band:"#33422A", bandtext:"#F6F3E7",
+        tinte:"#242A1E", tinteleise:"#6F7663", linie:"#E0D8C3",
+        akzent:"#7A5C1E", akzent2:"#93321F" },
+    kacheln:[["🍽","Speisekarte","Hausmannskost"],["🍺","Getränke","Vom Fass"],
+             ["🔔","Bedienung","Zahlen oder nachbestellen"],["🎲","Rätsel","Für die Wartezeit"]],
+    karte:[
+      {kat:"Vorweg", g:[
+        ["Rindersuppe","mit Flädle · A,C,I",590],
+        ["Wurstsalat","mit Bratkartoffeln · C,J",890],
+        ["Obatzda","mit Brezel · A,G",790]]},
+      {kat:"Hauptgerichte", g:[
+        ["Rinderroulade","mit Klößen und Blaukraut · A,C,I,J",1980],
+        ["Schnitzel Wiener Art","mit Pommes · A,C",1690],
+        ["Käsespätzle","mit Röstzwiebeln · A,C,G",1390]]},
+      {kat:"Getränke", g:[
+        ["Helles vom Fass","0,5 l · A",420],
+        ["Apfelschorle","0,4 l",340],
+        ["Viertel Silvaner","0,25 l · L",520]]}
+    ] }
+];
+
+/* ─── Farbrechnung ────────────────────────────────────────────
+   Dieselbe Rechnung wie im Erzeuger und im Studio. Sie steht hier,
+   weil auf farbigem Grund NIE eine feste Schriftfarbe stehen darf:
+   Weiß auf dem Säuregrün der Bar-Vorlage ergibt 1,16:1 — und genau
+   dieser Fehler war schon einmal live. */
+function helligkeit(hex){
+  var h = String(hex||"").replace("#","");
+  if(!/^[0-9a-fA-F]{6}$/.test(h)) return null;
+  var v = [0,2,4].map(function(i){
+    var x = parseInt(h.slice(i,i+2),16)/255;
+    return x <= .03928 ? x/12.92 : Math.pow((x+.055)/1.055, 2.4);
+  });
+  return .2126*v[0] + .7152*v[1] + .0722*v[2];
+}
+function kontrast(a,b){
+  var l1 = helligkeit(a), l2 = helligkeit(b);
+  if(l1 === null || l2 === null) return 1;
+  return (Math.max(l1,l2)+.05)/(Math.min(l1,l2)+.05);
+}
+/* Schrift auf farbigem Grund: gerechnet, nicht gesetzt. */
+function aufFarbe(grund){
+  return kontrast(grund,"#0B0C0A") >= kontrast(grund,"#FFFFFF") ? "#0B0C0A" : "#FFFFFF";
+}
+
+/* Farben eines Hauses auf ein Element legen. Nimmt jedes Element —
+   den Schirm der Markenschau wie den im Fenster. */
+function markeSetzen(el, haus){
+  if(!el) return;
+  var s = el.style, f = haus.f;
+  s.setProperty("--m-grund", f.grund);
+  s.setProperty("--m-flaeche", f.flaeche);
+  s.setProperty("--m-band", f.band);
+  s.setProperty("--m-bandtext", f.bandtext);
+  s.setProperty("--m-tinte", f.tinte);
+  s.setProperty("--m-tinteleise", f.tinteleise);
+  s.setProperty("--m-linie", f.linie);
+  s.setProperty("--m-akzent", f.akzent);
+  s.setProperty("--m-akzent2", f.akzent2);
+  s.setProperty("--m-aufakzent", aufFarbe(f.akzent));
+  s.setProperty("--m-rundung", haus.rundung + "px");
+  s.setProperty("--m-schatten", SCHATTEN[haus.schatten]);
+  s.setProperty("--m-kopf", SCHRIFT[haus.kopf]);
+  s.setProperty("--m-text", SCHRIFT[haus.text]);
+}
+
+function geld(cent){ return (cent/100).toFixed(2).replace(".",",") + " €"; }
+
+/* Ein Haus wählen heißt: allen Bescheid sagen, die eins zeigen.
+   Markenschau und Fenster hören dasselbe Ereignis — so bleiben sie
+   gleich, ohne voneinander zu wissen. */
+var HAUS_JETZT = HAEUSER[0];
+function hausWaehlen(id){
+  var haus = HAEUSER.filter(function(h){ return h.id === id; })[0];
+  if(!haus) return;
+  HAUS_JETZT = haus;
+  document.dispatchEvent(new CustomEvent("hauswahl", {detail:haus}));
+}
+
 /* ═══ MARKENSCHAU ══════════════════════════════════════════════
-   Dieselben vier Häuser wie im Marken-Studio und dieselbe Technik:
-   Farben als CSS-Variablen setzen, das Blatt macht den Rest. Wer
-   hier auf „Selbst einstellen" geht, findet drüben genau das wieder,
-   was er gerade gesehen hat. */
+   Dieselbe Technik wie im Marken-Studio: Farben als CSS-Variablen
+   setzen, das Blatt macht den Rest. Wer hier auf „Selbst einstellen"
+   geht, findet drüben genau das wieder, was er gerade gesehen hat. */
 (function markenschau(){
   var schirm = document.getElementById("schirm");
-  if(!schirm) return;
+  var wahl   = document.getElementById("haeuser");
+  if(!schirm || !wahl) return;
 
-  var SCHRIFT = {
-    system:'"Instrument Sans",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif',
-    klassisch:'"Instrument Serif","Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif',
-    schmal:'Charter,Georgia,Cambria,"Times New Roman",serif',
-    sachlich:'"Helvetica Neue",Helvetica,Arial,sans-serif'
-  };
-  var SCHATTEN = {
-    weich:"0 1px 2px rgba(0,0,0,.05), 0 8px 22px rgba(0,0,0,.07)",
-    kante:"0 2px 0 rgba(0,0,0,.14)",
-    ohne:"none"
-  };
-
-  var HAEUSER = [
-    { id:"nordstern", name:"Café Nordstern", art:"Café am Wasser",
-      logo:"Café Nordstern", claim:"Guter Kaffee, kurze Wege.",
-      gruss:"Schön, dass Sie da sind.", tipp:"Zimtschnecke",
-      kopf:"klassisch", text:"system", schatten:"weich", rundung:16,
-      f:{ grund:"#F6F3EE", flaeche:"#FFFFFF", band:"#1E3A3A", bandtext:"#F4F9F8",
-          tinte:"#1C2321", tinteleise:"#68756F", linie:"#E2DCD2",
-          akzent:"#0F6E64", akzent2:"#B0791A" },
-      kacheln:[["🍽","Frühstück","bis 14 Uhr"],["☕","Kaffee","Aus Bremen geröstet"],
-               ["🔔","Service rufen","Wir kommen"],["📅","Tisch anfragen","Für später"]] },
-
-    { id:"vespa", name:"Trattoria Vespa", art:"Trattoria",
-      logo:"Trattoria Vespa", claim:"Wie bei Nonna, nur lauter.",
-      gruss:"Benvenuti!", tipp:"Pasta del giorno",
-      kopf:"schmal", text:"system", schatten:"kante", rundung:8,
-      f:{ grund:"#FBF7EF", flaeche:"#FFFFFF", band:"#7A1F1B", bandtext:"#FDF6EC",
-          tinte:"#231A16", tinteleise:"#7C6A5E", linie:"#E8DDCB",
-          akzent:"#A32721", akzent2:"#3F6B2E" },
-      kacheln:[["🍝","La Carta","Antipasti bis Dolci"],["🍷","Vini","Offen und in Flaschen"],
-               ["🔔","Cameriere","Zahlen oder nachbestellen"],["📅","Tavolo","Für heute Abend"]] },
-
-    { id:"loft", name:"LOFT 21", art:"Bar",
-      logo:"LOFT 21", claim:"Bar & Küche",
-      gruss:"Guten Abend.", tipp:"Negroni Sbagliato",
-      kopf:"sachlich", text:"sachlich", schatten:"ohne", rundung:2,
-      f:{ grund:"#12120F", flaeche:"#1A1A16", band:"#0A0A08", bandtext:"#F2F2EC",
-          tinte:"#F2F2EC", tinteleise:"#9A9A90", linie:"#2A2A25",
-          akzent:"#D4FF3F", akzent2:"#F2F2EC" },
-      kacheln:[["🍹","Drinks","Signature & Klassiker"],["🍽","Small Plates","Zum Teilen"],
-               ["🎵","Musikwunsch","Geht an die Bar"],["🔔","Service","Wir kommen"]] },
-
-    { id:"linde", name:"Gasthaus Linde", art:"Gasthaus",
-      logo:"Gasthaus Linde", claim:"Seit 1904 am Markt.",
-      gruss:"Grüß Gott.", tipp:"Rinderroulade",
-      kopf:"klassisch", text:"system", schatten:"weich", rundung:20,
-      f:{ grund:"#F5F1E6", flaeche:"#FFFDF7", band:"#33422A", bandtext:"#F6F3E7",
-          tinte:"#242A1E", tinteleise:"#6F7663", linie:"#E0D8C3",
-          akzent:"#7A5C1E", akzent2:"#93321F" },
-      kacheln:[["🍽","Speisekarte","Hausmannskost"],["🍺","Getränke","Vom Fass"],
-               ["🔔","Bedienung","Zahlen oder nachbestellen"],["🎲","Rätsel","Für die Wartezeit"]] }
-  ];
-
-  function setzen(haus){
-    var s = schirm.style, f = haus.f;
-    s.setProperty("--m-grund", f.grund);
-    s.setProperty("--m-flaeche", f.flaeche);
-    s.setProperty("--m-band", f.band);
-    s.setProperty("--m-bandtext", f.bandtext);
-    s.setProperty("--m-tinte", f.tinte);
-    s.setProperty("--m-tinteleise", f.tinteleise);
-    s.setProperty("--m-linie", f.linie);
-    s.setProperty("--m-akzent", f.akzent);
-    s.setProperty("--m-akzent2", f.akzent2);
-    s.setProperty("--m-rundung", haus.rundung + "px");
-    s.setProperty("--m-schatten", SCHATTEN[haus.schatten]);
-    s.setProperty("--m-kopf", SCHRIFT[haus.kopf]);
-    s.setProperty("--m-text", SCHRIFT[haus.text]);
-
-    document.getElementById("mLogo").textContent  = haus.logo;
-    document.getElementById("mClaim").textContent = haus.claim;
-    document.getElementById("mGruss").textContent = haus.gruss;
-    document.getElementById("mTipp").textContent  = haus.tipp;
-    document.getElementById("mKacheln").innerHTML = haus.kacheln.map(function(k){
-      return '<div class="m-kachel"><i>' + k[0] + '</i><b>' + k[1] +
-             '</b><small>' + k[2] + '</small></div>';
-    }).join("");
-
-    document.querySelectorAll("[data-haus]").forEach(function(b){
-      b.setAttribute("aria-pressed", b.dataset.haus === haus.id);
-    });
-  }
-
-  document.getElementById("haeuser").innerHTML = HAEUSER.map(function(h, i){
+  wahl.innerHTML = HAEUSER.map(function(h, i){
     var tupfer = ["band","akzent","akzent2","grund"].map(function(k){
       return '<i style="background:' + h.f[k] + '"></i>';
     }).join("");
@@ -1270,13 +1772,30 @@ document.querySelectorAll("details").forEach(function(d){
       '</span><span class="tupfer">' + tupfer + '</span></button>';
   }).join("");
 
-  document.getElementById("haeuser").addEventListener("click", function(e){
+  wahl.addEventListener("click", function(e){
     var k = e.target.closest("[data-haus]"); if(!k) return;
-    var haus = HAEUSER.filter(function(h){ return h.id === k.dataset.haus; })[0];
-    if(haus) setzen(haus);
+    hausWaehlen(k.dataset.haus);
   });
 
-  setzen(HAEUSER[0]);
+  document.addEventListener("hauswahl", function(e){
+    var haus = e.detail;
+    markeSetzen(schirm, haus);
+    document.getElementById("mLogo").textContent  = haus.logo;
+    document.getElementById("mClaim").textContent = haus.claim;
+    document.getElementById("mGruss").textContent = haus.gruss;
+    document.getElementById("mTipp").textContent  = haus.tipp;
+    /* Der Preis der Empfehlung stand fest im Auszeichnungstext:
+       Beim Wechsel auf die Trattoria stand dort „Pasta del giorno ·
+       4,20 €". Er kommt jetzt aus dem Haus wie alles andere. */
+    document.getElementById("mPreis").textContent = geld(haus.tippPreis);
+    document.getElementById("mKacheln").innerHTML = haus.kacheln.map(function(k){
+      return '<div class="m-kachel"><i>' + k[0] + '</i><b>' + k[1] +
+             '</b><small>' + k[2] + '</small></div>';
+    }).join("");
+    wahl.querySelectorAll("[data-haus]").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.haus === haus.id);
+    });
+  });
 })();
 
 /* ─── Träger wechseln ───────────────────────────────────────── */
@@ -1364,6 +1883,261 @@ document.querySelectorAll("details").forEach(function(d){
     setTimeout(function(){}, i * 18);
   });
 })();
+
+/* ═══ DEMO-HUB ═════════════════════════════════════════════════
+   Was der Gast sieht, in einem Fenster auf derselben Seite. Es ist
+   nicht der echte Hub — der ist eine erzeugte Datei je Kunde und
+   hängt an einer Datenbank. Es ist dieselbe Oberfläche mit
+   Beispieldaten, und es sagt das an zwei Stellen.
+
+   Die Karte wird beim Antippen NICHT neu gezeichnet: Es ändert sich
+   nur die Menge in der einen Zeile und die Fußleiste. Ein voller
+   Neuaufbau würde die Liste zurück nach oben springen lassen —
+   genau der Fehler, der das Küchendisplay wackeln ließ. */
+(function demohub(){
+  var fenster = document.getElementById("hubfenster");
+  var oeffner = [].slice.call(document.querySelectorAll("[data-hub]"));
+  if(!oeffner.length) return;
+
+  /* Ohne <dialog> (iOS vor 15.4) führt derselbe Knopf zur
+     Markenschau. Lieber ein schwächeres Ziel als ein toter Knopf. */
+  if(!fenster || typeof fenster.showModal !== "function"){
+    oeffner.forEach(function(k){
+      k.addEventListener("click", function(e){
+        e.preventDefault();
+        var m = document.getElementById("marken");
+        if(m) m.scrollIntoView({behavior:"smooth"});
+      });
+    });
+    return;
+  }
+
+  var schirm  = document.getElementById("hubSchirm");
+  var inhalt  = document.getElementById("hubInhalt");
+  var fussEl  = document.getElementById("hubFuss");
+  var tabs    = document.getElementById("hubTabs");
+  var zaehler = document.getElementById("hubAnzahl");
+  var toastEl = document.getElementById("hubToast");
+  var wahl    = document.getElementById("hubHaeuser");
+
+  var SCHRITTE = [
+    ["Abgeschickt",  "Beim Betrieb eingegangen",     0],
+    ["Angenommen",   "Die Theke hat sie gesehen",    1700],
+    ["In der Küche", "Wird zubereitet",              4300],
+    ["Am Tisch",     "Guten Appetit",                8400]
+  ];
+
+  var haus = HAUS_JETZT, kat = 0, korb = [], bestellt = [], nummer = 0;
+  var blick = "karte", stufe = 0, uhren = [], toastuhr = 0, herkunft = null;
+
+  function stueck(liste){ return liste.reduce(function(a,z){ return a + z.n; }, 0); }
+  function summe(liste){  return liste.reduce(function(a,z){ return a + z.preis * z.n; }, 0); }
+  function frei(){ uhren.forEach(clearTimeout); uhren = []; }
+
+  function toast(text){
+    toastEl.textContent = text;
+    toastEl.classList.add("da");
+    clearTimeout(toastuhr);
+    toastuhr = setTimeout(function(){ toastEl.classList.remove("da"); }, 2600);
+  }
+
+  /* ─── Karte ─── */
+  function zeichneKarte(){
+    var k = haus.karte[kat];
+    var chips = haus.karte.map(function(c, i){
+      return '<button type="button" class="hub-kat" data-kat="' + i +
+             '" aria-pressed="' + (i === kat) + '">' + c.kat + '</button>';
+    }).join("");
+
+    var zeilen = k.g.map(function(g, i){
+      var e = korb.filter(function(z){ return z.name === g[0]; })[0];
+      return '<div class="hub-zeile">' +
+        '<span class="t"><b>' + g[0] + '</b>' +
+        (g[1] ? '<small>' + g[1] + '</small>' : '') + '</span>' +
+        '<span class="hub-anzahl" data-zahl="' + i + '">' + (e ? "×" + e.n : "") + '</span>' +
+        '<span class="p">' + geld(g[2]) + '</span>' +
+        '<button type="button" class="hub-plus" data-plus="' + i +
+        '" aria-label="' + g[0] + ' hinzufügen">+</button></div>';
+    }).join("");
+
+    inhalt.innerHTML =
+      '<p class="m-gruss">' + haus.gruss + '</p>' +
+      '<div class="m-tipp"><span class="k">Empfehlung des Hauses</span>' +
+      '<div class="n">' + haus.tipp + '</div>' +
+      '<div class="p">' + geld(haus.tippPreis) + '</div></div>' +
+      '<div class="hub-kats">' + chips + '</div>' + zeilen;
+    inhalt.scrollTop = 0;
+  }
+
+  /* ─── Bestellpass ─── */
+  function zeichnePass(){
+    if(bestellt.length){
+      inhalt.innerHTML =
+        '<div class="hub-nr">Nr. ' + nummer + '</div>' +
+        '<div class="hub-nrtext">Tisch 7 · ' + stueck(bestellt) + ' Artikel · ' +
+        geld(summe(bestellt)) + '</div>' +
+        '<div class="hub-schritte">' + SCHRITTE.map(function(sch, i){
+          return '<div class="hub-schritt" data-stufe="' + i + '"><i></i>' +
+                 '<span><b>' + sch[0] + '</b><small>' + sch[1] + '</small></span></div>';
+        }).join("") + '</div>' +
+        '<div class="hub-liste">' + bestellt.map(function(z){
+          return '<div class="hub-zeile"><span class="t"><b>' + z.n + '× ' + z.name +
+                 '</b></span><span class="p">' + geld(z.preis * z.n) + '</span></div>';
+        }).join("") + '</div>';
+      stufeZeigen(stufe);
+      return;
+    }
+    if(korb.length){
+      inhalt.innerHTML =
+        '<p class="m-gruss">Noch nicht abgeschickt.</p>' +
+        '<div class="hub-liste">' + korb.map(function(z){
+          return '<div class="hub-zeile"><span class="t"><b>' + z.n + '× ' + z.name +
+                 '</b></span><span class="p">' + geld(z.preis * z.n) + '</span></div>';
+        }).join("") + '</div>';
+      return;
+    }
+    inhalt.innerHTML = '<p class="m-gruss">Noch nichts gewählt.</p>' +
+      '<div class="hub-nrtext">Such dir in der Karte etwas aus — es geht ' +
+      'nichts raus, bevor du auf „Bestellen" tippst.</div>';
+  }
+
+  function stufeZeigen(n){
+    var alle = inhalt.querySelectorAll("[data-stufe]");
+    alle.forEach(function(el, i){
+      el.classList.toggle("da",    i <= n);
+      el.classList.toggle("jetzt", i === n);
+    });
+  }
+
+  function zeichneFuss(){
+    if(blick === "pass" && bestellt.length){
+      fussEl.innerHTML =
+        '<button type="button" class="hub-tun leise" data-tun="zurueck">Nachbestellen</button>' +
+        '<button type="button" class="hub-tun" data-tun="zahlen">Zahlen bitte</button>';
+      return;
+    }
+    var leer = !korb.length;
+    fussEl.innerHTML =
+      '<span class="hub-summe">' + (leer ? "Nichts gewählt" :
+        stueck(korb) + " Artikel · " + geld(summe(korb))) + '</span>' +
+      '<button type="button" class="hub-tun leise" data-tun="ruf">Service</button>' +
+      '<button type="button" class="hub-tun" data-tun="senden"' + (leer ? " disabled" : "") +
+      '>Bestellen</button>';
+  }
+
+  function zaehlerSetzen(){
+    zaehler.textContent = stueck(korb) || (bestellt.length ? "✓" : "0");
+  }
+
+  function zeichnen(){
+    if(blick === "karte") zeichneKarte(); else zeichnePass();
+    zeichneFuss();
+    zaehlerSetzen();
+    tabs.querySelectorAll("[data-tab]").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.tab === blick);
+    });
+  }
+
+  /* ─── Bedienung ─── */
+  inhalt.addEventListener("click", function(e){
+    var plus = e.target.closest("[data-plus]");
+    if(plus){
+      var i = Number(plus.dataset.plus), g = haus.karte[kat].g[i];
+      var e0 = korb.filter(function(z){ return z.name === g[0]; })[0];
+      if(e0) e0.n++; else korb.push({name:g[0], preis:g[2], n:1});
+      var z = inhalt.querySelector('[data-zahl="' + i + '"]');
+      if(z) z.textContent = "×" + (e0 ? e0.n : 1);
+      zeichneFuss(); zaehlerSetzen();
+      return;
+    }
+    var chip = e.target.closest("[data-kat]");
+    if(chip){ kat = Number(chip.dataset.kat); zeichneKarte(); }
+  });
+
+  fussEl.addEventListener("click", function(e){
+    var k = e.target.closest("[data-tun]"); if(!k) return;
+    var tun = k.dataset.tun;
+
+    if(tun === "ruf"){ toast("Ruf ist raus · Tisch 7"); return; }
+    if(tun === "zahlen"){ toast("Zahlen · der Service kommt"); return; }
+    if(tun === "zurueck"){ blick = "karte"; zeichnen(); return; }
+
+    if(tun === "senden" && korb.length){
+      bestellt = korb; korb = [];
+      /* Dreistellig wie im echten Hub — die Tagesnummer, nicht die
+         Tischnummer. */
+      nummer = 200 + Math.floor(Math.random() * 99);
+      blick = "pass"; stufe = 0;
+      zeichnen();
+      frei();
+      SCHRITTE.forEach(function(sch, i){
+        if(!i) return;
+        uhren.push(setTimeout(function(){ stufe = i; stufeZeigen(i); }, sch[2]));
+      });
+    }
+  });
+
+  tabs.addEventListener("click", function(e){
+    var k = e.target.closest("[data-tab]"); if(!k) return;
+    blick = k.dataset.tab; zeichnen();
+  });
+
+  /* ─── Häuser ─── */
+  wahl.innerHTML = HAEUSER.map(function(h){
+    return '<button type="button" class="hub-haus" data-haus="' + h.id +
+           '" aria-pressed="false">' + h.name + '</button>';
+  }).join("");
+  wahl.addEventListener("click", function(e){
+    var k = e.target.closest("[data-haus]"); if(!k) return;
+    hausWaehlen(k.dataset.haus);
+  });
+
+  document.addEventListener("hauswahl", function(e){
+    haus = e.detail;
+    markeSetzen(schirm, haus);
+    document.getElementById("hubLogo").textContent  = haus.logo;
+    document.getElementById("hubClaim").textContent = haus.claim;
+    wahl.querySelectorAll("[data-haus]").forEach(function(b){
+      b.setAttribute("aria-pressed", b.dataset.haus === haus.id);
+    });
+    /* Anderes Haus, andere Karte — ein Korb aus dem vorigen wäre
+       eine Bestellung, die es dort nicht gibt. */
+    frei(); korb = []; bestellt = []; kat = 0; blick = "karte"; stufe = 0;
+    zeichnen();
+  });
+
+  /* ─── Öffnen und Schließen ─── */
+  function auf(e){
+    if(e){ e.preventDefault(); herkunft = e.currentTarget; }
+    fenster.showModal();
+    /* Die Breite der verschwindenden Bildlaufleiste wird ersetzt,
+       sonst springt die Seite beim Öffnen um zehn Pixel. */
+    var luecke = innerWidth - document.documentElement.clientWidth;
+    document.documentElement.classList.add("starr");
+    if(luecke > 0) document.documentElement.style.paddingRight = luecke + "px";
+  }
+  oeffner.forEach(function(k){ k.addEventListener("click", auf); });
+
+  document.getElementById("hubZu").addEventListener("click", function(){ fenster.close(); });
+  /* Klick auf den Grund neben dem Fenster schließt ebenfalls. */
+  fenster.addEventListener("click", function(e){ if(e.target === fenster) fenster.close(); });
+  fenster.addEventListener("close", function(){
+    document.documentElement.classList.remove("starr");
+    document.documentElement.style.paddingRight = "";
+    /* Die Schrittuhren laufen bewusst weiter. Wer das Fenster
+       zumacht und wieder aufmacht, soll die Bestellung dort finden,
+       wo sie inzwischen steht — nicht dort, wo sie beim Schließen
+       stand. Sie schreiben nur in Elemente im Fenster. */
+    if(herkunft && herkunft.focus) herkunft.focus();
+  });
+
+  zeichnen();
+})();
+
+/* Erst wenn Markenschau und Fenster stehen, wird das erste Haus
+   gewählt — beide hören auf dasselbe Ereignis und füllen sich
+   daraufhin selbst. */
+hausWaehlen(HAEUSER[0].id);
 
 /* Warteliste: die Frage aufklappen und dorthin springen. */
 document.getElementById("warteKnopf").addEventListener("click", function(e){
