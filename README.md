@@ -32,6 +32,28 @@ tausende Zeilen, die niemand gelesen hat.
 
 ---
 
+## Welche Datei liegt wo
+
+Sechs Flächen, ein System. Wer wissen will, was er gerade bearbeitet,
+liest diese Tabelle zuerst.
+
+| Datei | Adresse | Wer benutzt sie |
+|---|---|---|
+| `omoteno-web.html` | `omoteno.de` | Der Wirt, bevor er Kunde ist |
+| `konto.html` | `omoteno.de/konto.html` | Der Kunde: Vertrag, Rechnungen, Zugänge |
+| `start.html` | `omoteno.de/start.html` | Wer lieber redet als klickt — Formular für die Einrichtung |
+| `marken-studio.html` | `omoteno.de/marken-studio.html` | Der Kunde, wenn er seinen Hub gestaltet |
+| `admin.html` | `admin.omoteno.de` | Der Betrieb: Bestellungen, Karte, Auswertung |
+| `kueche.html` | `admin.omoteno.de/kueche.html` | Die Küche und die Theke am Pass |
+| `hub.vorlage.html` → `dist/<slug>/index.html` | `<slug>.omoteno.de` | Der Gast am Tisch |
+
+**Die Farbrollen und Schriften stehen im `:root` von
+`omoteno-web.html`.** Das ist die Quelle; alle anderen Dateien tragen
+denselben Block mit demselben Kommentar. Kopiert, nicht geladen — es
+gibt bewusst kein Bauwerkzeug.
+
+---
+
 ## Die drei Befehle
 
 ```bash
@@ -53,6 +75,16 @@ python3 pruefungen/pruef-datei.py dist/chocolamour/index.html
 
 Keine Abhängigkeiten. Kein `npm install`, kein Bauwerkzeug. Node und
 Python3, mehr braucht es nicht — das ist Absicht und soll so bleiben.
+
+Der Erzeuger findet seine Dateien in **beiden** Formen: in der
+Ordnerform oben (`vorlagen/`, `markenblaetter/`) und flach neben sich,
+wenn alles in einem Verzeichnis liegt. Wer vom iPhone aus arbeitet, lädt
+flach hoch — dann läuft derselbe Befehl ohne Umbau:
+
+```bash
+node erzeuge-hub.js chocolamour        # flach, alles in einem Ordner
+node erzeuger/erzeuge-hub.js chocolamour   # in der Ordnerform
+```
 
 ---
 

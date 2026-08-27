@@ -28,9 +28,24 @@
 const fs   = require("fs");
 const path = require("path");
 
-const WURZEL   = path.resolve(__dirname, "..");
-const VORLAGE  = path.join(WURZEL, "vorlagen", "hub.vorlage.html");
-const BLAETTER = path.join(WURZEL, "markenblaetter");
+/* ─── Wo die Dateien liegen ───────────────────────────────────
+   Zwei Formen sind erlaubt, und zwar aus einem praktischen Grund:
+   Die dokumentierte Ordnerform (vorlagen/, markenblaetter/, dist/)
+   ist die Zielform. Wer aber vom iPhone aus arbeitet, lädt Dateien
+   flach in ein Verzeichnis hoch — dann liegt alles nebeneinander.
+   Der Erzeuger sucht deshalb erst die Ordnerform und nimmt sonst
+   das, was neben ihm liegt. Ohne diese zehn Zeilen bricht er im
+   flachen Verzeichnis mit „ENOENT vorlagen/hub.vorlage.html" ab,
+   und niemand sieht, dass nur der Pfad falsch war. */
+const HIER     = __dirname;
+const OBEN     = path.resolve(__dirname, "..");
+const nimm     = (...kandidaten) => kandidaten.find(p => fs.existsSync(p)) || kandidaten[0];
+
+const VORLAGE  = nimm(path.join(OBEN, "vorlagen", "hub.vorlage.html"),
+                      path.join(HIER, "hub.vorlage.html"));
+const BLAETTER = nimm(path.join(OBEN, "markenblaetter"),
+                      HIER);
+const WURZEL   = fs.existsSync(path.join(OBEN, "vorlagen")) ? OBEN : HIER;
 const ZIEL     = path.join(WURZEL, "dist");
 
 /* ─── Schriften und Schatten ──────────────────────────────────
@@ -249,8 +264,21 @@ function erzeuge(slug, nurPruefen){
 /* ─── Aufruf ──────────────────────────────────────────────────── */
 const args = process.argv.slice(2);
 const nurPruefen = args.includes("--pruefen-nur");
+/* Im flachen Verzeichnis liegen neben den Markenblättern auch andere
+   JSON-Dateien. „--alle" nimmt deshalb nur, was wirklich eins ist:
+   ein Objekt mit version und farben. Ohne diese Prüfung meldete der
+   Erzeuger für jede fremde JSON-Datei einen Fehler — und eine
+   Prüfung mit Fehlalarmen bringt einem bei, sie zu übergehen. */
+function istMarkenblatt(pfad){
+  try{
+    const j = JSON.parse(fs.readFileSync(pfad, "utf8"));
+    return !!(j && typeof j === "object" && "version" in j && "farben" in j);
+  }catch(e){ return false; }
+}
 const slugs = args.includes("--alle")
-  ? fs.readdirSync(BLAETTER).filter(f => f.endsWith(".json")).map(f => f.slice(0,-5))
+  ? fs.readdirSync(BLAETTER)
+      .filter(f => f.endsWith(".json") && istMarkenblatt(path.join(BLAETTER, f)))
+      .map(f => f.slice(0,-5))
   : args.filter(a => !a.startsWith("--"));
 
 if(!slugs.length){
