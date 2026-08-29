@@ -1570,6 +1570,83 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   html{scroll-behavior:auto}
 }
 
+/* ═══ WILLKOMMEN UND BEGLEITER ══════════════════════════════════
+   Drei Sekunden, bevor die Karte da ist: Name des Hauses, ein Gruß,
+   und die Figur, die durch den Abend mitläuft.
+
+   Warum überhaupt eine Wartezeit einbauen? Weil hier keine entsteht,
+   sondern eine bestehende gefüllt wird: Zwischen dem Antippen des
+   Untersetzers und der fertig gezeichneten Karte liegt auf
+   Café-WLAN ohnehin eine Sekunde. Statt eines weißen Blitzes steht
+   dort jetzt das Haus. Und weil es NUR einmal je Sitzung kommt, wird
+   es nicht zur Hürde — wer im Hub navigiert, sieht es nie wieder.
+
+   Überspringen geht durch Antippen, jederzeit. Wer keine Bewegung
+   will, bekommt sie kurz und ohne Lauf. */
+.willkommen{
+  position:fixed;inset:0;z-index:1000;
+  background:var(--grund);color:var(--tinte);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;padding:32px;text-align:center;
+  transition:opacity .5s cubic-bezier(.16,1,.3,1);
+}
+.willkommen.weg{opacity:0;pointer-events:none}
+.willkommen .haus{
+  font-family:var(--schrift-kopf);font-size:clamp(26px,7vw,38px);
+  line-height:1.1;letter-spacing:-.01em;margin:0;
+  animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .1s both;
+}
+.willkommen .wort{
+  font-size:15px;color:var(--tinte-leise);max-width:24ch;margin:0;
+  animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .26s both;
+}
+.willkommen .figur{animation:wkFigur .9s cubic-bezier(.16,1,.3,1) both}
+.willkommen .bahn{
+  width:min(160px,44vw);height:2px;border-radius:2px;
+  background:var(--linie);overflow:hidden;margin-top:6px;
+}
+.willkommen .bahn i{
+  display:block;height:100%;width:100%;background:var(--rot);
+  transform-origin:left;transform:scaleX(0);
+  animation:wkBahn 3s linear forwards;
+}
+.willkommen .wk-hinweis{
+  font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tinte-still);margin:0;
+  animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .9s both;
+}
+@keyframes wkAuf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes wkFigur{from{opacity:0;transform:translateY(18px) scale(.9)}to{opacity:1;transform:none}}
+@keyframes wkBahn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* Die Figur selbst: ein Untersetzer mit Gesicht. Das Ding auf dem
+   Tisch ist das Produkt — also ist es auch der Gastgeber. */
+.figur{display:block;flex:none}
+.figur .scheibe{fill:var(--flaeche);stroke:var(--linie-stark)}
+.figur .kante{fill:var(--linie);opacity:.85}
+.figur .zug{stroke:var(--tinte);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.figur .auge{fill:var(--tinte)}
+.figur .funke{fill:var(--rot)}
+.figur .schatten{fill:var(--tinte);opacity:.07}
+
+/* Der Begleiter im Seitenfluss: eine Zeile, kein Kasten. Er soll
+   grüßen, nicht im Weg stehen. */
+.begleiter{
+  display:flex;align-items:center;gap:12px;
+  margin:0 0 16px;padding:11px 14px;
+  background:var(--flaeche-2);border:1px solid var(--linie);
+  border-radius:var(--rundung-klein);
+}
+.begleiter .figur{flex:none}
+.begleiter p{margin:0;font-size:14px;line-height:1.45;color:var(--tinte-leise)}
+.begleiter p b{color:var(--tinte);font-weight:600}
+
+@media (prefers-reduced-motion:reduce){
+  .willkommen .haus,.willkommen .wort,.willkommen .figur,.willkommen .wk-hinweis{animation:none}
+  .willkommen .bahn i{animation:none;transform:scaleX(1)}
+  .willkommen{transition:none}
+}
+
 /* ═══ Kleine Geräte ═════════════════════════════════════════════ */
 @media (max-width:360px){
   body{--rand:15px}
@@ -1703,6 +1780,18 @@ function markeAnwenden(abend){
 
 </head>
 <body>
+
+<!-- ═══ Willkommen ═════════════════════════════════════════════════
+     Steht im Auszeichnungstext, nicht im Skript: So ist er beim
+     ersten Bildaufbau da. Käme er aus dem Skript, sähe der Gast
+     erst die halbe Karte und dann den Schirm darüber. -->
+<div class="willkommen" id="willkommen" hidden>
+  <div id="wkFigur"></div>
+  <h2 class="haus" id="wkHaus"></h2>
+  <p class="wort" id="wkWort"></p>
+  <div class="bahn" aria-hidden="true"><i></i></div>
+  <p class="wk-hinweis" id="wkTipp"></p>
+</div>
 
 <!-- ═══ Konditorei im Raum ══════════════════════════════════════════
      Sechs Umrisse, die langsam aus der Tiefe nach vorn ziehen. Die
@@ -2250,6 +2339,92 @@ const KACHELN = [
         ziel:"#/musik", bereich:"Jetzt am Tisch", von:17, bis:24, cyan:true },
   */
 ];
+
+/* ══════════════════════════════════════════════════════════════════
+   DER BEGLEITER
+
+   Ein Untersetzer mit Gesicht. Das Ding auf dem Tisch IST das
+   Produkt — also ist es auch der Gastgeber, und nicht irgendeine
+   zugekaufte Figur, die mit dem Haus nichts zu tun hat.
+
+   Drei Züge aus einer Grundform: Es ändern sich Augen, Mund und ein
+   Detail. Alles andere bleibt gleich, damit es dieselbe Figur bleibt
+   und nicht drei verschiedene.
+
+   Gebaut in SVG mit den Farben des Hauses. Kein Bild, kein
+   Nachladen: Der Hub muss ohne Netz laufen, und eine Figur, die
+   erst nach zwei Sekunden erscheint, grüßt niemanden.
+   ══════════════════════════════════════════════════════════════════ */
+const AVATAR_ZUEGE = {
+  freundlich: {
+    /* offene Augen, klarer Bogen nach oben */
+    augen: '<circle class="auge" cx="41" cy="46" r="3.4"/><circle class="auge" cx="59" cy="46" r="3.4"/>',
+    mund:  '<path class="zug" d="M41 57q9 8 18 0" stroke-width="3"/>',
+    extra: ''
+  },
+  ruhig: {
+    /* geschlossene Augen, kaum ein Mund — die Ruhe liegt im Weglassen */
+    augen: '<path class="zug" d="M37 47q4-4 8 0" stroke-width="2.6"/>' +
+           '<path class="zug" d="M55 47q4-4 8 0" stroke-width="2.6"/>',
+    mund:  '<path class="zug" d="M44 57q6 4 12 0" stroke-width="2.6"/>',
+    extra: '<path class="zug" d="M50 21c3-3 3-6 0-9" stroke-width="2.2" opacity=".5"/>'
+  },
+  witzig: {
+    /* ein Auge zwinkert, der Mund geht weiter auf */
+    augen: '<circle class="auge" cx="41" cy="46" r="3.4"/>' +
+           '<path class="zug" d="M55 46q4-4 8 0" stroke-width="2.8"/>',
+    mund:  '<path class="zug" d="M39 55q11 11 22 0" stroke-width="3"/>',
+    extra: '<path class="funke" d="M70 30l1.6 3.6 3.6 1.6-3.6 1.6L70 40.4l-1.6-3.6-3.6-1.6 3.6-1.6z"/>'
+  }
+};
+
+function avatarArt(){
+  const a = (typeof MARKENBLATT === "object" && MARKENBLATT.avatar) || {};
+  return AVATAR_ZUEGE[a.art] ? a.art : "freundlich";
+}
+
+function avatarSVG(groesse){
+  const z = AVATAR_ZUEGE[avatarArt()];
+  const g = groesse || 96;
+  return '<svg class="figur" width="' + g + '" height="' + Math.round(g * 0.86) + '" ' +
+    'viewBox="0 0 100 86" aria-hidden="true" focusable="false">' +
+      /* Schatten auf dem Tisch */
+      '<ellipse class="schatten" cx="50" cy="80" rx="29" ry="4.5"/>' +
+      /* Die Dicke: dieselbe Scheibe, ein Stück tiefer. Erst dadurch
+         liegt der Untersetzer auf dem Tisch, statt darüber zu
+         schweben — genauso wie der Körper auf der Webseite. */
+      '<ellipse class="kante" cx="50" cy="57" rx="34" ry="24"/>' +
+      '<ellipse class="scheibe" cx="50" cy="51" rx="34" ry="24" stroke-width="2.2"/>' +
+      '<ellipse class="zug" cx="50" cy="51" rx="28" ry="18.5" stroke-width="1.1" opacity=".4"/>' +
+      z.augen + z.mund + z.extra +
+    '</svg>';
+}
+
+/* Was die Figur sagt. Kurze Sätze, drei Anlässe, drei Züge — und
+   nichts davon erklärt sich selbst zweimal. */
+const AVATAR_TEXTE = {
+  start: {
+    freundlich: "Schön, dass Sie da sind. Suchen Sie sich in Ruhe etwas aus.",
+    ruhig:      "Lassen Sie sich Zeit. Hier drängt nichts.",
+    witzig:     "Alles da. Nur entscheiden müssen Sie selbst."
+  },
+  bestellt: {
+    freundlich: "Ist notiert. Wir sagen Bescheid, sobald es rausgeht.",
+    ruhig:      "Angekommen. Lehnen Sie sich zurück.",
+    witzig:     "Bestellt. Ab hier ist es unser Problem."
+  },
+  bewerten: {
+    freundlich: "Ehrlich ist uns lieber als nett.",
+    ruhig:      "Ein paar Worte genügen.",
+    witzig:     "Fünf Sterne nehmen wir auch."
+  }
+};
+
+function begleiterHTML(anlass){
+  const satz = (AVATAR_TEXTE[anlass] || {})[avatarArt()];
+  if(!satz) return "";
+  return '<div class="begleiter">' + avatarSVG(48) + '<p>' + t(satz) + '</p></div>';
+}
 
 /* ══════════════════════════════════════════════════════════════════
    INHALT AUS DEM MARKENBLATT
@@ -4062,7 +4237,7 @@ function start(){
       '</strong>' + (k.u ? '<span>' + t(k.u) + '</span>' : "") + '</div>' +
       '<div class="pfeil">›</div></a>';
 
-  let html = empfehlungHTML(), letzter = "";
+  let html = begleiterHTML("start") + empfehlungHTML(), letzter = "";
   sichtbar.forEach(k => {
     if(k.bereich !== letzter){
       if(letzter) html += '</div>';
@@ -4751,6 +4926,7 @@ SEITEN.bestellt = () => {
   if(vorgang && vorgang.tagesnummer && !b.tagesnummer) b.tagesnummer = vorgang.tagesnummer;
 
   return '<div class="seite"><div class="haken">✓</div>' +
+    begleiterHTML("bestellt") +
     '<h2 style="text-align:center">' + t("Bestellung ist da!") + '</h2>' +
     '<p class="unter" style="text-align:center">' +
     t("Wir haben Ihre Bestellung erhalten und kommen gleich zu Ihnen an den Tisch.") + '</p>' +
@@ -5062,6 +5238,7 @@ SEITEN.service = () => {
    will, sagt es dem Personal am Tisch. */
 SEITEN.rueckmeldung = () =>
   '<div class="seite"><h2>' + t("Uns bewerten") + '</h2>' +
+  begleiterHTML("bewerten") +
   '<p class="unter">' + t("Wenn Sie mögen, hinterlassen Sie uns ein paar Worte auf Google. Wir freuen uns über jede ehrliche Rückmeldung.") + '</p>' +
   '<a class="knopf gross-cta" href="' + LINKS.bewertung + '" target="_blank" rel="noopener">' +
     '<span class="sterne">★★★★★</span>' + t("Auf Google bewerten") + '</a>' +
@@ -6691,6 +6868,50 @@ document.querySelectorAll("#demo button").forEach(b =>
 tischLaden();
 spracheLaden();
 zeichne();
+
+/* ---------- Willkommen ----------
+   Drei Sekunden Haus, dann die Karte. EINMAL je Sitzung: Der Schirm
+   soll den ersten Eindruck tragen, nicht jeden Seitenwechsel
+   aufhalten. sessionStorage und nicht localStorage, weil „Sitzung"
+   hier wirklich der Besuch ist — wer morgen wiederkommt, wird wieder
+   begrüßt.
+
+   Antippen überspringt. Wer keine Bewegung will, sieht ihn kurz und
+   ohne Lauf: Der Schirm trägt eine Ansage, keine Verzierung. */
+(function willkommen(){
+  const schirm = $("willkommen");
+  if(!schirm) return;
+
+  const SCHLUESSEL = "omoteno-willkommen";
+  let schon = false;
+  try{ schon = sessionStorage.getItem(SCHLUESSEL) === "1"; }catch(e){}
+  if(schon) return;
+  try{ sessionStorage.setItem(SCHLUESSEL, "1"); }catch(e){}
+
+  /* Wer über einen tiefen Link kommt (#/speisekarte), will dorthin
+     und nicht erst begrüßt werden. */
+  const tief = (location.hash || "").replace(/^#\/?/, "");
+  if(tief && tief !== "/") return;
+
+  $("wkFigur").innerHTML = avatarSVG(120);
+  $("wkHaus").textContent = BETRIEB.name;
+  $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
+  $("wkTipp").textContent = t("Antippen zum Überspringen");
+  schirm.hidden = false;
+
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let weg = false;
+  function schliessen(){
+    if(weg) return;
+    weg = true;
+    schirm.classList.add("weg");
+    /* Erst nach dem Ausblenden aus dem Weg nehmen — sonst springt
+       die Karte einen Bildaufbau lang. */
+    setTimeout(() => { schirm.hidden = true; }, still ? 0 : 520);
+  }
+  schirm.addEventListener("click", schliessen);
+  setTimeout(schliessen, still ? 1200 : 3000);
+})();
 
 /* Lief beim letzten Besuch noch etwas? Dann sofort nachfragen und
    den Streifen zeigen - der Gast soll nicht suchen müssen. */
