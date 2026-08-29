@@ -2661,6 +2661,10 @@ function sicherText(w){
 }
 
 let aktionen = [];          /* was gerade läuft */
+/* Wie die Aktionen dieses Hauses überschrieben heißen. Die einzelne
+   Aktion darf einen eigenen Titel tragen; fehlt er, gilt dieser. */
+let RUNNER_TITEL = "Top-Runner";
+let hubTexte = {};
 let aktionGesehen = {};     /* welche der Gast schon eingeblendet bekam */
 try{ aktionGesehen = JSON.parse(sessionStorage.getItem("omoteno-aktionen") || "{}") || {}; }catch(e){}
 
@@ -2693,7 +2697,7 @@ function aktionBandHTML(){
       ? t("noch {n} Stunden", {n: Math.floor(restMin / 60)})
       : t("nur noch {n} Minuten", {n: restMin});
     return '<div class="aktion">' +
-      '<div class="was"><span class="kennz">' + t(a.titel || "Top-Runner") + '</span>' +
+      '<div class="was"><span class="kennz">' + t(a.titel || RUNNER_TITEL) + '</span>' +
       '<span class="name">' + sicherText(a.gericht_name) + '</span></div>' +
       '<div class="preise"><span class="alt">' + preisText(a.preis_alt) + '</span>' +
       '<span class="neu">' + preisText(a.preis_neu) + '</span></div>' +
@@ -2714,7 +2718,7 @@ function aktionAnzeigen(){
   const ruf = $("aktionsruf");
   if(!ruf) return;
   ruf.textContent = t("{titel}: {name} jetzt für {preis}", {
-    titel: t(neu.titel || "Top-Runner"), name: neu.gericht_name, preis: preisText(neu.preis_neu)
+    titel: t(neu.titel || RUNNER_TITEL), name: neu.gericht_name, preis: preisText(neu.preis_neu)
   });
   ruf.hidden = false;
   requestAnimationFrame(() => ruf.classList.add("an"));
@@ -8158,7 +8162,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -8166,6 +8170,27 @@ async function karteHolen(erstesMal){
        mit einem Tipp, der Gast sieht es beim nächsten Abgleich. */
     BETRIEB.bestellPause     = !!b[0].bestell_pause;
     BETRIEB.bestellPauseText = b[0].bestell_pause_text || "";
+
+    /* Worte, die der Betrieb selbst ändern darf — ohne dass der Hub
+       neu erzeugt werden muss. Bewusst WENIGE: Farben, Schriften und
+       Aufbau kommen aus dem Marken-Studio, hier stehen nur Sätze.
+
+       Gekürzt wird trotzdem. Die Datenbank hat eine Schranke, das
+       Board warnt früher — aber ein alter Wert aus der Zeit vor der
+       Schranke oder ein anderer Weg in die Tabelle darf den Kopf des
+       Hubs nicht auseinanderziehen. Wer drei Schranken hat, verliert
+       keine davon. */
+    hubTexte = (b[0].hub_texte && typeof b[0].hub_texte === "object")
+      ? b[0].hub_texte : {};
+    const kurz = (w, n) => String(w || "").trim().slice(0, n);
+    const vorher = BETRIEB.claim;
+    if(kurz(hubTexte.claim, 48))        BETRIEB.claim        = kurz(hubTexte.claim, 48);
+    if(kurz(hubTexte.gruss, 80))        BETRIEB.begruessung  = kurz(hubTexte.gruss, 80);
+    if(kurz(hubTexte.runner_titel, 24)) RUNNER_TITEL         = kurz(hubTexte.runner_titel, 24);
+    /* Der Kopf steht schon auf dem Schirm. Neu zeichnen nur, wenn sich
+       der Slogan wirklich geändert hat — sonst blitzt er bei jedem
+       Abgleich einmal auf, ohne dass etwas anders wäre. */
+    if(BETRIEB.claim !== vorher) zeichne();
 
     /* Sortierung: karte, kat_sort, reihenfolge, id.
        Vorher stand hier nur "karte.asc,reihenfolge.asc". Weil

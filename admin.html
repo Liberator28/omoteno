@@ -296,6 +296,60 @@ main{padding:18px 16px 90px;max-width:820px;margin:0 auto}
 .runner-kopf b{display:block;font-size:15px}
 .runner-kopf i{display:block;font-style:normal;font-size:12.5px;color:var(--gedaempft);line-height:1.45}
 .runner-form{display:grid;gap:12px;margin-top:14px;padding-top:14px;border-top:1px solid var(--linie)}
+/* Beschriftung ÜBER die Bedienung, nicht daneben. .feld ist sonst
+   eine waagerechte Zeile; in einem Formular blieb dem Hilfetext auf
+   dem Telefon eine Spalte von vier Zeichen und er brach mitten im
+   Wort um. Gilt für das Aktionsformular und die Textfläche in den
+   Einstellungen gleichermaßen. */
+.runner-form .feld,
+.ezeile .feld{display:grid;gap:5px;align-items:stretch;border-bottom:0;padding:0}
+.runner-form .feld > span,
+.ezeile .feld > span{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ezeile .feld input{width:100%}
+
+/* Das Maßband: Wie viel von dem, was gut aussieht, ist verbraucht.
+   Es zählt nicht Zeichen bis zum Anschlag, sondern bis zu der Länge,
+   ab der die Zeile im Gast-Hub umbricht — die Zahl kommt aus einer
+   Messung, nicht aus dem Gefühl. */
+.mass{
+  font-family:var(--mono);font-style:normal;font-size:11px;letter-spacing:.04em;
+  color:var(--gedaempft);white-space:nowrap;
+}
+.mass.eng{color:var(--messing)}
+.mass.voll{color:var(--warn)}
+.feldhilfe{
+  display:block;font-size:12px;line-height:1.45;color:var(--gedaempft);
+}
+.feldhilfe.warn{color:var(--messing)}
+
+/* Die Gastvorschau: der Kopf des Hubs in Telefonbreite. Bewusst mit
+   fester Breite von 360px — das ist das schmalste Gerät, das wir
+   messen, und wer hier eine Zeile zu viel sieht, sieht sie überall. */
+.hubschau{
+  width:360px;max-width:100%;border-radius:14px;overflow:hidden;
+  background:#2A1A14;color:#FBF6F2;padding:16px 18px 18px;
+  font-family:Georgia,"Times New Roman",serif;
+}
+.hubschau .hs-name{font-size:21px;line-height:1.15;font-weight:600;letter-spacing:-.2px;margin:0}
+.hubschau .hs-claim{
+  margin:3px 0 0;font-size:12.5px;line-height:1.4;font-style:italic;
+  color:rgba(251,246,242,.62);
+}
+.hubschau .hs-band{
+  margin:14px 0 0;padding:10px 12px;border-radius:10px;
+  background:rgba(232,119,108,.16);border:1px solid #E8776C;border-left-width:4px;
+  font-family:var(--schrift);
+}
+.hubschau .hs-kennz{
+  display:block;font-size:10px;letter-spacing:1.6px;font-weight:700;
+  text-transform:uppercase;color:#E8776C;margin-bottom:2px;
+}
+.hubschau .hs-gericht{font-weight:700;font-size:15.5px;line-height:1.25}
+.hubschau .hs-gruss{
+  margin:14px 0 0;padding:12px;border-radius:10px;text-align:center;
+  background:rgba(251,246,242,.06);font-size:14px;line-height:1.4;
+}
+.hubschau .hs-zuviel{outline:2px solid var(--warn);outline-offset:2px;border-radius:4px}
 .runner-zwei{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
 .runner-vorschau{
   font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--messing);
@@ -1374,6 +1428,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
           <span>Gericht</span>
           <select id="runnerGericht"></select>
         </label>
+        <label class="feld">
+          <span>So heißt die Aktion <em class="mass" id="runnerTitelMass"></em></span>
+          <input id="runnerTitel" maxlength="24" autocomplete="off"
+                 placeholder="Top-Runner">
+          <small class="feldhilfe" id="runnerTitelHilfe">Steht im Gast-Hub über dem
+            Gericht. „Happy Hour", „Mittagsknaller", wie Sie mögen.</small>
+        </label>
         <div class="runner-zwei">
           <label class="feld">
             <span>Neuer Preis</span>
@@ -1537,6 +1598,55 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <button class="knopf leise" id="hinweisProbe">Mitteilung testen</button>
       </div>
       <div class="epruefung" id="tonPruefung"></div>
+    </div>
+
+    <div class="egruppe">
+      <h2 class="etitel">Ihre Worte im Gast-Hub</h2>
+      <p class="ehilfe">Farben, Schriften und Aufbau kommen aus dem Marken-Studio —
+        das bleibt so, damit der Hub zusammenhält. Hier stehen die Sätze, die Sie
+        jederzeit selbst ändern dürfen. Sie sind sofort beim Gast, ohne dass etwas
+        neu gebaut werden muss.</p>
+
+      <div class="ezeile senkrecht">
+        <span><b>Slogan im Kopf</b><i>Die Zeile unter Ihrem Namen, auf jeder Seite sichtbar</i></span>
+        <label class="feld">
+          <span>Slogan <em class="mass" id="hubClaimMass"></em></span>
+          <input id="hubClaim" autocomplete="off" placeholder="Don't get mad, get chocolate.">
+          <small class="feldhilfe" id="hubClaimHilfe">Kurz wirkt am besten — eine Zeile,
+            die man im Vorbeigehen liest.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Gruß beim Öffnen</b><i>Drei Sekunden auf dem Willkommensschirm, einmal je Besuch</i></span>
+        <label class="feld">
+          <span>Gruß <em class="mass" id="hubGrussMass"></em></span>
+          <input id="hubGruss" autocomplete="off" placeholder="Schön, dass Sie da sind.">
+          <small class="feldhilfe" id="hubGrussHilfe">Ein Satz, den Ihr Team auch
+            sagen würde.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>So heißen Ihre Aktionen</b><i>Vorgabe für den Top-Runner — je Aktion überschreibbar</i></span>
+        <label class="feld">
+          <span>Aktionsname <em class="mass" id="hubRunnerMass"></em></span>
+          <input id="hubRunner" autocomplete="off" placeholder="Top-Runner">
+          <small class="feldhilfe" id="hubRunnerHilfe">„Happy Hour", „Mittagsknaller",
+            „Heute besonders" — Ihr Wort, nicht unseres.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>So sieht es der Gast</b><i>Kopf des Hubs in Telefonbreite, mit Ihren Worten</i></span>
+        <div class="hubschau" id="hubSchau" aria-live="polite"></div>
+      </div>
+
+      <div class="eknoepfe">
+        <button class="knopf" id="hubTexteSichern">Übernehmen</button>
+        <button class="knopf leise" id="hubTexteZurueck">Auf Vorgabe zurück</button>
+      </div>
+      <div class="epruefung" id="hubTextePruefung"></div>
     </div>
 
     <div class="egruppe">
@@ -1853,6 +1963,9 @@ let db = null, betriebId = null, demo = false;
    kanal          die Live-Leitung. Beim Wechsel wird sie abgebaut,
                   sonst hörte das Board zwei Betriebe gleichzeitig.  */
 let meineBetriebe = [];
+/* Die eigenen Worte des Hauses für den Gast-Hub. Leer heißt: die
+   Vorgaben aus dem Markenblatt gelten weiter. */
+let HUBTEXTE = {};
 let ladeMarke = 0;
 let netzUhr = null;
 const schonGezeigt = new Set();
@@ -2440,6 +2553,29 @@ async function start(){
   }
 
   scharfPruefen();
+
+  /* Die Bibliothek kommt von einem fremden Netz. Lädt sie nicht —
+     Netz weg, Werbeblocker, Firmen-WLAN —, warf die nächste Zeile
+     und das Board war tot: kein Text, kein Knopf, nur ein leeres
+     Gerüst. Genau der Vorfall, den konto.html schon kennt; hier
+     fehlte die Sicherung noch. Ein Bildschirm im Betrieb muss sagen
+     können, warum er nicht kann. */
+  if(typeof supabase === "undefined" || !supabase.createClient){
+    $("#tor").hidden = false;
+    $("#statusText").textContent = "nicht erreichbar";
+    const kasten = document.querySelector("#tor .torinhalt");
+    if(kasten){
+      kasten.innerHTML =
+        '<div class="marke" style="margin-bottom:8px;display:block">Omoteno' +
+        '<span class="jp" lang="ja">おもてなし</span></div>' +
+        '<h1 class="tortitel">Gerade nicht erreichbar.</h1>' +
+        '<p class="torhilfe">Das Board braucht eine Verbindung nach außen, und die ' +
+        'kommt hier nicht durch. Prüfe Netz und einen möglichen Werbeblocker.<br><br>' +
+        'Die Küche läuft weiter — das Küchendisplay braucht diese Bibliothek nicht.</p>' +
+        '<button class="knopf" onclick="location.reload()">Neu laden</button>';
+    }
+    return;
+  }
 
   db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   $("#abmelden").hidden = false;
@@ -3169,14 +3305,15 @@ function demoStarten(){
 async function betriebeHolen(){
   const {data, error} = await db
     .from("betrieb_mitglieder")
-    .select("rolle, betriebe(id, slug, name, bestell_pause)");
+    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte)");
 
   if(error) throw error;
 
   return (data || [])
     .filter(z => z.betriebe)
     .map(z => ({id:z.betriebe.id, slug:z.betriebe.slug, name:z.betriebe.name,
-                bestell_pause: z.betriebe.bestell_pause, rolle:z.rolle}))
+                bestell_pause: z.betriebe.bestell_pause,
+                hub_texte: z.betriebe.hub_texte || {}, rolle:z.rolle}))
     .sort((a,b) => a.name.localeCompare(b.name, "de"));
 }
 
@@ -3254,6 +3391,7 @@ async function betriebOeffnen(id){
   betriebId = id;
 
   const b = meineBetriebe.find(x => x.id === id);
+  HUBTEXTE = (b && b.hub_texte) || {};
   $("#betriebName").textContent = b ? b.name : "…";
   $("#betriebWahl").hidden = true;
   $("#wechseln").hidden = meineBetriebe.length < 2;
@@ -4176,7 +4314,7 @@ function tafelZeigen(ziel){
   mehrZu();
 
   if(ziel === "speisekarte")     aktionenLaden();
-  if(ziel === "einstellungen")   einstZeichnen();
+  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); }
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
   if(ziel === "auswertung")      awLaden();
@@ -4235,6 +4373,8 @@ function aktionenZeichnen(){
   const ziel = $("#runnerListe");
   if(!ziel) return;
   const jetzt = Date.now();
+  /* In der Liste steht der Titel vorn: Wer drei Aktionen laufen hat,
+     erkennt sie sonst nur am Gericht. */
   ziel.innerHTML = aktionen.filter(a => a.aktiv).map(a => {
     const laeuft = new Date(a.von) <= jetzt;
     const bis = new Date(a.bis);
@@ -4247,6 +4387,161 @@ function aktionenZeichnen(){
       '<button class="knopf leise schmal" data-aktion-aus="' + a.id + '">Beenden</button>' +
     '</div>';
   }).join("");
+}
+
+/* ══ Freie Texte mit Maß ═════════════════════════════════════════
+   Der Gastgeber soll seine eigenen Worte nehmen dürfen. Ohne Maß
+   zerlegt ein langer Satz aber den Kopf des Gast-Hubs: Der Slogan
+   rutscht in die dritte Zeile, das Aktionsband wächst um fünfzig
+   Pixel, und die Karte darunter sitzt nicht mehr da, wo sie soll.
+
+   Die Zahlen sind GEMESSEN, nicht geschätzt — kopflos bei 360, 390
+   und 430 Pixeln, mit echten Wörtern statt einer Buchstabenkette:
+
+     Slogan            bis 22 eine Zeile · bis 48 zwei · darüber drei
+     Aktionstitel      bis 20 eine Zeile · ab 24 wächst das Band
+     Gruß              bis 80, danach drei Zeilen im Willkommensschirm
+
+   „gut" ist die erste Zahl, „hart" die zweite. Bis „gut" sagt das
+   Feld nichts, dazwischen warnt es mit dem Grund, ab „hart" nimmt
+   das Feld nichts mehr an. Dieselben Grenzen stehen als CHECK in der
+   Datenbank: Eine Oberfläche kann einen Fehler haben, die Schranke
+   dahinter nicht.
+   ═══════════════════════════════════════════════════════════════ */
+const TEXTMASS = {
+  runnerTitel: { gut:20, hart:24,
+    warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." },
+  hubClaim:    { gut:22, hart:48,
+    warnung:"Ab 22 Zeichen braucht der Slogan auf schmalen Telefonen zwei Zeilen. Das geht — ab 48 werden es drei." },
+  hubGruss:    { gut:56, hart:80,
+    warnung:"Ab 56 Zeichen wird der Gruß auf dem Willkommensschirm dreizeilig." },
+  hubRunner:   { gut:20, hart:24,
+    warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." }
+};
+
+/* Zeigt Verbrauch und Grund am Feld. Gibt zurück, ob der Wert im
+   guten Bereich liegt — die Knöpfe fragen danach. */
+function massZeigen(feldId){
+  const el = $("#" + feldId), m = TEXTMASS[feldId];
+  if(!el || !m) return true;
+  const n = el.value.trim().length;
+  const band = $("#" + feldId + "Mass");
+  const hilfe = $("#" + feldId + "Hilfe");
+  if(band){
+    band.textContent = n + "/" + m.gut;
+    band.className = "mass" + (n > m.gut ? " voll" : n > m.gut - 4 ? " eng" : "");
+  }
+  if(hilfe){
+    const eng = n > m.gut;
+    hilfe.classList.toggle("warn", eng);
+    if(eng) hilfe.textContent = m.warnung;
+    else if(hilfe.dataset.ruhe) hilfe.textContent = hilfe.dataset.ruhe;
+  }
+  return n <= m.gut;
+}
+
+/* Den ruhigen Text einmal merken, damit die Warnung ihn nicht
+   dauerhaft überschreibt. */
+function massVerdrahten(){
+  Object.keys(TEXTMASS).forEach(id => {
+    const el = $("#" + id); if(!el) return;
+    const hilfe = $("#" + id + "Hilfe");
+    if(hilfe && !hilfe.dataset.ruhe) hilfe.dataset.ruhe = hilfe.textContent.trim();
+    el.setAttribute("maxlength", String(TEXTMASS[id].hart));
+    /* Einmal verdrahten, nicht bei jedem Öffnen erneut — sonst hängen
+       nach dem dritten Besuch drei Zuhörer am selben Feld. */
+    if(!el.dataset.verdrahtet){
+      el.dataset.verdrahtet = "1";
+      el.addEventListener("input", () => {
+        massZeigen(id);
+        if(id.indexOf("hub") === 0) hubSchauZeichnen();
+      });
+    }
+    massZeigen(id);
+  });
+}
+
+/* ══ Die Gastvorschau ════════════════════════════════════════════
+   Zeigt den Kopf des Hubs in 360 Pixeln — dem schmalsten Gerät, das
+   wir messen. Wer hier eine Zeile zu viel sieht, sieht sie überall.
+   Sie misst NACH dem Zeichnen, statt Zeichen zu zählen: Ein Slogan
+   aus lauter „i" bricht später um als einer aus lauter „M", und nur
+   der Browser weiß, wo genau. */
+function hubSchauZeichnen(){
+  const feld = $("#hubSchau"); if(!feld) return;
+  const b = meineBetriebe.find(x => x.id === betriebId);
+  const claim  = ($("#hubClaim")  || {}).value || "";
+  const gruss  = ($("#hubGruss")  || {}).value || "";
+  const runner = ($("#hubRunner") || {}).value || "";
+
+  feld.innerHTML =
+    '<p class="hs-name">' + sicher(b ? b.name : "Ihr Haus") + '</p>' +
+    '<p class="hs-claim" id="hsClaim">' +
+      sicher(claim || "Ihr Slogan steht hier") + '</p>' +
+    '<div class="hs-band"><span class="hs-kennz" id="hsKennz">' +
+      sicher(runner || "Top-Runner") + '</span>' +
+      '<span class="hs-gericht">' +
+      sicher((gerichte[0] && gerichte[0].name) || "Ihr Gericht") + '</span></div>' +
+    '<p class="hs-gruss" id="hsGruss">' +
+      sicher(gruss || "Schön, dass Sie da sind.") + '</p>';
+
+  /* Umbrüche zählen und markieren, was zu lang geworden ist. */
+  const zeilen = el => {
+    if(!el) return 0;
+    const s = getComputedStyle(el);
+    const zh = parseFloat(s.lineHeight) || parseFloat(s.fontSize) * 1.2;
+    return Math.round(el.getBoundingClientRect().height / zh);
+  };
+  [["hsClaim", 2], ["hsKennz", 1], ["hsGruss", 3]].forEach(([id, hoechstens]) => {
+    const el = $("#" + id);
+    if(el) el.classList.toggle("hs-zuviel", zeilen(el) > hoechstens);
+  });
+}
+
+function hubTexteFuellen(){
+  const setz = (id, wert) => { const el = $("#" + id); if(el) el.value = wert || ""; };
+  setz("hubClaim",  HUBTEXTE.claim);
+  setz("hubGruss",  HUBTEXTE.gruss);
+  setz("hubRunner", HUBTEXTE.runner_titel);
+  massVerdrahten();
+  hubSchauZeichnen();
+}
+
+async function hubTexteSichern(){
+  const raus = $("#hubTextePruefung");
+  const neu = {};
+  const claim  = $("#hubClaim").value.trim();
+  const gruss  = $("#hubGruss").value.trim();
+  const runner = $("#hubRunner").value.trim();
+  if(claim)  neu.claim = claim;
+  if(gruss)  neu.gruss = gruss;
+  if(runner) neu.runner_titel = runner;
+
+  const knopf = $("#hubTexteSichern");
+  knopf.disabled = true; knopf.textContent = "Wird übernommen …";
+  try{
+    if(demo || !db){
+      HUBTEXTE = neu;
+      raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
+    }else{
+      const {error} = await db.from("betriebe")
+        .update({ hub_texte: neu }).eq("id", betriebId);
+      if(error) throw error;
+      HUBTEXTE = neu;
+      const b = meineBetriebe.find(x => x.id === betriebId);
+      if(b) b.hub_texte = neu;
+      raus.textContent = "Übernommen. Gäste sehen es beim nächsten Öffnen.";
+    }
+    melde("Ihre Worte sind übernommen");
+  }catch(err){
+    /* Die Datenbank hat dieselben Grenzen als Schranke. Wenn sie
+       zuschlägt, ist das kein Serverfehler, sondern ein zu langer
+       Text — und das gehört genau so gesagt. */
+    raus.textContent = /hub_texte_masse|check/i.test(String(err && err.message))
+      ? "Ein Text ist zu lang. Bitte die Hinweise an den Feldern beachten."
+      : "Nicht gespeichert, bitte Verbindung prüfen.";
+  }
+  knopf.disabled = false; knopf.textContent = "Übernehmen";
 }
 
 function runnerGerichteFuellen(){
@@ -4282,8 +4577,34 @@ function runnerVorschau(){
     return;
   }
   const proz = Math.round((1 - neu / alt) * 100);
-  z.textContent = euro(alt) + " → " + euro(neu) + "  (−" + proz + " %) · " +
+  /* Die Vorschau zeigt jetzt auch, wie die Aktion HEISST — sonst
+     tippt der Gastgeber einen Titel und sieht nie, wo er landet. */
+  z.textContent = runnerTitelWert() + " · " +
+    euro(alt) + " → " + euro(neu) + "  (−" + proz + " %) · " +
     uhrzeit(start.toISOString()) + " bis " + uhrzeit(ende.toISOString());
+}
+
+/* Leer heißt: die Vorgabe des Hauses. Die steht in den Einstellungen
+   und ist im Zweifel „Top-Runner". */
+function runnerTitelWert(){
+  const el = $("#runnerTitel");
+  const eigen = el ? el.value.trim() : "";
+  return eigen || (HUBTEXTE.runner_titel || "").trim() || "Top-Runner";
+}
+
+/* Knöpfe der Textfläche. Sie stehen in den Einstellungen und sind
+   beim Laden schon im Auszeichnungstext — also einmal verdrahten. */
+if($("#hubTexteSichern")){
+  $("#hubTexteSichern").onclick = hubTexteSichern;
+  $("#hubTexteZurueck").onclick = () => {
+    ["hubClaim","hubGruss","hubRunner"].forEach(id => {
+      const el = $("#" + id); if(el) el.value = "";
+      massZeigen(id);
+    });
+    hubSchauZeichnen();
+    $("#hubTextePruefung").textContent =
+      "Felder geleert. Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
+  };
 }
 
 if($("#runnerAuf")){
@@ -4292,11 +4613,20 @@ if($("#runnerAuf")){
     f.hidden = !auf;
     $("#runnerAuf").setAttribute("aria-expanded", String(auf));
     $("#runnerAuf").textContent = auf ? "Schließen" : "Aktion starten";
-    if(auf) runnerGerichteFuellen();
+    if(auf){
+      runnerGerichteFuellen();
+      const tf = $("#runnerTitel");
+      if(tf){
+        tf.placeholder = (HUBTEXTE.runner_titel || "").trim() || "Top-Runner";
+        tf.value = "";
+      }
+      massVerdrahten();
+      runnerVorschau();
+    }
   };
   $("#runnerAbbrechen").onclick = () => { $("#runnerAuf").click(); };
   $("#runnerGericht").onchange = runnerVorschlagen;
-  ["#runnerPreis","#runnerDauer","#runnerStart"].forEach(id => {
+  ["#runnerPreis","#runnerDauer","#runnerStart","#runnerTitel"].forEach(id => {
     const el = $(id); if(el) el.oninput = el.onchange = runnerVorschau;
   });
 
@@ -4314,12 +4644,14 @@ if($("#runnerAuf")){
     try{
       if(demo || !db){
         aktionen.push({id:"demo-" + Date.now(), gericht_name:w.textContent.split(" · ")[0],
+          titel:runnerTitelWert(),
           preis_alt:alt, preis_neu:neu, von:start.toISOString(), bis:ende.toISOString(), aktiv:true});
         aktionenZeichnen();
       }else{
         const {error} = await db.from("aktionen").insert({
           betrieb_id: betriebId, gericht_id: w.value,
           gericht_name: w.textContent.split(" · ")[0],
+          titel: runnerTitelWert(),
           preis_alt: alt, preis_neu: neu,
           von: start.toISOString(), bis: ende.toISOString()
         });
