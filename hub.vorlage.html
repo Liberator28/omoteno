@@ -1047,6 +1047,35 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 @keyframes zeigenRein{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.zeigen{animation:none}}
 .zeigeninhalt{max-width:520px;margin:0 auto;position:relative}
+
+/* ═══ Weitersagen ═══════════════════════════════════════════════
+   Das Bild entsteht im Gerät und wird hier nur gezeigt. Es hat das
+   Story-Maß 9:16 — das Fenster richtet sich danach, damit der Gast
+   vorher sieht, was er später verschickt. */
+.story{
+  position:fixed;inset:0;z-index:90;
+  background:var(--grund);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:max(20px,env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+  animation:zeigenRein 300ms var(--weich) both;
+}
+.story[hidden]{display:none}
+@media (prefers-reduced-motion: reduce){.story{animation:none}}
+.storyinhalt{max-width:420px;margin:0 auto;position:relative}
+.storybild{
+  margin:44px 0 16px;border-radius:var(--rundung);overflow:hidden;
+  box-shadow:var(--schatten-hoch);background:var(--flaeche-2);
+  aspect-ratio:9/16;
+}
+.storybild img,.storybild canvas{display:block;width:100%;height:100%;object-fit:contain}
+/* Solange gezeichnet wird, steht hier eine Fläche im Maß des Bildes —
+   kein Kringel, der nichts über das Kommende sagt. */
+.storybild.laedt{
+  background:linear-gradient(90deg,var(--flaeche) 0%,var(--flaeche-2) 50%,var(--flaeche) 100%);
+  background-size:200% 100%;animation:skelettzug 1.4s linear infinite;
+}
+@media (prefers-reduced-motion:reduce){.storybild.laedt{animation:none}}
+.storyknoepfe{display:grid;gap:0}
 .zeigenzu{
   position:absolute;top:-4px;right:-4px;z-index:2;
   width:38px;height:38px;border:0;border-radius:50%;
@@ -2155,6 +2184,23 @@ function markeAnwenden(abend){
   </div>
 </div>
 
+<!-- ═══ WEITERSAGEN ═══════════════════════════════════════════════
+     Ein Bild im Look des Hauses, das der Gast in seine Story stellt.
+     Es entsteht im Gerät auf einer Leinwand — nichts wird hochgeladen,
+     nichts an Dritte geschickt, und es funktioniert ohne Netz.
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="story" id="story" hidden>
+  <div class="storyinhalt">
+    <button class="zeigenzu" data-story-zu aria-label="Schließen">✕</button>
+    <div class="storybild" id="storyBild"></div>
+    <div class="storyknoepfe">
+      <button class="knopf" data-aktion="storyTeilen" id="storyTeilen">Teilen</button>
+      <a class="knopf zweit" id="storySichern" download="besuch.png" href="#">Bild sichern</a>
+    </div>
+    <p class="hinweis" id="storyHinweis"></p>
+  </div>
+</div>
+
 <!-- Bestellung unterwegs: erscheint nur, solange etwas in der
      Warteschlange steht. Bewusst ÜBER dem Vorgangs-Streifen, weil es
      dringender ist. -->
@@ -2740,6 +2786,296 @@ function gastLaden(){
       if(seiteJetzt === "meintisch") zeichne();
     })
     .catch(() => { gastStand.geladen = true; });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   WEITERSAGEN
+
+   Nach dem Besuch ein Bild im Look des Hauses: was gegessen wurde,
+   das Datum, die Figur, die Adresse des Hubs. Der Gast stellt es in
+   seine Story, und wer es sieht, weiß, wo er war.
+
+   Alles entsteht IM GERÄT auf einer Leinwand. Nichts wird
+   hochgeladen, nichts an Dritte geschickt, und es läuft ohne Netz —
+   dieselbe Regel wie für den ganzen Hub.
+
+   Kein QR-Code: Wer die Story sieht, hält das Telefon schon in der
+   Hand und kann keinen Kode auf dem eigenen Schirm scannen. Eine
+   lesbare Adresse trägt weiter als ein Muster, das im
+   Story-Format ohnehin zerdrückt wird.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Die Figur als Bild. Im Canvas gilt kein Stylesheet — ein SVG mit
+   class="frucht" käme dort schwarz an. Deshalb werden die
+   ERRECHNETEN Werte vor dem Serialisieren an die Elemente
+   geschrieben. So kann die CSS-Datei sich ändern, ohne dass hier
+   eine zweite Farbliste nachgezogen werden muss. */
+function figurAlsBild(px, pose){
+  return new Promise((fertig, schief) => {
+    const topf = document.createElement("div");
+    topf.setAttribute("style",
+      "position:absolute;left:-9999px;top:0;width:" + px + "px;visibility:hidden");
+    topf.innerHTML = avatarSVG(px, pose);
+    document.body.appendChild(topf);
+    const svg = topf.querySelector("svg");
+    if(!svg){ topf.remove(); return schief(new Error("keine Figur")); }
+
+    const uebernehmen = ["fill","stroke","stroke-width","stroke-linecap",
+                         "stroke-linejoin","opacity","paint-order",
+                         "font-family","font-size","font-style","font-weight"];
+    svg.querySelectorAll("*").forEach(el => {
+      const s = getComputedStyle(el);
+      uebernehmen.forEach(k => {
+        const w = s.getPropertyValue(k);
+        if(w && w !== "none" || k === "fill") el.setAttribute(k, w);
+      });
+    });
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const roh = new XMLSerializer().serializeToString(svg);
+    topf.remove();
+
+    const bild = new Image();
+    bild.onload  = () => fertig(bild);
+    bild.onerror = () => schief(new Error("Figur nicht lesbar"));
+    /* encodeURIComponent statt btoa: Der Name des Hauses steht als
+       Buchstabe im SVG und kann ein Umlaut sein — btoa wirft dann. */
+    bild.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(roh);
+  });
+}
+
+/* Ein Wert aus dem Blatt, aufgelöst. Die Palette steht zur Laufzeit
+   am <html>, nicht im Stylesheet. */
+function farbe(name, rueckfall){
+  const w = getComputedStyle(document.documentElement)
+    .getPropertyValue(name).trim();
+  return w || rueckfall;
+}
+
+/* Text umbrechen, ohne Wörter zu zerreißen. Gibt die Zeilen zurück,
+   damit der Aufrufer die Höhe kennt, bevor er zeichnet. */
+function storyZeilen(ctx, text, breite, hoechstens){
+  const worte = String(text).split(/\s+/).filter(Boolean);
+  const zeilen = [];
+  let z = "", rest = false;
+  for(let i = 0; i < worte.length; i++){
+    const probe = z ? z + " " + worte[i] : worte[i];
+    if(ctx.measureText(probe).width > breite && z){
+      zeilen.push(z); z = worte[i];
+      if(hoechstens && zeilen.length >= hoechstens){ rest = true; break; }
+    } else z = probe;
+  }
+  if(!rest && z) zeilen.push(z);
+  /* Abgeschnitten heißt abgeschnitten — mit Auslassung. Ohne sie
+     stand im Bild „Nutella Waffel mit Erdbeeren und" und der Leser
+     hielt es für den ganzen Namen. */
+  if(rest && zeilen.length){
+    let l = zeilen[zeilen.length-1];
+    while(l.length > 1 && ctx.measureText(l + " …").width > breite) l = l.slice(0, -1);
+    zeilen[zeilen.length-1] = l.replace(/[\s,;:.-]+$/, "") + " …";
+  }
+  return zeilen;
+}
+
+/* 1080×1920 ist das Story-Maß. Wer es kleiner rechnet, bekommt beim
+   Hochladen ein weiches Bild. */
+const STORY_B = 1080, STORY_H = 1920;
+
+async function storyZeichnen(posten){
+  const c = document.createElement("canvas");
+  c.width = STORY_B; c.height = STORY_H;
+  const x = c.getContext("2d");
+
+  const grund   = farbe("--grund", "#FBF6F2");
+  const flaeche = farbe("--flaeche", "#FFFFFF");
+  const band    = farbe("--band", "#2A1A14");
+  const bandTxt = farbe("--band-text", "#FBF6F2");
+  const tinte   = farbe("--tinte", "#2A1A14");
+  const leise   = farbe("--tinte-leise", "#846C62");
+  const akzent  = farbe("--rot", "#C8202E");
+  const kopfSchrift = farbe("--schrift-kopf", "serif");
+  const textSchrift = farbe("--schrift-text", "sans-serif");
+
+  x.fillStyle = grund;
+  x.fillRect(0, 0, STORY_B, STORY_H);
+
+  /* Kopfband in der Hausfarbe, wie im Hub selbst. */
+  x.fillStyle = band;
+  x.fillRect(0, 0, STORY_B, 300);
+  x.fillStyle = bandTxt;
+  x.textAlign = "center";
+  x.font = "600 40px " + textSchrift;
+  x.fillText(t("Ich war hier"), STORY_B/2, 120);
+  x.font = "700 76px " + kopfSchrift;
+  storyZeilen(x, BETRIEB.name, STORY_B - 140, 2)
+    .forEach((z, i) => x.fillText(z, STORY_B/2, 200 + i*80));
+
+  /* Die Figur. Fällt sie aus, geht das Bild trotzdem raus — sie ist
+     Beiwerk, die Liste ist die Botschaft. */
+  let figur = null;
+  try{ figur = await figurAlsBild(340, "teller"); }catch(e){}
+
+  /* Erst rechnen, dann zeichnen: Bei fest gesetztem Anfang blieb
+     unter der Liste ein handbreites Loch, weil die Höhe von der Zahl
+     der Gerichte abhängt. Jetzt sitzt die Gruppe mittig zwischen
+     Kopfband und Fußzeile — bei einer Zeile wie bei fünf. */
+  const zeilen    = posten.slice(0, 5);
+  const listeHoch = zeilen.length * 74 + 56;
+  const mehrHoch  = posten.length > zeilen.length ? 60 : 0;
+  const figurHoch = figur ? figur.height + 40 : 0;
+  const gruppe    = figurHoch + 44 + 26 + listeHoch + mehrHoch;
+  const raumOben  = 300, raumUnten = STORY_H - 380;
+  let unten = raumOben + Math.max(20, (raumUnten - raumOben - gruppe) / 2);
+
+  if(figur){
+    x.drawImage(figur, (STORY_B - figur.width)/2, unten, figur.width, figur.height);
+    unten += figur.height + 40;
+  }
+
+  /* Was gegessen wurde. */
+  x.textAlign = "center";
+  x.fillStyle = leise;
+  x.font = "600 32px " + textSchrift;
+  x.fillText(t("DAS GAB ES").toUpperCase(), STORY_B/2, unten);
+  unten += 70;
+
+  x.fillStyle = flaeche;
+  const listeOben = unten - 44;
+  if(x.roundRect){ x.beginPath(); x.roundRect(90, listeOben, STORY_B - 180, listeHoch, 28); x.fill(); }
+  else x.fillRect(90, listeOben, STORY_B - 180, listeHoch);
+
+  /* Arabisch läuft von rechts nach links. Eine Leinwand richtet sich
+     nicht selbst — ohne diese Spiegelung stünde die Menge links vom
+     Namen und der Satz läse sich verkehrt herum. */
+  const rechtsLinks = RTL.indexOf(sprache) >= 0;
+  const randInnen = 140, randAussen = STORY_B - 140;
+  zeilen.forEach((p, i) => {
+    const y = unten + 26 + i*74;
+    x.textAlign = rechtsLinks ? "right" : "left";
+    x.fillStyle = akzent;
+    x.font = "700 38px " + textSchrift;
+    x.fillText((p.m || 1) + "×", rechtsLinks ? randAussen : randInnen, y);
+    x.fillStyle = tinte;
+    x.font = "500 38px " + textSchrift;
+    const name = storyZeilen(x, t(p.n), STORY_B - 400, 1)[0] || "";
+    x.fillText(name, rechtsLinks ? randAussen - 90 : randInnen + 90, y);
+  });
+  x.textAlign = "center";
+  unten = listeOben + listeHoch + 30;
+  if(posten.length > zeilen.length){
+    x.textAlign = "center";
+    x.fillStyle = leise;
+    x.font = "500 30px " + textSchrift;
+    x.fillText(t("und {n} weitere", {n: posten.length - zeilen.length}), STORY_B/2, unten + 20);
+    unten += 60;
+  }
+
+  /* Datum und Adresse. */
+  x.textAlign = "center";
+  x.fillStyle = leise;
+  x.font = "500 34px " + textSchrift;
+  /* Das Datum in der Sprache des Gastes, nicht fest auf Deutsch —
+     im arabischen Bild stand sonst „29. August 2026" mitten im
+     arabischen Satz. Fällt die Sprache dem Browser unbekannt aus,
+     nimmt er von selbst wieder Deutsch. */
+  let datum;
+  try{ datum = new Date().toLocaleDateString(sprache,
+    { day:"2-digit", month:"long", year:"numeric" }); }
+  catch(e){ datum = new Date().toLocaleDateString("de-DE",
+    { day:"2-digit", month:"long", year:"numeric" }); }
+  x.fillText(datum, STORY_B/2, STORY_H - 300);
+
+  x.fillStyle = akzent;
+  x.font = "700 42px " + textSchrift;
+  x.fillText(hubAdresse(), STORY_B/2, STORY_H - 230);
+
+  x.fillStyle = leise;
+  x.font = "500 26px " + textSchrift;
+  x.fillText(t("Karte, bestellen und rufen — direkt am Tisch."), STORY_B/2, STORY_H - 180);
+
+  x.globalAlpha = .55;
+  x.font = "600 24px " + textSchrift;
+  x.fillText("omoteno.de", STORY_B/2, STORY_H - 90);
+  x.globalAlpha = 1;
+
+  return c;
+}
+
+/* Die Adresse, unter der dieser Hub steht. Ohne Protokoll und ohne
+   abschließenden Strich — das liest sich besser und tippt sich
+   leichter ab. */
+function hubAdresse(){
+  try{
+    if(location.protocol === "file:") return (SERVER.betrieb || "hub") + ".omoteno.de";
+    return location.host + location.pathname.replace(/\/?(index\.html)?$/, "");
+  }catch(e){ return "omoteno.de"; }
+}
+
+let storyLeinwand = null;
+
+async function storyOeffnen(posten){
+  const el = $("story"); if(!el) return;
+  if(!posten || !posten.length){
+    melden(t("Dafür fehlt noch eine Bestellung."), true);
+    return;
+  }
+  const feld = $("storyBild");
+  feld.innerHTML = "";
+  feld.classList.add("laedt");
+  el.hidden = false;
+  /* Dieselbe Sperre wie bei der Vorzeige-Karte: Der Hub darf nicht
+     hinter dem Fenster weiterrollen. */
+  document.body.classList.add("fest");
+
+  try{
+    storyLeinwand = await storyZeichnen(posten);
+    feld.classList.remove("laedt");
+    feld.innerHTML = "";
+    feld.appendChild(storyLeinwand);
+    const sichern = $("storySichern");
+    sichern.href = storyLeinwand.toDataURL("image/png");
+    sichern.download = (SERVER.betrieb || "besuch") + ".png";
+    /* Ehrlich auf dem Knopf: Instagram und Meta lassen ohne eigene
+       App kein Posten in Storys zu. Wer etwas anderes verspricht,
+       schickt den Gast in eine Sackgasse. */
+    $("storyHinweis").textContent =
+      t("Für Instagram: Bild sichern, dann Instagram öffnen und aus der Galerie wählen. Direkt hineinstellen lässt Instagram niemanden.");
+  }catch(fehler){
+    console.error("[Omoteno] Story:", fehler);
+    feld.classList.remove("laedt");
+    feld.innerHTML = "";
+    $("storyHinweis").textContent = t("Das Bild ließ sich nicht bauen.");
+  }
+}
+
+function storySchliessen(){
+  const el = $("story"); if(!el) return;
+  el.hidden = true;
+  document.body.classList.remove("fest");
+}
+
+async function storyTeilen(){
+  if(!storyLeinwand){ melden(t("Das Bild ist noch nicht fertig."), true); return; }
+  const text = t("War gerade bei {haus}.", {haus: BETRIEB.name}) + " " + hubAdresse();
+
+  /* Der beste Weg zuerst: die Freigabe des Systems mit der Datei.
+     Sie kennt alle Apps des Gastes, wir kennen keine. */
+  try{
+    const klotz = await new Promise(f => storyLeinwand.toBlob(f, "image/png"));
+    if(klotz && navigator.canShare){
+      const datei = new File([klotz], "besuch.png", { type:"image/png" });
+      if(navigator.canShare({ files:[datei] })){
+        await navigator.share({ files:[datei], text: text });
+        return;
+      }
+    }
+    if(navigator.share){ await navigator.share({ text: text }); return; }
+  }catch(e){
+    /* Abbruch durch den Gast ist kein Fehler. */
+    if(e && e.name === "AbortError") return;
+  }
+  /* Kein Teilen im Gerät: WhatsApp direkt, das Bild von Hand dazu. */
+  oeffne("https://wa.me/?text=" + encodeURIComponent(text));
+  melden(t("Text ist offen — das Bild bitte über „Bild sichern“ dazulegen."));
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -4509,7 +4845,53 @@ const TEXTE = {
 "Anfrage ist angekommen. Wir melden uns kurz zur Bestätigung.":{en:"Your request arrived. We will confirm shortly.",tr:"Talebiniz ulaştı. Kısaca onaylayacağız.",ru:"Запрос получен. Мы скоро подтвердим.",fr:"Votre demande est arrivée. Nous confirmons sous peu.",es:"Su solicitud ha llegado. Le confirmamos en breve.",it:"La richiesta è arrivata. Confermiamo a breve.",pl:"Zapytanie dotarło. Wkrótce potwierdzimy.",ar:"وصل طلبكم. سنؤكد لكم قريباً.",uk:"Запит отримано. Скоро підтвердимо.",nl:"Uw aanvraag is aangekomen. We bevestigen zo.",ro:"Cererea a ajuns. Confirmăm în scurt timp."},
 "Guten Tag,\n\nich möchte gerne einen Tisch reservieren.\n\nWann: {w}\nPersonen: {p}":{en:"Hello,\n\nI would like to book a table.\n\nWhen: {w}\nGuests: {p}",tr:"Merhaba,\n\nbir masa ayırtmak istiyorum.\n\nNe zaman: {w}\nKişi: {p}",ru:"Здравствуйте,\n\nхочу забронировать столик.\n\nКогда: {w}\nГостей: {p}",fr:"Bonjour,\n\nje souhaite réserver une table.\n\nQuand : {w}\nPersonnes : {p}",es:"Hola:\n\nquisiera reservar una mesa.\n\nCuándo: {w}\nPersonas: {p}",it:"Buongiorno,\n\nvorrei prenotare un tavolo.\n\nQuando: {w}\nPersone: {p}",pl:"Dzień dobry,\n\nchciałbym zarezerwować stolik.\n\nKiedy: {w}\nOsoby: {p}",ar:"مرحباً،\n\nأود حجز طاولة.\n\nالموعد: {w}\nعدد الأشخاص: {p}",uk:"Доброго дня,\n\nхочу забронювати столик.\n\nКоли: {w}\nОсіб: {p}",nl:"Goedendag,\n\nik wil graag een tafel reserveren.\n\nWanneer: {w}\nPersonen: {p}",ro:"Bună ziua,\n\naș dori să rezerv o masă.\n\nCând: {w}\nPersoane: {p}"},
 "\nName: ":{en:"\nName: ",tr:"\nAd: ",ru:"\nИмя: ",fr:"\nNom : ",es:"\nNombre: ",it:"\nNome: ",pl:"\nImię: ",ar:"\nالاسم: ",uk:"\nІм'я: ",nl:"\nNaam: ",ro:"\nNume: "},
-"\n\nViele Grüße":{en:"\n\nBest regards",tr:"\n\nSaygılarımla",ru:"\n\nС уважением",fr:"\n\nCordialement",es:"\n\nUn saludo",it:"\n\nCordiali saluti",pl:"\n\nPozdrawiam",ar:"\n\nمع التحية",uk:"\n\nЗ повагою",nl:"\n\nMet vriendelijke groet",ro:"\n\nCu stimă"}
+"\n\nViele Grüße":{en:"\n\nBest regards",tr:"\n\nSaygılarımla",ru:"\n\nС уважением",fr:"\n\nCordialement",es:"\n\nUn saludo",it:"\n\nCordiali saluti",pl:"\n\nPozdrawiam",ar:"\n\nمع التحية",uk:"\n\nЗ повагою",nl:"\n\nMet vriendelijke groet",ro:"\n\nCu stimă"},
+
+/* --- Oberflaechentexte aus den spaeteren Bloecken -----------------
+   Mein Tisch, Weitersagen, Top-Runner und der Willkommensschirm
+   kamen zuletzt dazu. Ihre Saetze standen in ALLEN zwoelf Sprachen
+   auf Deutsch — sichtbar erst, wenn ein Gast die Sprache wechselt,
+   und deshalb monatelang niemandem aufgefallen. pruef-sprache.js
+   findet so etwas ab jetzt vor der Uebergabe.
+   --------------------------------------------------------------- */
+"Ab dem nächsten Mal sammeln sich hier Ihre Lieblingsspeisen.":{en:"From next time on, your favourites will collect here.",tr:"Bir dahaki sefere favorileriniz burada birikmeye başlar.",ru:"Со следующего раза здесь будут собираться ваши любимые блюда.",fr:"Dès la prochaine fois, vos plats préférés s'afficheront ici.",es:"A partir de la próxima vez, sus platos favoritos se reunirán aquí.",it:"Dalla prossima volta, qui si raccolgono i suoi piatti preferiti.",pl:"Od następnego razu zbierają się tu Twoje ulubione dania.",ar:"ابتداءً من المرة القادمة، ستتجمع هنا أطباقك المفضلة.",uk:"З наступного разу тут збиратимуться ваші улюблені страви.",nl:"Vanaf de volgende keer verzamelen uw favorieten zich hier.",ro:"De data viitoare, preferatele dumneavoastră se adună aici."},
+"Adresse hinterlegen":{en:"Save address",tr:"Adresi kaydet",ru:"Сохранить адрес",fr:"Enregistrer l'adresse",es:"Guardar dirección",it:"Salva indirizzo",pl:"Zapisz adres",ar:"حفظ العنوان",uk:"Зберегти адресу",nl:"Adres opslaan",ro:"Salvați adresa"},
+"Antippen zum Überspringen":{en:"Tap to skip",tr:"Atlamak için dokunun",ru:"Нажмите, чтобы пропустить",fr:"Toucher pour passer",es:"Toque para saltar",it:"Tocca per saltare",pl:"Dotknij, aby pominąć",ar:"انقر للتخطي",uk:"Торкніться, щоб пропустити",nl:"Tik om over te slaan",ro:"Atingeți pentru a sări"},
+"Besuch zusammenfassen":{en:"Sum up the visit",tr:"Ziyareti özetle",ru:"Собрать визит в картинку",fr:"Résumer la visite",es:"Resumir la visita",it:"Riassumi la visita",pl:"Podsumuj wizytę",ar:"لخّص الزيارة",uk:"Підсумувати візит",nl:"Bezoek samenvatten",ro:"Rezumați vizita"},
+"Bitte tragen Sie noch Ihre Adresse ein.":{en:"Please enter your address first.",tr:"Lütfen önce adresinizi girin.",ru:"Пожалуйста, укажите свой адрес.",fr:"Veuillez d'abord saisir votre adresse.",es:"Introduzca antes su dirección.",it:"Inserisca prima il suo indirizzo.",pl:"Najpierw wpisz swój adres.",ar:"يرجى إدخال عنوانك أولاً.",uk:"Спершу вкажіть свою адресу.",nl:"Vul eerst uw adres in.",ro:"Introduceți mai întâi adresa."},
+"DAS GAB ES":{en:"WHAT WE HAD",tr:"NELER YEDİK",ru:"ЧТО БЫЛО",fr:"AU MENU",es:"LO QUE HUBO",it:"COSA C'ERA",pl:"CO BYŁO",ar:"ما تناولناه",uk:"ЩО БУЛО",nl:"DIT WAS ER",ro:"CE A FOST"},
+"Dafür fehlt noch eine Bestellung.":{en:"There's no order to show yet.",tr:"Bunun için henüz bir sipariş yok.",ru:"Для этого пока нет заказа.",fr:"Il manque encore une commande pour cela.",es:"Todavía falta un pedido para eso.",it:"Manca ancora un ordine.",pl:"Brakuje jeszcze zamówienia.",ar:"لا يوجد طلب بعد.",uk:"Для цього ще немає замовлення.",nl:"Daarvoor ontbreekt nog een bestelling.",ro:"Încă lipsește o comandă."},
+"Das Bild ist noch nicht fertig.":{en:"The image isn't ready yet.",tr:"Görsel henüz hazır değil.",ru:"Изображение ещё не готово.",fr:"L'image n'est pas encore prête.",es:"La imagen aún no está lista.",it:"L'immagine non è ancora pronta.",pl:"Obraz jeszcze nie jest gotowy.",ar:"الصورة ليست جاهزة بعد.",uk:"Зображення ще не готове.",nl:"De afbeelding is nog niet klaar.",ro:"Imaginea nu este încă gata."},
+"Das Bild ließ sich nicht bauen.":{en:"The image couldn't be created.",tr:"Görsel oluşturulamadı.",ru:"Не удалось создать изображение.",fr:"L'image n'a pas pu être créée.",es:"No se ha podido crear la imagen.",it:"Non è stato possibile creare l'immagine.",pl:"Nie udało się utworzyć obrazu.",ar:"تعذّر إنشاء الصورة.",uk:"Не вдалося створити зображення.",nl:"De afbeelding kon niet worden gemaakt.",ro:"Imaginea nu a putut fi creată."},
+"Das klappt hier gerade nicht.":{en:"That isn't working right now.",tr:"Bu şu anda çalışmıyor.",ru:"Сейчас это не работает.",fr:"Cela ne fonctionne pas pour le moment.",es:"Ahora mismo esto no funciona.",it:"Al momento non funziona.",pl:"W tej chwili to nie działa.",ar:"هذا لا يعمل في الوقت الحالي.",uk:"Зараз це не працює.",nl:"Dat lukt op dit moment niet.",ro:"Momentan nu funcționează."},
+"Diese Adresse sieht nicht vollständig aus.":{en:"That address doesn't look complete.",tr:"Bu adres eksik görünüyor.",ru:"Этот адрес выглядит неполным.",fr:"Cette adresse semble incomplète.",es:"Esa dirección parece incompleta.",it:"Questo indirizzo sembra incompleto.",pl:"Ten adres wygląda na niepełny.",ar:"يبدو أن هذا العنوان غير مكتمل.",uk:"Ця адреса виглядає неповною.",nl:"Dit adres lijkt niet compleet.",ro:"Adresa pare incompletă."},
+"Einen Augenblick, wir sehen nach.":{en:"One moment, we're looking.",tr:"Bir saniye, bakıyoruz.",ru:"Минутку, проверяем.",fr:"Un instant, nous regardons.",es:"Un momento, lo estamos mirando.",it:"Un attimo, stiamo controllando.",pl:"Chwileczkę, sprawdzamy.",ar:"لحظة من فضلك، نتحقق.",uk:"Хвилинку, перевіряємо.",nl:"Een ogenblik, we kijken even.",ro:"O clipă, verificăm."},
+"Eingelöst wird am Tisch: Zeigen Sie den Code einfach unserem Team.":{en:"Redeemed at the table: just show the code to our team.",tr:"Masada kullanılır: kodu ekibimize göstermeniz yeterli.",ru:"Погашается за столом: просто покажите код нашей команде.",fr:"À échanger à table : montrez simplement le code à notre équipe.",es:"Se canjea en la mesa: solo enseñe el código a nuestro equipo.",it:"Si riscatta al tavolo: mostri il codice al nostro team.",pl:"Realizacja przy stoliku: wystarczy pokazać kod naszemu zespołowi.",ar:"يُستبدل على الطاولة: اعرض الرمز على فريقنا فحسب.",uk:"Використовується за столом: просто покажіть код нашій команді.",nl:"Inwisselen aan tafel: laat de code gewoon aan ons team zien.",ro:"Se folosește la masă: arătați codul echipei noastre."},
+"Etwas passt nicht? Sagen Sie es uns gerne direkt – wir sind am Tisch für Sie da.":{en:"Something not right? Just tell us – we're right there at your table.",tr:"Bir sorun mu var? Bize doğrudan söyleyin – masanızdayız.",ru:"Что-то не так? Скажите нам прямо — мы рядом у стола.",fr:"Quelque chose ne va pas ? Dites-le-nous directement – nous sommes à votre table.",es:"¿Algo no encaja? Díganoslo directamente: estamos en su mesa.",it:"Qualcosa non va? Ce lo dica pure: siamo al suo tavolo.",pl:"Coś się nie zgadza? Powiedz nam wprost – jesteśmy przy stoliku.",ar:"هناك ما لا يعجبك؟ أخبرنا مباشرة — نحن عند طاولتك.",uk:"Щось не так? Скажіть нам прямо — ми поруч зі столом.",nl:"Klopt er iets niet? Zeg het ons gerust – we staan bij uw tafel.",ro:"Nu e ceva în regulă? Spuneți-ne direct – suntem la masa dumneavoastră."},
+"FÜR SIE HINTERLEGT":{en:"SAVED FOR YOU",tr:"SİZİN İÇİN AYRILDI",ru:"СОХРАНЕНО ДЛЯ ВАС",fr:"RÉSERVÉ POUR VOUS",es:"GUARDADO PARA USTED",it:"RISERVATO PER LEI",pl:"ZAPISANE DLA CIEBIE",ar:"محفوظ لك",uk:"ЗБЕРЕЖЕНО ДЛЯ ВАС",nl:"VOOR U BEWAARD",ro:"PĂSTRAT PENTRU DUMNEAVOASTRĂ"},
+"Für Instagram: Bild sichern, dann Instagram öffnen und aus der Galerie wählen. Direkt hineinstellen lässt Instagram niemanden.":{en:"For Instagram: save the image, then open Instagram and pick it from your gallery. Instagram lets no one post directly.",tr:"Instagram için: görseli kaydedin, sonra Instagram'ı açıp galeriden seçin. Instagram doğrudan paylaşıma izin vermiyor.",ru:"Для Instagram: сохраните изображение, откройте Instagram и выберите его из галереи. Публиковать напрямую Instagram не позволяет никому.",fr:"Pour Instagram : enregistrez l'image, ouvrez Instagram et choisissez-la dans la galerie. Instagram n'autorise personne à publier directement.",es:"Para Instagram: guarde la imagen, abra Instagram y elíjala en la galería. Instagram no permite publicar directamente.",it:"Per Instagram: salvi l'immagine, apra Instagram e la scelga dalla galleria. Instagram non consente a nessuno di pubblicare direttamente.",pl:"Na Instagram: zapisz obraz, otwórz Instagram i wybierz go z galerii. Instagram nikomu nie pozwala publikować bezpośrednio.",ar:"لإنستغرام: احفظ الصورة، ثم افتح إنستغرام واخترها من المعرض. إنستغرام لا يسمح لأحد بالنشر مباشرة.",uk:"Для Instagram: збережіть зображення, відкрийте Instagram і виберіть його з галереї. Публікувати напряму Instagram нікому не дозволяє.",nl:"Voor Instagram: bewaar de afbeelding, open Instagram en kies hem uit de galerij. Instagram laat niemand rechtstreeks plaatsen.",ro:"Pentru Instagram: salvați imaginea, deschideți Instagram și alegeți-o din galerie. Instagram nu permite nimănui postarea directă."},
+"IHRE LIEBLINGE":{en:"YOUR FAVOURITES",tr:"FAVORİLERİNİZ",ru:"ВАШИ ЛЮБИМЫЕ",fr:"VOS PRÉFÉRÉS",es:"SUS FAVORITOS",it:"I SUOI PREFERITI",pl:"TWOJE ULUBIONE",ar:"مفضلاتك",uk:"ВАШІ УЛЮБЛЕНІ",nl:"UW FAVORIETEN",ro:"PREFERATELE DUMNEAVOASTRĂ"},
+"IHRE WEITEREN BESTELLUNGEN":{en:"YOUR OTHER ORDERS",tr:"DİĞER SİPARİŞLERİNİZ",ru:"ВАШИ ДРУГИЕ ЗАКАЗЫ",fr:"VOS AUTRES COMMANDES",es:"SUS OTROS PEDIDOS",it:"I SUOI ALTRI ORDINI",pl:"TWOJE POZOSTAŁE ZAMÓWIENIA",ar:"طلباتك الأخرى",uk:"ВАШІ ІНШІ ЗАМОВЛЕННЯ",nl:"UW OVERIGE BESTELLINGEN",ro:"CELELALTE COMENZI ALE DUMNEAVOASTRĂ"},
+"Ich war hier":{en:"I was here",tr:"Buradaydım",ru:"Я был здесь",fr:"J'étais ici",es:"Estuve aquí",it:"Sono stato qui",pl:"Byłem tutaj",ar:"كنت هنا",uk:"Я був тут",nl:"Ik was hier",ro:"Am fost aici"},
+"Ihr erster Besuch bei uns.":{en:"Your first visit with us.",tr:"Bizdeki ilk ziyaretiniz.",ru:"Ваш первый визит к нам.",fr:"Votre première visite chez nous.",es:"Su primera visita con nosotros.",it:"La sua prima visita da noi.",pl:"Twoja pierwsza wizyta u nas.",ar:"زيارتك الأولى لنا.",uk:"Ваш перший візит до нас.",nl:"Uw eerste bezoek bij ons.",ro:"Prima dumneavoastră vizită la noi."},
+"Ihr {n}. Besuch bei uns.":{en:"Your visit no. {n} with us.",tr:"Bizdeki {n}. ziyaretiniz.",ru:"Ваш {n}-й визит к нам.",fr:"Votre {n}e visite chez nous.",es:"Su visita n.º {n} con nosotros.",it:"La sua {n}ª visita da noi.",pl:"Twoja {n}. wizyta u nas.",ar:"زيارتك رقم {n} لنا.",uk:"Ваш {n}-й візит до нас.",nl:"Uw {n}e bezoek bij ons.",ro:"A {n}-a vizită la noi."},
+"Ihre Besuche merkt sich Ihr Gerät, nicht wir – dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.":{en:"Your device remembers your visits, not us – that needs a brief connection. Ordering and everything else works without it.",tr:"Ziyaretlerinizi biz değil cihazınız hatırlar – bunun için kısa bir bağlantı gerekir. Sipariş ve diğer her şey bağlantısız da çalışır.",ru:"Ваши визиты помнит ваше устройство, а не мы — для этого нужна короткая связь. Заказ и всё остальное работает и без неё.",fr:"C'est votre appareil qui retient vos visites, pas nous – il lui faut une brève connexion. Commander et tout le reste fonctionne sans.",es:"Sus visitas las recuerda su dispositivo, no nosotros: para eso hace falta conexión un momento. Pedir y todo lo demás funciona igual sin ella.",it:"Le sue visite se le ricorda il suo dispositivo, non noi: serve una breve connessione. Ordinare e tutto il resto funziona anche senza.",pl:"Twoje wizyty pamięta Twoje urządzenie, nie my – potrzebne jest do tego krótkie połączenie. Zamawianie i reszta działa też bez niego.",ar:"جهازك هو من يتذكر زياراتك، لا نحن — ويحتاج ذلك إلى اتصال قصير. الطلب وكل شيء آخر يعمل بدونه.",uk:"Ваші візити пам'ятає ваш пристрій, а не ми — для цього потрібен короткий зв'язок. Замовлення й усе інше працює й без нього.",nl:"Uw toestel onthoudt uw bezoeken, wij niet – daarvoor is even verbinding nodig. Bestellen en al het andere gaat ook zonder.",ro:"Vizitele le ține minte dispozitivul dumneavoastră, nu noi – pentru asta e nevoie de o scurtă conexiune. Comanda și restul funcționează și fără."},
+"Ihre E-Mail-Adresse":{en:"Your email address",tr:"E-posta adresiniz",ru:"Ваш адрес электронной почты",fr:"Votre adresse e-mail",es:"Su dirección de correo",it:"Il suo indirizzo e-mail",pl:"Twój adres e-mail",ar:"بريدك الإلكتروني",uk:"Ваша електронна адреса",nl:"Uw e-mailadres",ro:"Adresa dumneavoastră de e-mail"},
+"Karte, bestellen und rufen — direkt am Tisch.":{en:"Menu, ordering and service — right at the table.",tr:"Menü, sipariş ve servis — doğrudan masada.",ru:"Меню, заказ и вызов — прямо за столом.",fr:"Carte, commande et service — directement à table.",es:"Carta, pedidos y servicio: directamente en la mesa.",it:"Menù, ordini e servizio — direttamente al tavolo.",pl:"Karta, zamawianie i obsługa — prosto przy stoliku.",ar:"القائمة والطلب والنداء — من الطاولة مباشرة.",uk:"Меню, замовлення та виклик — прямо за столом.",nl:"Kaart, bestellen en roepen — direct aan tafel.",ro:"Meniu, comandă și chemare — direct la masă."},
+"Mein Tisch":{en:"My table",tr:"Masam",ru:"Мой стол",fr:"Ma table",es:"Mi mesa",it:"Il mio tavolo",pl:"Mój stolik",ar:"طاولتي",uk:"Мій стіл",nl:"Mijn tafel",ro:"Masa mea"},
+"Notiert. Sie hören erst von uns, wenn Sie die Adresse bestätigt haben.":{en:"Noted. You'll only hear from us once you've confirmed the address.",tr:"Not edildi. Adresi onaylayana kadar sizden haber almayız.",ru:"Записано. Мы напишем только после того, как вы подтвердите адрес.",fr:"C'est noté. Vous n'aurez de nos nouvelles qu'après confirmation de l'adresse.",es:"Anotado. Solo tendrá noticias nuestras cuando confirme la dirección.",it:"Annotato. Le scriveremo solo dopo che avrà confermato l'indirizzo.",pl:"Zapisane. Odezwiemy się dopiero po potwierdzeniu adresu.",ar:"تم التسجيل. لن نراسلك إلا بعد تأكيد العنوان.",uk:"Записано. Ми напишемо лише після підтвердження адреси.",nl:"Genoteerd. U hoort pas van ons zodra u het adres bevestigd hebt.",ro:"Notat. Vă scriem doar după ce confirmați adresa."},
+"Ohne Konto, ohne Passwort – das merkt sich Ihr Gerät.":{en:"No account, no password – your device remembers this.",tr:"Hesap yok, şifre yok – bunu cihazınız hatırlıyor.",ru:"Без аккаунта и пароля — всё помнит ваше устройство.",fr:"Sans compte ni mot de passe – votre appareil s'en souvient.",es:"Sin cuenta ni contraseña: lo recuerda su dispositivo.",it:"Senza account né password: se ne ricorda il suo dispositivo.",pl:"Bez konta i hasła – pamięta to Twoje urządzenie.",ar:"بلا حساب وبلا كلمة مرور — جهازك هو من يتذكر.",uk:"Без облікового запису й пароля — це пам'ятає ваш пристрій.",nl:"Zonder account, zonder wachtwoord – uw toestel onthoudt dit.",ro:"Fără cont, fără parolă – dispozitivul dumneavoastră ține minte."},
+"POST VOM HAUS (FREIWILLIG)":{en:"NEWS FROM US (OPTIONAL)",tr:"BİZDEN HABERLER (İSTEĞE BAĞLI)",ru:"НОВОСТИ ОТ НАС (ПО ЖЕЛАНИЮ)",fr:"DES NOUVELLES DE NOUS (FACULTATIF)",es:"NOTICIAS NUESTRAS (OPCIONAL)",it:"NOTIZIE DA NOI (FACOLTATIVO)",pl:"WIADOMOŚCI OD NAS (OPCJONALNIE)",ar:"رسائل منا (اختياري)",uk:"НОВИНИ ВІД НАС (ЗА БАЖАННЯМ)",nl:"POST VAN ONS (VRIJWILLIG)",ro:"VEȘTI DE LA NOI (OPȚIONAL)"},
+"Schön, dass Sie wieder da sind.":{en:"Good to see you again.",tr:"Tekrar aramızda olmanız güzel.",ru:"Рады видеть вас снова.",fr:"Ravis de vous revoir.",es:"Nos alegra verle de nuevo.",it:"Che bello rivederla.",pl:"Miło znów Cię widzieć.",ar:"سعداء بعودتك.",uk:"Раді бачити вас знову.",nl:"Fijn dat u er weer bent.",ro:"Ne bucurăm să vă revedem."},
+"Text ist offen — das Bild bitte über „Bild sichern“ dazulegen.":{en:"The message is open — please add the image via \\u201ESave image\\u201C.",tr:"Mesaj açık — görseli lütfen „Görseli kaydet\\u201C ile ekleyin.",ru:"Сообщение открыто — изображение добавьте через «Сохранить изображение».",fr:"Le message est ouvert — ajoutez l'image via « Enregistrer l'image ».",es:"El mensaje está abierto: añada la imagen con «Guardar imagen».",it:"Il messaggio è aperto: aggiunga l'immagine con «Salva immagine».",pl:"Wiadomość jest otwarta — obraz dodaj przez „Zapisz obraz”.",ar:"الرسالة مفتوحة — أضف الصورة عبر «حفظ الصورة».",uk:"Повідомлення відкрито — зображення додайте через «Зберегти зображення».",nl:"Het bericht staat open — voeg de afbeelding toe via „Afbeelding bewaren”.",ro:"Mesajul este deschis — adăugați imaginea prin „Salvați imaginea”."},
+"War gerade bei {haus}.":{en:"Just been to {haus}.",tr:"Az önce {haus} mekanındaydım.",ru:"Только что был в {haus}.",fr:"Je sors de {haus}.",es:"Acabo de estar en {haus}.",it:"Sono appena stato da {haus}.",pl:"Właśnie byłem w {haus}.",ar:"كنت للتو في {haus}.",uk:"Щойно був у {haus}.",nl:"Net bij {haus} geweest.",ro:"Tocmai am fost la {haus}."},
+"Wenn Sie mögen, hinterlassen Sie uns ein paar Worte auf Google. Wir freuen uns über jede ehrliche Rückmeldung.":{en:"If you like, leave us a few words on Google. We're glad of every honest word.",tr:"İsterseniz Google'da bize birkaç satır bırakın. Her dürüst geri bildirime seviniriz.",ru:"Если хотите, оставьте нам пару слов в Google. Мы рады каждому честному отзыву.",fr:"Si vous le souhaitez, laissez-nous quelques mots sur Google. Chaque retour sincère nous fait plaisir.",es:"Si le apetece, déjenos unas palabras en Google. Agradecemos cada comentario sincero.",it:"Se le va, ci lasci due parole su Google. Ogni riscontro sincero ci fa piacere.",pl:"Jeśli masz ochotę, zostaw nam kilka słów w Google. Cieszy nas każda szczera opinia.",ar:"إن أحببت، اترك لنا بضع كلمات على جوجل. يسعدنا كل رأي صادق.",uk:"Якщо бажаєте, залиште нам кілька слів у Google. Ми раді кожному щирому відгуку.",nl:"Als u wilt, laat ons een paar woorden achter op Google. We zijn blij met elke eerlijke reactie.",ro:"Dacă doriți, lăsați-ne câteva cuvinte pe Google. Ne bucură orice părere sinceră."},
+"Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – sonst nichts. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.":{en:"What for: the odd voucher or invitation from us – nothing else. We only write once you've confirmed the address by email, and you can opt out at any time.",tr:"Ne için: ara sıra bir kupon ya da davet – başka bir şey değil. Yalnızca adresi onay e-postasıyla doğruladıktan sonra yazarız ve dilediğiniz an vazgeçebilirsiniz.",ru:"Зачем: изредка купон или приглашение от нас — и ничего больше. Мы пишем только после подтверждения адреса по почте, и вы в любой момент можете отказаться.",fr:"À quoi cela sert : un bon ou une invitation de temps à autre – rien d'autre. Nous n'écrivons qu'après confirmation de l'adresse par e-mail, et vous pouvez vous désinscrire à tout moment.",es:"Para qué: algún vale o invitación nuestra, nada más. Solo escribimos cuando haya confirmado la dirección por correo, y puede darse de baja cuando quiera.",it:"A cosa serve: ogni tanto un buono o un invito da parte nostra, nient'altro. Le scriviamo solo dopo la conferma dell'indirizzo via e-mail e può revocare in qualsiasi momento.",pl:"Po co: od czasu do czasu kupon lub zaproszenie od nas – nic więcej. Piszemy dopiero po potwierdzeniu adresu w e-mailu, a Ty możesz w każdej chwili zrezygnować.",ar:"لماذا: قسيمة أو دعوة منا من حين لآخر — لا أكثر. لن نراسلك إلا بعد تأكيد العنوان عبر بريد التأكيد، ويمكنك الاعتراض في أي وقت.",uk:"Навіщо: час від часу купон або запрошення від нас — і нічого більше. Пишемо лише після підтвердження адреси листом, і ви будь-коли можете відмовитися.",nl:"Waarvoor: af en toe een bon of uitnodiging van ons – meer niet. We schrijven pas zodra u het adres per e-mail hebt bevestigd, en u kunt zich altijd afmelden.",ro:"Pentru ce: din când în când un voucher sau o invitație de la noi – nimic altceva. Vă scriem doar după ce confirmați adresa prin e-mail și puteți renunța oricând."},
+"gültig bis {d}":{en:"valid until {d}",tr:"{d} tarihine kadar geçerli",ru:"действует до {d}",fr:"valable jusqu'au {d}",es:"válido hasta el {d}",it:"valido fino al {d}",pl:"ważne do {d}",ar:"صالح حتى {d}",uk:"дійсний до {d}",nl:"geldig tot {d}",ro:"valabil până la {d}"},
+"noch {n} Stunden":{en:"{n} hours left",tr:"{n} saat kaldı",ru:"ещё {n} ч.",fr:"encore {n} heures",es:"quedan {n} horas",it:"ancora {n} ore",pl:"jeszcze {n} godz.",ar:"بقي {n} ساعات",uk:"ще {n} год",nl:"nog {n} uur",ro:"încă {n} ore"},
+"nur noch {n} Minuten":{en:"only {n} minutes left",tr:"sadece {n} dakika kaldı",ru:"осталось {n} мин.",fr:"plus que {n} minutes",es:"solo quedan {n} minutos",it:"solo {n} minuti",pl:"tylko {n} min",ar:"بقي {n} دقائق فقط",uk:"лише {n} хв",nl:"nog maar {n} minuten",ro:"doar {n} minute"},
+"und {n} weitere":{en:"and {n} more",tr:"ve {n} tane daha",ru:"и ещё {n}",fr:"et {n} de plus",es:"y {n} más",it:"e altri {n}",pl:"i jeszcze {n}",ar:"و{n} أخرى",uk:"і ще {n}",nl:"en nog {n}",ro:"și încă {n}"},
+"{titel}: {name} jetzt für {preis}":{en:"{titel}: {name} now for {preis}",tr:"{titel}: {name} şimdi {preis}",ru:"{titel}: {name} сейчас за {preis}",fr:"{titel} : {name} maintenant à {preis}",es:"{titel}: {name} ahora por {preis}",it:"{titel}: {name} ora a {preis}",pl:"{titel}: {name} teraz za {preis}",ar:"{titel}: {name} الآن بـ {preis}",uk:"{titel}: {name} зараз за {preis}",nl:"{titel}: {name} nu voor {preis}",ro:"{titel}: {name} acum la {preis}"}
 };
 
 const TAGE = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
@@ -5503,6 +5885,7 @@ function zeigenSchliessen(){
 
 document.addEventListener("click", e => {
   if(e.target.closest && e.target.closest("[data-zeigen-zu]")) zeigenSchliessen();
+  if(e.target.closest && e.target.closest("[data-story-zu]")) storySchliessen();
 });
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && !$("zeigen").hidden) zeigenSchliessen();
@@ -5573,6 +5956,10 @@ SEITEN.bestellt = () => {
         preisText(b.summe) + '</span></div>' : "") +
     '</div>' +
     weitereHTML +
+    /* Weitersagen steht ÜBER „noch etwas bestellen": Der Gast ist
+       gerade zufrieden, das ist der Augenblick. */
+    '<button class="knopf zweit" data-aktion="story">' +
+      t("Besuch zusammenfassen") + '</button>' +
     '<a class="knopf zweit" href="#/speisekarte">' + t("Noch etwas bestellen") + '</a>' +
     '<a class="knopf zweit" href="#/">' + t("Zur Startseite") + '</a>' +
     '<div class="hinweis">' +
@@ -6041,6 +6428,13 @@ SEITEN.meintisch = () => {
       '<div class="hinweis">' +
       t("Eingelöst wird am Tisch: Zeigen Sie den Code einfach unserem Team.") +
       '</div>';
+  }
+
+  /* Weitersagen erst, wenn es etwas zu erzählen gibt. Beim ersten
+     Besuch stünde sonst ein Knopf da, der ein leeres Bild baut. */
+  if(gastStand.lieblinge.length){
+    html += '<button class="knopf zweit" data-aktion="storyLieblinge">' +
+      t("Besuch zusammenfassen") + '</button>';
   }
 
   /* Freiwillig heißt: Der Zweck steht daneben, nicht im Kleingedruckten,
@@ -7312,6 +7706,17 @@ $("inhalt").addEventListener("click", e => {
     const was = aktion.dataset.aktion;
 
     if(was === "kopieren"){ kopieren(WLAN.passwort); }
+
+    if(was === "story"){
+      const b = letzteBestellung;
+      storyOeffnen((b && b.posten) || []);
+    }
+    if(was === "storyLieblinge"){
+      /* Aus „Mein Tisch" erzählt das Bild von allen Besuchen, nicht
+         von einer Bestellung: die Lieblinge mit ihrer Anzahl. */
+      storyOeffnen(gastStand.lieblinge.map(l => ({ n:l.name, m:l.mal })));
+    }
+    if(was === "storyTeilen"){ storyTeilen(); }
 
     if(was === "gastMail"){
       const adresse = wert("gastMail");
