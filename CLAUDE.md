@@ -415,6 +415,19 @@ doppelte `id` im Auszeichnungstext, im Skript gesuchte Elemente ohne
 Gegenstück im HTML, Namenskollisionen zwischen Skriptblöcken und die
 Syntax jedes Blocks einzeln.
 
+### 8.1 Eine Prüfung, die nicht startet, ist keine
+
+> **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
+> `pruef-ueberlauf.js` lasen `omoteno-marken-studio.html`,
+> `omoteno-admin.html` und `omoteno-landingpage.html`. Alle drei
+> Dateien heißen längst anders. Die Skripte fielen beim Start mit
+> ENOENT um — drei von fünf Einträgen der Tabelle oben waren tot,
+> und in der Prüfliste stand trotzdem, dass sie laufen.
+
+Nach jeder Umbenennung: **jedes** Prüfskript einmal starten, nicht nur
+das, an dem man gerade arbeitet. Skripte suchen ihre Datei neben sich
+und nennen im Fehlerfall alle Namen, unter denen sie gesucht haben.
+
 > **Eine Lehre über Prüfwerkzeuge selbst.** Die erste Fassung meldete
 > `id="melde"` als Fehler — die Kennung steht in sieben Seitenvorlagen,
 > von denen immer nur eine gezeichnet wird. Ein Werkzeug, das
@@ -430,6 +443,7 @@ Dazu je nach Änderung:
 | Karten-Zerleger | `pruefungen/pruef-import.js` |
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
 | Gastkonto, „Mein Tisch" im Hub | `pruef-gastkonto.js` (braucht `dist/`) |
+| Figur des Hauses, Bestellpass | `pruef-figur.js` (braucht `dist/`) |
 
 Und danach, immer:
 

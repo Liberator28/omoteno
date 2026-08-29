@@ -180,11 +180,32 @@ Deshalb gehören diese Blöcke jetzt ebenfalls ins Markenblatt:
 | `wlan` | `netz`, `passwort` |
 | `trinkgeld` | `paypal`, `betraege` (Liste von Zahlen) |
 | `empfehlung` | Liste: `von`, `bis` (Stunde), `kennz`, `name`, `was`, `preis`, `ziel`, `gericht` |
-| `avatar` | `art`: `freundlich` \| `ruhig` \| `witzig`, `name` |
+| `avatar` | `figur`: `untersetzer` \| `erdbeere`, `art`: `freundlich` \| `ruhig` \| `witzig`, `name` |
 
 **Fehlt ein Block, bleibt der Platzhalter aus dem Gerüst stehen** und
 der Erzeuger sagt es als Hinweis. Ein altes Markenblatt ohne diese
 Felder läuft also weiter — es zeigt nur nichts Eigenes.
+
+### Die Figur
+
+`figur` bestimmt, **wer** den Gast begleitet, `art` bestimmt **wie**.
+Beides ist unabhängig: Jede Figur kann jede der drei Launen tragen.
+
+- **`untersetzer`** — die Vorgabe. Der Untersetzer ist Omotenos
+  Produkt und passt in jedes Haus. Fehlt `figur`, ist es dieser.
+- **`erdbeere`** — Chocos Figur. Die Frucht bleibt Frucht: Rot, Grün
+  und Kernbeige stehen fest, denn eine Erdbeere in der Hausfarbe ist
+  keine Erdbeere mehr. Das Haus steht auf der **Schürze** — sie trägt
+  `farben.band`, der Buchstabe darauf `farben.bandText`, und der
+  Buchstabe kommt aus dem ersten Zeichen von `betrieb.name`.
+
+Ein unbekannter Wert ist ein **Fehler**, kein Hinweis: Sonst hätte der
+Kunde seine Figur ausgewählt, bekäme wortlos den Untersetzer, und
+niemand sagte es ihm.
+
+Nur Figuren mit Haltungen (heute die Erdbeere) erscheinen im
+Bestellpass in drei Posen. Häuser mit dem Untersetzer bekommen dort
+gezeichnete Zeichen — Zettel, Pfanne, Glocke.
 
 ## Was NICHT ins Markenblatt gehört
 

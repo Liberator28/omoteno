@@ -3,7 +3,17 @@
    Muster haben die Landingpage auf dem Telefon seitlich schiebbar
    gemacht. */
 const fs = require("fs");
-const s = fs.readFileSync(process.argv[2] || "omoteno-landingpage.html", "utf8");
+const path = require("path");
+/* Ohne Argument die Webseite neben sich — der alte Vorgabename
+   existiert nicht mehr und ergab beim Aufruf ohne Argument ENOENT. */
+const ziel = process.argv[2] ||
+  ["omoteno-web.html","omoteno-landingpage.html"]
+    .map(n => path.join(__dirname, n)).find(fs.existsSync);
+if(!ziel || !fs.existsSync(ziel)){
+  console.error("Keine Datei angegeben und keine Webseite neben dem Skript gefunden.");
+  process.exit(1);
+}
+const s = fs.readFileSync(ziel, "utf8");
 const css = [...s.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/g)].map(m => m[1]).join("\n");
 
 const regeln = [...css.matchAll(/([^{}]+)\{([^}]*)\}/g)]

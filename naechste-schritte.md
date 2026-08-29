@@ -81,15 +81,52 @@ Alle Prüfskripte laufen sauber. Siehe `CLAUDE.md`.
   unter der Grenze, vom Erzeuger seit jeher gemeldet. Jetzt `#846C62`
   (4,88:1 auf Karte, 4,55:1 auf Grund). Der Hinweis ist weg.
 
+- **Die Figur des Hauses.** Der Begleiter ist nicht mehr fest der
+  Untersetzer: `avatar.figur` im Markenblatt wählt zwischen
+  `untersetzer` (Vorgabe, passt in jedes Haus) und `erdbeere`
+  (Chocos Figur, nach der Zeichnung in SVG gebaut — kein Bild, nichts
+  wird nachgeladen). Die Frucht bleibt Frucht; das Haus steht auf der
+  **Schürze**, die `farben.band` trägt und den Buchstaben in
+  `farben.bandText`. Im Marken-Studio gibt es dafür jetzt die
+  Abteilung **Figur** mit lebender Vorschau — vorher konnte der Kunde
+  seine Figur überhaupt nicht wählen.
+
+  **Im Bestellpass**, der längsten Wartezeit des Gastes, standen drei
+  **Emoji** (🧾🍳🔔) — auf jedem Gerät ein anderes Bild. Jetzt steht
+  dort die Figur in drei Haltungen: Zettel halten, Sauce über den
+  Stapel gießen, Teller bringen. Häuser mit dem Untersetzer bekommen
+  gezeichnete Zeichen. Bewegt wird, was die Figur **hält** — eine
+  schaukelnde Erdbeere wäre albern, ein fallender Tropfen erzählt die
+  Phase. Bei „Bewegung reduzieren" bleibt die Haltung stehen.
+
+  **Dabei gefunden:** `.knopf` hatte fest `color:#FFF6F2` auf
+  `var(--rot)`. Bei Chocos Rot lesbar — bei einer Bar mit hellem Grün
+  als Hauptfarbe nicht. Genau der Fehler, der einmal im Studio 1,16:1
+  ergab. Jetzt `var(--auf-rot)`, gerechnet; gemessen 5,67:1 bei Choco
+  und 8,09:1 bei Blend. Dasselbe an zwei weiteren Stellen. Und der
+  Knopfschein war fest aus Chocos Rot gemischt und blieb bei jedem
+  anderen Haus rot.
+
+  **Und:** Drei der fünf Prüfskripte (`pruef-kontrast.js`,
+  `pruef-import.js`, `pruef-ueberlauf.js`) lasen Dateinamen, die es
+  nicht mehr gibt, und fielen beim Start um. Sie suchen ihre Datei
+  jetzt neben sich.
+
 **Offen aus Block 6, bewusst noch nicht gebaut:**
 
 - **Gutscheine kann noch niemand anlegen.** Die Tabelle steht, der Hub
   zeigt sie, aber im Admin-Board fehlt die Fläche dafür — sie gehört
   zu den Gästelisten aus Block 9. Bis dahin geht es nur über die
   Datenbank.
-- **Ein neuer Hub zeigt ohne Netz Chocos Karte.** `SPEISEKARTE`,
-  `GETRAENKE` und `COCKTAILS` stehen fest im Gerüst und werden zur
-  Laufzeit aus der Datenbank überschrieben. Solange die Antwort
+- **Der Sendestreifen behält seine Tasse.** Er ist 34 Pixel hoch; die
+  Erdbeere ist erst ab etwa 48 lesbar und wäre dort ein Fleck. Die
+  Tasse ist kein zweites Maskottchen, sondern ein gezeichnetes
+  Zeichen wie die Kachelsymbole — sie bleibt.
+- **Ein neuer Hub zeigt ohne Netz Chocos Karte — und ihr Logo.**
+  `SPEISEKARTE`, `GETRAENKE` und `COCKTAILS` stehen fest im Gerüst
+  und werden zur Laufzeit aus der Datenbank überschrieben; das
+  Logo-Abzeichen im Kopf zeigt bei Blend ebenfalls noch Chocos Marke.
+  Solange die Antwort
   unterwegs ist — und offline dauerhaft — sieht der Gast eines anderen
   Hauses 75 Crêpes aus Kirchhain. Richtige Antwort ist nicht „Karte
   ins Markenblatt", sondern ein **gestaltetes Skelett** an dieser

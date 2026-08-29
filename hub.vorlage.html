@@ -588,6 +588,10 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
 }
 .ico svg{width:20px;height:20px;fill:none;stroke:currentColor;
          stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+/* Ein gezeichnetes Zeichen im Knopf, dort wo vorher ein Emoji stand. */
+.kzeichen{display:inline-flex;flex:none}
+.kzeichen svg{width:18px;height:18px;fill:none;stroke:currentColor;
+         stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .kachel.cyan .ico{background:var(--pistazie-flaeche);color:var(--pistazie)}
 .txt{min-width:0}
 .txt strong{display:block;font-size:14.5px;font-weight:600;margin-bottom:1px;letter-spacing:-.1px}
@@ -633,9 +637,16 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
 .knopf{
   display:flex;align-items:center;justify-content:center;gap:8px;
   text-decoration:none;border-radius:14px;padding:16px;font-size:15.5px;font-weight:600;
-  background:var(--rot);color:#FFF6F2;margin-bottom:10px;border:0;width:100%;
+  /* Die Schriftfarbe wird GERECHNET, nicht gesetzt. Hier stand fest
+     #FFF6F2 — bei Chocos Rot lesbar, bei einer Bar mit hellem Grün
+     als Hauptfarbe nicht. --auf-rot kommt aus der Helligkeit der
+     Hauptfarbe und ist entweder Weiß oder fast Schwarz. Derselbe
+     Fehler lag einmal im Marken-Studio und ergab 1,16:1.
+     Der Schein darunter kam aus Chocos Rot und blieb bei jedem
+     anderen Haus rot — jetzt trägt er die Hauptfarbe selbst. */
+  background:var(--rot);color:var(--auf-rot);margin-bottom:10px;border:0;width:100%;
   font-family:inherit;cursor:pointer;letter-spacing:.1px;
-  box-shadow:0 6px 16px rgba(214,40,57,.22);
+  box-shadow:0 6px 16px var(--rot-schein);
   transition:transform var(--kurz) var(--feder), opacity var(--kurz)
 }
 .knopf:active{transform:scale(.975)}
@@ -1005,7 +1016,8 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .auswahlbalken .bpfeil{font-size:18px;font-weight:700;line-height:1;opacity:.7}
 [dir="rtl"] .auswahlbalken .bpfeil{transform:scaleX(-1)}
 .auswahlbalken .anzahl{
-  background:var(--rot);color:#FFF6F2;border-radius:999px;
+  /* wie beim Knopf: die Schrift auf der Hausfarbe wird gerechnet */
+  background:var(--rot);color:var(--auf-rot);border-radius:999px;
   min-width:24px;height:24px;padding:0 7px;display:inline-flex;align-items:center;
   justify-content:center;font-size:12.5px;font-weight:700
 }
@@ -1300,9 +1312,19 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
   box-shadow:var(--schatten);
   overflow:hidden;position:relative
 }
+/* Hier standen drei Emoji. Sie sahen auf jedem Gerät anders aus —
+   auf dem einen ein Blatt Papier, auf dem anderen eine Quittung — und
+   in genau dem Feld, auf das der wartende Gast am längsten schaut.
+   Jetzt steht dort die Figur des Hauses in der passenden Haltung;
+   Häuser ohne eigene Figur bekommen ein gezeichnetes Zeichen. */
 .bpass .bp-zeichen{
-  font-size:40px;line-height:1;display:block;margin-bottom:10px;
-  transform-origin:70% 80%
+  display:flex;justify-content:center;align-items:flex-end;
+  min-height:56px;margin-bottom:10px
+}
+.bpass .bp-zeichen .g-zeichen{
+  width:46px;height:46px;fill:none;stroke:var(--tinte);stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round;
+  transform-box:fill-box;transform-origin:70% 80%
 }
 .bpass .bp-text{
   font-size:14px;font-weight:600;color:var(--tinte-leise);
@@ -1321,14 +1343,14 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 .bpass .bp-nummer.wartet{color:var(--tinte-still);font-size:22px;letter-spacing:0}
 
 /* Angenommen: der Zettel haengt am Pass und wippt im Luftzug. */
-.bpass.p-neu .bp-zeichen{animation:bpZettel 3.2s ease-in-out infinite}
+.bpass.p-neu .g-zeichen{animation:bpZettel 3.2s ease-in-out infinite}
 @keyframes bpZettel{
   0%,100%{transform:rotate(-3deg)}
   50%    {transform:rotate(3deg)}
 }
 /* Wird zubereitet: die Pfanne schwingt. */
 .bpass.p-arbeit{border-color:var(--gold)}
-.bpass.p-arbeit .bp-zeichen{animation:bpPfanne 1.5s ease-in-out infinite}
+.bpass.p-arbeit .g-zeichen{animation:bpPfanne 1.5s ease-in-out infinite}
 @keyframes bpPfanne{
   0%,100%{transform:translateY(0)   rotate(-8deg)}
   50%    {transform:translateY(-5px) rotate(8deg)}
@@ -1336,11 +1358,37 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 /* Fertig: die Glocke schlaegt einmal an und ruht dann. */
 .bpass.p-fertig{border-color:var(--pistazie)}
 .bpass.p-fertig .bp-nummer{color:var(--pistazie)}
-.bpass.p-fertig .bp-zeichen{animation:bpGlocke 1.1s var(--feder) 2}
+.bpass.p-fertig .g-zeichen{animation:bpGlocke 1.1s var(--feder) 2}
 @keyframes bpGlocke{
   0%,100%{transform:rotate(0)}
   15%{transform:rotate(16deg)}  40%{transform:rotate(-12deg)}
   65%{transform:rotate(7deg)}   85%{transform:rotate(-3deg)}
+}
+
+/* Die Figur bewegt nicht SICH, sondern was sie hält. Eine
+   schaukelnde Erdbeere wäre albern; ein wippender Zettel und ein
+   fallender Tropfen erzählen dagegen genau die Phase.
+   transform-box:fill-box, weil der Ursprung in SVG sonst in der
+   linken oberen Ecke der viewBox liegt und das Teil aus dem Bild
+   schwenkt statt sich zu drehen. */
+.bpass .figur .zettel,.bpass .figur .tropfen{transform-box:fill-box}
+.bpass.p-neu .figur .zettel{
+  transform-origin:50% 0;
+  animation:bpZettel 3.2s ease-in-out infinite;
+}
+.bpass.p-arbeit .figur .tropfen{animation:bpTropfen 1.6s ease-in infinite}
+@keyframes bpTropfen{
+  0%      {transform:translateY(-10px) scale(.5); opacity:0}
+  22%     {transform:translateY(-6px)  scale(1);  opacity:1}
+  78%     {transform:translateY(9px)   scale(.9); opacity:1}
+  92%,100%{transform:translateY(12px)  scale(.4); opacity:0}
+}
+/* Fertig: die Figur kommt einmal heran und bleibt dann stehen. Der
+   Dampf über dem Teller läuft weiter — er sagt „noch warm". */
+.bpass.p-fertig .figur{animation:bpHeran .72s cubic-bezier(.16,1,.3,1) both}
+@keyframes bpHeran{
+  from{opacity:0;transform:translateX(-14px) scale(.94)}
+  to  {opacity:1;transform:none}
 }
 /* Ein weicher Schein hinter der Karte, sobald das Essen unterwegs ist. */
 .bpass.p-fertig::after{
@@ -1350,11 +1398,21 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 }
 @keyframes bpSchein{from{opacity:0}30%{opacity:1}to{opacity:.35}}
 
+/* Der Dampf über dem Teller läuft weiter, wenn das Essen unterwegs
+   ist — er sagt „noch warm". Die Schwaden nutzen dieselben Bilder wie
+   die Tasse im Sendestreifen, statt zweite zu erfinden. */
+.bpass.p-fertig .figur .dampf{animation:wsDampf 2.4s ease-in-out infinite}
+.figur .d2{animation-delay:.5s}
+.figur .d3{animation-delay:1s}
+
 /* Wer Bewegung abgestellt hat, bekommt dasselbe Bild - nur still.
-   Die Anzeige darf nie von einer Animation abhaengen. */
+   Die Anzeige darf nie von einer Animation abhaengen: Die HALTUNG
+   der Figur trägt die Phase, nicht ihre Bewegung. */
 @media (prefers-reduced-motion: reduce){
-  .bpass .bp-zeichen,
+  .bpass .bp-zeichen,.bpass .g-zeichen,.bpass .figur,
+  .bpass .figur .zettel,.bpass .figur .tropfen,.bpass .figur .dampf,
   .bpass::after{animation:none !important}
+  .bpass .figur .tropfen{opacity:1}
 }
 
 /* Live-Bestellstatus */
@@ -1405,7 +1463,7 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 .rufknopf .rufico svg{width:21px;height:21px;fill:none;stroke:currentColor;
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .rufknopf.an{border-color:var(--rot);box-shadow:0 0 0 1px var(--rot) inset}
-.rufknopf.an .rufico{background:var(--rot);color:#FFF6F2}
+.rufknopf.an .rufico{background:var(--rot);color:var(--auf-rot)}
 
 /* Eintrag für eine weitere, noch offene Bestellung auf der
    Bestätigungsseite. Bewusst ruhig - er soll die aktuelle Bestellung
@@ -1755,6 +1813,60 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 .figur .funke{fill:var(--rot)}
 .figur .schatten{fill:var(--tinte);opacity:.07}
 
+/* ╔═══ FIGUR · GETEILTER BLOCK (CSS) · ANFANG ═════════════════════╗
+   ║ Wortgleich auch in marken-studio.html — pruef-figur.js         ║
+   ║ vergleicht beide Fassungen Zeichen für Zeichen.                ║
+   ╚════════════════════════════════════════════════════════════════╝
+   Zwei Farbebenen, und die Trennung ist die ganze Idee:
+
+   Die FRUCHT bleibt Frucht. Rot, Grün und Kernbeige stehen fest —
+   eine Erdbeere in der Hausfarbe ist keine Erdbeere mehr, sondern
+   ein roter Fleck. Das HAUS steht auf der Schürze: --band und
+   --band-text, ein Paar, das der Erzeuger ohnehin schon auf Kontrast
+   prüft. Nicht --rot, denn Chocos Hauptfarbe IST rot, und eine rote
+   Schürze auf einer roten Frucht verschwindet.
+
+   Und zwei Konturen, nicht eine: --kontur umrandet die Frucht und
+   liegt immer auf Hellem. --glied sind Arme, Beine und Hände — die
+   liegen auf dem GRUND des Hauses, und der ist abends fast schwarz.
+   Mit einer einzigen dunklen Farbe waren die Beine abends weg. */
+.f-erdbeere{--kontur:#4A2318;--glied:#4A2318}
+/* Ohne body davor, damit derselbe Text auch im Studio trägt, wo die
+   Tageszeit an der Vorschau hängt und nicht am Seitenkörper. */
+[data-phase="abend"] .f-erdbeere{--glied:#EBCDBB}
+
+.f-erdbeere .frucht{fill:#D2536A;stroke:var(--kontur);stroke-width:3}
+.f-erdbeere .glanz{fill:#FFFFFF;opacity:.22}
+.f-erdbeere .kern{fill:#F3DDBC}
+.f-erdbeere .blatt{fill:#94B183;stroke:var(--kontur);stroke-width:2.6;stroke-linejoin:round}
+.f-erdbeere .stiel{stroke:#94B183;stroke-width:4;fill:none;stroke-linecap:round}
+.f-erdbeere .wange{fill:#E8899C;opacity:.55}
+.f-erdbeere .zug{stroke:var(--kontur)}
+/* Weißer Ring um die Pupille statt eines eigenen Augapfels: Die
+   Zeichnung hat große helle Augen, der Zug-Satz kennt nur Pupillen.
+   paint-order legt die Kontur UNTER die Füllung. */
+.f-erdbeere .auge{fill:var(--kontur);stroke:#FFFDF7;stroke-width:2.8;paint-order:stroke}
+.f-erdbeere .braue{stroke:var(--kontur);stroke-width:2.2;fill:none;stroke-linecap:round}
+/* Auf der roten Frucht ginge ein roter Funke unter. */
+.f-erdbeere .funke{fill:#F7D774;stroke:var(--kontur);stroke-width:.8}
+.f-erdbeere .schuerze{fill:var(--band);stroke:var(--kontur);stroke-width:2.6;stroke-linejoin:round}
+/* Die Tasche ist ein aufgesetzter Fleck, kein Kasten mit Rahmen —
+   ein Rahmen ließ den Buchstaben wie eine Tastenkappe aussehen. */
+.f-erdbeere .tasche{fill:var(--band-text);opacity:.13}
+.f-erdbeere .mono{fill:var(--band-text);font:italic 700 12px/1 Georgia,"Times New Roman",serif;opacity:.9}
+.f-erdbeere .arm,.f-erdbeere .bein{
+  stroke:var(--glied);stroke-width:5;fill:none;stroke-linecap:round}
+.f-erdbeere .fuss,.f-erdbeere .hand{fill:var(--glied)}
+.f-erdbeere .glas{fill:#E8C468;stroke:var(--kontur);stroke-width:2.4;stroke-linejoin:round}
+.f-erdbeere .kappe,.f-erdbeere .bohne{fill:var(--kontur)}
+.f-erdbeere .ritz{stroke:var(--kontur);stroke-width:1.7;fill:none;opacity:.55;stroke-linecap:round}
+.f-erdbeere .papier{fill:#FFFDF7;stroke:var(--kontur);stroke-width:2.4}
+.f-erdbeere .porzellan{fill:#FFFDF7;stroke:var(--kontur);stroke-width:2.4}
+.f-erdbeere .kuchen{fill:#F2DFB4;stroke:var(--kontur);stroke-width:2.2}
+.f-erdbeere .guss,.f-erdbeere .tropfen{fill:#5A3220}
+.f-erdbeere .dampf{stroke:var(--glied);stroke-width:1.8;fill:none;opacity:.6;stroke-linecap:round}
+/* ╚═══ FIGUR · GETEILTER BLOCK (CSS) · ENDE ═══════════════════════╝ */
+
 /* Der Begleiter im Seitenfluss: eine Zeile, kein Kasten. Er soll
    grüßen, nicht im Weg stehen. */
 .begleiter{
@@ -1871,6 +1983,10 @@ function markeAnwenden(abend){
   s.setProperty("--rot",              f.akzent);
   s.setProperty("--rot-flaeche",
     f.akzentFlaeche  || markeAlpha(f.akzent,  abend ? .14 : .09));
+  /* Der Schein unter den Knöpfen. Stand fest auf Chocos Rot und
+     blieb bei jedem anderen Haus rot — abends schwächer, weil ein
+     Leuchten auf dunklem Grund sonst schmutzig wirkt. */
+  s.setProperty("--rot-schein",       markeAlpha(f.akzent, abend ? .16 : .22));
   s.setProperty("--gold",             f.akzent2);
   s.setProperty("--gold-flaeche",
     f.akzent2Flaeche || markeAlpha(f.akzent2, abend ? .16 : .20));
@@ -2395,7 +2511,9 @@ const ICONS = {
   kamera:  '<svg viewBox="0 0 24 24"><rect x="3.4" y="3.4" width="17.2" height="17.2" rx="5"/><circle cx="12" cy="12" r="3.9"/><circle cx="17" cy="7" r="1" fill="currentColor" stroke="none"/></svg>',
   kalender:'<svg viewBox="0 0 24 24"><rect x="3.4" y="5.2" width="17.2" height="15.4" rx="3.2"/><path d="M3.4 10h17.2M8.2 3v4M15.8 3v4"/></svg>',
   ort:     '<svg viewBox="0 0 24 24"><path d="M12 20.8s6.8-6 6.8-10.6a6.8 6.8 0 1 0-13.6 0C5.2 14.8 12 20.8 12 20.8z"/><circle cx="12" cy="10" r="2.6"/></svg>',
-  herzleer:'<svg viewBox="0 0 24 24"><path d="M12 20.4S4.4 15.6 4.4 10.4a4.1 4.1 0 0 1 7.6-2.2 4.1 4.1 0 0 1 7.6 2.2c0 5.2-7.6 10-7.6 10z"/></svg>'
+  herzleer:'<svg viewBox="0 0 24 24"><path d="M12 20.4S4.4 15.6 4.4 10.4a4.1 4.1 0 0 1 7.6-2.2 4.1 4.1 0 0 1 7.6 2.2c0 5.2-7.6 10-7.6 10z"/></svg>',
+  telefon: '<svg viewBox="0 0 24 24"><path d="M7.4 3.6h3l1.5 3.8-2 1.4a11.4 11.4 0 0 0 5.3 5.3l1.4-2 3.8 1.5v3a2 2 0 0 1-2.2 2A16.6 16.6 0 0 1 5.4 5.8a2 2 0 0 1 2-2.2z"/></svg>',
+  brief:   '<svg viewBox="0 0 24 24"><rect x="2.8" y="5.2" width="18.4" height="13.6" rx="2.6"/><path d="M3.4 7.2l8.6 6 8.6-6"/></svg>'
 };
 
 /*  EMPFEHLUNG DES HAUSES
@@ -2639,6 +2757,15 @@ function gastLaden(){
    Nachladen: Der Hub muss ohne Netz laufen, und eine Figur, die
    erst nach zwei Sekunden erscheint, grüßt niemanden.
    ══════════════════════════════════════════════════════════════════ */
+/* ╔═══ FIGUR · GETEILTER BLOCK · ANFANG ═══════════════════════════╗
+   ║ Wortgleich auch in marken-studio.html. Es gibt in diesem       ║
+   ║ Verzeichnis bewusst kein Bauwerkzeug — geteilter Code wird     ║
+   ║ kopiert, wie die Farbrollen im :root. Damit die beiden Fassungen║
+   ║ nicht auseinanderlaufen, vergleicht pruef-figur.js sie Zeichen ║
+   ║ für Zeichen. Wer hier etwas ändert, ändert es dort auch.       ║
+   ║ Der Block ist absichtlich rein: keine MARKENBLATT-, BETRIEB-   ║
+   ║ oder t()-Aufrufe. Alles kommt als Parameter.                   ║
+   ╚════════════════════════════════════════════════════════════════╝ */
 const AVATAR_ZUEGE = {
   freundlich: {
     /* offene Augen, klarer Bogen nach oben */
@@ -2662,16 +2789,121 @@ const AVATAR_ZUEGE = {
   }
 };
 
-function avatarArt(){
-  const a = (typeof MARKENBLATT === "object" && MARKENBLATT.avatar) || {};
-  return AVATAR_ZUEGE[a.art] ? a.art : "freundlich";
+/* ── Die Erdbeere ────────────────────────────────────────────────
+   Ein zweiter Körper für dieselben drei Züge. Sie gehört CHOCO, nicht
+   Omoteno: Fest ins Gerüst gebaut bekäme eine Cocktailbar eine
+   Erdbeere mit Schokoflasche. Deshalb steht sie im Markenblatt
+   (avatar.figur) und nicht hier als Vorgabe.
+
+   Koordinaten: Feld 124×128, die Frucht mittig bei x=62 — links und
+   rechts bleiben gut zwanzig Einheiten für Arme, Flasche und Teller.
+   Im ersten Entwurf saß sie randbündig und die Flasche wurde
+   abgeschnitten.
+
+   EBENEN. Eine Pose hat zwei Hälften: „hinten" liegt UNTER der
+   Frucht (die Arme, deren Schulter darin verschwindet), „vorn"
+   DARÜBER (Hände und alles, was die Figur hält). Lag alles hinten,
+   verschluckte die Frucht die Flasche und den Schokotropfen. */
+
+/* Ein Blatt, das nach oben zeigt. Fünfmal gedreht ergibt die Krone —
+   fünf einzeln gezeichnete Blätter wären fünfmal so viel Pflege. */
+const E_BLATT = '<path class="blatt" d="M0 2C-11-3-15-15-6-25 4-16 10-4 0 2Z"/>';
+
+const E_KERNE = [[44,48],[60,42],[76,48],[36,62],[52,58],[70,60],[86,62],
+                 [44,74],[60,72],[78,74],[52,88],[72,88]]
+  .map(([x,y],i) => '<ellipse class="kern" cx="' + x + '" cy="' + y +
+       '" rx="2" ry="3" transform="rotate(' + ((i*41)%54-27) + ' ' + x + ' ' + y + ')"/>')
+  .join("");
+
+/* Die Schokoflasche sitzt im Ursprung, damit der Aufrufer sie drehen
+   kann. Die Kappe liegt bei +16, also UNTER dem Ursprung — daran
+   hängt, wohin sie gießt. */
+function eFlasche(){
+  return '<g class="flasche">' +
+    '<rect class="glas" x="-8" y="-23" width="16" height="27" rx="4"/>' +
+    '<path class="glas" d="M-4 4h8l1.8 7.4a2 2 0 0 1-2 2.6h-7.6a2 2 0 0 1-2-2.6Z"/>' +
+    '<rect class="kappe" x="-3" y="13.4" width="6" height="5.2" rx="1.6"/>' +
+    '<ellipse class="bohne" cx="0" cy="-10" rx="3" ry="4.6"/>' +
+    '<path class="ritz" d="M0-14.4v8.8"/>' +
+  '</g>';
 }
 
-function avatarSVG(groesse){
-  const z = AVATAR_ZUEGE[avatarArt()];
-  const g = groesse || 96;
-  return '<svg class="figur" width="' + g + '" height="' + Math.round(g * 0.86) + '" ' +
-    'viewBox="0 0 100 86" aria-hidden="true" focusable="false">' +
+/* Eine Hand am Ende eines Arms: ein Fäustling, kein Finger. */
+function eHand(x, y){
+  return '<ellipse class="hand" cx="' + x + '" cy="' + y + '" rx="5.6" ry="5"/>';
+}
+
+const E_POSEN = {
+  /* Winken mit der Flasche — der Gruß, und die Vorgabe. */
+  winken: {
+    hinten: '<path class="arm" d="M40 92C28 90 18 84 14 74"/>' +
+            '<path class="arm" d="M84 92C98 89 110 80 114 70"/>',
+    /* Auch hier gerechnet: Die um 13 Grad gedrehte Flasche hat ihre
+       linke obere Ecke bei -13. Bei x=9 stand sie 4 Einheiten über
+       dem Feldrand und wurde abgeschnitten. */
+    vorn:   eHand(13, 72) +
+            '<g transform="translate(14 58) rotate(-13)">' + eFlasche() + '</g>' +
+            eHand(115, 68)
+  },
+
+  /* Zettel in der Hand: die Bestellung hängt am Pass. Der innere
+     Knoten trägt die Drehung, damit die Animation ihn kippen kann,
+     ohne die Verschiebung zu überschreiben. */
+  zettel: {
+    hinten: '<path class="arm" d="M40 92C28 90 18 84 13 74"/>' +
+            '<path class="arm" d="M84 92C97 90 106 85 111 78"/>',
+    vorn:   eHand(12, 72) +
+            '<g transform="translate(12 56)"><g class="zettel" transform="rotate(-6)">' +
+              '<rect class="papier" x="-10" y="-16" width="20" height="28" rx="2.4"/>' +
+              '<path class="ritz" d="M-5.5-9h11M-5.5-3h11M-5.5 3h7"/>' +
+            '</g></g>' +
+            eHand(112, 76)
+  },
+
+  /* Gießen: die Flasche kippt über dem Stapel, ein Tropfen fällt. */
+  giessen: {
+    hinten: '<path class="arm" d="M42 92C32 88 24 80 20 68"/>' +
+            '<path class="arm" d="M84 92C97 90 106 85 111 78"/>',
+    vorn:   eHand(19, 64) +
+            /* Nachgerechnet, nicht geschätzt: Die um 26 Grad gedrehte
+               Flasche hat ihre linke obere Ecke bei -17,3 — bei x=14
+               ragte sie 3,3 Einheiten aus dem Feld und wurde von der
+               viewBox abgeschnitten. */
+            '<g transform="translate(18 58) rotate(-26)">' + eFlasche() + '</g>' +
+            /* Der Tropfen fällt LINKS an der Frucht vorbei. Weiter
+               rechts läge er auf ihr und sähe aus wie ein Fleck. */
+            '<circle class="tropfen" cx="25" cy="84" r="3.2"/>' +
+            '<g class="stapel" transform="translate(22 104)">' +
+              '<ellipse class="porzellan" cx="0" cy="11" rx="18" ry="4.6"/>' +
+              '<ellipse class="kuchen" cx="0" cy="5"  rx="14" ry="4.6"/>' +
+              '<ellipse class="kuchen" cx="0" cy="-2" rx="14" ry="4.6"/>' +
+              '<ellipse class="kuchen" cx="0" cy="-9" rx="14" ry="4.6"/>' +
+              '<path class="guss" d="M-13-10c3-4 6-6 13-6s10 2 13 6c-2 4-6 6-9 4-1 4-5 5-7 2-2 3-6 2-7-2-3 2-5 0-4-4Z"/>' +
+            '</g>' +
+            eHand(112, 76)
+  },
+
+  /* Teller tragen: fertig, kommt zum Tisch. */
+  teller: {
+    hinten: '<path class="arm" d="M40 92C29 90 19 84 14 76"/>' +
+            '<path class="arm" d="M84 90C96 85 105 74 106 64"/>',
+    vorn:   eHand(13, 74) +
+            eHand(105, 62) +
+            '<g class="stapel" transform="translate(102 52)">' +
+              '<ellipse class="porzellan" cx="0" cy="3" rx="18" ry="5.2"/>' +
+              '<ellipse class="kuchen" cx="0" cy="-3" rx="12" ry="4.4"/>' +
+              '<path class="guss" d="M-9-4c2-3 5-5 9-5s7 2 9 5c-2 2-4 3-6 2-1 2-3 3-5 1-2 1-4 0-5-2Z"/>' +
+              '<path class="dampf d1" d="M-6-12c0-3.4 2.4-3.8 2.4-7"/>' +
+              '<path class="dampf d2" d="M0-13c0-3.4 2.4-3.8 2.4-7"/>' +
+              '<path class="dampf d3" d="M6-12c0-3.4 2.4-3.8 2.4-7"/>' +
+            '</g>'
+  }
+};
+
+const AVATAR_FIGUREN = {
+  untersetzer: {
+    breite: 100, hoehe: 86, gesicht: "", rahmen: "", posen: null,
+    koerper: () =>
       /* Schatten auf dem Tisch */
       '<ellipse class="schatten" cx="50" cy="80" rx="29" ry="4.5"/>' +
       /* Die Dicke: dieselbe Scheibe, ein Stück tiefer. Erst dadurch
@@ -2679,9 +2911,120 @@ function avatarSVG(groesse){
          schweben — genauso wie der Körper auf der Webseite. */
       '<ellipse class="kante" cx="50" cy="57" rx="34" ry="24"/>' +
       '<ellipse class="scheibe" cx="50" cy="51" rx="34" ry="24" stroke-width="2.2"/>' +
-      '<ellipse class="zug" cx="50" cy="51" rx="28" ry="18.5" stroke-width="1.1" opacity=".4"/>' +
-      z.augen + z.mund + z.extra +
+      '<ellipse class="zug" cx="50" cy="51" rx="28" ry="18.5" stroke-width="1.1" opacity=".4"/>'
+  },
+
+  erdbeere: {
+    breite: 124, hoehe: 128, posen: E_POSEN,
+    /* Der Zug-Satz ist um (50,48) herum gebaut. Hier landet er auf der
+       Mitte der Frucht und wird größer — die Augen der Zeichnung sind
+       groß, und eine kleine Miene auf einer großen Frucht wirkt leer. */
+    gesicht: "translate(62 56) scale(1.55) translate(-50 -48)",
+    /* Brauen gehören zur Figur, nicht zum Zug: Sie stehen in jeder
+       Laune und geben dem Gesicht erst seinen Rahmen. */
+    rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
+            '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
+    koerper: pose => {
+      const p = E_POSEN[pose] || E_POSEN.winken;
+      /* cy=124 mit ry=4.6 endete bei 128,6 — 0,6 unter dem Feldrand. */
+      return '<ellipse class="schatten" cx="62" cy="123" rx="27" ry="4.2"/>' +
+        /* Beine und Arme zuerst — ihre Schultern verschwinden in der Frucht */
+        '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
+        '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
+        '<ellipse class="fuss" cx="74" cy="119" rx="7.5" ry="3.8"/>' +
+        p.hinten +
+        '<path class="stiel" d="M62 30C62 20 62 15 62 9"/>' +
+        '<g transform="translate(62 34)">' +
+          '<g transform="rotate(-62)">' + E_BLATT + '</g>' +
+          '<g transform="rotate(-31)">' + E_BLATT + '</g>' +
+          '<g>' + E_BLATT + '</g>' +
+          '<g transform="rotate(31)">' + E_BLATT + '</g>' +
+          '<g transform="rotate(62)">' + E_BLATT + '</g>' +
+        '</g>' +
+        '<path class="frucht" d="M62 28C90 28 105 44 105 64C105 86 86 108 62 108C38 108 19 86 19 64C19 44 34 28 62 28Z"/>' +
+        '<path class="glanz" d="M36 48C41 40 49 35 57 34C48 39 42 46 39 55Z"/>' +
+        E_KERNE +
+        '<ellipse class="wange" cx="38" cy="72" rx="7" ry="4.6"/>' +
+        '<ellipse class="wange" cx="86" cy="72" rx="7" ry="4.6"/>' +
+        /* Die Schürze: das Haus auf der Frucht */
+        '<path class="schuerze" d="M38 84C48 88 76 88 86 84L88 101C88 106 79 109 62 109C45 109 36 106 36 101Z"/>' +
+        '<rect class="tasche" x="53" y="88" width="18" height="14" rx="4.5"/>' +
+        /* und zuletzt, was die Figur in den Händen hält */
+        p.vorn;
+    }
+  }
+};
+
+/* Der Buchstabe auf der Schürze kommt aus dem Namen des Hauses —
+   nicht fest aus einem „C". Ein Artikel davor zählt nicht. */
+function figurBuchstabe(name){
+  const w = String(name || "").trim()
+    .replace(/^(das|der|die|the|le|la|el)\s+/i, "");
+  const z = (w.charAt(0) || "O").toUpperCase();
+  return z.replace(/[&<>"]/g, x => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[x]));
+}
+
+/* Rein: nimmt alles als Parameter, liest nichts aus der Umgebung.
+   Nur so lässt sich derselbe Block im Studio benutzen, wo es weder
+   MARKENBLATT noch BETRIEB gibt. */
+function figurSVG(groesse, figur, art, name, pose){
+  const fk = AVATAR_FIGUREN[figur] ? figur : "untersetzer";
+  const zk = AVATAR_ZUEGE[art]     ? art   : "freundlich";
+  const f = AVATAR_FIGUREN[fk], z = AVATAR_ZUEGE[zk];
+  const g = groesse || 96;
+  const gesicht = (f.rahmen || "") + z.augen + z.mund + z.extra;
+  /* Unter etwa 56px ist der Buchstabe nur noch ein Fleck. Lieber
+     weglassen als etwas zeigen, das niemand lesen kann. */
+  const zeichen = (fk === "erdbeere" && g >= 56)
+    ? '<text class="mono" x="62" y="99.5" text-anchor="middle">' +
+      figurBuchstabe(name) + '</text>'
+    : "";
+  return '<svg class="figur f-' + fk + '" width="' + g + '" height="' +
+    Math.round(g * f.hoehe / f.breite) + '" viewBox="0 0 ' + f.breite + ' ' + f.hoehe +
+    '" aria-hidden="true" focusable="false">' +
+      f.koerper(pose) +
+      (f.gesicht ? '<g transform="' + f.gesicht + '">' + gesicht + '</g>' : gesicht) +
+      zeichen +
     '</svg>';
+}
+/* ╚═══ FIGUR · GETEILTER BLOCK · ENDE ═════════════════════════════╝ */
+
+/* Ab hier wieder Hub: die dünne Hülle, die das Markenblatt liest. */
+function avatarArt(){
+  const a = (typeof MARKENBLATT === "object" && MARKENBLATT.avatar) || {};
+  return AVATAR_ZUEGE[a.art] ? a.art : "freundlich";
+}
+
+/* Fehlt figur im Markenblatt, bleibt es der Untersetzer. Ein altes
+   Blatt ohne das Feld läuft damit unverändert weiter. */
+function avatarFigur(){
+  const a = (typeof MARKENBLATT === "object" && MARKENBLATT.avatar) || {};
+  return AVATAR_FIGUREN[a.figur] ? a.figur : "untersetzer";
+}
+
+function avatarSVG(groesse, pose){
+  return figurSVG(groesse, avatarFigur(), avatarArt(), BETRIEB.name, pose);
+}
+
+/* Gezeichnete Zeichen für die drei Phasen — für Häuser, deren Figur
+   keine Haltungen kennt. Vorher standen hier Emoji; die sehen auf
+   jedem Gerät anders aus, und der Gestaltungsauftrag sperrt sie. */
+const PHASENZEICHEN = {
+  zettel: '<path d="M6 3.5h9l3 3v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-16a1 1 0 0 1 1-1z"/>' +
+          '<path d="M15 3.5v3h3M8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
+  pfanne: '<path d="M3.5 11h11a1 1 0 0 1 1 1v2a5.5 5.5 0 0 1-5.5 5.5h-2A5.5 5.5 0 0 1 2.5 14v-2a1 1 0 0 1 1-1z"/>' +
+          '<path d="M15.5 12.5h5.5"/><path d="M7 8.2c0-1.6 1.8-1.9 1.8-3.7M11 7.8c0-1.6 1.8-1.9 1.8-3.7"/>',
+  glocke: '<path d="M12 3.4a5.6 5.6 0 0 1 5.6 5.6c0 4.2 1.4 5.6 1.4 5.6H5s1.4-1.4 1.4-5.6A5.6 5.6 0 0 1 12 3.4z"/>' +
+          '<path d="M10 17.6a2 2 0 0 0 4 0"/><path d="M12 3.4V1.8"/>'
+};
+
+/* Zeigt die Figur in der passenden Haltung — oder, wenn sie keine
+   kennt, das gezeichnete Zeichen. */
+function phasenBild(pose, ersatz, groesse){
+  const f = AVATAR_FIGUREN[avatarFigur()];
+  if(f.posen && f.posen[pose]) return avatarSVG(groesse || 96, pose);
+  return '<svg class="g-zeichen" viewBox="0 0 24 24" aria-hidden="true" ' +
+         'focusable="false">' + (PHASENZEICHEN[ersatz] || "") + '</svg>';
 }
 
 /* Was die Figur sagt. Kurze Sätze, drei Anlässe, drei Züge — und
@@ -5260,10 +5603,15 @@ SEITEN.kontakt = () => {
   return '<div class="seite"><h2>' + t("Öffnungszeiten & Weg") + '</h2>' +
     '<p class="unter">' + BETRIEB.strasse + ' · ' + BETRIEB.ort + '</p>' +
     '<div class="block"><h3>' + t("WANN WIR DA SIND") + '</h3>' + reihen + '</div>' +
-    '<a class="knopf" href="' + LINKS.maps + '" target="_blank" rel="noopener">📍 ' +
-    t("Route starten") + '</a>' +
-    '<a class="knopf zweit" href="tel:' + BETRIEB.telefon.replace(/\s/g,"") + '">📞 ' + BETRIEB.telefon + '</a>' +
-    '<a class="knopf zweit" href="mailto:' + BETRIEB.mail + '">✉️ ' + BETRIEB.mail + '</a></div>';
+    /* Hier standen 📍 📞 ✉️. Auf jedem Gerät ein anderes Bild, und in
+       fremder Schrift teils gar keines — die Kacheln daneben sind
+       längst gezeichnet. */
+    '<a class="knopf" href="' + LINKS.maps + '" target="_blank" rel="noopener">' +
+    '<span class="kzeichen">' + ICONS.ort + '</span>' + t("Route starten") + '</a>' +
+    '<a class="knopf zweit" href="tel:' + BETRIEB.telefon.replace(/\s/g,"") + '">' +
+    '<span class="kzeichen">' + ICONS.telefon + '</span>' + BETRIEB.telefon + '</a>' +
+    '<a class="knopf zweit" href="mailto:' + BETRIEB.mail + '">' +
+    '<span class="kzeichen">' + ICONS.brief + '</span>' + BETRIEB.mail + '</a></div>';
 };
 
 /* ---------- Tischquiz ---------- */
@@ -5914,10 +6262,16 @@ const V_STUFEN_SERVICE = {
 /* ─── Bestellpass ────────────────────────────────────────────────
    Drei Phasen, drei Bilder aus der Küche. Der Gast soll auf einen
    Blick sehen, wo seine Bestellung steckt, ohne zu lesen. */
+/* zeichen ist eine Funktion, keine Zeichenkette: Welche Figur das
+   Haus hat, steht erst fest, wenn das Markenblatt gelesen ist — und
+   diese Liste wird gebaut, während die Datei noch lädt. */
 const PHASEN = {
-  neu:    { zeichen:"🧾", text:"Bestellzettel hängt",      klasse:"p-neu" },
-  arbeit: { zeichen:"🍳", text:"Kommt in die Pfanne",      klasse:"p-arbeit" },
-  fertig: { zeichen:"🔔", text:"Fertig — kommt zum Tisch", klasse:"p-fertig" }
+  neu:    { zeichen:() => phasenBild("zettel",  "zettel", 104),
+            text:"Bestellzettel hängt",      klasse:"p-neu" },
+  arbeit: { zeichen:() => phasenBild("giessen", "pfanne", 104),
+            text:"Kommt in die Pfanne",      klasse:"p-arbeit" },
+  fertig: { zeichen:() => phasenBild("teller",  "glocke", 104),
+            text:"Fertig — kommt zum Tisch", klasse:"p-fertig" }
 };
 
 function phaseHTML(status, tagesnummer){
@@ -5931,7 +6285,7 @@ function phaseHTML(status, tagesnummer){
     : '<div class="bp-nummer wartet">' + t("Nummer kommt gleich") + '</div>';
 
   return '<div class="bpass ' + p.klasse + '" id="bpass">' +
-    '<span class="bp-zeichen" aria-hidden="true">' + p.zeichen + '</span>' +
+    '<span class="bp-zeichen" aria-hidden="true">' + p.zeichen() + '</span>' +
     '<div class="bp-text">' + t(p.text) + '</div>' +
     nummer + '</div>';
 }

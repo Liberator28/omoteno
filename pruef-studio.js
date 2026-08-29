@@ -1,5 +1,16 @@
 const fs = require("fs");
-const s = fs.readFileSync("omoteno-marken-studio.html", "utf8");
+const path = require("path");
+/* Die Datei hieß einmal omoteno-marken-studio.html. Nach der
+   Umbenennung fiel diese Prüfung mit ENOENT um und wurde damit
+   monatelang nicht mehr gelesen — eine Prüfung, die nicht läuft, ist
+   keine. Deshalb sucht sie ihre Datei jetzt neben sich. */
+const KANDIDATEN = ["marken-studio.html", "omoteno-marken-studio.html", "markenstudio.html"];
+const datei = KANDIDATEN.map(n => path.join(__dirname, n)).find(fs.existsSync);
+if(!datei){
+  console.error("Kein Marken-Studio gefunden. Gesucht: " + KANDIDATEN.join(", "));
+  process.exit(1);
+}
+const s = fs.readFileSync(datei, "utf8");
 const js = s.match(/<script[^>]*>([\s\S]*?)<\/script>/)[1];
 
 // Sehr schlanker Ersatz fuer Browserdinge
@@ -34,6 +45,10 @@ console.log("── Entwurf verschicken ──");
 let fehler = 0;
 Object.keys(A.VORLAGEN).forEach(v => {
   A.vorlageLaden(v);
+  /* Die Figur wird absichtlich VERSTELLT, bevor der Link entsteht:
+     Bliebe sie auf der Vorgabe, könnte der Vergleich hinterher auch
+     dann „gleich" melden, wenn der Link sie gar nicht mitnimmt. */
+  A.holM().avatar = { figur:"erdbeere", art:"witzig", name:"Fräulein Fraise" };
   const vorher = JSON.parse(JSON.stringify(A.holM()));
   const adresse = A.entwurfsAdresse();
   // Anderen Ausgangszustand herstellen, dann aus der Adresse lesen
@@ -47,14 +62,17 @@ Object.keys(A.VORLAGEN).forEach(v => {
   const namegleich = nachher.betrieb.name === vorher.betrieb.name;
   const reihegleich = JSON.stringify(nachher.reihe) === JSON.stringify(vorher.reihe);
   const anGleich = A.BEREICH_FOLGE.every(k => !!nachher.bereiche[k] === !!vorher.bereiche[k]);
+  const figurGleich = nachher.avatar && vorher.avatar &&
+    ["figur","art","name"].every(k => nachher.avatar[k] === vorher.avatar[k]);
 
-  if(!(ok && gleich && namegleich && reihegleich && anGleich)) fehler++;
+  if(!(ok && gleich && namegleich && reihegleich && anGleich && figurGleich)) fehler++;
   console.log("  " + v.padEnd(11),
     "gelesen:", ok ? "ja " : "NEIN",
     "| Farben:", gleich ? "gleich" : "ABWEICHUNG",
     "| Name:", namegleich ? "gleich" : "ABWEICHUNG",
     "| Reihenfolge:", reihegleich ? "gleich" : "ABWEICHUNG",
     "| Schalter:", anGleich ? "gleich" : "ABWEICHUNG",
+    "| Figur:", figurGleich ? "gleich" : "ABWEICHUNG",
     "| Länge:", adresse.length);
 });
 console.log("  Fehler:", fehler);

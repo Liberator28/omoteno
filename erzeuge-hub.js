@@ -159,6 +159,12 @@ function pruefeMarkenblatt(mb){
     W("empfehlung fehlt — auf der Startseite steht dann keine");
   if(mb.avatar && ["freundlich","ruhig","witzig"].indexOf(mb.avatar.art) < 0)
     F("avatar.art unbekannt: " + mb.avatar.art + " — erlaubt: freundlich, ruhig, witzig");
+  /* Fehler, nicht Hinweis: Ein Tippfehler in figur ergäbe im Hub
+     wortlos wieder den Untersetzer. Der Kunde hätte seine Figur
+     ausgewählt und bekäme sie nicht — und niemand sagt es ihm. */
+  if(mb.avatar && mb.avatar.figur !== undefined &&
+     ["untersetzer","erdbeere"].indexOf(mb.avatar.figur) < 0)
+    F("avatar.figur unbekannt: " + mb.avatar.figur + " — erlaubt: untersetzer, erdbeere");
 
   /* Kontrast, Tag und Abend */
   const pruefePaare = (farben, wann) => {
@@ -237,7 +243,7 @@ function alsQuelltext(mb){
     /* Ab hier der Inhalt des Hauses. Fehlt ein Block, bleibt im Hub
        der Platzhalter aus der Vorlage stehen — deshalb wird er auch
        nicht leer geschrieben, sondern weggelassen. */
-    mb.avatar    ? block("avatar", mb.avatar, ["art","name"])   : null,
+    mb.avatar    ? block("avatar", mb.avatar, ["figur","art","name"]) : null,
     liste("zeiten",     mb.zeiten),
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,
