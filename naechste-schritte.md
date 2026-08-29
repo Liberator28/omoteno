@@ -112,6 +112,31 @@ Alle Prüfskripte laufen sauber. Siehe `CLAUDE.md`.
   nicht mehr gibt, und fielen beim Start um. Sie suchen ihre Datei
   jetzt neben sich.
 
+- **Weitersagen.** Nach dem Besuch baut der Hub ein Bild im Look des
+  Hauses (1080×1920, Story-Maß) — im Gerät, ohne Netz, ohne Dritte.
+  Geteilt über die Freigabe des Systems, sonst WhatsApp. Kein QR:
+  Wer die Story sieht, hält das Telefon schon in der Hand.
+- **Eigene Worte im Board.** Aktionsname je Aktion und als Vorgabe,
+  dazu Slogan und Gruß — mit gemessenen Grenzen, einer Warnung, die
+  den GRUND nennt, und einer Vorschau, die den Gastkopf in 360 Pixeln
+  zeigt und nach dem Zeichnen misst. Vier Schranken hintereinander:
+  Board, Feld, Datenbank-CHECK, Kürzen beim Lesen.
+- **Hell und dunkel** in Hub, Admin-Board und Küchendisplay, mit
+  `pruef-lesbarkeit.js` über jedes Element mit Text nachgerechnet.
+- **38 Übersetzungen** nachgetragen, die in allen zwölf Sprachen auf
+  Deutsch standen. `pruef-sprache.js` findet so etwas ab jetzt vorher.
+
+**Offen — bewusst noch nicht gebaut:**
+
+- **Hell und dunkel auf den Webflächen** (konto, start, Marken-Studio,
+  Webseite). Ihre Farben sind Palettenwerte mit Doppelrolle: `--pappe`
+  ist zugleich Seitengrund UND helle Schrift auf Dunklem. Ein Tausch
+  ergäbe Hell auf Hell. Zuerst Rollen von Werten trennen — eigener
+  Block, kein Anhängsel.
+- **„Erdbeersaft lecker"** steht so in der Karte. Sieht nach einem
+  Wort aus, das beim Tippen liegen geblieben ist — Datenpflege, kein
+  Fehler im Code.
+
 **Offen aus Block 6, bewusst noch nicht gebaut:**
 
 - **Gutscheine kann noch niemand anlegen.** Die Tabelle steht, der Hub
