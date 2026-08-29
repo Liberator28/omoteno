@@ -342,6 +342,29 @@ a{color:var(--kuli)}
   padding:18px 0;text-align:center}
 
 /* Markenvorschau */
+/* Anleitung: nummeriert, weil die Schritte aufeinander folgen —
+   und nicht als Kachelreihe, in der die Reihenfolge verlorengeht. */
+.anleitung{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:schritt}
+.anleitung li{
+  display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;
+  font-size:14.5px;color:var(--tinte-leise);line-height:1.55;
+}
+.anleitung li::before{
+  counter-increment:schritt;content:counter(schritt);
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--papier);border:1px solid var(--linie);color:var(--tinte);
+}
+.anleitung b{color:var(--tinte);font-weight:600}
+
+/* Der Tischlink darf umbrechen — er ist lang, und abgeschnitten
+   nützt er niemandem. */
+.tischlink{
+  font-family:var(--mono);font-size:11.5px;color:var(--tinte-leise);
+  overflow-wrap:anywhere;line-height:1.5;
+}
+.knopfreihe{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
 .markenreihe{display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap}
 .markenreihe i{width:34px;height:34px;border-radius:9px;display:block;
   border:1px solid rgba(26,25,19,.14)}
@@ -454,6 +477,7 @@ a{color:var(--kuli)}
   <nav class="reiter" id="reiter">
     <button data-blatt="uebersicht" aria-pressed="true">Übersicht</button>
     <button data-blatt="marke"      aria-pressed="false">Marke</button>
+    <button data-blatt="zugaenge"   aria-pressed="false">Zugänge</button>
     <button data-blatt="rechnungen" aria-pressed="false">Rechnungen</button>
     <button data-blatt="vertrag"    aria-pressed="false">Vertrag</button>
   </nav>
@@ -517,10 +541,65 @@ a{color:var(--kuli)}
     </div>
   </section>
 
+  <!-- ══ ZUGÄNGE ══
+       Was der Betrieb braucht, um loszulegen: die beiden Adressen für
+       das Personal, die Anleitung zum Ablegen auf dem Startbildschirm
+       und die Tischschlüssel. Vorher stand davon nichts im Konto — es
+       kam per Nachricht, und wer es verlor, fragte nach. -->
+  <section data-blatt-inhalt="zugaenge" hidden>
+    <div class="tafel">
+      <h2>Für dein Personal</h2>
+      <p class="unter">Zwei Adressen, ein Konto. Beide mit denselben
+      Zugangsdaten wie hier — jeder im Team, den du anlegst, kommt damit rein.</p>
+
+      <div class="adresse">
+        <code>admin.omoteno.de</code>
+        <button class="knopf leise schmal" data-kopieren="https://admin.omoteno.de">Kopieren</button>
+      </div>
+      <p class="hilfe">Bestell-Board: Bestellungen, Karte, Reservierungen, Auswertung.</p>
+
+      <div class="adresse" style="margin-top:14px">
+        <code>admin.omoteno.de/kueche.html</code>
+        <button class="knopf leise schmal" data-kopieren="https://admin.omoteno.de/kueche.html">Kopieren</button>
+      </div>
+      <p class="hilfe">Küchendisplay: nur die Bons, groß genug für zwei Meter Abstand.</p>
+    </div>
+
+    <div class="tafel">
+      <h2>Auf den Startbildschirm legen</h2>
+      <p class="unter">Nicht Kür, sondern Voraussetzung: <b>Safari gibt Mitteilungen
+      nur her, wenn die Seite als App abgelegt wurde.</b> Im normalen Reiter bleibt
+      das Board stumm, sobald etwas anderes im Vordergrund ist.</p>
+      <!-- Jeder Punkt in EINEM span. Ohne die Klammer bekommt im
+           Raster jedes Element und jeder lose Textknoten eine eigene
+           Zelle — die Anleitung stand dann untereinander, ein Wort je
+           Zeile. -->
+      <ol class="anleitung">
+        <li><span><b>iPhone und iPad</b> — Adresse in Safari öffnen, unten auf
+          <b>Teilen</b>, dann <b>Zum Home-Bildschirm</b>.</span></li>
+        <li><span><b>Android</b> — Adresse in Chrome öffnen, oben rechts das Menü,
+          dann <b>App installieren</b>.</span></li>
+        <li><span>Danach das Board einmal öffnen und <b>Scharf schalten</b> antippen.
+          Erst dann sind Ton und Hinweise an.</span></li>
+      </ol>
+    </div>
+
+    <div class="tafel">
+      <h2>Tische</h2>
+      <p class="unter">Jeder Tisch trägt einen eigenen Schlüssel. Er steckt im
+      NFC-Chip und im QR-Code des Untersetzers und beweist „war am Tisch" —
+      nicht „sitzt dort". Solange die Untersetzer in Produktion sind, kannst du
+      die Zeile ausdrucken und auf den Tisch legen.</p>
+      <div class="meldung" id="tischeMeldung" hidden></div>
+      <div id="tischListe"><p class="leerhinweis">Wird geladen …</p></div>
+    </div>
+  </section>
+
   <section data-blatt-inhalt="rechnungen" hidden>
     <div class="tafel">
       <h2>Rechnungen</h2>
       <p class="unter">Rechnungen von Omoteno an dich — nicht die Umsätze deines Betriebs.</p>
+      <div class="meldung fehler" id="rechnungMeldung" hidden></div>
       <div id="rechnungen"></div>
     </div>
   </section>
@@ -969,6 +1048,10 @@ async function rechnungenZeichnen(){
         '<span class="rmarke ' + (r.bezahlt_am ? "bezahlt" : "offen") + '">' +
           (r.bezahlt_am ? "bezahlt" : "offen") + '</span>' +
         '<span class="rsumme">' + euro(r.brutto) + '</span>' +
+        /* Die PDF lag im Eimer und war nirgends abrufbar — die Spalte
+           datei stand seit jeher da, der Knopf fehlte. */
+        (r.datei ? '<button class="knopf leise schmal" data-pdf="' + h(r.datei) +
+                   '">PDF</button>' : '') +
       '</div>').join("") + '</div>';
   }catch(e){
     ziel.innerHTML = '<p class="leerhinweis">Die Rechnungen konnten nicht geladen werden.</p>';
@@ -1094,17 +1177,119 @@ $("raSpeichern").onclick = async () => {
   knopf.disabled = false; knopf.textContent = "Anschrift speichern";
 };
 
-/* ─── Adresse kopieren ───────────────────────────────────────── */
-$("adresseKopieren").onclick = () => {
-  const text = "https://" + betrieb.slug + ".omoteno.de";
-  const fertig = () => {
-    $("adresseKopieren").textContent = "Kopiert";
-    setTimeout(() => { $("adresseKopieren").textContent = "Kopieren"; }, 1800);
-  };
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(fertig, () => {});
+/* ─── Kopieren ───────────────────────────────────────────────────
+   Ein Weg für alle Kopierknöpfe: Wer data-kopieren trägt, kopiert
+   seinen Wert. Vorher hatte jeder Knopf seinen eigenen Zuhörer, und
+   der nächste hätte den vierten gebraucht. */
+function kopieren(knopf, text){
+  if(!navigator.clipboard || !navigator.clipboard.writeText) return;
+  const alt = knopf.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    knopf.textContent = "Kopiert";
+    setTimeout(() => { knopf.textContent = alt; }, 1800);
+  }, () => {});
+}
+document.addEventListener("click", e => {
+  const k = e.target.closest("[data-kopieren]");
+  if(k) kopieren(k, k.dataset.kopieren);
+});
+$("adresseKopieren").onclick = () =>
+  kopieren($("adresseKopieren"), "https://" + betrieb.slug + ".omoteno.de");
+
+/* ─── Rechnung als PDF ───────────────────────────────────────────
+   Der Eimer bleibt privat; abgerufen wird über eine Adresse, die nach
+   einer Minute abläuft. Ein öffentlicher Eimer wäre einfacher und
+   würde jede Rechnung jedem zeigen, der die Adresse errät. */
+document.addEventListener("click", async e => {
+  const k = e.target.closest("[data-pdf]");
+  if(!k) return;
+  const alt = k.textContent;
+  k.disabled = true; k.textContent = "…";
+  try{
+    const {data, error} = await db.storage.from("rechnungen")
+      .createSignedUrl(k.dataset.pdf, 60);
+    if(error || !data) throw error || new Error("keine Adresse");
+    window.open(data.signedUrl, "_blank", "noopener");
+  }catch(err){
+    melde("rechnungMeldung", "Die Rechnung konnte nicht geöffnet werden. " +
+      "Schreib mir kurz, dann schicke ich sie dir.", "fehler");
   }
-};
+  k.disabled = false; k.textContent = alt;
+});
+
+/* ─── Tische ─────────────────────────────────────────────────────
+   Der Schlüssel steht im Klartext im Konto — hier sitzt der Inhaber,
+   und ohne ihn kann er weder einen Untersetzer nachdrucken noch
+   prüfen, welcher Tisch welchen trägt. Weitergeben soll er ihn
+   trotzdem nicht, und das steht auch daneben. */
+async function tischeZeichnen(){
+  const ziel = $("tischListe");
+  if(!ziel || !betrieb) return;
+  ziel.innerHTML = '<p class="leerhinweis">Wird geladen …</p>';
+  try{
+    const {data, error} = await db.from("tische")
+      .select("nummer,schluessel,aktiv")
+      .eq("betrieb_id", betrieb.id)
+      /* Am Ende ein eindeutiges Feld: Bei gleicher Nummer ist die
+         Reihenfolge sonst das, was physisch obenauf liegt. */
+      .order("aktiv", {ascending:false}).order("nummer").order("schluessel");
+    if(error) throw error;
+
+    if(!data || !data.length){
+      ziel.innerHTML = '<p class="leerhinweis">Noch keine Tische angelegt. ' +
+        'Die legen wir an, sobald dein Hub steht.</p>';
+      return;
+    }
+    const basis = "https://" + betrieb.slug + ".omoteno.de/?k=";
+    ziel.innerHTML =
+      '<div class="rliste">' + data.map(t => {
+        const url = basis + encodeURIComponent(t.schluessel);
+        return '<div class="rzeile">' +
+          '<span class="rnr">Tisch ' + h(t.nummer) + '</span>' +
+          '<span class="rzeit tischlink">' + h(url) + '</span>' +
+          (t.aktiv ? '' : '<span class="rmarke offen">stillgelegt</span>') +
+          '<button class="knopf leise schmal" data-kopieren="' + h(url) + '">Kopieren</button>' +
+        '</div>';
+      }).join("") + '</div>' +
+      '<div class="knopfreihe"><button class="knopf leise schmal" id="tischeDrucken">' +
+        'Tischzettel drucken</button></div>' +
+      '<p class="hilfe">Ein Blatt je Tisch, zum Auslegen bis die Untersetzer da sind. ' +
+      'Gib die Adressen nicht weiter — wer sie hat, kann für den Tisch bestellen.</p>';
+
+    const dk = $("tischeDrucken");
+    if(dk) dk.onclick = () => tischeDrucken(data, basis);
+  }catch(e){
+    ziel.innerHTML = '<p class="leerhinweis">Die Tische konnten nicht geladen werden.</p>';
+  }
+}
+
+/* Druckansicht in einem eigenen Fenster: Das Konto selbst bleibt
+   unberührt, und der Zettel trägt nur, was auf dem Tisch stehen soll. */
+function tischeDrucken(tische, basis){
+  const w = window.open("", "_blank");
+  if(!w) return;
+  const zettel = tische.filter(t => t.aktiv).map(t =>
+    '<article><p class="oben">' + h(betrieb.name) + '</p>' +
+    '<h1>Tisch ' + h(t.nummer) + '</h1>' +
+    '<p class="mitte">Karte öffnen und bestellen — ohne App, ohne Anmeldung.</p>' +
+    '<p class="url">' + h(basis + encodeURIComponent(t.schluessel)) + '</p></article>').join("");
+  w.document.write(
+    '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">' +
+    '<title>Tischzettel · ' + h(betrieb.name) + '</title><style>' +
+    '@page{size:A5;margin:14mm}' +
+    'body{margin:0;font-family:Georgia,serif;color:#16150F;background:#fff}' +
+    'article{page-break-after:always;height:100vh;display:flex;flex-direction:column;' +
+    'align-items:center;justify-content:center;text-align:center;padding:20mm 10mm}' +
+    '.oben{font-size:11pt;letter-spacing:.18em;text-transform:uppercase;color:#5C5849;margin:0 0 8mm}' +
+    'h1{font-size:34pt;margin:0 0 6mm;font-weight:400}' +
+    '.mitte{font-size:12pt;color:#5C5849;max-width:70mm;margin:0 0 10mm;line-height:1.5}' +
+    '.url{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:9pt;' +
+    'word-break:break-all;color:#16150F;border-top:1px solid #CFC6AE;padding-top:5mm}' +
+    '</style></head><body>' + zettel + '</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(() => { try{ w.print(); }catch(e){} }, 400);
+}
 
 /* ─── Reiter ─────────────────────────────────────────────────── */
 $("reiter").onclick = e => {
@@ -1114,6 +1299,7 @@ $("reiter").onclick = e => {
     x.setAttribute("aria-pressed", x.dataset.blatt === b));
   document.querySelectorAll("[data-blatt-inhalt]").forEach(x =>
     x.hidden = (x.dataset.blattInhalt !== b));
+  if(b === "zugaenge") tischeZeichnen();
   window.scrollTo(0,0);
 };
 
