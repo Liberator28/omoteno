@@ -217,6 +217,43 @@ a{color:var(--kuli)}
 .knopf.leise:hover{background:rgba(22,21,15,.05)}
 .knopf.schmal{width:auto;padding:11px 20px}
 
+/* ─── Anmeldung mit Google ──────────────────────────────────────
+   Steht ÜBER dem Formular, weil sie der schnellere Weg ist. Weißer
+   Grund und die Wortmarke von Google, weil deren Gestaltungsregeln
+   das so verlangen — das ist die eine Stelle, an der eine fremde
+   Marke in unsere Papierwelt darf. */
+.google{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:11px;
+  padding:13px 18px;border-radius:99px;
+  background:#FFFFFF;color:#1F1F1F;border:1px solid var(--linie);
+  font-size:15px;font-weight:600;
+  transition:transform .16s var(--weich),box-shadow .2s var(--weich),background .2s;
+}
+.google:hover{box-shadow:0 2px 10px rgba(22,21,15,.12)}
+.google:active{transform:scale(.985)}
+.google svg{width:19px;height:19px;flex:none}
+.google[disabled]{opacity:.55;cursor:default}
+
+/* „oder" mit Linien links und rechts. Zwei Wege, gleichrangig
+   dargestellt — nicht der eine als Kleingedrucktes unter dem anderen. */
+.oder{
+  display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;gap:12px;margin:18px 0;
+}
+.oder::before,.oder::after{content:"";height:1px;background:var(--linie)}
+.oder span{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--tinte-still);
+}
+
+/* Aus dem Formular übernommen — kurz gesagt, nicht erklärt. */
+.uebernommen{
+  font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--tinte-leise);
+  background:var(--papier);border:1px solid var(--linie);
+  border-radius:var(--r-klein);padding:11px 13px;margin-bottom:18px;
+}
+.uebernommen b{color:var(--tinte);font-weight:700}
+
 /* Magnetischer Knopf — dieselbe Bewegung wie auf der Webseite,
    selbst gebaut statt aus einer Bibliothek. Nur mit Zeiger: Auf dem
    Telefon gibt es keinen, dem man folgen könnte. */
@@ -342,6 +379,20 @@ a{color:var(--kuli)}
 <div class="tor" id="tor" hidden>
   <h1 id="torTitel">Willkommen zurück.</h1>
   <p class="lead" id="torText">Melde dich an, um deinen Hub zu verwalten.</p>
+
+  <div class="uebernommen" id="uebernommen" hidden></div>
+
+  <button class="google" id="googleKnopf" type="button">
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.7 1.22 9.2 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+    Mit Google anmelden
+  </button>
+
+  <div class="oder"><span>oder mit E-Mail</span></div>
 
   <div class="wechsel">
     <button data-modus="anmelden"    aria-pressed="true">Anmelden</button>
@@ -647,6 +698,38 @@ function zeige(welche){
   $("kopfRechts").hidden = (welche === "tor");
 }
 
+/* ─── Anmeldung mit Google ───────────────────────────────────────
+   Ein Knopf, ein Aufruf. Die Rückkehr fängt onAuthStateChange ab —
+   dort steht schon starten(), es braucht keinen zweiten Weg.
+
+   Ist der Anbieter in Supabase nicht freigeschaltet, kommt eine
+   Fehlermeldung im Klartext zurück („provider is not enabled").
+   Die wird hier übersetzt, statt sie dem Kunden roh hinzulegen. */
+$("googleKnopf").onclick = async () => {
+  const knopf = $("googleKnopf");
+  melde("torMeldung", "");
+  knopf.disabled = true;
+  try{
+    const {error} = await db.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        /* Zurück auf genau diese Seite, samt Anfrage-Kennung, falls
+           der Kunde aus dem Formular kommt. */
+        redirectTo: location.origin + location.pathname + location.search
+      }
+    });
+    if(error) throw error;
+    /* Ab hier übernimmt der Browser: Er verlässt die Seite. */
+  }catch(e){
+    const text = String(e && (e.message || e.error_description) || "");
+    melde("torMeldung", /not enabled|Unsupported provider/i.test(text)
+      ? "Die Anmeldung mit Google ist für diese Adresse noch nicht freigeschaltet. " +
+        "Nimm so lange E-Mail und Passwort."
+      : fehlertext(e), "fehler");
+    knopf.disabled = false;
+  }
+};
+
 /* ─── Tor ────────────────────────────────────────────────────── */
 document.querySelectorAll("[data-modus]").forEach(k => {
   k.onclick = () => {
@@ -665,6 +748,32 @@ document.querySelectorAll("[data-modus]").forEach(k => {
     melde("torMeldung", "");
   };
 });
+
+/* ─── Aus dem Formular übernommen ────────────────────────────────
+   Wer start.html ausgefüllt hat, soll Betrieb und Ort nicht ein
+   zweites Mal eintippen. Die Angaben liegen im sessionStorage
+   desselben Tabs — nicht in der Adresszeile, damit sie nicht im
+   Verlauf und in fremden Zugriffsprotokollen landen. */
+(function ausAnfrage(){
+  const kennung = new URLSearchParams(location.search).get("anfrage");
+  if(!kennung) return;
+  let a = null;
+  try{ a = JSON.parse(sessionStorage.getItem("omoteno-anfrage") || "null"); }catch(e){}
+  if(!a || a.kennung !== kennung) return;
+
+  const kasten = $("uebernommen");
+  kasten.hidden = false;
+  kasten.innerHTML = "Aus deiner Anfrage <b>" + h(kennung) + "</b> übernommen: " +
+    [a.betrieb, a.ort].filter(Boolean).map(h).join(" · ");
+
+  /* „Neu hier" ist der richtige Reiter für jemanden, der gerade das
+     Formular ausgefüllt hat. */
+  const neu = document.querySelector('[data-modus="registrieren"]');
+  if(neu) neu.click();
+  if(a.email)   $("fMail").value    = a.email;
+  if(a.betrieb) $("fBetrieb").value = a.betrieb;
+  if(a.ort)     $("fOrt").value     = a.ort;
+})();
 
 $("torKnopf").onclick = async () => {
   const mail = $("fMail").value.trim();

@@ -65,6 +65,28 @@ Betriebe aus `betriebe.markenblatt` zieht, `markenblaetter/<slug>.json`
 schreibt, erzeugt und nach Netlify legt. Danach `betriebe.erzeugt_am`
 setzen. Zugangsdaten als Repository-Geheimnisse.
 
+### 0 · Was du einmal einrichten musst
+
+**Google-Anmeldung freischalten.** Der Knopf steht im Konto und
+funktioniert, sobald diese drei Dinge stehen. Ohne sie sagt die Seite
+im Klartext, dass es noch nicht geht — sie zeigt keinen Fehlercode.
+
+1. **Google Cloud Console** → APIs & Dienste → Anmeldedaten →
+   *OAuth-Client-ID erstellen* → Anwendungstyp **Webanwendung**.
+   - Autorisierte JavaScript-Quellen: `https://omoteno.de`
+   - Autorisierter Weiterleitungs-URI:
+     `https://quxwweuvdqtjsdwgjdrh.supabase.co/auth/v1/callback`
+2. **Supabase** → Authentication → Providers → **Google** einschalten,
+   Client-ID und Client-Secret eintragen, speichern.
+3. **Supabase** → Authentication → URL Configuration →
+   *Site URL* `https://omoteno.de`, unter *Redirect URLs* zusätzlich
+   `https://omoteno.de/konto.html` eintragen.
+
+Danach einmal auf `omoteno.de/konto.html` prüfen: Knopf drücken,
+Google-Auswahl erscheint, zurück im Konto steht der Betriebsschritt.
+
+---
+
 ### 2 · Anmeldeseite und Formular auf das neue System
 **`konto.html` ist umgestellt.** Palette, Schriften und Knöpfe kommen
 jetzt aus demselben `:root` wie die Webseite — Werte übernommen, nicht
