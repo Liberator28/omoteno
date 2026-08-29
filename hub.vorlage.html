@@ -1570,6 +1570,48 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   html{scroll-behavior:auto}
 }
 
+/* ═══ TOP-RUNNER ════════════════════════════════════════════════
+   Eine zeitlich begrenzte Aktion auf ein Gericht. Sie steht oben auf
+   der Startseite und über der Karte — dort, wo der Gast ohnehin
+   hinsieht, und nicht als Pop-up, das er wegtippen muss.
+
+   Der Streifen trägt die Akzentfarbe des Hauses, nicht ein eigenes
+   Rot: Eine Aktion ist ein Angebot, kein Alarm. */
+.aktion{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:0 0 16px;padding:12px 14px;
+  border:1px solid var(--rot);border-left-width:4px;
+  border-radius:var(--rundung-klein);
+  background:var(--rot-flaeche);
+}
+.aktion .was{flex:1;min-width:150px}
+.aktion .kennz{
+  display:block;font-size:10px;letter-spacing:1.6px;font-weight:700;
+  color:var(--rot);text-transform:uppercase;margin-bottom:2px;
+}
+.aktion .name{font-weight:700;font-size:15.5px;line-height:1.25}
+.aktion .preise{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+.aktion .alt{color:var(--tinte-still);text-decoration:line-through;font-size:13px}
+.aktion .neu{color:var(--rot);font-weight:700;font-size:19px}
+.aktion .rest{
+  width:100%;font-size:11.5px;color:var(--tinte-leise);
+  font-variant-numeric:tabular-nums;
+}
+
+/* Startet die Aktion, während der Gast im Hub ist, schiebt sich
+   dieser Streifen einmal von oben ins Bild. Kein Neuaufbau der
+   Seite: Er legt sich darüber und geht von selbst wieder. */
+.aktionsruf{
+  position:fixed;left:0;right:0;top:0;z-index:900;
+  background:var(--rot);color:var(--auf-rot);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  font-size:14px;font-weight:600;text-align:center;
+  transform:translateY(-100%);
+  transition:transform .5s cubic-bezier(.16,1,.3,1);
+}
+.aktionsruf.an{transform:none}
+@media (prefers-reduced-motion:reduce){ .aktionsruf{transition:none} }
+
 /* ═══ WILLKOMMEN UND BEGLEITER ══════════════════════════════════
    Drei Sekunden, bevor die Karte da ist: Name des Hauses, ein Gruß,
    und die Figur, die durch den Abend mitläuft.
@@ -1780,6 +1822,9 @@ function markeAnwenden(abend){
 
 </head>
 <body>
+
+<!-- Meldet sich, wenn während des Besuchs eine Aktion startet. -->
+<div class="aktionsruf" id="aktionsruf" role="status" aria-live="polite" hidden></div>
 
 <!-- ═══ Willkommen ═════════════════════════════════════════════════
      Steht im Auszeichnungstext, nicht im Skript: So ist er beim
@@ -2339,6 +2384,91 @@ const KACHELN = [
         ziel:"#/musik", bereich:"Jetzt am Tisch", von:17, bis:24, cyan:true },
   */
 ];
+
+/* ══════════════════════════════════════════════════════════════════
+   TOP-RUNNER
+
+   Der Betrieb setzt eine Aktion auf ein Gericht, mit Anfang und Ende.
+   Der Gast sieht sie oben auf der Startseite und über der Karte.
+
+   Was der Hub NICHT tut: die Regel selbst prüfen. Welche Aktion
+   gerade läuft, entscheidet die Datenbank — die Regel für den
+   Gastzugriff lässt nur Laufendes heraus. Ein Filter im Browser wäre
+   eine Bitte, keine Sperre.
+   ══════════════════════════════════════════════════════════════════ */
+/* Der Hub hat keinen allgemeinen Maskierer — die Werte kommen sonst
+   aus der Karte, die der Betrieb selbst pflegt. Der Aktionsname geht
+   denselben Weg, wird hier aber trotzdem maskiert: Er landet als HTML
+   auf der Startseite, und ein „<" im Gerichtsnamen soll die Seite
+   nicht zerlegen. */
+function sicherText(w){
+  return String(w == null ? "" : w).replace(/[&<>"]/g, z =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[z]));
+}
+
+let aktionen = [];          /* was gerade läuft */
+let aktionGesehen = {};     /* welche der Gast schon eingeblendet bekam */
+try{ aktionGesehen = JSON.parse(sessionStorage.getItem("omoteno-aktionen") || "{}") || {}; }catch(e){}
+
+function aktionenLaden(){
+  if(!serverBereit()) return Promise.resolve();
+  return betriebIdHolen().then(bid => {
+    if(!bid) return;
+    const ziel = SERVER.adresse.replace(/\/+$/,"") +
+      "/rest/v1/aktionen?select=id,gericht_name,titel,preis_alt,preis_neu,bis" +
+      "&betrieb_id=eq." + bid + "&order=bis.asc,id.asc";
+    return sicherFetch(ziel, { headers:{ apikey:SERVER.schluessel,
+        Authorization:"Bearer " + SERVER.schluessel } })
+      .then(a => a.ok ? a.json() : [])
+      .then(liste => {
+        const vorher = aktionen.map(a => a.id).join(",");
+        aktionen = Array.isArray(liste) ? liste : [];
+        if(aktionen.map(a => a.id).join(",") !== vorher) aktionAnzeigen();
+      })
+      .catch(() => {});
+  });
+}
+
+/* Preis mit dem Komma des Hauses. preisText() gibt es schon — es
+   noch einmal zu schreiben hieße, es an zwei Stellen zu pflegen. */
+function aktionBandHTML(){
+  if(!aktionen.length) return "";
+  return aktionen.map(a => {
+    const restMin = Math.max(0, Math.round((new Date(a.bis) - Date.now()) / 60000));
+    const rest = restMin >= 60
+      ? t("noch {n} Stunden", {n: Math.floor(restMin / 60)})
+      : t("nur noch {n} Minuten", {n: restMin});
+    return '<div class="aktion">' +
+      '<div class="was"><span class="kennz">' + t(a.titel || "Top-Runner") + '</span>' +
+      '<span class="name">' + sicherText(a.gericht_name) + '</span></div>' +
+      '<div class="preise"><span class="alt">' + preisText(a.preis_alt) + '</span>' +
+      '<span class="neu">' + preisText(a.preis_neu) + '</span></div>' +
+      '<div class="rest">' + rest + '</div></div>';
+  }).join("");
+}
+
+/* Fängt eine Aktion an, während der Gast im Hub ist, schiebt sich der
+   Streifen einmal ins Bild — und nur einmal je Aktion und Sitzung.
+   Bei jedem Nachfragen erneut wäre er nach zehn Minuten ein Ärgernis. */
+function aktionAnzeigen(){
+  zeichne();
+  const neu = aktionen.filter(a => !aktionGesehen[a.id])[0];
+  if(!neu) return;
+  aktionGesehen[neu.id] = 1;
+  try{ sessionStorage.setItem("omoteno-aktionen", JSON.stringify(aktionGesehen)); }catch(e){}
+
+  const ruf = $("aktionsruf");
+  if(!ruf) return;
+  ruf.textContent = t("{titel}: {name} jetzt für {preis}", {
+    titel: t(neu.titel || "Top-Runner"), name: neu.gericht_name, preis: preisText(neu.preis_neu)
+  });
+  ruf.hidden = false;
+  requestAnimationFrame(() => ruf.classList.add("an"));
+  setTimeout(() => {
+    ruf.classList.remove("an");
+    setTimeout(() => { ruf.hidden = true; }, 600);
+  }, 6000);
+}
 
 /* ══════════════════════════════════════════════════════════════════
    DER BEGLEITER
@@ -4237,7 +4367,7 @@ function start(){
       '</strong>' + (k.u ? '<span>' + t(k.u) + '</span>' : "") + '</div>' +
       '<div class="pfeil">›</div></a>';
 
-  let html = begleiterHTML("start") + empfehlungHTML(), letzter = "";
+  let html = aktionBandHTML() + begleiterHTML("start") + empfehlungHTML(), letzter = "";
   sichtbar.forEach(k => {
     if(k.bereich !== letzter){
       if(letzter) html += '</div>';
@@ -4362,6 +4492,7 @@ function karteSeite(id, daten, titel, unter, fuss){
     t("Löschen") + '">×</button></div>';
 
   return '<div class="seite"><h2>' + t(titel) + '</h2><p class="unter">' + t(unter) + '</p>' +
+         aktionBandHTML() +
          suche + '<div class="chips">' + chips + '</div>' + liste +
          '<div class="hinweis">' + fuss + '</div></div>';
 }
@@ -6912,6 +7043,12 @@ zeichne();
   schirm.addEventListener("click", schliessen);
   setTimeout(schliessen, still ? 1200 : 3000);
 })();
+
+/* Läuft gerade eine Aktion? Einmal beim Öffnen und dann alle zwei
+   Minuten. Öfter bringt nichts: Eine Aktion, die eine Minute später
+   auftaucht, ist immer noch eine Neuigkeit. */
+aktionenLaden();
+setInterval(aktionenLaden, 120000);
 
 /* Lief beim letzten Besuch noch etwas? Dann sofort nachfragen und
    den Streifen zeigen - der Gast soll nicht suchen müssen. */

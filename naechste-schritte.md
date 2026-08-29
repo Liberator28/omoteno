@@ -47,6 +47,19 @@ Alle Prüfskripte laufen sauber. Siehe `CLAUDE.md`.
   Bibliothek, ohne Modellformat: CSS-Transformationen und Web
   Animations.
 
+- **Das Markenblatt trägt jetzt den Inhalt.** Name, Anschrift,
+  Telefon, Öffnungszeiten, Links, WLAN, Trinkgeld, Empfehlungen und
+  der Avatar kommen aus `markenblaetter/<slug>.json`, nicht mehr aus
+  dem Gerüst. Der Erzeuger meldet, was fehlt.
+- **Hub: Willkommensschirm und Begleiter.** Drei Sekunden beim
+  Öffnen, einmal je Sitzung; die Figur meldet sich auf der
+  Startseite, nach der Bestellung und beim Bewerten. Drei Züge im
+  Markenblatt: freundlich, ruhig, witzig.
+- **Top-Runner.** Tabelle `aktionen` mit Regeln, die dem Gast nur
+  Laufendes zeigen. Im Board über der Karte anlegen und beenden, im
+  Hub als Band auf Startseite und Karte — und als Einblendung, wenn
+  die Aktion während des Besuchs anfängt.
+
 **Offen an der Webseite:** Der Demo-Hub ist eine Nachbildung, kein
 erzeugter Hub. Sobald ein Betrieb als Schaufenster erzeugt ist
 (`demo.omoteno.de`), gehört daneben ein Verweis „echten Hub öffnen" —
