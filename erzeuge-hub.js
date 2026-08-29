@@ -142,6 +142,24 @@ function pruefeMarkenblatt(mb){
   if(!Object.keys(ber).some(k => ber[k]))
     F("kein einziger Bereich eingeschaltet — der Gast sähe eine leere Startseite");
 
+  /* ─── Inhalt des Hauses ─────────────────────────────────────
+     Fehlt einer dieser Blöcke, zeigt der Hub den Platzhalter aus der
+     Vorlage. Das ist kein Fehler — ein Haus ohne WLAN braucht kein
+     WLAN —, aber es muss gesagt werden. Vorher standen diese Werte
+     fest im Gerüst, und der zweite Kunde hätte die des ersten
+     bekommen, ohne dass es irgendwo aufgefallen wäre. */
+  if(!b.telefon && !b.mail) W("betrieb.telefon und betrieb.mail fehlen — die Kontaktseite bleibt leer");
+  if(!Array.isArray(mb.zeiten) || mb.zeiten.length !== 7)
+    W("zeiten fehlt oder hat nicht sieben Einträge (Sonntag zuerst) — der Hub zeigt „—\"");
+  if(!mb.links || !mb.links.bewertung)
+    W("links.bewertung fehlt — die Kachel „Uns bewerten\" führt ins Leere");
+  if(mb.bereiche && mb.bereiche.wlan && (!mb.wlan || !mb.wlan.netz))
+    W("wlan ist eingeschaltet, aber wlan.netz fehlt");
+  if(!Array.isArray(mb.empfehlung) || !mb.empfehlung.length)
+    W("empfehlung fehlt — auf der Startseite steht dann keine");
+  if(mb.avatar && ["freundlich","ruhig","witzig"].indexOf(mb.avatar.art) < 0)
+    F("avatar.art unbekannt: " + mb.avatar.art + " — erlaubt: freundlich, ruhig, witzig");
+
   /* Kontrast, Tag und Abend */
   const pruefePaare = (farben, wann) => {
     [
@@ -194,8 +212,19 @@ function alsQuelltext(mb){
 "   Erzeugt am " + new Date().toISOString().slice(0,16).replace("T"," ") + "\n" +
 "   ═════════════════════════════════════════════════════════ */\n";
 
+  /* Listen und verschachtelte Blöcke: als JSON, aber lesbar eingerückt.
+     Sie stehen in derselben Datei wie die Farben, also darf man sie
+     auch nachschlagen können. */
+  const liste = (name, wert) => {
+    if(wert === undefined || wert === null) return null;
+    const roh = JSON.stringify(wert, null, 2)
+      .split("\n").map((z, i) => i === 0 ? z : "  " + z).join("\n");
+    return "  " + name + ": " + roh + ",";
+  };
+
   const teile = [
-    block("betrieb",  mb.betrieb,  ["name","claim","begruessung","strasse","ort","slug"]),
+    block("betrieb",  mb.betrieb,  ["name","claim","begruessung","strasse","ort",
+                                    "telefon","mail","slug"]),
     block("farben",   mb.farben,   FARBEN_PFLICHT.concat(["akzentFlaeche","akzent2Flaeche","gutFlaeche"])),
     block("abend",    mb.abend,    ["an","ab","grund","flaeche","flaeche2","band","tinte",
                                     "tinteLeise","tinteStill","linie","linieStark",
@@ -203,8 +232,18 @@ function alsQuelltext(mb){
     block("form",     mb.form,     ["rundung","rundungKlein","rand","schatten"]),
     block("schrift",  mb.schrift,  ["kopf","text","groesse"]),
     block("logo",     mb.logo,     ["art","text","bild","hoehe"]),
-    block("bereiche", mb.bereiche, null)
-  ];
+    block("bereiche", mb.bereiche, null),
+
+    /* Ab hier der Inhalt des Hauses. Fehlt ein Block, bleibt im Hub
+       der Platzhalter aus der Vorlage stehen — deshalb wird er auch
+       nicht leer geschrieben, sondern weggelassen. */
+    mb.avatar    ? block("avatar", mb.avatar, ["art","name"])   : null,
+    liste("zeiten",     mb.zeiten),
+    mb.links     ? block("links",     mb.links,     null) : null,
+    mb.wlan      ? block("wlan",      mb.wlan,      null) : null,
+    mb.trinkgeld ? liste("trinkgeld", mb.trinkgeld)       : null,
+    liste("empfehlung", mb.empfehlung)
+  ].filter(Boolean);
   teile[teile.length-1] = teile[teile.length-1].replace(/,$/,"");
 
   return kopf + "const MARKENBLATT = {\n  version: 1,\n\n" + teile.join("\n\n") + "\n};\n";
