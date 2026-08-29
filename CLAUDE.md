@@ -60,6 +60,33 @@ JS-Bezeichner. Zwei `<script>`-Blöcke teilen sich den globalen
 Namensraum — zwei `const` mit demselben Namen werfen einen Fehler und
 die halbe Seite bleibt tot.
 
+### 1.1a Ein vorhandenes Feld heißt nicht, dass es das eigene ist
+
+> **Vorfall.** Das Gastkonto sollte an `bestellungen.gast_kennung`
+> hängen — das Feld war da, der Name passte, der Plan nannte es „den
+> Anker". Nachgesehen: Es ist die **Quittungsnummer einer einzelnen
+> Bestellung**, liegt unter einem UNIQUE-Index, und
+> `bestellung_aufgeben` gibt bei bekannter Nummer die vorhandene `id`
+> zurück, statt neu anzulegen. Eine Gerätekennung dort hätte geheißen:
+> Ab der **zweiten** Bestellung desselben Gastes verschwindet jede
+> weitere. Der Gast sieht seinen alten Bestellpass, die Küche sieht
+> nichts. Im Test mit einer Bestellung unsichtbar.
+
+Ein passender Name ist kein Beweis. Vor der Übernahme eines
+vorhandenen Feldes: **wer schreibt hinein, wer liest daraus, welcher
+Index liegt darauf.**
+
+```bash
+grep -n '<feld>' *.html
+```
+```sql
+select indexdef from pg_indexes where tablename='<tabelle>';
+select pg_get_functiondef(oid) from pg_proc where proname='<funktion>';
+```
+
+Und der Test dazu muss den **zweiten** Durchgang enthalten. Beim ersten
+sieht jede Verwechslung dieser Art richtig aus.
+
 ### 1.2 Erst den Bestand ansehen, dann den Plan schreiben
 
 > **Vorfall, viermal.** Der Umsetzungsplan schlug vor: eine neue Spalte
@@ -402,6 +429,7 @@ Dazu je nach Änderung:
 | Farben, Paletten, Vorlagen | `pruefungen/pruef-kontrast.js` |
 | Karten-Zerleger | `pruefungen/pruef-import.js` |
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
+| Gastkonto, „Mein Tisch" im Hub | `pruef-gastkonto.js` (braucht `dist/`) |
 
 Und danach, immer:
 

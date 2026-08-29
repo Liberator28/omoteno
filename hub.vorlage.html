@@ -1612,6 +1612,90 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 .aktionsruf.an{transform:none}
 @media (prefers-reduced-motion:reduce){ .aktionsruf{transition:none} }
 
+/* ═══ MEIN TISCH ════════════════════════════════════════════════
+   Wiedererkennung ohne Konto: Besuche, Lieblingsspeisen, offene
+   Gutscheine. Alles hängt an einer Kennung im Gerät — kein Name,
+   keine Anmeldung, kein Passwort, das jemand vergessen könnte.
+
+   Zahlen stehen in einer Schreibmaschinenschrift, weil sie hier
+   Anzeige sind und nicht Fließtext. Bewusst der System-Stapel und
+   NICHT die JetBrains Mono der übrigen Flächen: Der Hub lädt keine
+   einzige Schrift nach — er muss auch auf Café-WLAN und ohne Netz
+   sofort stehen. Eine Zahl, die zwei Sekunden später die Breite
+   wechselt, ist schlechter als eine Zahl in der Systemschrift. */
+:root{
+  --schrift-zahl:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+.gastkopf{
+  display:flex;align-items:center;gap:16px;
+  margin:0 0 18px;padding:16px;
+  border:1px solid var(--linie);border-radius:var(--rundung-klein);
+  background:var(--flaeche);
+}
+.gastkopf .zahl{
+  font-family:var(--schrift-zahl);
+  font-size:34px;line-height:1;font-weight:700;
+  color:var(--rot);font-variant-numeric:tabular-nums;
+}
+.gastkopf .wort{font-size:14px;line-height:1.35}
+.gastkopf .wort small{display:block;color:var(--tinte-leise);font-size:12px;margin-top:3px}
+
+.gastzeile{
+  display:flex;align-items:center;gap:12px;width:100%;
+  margin:0 0 8px;padding:11px 13px;text-align:left;
+  border:1px solid var(--linie);border-radius:var(--rundung-klein);
+  background:var(--karte);color:var(--tinte);
+  font-size:15px;font-family:inherit;cursor:pointer;
+}
+/* Lange Gerichtsnamen dürfen umbrechen statt die Zeile zu sprengen —
+   die Zahl rechts behält ihre Breite. */
+.gastzeile > span:first-child{flex:1;min-width:0}
+.gastzeile .mal{
+  margin-left:auto;flex:none;
+  font-family:var(--schrift-zahl);font-size:12.5px;
+  color:var(--tinte-leise);font-variant-numeric:tabular-nums;
+}
+.gastzeile .pf{flex:none;color:var(--tinte-still)}
+/* Gericht nicht mehr in der Karte: Zeile bleibt stehen, führt aber
+   nirgendwohin — ein Sprung ins Leere wäre schlimmer. */
+.gastzeile[disabled]{cursor:default;opacity:.65}
+
+/* Der Gutschein trägt Gold im Rand und am Code, aber NICHT unter der
+   Schrift. Gemessen: Auf der Goldfläche kam der Text je nach Haus und
+   Tageszeit auf 2,5:1 bis 4,3:1 — die Fläche hellt den Abendgrund auf,
+   und heller Text verliert genau dort. Der Kartengrund trägt jede
+   Palette; die Marke steckt im Rand. */
+.gutschein{
+  margin:0 0 10px;padding:13px 14px;
+  border:1px dashed var(--gold);border-radius:var(--rundung-klein);
+  background:var(--karte);
+}
+.gutschein b{display:block;font-size:15px;margin-bottom:2px}
+.gutschein p{margin:0;font-size:13px;color:var(--tinte-leise)}
+.gutschein .code{
+  display:inline-block;margin-top:8px;padding:4px 9px;
+  font-family:var(--schrift-zahl);font-size:14px;letter-spacing:1px;
+  border:1px solid var(--gold);border-radius:6px;background:var(--gold-flaeche);
+}
+/* Eine Frist ist Information, kein Zierrat: --tinte-still lag bei
+   1,6:1 bis 2,8:1 und ist für Linien gedacht, nicht für Text. */
+.gutschein .bis{margin-top:6px;font-size:11.5px;color:var(--tinte-leise)}
+
+/* Ladezustand im Maß des Inhalts statt eines drehenden Kreises:
+   Der Gast sieht, WAS gleich kommt, nicht nur DASS etwas kommt. */
+.skelett{
+  border-radius:var(--rundung-klein);
+  background:linear-gradient(90deg,var(--flaeche) 0%,var(--flaeche-2) 50%,var(--flaeche) 100%);
+  background-size:200% 100%;
+  animation:skelettzug 1.4s linear infinite;
+}
+.skelett.kopf{height:76px;margin:0 0 18px}
+.skelett.reihe{height:46px;margin:0 0 8px}
+@keyframes skelettzug{ from{background-position:200% 0} to{background-position:-200% 0} }
+@media (prefers-reduced-motion:reduce){
+  .skelett{animation:none;background:var(--flaeche)}
+}
+
 /* ═══ WILLKOMMEN UND BEGLEITER ══════════════════════════════════
    Drei Sekunden, bevor die Karte da ist: Name des Hauses, ein Gruß,
    und die Figur, die durch den Abend mitläuft.
@@ -2355,6 +2439,12 @@ const KACHELN = [
     ziel:"#/wlan", bereich:"Jetzt am Tisch", von:0, bis:24, cyan:true },
   { t:"Tischquiz",      u:"Süße Fragen, kurze Runde – wer weiß mehr?", i:"quiz",
     ziel:"#/quiz", bereich:"Jetzt am Tisch", von:11, bis:24, neu:true },
+  /*  Braucht die Datenbank: Ohne sie gäbe es nichts zu zeigen, und
+      eine Kachel, die zu „geht hier nicht" führt, lässt das ganze
+      Haus unfertig wirken.                                          */
+  { t:"Mein Tisch",     u:"Ihre Besuche, Lieblinge und Gutscheine – ohne Konto", i:"herz",
+    ziel:"#/meintisch", bereich:"Jetzt am Tisch", von:0, bis:24,
+    wenn:() => serverBereit() },
 
   /*  BEIM GEHEN · zwei Spalten, weil nebensächlich  */
   { t:"Uns bewerten",         u:"Zwei Sätze auf Google – und wir freuen uns", i:"stern",
@@ -2471,6 +2561,70 @@ function aktionAnzeigen(){
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   MEIN TISCH · Wiedererkennung ohne Konto
+
+   Der Gast bekommt einen Besuchszähler, seine Lieblingsspeisen und
+   offene Gutscheine — ohne Anmeldung, ohne Passwort, ohne Namen.
+   Alles hängt an einer Zufallskennung, die im Gerät bleibt.
+
+   Warum NICHT bestellungen.gast_kennung, obwohl das Feld längst da
+   ist: Das ist die Quittungsnummer EINER Bestellung. Sie liegt unter
+   einem UNIQUE-Index, und bestellung_aufgeben gibt bei bekannter
+   Nummer die vorhandene id zurück, statt neu anzulegen — genau dafür
+   ist sie da. Ein Gerät dort einzutragen hätte geheißen: Die zweite
+   Bestellung desselben Gastes verschwindet still. Deshalb eine
+   eigene Spalte bestellungen.geraet.
+
+   Die Kennung ist zufällig und je Betrieb eine andere. Wer in zwei
+   Häusern isst, ist zwei Gäste — das ist Absicht: Ein Betrieb soll
+   nicht sehen, wo sein Gast sonst noch war.
+   ══════════════════════════════════════════════════════════════════ */
+const GERAET_SCHLUESSEL = "omoteno-geraet-" + (SERVER.betrieb || "haus");
+
+function geraetKennung(){
+  let k = "";
+  try{ k = localStorage.getItem(GERAET_SCHLUESSEL) || ""; }catch(e){}
+  /* Die Datenbank lässt nur [A-Za-z0-9_-] und 8–64 Zeichen zu. Was
+     hier nicht hineinpasst, wird ersetzt statt mitgeschleppt. */
+  if(!/^[A-Za-z0-9_-]{8,64}$/.test(k)){
+    k = (self.crypto && crypto.randomUUID)
+      ? crypto.randomUUID().replace(/-/g, "")
+      : "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 14);
+    try{ localStorage.setItem(GERAET_SCHLUESSEL, k); }catch(e){ /* privates Fenster */ }
+  }
+  return k;
+}
+
+/* Was der Server zurückgemeldet hat. Solange geladen false ist, zeigt
+   die Seite Skelettflächen statt einer leeren Fläche. */
+let gastStand = { geladen:false, ok:false, besuche:0, lieblinge:[], gutscheine:[] };
+
+function gastLaden(){
+  if(!serverBereit()) return Promise.resolve();
+  const ziel = SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/gast_melden";
+  return sicherFetch(ziel, {
+      method:"POST",
+      headers:{ apikey:SERVER.schluessel,
+                Authorization:"Bearer " + SERVER.schluessel,
+                "Content-Type":"application/json" },
+      body: JSON.stringify({ p_slug: SERVER.betrieb, p_kennung: geraetKennung() })
+    })
+    .then(a => a.ok ? a.json() : null)
+    .then(d => {
+      gastStand.geladen = true;
+      if(!d || d.ok !== true) return;
+      gastStand.ok         = true;
+      gastStand.besuche    = d.besuche || 0;
+      gastStand.lieblinge  = Array.isArray(d.lieblinge)  ? d.lieblinge  : [];
+      gastStand.gutscheine = Array.isArray(d.gutscheine) ? d.gutscheine : [];
+      /* Nur neu zeichnen, wenn der Gast gerade auf dieser Seite steht.
+         Sonst risse es ihm die Karte unter den Fingern weg. */
+      if(seiteJetzt === "meintisch") zeichne();
+    })
+    .catch(() => { gastStand.geladen = true; });
+}
+
+/* ══════════════════════════════════════════════════════════════════
    DER BEGLEITER
 
    Ein Untersetzer mit Gesicht. Das Ding auf dem Tisch IST das
@@ -2547,6 +2701,11 @@ const AVATAR_TEXTE = {
     freundlich: "Ehrlich ist uns lieber als nett.",
     ruhig:      "Ein paar Worte genügen.",
     witzig:     "Fünf Sterne nehmen wir auch."
+  },
+  meintisch: {
+    freundlich: "Ich merke mir, was Ihnen schmeckt – mehr nicht.",
+    ruhig:      "Ihre Spuren bleiben auf Ihrem Gerät.",
+    witzig:     "Ich habe mitgezählt. Nur das, versprochen."
   }
 };
 
@@ -5455,6 +5614,101 @@ SEITEN.reservieren = () =>
   t("Eine Anfrage ist noch keine feste Reservierung – wir bestätigen Ihnen den Tisch, sobald wir sie gelesen haben. Für heute Abend rufen Sie uns besser direkt an.") +
   '</div></div>';
 
+/* ---------- Mein Tisch ---------- */
+
+/* findeGericht() sagt, OB es das Gericht gibt, nicht WO. Für den
+   Sprung braucht es aber die Seite, sonst landet der Gast in der
+   Speisekarte, während sein Liebling unter Getränken steht. */
+function gastSeiteFuer(name){
+  const wo = [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE],
+              ["cocktails", COCKTAILS]];
+  for(const [seite, quelle] of wo)
+    for(const gr of quelle)
+      for(const e of gr.eintraege)
+        if(e.n === name) return seite;
+  return "";
+}
+
+SEITEN.meintisch = () => {
+  const kopf = '<div class="seite"><h2>' + t("Mein Tisch") + '</h2>';
+
+  /* Solange die Antwort unterwegs ist: Flächen im Maß dessen, was
+     kommt. Ein drehender Kreis sagt nur „warte", ein Skelett sagt
+     „hier stehen gleich deine Besuche und deine Lieblinge". */
+  if(!gastStand.geladen){
+    return kopf +
+      '<p class="unter">' + t("Einen Augenblick, wir sehen nach.") + '</p>' +
+      '<div class="skelett kopf"></div>' +
+      '<div class="skelett reihe"></div><div class="skelett reihe"></div>' +
+      '<div class="skelett reihe"></div></div>';
+  }
+
+  if(!gastStand.ok){
+    return kopf +
+      '<p class="unter">' + t("Das klappt hier gerade nicht.") + '</p>' +
+      '<div class="hinweis">' +
+      t("Ihre Besuche merkt sich Ihr Gerät, nicht wir – dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.") +
+      '</div>' +
+      '<a class="knopf zweit" href="#/speisekarte">' + t("Zur Karte") + '</a></div>';
+  }
+
+  const n = gastStand.besuche;
+  let html = kopf +
+    '<p class="unter">' +
+    t("Ohne Konto, ohne Passwort – das merkt sich Ihr Gerät.") + '</p>' +
+    '<div class="gastkopf"><span class="zahl">' + n + '</span>' +
+    '<span class="wort">' +
+      (n <= 1 ? t("Ihr erster Besuch bei uns.") : t("Ihr {n}. Besuch bei uns.", {n:n})) +
+      '<small>' + (n <= 1
+        ? t("Ab dem nächsten Mal sammeln sich hier Ihre Lieblingsspeisen.")
+        : t("Schön, dass Sie wieder da sind.")) + '</small>' +
+    '</span></div>' +
+    begleiterHTML("meintisch");
+
+  if(gastStand.lieblinge.length){
+    html += '<div class="label">' + t("IHRE LIEBLINGE") + '</div>' +
+      gastStand.lieblinge.map(l => {
+        const seite = gastSeiteFuer(l.name);
+        const ziel  = seite ? "#/" + seite + "?g=" + encodeURIComponent(l.name) : "";
+        /* Steht das Gericht nicht mehr in der Karte, wird die Zeile
+           nicht anklickbar – ein Sprung ins Leere ist schlimmer als
+           gar keiner. */
+        return '<button class="gastzeile"' + (ziel ? ' data-liebling="' + sicherText(ziel) + '"' : ' disabled') + '>' +
+          '<span>' + sicherText(l.name) + '</span>' +
+          '<span class="mal">' + t("{n}×", {n:l.mal}) + '</span>' +
+          (ziel ? '<span class="pf">›</span>' : "") + '</button>';
+      }).join("");
+  }
+
+  if(gastStand.gutscheine.length){
+    html += '<div class="label">' + t("FÜR SIE HINTERLEGT") + '</div>' +
+      gastStand.gutscheine.map(g => {
+        const bis = g.bis
+          ? '<div class="bis">' + t("gültig bis {d}", {d:new Date(g.bis).toLocaleDateString("de-DE")}) + '</div>'
+          : "";
+        return '<div class="gutschein"><b>' + sicherText(g.titel) + '</b>' +
+          (g.text ? '<p>' + sicherText(g.text) + '</p>' : "") +
+          '<span class="code">' + sicherText(g.code) + '</span>' + bis + '</div>';
+      }).join("") +
+      '<div class="hinweis">' +
+      t("Eingelöst wird am Tisch: Zeigen Sie den Code einfach unserem Team.") +
+      '</div>';
+  }
+
+  /* Freiwillig heißt: Der Zweck steht daneben, nicht im Kleingedruckten,
+     und ohne Adresse funktioniert alles hier genauso. */
+  html += '<div class="label">' + t("POST VOM HAUS (FREIWILLIG)") + '</div>' +
+    '<input class="feld" id="gastMail" type="email" inputmode="email" autocomplete="email" ' +
+    'placeholder="' + t("Ihre E-Mail-Adresse") + '">' +
+    '<button class="knopf zweit" data-aktion="gastMail">' + t("Adresse hinterlegen") + '</button>' +
+    '<div class="kopiert" id="melde"></div>' +
+    '<div class="hinweis">' +
+    t("Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – sonst nichts. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.") +
+    '</div>';
+
+  return html + '</div>';
+};
+
 /* ---------- kleine Helfer ---------- */
 function melden(text, warnung){
   const m = $("melde");
@@ -6447,6 +6701,13 @@ function anServer(art, daten){
            Wiederholungsversuch trägt dieselbe - die Funktion legt dann
            nicht doppelt an, sondern gibt die vorhandene id zurück. */
         p_gast_kennung: daten.kennung || null,
+        /* Zwei verschiedene Dinge, die beide „Kennung" heißen könnten:
+           p_gast_kennung ist die Quittungsnummer DIESER Bestellung und
+           je Versuch dieselbe, damit ein Wiederholungsversuch nicht
+           doppelt anlegt. p_geraet bleibt über Bestellungen und Besuche
+           hinweg gleich und trägt „Mein Tisch". Vertauscht man sie,
+           verschwindet ab der zweiten Bestellung jede weitere still. */
+        p_geraet:     geraetKennung(),
         p_quelle:     "tisch",
         /* p_tisch ist nur noch der Rückfall. Liegt eine gültige Sitzung
            vor, überschreibt der Server die Nummer mit der des Tisches,
@@ -6674,6 +6935,10 @@ $("inhalt").addEventListener("click", e => {
     return;
   }
 
+  /* Liebling angetippt: direkt zum Gericht in seiner Karte. */
+  const liebling = e.target.closest("[data-liebling]");
+  if(liebling){ location.hash = liebling.dataset.liebling; return; }
+
   /* Zurück zu einer früheren, noch offenen Bestellung. */
   const vKnopf = e.target.closest("[data-vorgang]");
   if(vKnopf){
@@ -6693,6 +6958,36 @@ $("inhalt").addEventListener("click", e => {
     const was = aktion.dataset.aktion;
 
     if(was === "kopieren"){ kopieren(WLAN.passwort); }
+
+    if(was === "gastMail"){
+      const adresse = wert("gastMail");
+      if(!adresse){ melden(t("Bitte tragen Sie noch Ihre Adresse ein."), true); return; }
+      if(!serverBereit()){ melden(t("Das klappt hier gerade nicht."), true); return; }
+      aktion.disabled = true;
+      sicherFetch(SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/gast_mail_merken", {
+          method:"POST",
+          headers:{ apikey:SERVER.schluessel,
+                    Authorization:"Bearer " + SERVER.schluessel,
+                    "Content-Type":"application/json" },
+          body: JSON.stringify({ p_slug: SERVER.betrieb, p_kennung: geraetKennung(),
+                                 p_email: adresse })
+        })
+        .then(a => a.ok ? a.json() : null)
+        .then(d => {
+          aktion.disabled = false;
+          if(d && d.ok === true){
+            /* Kein „Sie sind angemeldet" – das wäre gelogen, solange
+               die Bestätigung fehlt und niemand versendet. */
+            melden(t("Notiert. Sie hören erst von uns, wenn Sie die Adresse bestätigt haben."));
+            const feld = $("gastMail"); if(feld) feld.value = "";
+          } else if(d && d.grund === "email"){
+            melden(t("Diese Adresse sieht nicht vollständig aus."), true);
+          } else {
+            melden(t("Das klappt hier gerade nicht."), true);
+          }
+        })
+        .catch(() => { aktion.disabled = false; melden(t("Das klappt hier gerade nicht."), true); });
+    }
 
     if(was === "musik"){
       const lied = wert("wunsch");
@@ -7049,6 +7344,11 @@ zeichne();
    auftaucht, ist immer noch eine Neuigkeit. */
 aktionenLaden();
 setInterval(aktionenLaden, 120000);
+
+/* Einmal beim Öffnen melden: Das zählt den Besuch und holt Lieblinge
+   und Gutscheine. Kein Takt dahinter — was sich hier ändert, ändert
+   sich zwischen Besuchen und nicht während einem. */
+gastLaden();
 
 /* Lief beim letzten Besuch noch etwas? Dann sofort nachfragen und
    den Streifen zeigen - der Gast soll nicht suchen müssen. */

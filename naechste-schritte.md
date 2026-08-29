@@ -60,6 +60,41 @@ Alle Prüfskripte laufen sauber. Siehe `CLAUDE.md`.
   Hub als Band auf Startseite und Karte — und als Einblendung, wenn
   die Aktion während des Besuchs anfängt.
 
+- **Mein Tisch — Gastkonto ohne Konto.** Eine Zufallskennung im Gerät,
+  je Betrieb eine eigene. Der Hub zeigt Besuchszähler, die drei
+  Lieblingsspeisen aus den eigenen Bestellungen (mit Sprung ins
+  Gericht) und offene Gutscheine; die E-Mail-Adresse ist ausdrücklich
+  freiwillig und wird nur als Wunsch gespeichert — versendet wird
+  nichts. Neue Tabellen `gaeste` und `gutscheine`, Funktionen
+  `gast_melden` und `gast_mail_merken`, beide ohne Tabellenzugriff für
+  Gäste.
+
+  **Dabei gefunden:** `bestellungen.gast_kennung` ist nicht der Gast,
+  sondern die **Quittungsnummer einer Bestellung** — UNIQUE, und
+  `bestellung_aufgeben` gibt bei bekannter Nummer die vorhandene id
+  zurück. Ein Gerät dort einzutragen hätte ab der zweiten Bestellung
+  jede weitere still verschluckt. Deshalb eine eigene Spalte
+  `bestellungen.geraet`. Nachgemessen in einer zurückgedrehten
+  Transaktion und kopflos: zwei Bestellungen, ein Gerät, zwei ids.
+
+  **Und:** Chocos `tinteLeise` lag bei **4,48:1** auf Weiß — knapp
+  unter der Grenze, vom Erzeuger seit jeher gemeldet. Jetzt `#846C62`
+  (4,88:1 auf Karte, 4,55:1 auf Grund). Der Hinweis ist weg.
+
+**Offen aus Block 6, bewusst noch nicht gebaut:**
+
+- **Gutscheine kann noch niemand anlegen.** Die Tabelle steht, der Hub
+  zeigt sie, aber im Admin-Board fehlt die Fläche dafür — sie gehört
+  zu den Gästelisten aus Block 9. Bis dahin geht es nur über die
+  Datenbank.
+- **Ein neuer Hub zeigt ohne Netz Chocos Karte.** `SPEISEKARTE`,
+  `GETRAENKE` und `COCKTAILS` stehen fest im Gerüst und werden zur
+  Laufzeit aus der Datenbank überschrieben. Solange die Antwort
+  unterwegs ist — und offline dauerhaft — sieht der Gast eines anderen
+  Hauses 75 Crêpes aus Kirchhain. Richtige Antwort ist nicht „Karte
+  ins Markenblatt", sondern ein **gestaltetes Skelett** an dieser
+  Stelle, wie es „Mein Tisch" jetzt hat.
+
 **Offen an der Webseite:** Der Demo-Hub ist eine Nachbildung, kein
 erzeugter Hub. Sobald ein Betrieb als Schaufenster erzeugt ist
 (`demo.omoteno.de`), gehört daneben ein Verweis „echten Hub öffnen" —
