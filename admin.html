@@ -122,6 +122,16 @@
   --gut:#6FAE6A;            /* 5,16 */
   --glut:#E8895E;           /* 5,31 — „drängt" */
 
+  /* Durchscheinende Flächen. Sie standen als feste rgba-Werte im
+     Blatt und blieben deshalb dunkel, als die helle Fassung kam:
+     Der Kopf, die Befehlsleiste und der Scharfschalt-Schirm trugen
+     im Hellen dunkle Grundfarbe unter dunkler Schrift — bis auf
+     1,03:1 herunter. Ein fester Farbwert ist eine Palette, die
+     niemand mitschaltet. */
+  --tresen-glas:rgba(20,18,15,.94);
+  --leiste-glas:rgba(16,38,33,.92);
+  --schleier:rgba(10,11,14,.94);
+
   --r:14px;
   --schrift:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
   /* Alles Zählbare läuft in der Monospace: Uhrzeiten, Tischnummern,
@@ -136,6 +146,35 @@
   --t-druck:140ms; --t-klein:180ms; --t-blatt:400ms;
 }
 
+/* ── Helle Fassung ────────────────────────────────────────────────
+   Ein Board steht tagsüber am Fenster. Dunkel blendet dort nicht,
+   sondern SPIEGELT — man sieht sich selbst statt der Bestellungen.
+   Deshalb dieselbe Wahl wie im Küchendisplay, mit denselben Werten:
+   Zwei Boards, die nebeneinander laufen, dürfen nicht verschieden
+   aussehen.
+
+   Die Bedeutungsfarben stehen eine Stufe dunkler als im Dunkeln —
+   auf Papier gilt dieselbe Grenze von 4,5:1, aber sie fällt in die
+   andere Richtung. Jeder Wert gerechnet, nicht geschätzt; die Zahl
+   steht daneben. */
+body.hell{
+  --nacht:#E9E3D4; --tresen:#FBF9F1; --karte:#FBF9F1; --linie:#CFC6AE;
+  --kreide:#16150F; --gedaempft:#5C5849;
+  --flaeche:#FBF9F1;        /* Karte auf hellem Grund      */
+  --flaeche-2:#EDE9DC;      /* Eingelassen: Felder, Bahnen */
+  --grau:#5C5849;           /* Alias auf --gedaempft       */
+  --messing:#7A5A10;        /* 6,04 auf Blatt */
+  --tisch:#7A5A10;
+  --telefon:#1F6E70;
+  --reservierung:#5B3E93;
+  --warn:#8C2C21;           /* 7,98 */
+  --gut:#3A6329;            /* 6,65 */
+  --glut:#A8410F;
+  --tresen-glas:rgba(251,249,241,.94);
+  --leiste-glas:rgba(251,249,241,.94);
+  --schleier:rgba(244,240,228,.96);
+}
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 /* hidden muss hidden bleiben. .zahl setzt display:inline-block und
    schlägt damit die UA-Regel für [hidden] — der Zähler an den
@@ -143,6 +182,9 @@
    Falle wie im Konto: Angabe schlägt Absicht. */
 [hidden]{display:none !important}
 ::selection{background:var(--messing);color:var(--nacht)}
+/* Im Hellen ist --nacht das Papier — dann stünde Papier auf Messing.
+   Die Auswahl braucht ihre eigene Gegenfarbe. */
+body.hell ::selection{background:var(--messing);color:#FBF9F1}
 ::-webkit-scrollbar{width:10px;height:10px}
 ::-webkit-scrollbar-track{background:var(--nacht)}
 ::-webkit-scrollbar-thumb{background:var(--karte);border-radius:99px;border:2px solid var(--nacht)}
@@ -177,7 +219,7 @@ button{cursor:pointer;border:none;background:none}
 /* ─── Kopf ─────────────────────────────────────────────────── */
 header{
   position:sticky;top:0;z-index:40;
-  background:rgba(20,18,15,.94);
+  background:var(--tresen-glas);
   backdrop-filter:blur(12px);
   border-bottom:1px solid var(--linie);
   padding:calc(12px + env(safe-area-inset-top)) 16px 0;
@@ -392,7 +434,7 @@ main{padding:18px 16px 90px;max-width:820px;margin:0 auto}
   .befehlsleiste{
     display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
     position:fixed;left:0;right:0;bottom:0;z-index:40;
-    background:rgba(16,38,33,.92);
+    background:var(--leiste-glas);
     -webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);
     border-top:1px solid var(--linie);
     padding:6px 4px calc(6px + env(safe-area-inset-bottom));
@@ -1089,7 +1131,7 @@ textarea{resize:vertical;min-height:66px}
 
 /* ══ Scharfschalten: ein Handgriff für Ton, Hinweise und Bildschirm ══ */
 .scharf{position:fixed;inset:0;z-index:120;display:flex;align-items:center;
-  justify-content:center;padding:24px;background:rgba(10,11,14,.94);
+  justify-content:center;padding:24px;background:var(--schleier);
   -webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
 .scharf[hidden]{display:none}
 .scharfinhalt{width:100%;max-width:400px;text-align:left}
@@ -1651,6 +1693,17 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 
     <div class="egruppe">
       <h2 class="etitel">Bildschirm</h2>
+      <div class="ezeile senkrecht">
+        <span><b>Hell oder dunkel</b><i>Am Fenster spiegelt Dunkel, im Abendbetrieb blendet Hell</i></span>
+        <div class="klangwahl" id="lichtWahl" role="radiogroup" aria-label="Ansicht wählen">
+          <button class="klang" data-licht="auto"   role="radio" aria-checked="true">
+            <b>Automatisch</b><i>Folgt dem Gerät</i></button>
+          <button class="klang" data-licht="hell"   role="radio" aria-checked="false">
+            <b>Hell</b><i>Für Tageslicht</i></button>
+          <button class="klang" data-licht="dunkel" role="radio" aria-checked="false">
+            <b>Dunkel</b><i>Für den Abend</i></button>
+        </div>
+      </div>
       <label class="ezeile">
         <span><b>Wach halten</b><i>Board schläft im Betrieb nicht ein</i></span>
         <input type="checkbox" class="kipp" data-einst="wachhalten">
@@ -2124,7 +2177,11 @@ const EINST_STANDARD = {
   wachhalten:   true,    // Bildschirm nicht einschlafen lassen
   autoFertig:   false,   // erledigte Meldungen ausblenden
   mahnungAb:    10,      // Minuten, ab denen eine offene Meldung mahnt (0 = aus)
-  reservierung: true     // Reservierungen im eigenen Bereich zeigen
+  reservierung: true,    // Reservierungen im eigenen Bereich zeigen
+  /* 'auto' folgt der Einstellung des Geräts, 'hell' und 'dunkel'
+     gelten fest. Vorgabe ist auto: Ein Board am Fenster steht
+     tagsüber hell und abends dunkel, ohne dass jemand daran denkt. */
+  licht:        'auto'
 };
 let EINST = Object.assign({}, EINST_STANDARD);
 
@@ -2138,6 +2195,10 @@ function einstSichern(){
   try{ localStorage.setItem("omoteno-einstellungen", JSON.stringify(EINST)); }catch(e){}
 }
 einstLaden();
+/* Sofort anwenden, nicht erst beim Öffnen der Einstellungen — sonst
+   blitzt das Board einmal dunkel auf und schlägt dann um. */
+document.addEventListener("DOMContentLoaded", lichtAnwenden);
+if(document.readyState !== "loading") lichtAnwenden();
 
 /* Die Klangdatei steckt im Dokument, damit sie ohne Netz und ohne
    zweite Anfrage sofort bereitliegt. */
@@ -3017,10 +3078,24 @@ setInterval(() => {
 /* ═══════════════════════════════════════════════════════════════
    EINSTELLUNGSSEITE
    ═══════════════════════════════════════════════════════════════ */
+/* Hell oder dunkel anwenden. Läuft auch VOR dem ersten Zeichnen,
+   damit das Board nicht einmal dunkel aufblitzt und dann umschlägt. */
+function lichtAnwenden(){
+  const dunkelAmGeraet = !window.matchMedia ||
+    !window.matchMedia("(prefers-color-scheme: light)").matches;
+  const hell = EINST.licht === "hell" ||
+               (EINST.licht === "auto" && !dunkelAmGeraet);
+  document.body.classList.toggle("hell", hell);
+  const m = document.querySelector('meta[name="theme-color"]');
+  if(m) m.setAttribute("content", hell ? "#FBF9F1" : "#102621");
+}
+
 function einstZeichnen(){
   $$("[data-einst]").forEach(el => {
     el.checked = !!EINST[el.dataset.einst];
   });
+  $$("#lichtWahl .klang").forEach(x =>
+    x.setAttribute("aria-checked", x.dataset.licht === EINST.licht));
   const r = $("#lautRegler");
   if(r){ r.value = EINST.lautstaerke; $("#lautWert").textContent = EINST.lautstaerke + " %"; }
   $$("#klangWahl .klang").forEach(x =>
@@ -3127,6 +3202,25 @@ $("#mahnRegler").addEventListener("change", () => {
 
 /* Klang wählen: sofort vorspielen, sonst kann man ihn nicht beurteilen.
    Muss synchron in der Berührung laufen, sonst sperrt iOS den Ton. */
+if($("#lichtWahl")){
+  $("#lichtWahl").onclick = e => {
+    const k = e.target.closest("[data-licht]"); if(!k) return;
+    EINST.licht = k.dataset.licht;
+    einstSpeichern();
+    lichtAnwenden();
+    $$("#lichtWahl .klang").forEach(x =>
+      x.setAttribute("aria-checked", x.dataset.licht === EINST.licht));
+  };
+  /* Steht die Wahl auf „automatisch", zieht das Board mit, wenn das
+     Gerät abends umschaltet — ohne dass jemand neu lädt. */
+  if(window.matchMedia){
+    const w = window.matchMedia("(prefers-color-scheme: light)");
+    const horch = () => { if(EINST.licht === "auto") lichtAnwenden(); };
+    if(w.addEventListener) w.addEventListener("change", horch);
+    else if(w.addListener) w.addListener(horch);
+  }
+}
+
 $("#klangWahl").onclick = e => {
   const k = e.target.closest("[data-klang]"); if(!k) return;
   EINST.klang = k.dataset.klang;
