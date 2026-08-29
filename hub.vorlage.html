@@ -162,6 +162,21 @@ body[data-phase="abend"]{
 }
 
 /* ═══ Grundgerüst ═══════════════════════════════════════════════ */
+/* hidden muss hidden bleiben.
+
+   VORFALL — der schwerste dieser Sitzung. .willkommen setzt
+   display:flex. Die Regel des Browsers für [hidden] ist eine
+   UA-Regel und verliert gegen JEDE Angabe im Blatt. Das Attribut tat
+   also nichts: Nach einem Neuladen INNERHALB der Sitzung übersprang
+   der Willkommensschirm sich selbst, blieb aber undurchsichtig über
+   dem ganzen Hub liegen und fing jeden Tipp ab. Der Gast sah eine
+   leere farbige Fläche und konnte nichts mehr tun — bei jedem
+   Neuladen, bei jeder Rückkehr aus dem Hintergrund.
+
+   Dieselbe Falle stand schon in konto.html und im Admin-Board und
+   ist dort seit Blöcken behoben. Der Hub hatte die Regel nie. */
+[hidden]{display:none !important}
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 /* KEIN scroll-behavior:smooth – zeichne() springt bewusst hart nach oben.
    Mit smooth wird daraus eine halbe Sekunde Scrollfahrt, die genau über der
@@ -5260,8 +5275,14 @@ function empfehlungHTML(){
 
   const quelle = g ? bildFuer(g, true) : "";
   const bild = quelle
+    /* onerror wie bei den Kartenbildern: Fehlt die Datei, verschwindet
+       die ganze Hülle. Ohne das stand hier als einziger Stelle im Hub
+       ein kaputtes Bildsymbol — ausgerechnet auf der Empfehlung, der
+       auffälligsten Karte der Startseite. */
     ? '<span class="tbild' + (schwebt(g) ? " frei" : "") + '">' +
-      '<img src="' + quelle + '" alt="" loading="lazy" decoding="async"></span>'
+      '<img src="' + quelle + '" alt="" loading="lazy" decoding="async" ' +
+      'onerror="this.closest(&quot;.tipp&quot;).classList.remove(&quot;mitbild&quot;);' +
+      'this.closest(&quot;.tbild&quot;).remove()"></span>'
     : "";
 
   return '<a class="tipp' + (bild ? " mitbild" : "") + '" href="' + ziel + '">' +
@@ -8183,13 +8204,17 @@ zeichne();
   const SCHLUESSEL = "omoteno-willkommen";
   let schon = false;
   try{ schon = sessionStorage.getItem(SCHLUESSEL) === "1"; }catch(e){}
-  if(schon) return;
+  /* Nicht nur zurückgehen: WEGNEHMEN. Ein Schirm, der nicht gebraucht
+     wird, hat auch nichts im Auszeichnungstext zu suchen — dann kann
+     ihn auch keine künftige Regel versehentlich wieder sichtbar
+     machen. Gürtel und Hosenträger, nach dem Vorfall oben. */
+  if(schon){ schirm.remove(); return; }
   try{ sessionStorage.setItem(SCHLUESSEL, "1"); }catch(e){}
 
   /* Wer über einen tiefen Link kommt (#/speisekarte), will dorthin
      und nicht erst begrüßt werden. */
   const tief = (location.hash || "").replace(/^#\/?/, "");
-  if(tief && tief !== "/") return;
+  if(tief && tief !== "/"){ schirm.remove(); return; }
 
   $("wkFigur").innerHTML = avatarSVG(120);
   $("wkHaus").textContent = BETRIEB.name;

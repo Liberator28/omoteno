@@ -415,7 +415,32 @@ doppelte `id` im Auszeichnungstext, im Skript gesuchte Elemente ohne
 Gegenstück im HTML, Namenskollisionen zwischen Skriptblöcken und die
 Syntax jedes Blocks einzeln.
 
-### 8.1 Eine Prüfung, die nicht startet, ist keine
+### 8.1 `[hidden]` hält nicht, wenn im Blatt ein `display` steht
+
+> **Vorfall, der schwerste dieser Sitzung.** `.willkommen` setzt
+> `display:flex`. Die Regel des Browsers für `[hidden]` ist eine
+> UA-Regel und verliert gegen **jede** Angabe im Blatt. Das Attribut
+> tat also nichts: Nach einem Neuladen INNERHALB der Sitzung
+> übersprang der Willkommensschirm sich selbst, blieb aber
+> undurchsichtig über dem ganzen Hub liegen und fing jeden Tipp ab.
+> Der Gast sah eine leere farbige Fläche und konnte nichts mehr tun —
+> bei jedem Neuladen, bei jeder Rückkehr aus dem Hintergrund. Dieselbe
+> Falle stand schon zweimal im Konto und im Board; der Hub hatte die
+> Gegenregel nie.
+
+**Jede Datei bekommt ganz oben:**
+
+```css
+[hidden]{display:none !important}
+```
+
+Und: Ein Überlagerungsschirm, der nicht gebraucht wird, wird
+**entfernt**, nicht nur versteckt. Gefunden hat das keine
+Einzelprüfung, sondern erst `pruef-durchgang.js` — der Weg, den ein
+Gast wirklich geht. Wer nur Bausteine prüft, findet keine Fehler
+zwischen den Bausteinen.
+
+### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
 > `pruef-ueberlauf.js` lasen `omoteno-marken-studio.html`,
@@ -444,6 +469,11 @@ Dazu je nach Änderung:
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
 | Gastkonto, „Mein Tisch" im Hub | `pruef-gastkonto.js` (braucht `dist/`) |
 | Figur des Hauses, Bestellpass | `pruef-figur.js` (braucht `dist/`) |
+| Texte im Hub, Sprachen | `pruef-sprache.js` |
+| Freie Texte des Betriebs | `pruef-texte.js` (braucht `dist/`) |
+| Farben, hell oder dunkel | `pruef-lesbarkeit.js` (braucht `dist/`) |
+| **Irgendetwas am Hub** | `pruef-durchgang.js` — geht den ganzen Weg des Gastes |
+| **Irgendetwas am Board** | `pruef-board.js` — bedient das Board von Hand |
 
 Und danach, immer:
 
