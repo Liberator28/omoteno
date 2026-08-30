@@ -88,6 +88,11 @@ server.listen(8899, async () => {
     ["/konto",          "Konto"],
     ["/start",          "Omoteno"],
     ["/studio",         "Studio"],
+    /* Pflichtangaben. Bis zum 30.08. fehlten beide Dateien und die
+       Fußzeile verlinkte sie trotzdem — sechsmal ins Leere. */
+    ["/impressum",      "Impressum"],
+    ["/impressum.html", "Impressum"],
+    ["/datenschutz",    "Datenschutz"],
     ["/h/chocolamour/", "Choco L'AMouR"],
     ["/h/chocolamour",  "Choco L'AMouR"],
     /* Der zweite Kunde MUSS seinen eigenen Namen tragen. */

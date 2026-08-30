@@ -62,13 +62,12 @@ const SEITEN = [
   ["konto.html",         "konto.html"],
   ["start.html",         "start.html"],
   ["marken-studio.html", "marken-studio.html"],
-  /* Diese beiden gibt es noch nicht. Sie sind aus dem Fuß von
-     omoteno-web.html, konto.html und start.html verlinkt — sechs
-     Links auf zwei Dateien, die fehlen. Sobald sie da sind, gehören
-     sie hier hinein; bis dahin meldet der Bau sie unten als
-     fehlend, statt sie stillschweigend zu übergehen. */
-  ["impressum.html",     "impressum.html",   true],
-  ["datenschutz.html",   "datenschutz.html", true]
+  /* Pflicht, nicht Kür. Beide sind aus dem Fuß von omoteno-web.html,
+     konto.html und start.html verlinkt — sechs Links. Fehlt eine
+     davon, bricht der Bau ab, statt eine Seite auszuliefern, deren
+     Impressumslink ins Leere führt. */
+  ["impressum.html",     "impressum.html"],
+  ["datenschutz.html",   "datenschutz.html"]
 ];
 
 function weg(p){ fs.rmSync(p, { recursive:true, force:true }); }
@@ -170,6 +169,8 @@ fs.writeFileSync(path.join(ZIEL, "sitemap.xml"),
   <url><loc>https://omoteno.de/</loc><priority>1.0</priority></url>
   <url><loc>https://omoteno.de/start.html</loc><priority>0.7</priority></url>
   <url><loc>https://omoteno.de/marken-studio.html</loc><priority>0.6</priority></url>
+  <url><loc>https://omoteno.de/impressum.html</loc><priority>0.3</priority></url>
+  <url><loc>https://omoteno.de/datenschutz.html</loc><priority>0.3</priority></url>
 </urlset>
 `);
 

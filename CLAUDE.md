@@ -493,6 +493,7 @@ Dazu je nach Änderung:
 | Freie Texte des Betriebs | `pruef-texte.js` (braucht `dist/`) |
 | Farben, hell oder dunkel | `pruef-lesbarkeit.js` (braucht `dist/`) |
 | Landingpage | `pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
+| Impressum, Datenschutz | `pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
 | Marken-Studio (Bedienung) | `pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
 | Auslieferung, Umleitungen | `bauen.js` und dann `pruef-lieferung.js` |
 | **Irgendetwas am Hub** | `pruef-durchgang.js` — geht den ganzen Weg des Gastes |

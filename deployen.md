@@ -74,7 +74,8 @@ bei jedem Bau gelöscht und neu geschrieben. Änderungen gehen in:
 - `hub.vorlage.html` — gilt für alle Kunden
 - `<slug>.json` — gilt für einen
 - `omoteno-web.html`, `admin.html`, `kueche.html`, `konto.html`,
-  `start.html`, `marken-studio.html` — die Seiten selbst
+  `start.html`, `marken-studio.html`, `impressum.html`,
+  `datenschutz.html` — die Seiten selbst
 
 ### Schritt 2 — Prüfen, **bevor** du eincheckst
 
@@ -95,6 +96,7 @@ Je nachdem, was du angefasst hast:
 | Geändert | Zusätzlich |
 |---|---|
 | Landingpage | `node pruef-web.js` |
+| Impressum, Datenschutz | `node pruef-recht.js` |
 | Marken-Studio | `node pruef-studio.js` und `node pruef-studio-hand.js` |
 | Farben, Paletten | `node pruef-kontrast.js`, `node pruef-lesbarkeit.js` |
 | Irgendetwas am Hub | `node pruef-durchgang.js` |
@@ -113,8 +115,8 @@ NODE_PATH=/opt/node22/lib/node_modules node pruef-web.js
 node bauen.js
 ```
 
-Der Bau meldet, was er tut. Lies die Ausgabe — sie sagt dir auch, was
-fehlt (zum Beispiel `impressum.html`, siehe unten).
+Der Bau meldet, was er tut. Lies die Ausgabe: Sie nennt jede Seite,
+jeden Hub und bricht ab, wenn eine Pflichtdatei fehlt.
 
 Der Ordner `oeffentlich/` ist danach genau das, was ins Netz geht.
 Ansehen kannst du ihn mit jedem kleinen Server:
@@ -169,6 +171,8 @@ Kunden-Hubs sähe erfolgreich aus, und die Kunden wären offline.
 | `omoteno.de/konto` | Das Kundenkonto |
 | `omoteno.de/start` | Das Anfrageformular |
 | `omoteno.de/studio` | Das Marken-Studio |
+| `omoteno.de/impressum` | Impressum |
+| `omoteno.de/datenschutz` | Datenschutzerklärung |
 | `omoteno.de/h/<slug>/` | Der Hub eines Kunden |
 | `<slug>.omoteno.de` | Derselbe Hub unter eigener Domain |
 
@@ -312,16 +316,30 @@ Prüfung sieht genau in den Titel jedes Hubs.
 
 ---
 
-## 6 · Was noch fehlt
+## 6 · Die Rechtstexte
 
-**`impressum.html` und `datenschutz.html` gibt es nicht**, sind aber
-sechsmal verlinkt: im Fuß von `omoteno-web.html`, `konto.html` und
-`start.html`, und in der Einwilligung des Anfrageformulars. Diese
-Links führen ins Leere.
+`impressum.html` und `datenschutz.html` liegen im Verzeichnis und
+gehen bei jedem Bau mit raus. `bauen.js` führt sie als **Pflicht**:
+Fehlt eine davon, bricht der Bau ab, statt eine Seite auszuliefern,
+deren Impressumslink ins Leere führt.
 
-Für eine gewerbliche Seite in Deutschland ist ein Impressum
-vorgeschrieben, und das Anfrageformular verweist auf eine
-Datenschutzerklärung, die nicht existiert. **Ich bin kein Anwalt** —
-lass beides von jemandem aufsetzen, der es ist. `bauen.js` nimmt die
-Dateien auf, sobald sie da sind, und meldet sie bis dahin bei jedem
-Lauf als fehlend.
+Zwei Dinge stehen in beiden Dateien ausdrücklich drin und sollen
+**nicht** „ergänzt" werden — beides steht als Kommentar oben in der
+jeweiligen Datei:
+
+- **Kein Link zur EU-Plattform für Online-Streitbeilegung.** Die
+  Plattform wurde am 20.07.2025 abgeschaltet; ein Hinweis darauf ist
+  seitdem falsch und selbst abmahnfähig.
+- **Kein Verweis auf § 5 TMG.** Das Telemediengesetz gibt es seit
+  dem 14.05.2024 nicht mehr, die Impressumspflicht steht in § 5 DDG.
+
+Eine Zeile ist noch offen und im Impressum als solche gekennzeichnet:
+die **Umsatzsteuer-Identifikationsnummer** („noch nicht erteilt").
+Sobald sie vom Bundeszentralamt für Steuern da ist, den Text
+ersetzen und die Klasse `offen` entfernen. Bis dahin ist die Zeile
+korrekt — § 5 Abs. 1 Nr. 6 DDG verlangt die Angabe nur, „soweit
+vorhanden".
+
+**Ich bin kein Anwalt.** Die Texte sind sorgfältig geschrieben, aber
+ob sie für deinen Fall vollständig sind, kann dir nur jemand sagen,
+der das darf.
