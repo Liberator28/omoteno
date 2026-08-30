@@ -157,6 +157,24 @@ function pruefeMarkenblatt(mb){
     W("wlan ist eingeschaltet, aber wlan.netz fehlt");
   if(!Array.isArray(mb.empfehlung) || !mb.empfehlung.length)
     W("empfehlung fehlt — auf der Startseite steht dann keine");
+
+  /* Das Quiz ist der einzige Bereich, dessen Inhalt NAMENTLICH auf
+     ein Haus zeigt: Zwei der Fragen im Gerüst lauten „Seit wann gibt
+     es Choco L'AMouR?" und „In welcher Stadt hat Choco L'AMouR
+     zuerst eröffnet?". Wer den Bereich einschaltet und keine eigenen
+     Fragen mitbringt, stellt seinen Gästen Fragen über ein fremdes
+     Café. Das fällt beim Bauen niemandem auf — der Bereich ist ja
+     gefüllt. Deshalb hier, laut. */
+  /* Aber nicht für das Haus, ÜBER das die Fragen gehen — dort sind
+     sie richtig. Eine Warnung, die auch dann kommt, wenn alles
+     stimmt, bringt einem bei, Warnungen zu übergehen. */
+  const QUIZ_HAUS = "Choco L'AMouR";
+  if(mb.bereiche && mb.bereiche.quiz &&
+     !(Array.isArray(mb.quiz) && mb.quiz.length) &&
+     (b.name || "").trim() !== QUIZ_HAUS)
+    W("quiz ist eingeschaltet, aber es fehlen eigene Fragen — der Hub " +
+      "zeigt dann die Fragen aus dem Gerüst, und zwei davon handeln " +
+      "namentlich von " + QUIZ_HAUS);
   if(mb.avatar && ["freundlich","ruhig","witzig"].indexOf(mb.avatar.art) < 0)
     F("avatar.art unbekannt: " + mb.avatar.art + " — erlaubt: freundlich, ruhig, witzig");
   /* Fehler, nicht Hinweis: Ein Tippfehler in figur ergäbe im Hub
@@ -248,11 +266,115 @@ function alsQuelltext(mb){
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,
     mb.trinkgeld ? liste("trinkgeld", mb.trinkgeld)       : null,
-    liste("empfehlung", mb.empfehlung)
+    liste("empfehlung", mb.empfehlung),
+    liste("quiz",       mb.quiz)
   ].filter(Boolean);
   teile[teile.length-1] = teile[teile.length-1].replace(/,$/,"");
 
   return kopf + "const MARKENBLATT = {\n  version: 1,\n\n" + teile.join("\n\n") + "\n};\n";
+}
+
+/* ─── Das Siegel des Hauses ───────────────────────────────────────
+   Bis zum 30.08. stand Chocos gezeichnetes Siegel fest im Gerüst und
+   damit in JEDEM erzeugten Hub. „Blend" bekam einen Kopf, in dem
+   „Choco L'AMouR · Estd. 2023" steht.
+
+   Drei Wege, in dieser Reihenfolge:
+
+     logo.svg   → wird unverändert übernommen. Für gezeichnete
+                  Siegel wie Chocos. Eine Ausnahme, die man
+                  ausdrücklich einträgt.
+     logo.bild  → eine Bilddatei, wie bisher vorgesehen.
+     sonst      → gezeichnet aus Name und Farben des Hauses.
+
+   Die Schriftfarbe im Siegel wird GERECHNET, nicht gesetzt: Auf der
+   Bar-Palette mit hellem Säuregrün wäre weiße Schrift 1,16:1
+   (CLAUDE.md §5.1). Der Kunde bekommt seine Farbe, der Gast bekommt
+   Lesbarkeit. */
+function helligkeit(hex){
+  const h = String(hex || "#000000").replace("#","");
+  const v = h.length === 3 ? h.split("").map(z => z+z).join("") : h;
+  const c = [0,2,4].map(i => {
+    const x = parseInt(v.substr(i,2),16)/255;
+    return x <= .03928 ? x/12.92 : Math.pow((x+.055)/1.055, 2.4);
+  });
+  return .2126*c[0] + .7152*c[1] + .0722*c[2];
+}
+function kontrast(a, b){
+  const x = helligkeit(a), y = helligkeit(b);
+  return (Math.max(x,y)+.05)/(Math.min(x,y)+.05);
+}
+function aufFarbe(grund, hell, dunkel){
+  return kontrast(hell, grund) >= 4.5 ? hell : dunkel;
+}
+
+/* Der Name im Siegel. Ein Kreis fasst nicht beliebig viel: Zwei
+   Zeilen à höchstens 13 Zeichen sind das, was bei 58px Anzeigegröße
+   noch lesbar bleibt. Was länger ist, wird an einem Leerzeichen
+   umgebrochen und sonst gekürzt — abgeschnitten mitten im Wort
+   sieht nach Fehler aus, gekürzt mit Punkt nach Absicht. */
+function siegelZeilen(name){
+  const w = String(name || "").trim().split(/\s+/).filter(Boolean);
+  if(!w.length) return ["", ""];
+  if(w.length === 1) return [w[0].slice(0,15), ""];
+  /* An der Stelle trennen, die beide Hälften am ähnlichsten macht */
+  let besteI = 1, besteAbw = Infinity;
+  for(let i = 1; i < w.length; i++){
+    const a = w.slice(0,i).join(" ").length, b = w.slice(i).join(" ").length;
+    if(Math.abs(a-b) < besteAbw){ besteAbw = Math.abs(a-b); besteI = i; }
+  }
+  const kurz = t => t.length > 15 ? t.slice(0,14) + "…" : t;
+  return [kurz(w.slice(0,besteI).join(" ")), kurz(w.slice(besteI).join(" "))];
+}
+
+function siegelSVG(mb){
+  const h = t => String(t == null ? "" : t).replace(/[&<>"']/g, z =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[z]));
+  const logo = mb.logo || {};
+  const name = mb.betrieb.name || "";
+
+  if(logo.svg) return String(logo.svg);
+
+  if(logo.art === "bild" && logo.bild){
+    return '<img src="' + h(logo.bild) + '" alt="' + h(name) + '" ' +
+           'width="88" height="88" style="border-radius:50%;object-fit:cover">';
+  }
+
+  const f      = mb.farben || {};
+  const ring   = f.band   || "#123029";
+  const kern   = f.grund  || "#F4F0E4";
+  const akzent = f.akzent || ring;
+  /* Schrift auf dem Kern, Zierstrich in der Akzentfarbe — beide
+     gegen den Kern gerechnet, nicht gegen den Ring. */
+  const tinte  = aufFarbe(kern, "#FFFFFF", f.tinte || "#16150F");
+  const zier   = kontrast(akzent, kern) >= 3 ? akzent : tinte;
+  const [oben, unten] = siegelZeilen(name);
+  const kopf   = (mb.schrift && mb.schrift.kopf) === "serif"
+    ? "Georgia,serif" : "system-ui,-apple-system,Helvetica,Arial,sans-serif";
+
+  /* Dieselbe Bauart wie das gezeichnete Siegel: Ring, Kern,
+     Goldrand, Wölbung. Nur die Zeichnung ist ersetzt, nicht die
+     Gestalt — sonst sähe ein neuer Kunde aus wie ein Provisorium
+     neben einem fertigen. */
+  return '<svg viewBox="0 0 100 100" width="88" height="88" aria-label="' + h(name) + '">' +
+    '<defs><radialGradient id="siegelWoelbung" cx="34%" cy="26%" r="78%">' +
+      '<stop offset="0%" stop-color="#FFFFFF" stop-opacity=".55"/>' +
+      '<stop offset="52%" stop-color="#FFFFFF" stop-opacity="0"/>' +
+      '<stop offset="100%" stop-color="#2A1A14" stop-opacity=".16"/>' +
+    '</radialGradient></defs>' +
+    '<circle cx="50" cy="50" r="48" fill="' + h(ring) + '"/>' +
+    '<circle cx="50" cy="50" r="33" fill="' + h(kern) + '"/>' +
+    '<circle cx="50" cy="50" r="33" fill="none" stroke="' + h(zier) +
+      '" stroke-opacity=".38" stroke-width=".9"/>' +
+    (unten
+      ? '<text x="50" y="47" text-anchor="middle" font-family="' + kopf + '" ' +
+          'font-size="13" font-weight="700" fill="' + h(tinte) + '">' + h(oben) + '</text>' +
+        '<text x="50" y="62" text-anchor="middle" font-family="' + kopf + '" ' +
+          'font-size="13" font-weight="700" fill="' + h(tinte) + '">' + h(unten) + '</text>'
+      : '<text x="50" y="56" text-anchor="middle" font-family="' + kopf + '" ' +
+          'font-size="15" font-weight="700" fill="' + h(tinte) + '">' + h(oben) + '</text>') +
+    '<circle cx="50" cy="50" r="49" fill="url(#siegelWoelbung)"/>' +
+  '</svg>';
 }
 
 /* ─── Erzeugen ────────────────────────────────────────────────── */
@@ -295,6 +417,13 @@ function erzeuge(slug, nurPruefen){
     "$1" + h(mb.betrieb.claim || mb.betrieb.name) + "$2");
   aus = aus.replace(/(<meta name="theme-color" content=")[^"]*(")/,
     "$1" + (mb.farben.band) + "$2");
+
+  /* Das Siegel. Der Bereich zwischen den Marken wird ersetzt — nicht
+     das SVG gesucht, denn davon gibt es im Hub dutzende. */
+  const LOGO_MARKE = /<!--\{\{LOGO\}\}[\s\S]*?<!--\{\{\/LOGO\}\}-->/;
+  if(!LOGO_MARKE.test(aus))
+    throw new Error("Die Vorlage hat keine LOGO-Marke ({{LOGO}} … {{/LOGO}})");
+  aus = aus.replace(LOGO_MARKE, () => siegelSVG(mb));
 
   const ordner = path.join(ZIEL, slug);
   fs.mkdirSync(ordner, {recursive:true});

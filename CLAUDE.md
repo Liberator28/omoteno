@@ -440,6 +440,26 @@ Einzelprüfung, sondern erst `pruef-durchgang.js` — der Weg, den ein
 Gast wirklich geht. Wer nur Bausteine prüft, findet keine Fehler
 zwischen den Bausteinen.
 
+### 8.1a Bausteine prüfen findet nicht, was zwischen ihnen fehlt
+
+> **Vorfall.** Der Erzeuger baute für „Blend" einen Hub mit
+> `name: "Blend"` im Markenblatt — und Chocos gezeichnetem Siegel im
+> Kopf, weil das SVG fest im Gerüst stand. `pruef-datei.py` war
+> zufrieden, `pruef-durchgang.js` auch: Beide prüfen den Hub, den es
+> gibt, nicht den Hub, den ein ZWEITER Kunde bekommt. Aufgefallen
+> ist es erst beim Bedienen des ausgelieferten Ordners — die Seite
+> `/h/blend/` trug im Titel „Choco L'AMouR".
+
+Dieselbe Lehre wie beim Willkommensschirm, nur eine Ebene höher:
+**Was mehrfach erzeugt wird, muss mindestens zweimal erzeugt und
+verglichen werden.** Ein Test mit einem Kunden sieht jede
+eingebrannte Fremdangabe für richtig an.
+
+Und beim Ersetzen einer solchen Stelle: Der alte Stand muss
+**bytegleich** herauskommen, wo er richtig war. Chocos Siegel wanderte
+dafür als ausdrückliche Ausnahme ins Markenblatt (§5.3), und der
+Vergleich vorher/nachher war Teil der Arbeit, nicht der Nachbereitung.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -472,6 +492,9 @@ Dazu je nach Änderung:
 | Texte im Hub, Sprachen | `pruef-sprache.js` |
 | Freie Texte des Betriebs | `pruef-texte.js` (braucht `dist/`) |
 | Farben, hell oder dunkel | `pruef-lesbarkeit.js` (braucht `dist/`) |
+| Landingpage | `pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
+| Marken-Studio (Bedienung) | `pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
+| Auslieferung, Umleitungen | `bauen.js` und dann `pruef-lieferung.js` |
 | **Irgendetwas am Hub** | `pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Board** | `pruef-board.js` — bedient das Board von Hand |
 

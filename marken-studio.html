@@ -33,6 +33,7 @@
 
   /* Wird vom Markenblatt gesetzt. Das Studio borgt sich die Farbe. */
   --leih:#0F6E64;
+  --auf-leih:#FFFFFF;   /* gerechnet in vorschau(), nie von Hand gesetzt */
 
   --tempo:170ms;
   --kurve:cubic-bezier(.22,.8,.3,1);
@@ -62,7 +63,28 @@ button{cursor:pointer;border:none;background:none;padding:0}
   padding:calc(11px + var(--oben)) 16px 12px;
   background:linear-gradient(to bottom, var(--werk) 60%, transparent);
   pointer-events:none;
+  display:flex;align-items:center;gap:12px;
 }
+.kopf .wortmarke{flex:1;min-width:0}
+
+/* Der Kopf lässt Tipps durch (pointer-events:none), damit man die
+   Bühne darunter greifen kann. Die beiden Knöpfe müssen sie wieder
+   annehmen — sonst hängen sie sichtbar da und tun nichts. */
+.verlaufwahl{display:flex;gap:6px;pointer-events:auto;flex-shrink:0}
+.verlaufwahl button{
+  display:flex;align-items:center;gap:6px;
+  padding:7px 11px;border-radius:99px;
+  border:1px solid var(--kante-hell);background:var(--werk-3);
+  color:var(--schrift-leise);font-size:11.5px;font-weight:600;
+  min-height:34px;
+  transition:color var(--tempo),border-color var(--tempo),opacity var(--tempo);
+}
+.verlaufwahl button:hover:not([disabled]){color:var(--schrift);border-color:var(--leih)}
+/* Ausgegraut, aber NICHT verschwunden: Wer den Knopf sucht, soll
+   ihn an derselben Stelle finden, auch wenn es nichts zurückzunehmen
+   gibt. Ein Knopf, der springt, wird nicht wiedergefunden. */
+.verlaufwahl button[disabled]{opacity:.34;cursor:default}
+@media (max-width:420px){ .verlaufwahl button span{display:none} }
 .wortmarke{
   font-size:11px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
   color:var(--schrift-leise);
@@ -297,6 +319,21 @@ button{cursor:pointer;border:none;background:none;padding:0}
   background:var(--werk-3);border:1px solid var(--kante);
   border-radius:0 10px 10px 0;padding:11px 13px;margin:0 0 14px;
 }
+/* ─── Antippbar in der Vorschau ──────────────────────────────
+   Ein Sprung, den man nicht sieht, findet niemand. Der Hinweis
+   bleibt trotzdem zurückhaltend: Die Vorschau soll aussehen wie der
+   Hub des Gastes, nicht wie ein Bedienfeld. Also nur beim
+   Darüberfahren, und in der Farbe des Kunden. */
+[data-hin]{cursor:pointer;border-radius:6px;
+  transition:box-shadow var(--tempo) var(--kurve)}
+[data-hin]:hover{box-shadow:0 0 0 2px var(--leih)}
+/* Das Band umschließt Logo und Claim. Ohne diese Regel leuchtete
+   beim Zeigen auf das Logo BEIDES auf — das äußere und das innere
+   Ziel — und man hätte nicht gewusst, welches man trifft. */
+[data-hin]:hover [data-hin]:not(:hover){box-shadow:none}
+[data-hin]:has([data-hin]:hover){box-shadow:none}
+@media (hover:none){ [data-hin]:hover{box-shadow:none} }
+
 .merk{border-left:2px solid var(--leih)}
 .warnung{border-left:2px solid #D8A63C}
 .merk b,.warnung b{color:var(--schrift);font-weight:600}
@@ -304,7 +341,7 @@ button{cursor:pointer;border:none;background:none;padding:0}
 .knopf{
   display:block;width:100%;padding:14px;border-radius:12px;
   font-size:15px;font-weight:600;text-align:center;
-  background:var(--leih);color:#fff;margin-bottom:9px;
+  background:var(--leih);color:var(--auf-leih);margin-bottom:9px;
   transition:transform 120ms var(--kurve);
 }
 .knopf:active{transform:scale(.985)}
@@ -365,6 +402,17 @@ button{cursor:pointer;border:none;background:none;padding:0}
   line-height:1.2;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
 }
 .hclaim{font-size:10.5px;opacity:.74;margin-top:2px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+
+/* Logo und Zeile darunter sind Blöcke und decken das Band damit
+   ganz ab. Solange sie das tun, ist data-hin am Band tot: Jeder
+   Tipp landet auf einem Kind, und die Farbe des Bandes hat keinen
+   Weg. Gefunden hat das nicht das Auge, sondern der Tipp bei 86 %
+   der Bandbreite — der landete auf .hclaim, obwohl dort sichtbar
+   nichts steht.
+
+   Also nur so breit wie ihr Text. Was daneben liegt, ist Band —
+   und Band ist Farbe. Die max-width hält die Ellipse am Leben. */
+.hlogo,.hclaim{display:inline-block;max-width:100%;vertical-align:top}
 
 .hinhalt{flex:1;overflow-y:auto;padding:13px var(--h-rand) 16px;scrollbar-width:none}
 .hinhalt::-webkit-scrollbar{display:none}
@@ -553,7 +601,29 @@ button{cursor:pointer;border:none;background:none;padding:0}
 </head>
 <body>
 
-<div class="kopf"><div class="wortmarke">OMOTENO<i>·</i>STUDIO</div></div>
+<div class="kopf">
+  <div class="wortmarke">OMOTENO<i>·</i>STUDIO</div>
+  <!-- Rückgängig gehört in den Kopf, nicht in eine Abteilung: Man
+       braucht es GENAU DANN, wenn man gerade etwas anderes ansieht. -->
+  <div class="verlaufwahl">
+    <button type="button" id="zurueck" disabled
+            aria-keyshortcuts="Control+Z Meta+Z" title="Rückgängig (Strg+Z)">
+      <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M7 5 3 9l4 4"/><path d="M3 9h8a5 5 0 0 1 0 10H8"/>
+      </svg><span>Zurück</span>
+    </button>
+    <button type="button" id="vorwaerts" disabled
+            aria-keyshortcuts="Control+Shift+Z Meta+Shift+Z" title="Wiederholen (Strg+Umschalt+Z)">
+      <svg viewBox="0 0 20 20" width="15" height="15" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M13 5l4 4-4 4"/><path d="M17 9H9a5 5 0 0 0 0 10h3"/>
+      </svg><span>Vor</span>
+    </button>
+  </div>
+</div>
 
 <div class="buehne">
   <div class="geraetraum" id="geraetraum">
@@ -702,9 +772,40 @@ button{cursor:pointer;border:none;background:none;padding:0}
       <p class="merk"><b>Entwurf schicken</b> erzeugt eine Adresse, in der Ihre
         Einstellungen vollständig enthalten sind. Wer sie öffnet, sieht genau diesen
         Stand. Nichts wird gespeichert, nichts an einen Server geschickt.</p>
-      <button class="knopf" id="teilen">Entwurf schicken</button>
+      <button class="knopf leise" id="teilen">Adresse zum Weitergeben</button>
       <button class="knopf leise" id="kopieren">Markenblatt kopieren</button>
       <button class="knopf leise" id="einlesen">Markenblatt einlesen</button>
+
+      <div style="height:18px"></div>
+      <h2 class="abteilungstitel">An Omoteno schicken</h2>
+      <p class="merk">Wir sehen uns Ihren Entwurf an und melden uns. Sie brauchen
+        dafür kein Konto. <b>Es geht genau das raus, was Sie hier sehen</b> —
+        Farben, Schrift, Form, Figur und die gewählten Bereiche.</p>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Ihr Name</span></div>
+        <input class="text" type="text" id="sName" maxlength="80" autocomplete="name">
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">E-Mail für die Antwort</span></div>
+        <input class="text" type="email" id="sMail" maxlength="120" autocomplete="email"
+               inputmode="email" placeholder="name@lokal.de">
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Dazu sagen — freiwillig</span></div>
+        <textarea class="text" id="sNotiz" rows="3" maxlength="600"></textarea>
+      </div>
+      <!-- Für Werbeschleudern, nicht für Menschen. Wer es ausfüllt,
+           bekommt eine freundliche Bestätigung und sonst nichts —
+           dasselbe Vorgehen und dieselbe Bauart wie in start.html. -->
+      <input type="text" id="sFalle" tabindex="-1" autocomplete="off" aria-hidden="true"
+             style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
+      <button class="knopf" id="schicken">An Omoteno schicken</button>
+      <div id="schickMeldung"></div>
+      <p class="merk" style="border-left-color:var(--kante-hell)">Schon ein Konto?
+        Dann übernehmen Sie den Entwurf dort selbst: <b>Konto → Marke →
+        Markenblatt übernehmen.</b> Der Knopf unten legt die Adresse dafür in
+        Ihre Zwischenablage und öffnet das Konto.</p>
+      <button class="knopf leise" id="zumKonto">Im Konto selbst übernehmen</button>
       <div style="height:8px"></div>
       <textarea class="ausgabe" id="ausgabe" readonly spellcheck="false"></textarea>
     </section>
@@ -1157,8 +1258,20 @@ function bandHTML(){
   var l = (M.logo.art === "bild" && M.logo.bild)
     ? '<img src="' + h(M.logo.bild) + '" alt="' + h(M.betrieb.name) + '">'
     : h(M.logo.text || M.betrieb.name);
-  return '<div class="hband"><div class="hlogo">' + l + '</div>' +
-         '<div class="hclaim">' + h(M.betrieb.claim) + '</div></div>';
+  /* data-hin sagt, welche Abteilung diese Fläche macht. Das Band
+     selbst ist eine Farbe, sein Inhalt ist das Haus — deshalb zwei
+     verschiedene Ziele und nicht eines für den ganzen Streifen.
+
+     Wo beide gelten, gewinnt das INNERE: Wer auf den Namen tippt,
+     will den Namen ändern, nicht die Bandfarbe. Das hat eine Folge,
+     die man kennen muss — ist die Zeile unter dem Logo lang, deckt
+     sie das Band ganz ab und es bleibt kein Fleck mehr für die
+     Farbe übrig (gemessen: bei „Kalt gebraut, laut gespielt.“ auf
+     390px reicht sie bis an den Rand). Deshalb trägt auch der freie
+     Seitengrund (.hinhalt) das Ziel „farben“: Der ist immer da und
+     IST die Farbe, um die es geht. */
+  return '<div class="hband" data-hin="farben"><div class="hlogo" data-hin="haus">' + l + '</div>' +
+         '<div class="hclaim" data-hin="haus">' + h(M.betrieb.claim) + '</div></div>';
 }
 
 function schirmStart(){
@@ -1166,18 +1279,18 @@ function schirmStart(){
   var kacheln = an.length
     ? an.map(function(k){
         var b = BEREICH_TEXTE[k];
-        return '<div class="hkachel"><div class="hi">' + b[1] + '</div>' +
+        return '<div class="hkachel" data-hin="bereiche"><div class="hi">' + b[1] + '</div>' +
                '<strong>' + h(b[0]) + '</strong><span>' + h(b[2]) + '</span></div>';
       }).join("")
-    : '<div class="hkachel" style="grid-column:1/-1"><strong>Noch nichts gewählt</strong>' +
+    : '<div class="hkachel" data-hin="bereiche" style="grid-column:1/-1"><strong>Noch nichts gewählt</strong>' +
       '<span>Unter „Bereiche“ auswählen</span></div>';
 
-  return bandHTML() + '<div class="hinhalt">' +
-    '<div class="hgruss">' + h(M.betrieb.begruessung) + '</div>' +
-    '<div class="htipp"><span class="tb">\u2728</span><div class="tt">' +
+  return bandHTML() + '<div class="hinhalt" data-hin="farben">' +
+    '<div class="hgruss" data-hin="haus">' + h(M.betrieb.begruessung) + '</div>' +
+    '<div class="htipp" data-hin="farben"><span class="tb">\u2728</span><div class="tt">' +
       '<div class="tk">EMPFEHLUNG DES HAUSES</div>' +
       '<div class="tn">Tagesgericht</div><div class="tp">12,50 €</div></div></div>' +
-    '<div class="hbereich">Am Tisch</div>' +
+    '<div class="hbereich" data-hin="schrift">Am Tisch</div>' +
     '<div class="hkacheln">' + kacheln + '</div></div>';
 }
 
@@ -1188,7 +1301,7 @@ function schirmKarte(){
       '<div class="gd">' + h(was) + '</div></div>' +
       '<span class="gp">' + preis + '</span></div>';
   }
-  return bandHTML() + '<div class="hinhalt">' +
+  return bandHTML() + '<div class="hinhalt" data-hin="farben">' +
     '<div class="hkat">Zum Teilen</div>' +
     z("\uD83E\uDED3","Brot &amp; Öl","Sauerteig, Olivenöl, Salz","6,50") +
     z("\uD83E\uDDC0","Käseauswahl","Drei Sorten, Feigensenf","14,90") +
@@ -1199,7 +1312,7 @@ function schirmKarte(){
 }
 
 function schirmBestellt(){
-  return bandHTML() + '<div class="hinhalt">' +
+  return bandHTML() + '<div class="hinhalt" data-hin="farben">' +
     '<div class="hpass"><span class="pz schwingt">\uD83C\uDF73</span>' +
       '<div class="pt">Kommt in die Pfanne</div>' +
       '<div class="pn"><small>IHRE NUMMER</small>213</div></div>' +
@@ -1216,8 +1329,25 @@ function vorschau(){
   markeAnwenden(hub, M, abendAn);
   hub.innerHTML = schirm === "karte" ? schirmKarte()
                 : schirm === "bestellt" ? schirmBestellt() : schirmStart();
-  document.documentElement.style.setProperty("--leih",
-    (abendAn && M.abend.an) ? M.abend.akzent : M.farben.akzent);
+  /* --leih ist die Farbe des KUNDEN. Was darauf steht, wird
+     gerechnet, nie gesetzt (CLAUDE.md §5.1).
+
+     Der Vorfall stand schon einmal im Regelbuch und war hier immer
+     noch live: .knopf trug fest color:#fff auf var(--leih).
+     Nachgerechnet am 30.08. über alle Akzentfarben der Vorlagen —
+     Tag und Abend:
+
+         #0F6E64  6,11   #A32721  7,32   #7A5C1E  6,22   ok
+         #E8695F  3,17   #5FC7B8  2,03   #D8B45E  1,98   zu wenig
+         #D4FF3F  1,16                                   unlesbar
+
+     Vier von sieben fielen durch, das Säuregrün der Bar mit genau
+     dem Wert, der in CLAUDE.md steht. Der Kunde bekommt seine
+     Farbe, der Knopf bekommt Lesbarkeit. */
+  var leih = (abendAn && M.abend.an) ? M.abend.akzent : M.farben.akzent;
+  document.documentElement.style.setProperty("--leih", leih);
+  document.documentElement.style.setProperty("--auf-leih",
+    kontrast("#FFFFFF", leih) >= 4.5 ? "#FFFFFF" : "#101010");
   kontrastPruefen();
   figurZeichnen();
   ausgabeSchreiben();
@@ -1544,11 +1674,29 @@ $("bereichsliste").addEventListener("keydown", function(ev){
 });
 
 /* ═══ Abteilungen anspringen ════════════════════════════════════ */
+/* Solange ein Sprung läuft, darf der Bildlauf-Beobachter die
+   Markierung NICHT umsetzen.
+
+   Gemessen am 30.08. auf dem Telefon: Nach einem Tipp auf das
+   Kopfband stand in der Reiterleiste 600 ms lang „Vorlagen“, dann
+   erst „Farben“. abteilungZeigen setzt die Markierung sofort und
+   richtig; danach feuert der weiche Bildlauf sein scroll-Ereignis,
+   der Beobachter sieht den Stand von unterwegs (ganz oben) und
+   überschreibt sie. Wer dabei das Blatt anfasst und den Bildlauf
+   abbricht, behält die falsche Markierung dauerhaft.
+
+   Also: Ziel merken, Beobachter schweigen lassen, bis er von selbst
+   dort ankommt. Die Frist ist der Notausgang, falls der Bildlauf
+   das Ziel nie erreicht (zu kurze Seite, abgebrochene Geste). */
+var sprungZiel = null, sprungFrist = 0;
+
 function abteilungZeigen(kennung){
   var ziel = document.querySelector('[data-abt="' + kennung + '"]');
   if(!ziel) return;
   var warten = 0;
   if(schmal() && raste < 2){ zuRaste(2); warten = 240; }
+  sprungZiel = kennung;
+  sprungFrist = Date.now() + warten + 1600;
   setTimeout(function(){
     $("blattinhalt").scrollTo({ top: ziel.offsetTop - 6, behavior:"smooth" });
   }, warten);
@@ -1565,6 +1713,10 @@ $("blattinhalt").addEventListener("scroll", function(){
     document.querySelectorAll("[data-abt]").forEach(function(s){
       if(s.offsetTop <= oben) jetzt = s.dataset.abt;
     });
+    if(sprungZiel){
+      if(jetzt === sprungZiel || Date.now() > sprungFrist) sprungZiel = null;
+      else return;                       /* unterwegs — nicht dazwischenreden */
+    }
     document.querySelectorAll("[data-abtziel]").forEach(function(b){
       b.setAttribute("aria-current", b.dataset.abtziel === jetzt);
     });
@@ -1612,6 +1764,11 @@ function ausgabeSchreiben(){
 "  /* Reihenfolge = Reihenfolge der Kacheln auf der Startseite */\n" +
 "  bereiche: {\n" + bereichzeilen + "\n  }\n};\n" +
 "/* \u25B2\u25B2\u25B2 AB HIER NICHTS \u00C4NDERN \u25B2\u25B2\u25B2 */";
+
+  /* Der Chokepoint des Verlaufs. Hier l\u00E4uft jede \u00C4nderung an M
+     durch \u2014 vorschau() ruft es, der Figurname ruft es einzeln.
+     Begr\u00FCndung steht bei merken(). */
+  merken();
 }
 
 /* ═══ Entwurf verschicken ═══════════════════════════════════════
@@ -1630,6 +1787,70 @@ function ausBase64(kurz){
   var roh = atob(s), bytes = new Uint8Array(roh.length);
   for(var i=0;i<roh.length;i++) bytes[i] = roh.charCodeAt(i);
   return new TextDecoder().decode(bytes);
+}
+
+/* ═══ Verlauf · Rückgängig und Wiederholen ══════════════════════
+   Ein Gestaltungswerkzeug ohne Rückgängig zwingt zur Vorsicht. Wer
+   nicht zurück kann, probiert nicht aus — und Ausprobieren ist der
+   ganze Zweck dieses Studios.
+
+   Zwei Entscheidungen, die nicht offensichtlich sind:
+
+   1 · GEDROSSELT. Ein Farbwähler, den man zieht, feuert dreißig
+       input-Ereignisse in zwei Sekunden. Ohne Drosselung wäre jedes
+       davon ein Schritt und „einmal zurück" ginge um ein
+       Hundertstel Farbton zurück — nutzlos. Erst 480 ms Ruhe machen
+       einen Stand aus.
+
+   2 · EIN CHOKEPOINT. Gemerkt wird in ausgabeSchreiben(), weil das
+       die eine Stelle ist, durch die JEDE Änderung an M läuft —
+       vorschau() ruft es, und der Figurname ruft es einzeln. Wer
+       später ein Feld dazustellt, bekommt den Verlauf geschenkt,
+       statt ihn zu vergessen. */
+var verlauf = [], verlaufNun = -1, verlaufUhr = null, verlaufStumm = false;
+var VERLAUF_TIEF = 40;
+
+function standJetzt(){ return JSON.stringify({ m:M, q:quelleName }); }
+
+function verlaufKnoepfe(){
+  var z = $("zurueck"), v = $("vorwaerts");
+  if(!z || !v) return;
+  z.disabled = verlaufNun <= 0;
+  v.disabled = verlaufNun >= verlauf.length - 1;
+}
+
+function merken(sofort){
+  if(verlaufStumm) return;
+  clearTimeout(verlaufUhr);
+  var legen = function(){
+    var jetzt = standJetzt();
+    if(verlauf[verlaufNun] === jetzt) return;      /* nichts Neues */
+    /* Wer nach einem Zurück etwas ändert, schneidet den vorderen
+       Ast ab — sonst führte „Vor" in eine Zukunft, die es nicht
+       mehr gibt. */
+    verlauf = verlauf.slice(0, verlaufNun + 1);
+    verlauf.push(jetzt);
+    if(verlauf.length > VERLAUF_TIEF) verlauf.shift();
+    verlaufNun = verlauf.length - 1;
+    verlaufKnoepfe();
+  };
+  if(sofort) legen(); else verlaufUhr = setTimeout(legen, 480);
+}
+
+function standSetzen(n){
+  if(n < 0 || n >= verlauf.length) return;
+  clearTimeout(verlaufUhr);
+  verlaufNun = n;
+  var s = JSON.parse(verlauf[n]);
+  M = s.m; quelleName = s.q;
+  /* Während des Wiederherstellens NICHT mitschreiben: alleBauen()
+     läuft durch vorschau() und würde den gerade gesetzten Stand als
+     neuen Schritt anhängen — der Verlauf würde bei jedem Zurück um
+     einen Eintrag wachsen und man käme nie an den Anfang. */
+  verlaufStumm = true;
+  alleBauen();
+  verlaufStumm = false;
+  verlaufKnoepfe();
 }
 
 function entwurfsAdresse(){
@@ -1748,6 +1969,9 @@ document.addEventListener("click", function(e){
 
   if(k.dataset.abtziel){ abteilungZeigen(k.dataset.abtziel); return; }
 
+  if(k.id === "zurueck"){ standSetzen(verlaufNun - 1); melde("Zurück"); return; }
+  if(k.id === "vorwaerts"){ standSetzen(verlaufNun + 1); melde("Wiederholt"); return; }
+
   if(k.dataset.vorlage){
     vorlageLaden(k.dataset.vorlage);
     abendAn = false; abendZeichnen();
@@ -1803,6 +2027,19 @@ document.addEventListener("click", function(e){
   }
   if(k.id === "kopieren"){ inZwischenablage($("ausgabe").value, "Markenblatt kopiert"); return; }
 
+  if(k.id === "schicken"){ entwurfSchicken(); return; }
+
+  /* Wer schon ein Konto hat, braucht uns nicht: Im Konto liegt der
+     Weg „Markenblatt übernehmen" fertig. Er verlangt die Adresse —
+     also wird sie kopiert, BEVOR die Seite wechselt. Danach wäre
+     die Zwischenablage aus einer anderen Seite heraus nicht mehr
+     zu füllen. */
+  if(k.id === "zumKonto"){
+    inZwischenablage(entwurfsAdresse(), "Adresse kopiert — im Konto einfügen");
+    setTimeout(function(){ location.href = "/konto.html"; }, 700);
+    return;
+  }
+
   if(k.id === "einlesen"){
     var roh = prompt("Markenblatt oder Adresse einfügen:");
     if(!roh) return;
@@ -1844,6 +2081,173 @@ document.addEventListener("click", function(e){
   }
 });
 
+/* ═══ An Omoteno schicken ═══════════════════════════════════════
+   Bewusst OHNE supabase-js. Das Konto lädt die Bibliothek von
+   jsdelivr und hat dafür einen ganzen Schirm, der erklärt, was los
+   ist, wenn sie ausbleibt — der Vorfall steht im Kopf von
+   konto.html. Dieses Studio soll gar nicht erst in die Lage
+   kommen: Ein POST gegen die REST-Schnittstelle ist alles, was es
+   braucht, genau wie in start.html. Keine Bibliothek, kein weißer
+   Schirm, nichts, das ausfallen kann.
+
+   Der anon-Schlüssel darf hier öffentlich stehen. Die Regel auf
+   „anfragen" erlaubt anon INSERT und sonst nichts — kein SELECT,
+   kein UPDATE. Gelesen wird nur mit ist_master(). Der
+   service_role-Schlüssel hat in einer Datei, die im Browser landet,
+   nichts verloren. */
+var SCHICK = {
+  adresse: "https://quxwweuvdqtjsdwgjdrh.supabase.co",
+  schluessel: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk",
+  mail: "hallo@omoteno.de"
+};
+
+function neueKennung(){
+  /* Ohne B/8, I/1, O/0 — auf Papier und am Telefon verwechselbar.
+     Dieselbe Bauart wie in start.html, damit eine Kennung aus dem
+     Studio genauso aussieht wie eine aus dem Anfrageformular. */
+  var abc = "ACDEFGHJKLMNPQRSTUVWXYZ2345679", s = "";
+  var zufall = new Uint8Array(5);
+  if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(zufall);
+  else for(var z=0;z<5;z++) zufall[z] = Math.floor(Math.random()*256);
+  for(var i=0;i<5;i++) s += abc[zufall[i] % abc.length];
+  return "OMO-" + s;
+}
+
+function schickMelden(text, art){
+  var raum = $("schickMeldung");
+  raum.innerHTML = '<div class="' + (art === "fehler" ? "warnung" : "merk") + '">' +
+                   text + '</div>';
+}
+
+/* Das Markenblatt als Datenstruktur — nicht der Kommentartext aus
+   dem Ausgabefeld. Was hier rausgeht, kann konto.html ohne
+   Umparsen in betriebe.markenblatt schreiben. */
+function markenblattObjekt(){
+  return {
+    version: 1,
+    betrieb: { name:M.betrieb.name, claim:M.betrieb.claim,
+               begruessung:M.betrieb.begruessung, strasse:"", ort:"", slug:"" },
+    farben: M.farben, abend: M.abend, form: M.form,
+    schrift: M.schrift, logo: M.logo, avatar: M.avatar,
+    bereiche: M.reihe.reduce(function(a,k){ a[k] = !!M.bereiche[k]; return a; }, {})
+  };
+}
+
+var schickLaeuft = false;
+
+function entwurfSchicken(){
+  if(schickLaeuft) return;
+  var name  = ($("sName").value || "").trim();
+  var mail  = ($("sMail").value || "").trim();
+  var notiz = ($("sNotiz").value || "").trim();
+
+  /* Die Werbeschleuder bekommt dieselbe Bestätigung wie ein Mensch
+     und nichts geht raus. Wer merkt, dass er erkannt wurde, ändert
+     seinen Bot. */
+  if($("sFalle").value){ schickMelden("Danke — wir melden uns."); return; }
+
+  if(!mail || mail.indexOf("@") < 1 || mail.indexOf(".") < 0){
+    schickMelden("Ohne E-Mail können wir nicht antworten. " +
+      "Bitte eine Adresse eintragen.", "fehler");
+    $("sMail").focus();
+    return;
+  }
+
+  var knopf = $("schicken");
+  schickLaeuft = true;
+  knopf.disabled = true;
+  knopf.textContent = "Wird geschickt …";
+  schickMelden("Einen Moment …");
+
+  var kennung = neueKennung();
+  fetch(SCHICK.adresse + "/rest/v1/anfragen", {
+    method: "POST",
+    headers: {
+      apikey: SCHICK.schluessel,
+      Authorization: "Bearer " + SCHICK.schluessel,
+      "Content-Type": "application/json",
+      Prefer: "return=minimal"
+    },
+    body: JSON.stringify({
+      kennung:         kennung,
+      betrieb:         M.betrieb.name || null,
+      ansprechpartner: name || null,
+      email:           mail,
+      hinweise:        notiz || null,
+      /* Der Entwurf selbst — als Objekt UND als Adresse. Das Objekt
+         ist das, womit gearbeitet wird; die Adresse ist das, was
+         man anklickt, um ihn zu sehen. Beides kostet nichts. */
+      antworten: {
+        markenblatt: markenblattObjekt(),
+        entwurf:     entwurfsAdresse(),
+        vorlage:     quelleName || null,
+        notiz:       notiz || null
+      },
+      quelle: "marken-studio"
+    })
+  }).then(function(a){
+    if(!a.ok) return a.text().then(function(t){
+      throw new Error(a.status + " " + t.slice(0,160));
+    });
+    schickMelden("<b>Angekommen.</b> Ihre Kennung ist <b>" + h(kennung) +
+      "</b> — die brauchen Sie nicht aufzuschreiben, wir haben sie. " +
+      "Wir melden uns an " + h(mail) + ".");
+    $("schicken").textContent = "Geschickt";
+  }).catch(function(){
+    /* Kein Netz, gesperrte Datenbank, Werbeblocker — der Entwurf
+       darf trotzdem nicht verloren gehen. Also der Weg, der ohne
+       alles funktioniert: eine E-Mail mit der Adresse darin. Das
+       ist der Unterschied zwischen „ging nicht" und „geht so". */
+    var betreff = "Markenentwurf " + (M.betrieb.name || "");
+    var text = "Mein Entwurf aus dem Marken-Studio:\n\n" + entwurfsAdresse() +
+      "\n\nName: " + name + "\nE-Mail: " + mail +
+      (notiz ? "\n\n" + notiz : "");
+    schickMelden("Die Datenbank ist gerade nicht erreichbar. " +
+      'Ihr Entwurf ist deshalb nicht verloren: <a href="mailto:' + SCHICK.mail +
+      "?subject=" + encodeURIComponent(betreff) +
+      "&body=" + encodeURIComponent(text) + '"><b>als E-Mail schicken</b></a> — ' +
+      "die Adresse mit allen Einstellungen steht schon darin.", "fehler");
+    $("schicken").textContent = "Noch einmal versuchen";
+  }).then(function(){
+    schickLaeuft = false;
+    $("schicken").disabled = false;
+  });
+}
+
+/* ═══ Tastatur ══════════════════════════════════════════════════
+   ⌘Z und Strg+Z sind das, wonach die Hand von selbst greift. Wer
+   gerade in einem Textfeld steht, meint aber SEIN Feld — dort hat
+   der Browser sein eigenes Rückgängig, und es ihm wegzunehmen wäre
+   schlimmer als kein Kürzel. */
+document.addEventListener("keydown", function(e){
+  if(!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+  var z = e.target;
+  if(z && (z.tagName === "INPUT" || z.tagName === "TEXTAREA" ||
+           z.isContentEditable) && z.type !== "range" && z.type !== "color") return;
+  e.preventDefault();
+  if(e.shiftKey){ standSetzen(verlaufNun + 1); melde("Wiederholt"); }
+  else          { standSetzen(verlaufNun - 1); melde("Zurück"); }
+});
+
+/* ═══ Antippen in der Vorschau springt zur Einstellung ══════════
+   Der Kunde sieht in der Vorschau, was ihm nicht gefällt — und
+   suchte die passende Abteilung dann in einer Liste von neun.
+   Jetzt tippt er das Ding selbst an.
+
+   Die Zuordnung steht am HTML der Vorschau, nicht hier: Wer eine
+   Fläche dazustellt, gibt ihr data-hin mit und ist fertig. Ohne
+   Zuordnung passiert nichts — lieber kein Sprung als ein falscher. */
+$("hub").addEventListener("click", function(e){
+  var t = e.target.closest("[data-hin]");
+  if(!t) return;
+  abteilungZeigen(t.dataset.hin);
+  melde(HIN_NAMEN[t.dataset.hin] || "Gefunden");
+});
+var HIN_NAMEN = {
+  haus:"Haus und Begrüßung", farben:"Farben", bereiche:"Bereiche",
+  schrift:"Schrift", figur:"Figur des Hauses"
+};
+
 /* ═══ Start ═════════════════════════════════════════════════════
    Ein Beispiel-Lokal steht sofort da. Ein leeres Studio wäre auf der
    Landingpage die schlechteste erste Sekunde: Der Besucher müsste
@@ -1856,6 +2260,13 @@ alleBauen();
 rastenRechnen();
 blattStarten();
 if(ausAdresse) melde("Entwurf geöffnet");
+
+/* Der erste Stand ist der Anfang des Verlaufs, nicht ein Schritt
+   darin: Er wird SOFORT gelegt, damit „Zurück" auch dann etwas
+   findet, wenn die erste Änderung nach zwei Sekunden kommt. Die
+   gedrosselte Fassung hätte hier 480 ms lang nichts gehabt. */
+merken(true);
+verlaufKnoepfe();
 </script>
 </body>
 </html>

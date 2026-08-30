@@ -7,9 +7,21 @@
 <meta name="description" content="Untersetzer antippen, Karte öffnet sich, Bestellung landet in der Küche. Ohne App, ohne neue Kasse. Ab 29 € im Monat.">
 <meta name="theme-color" content="#0A1714">
 
+<!-- Schrift lädt NEBENHER, nicht davor.
+     Gemessen am 30.08.: mit blockierendem <link rel=stylesheet> stand
+     das erste Bild nach 12 605 ms, mit abgewiesenem Schriftdienst nach
+     113 ms. Der Browser zeigt bis zur Antwort des fremden Dienstes
+     GAR NICHTS — kein Text, kein Gerüst. `display=swap` hilft dagegen
+     nicht: Das gilt für die Schriftdateien, nicht für den Stilbogen.
+     Deshalb: als preload holen, erst im onload zum Stylesheet machen.
+     Die Rückfallstapel in --serif/--sans/--mono tragen das erste Bild. -->
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link rel="preload" as="style"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"></noscript>
 
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -53,6 +65,7 @@
   --glut-hell:#D4642C;     /* dieselbe Rolle auf dem Sockel: 4,94:1.
                               Eine Farbe kann nicht auf hellem UND dunklem
                               Grund lesbar sein. Zwei Werte, eine Rolle. */
+  --fokus:var(--kuli);     /* Fokusring auf hellem Grund: 5,96:1 */
 
   --serif:"Instrument Serif",Iowan Old Style,"Palatino Linotype",Palatino,Georgia,serif;
   --sans:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
@@ -78,7 +91,20 @@ button{font:inherit;color:inherit;border:none;background:none;cursor:pointer}
 a{color:inherit}
 img,svg{display:block;max-width:100%}
 :focus{outline:none}
-:focus-visible{outline:2px solid var(--kuli);outline-offset:3px;border-radius:4px}
+/* Der Fokusring hat eine ROLLE, keine feste Farbe — dieselbe
+   Begründung wie bei --glut/--glut-hell weiter oben: Eine Farbe
+   kann nicht auf hellem UND dunklem Grund sichtbar sein.
+
+   Gerechnet am 30.08., weil das Board-Fenster ihn zum ersten Mal
+   auf dunklem Grund zeigte:
+
+       --kuli  auf Sockel 2,40   Tafel 1,86   Brett 2,28
+       --glut  auf Sockel 4,94   Tafel 3,82   Brett 4,68
+
+   Für eine Fokusanzeige gilt 3:1. Der blaue Ring lag auf allen
+   drei dunklen Flächen darunter — wer mit der Tastatur durch das
+   Board-Fenster ging, sah nicht, wo er steht. */
+:focus-visible{outline:2px solid var(--fokus);outline-offset:3px;border-radius:4px}
 
 ::selection{background:var(--kuli);color:var(--papier)}
 ::-webkit-scrollbar{width:10px}
@@ -482,12 +508,18 @@ p:last-child{margin-bottom:0}
 
 /* Stufenleiste unter der Uhr. Sie ist zugleich Fortschritt und
    Sprungmarke — wer nicht scrollen mag, tippt hin. */
-.abend-stufen{display:flex;gap:4px;flex-wrap:wrap;margin-top:16px}
+.abend-stufen{
+  display:flex;gap:4px;flex-wrap:wrap;margin-top:16px;
+  /* Auf schmalen Schirmen läuft sie waagerecht statt umzubrechen —
+     siehe die Regel weiter unten. Der Fangpunkt steht hier, damit
+     beide Fassungen dieselbe Mechanik benutzen. */
+  scroll-snap-type:x proximity;
+}
 .stufe{
   display:flex;align-items:center;gap:7px;padding:6px 11px 6px 8px;
   border-radius:99px;border:1px solid var(--linie-dunkel);
   font-family:var(--mono);font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;
-  color:var(--kreide-still);
+  color:var(--kreide-still);white-space:nowrap;scroll-snap-align:center;
   transition:color .24s var(--weich),border-color .24s var(--weich),background .24s var(--weich);
 }
 .stufe i{width:5px;height:5px;border-radius:50%;background:currentColor;flex-shrink:0}
@@ -495,7 +527,38 @@ p:last-child{margin-bottom:0}
 .stufe[aria-current=true]{
   color:var(--sockel);background:var(--kreide);border-color:var(--kreide);font-weight:700;
 }
-@media (max-width:700px){ .stufe span{display:none} .stufe{padding:8px} }
+
+/* ── Der laufende Schritt behält seinen Namen ──────────────────
+   Hier stand bis zum 30.08.:
+
+       @media (max-width:700px){ .stufe span{display:none} }
+
+   Damit sah der Gast auf dem Telefon eine Uhr, einen Strich und
+   sechs namenlose Punkte. Welcher Schritt gerade läuft, stand
+   nirgends — der Balken hatte keinen Text mehr.
+
+   Die Lösung ist nicht, alle sechs Namen hineinzuquetschen
+   (14 Zeichen × 6 passen bei 390px nicht), sondern nur den einen zu
+   zeigen, der zählt: Der laufende Punkt trägt seinen Namen, die
+   übrigen bleiben Punkte. Gerechnet für 390px: fünf Punkte 105px,
+   Lücken 20px, der benannte Knopf 131px — zusammen 256px von 342px.
+   Was darunter doch nicht passt (320px, elf Schritte später), rollt
+   waagerecht; das Skript zieht den laufenden Punkt in Sicht. */
+@media (max-width:700px){
+  .abend-stufen{
+    flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;
+    scrollbar-width:none;-webkit-overflow-scrolling:touch;
+    /* Die Leiste beginnt an derselben Kante wie Uhr und Balken,
+       darf aber bis an den Rand rollen — sonst wird der letzte
+       Punkt vom Polster abgeschnitten. */
+    margin-inline:-24px;padding-inline:24px;
+  }
+  .abend-stufen::-webkit-scrollbar{display:none}
+  .stufe{padding:8px;flex:0 0 auto}
+  .stufe span{display:none}
+  .stufe[aria-current=true]{padding:8px 12px 8px 9px}
+  .stufe[aria-current=true] span{display:inline}
+}
 
 /* Auf niedrigen und schmalen Schirmen wird nichts weggelassen,
    sondern enger gesetzt. Gerechnet für 390 × 664 — darunter greift
@@ -511,7 +574,7 @@ p:last-child{margin-bottom:0}
   .bonzeile{font-size:12px;padding:6px 0}
 }
 @media (max-height:700px){
-  .abend-fest{padding-top:calc(52px + 12px);padding-bottom:16px;gap:12px}
+  .abend-fest{padding-top:calc(52px + 12px);padding-bottom:14px;gap:10px}
   .abend-uhr{font-size:34px}
   .abend-bahn{margin-top:10px}
   .abend-stufen{margin-top:9px}
@@ -519,11 +582,56 @@ p:last-child{margin-bottom:0}
   .szene-bild{margin-top:12px}
 }
 
-/* Ab 900px steht der Beleg neben dem Text statt darunter. Vorher
+/* Bei 320 × 568 — dem kleinsten Schirm, den es noch gibt — war die
+   Bühne 401px hoch und hatte 327px Platz. Die untere Belegzeile fiel
+   aus dem Bild; „overflow:hidden" schnitt sie ab, ohne dass es
+   irgendwo aufgefallen wäre. Gerechnet und nachgezogen, nicht
+   geraten: Der Kopf verbraucht dort 149px, davon allein 40px für die
+   zweizeilige Beschriftung über der Uhr. */
+@media (max-width:360px){
+  .abend-fest{padding-top:calc(52px + 6px);padding-bottom:10px;gap:8px}
+  .abend-kopf .marke{font-size:9.5px;letter-spacing:.1em;line-height:1.35;display:block}
+  .abend-uhr{margin-top:4px}
+  .abend-bahn{margin-top:8px}
+  .abend-stufen{margin-top:8px}
+  .szene h3{font-size:18.5px;line-height:1.24;margin-bottom:9px}
+  .szene p{font-size:14px;line-height:1.44}
+  .szene .wer{margin-bottom:6px;font-size:10px}
+  .szene-bild{margin-top:9px;padding:9px}
+  .bonzeile{padding:4px 0;font-size:11.5px}
+}
+
+/* Ein Netz darunter, das im Regelfall NIE greift.
+
+   Der erste Entwurf schrieb hier „overscroll-behavior:contain".
+   Falsch herum gedacht: Damit hätte ein Wisch auf der Szene die
+   Erzählung nicht mehr weitergeschoben, sondern wäre nach ein paar
+   Pixeln stehen geblieben. Der seltene Fall (abgeschnittene
+   Belegzeile bei 320px) wäre auf Kosten des täglichen (weiterlesen)
+   behoben worden — genau die Abwägung aus CLAUDE.md §7.
+
+   Also: rollbar ja, aber MIT Weitergabe. Wer über das Ende hinaus
+   wischt, schiebt die Seite weiter, wie er es erwartet.
+   „align-content:safe center" oben gehört dazu — mit gewöhnlichem
+   „center" läge der Anfang einer zu hohen Szene im unerreichbaren
+   Bereich über dem Rollanfang. */
+.szenen{overflow-y:auto;scrollbar-width:none}
+.szenen::-webkit-scrollbar{display:none}
+
+/* Ab 760px steht der Beleg neben dem Text statt darunter. Vorher
    lag die ganze Szene in der linken Hälfte und die rechte blieb
    leer — bei einer Bühne, die den ganzen Schirm belegt, sieht das
-   nach vergessenem Inhalt aus. */
-@media (min-width:900px){
+   nach vergessenem Inhalt aus.
+
+   Die Grenze stand bis zum 30.08. bei 900px und ließ genau das
+   Tablet durchfallen: Bei 820 × 1180 belegte die Szene die linke
+   Hälfte, die rechte war schwarz — und die Überschrift lief noch in
+   der TELEFON-Größe (clamp bis 25px), weil auch die vom selben
+   Umbruch abhing. Also: großer Schirm, kleine Schrift, halb leer.
+   Gemessen im Bildschirmfoto, nicht vermutet. 760px trifft das
+   Tablet quer wie hoch und lässt das Telefon quer (740px) in
+   Ruhe. */
+@media (min-width:760px){
   .szene{
     display:grid;grid-template-columns:minmax(0,1fr) minmax(0,.9fr);
     column-gap:clamp(40px,6vw,88px);align-items:start;
@@ -559,6 +667,28 @@ p:last-child{margin-bottom:0}
 .szene .wer{
   font-family:var(--mono);font-size:10.5px;letter-spacing:.14em;text-transform:uppercase;
   color:var(--glut-hell);display:block;margin-bottom:12px;
+}
+
+/* Auf sehr hohen Schirmen wird die Szene NICHT mehr mittig gesetzt.
+
+   Gemessen bei 820 × 1180: Kopf zu Ende bei 280px, Szene 580–870,
+   Schirmrand 1180. Das sind 300px Loch über der Szene und 310
+   darunter — bei einem Block, der selbst nur 290px hoch ist. Über
+   der Szene liest sich das als Fehler („da fehlt etwas"), unter ihr
+   als Bühne. Also fällt die Luft nach unten: Der Abstand zum Kopf
+   wird gerechnet (6vh, gedeckelt), der Rest bleibt Bühne.
+
+   Erst ab 1000px Höhe, damit der gewöhnliche Rechner (1440 × 900)
+   seine gewachsene Mitte behält — dort sind 177px über und 185
+   unter der Szene ausgewogen und nicht leer.
+
+   Diese Regel MUSS hinter .szenen{align-content:safe center}
+   stehen. Beim ersten Versuch stand sie davor und tat gar nichts:
+   gleiche Spezifität, also gewinnt die spätere Regel — und das war
+   die Mitte. Im Bildschirmfoto sah es danach exakt so aus wie
+   vorher, was leicht als „hilft nicht" durchgegangen wäre. */
+@media (min-height:1000px){
+  .szenen{align-content:safe start;padding-top:clamp(24px,6vh,80px)}
 }
 .szene-bild{
   margin-top:26px;border:1px solid var(--linie-dunkel);border-radius:12px;
@@ -995,6 +1125,169 @@ details[open] summary::before{transform:translateY(-50%) scaleY(0);opacity:0}
   font-family:var(--mono);font-size:10.5px;line-height:1.65;color:var(--kreide-still);
 }
 
+/* ═══ 8b · DAS BRETT ══════════════════════════════════════════
+   Die Abbildung des Admin-Boards.
+
+   Bis zum 30.08. zeigte diese Seite vom Werkzeug des Wirts genau
+   zwei Belegzeilen. Wer wissen wollte, was er kauft, sah es
+   nirgends — und das ist die Hälfte des Geschäfts: Der Gast tippt,
+   der GASTGEBER arbeitet. Die andere Hälfte fehlte im Bild.
+
+   Ein Regelsatz, zwei Auftritte: still in den Szenen 3 und 4, und
+   bedienbar im Fenster darunter. Dasselbe Muster wie beim Demo-Hub
+   — sonst laufen Abbildung und Wirklichkeit auseinander, sobald
+   einer von beiden gepflegt wird.
+
+   Die Flächen sind nicht neu erfunden: #0E1D19 ist der Grund von
+   .szene-bild, die Schriftfarben sind --kreide und --kreide-leise.
+   Was hier steht, war auf dieser Seite schon gemessen. */
+.brett{
+  border:1px solid var(--linie-dunkel);border-radius:12px;background:#0E1D19;
+  overflow:hidden;display:flex;flex-direction:column;
+}
+/* In den Szenen ist die Abbildung ein KNOPF — sie öffnet das
+   bedienbare Fenster. Ein <button> bringt Zentrierung, Vererbungs-
+   sperre für die Schrift und ein anderes Vorgabepolster mit; beides
+   wird hier zurückgenommen, damit derselbe Regelsatz in Knopf und
+   Fenster dasselbe Bild ergibt. */
+button.brett{
+  width:100%;text-align:left;font:inherit;color:inherit;
+  padding:0;cursor:pointer;
+  transition:border-color .22s var(--weich),transform .16s var(--weich);
+}
+button.brett:hover{border-color:var(--kreide-still)}
+button.brett:active{transform:scale(.994)}
+/* Auf jeder dunklen Fläche wechselt der Fokusring seine Farbe —
+   an EINER Stelle, nicht an jedem Knopf einzeln. Wer später eine
+   dunkle Fläche dazustellt, setzt --fokus mit und ist fertig. */
+.status,.abend,.marken,.kolophon,.hub-rahmen,.brett{--fokus:var(--glut-hell)}
+/* Die Anfasser IM Knopf sind nur Bild. Ein Knopf im Knopf gäbe es
+   nicht, und ein Zeigefinger, der auf ihnen etwas anderes verspricht
+   als der Knopf tut, wäre eine Lüge. */
+button.brett .brett-griff{pointer-events:none}
+.brett-kopf{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  padding:10px 12px;border-bottom:1px solid var(--linie-dunkel);
+  background:rgba(237,231,217,.035);
+}
+.brett-kopf .marke{color:var(--kreide-still);flex:1;min-width:0}
+.brett-ampel{display:flex;gap:5px;flex-shrink:0}
+.brett-ampel i{width:7px;height:7px;border-radius:50%;background:var(--linie-dunkel)}
+.brett-ampel i:first-child{background:var(--glut-hell)}
+.brett-koerper{display:block;padding:10px 12px 12px}
+
+/* Jede Fläche hier bringt ihre Anzeigeart AUSDRÜCKLICH mit, auch
+   wo „block" der Vorgabewert wäre.
+
+   Der Grund steht im Auszeichnungstext: Im Fenster sind diese
+   Flächen <div>, in den Szenen <span> — weil ein <button> laut
+   Inhaltsmodell nur Phrasen aufnehmen darf und ein <div> darin
+   ungültig wäre. Ohne „display" erbte die Szenenfassung also
+   „inline": Rahmen ohne Höhe, Polster ohne Wirkung, alles in einer
+   Zeile ineinander. Im Fenster sah es richtig aus, in der Szene
+   zerlegt — und genau so stand es im ersten Bildschirmfoto. */
+.brett-bon,.brett-bon-posten,.brett-spalte,.brett-zahl,.brett-drang{display:block}
+
+/* Ein Bon. Die Zeile trägt ihren nächsten Handgriff IN sich — die
+   Regel, an der pruef-board.js das echte Board misst.
+
+   Der Name trägt sein „brett-" mit, und das ist nicht Zierde: Der
+   erste Entwurf hieß .bon / .bon-preis. Beides gibt es auf dieser
+   Seite längst — es sind die PREISKARTEN in Abschnitt 5. Meine
+   Regeln standen weiter unten und hätten Rahmen, Rundung, Polster
+   und Grund aller drei Preiskarten überschrieben. Gefunden hat es
+   nicht das Auge, sondern ein grep vor dem Schreiben (§1.1).
+   .beleg war ebenfalls schon vergeben. */
+.brett-bon{
+  border:1px solid var(--linie-dunkel);border-radius:9px;padding:9px 10px;
+  background:rgba(237,231,217,.03);
+}
+.brett-bon + .brett-bon{margin-top:7px}
+.brett-bon.frisch{border-color:var(--glut-hell)}
+.brett-bon-kopf{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.brett-bon-tisch{
+  font-family:var(--mono);font-size:12px;font-weight:700;color:var(--kreide);
+  letter-spacing:.02em;
+}
+/* Abschneiden statt umbrechen: „vor 4 Min" brach auf dem Telefon
+   nach der 4 um und ließ „Min" allein in einer zweiten Zeile stehen,
+   während der Preis daneben unangetastet blieb. Eine Nebenangabe
+   darf kürzer werden, sie darf die Zeile nicht auseinanderziehen. */
+.brett-bon-wann{
+  font-family:var(--mono);font-size:10px;color:var(--kreide-still);
+  flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+.brett-bon-preis{
+  font-family:var(--mono);font-size:12px;font-weight:700;color:var(--kreide);
+  font-variant-numeric:tabular-nums;white-space:nowrap;
+}
+.brett-bon-posten{
+  font-size:11.5px;color:var(--kreide-leise);margin-top:5px;line-height:1.45;
+}
+.brett-bon-marke{
+  font-family:var(--mono);font-size:8.5px;font-weight:700;letter-spacing:.11em;
+  text-transform:uppercase;padding:2px 6px;border-radius:4px;
+  background:var(--glut-hell);color:var(--sockel);flex-shrink:0;
+}
+.brett-bon-marke.ruhig{background:none;border:1px solid var(--linie-dunkel);color:var(--kreide-still)}
+.brett-bon-marke.kueche{background:var(--kreide);color:var(--sockel)}
+.brett-bon-marke.theke{background:none;border:1px solid var(--kreide-leise);color:var(--kreide-leise)}
+
+/* Der Handgriff. Keine eigene Farbe erfinden: Der laufende Knopf
+   ist heller Grund mit dunkler Schrift, genau wie .stufe. */
+.brett-griffe{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+.brett-griff{
+  font-family:var(--mono);font-size:10px;letter-spacing:.07em;text-transform:uppercase;
+  padding:6px 10px;border-radius:99px;border:1px solid var(--linie-dunkel);
+  color:var(--kreide-leise);min-height:30px;
+  transition:background .2s var(--weich),color .2s var(--weich),border-color .2s var(--weich);
+}
+.brett-griff:hover{color:var(--kreide);border-color:var(--kreide-still)}
+.brett-griff.stark{background:var(--kreide);color:var(--sockel);border-color:var(--kreide);font-weight:700}
+.brett-griff.stark:hover{background:#fff}
+.brett-griff[disabled]{opacity:.42;cursor:default}
+.brett-stand{
+  font-family:var(--mono);font-size:10px;letter-spacing:.06em;text-transform:uppercase;
+  color:var(--glut-hell);margin-top:7px;display:block;
+}
+
+/* Küche und Theke nebeneinander — getrennt abhaken ist der Punkt,
+   also stehen sie auch getrennt im Bild. */
+.brett-spalten{display:grid;gap:9px}
+@media (min-width:520px){ .brett-spalten{grid-template-columns:1fr 1fr} }
+.brett-spalte > .marke{
+  color:var(--kreide-still);display:block;margin-bottom:7px;font-size:9.5px;
+}
+.brett-drang{height:3px;border-radius:2px;background:var(--linie-dunkel);margin-top:7px}
+.brett-drang i{display:block;height:100%;border-radius:2px;background:var(--glut-hell)}
+
+/* Zahlen. Monospace, weil sie in Wirklichkeit auch so gedruckt
+   werden — dieselbe Begründung wie im Kopf der Datei. */
+.brett-zahlen{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.brett-zahl{
+  border:1px solid var(--linie-dunkel);border-radius:9px;padding:10px;
+  background:rgba(237,231,217,.03);
+}
+.brett-zahl b{
+  display:block;font-family:var(--mono);font-size:clamp(15px,3.4vw,20px);font-weight:700;
+  color:var(--kreide);font-variant-numeric:tabular-nums;line-height:1.1;
+}
+.brett-zahl span{
+  display:block;font-family:var(--mono);font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:var(--kreide-still);margin-top:5px;
+}
+
+/* ── Das Fenster ──
+   Erbt Rahmen, Kopf und Schließer vom Hub-Fenster. Was hier steht,
+   sind nur die Unterschiede: Ein Board ist breit, ein Telefon ist
+   schmal — also liegt die große Spalte links statt rechts. */
+.board-buehne{display:grid;gap:clamp(18px,3vw,30px);align-items:start}
+@media (min-width:860px){
+  .board-buehne{grid-template-columns:minmax(0,1fr) minmax(0,300px)}
+}
+.board-schirm{min-height:clamp(360px,52dvh,470px)}
+.board-schirm .brett-koerper{flex:1}
+
 /* Solange das Fenster offen ist, soll die Seite darunter nicht
    mitscrollen — sonst steht man nach dem Schließen woanders.
 
@@ -1090,6 +1383,9 @@ html.starr{overflow:hidden}
       <div class="rufreihe">
         <a class="gross" href="/konto.html">Zwei Wochen testen</a>
         <button class="gross leise" type="button" data-hub>Demo-Hub öffnen</button>
+        <!-- Zwei Fenster, zwei Rufe. Wer kauft, ist nicht der Gast —
+             er will sein Werkzeug sehen, nicht nur die Karte. -->
+        <button class="gross leise" type="button" data-board>Board öffnen</button>
       </div>
       <div class="belege">
         <span class="beleg">Server in Frankfurt</span>
@@ -1188,10 +1484,45 @@ html.starr{overflow:hidden}
           <p>Die Bestellung liegt auf dem Handy des Service, mit Ton. Ein Tipp auf
           „20 Min", und der Gast liest die Zusage an seinem Platz. Wird es doch
           später, hältst du die Annahme kurz an.</p>
-          <div class="szene-bild">
-            <div class="bonzeile"><span class="bonmarke neu">Neu</span><span class="t">Tisch 7 · gerade eben</span><span class="p">41,20 €</span></div>
-            <div class="bonzeile"><span class="m"></span><span class="t">Wartezeit zusagen</span><span class="p">10 · 20 · 30</span></div>
-          </div>
+          <!-- Abbildung, nicht Andeutung. Bis zum 30.08. standen hier
+               zwei Belegzeilen; wer wissen wollte, wie das Werkzeug
+               aussieht, sah es auf der ganzen Seite nirgends.
+               Dieselben .brett-Regeln wie im Board-Fenster darunter —
+               ein Regelsatz, zwei Auftritte. Der Knopf öffnet das
+               bedienbare Fenster (data-board). -->
+          <button class="szene-bild brett" type="button" data-board
+                  aria-label="Das Board bedienen — Beispieldaten">
+            <span class="brett-kopf">
+              <span class="brett-ampel" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="marke">Board · Bestellungen</span>
+            </span>
+            <span class="brett-koerper">
+              <span class="brett-bon frisch">
+                <span class="brett-bon-kopf">
+                  <span class="brett-bon-marke">Neu</span>
+                  <span class="brett-bon-tisch">Tisch 7</span>
+                  <span class="brett-bon-wann">Nr. 213 · gerade eben</span>
+                  <span class="brett-bon-preis">41,20 €</span>
+                </span>
+                <span class="brett-bon-posten">2× Dubai Crêpe · 1× Marina Waffel</span>
+                <span class="brett-griffe">
+                  <span class="brett-griff stark">Annehmen</span>
+                  <span class="brett-griff">10 Min</span>
+                  <span class="brett-griff">20 Min</span>
+                  <span class="brett-griff">30 Min</span>
+                </span>
+              </span>
+              <span class="brett-bon">
+                <span class="brett-bon-kopf">
+                  <span class="brett-bon-marke ruhig">In Arbeit</span>
+                  <span class="brett-bon-tisch">Tisch 12</span>
+                  <span class="brett-bon-wann">Nr. 212 · vor 4 Min</span>
+                  <span class="brett-bon-preis">19,50 €</span>
+                </span>
+                <span class="brett-stand">20 Min zugesagt</span>
+              </span>
+            </span>
+          </button>
         </article>
 
         <article class="szene" data-szene="3" data-zeit="6" data-schritt="In der Küche">
@@ -1200,10 +1531,39 @@ html.starr{overflow:hidden}
           <p>Speisen bei ihm, Getränke an der Theke — je Gericht festgelegt, nicht
           geraten. Servicerufe bleiben beim Kellner. Ein Balken zeigt, was drängt;
           <b>man muss nicht lesen, um zu sehen, was zuerst dran ist.</b></p>
-          <div class="szene-bild">
-            <div class="bonzeile"><span class="m">7</span><span class="bonmarke kueche">Küche</span><span class="t">2× Dubai Crêpe</span><span class="p">3 Min</span></div>
-            <div class="bonzeile"><span class="m">12</span><span class="bonmarke theke">Theke</span><span class="t">3× Arabischer Kaiser</span><span class="p">11 Min</span></div>
-          </div>
+          <button class="szene-bild brett" type="button" data-board="pass"
+                  aria-label="Küche und Theke ansehen — Beispieldaten">
+            <span class="brett-kopf">
+              <span class="brett-ampel" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="marke">Pass · Küche und Theke</span>
+            </span>
+            <span class="brett-koerper">
+              <span class="brett-spalten">
+                <span class="brett-spalte">
+                  <span class="marke">Küche</span>
+                  <span class="brett-bon">
+                    <span class="brett-bon-kopf">
+                      <span class="brett-bon-marke kueche">7</span>
+                      <span class="brett-bon-wann">seit 3 Min</span>
+                    </span>
+                    <span class="brett-bon-posten">2× Dubai Crêpe</span>
+                    <span class="brett-drang"><i style="width:26%"></i></span>
+                  </span>
+                </span>
+                <span class="brett-spalte">
+                  <span class="marke">Theke</span>
+                  <span class="brett-bon">
+                    <span class="brett-bon-kopf">
+                      <span class="brett-bon-marke theke">12</span>
+                      <span class="brett-bon-wann">seit 11 Min</span>
+                    </span>
+                    <span class="brett-bon-posten">3× Arabischer Kaiser</span>
+                    <span class="brett-drang"><i style="width:88%"></i></span>
+                  </span>
+                </span>
+              </span>
+            </span>
+          </button>
         </article>
 
         <article class="szene" data-szene="4" data-zeit="21" data-schritt="Am Tisch">
@@ -1223,11 +1583,20 @@ html.starr{overflow:hidden}
           <p>Umsatz, Schnitt, welche Stunden voll waren, was am besten lief. Eine
           Liste zum Ausdrucken oder für die Buchhaltung — <b>keine Kasse, keine
           TSE, kein Eingriff in das, was schon läuft.</b></p>
-          <div class="szene-bild">
-            <div class="bonzeile"><span class="t">Umsatz</span><span class="p">1.284,60 €</span></div>
-            <div class="bonzeile"><span class="t">Bons</span><span class="p">63</span></div>
-            <div class="bonzeile"><span class="t">Schnitt je Tisch</span><span class="p">20,39 €</span></div>
-          </div>
+          <button class="szene-bild brett" type="button" data-board="zahlen"
+                  aria-label="Die Auswertung ansehen — Beispieldaten">
+            <span class="brett-kopf">
+              <span class="brett-ampel" aria-hidden="true"><i></i><i></i><i></i></span>
+              <span class="marke">Board · Auswertung</span>
+            </span>
+            <span class="brett-koerper">
+              <span class="brett-zahlen">
+                <span class="brett-zahl"><b>1.284,60&nbsp;€</b><span>Umsatz</span></span>
+                <span class="brett-zahl"><b>63</b><span>Bons</span></span>
+                <span class="brett-zahl"><b>20,39&nbsp;€</b><span>Schnitt</span></span>
+              </span>
+            </span>
+          </button>
         </article>
       </div>
     </div>
@@ -1434,6 +1803,7 @@ html.starr{overflow:hidden}
     <div class="knopfreihe">
       <a class="gross" href="/konto.html">Zwei Wochen testen</a>
       <button class="gross leise" type="button" data-hub>Erst den Hub ansehen</button>
+      <button class="gross leise" type="button" data-board>Oder das Board</button>
       <a class="gross leise" href="/start.html">Lieber erst reden</a>
     </div>
 
@@ -1501,6 +1871,66 @@ html.starr{overflow:hidden}
         <p class="hub-hinweis">Beispieldaten. Es geht nichts an eine Küche raus, es
         wird nichts gespeichert. Der echte Hub liegt unter deiner eigenen Adresse
         und hängt an deiner Karte.</p>
+      </div>
+    </div>
+
+  </div>
+</dialog>
+
+<!-- ═══ 8c · DAS BOARD-FENSTER ═══
+     Der Gast tippt, der Gastgeber arbeitet. Der Hub zeigte bisher
+     nur die eine Hälfte. Hier ist die andere: dasselbe Muster
+     (<dialog>, showModal, Rahmen, Beispieldaten), aber quer statt
+     hoch — ein Board ist breit, ein Telefon ist schmal.
+
+     Jedes Element mit data-board öffnet es. Der Wert des Attributs
+     bestimmt die Ansicht: leer/„bons", „pass" oder „zahlen". So
+     öffnet die Abbildung aus Szene 4 auch die Ansicht aus Szene 4
+     und nicht irgendeine. -->
+<dialog class="hubfenster" id="boardfenster" aria-labelledby="boardTitel">
+  <div class="hub-rahmen">
+
+    <div class="hub-kopf">
+      <span class="marke" id="boardTitel">Board · Beispieldaten</span>
+      <div class="hub-haeuser" id="boardAnsichten">
+        <button class="hub-haus" type="button" data-ansicht="bons"   aria-pressed="true">Bestellungen</button>
+        <button class="hub-haus" type="button" data-ansicht="pass"   aria-pressed="false">Küche &amp; Theke</button>
+        <button class="hub-haus" type="button" data-ansicht="zahlen" aria-pressed="false">Zahlen</button>
+      </div>
+      <button class="hub-zu" id="boardZu" type="button" aria-label="Fenster schließen">×</button>
+    </div>
+
+    <div class="board-buehne">
+      <div class="brett board-schirm">
+        <div class="brett-kopf">
+          <span class="brett-ampel" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="marke" id="boardWo">Board · Bestellungen</span>
+        </div>
+        <div class="brett-koerper" id="boardKoerper"></div>
+      </div>
+
+      <div class="hub-seite">
+        <h3>Und das siehst du, während er tippt.</h3>
+        <p>Nimm die neue Bestellung an und sag eine Wartezeit zu — der Gast liest
+        sie an seinem Platz. Oben wechselst du zwischen Board, Pass und Zahlen.</p>
+        <ul>
+          <li><span>Der nächste Handgriff steht IN der Meldung, nicht in einem Menü</span></li>
+          <li><span>Küche und Theke haken getrennt ab</span></li>
+          <li><span>Ein Balken zeigt, was drängt — ohne zu lesen</span></li>
+          <li><span>Am Abend steht da, was war</span></li>
+        </ul>
+        <div class="rufreihe">
+          <a class="gross" href="/konto.html">Zwei Wochen testen</a>
+          <!-- Bewusst OHNE data-hub: Der allgemeine Öffner würde das
+               Hub-Fenster über das offene Board-Fenster legen. Zwei
+               modale Fenster übereinander heißt zweimal html.starr
+               und ein Schließer, der das falsche zumacht. Hier wird
+               erst geschlossen, dann geöffnet. -->
+          <button class="gross leise" type="button" id="boardZumHub">Und den Gast-Hub dazu</button>
+        </div>
+        <p class="hub-hinweis">Beispieldaten. Es geht nichts an eine Küche raus, es
+        wird nichts gespeichert. Das echte Board liegt unter deinem Konto und
+        hängt an deiner Karte.</p>
       </div>
     </div>
 
@@ -1586,6 +2016,7 @@ html.starr{overflow:hidden}
 
   var zeiten = szenen.map(function(s){ return Number(s.dataset.zeit || 0); });
   var ENDE   = zeiten[zeiten.length - 1];
+  var stille = matchMedia("(prefers-reduced-motion: reduce)").matches;
 
   stufen.innerHTML = szenen.map(function(s, i){
     return '<button type="button" class="stufe" data-zu="' + i + '">' +
@@ -1623,9 +2054,30 @@ html.starr{overflow:hidden}
         k.setAttribute("aria-current", n === i);
         k.classList.toggle("vorbei", n < i);
       });
+      inSichtRollen(knoepfe[i]);
       letzte = i;
     }
     warte = false;
+  }
+
+  /* Auf dem Telefon rollt die Stufenleiste waagerecht. Der laufende
+     Schritt muss dabei sichtbar bleiben — sonst ist er zwar benannt,
+     steht aber außerhalb des Bildes.
+
+     Ausdrücklich NICHT scrollIntoView(): Das rollt den nächsten
+     rollbaren Vorfahren, und der ist hier das Dokument. Die Leiste
+     hätte damit bei jedem Szenenwechsel die Seite senkrecht
+     verschoben — mitten in einer angehefteten Erzählung, die ihre
+     Szene aus genau dieser Bildlaufhöhe berechnet. Eine
+     Rückkopplung, die sich selbst weitertreibt. Deshalb wird nur
+     scrollLeft der Leiste gesetzt, nichts sonst. */
+  function inSichtRollen(k){
+    if(!k || stufen.scrollWidth <= stufen.clientWidth + 1) return;
+    var ziel = k.offsetLeft - (stufen.clientWidth - k.offsetWidth) / 2;
+    ziel = Math.max(0, Math.min(stufen.scrollWidth - stufen.clientWidth, ziel));
+    if(typeof stufen.scrollTo === "function")
+      stufen.scrollTo({ left: ziel, behavior: stille ? "auto" : "smooth" });
+    else stufen.scrollLeft = ziel;
   }
 
   /* Antippen springt zur Szene — wer nicht scrollen will, soll
@@ -2399,6 +2851,216 @@ var hubOeffnen = null;
    gewählt — beide hören auf dasselbe Ereignis und füllen sich
    daraufhin selbst. */
 hausWaehlen(HAEUSER[0].id);
+
+/* ─── Das Board zum Anfassen ──────────────────────────────────
+   Was der Hub für den Gast ist, ist dieses Fenster für den Wirt.
+   Der Ablauf, den es zeigt, ist der aus Szene 3, Schritt für
+   Schritt: Eine neue Bestellung kommt, man nimmt sie an, man sagt
+   eine Wartezeit zu — und erst dann kann man sie abhaken.
+
+   Die Ansicht wird nicht aus dem Ganzen neu gebaut, wenn sich nur
+   ein Stand ändert: Beim Antippen wird DER EINE Bon neu gezeichnet,
+   nicht die Liste. Genau der Fehler, der das Küchendisplay
+   wackeln ließ (CLAUDE.md §4.1/4.2), und derselbe Weg wie im
+   Demo-Hub darüber. */
+(function demoboard(){
+  var fenster = document.getElementById("boardfenster");
+  var oeffner = [].slice.call(document.querySelectorAll("[data-board]"));
+  if(!oeffner.length) return;
+
+  /* Ohne <dialog> (iOS vor 15.4) führt derselbe Knopf zum Preisteil
+     — dort steht, was das Board kann. Lieber ein schwächeres Ziel
+     als ein toter Knopf; dieselbe Entscheidung wie beim Demo-Hub. */
+  if(!fenster || typeof fenster.showModal !== "function"){
+    oeffner.forEach(function(k){
+      k.addEventListener("click", function(e){
+        e.preventDefault();
+        var p = document.getElementById("preise");
+        if(p) p.scrollIntoView({behavior:"smooth"});
+      });
+    });
+    return;
+  }
+
+  var koerper  = document.getElementById("boardKoerper");
+  var woEl     = document.getElementById("boardWo");
+  var wahl     = document.getElementById("boardAnsichten");
+  var herkunft = null, ansicht = "bons";
+
+  var TITEL = { bons:"Board · Bestellungen", pass:"Pass · Küche und Theke",
+                zahlen:"Board · Auswertung" };
+
+  /* Die Bons. „stand" wandert: neu → arbeit → zugesagt → fertig.
+     Jeder Stand hat genau einen nächsten Handgriff — deshalb muss
+     niemand lernen, was als Nächstes dran ist. */
+  var BONS = [
+    { id:213, tisch:7,  wann:"gerade eben", preis:"41,20 €", stand:"neu",
+      posten:"2× Dubai Crêpe · 1× Marina Waffel", min:0,
+      teil:[["kueche","2× Dubai Crêpe",26],["theke","1× Marina Waffel",40]] },
+    { id:212, tisch:12, wann:"vor 4 Min",   preis:"19,50 €", stand:"zugesagt",
+      posten:"3× Arabischer Kaiser", min:20,
+      teil:[["theke","3× Arabischer Kaiser",88]] },
+    { id:211, tisch:3,  wann:"vor 11 Min",  preis:"27,90 €", stand:"arbeit",
+      posten:"1× Pistazien-Künefe · 2× Chai", min:0,
+      teil:[["kueche","1× Pistazien-Künefe",64],["theke","2× Chai",30]] }
+  ];
+
+  function schutz(t){
+    return String(t).replace(/[&<>"]/g, function(z){
+      return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[z];
+    });
+  }
+
+  /* ─── Ein Bon ─── */
+  function bonHTML(b){
+    var marke =
+      b.stand === "neu"     ? '<span class="brett-bon-marke">Neu</span>' :
+      b.stand === "fertig"  ? '<span class="brett-bon-marke ruhig">Abgeholt</span>' :
+                              '<span class="brett-bon-marke ruhig">In Arbeit</span>';
+
+    var griffe = "", stand = "";
+    if(b.stand === "neu"){
+      griffe = '<button class="brett-griff stark" type="button" data-tun="an" data-id="' +
+               b.id + '">Annehmen</button>';
+    } else if(b.stand === "arbeit"){
+      /* Erst nach dem Annehmen kommt die Zusage — sonst stünde eine
+         Zeit auf einer Bestellung, die niemand gesehen hat. */
+      griffe = [10,20,30].map(function(m){
+        return '<button class="brett-griff" type="button" data-tun="zeit" data-id="' +
+               b.id + '" data-min="' + m + '">' + m + ' Min</button>';
+      }).join("");
+      stand = '<span class="brett-stand">angenommen · Wartezeit zusagen</span>';
+    } else if(b.stand === "zugesagt"){
+      griffe = '<button class="brett-griff" type="button" data-tun="fertig" data-id="' +
+               b.id + '">Abgeholt</button>';
+      stand = '<span class="brett-stand">' + b.min + ' Min zugesagt · der Gast liest es</span>';
+    } else {
+      stand = '<span class="brett-stand">abgeschlossen</span>';
+    }
+
+    return '<div class="brett-bon' + (b.stand === "neu" ? " frisch" : "") +
+      '" data-bon="' + b.id + '">' +
+      '<div class="brett-bon-kopf">' + marke +
+        '<span class="brett-bon-tisch">Tisch ' + b.tisch + '</span>' +
+        '<span class="brett-bon-wann">Nr. ' + b.id + ' · ' + schutz(b.wann) + '</span>' +
+        '<span class="brett-bon-preis">' + schutz(b.preis) + '</span>' +
+      '</div>' +
+      '<div class="brett-bon-posten">' + schutz(b.posten) + '</div>' + stand +
+      (griffe ? '<div class="brett-griffe">' + griffe + '</div>' : "") +
+    '</div>';
+  }
+
+  /* ─── Küche und Theke ─── */
+  function passHTML(){
+    return '<div class="brett-spalten">' + ["kueche","theke"].map(function(wo){
+      var zeilen = [];
+      BONS.forEach(function(b){
+        if(b.stand === "neu" || b.stand === "fertig") return;
+        b.teil.forEach(function(t){
+          if(t[0] !== wo) return;
+          zeilen.push('<div class="brett-bon">' +
+            '<div class="brett-bon-kopf">' +
+              '<span class="brett-bon-marke ' + wo + '">' + b.tisch + '</span>' +
+              '<span class="brett-bon-wann">' + schutz(b.wann) + '</span>' +
+            '</div>' +
+            '<div class="brett-bon-posten">' + schutz(t[1]) + '</div>' +
+            /* Der Balken ist die ganze Botschaft: Man muss nicht
+               lesen, um zu sehen, was zuerst dran ist. */
+            '<div class="brett-drang"><i style="width:' + t[2] + '%"></i></div>' +
+          '</div>');
+        });
+      });
+      return '<div class="brett-spalte"><span class="marke">' +
+        (wo === "kueche" ? "Küche" : "Theke") + '</span>' +
+        (zeilen.join("") || '<div class="brett-bon"><div class="brett-bon-posten">' +
+          'Nichts offen — alles raus.</div></div>') + '</div>';
+    }).join("") + '</div>';
+  }
+
+  function zahlenHTML(){
+    return '<div class="brett-zahlen">' +
+      '<div class="brett-zahl"><b>1.284,60&nbsp;€</b><span>Umsatz</span></div>' +
+      '<div class="brett-zahl"><b>63</b><span>Bons</span></div>' +
+      '<div class="brett-zahl"><b>20,39&nbsp;€</b><span>Schnitt</span></div>' +
+    '</div>';
+  }
+
+  function zeichnen(){
+    woEl.textContent = TITEL[ansicht];
+    koerper.innerHTML =
+      ansicht === "pass"   ? passHTML() :
+      ansicht === "zahlen" ? zahlenHTML() :
+      BONS.map(bonHTML).join("");
+    wahl.querySelectorAll("[data-ansicht]").forEach(function(k){
+      k.setAttribute("aria-pressed", k.dataset.ansicht === ansicht);
+    });
+  }
+
+  /* Nur den EINEN Bon austauschen, nicht die Liste. Ein voller
+     Neuaufbau würde den Bildlauf zurückspringen lassen und alle
+     übrigen Karten neu einfliegen lassen. */
+  function bonAuffrischen(b){
+    var alt = koerper.querySelector('[data-bon="' + b.id + '"]');
+    if(!alt) return zeichnen();
+    var huelle = document.createElement("div");
+    huelle.innerHTML = bonHTML(b);
+    alt.replaceWith(huelle.firstChild);
+  }
+
+  koerper.addEventListener("click", function(e){
+    var k = e.target.closest("[data-tun]"); if(!k) return;
+    var b = BONS.filter(function(x){ return x.id === Number(k.dataset.id); })[0];
+    if(!b) return;
+    if(k.dataset.tun === "an")     b.stand = "arbeit";
+    if(k.dataset.tun === "zeit"){  b.stand = "zugesagt"; b.min = Number(k.dataset.min); }
+    if(k.dataset.tun === "fertig") b.stand = "fertig";
+    bonAuffrischen(b);
+  });
+
+  wahl.addEventListener("click", function(e){
+    var k = e.target.closest("[data-ansicht]"); if(!k) return;
+    ansicht = k.dataset.ansicht;
+    zeichnen();
+  });
+
+  /* ─── Öffnen und Schließen ─── */
+  function auf(e){
+    if(e){
+      e.preventDefault();
+      herkunft = e.currentTarget;
+      /* Der Wert des Attributs wählt die Ansicht. Ein leerer Wert
+         heißt „Bestellungen" — der Ruf im Sockel braucht so keinen. */
+      var w = e.currentTarget.getAttribute("data-board");
+      ansicht = (w && TITEL[w]) ? w : "bons";
+    }
+    zeichnen();
+    fenster.showModal();
+    var luecke = innerWidth - document.documentElement.clientWidth;
+    document.documentElement.classList.add("starr");
+    if(luecke > 0) document.documentElement.style.paddingRight = luecke + "px";
+  }
+  oeffner.forEach(function(k){ k.addEventListener("click", auf); });
+
+  document.getElementById("boardZu").addEventListener("click", function(){ fenster.close(); });
+  fenster.addEventListener("click", function(e){ if(e.target === fenster) fenster.close(); });
+
+  /* Vom Board in den Hub: erst zu, dann auf. Das close-Ereignis
+     räumt html.starr weg, deshalb muss das Öffnen danach kommen —
+     sonst bliebe die Seite dahinter für immer festgestellt. */
+  var zumHub = document.getElementById("boardZumHub");
+  if(zumHub) zumHub.addEventListener("click", function(){
+    fenster.close();
+    if(typeof hubOeffnen === "function") hubOeffnen();
+    else location.hash = "#marken";
+  });
+  fenster.addEventListener("close", function(){
+    document.documentElement.classList.remove("starr");
+    document.documentElement.style.paddingRight = "";
+    if(herkunft && herkunft.focus) herkunft.focus();
+  });
+
+  zeichnen();
+})();
 
 /* Warteliste: die Frage aufklappen und dorthin springen. */
 document.getElementById("warteKnopf").addEventListener("click", function(e){
