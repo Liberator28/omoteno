@@ -418,6 +418,22 @@ function erzeuge(slug, nurPruefen){
   aus = aus.replace(/(<meta name="theme-color" content=")[^"]*(")/,
     "$1" + (mb.farben.band) + "$2");
 
+  /* Der Vorführblock fliegt raus, wenn ihn niemand bestellt hat.
+
+     Im Gerüst stand jahrelang „Vor dem Livegang diesen Block
+     löschen" — als Bitte an einen Menschen, der sie irgendwann
+     übersieht. Eine Bitte im Kommentar ist keine Regel; der
+     Erzeuger ist eine. */
+  const VORF = /<!--\{\{VORFUEHRUNG\}\}[\s\S]*?<!--\{\{\/VORFUEHRUNG\}\}-->/;
+  if(!VORF.test(aus))
+    throw new Error("Die Vorlage hat keine VORFUEHRUNG-Marke ({{VORFUEHRUNG}} … {{/VORFUEHRUNG}})");
+  if(mb.vorfuehrung === true){
+    console.log("   Hinweis: VORFÜHRBLOCK BLEIBT DRIN — dieser Hub gehört " +
+                "nicht vor echte Gäste.");
+  } else {
+    aus = aus.replace(VORF, "");
+  }
+
   /* Das Siegel. Der Bereich zwischen den Marken wird ersetzt — nicht
      das SVG gesucht, denn davon gibt es im Hub dutzende. */
   const LOGO_MARKE = /<!--\{\{LOGO\}\}[\s\S]*?<!--\{\{\/LOGO\}\}-->/;

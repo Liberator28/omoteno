@@ -100,6 +100,7 @@ Je nachdem, was du angefasst hast:
 | Marken-Studio | `node pruef-studio.js` und `node pruef-studio-hand.js` |
 | Farben, Paletten | `node pruef-kontrast.js`, `node pruef-lesbarkeit.js` |
 | Irgendetwas am Hub | `node pruef-durchgang.js` |
+| Irgendetwas am Hub | `node pruef-hub-hand.js` |
 | Irgendetwas am Board | `node pruef-board.js` |
 | Auslieferung, Umleitungen | `node bauen.js && node pruef-lieferung.js` |
 

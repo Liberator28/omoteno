@@ -497,6 +497,7 @@ Dazu je nach Änderung:
 | Marken-Studio (Bedienung) | `pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
 | Auslieferung, Umleitungen | `bauen.js` und dann `pruef-lieferung.js` |
 | **Irgendetwas am Hub** | `pruef-durchgang.js` — geht den ganzen Weg des Gastes |
+| **Irgendetwas am Hub** | `pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Irgendetwas am Board** | `pruef-board.js` — bedient das Board von Hand |
 
 Und danach, immer:
