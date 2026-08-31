@@ -1,9 +1,16 @@
 -- ═══════════════════════════════════════════════════════════════════
---  OFFEN · Der Gast kann die Kopfdaten seines Lokals nicht lesen
+--  ANGEWENDET · Der Gast konnte die Kopfdaten seines Lokals nicht lesen
 --
---  NICHT ANGEWENDET. Diese Datei ist zum Selbst-Ausführen im
---  Supabase-SQL-Editor. Rechte an einer laufenden Datenbank ändere
---  ich nicht von mir aus.
+--  Angewendet am 30.08. als Migration „gast_liest_betriebe_kopfdaten",
+--  nach ausdrücklicher Freigabe. Nachgemessen mit set local role anon:
+--  Kopfdaten lesbar, alle Geschäftsspalten und select * verweigert,
+--  102 Gerichte erreichbar. Die Anhäufung wurde geprüft (§2.3): Die
+--  neue Regel gilt nur für anon, die beiden vorhandenen nur für
+--  authenticated — ein angemeldeter Wirt sieht weiterhin nur seine
+--  eigenen Betriebe.
+--
+--  Diese Datei bleibt als Beleg. Der Befund darunter ist der Stand
+--  VOR der Reparatur.
 --
 --  ── BEFUND ────────────────────────────────────────────────────
 --  Der Gäste-Hub liest beim Start (hub.vorlage.html, Zeile ~8381):
