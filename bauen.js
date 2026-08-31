@@ -67,7 +67,14 @@ const SEITEN = [
      davon, bricht der Bau ab, statt eine Seite auszuliefern, deren
      Impressumslink ins Leere führt. */
   ["impressum.html",     "impressum.html"],
-  ["datenschutz.html",   "datenschutz.html"]
+  ["datenschutz.html",   "datenschutz.html"],
+  /* Der Service Worker. admin.html registriert ihn beim Namen
+     (register("sw.js")); fehlt er im Ordner, läuft die Registrierung
+     auf ein 404 und das Personal bekommt nie eine Meldung über eine
+     neue Bestellung. Er MUSS in der Wurzel liegen — von dort gilt er
+     für die ganze Adresse. Läge er tiefer, wäre sein Geltungsbereich
+     der Unterordner und das Board davon nicht erfasst. */
+  ["sw.js",              "sw.js"]
 ];
 
 function weg(p){ fs.rmSync(p, { recursive:true, force:true }); }

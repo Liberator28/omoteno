@@ -499,6 +499,7 @@ Dazu je nach Änderung:
 | **Irgendetwas am Hub** | `pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Irgendetwas am Board** | `pruef-board.js` — bedient das Board von Hand |
+| Meldungen, Service Worker | `pruef-push.js` — sw.js wird ausgeliefert und meldet |
 
 Und danach, immer:
 
