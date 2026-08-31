@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<!--
+  ═══════════════════════════════════════════════════════════════════
+   OMOTENO · Küchen- und Thekendisplay
+   © 2026 Elias Faber · hallo@omoteno.de
+
+   Gehört als kueche.html neben die index.html auf admin.omoteno.de.
+   Erreichbar dann unter:  admin.omoteno.de/kueche.html
+   Anmeldung mit demselben Konto wie das Bestell-Board.
+
+   BEWUSSTE ENTSCHEIDUNGEN
+
+   1. Keine fremden Bibliotheken. Das Board lädt supabase-js von
+      jsdelivr — ist der Dienst weg, startet es nicht. Ein Bildschirm
+      in der Küche darf davon nicht abhängen. Hier ist alles reines
+      fetch gegen die REST-Schnittstelle.
+
+      Dasselbe gilt für die SCHRIFT, und genau da stand bis zum
+      30.08. ein Widerspruch: Diese Datei holte ihren Stilbogen von
+      fonts.googleapis.com — blockierend. Gemessen kostete das auf
+      der Landingpage 12,5 Sekunden bis zum ersten Bild. Ein Pass mit
+      schlechtem WLAN hätte minutenlang schwarz gestanden, obwohl
+      hier oben steht, dass er von nichts Fremdem abhängen darf.
+      Der Link ist weg. Das Display läuft auf Systemschrift; wo
+      Instrument Sans oder JetBrains Mono örtlich vorhanden sind,
+      nimmt der Rückfallstapel sie trotzdem.
+
+   2. Abfrage alle 4 Sekunden statt Realtime. Eine WebSocket-Leitung
+      reißt in einer Küche mit schlechtem WLAN ständig ab und merkt es
+      spät. Ein kurzer Takt kommt immer wieder von selbst zurück.
+
+   3. Küche und Theke haken getrennt ab (kueche_fertig_um,
+      theke_fertig_um). Sonst wäre ein Bon für die Theke verschwunden,
+      sobald die Küche ihn abhakt.
+  ═══════════════════════════════════════════════════════════════════
+-->
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Küche — Omoteno</title>
+
+<!-- KEIN Schriftlink. Siehe Entscheidung 1 oben: Ein Display am Pass
+     hängt von keinem fremden Dienst ab — auch nicht für Buchstaben. -->
+<meta name="theme-color" content="#0A1714">
+<meta name="robots" content="noindex, nofollow">
+<style>
+:root{
+  /* ── Die Ecke ─────────────────────────────────────────────────
+     Omotenos eigene Knoepfe, Chips und Marken sind ECKIG. Der Wert
+     steht hier und nur hier; 67 Fundstellen ueber sechs Dateien
+     zeigen auf ihn, keine traegt eine eigene Zahl. Wer es doch
+     weicher will, setzt hier 2px.
+
+     Der Name war beim ersten Versuch --kante. Den gibt es in
+     kueche.html und im Marken-Studio schon: dort ist er eine FARBE
+     (rgba(237,231,217,.09) bzw. #31363E) fuer Rahmen. Aus
+     Die Rundung zeigte damit auf eine Farbe statt auf eine Zahl
+     — ungueltig, still verworfen, und zufaellig trotzdem eckig.
+     pruef-datei.py konnte das nicht finden: Die Variable IST
+     definiert, nur eben als etwas anderes (CLAUDE.md §1.1).
+
+     Was NICHT eckig wird und warum:
+       · der Untersetzer (.seite) — er IST das Produkt
+       · Punkte, Leuchten, Anzeigen, der Ladekreisel
+       · Telefonrahmen und Siegel: sie stellen runde Dinge dar
+       · der Gaeste-Hub: seine Rundung kommt aus dem Markenblatt
+         des Kunden (form.rundung) */
+  --ecke:0px;
+
+  /* ── Marke ────────────────────────────────────────────────────
+     Übernommen aus dem :root von omoteno-web.html. Die Rollen
+     darunter zeigen auf diese Werte, statt eigene zu erfinden — so
+     ist das Board dieselbe Marke wie Webseite und Konto, ohne dass
+     zweihundert Fundstellen umgeschrieben werden müssen. */
+  --sockel:#0A1714;
+  --tafel:#123029;
+  --tafel-hoch:#174036;
+  --pappe:#E9E3D4;
+  --papier:#F4F0E4;
+  --blatt:#FBF9F1;
+  --tinte:#16150F;
+  --tinte-leise:#5C5849;
+  --kreide-hell:#EDE7D9;
+  --kreide-leise:#9DB0A5;
+
+  /* ── Flächen ──────────────────────────────────────────────────
+     Dunkler, als die Marke sie auf der Webseite benutzt, und das mit
+     Absicht: Auf dem hellen Flaschengrün (#174036) fielen vier von
+     sieben Herkunfts- und Zustandsfarben unter 4,5:1. Gerechnet,
+     nicht geschätzt. Der Farbton bleibt der der Marke, die
+     Helligkeit die des Tresens. */
+  --nacht:#0A1714;
+  --tresen:#102621;
+  --karte:#14332B;
+  --linie:rgba(237,231,217,.14);
+  --kreide:#EDE7D9;
+  --gedaempft:#9DB0A5;
+
+  /* Herkunfts- und Zustandsfarben. Bei wenig Licht aus zwei Metern
+     unterscheidbar — und jede über 4,5:1 auf der hellsten Fläche
+     des Boards (Werte in Klammern). */
+  --messing:#C9A227;        /* 5,64 */
+  --tisch:#C9A227;          /* 5,64 */
+  --telefon:#4FA5A8;        /* 4,73 */
+  --reservierung:#A98BD4;   /* 4,77 */
+  --warn:#E8776C;           /* 4,74 — vorher #D4574E mit 3,97 */
+  --gut:#6FAE6A;            /* 5,16 */
+  --achtung:#E0A83C;        /* 6,39 */
+  --glut:#E8895E;           /* 5,31 — „drängt" */
+
+  --r:14px;
+  --schrift:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  /* Alles Zählbare läuft in der Monospace: Uhrzeiten, Tischnummern,
+     Beträge, Wartezeiten. Ein Bon ist monospaced — dieselbe Regel
+     wie auf der Webseite. */
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --ease-out:cubic-bezier(.23,1,.32,1);
+  /* Schnell anspringend, weich auslaufend. */
+  --ease-fein:cubic-bezier(.16,1,.3,1);
+  /* Halbdurchlässige Kanten statt harter Linien — fügen sich in jede
+     Fläche ein, hell wie dunkel. */
+  --kante:rgba(237,231,217,.09);
+  --kante-stark:rgba(237,231,217,.17);
+  --schatten-1:0 1px 2px rgba(0,0,0,.28), 0 4px 12px rgba(0,0,0,.2);
+  --schatten-2:0 2px 8px rgba(0,0,0,.3), 0 14px 36px rgba(0,0,0,.32);
+
+  /* Der Koch stellt das selbst. 1 = normal, bis 1.9 für einen
+     Monitor, den man aus drei Metern liest. */
+  --skala:1.15;
+  --spalten:auto;
+}
+/* Helle Fassung für Küchen mit Tageslicht — dort blendet Dunkel nicht,
+   sondern spiegelt. */
+body.hell{
+  /* Tageslichtküche. Dieselben Papierwerte wie Webseite und Konto,
+     und die Bedeutungsfarben eine Stufe dunkler — auf Papier gilt
+     dieselbe Grenze wie im Dunkeln. */
+  --nacht:#E9E3D4; --tresen:#FBF9F1; --karte:#FBF9F1; --linie:#CFC6AE;
+  --kreide:#16150F; --gedaempft:#5C5849;
+  --messing:#7A5A10;        /* 6,04 auf Blatt */
+  --tisch:#7A5A10;
+  --telefon:#1F6E70;
+  --reservierung:#5B3E93;
+  --warn:#8C2C21;           /* 7,98 */
+  --gut:#3A6329;            /* 6,65 */
+  --achtung:#7A5A10;
+  --glut:#A8410F;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  background:var(--nacht); color:var(--kreide);
+  font-family:var(--schrift); -webkit-font-smoothing:antialiased;
+  font-size:calc(16px * var(--skala)); line-height:1.4;
+  overscroll-behavior:none;
+  -webkit-user-select:none; user-select:none;   /* fühlt sich an wie eine App, nicht wie eine Seite */
+}
+button{font:inherit;color:inherit;cursor:pointer;border:none;background:none;
+  -webkit-tap-highlight-color:transparent;
+  transition:transform .12s var(--ease-out);
+}
+button:active{transform:scale(.96)}
+input{-webkit-user-select:text;user-select:text}
+[hidden]{display:none !important}
+::selection{background:var(--messing);color:var(--nacht)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:var(--nacht)}
+::-webkit-scrollbar-thumb{background:var(--karte);border-radius:var(--ecke);border:2px solid var(--nacht)}
+:focus-visible{outline:3px solid var(--messing);outline-offset:2px}
+
+/* ═══════════════════════════════════════════════════════════════════
+   FEINSCHLIFF · rein visuell, keine Logik betroffen
+   ═══════════════════════════════════════════════════════════════════ */
+body{letter-spacing:-.006em}
+
+/* Zahlen laufen in der Monospace und mit gleicher Ziffernbreite:
+   Uhrzeit, Tischnummer, Wartezeit, Mengen, Zähler. Aus zwei Metern
+   liest man eine Tischnummer als Zahl, nicht als Wort — und in einer
+   Proportionalschrift springt sie bei jedem Wechsel um ein paar
+   Pixel. Dieselbe Regel wie auf der Webseite. */
+.uhr,.tisch,.wartet b,.wartet,.menge,.zahl,.wieAlt,.bon-zeit,.stand-wahl b{
+  font-family:var(--mono);
+  font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
+}
+h1,h2,h3,.tisch,.a-name{letter-spacing:-.018em}
+button,.knopf,.chip{touch-action:manipulation}
+
+/* Kanten und Tiefe */
+.bon,.card,.tr-zeile,.toast,.blatt,.zeit-select,textarea,.stand-wahl button,.reihe button{
+  border-color:var(--kante);
+}
+.bon{box-shadow:var(--schatten-1)}
+.bon.neu{box-shadow:var(--schatten-1), 0 0 0 1px rgba(201,162,39,.35)}
+.blatt{box-shadow:0 -8px 40px rgba(0,0,0,.5)}
+.toast{box-shadow:var(--schatten-2)}
+
+/* Kopfleiste und Spuren mit Glaseffekt — der Inhalt darunter bleibt
+   erahnbar, das Board bekommt Tiefe statt eines Balkens. */
+.kopf{
+  background:rgba(16,38,33,.82);
+  backdrop-filter:blur(16px) saturate(150%);
+  -webkit-backdrop-filter:blur(16px) saturate(150%);
+  border-bottom-color:var(--kante);
+}
+body.hell .kopf{background:rgba(251,249,241,.86)}
+
+/* Bewegung: eine Kurve für alles, die schnell anspringt. */
+.bon,.spuren button,.knopf-rund,.bon-fuss button,.stand-wahl button,.reihe button{
+  transition:transform .14s var(--ease-fein),
+             background .16s ease, border-color .16s ease, opacity .16s ease;
+}
+.spuren button:active,.knopf-rund:active,.stand-wahl button:active,.reihe button:active{
+  transform:scale(.96);
+}
+.bon-fuss button:active{transform:scale(.985)}
+
+/* Der Dringlichkeitsbalken bekommt einen weichen Verlauf statt einer
+   flachen Fläche — er liest sich dadurch aus der Entfernung besser. */
+.mass span{
+  background:linear-gradient(90deg, rgba(201,162,39,.55), var(--messing));
+}
+.bon.spaet .mass span{background:linear-gradient(90deg, rgba(224,168,60,.55), var(--achtung))}
+.bon.sehr-spaet .mass span{background:linear-gradient(90deg, rgba(212,87,78,.55), var(--warn))}
+
+/* Der Bon selbst: die Fläche unter den Posten etwas abheben, damit die
+   Kopfzeile mit Tisch und Wartezeit klar davorsteht. */
+.bon-kopf{background:rgba(255,255,255,.02)}
+body.hell .bon-kopf{background:rgba(0,0,0,.02)}
+
+@media (prefers-reduced-motion:reduce){
+  .spuren button:active,.knopf-rund:active,.bon-fuss button:active,
+  .stand-wahl button:active,.reihe button:active{transform:none}
+}
+
+/* Auf dem Telefon hat die Kopfzeile fünf Dinge nebeneinander: Name,
+   Lage, Netz, Uhr, zwei Knöpfe. Bei 390px blieb vom Namen „Cho…" und
+   von der Lage „· jet…" übrig. Zwei Zeilen statt einer Quetschung —
+   und der Vollbildknopf fällt weg, weil ein Telefon ohnehin kein
+   Vollbild kennt, das der Koch braucht. */
+@media (max-width:560px){
+  .kopf{
+    display:grid;
+    grid-template-columns:minmax(0,1fr) auto auto;
+    grid-template-areas:"wer uhr knopf" "netz netz netz";
+    gap:6px 10px;align-items:center;
+  }
+  .kopf .wer{grid-area:wer}
+  .kopf .uhr{grid-area:uhr}
+  .kopf .netz{grid-area:netz;justify-self:start}
+  .kopf #vollbildKnopf{display:none}
+  .kopf .wer b{font-size:calc(16px * var(--skala))}
+  .spuren{padding-left:12px;padding-right:12px}
+}
+
+/* ───────── Kopfleiste ───────── */
+.kopf{
+  position:sticky; top:0; z-index:30;
+  background:var(--tresen); border-bottom:1px solid var(--linie);
+  padding:calc(10px + env(safe-area-inset-top)) 14px 10px;
+  display:flex; align-items:center; gap:12px;
+}
+.kopf .wer{min-width:0; flex:1}
+.kopf .wer b{
+  display:block; font-size:calc(15px * var(--skala)); font-weight:700;
+  letter-spacing:-.01em; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+}
+.kopf .wer span{
+  display:block; font-size:calc(11px * var(--skala)); color:var(--gedaempft);
+  letter-spacing:.05em; text-transform:uppercase;
+}
+.kopf .wer span b.wieAlt{font-weight:400;text-transform:none;letter-spacing:0;opacity:.75}
+
+/* Betriebswahl — nur sichtbar, wenn ein Konto mehr als einen Betrieb sieht
+   (z. B. dein Master-Konto). Für eine normale Servicekraft bleibt sie weg. */
+.betriebe-wahl{display:flex;gap:5px;flex:none}
+.betriebe-wahl button{
+  padding:6px 12px;border-radius:var(--ecke);border:1px solid var(--linie);
+  font-size:calc(12px * var(--skala));font-weight:700;color:var(--gedaempft);
+  white-space:nowrap;
+}
+.betriebe-wahl button.an{background:var(--messing);border-color:var(--messing);color:var(--nacht)}
+
+/* Verbindungsstatus. Grün = gut, gelb blinkend = versucht es gerade wieder,
+   rot = seit einer Weile kein Kontakt. Der Koch muss das auf einen Blick
+   erfassen, ohne eine Fehlermeldung lesen zu müssen. */
+.netz{
+  display:flex; align-items:center; gap:7px; flex:none;
+  font-size:calc(11px * var(--skala)); font-weight:700; letter-spacing:.04em;
+  padding:6px 11px; border-radius:var(--ecke); background:rgba(237,231,217,.06);
+  color:var(--gedaempft); transition:background .25s, color .25s;
+}
+.netz .punkt{width:7px;height:7px;border-radius:50%;background:var(--gut);flex:none;transition:background .25s}
+.netz.reconnect{color:var(--achtung);background:rgba(224,168,60,.12)}
+.netz.reconnect .punkt{background:var(--achtung);animation:pulsdot 1s ease-in-out infinite}
+.netz.offline{color:var(--warn);background:rgba(232,119,108,.14)}
+.netz.offline .punkt{background:var(--warn)}
+@keyframes pulsdot{0%,100%{opacity:1}50%{opacity:.25}}
+.uhr{
+  font-variant-numeric:tabular-nums; font-size:calc(19px * var(--skala));
+  font-weight:700; letter-spacing:.02em; flex:none;
+}
+.knopf-rund{
+  flex:none; width:calc(42px * var(--skala)); height:calc(42px * var(--skala));
+  border-radius:var(--ecke); background:rgba(237,231,217,.07); border:1px solid var(--linie);
+  display:grid; place-items:center; transition:background .16s;
+}
+.knopf-rund svg{width:52%;height:52%;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.knopf-rund:active{background:rgba(237,231,217,.16)}
+
+/* ───────── Spurenwahl ───────── */
+.spuren{display:flex;gap:6px;padding:10px 14px 0;max-width:100%;overflow-x:auto}
+.spuren::-webkit-scrollbar{display:none}
+.spuren button{
+  flex:none; padding:calc(8px * var(--skala)) calc(15px * var(--skala));
+  border-radius:var(--ecke); border:1px solid var(--linie); color:var(--gedaempft);
+  font-size:calc(13px * var(--skala)); font-weight:700; letter-spacing:.04em;
+  transition:all .16s;
+}
+.spuren button.an{background:var(--kreide);border-color:var(--kreide);color:var(--nacht)}
+.spuren .zahl{
+  display:inline-block; margin-left:7px; padding:1px 7px; border-radius:var(--ecke);
+  background:rgba(0,0,0,.22); font-size:calc(11px * var(--skala));
+}
+.spuren button.an .zahl{background:rgba(0,0,0,.14)}
+
+/* ───────── Das Bonfeld ───────── */
+.feld{
+  display:grid; gap:12px; padding:12px 14px calc(24px + env(safe-area-inset-bottom));
+  grid-template-columns:repeat(auto-fill, minmax(calc(270px * var(--skala)), 1fr));
+  /* Jede Karte nur so hoch wie ihr Inhalt. Ohne das werden alle auf die
+     Hoehe der laengsten gestreckt, und ein Wandmonitor zeigt halb leere
+     Kaesten statt Bons. */
+  align-items:start;
+}
+body[data-spalten="1"] .feld{grid-template-columns:1fr}
+body[data-spalten="2"] .feld{grid-template-columns:repeat(2,1fr)}
+body[data-spalten="3"] .feld{grid-template-columns:repeat(3,1fr)}
+body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
+
+/* ───────── Ein Bon ───────── */
+/* WICHTIG: Hier stand früher „animation:rein …“ auf JEDEM Bon.
+   Da das Feld bei jeder Aktualisierung komplett neu aufgebaut wird,
+   sind alle Karten neue Elemente — und die Einflug-Animation lief
+   dadurch alle vier Sekunden erneut auf dem ganzen Bildschirm ab.
+   Das war das Wackeln. Der Einflug gehört nur an Karten, die
+   tatsächlich zum ersten Mal erscheinen, also an .frisch. */
+.bon{
+  background:var(--karte); border:1px solid var(--linie); border-radius:var(--r);
+  display:flex; flex-direction:column; overflow:hidden;
+  position:relative; touch-action:pan-y;   /* pan-y lässt die Seite scrollen, wir übernehmen nur X */
+}
+@keyframes rein{from{opacity:0;transform:translateY(10px)}}
+.bon.neu{border-color:var(--messing)}
+.bon.spaet{border-color:var(--achtung)}
+.bon.sehr-spaet{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
+.bon.erledigt{opacity:.42}
+
+/* Kurzes Aufblitzen, wenn ein Bon zum ersten Mal auf dem Bildschirm
+   erscheint — auf einem Wandmonitor sonst leicht zu übersehen. */
+.bon.frisch{animation:rein .3s var(--ease-out) backwards, glut 1.4s ease-out .05s}
+@keyframes glut{
+  0%{box-shadow:0 0 0 0 rgba(201,162,39,.6)}
+  65%{box-shadow:0 0 0 18px rgba(201,162,39,0)}
+  100%{box-shadow:0 0 0 0 rgba(201,162,39,0)}
+}
+
+/* Dringlichkeitsbalken: füllt sich von leer bis voll zwischen „gerade
+   angekommen“ und „rot“. Zeigt die Lage, ohne dass man Zahlen lesen muss. */
+.mass{height:4px;background:rgba(127,122,105,.16);flex:none}
+.mass span{display:block;height:100%;width:0%;background:var(--messing);
+  transition:width 1s linear, background .3s ease}
+.bon.spaet .mass span{background:var(--achtung)}
+.bon.sehr-spaet .mass span{background:var(--warn)}
+
+/* Wischen nach rechts = fertig. Der Haken links wird sichtbar, während
+   man zieht, und bestätigt die Richtung. */
+.bon .wischgrund{
+  position:absolute; inset:0; display:flex; align-items:center; padding-left:22px;
+  background:rgba(111,174,106,.16); opacity:0; pointer-events:none;
+}
+.bon .wischgrund svg{width:28px;height:28px;stroke:var(--gut);fill:none;stroke-width:2.5;stroke-linecap:round;stroke-linejoin:round}
+.bon .schicht{position:relative;display:flex;flex-direction:column;flex:1;background:var(--karte)}
+.bon.zieht .schicht{transition:none}
+.bon.schnappt .schicht{transition:transform .28s var(--ease-out)}
+
+.bon-kopf{
+  display:flex; align-items:center; gap:10px;
+  padding:calc(11px * var(--skala)) calc(13px * var(--skala));
+  border-bottom:1px solid var(--linie);
+}
+.tisch{
+  font-size:calc(26px * var(--skala)); font-weight:800; letter-spacing:-.02em;
+  line-height:1; flex:none;
+}
+.tisch small{display:block;font-size:calc(10px * var(--skala));font-weight:700;
+  letter-spacing:.14em;color:var(--gedaempft);text-transform:uppercase;margin-bottom:3px}
+.bon-kopf .luecke{flex:1}
+.wartet{
+  font-variant-numeric:tabular-nums; text-align:right; flex:none;
+  font-size:calc(22px * var(--skala)); font-weight:700; line-height:1;
+}
+.wartet small{display:block;font-size:calc(10px * var(--skala));font-weight:700;
+  letter-spacing:.12em;color:var(--gedaempft);text-transform:uppercase;margin-bottom:3px}
+.bon.spaet .wartet{color:var(--achtung)}
+.bon.sehr-spaet .wartet{color:var(--warn)}
+
+.marke{
+  flex:none; padding:3px 9px; border-radius:var(--ecke);
+  font-size:calc(10px * var(--skala)); font-weight:800; letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.marke.kueche{background:rgba(201,162,39,.18);color:var(--messing)}
+.marke.theke{background:rgba(79,165,168,.18);color:var(--telefon)}
+.marke.arbeit{background:rgba(111,174,106,.16);color:var(--gut)}
+
+.posten{list-style:none;padding:calc(6px * var(--skala)) 0;flex:1}
+.posten li{
+  display:flex; gap:calc(11px * var(--skala)); align-items:baseline;
+  padding:calc(7px * var(--skala)) calc(13px * var(--skala));
+}
+.posten .menge{
+  flex:none; min-width:calc(30px * var(--skala)); text-align:right;
+  font-size:calc(19px * var(--skala)); font-weight:800; color:var(--messing);
+  font-variant-numeric:tabular-nums;
+}
+.posten .name{font-size:calc(17px * var(--skala)); font-weight:600; line-height:1.3}
+.posten .zusatz{display:block;font-size:calc(13px * var(--skala));color:var(--gedaempft);font-weight:400}
+
+.notiz{
+  margin:0 calc(13px * var(--skala)) calc(11px * var(--skala));
+  padding:calc(9px * var(--skala)) calc(11px * var(--skala));
+  background:rgba(212,87,78,.12); border-left:3px solid var(--warn);
+  border-radius:6px; font-size:calc(14.5px * var(--skala)); line-height:1.45;
+}
+.notiz b{display:block;font-size:calc(10px * var(--skala));letter-spacing:.12em;
+  text-transform:uppercase;color:var(--warn);margin-bottom:3px}
+
+.bon-fuss{display:flex;gap:1px;background:var(--linie);border-top:1px solid var(--linie)}
+.bon-fuss button{
+  flex:1; padding:calc(14px * var(--skala)) 8px; background:var(--karte);
+  font-size:calc(14px * var(--skala)); font-weight:700; letter-spacing:.03em;
+  transition:background .14s;
+}
+.bon-fuss button:active{background:rgba(237,231,217,.12)}
+.bon-fuss button.haupt{background:rgba(111,174,106,.16);color:var(--gut)}
+.bon-fuss button.haupt:active{background:rgba(111,174,106,.3)}
+.bon-fuss button.zurueck{color:var(--gedaempft);flex:0 0 38%}
+
+/* ───────── Leer, Laden, Anmeldung ───────── */
+.leer{
+  grid-column:1/-1; text-align:center; padding:14vh 20px; color:var(--gedaempft);
+}
+.leer b{display:block;font-size:calc(21px * var(--skala));color:var(--kreide);margin-bottom:8px}
+.leer p{font-size:calc(15px * var(--skala));max-width:360px;margin:0 auto}
+
+/* Lade-Skelett: erscheint für den Sekundenbruchteil zwischen Anmelden und
+   den ersten echten Bons. Besser als ein leeres Feld, das nach einem
+   Fehler aussieht. */
+.skel{
+  background:var(--karte); border:1px solid var(--linie); border-radius:var(--r);
+  height:calc(150px * var(--skala)); overflow:hidden; position:relative;
+}
+.skel::after{
+  content:""; position:absolute; inset:0;
+  background:linear-gradient(100deg, transparent 30%, rgba(237,231,217,.07) 50%, transparent 70%);
+  animation:schimmer 1.3s ease-in-out infinite;
+}
+@keyframes schimmer{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+
+/* Toasts: für Fehler, die keine Vollbremsung verdienen. Erscheinen unten,
+   verschwinden von selbst, verdecken nie die Bons. */
+.toasts{
+  position:fixed; left:0; right:0; bottom:calc(16px + env(safe-area-inset-bottom));
+  display:flex; flex-direction:column; align-items:center; gap:8px;
+  z-index:80; pointer-events:none; padding:0 16px;
+}
+.toast{
+  pointer-events:auto; max-width:min(92vw, 420px);
+  display:flex; align-items:center; gap:12px;
+  background:var(--tresen); border:1px solid var(--linie); border-radius:12px;
+  padding:12px 14px 12px 16px; font-size:calc(14px * var(--skala));
+  box-shadow:0 10px 30px rgba(0,0,0,.4);
+  animation:toastrein .22s var(--ease-out);
+}
+.toast.err{border-color:var(--warn)}
+.toast.ok{border-color:var(--gut)}
+.toast span{flex:1;line-height:1.35}
+.toast button{
+  flex:none; font-weight:700; font-size:calc(12.5px * var(--skala));
+  color:var(--messing); letter-spacing:.03em; white-space:nowrap;
+}
+@keyframes toastrein{from{opacity:0;transform:translateY(10px) scale(.97)}}
+.toast.weg{animation:toastweg .16s ease forwards}
+@keyframes toastweg{to{opacity:0;transform:translateY(6px)}}
+
+.tor{max-width:380px;margin:14vh auto 0;padding:0 22px}
+.tor h1{font-size:26px;margin-bottom:6px;letter-spacing:-.02em}
+.tor p{color:var(--gedaempft);font-size:15px;margin-bottom:24px}
+.tor label{display:block;font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--gedaempft);margin-bottom:6px}
+.tor input{
+  width:100%; font-size:17px; color:var(--kreide); background:var(--karte);
+  border:1px solid var(--linie); border-radius:10px; padding:14px 15px; margin-bottom:15px;
+  -webkit-appearance:none; appearance:none;
+}
+.tor input:focus{border-color:var(--messing);outline:none}
+.knopf-voll{
+  width:100%; background:var(--kreide); color:var(--nacht);
+  padding:15px; border-radius:var(--ecke); font-size:16px; font-weight:700;
+}
+.knopf-voll:disabled{opacity:.5}
+.meldung{min-height:22px;font-size:14px;color:var(--warn);margin-bottom:10px}
+
+/* ───────── Einstellungen ───────── */
+.decke{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;
+  display:flex;align-items:flex-end;justify-content:center;
+  animation:auf .2s ease}
+@keyframes auf{from{opacity:0}}
+.blatt{
+  width:100%; max-width:520px; max-height:88vh; overflow-y:auto;
+  background:var(--tresen); border:1px solid var(--linie);
+  border-radius:20px 20px 0 0; padding:20px 20px calc(26px + env(safe-area-inset-bottom));
+  animation:hoch .3s var(--ease-out);
+}
+@keyframes hoch{from{transform:translateY(24px)}}
+.blatt h2{font-size:20px;margin-bottom:3px;letter-spacing:-.02em}
+.blatt .sub{color:var(--gedaempft);font-size:13.5px;margin-bottom:20px}
+.griff{width:38px;height:4px;border-radius:var(--ecke);background:var(--linie);margin:0 auto 16px}
+
+.satz{margin-bottom:20px}
+.satz > label{display:block;font-size:11px;font-weight:700;letter-spacing:.12em;
+  text-transform:uppercase;color:var(--gedaempft);margin-bottom:9px}
+.satz .dazu{font-size:13px;color:var(--gedaempft);margin-top:8px;line-height:1.45}
+.reihe{display:flex;gap:7px;flex-wrap:wrap}
+.reihe button{
+  flex:1; min-width:64px; padding:12px 10px; border-radius:11px;
+  border:1px solid var(--linie); background:var(--karte); color:var(--gedaempft);
+  font-size:14px; font-weight:600;
+}
+.reihe button.an{background:var(--kreide);border-color:var(--kreide);color:var(--nacht)}
+.schalter{display:flex;align-items:center;justify-content:space-between;gap:14px;
+  padding:13px 0;border-top:1px solid var(--linie)}
+.schalter b{font-size:15px;font-weight:600}
+.schalter span{display:block;font-size:12.5px;color:var(--gedaempft);margin-top:2px}
+.kippe{
+  flex:none;width:52px;height:31px;border-radius:var(--ecke);background:var(--linie);
+  position:relative;transition:background .2s;
+}
+.kippe::after{content:"";position:absolute;top:3px;left:3px;width:25px;height:25px;
+  border-radius:var(--ecke);background:var(--kreide);transition:transform .2s var(--ease-out)}
+.kippe.an{background:var(--gut)}
+.kippe.an::after{transform:translateX(21px)}
+.zahlwahl{display:flex;align-items:center;gap:12px}
+.zahlwahl input{flex:1;accent-color:var(--messing)}
+.zahlwahl output{font-variant-numeric:tabular-nums;font-weight:700;min-width:62px;text-align:right;font-size:15px}
+</style>
+</head>
+<body>
+
+<!-- ═══════════ ANMELDUNG ═══════════ -->
+<section class="tor" id="tor" hidden>
+  <h1>Küche</h1>
+  <p>Melde dich mit demselben Konto an wie am Bestell-Board.</p>
+  <form id="anmeldung">
+    <label for="mail">E-Mail</label>
+    <input type="email" id="mail" autocomplete="username" inputmode="email" autocapitalize="off" spellcheck="false" required>
+    <label for="wort">Passwort</label>
+    <input type="password" id="wort" autocomplete="current-password" required>
+    <p class="meldung" id="torMeldung"></p>
+    <button type="submit" class="knopf-voll" id="torKnopf">Anmelden</button>
+  </form>
+</section>
+
+<!-- ═══════════ DISPLAY ═══════════ -->
+<div id="schirm" hidden>
+  <header class="kopf">
+    <div class="wer">
+      <b id="betriebName">—</b>
+      <span id="lage">wird geladen<b class="wieAlt" id="wieAlt"></b></span>
+    </div>
+    <div class="betriebe-wahl" id="betriebeWahl" hidden></div>
+    <div class="netz" id="netz"><span class="punkt"></span><span id="netzText">verbunden</span></div>
+    <div class="uhr" id="uhr">--:--</div>
+    <button class="knopf-rund" id="vollbildKnopf" type="button" aria-label="Vollbild">
+      <svg viewBox="0 0 24 24"><path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/></svg>
+    </button>
+    <button class="knopf-rund" id="einstKnopf" type="button" aria-label="Einstellungen">
+      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.9l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.9-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1A1.7 1.7 0 0 0 9 19.4a1.7 1.7 0 0 0-1.9.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.9 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.3-1.9l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.9.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.9-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.9V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+    </button>
+  </header>
+
+  <nav class="spuren" id="spuren">
+    <button type="button" data-spur="beides">Alles</button>
+    <button type="button" data-spur="kueche">Küche<span class="zahl" id="zKueche">0</span></button>
+    <button type="button" data-spur="theke">Theke<span class="zahl" id="zTheke">0</span></button>
+  </nav>
+
+  <main class="feld" id="feld"></main>
+</div>
+
+<div class="toasts" id="toasts" aria-live="polite"></div>
+
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   1 · EINSTELLUNGEN — dieselbe Datenbank wie Board und Hub
+   ═══════════════════════════════════════════════════════════════ */
+var DB = {
+  adresse:    "https://quxwweuvdqtjsdwgjdrh.supabase.co",
+  schluessel: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk"
+};
+var TAKT_MS = 4000;      /* wie oft nach neuen Bons gefragt wird */
+var RUECKBLICK_STD = 6;  /* wie weit zurück Bons geholt werden */
+
+(function(){
+/* ═══════════════════════════════════════════════════════════════
+   2 · ZUSTAND
+   ═══════════════════════════════════════════════════════════════ */
+var SPEICHER_SITZUNG = "omoteno-kueche-sitzung";
+var SPEICHER_EINST   = "omoteno-kueche-einstellungen";
+
+var EINST = {
+  spur:      "beides",   /* beides | kueche | theke */
+  skala:     1.15,
+  spalten:   "auto",
+  sortierung:"alt",      /* alt | neu | tisch */
+  gelbAb:    8,          /* Minuten */
+  rotAb:     18,
+  fertigZeigen: 3,       /* Minuten, die ein erledigter Bon noch stehen bleibt */
+  ton:       true,
+  hell:      false,
+  wach:      true
+};
+
+var sitzung = null, betrieb = null, betriebe = [];
+var bons = [], spurNachName = {}, gesehen = {}, ersterLauf = true;
+var takt = null, wachSchloss = null;
+var netzStand = "gut";       /* gut | reconnect | offline */
+var fehlSerie = 0;           /* wie oft in Folge die Abfrage misslang */
+var letzteAktualisierung = null;
+
+var $ = function(id){ return document.getElementById(id); };
+function h(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function basis(){ return DB.adresse.replace(/\/+$/,""); }
+function kopf(){
+  return { apikey: DB.schluessel, "Content-Type":"application/json",
+           Authorization: "Bearer " + (sitzung ? sitzung.access_token : DB.schluessel) };
+}
+function merken(schl, wert){ try{ localStorage.setItem(schl, JSON.stringify(wert)); }catch(e){} }
+function holen(schl){ try{ var r = localStorage.getItem(schl); return r ? JSON.parse(r) : null; }catch(e){ return null; } }
+
+/* ═══════════════════════════════════════════════════════════════
+   2b · TOASTS UND VERBINDUNGSSTATUS
+
+   Ein Fehler beim Speichern darf die Küche nicht aufhalten — kein
+   Dialog, keine Blockade. Ein Toast informiert kurz, verschwindet
+   von selbst, und bietet bei Bedarf einen erneuten Versuch an.
+   ═══════════════════════════════════════════════════════════════ */
+function toast(text, art, aktion){
+  var box = $('toasts');
+  var el = document.createElement('div');
+  el.className = 'toast' + (art ? ' ' + art : '');
+  el.innerHTML = '<span>' + h(text) + '</span>' +
+    (aktion ? '<button type="button">' + h(aktion.text) + '</button>' : '');
+  if(aktion){
+    el.querySelector('button').addEventListener('click', function(){
+      weg(); aktion.tun();
+    });
+  }
+  box.appendChild(el);
+  var zeit = setTimeout(weg, art === 'err' ? 6000 : 3200);
+  function weg(){
+    clearTimeout(zeit);
+    if(!el.parentNode) return;
+    el.classList.add('weg');
+    setTimeout(function(){ if(el.parentNode) el.remove(); }, 180);
+  }
+}
+
+/* Netzstatus: „gut" sofort nach einer erfolgreichen Abfrage. Nach dem
+   ersten Fehlschlag „reconnect" (kann ein einzelner Ruckler sein). Erst
+   ab drei Fehlschlägen in Folge (~12 Sekunden) „offline" — vorher würde
+   die Anzeige bei jedem kleinen Hänger unruhig blinken. */
+function netzMelden(gut){
+  if(gut){ fehlSerie = 0; letzteAktualisierung = Date.now(); netzStand = "gut"; }
+  else{
+    fehlSerie++;
+    netzStand = fehlSerie >= 3 ? "offline" : "reconnect";
+  }
+  netzZeichnen();
+}
+function netzZeichnen(){
+  var el = $('netz');
+  el.className = 'netz' + (netzStand === 'gut' ? '' : ' ' + netzStand);
+  $('netzText').textContent = netzStand === 'gut' ? 'verbunden'
+    : (netzStand === 'reconnect' ? 'verbindet …' : 'keine Verbindung');
+}
+function wieAltZeichnen(){
+  var el = $('wieAlt');
+  if(!letzteAktualisierung){ el.textContent = ''; return; }
+  var s = Math.round((Date.now() - letzteAktualisierung) / 1000);
+  el.textContent = s < 3 ? '· jetzt aktualisiert' : '· vor ' + s + 's';
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   3 · ANMELDUNG
+   ═══════════════════════════════════════════════════════════════ */
+function anmelden(mail, wort){
+  return fetch(basis()+"/auth/v1/token?grant_type=password", {
+    method:"POST", headers:{apikey:DB.schluessel,"Content-Type":"application/json"},
+    body: JSON.stringify({email:mail, password:wort})
+  }).then(function(a){
+    return a.json().then(function(o){
+      if(!a.ok) throw new Error(o.error_description || o.msg || o.message || "Anmeldung fehlgeschlagen");
+      sitzung = {access_token:o.access_token, refresh_token:o.refresh_token};
+      merken(SPEICHER_SITZUNG, sitzung);
+    });
+  });
+}
+function auffrischen(){
+  if(!sitzung || !sitzung.refresh_token) return Promise.reject(new Error("keine Sitzung"));
+  return fetch(basis()+"/auth/v1/token?grant_type=refresh_token", {
+    method:"POST", headers:{apikey:DB.schluessel,"Content-Type":"application/json"},
+    body: JSON.stringify({refresh_token: sitzung.refresh_token})
+  }).then(function(a){
+    if(!a.ok) throw new Error("Sitzung abgelaufen");
+    return a.json();
+  }).then(function(o){
+    sitzung = {access_token:o.access_token, refresh_token:o.refresh_token};
+    merken(SPEICHER_SITZUNG, sitzung);
+  });
+}
+/* Ein Aufruf, der bei 401 einmal die Sitzung auffrischt und dann
+   wiederholt. Ohne das steht die Küche nach einer Stunde still. */
+function ruf(pfad, opt){
+  opt = opt || {}; opt.headers = kopf();
+  return fetch(basis()+pfad, opt).then(function(a){
+    if(a.status !== 401) return a;
+    return auffrischen().then(function(){
+      opt.headers = kopf();
+      return fetch(basis()+pfad, opt);
+    });
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   4 · DATEN
+   ═══════════════════════════════════════════════════════════════ */
+function ladeBetriebe(){
+  return ruf("/rest/v1/betriebe?select=id,name&order=name.asc")
+    .then(function(a){ if(!a.ok) throw new Error("Betriebe nicht lesbar ("+a.status+")"); return a.json(); });
+}
+
+/* Die Karte sagt uns, was Speise und was Getränk ist. In den Positionen
+   einer Bestellung steht nur der Name — die Zuordnung kommt von hier. */
+function ladeKarte(){
+  return ruf("/rest/v1/gerichte?select=name,karte,spur&betrieb_id=eq."+betrieb.id)
+    .then(function(a){ return a.ok ? a.json() : []; })
+    .then(function(liste){
+      spurNachName = {};
+      (liste||[]).forEach(function(g){
+        if(!g.name) return;
+        /* Steht am Gericht eine Zuständigkeit, gilt die. Sonst wie
+           früher aus der Karte hergeleitet — damit ein Betrieb, der
+           noch nichts gesetzt hat, unverändert weiterläuft. */
+        spurNachName[g.name.trim().toLowerCase()] =
+          (g.spur === "theke" || g.spur === "kueche")
+            ? g.spur
+            : ((g.karte === "getraenke" || g.karte === "cocktails") ? "theke" : "kueche");
+      });
+    });
+}
+
+/* Bewusst nicht select=*. Drei Gründe:
+     1. Weniger Bytes bei jeder Abfrage alle 4 Sekunden — zählt im
+        schwachen Küchen-WLAN.
+     2. Der Bildschirm hängt oft für mehrere Leute sichtbar in der
+        Küche. Telefonnummer und Name des Gasts (gast_telefon,
+        gast_name) haben dort nichts verloren, wenn niemand sie braucht.
+     3. Weniger Felder heißt weniger Code, der falsch damit umgehen kann.
+   Das ist eine Datensparsamkeit auf Abfrageebene, kein Ersatz für
+   Rechteprüfung — das Konto könnte diese Spalten mit einer anderen
+   Abfrage weiterhin lesen. Die eigentliche Schranke bleibt RLS. */
+var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
+                   "zeitpunkt,kueche_fertig_um,theke_fertig_um";
+
+/* quelle=eq.tisch: Servicerufe bleiben draußen.
+
+   Ein Serviceruf ist eine Bitte an den Kellner — zahlen, nachbestellen,
+   Besteck. In der Küche steht er nur im Weg und verstellt die Sicht auf
+   das, was gekocht werden muss. Er läuft weiterhin im Admin-Board auf,
+   wo der Service ihn sieht.
+
+   Der Filter sitzt bewusst in der ABFRAGE, nicht erst in der Anzeige:
+   So kommen die Zeilen gar nicht erst über das Küchen-WLAN, und die
+   Zähler oben können sich nicht mehr an ihnen verrechnen. */
+function ladeBons(){
+  var seit = new Date(Date.now() - RUECKBLICK_STD*3600*1000).toISOString();
+  return ruf("/rest/v1/bestellungen?select="+BON_SPALTEN+"&betrieb_id=eq."+betrieb.id+
+             "&quelle=eq.tisch"+
+             "&zeitpunkt=gte."+seit+"&order=zeitpunkt.asc")
+    .then(function(a){
+      if(!a.ok) throw new Error("Bons nicht lesbar ("+a.status+")");
+      return a.json();
+    });
+}
+
+function setzeBon(id, felder){
+  return ruf("/rest/v1/bestellungen?id=eq."+encodeURIComponent(id), {
+    method:"PATCH", body: JSON.stringify(felder)
+  }).then(function(a){ if(!a.ok) throw new Error("Nicht gespeichert ("+a.status+")"); });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5 · EINEN BON AUFTEILEN
+
+   Ein Bon kann Speisen und Getränke enthalten. Jede Spur sieht nur
+   ihren Teil — sonst steht der Koch vor einer Liste Cocktails.
+   ═══════════════════════════════════════════════════════════════ */
+function spurVon(posten){
+  /* Der Name kommt so, wie er beim Bestellen stand — inklusive
+     Zusätzen in Klammern: „Dubai Crêpe (extra Pistazie)". Deshalb
+     erst der volle Name, dann der Teil vor der Klammer. */
+  var roh = String(posten.name||"").trim().toLowerCase();
+  var s = spurNachName[roh];
+  if(!s){
+    var basis = roh.split(" (")[0].trim();
+    s = spurNachName[basis];
+  }
+  /* Unbekannte Namen gehen in die Küche. Lieber der Koch sieht etwas
+     zu viel, als dass eine Speise nirgends auftaucht. */
+  return s === "theke" ? "theke" : "kueche";
+}
+
+function aufteilen(b){
+  var posten = Array.isArray(b.positionen) ? b.positionen : [];
+  var kueche = [], theke = [];
+  posten.forEach(function(p){ (spurVon(p) === "theke" ? theke : kueche).push(p); });
+
+  /* Servicerufe kommen hier nicht mehr an (siehe ladeBons). Ein Bon
+     ganz ohne Posten ist deshalb eine Bestellung, bei der nur eine
+     Anmerkung steht — die gehört in die Küche, nicht in den Papierkorb. */
+  return { kueche:kueche, theke:theke };
+}
+
+/* Welche Spuren hat dieser Bon überhaupt zu tun? */
+function spurenVon(b){
+  var t = aufteilen(b), s = [];
+  if(t.kueche.length) s.push("kueche");
+  if(t.theke.length)  s.push("theke");
+  if(!s.length) s.push("kueche");
+  return s;
+}
+function spurFertig(b, spur){
+  return spur === "kueche" ? !!b.kueche_fertig_um : !!b.theke_fertig_um;
+}
+/* Ist der ganze Bon durch? Nur dann wandert status auf „fertig" —
+   sonst verschwindet er beim Board, bevor die Theke gegossen hat. */
+function ganzFertig(b, extraSpur){
+  return spurenVon(b).every(function(s){
+    return s === extraSpur || spurFertig(b, s);
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   6 · ANZEIGE
+   ═══════════════════════════════════════════════════════════════ */
+function minutenSeit(iso){
+  if(!iso) return 0;
+  return Math.floor((Date.now() - new Date(iso).getTime()) / 60000);
+}
+function zeitText(min){
+  if(min < 60) return min + "′";
+  return Math.floor(min/60) + "h " + (min % 60) + "′";
+}
+
+function sichtbareBons(){
+  var spur = EINST.spur;
+  var jetzt = Date.now();
+  var liste = bons.filter(function(b){
+    var meine = spurenVon(b).filter(function(s){ return spur === "beides" || s === spur; });
+    if(!meine.length) return false;
+
+    /* Erledigt = alle für diese Ansicht zuständigen Spuren sind abgehakt. */
+    var offen = meine.some(function(s){ return !spurFertig(b, s); });
+    if(offen) return true;
+
+    /* Kurz stehen lassen, damit man ein Versehen zurücknehmen kann. */
+    var wann = Math.max(
+      b.kueche_fertig_um ? new Date(b.kueche_fertig_um).getTime() : 0,
+      b.theke_fertig_um  ? new Date(b.theke_fertig_um).getTime()  : 0
+    );
+    return wann && (jetzt - wann) < EINST.fertigZeigen * 60000;
+  });
+
+  liste.sort(function(a,b){
+    if(EINST.sortierung === "tisch"){
+      var ta = parseInt(a.tisch,10) || 999, tb = parseInt(b.tisch,10) || 999;
+      if(ta !== tb) return ta - tb;
+    }
+    var za = new Date(a.zeitpunkt).getTime(), zb = new Date(b.zeitpunkt).getTime();
+    return EINST.sortierung === "neu" ? zb - za : za - zb;
+  });
+  return liste;
+}
+
+/* Lade-Skelett: einmalig zwischen Anmelden und den ersten echten Bons.
+   Besser als ein leeres Feld, das nach einem Fehler aussieht. */
+function skelettZeichnen(){
+  /* Das Skelett ersetzt den Inhalt des Feldes. Danach darf die
+     Signatur nicht mehr behaupten, es stünde noch etwas darin —
+     sonst bliebe das Skelett stehen. */
+  letzteSignatur = null;
+  var s = "";
+  for(var i=0;i<4;i++) s += '<div class="skel" style="animation-delay:' + (i*60) + 'ms"></div>';
+  $('feld').innerHTML = s;
+}
+
+/* ─────────────────────────────────────────────────────────────
+   RUHE AUF DEM SCHIRM
+
+   Das Feld wurde bisher bei jedem Takt komplett neu aufgebaut —
+   alle vier Sekunden, auch wenn sich nichts geändert hatte. Neue
+   Elemente heißt: Animationen laufen erneut, ein begonnener Wisch
+   ist weg, ein gedrückter Knopf verliert den Druck. Das war das
+   Zittern.
+
+   Ab jetzt gilt: Neu aufgebaut wird nur, wenn sich an den Bons
+   wirklich etwas geändert hat. Die Signatur enthält bewusst KEINE
+   Uhrzeit — sonst wäre jede Minute wieder ein Neuaufbau fällig.
+   Die laufenden Zeiten zieht zeitenAktualisieren() im bestehenden
+   Element nach. ───────────────────────────────────────────────── */
+var letzteSignatur = null;
+var wischtGerade   = false;
+
+function bonSignatur(liste){
+  return EINST.spur + "|" + EINST.sortierung + "|" + liste.map(function(b){
+    return b.id + ":" + (b.status || "") + ":" +
+           (b.kueche_fertig_um || "") + ":" + (b.theke_fertig_um || "");
+  }).join(",");
+}
+
+/* Wartezeit, Balken und Farbstufe direkt am vorhandenen Element
+   ändern. Kein innerHTML, also kein Sprung. */
+function zeitenAktualisieren(){
+  var karten = $('feld').children;
+  for(var i = 0; i < karten.length; i++){
+    var el = karten[i];
+    if(!el.dataset || !el.dataset.id) continue;
+    var b = bonFinden(el.dataset.id); if(!b) continue;
+
+    var min = minutenSeit(b.zeitpunkt);
+    var w = el.querySelector('.wartet');
+    if(w) w.innerHTML = '<small>wartet</small>' + zeitText(min);
+
+    var balken = el.querySelector('.mass span');
+    if(balken) balken.style.width =
+      Math.min(100, Math.round((min / Math.max(1, EINST.rotAb)) * 100)) + '%';
+
+    el.classList.toggle('spaet',      min >= EINST.gelbAb && min < EINST.rotAb);
+    el.classList.toggle('sehr-spaet', min >= EINST.rotAb);
+  }
+}
+
+function zeichne(){
+  var feld = $('feld');
+  var liste = sichtbareBons();
+
+  /* Zähler je Spur */
+  var zK = 0, zT = 0;
+  bons.forEach(function(b){
+    spurenVon(b).forEach(function(s){
+      if(spurFertig(b, s)) return;
+      if(s === "kueche") zK++; else zT++;
+    });
+  });
+  $('zKueche').textContent = zK;
+  $('zTheke').textContent  = zT;
+  /* Auch diese Zeile wurde bisher bei jedem Takt neu geschrieben. Damit
+     verschwand das darin liegende #wieAlt für einen Augenblick und die
+     Kopfzeile zuckte in der Breite. Jetzt nur noch bei echter Änderung. */
+  var lageText = ((zK + zT) === 0 ? "nichts offen"
+    : (zK + zT) + (zK + zT === 1 ? " Bon offen" : " Bons offen"));
+  var lageEl = $('lage');
+  if(lageEl.getAttribute('data-text') !== lageText){
+    lageEl.setAttribute('data-text', lageText);
+    lageEl.innerHTML = lageText + '<b class="wieAlt" id="wieAlt"></b>';
+  }
+  wieAltZeichnen();
+
+  if(!liste.length){
+    if(letzteSignatur !== "leer"){
+      letzteSignatur = "leer";
+      feld.innerHTML = '<div class="leer"><b>Alles abgearbeitet.</b>' +
+        '<p>Neue Bestellungen erscheinen hier von selbst, ohne dass du etwas tun musst.</p></div>';
+    }
+    return;
+  }
+
+  /* Nichts Neues? Dann nur die Uhren weiterstellen und das Feld in Ruhe lassen. */
+  var signatur = bonSignatur(liste);
+  if(signatur === letzteSignatur){ zeitenAktualisieren(); return; }
+
+  /* Mitten im Wisch wird nicht neu aufgebaut — sonst rutscht die Karte
+     dem Finger weg. Der nächste Takt holt es nach. */
+  if(wischtGerade){ return; }
+
+  letzteSignatur = signatur;
+
+  feld.innerHTML = liste.map(function(b, i){
+    var t = aufteilen(b);
+    var min = minutenSeit(b.zeitpunkt);
+    var klasse = "bon";
+    if(min >= EINST.rotAb) klasse += " sehr-spaet";
+    else if(min >= EINST.gelbAb) klasse += " spaet";
+    if(b.status === "neu") klasse += " neu";
+    /* Nur beim allerersten Anzeigen aufblitzen, nicht bei jedem der
+       vier Sekunden-Takte danach. */
+    if(!gesehen[b.id+"_gezeichnet"]){ klasse += " frisch"; gesehen[b.id+"_gezeichnet"] = 1; }
+
+    /* Dringlichkeitsbalken: 0 % bei Ankunft, 100 % bei „rot". Zeigt die
+       Lage auf einen Blick, auch von der anderen Seite der Küche. */
+    var anteil = Math.min(100, Math.round((min / Math.max(1,EINST.rotAb)) * 100));
+
+    /* Welche Spuren zeigt dieser Bon in der aktuellen Ansicht? */
+    var meine = spurenVon(b).filter(function(s){ return EINST.spur === "beides" || s === EINST.spur; });
+    var alleAbgehakt = meine.every(function(s){ return spurFertig(b, s); });
+    if(alleAbgehakt) klasse += " erledigt";
+
+    var marken = meine.map(function(s){
+      return '<span class="marke ' + s + '">' + (s === "kueche" ? "Küche" : "Theke") +
+             (spurFertig(b, s) ? " ✓" : "") + '</span>';
+    }).join("");
+    if(b.status === "arbeit" && !alleAbgehakt) marken += '<span class="marke arbeit">läuft</span>';
+
+    /* Posten aller Spuren, die diese Ansicht betreffen */
+    var zeilen = "";
+    meine.forEach(function(s){
+      (s === "kueche" ? t.kueche : t.theke).forEach(function(p){
+        var name = String(p.name || "");
+        var klammer = name.indexOf(" (");
+        var haupt = klammer > 0 ? name.slice(0, klammer) : name;
+        var zusatz = klammer > 0 ? name.slice(klammer + 2, -1) : "";
+        zeilen += '<li><span class="menge">' + (p.menge || 1) + '×</span>' +
+                  '<span class="name">' + h(haupt) +
+                  (zusatz ? '<span class="zusatz">' + h(zusatz) + '</span>' : '') +
+                  '</span></li>';
+      });
+    });
+    var knopfText = alleAbgehakt ? "Wieder öffnen"
+      : (b.status === "neu" ? "Starten" : "Fertig");
+    var knopfArt  = alleAbgehakt ? "zurueck" : "haupt";
+    var aktion    = alleAbgehakt ? "oeffnen" : (b.status === "neu" ? "starten" : "fertig");
+
+    /* .schicht trägt den Wisch — bewegt sich per JS beim Ziehen.
+       .wischgrund liegt darunter und wird beim Ziehen sichtbar. */
+    return '<article class="' + klasse + '" style="animation-delay:' + Math.min(i*40, 400) + 'ms" data-id="' + h(b.id) + '">' +
+      '<div class="wischgrund"><svg viewBox="0 0 24 24"><path d="M4 12.5 9 18 20 6"/></svg></div>' +
+      '<div class="schicht">' +
+        '<div class="mass"><span style="width:' + anteil + '%"></span></div>' +
+        '<div class="bon-kopf">' +
+          '<div class="tisch"><small>Tisch</small>' + h(b.tisch || "—") + '</div>' +
+          '<div class="luecke">' + marken + '</div>' +
+          '<div class="wartet"><small>wartet</small>' + zeitText(min) + '</div>' +
+        '</div>' +
+        '<ul class="posten">' + zeilen + '</ul>' +
+        (b.notiz ? '<div class="notiz"><b>Hinweis vom Gast</b>' + h(b.notiz) + '</div>' : '') +
+        '<div class="bon-fuss">' +
+          (b.status === "arbeit" && !alleAbgehakt
+            ? '<button class="zurueck" data-tun="zurueck" data-id="' + h(b.id) + '">Zurück</button>' : '') +
+          '<button class="' + knopfArt + '" data-tun="' + aktion + '" data-id="' + h(b.id) + '">' +
+            knopfText + '</button>' +
+        '</div>' +
+      '</div>' +
+    '</article>';
+  }).join("");
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   7 · HANDGRIFFE
+   ═══════════════════════════════════════════════════════════════ */
+function bonFinden(id){
+  for(var i=0;i<bons.length;i++) if(String(bons[i].id) === String(id)) return bons[i];
+  return null;
+}
+
+/* Die eigentliche Aktion — von Knopf UND Wisch gemeinsam genutzt, damit
+   sich beide Wege exakt gleich verhalten. */
+function ausfuehren(b, tun){
+  var felder = {}, jetzt = new Date().toISOString();
+
+  if(tun === "starten"){
+    felder.status = "arbeit";
+    if(!b.bestaetigt_um) felder.bestaetigt_um = jetzt;
+  }
+  else if(tun === "zurueck"){
+    felder.status = "neu";
+  }
+  else if(tun === "fertig"){
+    var meine = spurenVon(b).filter(function(s){ return EINST.spur === "beides" || s === EINST.spur; });
+    meine.forEach(function(s){
+      if(s === "kueche") felder.kueche_fertig_um = jetzt;
+      else felder.theke_fertig_um = jetzt;
+    });
+    var restOffen = spurenVon(b).some(function(s){
+      if(meine.indexOf(s) > -1) return false;
+      return !spurFertig(b, s);
+    });
+    if(!restOffen) felder.status = "fertig";
+  }
+  else if(tun === "oeffnen"){
+    var meine2 = spurenVon(b).filter(function(s){ return EINST.spur === "beides" || s === EINST.spur; });
+    meine2.forEach(function(s){
+      if(s === "kueche") felder.kueche_fertig_um = null;
+      else felder.theke_fertig_um = null;
+    });
+    felder.status = "arbeit";
+  }
+
+  /* Sofort im Bild ändern, dann erst senden — der Koch soll nicht auf
+     das Netz warten. Geht es schief, bietet der Toast einen erneuten
+     Versuch an, statt den Bildschirm einfach zurückzudrehen. */
+  Object.keys(felder).forEach(function(f){ b[f] = felder[f]; });
+  zeichne();
+
+  setzeBon(b.id, felder).catch(function(e){
+    toast("„" + (b.tisch||"?") + "“ nicht gespeichert.", "err", {
+      text:"Erneut", tun: function(){ ausfuehren(b, tun); }
+    });
+  });
+}
+
+$('feld').addEventListener('click', function(ev){
+  var k = ev.target.closest ? ev.target.closest('[data-tun]') : null;
+  if(!k) return;
+  var b = bonFinden(k.dataset.id); if(!b) return;
+  k.disabled = true;
+  ausfuehren(b, k.dataset.tun);
+});
+
+/* ═══════════════════════════════════════════════════════════════
+   7b · WISCHEN NACH RECHTS = FERTIG
+
+   Funktioniert mit Finger UND Maus (Pointer Events decken beides ab).
+   Erst ab einer kleinen Bewegung wird überhaupt etwas verschoben —
+   ein einfaches Antippen des Kartenkörpers bleibt folgenlos.
+   ═══════════════════════════════════════════════════════════════ */
+(function(){
+  var aktiv = null;  /* {id, startX, dx, schicht, karte} */
+  var SCHWELLE = 96;  /* Pixel, ab denen „fertig" auslöst */
+
+  $('feld').addEventListener('pointerdown', function(ev){
+    if(ev.target.closest('button')) return;   /* Knöpfe wischen nicht mit */
+    var karte = ev.target.closest('.bon'); if(!karte) return;
+    if(karte.classList.contains('erledigt')) return;  /* fertige Bons wischt man nicht weg */
+    var schicht = karte.querySelector('.schicht');
+    aktiv = { id:karte.dataset.id, startX:ev.clientX, dx:0, schicht:schicht, karte:karte, zeiger:ev.pointerId };
+    schicht.setPointerCapture(ev.pointerId);
+    karte.classList.add('zieht');
+    wischtGerade = true;   /* solange: kein Neuaufbau des Feldes */
+  });
+
+  $('feld').addEventListener('pointermove', function(ev){
+    if(!aktiv || ev.pointerId !== aktiv.zeiger) return;
+    var dx = ev.clientX - aktiv.startX;
+    if(dx < 0) dx = dx / 4;                 /* nach links kaum nachgeben */
+    aktiv.dx = dx;
+    aktiv.schicht.style.transform = 'translateX(' + Math.max(dx,0) + 'px)';
+    aktiv.karte.querySelector('.wischgrund').style.opacity = Math.min(1, Math.max(dx,0) / SCHWELLE);
+  });
+
+  function loslassen(ev){
+    if(!aktiv || ev.pointerId !== aktiv.zeiger) return;
+    var a = aktiv; aktiv = null;
+    wischtGerade = false;
+    a.karte.classList.remove('zieht');
+    a.karte.classList.add('schnappt');
+
+    if(a.dx >= SCHWELLE){
+      var b = bonFinden(a.id);
+      if(b){
+        a.schicht.style.transform = 'translateX(120%)';
+        a.karte.style.opacity = '0';
+        setTimeout(function(){ ausfuehren(b, b.status === 'neu' ? 'starten' : 'fertig'); }, 160);
+        return;
+      }
+    }
+    a.schicht.style.transform = '';
+    a.karte.querySelector('.wischgrund').style.opacity = '0';
+    setTimeout(function(){ a.karte.classList.remove('schnappt'); }, 300);
+  }
+  $('feld').addEventListener('pointerup', loslassen);
+  $('feld').addEventListener('pointercancel', loslassen);
+})();
+
+/* ═══════════════════════════════════════════════════════════════
+   8 · TAKT
+   ═══════════════════════════════════════════════════════════════ */
+function aktualisieren(){
+  return ladeBons().then(function(liste){
+    /* Ton nur bei wirklich neuen Bons, nicht beim ersten Laden. */
+    var neueDa = false;
+    (liste||[]).forEach(function(b){
+      if(!gesehen[b.id]){ gesehen[b.id] = 1; if(!ersterLauf) neueDa = true; }
+    });
+    ersterLauf = false;
+    bons = liste || [];
+    zeichne();
+    netzMelden(true);
+    if(neueDa && EINST.ton) piep();
+  }).catch(function(e){
+    if(String(e.message).indexOf("Sitzung") > -1){ abmelden(); return; }
+    netzMelden(false);
+    /* Erst ab dem zweiten Fehlschlag in Folge einen Toast zeigen —
+       ein einzelner Ruckler soll nicht schon einen Hinweis auslösen. */
+    if(fehlSerie === 2) toast("Verbindung wackelt — Küche versucht es weiter.", "err");
+  });
+}
+function taktStarten(){
+  clearInterval(takt);
+  takt = setInterval(function(){
+    if(!document.hidden) aktualisieren();
+  }, TAKT_MS);
+  /* Die Wartezeiten müssen auch dann hochzählen, wenn nichts Neues
+     kommt — sonst steht die Uhr auf einem ruhigen Bon still. Das
+     geschieht jetzt direkt am Element, nicht mehr über einen
+     Neuaufbau des ganzen Feldes. Deshalb darf es auch häufiger
+     laufen, ohne dass etwas zuckt. */
+  setInterval(function(){ if(!document.hidden && bons.length) zeitenAktualisieren(); }, 10000);
+  /* Die Angabe „vor Xs" tickt für sich, unabhängig vom Abfragetakt. */
+  setInterval(function(){ if(!document.hidden) wieAltZeichnen(); }, 1000);
+}
+
+/* Ein kurzer Ton, ohne Datei von irgendwoher. */
+function piep(){
+  try{
+    var K = window.AudioContext || window.webkitAudioContext; if(!K) return;
+    var ctx = new K(), o = ctx.createOscillator(), g = ctx.createGain();
+    o.type = "sine"; o.frequency.value = 880;
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.02);
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+    o.connect(g); g.connect(ctx.destination);
+    o.start(); o.stop(ctx.currentTime + 0.52);
+    if(navigator.vibrate) navigator.vibrate(120);
+  }catch(e){}
+}
+
+function uhrStellen(){
+  var d = new Date();
+  $('uhr').textContent = ("0"+d.getHours()).slice(-2) + ":" + ("0"+d.getMinutes()).slice(-2);
+}
+
+/* Bildschirm anlassen. Ohne das schläft ein Tablet mitten im Service ein. */
+function wachHalten(){
+  if(!EINST.wach || !navigator.wakeLock) return;
+  navigator.wakeLock.request('screen').then(function(s){
+    wachSchloss = s;
+    s.addEventListener('release', function(){ wachSchloss = null; });
+  }).catch(function(){});
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   9 · EINSTELLUNGEN
+   ═══════════════════════════════════════════════════════════════ */
+function einstAnwenden(){
+  document.documentElement.style.setProperty('--skala', EINST.skala);
+  document.body.dataset.spalten = EINST.spalten;
+  document.body.classList.toggle('hell', !!EINST.hell);
+  var kn = document.querySelectorAll('#spuren [data-spur]');
+  for(var i=0;i<kn.length;i++) kn[i].classList.toggle('an', kn[i].dataset.spur === EINST.spur);
+  merken(SPEICHER_EINST, EINST);
+  zeichne();
+}
+
+function einstOeffnen(ausloeser){
+  ausloeser = ausloeser || document.activeElement;
+  var d = document.createElement('div');
+  d.className = 'decke';
+  d.innerHTML = '<div class="blatt" role="dialog" aria-modal="true" aria-label="Einstellungen" tabindex="-1">' +
+    '<div class="griff"></div>' +
+    '<h2>Wie du es magst</h2>' +
+    '<p class="sub">Gilt nur für diesen Bildschirm. Der Tresen kann es anders haben.</p>' +
+
+    '<div class="satz"><label>Schriftgröße</label>' +
+      '<div class="zahlwahl"><input type="range" min="0.9" max="1.9" step="0.05" value="' + EINST.skala + '" id="eSkala">' +
+      '<output id="oSkala">' + Math.round(EINST.skala*100) + ' %</output></div>' +
+      '<p class="dazu">Für einen Monitor an der Wand ruhig bis ganz nach rechts.</p></div>' +
+
+    '<div class="satz"><label>Spalten</label><div class="reihe" id="eSpalten">' +
+      ['auto','1','2','3','4'].map(function(v){
+        return '<button data-w="'+v+'" class="'+(EINST.spalten===v?'an':'')+'">'+(v==='auto'?'Auto':v)+'</button>';
+      }).join('') + '</div></div>' +
+
+    '<div class="satz"><label>Reihenfolge</label><div class="reihe" id="eSort">' +
+      [['alt','Älteste zuerst'],['neu','Neueste zuerst'],['tisch','Nach Tisch']].map(function(v){
+        return '<button data-w="'+v[0]+'" class="'+(EINST.sortierung===v[0]?'an':'')+'">'+v[1]+'</button>';
+      }).join('') + '</div></div>' +
+
+    '<div class="satz"><label>Gelb ab</label>' +
+      '<div class="zahlwahl"><input type="range" min="3" max="30" step="1" value="' + EINST.gelbAb + '" id="eGelb">' +
+      '<output id="oGelb">' + EINST.gelbAb + ' Min.</output></div></div>' +
+
+    '<div class="satz"><label>Rot ab</label>' +
+      '<div class="zahlwahl"><input type="range" min="5" max="60" step="1" value="' + EINST.rotAb + '" id="eRot">' +
+      '<output id="oRot">' + EINST.rotAb + ' Min.</output></div>' +
+      '<p class="dazu">Danach wird der Bon rot umrandet. Stell es auf das, was bei euch wirklich zu lang ist.</p></div>' +
+
+    '<div class="satz"><label>Erledigte noch zeigen</label>' +
+      '<div class="zahlwahl"><input type="range" min="0" max="15" step="1" value="' + EINST.fertigZeigen + '" id="eFertig">' +
+      '<output id="oFertig">' + EINST.fertigZeigen + ' Min.</output></div>' +
+      '<p class="dazu">Damit du ein Versehen zurücknehmen kannst.</p></div>' +
+
+    '<div class="schalter"><div><b>Ton bei neuem Bon</b><span>Kurzer Ton, dazu Vibration</span></div>' +
+      '<button class="kippe ' + (EINST.ton?'an':'') + '" id="eTon" aria-label="Ton"></button></div>' +
+    '<div class="schalter"><div><b>Helle Ansicht</b><span>Für Küchen mit Tageslicht</span></div>' +
+      '<button class="kippe ' + (EINST.hell?'an':'') + '" id="eHell" aria-label="Hell"></button></div>' +
+    '<div class="schalter"><div><b>Bildschirm anlassen</b><span>Tablet schläft nicht ein</span></div>' +
+      '<button class="kippe ' + (EINST.wach?'an':'') + '" id="eWach" aria-label="Wach"></button></div>' +
+    '<div class="schalter"><div><b>Abmelden</b><span>' + h(betrieb ? betrieb.name : '') + '</span></div>' +
+      '<button class="reihe" id="eAbmelden" style="padding:10px 16px;border:1px solid var(--linie);border-radius:11px;color:var(--warn)">Abmelden</button></div>' +
+
+    '<button class="knopf-voll" id="eZu" style="margin-top:18px">Fertig</button>' +
+    '</div>';
+  document.body.appendChild(d);
+
+  var blatt = d.querySelector('.blatt');
+  blatt.focus();
+
+  function schliessen(){
+    document.removeEventListener('keydown', aufTaste);
+    d.remove();
+    if(ausloeser && ausloeser.focus) ausloeser.focus();
+  }
+  function aufTaste(ev){ if(ev.key === "Escape") schliessen(); }
+  document.addEventListener('keydown', aufTaste);
+
+  d.addEventListener('click', function(ev){ if(ev.target === d) schliessen(); });
+  d.querySelector('#eZu').addEventListener('click', schliessen);
+
+  function schieber(id, aus, feld, einheit){
+    var el = d.querySelector(id), o = d.querySelector(aus);
+    el.addEventListener('input', function(){
+      EINST[feld] = parseFloat(el.value);
+      o.textContent = (einheit === "%" ? Math.round(EINST[feld]*100) + " %" : EINST[feld] + " Min.");
+      einstAnwenden();
+    });
+  }
+  schieber('#eSkala','#oSkala','skala','%');
+  schieber('#eGelb','#oGelb','gelbAb','min');
+  schieber('#eRot','#oRot','rotAb','min');
+  schieber('#eFertig','#oFertig','fertigZeigen','min');
+
+  function reihe(id, feld){
+    d.querySelector(id).addEventListener('click', function(ev){
+      var b = ev.target.closest('[data-w]'); if(!b) return;
+      EINST[feld] = b.dataset.w;
+      var alle = this.querySelectorAll('[data-w]');
+      for(var i=0;i<alle.length;i++) alle[i].classList.toggle('an', alle[i] === b);
+      einstAnwenden();
+    });
+  }
+  reihe('#eSpalten','spalten');
+  reihe('#eSort','sortierung');
+
+  function kippe(id, feld, danach){
+    d.querySelector(id).addEventListener('click', function(){
+      EINST[feld] = !EINST[feld];
+      this.classList.toggle('an', EINST[feld]);
+      einstAnwenden();
+      if(danach) danach();
+    });
+  }
+  kippe('#eTon','ton', function(){ if(EINST.ton) piep(); });
+  kippe('#eHell','hell');
+  kippe('#eWach','wach', function(){
+    if(EINST.wach) wachHalten();
+    else if(wachSchloss){ wachSchloss.release(); wachSchloss = null; }
+  });
+
+  d.querySelector('#eAbmelden').addEventListener('click', function(){
+    document.removeEventListener('keydown', aufTaste);
+    d.remove(); abmelden();
+  });
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   10 · START
+   ═══════════════════════════════════════════════════════════════ */
+$('spuren').addEventListener('click', function(ev){
+  var b = ev.target.closest('[data-spur]'); if(!b) return;
+  EINST.spur = b.dataset.spur;
+  einstAnwenden();
+});
+$('einstKnopf').addEventListener('click', function(){ einstOeffnen($('einstKnopf')); });
+$('vollbildKnopf').addEventListener('click', function(){
+  if(document.fullscreenElement) document.exitFullscreen();
+  else if(document.documentElement.requestFullscreen)
+    document.documentElement.requestFullscreen().catch(function(){});
+});
+
+function abmelden(){
+  sitzung = null; betrieb = null;
+  try{ localStorage.removeItem(SPEICHER_SITZUNG); }catch(e){}
+  clearInterval(takt);
+  $('schirm').hidden = true; $('tor').hidden = false;
+}
+
+/* Nur relevant für ein Konto, das mehr als einen Betrieb sieht — bei
+   dir also das Master-Konto. Eine normale Servicekraft bekommt von
+   der Datenbank ohnehin nur ihren eigenen Betrieb zurück (das regelt
+   dieselbe Trennung wie im Bestell-Board), die Auswahl bleibt dann
+   versteckt. */
+function betriebeWahlZeichnen(){
+  var box = $('betriebeWahl');
+  if(betriebe.length < 2){ box.hidden = true; box.innerHTML = ""; return; }
+  box.innerHTML = betriebe.map(function(b){
+    return '<button type="button" data-b="' + h(b.id) + '" class="' +
+           (b.id === betrieb.id ? 'an' : '') + '">' + h(b.name || "Betrieb") + '</button>';
+  }).join("");
+  box.hidden = false;
+}
+$('betriebeWahl').addEventListener('click', function(ev){
+  var k = ev.target.closest('[data-b]'); if(!k) return;
+  var neu = betriebe.filter(function(b){ return b.id === k.dataset.b; })[0];
+  if(!neu || neu.id === betrieb.id) return;
+  betrieb = neu;
+  merken("omoteno-kueche-betrieb", betrieb.id);
+  $('betriebName').textContent = betrieb.name || "Betrieb";
+  betriebeWahlZeichnen();
+  /* Beim Wechsel darf nichts vom alten Betrieb hängen bleiben — sonst
+     zeigt der Bildschirm für einen Moment fremde Bestellungen. */
+  bons = []; gesehen = {}; ersterLauf = true;
+  skelettZeichnen();
+  ladeKarte().then(aktualisieren);
+});
+
+function loslegen(){
+  return ladeBetriebe().then(function(liste){
+    betriebe = liste || [];
+    if(!betriebe.length) throw new Error("Kein Betrieb für dieses Konto hinterlegt.");
+    var gemerkt = holen("omoteno-kueche-betrieb");
+    betrieb = betriebe.filter(function(b){ return b.id === gemerkt; })[0] || betriebe[0];
+    merken("omoteno-kueche-betrieb", betrieb.id);
+    $('betriebName').textContent = betrieb.name || "Betrieb";
+    betriebeWahlZeichnen();
+    $('tor').hidden = true; $('schirm').hidden = false;
+    einstAnwenden();
+    wachHalten();
+    skelettZeichnen();
+    return ladeKarte();
+  }).then(function(){
+    return aktualisieren();
+  }).then(function(){
+    taktStarten();
+    setInterval(ladeKarte, 600000);   /* Karte alle 10 Minuten nachziehen */
+  });
+}
+
+$('anmeldung').addEventListener('submit', function(ev){
+  ev.preventDefault();
+  var k = $('torKnopf'), m = $('torMeldung');
+  k.disabled = true; k.textContent = "Einen Moment …"; m.textContent = "";
+  anmelden($('mail').value.trim(), $('wort').value)
+    .then(loslegen)
+    .catch(function(e){ m.textContent = e.message; })
+    .then(function(){ k.disabled = false; k.textContent = "Anmelden"; });
+});
+
+document.addEventListener('visibilitychange', function(){
+  if(document.hidden) return;
+  wachHalten();
+  if(sitzung && betrieb) aktualisieren();
+});
+
+uhrStellen();
+setInterval(uhrStellen, 15000);
+
+var gespeichert = holen(SPEICHER_EINST);
+if(gespeichert) for(var s in gespeichert) if(s in EINST) EINST[s] = gespeichert[s];
+
+sitzung = holen(SPEICHER_SITZUNG);
+if(sitzung && sitzung.access_token){
+  auffrischen().then(loslegen).catch(function(){ abmelden(); });
+}else{
+  $('tor').hidden = false;
+}
+})();
+</script>
+</body>
+</html>

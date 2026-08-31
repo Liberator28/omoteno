@@ -163,12 +163,61 @@ heller Hausfarbe bekäme sonst weißen Text auf Hellgelb — unter 2:1 und
 damit nicht lesbar. Der Kunde bekommt seine Farbe, der Gast bekommt
 Lesbarkeit.
 
+## Der Inhalt des Hauses
+
+Bis zuletzt standen Name, Anschrift, Öffnungszeiten, Links, WLAN und
+Empfehlungen **fest im Gerüst** — die Farben kamen aus dem Markenblatt,
+der Text nicht. Für einen Kunden fiel das nicht auf. Beim zweiten hätte
+sein Hub die Telefonnummer und die Öffnungszeiten des ersten getragen.
+
+Deshalb gehören diese Blöcke jetzt ebenfalls ins Markenblatt:
+
+| Block | Inhalt |
+|---|---|
+| `betrieb` | `name`, `claim`, `begruessung`, `strasse`, `ort`, `telefon`, `mail`, `slug` |
+| `zeiten` | sieben Zeilen, **Sonntag zuerst** — z. B. `"10:30 – 23:00"` |
+| `links` | `bewertung`, `maps`, `instagram`, `tiktok`, `website` — leere blenden ihre Kachel aus |
+| `wlan` | `netz`, `passwort` |
+| `trinkgeld` | `paypal`, `betraege` (Liste von Zahlen) |
+| `empfehlung` | Liste: `von`, `bis` (Stunde), `kennz`, `name`, `was`, `preis`, `ziel`, `gericht` |
+| `avatar` | `figur`: `untersetzer` \| `erdbeere`, `art`: `freundlich` \| `ruhig` \| `witzig`, `name` |
+
+**Fehlt ein Block, bleibt der Platzhalter aus dem Gerüst stehen** und
+der Erzeuger sagt es als Hinweis. Ein altes Markenblatt ohne diese
+Felder läuft also weiter — es zeigt nur nichts Eigenes.
+
+### Die Figur
+
+`figur` bestimmt, **wer** den Gast begleitet, `art` bestimmt **wie**.
+Beides ist unabhängig: Jede Figur kann jede der drei Launen tragen.
+
+- **`untersetzer`** — die Vorgabe. Der Untersetzer ist Omotenos
+  Produkt und passt in jedes Haus. Fehlt `figur`, ist es dieser.
+- **`erdbeere`** — Chocos Figur. Die Frucht bleibt Frucht: Rot, Grün
+  und Kernbeige stehen fest, denn eine Erdbeere in der Hausfarbe ist
+  keine Erdbeere mehr. Das Haus steht auf der **Schürze** — sie trägt
+  `farben.band`, der Buchstabe darauf `farben.bandText`, und der
+  Buchstabe kommt aus dem ersten Zeichen von `betrieb.name`.
+
+Ein unbekannter Wert ist ein **Fehler**, kein Hinweis: Sonst hätte der
+Kunde seine Figur ausgewählt, bekäme wortlos den Untersetzer, und
+niemand sagte es ihm.
+
+Nur Figuren mit Haltungen (heute die Erdbeere) erscheinen im
+Bestellpass in drei Posen. Häuser mit dem Untersetzer bekommen dort
+gezeichnete Zeichen — Zettel, Pfanne, Glocke.
+
 ## Was NICHT ins Markenblatt gehört
 
 - Gerichte, Preise, Allergene → Datenbank, gepflegt im Board
-- Öffnungszeiten → Datenbank
 - Tischschlüssel → Datenbank
+- Bestellstopp und Testphase → Datenbank, vom Board geschaltet
 
 Faustregel: Ändert es sich im laufenden Betrieb, gehört es in die
 Datenbank. Ändert es sich einmal bei der Einrichtung, gehört es ins
 Markenblatt.
+
+Die Öffnungszeiten sind der Grenzfall: Sie stehen im Markenblatt, weil
+sie sich selten ändern und der Hub sie ohne Netz zeigen können muss.
+Wer sie im Betrieb ändern will, braucht eine Spalte in `betriebe` und
+einen Vorrang zur Laufzeit — das ist bewusst noch nicht gebaut.

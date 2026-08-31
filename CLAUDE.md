@@ -60,6 +60,33 @@ JS-Bezeichner. Zwei `<script>`-Blöcke teilen sich den globalen
 Namensraum — zwei `const` mit demselben Namen werfen einen Fehler und
 die halbe Seite bleibt tot.
 
+### 1.1a Ein vorhandenes Feld heißt nicht, dass es das eigene ist
+
+> **Vorfall.** Das Gastkonto sollte an `bestellungen.gast_kennung`
+> hängen — das Feld war da, der Name passte, der Plan nannte es „den
+> Anker". Nachgesehen: Es ist die **Quittungsnummer einer einzelnen
+> Bestellung**, liegt unter einem UNIQUE-Index, und
+> `bestellung_aufgeben` gibt bei bekannter Nummer die vorhandene `id`
+> zurück, statt neu anzulegen. Eine Gerätekennung dort hätte geheißen:
+> Ab der **zweiten** Bestellung desselben Gastes verschwindet jede
+> weitere. Der Gast sieht seinen alten Bestellpass, die Küche sieht
+> nichts. Im Test mit einer Bestellung unsichtbar.
+
+Ein passender Name ist kein Beweis. Vor der Übernahme eines
+vorhandenen Feldes: **wer schreibt hinein, wer liest daraus, welcher
+Index liegt darauf.**
+
+```bash
+grep -n '<feld>' *.html
+```
+```sql
+select indexdef from pg_indexes where tablename='<tabelle>';
+select pg_get_functiondef(oid) from pg_proc where proname='<funktion>';
+```
+
+Und der Test dazu muss den **zweiten** Durchgang enthalten. Beim ersten
+sieht jede Verwechslung dieser Art richtig aus.
+
 ### 1.2 Erst den Bestand ansehen, dann den Plan schreiben
 
 > **Vorfall, viermal.** Der Umsetzungsplan schlug vor: eine neue Spalte
@@ -388,6 +415,64 @@ doppelte `id` im Auszeichnungstext, im Skript gesuchte Elemente ohne
 Gegenstück im HTML, Namenskollisionen zwischen Skriptblöcken und die
 Syntax jedes Blocks einzeln.
 
+### 8.1 `[hidden]` hält nicht, wenn im Blatt ein `display` steht
+
+> **Vorfall, der schwerste dieser Sitzung.** `.willkommen` setzt
+> `display:flex`. Die Regel des Browsers für `[hidden]` ist eine
+> UA-Regel und verliert gegen **jede** Angabe im Blatt. Das Attribut
+> tat also nichts: Nach einem Neuladen INNERHALB der Sitzung
+> übersprang der Willkommensschirm sich selbst, blieb aber
+> undurchsichtig über dem ganzen Hub liegen und fing jeden Tipp ab.
+> Der Gast sah eine leere farbige Fläche und konnte nichts mehr tun —
+> bei jedem Neuladen, bei jeder Rückkehr aus dem Hintergrund. Dieselbe
+> Falle stand schon zweimal im Konto und im Board; der Hub hatte die
+> Gegenregel nie.
+
+**Jede Datei bekommt ganz oben:**
+
+```css
+[hidden]{display:none !important}
+```
+
+Und: Ein Überlagerungsschirm, der nicht gebraucht wird, wird
+**entfernt**, nicht nur versteckt. Gefunden hat das keine
+Einzelprüfung, sondern erst `pruef-durchgang.js` — der Weg, den ein
+Gast wirklich geht. Wer nur Bausteine prüft, findet keine Fehler
+zwischen den Bausteinen.
+
+### 8.1a Bausteine prüfen findet nicht, was zwischen ihnen fehlt
+
+> **Vorfall.** Der Erzeuger baute für „Blend" einen Hub mit
+> `name: "Blend"` im Markenblatt — und Chocos gezeichnetem Siegel im
+> Kopf, weil das SVG fest im Gerüst stand. `pruef-datei.py` war
+> zufrieden, `pruef-durchgang.js` auch: Beide prüfen den Hub, den es
+> gibt, nicht den Hub, den ein ZWEITER Kunde bekommt. Aufgefallen
+> ist es erst beim Bedienen des ausgelieferten Ordners — die Seite
+> `/h/blend/` trug im Titel „Choco L'AMouR".
+
+Dieselbe Lehre wie beim Willkommensschirm, nur eine Ebene höher:
+**Was mehrfach erzeugt wird, muss mindestens zweimal erzeugt und
+verglichen werden.** Ein Test mit einem Kunden sieht jede
+eingebrannte Fremdangabe für richtig an.
+
+Und beim Ersetzen einer solchen Stelle: Der alte Stand muss
+**bytegleich** herauskommen, wo er richtig war. Chocos Siegel wanderte
+dafür als ausdrückliche Ausnahme ins Markenblatt (§5.3), und der
+Vergleich vorher/nachher war Teil der Arbeit, nicht der Nachbereitung.
+
+### 8.2 Eine Prüfung, die nicht startet, ist keine
+
+> **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
+> `pruef-ueberlauf.js` lasen `omoteno-marken-studio.html`,
+> `omoteno-admin.html` und `omoteno-landingpage.html`. Alle drei
+> Dateien heißen längst anders. Die Skripte fielen beim Start mit
+> ENOENT um — drei von fünf Einträgen der Tabelle oben waren tot,
+> und in der Prüfliste stand trotzdem, dass sie laufen.
+
+Nach jeder Umbenennung: **jedes** Prüfskript einmal starten, nicht nur
+das, an dem man gerade arbeitet. Skripte suchen ihre Datei neben sich
+und nennen im Fehlerfall alle Namen, unter denen sie gesucht haben.
+
 > **Eine Lehre über Prüfwerkzeuge selbst.** Die erste Fassung meldete
 > `id="melde"` als Fehler — die Kennung steht in sieben Seitenvorlagen,
 > von denen immer nur eine gezeichnet wird. Ein Werkzeug, das
@@ -402,6 +487,18 @@ Dazu je nach Änderung:
 | Farben, Paletten, Vorlagen | `pruefungen/pruef-kontrast.js` |
 | Karten-Zerleger | `pruefungen/pruef-import.js` |
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
+| Gastkonto, „Mein Tisch" im Hub | `pruef-gastkonto.js` (braucht `dist/`) |
+| Figur des Hauses, Bestellpass | `pruef-figur.js` (braucht `dist/`) |
+| Texte im Hub, Sprachen | `pruef-sprache.js` |
+| Freie Texte des Betriebs | `pruef-texte.js` (braucht `dist/`) |
+| Farben, hell oder dunkel | `pruef-lesbarkeit.js` (braucht `dist/`) |
+| Landingpage | `pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
+| Impressum, Datenschutz | `pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
+| Marken-Studio (Bedienung) | `pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
+| Auslieferung, Umleitungen | `bauen.js` und dann `pruef-lieferung.js` |
+| **Irgendetwas am Hub** | `pruef-durchgang.js` — geht den ganzen Weg des Gastes |
+| **Irgendetwas am Hub** | `pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
+| **Irgendetwas am Board** | `pruef-board.js` — bedient das Board von Hand |
 
 Und danach, immer:
 

@@ -162,6 +162,21 @@ body[data-phase="abend"]{
 }
 
 /* ═══ Grundgerüst ═══════════════════════════════════════════════ */
+/* hidden muss hidden bleiben.
+
+   VORFALL — der schwerste dieser Sitzung. .willkommen setzt
+   display:flex. Die Regel des Browsers für [hidden] ist eine
+   UA-Regel und verliert gegen JEDE Angabe im Blatt. Das Attribut tat
+   also nichts: Nach einem Neuladen INNERHALB der Sitzung übersprang
+   der Willkommensschirm sich selbst, blieb aber undurchsichtig über
+   dem ganzen Hub liegen und fing jeden Tipp ab. Der Gast sah eine
+   leere farbige Fläche und konnte nichts mehr tun — bei jedem
+   Neuladen, bei jeder Rückkehr aus dem Hintergrund.
+
+   Dieselbe Falle stand schon in konto.html und im Admin-Board und
+   ist dort seit Blöcken behoben. Der Hub hatte die Regel nie. */
+[hidden]{display:none !important}
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 /* KEIN scroll-behavior:smooth – zeichne() springt bewusst hart nach oben.
    Mit smooth wird daraus eine halbe Sekunde Scrollfahrt, die genau über der
@@ -214,7 +229,13 @@ header{
   padding:calc(var(--rand-oben) + 6px) var(--rand) 18px;
   background:var(--band);color:var(--band-text);
   display:grid;grid-template-columns:auto 1fr auto;
-  grid-template-areas:"logo titel sprache" "logo claim sprache" "status status status";
+  /* Der Slogan läuft über die volle Breite unter Titel UND Wahl.
+     Vorher endete er an der rechten Spalte; als dort neben der
+     Sprachwahl der Lichtknopf dazukam, blieben bei 390px keine
+     150 Pixel mehr übrig und ein Slogan von 22 Zeichen brauchte
+     plötzlich zwei Zeilen. Gefunden hat es pruef-texte.js, weil die
+     Zahlen im Board nicht mehr zur Wirklichkeit passten. */
+  grid-template-areas:"logo titel sprache" "logo claim claim" "status status status";
   column-gap:14px;align-items:center;
   transition:background-color .9s ease;
 }
@@ -447,7 +468,29 @@ main{min-height:60vh}
 }
 
 /* Sprachwahl · sitzt rechts oben im Band */
-.sprachwahl{grid-area:sprache;position:relative;justify-self:end;align-self:center}
+/* Der Lichtknopf sitzt links neben der Sprachwahl und trägt dieselbe
+   Gestalt — beides beantwortet „wie will ich das sehen". */
+.kopfwahl{
+  grid-area:sprache;justify-self:end;align-self:center;
+  display:flex;align-items:center;gap:8px;
+}
+.lichtknopf{
+  flex:none;
+  width:38px;height:38px;padding:0;border-radius:999px;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(251,246,242,.10);border:1px solid rgba(251,246,242,.22);
+  color:var(--band-text);cursor:pointer;
+  transition:background var(--kurz) var(--feder), border-color var(--kurz);
+}
+.lichtknopf svg{width:19px;height:19px;fill:none;stroke:currentColor;
+  stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+/* Fest gewählt heißt sichtbar fest gewählt — sonst weiß der Gast nach
+   dem nächsten Besuch nicht, warum es tagsüber dunkel ist. */
+.lichtknopf.fest{background:rgba(251,246,242,.20);border-color:rgba(251,246,242,.45)}
+.lichtknopf:active{transform:scale(.94)}
+@media (max-width:360px){ .lichtknopf{display:none} }
+
+.sprachwahl{position:relative}
 .sprachknopf{
   display:inline-flex;align-items:center;gap:6px;
   background:rgba(251,246,242,.10);border:1px solid rgba(251,246,242,.16);
@@ -478,13 +521,17 @@ main{min-height:60vh}
   padding:11px 12px;border-radius:9px;cursor:pointer;text-align:left
 }
 .sprachliste button:active{background:var(--flaeche-2)}
-.sprachliste button .kurz{font-size:10px;font-weight:700;color:var(--tinte-still);letter-spacing:.9px}
+/* --tinte-still ist die Farbe für Linien und Zierrat, nicht für
+   Text. Hier trug sie das Sprachkürzel und lag bei 3,72:1 — in
+   HELLER wie in dunkler Fassung, seit jeher. Gefunden hat es der
+   Lesbarkeitsdurchlauf, nicht das Auge. */
+.sprachliste button .kurz{font-size:10px;font-weight:700;color:var(--tinte-leise);letter-spacing:.9px}
 .sprachliste button[aria-checked="true"]{color:var(--rot);font-weight:600}
 .sprachliste button[aria-checked="true"] .kurz{color:var(--rot)}
 
 /* Rechts-nach-links */
 [dir="rtl"] body{direction:rtl}
-[dir="rtl"] header{grid-template-areas:"sprache titel logo" "sprache claim logo" "status status status"}
+[dir="rtl"] header{grid-template-areas:"sprache titel logo" "claim claim logo" "status status status"}
 [dir="rtl"] .sprachliste{right:auto;left:0;transform-origin:0 0}
 [dir="rtl"] .gericht,[dir="rtl"] .zeile,[dir="rtl"] .kachel{flex-direction:row-reverse}
 [dir="rtl"] .pfeil{transform:scaleX(-1)}
@@ -588,6 +635,10 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
 }
 .ico svg{width:20px;height:20px;fill:none;stroke:currentColor;
          stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+/* Ein gezeichnetes Zeichen im Knopf, dort wo vorher ein Emoji stand. */
+.kzeichen{display:inline-flex;flex:none}
+.kzeichen svg{width:18px;height:18px;fill:none;stroke:currentColor;
+         stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .kachel.cyan .ico{background:var(--pistazie-flaeche);color:var(--pistazie)}
 .txt{min-width:0}
 .txt strong{display:block;font-size:14.5px;font-weight:600;margin-bottom:1px;letter-spacing:-.1px}
@@ -597,7 +648,10 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
   color:var(--flaeche);background:var(--rot);border-radius:4px;padding:2px 5px;
   margin-left:6px;line-height:1.4;vertical-align:1.5px
 }
-.pfeil{margin-left:auto;color:var(--tinte-still);font-size:17px;flex:0 0 auto}
+/* --tinte-still ist für Linien gedacht. Der Pfeil ist zwar Zierrat,
+   aber er sagt „hier geht es weiter" — bei 3,72:1 sah man ihn auf
+   dem Telefon in der Sonne nicht mehr. */
+.pfeil{margin-left:auto;color:var(--tinte-leise);font-size:17px;flex:0 0 auto}
 .leer{color:var(--tinte-leise);font-size:14px;text-align:center;padding:36px 12px;line-height:1.6}
 
 /* Kleine Kacheln in zwei Spalten für alles Nebensächliche */
@@ -633,9 +687,16 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
 .knopf{
   display:flex;align-items:center;justify-content:center;gap:8px;
   text-decoration:none;border-radius:14px;padding:16px;font-size:15.5px;font-weight:600;
-  background:var(--rot);color:#FFF6F2;margin-bottom:10px;border:0;width:100%;
+  /* Die Schriftfarbe wird GERECHNET, nicht gesetzt. Hier stand fest
+     #FFF6F2 — bei Chocos Rot lesbar, bei einer Bar mit hellem Grün
+     als Hauptfarbe nicht. --auf-rot kommt aus der Helligkeit der
+     Hauptfarbe und ist entweder Weiß oder fast Schwarz. Derselbe
+     Fehler lag einmal im Marken-Studio und ergab 1,16:1.
+     Der Schein darunter kam aus Chocos Rot und blieb bei jedem
+     anderen Haus rot — jetzt trägt er die Hauptfarbe selbst. */
+  background:var(--rot);color:var(--auf-rot);margin-bottom:10px;border:0;width:100%;
   font-family:inherit;cursor:pointer;letter-spacing:.1px;
-  box-shadow:0 6px 16px rgba(214,40,57,.22);
+  box-shadow:0 6px 16px var(--rot-schein);
   transition:transform var(--kurz) var(--feder), opacity var(--kurz)
 }
 .knopf:active{transform:scale(.975)}
@@ -1005,7 +1066,8 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .auswahlbalken .bpfeil{font-size:18px;font-weight:700;line-height:1;opacity:.7}
 [dir="rtl"] .auswahlbalken .bpfeil{transform:scaleX(-1)}
 .auswahlbalken .anzahl{
-  background:var(--rot);color:#FFF6F2;border-radius:999px;
+  /* wie beim Knopf: die Schrift auf der Hausfarbe wird gerechnet */
+  background:var(--rot);color:var(--auf-rot);border-radius:999px;
   min-width:24px;height:24px;padding:0 7px;display:inline-flex;align-items:center;
   justify-content:center;font-size:12.5px;font-weight:700
 }
@@ -1035,6 +1097,35 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 @keyframes zeigenRein{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion: reduce){.zeigen{animation:none}}
 .zeigeninhalt{max-width:520px;margin:0 auto;position:relative}
+
+/* ═══ Weitersagen ═══════════════════════════════════════════════
+   Das Bild entsteht im Gerät und wird hier nur gezeigt. Es hat das
+   Story-Maß 9:16 — das Fenster richtet sich danach, damit der Gast
+   vorher sieht, was er später verschickt. */
+.story{
+  position:fixed;inset:0;z-index:90;
+  background:var(--grund);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:max(20px,env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+  animation:zeigenRein 300ms var(--weich) both;
+}
+.story[hidden]{display:none}
+@media (prefers-reduced-motion: reduce){.story{animation:none}}
+.storyinhalt{max-width:420px;margin:0 auto;position:relative}
+.storybild{
+  margin:44px 0 16px;border-radius:var(--rundung);overflow:hidden;
+  box-shadow:var(--schatten-hoch);background:var(--flaeche-2);
+  aspect-ratio:9/16;
+}
+.storybild img,.storybild canvas{display:block;width:100%;height:100%;object-fit:contain}
+/* Solange gezeichnet wird, steht hier eine Fläche im Maß des Bildes —
+   kein Kringel, der nichts über das Kommende sagt. */
+.storybild.laedt{
+  background:linear-gradient(90deg,var(--flaeche) 0%,var(--flaeche-2) 50%,var(--flaeche) 100%);
+  background-size:200% 100%;animation:skelettzug 1.4s linear infinite;
+}
+@media (prefers-reduced-motion:reduce){.storybild.laedt{animation:none}}
+.storyknoepfe{display:grid;gap:0}
 .zeigenzu{
   position:absolute;top:-4px;right:-4px;z-index:2;
   width:38px;height:38px;border:0;border-radius:50%;
@@ -1300,9 +1391,19 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
   box-shadow:var(--schatten);
   overflow:hidden;position:relative
 }
+/* Hier standen drei Emoji. Sie sahen auf jedem Gerät anders aus —
+   auf dem einen ein Blatt Papier, auf dem anderen eine Quittung — und
+   in genau dem Feld, auf das der wartende Gast am längsten schaut.
+   Jetzt steht dort die Figur des Hauses in der passenden Haltung;
+   Häuser ohne eigene Figur bekommen ein gezeichnetes Zeichen. */
 .bpass .bp-zeichen{
-  font-size:40px;line-height:1;display:block;margin-bottom:10px;
-  transform-origin:70% 80%
+  display:flex;justify-content:center;align-items:flex-end;
+  min-height:56px;margin-bottom:10px
+}
+.bpass .bp-zeichen .g-zeichen{
+  width:46px;height:46px;fill:none;stroke:var(--tinte);stroke-width:1.7;
+  stroke-linecap:round;stroke-linejoin:round;
+  transform-box:fill-box;transform-origin:70% 80%
 }
 .bpass .bp-text{
   font-size:14px;font-weight:600;color:var(--tinte-leise);
@@ -1321,14 +1422,14 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 .bpass .bp-nummer.wartet{color:var(--tinte-still);font-size:22px;letter-spacing:0}
 
 /* Angenommen: der Zettel haengt am Pass und wippt im Luftzug. */
-.bpass.p-neu .bp-zeichen{animation:bpZettel 3.2s ease-in-out infinite}
+.bpass.p-neu .g-zeichen{animation:bpZettel 3.2s ease-in-out infinite}
 @keyframes bpZettel{
   0%,100%{transform:rotate(-3deg)}
   50%    {transform:rotate(3deg)}
 }
 /* Wird zubereitet: die Pfanne schwingt. */
 .bpass.p-arbeit{border-color:var(--gold)}
-.bpass.p-arbeit .bp-zeichen{animation:bpPfanne 1.5s ease-in-out infinite}
+.bpass.p-arbeit .g-zeichen{animation:bpPfanne 1.5s ease-in-out infinite}
 @keyframes bpPfanne{
   0%,100%{transform:translateY(0)   rotate(-8deg)}
   50%    {transform:translateY(-5px) rotate(8deg)}
@@ -1336,11 +1437,37 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 /* Fertig: die Glocke schlaegt einmal an und ruht dann. */
 .bpass.p-fertig{border-color:var(--pistazie)}
 .bpass.p-fertig .bp-nummer{color:var(--pistazie)}
-.bpass.p-fertig .bp-zeichen{animation:bpGlocke 1.1s var(--feder) 2}
+.bpass.p-fertig .g-zeichen{animation:bpGlocke 1.1s var(--feder) 2}
 @keyframes bpGlocke{
   0%,100%{transform:rotate(0)}
   15%{transform:rotate(16deg)}  40%{transform:rotate(-12deg)}
   65%{transform:rotate(7deg)}   85%{transform:rotate(-3deg)}
+}
+
+/* Die Figur bewegt nicht SICH, sondern was sie hält. Eine
+   schaukelnde Erdbeere wäre albern; ein wippender Zettel und ein
+   fallender Tropfen erzählen dagegen genau die Phase.
+   transform-box:fill-box, weil der Ursprung in SVG sonst in der
+   linken oberen Ecke der viewBox liegt und das Teil aus dem Bild
+   schwenkt statt sich zu drehen. */
+.bpass .figur .zettel,.bpass .figur .tropfen{transform-box:fill-box}
+.bpass.p-neu .figur .zettel{
+  transform-origin:50% 0;
+  animation:bpZettel 3.2s ease-in-out infinite;
+}
+.bpass.p-arbeit .figur .tropfen{animation:bpTropfen 1.6s ease-in infinite}
+@keyframes bpTropfen{
+  0%      {transform:translateY(-10px) scale(.5); opacity:0}
+  22%     {transform:translateY(-6px)  scale(1);  opacity:1}
+  78%     {transform:translateY(9px)   scale(.9); opacity:1}
+  92%,100%{transform:translateY(12px)  scale(.4); opacity:0}
+}
+/* Fertig: die Figur kommt einmal heran und bleibt dann stehen. Der
+   Dampf über dem Teller läuft weiter — er sagt „noch warm". */
+.bpass.p-fertig .figur{animation:bpHeran .72s cubic-bezier(.16,1,.3,1) both}
+@keyframes bpHeran{
+  from{opacity:0;transform:translateX(-14px) scale(.94)}
+  to  {opacity:1;transform:none}
 }
 /* Ein weicher Schein hinter der Karte, sobald das Essen unterwegs ist. */
 .bpass.p-fertig::after{
@@ -1350,11 +1477,21 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 }
 @keyframes bpSchein{from{opacity:0}30%{opacity:1}to{opacity:.35}}
 
+/* Der Dampf über dem Teller läuft weiter, wenn das Essen unterwegs
+   ist — er sagt „noch warm". Die Schwaden nutzen dieselben Bilder wie
+   die Tasse im Sendestreifen, statt zweite zu erfinden. */
+.bpass.p-fertig .figur .dampf{animation:wsDampf 2.4s ease-in-out infinite}
+.figur .d2{animation-delay:.5s}
+.figur .d3{animation-delay:1s}
+
 /* Wer Bewegung abgestellt hat, bekommt dasselbe Bild - nur still.
-   Die Anzeige darf nie von einer Animation abhaengen. */
+   Die Anzeige darf nie von einer Animation abhaengen: Die HALTUNG
+   der Figur trägt die Phase, nicht ihre Bewegung. */
 @media (prefers-reduced-motion: reduce){
-  .bpass .bp-zeichen,
+  .bpass .bp-zeichen,.bpass .g-zeichen,.bpass .figur,
+  .bpass .figur .zettel,.bpass .figur .tropfen,.bpass .figur .dampf,
   .bpass::after{animation:none !important}
+  .bpass .figur .tropfen{opacity:1}
 }
 
 /* Live-Bestellstatus */
@@ -1405,7 +1542,7 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 .rufknopf .rufico svg{width:21px;height:21px;fill:none;stroke:currentColor;
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .rufknopf.an{border-color:var(--rot);box-shadow:0 0 0 1px var(--rot) inset}
-.rufknopf.an .rufico{background:var(--rot);color:#FFF6F2}
+.rufknopf.an .rufico{background:var(--rot);color:var(--auf-rot)}
 
 /* Eintrag für eine weitere, noch offene Bestellung auf der
    Bestätigungsseite. Bewusst ruhig - er soll die aktuelle Bestellung
@@ -1526,17 +1663,17 @@ textarea.feld{resize:vertical;min-height:96px;line-height:1.5}
 
 /* ═══ Fuß ═══════════════════════════════════════════════════════ */
 footer{margin-top:48px;text-align:center;position:relative;z-index:1}
-.marke2{font-size:9.5px;letter-spacing:1.8px;color:var(--tinte-still)}
+.marke2{font-size:9.5px;letter-spacing:1.8px;color:var(--tinte-leise)}
 /* Der Herkunftsbegriff gehört zur Absenderzeile, nicht zur Karte.
    Deshalb klein, blass und ohne Sperrung im Fließtext. */
 .marke2 .jp{font-family:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"Noto Sans JP",Meiryo,sans-serif;
-  letter-spacing:.14em;opacity:.62;margin-left:4px;font-size:10px}
+  letter-spacing:.14em;opacity:.82;margin-left:4px;font-size:10px}
 .ver{font-size:9px;letter-spacing:1.2px;color:var(--tinte-still);opacity:.55;margin-top:6px}
 
 /* ═══ Vorführmodus · vor dem Livegang löschen ═══════════════════ */
 #demo{margin-top:26px;padding:12px;border:1px dashed var(--linie-stark);
   border-radius:12px;text-align:center;position:relative;z-index:1}
-#demo p{margin:0 0 9px;font-size:10px;color:var(--tinte-still);letter-spacing:1.2px}
+#demo p{margin:0 0 9px;font-size:10px;color:var(--tinte-leise);letter-spacing:1.2px}
 #demo button{
   background:transparent;border:1px solid var(--linie-stark);color:var(--tinte-leise);
   border-radius:8px;padding:7px 11px;font-size:11.5px;margin:0 3px;
@@ -1553,8 +1690,19 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   /* Der Guss steht sofort fertig da, statt zu laufen */
   .guss .schicht,.guss .glanz{animation:none;transform:none;opacity:1}
   /* Die LED und der Lichtschein hören auf zu wandern, der Schein
-     bleibt aber – er trägt die Information „es ist Abend" */
-  .logo .led{animation:none;opacity:0}
+     bleibt aber – er trägt die Information „es ist Abend"
+
+     Der Selektor MUSS so lang sein wie der, den er aufheben soll.
+     Bis zum 30.08. stand hier nur „.logo .led" (Spezifität 0,0,2)
+     und verlor gegen „body[data-phase=abend] .logo .led" (0,1,3) —
+     eine Medienabfrage hebt die Spezifität nicht an. Die LED drehte
+     sich damit auch bei reduzierter Bewegung weiter, obwohl genau
+     hier steht, dass sie es nicht soll. Eine Zeile tiefer war es
+     schon richtig gemacht; hier nicht. Auch die @supports-Fassung
+     für ältere Firefox-Stände wird mitgenommen — sonst dreht sich
+     dort das Element selbst weiter. */
+  .logo .led,
+  body[data-phase="abend"] .logo .led{animation:none;opacity:0}
   body[data-phase="abend"] .logo::before{animation:none;opacity:.85}
   .status.offen i{animation:none}
   /* Inhalte erscheinen, ohne zu gleiten */
@@ -1568,6 +1716,263 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   .merk.an svg{animation:none}
   .warenkarte{transition:transform 180ms linear}
   html{scroll-behavior:auto}
+}
+
+/* ═══ TOP-RUNNER ════════════════════════════════════════════════
+   Eine zeitlich begrenzte Aktion auf ein Gericht. Sie steht oben auf
+   der Startseite und über der Karte — dort, wo der Gast ohnehin
+   hinsieht, und nicht als Pop-up, das er wegtippen muss.
+
+   Der Streifen trägt die Akzentfarbe des Hauses, nicht ein eigenes
+   Rot: Eine Aktion ist ein Angebot, kein Alarm. */
+.aktion{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;
+  margin:0 0 16px;padding:12px 14px;
+  border:1px solid var(--rot);border-left-width:4px;
+  border-radius:var(--rundung-klein);
+  background:var(--rot-flaeche);
+}
+.aktion .was{flex:1;min-width:150px}
+.aktion .kennz{
+  display:block;font-size:10px;letter-spacing:1.6px;font-weight:700;
+  color:var(--rot);text-transform:uppercase;margin-bottom:2px;
+}
+.aktion .name{font-weight:700;font-size:15.5px;line-height:1.25}
+.aktion .preise{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
+.aktion .alt{color:var(--tinte-still);text-decoration:line-through;font-size:13px}
+.aktion .neu{color:var(--rot);font-weight:700;font-size:19px}
+.aktion .rest{
+  width:100%;font-size:11.5px;color:var(--tinte-leise);
+  font-variant-numeric:tabular-nums;
+}
+
+/* Startet die Aktion, während der Gast im Hub ist, schiebt sich
+   dieser Streifen einmal von oben ins Bild. Kein Neuaufbau der
+   Seite: Er legt sich darüber und geht von selbst wieder. */
+.aktionsruf{
+  position:fixed;left:0;right:0;top:0;z-index:900;
+  background:var(--rot);color:var(--auf-rot);
+  padding:calc(10px + env(safe-area-inset-top)) 16px 10px;
+  font-size:14px;font-weight:600;text-align:center;
+  transform:translateY(-100%);
+  transition:transform .5s cubic-bezier(.16,1,.3,1);
+}
+.aktionsruf.an{transform:none}
+@media (prefers-reduced-motion:reduce){ .aktionsruf{transition:none} }
+
+/* ═══ MEIN TISCH ════════════════════════════════════════════════
+   Wiedererkennung ohne Konto: Besuche, Lieblingsspeisen, offene
+   Gutscheine. Alles hängt an einer Kennung im Gerät — kein Name,
+   keine Anmeldung, kein Passwort, das jemand vergessen könnte.
+
+   Zahlen stehen in einer Schreibmaschinenschrift, weil sie hier
+   Anzeige sind und nicht Fließtext. Bewusst der System-Stapel und
+   NICHT die JetBrains Mono der übrigen Flächen: Der Hub lädt keine
+   einzige Schrift nach — er muss auch auf Café-WLAN und ohne Netz
+   sofort stehen. Eine Zahl, die zwei Sekunden später die Breite
+   wechselt, ist schlechter als eine Zahl in der Systemschrift. */
+:root{
+  --schrift-zahl:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
+}
+.gastkopf{
+  display:flex;align-items:center;gap:16px;
+  margin:0 0 18px;padding:16px;
+  border:1px solid var(--linie);border-radius:var(--rundung-klein);
+  background:var(--flaeche);
+}
+.gastkopf .zahl{
+  font-family:var(--schrift-zahl);
+  font-size:34px;line-height:1;font-weight:700;
+  color:var(--rot);font-variant-numeric:tabular-nums;
+}
+.gastkopf .wort{font-size:14px;line-height:1.35}
+.gastkopf .wort small{display:block;color:var(--tinte-leise);font-size:12px;margin-top:3px}
+
+.gastzeile{
+  display:flex;align-items:center;gap:12px;width:100%;
+  margin:0 0 8px;padding:11px 13px;text-align:left;
+  border:1px solid var(--linie);border-radius:var(--rundung-klein);
+  background:var(--karte);color:var(--tinte);
+  font-size:15px;font-family:inherit;cursor:pointer;
+}
+/* Lange Gerichtsnamen dürfen umbrechen statt die Zeile zu sprengen —
+   die Zahl rechts behält ihre Breite. */
+.gastzeile > span:first-child{flex:1;min-width:0}
+.gastzeile .mal{
+  margin-left:auto;flex:none;
+  font-family:var(--schrift-zahl);font-size:12.5px;
+  color:var(--tinte-leise);font-variant-numeric:tabular-nums;
+}
+.gastzeile .pf{flex:none;color:var(--tinte-still)}
+/* Gericht nicht mehr in der Karte: Zeile bleibt stehen, führt aber
+   nirgendwohin — ein Sprung ins Leere wäre schlimmer. */
+.gastzeile[disabled]{cursor:default;opacity:.65}
+
+/* Der Gutschein trägt Gold im Rand und am Code, aber NICHT unter der
+   Schrift. Gemessen: Auf der Goldfläche kam der Text je nach Haus und
+   Tageszeit auf 2,5:1 bis 4,3:1 — die Fläche hellt den Abendgrund auf,
+   und heller Text verliert genau dort. Der Kartengrund trägt jede
+   Palette; die Marke steckt im Rand. */
+.gutschein{
+  margin:0 0 10px;padding:13px 14px;
+  border:1px dashed var(--gold);border-radius:var(--rundung-klein);
+  background:var(--karte);
+}
+.gutschein b{display:block;font-size:15px;margin-bottom:2px}
+.gutschein p{margin:0;font-size:13px;color:var(--tinte-leise)}
+.gutschein .code{
+  display:inline-block;margin-top:8px;padding:4px 9px;
+  font-family:var(--schrift-zahl);font-size:14px;letter-spacing:1px;
+  border:1px solid var(--gold);border-radius:6px;background:var(--gold-flaeche);
+}
+/* Eine Frist ist Information, kein Zierrat: --tinte-still lag bei
+   1,6:1 bis 2,8:1 und ist für Linien gedacht, nicht für Text. */
+.gutschein .bis{margin-top:6px;font-size:11.5px;color:var(--tinte-leise)}
+
+/* Ladezustand im Maß des Inhalts statt eines drehenden Kreises:
+   Der Gast sieht, WAS gleich kommt, nicht nur DASS etwas kommt. */
+.skelett{
+  border-radius:var(--rundung-klein);
+  background:linear-gradient(90deg,var(--flaeche) 0%,var(--flaeche-2) 50%,var(--flaeche) 100%);
+  background-size:200% 100%;
+  animation:skelettzug 1.4s linear infinite;
+}
+.skelett.kopf{height:76px;margin:0 0 18px}
+.skelett.reihe{height:46px;margin:0 0 8px}
+@keyframes skelettzug{ from{background-position:200% 0} to{background-position:-200% 0} }
+@media (prefers-reduced-motion:reduce){
+  .skelett{animation:none;background:var(--flaeche)}
+}
+
+/* ═══ WILLKOMMEN UND BEGLEITER ══════════════════════════════════
+   Drei Sekunden, bevor die Karte da ist: Name des Hauses, ein Gruß,
+   und die Figur, die durch den Abend mitläuft.
+
+   Warum überhaupt eine Wartezeit einbauen? Weil hier keine entsteht,
+   sondern eine bestehende gefüllt wird: Zwischen dem Antippen des
+   Untersetzers und der fertig gezeichneten Karte liegt auf
+   Café-WLAN ohnehin eine Sekunde. Statt eines weißen Blitzes steht
+   dort jetzt das Haus. Und weil es NUR einmal je Sitzung kommt, wird
+   es nicht zur Hürde — wer im Hub navigiert, sieht es nie wieder.
+
+   Überspringen geht durch Antippen, jederzeit. Wer keine Bewegung
+   will, bekommt sie kurz und ohne Lauf. */
+.willkommen{
+  position:fixed;inset:0;z-index:1000;
+  background:var(--grund);color:var(--tinte);
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:18px;padding:32px;text-align:center;
+  transition:opacity .5s cubic-bezier(.16,1,.3,1);
+}
+.willkommen.weg{opacity:0;pointer-events:none}
+.willkommen .haus{
+  font-family:var(--schrift-kopf);font-size:clamp(26px,7vw,38px);
+  line-height:1.1;letter-spacing:-.01em;margin:0;
+  animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .1s both;
+}
+.willkommen .wort{
+  font-size:15px;color:var(--tinte-leise);max-width:24ch;margin:0;
+  animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .26s both;
+}
+.willkommen .figur{animation:wkFigur .9s cubic-bezier(.16,1,.3,1) both}
+.willkommen .bahn{
+  width:min(160px,44vw);height:2px;border-radius:2px;
+  background:var(--linie);overflow:hidden;margin-top:6px;
+}
+.willkommen .bahn i{
+  display:block;height:100%;width:100%;background:var(--rot);
+  transform-origin:left;transform:scaleX(0);
+  animation:wkBahn 3s linear forwards;
+}
+.willkommen .wk-hinweis{
+  font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tinte-still);margin:0;
+  animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .9s both;
+}
+@keyframes wkAuf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@keyframes wkFigur{from{opacity:0;transform:translateY(18px) scale(.9)}to{opacity:1;transform:none}}
+@keyframes wkBahn{from{transform:scaleX(0)}to{transform:scaleX(1)}}
+
+/* Die Figur selbst: ein Untersetzer mit Gesicht. Das Ding auf dem
+   Tisch ist das Produkt — also ist es auch der Gastgeber. */
+.figur{display:block;flex:none}
+.figur .scheibe{fill:var(--flaeche);stroke:var(--linie-stark)}
+.figur .kante{fill:var(--linie);opacity:.85}
+.figur .zug{stroke:var(--tinte);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.figur .auge{fill:var(--tinte)}
+.figur .funke{fill:var(--rot)}
+.figur .schatten{fill:var(--tinte);opacity:.07}
+
+/* ╔═══ FIGUR · GETEILTER BLOCK (CSS) · ANFANG ═════════════════════╗
+   ║ Wortgleich auch in marken-studio.html — pruef-figur.js         ║
+   ║ vergleicht beide Fassungen Zeichen für Zeichen.                ║
+   ╚════════════════════════════════════════════════════════════════╝
+   Zwei Farbebenen, und die Trennung ist die ganze Idee:
+
+   Die FRUCHT bleibt Frucht. Rot, Grün und Kernbeige stehen fest —
+   eine Erdbeere in der Hausfarbe ist keine Erdbeere mehr, sondern
+   ein roter Fleck. Das HAUS steht auf der Schürze: --band und
+   --band-text, ein Paar, das der Erzeuger ohnehin schon auf Kontrast
+   prüft. Nicht --rot, denn Chocos Hauptfarbe IST rot, und eine rote
+   Schürze auf einer roten Frucht verschwindet.
+
+   Und zwei Konturen, nicht eine: --kontur umrandet die Frucht und
+   liegt immer auf Hellem. --glied sind Arme, Beine und Hände — die
+   liegen auf dem GRUND des Hauses, und der ist abends fast schwarz.
+   Mit einer einzigen dunklen Farbe waren die Beine abends weg. */
+.f-erdbeere{--kontur:#4A2318;--glied:#4A2318}
+/* Ohne body davor, damit derselbe Text auch im Studio trägt, wo die
+   Tageszeit an der Vorschau hängt und nicht am Seitenkörper. */
+[data-phase="abend"] .f-erdbeere{--glied:#EBCDBB}
+
+.f-erdbeere .frucht{fill:#D2536A;stroke:var(--kontur);stroke-width:3}
+.f-erdbeere .glanz{fill:#FFFFFF;opacity:.22}
+.f-erdbeere .kern{fill:#F3DDBC}
+.f-erdbeere .blatt{fill:#94B183;stroke:var(--kontur);stroke-width:2.6;stroke-linejoin:round}
+.f-erdbeere .stiel{stroke:#94B183;stroke-width:4;fill:none;stroke-linecap:round}
+.f-erdbeere .wange{fill:#E8899C;opacity:.55}
+.f-erdbeere .zug{stroke:var(--kontur)}
+/* Weißer Ring um die Pupille statt eines eigenen Augapfels: Die
+   Zeichnung hat große helle Augen, der Zug-Satz kennt nur Pupillen.
+   paint-order legt die Kontur UNTER die Füllung. */
+.f-erdbeere .auge{fill:var(--kontur);stroke:#FFFDF7;stroke-width:2.8;paint-order:stroke}
+.f-erdbeere .braue{stroke:var(--kontur);stroke-width:2.2;fill:none;stroke-linecap:round}
+/* Auf der roten Frucht ginge ein roter Funke unter. */
+.f-erdbeere .funke{fill:#F7D774;stroke:var(--kontur);stroke-width:.8}
+.f-erdbeere .schuerze{fill:var(--band);stroke:var(--kontur);stroke-width:2.6;stroke-linejoin:round}
+/* Die Tasche ist ein aufgesetzter Fleck, kein Kasten mit Rahmen —
+   ein Rahmen ließ den Buchstaben wie eine Tastenkappe aussehen. */
+.f-erdbeere .tasche{fill:var(--band-text);opacity:.13}
+.f-erdbeere .mono{fill:var(--band-text);font:italic 700 12px/1 Georgia,"Times New Roman",serif;opacity:.9}
+.f-erdbeere .arm,.f-erdbeere .bein{
+  stroke:var(--glied);stroke-width:5;fill:none;stroke-linecap:round}
+.f-erdbeere .fuss,.f-erdbeere .hand{fill:var(--glied)}
+.f-erdbeere .glas{fill:#E8C468;stroke:var(--kontur);stroke-width:2.4;stroke-linejoin:round}
+.f-erdbeere .kappe,.f-erdbeere .bohne{fill:var(--kontur)}
+.f-erdbeere .ritz{stroke:var(--kontur);stroke-width:1.7;fill:none;opacity:.55;stroke-linecap:round}
+.f-erdbeere .papier{fill:#FFFDF7;stroke:var(--kontur);stroke-width:2.4}
+.f-erdbeere .porzellan{fill:#FFFDF7;stroke:var(--kontur);stroke-width:2.4}
+.f-erdbeere .kuchen{fill:#F2DFB4;stroke:var(--kontur);stroke-width:2.2}
+.f-erdbeere .guss,.f-erdbeere .tropfen{fill:#5A3220}
+.f-erdbeere .dampf{stroke:var(--glied);stroke-width:1.8;fill:none;opacity:.6;stroke-linecap:round}
+/* ╚═══ FIGUR · GETEILTER BLOCK (CSS) · ENDE ═══════════════════════╝ */
+
+/* Der Begleiter im Seitenfluss: eine Zeile, kein Kasten. Er soll
+   grüßen, nicht im Weg stehen. */
+.begleiter{
+  display:flex;align-items:center;gap:12px;
+  margin:0 0 16px;padding:11px 14px;
+  background:var(--flaeche-2);border:1px solid var(--linie);
+  border-radius:var(--rundung-klein);
+}
+.begleiter .figur{flex:none}
+.begleiter p{margin:0;font-size:14px;line-height:1.45;color:var(--tinte-leise)}
+.begleiter p b{color:var(--tinte);font-weight:600}
+
+@media (prefers-reduced-motion:reduce){
+  .willkommen .haus,.willkommen .wort,.willkommen .figur,.willkommen .wk-hinweis{animation:none}
+  .willkommen .bahn i{animation:none;transform:scaleX(1)}
+  .willkommen{transition:none}
 }
 
 /* ═══ Kleine Geräte ═════════════════════════════════════════════ */
@@ -1668,6 +2073,10 @@ function markeAnwenden(abend){
   s.setProperty("--rot",              f.akzent);
   s.setProperty("--rot-flaeche",
     f.akzentFlaeche  || markeAlpha(f.akzent,  abend ? .14 : .09));
+  /* Der Schein unter den Knöpfen. Stand fest auf Chocos Rot und
+     blieb bei jedem anderen Haus rot — abends schwächer, weil ein
+     Leuchten auf dunklem Grund sonst schmutzig wirkt. */
+  s.setProperty("--rot-schein",       markeAlpha(f.akzent, abend ? .16 : .22));
   s.setProperty("--gold",             f.akzent2);
   s.setProperty("--gold-flaeche",
     f.akzent2Flaeche || markeAlpha(f.akzent2, abend ? .16 : .20));
@@ -1704,6 +2113,21 @@ function markeAnwenden(abend){
 </head>
 <body>
 
+<!-- Meldet sich, wenn während des Besuchs eine Aktion startet. -->
+<div class="aktionsruf" id="aktionsruf" role="status" aria-live="polite" hidden></div>
+
+<!-- ═══ Willkommen ═════════════════════════════════════════════════
+     Steht im Auszeichnungstext, nicht im Skript: So ist er beim
+     ersten Bildaufbau da. Käme er aus dem Skript, sähe der Gast
+     erst die halbe Karte und dann den Schirm darüber. -->
+<div class="willkommen" id="willkommen" hidden>
+  <div id="wkFigur"></div>
+  <h2 class="haus" id="wkHaus"></h2>
+  <p class="wort" id="wkWort"></p>
+  <div class="bahn" aria-hidden="true"><i></i></div>
+  <p class="wk-hinweis" id="wkTipp"></p>
+</div>
+
 <!-- ═══ Konditorei im Raum ══════════════════════════════════════════
      Sechs Umrisse, die langsam aus der Tiefe nach vorn ziehen. Die
      Perspektive macht die Bewegung: weit hinten klein und blass, vorn
@@ -1739,6 +2163,27 @@ function markeAnwenden(abend){
 <header>
   <button class="logo" id="logo" type="button" aria-label="Zur Übersicht">
     <span class="led" aria-hidden="true"></span>
+    <!--{{LOGO}}
+      Alles zwischen dieser Marke und {{/LOGO}} ersetzt der Erzeuger
+      durch das Siegel DES HAUSES.
+
+      Was hier steht, ist Chocos Siegel — von Hand gezeichnet und
+      absichtlich so. Es bleibt als Vorgabe stehen, damit die
+      Vorlage allein geöffnet etwas Fertiges zeigt statt eines
+      leeren Kreises.
+
+      Warum die Marke überhaupt sein muss: Bis zum 30.08. stand
+      dieses SVG fest in JEDEM erzeugten Hub. „Blend" bekam damit
+      einen Kopf, in dem „Choco L'AMouR · Estd. 2023" steht — der
+      Name aus dem Markenblatt landete daneben in <h1>, das Siegel
+      blieb fremd. Gefunden hat es nicht das Lesen der Datei,
+      sondern der ausgelieferte Ordner: /h/blend/ zeigte im
+      Prüfserver Chocos Namen.
+
+      Choco behält sein gezeichnetes Siegel über logo.svg im
+      Markenblatt — eine ausdrückliche Ausnahme, keine Regel, die
+      man sich verbiegt (CLAUDE.md §5.3).
+    -->
     <svg viewBox="0 0 100 100" width="88" height="88" aria-label="Choco L'AMouR">
       <defs>
         <!-- Wölbung: oben heller, unten abgeschattet. Macht aus der
@@ -1763,10 +2208,17 @@ function markeAnwenden(abend){
       <!-- Wölbung ganz oben, damit sie über allem liegt -->
       <circle cx="50" cy="50" r="49" fill="url(#siegelWoelbung)"/>
     </svg>
+    <!--{{/LOGO}}-->
   </button>
   <h1 id="titel"></h1>
   <p class="claim" id="claim"></p>
   <div id="status"></div>
+  <!-- Hell oder dunkel steht NEBEN der Sprachwahl, weil beides
+       dasselbe beantwortet: wie der Gast den Hub sehen will. Beide
+       liegen in einer gemeinsamen Zeile — zwei Elemente auf derselben
+       Rasterfläche hätten sich überlagert. -->
+  <div class="kopfwahl">
+  <button class="lichtknopf" id="lichtknopf" type="button"></button>
   <div class="sprachwahl" id="sprachwahl">
     <button class="sprachknopf" id="sprachknopf" aria-haspopup="menu" aria-expanded="false">
       <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.2 9h17.6M3.2 15h17.6"/>
@@ -1774,6 +2226,7 @@ function markeAnwenden(abend){
       <span id="sprachname">Deutsch</span><span class="chev">▾</span>
     </button>
     <div class="sprachliste" id="sprachliste" role="menu" aria-label="Sprache wählen"></div>
+  </div>
   </div>
   <!-- Der Guss: unregelmäßig gelaufene Schokolade als Abschluss des
        Kopfbandes. Läuft beim ersten Laden einmal nach unten. -->
@@ -1821,6 +2274,23 @@ function markeAnwenden(abend){
   </div>
 </div>
 
+<!-- ═══ WEITERSAGEN ═══════════════════════════════════════════════
+     Ein Bild im Look des Hauses, das der Gast in seine Story stellt.
+     Es entsteht im Gerät auf einer Leinwand — nichts wird hochgeladen,
+     nichts an Dritte geschickt, und es funktioniert ohne Netz.
+     ═══════════════════════════════════════════════════════════════ -->
+<div class="story" id="story" hidden>
+  <div class="storyinhalt">
+    <button class="zeigenzu" data-story-zu aria-label="Schließen">✕</button>
+    <div class="storybild" id="storyBild"></div>
+    <div class="storyknoepfe">
+      <button class="knopf" data-aktion="storyTeilen" id="storyTeilen">Teilen</button>
+      <a class="knopf zweit" id="storySichern" download="besuch.png" href="#">Bild sichern</a>
+    </div>
+    <p class="hinweis" id="storyHinweis"></p>
+  </div>
+</div>
+
 <!-- Bestellung unterwegs: erscheint nur, solange etwas in der
      Warteschlange steht. Bewusst ÜBER dem Vorgangs-Streifen, weil es
      dringender ist. -->
@@ -1841,13 +2311,29 @@ function markeAnwenden(abend){
 
 <footer><div class="marke2">POWERED BY OMOTENO <span class="jp" lang="ja">おもてなし</span></div><div class="ver">v7.1</div></footer>
 
-<!-- Vor dem Livegang diesen Block löschen -->
+<!--{{VORFUEHRUNG}}
+     Der Vorführblock. Hier stand bis zum 30.08. „Vor dem Livegang
+     diesen Block löschen" — und nichts löschte ihn. Der erzeugte
+     Hub trug ihn mit in die Auslieferung; ein Gast von Choco hätte
+     unter der Karte ein Feld „VORFÜHRMODUS · TAGESZEIT UMSCHALTEN"
+     mit drei Knöpfen gefunden.
+
+     Gefallen ist es nicht beim Lesen, sondern beim Messen der
+     Trefferflächen: drei Knöpfe mit 28px Höhe, wo 44px die Grenze
+     ist. Die Knöpfe waren nicht das Problem — dass es sie überhaupt
+     noch gibt, war es.
+
+     Jetzt schneidet ihn der Erzeuger heraus. Wer ihn braucht (für
+     einen Vorführ-Hub auf demo.omoteno.de), setzt im Markenblatt
+     "vorfuehrung": true — und der Erzeuger sagt dann laut, dass er
+     drin ist. -->
 <div id="demo">
   <p>VORFÜHRMODUS · TAGESZEIT UMSCHALTEN</p>
   <button data-h="12">Mittags</button>
   <button data-h="15">Nachmittag</button>
   <button data-h="21">Abends</button>
 </div>
+<!--{{/VORFUEHRUNG}}-->
 
 <script>
 /*  DOMAINSPERRE
@@ -1904,14 +2390,17 @@ function markeAnwenden(abend){
    nach der letzten Zeile einer Liste keins.
    ========================================================== */
 
+/* PLATZHALTER. Die echten Werte stehen im Markenblatt und werden
+   weiter unten übernommen (inhaltAusMarkenblatt). Wer hier etwas
+   einträgt, trägt es für ALLE Kunden ein. */
 const BETRIEB = {
-  name:        "Choco L'AMouR",
+  name:        "Dein Betrieb",
   begruessung: "Schön, dass Sie da sind.",
-  claim:       "Don't get mad, get chocolate.",
-  strasse:     "Frankfurter Str. 10",
-  ort:         "35274 Kirchhain",
-  telefon:     "+49 6422 4030004",
-  mail:        "kirchhain@chocolamour.de",
+  claim:       "",
+  strasse:     "",
+  ort:         "",
+  telefon:     "",
+  mail:        "",
 
   /* Wird aus der Datenbank überschrieben. Das Team schaltet es im Board
      mit einem Tipp - hier steht nur der Ausgangswert. */
@@ -1920,31 +2409,34 @@ const BETRIEB = {
 };
 
 /* Öffnungszeiten · 0 = Sonntag */
+/* PLATZHALTER — siehe BETRIEB. Sieben Zeilen, Sonntag zuerst. */
 const ZEITEN = [
-  "10:30 – 23:00",   // So
-  "10:30 – 23:00",   // Mo
-  "10:30 – 23:00",   // Di
-  "10:30 – 23:00",   // Mi
-  "10:30 – 23:00",   // Do
-  "10:30 – 00:30",   // Fr
-  "10:30 – 00:30"    // Sa
+  "—",   // So
+  "—",   // Mo
+  "—",   // Di
+  "—",   // Mi
+  "—",   // Do
+  "—",   // Fr
+  "—"    // Sa
 ];
 
+/* PLATZHALTER — siehe BETRIEB. Leere Links blenden ihre Kachel aus. */
 const LINKS = {
-  bewertung:    "https://www.google.com/search?q=Choco+L%27AMouR+Kirchhain",
-  maps:         "https://maps.google.com/?q=Frankfurter+Str.+10,+35274+Kirchhain",
-  instagram:    "https://www.instagram.com/chocol.amour_kirchhain/",
-  tiktok:       "https://www.tiktok.com/@chocol.amour_kirchhain",
-  website:      "https://kirchhain.choco-lamour.com/"
+  bewertung:    "",
+  maps:         "",
+  instagram:    "",
+  tiktok:       "",
+  website:      ""
 };
 
 /*  WLAN
     Eine Webseite kann ein Handy technisch nicht selbst ins WLAN bringen.
     Deshalb: Passwort groß anzeigen + Kopierknopf. Der Gast tippt nichts ab.
     >>> HIER die echten Zugangsdaten des Betriebs eintragen.                */
+/* PLATZHALTER — siehe BETRIEB. */
 const WLAN = {
-  netz:     "ChocoLamour-Gast",
-  passwort: "BITTE-EINTRAGEN"
+  netz:     "",
+  passwort: ""
 };
 
 /*  MUSIKWUNSCH
@@ -2171,7 +2663,9 @@ const ICONS = {
   kamera:  '<svg viewBox="0 0 24 24"><rect x="3.4" y="3.4" width="17.2" height="17.2" rx="5"/><circle cx="12" cy="12" r="3.9"/><circle cx="17" cy="7" r="1" fill="currentColor" stroke="none"/></svg>',
   kalender:'<svg viewBox="0 0 24 24"><rect x="3.4" y="5.2" width="17.2" height="15.4" rx="3.2"/><path d="M3.4 10h17.2M8.2 3v4M15.8 3v4"/></svg>',
   ort:     '<svg viewBox="0 0 24 24"><path d="M12 20.8s6.8-6 6.8-10.6a6.8 6.8 0 1 0-13.6 0C5.2 14.8 12 20.8 12 20.8z"/><circle cx="12" cy="10" r="2.6"/></svg>',
-  herzleer:'<svg viewBox="0 0 24 24"><path d="M12 20.4S4.4 15.6 4.4 10.4a4.1 4.1 0 0 1 7.6-2.2 4.1 4.1 0 0 1 7.6 2.2c0 5.2-7.6 10-7.6 10z"/></svg>'
+  herzleer:'<svg viewBox="0 0 24 24"><path d="M12 20.4S4.4 15.6 4.4 10.4a4.1 4.1 0 0 1 7.6-2.2 4.1 4.1 0 0 1 7.6 2.2c0 5.2-7.6 10-7.6 10z"/></svg>',
+  telefon: '<svg viewBox="0 0 24 24"><path d="M7.4 3.6h3l1.5 3.8-2 1.4a11.4 11.4 0 0 0 5.3 5.3l1.4-2 3.8 1.5v3a2 2 0 0 1-2.2 2A16.6 16.6 0 0 1 5.4 5.8a2 2 0 0 1 2-2.2z"/></svg>',
+  brief:   '<svg viewBox="0 0 24 24"><rect x="2.8" y="5.2" width="18.4" height="13.6" rx="2.6"/><path d="M3.4 7.2l8.6 6 8.6-6"/></svg>'
 };
 
 /*  EMPFEHLUNG DES HAUSES
@@ -2183,19 +2677,10 @@ const ICONS = {
     der Kategorie abzusetzen, wo er dann selbst suchen muss. Das Bild
     holt sich die Karte von dort ebenfalls von allein.
     Lässt man gericht weg, verhält sich der Tipp wie früher.        */
+/* PLATZHALTER — siehe BETRIEB. Die echten Empfehlungen stehen im
+   Markenblatt und ersetzen diese Liste ganz. */
 const EMPFEHLUNG = [
-  { von:0,  bis:13, kennz:"ZUM WACHWERDEN", name:"Frisch gepresster Orangensaft",
-    was:"Morgens gepresst, sonst nichts drin.", preis:"7,40", ziel:"#/getraenke",
-    gericht:"Frisch gepresster Orangensaft" },
-  { von:13, bis:17, kennz:"UNSER LIEBLING", name:"Dubai Crêpe",
-    was:"Pistaziencreme, Engelshaar, Schokolade. Der Grund, warum viele wiederkommen.", preis:"15,90", ziel:"#/speisekarte",
-    gericht:"Dubai Crêpe" },
-  { von:17, bis:20, kennz:"FÜR DIE RUNDE", name:"Family Love",
-    was:"Die große Platte. Gemacht zum Teilen – oder auch nicht.", preis:"36,50", ziel:"#/speisekarte",
-    gericht:"Family Love" },
-  { von:20, bis:24, kennz:"HEUTE AN DER THEKE", name:"Arabischer Kaiser",
-    was:"Banane, Erdbeere, Nüsse, Ashta und Honig. Ein halber Liter Liebe.", preis:"12,20", ziel:"#/cocktails",
-    gericht:"Arabischer Kaiser" }
+  { von:0, bis:24, kennz:"UNSER LIEBLING", name:"", was:"", preis:"", ziel:"#/speisekarte", gericht:"" }
 ];
 
 /*  KACHELN
@@ -2224,6 +2709,12 @@ const KACHELN = [
     ziel:"#/wlan", bereich:"Jetzt am Tisch", von:0, bis:24, cyan:true },
   { t:"Tischquiz",      u:"Süße Fragen, kurze Runde – wer weiß mehr?", i:"quiz",
     ziel:"#/quiz", bereich:"Jetzt am Tisch", von:11, bis:24, neu:true },
+  /*  Braucht die Datenbank: Ohne sie gäbe es nichts zu zeigen, und
+      eine Kachel, die zu „geht hier nicht" führt, lässt das ganze
+      Haus unfertig wirken.                                          */
+  { t:"Mein Tisch",     u:"Ihre Besuche, Lieblinge und Gutscheine – ohne Konto", i:"herz",
+    ziel:"#/meintisch", bereich:"Jetzt am Tisch", von:0, bis:24,
+    wenn:() => serverBereit() },
 
   /*  BEIM GEHEN · zwei Spalten, weil nebensächlich  */
   { t:"Uns bewerten",         u:"Zwei Sätze auf Google – und wir freuen uns", i:"stern",
@@ -2253,6 +2744,824 @@ const KACHELN = [
         ziel:"#/musik", bereich:"Jetzt am Tisch", von:17, bis:24, cyan:true },
   */
 ];
+
+/* ══════════════════════════════════════════════════════════════════
+   TOP-RUNNER
+
+   Der Betrieb setzt eine Aktion auf ein Gericht, mit Anfang und Ende.
+   Der Gast sieht sie oben auf der Startseite und über der Karte.
+
+   Was der Hub NICHT tut: die Regel selbst prüfen. Welche Aktion
+   gerade läuft, entscheidet die Datenbank — die Regel für den
+   Gastzugriff lässt nur Laufendes heraus. Ein Filter im Browser wäre
+   eine Bitte, keine Sperre.
+   ══════════════════════════════════════════════════════════════════ */
+/* Der Hub hat keinen allgemeinen Maskierer — die Werte kommen sonst
+   aus der Karte, die der Betrieb selbst pflegt. Der Aktionsname geht
+   denselben Weg, wird hier aber trotzdem maskiert: Er landet als HTML
+   auf der Startseite, und ein „<" im Gerichtsnamen soll die Seite
+   nicht zerlegen. */
+function sicherText(w){
+  return String(w == null ? "" : w).replace(/[&<>"]/g, z =>
+    ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[z]));
+}
+
+let aktionen = [];          /* was gerade läuft */
+/* Wie die Aktionen dieses Hauses überschrieben heißen. Die einzelne
+   Aktion darf einen eigenen Titel tragen; fehlt er, gilt dieser. */
+let RUNNER_TITEL = "Top-Runner";
+let hubTexte = {};
+let aktionGesehen = {};     /* welche der Gast schon eingeblendet bekam */
+try{ aktionGesehen = JSON.parse(sessionStorage.getItem("omoteno-aktionen") || "{}") || {}; }catch(e){}
+
+function aktionenLaden(){
+  if(!serverBereit()) return Promise.resolve();
+  return betriebIdHolen().then(bid => {
+    if(!bid) return;
+    const ziel = SERVER.adresse.replace(/\/+$/,"") +
+      "/rest/v1/aktionen?select=id,gericht_name,titel,preis_alt,preis_neu,bis" +
+      "&betrieb_id=eq." + bid + "&order=bis.asc,id.asc";
+    return sicherFetch(ziel, { headers:{ apikey:SERVER.schluessel,
+        Authorization:"Bearer " + SERVER.schluessel } })
+      .then(a => a.ok ? a.json() : [])
+      .then(liste => {
+        const vorher = aktionen.map(a => a.id).join(",");
+        aktionen = Array.isArray(liste) ? liste : [];
+        if(aktionen.map(a => a.id).join(",") !== vorher) aktionAnzeigen();
+      })
+      .catch(() => {});
+  });
+}
+
+/* Preis mit dem Komma des Hauses. preisText() gibt es schon — es
+   noch einmal zu schreiben hieße, es an zwei Stellen zu pflegen. */
+function aktionBandHTML(){
+  if(!aktionen.length) return "";
+  return aktionen.map(a => {
+    const restMin = Math.max(0, Math.round((new Date(a.bis) - Date.now()) / 60000));
+    const rest = restMin >= 60
+      ? t("noch {n} Stunden", {n: Math.floor(restMin / 60)})
+      : t("nur noch {n} Minuten", {n: restMin});
+    return '<div class="aktion">' +
+      '<div class="was"><span class="kennz">' + t(a.titel || RUNNER_TITEL) + '</span>' +
+      '<span class="name">' + sicherText(a.gericht_name) + '</span></div>' +
+      '<div class="preise"><span class="alt">' + preisText(a.preis_alt) + '</span>' +
+      '<span class="neu">' + preisText(a.preis_neu) + '</span></div>' +
+      '<div class="rest">' + rest + '</div></div>';
+  }).join("");
+}
+
+/* Fängt eine Aktion an, während der Gast im Hub ist, schiebt sich der
+   Streifen einmal ins Bild — und nur einmal je Aktion und Sitzung.
+   Bei jedem Nachfragen erneut wäre er nach zehn Minuten ein Ärgernis. */
+function aktionAnzeigen(){
+  zeichne();
+  const neu = aktionen.filter(a => !aktionGesehen[a.id])[0];
+  if(!neu) return;
+  aktionGesehen[neu.id] = 1;
+  try{ sessionStorage.setItem("omoteno-aktionen", JSON.stringify(aktionGesehen)); }catch(e){}
+
+  const ruf = $("aktionsruf");
+  if(!ruf) return;
+  ruf.textContent = t("{titel}: {name} jetzt für {preis}", {
+    titel: t(neu.titel || RUNNER_TITEL), name: neu.gericht_name, preis: preisText(neu.preis_neu)
+  });
+  ruf.hidden = false;
+  requestAnimationFrame(() => ruf.classList.add("an"));
+  setTimeout(() => {
+    ruf.classList.remove("an");
+    setTimeout(() => { ruf.hidden = true; }, 600);
+  }, 6000);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MEIN TISCH · Wiedererkennung ohne Konto
+
+   Der Gast bekommt einen Besuchszähler, seine Lieblingsspeisen und
+   offene Gutscheine — ohne Anmeldung, ohne Passwort, ohne Namen.
+   Alles hängt an einer Zufallskennung, die im Gerät bleibt.
+
+   Warum NICHT bestellungen.gast_kennung, obwohl das Feld längst da
+   ist: Das ist die Quittungsnummer EINER Bestellung. Sie liegt unter
+   einem UNIQUE-Index, und bestellung_aufgeben gibt bei bekannter
+   Nummer die vorhandene id zurück, statt neu anzulegen — genau dafür
+   ist sie da. Ein Gerät dort einzutragen hätte geheißen: Die zweite
+   Bestellung desselben Gastes verschwindet still. Deshalb eine
+   eigene Spalte bestellungen.geraet.
+
+   Die Kennung ist zufällig und je Betrieb eine andere. Wer in zwei
+   Häusern isst, ist zwei Gäste — das ist Absicht: Ein Betrieb soll
+   nicht sehen, wo sein Gast sonst noch war.
+   ══════════════════════════════════════════════════════════════════ */
+const GERAET_SCHLUESSEL = "omoteno-geraet-" + (SERVER.betrieb || "haus");
+
+function geraetKennung(){
+  let k = "";
+  try{ k = localStorage.getItem(GERAET_SCHLUESSEL) || ""; }catch(e){}
+  /* Die Datenbank lässt nur [A-Za-z0-9_-] und 8–64 Zeichen zu. Was
+     hier nicht hineinpasst, wird ersetzt statt mitgeschleppt. */
+  if(!/^[A-Za-z0-9_-]{8,64}$/.test(k)){
+    k = (self.crypto && crypto.randomUUID)
+      ? crypto.randomUUID().replace(/-/g, "")
+      : "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 14);
+    try{ localStorage.setItem(GERAET_SCHLUESSEL, k); }catch(e){ /* privates Fenster */ }
+  }
+  return k;
+}
+
+/* Was der Server zurückgemeldet hat. Solange geladen false ist, zeigt
+   die Seite Skelettflächen statt einer leeren Fläche. */
+let gastStand = { geladen:false, ok:false, besuche:0, lieblinge:[], gutscheine:[] };
+
+function gastLaden(){
+  if(!serverBereit()) return Promise.resolve();
+  const ziel = SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/gast_melden";
+  return sicherFetch(ziel, {
+      method:"POST",
+      headers:{ apikey:SERVER.schluessel,
+                Authorization:"Bearer " + SERVER.schluessel,
+                "Content-Type":"application/json" },
+      body: JSON.stringify({ p_slug: SERVER.betrieb, p_kennung: geraetKennung() })
+    })
+    .then(a => a.ok ? a.json() : null)
+    .then(d => {
+      gastStand.geladen = true;
+      if(!d || d.ok !== true) return;
+      gastStand.ok         = true;
+      gastStand.besuche    = d.besuche || 0;
+      gastStand.lieblinge  = Array.isArray(d.lieblinge)  ? d.lieblinge  : [];
+      gastStand.gutscheine = Array.isArray(d.gutscheine) ? d.gutscheine : [];
+      /* Nur neu zeichnen, wenn der Gast gerade auf dieser Seite steht.
+         Sonst risse es ihm die Karte unter den Fingern weg. */
+      if(seiteJetzt === "meintisch") zeichne();
+    })
+    .catch(() => { gastStand.geladen = true; });
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   WEITERSAGEN
+
+   Nach dem Besuch ein Bild im Look des Hauses: was gegessen wurde,
+   das Datum, die Figur, die Adresse des Hubs. Der Gast stellt es in
+   seine Story, und wer es sieht, weiß, wo er war.
+
+   Alles entsteht IM GERÄT auf einer Leinwand. Nichts wird
+   hochgeladen, nichts an Dritte geschickt, und es läuft ohne Netz —
+   dieselbe Regel wie für den ganzen Hub.
+
+   Kein QR-Code: Wer die Story sieht, hält das Telefon schon in der
+   Hand und kann keinen Kode auf dem eigenen Schirm scannen. Eine
+   lesbare Adresse trägt weiter als ein Muster, das im
+   Story-Format ohnehin zerdrückt wird.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Die Figur als Bild. Im Canvas gilt kein Stylesheet — ein SVG mit
+   class="frucht" käme dort schwarz an. Deshalb werden die
+   ERRECHNETEN Werte vor dem Serialisieren an die Elemente
+   geschrieben. So kann die CSS-Datei sich ändern, ohne dass hier
+   eine zweite Farbliste nachgezogen werden muss. */
+function figurAlsBild(px, pose){
+  return new Promise((fertig, schief) => {
+    const topf = document.createElement("div");
+    topf.setAttribute("style",
+      "position:absolute;left:-9999px;top:0;width:" + px + "px;visibility:hidden");
+    topf.innerHTML = avatarSVG(px, pose);
+    document.body.appendChild(topf);
+    const svg = topf.querySelector("svg");
+    if(!svg){ topf.remove(); return schief(new Error("keine Figur")); }
+
+    const uebernehmen = ["fill","stroke","stroke-width","stroke-linecap",
+                         "stroke-linejoin","opacity","paint-order",
+                         "font-family","font-size","font-style","font-weight"];
+    svg.querySelectorAll("*").forEach(el => {
+      const s = getComputedStyle(el);
+      uebernehmen.forEach(k => {
+        const w = s.getPropertyValue(k);
+        if(w && w !== "none" || k === "fill") el.setAttribute(k, w);
+      });
+    });
+    svg.setAttribute("xmlns", "http://www.w3.org/2000/svg");
+    const roh = new XMLSerializer().serializeToString(svg);
+    topf.remove();
+
+    const bild = new Image();
+    bild.onload  = () => fertig(bild);
+    bild.onerror = () => schief(new Error("Figur nicht lesbar"));
+    /* encodeURIComponent statt btoa: Der Name des Hauses steht als
+       Buchstabe im SVG und kann ein Umlaut sein — btoa wirft dann. */
+    bild.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(roh);
+  });
+}
+
+/* Ein Wert aus dem Blatt, aufgelöst. Die Palette steht zur Laufzeit
+   am <html>, nicht im Stylesheet. */
+function farbe(name, rueckfall){
+  const w = getComputedStyle(document.documentElement)
+    .getPropertyValue(name).trim();
+  return w || rueckfall;
+}
+
+/* Text umbrechen, ohne Wörter zu zerreißen. Gibt die Zeilen zurück,
+   damit der Aufrufer die Höhe kennt, bevor er zeichnet. */
+function storyZeilen(ctx, text, breite, hoechstens){
+  const worte = String(text).split(/\s+/).filter(Boolean);
+  const zeilen = [];
+  let z = "", rest = false;
+  for(let i = 0; i < worte.length; i++){
+    const probe = z ? z + " " + worte[i] : worte[i];
+    if(ctx.measureText(probe).width > breite && z){
+      zeilen.push(z); z = worte[i];
+      if(hoechstens && zeilen.length >= hoechstens){ rest = true; break; }
+    } else z = probe;
+  }
+  if(!rest && z) zeilen.push(z);
+  /* Abgeschnitten heißt abgeschnitten — mit Auslassung. Ohne sie
+     stand im Bild „Nutella Waffel mit Erdbeeren und" und der Leser
+     hielt es für den ganzen Namen. */
+  if(rest && zeilen.length){
+    let l = zeilen[zeilen.length-1];
+    while(l.length > 1 && ctx.measureText(l + " …").width > breite) l = l.slice(0, -1);
+    zeilen[zeilen.length-1] = l.replace(/[\s,;:.-]+$/, "") + " …";
+  }
+  return zeilen;
+}
+
+/* 1080×1920 ist das Story-Maß. Wer es kleiner rechnet, bekommt beim
+   Hochladen ein weiches Bild. */
+const STORY_B = 1080, STORY_H = 1920;
+
+async function storyZeichnen(posten){
+  const c = document.createElement("canvas");
+  c.width = STORY_B; c.height = STORY_H;
+  const x = c.getContext("2d");
+
+  const grund   = farbe("--grund", "#FBF6F2");
+  const flaeche = farbe("--flaeche", "#FFFFFF");
+  const band    = farbe("--band", "#2A1A14");
+  const bandTxt = farbe("--band-text", "#FBF6F2");
+  const tinte   = farbe("--tinte", "#2A1A14");
+  const leise   = farbe("--tinte-leise", "#846C62");
+  const akzent  = farbe("--rot", "#C8202E");
+  const kopfSchrift = farbe("--schrift-kopf", "serif");
+  const textSchrift = farbe("--schrift-text", "sans-serif");
+
+  x.fillStyle = grund;
+  x.fillRect(0, 0, STORY_B, STORY_H);
+
+  /* Kopfband in der Hausfarbe, wie im Hub selbst. */
+  x.fillStyle = band;
+  x.fillRect(0, 0, STORY_B, 300);
+  x.fillStyle = bandTxt;
+  x.textAlign = "center";
+  x.font = "600 40px " + textSchrift;
+  x.fillText(t("Ich war hier"), STORY_B/2, 120);
+  x.font = "700 76px " + kopfSchrift;
+  storyZeilen(x, BETRIEB.name, STORY_B - 140, 2)
+    .forEach((z, i) => x.fillText(z, STORY_B/2, 200 + i*80));
+
+  /* Die Figur. Fällt sie aus, geht das Bild trotzdem raus — sie ist
+     Beiwerk, die Liste ist die Botschaft. */
+  let figur = null;
+  try{ figur = await figurAlsBild(340, "teller"); }catch(e){}
+
+  /* Erst rechnen, dann zeichnen: Bei fest gesetztem Anfang blieb
+     unter der Liste ein handbreites Loch, weil die Höhe von der Zahl
+     der Gerichte abhängt. Jetzt sitzt die Gruppe mittig zwischen
+     Kopfband und Fußzeile — bei einer Zeile wie bei fünf. */
+  const zeilen    = posten.slice(0, 5);
+  const listeHoch = zeilen.length * 74 + 56;
+  const mehrHoch  = posten.length > zeilen.length ? 60 : 0;
+  const figurHoch = figur ? figur.height + 40 : 0;
+  const gruppe    = figurHoch + 44 + 26 + listeHoch + mehrHoch;
+  const raumOben  = 300, raumUnten = STORY_H - 380;
+  let unten = raumOben + Math.max(20, (raumUnten - raumOben - gruppe) / 2);
+
+  if(figur){
+    x.drawImage(figur, (STORY_B - figur.width)/2, unten, figur.width, figur.height);
+    unten += figur.height + 40;
+  }
+
+  /* Was gegessen wurde. */
+  x.textAlign = "center";
+  x.fillStyle = leise;
+  x.font = "600 32px " + textSchrift;
+  x.fillText(t("DAS GAB ES").toUpperCase(), STORY_B/2, unten);
+  unten += 70;
+
+  x.fillStyle = flaeche;
+  const listeOben = unten - 44;
+  if(x.roundRect){ x.beginPath(); x.roundRect(90, listeOben, STORY_B - 180, listeHoch, 28); x.fill(); }
+  else x.fillRect(90, listeOben, STORY_B - 180, listeHoch);
+
+  /* Arabisch läuft von rechts nach links. Eine Leinwand richtet sich
+     nicht selbst — ohne diese Spiegelung stünde die Menge links vom
+     Namen und der Satz läse sich verkehrt herum. */
+  const rechtsLinks = RTL.indexOf(sprache) >= 0;
+  const randInnen = 140, randAussen = STORY_B - 140;
+  zeilen.forEach((p, i) => {
+    const y = unten + 26 + i*74;
+    x.textAlign = rechtsLinks ? "right" : "left";
+    x.fillStyle = akzent;
+    x.font = "700 38px " + textSchrift;
+    x.fillText((p.m || 1) + "×", rechtsLinks ? randAussen : randInnen, y);
+    x.fillStyle = tinte;
+    x.font = "500 38px " + textSchrift;
+    const name = storyZeilen(x, t(p.n), STORY_B - 400, 1)[0] || "";
+    x.fillText(name, rechtsLinks ? randAussen - 90 : randInnen + 90, y);
+  });
+  x.textAlign = "center";
+  unten = listeOben + listeHoch + 30;
+  if(posten.length > zeilen.length){
+    x.textAlign = "center";
+    x.fillStyle = leise;
+    x.font = "500 30px " + textSchrift;
+    x.fillText(t("und {n} weitere", {n: posten.length - zeilen.length}), STORY_B/2, unten + 20);
+    unten += 60;
+  }
+
+  /* Datum und Adresse. */
+  x.textAlign = "center";
+  x.fillStyle = leise;
+  x.font = "500 34px " + textSchrift;
+  /* Das Datum in der Sprache des Gastes, nicht fest auf Deutsch —
+     im arabischen Bild stand sonst „29. August 2026" mitten im
+     arabischen Satz. Fällt die Sprache dem Browser unbekannt aus,
+     nimmt er von selbst wieder Deutsch. */
+  let datum;
+  try{ datum = new Date().toLocaleDateString(sprache,
+    { day:"2-digit", month:"long", year:"numeric" }); }
+  catch(e){ datum = new Date().toLocaleDateString("de-DE",
+    { day:"2-digit", month:"long", year:"numeric" }); }
+  x.fillText(datum, STORY_B/2, STORY_H - 300);
+
+  x.fillStyle = akzent;
+  x.font = "700 42px " + textSchrift;
+  x.fillText(hubAdresse(), STORY_B/2, STORY_H - 230);
+
+  x.fillStyle = leise;
+  x.font = "500 26px " + textSchrift;
+  x.fillText(t("Karte, bestellen und rufen — direkt am Tisch."), STORY_B/2, STORY_H - 180);
+
+  x.globalAlpha = .55;
+  x.font = "600 24px " + textSchrift;
+  x.fillText("omoteno.de", STORY_B/2, STORY_H - 90);
+  x.globalAlpha = 1;
+
+  return c;
+}
+
+/* Die Adresse, unter der dieser Hub steht. Ohne Protokoll und ohne
+   abschließenden Strich — das liest sich besser und tippt sich
+   leichter ab. */
+function hubAdresse(){
+  try{
+    if(location.protocol === "file:") return (SERVER.betrieb || "hub") + ".omoteno.de";
+    return location.host + location.pathname.replace(/\/?(index\.html)?$/, "");
+  }catch(e){ return "omoteno.de"; }
+}
+
+let storyLeinwand = null;
+
+async function storyOeffnen(posten){
+  const el = $("story"); if(!el) return;
+  if(!posten || !posten.length){
+    melden(t("Dafür fehlt noch eine Bestellung."), true);
+    return;
+  }
+  const feld = $("storyBild");
+  feld.innerHTML = "";
+  feld.classList.add("laedt");
+  el.hidden = false;
+  /* Dieselbe Sperre wie bei der Vorzeige-Karte: Der Hub darf nicht
+     hinter dem Fenster weiterrollen. */
+  document.body.classList.add("fest");
+
+  try{
+    storyLeinwand = await storyZeichnen(posten);
+    feld.classList.remove("laedt");
+    feld.innerHTML = "";
+    feld.appendChild(storyLeinwand);
+    const sichern = $("storySichern");
+    sichern.href = storyLeinwand.toDataURL("image/png");
+    sichern.download = (SERVER.betrieb || "besuch") + ".png";
+    /* Ehrlich auf dem Knopf: Instagram und Meta lassen ohne eigene
+       App kein Posten in Storys zu. Wer etwas anderes verspricht,
+       schickt den Gast in eine Sackgasse. */
+    $("storyHinweis").textContent =
+      t("Für Instagram: Bild sichern, dann Instagram öffnen und aus der Galerie wählen. Direkt hineinstellen lässt Instagram niemanden.");
+  }catch(fehler){
+    console.error("[Omoteno] Story:", fehler);
+    feld.classList.remove("laedt");
+    feld.innerHTML = "";
+    $("storyHinweis").textContent = t("Das Bild ließ sich nicht bauen.");
+  }
+}
+
+function storySchliessen(){
+  const el = $("story"); if(!el) return;
+  el.hidden = true;
+  document.body.classList.remove("fest");
+}
+
+async function storyTeilen(){
+  if(!storyLeinwand){ melden(t("Das Bild ist noch nicht fertig."), true); return; }
+  const text = t("War gerade bei {haus}.", {haus: BETRIEB.name}) + " " + hubAdresse();
+
+  /* Der beste Weg zuerst: die Freigabe des Systems mit der Datei.
+     Sie kennt alle Apps des Gastes, wir kennen keine. */
+  try{
+    const klotz = await new Promise(f => storyLeinwand.toBlob(f, "image/png"));
+    if(klotz && navigator.canShare){
+      const datei = new File([klotz], "besuch.png", { type:"image/png" });
+      if(navigator.canShare({ files:[datei] })){
+        await navigator.share({ files:[datei], text: text });
+        return;
+      }
+    }
+    if(navigator.share){ await navigator.share({ text: text }); return; }
+  }catch(e){
+    /* Abbruch durch den Gast ist kein Fehler. */
+    if(e && e.name === "AbortError") return;
+  }
+  /* Kein Teilen im Gerät: WhatsApp direkt, das Bild von Hand dazu. */
+  oeffne("https://wa.me/?text=" + encodeURIComponent(text));
+  melden(t("Text ist offen — das Bild bitte über „Bild sichern“ dazulegen."));
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DER BEGLEITER
+
+   Ein Untersetzer mit Gesicht. Das Ding auf dem Tisch IST das
+   Produkt — also ist es auch der Gastgeber, und nicht irgendeine
+   zugekaufte Figur, die mit dem Haus nichts zu tun hat.
+
+   Drei Züge aus einer Grundform: Es ändern sich Augen, Mund und ein
+   Detail. Alles andere bleibt gleich, damit es dieselbe Figur bleibt
+   und nicht drei verschiedene.
+
+   Gebaut in SVG mit den Farben des Hauses. Kein Bild, kein
+   Nachladen: Der Hub muss ohne Netz laufen, und eine Figur, die
+   erst nach zwei Sekunden erscheint, grüßt niemanden.
+   ══════════════════════════════════════════════════════════════════ */
+/* ╔═══ FIGUR · GETEILTER BLOCK · ANFANG ═══════════════════════════╗
+   ║ Wortgleich auch in marken-studio.html. Es gibt in diesem       ║
+   ║ Verzeichnis bewusst kein Bauwerkzeug — geteilter Code wird     ║
+   ║ kopiert, wie die Farbrollen im :root. Damit die beiden Fassungen║
+   ║ nicht auseinanderlaufen, vergleicht pruef-figur.js sie Zeichen ║
+   ║ für Zeichen. Wer hier etwas ändert, ändert es dort auch.       ║
+   ║ Der Block ist absichtlich rein: keine MARKENBLATT-, BETRIEB-   ║
+   ║ oder t()-Aufrufe. Alles kommt als Parameter.                   ║
+   ╚════════════════════════════════════════════════════════════════╝ */
+const AVATAR_ZUEGE = {
+  freundlich: {
+    /* offene Augen, klarer Bogen nach oben */
+    augen: '<circle class="auge" cx="41" cy="46" r="3.4"/><circle class="auge" cx="59" cy="46" r="3.4"/>',
+    mund:  '<path class="zug" d="M41 57q9 8 18 0" stroke-width="3"/>',
+    extra: ''
+  },
+  ruhig: {
+    /* geschlossene Augen, kaum ein Mund — die Ruhe liegt im Weglassen */
+    augen: '<path class="zug" d="M37 47q4-4 8 0" stroke-width="2.6"/>' +
+           '<path class="zug" d="M55 47q4-4 8 0" stroke-width="2.6"/>',
+    mund:  '<path class="zug" d="M44 57q6 4 12 0" stroke-width="2.6"/>',
+    extra: '<path class="zug" d="M50 21c3-3 3-6 0-9" stroke-width="2.2" opacity=".5"/>'
+  },
+  witzig: {
+    /* ein Auge zwinkert, der Mund geht weiter auf */
+    augen: '<circle class="auge" cx="41" cy="46" r="3.4"/>' +
+           '<path class="zug" d="M55 46q4-4 8 0" stroke-width="2.8"/>',
+    mund:  '<path class="zug" d="M39 55q11 11 22 0" stroke-width="3"/>',
+    extra: '<path class="funke" d="M70 30l1.6 3.6 3.6 1.6-3.6 1.6L70 40.4l-1.6-3.6-3.6-1.6 3.6-1.6z"/>'
+  }
+};
+
+/* ── Die Erdbeere ────────────────────────────────────────────────
+   Ein zweiter Körper für dieselben drei Züge. Sie gehört CHOCO, nicht
+   Omoteno: Fest ins Gerüst gebaut bekäme eine Cocktailbar eine
+   Erdbeere mit Schokoflasche. Deshalb steht sie im Markenblatt
+   (avatar.figur) und nicht hier als Vorgabe.
+
+   Koordinaten: Feld 124×128, die Frucht mittig bei x=62 — links und
+   rechts bleiben gut zwanzig Einheiten für Arme, Flasche und Teller.
+   Im ersten Entwurf saß sie randbündig und die Flasche wurde
+   abgeschnitten.
+
+   EBENEN. Eine Pose hat zwei Hälften: „hinten" liegt UNTER der
+   Frucht (die Arme, deren Schulter darin verschwindet), „vorn"
+   DARÜBER (Hände und alles, was die Figur hält). Lag alles hinten,
+   verschluckte die Frucht die Flasche und den Schokotropfen. */
+
+/* Ein Blatt, das nach oben zeigt. Fünfmal gedreht ergibt die Krone —
+   fünf einzeln gezeichnete Blätter wären fünfmal so viel Pflege. */
+const E_BLATT = '<path class="blatt" d="M0 2C-11-3-15-15-6-25 4-16 10-4 0 2Z"/>';
+
+const E_KERNE = [[44,48],[60,42],[76,48],[36,62],[52,58],[70,60],[86,62],
+                 [44,74],[60,72],[78,74],[52,88],[72,88]]
+  .map(([x,y],i) => '<ellipse class="kern" cx="' + x + '" cy="' + y +
+       '" rx="2" ry="3" transform="rotate(' + ((i*41)%54-27) + ' ' + x + ' ' + y + ')"/>')
+  .join("");
+
+/* Die Schokoflasche sitzt im Ursprung, damit der Aufrufer sie drehen
+   kann. Die Kappe liegt bei +16, also UNTER dem Ursprung — daran
+   hängt, wohin sie gießt. */
+function eFlasche(){
+  return '<g class="flasche">' +
+    '<rect class="glas" x="-8" y="-23" width="16" height="27" rx="4"/>' +
+    '<path class="glas" d="M-4 4h8l1.8 7.4a2 2 0 0 1-2 2.6h-7.6a2 2 0 0 1-2-2.6Z"/>' +
+    '<rect class="kappe" x="-3" y="13.4" width="6" height="5.2" rx="1.6"/>' +
+    '<ellipse class="bohne" cx="0" cy="-10" rx="3" ry="4.6"/>' +
+    '<path class="ritz" d="M0-14.4v8.8"/>' +
+  '</g>';
+}
+
+/* Eine Hand am Ende eines Arms: ein Fäustling, kein Finger. */
+function eHand(x, y){
+  return '<ellipse class="hand" cx="' + x + '" cy="' + y + '" rx="5.6" ry="5"/>';
+}
+
+const E_POSEN = {
+  /* Winken mit der Flasche — der Gruß, und die Vorgabe. */
+  winken: {
+    hinten: '<path class="arm" d="M40 92C28 90 18 84 14 74"/>' +
+            '<path class="arm" d="M84 92C98 89 110 80 114 70"/>',
+    /* Auch hier gerechnet: Die um 13 Grad gedrehte Flasche hat ihre
+       linke obere Ecke bei -13. Bei x=9 stand sie 4 Einheiten über
+       dem Feldrand und wurde abgeschnitten. */
+    vorn:   eHand(13, 72) +
+            '<g transform="translate(14 58) rotate(-13)">' + eFlasche() + '</g>' +
+            eHand(115, 68)
+  },
+
+  /* Zettel in der Hand: die Bestellung hängt am Pass. Der innere
+     Knoten trägt die Drehung, damit die Animation ihn kippen kann,
+     ohne die Verschiebung zu überschreiben. */
+  zettel: {
+    hinten: '<path class="arm" d="M40 92C28 90 18 84 13 74"/>' +
+            '<path class="arm" d="M84 92C97 90 106 85 111 78"/>',
+    vorn:   eHand(12, 72) +
+            '<g transform="translate(12 56)"><g class="zettel" transform="rotate(-6)">' +
+              '<rect class="papier" x="-10" y="-16" width="20" height="28" rx="2.4"/>' +
+              '<path class="ritz" d="M-5.5-9h11M-5.5-3h11M-5.5 3h7"/>' +
+            '</g></g>' +
+            eHand(112, 76)
+  },
+
+  /* Gießen: die Flasche kippt über dem Stapel, ein Tropfen fällt. */
+  giessen: {
+    hinten: '<path class="arm" d="M42 92C32 88 24 80 20 68"/>' +
+            '<path class="arm" d="M84 92C97 90 106 85 111 78"/>',
+    vorn:   eHand(19, 64) +
+            /* Nachgerechnet, nicht geschätzt: Die um 26 Grad gedrehte
+               Flasche hat ihre linke obere Ecke bei -17,3 — bei x=14
+               ragte sie 3,3 Einheiten aus dem Feld und wurde von der
+               viewBox abgeschnitten. */
+            '<g transform="translate(18 58) rotate(-26)">' + eFlasche() + '</g>' +
+            /* Der Tropfen fällt LINKS an der Frucht vorbei. Weiter
+               rechts läge er auf ihr und sähe aus wie ein Fleck. */
+            '<circle class="tropfen" cx="25" cy="84" r="3.2"/>' +
+            '<g class="stapel" transform="translate(22 104)">' +
+              '<ellipse class="porzellan" cx="0" cy="11" rx="18" ry="4.6"/>' +
+              '<ellipse class="kuchen" cx="0" cy="5"  rx="14" ry="4.6"/>' +
+              '<ellipse class="kuchen" cx="0" cy="-2" rx="14" ry="4.6"/>' +
+              '<ellipse class="kuchen" cx="0" cy="-9" rx="14" ry="4.6"/>' +
+              '<path class="guss" d="M-13-10c3-4 6-6 13-6s10 2 13 6c-2 4-6 6-9 4-1 4-5 5-7 2-2 3-6 2-7-2-3 2-5 0-4-4Z"/>' +
+            '</g>' +
+            eHand(112, 76)
+  },
+
+  /* Teller tragen: fertig, kommt zum Tisch. */
+  teller: {
+    hinten: '<path class="arm" d="M40 92C29 90 19 84 14 76"/>' +
+            '<path class="arm" d="M84 90C96 85 105 74 106 64"/>',
+    vorn:   eHand(13, 74) +
+            eHand(105, 62) +
+            '<g class="stapel" transform="translate(102 52)">' +
+              '<ellipse class="porzellan" cx="0" cy="3" rx="18" ry="5.2"/>' +
+              '<ellipse class="kuchen" cx="0" cy="-3" rx="12" ry="4.4"/>' +
+              '<path class="guss" d="M-9-4c2-3 5-5 9-5s7 2 9 5c-2 2-4 3-6 2-1 2-3 3-5 1-2 1-4 0-5-2Z"/>' +
+              '<path class="dampf d1" d="M-6-12c0-3.4 2.4-3.8 2.4-7"/>' +
+              '<path class="dampf d2" d="M0-13c0-3.4 2.4-3.8 2.4-7"/>' +
+              '<path class="dampf d3" d="M6-12c0-3.4 2.4-3.8 2.4-7"/>' +
+            '</g>'
+  }
+};
+
+const AVATAR_FIGUREN = {
+  untersetzer: {
+    breite: 100, hoehe: 86, gesicht: "", rahmen: "", posen: null,
+    koerper: () =>
+      /* Schatten auf dem Tisch */
+      '<ellipse class="schatten" cx="50" cy="80" rx="29" ry="4.5"/>' +
+      /* Die Dicke: dieselbe Scheibe, ein Stück tiefer. Erst dadurch
+         liegt der Untersetzer auf dem Tisch, statt darüber zu
+         schweben — genauso wie der Körper auf der Webseite. */
+      '<ellipse class="kante" cx="50" cy="57" rx="34" ry="24"/>' +
+      '<ellipse class="scheibe" cx="50" cy="51" rx="34" ry="24" stroke-width="2.2"/>' +
+      '<ellipse class="zug" cx="50" cy="51" rx="28" ry="18.5" stroke-width="1.1" opacity=".4"/>'
+  },
+
+  erdbeere: {
+    breite: 124, hoehe: 128, posen: E_POSEN,
+    /* Der Zug-Satz ist um (50,48) herum gebaut. Hier landet er auf der
+       Mitte der Frucht und wird größer — die Augen der Zeichnung sind
+       groß, und eine kleine Miene auf einer großen Frucht wirkt leer. */
+    gesicht: "translate(62 56) scale(1.55) translate(-50 -48)",
+    /* Brauen gehören zur Figur, nicht zum Zug: Sie stehen in jeder
+       Laune und geben dem Gesicht erst seinen Rahmen. */
+    rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
+            '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
+    koerper: pose => {
+      const p = E_POSEN[pose] || E_POSEN.winken;
+      /* cy=124 mit ry=4.6 endete bei 128,6 — 0,6 unter dem Feldrand. */
+      return '<ellipse class="schatten" cx="62" cy="123" rx="27" ry="4.2"/>' +
+        /* Beine und Arme zuerst — ihre Schultern verschwinden in der Frucht */
+        '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
+        '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
+        '<ellipse class="fuss" cx="74" cy="119" rx="7.5" ry="3.8"/>' +
+        p.hinten +
+        '<path class="stiel" d="M62 30C62 20 62 15 62 9"/>' +
+        '<g transform="translate(62 34)">' +
+          '<g transform="rotate(-62)">' + E_BLATT + '</g>' +
+          '<g transform="rotate(-31)">' + E_BLATT + '</g>' +
+          '<g>' + E_BLATT + '</g>' +
+          '<g transform="rotate(31)">' + E_BLATT + '</g>' +
+          '<g transform="rotate(62)">' + E_BLATT + '</g>' +
+        '</g>' +
+        '<path class="frucht" d="M62 28C90 28 105 44 105 64C105 86 86 108 62 108C38 108 19 86 19 64C19 44 34 28 62 28Z"/>' +
+        '<path class="glanz" d="M36 48C41 40 49 35 57 34C48 39 42 46 39 55Z"/>' +
+        E_KERNE +
+        '<ellipse class="wange" cx="38" cy="72" rx="7" ry="4.6"/>' +
+        '<ellipse class="wange" cx="86" cy="72" rx="7" ry="4.6"/>' +
+        /* Die Schürze: das Haus auf der Frucht */
+        '<path class="schuerze" d="M38 84C48 88 76 88 86 84L88 101C88 106 79 109 62 109C45 109 36 106 36 101Z"/>' +
+        '<rect class="tasche" x="53" y="88" width="18" height="14" rx="4.5"/>' +
+        /* und zuletzt, was die Figur in den Händen hält */
+        p.vorn;
+    }
+  }
+};
+
+/* Der Buchstabe auf der Schürze kommt aus dem Namen des Hauses —
+   nicht fest aus einem „C". Ein Artikel davor zählt nicht. */
+function figurBuchstabe(name){
+  const w = String(name || "").trim()
+    .replace(/^(das|der|die|the|le|la|el)\s+/i, "");
+  const z = (w.charAt(0) || "O").toUpperCase();
+  return z.replace(/[&<>"]/g, x => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[x]));
+}
+
+/* Rein: nimmt alles als Parameter, liest nichts aus der Umgebung.
+   Nur so lässt sich derselbe Block im Studio benutzen, wo es weder
+   MARKENBLATT noch BETRIEB gibt. */
+function figurSVG(groesse, figur, art, name, pose){
+  const fk = AVATAR_FIGUREN[figur] ? figur : "untersetzer";
+  const zk = AVATAR_ZUEGE[art]     ? art   : "freundlich";
+  const f = AVATAR_FIGUREN[fk], z = AVATAR_ZUEGE[zk];
+  const g = groesse || 96;
+  const gesicht = (f.rahmen || "") + z.augen + z.mund + z.extra;
+  /* Unter etwa 56px ist der Buchstabe nur noch ein Fleck. Lieber
+     weglassen als etwas zeigen, das niemand lesen kann. */
+  const zeichen = (fk === "erdbeere" && g >= 56)
+    ? '<text class="mono" x="62" y="99.5" text-anchor="middle">' +
+      figurBuchstabe(name) + '</text>'
+    : "";
+  return '<svg class="figur f-' + fk + '" width="' + g + '" height="' +
+    Math.round(g * f.hoehe / f.breite) + '" viewBox="0 0 ' + f.breite + ' ' + f.hoehe +
+    '" aria-hidden="true" focusable="false">' +
+      f.koerper(pose) +
+      (f.gesicht ? '<g transform="' + f.gesicht + '">' + gesicht + '</g>' : gesicht) +
+      zeichen +
+    '</svg>';
+}
+/* ╚═══ FIGUR · GETEILTER BLOCK · ENDE ═════════════════════════════╝ */
+
+/* Ab hier wieder Hub: die dünne Hülle, die das Markenblatt liest. */
+function avatarArt(){
+  const a = (typeof MARKENBLATT === "object" && MARKENBLATT.avatar) || {};
+  return AVATAR_ZUEGE[a.art] ? a.art : "freundlich";
+}
+
+/* Fehlt figur im Markenblatt, bleibt es der Untersetzer. Ein altes
+   Blatt ohne das Feld läuft damit unverändert weiter. */
+function avatarFigur(){
+  const a = (typeof MARKENBLATT === "object" && MARKENBLATT.avatar) || {};
+  return AVATAR_FIGUREN[a.figur] ? a.figur : "untersetzer";
+}
+
+function avatarSVG(groesse, pose){
+  return figurSVG(groesse, avatarFigur(), avatarArt(), BETRIEB.name, pose);
+}
+
+/* Gezeichnete Zeichen für die drei Phasen — für Häuser, deren Figur
+   keine Haltungen kennt. Vorher standen hier Emoji; die sehen auf
+   jedem Gerät anders aus, und der Gestaltungsauftrag sperrt sie. */
+const PHASENZEICHEN = {
+  zettel: '<path d="M6 3.5h9l3 3v14a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1v-16a1 1 0 0 1 1-1z"/>' +
+          '<path d="M15 3.5v3h3M8.5 11h7M8.5 14.5h7M8.5 18h4"/>',
+  pfanne: '<path d="M3.5 11h11a1 1 0 0 1 1 1v2a5.5 5.5 0 0 1-5.5 5.5h-2A5.5 5.5 0 0 1 2.5 14v-2a1 1 0 0 1 1-1z"/>' +
+          '<path d="M15.5 12.5h5.5"/><path d="M7 8.2c0-1.6 1.8-1.9 1.8-3.7M11 7.8c0-1.6 1.8-1.9 1.8-3.7"/>',
+  glocke: '<path d="M12 3.4a5.6 5.6 0 0 1 5.6 5.6c0 4.2 1.4 5.6 1.4 5.6H5s1.4-1.4 1.4-5.6A5.6 5.6 0 0 1 12 3.4z"/>' +
+          '<path d="M10 17.6a2 2 0 0 0 4 0"/><path d="M12 3.4V1.8"/>'
+};
+
+/* Zeigt die Figur in der passenden Haltung — oder, wenn sie keine
+   kennt, das gezeichnete Zeichen. */
+function phasenBild(pose, ersatz, groesse){
+  const f = AVATAR_FIGUREN[avatarFigur()];
+  if(f.posen && f.posen[pose]) return avatarSVG(groesse || 96, pose);
+  return '<svg class="g-zeichen" viewBox="0 0 24 24" aria-hidden="true" ' +
+         'focusable="false">' + (PHASENZEICHEN[ersatz] || "") + '</svg>';
+}
+
+/* Was die Figur sagt. Kurze Sätze, drei Anlässe, drei Züge — und
+   nichts davon erklärt sich selbst zweimal. */
+const AVATAR_TEXTE = {
+  start: {
+    freundlich: "Schön, dass Sie da sind. Suchen Sie sich in Ruhe etwas aus.",
+    ruhig:      "Lassen Sie sich Zeit. Hier drängt nichts.",
+    witzig:     "Alles da. Nur entscheiden müssen Sie selbst."
+  },
+  bestellt: {
+    freundlich: "Ist notiert. Wir sagen Bescheid, sobald es rausgeht.",
+    ruhig:      "Angekommen. Lehnen Sie sich zurück.",
+    witzig:     "Bestellt. Ab hier ist es unser Problem."
+  },
+  bewerten: {
+    freundlich: "Ehrlich ist uns lieber als nett.",
+    ruhig:      "Ein paar Worte genügen.",
+    witzig:     "Fünf Sterne nehmen wir auch."
+  },
+  meintisch: {
+    freundlich: "Ich merke mir, was Ihnen schmeckt – mehr nicht.",
+    ruhig:      "Ihre Spuren bleiben auf Ihrem Gerät.",
+    witzig:     "Ich habe mitgezählt. Nur das, versprochen."
+  }
+};
+
+function begleiterHTML(anlass){
+  const satz = (AVATAR_TEXTE[anlass] || {})[avatarArt()];
+  if(!satz) return "";
+  return '<div class="begleiter">' + avatarSVG(48) + '<p>' + t(satz) + '</p></div>';
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   INHALT AUS DEM MARKENBLATT
+
+   Bis hierher stehen die Werte des Hauses fest im Gerüst: Name,
+   Öffnungszeiten, Links, WLAN, Empfehlungen. Das war der Rest der
+   Handarbeit, die der Erzeuger eigentlich abschaffen sollte — die
+   Farben kamen längst aus dem Markenblatt, der TEXT nicht. Ein
+   zweiter Kunde hätte damit Chocos Telefonnummer und Chocos
+   Öffnungszeiten im Hub stehen.
+
+   Deshalb: Was im Markenblatt steht, gewinnt. Was dort fehlt, bleibt
+   wie hier eingetragen. Beides zusammen heißt, dass ein altes
+   Markenblatt ohne diese Felder weiter läuft — und ein neues nichts
+   mehr von Hand nachziehen muss.
+
+   Die Konstanten werden verändert, nicht ersetzt: const verbietet die
+   Neuzuweisung, nicht das Füllen.
+   ══════════════════════════════════════════════════════════════════ */
+(function inhaltAusMarkenblatt(){
+  const mb = (typeof MARKENBLATT === "object" && MARKENBLATT) || {};
+  const da = w => w !== undefined && w !== null && w !== "";
+
+  const b = mb.betrieb || {};
+  ["name","claim","begruessung","strasse","ort","telefon","mail"].forEach(k => {
+    if(da(b[k])) BETRIEB[k] = b[k];
+  });
+
+  if(Array.isArray(mb.zeiten) && mb.zeiten.length === 7){
+    ZEITEN.length = 0;
+    mb.zeiten.forEach(z => ZEITEN.push(z));
+  }
+
+  if(mb.links)     Object.keys(mb.links).forEach(k => { if(da(mb.links[k])) LINKS[k] = mb.links[k]; });
+  if(mb.wlan)      Object.keys(mb.wlan).forEach(k  => { if(da(mb.wlan[k]))  WLAN[k]  = mb.wlan[k];  });
+  if(mb.trinkgeld){
+    if(da(mb.trinkgeld.paypal)) TRINKGELD.paypal = mb.trinkgeld.paypal;
+    if(Array.isArray(mb.trinkgeld.betraege) && mb.trinkgeld.betraege.length)
+      TRINKGELD.betraege = mb.trinkgeld.betraege.slice();
+  }
+
+  /* Empfehlungen ganz oder gar nicht: Eine halb übernommene Liste
+     wäre eine Mischung aus zwei Häusern. */
+  if(Array.isArray(mb.empfehlung) && mb.empfehlung.length){
+    EMPFEHLUNG.length = 0;
+    mb.empfehlung.forEach(e => EMPFEHLUNG.push(e));
+  }
+
+  /* Das Quiz wird hier NICHT übernommen, obwohl es hierher gehören
+     würde: const QUIZ steht dreihundert Zeilen weiter unten, und
+     eine const vor ihrer Deklaration anzufassen wirft einen
+     ReferenceError. Der hätte diesen ganzen Block abgebrochen —
+     mitsamt Zeiten, Links, WLAN und Empfehlungen, die davor stehen.
+     Ein Haus hätte dann Chocos Öffnungszeiten gezeigt, und in der
+     Konsole hätte eine Zeile gestanden, die niemand liest.
+     Dieselbe Falle wie beim Lichtschalter im Kopf (CLAUDE.md §1.1).
+     Die Übernahme steht deshalb direkt hinter QUIZ. */
+})();
+
 
 /*  ============================================================
     INHALTSSTOFFE & ALLERGENE  ·  HIER TRÄGST DU SPÄTER EIN
@@ -2626,6 +3935,22 @@ const LISTE_LAENGE     = 10;
     Das Tischquiz hat je Sprache einen eigenen Fragentopf (QUIZ_LAND):
     Deutsch bekommt lokale Fragen zu Stadtallendorf und Hessen, jede
     andere Sprache Fragen zum passenden Land.                             */
+/* Eigene Fragen aus dem Markenblatt — ganz oder gar nicht, wie bei
+   den Empfehlungen. Zwei der Fragen oben nennen Choco L'AMouR beim
+   Namen; ein zweites Haus würde seine Gäste sonst über ein fremdes
+   Café abfragen. Der Erzeuger warnt, wenn der Bereich eingeschaltet
+   ist und eigene Fragen fehlen.
+
+   Steht hier und nicht oben in inhaltAusMarkenblatt: const QUIZ ist
+   erst seit ein paar Zeilen deklariert, und ein Zugriff davor hätte
+   den ganzen Übernahmeblock mit einem ReferenceError abgebrochen. */
+(function quizAusMarkenblatt(){
+  const q = (typeof MARKENBLATT === "object" && MARKENBLATT.quiz) || null;
+  if(!Array.isArray(q) || !q.length) return;
+  QUIZ.length = 0;
+  q.forEach(x => QUIZ.push(x));
+})();
+
 /*  LÄNDERFRAGEN
     Je Sprache ein eigener Fragentopf mit bekannten Fragen zum passenden
     Land. Deutsch behält die lokalen Fragen oben (Stadtallendorf/Hessen).
@@ -3656,7 +4981,57 @@ const TEXTE = {
 "Anfrage ist angekommen. Wir melden uns kurz zur Bestätigung.":{en:"Your request arrived. We will confirm shortly.",tr:"Talebiniz ulaştı. Kısaca onaylayacağız.",ru:"Запрос получен. Мы скоро подтвердим.",fr:"Votre demande est arrivée. Nous confirmons sous peu.",es:"Su solicitud ha llegado. Le confirmamos en breve.",it:"La richiesta è arrivata. Confermiamo a breve.",pl:"Zapytanie dotarło. Wkrótce potwierdzimy.",ar:"وصل طلبكم. سنؤكد لكم قريباً.",uk:"Запит отримано. Скоро підтвердимо.",nl:"Uw aanvraag is aangekomen. We bevestigen zo.",ro:"Cererea a ajuns. Confirmăm în scurt timp."},
 "Guten Tag,\n\nich möchte gerne einen Tisch reservieren.\n\nWann: {w}\nPersonen: {p}":{en:"Hello,\n\nI would like to book a table.\n\nWhen: {w}\nGuests: {p}",tr:"Merhaba,\n\nbir masa ayırtmak istiyorum.\n\nNe zaman: {w}\nKişi: {p}",ru:"Здравствуйте,\n\nхочу забронировать столик.\n\nКогда: {w}\nГостей: {p}",fr:"Bonjour,\n\nje souhaite réserver une table.\n\nQuand : {w}\nPersonnes : {p}",es:"Hola:\n\nquisiera reservar una mesa.\n\nCuándo: {w}\nPersonas: {p}",it:"Buongiorno,\n\nvorrei prenotare un tavolo.\n\nQuando: {w}\nPersone: {p}",pl:"Dzień dobry,\n\nchciałbym zarezerwować stolik.\n\nKiedy: {w}\nOsoby: {p}",ar:"مرحباً،\n\nأود حجز طاولة.\n\nالموعد: {w}\nعدد الأشخاص: {p}",uk:"Доброго дня,\n\nхочу забронювати столик.\n\nКоли: {w}\nОсіб: {p}",nl:"Goedendag,\n\nik wil graag een tafel reserveren.\n\nWanneer: {w}\nPersonen: {p}",ro:"Bună ziua,\n\naș dori să rezerv o masă.\n\nCând: {w}\nPersoane: {p}"},
 "\nName: ":{en:"\nName: ",tr:"\nAd: ",ru:"\nИмя: ",fr:"\nNom : ",es:"\nNombre: ",it:"\nNome: ",pl:"\nImię: ",ar:"\nالاسم: ",uk:"\nІм'я: ",nl:"\nNaam: ",ro:"\nNume: "},
-"\n\nViele Grüße":{en:"\n\nBest regards",tr:"\n\nSaygılarımla",ru:"\n\nС уважением",fr:"\n\nCordialement",es:"\n\nUn saludo",it:"\n\nCordiali saluti",pl:"\n\nPozdrawiam",ar:"\n\nمع التحية",uk:"\n\nЗ повагою",nl:"\n\nMet vriendelijke groet",ro:"\n\nCu stimă"}
+"\n\nViele Grüße":{en:"\n\nBest regards",tr:"\n\nSaygılarımla",ru:"\n\nС уважением",fr:"\n\nCordialement",es:"\n\nUn saludo",it:"\n\nCordiali saluti",pl:"\n\nPozdrawiam",ar:"\n\nمع التحية",uk:"\n\nЗ повагою",nl:"\n\nMet vriendelijke groet",ro:"\n\nCu stimă"},
+
+"Hell":{en:"Light",tr:"Açık",ru:"Светлый",fr:"Clair",es:"Claro",it:"Chiaro",pl:"Jasny",ar:"فاتح",uk:"Світла",nl:"Licht",ro:"Luminos"},
+"Dunkel":{en:"Dark",tr:"Koyu",ru:"Тёмный",fr:"Sombre",es:"Oscuro",it:"Scuro",pl:"Ciemny",ar:"داكن",uk:"Темна",nl:"Donker",ro:"Întunecat"},
+"Automatisch":{en:"Automatic",tr:"Otomatik",ru:"Автоматически",fr:"Automatique",es:"Automático",it:"Automatico",pl:"Automatycznie",ar:"تلقائي",uk:"Автоматично",nl:"Automatisch",ro:"Automat"},
+"Ansicht: {w}":{en:"View: {w}",tr:"Görünüm: {w}",ru:"Вид: {w}",fr:"Affichage : {w}",es:"Vista: {w}",it:"Vista: {w}",pl:"Widok: {w}",ar:"العرض: {w}",uk:"Вигляд: {w}",nl:"Weergave: {w}",ro:"Afișare: {w}"},
+/* --- Oberflaechentexte aus den spaeteren Bloecken -----------------
+   Mein Tisch, Weitersagen, Top-Runner und der Willkommensschirm
+   kamen zuletzt dazu. Ihre Saetze standen in ALLEN zwoelf Sprachen
+   auf Deutsch — sichtbar erst, wenn ein Gast die Sprache wechselt,
+   und deshalb monatelang niemandem aufgefallen. pruef-sprache.js
+   findet so etwas ab jetzt vor der Uebergabe.
+   --------------------------------------------------------------- */
+"Ab dem nächsten Mal sammeln sich hier Ihre Lieblingsspeisen.":{en:"From next time on, your favourites will collect here.",tr:"Bir dahaki sefere favorileriniz burada birikmeye başlar.",ru:"Со следующего раза здесь будут собираться ваши любимые блюда.",fr:"Dès la prochaine fois, vos plats préférés s'afficheront ici.",es:"A partir de la próxima vez, sus platos favoritos se reunirán aquí.",it:"Dalla prossima volta, qui si raccolgono i suoi piatti preferiti.",pl:"Od następnego razu zbierają się tu Twoje ulubione dania.",ar:"ابتداءً من المرة القادمة، ستتجمع هنا أطباقك المفضلة.",uk:"З наступного разу тут збиратимуться ваші улюблені страви.",nl:"Vanaf de volgende keer verzamelen uw favorieten zich hier.",ro:"De data viitoare, preferatele dumneavoastră se adună aici."},
+"Adresse hinterlegen":{en:"Save address",tr:"Adresi kaydet",ru:"Сохранить адрес",fr:"Enregistrer l'adresse",es:"Guardar dirección",it:"Salva indirizzo",pl:"Zapisz adres",ar:"حفظ العنوان",uk:"Зберегти адресу",nl:"Adres opslaan",ro:"Salvați adresa"},
+"Antippen zum Überspringen":{en:"Tap to skip",tr:"Atlamak için dokunun",ru:"Нажмите, чтобы пропустить",fr:"Toucher pour passer",es:"Toque para saltar",it:"Tocca per saltare",pl:"Dotknij, aby pominąć",ar:"انقر للتخطي",uk:"Торкніться, щоб пропустити",nl:"Tik om over te slaan",ro:"Atingeți pentru a sări"},
+"Besuch zusammenfassen":{en:"Sum up the visit",tr:"Ziyareti özetle",ru:"Собрать визит в картинку",fr:"Résumer la visite",es:"Resumir la visita",it:"Riassumi la visita",pl:"Podsumuj wizytę",ar:"لخّص الزيارة",uk:"Підсумувати візит",nl:"Bezoek samenvatten",ro:"Rezumați vizita"},
+"Bitte tragen Sie noch Ihre Adresse ein.":{en:"Please enter your address first.",tr:"Lütfen önce adresinizi girin.",ru:"Пожалуйста, укажите свой адрес.",fr:"Veuillez d'abord saisir votre adresse.",es:"Introduzca antes su dirección.",it:"Inserisca prima il suo indirizzo.",pl:"Najpierw wpisz swój adres.",ar:"يرجى إدخال عنوانك أولاً.",uk:"Спершу вкажіть свою адресу.",nl:"Vul eerst uw adres in.",ro:"Introduceți mai întâi adresa."},
+"DAS GAB ES":{en:"WHAT WE HAD",tr:"NELER YEDİK",ru:"ЧТО БЫЛО",fr:"AU MENU",es:"LO QUE HUBO",it:"COSA C'ERA",pl:"CO BYŁO",ar:"ما تناولناه",uk:"ЩО БУЛО",nl:"DIT WAS ER",ro:"CE A FOST"},
+"Dafür fehlt noch eine Bestellung.":{en:"There's no order to show yet.",tr:"Bunun için henüz bir sipariş yok.",ru:"Для этого пока нет заказа.",fr:"Il manque encore une commande pour cela.",es:"Todavía falta un pedido para eso.",it:"Manca ancora un ordine.",pl:"Brakuje jeszcze zamówienia.",ar:"لا يوجد طلب بعد.",uk:"Для цього ще немає замовлення.",nl:"Daarvoor ontbreekt nog een bestelling.",ro:"Încă lipsește o comandă."},
+"Das Bild ist noch nicht fertig.":{en:"The image isn't ready yet.",tr:"Görsel henüz hazır değil.",ru:"Изображение ещё не готово.",fr:"L'image n'est pas encore prête.",es:"La imagen aún no está lista.",it:"L'immagine non è ancora pronta.",pl:"Obraz jeszcze nie jest gotowy.",ar:"الصورة ليست جاهزة بعد.",uk:"Зображення ще не готове.",nl:"De afbeelding is nog niet klaar.",ro:"Imaginea nu este încă gata."},
+"Das Bild ließ sich nicht bauen.":{en:"The image couldn't be created.",tr:"Görsel oluşturulamadı.",ru:"Не удалось создать изображение.",fr:"L'image n'a pas pu être créée.",es:"No se ha podido crear la imagen.",it:"Non è stato possibile creare l'immagine.",pl:"Nie udało się utworzyć obrazu.",ar:"تعذّر إنشاء الصورة.",uk:"Не вдалося створити зображення.",nl:"De afbeelding kon niet worden gemaakt.",ro:"Imaginea nu a putut fi creată."},
+"Das klappt hier gerade nicht.":{en:"That isn't working right now.",tr:"Bu şu anda çalışmıyor.",ru:"Сейчас это не работает.",fr:"Cela ne fonctionne pas pour le moment.",es:"Ahora mismo esto no funciona.",it:"Al momento non funziona.",pl:"W tej chwili to nie działa.",ar:"هذا لا يعمل في الوقت الحالي.",uk:"Зараз це не працює.",nl:"Dat lukt op dit moment niet.",ro:"Momentan nu funcționează."},
+"Diese Adresse sieht nicht vollständig aus.":{en:"That address doesn't look complete.",tr:"Bu adres eksik görünüyor.",ru:"Этот адрес выглядит неполным.",fr:"Cette adresse semble incomplète.",es:"Esa dirección parece incompleta.",it:"Questo indirizzo sembra incompleto.",pl:"Ten adres wygląda na niepełny.",ar:"يبدو أن هذا العنوان غير مكتمل.",uk:"Ця адреса виглядає неповною.",nl:"Dit adres lijkt niet compleet.",ro:"Adresa pare incompletă."},
+"Einen Augenblick, wir sehen nach.":{en:"One moment, we're looking.",tr:"Bir saniye, bakıyoruz.",ru:"Минутку, проверяем.",fr:"Un instant, nous regardons.",es:"Un momento, lo estamos mirando.",it:"Un attimo, stiamo controllando.",pl:"Chwileczkę, sprawdzamy.",ar:"لحظة من فضلك، نتحقق.",uk:"Хвилинку, перевіряємо.",nl:"Een ogenblik, we kijken even.",ro:"O clipă, verificăm."},
+"Eingelöst wird am Tisch: Zeigen Sie den Code einfach unserem Team.":{en:"Redeemed at the table: just show the code to our team.",tr:"Masada kullanılır: kodu ekibimize göstermeniz yeterli.",ru:"Погашается за столом: просто покажите код нашей команде.",fr:"À échanger à table : montrez simplement le code à notre équipe.",es:"Se canjea en la mesa: solo enseñe el código a nuestro equipo.",it:"Si riscatta al tavolo: mostri il codice al nostro team.",pl:"Realizacja przy stoliku: wystarczy pokazać kod naszemu zespołowi.",ar:"يُستبدل على الطاولة: اعرض الرمز على فريقنا فحسب.",uk:"Використовується за столом: просто покажіть код нашій команді.",nl:"Inwisselen aan tafel: laat de code gewoon aan ons team zien.",ro:"Se folosește la masă: arătați codul echipei noastre."},
+"Etwas passt nicht? Sagen Sie es uns gerne direkt – wir sind am Tisch für Sie da.":{en:"Something not right? Just tell us – we're right there at your table.",tr:"Bir sorun mu var? Bize doğrudan söyleyin – masanızdayız.",ru:"Что-то не так? Скажите нам прямо — мы рядом у стола.",fr:"Quelque chose ne va pas ? Dites-le-nous directement – nous sommes à votre table.",es:"¿Algo no encaja? Díganoslo directamente: estamos en su mesa.",it:"Qualcosa non va? Ce lo dica pure: siamo al suo tavolo.",pl:"Coś się nie zgadza? Powiedz nam wprost – jesteśmy przy stoliku.",ar:"هناك ما لا يعجبك؟ أخبرنا مباشرة — نحن عند طاولتك.",uk:"Щось не так? Скажіть нам прямо — ми поруч зі столом.",nl:"Klopt er iets niet? Zeg het ons gerust – we staan bij uw tafel.",ro:"Nu e ceva în regulă? Spuneți-ne direct – suntem la masa dumneavoastră."},
+"FÜR SIE HINTERLEGT":{en:"SAVED FOR YOU",tr:"SİZİN İÇİN AYRILDI",ru:"СОХРАНЕНО ДЛЯ ВАС",fr:"RÉSERVÉ POUR VOUS",es:"GUARDADO PARA USTED",it:"RISERVATO PER LEI",pl:"ZAPISANE DLA CIEBIE",ar:"محفوظ لك",uk:"ЗБЕРЕЖЕНО ДЛЯ ВАС",nl:"VOOR U BEWAARD",ro:"PĂSTRAT PENTRU DUMNEAVOASTRĂ"},
+"Für Instagram: Bild sichern, dann Instagram öffnen und aus der Galerie wählen. Direkt hineinstellen lässt Instagram niemanden.":{en:"For Instagram: save the image, then open Instagram and pick it from your gallery. Instagram lets no one post directly.",tr:"Instagram için: görseli kaydedin, sonra Instagram'ı açıp galeriden seçin. Instagram doğrudan paylaşıma izin vermiyor.",ru:"Для Instagram: сохраните изображение, откройте Instagram и выберите его из галереи. Публиковать напрямую Instagram не позволяет никому.",fr:"Pour Instagram : enregistrez l'image, ouvrez Instagram et choisissez-la dans la galerie. Instagram n'autorise personne à publier directement.",es:"Para Instagram: guarde la imagen, abra Instagram y elíjala en la galería. Instagram no permite publicar directamente.",it:"Per Instagram: salvi l'immagine, apra Instagram e la scelga dalla galleria. Instagram non consente a nessuno di pubblicare direttamente.",pl:"Na Instagram: zapisz obraz, otwórz Instagram i wybierz go z galerii. Instagram nikomu nie pozwala publikować bezpośrednio.",ar:"لإنستغرام: احفظ الصورة، ثم افتح إنستغرام واخترها من المعرض. إنستغرام لا يسمح لأحد بالنشر مباشرة.",uk:"Для Instagram: збережіть зображення, відкрийте Instagram і виберіть його з галереї. Публікувати напряму Instagram нікому не дозволяє.",nl:"Voor Instagram: bewaar de afbeelding, open Instagram en kies hem uit de galerij. Instagram laat niemand rechtstreeks plaatsen.",ro:"Pentru Instagram: salvați imaginea, deschideți Instagram și alegeți-o din galerie. Instagram nu permite nimănui postarea directă."},
+"IHRE LIEBLINGE":{en:"YOUR FAVOURITES",tr:"FAVORİLERİNİZ",ru:"ВАШИ ЛЮБИМЫЕ",fr:"VOS PRÉFÉRÉS",es:"SUS FAVORITOS",it:"I SUOI PREFERITI",pl:"TWOJE ULUBIONE",ar:"مفضلاتك",uk:"ВАШІ УЛЮБЛЕНІ",nl:"UW FAVORIETEN",ro:"PREFERATELE DUMNEAVOASTRĂ"},
+"IHRE WEITEREN BESTELLUNGEN":{en:"YOUR OTHER ORDERS",tr:"DİĞER SİPARİŞLERİNİZ",ru:"ВАШИ ДРУГИЕ ЗАКАЗЫ",fr:"VOS AUTRES COMMANDES",es:"SUS OTROS PEDIDOS",it:"I SUOI ALTRI ORDINI",pl:"TWOJE POZOSTAŁE ZAMÓWIENIA",ar:"طلباتك الأخرى",uk:"ВАШІ ІНШІ ЗАМОВЛЕННЯ",nl:"UW OVERIGE BESTELLINGEN",ro:"CELELALTE COMENZI ALE DUMNEAVOASTRĂ"},
+"Ich war hier":{en:"I was here",tr:"Buradaydım",ru:"Я был здесь",fr:"J'étais ici",es:"Estuve aquí",it:"Sono stato qui",pl:"Byłem tutaj",ar:"كنت هنا",uk:"Я був тут",nl:"Ik was hier",ro:"Am fost aici"},
+"Ihr erster Besuch bei uns.":{en:"Your first visit with us.",tr:"Bizdeki ilk ziyaretiniz.",ru:"Ваш первый визит к нам.",fr:"Votre première visite chez nous.",es:"Su primera visita con nosotros.",it:"La sua prima visita da noi.",pl:"Twoja pierwsza wizyta u nas.",ar:"زيارتك الأولى لنا.",uk:"Ваш перший візит до нас.",nl:"Uw eerste bezoek bij ons.",ro:"Prima dumneavoastră vizită la noi."},
+"Ihr {n}. Besuch bei uns.":{en:"Your visit no. {n} with us.",tr:"Bizdeki {n}. ziyaretiniz.",ru:"Ваш {n}-й визит к нам.",fr:"Votre {n}e visite chez nous.",es:"Su visita n.º {n} con nosotros.",it:"La sua {n}ª visita da noi.",pl:"Twoja {n}. wizyta u nas.",ar:"زيارتك رقم {n} لنا.",uk:"Ваш {n}-й візит до нас.",nl:"Uw {n}e bezoek bij ons.",ro:"A {n}-a vizită la noi."},
+"Ihre Besuche merkt sich Ihr Gerät, nicht wir – dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.":{en:"Your device remembers your visits, not us – that needs a brief connection. Ordering and everything else works without it.",tr:"Ziyaretlerinizi biz değil cihazınız hatırlar – bunun için kısa bir bağlantı gerekir. Sipariş ve diğer her şey bağlantısız da çalışır.",ru:"Ваши визиты помнит ваше устройство, а не мы — для этого нужна короткая связь. Заказ и всё остальное работает и без неё.",fr:"C'est votre appareil qui retient vos visites, pas nous – il lui faut une brève connexion. Commander et tout le reste fonctionne sans.",es:"Sus visitas las recuerda su dispositivo, no nosotros: para eso hace falta conexión un momento. Pedir y todo lo demás funciona igual sin ella.",it:"Le sue visite se le ricorda il suo dispositivo, non noi: serve una breve connessione. Ordinare e tutto il resto funziona anche senza.",pl:"Twoje wizyty pamięta Twoje urządzenie, nie my – potrzebne jest do tego krótkie połączenie. Zamawianie i reszta działa też bez niego.",ar:"جهازك هو من يتذكر زياراتك، لا نحن — ويحتاج ذلك إلى اتصال قصير. الطلب وكل شيء آخر يعمل بدونه.",uk:"Ваші візити пам'ятає ваш пристрій, а не ми — для цього потрібен короткий зв'язок. Замовлення й усе інше працює й без нього.",nl:"Uw toestel onthoudt uw bezoeken, wij niet – daarvoor is even verbinding nodig. Bestellen en al het andere gaat ook zonder.",ro:"Vizitele le ține minte dispozitivul dumneavoastră, nu noi – pentru asta e nevoie de o scurtă conexiune. Comanda și restul funcționează și fără."},
+"Ihre E-Mail-Adresse":{en:"Your email address",tr:"E-posta adresiniz",ru:"Ваш адрес электронной почты",fr:"Votre adresse e-mail",es:"Su dirección de correo",it:"Il suo indirizzo e-mail",pl:"Twój adres e-mail",ar:"بريدك الإلكتروني",uk:"Ваша електронна адреса",nl:"Uw e-mailadres",ro:"Adresa dumneavoastră de e-mail"},
+"Karte, bestellen und rufen — direkt am Tisch.":{en:"Menu, ordering and service — right at the table.",tr:"Menü, sipariş ve servis — doğrudan masada.",ru:"Меню, заказ и вызов — прямо за столом.",fr:"Carte, commande et service — directement à table.",es:"Carta, pedidos y servicio: directamente en la mesa.",it:"Menù, ordini e servizio — direttamente al tavolo.",pl:"Karta, zamawianie i obsługa — prosto przy stoliku.",ar:"القائمة والطلب والنداء — من الطاولة مباشرة.",uk:"Меню, замовлення та виклик — прямо за столом.",nl:"Kaart, bestellen en roepen — direct aan tafel.",ro:"Meniu, comandă și chemare — direct la masă."},
+"Mein Tisch":{en:"My table",tr:"Masam",ru:"Мой стол",fr:"Ma table",es:"Mi mesa",it:"Il mio tavolo",pl:"Mój stolik",ar:"طاولتي",uk:"Мій стіл",nl:"Mijn tafel",ro:"Masa mea"},
+"Notiert. Sie hören erst von uns, wenn Sie die Adresse bestätigt haben.":{en:"Noted. You'll only hear from us once you've confirmed the address.",tr:"Not edildi. Adresi onaylayana kadar sizden haber almayız.",ru:"Записано. Мы напишем только после того, как вы подтвердите адрес.",fr:"C'est noté. Vous n'aurez de nos nouvelles qu'après confirmation de l'adresse.",es:"Anotado. Solo tendrá noticias nuestras cuando confirme la dirección.",it:"Annotato. Le scriveremo solo dopo che avrà confermato l'indirizzo.",pl:"Zapisane. Odezwiemy się dopiero po potwierdzeniu adresu.",ar:"تم التسجيل. لن نراسلك إلا بعد تأكيد العنوان.",uk:"Записано. Ми напишемо лише після підтвердження адреси.",nl:"Genoteerd. U hoort pas van ons zodra u het adres bevestigd hebt.",ro:"Notat. Vă scriem doar după ce confirmați adresa."},
+"Ohne Konto, ohne Passwort – das merkt sich Ihr Gerät.":{en:"No account, no password – your device remembers this.",tr:"Hesap yok, şifre yok – bunu cihazınız hatırlıyor.",ru:"Без аккаунта и пароля — всё помнит ваше устройство.",fr:"Sans compte ni mot de passe – votre appareil s'en souvient.",es:"Sin cuenta ni contraseña: lo recuerda su dispositivo.",it:"Senza account né password: se ne ricorda il suo dispositivo.",pl:"Bez konta i hasła – pamięta to Twoje urządzenie.",ar:"بلا حساب وبلا كلمة مرور — جهازك هو من يتذكر.",uk:"Без облікового запису й пароля — це пам'ятає ваш пристрій.",nl:"Zonder account, zonder wachtwoord – uw toestel onthoudt dit.",ro:"Fără cont, fără parolă – dispozitivul dumneavoastră ține minte."},
+"POST VOM HAUS (FREIWILLIG)":{en:"NEWS FROM US (OPTIONAL)",tr:"BİZDEN HABERLER (İSTEĞE BAĞLI)",ru:"НОВОСТИ ОТ НАС (ПО ЖЕЛАНИЮ)",fr:"DES NOUVELLES DE NOUS (FACULTATIF)",es:"NOTICIAS NUESTRAS (OPCIONAL)",it:"NOTIZIE DA NOI (FACOLTATIVO)",pl:"WIADOMOŚCI OD NAS (OPCJONALNIE)",ar:"رسائل منا (اختياري)",uk:"НОВИНИ ВІД НАС (ЗА БАЖАННЯМ)",nl:"POST VAN ONS (VRIJWILLIG)",ro:"VEȘTI DE LA NOI (OPȚIONAL)"},
+"Schön, dass Sie wieder da sind.":{en:"Good to see you again.",tr:"Tekrar aramızda olmanız güzel.",ru:"Рады видеть вас снова.",fr:"Ravis de vous revoir.",es:"Nos alegra verle de nuevo.",it:"Che bello rivederla.",pl:"Miło znów Cię widzieć.",ar:"سعداء بعودتك.",uk:"Раді бачити вас знову.",nl:"Fijn dat u er weer bent.",ro:"Ne bucurăm să vă revedem."},
+"Text ist offen — das Bild bitte über „Bild sichern“ dazulegen.":{en:"The message is open — please add the image via \\u201ESave image\\u201C.",tr:"Mesaj açık — görseli lütfen „Görseli kaydet\\u201C ile ekleyin.",ru:"Сообщение открыто — изображение добавьте через «Сохранить изображение».",fr:"Le message est ouvert — ajoutez l'image via « Enregistrer l'image ».",es:"El mensaje está abierto: añada la imagen con «Guardar imagen».",it:"Il messaggio è aperto: aggiunga l'immagine con «Salva immagine».",pl:"Wiadomość jest otwarta — obraz dodaj przez „Zapisz obraz”.",ar:"الرسالة مفتوحة — أضف الصورة عبر «حفظ الصورة».",uk:"Повідомлення відкрито — зображення додайте через «Зберегти зображення».",nl:"Het bericht staat open — voeg de afbeelding toe via „Afbeelding bewaren”.",ro:"Mesajul este deschis — adăugați imaginea prin „Salvați imaginea”."},
+"War gerade bei {haus}.":{en:"Just been to {haus}.",tr:"Az önce {haus} mekanındaydım.",ru:"Только что был в {haus}.",fr:"Je sors de {haus}.",es:"Acabo de estar en {haus}.",it:"Sono appena stato da {haus}.",pl:"Właśnie byłem w {haus}.",ar:"كنت للتو في {haus}.",uk:"Щойно був у {haus}.",nl:"Net bij {haus} geweest.",ro:"Tocmai am fost la {haus}."},
+"Wenn Sie mögen, hinterlassen Sie uns ein paar Worte auf Google. Wir freuen uns über jede ehrliche Rückmeldung.":{en:"If you like, leave us a few words on Google. We're glad of every honest word.",tr:"İsterseniz Google'da bize birkaç satır bırakın. Her dürüst geri bildirime seviniriz.",ru:"Если хотите, оставьте нам пару слов в Google. Мы рады каждому честному отзыву.",fr:"Si vous le souhaitez, laissez-nous quelques mots sur Google. Chaque retour sincère nous fait plaisir.",es:"Si le apetece, déjenos unas palabras en Google. Agradecemos cada comentario sincero.",it:"Se le va, ci lasci due parole su Google. Ogni riscontro sincero ci fa piacere.",pl:"Jeśli masz ochotę, zostaw nam kilka słów w Google. Cieszy nas każda szczera opinia.",ar:"إن أحببت، اترك لنا بضع كلمات على جوجل. يسعدنا كل رأي صادق.",uk:"Якщо бажаєте, залиште нам кілька слів у Google. Ми раді кожному щирому відгуку.",nl:"Als u wilt, laat ons een paar woorden achter op Google. We zijn blij met elke eerlijke reactie.",ro:"Dacă doriți, lăsați-ne câteva cuvinte pe Google. Ne bucură orice părere sinceră."},
+"Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – sonst nichts. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.":{en:"What for: the odd voucher or invitation from us – nothing else. We only write once you've confirmed the address by email, and you can opt out at any time.",tr:"Ne için: ara sıra bir kupon ya da davet – başka bir şey değil. Yalnızca adresi onay e-postasıyla doğruladıktan sonra yazarız ve dilediğiniz an vazgeçebilirsiniz.",ru:"Зачем: изредка купон или приглашение от нас — и ничего больше. Мы пишем только после подтверждения адреса по почте, и вы в любой момент можете отказаться.",fr:"À quoi cela sert : un bon ou une invitation de temps à autre – rien d'autre. Nous n'écrivons qu'après confirmation de l'adresse par e-mail, et vous pouvez vous désinscrire à tout moment.",es:"Para qué: algún vale o invitación nuestra, nada más. Solo escribimos cuando haya confirmado la dirección por correo, y puede darse de baja cuando quiera.",it:"A cosa serve: ogni tanto un buono o un invito da parte nostra, nient'altro. Le scriviamo solo dopo la conferma dell'indirizzo via e-mail e può revocare in qualsiasi momento.",pl:"Po co: od czasu do czasu kupon lub zaproszenie od nas – nic więcej. Piszemy dopiero po potwierdzeniu adresu w e-mailu, a Ty możesz w każdej chwili zrezygnować.",ar:"لماذا: قسيمة أو دعوة منا من حين لآخر — لا أكثر. لن نراسلك إلا بعد تأكيد العنوان عبر بريد التأكيد، ويمكنك الاعتراض في أي وقت.",uk:"Навіщо: час від часу купон або запрошення від нас — і нічого більше. Пишемо лише після підтвердження адреси листом, і ви будь-коли можете відмовитися.",nl:"Waarvoor: af en toe een bon of uitnodiging van ons – meer niet. We schrijven pas zodra u het adres per e-mail hebt bevestigd, en u kunt zich altijd afmelden.",ro:"Pentru ce: din când în când un voucher sau o invitație de la noi – nimic altceva. Vă scriem doar după ce confirmați adresa prin e-mail și puteți renunța oricând."},
+"gültig bis {d}":{en:"valid until {d}",tr:"{d} tarihine kadar geçerli",ru:"действует до {d}",fr:"valable jusqu'au {d}",es:"válido hasta el {d}",it:"valido fino al {d}",pl:"ważne do {d}",ar:"صالح حتى {d}",uk:"дійсний до {d}",nl:"geldig tot {d}",ro:"valabil până la {d}"},
+"noch {n} Stunden":{en:"{n} hours left",tr:"{n} saat kaldı",ru:"ещё {n} ч.",fr:"encore {n} heures",es:"quedan {n} horas",it:"ancora {n} ore",pl:"jeszcze {n} godz.",ar:"بقي {n} ساعات",uk:"ще {n} год",nl:"nog {n} uur",ro:"încă {n} ore"},
+"nur noch {n} Minuten":{en:"only {n} minutes left",tr:"sadece {n} dakika kaldı",ru:"осталось {n} мин.",fr:"plus que {n} minutes",es:"solo quedan {n} minutos",it:"solo {n} minuti",pl:"tylko {n} min",ar:"بقي {n} دقائق فقط",uk:"лише {n} хв",nl:"nog maar {n} minuten",ro:"doar {n} minute"},
+"und {n} weitere":{en:"and {n} more",tr:"ve {n} tane daha",ru:"и ещё {n}",fr:"et {n} de plus",es:"y {n} más",it:"e altri {n}",pl:"i jeszcze {n}",ar:"و{n} أخرى",uk:"і ще {n}",nl:"en nog {n}",ro:"și încă {n}"},
+"{titel}: {name} jetzt für {preis}":{en:"{titel}: {name} now for {preis}",tr:"{titel}: {name} şimdi {preis}",ru:"{titel}: {name} сейчас за {preis}",fr:"{titel} : {name} maintenant à {preis}",es:"{titel}: {name} ahora por {preis}",it:"{titel}: {name} ora a {preis}",pl:"{titel}: {name} teraz za {preis}",ar:"{titel}: {name} الآن بـ {preis}",uk:"{titel}: {name} зараз за {preis}",nl:"{titel}: {name} nu voor {preis}",ro:"{titel}: {name} acum la {preis}"}
 };
 
 const TAGE = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
@@ -3975,8 +5350,14 @@ function empfehlungHTML(){
 
   const quelle = g ? bildFuer(g, true) : "";
   const bild = quelle
+    /* onerror wie bei den Kartenbildern: Fehlt die Datei, verschwindet
+       die ganze Hülle. Ohne das stand hier als einziger Stelle im Hub
+       ein kaputtes Bildsymbol — ausgerechnet auf der Empfehlung, der
+       auffälligsten Karte der Startseite. */
     ? '<span class="tbild' + (schwebt(g) ? " frei" : "") + '">' +
-      '<img src="' + quelle + '" alt="" loading="lazy" decoding="async"></span>'
+      '<img src="' + quelle + '" alt="" loading="lazy" decoding="async" ' +
+      'onerror="this.closest(&quot;.tipp&quot;).classList.remove(&quot;mitbild&quot;);' +
+      'this.closest(&quot;.tbild&quot;).remove()"></span>'
     : "";
 
   return '<a class="tipp' + (bild ? " mitbild" : "") + '" href="' + ziel + '">' +
@@ -4016,7 +5397,7 @@ function start(){
       '</strong>' + (k.u ? '<span>' + t(k.u) + '</span>' : "") + '</div>' +
       '<div class="pfeil">›</div></a>';
 
-  let html = empfehlungHTML(), letzter = "";
+  let html = aktionBandHTML() + begleiterHTML("start") + empfehlungHTML(), letzter = "";
   sichtbar.forEach(k => {
     if(k.bereich !== letzter){
       if(letzter) html += '</div>';
@@ -4141,6 +5522,7 @@ function karteSeite(id, daten, titel, unter, fuss){
     t("Löschen") + '">×</button></div>';
 
   return '<div class="seite"><h2>' + t(titel) + '</h2><p class="unter">' + t(unter) + '</p>' +
+         aktionBandHTML() +
          suche + '<div class="chips">' + chips + '</div>' + liste +
          '<div class="hinweis">' + fuss + '</div></div>';
 }
@@ -4649,6 +6031,7 @@ function zeigenSchliessen(){
 
 document.addEventListener("click", e => {
   if(e.target.closest && e.target.closest("[data-zeigen-zu]")) zeigenSchliessen();
+  if(e.target.closest && e.target.closest("[data-story-zu]")) storySchliessen();
 });
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && !$("zeigen").hidden) zeigenSchliessen();
@@ -4705,6 +6088,7 @@ SEITEN.bestellt = () => {
   if(vorgang && vorgang.tagesnummer && !b.tagesnummer) b.tagesnummer = vorgang.tagesnummer;
 
   return '<div class="seite"><div class="haken">✓</div>' +
+    begleiterHTML("bestellt") +
     '<h2 style="text-align:center">' + t("Bestellung ist da!") + '</h2>' +
     '<p class="unter" style="text-align:center">' +
     t("Wir haben Ihre Bestellung erhalten und kommen gleich zu Ihnen an den Tisch.") + '</p>' +
@@ -4718,6 +6102,10 @@ SEITEN.bestellt = () => {
         preisText(b.summe) + '</span></div>' : "") +
     '</div>' +
     weitereHTML +
+    /* Weitersagen steht ÜBER „noch etwas bestellen": Der Gast ist
+       gerade zufrieden, das ist der Augenblick. */
+    '<button class="knopf zweit" data-aktion="story">' +
+      t("Besuch zusammenfassen") + '</button>' +
     '<a class="knopf zweit" href="#/speisekarte">' + t("Noch etwas bestellen") + '</a>' +
     '<a class="knopf zweit" href="#/">' + t("Zur Startseite") + '</a>' +
     '<div class="hinweis">' +
@@ -4748,10 +6136,15 @@ SEITEN.kontakt = () => {
   return '<div class="seite"><h2>' + t("Öffnungszeiten & Weg") + '</h2>' +
     '<p class="unter">' + BETRIEB.strasse + ' · ' + BETRIEB.ort + '</p>' +
     '<div class="block"><h3>' + t("WANN WIR DA SIND") + '</h3>' + reihen + '</div>' +
-    '<a class="knopf" href="' + LINKS.maps + '" target="_blank" rel="noopener">📍 ' +
-    t("Route starten") + '</a>' +
-    '<a class="knopf zweit" href="tel:' + BETRIEB.telefon.replace(/\s/g,"") + '">📞 ' + BETRIEB.telefon + '</a>' +
-    '<a class="knopf zweit" href="mailto:' + BETRIEB.mail + '">✉️ ' + BETRIEB.mail + '</a></div>';
+    /* Hier standen 📍 📞 ✉️. Auf jedem Gerät ein anderes Bild, und in
+       fremder Schrift teils gar keines — die Kacheln daneben sind
+       längst gezeichnet. */
+    '<a class="knopf" href="' + LINKS.maps + '" target="_blank" rel="noopener">' +
+    '<span class="kzeichen">' + ICONS.ort + '</span>' + t("Route starten") + '</a>' +
+    '<a class="knopf zweit" href="tel:' + BETRIEB.telefon.replace(/\s/g,"") + '">' +
+    '<span class="kzeichen">' + ICONS.telefon + '</span>' + BETRIEB.telefon + '</a>' +
+    '<a class="knopf zweit" href="mailto:' + BETRIEB.mail + '">' +
+    '<span class="kzeichen">' + ICONS.brief + '</span>' + BETRIEB.mail + '</a></div>';
 };
 
 /* ---------- Tischquiz ---------- */
@@ -5016,6 +6409,7 @@ SEITEN.service = () => {
    will, sagt es dem Personal am Tisch. */
 SEITEN.rueckmeldung = () =>
   '<div class="seite"><h2>' + t("Uns bewerten") + '</h2>' +
+  begleiterHTML("bewerten") +
   '<p class="unter">' + t("Wenn Sie mögen, hinterlassen Sie uns ein paar Worte auf Google. Wir freuen uns über jede ehrliche Rückmeldung.") + '</p>' +
   '<a class="knopf gross-cta" href="' + LINKS.bewertung + '" target="_blank" rel="noopener">' +
     '<span class="sterne">★★★★★</span>' + t("Auf Google bewerten") + '</a>' +
@@ -5100,6 +6494,108 @@ SEITEN.reservieren = () =>
   '<div class="hinweis">' +
   t("Eine Anfrage ist noch keine feste Reservierung – wir bestätigen Ihnen den Tisch, sobald wir sie gelesen haben. Für heute Abend rufen Sie uns besser direkt an.") +
   '</div></div>';
+
+/* ---------- Mein Tisch ---------- */
+
+/* findeGericht() sagt, OB es das Gericht gibt, nicht WO. Für den
+   Sprung braucht es aber die Seite, sonst landet der Gast in der
+   Speisekarte, während sein Liebling unter Getränken steht. */
+function gastSeiteFuer(name){
+  const wo = [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE],
+              ["cocktails", COCKTAILS]];
+  for(const [seite, quelle] of wo)
+    for(const gr of quelle)
+      for(const e of gr.eintraege)
+        if(e.n === name) return seite;
+  return "";
+}
+
+SEITEN.meintisch = () => {
+  const kopf = '<div class="seite"><h2>' + t("Mein Tisch") + '</h2>';
+
+  /* Solange die Antwort unterwegs ist: Flächen im Maß dessen, was
+     kommt. Ein drehender Kreis sagt nur „warte", ein Skelett sagt
+     „hier stehen gleich deine Besuche und deine Lieblinge". */
+  if(!gastStand.geladen){
+    return kopf +
+      '<p class="unter">' + t("Einen Augenblick, wir sehen nach.") + '</p>' +
+      '<div class="skelett kopf"></div>' +
+      '<div class="skelett reihe"></div><div class="skelett reihe"></div>' +
+      '<div class="skelett reihe"></div></div>';
+  }
+
+  if(!gastStand.ok){
+    return kopf +
+      '<p class="unter">' + t("Das klappt hier gerade nicht.") + '</p>' +
+      '<div class="hinweis">' +
+      t("Ihre Besuche merkt sich Ihr Gerät, nicht wir – dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.") +
+      '</div>' +
+      '<a class="knopf zweit" href="#/speisekarte">' + t("Zur Karte") + '</a></div>';
+  }
+
+  const n = gastStand.besuche;
+  let html = kopf +
+    '<p class="unter">' +
+    t("Ohne Konto, ohne Passwort – das merkt sich Ihr Gerät.") + '</p>' +
+    '<div class="gastkopf"><span class="zahl">' + n + '</span>' +
+    '<span class="wort">' +
+      (n <= 1 ? t("Ihr erster Besuch bei uns.") : t("Ihr {n}. Besuch bei uns.", {n:n})) +
+      '<small>' + (n <= 1
+        ? t("Ab dem nächsten Mal sammeln sich hier Ihre Lieblingsspeisen.")
+        : t("Schön, dass Sie wieder da sind.")) + '</small>' +
+    '</span></div>' +
+    begleiterHTML("meintisch");
+
+  if(gastStand.lieblinge.length){
+    html += '<div class="label">' + t("IHRE LIEBLINGE") + '</div>' +
+      gastStand.lieblinge.map(l => {
+        const seite = gastSeiteFuer(l.name);
+        const ziel  = seite ? "#/" + seite + "?g=" + encodeURIComponent(l.name) : "";
+        /* Steht das Gericht nicht mehr in der Karte, wird die Zeile
+           nicht anklickbar – ein Sprung ins Leere ist schlimmer als
+           gar keiner. */
+        return '<button class="gastzeile"' + (ziel ? ' data-liebling="' + sicherText(ziel) + '"' : ' disabled') + '>' +
+          '<span>' + sicherText(l.name) + '</span>' +
+          '<span class="mal">' + t("{n}×", {n:l.mal}) + '</span>' +
+          (ziel ? '<span class="pf">›</span>' : "") + '</button>';
+      }).join("");
+  }
+
+  if(gastStand.gutscheine.length){
+    html += '<div class="label">' + t("FÜR SIE HINTERLEGT") + '</div>' +
+      gastStand.gutscheine.map(g => {
+        const bis = g.bis
+          ? '<div class="bis">' + t("gültig bis {d}", {d:new Date(g.bis).toLocaleDateString("de-DE")}) + '</div>'
+          : "";
+        return '<div class="gutschein"><b>' + sicherText(g.titel) + '</b>' +
+          (g.text ? '<p>' + sicherText(g.text) + '</p>' : "") +
+          '<span class="code">' + sicherText(g.code) + '</span>' + bis + '</div>';
+      }).join("") +
+      '<div class="hinweis">' +
+      t("Eingelöst wird am Tisch: Zeigen Sie den Code einfach unserem Team.") +
+      '</div>';
+  }
+
+  /* Weitersagen erst, wenn es etwas zu erzählen gibt. Beim ersten
+     Besuch stünde sonst ein Knopf da, der ein leeres Bild baut. */
+  if(gastStand.lieblinge.length){
+    html += '<button class="knopf zweit" data-aktion="storyLieblinge">' +
+      t("Besuch zusammenfassen") + '</button>';
+  }
+
+  /* Freiwillig heißt: Der Zweck steht daneben, nicht im Kleingedruckten,
+     und ohne Adresse funktioniert alles hier genauso. */
+  html += '<div class="label">' + t("POST VOM HAUS (FREIWILLIG)") + '</div>' +
+    '<input class="feld" id="gastMail" type="email" inputmode="email" autocomplete="email" ' +
+    'placeholder="' + t("Ihre E-Mail-Adresse") + '">' +
+    '<button class="knopf zweit" data-aktion="gastMail">' + t("Adresse hinterlegen") + '</button>' +
+    '<div class="kopiert" id="melde"></div>' +
+    '<div class="hinweis">' +
+    t("Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – sonst nichts. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.") +
+    '</div>';
+
+  return html + '</div>';
+};
 
 /* ---------- kleine Helfer ---------- */
 function melden(text, warnung){
@@ -5192,12 +6688,75 @@ function nachtSchalten(){
       Hausfarben dieses Cafés — Guss, Wolken, Lichtkante. Die gehören
       nicht ins Markenblatt und schalten weiter über das Blatt.      */
   const mb = MARKENBLATT;
-  const abend = !!(mb.abend && mb.abend.an) &&
-                (stunde >= mb.abend.ab || stunde < 5);
+  /* Drei Zustände, nicht zwei. „automatisch" ist die Vorgabe und
+     folgt der Uhr des Hauses — abends dunkel, tagsüber hell. Wer
+     etwas anderes will, wählt es und behält es: ein Gast, der bei
+     Sonne im Wintergarten sitzt, will keine Abendfassung, und wer
+     nachtblind ist, will keine helle. Die Wahl gilt für dieses Gerät
+     und dieses Haus, nicht darüber hinaus. */
+  const nachUhr = !!(mb.abend && mb.abend.an) &&
+                  (stunde >= mb.abend.ab || stunde < 5);
+  const abend = licht === "dunkel" ? true
+              : licht === "hell"   ? false
+              : nachUhr;
 
   markeAnwenden(abend);
   document.body.dataset.phase = abend ? "abend" : "tag";
   document.body.classList.toggle("nacht", abend);   /* Altbestand */
+  lichtKnopfZeichnen();
+}
+
+/* ── Hell oder dunkel ────────────────────────────────────────────
+   Der Schlüssel trägt den Slug: Wer zwei Häuser besucht, hat in
+   jedem seine eigene Wahl — die Häuser sehen ohnehin verschieden
+   aus, und eine Einstellung, die überall gilt, wäre hier falsch. */
+const LICHT_SCHLUESSEL = "omoteno-licht-" + (SERVER.betrieb || "haus");
+let licht = "auto";
+
+function lichtLaden(){
+  try{
+    const w = localStorage.getItem(LICHT_SCHLUESSEL);
+    if(w === "hell" || w === "dunkel") licht = w;
+  }catch(e){}
+}
+
+/* Sofort laden, direkt hinter der Deklaration.
+
+   Vorfall: Der Aufruf stand weiter oben, bei spracheLaden(). Dort war
+   LICHT_SCHLUESSEL noch nicht deklariert — const liegt bis dahin in
+   der toten Zone und wirft. Der Wurf landete im try, das eigentlich
+   nur private Fenster abfangen sollte, und wurde still geschluckt:
+   Die Wahl des Gastes verschwand bei jedem Neuladen, ohne dass ein
+   Fehler in der Konsole stand. Gefunden hat es die Prüfung, nicht
+   das Auge. */
+lichtLaden();
+
+function lichtSetzen(wahl){
+  licht = (wahl === "hell" || wahl === "dunkel") ? wahl : "auto";
+  try{
+    if(licht === "auto") localStorage.removeItem(LICHT_SCHLUESSEL);
+    else localStorage.setItem(LICHT_SCHLUESSEL, licht);
+  }catch(e){}
+  nachtSchalten();
+  lichtKnopfZeichnen();
+}
+
+/* Ein Knopf, drei Zustände im Ring: automatisch → hell → dunkel.
+   Ein Menü für drei Werte wäre mehr Bedienung als Nutzen. */
+function lichtKnopfZeichnen(){
+  const k = $("lichtknopf"); if(!k) return;
+  const abend = document.body.dataset.phase === "abend";
+  const name = licht === "hell" ? t("Hell")
+             : licht === "dunkel" ? t("Dunkel") : t("Automatisch");
+  k.setAttribute("aria-label", t("Ansicht: {w}", {w:name}));
+  k.setAttribute("title", t("Ansicht: {w}", {w:name}));
+  k.classList.toggle("fest", licht !== "auto");
+  /* Sonne, wenn es gerade hell ist; Mond, wenn dunkel. Das Zeichen
+     sagt den ZUSTAND, nicht die nächste Wahl — sonst rät der Gast. */
+  k.innerHTML = abend
+    ? '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.6A8.4 8.4 0 0 1 9.4 4a8.4 8.4 0 1 0 10.6 10.6z"/></svg>'
+    : '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.4"/>' +
+      '<path d="M12 2.6v2.6M12 18.8v2.6M2.6 12h2.6M18.8 12h2.6M5.3 5.3l1.9 1.9M16.8 16.8l1.9 1.9M18.7 5.3l-1.9 1.9M7.2 16.8l-1.9 1.9"/></svg>';
 }
 
 /* Der Quiz-Balken wird bei jeder Frage neu erzeugt. Ohne diesen Anstupser im
@@ -5306,10 +6865,16 @@ const V_STUFEN_SERVICE = {
 /* ─── Bestellpass ────────────────────────────────────────────────
    Drei Phasen, drei Bilder aus der Küche. Der Gast soll auf einen
    Blick sehen, wo seine Bestellung steckt, ohne zu lesen. */
+/* zeichen ist eine Funktion, keine Zeichenkette: Welche Figur das
+   Haus hat, steht erst fest, wenn das Markenblatt gelesen ist — und
+   diese Liste wird gebaut, während die Datei noch lädt. */
 const PHASEN = {
-  neu:    { zeichen:"🧾", text:"Bestellzettel hängt",      klasse:"p-neu" },
-  arbeit: { zeichen:"🍳", text:"Kommt in die Pfanne",      klasse:"p-arbeit" },
-  fertig: { zeichen:"🔔", text:"Fertig — kommt zum Tisch", klasse:"p-fertig" }
+  neu:    { zeichen:() => phasenBild("zettel",  "zettel", 104),
+            text:"Bestellzettel hängt",      klasse:"p-neu" },
+  arbeit: { zeichen:() => phasenBild("giessen", "pfanne", 104),
+            text:"Kommt in die Pfanne",      klasse:"p-arbeit" },
+  fertig: { zeichen:() => phasenBild("teller",  "glocke", 104),
+            text:"Fertig — kommt zum Tisch", klasse:"p-fertig" }
 };
 
 function phaseHTML(status, tagesnummer){
@@ -5323,7 +6888,7 @@ function phaseHTML(status, tagesnummer){
     : '<div class="bp-nummer wartet">' + t("Nummer kommt gleich") + '</div>';
 
   return '<div class="bpass ' + p.klasse + '" id="bpass">' +
-    '<span class="bp-zeichen" aria-hidden="true">' + p.zeichen + '</span>' +
+    '<span class="bp-zeichen" aria-hidden="true">' + p.zeichen() + '</span>' +
     '<div class="bp-text">' + t(p.text) + '</div>' +
     nummer + '</div>';
 }
@@ -6093,6 +7658,13 @@ function anServer(art, daten){
            Wiederholungsversuch trägt dieselbe - die Funktion legt dann
            nicht doppelt an, sondern gibt die vorhandene id zurück. */
         p_gast_kennung: daten.kennung || null,
+        /* Zwei verschiedene Dinge, die beide „Kennung" heißen könnten:
+           p_gast_kennung ist die Quittungsnummer DIESER Bestellung und
+           je Versuch dieselbe, damit ein Wiederholungsversuch nicht
+           doppelt anlegt. p_geraet bleibt über Bestellungen und Besuche
+           hinweg gleich und trägt „Mein Tisch". Vertauscht man sie,
+           verschwindet ab der zweiten Bestellung jede weitere still. */
+        p_geraet:     geraetKennung(),
         p_quelle:     "tisch",
         /* p_tisch ist nur noch der Rückfall. Liegt eine gültige Sitzung
            vor, überschreibt der Server die Nummer mit der des Tisches,
@@ -6320,6 +7892,10 @@ $("inhalt").addEventListener("click", e => {
     return;
   }
 
+  /* Liebling angetippt: direkt zum Gericht in seiner Karte. */
+  const liebling = e.target.closest("[data-liebling]");
+  if(liebling){ location.hash = liebling.dataset.liebling; return; }
+
   /* Zurück zu einer früheren, noch offenen Bestellung. */
   const vKnopf = e.target.closest("[data-vorgang]");
   if(vKnopf){
@@ -6339,6 +7915,47 @@ $("inhalt").addEventListener("click", e => {
     const was = aktion.dataset.aktion;
 
     if(was === "kopieren"){ kopieren(WLAN.passwort); }
+
+    if(was === "story"){
+      const b = letzteBestellung;
+      storyOeffnen((b && b.posten) || []);
+    }
+    if(was === "storyLieblinge"){
+      /* Aus „Mein Tisch" erzählt das Bild von allen Besuchen, nicht
+         von einer Bestellung: die Lieblinge mit ihrer Anzahl. */
+      storyOeffnen(gastStand.lieblinge.map(l => ({ n:l.name, m:l.mal })));
+    }
+    if(was === "storyTeilen"){ storyTeilen(); }
+
+    if(was === "gastMail"){
+      const adresse = wert("gastMail");
+      if(!adresse){ melden(t("Bitte tragen Sie noch Ihre Adresse ein."), true); return; }
+      if(!serverBereit()){ melden(t("Das klappt hier gerade nicht."), true); return; }
+      aktion.disabled = true;
+      sicherFetch(SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/gast_mail_merken", {
+          method:"POST",
+          headers:{ apikey:SERVER.schluessel,
+                    Authorization:"Bearer " + SERVER.schluessel,
+                    "Content-Type":"application/json" },
+          body: JSON.stringify({ p_slug: SERVER.betrieb, p_kennung: geraetKennung(),
+                                 p_email: adresse })
+        })
+        .then(a => a.ok ? a.json() : null)
+        .then(d => {
+          aktion.disabled = false;
+          if(d && d.ok === true){
+            /* Kein „Sie sind angemeldet" – das wäre gelogen, solange
+               die Bestätigung fehlt und niemand versendet. */
+            melden(t("Notiert. Sie hören erst von uns, wenn Sie die Adresse bestätigt haben."));
+            const feld = $("gastMail"); if(feld) feld.value = "";
+          } else if(d && d.grund === "email"){
+            melden(t("Diese Adresse sieht nicht vollständig aus."), true);
+          } else {
+            melden(t("Das klappt hier gerade nicht."), true);
+          }
+        })
+        .catch(() => { aktion.disabled = false; melden(t("Das klappt hier gerade nicht."), true); });
+    }
 
     if(was === "musik"){
       const lied = wert("wunsch");
@@ -6646,6 +8263,73 @@ tischLaden();
 spracheLaden();
 zeichne();
 
+/* ---------- Willkommen ----------
+   Drei Sekunden Haus, dann die Karte. EINMAL je Sitzung: Der Schirm
+   soll den ersten Eindruck tragen, nicht jeden Seitenwechsel
+   aufhalten. sessionStorage und nicht localStorage, weil „Sitzung"
+   hier wirklich der Besuch ist — wer morgen wiederkommt, wird wieder
+   begrüßt.
+
+   Antippen überspringt. Wer keine Bewegung will, sieht ihn kurz und
+   ohne Lauf: Der Schirm trägt eine Ansage, keine Verzierung. */
+(function willkommen(){
+  const schirm = $("willkommen");
+  if(!schirm) return;
+
+  const SCHLUESSEL = "omoteno-willkommen";
+  let schon = false;
+  try{ schon = sessionStorage.getItem(SCHLUESSEL) === "1"; }catch(e){}
+  /* Nicht nur zurückgehen: WEGNEHMEN. Ein Schirm, der nicht gebraucht
+     wird, hat auch nichts im Auszeichnungstext zu suchen — dann kann
+     ihn auch keine künftige Regel versehentlich wieder sichtbar
+     machen. Gürtel und Hosenträger, nach dem Vorfall oben. */
+  if(schon){ schirm.remove(); return; }
+  try{ sessionStorage.setItem(SCHLUESSEL, "1"); }catch(e){}
+
+  /* Wer über einen tiefen Link kommt (#/speisekarte), will dorthin
+     und nicht erst begrüßt werden. */
+  const tief = (location.hash || "").replace(/^#\/?/, "");
+  if(tief && tief !== "/"){ schirm.remove(); return; }
+
+  $("wkFigur").innerHTML = avatarSVG(120);
+  $("wkHaus").textContent = BETRIEB.name;
+  $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
+  $("wkTipp").textContent = t("Antippen zum Überspringen");
+  schirm.hidden = false;
+
+  const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  let weg = false;
+  function schliessen(){
+    if(weg) return;
+    weg = true;
+    schirm.classList.add("weg");
+    /* Erst nach dem Ausblenden aus dem Weg nehmen — sonst springt
+       die Karte einen Bildaufbau lang. */
+    setTimeout(() => { schirm.hidden = true; }, still ? 0 : 520);
+  }
+  schirm.addEventListener("click", schliessen);
+  setTimeout(schliessen, still ? 1200 : 3000);
+})();
+
+/* Läuft gerade eine Aktion? Einmal beim Öffnen und dann alle zwei
+   Minuten. Öfter bringt nichts: Eine Aktion, die eine Minute später
+   auftaucht, ist immer noch eine Neuigkeit. */
+/* Der Lichtknopf: automatisch → hell → dunkel → automatisch. */
+if($("lichtknopf")){
+  $("lichtknopf").addEventListener("click", () => {
+    lichtSetzen(licht === "auto" ? "hell" : licht === "hell" ? "dunkel" : "auto");
+  });
+}
+lichtKnopfZeichnen();
+
+aktionenLaden();
+setInterval(aktionenLaden, 120000);
+
+/* Einmal beim Öffnen melden: Das zählt den Besuch und holt Lieblinge
+   und Gutscheine. Kein Takt dahinter — was sich hier ändert, ändert
+   sich zwischen Besuchen und nicht während einem. */
+gastLaden();
+
 /* Lief beim letzten Besuch noch etwas? Dann sofort nachfragen und
    den Streifen zeigen - der Gast soll nicht suchen müssen. */
 vorgangWeckerStellen();
@@ -6695,7 +8379,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -6703,6 +8387,27 @@ async function karteHolen(erstesMal){
        mit einem Tipp, der Gast sieht es beim nächsten Abgleich. */
     BETRIEB.bestellPause     = !!b[0].bestell_pause;
     BETRIEB.bestellPauseText = b[0].bestell_pause_text || "";
+
+    /* Worte, die der Betrieb selbst ändern darf — ohne dass der Hub
+       neu erzeugt werden muss. Bewusst WENIGE: Farben, Schriften und
+       Aufbau kommen aus dem Marken-Studio, hier stehen nur Sätze.
+
+       Gekürzt wird trotzdem. Die Datenbank hat eine Schranke, das
+       Board warnt früher — aber ein alter Wert aus der Zeit vor der
+       Schranke oder ein anderer Weg in die Tabelle darf den Kopf des
+       Hubs nicht auseinanderziehen. Wer drei Schranken hat, verliert
+       keine davon. */
+    hubTexte = (b[0].hub_texte && typeof b[0].hub_texte === "object")
+      ? b[0].hub_texte : {};
+    const kurz = (w, n) => String(w || "").trim().slice(0, n);
+    const vorher = BETRIEB.claim;
+    if(kurz(hubTexte.claim, 48))        BETRIEB.claim        = kurz(hubTexte.claim, 48);
+    if(kurz(hubTexte.gruss, 80))        BETRIEB.begruessung  = kurz(hubTexte.gruss, 80);
+    if(kurz(hubTexte.runner_titel, 24)) RUNNER_TITEL         = kurz(hubTexte.runner_titel, 24);
+    /* Der Kopf steht schon auf dem Schirm. Neu zeichnen nur, wenn sich
+       der Slogan wirklich geändert hat — sonst blitzt er bei jedem
+       Abgleich einmal auf, ohne dass etwas anders wäre. */
+    if(BETRIEB.claim !== vorher) zeichne();
 
     /* Sortierung: karte, kat_sort, reihenfolge, id.
        Vorher stand hier nur "karte.asc,reihenfolge.asc". Weil

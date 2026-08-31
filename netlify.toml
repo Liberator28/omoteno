@@ -1,0 +1,58 @@
+# ═══════════════════════════════════════════════════════════════
+#  NETLIFY
+#
+#  Ein Projekt, ein Bau, ein Ordner. Das ist eine Entscheidung, und
+#  hier steht, warum:
+#
+#  Drei getrennte Netlify-Projekte (Seite, Board, Hubs) wären
+#  sauberer getrennt — und dreimal so viel, das falsch stehen kann:
+#  drei Baueinstellungen, drei DNS-Einträge, drei Stellen, an denen
+#  ein Auslieferungslauf hängen bleibt. Und sie hätten sich EINE
+#  netlify.toml im Wurzelverzeichnis teilen müssen, denn Netlify
+#  liest sie von dort. Für getrennte Umleitungen bräuchte jedes
+#  Projekt ein eigenes Basisverzeichnis; dafür müssten die Dateien
+#  in Ordner umziehen, die es heute nicht gibt.
+#
+#  Deshalb: ein Projekt. Getrennt wird über Adressen, nicht über
+#  Projekte. Wer später doch aufteilen will, verschiebt die Regeln
+#  aus _redirects und ändert hier zwei Zeilen — die Bauart steht
+#  dem nicht im Weg.
+# ═══════════════════════════════════════════════════════════════
+
+[build]
+  # Erzeugt die Gäste-Hubs und stellt oeffentlich/ zusammen.
+  # dist/ und oeffentlich/ stehen in .gitignore: Was erzeugt werden
+  # kann, gehört nicht in die Versionsgeschichte — und muss deshalb
+  # HIER gebaut werden, sonst käme kein einziger Kunden-Hub online.
+  command  = "node bauen.js"
+  publish  = "oeffentlich"
+
+[build.environment]
+  # Der Erzeuger braucht nichts weiter als Node. Kein npm install,
+  # keine Abhängigkeiten, kein Bauwerkzeug.
+  NODE_VERSION = "20"
+
+# ── Vorschau-Läufe ─────────────────────────────────────────────
+# Jeder Zweig und jede Pull-Anfrage bekommt eine eigene Adresse mit
+# demselben Bau. So sieht man eine Änderung, BEVOR sie auf
+# omoteno.de steht — der ganze Zweck einer Vorschau.
+[context.deploy-preview]
+  command = "node bauen.js"
+
+[context.branch-deploy]
+  command = "node bauen.js"
+
+# ── Prüfungen im Bau ───────────────────────────────────────────
+# Bewusst NICHT hier. Die Prüfungen brauchen Playwright und einen
+# Browser; das dauert Minuten und würde jede Auslieferung daran
+# hängen. Sie gehören vor das Einchecken, nicht dahinter — siehe
+# deployen.md, Abschnitt „Der tägliche Weg".
+#
+# Was der Bau trotzdem prüft: erzeuge-hub.js bricht bei einem
+# kaputten Markenblatt ab, und bauen.js liefert dann gar nichts
+# aus. Netlify behält in dem Fall die vorige Fassung online.
+
+# Umleitungen und Kopfzeilen stehen in _redirects und _headers.
+# Sie liegen als Dateien im ausgelieferten Ordner statt hier, damit
+# sie dort stehen, wofür sie gelten — und damit eine neue
+# Kundendomain eine Zeile ist und keine Konfigurationsänderung.

@@ -4,8 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Omoteno · Dein Konto</title>
-<meta name="theme-color" content="#12332B">
+<meta name="theme-color" content="#123029">
 <meta name="robots" content="noindex">
+
+<!-- Schrift lädt nebenher, nicht davor — siehe omoteno-web.html.
+     Ein blockierender Stilbogen hält das ERSTE Bild auf; hier holt
+     ihn preload und macht ihn erst im onload gültig. Bis dahin steht
+     die Seite im Rückfallstapel von --serif/--sans/--mono. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"></noscript>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
@@ -23,38 +35,106 @@
    öffnet, sieht dieselbe Marke.
    ═══════════════════════════════════════════════════════════════ */
 :root{
-  --tisch:#12332B;
-  --tisch-tief:#0C241E;
-  --pappe:#E7E1D2;
-  --pappe-hell:#F0EBDD;
-  --weiss:#FBF9F3;
-  --tinte:#1A1913;
-  --tinte-leise:#5F5B4C;
-  --tinte-still:#8A8571;
-  --kuli:#2B44C7;
+  /* ── Die Ecke ─────────────────────────────────────────────────
+     Omotenos eigene Knoepfe, Chips und Marken sind ECKIG. Der Wert
+     steht hier und nur hier; 67 Fundstellen ueber sechs Dateien
+     zeigen auf ihn, keine traegt eine eigene Zahl. Wer es doch
+     weicher will, setzt hier 2px.
+
+     Der Name war beim ersten Versuch --kante. Den gibt es in
+     kueche.html und im Marken-Studio schon: dort ist er eine FARBE
+     (rgba(237,231,217,.09) bzw. #31363E) fuer Rahmen. Aus
+     Die Rundung zeigte damit auf eine Farbe statt auf eine Zahl
+     — ungueltig, still verworfen, und zufaellig trotzdem eckig.
+     pruef-datei.py konnte das nicht finden: Die Variable IST
+     definiert, nur eben als etwas anderes (CLAUDE.md §1.1).
+
+     Was NICHT eckig wird und warum:
+       · der Untersetzer (.seite) — er IST das Produkt
+       · Punkte, Leuchten, Anzeigen, der Ladekreisel
+       · Telefonrahmen und Siegel: sie stellen runde Dinge dar
+       · der Gaeste-Hub: seine Rundung kommt aus dem Markenblatt
+         des Kunden (form.rundung) */
+  --ecke:0px;
+
+
+  /* Dieselben Werte wie im :root von omoteno-web.html — nicht
+     „ungefähr dieselben". Wer Webseite und Konto nebeneinander
+     öffnet, soll keinen Sprung sehen. Jeder Wert, der dort einen
+     geprüften Kontrast hat, steht hier mit demselben Kommentar. */
+  --sockel:#0A1714;        /* der dunkle Tisch */
+  --tafel:#123029;         /* Flaschengrün — die Marke */
+  --tafel-hoch:#174036;
+  --pappe:#E9E3D4;         /* Grund, kein Weiß */
+  --papier:#F4F0E4;        /* eingelassene Flächen auf dem Grund */
+  --blatt:#FBF9F1;         /* Tafeln und Eingabefelder darüber */
+  --tinte:#16150F;         /* Druckfarbe, kein Schwarz */
+  --tinte-leise:#5C5849;
+  --tinte-still:#696553;   /* geprüft: 4,57:1 auf Pappe */
   --kreide:#EDE7D9;
-  --kreide-leise:#9FB0A4;
-  --linie:#CDC4AC;
-  --linie-stark:#B5AB90;
-  --warn:#A8382C;
-  --gut:#3F6B2E;
-  --gold:#8A6512;
+  --kreide-leise:#9DB0A5;
+  --kreide-still:#6E837A;
+  --kuli:#2B44C7;          /* der eine Moment Farbe */
+  --linie:#CFC6AE;
+  --linie-stark:#BDB49B;
+  --linie-dunkel:rgba(237,231,217,.15);
+  --glut:#A8410F;          /* „läuft gerade" auf hellem Grund */
+  --glut-hell:#D4642C;     /* dieselbe Rolle auf dem Sockel: 4,94:1 */
+
+  /* Bedeutungsfarben. Sie stehen als Schrift auf getönten Flächen
+     und sind deshalb einzeln gerechnet, nicht geschätzt. Gemessen
+     auf Blatt: warn 7,98:1 · gut 6,65:1 · gold 6,04:1. Auf der
+     eigenen getönten Marke (14 % Deckung) bleiben gold 5,02:1 und
+     gut 5,47:1 — der schlechteste Fall, und er hält. */
+  --warn:#8C2C21;
+  --gut:#3A6329;
+  --gold:#7A5A10;
+
+  --serif:"Instrument Serif",Iowan Old Style,"Palatino Linotype",Palatino,Georgia,serif;
+  --sans:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
 
   --r:14px;
   --r-klein:10px;
   --breite:840px;
-  --anlauf:cubic-bezier(.23,1,.32,1);
-  --schrift:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
-  --schrift-beleg:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  --weich:cubic-bezier(.16,1,.3,1);
+  --elegant:cubic-bezier(.33,1,.68,1);
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* hidden muss hidden bleiben. Ohne diese Zeile schlägt jede Regel
+   mit display die UA-Regel für [hidden] — deshalb stand „Abmelden"
+   auch auf der Anmeldeseite, obwohl das Skript den Kasten
+   ausdrücklich versteckt hatte. Angabe schlägt Absicht. */
+[hidden]{display:none !important}
 html,body{margin:0;padding:0}
 body{
   background:var(--pappe);color:var(--tinte);
-  font-family:var(--schrift);font-size:16px;line-height:1.55;
-  -webkit-font-smoothing:antialiased;
+  font-family:var(--sans);font-size:16.5px;line-height:1.62;
+  -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
+  font-synthesis-weight:none;
   min-height:100vh;min-height:100dvh;
+}
+
+/* Korn wie auf der Webseite: kein Bild, kein Netz — ein SVG-Filter
+   im Datenstrom. Er nimmt den Flächen die digitale Glätte. */
+body::after{
+  content:"";position:fixed;inset:0;z-index:900;pointer-events:none;
+  opacity:.045;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3C/filter%3E%3Crect width='180' height='180' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+
+/* Überschriften in der Anzeigeschrift der Webseite. Der Kunde kommt
+   von dort hierher — es soll dasselbe Haus sein, nicht ein zweites
+   mit ähnlicher Farbe. */
+h1,h2,h3{font-family:var(--serif);font-weight:400;margin:0;text-wrap:balance;letter-spacing:-.022em}
+
+/* Kleine Auszeichnungen laufen in der Monospace: Beschriftungen,
+   Reiter, Zustandsmarken. Ein Bon ist monospaced — dieselbe Logik
+   wie auf der Webseite, wo Preise und Tischnummern dort stehen. */
+.marke{
+  font-family:var(--mono);font-size:11px;font-weight:500;
+  letter-spacing:.16em;text-transform:uppercase;
 }
 button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;border:none;background:none}
@@ -64,75 +144,152 @@ a{color:var(--kuli)}
 
 /* ─── Kopf ─────────────────────────────────────────────────── */
 .kopf{
-  background:var(--tisch);color:var(--kreide);
+  background:var(--tafel);color:var(--kreide);
   padding:calc(16px + env(safe-area-inset-top)) 20px 16px;
 }
 .kopf-innen{
   max-width:var(--breite);margin:0 auto;
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;
 }
-.wortmarke{font-size:15px;font-weight:700;letter-spacing:.02em}
-.wortmarke span{font-weight:400;color:var(--kreide-leise)}
+.wortmarke{
+  font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.02em;
+  display:flex;align-items:center;gap:8px;text-transform:uppercase;
+}
+.wortmarke span{font-weight:400;color:var(--kreide-leise);text-transform:none}
+/* Derselbe lebende Punkt wie in der Statusleiste der Webseite. */
+.pip{
+  width:7px;height:7px;border-radius:50%;background:#7FA85C;flex-shrink:0;
+  box-shadow:0 0 0 0 rgba(127,168,92,.6);animation:puls 2.6s var(--elegant) infinite;
+}
+@keyframes puls{
+  0%  {box-shadow:0 0 0 0 rgba(127,168,92,.55)}
+  70% {box-shadow:0 0 0 9px rgba(127,168,92,0)}
+  100%{box-shadow:0 0 0 0 rgba(127,168,92,0)}
+}
 .kopf .rechts{margin-left:auto;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .abmelden{
-  font-size:13px;color:var(--kreide-leise);
-  border:1px solid rgba(237,231,217,.24);border-radius:99px;padding:6px 13px;
+  font-family:var(--mono);font-size:11px;letter-spacing:.09em;text-transform:uppercase;
+  color:var(--kreide-leise);
+  border:1px solid var(--linie-dunkel);border-radius:var(--ecke);padding:7px 13px;
+  transition:color .22s var(--weich),background .22s var(--weich);
 }
+.abmelden:hover{color:var(--kreide);background:rgba(237,231,217,.07)}
 
 /* Zustandsmarke. Farbe trägt hier echte Bedeutung — deshalb ist sie
    die einzige bunte Fläche im Kopf. */
 .zustand{
-  font-size:11px;letter-spacing:.1em;text-transform:uppercase;font-weight:700;
-  padding:4px 10px;border-radius:99px;
+  font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:700;padding:5px 10px;border-radius:var(--ecke);
 }
 .zustand.test     {background:rgba(226,182,71,.22);color:#E8C86A}
 .zustand.aktiv    {background:rgba(127,168,92,.22);color:#A9CE86}
-.zustand.pausiert {background:rgba(237,231,217,.14);color:var(--kreide-leise)}
+/* Kreide statt kreide-leise: Auf der eigenen getönten Fläche kam
+   die pausierte Marke sonst auf 4,20:1 — als einzige unter der
+   Grenze. Gerechnet, nicht angesehen. */
+.zustand.pausiert {background:rgba(237,231,217,.14);color:var(--kreide)}
 .zustand.gekuendigt{background:rgba(214,106,94,.2);color:#E79086}
 
 .innen{max-width:var(--breite);margin:0 auto;padding:26px 20px 80px}
 
 /* ─── Tor: Anmelden und Registrieren ───────────────────────── */
 .tor{max-width:420px;margin:0 auto;padding:40px 20px 80px}
-.tor h1{font-size:clamp(26px,5vw,34px);line-height:1.12;margin:0 0 10px;letter-spacing:-.02em}
-.tor .lead{color:var(--tinte-leise);font-size:15px;margin:0 0 26px}
+.tor h1{font-size:clamp(31px,6vw,44px);line-height:1.04;margin:0 0 12px}
+.tor .lead{color:var(--tinte-leise);font-size:16px;margin:0 0 26px}
 
-.wechsel{display:flex;gap:4px;background:var(--pappe-hell);border:1px solid var(--linie);
-  border-radius:99px;padding:4px;margin-bottom:22px}
+/* Derselbe Umschalter wie „Untersetzer / Aufsteller" auf der
+   Webseite: Monospace, Versalien, die gewählte Seite als Fläche. */
+.wechsel{display:flex;gap:4px;background:var(--papier);border:1px solid var(--linie);
+  border-radius:var(--ecke);padding:4px;margin-bottom:22px}
 .wechsel button{
-  flex:1;padding:9px;border-radius:99px;font-size:14px;font-weight:600;
-  color:var(--tinte-leise);transition:background .2s var(--anlauf),color .2s var(--anlauf);
+  flex:1;padding:10px;border-radius:var(--ecke);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--tinte-still);transition:background .26s var(--weich),color .26s var(--weich);
 }
-.wechsel button[aria-pressed=true]{background:var(--weiss);color:var(--tinte);
-  box-shadow:0 1px 2px rgba(26,25,19,.1)}
+.wechsel button[aria-pressed=true]{background:var(--tinte);color:var(--papier);font-weight:700}
 
 /* ─── Formularteile ────────────────────────────────────────── */
 .feld{margin-bottom:16px}
-.feld label{display:block;font-size:12.5px;font-weight:600;color:var(--tinte-leise);
-  margin-bottom:6px;letter-spacing:.01em}
+.feld label{
+  display:block;margin-bottom:7px;
+  font-family:var(--mono);font-size:10.5px;font-weight:700;
+  letter-spacing:.12em;text-transform:uppercase;color:var(--tinte-still);
+}
 .feld input,.feld textarea,.feld select{
-  width:100%;background:var(--weiss);border:1px solid var(--linie);
-  border-radius:var(--r-klein);padding:12px 13px;font-size:16px;
+  width:100%;background:var(--blatt);border:1px solid var(--linie);
+  border-radius:var(--r-klein);padding:13px 14px;
+  /* 16px, nicht kleiner: Darunter zoomt iOS beim Antippen in die
+     Seite hinein. Und die Schriftfarbe steht ausdrücklich da —
+     ohne sie nimmt Safari seine Systemfarbe. */
+  font-size:16px;
   -webkit-appearance:none;appearance:none;
   color:var(--tinte);-webkit-text-fill-color:var(--tinte);
-  transition:border-color .2s var(--anlauf);
+  transition:border-color .2s var(--weich);
 }
 .feld input:focus,.feld textarea:focus{border-color:var(--kuli)}
-.feld .hilfe{font-size:12.5px;color:var(--tinte-still);margin-top:6px;line-height:1.45}
+.feld .hilfe{font-family:var(--mono);font-size:11px;color:var(--tinte-still);
+  margin-top:7px;line-height:1.5}
 .feld .hilfe.gut{color:var(--gut)}
 .feld .hilfe.warn{color:var(--warn)}
 .zweispaltig{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:0 14px}
 
+/* Dieselbe Rolle wie der Kaufknopf auf der Webseite: Tinte auf
+   Papier, rund. Nicht Flaschengrün — das trägt dort der Kopf, nicht
+   die Handlung. */
 .knopf{
-  width:100%;padding:14px;border-radius:var(--r-klein);
-  background:var(--tisch);color:var(--kreide);
+  width:100%;padding:14px;border-radius:var(--ecke);
+  background:var(--tinte);color:var(--papier);
   font-size:15px;font-weight:600;
-  transition:transform .14s var(--anlauf),opacity .2s;
+  transition:transform .16s var(--weich),opacity .2s,background .22s var(--weich);
 }
-.knopf:active{transform:scale(.99)}
-.knopf:disabled{opacity:.5;cursor:not-allowed}
+.knopf:hover{background:#000}
+.knopf:active{transform:scale(.985)}
+.knopf:disabled{opacity:.45;cursor:not-allowed}
 .knopf.leise{background:none;border:1px solid var(--linie-stark);color:var(--tinte)}
-.knopf.schmal{width:auto;padding:11px 18px}
+.knopf.leise:hover{background:rgba(22,21,15,.05)}
+.knopf.schmal{width:auto;padding:11px 20px}
+
+/* ─── Anmeldung mit Google ──────────────────────────────────────
+   Steht ÜBER dem Formular, weil sie der schnellere Weg ist. Weißer
+   Grund und die Wortmarke von Google, weil deren Gestaltungsregeln
+   das so verlangen — das ist die eine Stelle, an der eine fremde
+   Marke in unsere Papierwelt darf. */
+.google{
+  width:100%;display:flex;align-items:center;justify-content:center;gap:11px;
+  padding:13px 18px;border-radius:var(--ecke);
+  background:#FFFFFF;color:#1F1F1F;border:1px solid var(--linie);
+  font-size:15px;font-weight:600;
+  transition:transform .16s var(--weich),box-shadow .2s var(--weich),background .2s;
+}
+.google:hover{box-shadow:0 2px 10px rgba(22,21,15,.12)}
+.google:active{transform:scale(.985)}
+.google svg{width:19px;height:19px;flex:none}
+.google[disabled]{opacity:.55;cursor:default}
+
+/* „oder" mit Linien links und rechts. Zwei Wege, gleichrangig
+   dargestellt — nicht der eine als Kleingedrucktes unter dem anderen. */
+.oder{
+  display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);
+  align-items:center;gap:12px;margin:18px 0;
+}
+.oder::before,.oder::after{content:"";height:1px;background:var(--linie)}
+.oder span{
+  font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--tinte-still);
+}
+
+/* Aus dem Formular übernommen — kurz gesagt, nicht erklärt. */
+.uebernommen{
+  font-family:var(--mono);font-size:11px;line-height:1.6;color:var(--tinte-leise);
+  background:var(--papier);border:1px solid var(--linie);
+  border-radius:var(--r-klein);padding:11px 13px;margin-bottom:18px;
+}
+.uebernommen b{color:var(--tinte);font-weight:700}
+
+/* Magnetischer Knopf — dieselbe Bewegung wie auf der Webseite,
+   selbst gebaut statt aus einer Bibliothek. Nur mit Zeiger: Auf dem
+   Telefon gibt es keinen, dem man folgen könnte. */
+.magnet{will-change:transform}
+@media (hover:none){ .magnet{transform:none !important} }
 
 .meldung{
   border-radius:var(--r-klein);padding:12px 14px;font-size:14px;line-height:1.5;
@@ -140,24 +297,26 @@ a{color:var(--kuli)}
 }
 .meldung.fehler{background:rgba(168,56,44,.08);border-color:rgba(168,56,44,.3);color:#7E2A20}
 .meldung.gut   {background:rgba(63,107,46,.08);border-color:rgba(63,107,46,.3);color:#2F5222}
-.meldung.info  {background:var(--pappe-hell);border-color:var(--linie);color:var(--tinte-leise)}
+.meldung.info  {background:var(--papier);border-color:var(--linie);color:var(--tinte-leise)}
 .meldung[hidden]{display:none}
 
 /* ─── Abschnitte im Konto ──────────────────────────────────── */
 .reiter{display:flex;gap:5px;flex-wrap:wrap;margin-bottom:24px}
 .reiter button{
-  font-size:13.5px;padding:8px 15px;border-radius:99px;
-  border:1px solid var(--linie);background:var(--pappe-hell);color:var(--tinte-leise);
-  transition:border-color .2s var(--anlauf),color .2s var(--anlauf),background .2s var(--anlauf);
+  font-family:var(--mono);font-size:10.5px;letter-spacing:.09em;text-transform:uppercase;
+  padding:9px 14px;border-radius:var(--ecke);
+  border:1px solid var(--linie);background:var(--papier);color:var(--tinte-still);
+  transition:border-color .24s var(--weich),color .24s var(--weich),background .24s var(--weich);
 }
-.reiter button[aria-pressed=true]{background:var(--tisch);border-color:var(--tisch);color:var(--kreide)}
+.reiter button:hover{color:var(--tinte)}
+.reiter button[aria-pressed=true]{background:var(--tinte);border-color:var(--tinte);color:var(--papier);font-weight:700}
 
 .tafel{
-  background:var(--weiss);border:1px solid var(--linie);
+  background:var(--blatt);border:1px solid var(--linie);
   border-radius:var(--r);padding:20px;margin-bottom:16px;
 }
-.tafel h2{font-size:17px;margin:0 0 4px;letter-spacing:-.01em}
-.tafel .unter{font-size:13.5px;color:var(--tinte-leise);margin:0 0 16px;line-height:1.5}
+.tafel h2{font-size:22px;margin:0 0 5px;line-height:1.16}
+.tafel .unter{font-size:14px;color:var(--tinte-leise);margin:0 0 16px;line-height:1.55}
 .tafel:last-child{margin-bottom:0}
 
 .zeile{
@@ -165,63 +324,90 @@ a{color:var(--kuli)}
   padding:11px 0;border-bottom:1px solid var(--linie);flex-wrap:wrap;
 }
 .zeile:last-child{border-bottom:none;padding-bottom:0}
-.zeile .was{font-size:13.5px;color:var(--tinte-leise)}
+.zeile .was{font-size:14px;color:var(--tinte-leise)}
 .zeile .wert{font-weight:600;font-variant-numeric:tabular-nums}
-.zeile .wert.beleg{font-family:var(--schrift-beleg);font-size:13.5px;font-weight:400}
+.zeile .wert.beleg{font-family:var(--mono);font-size:13.5px;font-weight:400}
 
 /* Testphase. Der Balken ist keine Zierde: Eine Zahl in Tagen liest
    man, einen fast vollen Balken sieht man. */
 .frist{margin-top:4px}
-.frist .bahn{height:6px;border-radius:99px;background:var(--pappe);overflow:hidden;margin-top:9px}
-.frist .bahn i{display:block;height:100%;background:var(--gold);border-radius:99px}
+.frist .bahn{height:6px;border-radius:var(--ecke);background:var(--pappe);overflow:hidden;margin-top:9px}
+.frist .bahn i{display:block;height:100%;background:var(--gold);border-radius:var(--ecke)}
 .frist.knapp .bahn i{background:var(--warn)}
 
 .adresse{
   display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-  background:var(--pappe-hell);border:1px solid var(--linie);
+  background:var(--papier);border:1px solid var(--linie);
   border-radius:var(--r-klein);padding:12px 14px;margin-top:4px;
 }
-.adresse code{font-family:var(--schrift-beleg);font-size:14px;flex:1;min-width:0;
+.adresse code{font-family:var(--mono);font-size:14px;flex:1;min-width:0;
   overflow-wrap:anywhere}
 
 .gitter{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px}
 .kachel{
   display:block;text-decoration:none;color:inherit;
-  background:var(--pappe-hell);border:1px solid var(--linie);
+  background:var(--papier);border:1px solid var(--linie);
   border-radius:var(--r-klein);padding:14px;
-  transition:border-color .2s var(--anlauf),transform .14s var(--anlauf);
+  transition:border-color .2s var(--weich),transform .14s var(--weich);
 }
 .kachel:active{transform:scale(.99)}
 .kachel:hover{border-color:var(--linie-stark)}
-.kachel b{display:block;font-size:14.5px;margin-bottom:2px}
+.kachel b{display:block;font-size:15px;font-weight:600;margin-bottom:2px}
 .kachel span{display:block;font-size:12.5px;color:var(--tinte-leise);line-height:1.4}
 
 /* Rechnungen */
 .rliste{border:1px solid var(--linie);border-radius:var(--r-klein);overflow:hidden}
 .rzeile{
   display:flex;align-items:center;gap:12px;flex-wrap:wrap;
-  padding:13px 14px;border-bottom:1px solid var(--linie);background:var(--weiss);
+  padding:13px 14px;border-bottom:1px solid var(--linie);background:var(--blatt);
 }
 .rzeile:last-child{border-bottom:none}
-.rzeile .rnr{font-family:var(--schrift-beleg);font-size:13px;color:var(--tinte-leise)}
+.rzeile .rnr{font-family:var(--mono);font-size:13px;color:var(--tinte-leise)}
 .rzeile .rzeit{flex:1;min-width:120px;font-size:14px}
 .rzeile .rsumme{font-weight:600;font-variant-numeric:tabular-nums;white-space:nowrap}
-.rmarke{font-size:10.5px;letter-spacing:.08em;text-transform:uppercase;font-weight:700;
-  padding:3px 9px;border-radius:99px}
+.rmarke{font-family:var(--mono);font-size:9.5px;letter-spacing:.1em;text-transform:uppercase;
+  font-weight:700;padding:4px 9px;border-radius:var(--ecke)}
 .rmarke.offen{background:rgba(138,101,18,.14);color:var(--gold)}
 .rmarke.bezahlt{background:rgba(63,107,46,.14);color:var(--gut)}
-.leerhinweis{font-size:13.5px;color:var(--tinte-still);padding:18px 0;text-align:center}
+.leerhinweis{font-family:var(--mono);font-size:12px;color:var(--tinte-still);
+  padding:18px 0;text-align:center}
 
 /* Markenvorschau */
+/* Anleitung: nummeriert, weil die Schritte aufeinander folgen —
+   und nicht als Kachelreihe, in der die Reihenfolge verlorengeht. */
+.anleitung{list-style:none;margin:0;padding:0;display:grid;gap:12px;counter-reset:schritt}
+.anleitung li{
+  display:grid;grid-template-columns:26px minmax(0,1fr);gap:12px;
+  font-size:14.5px;color:var(--tinte-leise);line-height:1.55;
+}
+.anleitung li::before{
+  counter-increment:schritt;content:counter(schritt);
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  width:26px;height:26px;border-radius:50%;display:grid;place-items:center;
+  background:var(--papier);border:1px solid var(--linie);color:var(--tinte);
+}
+.anleitung b{color:var(--tinte);font-weight:600}
+
+/* Der Tischlink darf umbrechen — er ist lang, und abgeschnitten
+   nützt er niemandem. */
+.tischlink{
+  font-family:var(--mono);font-size:11.5px;color:var(--tinte-leise);
+  overflow-wrap:anywhere;line-height:1.5;
+}
+.knopfreihe{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+
 .markenreihe{display:flex;gap:8px;margin:14px 0 4px;flex-wrap:wrap}
 .markenreihe i{width:34px;height:34px;border-radius:9px;display:block;
   border:1px solid rgba(26,25,19,.14)}
 
 .fuss{
   max-width:var(--breite);margin:0 auto;padding:0 20px 40px;
-  font-size:12.5px;color:var(--tinte-still);line-height:1.6;
+  font-family:var(--mono);font-size:11.5px;color:var(--tinte-still);line-height:1.7;
+  letter-spacing:.03em;
 }
 .fuss a{color:var(--tinte-leise)}
+
+::selection{background:var(--kuli);color:var(--papier)}
 
 @media (max-width:520px){
   .zweispaltig{grid-template-columns:minmax(0,1fr)}
@@ -235,7 +421,7 @@ a{color:var(--kuli)}
 
 <header class="kopf">
   <div class="kopf-innen">
-    <div class="wortmarke">omoteno<span> · Konto</span></div>
+    <div class="wortmarke"><i class="pip"></i>omoteno<span> · Konto</span></div>
     <div class="rechts" id="kopfRechts" hidden>
       <span class="zustand" id="kopfZustand"></span>
       <button class="abmelden" id="abmelden">Abmelden</button>
@@ -247,6 +433,20 @@ a{color:var(--kuli)}
 <div class="tor" id="tor" hidden>
   <h1 id="torTitel">Willkommen zurück.</h1>
   <p class="lead" id="torText">Melde dich an, um deinen Hub zu verwalten.</p>
+
+  <div class="uebernommen" id="uebernommen" hidden></div>
+
+  <button class="google" id="googleKnopf" type="button">
+    <svg viewBox="0 0 48 48" aria-hidden="true">
+      <path fill="#EA4335" d="M24 9.5c3.54 0 6.7 1.22 9.2 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+      <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+      <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+      <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+    </svg>
+    Mit Google anmelden
+  </button>
+
+  <div class="oder"><span>oder mit E-Mail</span></div>
 
   <div class="wechsel">
     <button data-modus="anmelden"    aria-pressed="true">Anmelden</button>
@@ -308,6 +508,7 @@ a{color:var(--kuli)}
   <nav class="reiter" id="reiter">
     <button data-blatt="uebersicht" aria-pressed="true">Übersicht</button>
     <button data-blatt="marke"      aria-pressed="false">Marke</button>
+    <button data-blatt="zugaenge"   aria-pressed="false">Zugänge</button>
     <button data-blatt="rechnungen" aria-pressed="false">Rechnungen</button>
     <button data-blatt="vertrag"    aria-pressed="false">Vertrag</button>
   </nav>
@@ -371,10 +572,65 @@ a{color:var(--kuli)}
     </div>
   </section>
 
+  <!-- ══ ZUGÄNGE ══
+       Was der Betrieb braucht, um loszulegen: die beiden Adressen für
+       das Personal, die Anleitung zum Ablegen auf dem Startbildschirm
+       und die Tischschlüssel. Vorher stand davon nichts im Konto — es
+       kam per Nachricht, und wer es verlor, fragte nach. -->
+  <section data-blatt-inhalt="zugaenge" hidden>
+    <div class="tafel">
+      <h2>Für dein Personal</h2>
+      <p class="unter">Zwei Adressen, ein Konto. Beide mit denselben
+      Zugangsdaten wie hier — jeder im Team, den du anlegst, kommt damit rein.</p>
+
+      <div class="adresse">
+        <code>admin.omoteno.de</code>
+        <button class="knopf leise schmal" data-kopieren="https://admin.omoteno.de">Kopieren</button>
+      </div>
+      <p class="hilfe">Bestell-Board: Bestellungen, Karte, Reservierungen, Auswertung.</p>
+
+      <div class="adresse" style="margin-top:14px">
+        <code>admin.omoteno.de/kueche.html</code>
+        <button class="knopf leise schmal" data-kopieren="https://admin.omoteno.de/kueche.html">Kopieren</button>
+      </div>
+      <p class="hilfe">Küchendisplay: nur die Bons, groß genug für zwei Meter Abstand.</p>
+    </div>
+
+    <div class="tafel">
+      <h2>Auf den Startbildschirm legen</h2>
+      <p class="unter">Nicht Kür, sondern Voraussetzung: <b>Safari gibt Mitteilungen
+      nur her, wenn die Seite als App abgelegt wurde.</b> Im normalen Reiter bleibt
+      das Board stumm, sobald etwas anderes im Vordergrund ist.</p>
+      <!-- Jeder Punkt in EINEM span. Ohne die Klammer bekommt im
+           Raster jedes Element und jeder lose Textknoten eine eigene
+           Zelle — die Anleitung stand dann untereinander, ein Wort je
+           Zeile. -->
+      <ol class="anleitung">
+        <li><span><b>iPhone und iPad</b> — Adresse in Safari öffnen, unten auf
+          <b>Teilen</b>, dann <b>Zum Home-Bildschirm</b>.</span></li>
+        <li><span><b>Android</b> — Adresse in Chrome öffnen, oben rechts das Menü,
+          dann <b>App installieren</b>.</span></li>
+        <li><span>Danach das Board einmal öffnen und <b>Scharf schalten</b> antippen.
+          Erst dann sind Ton und Hinweise an.</span></li>
+      </ol>
+    </div>
+
+    <div class="tafel">
+      <h2>Tische</h2>
+      <p class="unter">Jeder Tisch trägt einen eigenen Schlüssel. Er steckt im
+      NFC-Chip und im QR-Code des Untersetzers und beweist „war am Tisch" —
+      nicht „sitzt dort". Solange die Untersetzer in Produktion sind, kannst du
+      die Zeile ausdrucken und auf den Tisch legen.</p>
+      <div class="meldung" id="tischeMeldung" hidden></div>
+      <div id="tischListe"><p class="leerhinweis">Wird geladen …</p></div>
+    </div>
+  </section>
+
   <section data-blatt-inhalt="rechnungen" hidden>
     <div class="tafel">
       <h2>Rechnungen</h2>
       <p class="unter">Rechnungen von Omoteno an dich — nicht die Umsätze deines Betriebs.</p>
+      <div class="meldung fehler" id="rechnungMeldung" hidden></div>
       <div id="rechnungen"></div>
     </div>
   </section>
@@ -447,6 +703,28 @@ a{color:var(--kuli)}
 const SUPABASE_URL = "https://quxwweuvdqtjsdwgjdrh.supabase.co";
 const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk";
 /* ═════════════════════════════════════════════════════════════ */
+
+/* Die Supabase-Bibliothek kommt von einem fremden Netz. Lädt sie
+   nicht — Netz weg, Werbeblocker, Firmen-WLAN —, warf die nächste
+   Zeile, das ganze Skript starb und der Kunde sah eine WEISSE
+   SEITE. Ohne Erklärung, ohne Knopf. Lieber ein Satz, der sagt,
+   was los ist. */
+if(typeof supabase === "undefined" || !supabase.createClient){
+  document.addEventListener("DOMContentLoaded", function(){
+    var tor = document.getElementById("tor");
+    if(!tor) return;
+    tor.hidden = false;
+    tor.innerHTML =
+      '<h1>Gerade nicht erreichbar.</h1>' +
+      '<p class="lead">Die Anmeldung braucht eine Verbindung nach außen, und die ' +
+      'kommt hier nicht durch. Prüf dein Netz oder einen Werbeblocker — und ' +
+      'versuch es dann noch einmal.</p>' +
+      '<button class="knopf" onclick="location.reload()">Neu laden</button>' +
+      '<p class="hilfe" style="margin-top:16px;text-align:center">' +
+      'Bleibt es dabei: <a href="mailto:hallo@omoteno.de">hallo@omoteno.de</a></p>';
+  });
+  throw new Error("Supabase-Bibliothek nicht geladen");
+}
 
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
@@ -530,6 +808,38 @@ function zeige(welche){
   $("kopfRechts").hidden = (welche === "tor");
 }
 
+/* ─── Anmeldung mit Google ───────────────────────────────────────
+   Ein Knopf, ein Aufruf. Die Rückkehr fängt onAuthStateChange ab —
+   dort steht schon starten(), es braucht keinen zweiten Weg.
+
+   Ist der Anbieter in Supabase nicht freigeschaltet, kommt eine
+   Fehlermeldung im Klartext zurück („provider is not enabled").
+   Die wird hier übersetzt, statt sie dem Kunden roh hinzulegen. */
+$("googleKnopf").onclick = async () => {
+  const knopf = $("googleKnopf");
+  melde("torMeldung", "");
+  knopf.disabled = true;
+  try{
+    const {error} = await db.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        /* Zurück auf genau diese Seite, samt Anfrage-Kennung, falls
+           der Kunde aus dem Formular kommt. */
+        redirectTo: location.origin + location.pathname + location.search
+      }
+    });
+    if(error) throw error;
+    /* Ab hier übernimmt der Browser: Er verlässt die Seite. */
+  }catch(e){
+    const text = String(e && (e.message || e.error_description) || "");
+    melde("torMeldung", /not enabled|Unsupported provider/i.test(text)
+      ? "Die Anmeldung mit Google ist für diese Adresse noch nicht freigeschaltet. " +
+        "Nimm so lange E-Mail und Passwort."
+      : fehlertext(e), "fehler");
+    knopf.disabled = false;
+  }
+};
+
 /* ─── Tor ────────────────────────────────────────────────────── */
 document.querySelectorAll("[data-modus]").forEach(k => {
   k.onclick = () => {
@@ -548,6 +858,32 @@ document.querySelectorAll("[data-modus]").forEach(k => {
     melde("torMeldung", "");
   };
 });
+
+/* ─── Aus dem Formular übernommen ────────────────────────────────
+   Wer start.html ausgefüllt hat, soll Betrieb und Ort nicht ein
+   zweites Mal eintippen. Die Angaben liegen im sessionStorage
+   desselben Tabs — nicht in der Adresszeile, damit sie nicht im
+   Verlauf und in fremden Zugriffsprotokollen landen. */
+(function ausAnfrage(){
+  const kennung = new URLSearchParams(location.search).get("anfrage");
+  if(!kennung) return;
+  let a = null;
+  try{ a = JSON.parse(sessionStorage.getItem("omoteno-anfrage") || "null"); }catch(e){}
+  if(!a || a.kennung !== kennung) return;
+
+  const kasten = $("uebernommen");
+  kasten.hidden = false;
+  kasten.innerHTML = "Aus deiner Anfrage <b>" + h(kennung) + "</b> übernommen: " +
+    [a.betrieb, a.ort].filter(Boolean).map(h).join(" · ");
+
+  /* „Neu hier" ist der richtige Reiter für jemanden, der gerade das
+     Formular ausgefüllt hat. */
+  const neu = document.querySelector('[data-modus="registrieren"]');
+  if(neu) neu.click();
+  if(a.email)   $("fMail").value    = a.email;
+  if(a.betrieb) $("fBetrieb").value = a.betrieb;
+  if(a.ort)     $("fOrt").value     = a.ort;
+})();
 
 $("torKnopf").onclick = async () => {
   const mail = $("fMail").value.trim();
@@ -743,6 +1079,10 @@ async function rechnungenZeichnen(){
         '<span class="rmarke ' + (r.bezahlt_am ? "bezahlt" : "offen") + '">' +
           (r.bezahlt_am ? "bezahlt" : "offen") + '</span>' +
         '<span class="rsumme">' + euro(r.brutto) + '</span>' +
+        /* Die PDF lag im Eimer und war nirgends abrufbar — die Spalte
+           datei stand seit jeher da, der Knopf fehlte. */
+        (r.datei ? '<button class="knopf leise schmal" data-pdf="' + h(r.datei) +
+                   '">PDF</button>' : '') +
       '</div>').join("") + '</div>';
   }catch(e){
     ziel.innerHTML = '<p class="leerhinweis">Die Rechnungen konnten nicht geladen werden.</p>';
@@ -868,17 +1208,119 @@ $("raSpeichern").onclick = async () => {
   knopf.disabled = false; knopf.textContent = "Anschrift speichern";
 };
 
-/* ─── Adresse kopieren ───────────────────────────────────────── */
-$("adresseKopieren").onclick = () => {
-  const text = "https://" + betrieb.slug + ".omoteno.de";
-  const fertig = () => {
-    $("adresseKopieren").textContent = "Kopiert";
-    setTimeout(() => { $("adresseKopieren").textContent = "Kopieren"; }, 1800);
-  };
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(text).then(fertig, () => {});
+/* ─── Kopieren ───────────────────────────────────────────────────
+   Ein Weg für alle Kopierknöpfe: Wer data-kopieren trägt, kopiert
+   seinen Wert. Vorher hatte jeder Knopf seinen eigenen Zuhörer, und
+   der nächste hätte den vierten gebraucht. */
+function kopieren(knopf, text){
+  if(!navigator.clipboard || !navigator.clipboard.writeText) return;
+  const alt = knopf.textContent;
+  navigator.clipboard.writeText(text).then(() => {
+    knopf.textContent = "Kopiert";
+    setTimeout(() => { knopf.textContent = alt; }, 1800);
+  }, () => {});
+}
+document.addEventListener("click", e => {
+  const k = e.target.closest("[data-kopieren]");
+  if(k) kopieren(k, k.dataset.kopieren);
+});
+$("adresseKopieren").onclick = () =>
+  kopieren($("adresseKopieren"), "https://" + betrieb.slug + ".omoteno.de");
+
+/* ─── Rechnung als PDF ───────────────────────────────────────────
+   Der Eimer bleibt privat; abgerufen wird über eine Adresse, die nach
+   einer Minute abläuft. Ein öffentlicher Eimer wäre einfacher und
+   würde jede Rechnung jedem zeigen, der die Adresse errät. */
+document.addEventListener("click", async e => {
+  const k = e.target.closest("[data-pdf]");
+  if(!k) return;
+  const alt = k.textContent;
+  k.disabled = true; k.textContent = "…";
+  try{
+    const {data, error} = await db.storage.from("rechnungen")
+      .createSignedUrl(k.dataset.pdf, 60);
+    if(error || !data) throw error || new Error("keine Adresse");
+    window.open(data.signedUrl, "_blank", "noopener");
+  }catch(err){
+    melde("rechnungMeldung", "Die Rechnung konnte nicht geöffnet werden. " +
+      "Schreib mir kurz, dann schicke ich sie dir.", "fehler");
   }
-};
+  k.disabled = false; k.textContent = alt;
+});
+
+/* ─── Tische ─────────────────────────────────────────────────────
+   Der Schlüssel steht im Klartext im Konto — hier sitzt der Inhaber,
+   und ohne ihn kann er weder einen Untersetzer nachdrucken noch
+   prüfen, welcher Tisch welchen trägt. Weitergeben soll er ihn
+   trotzdem nicht, und das steht auch daneben. */
+async function tischeZeichnen(){
+  const ziel = $("tischListe");
+  if(!ziel || !betrieb) return;
+  ziel.innerHTML = '<p class="leerhinweis">Wird geladen …</p>';
+  try{
+    const {data, error} = await db.from("tische")
+      .select("nummer,schluessel,aktiv")
+      .eq("betrieb_id", betrieb.id)
+      /* Am Ende ein eindeutiges Feld: Bei gleicher Nummer ist die
+         Reihenfolge sonst das, was physisch obenauf liegt. */
+      .order("aktiv", {ascending:false}).order("nummer").order("schluessel");
+    if(error) throw error;
+
+    if(!data || !data.length){
+      ziel.innerHTML = '<p class="leerhinweis">Noch keine Tische angelegt. ' +
+        'Die legen wir an, sobald dein Hub steht.</p>';
+      return;
+    }
+    const basis = "https://" + betrieb.slug + ".omoteno.de/?k=";
+    ziel.innerHTML =
+      '<div class="rliste">' + data.map(t => {
+        const url = basis + encodeURIComponent(t.schluessel);
+        return '<div class="rzeile">' +
+          '<span class="rnr">Tisch ' + h(t.nummer) + '</span>' +
+          '<span class="rzeit tischlink">' + h(url) + '</span>' +
+          (t.aktiv ? '' : '<span class="rmarke offen">stillgelegt</span>') +
+          '<button class="knopf leise schmal" data-kopieren="' + h(url) + '">Kopieren</button>' +
+        '</div>';
+      }).join("") + '</div>' +
+      '<div class="knopfreihe"><button class="knopf leise schmal" id="tischeDrucken">' +
+        'Tischzettel drucken</button></div>' +
+      '<p class="hilfe">Ein Blatt je Tisch, zum Auslegen bis die Untersetzer da sind. ' +
+      'Gib die Adressen nicht weiter — wer sie hat, kann für den Tisch bestellen.</p>';
+
+    const dk = $("tischeDrucken");
+    if(dk) dk.onclick = () => tischeDrucken(data, basis);
+  }catch(e){
+    ziel.innerHTML = '<p class="leerhinweis">Die Tische konnten nicht geladen werden.</p>';
+  }
+}
+
+/* Druckansicht in einem eigenen Fenster: Das Konto selbst bleibt
+   unberührt, und der Zettel trägt nur, was auf dem Tisch stehen soll. */
+function tischeDrucken(tische, basis){
+  const w = window.open("", "_blank");
+  if(!w) return;
+  const zettel = tische.filter(t => t.aktiv).map(t =>
+    '<article><p class="oben">' + h(betrieb.name) + '</p>' +
+    '<h1>Tisch ' + h(t.nummer) + '</h1>' +
+    '<p class="mitte">Karte öffnen und bestellen — ohne App, ohne Anmeldung.</p>' +
+    '<p class="url">' + h(basis + encodeURIComponent(t.schluessel)) + '</p></article>').join("");
+  w.document.write(
+    '<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">' +
+    '<title>Tischzettel · ' + h(betrieb.name) + '</title><style>' +
+    '@page{size:A5;margin:14mm}' +
+    'body{margin:0;font-family:Georgia,serif;color:#16150F;background:#fff}' +
+    'article{page-break-after:always;height:100vh;display:flex;flex-direction:column;' +
+    'align-items:center;justify-content:center;text-align:center;padding:20mm 10mm}' +
+    '.oben{font-size:11pt;letter-spacing:.18em;text-transform:uppercase;color:#5C5849;margin:0 0 8mm}' +
+    'h1{font-size:34pt;margin:0 0 6mm;font-weight:400}' +
+    '.mitte{font-size:12pt;color:#5C5849;max-width:70mm;margin:0 0 10mm;line-height:1.5}' +
+    '.url{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:9pt;' +
+    'word-break:break-all;color:#16150F;border-top:1px solid #CFC6AE;padding-top:5mm}' +
+    '</style></head><body>' + zettel + '</body></html>');
+  w.document.close();
+  w.focus();
+  setTimeout(() => { try{ w.print(); }catch(e){} }, 400);
+}
 
 /* ─── Reiter ─────────────────────────────────────────────────── */
 $("reiter").onclick = e => {
@@ -888,6 +1330,7 @@ $("reiter").onclick = e => {
     x.setAttribute("aria-pressed", x.dataset.blatt === b));
   document.querySelectorAll("[data-blatt-inhalt]").forEach(x =>
     x.hidden = (x.dataset.blattInhalt !== b));
+  if(b === "zugaenge") tischeZeichnen();
   window.scrollTo(0,0);
 };
 
@@ -923,6 +1366,40 @@ async function starten(){
   zeige("konto");
   kontoZeichnen();
 }
+
+/* ─── Magnetische Knöpfe ────────────────────────────────────────
+   Dieselbe Bewegung wie auf der Webseite: Der Knopf folgt dem
+   Zeiger ein Stück weit und schnellt zurück, sobald er ihn
+   verlässt. Nur mit Maus — auf dem Telefon gibt es keinen Zeiger,
+   dem man folgen könnte. Und er wird bei jedem Zeichnen neu
+   verteilt, weil Reiter und Rechnungen ihre Knöpfe erst später
+   in die Seite legen. */
+function magnetisieren(){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if(matchMedia("(hover:none)").matches) return;
+
+  document.querySelectorAll(".knopf:not(.magnet)").forEach(el => {
+    el.classList.add("magnet");
+    let r = null;
+    const zieh = e => {
+      if(!r) r = el.getBoundingClientRect();
+      const dx = (e.clientX - (r.left + r.width / 2)) * .16;
+      const dy = (e.clientY - (r.top + r.height / 2)) * .34;
+      el.style.transition = "transform .1s linear";
+      el.style.transform  = `translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px)`;
+    };
+    el.addEventListener("pointerenter", e => { r = el.getBoundingClientRect(); zieh(e); });
+    el.addEventListener("pointermove", zieh);
+    el.addEventListener("pointerleave", () => {
+      r = null;
+      el.style.transition = "transform .55s cubic-bezier(.34,1.4,.64,1)";
+      el.style.transform  = "translate(0,0)";
+    });
+  });
+}
+magnetisieren();
+/* Alles, was Knöpfe nachlegt, ruft es danach noch einmal auf. */
+new MutationObserver(magnetisieren).observe(document.body, {childList:true, subtree:true});
 
 db.auth.onAuthStateChange((ereignis) => {
   if(ereignis === "SIGNED_IN" || ereignis === "SIGNED_OUT") starten();

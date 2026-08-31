@@ -1,5 +1,18 @@
 const fs = require("fs");
-const s = fs.readFileSync("omoteno-admin.html", "utf8");
+const path = require("path");
+/* Die Datei hieß einmal anders. Nach der Umbenennung fiel diese
+   Prüfung mit ENOENT um und wurde damit nicht mehr gelesen — eine
+   Prüfung, die nicht startet, ist keine. Deshalb sucht sie ihre
+   Datei jetzt neben sich, unter allen Namen, die sie hatte. */
+function finden(namen){
+  const t = namen.map(n => path.join(__dirname, n)).find(fs.existsSync);
+  if(!t){
+    console.error("Datei nicht gefunden. Gesucht: " + namen.join(", "));
+    process.exit(1);
+  }
+  return t;
+}
+const s = fs.readFileSync(finden(["admin.html","omoteno-admin.html"]), "utf8");
 const js = [...s.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)].map(m => m[1]).join("\n");
 
 // Nur die Zerlegerfunktionen herausschneiden, ohne den Rest des Boards
