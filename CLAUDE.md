@@ -500,6 +500,7 @@ Dazu je nach Änderung:
 | **Irgendetwas am Hub** | `pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Irgendetwas am Board** | `pruef-board.js` — bedient das Board von Hand |
 | Meldungen, Service Worker | `pruef-push.js` — sw.js wird ausgeliefert und meldet |
+| Konto, Anfrageformular | `pruef-konto-start.js` — ohne Netz, 16px, tote Links |
 
 Und danach, immer:
 

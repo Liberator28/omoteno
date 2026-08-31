@@ -103,6 +103,7 @@ Je nachdem, was du angefasst hast:
 | Irgendetwas am Hub | `node pruef-hub-hand.js` |
 | Irgendetwas am Board | `node pruef-board.js` |
 | Meldungen, Service Worker | `node pruef-push.js` |
+| Konto, Anfrageformular | `node pruef-konto-start.js` |
 | Auslieferung, Umleitungen | `node bauen.js && node pruef-lieferung.js` |
 
 Die Playwright-Prüfungen brauchen den Pfad davor:
