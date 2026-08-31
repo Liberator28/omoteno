@@ -200,6 +200,62 @@ erreichbar zu machen — das ist genau die Tür, gegen die er da ist.
 Nie nur die Richtigkeit einer Regel prüfen, immer auch die
 **Anhäufung**. Regelbestand auflisten, nicht nur die neue ansehen.
 
+### 2.3a Eine RLS-Regel ist die zweite Linie, nicht die erste
+
+> **Vorfall.** Der `anon`-Schlüssel steht in jedem Hub — richtig so.
+> Er trug aber `INSERT` auf `bestellungen`. Der Hub bestellt längst
+> über `bestellung_aufgeben`, und die Funktion rechnet den Preis aus
+> der Karte **nach**, prüft Vertragszustand, Bestellpause,
+> Tischpflicht und Tischschlüssel. Der direkte Weg in die Tabelle
+> prüfte per RLS nur vier Dinge — und den Preis nicht. Gemessen:
+> **99 Stück für 1 Cent gingen durch**, samt gefälschtem
+> `tisch_bestaetigt=true`. Daneben stand die Sicht
+> `betriebe_oeffentlich` mit `security_invoker=false`; ein anonymes
+> `update` darauf änderte **alle** Betriebe auf einmal.
+
+Ein Wächter neben einer offenen Tür ist kein Wächter. Vor jeder
+Behauptung „das ist abgesichert": **beide** Ebenen ansehen.
+
+```sql
+-- Was darf die Rolle ueberhaupt anfassen?
+select c.relname,
+       has_table_privilege('anon',c.oid,'SELECT') as lesen,
+       has_table_privilege('anon',c.oid,'INSERT') as schreiben,
+       has_table_privilege('anon',c.oid,'UPDATE') as aendern
+from pg_class c join pg_namespace n on n.oid=c.relnamespace
+where n.nspname='public' and c.relkind in ('r','v');
+```
+
+Die Regel entscheidet, **welche Zeilen**. Das Recht entscheidet, **ob
+überhaupt**. Wer nur die Regel liest, sieht die halbe Wahrheit. Und
+eine Sicht mit `security_invoker=false` umgeht die Regel vollständig —
+sie läuft mit den Rechten ihres Eigentümers.
+
+Dazu: PostgREST stellt **jede** Funktion in `public` als
+`/rest/v1/rpc/<name>` bereit, sobald die Rolle `EXECUTE` hat —
+Trigger-Funktionen eingeschlossen. Ein Trigger braucht dieses Recht
+nicht; er läuft als Teil der Anweisung.
+
+### 2.3b Zwei Messfehler, die Löcher verstecken und erfinden
+
+> **Vorfall, beide in derselben Sitzung.** Der erste Angriffstest
+> schrieb `insert … returning id` und bekam „permission denied" —
+> ich hätte um ein Haar „ist zu" gemeldet. Es fehlte das
+> **SELECT**-Recht für `returning`, nicht das INSERT. Ohne
+> `returning` ging die Zeile durch. Kurz darauf das Gegenteil: ein
+> `update betriebe set name=…` als Fremder lief **ohne Ausnahme**
+> durch, und ich hätte fast ein Leck gemeldet — RLS hatte auf null
+> Zeilen gefiltert, und das meldet Postgres als Erfolg.
+
+- Beim Schreibtest **kein `returning`** benutzen, sonst misst man das
+  Leserecht.
+- Beim Schreibtest die **Zeilenzahl** messen (`get diagnostics n =
+  row_count`), nicht die Ausnahme. `0 Zeilen` heißt „RLS hält",
+  Erfolg heißt gar nichts.
+
+`datenbank/pruef-rechte.sql` macht beides richtig und fährt 36
+Angriffe und ehrliche Wege in einer zurückgedrehten Transaktion.
+
 ### 2.4 Rollenwechsel allein simuliert PostgREST nicht
 
 `set role anon` reicht nicht. Der einzige verlässliche Weg:
@@ -519,6 +575,7 @@ Dazu je nach Änderung:
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
+| **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
 | Konto, Anfrageformular | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links |
 
 Und danach, immer:
