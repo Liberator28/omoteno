@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Lesbarkeit, hell wie dunkel
 
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-lesbarkeit.js
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-lesbarkeit.js
 
    Sie geht über JEDES Element mit Text, mischt die durchscheinenden
    Flächen darunter zusammen und rechnet den Kontrast. Nicht ein paar
@@ -20,7 +20,10 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
 
-const HIER = __dirname;
+/* dist/ liegt in der Wurzel, die Seiten in seiten/ - beides eine
+   Ebene hoeher als dieses Skript. */
+const HIER   = path.resolve(__dirname, "..");
+const SEITEN = path.join(HIER, "seiten");
 const BID  = "af095b14-d9ef-41f4-9b97-c4422b0de63f";
 
 let fehler = 0;
@@ -142,10 +145,10 @@ const FLAECHEN = [
       if(!slug){ console.log("\n" + f.name + ": kein erzeugter Hub, übersprungen"); continue; }
       ziel = "file://" + path.join(o, slug, "index.html");
     } else {
-      if(!fs.existsSync(path.join(HIER, f.datei))){
+      if(!fs.existsSync(path.join(SEITEN, f.datei))){
         console.log("\n" + f.name + ": Datei fehlt, übersprungen"); continue;
       }
-      ziel = "file://" + path.join(HIER, f.datei);
+      ziel = "file://" + path.join(SEITEN, f.datei);
     }
 
     for(const [lage, stellen] of f.lagen){

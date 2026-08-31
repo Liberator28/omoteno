@@ -8,13 +8,13 @@ ausprobiert, nicht angenommen.
 ## 0 · Das Wichtigste in fünf Zeilen
 
 ```bash
-node bauen.js                                   # baut oeffentlich/
-NODE_PATH=/opt/node22/lib/node_modules node pruef-lieferung.js
+node erzeuger/bauen.js                                   # baut oeffentlich/
+NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-lieferung.js
 git add -A && git commit -m "was geändert wurde"
 git push
 ```
 
-Netlify sieht den Push, führt `node bauen.js` aus und stellt
+Netlify sieht den Push, führt `node erzeuger/bauen.js` aus und stellt
 `oeffentlich/` ins Netz. Nach zwei bis drei Minuten ist es oben.
 
 ---
@@ -71,11 +71,11 @@ select slug, name, erzeugt_am from betriebe order by erzeugt_am nulls first;
 **Niemals in `dist/` oder `oeffentlich/` bearbeiten.** Beide werden
 bei jedem Bau gelöscht und neu geschrieben. Änderungen gehen in:
 
-- `hub.vorlage.html` — gilt für alle Kunden
-- `<slug>.json` — gilt für einen
-- `omoteno-web.html`, `admin.html`, `kueche.html`, `konto.html`,
-  `start.html`, `marken-studio.html`, `impressum.html`,
-  `datenschutz.html` — die Seiten selbst
+- `vorlagen/hub.vorlage.html` — gilt für alle Kunden
+- `markenblaetter/<slug>.json` — gilt für einen
+- `seiten/` — die Seiten selbst: `omoteno-web.html`, `admin.html`,
+  `kueche.html`, `konto.html`, `start.html`, `marken-studio.html`,
+  `impressum.html`, `datenschutz.html`, `sw.js`
 
 ### Schritt 2 — Prüfen, **bevor** du eincheckst
 
@@ -86,36 +86,36 @@ wird irgendwann übersprungen.
 Immer:
 
 ```bash
-node erzeuge-hub.js --alle
-python3 pruef-datei.py dist/chocolamour/index.html
-python3 pruef-datei.py omoteno-web.html
+node erzeuger/erzeuge-hub.js --alle
+python3 pruefungen/pruef-datei.py dist/chocolamour/index.html
+python3 pruefungen/pruef-datei.py seiten/omoteno-web.html
 ```
 
 Je nachdem, was du angefasst hast:
 
 | Geändert | Zusätzlich |
 |---|---|
-| Landingpage | `node pruef-web.js` |
-| Impressum, Datenschutz | `node pruef-recht.js` |
-| Marken-Studio | `node pruef-studio.js` und `node pruef-studio-hand.js` |
-| Farben, Paletten | `node pruef-kontrast.js`, `node pruef-lesbarkeit.js` |
-| Irgendetwas am Hub | `node pruef-durchgang.js` |
-| Irgendetwas am Hub | `node pruef-hub-hand.js` |
-| Irgendetwas am Board | `node pruef-board.js` |
-| Meldungen, Service Worker | `node pruef-push.js` |
-| Konto, Anfrageformular | `node pruef-konto-start.js` |
-| Auslieferung, Umleitungen | `node bauen.js && node pruef-lieferung.js` |
+| Landingpage | `node pruefungen/pruef-web.js` |
+| Impressum, Datenschutz | `node pruefungen/pruef-recht.js` |
+| Marken-Studio | `node pruefungen/pruef-studio.js` und `node pruefungen/pruef-studio-hand.js` |
+| Farben, Paletten | `node pruefungen/pruef-kontrast.js`, `node pruefungen/pruef-lesbarkeit.js` |
+| Irgendetwas am Hub | `node pruefungen/pruef-durchgang.js` |
+| Irgendetwas am Hub | `node pruefungen/pruef-hub-hand.js` |
+| Irgendetwas am Board | `node pruefungen/pruef-board.js` |
+| Meldungen, Service Worker | `node pruefungen/pruef-push.js` |
+| Konto, Anfrageformular | `node pruefungen/pruef-konto-start.js` |
+| Auslieferung, Umleitungen | `node erzeuger/bauen.js && node pruefungen/pruef-lieferung.js` |
 
 Die Playwright-Prüfungen brauchen den Pfad davor:
 
 ```bash
-NODE_PATH=/opt/node22/lib/node_modules node pruef-web.js
+NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-web.js
 ```
 
 ### Schritt 3 — Bauen und ansehen
 
 ```bash
-node bauen.js
+node erzeuger/bauen.js
 ```
 
 Der Bau meldet, was er tut. Lies die Ausgabe: Sie nennt jede Seite,
@@ -130,7 +130,7 @@ cd oeffentlich && python3 -m http.server 8000
 
 Dann `http://localhost:8000` im Browser. **Achtung:** Die Umleitungen
 aus `_redirects` kennt dieser Server nicht — `/admin` funktioniert
-dort nicht, `/admin.html` schon. `pruef-lieferung.js` bildet die
+dort nicht, `/admin.html` schon. `pruefungen/pruef-lieferung.js` bildet die
 Umleitungen dagegen nach.
 
 ### Schritt 4 — Einchecken und hochschieben
@@ -149,8 +149,8 @@ tausende Zeilen, die niemand gelesen hat.
 ### Schritt 5 — Was Netlify daraus macht
 
 1. Netlify sieht den Push am Zweig.
-2. Es liest `netlify.toml` und führt `node bauen.js` aus.
-3. `bauen.js` ruft `erzeuge-hub.js --alle`, baut die Hubs nach
+2. Es liest `netlify.toml` und führt `node erzeuger/bauen.js` aus.
+3. `erzeuger/bauen.js` ruft `erzeuger/erzeuge-hub.js --alle`, baut die Hubs nach
    `dist/`, stellt `oeffentlich/` zusammen und kopiert `_headers`
    und `_redirects` hinein.
 4. Netlify stellt den Inhalt von `oeffentlich/` ins Netz.
@@ -159,7 +159,7 @@ Das dauert typischerweise zwei bis drei Minuten. Solange behält
 Netlify die **vorige** Fassung online — es wird nie eine halbe Seite
 ausgeliefert.
 
-**Wenn der Bau scheitert, passiert nichts.** `bauen.js` bricht ab,
+**Wenn der Bau scheitert, passiert nichts.** `erzeuger/bauen.js` bricht ab,
 wenn der Erzeuger scheitert oder kein einziger Hub herauskommt. Die
 alte Fassung bleibt oben. Das ist gewollt: Eine Auslieferung ohne
 Kunden-Hubs sähe erfolgreich aus, und die Kunden wären offline.
@@ -200,7 +200,7 @@ Kleinbuchstaben, Ziffern und Bindestriche enthalten.
 ### b) Prüfen, ohne zu schreiben
 
 ```bash
-node erzeuge-hub.js <slug> --pruefen-nur
+node erzeuger/erzeuge-hub.js <slug> --pruefen-nur
 ```
 
 Der Erzeuger sagt, was fehlt. **Lies die Hinweise.** Zwei davon
@@ -216,8 +216,8 @@ kosten sonst richtig:
 ### c) Erzeugen und ansehen
 
 ```bash
-node erzeuge-hub.js <slug>
-python3 pruef-datei.py dist/<slug>/index.html
+node erzeuger/erzeuge-hub.js <slug>
+python3 pruefungen/pruef-datei.py dist/<slug>/index.html
 ```
 
 Prüf dabei, ob **sein** Name im Siegel steht, nicht Chocos. Das
@@ -260,7 +260,7 @@ Netlify ist verbunden, ein Projekt läuft. Was noch fehlt:
 
 1. **Baueinstellung setzen.** Netlify → dein Projekt → *Site
    configuration → Build & deploy*:
-   - Build command: `node bauen.js`
+   - Build command: `node erzeuger/bauen.js`
    - Publish directory: `oeffentlich`
 
    Steht beides schon in `netlify.toml` — die Datei gewinnt. Trag es
@@ -271,7 +271,7 @@ Netlify ist verbunden, ein Projekt läuft. Was noch fehlt:
 
 3. **Der erste Lauf.** *Deploys → Trigger deploy → Clear cache and
    deploy site.* Sieh dir das Protokoll an: Dort muss die Ausgabe von
-   `bauen.js` stehen, samt der Zeile mit den Hubs.
+   `erzeuger/bauen.js` stehen, samt der Zeile mit den Hubs.
 
 Ein zweites oder drittes Netlify-Projekt brauchst du **nicht**. Warum,
 steht in `netlify.toml`: Sie müssten sich dieselbe Konfigurationsdatei
@@ -295,7 +295,7 @@ Häufigste Ursachen:
 |---|---|
 | `FEHLER: betrieb.slug fehlt` | Markenblatt unvollständig |
 | `slug im Markenblatt … passt nicht zum Dateinamen` | Datei umbenennen oder `slug` ändern |
-| `KEIN EINZIGER HUB` | Der Erzeuger lief, lieferte aber nichts — `node bauen.js` örtlich nachfahren |
+| `KEIN EINZIGER HUB` | Der Erzeuger lief, lieferte aber nichts — `node erzeuger/bauen.js` örtlich nachfahren |
 | `Die Vorlage hat keine LOGO-Marke` | In `hub.vorlage.html` fehlen `{{LOGO}}` … `{{/LOGO}}` |
 
 ### Zurückrollen
@@ -313,16 +313,16 @@ laden (⇧ + Neu laden) oder fünf Minuten warten.
 
 ### Ein Kunde sieht den falschen Namen
 
-Dann ist sein Hub aus einem alten Gerüst gebaut. `node bauen.js` neu
-laufen lassen und mit `node pruef-lieferung.js` gegenprüfen — die
+Dann ist sein Hub aus einem alten Gerüst gebaut. `node erzeuger/bauen.js` neu
+laufen lassen und mit `node pruefungen/pruef-lieferung.js` gegenprüfen — die
 Prüfung sieht genau in den Titel jedes Hubs.
 
 ---
 
 ## 6 · Die Rechtstexte
 
-`impressum.html` und `datenschutz.html` liegen im Verzeichnis und
-gehen bei jedem Bau mit raus. `bauen.js` führt sie als **Pflicht**:
+`impressum.html` und `datenschutz.html` liegen in `seiten/` und
+gehen bei jedem Bau mit raus. `erzeuger/bauen.js` führt sie als **Pflicht**:
 Fehlt eine davon, bricht der Bau ab, statt eine Seite auszuliefern,
 deren Impressumslink ins Leere führt.
 

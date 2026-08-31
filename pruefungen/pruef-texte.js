@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Eigene Worte des Betriebs
 
-     node erzeuge-hub.js --alle
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-texte.js
+     node erzeuger/erzeuge-hub.js --alle
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-texte.js
 
    Der Gastgeber darf Slogan, Gruß und den Namen seiner Aktionen
    selbst setzen. Damit das nicht den Kopf des Gast-Hubs zerlegt,
@@ -22,7 +22,9 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
 
-const HIER = __dirname;
+/* dist/ liegt in der Wurzel, das Board in seiten/. */
+const HIER   = path.resolve(__dirname, "..");
+const SEITEN = path.join(HIER, "seiten");
 const BID  = "af095b14-d9ef-41f4-9b97-c4422b0de63f";
 const BREITEN = [360, 390, 430];
 
@@ -52,7 +54,7 @@ function hubs(){
    admin.html gelesen, nicht hier abgeschrieben — sonst prüft die
    Prüfung ihre eigene Kopie. */
 function grenzenAusBoard(){
-  const s = fs.readFileSync(path.join(HIER, "admin.html"), "utf8");
+  const s = fs.readFileSync(path.join(SEITEN, "admin.html"), "utf8");
   const blk = s.slice(s.indexOf("const TEXTMASS = {"));
   const raus = {};
   for(const m of blk.slice(0, blk.indexOf("\n};")).matchAll(
@@ -78,7 +80,7 @@ async function verdrahten(seite, texte){
 (async () => {
   const liste = hubs();
   if(!liste.length){
-    console.log("Kein erzeugter Hub in dist/. Erst „node erzeuge-hub.js --alle“ laufen lassen.");
+    console.log("Kein erzeugter Hub in dist/. Erst „node erzeuger/erzeuge-hub.js --alle“ laufen lassen.");
     process.exit(1);
   }
   const DATEI = "file://" + path.join(HIER, "dist", liste[0], "index.html");

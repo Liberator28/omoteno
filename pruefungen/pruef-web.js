@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Die Landingpage, kopflos durchgespielt
 
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-web.js
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-web.js
 
    Sie fragt sechs Dinge, die man einer Datei nicht ansieht:
 
@@ -35,7 +35,8 @@ const path = require("path");
    laufen (CLAUDE.md §8.2). Deshalb sucht auch diese ihre Datei
    neben sich und nennt im Fehlerfall alle Namen. */
 const KANDIDATEN = ["omoteno-web.html", "omoteno-landingpage.html", "index.html"];
-const DATEI = KANDIDATEN.map(n => path.join(__dirname, n)).find(fs.existsSync);
+const DATEI = KANDIDATEN.map(n => path.join(__dirname, "..", "seiten", n))
+                        .find(fs.existsSync);
 if(!DATEI){
   console.error("Keine Landingpage gefunden. Gesucht: " + KANDIDATEN.join(", "));
   process.exit(1);

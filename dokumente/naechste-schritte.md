@@ -107,8 +107,8 @@ Alle Prüfskripte laufen sauber. Siehe `CLAUDE.md`.
   Knopfschein war fest aus Chocos Rot gemischt und blieb bei jedem
   anderen Haus rot.
 
-  **Und:** Drei der fünf Prüfskripte (`pruef-kontrast.js`,
-  `pruef-import.js`, `pruef-ueberlauf.js`) lasen Dateinamen, die es
+  **Und:** Drei der fünf Prüfskripte (`pruefungen/pruef-kontrast.js`,
+  `pruefungen/pruef-import.js`, `pruefungen/pruef-ueberlauf.js`) lasen Dateinamen, die es
   nicht mehr gibt, und fielen beim Start um. Sie suchen ihre Datei
   jetzt neben sich.
 
@@ -122,9 +122,9 @@ Alle Prüfskripte laufen sauber. Siehe `CLAUDE.md`.
   zeigt und nach dem Zeichnen misst. Vier Schranken hintereinander:
   Board, Feld, Datenbank-CHECK, Kürzen beim Lesen.
 - **Hell und dunkel** in Hub, Admin-Board und Küchendisplay, mit
-  `pruef-lesbarkeit.js` über jedes Element mit Text nachgerechnet.
+  `pruefungen/pruef-lesbarkeit.js` über jedes Element mit Text nachgerechnet.
 - **38 Übersetzungen** nachgetragen, die in allen zwölf Sprachen auf
-  Deutsch standen. `pruef-sprache.js` findet so etwas ab jetzt vorher.
+  Deutsch standen. `pruefungen/pruef-sprache.js` findet so etwas ab jetzt vorher.
 
 **Offen — bewusst noch nicht gebaut:**
 

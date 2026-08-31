@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Der Gäste-Hub von Hand bedient
 
-     node erzeuge-hub.js --alle
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-hub-hand.js [slug]
+     node erzeuger/erzeuge-hub.js --alle
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-hub-hand.js [slug]
 
    pruef-durchgang.js geht den Weg des Gastes einmal durch. Diese
    hier fragt die acht Dinge, die dabei NICHT vorkommen — und jedes
@@ -34,9 +34,11 @@ const fs = require("fs");
 /* Welcher Hub? Ohne Angabe der erste in dist/. Die Datei neben sich
    suchen, nicht an einem festen Pfad — nach einer Umbenennung fällt
    eine Prüfung sonst mit ENOENT um (CLAUDE.md §8.2). */
-const DIST = path.join(__dirname, "dist");
+/* dist/ und markenblaetter/ liegen eine Ebene hoeher als
+   pruefungen/. */
+const DIST = path.join(__dirname, "..", "dist");
 if(!fs.existsSync(DIST)){
-  console.error("dist/ fehlt. Erst „node erzeuge-hub.js --alle\" laufen lassen.");
+  console.error("dist/ fehlt. Erst „node erzeuger/erzeuge-hub.js --alle\" laufen lassen.");
   process.exit(1);
 }
 const SLUG = process.argv[2] ||
@@ -233,7 +235,7 @@ const echt = k => k.filter(z => !/net::ERR|Failed to (load|fetch)|ERR_FAILED|sup
      übergehen. */
   console.log("\n══ 7 · Die Figur des Hauses ══");
   {
-    const blatt = path.join(__dirname, SLUG + ".json");
+    const blatt = path.join(__dirname, "..", "markenblaetter", SLUG + ".json");
     const soll = fs.existsSync(blatt)
       ? ((JSON.parse(fs.readFileSync(blatt, "utf8")).avatar || {}).figur || "untersetzer")
       : "untersetzer";

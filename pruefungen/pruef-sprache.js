@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Übersetzungen
 
-     node pruef-sprache.js
+     node pruefungen/pruef-sprache.js
 
    > Vorfall. Nach den Blöcken „Mein Tisch", „Top-Runner" und
    > „Weitersagen" standen 38 Sätze in ALLEN zwölf Sprachen auf
@@ -23,7 +23,8 @@
 const fs = require("fs");
 const path = require("path");
 
-const DATEI = path.join(__dirname, "hub.vorlage.html");
+/* Das Geruest liegt in vorlagen/, eine Ebene hoeher. */
+const DATEI = path.join(__dirname, "..", "vorlagen", "hub.vorlage.html");
 if(!fs.existsSync(DATEI)){
   console.error("hub.vorlage.html nicht gefunden.");
   process.exit(1);

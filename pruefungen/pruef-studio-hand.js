@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Das Marken-Studio von Hand bedient
 
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-studio-hand.js
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-studio-hand.js
 
    pruef-studio.js prüft den Entwurfslink rechnerisch — hin, zurück,
    gleich. Diese hier fasst das Studio an und fragt vier Dinge, die
@@ -23,7 +23,8 @@
 const fs = require("fs");
 const path = require("path");
 const KANDIDATEN = ["marken-studio.html", "omoteno-marken-studio.html"];
-const DATEI = KANDIDATEN.map(n => path.join(__dirname, n)).find(fs.existsSync);
+const DATEI = KANDIDATEN.map(n => path.join(__dirname, "..", "seiten", n))
+                        .find(fs.existsSync);
 if(!DATEI){
   console.error("Kein Marken-Studio gefunden. Gesucht: " + KANDIDATEN.join(", "));
   process.exit(1);

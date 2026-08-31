@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Das Admin-Board von Hand bedient
 
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-board.js
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-board.js
 
    Sie fragt drei Dinge, die man einer Datei nicht ansieht:
 
@@ -21,7 +21,9 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
 
-const HIER = __dirname;
+/* Die Seiten liegen seit dem Aufraeumen eine Ebene hoeher in
+   seiten/. Ohne diesen Schritt faellt das Skript mit ENOENT um. */
+const HIER = path.join(__dirname, "..", "seiten");
 let fehler = 0;
 function pruef(gut, text, zusatz){
   console.log((gut ? "  ok   " : "  FEHL ") + text + (zusatz ? "  → " + zusatz : ""));

@@ -5,7 +5,7 @@
    Legt aus dem Arbeitsverzeichnis den Ordner an, der wirklich ins
    Netz geht.
 
-       node bauen.js
+       node erzeuger/bauen.js
 
    Warum es diese Datei überhaupt gibt: Netlify liefert einen
    ORDNER aus, nicht ein Verzeichnis mit Auswahl. Läge das Repo
@@ -35,8 +35,13 @@ const fs   = require("fs");
 const path = require("path");
 const { execFileSync } = require("child_process");
 
-const HIER  = __dirname;
-const ZIEL  = path.join(HIER, "oeffentlich");
+/* Seit dem Aufräumen liegt bauen.js in erzeuger/. Gearbeitet wird
+   aber weiter im Wurzelverzeichnis: Dort stehen netlify.toml und der
+   Ordner, der ins Netz geht. WURZEL ist deshalb eine Ebene höher —
+   und alles darunter zeigt auf WURZEL, nicht auf __dirname. */
+const HIER   = __dirname;
+const WURZEL = path.resolve(__dirname, "..");
+const ZIEL   = path.join(WURZEL, "oeffentlich");
 /* NICHT hier prüfen, ob es dist/ gibt. Der Ordner entsteht erst in
    Schritt 1 — und auf Netlify gibt es ihn beim Start GARANTIERT
    nicht, weil er in .gitignore steht. Der erste Entwurf las
@@ -45,7 +50,7 @@ const ZIEL  = path.join(HIER, "oeffentlich");
    grün gemeldet und keinen einzigen Kunden-Hub ausgeliefert.
    Gefunden hat das nicht das Lesen, sondern der Trockenlauf in
    einem leeren Verzeichnis — also genau das, was Netlify tut. */
-const DIST  = path.join(HIER, "dist");
+const DIST   = path.join(WURZEL, "dist");
 
 /* Welche Seiten öffentlich sind — und unter welchem Namen.
 
@@ -56,25 +61,25 @@ const DIST  = path.join(HIER, "dist");
    kopieren außer einer Sperrliste — geht genau einmal schief, und
    dann liegt eine Datei draußen, von der niemand wusste. */
 const SEITEN = [
-  ["omoteno-web.html",   "index.html"],       /* omoteno.de */
-  ["admin.html",         "admin.html"],       /* das Board  */
-  ["kueche.html",        "kueche.html"],      /* Küche und Theke */
-  ["konto.html",         "konto.html"],
-  ["start.html",         "start.html"],
-  ["marken-studio.html", "marken-studio.html"],
+  ["seiten/omoteno-web.html",   "index.html"],       /* omoteno.de */
+  ["seiten/admin.html",         "admin.html"],       /* das Board  */
+  ["seiten/kueche.html",        "kueche.html"],      /* Küche und Theke */
+  ["seiten/konto.html",         "konto.html"],
+  ["seiten/start.html",         "start.html"],
+  ["seiten/marken-studio.html", "marken-studio.html"],
   /* Pflicht, nicht Kür. Beide sind aus dem Fuß von omoteno-web.html,
      konto.html und start.html verlinkt — sechs Links. Fehlt eine
      davon, bricht der Bau ab, statt eine Seite auszuliefern, deren
      Impressumslink ins Leere führt. */
-  ["impressum.html",     "impressum.html"],
-  ["datenschutz.html",   "datenschutz.html"],
+  ["seiten/impressum.html",     "impressum.html"],
+  ["seiten/datenschutz.html",   "datenschutz.html"],
   /* Der Service Worker. admin.html registriert ihn beim Namen
      (register("sw.js")); fehlt er im Ordner, läuft die Registrierung
      auf ein 404 und das Personal bekommt nie eine Meldung über eine
      neue Bestellung. Er MUSS in der Wurzel liegen — von dort gilt er
      für die ganze Adresse. Läge er tiefer, wäre sein Geltungsbereich
      der Unterordner und das Board davon nicht erfasst. */
-  ["sw.js",              "sw.js"]
+  ["seiten/sw.js",              "sw.js"]
 ];
 
 function weg(p){ fs.rmSync(p, { recursive:true, force:true }); }
@@ -108,7 +113,7 @@ weg(ZIEL); ordner(ZIEL);
 console.log("\n── Seiten ──");
 const fehlend = [];
 for(const [quelle, name, freiwillig] of SEITEN){
-  const von = path.join(HIER, quelle);
+  const von = path.join(WURZEL, quelle);
   if(!fs.existsSync(von)){
     fehlend.push(quelle + (freiwillig ? "" : "   (PFLICHT)"));
     if(!freiwillig){
@@ -146,8 +151,10 @@ if(fs.existsSync(DIST)){
    stimmt etwas zwischen den beiden Schritten nicht, und eine
    Auslieferung ohne Kunden-Hubs ist schlimmer als keine: Sie sieht
    erfolgreich aus, und die Kunden sind offline. */
-const blaetter = fs.readdirSync(HIER)
-  .filter(n => n.endsWith(".json") && n !== "package.json").length;
+const blaetterOrdner = path.join(WURZEL, "markenblaetter");
+const blaetter = fs.existsSync(blaetterOrdner)
+  ? fs.readdirSync(blaetterOrdner).filter(n => n.endsWith(".json")).length
+  : 0;
 if(!hubs && blaetter){
   console.error("\n   KEIN EINZIGER HUB, obwohl " + blaetter +
     " Markenblätter da sind.\n   Es wird nichts ausgeliefert.\n");
@@ -186,7 +193,7 @@ fs.writeFileSync(path.join(ZIEL, "sitemap.xml"),
    von dort, und sie stehen damit im selben Ordner wie das, wofür
    sie gelten — nicht in einer Konfiguration zwei Ebenen darüber. */
 for(const n of ["_headers", "_redirects"]){
-  const von = path.join(HIER, n);
+  const von = path.join(WURZEL, "auslieferung", n);
   if(fs.existsSync(von)){
     fs.copyFileSync(von, path.join(ZIEL, n));
     console.log("\n   " + n + " übernommen");

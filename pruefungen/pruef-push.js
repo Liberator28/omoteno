@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Die Meldung über eine neue Bestellung
 
-     node bauen.js
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-push.js
+     node erzeuger/bauen.js
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-push.js
 
    admin.html registriert einen Service Worker beim Namen:
 
@@ -24,9 +24,11 @@ const { chromium } = require("playwright");
 const http = require("http");
 const fs = require("fs");
 const path = require("path");
-const WURZEL = path.join(__dirname, "oeffentlich");
+/* Der ausgelieferte Ordner liegt in der Wurzel, nicht neben
+   diesem Skript. */
+const WURZEL = path.join(__dirname, "..", "oeffentlich");
 if(!fs.existsSync(path.join(WURZEL, "sw.js"))){
-  console.error("oeffentlich/sw.js fehlt. Erst „node bauen.js\" laufen lassen.");
+  console.error("oeffentlich/sw.js fehlt. Erst „node erzeuger/bauen.js\" laufen lassen.");
   process.exit(1);
 }
 let fehler = 0;

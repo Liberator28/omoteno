@@ -3,8 +3,8 @@
 
    Läuft gegen den ERZEUGTEN Hub, nicht gegen das Gerüst:
 
-     node erzeuge-hub.js --alle
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-gastkonto.js
+     node erzeuger/erzeuge-hub.js --alle
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-gastkonto.js
 
    Die Datenschicht wird nachgebaut (page.route), damit die Oberfläche
    prüfbar ist, ohne echte Gäste anzufassen.
@@ -28,7 +28,9 @@ const { chromium } = require("playwright");
 const fs   = require("fs");
 const path = require("path");
 
-const HIER = __dirname;
+/* Die Wurzel, nicht das eigene Verzeichnis: dist/ liegt eine
+   Ebene hoeher als pruefungen/. */
+const HIER = path.resolve(__dirname, "..");
 const BID  = "af095b14-d9ef-41f4-9b97-c4422b0de63f";   /* frei erfunden */
 
 const MASSE = [
@@ -155,7 +157,7 @@ const MESSUNG = `
 (async () => {
   const hubs = erzeugteHubs();
   if(!hubs.length){
-    console.log("Kein erzeugter Hub in dist/. Erst „node erzeuge-hub.js --alle“ laufen lassen.");
+    console.log("Kein erzeugter Hub in dist/. Erst „node erzeuger/erzeuge-hub.js --alle“ laufen lassen.");
     process.exit(1);
   }
 

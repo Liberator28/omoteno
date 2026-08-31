@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Die Figur des Hauses
 
-     node erzeuge-hub.js --alle
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-figur.js
+     node erzeuger/erzeuge-hub.js --alle
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-figur.js
 
    Was hier geprüft wird und warum:
 
@@ -29,7 +29,16 @@ const { execFileSync } = require("child_process");
 const fs   = require("fs");
 const path = require("path");
 
-const HIER = __dirname;
+/* Vier verschiedene Orte, deshalb einzeln benannt statt ein HIER
+   fuer alles: dist/ und der Erzeuger liegen in der Wurzel, das
+   Geruest in vorlagen/, das Studio in seiten/, die Markenblaetter
+   in markenblaetter/. */
+const OBEN     = path.resolve(__dirname, "..");
+const HIER     = OBEN;
+const SEITEN   = path.join(OBEN, "seiten");
+const VORLAGEN = path.join(OBEN, "vorlagen");
+const BLAETTER = path.join(OBEN, "markenblaetter");
+const ERZEUGER = path.join(OBEN, "erzeuger");
 const BID  = "af095b14-d9ef-41f4-9b97-c4422b0de63f";
 const MASSE = [
   { name: "iPhone SE", width: 390, height:  664 },
@@ -156,7 +165,7 @@ const RANDMESSUNG = `
 (async () => {
   const hubs = erzeugteHubs();
   if(!hubs.length){
-    console.log("Kein erzeugter Hub in dist/. Erst „node erzeuge-hub.js --alle“ laufen lassen.");
+    console.log("Kein erzeugter Hub in dist/. Erst „node erzeuger/erzeuge-hub.js --alle“ laufen lassen.");
     process.exit(1);
   }
 
@@ -167,8 +176,8 @@ const RANDMESSUNG = `
      im Hub bekommt. Deshalb Zeichen für Zeichen. */
   console.log("\n── Gerüst und Studio ──");
   {
-    const hub    = fs.readFileSync(path.join(HIER, "hub.vorlage.html"), "utf8");
-    const studio = fs.readFileSync(path.join(HIER, "marken-studio.html"), "utf8");
+    const hub    = fs.readFileSync(path.join(VORLAGEN, "hub.vorlage.html"), "utf8");
+    const studio = fs.readFileSync(path.join(SEITEN, "marken-studio.html"), "utf8");
     const bloecke = [
       ["Zeichnung (JS)",
        /\/\* ╔═══ FIGUR · GETEILTER BLOCK · ANFANG[\s\S]*?\/\* ╚═══ FIGUR · GETEILTER BLOCK · ENDE ═+╝ \*\//],
@@ -196,20 +205,24 @@ const RANDMESSUNG = `
   /* ───── 1 · Der Erzeuger hält bei unbekannter Figur an ───── */
   console.log("\n── Erzeuger ──");
   {
-    const quelle = hubs.map(s => path.join(HIER, s + ".json")).filter(fs.existsSync)[0];
+    const quelle = hubs.map(s => path.join(BLAETTER, s + ".json")).filter(fs.existsSync)[0];
     if(!quelle){
       pruef(false, "kein Markenblatt zum Prüfen gefunden");
     } else {
       const mb = JSON.parse(fs.readFileSync(quelle, "utf8"));
-      const probe = path.join(HIER, "pruefling.json");
+      /* Der Pruefling muss dorthin, wo der Erzeuger seine Blaetter
+     sucht - sonst findet er ihn nicht und die Pruefung misst
+     einen Fehler, den es gar nicht gibt. */
+    const probe = path.join(BLAETTER, "pruefling.json");
       try {
         /* unbekannter Wert → Fehler, nichts wird geschrieben */
         mb.betrieb.slug = "pruefling";
         mb.avatar = Object.assign({}, mb.avatar, { figur: "banane" });
         fs.writeFileSync(probe, JSON.stringify(mb));
         let hielt = false, meldung = "";
-        try { execFileSync("node", ["erzeuge-hub.js", "pruefling", "--pruefen-nur"],
-                { cwd: HIER, encoding: "utf8", stdio: "pipe" }); }
+        try { execFileSync("node", [path.join(ERZEUGER, "erzeuge-hub.js"),
+                 "pruefling", "--pruefen-nur"],
+                { cwd: OBEN, encoding: "utf8", stdio: "pipe" }); }
         catch(e){ hielt = true; meldung = String(e.stdout || "") + String(e.stderr || ""); }
         pruef(hielt && /figur unbekannt/.test(meldung),
           "unbekannte Figur hält den Erzeuger an", meldung.trim().split("\n").pop());
@@ -218,8 +231,9 @@ const RANDMESSUNG = `
         delete mb.avatar.figur;
         fs.writeFileSync(probe, JSON.stringify(mb));
         let lief = true;
-        try { execFileSync("node", ["erzeuge-hub.js", "pruefling", "--pruefen-nur"],
-                { cwd: HIER, encoding: "utf8", stdio: "pipe" }); }
+        try { execFileSync("node", [path.join(ERZEUGER, "erzeuge-hub.js"),
+                 "pruefling", "--pruefen-nur"],
+                { cwd: OBEN, encoding: "utf8", stdio: "pipe" }); }
         catch(e){ lief = false; }
         pruef(lief, "Markenblatt ohne figur läuft weiter");
       } finally {

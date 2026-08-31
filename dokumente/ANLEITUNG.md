@@ -39,7 +39,7 @@ Das machst du **einmal**. Danach nie wieder.
 
    | Feld | Was reinkommt |
    |---|---|
-   | Build command | `node bauen.js` |
+   | Build command | `node erzeuger/bauen.js` |
    | Publish directory | `oeffentlich` |
    | Base directory | *(leer lassen)* |
 
@@ -47,7 +47,7 @@ Das machst du **einmal**. Danach nie wieder.
 
 > **Was passiert da?**
 > „Build command" heißt: der Befehl, den Netlify ausführt.
-> `node bauen.js` startet unser kleines Programm `bauen.js`. Das
+> `node erzeuger/bauen.js` startet unser kleines Programm `erzeuger/bauen.js`. Das
 > baut den Ordner `oeffentlich` zusammen.
 > „Publish directory" heißt: welcher Ordner ins Internet soll.
 > Antwort: `oeffentlich`.
@@ -100,7 +100,7 @@ Das ist der Ablauf, den du ab jetzt **jedes Mal** gehst.
 In der Sitzung (oder auf deinem Rechner im Ordner):
 
 ```bash
-node bauen.js
+node erzeuger/bauen.js
 ```
 
 Das baut alles zusammen und sagt dir, ob etwas fehlt.
@@ -110,8 +110,8 @@ Unglück — er verhindert gerade, dass etwas Kaputtes online geht.
 Dann die große Prüfung:
 
 ```bash
-NODE_PATH=/opt/node22/lib/node_modules node pruef-lieferung.js
-NODE_PATH=/opt/node22/lib/node_modules node pruef-hub-hand.js chocolamour
+NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-lieferung.js
+NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-hub-hand.js chocolamour
 ```
 
 Bei beiden muss am Ende **„Alles sauber."** bzw. **„Keine Fehler"**
@@ -208,14 +208,14 @@ warten.
    unten auf „Markenblatt kopieren" tippen und einsetzen.
 2. **Erst prüfen, ohne zu schreiben:**
    ```bash
-   node erzeuge-hub.js <kürzel> --pruefen-nur
+   node erzeuger/erzeuge-hub.js <kürzel> --pruefen-nur
    ```
    **Lies die Hinweise.** Besonders diesen: Wenn dort steht, dass
    das Quiz eingeschaltet ist, aber eigene Fragen fehlen, würden
    deinem Kunden zwei Fragen über **Choco L'AMouR** gestellt.
 3. **Erzeugen:**
    ```bash
-   node erzeuge-hub.js <kürzel>
+   node erzeuger/erzeuge-hub.js <kürzel>
    ```
    Dann in der erzeugten Datei nachsehen: Steht **sein** Name im
    runden Siegel oben links? Nicht Chocos?
@@ -247,6 +247,6 @@ warten.
    Die Prüfungen sind keine Schikane. Jede einzelne steht da, weil
    genau dieser Fehler schon einmal passiert ist.
 
-3. **Lies die Ausgabe von `node bauen.js`.**
+3. **Lies die Ausgabe von `node erzeuger/bauen.js`.**
    Sie sagt dir in normalen Worten, was gerade passiert und was
    fehlt. Zehn Sekunden lesen ersparen eine Stunde suchen.

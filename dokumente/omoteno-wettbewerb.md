@@ -323,8 +323,8 @@ einer Aufgabe zur Zeit, reicht es.
    Zurückrollen).
 2. Vom iPhone aus Cloud-Sitzungen starten: „Baue Block X nach der
    Arbeitsweise-Datei."
-3. Die Prüfskripte (`pruef-datei.py`, `pruef-kontrast.js`,
-   `pruef-ueberlauf.js`) laufen in der Sitzung automatisch mit.
+3. Die Prüfskripte (`pruefungen/pruef-datei.py`, `pruefungen/pruef-kontrast.js`,
+   `pruefungen/pruef-ueberlauf.js`) laufen in der Sitzung automatisch mit.
 4. Ergebnis als Pull Request, du prüfst am Telefon, führst zusammen.
 
 **Ehrlich dazu:** Das ersetzt nicht das Denken. Es ersetzt das

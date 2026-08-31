@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Der ausgelieferte Ordner
 
-     node bauen.js
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-lieferung.js
+     node erzeuger/bauen.js
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-lieferung.js
 
    Sie bedient oeffentlich/ wie einen Webserver, folgt dabei den
    Regeln aus _redirects und fragt drei Dinge:
@@ -24,9 +24,11 @@ const http = require("http");
 
 const fs = require("fs");
 const path = require("path");
-const WURZEL = path.join(__dirname, "oeffentlich");
+/* Der ausgelieferte Ordner liegt in der Wurzel, nicht neben
+   diesem Skript. */
+const WURZEL = path.join(__dirname, "..", "oeffentlich");
 if(!fs.existsSync(WURZEL)){
-  console.error("oeffentlich/ fehlt. Erst „node bauen.js\" laufen lassen.");
+  console.error("oeffentlich/ fehlt. Erst „node erzeuger/bauen.js\" laufen lassen.");
   process.exit(1);
 }
 const typ = { ".html":"text/html", ".txt":"text/plain", ".xml":"application/xml" };

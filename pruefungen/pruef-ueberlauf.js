@@ -8,7 +8,7 @@ const path = require("path");
    existiert nicht mehr und ergab beim Aufruf ohne Argument ENOENT. */
 const ziel = process.argv[2] ||
   ["omoteno-web.html","omoteno-landingpage.html"]
-    .map(n => path.join(__dirname, n)).find(fs.existsSync);
+    .map(n => path.join(__dirname, "..", "seiten", n)).find(fs.existsSync);
 if(!ziel || !fs.existsSync(ziel)){
   console.error("Keine Datei angegeben und keine Webseite neben dem Skript gefunden.");
   process.exit(1);

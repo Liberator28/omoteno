@@ -5,7 +5,8 @@ const path = require("path");
    Prüfung, die nicht startet, ist keine. Deshalb sucht sie ihre
    Datei jetzt neben sich, unter allen Namen, die sie hatte. */
 function finden(namen){
-  const t = namen.map(n => path.join(__dirname, n)).find(fs.existsSync);
+  const t = namen.map(n => path.join(__dirname, "..", "seiten", n))
+                 .find(fs.existsSync);
   if(!t){
     console.error("Datei nicht gefunden. Gesucht: " + namen.join(", "));
     process.exit(1);

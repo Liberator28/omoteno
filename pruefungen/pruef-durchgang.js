@@ -1,8 +1,8 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Der ganze Weg des Gastes
 
-     node erzeuge-hub.js --alle
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-durchgang.js
+     node erzeuger/erzeuge-hub.js --alle
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-durchgang.js
 
    Die anderen Prüfungen sehen sich je ein Stück an. Diese geht den
    Weg, den ein Gast wirklich geht — vom Antippen des Untersetzers bis
@@ -19,7 +19,9 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
 
-const HIER = __dirname;
+/* Die Wurzel, nicht das eigene Verzeichnis: dist/ liegt eine
+   Ebene hoeher als pruefungen/. */
+const HIER = path.resolve(__dirname, "..");
 const BID  = "af095b14-d9ef-41f4-9b97-c4422b0de63f";
 
 let fehler = 0;
@@ -38,7 +40,7 @@ function hubDatei(){
 (async () => {
   const datei = hubDatei();
   if(!datei){
-    console.log("Kein erzeugter Hub in dist/. Erst „node erzeuge-hub.js --alle“ laufen lassen.");
+    console.log("Kein erzeugter Hub in dist/. Erst „node erzeuger/erzeuge-hub.js --alle“ laufen lassen.");
     process.exit(1);
   }
 

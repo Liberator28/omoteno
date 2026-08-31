@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Impressum und Datenschutzerklärung
 
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-recht.js
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-recht.js
 
    Zwei Seiten, die selten jemand aufmacht — und die genau deshalb
    niemandem auffallen, wenn sie kaputt sind. Geprüft wird:
@@ -28,7 +28,7 @@ const path = require("path");
    einer Umbenennung faellt eine Pruefung sonst mit ENOENT um und
    wird nicht mehr gelesen (CLAUDE.md §8.2). */
 const ADRESSE = n => {
-  const p = path.join(__dirname, n + ".html");
+  const p = path.join(__dirname, "..", "seiten", n + ".html");
   if(!fs.existsSync(p)){ console.error(n + ".html fehlt."); process.exit(1); }
   return "file://" + p;
 };

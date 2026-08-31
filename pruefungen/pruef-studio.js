@@ -5,7 +5,8 @@ const path = require("path");
    monatelang nicht mehr gelesen — eine Prüfung, die nicht läuft, ist
    keine. Deshalb sucht sie ihre Datei jetzt neben sich. */
 const KANDIDATEN = ["marken-studio.html", "omoteno-marken-studio.html", "markenstudio.html"];
-const datei = KANDIDATEN.map(n => path.join(__dirname, n)).find(fs.existsSync);
+const datei = KANDIDATEN.map(n => path.join(__dirname, "..", "seiten", n))
+                        .find(fs.existsSync);
 if(!datei){
   console.error("Kein Marken-Studio gefunden. Gesucht: " + KANDIDATEN.join(", "));
   process.exit(1);

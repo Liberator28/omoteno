@@ -14,6 +14,25 @@ python3 pruefungen/pruef-datei.py dist/<slug>/index.html
 node pruefungen/pruef-ueberlauf.js dist/<slug>/index.html
 ```
 
+**Wo was liegt.** Verschoben werden Quellen, nie die Ausgabe:
+
+```
+seiten/          was ausgeliefert wird (admin, konto, kueche, web, …)
+vorlagen/        hub.vorlage.html
+markenblaetter/  <slug>.json
+erzeuger/        erzeuge-hub.js, bauen.js
+pruefungen/      alle pruef-*
+auslieferung/    _headers, _redirects
+datenbank/       migration-*.sql
+dokumente/       alles Übrige an .md
+```
+
+In der Wurzel bleiben nur `README.md`, `CLAUDE.md`, `.gitignore` und
+`netlify.toml` — letztere, weil Netlify sie NUR dort liest. Der
+veröffentlichte Ordner bleibt flach (`index.html`, `admin.html`,
+`h/<slug>/`); die Seiten verlinken sich absolut, `_redirects` hängt
+daran.
+
 **Hub-Dateien in `dist/` werden NIE bearbeitet.** Wer dort etwas
 ändert, verliert es beim nächsten Erzeugen. Änderungen gehen entweder
 in `vorlagen/hub.vorlage.html` (gilt für alle Kunden) oder in
@@ -406,7 +425,7 @@ macht daraus eine Frist, kein Schloss. Das gehört so gesagt.
 Keine Datei geht raus, ohne dass das hier gelaufen ist:
 
 ```bash
-python3 pruefungen/pruef-datei.py chocolamour-hub-v7.html
+python3 pruefungen/pruef-datei.py dist/chocolamour/index.html
 ```
 
 Das Werkzeug prüft genau die Fehler, die in diesem Projekt schon
@@ -487,20 +506,20 @@ Dazu je nach Änderung:
 | Farben, Paletten, Vorlagen | `pruefungen/pruef-kontrast.js` |
 | Karten-Zerleger | `pruefungen/pruef-import.js` |
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
-| Gastkonto, „Mein Tisch" im Hub | `pruef-gastkonto.js` (braucht `dist/`) |
-| Figur des Hauses, Bestellpass | `pruef-figur.js` (braucht `dist/`) |
-| Texte im Hub, Sprachen | `pruef-sprache.js` |
-| Freie Texte des Betriebs | `pruef-texte.js` (braucht `dist/`) |
-| Farben, hell oder dunkel | `pruef-lesbarkeit.js` (braucht `dist/`) |
-| Landingpage | `pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
-| Impressum, Datenschutz | `pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
-| Marken-Studio (Bedienung) | `pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
-| Auslieferung, Umleitungen | `bauen.js` und dann `pruef-lieferung.js` |
-| **Irgendetwas am Hub** | `pruef-durchgang.js` — geht den ganzen Weg des Gastes |
-| **Irgendetwas am Hub** | `pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
-| **Irgendetwas am Board** | `pruef-board.js` — bedient das Board von Hand |
-| Meldungen, Service Worker | `pruef-push.js` — sw.js wird ausgeliefert und meldet |
-| Konto, Anfrageformular | `pruef-konto-start.js` — ohne Netz, 16px, tote Links |
+| Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
+| Figur des Hauses, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
+| Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
+| Freie Texte des Betriebs | `pruefungen/pruef-texte.js` (braucht `dist/`) |
+| Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |
+| Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
+| Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
+| Marken-Studio (Bedienung) | `pruefungen/pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
+| Auslieferung, Umleitungen | `erzeuger/bauen.js` und dann `pruefungen/pruef-lieferung.js` |
+| **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
+| **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
+| **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand |
+| Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
+| Konto, Anfrageformular | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links |
 
 Und danach, immer:
 

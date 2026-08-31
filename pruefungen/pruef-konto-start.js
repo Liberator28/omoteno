@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Konto und Anfrageformular von Hand bedient
 
-     NODE_PATH=/opt/node22/lib/node_modules node pruef-konto-start.js
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-konto-start.js
 
    Beide Seiten waren bis zum 30.08. von KEINER Prüfung angefasst.
    Gefunden hat diese hier beim ersten Lauf: Das <select> für die
@@ -28,6 +28,8 @@
 const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
+/* Die beiden Seiten liegen in seiten/, eine Ebene hoeher. */
+const SEITEN = path.join(__dirname, "..", "seiten");
 let fehler = 0, hinweise = 0;
 const ok   = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:"")); if(!g) fehler++; };
 const hinw = (g,t,z) => { console.log((g?"  ok   ":"  hinw ")+t+(z?"  → "+z:"")); if(!g) hinweise++; };
@@ -47,7 +49,7 @@ async function seite(b, datei, w, h){
   p.on("pageerror", e => kons.push("JS: " + String(e).slice(0,150)));
   p.on("console", m => { if(m.type()==="error") kons.push(m.text().slice(0,150)); });
   await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
-  await p.goto("file://" + path.join(__dirname, datei));
+  await p.goto("file://" + path.join(SEITEN, datei));
   await p.waitForTimeout(1100);
   return { ctx, p, kons };
 }
@@ -57,7 +59,7 @@ async function seite(b, datei, w, h){
      einer Umbenennung fällt eine Prüfung sonst mit ENOENT um und wird
      nicht mehr gelesen (CLAUDE.md §8.2). */
   for(const d of ["konto.html","start.html"]){
-    if(!fs.existsSync(path.join(__dirname, d))){
+    if(!fs.existsSync(path.join(SEITEN, d))){
       console.error(d + " fehlt neben dem Skript."); process.exit(1);
     }
   }

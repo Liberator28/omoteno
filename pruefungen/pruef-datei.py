@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Grundprüfung für jede Omoteno-HTML-Datei.
 
-    python3 pruef-datei.py chocolamour-hub-v7.html
+    python3 pruefungen/pruef-datei.py dist/chocolamour/index.html
 
 Prüft, was in diesem Projekt schon einmal schiefgegangen ist:
 offene CSS-Klammern, Variablen ohne Wert, doppelte id-Attribute,
