@@ -109,8 +109,14 @@ server.listen(8899, async () => {
     pruef(gut, weg.padEnd(20) + " liefert aus",
       a.status() + " · " + (titel || "(ohne Titel)").slice(0,44));
   }
-  /* Ein Weg, den es NICHT geben darf */
-  for(const weg of ["/CLAUDE.md","/chocolamour.json","/erzeuge-hub.js","/pruef-web.js","/hub.vorlage.html"]){
+  /* Ein Weg, den es NICHT geben darf.
+     .mcp.json steht hier, obwohl bauen.js eine feste Positivliste
+     kopiert und sie deshalb ohnehin nie mitnimmt. Genau das macht die
+     Zeile billig — sie kostet nichts und fängt den Tag ab, an dem
+     jemand aus der Positivliste ein „alles kopieren" macht. Die Datei
+     trägt zwar nur den Platzhalter ${SUPABASE_ACCESS_TOKEN} und kein
+     Geheimnis, verrät draußen aber Projektkennung und Bauart. */
+  for(const weg of ["/CLAUDE.md","/chocolamour.json","/erzeuge-hub.js","/pruef-web.js","/hub.vorlage.html","/.mcp.json"]){
     const a = await p.goto("http://localhost:8899" + weg);
     pruef(a.status() === 404, weg.padEnd(20) + " liegt NICHT draußen", a.status());
   }
