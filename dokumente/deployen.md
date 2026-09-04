@@ -319,6 +319,45 @@ Prüfung sieht genau in den Titel jedes Hubs.
 
 ---
 
+## 5a · Eine neue Kundenadresse einpflegen
+
+Drei Dinge, **alle drei** nötig. Fehlt eines, passiert nichts:
+
+| # | Wo | Was |
+|---|---|---|
+| 1 | Domain-Anbieter | `CNAME` für die Adresse → `<projekt>.netlify.app` |
+| 2 | Netlify | *Domain management → Add domain alias* |
+| 3 | Repo | eine Zeile in `auslieferung/_redirects` |
+
+1 und 2 bringen die Anfrage überhaupt erst zu Netlify. Mit 1 und 2,
+aber ohne 3, kommt genau das heraus, was am 04.09. passiert ist: Der
+Gast landet auf der **Landingpage** statt im Hub, weil Netlify bei
+keiner passenden Regel die Startseite des Ordners ausliefert.
+
+**Die Adresse muss NICHT wie der Slug heißen.** Links steht, was der
+Gast tippt; rechts, wie der Ordner heißt:
+
+```
+https://choco-lamour.omoteno.de/*  /h/chocolamour/:splat   200
+```
+
+Der Slug hängt an `betriebe.slug` in der Datenbank — der Hub lädt
+Karte und Texte darüber. Ihn umzubenennen, nur damit er wie die
+Adresse aussieht, wäre eine Datenbankänderung und neue Untersetzer.
+
+Gibt es die Adresse schon in einer zweiten Schreibweise, bekommt die
+alte eine **301** auf die echte, statt zweimal denselben Hub
+auszuliefern:
+
+```
+https://chocolamour.omoteno.de/*   https://choco-lamour.omoteno.de/:splat   301
+```
+
+Danach `node erzeuger/bauen.js && node pruefungen/pruef-lieferung.js`.
+Die Prüfung sagt für jeden Hub, ob eine Adresse auf ihn zeigt.
+
+---
+
 ## 6 · Die Rechtstexte
 
 `impressum.html` und `datenschutz.html` liegen in `seiten/` und

@@ -535,6 +535,38 @@ Und beim Ersetzen einer solchen Stelle: Der alte Stand muss
 dafür als ausdrückliche Ausnahme ins Markenblatt (§5.3), und der
 Vergleich vorher/nachher war Teil der Arbeit, nicht der Nachbereitung.
 
+### 8.1b Eine Prüfung über das Vorhandene ist blind für das Fehlende
+
+> **Vorfall.** `choco-lamour.omoteno.de` lieferte die Landingpage
+> statt Chocos Hub: `_redirects` kannte nur die Schreibweise ohne
+> Bindestrich, keine Regel passte, und Netlify liefert dann die
+> Startseite des Ordners aus. `pruef-lieferung.js` hatte das nie
+> sehen können — sie übersprang Regeln mit absoluter URL
+> ausdrücklich (`if(von.startsWith("http")) continue`).
+>
+> **Der eigentliche Fehler kam danach.** Meine erste Nachbesserung
+> lief über die Regeln, die in `_redirects` *dastehen*. Beim
+> Gegenbeweis — Zeile testweise wieder entfernt — meldete sie
+> „alles sauber". Der Anlassfall war eine **fehlende** Zeile, und
+> über etwas, das nicht dasteht, iteriert keine Schleife.
+
+Wer eine Liste durchgeht, prüft nur, ob das Vorhandene stimmt. Für
+„etwas fehlt" braucht es eine **zweite Quelle**, gegen die man hält.
+Hier: nicht die Regeln zählen, sondern die erzeugten Hubs — jeder
+Ordner unter `/h/` ist ein Kunde, und jeder Kunde braucht eine
+Adresse, die auf ihn zeigt.
+
+**Und jede Prüfung muss ihren eigenen Anlassfall reproduzieren
+können.** Korrektur testweise zurücknehmen, Prüfung laufen lassen:
+Wird sie nicht rot, prüft sie nicht das, wofür man sie geschrieben
+hat. Das kostet zwei Minuten und ist der einzige Beleg, der zählt.
+
+Dazu die ehrliche Grenze, die dazugehört: Diese Prüfung fängt
+„Zeile vergessen" und „Zeile zeigt ins Leere". Sie kann **nicht**
+wissen, ob die Adresse auch im DNS und bei Netlify eingetragen ist —
+das steht nirgends im Verzeichnis. Eine Grenze, die man nennt, ist
+keine Lücke; eine, die man verschweigt, schon.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
