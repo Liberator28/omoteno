@@ -37,18 +37,37 @@ tausende Zeilen, die niemand gelesen hat.
 Sechs Flächen, ein System. Wer wissen will, was er gerade bearbeitet,
 liest diese Tabelle zuerst.
 
-| Datei | Adresse | Wer benutzt sie |
+| Quelle | Adresse | Wer benutzt sie |
 |---|---|---|
-| `omoteno-web.html` | `omoteno.de` | Der Wirt, bevor er Kunde ist |
-| `konto.html` | `omoteno.de/konto.html` | Der Kunde: Vertrag, Rechnungen, Zugänge |
-| `start.html` | `omoteno.de/start.html` | Wer lieber redet als klickt — Formular für die Einrichtung |
-| `marken-studio.html` | `omoteno.de/marken-studio.html` | Der Kunde, wenn er seinen Hub gestaltet |
-| `admin.html` | `admin.omoteno.de` | Der Betrieb: Bestellungen, Karte, Auswertung |
-| `kueche.html` | `admin.omoteno.de/kueche.html` | Die Küche und die Theke am Pass |
-| `hub.vorlage.html` → `dist/<slug>/index.html` | `<slug>.omoteno.de` | Der Gast am Tisch |
+| `seiten/omoteno-web.html` | `omoteno.de` | Der Wirt, bevor er Kunde ist |
+| `seiten/konto.html` | `omoteno.de/konto.html` | Der Kunde: Vertrag, Rechnungen, Zugänge |
+| `seiten/start.html` | `omoteno.de/start.html` | Wer lieber redet als klickt — Formular für die Einrichtung |
+| `seiten/marken-studio.html` | `omoteno.de/marken-studio.html` | Der Kunde, wenn er seinen Hub gestaltet |
+| `seiten/admin.html` | `admin.omoteno.de` | Der Betrieb: Bestellungen, Karte, Auswertung |
+| `seiten/kueche.html` | `admin.omoteno.de/kueche.html` | Die Küche und die Theke am Pass |
+| `vorlagen/hub.vorlage.html` → `dist/<slug>/index.html` | `<slug>.omoteno.de` | Der Gast am Tisch |
+
+Links steht, wo die Datei **liegt**, rechts, unter welcher Adresse sie
+ankommt. Beides hat nichts miteinander zu tun: Die Quellen liegen in
+Ordnern, der veröffentlichte Ordner ist flach. `erzeuger/bauen.js`
+legt das eine auf das andere.
+
+```
+seiten/          was ausgeliefert wird
+vorlagen/        hub.vorlage.html
+markenblaetter/  chocolamour.json, blend.json
+erzeuger/        erzeuge-hub.js, bauen.js
+pruefungen/      alle pruef-*
+auslieferung/    _headers, _redirects
+datenbank/       migration-*.sql
+dokumente/       ANLEITUNG, deployen, markenblatt, …
+```
+
+In der Wurzel bleiben `README.md`, `CLAUDE.md`, `.gitignore` und
+`netlify.toml` — letztere, weil Netlify sie **nur** dort liest.
 
 **Die Farbrollen und Schriften stehen im `:root` von
-`omoteno-web.html`.** Das ist die Quelle; alle anderen Dateien tragen
+`seiten/omoteno-web.html`.** Das ist die Quelle; alle anderen Dateien tragen
 denselben Block mit demselben Kommentar. Kopiert, nicht geladen — es
 gibt bewusst kein Bauwerkzeug.
 
@@ -77,14 +96,10 @@ Keine Abhängigkeiten. Kein `npm install`, kein Bauwerkzeug. Node und
 Python3, mehr braucht es nicht — das ist Absicht und soll so bleiben.
 
 Der Erzeuger findet seine Dateien in **beiden** Formen: in der
-Ordnerform oben (`vorlagen/`, `markenblaetter/`) und flach neben sich,
-wenn alles in einem Verzeichnis liegt. Wer vom iPhone aus arbeitet, lädt
-flach hoch — dann läuft derselbe Befehl ohne Umbau:
-
-```bash
-node erzeuge-hub.js chocolamour        # flach, alles in einem Ordner
-node erzeuger/erzeuge-hub.js chocolamour   # in der Ordnerform
-```
+Ordnerform (`vorlagen/`, `markenblaetter/`) und flach neben sich, wenn
+alles in einem Verzeichnis liegt. Wer vom iPhone aus arbeitet, lädt
+flach hoch — derselbe Befehl läuft dann ohne Umbau. Er sucht die
+Ordnerform zuerst und nimmt sonst, was neben ihm liegt.
 
 ---
 
@@ -121,7 +136,7 @@ Hausfarbe trotzdem will.
 |---|---|
 | `vorlagen/` | Hub-Gerüst mit `/*{{MARKENBLATT}}*/` als Platzhalter |
 | `markenblaetter/` | ein JSON je Kunde |
-| `erzeuger/` | `erzeuge-hub.js` |
+| `erzeuger/` | `erzeuger/erzeuge-hub.js` |
 | `pruefungen/` | die Prüfskripte, siehe `CLAUDE.md` |
 | `dokumente/` | Markenblatt-Schema, Wettbewerbsanalyse |
 | `CLAUDE.md` | **Arbeitsregeln — wird von jeder Claude-Sitzung gelesen** |

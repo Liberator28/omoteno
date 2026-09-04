@@ -14,6 +14,25 @@ python3 pruefungen/pruef-datei.py dist/<slug>/index.html
 node pruefungen/pruef-ueberlauf.js dist/<slug>/index.html
 ```
 
+**Wo was liegt.** Verschoben werden Quellen, nie die Ausgabe:
+
+```
+seiten/          was ausgeliefert wird (admin, konto, kueche, web, …)
+vorlagen/        hub.vorlage.html
+markenblaetter/  <slug>.json
+erzeuger/        erzeuge-hub.js, bauen.js
+pruefungen/      alle pruef-*
+auslieferung/    _headers, _redirects
+datenbank/       migration-*.sql
+dokumente/       alles Übrige an .md
+```
+
+In der Wurzel bleiben nur `README.md`, `CLAUDE.md`, `.gitignore` und
+`netlify.toml` — letztere, weil Netlify sie NUR dort liest. Der
+veröffentlichte Ordner bleibt flach (`index.html`, `admin.html`,
+`h/<slug>/`); die Seiten verlinken sich absolut, `_redirects` hängt
+daran.
+
 **Hub-Dateien in `dist/` werden NIE bearbeitet.** Wer dort etwas
 ändert, verliert es beim nächsten Erzeugen. Änderungen gehen entweder
 in `vorlagen/hub.vorlage.html` (gilt für alle Kunden) oder in
@@ -180,6 +199,62 @@ erreichbar zu machen — das ist genau die Tür, gegen die er da ist.
 
 Nie nur die Richtigkeit einer Regel prüfen, immer auch die
 **Anhäufung**. Regelbestand auflisten, nicht nur die neue ansehen.
+
+### 2.3a Eine RLS-Regel ist die zweite Linie, nicht die erste
+
+> **Vorfall.** Der `anon`-Schlüssel steht in jedem Hub — richtig so.
+> Er trug aber `INSERT` auf `bestellungen`. Der Hub bestellt längst
+> über `bestellung_aufgeben`, und die Funktion rechnet den Preis aus
+> der Karte **nach**, prüft Vertragszustand, Bestellpause,
+> Tischpflicht und Tischschlüssel. Der direkte Weg in die Tabelle
+> prüfte per RLS nur vier Dinge — und den Preis nicht. Gemessen:
+> **99 Stück für 1 Cent gingen durch**, samt gefälschtem
+> `tisch_bestaetigt=true`. Daneben stand die Sicht
+> `betriebe_oeffentlich` mit `security_invoker=false`; ein anonymes
+> `update` darauf änderte **alle** Betriebe auf einmal.
+
+Ein Wächter neben einer offenen Tür ist kein Wächter. Vor jeder
+Behauptung „das ist abgesichert": **beide** Ebenen ansehen.
+
+```sql
+-- Was darf die Rolle ueberhaupt anfassen?
+select c.relname,
+       has_table_privilege('anon',c.oid,'SELECT') as lesen,
+       has_table_privilege('anon',c.oid,'INSERT') as schreiben,
+       has_table_privilege('anon',c.oid,'UPDATE') as aendern
+from pg_class c join pg_namespace n on n.oid=c.relnamespace
+where n.nspname='public' and c.relkind in ('r','v');
+```
+
+Die Regel entscheidet, **welche Zeilen**. Das Recht entscheidet, **ob
+überhaupt**. Wer nur die Regel liest, sieht die halbe Wahrheit. Und
+eine Sicht mit `security_invoker=false` umgeht die Regel vollständig —
+sie läuft mit den Rechten ihres Eigentümers.
+
+Dazu: PostgREST stellt **jede** Funktion in `public` als
+`/rest/v1/rpc/<name>` bereit, sobald die Rolle `EXECUTE` hat —
+Trigger-Funktionen eingeschlossen. Ein Trigger braucht dieses Recht
+nicht; er läuft als Teil der Anweisung.
+
+### 2.3b Zwei Messfehler, die Löcher verstecken und erfinden
+
+> **Vorfall, beide in derselben Sitzung.** Der erste Angriffstest
+> schrieb `insert … returning id` und bekam „permission denied" —
+> ich hätte um ein Haar „ist zu" gemeldet. Es fehlte das
+> **SELECT**-Recht für `returning`, nicht das INSERT. Ohne
+> `returning` ging die Zeile durch. Kurz darauf das Gegenteil: ein
+> `update betriebe set name=…` als Fremder lief **ohne Ausnahme**
+> durch, und ich hätte fast ein Leck gemeldet — RLS hatte auf null
+> Zeilen gefiltert, und das meldet Postgres als Erfolg.
+
+- Beim Schreibtest **kein `returning`** benutzen, sonst misst man das
+  Leserecht.
+- Beim Schreibtest die **Zeilenzahl** messen (`get diagnostics n =
+  row_count`), nicht die Ausnahme. `0 Zeilen` heißt „RLS hält",
+  Erfolg heißt gar nichts.
+
+`datenbank/pruef-rechte.sql` macht beides richtig und fährt 36
+Angriffe und ehrliche Wege in einer zurückgedrehten Transaktion.
 
 ### 2.4 Rollenwechsel allein simuliert PostgREST nicht
 
@@ -406,7 +481,7 @@ macht daraus eine Frist, kein Schloss. Das gehört so gesagt.
 Keine Datei geht raus, ohne dass das hier gelaufen ist:
 
 ```bash
-python3 pruefungen/pruef-datei.py chocolamour-hub-v7.html
+python3 pruefungen/pruef-datei.py dist/chocolamour/index.html
 ```
 
 Das Werkzeug prüft genau die Fehler, die in diesem Projekt schon
@@ -460,6 +535,38 @@ Und beim Ersetzen einer solchen Stelle: Der alte Stand muss
 dafür als ausdrückliche Ausnahme ins Markenblatt (§5.3), und der
 Vergleich vorher/nachher war Teil der Arbeit, nicht der Nachbereitung.
 
+### 8.1b Eine Prüfung über das Vorhandene ist blind für das Fehlende
+
+> **Vorfall.** `choco-lamour.omoteno.de` lieferte die Landingpage
+> statt Chocos Hub: `_redirects` kannte nur die Schreibweise ohne
+> Bindestrich, keine Regel passte, und Netlify liefert dann die
+> Startseite des Ordners aus. `pruef-lieferung.js` hatte das nie
+> sehen können — sie übersprang Regeln mit absoluter URL
+> ausdrücklich (`if(von.startsWith("http")) continue`).
+>
+> **Der eigentliche Fehler kam danach.** Meine erste Nachbesserung
+> lief über die Regeln, die in `_redirects` *dastehen*. Beim
+> Gegenbeweis — Zeile testweise wieder entfernt — meldete sie
+> „alles sauber". Der Anlassfall war eine **fehlende** Zeile, und
+> über etwas, das nicht dasteht, iteriert keine Schleife.
+
+Wer eine Liste durchgeht, prüft nur, ob das Vorhandene stimmt. Für
+„etwas fehlt" braucht es eine **zweite Quelle**, gegen die man hält.
+Hier: nicht die Regeln zählen, sondern die erzeugten Hubs — jeder
+Ordner unter `/h/` ist ein Kunde, und jeder Kunde braucht eine
+Adresse, die auf ihn zeigt.
+
+**Und jede Prüfung muss ihren eigenen Anlassfall reproduzieren
+können.** Korrektur testweise zurücknehmen, Prüfung laufen lassen:
+Wird sie nicht rot, prüft sie nicht das, wofür man sie geschrieben
+hat. Das kostet zwei Minuten und ist der einzige Beleg, der zählt.
+
+Dazu die ehrliche Grenze, die dazugehört: Diese Prüfung fängt
+„Zeile vergessen" und „Zeile zeigt ins Leere". Sie kann **nicht**
+wissen, ob die Adresse auch im DNS und bei Netlify eingetragen ist —
+das steht nirgends im Verzeichnis. Eine Grenze, die man nennt, ist
+keine Lücke; eine, die man verschweigt, schon.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -487,18 +594,21 @@ Dazu je nach Änderung:
 | Farben, Paletten, Vorlagen | `pruefungen/pruef-kontrast.js` |
 | Karten-Zerleger | `pruefungen/pruef-import.js` |
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
-| Gastkonto, „Mein Tisch" im Hub | `pruef-gastkonto.js` (braucht `dist/`) |
-| Figur des Hauses, Bestellpass | `pruef-figur.js` (braucht `dist/`) |
-| Texte im Hub, Sprachen | `pruef-sprache.js` |
-| Freie Texte des Betriebs | `pruef-texte.js` (braucht `dist/`) |
-| Farben, hell oder dunkel | `pruef-lesbarkeit.js` (braucht `dist/`) |
-| Landingpage | `pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
-| Impressum, Datenschutz | `pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
-| Marken-Studio (Bedienung) | `pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
-| Auslieferung, Umleitungen | `bauen.js` und dann `pruef-lieferung.js` |
-| **Irgendetwas am Hub** | `pruef-durchgang.js` — geht den ganzen Weg des Gastes |
-| **Irgendetwas am Hub** | `pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
-| **Irgendetwas am Board** | `pruef-board.js` — bedient das Board von Hand |
+| Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
+| Figur des Hauses, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
+| Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
+| Freie Texte des Betriebs | `pruefungen/pruef-texte.js` (braucht `dist/`) |
+| Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |
+| Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
+| Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
+| Marken-Studio (Bedienung) | `pruefungen/pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
+| Auslieferung, Umleitungen | `erzeuger/bauen.js` und dann `pruefungen/pruef-lieferung.js` |
+| **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
+| **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
+| **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand |
+| Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
+| **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
+| Konto, Anfrageformular | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links |
 
 Und danach, immer:
 

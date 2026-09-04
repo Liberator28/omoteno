@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<!--
+  ═══════════════════════════════════════════════════════════════════
+   OMOTENO · Einrichtung starten
+   © 2026 Elias Faber · Ringstraße 12 · 35260 Stadtallendorf
+   hallo@omoteno.de · omoteno.de
+
+   Diese Datei gehört NEBEN die index.html im selben Netlify-Ordner.
+   Sie heißt start.html und wird nicht umbenannt.
+  ═══════════════════════════════════════════════════════════════════
+-->
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Einrichtung starten — Omoteno</title>
+<meta name="description" content="Erzähl mir von deinem Laden: Kasse, Karte, Motiv. In sechs Minuten habe ich alles, was ich zur Einrichtung brauche.">
+<meta name="theme-color" content="#12332B">
+
+<!-- Schrift lädt nebenher, nicht davor — siehe omoteno-web.html.
+     Ein blockierender Stilbogen hält das ERSTE Bild auf; hier holt
+     ihn preload und macht ihn erst im onload gültig. Bis dahin steht
+     die Seite im Rückfallstapel von --serif/--sans/--mono. -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="style"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"
+      onload="this.onload=null;this.rel='stylesheet'">
+<noscript><link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500;700&display=swap"></noscript>
+<meta name="robots" content="noindex">
+<style>
+/* =====================================================================
+   Dieselben Tokens wie auf der Landingpage. Wer dort etwas ändert,
+   muss es hier mitändern — die Seiten stehen nebeneinander im Ordner
+   und sollen sich wie eine anfühlen.
+   ===================================================================== */
+:root{
+  /* ── Die Ecke ─────────────────────────────────────────────────
+     Omotenos eigene Knoepfe, Chips und Marken sind ECKIG. Der Wert
+     steht hier und nur hier; 67 Fundstellen ueber sechs Dateien
+     zeigen auf ihn, keine traegt eine eigene Zahl. Wer es doch
+     weicher will, setzt hier 2px.
+
+     Der Name war beim ersten Versuch --kante. Den gibt es in
+     kueche.html und im Marken-Studio schon: dort ist er eine FARBE
+     (rgba(237,231,217,.09) bzw. #31363E) fuer Rahmen. Aus
+     Die Rundung zeigte damit auf eine Farbe statt auf eine Zahl
+     — ungueltig, still verworfen, und zufaellig trotzdem eckig.
+     pruef-datei.py konnte das nicht finden: Die Variable IST
+     definiert, nur eben als etwas anderes (CLAUDE.md §1.1).
+
+     Was NICHT eckig wird und warum:
+       · der Untersetzer (.seite) — er IST das Produkt
+       · Punkte, Leuchten, Anzeigen, der Ladekreisel
+       · Telefonrahmen und Siegel: sie stellen runde Dinge dar
+       · der Gaeste-Hub: seine Rundung kommt aus dem Markenblatt
+         des Kunden (form.rundung) */
+  --ecke:0px;
+
+
+  /* Übernommen aus dem :root von omoteno-web.html — dieselben Namen,
+     dieselben Werte. Wer Webseite, Konto und dieses Formular
+     nacheinander öffnet, soll keinen Sprung sehen. Werte mit
+     geprüftem Kontrast tragen ihn im Kommentar. */
+  --sockel:#0A1714;        /* der dunkle Tisch */
+  --tafel:#123029;         /* Flaschengrün — die Marke */
+  --tafel-hoch:#174036;
+  --pappe:#E9E3D4;         /* der Zettel auf dem Tisch */
+  --papier:#F4F0E4;        /* eingelassene Flächen auf dem Zettel */
+  --blatt:#FBF9F1;         /* Eingabefelder — die hellste Fläche */
+  --tinte:#16150F;         /* Druckfarbe, kein Schwarz */
+  --tinte-leise:#5C5849;
+  --tinte-still:#696553;   /* geprüft: 4,57:1 auf Pappe */
+  --kreide:#EDE7D9;
+  --kreide-leise:#9DB0A5;
+  --kreide-still:#6E837A;
+  --kuli:#2B44C7;          /* der eine Moment Farbe */
+  --linie:#CFC6AE;
+  --linie-stark:#BDB49B;
+  --linie-dunkel:rgba(237,231,217,.15);
+  --glut:#A8410F;
+  --glut-hell:#D4642C;
+
+  /* Bedeutungsfarben, gerechnet auf Blatt: warn 7,98:1 · gut 6,65:1 */
+  --warn:#8C2C21;
+  --gut:#3A6329;
+
+  --serif:"Instrument Serif",Iowan Old Style,"Palatino Linotype",Palatino,Georgia,serif;
+  --sans:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,monospace;
+  /* Die Anzeigeschrift für halbfette Kleinteile bleibt die Sans:
+     Instrument Serif gibt es nur in einem Schnitt, ein „fett" daraus
+     würde der Browser rechnen — und gerechnete Fettschrift sieht
+     genau so aus, wie sie heißt. */
+  --anzeige:var(--sans);
+  --schrift-jp:"Hiragino Sans","Hiragino Kaku Gothic ProN","Yu Gothic",YuGothic,"Noto Sans JP","Noto Sans CJK JP",Meiryo,system-ui,sans-serif;
+
+  --breite:1120px; --r:14px;
+  --weich:cubic-bezier(.16,1,.3,1);
+  --elegant:cubic-bezier(.33,1,.68,1);
+}
+
+*{margin:0;padding:0;box-sizing:border-box}
+@media(prefers-reduced-motion:no-preference){html{scroll-behavior:smooth}}
+body{
+  background:var(--tafel); color:var(--kreide);
+  font-family:var(--sans); font-size:17px; line-height:1.62;
+  -webkit-font-smoothing:antialiased;
+  /* Kein overflow-x:hidden — das bricht in manchen Browsern position:sticky,
+     und die Strichliste oben MUSS mitlaufen. */
+}
+/* Die Schlagzeilen laufen in derselben Serife wie auf der Webseite.
+   Die Wortmarke NICHT — sie ist dort eine Monospace-Zeile mit
+   lebendem Punkt, und genau so steht sie auch hier. */
+h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-.024em;line-height:1.04;text-wrap:balance}
+
+p{text-wrap:pretty}
+a{color:inherit}
+::selection{background:var(--kuli);color:#fff}
+:focus{outline:none}
+:focus-visible{outline:2.5px solid currentColor;outline-offset:3px;box-shadow:0 0 0 2px var(--pappe);border-radius:8px;position:relative;z-index:3}
+.tafel :focus-visible,.fuss :focus-visible{box-shadow:0 0 0 2px var(--sockel)}
+.nur-vorlese{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+/* Muss stehen bleiben: .knopf und .zwischenfrage setzen display, und eine
+   Klassenregel schlägt die eingebaute hidden-Regel des Browsers. Ohne diese
+   Zeile erscheinen die WhatsApp-Knöpfe auch dann, wenn keine Nummer
+   eingetragen ist. */
+[hidden]{display:none !important}
+.marker{font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase}
+.innen{max-width:var(--breite);margin:0 auto;padding-left:26px;padding-right:26px}
+
+/* ---- Knöpfe: identisch zur Landingpage ---- */
+.knopf{
+  display:inline-flex;align-items:center;justify-content:center;gap:10px;
+  font-family:var(--sans);font-size:15.5px;font-weight:600;letter-spacing:0;
+  padding:14px 26px;border-radius:var(--ecke);text-decoration:none;
+  border:1px solid transparent;cursor:pointer;
+  transition:transform .16s var(--weich),box-shadow .18s var(--weich),background .22s var(--weich),color .18s,opacity .18s;
+}
+.knopf .pfeil{transition:transform .22s var(--weich)}
+/* Dieselben drei Rollen wie auf der Webseite: Tinte auf hellem Grund,
+   Pappe auf dunklem, und die leise Fassung mit Linie statt Fläche. */
+.knopf.voll{background:var(--tinte);color:var(--papier)}
+.knopf.voll:hover{background:#000}
+.knopf.leer{border-color:var(--linie-stark);color:var(--tinte);background:transparent}
+.knopf.leer:hover{background:rgba(22,21,15,.05)}
+.knopf.hell{background:var(--pappe);color:var(--sockel);box-shadow:0 10px 24px rgba(0,0,0,.35)}
+.knopf.hell:hover{background:#fff}
+.knopf:active{transform:scale(.985)}
+.magnet{will-change:transform}
+@media (hover:none){ .magnet{transform:none !important} }
+.knopf[disabled]{opacity:.45;cursor:not-allowed;box-shadow:none}
+.knopf.wa{background:#1E7A4A;color:#fff;box-shadow:0 8px 20px rgba(30,122,74,.3)}
+.knopf.wa svg{flex:none}
+
+/* ---- Kopfzeile ---- */
+.kopf{max-width:var(--breite);margin:0 auto;padding:22px 26px 0;display:flex;align-items:center;justify-content:space-between;gap:16px}
+/* Wort-Bild-Zeichen: „omoten" plus das gezeichnete „o" mit den
+   Wellen. Klein geschrieben, in der Monospace des Systems. */
+.marke{
+  display:flex;align-items:center;gap:3px;text-decoration:none;
+  font-family:var(--mono);font-size:20px;font-weight:700;letter-spacing:-.02em;
+  color:var(--kreide);
+}
+.marke svg{display:block}
+.kopf-link{
+  font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--kreide);text-decoration:none;border-bottom:2px solid rgba(237,231,217,.35);padding-bottom:3px;transition:border-color .2s;
+}
+
+/* ---- Auftakt auf dem Tisch ---- */
+.auftakt{max-width:var(--breite);margin:0 auto;padding:46px 26px 40px;text-align:center}
+.auftakt .marker{color:var(--kreide-leise);display:block;margin-bottom:18px}
+.auftakt h1{font-size:clamp(34px,5vw,56px);margin-bottom:18px;max-width:720px;margin-left:auto;margin-right:auto}
+.auftakt p{font-size:18px;color:var(--kreide-leise);max-width:560px;margin:0 auto}
+.auftakt p b{color:var(--kreide);font-weight:600}
+.auftakt-beleg{display:flex;flex-wrap:wrap;justify-content:center;gap:8px 24px;margin-top:26px}
+.auftakt-beleg span{display:flex;align-items:center;gap:8px;font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--kreide-leise)}
+
+/* =====================================================================
+   DER ZETTEL — Pappe auf dem Tisch. Hier wird geschrieben.
+   ===================================================================== */
+.zettel{
+  max-width:760px;margin:0 auto 90px;
+  background:var(--pappe);color:var(--tinte);
+  border-radius:8px;box-shadow:0 30px 70px rgba(0,0,0,.45);
+  position:relative;
+  /* overflow:clip statt hidden. „hidden" macht aus dem Zettel einen
+     Scrollbehälter, und darin funktioniert position:sticky nicht mehr —
+     weder der Balken oben noch die Weiter-Leiste unten würden mitlaufen.
+     „clip" schneidet genauso ab, ohne diesen Nebeneffekt. */
+  overflow:hidden;
+  overflow:clip;
+}
+.zettel::before{
+  content:"";position:absolute;inset:0;pointer-events:none;z-index:0;border-radius:inherit;
+  opacity:.5;mix-blend-mode:multiply;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='3'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='160' height='160' filter='url(%23n)' opacity='.16'/%3E%3C/svg%3E");
+}
+.zettel > *{position:relative;z-index:1}
+
+/* ---- Fortschrittsbalken ----
+   Sieben Abschnitte, einer je Schritt. Erledigte sind voll, der
+   aktuelle ist halb — damit sichtbar ist: hier stehst du gerade,
+   fertig ist er noch nicht. */
+.fortschritt{
+  position:sticky;top:0;z-index:12;
+  background:var(--pappe);
+  border-bottom:1px solid var(--linie);
+  padding:15px 30px 13px;
+}
+.balken-spur{display:flex;gap:3px;height:7px}
+.balken-teil{
+  flex:1;border-radius:var(--ecke);background:rgba(43,68,199,.13);
+  position:relative;overflow:hidden;
+}
+.balken-teil::after{
+  content:"";position:absolute;inset:0;border-radius:var(--ecke);
+  background:var(--kuli);transform:scaleX(0);transform-origin:left;
+  transition:transform .45s var(--weich);
+}
+.balken-teil.voll::after{transform:scaleX(1)}
+.balken-teil.halb::after{transform:scaleX(.5)}
+.balken-zeile{display:flex;align-items:baseline;gap:12px;margin-top:10px}
+.balken-zeile b{
+  font-family:var(--anzeige);font-size:14.5px;font-weight:700;letter-spacing:-.01em;
+  min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
+}
+.balken-zeile span{
+  margin-left:auto;flex:none;
+  font-family:var(--mono);font-size:11px;font-weight:700;
+  letter-spacing:.1em;text-transform:uppercase;color:var(--tinte-leise);white-space:nowrap;
+}
+
+/* ---- Entwurfsleiste ---- */
+.entwurf{
+  display:none;align-items:center;gap:12px;flex-wrap:wrap;
+  padding:12px 30px;background:rgba(43,68,199,.07);
+  border-bottom:1px solid var(--linie);
+  font-size:14px;color:var(--tinte-leise);
+}
+.entwurf.an{display:flex}
+.entwurf button{
+  font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  background:none;border:none;cursor:pointer;color:var(--kuli);
+  border-bottom:1.5px solid currentColor;padding:0 0 2px;
+}
+.entwurf button.leise{color:var(--tinte-leise)}
+
+/* ---- Eine Seite des Blocks ---- */
+.seite{display:none;padding:34px 30px 30px}
+.seite.an{display:block}
+.seite > h2{font-size:clamp(26px,3.4vw,34px);margin-bottom:8px}
+.seite > .unter{font-size:16px;color:var(--tinte-leise);margin-bottom:30px;max-width:520px}
+
+.feld{margin-bottom:28px}
+.feld > .frage{
+  display:block;font-family:var(--anzeige);
+  font-size:17px;font-weight:700;letter-spacing:-.01em;margin-bottom:4px;
+}
+/* Ruhiger als vorher: Das Blau schrie über die halbe Seite, obwohl nur
+   sieben von vierzig Feldern wirklich nötig sind. */
+.feld > .frage .noetig{
+  font-family:var(--mono);font-size:10px;font-weight:700;letter-spacing:.12em;
+  color:var(--tinte-leise);opacity:.75;margin-left:9px;vertical-align:2px;text-transform:none;
+}
+.feld > .dazu{font-size:14.5px;color:var(--tinte-leise);margin-bottom:12px;line-height:1.5}
+.feld > .frage + .eingabe,.feld > .frage + .chips,.feld > .frage + .ablage,.feld > .frage + .zeile{margin-top:12px}
+
+.eingabe{
+  width:100%;font-family:var(--sans);font-size:16.5px;
+  /* Schriftfarbe ausdrücklich: Ohne sie nimmt Safari seine
+     Systemfarbe — dunkel auf dunkel. */
+  color:var(--tinte);-webkit-text-fill-color:var(--tinte);
+  background:var(--blatt);
+  border:1.5px solid var(--linie);border-radius:10px;
+  padding:14px 16px;line-height:1.5;
+  transition:border-color .18s ease,box-shadow .18s ease,background .18s ease;
+  -webkit-appearance:none;appearance:none;
+}
+.eingabe::placeholder{color:var(--tinte-still)}
+.eingabe:focus{border-color:var(--kuli);box-shadow:0 0 0 3px rgba(43,68,199,.14);background:#fff;outline:none}
+textarea.eingabe{min-height:104px;resize:vertical}
+.feld.falsch .eingabe{border-color:var(--warn);box-shadow:0 0 0 3px rgba(163,43,30,.12)}
+
+/* ---- Auswahl: Kärtchen statt Klappliste. Auf dem Handy schneller. ---- */
+.chips{display:flex;flex-wrap:wrap;gap:9px}
+.chip{
+  font-family:var(--sans);font-size:15.5px;font-weight:500;color:var(--tinte);
+  background:var(--blatt);border:1.5px solid var(--linie);
+  border-radius:var(--ecke);padding:11px 17px;cursor:pointer;text-align:left;
+  transition:background .16s ease,border-color .16s ease,color .16s ease,transform .12s var(--weich);
+  display:inline-flex;align-items:center;gap:8px;
+}
+.chip .haken{width:0;overflow:hidden;transition:width .16s var(--weich);flex:none;display:inline-flex}
+.chip.an{background:var(--tafel);border-color:var(--tafel);color:var(--pappe);font-weight:600}
+.chip.an .haken{width:15px}
+.chip:active{transform:scale(.97)}
+.feld.falsch .chips{border-radius:12px;box-shadow:0 0 0 3px rgba(163,43,30,.12)}
+
+.zeile{display:flex;gap:12px;flex-wrap:wrap;align-items:center}
+.zeile .eingabe{flex:1;min-width:150px}
+.farbtupfer{
+  width:52px;height:52px;padding:0;border:1.5px solid var(--linie);border-radius:10px;
+  background:var(--blatt);cursor:pointer;flex:none;-webkit-appearance:none;appearance:none;
+}
+.farbtupfer::-webkit-color-swatch-wrapper{padding:5px}
+.farbtupfer::-webkit-color-swatch{border:none;border-radius:6px}
+
+.rechnung-notiz{
+  margin-top:10px;font-family:var(--mono);font-size:12.5px;
+  color:var(--kuli);letter-spacing:.02em;
+}
+
+/* ---- Dateien ---- */
+.ablage{
+  border:2px dashed var(--linie);border-radius:12px;
+  background:rgba(240,235,221,.5);
+  padding:26px 20px;text-align:center;cursor:pointer;display:block;
+  transition:border-color .18s ease,background .18s ease;
+}
+.ablage.drueber{border-color:var(--kuli);background:rgba(43,68,199,.06)}
+.ablage svg{display:block;margin:0 auto 10px;color:var(--kuli)}
+.ablage b{display:block;font-family:var(--anzeige);font-size:16.5px;font-weight:700;margin-bottom:4px}
+.ablage span{font-family:var(--mono);font-size:12px;color:var(--tinte-leise);letter-spacing:.02em;line-height:1.6;display:block}
+.ablage input[type=file]{position:absolute;width:1px;height:1px;opacity:0;pointer-events:none}
+
+.dateien{list-style:none;margin-top:12px}
+.dateien li{
+  display:flex;align-items:center;gap:12px;
+  padding:11px 13px;margin-bottom:8px;
+  background:var(--blatt);border:1px solid var(--linie);border-radius:10px;
+}
+.dateien .art{
+  flex:none;width:34px;height:34px;border-radius:8px;background:rgba(43,68,199,.1);
+  display:grid;place-items:center;font-family:var(--mono);font-size:9.5px;font-weight:700;color:var(--kuli);
+}
+.dateien .txt{min-width:0;flex:1}
+.dateien .txt b{display:block;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dateien .txt small{font-family:var(--mono);font-size:11.5px;color:var(--tinte-leise)}
+.dateien .weg{
+  flex:none;background:none;border:none;cursor:pointer;color:var(--tinte-leise);
+  font-size:22px;line-height:1;padding:4px 6px;border-radius:6px;
+}
+.dateien .weg:hover{color:var(--warn)}
+
+/* ---- Adressblock ----
+   Getrennte Felder statt einer Zeile. Eine Zeile führt zu Einträgen
+   wie „Maximilian Kolbe Weg 35260" — ohne Hausnummer, ohne Ort. */
+.adr{display:flex;flex-direction:column;gap:10px}
+.adr-zeile{display:flex;gap:10px}
+.adr-zeile .eingabe{flex:1;min-width:0}
+.adr-zeile .kurz{flex:0 0 96px}
+.adr-zeile .plz{flex:0 0 112px}
+.adr-lage{
+  font-family:var(--mono);font-size:12px;letter-spacing:.02em;
+  color:var(--tinte-leise);min-height:17px;
+}
+.adr-lage.gut{color:var(--gut)}
+.vorschlaege{
+  list-style:none;border:1.5px solid var(--linie);border-radius:10px;
+  background:var(--blatt);overflow:hidden;
+}
+.vorschlaege:empty{display:none}
+.vorschlaege li button{
+  width:100%;text-align:left;background:none;border:none;cursor:pointer;
+  font-family:var(--sans);font-size:15.5px;color:var(--tinte);
+  padding:12px 15px;border-bottom:1px solid var(--linie);
+}
+.vorschlaege li:last-child button{border-bottom:0}
+.vorschlaege li button b{font-weight:600}
+.vorschlaege li button small{
+  display:block;font-family:var(--mono);font-size:11.5px;color:var(--tinte-leise);margin-top:1px;
+}
+
+/* ---- Öffnungszeiten ---- */
+.zeiten{border:1.5px solid var(--linie);border-radius:12px;overflow:hidden;background:var(--blatt)}
+.ztag{
+  display:flex;align-items:center;gap:9px;flex-wrap:wrap;
+  padding:10px 12px;border-bottom:1px solid var(--linie);
+}
+.ztag:last-of-type{border-bottom:0}
+.ztag-name{
+  flex:0 0 34px;font-family:var(--mono);font-size:12.5px;font-weight:700;
+  letter-spacing:.06em;text-transform:uppercase;color:var(--tinte-leise);
+}
+.ztag.offen .ztag-name{color:var(--tinte)}
+.zwahl{display:flex;align-items:center;gap:7px;flex:1;min-width:0}
+.zwahl .bis{font-size:14px;color:var(--tinte-leise);flex:none}
+.zeit-select{
+  /* 16px ist keine Geschmacksfrage: Unter 16px zoomt iOS beim
+     Antippen in die Seite hinein, und der Gastronom muss danach
+     wieder herauszoomen, um den Rest des Formulars zu sehen. Die
+     Regel steht in CLAUDE.md §3.5; .eingabe hält sie mit 16,5px
+     längst ein, dieses <select> war die einzige Ausnahme. */
+  flex:1;min-width:0;font-family:var(--mono);font-size:16px;color:var(--tinte);
+  background:var(--pappe);border:1.5px solid var(--linie);border-radius:9px;
+  padding:9px 8px;text-align:center;
+  -webkit-appearance:none;appearance:none;
+}
+.zeit-select:focus{border-color:var(--kuli);outline:none}
+.ztag.zu .zwahl{display:none}
+.ztag-zu-text{flex:1;font-size:14.5px;color:var(--tinte-leise);font-style:italic;display:none}
+.ztag.zu .ztag-zu-text{display:block}
+.zknopf{
+  flex:none;background:none;border:1.5px solid var(--linie);border-radius:9px;
+  cursor:pointer;color:var(--tinte-leise);
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.06em;
+  padding:9px 11px;text-transform:uppercase;
+}
+.ztag.zu .zknopf.zutoggle{background:var(--tafel);border-color:var(--tafel);color:var(--pappe)}
+.zpause{
+  display:flex;align-items:center;gap:9px;padding:0 12px 10px 55px;
+  border-bottom:1px solid var(--linie);
+}
+.ztag.zu + .zpause{display:none}
+.ztag.zu [data-zpause]{visibility:hidden}
+.ztag.hat-pause [data-zpause]{visibility:hidden}
+.zhilfen{display:flex;flex-wrap:wrap;gap:8px;margin-top:11px}
+.zhilfen button{
+  background:none;border:1.5px solid var(--linie);border-radius:var(--ecke);cursor:pointer;
+  font-family:var(--sans);font-size:14px;color:var(--tinte);
+  padding:9px 15px;
+}
+.zvorschau{
+  margin-top:11px;padding:11px 14px;border-radius:10px;
+  background:rgba(43,68,199,.06);
+  font-size:14.5px;line-height:1.5;color:var(--tinte);
+}
+.zvorschau b{font-weight:600}
+.zvorschau .leer{color:var(--tinte-leise);font-style:italic}
+
+/* ---- Weiter bleibt erreichbar ----
+   Auf dem Handy steht der Knopf sonst hinter zehn Feldern. Klebend
+   am unteren Rand ist er immer einen Daumen entfernt. */
+@media(max-width:720px){
+  .navi{margin-left:-20px;margin-right:-20px;padding:32px 20px calc(14px + env(safe-area-inset-bottom))}
+  .adr-zeile{flex-wrap:wrap}
+  .adr-zeile .kurz{flex:0 0 82px}
+  .adr-zeile .plz{flex:0 0 96px}
+  .zpause{padding-left:12px}
+}
+.meckern{display:none;margin-top:9px;font-size:14px;color:var(--warn);font-weight:500}
+.feld.falsch .meckern{display:block}
+
+/* ---- Einwilligung ---- */
+.haken-feld{display:flex;gap:13px;align-items:flex-start;cursor:pointer}
+.haken-feld input{
+  flex:none;width:24px;height:24px;margin-top:2px;
+  accent-color:var(--kuli);cursor:pointer;
+}
+.haken-feld span{font-size:15px;line-height:1.55;color:var(--tinte-leise)}
+.haken-feld a{color:var(--kuli);text-decoration:underline;text-underline-offset:2px}
+
+/* ---- Navigation ---- */
+.navi{
+  display:flex;align-items:center;gap:14px;flex-wrap:wrap;
+  margin-top:14px;
+}
+/* Klebt am unteren Rand. Kein gestrichelter Strich darüber: Wenn die
+   Leiste mitten über dem Text schwebt, sieht ein Strich aus wie ein
+   Fehler. Stattdessen läuft die Pappe nach oben weich aus. */
+.navi{
+  position:sticky;bottom:0;z-index:8;
+  background:linear-gradient(180deg, rgba(231,225,210,0) 0%, var(--pappe) 58%, var(--pappe) 100%);
+  margin-left:-30px;margin-right:-30px;
+  padding:34px 30px calc(16px + env(safe-area-inset-bottom));
+}
+.navi .weiter{flex:1;min-width:180px}
+.zurueck{
+  background:none;border:none;cursor:pointer;
+  font-family:var(--mono);font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;
+  color:var(--tinte-leise);border-bottom:1.5px solid rgba(95,91,76,.4);padding:0 0 3px;
+}
+
+/* ---- Prüfen: der Bon ---- */
+.bon-block{margin-bottom:24px}
+.bon-block h3{
+  display:flex;align-items:baseline;gap:12px;
+  font-family:var(--mono);font-size:11.5px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;
+  color:var(--tinte-leise);padding-bottom:9px;margin-bottom:4px;border-bottom:1.5px dashed var(--linie);
+}
+.bon-block h3 button{
+  margin-left:auto;background:none;border:none;cursor:pointer;
+  font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
+  color:var(--kuli);border-bottom:1.5px solid currentColor;padding:0 0 2px;
+}
+.posten{list-style:none}
+.posten li{display:flex;align-items:baseline;gap:10px;font-size:15.5px;padding:9px 0;border-bottom:1px dotted rgba(205,196,172,.8)}
+.posten li:last-child{border-bottom:0}
+.posten .was{color:var(--tinte-leise);flex:none;max-width:46%}
+.posten .pkt{flex:1;border-bottom:1.5px dotted var(--linie);transform:translateY(-4px);min-width:12px}
+.posten .wert{font-family:var(--mono);font-size:12.5px;font-weight:700;letter-spacing:.02em;text-align:right;max-width:52%}
+.posten .wert.lang{font-family:var(--sans);font-size:14.5px;font-weight:500;letter-spacing:0}
+.leerhinweis{font-size:15px;color:var(--tinte-leise);font-style:italic}
+
+/* ---- Sendezustand ---- */
+.senden-lage{display:none;align-items:center;gap:12px;margin-top:16px;font-size:15px;color:var(--tinte-leise)}
+.senden-lage.an{display:flex}
+.kreisel{
+  width:20px;height:20px;flex:none;border-radius:50%;
+  border:2.5px solid rgba(43,68,199,.25);border-top-color:var(--kuli);
+  animation:dreh .8s linear infinite;
+}
+@keyframes dreh{to{transform:rotate(360deg)}}
+
+.panne{
+  display:none;margin-top:20px;padding:20px 22px;
+  border:1.5px solid var(--warn);border-radius:12px;background:rgba(163,43,30,.06);
+}
+.panne.an{display:block}
+.panne b{display:block;font-family:var(--anzeige);font-size:17px;margin-bottom:6px;color:var(--warn)}
+.panne p{font-size:15px;color:var(--tinte-leise);margin-bottom:16px}
+.panne .wege{display:flex;flex-wrap:wrap;gap:10px}
+.panne .wege .knopf{font-size:15px;padding:12px 20px}
+
+/* ---- Angekommen ---- */
+.fertig{display:none;padding:44px 30px 38px;text-align:center}
+.fertig.an{display:block}
+.stempel{
+  display:inline-flex;align-items:center;gap:10px;
+  border:2.5px solid var(--gut);color:var(--gut);border-radius:6px;
+  font-family:var(--mono);font-size:13px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
+  padding:9px 16px;transform:rotate(-2.5deg);margin-bottom:26px;
+}
+.fertig h2{font-size:clamp(28px,4vw,40px);margin-bottom:14px}
+.fertig > p{font-size:17px;color:var(--tinte-leise);max-width:460px;margin:0 auto 26px}
+.kennung{
+  display:inline-block;background:var(--tafel);color:var(--kreide);
+  font-family:var(--mono);font-size:22px;font-weight:700;letter-spacing:.14em;
+  padding:12px 22px;border-radius:8px;margin-bottom:8px;
+}
+.kennung-dazu{font-family:var(--mono);font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--tinte-leise);margin-bottom:32px}
+.danach{
+  list-style:none;text-align:left;max-width:420px;margin:0 auto 32px;
+  border-top:1.5px dashed var(--linie);
+}
+.danach li{display:flex;gap:13px;padding:14px 0;border-bottom:1.5px dashed var(--linie);font-size:15.5px;line-height:1.5}
+.danach .nr{
+  flex:none;width:26px;height:26px;border-radius:var(--ecke);border:1.5px solid var(--kuli);color:var(--kuli);
+  display:grid;place-items:center;font-family:var(--mono);font-size:11.5px;font-weight:700;margin-top:1px;
+}
+.fertig-wege{display:flex;flex-direction:column;gap:12px;max-width:400px;margin:0 auto}
+.fertig-wege .knopf{width:100%}
+.kopiert{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--gut);height:18px;margin-top:6px}
+
+/* ---- WhatsApp jederzeit ---- */
+.zwischenfrage{
+  max-width:760px;margin:0 auto 26px;padding:18px 22px;
+  border:1px solid var(--linie-dunkel);border-radius:var(--r);
+  background:rgba(237,231,217,.04);
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+}
+.zwischenfrage p{font-size:15px;color:var(--kreide-leise);flex:1;min-width:220px;margin:0}
+.zwischenfrage p b{color:var(--kreide);font-weight:600}
+.zwischenfrage .knopf{padding:12px 20px;font-size:15px}
+
+/* ---- Fuß ---- */
+.fuss{background:var(--sockel);padding:34px 0 40px;border-top:1px solid var(--linie-dunkel)}
+.fuss-innen{max-width:var(--breite);margin:0 auto;padding:0 26px;display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:16px}
+.fuss .marke{font-size:19px}
+.fuss p,.fuss a{font-family:var(--mono);font-size:11.5px;letter-spacing:.04em;color:var(--kreide-leise)}
+.fuss nav{display:flex;gap:22px}
+.fuss nav a{text-decoration:none}
+.fuss-jp{font-size:12.5px;color:var(--kreide-leise);margin-bottom:2px}
+.fuss-jp span{font-family:var(--schrift-jp);letter-spacing:.12em}
+
+/* ---- Ohne Skript ---- */
+.ohne-skript{
+  max-width:760px;margin:0 auto 40px;padding:24px 26px;
+  background:var(--pappe);color:var(--tinte);border-radius:8px;
+}
+.ohne-skript b{display:block;font-family:var(--anzeige);font-size:19px;margin-bottom:8px}
+.ohne-skript a{color:var(--kuli)}
+
+/* ---- Schmale Schirme ---- */
+@media(max-width:720px){
+  body{font-size:16.5px}
+  .auftakt{padding:34px 20px 30px}
+  .zettel{margin:0 14px 70px;border-radius:10px}
+  .zwischenfrage{margin:0 14px 22px}
+  .ohne-skript{margin:0 14px 30px}
+  .fortschritt{padding:13px 20px 11px}
+  .seite{padding:28px 20px 26px}
+  .fertig{padding:38px 20px 32px}
+  .entwurf{padding:12px 20px}
+  .navi .weiter{width:100%;flex-basis:100%}
+  .navi{flex-direction:column-reverse;align-items:stretch;gap:16px}
+  .zurueck{align-self:center}
+  .posten li{flex-wrap:wrap}
+  .posten .was{max-width:none;flex-basis:100%}
+  .posten .pkt{display:none}
+  .posten .wert{text-align:left;max-width:none}
+}
+@media(max-width:400px){
+}
+
+@media (hover:hover) and (pointer:fine){
+  .knopf.voll:hover{transform:translateY(-2px);box-shadow:0 14px 28px rgba(18,51,43,.34)}
+  .knopf.hell:hover,.knopf.wa:hover{transform:translateY(-2px);box-shadow:0 16px 32px rgba(0,0,0,.4)}
+  .knopf.leer:hover{background:var(--tafel);color:var(--pappe)}
+  .knopf:hover .pfeil{transform:translateX(4px)}
+  .chip:hover{border-color:var(--tinte-leise)}
+  .chip.an:hover{border-color:var(--tafel)}
+  .ablage:hover{border-color:var(--kuli)}
+  .kopf-link:hover{border-color:var(--kreide)}
+  .fuss nav a:hover{color:var(--kreide)}
+}
+@media(prefers-reduced-motion:reduce){
+  html{scroll-behavior:auto}
+  .kreisel{animation:none;border-top-color:rgba(43,68,199,.6)}
+  .balken-teil::after{transition:none}
+  .knopf:hover,.chip:active{transform:none}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ KOPF ═══════════════ -->
+<header class="kopf">
+  <a class="marke" href="index.html" aria-label="Omoteno, Startseite">
+    <span>omoten</span>
+    <svg width="38" height="28" viewBox="0 0 92 68" aria-hidden="true">
+      <circle cx="26" cy="34" r="15" fill="none" stroke="#EDE7D9" stroke-width="7"/>
+      <circle cx="26" cy="34" r="3.5" fill="#EDE7D9"/>
+      <path d="M48 22a19 19 0 0 1 0 24" fill="none" stroke="#EDE7D9" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+      <path d="M58 14a29 29 0 0 1 0 40" fill="none" stroke="#EDE7D9" stroke-width="4" stroke-linecap="round" opacity=".34"/>
+    </svg>
+  </a>
+  <a class="kopf-link" href="index.html">Zurück zur Übersicht</a>
+</header>
+
+<!-- ═══════════════ AUFTAKT ═══════════════ -->
+<section class="auftakt" id="auftakt">
+  <span class="marker">Einrichtung starten</span>
+  <h1>Erzähl mir von deinem Laden.</h1>
+  <p>Je genauer ich Kasse, Karte und Motiv kenne, desto fertiger ist dein Hub,
+  wenn wir das erste Mal miteinander sprechen. <b>Sechs kurze Schritte.</b></p>
+  <div class="auftakt-beleg">
+    <span><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5 8.2 15 16 5.5" fill="none" stroke="#EDE7D9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Etwa 6 Minuten</span>
+    <span><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5 8.2 15 16 5.5" fill="none" stroke="#EDE7D9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Speichert sich auf deinem Gerät</span>
+    <span><svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5 8.2 15 16 5.5" fill="none" stroke="#EDE7D9" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>Unverbindlich</span>
+  </div>
+</section>
+
+<noscript>
+  <div class="ohne-skript">
+    <b>Dieses Formular braucht JavaScript.</b>
+    <p>Schreib mir stattdessen direkt an <a href="mailto:hallo@omoteno.de">hallo@omoteno.de</a> —
+    am besten mit Name des Betriebs, Ort, Anzahl Tische und deiner Speisekarte im Anhang.
+    Ich melde mich am selben Tag.</p>
+  </div>
+</noscript>
+
+<!-- ═══════════════ ZWISCHENFRAGE ═══════════════ -->
+<div class="zwischenfrage" id="zwischenfrage" hidden>
+  <p><b>Lieber kurz fragen als lange tippen?</b> Schreib mir währenddessen einfach — das Formular bleibt stehen.</p>
+  <a class="knopf wa" id="waZwischen" href="#" target="_blank" rel="noopener">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23a8.23 8.23 0 0 1 8.24 8.24c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.13-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.44.13-.15.17-.25.25-.42.08-.16.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.16 0-.43.06-.65.31-.22.25-.85.83-.85 2.03s.87 2.35.99 2.51c.12.16 1.72 2.63 4.17 3.69.58.25 1.04.4 1.39.51.59.19 1.12.16 1.54.1.47-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29z"/></svg>
+    WhatsApp
+  </a>
+</div>
+
+<!-- ═══════════════ DER ZETTEL ═══════════════ -->
+<main class="zettel" id="zettel">
+
+  <div class="fortschritt" id="fortschritt">
+    <div class="balken-spur" id="balkenSpur" role="progressbar"
+         aria-valuemin="1" aria-valuemax="7" aria-valuenow="1" aria-label="Fortschritt"></div>
+    <div class="balken-zeile">
+      <b id="woTitel">Dein Betrieb</b>
+      <span id="woZahl">1 von 7</span>
+    </div>
+  </div>
+
+  <div class="entwurf" id="entwurfLeiste">
+    <span id="entwurfText">Du hast hier schon einmal angefangen.</span>
+    <button type="button" id="entwurfWeiter">Weitermachen</button>
+    <button type="button" class="leise" id="entwurfWeg">Neu anfangen</button>
+  </div>
+
+  <form id="bogen" novalidate autocomplete="on">
+    <div id="seiten"><!-- wird vom Skript gefüllt --></div>
+  </form>
+
+  <!-- Angekommen -->
+  <div class="fertig" id="fertig">
+    <span class="stempel">Angekommen</span>
+    <h2>Danke — ich habe alles.</h2>
+    <p id="fertigText">Deine Angaben liegen bei mir. Ich sehe mir deine Karte an und melde mich.</p>
+    <div class="kennung" id="kennungFeld">OMO-·····</div>
+    <p class="kennung-dazu">Deine Kennung</p>
+
+    <ul class="danach">
+      <li><span class="nr">1</span><span>Ich sehe mir deine Karte und dein Motiv an — meistens noch am selben Abend.</span></li>
+      <li><span class="nr">2</span><span id="danachWeg">Ich melde mich innerhalb von 24 Stunden bei dir.</span></li>
+      <li><span class="nr">3</span><span>Wir gehen deinen Hub gemeinsam durch, bevor irgendetwas auf einem Tisch liegt.</span></li>
+    </ul>
+
+    <div class="fertig-wege">
+      <a class="knopf voll" id="kontoWeiter" href="konto.html">Konto anlegen und weitermachen</a>
+      <a class="knopf wa" id="waFertig" href="#" target="_blank" rel="noopener" hidden>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12.04 2C6.58 2 2.13 6.45 2.13 11.91c0 1.75.46 3.45 1.32 4.95L2 22l5.25-1.38a9.9 9.9 0 0 0 4.79 1.22h.01c5.46 0 9.91-4.45 9.91-9.91C21.96 6.45 17.5 2 12.04 2zm0 18.15h-.01a8.2 8.2 0 0 1-4.19-1.15l-.3-.18-3.12.82.83-3.04-.2-.31a8.19 8.19 0 0 1-1.26-4.38c0-4.54 3.7-8.23 8.25-8.23a8.23 8.23 0 0 1 8.24 8.24c0 4.54-3.7 8.23-8.24 8.23zm4.52-6.16c-.25-.12-1.47-.72-1.69-.81-.23-.08-.39-.12-.56.13-.16.24-.64.8-.79.97-.14.16-.29.18-.54.06-.25-.13-1.05-.39-1.99-1.23-.74-.66-1.23-1.47-1.38-1.72-.14-.25-.01-.38.11-.5.11-.11.25-.29.37-.44.13-.15.17-.25.25-.42.08-.16.04-.31-.02-.43-.06-.12-.56-1.34-.76-1.84-.2-.48-.4-.42-.56-.43h-.48c-.16 0-.43.06-.65.31-.22.25-.85.83-.85 2.03s.87 2.35.99 2.51c.12.16 1.72 2.63 4.17 3.69.58.25 1.04.4 1.39.51.59.19 1.12.16 1.54.1.47-.07 1.47-.6 1.67-1.18.21-.58.21-1.07.15-1.18-.06-.11-.22-.17-.47-.29z"/></svg>
+        Kurz per WhatsApp Bescheid geben
+      </a>
+      <button type="button" class="knopf leer" id="kopierKnopf">Zusammenfassung kopieren</button>
+      <p class="kopiert" id="kopiertText"></p>
+      <a class="knopf leer" href="index.html">Zurück zur Startseite</a>
+    </div>
+  </div>
+</main>
+
+<!-- ═══════════════ FUSS ═══════════════ -->
+<footer class="fuss">
+  <div class="fuss-innen">
+    <a class="marke" href="index.html" aria-label="Omoteno, Startseite">
+      <span>omoten</span>
+      <svg width="32" height="24" viewBox="0 0 92 68" aria-hidden="true">
+        <circle cx="26" cy="34" r="15" fill="none" stroke="#EDE7D9" stroke-width="7"/>
+        <circle cx="26" cy="34" r="3.5" fill="#EDE7D9"/>
+        <path d="M48 22a19 19 0 0 1 0 24" fill="none" stroke="#EDE7D9" stroke-width="4" stroke-linecap="round" opacity=".7"/>
+        <path d="M58 14a29 29 0 0 1 0 40" fill="none" stroke="#EDE7D9" stroke-width="4" stroke-linecap="round" opacity=".34"/>
+      </svg>
+    </a>
+    <div>
+      <p class="fuss-jp"><span lang="ja">おもてなし</span> · Gastfreundschaft, die zuvorkommt</p>
+      <p>© 2026 Omoteno · Inhaber: Elias Faber · Ringstraße 12, 35260 Stadtallendorf</p>
+    </div>
+    <nav>
+      <a href="impressum.html">Impressum</a>
+      <a href="datenschutz.html">Datenschutz</a>
+    </nav>
+  </div>
+</footer>
+
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════════
+   1 · EINSTELLUNGEN — das Einzige, was du hier normalerweise anfasst
+   ═══════════════════════════════════════════════════════════════════ */
+var OMOTENO = {
+
+  /* Deine WhatsApp-Business-Nummer. Nur Ziffern, mit Länderkennung 49,
+     ohne +, ohne Leerzeichen, ohne die führende 0.
+     Eingetragen: +49 15678 505529
+     Lässt du das Feld leer, verschwinden alle WhatsApp-Knöpfe von selbst
+     und es wird stattdessen die E-Mail angeboten. Nichts geht kaputt. */
+  whatsapp: "4915678505529",
+
+  mail: "hallo@omoteno.de",
+
+  /* Die Datenbank. Adresse und Schlüssel sind dieselben wie im Hub.
+     Der anon-Schlüssel darf öffentlich hier stehen — die Regeln in der
+     Datenbank erlauben ihm nur EINWERFEN, nicht Lesen.
+     Steht an:false, geht das Formular direkt auf WhatsApp bzw. E-Mail.
+     Setz es erst auf true, wenn supabase-anfragen.sql durchgelaufen ist. */
+  db: {
+    an:         true,
+    adresse:    "https://quxwweuvdqtjsdwgjdrh.supabase.co",
+    schluessel: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk",
+    eimer:      "anfragen"
+  },
+
+  /* Grenzen für Anhänge */
+  datei: { anzahl:10, jeMB:20, summeMB:60 }
+};
+
+/* ═══════════════════════════════════════════════════════════════════
+   2 · DIE FRAGEN
+   Alles, was auf dem Zettel steht, steht hier. Willst du eine Frage
+   ergänzen, kommt sie in diese Liste — Anzeige, Prüfung, Bon und
+   Versand richten sich automatisch danach.
+
+   t: text | tel | mail | zahl | lang | wahl | mehr | farbe | dateien | haken
+   k: Schlüssel in der Datenbank   l: Frage   d: Erklärung darunter
+   o: Auswahlmöglichkeiten          frei: bei dieser Auswahl kommt ein Textfeld
+   ═══════════════════════════════════════════════════════════════════ */
+var SCHRITTE = [
+{
+  titel:"Dein Betrieb", unter:"Damit ich weiß, für wen ich das hier baue.",
+  felder:[
+    {k:"betrieb_name", t:"text", l:"Wie heißt dein Laden?", pflicht:true, ph:"z. B. Choco L'AMouR"},
+    {k:"betrieb_art", t:"wahl", l:"Was für ein Betrieb ist das?", pflicht:true,
+     o:["Restaurant","Café","Bar / Kneipe","Hotel / Pension","Eisdiele / Crêperie","Bäckerei / Konditorei","Foodtruck / Imbiss","Anderes"],
+     frei:"Anderes", freiPh:"Was denn?"},
+    {k:"adresse", t:"adresse", l:"Wo steht der Laden?", pflicht:true,
+     d:"Tipp die Postleitzahl ein — der Ort kommt von selbst, und ab drei Buchstaben schlage ich Straßen vor."},
+    {k:"web", t:"text", l:"Website oder Instagram", d:"Damit ich mir vorab ein Bild machen kann.", ph:"omoteno.de oder @omoteno"},
+    {k:"tische", t:"zahl", l:"Wie viele Tische hast du?", pflicht:true, d:"Ungefähr reicht. Danach richtet sich die Zahl der Untersetzer.", ph:"z. B. 18"},
+    {k:"bereich", t:"wahl", l:"Wo sitzen die Gäste?",
+     o:["Nur innen","Innen und Terrasse","Überwiegend draußen"]},
+    {k:"oeffnung", t:"zeiten", l:"Öffnungszeiten",
+     d:"Der Hub begrüßt Gäste je nach Uhrzeit anders und zeigt, ob gerade offen ist. Tage, die du frei lässt, klären wir im Gespräch."}
+  ]
+},
+{
+  titel:"Wer sich meldet", unter:"Damit ich weiß, wen ich anrufe — und wann das passt.",
+  felder:[
+    {k:"kontakt_name", t:"text", l:"Dein Name", pflicht:true, ph:"Vor- und Nachname", auto:"name"},
+    {k:"kontakt_rolle", t:"wahl", l:"Deine Rolle im Betrieb",
+     o:["Inhaber:in","Geschäftsführung","Service- oder Schichtleitung","Küche","Anderes"]},
+    {k:"mail", t:"mail", l:"E-Mail", pflicht:true, ph:"name@laden.de", auto:"email"},
+    {k:"telefon", t:"tel", l:"Handynummer", pflicht:true, d:"Am besten die, auf der auch WhatsApp läuft.", ph:"0151 23456789", auto:"tel"},
+    {k:"weg", t:"wahl", l:"Wie soll ich mich melden?", pflicht:true,
+     o:["WhatsApp","Anruf","E-Mail"]},
+    {k:"zeit", t:"wahl", l:"Wann passt es dir?",
+     o:["Vormittags","Nachmittags","Nach Feierabend","Egal"]}
+  ]
+},
+{
+  titel:"Kasse und Ablauf", unter:"Der wichtigste Teil. Hier entscheidet sich, wie Bestellungen bei euch ankommen.",
+  felder:[
+    {k:"kasse", t:"wahl", l:"Mit welchem Kassensystem arbeitest du?", pflicht:true,
+     d:"Omoteno ersetzt keine Kasse und bucht nichts um. Ich muss nur wissen, woran es andockt.",
+     o:["Lightspeed / Gastrofix","Vectron","orderbird","ready2order","SumUp","gastronovi","Hellotess","Oracle Simphony","Anderes System","Kein digitales Kassensystem","Weiß ich nicht"],
+     frei:"Anderes System", freiPh:"Welches?"},
+    {k:"kasse_export", t:"wahl", l:"Kommst du an einen Export deiner Artikel?",
+     d:"Eine Datei aus der Kasse spart mir Stunden beim Erfassen der Karte.",
+     o:["Ja, das kriege ich hin","Nein","Weiß ich nicht"]},
+    {k:"bestell_weg", t:"wahl", l:"Wie sollen Bestellungen bei euch landen?",
+     o:["Auf einem Tablet an der Theke","Ausdruck auf dem Bondrucker","Erst mal nur Serviceruf, ohne Bestellung","Bin unsicher — berate mich"]},
+    {k:"funktionen", t:"mehr", l:"Was soll dein Hub können?",
+     d:"Mehrfachauswahl. Alles lässt sich später ein- und ausschalten.",
+     o:["Speisekarte","Bestellen am Tisch","Service rufen","Reservierung","WLAN-Zugang","Musikwunsch","Feedback / Google-Bewertung","Gutscheine","Veranstaltungen"]},
+    {k:"wlan_name", t:"text", l:"Name deines Gäste-WLANs", d:"Nur der Name. Das Passwort schickst du mir später — nicht über ein Formular.", ph:"z. B. Gaeste-Cafe"},
+    {k:"service_anzahl", t:"zahl", l:"Wie viele arbeiten im Service gleichzeitig?", d:"Danach richtet sich, wie das Board aufgeteilt wird.", ph:"z. B. 3"}
+  ]
+},
+{
+  titel:"Deine Karte", unter:"Wenn du mir hier etwas anhängst, steht deine Karte schon im Hub, bevor wir telefonieren.",
+  felder:[
+    {k:"karte_form", t:"wahl", l:"In welcher Form liegt deine Karte vor?", pflicht:true,
+     o:["PDF","Word oder Excel","Foto der gedruckten Karte","Auf meiner Website","Export aus der Kasse","Noch gar nicht digital"]},
+    {k:"dateien", t:"dateien", l:"Karte, Logo, Fotos anhängen",
+     d:"PDF, Bilder, Word, Excel. Bis 10 Dateien, je 20 MB. Alles, was du hier hochlädst, kann ich sofort einsetzen."},
+    {k:"karte_umfang", t:"wahl", l:"Wie viele Positionen hat die Karte ungefähr?",
+     o:["Bis 30","30 bis 80","80 bis 150","Über 150"]},
+    {k:"karte_optionen", t:"wahl", l:"Gibt es Beilagen, Größen oder Toppings zum Auswählen?",
+     o:["Ja, viele","Ein paar","Nein"]},
+    {k:"karte_allergene", t:"wahl", l:"Sind Allergene bereits erfasst?",
+     d:"Ich kann sie aus den Zutaten ableiten — geprüft werden müssen sie am Ende von euch.",
+     o:["Ja, geprüft vorhanden","Teilweise","Nein"]},
+    {k:"karte_wechsel", t:"wahl", l:"Wie oft ändert sich die Karte?",
+     o:["Feste Karte","Wechselnde Tageskarte","Saisonal","Ständig"]},
+    {k:"sprachen", t:"mehr", l:"In welchen Sprachen soll die Karte erscheinen?",
+     d:"Deutsch ist immer dabei. Übersetzung übernehme ich.",
+     o:["Englisch","Türkisch","Französisch","Spanisch","Italienisch","Polnisch","Russisch","Arabisch","Ukrainisch","Niederländisch","Rumänisch"]},
+    {k:"karte_notiz", t:"lang", l:"Was sollte ich über deine Karte noch wissen?", ph:"z. B. Mittagstisch nur werktags, Eis wechselt wöchentlich …"}
+  ]
+},
+{
+  titel:"Wie es aussehen soll", unter:"Dein Hub sieht aus wie dein Laden, nicht wie Omoteno.",
+  felder:[
+    {k:"motiv", t:"wahl", l:"Welche Stimmung passt zu euch?", pflicht:true,
+     o:["Hell und warm","Dunkel und edel","Natürlich und grün","Klassisch und schlicht","Nach meinem Logo","Überrasch mich"]},
+    {k:"hausfarbe", t:"farbe", l:"Eure Hausfarbe", d:"Wenn du den Farbwert kennst, trag ihn ein. Sonst überspring das einfach.", ph:"#2B44C7 oder „dunkelrot“"},
+    {k:"logo_status", t:"wahl", l:"Hast du ein Logo?",
+     o:["Ja, oben angehängt","Ja, aber nur gedruckt","Habe ich noch nicht"]},
+    {k:"fotos", t:"wahl", l:"Gibt es Fotos von euren Gerichten?",
+     d:"Freigestellte Produktfotos sind der größte optische Unterschied im Hub.",
+     o:["Profifotos vorhanden","Handyfotos vorhanden","Nur ein paar","Keine"]},
+    {k:"traeger_form", t:"wahl", l:"Welche Untersetzer möchtest du?",
+     o:["Rund","Eckig","Egal — berate mich"]},
+    {k:"traeger_menge", t:"zahl", l:"Wie viele Untersetzer brauchst du?", ph:"Vorschlag steht unten", notiz:"traeger"},
+    {k:"vorbild", t:"lang", l:"Gibt es Seiten oder Karten, die dir gefallen?", d:"Links oder Namen genügen. Das hilft mir mehr als jede Beschreibung.", ph:"z. B. die Karte vom … , die Website von …"},
+    {k:"stimmung", t:"text", l:"In drei Worten: Wie soll sich dein Hub anfühlen?", ph:"ruhig, warm, aufgeräumt"}
+  ]
+},
+{
+  titel:"Der Start", unter:"Fast geschafft.",
+  felder:[
+    {k:"start_wann", t:"wahl", l:"Wann soll es losgehen?", pflicht:true,
+     o:["So schnell wie möglich","In zwei bis vier Wochen","Nächsten Monat","Erst mal nur informieren"]},
+    {k:"paket", t:"wahl", l:"Woran denkst du?",
+     o:["Komplett: Einrichtung und Untersetzer","Erst mal nur der Hub","Weiß ich noch nicht"]},
+    {k:"gefunden", t:"wahl", l:"Wie hast du von Omoteno erfahren?",
+     o:["Empfehlung","Instagram","Google","Ich wurde angesprochen","Anderes"]},
+    {k:"nachricht", t:"lang", l:"Willst du mir sonst noch etwas sagen?", ph:"Alles, was nicht in die Felder oben gepasst hat."},
+    {k:"einwilligung", t:"haken", pflicht:true,
+     l:'Ich bin damit einverstanden, dass Omoteno diese Angaben speichert und mich dazu kontaktiert. Mehr dazu in der <a href="datenschutz.html" target="_blank" rel="noopener">Datenschutzerklärung</a>.'}
+  ]
+}
+];
+
+/* ═══════════════════════════════════════════════════════════════════
+   3 · DAS SKRIPT
+   ═══════════════════════════════════════════════════════════════════ */
+(function(){
+
+var ruhig  = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+var daten  = {};                 /* Schlüssel -> Wert */
+var dateien = [];                /* die angehängten Dateien */
+var seite  = 0;                  /* 0..5 Fragen, 6 = Prüfen */
+var PRUEFEN = SCHRITTE.length;   /* Index der Prüfseite */
+var geladen = Date.now();
+var kennung = null;
+var gesendet = false;
+var ENTWURF = "omoteno-anfrage-entwurf";
+
+var elSeiten = document.getElementById('seiten');
+var elWoZahl  = document.getElementById('woZahl');
+var elSpur    = document.getElementById('balkenSpur');
+var elWoTitel = document.getElementById('woTitel');
+
+/* Balkenabschnitte einmal bauen — einer je Schritt inklusive Prüfseite. */
+(function(){
+  var s = "";
+  for(var i=0;i<=SCHRITTE.length;i++) s += '<span class="balken-teil"></span>';
+  elSpur.innerHTML = s;
+})();
+var elFertig  = document.getElementById('fertig');
+var elBogen   = document.getElementById('bogen');
+
+/* ---------- kleine Helfer ---------- */
+function h(s){ return String(s==null?"":s).replace(/[&<>"']/g,function(c){
+  return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+
+/* Wochentage und Uhrzeiten für die Öffnungszeiten-Auswahl */
+var TAGE = [
+  {k:"mo", kurz:"Mo", lang:"Montag"},    {k:"di", kurz:"Di", lang:"Dienstag"},
+  {k:"mi", kurz:"Mi", lang:"Mittwoch"},  {k:"do", kurz:"Do", lang:"Donnerstag"},
+  {k:"fr", kurz:"Fr", lang:"Freitag"},   {k:"sa", kurz:"Sa", lang:"Samstag"},
+  {k:"so", kurz:"So", lang:"Sonntag"}
+];
+var UHRZEITEN = (function(){
+  var l = [];
+  for(var st=0; st<24; st++){
+    l.push(("0"+st).slice(-2)+":00");
+    l.push(("0"+st).slice(-2)+":30");
+  }
+  return l;
+})();
+function zeitSelect(tag, welche){
+  var s = '<select class="zeit-select" data-zzeit="'+tag+'" data-teil="'+welche+'" aria-label="Uhrzeit">';
+  s += '<option value="">—</option>';
+  for(var i=0;i<UHRZEITEN.length;i++) s += '<option value="'+UHRZEITEN[i]+'">'+UHRZEITEN[i]+'</option>';
+  return s + '</select>';
+}
+function feldFinden(k){
+  for(var i=0;i<SCHRITTE.length;i++){
+    var f = SCHRITTE[i].felder;
+    for(var j=0;j<f.length;j++) if(f[j].k===k) return f[j];
+  }
+  return null;
+}
+function mbTxt(b){ return b<1024*1024 ? Math.max(1,Math.round(b/1024))+" KB" : (b/1048576).toFixed(1).replace('.',',')+" MB"; }
+
+/* ═══════════════════════════════════════════════════════════════
+   ÖFFNUNGSZEITEN
+   Gespeichert wird ein Plan je Tag: {zu:true} oder {zeiten:[[von,bis],…]}.
+   Zusätzlich entsteht daraus ein lesbarer Satz für den Bon und für dich.
+   ═══════════════════════════════════════════════════════════════ */
+function planLesen(){
+  var plan = {};
+  TAGE.forEach(function(t){
+    var zeile = elSeiten.querySelector('[data-ztag="'+t.k+'"]');
+    if(!zeile) return;
+    if(zeile.classList.contains('zu')){ plan[t.k] = {zu:true}; return; }
+    var w = function(teil){
+      var el = elSeiten.querySelector('[data-zzeit="'+t.k+'"][data-teil="'+teil+'"]');
+      return el ? el.value : "";
+    };
+    var zeiten = [];
+    if(w('von') && w('bis')) zeiten.push([w('von'), w('bis')]);
+    if(w('von2') && w('bis2')) zeiten.push([w('von2'), w('bis2')]);
+    if(zeiten.length) plan[t.k] = {zeiten:zeiten};
+  });
+  return plan;
+}
+function planSetzen(plan){
+  if(!plan) return;
+  TAGE.forEach(function(t){
+    var zeile = elSeiten.querySelector('[data-ztag="'+t.k+'"]');
+    if(!zeile) return;
+    var e = plan[t.k];
+    var setz = function(teil, wert){
+      var el = elSeiten.querySelector('[data-zzeit="'+t.k+'"][data-teil="'+teil+'"]');
+      if(el) el.value = wert || "";
+    };
+    zeile.classList.toggle('zu', !!(e && e.zu));
+    zeile.classList.toggle('offen', !!(e && e.zeiten && e.zeiten.length));
+    var z = (e && e.zeiten) || [];
+    setz('von', z[0] && z[0][0]);  setz('bis', z[0] && z[0][1]);
+    setz('von2', z[1] && z[1][0]); setz('bis2', z[1] && z[1][1]);
+    var pz = elSeiten.querySelector('[data-zpausezeile="'+t.k+'"]');
+    if(pz) pz.hidden = !(z.length > 1);
+    zeile.classList.toggle('hat-pause', z.length > 1);
+  });
+}
+function zeitenText(plan){
+  if(!plan) return "";
+  /* Gleiche Tage in Folge werden zusammengefasst: aus sieben Zeilen
+     wird „Mo–Fr 11:30–14:30 und 17:30–22:00, Sa 12:00–22:00". */
+  function eintragText(e){
+    if(!e) return null;
+    if(e.zu) return "geschlossen";
+    if(!e.zeiten || !e.zeiten.length) return null;
+    return e.zeiten.map(function(z){ return z[0]+"–"+z[1]; }).join(" und ");
+  }
+  var stuecke = [], lauf = null;
+  TAGE.forEach(function(t, i){
+    var txt = eintragText(plan[t.k]);
+    if(lauf && lauf.txt === txt){ lauf.bis = t.kurz; return; }
+    if(lauf) stuecke.push(lauf);
+    lauf = {von:t.kurz, bis:t.kurz, txt:txt};
+  });
+  if(lauf) stuecke.push(lauf);
+  return stuecke.filter(function(st){ return st.txt; }).map(function(st){
+    var tage = (st.von === st.bis) ? st.von : st.von+"–"+st.bis;
+    return tage + " " + st.txt;
+  }).join(", ");
+}
+function zeitenFrischen(){
+  var plan = planLesen();
+  daten.oeffnung_plan = plan;
+  var txt = zeitenText(plan);
+  daten.oeffnung = txt;
+  var box = elSeiten.querySelector('[data-zvorschau]');
+  if(box) box.innerHTML = txt ? '<b>'+h(txt)+'</b>' : '<span class="leer">Noch nichts eingetragen.</span>';
+  TAGE.forEach(function(t){
+    var zeile = elSeiten.querySelector('[data-ztag="'+t.k+'"]');
+    if(zeile) zeile.classList.toggle('offen', !!(plan[t.k] && plan[t.k].zeiten));
+  });
+  entwurfSichern();
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ADRESSE
+   Vorschläge kommen von der OpenPLZ API — offene Daten aus
+   OpenStreetMap, ohne Schlüssel, ohne Konto. Antwortet sie nicht,
+   bleiben es ganz normale Textfelder. Nichts hängt davon ab.
+   ═══════════════════════════════════════════════════════════════ */
+var PLZ_DIENST = "https://openplzapi.org/de";
+var adrAbbruch = null, adrTimer = null;
+
+function adrLage(text, gut){
+  var el = elSeiten.querySelector('[data-adrlage]');
+  if(!el) return;
+  el.textContent = text || "";
+  el.classList.toggle('gut', !!gut);
+}
+function vorschlagBox(welche){ return elSeiten.querySelector('[data-vorschlag="'+welche+'"]'); }
+function vorschlaegeLeeren(welche){
+  var b = vorschlagBox(welche); if(b) b.innerHTML = "";
+}
+function regexSicher(t){
+  /* Die API versteht reguläre Ausdrücke. Sonderzeichen aus der Eingabe
+     würden dort als Befehle gelten — also raus damit. */
+  return String(t||"").replace(/[^A-Za-zÄÖÜäöüß0-9 .\-]/g, "").trim();
+}
+function plzNachschlagen(plz){
+  if(adrAbbruch) adrAbbruch.abort();
+  adrAbbruch = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  adrLage("Ort wird gesucht …");
+  fetch(PLZ_DIENST+"/Localities?postalCode="+encodeURIComponent(plz),
+        adrAbbruch ? {signal:adrAbbruch.signal} : {})
+    .then(function(a){ if(!a.ok) throw new Error("nix"); return a.json(); })
+    .then(function(liste){
+      var orte = [];
+      (liste||[]).forEach(function(o){ if(o.name && orte.indexOf(o.name) < 0) orte.push(o.name); });
+      if(!orte.length){ adrLage("Zu dieser Postleitzahl finde ich nichts — trag den Ort von Hand ein."); return; }
+      if(orte.length === 1){
+        var el = elSeiten.querySelector('[data-k="ort"]');
+        if(el && !daten.ort){ el.value = orte[0]; wertSetzen('ort', orte[0]); }
+        adrLage(orte[0], true);
+        vorschlaegeLeeren('ort');
+        return;
+      }
+      adrLage("Mehrere Orte — bitte auswählen:");
+      var b = vorschlagBox('ort');
+      if(b) b.innerHTML = orte.slice(0,8).map(function(o){
+        return '<li><button type="button" data-waehleort="'+h(o)+'"><b>'+h(o)+'</b></button></li>';
+      }).join('');
+    })
+    .catch(function(e){
+      if(e && e.name === "AbortError") return;
+      adrLage("");   /* still bleiben — von Hand geht es weiterhin */
+    });
+}
+function strassenVorschlagen(text){
+  var name = regexSicher(text);
+  if(name.length < 3){ vorschlaegeLeeren('strasse'); return; }
+  if(adrAbbruch) adrAbbruch.abort();
+  adrAbbruch = (typeof AbortController !== "undefined") ? new AbortController() : null;
+  var url = PLZ_DIENST+"/Streets?name=^"+encodeURIComponent(name);
+  if(/^\d{5}$/.test(daten.plz||"")) url += "&postalCode="+encodeURIComponent(daten.plz);
+  fetch(url, adrAbbruch ? {signal:adrAbbruch.signal} : {})
+    .then(function(a){ if(!a.ok) throw new Error("nix"); return a.json(); })
+    .then(function(liste){
+      var b = vorschlagBox('strasse'); if(!b) return;
+      var gesehen = {}, treffer = [];
+      (liste||[]).forEach(function(r){
+        var schl = r.name+"|"+r.postalCode+"|"+r.locality;
+        if(gesehen[schl]) return;
+        gesehen[schl] = 1;
+        treffer.push(r);
+      });
+      b.innerHTML = treffer.slice(0,6).map(function(r){
+        return '<li><button type="button" data-waehlestrasse="'+h(r.name)+'"'
+             + ' data-plz="'+h(r.postalCode||"")+'" data-ort="'+h(r.locality||"")+'">'
+             + '<b>'+h(r.name)+'</b><small>'+h((r.postalCode||"")+" "+(r.locality||""))+'</small></button></li>';
+      }).join('');
+    })
+    .catch(function(e){ if(e && e.name !== "AbortError") vorschlaegeLeeren('strasse'); });
+}
+function adresseZusammen(){
+  var teile = [];
+  var str = [daten.strasse, daten.hausnr].filter(Boolean).join(" ").trim();
+  if(str) teile.push(str);
+  var ort = [daten.plz, daten.ort].filter(Boolean).join(" ").trim();
+  if(ort) teile.push(ort);
+  daten.adresse = teile.join(", ");
+  return daten.adresse;
+}
+
+/* ---------- Aufbau der Seiten ---------- */
+function feldBauen(f){
+  var id = "f_"+f.k;
+  var s = '<div class="feld" data-feld="'+f.k+'">';
+  if(f.t !== "haken"){
+    s += '<label class="frage" for="'+id+'">'+f.l+(f.pflicht?'<span class="noetig">nötig</span>':'')+'</label>';
+    if(f.d) s += '<p class="dazu">'+f.d+'</p>';
+  }
+
+  if(f.t==="text"||f.t==="tel"||f.t==="mail"||f.t==="zahl"){
+    var typ = f.t==="mail"?"email":(f.t==="tel"?"tel":(f.t==="zahl"?"number":"text"));
+    var extra = "";
+    if(f.t==="zahl") extra = ' inputmode="numeric" min="0" step="1"';
+    if(f.t==="mail") extra = ' inputmode="email" autocapitalize="off" spellcheck="false"';
+    if(f.t==="tel")  extra = ' inputmode="tel"';
+    if(f.auto) extra += ' autocomplete="'+f.auto+'"';
+    s += '<input class="eingabe" type="'+typ+'" id="'+id+'" data-k="'+f.k+'" placeholder="'+h(f.ph||"")+'"'+extra+'>';
+  }
+  else if(f.t==="lang"){
+    s += '<textarea class="eingabe" id="'+id+'" data-k="'+f.k+'" rows="3" placeholder="'+h(f.ph||"")+'"></textarea>';
+  }
+  else if(f.t==="farbe"){
+    s += '<div class="zeile">'
+      +  '<input class="farbtupfer" type="color" id="'+id+'_c" data-k="'+f.k+'" data-farbe="1" value="#2B44C7" aria-label="Farbe wählen">'
+      +  '<input class="eingabe" type="text" id="'+id+'" data-k="'+f.k+'" placeholder="'+h(f.ph||"")+'">'
+      +  '</div>';
+  }
+  else if(f.t==="wahl"||f.t==="mehr"){
+    s += '<div class="chips" role="group" aria-labelledby="'+id+'">';
+    for(var i=0;i<f.o.length;i++){
+      s += '<button type="button" class="chip" data-k="'+f.k+'" data-mehr="'+(f.t==="mehr"?1:0)+'" data-v="'+h(f.o[i])+'">'
+         + '<span class="haken" aria-hidden="true"><svg width="13" height="13" viewBox="0 0 20 20"><path d="M4 10.5 8.2 15 16 5.5" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg></span>'
+         + h(f.o[i]) + '</button>';
+    }
+    s += '</div>';
+    if(f.frei){
+      s += '<input class="eingabe" type="text" data-k="'+f.k+'_frei" data-freizu="'+f.k+'" data-freiwenn="'+h(f.frei)+'" placeholder="'+h(f.freiPh||"Bitte kurz beschreiben")+'" style="display:none;margin-top:10px">';
+    }
+  }
+  else if(f.t==="dateien"){
+    s += '<label class="ablage" id="ablage">'
+      +  '<svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 16V4"/><path d="m7.5 8.5 4.5-4.5 4.5 4.5"/><path d="M4 15v3.5A1.5 1.5 0 0 0 5.5 20h13a1.5 1.5 0 0 0 1.5-1.5V15"/></svg>'
+      +  '<b>Dateien auswählen</b>'
+      +  '<span>Speisekarte, Logo, Fotos<br>PDF · JPG · PNG · Word · Excel</span>'
+      +  '<input type="file" id="dateiWahl" multiple accept="image/*,application/pdf,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.rtf,.pages,.numbers">'
+      +  '</label>'
+      +  '<ul class="dateien" id="dateiListe"></ul>';
+  }
+  else if(f.t==="adresse"){
+    s += '<div class="adr">'
+      +  '<div class="adr-zeile">'
+      +    '<input class="eingabe" type="text" id="'+id+'" data-k="strasse" placeholder="Straße" autocomplete="address-line1" enterkeyhint="next">'
+      +    '<input class="eingabe kurz" type="text" data-k="hausnr" placeholder="Nr." autocomplete="address-line2" enterkeyhint="next">'
+      +  '</div>'
+      +  '<ul class="vorschlaege" data-vorschlag="strasse"></ul>'
+      +  '<div class="adr-zeile">'
+      +    '<input class="eingabe plz" type="text" data-k="plz" placeholder="PLZ" inputmode="numeric" maxlength="5" autocomplete="postal-code" enterkeyhint="next">'
+      +    '<input class="eingabe" type="text" data-k="ort" placeholder="Ort" autocomplete="address-level2" enterkeyhint="next">'
+      +  '</div>'
+      +  '<ul class="vorschlaege" data-vorschlag="ort"></ul>'
+      +  '<p class="adr-lage" data-adrlage></p>'
+      +  '</div>';
+  }
+  else if(f.t==="zeiten"){
+    s += '<div class="zeiten" data-zeiten>'
+      +  TAGE.map(function(t){
+           return '<div class="ztag" data-ztag="'+t.k+'">'
+             + '<span class="ztag-name">'+t.kurz+'</span>'
+             + '<span class="ztag-zu-text">geschlossen</span>'
+             + '<span class="zwahl">'
+             +   zeitSelect(t.k,'von') + '<span class="bis">bis</span>' + zeitSelect(t.k,'bis')
+             + '</span>'
+             + '<button type="button" class="zknopf zutoggle" data-zzu="'+t.k+'" aria-label="'+t.lang+' geschlossen">zu</button>'
+             + '<button type="button" class="zknopf" data-zpause="'+t.k+'" aria-label="Pause für '+t.lang+'">+</button>'
+             + '</div>'
+             + '<div class="zpause" data-zpausezeile="'+t.k+'" hidden>'
+             +   zeitSelect(t.k,'von2') + '<span class="bis">bis</span>' + zeitSelect(t.k,'bis2')
+             +   '<button type="button" class="zknopf" data-zpauseweg="'+t.k+'" aria-label="Pause entfernen">&minus;</button>'
+             + '</div>';
+         }).join('')
+      +  '</div>'
+      +  '<div class="zhilfen">'
+      +    '<button type="button" data-zalle>Montag auf alle Tage</button>'
+      +    '<button type="button" data-zwoche>Mo–Fr wie Montag</button>'
+      +    '<button type="button" data-zleeren>Zurücksetzen</button>'
+      +  '</div>'
+      +  '<div class="zvorschau" data-zvorschau><span class="leer">Noch nichts eingetragen.</span></div>';
+  }
+  else if(f.t==="haken"){
+    s += '<label class="haken-feld"><input type="checkbox" id="'+id+'" data-k="'+f.k+'"><span>'+f.l+'</span></label>';
+  }
+
+  if(f.notiz) s += '<p class="rechnung-notiz" data-notiz="'+f.notiz+'"></p>';
+  s += '<p class="meckern" data-meckern="'+f.k+'">Bitte noch ausfüllen.</p>';
+  s += '</div>';
+  return s;
+}
+
+function seitenBauen(){
+  var s = "";
+  for(var i=0;i<SCHRITTE.length;i++){
+    s += '<section class="seite" data-seite="'+i+'"><h2>'+h(SCHRITTE[i].titel)+'</h2>'
+       + '<p class="unter">'+h(SCHRITTE[i].unter)+'</p>';
+    /* Falle für Werbeschleudern: unsichtbar, echte Menschen füllen es nie aus. */
+    if(i===0) s += '<input type="text" id="falle" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">';
+    for(var j=0;j<SCHRITTE[i].felder.length;j++) s += feldBauen(SCHRITTE[i].felder[j]);
+    s += '<div class="navi">'
+       + (i>0 ? '<button type="button" class="zurueck" data-nav="zurueck">Zurück</button>' : '')
+       + '<button type="button" class="knopf voll weiter" data-nav="weiter">'
+       + (i===SCHRITTE.length-1 ? 'Angaben prüfen' : 'Weiter')
+       + ' <span class="pfeil" aria-hidden="true">→</span></button>'
+       + '</div></section>';
+  }
+  /* Prüfseite */
+  s += '<section class="seite" data-seite="'+PRUEFEN+'">'
+     + '<h2>Kurz drüberschauen</h2>'
+     + '<p class="unter">Alles richtig? Tipp auf „ändern“, wenn nicht.</p>'
+     + '<div id="bon"></div>'
+     + '<div class="navi">'
+     + '<button type="button" class="zurueck" data-nav="zurueck">Zurück</button>'
+     + '<button type="button" class="knopf voll weiter" id="absenden">Absenden <span class="pfeil" aria-hidden="true">→</span></button>'
+     + '</div>'
+     + '<div class="senden-lage" id="sendeLage"><span class="kreisel"></span><span id="sendeText">Wird gesendet …</span></div>'
+     + '<div class="panne" id="panne">'
+     +   '<b>Das ist nicht durchgekommen.</b>'
+     +   '<p id="panneText">Deine Angaben sind nicht verloren — sie stehen noch hier. Versuch es gleich noch einmal, oder schick sie mir direkt.</p>'
+     +   '<div class="wege">'
+     +     '<button type="button" class="knopf voll" id="nochmal">Noch einmal senden</button>'
+     +     '<a class="knopf leer" id="panneMail" href="#">Per E-Mail schicken</a>'
+     +     '<a class="knopf wa" id="panneWa" href="#" target="_blank" rel="noopener" hidden>Per WhatsApp schicken</a>'
+     +   '</div>'
+     + '</div>'
+     + '</section>';
+  elSeiten.innerHTML = s;
+}
+
+/* ---------- Anzeige ---------- */
+function zeigen(n, ohneSprung){
+  seite = n;
+  var alle = elSeiten.querySelectorAll('.seite');
+  for(var i=0;i<alle.length;i++) alle[i].classList.toggle('an', Number(alle[i].dataset.seite)===n);
+  elWoTitel.textContent = (n===PRUEFEN) ? "Kurz drüberschauen" : SCHRITTE[n].titel;
+  elWoZahl.textContent  = (n+1)+" von "+(PRUEFEN+1);
+  elSpur.setAttribute('aria-valuenow', n+1);
+  var teile = elSpur.children;
+  for(var s=0;s<teile.length;s++){
+    teile[s].classList.toggle('voll', s < n);
+    teile[s].classList.toggle('halb', s === n);
+  }
+  if(n===PRUEFEN) bonBauen();
+  if(!ohneSprung){
+    var ziel = document.getElementById('zettel');
+    var oben = ziel.getBoundingClientRect().top + window.pageYOffset - 12;
+    window.scrollTo({top:oben, behavior: ruhig ? 'auto' : 'smooth'});
+  }
+}
+
+/* ---------- Werte setzen und lesen ---------- */
+function wertSetzen(k, v){
+  daten[k] = v;
+  entwurfSichern();
+  notizenFrischen();
+}
+function chipsFrischen(k){
+  var chips = elSeiten.querySelectorAll('.chip[data-k="'+k+'"]');
+  var w = daten[k];
+  for(var i=0;i<chips.length;i++){
+    var v = chips[i].dataset.v;
+    var an = Array.isArray(w) ? w.indexOf(v)>-1 : w===v;
+    chips[i].classList.toggle('an', an);
+    chips[i].setAttribute('aria-pressed', an?'true':'false');
+  }
+  freiFrischen(k);
+}
+function freiFrischen(k){
+  var frei = elSeiten.querySelector('[data-freizu="'+k+'"]');
+  if(!frei) return;
+  var w = daten[k];
+  var passt = Array.isArray(w) ? w.indexOf(frei.dataset.freiwenn)>-1 : w===frei.dataset.freiwenn;
+  frei.style.display = passt ? 'block' : 'none';
+  if(!passt && daten[frei.dataset.k]){ delete daten[frei.dataset.k]; frei.value=""; }
+}
+function notizenFrischen(){
+  var n = elSeiten.querySelector('[data-notiz="traeger"]');
+  if(!n) return;
+  var t = parseInt(daten.tische,10);
+  n.textContent = (t>0) ? "Vorschlag: "+Math.ceil(t*1.2)+" Stück — deine "+t+" Tische plus etwas Reserve." : "";
+}
+
+/* ---------- Entwurf auf dem Gerät ---------- */
+function entwurfSichern(){
+  try{
+    localStorage.setItem(ENTWURF, JSON.stringify({wann:Date.now(), seite:seite, daten:daten}));
+  }catch(e){/* Privater Modus o. Ä. — dann eben nicht. Kein Grund zu stören. */}
+}
+function entwurfLoeschen(){ try{ localStorage.removeItem(ENTWURF); }catch(e){} }
+function entwurfLesen(){
+  try{
+    var r = localStorage.getItem(ENTWURF);
+    if(!r) return null;
+    var o = JSON.parse(r);
+    if(!o || !o.daten || Date.now()-o.wann > 1000*60*60*24*30) return null;
+    return o;
+  }catch(e){ return null; }
+}
+function entwurfEinsetzen(o){
+  daten = o.daten || {};
+  /* Textfelder füllen */
+  var ein = elSeiten.querySelectorAll('[data-k]');
+  for(var i=0;i<ein.length;i++){
+    var el = ein[i], k = el.dataset.k;
+    if(el.classList.contains('chip')) continue;
+    if(el.type==='checkbox'){ el.checked = !!daten[k]; }
+    else if(daten[k]!=null && !Array.isArray(daten[k])) el.value = daten[k];
+  }
+  /* Auswahlkärtchen setzen */
+  for(var s=0;s<SCHRITTE.length;s++)
+    for(var f=0;f<SCHRITTE[s].felder.length;f++){
+      var fe = SCHRITTE[s].felder[f];
+      if(fe.t==="wahl"||fe.t==="mehr") chipsFrischen(fe.k);
+    }
+  planSetzen(daten.oeffnung_plan);
+  zeitenFrischen();
+  adresseZusammen();
+  notizenFrischen();
+  zeigen(Math.min(o.seite||0, PRUEFEN));
+}
+
+/* ---------- Prüfen ---------- */
+/* false zählt als leer — sonst rutscht ein Haken durch, den jemand
+   erst gesetzt und dann wieder weggenommen hat. */
+function istLeer(v){ return v==null || v==="" || v===false || (Array.isArray(v)&&v.length===0); }
+function seitePruefen(n){
+  if(n===PRUEFEN) return true;
+  var ok = true, erstes = null;
+  var felder = SCHRITTE[n].felder;
+  for(var i=0;i<felder.length;i++){
+    var f = felder[i];
+    var box = elSeiten.querySelector('.seite[data-seite="'+n+'"] .feld[data-feld="'+f.k+'"]');
+    if(!box) continue;
+    var schlecht = false;
+    var grund = (f.t==="haken") ? "Ohne dein Einverständnis darf ich die Angaben nicht speichern."
+              : (f.t==="wahl"||f.t==="mehr") ? "Bitte eine Antwort auswählen."
+              : "Bitte noch ausfüllen.";
+
+    if(f.t === "adresse"){
+      /* Straße und Hausnummer sind bewusst nicht nötig — die klären wir
+         im Gespräch. Postleitzahl und Ort brauche ich, um zu wissen,
+         wie weit du weg bist und wohin die Untersetzer gehen. */
+      adresseZusammen();
+      if(!/^\d{5}$/.test(daten.plz||"")){ schlecht = true; grund = "Bitte eine fünfstellige Postleitzahl."; }
+      else if(istLeer(daten.ort)){ schlecht = true; grund = "Bitte noch den Ort eintragen."; }
+    }
+    else if(f.pflicht && istLeer(daten[f.k])) schlecht = true;
+    if(!schlecht && f.t==="mail" && daten[f.k] && !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(daten[f.k])){
+      schlecht = true; grund = "Diese Adresse sieht nicht vollständig aus.";
+    }
+    if(!schlecht && f.t==="tel" && daten[f.k] && (daten[f.k].replace(/\D/g,"").length < 7)){
+      schlecht = true; grund = "Da fehlen noch ein paar Ziffern.";
+    }
+    box.classList.toggle('falsch', schlecht);
+    if(schlecht){
+      box.querySelector('.meckern').textContent = grund;
+      if(!erstes) erstes = box;
+      ok = false;
+    }
+  }
+  if(erstes){
+    var oben = erstes.getBoundingClientRect().top + window.pageYOffset - 110;
+    window.scrollTo({top:oben, behavior: ruhig?'auto':'smooth'});
+    var e = erstes.querySelector('.eingabe, .chip, input[type=checkbox]');
+    if(e && e.focus) setTimeout(function(){ try{e.focus({preventScroll:true});}catch(x){} }, ruhig?0:340);
+  }
+  return ok;
+}
+
+/* ---------- Der Bon ---------- */
+function wertText(f){
+  var v = daten[f.k];
+  if(f.t==="adresse") return adresseZusammen();
+  if(f.t==="zeiten")  return daten.oeffnung || "";
+  if(f.t==="dateien") return dateien.length ? dateien.length+" Datei"+(dateien.length>1?"en":"") : "";
+  if(f.t==="haken") return v ? "Ja" : "";
+  if(Array.isArray(v)) return v.join(", ");
+  if(istLeer(v)) return "";
+  var t = String(v);
+  if(f.frei && v===f.frei && daten[f.k+"_frei"]) t += ": "+daten[f.k+"_frei"];
+  return t;
+}
+function bonBauen(){
+  var s = "";
+  for(var i=0;i<SCHRITTE.length;i++){
+    var zeilen = "";
+    for(var j=0;j<SCHRITTE[i].felder.length;j++){
+      var f = SCHRITTE[i].felder[j];
+      var t = wertText(f);
+      if(!t) continue;
+      var lang = t.length>28;
+      var frage = (f.t==="haken") ? "Einverständnis" : f.l.replace(/<[^>]+>/g,"");
+      zeilen += '<li><span class="was">'+h(frage)+'</span><span class="pkt"></span>'
+             +  '<span class="wert'+(lang?' lang':'')+'">'+h(t)+'</span></li>';
+    }
+    s += '<div class="bon-block"><h3>'+h(SCHRITTE[i].titel)
+       + '<button type="button" data-zu="'+i+'">ändern</button></h3>'
+       + (zeilen ? '<ul class="posten">'+zeilen+'</ul>' : '<p class="leerhinweis">Nichts angegeben — das ist in Ordnung.</p>')
+       + '</div>';
+  }
+  if(dateien.length){
+    var d = "";
+    for(var k=0;k<dateien.length;k++)
+      d += '<li><span class="was">'+h(dateien[k].name)+'</span><span class="pkt"></span><span class="wert">'+mbTxt(dateien[k].size)+'</span></li>';
+    s += '<div class="bon-block"><h3>Anhänge<button type="button" data-zu="3">ändern</button></h3><ul class="posten">'+d+'</ul></div>';
+  }
+  document.getElementById('bon').innerHTML = s;
+}
+
+/* ---------- Zusammenfassung als Text ---------- */
+function textLang(){
+  var z = [];
+  z.push("OMOTENO — Neue Anfrage");
+  if(kennung) z.push("Kennung: "+kennung);
+  z.push("");
+  for(var i=0;i<SCHRITTE.length;i++){
+    var block = [];
+    for(var j=0;j<SCHRITTE[i].felder.length;j++){
+      var f = SCHRITTE[i].felder[j];
+      var t = wertText(f);
+      if(!t) continue;
+      var frage = (f.t==="haken") ? "Einverständnis" : f.l.replace(/<[^>]+>/g,"");
+      block.push("- "+frage+": "+t);
+    }
+    if(block.length){ z.push(SCHRITTE[i].titel.toUpperCase()); z.push(block.join("\n")); z.push(""); }
+  }
+  if(dateien.length){
+    z.push("ANHÄNGE");
+    for(var k=0;k<dateien.length;k++) z.push("- "+dateien[k].name+" ("+mbTxt(dateien[k].size)+")");
+    z.push("");
+  }
+  return z.join("\n");
+}
+function textKurz(){
+  var t = "Hallo Elias, ich habe gerade das Formular ausgefüllt.\n";
+  if(kennung) t += "Kennung: "+kennung+"\n";
+  if(daten.betrieb_name) t += "Betrieb: "+daten.betrieb_name+"\n";
+  if(daten.adresse) t += "Ort: "+daten.adresse+"\n";
+  if(daten.kontakt_name) t += "Mein Name: "+daten.kontakt_name+"\n";
+  if(daten.tische) t += "Tische: "+daten.tische+"\n";
+  if(daten.start_wann) t += "Start: "+daten.start_wann+"\n";
+  return t;
+}
+function waLink(text){
+  if(!OMOTENO.whatsapp) return null;
+  return "https://wa.me/"+OMOTENO.whatsapp+"?text="+encodeURIComponent(text);
+}
+function mailLink(betreff, text){
+  return "mailto:"+OMOTENO.mail+"?subject="+encodeURIComponent(betreff)+"&body="+encodeURIComponent(text);
+}
+
+/* ---------- Dateien ---------- */
+function dateiListeFrischen(){
+  var ul = document.getElementById('dateiListe');
+  if(!ul) return;
+  var s = "";
+  for(var i=0;i<dateien.length;i++){
+    var endung = (dateien[i].name.split('.').pop()||"?").toUpperCase().slice(0,4);
+    s += '<li><span class="art">'+h(endung)+'</span>'
+      +  '<span class="txt"><b>'+h(dateien[i].name)+'</b><small>'+mbTxt(dateien[i].size)+'</small></span>'
+      +  '<button type="button" class="weg" data-weg="'+i+'" aria-label="'+h(dateien[i].name)+' entfernen">×</button></li>';
+  }
+  ul.innerHTML = s;
+}
+function dateienAufnehmen(liste){
+  var meckern = elSeiten.querySelector('.feld[data-feld="dateien"] .meckern');
+  var summe = 0, i;
+  for(i=0;i<dateien.length;i++) summe += dateien[i].size;
+  var probleme = [];
+  for(i=0;i<liste.length;i++){
+    var d = liste[i];
+    if(dateien.length >= OMOTENO.datei.anzahl){ probleme.push("Mehr als "+OMOTENO.datei.anzahl+" Dateien gehen nicht."); break; }
+    if(d.size > OMOTENO.datei.jeMB*1048576){ probleme.push('„'+d.name+'“ ist größer als '+OMOTENO.datei.jeMB+' MB.'); continue; }
+    if(summe + d.size > OMOTENO.datei.summeMB*1048576){ probleme.push("Zusammen dürfen es höchstens "+OMOTENO.datei.summeMB+" MB sein."); break; }
+    summe += d.size;
+    dateien.push(d);
+  }
+  dateiListeFrischen();
+  var box = elSeiten.querySelector('.feld[data-feld="dateien"]');
+  if(probleme.length){ meckern.textContent = probleme.join(" "); box.classList.add('falsch'); }
+  else box.classList.remove('falsch');
+}
+
+/* ---------- Senden ---------- */
+function neueKennung(){
+  var abc = "ACDEFGHJKLMNPQRSTUVWXYZ2345679";  /* ohne B/8, I/1, O/0 — auf Papier verwechselbar */
+  var s = "";
+  var zufall = new Uint8Array(5);
+  if(window.crypto && crypto.getRandomValues) crypto.getRandomValues(zufall);
+  else for(var z=0;z<5;z++) zufall[z] = Math.floor(Math.random()*256);
+  for(var i=0;i<5;i++) s += abc[zufall[i] % abc.length];
+  return "OMO-"+s;
+}
+function dateiName(name){
+  var punkt = name.lastIndexOf('.');
+  var stamm = punkt>0 ? name.slice(0,punkt) : name;
+  var endung = punkt>0 ? name.slice(punkt+1) : "";
+  stamm = stamm.replace(/[äÄ]/g,'ae').replace(/[öÖ]/g,'oe').replace(/[üÜ]/g,'ue').replace(/ß/g,'ss')
+               .replace(/[^A-Za-z0-9._-]+/g,'-').replace(/^-+|-+$/g,'').slice(0,60) || "datei";
+  endung = endung.replace(/[^A-Za-z0-9]/g,'').slice(0,8).toLowerCase();
+  return endung ? stamm+"."+endung : stamm;
+}
+
+function kopf(){
+  return { apikey: OMOTENO.db.schluessel, Authorization: "Bearer "+OMOTENO.db.schluessel };
+}
+
+function dateiHochladen(datei, index){
+  var pfad = kennung + "/" + (index+1) + "-" + dateiName(datei.name);
+  var ziel = OMOTENO.db.adresse.replace(/\/+$/,"") + "/storage/v1/object/" + OMOTENO.db.eimer + "/" + pfad;
+  var k = kopf();
+  k["Content-Type"] = datei.type || "application/octet-stream";
+  k["x-upsert"] = "true";
+  return fetch(ziel, {method:"POST", headers:k, body:datei})
+    .then(function(a){
+      if(!a.ok) return a.text().then(function(t){ throw new Error("Datei "+datei.name+": "+a.status+" "+t.slice(0,140)); });
+      return {name:datei.name, pfad:pfad, groesse:datei.size, typ:datei.type||""};
+    });
+}
+
+/* Der Übergang ins Konto. Die Angaben liegen im sessionStorage
+   desselben Tabs, nicht in der Adresszeile: In der Adresszeile
+   stünden Betrieb und E-Mail im Verlauf, in Lesezeichen und in
+   jedem Zugriffsprotokoll auf dem Weg. Die Kennung darf dort
+   stehen — sie ist ohne den Rest nichts wert. */
+function kontoUebergabe(){
+  var knopf = document.getElementById("kontoWeiter");
+  if(!knopf || !kennung) return;
+  try{
+    sessionStorage.setItem("omoteno-anfrage", JSON.stringify({
+      kennung: kennung,
+      betrieb: daten.betrieb_name || "",
+      ort:     daten.adresse || "",
+      email:   daten.mail || ""
+    }));
+  }catch(e){ /* ohne Speicher eben ohne Vorbelegung */ }
+  knopf.href = "konto.html?anfrage=" + encodeURIComponent(kennung);
+}
+
+function zeileSchreiben(dateiliste, warnungen){
+  var ziel = OMOTENO.db.adresse.replace(/\/+$/,"") + "/rest/v1/anfragen";
+  var k = kopf();
+  k["Content-Type"] = "application/json";
+  k["Prefer"] = "return=minimal";
+  var koerper = {
+    kennung:        kennung,
+    betrieb:        daten.betrieb_name || null,
+    ort:            daten.adresse || null,
+    ansprechpartner:daten.kontakt_name || null,
+    email:          daten.mail || null,
+    telefon:        daten.telefon || null,
+    kasse:          daten.kasse === "Anderes System" && daten.kasse_frei ? daten.kasse_frei : (daten.kasse || null),
+    tische:         daten.tische ? parseInt(daten.tische,10) : null,
+    start_wann:     daten.start_wann || null,
+    kontaktweg:     daten.weg || null,
+    antworten:      daten,
+    dateien:        dateiliste,
+    hinweise:       warnungen.length ? warnungen.join(" | ") : null,
+    quelle:         (location.hostname || "unbekannt")
+  };
+  return fetch(ziel, {method:"POST", headers:k, body:JSON.stringify(koerper)})
+    .then(function(a){
+      if(a.status===409){ throw new Error("kollision"); }
+      if(!a.ok) return a.text().then(function(t){ throw new Error("Datenbank: "+a.status+" "+t.slice(0,200)); });
+      return true;
+    });
+}
+
+function absenden(){
+  if(gesendet) return;
+  var falle = document.getElementById('falle');
+  if(falle && falle.value){ zeigenFertig(); return; }          /* Werbeschleuder — still schlucken */
+  if(Date.now() - geladen < 8000){                              /* zu schnell für einen Menschen */
+    document.getElementById('sendeText').textContent = "Einen Moment noch …";
+  }
+  for(var i=0;i<PRUEFEN;i++){
+    if(!seitePruefen(i)){ zeigen(i); return; }
+  }
+
+  var lage  = document.getElementById('sendeLage');
+  var txt   = document.getElementById('sendeText');
+  var panne = document.getElementById('panne');
+  var knopf = document.getElementById('absenden');
+  panne.classList.remove('an');
+  lage.classList.add('an');
+  knopf.disabled = true;
+
+  if(!kennung) kennung = neueKennung();
+
+  /* Ohne Datenbank: direkt den Weg über WhatsApp bzw. E-Mail anbieten. */
+  if(!OMOTENO.db.an){
+    lage.classList.remove('an'); knopf.disabled = false;
+    ausweichen("Die Datenbank ist noch nicht eingeschaltet.");
+    return;
+  }
+
+  var warnungen = [];
+  var hochgeladen = [];
+
+  txt.textContent = dateien.length ? "Dateien werden übertragen …" : "Wird gesendet …";
+
+  var kette = Promise.resolve();
+  dateien.forEach(function(d, i){
+    kette = kette.then(function(){
+      txt.textContent = "Datei "+(i+1)+" von "+dateien.length+" …";
+      return dateiHochladen(d, i)
+        .then(function(r){ hochgeladen.push(r); })
+        .catch(function(e){ warnungen.push("Anhang „"+d.name+"“ kam nicht durch."); });
+    });
+  });
+
+  kette
+    .then(function(){ txt.textContent = "Wird gesendet …"; return zeileSchreiben(hochgeladen, warnungen); })
+    .catch(function(e){
+      if(String(e && e.message)==="kollision"){       /* Kennung schon vergeben — einmal neu würfeln */
+        kennung = neueKennung();
+        return zeileSchreiben(hochgeladen, warnungen);
+      }
+      throw e;
+    })
+    .then(function(){
+      lage.classList.remove('an');
+      gesendet = true;
+      entwurfLoeschen();
+      kontoUebergabe();
+      zeigenFertig(warnungen);
+    })
+    .catch(function(e){
+      lage.classList.remove('an');
+      knopf.disabled = false;
+      ausweichen(e && e.message ? e.message : "Unbekannter Fehler");
+    });
+}
+
+function ausweichen(grund){
+  var panne = document.getElementById('panne');
+  document.getElementById('panneText').textContent =
+    "Deine Angaben sind nicht verloren — sie stehen noch hier. Versuch es gleich noch einmal, oder schick sie mir direkt. Dann habe ich alles trotzdem.";
+  var mail = document.getElementById('panneMail');
+  mail.href = mailLink("Omoteno Anfrage "+(kennung||""), textLang());
+  var wa = document.getElementById('panneWa');
+  var l = waLink(textLang().slice(0,1400));
+  if(l){ wa.href = l; wa.hidden = false; } else { wa.hidden = true; }
+  panne.classList.add('an');
+  panne.scrollIntoView({behavior: ruhig?'auto':'smooth', block:'center'});
+  if(window.console) console.warn("Omoteno: Senden fehlgeschlagen —", grund);
+}
+
+function zeigenFertig(warnungen){
+  elBogen.style.display = "none";
+  document.getElementById('fortschritt').style.display = "none";
+  document.getElementById('entwurfLeiste').classList.remove('an');
+  var zw = document.getElementById('zwischenfrage'); if(zw) zw.hidden = true;
+  var auf = document.getElementById('auftakt'); if(auf) auf.hidden = true;
+  elFertig.classList.add('an');
+  document.getElementById('kennungFeld').textContent = kennung || "OMO-·····";
+
+  var wegText = "Ich melde mich innerhalb von 24 Stunden bei dir.";
+  if(daten.weg==="WhatsApp") wegText = "Ich melde mich per WhatsApp — meistens innerhalb von 24 Stunden.";
+  if(daten.weg==="Anruf")    wegText = "Ich rufe dich an"+(daten.zeit&&daten.zeit!=="Egal"?" — "+daten.zeit.toLowerCase():"")+", innerhalb von 24 Stunden.";
+  if(daten.weg==="E-Mail")   wegText = "Ich schreibe dir eine E-Mail, innerhalb von 24 Stunden.";
+  document.getElementById('danachWeg').textContent = wegText;
+
+  if(warnungen && warnungen.length){
+    document.getElementById('fertigText').textContent =
+      "Deine Angaben liegen bei mir. Ein Anhang ist unterwegs verloren gegangen — schick ihn mir gern noch per WhatsApp nach.";
+  }
+
+  var wa = document.getElementById('waFertig');
+  var l = waLink(textKurz());
+  if(l){ wa.href = l; wa.hidden = false; }
+
+  window.scrollTo({top: document.getElementById('zettel').getBoundingClientRect().top + window.pageYOffset - 20, behavior: ruhig?'auto':'smooth'});
+}
+
+/* ---------- Verdrahtung ---------- */
+seitenBauen();
+
+/* Ein Klickhorcher für den ganzen Zettel statt hundert einzelne. */
+elSeiten.addEventListener('click', function(ev){
+  var chip = ev.target.closest ? ev.target.closest('.chip') : null;
+  if(chip){
+    var k = chip.dataset.k, v = chip.dataset.v;
+    if(chip.dataset.mehr === "1"){
+      var liste = Array.isArray(daten[k]) ? daten[k].slice() : [];
+      var p = liste.indexOf(v);
+      if(p>-1) liste.splice(p,1); else liste.push(v);
+      wertSetzen(k, liste);
+    }else{
+      wertSetzen(k, daten[k]===v ? "" : v);     /* nochmal tippen = abwählen */
+    }
+    chipsFrischen(k);
+    var box = chip.closest('.feld'); if(box) box.classList.remove('falsch');
+    return;
+  }
+  var nav = ev.target.closest ? ev.target.closest('[data-nav]') : null;
+  if(nav){
+    if(nav.dataset.nav === "weiter"){ if(seitePruefen(seite)) zeigen(seite+1); }
+    else zeigen(seite-1);
+    return;
+  }
+  var zu = ev.target.closest ? ev.target.closest('[data-zu]') : null;
+  if(zu){ zeigen(Number(zu.dataset.zu)); return; }
+
+  var weg = ev.target.closest ? ev.target.closest('[data-weg]') : null;
+  if(weg){ dateien.splice(Number(weg.dataset.weg),1); dateiListeFrischen(); return; }
+
+  /* ---- Öffnungszeiten ---- */
+  var zu = ev.target.closest ? ev.target.closest('[data-zzu]') : null;
+  if(zu){
+    var zeile = elSeiten.querySelector('[data-ztag="'+zu.dataset.zzu+'"]');
+    zeile.classList.toggle('zu');
+    if(zeile.classList.contains('zu')){
+      var sel = zeile.querySelectorAll('.zeit-select');
+      for(var q=0;q<sel.length;q++) sel[q].value = "";
+      var pz = elSeiten.querySelector('[data-zpausezeile="'+zu.dataset.zzu+'"]');
+      if(pz){ pz.hidden = true; var s2 = pz.querySelectorAll('.zeit-select'); for(var r=0;r<s2.length;r++) s2[r].value = ""; }
+    }
+    zeitenFrischen(); return;
+  }
+  var zp = ev.target.closest ? ev.target.closest('[data-zpause]') : null;
+  if(zp){
+    var pz2 = elSeiten.querySelector('[data-zpausezeile="'+zp.dataset.zpause+'"]');
+    if(pz2) pz2.hidden = false;
+    var zt = elSeiten.querySelector('[data-ztag="'+zp.dataset.zpause+'"]');
+    if(zt) zt.classList.add('hat-pause');
+    return;
+  }
+  var zpw = ev.target.closest ? ev.target.closest('[data-zpauseweg]') : null;
+  if(zpw){
+    var pz3 = elSeiten.querySelector('[data-zpausezeile="'+zpw.dataset.zpauseweg+'"]');
+    if(pz3){ pz3.hidden = true; var s3 = pz3.querySelectorAll('.zeit-select'); for(var u=0;u<s3.length;u++) s3[u].value = ""; }
+    var zt2 = elSeiten.querySelector('[data-ztag="'+zpw.dataset.zpauseweg+'"]');
+    if(zt2) zt2.classList.remove('hat-pause');
+    zeitenFrischen(); return;
+  }
+  if(ev.target.closest && (ev.target.closest('[data-zalle]') || ev.target.closest('[data-zwoche]'))){
+    var nurWoche = !!ev.target.closest('[data-zwoche]');
+    var plan = planLesen();
+    var vorlage = plan.mo;
+    if(!vorlage){ adrLage(""); zeitenFrischen(); return; }
+    TAGE.forEach(function(t, i){
+      if(t.k === "mo") return;
+      if(nurWoche && i > 4) return;          /* Mo–Fr sind die Plätze 0 bis 4 */
+      plan[t.k] = JSON.parse(JSON.stringify(vorlage));
+    });
+    planSetzen(plan); zeitenFrischen(); return;
+  }
+  if(ev.target.closest && ev.target.closest('[data-zleeren]')){
+    planSetzen({mo:null,di:null,mi:null,do:null,fr:null,sa:null,so:null});
+    TAGE.forEach(function(t){
+      var z = elSeiten.querySelector('[data-ztag="'+t.k+'"]');
+      if(z) z.classList.remove('zu','offen','hat-pause');
+    });
+    zeitenFrischen(); return;
+  }
+
+  /* ---- Adressvorschläge ---- */
+  var wo = ev.target.closest ? ev.target.closest('[data-waehleort]') : null;
+  if(wo){
+    var eo = elSeiten.querySelector('[data-k="ort"]');
+    if(eo){ eo.value = wo.dataset.waehleort; wertSetzen('ort', wo.dataset.waehleort); }
+    vorschlaegeLeeren('ort'); adrLage(wo.dataset.waehleort, true); return;
+  }
+  var ws = ev.target.closest ? ev.target.closest('[data-waehlestrasse]') : null;
+  if(ws){
+    var es = elSeiten.querySelector('[data-k="strasse"]');
+    if(es){ es.value = ws.dataset.waehlestrasse; wertSetzen('strasse', ws.dataset.waehlestrasse); }
+    if(ws.dataset.plz && !daten.plz){
+      var ep = elSeiten.querySelector('[data-k="plz"]');
+      if(ep){ ep.value = ws.dataset.plz; wertSetzen('plz', ws.dataset.plz); }
+    }
+    if(ws.dataset.ort && !daten.ort){
+      var eo2 = elSeiten.querySelector('[data-k="ort"]');
+      if(eo2){ eo2.value = ws.dataset.ort; wertSetzen('ort', ws.dataset.ort); }
+    }
+    vorschlaegeLeeren('strasse');
+    adrLage((daten.plz||"")+" "+(daten.ort||""), true);
+    var box = ws.closest('.feld'); if(box) box.classList.remove('falsch');
+    return;
+  }
+
+  if(ev.target.id === "absenden"){ absenden(); return; }
+  if(ev.target.id === "nochmal"){ document.getElementById('panne').classList.remove('an'); absenden(); return; }
+});
+
+/* Tippen in Textfelder */
+elSeiten.addEventListener('input', function(ev){
+  var el = ev.target;
+
+  /* Uhrzeit-Auswahl */
+  if(el.dataset && el.dataset.zzeit){ zeitenFrischen(); return; }
+
+  if(!el.dataset || !el.dataset.k) return;
+  if(el.type === "checkbox"){ wertSetzen(el.dataset.k, el.checked); }
+  else if(el.dataset.farbe){
+    wertSetzen(el.dataset.k, el.value);
+    var text = elSeiten.querySelector('input[data-k="'+el.dataset.k+'"]:not([data-farbe])');
+    if(text) text.value = el.value;
+  }
+  else wertSetzen(el.dataset.k, el.value);
+
+  /* Adresse: Ort aus der Postleitzahl, Vorschläge zur Straße */
+  if(el.dataset.k === "plz"){
+    var roh = el.value.replace(/\D/g,"").slice(0,5);
+    if(roh !== el.value){ el.value = roh; wertSetzen('plz', roh); }
+    vorschlaegeLeeren('ort');
+    clearTimeout(adrTimer);
+    if(/^\d{5}$/.test(roh)) adrTimer = setTimeout(function(){ plzNachschlagen(roh); }, 250);
+    else adrLage("");
+  }
+  if(el.dataset.k === "strasse"){
+    clearTimeout(adrTimer);
+    var wert = el.value;
+    adrTimer = setTimeout(function(){ strassenVorschlagen(wert); }, 400);
+  }
+  if(el.dataset.k === "plz" || el.dataset.k === "ort" ||
+     el.dataset.k === "strasse" || el.dataset.k === "hausnr") adresseZusammen();
+
+  var box = el.closest('.feld'); if(box) box.classList.remove('falsch');
+});
+
+/* Auswahlfelder melden sich über „change", nicht über „input" */
+elSeiten.addEventListener('change', function(ev){
+  if(ev.target.dataset && ev.target.dataset.zzeit) zeitenFrischen();
+});
+
+/* Telefonnummern und E-Mail beim Verlassen des Feldes aufräumen */
+elSeiten.addEventListener('focusout', function(ev){
+  var el = ev.target;
+  if(!el.dataset || !el.dataset.k) return;
+
+  if(el.dataset.k === "telefon" && el.value){
+    /* 0049…, +49…, 0151… — alles auf eine lesbare Form bringen.
+       Der Rest bleibt unangetastet, damit nichts kaputtgeht. */
+    var t = el.value.replace(/[^\d+]/g,"");
+    if(/^0049/.test(t)) t = "+49" + t.slice(4);
+    else if(/^49\d{9,}$/.test(t)) t = "+49" + t.slice(2);
+    else if(/^0\d{6,}$/.test(t)) t = "+49" + t.slice(1);
+    if(t !== el.value){ el.value = t; wertSetzen('telefon', t); }
+  }
+
+  if(el.dataset.k === "mail" && el.value.indexOf("@") > 0){
+    var dom = el.value.split("@").pop().toLowerCase();
+    var haeufig = { "gmail.de":"gmail.com", "gmail.con":"gmail.com", "gmial.com":"gmail.com",
+                    "gmx.com":"gmx.de", "web.com":"web.de", "hotmai.com":"hotmail.com",
+                    "outlook.de ":"outlook.de", "t-online.com":"t-online.de", "yahoo.de.com":"yahoo.de" };
+    var hinweis = el.closest('.feld').querySelector('.meckern');
+    if(haeufig[dom]){
+      /* Nur ein Hinweis, keine Sperre — vielleicht stimmt es ja doch. */
+      hinweis.textContent = "Meintest du vielleicht …@" + haeufig[dom] + "?";
+      hinweis.style.display = "block";
+      hinweis.style.color = "var(--tinte-leise)";
+    }else{
+      hinweis.style.display = ""; hinweis.style.color = "";
+    }
+  }
+});
+
+/* Enter springt weiter statt abzuschicken */
+elBogen.addEventListener('keydown', function(ev){
+  if(ev.key === "Enter" && ev.target.tagName === "INPUT"){
+    ev.preventDefault();
+    var w = elSeiten.querySelector('.seite.an [data-nav="weiter"], .seite.an #absenden');
+    if(w) w.click();
+  }
+});
+elBogen.addEventListener('submit', function(ev){ ev.preventDefault(); });
+
+/* Dateien: Auswahl und Ablegen */
+(function(){
+  var wahl = document.getElementById('dateiWahl');
+  var flaeche = document.getElementById('ablage');
+  if(!wahl || !flaeche) return;
+  wahl.addEventListener('change', function(){
+    dateienAufnehmen(Array.prototype.slice.call(wahl.files));
+    wahl.value = "";                    /* damit dieselbe Datei erneut wählbar bleibt */
+  });
+  ['dragenter','dragover'].forEach(function(e){
+    flaeche.addEventListener(e, function(ev){ ev.preventDefault(); flaeche.classList.add('drueber'); });
+  });
+  ['dragleave','drop'].forEach(function(e){
+    flaeche.addEventListener(e, function(ev){ ev.preventDefault(); flaeche.classList.remove('drueber'); });
+  });
+  flaeche.addEventListener('drop', function(ev){
+    if(ev.dataTransfer && ev.dataTransfer.files) dateienAufnehmen(Array.prototype.slice.call(ev.dataTransfer.files));
+  });
+})();
+
+/* WhatsApp-Knöpfe nur zeigen, wenn eine Nummer eingetragen ist */
+(function(){
+  var kasten = document.getElementById('zwischenfrage');
+  var link = waLink("Hallo Elias, ich fülle gerade das Omoteno-Formular aus und habe eine Frage: ");
+  if(link){ document.getElementById('waZwischen').href = link; kasten.hidden = false; }
+})();
+
+/* Zusammenfassung kopieren */
+document.getElementById('kopierKnopf').addEventListener('click', function(){
+  var t = textLang();
+  var melden = function(gut){
+    var p = document.getElementById('kopiertText');
+    p.textContent = gut ? "Kopiert." : "Klappte nicht — markier den Text von Hand.";
+    setTimeout(function(){ p.textContent = ""; }, 3000);
+  };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(t).then(function(){melden(true);}, function(){melden(false);});
+  }else{
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = t; ta.style.position='fixed'; ta.style.opacity='0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta); melden(true);
+    }catch(e){ melden(false); }
+  }
+});
+
+/* Entwurf */
+(function(){
+  var alt = entwurfLesen();
+  var leiste = document.getElementById('entwurfLeiste');
+  if(alt && Object.keys(alt.daten||{}).length){
+    var d = new Date(alt.wann);
+    document.getElementById('entwurfText').textContent =
+      "Du hast hier am "+d.toLocaleDateString('de-DE',{day:'numeric',month:'long'})+" schon angefangen.";
+    leiste.classList.add('an');
+    document.getElementById('entwurfWeiter').addEventListener('click', function(){
+      entwurfEinsetzen(alt); leiste.classList.remove('an');
+    });
+    document.getElementById('entwurfWeg').addEventListener('click', function(){
+      entwurfLoeschen(); leiste.classList.remove('an');
+    });
+  }
+})();
+
+/* Warnung beim Verlassen mit halb ausgefülltem Zettel */
+window.addEventListener('beforeunload', function(ev){
+  if(gesendet) return;
+  if(Object.keys(daten).length < 3) return;
+  ev.preventDefault(); ev.returnValue = "";
+});
+
+zeigen(0, true);
+
+/* ─── Magnetische Knöpfe ────────────────────────────────────────
+   Dieselbe Bewegung wie auf der Webseite und im Konto: Der Knopf
+   folgt dem Zeiger ein Stück weit und schnellt zurück. Nur mit
+   Maus — auf dem Telefon gibt es keinen Zeiger, dem man folgen
+   könnte. Und nach jedem Seitenwechsel neu verteilt, weil die
+   Schritte ihre Knöpfe erst beim Zeichnen in die Seite legen. */
+function magnetisieren(){
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+  if(matchMedia("(hover:none)").matches) return;
+  var knoepfe = document.querySelectorAll(".knopf:not(.magnet)");
+  for(var i = 0; i < knoepfe.length; i++) magnetEinzeln(knoepfe[i]);
+}
+function magnetEinzeln(el){
+  el.classList.add("magnet");
+  var r = null;
+  function zieh(e){
+    if(!r) r = el.getBoundingClientRect();
+    var dx = (e.clientX - (r.left + r.width / 2)) * .16;
+    var dy = (e.clientY - (r.top  + r.height / 2)) * .34;
+    el.style.transition = "transform .1s linear";
+    el.style.transform  = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px)";
+  }
+  el.addEventListener("pointerenter", function(e){ r = el.getBoundingClientRect(); zieh(e); });
+  el.addEventListener("pointermove", zieh);
+  el.addEventListener("pointerleave", function(){
+    r = null;
+    el.style.transition = "transform .55s cubic-bezier(.34,1.4,.64,1)";
+    el.style.transform  = "translate(0,0)";
+  });
+}
+magnetisieren();
+new MutationObserver(magnetisieren).observe(document.body, {childList:true, subtree:true});
+})();
+</script>
+</body>
+</html>
