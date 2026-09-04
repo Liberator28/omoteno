@@ -515,6 +515,36 @@ Einzelprüfung, sondern erst `pruef-durchgang.js` — der Weg, den ein
 Gast wirklich geht. Wer nur Bausteine prüft, findet keine Fehler
 zwischen den Bausteinen.
 
+### 8.1c `hidden` gibt es auf einem SVG nicht als Eigenschaft
+
+> **Vorfall.** Untersetzer und Aufsteller bekamen je eine eigene
+> Zeichnung; umgeschaltet wurde mit `el.hidden = true`. Beim Messen:
+> **Eigenschaft `true`, Attribut weg, `display` weiter `block`** —
+> die Fläche blieb stehen, und die zweite lag darunter. Kein Fehler,
+> keine Warnung.
+>
+> Grund: `hidden` liegt auf **HTMLElement** und spiegelt dort aufs
+> Attribut. Ein `<svg>` ist ein `SVGElement` und erbt das nicht. Die
+> Zuweisung legt dann still eine gewöhnliche JS-Eigenschaft an, die
+> niemand liest.
+
+Bei allem, was kein HTML-Element ist — `<svg>` und alles darin —:
+
+```js
+el.setAttribute("hidden", "");   // statt el.hidden = true
+el.removeAttribute("hidden");    // statt el.hidden = false
+```
+
+Und die Prüfung dazu darf **nicht** `el.hidden` ablesen; dort steht
+für SVG immer `undefined`. Gemessen wird, was zählt:
+`hasAttribute("hidden")`, `getComputedStyle(el).display` und die
+Breite. Mein erster Test las die Eigenschaft und meldete deshalb
+grün, als es noch kaputt war — und rot, als es schon lief.
+
+Zusammen mit §8.1 heißt das: `[hidden]` braucht die
+`display:none`-Gegenregel **und** den richtigen Weg, es zu setzen.
+Eines von beidem allein reicht nie.
+
 ### 8.1a Bausteine prüfen findet nicht, was zwischen ihnen fehlt
 
 > **Vorfall.** Der Erzeuger baute für „Blend" einen Hub mit

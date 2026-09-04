@@ -319,6 +319,84 @@ Prüfung sieht genau in den Titel jedes Hubs.
 
 ---
 
+## 5c · Google-Anmeldung einschalten
+
+Der Code in `seiten/konto.html` ist vollständig — er ruft
+`signInWithOAuth({provider:"google"})` auf und übersetzt beide
+möglichen Absagen in Klartext. Was fehlt, ist die **Freischaltung**.
+Zwei Stellen, beide im Supabase-Dashboard:
+
+**1 · Den Anbieter einschalten**
+*Authentication → Providers → Google*. Client-ID und Secret kommen aus
+der Google Cloud Console (*APIs & Services → Credentials → OAuth
+client ID*, Typ „Web application"). Dort als autorisierte
+Weiterleitung eintragen:
+
+```
+https://quxwweuvdqtjsdwgjdrh.supabase.co/auth/v1/callback
+```
+
+**2 · Die Rücksprungadressen erlauben**
+*Authentication → URL Configuration → Redirect URLs*. Die Seite
+schickt `location.origin + location.pathname` zurück, und beide
+Schreibweisen sind erreichbar:
+
+```
+https://omoteno.de/konto
+https://omoteno.de/konto.html
+```
+
+**Keine Kundendomain hier eintragen.** Das Konto gehört unter
+omoteno.de; unter einer Kundenadresse hat es nichts zu suchen (siehe
+5b).
+
+**Woran man erkennt, welches der beiden fehlt:** Die Seite sagt es.
+„noch nicht freigeschaltet" heißt Punkt 1, „Adresse nicht hinterlegt"
+heißt Punkt 2.
+
+---
+
+## 5b · Ein Projekt, nicht zwei
+
+> **Vorfall, 04.09.** Bei Netlify liefen ZWEI Projekte auf demselben
+> Repo — eines für omoteno.de, eines für den Choco-Hub. Beide bauten
+> unabhängig voneinander, zu verschiedenen Zeitpunkten. Ergebnis: Auf
+> der einen Adresse stand ein alter Stand, auf der anderen die
+> Landingpage statt des Hubs. Die Korrektur im Repo war längst drin.
+
+Zwei Projekte auf einem Repo laufen **zwangsläufig** auseinander. Sie
+teilen sich dieselbe `netlify.toml`, bauen denselben Ordner und
+veröffentlichen dasselbe — nur eben zu verschiedenen Zeiten. Was einen
+Kunden-Hub unter eigener Adresse erscheinen lässt, ist **kein zweites
+Projekt**, sondern ein Domain-Alias plus eine Zeile in `_redirects`
+(Abschnitt 5a).
+
+**Zusammenlegen, in dieser Reihenfolge:**
+
+1. Im **Omoteno-Projekt**: *Domain management → Add domain alias* →
+   die Kundenadresse eintragen. Warten, bis Netlify das Zertifikat
+   ausgestellt hat (steht dort als „Netlify certificate").
+2. *Site configuration → Build & deploy* prüfen:
+   **Base directory leer**, Branch `main`, Build command kommt aus
+   `netlify.toml`. Steht im Base directory etwas, findet Netlify die
+   `netlify.toml` nicht — der häufigste Grund für einen Bau, der
+   sofort scheitert.
+3. **Erst wenn 1 grün ist**: das zweite Projekt löschen
+   (*Site configuration → Danger zone → Delete site*). Vorher nicht —
+   sonst zeigt die Adresse zwischendurch ins Leere.
+4. Beim Domain-Anbieter bleibt der `CNAME` unverändert. Er zeigt
+   danach nur auf ein anderes Netlify-Projekt.
+
+**Warum das auch die Anmeldung repariert:** Supabase lässt den
+Rücksprung nach der Google-Anmeldung nur auf Adressen zu, die in
+*Authentication → URL Configuration* stehen. Dort steht `omoteno.de`
+— und dort soll auch keine Kundendomain stehen. Liegt `konto.html`
+unter einer Kundenadresse, scheitert die Anmeldung genau daran.
+Mit einem Projekt und sauberen Umleitungen kommt das Konto gar nicht
+erst unter einer Kundendomain heraus.
+
+---
+
 ## 5a · Eine neue Kundenadresse einpflegen
 
 Drei Dinge, **alle drei** nötig. Fehlt eines, passiert nichts:

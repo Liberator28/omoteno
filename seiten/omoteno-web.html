@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Omoteno — Der Tisch ist das Personal, das nie Pause macht.</title>
-<meta name="description" content="Untersetzer antippen, Karte öffnet sich, Bestellung landet in der Küche. Ohne App, ohne neue Kasse. Ab 29 € im Monat.">
+<meta name="description" content="Untersetzer antippen, Karte öffnet sich, Bestellung landet in der Küche. Ohne App, ohne neue Kasse. Ab 79 € im Monat.">
 <meta name="theme-color" content="#0A1714">
 
 <!-- Schrift lädt NEBENHER, nicht davor.
@@ -346,6 +346,14 @@ p:last-child{margin-bottom:0}
 .plinth.aufsteller .seite.oben::after{inset:11px;border-radius:5px}
 .seite svg{width:78%;height:auto}
 .plinth.aufsteller .seite svg{width:66%}
+/* Die verborgene Fläche muss AUSDRÜCKLICH weg. `.seite svg` trägt
+   eine Breitenregel, und gegen eine Angabe im Blatt verliert die
+   UA-Regel für [hidden] — genau die Falle aus CLAUDE.md §8.1, die
+   den Willkommensschirm im Hub unsichtbar über allem liegen ließ. */
+.seite .flaeche[hidden]{display:none !important}
+/* Der A5 nutzt seine Höhe, nicht seine Breite: hochkant zählt, dass
+   die Fläche oben und unten Luft behält. */
+.plinth.aufsteller .seite .f-hoch{width:74%}
 .praegung{
   font-family:var(--mono);font-size:9.5px;font-weight:700;letter-spacing:.22em;
   color:rgba(22,21,15,.26);text-transform:uppercase;
@@ -535,6 +543,42 @@ p:last-child{margin-bottom:0}
 .abend-bahn i{
   position:absolute;left:0;top:0;height:100%;background:var(--glut-hell);
   transition:width .18s linear;
+}
+
+/* ─── Nachtmodus ab 22:00 ────────────────────────────────────────
+   Der Abschnitt ist ohnehin dunkel. „Nacht" darf deshalb nicht
+   einfach „dunkler" heißen, sonst sieht man den Unterschied nicht —
+   es wechselt auch die AKZENTFARBE: Glut wird Mondlicht. Damit ist
+   der Umschlag auf einen Blick da, ohne dass irgendetwas an Kontrast
+   verliert.
+
+   Gerechnet auf dem Nachtgrund #06100E (CLAUDE.md §5.2):
+     Uhr        #E4EDE6  16,13:1   (soll 4,5)
+     Bahn       #8FB8D6   9,19:1   (soll 3,0 — Bedienelement)
+     Stufe still#7E938A   5,91:1   (soll 4,5)
+     Stufe vorbei #A7BAB0 9,46:1   (soll 4,5)
+   Zum Vergleich der Tagzustand: Uhr 14,87:1, Bahn 4,94:1,
+   Stufe still 4,53:1. Beide Zustände tragen. */
+.abend-fest.nacht{
+  background:#06100E;
+  --kreide:#E4EDE6;
+  --kreide-still:#7E938A;
+  --kreide-leise:#A7BAB0;
+  --glut-hell:#8FB8D6;
+  --linie-dunkel:rgba(228,237,230,.17);
+}
+/* Der Grund liegt am .abend-fest, nicht am Abschnitt: Nur die
+   angeheftete Fläche kippt, der Rest der Seite bleibt ruhig. Ohne
+   eigenes Kastenmodell säße die Farbe hinter dem sticky-Element und
+   liefe beim Scrollen mit dem Abschnitt weg. */
+.abend-fest{
+  transition:background .5s var(--weich);
+  background:var(--sockel);
+}
+/* Bei reduzierter Bewegung bleibt der Farbwechsel — er trägt eine
+   Information —, aber ohne Überblendung (CLAUDE.md §4.1). */
+@media (prefers-reduced-motion: reduce){
+  .abend-fest{transition:none}
 }
 
 /* Stufenleiste unter der Uhr. Sie ist zugleich Fortschritt und
@@ -1533,16 +1577,90 @@ html.starr{overflow:hidden}
           <span class="tisch">
             <span class="koerper" id="koerper">
               <span class="seite oben">
-                <svg viewBox="0 0 120 120" aria-hidden="true">
+                <!-- Zwei Flächen, ein Körper. Bis zum 04.09. teilten sich
+                     Untersetzer und Aufsteller DIESELBE Zeichnung; beim A5
+                     wurde sie nur auf 66 % gestaucht. Deshalb sah der
+                     Aufsteller aus wie ein zusammengedrückter Untersetzer
+                     statt wie ein Kartenständer. Jetzt hat jede Form ihre
+                     eigene, für ihr Format gezeichnete Fläche.
+
+                     Umgeschaltet wird in gegenstand() mit `hidden` UND
+                     display:none — `[hidden]` allein verliert gegen die
+                     Breitenregel an `.seite svg` (CLAUDE.md §8.1). -->
+                <svg class="flaeche f-rund" viewBox="0 0 120 120" aria-hidden="true">
                   <g fill="none" stroke="#123029" stroke-linecap="round">
-                    <circle cx="60" cy="41" r="7.5" fill="#123029" stroke="none"/>
-                    <path d="M43 57c5-5.5 11-8.2 17-8.2S72 51.5 77 57" stroke-width="4.6" opacity=".82"/>
-                    <path d="M34 69c7.5-8 16.5-12 26-12s18.5 4 26 12" stroke-width="4.6" opacity=".5"/>
-                    <path d="M25 81c10-10.5 22-15.8 35-15.8S85 70.5 95 81" stroke-width="4.6" opacity=".26"/>
+                    <circle cx="60" cy="40" r="7" fill="#123029" stroke="none"/>
+                    <!-- Gleichmäßige Abstände und ein gleichmäßiger
+                         Deckkraft-Verlauf. Vorher sprangen .82 / .5 / .26
+                         — der äußere Bogen wirkte abgerissen. -->
+                    <path d="M44 56c4.6-5 10-7.6 16-7.6S71.4 51 76 56" stroke-width="4.4" opacity=".78"/>
+                    <path d="M35 68c6.9-7.4 15.4-11.2 25-11.2S78.1 60.6 85 68" stroke-width="4.4" opacity=".56"/>
+                    <path d="M26 80c9.2-9.8 20.6-14.8 34-14.8S84.8 70.2 94 80" stroke-width="4.4" opacity=".34"/>
                   </g>
-                  <text x="60" y="99" text-anchor="middle" fill="#123029"
-                        font-family="ui-monospace,monospace" font-size="7.4" font-weight="700"
-                        letter-spacing="2.2" opacity=".62">AUFLEGEN · QR</text>
+                  <text x="60" y="100" text-anchor="middle" fill="#123029"
+                        font-family="ui-monospace,monospace" font-size="7" font-weight="700"
+                        letter-spacing="1.8" opacity=".6">AUFLEGEN · QR</text>
+                </svg>
+
+                <!-- Der A5 steht hochkant auf dem Tisch. Er zeigt, was ein
+                     Gast dort wirklich vor sich hat: worum es geht, das
+                     NFC-Zeichen zum Auflegen, einen QR zum Scannen und die
+                     Tischnummer.
+
+                     Der QR ist ausdrücklich eine ANDEUTUNG, kein lesbarer
+                     Code — drei Suchmuster und ein ruhiges Raster. Einen
+                     scanbaren Code auf eine Werbeseite zu drucken, der
+                     nirgendwohin führt, wäre eine Lüge auf dem Tisch. -->
+                <svg class="flaeche f-hoch" viewBox="0 0 100 141" aria-hidden="true" hidden>
+                  <text x="50" y="15" text-anchor="middle" fill="#123029"
+                        font-family="ui-monospace,monospace" font-size="5.2" font-weight="700"
+                        letter-spacing="1.6" opacity=".58">SPEISEKARTE · 11 SPRACHEN</text>
+
+                  <g fill="none" stroke="#123029" stroke-linecap="round"
+                     transform="translate(0,4)">
+                    <circle cx="50" cy="36" r="4.6" fill="#123029" stroke="none"/>
+                    <path d="M39 47c3-3.4 6.7-5.2 11-5.2S58 43.6 61 47" stroke-width="3" opacity=".78"/>
+                    <path d="M33 55c4.6-5 10.3-7.6 17-7.6S62.4 50 67 55" stroke-width="3" opacity=".56"/>
+                    <path d="M27 63c6.2-6.6 13.9-10 23-10s16.8 3.4 23 10" stroke-width="3" opacity=".34"/>
+                  </g>
+
+                  <text x="50" y="80" text-anchor="middle" fill="#123029"
+                        font-family="ui-monospace,monospace" font-size="4.6" font-weight="700"
+                        letter-spacing="1.3" opacity=".5">HANDY AUFLEGEN</text>
+
+                  <g fill="#123029" opacity=".72" transform="translate(35,86)">
+                    <!-- Suchmuster: drei Ecken, wie bei jedem echten Code -->
+                    <path d="M0 0h9v9H0z M2 2v5h5V2z" fill-rule="evenodd"/>
+                    <path d="M21 0h9v9h-9z M23 2v5h5V2z" fill-rule="evenodd"/>
+                    <path d="M0 21h9v9H0z M2 23v5h5v-5z" fill-rule="evenodd"/>
+                    <!-- Raster: ruhig gesetzt, damit es nicht flimmert -->
+                    <rect x="12" y="1" width="2" height="2"/><rect x="16" y="1" width="2" height="2"/>
+                    <rect x="12" y="5" width="2" height="2"/><rect x="18" y="5" width="2" height="2"/>
+                    <rect x="14" y="9" width="2" height="2"/><rect x="18" y="9" width="2" height="2"/>
+                    <rect x="1" y="12" width="2" height="2"/><rect x="5" y="12" width="2" height="2"/>
+                    <rect x="12" y="12" width="2" height="2"/><rect x="16" y="12" width="2" height="2"/>
+                    <rect x="21" y="12" width="2" height="2"/><rect x="27" y="12" width="2" height="2"/>
+                    <rect x="3" y="16" width="2" height="2"/><rect x="9" y="16" width="2" height="2"/>
+                    <rect x="14" y="16" width="2" height="2"/><rect x="23" y="16" width="2" height="2"/>
+                    <rect x="1" y="19" width="2" height="2"/><rect x="18" y="19" width="2" height="2"/>
+                    <rect x="25" y="19" width="2" height="2"/>
+                    <rect x="12" y="21" width="2" height="2"/><rect x="21" y="21" width="2" height="2"/>
+                    <rect x="27" y="21" width="2" height="2"/>
+                    <rect x="14" y="25" width="2" height="2"/><rect x="18" y="25" width="2" height="2"/>
+                    <rect x="23" y="25" width="2" height="2"/>
+                    <rect x="12" y="28" width="2" height="2"/><rect x="21" y="28" width="2" height="2"/>
+                    <rect x="27" y="28" width="2" height="2"/>
+                  </g>
+
+                  <!-- Die Tischnummer. Sie ist der Grund, warum der Wirt
+                       sich den Aufsteller auf SEINEM Tisch vorstellen kann. -->
+                  <g transform="translate(0,124)">
+                    <rect x="34" y="-9" width="32" height="13" rx="2"
+                          fill="none" stroke="#123029" stroke-width="1" opacity=".45"/>
+                    <text x="50" y="0" text-anchor="middle" fill="#123029"
+                          font-family="ui-monospace,monospace" font-size="6.4" font-weight="700"
+                          letter-spacing="1.8" opacity=".7">TISCH 7</text>
+                  </g>
                 </svg>
               </span>
               <span class="seite unten"><span class="praegung">Omoteno</span></span>
@@ -1673,23 +1791,33 @@ html.starr{overflow:hidden}
      halb zehn morgens, eine Eisdiele am Sonntagnachmittag. Die Uhrzeit
      schließt die Hälfte der Kundschaft aus.
 
-     Jetzt zählt die Uhr die MINUTEN SEIT DEM HINSETZEN. Das gilt um
-     neun wie um elf — und es ist zugleich das ehrlichere Maß, denn
-     genau diese Spanne verkauft das Produkt. -->
+     Danach zählte die Uhr die MINUTEN SEIT DEM HINSETZEN — das galt
+     um neun wie um elf.
+
+     Seit dem 04.09. läuft sie wieder als Uhrzeit, aber über den GANZEN
+     Betriebstag: 07:00 bis 03:00. Das beantwortet den Einwand von
+     oben, statt ihn zu wiederholen — die Spanne schließt das Café um
+     halb zehn ebenso ein wie den Club um zwei. Und sie kann etwas,
+     was die Minutenzählung nicht konnte: zeigen, dass dasselbe
+     Werkzeug den ganzen Tag trägt, nicht nur eine Stoßzeit.
+
+     Ab 22:00 kippt die Anzeige in den Nachtmodus. Die Farben dafür
+     sind gerechnet, nicht geschätzt (CLAUDE.md §5.2) — jeder Wert
+     steht unten am Regelsatz. -->
 <section class="abend" id="durchgang">
   <div class="abend-halt" id="abendHalt">
     <div class="abend-fest">
       <div class="abend-kopf">
         <div class="innen">
-          <span class="marke">Ein Durchgang · vom Hinsetzen bis zum Zahlen</span>
-          <div class="abend-uhr" id="abendUhr">+0:00</div>
+          <span class="marke">Ein Betriebstag · von der Vorbereitung bis zur Abrechnung</span>
+          <div class="abend-uhr" id="abendUhr">07:00</div>
           <div class="abend-bahn"><i id="abendBahn"></i></div>
           <div class="abend-stufen" id="abendStufen"></div>
         </div>
       </div>
 
       <div class="szenen" id="szenen">
-        <article class="szene an" data-szene="0" data-zeit="0" data-schritt="Platz genommen">
+        <article class="szene an" data-szene="0" data-zeit="0" data-schritt="Vorbereitung">
           <span class="wer">Am Tisch · der Gast</span>
           <h3>Handy auflegen. Mehr nicht.</h3>
           <p>Kein App-Store, kein Konto, keine Einwilligung. Die Karte öffnet sich
@@ -1701,7 +1829,7 @@ html.starr{overflow:hidden}
           </div>
         </article>
 
-        <article class="szene" data-szene="1" data-zeit="4" data-schritt="Bestellt">
+        <article class="szene" data-szene="1" data-zeit="300" data-schritt="Mittag">
           <span class="wer">Am Tisch · der Gast</span>
           <h3>Bestellt, ohne jemanden zu suchen.</h3>
           <p>Auswählen, Anmerkung dazu, abschicken. Der Gast bekommt eine
@@ -1715,7 +1843,7 @@ html.starr{overflow:hidden}
           </div>
         </article>
 
-        <article class="szene" data-szene="2" data-zeit="5" data-schritt="Angenommen">
+        <article class="szene" data-szene="2" data-zeit="600" data-schritt="Nachmittag">
           <span class="wer">Hinter der Theke · das Board</span>
           <h3>Es meldet sich, bevor der Gast aufsteht.</h3>
           <p>Die Bestellung liegt auf dem Handy des Service, mit Ton. Ein Tipp auf
@@ -1762,7 +1890,7 @@ html.starr{overflow:hidden}
           </button>
         </article>
 
-        <article class="szene" data-szene="3" data-zeit="6" data-schritt="In der Küche">
+        <article class="szene" data-szene="3" data-zeit="780" data-schritt="Abendservice">
           <span class="wer">Am Pass · die Küche</span>
           <h3>Der Koch sieht nur, was gekocht wird.</h3>
           <p>Speisen bei ihm, Getränke an der Theke — je Gericht festgelegt, nicht
@@ -1803,7 +1931,7 @@ html.starr{overflow:hidden}
           </button>
         </article>
 
-        <article class="szene" data-szene="4" data-zeit="21" data-schritt="Am Tisch">
+        <article class="szene" data-szene="4" data-zeit="900" data-schritt="Nachtbetrieb">
           <span class="wer">Am Tisch · der Gast</span>
           <h3>Nachbestellen kostet keinen Gang.</h3>
           <p>Noch ein Getränk, die Rechnung, eine Frage — derselbe Träger, ein
@@ -1814,7 +1942,7 @@ html.starr{overflow:hidden}
           </div>
         </article>
 
-        <article class="szene" data-szene="5" data-zeit="24" data-schritt="Abgerechnet">
+        <article class="szene" data-szene="5" data-zeit="1200" data-schritt="Abrechnung">
           <span class="wer">Nach Feierabend · die Zahlen</span>
           <h3>Und am Ende steht da, was war.</h3>
           <p>Umsatz, Schnitt, welche Stunden voll waren, was am besten lief. Eine
@@ -1853,9 +1981,9 @@ html.starr{overflow:hidden}
 
     <div class="bons">
       <article class="bon auf">
-        <div class="bon-oben"><span class="bon-name">Tisch</span></div>
+        <div class="bon-oben"><span class="bon-name">Basic</span></div>
         <p class="bon-wem">Cafés, Imbisse, kleine Häuser</p>
-        <div class="bon-preis">29<small>€ / Monat</small></div>
+        <div class="bon-preis">79<small>€ / Monat</small></div>
         <hr class="bon-strich">
         <ul>
           <li><span>Hub, Board und Küchendisplay</span></li>
@@ -1874,10 +2002,10 @@ html.starr{overflow:hidden}
           <span class="bon-zusatz">Beliebt</span>
         </div>
         <p class="bon-wem">Restaurants mit Bedienung</p>
-        <div class="bon-preis">59<small>€ / Monat</small></div>
+        <div class="bon-preis">149<small>€ / Monat</small></div>
         <hr class="bon-strich">
         <ul>
-          <li><span>Alles aus <b>Tisch</b>, Tische unbegrenzt</span></li>
+          <li><span>Alles aus <b>Basic</b>, Tische unbegrenzt</span></li>
           <li><span><b>Karte aus dem Foto</b> — abfotografieren, fertig</span></li>
           <li><span>Fragen an deine Zahlen: „Wie lief Freitag?"</span></li>
           <li><span>Allergene werden vorgeschlagen, du bestätigst</span></li>
@@ -1893,7 +2021,7 @@ html.starr{overflow:hidden}
           <span class="bon-zusatz">In Vorbereitung</span>
         </div>
         <p class="bon-wem">Häuser, bei denen das Telefon nie stillsteht</p>
-        <div class="bon-preis"><span class="ab">ab</span>149<small>€ / Monat</small></div>
+        <div class="bon-preis"><span class="ab">ab</span>299<small>€ / Monat</small></div>
         <hr class="bon-strich">
         <ul>
           <li><span>Nimmt Anrufe an, wenn niemand Zeit hat</span></li>
@@ -2356,6 +2484,7 @@ html.starr{overflow:hidden}
    muss. */
 (function durchgang(){
   var halt   = document.getElementById("abendHalt");
+  var fest   = halt && halt.querySelector(".abend-fest");
   var uhrEl  = document.getElementById("abendUhr");
   var bahn   = document.getElementById("abendBahn");
   var stufen = document.getElementById("abendStufen");
@@ -2372,7 +2501,11 @@ html.starr{overflow:hidden}
   }).join("");
   var knoepfe = [].slice.call(stufen.querySelectorAll(".stufe"));
 
-  var warte = false, letzte = -1;
+  var warte = false, letzte = -1, letzteNacht = null;
+
+  /* Der Bogen beginnt um 07:00; data-zeit zählt Minuten ab da. */
+  var BEGINN = 7 * 60;
+  var TAG    = 24 * 60;
 
   function messen(){
     var r = halt.getBoundingClientRect();
@@ -2382,19 +2515,39 @@ html.starr{overflow:hidden}
     /* Die angezeigte Minute folgt der Erzählung, nicht dem Bildlauf:
        Zwischen zwei Szenen wird zwischen deren Zeitpunkten
        interpoliert. Sonst stünde bei Szene 2 eine Zahl, die zu
-       keinem Schritt gehört. */
-    var roh = p * (szenen.length - 1);
+       keinem Schritt gehört.
+
+       Geteilt wird durch die ANZAHL der Szenen, nicht durch
+       „Anzahl minus eins". Mit dem Minus bekam jede Szene ein
+       Sechstel — ausser der letzten: Die rastete erst bei p = 1,0
+       ein, also auf einem einzigen Punkt am untersten Rand. Beim
+       Messen stand deshalb bei 100 % noch „Nachtbetrieb" statt
+       „Abrechnung", und die Auswertung im letzten Bild bekam nie
+       jemand zu sehen. Jetzt hat jede Szene denselben Anteil, und
+       Szene i rastet genau zu ihrer eigenen Uhrzeit ein. */
+    var roh = p * szenen.length;
     var i   = Math.min(szenen.length - 1, Math.floor(roh));
-    var rest = roh - i;
+    var rest = Math.min(1, roh - i);
     var min = zeiten[i] + (zeiten[Math.min(i+1, zeiten.length-1)] - zeiten[i]) * rest;
 
-    /* Erst runden, dann teilen. Andersherum stand bei min = 4,995
-       ein „+4:60" auf der Uhr: Die Minute wurde abgeschnitten, die
-       Sekunden aber auf 60 gerundet. */
-    var sek = Math.round(min * 60);
-    uhrEl.textContent = "+" + Math.floor(sek / 60) + ":" +
-      String(sek % 60).padStart(2,"0");
+    /* Erst runden, dann teilen — die Lehre von der Minutenuhr gilt
+       weiter: Wer zuerst teilt und dann rundet, bekommt ein „:60".
+       Deshalb wird die MINUTE gerundet, nicht die Stunde. */
+    var tagmin = Math.round(BEGINN + min) % TAG;
+    uhrEl.textContent = String(Math.floor(tagmin / 60)).padStart(2,"0") + ":" +
+                        String(tagmin % 60).padStart(2,"0");
     bahn.style.width = (Math.min(1, min / ENDE) * 100) + "%";
+
+    /* Nachtmodus ab 22:00, bis einschließlich 03:00. Gerechnet wird
+       auf der LAUFENDEN Zahl, nicht auf der eingerasteten Szene: Der
+       Umschlag soll beim Übertritt kommen, nicht erst, wenn die
+       nächste Szene greift. Das „<=" am Ende ist Absicht — 03:00 ist
+       der letzte Schritt und gehört noch zur Nacht. */
+    var nacht = tagmin >= 22 * 60 || tagmin <= 3 * 60;
+    if(fest && nacht !== letzteNacht){
+      fest.classList.toggle("nacht", nacht);
+      letzteNacht = nacht;
+    }
 
     if(i !== letzte){
       szenen.forEach(function(s, n){ s.classList.toggle("an", n === i); });
@@ -2723,6 +2876,29 @@ function hausWaehlen(id){
   var RUNDE   = 17000;   /* eine Umdrehung, langsam genug zum Lesen */
 
   var form  = "untersetzer";
+
+  /* Jede Trägerform hat ihre eigene Fläche. Umgeschaltet wird über
+     das Attribut; die Regel im Blatt setzt dazu display:none. */
+  var flaechen = {
+    untersetzer: stueck.querySelector(".f-rund"),
+    aufsteller:  stueck.querySelector(".f-hoch")
+  };
+  function flaecheZeigen(welche){
+    Object.keys(flaechen).forEach(function(n){
+      var el = flaechen[n]; if(!el) return;
+      /* setAttribute, NICHT el.hidden = … — das ist der Unterschied
+         zwischen „geht" und „geht nicht":
+
+         `hidden` liegt auf HTMLElement und spiegelt dort aufs
+         Attribut. Ein <svg> ist ein SVGElement und erbt das NICHT.
+         `el.hidden = true` legt dann still eine gewöhnliche
+         JS-Eigenschaft an — kein Fehler, kein Hinweis, und das
+         Stylesheet sieht davon nichts. Gemessen: Eigenschaft true,
+         Attribut weg, display weiter block. */
+      if(n === welche) el.removeAttribute("hidden");
+      else             el.setAttribute("hidden", "");
+    });
+  }
   var lauf  = null;              /* die endlose Drehung */
   var zoomAn = null, drehAn = null;  /* die beiden haltenden Bewegungen */
   var heran = false;
@@ -2861,6 +3037,7 @@ function hausWaehlen(id){
     stueck.setAttribute("aria-label",
       (form === "aufsteller" ? "Aufsteller" : "Untersetzer") + " antippen — Demo-Hub öffnen");
     if(text) text.textContent = TEXTE[form];
+    flaecheZeigen(form);
     wahl.querySelectorAll("[data-traeger]").forEach(function(b){
       b.setAttribute("aria-pressed", b.dataset.traeger === form);
     });
@@ -2871,6 +3048,7 @@ function hausWaehlen(id){
     drehen();
   });
 
+  flaecheZeigen(form);
   kanten();
   drehen();
 })();
