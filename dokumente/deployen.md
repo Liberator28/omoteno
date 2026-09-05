@@ -232,14 +232,21 @@ sonst findet der Hub seine Karte nicht.
 
 ### e) Domain
 
-1. In `_redirects` eine Zeile dazu:
+1. In `_redirects` **vier** Zeilen dazu — die drei Wege des Wirts
+   zuerst, sonst schluckt die Hub-Regel den Pfad:
    ```
-   https://<slug>.omoteno.de/*   /h/<slug>/:splat   200
+   https://<adresse>/admin*   https://omoteno.de/admin    301!
+   https://<adresse>/kueche*  https://omoteno.de/kueche   301!
+   https://<adresse>/konto*   https://omoteno.de/konto    301!
+   https://<adresse>/*        /h/<slug>/:splat            200!
    ```
+   **Das Ausrufezeichen ist Pflicht, keine Feinheit** — ohne es
+   liefert die Kundenadresse Omotenos eigene Seiten aus. Warum,
+   steht unten unter „Die Adresse eines Kunden".
 2. Bei Netlify: **Domain management → Add domain alias** →
-   `<slug>.omoteno.de`.
+   `<adresse>`.
 3. Beim DNS-Anbieter von `omoteno.de` einen CNAME anlegen:
-   `<slug>` → deine Netlify-Adresse (`<projekt>.netlify.app`).
+   `<adresse>` → deine Netlify-Adresse (`<projekt>.netlify.app`).
 
 Ohne Schritt 2 **und** 3 läuft die Anfrage gar nicht erst bei Netlify
 vorbei, und die Zeile aus Schritt 1 kann nichts tun.
@@ -416,7 +423,7 @@ keiner passenden Regel die Startseite des Ordners ausliefert.
 Gast tippt; rechts, wie der Ordner heißt:
 
 ```
-https://choco-lamour.omoteno.de/*  /h/chocolamour/:splat   200
+https://choco-lamour.omoteno.de/*  /h/chocolamour/:splat   200!
 ```
 
 Der Slug hängt an `betriebe.slug` in der Datenbank — der Hub lädt
@@ -428,7 +435,7 @@ alte eine **301** auf die echte, statt zweimal denselben Hub
 auszuliefern:
 
 ```
-https://chocolamour.omoteno.de/*   https://choco-lamour.omoteno.de/:splat   301
+https://chocolamour.omoteno.de/*   https://choco-lamour.omoteno.de/:splat   301!
 ```
 
 **Das Ausrufezeichen ist Pflicht, keine Feinheit.** Netlify bedient
