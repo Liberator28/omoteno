@@ -8576,11 +8576,28 @@ function karteAuffrischen(){
   letzterAbruf = Date.now();
   karteHolen(false);
 }
-setInterval(karteAuffrischen, 90000);
+/* 90 Sekunden waren zu dicht. Gerechnet für ein volles Haus: 200
+   offene Hubs × alle 90 s die GANZE Karte (rund hundert Zeilen) sind
+   etwa 133 Abrufe je Minute — für ein Haus. Bei zehn Häusern
+   gleichzeitig ist das der teuerste Posten im ganzen Betrieb, und
+   eine Speisekarte ändert sich nicht im Minutentakt.
+
+   Fünf Minuten sind gefahrlos: bestellung_aufgeben rechnet den Preis
+   ohnehin serverseitig aus der Karte NACH. Eine ältere Karte im
+   Telefon kann also nichts falsch abrechnen. Sie kann höchstens ein
+   ausverkauftes Gericht noch zeigen — und das fängt die Küche ab, wie
+   bei jeder Papierkarte auch.
+
+   Der Rückweg darunter macht die Verlängerung ungefährlich: Wer die
+   Seite wieder hervorholt, bekommt frisch. Genau dann sieht auch
+   jemand hin. */
+setInterval(karteAuffrischen, 300000);
 
 document.addEventListener("visibilitychange", () => {
-  /* Kommt der Gast nach längerer Pause zurück, gleich frisch laden. */
-  if(!document.hidden && Date.now() - letzterAbruf > 60000) karteAuffrischen();
+  /* Kommt der Gast nach längerer Pause zurück, gleich frisch laden.
+     Die Schwelle wandert mit dem Takt mit: Sie soll das Zurückkommen
+     abfangen, nicht jedes kurze Wegtippen. */
+  if(!document.hidden && Date.now() - letzterAbruf > 120000) karteAuffrischen();
 });
 
 /* ══════════════════════════════════════════════════════════════════

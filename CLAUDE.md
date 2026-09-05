@@ -662,6 +662,8 @@ Dazu je nach Änderung:
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
 | Konto, Anfrageformular | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links |
+| **Alessia, der Telefonweg** | `pruefungen/pruef-alessia.js` — liest die Nutzlast, ohne Netz |
+| **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
 
 Und danach, immer:
 
