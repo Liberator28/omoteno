@@ -431,6 +431,32 @@ auszuliefern:
 https://chocolamour.omoteno.de/*   https://choco-lamour.omoteno.de/:splat   301
 ```
 
+**Das Ausrufezeichen ist Pflicht, keine Feinheit.** Netlify bedient
+zuerst eine vorhandene **Datei** und erst danach eine nicht erzwungene
+Umleitung. Der veröffentlichte Ordner ist flach — `admin.html`,
+`konto.html`, `index.html` liegen darin. Ohne `!` liefert die
+Kundenadresse also Omotenos Seiten aus:
+
+```
+https://<adresse>/*   /h/<slug>/:splat   200!
+```
+
+**Der Wirt braucht einen Weg an sein Board.** Drei Zeilen je Kunde,
+**vor** der Hub-Regel, sonst schluckt die den Pfad:
+
+```
+https://<adresse>/admin*   https://omoteno.de/admin    301!
+https://<adresse>/kueche*  https://omoteno.de/kueche   301!
+https://<adresse>/konto*   https://omoteno.de/konto    301!
+```
+
+301, nicht 200: Die Anmeldung gehört auf omoteno.de, weil Supabase den
+Rücksprung nur auf Adressen aus seiner Allowlist zulässt (5c). Welches
+Haus der Wirt danach sieht, entscheidet `meine_betriebe()` in den
+RLS-Regeln — am Board selbst ist nichts einzurichten.
+
+Im Hub führt die Zeile **„Für den Betrieb"** im Fuß auf denselben Weg.
+
 Danach `node erzeuger/bauen.js && node pruefungen/pruef-lieferung.js`.
 Die Prüfung sagt für jeden Hub, ob eine Adresse auf ihn zeigt.
 

@@ -411,6 +411,29 @@ Nebentext auf Karte, Bandschrift auf Band, Akzent auf Karte,
 Knopfschrift auf Knopf — **Tag und Abend**. Grenze 4,5:1.
 `pruef-kontrast.js` im Projekt macht genau das.
 
+### 5.2a Ein Grenzwert in der Prüfung kann eine Lücke sein
+
+> **Vorfall.** Der neue Fußzeilen-Link im Hub stand auf 9,5px und kam
+> bei Choco auf **2,83:1**. `pruef-lesbarkeit.js` meldete trotzdem
+> „alles sauber" — sie überspringt alles unter 10px als Zierschrift.
+> Für eine Gutschrift stimmt das; für etwas, das man **antippen**
+> soll, nicht.
+>
+> Der Fehler davor war meiner: Ich hatte `--tinte-still` gesetzt und
+> in den Kommentar geschrieben „auf Pappe 4,57:1". Der Wert stimmte —
+> nur ist der Grund im Hub die Farbe, die der **Kunde** gewählt hat.
+> Genau §5.1, eine Ebene tiefer.
+
+Zwei Lehren, beide gemessen:
+
+- Eine feste Schriftfarbe im Hub ist immer falsch. Rollen wie
+  `--tinte-leise` werden pro Markenblatt hergeleitet und tragen
+  deshalb bei jedem Haus (Choco 4,55:1, Blend 7,44:1).
+- **Ein Bedienelement ist nie Zierschrift.** Die Prüfung rechnet
+  Links und Knöpfe jetzt unabhängig von der Schriftgröße. Wer einen
+  Grenzwert einbaut, muss sich fragen, was er damit ungesehen
+  durchlässt.
+
 ### 5.3 Bewusste Ungereimtheiten nicht wegsystematisieren
 
 > **Vorfall.** Chocos Goldfläche am Tag war seit jeher aus dem hellen
