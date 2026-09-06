@@ -688,6 +688,7 @@ Dazu je nach Änderung:
 | Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
 | Marken-Studio (Bedienung) | `pruefungen/pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
 | Auslieferung, Umleitungen | `erzeuger/bauen.js` und dann `pruefungen/pruef-lieferung.js` |
+| **Startkacheln, Bereiche, Markenblatt** | `pruefungen/pruef-kacheln.js` — Kreuzvergleich: kein Hub trägt fremden Text |
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand |

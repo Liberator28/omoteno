@@ -113,12 +113,58 @@ const MARKENBLATT = {
   },
 
   kacheln: [
-    { id:"speisekarte", t:"Speisekarte", u:"Frühstück bis 14 Uhr", von:0,  bis:24, an:true },
-    { id:"getraenke",   t:"Getränke",    u:"Kaffee, Limonaden",    von:0,  bis:24, an:true },
-    { id:"tischruf",    t:"Service rufen", u:"Wir kommen zu Ihnen", von:0, bis:24, an:true }
+    { schluessel:"speisekarte", an:true, titel:"Speisekarte",
+      unter:"Frühstück bis 14 Uhr", icon:"speise" },
+    { schluessel:"getraenke",   an:true, titel:"Getränke",
+      unter:"Kaffee, Limonaden",    icon:"glas"  },
+    { schluessel:"tischruf",    an:true, titel:"Service rufen",
+      unter:"Wir kommen zu Ihnen",  icon:"hand"  }
   ]
 };
 ```
+
+## Die Startkacheln
+
+> Hier stand vorher ein Entwurf mit `id`, `t` und `u`. Umgesetzt war
+> er nie — die Kachelliste stand fest im Gerüst, und Blends Hub trug
+> deshalb Chocos elf Kacheln, Wort für Wort, samt
+> `@chocol.amour_kirchhain`. Die Namen sind jetzt ausgeschrieben wie
+> im übrigen Schema.
+
+Zwei Sorten Feld, streng getrennt:
+
+| Der Wirt entscheidet | Das Gerüst entscheidet |
+|---|---|
+| `titel`, `unter`, `icon` | `ziel` — wohin die Kachel führt |
+| `an`, Reihenfolge in der Liste | `wenn` — ob das Haus sie überhaupt kann |
+| `gruppe`, `raster`, `stil`, `farbe` | `nurDe` |
+| `von`, `bis`, `neu`, `cyan` | |
+
+`schluessel` verbindet beides. Erlaubt sind die Schlüssel aus
+`KACHELARTEN` in `vorlagen/hub.vorlage.html`; ein unbekannter hält
+den Erzeuger an, statt die Kachel wortlos verschwinden zu lassen.
+
+**Drei Stufen, absteigend.** Fehlt `kacheln`, leitet der Hub die Liste
+aus `bereiche` ab. Fehlt auch das, bleibt seine Vorgabe. `bereiche`
+war bis dahin ein toter Schalter: geschrieben, nie gelesen.
+
+Ein Schlüssel, den `bereiche` gar nicht kennt — `wlan`, `meintisch`,
+`kontakt`, `instagram`, `bewertung` — bleibt an. Das sind keine
+Bereiche, die der Wirt umlegt, sondern Wege, die entweder taugen oder
+sich per `wenn` selbst ausblenden.
+
+### Die Grenze, die dazugehört
+
+**Eigene Kacheltitel werden nicht übersetzt.** `t()` gibt bei
+fehlendem Wörterbucheintrag den deutschen Text zurück — richtig für
+„Nutella Crêpe", aber „Süße Karte" stand bisher im Wörterbuch und kam
+auf Englisch als „Sweet menu" heraus. Sobald der Titel dem Haus
+gehört, kann das Wörterbuch ihn nicht mehr kennen.
+
+`pruef-sprache.js` schlägt deswegen **nicht** an: Sie liest das
+Gerüst, nicht die Markenblätter. Das ist kein Fehler der Prüfung —
+aber es heißt, dass diese Lücke niemandem von selbst auffällt.
+Deshalb steht sie hier.
 
 ## Schriften
 

@@ -54,6 +54,21 @@ const ZIEL     = path.join(WURZEL, "dist");
 /* Wortgleich mit den Schlüsseln in vorlagen/hub.vorlage.html und
    seiten/marken-studio.html. Eine Schrift, die dort steht und hier
    nicht, lässt jedes Markenblatt durchfallen, das sie benutzt. */
+/* Beide Listen werden AUS DEM GERÜST gelesen, nicht hier doppelt
+   gepflegt. Sonst laufen sie auseinander, und der Erzeuger lehnt ab,
+   was der Hub kann — oder schlimmer, lässt durch, was er nicht kann. */
+function ausGeruest(muster, wo){
+  const datei = fs.readFileSync(path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), "utf8");
+  const t = datei.match(muster);
+  if(!t){
+    console.error("Im Gerüst nicht gefunden: " + wo);
+    process.exit(1);
+  }
+  return [...t[1].matchAll(/^\s{2}([a-zA-Z][a-zA-Z0-9_]*)\s*:/gm)].map(m => m[1]);
+}
+const KACHELSCHLUESSEL = ausGeruest(/const KACHELARTEN = \{([\s\S]*?)\n\};/, "KACHELARTEN");
+const ICONNAMEN        = ausGeruest(/const ICONS = \{([\s\S]*?)\n\};/, "ICONS");
+
 const SCHRIFTEN = ["system","serif-klassisch","serif-eng","serif-hoch","slab",
                    "grotesk","grotesk-eng","rund","mono","schreib"];
 const SCHATTEN  = ["weich","kante","ohne"];
@@ -146,6 +161,33 @@ function pruefeMarkenblatt(mb){
     F("schrift.zahl unbekannt: " + s.zahl + " — erlaubt: " + SCHRIFTEN.join(", "));
   if(s.groesse != null && (s.groesse < 0.9 || s.groesse > 1.2))
     F("schrift.groesse muss zwischen 0.9 und 1.2 liegen, ist: " + s.groesse);
+
+  /* Kacheln — freiwillig (§2.5). Fehlt der Block, leitet der Hub die
+     Liste aus bereiche ab; fehlt auch das, bleibt sein Platzhalter.
+     Steht aber etwas Falsches drin, wird angehalten: Eine Kachel mit
+     unbekanntem Schlüssel verschwindet sonst wortlos, und der Wirt
+     sucht den Fehler bei sich. */
+  if(mb.kacheln !== undefined){
+    if(!Array.isArray(mb.kacheln)) F("kacheln muss eine Liste sein");
+    else mb.kacheln.forEach((k, i) => {
+      const wo = "kacheln[" + i + "]";
+      if(!k || typeof k !== "object"){ F(wo + " ist kein Eintrag"); return; }
+      if(!k.schluessel) F(wo + ".schluessel fehlt");
+      else if(KACHELSCHLUESSEL.indexOf(k.schluessel) < 0)
+        F(wo + ".schluessel unbekannt: " + k.schluessel +
+          " — erlaubt: " + KACHELSCHLUESSEL.join(", "));
+      if(k.titel !== undefined && typeof k.titel !== "string")
+        F(wo + ".titel muss Text sein");
+      if(k.icon !== undefined && ICONNAMEN.indexOf(k.icon) < 0)
+        F(wo + ".icon unbekannt: " + k.icon + " — erlaubt: " + ICONNAMEN.join(", "));
+    });
+    const doppelt = {};
+    (Array.isArray(mb.kacheln) ? mb.kacheln : []).forEach(k => {
+      if(!k || !k.schluessel) return;
+      if(doppelt[k.schluessel]) F("kacheln: " + k.schluessel + " steht zweimal drin");
+      doppelt[k.schluessel] = true;
+    });
+  }
 
   /* Bereiche */
   const ber = mb.bereiche || {};
@@ -276,6 +318,7 @@ function alsQuelltext(mb){
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,
     mb.trinkgeld ? liste("trinkgeld", mb.trinkgeld)       : null,
+    liste("kacheln",    mb.kacheln),
     liste("empfehlung", mb.empfehlung),
     liste("quiz",       mb.quiz)
   ].filter(Boolean);

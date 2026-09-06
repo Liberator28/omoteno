@@ -2736,67 +2736,135 @@ const EMPFEHLUNG = [
   { von:0, bis:24, kennz:"UNSER LIEBLING", name:"", was:"", preis:"", ziel:"#/speisekarte", gericht:"" }
 ];
 
-/*  KACHELN
-    i = Name eines Icons aus ICONS oben
-    bereich = Überschrift, unter der die Kachel einsortiert wird
-    ziel: "#/name" = Unterseite · "https://" = extern
-    von / bis = Stunde, in der die Kachel sichtbar ist (0 bis 24)
-    cyan: true = blauer Symbolhintergrund                       */
-const KACHELN = [
-  /*  DIE KARTE · drei große Säulen nebeneinander
-      Dafür hält der Gast das Handy ans Holz. Alles andere ist Beiwerk
-      und darf entsprechend kleiner sein.
-      stil:"saeule" + raster:"saeulen" = große Kachel, drei pro Reihe.
-      farbe = rot | gold | pistazie (Farbe des Symbols)               */
-  { t:"Süße Karte",   u:"", i:"speise",   ziel:"#/speisekarte", bereich:"Die Karte",
-    raster:"saeulen", stil:"saeule", farbe:"rot",      von:0, bis:24 },
-  { t:"Getränke",     u:"", i:"glas",     ziel:"#/getraenke",   bereich:"Die Karte",
-    raster:"saeulen", stil:"saeule", farbe:"pistazie", von:0, bis:24 },
-  { t:"Kaiser & Eis", u:"", i:"cocktail", ziel:"#/cocktails",   bereich:"Die Karte",
-    raster:"saeulen", stil:"saeule", farbe:"gold",     von:0, bis:24 },
+/*  KACHELARTEN · was eine Kachel ist, und was der Wirt daran ändern darf
 
-  /*  AM TISCH · was man während des Besuchs braucht  */
-  { t:"Service rufen",  u:"Zahlen, nachbestellen, kurz Bescheid geben", i:"hand",
-    ziel:"#/service", bereich:"Jetzt am Tisch", von:0, bis:24 },
-  { t:"WLAN verbinden", u:"Ohne Passwort tippen – ein Tap genügt", i:"wlan",
-    ziel:"#/wlan", bereich:"Jetzt am Tisch", von:0, bis:24, cyan:true },
-  { t:"Tischquiz",      u:"Süße Fragen, kurze Runde – wer weiß mehr?", i:"quiz",
-    ziel:"#/quiz", bereich:"Jetzt am Tisch", von:11, bis:24, neu:true },
+    Bis hierher stand die ganze Kachelliste fest im Gerüst — samt
+    „Süße Karte", „Kaiser & Eis" und Chocos Instagram-Namen. Ein
+    zweiter Kunde bekam damit Chocos Startseite, Wort für Wort.
+    Gemessen an den ausgelieferten Dateien: elf zu elf.
+
+    Deshalb zwei Sorten Feld, streng getrennt:
+
+    VERHALTEN — ziel, wenn, nurDe. Kommt NIE aus dem Markenblatt.
+      Eine Funktion aus JSON zu lesen wäre eine Tür, die niemand
+      braucht, und ein Ziel darf der Wirt nicht umbiegen.
+
+    VORGABE — titel, unter, icon, gruppe, raster, stil, farbe, von,
+      bis, neu, cyan. Steht hier als neutraler Rückfall und wird vom
+      Markenblatt überschrieben.
+
+    ziel darf eine FUNKTION sein. Das ist kein Schmuck: „ziel:
+    LINKS.instagram" war ein WERT, eingefroren beim Anlegen der Liste
+    — und LINKS wird erst tausend Zeilen später aus dem Markenblatt
+    gefüllt. Die Kachel behielt den leeren String, href="" lud die
+    Seite neu. Gemessen bei Choco, dessen Markenblatt die richtige
+    Adresse trägt: Kachel zeigte auf "". Als Funktion wird sie erst
+    beim Zeichnen aufgelöst — dann stimmt sie.                      */
+const KACHELARTEN = {
+  speisekarte: { ziel:"#/speisekarte",
+    titel:"Speisekarte", unter:"", icon:"speise",
+    gruppe:"Die Karte", raster:"saeulen", stil:"saeule", farbe:"rot" },
+
+  getraenke: { ziel:"#/getraenke",
+    titel:"Getränke", unter:"", icon:"glas",
+    gruppe:"Die Karte", raster:"saeulen", stil:"saeule", farbe:"pistazie" },
+
+  cocktails: { ziel:"#/cocktails",
+    titel:"Cocktails", unter:"", icon:"cocktail",
+    gruppe:"Die Karte", raster:"saeulen", stil:"saeule", farbe:"gold" },
+
+  tischruf: { ziel:"#/service",
+    titel:"Service rufen", unter:"Zahlen, nachbestellen, kurz Bescheid geben",
+    icon:"hand", gruppe:"Jetzt am Tisch" },
+
+  wlan: { ziel:"#/wlan",
+    titel:"WLAN verbinden", unter:"Ohne Passwort tippen – ein Tap genügt",
+    icon:"wlan", gruppe:"Jetzt am Tisch", cyan:true },
+
+  quiz: { ziel:"#/quiz",
+    titel:"Tischquiz", unter:"Kurze Runde – wer weiß mehr?",
+    icon:"quiz", gruppe:"Jetzt am Tisch", von:11, neu:true },
+
+  musikwunsch: { ziel:"#/musik",
+    titel:"Musikwunsch", unter:"Geht direkt an die Theke",
+    icon:"musik", gruppe:"Jetzt am Tisch", von:17, cyan:true },
+
   /*  Braucht die Datenbank: Ohne sie gäbe es nichts zu zeigen, und
       eine Kachel, die zu „geht hier nicht" führt, lässt das ganze
       Haus unfertig wirken.                                          */
-  { t:"Mein Tisch",     u:"Ihre Besuche, Lieblinge und Gutscheine – ohne Konto", i:"herz",
-    ziel:"#/meintisch", bereich:"Jetzt am Tisch", von:0, bis:24,
-    wenn:() => serverBereit() },
+  meintisch: { ziel:"#/meintisch", wenn:() => serverBereit(),
+    titel:"Mein Tisch", unter:"Ihre Besuche, Lieblinge und Gutscheine – ohne Konto",
+    icon:"herz", gruppe:"Jetzt am Tisch" },
 
-  /*  BEIM GEHEN · zwei Spalten, weil nebensächlich  */
-  { t:"Uns bewerten",         u:"Zwei Sätze auf Google – und wir freuen uns", i:"stern",
-    ziel:"#/rueckmeldung", bereich:"Für Ihren nächsten Besuch", raster:"zwei", von:0, bis:24 },
-  { t:"Tisch reservieren",    u:"Für Ihren nächsten süßen Moment", i:"kalender",
-    ziel:"#/reservieren", bereich:"Für Ihren nächsten Besuch", raster:"zwei", von:0, bis:24 },
-  { t:"Instagram",            u:"@chocol.amour_kirchhain", i:"kamera",
-    ziel:LINKS.instagram, bereich:"Für Ihren nächsten Besuch", raster:"zwei", von:0, bis:24, cyan:true },
-  { t:"Öffnungszeiten & Weg", u:"Wann wir da sind, wie Sie herkommen", i:"ort",
-    ziel:"#/kontakt", bereich:"Für Ihren nächsten Besuch", raster:"zwei", von:0, bis:24, cyan:true },
+  bewertung: { ziel:"#/rueckmeldung",
+    titel:"Uns bewerten", unter:"Zwei Sätze – und wir freuen uns",
+    icon:"stern", gruppe:"Für Ihren nächsten Besuch", raster:"zwei" },
+
+  reservierung: { ziel:"#/reservieren",
+    titel:"Tisch reservieren", unter:"Für Ihren nächsten Besuch",
+    icon:"kalender", gruppe:"Für Ihren nächsten Besuch", raster:"zwei" },
+
+  /*  Erst beim Zeichnen aufgelöst — siehe oben. Und ohne Auftritt
+      gar nicht gezeigt, statt ins Leere zu führen.                  */
+  instagram: { ziel:() => LINKS.instagram, wenn:() => !!LINKS.instagram,
+    titel:"Instagram", unter:"", icon:"kamera",
+    gruppe:"Für Ihren nächsten Besuch", raster:"zwei", cyan:true },
+
+  kontakt: { ziel:"#/kontakt",
+    titel:"Öffnungszeiten & Weg", unter:"Wann wir da sind, wie Sie herkommen",
+    icon:"ort", gruppe:"Für Ihren nächsten Besuch", raster:"zwei", cyan:true },
 
   /*  Trinkgeld erscheint erst, wenn in TRINKGELD ein PayPal-Name steht.
       Eine Kachel, die zu „geht hier noch nicht" führt, lässt das ganze
       Haus unfertig wirken – lieber gar nicht zeigen.                 */
-  { t:"Trinkgeld fürs Team",  u:"Danke sagen, ganz ohne Bargeld", i:"herz",
-    ziel:"#/trinkgeld", bereich:"Danke sagen", von:0, bis:24,
-    wenn:() => !!TRINKGELD.paypal }
+  trinkgeld: { ziel:"#/trinkgeld", wenn:() => !!TRINKGELD.paypal,
+    titel:"Trinkgeld fürs Team", unter:"Danke sagen, ganz ohne Bargeld",
+    icon:"herz", gruppe:"Danke sagen" }
+};
 
-  /*  MUSIKWUNSCH IST RAUS.
-      Er kam aus der Vorlage für die Cocktailbar. In einer Crêperie mit
-      Familien am Nachmittag wünscht niemand Lieder, und ohne Nummer des
-      Diensthandys landet der Wunsch nur in einer E-Mail, die während des
-      Betriebs keiner liest. Die Seite bleibt im Code erhalten – zum
-      Wiedereinschalten diese Zeile hier einfügen:
+/* Die Reihenfolge der Kacheln, wenn das Markenblatt keine eigene
+   nennt. Sie bestimmt zugleich die Gruppierung: start() fasst
+   aufeinanderfolgende Kacheln derselben Gruppe zusammen. */
+const KACHELFOLGE = ["speisekarte","getraenke","cocktails",
+                     "tischruf","wlan","quiz","musikwunsch","meintisch",
+                     "bewertung","reservierung","instagram","kontakt",
+                     "trinkgeld"];
 
-      { t:"Musikwunsch", u:"Geht direkt an die Theke", i:"musik",
-        ziel:"#/musik", bereich:"Jetzt am Tisch", von:17, bis:24, cyan:true },
-  */
-];
+/* Aus einem Eintrag des Markenblatts (oder aus nichts) eine fertige
+   Kachel bauen. Was der Wirt schicken darf, steht in ERLAUBT — alles
+   andere aus dem Markenblatt wird ignoriert, nicht übernommen. */
+const KACHEL_ERLAUBT = ["titel","unter","icon","gruppe","raster","stil",
+                        "farbe","von","bis","neu","cyan"];
+
+function kachelBauen(schluessel, wunsch){
+  const art = KACHELARTEN[schluessel];
+  if(!art) return null;
+  const k = {
+    schluessel: schluessel,
+    ziel: art.ziel, wenn: art.wenn, nurDe: art.nurDe,
+    titel: art.titel, unter: art.unter || "", icon: art.icon,
+    gruppe: art.gruppe, raster: art.raster || "", stil: art.stil || "",
+    farbe: art.farbe || "", neu: !!art.neu, cyan: !!art.cyan,
+    von: art.von === undefined ? 0 : art.von,
+    bis: art.bis === undefined ? 24 : art.bis
+  };
+  if(wunsch) KACHEL_ERLAUBT.forEach(f => {
+    if(wunsch[f] !== undefined && wunsch[f] !== null) k[f] = wunsch[f];
+  });
+  return k;
+}
+
+/* Das Ziel kann eine Zeichenkette oder eine Funktion sein. Überall
+   EINE Stelle, die das auflöst — sonst steht der Unterschied an drei
+   Orten und einer davon vergisst ihn. */
+function kachelZiel(k){
+  const z = typeof k.ziel === "function" ? k.ziel() : k.ziel;
+  return typeof z === "string" ? z : "";
+}
+
+/* PLATZHALTER — siehe BETRIEB. Die echte Liste kommt aus dem
+   Markenblatt und ersetzt diese hier ganz. */
+const KACHELN = KACHELFOLGE.map(s => kachelBauen(s, null)).filter(Boolean);
 
 /* ══════════════════════════════════════════════════════════════════
    TOP-RUNNER
@@ -3602,6 +3670,43 @@ function begleiterHTML(anlass){
   if(Array.isArray(mb.empfehlung) && mb.empfehlung.length){
     EMPFEHLUNG.length = 0;
     mb.empfehlung.forEach(e => EMPFEHLUNG.push(e));
+  }
+
+  /* Die Startkacheln, aus demselben Grund ganz oder gar nicht. Drei
+     Stufen, absteigend:
+
+     1 · kacheln im Markenblatt  → gilt, Wort für Wort.
+     2 · nur bereiche            → daraus abgeleitet, mit den
+         neutralen Vorgaben aus KACHELARTEN. Damit wird ein Schalter
+         wirksam, der bis heute TOT war: bereiche wurde vom Erzeuger
+         geschrieben und im Hub nirgends gelesen. Choco stand auf
+         quiz:true/musikwunsch:false, Blend genau umgekehrt — und
+         beide Hubs zeigten Tischquiz und keinen Musikwunsch.
+     3 · nichts                  → der Platzhalter oben bleibt.
+
+     Ein Schlüssel, den bereiche gar nicht kennt (wlan, meintisch,
+     kontakt …), bleibt an: Das sind keine Bereiche, die der Wirt
+     umlegt, sondern Wege, die entweder taugen oder sich per wenn
+     selbst ausblenden. */
+  const kachelWunsch = (() => {
+    if(Array.isArray(mb.kacheln) && mb.kacheln.length){
+      return mb.kacheln
+        .filter(e => e && e.schluessel && e.an !== false)
+        .map(e => kachelBauen(e.schluessel, e));
+    }
+    if(mb.bereiche && typeof mb.bereiche === "object"){
+      return KACHELFOLGE
+        .filter(s => mb.bereiche[s] !== false)
+        .map(s => kachelBauen(s, null));
+    }
+    return null;
+  })();
+  if(kachelWunsch){
+    const fertig = kachelWunsch.filter(Boolean);
+    if(fertig.length){
+      KACHELN.length = 0;
+      fertig.forEach(k => KACHELN.push(k));
+    }
   }
 
   /* Das Quiz wird hier NICHT übernommen, obwohl es hierher gehören
@@ -5223,8 +5328,12 @@ function konfigPruefen(quelle){
   if(Array.isArray(KACHELN)){
     for(let i = KACHELN.length - 1; i >= 0; i--){
       const k = KACHELN[i];
-      if(!k || typeof k.ziel !== "string" || !k.t){
-        meckern.push("KACHELN[" + i + "] hat kein ziel oder keinen Titel, entfernt.");
+      /* „typeof k.ziel !== 'string'" stand hier und ließ den LEEREN
+         String durch — genau der Fall, der die Instagram-Kachel auf
+         href="" schickte. Jetzt wird das Ziel aufgelöst und auf
+         Inhalt geprüft; eine Funktion ist dabei ausdrücklich erlaubt. */
+      if(!k || !k.titel || !kachelZiel(k)){
+        meckern.push("KACHELN[" + i + "] hat kein Ziel oder keinen Titel, entfernt.");
         KACHELN.splice(i, 1);
         continue;
       }
@@ -5434,33 +5543,40 @@ function start(){
      false, erscheint die Kachel nicht – siehe Trinkgeld. */
   const sichtbar = KACHELN.filter(k =>
     stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
-    (typeof k.wenn !== "function" || k.wenn()));
+    (typeof k.wenn !== "function" || k.wenn()) &&
+    /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
+       neu. Lieber gar keine Kachel als eine, die im Kreis führt. */
+    kachelZiel(k) !== "");
   if(!sichtbar.length){
     return '<div class="leer">' + t("Gerade ist nichts freigeschaltet.") + '<br>' +
            t("Schauen Sie später noch einmal vorbei.") + '</div>';
   }
 
-  const kachelHTML = k =>
-    '<a class="kachel' + (k.stil ? " " + k.stil : "") + (k.cyan ? " cyan" : "") + '"' +
-    (k.farbe ? ' data-farbe="' + k.farbe + '"' : "") +
-    ' href="' + k.ziel + '"' +
-    (k.ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
-      '<div class="ico">' + (ICONS[k.i] || "") + '</div>' +
-      '<div class="txt"><strong>' + t(k.t) +
-      (k.neu ? '<span class="neu">' + t("NEU") + '</span>' : "") +
-      '</strong>' + (k.u ? '<span>' + t(k.u) + '</span>' : "") + '</div>' +
-      '<div class="pfeil">›</div></a>';
+  const kachelHTML = k => {
+    /* EINMAL auflösen, nicht dreimal: Ein Ziel darf eine Funktion
+       sein, und ein Aufruf pro Zweig würde sie dreifach auswerten. */
+    const ziel = kachelZiel(k);
+    return '<a class="kachel' + (k.stil ? " " + k.stil : "") + (k.cyan ? " cyan" : "") + '"' +
+      (k.farbe ? ' data-farbe="' + k.farbe + '"' : "") +
+      ' href="' + ziel + '"' +
+      (ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
+        '<div class="ico">' + (ICONS[k.icon] || "") + '</div>' +
+        '<div class="txt"><strong>' + t(k.titel) +
+        (k.neu ? '<span class="neu">' + t("NEU") + '</span>' : "") +
+        '</strong>' + (k.unter ? '<span>' + t(k.unter) + '</span>' : "") + '</div>' +
+        '<div class="pfeil">›</div></a>';
+  };
 
   let html = aktionBandHTML() + begleiterHTML("start") + empfehlungHTML(), letzter = "";
   sichtbar.forEach(k => {
-    if(k.bereich !== letzter){
+    if(k.gruppe !== letzter){
       if(letzter) html += '</div>';
       /* Das Raster kommt von der ersten Kachel der Gruppe:
          saeulen = drei große nebeneinander, zwei = zwei kleine,
          ohne Angabe = untereinander. */
-      html += '<div class="bereich">' + t(k.bereich).toUpperCase() + '</div>' +
+      html += '<div class="bereich">' + t(k.gruppe).toUpperCase() + '</div>' +
               '<div class="gitter' + (k.raster ? " " + k.raster : "") + '">';
-      letzter = k.bereich;
+      letzter = k.gruppe;
     }
     html += kachelHTML(k);
   });

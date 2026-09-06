@@ -2056,6 +2056,22 @@ $("blattinhalt").addEventListener("scroll", function(){
 });
 
 /* ═══ Ausgabe ═══════════════════════════════════════════════════ */
+/* Was der Hub als „kacheln" erwartet, gebaut aus dem, was das Studio
+   ohnehin führt: M.reihe gibt die Reihenfolge, M.bereiche das An/Aus,
+   BEREICH_TEXTE den Titel und den Untertitel.
+
+   Die Symbole bleiben hier NOCH aus: Das Studio zeigt Emoji, der Hub
+   zeichnet SVG. Erst wenn die Symbolwahl steht, hat es Sinn, ein
+   „icon" mitzuschicken — bis dahin nimmt der Hub seine Vorgabe, und
+   die ist richtig. */
+function kachelListe(){
+  return M.reihe.map(function(k){
+    var b = BEREICH_TEXTE[k];
+    if(!b) return null;
+    return { schluessel:k, an: !!M.bereiche[k], titel:b[0], unter:b[2] };
+  }).filter(Boolean);
+}
+
 function ausgabeSchreiben(){
   function farbzeilen(obj, felder){
     return felder.map(function(fp){
@@ -2095,7 +2111,10 @@ function ausgabeSchreiben(){
 '    art:   "' + M.avatar.art + '",\n' +
 '    name:  "' + (M.avatar.name || "").replace(/"/g, "") + '"\n  },\n\n' +
 "  /* Reihenfolge = Reihenfolge der Kacheln auf der Startseite */\n" +
-"  bereiche: {\n" + bereichzeilen + "\n  }\n};\n" +
+"  bereiche: {\n" + bereichzeilen + "\n  },\n\n" +
+"  kacheln: " + JSON.stringify(kachelListe(), null, 2)
+                 .split("\n").map(function(z,i){ return i ? "  " + z : z; }).join("\n") +
+"\n};\n" +
 "/* \u25B2\u25B2\u25B2 AB HIER NICHTS \u00C4NDERN \u25B2\u25B2\u25B2 */";
 
   /* Der Chokepoint des Verlaufs. Hier l\u00E4uft jede \u00C4nderung an M
@@ -2462,7 +2481,8 @@ function markenblattObjekt(){
                begruessung:M.betrieb.begruessung, strasse:"", ort:"", slug:"" },
     farben: M.farben, abend: M.abend, form: M.form,
     schrift: M.schrift, logo: M.logo, avatar: M.avatar,
-    bereiche: M.reihe.reduce(function(a,k){ a[k] = !!M.bereiche[k]; return a; }, {})
+    bereiche: M.reihe.reduce(function(a,k){ a[k] = !!M.bereiche[k]; return a; }, {}),
+    kacheln: kachelListe()
   };
 }
 
