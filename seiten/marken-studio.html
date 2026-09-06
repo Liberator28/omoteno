@@ -335,7 +335,13 @@ button{cursor:pointer;border:none;background:none;padding:0}
   color:var(--schrift-still);cursor:grab;touch-action:none;
 }
 .bposten .zieher:active{cursor:grabbing}
-.bposten .bild{font-size:19px;line-height:1;flex:0 0 24px;text-align:center}
+/* Dieselbe Umstellung wie in der Vorschaukachel: Ein Emoji brauchte
+   eine Schriftgröße, ein SVG braucht Maße. Eigene, keine geliehenen. */
+.bposten .bild{line-height:0;flex:0 0 24px;display:flex;justify-content:center;
+  color:var(--schrift-leise)}
+.bposten .bild svg{width:19px;height:19px;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.bposten:not(.aus) .bild{color:var(--schrift)}
 .bposten .btext{flex:1;min-width:0}
 .bposten .btext b{display:block;font-size:14px;font-weight:600;line-height:1.25}
 .bposten .btext small{
@@ -484,7 +490,13 @@ button{cursor:pointer;border:none;background:none;padding:0}
   box-shadow:var(--h-schatten);min-height:80px;
   display:flex;flex-direction:column;
 }
-.hkachel .hi{font-size:17px;line-height:1;margin-bottom:auto;padding-bottom:7px}
+/* Hier stand einmal font-size:17px für ein Emoji. Ein SVG braucht
+   Breite und Höhe, und es braucht sie HIER — die Regel .ico des Hubs
+   gilt in dieser Datei nicht (§3.3). Farbe kommt aus currentColor,
+   also aus der Kachel, genau wie im Hub. */
+.hkachel .hi{line-height:0;margin-bottom:auto;padding-bottom:7px;color:var(--h-akzent)}
+.hkachel .hi svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .hkachel strong{font-size:12.5px;font-weight:600;display:block;line-height:1.2;overflow-wrap:anywhere}
 .hkachel span{
   font-size:10px;color:var(--h-tinteleise);display:-webkit-box;margin-top:3px;
@@ -1152,17 +1164,81 @@ var FARBFELDER_ABEND = FARBFELDER.filter(function(f){
   return f[0] !== "bandText" && f[0] !== "linieStark";
 });
 
+/* ╔═══ ICONS · GETEILTER BLOCK · ANFANG ═══════════════════════════╗
+   ║ Wortgleich in vorlagen/hub.vorlage.html und                    ║
+   ║ seiten/marken-studio.html. pruef-kacheln.js vergleicht beide   ║
+   ║ Zeichen für Zeichen. Wer hier etwas ändert, ändert es dort auch.║
+   ║                                                                ║
+   ║ Anlass: Das Studio zeigte in der Vorschau EMOJI, der Hub        ║
+   ║ zeichnete Striche. Der Kunde sah damit etwas anderes, als er   ║
+   ║ bekam. Und Emoji sind auf jedem Gerät ein anderes Bild —       ║
+   ║ pruef-figur.js verbietet sie im Bestellpass aus dem Grund.     ║
+   ║                                                                ║
+   ║ Der Strich ist der Bestand: viewBox 0 0 24 24, currentColor,   ║
+   ║ keine Füllung außer wo ein Punkt gemeint ist. Das Blatt setzt  ║
+   ║ fill:none, stroke-width:1.7 und runde Enden — ein Symbol, das  ║
+   ║ eigene Werte mitbringt, fällt aus der Reihe.                   ║
+   ╚════════════════════════════════════════════════════════════════╝ */
+const ICONS = {
+  karte:   '<svg viewBox="0 0 24 24"><rect x="2.5" y="5" width="19" height="14" rx="2.5"/><path d="M2.5 10h19"/><path d="M6 14.5h4"/></svg>',
+  hand:    '<svg viewBox="0 0 24 24"><path d="M9 11V4.6a1.6 1.6 0 0 1 3.2 0V11"/><path d="M12.2 10.4V3.8a1.6 1.6 0 0 1 3.2 0v7.8"/><path d="M15.4 11.6V6.6a1.6 1.6 0 0 1 3.2 0v7.6a6.4 6.4 0 0 1-6.4 6.4h-1a5.2 5.2 0 0 1-4.4-2.4L4 14.4a1.7 1.7 0 0 1 2.7-2l2.3 2.6"/></svg>',
+  sprech:  '<svg viewBox="0 0 24 24"><path d="M20.5 12.2a7.7 7.7 0 0 1-7.7 7.7H8.4L4 22.6v-4.4a7.7 7.7 0 0 1 4.4-14h4.4a7.7 7.7 0 0 1 7.7 7.7z"/><path d="M9 11.5h6M9 14.6h3.6"/></svg>',
+  speise:  '<svg viewBox="0 0 24 24"><path d="M7 3v6a2 2 0 1 0 4 0V3M9 9v12"/><path d="M17 3c1.6 2.1 2 4.6 2 7.2h-4c0-2.6.4-5.1 2-7.2z"/><path d="M17 10.2V21"/></svg>',
+  glas:    '<svg viewBox="0 0 24 24"><path d="M5 8h11v7a4 4 0 0 1-4 4H9a4 4 0 0 1-4-4V8z"/><path d="M16 10.5h1.8a2.2 2.2 0 0 1 0 4.4H16"/><path d="M8 5V3M12 5V3"/></svg>',
+  cocktail:'<svg viewBox="0 0 24 24"><path d="M4.5 5.5h15l-7.5 7.5-7.5-7.5z"/><path d="M12 13V19"/><path d="M8 19.5h8"/><path d="M14.8 8.2l3.4-3.1"/><circle cx="18.6" cy="4.3" r="0.9" fill="currentColor" stroke="none"/></svg>',
+  wlan:    '<svg viewBox="0 0 24 24"><path d="M3.6 9.4a12.6 12.6 0 0 1 16.8 0"/><path d="M6.9 13a8 8 0 0 1 10.2 0"/><path d="M10.1 16.5a3.4 3.4 0 0 1 3.8 0"/><circle cx="12" cy="19.6" r=".9" fill="currentColor" stroke="none"/></svg>',
+  musik:   '<svg viewBox="0 0 24 24"><path d="M9 17.5V4.8l10-2v12.4"/><circle cx="6.6" cy="17.9" r="2.6"/><circle cx="16.6" cy="15.9" r="2.6"/></svg>',
+  quiz:    '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><circle cx="12" cy="12" r="4.2"/><circle cx="12" cy="12" r="1.1" fill="currentColor" stroke="none"/></svg>',
+  herz:    '<svg viewBox="0 0 24 24"><path d="M12 20.4S4.4 15.6 4.4 10.4a4.1 4.1 0 0 1 7.6-2.2 4.1 4.1 0 0 1 7.6 2.2c0 5.2-7.6 10-7.6 10z"/></svg>',
+  stern:   '<svg viewBox="0 0 24 24"><path d="M12 3.2l2.7 5.6 6.1.8-4.4 4.3 1.1 6.1L12 17.1 6.5 20l1.1-6.1L3.2 9.6l6.1-.8z"/></svg>',
+  kamera:  '<svg viewBox="0 0 24 24"><rect x="3.4" y="3.4" width="17.2" height="17.2" rx="5"/><circle cx="12" cy="12" r="3.9"/><circle cx="17" cy="7" r="1" fill="currentColor" stroke="none"/></svg>',
+  kalender:'<svg viewBox="0 0 24 24"><rect x="3.4" y="5.2" width="17.2" height="15.4" rx="3.2"/><path d="M3.4 10h17.2M8.2 3v4M15.8 3v4"/></svg>',
+  ort:     '<svg viewBox="0 0 24 24"><path d="M12 20.8s6.8-6 6.8-10.6a6.8 6.8 0 1 0-13.6 0C5.2 14.8 12 20.8 12 20.8z"/><circle cx="12" cy="10" r="2.6"/></svg>',
+  herzleer:'<svg viewBox="0 0 24 24"><path d="M12 20.4S4.4 15.6 4.4 10.4a4.1 4.1 0 0 1 7.6-2.2 4.1 4.1 0 0 1 7.6 2.2c0 5.2-7.6 10-7.6 10z"/></svg>',
+  telefon: '<svg viewBox="0 0 24 24"><path d="M7.4 3.6h3l1.5 3.8-2 1.4a11.4 11.4 0 0 0 5.3 5.3l1.4-2 3.8 1.5v3a2 2 0 0 1-2.2 2A16.6 16.6 0 0 1 5.4 5.8a2 2 0 0 1 2-2.2z"/></svg>',
+  brief:   '<svg viewBox="0 0 24 24"><rect x="2.8" y="5.2" width="18.4" height="13.6" rx="2.6"/><path d="M3.4 7.2l8.6 6 8.6-6"/></svg>',
+
+  /* ── Dazu für die Symbolwahl: fünf je Kachelfunktion ────────── */
+  teller:    '<svg viewBox="0 0 24 24"><path d="M3.4 16.6a8.6 8.6 0 0 1 17.2 0z"/><path d="M2.2 16.6h19.6"/><path d="M12 8V6.4"/><circle cx="12" cy="5" r="1.4"/><path d="M4.8 19.6h14.4"/></svg>',
+  brot:      '<svg viewBox="0 0 24 24"><path d="M4 13.6c0-3.7 3.6-6.6 8-6.6s8 2.9 8 6.6v2.2a1.8 1.8 0 0 1-1.8 1.8H5.8A1.8 1.8 0 0 1 4 15.8z"/><path d="M9 8.4 7.6 11.2M12.4 7.6 11 10.8M15.8 8.4 14.4 11.2"/></svg>',
+  loeffel:   '<svg viewBox="0 0 24 24"><ellipse cx="12" cy="6.6" rx="3.4" ry="4.4"/><path d="M12 11.2v9.6"/></svg>',
+  tasse:     '<svg viewBox="0 0 24 24"><path d="M4.6 7.6h11v5.2a5.5 5.5 0 0 1-11 0z"/><path d="M15.6 9.2h1.9a2.3 2.3 0 0 1 0 4.6h-1.9"/><path d="M3.4 20.4h13.4"/></svg>',
+  flasche:   '<svg viewBox="0 0 24 24"><path d="M10 3.4h4v3.2l1.9 2.6a4 4 0 0 1 .7 2.3v7.3a2 2 0 0 1-2 2h-5.2a2 2 0 0 1-2-2v-7.3a4 4 0 0 1 .7-2.3L10 6.6z"/><path d="M8.4 13.6h7.2"/></svg>',
+  kanne:     '<svg viewBox="0 0 24 24"><path d="M6.6 6.6h10.8v12a2.4 2.4 0 0 1-2.4 2.4H9a2.4 2.4 0 0 1-2.4-2.4z"/><rect x="5.4" y="3.6" width="13.2" height="3" rx="1"/><path d="M17.4 9.6h1.4a2.4 2.4 0 0 1 0 4.8h-1.4"/><path d="M12 3.6V1.9"/></svg>',
+  becher:    '<svg viewBox="0 0 24 24"><path d="M7 7.6h10l-1.2 11.8a1.8 1.8 0 0 1-1.8 1.6h-4a1.8 1.8 0 0 1-1.8-1.6z"/><path d="M5.6 4.6h12.8v3H5.6z"/><path d="M8.4 12.2h7.2"/></svg>',
+  shaker:    '<svg viewBox="0 0 24 24"><path d="M8.4 8.6h7.2l1 10.4a1.8 1.8 0 0 1-1.8 2h-5.6a1.8 1.8 0 0 1-1.8-2z"/><path d="M8.8 4.4h6.4l.6 4.2H8.2z"/><path d="M9.6 2.6h4.8"/></svg>',
+  olive:     '<svg viewBox="0 0 24 24"><circle cx="10.4" cy="14" r="3.6"/><circle cx="10.4" cy="14" r="1.2" fill="currentColor" stroke="none"/><path d="M13 11.4 20 4.4"/><path d="M7.8 16.6 4.6 19.8"/></svg>',
+  sekt:      '<svg viewBox="0 0 24 24"><path d="M8.6 3.4h6.8l-1.2 8a2.4 2.4 0 0 1-4.4 0z"/><path d="M12 13.8v6.4"/><path d="M9 20.4h6"/></svg>',
+  eis:       '<svg viewBox="0 0 24 24"><path d="M12 3.4 20.4 8v8L12 20.6 3.6 16V8z"/><path d="M12 3.4v8.6"/><path d="M12 12l8.4-4M12 12l-8.4-4"/></svg>',
+  glocke:    '<svg viewBox="0 0 24 24"><path d="M18.4 16.4H5.6c1.6-1.4 1.8-2.4 1.8-5.2a4.6 4.6 0 0 1 9.2 0c0 2.8.2 3.8 1.8 5.2z"/><path d="M10.2 19.4a2.2 2.2 0 0 0 3.6 0"/><path d="M12 4.4V2.8"/></svg>',
+  stuhl:     '<svg viewBox="0 0 24 24"><path d="M6.6 3.6h10.8v8.8H6.6z"/><path d="M4.8 12.4h14.4v2.4H4.8z"/><path d="M6.6 14.8v5.6M17.4 14.8v5.6"/></svg>',
+  buch:      '<svg viewBox="0 0 24 24"><path d="M12 6.4C10 4.6 7.6 4 4.4 4.2v13.2c3.2-.2 5.6.4 7.6 2.2 2-1.8 4.4-2.4 7.6-2.2V4.2C16.4 4 14 4.6 12 6.4z"/><path d="M12 6.4v13.2"/></svg>',
+  uhr:       '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8"/><path d="M12 6.8V12l3.6 2.2"/></svg>',
+  note:      '<svg viewBox="0 0 24 24"><path d="M9.6 17.6V4.6c3 .4 5 2 5.4 4.6"/><ellipse cx="7" cy="17.9" rx="2.6" ry="2.4"/></svg>',
+  platte:    '<svg viewBox="0 0 24 24"><circle cx="10.6" cy="13.4" r="7.4"/><circle cx="10.6" cy="13.4" r="1.5"/><path d="M16.2 8.6 19.6 4.8"/><circle cx="20.4" cy="3.9" r="1.3"/></svg>',
+  wuerfel:   '<svg viewBox="0 0 24 24"><rect x="3.6" y="3.6" width="16.8" height="16.8" rx="3.4"/><circle cx="8.4" cy="8.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.6" cy="8.4" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="8.4" cy="15.6" r="1.2" fill="currentColor" stroke="none"/><circle cx="15.6" cy="15.6" r="1.2" fill="currentColor" stroke="none"/></svg>',
+  gluehbirne:'<svg viewBox="0 0 24 24"><path d="M9.4 18.4a6.6 6.6 0 1 1 5.2 0"/><path d="M9.6 18.6h4.8"/><path d="M10.4 21.2h3.2"/></svg>',
+  muenze:    '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.8"/><path d="M15.6 8.6a4.6 4.6 0 0 0-7 1.8 5.6 5.6 0 0 0 0 3.2 4.6 4.6 0 0 0 7 1.8"/><path d="M7.2 11h6.2M7.2 13.4h6.2"/></svg>',
+  qr:        '<svg viewBox="0 0 24 24"><path d="M3.6 3.6h6.4v6.4H3.6z"/><path d="M14 3.6h6.4v6.4H14z"/><path d="M3.6 14h6.4v6.4H3.6z"/><path d="M14 14h2.8M20.4 14v2.8M14 17.6h2.8v2.8M20.4 20.4h-1.6"/></svg>'
+};
+/* ╚═══ ICONS · GETEILTER BLOCK · ENDE ═════════════════════════════╝ */
+
 /* Die Reihenfolge im Markenblatt bestimmt die Reihenfolge der
-   Kacheln auf der Startseite — deshalb eine Liste, keine Tabelle. */
+   Kacheln auf der Startseite — deshalb eine Liste, keine Tabelle.
+
+   Die mittlere Spalte trug bis hierher ein EMOJI. Der Hub zeichnet an
+   derselben Stelle ein Symbol aus ICONS — der Kunde sah in der
+   Vorschau also etwas anderes, als er bekam. Jetzt steht dort der
+   Name des Symbols, und beide Seiten zeichnen dasselbe. */
 var BEREICH_TEXTE = {
-  speisekarte:  ["Speisekarte",   "\uD83C\uDF7D", "Die Karte zum Bestellen"],
-  getraenke:    ["Getränke",      "\u2615",       "Kaffee, Wein, Alkoholfreies"],
-  cocktails:    ["Cocktails",     "\uD83C\uDF79", "Eigene Karte für die Bar"],
-  reservierung: ["Tisch anfragen","\uD83D\uDCC5", "Anfrage ans Team"],
-  tischruf:     ["Service rufen", "\uD83D\uDD14", "Winken ohne zu winken"],
-  musikwunsch:  ["Musikwunsch",   "\uD83C\uDFB5", "Für Bars und lange Abende"],
-  quiz:         ["Quiz",          "\uD83C\uDFB2", "Beschäftigung beim Warten"],
-  trinkgeld:    ["Trinkgeld",     "\uD83D\uDC9B", "Freiwillig, direkt ans Team"]
+  speisekarte:  ["Speisekarte",   "speise",   "Die Karte zum Bestellen"],
+  getraenke:    ["Getränke",      "glas",     "Kaffee, Wein, Alkoholfreies"],
+  cocktails:    ["Cocktails",     "cocktail", "Eigene Karte für die Bar"],
+  reservierung: ["Tisch anfragen","kalender", "Anfrage ans Team"],
+  tischruf:     ["Service rufen", "hand",     "Winken ohne zu winken"],
+  musikwunsch:  ["Musikwunsch",   "musik",    "Für Bars und lange Abende"],
+  quiz:         ["Quiz",          "quiz",     "Beschäftigung beim Warten"],
+  trinkgeld:    ["Trinkgeld",     "herz",     "Freiwillig, direkt ans Team"]
 };
 var BEREICH_FOLGE = ["speisekarte","getraenke","cocktails","reservierung",
                      "tischruf","musikwunsch","quiz","trinkgeld"];
@@ -1566,7 +1642,7 @@ function schirmStart(){
   var kacheln = an.length
     ? an.map(function(k){
         var b = BEREICH_TEXTE[k];
-        return '<div class="hkachel" data-hin="bereiche"><div class="hi">' + b[1] + '</div>' +
+        return '<div class="hkachel" data-hin="bereiche"><div class="hi">' + (ICONS[b[1]] || "") + '</div>' +
                '<strong>' + h(b[0]) + '</strong><span>' + h(b[2]) + '</span></div>';
       }).join("")
     : '<div class="hkachel" data-hin="bereiche" style="grid-column:1/-1"><strong>Noch nichts gewählt</strong>' +
@@ -1724,7 +1800,7 @@ function bereicheBauen(){
     return '<div class="bposten' + (M.bereiche[k] ? "" : " aus") + '" data-posten="' + k + '">' +
       '<span class="zieher" data-zieher="' + k + '" role="button" tabindex="0" ' +
         'aria-label="' + h(b[0]) + ' verschieben">' + ZIEHSINN + '</span>' +
-      '<span class="bild">' + b[1] + '</span>' +
+      '<span class="bild">' + (ICONS[b[1]] || "") + '</span>' +
       '<span class="btext"><b>' + h(b[0]) + '</b><small>' + h(b[2]) + '</small></span>' +
       '<input type="checkbox" class="wippe" data-bereich="' + k + '"' +
         (M.bereiche[k] ? " checked" : "") + '></div>';
@@ -2060,15 +2136,13 @@ $("blattinhalt").addEventListener("scroll", function(){
    ohnehin führt: M.reihe gibt die Reihenfolge, M.bereiche das An/Aus,
    BEREICH_TEXTE den Titel und den Untertitel.
 
-   Die Symbole bleiben hier NOCH aus: Das Studio zeigt Emoji, der Hub
-   zeichnet SVG. Erst wenn die Symbolwahl steht, hat es Sinn, ein
-   „icon" mitzuschicken — bis dahin nimmt der Hub seine Vorgabe, und
-   die ist richtig. */
+   Das Symbol geht jetzt mit: Beide Seiten zeichnen aus demselben
+   ICONS-Block, also heißt „icon" hier und dort dasselbe. */
 function kachelListe(){
   return M.reihe.map(function(k){
     var b = BEREICH_TEXTE[k];
     if(!b) return null;
-    return { schluessel:k, an: !!M.bereiche[k], titel:b[0], unter:b[2] };
+    return { schluessel:k, an: !!M.bereiche[k], titel:b[0], unter:b[2], icon:b[1] };
   }).filter(Boolean);
 }
 

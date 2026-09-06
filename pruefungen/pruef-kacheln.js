@@ -87,15 +87,59 @@ function eigeneTexte(blatt){
       ? r.continue() : r.abort());
     await p.goto("file://" + x.hub);
     await p.waitForTimeout(1300);
-    gezeigt[x.slug] = await p.$$eval(".kachel", e => e.map(el => ({
-      titel: el.querySelector("strong") ? el.querySelector("strong").textContent.trim() : "",
-      unter: el.querySelector(".txt span:not(.neu)")
-        ? el.querySelector(".txt span:not(.neu)").textContent.trim() : "",
-      ziel:  el.getAttribute("href") || ""
-    })));
+    gezeigt[x.slug] = await p.$$eval(".kachel", e => e.map(el => {
+      const svg = el.querySelector(".ico svg");
+      return {
+        titel: el.querySelector("strong") ? el.querySelector("strong").textContent.trim() : "",
+        unter: el.querySelector(".txt span:not(.neu)")
+          ? el.querySelector(".txt span:not(.neu)").textContent.trim() : "",
+        ziel:  el.getAttribute("href") || "",
+        /* Am gezeichneten Bild gemessen: ICONS[k.icon] || "" fällt
+           still auf leer zurück, und eine Kachel ohne Symbol sieht
+           nicht kaputt aus, sondern nur karg. */
+        symbolBreit: svg ? Math.round(svg.getBoundingClientRect().width) : 0
+      };
+    }));
     await p.close();
   }
   await browser.close();
+
+  /* ── 0 · Ein Alphabet für beide Seiten ──────────────────────────
+     Der Hub zeichnete Striche, das Studio zeigte Emoji — der Kunde
+     sah in der Vorschau also etwas anderes, als er bekam. Seit dem
+     geteilten Block zeichnen beide dasselbe; hier wird das gehalten. */
+  console.log("\n══ Der geteilte ICONS-Block ══");
+  const marke = /\/\* ╔═══ ICONS · GETEILTER BLOCK · ANFANG[\s\S]*?\/\* ╚═══ ICONS · GETEILTER BLOCK · ENDE ═+╝ \*\//;
+  const quellen = [
+    { name:"vorlagen/hub.vorlage.html", pfad: path.join(OBEN, "vorlagen", "hub.vorlage.html") },
+    { name:"seiten/marken-studio.html", pfad: path.join(OBEN, "seiten", "marken-studio.html") }
+  ].map(q => {
+    const t = fs.readFileSync(q.pfad, "utf8").match(marke);
+    return { name:q.name, text: t ? t[0] : null };
+  });
+  const ohne = quellen.filter(q => !q.text);
+  if(ohne.length){
+    ohne.forEach(q => pruef(false, "Block fehlt in " + q.name));
+  } else {
+    pruef(quellen[0].text === quellen[1].text,
+      "beide Fassungen sind wortgleich", quellen[0].text.length + " Zeichen");
+  }
+  const symbolNamen = quellen[0].text
+    ? [...quellen[0].text.matchAll(/^  ([a-z]+):/gm)].map(m => m[1]) : [];
+  pruef(symbolNamen.length >= 30, "genug Symbole für fünf je Funktion",
+    symbolNamen.length + " Stück");
+
+  /* Jeder Vorschlag zeigt auf ein Symbol, das es gibt. Eine Liste,
+     die auf einen erfundenen Namen zeigt, ist ein leerer Knopf. */
+  const vorschlagBlock = quellen[0].text
+    ? fs.readFileSync(path.join(OBEN, "vorlagen", "hub.vorlage.html"), "utf8")
+        .match(/const KACHELSYMBOLE = \{([\s\S]*?)\n\};/) : null;
+  if(vorschlagBlock){
+    const tote = [...vorschlagBlock[1].matchAll(/"([a-z]+)"/g)]
+      .map(m => m[1]).filter(n => symbolNamen.indexOf(n) < 0);
+    pruef(tote.length === 0, "jeder Symbolvorschlag existiert",
+      tote.length ? [...new Set(tote)].join(", ") : "alle");
+  }
 
   /* ── 1 · Kein Hub trägt den Text eines anderen Hauses ──────────── */
   console.log("\n══ Kreuzvergleich: fremder Text im Hub ══");
@@ -185,6 +229,15 @@ function eigeneTexte(blatt){
         kann === da ? "stimmt" : (kann ? "eingerichtet, aber NICHT sichtbar"
                                        : "nicht eingerichtet, aber sichtbar"));
     });
+  });
+
+  /* ── 3c · Jede Kachel trägt ein gezeichnetes Symbol ────────────── */
+  console.log("\n══ Jede Kachel hat ein Symbol ══");
+  h.forEach(x => {
+    const ohneBild = gezeigt[x.slug].filter(k => k.symbolBreit <= 0);
+    pruef(ohneBild.length === 0, x.slug.padEnd(14) + " zeichnet überall ein Symbol",
+      ohneBild.length ? ohneBild.map(k => k.titel).join(", ")
+                      : gezeigt[x.slug].length + " Kacheln, alle mit Strich");
   });
 
   /* ── 4 · bereiche wirkt wirklich ───────────────────────────────── */
