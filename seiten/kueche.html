@@ -426,6 +426,27 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
 .posten .name{font-size:calc(17px * var(--skala)); font-weight:600; line-height:1.3}
 .posten .zusatz{display:block;font-size:calc(13px * var(--skala));color:var(--gedaempft);font-weight:400}
 
+/* ─── Der Telefonbon ────────────────────────────────────────────
+   --telefon steht seit jeher in der Palette (4,73:1, siehe oben) —
+   die Herkunftsfarbe war vorgesehen, nur nie benutzt, weil
+   Telefonbestellungen gar nicht bis in die Küche kamen. Jetzt tut
+   sie, wofür sie angelegt wurde. Keine neue Farbe, keine neue
+   Rechnung. */
+.tisch.telefon{color:var(--telefon)}
+.tisch.telefon small{color:var(--telefon);opacity:.85}
+.anrufer{
+  margin:0 calc(13px * var(--skala)) calc(11px * var(--skala));
+  padding:calc(9px * var(--skala)) calc(11px * var(--skala));
+  background:rgba(79,165,168,.12); border-left:3px solid var(--telefon);
+  border-radius:6px; font-size:calc(14.5px * var(--skala)); line-height:1.45;
+  display:flex; flex-wrap:wrap; align-items:baseline; gap:6px;
+}
+.anrufer b{display:block;width:100%;font-size:calc(11px * var(--skala));
+  letter-spacing:.06em;text-transform:uppercase;color:var(--telefon)}
+/* Die Wunschzeit in der Monospace — sie ist zählbar, wie jede
+   andere Zahl auf einem Bon. */
+.anrufer .wunsch{font-family:var(--mono);font-weight:700;color:var(--kreide-hell)}
+
 .notiz{
   margin:0 calc(13px * var(--skala)) calc(11px * var(--skala));
   padding:calc(9px * var(--skala)) calc(11px * var(--skala));
@@ -783,14 +804,24 @@ function ladeKarte(){
    Rechteprüfung — das Konto könnte diese Spalten mit einer anderen
    Abfrage weiterhin lesen. Die eigentliche Schranke bleibt RLS. */
 var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
-                   "zeitpunkt,kueche_fertig_um,theke_fertig_um";
+                   "zeitpunkt,kueche_fertig_um,theke_fertig_um," +
+                   /* Für Telefonbestellungen: Wer hat angerufen, wann
+                      will er es abholen. Am Tisch sind die Felder leer
+                      und kosten nichts. */
+                   "gast_name,gast_telefon,abholung,wunschzeit,tagesnummer";
 
-/* quelle=eq.tisch: Servicerufe bleiben draußen.
+/* Servicerufe bleiben draußen, Telefonbestellungen kommen herein.
 
    Ein Serviceruf ist eine Bitte an den Kellner — zahlen, nachbestellen,
    Besteck. In der Küche steht er nur im Weg und verstellt die Sicht auf
    das, was gekocht werden muss. Er läuft weiterhin im Admin-Board auf,
    wo der Service ihn sieht.
+
+   quelle=in.(tisch,telefon): Bis zum 05.09. stand hier eq.tisch. Eine
+   Bestellung, die Alessia am Telefon aufgenommen hat, wäre damit in
+   der Datenbank gelandet und in der Küche NIE aufgetaucht — sie muss
+   aber gekocht werden wie jede andere. Der Unterschied gehört auf den
+   Bon, nicht in den Filter.
 
    Der Filter sitzt bewusst in der ABFRAGE, nicht erst in der Anzeige:
    So kommen die Zeilen gar nicht erst über das Küchen-WLAN, und die
@@ -798,7 +829,7 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
 function ladeBons(){
   var seit = new Date(Date.now() - RUECKBLICK_STD*3600*1000).toISOString();
   return ruf("/rest/v1/bestellungen?select="+BON_SPALTEN+"&betrieb_id=eq."+betrieb.id+
-             "&quelle=eq.tisch"+
+             "&quelle=in.(tisch,telefon)"+
              "&zeitpunkt=gte."+seit+"&order=zeitpunkt.asc")
     .then(function(a){
       if(!a.ok) throw new Error("Bons nicht lesbar ("+a.status+")");
@@ -1060,11 +1091,31 @@ function zeichne(){
       '<div class="schicht">' +
         '<div class="mass"><span style="width:' + anteil + '%"></span></div>' +
         '<div class="bon-kopf">' +
-          '<div class="tisch"><small>Tisch</small>' + h(b.tisch || "—") + '</div>' +
+          /* Am Telefon gibt es keinen Tisch. Statt „Tisch —" steht
+             dort, worum es geht: Abholung oder Lieferung, und die
+             Nummer, unter der der Pass ausgerufen wird. Wer am Pass
+             steht, muss auf einen Blick wissen, ob der Teller zum
+             Gast geht oder in eine Tüte. */
+          (b.quelle === "telefon"
+            ? '<div class="tisch telefon"><small>' +
+                (b.abholung === false ? 'Lieferung' : 'Abholung') + '</small>' +
+                h(b.tagesnummer != null ? "#" + b.tagesnummer : "Tel") + '</div>'
+            : '<div class="tisch"><small>Tisch</small>' + h(b.tisch || "—") + '</div>') +
           '<div class="luecke">' + marken + '</div>' +
           '<div class="wartet"><small>wartet</small>' + zeitText(min) + '</div>' +
         '</div>' +
         '<ul class="posten">' + zeilen + '</ul>' +
+        /* Wer angerufen hat und wann er kommt — die zwei Angaben,
+           ohne die ein Telefonbon in der Küche nutzlos ist. */
+        (b.quelle === "telefon"
+          ? '<div class="anrufer"><b>Am Telefon</b>' +
+              h([b.gast_name, b.gast_telefon].filter(Boolean).join(" · ") || "ohne Namen") +
+              (b.wunschzeit
+                ? '<span class="wunsch">' + h(new Date(b.wunschzeit)
+                    .toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})) + ' Uhr</span>'
+                : '') +
+            '</div>'
+          : '') +
         (b.notiz ? '<div class="notiz"><b>Hinweis vom Gast</b>' + h(b.notiz) + '</div>' : '') +
         '<div class="bon-fuss">' +
           (b.status === "arbeit" && !alleAbgehakt

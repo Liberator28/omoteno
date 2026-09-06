@@ -411,6 +411,29 @@ Nebentext auf Karte, Bandschrift auf Band, Akzent auf Karte,
 Knopfschrift auf Knopf — **Tag und Abend**. Grenze 4,5:1.
 `pruef-kontrast.js` im Projekt macht genau das.
 
+### 5.2a Ein Grenzwert in der Prüfung kann eine Lücke sein
+
+> **Vorfall.** Der neue Fußzeilen-Link im Hub stand auf 9,5px und kam
+> bei Choco auf **2,83:1**. `pruef-lesbarkeit.js` meldete trotzdem
+> „alles sauber" — sie überspringt alles unter 10px als Zierschrift.
+> Für eine Gutschrift stimmt das; für etwas, das man **antippen**
+> soll, nicht.
+>
+> Der Fehler davor war meiner: Ich hatte `--tinte-still` gesetzt und
+> in den Kommentar geschrieben „auf Pappe 4,57:1". Der Wert stimmte —
+> nur ist der Grund im Hub die Farbe, die der **Kunde** gewählt hat.
+> Genau §5.1, eine Ebene tiefer.
+
+Zwei Lehren, beide gemessen:
+
+- Eine feste Schriftfarbe im Hub ist immer falsch. Rollen wie
+  `--tinte-leise` werden pro Markenblatt hergeleitet und tragen
+  deshalb bei jedem Haus (Choco 4,55:1, Blend 7,44:1).
+- **Ein Bedienelement ist nie Zierschrift.** Die Prüfung rechnet
+  Links und Knöpfe jetzt unabhängig von der Schriftgröße. Wer einen
+  Grenzwert einbaut, muss sich fragen, was er damit ungesehen
+  durchlässt.
+
 ### 5.3 Bewusste Ungereimtheiten nicht wegsystematisieren
 
 > **Vorfall.** Chocos Goldfläche am Tag war seit jeher aus dem hellen
@@ -515,6 +538,36 @@ Einzelprüfung, sondern erst `pruef-durchgang.js` — der Weg, den ein
 Gast wirklich geht. Wer nur Bausteine prüft, findet keine Fehler
 zwischen den Bausteinen.
 
+### 8.1c `hidden` gibt es auf einem SVG nicht als Eigenschaft
+
+> **Vorfall.** Untersetzer und Aufsteller bekamen je eine eigene
+> Zeichnung; umgeschaltet wurde mit `el.hidden = true`. Beim Messen:
+> **Eigenschaft `true`, Attribut weg, `display` weiter `block`** —
+> die Fläche blieb stehen, und die zweite lag darunter. Kein Fehler,
+> keine Warnung.
+>
+> Grund: `hidden` liegt auf **HTMLElement** und spiegelt dort aufs
+> Attribut. Ein `<svg>` ist ein `SVGElement` und erbt das nicht. Die
+> Zuweisung legt dann still eine gewöhnliche JS-Eigenschaft an, die
+> niemand liest.
+
+Bei allem, was kein HTML-Element ist — `<svg>` und alles darin —:
+
+```js
+el.setAttribute("hidden", "");   // statt el.hidden = true
+el.removeAttribute("hidden");    // statt el.hidden = false
+```
+
+Und die Prüfung dazu darf **nicht** `el.hidden` ablesen; dort steht
+für SVG immer `undefined`. Gemessen wird, was zählt:
+`hasAttribute("hidden")`, `getComputedStyle(el).display` und die
+Breite. Mein erster Test las die Eigenschaft und meldete deshalb
+grün, als es noch kaputt war — und rot, als es schon lief.
+
+Zusammen mit §8.1 heißt das: `[hidden]` braucht die
+`display:none`-Gegenregel **und** den richtigen Weg, es zu setzen.
+Eines von beidem allein reicht nie.
+
 ### 8.1a Bausteine prüfen findet nicht, was zwischen ihnen fehlt
 
 > **Vorfall.** Der Erzeuger baute für „Blend" einen Hub mit
@@ -609,6 +662,8 @@ Dazu je nach Änderung:
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
 | Konto, Anfrageformular | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links |
+| **Alessia, der Telefonweg** | `pruefungen/pruef-alessia.js` — liest die Nutzlast, ohne Netz |
+| **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
 
 Und danach, immer:
 

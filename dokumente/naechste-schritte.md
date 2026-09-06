@@ -213,7 +213,7 @@ vorhandene Fassung nicht zu überschreiben.
 **Wichtig:** Farbwerte nicht raten — die geprüften Werte stehen im
 `:root` von `omoteno-web.html`, jeder mit Kontrastwert im Kommentar.
 
-### 3 · Der Assistent (Tarif „Assistent", 59 €)
+### 3 · Der Assistent (Tarif „Assistent", 149 €)
 Auf der Webseite beworben, noch nicht gebaut:
 - Karte aus Foto oder PDF einlesen (der Zerleger dafür existiert
   bereits in `omoteno-admin.html`, Funktion `impZerlegen`)

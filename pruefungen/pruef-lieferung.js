@@ -38,60 +38,92 @@ if(!fs.existsSync(WURZEL)){
 }
 const typ = { ".html":"text/html", ".txt":"text/plain", ".xml":"application/xml" };
 
-/* Die Regeln aus _redirects, so weit ein Prüfserver sie braucht. */
+/* Die Regeln aus _redirects, so weit ein Prüfserver sie braucht.
+   Das „!" am Statuscode wird ausgelesen — es entscheidet alles. */
 const REGELN = fs.readFileSync(path.join(WURZEL,"_redirects"),"utf8")
   .split("\n").map(z => z.trim())
   .filter(z => z && !z.startsWith("#"))
-  .map(z => z.split(/\s+/));
+  .map(z => {
+    const [von, nach, code] = z.split(/\s+/);
+    return { von, nach, code: (code||"200").replace("!",""),
+             zwang: (code||"").endsWith("!") };
+  });
 
+/* Liegt der Weg als Datei im Ordner? Genau diese Frage entscheidet bei
+   Netlify, ob eine nicht erzwungene Umleitung überhaupt drankommt. */
+const alsDatei = w => {
+  let d = w;
+  if(d === "/" || d.endsWith("/")) d += "index.html";
+  const voll = path.join(WURZEL, d);
+  return voll.startsWith(WURZEL) && fs.existsSync(voll) && !fs.statSync(voll).isDirectory()
+       ? voll : null;
+};
+
+/* Eine Regel auf Host und Pfad anwenden. Gibt den neuen Pfad zurück,
+   eine Weiterleitung, oder null. */
+function anwenden(r, host, p){
+  if(r.von.startsWith("http")){
+    let u; try { u = new URL(r.von.replace(/\*$/,"")); } catch(e){ return null; }
+    if(u.hostname !== host) return null;
+    /* Der Pfadanteil der Regel: „/admin*" heißt Präfix, „/*" heißt alles. */
+    const muster = u.pathname.replace(/\*$/,"");
+    if(muster && muster !== "/" && !p.startsWith(muster)) return null;
+    const rest = p.slice(muster === "/" ? 1 : muster.length).replace(/^\//,"");
+    const ziel = r.nach.replace(":splat", rest);
+    return r.nach.startsWith("http")
+      ? { weiter: ziel, code: Number(r.code) || 301 }
+      : { pfad: ziel };
+  }
+  if(r.von.endsWith("/*")){
+    const kopf = r.von.slice(0,-2);
+    if(!p.startsWith(kopf)) return null;
+    return { pfad: r.nach.replace(":splat", p.slice(kopf.length+1)) };
+  }
+  if(r.von.includes(":")){
+    const teile = r.von.split("/"), jetzt = p.split("/");
+    if(teile.length !== jetzt.length) return null;
+    let passt = true; const werte = {};
+    teile.forEach((t,i) => { if(t.startsWith(":")) werte[t.slice(1)] = jetzt[i];
+                             else if(t !== jetzt[i]) passt = false; });
+    return passt ? { pfad: r.nach.replace(/:(\w+)/g, (_,k) => werte[k]) } : null;
+  }
+  return r.von === p ? { pfad: r.nach } : null;
+}
+
+/* ── Netlifys Reihenfolge, und sie ist der ganze Punkt ─────────────
+   1. erzwungene Regeln („!")   — gewinnen immer
+   2. eine vorhandene DATEI
+   3. alle übrigen Regeln
+
+   Der erste Entwurf dieses Servers wendete Regeln VOR den Dateien an
+   und bildete Netlify damit falsch ab. Er hätte gemeldet, dass
+   choco-lamour.omoteno.de/konto.html den Hub liefert — in Wahrheit
+   lieferte es Omotenos Konto-Seite, weil die Datei gewinnt. Eine
+   Prüfung, die großzügiger ist als die Wirklichkeit, ist schlimmer
+   als keine. */
 const server = http.createServer((a,b) => {
   const host = (a.headers.host || "").split(":")[0];
   let p = decodeURIComponent(a.url.split("?")[0]);
 
-  /* ── Zuerst die Adressregeln ──────────────────────────────────
-     Bis zum 04.09. stand hier „Domainregeln hier nicht" und die
-     Schleife uebersprang jede Regel mit absoluter URL. Genau
-     deshalb konnte keine Pruefung finden, dass
-     choco-lamour.omoteno.de (mit Bindestrich) auf KEINE Regel
-     passte — Netlify lieferte dem Gast die Landingpage aus. Das
-     ist CLAUDE.md 8.2: Eine Pruefung, die die entscheidende Zeile
-     gar nicht ansieht, ist fuer diesen Fall keine.
-
-     Netlify verkettet Regeln NICHT. Greift eine Adressregel, ist
-     der Weg entschieden — deshalb der Schalter. */
-  let getroffen = false;
-  for(const [von, nach, code] of REGELN){
-    if(!von.startsWith("http")) continue;
-    let u; try { u = new URL(von.replace("/*","")); } catch(e){ continue; }
-    if(u.hostname !== host) continue;
-    const rest = p.replace(/^\//, "");
-    if(nach.startsWith("http")){
-      b.writeHead(parseInt(code,10) || 301, { Location: nach.replace(":splat", rest) });
-      return b.end();
+  const runde = (nurZwang) => {
+    for(const r of REGELN){
+      if(nurZwang && !r.zwang) continue;
+      if(!nurZwang && r.zwang) continue;
+      const erg = anwenden(r, host, p);
+      if(!erg) continue;
+      if(erg.weiter){ b.writeHead(erg.code, { Location: erg.weiter }); b.end(); return true; }
+      p = erg.pfad; return true;
     }
-    p = nach.replace(":splat", rest); getroffen = true; break;
-  }
+    return false;
+  };
 
-  for(const [von, nach, code] of getroffen ? [] : REGELN){
-    if(von.startsWith("http")) continue;             /* oben schon behandelt */
-    if(von.endsWith("/*")){
-      const kopf = von.slice(0,-2);
-      if(p.startsWith(kopf)){ p = nach.replace(":splat", p.slice(kopf.length+1)); break; }
-    } else if(von.includes(":")){
-      const teile = von.split("/"), jetzt = p.split("/");
-      if(teile.length === jetzt.length){
-        let passt = true, werte = {};
-        teile.forEach((t,i) => { if(t.startsWith(":")) werte[t.slice(1)] = jetzt[i];
-                                 else if(t !== jetzt[i]) passt = false; });
-        if(passt){ p = nach.replace(/:(\w+)/g, (_,k) => werte[k]); break; }
-      }
-    } else if(von === p){ p = nach; break; }
+  if(!runde(true)){          /* 1 · erzwungen */
+    if(!alsDatei(p)) runde(false);   /* 2 · Datei  →  3 · der Rest */
   }
-  if(p === "/" || p.endsWith("/")) p += "index.html";
-  const datei = path.join(WURZEL, p);
-  if(!datei.startsWith(WURZEL) || !fs.existsSync(datei) || fs.statSync(datei).isDirectory()){
-    b.writeHead(404); return b.end("404");
-  }
+  if(b.writableEnded) return;
+
+  const datei = alsDatei(p);
+  if(!datei){ b.writeHead(404); return b.end("404"); }
   b.writeHead(200, {"Content-Type": typ[path.extname(datei)] || "application/octet-stream"});
   b.end(fs.readFileSync(datei));
 });
@@ -162,12 +194,18 @@ server.listen(8899, async () => {
 
   console.log("\n── Die Kundenadressen ──");
   const startseite = (await ueberHost("localhost", "/")).titel;
-  const adressen   = REGELN.filter(([von]) => von.startsWith("http"));
+  /* Die Adressregeln als {von, nach, code, zwang} — seit der Server
+     Netlifys Reihenfolge abbildet, sind Regeln Objekte, keine Felder. */
+  const adressen   = REGELN.filter(r => r.von.startsWith("http"));
   pruef(adressen.length > 0, "es gibt ueberhaupt Adressregeln",
     adressen.length + " Zeile(n) in _redirects");
 
-  for(const [von, nach, code] of adressen){
-    let host; try { host = new URL(von.replace("/*","")).hostname; } catch(e){ continue; }
+  for(const {von, nach, code} of adressen){
+    /* Nur die Regeln, die den ganzen Host abfangen. Die drei
+       Betriebswege („/admin*") werden weiter unten eigens geprueft. */
+    let u; try { u = new URL(von.replace(/\*$/,"")); } catch(e){ continue; }
+    if(u.pathname !== "/") continue;
+    const host = u.hostname;
     const a = await ueberHost(host, "/");
 
     if(nach.startsWith("http")){
@@ -186,6 +224,50 @@ server.listen(8899, async () => {
     pruef(a.titel !== startseite,
       host.padEnd(26) + " zeigt NICHT die Landingpage",
       a.titel === startseite ? "genau der Fehler vom 04.09." : "richtig");
+  }
+
+  /* ── Beschattung: liefert eine Kundenadresse fremde Seiten? ───
+     Netlify bedient zuerst eine vorhandene DATEI. Der veroeffentlichte
+     Ordner ist flach — admin.html, konto.html, kueche.html liegen
+     darin. Ohne „!" an der Hub-Regel gewinnt also die Datei, und ein
+     Gast an Chocos Tisch erreicht unter Chocos Adresse Omotenos
+     Anmeldung. Genau das war auf dem Bildschirmfoto vom 04.09. */
+  console.log("\n── Fremde Seiten unter Kundenadressen ──");
+  const hubHosts = [...new Set(adressen
+    .filter(r => !r.nach.startsWith("http"))
+    .map(r => { try { return new URL(r.von.replace(/\*$/,"")).hostname; }
+                catch(e){ return null; } })
+    .filter(Boolean))];
+  for(const host of hubHosts){
+    for(const weg of ["/konto.html", "/admin.html", "/kueche.html", "/index.html"]){
+      const a = await ueberHost(host, weg);
+      const fremd = a.code === 200 && /Omoteno|Küche/i.test(a.titel) &&
+                    !/Choco|Blend/i.test(a.titel);
+      pruef(!fremd, (host + weg).padEnd(44) + " zeigt NICHT Omotenos Seite",
+        a.code + (a.ziel ? " → " + a.ziel : " · „" + (a.titel||"(ohne Titel)").slice(0,26) + "“"));
+    }
+  }
+
+  /* ── Der Weg des Wirts an sein eigenes Board ──────────────────── */
+  console.log("\n── Vom Hub ins eigene Board ──");
+  for(const [host, weg, ziel] of [
+        ["choco-lamour.omoteno.de", "/admin",  "https://omoteno.de/admin"],
+        ["choco-lamour.omoteno.de", "/kueche", "https://omoteno.de/kueche"],
+        ["choco-lamour.omoteno.de", "/konto",  "https://omoteno.de/konto"],
+        ["blend.omoteno.de",        "/admin",  "https://omoteno.de/admin"]]){
+    const a = await ueberHost(host, weg);
+    pruef(a.code === 301 && a.ziel === ziel,
+      (host + weg).padEnd(44) + " fuehrt nach omoteno.de",
+      a.code + " → " + (a.ziel || "(ohne Ziel)"));
+  }
+
+  /* ── Eine Seite, eine Adresse ─────────────────────────────────── */
+  console.log("\n── www ──");
+  for(const weg of ["/", "/konto", "/konto.html"]){
+    const a = await ueberHost("www.omoteno.de", weg);
+    pruef(a.code === 301 && a.ziel.startsWith("https://omoteno.de/"),
+      ("www.omoteno.de" + weg).padEnd(44) + " springt auf omoteno.de",
+      a.code + " → " + (a.ziel || "(ohne Ziel)"));
   }
 
   /* ── Ist JEDER Hub unter einer Adresse erreichbar? ────────────
@@ -209,8 +291,8 @@ server.listen(8899, async () => {
     ? fs.readdirSync(path.join(WURZEL,"h")).filter(n =>
         fs.existsSync(path.join(WURZEL,"h",n,"index.html"))) : [];
   const bedient = new Set(adressen
-    .filter(([,nach]) => !nach.startsWith("http"))
-    .map(([,nach]) => (nach.match(/^\/h\/([^/]+)/) || [,null])[1])
+    .filter(r => !r.nach.startsWith("http"))
+    .map(r => (r.nach.match(/^\/h\/([^/]+)/) || [,null])[1])
     .filter(Boolean));
   for(const slug of hubs){
     pruef(bedient.has(slug), ("/h/" + slug + "/").padEnd(26) + " hat eine eigene Adresse",
@@ -220,11 +302,15 @@ server.listen(8899, async () => {
   /* Und zeigt jede Umleitung auf eine Adresse, die es wirklich gibt?
      Ohne das koennte jemand die Zielzeile loeschen und die Umleitung
      schickte den Gast auf die Landingpage — unbemerkt. */
-  for(const [von, nach] of adressen){
+  for(const {von, nach} of adressen){
     if(!nach.startsWith("http")) continue;
+    /* Nur Umleitungen zwischen KUNDENadressen. Die Betriebswege und
+       die www-Regel zeigen absichtlich auf omoteno.de, das keinen Hub
+       hat — sie hier zu fordern waere ein Fehlalarm. */
+    if(/^https:\/\/omoteno\.de/.test(nach)) continue;
     let zielHost; try { zielHost = new URL(nach.replace(":splat","")).hostname; } catch(e){ continue; }
-    const hatRegel = adressen.some(([v, n]) => {
-      try { return new URL(v.replace("/*","")).hostname === zielHost && !n.startsWith("http"); }
+    const hatRegel = adressen.some(r => {
+      try { return new URL(r.von.replace(/\*$/,"")).hostname === zielHost && !r.nach.startsWith("http"); }
       catch(e){ return false; }
     });
     pruef(hatRegel, zielHost.padEnd(26) + " ist als Ziel wirklich bedient",

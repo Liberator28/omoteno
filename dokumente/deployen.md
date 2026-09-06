@@ -232,14 +232,21 @@ sonst findet der Hub seine Karte nicht.
 
 ### e) Domain
 
-1. In `_redirects` eine Zeile dazu:
+1. In `_redirects` **vier** Zeilen dazu — die drei Wege des Wirts
+   zuerst, sonst schluckt die Hub-Regel den Pfad:
    ```
-   https://<slug>.omoteno.de/*   /h/<slug>/:splat   200
+   https://<adresse>/admin*   https://omoteno.de/admin    301!
+   https://<adresse>/kueche*  https://omoteno.de/kueche   301!
+   https://<adresse>/konto*   https://omoteno.de/konto    301!
+   https://<adresse>/*        /h/<slug>/:splat            200!
    ```
+   **Das Ausrufezeichen ist Pflicht, keine Feinheit** — ohne es
+   liefert die Kundenadresse Omotenos eigene Seiten aus. Warum,
+   steht unten unter „Die Adresse eines Kunden".
 2. Bei Netlify: **Domain management → Add domain alias** →
-   `<slug>.omoteno.de`.
+   `<adresse>`.
 3. Beim DNS-Anbieter von `omoteno.de` einen CNAME anlegen:
-   `<slug>` → deine Netlify-Adresse (`<projekt>.netlify.app`).
+   `<adresse>` → deine Netlify-Adresse (`<projekt>.netlify.app`).
 
 Ohne Schritt 2 **und** 3 läuft die Anfrage gar nicht erst bei Netlify
 vorbei, und die Zeile aus Schritt 1 kann nichts tun.
@@ -319,6 +326,84 @@ Prüfung sieht genau in den Titel jedes Hubs.
 
 ---
 
+## 5c · Google-Anmeldung einschalten
+
+Der Code in `seiten/konto.html` ist vollständig — er ruft
+`signInWithOAuth({provider:"google"})` auf und übersetzt beide
+möglichen Absagen in Klartext. Was fehlt, ist die **Freischaltung**.
+Zwei Stellen, beide im Supabase-Dashboard:
+
+**1 · Den Anbieter einschalten**
+*Authentication → Providers → Google*. Client-ID und Secret kommen aus
+der Google Cloud Console (*APIs & Services → Credentials → OAuth
+client ID*, Typ „Web application"). Dort als autorisierte
+Weiterleitung eintragen:
+
+```
+https://quxwweuvdqtjsdwgjdrh.supabase.co/auth/v1/callback
+```
+
+**2 · Die Rücksprungadressen erlauben**
+*Authentication → URL Configuration → Redirect URLs*. Die Seite
+schickt `location.origin + location.pathname` zurück, und beide
+Schreibweisen sind erreichbar:
+
+```
+https://omoteno.de/konto
+https://omoteno.de/konto.html
+```
+
+**Keine Kundendomain hier eintragen.** Das Konto gehört unter
+omoteno.de; unter einer Kundenadresse hat es nichts zu suchen (siehe
+5b).
+
+**Woran man erkennt, welches der beiden fehlt:** Die Seite sagt es.
+„noch nicht freigeschaltet" heißt Punkt 1, „Adresse nicht hinterlegt"
+heißt Punkt 2.
+
+---
+
+## 5b · Ein Projekt, nicht zwei
+
+> **Vorfall, 04.09.** Bei Netlify liefen ZWEI Projekte auf demselben
+> Repo — eines für omoteno.de, eines für den Choco-Hub. Beide bauten
+> unabhängig voneinander, zu verschiedenen Zeitpunkten. Ergebnis: Auf
+> der einen Adresse stand ein alter Stand, auf der anderen die
+> Landingpage statt des Hubs. Die Korrektur im Repo war längst drin.
+
+Zwei Projekte auf einem Repo laufen **zwangsläufig** auseinander. Sie
+teilen sich dieselbe `netlify.toml`, bauen denselben Ordner und
+veröffentlichen dasselbe — nur eben zu verschiedenen Zeiten. Was einen
+Kunden-Hub unter eigener Adresse erscheinen lässt, ist **kein zweites
+Projekt**, sondern ein Domain-Alias plus eine Zeile in `_redirects`
+(Abschnitt 5a).
+
+**Zusammenlegen, in dieser Reihenfolge:**
+
+1. Im **Omoteno-Projekt**: *Domain management → Add domain alias* →
+   die Kundenadresse eintragen. Warten, bis Netlify das Zertifikat
+   ausgestellt hat (steht dort als „Netlify certificate").
+2. *Site configuration → Build & deploy* prüfen:
+   **Base directory leer**, Branch `main`, Build command kommt aus
+   `netlify.toml`. Steht im Base directory etwas, findet Netlify die
+   `netlify.toml` nicht — der häufigste Grund für einen Bau, der
+   sofort scheitert.
+3. **Erst wenn 1 grün ist**: das zweite Projekt löschen
+   (*Site configuration → Danger zone → Delete site*). Vorher nicht —
+   sonst zeigt die Adresse zwischendurch ins Leere.
+4. Beim Domain-Anbieter bleibt der `CNAME` unverändert. Er zeigt
+   danach nur auf ein anderes Netlify-Projekt.
+
+**Warum das auch die Anmeldung repariert:** Supabase lässt den
+Rücksprung nach der Google-Anmeldung nur auf Adressen zu, die in
+*Authentication → URL Configuration* stehen. Dort steht `omoteno.de`
+— und dort soll auch keine Kundendomain stehen. Liegt `konto.html`
+unter einer Kundenadresse, scheitert die Anmeldung genau daran.
+Mit einem Projekt und sauberen Umleitungen kommt das Konto gar nicht
+erst unter einer Kundendomain heraus.
+
+---
+
 ## 5a · Eine neue Kundenadresse einpflegen
 
 Drei Dinge, **alle drei** nötig. Fehlt eines, passiert nichts:
@@ -338,7 +423,7 @@ keiner passenden Regel die Startseite des Ordners ausliefert.
 Gast tippt; rechts, wie der Ordner heißt:
 
 ```
-https://choco-lamour.omoteno.de/*  /h/chocolamour/:splat   200
+https://choco-lamour.omoteno.de/*  /h/chocolamour/:splat   200!
 ```
 
 Der Slug hängt an `betriebe.slug` in der Datenbank — der Hub lädt
@@ -350,8 +435,34 @@ alte eine **301** auf die echte, statt zweimal denselben Hub
 auszuliefern:
 
 ```
-https://chocolamour.omoteno.de/*   https://choco-lamour.omoteno.de/:splat   301
+https://chocolamour.omoteno.de/*   https://choco-lamour.omoteno.de/:splat   301!
 ```
+
+**Das Ausrufezeichen ist Pflicht, keine Feinheit.** Netlify bedient
+zuerst eine vorhandene **Datei** und erst danach eine nicht erzwungene
+Umleitung. Der veröffentlichte Ordner ist flach — `admin.html`,
+`konto.html`, `index.html` liegen darin. Ohne `!` liefert die
+Kundenadresse also Omotenos Seiten aus:
+
+```
+https://<adresse>/*   /h/<slug>/:splat   200!
+```
+
+**Der Wirt braucht einen Weg an sein Board.** Drei Zeilen je Kunde,
+**vor** der Hub-Regel, sonst schluckt die den Pfad:
+
+```
+https://<adresse>/admin*   https://omoteno.de/admin    301!
+https://<adresse>/kueche*  https://omoteno.de/kueche   301!
+https://<adresse>/konto*   https://omoteno.de/konto    301!
+```
+
+301, nicht 200: Die Anmeldung gehört auf omoteno.de, weil Supabase den
+Rücksprung nur auf Adressen aus seiner Allowlist zulässt (5c). Welches
+Haus der Wirt danach sieht, entscheidet `meine_betriebe()` in den
+RLS-Regeln — am Board selbst ist nichts einzurichten.
+
+Im Hub führt die Zeile **„Für den Betrieb"** im Fuß auf denselben Weg.
 
 Danach `node erzeuger/bauen.js && node pruefungen/pruef-lieferung.js`.
 Die Prüfung sagt für jeden Hub, ob eine Adresse auf ihn zeigt.

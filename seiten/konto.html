@@ -832,10 +832,28 @@ $("googleKnopf").onclick = async () => {
     /* Ab hier übernimmt der Browser: Er verlässt die Seite. */
   }catch(e){
     const text = String(e && (e.message || e.error_description) || "");
-    melde("torMeldung", /not enabled|Unsupported provider/i.test(text)
-      ? "Die Anmeldung mit Google ist für diese Adresse noch nicht freigeschaltet. " +
-        "Nimm so lange E-Mail und Passwort."
-      : fehlertext(e), "fehler");
+
+    /* Zwei Absagen, zwei Ursachen — und beide sind KONFIGURATION,
+       nicht Code. Wer sie nicht auseinanderhält, sucht tagelang am
+       falschen Ende:
+
+       „provider is not enabled"  → Google ist in Supabase unter
+         Authentication → Providers nicht eingeschaltet.
+       „redirect_to is not allowed" → Die Rücksprungadresse steht
+         nicht in Authentication → URL Configuration. Genau das
+         passiert, wenn jemand das Konto unter einer KUNDENDOMAIN
+         öffnet (choco-lamour.omoteno.de/konto) statt unter
+         omoteno.de — die Kundenadresse steht dort nicht drin und
+         soll es auch nicht. */
+    let hinweis = fehlertext(e);
+    if(/not enabled|Unsupported provider/i.test(text)){
+      hinweis = "Die Anmeldung mit Google ist noch nicht freigeschaltet. " +
+                "Nimm so lange E-Mail und Passwort.";
+    } else if(/redirect|not allowed|invalid.*url/i.test(text)){
+      hinweis = "Diese Adresse ist für die Google-Anmeldung nicht hinterlegt. " +
+                "Melde dich bitte unter omoteno.de/konto an.";
+    }
+    melde("torMeldung", hinweis, "fehler");
     knopf.disabled = false;
   }
 };

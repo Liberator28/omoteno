@@ -72,7 +72,16 @@ const SWEEP = `
     const kasten = el.getBoundingClientRect();
     if(kasten.width < 2 || kasten.height < 2) return;
     const groesse = parseFloat(s.fontSize);
-    if(groesse < 10) return;                 /* Zierschrift */
+    /* Unter 10px gilt als Zierschrift und wird uebersprungen — bei
+       einer Gutschrift im Fuss stimmt das.
+
+       Bei etwas, das man ANTIPPEN soll, stimmt es nicht. Vorfall vom
+       05.09.: Der Link „Fuer den Betrieb" stand auf 9,5px und kam auf
+       2,83:1. Diese Pruefung meldete trotzdem „alles sauber", weil sie
+       ihn wegen der Groesse gar nicht ansah. Ein Bedienelement ist nie
+       Zier — es wird immer gerechnet, egal wie klein es gesetzt ist. */
+    const bedienbar = el.closest("a,button,[role=button],[role=link]") !== null;
+    if(groesse < 10 && !bedienbar) return;
     const dick = parseInt(s.fontWeight, 10) >= 700;
     const grenze = (groesse >= 24 || (groesse >= 18.66 && dick)) ? 3 : 4.5;
 
