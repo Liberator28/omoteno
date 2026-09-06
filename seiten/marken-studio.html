@@ -68,6 +68,11 @@
 }
 
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+/* CLAUDE.md §8.1: Die UA-Regel für [hidden] verliert gegen JEDE
+   Angabe im Blatt. Als einzige Seite hatte das Studio diese Zeile
+   nicht — folgenlos, solange das Attribut nirgends benutzt wurde, und
+   genau ab der Kachelbearbeitung unten nicht mehr folgenlos. */
+[hidden]{display:none !important}
 html,body{margin:0;padding:0;height:100%;overflow:hidden}
 body{
   background:var(--werk);color:var(--schrift);
@@ -342,6 +347,51 @@ button{cursor:pointer;border:none;background:none;padding:0}
 .bposten .bild svg{width:19px;height:19px;fill:none;stroke:currentColor;
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .bposten:not(.aus) .bild{color:var(--schrift)}
+
+/* Die Kachelbearbeitung. Eigene Maße durchgehend — .stell und .wahl
+   aus den anderen Abteilungen sind für ganze Zeilen gebaut, hier
+   sitzt alles in einer Liste, die man auch noch zieht (§3.3). */
+.bposten{flex-wrap:wrap}
+.bposten .btext{
+  flex:1;min-width:0;text-align:left;background:none;border:0;padding:0;
+  color:inherit;font-family:inherit;cursor:pointer;
+}
+.bposten .btext b{display:block;font-size:13.5px;font-weight:600}
+.bposten .btext small{display:block;font-size:11px;color:var(--schrift-leise);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bposten .btext .eigen{
+  font-style:normal;color:var(--leih);margin-left:5px;font-size:15px;line-height:0;
+}
+.bposten.offen{border-color:var(--leih)}
+.bfeld{
+  flex:0 0 100%;margin-top:10px;padding-top:11px;
+  border-top:1px solid var(--kante);
+  display:flex;flex-direction:column;gap:11px;
+}
+/* Beschriftung oben, Bedienung darunter — auf 390px bliebe für den
+   Text sonst eine Spalte von vier Zeichen (§3.6). */
+.bzeile{display:flex;flex-direction:column;gap:5px}
+.bzeile > span{font-size:11.5px;color:var(--schrift-leise);letter-spacing:.02em}
+.bzeile .warum{display:block;font-size:10.5px;color:var(--schrift-still);
+  margin-top:2px;line-height:1.35}
+.bfeld .text{width:100%;box-sizing:border-box}
+.bfeld .text.schmal{max-width:140px}
+.symwahl{display:flex;flex-wrap:wrap;gap:6px}
+.symwahl .sym{
+  width:38px;height:38px;flex:none;display:grid;place-items:center;
+  background:var(--werk-2);border:1px solid var(--kante);border-radius:9px;
+  color:var(--schrift-leise);cursor:pointer;
+  transition:border-color var(--tempo),color var(--tempo),transform 120ms var(--kurve);
+}
+.symwahl .sym svg{width:19px;height:19px;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.symwahl .sym:active{transform:scale(.92)}
+.symwahl .sym.an{border-color:var(--leih);color:var(--leih)}
+.mehrsym{
+  align-self:flex-start;background:none;border:0;padding:2px 0;
+  color:var(--schrift-leise);font-family:inherit;font-size:11px;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer;
+}
 .bposten .btext{flex:1;min-width:0}
 .bposten .btext b{display:block;font-size:14px;font-weight:600;line-height:1.25}
 .bposten .btext small{
@@ -497,6 +547,9 @@ button{cursor:pointer;border:none;background:none;padding:0}
 .hkachel .hi{line-height:0;margin-bottom:auto;padding-bottom:7px;color:var(--h-akzent)}
 .hkachel .hi svg{width:18px;height:18px;display:block;fill:none;stroke:currentColor;
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+/* Wählt der Kunde ein Emoji, steht dort Text statt SVG — der braucht
+   eine Schriftgröße, sonst sitzt er schief. Wie im Hub. */
+.hkachel .hi.zeichen{font-size:17px;line-height:1}
 .hkachel strong{font-size:12.5px;font-weight:600;display:block;line-height:1.2;overflow-wrap:anywhere}
 .hkachel span{
   font-size:10px;color:var(--h-tinteleise);display:-webkit-box;margin-top:3px;
@@ -1243,6 +1296,48 @@ var BEREICH_TEXTE = {
 var BEREICH_FOLGE = ["speisekarte","getraenke","cocktails","reservierung",
                      "tischruf","musikwunsch","quiz","trinkgeld"];
 
+/* Fünf Vorschläge je Funktion. Die Liste steht HIER und nicht im
+   Gerüst: Vorschläge sind eine Frage der Bedienung, nicht des Hubs.
+   Der Erzeuger prüft „icon" ohnehin gegen die echten Symbolnamen aus
+   dem geteilten Block — ein Vorschlag kann also nichts durchlassen,
+   was der Hub nicht zeichnen kann.
+
+   Achtundreißig Symbole auf einmal wären keine Wahl, sondern eine
+   Suchaufgabe. Wer trotzdem alle will, klappt sie auf. */
+var KACHELSYMBOLE = {
+  speisekarte:  ["speise","karte","teller","brot","loeffel"],
+  getraenke:    ["glas","tasse","flasche","kanne","becher"],
+  cocktails:    ["cocktail","shaker","olive","sekt","eis"],
+  tischruf:     ["hand","glocke","sprech","uhr","herz"],
+  reservierung: ["kalender","stuhl","uhr","buch","ort"],
+  musikwunsch:  ["musik","note","platte","sprech","stern"],
+  quiz:         ["quiz","wuerfel","gluehbirne","buch","stern"],
+  trinkgeld:    ["herz","muenze","stern","herzleer","hand"]
+};
+
+/* Was der Kunde an einer Kachel geändert hat, steht in M.kachel —
+   DÜNN BESETZT, nur Abweichungen. Zwei Gründe: Der Entwurfslink
+   bleibt kurz, und ein eigener Titel überlebt den Stilwechsel von
+   selbst, ohne dass es dafür eine zweite Regel braucht (Block 1). */
+function kachelVorgabe(k, feld){
+  if(feld === "emoji") return "";
+  var b = BEREICH_TEXTE[k];
+  if(!b) return "";
+  return feld === "titel" ? b[0] : feld === "icon" ? b[1] : b[2];
+}
+function kachelWert(k, feld){
+  var eig = M.kachel && M.kachel[k];
+  if(eig && eig[feld] != null && eig[feld] !== "") return eig[feld];
+  return kachelVorgabe(k, feld);
+}
+function kachelSetzen(k, feld, wert){
+  if(!M.kachel) M.kachel = {};
+  var eig = M.kachel[k] || (M.kachel[k] = {});
+  if(wert === kachelVorgabe(k, feld) || wert === "") delete eig[feld];
+  else eig[feld] = wert;
+  if(!Object.keys(eig).length) delete M.kachel[k];
+}
+
 var ABTEILUNGEN = [
   ["vorlagen","Vorlagen"], ["haus","Haus"], ["farben","Farben"], ["abend","Abend"],
   ["form","Form"], ["schrift","Schrift"], ["figur","Figur"],
@@ -1506,6 +1601,10 @@ function eigeneTexte(){
   /* Der Figurname hat in keiner Vorlage einen Wert. Steht dort etwas,
      hat ihn der Kunde vergeben — ohne Vergleich, aus demselben Grund. */
   if(M.avatar && M.avatar.name) eigen.figurname = M.avatar.name;
+  /* Kachelüberschreibungen gehören immer dem Kunden — es gibt keine
+     Vorlage, gegen die man sie halten könnte. Dieselbe Begründung wie
+     beim Figurnamen. */
+  if(M.kachel && Object.keys(M.kachel).length) eigen.kachel = M.kachel;
   return eigen;
 }
 
@@ -1529,7 +1628,8 @@ function vorlageLaden(kennung, frisch){
        in jedes Haus. Eine eigene Figur wählt der Kunde bewusst. */
     avatar:  { figur:v.figur || "untersetzer", art:v.zug || "freundlich", name:"" },
     reihe:   v.reihe.slice(),
-    bereiche: bereiche
+    bereiche: bereiche,
+    kachel:  {}
   };
   /* Abgeschaltete Bereiche hängen hinten dran, damit man sie findet,
      ohne suchen zu müssen. */
@@ -1545,6 +1645,7 @@ function vorlageLaden(kennung, frisch){
   if(eigen.claim != null)  M.betrieb.claim       = eigen.claim;
   if(eigen.gruss != null)  M.betrieb.begruessung = eigen.gruss;
   if(eigen.figurname)      M.avatar.name         = eigen.figurname;
+  if(eigen.kachel)         M.kachel              = eigen.kachel;
 }
 
 /* ═══ Farbe und Lesbarkeit ══════════════════════════════════════ */
@@ -1642,8 +1743,12 @@ function schirmStart(){
   var kacheln = an.length
     ? an.map(function(k){
         var b = BEREICH_TEXTE[k];
-        return '<div class="hkachel" data-hin="bereiche"><div class="hi">' + (ICONS[b[1]] || "") + '</div>' +
-               '<strong>' + h(b[0]) + '</strong><span>' + h(b[2]) + '</span></div>';
+        var em = kachelWert(k, "emoji");
+        return '<div class="hkachel" data-hin="bereiche"><div class="hi' +
+               (em ? " zeichen" : "") + '">' +
+               (em ? h(em) : (ICONS[kachelWert(k,"icon")] || "")) + '</div>' +
+               '<strong>' + h(kachelWert(k,"titel")) + '</strong><span>' +
+               h(kachelWert(k,"unter")) + '</span></div>';
       }).join("")
     : '<div class="hkachel" data-hin="bereiche" style="grid-column:1/-1"><strong>Noch nichts gewählt</strong>' +
       '<span>Unter „Bereiche“ auswählen</span></div>';
@@ -1794,16 +1899,57 @@ var ZIEHSINN = '<svg width="12" height="18" viewBox="0 0 12 18" fill="currentCol
   '<circle cx="3" cy="9" r="1.5"/><circle cx="9" cy="9" r="1.5"/>' +
   '<circle cx="3" cy="15" r="1.5"/><circle cx="9" cy="15" r="1.5"/></svg>';
 
+/* Welche Kachel gerade aufgeklappt ist. Genau eine — zwei offene
+   Felder auf einem Telefonschirm sind keine Übersicht mehr. */
+var kachelOffen = null;
+
+function symbolwahlHTML(k, alle){
+  var liste = alle ? Object.keys(ICONS)
+                   : (KACHELSYMBOLE[k] || Object.keys(ICONS).slice(0, 5));
+  var jetzt = kachelWert(k, "icon");
+  return liste.map(function(n){
+    return '<button type="button" class="sym' + (n === jetzt ? " an" : "") +
+      '" data-symbol="' + k + '|' + n + '" aria-pressed="' + (n === jetzt) +
+      '" title="' + h(n) + '">' + (ICONS[n] || "") + '</button>';
+  }).join("");
+}
+
 function bereicheBauen(){
   $("bereichsliste").innerHTML = M.reihe.map(function(k){
-    var b = BEREICH_TEXTE[k];
-    return '<div class="bposten' + (M.bereiche[k] ? "" : " aus") + '" data-posten="' + k + '">' +
+    var titel = kachelWert(k, "titel"), unter = kachelWert(k, "unter");
+    var emoji = kachelWert(k, "emoji");
+    var offen = kachelOffen === k;
+    var eigen = M.kachel && M.kachel[k] && Object.keys(M.kachel[k]).length;
+    return '<div class="bposten' + (M.bereiche[k] ? "" : " aus") +
+             (offen ? " offen" : "") + '" data-posten="' + k + '">' +
       '<span class="zieher" data-zieher="' + k + '" role="button" tabindex="0" ' +
-        'aria-label="' + h(b[0]) + ' verschieben">' + ZIEHSINN + '</span>' +
-      '<span class="bild">' + (ICONS[b[1]] || "") + '</span>' +
-      '<span class="btext"><b>' + h(b[0]) + '</b><small>' + h(b[2]) + '</small></span>' +
+        'aria-label="' + h(titel) + ' verschieben">' + ZIEHSINN + '</span>' +
+      '<span class="bild">' + (emoji ? h(emoji) : (ICONS[kachelWert(k,"icon")] || "")) + '</span>' +
+      /* Der Text ist jetzt der Knopf zum Aufklappen. Griff und
+         Schalter bleiben, was sie waren — wer nur sortieren oder
+         abschalten will, merkt von der Bearbeitung nichts. */
+      '<button type="button" class="btext" data-auf="' + k + '" aria-expanded="' + offen + '">' +
+        '<b>' + h(titel) + (eigen ? '<i class="eigen" title="selbst geändert">•</i>' : "") + '</b>' +
+        '<small>' + h(unter) + '</small></button>' +
       '<input type="checkbox" class="wippe" data-bereich="' + k + '"' +
-        (M.bereiche[k] ? " checked" : "") + '></div>';
+        (M.bereiche[k] ? " checked" : "") + '>' +
+      '<div class="bfeld"' + (offen ? "" : " hidden") + '>' +
+        '<label class="bzeile"><span>Titel</span>' +
+          '<input class="text" data-kfeld="' + k + '|titel" maxlength="28" value="' +
+          h(titel) + '" autocomplete="off"></label>' +
+        '<label class="bzeile"><span>Zeile darunter</span>' +
+          '<input class="text" data-kfeld="' + k + '|unter" maxlength="48" value="' +
+          h(unter) + '" autocomplete="off"></label>' +
+        '<div class="bzeile"><span>Symbol</span>' +
+          '<div class="symwahl" data-symwahl="' + k + '">' + symbolwahlHTML(k, false) + '</div>' +
+          '<button type="button" class="mehrsym" data-allesym="' + k + '">Alle ' +
+            Object.keys(ICONS).length + ' zeigen</button></div>' +
+        '<label class="bzeile"><span>Lieber ein Emoji?' +
+          '<small class="warum">Sieht auf jedem Gerät anders aus. Für die feste ' +
+          'Kachel ist der Strich die bessere Wahl.</small></span>' +
+          '<input class="text schmal" data-kfeld="' + k + '|emoji" maxlength="8" value="' +
+          h(emoji) + '" autocomplete="off" placeholder="leer = Strich"></label>' +
+      '</div></div>';
   }).join("");
 }
 
@@ -2140,9 +2286,15 @@ $("blattinhalt").addEventListener("scroll", function(){
    ICONS-Block, also heißt „icon" hier und dort dasselbe. */
 function kachelListe(){
   return M.reihe.map(function(k){
-    var b = BEREICH_TEXTE[k];
-    if(!b) return null;
-    return { schluessel:k, an: !!M.bereiche[k], titel:b[0], unter:b[2], icon:b[1] };
+    if(!BEREICH_TEXTE[k]) return null;
+    var e = { schluessel:k, an: !!M.bereiche[k],
+              titel:kachelWert(k,"titel"), unter:kachelWert(k,"unter"),
+              icon:kachelWert(k,"icon") };
+    /* Nur schreiben, wenn gewählt: Ein leeres emoji im Markenblatt
+       wäre eine Angabe, die nichts sagt. */
+    var em = kachelWert(k,"emoji");
+    if(em) e.emoji = em;
+    return e;
   }).filter(Boolean);
 }
 
@@ -2284,7 +2436,10 @@ function entwurfsAdresse(){
     b:[M.betrieb.name, M.betrieb.claim, M.betrieb.begruessung],
     f:M.farben, a:M.abend, o:M.form, s:M.schrift,
     v:[M.avatar.figur, M.avatar.art, M.avatar.name || ""],
-    r:M.reihe, e:M.reihe.map(function(k){ return M.bereiche[k] ? 1 : 0; })
+    r:M.reihe, e:M.reihe.map(function(k){ return M.bereiche[k] ? 1 : 0; }),
+    /* Dünn besetzt — nur was der Kunde geändert hat. Bei einem
+       unberührten Entwurf steht hier gar nichts. */
+    k:(M.kachel && Object.keys(M.kachel).length) ? M.kachel : undefined
   };
   return location.origin + location.pathname + "#m=" + nachBase64(JSON.stringify(knapp));
 }
@@ -2301,6 +2456,9 @@ function entwurfLesen(){
     M.form    = Object.assign({}, M.form, k.o);
     M.schrift = Object.assign({}, M.schrift, k.s);
     M.logo    = { art:"text", text:k.b[0], bild:"", hoehe:30 };
+    /* Ältere Entwurfslinks kennen k noch nicht — dann bleibt es bei
+       den Vorgaben, statt dass die Seite über undefined stolpert. */
+    M.kachel  = (k.k && typeof k.k === "object") ? k.k : {};
     /* Ältere Entwurfslinks kennen v noch nicht — dann bleibt es beim
        Untersetzer, statt dass die Seite über undefined stolpert. */
     M.avatar  = Array.isArray(k.v)
@@ -2364,6 +2522,29 @@ document.addEventListener("input", function(e){
   if(z.id === "fFigurName"){ M.avatar.name = z.value; ausgabeSchreiben(); return; }
   if(z.id === "fClaim"){ M.betrieb.claim = z.value; vorschau(); return; }
   if(z.id === "fGruss"){ M.betrieb.begruessung = z.value; vorschau(); return; }
+
+  /* Titel, Zeile darunter, Emoji. Ein Wert, der der Vorgabe
+     entspricht, wird nicht gespeichert, sondern gelöscht — dadurch
+     bleibt M.kachel dünn und der Entwurfslink kurz. */
+  if(z.dataset.kfeld){
+    var teil = z.dataset.kfeld.split("|");
+    kachelSetzen(teil[0], teil[1], z.value.trim());
+    /* Die Liste NICHT neu bauen: Der Cursor säße sonst bei jedem
+       Tastendruck wieder am Anfang. Nur Zeile und Vorschau ziehen
+       nach. */
+    var reihe = document.querySelector('[data-posten="' + teil[0] + '"]');
+    if(reihe){
+      var kopf = reihe.querySelector(".btext");
+      if(kopf) kopf.innerHTML = "<b>" + h(kachelWert(teil[0],"titel")) +
+        ((M.kachel && M.kachel[teil[0]] && Object.keys(M.kachel[teil[0]]).length)
+          ? '<i class="eigen" title="selbst geändert">•</i>' : "") + "</b><small>" +
+        h(kachelWert(teil[0],"unter")) + "</small>";
+      var bild = reihe.querySelector(".bild");
+      var em = kachelWert(teil[0],"emoji");
+      if(bild) bild.innerHTML = em ? h(em) : (ICONS[kachelWert(teil[0],"icon")] || "");
+    }
+    vorschau(); return;
+  }
   if(z.id === "fRundung"){ M.form.rundung = +z.value; reglerSchreiben(); vorschau(); return; }
   if(z.id === "fRundungK"){ M.form.rundungKlein = +z.value; reglerSchreiben(); vorschau(); return; }
   if(z.id === "fRand"){ M.form.rand = +z.value; reglerSchreiben(); vorschau(); return; }
@@ -2415,6 +2596,32 @@ document.addEventListener("click", function(e){
   if(k.hasAttribute("data-abend")){
     if(!M.abend.an){ melde("Abendvariante ist ausgeschaltet"); return; }
     abendAn = !abendAn; abendZeichnen(); vorschau(); return;
+  }
+  if(k.dataset.auf){
+    kachelOffen = (kachelOffen === k.dataset.auf) ? null : k.dataset.auf;
+    bereicheBauen(); return;
+  }
+  if(k.dataset.symbol){
+    var t2 = k.dataset.symbol.split("|");
+    kachelSetzen(t2[0], "icon", t2[1]);
+    /* Nur die Wahl neu zeichnen, nicht die ganze Liste — sonst
+       klappt das Feld beim Tippen zu und wieder auf. */
+    var w = document.querySelector('[data-symwahl="' + t2[0] + '"]');
+    if(w) w.innerHTML = symbolwahlHTML(t2[0], w.dataset.alle === "1");
+    var r2 = document.querySelector('[data-posten="' + t2[0] + '"] .bild');
+    if(r2 && !kachelWert(t2[0],"emoji")) r2.innerHTML = ICONS[t2[1]] || "";
+    vorschau(); return;
+  }
+  if(k.dataset.allesym){
+    var w2 = document.querySelector('[data-symwahl="' + k.dataset.allesym + '"]');
+    if(w2){
+      var alle = w2.dataset.alle !== "1";
+      w2.dataset.alle = alle ? "1" : "0";
+      w2.innerHTML = symbolwahlHTML(k.dataset.allesym, alle);
+      k.textContent = alle ? "Weniger zeigen"
+                           : "Alle " + Object.keys(ICONS).length + " zeigen";
+    }
+    return;
   }
   if(k.dataset.schatten){
     M.form.schatten = k.dataset.schatten;

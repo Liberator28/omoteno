@@ -130,15 +130,28 @@ function eigeneTexte(blatt){
     symbolNamen.length + " Stück");
 
   /* Jeder Vorschlag zeigt auf ein Symbol, das es gibt. Eine Liste,
-     die auf einen erfundenen Namen zeigt, ist ein leerer Knopf. */
-  const vorschlagBlock = quellen[0].text
-    ? fs.readFileSync(path.join(OBEN, "vorlagen", "hub.vorlage.html"), "utf8")
-        .match(/const KACHELSYMBOLE = \{([\s\S]*?)\n\};/) : null;
+     die auf einen erfundenen Namen zeigt, ist ein leerer Knopf.
+
+     Diese Prüfung suchte KACHELSYMBOLE zuerst in hub.vorlage.html —
+     dort steht sie nicht und wird nie stehen, denn Vorschläge sind
+     Bedienung. Sie meldete deshalb NICHTS, weder gut noch schlecht.
+     Eine Prüfung, die still übergeht, ist keine. */
+  const studioText = fs.readFileSync(path.join(OBEN, "seiten", "marken-studio.html"), "utf8");
+  const vorschlagBlock = studioText.match(/const KACHELSYMBOLE = \{([\s\S]*?)\n\};/) ||
+                         studioText.match(/var KACHELSYMBOLE = \{([\s\S]*?)\n\};/);
+  pruef(!!vorschlagBlock, "die Vorschlagsliste ist da, wo sie hingehört",
+    vorschlagBlock ? "seiten/marken-studio.html" : "NICHT GEFUNDEN");
   if(vorschlagBlock){
-    const tote = [...vorschlagBlock[1].matchAll(/"([a-z]+)"/g)]
-      .map(m => m[1]).filter(n => symbolNamen.indexOf(n) < 0);
+    const genannt = [...vorschlagBlock[1].matchAll(/"([a-z]+)"/g)].map(m => m[1]);
+    const tote = genannt.filter(n => symbolNamen.indexOf(n) < 0);
     pruef(tote.length === 0, "jeder Symbolvorschlag existiert",
-      tote.length ? [...new Set(tote)].join(", ") : "alle");
+      tote.length ? [...new Set(tote)].join(", ") : genannt.length + " Nennungen");
+    /* Fünf je Funktion war die Zusage — weniger wäre keine Wahl. */
+    const zuWenig = [...vorschlagBlock[1].matchAll(/^\s{2}([a-z]+):\s*\[([^\]]*)\]/gm)]
+      .map(m => [m[1], (m[2].match(/"/g) || []).length / 2])
+      .filter(x => x[1] < 5);
+    pruef(zuWenig.length === 0, "fünf Vorschläge je Funktion",
+      zuWenig.length ? zuWenig.map(x => x[0] + ": " + x[1]).join(", ") : "überall fünf");
   }
 
   /* ── 1 · Kein Hub trägt den Text eines anderen Hauses ──────────── */
@@ -239,6 +252,24 @@ function eigeneTexte(blatt){
       ohneBild.length ? ohneBild.map(k => k.titel).join(", ")
                       : gezeigt[x.slug].length + " Kacheln, alle mit Strich");
   });
+
+  /* ── 3d · Kacheltext ist Text, keine Auszeichnung ───────────────
+     Der Titel gehört seit Block 4 dem Haus und geht als Zeichenkette
+     in innerHTML. Bis Block 5b ohne Maskierung. Gemessen wird am
+     gezeichneten Bild: Steht ein spitzes Klammernpaar im Titel, muss
+     es DASTEHEN und darf nicht zu einem Element werden. */
+  console.log("\n══ Kacheltext wird maskiert ══");
+  {
+    const hub = fs.readFileSync(path.join(OBEN, "vorlagen", "hub.vorlage.html"), "utf8");
+    const start = hub.match(/const kachelHTML = k => \{[\s\S]*?\n  \};/);
+    pruef(!!start && /hs\(t\(k\.titel\)\)/.test(start[0]),
+      "der Titel geht durch die Maskierung",
+      start ? (/hs\(t\(k\.titel\)\)/.test(start[0]) ? "hs(t(k.titel))" : "ROH") : "nicht gefunden");
+    pruef(!!start && /hs\(t\(k\.unter\)\)/.test(start[0]),
+      "die Zeile darunter auch");
+    pruef(!!start && /hs\(k\.emoji\)/.test(start[0]),
+      "und das Emoji, das der Wirt frei tippt");
+  }
 
   /* ── 4 · bereiche wirkt wirklich ───────────────────────────────── */
   console.log("\n══ Abgeschaltete Bereiche sind wirklich weg ══");

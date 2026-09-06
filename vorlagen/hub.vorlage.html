@@ -635,6 +635,11 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
 }
 .ico svg{width:20px;height:20px;fill:none;stroke:currentColor;
          stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+/* Wählt der Wirt ein Emoji statt eines Strichs, steht dort TEXT und
+   kein SVG. Der braucht eine Schriftgröße und eine Zeilenhöhe, sonst
+   sitzt er schief im Feld. */
+.ico.zeichen{font-size:20px;line-height:1}
+.kachel.saeule .ico.zeichen{font-size:21px}
 /* Ein gezeichnetes Zeichen im Knopf, dort wo vorher ein Emoji stand. */
 .kzeichen{display:inline-flex;flex:none}
 .kzeichen svg{width:18px;height:18px;fill:none;stroke:currentColor;
@@ -2869,7 +2874,7 @@ const KACHELFOLGE = ["speisekarte","getraenke","cocktails",
 /* Aus einem Eintrag des Markenblatts (oder aus nichts) eine fertige
    Kachel bauen. Was der Wirt schicken darf, steht in ERLAUBT — alles
    andere aus dem Markenblatt wird ignoriert, nicht übernommen. */
-const KACHEL_ERLAUBT = ["titel","unter","icon","gruppe","raster","stil",
+const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
                         "farbe","von","bis","neu","cyan"];
 
 function kachelBauen(schluessel, wunsch){
@@ -2878,7 +2883,7 @@ function kachelBauen(schluessel, wunsch){
   const k = {
     schluessel: schluessel,
     ziel: art.ziel, wenn: art.wenn, nurDe: art.nurDe,
-    titel: art.titel, unter: art.unter || "", icon: art.icon,
+    titel: art.titel, unter: art.unter || "", icon: art.icon, emoji: "",
     gruppe: art.gruppe, raster: art.raster || "", stil: art.stil || "",
     farbe: art.farbe || "", neu: !!art.neu, cyan: !!art.cyan,
     von: art.von === undefined ? 0 : art.von,
@@ -2888,6 +2893,22 @@ function kachelBauen(schluessel, wunsch){
     if(wunsch[f] !== undefined && wunsch[f] !== null) k[f] = wunsch[f];
   });
   return k;
+}
+
+/* Alles aus dem Markenblatt, das in eine Zeichenkette statt in
+   textContent geht, muss hier durch.
+
+   Solange die Kacheltexte fest im Gerüst standen, war das folgenlos —
+   niemand außer uns schrieb sie. Seit sie dem Haus gehören, ist es
+   eine Tür ohne Klinke. Der FIGUR-Block maskiert längst; hier fehlte
+   es.
+
+   NICHT in t() eingebaut: Die wird auch dort gerufen, wo textContent
+   folgt, und doppelt maskiert ist so falsch wie gar nicht — genau der
+   Fehler, der einmal „Brot &amp;amp; Öl" ergab. */
+function hs(w){
+  return String(w == null ? "" : w).replace(/[&<>"]/g, z =>
+    ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[z]));
 }
 
 /* Das Ziel kann eine Zeichenkette oder eine Funktion sein. Überall
@@ -5596,10 +5617,14 @@ function start(){
       (k.farbe ? ' data-farbe="' + k.farbe + '"' : "") +
       ' href="' + ziel + '"' +
       (ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
-        '<div class="ico">' + (ICONS[k.icon] || "") + '</div>' +
-        '<div class="txt"><strong>' + t(k.titel) +
-        (k.neu ? '<span class="neu">' + t("NEU") + '</span>' : "") +
-        '</strong>' + (k.unter ? '<span>' + t(k.unter) + '</span>' : "") + '</div>' +
+        /* Ein Emoji überschreibt den Strich — bewusst zweite Wahl,
+           weil es auf jedem Gerät anders aussieht. Der Wirt darf, er
+           muss nicht. */
+        '<div class="ico' + (k.emoji ? " zeichen" : "") + '">' +
+          (k.emoji ? hs(k.emoji) : (ICONS[k.icon] || "")) + '</div>' +
+        '<div class="txt"><strong>' + hs(t(k.titel)) +
+        (k.neu ? '<span class="neu">' + hs(t("NEU")) + '</span>' : "") +
+        '</strong>' + (k.unter ? '<span>' + hs(t(k.unter)) + '</span>' : "") + '</div>' +
         '<div class="pfeil">›</div></a>';
   };
 
@@ -5610,7 +5635,7 @@ function start(){
       /* Das Raster kommt von der ersten Kachel der Gruppe:
          saeulen = drei große nebeneinander, zwei = zwei kleine,
          ohne Angabe = untereinander. */
-      html += '<div class="bereich">' + t(k.gruppe).toUpperCase() + '</div>' +
+      html += '<div class="bereich">' + hs(t(k.gruppe).toUpperCase()) + '</div>' +
               '<div class="gitter' + (k.raster ? " " + k.raster : "") + '">';
       letzter = k.gruppe;
     }

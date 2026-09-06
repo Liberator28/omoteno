@@ -180,6 +180,16 @@ function pruefeMarkenblatt(mb){
         F(wo + ".titel muss Text sein");
       if(k.icon !== undefined && ICONNAMEN.indexOf(k.icon) < 0)
         F(wo + ".icon unbekannt: " + k.icon + " — erlaubt: " + ICONNAMEN.join(", "));
+      /* emoji ist ein FREIES Feld — also gehört eine Grenze daran.
+         Zwei Zeichen reichen für jedes Emoji samt Variantenselektor;
+         wer mehr hineinschreibt, meint keinen Bildschriftzeichen,
+         sondern schiebt Text ins Symbolfeld. Gemessen wird in
+         Codepunkten, nicht in Bytes: „👨‍🍳" sind drei. */
+      if(k.emoji !== undefined && k.emoji !== ""){
+        if(typeof k.emoji !== "string") F(wo + ".emoji muss Text sein");
+        else if([...k.emoji].length > 4)
+          F(wo + '.emoji ist zu lang: "' + k.emoji + '" — höchstens 4 Zeichen');
+      }
     });
     const doppelt = {};
     (Array.isArray(mb.kacheln) ? mb.kacheln : []).forEach(k => {

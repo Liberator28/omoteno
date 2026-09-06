@@ -58,6 +58,12 @@ Object.keys(A.VORLAGEN).forEach(v => {
      Bliebe sie auf der Vorgabe, könnte der Vergleich hinterher auch
      dann „gleich" melden, wenn der Link sie gar nicht mitnimmt. */
   A.holM().avatar = { figur:"erdbeere", art:"witzig", name:"Fräulein Fraise" };
+  /* Dasselbe Spiel für die Kachelüberschreibungen: Bleiben sie leer,
+     könnte der Vergleich hinterher auch dann „gleich" melden, wenn
+     der Link sie gar nicht mitnimmt. Ein Feld, das mitfährt, aber
+     nicht verglichen wird, fährt ungeprüft (§2.3b). */
+  A.holM().kachel = { speisekarte:{ titel:"Unsere Karte", icon:"teller" },
+                      tischruf:{ emoji:"🔔" } };
   const vorher = JSON.parse(JSON.stringify(A.holM()));
   const adresse = A.entwurfsAdresse();
   // Anderen Ausgangszustand herstellen, dann aus der Adresse lesen
@@ -73,8 +79,10 @@ Object.keys(A.VORLAGEN).forEach(v => {
   const anGleich = A.BEREICH_FOLGE.every(k => !!nachher.bereiche[k] === !!vorher.bereiche[k]);
   const figurGleich = nachher.avatar && vorher.avatar &&
     ["figur","art","name"].every(k => nachher.avatar[k] === vorher.avatar[k]);
+  const kachelGleich = JSON.stringify(nachher.kachel || {}) ===
+                       JSON.stringify(vorher.kachel || {});
 
-  if(!(ok && gleich && namegleich && reihegleich && anGleich && figurGleich)) fehler++;
+  if(!(ok && gleich && namegleich && reihegleich && anGleich && figurGleich && kachelGleich)) fehler++;
   console.log("  " + v.padEnd(11),
     "gelesen:", ok ? "ja " : "NEIN",
     "| Farben:", gleich ? "gleich" : "ABWEICHUNG",
@@ -82,6 +90,7 @@ Object.keys(A.VORLAGEN).forEach(v => {
     "| Reihenfolge:", reihegleich ? "gleich" : "ABWEICHUNG",
     "| Schalter:", anGleich ? "gleich" : "ABWEICHUNG",
     "| Figur:", figurGleich ? "gleich" : "ABWEICHUNG",
+    "| Kacheln:", kachelGleich ? "gleich" : "ABWEICHUNG",
     "| Länge:", adresse.length);
 });
 console.log("  Fehler:", fehler);
