@@ -650,7 +650,11 @@ var EINST = {
   fertigZeigen: 3,       /* Minuten, die ein erledigter Bon noch stehen bleibt */
   ton:       true,
   hell:      false,
-  wach:      true
+  wach:      true,
+  /* Muss hier stehen, auch wenn die Vorgabe false ist: Das Zurücklesen
+     unten siebt mit „if(s in EINST)" — ein Schlüssel, den die Vorgabe
+     nicht kennt, käme nie zurück. */
+  vollbild:  false
 };
 
 var sitzung = null, betrieb = null, betriebe = [];
@@ -1436,6 +1440,76 @@ function einstOeffnen(ausloeser){
   });
 }
 
+/* ╔═══ VOLLBILD · GETEILTER BLOCK · ANFANG ════════════════════════╗
+   ║ Wortgleich in seiten/admin.html und seiten/kueche.html.        ║
+   ║ pruef-vollbild.js vergleicht beide Zeichen für Zeichen. Wer    ║
+   ║ hier etwas ändert, ändert es dort auch.                       ║
+   ║                                                               ║
+   ║ Der Block ist rein: Er kennt nur die Kennung seines Knopfes    ║
+   ║ und eine Funktion zum Merken. Nichts aus der Umgebung.         ║
+   ╚═══════════════════════════════════════════════════════════════╝ */
+function vollbildAn(){ return !!document.fullscreenElement; }
+
+/* documentElement, nicht ein Teilbaum: Sonst verschwindet alles, was
+   außerhalb liegt — Meldungen, Sperrschicht, Überlagerungen. Sie
+   wären im Vollbild schlicht nicht gezeichnet. */
+function vollbildRein(){
+  var el = document.documentElement;
+  if(!el.requestFullscreen) return Promise.reject();
+  return el.requestFullscreen().catch(function(){});
+}
+function vollbildRaus(){
+  if(document.exitFullscreen) return document.exitFullscreen().catch(function(){});
+}
+
+/* Der Knopf muss WISSEN, ob er an ist. Ohne das ist er ein Schalter
+   ohne Stellung: Chrome verlässt den Vollbildmodus bei Escape, und
+   die Seite bekommt den Tastendruck trotzdem — ein Druck schließt
+   also den Dialog UND wirft heraus. Verhindern kann das keine Seite.
+   Was sie kann: sofort zeigen, dass sie draußen ist, damit der
+   Rückweg einen Griff entfernt bleibt. */
+function vollbildKnopfStellen(kennung){
+  var k = document.getElementById(kennung);
+  if(!k) return;
+  var an = vollbildAn();
+  k.setAttribute("aria-pressed", String(an));
+  k.setAttribute("aria-label", an ? "Vollbild verlassen" : "Vollbild");
+  k.classList.toggle("an", an);
+}
+
+/* Ein Schirm, der morgens eingeschaltet wird, kann NICHT von selbst
+   ins Vollbild — der Browser verlangt dafür eine Geste, und das lässt
+   sich nicht umgehen. Was geht: sich die Absicht merken und die
+   ERSTE beste Geste dafür nehmen. Ein Handgriff statt fünf.
+
+   once:true an jedem Horcher, und alle drei werden beim ersten
+   Zugriff abgeräumt — sonst springt die Seite später bei jedem Klick
+   erneut hinein, wenn der Nutzer bewusst herausgegangen ist. */
+function vollbildAufWunsch(kennung, willVollbild, merken){
+  var knopf = document.getElementById(kennung);
+  if(knopf) knopf.addEventListener("click", function(){
+    var neu = !vollbildAn();
+    if(neu) vollbildRein(); else vollbildRaus();
+    if(merken) merken(neu);
+  });
+
+  document.addEventListener("fullscreenchange", function(){
+    vollbildKnopfStellen(kennung);
+  });
+  vollbildKnopfStellen(kennung);
+
+  if(!willVollbild || !document.documentElement.requestFullscreen) return;
+  var arten = ["pointerdown", "keydown", "touchend"];
+  var einmal = function(){
+    arten.forEach(function(a){ document.removeEventListener(a, einmal, true); });
+    if(!vollbildAn()) vollbildRein();
+  };
+  arten.forEach(function(a){
+    document.addEventListener(a, einmal, true);
+  });
+}
+/* ╚═══ VOLLBILD · GETEILTER BLOCK · ENDE ══════════════════════════╝ */
+
 /* ═══════════════════════════════════════════════════════════════
    10 · START
    ═══════════════════════════════════════════════════════════════ */
@@ -1445,11 +1519,6 @@ $('spuren').addEventListener('click', function(ev){
   einstAnwenden();
 });
 $('einstKnopf').addEventListener('click', function(){ einstOeffnen($('einstKnopf')); });
-$('vollbildKnopf').addEventListener('click', function(){
-  if(document.fullscreenElement) document.exitFullscreen();
-  else if(document.documentElement.requestFullscreen)
-    document.documentElement.requestFullscreen().catch(function(){});
-});
 
 function abmelden(){
   sitzung = null; betrieb = null;
@@ -1530,6 +1599,15 @@ setInterval(uhrStellen, 15000);
 
 var gespeichert = holen(SPEICHER_EINST);
 if(gespeichert) for(var s in gespeichert) if(s in EINST) EINST[s] = gespeichert[s];
+
+/* NACH dem Zurücklesen, nicht davor: Sonst bekäme vollbildAufWunsch
+   die Vorgabe false zu sehen und der gemerkte Wunsch bliebe wirkungslos.
+   Der Aufruf stand zuerst oben im Startblock — dort lief er 80 Zeilen
+   zu früh und tat nichts. */
+vollbildAufWunsch('vollbildKnopf', EINST.vollbild, function(an){
+  EINST.vollbild = an;
+  merken(SPEICHER_EINST, EINST);
+});
 
 sitzung = holen(SPEICHER_SITZUNG);
 if(sitzung && sitzung.access_token){

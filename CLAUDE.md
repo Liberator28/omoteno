@@ -620,6 +620,38 @@ wissen, ob die Adresse auch im DNS und bei Netlify eingetragen ist —
 das steht nirgends im Verzeichnis. Eine Grenze, die man nennt, ist
 keine Lücke; eine, die man verschweigt, schon.
 
+### 8.1d Ein Board im Vollbild ist eine eigene Umgebung
+
+> **Vorfall.** Das Küchen-Board hatte einen Vollbildknopf, das
+> Admin-Board keinen — gemessen bei 1280, 1920 und 2560 Pixeln. Und
+> der vorhandene Knopf wusste nicht, ob er an ist: kein
+> `fullscreenchange`-Horcher, kein `aria-pressed`. Chrome verlässt
+> den Vollbildmodus bei Escape und gibt der Seite den Tastendruck
+> **trotzdem** — ein Druck schließt also den Dialog UND wirft heraus.
+> Der Koch stand danach wieder im Browserrahmen und wusste nicht,
+> warum. Dazu: `main` blieb bei 1280 px stehen, auf einem
+> 2560-px-Schirm war die Hälfte leer.
+
+Ein Schirm an der Wand ist kein Tablet in der Hand. Wer etwas für den
+Betrieb baut, prüft es auf der Fläche, auf der es hängt:
+
+- **Der Zustand gehört ans Element.** `fullscreenchange` beobachten,
+  `aria-pressed` nachziehen. Ein Schalter ohne Stellung ist keiner.
+- **`documentElement` in den Vollbildmodus schicken**, nie einen
+  Teilbaum: Alles außerhalb wird sonst schlicht nicht gezeichnet.
+- **`window.open` ist im Vollbild tot.** Ein zweites Fenster öffnet
+  dahinter oder gar nicht. Was drucken soll, druckt aus einem
+  versteckten `<iframe>` im selben Dokument.
+- **Vollbild kann nicht von selbst starten.** Der Browser verlangt
+  eine Geste, und das lässt sich nicht umgehen. Man kann sich die
+  Absicht merken und die erste beste Geste nehmen — mehr nicht, und
+  mehr sollte man auch nicht behaupten.
+
+Die ehrliche Grenze dazu: Der kopflose Browser hat keinen
+Browserrahmen, den er verstecken könnte. Er prüft die
+Fullscreen-API und das Verhalten der Seite, nicht Chrome am Tresen.
+Der Escape-Fall bleibt ungeprüft — deshalb hängt nichts daran.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -659,6 +691,7 @@ Dazu je nach Änderung:
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand |
+| **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
 | Konto, Anfrageformular | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links |

@@ -30,9 +30,16 @@ function pruef(gut, text, zusatz){
   if(!gut) fehler++;
 }
 
+/* Die zwei großen Maße kamen dazu, als das Board vollbildfähig wurde:
+   Ein Küchenschirm hängt an der Wand, nicht am Tresen. Bei 2560 px
+   blieb main vorher bei 1280 px stehen — die Hälfte des Schirms leer.
+   pruef-vollbild.js misst das im Vollbild; hier läuft dieselbe
+   Bedienprobe auf derselben Fläche. */
 const MASSE = [
-  { name:"Telefon", width:390, height:844 },
-  { name:"Tresen",  width:1280, height:900 }
+  { name:"Telefon",       width:390,  height:844  },
+  { name:"Tresen",        width:1280, height:900  },
+  { name:"Küchenschirm",  width:1920, height:1080 },
+  { name:"Großer Schirm", width:2560, height:1440 }
 ];
 
 (async () => {
