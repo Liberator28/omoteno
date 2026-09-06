@@ -1186,8 +1186,47 @@ var VORLAGEN = {
 /* ═══ Zustand ═══════════════════════════════════════════════════ */
 var M = null, schirm = "start", abendAn = false, quelleName = "";
 
-function vorlageLaden(kennung){
+/* Was der Kunde selbst geschrieben hat, überlebt den Stilwechsel.
+
+   Ein Stil zu wechseln heißt: andere Farben, andere Schrift, andere
+   Form. Es heißt NICHT, dass das Haus wieder „Café Nordstern" heißt.
+   Wer seinen Namen eingetippt hat und dann noch drei Stile
+   durchprobiert, tippt ihn sonst dreimal neu.
+
+   Woher weiß das Studio, was der Kunde geändert hat? Aus dem
+   Vergleich mit der QUELLVORLAGE. Steht im Feld noch genau das, was
+   die geladene Vorlage hineingeschrieben hat, ist es Vorlagentext und
+   darf weichen. Weicht es ab, gehört es dem Kunden und bleibt.
+
+   Das braucht keinen zweiten Zustand: quelleName gibt es schon. Und
+   es fängt den Fall mit, an den man sonst nicht denkt — ein Entwurf
+   aus der Adresse oder ein eingelesenes Markenblatt setzt quelleName
+   auf leer. Dann gibt es keine Vorlage, gegen die man halten könnte,
+   und JEDER Text ist der des Kunden. */
+function eigeneTexte(){
+  var eigen = {};
+  if(!M) return eigen;
+  var q = VORLAGEN[quelleName];
+  if(!q){
+    eigen.name  = M.betrieb.name;
+    eigen.claim = M.betrieb.claim;
+    eigen.gruss = M.betrieb.begruessung;
+  } else {
+    if(M.betrieb.name        !== q.name)  eigen.name  = M.betrieb.name;
+    if(M.betrieb.claim       !== q.claim) eigen.claim = M.betrieb.claim;
+    if(M.betrieb.begruessung !== q.gruss) eigen.gruss = M.betrieb.begruessung;
+  }
+  /* Der Figurname hat in keiner Vorlage einen Wert. Steht dort etwas,
+     hat ihn der Kunde vergeben — ohne Vergleich, aus demselben Grund. */
+  if(M.avatar && M.avatar.name) eigen.figurname = M.avatar.name;
+  return eigen;
+}
+
+/* frisch=true lädt die Vorlage OHNE Übertrag — der Start des Studios
+   und alles, was bewusst bei null anfangen will. */
+function vorlageLaden(kennung, frisch){
   var v = VORLAGEN[kennung];
+  var eigen = frisch ? {} : eigeneTexte();
   quelleName = kennung;
   var bereiche = {};
   BEREICH_FOLGE.forEach(function(k){ bereiche[k] = v.reihe.indexOf(k) >= 0; });
@@ -1208,6 +1247,17 @@ function vorlageLaden(kennung){
   /* Abgeschaltete Bereiche hängen hinten dran, damit man sie findet,
      ohne suchen zu müssen. */
   BEREICH_FOLGE.forEach(function(k){ if(M.reihe.indexOf(k) < 0) M.reihe.push(k); });
+
+  /* Und zuletzt zurück, was dem Kunden gehört. Der Logotext hängt am
+     Namen, solange die Wortmarke Text ist — genauso wie beim Tippen
+     im Feld „Name“. */
+  if(eigen.name != null){
+    M.betrieb.name = eigen.name;
+    if(M.logo.art === "text") M.logo.text = eigen.name;
+  }
+  if(eigen.claim != null)  M.betrieb.claim       = eigen.claim;
+  if(eigen.gruss != null)  M.betrieb.begruessung = eigen.gruss;
+  if(eigen.figurname)      M.avatar.name         = eigen.figurname;
 }
 
 /* ═══ Farbe und Lesbarkeit ══════════════════════════════════════ */
@@ -1325,7 +1375,10 @@ function schirmKarte(){
   }
   return bandHTML() + '<div class="hinhalt" data-hin="farben">' +
     '<div class="hkat">Zum Teilen</div>' +
-    z("\uD83E\uDED3","Brot &amp; Öl","Sauerteig, Olivenöl, Salz","6,50") +
+    /* Klartext, nicht maskiert: z() schickt den Namen durch h(), und
+       das macht aus „&“ selbst ein „&amp;“. Hier stand einmal
+       „Brot &amp; Öl“ — zweimal maskiert, angezeigt als „Brot &amp; Öl“. */
+    z("\uD83E\uDED3","Brot & Öl","Sauerteig, Olivenöl, Salz","6,50") +
     z("\uD83E\uDDC0","Käseauswahl","Drei Sorten, Feigensenf","14,90") +
     '<div class="hkat">Hauptgerichte</div>' +
     z("\uD83C\uDF5D","Pasta des Tages","Was der Markt hergab","16,50") +
@@ -2276,7 +2329,9 @@ var HIN_NAMEN = {
    erst etwas bauen, bevor er sieht, worum es geht.
    ═══════════════════════════════════════════════════════════════ */
 reiterBauen();
-vorlageLaden("nordstern");
+/* frisch: Beim Start gibt es nichts zu übernehmen — M ist null. Der
+   Parameter steht trotzdem da, weil er die Absicht benennt. */
+vorlageLaden("nordstern", true);
 var ausAdresse = entwurfLesen();
 alleBauen();
 rastenRechnen();
