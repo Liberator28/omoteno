@@ -88,8 +88,9 @@ const MARKENBLATT = {
   },
 
   schrift: {
-    kopf:    "serif-klassisch",  // siehe SCHRIFTEN unten
-    text:    "system",
+    kopf:    "serif-klassisch",  // Überschriften und Namen
+    text:    "system",           // Fließtext und Beschreibungen
+    zahl:    "mono",             // Preise, Nummern — FREIWILLIG
     groesse: 1.0                 // 0.94 – 1.12
   },
 
@@ -130,8 +131,37 @@ die nicht kommt, verschiebt beim Nachladen die halbe Karte.
 | `system` | neutral, schnell, überall gleich |
 | `serif-klassisch` | Iowan / Palatino / Georgia — Speisekarte |
 | `serif-eng` | Charter / Georgia, engere Laufweite |
+| `serif-hoch` | Didot / Bodoni — hoher Strichkontrast, festlich |
+| `slab` | Rockwell / Roboto Slab — kräftig, handfest |
 | `grotesk` | Helvetica / Arial, sachlich |
+| `grotesk-eng` | Condensed — für lange Gerichtnamen auf schmalen Schirmen |
 | `rund` | Avenir / Nunito / Segoe, freundlich |
+| `mono` | Schreibmaschine, gleich breite Ziffern — Vorgabe für `zahl` |
+| `schreib` | Schreibschrift. **Nur für `kopf`.** Als Fließtext oder Zahl unlesbar |
+
+Dieselben zehn Kennungen stehen an **drei** Stellen: `SCHRIFTEN` in
+`vorlagen/hub.vorlage.html`, `SCHRIFTEN` in
+`seiten/marken-studio.html` und die Positivliste in
+`erzeuger/erzeuge-hub.js`. Eine Schrift, die nicht überall steht,
+lässt jedes Markenblatt durchfallen, das sie benutzt.
+
+### Die drei Rollen
+
+| Rolle | wirkt auf | CSS |
+|---|---|---|
+| `kopf` | Überschriften, Name im Band | `--schrift-kopf` |
+| `text` | Fließtext, Beschreibungen | `--schrift-text` |
+| `zahl` | Preise, Nummern, Tischnummer | `--schrift-zahl` |
+
+`zahl` ist **freiwillig**. Fehlt sie, bleibt es bei der
+Schreibmaschine — genau wie in jedem Hub, bevor die Rolle wählbar war.
+Gemessen: Chocos und Blends erzeugte Hubs unterscheiden sich dadurch
+nur um die neuen Einträge in `SCHRIFTEN` und die eine Abfrage, sonst
+in keiner Zeile.
+
+Steht dort aber etwas Falsches, hält der Erzeuger an. Ein stiller
+Rückfall gäbe dem Kunden wortlos die Schrift zurück, die er gerade
+abgewählt hat.
 
 ## Umsetzung auf CSS-Variablen
 

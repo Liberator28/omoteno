@@ -51,7 +51,11 @@ const ZIEL     = path.join(WURZEL, "dist");
 /* ─── Schriften und Schatten ──────────────────────────────────
    Muss deckungsgleich mit dem sein, was in der Vorlage steht.
    Deshalb wird es unten auch geprüft, statt es zu hoffen. */
-const SCHRIFTEN = ["system","serif-klassisch","serif-eng","grotesk","rund"];
+/* Wortgleich mit den Schlüsseln in vorlagen/hub.vorlage.html und
+   seiten/marken-studio.html. Eine Schrift, die dort steht und hier
+   nicht, lässt jedes Markenblatt durchfallen, das sie benutzt. */
+const SCHRIFTEN = ["system","serif-klassisch","serif-eng","serif-hoch","slab",
+                   "grotesk","grotesk-eng","rund","mono","schreib"];
 const SCHATTEN  = ["weich","kante","ohne"];
 
 const FARBEN_PFLICHT = ["grund","flaeche","flaeche2","band","bandText",
@@ -134,6 +138,12 @@ function pruefeMarkenblatt(mb){
     else if(SCHRIFTEN.indexOf(s[k]) < 0)
       F("schrift." + k + " unbekannt: " + s[k] + " — erlaubt: " + SCHRIFTEN.join(", "));
   });
+  /* zahl ist neu und deshalb freiwillig (§2.5): Ein Markenblatt von
+     gestern muss weiter bauen. Steht aber etwas Falsches drin, ist
+     das ein Fehler und kein stiller Rückfall — sonst bekäme der
+     Kunde wortlos die Schreibmaschine, die er gerade abgewählt hat. */
+  if(s.zahl && SCHRIFTEN.indexOf(s.zahl) < 0)
+    F("schrift.zahl unbekannt: " + s.zahl + " — erlaubt: " + SCHRIFTEN.join(", "));
   if(s.groesse != null && (s.groesse < 0.9 || s.groesse > 1.2))
     F("schrift.groesse muss zwischen 0.9 und 1.2 liegen, ist: " + s.groesse);
 
@@ -254,7 +264,7 @@ function alsQuelltext(mb){
                                     "tinteLeise","tinteStill","linie","linieStark",
                                     "akzent","akzent2","gut","akzentFlaeche","akzent2Flaeche","gutFlaeche"]),
     block("form",     mb.form,     ["rundung","rundungKlein","rand","schatten"]),
-    block("schrift",  mb.schrift,  ["kopf","text","groesse"]),
+    block("schrift",  mb.schrift,  ["kopf","text","zahl","groesse"]),
     block("logo",     mb.logo,     ["art","text","bild","hoehe"]),
     block("bereiche", mb.bereiche, null),
 

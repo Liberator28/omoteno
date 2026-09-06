@@ -468,7 +468,7 @@ button{cursor:pointer;border:none;background:none;padding:0}
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
 }
 .htipp .tn{font-size:13.5px;font-weight:600;line-height:1.25;margin-top:2px}
-.htipp .tp{font-family:var(--h-kopf);font-size:12px;color:var(--h-akzent2);font-weight:600;margin-top:2px}
+.htipp .tp{font-family:var(--h-zahl);font-size:12px;color:var(--h-akzent2);font-weight:600;margin-top:2px}
 
 .hbereich{
   font-size:8.5px;letter-spacing:.16em;font-weight:700;text-transform:uppercase;
@@ -508,7 +508,7 @@ button{cursor:pointer;border:none;background:none;padding:0}
   display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden;
 }
 .hgericht .gp{
-  font-family:var(--h-kopf);font-size:13px;font-weight:600;color:var(--h-akzent2);
+  font-family:var(--h-zahl);font-size:13px;font-weight:600;color:var(--h-akzent2);
   font-variant-numeric:tabular-nums;white-space:nowrap;
 }
 
@@ -520,7 +520,7 @@ button{cursor:pointer;border:none;background:none;padding:0}
 .hpass .pz{font-size:34px;line-height:1;display:block;margin-bottom:8px;transform-origin:70% 80%}
 .hpass .pt{font-size:12px;font-weight:600;color:var(--h-tinteleise);margin-bottom:10px}
 .hpass .pn{
-  font-family:var(--h-kopf);font-size:38px;font-weight:700;line-height:1;
+  font-family:var(--h-zahl);font-size:38px;font-weight:700;line-height:1;
   color:var(--h-gut);font-variant-numeric:tabular-nums;letter-spacing:-1px;
 }
 .hpass .pn small{
@@ -545,6 +545,7 @@ button{cursor:pointer;border:none;background:none;padding:0}
   flex-shrink:0;background:var(--h-akzent);color:var(--h-auf-akzent);
   padding:11px var(--h-rand);display:flex;justify-content:space-between;
   align-items:center;font-size:12px;font-weight:600;gap:10px;
+  font-family:var(--h-zahl);font-variant-numeric:tabular-nums;
 }
 
 @keyframes pfanne{
@@ -747,16 +748,24 @@ button{cursor:pointer;border:none;background:none;padding:0}
 
     <section class="abteilung" data-abt="schrift">
       <h2 class="abteilungstitel">Schrift</h2>
-      <p class="abteilungssatz">Feste Auswahl statt freier Eingabe: Ein Tablet hinter dem
-        Tresen hat oft kein Netz zum Nachladen, und eine Schrift, die zu spät ankommt,
-        verschiebt beim Eintreffen die halbe Karte.</p>
+      <p class="abteilungssatz">Drei Rollen, zehn Schriften — jede Rolle einzeln. Feste Auswahl
+        statt freier Eingabe: Ein Tablet hinter dem Tresen hat oft kein Netz zum Nachladen,
+        und eine Schrift, die zu spät ankommt, verschiebt beim Eintreffen die halbe Karte.
+        Deshalb stehen hier nur Schriften, die auf dem Gerät schon liegen.</p>
       <div class="stell">
-        <div class="kopfzeile"><span class="bez">Überschriften und Preise</span></div>
-        <div class="wahl" id="fKopf"></div>
+        <div class="kopfzeile"><span class="bez">Überschriften und Namen</span></div>
+        <div class="wahl" id="fSchrift-kopf"></div>
       </div>
       <div class="stell">
-        <div class="kopfzeile"><span class="bez">Fließtext</span></div>
-        <div class="wahl" id="fText"></div>
+        <div class="kopfzeile"><span class="bez">Fließtext und Beschreibungen</span></div>
+        <div class="wahl" id="fSchrift-text"></div>
+      </div>
+      <div class="stell">
+        <div class="kopfzeile">
+          <span class="bez">Preise, Nummern, Tischnummer
+            <small>Eine Schrift mit gleich breiten Ziffern lässt Preise untereinander stehen</small></span>
+        </div>
+        <div class="wahl" id="fSchrift-zahl"></div>
       </div>
       <div class="stell">
         <div class="kopfzeile">
@@ -1083,13 +1092,48 @@ function figurSVG(groesse, figur, art, name, pose){
 }
 /* ╚═══ FIGUR · GETEILTER BLOCK · ENDE ═════════════════════════════╝ */
 
+/* Zehn Stapel, alle aus Schriften, die auf dem Gerät SCHON LIEGEN.
+   Der Hub lädt keine einzige Schrift nach — ein Tablet hinter dem
+   Tresen hat oft kein Netz, und eine Schrift, die zu spät ankommt,
+   verschiebt beim Eintreffen die halbe Karte.
+
+   Jeder Stapel endet auf einer Gattung (serif, sans-serif, monospace,
+   cursive). Fehlt jeder Name davor, greift die des Systems — nie
+   nichts.
+
+   nurKopf: Schriften, die als Fließtext oder als Zahl nicht taugen.
+   Eine Schreibschrift über einer Überschrift ist Charakter; dieselbe
+   Schrift über einer Allergenliste ist eine Zumutung. Sie steht
+   deshalb nur zur Wahl, wo sie hingehört. */
 var SCHRIFTEN = {
   "system":          { name:"Neutral",   stapel:'-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif' },
   "serif-klassisch": { name:"Klassisch", stapel:'"Iowan Old Style","Palatino Linotype",Palatino,Charter,Georgia,"Times New Roman",serif' },
   "serif-eng":       { name:"Schmal",    stapel:'Charter,Georgia,Cambria,"Times New Roman",serif' },
+  "serif-hoch":      { name:"Edel",      stapel:'Didot,"Bodoni 72","Bodoni MT","Playfair Display",Georgia,"Times New Roman",serif' },
+  "slab":            { name:"Kräftig",   stapel:'Rockwell,"Roboto Slab","Bookman Old Style","Courier New",Georgia,serif' },
   "grotesk":         { name:"Sachlich",  stapel:'"Helvetica Neue",Helvetica,Arial,sans-serif' },
-  "rund":            { name:"Freundlich",stapel:'Avenir,"Avenir Next","Segoe UI",Nunito,system-ui,sans-serif' }
+  "grotesk-eng":     { name:"Eng",       stapel:'"Helvetica Neue Condensed","Avenir Next Condensed","Roboto Condensed","Arial Narrow","Helvetica Neue",sans-serif' },
+  "rund":            { name:"Freundlich",stapel:'Avenir,"Avenir Next","Segoe UI",Nunito,system-ui,sans-serif' },
+  "mono":            { name:"Technisch", stapel:'ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace' },
+  "schreib":         { name:"Geschrieben",nurKopf:true,
+                       stapel:'"Snell Roundhand","Apple Chancery","Segoe Script","Brush Script MT",cursive' }
 };
+
+/* Die drei Rollen. „zahl" gibt es im Hub als --schrift-zahl schon —
+   sie stand dort nur fest auf Schreibmaschine und war nicht wählbar. */
+var SCHRIFTROLLEN = [
+  ["kopf", "Überschriften und Namen", ""],
+  ["text", "Fließtext und Beschreibungen", ""],
+  ["zahl", "Preise, Nummern, Tischnummer",
+   "Eine Schrift mit gleich breiten Ziffern lässt Preise untereinander stehen"]
+];
+
+/* Welche Schriften für welche Rolle zur Wahl stehen. */
+function schriftenFuer(rolle){
+  return Object.keys(SCHRIFTEN).filter(function(k){
+    return rolle === "kopf" || !SCHRIFTEN[k].nurKopf;
+  });
+}
 
 var SCHATTEN = {
   weich: { name:"Weich", wert:"0 1px 2px rgba(0,0,0,.05), 0 8px 22px rgba(0,0,0,.07)" },
@@ -1403,7 +1447,7 @@ function vorlageLaden(kennung, frisch){
     farben:  Object.assign({}, v.tag),
     abend:   Object.assign({ an:true, ab:18 }, v.abend),
     form:    { rundung:v.rundung, rundungKlein:v.rundungK, rand:v.rand, schatten:v.schatten },
-    schrift: { kopf:v.kopf, text:v.text, groesse:v.groesse/100 },
+    schrift: { kopf:v.kopf, text:v.text, zahl:v.zahl || "mono", groesse:v.groesse/100 },
     logo:    { art:"text", text:v.name, bild:"", hoehe:30 },
     /* Vorgabe ist der Untersetzer: Er ist Omotenos Produkt und passt
        in jedes Haus. Eine eigene Figur wählt der Kunde bewusst. */
@@ -1482,6 +1526,10 @@ function markeAnwenden(ziel, mb, abend){
   s.setProperty("--h-schatten", (SCHATTEN[mb.form.schatten] || SCHATTEN.weich).wert);
   s.setProperty("--h-kopf", (SCHRIFTEN[mb.schrift.kopf] || SCHRIFTEN.system).stapel);
   s.setProperty("--h-text", (SCHRIFTEN[mb.schrift.text] || SCHRIFTEN.system).stapel);
+  /* Fehlt zahl, gilt die Schreibmaschine — genau wie im Hub, bevor
+     die Rolle wählbar war. Ein Markenblatt von gestern sieht damit
+     aus wie gestern (§2.5). */
+  s.setProperty("--h-zahl", (SCHRIFTEN[mb.schrift.zahl] || SCHRIFTEN.mono).stapel);
   s.setProperty("font-size", (14 * mb.schrift.groesse).toFixed(1) + "px");
 }
 
@@ -1634,11 +1682,35 @@ function farbgitter(ziel, felder, wo){
   }).join("");
 }
 
+/* Ein Eintrag ist [Kennung, Beschriftung] — und wahlweise ein dritter
+   Wert mit einem style-Attribut. Der Schriftwähler braucht das: Man
+   soll SEHEN, was man wählt, nicht lesen, wie es heißt. */
 function wahlBauen(ziel, eintraege, aktiv, kennung){
   ziel.innerHTML = eintraege.map(function(e){
-    return '<button type="button" data-' + kennung + '="' + e[0] + '" aria-pressed="' +
+    return '<button type="button" data-' + kennung + '="' + e[0] + '"' +
+      /* h(), nicht roh: Jeder Schriftstapel enthält Namen in
+         Anführungszeichen ("Helvetica Neue"). Ungeschützt schließen
+         die das style-Attribut mitten im Wert, und der Rest des
+         Stapels landet als Müll-Attribute im Knopf. */
+      (e[2] ? ' style="' + h(e[2]) + '"' : "") + ' aria-pressed="' +
       (e[0] === aktiv) + '">' + h(e[1]) + '</button>';
   }).join("");
+}
+
+/* Eine Rolle, eine Reihe Knöpfe. Die Kennung im data-Attribut heißt
+   wie die Rolle — dann braucht die Verdrahtung keine Tabelle. */
+function schriftwahlBauen(){
+  SCHRIFTROLLEN.forEach(function(r){
+    var ziel = $("fSchrift-" + r[0]);
+    if(!ziel) return;
+    wahlBauen(ziel, schriftenFuer(r[0]).map(function(k){
+      /* Der Knopf trägt die Schrift, für die er steht. Bei der Rolle
+         „zahl" trägt er zusätzlich Ziffern — an „Neutral" sieht man
+         nicht, ob die Ziffern gleich breit laufen. */
+      return [k, SCHRIFTEN[k].name + (r[0] === "zahl" ? "  8,50" : ""),
+              "font-family:" + SCHRIFTEN[k].stapel];
+    }), M.schrift[r[0]] || "system", "schriftrolle-" + r[0]);
+  });
 }
 
 var ZIEHSINN = '<svg width="12" height="18" viewBox="0 0 12 18" fill="currentColor" aria-hidden="true">' +
@@ -1743,10 +1815,7 @@ function alleBauen(){
   farbgitter($("farbenAbend"), FARBFELDER_ABEND, "abend");
   wahlBauen($("fSchatten"), Object.keys(SCHATTEN).map(function(k){ return [k, SCHATTEN[k].name]; }),
     M.form.schatten, "schatten");
-  wahlBauen($("fKopf"), Object.keys(SCHRIFTEN).map(function(k){ return [k, SCHRIFTEN[k].name]; }),
-    M.schrift.kopf, "kopf");
-  wahlBauen($("fText"), Object.keys(SCHRIFTEN).map(function(k){ return [k, SCHRIFTEN[k].name]; }),
-    M.schrift.text, "textschrift");
+  schriftwahlBauen();
   bereicheBauen();
   figurBauen();
   vorlagenBauen();
@@ -2016,6 +2085,7 @@ function ausgabeSchreiben(){
 '    schatten:     "' + M.form.schatten + '"\n  },\n\n' +
 '  schrift: {\n    kopf:    "' + M.schrift.kopf + '",\n' +
 '    text:    "' + M.schrift.text + '",\n' +
+'    zahl:    "' + (M.schrift.zahl || "mono") + '",\n' +
 "    groesse: " + M.schrift.groesse.toFixed(2) + "\n  },\n\n" +
 '  logo: {\n    art:   "' + M.logo.art + '",\n' +
 '    text:  "' + (M.logo.text || M.betrieb.name) + '",\n' +
@@ -2259,12 +2329,6 @@ document.addEventListener("click", function(e){
       M.form.schatten, "schatten");
     vorschau(); return;
   }
-  if(k.dataset.kopf){
-    M.schrift.kopf = k.dataset.kopf;
-    wahlBauen($("fKopf"), Object.keys(SCHRIFTEN).map(function(x){ return [x, SCHRIFTEN[x].name]; }),
-      M.schrift.kopf, "kopf");
-    vorschau(); return;
-  }
   if(k.dataset.figur){
     M.avatar.figur = k.dataset.figur;
     figurBauen(); vorschau(); return;
@@ -2273,11 +2337,17 @@ document.addEventListener("click", function(e){
     M.avatar.art = k.dataset.zug;
     figurBauen(); vorschau(); return;
   }
-  if(k.dataset.textschrift){
-    M.schrift.text = k.dataset.textschrift;
-    wahlBauen($("fText"), Object.keys(SCHRIFTEN).map(function(x){ return [x, SCHRIFTEN[x].name]; }),
-      M.schrift.text, "textschrift");
-    vorschau(); return;
+  /* Ein Zweig für alle drei Rollen. Vorher stand jede Rolle einzeln
+     da — bei der dritten wäre das die dritte Abschrift derselben vier
+     Zeilen gewesen. */
+  for(var ri = 0; ri < SCHRIFTROLLEN.length; ri++){
+    var rolle = SCHRIFTROLLEN[ri][0], wert = k.dataset["schriftrolle" +
+      rolle.charAt(0).toUpperCase() + rolle.slice(1)];
+    if(wert){
+      M.schrift[rolle] = wert;
+      schriftwahlBauen();
+      vorschau(); return;
+    }
   }
 
   if(k.id === "teilen"){
