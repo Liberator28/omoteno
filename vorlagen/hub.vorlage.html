@@ -2000,6 +2000,16 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
    das Auge (§1.1). */
 .figur .glasur,.figur .tropfen{fill:#5A3220}
 .figur .dampf{stroke:var(--glied);stroke-width:1.8;fill:none;opacity:.6;stroke-linecap:round}
+/* Seit Block 6d kann das Haus wählen, was die Figur trägt. Diese fünf
+   Farben gehören zu den neuen Requisiten — und sie sind FEST, nicht
+   aus der Hausfarbe: Eine Pfanne in Säuregrün ist keine Pfanne mehr.
+   Nur die Kontur kommt von der Figur, damit das Ding zur Zeichnung
+   passt. */
+.figur .metall{fill:#C9CDD2;stroke:var(--kontur);stroke-width:2.2;stroke-linejoin:round}
+.figur .pfannenstiel{stroke:var(--kontur);stroke-width:4.4;fill:none;stroke-linecap:round}
+.figur .butter{fill:#F2C94C;stroke:var(--kontur);stroke-width:1.6}
+.figur .strohhalm{stroke:#D2536A;stroke-width:3;fill:none;stroke-linecap:round}
+.figur .hoernchen{fill:#D9A05B;stroke:var(--kontur);stroke-width:2.2;stroke-linejoin:round}
 
 /* ── Untersetzer · Rückfall, nicht mehr zur Wahl ──────────────────
    Er nimmt seine Flächen aus dem Haus — er IST das Produkt auf dem
@@ -3547,90 +3557,279 @@ const E_KERNE = [[44,48],[60,42],[76,48],[36,62],[52,58],[70,60],[86,62],
        '" rx="2" ry="3" transform="rotate(' + ((i*41)%54-27) + ' ' + x + ' ' + y + ')"/>')
   .join("");
 
-/* Die Schokoflasche sitzt im Ursprung, damit der Aufrufer sie drehen
-   kann. Die Kappe liegt bei +16, also UNTER dem Ursprung — daran
-   hängt, wohin sie gießt. */
-function eFlasche(){
-  return '<g class="flasche">' +
-    '<rect class="glas" x="-8" y="-23" width="16" height="27" rx="4"/>' +
-    '<path class="glas" d="M-4 4h8l1.8 7.4a2 2 0 0 1-2 2.6h-7.6a2 2 0 0 1-2-2.6Z"/>' +
-    '<rect class="kappe" x="-3" y="13.4" width="6" height="5.2" rx="1.6"/>' +
-    '<ellipse class="bohne" cx="0" cy="-10" rx="3" ry="4.6"/>' +
-    '<path class="ritz" d="M0-14.4v8.8"/>' +
-  '</g>';
-}
-
 /* Eine Hand am Ende eines Arms: ein Fäustling, kein Finger. */
 function eHand(x, y){
   return '<ellipse class="hand" cx="' + x + '" cy="' + y + '" rx="5.6" ry="5"/>';
 }
 
-const E_POSEN = {
-  /* Winken mit der Flasche — der Gruß, und die Vorgabe. */
+/* ── Haltung und Requisite, getrennt ─────────────────────────────
+   Bis Block 6d waren beide VERSCHWEISST: „zettel" hieß Arme UND
+   Bestellzettel, „teller" hieß Arme UND Kuchenteller. Ein Haus, das
+   Pancakes serviert, konnte nichts daran ändern.
+
+   Jetzt sagt die HALTUNG, wo die Arme stehen und wo das Ding hängt,
+   und die REQUISITE sagt, was dort gezeichnet wird. Jede Haltung
+   schreibt ihr `vorn` selbst zusammen — die Reihenfolge von Händen,
+   Ding und Beiwerk ist bei jeder eine andere, und ein gemeinsames
+   Schema hätte die vorhandenen vier verändert. So kommen sie
+   bytegleich heraus; pruef-figur.js hält das nach.
+
+   ZWEI SORTEN, und der Unterschied ist keine Kosmetik: Eine KLEINE
+   Requisite hängt in der erhobenen Hand und ist um die Griffstelle
+   herum gebaut. Eine getragene liegt auf der offenen Hand und ist um
+   ihre Mitte gebaut. Wer eine Pfanne in die erhobene Hand legt, malt
+   sie senkrecht in die Luft. */
+const E_HALTUNGEN = {
+  /* Winken mit dem, was das Haus in der Hand hat — der Gruß. */
   winken: {
+    art: "klein", vorgabe: "flasche",
     hinten: '<path class="arm" d="M40 92C28 90 18 84 14 74"/>' +
             '<path class="arm" d="M84 92C98 89 110 80 114 70"/>',
     /* Auch hier gerechnet: Die um 13 Grad gedrehte Flasche hat ihre
        linke obere Ecke bei -13. Bei x=9 stand sie 4 Einheiten über
        dem Feldrand und wurde abgeschnitten. */
-    vorn:   eHand(13, 72) +
-            '<g transform="translate(14 58) rotate(-13)">' + eFlasche() + '</g>' +
-            eHand(115, 68)
+    vorn: d => eHand(13, 72) +
+               '<g transform="translate(14 58) rotate(-13)">' + d + '</g>' +
+               eHand(115, 68)
   },
 
-  /* Zettel in der Hand: die Bestellung hängt am Pass. Der innere
-     Knoten trägt die Drehung, damit die Animation ihn kippen kann,
-     ohne die Verschiebung zu überschreiben. */
+  /* Aufrecht in der Hand: die Bestellung hängt am Pass, die Tasse
+     steht gerade. Der innere Knoten trägt die Drehung, damit die
+     Animation ihn kippen kann, ohne die Verschiebung zu
+     überschreiben. */
   zettel: {
+    art: "klein", vorgabe: "zettel",
     hinten: '<path class="arm" d="M40 92C28 90 18 84 13 74"/>' +
             '<path class="arm" d="M84 92C97 90 106 85 111 78"/>',
-    vorn:   eHand(12, 72) +
-            '<g transform="translate(12 56)"><g class="zettel" transform="rotate(-6)">' +
-              '<rect class="papier" x="-10" y="-16" width="20" height="28" rx="2.4"/>' +
-              '<path class="ritz" d="M-5.5-9h11M-5.5-3h11M-5.5 3h7"/>' +
-            '</g></g>' +
-            eHand(112, 76)
+    vorn: d => eHand(12, 72) +
+               '<g transform="translate(12 56)"><g class="zettel" transform="rotate(-6)">' +
+                 d +
+               '</g></g>' +
+               eHand(112, 76)
   },
 
-  /* Gießen: die Flasche kippt über dem Stapel, ein Tropfen fällt. */
+  /* Gießen: das Ding kippt über dem Stapel, ein Tropfen fällt. Der
+     Stapel am Boden gehört zur HALTUNG, nicht zur Requisite — er ist
+     das, worüber gegossen wird, nicht das, was man hält. */
   giessen: {
+    art: "klein", vorgabe: "flasche",
     hinten: '<path class="arm" d="M42 92C32 88 24 80 20 68"/>' +
             '<path class="arm" d="M84 92C97 90 106 85 111 78"/>',
-    vorn:   eHand(19, 64) +
-            /* Nachgerechnet, nicht geschätzt: Die um 26 Grad gedrehte
-               Flasche hat ihre linke obere Ecke bei -17,3 — bei x=14
-               ragte sie 3,3 Einheiten aus dem Feld und wurde von der
-               viewBox abgeschnitten. */
-            '<g transform="translate(18 58) rotate(-26)">' + eFlasche() + '</g>' +
-            /* Der Tropfen fällt LINKS an der Frucht vorbei. Weiter
-               rechts läge er auf ihr und sähe aus wie ein Fleck. */
-            '<circle class="tropfen" cx="25" cy="84" r="3.2"/>' +
-            '<g class="stapel" transform="translate(22 104)">' +
-              '<ellipse class="porzellan" cx="0" cy="11" rx="18" ry="4.6"/>' +
-              '<ellipse class="kuchen" cx="0" cy="5"  rx="14" ry="4.6"/>' +
-              '<ellipse class="kuchen" cx="0" cy="-2" rx="14" ry="4.6"/>' +
-              '<ellipse class="kuchen" cx="0" cy="-9" rx="14" ry="4.6"/>' +
-              '<path class="glasur" d="M-13-10c3-4 6-6 13-6s10 2 13 6c-2 4-6 6-9 4-1 4-5 5-7 2-2 3-6 2-7-2-3 2-5 0-4-4Z"/>' +
-            '</g>' +
-            eHand(112, 76)
+    vorn: d => eHand(19, 64) +
+               /* Nachgerechnet, nicht geschätzt: Die um 26 Grad gedrehte
+                  Flasche hat ihre linke obere Ecke bei -17,3 — bei x=14
+                  ragte sie 3,3 Einheiten aus dem Feld und wurde von der
+                  viewBox abgeschnitten. */
+               '<g transform="translate(18 58) rotate(-26)">' + d + '</g>' +
+               /* Der Tropfen fällt LINKS an der Frucht vorbei. Weiter
+                  rechts läge er auf ihr und sähe aus wie ein Fleck. */
+               '<circle class="tropfen" cx="25" cy="84" r="3.2"/>' +
+               '<g class="stapel" transform="translate(22 104)">' +
+                 E_STAPEL +
+               '</g>' +
+               eHand(112, 76)
   },
 
-  /* Teller tragen: fertig, kommt zum Tisch. */
+  /* Tragen: fertig, kommt zum Tisch. Die offene rechte Hand hält das
+     Ding um seine Mitte. */
   teller: {
+    art: "tablett", vorgabe: "teller",
     hinten: '<path class="arm" d="M40 92C29 90 19 84 14 76"/>' +
             '<path class="arm" d="M84 90C96 85 105 74 106 64"/>',
-    vorn:   eHand(13, 74) +
-            eHand(105, 62) +
-            '<g class="stapel" transform="translate(102 52)">' +
-              '<ellipse class="porzellan" cx="0" cy="3" rx="18" ry="5.2"/>' +
-              '<ellipse class="kuchen" cx="0" cy="-3" rx="12" ry="4.4"/>' +
-              '<path class="glasur" d="M-9-4c2-3 5-5 9-5s7 2 9 5c-2 2-4 3-6 2-1 2-3 3-5 1-2 1-4 0-5-2Z"/>' +
-              '<path class="dampf d1" d="M-6-12c0-3.4 2.4-3.8 2.4-7"/>' +
-              '<path class="dampf d2" d="M0-13c0-3.4 2.4-3.8 2.4-7"/>' +
-              '<path class="dampf d3" d="M6-12c0-3.4 2.4-3.8 2.4-7"/>' +
-            '</g>'
+    vorn: d => eHand(13, 74) +
+               eHand(105, 62) +
+               '<g class="stapel" transform="translate(102 52)">' +
+                 d +
+               '</g>'
   }
 };
+
+/* Der Kuchenstapel am Boden. Er gehört zur Haltung „giessen", steht
+   aber hier, weil er dieselbe Zeichensprache benutzt wie alles
+   andere. */
+const E_STAPEL =
+  '<ellipse class="porzellan" cx="0" cy="11" rx="18" ry="4.6"/>' +
+  '<ellipse class="kuchen" cx="0" cy="5"  rx="14" ry="4.6"/>' +
+  '<ellipse class="kuchen" cx="0" cy="-2" rx="14" ry="4.6"/>' +
+  '<ellipse class="kuchen" cx="0" cy="-9" rx="14" ry="4.6"/>' +
+  '<path class="glasur" d="M-13-10c3-4 6-6 13-6s10 2 13 6c-2 4-6 6-9 4-1 4-5 5-7 2-2 3-6 2-7-2-3 2-5 0-4-4Z"/>';
+
+/* ── Was die Figur in der Hand hält ──────────────────────────────
+   Jede Requisite nennt ihre Sorte und die Haltung, in der sie
+   gezeichnet wird. Das Haus wählt die REQUISITE, die Haltung kommt
+   mit — sonst müsste ein Kunde wissen, dass eine Pfanne getragen und
+   eine Tasse gehalten wird. */
+const E_REQUISITEN = {
+  zettel: {
+    name: "Bestellzettel", art: "klein", haltung: "zettel",
+    zeichnen: () =>
+      '<rect class="papier" x="-10" y="-16" width="20" height="28" rx="2.4"/>' +
+      '<path class="ritz" d="M-5.5-9h11M-5.5-3h11M-5.5 3h7"/>'
+  },
+  flasche: {
+    name: "Flasche", art: "klein", haltung: "giessen",
+    /* Sitzt im Ursprung, damit die Haltung sie drehen kann. Die Kappe
+       liegt bei +16, also UNTER dem Ursprung — daran hängt, wohin sie
+       gießt. */
+    zeichnen: () =>
+      '<g class="flasche">' +
+        '<rect class="glas" x="-8" y="-23" width="16" height="27" rx="4"/>' +
+        '<path class="glas" d="M-4 4h8l1.8 7.4a2 2 0 0 1-2 2.6h-7.6a2 2 0 0 1-2-2.6Z"/>' +
+        '<rect class="kappe" x="-3" y="13.4" width="6" height="5.2" rx="1.6"/>' +
+        '<ellipse class="bohne" cx="0" cy="-10" rx="3" ry="4.6"/>' +
+        '<path class="ritz" d="M0-14.4v8.8"/>' +
+      '</g>'
+  },
+  teller: {
+    name: "Teller", art: "tablett", haltung: "teller",
+    zeichnen: () =>
+      '<ellipse class="porzellan" cx="0" cy="3" rx="18" ry="5.2"/>' +
+      '<ellipse class="kuchen" cx="0" cy="-3" rx="12" ry="4.4"/>' +
+      '<path class="glasur" d="M-9-4c2-3 5-5 9-5s7 2 9 5c-2 2-4 3-6 2-1 2-3 3-5 1-2 1-4 0-5-2Z"/>' +
+      '<path class="dampf d1" d="M-6-12c0-3.4 2.4-3.8 2.4-7"/>' +
+      '<path class="dampf d2" d="M0-13c0-3.4 2.4-3.8 2.4-7"/>' +
+      '<path class="dampf d3" d="M6-12c0-3.4 2.4-3.8 2.4-7"/>'
+  },
+
+  /* ── Kleine Requisiten ──────────────────────────────────────────
+     Um die GRIFFSTELLE gebaut, Ursprung dort, wo die Hand zufasst.
+     Der Platz ist gerechnet, nicht geschätzt: Die Haltung „zettel"
+     verschiebt auf (12,56) und dreht um −6°. Eine Ecke bei (−11,−24)
+     landet damit bei x = −1,45 und ragt aus dem Feld. Sicher ist
+     x zwischen −10 und 10, y zwischen −17 und 13. */
+  tasse: {
+    name: "Tasse Kaffee", art: "klein", haltung: "zettel",
+    zeichnen: () =>
+      '<path class="porzellan" d="M-8-13h13a1.6 1.6 0 0 1 1.6 1.6v6.4A6.4 6.4 0 0 1 .2 1H-1.6A6.4 6.4 0 0 1-8-5.4Z"/>' +
+      '<path class="porzellan" d="M6.6-10.4c3.4 0 3.4 5.4 0 5.4"/>' +
+      '<ellipse class="porzellan" cx="-1.4" cy="3" rx="9" ry="2.6"/>' +
+      '<path class="glasur" d="M-6.4-11h11.2v2.6H-6.4Z"/>' +
+      '<path class="dampf d1" d="M-4-16c0-2.6 2-3 2-5.4"/>' +
+      '<path class="dampf d2" d="M1-16.4c0-2.6 2-3 2-5.4"/>'
+  },
+  glas: {
+    name: "Glas", art: "klein", haltung: "zettel",
+    zeichnen: () =>
+      '<path class="glas" d="M-6.4-13h12.8L4.6 2.6a2 2 0 0 1-2 1.6h-6.2a2 2 0 0 1-2-1.6Z"/>' +
+      '<path class="strohhalm" d="M3-15.6 1-11"/>' +
+      '<path class="ritz" d="M-5-8.6h10"/>'
+  },
+  becher: {
+    name: "Becher zum Mitnehmen", art: "klein", haltung: "zettel",
+    /* Erster Entwurf: Deckel in kappe (dunkel), Banderole in glasur —
+       zusammen las sich das als schwarzweiß gestreifter Kasten, nicht
+       als Becher. Jetzt ist der Deckel hell und übersteht, der Becher
+       läuft nach unten zu, und nur die Banderole ist dunkel. */
+    zeichnen: () =>
+      '<path class="papier" d="M-6.6-9h13.2L4.6 5.4a2 2 0 0 1-2 1.6h-6a2 2 0 0 1-2-1.6Z"/>' +
+      '<path class="glasur" d="M-5.8-3.4h11.6l-.7 4.6H-5.1Z"/>' +
+      '<rect class="papier" x="-8.4" y="-12.6" width="16.8" height="4.2" rx="1.6"/>' +
+      '<path class="dampf d1" d="M-2-15c0-2.4 1.8-2.8 1.8-5"/>'
+  },
+  /* Statt eines Löffels eine SERVIERGLOCKE. Der Löffel war eine
+     Ellipse an einem Stiel und las sich als Handspiegel — und für
+     „fertig, kommt zum Tisch" ist eine Glocke ohnehin das, was ein
+     Haus meint. */
+  glocke: {
+    name: "Servierglocke", art: "klein", haltung: "zettel",
+    zeichnen: () =>
+      '<path class="metall" d="M0-15a7 7 0 0 1 7 7c0 4.4 1.6 6.2 1.6 6.2H-8.6S-7-3.6-7-8a7 7 0 0 1 7-7Z"/>' +
+      '<path class="metall" d="M-2.6-1.8a2.6 2.6 0 0 0 5.2 0"/>' +
+      '<path class="pfannenstiel" d="M0-15v-1.6"/>'
+  },
+
+  /* ── Getragene Requisiten ───────────────────────────────────────
+     Um die MITTE gebaut, denn sie liegen auf der offenen Hand. Die
+     Haltung „teller" verschiebt auf (102,52) — nach rechts bleiben
+     rund 20 Einheiten, nach oben rund 32. */
+  pancakes: {
+    name: "Pancakes", art: "tablett", haltung: "teller",
+    zeichnen: () =>
+      '<ellipse class="porzellan" cx="0" cy="6" rx="18" ry="5.2"/>' +
+      '<ellipse class="kuchen" cx="0" cy="1"  rx="13" ry="4.6"/>' +
+      '<ellipse class="kuchen" cx="0" cy="-4" rx="13" ry="4.6"/>' +
+      '<ellipse class="kuchen" cx="0" cy="-9" rx="13" ry="4.6"/>' +
+      /* Der Sirup läuft über den Rand — sonst sieht der Stapel aus
+         wie drei Deckel. */
+      '<path class="glasur" d="M-11-10c3-3 7-4 11-4s8 1 11 4c-2 3-5 4-8 3-1 3-4 4-6 2-2 2-5 1-6-2-3 1-4-1-2-3Z"/>' +
+      '<rect class="butter" x="-4" y="-15" width="8" height="4.4" rx="1.2"/>' +
+      '<path class="dampf d1" d="M-7-18c0-3 2.2-3.4 2.2-6.2"/>' +
+      '<path class="dampf d3" d="M6-18c0-3 2.2-3.4 2.2-6.2"/>'
+  },
+  pfanne: {
+    name: "Pfanne", art: "tablett", haltung: "teller",
+    zeichnen: () =>
+      /* Kleiner und tiefer als im ersten Entwurf: Der lag als graue
+         Masse auf Augenhöhe und deckte die Wange zu. Der Teller
+         daneben überlappt genauso, fällt aber nicht auf, weil er
+         weiß und flach ist. Eine Pfanne ist beides nicht. */
+      /* HÖHER als der zweite Entwurf. Der lag auf Höhe der Hand, und
+         die dunkle Kontur der Pfanne verschmolz mit dem Fäustling zu
+         einem Klumpen. Der Teller daneben sitzt ÜBER der Hand — die
+         Pfanne jetzt auch. */
+      '<path class="metall" d="M-14-6h21.4a1.4 1.4 0 0 1 1.4 1.4v2.4A8.6 8.6 0 0 1 3 6.4h-8.8A8.6 8.6 0 0 1-14-1.2Z"/>' +
+      '<path class="pfannenstiel" d="M8.8-4 19.6-1.2"/>' +
+      '<ellipse class="glasur" cx="-5.4" cy="-3.2" rx="4" ry="2.2"/>' +
+      '<ellipse class="glasur" cx="2.6" cy="-2.8" rx="4" ry="2.2"/>' +
+      '<path class="dampf d1" d="M-7-10c0-3 2.2-3.4 2.2-6.2"/>' +
+      '<path class="dampf d2" d="M0-11c0-3 2.2-3.4 2.2-6.2"/>' +
+      '<path class="dampf d3" d="M7-10c0-3 2.2-3.4 2.2-6.2"/>'
+  },
+  schale: {
+    name: "Schale", art: "tablett", haltung: "teller",
+    zeichnen: () =>
+      '<path class="porzellan" d="M-16-2h32a1 1 0 0 1 1 1.2A15 15 0 0 1 2 9h-4A15 15 0 0 1-17-0.8 1 1 0 0 1-16-2Z"/>' +
+      '<ellipse class="kuchen" cx="0" cy="-3.4" rx="14" ry="3.6"/>' +
+      '<path class="dampf d1" d="M-6-9c0-3 2.2-3.4 2.2-6.2"/>' +
+      '<path class="dampf d3" d="M4-9c0-3 2.2-3.4 2.2-6.2"/>'
+  },
+  tuete: {
+    /* Heißt „Box", nicht „Tüte": Gezeichnet ist ein Behälter mit
+       umgeschlagenem Rand, und der Name soll dem Bild folgen, nicht
+       das Bild dem Namen. */
+    name: "Box zum Mitnehmen", art: "tablett", haltung: "teller",
+    zeichnen: () =>
+      /* Erster Entwurf hatte ein Trapez obendrauf und zwei senkrechte
+         Linien — zusammen eine Laterne. Jetzt: umgeschlagener Rand,
+         ein Henkel, und die Aufschrift sitzt tiefer. */
+      '<path class="papier" d="M-10-6h20v12a2 2 0 0 1-2 2h-16a2 2 0 0 1-2-2Z"/>' +
+      '<path class="papier" d="M-10.6-10.4h21.2a1.4 1.4 0 0 1 1.4 1.4v2.6a1.4 1.4 0 0 1-1.4 1.4h-21.2a1.4 1.4 0 0 1-1.4-1.4v-2.6a1.4 1.4 0 0 1 1.4-1.4Z"/>' +
+      '<path class="ritz" d="M-4.6-11c0-4 9.2-4 9.2 0"/>' +
+      '<rect class="glasur" x="-5.4" y="-1.4" width="10.8" height="5.4" rx="1.4"/>'
+  },
+  eis: {
+    name: "Eis", art: "tablett", haltung: "teller",
+    zeichnen: () =>
+      '<path class="hoernchen" d="M-9 0h18L2 16a2.6 2.6 0 0 1-4 0Z"/>' +
+      '<path class="ritz" d="M-5 4 5 4M-3 9 3 9"/>' +
+      '<circle class="kuchen" cx="-4.6" cy="-4" r="6.4"/>' +
+      '<circle class="glasur" cx="4.6" cy="-4" r="6.4"/>' +
+      '<circle class="kuchen" cx="0" cy="-11" r="6"/>'
+  }
+};
+
+/* Welche Requisite eine Bestellphase zeigt, wenn das Haus nichts
+   gewählt hat. Steht im geteilten Block, weil das Studio dieselbe
+   Vorgabe kennen muss wie der Hub — sonst zeigt die Vorschau etwas
+   anderes als die Karte. Die drei Werte ergeben genau das Bild, das
+   der Hub seit jeher zeichnet. */
+const E_PHASENVORGABE = { neu: "zettel", arbeit: "flasche", fertig: "teller" };
+
+/* Und wie die Phasen im Studio heißen. */
+const E_PHASENNAMEN = { neu: "Bestellzettel hängt",
+                        arbeit: "In Arbeit",
+                        fertig: "Fertig" };
+
+/* Haltung und Requisite zusammensetzen. Passt die Requisite nicht zur
+   Sorte der Haltung, gewinnt die Haltung — ein falsch eingetragener
+   Name soll die Zeichnung nicht zerlegen, sondern still auf die
+   Vorgabe zurückfallen. Der Erzeuger meldet den Tippfehler ohnehin. */
+function ePose(haltung, ding){
+  const h = E_HALTUNGEN[haltung] || E_HALTUNGEN.winken;
+  const d = E_REQUISITEN[ding];
+  const nimm = (d && d.art === h.art) ? d : E_REQUISITEN[h.vorgabe];
+  return { hinten: h.hinten, vorn: h.vorn(nimm.zeichnen()) };
+}
 
 /* ── Die Figuren ─────────────────────────────────────────────────
    Jede Figur außer dem Untersetzer liegt im SELBEN Feld 124×128. Das
@@ -3671,7 +3870,7 @@ const AVATAR_FIGUREN = {
 
   erdbeere: {
     name: "Erdbeere", passt: ["Café & Frühstück"],
-    breite: 124, hoehe: 128, posen: E_POSEN, mono: { x: 62, y: 99.5 },
+    breite: 124, hoehe: 128, posen: E_HALTUNGEN, mono: { x: 62, y: 99.5 },
     /* Der Zug-Satz ist um (50,48) herum gebaut. Hier landet er auf der
        Mitte der Frucht und wird größer — die Augen der Zeichnung sind
        groß, und eine kleine Miene auf einer großen Frucht wirkt leer. */
@@ -3680,8 +3879,8 @@ const AVATAR_FIGUREN = {
        Laune und geben dem Gesicht erst seinen Rahmen. */
     rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
             '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
-    koerper: pose => {
-      const p = E_POSEN[pose] || E_POSEN.winken;
+    koerper: (pose, ding) => {
+      const p = ePose(pose, ding);
       /* cy=124 mit ry=4.6 endete bei 128,6 — 0,6 unter dem Feldrand. */
       return '<ellipse class="schatten" cx="62" cy="123" rx="27" ry="4.2"/>' +
         /* Beine und Arme zuerst — ihre Schultern verschwinden in der Frucht */
@@ -3716,12 +3915,12 @@ const AVATAR_FIGUREN = {
      Platz für die untere Naht, bevor die Schürze bei y=84 anfängt. */
   kaffeebohne: {
     name: "Kaffeebohne", passt: ["Café & Frühstück"],
-    breite: 124, hoehe: 128, posen: E_POSEN, mono: { x: 62, y: 99.5 },
+    breite: 124, hoehe: 128, posen: E_HALTUNGEN, mono: { x: 62, y: 99.5 },
     gesicht: "translate(62 48) scale(1.25) translate(-50 -48)",
     rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
             '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
-    koerper: pose => {
-      const p = E_POSEN[pose] || E_POSEN.winken;
+    koerper: (pose, ding) => {
+      const p = ePose(pose, ding);
       return '<ellipse class="schatten" cx="62" cy="123" rx="26" ry="4.2"/>' +
         '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
         '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
@@ -3753,12 +3952,12 @@ const AVATAR_FIGUREN = {
      ist hier die Papiermanschette um den Boden. */
   burger: {
     name: "Burger", passt: ["Schnell & Unterwegs"],
-    breite: 124, hoehe: 128, posen: E_POSEN, mono: { x: 62, y: 102.5 },
+    breite: 124, hoehe: 128, posen: E_HALTUNGEN, mono: { x: 62, y: 102.5 },
     gesicht: "translate(62 49) scale(1.3) translate(-50 -48)",
     rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
             '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
-    koerper: pose => {
-      const p = E_POSEN[pose] || E_POSEN.winken;
+    koerper: (pose, ding) => {
+      const p = ePose(pose, ding);
       return '<ellipse class="schatten" cx="62" cy="123" rx="28" ry="4.2"/>' +
         '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
         '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
@@ -3836,7 +4035,7 @@ function figurBuchstabe(name){
 /* Rein: nimmt alles als Parameter, liest nichts aus der Umgebung.
    Nur so lässt sich derselbe Block im Studio benutzen, wo es weder
    MARKENBLATT noch BETRIEB gibt. */
-function figurSVG(groesse, figur, art, name, pose){
+function figurSVG(groesse, figur, art, name, pose, ding){
   const fk = AVATAR_FIGUREN[figur] ? figur : "untersetzer";
   const zk = AVATAR_ZUEGE[art]     ? art   : "freundlich";
   const f = AVATAR_FIGUREN[fk], z = AVATAR_ZUEGE[zk];
@@ -3851,7 +4050,7 @@ function figurSVG(groesse, figur, art, name, pose){
   return '<svg class="figur f-' + fk + '" width="' + g + '" height="' +
     Math.round(g * f.hoehe / f.breite) + '" viewBox="0 0 ' + f.breite + ' ' + f.hoehe +
     '" aria-hidden="true" focusable="false">' +
-      f.koerper(pose) +
+      f.koerper(pose, ding) +
       (f.gesicht ? '<g transform="' + f.gesicht + '">' + gesicht + '</g>' : gesicht) +
       zeichen +
     '</svg>';
@@ -3871,8 +4070,16 @@ function avatarFigur(){
   return AVATAR_FIGUREN[a.figur] ? a.figur : "untersetzer";
 }
 
-function avatarSVG(groesse, pose){
-  return figurSVG(groesse, avatarFigur(), avatarArt(), BETRIEB.name, pose);
+/* Was die Figur je Bestellphase trägt. Dieselbe Bauart wie oben: Was
+   nicht dasteht oder nicht existiert, fällt auf die Vorgabe der Phase
+   zurück — ein altes Markenblatt läuft unverändert weiter. */
+function avatarHaende(){
+  const a = (typeof MARKENBLATT === "object" && MARKENBLATT.avatar) || {};
+  return (a.haende && typeof a.haende === "object") ? a.haende : {};
+}
+
+function avatarSVG(groesse, pose, ding){
+  return figurSVG(groesse, avatarFigur(), avatarArt(), BETRIEB.name, pose, ding);
 }
 
 /* Gezeichnete Zeichen für die drei Phasen — für Häuser, deren Figur
@@ -3887,11 +4094,24 @@ const PHASENZEICHEN = {
           '<path d="M10 17.6a2 2 0 0 0 4 0"/><path d="M12 3.4V1.8"/>'
 };
 
+/* WAS DIE FIGUR IN DER HAND HÄLT, entscheidet das Haus — je
+   Bestellphase. Steht nichts im Markenblatt, bleibt es bei dem, was
+   der Hub seit jeher zeigt: Zettel, Flasche über dem Kuchenstapel,
+   Teller. Die HALTUNG kommt mit der Requisite, damit ein Kunde nicht
+   wissen muss, dass eine Pfanne getragen und eine Tasse gehalten
+   wird. */
+function phasenDing(status){
+  const w = avatarHaende()[status];
+  return E_REQUISITEN[w] ? w : (PHASEN[status] || PHASEN.neu).ding;
+}
+
 /* Zeigt die Figur in der passenden Haltung — oder, wenn sie keine
    kennt, das gezeichnete Zeichen. */
-function phasenBild(pose, ersatz, groesse){
+function phasenBild(status, ersatz, groesse){
   const f = AVATAR_FIGUREN[avatarFigur()];
-  if(f.posen && f.posen[pose]) return avatarSVG(groesse || 96, pose);
+  const ding = phasenDing(status);
+  const pose = E_REQUISITEN[ding].haltung;
+  if(f.posen && f.posen[pose]) return avatarSVG(groesse || 96, pose, ding);
   return '<svg class="g-zeichen" viewBox="0 0 24 24" aria-hidden="true" ' +
          'focusable="false">' + (PHASENZEICHEN[ersatz] || "") + '</svg>';
 }
@@ -7363,12 +7583,20 @@ const V_STUFEN_SERVICE = {
 /* zeichen ist eine Funktion, keine Zeichenkette: Welche Figur das
    Haus hat, steht erst fest, wenn das Markenblatt gelesen ist — und
    diese Liste wird gebaut, während die Datei noch lädt. */
+/* Je Phase eine VORGABE-Requisite, nicht mehr eine feste Haltung.
+   Die drei Vorgaben ergeben genau das Bild, das der Hub bisher
+   zeigte — ein Markenblatt ohne avatar.haende sieht aus wie vorher.
+   `ersatz` ist das gezeichnete Zeichen für Figuren ohne Haltungen
+   (der Untersetzer). */
 const PHASEN = {
-  neu:    { zeichen:() => phasenBild("zettel",  "zettel", 104),
+  neu:    { ding:E_PHASENVORGABE.neu,
+            zeichen:() => phasenBild("neu",    "zettel", 104),
             text:"Bestellzettel hängt",      klasse:"p-neu" },
-  arbeit: { zeichen:() => phasenBild("giessen", "pfanne", 104),
+  arbeit: { ding:E_PHASENVORGABE.arbeit,
+            zeichen:() => phasenBild("arbeit", "pfanne", 104),
             text:"Kommt in die Pfanne",      klasse:"p-arbeit" },
-  fertig: { zeichen:() => phasenBild("teller",  "glocke", 104),
+  fertig: { ding:E_PHASENVORGABE.fertig,
+            zeichen:() => phasenBild("fertig", "glocke", 104),
             text:"Fertig — kommt zum Tisch", klasse:"p-fertig" }
 };
 

@@ -256,7 +256,25 @@ Deshalb gehören diese Blöcke jetzt ebenfalls ins Markenblatt:
 | `wlan` | `netz`, `passwort` |
 | `trinkgeld` | `paypal`, `betraege` (Liste von Zahlen) |
 | `empfehlung` | Liste: `von`, `bis` (Stunde), `kennz`, `name`, `was`, `preis`, `ziel`, `gericht` |
-| `avatar` | `figur`: `untersetzer` \| `erdbeere`, `art`: `freundlich` \| `ruhig` \| `witzig`, `name` |
+| `avatar` | `figur`, `art`: `freundlich` \| `ruhig` \| `witzig`, `name`, `haende` |
+
+**`avatar.figur`** — welche Figur das Haus begleitet. Die erlaubten
+Namen liest der Erzeuger aus `AVATAR_FIGUREN` im Gerüst; ein Tippfehler
+hält ihn an. Fehlt das Feld, bleibt es beim Untersetzer.
+
+**`avatar.haende`** — was die Figur je Bestellphase in der Hand hält.
+Dünn besetzt: Was fehlt, ist die Vorgabe der Phase (`neu` Bestellzettel,
+`arbeit` Flasche über dem Kuchenstapel, `fertig` Teller).
+
+```json
+"avatar": { "figur": "kaffeebohne", "art": "freundlich",
+            "haende": { "arbeit": "pfanne", "fertig": "pancakes" } }
+```
+
+Die HALTUNG kommt mit der Requisite — eine Pfanne wird getragen, eine
+Tasse gehalten. Der Kunde wählt den Gegenstand, nicht die Armstellung.
+Die erlaubten Namen liest der Erzeuger aus `E_REQUISITEN` im Gerüst;
+`pruef-figur.js` hält beide Listen gegeneinander.
 
 **Fehlt ein Block, bleibt der Platzhalter aus dem Gerüst stehen** und
 der Erzeuger sagt es als Hinweis. Ein altes Markenblatt ohne diese

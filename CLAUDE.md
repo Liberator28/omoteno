@@ -687,6 +687,30 @@ Studio das Einstellblatt als Seitenspalte, ohne `transform`) und bei
 900×1000 offensichtlich. Meine Prüfung fuhr zuerst nur die eine Breite
 — und meldete grün.
 
+### 8.1f Auf einer bewegten Fläche misst kein Pixelvergleich
+
+> **Vorfall, und es war eine Behauptung von mir.** Nach einem Umbau am
+> Bestellpass meldete ich „Bestellpass tag: BYTEGLEICH, abend:
+> BYTEGLEICH" als Beleg, dass sich nichts verändert hat. Beim nächsten
+> Block wich derselbe Vergleich plötzlich ab. Gegenprobe: **dieselbe
+> Datei gegen sich selbst** — auch die wich ab. Auf dem Pass laufen
+> Guss, Dampf und Einflug; ein Bildschirmfoto trifft sie jedes Mal an
+> einer anderen Stelle. Der frühere „BYTEGLEICH" war Glück, kein
+> Messwert.
+
+Wo etwas animiert ist, wird der **Auszeichnungstext** verglichen, nicht
+das Bild: `PHASEN[s].zeichen()` und `begleiterHTML()` liefern
+Zeichenketten, und die sind entweder gleich oder nicht. Ein
+Pixelvergleich taugt nur auf ruhenden Flächen — und wer ihn benutzt,
+lässt ihn einmal gegen sich selbst laufen, bevor er ihm glaubt.
+
+Dieselbe Falle eine Ebene tiefer: **Eine Gruppe zu messen heißt nicht,
+den Gegenstand darin zu messen.** Die Prüfung „ist die Requisite groß
+genug" nahm die `getBBox()` der umgebenden Gruppe — die umfasst auch
+den Dampf, und der bleibt groß, während das Ding darunter zum Punkt
+schrumpft. Der Gegenbeweis blieb grün. Gemessen wird jetzt die
+Requisite allein, ohne Beiwerk.
+
 ### 8.1b Eine Prüfung über das Vorhandene ist blind für das Fehlende
 
 > **Vorfall.** `choco-lamour.omoteno.de` lieferte die Landingpage
@@ -779,7 +803,7 @@ Dazu je nach Änderung:
 | Karten-Zerleger | `pruefungen/pruef-import.js` |
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
 | Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
-| Figur des Hauses, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
+| Figur des Hauses, Requisiten, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
 | Freie Texte des Betriebs | `pruefungen/pruef-texte.js` (braucht `dist/`) |
 | Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |

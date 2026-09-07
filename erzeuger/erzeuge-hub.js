@@ -73,6 +73,10 @@ const ICONNAMEN        = ausGeruest(/const ICONS = \{([\s\S]*?)\n\};/, "ICONS");
    Erzeuger abgelehnt — der Kunde hätte sie im Studio gewählt und den
    Hub nicht bekommen. */
 const FIGURNAMEN       = ausGeruest(/const AVATAR_FIGUREN = \{([\s\S]*?)\n\};/, "AVATAR_FIGUREN");
+/* Was die Figur je Bestellphase tragen kann, und welche Phasen es
+   gibt — beides aus dem Gerüst, aus demselben Grund wie oben. */
+const REQUISITEN       = ausGeruest(/const E_REQUISITEN = \{([\s\S]*?)\n\};/, "E_REQUISITEN");
+const PHASENNAMEN      = ausGeruest(/const PHASEN = \{([\s\S]*?)\n\};/, "PHASEN");
 
 const SCHRIFTEN = ["system","serif-klassisch","serif-eng","serif-hoch","slab",
                    "grotesk","grotesk-eng","rund","mono","schreib"];
@@ -249,6 +253,22 @@ function pruefeMarkenblatt(mb){
      FIGURNAMEN.indexOf(mb.avatar.figur) < 0)
     F("avatar.figur unbekannt: " + mb.avatar.figur +
       " — erlaubt: " + FIGURNAMEN.join(", "));
+  /* Dieselbe Begründung wie bei figur: Ein Tippfehler in haende
+     ergäbe im Hub wortlos wieder die Vorgabe. Der Kunde hätte seine
+     Pfanne gewählt und bekäme den Kuchenstapel. */
+  if(mb.avatar && mb.avatar.haende !== undefined){
+    if(typeof mb.avatar.haende !== "object" || Array.isArray(mb.avatar.haende))
+      F("avatar.haende muss ein Objekt sein, z. B. " +
+        '{"arbeit":"pfanne"} — ist: ' + JSON.stringify(mb.avatar.haende));
+    else for(const [phase, ding] of Object.entries(mb.avatar.haende)){
+      if(PHASENNAMEN.indexOf(phase) < 0)
+        F("avatar.haende." + phase + " ist keine Bestellphase — erlaubt: " +
+          PHASENNAMEN.join(", "));
+      else if(REQUISITEN.indexOf(ding) < 0)
+        F("avatar.haende." + phase + " unbekannt: " + ding +
+          " — erlaubt: " + REQUISITEN.join(", "));
+    }
+  }
 
   /* Kontrast, Tag und Abend */
   const pruefePaare = (farben, wann) => {

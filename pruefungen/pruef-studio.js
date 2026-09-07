@@ -57,7 +57,12 @@ Object.keys(A.VORLAGEN).forEach(v => {
   /* Die Figur wird absichtlich VERSTELLT, bevor der Link entsteht:
      Bliebe sie auf der Vorgabe, könnte der Vergleich hinterher auch
      dann „gleich" melden, wenn der Link sie gar nicht mitnimmt. */
-  A.holM().avatar = { figur:"erdbeere", art:"witzig", name:"Fräulein Fraise" };
+  /* Mit haende, aus demselben Grund wie unten bei den Kacheln: Ein
+     Feld, das im Entwurfslink mitfährt, aber nicht verglichen wird,
+     fährt ungeprüft mit. Bewusst DÜNN besetzt (nur zwei der drei
+     Phasen) — genau so speichert das Studio. */
+  A.holM().avatar = { figur:"erdbeere", art:"witzig", name:"Fräulein Fraise",
+                      haende:{ arbeit:"pfanne", fertig:"pancakes" } };
   /* Dasselbe Spiel für die Kachelüberschreibungen: Bleiben sie leer,
      könnte der Vergleich hinterher auch dann „gleich" melden, wenn
      der Link sie gar nicht mitnimmt. Ein Feld, das mitfährt, aber
@@ -81,8 +86,11 @@ Object.keys(A.VORLAGEN).forEach(v => {
     ["figur","art","name"].every(k => nachher.avatar[k] === vorher.avatar[k]);
   const kachelGleich = JSON.stringify(nachher.kachel || {}) ===
                        JSON.stringify(vorher.kachel || {});
+  const haendeGleich = JSON.stringify((nachher.avatar || {}).haende || {}) ===
+                       JSON.stringify((vorher.avatar || {}).haende || {});
 
-  if(!(ok && gleich && namegleich && reihegleich && anGleich && figurGleich && kachelGleich)) fehler++;
+  if(!(ok && gleich && namegleich && reihegleich && anGleich && figurGleich &&
+       kachelGleich && haendeGleich)) fehler++;
   console.log("  " + v.padEnd(11),
     "gelesen:", ok ? "ja " : "NEIN",
     "| Farben:", gleich ? "gleich" : "ABWEICHUNG",
@@ -91,6 +99,7 @@ Object.keys(A.VORLAGEN).forEach(v => {
     "| Schalter:", anGleich ? "gleich" : "ABWEICHUNG",
     "| Figur:", figurGleich ? "gleich" : "ABWEICHUNG",
     "| Kacheln:", kachelGleich ? "gleich" : "ABWEICHUNG",
+    "| Hände:", haendeGleich ? "gleich" : "ABWEICHUNG",
     "| Länge:", adresse.length);
 });
 console.log("  Fehler:", fehler);

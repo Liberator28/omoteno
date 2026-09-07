@@ -355,6 +355,39 @@ const RANDMESSUNG = `
           pruef(ok, "der Erzeuger kennt die Figur „" + f + "“",
             ok ? "" : sagt.trim().split("\n").pop());
         }
+        delete mb.avatar.figur;
+
+        /* Dasselbe für die Requisiten: Was im Gerüst steht, muss der
+           Erzeuger annehmen — und ein erfundener Name muss ihn
+           anhalten. Sonst hätte der Kunde seine Pfanne im Studio
+           gewählt und bekäme seinen Hub nicht. */
+        const rTab = geruest.match(/const E_REQUISITEN = \{([\s\S]*?)\n\};/);
+        const dinge = rTab
+          ? [...rTab[1].matchAll(/^\s{2}([a-zA-Z][a-zA-Z0-9_]*)\s*:/gm)].map(m => m[1])
+          : [];
+        pruef(dinge.length >= 6, "Requisiten im Gerüst gefunden", dinge.join(", "));
+        for(const ding of dinge){
+          mb.avatar = Object.assign({}, mb.avatar, { haende: { arbeit: ding } });
+          fs.writeFileSync(probe, JSON.stringify(mb));
+          let gut = true, sagt2 = "";
+          try { execFileSync("node", [path.join(ERZEUGER, "erzeuge-hub.js"),
+                   "pruefling", "--pruefen-nur"],
+                  { cwd: OBEN, encoding: "utf8", stdio: "pipe" }); }
+          catch(e){ gut = false; sagt2 = String(e.stdout || "") + String(e.stderr || ""); }
+          pruef(gut, "der Erzeuger kennt die Requisite „" + ding + "“",
+            gut ? "" : sagt2.trim().split("\n").pop());
+        }
+        mb.avatar = Object.assign({}, mb.avatar, { haende: { arbeit: "schubkarre" } });
+        fs.writeFileSync(probe, JSON.stringify(mb));
+        let hielt2 = false, meldung2 = "";
+        try { execFileSync("node", [path.join(ERZEUGER, "erzeuge-hub.js"),
+                 "pruefling", "--pruefen-nur"],
+                { cwd: OBEN, encoding: "utf8", stdio: "pipe" }); }
+        catch(e){ hielt2 = true; meldung2 = String(e.stdout || "") + String(e.stderr || ""); }
+        pruef(hielt2 && /haende\.arbeit unbekannt/.test(meldung2),
+          "unbekannte Requisite hält den Erzeuger an",
+          meldung2.trim().split("\n").pop());
+        delete mb.avatar.haende;
       } finally {
         if(fs.existsSync(probe)) fs.unlinkSync(probe);
         const raus = path.join(HIER, "dist", "pruefling");
@@ -526,14 +559,23 @@ const RANDMESSUNG = `
              Grund am Elternknoten — im Studio war das die dunkle Hülle
              des Werkzeugs, nicht die Fläche des Kunden, und im Hub ein
              fester dunkler Kasten. Beide Male erfundene Zahlen. */
-          const raus = { schwarz: [], ueber: [], figuren: [] };
+          const raus = { schwarz: [], ueber: [], winzig: [], figuren: [], dinge: [] };
+          /* JEDE Requisite in ihrer eigenen Haltung, nicht mehr vier
+             feste Posen. Seit Block 6d wählt das Haus, was die Figur
+             trägt — eine Requisite, die in keiner Prüfung vorkommt,
+             fällt erst dem Kunden auf, der sie nimmt. Dazu der Gruß,
+             der zu keiner Requisite gehört. */
+          const faelle = [["winken", null]];
+          for(const k of Object.keys(E_REQUISITEN))
+            faelle.push([E_REQUISITEN[k].haltung, k]);
+          raus.dinge = Object.keys(E_REQUISITEN);
           for(const fk of Object.keys(AVATAR_FIGUREN)){
             raus.figuren.push(fk);
-            for(const pose of ["winken","zettel","giessen","teller"])
+            for(const [pose, ding] of faelle)
               for(const zug of ["freundlich","ruhig","witzig"]){
-                host.innerHTML = figurSVG(200, fk, zug, "Choco Lamour", pose);
+                host.innerHTML = figurSVG(200, fk, zug, "Choco Lamour", pose, ding);
                 const svg = host.querySelector("svg.figur");
-                const wo = fk + "/" + pose + "/" + zug;
+                const wo = fk + "/" + (ding || pose) + "/" + zug;
 
                 /* a · Keine schwarze Fläche. In diesem Zeichensatz ist
                    keine Farbe reines Schwarz — --tinte ist bei Choco
@@ -562,6 +604,39 @@ const RANDMESSUNG = `
                     (bb.x+bb.width).toFixed(1) + "  y " + bb.y.toFixed(1) + "…" +
                     (bb.y+bb.height).toFixed(1) + "  Feld " + vb.width + "×" + vb.height);
 
+                /* c · Nicht zu klein. Im Begleiter steht die Figur bei
+                   48 px — ein Feld von 124 Einheiten wird dort auf 48
+                   Pixel gestaucht, ein Ding von 8 Einheiten also auf
+                   gut drei. Alles darunter ist ein Fleck, kein
+                   Gegenstand. Das ist eine UNTERGRENZE gegen
+                   „unsichtbar", kein Urteil über die Zeichnung — ob
+                   eine Pfanne wie eine Pfanne aussieht, sagt keine
+                   Prüfung (§5.2a). */
+                if(ding && zug === "freundlich" && fk === "erdbeere"){
+                  /* Den GEGENSTAND messen, nicht die Gruppe. Erste
+                     Fassung nahm die bbox von .stapel — die umfasst
+                     auch den Dampf, und der bleibt groß, während das
+                     Ding darunter zum Punkt schrumpft. Der
+                     Gegenbeweis blieb deshalb grün. Jetzt wird die
+                     Requisite ALLEIN gezeichnet und gemessen. */
+                  const probe = document.createElementNS(
+                    "http://www.w3.org/2000/svg", "svg");
+                  probe.setAttribute("width", "1"); probe.setAttribute("height", "1");
+                  probe.style.cssText = "position:absolute;left:-9999px";
+                  probe.innerHTML = E_REQUISITEN[ding].zeichnen();
+                  document.body.appendChild(probe);
+                  let breit = 0, hoch = 0;
+                  for(const el of probe.querySelectorAll(
+                        "path,circle,ellipse,rect,line,polygon,polyline")){
+                    if(/dampf/.test(el.getAttribute("class") || "")) continue;
+                    const q = el.getBBox();
+                    breit = Math.max(breit, q.width); hoch = Math.max(hoch, q.height);
+                  }
+                  probe.remove();
+                  if(breit < 8 || hoch < 8)
+                    raus.winzig.push(ding + "  größtes Teil " + breit.toFixed(1) +
+                      "×" + hoch.toFixed(1) + " Einheiten");
+                }
               }
           }
           return raus;
@@ -570,14 +645,50 @@ const RANDMESSUNG = `
         const kopf = ort.name + " · " + (phase === "abend" ? "Abend" : "Tag");
         pruef(fund.schwarz.length === 0, kopf + ": keine schwarze Fläche",
           fund.schwarz.length ? fund.schwarz.length + "× — " + fund.schwarz[0]
-                              : fund.figuren.length + " Figuren × 12 Fassungen");
+                              : fund.figuren.length + " Figuren × " +
+                                (fund.dinge.length + 1) + " Fassungen × 3 Launen");
         pruef(fund.ueber.length === 0, kopf + ": nichts ragt aus dem Feld",
           fund.ueber[0] || "alle im Feld");
+        pruef(fund.winzig.length === 0, kopf + ": keine Requisite ist ein Fleck",
+          fund.winzig[0] || fund.dinge.length + " Requisiten geprüft");
       }
       pruef(skriptfehler.length === 0, ort.name + ": kein Skriptfehler",
         skriptfehler[0] || "keiner");
       await ctx.close();
     }
+  }
+
+  /* ───── 2b2 · Ein Blatt OHNE haende zeichnet wie eines MIT den
+     Vorgaben. Zwei Tabellen nennen dieselbe Sache — PHASEN[x].ding im
+     Hub und E_PHASENVORGABE im geteilten Block. Laufen sie
+     auseinander, sieht der Kunde im Studio etwas anderes als der Gast
+     auf der Karte, und keine Einzelprüfung merkt es. */
+  console.log("\n── Ohne Wahl zeichnet der Hub wie mit den Vorgaben ──");
+  {
+    const ctx = await browser.newContext({ viewport: MASSE[1] });
+    const seite = await ctx.newPage();
+    await verdrahten(seite);
+    await seite.goto("file://" + path.join(HIER, "dist", hubs[0], "index.html"));
+    await seite.waitForTimeout(500);
+    const r = await seite.evaluate(() => {
+      const wk = document.querySelector(".willkommen"); if(wk) wk.remove();
+      const raus = {};
+      for(const s of Object.keys(PHASEN)){
+        delete MARKENBLATT.avatar.haende;
+        const ohne = PHASEN[s].zeichen();
+        MARKENBLATT.avatar.haende = { [s]: E_PHASENVORGABE[s] };
+        const mit = PHASEN[s].zeichen();
+        raus[s] = { gleich: ohne === mit, ding: phasenDing(s),
+                    vorgabe: E_PHASENVORGABE[s] };
+      }
+      delete MARKENBLATT.avatar.haende;
+      return raus;
+    });
+    for(const [s, v] of Object.entries(r))
+      pruef(v.gleich && v.ding === v.vorgabe,
+        "Phase „" + s + "\u201c: ohne Wahl wie mit der Vorgabe",
+        v.ding + (v.ding === v.vorgabe ? "" : " ≠ " + v.vorgabe));
+    await ctx.close();
   }
 
   /* ───── 2c · Gehört die Schürze dem HAUS? ─────
