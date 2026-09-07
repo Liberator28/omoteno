@@ -770,6 +770,40 @@ Begleiters stand in meinem Entwurf auf 120 Zeichen — gemessen hatte ich
 nur bis 96. Die eigene Prüfung hat den Wert widerlegt: Bei 360 px waren
 120 Zeichen vier Zeilen. Nachgemessen sind es 108.
 
+### 8.1h Eine Fehlerbehandlung, die nie erreicht wird, ist keine
+
+> **Vorfall, und der Nutzer hat ihn gefunden, nicht ich.** Der
+> Google-Knopf im Konto führte in eine Sackgasse: rohes JSON
+> („provider is not enabled") auf der Supabase-Adresse. Darunter im
+> Code standen zwölf sorgfältige Zeilen, die genau diesen Text in
+> Klartext übersetzen — **und die nie gelaufen sind**.
+>
+> Grund: `signInWithOAuth()` fragt niemanden. Es setzt die Adresse
+> lokal zusammen und ruft `location.assign()` auf. Es gibt kein
+> `error`, also kein `throw`, also kein `catch`. Ich hatte in einem
+> früheren Bericht sogar geschrieben „der Code war in Ordnung" — der
+> **Aufruf** war es, die Absicherung dahinter nicht.
+>
+> Gesehen hat man es an einer Stelle, die leicht zu übersehen ist:
+> In der **Adresszeile** des Bildschirmfotos stand die fremde Domain.
+> Wer nur die Fehlermeldung liest, sucht in der falschen Datei.
+
+Zwei Lehren:
+
+- **Vor jeder Fehlerbehandlung die Frage: Kann dieser Zweig überhaupt
+  erreicht werden?** Eine Bibliothek, die die Seite verlässt, gibt
+  nichts zurück, was man fangen könnte. Wo das droht, den Sprung
+  selbst machen (`skipBrowserRedirect`), sonst ist alles darunter
+  Zierrat.
+- **Vorher fragen schlägt hinterher übersetzen.** Ein Weg, den es
+  nicht gibt, wird gar nicht erst angeboten — und die Frage danach
+  darf **fail-open** sein: Kommt sie nicht durch, bleibt der Weg
+  stehen (§7).
+
+Und die Prüfung dazu: `pruef-konto-start.js` erwähnte Google mit
+keiner Zeile. Eine Seite, die eine Prüfung hat, ist nicht geprüft —
+geprüft ist, was in der Prüfung **vorkommt**.
+
 ### 8.1d Ein Board im Vollbild ist eine eigene Umgebung
 
 > **Vorfall.** Das Küchen-Board hatte einen Vollbildknopf, das
@@ -846,7 +880,7 @@ Dazu je nach Änderung:
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
-| Konto, Anfrageformular | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links |
+| Konto, Anfrageformular, **Google-Knopf** | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links, Anbieterliste |
 | **Alessia, der Telefonweg** | `pruefungen/pruef-alessia.js` — liest die Nutzlast, ohne Netz |
 | **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
 
