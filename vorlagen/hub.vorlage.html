@@ -4055,6 +4055,79 @@ function figurSVG(groesse, figur, art, name, pose, ding){
       zeichen +
     '</svg>';
 }
+/* Was die Figur sagt. Kurze Sätze, drei Anlässe, drei Züge — und
+   nichts davon erklärt sich selbst zweimal. */
+const AVATAR_TEXTE = {
+  start: {
+    freundlich: "Schön, dass Sie da sind. Suchen Sie sich in Ruhe etwas aus.",
+    ruhig:      "Lassen Sie sich Zeit. Hier drängt nichts.",
+    witzig:     "Alles da. Nur entscheiden müssen Sie selbst."
+  },
+  bestellt: {
+    freundlich: "Ist notiert. Wir sagen Bescheid, sobald es rausgeht.",
+    ruhig:      "Angekommen. Lehnen Sie sich zurück.",
+    witzig:     "Bestellt. Ab hier ist es unser Problem."
+  },
+  bewerten: {
+    freundlich: "Ehrlich ist uns lieber als nett.",
+    ruhig:      "Ein paar Worte genügen.",
+    witzig:     "Fünf Sterne nehmen wir auch."
+  },
+  meintisch: {
+    freundlich: "Ich merke mir, was Ihnen schmeckt – mehr nicht.",
+    ruhig:      "Ihre Spuren bleiben auf Ihrem Gerät.",
+    witzig:     "Ich habe mitgezählt. Nur das, versprochen."
+  }
+};
+
+/* Und was auf dem Bestellpass steht. Beides gehört in den geteilten
+   Block, seit der Betrieb die Sätze selbst schreiben darf: Das Studio
+   muss dieselbe Vorgabe kennen wie der Hub, sonst zeigt die Vorschau
+   als Platzhalter etwas anderes, als der Gast später liest. */
+const E_PHASENTEXTE = {
+  neu:    "Bestellzettel hängt",
+  arbeit: "Kommt in die Pfanne",
+  fertig: "Fertig — kommt zum Tisch"
+};
+
+/* WIE LANG DARF EIN EIGENER SATZ SEIN. Die Zahlen sind GEMESSEN, auf
+   360, 390 und 430 Pixeln, nicht geschätzt: Auf dem schmalsten Telefon
+   bleibt der Passtext bis 42 Zeichen einzeilig und wird ab 84
+   dreizeilig; der Begleitersatz bis 38 einzeilig, ab 76 dreizeilig und
+   ab 110 VIERzeilig. Seitlich ragt nichts heraus — die Texte
+   umbrechen, sie sprengen nichts. „gut" ist deshalb keine Grenze,
+   sondern der Punkt, ab dem es eine Zeile mehr wird; „hart" ist, wo
+   der Hub abschneidet.
+
+   Die 108 beim Begleiter sind nachgemessen, nicht geschätzt: Mein
+   erster Entwurf stand auf 120, und die eigene Prüfung hat ihn
+   widerlegt — bei 360 px waren das vier Zeilen. Eine Grenze, die man
+   sich ausdenkt, ist keine Messung.
+
+   Die harte Grenze ist die VIERTE Schranke (§pruef-texte): Sie greift
+   auch dann, wenn ein zu langer Satz an Studio und Erzeuger vorbei ins
+   Markenblatt gekommen ist. */
+const E_TEXTMASS = {
+  phase:     { gut: 42, hart: 80,
+    warnung: "Ab 42 Zeichen braucht der Satz auf schmalen Telefonen zwei Zeilen, ab 84 drei." },
+  begleiter: { gut: 74, hart: 108,
+    warnung: "Ab 76 Zeichen wird der Satz des Begleiters auf schmalen Telefonen dreizeilig." }
+};
+
+/* Rein wie der Rest des Blocks: Die Texte kommen als Parameter, nicht
+   aus MARKENBLATT. Der Hub reicht sein Markenblatt herein, das Studio
+   sein M — sonst könnte dieser Block im Studio gar nicht laufen. */
+function hausText(alle, gruppe, schluessel){
+  const g = (alle && typeof alle === "object") ? alle[gruppe] : null;
+  if(!g || typeof g !== "object") return null;
+  const w = typeof g[schluessel] === "string" ? g[schluessel].trim() : "";
+  if(!w) return null;
+  /* Die VIERTE Schranke: schneidet auch dann ab, wenn ein zu langer
+     Satz an Studio und Erzeuger vorbei ins Markenblatt gekommen ist. */
+  const mass = E_TEXTMASS[gruppe === "phase" ? "phase" : "begleiter"];
+  return w.slice(0, mass.hart);
+}
+
 /* ╚═══ FIGUR · GETEILTER BLOCK · ENDE ═════════════════════════════╝ */
 
 /* Ab hier wieder Hub: die dünne Hülle, die das Markenblatt liest. */
@@ -4116,35 +4189,14 @@ function phasenBild(status, ersatz, groesse){
          'focusable="false">' + (PHASENZEICHEN[ersatz] || "") + '</svg>';
 }
 
-/* Was die Figur sagt. Kurze Sätze, drei Anlässe, drei Züge — und
-   nichts davon erklärt sich selbst zweimal. */
-const AVATAR_TEXTE = {
-  start: {
-    freundlich: "Schön, dass Sie da sind. Suchen Sie sich in Ruhe etwas aus.",
-    ruhig:      "Lassen Sie sich Zeit. Hier drängt nichts.",
-    witzig:     "Alles da. Nur entscheiden müssen Sie selbst."
-  },
-  bestellt: {
-    freundlich: "Ist notiert. Wir sagen Bescheid, sobald es rausgeht.",
-    ruhig:      "Angekommen. Lehnen Sie sich zurück.",
-    witzig:     "Bestellt. Ab hier ist es unser Problem."
-  },
-  bewerten: {
-    freundlich: "Ehrlich ist uns lieber als nett.",
-    ruhig:      "Ein paar Worte genügen.",
-    witzig:     "Fünf Sterne nehmen wir auch."
-  },
-  meintisch: {
-    freundlich: "Ich merke mir, was Ihnen schmeckt – mehr nicht.",
-    ruhig:      "Ihre Spuren bleiben auf Ihrem Gerät.",
-    witzig:     "Ich habe mitgezählt. Nur das, versprochen."
-  }
-};
 
 function begleiterHTML(anlass){
-  const satz = (AVATAR_TEXTE[anlass] || {})[avatarArt()];
+  const eigen = hausText(MARKENBLATT.texte, "figur", anlass);
+  const satz = eigen || (AVATAR_TEXTE[anlass] || {})[avatarArt()];
   if(!satz) return "";
-  return '<div class="begleiter">' + avatarSVG(48) + '<p>' + t(satz) + '</p></div>';
+  /* Wie beim Bestellpass: nur die Vorgabe geht durchs Wörterbuch. */
+  return '<div class="begleiter">' + avatarSVG(48) + '<p>' +
+         (eigen || t(satz)) + '</p></div>';
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -7591,17 +7643,18 @@ const V_STUFEN_SERVICE = {
 const PHASEN = {
   neu:    { ding:E_PHASENVORGABE.neu,
             zeichen:() => phasenBild("neu",    "zettel", 104),
-            text:"Bestellzettel hängt",      klasse:"p-neu" },
+            text:E_PHASENTEXTE.neu,          klasse:"p-neu" },
   arbeit: { ding:E_PHASENVORGABE.arbeit,
             zeichen:() => phasenBild("arbeit", "pfanne", 104),
-            text:"Kommt in die Pfanne",      klasse:"p-arbeit" },
+            text:E_PHASENTEXTE.arbeit,       klasse:"p-arbeit" },
   fertig: { ding:E_PHASENVORGABE.fertig,
             zeichen:() => phasenBild("fertig", "glocke", 104),
-            text:"Fertig — kommt zum Tisch", klasse:"p-fertig" }
+            text:E_PHASENTEXTE.fertig,       klasse:"p-fertig" }
 };
 
 function phaseHTML(status, tagesnummer){
   const p = PHASEN[status] || PHASEN.neu;
+  const eigen = hausText(MARKENBLATT.texte, "phase", status);
   /* Die Nummer kommt mit der ersten Statusabfrage, also einen Wimpernschlag
      nach dem Absenden. Bis dahin steht dort ein ruhiger Satz statt einer
      blinkenden Lücke. */
@@ -7612,7 +7665,10 @@ function phaseHTML(status, tagesnummer){
 
   return '<div class="bpass ' + p.klasse + '" id="bpass">' +
     '<span class="bp-zeichen" aria-hidden="true">' + p.zeichen() + '</span>' +
-    '<div class="bp-text">' + t(p.text) + '</div>' +
+    /* Der eigene Satz des Hauses geht bewusst NICHT durch t(): Er
+       steht in allen zwölf Sprachen so da, wie das Haus ihn schreibt.
+       Nur die Vorgabe wird übersetzt. */
+    '<div class="bp-text">' + (eigen || t(p.text)) + '</div>' +
     nummer + '</div>';
 }
 

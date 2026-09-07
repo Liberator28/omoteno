@@ -31,10 +31,19 @@ print(f"\n{pfad}")
 print(f"  CSS-Klammern (soll 0)                 {klammern}")
 if klammern: fehler += 1
 
-defined = set(re.findall(r'(--[a-zA-Z0-9-]+)\s*:', css)) | \
-          set(re.findall(r'setProperty\("(--[a-zA-Z0-9-]+)"', s))
-mitRueckfall = set(re.findall(r'var\((--[a-zA-Z0-9-]+)\s*,', s))
-ohne = set(re.findall(r'var\((--[a-zA-Z0-9-]+)\s*\)', s)) - defined
+# Kommentare zuerst raus. Ein var(--x) IN einem Kommentar ist keine
+# Benutzung — es ist meist genau die Erklaerung, warum die Variable
+# NICHT benutzt wird. Vorfall: Ein Kommentar mit dem Wortlaut
+# "Kein var(--gelb): die Rolle gibt es hier nicht" liess die Pruefung
+# --gelb als fehlende Variable melden. Ein Werkzeug, das Fehlalarme
+# schlaegt, bringt einem bei, es zu uebergehen (CLAUDE.md §8.2).
+ohneKomm = re.sub(r'/\*.*?\*/', ' ', s, flags=re.S)
+cssOhneKomm = re.sub(r'/\*.*?\*/', ' ', css, flags=re.S)
+
+defined = set(re.findall(r'(--[a-zA-Z0-9-]+)\s*:', cssOhneKomm)) | \
+          set(re.findall(r'setProperty\("(--[a-zA-Z0-9-]+)"', ohneKomm))
+mitRueckfall = set(re.findall(r'var\((--[a-zA-Z0-9-]+)\s*,', ohneKomm))
+ohne = set(re.findall(r'var\((--[a-zA-Z0-9-]+)\s*\)', ohneKomm)) - defined
 print(f"  Variablen ohne Wert und ohne Rückfall {sorted(ohne) or 'keine'}")
 if ohne: fehler += 1
 

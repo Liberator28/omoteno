@@ -69,6 +69,9 @@ Object.keys(A.VORLAGEN).forEach(v => {
      nicht verglichen wird, fährt ungeprüft (§2.3b). */
   A.holM().kachel = { speisekarte:{ titel:"Unsere Karte", icon:"teller" },
                       tischruf:{ emoji:"🔔" } };
+  /* Und die eigenen Sätze, aus demselben Grund. */
+  A.holM().texte = { phase:{ arbeit:"Wird gerade gebacken" },
+                     figur:{ start:"Willkommen bei uns." } };
   const vorher = JSON.parse(JSON.stringify(A.holM()));
   const adresse = A.entwurfsAdresse();
   // Anderen Ausgangszustand herstellen, dann aus der Adresse lesen
@@ -88,9 +91,11 @@ Object.keys(A.VORLAGEN).forEach(v => {
                        JSON.stringify(vorher.kachel || {});
   const haendeGleich = JSON.stringify((nachher.avatar || {}).haende || {}) ===
                        JSON.stringify((vorher.avatar || {}).haende || {});
+  const texteGleich  = JSON.stringify(nachher.texte || {}) ===
+                       JSON.stringify(vorher.texte || {});
 
   if(!(ok && gleich && namegleich && reihegleich && anGleich && figurGleich &&
-       kachelGleich && haendeGleich)) fehler++;
+       kachelGleich && haendeGleich && texteGleich)) fehler++;
   console.log("  " + v.padEnd(11),
     "gelesen:", ok ? "ja " : "NEIN",
     "| Farben:", gleich ? "gleich" : "ABWEICHUNG",
@@ -100,6 +105,7 @@ Object.keys(A.VORLAGEN).forEach(v => {
     "| Figur:", figurGleich ? "gleich" : "ABWEICHUNG",
     "| Kacheln:", kachelGleich ? "gleich" : "ABWEICHUNG",
     "| Hände:", haendeGleich ? "gleich" : "ABWEICHUNG",
+    "| Texte:", texteGleich ? "gleich" : "ABWEICHUNG",
     "| Länge:", adresse.length);
 });
 console.log("  Fehler:", fehler);

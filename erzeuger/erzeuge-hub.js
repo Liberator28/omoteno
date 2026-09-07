@@ -77,6 +77,21 @@ const FIGURNAMEN       = ausGeruest(/const AVATAR_FIGUREN = \{([\s\S]*?)\n\};/, 
    gibt — beides aus dem Gerüst, aus demselben Grund wie oben. */
 const REQUISITEN       = ausGeruest(/const E_REQUISITEN = \{([\s\S]*?)\n\};/, "E_REQUISITEN");
 const PHASENNAMEN      = ausGeruest(/const PHASEN = \{([\s\S]*?)\n\};/, "PHASEN");
+const FIGURANLAESSE    = ausGeruest(/const AVATAR_TEXTE = \{([\s\S]*?)\n\};/, "AVATAR_TEXTE");
+/* Die Längengrenzen kommen ebenfalls aus dem Gerüst. Sie hier
+   abzuschreiben hieße: Wer sie dort nachmisst und ändert, ändert sie
+   für den Hub und nicht für den Erzeuger — und der Kunde bekäme ein
+   Blatt durch, das der Hub hinterher abschneidet. */
+const TEXTMASS_HAUS = (() => {
+  const datei = fs.readFileSync(
+    path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), "utf8");
+  const t = datei.match(/const E_TEXTMASS = \{([\s\S]*?)\n\};/);
+  if(!t){ console.error("Im Gerüst nicht gefunden: E_TEXTMASS"); process.exit(1); }
+  const raus = {};
+  for(const m of t[1].matchAll(/(\w+):\s*\{\s*gut:\s*(\d+),\s*hart:\s*(\d+)/g))
+    raus[m[1]] = { gut:+m[2], hart:+m[3] };
+  return raus;
+})();
 
 const SCHRIFTEN = ["system","serif-klassisch","serif-eng","serif-hoch","slab",
                    "grotesk","grotesk-eng","rund","mono","schreib"];
@@ -267,6 +282,43 @@ function pruefeMarkenblatt(mb){
       else if(REQUISITEN.indexOf(ding) < 0)
         F("avatar.haende." + phase + " unbekannt: " + ding +
           " — erlaubt: " + REQUISITEN.join(", "));
+    }
+  }
+
+  /* Eigene Sätze des Hauses. Drei Dinge können schiefgehen, und jedes
+     wäre im Hub still: ein Tippfehler im Schlüssel (der Satz erscheint
+     nie), ein falscher Typ (die Seite zeigt „[object Object]"), und
+     ein zu langer Satz (der Hub schneidet ab, und der Gastgeber sieht
+     einen abgehackten Halbsatz). */
+  if(mb.texte !== undefined){
+    if(typeof mb.texte !== "object" || Array.isArray(mb.texte))
+      F("texte muss ein Objekt sein, z. B. " +
+        '{"phase":{"arbeit":"Wird gebacken"}} — ist: ' + JSON.stringify(mb.texte));
+    else for(const [gruppe, satz] of Object.entries(mb.texte)){
+      if(gruppe !== "phase" && gruppe !== "figur"){
+        F("texte." + gruppe + " ist keine Gruppe — erlaubt: phase, figur");
+        continue;
+      }
+      if(typeof satz !== "object" || Array.isArray(satz)){
+        F("texte." + gruppe + " muss ein Objekt sein");
+        continue;
+      }
+      const erlaubt = gruppe === "phase" ? PHASENNAMEN : FIGURANLAESSE;
+      const mass = TEXTMASS_HAUS[gruppe === "phase" ? "phase" : "begleiter"];
+      for(const [k, w] of Object.entries(satz)){
+        if(erlaubt.indexOf(k) < 0)
+          F("texte." + gruppe + "." + k + " ist kein Anlass — erlaubt: " +
+            erlaubt.join(", "));
+        else if(typeof w !== "string")
+          F("texte." + gruppe + "." + k + " muss Text sein, ist: " + typeof w);
+        else if(w.trim().length > mass.hart)
+          F("texte." + gruppe + "." + k + " ist zu lang: " + w.trim().length +
+            " Zeichen, erlaubt sind " + mass.hart + " — der Hub würde abschneiden");
+        else if(w.trim().length > mass.gut)
+          W("texte." + gruppe + "." + k + " ist " + w.trim().length +
+            " Zeichen lang — ab " + mass.gut + " braucht der Satz auf " +
+            "schmalen Telefonen eine Zeile mehr");
+      }
     }
   }
 

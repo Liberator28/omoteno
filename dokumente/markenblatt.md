@@ -276,6 +276,31 @@ Tasse gehalten. Der Kunde wählt den Gegenstand, nicht die Armstellung.
 Die erlaubten Namen liest der Erzeuger aus `E_REQUISITEN` im Gerüst;
 `pruef-figur.js` hält beide Listen gegeneinander.
 
+**`texte`** — was auf dem Bestellpass steht und was die Figur sagt.
+Ebenfalls dünn besetzt: Was fehlt, ist Omotenos Satz.
+
+```json
+"texte": {
+  "phase": { "arbeit": "Wird gerade gebacken" },
+  "figur": { "start": "Willkommen bei uns." }
+}
+```
+
+Gruppen: `phase` mit den Schlüsseln `neu`, `arbeit`, `fertig`; `figur`
+mit `start`, `bestellt`, `bewerten`, `meintisch`. Ein eigener Satz
+ersetzt alle drei Launen — ein Haus hat eine Stimme.
+
+**Und die Sprachfolge, ausdrücklich:** Omotenos Sätze stehen in zwölf
+Sprachen im Wörterbuch. Ein eigener Satz steht **in allen zwölf so da,
+wie er geschrieben wurde** — übersetzen kann ihn niemand. Das ist keine
+Lücke, sondern die einzige ehrliche Antwort; das Studio sagt es dem
+Gastgeber auch.
+
+Längen sind gemessen, nicht geschätzt (360, 390, 430 px): Passtext
+höchstens 80 Zeichen (ab 42 zweizeilig), Begleitersatz höchstens 108
+(ab 76 dreizeilig, ab 110 vierzeilig). Der Erzeuger lehnt Längeres ab,
+und der Hub schneidet als letzte Schranke beim Lesen ab.
+
 **Fehlt ein Block, bleibt der Platzhalter aus dem Gerüst stehen** und
 der Erzeuger sagt es als Hinweis. Ein altes Markenblatt ohne diese
 Felder läuft also weiter — es zeigt nur nichts Eigenes.

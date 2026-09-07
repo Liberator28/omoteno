@@ -743,6 +743,33 @@ wissen, ob die Adresse auch im DNS und bei Netlify eingetragen ist —
 das steht nirgends im Verzeichnis. Eine Grenze, die man nennt, ist
 keine Lücke; eine, die man verschweigt, schon.
 
+### 8.1g Eine Probe, die den Fehler nicht zeigen KANN, ist keine Probe
+
+> **Vorfall A.** Die Prüfung „ein eigener Satz des Hauses wird nicht
+> übersetzt" setzte als Probe „Wird gerade gebacken" — einen Satz, den
+> es im Wörterbuch **nicht** gibt. Der wäre auch durch `t()` unverändert
+> herausgekommen. Die Prüfung war grün und hätte es auch dann gemeint,
+> wenn der Hub jeden Haussatz übersetzt hätte. Gegenprobe mit einem
+> Satz, der im Wörterbuch **steht**: sofort rot.
+
+> **Vorfall B.** Zwei Gegenbeweise blieben grün, weil meine Sabotage
+> gar nicht griff: Einmal setzte ich einen Pfad auf x = −44, was im
+> 124 Einheiten breiten Feld immer noch drin liegt; einmal suchte ich
+> `body{background:` in einer Datei, die diese Zeile nicht hat. Grün
+> heißt dann nicht „die Prüfung hält", sondern „ich habe nichts
+> kaputtgemacht".
+
+Eine Prüfung ist erst belegt, wenn die Probe den Fehler **treffen
+kann**. Deshalb gehört zu jedem Gegenbeweis der Nachweis, dass die
+Sabotage überhaupt angekommen ist — `grep -c` auf die geänderte Stelle
+kostet zwei Sekunden.
+
+Dazu die verwandte Falle bei Grenzwerten: **Eine Grenze, die man sich
+ausdenkt, ist keine Messung.** Die harte Länge für den Satz des
+Begleiters stand in meinem Entwurf auf 120 Zeichen — gemessen hatte ich
+nur bis 96. Die eigene Prüfung hat den Wert widerlegt: Bei 360 px waren
+120 Zeichen vier Zeilen. Nachgemessen sind es 108.
+
 ### 8.1d Ein Board im Vollbild ist eine eigene Umgebung
 
 > **Vorfall.** Das Küchen-Board hatte einen Vollbildknopf, das
@@ -805,7 +832,7 @@ Dazu je nach Änderung:
 | Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
 | Figur des Hauses, Requisiten, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
-| Freie Texte des Betriebs | `pruefungen/pruef-texte.js` (braucht `dist/`) |
+| Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |
 | Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |
 | **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
 | Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |

@@ -647,6 +647,23 @@ button{cursor:pointer;border:none;background:none;padding:0}
   border:1px solid var(--kante);min-height:150px;
 }
 #figurschau .figur{filter:none}
+.tfeld{margin-bottom:12px}
+.tfeld > .tbez{display:block;font-size:12.5px;color:var(--schrift-leise);margin:0 0 5px}
+.tzaehler{display:block;font-size:11.5px;margin:4px 0 0;color:var(--schrift-still)}
+/* Kein var(--gelb): Die Rolle gibt es im Studio nicht, und ein
+   Rückfallwert würde nur vortäuschen, dass sie es tut (§3.1). */
+.tzaehler.lang{color:#E3B457}
+.txthinweis{font-size:12.5px;color:var(--schrift-leise);margin:0 0 12px;min-height:1em}
+.txthinweis:empty{display:none}
+/* GEMESSEN, nicht angenommen: Die Browservorgabe für Platzhalter ist
+   #757575 und kommt auf dem Feldgrund (#23272D) auf 3,26:1 — unter der
+   Grenze. Bei einem gewöhnlichen Platzhalter („z. B. Fräulein Fraise")
+   wäre das Zierschrift; hier steht in ihm die VORGABE, also der Satz,
+   den der Gast liest, wenn der Gastgeber nichts schreibt. Wer den
+   nicht lesen kann, kann nicht entscheiden, ob er ihn ersetzen will —
+   und damit ist es keine Zierschrift mehr (§5.2a). --schrift-leise
+   bringt 5,68:1. */
+.text::placeholder{color:var(--schrift-leise);opacity:1}
 .hfeld{margin-bottom:10px}
 .hfeld > .hbez{display:block;font-size:12.5px;color:var(--schrift-leise);margin:0 0 5px}
 .figurpasst{margin:8px 0 0;font-size:12.5px;color:var(--schrift-leise);min-height:1em}
@@ -996,6 +1013,25 @@ button{cursor:pointer;border:none;background:none;padding:0}
         <div class="kopfzeile"><span class="bez">Name der Figur
           <small>Freiwillig. Steht heute nirgends, ist aber im Markenblatt hinterlegt</small></span></div>
         <input class="text" id="fFigurName" maxlength="30" placeholder="z. B. Fräulein Fraise" autocomplete="off">
+      </div>
+    </section>
+
+    <section class="abteilung" data-abt="texte">
+      <h2 class="abteilungstitel">Texte</h2>
+      <p class="abteilungssatz">Was auf dem Bestellpass steht und was die Figur
+        sagt. Leer lassen heißt: Omotenos Satz, übersetzt in alle zwölf Sprachen.
+        Wer selbst schreibt, bekommt genau seinen Satz — <b>in jeder Sprache
+        denselben</b>, denn übersetzen kann ihn niemand.</p>
+      <div id="txtWarnung" class="txthinweis"></div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Auf dem Bestellpass
+          <small>Was der Gast liest, während er wartet</small></span></div>
+        <div id="fTextePhase"></div>
+      </div>
+      <div class="stell">
+        <div class="kopfzeile"><span class="bez">Was die Figur sagt
+          <small>Ein eigener Satz ersetzt alle drei Launen — ein Haus hat eine Stimme</small></span></div>
+        <div id="fTexteFigur"></div>
       </div>
     </section>
 
@@ -1622,6 +1658,79 @@ function figurSVG(groesse, figur, art, name, pose, ding){
       zeichen +
     '</svg>';
 }
+/* Was die Figur sagt. Kurze Sätze, drei Anlässe, drei Züge — und
+   nichts davon erklärt sich selbst zweimal. */
+const AVATAR_TEXTE = {
+  start: {
+    freundlich: "Schön, dass Sie da sind. Suchen Sie sich in Ruhe etwas aus.",
+    ruhig:      "Lassen Sie sich Zeit. Hier drängt nichts.",
+    witzig:     "Alles da. Nur entscheiden müssen Sie selbst."
+  },
+  bestellt: {
+    freundlich: "Ist notiert. Wir sagen Bescheid, sobald es rausgeht.",
+    ruhig:      "Angekommen. Lehnen Sie sich zurück.",
+    witzig:     "Bestellt. Ab hier ist es unser Problem."
+  },
+  bewerten: {
+    freundlich: "Ehrlich ist uns lieber als nett.",
+    ruhig:      "Ein paar Worte genügen.",
+    witzig:     "Fünf Sterne nehmen wir auch."
+  },
+  meintisch: {
+    freundlich: "Ich merke mir, was Ihnen schmeckt – mehr nicht.",
+    ruhig:      "Ihre Spuren bleiben auf Ihrem Gerät.",
+    witzig:     "Ich habe mitgezählt. Nur das, versprochen."
+  }
+};
+
+/* Und was auf dem Bestellpass steht. Beides gehört in den geteilten
+   Block, seit der Betrieb die Sätze selbst schreiben darf: Das Studio
+   muss dieselbe Vorgabe kennen wie der Hub, sonst zeigt die Vorschau
+   als Platzhalter etwas anderes, als der Gast später liest. */
+const E_PHASENTEXTE = {
+  neu:    "Bestellzettel hängt",
+  arbeit: "Kommt in die Pfanne",
+  fertig: "Fertig — kommt zum Tisch"
+};
+
+/* WIE LANG DARF EIN EIGENER SATZ SEIN. Die Zahlen sind GEMESSEN, auf
+   360, 390 und 430 Pixeln, nicht geschätzt: Auf dem schmalsten Telefon
+   bleibt der Passtext bis 42 Zeichen einzeilig und wird ab 84
+   dreizeilig; der Begleitersatz bis 38 einzeilig, ab 76 dreizeilig und
+   ab 110 VIERzeilig. Seitlich ragt nichts heraus — die Texte
+   umbrechen, sie sprengen nichts. „gut" ist deshalb keine Grenze,
+   sondern der Punkt, ab dem es eine Zeile mehr wird; „hart" ist, wo
+   der Hub abschneidet.
+
+   Die 108 beim Begleiter sind nachgemessen, nicht geschätzt: Mein
+   erster Entwurf stand auf 120, und die eigene Prüfung hat ihn
+   widerlegt — bei 360 px waren das vier Zeilen. Eine Grenze, die man
+   sich ausdenkt, ist keine Messung.
+
+   Die harte Grenze ist die VIERTE Schranke (§pruef-texte): Sie greift
+   auch dann, wenn ein zu langer Satz an Studio und Erzeuger vorbei ins
+   Markenblatt gekommen ist. */
+const E_TEXTMASS = {
+  phase:     { gut: 42, hart: 80,
+    warnung: "Ab 42 Zeichen braucht der Satz auf schmalen Telefonen zwei Zeilen, ab 84 drei." },
+  begleiter: { gut: 74, hart: 108,
+    warnung: "Ab 76 Zeichen wird der Satz des Begleiters auf schmalen Telefonen dreizeilig." }
+};
+
+/* Rein wie der Rest des Blocks: Die Texte kommen als Parameter, nicht
+   aus MARKENBLATT. Der Hub reicht sein Markenblatt herein, das Studio
+   sein M — sonst könnte dieser Block im Studio gar nicht laufen. */
+function hausText(alle, gruppe, schluessel){
+  const g = (alle && typeof alle === "object") ? alle[gruppe] : null;
+  if(!g || typeof g !== "object") return null;
+  const w = typeof g[schluessel] === "string" ? g[schluessel].trim() : "";
+  if(!w) return null;
+  /* Die VIERTE Schranke: schneidet auch dann ab, wenn ein zu langer
+     Satz an Studio und Erzeuger vorbei ins Markenblatt gekommen ist. */
+  const mass = E_TEXTMASS[gruppe === "phase" ? "phase" : "begleiter"];
+  return w.slice(0, mass.hart);
+}
+
 /* ╚═══ FIGUR · GETEILTER BLOCK · ENDE ═════════════════════════════╝ */
 
 /* Zehn Stapel, alle aus Schriften, die auf dem Gerät SCHON LIEGEN.
@@ -1808,7 +1917,7 @@ function kachelSetzen(k, feld, wert){
 var ABTEILUNGEN = [
   ["vorlagen","Vorlagen"], ["haus","Haus"], ["farben","Farben"], ["abend","Abend"],
   ["form","Form"], ["schrift","Schrift"], ["figur","Figur"],
-  ["bereiche","Bereiche"], ["teilen","Fertig"]
+  ["texte","Texte"], ["bereiche","Bereiche"], ["teilen","Fertig"]
 ];
 
 /* ═══ Vorlagen ══════════════════════════════════════════════════
@@ -2076,6 +2185,8 @@ function eigeneTexte(){
      setzt es. Gleiche Begründung wie bei den Kacheln. */
   if(M.avatar && M.avatar.haende && Object.keys(M.avatar.haende).length)
     eigen.haende = M.avatar.haende;
+  /* Eigene Sätze gehören dem Kunden — keine Vorlage setzt sie. */
+  if(M.texte && Object.keys(M.texte).length) eigen.texte = M.texte;
   return eigen;
 }
 
@@ -2121,6 +2232,7 @@ function vorlageLaden(kennung, frisch){
   if(eigen.figurname)      M.avatar.name         = eigen.figurname;
   if(eigen.kachel)         M.kachel              = eigen.kachel;
   if(eigen.haende)         M.avatar.haende       = eigen.haende;
+  if(eigen.texte)          M.texte               = eigen.texte;
 }
 
 /* ═══ Farbe und Lesbarkeit ══════════════════════════════════════ */
@@ -2511,6 +2623,86 @@ function figurBauen(){
   figurZeichnen();
 }
 
+/* ═══ Eigene Texte ══════════════════════════════════════════════
+   Sieben Felder, alle freiwillig. Der PLATZHALTER ist die Vorgabe —
+   so sieht der Gastgeber, was dort steht, wenn er nichts schreibt,
+   ohne dass ein Wert im Feld ihn glauben lässt, er habe schon etwas
+   gesetzt.
+
+   Gespeichert wird DÜNN: Ein Feld, das leer ist oder wörtlich der
+   Vorgabe entspricht, wandert nicht ins Markenblatt. */
+var TEXTFELDER = [
+  ["phase", "fTextePhase", function(){
+      return Object.keys(E_PHASENTEXTE).map(function(k){
+        return [k, E_PHASENNAMEN[k] || k, E_PHASENTEXTE[k]]; }); }],
+  ["figur", "fTexteFigur", function(){
+      var laune = (M.avatar && M.avatar.art) || "freundlich";
+      return Object.keys(AVATAR_TEXTE).map(function(k){
+        return [k, TEXTANLASS[k] || k, AVATAR_TEXTE[k][laune]]; }); }]
+];
+
+/* Wie die vier Anlässe der Figur im Studio heißen. */
+var TEXTANLASS = { start:"Beim Öffnen", bestellt:"Nach der Bestellung",
+                   bewerten:"Beim Bewerten", meintisch:"Bei „Mein Tisch“" };
+
+function texteBauen(){
+  TEXTFELDER.forEach(function(f){
+    var gruppe = f[0], ziel = $(f[1]); if(!ziel) return;
+    var eigen = (M.texte && M.texte[gruppe]) || {};
+    ziel.innerHTML = f[2]().map(function(z){
+      var wert = eigen[z[0]] || "";
+      return '<div class="tfeld"><span class="tbez">' + h(z[1]) + '</span>' +
+        '<input class="text" data-txt="' + gruppe + '|' + z[0] + '" maxlength="' +
+        E_TEXTMASS[gruppe === "phase" ? "phase" : "begleiter"].hart + '" ' +
+        'placeholder="' + h(z[2]) + '" value="' + h(wert) + '">' +
+        '<span class="tzaehler" id="tz-' + gruppe + '-' + z[0] + '"></span></div>';
+    }).join("");
+    f[2]().forEach(function(z){ textZaehler(gruppe, z[0]); });
+  });
+  textWarnung();
+}
+
+/* Zählt mit und nennt den GRUND, nicht nur die Zahl. Eine Warnung
+   ohne Begründung lehrt einen, sie zu übergehen. */
+function textZaehler(gruppe, schluessel){
+  var feld = document.querySelector('[data-txt="' + gruppe + '|' + schluessel + '"]');
+  var an = $("tz-" + gruppe + "-" + schluessel);
+  if(!feld || !an) return;
+  var mass = E_TEXTMASS[gruppe === "phase" ? "phase" : "begleiter"];
+  var n = feld.value.trim().length;
+  an.className = "tzaehler" + (n > mass.gut ? " lang" : "");
+  an.textContent = n ? (n + " von " + mass.hart + " Zeichen" +
+    (n > mass.gut ? " · " + mass.warnung : "")) : "";
+}
+
+/* Ein Satz über der Abteilung, sobald wirklich etwas eigenes drinsteht
+   — die Sprachfolge ist nichts, was man einmal liest und dann weiß. */
+function textWarnung(){
+  var an = $("txtWarnung"); if(!an) return;
+  var n = 0;
+  if(M.texte) Object.keys(M.texte).forEach(function(g){
+    n += Object.keys(M.texte[g] || {}).length; });
+  an.textContent = n
+    ? n + " eigene" + (n === 1 ? "r Satz steht" : " Sätze stehen") +
+      " so in allen zwölf Sprachen — auch für einen Gast, der auf Englisch umstellt."
+    : "";
+}
+
+function textSetzen(gruppe, schluessel, wert){
+  var w = String(wert || "").trim();
+  var vorgabe = gruppe === "phase"
+    ? E_PHASENTEXTE[schluessel]
+    : (AVATAR_TEXTE[schluessel] || {})[(M.avatar && M.avatar.art) || "freundlich"];
+  if(!M.texte) M.texte = {};
+  if(!M.texte[gruppe]) M.texte[gruppe] = {};
+  /* Leer oder wörtlich die Vorgabe heißt: nichts eigenes. Sonst
+     schleppte das Markenblatt Sätze mit, die ohnehin dort stünden. */
+  if(!w || w === vorgabe) delete M.texte[gruppe][schluessel];
+  else M.texte[gruppe][schluessel] = w;
+  if(!Object.keys(M.texte[gruppe]).length) delete M.texte[gruppe];
+  if(!Object.keys(M.texte).length) delete M.texte;
+}
+
 /* Eine Reihe je Bestellphase. Die Reihenfolge kommt aus
    E_PHASENVORGABE — dieselbe Quelle, aus der der Hub seine Vorgabe
    nimmt, damit Vorschau und Karte nicht auseinanderlaufen. */
@@ -2580,6 +2772,7 @@ function alleBauen(){
   bereicheBauen();
   figurBauen();
   haendeBauen();
+  texteBauen();
   vorlagenBauen();
   reglerSchreiben();
   vorschau();
@@ -2984,7 +3177,9 @@ function entwurfsAdresse(){
        Feld, das im Entwurfslink mitfährt, aber nicht verglichen wird,
        fährt ungeprüft mit — pruef-studio.js nimmt es in den Rundlauf. */
     d:(M.avatar.haende && Object.keys(M.avatar.haende).length)
-        ? M.avatar.haende : undefined
+        ? M.avatar.haende : undefined,
+    /* Ebenfalls dünn, und ebenfalls im Rundlauf von pruef-studio.js. */
+    x:(M.texte && Object.keys(M.texte).length) ? M.texte : undefined
   };
   return location.origin + location.pathname + "#m=" + nachBase64(JSON.stringify(knapp));
 }
@@ -3012,6 +3207,9 @@ function entwurfLesen(){
     /* Ältere Entwurfslinks kennen d noch nicht — dann bleibt es bei
        den Vorgaben der Phasen. */
     if(k.d && typeof k.d === "object") M.avatar.haende = k.d;
+    /* Ältere Entwurfslinks kennen x noch nicht — dann bleibt es bei
+       Omotenos Sätzen. */
+    if(k.x && typeof k.x === "object") M.texte = k.x; else delete M.texte;
     if(Array.isArray(k.r) && k.r.length){
       M.reihe = k.r.filter(function(x){ return BEREICH_TEXTE[x]; });
       BEREICH_FOLGE.forEach(function(x){ if(M.reihe.indexOf(x) < 0) M.reihe.push(x); });
@@ -3070,6 +3268,17 @@ document.addEventListener("input", function(e){
   if(z.id === "fFigurName"){ M.avatar.name = z.value; ausgabeSchreiben(); return; }
   if(z.id === "fClaim"){ M.betrieb.claim = z.value; vorschau(); return; }
   if(z.id === "fGruss"){ M.betrieb.begruessung = z.value; vorschau(); return; }
+
+  /* Eigene Sätze. Beim Tippen wird nur gezählt und die Vorschau
+     nachgezogen — NICHT texteBauen(), das würde das Feld neu bauen
+     und den Schreibfleck ans Ende werfen. */
+  if(z.dataset.txt){
+    var tt = z.dataset.txt.split("|");
+    textSetzen(tt[0], tt[1], z.value);
+    textZaehler(tt[0], tt[1]);
+    textWarnung();
+    vorschau(); return;
+  }
 
   /* Titel, Zeile darunter, Emoji. Ein Wert, der der Vorgabe
      entspricht, wird nicht gespeichert, sondern gelöscht — dadurch
