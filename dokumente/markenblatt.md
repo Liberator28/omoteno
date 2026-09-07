@@ -258,9 +258,12 @@ Deshalb gehören diese Blöcke jetzt ebenfalls ins Markenblatt:
 | `empfehlung` | Liste: `von`, `bis` (Stunde), `kennz`, `name`, `was`, `preis`, `ziel`, `gericht` |
 | `avatar` | `figur`, `art`: `freundlich` \| `ruhig` \| `witzig`, `name`, `haende` |
 
-**`avatar.figur`** — welche Figur das Haus begleitet. Die erlaubten
-Namen liest der Erzeuger aus `AVATAR_FIGUREN` im Gerüst; ein Tippfehler
-hält ihn an. Fehlt das Feld, bleibt es beim Untersetzer.
+**`avatar.figur`** — welche Figur das Haus begleitet. Neun stehen zur
+Wahl: `erdbeere`, `kaffeebohne`, `burger`, `brezel`, `pizzaecke`,
+`sushi`, `traube`, `platte`, `eiswaffel`. Die erlaubten Namen liest der
+Erzeuger aus `AVATAR_FIGUREN` im Gerüst; ein Tippfehler hält ihn an.
+Fehlt das Feld, bleibt es beim `untersetzer` — der steht seit Block 6a
+nicht mehr zur Wahl, bleibt aber der Rückfall für alte Blätter.
 
 **`avatar.haende`** — was die Figur je Bestellphase in der Hand hält.
 Dünn besetzt: Was fehlt, ist die Vorgabe der Phase (`neu` Bestellzettel,

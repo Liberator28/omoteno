@@ -724,8 +724,17 @@ const RANDMESSUNG = `
              gleich war, das Monogramm aber weiter dem Haus gehörte.
              Ein zusammengesetzter Wert versteckt, welche Hälfte
              stimmt. */
+          const kragen = document.querySelector("svg.figur .kragen");
           if(sch) raus[fk] = {
             schuerze: getComputedStyle(sch).fill,
+            /* Der Kragen kam mit dem Entwurfsdurchgang dazu und trägt
+               ebenfalls eine Hausfarbe (--band-text). Beim Gegenbeweis
+               blieb er zuerst ungeprüft: Eine feste Farbe darin fiel
+               niemandem auf, weil nur Schürze und Monogramm verglichen
+               wurden. Was eine Hausfarbe trägt, gehört in den
+               Kreuzvergleich — sonst ist die Liste eine Momentaufnahme
+               von dem Tag, an dem sie geschrieben wurde. */
+            kragen: kragen ? getComputedStyle(kragen).stroke : "—",
             mono: mono ? getComputedStyle(mono).fill : "—" };
         }
         return raus;
@@ -736,9 +745,9 @@ const RANDMESSUNG = `
     const traeger = Object.keys(gemessen[a]);
     pruef(traeger.length > 0, "Figuren mit Schürze gefunden", traeger.join(", "));
     for(const fk of traeger)
-      for(const teil of ["schuerze", "mono"])
+      for(const teil of ["schuerze", "kragen", "mono"])
         pruef(gemessen[a][fk][teil] !== gemessen[b][fk][teil],
-          fk + " · " + (teil === "mono" ? "Monogramm" : "Schürze") +
+          fk + " · " + ({ mono:"Monogramm", kragen:"Kragen" }[teil] || "Schürze") +
           " trägt die Farbe des Hauses",
           a + " " + gemessen[a][fk][teil] + "  ≠  " + b + " " + gemessen[b][fk][teil]);
   } else {
