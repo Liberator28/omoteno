@@ -87,15 +87,13 @@ const FARBEN_PFLICHT = ["grund","flaeche","flaeche2","band","bandText",
    Landingpage. Vier Kopien wären drei zu viel — aber solange die
    Zielumgebungen keine Module laden, ist die Kopie hier der Preis
    dafür, dass die PRÜFUNG überhaupt stattfindet. */
-function helligkeit(hex){
-  const h = String(hex||"").replace("#","");
-  if(!/^[0-9a-fA-F]{6}$/.test(h)) return null;
-  const v = [0,2,4].map(i => {
-    const x = parseInt(h.slice(i,i+2),16)/255;
-    return x <= .03928 ? x/12.92 : Math.pow((x+.055)/1.055, 2.4);
-  });
-  return .2126*v[0] + .7152*v[1] + .0722*v[2];
-}
+/* Diese Datei hatte helligkeit() und kontrast() ZWEIMAL. In
+   JavaScript werden Funktionsdeklarationen gehoben — die spätere
+   Fassung gewann für die ganze Datei, die frühere war unerreichbar.
+   Für gültige sechsstellige Hexfarben rechnen beide aufs Zehntel
+   gleich (gemessen), es ging also nie etwas schief; die Prüfung des
+   Farbformats steht ohnehin weiter oben bei FARBEN_PFLICHT. Weg damit,
+   bevor jemand die tote Fassung pflegt. §1.1 */
 function kontrast(a,b){
   const l1 = helligkeit(a), l2 = helligkeit(b);
   if(l1 === null || l2 === null) return null;
@@ -486,6 +484,18 @@ function erzeuge(slug, nurPruefen){
     "$1" + h(mb.betrieb.claim || mb.betrieb.name) + "$2");
   aus = aus.replace(/(<meta name="theme-color" content=")[^"]*(")/,
     "$1" + (mb.farben.band) + "$2");
+  /* Das Farbschema für den ERSTEN Anstrich, bevor ein Skript läuft.
+     Danach zieht nachtSchalten() es nach. Ohne diese Zeile stünde bei
+     jedem Kunden „light" — und Blend ist schon am Tag fast schwarz
+     (grund #0B0C0F). Ein falsch angesagtes Schema ist schlimmer als
+     keins: Der Browser richtet Bedienelemente und Rollbalken danach.
+     0,179 ist der Punkt aus der sRGB-Rechnung, an dem Schwarz und
+     Weiß gleich gut auf einem Grund stehen. */
+  const schema = helligkeit(mb.farben.grund) < 0.179 ? "dark" : "light";
+  if(!/<meta name="color-scheme" content="[^"]*">/.test(aus))
+    throw new Error('Die Vorlage hat kein <meta name="color-scheme"> im Kopf');
+  aus = aus.replace(/(<meta name="color-scheme" content=")[^"]*(")/,
+    "$1" + schema + "$2");
 
   /* Der Vorführblock fliegt raus, wenn ihn niemand bestellt hat.
 

@@ -470,6 +470,46 @@ wird dort, wo wirklich gemalt wird: Im Hub trägt `<html>` den Grund,
 `<body>` behielt abends die Tagesfarbe — wer am `body` misst, bekommt
 abends „hell".
 
+### 5.2c Ohne `color-scheme` färbt der Browser selbst um
+
+> **Vorfall.** Ein Gast öffnete Chocos Karte auf einem Samsung mit
+> eingeschaltetem Dunkelmodus. Die Figuren und einige Flächen kamen
+> „viel heller" heraus als auf dem iPhone — dunkle Konturen waren hell
+> geworden.
+>
+> Chrome auf Android und Samsung Internet haben ein „dunkles Design für
+> Webseiten". Findet der Browser **keine** `color-scheme`-Angabe, hält
+> er die Seite für eine, die kein Dunkel kennt, und kippt selbst die
+> Helligkeiten. Gemessen: **keine einzige Datei** dieses Verzeichnisses
+> hatte die Angabe.
+
+Jede ausgelieferte Seite sagt an, was sie zeigt — und zwar das, was sie
+**wirklich malt**, nicht das, was der Schalter heißt:
+
+```css
+:root{color-scheme:dark}        /* fest dunkel */
+:root{color-scheme:light dark}  /* folgt wirklich dem System */
+```
+
+Drei Dinge gehören dazu, und jedes hat beim Gegenbeweis eine eigene
+Lücke aufgedeckt:
+
+- **Eine falsche Ansage ist schlimmer als keine.** Der Browser richtet
+  Bedienelemente und Rollbalken danach. Deshalb wird die Ansage gegen
+  den gemessenen Grund gehalten, nicht gegen die Absicht.
+- **`light dark` ist eine Behauptung.** Wer das ansagt, muss dem System
+  auch wirklich folgen. Im ganzen Verzeichnis tut das genau eine Seite.
+- **Der erste Anstrich zählt.** Der Hub setzt sein Schema zur Laufzeit
+  nach — aber der Browser entscheidet, bevor ein Skript läuft. Deshalb
+  schreibt der Erzeuger zusätzlich ein `<meta name="color-scheme">` aus
+  der Tagpalette des Hauses. Eine Prüfung, die nur den Laufzeitwert
+  misst, bleibt grün, während der erste Anstrich falsch ist.
+
+**Die ehrliche Grenze:** Der kopflose Browser kennt Chromes Auto Dark
+Theme nicht — fünf Flag-Varianten durchprobiert, keine greift. Die
+Prüfung zeigt, dass die Ansage da ist und stimmt, **nicht**, dass das
+Umfärben aufhört. Der Beweis dafür steht auf dem Gerät des Gastes.
+
 ### 5.3 Bewusste Ungereimtheiten nicht wegsystematisieren
 
 > **Vorfall.** Chocos Goldfläche am Tag war seit jeher aus dem hellen
@@ -743,6 +783,7 @@ Dazu je nach Änderung:
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
 | Freie Texte des Betriebs | `pruefungen/pruef-texte.js` (braucht `dist/`) |
 | Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |
+| **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
 | Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
 | Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
 | Marken-Studio (Bedienung) | `pruefungen/pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
