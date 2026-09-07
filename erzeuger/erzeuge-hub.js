@@ -68,6 +68,11 @@ function ausGeruest(muster, wo){
 }
 const KACHELSCHLUESSEL = ausGeruest(/const KACHELARTEN = \{([\s\S]*?)\n\};/, "KACHELARTEN");
 const ICONNAMEN        = ausGeruest(/const ICONS = \{([\s\S]*?)\n\};/, "ICONS");
+/* Aus demselben Grund wie oben: Bis Block 6 stand hier von Hand
+   ["untersetzer","erdbeere"]. Eine neunte Figur im Gerüst hätte der
+   Erzeuger abgelehnt — der Kunde hätte sie im Studio gewählt und den
+   Hub nicht bekommen. */
+const FIGURNAMEN       = ausGeruest(/const AVATAR_FIGUREN = \{([\s\S]*?)\n\};/, "AVATAR_FIGUREN");
 
 const SCHRIFTEN = ["system","serif-klassisch","serif-eng","serif-hoch","slab",
                    "grotesk","grotesk-eng","rund","mono","schreib"];
@@ -243,8 +248,9 @@ function pruefeMarkenblatt(mb){
      wortlos wieder den Untersetzer. Der Kunde hätte seine Figur
      ausgewählt und bekäme sie nicht — und niemand sagt es ihm. */
   if(mb.avatar && mb.avatar.figur !== undefined &&
-     ["untersetzer","erdbeere"].indexOf(mb.avatar.figur) < 0)
-    F("avatar.figur unbekannt: " + mb.avatar.figur + " — erlaubt: untersetzer, erdbeere");
+     FIGURNAMEN.indexOf(mb.avatar.figur) < 0)
+    F("avatar.figur unbekannt: " + mb.avatar.figur +
+      " — erlaubt: " + FIGURNAMEN.join(", "));
 
   /* Kontrast, Tag und Abend */
   const pruefePaare = (farben, wann) => {

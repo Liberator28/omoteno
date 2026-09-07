@@ -79,6 +79,26 @@ JS-Bezeichner. Zwei `<script>`-Blöcke teilen sich den globalen
 Namensraum — zwei `const` mit demselben Namen werfen einen Fehler und
 die halbe Seite bleibt tot.
 
+**Bei einem geteilten Block in BEIDEN Dateien nachsehen.**
+
+> **Vorfall.** Die fünf Blätter der Erdbeerkrone hießen `.blatt`. Im
+> Marken-Studio heißt das Einstellblatt auch `.blatt`, und dessen Regel
+> setzt `transform:translateY(92dvh − var(--sicht))`. SVG erbt
+> CSS-`transform` genauso wie HTML. Gemessen bei 900×1000: Die Krone
+> stand 824 Einheiten tiefer und 672 links, die Zeichnung ragte von
+> x −672,5 bis 793,7 statt 1…120,6 — die Erdbeere hatte im Studio keine
+> Krone. Derselbe Block, dieselbe Zeile, im Hub völlig in Ordnung.
+>
+> Zwei Zeilen tiefer dasselbe mit `.guss`: Im Gerüst ist das der
+> Schokoladenguss unter dem Kopfband, eine Fläche mit `drop-shadow`.
+> Die Glasur auf dem Kuchen, den die Figur trägt, bekam denselben
+> Schatten — gemessen `drop-shadow(rgba(42,26,20,.2) 0 3px 6px)`, wo
+> `none` stehen sollte.
+
+Ein Blick in die eigene Datei findet das nicht. Wer einen geteilten
+Block anfasst, `grep`t den Namen in **jeder** Datei, in die er kopiert
+wird. `pruef-figur.js` tut das jetzt für alle 41 Klassen des Blocks.
+
 ### 1.1a Ein vorhandenes Feld heißt nicht, dass es das eigene ist
 
 > **Vorfall.** Das Gastkonto sollte an `bestellungen.gast_kennung`
@@ -434,6 +454,22 @@ Zwei Lehren, beide gemessen:
   Grenzwert einbaut, muss sich fragen, was er damit ungesehen
   durchlässt.
 
+### 5.2b Hell und dunkel entscheidet der Grund, nicht die Uhr
+
+> **Vorfall.** Die hellen Gliedmaßen der Figur hingen an
+> `[data-phase="abend"]`. Das traf Choco richtig und Blend nie: Blend
+> ist ein Cocktail-Lab und schon am **Tag** fast schwarz
+> (`grund #0B0C0F`, Abendfassung gar nicht eingeschaltet). Gemessen:
+> Gliedmaßen 1,31:1, Kaffeebohne 2,40:1 — die Beine weg, die Figur ein
+> Fleck. Ein Haus, das tagsüber dunkel ist, gibt es; eine Uhr, die das
+> weiß, nicht.
+
+Alles, was von der Helligkeit des Untergrunds abhängt, wird aus der
+**gemessenen Fläche** hergeleitet, nie aus der Tageszeit. Und gemessen
+wird dort, wo wirklich gemalt wird: Im Hub trägt `<html>` den Grund,
+`<body>` behielt abends die Tagesfarbe — wer am `body` misst, bekommt
+abends „hell".
+
 ### 5.3 Bewusste Ungereimtheiten nicht wegsystematisieren
 
 > **Vorfall.** Chocos Goldfläche am Tag war seit jeher aus dem hellen
@@ -587,6 +623,29 @@ Und beim Ersetzen einer solchen Stelle: Der alte Stand muss
 **bytegleich** herauskommen, wo er richtig war. Chocos Siegel wanderte
 dafür als ausdrückliche Ausnahme ins Markenblatt (§5.3), und der
 Vergleich vorher/nachher war Teil der Arbeit, nicht der Nachbereitung.
+
+### 8.1e Ein geteilter Block muss tragen, worauf er sich stützt
+
+> **Vorfall.** Der FIGUR-Block wird zwischen `hub.vorlage.html` und
+> `marken-studio.html` kopiert, und `pruef-figur.js` vergleicht beide
+> Fassungen Zeichen für Zeichen. Sie waren gleich. Trotzdem war der
+> Untersetzer im Studio ein **schwarzer Fleck** und der Mund der
+> Erdbeere eine gefüllte Sichel: Die Grundregeln des Zeichensatzes
+> (`.figur .zug{fill:none}`, `.figur .schatten{…}`) standen im Gerüst
+> **außerhalb** des Blocks und im Studio gar nicht. Ohne Regel füllt
+> SVG mit Schwarz. Gemessen: `fill: rgb(0,0,0)` an fünf Klassen, in
+> jeder Pose, in jeder Laune.
+
+Ein Blockvergleich sieht nur, ob zwei Kopien gleich sind — nicht, ob
+außerhalb etwas fehlt. Deshalb gilt: **Alles, worauf ein geteilter
+Block sich stützt, gehört in den Block.** Und die Prüfung dazu misst
+nicht den Text, sondern das gezeichnete Bild, **in jeder Datei**.
+
+Dazu die zweite Hälfte: **Ein Schirm ist keine Messung.** Der
+`.blatt`-Fehler aus §1.1 war bei 1440×900 unsichtbar (dort legt das
+Studio das Einstellblatt als Seitenspalte, ohne `transform`) und bei
+900×1000 offensichtlich. Meine Prüfung fuhr zuerst nur die eine Breite
+— und meldete grün.
 
 ### 8.1b Eine Prüfung über das Vorhandene ist blind für das Fehlende
 

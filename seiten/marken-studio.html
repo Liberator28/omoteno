@@ -632,12 +632,15 @@ button{cursor:pointer;border:none;background:none;padding:0}
   --band:var(--h-band); --band-text:var(--h-bandtext);
   --tinte:var(--h-tinte); --linie:var(--h-linie);
   --linie-stark:var(--h-liniestark); --flaeche:var(--h-flaeche);
+  --flaeche-2:var(--h-flaeche2); --tinte-leise:var(--h-tinteleise);
   --rot:var(--h-akzent);
   display:flex;align-items:center;justify-content:center;gap:18px;
   padding:18px;border-radius:12px;background:var(--h-grund);
   border:1px solid var(--kante);min-height:150px;
 }
 #figurschau .figur{filter:none}
+.figurpasst{margin:8px 0 0;font-size:12.5px;color:var(--schrift-leise);min-height:1em}
+.figurpasst:empty{display:none}
 
 /* ╔═══ FIGUR · GETEILTER BLOCK (CSS) · ANFANG ═════════════════════╗
    ║ Wortgleich auch in marken-studio.html — pruef-figur.js         ║
@@ -645,26 +648,103 @@ button{cursor:pointer;border:none;background:none;padding:0}
    ╚════════════════════════════════════════════════════════════════╝
    Zwei Farbebenen, und die Trennung ist die ganze Idee:
 
-   Die FRUCHT bleibt Frucht. Rot, Grün und Kernbeige stehen fest —
-   eine Erdbeere in der Hausfarbe ist keine Erdbeere mehr, sondern
-   ein roter Fleck. Das HAUS steht auf der Schürze: --band und
-   --band-text, ein Paar, das der Erzeuger ohnehin schon auf Kontrast
-   prüft. Nicht --rot, denn Chocos Hauptfarbe IST rot, und eine rote
-   Schürze auf einer roten Frucht verschwindet.
+   Der GEGENSTAND bleibt Gegenstand. Rot, Grün und Kernbeige der
+   Erdbeere stehen fest — eine Erdbeere in der Hausfarbe ist keine
+   Erdbeere mehr, sondern ein roter Fleck. Kaffee ist braun, Salat ist
+   grün, dasselbe gilt für jede weitere Figur. Das HAUS steht auf der
+   Schürze: --band und --band-text, ein Paar, das der Erzeuger ohnehin
+   schon auf Kontrast prüft. Nicht --rot, denn Chocos Hauptfarbe IST
+   rot, und eine rote Schürze auf einer roten Frucht verschwindet.
 
-   Und zwei Konturen, nicht eine: --kontur umrandet die Frucht und
+   Und zwei Konturen, nicht eine: --kontur umrandet den Körper und
    liegt immer auf Hellem. --glied sind Arme, Beine und Hände — die
    liegen auf dem GRUND des Hauses, und der ist abends fast schwarz.
-   Mit einer einzigen dunklen Farbe waren die Beine abends weg. */
+   Mit einer einzigen dunklen Farbe waren die Beine abends weg.
+
+   AUFBAU seit Block 6, und der spart die Arbeit: Alles, was jede
+   Figur gleich hat — Gliedmaßen, Schürze, Monogramm und was sie in
+   den Händen hält — steht unter .figur und wird EINMAL geschrieben.
+   Jede Figur bringt nur noch ihre zwei Konturfarben und ihren eigenen
+   Körper mit. Wo ein dunkler Körper eine helle Miene braucht,
+   überschreibt sie .figur mit gleicher Schärfe und späterer Stelle. */
+
+/* ── Was jede Figur gleich hat ────────────────────────────────────
+   Diese Regeln standen bis Block 6 im allgemeinen Blatt des Gerüsts —
+   also NUR dort. Im Studio fehlten sie, und ohne Regel füllt SVG mit
+   Schwarz: Der Untersetzer war dort ein schwarzer Fleck, der Mund der
+   Erdbeere eine gefüllte Sichel. Gefunden hat das keine
+   Blockprüfung — beide geteilten Blöcke waren ja gleich. Was ZWISCHEN
+   den Blöcken fehlt, sieht kein Blockvergleich (§8.1a). */
+.figur{display:block;flex:none}
+.figur .zug{stroke:var(--tinte);fill:none;stroke-linecap:round;stroke-linejoin:round}
+.figur .auge{fill:var(--tinte)}
+.figur .funke{fill:var(--rot)}
+.figur .schatten{fill:var(--tinte);opacity:.07}
+
+/* Gliedmaßen: eigene Farbe, weil sie auf dem Grund des Hauses liegen
+   und nicht auf dem Körper der Figur. */
+.figur .arm,.figur .bein{
+  stroke:var(--glied);stroke-width:5;fill:none;stroke-linecap:round}
+.figur .fuss,.figur .hand{fill:var(--glied)}
+
+/* Die Schürze trägt das Haus — bei jeder Figur dieselbe Rolle, auch
+   wenn sie bei der Schallplatte ein Etikett und beim Burger eine
+   Papiermanschette ist. Die Tasche ist ein aufgesetzter Fleck, kein
+   Kasten mit Rahmen — ein Rahmen ließ den Buchstaben wie eine
+   Tastenkappe aussehen. */
+.figur .schuerze{fill:var(--band);stroke:var(--kontur);stroke-width:2.6;stroke-linejoin:round}
+.figur .tasche{fill:var(--band-text);opacity:.13}
+.figur .mono{fill:var(--band-text);font:italic 700 12px/1 Georgia,"Times New Roman",serif;opacity:.9}
+
+/* Was die Figur in den Händen hält, gehört nicht ihr: Flasche,
+   Zettel, Teller und Kuchen sehen bei jeder Figur gleich aus. Sie
+   nehmen nur deren Kontur, damit sie zur Zeichnung passen. */
+.figur .glas{fill:#E8C468;stroke:var(--kontur);stroke-width:2.4;stroke-linejoin:round}
+.figur .kappe,.figur .bohne{fill:var(--kontur)}
+.figur .ritz{stroke:var(--kontur);stroke-width:1.7;fill:none;opacity:.55;stroke-linecap:round}
+.figur .papier{fill:#FFFDF7;stroke:var(--kontur);stroke-width:2.4}
+.figur .porzellan{fill:#FFFDF7;stroke:var(--kontur);stroke-width:2.4}
+.figur .kuchen{fill:#F2DFB4;stroke:var(--kontur);stroke-width:2.2}
+/* GLASUR, nicht „guss". Im Gerüst ist .guss der Schokoladenguss
+   unter dem Kopfband — eine 32px hohe, absolut gesetzte Fläche mit
+   drop-shadow und Übergang. Die Regel griff auch auf die Glasur des
+   Kuchens, den die Figur trägt: Sie bekam einen Schlagschatten, der
+   nicht zu ihr gehört. Gefunden hat das die neue Namensprüfung, nicht
+   das Auge (§1.1). */
+.figur .glasur,.figur .tropfen{fill:#5A3220}
+.figur .dampf{stroke:var(--glied);stroke-width:1.8;fill:none;opacity:.6;stroke-linecap:round}
+
+/* ── Untersetzer · Rückfall, nicht mehr zur Wahl ──────────────────
+   Er nimmt seine Flächen aus dem Haus — er IST das Produkt auf dem
+   Tisch. Enger gefasst als vorher (.figur .scheibe): scheibe und
+   kante gehören ihm allein, keine neue Figur soll sie erben. */
+/* GEMESSEN, nicht vermutet. Der Untersetzer steht auf dem
+   Bestellpass, und der Pass hat dieselbe --flaeche wie die Scheibe:
+   Füllung gegen Grund 1,00:1. Es blieb nur der Rand, und der war
+   --linie-stark — eine Haarlinienfarbe, gemacht für Trennstriche,
+   nicht zum Tragen einer Form. Gemessen 1,58:1 bei Choco am Tag und
+   1,44:1 bei Blend; im Abendbild war der Begleiter schlicht nicht da.
+   Das galt seit jeher und fiel nie auf, weil die Prüfung nur die
+   Erdbeere beim Namen kannte.
+
+   Jetzt trägt der Rand --tinte-leise. Das ist keine gewählte Farbe,
+   sondern eine ROLLE, die der Erzeuger ohnehin schon gegen --flaeche
+   auf 4,5:1 prüft („Nebentext auf Karte"). Damit kann kein Haus sie
+   kaputt einstellen (§5.1). */
+.f-untersetzer .scheibe{fill:var(--flaeche);stroke:var(--tinte-leise)}
+.f-untersetzer .kante{fill:var(--linie);opacity:.85}
+
+/* ── Erdbeere · Café, Konditorei, Eis ─────────────────────────────*/
 .f-erdbeere{--kontur:#4A2318;--glied:#4A2318}
 /* Ohne body davor, damit derselbe Text auch im Studio trägt, wo die
-   Tageszeit an der Vorschau hängt und nicht am Seitenkörper. */
-[data-phase="abend"] .f-erdbeere{--glied:#EBCDBB}
+   Marke an der Vorschau hängt und nicht am Seitenkörper. Gesetzt wird
+   das Attribut von grundMarkieren() im geteilten JS-Block. */
+[data-grund="dunkel"] .f-erdbeere{--glied:#EBCDBB}
 
 .f-erdbeere .frucht{fill:#D2536A;stroke:var(--kontur);stroke-width:3}
 .f-erdbeere .glanz{fill:#FFFFFF;opacity:.22}
 .f-erdbeere .kern{fill:#F3DDBC}
-.f-erdbeere .blatt{fill:#94B183;stroke:var(--kontur);stroke-width:2.6;stroke-linejoin:round}
+.f-erdbeere .kelch{fill:#94B183;stroke:var(--kontur);stroke-width:2.6;stroke-linejoin:round}
 .f-erdbeere .stiel{stroke:#94B183;stroke-width:4;fill:none;stroke-linecap:round}
 .f-erdbeere .wange{fill:#E8899C;opacity:.55}
 .f-erdbeere .zug{stroke:var(--kontur)}
@@ -675,22 +755,46 @@ button{cursor:pointer;border:none;background:none;padding:0}
 .f-erdbeere .braue{stroke:var(--kontur);stroke-width:2.2;fill:none;stroke-linecap:round}
 /* Auf der roten Frucht ginge ein roter Funke unter. */
 .f-erdbeere .funke{fill:#F7D774;stroke:var(--kontur);stroke-width:.8}
-.f-erdbeere .schuerze{fill:var(--band);stroke:var(--kontur);stroke-width:2.6;stroke-linejoin:round}
-/* Die Tasche ist ein aufgesetzter Fleck, kein Kasten mit Rahmen —
-   ein Rahmen ließ den Buchstaben wie eine Tastenkappe aussehen. */
-.f-erdbeere .tasche{fill:var(--band-text);opacity:.13}
-.f-erdbeere .mono{fill:var(--band-text);font:italic 700 12px/1 Georgia,"Times New Roman",serif;opacity:.9}
-.f-erdbeere .arm,.f-erdbeere .bein{
-  stroke:var(--glied);stroke-width:5;fill:none;stroke-linecap:round}
-.f-erdbeere .fuss,.f-erdbeere .hand{fill:var(--glied)}
-.f-erdbeere .glas{fill:#E8C468;stroke:var(--kontur);stroke-width:2.4;stroke-linejoin:round}
-.f-erdbeere .kappe,.f-erdbeere .bohne{fill:var(--kontur)}
-.f-erdbeere .ritz{stroke:var(--kontur);stroke-width:1.7;fill:none;opacity:.55;stroke-linecap:round}
-.f-erdbeere .papier{fill:#FFFDF7;stroke:var(--kontur);stroke-width:2.4}
-.f-erdbeere .porzellan{fill:#FFFDF7;stroke:var(--kontur);stroke-width:2.4}
-.f-erdbeere .kuchen{fill:#F2DFB4;stroke:var(--kontur);stroke-width:2.2}
-.f-erdbeere .guss,.f-erdbeere .tropfen{fill:#5A3220}
-.f-erdbeere .dampf{stroke:var(--glied);stroke-width:1.8;fill:none;opacity:.6;stroke-linecap:round}
+
+/* ── Kaffeebohne · Café, Bäckerei, Röster ─────────────────────────
+   Der dunkelste Körper im Satz — deshalb kehrt sich die Miene um:
+   Mund und Brauen hell, die Pupille behält ihren weißen Ring. Eine
+   dunkle Linie auf dunklem Kaffee ist keine Linie. */
+.f-kaffeebohne{--kontur:#33200F;--glied:#33200F}
+[data-grund="dunkel"] .f-kaffeebohne{--glied:#E9D6C2}
+.f-kaffeebohne .leib{fill:#7A4A28;stroke:var(--kontur);stroke-width:3}
+/* Dieselbe Frage wie bei --glied, eine Ebene höher: Eine geröstete
+   Bohne ist dunkel, und auf Chocos Abendkarte kam sie auf 2,34:1 —
+   ein Fleck. Abends wird sie heller geröstet. Die Erdbeere braucht
+   das nicht, sie steht von sich aus bei 4,27:1. */
+[data-grund="dunkel"] .f-kaffeebohne .leib{fill:#A9703E}
+.f-kaffeebohne .glanz{fill:#FFFFFF;opacity:.15}
+/* Die Naht ist das Erkennungszeichen der Bohne. Sie läuft oben und
+   unten am Gesicht vorbei — durchgezogen liefe sie mitten durch die
+   Augen. Unten deckt die Schürze sie ab, das ist gewollt. */
+.f-kaffeebohne .naht{stroke:var(--kontur);stroke-width:6;fill:none;stroke-linecap:round}
+.f-kaffeebohne .wange{fill:#B06A3A;opacity:.5}
+.f-kaffeebohne .zug{stroke:#F6E7D4}
+.f-kaffeebohne .auge{fill:var(--kontur);stroke:#FFFDF7;stroke-width:2.8;paint-order:stroke}
+.f-kaffeebohne .braue{stroke:#F6E7D4;stroke-width:2.2;fill:none;stroke-linecap:round}
+.f-kaffeebohne .funke{fill:#F7D774;stroke:var(--kontur);stroke-width:.8}
+
+/* ── Burger · Imbiss, Burgerladen, Foodtruck ──────────────────────
+   Das Gesicht sitzt auf dem Deckel, nicht auf dem Belag — deshalb
+   hat diese Figur einen eigenen, höher gesetzten Gesichtsplatz. Die
+   Schürze ist hier die Papiermanschette. */
+.f-burger{--kontur:#5A3416;--glied:#5A3416}
+[data-grund="dunkel"] .f-burger{--glied:#F0D9BE}
+.f-burger .leib{fill:#E3A757;stroke:var(--kontur);stroke-width:3}
+.f-burger .glanz{fill:#FFFFFF;opacity:.2}
+.f-burger .sesam{fill:#FBEBCF;stroke:var(--kontur);stroke-width:1.2}
+.f-burger .salat{fill:#8FB566;stroke:var(--kontur);stroke-width:2.2;stroke-linejoin:round}
+.f-burger .patty{fill:#7B4526;stroke:var(--kontur);stroke-width:2.6}
+.f-burger .wange{fill:#D98A50;opacity:.5}
+.f-burger .zug{stroke:var(--kontur)}
+.f-burger .auge{fill:var(--kontur);stroke:#FFFDF7;stroke-width:2.8;paint-order:stroke}
+.f-burger .braue{stroke:var(--kontur);stroke-width:2.2;fill:none;stroke-linecap:round}
+.f-burger .funke{fill:#F7D774;stroke:var(--kontur);stroke-width:.8}
 /* ╚═══ FIGUR · GETEILTER BLOCK (CSS) · ENDE ═══════════════════════╝ */
 
 </style>
@@ -846,11 +950,13 @@ button{cursor:pointer;border:none;background:none;padding:0}
       <h2 class="abteilungstitel">Figur</h2>
       <p class="abteilungssatz">Die Figur begrüßt den Gast beim Öffnen, meldet sich
         bei der Bestellung und wartet mit ihm, bis das Essen kommt. Der Untersetzer
-        passt zu jedem Haus; wer eine eigene Figur hat, wählt sie hier.</p>
+        Jede Figur bringt dieselben Haltungen mit — sie winkt, hält den
+        Bestellzettel und trägt den Teller. Wähle die, die zum Haus passt.</p>
       <div id="figurschau"></div>
       <div class="stell">
         <div class="kopfzeile"><span class="bez">Wer begleitet</span></div>
         <div class="wahl" id="fFigur"></div>
+        <p class="figurpasst" id="figurpasst"></p>
       </div>
       <div class="stell">
         <div class="kopfzeile">
@@ -975,7 +1081,15 @@ const AVATAR_ZUEGE = {
 
 /* Ein Blatt, das nach oben zeigt. Fünfmal gedreht ergibt die Krone —
    fünf einzeln gezeichnete Blätter wären fünfmal so viel Pflege. */
-const E_BLATT = '<path class="blatt" d="M0 2C-11-3-15-15-6-25 4-16 10-4 0 2Z"/>';
+/* KELCH, nicht „blatt". Der Name war schon vergeben: Im Studio heißt
+   das Einstellblatt .blatt, und dessen Regel setzt
+   transform:translateY(92dvh − --sicht). SVG-Elemente erben CSS-
+   transform genauso. Gemessen im Studio bei 900×1000: Die fünf Blätter
+   der Krone standen 824 Einheiten tiefer und 672 links, die Zeichnung
+   ragte von x −672,5 bis 793,7 statt 1…120,6 — die Erdbeere hatte im
+   Studio keine Krone. §1.1, und die teuerste Art davon: Der Name lag
+   in der ANDEREN Datei, in die der geteilte Block kopiert wird. */
+const E_BLATT = '<path class="kelch" d="M0 2C-11-3-15-15-6-25 4-16 10-4 0 2Z"/>';
 
 const E_KERNE = [[44,48],[60,42],[76,48],[36,62],[52,58],[70,60],[86,62],
                  [44,74],[60,72],[78,74],[52,88],[72,88]]
@@ -1046,7 +1160,7 @@ const E_POSEN = {
               '<ellipse class="kuchen" cx="0" cy="5"  rx="14" ry="4.6"/>' +
               '<ellipse class="kuchen" cx="0" cy="-2" rx="14" ry="4.6"/>' +
               '<ellipse class="kuchen" cx="0" cy="-9" rx="14" ry="4.6"/>' +
-              '<path class="guss" d="M-13-10c3-4 6-6 13-6s10 2 13 6c-2 4-6 6-9 4-1 4-5 5-7 2-2 3-6 2-7-2-3 2-5 0-4-4Z"/>' +
+              '<path class="glasur" d="M-13-10c3-4 6-6 13-6s10 2 13 6c-2 4-6 6-9 4-1 4-5 5-7 2-2 3-6 2-7-2-3 2-5 0-4-4Z"/>' +
             '</g>' +
             eHand(112, 76)
   },
@@ -1060,7 +1174,7 @@ const E_POSEN = {
             '<g class="stapel" transform="translate(102 52)">' +
               '<ellipse class="porzellan" cx="0" cy="3" rx="18" ry="5.2"/>' +
               '<ellipse class="kuchen" cx="0" cy="-3" rx="12" ry="4.4"/>' +
-              '<path class="guss" d="M-9-4c2-3 5-5 9-5s7 2 9 5c-2 2-4 3-6 2-1 2-3 3-5 1-2 1-4 0-5-2Z"/>' +
+              '<path class="glasur" d="M-9-4c2-3 5-5 9-5s7 2 9 5c-2 2-4 3-6 2-1 2-3 3-5 1-2 1-4 0-5-2Z"/>' +
               '<path class="dampf d1" d="M-6-12c0-3.4 2.4-3.8 2.4-7"/>' +
               '<path class="dampf d2" d="M0-13c0-3.4 2.4-3.8 2.4-7"/>' +
               '<path class="dampf d3" d="M6-12c0-3.4 2.4-3.8 2.4-7"/>' +
@@ -1068,9 +1182,32 @@ const E_POSEN = {
   }
 };
 
+/* ── Die Figuren ─────────────────────────────────────────────────
+   Jede Figur außer dem Untersetzer liegt im SELBEN Feld 124×128. Das
+   ist der ganze Kniff: Posen, Hände, Arme, Beine und der Zug-Satz
+   bleiben gemeinsam, nur der Körper unterscheidet sich. Eine Figur
+   kostet damit einen koerper() und sechs Zeilen Farbe, nicht einen
+   eigenen Zeichensatz.
+
+   FELDER. name — steht so in der Wahl im Studio. passt — für welche
+   Vorlagengruppen sie gedacht ist, reine Beschriftung. mono — wo der
+   Buchstabe des Hauses sitzt, null wenn die Figur keinen trägt.
+   verborgen — nicht zur Wahl, aber weiter erreichbar.
+
+   DER GESICHTSPLATZ ist gerechnet, nicht geschätzt. Der Zug-Satz ist
+   um (50,48) gebaut und reicht oben bis y=12 (der Atemzug bei
+   „ruhig“). Nach der Verschiebung muss ty − 36·s ≥ 1,5 bleiben, sonst
+   ragt der Atemzug oben aus dem Feld. Erdbeere: 56 − 36·1,55 = 0,2 —
+   die Untergrenze, an der schon einmal etwas abgeschnitten wurde. Die
+   neuen Figuren stehen bewusst darüber. */
 const AVATAR_FIGUREN = {
+  /* Seit Block 6 nicht mehr zur Wahl: Der Untersetzer ist Omotenos
+     Produkt, aber keine Figur für ein fremdes Haus. Er bleibt der
+     RÜCKFALL — figurSVG landet bei einem unbekannten Namen hier, und
+     ein Markenblatt ohne avatar.figur bekommt ihn weiterhin. */
   untersetzer: {
-    breite: 100, hoehe: 86, gesicht: "", rahmen: "", posen: null,
+    name: "Untersetzer", verborgen: true, passt: [],
+    breite: 100, hoehe: 86, gesicht: "", rahmen: "", posen: null, mono: null,
     koerper: () =>
       /* Schatten auf dem Tisch */
       '<ellipse class="schatten" cx="50" cy="80" rx="29" ry="4.5"/>' +
@@ -1083,7 +1220,8 @@ const AVATAR_FIGUREN = {
   },
 
   erdbeere: {
-    breite: 124, hoehe: 128, posen: E_POSEN,
+    name: "Erdbeere", passt: ["Café & Frühstück"],
+    breite: 124, hoehe: 128, posen: E_POSEN, mono: { x: 62, y: 99.5 },
     /* Der Zug-Satz ist um (50,48) herum gebaut. Hier landet er auf der
        Mitte der Frucht und wird größer — die Augen der Zeichnung sind
        groß, und eine kleine Miene auf einer großen Frucht wirkt leer. */
@@ -1120,8 +1258,115 @@ const AVATAR_FIGUREN = {
         /* und zuletzt, was die Figur in den Händen hält */
         p.vorn;
     }
+  },
+
+  /* ── Kaffeebohne ────────────────────────────────────────────────
+     Gesichtsplatz 52 − 36·1,4 = 1,6 — mehr Luft nach oben als bei der
+     Erdbeere. Der Mund endet dadurch bei y≈69,5, und darunter bleibt
+     Platz für die untere Naht, bevor die Schürze bei y=84 anfängt. */
+  kaffeebohne: {
+    name: "Kaffeebohne", passt: ["Café & Frühstück"],
+    breite: 124, hoehe: 128, posen: E_POSEN, mono: { x: 62, y: 99.5 },
+    gesicht: "translate(62 48) scale(1.25) translate(-50 -48)",
+    rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
+            '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
+    koerper: pose => {
+      const p = E_POSEN[pose] || E_POSEN.winken;
+      return '<ellipse class="schatten" cx="62" cy="123" rx="26" ry="4.2"/>' +
+        '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
+        '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
+        '<ellipse class="fuss" cx="74" cy="119" rx="7.5" ry="3.8"/>' +
+        p.hinten +
+        '<path class="leib" d="M62 26C84 26 100 45 100 69C100 92 83 109 62 109C41 109 24 92 24 69C24 45 40 26 62 26Z"/>' +
+        '<path class="glanz" d="M38 46C43 38 51 33 60 32C50 38 44 45 41 54Z"/>' +
+        /* Die Naht ist das Erkennungszeichen — der erste Entwurf hatte
+           sie zu kurz, und die Bohne sah aus wie eine Kastanie. Sie
+           läuft oben und unten am Gesicht vorbei; durchgezogen liefe
+           sie mitten durch die Augen. Deshalb sitzt das Gesicht hier
+           kleiner (1,25) und höher (48): Darunter bleiben sechzehn
+           Einheiten für das untere Stück. Der Durchlass zwischen den
+           Brauen liegt bei x 55,9…68,1 — gerechnet, nicht geraten. */
+        '<path class="naht" d="M62 27C56.5 31 56.5 36 61 40"/>' +
+        '<path class="naht" d="M61 68C65.5 73 65.5 79 61 85"/>' +
+        '<ellipse class="wange" cx="36" cy="74" rx="7" ry="4.6"/>' +
+        '<ellipse class="wange" cx="88" cy="74" rx="7" ry="4.6"/>' +
+        '<path class="schuerze" d="M38 84C48 88 76 88 86 84L88 101C88 106 79 109 62 109C45 109 36 106 36 101Z"/>' +
+        '<rect class="tasche" x="53" y="88" width="18" height="14" rx="4.5"/>' +
+        p.vorn;
+    }
+  },
+
+  /* ── Burger ─────────────────────────────────────────────────────
+     Das Gesicht sitzt auf dem DECKEL, nicht auf dem Belag — sonst
+     läge der Mund im Salat. Deshalb reicht der Deckel bis y=72 und
+     der Gesichtsplatz ist kleiner (1,3) und höher (49). Die Schürze
+     ist hier die Papiermanschette um den Boden. */
+  burger: {
+    name: "Burger", passt: ["Schnell & Unterwegs"],
+    breite: 124, hoehe: 128, posen: E_POSEN, mono: { x: 62, y: 102.5 },
+    gesicht: "translate(62 49) scale(1.3) translate(-50 -48)",
+    rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
+            '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
+    koerper: pose => {
+      const p = E_POSEN[pose] || E_POSEN.winken;
+      return '<ellipse class="schatten" cx="62" cy="123" rx="28" ry="4.2"/>' +
+        '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
+        '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
+        '<ellipse class="fuss" cx="74" cy="119" rx="7.5" ry="3.8"/>' +
+        p.hinten +
+        /* Boden, Patty, Salat, Deckel — von unten nach oben gezeichnet,
+           damit jede Lage die darunter überlappt. */
+        '<path class="leib" d="M22 92H102V99C102 105 88 108 62 108C36 108 22 105 22 99Z"/>' +
+        '<rect class="patty" x="21" y="78" width="82" height="16" rx="7.5"/>' +
+        '<path class="salat" d="M19 69H105V74C105 83 96 86 90 79C83 87 75 87 68 80C61 87 53 87 46 80C39 87 31 87 24 79C21 83 19 80 19 74Z"/>' +
+        '<path class="leib" d="M20 72C20 45 38 24 62 24C86 24 104 45 104 72Z"/>' +
+        '<path class="glanz" d="M32 56C36 42 46 33 57 30C45 36 38 46 35 60Z"/>' +
+        /* Sesam: drei Körner, keines auf einer Braue (x 43…81). Fünf
+           waren zu viel — die unteren zwei lagen auf den Wangen. */
+        '<ellipse class="sesam" cx="62" cy="29" rx="4" ry="2.4"/>' +
+        '<ellipse class="sesam" cx="35" cy="43" rx="4" ry="2.4" transform="rotate(-24 35 43)"/>' +
+        '<ellipse class="sesam" cx="89" cy="43" rx="4" ry="2.4" transform="rotate(24 89 43)"/>' +
+        '<ellipse class="wange" cx="35" cy="60" rx="7" ry="4.6"/>' +
+        '<ellipse class="wange" cx="89" cy="60" rx="7" ry="4.6"/>' +
+        '<path class="schuerze" d="M30 88C44 93 80 93 94 88L95 101C95 106 83 109 62 109C41 109 29 106 29 101Z"/>' +
+        '<rect class="tasche" x="53" y="92" width="18" height="13" rx="4.5"/>' +
+        p.vorn;
+    }
   }
 };
+
+/* HELL ODER DUNKEL ENTSCHEIDET DER GRUND, NICHT DIE UHR.
+
+   Vorfall. Die hellen Gliedmaßen hingen an [data-phase="abend"]. Das
+   traf Choco richtig und Blend nicht: Blend ist ein Cocktail-Lab und
+   am TAG fast schwarz (grund #0B0C0F, abend gar nicht eingeschaltet).
+   Die Regel feuerte dort nie. Gemessen: Gliedmaßen 1,31:1, Bohne
+   2,40:1 — die Beine waren weg, die Bohne ein Fleck. Ein Haus, das
+   tagsüber dunkel ist, gibt es; eine Uhr, die das weiß, nicht.
+
+   Deshalb liest diese Funktion die WIRKLICH gemalte Fläche und setzt
+   data-grund. 0,179 ist kein geschätzter Grenzwert, sondern der Punkt
+   aus der sRGB-Rechnung, an dem Schwarz und Weiß gleich gut auf einem
+   Grund stehen. Ob die Entscheidung stimmt, prüft am Ende nicht dieser
+   Wert, sondern der gemessene Kontrast am fertigen Bild. */
+function grundMarkieren(el){
+  /* Ohne Zeichenwerk gibt es keine gemalte Fläche. pruef-studio.js und
+     pruef-kontrast.js fahren das Studio in einem DOM-Ersatz ohne
+     getComputedStyle — und der Ersatz hat recht: Wo nichts gemalt
+     wird, ist nichts zu messen. Ein Aufruf darf daran nicht sterben,
+     sonst nimmt eine Verzierung zwei Prüfungen mit. */
+  if(!el || typeof getComputedStyle !== "function") return;
+  let k = el, p = [];
+  while(k){
+    const c = (String(getComputedStyle(k).backgroundColor).match(/[\d.]+/g) || []).map(Number);
+    if(c.length >= 3 && (c.length < 4 || c[3] > 0)){ p = c; break; }
+    k = k.parentElement;
+  }
+  if(p.length < 3) return;
+  const kanal = c => { c /= 255; return c <= 0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055, 2.4); };
+  const leucht = .2126*kanal(p[0]) + .7152*kanal(p[1]) + .0722*kanal(p[2]);
+  el.setAttribute("data-grund", leucht < 0.179 ? "dunkel" : "hell");
+}
 
 /* Der Buchstabe auf der Schürze kommt aus dem Namen des Hauses —
    nicht fest aus einem „C". Ein Artikel davor zählt nicht. */
@@ -1143,9 +1388,9 @@ function figurSVG(groesse, figur, art, name, pose){
   const gesicht = (f.rahmen || "") + z.augen + z.mund + z.extra;
   /* Unter etwa 56px ist der Buchstabe nur noch ein Fleck. Lieber
      weglassen als etwas zeigen, das niemand lesen kann. */
-  const zeichen = (fk === "erdbeere" && g >= 56)
-    ? '<text class="mono" x="62" y="99.5" text-anchor="middle">' +
-      figurBuchstabe(name) + '</text>'
+  const zeichen = (f.mono && g >= 56)
+    ? '<text class="mono" x="' + f.mono.x + '" y="' + f.mono.y +
+      '" text-anchor="middle">' + figurBuchstabe(name) + '</text>'
     : "";
   return '<svg class="figur f-' + fk + '" width="' + g + '" height="' +
     Math.round(g * f.hoehe / f.breite) + '" viewBox="0 0 ' + f.breite + ' ' + f.hoehe +
@@ -1624,9 +1869,12 @@ function vorlageLaden(kennung, frisch){
     form:    { rundung:v.rundung, rundungKlein:v.rundungK, rand:v.rand, schatten:v.schatten },
     schrift: { kopf:v.kopf, text:v.text, zahl:v.zahl || "mono", groesse:v.groesse/100 },
     logo:    { art:"text", text:v.name, bild:"", hoehe:30 },
-    /* Vorgabe ist der Untersetzer: Er ist Omotenos Produkt und passt
-       in jedes Haus. Eine eigene Figur wählt der Kunde bewusst. */
-    avatar:  { figur:v.figur || "untersetzer", art:v.zug || "freundlich", name:"" },
+    /* Bis Block 6 war die Vorgabe der Untersetzer. Er ist Omotenos
+       Produkt, aber keine Figur für ein fremdes Haus — und seit er
+       nicht mehr zur Wahl steht, wäre er eine Vorgabe, die niemand
+       wieder einstellen könnte. Bringt die Vorlage keine eigene mit,
+       nimmt das Studio die erste wählbare. */
+    avatar:  { figur:v.figur || waehlbareFiguren()[0], art:v.zug || "freundlich", name:"" },
     reihe:   v.reihe.slice(),
     bereiche: bereiche,
     kachel:  {}
@@ -2004,15 +2252,34 @@ function reglerSchreiben(){
 
 /* Die Figur in der Schau: immer die Grußhaltung, immer in der
    Tageszeit, die gerade in der Vorschau steht. */
-var FIGURNAMEN = { untersetzer:"Untersetzer", erdbeere:"Erdbeere" };
-var ZUGNAMEN   = { freundlich:"Freundlich", ruhig:"Ruhig", witzig:"Witzig" };
+/* Die Namen der Figuren stehen im geteilten Block bei der Figur
+   selbst — eine zweite Tabelle hier hätte beim nächsten Zuwachs
+   auseinanderlaufen können, ohne dass es jemand merkt. */
+var ZUGNAMEN = { freundlich:"Freundlich", ruhig:"Ruhig", witzig:"Witzig" };
+
+function waehlbareFiguren(aktiv){
+  var liste = Object.keys(AVATAR_FIGUREN).filter(function(k){
+    return !AVATAR_FIGUREN[k].verborgen; });
+  if(aktiv === undefined) return liste;
+  /* Steht im Markenblatt eine verborgene Figur — der Untersetzer, den
+     ältere Blätter tragen —, muss sie trotzdem in der Reihe stehen.
+     Sonst zeigt die Wahl nichts Aktives an und der Kunde sieht eine
+     Figur, die es angeblich nicht gibt. */
+  if(AVATAR_FIGUREN[aktiv] && liste.indexOf(aktiv) < 0) liste.unshift(aktiv);
+  return liste;
+}
 
 function figurBauen(){
-  var a = M.avatar || (M.avatar = { figur:"untersetzer", art:"freundlich", name:"" });
-  wahlBauen($("fFigur"), Object.keys(AVATAR_FIGUREN).map(function(k){
-    return [k, FIGURNAMEN[k] || k]; }), a.figur, "figur");
+  var a = M.avatar ||
+    (M.avatar = { figur:waehlbareFiguren()[0], art:"freundlich", name:"" });
+  wahlBauen($("fFigur"), waehlbareFiguren(a.figur).map(function(k){
+    return [k, AVATAR_FIGUREN[k].name || k]; }), a.figur, "figur");
   wahlBauen($("fZug"), Object.keys(AVATAR_ZUEGE).map(function(k){
     return [k, ZUGNAMEN[k] || k]; }), a.art, "zug");
+  var hin = $("figurpasst"), f = AVATAR_FIGUREN[a.figur];
+  if(hin) hin.textContent = (f && f.passt && f.passt.length)
+    ? "Passt zu: " + f.passt.join(" · ")
+    : "";
   $("fFigurName").value = a.name || "";
   figurZeichnen();
 }
@@ -2022,6 +2289,8 @@ function figurZeichnen(){
   if(!schau) return;
   markeAnwenden(schau, M, abendAn);
   schau.setAttribute("data-phase", (abendAn && M.abend.an) ? "abend" : "tag");
+  /* Erst zeichnen lassen, dann messen — siehe grundMarkieren(). */
+  grundMarkieren(schau);
   /* Zwei Größen nebeneinander: So sieht der Kunde sofort, dass die
      Figur klein als Begleiter und groß beim Empfang auftritt. */
   schau.innerHTML = figurSVG(120, a.figur, a.art, M.betrieb.name, "winken") +
