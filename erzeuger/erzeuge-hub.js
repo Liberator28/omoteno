@@ -212,6 +212,17 @@ function pruefeMarkenblatt(mb){
         else if([...k.emoji].length > 4)
           F(wo + '.emoji ist zu lang: "' + k.emoji + '" — höchstens 4 Zeichen');
       }
+      /* banner ist eine ADRESSE, und Adressen sind der Weg, auf dem
+         fremder Code in eine Seite kommt. Deshalb nur https, nichts
+         anderes: kein javascript:, kein data:, kein Pfad ins eigene
+         Verzeichnis, den es beim Kunden gar nicht gibt. Der Hub prüft
+         dasselbe noch einmal beim Zeichnen — zwei Schranken, damit
+         keine davon allein trägt. */
+      if(k.banner !== undefined && k.banner !== ""){
+        if(typeof k.banner !== "string") F(wo + ".banner muss Text sein");
+        else if(!/^https:\/\//i.test(k.banner))
+          F(wo + '.banner muss mit https:// beginnen: "' + k.banner + '"');
+      }
     });
     const doppelt = {};
     (Array.isArray(mb.kacheln) ? mb.kacheln : []).forEach(k => {

@@ -677,6 +677,61 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
 .gitter.zwei .txt > span{display:none}
 .gitter.zwei .pfeil{display:none}
 
+/* ═══ Banner auf der Kachel ═════════════════════════════════════
+   Der Wirt lädt im Board ein Bild hoch. Die entscheidende Regel
+   steht hier und nicht im Board: DIE SCHRIFT LIEGT NIE AUF DEM
+   FOTO.
+
+   Warum so streng — CLAUDE.md §5.1: Überall, wo ein Nutzer den
+   Grund bestimmt, wird die Schriftfarbe gerechnet, nie gesetzt.
+   Bei einem FOTO lässt sich nichts rechnen: Es kann in derselben
+   Kachel oben weiß und unten schwarz sein, und morgen lädt der
+   Wirt ein anderes hoch. Jede Lösung mit Schrift über Bild wäre
+   eine Wette auf das nächste Foto.
+
+   Also liegt das Bild NEBEN der Schrift und läuft zur Textseite
+   hin in die Fläche aus. Der Kontrast bleibt damit exakt der von
+   heute — messbar, und unabhängig davon, was der Wirt hochlädt. */
+.kbanner{
+  position:absolute;inset:0 0 0 auto;width:46%;
+  overflow:hidden;pointer-events:none;
+  border-radius:0 var(--rundung) var(--rundung) 0;
+}
+.kbanner img{width:100%;height:100%;object-fit:cover;display:block}
+/* Der Verlauf gehört ÜBER das Bild, nicht darunter — sonst deckt
+   das Bild ihn zu. Er läuft von der Flächenfarbe ins Durchsichtige,
+   damit die Kante nicht als Strich sichtbar wird. */
+.kbanner::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(to right, var(--flaeche) 0%,
+             var(--flaeche) 12%, transparent 62%);
+}
+a.kachel.hatbanner{position:relative;overflow:hidden}
+/* Text und Symbol müssen über dem Bild liegen, sonst verschwinden
+   sie darunter, sobald das Bild breiter gerät als gedacht. */
+a.kachel.hatbanner > .ico,
+a.kachel.hatbanner > .txt,
+a.kachel.hatbanner > .pfeil{position:relative;z-index:1}
+/* Der Pfeil stünde sonst mitten im Foto. */
+a.kachel.hatbanner > .pfeil{display:none}
+.txt{max-width:100%}
+a.kachel.hatbanner > .txt{max-width:56%}
+
+/* Die Säule ist hoch und schmal — dort liegt das Bild oben quer,
+   und die Schrift steht darunter auf der Fläche. Dasselbe Prinzip,
+   andere Richtung. */
+a.kachel.saeule.hatbanner{padding-top:0}
+.kachel.saeule .kbanner{
+  position:static;width:calc(100% + 24px);height:58px;
+  margin:0 -12px 0;flex:none;
+  border-radius:var(--rundung) var(--rundung) 0 0;
+}
+.kachel.saeule .kbanner::after{
+  background:linear-gradient(to bottom, transparent 40%, var(--flaeche) 100%);
+}
+a.kachel.saeule.hatbanner > .txt{max-width:100%}
+.gitter.zwei .kbanner{width:38%}
+
 /* ═══ Unterseiten ═══════════════════════════════════════════════ */
 .seite h2{font-size:26px;margin:0 0 7px;font-weight:600;letter-spacing:-.4px;line-height:1.15}
 .seite .unter{color:var(--tinte-leise);font-size:14px;margin:0 0 24px;line-height:1.5}
@@ -1696,15 +1751,9 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 
    Kein zusätzliches opacity: Das würde den gemessenen Wert wieder
    zunichte machen. */
-.fuerbetrieb{margin-top:8px;font-size:10.5px;letter-spacing:1.2px}
-/* inline-block plus Polster: Die Schrift bleibt klein und
-   zurückhaltend, die Trefferfläche wird trotzdem 32px hoch. Ohne das
-   waren es 14px — pruef-hub-hand.js hat genau darauf hingewiesen. Wer
-   den Link braucht, tippt oft mit dem Daumen im Gehen. */
-.fuerbetrieb a{display:inline-block;padding:9px 8px;
-  color:var(--tinte-leise);text-decoration:none;
-  border-bottom:1px solid currentColor}
-.fuerbetrieb a:hover,.fuerbetrieb a:focus-visible{color:var(--tinte)}
+/* Die Regeln für „Für den Betrieb" standen hier. Der Link ist raus,
+   die Regeln mit ihm — totes CSS ist eine Einladung, es später
+   wieder anzuschließen. */
 
 /* ═══ Vorführmodus · vor dem Livegang löschen ═══════════════════ */
 #demo{margin-top:26px;padding:12px;border:1px dashed var(--linie-stark);
@@ -2572,7 +2621,10 @@ function markeAnwenden(abend){
      Rücksprung nach der Google-Anmeldung nur auf Adressen zu, die in
      der Allowlist stehen. Ein relativer Link wäre ein Umweg über eine
      Umleitung, die jemand später wegnehmen könnte. -->
-<div class="fuerbetrieb"><a id="fuerbetrieb" href="https://omoteno.de/admin" rel="nofollow">Für den Betrieb</a></div>
+<!-- „Für den Betrieb" stand hier bis zum 08.09. und ist bewusst
+     ENTFERNT, nicht versteckt: Ein Gast hat im Board nichts zu
+     suchen, und ein Link, den niemand braucht, ist eine Frage, die
+     sich niemand stellen sollte. Der Wirt kommt über omoteno.de. -->
 <div class="ver">v7.1</div></footer>
 
 <!--{{VORFUEHRUNG}}
@@ -2910,9 +2962,10 @@ const TRINKGELD = {
 };
 
 /* ╔═══ ICONS · GETEILTER BLOCK · ANFANG ═══════════════════════════╗
-   ║ Wortgleich in vorlagen/hub.vorlage.html und                    ║
-   ║ seiten/marken-studio.html. pruef-kacheln.js vergleicht beide   ║
-   ║ Zeichen für Zeichen. Wer hier etwas ändert, ändert es dort auch.║
+   ║ Wortgleich in vorlagen/hub.vorlage.html,                       ║
+   ║ seiten/marken-studio.html und seiten/admin.html.               ║
+   ║ pruef-kacheln.js vergleicht alle drei Zeichen für Zeichen.     ║
+   ║ Wer hier etwas ändert, ändert es dort auch.                    ║
    ║                                                                ║
    ║ Anlass: Das Studio zeigte in der Vorschau EMOJI, der Hub        ║
    ║ zeichnete Striche. Der Kunde sah damit etwas anderes, als er   ║
@@ -3081,7 +3134,7 @@ const KACHELFOLGE = ["speisekarte","getraenke","cocktails",
    Kachel bauen. Was der Wirt schicken darf, steht in ERLAUBT — alles
    andere aus dem Markenblatt wird ignoriert, nicht übernommen. */
 const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
-                        "farbe","von","bis","neu","cyan"];
+                        "farbe","von","bis","neu","cyan","banner"];
 
 function kachelBauen(schluessel, wunsch){
   const art = KACHELARTEN[schluessel];
@@ -3091,6 +3144,10 @@ function kachelBauen(schluessel, wunsch){
     ziel: art.ziel, wenn: art.wenn, nurDe: art.nurDe,
     titel: art.titel, unter: art.unter || "", icon: art.icon, emoji: "",
     gruppe: art.gruppe, raster: art.raster || "", stil: art.stil || "",
+    /* Keine Kachel bringt von Haus aus ein Banner mit. Es entsteht
+       erst, wenn der Wirt eines hochlädt — sonst sähe jeder neue
+       Kunde fremde Bilder. */
+    banner: "",
     farbe: art.farbe || "", neu: !!art.neu, cyan: !!art.cyan,
     von: art.von === undefined ? 0 : art.von,
     bis: art.bis === undefined ? 24 : art.bis
@@ -6457,10 +6514,22 @@ function start(){
     /* EINMAL auflösen, nicht dreimal: Ein Ziel darf eine Funktion
        sein, und ein Aufruf pro Zweig würde sie dreifach auswerten. */
     const ziel = kachelZiel(k);
-    return '<a class="kachel' + (k.stil ? " " + k.stil : "") + (k.cyan ? " cyan" : "") + '"' +
+    /* Nur eine Adresse aus dem Netz, und nur https. Ein Banner ist
+       ein Feld, das der WIRT füllt — dort darf kein javascript:
+       und kein data: hinein (dieselbe Sorgfalt wie bei hs()). */
+    const banner = /^https:\/\//i.test(String(k.banner || "")) ? k.banner : "";
+    return '<a class="kachel' + (k.stil ? " " + k.stil : "") +
+      (k.cyan ? " cyan" : "") + (banner ? " hatbanner" : "") + '"' +
       (k.farbe ? ' data-farbe="' + k.farbe + '"' : "") +
       ' href="' + ziel + '"' +
       (ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
+        /* Das Bild steht VOR Symbol und Text im Auszeichnungstext:
+           In der Säule liegt es dadurch oben, ohne dass die Reihen-
+           folge per CSS gedreht werden muss. alt bleibt leer — es
+           ist Schmuck, und ein Vorleseprogramm würde den Kacheltitel
+           sonst zweimal ansagen. */
+        (banner ? '<span class="kbanner"><img src="' + hs(banner) +
+                  '" alt="" loading="lazy" decoding="async"></span>' : "") +
         /* Ein Emoji überschreibt den Strich — bewusst zweite Wahl,
            weil es auf jedem Gerät anders aussieht. Der Wirt darf, er
            muss nicht. */
@@ -7928,12 +7997,10 @@ function zeichne(){
   serviceRuf = "";
   nachtSchalten();
 
-  /* Der Fuß steht fest im Gerüst, wird also nicht mitgezeichnet. Seine
-     eine übersetzbare Zeile deshalb hier — zeichne() läuft beim
-     Aufbau UND nach jedem Sprachwechsel. Ohne das bliebe „Für den
-     Betrieb" auf einer arabischen Karte deutsch stehen. */
-  { const fb = document.getElementById("fuerbetrieb");
-    if(fb) fb.textContent = t("Für den Betrieb"); }
+  /* Hier stand bis zum 08.09. die Übersetzung der Fußzeile „Für den
+     Betrieb". Der Link ist entfernt (siehe Fuß im Gerüst), und mit
+     ihm die Suche nach seinem Element — ein getElementById auf etwas,
+     das es nicht gibt, ist genau das, was pruef-datei.py meldet. */
   const roh = location.hash.replace(/^#\//,"");
 
   /* Ein Ziel darf jetzt „seite?g=Gerichtname“ heißen. Vorher fiel so
@@ -9587,7 +9654,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -9616,6 +9683,29 @@ async function karteHolen(erstesMal){
        der Slogan wirklich geändert hat — sonst blitzt er bei jedem
        Abgleich einmal auf, ohne dass etwas anders wäre. */
     if(BETRIEB.claim !== vorher) zeichne();
+
+    /* Die Startkacheln aus dem Board. Sie kommen aus der DATENBANK,
+       nicht aus dem Markenblatt: Der Wirt stellt sie im Board ein
+       und will sie beim nächsten Öffnen sehen, nicht beim nächsten
+       Erzeugen des Hubs.
+
+       Ganz oder gar nicht, wie beim Markenblatt: Eine halb
+       übernommene Liste wäre eine Mischung aus zwei Ständen. Und
+       durch dieselbe Positivliste wie dort — was der Wirt nicht
+       schicken darf, wird ignoriert, nicht übernommen. */
+    if(Array.isArray(b[0].hub_kacheln) && b[0].hub_kacheln.length){
+      const gebaut = b[0].hub_kacheln
+        .filter(e => e && e.schluessel && e.an !== false)
+        .map(e => kachelBauen(e.schluessel, e))
+        .filter(Boolean);
+      if(gebaut.length){
+        KACHELN.length = 0;
+        gebaut.forEach(k => KACHELN.push(k));
+        /* Nur zeichnen, wenn der Gast die Startseite auch ansieht —
+           sonst reißt es ihm die Karte unter dem Finger weg. */
+        if(seiteJetzt === "start") zeichne();
+      }
+    }
 
     /* Sortierung: karte, kat_sort, reihenfolge, id.
        Vorher stand hier nur "karte.asc,reihenfolge.asc". Weil

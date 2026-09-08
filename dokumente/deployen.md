@@ -326,6 +326,29 @@ Prüfung sieht genau in den Titel jedes Hubs.
 
 ---
 
+## 5e · Den Kachel-Baukasten einschalten
+
+Der Bereich **Startseite** im Admin-Board schreibt nach
+`betriebe.hub_kacheln`. Die Spalte gibt es noch nicht — einmal im
+SQL-Editor anwenden:
+
+```
+datenbank/migration-baukasten-und-storno.sql
+```
+
+Sie legt die Spalte an, hängt eine Größenschranke daran und gibt das
+Leserecht **spaltenweise** an `anon` — genau wie bei den übrigen
+Kopfdaten, damit `select *` auf `betriebe` weiterhin scheitert und
+`plan`, `preis_monat` und `vertrag_ab` nicht mit herauskommen.
+
+**Woran man erkennt, dass sie fehlt:** Das Board sagt es beim
+Übernehmen im Klartext („Die Spalte hub_kacheln fehlt noch …").
+
+Die Bilder brauchen **nichts**: Sie liegen im vorhandenen, öffentlichen
+Eimer `gerichte` unter `<betrieb>/kacheln/`.
+
+---
+
 ## 5d · Die Restzeit für den Gast einschalten
 
 Küche und Admin-Board zeigen die zugesagte Zeit **sofort** nach der

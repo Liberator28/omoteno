@@ -110,9 +110,15 @@ function eigeneTexte(blatt){
      geteilten Block zeichnen beide dasselbe; hier wird das gehalten. */
   console.log("\n══ Der geteilte ICONS-Block ══");
   const marke = /\/\* ╔═══ ICONS · GETEILTER BLOCK · ANFANG[\s\S]*?\/\* ╚═══ ICONS · GETEILTER BLOCK · ENDE ═+╝ \*\//;
+  /* Seit dem Baukasten liegt der Block in DREI Dateien: Der Wirt
+     wählt seine Symbole im Board, der Gast bekommt sie im Hub, das
+     Studio zeigt sie in der Vorschau. Zeigte eine Datei ein anderes
+     Bild als die andere, sähe der Wirt etwas, das der Gast nie
+     bekommt — genau der Anlassfall, für den dieser Block entstand. */
   const quellen = [
     { name:"vorlagen/hub.vorlage.html", pfad: path.join(OBEN, "vorlagen", "hub.vorlage.html") },
-    { name:"seiten/marken-studio.html", pfad: path.join(OBEN, "seiten", "marken-studio.html") }
+    { name:"seiten/marken-studio.html", pfad: path.join(OBEN, "seiten", "marken-studio.html") },
+    { name:"seiten/admin.html",         pfad: path.join(OBEN, "seiten", "admin.html") }
   ].map(q => {
     const t = fs.readFileSync(q.pfad, "utf8").match(marke);
     return { name:q.name, text: t ? t[0] : null };
@@ -121,8 +127,10 @@ function eigeneTexte(blatt){
   if(ohne.length){
     ohne.forEach(q => pruef(false, "Block fehlt in " + q.name));
   } else {
-    pruef(quellen[0].text === quellen[1].text,
-      "beide Fassungen sind wortgleich", quellen[0].text.length + " Zeichen");
+    quellen.slice(1).forEach(q => pruef(quellen[0].text === q.text,
+      "wortgleich mit " + q.name,
+      quellen[0].text === q.text ? quellen[0].text.length + " Zeichen"
+        : "weicht ab (" + quellen[0].text.length + " gegen " + q.text.length + ")"));
   }
   const symbolNamen = quellen[0].text
     ? [...quellen[0].text.matchAll(/^  ([a-z]+):/gm)].map(m => m[1]) : [];
