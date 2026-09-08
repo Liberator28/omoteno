@@ -67,6 +67,14 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
+/* FARBSCHEMA — kein Schmuck, sondern die Ansage an den Browser.
+   Chrome auf Android und Samsung Internet färben eine Seite im
+   Dunkelmodus SELBST um, wenn sie keine color-scheme-Angabe finden.
+   Sie kippen dabei Helligkeiten: dunkle Konturen werden hell.
+   Gemessen: Das Board folgt als EINZIGE Seite dem System — hell
+   rgb(233,227,212), dunkel rgb(10,23,20). Deshalb hier beides. */
+:root{color-scheme:light dark}
+
 :root{
   /* ── Die Ecke ─────────────────────────────────────────────────
      Omotenos eigene Knoepfe, Chips und Marken sind ECKIG. Der Wert
@@ -356,6 +364,10 @@ nav button:active{color:var(--kreide)}
 }
 
 main{padding:18px 16px 90px;max-width:820px;margin:0 auto}
+/* Fern-Ansicht. Dieselbe Mechanik wie in der Küche: eine Zahl auf
+   <html>, alles andere rechnet daran. Vorgabe 1 — ohne Zutun sieht
+   das Board aus wie vorher. */
+html{font-size:calc(16px * var(--skala,1))}
 
 /* ═══ Top-Runner ════════════════════════════════════════════════
    Steht über der Karte und nimmt nur so viel Platz, wie es gerade
@@ -934,6 +946,27 @@ textarea{resize:vertical;min-height:66px}
              transform var(--t-druck) var(--ease-out);
 }
 .wechseln:active{transform:scale(.94)}
+
+/* Vollbild. Eigene Maße statt geliehener (§3.3): Größe, Rahmen,
+   Farbe und Kurve stehen hier vollständig. --skala zieht ihn mit,
+   damit er in der Fern-Ansicht nicht als einziges klein bleibt. */
+.knopf-rund{
+  flex:none;margin-left:auto;
+  width:calc(36px * var(--skala,1));height:calc(36px * var(--skala,1));
+  border:1px solid var(--linie);background:transparent;color:var(--gedaempft);
+  border-radius:var(--ecke);display:grid;place-items:center;cursor:pointer;
+  transition:color var(--t-klein) var(--ease-out),
+             border-color var(--t-klein) var(--ease-out),
+             transform var(--t-druck) var(--ease-out);
+}
+.knopf-rund:active{transform:scale(.94)}
+.knopf-rund.an{color:var(--messing);border-color:var(--messing)}
+@media (hover:hover) and (pointer:fine){
+  .knopf-rund:hover{color:var(--kreide);border-color:var(--kreide)}
+}
+/* Ein Telefon kennt kein Vollbild, das dem Betrieb hilft — dort
+   nimmt der Knopf nur Platz weg. Genauso in der Küche (§3.3). */
+@media (max-width:760px){ .knopf-rund{display:none} }
 @media (hover:hover) and (pointer:fine){
   .wechseln:hover{color:var(--kreide);border-color:var(--kreide)}
 }
@@ -1402,6 +1435,18 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   .karten{grid-template-columns:repeat(auto-fill,minmax(330px,1fr))}
   .filterblock,.pausezeile{max-width:900px}
 }
+/* Am Küchenschirm und am großen Tresenschirm. Gemessen: Bei 2560 px
+   blieb main bei 1280 px stehen — die Hälfte des Schirms war leer,
+   und genau der Bereich, für den das Board im Vollbild hängt, hatte
+   drei Kartenspalten statt sieben.
+
+   Der Deckel für FORMULARE bleibt (siehe oben): Fließtext gewinnt
+   nichts dadurch, breiter zu werden. Nur die Bestell-Tafel wächst —
+   die Ausnahme :not(#t-bestellungen) stand ohnehin schon da. */
+@media (min-width:1600px){
+  main{max-width:none;padding-left:28px;padding-right:28px}
+  main > .tafel:not(#t-bestellungen){max-width:1280px;margin:0 auto}
+}
 </style>
 </head>
 <body>
@@ -1413,6 +1458,17 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <button class="wechseln" id="wechseln" type="button" hidden
             aria-label="Betrieb wechseln">wechseln</button>
     <span class="status"><span class="punkt" id="punkt"></span><span id="statusText">verbinde</span></span>
+    <!-- Dieselbe Zeichnung wie in der Küche: vier Ecken, die nach
+         außen zeigen. Auf dem Telefon ausgeblendet — ein Telefon
+         kennt kein Vollbild, das jemandem hilft. -->
+    <button class="knopf-rund" id="vollbildKnopf" type="button"
+            aria-label="Vollbild" aria-pressed="false">
+      <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"
+           fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 9V5a1 1 0 0 1 1-1h4M20 9V5a1 1 0 0 0-1-1h-4M4 15v4a1 1 0 0 0 1 1h4M20 15v4a1 1 0 0 1-1 1h-4"/>
+      </svg>
+    </button>
   </div>
   <div class="offline" id="offline" hidden>Keine Internetverbindung — Änderungen werden nicht gespeichert</div>
   <div class="tonleiste" id="tonHinweis">
@@ -1740,6 +1796,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
           <button class="klang" data-licht="dunkel" role="radio" aria-checked="false">
             <b>Dunkel</b><i>Für den Abend</i></button>
         </div>
+      </div>
+      <div class="ezeile senkrecht" id="skalaZeile">
+        <span><b>Aus der Ferne lesen</b><i id="skalaWert">100 %</i></span>
+        <input type="range" min="100" max="160" step="5" id="skalaRegler" class="regler">
       </div>
       <label class="ezeile">
         <span><b>Wach halten</b><i>Board schläft im Betrieb nicht ein</i></span>
@@ -2218,7 +2278,12 @@ const EINST_STANDARD = {
   /* 'auto' folgt der Einstellung des Geräts, 'hell' und 'dunkel'
      gelten fest. Vorgabe ist auto: Ein Board am Fenster steht
      tagsüber hell und abends dunkel, ohne dass jemand daran denkt. */
-  licht:        'auto'
+  licht:        'auto',
+  /* Vollbild und Fern-Ansicht. Ein Board am Tresen hängt im Vollbild
+     und wird aus zwei Metern gelesen — beides gab es bisher nur in
+     der Küche. */
+  vollbild:     false,
+  skala:        1      // 1 bis 1.6
 };
 let EINST = Object.assign({}, EINST_STANDARD);
 
@@ -2231,7 +2296,84 @@ function einstLaden(){
 function einstSichern(){
   try{ localStorage.setItem("omoteno-einstellungen", JSON.stringify(EINST)); }catch(e){}
 }
+/* ╔═══ VOLLBILD · GETEILTER BLOCK · ANFANG ════════════════════════╗
+   ║ Wortgleich in seiten/admin.html und seiten/kueche.html.        ║
+   ║ pruef-vollbild.js vergleicht beide Zeichen für Zeichen. Wer    ║
+   ║ hier etwas ändert, ändert es dort auch.                       ║
+   ║                                                               ║
+   ║ Der Block ist rein: Er kennt nur die Kennung seines Knopfes    ║
+   ║ und eine Funktion zum Merken. Nichts aus der Umgebung.         ║
+   ╚═══════════════════════════════════════════════════════════════╝ */
+function vollbildAn(){ return !!document.fullscreenElement; }
+
+/* documentElement, nicht ein Teilbaum: Sonst verschwindet alles, was
+   außerhalb liegt — Meldungen, Sperrschicht, Überlagerungen. Sie
+   wären im Vollbild schlicht nicht gezeichnet. */
+function vollbildRein(){
+  var el = document.documentElement;
+  if(!el.requestFullscreen) return Promise.reject();
+  return el.requestFullscreen().catch(function(){});
+}
+function vollbildRaus(){
+  if(document.exitFullscreen) return document.exitFullscreen().catch(function(){});
+}
+
+/* Der Knopf muss WISSEN, ob er an ist. Ohne das ist er ein Schalter
+   ohne Stellung: Chrome verlässt den Vollbildmodus bei Escape, und
+   die Seite bekommt den Tastendruck trotzdem — ein Druck schließt
+   also den Dialog UND wirft heraus. Verhindern kann das keine Seite.
+   Was sie kann: sofort zeigen, dass sie draußen ist, damit der
+   Rückweg einen Griff entfernt bleibt. */
+function vollbildKnopfStellen(kennung){
+  var k = document.getElementById(kennung);
+  if(!k) return;
+  var an = vollbildAn();
+  k.setAttribute("aria-pressed", String(an));
+  k.setAttribute("aria-label", an ? "Vollbild verlassen" : "Vollbild");
+  k.classList.toggle("an", an);
+}
+
+/* Ein Schirm, der morgens eingeschaltet wird, kann NICHT von selbst
+   ins Vollbild — der Browser verlangt dafür eine Geste, und das lässt
+   sich nicht umgehen. Was geht: sich die Absicht merken und die
+   ERSTE beste Geste dafür nehmen. Ein Handgriff statt fünf.
+
+   once:true an jedem Horcher, und alle drei werden beim ersten
+   Zugriff abgeräumt — sonst springt die Seite später bei jedem Klick
+   erneut hinein, wenn der Nutzer bewusst herausgegangen ist. */
+function vollbildAufWunsch(kennung, willVollbild, merken){
+  var knopf = document.getElementById(kennung);
+  if(knopf) knopf.addEventListener("click", function(){
+    var neu = !vollbildAn();
+    if(neu) vollbildRein(); else vollbildRaus();
+    if(merken) merken(neu);
+  });
+
+  document.addEventListener("fullscreenchange", function(){
+    vollbildKnopfStellen(kennung);
+  });
+  vollbildKnopfStellen(kennung);
+
+  if(!willVollbild || !document.documentElement.requestFullscreen) return;
+  var arten = ["pointerdown", "keydown", "touchend"];
+  var einmal = function(){
+    arten.forEach(function(a){ document.removeEventListener(a, einmal, true); });
+    if(!vollbildAn()) vollbildRein();
+  };
+  arten.forEach(function(a){
+    document.addEventListener(a, einmal, true);
+  });
+}
+/* ╚═══ VOLLBILD · GETEILTER BLOCK · ENDE ══════════════════════════╝ */
+
 einstLaden();
+
+/* NACH einstLaden(), sonst sieht der Block die Vorgabe statt des
+   gemerkten Wunsches. */
+vollbildAufWunsch("vollbildKnopf", EINST.vollbild, function(an){
+  EINST.vollbild = an; einstSichern();
+});
+
 /* Sofort anwenden, nicht erst beim Öffnen der Einstellungen — sonst
    blitzt das Board einmal dunkel auf und schlägt dann um. */
 document.addEventListener("DOMContentLoaded", lichtAnwenden);
@@ -3137,6 +3279,11 @@ function einstZeichnen(){
   if(r){ r.value = EINST.lautstaerke; $("#lautWert").textContent = EINST.lautstaerke + " %"; }
   $$("#klangWahl .klang").forEach(x =>
     x.setAttribute("aria-checked", x.dataset.klang === EINST.klang));
+  const sr = $("#skalaRegler");
+  if(sr){
+    sr.value = Math.round(EINST.skala * 100);
+    $("#skalaWert").textContent = Math.round(EINST.skala * 100) + " %";
+  }
   const mr = $("#mahnRegler");
   if(mr){
     mr.value = EINST.mahnungAb;
@@ -3224,6 +3371,23 @@ $("#lautRegler").addEventListener("input", e => {
   $("#lautWert").textContent = EINST.lautstaerke + " %";
 });
 $("#lautRegler").addEventListener("change", () => { einstSichern(); klingel(); });
+
+/* Fern-Ansicht. EINE Zahl auf <html>, alles andere rechnet daran —
+   dieselbe Mechanik wie in der Küche, kein zweiter Mechanismus.
+   Wird sofort angewandt, nicht erst beim Loslassen: Wer aus zwei
+   Metern schaut, will beim Ziehen sehen, wann es reicht. */
+function skalaAnwenden(){
+  document.documentElement.style.setProperty("--skala", EINST.skala);
+}
+if($("#skalaRegler")){
+  $("#skalaRegler").addEventListener("input", e => {
+    EINST.skala = +e.target.value / 100;
+    $("#skalaWert").textContent = e.target.value + " %";
+    skalaAnwenden();
+  });
+  $("#skalaRegler").addEventListener("change", einstSichern);
+}
+skalaAnwenden();
 
 $("#mahnRegler").addEventListener("input", e => {
   EINST.mahnungAb = +e.target.value;
@@ -5392,8 +5556,23 @@ $("#csvKnopf").onclick = () => {
 $("#druckKnopf").onclick = () => {
   const zeilen = tabelle();
   if(zeilen.length < 2) return melde("Nichts zu drucken", true);
-  const w = window.open("", "_blank");
-  if(!w) return melde("Der Browser hat das Fenster blockiert", true);
+  /* KEIN zweites Fenster. window.open öffnet im Vollbild einen Tab
+     HINTER dem Vollbildfenster — der Wirt tippt auf „Drucken" und
+     sieht nichts passieren. Ein verstecktes iframe im selben Dokument
+     bleibt im Vollbild, braucht keinen Popup-Freibrief und kann
+     denselben Text tragen.
+
+     Der Rahmen wird nach dem Druck wieder abgeräumt: Bliebe er
+     stehen, sammelte sich bei jedem Druck einer mehr an. */
+  const alt = document.getElementById("druckRahmen");
+  if(alt) alt.remove();
+  const rahmen = document.createElement("iframe");
+  rahmen.id = "druckRahmen";
+  rahmen.setAttribute("aria-hidden", "true");
+  rahmen.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;border:0";
+  document.body.appendChild(rahmen);
+  const w = rahmen.contentWindow;
+  if(!w) { rahmen.remove(); return melde("Drucken geht hier nicht", true); }
   w.document.write(`<!DOCTYPE html><html lang="de"><head><meta charset="utf-8">
     <title>Tagesliste</title><style>
     body{font:13px -apple-system,sans-serif;padding:22px;color:#111}
@@ -5410,7 +5589,12 @@ $("#druckKnopf").onclick = () => {
     <tbody>${zeilen.slice(1).map(z=>`<tr>${z.map(f=>`<td>${String(f??"").replace(/[<>]/g,"")}</td>`).join("")}</tr>`).join("")}</tbody>
     </table></body></html>`);
   w.document.close();
-  setTimeout(()=> w.print(), 350);
+  setTimeout(function(){
+    try{ w.focus(); w.print(); }catch(e){ melde("Drucken geht hier nicht", true); }
+    /* Erst nach dem Druckdialog abräumen. 60 Sekunden reichen für
+       jede Entscheidung; danach ist der Rahmen sicher entbehrlich. */
+    setTimeout(function(){ const r = document.getElementById("druckRahmen"); if(r) r.remove(); }, 60000);
+  }, 350);
 };
 
 start();

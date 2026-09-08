@@ -51,7 +51,50 @@ const ZIEL     = path.join(WURZEL, "dist");
 /* ─── Schriften und Schatten ──────────────────────────────────
    Muss deckungsgleich mit dem sein, was in der Vorlage steht.
    Deshalb wird es unten auch geprüft, statt es zu hoffen. */
-const SCHRIFTEN = ["system","serif-klassisch","serif-eng","grotesk","rund"];
+/* Wortgleich mit den Schlüsseln in vorlagen/hub.vorlage.html und
+   seiten/marken-studio.html. Eine Schrift, die dort steht und hier
+   nicht, lässt jedes Markenblatt durchfallen, das sie benutzt. */
+/* Beide Listen werden AUS DEM GERÜST gelesen, nicht hier doppelt
+   gepflegt. Sonst laufen sie auseinander, und der Erzeuger lehnt ab,
+   was der Hub kann — oder schlimmer, lässt durch, was er nicht kann. */
+function ausGeruest(muster, wo){
+  const datei = fs.readFileSync(path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), "utf8");
+  const t = datei.match(muster);
+  if(!t){
+    console.error("Im Gerüst nicht gefunden: " + wo);
+    process.exit(1);
+  }
+  return [...t[1].matchAll(/^\s{2}([a-zA-Z][a-zA-Z0-9_]*)\s*:/gm)].map(m => m[1]);
+}
+const KACHELSCHLUESSEL = ausGeruest(/const KACHELARTEN = \{([\s\S]*?)\n\};/, "KACHELARTEN");
+const ICONNAMEN        = ausGeruest(/const ICONS = \{([\s\S]*?)\n\};/, "ICONS");
+/* Aus demselben Grund wie oben: Bis Block 6 stand hier von Hand
+   ["untersetzer","erdbeere"]. Eine neunte Figur im Gerüst hätte der
+   Erzeuger abgelehnt — der Kunde hätte sie im Studio gewählt und den
+   Hub nicht bekommen. */
+const FIGURNAMEN       = ausGeruest(/const AVATAR_FIGUREN = \{([\s\S]*?)\n\};/, "AVATAR_FIGUREN");
+/* Was die Figur je Bestellphase tragen kann, und welche Phasen es
+   gibt — beides aus dem Gerüst, aus demselben Grund wie oben. */
+const REQUISITEN       = ausGeruest(/const E_REQUISITEN = \{([\s\S]*?)\n\};/, "E_REQUISITEN");
+const PHASENNAMEN      = ausGeruest(/const PHASEN = \{([\s\S]*?)\n\};/, "PHASEN");
+const FIGURANLAESSE    = ausGeruest(/const AVATAR_TEXTE = \{([\s\S]*?)\n\};/, "AVATAR_TEXTE");
+/* Die Längengrenzen kommen ebenfalls aus dem Gerüst. Sie hier
+   abzuschreiben hieße: Wer sie dort nachmisst und ändert, ändert sie
+   für den Hub und nicht für den Erzeuger — und der Kunde bekäme ein
+   Blatt durch, das der Hub hinterher abschneidet. */
+const TEXTMASS_HAUS = (() => {
+  const datei = fs.readFileSync(
+    path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), "utf8");
+  const t = datei.match(/const E_TEXTMASS = \{([\s\S]*?)\n\};/);
+  if(!t){ console.error("Im Gerüst nicht gefunden: E_TEXTMASS"); process.exit(1); }
+  const raus = {};
+  for(const m of t[1].matchAll(/(\w+):\s*\{\s*gut:\s*(\d+),\s*hart:\s*(\d+)/g))
+    raus[m[1]] = { gut:+m[2], hart:+m[3] };
+  return raus;
+})();
+
+const SCHRIFTEN = ["system","serif-klassisch","serif-eng","serif-hoch","slab",
+                   "grotesk","grotesk-eng","rund","mono","schreib"];
 const SCHATTEN  = ["weich","kante","ohne"];
 
 const FARBEN_PFLICHT = ["grund","flaeche","flaeche2","band","bandText",
@@ -63,15 +106,13 @@ const FARBEN_PFLICHT = ["grund","flaeche","flaeche2","band","bandText",
    Landingpage. Vier Kopien wären drei zu viel — aber solange die
    Zielumgebungen keine Module laden, ist die Kopie hier der Preis
    dafür, dass die PRÜFUNG überhaupt stattfindet. */
-function helligkeit(hex){
-  const h = String(hex||"").replace("#","");
-  if(!/^[0-9a-fA-F]{6}$/.test(h)) return null;
-  const v = [0,2,4].map(i => {
-    const x = parseInt(h.slice(i,i+2),16)/255;
-    return x <= .03928 ? x/12.92 : Math.pow((x+.055)/1.055, 2.4);
-  });
-  return .2126*v[0] + .7152*v[1] + .0722*v[2];
-}
+/* Diese Datei hatte helligkeit() und kontrast() ZWEIMAL. In
+   JavaScript werden Funktionsdeklarationen gehoben — die spätere
+   Fassung gewann für die ganze Datei, die frühere war unerreichbar.
+   Für gültige sechsstellige Hexfarben rechnen beide aufs Zehntel
+   gleich (gemessen), es ging also nie etwas schief; die Prüfung des
+   Farbformats steht ohnehin weiter oben bei FARBEN_PFLICHT. Weg damit,
+   bevor jemand die tote Fassung pflegt. §1.1 */
 function kontrast(a,b){
   const l1 = helligkeit(a), l2 = helligkeit(b);
   if(l1 === null || l2 === null) return null;
@@ -134,8 +175,51 @@ function pruefeMarkenblatt(mb){
     else if(SCHRIFTEN.indexOf(s[k]) < 0)
       F("schrift." + k + " unbekannt: " + s[k] + " — erlaubt: " + SCHRIFTEN.join(", "));
   });
+  /* zahl ist neu und deshalb freiwillig (§2.5): Ein Markenblatt von
+     gestern muss weiter bauen. Steht aber etwas Falsches drin, ist
+     das ein Fehler und kein stiller Rückfall — sonst bekäme der
+     Kunde wortlos die Schreibmaschine, die er gerade abgewählt hat. */
+  if(s.zahl && SCHRIFTEN.indexOf(s.zahl) < 0)
+    F("schrift.zahl unbekannt: " + s.zahl + " — erlaubt: " + SCHRIFTEN.join(", "));
   if(s.groesse != null && (s.groesse < 0.9 || s.groesse > 1.2))
     F("schrift.groesse muss zwischen 0.9 und 1.2 liegen, ist: " + s.groesse);
+
+  /* Kacheln — freiwillig (§2.5). Fehlt der Block, leitet der Hub die
+     Liste aus bereiche ab; fehlt auch das, bleibt sein Platzhalter.
+     Steht aber etwas Falsches drin, wird angehalten: Eine Kachel mit
+     unbekanntem Schlüssel verschwindet sonst wortlos, und der Wirt
+     sucht den Fehler bei sich. */
+  if(mb.kacheln !== undefined){
+    if(!Array.isArray(mb.kacheln)) F("kacheln muss eine Liste sein");
+    else mb.kacheln.forEach((k, i) => {
+      const wo = "kacheln[" + i + "]";
+      if(!k || typeof k !== "object"){ F(wo + " ist kein Eintrag"); return; }
+      if(!k.schluessel) F(wo + ".schluessel fehlt");
+      else if(KACHELSCHLUESSEL.indexOf(k.schluessel) < 0)
+        F(wo + ".schluessel unbekannt: " + k.schluessel +
+          " — erlaubt: " + KACHELSCHLUESSEL.join(", "));
+      if(k.titel !== undefined && typeof k.titel !== "string")
+        F(wo + ".titel muss Text sein");
+      if(k.icon !== undefined && ICONNAMEN.indexOf(k.icon) < 0)
+        F(wo + ".icon unbekannt: " + k.icon + " — erlaubt: " + ICONNAMEN.join(", "));
+      /* emoji ist ein FREIES Feld — also gehört eine Grenze daran.
+         Zwei Zeichen reichen für jedes Emoji samt Variantenselektor;
+         wer mehr hineinschreibt, meint keinen Bildschriftzeichen,
+         sondern schiebt Text ins Symbolfeld. Gemessen wird in
+         Codepunkten, nicht in Bytes: „👨‍🍳" sind drei. */
+      if(k.emoji !== undefined && k.emoji !== ""){
+        if(typeof k.emoji !== "string") F(wo + ".emoji muss Text sein");
+        else if([...k.emoji].length > 4)
+          F(wo + '.emoji ist zu lang: "' + k.emoji + '" — höchstens 4 Zeichen');
+      }
+    });
+    const doppelt = {};
+    (Array.isArray(mb.kacheln) ? mb.kacheln : []).forEach(k => {
+      if(!k || !k.schluessel) return;
+      if(doppelt[k.schluessel]) F("kacheln: " + k.schluessel + " steht zweimal drin");
+      doppelt[k.schluessel] = true;
+    });
+  }
 
   /* Bereiche */
   const ber = mb.bereiche || {};
@@ -181,8 +265,62 @@ function pruefeMarkenblatt(mb){
      wortlos wieder den Untersetzer. Der Kunde hätte seine Figur
      ausgewählt und bekäme sie nicht — und niemand sagt es ihm. */
   if(mb.avatar && mb.avatar.figur !== undefined &&
-     ["untersetzer","erdbeere"].indexOf(mb.avatar.figur) < 0)
-    F("avatar.figur unbekannt: " + mb.avatar.figur + " — erlaubt: untersetzer, erdbeere");
+     FIGURNAMEN.indexOf(mb.avatar.figur) < 0)
+    F("avatar.figur unbekannt: " + mb.avatar.figur +
+      " — erlaubt: " + FIGURNAMEN.join(", "));
+  /* Dieselbe Begründung wie bei figur: Ein Tippfehler in haende
+     ergäbe im Hub wortlos wieder die Vorgabe. Der Kunde hätte seine
+     Pfanne gewählt und bekäme den Kuchenstapel. */
+  if(mb.avatar && mb.avatar.haende !== undefined){
+    if(typeof mb.avatar.haende !== "object" || Array.isArray(mb.avatar.haende))
+      F("avatar.haende muss ein Objekt sein, z. B. " +
+        '{"arbeit":"pfanne"} — ist: ' + JSON.stringify(mb.avatar.haende));
+    else for(const [phase, ding] of Object.entries(mb.avatar.haende)){
+      if(PHASENNAMEN.indexOf(phase) < 0)
+        F("avatar.haende." + phase + " ist keine Bestellphase — erlaubt: " +
+          PHASENNAMEN.join(", "));
+      else if(REQUISITEN.indexOf(ding) < 0)
+        F("avatar.haende." + phase + " unbekannt: " + ding +
+          " — erlaubt: " + REQUISITEN.join(", "));
+    }
+  }
+
+  /* Eigene Sätze des Hauses. Drei Dinge können schiefgehen, und jedes
+     wäre im Hub still: ein Tippfehler im Schlüssel (der Satz erscheint
+     nie), ein falscher Typ (die Seite zeigt „[object Object]"), und
+     ein zu langer Satz (der Hub schneidet ab, und der Gastgeber sieht
+     einen abgehackten Halbsatz). */
+  if(mb.texte !== undefined){
+    if(typeof mb.texte !== "object" || Array.isArray(mb.texte))
+      F("texte muss ein Objekt sein, z. B. " +
+        '{"phase":{"arbeit":"Wird gebacken"}} — ist: ' + JSON.stringify(mb.texte));
+    else for(const [gruppe, satz] of Object.entries(mb.texte)){
+      if(gruppe !== "phase" && gruppe !== "figur"){
+        F("texte." + gruppe + " ist keine Gruppe — erlaubt: phase, figur");
+        continue;
+      }
+      if(typeof satz !== "object" || Array.isArray(satz)){
+        F("texte." + gruppe + " muss ein Objekt sein");
+        continue;
+      }
+      const erlaubt = gruppe === "phase" ? PHASENNAMEN : FIGURANLAESSE;
+      const mass = TEXTMASS_HAUS[gruppe === "phase" ? "phase" : "begleiter"];
+      for(const [k, w] of Object.entries(satz)){
+        if(erlaubt.indexOf(k) < 0)
+          F("texte." + gruppe + "." + k + " ist kein Anlass — erlaubt: " +
+            erlaubt.join(", "));
+        else if(typeof w !== "string")
+          F("texte." + gruppe + "." + k + " muss Text sein, ist: " + typeof w);
+        else if(w.trim().length > mass.hart)
+          F("texte." + gruppe + "." + k + " ist zu lang: " + w.trim().length +
+            " Zeichen, erlaubt sind " + mass.hart + " — der Hub würde abschneiden");
+        else if(w.trim().length > mass.gut)
+          W("texte." + gruppe + "." + k + " ist " + w.trim().length +
+            " Zeichen lang — ab " + mass.gut + " braucht der Satz auf " +
+            "schmalen Telefonen eine Zeile mehr");
+      }
+    }
+  }
 
   /* Kontrast, Tag und Abend */
   const pruefePaare = (farben, wann) => {
@@ -254,7 +392,7 @@ function alsQuelltext(mb){
                                     "tinteLeise","tinteStill","linie","linieStark",
                                     "akzent","akzent2","gut","akzentFlaeche","akzent2Flaeche","gutFlaeche"]),
     block("form",     mb.form,     ["rundung","rundungKlein","rand","schatten"]),
-    block("schrift",  mb.schrift,  ["kopf","text","groesse"]),
+    block("schrift",  mb.schrift,  ["kopf","text","zahl","groesse"]),
     block("logo",     mb.logo,     ["art","text","bild","hoehe"]),
     block("bereiche", mb.bereiche, null),
 
@@ -266,6 +404,7 @@ function alsQuelltext(mb){
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,
     mb.trinkgeld ? liste("trinkgeld", mb.trinkgeld)       : null,
+    liste("kacheln",    mb.kacheln),
     liste("empfehlung", mb.empfehlung),
     liste("quiz",       mb.quiz)
   ].filter(Boolean);
@@ -417,6 +556,18 @@ function erzeuge(slug, nurPruefen){
     "$1" + h(mb.betrieb.claim || mb.betrieb.name) + "$2");
   aus = aus.replace(/(<meta name="theme-color" content=")[^"]*(")/,
     "$1" + (mb.farben.band) + "$2");
+  /* Das Farbschema für den ERSTEN Anstrich, bevor ein Skript läuft.
+     Danach zieht nachtSchalten() es nach. Ohne diese Zeile stünde bei
+     jedem Kunden „light" — und Blend ist schon am Tag fast schwarz
+     (grund #0B0C0F). Ein falsch angesagtes Schema ist schlimmer als
+     keins: Der Browser richtet Bedienelemente und Rollbalken danach.
+     0,179 ist der Punkt aus der sRGB-Rechnung, an dem Schwarz und
+     Weiß gleich gut auf einem Grund stehen. */
+  const schema = helligkeit(mb.farben.grund) < 0.179 ? "dark" : "light";
+  if(!/<meta name="color-scheme" content="[^"]*">/.test(aus))
+    throw new Error('Die Vorlage hat kein <meta name="color-scheme"> im Kopf');
+  aus = aus.replace(/(<meta name="color-scheme" content=")[^"]*(")/,
+    "$1" + schema + "$2");
 
   /* Der Vorführblock fliegt raus, wenn ihn niemand bestellt hat.
 

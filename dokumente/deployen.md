@@ -328,10 +328,27 @@ Prüfung sieht genau in den Titel jedes Hubs.
 
 ## 5c · Google-Anmeldung einschalten
 
-Der Code in `seiten/konto.html` ist vollständig — er ruft
-`signInWithOAuth({provider:"google"})` auf und übersetzt beide
-möglichen Absagen in Klartext. Was fehlt, ist die **Freischaltung**.
-Zwei Stellen, beide im Supabase-Dashboard:
+> **Korrektur zu einem früheren Satz an dieser Stelle.** Hier stand,
+> die Seite „übersetzt beide möglichen Absagen in Klartext". Das war
+> falsch, und der Nutzer hat es als Erster gesehen: In seiner
+> Adresszeile stand die **Supabase**-Adresse, nicht omoteno.de, und
+> darauf rohes JSON. `signInWithOAuth()` fragt niemanden — es baut die
+> `authorize`-Adresse lokal zusammen und springt sofort. Es gibt kein
+> `error`, das `catch` lief nie, und der freundliche Satz war toter
+> Code.
+
+Seitdem fragt die Seite **vorher**: `GET /auth/v1/settings` sagt, welche
+Anbieter an sind. Ist Google aus, verschwindet der Knopf samt Trennlinie
+und der Kunde nimmt E-Mail und Passwort — statt in eine Sackgasse zu
+laufen. Kommt die Frage nicht durch, **bleibt** der Knopf: Ein Kunde,
+der sich nicht anmelden kann, kostet mehr als eine seltene Sackgasse
+(CLAUDE.md §7).
+
+**Das heißt auch:** Sobald du Google unten einschaltest, ist der Knopf
+beim nächsten **Neuladen** da. Es braucht dafür keine Auslieferung.
+
+Was fehlt, ist also nur die **Freischaltung**. Zwei Stellen, beide im
+Supabase-Dashboard:
 
 **1 · Den Anbieter einschalten**
 *Authentication → Providers → Google*. Client-ID und Secret kommen aus
@@ -357,9 +374,15 @@ https://omoteno.de/konto.html
 omoteno.de; unter einer Kundenadresse hat es nichts zu suchen (siehe
 5b).
 
-**Woran man erkennt, welches der beiden fehlt:** Die Seite sagt es.
-„noch nicht freigeschaltet" heißt Punkt 1, „Adresse nicht hinterlegt"
-heißt Punkt 2.
+**Woran man erkennt, welches der beiden fehlt:** Fehlt **Punkt 1**,
+ist der Google-Knopf gar nicht erst da — die Vorabfrage hat ihn
+entfernt. Fehlt **Punkt 2**, steht der Knopf, und nach dem Klick sagt
+die Seite „Diese Adresse ist für die Google-Anmeldung nicht
+hinterlegt". Diesen zweiten Satz kann sie jetzt auch wirklich zeigen,
+weil der Sprung ihr gehört und nicht der Bibliothek.
+
+Geprüft wird das von `pruefungen/pruef-konto-start.js`, Abschnitt
+„Google" — ohne Netz, mit gestellter Anbieterliste.
 
 ---
 

@@ -88,8 +88,9 @@ const MARKENBLATT = {
   },
 
   schrift: {
-    kopf:    "serif-klassisch",  // siehe SCHRIFTEN unten
-    text:    "system",
+    kopf:    "serif-klassisch",  // Überschriften und Namen
+    text:    "system",           // Fließtext und Beschreibungen
+    zahl:    "mono",             // Preise, Nummern — FREIWILLIG
     groesse: 1.0                 // 0.94 – 1.12
   },
 
@@ -112,12 +113,58 @@ const MARKENBLATT = {
   },
 
   kacheln: [
-    { id:"speisekarte", t:"Speisekarte", u:"Frühstück bis 14 Uhr", von:0,  bis:24, an:true },
-    { id:"getraenke",   t:"Getränke",    u:"Kaffee, Limonaden",    von:0,  bis:24, an:true },
-    { id:"tischruf",    t:"Service rufen", u:"Wir kommen zu Ihnen", von:0, bis:24, an:true }
+    { schluessel:"speisekarte", an:true, titel:"Speisekarte",
+      unter:"Frühstück bis 14 Uhr", icon:"speise" },
+    { schluessel:"getraenke",   an:true, titel:"Getränke",
+      unter:"Kaffee, Limonaden",    icon:"glas"  },
+    { schluessel:"tischruf",    an:true, titel:"Service rufen",
+      unter:"Wir kommen zu Ihnen",  icon:"hand"  }
   ]
 };
 ```
+
+## Die Startkacheln
+
+> Hier stand vorher ein Entwurf mit `id`, `t` und `u`. Umgesetzt war
+> er nie — die Kachelliste stand fest im Gerüst, und Blends Hub trug
+> deshalb Chocos elf Kacheln, Wort für Wort, samt
+> `@chocol.amour_kirchhain`. Die Namen sind jetzt ausgeschrieben wie
+> im übrigen Schema.
+
+Zwei Sorten Feld, streng getrennt:
+
+| Der Wirt entscheidet | Das Gerüst entscheidet |
+|---|---|
+| `titel`, `unter`, `icon` | `ziel` — wohin die Kachel führt |
+| `an`, Reihenfolge in der Liste | `wenn` — ob das Haus sie überhaupt kann |
+| `gruppe`, `raster`, `stil`, `farbe` | `nurDe` |
+| `von`, `bis`, `neu`, `cyan` | |
+
+`schluessel` verbindet beides. Erlaubt sind die Schlüssel aus
+`KACHELARTEN` in `vorlagen/hub.vorlage.html`; ein unbekannter hält
+den Erzeuger an, statt die Kachel wortlos verschwinden zu lassen.
+
+**Drei Stufen, absteigend.** Fehlt `kacheln`, leitet der Hub die Liste
+aus `bereiche` ab. Fehlt auch das, bleibt seine Vorgabe. `bereiche`
+war bis dahin ein toter Schalter: geschrieben, nie gelesen.
+
+Ein Schlüssel, den `bereiche` gar nicht kennt — `wlan`, `meintisch`,
+`kontakt`, `instagram`, `bewertung` — bleibt an. Das sind keine
+Bereiche, die der Wirt umlegt, sondern Wege, die entweder taugen oder
+sich per `wenn` selbst ausblenden.
+
+### Die Grenze, die dazugehört
+
+**Eigene Kacheltitel werden nicht übersetzt.** `t()` gibt bei
+fehlendem Wörterbucheintrag den deutschen Text zurück — richtig für
+„Nutella Crêpe", aber „Süße Karte" stand bisher im Wörterbuch und kam
+auf Englisch als „Sweet menu" heraus. Sobald der Titel dem Haus
+gehört, kann das Wörterbuch ihn nicht mehr kennen.
+
+`pruef-sprache.js` schlägt deswegen **nicht** an: Sie liest das
+Gerüst, nicht die Markenblätter. Das ist kein Fehler der Prüfung —
+aber es heißt, dass diese Lücke niemandem von selbst auffällt.
+Deshalb steht sie hier.
 
 ## Schriften
 
@@ -130,8 +177,37 @@ die nicht kommt, verschiebt beim Nachladen die halbe Karte.
 | `system` | neutral, schnell, überall gleich |
 | `serif-klassisch` | Iowan / Palatino / Georgia — Speisekarte |
 | `serif-eng` | Charter / Georgia, engere Laufweite |
+| `serif-hoch` | Didot / Bodoni — hoher Strichkontrast, festlich |
+| `slab` | Rockwell / Roboto Slab — kräftig, handfest |
 | `grotesk` | Helvetica / Arial, sachlich |
+| `grotesk-eng` | Condensed — für lange Gerichtnamen auf schmalen Schirmen |
 | `rund` | Avenir / Nunito / Segoe, freundlich |
+| `mono` | Schreibmaschine, gleich breite Ziffern — Vorgabe für `zahl` |
+| `schreib` | Schreibschrift. **Nur für `kopf`.** Als Fließtext oder Zahl unlesbar |
+
+Dieselben zehn Kennungen stehen an **drei** Stellen: `SCHRIFTEN` in
+`vorlagen/hub.vorlage.html`, `SCHRIFTEN` in
+`seiten/marken-studio.html` und die Positivliste in
+`erzeuger/erzeuge-hub.js`. Eine Schrift, die nicht überall steht,
+lässt jedes Markenblatt durchfallen, das sie benutzt.
+
+### Die drei Rollen
+
+| Rolle | wirkt auf | CSS |
+|---|---|---|
+| `kopf` | Überschriften, Name im Band | `--schrift-kopf` |
+| `text` | Fließtext, Beschreibungen | `--schrift-text` |
+| `zahl` | Preise, Nummern, Tischnummer | `--schrift-zahl` |
+
+`zahl` ist **freiwillig**. Fehlt sie, bleibt es bei der
+Schreibmaschine — genau wie in jedem Hub, bevor die Rolle wählbar war.
+Gemessen: Chocos und Blends erzeugte Hubs unterscheiden sich dadurch
+nur um die neuen Einträge in `SCHRIFTEN` und die eine Abfrage, sonst
+in keiner Zeile.
+
+Steht dort aber etwas Falsches, hält der Erzeuger an. Ein stiller
+Rückfall gäbe dem Kunden wortlos die Schrift zurück, die er gerade
+abgewählt hat.
 
 ## Umsetzung auf CSS-Variablen
 
@@ -180,7 +256,53 @@ Deshalb gehören diese Blöcke jetzt ebenfalls ins Markenblatt:
 | `wlan` | `netz`, `passwort` |
 | `trinkgeld` | `paypal`, `betraege` (Liste von Zahlen) |
 | `empfehlung` | Liste: `von`, `bis` (Stunde), `kennz`, `name`, `was`, `preis`, `ziel`, `gericht` |
-| `avatar` | `figur`: `untersetzer` \| `erdbeere`, `art`: `freundlich` \| `ruhig` \| `witzig`, `name` |
+| `avatar` | `figur`, `art`: `freundlich` \| `ruhig` \| `witzig`, `name`, `haende` |
+
+**`avatar.figur`** — welche Figur das Haus begleitet. Neun stehen zur
+Wahl: `erdbeere`, `kaffeebohne`, `burger`, `brezel`, `pizzaecke`,
+`sushi`, `traube`, `platte`, `eiswaffel`. Die erlaubten Namen liest der
+Erzeuger aus `AVATAR_FIGUREN` im Gerüst; ein Tippfehler hält ihn an.
+Fehlt das Feld, bleibt es beim `untersetzer` — der steht seit Block 6a
+nicht mehr zur Wahl, bleibt aber der Rückfall für alte Blätter.
+
+**`avatar.haende`** — was die Figur je Bestellphase in der Hand hält.
+Dünn besetzt: Was fehlt, ist die Vorgabe der Phase (`neu` Bestellzettel,
+`arbeit` Flasche über dem Kuchenstapel, `fertig` Teller).
+
+```json
+"avatar": { "figur": "kaffeebohne", "art": "freundlich",
+            "haende": { "arbeit": "pfanne", "fertig": "pancakes" } }
+```
+
+Die HALTUNG kommt mit der Requisite — eine Pfanne wird getragen, eine
+Tasse gehalten. Der Kunde wählt den Gegenstand, nicht die Armstellung.
+Die erlaubten Namen liest der Erzeuger aus `E_REQUISITEN` im Gerüst;
+`pruef-figur.js` hält beide Listen gegeneinander.
+
+**`texte`** — was auf dem Bestellpass steht und was die Figur sagt.
+Ebenfalls dünn besetzt: Was fehlt, ist Omotenos Satz.
+
+```json
+"texte": {
+  "phase": { "arbeit": "Wird gerade gebacken" },
+  "figur": { "start": "Willkommen bei uns." }
+}
+```
+
+Gruppen: `phase` mit den Schlüsseln `neu`, `arbeit`, `fertig`; `figur`
+mit `start`, `bestellt`, `bewerten`, `meintisch`. Ein eigener Satz
+ersetzt alle drei Launen — ein Haus hat eine Stimme.
+
+**Und die Sprachfolge, ausdrücklich:** Omotenos Sätze stehen in zwölf
+Sprachen im Wörterbuch. Ein eigener Satz steht **in allen zwölf so da,
+wie er geschrieben wurde** — übersetzen kann ihn niemand. Das ist keine
+Lücke, sondern die einzige ehrliche Antwort; das Studio sagt es dem
+Gastgeber auch.
+
+Längen sind gemessen, nicht geschätzt (360, 390, 430 px): Passtext
+höchstens 80 Zeichen (ab 42 zweizeilig), Begleitersatz höchstens 108
+(ab 76 dreizeilig, ab 110 vierzeilig). Der Erzeuger lehnt Längeres ab,
+und der Hub schneidet als letzte Schranke beim Lesen ab.
 
 **Fehlt ein Block, bleibt der Platzhalter aus dem Gerüst stehen** und
 der Erzeuger sagt es als Hinweis. Ein altes Markenblatt ohne diese

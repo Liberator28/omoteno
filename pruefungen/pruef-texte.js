@@ -20,6 +20,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const fs = require("fs");
+const { execFileSync } = require("child_process");
 const path = require("path");
 
 /* dist/ liegt in der Wurzel, das Board in seiten/. */
@@ -200,6 +201,143 @@ async function verdrahten(seite, texte){
     pruef(zahl.runnerBeiGut <= 1,
       "    Aktionsname bei „gut" + '"' + " noch einzeilig", zahl.runnerBeiGut + " Zeile(n)");
     await ctx.close();
+  }
+
+  /* ═══ Die Sätze, die der Betrieb seit Block 7 selbst schreibt ═══
+     Bestellpass und Begleiter. Dieselben vier Schranken wie oben, nur
+     ist die erste hier das Studio und nicht das Board — geprüft wird
+     die VIERTE (der Hub schneidet ab) und die Zahl selbst.
+
+     Die Grenzen kommen aus dem GERÜST, nicht von hier: Sie hier
+     abzuschreiben hieße, die Prüfung prüft ihre eigene Kopie. */
+  console.log("\n── Eigene Sätze: Bestellpass und Begleiter ──");
+  {
+    const geruest = fs.readFileSync(
+      path.join(HIER, "vorlagen", "hub.vorlage.html"), "utf8");
+    const tm = geruest.match(/const E_TEXTMASS = \{([\s\S]*?)\n\};/);
+    const mass = {};
+    if(tm) for(const m of tm[1].matchAll(
+        /(\w+):\s*\{\s*gut:\s*(\d+),\s*hart:\s*(\d+)/g))
+      mass[m[1]] = { gut:+m[2], hart:+m[3] };
+    pruef(!!mass.phase && !!mass.begleiter, "Grenzen im Gerüst gefunden",
+      JSON.stringify(mass));
+    if(mass.phase){
+      for(const breite of BREITEN){
+        const ctx = await browser.newContext({ viewport:{ width:breite, height:900 } });
+        const seite = await ctx.newPage();
+        await verdrahten(seite);
+        await seite.goto(DATEI);
+        await seite.waitForTimeout(400);
+        const r = await seite.evaluate(({ mass, worte }) => {
+          const wk = document.querySelector(".willkommen"); if(wk) wk.remove();
+          const satz = n => { let s = "", i = 0;
+            while(s.length < n) s += (s ? " " : "") + worte[i++ % worte.length];
+            return s.slice(0, n); };
+          const zeilen = el => el ? Math.round(el.getBoundingClientRect().height /
+            parseFloat(getComputedStyle(el).lineHeight)) : 0;
+          const zeig = (gruppe, schluessel, text, bau, wahl) => {
+            MARKENBLATT.texte = { [gruppe]: { [schluessel]: text } };
+            document.getElementById("inhalt").innerHTML = bau();
+            const el = document.querySelector(wahl);
+            const erg = { zeilen: zeilen(el), text: el ? el.textContent : "" };
+            delete MARKENBLATT.texte;
+            return erg;
+          };
+          const pass = () => phaseHTML("arbeit", 217);
+          const begl = () => begleiterHTML("start");
+          const raus = {
+            passGut:  zeig("phase","arbeit", satz(mass.phase.gut), pass, ".bp-text"),
+            passHart: zeig("phase","arbeit", satz(mass.phase.hart), pass, ".bp-text"),
+            beglGut:  zeig("figur","start", satz(mass.begleiter.gut), begl, ".begleiter p"),
+            beglHart: zeig("figur","start", satz(mass.begleiter.hart), begl, ".begleiter p")
+          };
+          /* Die VIERTE Schranke: Was zu lang ins Markenblatt kommt,
+             schneidet der Hub beim Lesen ab. */
+          raus.abgeschnitten = zeig("phase","arbeit", satz(mass.phase.hart) +
+            " und noch viel mehr Text hinterher", pass, ".bp-text").text.length;
+          /* Und die Sprachen: Ein eigener Satz steht in ALLEN zwölf
+             gleich da, eine Vorgabe wird übersetzt. Beides ist Absicht,
+             und beides muss man belegen können. */
+          /* DER SATZ MUSS IM WÖRTERBUCH STEHEN, sonst kann diese
+             Prüfung ihren eigenen Anlassfall nicht sehen: Ein
+             erfundener Satz käme auch durch t() unverändert heraus,
+             und die Prüfung bliebe grün, während der Hub die Sätze
+             des Hauses in Wirklichkeit übersetzt. Genommen wird
+             deshalb die Vorgabe der anderen Phase — die steht
+             garantiert in allen zwölf Sprachen drin. */
+          const probe = E_PHASENTEXTE.fertig;
+          const eigen = {}, vorgabe = {};
+          for(const sp of SPRACHEN.map(x => x.code)){
+            sprache = sp;
+            eigen[sp] = zeig("phase","arbeit", probe, pass, ".bp-text").text;
+            document.getElementById("inhalt").innerHTML = pass();
+            vorgabe[sp] = document.querySelector(".bp-text").textContent;
+          }
+          sprache = "de";
+          raus.probe = probe;
+          raus.eigenGleich = Object.values(eigen).every(x => x === probe);
+          raus.vorgabeUebersetzt = new Set(Object.values(vorgabe)).size > 1;
+          raus.sprachen = Object.keys(eigen).length;
+          return raus;
+        }, { mass, worte: ["Frisch","gebacken","jeden","Tag","für","Sie","mit","viel",
+                           "Liebe","und","Schokolade","aus","der","eigenen","Küche"] });
+
+        console.log("  " + breite + "px");
+        pruef(r.passGut.zeilen <= 1, "    Passtext bei „gut\u201c noch einzeilig",
+          r.passGut.zeilen + " Zeile(n)");
+        pruef(r.passHart.zeilen <= 2, "    Passtext bei „hart\u201c höchstens zweizeilig",
+          r.passHart.zeilen + " Zeile(n)");
+        pruef(r.beglGut.zeilen <= 2, "    Begleitersatz bei „gut\u201c höchstens zweizeilig",
+          r.beglGut.zeilen + " Zeile(n)");
+        pruef(r.beglHart.zeilen <= 3, "    Begleitersatz bei „hart\u201c höchstens dreizeilig",
+          r.beglHart.zeilen + " Zeile(n)");
+        pruef(r.abgeschnitten <= mass.phase.hart,
+          "    zu langer Satz wird beim Lesen gekürzt",
+          r.abgeschnitten + " von erlaubten " + mass.phase.hart + " Zeichen");
+        pruef(r.eigenGleich, "    eigener Satz steht in allen Sprachen gleich da",
+          r.sprachen + " Sprachen, Probe: \u201e" + r.probe + "\u201c");
+        pruef(r.vorgabeUebersetzt, "    die Vorgabe wird weiterhin übersetzt");
+        await ctx.close();
+      }
+    }
+  }
+
+  /* Die ZWEITE Schranke: Der Erzeuger muss ablehnen, was der Hub
+     hinterher abschneiden würde. Ohne diese Prüfung wäre die
+     Längengrenze im Gerüst eine Zahl, an die sich niemand halten
+     muss. */
+  console.log("\n── Der Erzeuger lehnt zu lange Sätze ab ──");
+  {
+    const blatt = path.join(HIER, "markenblaetter", liste[0] + ".json");
+    const probe = path.join(HIER, "markenblaetter", "textprobe.json");
+    try{
+      const mb = JSON.parse(fs.readFileSync(blatt, "utf8"));
+      mb.betrieb.slug = "textprobe";
+      const faelle = [
+        ["genau an der Grenze",  "x".repeat(80),  false],
+        ["ein Zeichen darüber",  "x".repeat(81),  true],
+        ["weit darüber",         "x".repeat(300), true],
+        ["falscher Schlüssel",   null,            true]
+      ];
+      for(const [name, wert, sollHalten] of faelle){
+        mb.texte = wert === null
+          ? { phase: { arbeitt: "kurz" } }
+          : { phase: { arbeit: wert } };
+        fs.writeFileSync(probe, JSON.stringify(mb));
+        let hielt = false;
+        try { execFileSync("node",
+          [path.join(HIER, "erzeuger", "erzeuge-hub.js"), "textprobe", "--pruefen-nur"],
+          { cwd: HIER, encoding: "utf8", stdio: "pipe" }); }
+        catch(e){ hielt = true; }
+        pruef(hielt === sollHalten,
+          "  " + name + (sollHalten ? " hält den Erzeuger an" : " läuft durch"),
+          hielt ? "hält an" : "läuft durch");
+      }
+    } finally {
+      if(fs.existsSync(probe)) fs.unlinkSync(probe);
+      const raus = path.join(HIER, "dist", "textprobe");
+      if(fs.existsSync(raus)) fs.rmSync(raus, { recursive:true, force:true });
+    }
   }
 
   await browser.close();

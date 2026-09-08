@@ -34,6 +34,14 @@
    Dieselben Farbnamen wie auf der Landingpage. Wer beide nebeneinander
    öffnet, sieht dieselbe Marke.
    ═══════════════════════════════════════════════════════════════ */
+/* FARBSCHEMA — kein Schmuck, sondern die Ansage an den Browser.
+   Chrome auf Android und Samsung Internet färben eine Seite im
+   Dunkelmodus SELBST um, wenn sie keine color-scheme-Angabe finden.
+   Sie kippen dabei Helligkeiten: dunkle Konturen werden hell. So sahen
+   die Figuren auf einem Samsung mit Dunkelmodus aus.
+   Das Konto ist fest hell. */
+:root{color-scheme:light}
+
 :root{
   /* ── Die Ecke ─────────────────────────────────────────────────
      Omotenos eigene Knoepfe, Chips und Marken sind ECKIG. Der Wert
@@ -446,7 +454,7 @@ a{color:var(--kuli)}
     Mit Google anmelden
   </button>
 
-  <div class="oder"><span>oder mit E-Mail</span></div>
+  <div class="oder" id="oderMail"><span>oder mit E-Mail</span></div>
 
   <div class="wechsel">
     <button data-modus="anmelden"    aria-pressed="true">Anmelden</button>
@@ -808,28 +816,92 @@ function zeige(welche){
   $("kopfRechts").hidden = (welche === "tor");
 }
 
+/* ─── Welche Anbieter sind überhaupt eingeschaltet? ──────────────
+   > Vorfall. Der Google-Knopf führte in eine Sackgasse, und die
+   > Übersetzung darunter hat sie NIE abgefangen. Gemessen am
+   > Bildschirmfoto des Nutzers: In der Adresszeile stand die
+   > SUPABASE-Adresse, nicht omoteno.de — der Browser hatte die
+   > Seite also längst verlassen. Zu sehen war rohes JSON:
+   >
+   >   {"code":400,"error_code":"validation_failed",
+   >    "msg":"Unsupported provider: provider is not enabled"}
+   >
+   > Grund: signInWithOAuth() FRAGT NIEMANDEN. Es setzt die Adresse
+   > …/auth/v1/authorize?provider=google&redirect_to=… lokal
+   > zusammen und ruft location.assign() auf. Es gibt kein `error`,
+   > das catch unten lief nie, und der freundliche Satz „noch nicht
+   > freigeschaltet" hat noch nie jemand gesehen.
+
+   Deshalb wird jetzt VORHER gefragt. /auth/v1/settings ist
+   öffentlich und sagt, welche Anbieter an sind.
+
+   Die Richtung der Vorsicht steht in CLAUDE.md §7: Ein echter
+   Kunde, der sich nicht anmelden kann, kostet mehr als eine
+   seltene Sackgasse. Deshalb verschwindet der Knopf NUR, wenn die
+   Antwort ausdrücklich `false` sagt. Kein Netz, kein Feld, andere
+   Form, Zeitüberschreitung → der Knopf bleibt. Aus demselben Grund
+   startet er SICHTBAR und wird höchstens entfernt: Stirbt das
+   Skript vorher, ist der Weg da statt weg.
+
+   Und er kommt von selbst zurück. Wer Google im Dashboard
+   einschaltet, braucht keine neue Auslieferung — nur ein Neuladen. */
+(async function anbieterPruefen(){
+  const knopf = $("googleKnopf"), trenner = $("oderMail");
+  if(!knopf) return;
+  let an = null;
+  try{
+    /* Ohne Frist hinge die Frage an einem stummen Netz, bis der
+       Browser aufgibt. Vier Sekunden, dann gilt „unbekannt". */
+    const abbruch = new AbortController();
+    const frist = setTimeout(() => abbruch.abort(), 4000);
+    const antwort = await fetch(SUPABASE_URL + "/auth/v1/settings",
+      { headers:{ apikey: SUPABASE_KEY }, signal: abbruch.signal });
+    clearTimeout(frist);
+    if(antwort.ok){
+      const stand = await antwort.json();
+      const aussen = stand && stand.external;
+      /* Nur ein echtes Boolean zählt. Fehlt das Feld oder hat die
+         Antwort eine Form, die ich nicht kenne, bleibt es bei
+         null — und null ändert nichts. */
+      if(aussen && typeof aussen.google === "boolean") an = aussen.google;
+    }
+  }catch(e){ /* Absicht: unbekannt heißt „so lassen". */ }
+
+  if(an === false){
+    knopf.hidden = true;
+    /* Der Trenner sagt „oder mit E-Mail". Ohne den Knopf darüber
+       stünde ein „oder" über einem Nichts. */
+    if(trenner) trenner.hidden = true;
+  }
+})();
+
 /* ─── Anmeldung mit Google ───────────────────────────────────────
    Ein Knopf, ein Aufruf. Die Rückkehr fängt onAuthStateChange ab —
    dort steht schon starten(), es braucht keinen zweiten Weg.
 
-   Ist der Anbieter in Supabase nicht freigeschaltet, kommt eine
-   Fehlermeldung im Klartext zurück („provider is not enabled").
-   Die wird hier übersetzt, statt sie dem Kunden roh hinzulegen. */
+   Der Sprung gehört UNS, nicht der Bibliothek (skipBrowserRedirect).
+   Nur so kann das catch unten überhaupt etwas fangen. */
 $("googleKnopf").onclick = async () => {
   const knopf = $("googleKnopf");
   melde("torMeldung", "");
   knopf.disabled = true;
   try{
-    const {error} = await db.auth.signInWithOAuth({
+    const {data, error} = await db.auth.signInWithOAuth({
       provider: "google",
       options: {
         /* Zurück auf genau diese Seite, samt Anfrage-Kennung, falls
            der Kunde aus dem Formular kommt. */
-        redirectTo: location.origin + location.pathname + location.search
+        redirectTo: location.origin + location.pathname + location.search,
+        /* Nicht springen — nur die Adresse geben. Sonst verlässt die
+           Bibliothek die Seite sofort, und alles darunter ist toter
+           Code (siehe der Vorfall über dieser Funktion). */
+        skipBrowserRedirect: true
       }
     });
     if(error) throw error;
+    if(!data || !data.url) throw new Error("Keine Adresse für die Anmeldung erhalten.");
     /* Ab hier übernimmt der Browser: Er verlässt die Seite. */
+    location.assign(data.url);
   }catch(e){
     const text = String(e && (e.message || e.error_description) || "");
 

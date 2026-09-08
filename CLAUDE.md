@@ -79,6 +79,26 @@ JS-Bezeichner. Zwei `<script>`-Blöcke teilen sich den globalen
 Namensraum — zwei `const` mit demselben Namen werfen einen Fehler und
 die halbe Seite bleibt tot.
 
+**Bei einem geteilten Block in BEIDEN Dateien nachsehen.**
+
+> **Vorfall.** Die fünf Blätter der Erdbeerkrone hießen `.blatt`. Im
+> Marken-Studio heißt das Einstellblatt auch `.blatt`, und dessen Regel
+> setzt `transform:translateY(92dvh − var(--sicht))`. SVG erbt
+> CSS-`transform` genauso wie HTML. Gemessen bei 900×1000: Die Krone
+> stand 824 Einheiten tiefer und 672 links, die Zeichnung ragte von
+> x −672,5 bis 793,7 statt 1…120,6 — die Erdbeere hatte im Studio keine
+> Krone. Derselbe Block, dieselbe Zeile, im Hub völlig in Ordnung.
+>
+> Zwei Zeilen tiefer dasselbe mit `.guss`: Im Gerüst ist das der
+> Schokoladenguss unter dem Kopfband, eine Fläche mit `drop-shadow`.
+> Die Glasur auf dem Kuchen, den die Figur trägt, bekam denselben
+> Schatten — gemessen `drop-shadow(rgba(42,26,20,.2) 0 3px 6px)`, wo
+> `none` stehen sollte.
+
+Ein Blick in die eigene Datei findet das nicht. Wer einen geteilten
+Block anfasst, `grep`t den Namen in **jeder** Datei, in die er kopiert
+wird. `pruef-figur.js` tut das jetzt für alle 41 Klassen des Blocks.
+
 ### 1.1a Ein vorhandenes Feld heißt nicht, dass es das eigene ist
 
 > **Vorfall.** Das Gastkonto sollte an `bestellungen.gast_kennung`
@@ -434,6 +454,62 @@ Zwei Lehren, beide gemessen:
   Grenzwert einbaut, muss sich fragen, was er damit ungesehen
   durchlässt.
 
+### 5.2b Hell und dunkel entscheidet der Grund, nicht die Uhr
+
+> **Vorfall.** Die hellen Gliedmaßen der Figur hingen an
+> `[data-phase="abend"]`. Das traf Choco richtig und Blend nie: Blend
+> ist ein Cocktail-Lab und schon am **Tag** fast schwarz
+> (`grund #0B0C0F`, Abendfassung gar nicht eingeschaltet). Gemessen:
+> Gliedmaßen 1,31:1, Kaffeebohne 2,40:1 — die Beine weg, die Figur ein
+> Fleck. Ein Haus, das tagsüber dunkel ist, gibt es; eine Uhr, die das
+> weiß, nicht.
+
+Alles, was von der Helligkeit des Untergrunds abhängt, wird aus der
+**gemessenen Fläche** hergeleitet, nie aus der Tageszeit. Und gemessen
+wird dort, wo wirklich gemalt wird: Im Hub trägt `<html>` den Grund,
+`<body>` behielt abends die Tagesfarbe — wer am `body` misst, bekommt
+abends „hell".
+
+### 5.2c Ohne `color-scheme` färbt der Browser selbst um
+
+> **Vorfall.** Ein Gast öffnete Chocos Karte auf einem Samsung mit
+> eingeschaltetem Dunkelmodus. Die Figuren und einige Flächen kamen
+> „viel heller" heraus als auf dem iPhone — dunkle Konturen waren hell
+> geworden.
+>
+> Chrome auf Android und Samsung Internet haben ein „dunkles Design für
+> Webseiten". Findet der Browser **keine** `color-scheme`-Angabe, hält
+> er die Seite für eine, die kein Dunkel kennt, und kippt selbst die
+> Helligkeiten. Gemessen: **keine einzige Datei** dieses Verzeichnisses
+> hatte die Angabe.
+
+Jede ausgelieferte Seite sagt an, was sie zeigt — und zwar das, was sie
+**wirklich malt**, nicht das, was der Schalter heißt:
+
+```css
+:root{color-scheme:dark}        /* fest dunkel */
+:root{color-scheme:light dark}  /* folgt wirklich dem System */
+```
+
+Drei Dinge gehören dazu, und jedes hat beim Gegenbeweis eine eigene
+Lücke aufgedeckt:
+
+- **Eine falsche Ansage ist schlimmer als keine.** Der Browser richtet
+  Bedienelemente und Rollbalken danach. Deshalb wird die Ansage gegen
+  den gemessenen Grund gehalten, nicht gegen die Absicht.
+- **`light dark` ist eine Behauptung.** Wer das ansagt, muss dem System
+  auch wirklich folgen. Im ganzen Verzeichnis tut das genau eine Seite.
+- **Der erste Anstrich zählt.** Der Hub setzt sein Schema zur Laufzeit
+  nach — aber der Browser entscheidet, bevor ein Skript läuft. Deshalb
+  schreibt der Erzeuger zusätzlich ein `<meta name="color-scheme">` aus
+  der Tagpalette des Hauses. Eine Prüfung, die nur den Laufzeitwert
+  misst, bleibt grün, während der erste Anstrich falsch ist.
+
+**Die ehrliche Grenze:** Der kopflose Browser kennt Chromes Auto Dark
+Theme nicht — fünf Flag-Varianten durchprobiert, keine greift. Die
+Prüfung zeigt, dass die Ansage da ist und stimmt, **nicht**, dass das
+Umfärben aufhört. Der Beweis dafür steht auf dem Gerät des Gastes.
+
 ### 5.3 Bewusste Ungereimtheiten nicht wegsystematisieren
 
 > **Vorfall.** Chocos Goldfläche am Tag war seit jeher aus dem hellen
@@ -588,6 +664,53 @@ Und beim Ersetzen einer solchen Stelle: Der alte Stand muss
 dafür als ausdrückliche Ausnahme ins Markenblatt (§5.3), und der
 Vergleich vorher/nachher war Teil der Arbeit, nicht der Nachbereitung.
 
+### 8.1e Ein geteilter Block muss tragen, worauf er sich stützt
+
+> **Vorfall.** Der FIGUR-Block wird zwischen `hub.vorlage.html` und
+> `marken-studio.html` kopiert, und `pruef-figur.js` vergleicht beide
+> Fassungen Zeichen für Zeichen. Sie waren gleich. Trotzdem war der
+> Untersetzer im Studio ein **schwarzer Fleck** und der Mund der
+> Erdbeere eine gefüllte Sichel: Die Grundregeln des Zeichensatzes
+> (`.figur .zug{fill:none}`, `.figur .schatten{…}`) standen im Gerüst
+> **außerhalb** des Blocks und im Studio gar nicht. Ohne Regel füllt
+> SVG mit Schwarz. Gemessen: `fill: rgb(0,0,0)` an fünf Klassen, in
+> jeder Pose, in jeder Laune.
+
+Ein Blockvergleich sieht nur, ob zwei Kopien gleich sind — nicht, ob
+außerhalb etwas fehlt. Deshalb gilt: **Alles, worauf ein geteilter
+Block sich stützt, gehört in den Block.** Und die Prüfung dazu misst
+nicht den Text, sondern das gezeichnete Bild, **in jeder Datei**.
+
+Dazu die zweite Hälfte: **Ein Schirm ist keine Messung.** Der
+`.blatt`-Fehler aus §1.1 war bei 1440×900 unsichtbar (dort legt das
+Studio das Einstellblatt als Seitenspalte, ohne `transform`) und bei
+900×1000 offensichtlich. Meine Prüfung fuhr zuerst nur die eine Breite
+— und meldete grün.
+
+### 8.1f Auf einer bewegten Fläche misst kein Pixelvergleich
+
+> **Vorfall, und es war eine Behauptung von mir.** Nach einem Umbau am
+> Bestellpass meldete ich „Bestellpass tag: BYTEGLEICH, abend:
+> BYTEGLEICH" als Beleg, dass sich nichts verändert hat. Beim nächsten
+> Block wich derselbe Vergleich plötzlich ab. Gegenprobe: **dieselbe
+> Datei gegen sich selbst** — auch die wich ab. Auf dem Pass laufen
+> Guss, Dampf und Einflug; ein Bildschirmfoto trifft sie jedes Mal an
+> einer anderen Stelle. Der frühere „BYTEGLEICH" war Glück, kein
+> Messwert.
+
+Wo etwas animiert ist, wird der **Auszeichnungstext** verglichen, nicht
+das Bild: `PHASEN[s].zeichen()` und `begleiterHTML()` liefern
+Zeichenketten, und die sind entweder gleich oder nicht. Ein
+Pixelvergleich taugt nur auf ruhenden Flächen — und wer ihn benutzt,
+lässt ihn einmal gegen sich selbst laufen, bevor er ihm glaubt.
+
+Dieselbe Falle eine Ebene tiefer: **Eine Gruppe zu messen heißt nicht,
+den Gegenstand darin zu messen.** Die Prüfung „ist die Requisite groß
+genug" nahm die `getBBox()` der umgebenden Gruppe — die umfasst auch
+den Dampf, und der bleibt groß, während das Ding darunter zum Punkt
+schrumpft. Der Gegenbeweis blieb grün. Gemessen wird jetzt die
+Requisite allein, ohne Beiwerk.
+
 ### 8.1b Eine Prüfung über das Vorhandene ist blind für das Fehlende
 
 > **Vorfall.** `choco-lamour.omoteno.de` lieferte die Landingpage
@@ -620,6 +743,99 @@ wissen, ob die Adresse auch im DNS und bei Netlify eingetragen ist —
 das steht nirgends im Verzeichnis. Eine Grenze, die man nennt, ist
 keine Lücke; eine, die man verschweigt, schon.
 
+### 8.1g Eine Probe, die den Fehler nicht zeigen KANN, ist keine Probe
+
+> **Vorfall A.** Die Prüfung „ein eigener Satz des Hauses wird nicht
+> übersetzt" setzte als Probe „Wird gerade gebacken" — einen Satz, den
+> es im Wörterbuch **nicht** gibt. Der wäre auch durch `t()` unverändert
+> herausgekommen. Die Prüfung war grün und hätte es auch dann gemeint,
+> wenn der Hub jeden Haussatz übersetzt hätte. Gegenprobe mit einem
+> Satz, der im Wörterbuch **steht**: sofort rot.
+
+> **Vorfall B.** Zwei Gegenbeweise blieben grün, weil meine Sabotage
+> gar nicht griff: Einmal setzte ich einen Pfad auf x = −44, was im
+> 124 Einheiten breiten Feld immer noch drin liegt; einmal suchte ich
+> `body{background:` in einer Datei, die diese Zeile nicht hat. Grün
+> heißt dann nicht „die Prüfung hält", sondern „ich habe nichts
+> kaputtgemacht".
+
+Eine Prüfung ist erst belegt, wenn die Probe den Fehler **treffen
+kann**. Deshalb gehört zu jedem Gegenbeweis der Nachweis, dass die
+Sabotage überhaupt angekommen ist — `grep -c` auf die geänderte Stelle
+kostet zwei Sekunden.
+
+Dazu die verwandte Falle bei Grenzwerten: **Eine Grenze, die man sich
+ausdenkt, ist keine Messung.** Die harte Länge für den Satz des
+Begleiters stand in meinem Entwurf auf 120 Zeichen — gemessen hatte ich
+nur bis 96. Die eigene Prüfung hat den Wert widerlegt: Bei 360 px waren
+120 Zeichen vier Zeilen. Nachgemessen sind es 108.
+
+### 8.1h Eine Fehlerbehandlung, die nie erreicht wird, ist keine
+
+> **Vorfall, und der Nutzer hat ihn gefunden, nicht ich.** Der
+> Google-Knopf im Konto führte in eine Sackgasse: rohes JSON
+> („provider is not enabled") auf der Supabase-Adresse. Darunter im
+> Code standen zwölf sorgfältige Zeilen, die genau diesen Text in
+> Klartext übersetzen — **und die nie gelaufen sind**.
+>
+> Grund: `signInWithOAuth()` fragt niemanden. Es setzt die Adresse
+> lokal zusammen und ruft `location.assign()` auf. Es gibt kein
+> `error`, also kein `throw`, also kein `catch`. Ich hatte in einem
+> früheren Bericht sogar geschrieben „der Code war in Ordnung" — der
+> **Aufruf** war es, die Absicherung dahinter nicht.
+>
+> Gesehen hat man es an einer Stelle, die leicht zu übersehen ist:
+> In der **Adresszeile** des Bildschirmfotos stand die fremde Domain.
+> Wer nur die Fehlermeldung liest, sucht in der falschen Datei.
+
+Zwei Lehren:
+
+- **Vor jeder Fehlerbehandlung die Frage: Kann dieser Zweig überhaupt
+  erreicht werden?** Eine Bibliothek, die die Seite verlässt, gibt
+  nichts zurück, was man fangen könnte. Wo das droht, den Sprung
+  selbst machen (`skipBrowserRedirect`), sonst ist alles darunter
+  Zierrat.
+- **Vorher fragen schlägt hinterher übersetzen.** Ein Weg, den es
+  nicht gibt, wird gar nicht erst angeboten — und die Frage danach
+  darf **fail-open** sein: Kommt sie nicht durch, bleibt der Weg
+  stehen (§7).
+
+Und die Prüfung dazu: `pruef-konto-start.js` erwähnte Google mit
+keiner Zeile. Eine Seite, die eine Prüfung hat, ist nicht geprüft —
+geprüft ist, was in der Prüfung **vorkommt**.
+
+### 8.1d Ein Board im Vollbild ist eine eigene Umgebung
+
+> **Vorfall.** Das Küchen-Board hatte einen Vollbildknopf, das
+> Admin-Board keinen — gemessen bei 1280, 1920 und 2560 Pixeln. Und
+> der vorhandene Knopf wusste nicht, ob er an ist: kein
+> `fullscreenchange`-Horcher, kein `aria-pressed`. Chrome verlässt
+> den Vollbildmodus bei Escape und gibt der Seite den Tastendruck
+> **trotzdem** — ein Druck schließt also den Dialog UND wirft heraus.
+> Der Koch stand danach wieder im Browserrahmen und wusste nicht,
+> warum. Dazu: `main` blieb bei 1280 px stehen, auf einem
+> 2560-px-Schirm war die Hälfte leer.
+
+Ein Schirm an der Wand ist kein Tablet in der Hand. Wer etwas für den
+Betrieb baut, prüft es auf der Fläche, auf der es hängt:
+
+- **Der Zustand gehört ans Element.** `fullscreenchange` beobachten,
+  `aria-pressed` nachziehen. Ein Schalter ohne Stellung ist keiner.
+- **`documentElement` in den Vollbildmodus schicken**, nie einen
+  Teilbaum: Alles außerhalb wird sonst schlicht nicht gezeichnet.
+- **`window.open` ist im Vollbild tot.** Ein zweites Fenster öffnet
+  dahinter oder gar nicht. Was drucken soll, druckt aus einem
+  versteckten `<iframe>` im selben Dokument.
+- **Vollbild kann nicht von selbst starten.** Der Browser verlangt
+  eine Geste, und das lässt sich nicht umgehen. Man kann sich die
+  Absicht merken und die erste beste Geste nehmen — mehr nicht, und
+  mehr sollte man auch nicht behaupten.
+
+Die ehrliche Grenze dazu: Der kopflose Browser hat keinen
+Browserrahmen, den er verstecken könnte. Er prüft die
+Fullscreen-API und das Verhalten der Seite, nicht Chrome am Tresen.
+Der Escape-Fall bleibt ungeprüft — deshalb hängt nichts daran.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -648,20 +864,23 @@ Dazu je nach Änderung:
 | Karten-Zerleger | `pruefungen/pruef-import.js` |
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
 | Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
-| Figur des Hauses, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
+| Figur des Hauses, Requisiten, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
-| Freie Texte des Betriebs | `pruefungen/pruef-texte.js` (braucht `dist/`) |
+| Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |
 | Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |
+| **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
 | Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
 | Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
 | Marken-Studio (Bedienung) | `pruefungen/pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
 | Auslieferung, Umleitungen | `erzeuger/bauen.js` und dann `pruefungen/pruef-lieferung.js` |
+| **Startkacheln, Bereiche, Markenblatt** | `pruefungen/pruef-kacheln.js` — Kreuzvergleich: kein Hub trägt fremden Text |
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand |
+| **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
-| Konto, Anfrageformular | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links |
+| Konto, Anfrageformular, **Google-Knopf** | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links, Anbieterliste |
 | **Alessia, der Telefonweg** | `pruefungen/pruef-alessia.js` — liest die Nutzlast, ohne Netz |
 | **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
 
