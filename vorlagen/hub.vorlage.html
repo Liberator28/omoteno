@@ -5525,6 +5525,9 @@ const TEXTE = {
 "Arabische Sahne (Ashta) on top":{en:"Arabic cream (ashta) on top",tr:"Üzerine kaymak (ashta)",ru:"Арабские сливки (ашта) сверху",fr:"Crème arabe (ashta) par-dessus",es:"Crema árabe (ashta) por encima",it:"Crema araba (ashta) sopra",pl:"Arabska śmietanka (ashta) na wierzchu",ar:"قشطة عربية فوقها",uk:"Арабські вершки (ашта) зверху",nl:"Arabische room (ashta) erbovenop",ro:"Cremă arabă (ashta) deasupra"},
 "Softdrink wählen":{en:"Choose a soft drink",tr:"İçecek seçin",ru:"Выберите напиток",fr:"Choisir une boisson",es:"Elija un refresco",it:"Scegli una bibita",pl:"Wybierz napój",ar:"اختر مشروباً",uk:"Оберіть напій",nl:"Kies een frisdrank",ro:"Alegeți o băutură"},
 "ca. {a} Minuten":{en:"approx. {a} minutes",tr:"yaklaşık {a} dakika",ru:"около {a} минут",fr:"env. {a} minutes",es:"aprox. {a} minutos",it:"circa {a} minuti",pl:"ok. {a} minut",ar:"حوالي {a} دقيقة",uk:"близько {a} хвилин",nl:"ca. {a} minuten",ro:"cca. {a} minute"},
+"noch ca. {a} Minuten":{en:"approx. {a} minutes left",tr:"yaklaşık {a} dakika kaldı",ru:"осталось около {a} минут",fr:"encore env. {a} minutes",es:"quedan aprox. {a} minutos",it:"ancora circa {a} minuti",pl:"jeszcze ok. {a} minut",ar:"بقي حوالي {a} دقيقة",uk:"залишилось близько {a} хвилин",nl:"nog ca. {a} minuten",ro:"încă cca. {a} minute"},
+"noch {a} Min":{en:"{a} min left",tr:"{a} dk kaldı",ru:"ещё {a} мин",fr:"encore {a} min",es:"quedan {a} min",it:"ancora {a} min",pl:"jeszcze {a} min",ar:"بقي {a} د",uk:"ще {a} хв",nl:"nog {a} min",ro:"încă {a} min"},
+"Jeden Moment":{en:"Any moment now",tr:"Her an gelebilir",ru:"Совсем скоро",fr:"D'un instant à l'autre",es:"En cualquier momento",it:"Da un momento all'altro",pl:"Lada chwila",ar:"في أي لحظة",uk:"Ось-ось",nl:"Elk moment",ro:"Dintr-un moment în altul"},
 "vom Team bestätigt":{en:"confirmed by the team",tr:"ekip tarafından onaylandı",ru:"подтверждено командой",fr:"confirmé par l'équipe",es:"confirmado por el equipo",it:"confermato dal team",pl:"potwierdzone przez zespół",ar:"مؤكد من الفريق",uk:"підтверджено командою",nl:"bevestigd door het team",ro:"confirmat de echipă"},
 "Schließen":{en:"Close",tr:"Kapat",ru:"Закрыть",fr:"Fermer",es:"Cerrar",it:"Chiudi",pl:"Zamknij",ar:"إغلاق",uk:"Закрити",nl:"Sluiten",ro:"Închide"},
 "Zurück zur Übersicht":{en:"Back to overview",tr:"Genel bakışa dön",ru:"К обзору",fr:"Retour à l'aperçu",es:"Volver al inicio",it:"Torna alla panoramica",pl:"Powrót do przeglądu",ar:"العودة إلى النظرة العامة",uk:"Назад до огляду",nl:"Terug naar overzicht",ro:"Înapoi la prezentare"},
@@ -6740,6 +6743,72 @@ function vorgangMerken(v){
   vorgaenge.unshift(v);
   if(vorgaenge.length > 6) vorgaenge.length = 6;
   vorgaengeSichern();
+}
+
+/* ─── Wie lange dauert es noch? ──────────────────────────────────
+   Die Zusage („20 Minuten") kommt mit dem Status. Der ZEITPUNKT der
+   Zusage kommt nicht mit — bestellung_status gibt ihn absichtlich
+   nicht heraus. Ohne ihn ist keine Restzeit zu rechnen.
+
+   Deshalb eine zweite, sehr enge Funktion: bestellung_restzeit gibt
+   EINE Zahl zurück, die verbleibenden Sekunden, vom Server gerechnet.
+   Vom Server, weil die Uhr des Gastes nicht die Uhr des Hauses ist —
+   ein Telefon, das zwei Minuten falsch geht, zeigte sonst zwei
+   Minuten falsch.
+
+   Ist die Migration noch nicht angewendet, antwortet PostgREST mit
+   404. Dann wird NICHT weitergefragt und der Hub zeigt genau das,
+   was er vorher zeigte: die feste Zusage. Kein erfundener
+   Startzeitpunkt — der liefe beim Wiederöffnen von vorn los und wäre
+   ausgerechnet dann falsch, wenn es darauf ankommt. */
+let restzeitDa = true;
+
+function restzeitAbfragen(nummer){
+  if(!restzeitDa || !nummer || !serverBereit()) return Promise.resolve(null);
+  return sicherFetch(SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/bestellung_restzeit",
+    { method:"POST",
+      headers:{ apikey:SERVER.schluessel,
+                Authorization:"Bearer " + SERVER.schluessel,
+                "Content-Type":"application/json" },
+      body: JSON.stringify({ nummer: nummer }) })
+    .then(a => {
+      /* 404 = Funktion gibt es nicht, 401/403 = kein Ausführungsrecht.
+         Beides heißt: hier ist nichts zu holen, und zwar dauerhaft.
+         Alle 15 Sekunden erneut zu fragen wäre nur Rauschen im Netz
+         des Gastes. */
+      if(a.status === 404 || a.status === 401 || a.status === 403){
+        restzeitDa = false; return null;
+      }
+      return a.ok ? a.json() : null;
+    })
+    .catch(() => null);
+}
+
+/* Aus Sekunden wird ein Endzeitpunkt. Der wird gemerkt, nicht die
+   Sekundenzahl: Eine Zahl, die man selbst herunterzählt, geht falsch,
+   sobald das Telefon in der Tasche liegt. Ein Endzeitpunkt nicht. */
+function restzeitMerken(nummer, sekunden){
+  const v = vorgaenge.find(x => x.nummer === nummer);
+  if(!v) return;
+  const endet = (typeof sekunden === "number" && isFinite(sekunden) && sekunden >= 0)
+    ? Date.now() + sekunden * 1000
+    : null;
+  /* Nur bei echter Verschiebung sichern. Sonst schriebe jeder Takt in
+     den Speicher, obwohl sich nichts geändert hat. */
+  const anders = (v.endet == null) !== (endet == null) ||
+                 (endet != null && Math.abs(endet - v.endet) > 20000);
+  v.endet = endet;
+  if(anders) vorgaengeSichern();
+}
+
+/* Wie viele Minuten stehen noch? null heißt: keine Restzeit bekannt —
+   dann zeigt der Hub weiter die feste Zusage. 0 heißt: die zugesagte
+   Zeit ist um. Der Gast sieht dann „Jeden Moment", nie ein Minus. Er
+   kann an einer Verspätung nichts ändern; der Koch kann es, und der
+   sieht sie deshalb in der Küche. */
+function restMinuten(v){
+  if(!v || v.endet == null || v.status === "fertig") return null;
+  return Math.max(0, Math.ceil((v.endet - Date.now()) / 60000));
 }
 
 function vorgangAktualisieren(nummer, status, minuten, tagesnummer){
@@ -8024,9 +8093,15 @@ function vorgangStreifenZeichnen(){
     ? " · " + t("{n} weitere", {n: liste.length - 1})
     : "";
 
-  const warte = (v.warte && v.status !== "fertig")
-    ? '<span class="vwarte">' + t("ca. {a} Min", {a: v.warte}) + '</span>'
-    : (v.status === "fertig" ? '<span class="vwarte">✓</span>' : "");
+  /* Drei Fälle, in dieser Reihenfolge: fertig · Restzeit läuft ·
+     nur die feste Zusage (weil die Migration noch nicht steht). */
+  const rest = restMinuten(v);
+  const warte = (v.status === "fertig")
+    ? '<span class="vwarte">✓</span>'
+    : (rest != null
+        ? '<span class="vwarte">' +
+          (rest > 0 ? t("noch {a} Min", {a: rest}) : t("Jeden Moment")) + '</span>'
+        : (v.warte ? '<span class="vwarte">' + t("ca. {a} Min", {a: v.warte}) + '</span>' : ""));
 
   el.className = "vstreifen " + st.klasse;
   el.hidden = false;
@@ -8057,6 +8132,14 @@ function vorgaengeAbfragen(){
       const anders = vorgangAktualisieren(v.nummer, reihen[0].status,
                                           reihen[0].wartezeit_min,
                                           reihen[0].tagesnummer);
+      /* Die Restzeit kommt aus einer zweiten Anfrage und darf das
+         Neuzeichnen NICHT an „anders" hängen: Sie ändert sich in
+         jedem Takt, der Status fast nie. Der Streifen wird deshalb
+         hier ohnehin einmal nachgezogen. */
+      restzeitAbfragen(v.nummer).then(sek => {
+        restzeitMerken(v.nummer, sek);
+        if(sek != null) vorgangStreifenZeichnen();
+      });
       if(anders){
         vorgangStreifenZeichnen();
         /* Steht der Gast gerade auf der Bestätigungsseite, muss auch
@@ -8162,15 +8245,30 @@ function bestellStatusSteuern(pfad){
     /* Die zugesagte Wartezeit kommt aus dem Board. Sie steht nur dann da,
        wenn wirklich jemand bestätigt hat – geschätzte Zeiten ohne Zusage
        wären schlimmer als gar keine Angabe. */
-    const zusage = (minuten && status !== "fertig")
-      ? '<div class="bs-warte"><b>' + t("ca. {a} Minuten", {a: minuten}) + '</b>' +
+    /* Läuft eine Restzeit, zählt sie herunter. Läuft keine (Migration
+       noch nicht angewendet), bleibt es bei der festen Zusage — genau
+       wie bisher. Und bei 0 steht ein Satz statt einer Zahl: Ein
+       Zähler, der ins Minus läuft, macht aus drei Minuten Verspätung
+       einen Vorwurf, den der Gast vor sich hat, während er wartet. */
+    const restV = vorgaenge.find(x => String(x.nummer) === String(b.nummer));
+    const rest  = restMinuten(restV);
+    const kopf  = (status === "fertig") ? null
+                : (rest != null
+                    ? (rest > 0 ? t("noch ca. {a} Minuten", {a: rest}) : t("Jeden Moment"))
+                    : (minuten ? t("ca. {a} Minuten", {a: minuten}) : null));
+    const zusage = kopf
+      ? '<div class="bs-warte"><b>' + kopf + '</b>' +
         '<span>' + t("vom Team bestätigt") + '</span></div>'
       : "";
     kasten.hidden = false;
-    kasten.innerHTML = '<div class="bs-titel">' + t("Live-Status") + '</div>' +
+    /* Nur anfassen, wenn sich wirklich etwas geändert hat. Der Kasten
+       wird alle 15 Sekunden gerechnet; ein innerHTML bei jedem Takt
+       setzte die Stufen-Übergänge jedes Mal zurück (§4.2). */
+    const neuHTML = '<div class="bs-titel">' + t("Live-Status") + '</div>' +
       '<div class="bs-stufen">' + STUFEN.map((s,i) =>
         '<div class="bs-stufe' + (i <= idx ? " an" : "") + '"><i></i><span>' +
         t(s[1]) + '</span></div>').join("") + '</div>' + zusage;
+    if(kasten.innerHTML !== neuHTML) kasten.innerHTML = neuHTML;
   };
   /* Beim ersten Zeichnen den Stand nehmen, der im Speicher liegt –
      nicht stur „neu“. Kommt der Gast von der Startseite zurück,
@@ -8194,8 +8292,15 @@ function bestellStatusSteuern(pfad){
             body: JSON.stringify({ nummer: b.nummer }) })
     .then(a => a.ok ? a.json() : Promise.reject(a.status))
     .then(reihen => {
-      if(reihen && reihen[0] && reihen[0].status)
+      if(!reihen || !reihen[0] || !reihen[0].status) return;
+      malen(reihen[0].status, reihen[0].wartezeit_min, reihen[0].tagesnummer);
+      /* Und einmal mit der Restzeit hinterher — sie kommt aus einer
+         eigenen Anfrage und soll das erste Zeichnen nicht aufhalten. */
+      restzeitAbfragen(b.nummer).then(sek => {
+        if(sek == null) return;
+        restzeitMerken(b.nummer, sek);
         malen(reihen[0].status, reihen[0].wartezeit_min, reihen[0].tagesnummer);
+      });
     })
     .catch(grund => {
       /* Fehlen die Leserechte (RLS), verschwindet die Anzeige leise –

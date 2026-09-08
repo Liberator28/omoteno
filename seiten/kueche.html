@@ -464,6 +464,29 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
 .notiz b{display:block;font-size:calc(10px * var(--skala));letter-spacing:.12em;
   text-transform:uppercase;color:var(--warn);margin-bottom:3px}
 
+/* Wie lange dauert es? Nur da, solange niemand es gesagt hat.
+   Die Knöpfe sind so hoch wie die im Fuß — ein Schirm an der Wand
+   wird mit der ganzen Hand bedient, nicht mit der Fingerspitze
+   (CLAUDE.md §8.1d). */
+.zeitwahl{
+  display:flex; gap:1px; align-items:stretch;
+  background:var(--linie); border-top:1px solid var(--linie);
+}
+.zeitwahl small{
+  flex:none; display:flex; align-items:center; padding:0 12px;
+  background:var(--karte); color:var(--gedaempft);
+  font-size:calc(10px * var(--skala)); font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; white-space:nowrap;
+}
+.zeitwahl button{
+  flex:1; min-width:calc(44px * var(--skala));
+  padding:calc(13px * var(--skala)) 4px; background:var(--karte);
+  color:var(--messing); font-variant-numeric:tabular-nums;
+  font-size:calc(15px * var(--skala)); font-weight:700;
+  transition:background .14s;
+}
+.zeitwahl button:active{background:rgba(201,162,39,.22)}
+
 .bon-fuss{display:flex;gap:1px;background:var(--linie);border-top:1px solid var(--linie)}
 .bon-fuss button{
   flex:1; padding:calc(14px * var(--skala)) 8px; background:var(--karte);
@@ -820,7 +843,12 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
                    /* Für Telefonbestellungen: Wer hat angerufen, wann
                       will er es abholen. Am Tisch sind die Felder leer
                       und kosten nichts. */
-                   "gast_name,gast_telefon,abholung,wunschzeit,tagesnummer";
+                   "gast_name,gast_telefon,abholung,wunschzeit,tagesnummer," +
+                   /* Die Zusage aus dem Admin-Board: wie viele Minuten
+                      versprochen wurden und ab wann sie laufen. Erst
+                      beide zusammen ergeben eine Restzeit — eine Zahl
+                      ohne Startpunkt ist keine. */
+                   "wartezeit_min,bestaetigt_um";
 
 /* Servicerufe bleiben draußen, Telefonbestellungen kommen herein.
 
@@ -918,6 +946,53 @@ function zeitText(min){
   return Math.floor(min/60) + "h " + (min % 60) + "′";
 }
 
+/* ─── Die Lage eines Bons in einer Rechnung ───────────────────────
+   Beschriftung, Zahl, Balkenanteil und Farbstufe kommen aus EINER
+   Funktion. zeichne() baut die Karte damit, zeitenAktualisieren()
+   zieht sie damit nach. Zwei getrennte Rechnungen wären zwei
+   Gelegenheiten, auseinanderzulaufen — und die eine läuft im Takt,
+   die andere nur bei Änderungen, man sähe es also erst spät.
+
+   OHNE Zusage bleibt alles, wie es war: gelaufene Zeit seit der
+   Bestellung, Balken gegen EINST.rotAb.
+
+   MIT Zusage (Minuten aus dem Board UND Zeitpunkt der Bestätigung)
+   zählt die Karte herunter. Und sie zählt weiter, wenn die Zeit um
+   ist: „+3′" in Rot. Das ist Absicht und der Unterschied zum Gast —
+   der Koch KANN etwas daran ändern, der Gast nicht. */
+function bonLage(b){
+  var zusage = (Number(b.wartezeit_min) > 0 && b.bestaetigt_um)
+    ? Number(b.wartezeit_min) : 0;
+
+  if(!zusage){
+    var min = minutenSeit(b.zeitpunkt);
+    return {
+      zusage:   false,
+      marke:    "wartet",
+      text:     zeitText(min),
+      anteil:   Math.min(100, Math.round((min / Math.max(1, EINST.rotAb)) * 100)),
+      spaet:     min >= EINST.gelbAb && min < EINST.rotAb,
+      sehrSpaet: min >= EINST.rotAb
+    };
+  }
+
+  var seitZusage = minutenSeit(b.bestaetigt_um);
+  var rest = zusage - seitZusage;
+  /* Das letzte Fünftel ist die Vorwarnung. Ein gewählter Wert, keine
+     Messung: Bei 20 Minuten sind das die letzten vier, bei 60 die
+     letzten zwölf — mitwachsend, weil eine feste Minutenzahl bei
+     langen Zusagen zu früh und bei kurzen zu spät käme. */
+  var vorwarnung = Math.max(1, Math.round(zusage / 5));
+  return {
+    zusage:   true,
+    marke:    rest >= 0 ? "noch" : "zu spät",
+    text:     rest >= 0 ? zeitText(rest) : "+" + zeitText(-rest),
+    anteil:   Math.min(100, Math.round((seitZusage / zusage) * 100)),
+    spaet:     rest >= 0 && rest <= vorwarnung,
+    sehrSpaet: rest < 0
+  };
+}
+
 function sichtbareBons(){
   var spur = EINST.spur;
   var jetzt = Date.now();
@@ -980,7 +1055,12 @@ var wischtGerade   = false;
 function bonSignatur(liste){
   return EINST.spur + "|" + EINST.sortierung + "|" + liste.map(function(b){
     return b.id + ":" + (b.status || "") + ":" +
-           (b.kueche_fertig_um || "") + ":" + (b.theke_fertig_um || "");
+           (b.kueche_fertig_um || "") + ":" + (b.theke_fertig_um || "") + ":" +
+           /* Die Zusage MUSS mitzählen: Ohne sie blieben die
+              Minuten-Knöpfe nach dem Tippen stehen, bis zufällig
+              etwas anderes den Bon ändert. Der Zeitpunkt selbst
+              bleibt draußen — sonst wäre jede Minute ein Neuaufbau. */
+           (b.wartezeit_min || "");
   }).join(",");
 }
 
@@ -993,16 +1073,15 @@ function zeitenAktualisieren(){
     if(!el.dataset || !el.dataset.id) continue;
     var b = bonFinden(el.dataset.id); if(!b) continue;
 
-    var min = minutenSeit(b.zeitpunkt);
+    var L = bonLage(b);
     var w = el.querySelector('.wartet');
-    if(w) w.innerHTML = '<small>wartet</small>' + zeitText(min);
+    if(w) w.innerHTML = '<small>' + L.marke + '</small>' + L.text;
 
     var balken = el.querySelector('.mass span');
-    if(balken) balken.style.width =
-      Math.min(100, Math.round((min / Math.max(1, EINST.rotAb)) * 100)) + '%';
+    if(balken) balken.style.width = L.anteil + '%';
 
-    el.classList.toggle('spaet',      min >= EINST.gelbAb && min < EINST.rotAb);
-    el.classList.toggle('sehr-spaet', min >= EINST.rotAb);
+    el.classList.toggle('spaet',      L.spaet);
+    el.classList.toggle('sehr-spaet', L.sehrSpaet);
   }
 }
 
@@ -1053,18 +1132,20 @@ function zeichne(){
 
   feld.innerHTML = liste.map(function(b, i){
     var t = aufteilen(b);
-    var min = minutenSeit(b.zeitpunkt);
+    var L = bonLage(b);
     var klasse = "bon";
-    if(min >= EINST.rotAb) klasse += " sehr-spaet";
-    else if(min >= EINST.gelbAb) klasse += " spaet";
+    if(L.sehrSpaet) klasse += " sehr-spaet";
+    else if(L.spaet) klasse += " spaet";
     if(b.status === "neu") klasse += " neu";
     /* Nur beim allerersten Anzeigen aufblitzen, nicht bei jedem der
        vier Sekunden-Takte danach. */
     if(!gesehen[b.id+"_gezeichnet"]){ klasse += " frisch"; gesehen[b.id+"_gezeichnet"] = 1; }
 
-    /* Dringlichkeitsbalken: 0 % bei Ankunft, 100 % bei „rot". Zeigt die
-       Lage auf einen Blick, auch von der anderen Seite der Küche. */
-    var anteil = Math.min(100, Math.round((min / Math.max(1,EINST.rotAb)) * 100));
+    /* Dringlichkeitsbalken: 0 % bei Ankunft, 100 % bei „rot" — und
+       sobald eine Zusage steht, läuft er stattdessen gegen SIE. Das
+       ist der Balken, den der Koch quer durch die Küche liest, und er
+       soll die Frist zeigen, die wirklich gilt. */
+    var anteil = L.anteil;
 
     /* Welche Spuren zeigt dieser Bon in der aktuellen Ansicht? */
     var meine = spurenVon(b).filter(function(s){ return EINST.spur === "beides" || s === EINST.spur; });
@@ -1114,7 +1195,7 @@ function zeichne(){
                 h(b.tagesnummer != null ? "#" + b.tagesnummer : "Tel") + '</div>'
             : '<div class="tisch"><small>Tisch</small>' + h(b.tisch || "—") + '</div>') +
           '<div class="luecke">' + marken + '</div>' +
-          '<div class="wartet"><small>wartet</small>' + zeitText(min) + '</div>' +
+          '<div class="wartet"><small>' + L.marke + '</small>' + L.text + '</div>' +
         '</div>' +
         '<ul class="posten">' + zeilen + '</ul>' +
         /* Wer angerufen hat und wann er kommt — die zwei Angaben,
@@ -1129,6 +1210,19 @@ function zeichne(){
             '</div>'
           : '') +
         (b.notiz ? '<div class="notiz"><b>Hinweis vom Gast</b>' + h(b.notiz) + '</div>' : '') +
+        /* Wie lange dauert es? Die Zusage kommt normalerweise aus dem
+           Admin-Board. Steht dort keine, kann der Koch sie hier selbst
+           geben — er ist der Einzige, der es wirklich weiß, und der
+           Gast sieht die Minuten binnen 15 Sekunden in seinem Hub.
+           Sobald eine Zusage steht, verschwindet die Reihe: Sie ist
+           gesetzt, nicht dauernd verstellbar. */
+        (!L.zusage && !alleAbgehakt
+          ? '<div class="zeitwahl"><small>Dauert ca.</small>' +
+            [10,15,20,30].map(function(m){
+              return '<button data-tun="zeit" data-min="' + m + '" data-id="' +
+                     h(b.id) + '">' + m + '′</button>';
+            }).join("") + '</div>'
+          : '') +
         '<div class="bon-fuss">' +
           (b.status === "arbeit" && !alleAbgehakt
             ? '<button class="zurueck" data-tun="zurueck" data-id="' + h(b.id) + '">Zurück</button>' : '') +
@@ -1150,10 +1244,17 @@ function bonFinden(id){
 
 /* Die eigentliche Aktion — von Knopf UND Wisch gemeinsam genutzt, damit
    sich beide Wege exakt gleich verhalten. */
-function ausfuehren(b, tun){
+function ausfuehren(b, tun, zusatz){
   var felder = {}, jetzt = new Date().toISOString();
 
-  if(tun === "starten"){
+  if(tun === "zeit"){
+    /* Ab JETZT, nicht ab der Bestellung. Wer um 20:10 sagt „zwanzig
+       Minuten", meint 20:30 — auch wenn der Bon seit 20:02 liegt. */
+    felder.status        = "arbeit";
+    felder.wartezeit_min = Number(zusatz);
+    felder.bestaetigt_um = jetzt;
+  }
+  else if(tun === "starten"){
     felder.status = "arbeit";
     if(!b.bestaetigt_um) felder.bestaetigt_um = jetzt;
   }
@@ -1189,7 +1290,7 @@ function ausfuehren(b, tun){
 
   setzeBon(b.id, felder).catch(function(e){
     toast("„" + (b.tisch||"?") + "“ nicht gespeichert.", "err", {
-      text:"Erneut", tun: function(){ ausfuehren(b, tun); }
+      text:"Erneut", tun: function(){ ausfuehren(b, tun, zusatz); }
     });
   });
 }
@@ -1199,7 +1300,7 @@ $('feld').addEventListener('click', function(ev){
   if(!k) return;
   var b = bonFinden(k.dataset.id); if(!b) return;
   k.disabled = true;
-  ausfuehren(b, k.dataset.tun);
+  ausfuehren(b, k.dataset.tun, k.dataset.min);
 });
 
 /* ═══════════════════════════════════════════════════════════════

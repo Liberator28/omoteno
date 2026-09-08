@@ -883,6 +883,7 @@ Dazu je nach Änderung:
 | Konto, Anfrageformular, **Google-Knopf** | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links, Anbieterliste |
 | **Alessia, der Telefonweg** | `pruefungen/pruef-alessia.js` — liest die Nutzlast, ohne Netz |
 | **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
+| **Zugesagte Zeit, Countdown in Küche und Hub** | `pruefungen/pruef-zusage.js` (braucht `dist/`) — beide Seiten, und der Fall „Migration fehlt noch" |
 
 Und danach, immer:
 

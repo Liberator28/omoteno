@@ -326,6 +326,33 @@ Prüfung sieht genau in den Titel jedes Hubs.
 
 ---
 
+## 5d · Die Restzeit für den Gast einschalten
+
+Küche und Admin-Board zeigen die zugesagte Zeit **sofort** nach der
+Auslieferung herunterlaufend — sie lesen die Tabelle direkt.
+
+Der **Gast** kann das nicht: Er bekommt seinen Stand über
+`bestellung_status`, und die Funktion gibt absichtlich nur `status`,
+`wartezeit_min` und `tagesnummer` heraus — **keinen Zeitpunkt**. Er
+weiß „20 Minuten", nicht „ab wann".
+
+Deshalb einmal im SQL-Editor anwenden:
+
+```
+datenbank/migration-restzeit.sql
+```
+
+Sie legt **zusätzlich** `bestellung_restzeit(nummer)` an und lässt
+`bestellung_status` unangetastet. Die zwei Proben am Ende der Datei
+gehören dazu — eine Migration, die „success" meldet, sagt nichts
+darüber, ob die Funktion läuft.
+
+**Bis dahin ist nichts kaputt:** Der Hub zeigt weiter die feste Zusage
+(„ca. 20 Minuten"), fragt nach der ersten 404 nicht wieder und
+erfindet keinen Startzeitpunkt.
+
+---
+
 ## 5c · Google-Anmeldung einschalten
 
 > **Korrektur zu einem früheren Satz an dieser Stelle.** Hier stand,
