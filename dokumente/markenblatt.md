@@ -144,6 +144,26 @@ Zwei Sorten Feld, streng getrennt:
 `KACHELARTEN` in `vorlagen/hub.vorlage.html`; ein unbekannter hält
 den Erzeuger an, statt die Kachel wortlos verschwinden zu lassen.
 
+**Seit dem 08.09. gibt es eine VIERTE Quelle, und sie schlägt alle
+anderen: `betriebe.hub_kacheln` in der Datenbank.** Das ist der
+Kachel-Baukasten im Admin-Board. Der Grund für die Trennung:
+
+| Quelle | Wer stellt ein | Wann wirkt es |
+|---|---|---|
+| `markenblatt.kacheln` | wir, bei der Aufnahme | beim nächsten Erzeugen |
+| `betriebe.hub_kacheln` | der **Wirt**, im Board | beim nächsten Öffnen |
+
+Beide tragen dieselben Felder und laufen durch dieselbe Positivliste
+(`KACHEL_ERLAUBT`). Dazu ein Feld, das nur über den Baukasten sinnvoll
+entsteht:
+
+- **`banner`** — eine `https://`-Adresse zu einem Bild, das auf dem
+  Knopf liegt. Alles andere wird ignoriert, im Erzeuger **und** im Hub.
+  Das Bild liegt NEBEN der Schrift und läuft zu ihr hin in die Fläche
+  aus: Auf einem Foto lässt sich kein Kontrast rechnen (§5.1), es kann
+  oben weiß und unten schwarz sein. Deshalb steht die Schrift nie
+  darauf — `pruef-baukasten.js` misst den Abstand zwischen beiden.
+
 **Drei Stufen, absteigend.** Fehlt `kacheln`, leitet der Hub die Liste
 aus `bereiche` ab. Fehlt auch das, bleibt seine Vorgabe. `bereiche`
 war bis dahin ein toter Schalter: geschrieben, nie gelesen.

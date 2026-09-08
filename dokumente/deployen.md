@@ -326,6 +326,87 @@ Prüfung sieht genau in den Titel jedes Hubs.
 
 ---
 
+## 5f · Storno binnen zwei Minuten einschalten
+
+Derselbe Einspielvorgang wie 5e — die Datei trägt **beide** Abschnitte:
+
+```
+datenbank/migration-baukasten-und-storno.sql
+```
+
+Abschnitt 2 legt `bestellungen.storno` und
+`bestellung_stornieren(nummer, posten)` an. **Die Zwei-Minuten-Frist
+rechnet der Server**, nicht der Hub: Wer die Uhr seines Telefons
+verstellt, storniert sonst eine Stunde alte Bestellung.
+
+Gestrichen wird über die **Stelle** in der Liste, nicht über den Namen
+— der Name in der Datenbank trägt die Zusätze mit („Dubai Crêpe (extra
+Pistazie)"), und der wurde beim Bestellen aus dem damaligen Zustand der
+Auswahl gebaut.
+
+**Bis dahin ist nichts kaputt:** Der Knopf steht im Hub, und wenn die
+Funktion fehlt, sagt die Seite es im Klartext („Das geht hier gerade
+nicht. Bitte sagen Sie kurz Bescheid.") — statt den Gast raten zu
+lassen.
+
+**Die Küche braucht nichts weiter.** Sie liest die Spalte mit dem
+Personal-Schlüssel, färbt den Bon rot, lässt die gestrichene Zeile
+durchgestrichen stehen und spielt einen eigenen Ton: vier **fallende**
+Töne (660 → 440), nicht den einen steigenden auf 880, der eine neue
+Bestellung meldet.
+
+---
+
+## 5e · Den Kachel-Baukasten einschalten
+
+Der Bereich **Startseite** im Admin-Board schreibt nach
+`betriebe.hub_kacheln`. Die Spalte gibt es noch nicht — einmal im
+SQL-Editor anwenden:
+
+```
+datenbank/migration-baukasten-und-storno.sql
+```
+
+Sie legt die Spalte an, hängt eine Größenschranke daran und gibt das
+Leserecht **spaltenweise** an `anon` — genau wie bei den übrigen
+Kopfdaten, damit `select *` auf `betriebe` weiterhin scheitert und
+`plan`, `preis_monat` und `vertrag_ab` nicht mit herauskommen.
+
+**Woran man erkennt, dass sie fehlt:** Das Board sagt es beim
+Übernehmen im Klartext („Die Spalte hub_kacheln fehlt noch …").
+
+Die Bilder brauchen **nichts**: Sie liegen im vorhandenen, öffentlichen
+Eimer `gerichte` unter `<betrieb>/kacheln/`.
+
+---
+
+## 5d · Die Restzeit für den Gast einschalten
+
+Küche und Admin-Board zeigen die zugesagte Zeit **sofort** nach der
+Auslieferung herunterlaufend — sie lesen die Tabelle direkt.
+
+Der **Gast** kann das nicht: Er bekommt seinen Stand über
+`bestellung_status`, und die Funktion gibt absichtlich nur `status`,
+`wartezeit_min` und `tagesnummer` heraus — **keinen Zeitpunkt**. Er
+weiß „20 Minuten", nicht „ab wann".
+
+Deshalb einmal im SQL-Editor anwenden:
+
+```
+datenbank/migration-restzeit.sql
+```
+
+Sie legt **zusätzlich** `bestellung_restzeit(nummer)` an und lässt
+`bestellung_status` unangetastet. Die zwei Proben am Ende der Datei
+gehören dazu — eine Migration, die „success" meldet, sagt nichts
+darüber, ob die Funktion läuft.
+
+**Bis dahin ist nichts kaputt:** Der Hub zeigt weiter die feste Zusage
+(„ca. 20 Minuten"), fragt nach der ersten 404 nicht wieder und
+erfindet keinen Startzeitpunkt.
+
+---
+
 ## 5c · Google-Anmeldung einschalten
 
 > **Korrektur zu einem früheren Satz an dieser Stelle.** Hier stand,

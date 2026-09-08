@@ -677,6 +677,61 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
 .gitter.zwei .txt > span{display:none}
 .gitter.zwei .pfeil{display:none}
 
+/* ═══ Banner auf der Kachel ═════════════════════════════════════
+   Der Wirt lädt im Board ein Bild hoch. Die entscheidende Regel
+   steht hier und nicht im Board: DIE SCHRIFT LIEGT NIE AUF DEM
+   FOTO.
+
+   Warum so streng — CLAUDE.md §5.1: Überall, wo ein Nutzer den
+   Grund bestimmt, wird die Schriftfarbe gerechnet, nie gesetzt.
+   Bei einem FOTO lässt sich nichts rechnen: Es kann in derselben
+   Kachel oben weiß und unten schwarz sein, und morgen lädt der
+   Wirt ein anderes hoch. Jede Lösung mit Schrift über Bild wäre
+   eine Wette auf das nächste Foto.
+
+   Also liegt das Bild NEBEN der Schrift und läuft zur Textseite
+   hin in die Fläche aus. Der Kontrast bleibt damit exakt der von
+   heute — messbar, und unabhängig davon, was der Wirt hochlädt. */
+.kbanner{
+  position:absolute;inset:0 0 0 auto;width:46%;
+  overflow:hidden;pointer-events:none;
+  border-radius:0 var(--rundung) var(--rundung) 0;
+}
+.kbanner img{width:100%;height:100%;object-fit:cover;display:block}
+/* Der Verlauf gehört ÜBER das Bild, nicht darunter — sonst deckt
+   das Bild ihn zu. Er läuft von der Flächenfarbe ins Durchsichtige,
+   damit die Kante nicht als Strich sichtbar wird. */
+.kbanner::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(to right, var(--flaeche) 0%,
+             var(--flaeche) 12%, transparent 62%);
+}
+a.kachel.hatbanner{position:relative;overflow:hidden}
+/* Text und Symbol müssen über dem Bild liegen, sonst verschwinden
+   sie darunter, sobald das Bild breiter gerät als gedacht. */
+a.kachel.hatbanner > .ico,
+a.kachel.hatbanner > .txt,
+a.kachel.hatbanner > .pfeil{position:relative;z-index:1}
+/* Der Pfeil stünde sonst mitten im Foto. */
+a.kachel.hatbanner > .pfeil{display:none}
+.txt{max-width:100%}
+a.kachel.hatbanner > .txt{max-width:56%}
+
+/* Die Säule ist hoch und schmal — dort liegt das Bild oben quer,
+   und die Schrift steht darunter auf der Fläche. Dasselbe Prinzip,
+   andere Richtung. */
+a.kachel.saeule.hatbanner{padding-top:0}
+.kachel.saeule .kbanner{
+  position:static;width:calc(100% + 24px);height:58px;
+  margin:0 -12px 0;flex:none;
+  border-radius:var(--rundung) var(--rundung) 0 0;
+}
+.kachel.saeule .kbanner::after{
+  background:linear-gradient(to bottom, transparent 40%, var(--flaeche) 100%);
+}
+a.kachel.saeule.hatbanner > .txt{max-width:100%}
+.gitter.zwei .kbanner{width:38%}
+
 /* ═══ Unterseiten ═══════════════════════════════════════════════ */
 .seite h2{font-size:26px;margin:0 0 7px;font-weight:600;letter-spacing:-.4px;line-height:1.15}
 .seite .unter{color:var(--tinte-leise);font-size:14px;margin:0 0 24px;line-height:1.5}
@@ -1139,6 +1194,87 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   background-size:200% 100%;animation:skelettzug 1.4s linear infinite;
 }
 @media (prefers-reduced-motion:reduce){.storybild.laedt{animation:none}}
+/* ═══ Bestellung zurückziehen ═══════════════════════════════════
+   Zwei Minuten lang. Danach hilft nur noch der Service — und das
+   steht dann auch dort, statt dass der Knopf einfach verschwindet. */
+.stknopf{
+  display:block;width:100%;margin-top:14px;padding:12px;
+  border:1px solid var(--linie);border-radius:var(--rundung);
+  background:none;color:var(--tinte-leise);
+  font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
+}
+.stknopf:active{transform:scale(.985)}
+.sthinweis{margin-top:12px;font-size:12px;color:var(--tinte-still);text-align:center}
+
+.stblatt{
+  position:fixed;inset:0;z-index:95;background:var(--grund);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:max(20px,env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+  animation:zeigenRein 300ms var(--weich) both;
+}
+.stblatt[hidden]{display:none}
+@media (prefers-reduced-motion: reduce){.stblatt{animation:none}}
+.stinhalt{max-width:420px;margin:0 auto}
+.stliste{display:flex;flex-direction:column;gap:8px;margin:18px 0}
+.stzeile2{
+  display:flex;align-items:center;gap:12px;padding:13px 14px;
+  border:1px solid var(--linie);border-radius:var(--rundung);
+  background:var(--flaeche);cursor:pointer;
+}
+.stzeile2[aria-pressed="true"]{border-color:var(--rot);background:var(--flaeche-2)}
+.stzeile2 .stname{flex:1;min-width:0;font-size:14.5px;font-weight:600}
+.stzeile2 .stpreis{font-size:13px;color:var(--tinte-leise);flex:none}
+.stzeile2 .stkreuz{
+  width:26px;height:26px;flex:none;border-radius:50%;
+  border:1px solid var(--linie-stark);color:var(--tinte-still);
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.stzeile2[aria-pressed="true"] .stkreuz{
+  border-color:var(--rot);background:var(--rot);color:var(--flaeche)}
+
+/* ═══ Was im Besuchsbild stehen soll ════════════════════════════
+   Bewusst ÜBER den Teilen-Knöpfen: Erst bauen, dann teilen. Wer die
+   Reihenfolge dreht, lädt zum Teilen ein, bevor das Bild fertig ist. */
+.storywahl{margin:0 0 16px}
+.swreihe{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px}
+.swknopf{
+  flex:1 1 auto;min-height:44px;padding:11px 13px;
+  border:1px solid var(--linie);border-radius:var(--rundung);
+  background:var(--flaeche);color:var(--tinte);
+  font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
+  transition:border-color var(--kurz) var(--weich), background var(--kurz);
+}
+.swknopf[aria-pressed="true"]{
+  border-color:var(--rot);background:var(--flaeche-2);color:var(--tinte)}
+.swknopf:active{transform:scale(.98)}
+
+/* Die Karte des Hauses als Bildquelle. Nur Gerichte MIT Bild — ein
+   Feld ohne Bild wäre ein Versprechen, das keiner einlöst. */
+.sgerichte{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));
+  gap:7px;margin:0 0 10px;max-height:196px;overflow-y:auto;
+}
+.sgerichte button{
+  padding:0;border:1px solid var(--linie);border-radius:10px;overflow:hidden;
+  background:var(--flaeche-2);aspect-ratio:1;cursor:pointer;
+}
+.sgerichte button[aria-pressed="true"]{border-color:var(--rot);border-width:2px}
+.sgerichte img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* Sterne je Speise. Sie bleiben IM GERÄT — sie gehen weder ans Haus
+   noch an sonst jemanden. Das steht auch als Satz darüber. */
+.ssterne{display:flex;flex-direction:column;gap:8px}
+.ssterne .szeile{display:flex;align-items:center;gap:8px}
+.ssterne .sname{
+  flex:1;min-width:0;font-size:13px;color:var(--tinte-leise);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sstern{
+  width:32px;height:32px;flex:none;border:0;background:none;padding:0;
+  color:var(--linie-stark);cursor:pointer;line-height:1}
+.sstern svg{width:20px;height:20px;display:block;margin:0 auto;
+  fill:currentColor;stroke:none}
+.sstern[aria-pressed="true"]{color:var(--gold)}
+
 .storyknoepfe{display:grid;gap:0}
 .zeigenzu{
   position:absolute;top:-4px;right:-4px;z-index:2;
@@ -1696,15 +1832,9 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 
    Kein zusätzliches opacity: Das würde den gemessenen Wert wieder
    zunichte machen. */
-.fuerbetrieb{margin-top:8px;font-size:10.5px;letter-spacing:1.2px}
-/* inline-block plus Polster: Die Schrift bleibt klein und
-   zurückhaltend, die Trefferfläche wird trotzdem 32px hoch. Ohne das
-   waren es 14px — pruef-hub-hand.js hat genau darauf hingewiesen. Wer
-   den Link braucht, tippt oft mit dem Daumen im Gehen. */
-.fuerbetrieb a{display:inline-block;padding:9px 8px;
-  color:var(--tinte-leise);text-decoration:none;
-  border-bottom:1px solid currentColor}
-.fuerbetrieb a:hover,.fuerbetrieb a:focus-visible{color:var(--tinte)}
+/* Die Regeln für „Für den Betrieb" standen hier. Der Link ist raus,
+   die Regeln mit ihm — totes CSS ist eine Einladung, es später
+   wieder anzuschließen. */
 
 /* ═══ Vorführmodus · vor dem Livegang löschen ═══════════════════ */
 #demo{margin-top:26px;padding:12px;border:1px dashed var(--linie-stark);
@@ -2505,6 +2635,7 @@ function markeAnwenden(abend){
      ═══════════════════════════════════════════════════════════════ -->
 <div class="zeigen" id="zeigen" hidden>
   <div class="zeigeninhalt">
+    <div class="wgriff"></div>
     <button class="zeigenzu" data-zeigen-zu aria-label="Schließen">✕</button>
 
     <div class="zeigenkopf">
@@ -2528,10 +2659,46 @@ function markeAnwenden(abend){
      Es entsteht im Gerät auf einer Leinwand — nichts wird hochgeladen,
      nichts an Dritte geschickt, und es funktioniert ohne Netz.
      ═══════════════════════════════════════════════════════════════ -->
+<!-- Bestellung zurückziehen. Ein eigenes Fenster statt einer Zeile im
+     Pass: Wer etwas streicht, soll es einzeln sehen und antippen. -->
+<div class="stblatt" id="storno" hidden>
+  <div class="stinhalt">
+    <div class="wgriff"></div>
+    <h2 id="stTitel">Bestellung ändern</h2>
+    <p class="lead" id="stLead"></p>
+    <div class="stliste" id="stListe"></div>
+    <button class="knopf" id="stEinzeln">Ausgewähltes streichen</button>
+    <button class="knopf zweit" id="stAlles">Ganze Bestellung stornieren</button>
+    <button class="knopf zweit" id="stZurueck">Doch nicht</button>
+    <p class="hinweis" id="stMeldung"></p>
+  </div>
+</div>
+
 <div class="story" id="story" hidden>
   <div class="storyinhalt">
+    <div class="wgriff"></div>
     <button class="zeigenzu" data-story-zu aria-label="Schließen">✕</button>
     <div class="storybild" id="storyBild"></div>
+
+    <!-- Alles, was der Gast am Bild einstellen kann. Es entsteht
+         weiterhin VOLLSTÄNDIG IM GERÄT: kein Hochladen, kein Dritter,
+         und es läuft ohne Netz. Auch das Foto bleibt hier. -->
+    <div class="storywahl" id="storyWahl">
+      <div class="swreihe" role="group" aria-label="Bauart">
+        <button type="button" class="swknopf" data-sbauart="figur" aria-pressed="true">Nur Figur</button>
+        <button type="button" class="swknopf" data-sbauart="bild"  aria-pressed="false">Mit Bild</button>
+      </div>
+      <div class="swreihe" id="storyBildWahl" hidden>
+        <button type="button" class="swknopf" data-sfoto>Foto machen</button>
+        <button type="button" class="swknopf" data-sgalerie>Aus der Galerie</button>
+        <button type="button" class="swknopf" data-sgericht>Aus der Karte</button>
+      </div>
+      <input type="file" accept="image/*" capture="environment" hidden id="storyFoto">
+      <input type="file" accept="image/*" hidden id="storyGalerie">
+      <div class="sgerichte" id="storyGerichte" hidden></div>
+      <div class="ssterne" id="storySterne"></div>
+    </div>
+
     <div class="storyknoepfe">
       <button class="knopf" data-aktion="storyTeilen" id="storyTeilen">Teilen</button>
       <a class="knopf zweit" id="storySichern" download="besuch.png" href="#">Bild sichern</a>
@@ -2572,7 +2739,10 @@ function markeAnwenden(abend){
      Rücksprung nach der Google-Anmeldung nur auf Adressen zu, die in
      der Allowlist stehen. Ein relativer Link wäre ein Umweg über eine
      Umleitung, die jemand später wegnehmen könnte. -->
-<div class="fuerbetrieb"><a id="fuerbetrieb" href="https://omoteno.de/admin" rel="nofollow">Für den Betrieb</a></div>
+<!-- „Für den Betrieb" stand hier bis zum 08.09. und ist bewusst
+     ENTFERNT, nicht versteckt: Ein Gast hat im Board nichts zu
+     suchen, und ein Link, den niemand braucht, ist eine Frage, die
+     sich niemand stellen sollte. Der Wirt kommt über omoteno.de. -->
 <div class="ver">v7.1</div></footer>
 
 <!--{{VORFUEHRUNG}}
@@ -2910,9 +3080,10 @@ const TRINKGELD = {
 };
 
 /* ╔═══ ICONS · GETEILTER BLOCK · ANFANG ═══════════════════════════╗
-   ║ Wortgleich in vorlagen/hub.vorlage.html und                    ║
-   ║ seiten/marken-studio.html. pruef-kacheln.js vergleicht beide   ║
-   ║ Zeichen für Zeichen. Wer hier etwas ändert, ändert es dort auch.║
+   ║ Wortgleich in vorlagen/hub.vorlage.html,                       ║
+   ║ seiten/marken-studio.html und seiten/admin.html.               ║
+   ║ pruef-kacheln.js vergleicht alle drei Zeichen für Zeichen.     ║
+   ║ Wer hier etwas ändert, ändert es dort auch.                    ║
    ║                                                                ║
    ║ Anlass: Das Studio zeigte in der Vorschau EMOJI, der Hub        ║
    ║ zeichnete Striche. Der Kunde sah damit etwas anderes, als er   ║
@@ -3081,7 +3252,7 @@ const KACHELFOLGE = ["speisekarte","getraenke","cocktails",
    Kachel bauen. Was der Wirt schicken darf, steht in ERLAUBT — alles
    andere aus dem Markenblatt wird ignoriert, nicht übernommen. */
 const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
-                        "farbe","von","bis","neu","cyan"];
+                        "farbe","von","bis","neu","cyan","banner"];
 
 function kachelBauen(schluessel, wunsch){
   const art = KACHELARTEN[schluessel];
@@ -3091,6 +3262,10 @@ function kachelBauen(schluessel, wunsch){
     ziel: art.ziel, wenn: art.wenn, nurDe: art.nurDe,
     titel: art.titel, unter: art.unter || "", icon: art.icon, emoji: "",
     gruppe: art.gruppe, raster: art.raster || "", stil: art.stil || "",
+    /* Keine Kachel bringt von Haus aus ein Banner mit. Es entsteht
+       erst, wenn der Wirt eines hochlädt — sonst sähe jeder neue
+       Kunde fremde Bilder. */
+    banner: "",
     farbe: art.farbe || "", neu: !!art.neu, cyan: !!art.cyan,
     von: art.von === undefined ? 0 : art.von,
     bis: art.bis === undefined ? 24 : art.bis
@@ -3374,6 +3549,26 @@ function storyZeilen(ctx, text, breite, hoechstens){
    Hochladen ein weiches Bild. */
 const STORY_B = 1080, STORY_H = 1920;
 
+/* Was der Gast am Bild eingestellt hat. Alles davon bleibt IM GERÄT:
+   das Foto, die Sterne, die Bauart. Nichts wird gesendet, nichts
+   gespeichert — dieselbe Regel wie für das Bild selbst. */
+let storyStand = { bauart:"figur", bild:null, bildName:"", sterne:{}, posten:[] };
+
+/* Ein gezeichneter Stern, kein Schriftzeichen. „★" sieht auf jedem
+   Gerät anders aus und fehlt in mancher Schrift ganz — dieselbe
+   Begründung, aus der der Bestellpass keine Emoji trägt. */
+function sternPfad(x, mitte, y, r){
+  x.beginPath();
+  for(let i = 0; i < 10; i++){
+    const w = Math.PI/5 * i - Math.PI/2;
+    const rr = i % 2 ? r * 0.42 : r;
+    const px = mitte + Math.cos(w) * rr, py = y + Math.sin(w) * rr;
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  }
+  x.closePath();
+  x.fill();
+}
+
 async function storyZeichnen(posten){
   const c = document.createElement("canvas");
   c.width = STORY_B; c.height = STORY_H;
@@ -3386,6 +3581,11 @@ async function storyZeichnen(posten){
   const tinte   = farbe("--tinte", "#2A1A14");
   const leise   = farbe("--tinte-leise", "#846C62");
   const akzent  = farbe("--rot", "#C8202E");
+  /* Für die Sterne: gefüllt in Gold, leer in der Linienfarbe. Beide
+     kommen aus der Palette des Hauses, nicht aus einer festen Liste
+     (§5.1) — bei Blend ist Gold ein anderes als bei Choco. */
+  const gold    = farbe("--gold", "#C9A227");
+  const linie   = farbe("--linie-stark", "#DCCBBE");
   const kopfSchrift = farbe("--schrift-kopf", "serif");
   const textSchrift = farbe("--schrift-text", "sans-serif");
 
@@ -3403,24 +3603,49 @@ async function storyZeichnen(posten){
   storyZeilen(x, BETRIEB.name, STORY_B - 140, 2)
     .forEach((z, i) => x.fillText(z, STORY_B/2, 200 + i*80));
 
+  /* Zwei Bauarten. „bild" nur, wenn wirklich eines da ist — sonst
+     stünde ein leeres Feld über der Liste, und der Gast hätte etwas
+     gewählt, das ihm niemand gegeben hat. */
+  const mitBild = storyStand.bauart === "bild" && !!storyStand.bild;
+
   /* Die Figur. Fällt sie aus, geht das Bild trotzdem raus — sie ist
-     Beiwerk, die Liste ist die Botschaft. */
+     Beiwerk, die Liste ist die Botschaft. Mit Foto wird sie klein und
+     rückt in den Fuß: Zwei große Bilder übereinander erschlagen die
+     Liste, und die ist die Botschaft. */
   let figur = null;
-  try{ figur = await figurAlsBild(340, "teller"); }catch(e){}
+  try{ figur = await figurAlsBild(mitBild ? 190 : 340, "teller"); }catch(e){}
+
+  /* Das Foto als Band unter dem Kopf. Beschnitten wie eine Kachel:
+     Was nicht hineinpasst, wird weggeschnitten statt gestaucht — eine
+     verzerrte Waffel sieht nach Fehler aus, ein Ausschnitt nicht. */
+  let bandUnten = 300;
+  if(mitBild){
+    const b = storyStand.bild;
+    const H = 700, ziel = STORY_B / H, quelle = b.naturalWidth / b.naturalHeight;
+    let qb = b.naturalWidth, qh = b.naturalHeight, qx = 0, qy = 0;
+    if(quelle > ziel){ qb = b.naturalHeight * ziel; qx = (b.naturalWidth - qb) / 2; }
+    else             { qh = b.naturalWidth / ziel;  qy = (b.naturalHeight - qh) / 2; }
+    x.drawImage(b, qx, qy, qb, qh, 0, 300, STORY_B, H);
+    bandUnten = 300 + H;
+  }
 
   /* Erst rechnen, dann zeichnen: Bei fest gesetztem Anfang blieb
      unter der Liste ein handbreites Loch, weil die Höhe von der Zahl
      der Gerichte abhängt. Jetzt sitzt die Gruppe mittig zwischen
      Kopfband und Fußzeile — bei einer Zeile wie bei fünf. */
   const zeilen    = posten.slice(0, 5);
-  const listeHoch = zeilen.length * 74 + 56;
+  /* Sterne brauchen eine eigene Zeile unter dem Namen. Nur dann, sonst
+     stünde bei jedem Bild ohne Bewertung ein leerer Streifen. */
+  const sterneDa  = zeilen.some((p,i) => (storyStand.sterne[storyKennung(p,i)] || 0) > 0);
+  const zeilHoch  = sterneDa ? 96 : 74;
+  const listeHoch = zeilen.length * zeilHoch + 56;
   const mehrHoch  = posten.length > zeilen.length ? 60 : 0;
   const figurHoch = figur ? figur.height + 40 : 0;
-  const gruppe    = figurHoch + 44 + 26 + listeHoch + mehrHoch;
-  const raumOben  = 300, raumUnten = STORY_H - 380;
+  const gruppe    = (mitBild ? 0 : figurHoch) + 44 + 26 + listeHoch + mehrHoch;
+  const raumOben  = bandUnten, raumUnten = STORY_H - 380;
   let unten = raumOben + Math.max(20, (raumUnten - raumOben - gruppe) / 2);
 
-  if(figur){
+  if(figur && !mitBild){
     x.drawImage(figur, (STORY_B - figur.width)/2, unten, figur.width, figur.height);
     unten += figur.height + 40;
   }
@@ -3443,7 +3668,7 @@ async function storyZeichnen(posten){
   const rechtsLinks = RTL.indexOf(sprache) >= 0;
   const randInnen = 140, randAussen = STORY_B - 140;
   zeilen.forEach((p, i) => {
-    const y = unten + 26 + i*74;
+    const y = unten + 26 + i*zeilHoch;
     x.textAlign = rechtsLinks ? "right" : "left";
     x.fillStyle = akzent;
     x.font = "700 38px " + textSchrift;
@@ -3452,6 +3677,18 @@ async function storyZeichnen(posten){
     x.font = "500 38px " + textSchrift;
     const name = storyZeilen(x, t(p.n), STORY_B - 400, 1)[0] || "";
     x.fillText(name, rechtsLinks ? randAussen - 90 : randInnen + 90, y);
+
+    /* Die Sterne stehen UNTER der Speise, wie besprochen. Gezeichnet,
+       nicht getippt: „★" fehlt in mancher Schrift ganz. */
+    const wie = storyStand.sterne[storyKennung(p, i)] || 0;
+    if(wie > 0){
+      const start = rechtsLinks ? randAussen - 90 - 18 : randInnen + 90 + 18;
+      for(let k = 0; k < 5; k++){
+        x.fillStyle = k < wie ? gold : linie;
+        const versatz = (rechtsLinks ? -1 : 1) * k * 44;
+        sternPfad(x, start + versatz, y + 32, 16);
+      }
+    }
   });
   x.textAlign = "center";
   unten = listeOben + listeHoch + 30;
@@ -3476,7 +3713,20 @@ async function storyZeichnen(posten){
     { day:"2-digit", month:"long", year:"numeric" }); }
   catch(e){ datum = new Date().toLocaleDateString("de-DE",
     { day:"2-digit", month:"long", year:"numeric" }); }
-  x.fillText(datum, STORY_B/2, STORY_H - 300);
+  /* Datum UND Uhrzeit. Ein Besuch um halb elf abends erzählt etwas
+     anderes als einer um zehn Uhr morgens — und der Gast weiß beim
+     Wiedersehen des Bildes wieder, welcher Abend das war. */
+  let uhr;
+  try{ uhr = new Date().toLocaleTimeString(sprache, { hour:"2-digit", minute:"2-digit" }); }
+  catch(e){ uhr = new Date().toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit" }); }
+  x.fillText(datum + " · " + uhr, STORY_B/2, STORY_H - 300);
+
+  /* Mit Foto steht die Figur klein im Fuß — sie bleibt dabei, aber
+     sie nimmt der Liste nicht den Platz. */
+  if(figur && mitBild){
+    x.drawImage(figur, (STORY_B - figur.width)/2, STORY_H - 300 - figur.height - 34,
+                figur.width, figur.height);
+  }
 
   x.fillStyle = akzent;
   x.font = "700 42px " + textSchrift;
@@ -3506,22 +3756,178 @@ function hubAdresse(){
 
 let storyLeinwand = null;
 
+/* Eine Zeile der Liste eindeutig benennen. Der Name allein reicht
+   nicht: Wer zweimal dasselbe bestellt, hätte sonst eine Bewertung
+   für zwei Zeilen. */
+function storyKennung(p, i){ return (p && p.n ? p.n : "?") + "#" + i; }
+
+/* ══════════════════════════════════════════════════════════════════
+   BESTELLUNG ZURÜCKZIEHEN
+
+   Zwei Minuten lang darf der Gast eine Speise streichen oder die
+   ganze Bestellung zurückziehen. Danach hilft nur noch der Service —
+   und dann steht das auch dort, statt dass der Knopf verschwindet.
+
+   Die Frist hier ist nur für die ANZEIGE. Entschieden wird sie auf
+   dem Server: Wer die Uhr seines Telefons verstellt, storniert sonst
+   eine Stunde alte Bestellung.
+
+   Gestrichen wird über die STELLE in der Liste, nicht über den Namen.
+   Der Name in der Datenbank trägt die Zusätze mit („Dubai Crêpe
+   (extra Pistazie)"), und der wurde beim Senden aus dem damaligen
+   Zustand der Auswahl gebaut. Wer später über den Namen sucht, sucht
+   unter Umständen einen, den es so nicht mehr gibt.
+   ══════════════════════════════════════════════════════════════════ */
+const STORNO_FRIST = 2 * 60 * 1000;
+let stornoFuer = null;      /* die Bestellung, um die es geht */
+let stornoWahl = {};        /* welche Stellen angetippt sind */
+let stornoUhr  = null;
+
+/* Wie lange darf noch gestrichen werden? Null heißt: vorbei. */
+function stornoRest(b){
+  if(!b || !b.nummer) return 0;
+  const v = vorgaenge.find(x => String(x.nummer) === String(b.nummer));
+  const start = (v && v.zeit) || 0;
+  if(!start) return 0;
+  return Math.max(0, STORNO_FRIST - (Date.now() - start));
+}
+
+function stornoHTML(b, status){
+  if(status === "fertig" || status === "storniert") return "";
+  const rest = stornoRest(b);
+  if(rest <= 0) return "";
+  return '<button class="stknopf" id="stOeffnen" type="button">' +
+    hs(t("Bestellung ändern oder zurückziehen")) + '</button>';
+}
+
+function stornoOeffnen(){
+  const b = letzteBestellung;
+  if(!b || !Array.isArray(b.posten) || !b.posten.length){
+    melden(t("Dafür fehlt noch eine Bestellung."), true);
+    return;
+  }
+  stornoFuer = b;
+  stornoWahl = {};
+  const el = $("storno"); if(!el) return;
+  $("stTitel").textContent = t("Bestellung ändern");
+  $("stLead").textContent  = t("Tippen Sie an, was weg soll. Oder ziehen Sie alles zurück.");
+  $("stEinzeln").textContent = t("Ausgewähltes streichen");
+  $("stAlles").textContent   = t("Ganze Bestellung stornieren");
+  $("stZurueck").textContent = t("Doch nicht");
+  $("stMeldung").textContent = "";
+  stornoListeZeichnen();
+  el.hidden = false;
+  document.body.classList.add("fest");
+  wischZu({ blatt: el, zu: stornoSchliessen, griff: ".wgriff" });
+}
+
+function stornoSchliessen(){
+  const el = $("storno"); if(!el) return;
+  el.hidden = true;
+  document.body.classList.remove("fest");
+  stornoFuer = null;
+}
+
+function stornoListeZeichnen(){
+  const feld = $("stListe"); if(!feld || !stornoFuer) return;
+  feld.innerHTML = stornoFuer.posten.map((p, i) =>
+    '<button type="button" class="stzeile2" data-storno-stelle="' + i + '"' +
+    ' aria-pressed="' + (stornoWahl[i] ? "true" : "false") + '">' +
+      '<span class="stkreuz" aria-hidden="true">' + (stornoWahl[i] ? "✕" : "") + '</span>' +
+      '<span class="stname">' + hs((p.m || 1) + "× " + t(p.n)) + '</span>' +
+      '<span class="stpreis">' + hs(p.p || "") + '</span>' +
+    '</button>').join("");
+  const wieviele = Object.keys(stornoWahl).filter(k => stornoWahl[k]).length;
+  $("stEinzeln").disabled = wieviele === 0;
+}
+
+async function stornoSenden(alles){
+  const b = stornoFuer;
+  if(!b || !serverBereit()) return;
+  const stellen = Object.keys(stornoWahl).filter(k => stornoWahl[k]);
+  if(!alles && !stellen.length) return;
+
+  if(alles && !confirm(t("Die ganze Bestellung zurückziehen?"))) return;
+
+  const knopf = alles ? $("stAlles") : $("stEinzeln");
+  knopf.disabled = true;
+  $("stMeldung").textContent = t("Wird gesendet …");
+  try{
+    const a = await sicherFetch(
+      SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/bestellung_stornieren",
+      { method:"POST",
+        headers:{ apikey:SERVER.schluessel,
+                  Authorization:"Bearer " + SERVER.schluessel,
+                  "Content-Type":"application/json" },
+        body: JSON.stringify({ nummer: b.nummer, posten: alles ? null : stellen }) });
+    /* 404 heißt: Die Migration ist noch nicht eingespielt. Das ist
+       kein Fehler des Gastes, und er soll auch nicht raten. */
+    if(a.status === 404){
+      $("stMeldung").textContent =
+        t("Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.");
+      knopf.disabled = false; return;
+    }
+    const antwort = a.ok ? await a.json() : null;
+    if(!antwort || !antwort.ok){
+      const grund = antwort && antwort.grund;
+      $("stMeldung").textContent =
+        grund === "frist"   ? t("Die zwei Minuten sind um. Bitte sagen Sie kurz Bescheid.")
+      : grund === "zu_spaet"? t("Die Küche ist schon dran. Bitte sagen Sie kurz Bescheid.")
+      :                       t("Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.");
+      knopf.disabled = false;
+      return;
+    }
+
+    /* Den eigenen Stand nachziehen — sonst zeigt der Pass weiter, was
+       es nicht mehr gibt. */
+    const v = vorgaenge.find(x => String(x.nummer) === String(b.nummer));
+    if(antwort.alles){
+      if(v){ v.status = "storniert"; v.fertigSeit = Date.now(); }
+      b.posten = [];
+    }else if(Array.isArray(antwort.positionen)){
+      b.posten = antwort.positionen.map(z => ({
+        n: String(z.name || ""), m: Number(z.menge) || 1,
+        p: preisText(Number(z.preis) || 0) }));
+      if(v && v.bestellung) v.bestellung.posten = b.posten;
+    }
+    vorgaengeSichern();
+    stornoSchliessen();
+    vorgangStreifenZeichnen();
+    if(seiteJetzt === "bestellt") bestellStatusSteuern("bestellt");
+    melden(antwort.alles ? t("Bestellung zurückgezogen.") : t("Gestrichen."));
+  }catch(e){
+    $("stMeldung").textContent = t("Keine Verbindung. Bitte kurz Bescheid sagen.");
+    knopf.disabled = false;
+  }
+}
+
 async function storyOeffnen(posten){
   const el = $("story"); if(!el) return;
   if(!posten || !posten.length){
     melden(t("Dafür fehlt noch eine Bestellung."), true);
     return;
   }
-  const feld = $("storyBild");
-  feld.innerHTML = "";
-  feld.classList.add("laedt");
+  /* Jeder Besuch fängt sauber an: keine Sterne von gestern, kein Foto
+     vom letzten Mal. */
+  storyStand = { bauart:"figur", bild:null, bildName:"", sterne:{},
+                 posten: posten.slice(0) };
   el.hidden = false;
   /* Dieselbe Sperre wie bei der Vorzeige-Karte: Der Hub darf nicht
      hinter dem Fenster weiterrollen. */
   document.body.classList.add("fest");
+  wischZu({ blatt: el, zu: storySchliessen, griff: ".wgriff" });
+  storyWahlZeichnen();
+  await storyMalen();
+}
 
+/* Zeichnen und in den Rahmen hängen. Läuft nach JEDER Änderung —
+   Bauart, Foto, Stern —, deshalb steht es für sich. */
+async function storyMalen(){
+  const feld = $("storyBild"); if(!feld) return;
+  feld.innerHTML = "";
+  feld.classList.add("laedt");
   try{
-    storyLeinwand = await storyZeichnen(posten);
+    storyLeinwand = await storyZeichnen(storyStand.posten);
     feld.classList.remove("laedt");
     feld.innerHTML = "";
     feld.appendChild(storyLeinwand);
@@ -3540,6 +3946,116 @@ async function storyOeffnen(posten){
     $("storyHinweis").textContent = t("Das Bild ließ sich nicht bauen.");
   }
 }
+
+/* ── Die Bedienung unter dem Bild ──────────────────────────────── */
+function storyWahlZeichnen(){
+  /* Die Beschriftungen stehen fest im Gerüst und werden hier
+     übersetzt — zeichne() kommt an dieses Fenster nicht heran.
+     Dabei aufgefallen: „Teilen" und „Bild sichern" standen seit jeher
+     fest auf Deutsch, auch auf einer arabischen Karte. Jetzt nicht
+     mehr. */
+  const setz = (id, satz) => { const e = $(id); if(e) e.textContent = t(satz); };
+  setz("storyTeilen",  "Teilen");
+  setz("storySichern", "Bild sichern");
+  document.querySelectorAll("[data-sbauart]").forEach(k => {
+    k.textContent = t(k.dataset.sbauart === "bild" ? "Mit Bild" : "Nur Figur");
+  });
+  const beschriftung = [["[data-sfoto]","Foto machen"],
+                        ["[data-sgalerie]","Aus der Galerie"],
+                        ["[data-sgericht]","Aus der Karte"]];
+  beschriftung.forEach(([w, satz]) => {
+    const e = document.querySelector(w); if(e) e.textContent = t(satz);
+  });
+
+  document.querySelectorAll("[data-sbauart]").forEach(k =>
+    k.setAttribute("aria-pressed", k.dataset.sbauart === storyStand.bauart));
+  const wahl = $("storyBildWahl");
+  if(wahl) wahl.hidden = storyStand.bauart !== "bild";
+  const gerichte = $("storyGerichte");
+  if(gerichte && storyStand.bauart !== "bild"){ gerichte.hidden = true; }
+
+  const feld = $("storySterne"); if(!feld) return;
+  const stern = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5-5.9-3.1-5.9 3.1 1.2-6.5L2.5 9.5l6.6-.9z"/></svg>';
+  feld.innerHTML =
+    '<div class="sname" style="flex:none">' + hs(t("Wie war es? Bleibt auf Ihrem Gerät.")) + '</div>' +
+    storyStand.posten.slice(0, 5).map((p, i) => {
+      const k = storyKennung(p, i), wie = storyStand.sterne[k] || 0;
+      return '<div class="szeile" data-sgericht-zeile="' + hs(k) + '">' +
+        '<span class="sname">' + hs(t(p.n)) + '</span>' +
+        [1,2,3,4,5].map(n =>
+          '<button type="button" class="sstern" data-sstern="' + n + '"' +
+          ' aria-pressed="' + (n <= wie ? "true" : "false") + '"' +
+          ' aria-label="' + n + '">' + stern + '</button>').join("") +
+      '</div>';
+    }).join("");
+}
+
+/* Die Gerichte der Karte, die ein Bild haben. Ohne Bild wäre der
+   Knopf ein Versprechen, das keiner einlöst. */
+function storyGerichteZeichnen(){
+  const feld = $("storyGerichte"); if(!feld) return;
+  const mit = [];
+  [SPEISEKARTE, GETRAENKE, COCKTAILS].forEach(karte => {
+    (Array.isArray(karte) ? karte : []).forEach(gr =>
+      (gr.eintraege || []).forEach(g => { if(g && g.bild) mit.push(g); }));
+  });
+  if(!mit.length){
+    feld.hidden = true;
+    melden(t("Die Karte hat noch keine Bilder."), true);
+    return;
+  }
+  feld.innerHTML = mit.slice(0, 24).map(g =>
+    '<button type="button" data-sgericht-bild="' + hs(bildFuer(g)) + '"' +
+    ' aria-pressed="' + (storyStand.bildName === g.n ? "true" : "false") + '"' +
+    ' data-sgericht-name="' + hs(g.n) + '" aria-label="' + hs(t(g.n)) + '">' +
+    '<img src="' + hs(bildFuer(g, true)) + '" alt="" loading="lazy"></button>').join("");
+  feld.hidden = false;
+}
+
+/* Ein Bild in den Stand holen — von der Kamera, aus der Galerie oder
+   aus der Karte. crossOrigin ist Pflicht: Ohne das wird die Leinwand
+   „vergiftet", und toDataURL wirft — das Bild ließe sich dann weder
+   sichern noch teilen. */
+function storyBildLaden(quelle, name){
+  return new Promise(fertig => {
+    const b = new Image();
+    /* crossOrigin NUR bei einer fremden Adresse. Bei einem eigenen,
+       relativen Pfad ist es überflüssig, und auf einer file://-Seite
+       lässt es das Laden ganz scheitern. Bei https ist es Pflicht:
+       Ohne das wird die Leinwand „vergiftet", und toDataURL wirft —
+       das Bild ließe sich dann weder sichern noch teilen. */
+    if(/^https?:\/\//i.test(quelle)) b.crossOrigin = "anonymous";
+    b.onload  = () => { storyStand.bild = b; storyStand.bildName = name || ""; fertig(true); };
+    b.onerror = () => { fertig(false); };
+    b.src = quelle;
+  });
+}
+
+async function storyBildAusDatei(datei){
+  if(!datei) return;
+  const leser = new FileReader();
+  leser.onerror = () => melden(t("Das Bild ließ sich nicht lesen."), true);
+  leser.onload = async () => {
+    const gut = await storyBildLaden(leser.result, "");
+    if(!gut){ melden(t("Das Bild ließ sich nicht lesen."), true); return; }
+    storyStand.bauart = "bild";
+    storyWahlZeichnen();
+    await storyMalen();
+  };
+  leser.readAsDataURL(datei);
+}
+
+/* Kamera und Galerie. Zwei Felder statt eines: „capture" zwingt auf
+   dem Telefon die Kamera auf — wer ein vorhandenes Bild nehmen will,
+   käme damit gar nicht an seine Galerie. */
+document.addEventListener("change", e => {
+  if(!e.target || !e.target.id) return;
+  if(e.target.id === "storyFoto" || e.target.id === "storyGalerie"){
+    const d = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if(d) storyBildAusDatei(d);
+  }
+});
 
 function storySchliessen(){
   const el = $("story"); if(!el) return;
@@ -5525,6 +6041,33 @@ const TEXTE = {
 "Arabische Sahne (Ashta) on top":{en:"Arabic cream (ashta) on top",tr:"Üzerine kaymak (ashta)",ru:"Арабские сливки (ашта) сверху",fr:"Crème arabe (ashta) par-dessus",es:"Crema árabe (ashta) por encima",it:"Crema araba (ashta) sopra",pl:"Arabska śmietanka (ashta) na wierzchu",ar:"قشطة عربية فوقها",uk:"Арабські вершки (ашта) зверху",nl:"Arabische room (ashta) erbovenop",ro:"Cremă arabă (ashta) deasupra"},
 "Softdrink wählen":{en:"Choose a soft drink",tr:"İçecek seçin",ru:"Выберите напиток",fr:"Choisir une boisson",es:"Elija un refresco",it:"Scegli una bibita",pl:"Wybierz napój",ar:"اختر مشروباً",uk:"Оберіть напій",nl:"Kies een frisdrank",ro:"Alegeți o băutură"},
 "ca. {a} Minuten":{en:"approx. {a} minutes",tr:"yaklaşık {a} dakika",ru:"около {a} минут",fr:"env. {a} minutes",es:"aprox. {a} minutos",it:"circa {a} minuti",pl:"ok. {a} minut",ar:"حوالي {a} دقيقة",uk:"близько {a} хвилин",nl:"ca. {a} minuten",ro:"cca. {a} minute"},
+"noch ca. {a} Minuten":{en:"approx. {a} minutes left",tr:"yaklaşık {a} dakika kaldı",ru:"осталось около {a} минут",fr:"encore env. {a} minutes",es:"quedan aprox. {a} minutos",it:"ancora circa {a} minuti",pl:"jeszcze ok. {a} minut",ar:"بقي حوالي {a} دقيقة",uk:"залишилось близько {a} хвилин",nl:"nog ca. {a} minuten",ro:"încă cca. {a} minute"},
+"noch {a} Min":{en:"{a} min left",tr:"{a} dk kaldı",ru:"ещё {a} мин",fr:"encore {a} min",es:"quedan {a} min",it:"ancora {a} min",pl:"jeszcze {a} min",ar:"بقي {a} د",uk:"ще {a} хв",nl:"nog {a} min",ro:"încă {a} min"},
+"Jeden Moment":{en:"Any moment now",tr:"Her an gelebilir",ru:"Совсем скоро",fr:"D'un instant à l'autre",es:"En cualquier momento",it:"Da un momento all'altro",pl:"Lada chwila",ar:"في أي لحظة",uk:"Ось-ось",nl:"Elk moment",ro:"Dintr-un moment în altul"},
+"Nur Figur":{en:"Figure only",tr:"Sadece figür",ru:"Только фигурка",fr:"Figurine seule",es:"Solo la figura",it:"Solo la figura",pl:"Tylko postać",ar:"الشخصية فقط",uk:"Лише фігурка",nl:"Alleen het figuur",ro:"Doar figurina"},
+"Mit Bild":{en:"With a photo",tr:"Fotoğraflı",ru:"С фото",fr:"Avec une photo",es:"Con foto",it:"Con foto",pl:"Ze zdjęciem",ar:"مع صورة",uk:"З фото",nl:"Met foto",ro:"Cu fotografie"},
+"Foto machen":{en:"Take a photo",tr:"Fotoğraf çek",ru:"Сделать фото",fr:"Prendre une photo",es:"Hacer una foto",it:"Scatta una foto",pl:"Zrób zdjęcie",ar:"التقاط صورة",uk:"Зробити фото",nl:"Foto maken",ro:"Fă o fotografie"},
+"Aus der Galerie":{en:"From the gallery",tr:"Galeriden",ru:"Из галереи",fr:"Depuis la galerie",es:"De la galería",it:"Dalla galleria",pl:"Z galerii",ar:"من المعرض",uk:"З галереї",nl:"Uit de galerij",ro:"Din galerie"},
+"Aus der Karte":{en:"From the menu",tr:"Menüden",ru:"Из меню",fr:"Depuis la carte",es:"De la carta",it:"Dal menù",pl:"Z karty",ar:"من القائمة",uk:"З меню",nl:"Van de kaart",ro:"Din meniu"},
+"Wie war es? Bleibt auf Ihrem Gerät.":{en:"How was it? Stays on your device.",tr:"Nasıldı? Cihazınızda kalır.",ru:"Как было? Останется на вашем устройстве.",fr:"C'était comment ? Reste sur votre appareil.",es:"¿Qué tal estuvo? Se queda en su dispositivo.",it:"Com'era? Resta sul suo dispositivo.",pl:"Jak było? Zostaje na Twoim urządzeniu.",ar:"كيف كان؟ يبقى على جهازك.",uk:"Як було? Залишається на вашому пристрої.",nl:"Hoe was het? Blijft op uw toestel.",ro:"Cum a fost? Rămâne pe dispozitivul dvs."},
+"Die Karte hat noch keine Bilder.":{en:"The menu has no photos yet.",tr:"Menüde henüz fotoğraf yok.",ru:"В меню пока нет фотографий.",fr:"La carte n'a pas encore de photos.",es:"La carta aún no tiene fotos.",it:"Il menù non ha ancora foto.",pl:"Karta nie ma jeszcze zdjęć.",ar:"القائمة لا تحتوي على صور بعد.",uk:"У меню поки немає фото.",nl:"De kaart heeft nog geen foto's.",ro:"Meniul nu are încă fotografii."},
+"Das Bild ließ sich nicht lesen.":{en:"That image could not be read.",tr:"Görsel okunamadı.",ru:"Изображение не удалось прочитать.",fr:"Cette image n'a pas pu être lue.",es:"No se pudo leer la imagen.",it:"L'immagine non è stata letta.",pl:"Nie udało się odczytać obrazu.",ar:"تعذّر قراءة الصورة.",uk:"Не вдалося прочитати зображення.",nl:"De afbeelding kon niet gelezen worden.",ro:"Imaginea nu a putut fi citită."},
+"Teilen":{en:"Share",tr:"Paylaş",ru:"Поделиться",fr:"Partager",es:"Compartir",it:"Condividi",pl:"Udostępnij",ar:"مشاركة",uk:"Поділитися",nl:"Delen",ro:"Distribuie"},
+"Bild sichern":{en:"Save image",tr:"Görseli kaydet",ru:"Сохранить изображение",fr:"Enregistrer l'image",es:"Guardar imagen",it:"Salva immagine",pl:"Zapisz obraz",ar:"حفظ الصورة",uk:"Зберегти зображення",nl:"Afbeelding bewaren",ro:"Salvați imaginea"},
+"Bestellung ändern oder zurückziehen":{en:"Change or cancel the order",tr:"Siparişi değiştir veya iptal et",ru:"Изменить или отменить заказ",fr:"Modifier ou annuler la commande",es:"Cambiar o cancelar el pedido",it:"Modifica o annulla l'ordine",pl:"Zmień lub anuluj zamówienie",ar:"تعديل الطلب أو إلغاؤه",uk:"Змінити або скасувати замовлення",nl:"Bestelling wijzigen of annuleren",ro:"Modificați sau anulați comanda"},
+"Bestellung ändern":{en:"Change the order",tr:"Siparişi değiştir",ru:"Изменить заказ",fr:"Modifier la commande",es:"Cambiar el pedido",it:"Modifica l'ordine",pl:"Zmień zamówienie",ar:"تعديل الطلب",uk:"Змінити замовлення",nl:"Bestelling wijzigen",ro:"Modificați comanda"},
+"Tippen Sie an, was weg soll. Oder ziehen Sie alles zurück.":{en:"Tap what should go. Or take the whole order back.",tr:"Çıkarılacakları seçin. Ya da tüm siparişi geri alın.",ru:"Отметьте, что убрать. Или отмените заказ целиком.",fr:"Touchez ce qui doit partir. Ou annulez toute la commande.",es:"Toque lo que debe quitarse. O retire todo el pedido.",it:"Tocchi ciò che va tolto. Oppure ritiri tutto l'ordine.",pl:"Dotknij, co ma zniknąć. Albo cofnij całe zamówienie.",ar:"اضغط على ما تريد إزالته. أو تراجع عن الطلب كله.",uk:"Торкніться того, що прибрати. Або скасуйте все замовлення.",nl:"Tik aan wat weg moet. Of trek de hele bestelling in.",ro:"Atingeți ce trebuie scos. Sau retrageți toată comanda."},
+"Ausgewähltes streichen":{en:"Remove selected",tr:"Seçilenleri çıkar",ru:"Убрать выбранное",fr:"Retirer la sélection",es:"Quitar lo seleccionado",it:"Togli i selezionati",pl:"Usuń zaznaczone",ar:"إزالة المحدد",uk:"Прибрати вибране",nl:"Selectie verwijderen",ro:"Eliminați selecția"},
+"Ganze Bestellung stornieren":{en:"Cancel the whole order",tr:"Tüm siparişi iptal et",ru:"Отменить весь заказ",fr:"Annuler toute la commande",es:"Cancelar todo el pedido",it:"Annulla tutto l'ordine",pl:"Anuluj całe zamówienie",ar:"إلغاء الطلب كله",uk:"Скасувати все замовлення",nl:"Hele bestelling annuleren",ro:"Anulați toată comanda"},
+"Doch nicht":{en:"Never mind",tr:"Vazgeçtim",ru:"Передумал",fr:"Finalement non",es:"Mejor no",it:"Lasci stare",pl:"Jednak nie",ar:"تراجعت",uk:"Передумав",nl:"Toch niet",ro:"Totuși nu"},
+"Die ganze Bestellung zurückziehen?":{en:"Take the whole order back?",tr:"Tüm sipariş geri alınsın mı?",ru:"Отменить весь заказ?",fr:"Annuler toute la commande ?",es:"¿Retirar todo el pedido?",it:"Ritirare tutto l'ordine?",pl:"Cofnąć całe zamówienie?",ar:"هل تتراجع عن الطلب كله؟",uk:"Скасувати все замовлення?",nl:"De hele bestelling intrekken?",ro:"Retrageți toată comanda?"},
+"Wird gesendet …":{en:"Sending …",tr:"Gönderiliyor …",ru:"Отправляется …",fr:"Envoi …",es:"Enviando …",it:"Invio …",pl:"Wysyłanie …",ar:"جارٍ الإرسال …",uk:"Надсилання …",nl:"Versturen …",ro:"Se trimite …"},
+"Die zwei Minuten sind um. Bitte sagen Sie kurz Bescheid.":{en:"The two minutes are up. Please let us know at the table.",tr:"İki dakika doldu. Lütfen bize haber verin.",ru:"Две минуты прошли. Скажите, пожалуйста, персоналу.",fr:"Les deux minutes sont écoulées. Faites-nous signe.",es:"Los dos minutos han pasado. Avísenos, por favor.",it:"I due minuti sono passati. Ce lo dica, per favore.",pl:"Dwie minuty minęły. Daj nam znać przy stoliku.",ar:"انتهت الدقيقتان. أخبرونا من فضلكم.",uk:"Дві хвилини минули. Скажіть, будь ласка, персоналу.",nl:"De twee minuten zijn om. Laat het ons even weten.",ro:"Cele două minute au trecut. Vă rugăm să ne spuneți."},
+"Die Küche ist schon dran. Bitte sagen Sie kurz Bescheid.":{en:"The kitchen has started. Please let us know at the table.",tr:"Mutfak başladı. Lütfen bize haber verin.",ru:"Кухня уже начала. Скажите, пожалуйста, персоналу.",fr:"La cuisine a commencé. Faites-nous signe.",es:"La cocina ya empezó. Avísenos, por favor.",it:"La cucina ha già iniziato. Ce lo dica, per favore.",pl:"Kuchnia już zaczęła. Daj nam znać przy stoliku.",ar:"المطبخ بدأ بالفعل. أخبرونا من فضلكم.",uk:"Кухня вже почала. Скажіть, будь ласка, персоналу.",nl:"De keuken is begonnen. Laat het ons even weten.",ro:"Bucătăria a început deja. Vă rugăm să ne spuneți."},
+"Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.":{en:"That is not possible right now. Please let us know at the table.",tr:"Şu anda mümkün değil. Lütfen bize haber verin.",ru:"Сейчас это невозможно. Скажите, пожалуйста, персоналу.",fr:"Ce n'est pas possible pour le moment. Faites-nous signe.",es:"Ahora mismo no es posible. Avísenos, por favor.",it:"Ora non è possibile. Ce lo dica, per favore.",pl:"Teraz to niemożliwe. Daj nam znać przy stoliku.",ar:"هذا غير ممكن الآن. أخبرونا من فضلكم.",uk:"Зараз це неможливо. Скажіть, будь ласка, персоналу.",nl:"Dat kan nu niet. Laat het ons even weten.",ro:"Acum nu se poate. Vă rugăm să ne spuneți."},
+"Keine Verbindung. Bitte kurz Bescheid sagen.":{en:"No connection. Please let us know at the table.",tr:"Bağlantı yok. Lütfen bize haber verin.",ru:"Нет связи. Скажите, пожалуйста, персоналу.",fr:"Pas de connexion. Faites-nous signe.",es:"Sin conexión. Avísenos, por favor.",it:"Nessuna connessione. Ce lo dica, per favore.",pl:"Brak połączenia. Daj nam znać przy stoliku.",ar:"لا يوجد اتصال. أخبرونا من فضلكم.",uk:"Немає зв'язку. Скажіть, будь ласка, персоналу.",nl:"Geen verbinding. Laat het ons even weten.",ro:"Fără conexiune. Vă rugăm să ne spuneți."},
+"Bestellung zurückgezogen.":{en:"Order cancelled.",tr:"Sipariş iptal edildi.",ru:"Заказ отменён.",fr:"Commande annulée.",es:"Pedido cancelado.",it:"Ordine annullato.",pl:"Zamówienie anulowane.",ar:"تم إلغاء الطلب.",uk:"Замовлення скасовано.",nl:"Bestelling geannuleerd.",ro:"Comandă anulată."},
+"Gestrichen.":{en:"Removed.",tr:"Çıkarıldı.",ru:"Убрано.",fr:"Retiré.",es:"Quitado.",it:"Tolto.",pl:"Usunięte.",ar:"تمت الإزالة.",uk:"Прибрано.",nl:"Verwijderd.",ro:"Eliminat."},
 "vom Team bestätigt":{en:"confirmed by the team",tr:"ekip tarafından onaylandı",ru:"подтверждено командой",fr:"confirmé par l'équipe",es:"confirmado por el equipo",it:"confermato dal team",pl:"potwierdzone przez zespół",ar:"مؤكد من الفريق",uk:"підтверджено командою",nl:"bevestigd door het team",ro:"confirmat de echipă"},
 "Schließen":{en:"Close",tr:"Kapat",ru:"Закрыть",fr:"Fermer",es:"Cerrar",it:"Chiudi",pl:"Zamknij",ar:"إغلاق",uk:"Закрити",nl:"Sluiten",ro:"Închide"},
 "Zurück zur Übersicht":{en:"Back to overview",tr:"Genel bakışa dön",ru:"К обзору",fr:"Retour à l'aperçu",es:"Volver al inicio",it:"Torna alla panoramica",pl:"Powrót do przeglądu",ar:"العودة إلى النظرة العامة",uk:"Назад до огляду",nl:"Terug naar overzicht",ro:"Înapoi la prezentare"},
@@ -6454,10 +6997,22 @@ function start(){
     /* EINMAL auflösen, nicht dreimal: Ein Ziel darf eine Funktion
        sein, und ein Aufruf pro Zweig würde sie dreifach auswerten. */
     const ziel = kachelZiel(k);
-    return '<a class="kachel' + (k.stil ? " " + k.stil : "") + (k.cyan ? " cyan" : "") + '"' +
+    /* Nur eine Adresse aus dem Netz, und nur https. Ein Banner ist
+       ein Feld, das der WIRT füllt — dort darf kein javascript:
+       und kein data: hinein (dieselbe Sorgfalt wie bei hs()). */
+    const banner = /^https:\/\//i.test(String(k.banner || "")) ? k.banner : "";
+    return '<a class="kachel' + (k.stil ? " " + k.stil : "") +
+      (k.cyan ? " cyan" : "") + (banner ? " hatbanner" : "") + '"' +
       (k.farbe ? ' data-farbe="' + k.farbe + '"' : "") +
       ' href="' + ziel + '"' +
       (ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
+        /* Das Bild steht VOR Symbol und Text im Auszeichnungstext:
+           In der Säule liegt es dadurch oben, ohne dass die Reihen-
+           folge per CSS gedreht werden muss. alt bleibt leer — es
+           ist Schmuck, und ein Vorleseprogramm würde den Kacheltitel
+           sonst zweimal ansagen. */
+        (banner ? '<span class="kbanner"><img src="' + hs(banner) +
+                  '" alt="" loading="lazy" decoding="async"></span>' : "") +
         /* Ein Emoji überschreibt den Strich — bewusst zweite Wahl,
            weil es auf jedem Gerät anders aussieht. Der Wirt darf, er
            muss nicht. */
@@ -6740,6 +7295,72 @@ function vorgangMerken(v){
   vorgaenge.unshift(v);
   if(vorgaenge.length > 6) vorgaenge.length = 6;
   vorgaengeSichern();
+}
+
+/* ─── Wie lange dauert es noch? ──────────────────────────────────
+   Die Zusage („20 Minuten") kommt mit dem Status. Der ZEITPUNKT der
+   Zusage kommt nicht mit — bestellung_status gibt ihn absichtlich
+   nicht heraus. Ohne ihn ist keine Restzeit zu rechnen.
+
+   Deshalb eine zweite, sehr enge Funktion: bestellung_restzeit gibt
+   EINE Zahl zurück, die verbleibenden Sekunden, vom Server gerechnet.
+   Vom Server, weil die Uhr des Gastes nicht die Uhr des Hauses ist —
+   ein Telefon, das zwei Minuten falsch geht, zeigte sonst zwei
+   Minuten falsch.
+
+   Ist die Migration noch nicht angewendet, antwortet PostgREST mit
+   404. Dann wird NICHT weitergefragt und der Hub zeigt genau das,
+   was er vorher zeigte: die feste Zusage. Kein erfundener
+   Startzeitpunkt — der liefe beim Wiederöffnen von vorn los und wäre
+   ausgerechnet dann falsch, wenn es darauf ankommt. */
+let restzeitDa = true;
+
+function restzeitAbfragen(nummer){
+  if(!restzeitDa || !nummer || !serverBereit()) return Promise.resolve(null);
+  return sicherFetch(SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/bestellung_restzeit",
+    { method:"POST",
+      headers:{ apikey:SERVER.schluessel,
+                Authorization:"Bearer " + SERVER.schluessel,
+                "Content-Type":"application/json" },
+      body: JSON.stringify({ nummer: nummer }) })
+    .then(a => {
+      /* 404 = Funktion gibt es nicht, 401/403 = kein Ausführungsrecht.
+         Beides heißt: hier ist nichts zu holen, und zwar dauerhaft.
+         Alle 15 Sekunden erneut zu fragen wäre nur Rauschen im Netz
+         des Gastes. */
+      if(a.status === 404 || a.status === 401 || a.status === 403){
+        restzeitDa = false; return null;
+      }
+      return a.ok ? a.json() : null;
+    })
+    .catch(() => null);
+}
+
+/* Aus Sekunden wird ein Endzeitpunkt. Der wird gemerkt, nicht die
+   Sekundenzahl: Eine Zahl, die man selbst herunterzählt, geht falsch,
+   sobald das Telefon in der Tasche liegt. Ein Endzeitpunkt nicht. */
+function restzeitMerken(nummer, sekunden){
+  const v = vorgaenge.find(x => x.nummer === nummer);
+  if(!v) return;
+  const endet = (typeof sekunden === "number" && isFinite(sekunden) && sekunden >= 0)
+    ? Date.now() + sekunden * 1000
+    : null;
+  /* Nur bei echter Verschiebung sichern. Sonst schriebe jeder Takt in
+     den Speicher, obwohl sich nichts geändert hat. */
+  const anders = (v.endet == null) !== (endet == null) ||
+                 (endet != null && Math.abs(endet - v.endet) > 20000);
+  v.endet = endet;
+  if(anders) vorgaengeSichern();
+}
+
+/* Wie viele Minuten stehen noch? null heißt: keine Restzeit bekannt —
+   dann zeigt der Hub weiter die feste Zusage. 0 heißt: die zugesagte
+   Zeit ist um. Der Gast sieht dann „Jeden Moment", nie ein Minus. Er
+   kann an einer Verspätung nichts ändern; der Koch kann es, und der
+   sieht sie deshalb in der Küche. */
+function restMinuten(v){
+  if(!v || v.endet == null || v.status === "fertig") return null;
+  return Math.max(0, Math.ceil((v.endet - Date.now()) / 60000));
 }
 
 function vorgangAktualisieren(nummer, status, minuten, tagesnummer){
@@ -7087,6 +7708,7 @@ function zeigenOeffnen(daten){
 
   el.hidden = false;
   document.body.classList.add("fest");
+  wischZu({ blatt: el, zu: zeigenSchliessen, griff: ".wgriff" });
 
   /* Bildschirm hell halten, solange die Karte offen ist. */
   if(navigator.wakeLock && navigator.wakeLock.request){
@@ -7104,6 +7726,69 @@ function zeigenSchliessen(){
 document.addEventListener("click", e => {
   if(e.target.closest && e.target.closest("[data-zeigen-zu]")) zeigenSchliessen();
   if(e.target.closest && e.target.closest("[data-story-zu]")) storySchliessen();
+
+  /* ── Bestellung zurückziehen ─────────────────────────────────── */
+  if(e.target.closest){
+    if(e.target.closest("#stOeffnen")){ stornoOeffnen(); return; }
+    if(e.target.closest("#stZurueck")){ stornoSchliessen(); return; }
+    if(e.target.closest("#stEinzeln")){ stornoSenden(false); return; }
+    if(e.target.closest("#stAlles")){   stornoSenden(true);  return; }
+    const zeile = e.target.closest("[data-storno-stelle]");
+    if(zeile){
+      const i = zeile.dataset.stornoStelle;
+      stornoWahl[i] = !stornoWahl[i];
+      stornoListeZeichnen();
+      return;
+    }
+  }
+
+  /* ── Das Besuchsbild einstellen ──────────────────────────────
+     Alles hier bleibt IM GERÄT. Kein Aufruf nach außen, kein
+     Speichern — auch die Sterne nicht. */
+  if(e.target.closest){
+    const bau = e.target.closest("[data-sbauart]");
+    if(bau){
+      storyStand.bauart = bau.dataset.sbauart;
+      storyWahlZeichnen();
+      /* Ohne Bild bringt „Mit Bild" nichts zu sehen — also gleich
+         fragen, woher es kommen soll, statt ein leeres Feld zu malen. */
+      if(storyStand.bauart === "bild" && !storyStand.bild) return;
+      storyMalen();
+      return;
+    }
+    if(e.target.closest("[data-sfoto]")){    $("storyFoto").click();    return; }
+    if(e.target.closest("[data-sgalerie]")){ $("storyGalerie").click(); return; }
+    if(e.target.closest("[data-sgericht]")){ storyGerichteZeichnen();   return; }
+
+    const ausKarte = e.target.closest("[data-sgericht-bild]");
+    if(ausKarte){
+      storyBildLaden(ausKarte.dataset.sgerichtBild, ausKarte.dataset.sgerichtName)
+        .then(gut => {
+          if(!gut){ melden(t("Das Bild ließ sich nicht lesen."), true); return; }
+          storyStand.bauart = "bild";
+          storyGerichteZeichnen();
+          storyWahlZeichnen();
+          storyMalen();
+        });
+      return;
+    }
+
+    const stern = e.target.closest("[data-sstern]");
+    if(stern){
+      const zeile = stern.closest("[data-sgericht-zeile]");
+      if(zeile){
+        const k = zeile.dataset.sgerichtZeile, n = Number(stern.dataset.sstern);
+        /* Noch einmal auf denselben Stern tippen nimmt die Bewertung
+           zurück. Sonst gäbe es keinen Weg von „ein Stern" zu „gar
+           keiner" — und eine Bewertung, die man nicht zurücknehmen
+           kann, ist eine Falle. */
+        storyStand.sterne[k] = (storyStand.sterne[k] === n) ? 0 : n;
+        storyWahlZeichnen();
+        storyMalen();
+      }
+      return;
+    }
+  }
 });
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && !$("zeigen").hidden) zeigenSchliessen();
@@ -7859,12 +8544,10 @@ function zeichne(){
   serviceRuf = "";
   nachtSchalten();
 
-  /* Der Fuß steht fest im Gerüst, wird also nicht mitgezeichnet. Seine
-     eine übersetzbare Zeile deshalb hier — zeichne() läuft beim
-     Aufbau UND nach jedem Sprachwechsel. Ohne das bliebe „Für den
-     Betrieb" auf einer arabischen Karte deutsch stehen. */
-  { const fb = document.getElementById("fuerbetrieb");
-    if(fb) fb.textContent = t("Für den Betrieb"); }
+  /* Hier stand bis zum 08.09. die Übersetzung der Fußzeile „Für den
+     Betrieb". Der Link ist entfernt (siehe Fuß im Gerüst), und mit
+     ihm die Suche nach seinem Element — ein getElementById auf etwas,
+     das es nicht gibt, ist genau das, was pruef-datei.py meldet. */
   const roh = location.hash.replace(/^#\//,"");
 
   /* Ein Ziel darf jetzt „seite?g=Gerichtname“ heißen. Vorher fiel so
@@ -8024,9 +8707,15 @@ function vorgangStreifenZeichnen(){
     ? " · " + t("{n} weitere", {n: liste.length - 1})
     : "";
 
-  const warte = (v.warte && v.status !== "fertig")
-    ? '<span class="vwarte">' + t("ca. {a} Min", {a: v.warte}) + '</span>'
-    : (v.status === "fertig" ? '<span class="vwarte">✓</span>' : "");
+  /* Drei Fälle, in dieser Reihenfolge: fertig · Restzeit läuft ·
+     nur die feste Zusage (weil die Migration noch nicht steht). */
+  const rest = restMinuten(v);
+  const warte = (v.status === "fertig")
+    ? '<span class="vwarte">✓</span>'
+    : (rest != null
+        ? '<span class="vwarte">' +
+          (rest > 0 ? t("noch {a} Min", {a: rest}) : t("Jeden Moment")) + '</span>'
+        : (v.warte ? '<span class="vwarte">' + t("ca. {a} Min", {a: v.warte}) + '</span>' : ""));
 
   el.className = "vstreifen " + st.klasse;
   el.hidden = false;
@@ -8057,6 +8746,14 @@ function vorgaengeAbfragen(){
       const anders = vorgangAktualisieren(v.nummer, reihen[0].status,
                                           reihen[0].wartezeit_min,
                                           reihen[0].tagesnummer);
+      /* Die Restzeit kommt aus einer zweiten Anfrage und darf das
+         Neuzeichnen NICHT an „anders" hängen: Sie ändert sich in
+         jedem Takt, der Status fast nie. Der Streifen wird deshalb
+         hier ohnehin einmal nachgezogen. */
+      restzeitAbfragen(v.nummer).then(sek => {
+        restzeitMerken(v.nummer, sek);
+        if(sek != null) vorgangStreifenZeichnen();
+      });
       if(anders){
         vorgangStreifenZeichnen();
         /* Steht der Gast gerade auf der Bestätigungsseite, muss auch
@@ -8162,15 +8859,47 @@ function bestellStatusSteuern(pfad){
     /* Die zugesagte Wartezeit kommt aus dem Board. Sie steht nur dann da,
        wenn wirklich jemand bestätigt hat – geschätzte Zeiten ohne Zusage
        wären schlimmer als gar keine Angabe. */
-    const zusage = (minuten && status !== "fertig")
-      ? '<div class="bs-warte"><b>' + t("ca. {a} Minuten", {a: minuten}) + '</b>' +
+    /* Läuft eine Restzeit, zählt sie herunter. Läuft keine (Migration
+       noch nicht angewendet), bleibt es bei der festen Zusage — genau
+       wie bisher. Und bei 0 steht ein Satz statt einer Zahl: Ein
+       Zähler, der ins Minus läuft, macht aus drei Minuten Verspätung
+       einen Vorwurf, den der Gast vor sich hat, während er wartet. */
+    const restV = vorgaenge.find(x => String(x.nummer) === String(b.nummer));
+    const rest  = restMinuten(restV);
+    const kopf  = (status === "fertig") ? null
+                : (rest != null
+                    ? (rest > 0 ? t("noch ca. {a} Minuten", {a: rest}) : t("Jeden Moment"))
+                    : (minuten ? t("ca. {a} Minuten", {a: minuten}) : null));
+    const zusage = kopf
+      ? '<div class="bs-warte"><b>' + kopf + '</b>' +
         '<span>' + t("vom Team bestätigt") + '</span></div>'
       : "";
     kasten.hidden = false;
-    kasten.innerHTML = '<div class="bs-titel">' + t("Live-Status") + '</div>' +
+    /* Nur anfassen, wenn sich wirklich etwas geändert hat. Der Kasten
+       wird alle 15 Sekunden gerechnet; ein innerHTML bei jedem Takt
+       setzte die Stufen-Übergänge jedes Mal zurück (§4.2). */
+    const neuHTML = '<div class="bs-titel">' + t("Live-Status") + '</div>' +
       '<div class="bs-stufen">' + STUFEN.map((s,i) =>
         '<div class="bs-stufe' + (i <= idx ? " an" : "") + '"><i></i><span>' +
-        t(s[1]) + '</span></div>').join("") + '</div>' + zusage;
+        t(s[1]) + '</span></div>').join("") + '</div>' + zusage +
+      /* Zwei Minuten lang darf der Gast zurück. Der Knopf steht hier
+         und nicht im Pass: Der Pass wird über outerHTML verglichen,
+         und ein Knopf, der nach zwei Minuten verschwindet, ließe die
+         Einflug-Animation neu starten. */
+      stornoHTML(b, status);
+    if(kasten.innerHTML !== neuHTML) kasten.innerHTML = neuHTML;
+
+    /* Genau einmal am Ende der Frist noch einmal zeichnen. Ohne das
+       stünde der Knopf bis zum nächsten Takt da und behauptete etwas,
+       das der Server längst ablehnt. */
+    /* NICHT „rest" nennen: Den Namen trägt in dieser Funktion schon
+       die Restzeit der Zusage (Block 10). Zwei const mit demselben
+       Namen werfen, und die halbe Seite bleibt tot (§1.1). */
+    if(stornoUhr){ clearTimeout(stornoUhr); stornoUhr = null; }
+    const stFrist = stornoRest(b);
+    if(stFrist > 0) stornoUhr = setTimeout(() => {
+      if(seiteJetzt === "bestellt") bestellStatusSteuern("bestellt");
+    }, stFrist + 400);
   };
   /* Beim ersten Zeichnen den Stand nehmen, der im Speicher liegt –
      nicht stur „neu“. Kommt der Gast von der Startseite zurück,
@@ -8194,8 +8923,15 @@ function bestellStatusSteuern(pfad){
             body: JSON.stringify({ nummer: b.nummer }) })
     .then(a => a.ok ? a.json() : Promise.reject(a.status))
     .then(reihen => {
-      if(reihen && reihen[0] && reihen[0].status)
+      if(!reihen || !reihen[0] || !reihen[0].status) return;
+      malen(reihen[0].status, reihen[0].wartezeit_min, reihen[0].tagesnummer);
+      /* Und einmal mit der Restzeit hinterher — sie kommt aus einer
+         eigenen Anfrage und soll das erste Zeichnen nicht aufhalten. */
+      restzeitAbfragen(b.nummer).then(sek => {
+        if(sek == null) return;
+        restzeitMerken(b.nummer, sek);
         malen(reihen[0].status, reihen[0].wartezeit_min, reihen[0].tagesnummer);
+      });
     })
     .catch(grund => {
       /* Fehlen die Leserechte (RLS), verschwindet die Anzeige leise –
@@ -8415,6 +9151,10 @@ function detailOeffnen(name){
 
   $("blende").classList.add("an");
   karte.classList.add("an");
+  /* Der Balken oben lässt sich jetzt herunterziehen. Das ✕ bleibt —
+     eine Geste ist ein Angebot, kein Ersatz für einen Knopf, den man
+     sieht. basisX, weil die Karte auf translate3d(-50%,…) steht. */
+  wischZu({ blatt: karte, zu: detailSchliessen, griff: ".wgriff", basisX: "-50%" });
   document.addEventListener("keydown", fokusFangen, true);
 
   /* erst im nächsten Frame – sonst scrollt iOS die Karte während der
@@ -9482,7 +10222,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -9511,6 +10251,29 @@ async function karteHolen(erstesMal){
        der Slogan wirklich geändert hat — sonst blitzt er bei jedem
        Abgleich einmal auf, ohne dass etwas anders wäre. */
     if(BETRIEB.claim !== vorher) zeichne();
+
+    /* Die Startkacheln aus dem Board. Sie kommen aus der DATENBANK,
+       nicht aus dem Markenblatt: Der Wirt stellt sie im Board ein
+       und will sie beim nächsten Öffnen sehen, nicht beim nächsten
+       Erzeugen des Hubs.
+
+       Ganz oder gar nicht, wie beim Markenblatt: Eine halb
+       übernommene Liste wäre eine Mischung aus zwei Ständen. Und
+       durch dieselbe Positivliste wie dort — was der Wirt nicht
+       schicken darf, wird ignoriert, nicht übernommen. */
+    if(Array.isArray(b[0].hub_kacheln) && b[0].hub_kacheln.length){
+      const gebaut = b[0].hub_kacheln
+        .filter(e => e && e.schluessel && e.an !== false)
+        .map(e => kachelBauen(e.schluessel, e))
+        .filter(Boolean);
+      if(gebaut.length){
+        KACHELN.length = 0;
+        gebaut.forEach(k => KACHELN.push(k));
+        /* Nur zeichnen, wenn der Gast die Startseite auch ansieht —
+           sonst reißt es ihm die Karte unter dem Finger weg. */
+        if(seiteJetzt === "start") zeichne();
+      }
+    }
 
     /* Sortierung: karte, kat_sort, reihenfolge, id.
        Vorher stand hier nur "karte.asc,reihenfolge.asc". Weil
@@ -9657,6 +10420,131 @@ document.addEventListener("visibilitychange", () => {
      abfangen, nicht jedes kurze Wegtippen. */
   if(!document.hidden && Date.now() - letzterAbruf > 120000) karteAuffrischen();
 });
+
+/* ╔═══ WISCHZU · GETEILTER BLOCK · ANFANG ═════════════════════════╗
+   ║ Wortgleich in vorlagen/hub.vorlage.html, seiten/admin.html und ║
+   ║ seiten/kueche.html. pruef-wischen.js vergleicht alle drei      ║
+   ║ Zeichen für Zeichen. Wer hier etwas ändert, ändert es dort auch.║
+   ║                                                                ║
+   ║ Anlass: Jedes Fenster hatte oben einen Balken, der aussieht,   ║
+   ║ als könnte man ihn herunterziehen — und man konnte nicht. Zum  ║
+   ║ Schließen musste man jedes Mal das ✕ oben rechts treffen. Das  ║
+   ║ ist der Griff, den man am Telefon am schlechtesten erreicht.   ║
+   ║                                                                ║
+   ║ Der Block ist absichtlich rein: keine Farbnamen, keine         ║
+   ║ Kurven-Variablen, kein t(). Die drei Dateien führen dieselben  ║
+   ║ Variablen unter verschiedenen Werten — eine Bewegung, die von  ║
+   ║ dort liest, fühlte sich in jeder Datei anders an.              ║
+   ╚════════════════════════════════════════════════════════════════╝ */
+
+/* Ein Blatt herunterziehen und loslassen. Die Geste FOLGT dem Finger,
+   statt nur auszulösen: Sonst weiß niemand, ob sie greift, bevor sie
+   fertig ist.
+
+   o.blatt   das Element, das sich bewegt
+   o.zu      wird gerufen, wenn wirklich geschlossen werden soll
+   o.griff   Auswahl des Balkens INNERHALB des Blattes (freiwillig)
+   o.basisX  waagerechter Anteil, der erhalten bleiben muss —
+             .warenkarte steht auf translate3d(-50%,…) und läge ohne
+             das plötzlich halb außerhalb des Schirms
+   o.kopf    wie weit oben eine Geste beginnen darf (Vorgabe 72px) */
+function wischZu(o){
+  var blatt = o && o.blatt, zu = o && o.zu;
+  if(!blatt || typeof zu !== "function") return;
+  /* Zweimal verdrahtet hieße zweimal geschlossen. */
+  if(blatt.getAttribute("data-wischt") === "1") return;
+  blatt.setAttribute("data-wischt", "1");
+
+  var basisX = o.basisX || "0px";
+  var kopf   = typeof o.kopf === "number" ? o.kopf : 72;
+  var griff  = o.griff ? blatt.querySelector(o.griff) : null;
+  /* Ohne das rollt der Browser die Seite mit, statt das Blatt zu
+     ziehen — und die Geste fühlt sich an, als hakte sie. */
+  if(griff) griff.style.touchAction = "none";
+
+  var zieht = false, y0 = 0, dy = 0, tLetzt = 0, yLetzt = 0, tempo = 0, alterUebergang = "";
+
+  function ruhig(){
+    return !!(window.matchMedia &&
+              window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+  function aufraeumen(){
+    blatt.style.transition = alterUebergang;
+    blatt.style.transform  = "";
+  }
+
+  blatt.addEventListener("pointerdown", function(ev){
+    if(ev.pointerType === "mouse" && ev.button !== 0) return;
+    /* Auf einem Bedienelement fängt keine Geste an: Wer einen Regler
+       zieht, will den Regler bewegen und nicht das Blatt. */
+    if(ev.target.closest &&
+       ev.target.closest("button,a,input,select,textarea,label,[role=button]")) return;
+
+    var aufGriff = !!(griff && griff.contains(ev.target));
+    /* Sonst nur ganz oben, und nur wenn der Inhalt nicht gescrollt
+       ist. Sonst kollidiert die Geste mit dem Lesen. */
+    var obenAmBlatt = blatt.scrollTop <= 0 &&
+      (ev.clientY - blatt.getBoundingClientRect().top) <= kopf;
+    if(!aufGriff && !obenAmBlatt) return;
+
+    zieht = true; y0 = ev.clientY; dy = 0; tempo = 0;
+    yLetzt = ev.clientY; tLetzt = ev.timeStamp;
+    alterUebergang = blatt.style.transition;
+    blatt.style.transition = "none";
+    try{ blatt.setPointerCapture(ev.pointerId); }catch(e){}
+  }, {passive:true});
+
+  blatt.addEventListener("pointermove", function(ev){
+    if(!zieht) return;
+    dy = ev.clientY - y0;
+    /* Nach oben gibt es kaum nach — das Blatt ist schon oben. */
+    if(dy < 0) dy = dy / 5;
+    var dt = ev.timeStamp - tLetzt;
+    if(dt > 0){
+      tempo  = (ev.clientY - yLetzt) / dt;   /* px je Millisekunde */
+      yLetzt = ev.clientY; tLetzt = ev.timeStamp;
+    }
+    /* Wer Bewegung reduziert hat, bekommt kein Mitziehen — aber
+       dieselbe Geste und dasselbe Ergebnis. */
+    if(!ruhig()) blatt.style.transform = "translate3d(" + basisX + "," + dy + "px,0)";
+  }, {passive:true});
+
+  function los(){
+    if(!zieht) return;
+    zieht = false;
+
+    /* Ein Viertel der Höhe, mindestens 80px — ODER ein schneller
+       Wisch. Beides zusammen, weil sonst ein kurzer, entschlossener
+       Zug nichts täte und ein langsames Verrutschen alles zumachte. */
+    var hoch = blatt.getBoundingClientRect().height || 400;
+    var weg  = dy > Math.max(80, hoch * 0.25) || (dy > 24 && tempo > 0.55);
+
+    if(!weg){
+      /* Zurückfedern. ease-out, 300ms: Hereinkommen darf ausrollen. */
+      blatt.style.transition = "transform 300ms cubic-bezier(.16,1,.3,1)";
+      blatt.style.transform  = "translate3d(" + basisX + ",0,0)";
+      window.setTimeout(aufraeumen, 320);
+      return;
+    }
+
+    if(ruhig()){ aufraeumen(); zu(); return; }
+
+    /* Hinausgehen ist schneller als Hereinkommen — der Nutzer hat
+       sich schon entschieden. ease-in, 200ms. */
+    blatt.style.transition = "transform 200ms cubic-bezier(.4,0,1,1)";
+    blatt.style.transform  = "translate3d(" + basisX + "," + Math.round(hoch + 40) + "px,0)";
+    window.setTimeout(function(){
+      /* ERST schließen, DANN die Inline-Angaben wegnehmen. Umgekehrt
+         spränge das Blatt für ein Bild an seinen offenen Platz
+         zurück, bevor die Klasse es hinausschiebt. */
+      zu(); aufraeumen();
+    }, 205);
+  }
+
+  blatt.addEventListener("pointerup",     los, {passive:true});
+  blatt.addEventListener("pointercancel", los, {passive:true});
+}
+/* ╚═══ WISCHZU · GETEILTER BLOCK · ENDE ═══════════════════════════╝ */
 
 /* ══════════════════════════════════════════════════════════════════
    NACH UNTEN WISCHEN FÜHRT ZUR ÜBERSICHT

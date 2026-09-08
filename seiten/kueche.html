@@ -361,6 +361,19 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
 .bon.neu{border-color:var(--messing)}
 .bon.spaet{border-color:var(--achtung)}
 .bon.sehr-spaet{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
+/* Ein Storno ist die dringendere Nachricht als „spät". Deshalb steht
+   diese Regel HINTER der von sehr-spaet: Bei gleicher Genauigkeit
+   gewinnt die spätere, und ein zurückgezogener Bon soll auch dann rot
+   sein, wenn er noch nicht spät ist. */
+.bon.storniert{border-color:var(--warn);box-shadow:0 0 0 2px var(--warn)}
+.bon.storniert .mass span{background:var(--warn)}
+.storno-kopf{
+  margin-top:8px;padding-top:8px;border-top:1px dashed var(--warn);
+  color:var(--warn);font-weight:800;
+  font-size:calc(12px * var(--skala));letter-spacing:.06em;text-transform:uppercase}
+.storno-kopf .menge{color:var(--warn)}
+.storno-zeile{color:var(--gedaempft);text-decoration:line-through}
+.storno-zeile .menge{color:var(--gedaempft)}
 .bon.erledigt{opacity:.42}
 
 /* Kurzes Aufblitzen, wenn ein Bon zum ersten Mal auf dem Bildschirm
@@ -463,6 +476,29 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
 }
 .notiz b{display:block;font-size:calc(10px * var(--skala));letter-spacing:.12em;
   text-transform:uppercase;color:var(--warn);margin-bottom:3px}
+
+/* Wie lange dauert es? Nur da, solange niemand es gesagt hat.
+   Die Knöpfe sind so hoch wie die im Fuß — ein Schirm an der Wand
+   wird mit der ganzen Hand bedient, nicht mit der Fingerspitze
+   (CLAUDE.md §8.1d). */
+.zeitwahl{
+  display:flex; gap:1px; align-items:stretch;
+  background:var(--linie); border-top:1px solid var(--linie);
+}
+.zeitwahl small{
+  flex:none; display:flex; align-items:center; padding:0 12px;
+  background:var(--karte); color:var(--gedaempft);
+  font-size:calc(10px * var(--skala)); font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; white-space:nowrap;
+}
+.zeitwahl button{
+  flex:1; min-width:calc(44px * var(--skala));
+  padding:calc(13px * var(--skala)) 4px; background:var(--karte);
+  color:var(--messing); font-variant-numeric:tabular-nums;
+  font-size:calc(15px * var(--skala)); font-weight:700;
+  transition:background .14s;
+}
+.zeitwahl button:active{background:rgba(201,162,39,.22)}
 
 .bon-fuss{display:flex;gap:1px;background:var(--linie);border-top:1px solid var(--linie)}
 .bon-fuss button{
@@ -820,7 +856,17 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
                    /* Für Telefonbestellungen: Wer hat angerufen, wann
                       will er es abholen. Am Tisch sind die Felder leer
                       und kosten nichts. */
-                   "gast_name,gast_telefon,abholung,wunschzeit,tagesnummer";
+                   "gast_name,gast_telefon,abholung,wunschzeit,tagesnummer," +
+                   /* Die Zusage aus dem Admin-Board: wie viele Minuten
+                      versprochen wurden und ab wann sie laufen. Erst
+                      beide zusammen ergeben eine Restzeit — eine Zahl
+                      ohne Startpunkt ist keine. */
+                   "wartezeit_min,bestaetigt_um," +
+                   /* Was der Gast binnen zwei Minuten zurückgezogen
+                      hat. Die Zeilen bleiben stehen — wer schon kocht,
+                      muss sehen, WAS wegfällt, nicht nur DASS etwas
+                      wegfiel. */
+                   "storno";
 
 /* Servicerufe bleiben draußen, Telefonbestellungen kommen herein.
 
@@ -918,6 +964,53 @@ function zeitText(min){
   return Math.floor(min/60) + "h " + (min % 60) + "′";
 }
 
+/* ─── Die Lage eines Bons in einer Rechnung ───────────────────────
+   Beschriftung, Zahl, Balkenanteil und Farbstufe kommen aus EINER
+   Funktion. zeichne() baut die Karte damit, zeitenAktualisieren()
+   zieht sie damit nach. Zwei getrennte Rechnungen wären zwei
+   Gelegenheiten, auseinanderzulaufen — und die eine läuft im Takt,
+   die andere nur bei Änderungen, man sähe es also erst spät.
+
+   OHNE Zusage bleibt alles, wie es war: gelaufene Zeit seit der
+   Bestellung, Balken gegen EINST.rotAb.
+
+   MIT Zusage (Minuten aus dem Board UND Zeitpunkt der Bestätigung)
+   zählt die Karte herunter. Und sie zählt weiter, wenn die Zeit um
+   ist: „+3′" in Rot. Das ist Absicht und der Unterschied zum Gast —
+   der Koch KANN etwas daran ändern, der Gast nicht. */
+function bonLage(b){
+  var zusage = (Number(b.wartezeit_min) > 0 && b.bestaetigt_um)
+    ? Number(b.wartezeit_min) : 0;
+
+  if(!zusage){
+    var min = minutenSeit(b.zeitpunkt);
+    return {
+      zusage:   false,
+      marke:    "wartet",
+      text:     zeitText(min),
+      anteil:   Math.min(100, Math.round((min / Math.max(1, EINST.rotAb)) * 100)),
+      spaet:     min >= EINST.gelbAb && min < EINST.rotAb,
+      sehrSpaet: min >= EINST.rotAb
+    };
+  }
+
+  var seitZusage = minutenSeit(b.bestaetigt_um);
+  var rest = zusage - seitZusage;
+  /* Das letzte Fünftel ist die Vorwarnung. Ein gewählter Wert, keine
+     Messung: Bei 20 Minuten sind das die letzten vier, bei 60 die
+     letzten zwölf — mitwachsend, weil eine feste Minutenzahl bei
+     langen Zusagen zu früh und bei kurzen zu spät käme. */
+  var vorwarnung = Math.max(1, Math.round(zusage / 5));
+  return {
+    zusage:   true,
+    marke:    rest >= 0 ? "noch" : "zu spät",
+    text:     rest >= 0 ? zeitText(rest) : "+" + zeitText(-rest),
+    anteil:   Math.min(100, Math.round((seitZusage / zusage) * 100)),
+    spaet:     rest >= 0 && rest <= vorwarnung,
+    sehrSpaet: rest < 0
+  };
+}
+
 function sichtbareBons(){
   var spur = EINST.spur;
   var jetzt = Date.now();
@@ -980,7 +1073,15 @@ var wischtGerade   = false;
 function bonSignatur(liste){
   return EINST.spur + "|" + EINST.sortierung + "|" + liste.map(function(b){
     return b.id + ":" + (b.status || "") + ":" +
-           (b.kueche_fertig_um || "") + ":" + (b.theke_fertig_um || "");
+           (b.kueche_fertig_um || "") + ":" + (b.theke_fertig_um || "") + ":" +
+           /* Die Zusage MUSS mitzählen: Ohne sie blieben die
+              Minuten-Knöpfe nach dem Tippen stehen, bis zufällig
+              etwas anderes den Bon ändert. Der Zeitpunkt selbst
+              bleibt draußen — sonst wäre jede Minute ein Neuaufbau. */
+           (b.wartezeit_min || "") + ":" +
+           /* Ein Storno MUSS die Karte neu bauen: Die gestrichene
+              Zeile ist eine Änderung am Bon, nicht an einer Uhr. */
+           ((b.storno && b.storno.length) || 0);
   }).join(",");
 }
 
@@ -993,16 +1094,15 @@ function zeitenAktualisieren(){
     if(!el.dataset || !el.dataset.id) continue;
     var b = bonFinden(el.dataset.id); if(!b) continue;
 
-    var min = minutenSeit(b.zeitpunkt);
+    var L = bonLage(b);
     var w = el.querySelector('.wartet');
-    if(w) w.innerHTML = '<small>wartet</small>' + zeitText(min);
+    if(w) w.innerHTML = '<small>' + L.marke + '</small>' + L.text;
 
     var balken = el.querySelector('.mass span');
-    if(balken) balken.style.width =
-      Math.min(100, Math.round((min / Math.max(1, EINST.rotAb)) * 100)) + '%';
+    if(balken) balken.style.width = L.anteil + '%';
 
-    el.classList.toggle('spaet',      min >= EINST.gelbAb && min < EINST.rotAb);
-    el.classList.toggle('sehr-spaet', min >= EINST.rotAb);
+    el.classList.toggle('spaet',      L.spaet);
+    el.classList.toggle('sehr-spaet', L.sehrSpaet);
   }
 }
 
@@ -1053,18 +1153,25 @@ function zeichne(){
 
   feld.innerHTML = liste.map(function(b, i){
     var t = aufteilen(b);
-    var min = minutenSeit(b.zeitpunkt);
+    var L = bonLage(b);
     var klasse = "bon";
-    if(min >= EINST.rotAb) klasse += " sehr-spaet";
-    else if(min >= EINST.gelbAb) klasse += " spaet";
+    if(L.sehrSpaet) klasse += " sehr-spaet";
+    else if(L.spaet) klasse += " spaet";
     if(b.status === "neu") klasse += " neu";
+    /* Ein Bon, an dem etwas gestrichen wurde, ist rot — bis er
+       abgehakt ist. Danach ist die Sache erledigt und die Farbe wäre
+       nur noch Lärm. */
+    var stornoZeilen = Array.isArray(b.storno) ? b.storno : [];
+    if(stornoZeilen.length) klasse += " storniert";
     /* Nur beim allerersten Anzeigen aufblitzen, nicht bei jedem der
        vier Sekunden-Takte danach. */
     if(!gesehen[b.id+"_gezeichnet"]){ klasse += " frisch"; gesehen[b.id+"_gezeichnet"] = 1; }
 
-    /* Dringlichkeitsbalken: 0 % bei Ankunft, 100 % bei „rot". Zeigt die
-       Lage auf einen Blick, auch von der anderen Seite der Küche. */
-    var anteil = Math.min(100, Math.round((min / Math.max(1,EINST.rotAb)) * 100));
+    /* Dringlichkeitsbalken: 0 % bei Ankunft, 100 % bei „rot" — und
+       sobald eine Zusage steht, läuft er stattdessen gegen SIE. Das
+       ist der Balken, den der Koch quer durch die Küche liest, und er
+       soll die Frist zeigen, die wirklich gilt. */
+    var anteil = L.anteil;
 
     /* Welche Spuren zeigt dieser Bon in der aktuellen Ansicht? */
     var meine = spurenVon(b).filter(function(s){ return EINST.spur === "beides" || s === EINST.spur; });
@@ -1091,6 +1198,23 @@ function zeichne(){
                   '</span></li>';
       });
     });
+    /* Die gestrichenen Zeilen stehen MIT auf dem Bon, durchgestrichen.
+       Ein Bon, aus dem still eine Zeile verschwindet, ist schlimmer
+       als keiner: Wer schon angefangen hat, sucht sonst den Fehler
+       bei sich. */
+    if(stornoZeilen.length){
+      zeilen += '<li class="storno-kopf"><span class="menge">✕</span>' +
+                '<span class="name">' +
+                (b.status === "storniert" ? "Bestellung zurückgezogen"
+                                          : "Vom Gast gestrichen") +
+                '</span></li>';
+      stornoZeilen.forEach(function(p){
+        zeilen += '<li class="storno-zeile"><span class="menge">' +
+                  (p.menge || 1) + '×</span><span class="name">' +
+                  h(String(p.name || "")) + '</span></li>';
+      });
+    }
+
     var knopfText = alleAbgehakt ? "Wieder öffnen"
       : (b.status === "neu" ? "Starten" : "Fertig");
     var knopfArt  = alleAbgehakt ? "zurueck" : "haupt";
@@ -1114,7 +1238,7 @@ function zeichne(){
                 h(b.tagesnummer != null ? "#" + b.tagesnummer : "Tel") + '</div>'
             : '<div class="tisch"><small>Tisch</small>' + h(b.tisch || "—") + '</div>') +
           '<div class="luecke">' + marken + '</div>' +
-          '<div class="wartet"><small>wartet</small>' + zeitText(min) + '</div>' +
+          '<div class="wartet"><small>' + L.marke + '</small>' + L.text + '</div>' +
         '</div>' +
         '<ul class="posten">' + zeilen + '</ul>' +
         /* Wer angerufen hat und wann er kommt — die zwei Angaben,
@@ -1129,6 +1253,19 @@ function zeichne(){
             '</div>'
           : '') +
         (b.notiz ? '<div class="notiz"><b>Hinweis vom Gast</b>' + h(b.notiz) + '</div>' : '') +
+        /* Wie lange dauert es? Die Zusage kommt normalerweise aus dem
+           Admin-Board. Steht dort keine, kann der Koch sie hier selbst
+           geben — er ist der Einzige, der es wirklich weiß, und der
+           Gast sieht die Minuten binnen 15 Sekunden in seinem Hub.
+           Sobald eine Zusage steht, verschwindet die Reihe: Sie ist
+           gesetzt, nicht dauernd verstellbar. */
+        (!L.zusage && !alleAbgehakt
+          ? '<div class="zeitwahl"><small>Dauert ca.</small>' +
+            [10,15,20,30].map(function(m){
+              return '<button data-tun="zeit" data-min="' + m + '" data-id="' +
+                     h(b.id) + '">' + m + '′</button>';
+            }).join("") + '</div>'
+          : '') +
         '<div class="bon-fuss">' +
           (b.status === "arbeit" && !alleAbgehakt
             ? '<button class="zurueck" data-tun="zurueck" data-id="' + h(b.id) + '">Zurück</button>' : '') +
@@ -1150,10 +1287,17 @@ function bonFinden(id){
 
 /* Die eigentliche Aktion — von Knopf UND Wisch gemeinsam genutzt, damit
    sich beide Wege exakt gleich verhalten. */
-function ausfuehren(b, tun){
+function ausfuehren(b, tun, zusatz){
   var felder = {}, jetzt = new Date().toISOString();
 
-  if(tun === "starten"){
+  if(tun === "zeit"){
+    /* Ab JETZT, nicht ab der Bestellung. Wer um 20:10 sagt „zwanzig
+       Minuten", meint 20:30 — auch wenn der Bon seit 20:02 liegt. */
+    felder.status        = "arbeit";
+    felder.wartezeit_min = Number(zusatz);
+    felder.bestaetigt_um = jetzt;
+  }
+  else if(tun === "starten"){
     felder.status = "arbeit";
     if(!b.bestaetigt_um) felder.bestaetigt_um = jetzt;
   }
@@ -1170,7 +1314,11 @@ function ausfuehren(b, tun){
       if(meine.indexOf(s) > -1) return false;
       return !spurFertig(b, s);
     });
-    if(!restOffen) felder.status = "fertig";
+    /* „storniert" darf NICHT zu „fertig" werden. Das Board rechnet
+       den Umsatz über status !== "storniert" (awAuswerten) — ein
+       zurückgezogener Bon, den der Koch abhakt, tauchte sonst im
+       Tagesbogen wieder auf. Abhaken heißt hier nur: vom Schirm. */
+    if(!restOffen && b.status !== "storniert") felder.status = "fertig";
   }
   else if(tun === "oeffnen"){
     var meine2 = spurenVon(b).filter(function(s){ return EINST.spur === "beides" || s === EINST.spur; });
@@ -1189,7 +1337,7 @@ function ausfuehren(b, tun){
 
   setzeBon(b.id, felder).catch(function(e){
     toast("„" + (b.tisch||"?") + "“ nicht gespeichert.", "err", {
-      text:"Erneut", tun: function(){ ausfuehren(b, tun); }
+      text:"Erneut", tun: function(){ ausfuehren(b, tun, zusatz); }
     });
   });
 }
@@ -1199,7 +1347,7 @@ $('feld').addEventListener('click', function(ev){
   if(!k) return;
   var b = bonFinden(k.dataset.id); if(!b) return;
   k.disabled = true;
-  ausfuehren(b, k.dataset.tun);
+  ausfuehren(b, k.dataset.tun, k.dataset.min);
 });
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1263,15 +1411,28 @@ $('feld').addEventListener('click', function(ev){
 function aktualisieren(){
   return ladeBons().then(function(liste){
     /* Ton nur bei wirklich neuen Bons, nicht beim ersten Laden. */
-    var neueDa = false;
+    var neueDa = false, stornoDa = false;
     (liste||[]).forEach(function(b){
       if(!gesehen[b.id]){ gesehen[b.id] = 1; if(!ersterLauf) neueDa = true; }
+      /* Gezählt wird die ZAHL der gestrichenen Zeilen, nicht ein
+         Ja/Nein: Wer zweimal etwas streicht, muss zweimal gehört
+         werden. */
+      var wieviel = (b.storno && b.storno.length) || 0;
+      var vorher  = gesehen[b.id + "_storno"] || 0;
+      if(wieviel > vorher){
+        gesehen[b.id + "_storno"] = wieviel;
+        if(!ersterLauf) stornoDa = true;
+      }
     });
     ersterLauf = false;
     bons = liste || [];
     zeichne();
     netzMelden(true);
-    if(neueDa && EINST.ton) piep();
+    /* Storno hat Vorrang: Es ist die seltenere und die dringendere
+       Nachricht. Beide Töne übereinander wären nur Lärm. */
+    if(stornoDa && EINST.ton)      piepStorno();
+    else if(neueDa && EINST.ton)   piep();
+    if(stornoDa) toast("Ein Gast hat etwas zurückgezogen.", "err");
   }).catch(function(e){
     if(String(e.message).indexOf("Sitzung") > -1){ abmelden(); return; }
     netzMelden(false);
@@ -1307,6 +1468,31 @@ function piep(){
     o.connect(g); g.connect(ctx.destination);
     o.start(); o.stop(ctx.currentTime + 0.52);
     if(navigator.vibrate) navigator.vibrate(120);
+  }catch(e){}
+}
+
+/* Der Storno-Ton. Bewusst ANDERS als piep(): zwei FALLENDE Töne,
+   zweimal, tiefer. Ein Ton, der wie eine neue Bestellung klingt,
+   schickt den Koch an den Pass statt an den Bon.
+
+   Fallend, weil etwas weggenommen wird — dieselbe Sprache, die jeder
+   von Aufzügen und Kassen kennt. */
+function piepStorno(){
+  try{
+    var K = window.AudioContext || window.webkitAudioContext; if(!K) return;
+    var ctx = new K();
+    [[660, 0], [440, 0.16], [660, 0.42], [440, 0.58]].forEach(function(n){
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "square";
+      o.frequency.value = n[0];
+      var t = ctx.currentTime + n[1];
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.30, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.17);
+    });
+    if(navigator.vibrate) navigator.vibrate([90, 60, 90]);
   }catch(e){}
 }
 
@@ -1400,6 +1586,10 @@ function einstOeffnen(ausloeser){
   document.addEventListener('keydown', aufTaste);
 
   d.addEventListener('click', function(ev){ if(ev.target === d) schliessen(); });
+  /* Der Balken oben zieht das Blatt herunter. In der Küche zählt das
+     doppelt: Wer mit mehligen Händen tippt, trifft einen Balken eher
+     als ein kleines Kreuz. */
+  wischZu({ blatt: d.querySelector('.blatt'), zu: schliessen, griff: '.griff' });
   d.querySelector('#eZu').addEventListener('click', schliessen);
 
   function schieber(id, aus, feld, einheit){
@@ -1447,6 +1637,131 @@ function einstOeffnen(ausloeser){
     d.remove(); abmelden();
   });
 }
+
+/* ╔═══ WISCHZU · GETEILTER BLOCK · ANFANG ═════════════════════════╗
+   ║ Wortgleich in vorlagen/hub.vorlage.html, seiten/admin.html und ║
+   ║ seiten/kueche.html. pruef-wischen.js vergleicht alle drei      ║
+   ║ Zeichen für Zeichen. Wer hier etwas ändert, ändert es dort auch.║
+   ║                                                                ║
+   ║ Anlass: Jedes Fenster hatte oben einen Balken, der aussieht,   ║
+   ║ als könnte man ihn herunterziehen — und man konnte nicht. Zum  ║
+   ║ Schließen musste man jedes Mal das ✕ oben rechts treffen. Das  ║
+   ║ ist der Griff, den man am Telefon am schlechtesten erreicht.   ║
+   ║                                                                ║
+   ║ Der Block ist absichtlich rein: keine Farbnamen, keine         ║
+   ║ Kurven-Variablen, kein t(). Die drei Dateien führen dieselben  ║
+   ║ Variablen unter verschiedenen Werten — eine Bewegung, die von  ║
+   ║ dort liest, fühlte sich in jeder Datei anders an.              ║
+   ╚════════════════════════════════════════════════════════════════╝ */
+
+/* Ein Blatt herunterziehen und loslassen. Die Geste FOLGT dem Finger,
+   statt nur auszulösen: Sonst weiß niemand, ob sie greift, bevor sie
+   fertig ist.
+
+   o.blatt   das Element, das sich bewegt
+   o.zu      wird gerufen, wenn wirklich geschlossen werden soll
+   o.griff   Auswahl des Balkens INNERHALB des Blattes (freiwillig)
+   o.basisX  waagerechter Anteil, der erhalten bleiben muss —
+             .warenkarte steht auf translate3d(-50%,…) und läge ohne
+             das plötzlich halb außerhalb des Schirms
+   o.kopf    wie weit oben eine Geste beginnen darf (Vorgabe 72px) */
+function wischZu(o){
+  var blatt = o && o.blatt, zu = o && o.zu;
+  if(!blatt || typeof zu !== "function") return;
+  /* Zweimal verdrahtet hieße zweimal geschlossen. */
+  if(blatt.getAttribute("data-wischt") === "1") return;
+  blatt.setAttribute("data-wischt", "1");
+
+  var basisX = o.basisX || "0px";
+  var kopf   = typeof o.kopf === "number" ? o.kopf : 72;
+  var griff  = o.griff ? blatt.querySelector(o.griff) : null;
+  /* Ohne das rollt der Browser die Seite mit, statt das Blatt zu
+     ziehen — und die Geste fühlt sich an, als hakte sie. */
+  if(griff) griff.style.touchAction = "none";
+
+  var zieht = false, y0 = 0, dy = 0, tLetzt = 0, yLetzt = 0, tempo = 0, alterUebergang = "";
+
+  function ruhig(){
+    return !!(window.matchMedia &&
+              window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+  function aufraeumen(){
+    blatt.style.transition = alterUebergang;
+    blatt.style.transform  = "";
+  }
+
+  blatt.addEventListener("pointerdown", function(ev){
+    if(ev.pointerType === "mouse" && ev.button !== 0) return;
+    /* Auf einem Bedienelement fängt keine Geste an: Wer einen Regler
+       zieht, will den Regler bewegen und nicht das Blatt. */
+    if(ev.target.closest &&
+       ev.target.closest("button,a,input,select,textarea,label,[role=button]")) return;
+
+    var aufGriff = !!(griff && griff.contains(ev.target));
+    /* Sonst nur ganz oben, und nur wenn der Inhalt nicht gescrollt
+       ist. Sonst kollidiert die Geste mit dem Lesen. */
+    var obenAmBlatt = blatt.scrollTop <= 0 &&
+      (ev.clientY - blatt.getBoundingClientRect().top) <= kopf;
+    if(!aufGriff && !obenAmBlatt) return;
+
+    zieht = true; y0 = ev.clientY; dy = 0; tempo = 0;
+    yLetzt = ev.clientY; tLetzt = ev.timeStamp;
+    alterUebergang = blatt.style.transition;
+    blatt.style.transition = "none";
+    try{ blatt.setPointerCapture(ev.pointerId); }catch(e){}
+  }, {passive:true});
+
+  blatt.addEventListener("pointermove", function(ev){
+    if(!zieht) return;
+    dy = ev.clientY - y0;
+    /* Nach oben gibt es kaum nach — das Blatt ist schon oben. */
+    if(dy < 0) dy = dy / 5;
+    var dt = ev.timeStamp - tLetzt;
+    if(dt > 0){
+      tempo  = (ev.clientY - yLetzt) / dt;   /* px je Millisekunde */
+      yLetzt = ev.clientY; tLetzt = ev.timeStamp;
+    }
+    /* Wer Bewegung reduziert hat, bekommt kein Mitziehen — aber
+       dieselbe Geste und dasselbe Ergebnis. */
+    if(!ruhig()) blatt.style.transform = "translate3d(" + basisX + "," + dy + "px,0)";
+  }, {passive:true});
+
+  function los(){
+    if(!zieht) return;
+    zieht = false;
+
+    /* Ein Viertel der Höhe, mindestens 80px — ODER ein schneller
+       Wisch. Beides zusammen, weil sonst ein kurzer, entschlossener
+       Zug nichts täte und ein langsames Verrutschen alles zumachte. */
+    var hoch = blatt.getBoundingClientRect().height || 400;
+    var weg  = dy > Math.max(80, hoch * 0.25) || (dy > 24 && tempo > 0.55);
+
+    if(!weg){
+      /* Zurückfedern. ease-out, 300ms: Hereinkommen darf ausrollen. */
+      blatt.style.transition = "transform 300ms cubic-bezier(.16,1,.3,1)";
+      blatt.style.transform  = "translate3d(" + basisX + ",0,0)";
+      window.setTimeout(aufraeumen, 320);
+      return;
+    }
+
+    if(ruhig()){ aufraeumen(); zu(); return; }
+
+    /* Hinausgehen ist schneller als Hereinkommen — der Nutzer hat
+       sich schon entschieden. ease-in, 200ms. */
+    blatt.style.transition = "transform 200ms cubic-bezier(.4,0,1,1)";
+    blatt.style.transform  = "translate3d(" + basisX + "," + Math.round(hoch + 40) + "px,0)";
+    window.setTimeout(function(){
+      /* ERST schließen, DANN die Inline-Angaben wegnehmen. Umgekehrt
+         spränge das Blatt für ein Bild an seinen offenen Platz
+         zurück, bevor die Klasse es hinausschiebt. */
+      zu(); aufraeumen();
+    }, 205);
+  }
+
+  blatt.addEventListener("pointerup",     los, {passive:true});
+  blatt.addEventListener("pointercancel", los, {passive:true});
+}
+/* ╚═══ WISCHZU · GETEILTER BLOCK · ENDE ═══════════════════════════╝ */
 
 /* ╔═══ VOLLBILD · GETEILTER BLOCK · ANFANG ════════════════════════╗
    ║ Wortgleich in seiten/admin.html und seiten/kueche.html.        ║

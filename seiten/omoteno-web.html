@@ -178,8 +178,16 @@ p:last-child{margin-bottom:0}
 
 /* ─── Bildlauffortschritt ─────────────────────────────────────── */
 .fortschritt{
-  position:fixed;top:0;left:0;height:2px;width:0;z-index:950;
-  background:var(--kuli);transition:width .1s linear;
+  position:fixed;top:0;left:0;height:2px;width:100%;z-index:950;
+  background:var(--kuli);
+  /* scaleX statt width: width zwingt den Browser in JEDEM Bild zu
+     einem neuen Layout, und dieser Balken laeuft bei jedem Bildlauf.
+     Zulaessig ist der Tausch hier, weil der Balken 2 px hoch ist und
+     weder Rand noch Inhalt hat, die mitgestaucht wuerden — bei einem
+     beschrifteten Balken waere er es nicht.
+     `linear` bleibt: Ein Fortschritt, der einer Kurve folgt, luegt. */
+  transform:scaleX(0);transform-origin:0 50%;
+  transition:transform .1s linear;
 }
 
 /* ─── Statusleiste als Navigation ─────────────────────────────
@@ -317,6 +325,13 @@ p:last-child{margin-bottom:0}
 .stueck{
   display:block;padding:0;background:none;border:none;position:relative;
   width:var(--breit);height:var(--hoch);
+  /* Der Schatten steht im Auszeichnungstext SPAETER und malte deshalb
+     ueber dem Gegenstand — gemessen 9,8 px Ueberlappung am Telefon,
+     11,4 px am Rechner, und elementFromPoint traf dort den Schatten.
+     Tiefe sagt man mit z-index, und dann an BEIDEN Elementen: Ein
+     einzelnes z-index stapelt gegen `auto` nicht verlaesslich, sobald
+     ein transform daneben einen eigenen Stapelkontext aufmacht. */
+  z-index:1;
 }
 .tisch{
   display:block;width:100%;height:100%;
@@ -411,7 +426,15 @@ p:last-child{margin-bottom:0}
   margin-top:calc(var(--breit) * -.05);
   background:radial-gradient(ellipse at 50% 50%,rgba(0,0,0,.5),transparent 68%);
   animation:schattenfallen 1.1s var(--weich) both;
-  transition:transform .74s var(--weich),opacity .74s var(--weich);
+  /* Gegenstueck zu .stueck{z-index:1} — der Schatten liegt UNTER dem
+     Ding, nicht davor. position ist noetig, damit z-index greift. */
+  position:relative;z-index:0;
+  /* Der Schatten laeuft mit dem Gegenstand, nicht neben ihm: Hin
+     dauert der Gegenstand 340 ms (herankommen), zurueck 240 ms
+     (zurueckfahren). Deshalb steht hier die RUECKfahrt; die Hinfahrt
+     setzt .plinth.heran. Vorher standen ueberall 740 ms — weder das
+     eine noch das andere. */
+  transition:transform .24s var(--weich),opacity .24s var(--weich);
 }
 @keyframes schattenfallen{
   from{opacity:0;transform:scale(.5)}
@@ -419,7 +442,10 @@ p:last-child{margin-bottom:0}
 }
 /* Fährt der Gegenstand heran, rückt er vom Tisch ab: Der Schatten
    wird kleiner und weicher, nicht größer. */
-.plinth.heran .tischschatten{transform:scale(.72);opacity:.5}
+.plinth.heran .tischschatten{
+  transform:scale(.72);opacity:.5;
+  transition-duration:.34s,.34s;
+}
 .plinth.aufsteller .tischschatten{width:calc(var(--breit) * 1.3);height:18px;margin-top:4px}
 
 .tippmich{
@@ -549,8 +575,11 @@ p:last-child{margin-bottom:0}
   max-width:var(--breite);
 }
 .abend-bahn i{
-  position:absolute;left:0;top:0;height:100%;background:var(--glut-hell);
-  transition:width .18s linear;
+  position:absolute;left:0;top:0;height:100%;width:100%;background:var(--glut-hell);
+  /* Dieselbe Begruendung wie bei .fortschritt: 2 px hoch, ohne Inhalt,
+     und der Balken laeuft bei jedem Zeitschritt. */
+  transform:scaleX(0);transform-origin:0 50%;
+  transition:transform .18s linear;
 }
 
 /* ─── Nachtmodus ab 22:00 ────────────────────────────────────────
@@ -1620,9 +1649,15 @@ html.starr{overflow:hidden}
                      scanbaren Code auf eine Werbeseite zu drucken, der
                      nirgendwohin führt, wäre eine Lüge auf dem Tisch. -->
                 <svg class="flaeche f-hoch" viewBox="0 0 100 141" aria-hidden="true" hidden>
+                  <!-- Gemessen mit getBBox() in der viewBox 0…100: Bei 5.2/1.6
+                       lief die Zeile von x −9 bis 109, also je neun Einheiten
+                       ueber den Rand. 24 Zeichen tragen bei 1.6 allein 38
+                       Einheiten Sperrung — deshalb kommen beide Stellschrauben
+                       herunter, nicht nur eine. Die anderen beiden Zeilen
+                       derselben Flaeche passen (56,9 und 39,6) und bleiben. -->
                   <text x="50" y="15" text-anchor="middle" fill="#123029"
-                        font-family="ui-monospace,monospace" font-size="5.2" font-weight="700"
-                        letter-spacing="1.6" opacity=".58">SPEISEKARTE · 11 SPRACHEN</text>
+                        font-family="ui-monospace,monospace" font-size="4.4" font-weight="700"
+                        letter-spacing="1" opacity=".58">SPEISEKARTE · 11 SPRACHEN</text>
 
                   <g fill="none" stroke="#123029" stroke-linecap="round"
                      transform="translate(0,4)">
@@ -2444,7 +2479,7 @@ html.starr{overflow:hidden}
   function messen(){
     var h = document.documentElement;
     var voll = h.scrollHeight - h.clientHeight;
-    bahn.style.width = (voll > 0 ? (h.scrollTop / voll) * 100 : 0) + "%";
+    bahn.style.transform = "scaleX(" + (voll > 0 ? h.scrollTop / voll : 0) + ")";
     warte = false;
   }
   addEventListener("scroll", function(){
@@ -2544,7 +2579,7 @@ html.starr{overflow:hidden}
     var tagmin = Math.round(BEGINN + min) % TAG;
     uhrEl.textContent = String(Math.floor(tagmin / 60)).padStart(2,"0") + ":" +
                         String(tagmin % 60).padStart(2,"0");
-    bahn.style.width = (Math.min(1, min / ENDE) * 100) + "%";
+    bahn.style.transform = "scaleX(" + Math.min(1, min / ENDE) + ")";
 
     /* Nachtmodus ab 22:00, bis einschließlich 03:00. Gerechnet wird
        auf der LAUFENDEN Zahl, nicht auf der eingerasteten Szene: Der
@@ -2960,13 +2995,30 @@ function hausWaehlen(id){
     heran = true;
     plinth.classList.add("heran");
 
+    /* 340 statt 820 ms. Am Ende dieser Bewegung oeffnet der Tipp den
+       ganzen Hub — der Skill `bewegung` §3 gibt einem ganzen Schirm
+       320 bis 500 ms, gemessen waren es 820.
+
+       Warum 340 und nicht 500: Zwischen dem Ende der Bewegung und dem
+       offenen Fenster liegt noch etwas — onfinish faellt auf den
+       naechsten Bildtakt, dazu showModal. In sechs Laeufen waren das
+       49 bis 90 ms Aufschlag, Streuung 41 ms. Mit 400 ms kam ein Lauf
+       auf 490 und haette die Grenze bei naechster Gelegenheit
+       gerissen; eine Pruefung, die manchmal rot wird, bringt einem
+       bei, sie zu uebergehen (CLAUDE.md §8.2). Gemessen wird deshalb
+       am fertig offenen Hub, nicht an der Zahl hier: 399 bis 424 ms.
+
+       Umdrehungen und Kurven bleiben. `bis` haelt weiter mindestens
+       eine ganze Umdrehung, und das Ausrollen von
+       cubic-bezier(.16,1,.3,1) legt den Grossteil des Weges nach vorn
+       und laesst den Aufdruck hinten langsam einrasten. */
     drehAn = koerper.animate(
       [{transform:stand(von)},{transform:stand(bis, 16)}],
-      {duration:820, easing:"cubic-bezier(.16,1,.3,1)", fill:"forwards"}
+      {duration:340, easing:"cubic-bezier(.16,1,.3,1)", fill:"forwards"}
     );
     zoomAn = stueck.animate(
       [{transform:"scale(1)"},{transform:"scale(1.46)"}],
-      {duration:820, easing:"cubic-bezier(.55,0,.25,1)", fill:"forwards"}
+      {duration:340, easing:"cubic-bezier(.55,0,.25,1)", fill:"forwards"}
     );
     zoomAn.onfinish = fertig;
   }
@@ -2987,13 +3039,16 @@ function hausWaehlen(id){
     if(!heran) return;
     heran = false;
     plinth.classList.remove("heran");
+    /* Hinausgehen ist schneller als Hereinkommen — der Skill nennt
+       60 bis 80 Prozent, 240 von 340 ms sind 71. Der Nutzer hat das
+       Fenster schon geschlossen; niemand wartet dem Weggehen nach. */
     koerper.animate(
       [{transform:stand(0, 16)},{transform:stand(0)}],
-      {duration:640, easing:"cubic-bezier(.16,1,.3,1)"}
+      {duration:240, easing:"cubic-bezier(.16,1,.3,1)"}
     );
     var z = stueck.animate(
       [{transform:"scale(1.46)"},{transform:"scale(1)"}],
-      {duration:640, easing:"cubic-bezier(.16,1,.3,1)"}
+      {duration:240, easing:"cubic-bezier(.16,1,.3,1)"}
     );
     haltenLoesen();
     z.onfinish = drehen;
