@@ -764,6 +764,20 @@ kann**. Deshalb gehört zu jedem Gegenbeweis der Nachweis, dass die
 Sabotage überhaupt angekommen ist — `grep -c` auf die geänderte Stelle
 kostet zwei Sekunden.
 
+> **Vorfall C, und er ist die tückischste Form davon.** Die Prüfung
+> für die Wischgeste öffnete in der Küche ein Blatt und zog daran.
+> Der Aufruf ging ins Leere — `einstOeffnen` ist im Küchenskript
+> nicht global —, es öffnete sich also gar nichts. Die Probe
+> „ein langer Zug schließt sie" prüfte danach
+> `!document.querySelector(".decke")` und meldete **grün**: Wo nie
+> etwas war, ist auch nichts mehr. **„Nichts da" sieht aus wie
+> „geschlossen".**
+
+Daraus die dritte Regel: **Eine Probe, deren Voraussetzung fehlschlagen
+kann, muss die Voraussetzung selbst prüfen — und die Folgeproben daran
+hängen.** Sonst meldet die Prüfung nicht „es funktioniert", sondern
+„ich habe nichts gefunden", und das klingt gleich.
+
 Dazu die verwandte Falle bei Grenzwerten: **Eine Grenze, die man sich
 ausdenkt, ist keine Messung.** Die harte Länge für den Satz des
 Begleiters stand in meinem Entwurf auf 120 Zeichen — gemessen hatte ich
@@ -886,6 +900,7 @@ Dazu je nach Änderung:
 | **Zugesagte Zeit, Countdown in Küche und Hub** | `pruefungen/pruef-zusage.js` (braucht `dist/`) — beide Seiten, und der Fall „Migration fehlt noch" |
 | **Kacheln, Symbole, Banner, Baukasten im Board** | `pruefungen/pruef-baukasten.js` (braucht `dist/`) — zweite Quelle, Zuschnitt, Schrift nie auf dem Bild |
 | **Besuchsbild, Sterne, Foto** | `pruefungen/pruef-besuchsbild.js` (braucht `dist/`) — Sterne auf der Leinwand, Bild aus der Karte |
+| **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung |
 
 Und danach, immer:
 

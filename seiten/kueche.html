@@ -1501,6 +1501,10 @@ function einstOeffnen(ausloeser){
   document.addEventListener('keydown', aufTaste);
 
   d.addEventListener('click', function(ev){ if(ev.target === d) schliessen(); });
+  /* Der Balken oben zieht das Blatt herunter. In der Küche zählt das
+     doppelt: Wer mit mehligen Händen tippt, trifft einen Balken eher
+     als ein kleines Kreuz. */
+  wischZu({ blatt: d.querySelector('.blatt'), zu: schliessen, griff: '.griff' });
   d.querySelector('#eZu').addEventListener('click', schliessen);
 
   function schieber(id, aus, feld, einheit){
@@ -1548,6 +1552,131 @@ function einstOeffnen(ausloeser){
     d.remove(); abmelden();
   });
 }
+
+/* ╔═══ WISCHZU · GETEILTER BLOCK · ANFANG ═════════════════════════╗
+   ║ Wortgleich in vorlagen/hub.vorlage.html, seiten/admin.html und ║
+   ║ seiten/kueche.html. pruef-wischen.js vergleicht alle drei      ║
+   ║ Zeichen für Zeichen. Wer hier etwas ändert, ändert es dort auch.║
+   ║                                                                ║
+   ║ Anlass: Jedes Fenster hatte oben einen Balken, der aussieht,   ║
+   ║ als könnte man ihn herunterziehen — und man konnte nicht. Zum  ║
+   ║ Schließen musste man jedes Mal das ✕ oben rechts treffen. Das  ║
+   ║ ist der Griff, den man am Telefon am schlechtesten erreicht.   ║
+   ║                                                                ║
+   ║ Der Block ist absichtlich rein: keine Farbnamen, keine         ║
+   ║ Kurven-Variablen, kein t(). Die drei Dateien führen dieselben  ║
+   ║ Variablen unter verschiedenen Werten — eine Bewegung, die von  ║
+   ║ dort liest, fühlte sich in jeder Datei anders an.              ║
+   ╚════════════════════════════════════════════════════════════════╝ */
+
+/* Ein Blatt herunterziehen und loslassen. Die Geste FOLGT dem Finger,
+   statt nur auszulösen: Sonst weiß niemand, ob sie greift, bevor sie
+   fertig ist.
+
+   o.blatt   das Element, das sich bewegt
+   o.zu      wird gerufen, wenn wirklich geschlossen werden soll
+   o.griff   Auswahl des Balkens INNERHALB des Blattes (freiwillig)
+   o.basisX  waagerechter Anteil, der erhalten bleiben muss —
+             .warenkarte steht auf translate3d(-50%,…) und läge ohne
+             das plötzlich halb außerhalb des Schirms
+   o.kopf    wie weit oben eine Geste beginnen darf (Vorgabe 72px) */
+function wischZu(o){
+  var blatt = o && o.blatt, zu = o && o.zu;
+  if(!blatt || typeof zu !== "function") return;
+  /* Zweimal verdrahtet hieße zweimal geschlossen. */
+  if(blatt.getAttribute("data-wischt") === "1") return;
+  blatt.setAttribute("data-wischt", "1");
+
+  var basisX = o.basisX || "0px";
+  var kopf   = typeof o.kopf === "number" ? o.kopf : 72;
+  var griff  = o.griff ? blatt.querySelector(o.griff) : null;
+  /* Ohne das rollt der Browser die Seite mit, statt das Blatt zu
+     ziehen — und die Geste fühlt sich an, als hakte sie. */
+  if(griff) griff.style.touchAction = "none";
+
+  var zieht = false, y0 = 0, dy = 0, tLetzt = 0, yLetzt = 0, tempo = 0, alterUebergang = "";
+
+  function ruhig(){
+    return !!(window.matchMedia &&
+              window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }
+  function aufraeumen(){
+    blatt.style.transition = alterUebergang;
+    blatt.style.transform  = "";
+  }
+
+  blatt.addEventListener("pointerdown", function(ev){
+    if(ev.pointerType === "mouse" && ev.button !== 0) return;
+    /* Auf einem Bedienelement fängt keine Geste an: Wer einen Regler
+       zieht, will den Regler bewegen und nicht das Blatt. */
+    if(ev.target.closest &&
+       ev.target.closest("button,a,input,select,textarea,label,[role=button]")) return;
+
+    var aufGriff = !!(griff && griff.contains(ev.target));
+    /* Sonst nur ganz oben, und nur wenn der Inhalt nicht gescrollt
+       ist. Sonst kollidiert die Geste mit dem Lesen. */
+    var obenAmBlatt = blatt.scrollTop <= 0 &&
+      (ev.clientY - blatt.getBoundingClientRect().top) <= kopf;
+    if(!aufGriff && !obenAmBlatt) return;
+
+    zieht = true; y0 = ev.clientY; dy = 0; tempo = 0;
+    yLetzt = ev.clientY; tLetzt = ev.timeStamp;
+    alterUebergang = blatt.style.transition;
+    blatt.style.transition = "none";
+    try{ blatt.setPointerCapture(ev.pointerId); }catch(e){}
+  }, {passive:true});
+
+  blatt.addEventListener("pointermove", function(ev){
+    if(!zieht) return;
+    dy = ev.clientY - y0;
+    /* Nach oben gibt es kaum nach — das Blatt ist schon oben. */
+    if(dy < 0) dy = dy / 5;
+    var dt = ev.timeStamp - tLetzt;
+    if(dt > 0){
+      tempo  = (ev.clientY - yLetzt) / dt;   /* px je Millisekunde */
+      yLetzt = ev.clientY; tLetzt = ev.timeStamp;
+    }
+    /* Wer Bewegung reduziert hat, bekommt kein Mitziehen — aber
+       dieselbe Geste und dasselbe Ergebnis. */
+    if(!ruhig()) blatt.style.transform = "translate3d(" + basisX + "," + dy + "px,0)";
+  }, {passive:true});
+
+  function los(){
+    if(!zieht) return;
+    zieht = false;
+
+    /* Ein Viertel der Höhe, mindestens 80px — ODER ein schneller
+       Wisch. Beides zusammen, weil sonst ein kurzer, entschlossener
+       Zug nichts täte und ein langsames Verrutschen alles zumachte. */
+    var hoch = blatt.getBoundingClientRect().height || 400;
+    var weg  = dy > Math.max(80, hoch * 0.25) || (dy > 24 && tempo > 0.55);
+
+    if(!weg){
+      /* Zurückfedern. ease-out, 300ms: Hereinkommen darf ausrollen. */
+      blatt.style.transition = "transform 300ms cubic-bezier(.16,1,.3,1)";
+      blatt.style.transform  = "translate3d(" + basisX + ",0,0)";
+      window.setTimeout(aufraeumen, 320);
+      return;
+    }
+
+    if(ruhig()){ aufraeumen(); zu(); return; }
+
+    /* Hinausgehen ist schneller als Hereinkommen — der Nutzer hat
+       sich schon entschieden. ease-in, 200ms. */
+    blatt.style.transition = "transform 200ms cubic-bezier(.4,0,1,1)";
+    blatt.style.transform  = "translate3d(" + basisX + "," + Math.round(hoch + 40) + "px,0)";
+    window.setTimeout(function(){
+      /* ERST schließen, DANN die Inline-Angaben wegnehmen. Umgekehrt
+         spränge das Blatt für ein Bild an seinen offenen Platz
+         zurück, bevor die Klasse es hinausschiebt. */
+      zu(); aufraeumen();
+    }, 205);
+  }
+
+  blatt.addEventListener("pointerup",     los, {passive:true});
+  blatt.addEventListener("pointercancel", los, {passive:true});
+}
+/* ╚═══ WISCHZU · GETEILTER BLOCK · ENDE ═══════════════════════════╝ */
 
 /* ╔═══ VOLLBILD · GETEILTER BLOCK · ANFANG ════════════════════════╗
    ║ Wortgleich in seiten/admin.html und seiten/kueche.html.        ║
