@@ -361,6 +361,19 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
 .bon.neu{border-color:var(--messing)}
 .bon.spaet{border-color:var(--achtung)}
 .bon.sehr-spaet{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
+/* Ein Storno ist die dringendere Nachricht als „spät". Deshalb steht
+   diese Regel HINTER der von sehr-spaet: Bei gleicher Genauigkeit
+   gewinnt die spätere, und ein zurückgezogener Bon soll auch dann rot
+   sein, wenn er noch nicht spät ist. */
+.bon.storniert{border-color:var(--warn);box-shadow:0 0 0 2px var(--warn)}
+.bon.storniert .mass span{background:var(--warn)}
+.storno-kopf{
+  margin-top:8px;padding-top:8px;border-top:1px dashed var(--warn);
+  color:var(--warn);font-weight:800;
+  font-size:calc(12px * var(--skala));letter-spacing:.06em;text-transform:uppercase}
+.storno-kopf .menge{color:var(--warn)}
+.storno-zeile{color:var(--gedaempft);text-decoration:line-through}
+.storno-zeile .menge{color:var(--gedaempft)}
 .bon.erledigt{opacity:.42}
 
 /* Kurzes Aufblitzen, wenn ein Bon zum ersten Mal auf dem Bildschirm
@@ -848,7 +861,12 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
                       versprochen wurden und ab wann sie laufen. Erst
                       beide zusammen ergeben eine Restzeit — eine Zahl
                       ohne Startpunkt ist keine. */
-                   "wartezeit_min,bestaetigt_um";
+                   "wartezeit_min,bestaetigt_um," +
+                   /* Was der Gast binnen zwei Minuten zurückgezogen
+                      hat. Die Zeilen bleiben stehen — wer schon kocht,
+                      muss sehen, WAS wegfällt, nicht nur DASS etwas
+                      wegfiel. */
+                   "storno";
 
 /* Servicerufe bleiben draußen, Telefonbestellungen kommen herein.
 
@@ -1060,7 +1078,10 @@ function bonSignatur(liste){
               Minuten-Knöpfe nach dem Tippen stehen, bis zufällig
               etwas anderes den Bon ändert. Der Zeitpunkt selbst
               bleibt draußen — sonst wäre jede Minute ein Neuaufbau. */
-           (b.wartezeit_min || "");
+           (b.wartezeit_min || "") + ":" +
+           /* Ein Storno MUSS die Karte neu bauen: Die gestrichene
+              Zeile ist eine Änderung am Bon, nicht an einer Uhr. */
+           ((b.storno && b.storno.length) || 0);
   }).join(",");
 }
 
@@ -1137,6 +1158,11 @@ function zeichne(){
     if(L.sehrSpaet) klasse += " sehr-spaet";
     else if(L.spaet) klasse += " spaet";
     if(b.status === "neu") klasse += " neu";
+    /* Ein Bon, an dem etwas gestrichen wurde, ist rot — bis er
+       abgehakt ist. Danach ist die Sache erledigt und die Farbe wäre
+       nur noch Lärm. */
+    var stornoZeilen = Array.isArray(b.storno) ? b.storno : [];
+    if(stornoZeilen.length) klasse += " storniert";
     /* Nur beim allerersten Anzeigen aufblitzen, nicht bei jedem der
        vier Sekunden-Takte danach. */
     if(!gesehen[b.id+"_gezeichnet"]){ klasse += " frisch"; gesehen[b.id+"_gezeichnet"] = 1; }
@@ -1172,6 +1198,23 @@ function zeichne(){
                   '</span></li>';
       });
     });
+    /* Die gestrichenen Zeilen stehen MIT auf dem Bon, durchgestrichen.
+       Ein Bon, aus dem still eine Zeile verschwindet, ist schlimmer
+       als keiner: Wer schon angefangen hat, sucht sonst den Fehler
+       bei sich. */
+    if(stornoZeilen.length){
+      zeilen += '<li class="storno-kopf"><span class="menge">✕</span>' +
+                '<span class="name">' +
+                (b.status === "storniert" ? "Bestellung zurückgezogen"
+                                          : "Vom Gast gestrichen") +
+                '</span></li>';
+      stornoZeilen.forEach(function(p){
+        zeilen += '<li class="storno-zeile"><span class="menge">' +
+                  (p.menge || 1) + '×</span><span class="name">' +
+                  h(String(p.name || "")) + '</span></li>';
+      });
+    }
+
     var knopfText = alleAbgehakt ? "Wieder öffnen"
       : (b.status === "neu" ? "Starten" : "Fertig");
     var knopfArt  = alleAbgehakt ? "zurueck" : "haupt";
@@ -1271,7 +1314,11 @@ function ausfuehren(b, tun, zusatz){
       if(meine.indexOf(s) > -1) return false;
       return !spurFertig(b, s);
     });
-    if(!restOffen) felder.status = "fertig";
+    /* „storniert" darf NICHT zu „fertig" werden. Das Board rechnet
+       den Umsatz über status !== "storniert" (awAuswerten) — ein
+       zurückgezogener Bon, den der Koch abhakt, tauchte sonst im
+       Tagesbogen wieder auf. Abhaken heißt hier nur: vom Schirm. */
+    if(!restOffen && b.status !== "storniert") felder.status = "fertig";
   }
   else if(tun === "oeffnen"){
     var meine2 = spurenVon(b).filter(function(s){ return EINST.spur === "beides" || s === EINST.spur; });
@@ -1364,15 +1411,28 @@ $('feld').addEventListener('click', function(ev){
 function aktualisieren(){
   return ladeBons().then(function(liste){
     /* Ton nur bei wirklich neuen Bons, nicht beim ersten Laden. */
-    var neueDa = false;
+    var neueDa = false, stornoDa = false;
     (liste||[]).forEach(function(b){
       if(!gesehen[b.id]){ gesehen[b.id] = 1; if(!ersterLauf) neueDa = true; }
+      /* Gezählt wird die ZAHL der gestrichenen Zeilen, nicht ein
+         Ja/Nein: Wer zweimal etwas streicht, muss zweimal gehört
+         werden. */
+      var wieviel = (b.storno && b.storno.length) || 0;
+      var vorher  = gesehen[b.id + "_storno"] || 0;
+      if(wieviel > vorher){
+        gesehen[b.id + "_storno"] = wieviel;
+        if(!ersterLauf) stornoDa = true;
+      }
     });
     ersterLauf = false;
     bons = liste || [];
     zeichne();
     netzMelden(true);
-    if(neueDa && EINST.ton) piep();
+    /* Storno hat Vorrang: Es ist die seltenere und die dringendere
+       Nachricht. Beide Töne übereinander wären nur Lärm. */
+    if(stornoDa && EINST.ton)      piepStorno();
+    else if(neueDa && EINST.ton)   piep();
+    if(stornoDa) toast("Ein Gast hat etwas zurückgezogen.", "err");
   }).catch(function(e){
     if(String(e.message).indexOf("Sitzung") > -1){ abmelden(); return; }
     netzMelden(false);
@@ -1408,6 +1468,31 @@ function piep(){
     o.connect(g); g.connect(ctx.destination);
     o.start(); o.stop(ctx.currentTime + 0.52);
     if(navigator.vibrate) navigator.vibrate(120);
+  }catch(e){}
+}
+
+/* Der Storno-Ton. Bewusst ANDERS als piep(): zwei FALLENDE Töne,
+   zweimal, tiefer. Ein Ton, der wie eine neue Bestellung klingt,
+   schickt den Koch an den Pass statt an den Bon.
+
+   Fallend, weil etwas weggenommen wird — dieselbe Sprache, die jeder
+   von Aufzügen und Kassen kennt. */
+function piepStorno(){
+  try{
+    var K = window.AudioContext || window.webkitAudioContext; if(!K) return;
+    var ctx = new K();
+    [[660, 0], [440, 0.16], [660, 0.42], [440, 0.58]].forEach(function(n){
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "square";
+      o.frequency.value = n[0];
+      var t = ctx.currentTime + n[1];
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(0.30, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.15);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(t); o.stop(t + 0.17);
+    });
+    if(navigator.vibrate) navigator.vibrate([90, 60, 90]);
   }catch(e){}
 }
 

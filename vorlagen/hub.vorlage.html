@@ -1194,6 +1194,44 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   background-size:200% 100%;animation:skelettzug 1.4s linear infinite;
 }
 @media (prefers-reduced-motion:reduce){.storybild.laedt{animation:none}}
+/* ═══ Bestellung zurückziehen ═══════════════════════════════════
+   Zwei Minuten lang. Danach hilft nur noch der Service — und das
+   steht dann auch dort, statt dass der Knopf einfach verschwindet. */
+.stknopf{
+  display:block;width:100%;margin-top:14px;padding:12px;
+  border:1px solid var(--linie);border-radius:var(--rundung);
+  background:none;color:var(--tinte-leise);
+  font-family:inherit;font-size:13px;font-weight:600;cursor:pointer;
+}
+.stknopf:active{transform:scale(.985)}
+.sthinweis{margin-top:12px;font-size:12px;color:var(--tinte-still);text-align:center}
+
+.stblatt{
+  position:fixed;inset:0;z-index:95;background:var(--grund);
+  overflow-y:auto;-webkit-overflow-scrolling:touch;
+  padding:max(20px,env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+  animation:zeigenRein 300ms var(--weich) both;
+}
+.stblatt[hidden]{display:none}
+@media (prefers-reduced-motion: reduce){.stblatt{animation:none}}
+.stinhalt{max-width:420px;margin:0 auto}
+.stliste{display:flex;flex-direction:column;gap:8px;margin:18px 0}
+.stzeile2{
+  display:flex;align-items:center;gap:12px;padding:13px 14px;
+  border:1px solid var(--linie);border-radius:var(--rundung);
+  background:var(--flaeche);cursor:pointer;
+}
+.stzeile2[aria-pressed="true"]{border-color:var(--rot);background:var(--flaeche-2)}
+.stzeile2 .stname{flex:1;min-width:0;font-size:14.5px;font-weight:600}
+.stzeile2 .stpreis{font-size:13px;color:var(--tinte-leise);flex:none}
+.stzeile2 .stkreuz{
+  width:26px;height:26px;flex:none;border-radius:50%;
+  border:1px solid var(--linie-stark);color:var(--tinte-still);
+  display:flex;align-items:center;justify-content:center;font-size:14px;
+}
+.stzeile2[aria-pressed="true"] .stkreuz{
+  border-color:var(--rot);background:var(--rot);color:var(--flaeche)}
+
 /* ═══ Was im Besuchsbild stehen soll ════════════════════════════
    Bewusst ÜBER den Teilen-Knöpfen: Erst bauen, dann teilen. Wer die
    Reihenfolge dreht, lädt zum Teilen ein, bevor das Bild fertig ist. */
@@ -2621,6 +2659,21 @@ function markeAnwenden(abend){
      Es entsteht im Gerät auf einer Leinwand — nichts wird hochgeladen,
      nichts an Dritte geschickt, und es funktioniert ohne Netz.
      ═══════════════════════════════════════════════════════════════ -->
+<!-- Bestellung zurückziehen. Ein eigenes Fenster statt einer Zeile im
+     Pass: Wer etwas streicht, soll es einzeln sehen und antippen. -->
+<div class="stblatt" id="storno" hidden>
+  <div class="stinhalt">
+    <div class="wgriff"></div>
+    <h2 id="stTitel">Bestellung ändern</h2>
+    <p class="lead" id="stLead"></p>
+    <div class="stliste" id="stListe"></div>
+    <button class="knopf" id="stEinzeln">Ausgewähltes streichen</button>
+    <button class="knopf zweit" id="stAlles">Ganze Bestellung stornieren</button>
+    <button class="knopf zweit" id="stZurueck">Doch nicht</button>
+    <p class="hinweis" id="stMeldung"></p>
+  </div>
+</div>
+
 <div class="story" id="story" hidden>
   <div class="storyinhalt">
     <div class="wgriff"></div>
@@ -3707,6 +3760,146 @@ let storyLeinwand = null;
    nicht: Wer zweimal dasselbe bestellt, hätte sonst eine Bewertung
    für zwei Zeilen. */
 function storyKennung(p, i){ return (p && p.n ? p.n : "?") + "#" + i; }
+
+/* ══════════════════════════════════════════════════════════════════
+   BESTELLUNG ZURÜCKZIEHEN
+
+   Zwei Minuten lang darf der Gast eine Speise streichen oder die
+   ganze Bestellung zurückziehen. Danach hilft nur noch der Service —
+   und dann steht das auch dort, statt dass der Knopf verschwindet.
+
+   Die Frist hier ist nur für die ANZEIGE. Entschieden wird sie auf
+   dem Server: Wer die Uhr seines Telefons verstellt, storniert sonst
+   eine Stunde alte Bestellung.
+
+   Gestrichen wird über die STELLE in der Liste, nicht über den Namen.
+   Der Name in der Datenbank trägt die Zusätze mit („Dubai Crêpe
+   (extra Pistazie)"), und der wurde beim Senden aus dem damaligen
+   Zustand der Auswahl gebaut. Wer später über den Namen sucht, sucht
+   unter Umständen einen, den es so nicht mehr gibt.
+   ══════════════════════════════════════════════════════════════════ */
+const STORNO_FRIST = 2 * 60 * 1000;
+let stornoFuer = null;      /* die Bestellung, um die es geht */
+let stornoWahl = {};        /* welche Stellen angetippt sind */
+let stornoUhr  = null;
+
+/* Wie lange darf noch gestrichen werden? Null heißt: vorbei. */
+function stornoRest(b){
+  if(!b || !b.nummer) return 0;
+  const v = vorgaenge.find(x => String(x.nummer) === String(b.nummer));
+  const start = (v && v.zeit) || 0;
+  if(!start) return 0;
+  return Math.max(0, STORNO_FRIST - (Date.now() - start));
+}
+
+function stornoHTML(b, status){
+  if(status === "fertig" || status === "storniert") return "";
+  const rest = stornoRest(b);
+  if(rest <= 0) return "";
+  return '<button class="stknopf" id="stOeffnen" type="button">' +
+    hs(t("Bestellung ändern oder zurückziehen")) + '</button>';
+}
+
+function stornoOeffnen(){
+  const b = letzteBestellung;
+  if(!b || !Array.isArray(b.posten) || !b.posten.length){
+    melden(t("Dafür fehlt noch eine Bestellung."), true);
+    return;
+  }
+  stornoFuer = b;
+  stornoWahl = {};
+  const el = $("storno"); if(!el) return;
+  $("stTitel").textContent = t("Bestellung ändern");
+  $("stLead").textContent  = t("Tippen Sie an, was weg soll. Oder ziehen Sie alles zurück.");
+  $("stEinzeln").textContent = t("Ausgewähltes streichen");
+  $("stAlles").textContent   = t("Ganze Bestellung stornieren");
+  $("stZurueck").textContent = t("Doch nicht");
+  $("stMeldung").textContent = "";
+  stornoListeZeichnen();
+  el.hidden = false;
+  document.body.classList.add("fest");
+  wischZu({ blatt: el, zu: stornoSchliessen, griff: ".wgriff" });
+}
+
+function stornoSchliessen(){
+  const el = $("storno"); if(!el) return;
+  el.hidden = true;
+  document.body.classList.remove("fest");
+  stornoFuer = null;
+}
+
+function stornoListeZeichnen(){
+  const feld = $("stListe"); if(!feld || !stornoFuer) return;
+  feld.innerHTML = stornoFuer.posten.map((p, i) =>
+    '<button type="button" class="stzeile2" data-storno-stelle="' + i + '"' +
+    ' aria-pressed="' + (stornoWahl[i] ? "true" : "false") + '">' +
+      '<span class="stkreuz" aria-hidden="true">' + (stornoWahl[i] ? "✕" : "") + '</span>' +
+      '<span class="stname">' + hs((p.m || 1) + "× " + t(p.n)) + '</span>' +
+      '<span class="stpreis">' + hs(p.p || "") + '</span>' +
+    '</button>').join("");
+  const wieviele = Object.keys(stornoWahl).filter(k => stornoWahl[k]).length;
+  $("stEinzeln").disabled = wieviele === 0;
+}
+
+async function stornoSenden(alles){
+  const b = stornoFuer;
+  if(!b || !serverBereit()) return;
+  const stellen = Object.keys(stornoWahl).filter(k => stornoWahl[k]);
+  if(!alles && !stellen.length) return;
+
+  if(alles && !confirm(t("Die ganze Bestellung zurückziehen?"))) return;
+
+  const knopf = alles ? $("stAlles") : $("stEinzeln");
+  knopf.disabled = true;
+  $("stMeldung").textContent = t("Wird gesendet …");
+  try{
+    const a = await sicherFetch(
+      SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/bestellung_stornieren",
+      { method:"POST",
+        headers:{ apikey:SERVER.schluessel,
+                  Authorization:"Bearer " + SERVER.schluessel,
+                  "Content-Type":"application/json" },
+        body: JSON.stringify({ nummer: b.nummer, posten: alles ? null : stellen }) });
+    /* 404 heißt: Die Migration ist noch nicht eingespielt. Das ist
+       kein Fehler des Gastes, und er soll auch nicht raten. */
+    if(a.status === 404){
+      $("stMeldung").textContent =
+        t("Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.");
+      knopf.disabled = false; return;
+    }
+    const antwort = a.ok ? await a.json() : null;
+    if(!antwort || !antwort.ok){
+      const grund = antwort && antwort.grund;
+      $("stMeldung").textContent =
+        grund === "frist"   ? t("Die zwei Minuten sind um. Bitte sagen Sie kurz Bescheid.")
+      : grund === "zu_spaet"? t("Die Küche ist schon dran. Bitte sagen Sie kurz Bescheid.")
+      :                       t("Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.");
+      knopf.disabled = false;
+      return;
+    }
+
+    /* Den eigenen Stand nachziehen — sonst zeigt der Pass weiter, was
+       es nicht mehr gibt. */
+    const v = vorgaenge.find(x => String(x.nummer) === String(b.nummer));
+    if(antwort.alles){
+      if(v){ v.status = "storniert"; v.fertigSeit = Date.now(); }
+      b.posten = [];
+    }else if(Array.isArray(antwort.positionen)){
+      b.posten = antwort.positionen.map(z => ({
+        n: String(z.name || ""), m: Number(z.menge) || 1,
+        p: preisText(Number(z.preis) || 0) }));
+      if(v && v.bestellung) v.bestellung.posten = b.posten;
+    }
+    vorgaengeSichern();
+    stornoSchliessen();
+    vorgangStreifenZeichnen();
+    if(seiteJetzt === "bestellt") bestellStatusSteuern("bestellt");
+    melden(antwort.alles ? t("Bestellung zurückgezogen.") : t("Gestrichen."));
+  }catch(e){
+    $("stMeldung").textContent = t("Keine Verbindung. Bitte kurz Bescheid sagen.");
+    knopf.disabled = false;
+  }
+}
 
 async function storyOeffnen(posten){
   const el = $("story"); if(!el) return;
@@ -5861,6 +6054,20 @@ const TEXTE = {
 "Das Bild ließ sich nicht lesen.":{en:"That image could not be read.",tr:"Görsel okunamadı.",ru:"Изображение не удалось прочитать.",fr:"Cette image n'a pas pu être lue.",es:"No se pudo leer la imagen.",it:"L'immagine non è stata letta.",pl:"Nie udało się odczytać obrazu.",ar:"تعذّر قراءة الصورة.",uk:"Не вдалося прочитати зображення.",nl:"De afbeelding kon niet gelezen worden.",ro:"Imaginea nu a putut fi citită."},
 "Teilen":{en:"Share",tr:"Paylaş",ru:"Поделиться",fr:"Partager",es:"Compartir",it:"Condividi",pl:"Udostępnij",ar:"مشاركة",uk:"Поділитися",nl:"Delen",ro:"Distribuie"},
 "Bild sichern":{en:"Save image",tr:"Görseli kaydet",ru:"Сохранить изображение",fr:"Enregistrer l'image",es:"Guardar imagen",it:"Salva immagine",pl:"Zapisz obraz",ar:"حفظ الصورة",uk:"Зберегти зображення",nl:"Afbeelding bewaren",ro:"Salvați imaginea"},
+"Bestellung ändern oder zurückziehen":{en:"Change or cancel the order",tr:"Siparişi değiştir veya iptal et",ru:"Изменить или отменить заказ",fr:"Modifier ou annuler la commande",es:"Cambiar o cancelar el pedido",it:"Modifica o annulla l'ordine",pl:"Zmień lub anuluj zamówienie",ar:"تعديل الطلب أو إلغاؤه",uk:"Змінити або скасувати замовлення",nl:"Bestelling wijzigen of annuleren",ro:"Modificați sau anulați comanda"},
+"Bestellung ändern":{en:"Change the order",tr:"Siparişi değiştir",ru:"Изменить заказ",fr:"Modifier la commande",es:"Cambiar el pedido",it:"Modifica l'ordine",pl:"Zmień zamówienie",ar:"تعديل الطلب",uk:"Змінити замовлення",nl:"Bestelling wijzigen",ro:"Modificați comanda"},
+"Tippen Sie an, was weg soll. Oder ziehen Sie alles zurück.":{en:"Tap what should go. Or take the whole order back.",tr:"Çıkarılacakları seçin. Ya da tüm siparişi geri alın.",ru:"Отметьте, что убрать. Или отмените заказ целиком.",fr:"Touchez ce qui doit partir. Ou annulez toute la commande.",es:"Toque lo que debe quitarse. O retire todo el pedido.",it:"Tocchi ciò che va tolto. Oppure ritiri tutto l'ordine.",pl:"Dotknij, co ma zniknąć. Albo cofnij całe zamówienie.",ar:"اضغط على ما تريد إزالته. أو تراجع عن الطلب كله.",uk:"Торкніться того, що прибрати. Або скасуйте все замовлення.",nl:"Tik aan wat weg moet. Of trek de hele bestelling in.",ro:"Atingeți ce trebuie scos. Sau retrageți toată comanda."},
+"Ausgewähltes streichen":{en:"Remove selected",tr:"Seçilenleri çıkar",ru:"Убрать выбранное",fr:"Retirer la sélection",es:"Quitar lo seleccionado",it:"Togli i selezionati",pl:"Usuń zaznaczone",ar:"إزالة المحدد",uk:"Прибрати вибране",nl:"Selectie verwijderen",ro:"Eliminați selecția"},
+"Ganze Bestellung stornieren":{en:"Cancel the whole order",tr:"Tüm siparişi iptal et",ru:"Отменить весь заказ",fr:"Annuler toute la commande",es:"Cancelar todo el pedido",it:"Annulla tutto l'ordine",pl:"Anuluj całe zamówienie",ar:"إلغاء الطلب كله",uk:"Скасувати все замовлення",nl:"Hele bestelling annuleren",ro:"Anulați toată comanda"},
+"Doch nicht":{en:"Never mind",tr:"Vazgeçtim",ru:"Передумал",fr:"Finalement non",es:"Mejor no",it:"Lasci stare",pl:"Jednak nie",ar:"تراجعت",uk:"Передумав",nl:"Toch niet",ro:"Totuși nu"},
+"Die ganze Bestellung zurückziehen?":{en:"Take the whole order back?",tr:"Tüm sipariş geri alınsın mı?",ru:"Отменить весь заказ?",fr:"Annuler toute la commande ?",es:"¿Retirar todo el pedido?",it:"Ritirare tutto l'ordine?",pl:"Cofnąć całe zamówienie?",ar:"هل تتراجع عن الطلب كله؟",uk:"Скасувати все замовлення?",nl:"De hele bestelling intrekken?",ro:"Retrageți toată comanda?"},
+"Wird gesendet …":{en:"Sending …",tr:"Gönderiliyor …",ru:"Отправляется …",fr:"Envoi …",es:"Enviando …",it:"Invio …",pl:"Wysyłanie …",ar:"جارٍ الإرسال …",uk:"Надсилання …",nl:"Versturen …",ro:"Se trimite …"},
+"Die zwei Minuten sind um. Bitte sagen Sie kurz Bescheid.":{en:"The two minutes are up. Please let us know at the table.",tr:"İki dakika doldu. Lütfen bize haber verin.",ru:"Две минуты прошли. Скажите, пожалуйста, персоналу.",fr:"Les deux minutes sont écoulées. Faites-nous signe.",es:"Los dos minutos han pasado. Avísenos, por favor.",it:"I due minuti sono passati. Ce lo dica, per favore.",pl:"Dwie minuty minęły. Daj nam znać przy stoliku.",ar:"انتهت الدقيقتان. أخبرونا من فضلكم.",uk:"Дві хвилини минули. Скажіть, будь ласка, персоналу.",nl:"De twee minuten zijn om. Laat het ons even weten.",ro:"Cele două minute au trecut. Vă rugăm să ne spuneți."},
+"Die Küche ist schon dran. Bitte sagen Sie kurz Bescheid.":{en:"The kitchen has started. Please let us know at the table.",tr:"Mutfak başladı. Lütfen bize haber verin.",ru:"Кухня уже начала. Скажите, пожалуйста, персоналу.",fr:"La cuisine a commencé. Faites-nous signe.",es:"La cocina ya empezó. Avísenos, por favor.",it:"La cucina ha già iniziato. Ce lo dica, per favore.",pl:"Kuchnia już zaczęła. Daj nam znać przy stoliku.",ar:"المطبخ بدأ بالفعل. أخبرونا من فضلكم.",uk:"Кухня вже почала. Скажіть, будь ласка, персоналу.",nl:"De keuken is begonnen. Laat het ons even weten.",ro:"Bucătăria a început deja. Vă rugăm să ne spuneți."},
+"Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.":{en:"That is not possible right now. Please let us know at the table.",tr:"Şu anda mümkün değil. Lütfen bize haber verin.",ru:"Сейчас это невозможно. Скажите, пожалуйста, персоналу.",fr:"Ce n'est pas possible pour le moment. Faites-nous signe.",es:"Ahora mismo no es posible. Avísenos, por favor.",it:"Ora non è possibile. Ce lo dica, per favore.",pl:"Teraz to niemożliwe. Daj nam znać przy stoliku.",ar:"هذا غير ممكن الآن. أخبرونا من فضلكم.",uk:"Зараз це неможливо. Скажіть, будь ласка, персоналу.",nl:"Dat kan nu niet. Laat het ons even weten.",ro:"Acum nu se poate. Vă rugăm să ne spuneți."},
+"Keine Verbindung. Bitte kurz Bescheid sagen.":{en:"No connection. Please let us know at the table.",tr:"Bağlantı yok. Lütfen bize haber verin.",ru:"Нет связи. Скажите, пожалуйста, персоналу.",fr:"Pas de connexion. Faites-nous signe.",es:"Sin conexión. Avísenos, por favor.",it:"Nessuna connessione. Ce lo dica, per favore.",pl:"Brak połączenia. Daj nam znać przy stoliku.",ar:"لا يوجد اتصال. أخبرونا من فضلكم.",uk:"Немає зв'язку. Скажіть, будь ласка, персоналу.",nl:"Geen verbinding. Laat het ons even weten.",ro:"Fără conexiune. Vă rugăm să ne spuneți."},
+"Bestellung zurückgezogen.":{en:"Order cancelled.",tr:"Sipariş iptal edildi.",ru:"Заказ отменён.",fr:"Commande annulée.",es:"Pedido cancelado.",it:"Ordine annullato.",pl:"Zamówienie anulowane.",ar:"تم إلغاء الطلب.",uk:"Замовлення скасовано.",nl:"Bestelling geannuleerd.",ro:"Comandă anulată."},
+"Gestrichen.":{en:"Removed.",tr:"Çıkarıldı.",ru:"Убрано.",fr:"Retiré.",es:"Quitado.",it:"Tolto.",pl:"Usunięte.",ar:"تمت الإزالة.",uk:"Прибрано.",nl:"Verwijderd.",ro:"Eliminat."},
 "vom Team bestätigt":{en:"confirmed by the team",tr:"ekip tarafından onaylandı",ru:"подтверждено командой",fr:"confirmé par l'équipe",es:"confirmado por el equipo",it:"confermato dal team",pl:"potwierdzone przez zespół",ar:"مؤكد من الفريق",uk:"підтверджено командою",nl:"bevestigd door het team",ro:"confirmat de echipă"},
 "Schließen":{en:"Close",tr:"Kapat",ru:"Закрыть",fr:"Fermer",es:"Cerrar",it:"Chiudi",pl:"Zamknij",ar:"إغلاق",uk:"Закрити",nl:"Sluiten",ro:"Închide"},
 "Zurück zur Übersicht":{en:"Back to overview",tr:"Genel bakışa dön",ru:"К обзору",fr:"Retour à l'aperçu",es:"Volver al inicio",it:"Torna alla panoramica",pl:"Powrót do przeglądu",ar:"العودة إلى النظرة العامة",uk:"Назад до огляду",nl:"Terug naar overzicht",ro:"Înapoi la prezentare"},
@@ -7520,6 +7727,21 @@ document.addEventListener("click", e => {
   if(e.target.closest && e.target.closest("[data-zeigen-zu]")) zeigenSchliessen();
   if(e.target.closest && e.target.closest("[data-story-zu]")) storySchliessen();
 
+  /* ── Bestellung zurückziehen ─────────────────────────────────── */
+  if(e.target.closest){
+    if(e.target.closest("#stOeffnen")){ stornoOeffnen(); return; }
+    if(e.target.closest("#stZurueck")){ stornoSchliessen(); return; }
+    if(e.target.closest("#stEinzeln")){ stornoSenden(false); return; }
+    if(e.target.closest("#stAlles")){   stornoSenden(true);  return; }
+    const zeile = e.target.closest("[data-storno-stelle]");
+    if(zeile){
+      const i = zeile.dataset.stornoStelle;
+      stornoWahl[i] = !stornoWahl[i];
+      stornoListeZeichnen();
+      return;
+    }
+  }
+
   /* ── Das Besuchsbild einstellen ──────────────────────────────
      Alles hier bleibt IM GERÄT. Kein Aufruf nach außen, kein
      Speichern — auch die Sterne nicht. */
@@ -8659,8 +8881,25 @@ function bestellStatusSteuern(pfad){
     const neuHTML = '<div class="bs-titel">' + t("Live-Status") + '</div>' +
       '<div class="bs-stufen">' + STUFEN.map((s,i) =>
         '<div class="bs-stufe' + (i <= idx ? " an" : "") + '"><i></i><span>' +
-        t(s[1]) + '</span></div>').join("") + '</div>' + zusage;
+        t(s[1]) + '</span></div>').join("") + '</div>' + zusage +
+      /* Zwei Minuten lang darf der Gast zurück. Der Knopf steht hier
+         und nicht im Pass: Der Pass wird über outerHTML verglichen,
+         und ein Knopf, der nach zwei Minuten verschwindet, ließe die
+         Einflug-Animation neu starten. */
+      stornoHTML(b, status);
     if(kasten.innerHTML !== neuHTML) kasten.innerHTML = neuHTML;
+
+    /* Genau einmal am Ende der Frist noch einmal zeichnen. Ohne das
+       stünde der Knopf bis zum nächsten Takt da und behauptete etwas,
+       das der Server längst ablehnt. */
+    /* NICHT „rest" nennen: Den Namen trägt in dieser Funktion schon
+       die Restzeit der Zusage (Block 10). Zwei const mit demselben
+       Namen werfen, und die halbe Seite bleibt tot (§1.1). */
+    if(stornoUhr){ clearTimeout(stornoUhr); stornoUhr = null; }
+    const stFrist = stornoRest(b);
+    if(stFrist > 0) stornoUhr = setTimeout(() => {
+      if(seiteJetzt === "bestellt") bestellStatusSteuern("bestellt");
+    }, stFrist + 400);
   };
   /* Beim ersten Zeichnen den Stand nehmen, der im Speicher liegt –
      nicht stur „neu“. Kommt der Gast von der Startseite zurück,

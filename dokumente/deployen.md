@@ -326,6 +326,37 @@ Prüfung sieht genau in den Titel jedes Hubs.
 
 ---
 
+## 5f · Storno binnen zwei Minuten einschalten
+
+Derselbe Einspielvorgang wie 5e — die Datei trägt **beide** Abschnitte:
+
+```
+datenbank/migration-baukasten-und-storno.sql
+```
+
+Abschnitt 2 legt `bestellungen.storno` und
+`bestellung_stornieren(nummer, posten)` an. **Die Zwei-Minuten-Frist
+rechnet der Server**, nicht der Hub: Wer die Uhr seines Telefons
+verstellt, storniert sonst eine Stunde alte Bestellung.
+
+Gestrichen wird über die **Stelle** in der Liste, nicht über den Namen
+— der Name in der Datenbank trägt die Zusätze mit („Dubai Crêpe (extra
+Pistazie)"), und der wurde beim Bestellen aus dem damaligen Zustand der
+Auswahl gebaut.
+
+**Bis dahin ist nichts kaputt:** Der Knopf steht im Hub, und wenn die
+Funktion fehlt, sagt die Seite es im Klartext („Das geht hier gerade
+nicht. Bitte sagen Sie kurz Bescheid.") — statt den Gast raten zu
+lassen.
+
+**Die Küche braucht nichts weiter.** Sie liest die Spalte mit dem
+Personal-Schlüssel, färbt den Bon rot, lässt die gestrichene Zeile
+durchgestrichen stehen und spielt einen eigenen Ton: vier **fallende**
+Töne (660 → 440), nicht den einen steigenden auf 880, der eine neue
+Bestellung meldet.
+
+---
+
 ## 5e · Den Kachel-Baukasten einschalten
 
 Der Bereich **Startseite** im Admin-Board schreibt nach
