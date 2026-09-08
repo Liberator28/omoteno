@@ -1194,6 +1194,49 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
   background-size:200% 100%;animation:skelettzug 1.4s linear infinite;
 }
 @media (prefers-reduced-motion:reduce){.storybild.laedt{animation:none}}
+/* ═══ Was im Besuchsbild stehen soll ════════════════════════════
+   Bewusst ÜBER den Teilen-Knöpfen: Erst bauen, dann teilen. Wer die
+   Reihenfolge dreht, lädt zum Teilen ein, bevor das Bild fertig ist. */
+.storywahl{margin:0 0 16px}
+.swreihe{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:9px}
+.swknopf{
+  flex:1 1 auto;min-height:44px;padding:11px 13px;
+  border:1px solid var(--linie);border-radius:var(--rundung);
+  background:var(--flaeche);color:var(--tinte);
+  font-family:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
+  transition:border-color var(--kurz) var(--weich), background var(--kurz);
+}
+.swknopf[aria-pressed="true"]{
+  border-color:var(--rot);background:var(--flaeche-2);color:var(--tinte)}
+.swknopf:active{transform:scale(.98)}
+
+/* Die Karte des Hauses als Bildquelle. Nur Gerichte MIT Bild — ein
+   Feld ohne Bild wäre ein Versprechen, das keiner einlöst. */
+.sgerichte{
+  display:grid;grid-template-columns:repeat(auto-fill,minmax(74px,1fr));
+  gap:7px;margin:0 0 10px;max-height:196px;overflow-y:auto;
+}
+.sgerichte button{
+  padding:0;border:1px solid var(--linie);border-radius:10px;overflow:hidden;
+  background:var(--flaeche-2);aspect-ratio:1;cursor:pointer;
+}
+.sgerichte button[aria-pressed="true"]{border-color:var(--rot);border-width:2px}
+.sgerichte img{width:100%;height:100%;object-fit:cover;display:block}
+
+/* Sterne je Speise. Sie bleiben IM GERÄT — sie gehen weder ans Haus
+   noch an sonst jemanden. Das steht auch als Satz darüber. */
+.ssterne{display:flex;flex-direction:column;gap:8px}
+.ssterne .szeile{display:flex;align-items:center;gap:8px}
+.ssterne .sname{
+  flex:1;min-width:0;font-size:13px;color:var(--tinte-leise);
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sstern{
+  width:32px;height:32px;flex:none;border:0;background:none;padding:0;
+  color:var(--linie-stark);cursor:pointer;line-height:1}
+.sstern svg{width:20px;height:20px;display:block;margin:0 auto;
+  fill:currentColor;stroke:none}
+.sstern[aria-pressed="true"]{color:var(--gold)}
+
 .storyknoepfe{display:grid;gap:0}
 .zeigenzu{
   position:absolute;top:-4px;right:-4px;z-index:2;
@@ -2581,6 +2624,26 @@ function markeAnwenden(abend){
   <div class="storyinhalt">
     <button class="zeigenzu" data-story-zu aria-label="Schließen">✕</button>
     <div class="storybild" id="storyBild"></div>
+
+    <!-- Alles, was der Gast am Bild einstellen kann. Es entsteht
+         weiterhin VOLLSTÄNDIG IM GERÄT: kein Hochladen, kein Dritter,
+         und es läuft ohne Netz. Auch das Foto bleibt hier. -->
+    <div class="storywahl" id="storyWahl">
+      <div class="swreihe" role="group" aria-label="Bauart">
+        <button type="button" class="swknopf" data-sbauart="figur" aria-pressed="true">Nur Figur</button>
+        <button type="button" class="swknopf" data-sbauart="bild"  aria-pressed="false">Mit Bild</button>
+      </div>
+      <div class="swreihe" id="storyBildWahl" hidden>
+        <button type="button" class="swknopf" data-sfoto>Foto machen</button>
+        <button type="button" class="swknopf" data-sgalerie>Aus der Galerie</button>
+        <button type="button" class="swknopf" data-sgericht>Aus der Karte</button>
+      </div>
+      <input type="file" accept="image/*" capture="environment" hidden id="storyFoto">
+      <input type="file" accept="image/*" hidden id="storyGalerie">
+      <div class="sgerichte" id="storyGerichte" hidden></div>
+      <div class="ssterne" id="storySterne"></div>
+    </div>
+
     <div class="storyknoepfe">
       <button class="knopf" data-aktion="storyTeilen" id="storyTeilen">Teilen</button>
       <a class="knopf zweit" id="storySichern" download="besuch.png" href="#">Bild sichern</a>
@@ -3431,6 +3494,26 @@ function storyZeilen(ctx, text, breite, hoechstens){
    Hochladen ein weiches Bild. */
 const STORY_B = 1080, STORY_H = 1920;
 
+/* Was der Gast am Bild eingestellt hat. Alles davon bleibt IM GERÄT:
+   das Foto, die Sterne, die Bauart. Nichts wird gesendet, nichts
+   gespeichert — dieselbe Regel wie für das Bild selbst. */
+let storyStand = { bauart:"figur", bild:null, bildName:"", sterne:{}, posten:[] };
+
+/* Ein gezeichneter Stern, kein Schriftzeichen. „★" sieht auf jedem
+   Gerät anders aus und fehlt in mancher Schrift ganz — dieselbe
+   Begründung, aus der der Bestellpass keine Emoji trägt. */
+function sternPfad(x, mitte, y, r){
+  x.beginPath();
+  for(let i = 0; i < 10; i++){
+    const w = Math.PI/5 * i - Math.PI/2;
+    const rr = i % 2 ? r * 0.42 : r;
+    const px = mitte + Math.cos(w) * rr, py = y + Math.sin(w) * rr;
+    i ? x.lineTo(px, py) : x.moveTo(px, py);
+  }
+  x.closePath();
+  x.fill();
+}
+
 async function storyZeichnen(posten){
   const c = document.createElement("canvas");
   c.width = STORY_B; c.height = STORY_H;
@@ -3443,6 +3526,11 @@ async function storyZeichnen(posten){
   const tinte   = farbe("--tinte", "#2A1A14");
   const leise   = farbe("--tinte-leise", "#846C62");
   const akzent  = farbe("--rot", "#C8202E");
+  /* Für die Sterne: gefüllt in Gold, leer in der Linienfarbe. Beide
+     kommen aus der Palette des Hauses, nicht aus einer festen Liste
+     (§5.1) — bei Blend ist Gold ein anderes als bei Choco. */
+  const gold    = farbe("--gold", "#C9A227");
+  const linie   = farbe("--linie-stark", "#DCCBBE");
   const kopfSchrift = farbe("--schrift-kopf", "serif");
   const textSchrift = farbe("--schrift-text", "sans-serif");
 
@@ -3460,24 +3548,49 @@ async function storyZeichnen(posten){
   storyZeilen(x, BETRIEB.name, STORY_B - 140, 2)
     .forEach((z, i) => x.fillText(z, STORY_B/2, 200 + i*80));
 
+  /* Zwei Bauarten. „bild" nur, wenn wirklich eines da ist — sonst
+     stünde ein leeres Feld über der Liste, und der Gast hätte etwas
+     gewählt, das ihm niemand gegeben hat. */
+  const mitBild = storyStand.bauart === "bild" && !!storyStand.bild;
+
   /* Die Figur. Fällt sie aus, geht das Bild trotzdem raus — sie ist
-     Beiwerk, die Liste ist die Botschaft. */
+     Beiwerk, die Liste ist die Botschaft. Mit Foto wird sie klein und
+     rückt in den Fuß: Zwei große Bilder übereinander erschlagen die
+     Liste, und die ist die Botschaft. */
   let figur = null;
-  try{ figur = await figurAlsBild(340, "teller"); }catch(e){}
+  try{ figur = await figurAlsBild(mitBild ? 190 : 340, "teller"); }catch(e){}
+
+  /* Das Foto als Band unter dem Kopf. Beschnitten wie eine Kachel:
+     Was nicht hineinpasst, wird weggeschnitten statt gestaucht — eine
+     verzerrte Waffel sieht nach Fehler aus, ein Ausschnitt nicht. */
+  let bandUnten = 300;
+  if(mitBild){
+    const b = storyStand.bild;
+    const H = 700, ziel = STORY_B / H, quelle = b.naturalWidth / b.naturalHeight;
+    let qb = b.naturalWidth, qh = b.naturalHeight, qx = 0, qy = 0;
+    if(quelle > ziel){ qb = b.naturalHeight * ziel; qx = (b.naturalWidth - qb) / 2; }
+    else             { qh = b.naturalWidth / ziel;  qy = (b.naturalHeight - qh) / 2; }
+    x.drawImage(b, qx, qy, qb, qh, 0, 300, STORY_B, H);
+    bandUnten = 300 + H;
+  }
 
   /* Erst rechnen, dann zeichnen: Bei fest gesetztem Anfang blieb
      unter der Liste ein handbreites Loch, weil die Höhe von der Zahl
      der Gerichte abhängt. Jetzt sitzt die Gruppe mittig zwischen
      Kopfband und Fußzeile — bei einer Zeile wie bei fünf. */
   const zeilen    = posten.slice(0, 5);
-  const listeHoch = zeilen.length * 74 + 56;
+  /* Sterne brauchen eine eigene Zeile unter dem Namen. Nur dann, sonst
+     stünde bei jedem Bild ohne Bewertung ein leerer Streifen. */
+  const sterneDa  = zeilen.some((p,i) => (storyStand.sterne[storyKennung(p,i)] || 0) > 0);
+  const zeilHoch  = sterneDa ? 96 : 74;
+  const listeHoch = zeilen.length * zeilHoch + 56;
   const mehrHoch  = posten.length > zeilen.length ? 60 : 0;
   const figurHoch = figur ? figur.height + 40 : 0;
-  const gruppe    = figurHoch + 44 + 26 + listeHoch + mehrHoch;
-  const raumOben  = 300, raumUnten = STORY_H - 380;
+  const gruppe    = (mitBild ? 0 : figurHoch) + 44 + 26 + listeHoch + mehrHoch;
+  const raumOben  = bandUnten, raumUnten = STORY_H - 380;
   let unten = raumOben + Math.max(20, (raumUnten - raumOben - gruppe) / 2);
 
-  if(figur){
+  if(figur && !mitBild){
     x.drawImage(figur, (STORY_B - figur.width)/2, unten, figur.width, figur.height);
     unten += figur.height + 40;
   }
@@ -3500,7 +3613,7 @@ async function storyZeichnen(posten){
   const rechtsLinks = RTL.indexOf(sprache) >= 0;
   const randInnen = 140, randAussen = STORY_B - 140;
   zeilen.forEach((p, i) => {
-    const y = unten + 26 + i*74;
+    const y = unten + 26 + i*zeilHoch;
     x.textAlign = rechtsLinks ? "right" : "left";
     x.fillStyle = akzent;
     x.font = "700 38px " + textSchrift;
@@ -3509,6 +3622,18 @@ async function storyZeichnen(posten){
     x.font = "500 38px " + textSchrift;
     const name = storyZeilen(x, t(p.n), STORY_B - 400, 1)[0] || "";
     x.fillText(name, rechtsLinks ? randAussen - 90 : randInnen + 90, y);
+
+    /* Die Sterne stehen UNTER der Speise, wie besprochen. Gezeichnet,
+       nicht getippt: „★" fehlt in mancher Schrift ganz. */
+    const wie = storyStand.sterne[storyKennung(p, i)] || 0;
+    if(wie > 0){
+      const start = rechtsLinks ? randAussen - 90 - 18 : randInnen + 90 + 18;
+      for(let k = 0; k < 5; k++){
+        x.fillStyle = k < wie ? gold : linie;
+        const versatz = (rechtsLinks ? -1 : 1) * k * 44;
+        sternPfad(x, start + versatz, y + 32, 16);
+      }
+    }
   });
   x.textAlign = "center";
   unten = listeOben + listeHoch + 30;
@@ -3533,7 +3658,20 @@ async function storyZeichnen(posten){
     { day:"2-digit", month:"long", year:"numeric" }); }
   catch(e){ datum = new Date().toLocaleDateString("de-DE",
     { day:"2-digit", month:"long", year:"numeric" }); }
-  x.fillText(datum, STORY_B/2, STORY_H - 300);
+  /* Datum UND Uhrzeit. Ein Besuch um halb elf abends erzählt etwas
+     anderes als einer um zehn Uhr morgens — und der Gast weiß beim
+     Wiedersehen des Bildes wieder, welcher Abend das war. */
+  let uhr;
+  try{ uhr = new Date().toLocaleTimeString(sprache, { hour:"2-digit", minute:"2-digit" }); }
+  catch(e){ uhr = new Date().toLocaleTimeString("de-DE", { hour:"2-digit", minute:"2-digit" }); }
+  x.fillText(datum + " · " + uhr, STORY_B/2, STORY_H - 300);
+
+  /* Mit Foto steht die Figur klein im Fuß — sie bleibt dabei, aber
+     sie nimmt der Liste nicht den Platz. */
+  if(figur && mitBild){
+    x.drawImage(figur, (STORY_B - figur.width)/2, STORY_H - 300 - figur.height - 34,
+                figur.width, figur.height);
+  }
 
   x.fillStyle = akzent;
   x.font = "700 42px " + textSchrift;
@@ -3563,22 +3701,37 @@ function hubAdresse(){
 
 let storyLeinwand = null;
 
+/* Eine Zeile der Liste eindeutig benennen. Der Name allein reicht
+   nicht: Wer zweimal dasselbe bestellt, hätte sonst eine Bewertung
+   für zwei Zeilen. */
+function storyKennung(p, i){ return (p && p.n ? p.n : "?") + "#" + i; }
+
 async function storyOeffnen(posten){
   const el = $("story"); if(!el) return;
   if(!posten || !posten.length){
     melden(t("Dafür fehlt noch eine Bestellung."), true);
     return;
   }
-  const feld = $("storyBild");
-  feld.innerHTML = "";
-  feld.classList.add("laedt");
+  /* Jeder Besuch fängt sauber an: keine Sterne von gestern, kein Foto
+     vom letzten Mal. */
+  storyStand = { bauart:"figur", bild:null, bildName:"", sterne:{},
+                 posten: posten.slice(0) };
   el.hidden = false;
   /* Dieselbe Sperre wie bei der Vorzeige-Karte: Der Hub darf nicht
      hinter dem Fenster weiterrollen. */
   document.body.classList.add("fest");
+  storyWahlZeichnen();
+  await storyMalen();
+}
 
+/* Zeichnen und in den Rahmen hängen. Läuft nach JEDER Änderung —
+   Bauart, Foto, Stern —, deshalb steht es für sich. */
+async function storyMalen(){
+  const feld = $("storyBild"); if(!feld) return;
+  feld.innerHTML = "";
+  feld.classList.add("laedt");
   try{
-    storyLeinwand = await storyZeichnen(posten);
+    storyLeinwand = await storyZeichnen(storyStand.posten);
     feld.classList.remove("laedt");
     feld.innerHTML = "";
     feld.appendChild(storyLeinwand);
@@ -3597,6 +3750,116 @@ async function storyOeffnen(posten){
     $("storyHinweis").textContent = t("Das Bild ließ sich nicht bauen.");
   }
 }
+
+/* ── Die Bedienung unter dem Bild ──────────────────────────────── */
+function storyWahlZeichnen(){
+  /* Die Beschriftungen stehen fest im Gerüst und werden hier
+     übersetzt — zeichne() kommt an dieses Fenster nicht heran.
+     Dabei aufgefallen: „Teilen" und „Bild sichern" standen seit jeher
+     fest auf Deutsch, auch auf einer arabischen Karte. Jetzt nicht
+     mehr. */
+  const setz = (id, satz) => { const e = $(id); if(e) e.textContent = t(satz); };
+  setz("storyTeilen",  "Teilen");
+  setz("storySichern", "Bild sichern");
+  document.querySelectorAll("[data-sbauart]").forEach(k => {
+    k.textContent = t(k.dataset.sbauart === "bild" ? "Mit Bild" : "Nur Figur");
+  });
+  const beschriftung = [["[data-sfoto]","Foto machen"],
+                        ["[data-sgalerie]","Aus der Galerie"],
+                        ["[data-sgericht]","Aus der Karte"]];
+  beschriftung.forEach(([w, satz]) => {
+    const e = document.querySelector(w); if(e) e.textContent = t(satz);
+  });
+
+  document.querySelectorAll("[data-sbauart]").forEach(k =>
+    k.setAttribute("aria-pressed", k.dataset.sbauart === storyStand.bauart));
+  const wahl = $("storyBildWahl");
+  if(wahl) wahl.hidden = storyStand.bauart !== "bild";
+  const gerichte = $("storyGerichte");
+  if(gerichte && storyStand.bauart !== "bild"){ gerichte.hidden = true; }
+
+  const feld = $("storySterne"); if(!feld) return;
+  const stern = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 2.6l2.9 6 6.6.9-4.8 4.6 1.2 6.5-5.9-3.1-5.9 3.1 1.2-6.5L2.5 9.5l6.6-.9z"/></svg>';
+  feld.innerHTML =
+    '<div class="sname" style="flex:none">' + hs(t("Wie war es? Bleibt auf Ihrem Gerät.")) + '</div>' +
+    storyStand.posten.slice(0, 5).map((p, i) => {
+      const k = storyKennung(p, i), wie = storyStand.sterne[k] || 0;
+      return '<div class="szeile" data-sgericht-zeile="' + hs(k) + '">' +
+        '<span class="sname">' + hs(t(p.n)) + '</span>' +
+        [1,2,3,4,5].map(n =>
+          '<button type="button" class="sstern" data-sstern="' + n + '"' +
+          ' aria-pressed="' + (n <= wie ? "true" : "false") + '"' +
+          ' aria-label="' + n + '">' + stern + '</button>').join("") +
+      '</div>';
+    }).join("");
+}
+
+/* Die Gerichte der Karte, die ein Bild haben. Ohne Bild wäre der
+   Knopf ein Versprechen, das keiner einlöst. */
+function storyGerichteZeichnen(){
+  const feld = $("storyGerichte"); if(!feld) return;
+  const mit = [];
+  [SPEISEKARTE, GETRAENKE, COCKTAILS].forEach(karte => {
+    (Array.isArray(karte) ? karte : []).forEach(gr =>
+      (gr.eintraege || []).forEach(g => { if(g && g.bild) mit.push(g); }));
+  });
+  if(!mit.length){
+    feld.hidden = true;
+    melden(t("Die Karte hat noch keine Bilder."), true);
+    return;
+  }
+  feld.innerHTML = mit.slice(0, 24).map(g =>
+    '<button type="button" data-sgericht-bild="' + hs(bildFuer(g)) + '"' +
+    ' aria-pressed="' + (storyStand.bildName === g.n ? "true" : "false") + '"' +
+    ' data-sgericht-name="' + hs(g.n) + '" aria-label="' + hs(t(g.n)) + '">' +
+    '<img src="' + hs(bildFuer(g, true)) + '" alt="" loading="lazy"></button>').join("");
+  feld.hidden = false;
+}
+
+/* Ein Bild in den Stand holen — von der Kamera, aus der Galerie oder
+   aus der Karte. crossOrigin ist Pflicht: Ohne das wird die Leinwand
+   „vergiftet", und toDataURL wirft — das Bild ließe sich dann weder
+   sichern noch teilen. */
+function storyBildLaden(quelle, name){
+  return new Promise(fertig => {
+    const b = new Image();
+    /* crossOrigin NUR bei einer fremden Adresse. Bei einem eigenen,
+       relativen Pfad ist es überflüssig, und auf einer file://-Seite
+       lässt es das Laden ganz scheitern. Bei https ist es Pflicht:
+       Ohne das wird die Leinwand „vergiftet", und toDataURL wirft —
+       das Bild ließe sich dann weder sichern noch teilen. */
+    if(/^https?:\/\//i.test(quelle)) b.crossOrigin = "anonymous";
+    b.onload  = () => { storyStand.bild = b; storyStand.bildName = name || ""; fertig(true); };
+    b.onerror = () => { fertig(false); };
+    b.src = quelle;
+  });
+}
+
+async function storyBildAusDatei(datei){
+  if(!datei) return;
+  const leser = new FileReader();
+  leser.onerror = () => melden(t("Das Bild ließ sich nicht lesen."), true);
+  leser.onload = async () => {
+    const gut = await storyBildLaden(leser.result, "");
+    if(!gut){ melden(t("Das Bild ließ sich nicht lesen."), true); return; }
+    storyStand.bauart = "bild";
+    storyWahlZeichnen();
+    await storyMalen();
+  };
+  leser.readAsDataURL(datei);
+}
+
+/* Kamera und Galerie. Zwei Felder statt eines: „capture" zwingt auf
+   dem Telefon die Kamera auf — wer ein vorhandenes Bild nehmen will,
+   käme damit gar nicht an seine Galerie. */
+document.addEventListener("change", e => {
+  if(!e.target || !e.target.id) return;
+  if(e.target.id === "storyFoto" || e.target.id === "storyGalerie"){
+    const d = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if(d) storyBildAusDatei(d);
+  }
+});
 
 function storySchliessen(){
   const el = $("story"); if(!el) return;
@@ -5585,6 +5848,16 @@ const TEXTE = {
 "noch ca. {a} Minuten":{en:"approx. {a} minutes left",tr:"yaklaşık {a} dakika kaldı",ru:"осталось около {a} минут",fr:"encore env. {a} minutes",es:"quedan aprox. {a} minutos",it:"ancora circa {a} minuti",pl:"jeszcze ok. {a} minut",ar:"بقي حوالي {a} دقيقة",uk:"залишилось близько {a} хвилин",nl:"nog ca. {a} minuten",ro:"încă cca. {a} minute"},
 "noch {a} Min":{en:"{a} min left",tr:"{a} dk kaldı",ru:"ещё {a} мин",fr:"encore {a} min",es:"quedan {a} min",it:"ancora {a} min",pl:"jeszcze {a} min",ar:"بقي {a} د",uk:"ще {a} хв",nl:"nog {a} min",ro:"încă {a} min"},
 "Jeden Moment":{en:"Any moment now",tr:"Her an gelebilir",ru:"Совсем скоро",fr:"D'un instant à l'autre",es:"En cualquier momento",it:"Da un momento all'altro",pl:"Lada chwila",ar:"في أي لحظة",uk:"Ось-ось",nl:"Elk moment",ro:"Dintr-un moment în altul"},
+"Nur Figur":{en:"Figure only",tr:"Sadece figür",ru:"Только фигурка",fr:"Figurine seule",es:"Solo la figura",it:"Solo la figura",pl:"Tylko postać",ar:"الشخصية فقط",uk:"Лише фігурка",nl:"Alleen het figuur",ro:"Doar figurina"},
+"Mit Bild":{en:"With a photo",tr:"Fotoğraflı",ru:"С фото",fr:"Avec une photo",es:"Con foto",it:"Con foto",pl:"Ze zdjęciem",ar:"مع صورة",uk:"З фото",nl:"Met foto",ro:"Cu fotografie"},
+"Foto machen":{en:"Take a photo",tr:"Fotoğraf çek",ru:"Сделать фото",fr:"Prendre une photo",es:"Hacer una foto",it:"Scatta una foto",pl:"Zrób zdjęcie",ar:"التقاط صورة",uk:"Зробити фото",nl:"Foto maken",ro:"Fă o fotografie"},
+"Aus der Galerie":{en:"From the gallery",tr:"Galeriden",ru:"Из галереи",fr:"Depuis la galerie",es:"De la galería",it:"Dalla galleria",pl:"Z galerii",ar:"من المعرض",uk:"З галереї",nl:"Uit de galerij",ro:"Din galerie"},
+"Aus der Karte":{en:"From the menu",tr:"Menüden",ru:"Из меню",fr:"Depuis la carte",es:"De la carta",it:"Dal menù",pl:"Z karty",ar:"من القائمة",uk:"З меню",nl:"Van de kaart",ro:"Din meniu"},
+"Wie war es? Bleibt auf Ihrem Gerät.":{en:"How was it? Stays on your device.",tr:"Nasıldı? Cihazınızda kalır.",ru:"Как было? Останется на вашем устройстве.",fr:"C'était comment ? Reste sur votre appareil.",es:"¿Qué tal estuvo? Se queda en su dispositivo.",it:"Com'era? Resta sul suo dispositivo.",pl:"Jak było? Zostaje na Twoim urządzeniu.",ar:"كيف كان؟ يبقى على جهازك.",uk:"Як було? Залишається на вашому пристрої.",nl:"Hoe was het? Blijft op uw toestel.",ro:"Cum a fost? Rămâne pe dispozitivul dvs."},
+"Die Karte hat noch keine Bilder.":{en:"The menu has no photos yet.",tr:"Menüde henüz fotoğraf yok.",ru:"В меню пока нет фотографий.",fr:"La carte n'a pas encore de photos.",es:"La carta aún no tiene fotos.",it:"Il menù non ha ancora foto.",pl:"Karta nie ma jeszcze zdjęć.",ar:"القائمة لا تحتوي على صور بعد.",uk:"У меню поки немає фото.",nl:"De kaart heeft nog geen foto's.",ro:"Meniul nu are încă fotografii."},
+"Das Bild ließ sich nicht lesen.":{en:"That image could not be read.",tr:"Görsel okunamadı.",ru:"Изображение не удалось прочитать.",fr:"Cette image n'a pas pu être lue.",es:"No se pudo leer la imagen.",it:"L'immagine non è stata letta.",pl:"Nie udało się odczytać obrazu.",ar:"تعذّر قراءة الصورة.",uk:"Не вдалося прочитати зображення.",nl:"De afbeelding kon niet gelezen worden.",ro:"Imaginea nu a putut fi citită."},
+"Teilen":{en:"Share",tr:"Paylaş",ru:"Поделиться",fr:"Partager",es:"Compartir",it:"Condividi",pl:"Udostępnij",ar:"مشاركة",uk:"Поділитися",nl:"Delen",ro:"Distribuie"},
+"Bild sichern":{en:"Save image",tr:"Görseli kaydet",ru:"Сохранить изображение",fr:"Enregistrer l'image",es:"Guardar imagen",it:"Salva immagine",pl:"Zapisz obraz",ar:"حفظ الصورة",uk:"Зберегти зображення",nl:"Afbeelding bewaren",ro:"Salvați imaginea"},
 "vom Team bestätigt":{en:"confirmed by the team",tr:"ekip tarafından onaylandı",ru:"подтверждено командой",fr:"confirmé par l'équipe",es:"confirmado por el equipo",it:"confermato dal team",pl:"potwierdzone przez zespół",ar:"مؤكد من الفريق",uk:"підтверджено командою",nl:"bevestigd door het team",ro:"confirmat de echipă"},
 "Schließen":{en:"Close",tr:"Kapat",ru:"Закрыть",fr:"Fermer",es:"Cerrar",it:"Chiudi",pl:"Zamknij",ar:"إغلاق",uk:"Закрити",nl:"Sluiten",ro:"Închide"},
 "Zurück zur Übersicht":{en:"Back to overview",tr:"Genel bakışa dön",ru:"К обзору",fr:"Retour à l'aperçu",es:"Volver al inicio",it:"Torna alla panoramica",pl:"Powrót do przeglądu",ar:"العودة إلى النظرة العامة",uk:"Назад до огляду",nl:"Terug naar overzicht",ro:"Înapoi la prezentare"},
@@ -7242,6 +7515,54 @@ function zeigenSchliessen(){
 document.addEventListener("click", e => {
   if(e.target.closest && e.target.closest("[data-zeigen-zu]")) zeigenSchliessen();
   if(e.target.closest && e.target.closest("[data-story-zu]")) storySchliessen();
+
+  /* ── Das Besuchsbild einstellen ──────────────────────────────
+     Alles hier bleibt IM GERÄT. Kein Aufruf nach außen, kein
+     Speichern — auch die Sterne nicht. */
+  if(e.target.closest){
+    const bau = e.target.closest("[data-sbauart]");
+    if(bau){
+      storyStand.bauart = bau.dataset.sbauart;
+      storyWahlZeichnen();
+      /* Ohne Bild bringt „Mit Bild" nichts zu sehen — also gleich
+         fragen, woher es kommen soll, statt ein leeres Feld zu malen. */
+      if(storyStand.bauart === "bild" && !storyStand.bild) return;
+      storyMalen();
+      return;
+    }
+    if(e.target.closest("[data-sfoto]")){    $("storyFoto").click();    return; }
+    if(e.target.closest("[data-sgalerie]")){ $("storyGalerie").click(); return; }
+    if(e.target.closest("[data-sgericht]")){ storyGerichteZeichnen();   return; }
+
+    const ausKarte = e.target.closest("[data-sgericht-bild]");
+    if(ausKarte){
+      storyBildLaden(ausKarte.dataset.sgerichtBild, ausKarte.dataset.sgerichtName)
+        .then(gut => {
+          if(!gut){ melden(t("Das Bild ließ sich nicht lesen."), true); return; }
+          storyStand.bauart = "bild";
+          storyGerichteZeichnen();
+          storyWahlZeichnen();
+          storyMalen();
+        });
+      return;
+    }
+
+    const stern = e.target.closest("[data-sstern]");
+    if(stern){
+      const zeile = stern.closest("[data-sgericht-zeile]");
+      if(zeile){
+        const k = zeile.dataset.sgerichtZeile, n = Number(stern.dataset.sstern);
+        /* Noch einmal auf denselben Stern tippen nimmt die Bewertung
+           zurück. Sonst gäbe es keinen Weg von „ein Stern" zu „gar
+           keiner" — und eine Bewertung, die man nicht zurücknehmen
+           kann, ist eine Falle. */
+        storyStand.sterne[k] = (storyStand.sterne[k] === n) ? 0 : n;
+        storyWahlZeichnen();
+        storyMalen();
+      }
+      return;
+    }
+  }
 });
 document.addEventListener("keydown", e => {
   if(e.key === "Escape" && !$("zeigen").hidden) zeigenSchliessen();
