@@ -3,7 +3,7 @@
 
      NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-web.js
 
-   Sie fragt sechs Dinge, die man einer Datei nicht ansieht:
+   Sie fragt sieben Dinge, die man einer Datei nicht ansieht:
 
    1 · Wie lange bis zum ERSTEN BILD, wenn der Schriftdienst nicht
        antwortet? Am 30.08. waren es 12 605 ms, weil der Stilbogen
@@ -19,6 +19,14 @@
    4 · Schiebt etwas seitlich? Und wer?
    5 · Bei prefers-reduced-motion: läuft nichts endlos.
    6 · Ohne Netz: steht die Seite trotzdem vollständig?
+   7 · Am Träger-Modell: Liegt der Schatten UNTER dem Gegenstand?
+       Passt jede Zeile auf die A5-Fläche? Läuft eine Bewegung über
+       ein Layout-Merkmal? Und wie lange dauert die Antwort auf ein
+       Antippen? Gemessen am 08.09.: Der Schatten lag OBEN
+       (elementFromPoint traf ihn bei 9,8 px Überlappung), die
+       Schlagzeile lief von x −9 bis 109 in einer 100 breiten Fläche,
+       zwei Balken liefen über `width`, und vom Tipp bis zum offenen
+       Hub vergingen 820 ms.
 
    Gefahren wird OHNE Netz nach außen. Jede Anfrage, die nicht
    file:// ist, wird abgewiesen — genauso, wie es hinter einer Firma,
@@ -361,6 +369,149 @@ async function ohneNetz(seite){
   pruef(versteckt === 0, "und trotzdem ist alles zu sehen",
     versteckt ? versteckt + " unsichtbare Blöcke" : "nichts verborgen");
   await ruheCtx.close();
+
+  /* ══ 7 · Bewegung und Tiefe am Träger ══════════════════════════
+     Vier Messungen, und jede misst das GEMALTE, nicht den Quelltext.
+     Der Unterschied ist nicht theoretisch: `getComputedStyle().zIndex`
+     hätte auch dann „1" gemeldet, wenn der Schatten weiter obenauf
+     läge — die Regel ist nicht das Bild (Skill `bewegung` §6). */
+  console.log("\n══ Bewegung und Tiefe am Träger ══");
+
+  /* 7a · Der Schatten liegt unter dem Gegenstand.
+     Zwei Breiten, weil derselbe Fehler bei 1440×900 einmal unsichtbar
+     war und bei 900×1000 offensichtlich (CLAUDE.md §8.1e). Und zwei
+     Zustände, weil er beim Heranfahren weiter nach unten reicht. */
+  for(const vp of [{ w:390, h:844 }, { w:1280, h:900 }]){
+    const tCtx = await browser.newContext({ viewport:{ width:vp.w, height:vp.h } });
+    const t = await tCtx.newPage();
+    await ohneNetz(t);
+    await t.goto(ADRESSE);
+    await t.waitForTimeout(1500);
+    for(const heran of [false, true]){
+      const r = await t.evaluate((heran) => {
+        const pl = document.querySelector(".plinth");
+        if(!pl) return null;
+        pl.classList.toggle("heran", heran);
+        const st = document.getElementById("deckel").getBoundingClientRect();
+        const sc = document.querySelector(".tischschatten").getBoundingClientRect();
+        const ueber = st.bottom - sc.top;
+        if(ueber <= 0) return { ueber:0 };
+        const el = document.elementFromPoint((st.left + st.right) / 2,
+                     (Math.max(st.top, sc.top) + Math.min(st.bottom, sc.bottom)) / 2);
+        return { ueber:+ueber.toFixed(1),
+                 imDeckel: !!(el && el.closest("#deckel")),
+                 treffer: el ? (el.id || (el.className.baseVal || el.className || "")
+                                          .toString().trim().split(/\s+/)[0] || el.tagName)
+                             : "nichts" };
+      }, heran);
+      /* „Keine Überlappung" wäre kein Beweis, sondern eine Probe, die
+         den Fehler nicht treffen KANN (CLAUDE.md §8.1g). Deshalb ist
+         sie hier ein Fehler und keine stille Ausnahme. */
+      pruef(!!r && r.ueber > 0, vp.w + "px" + (heran ? " heran" : "      ") +
+        " · Schatten und Gegenstand überlappen überhaupt",
+        r ? r.ueber + " px" : "kein Modell");
+      if(r && r.ueber > 0){
+        pruef(r.imDeckel, vp.w + "px" + (heran ? " heran" : "      ") +
+          " · in der Überlappung liegt der GEGENSTAND obenauf", r.treffer);
+      }
+    }
+
+    /* 7b · Jede Zeile passt auf die A5-Fläche.
+       Alle <text>, nicht nur die eine, die einmal herausragte —
+       sonst prüft die Prüfung meinen Fund statt die Fläche. */
+    const zeilen = await t.evaluate(() => {
+      const svg = document.querySelector(".f-hoch");
+      if(!svg) return null;
+      const war = svg.hasAttribute("hidden");
+      svg.removeAttribute("hidden");
+      const vb = svg.getAttribute("viewBox").split(/\s+/).map(Number);
+      const r = [...svg.querySelectorAll("text")].map(e => {
+        const b = e.getBBox();
+        return { text:e.textContent.trim(), x1:+b.x.toFixed(1),
+                 x2:+(b.x + b.width).toFixed(1), drin: b.x >= vb[0] && b.x + b.width <= vb[0] + vb[2] };
+      });
+      if(war) svg.setAttribute("hidden", "");
+      return { breite:vb[2], zeilen:r };
+    });
+    pruef(!!zeilen && zeilen.zeilen.length >= 3, vp.w + "px · die A5-Fläche trägt ihre Zeilen",
+      zeilen ? zeilen.zeilen.length + " Zeilen" : "keine Fläche");
+    if(zeilen) for(const z of zeilen.zeilen){
+      pruef(z.drin, vp.w + "px · „" + z.text.slice(0, 26) + "“ passt in die Fläche",
+        "x " + z.x1 + " … " + z.x2 + " von 0 … " + zeilen.breite);
+    }
+    await tCtx.close();
+  }
+
+  /* 7c · Keine Bewegung über ein Layout-Merkmal.
+     Kommentare vorher weg: Ein Beispiel im Fließtext darf keinen
+     Fehlalarm schlagen — ein Werkzeug, das das tut, bringt einem bei,
+     es zu übergehen (CLAUDE.md §8.2). */
+  const quelltext = fs.readFileSync(DATEI, "utf8");
+  const stile = (quelltext.match(/<style[^>]*>[\s\S]*?<\/style>/g) || [])
+    .join("\n").replace(/\/\*[\s\S]*?\*\//g, "");
+  const LAYOUT = ["width", "height", "top", "left", "right", "bottom", "margin", "padding"];
+  const schuldig = [];
+  for(const m of stile.matchAll(/transition(?:-property)?\s*:\s*([^;}]+)/g)){
+    for(const teil of m[1].split(",")){
+      const merkmal = teil.trim().split(/\s+/)[0];
+      if(LAYOUT.includes(merkmal)) schuldig.push(merkmal + " in „" + teil.trim() + "“");
+    }
+  }
+  pruef(schuldig.length === 0, "kein Übergang läuft über ein Layout-Merkmal",
+    schuldig.length ? [...new Set(schuldig)].join(", ") : LAYOUT.length + " Merkmale geprüft");
+
+  /* 7d · Die Antwort auf das Antippen.
+     Gemessen wird das, was der Gast erlebt: vom Klick bis zum offenen
+     Hub. Nicht die Zahl im Quelltext — zwischen dem Ende der Bewegung
+     und dem offenen Fenster liegen noch Bildtakt und showModal.
+     Grenze 500 ms: Der Skill `bewegung` §3 gibt einem ganzen Schirm
+     320–500 ms. Einzüge (`animation … both`) und Pulse (`infinite`)
+     sind hier ausdrücklich NICHT gemeint — die dürfen länger laufen,
+     sie sind Vorführung und keine Bedienung. */
+  const aCtx = await browser.newContext({ viewport:{ width:390, height:844 } });
+  const a = await aCtx.newPage();
+  await ohneNetz(a);
+  await a.goto(ADRESSE);
+  await a.waitForTimeout(1500);
+  const antwort = await a.evaluate(async () => {
+    const f = document.getElementById("hubfenster");
+    const t0 = performance.now();
+    document.getElementById("deckel").click();
+    await new Promise(res => {
+      const i = setInterval(() => { if(f.open){ clearInterval(i); res(); } }, 4);
+      setTimeout(() => { clearInterval(i); res(); }, 5000);
+    });
+    return { offen:f.open, ms:Math.round(performance.now() - t0) };
+  });
+  pruef(antwort.offen, "das Antippen öffnet den Hub");
+  pruef(antwort.offen && antwort.ms <= 500,
+    "und zwar innerhalb von 500 ms", antwort.ms + " ms");
+
+  /* Der Schatten darf nicht vor dem Gegenstand ankommen: Er läuft
+     mit, sonst löst er sich optisch vom Ding. */
+  const paar = await a.evaluate(() => {
+    const pl = document.querySelector(".plinth");
+    pl.classList.add("heran");
+    const d = getComputedStyle(document.querySelector(".tischschatten")).transitionDuration;
+    return d.split(",").map(v => parseFloat(v) * (/ms/.test(v) ? 1 : 1000));
+  });
+  pruef(paar.every(v => v > 0 && v <= 500), "der Schatten läuft mit dem Gegenstand",
+    paar.join(" / ") + " ms");
+
+  /* Und die beiden Balken laufen wirklich über transform: Nach einem
+     Bildlauf muss sich die Matrix ändern und die Breite NICHT. */
+  await a.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; });
+  const balken = await a.evaluate(async () => {
+    const b = document.getElementById("fortschritt");
+    const vorher = { tf:getComputedStyle(b).transform, w:getComputedStyle(b).width };
+    scrollTo(0, document.documentElement.scrollHeight / 2);
+    await new Promise(r => setTimeout(r, 400));
+    return { vorher, tf:getComputedStyle(b).transform, w:getComputedStyle(b).width };
+  });
+  pruef(balken.tf !== balken.vorher.tf && balken.w === balken.vorher.w,
+    "der Fortschrittsbalken wächst über transform, nicht über width",
+    balken.vorher.tf + " → " + balken.tf + ", Breite " + balken.w);
+  await aCtx.close();
 
   await browser.close();
   console.log("\n" + (fehler ? fehler + " Fehler" : "Alles sauber."));
