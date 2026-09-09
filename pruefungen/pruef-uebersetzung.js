@@ -159,7 +159,51 @@ pruef(ohneEintrag.length === 0,
   ausDaten.size + " Texte aus Daten haben einen Wörterbucheintrag",
   ohneEintrag.length ? ohneEintrag.slice(0, 4).join(" | ") : "keine Lücke");
 
-/* ══ 3 · Das Gemalte, in jeder Sprache ══════════════════════════════ */
+/* ══ 3 · Die Anrede bleibt in jeder Sprache dieselbe ════════════════
+   > Vorfall, 09.09. Gemessen: Polnisch duzte in 29 Eintraegen und
+   > siezte in 7, Italienisch duzte in 10 und siezte in 35. Kein
+   > einzelner Satz war falsch — zusammen lasen sie sich billig, und
+   > genau das war eine der Klagen des Nutzers.
+
+   Der Hub siezt auf Deutsch. Wo eine Sprache beides kennt, muss sie
+   sich entscheiden — und zwar überall gleich.
+
+   Die ehrliche Grenze, und sie steht hier, statt einen Fehlalarm zu
+   bauen: TÜRKISCH ist nicht dabei. „alınsın“ und „olsun“ sind
+   Optative, „masanızı“ ist die Höflichkeitsform — ein regulärer
+   Ausdruck unterscheidet das nicht von der zweiten Person Singular
+   und schlug bei allen dreien an. Ein Werkzeug, das Fehlalarme
+   schlägt, bringt einem bei, es zu übergehen (CLAUDE.md §8.2).
+   Arabisch fehlt aus demselben Grund: Die Höflichkeitsform ist dort
+   eine andere Konstruktion, kein anderes Pronomen.                 */
+console.log("\n══ Die Anrede ══");
+const W = re => new RegExp("(?:^|[\\s(„\"'»])(?:" + re + ")(?=$|[\\s.,;:!?)\"'“«»])", "i");
+const ANREDE = {
+  fr:{ du:W("tu|ton|ta|tes|toi"),                sie:W("vous|votre|vos") },
+  es:{ du:W("tú|tu|tus|ti|elige|toca|mira"),     sie:W("usted|su|sus|elija|toque|mire") },
+  it:{ du:W("tu|tuo|tua|tuoi|tue|scegli|tocca|scrivi"), sie:W("lei|suo|sua|suoi|sue|scelga|tocchi|scriva") },
+  ru:{ du:W("ты|твой|твоя|твои|тебя|тебе"),      sie:W("вы|ваш|ваша|ваши|вас|вам") },
+  uk:{ du:W("ти|твій|твоя|твої|тебе|тобі"),      sie:W("ви|ваш|ваша|ваші|вас|вам") },
+  pl:{ du:W("ty|twój|twoja|twoje|ciebie|tobie"), sie:W("pan|pani|państwo|państwa|państwu") },
+  nl:{ du:W("je|jij|jouw|jullie"),               sie:W("u|uw") },
+  ro:{ du:W("tu|tău|ta|tăi|tale|ție"),           sie:W("dumneavoastră|dvs") }
+};
+/* Namentlich, nicht als Muster: Wo das Deutsche selbst unpersönlich
+   ist („wie man es nicht erwartet“), ist das niederländische „je“
+   ebenfalls unpersönlich und richtig. */
+const ANREDE_AUSNAHME = new Set(["Gestapelt, wie man es nicht erwartet"]);
+for(const c of Object.keys(ANREDE)){
+  const geduzt = Object.keys(TEXTE).filter(k => {
+    const v = TEXTE[k][c];
+    return v && !ANREDE_AUSNAHME.has(k) &&
+           ANREDE[c].du.test(v) && !ANREDE[c].sie.test(v);
+  });
+  pruef(geduzt.length === 0, c + " · siezt durchgehend, wie das Deutsche",
+    geduzt.length ? geduzt.length + " geduzt, z. B. „" + TEXTE[geduzt[0]][c].slice(0, 44) + "“"
+                  : "keine Abweichung");
+}
+
+/* ══ 4 · Das Gemalte, in jeder Sprache ══════════════════════════════ */
 (async () => {
   const browser = await chromium.launch();
 
