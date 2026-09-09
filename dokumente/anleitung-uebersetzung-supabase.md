@@ -97,15 +97,83 @@ Beispiel als `dokumente/kartentexte-chocolamour.json`. Damit baue ich
 
 ---
 
-## Schritt 2 · Die Struktur  *(schreibt — folgt)*
+## Schritt 2 · Die Struktur  *(schreibt)*
 
-Kommt in diese Datei, sobald `datenbank/migration-uebersetzungen.sql`
-fertig und lokal gegen ein echtes Postgres gefahren ist. Sie erweitert
-die vorhandene Spalte `gerichte.uebersetzungen` von zwei auf elf
-Sprachen und legt die Übersetzungen für alles an, was kein Gericht ist.
+**Aufgabe für den Chat-Claude:**
 
-## Schritt 3 · Die Texte einspielen  *(schreibt — folgt)*
+> Führe `datenbank/migration-uebersetzungen.sql` aus diesem Verzeichnis
+> im Supabase-Projekt aus, **in einem Rutsch und unverändert**. Sie ist
+> additiv: zwei neue Spalten, drei Größenschranken, vier Spaltenrechte.
+> Keine Zeile wird geändert, keine Spalte gelöscht, keine RLS-Regel
+> angefasst.
+>
+> Am Ende der Datei steht ein Probenblock in einer Transaktion, die
+> sich selbst zurückdreht. Gib mir seine Ausgabetabelle vollständig
+> zurück — sechs Zeilen, und jede muss `ok` sagen:
+>
+> | Schritt | erwartet |
+> |---|---|
+> | elf Sprachen am Gericht | ok (11) |
+> | Schranke am Gericht | ok — abgewiesen |
+> | hub_woerter schreibbar | ok |
+> | anon liest name_uebersetzungen | ok |
+> | anon liest hub_woerter | ok |
+> | **anon schreibt NICHT** | ok |
+>
+> Die letzte ist die wichtigste. Ein Leserecht ohne die Gegenprobe auf
+> das Schreibrecht ist die halbe Wahrheit: Die Regel entscheidet,
+> **welche** Zeilen — das Recht entscheidet, **ob überhaupt**.
+>
+> Meldet eine Zeile `FEHL`, führe nichts weiter aus und gib mir die
+> Zeile samt Fehlertext zurück.
 
-Kommt in diese Datei, sobald die Übersetzungen stehen. Enthält für jede
-Zeile die `id`, den alten und den neuen Wert nebeneinander, damit vor dem
-Ausführen sichtbar ist, was sich ändert.
+Was die Migration anlegt:
+
+| | wozu |
+|---|---|
+| `gerichte.name_uebersetzungen jsonb` | der **Name** eines Gerichts in elf Sprachen. `uebersetzungen` gab es schon, aber nur für die Beschreibung. |
+| `betriebe.hub_woerter jsonb` | alles, was kein Gericht ist: Kategorien, freie Texte, Kachelunterzeilen. Form `{ "tr": { "Deutscher Satz": "…" } }`. |
+
+**Danach die Edge Function**, die das Übersetzen tut:
+
+```bash
+supabase functions deploy uebersetzen
+supabase secrets set ANTHROPIC_API_KEY=<dein Schlüssel>
+```
+
+Ohne `--no-verify-jwt` — anders als der Vapi-Webhook wird sie aus dem
+Admin-Board gerufen, wo immer jemand angemeldet ist. Supabase prüft das
+Token, bevor eine Zeile des Codes läuft; sonst könnte jeder Fremde das
+Sprach-Guthaben verbrauchen.
+
+Der Schlüssel steht **ausschließlich** in den Supabase-Secrets. In eine
+ausgelieferte Seite gehört er nie — dort ist er kein Geheimnis, sondern
+eine Rechnung, die jemand anders bezahlt.
+
+**Prüfen, dass sie läuft** (die Antwort muss elf Sprachen tragen):
+
+```bash
+curl -s -X POST "$SUPABASE_URL/functions/v1/uebersetzen" \
+  -H "Authorization: Bearer $EIN_ANGEMELDETES_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"texte":["Frisch gebacken, warm serviert"]}' | jq
+```
+
+## Schritt 3 · Den kaputten deutschen Quelltext reparieren  *(schreibt)*
+
+Kommt, sobald du mir den Export aus Schritt 1 gegeben hast. Auf der
+Karte stehen Sätze, die schon **auf Deutsch** keinen Sinn ergeben —
+„Karamelli bis zur Kremation und Verbrennung" ist eine Rückübersetzung
+aus dem Türkischen, und eine Zusatzoption heißt „Kopfgeld", weil jemand
+„Bounty" übersetzt hat. Solange das in der Datenbank steht, kann keine
+Übersetzung der Welt daraus etwas Gutes machen.
+
+Du bekommst dann `UPDATE`s mit `id`, altem und neuem Wert nebeneinander
+— damit vor dem Ausführen sichtbar ist, was sich ändert.
+
+## Schritt 4 · Die vorhandene Karte einmal durchübersetzen
+
+Neue und geänderte Gerichte übersetzt das Board von selbst. Die **102
+Gerichte, die schon da sind**, hat nie jemand angefasst — für die
+braucht es einen einmaligen Durchlauf. Der kommt zusammen mit Schritt 3,
+als `hub_woerter`-JSON und als `UPDATE` je Gericht.

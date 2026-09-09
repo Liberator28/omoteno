@@ -1005,6 +1005,20 @@ textarea{resize:vertical;min-height:66px}
 /* Der Zuschnitt. Der Rahmen hat GENAU das Seitenverhältnis, das die
    Kachel im Hub hat — deshalb kann hier keine Fehlproportion
    entstehen. Was im Rahmen steht, ist das Bild. */
+/* ─── Sprachen am Gericht ─────────────────────────────────────
+   Kein Feld, sondern ein Stand: Der Wirt soll SEHEN, ob ein Gast in
+   seiner Sprache etwas findet — tippen soll er dafuer nichts. */
+.uebblock{margin:14px 0}
+.uebstand{margin:6px 0 10px;font-size:13px;color:var(--grau);line-height:1.45}
+.uebstand.fertig{color:var(--gut)}
+.uebstand.offen{color:var(--warn)}
+.uebreihe{display:flex;gap:8px;flex-wrap:wrap}
+.uebreihe .knopf{flex:1 1 auto;min-width:150px}
+.uebzeile{margin:10px 0}
+.uebzeile .lname{display:block;margin-bottom:4px}
+.uebzeile input{width:100%}
+.uebgruppe{margin:14px 0 4px;font-weight:600;font-size:13px}
+
 .kbrahmen{
   position:relative;overflow:hidden;border-radius:10px;
   background:var(--flaeche-2);border:1px solid var(--linie);
@@ -2059,6 +2073,23 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   </div>
 </div>
 
+<!-- ══ Sprachen-Blatt ══
+     Was die Maschine geschrieben hat, muss der Wirt sehen und aendern
+     koennen. Eine Uebersetzung, die niemand mehr anfassen kann, ist
+     eine Behauptung. -->
+<div class="blatt" id="uebBlatt" hidden>
+  <div class="blattinhalt">
+    <div class="griff"></div>
+    <h2 class="blatttitel">Sprachen</h2>
+    <p class="ehilfe" id="uebBlattFuer"></p>
+    <div id="uebFelder"></div>
+    <div class="blattfuss">
+      <button class="knopf" id="uebBlattOk">Übernehmen</button>
+      <button class="knopf leise" id="uebBlattWeg">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ Bearbeiten-Blatt ══ -->
 <!-- ══ KARTE EINLESEN ══════════════════════════════════════════════
      Der größte Zeitfresser bei einem neuen Kunden ist nicht das
@@ -2116,11 +2147,18 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <label><span class="lname">Beschreibung</span>
       <textarea id="fBeschr" placeholder="Campari, roter Wermut, Prosecco"></textarea></label>
 
-    <div class="zweispalt">
-      <label><span class="lname">Beschreibung EN <small style="font-weight:400;color:var(--grau)">(optional)</small></span>
-        <input type="text" id="fBeschrEn" placeholder="Campari, red vermouth, prosecco"></label>
-      <label><span class="lname">Beschreibung TR <small style="font-weight:400;color:var(--grau)">(optional)</small></span>
-        <input type="text" id="fBeschrTr" placeholder="Campari, kırmızı vermut, prosecco"></label>
+    <!-- Hier standen zwei Handfelder, EN und TR. Elf Sprachen von Hand
+         zu tippen tut kein Wirt — und zwei von zwoelf sind schlimmer
+         als keine, weil der Gast dann NUR auf Englisch und Tuerkisch
+         etwas findet und in neun Sprachen Deutsch liest. Uebersetzt
+         wird jetzt beim Speichern, in alle elf. -->
+    <div class="uebblock" id="uebBlock">
+      <span class="lname">Sprachen <span class="lzusatz">elf, beim Speichern automatisch</span></span>
+      <p class="uebstand" id="uebStand">Wird beim Speichern übersetzt.</p>
+      <div class="uebreihe">
+        <button type="button" class="knopf leise" id="uebJetzt">Jetzt übersetzen</button>
+        <button type="button" class="knopf leise" id="uebZeigen">Ansehen und ändern</button>
+      </div>
     </div>
 
     <div class="zweispalt">
@@ -4948,7 +4986,8 @@ function tabelle(){
   [["#blatt",     function(){ blattSchliessen(); }],
    ["#kbBlatt",   function(){ kbSchliessen(); }],
    ["#zeitBlatt", function(){ zeitBlattSchliessen(); }],
-   ["#impBlatt",  function(){ impSchliessen(); }]].forEach(function(paar){
+   ["#impBlatt",  function(){ impSchliessen(); }],
+   ["#uebBlatt",  function(){ uebSchliessen(); }]].forEach(function(paar){
     var schirm = document.querySelector(paar[0]); if(!schirm) return;
     var inhalt = schirm.querySelector(".blattinhalt"); if(!inhalt) return;
     wischZu({ blatt: inhalt, zu: paar[1], griff: ".griff, .blattgriff" });
@@ -6057,13 +6096,149 @@ $("#fKarte").onchange = () => {
 };
 let karteVorher = "speisekarte";
 
+/* ═══════════════════════════════════════════════════════════════
+   SPRACHEN AM GERICHT
+
+   Der Hub uebersetzt ueber ein Woerterbuch, dessen Schluessel der
+   DEUTSCHE Satz ist. Was hier eingetippt wird, steht dort nicht — und
+   blieb deshalb in allen zwoelf Sprachen deutsch, obwohl der ganze
+   Rest des Hubs uebersetzt ist. Genau das hat der Gast auf der
+   tuerkischen Karte gesehen.
+
+   Zwei Handfelder (EN, TR) gab es schon. Elf von Hand tippt niemand,
+   und zwei von zwoelf sind schlimmer als keine: Der Gast findet dann
+   NUR auf Englisch und Tuerkisch etwas.
+
+   Uebersetzt wird deshalb beim Speichern, ueber die Edge Function
+   "uebersetzen" — dort liegt der API-Schluessel, nicht hier. Ein
+   Schluessel in einer ausgelieferten Seite ist kein Geheimnis,
+   sondern eine Rechnung, die jemand anders bezahlt.
+   ═══════════════════════════════════════════════════════════════ */
+const UEB_SPRACHEN = [
+  ["en","Englisch"], ["tr","Türkisch"], ["ru","Russisch"], ["fr","Französisch"],
+  ["es","Spanisch"], ["it","Italienisch"], ["pl","Polnisch"], ["ar","Arabisch"],
+  ["uk","Ukrainisch"], ["nl","Niederländisch"], ["ro","Rumänisch"]
+];
+/* Was gerade im Blatt liegt. Nicht am DOM ablesen: Der Wirt kann das
+   Blatt schliessen, ohne zu uebernehmen, und dann darf nichts davon
+   im Gericht landen. */
+let uebEntwurf = null;
+
+/* Der Stand am offenen Gericht. Gerechnet, nicht gemerkt: Ein
+   gespeicherter Zaehler wuerde beim naechsten Fehlschlag luegen. */
+function uebZahl(g){
+  const voll = o => o && typeof o === "object" &&
+    UEB_SPRACHEN.every(([c]) => String(o[c] || "").trim());
+  const braucht = (g?.beschreibung ? 1 : 0) + (g?.name ? 1 : 0);
+  const hat = (g?.beschreibung && voll(g.uebersetzungen) ? 1 : 0) +
+              (g?.name && voll(g.name_uebersetzungen) ? 1 : 0);
+  return { braucht, hat };
+}
+
+function uebStandSetzen(g){
+  const el = $("#uebStand"); if(!el) return;
+  el.classList.remove("fertig", "offen");
+  if(!g){
+    el.textContent = "Wird beim Speichern in elf Sprachen übersetzt.";
+    return;
+  }
+  const { braucht, hat } = uebZahl(g);
+  if(!braucht){ el.textContent = "Nichts zu übersetzen."; return; }
+  if(hat === braucht){
+    el.classList.add("fertig");
+    el.textContent = "In elf Sprachen übersetzt.";
+  }else{
+    el.classList.add("offen");
+    el.textContent = hat
+      ? "Teilweise übersetzt — ein Gast liest den Rest auf Deutsch."
+      : "Noch nicht übersetzt — ein Gast liest das auf Deutsch.";
+  }
+}
+
+/* Ruft die Edge Function. Gibt IMMER ein Objekt zurueck, nie einen
+   Fehler: Der Wirt soll sein Gericht speichern koennen, auch wenn der
+   Uebersetzer schweigt (CLAUDE.md 7). */
+async function uebersetzenLassen(texte){
+  const liste = [...new Set((texte || []).map(t => String(t || "").trim()).filter(Boolean))];
+  if(!liste.length || demo || !db) return {};
+  try{
+    const { data, error } = await db.functions.invoke("uebersetzen", { body: { texte: liste } });
+    if(error || !data || !data.uebersetzt) return {};
+    return data.uebersetzt;
+  }catch(e){ return {}; }
+}
+
+/* Nach dem Speichern, nicht davor. Ein Gericht, das sich nicht
+   speichern laesst, weil ein Uebersetzer nicht antwortet, kostet
+   Umsatz; eine fehlende Uebersetzung kostet einen zweiten Anlauf. */
+async function uebNachtragen(satz, melden){
+  const noetig = [];
+  const voll = o => o && typeof o === "object" &&
+    UEB_SPRACHEN.every(([c]) => String(o[c] || "").trim());
+  if(satz.beschreibung && !voll(satz.uebersetzungen))      noetig.push(satz.beschreibung);
+  if(satz.name        && !voll(satz.name_uebersetzungen))  noetig.push(satz.name);
+  if(!noetig.length) return false;
+
+  if(melden) melde("Übersetze in elf Sprachen …");
+  const fertig = await uebersetzenLassen(noetig);
+  const neu = {};
+  if(fertig[satz.beschreibung]) neu.uebersetzungen      = fertig[satz.beschreibung];
+  if(fertig[satz.name])         neu.name_uebersetzungen = fertig[satz.name];
+  if(!Object.keys(neu).length){
+    if(melden) melde("Gespeichert — übersetzt wurde nicht, das lässt sich nachholen", true);
+    return false;
+  }
+  Object.assign(satz, neu);
+  if(!demo && db && satz.id){
+    const { error } = await db.from("gerichte").update(neu).eq("id", satz.id);
+    if(error){
+      if(melden) melde("Übersetzt, aber nicht gespeichert — bitte noch einmal", true);
+      return false;
+    }
+  }
+  if(melden) melde("Gespeichert und in elf Sprachen übersetzt");
+  return true;
+}
+
+/* ─── Das Blatt zum Ansehen und Ändern ─── */
+function uebOeffnen(){
+  const g = bearbeite || {
+    name: $("#fName").value.trim(), beschreibung: $("#fBeschr").value.trim()
+  };
+  if(bearbeite){
+    g.name = $("#fName").value.trim();
+    g.beschreibung = $("#fBeschr").value.trim();
+  }
+  uebEntwurf = {
+    name: Object.assign({}, g.name_uebersetzungen || {}),
+    beschreibung: Object.assign({}, g.uebersetzungen || {})
+  };
+  $("#uebBlattFuer").textContent = g.name || "Neues Gericht";
+  const feld = (art, code, name, wert) =>
+    '<label class="uebzeile"><span class="lname">' + sicher(name) + '</span>' +
+    '<input type="text" data-ueb="' + art + '" data-code="' + code +
+    '" value="' + sicher(wert || "") + '"></label>';
+  let html = "";
+  if(g.name){
+    html += '<div class="uebgruppe">Name — ' + sicher(g.name) + '</div>';
+    UEB_SPRACHEN.forEach(([c, n]) => { html += feld("name", c, n, uebEntwurf.name[c]); });
+  }
+  if(g.beschreibung){
+    html += '<div class="uebgruppe">Beschreibung — ' + sicher(g.beschreibung) + '</div>';
+    UEB_SPRACHEN.forEach(([c, n]) => { html += feld("beschr", c, n, uebEntwurf.beschreibung[c]); });
+  }
+  if(!html) html = '<p class="ehilfe">Erst Name und Beschreibung eintragen.</p>';
+  $("#uebFelder").innerHTML = html;
+  $("#uebBlatt").hidden = false;
+}
+function uebSchliessen(){ $("#uebBlatt").hidden = true; uebEntwurf = null; }
+
 function blattOeffnen(g){
   bearbeite = g;
   $("#blattTitel").textContent = g ? "Gericht bearbeiten" : "Neues Gericht";
   $("#fName").value      = g?.name || "";
   $("#fBeschr").value    = g?.beschreibung || "";
-  $("#fBeschrEn").value  = g?.uebersetzungen?.en || "";
-  $("#fBeschrTr").value  = g?.uebersetzungen?.tr || "";
+  uebStandSetzen(g);
   $("#fPreis").value     = g?.preis ?? "";
   $("#fKat").value       = g?.kategorie || "";
   stoffeSetzen("#fAllergene", g?.allergene);
@@ -6232,12 +6407,14 @@ async function sichern(alsKopie){
     name: alsKopie ? name + " (Kopie)" : name,
     kategorie: kat,
     beschreibung: $("#fBeschr").value.trim(),
-    uebersetzungen: (() => {
-      const u = {};
-      const en = $("#fBeschrEn").value.trim(); if(en) u.en = en;
-      const tr = $("#fBeschrTr").value.trim(); if(tr) u.tr = tr;
-      return Object.keys(u).length ? u : null;
-    })(),
+    /* Vorhandene Uebersetzungen behalten — aber NUR, wenn der deutsche
+       Text derselbe geblieben ist. Sonst stuende unter einem neuen
+       Gericht die Uebersetzung des alten, und das faellt niemandem
+       auf, der kein Tuerkisch liest. */
+    uebersetzungen: (bearbeite && bearbeite.beschreibung === $("#fBeschr").value.trim())
+      ? (bearbeite.uebersetzungen || null) : null,
+    name_uebersetzungen: (!alsKopie && bearbeite && bearbeite.name === name)
+      ? (bearbeite.name_uebersetzungen || null) : null,
     preis: parseFloat($("#fPreis").value) || 0,
     allergene:    stoffeLesen("#fAllergene"),
     zusatzstoffe: stoffeLesen("#fZusatz"),
@@ -6281,7 +6458,59 @@ async function sichern(alsKopie){
 
   blattSchliessen(); zeichneKarte();
   melde(alsKopie ? "Kopie angelegt" : (neuAnlegen ? "Gericht hinzugefügt" : "Gespeichert"));
+
+  /* Erst jetzt uebersetzen. Die Reihenfolge ist der ganze Punkt: Das
+     Gericht ist gespeichert und die Karte gezeichnet, bevor irgendein
+     fremder Dienst gefragt wird. Antwortet er nicht, hat der Wirt
+     trotzdem alles, was er wollte — und der Stand am Gericht sagt
+     ihm, dass eine Uebersetzung fehlt. */
+  const gespeichert = neuAnlegen
+    ? gerichte[gerichte.length - 1]
+    : (bearbeite || null);
+  if(gespeichert){
+    const nachher = await uebNachtragen(gespeichert, true);
+    if(nachher) zeichneKarte();
+  }
 }
+
+$("#uebZeigen").onclick = () => uebOeffnen();
+$("#uebBlattWeg").onclick = () => uebSchliessen();
+$("#uebBlatt").onclick = e => { if(e.target === $("#uebBlatt")) uebSchliessen(); };
+$("#uebBlattOk").onclick = () => {
+  if(!uebEntwurf) return uebSchliessen();
+  $$("#uebFelder [data-ueb]").forEach(el => {
+    const topf = el.dataset.ueb === "name" ? uebEntwurf.name : uebEntwurf.beschreibung;
+    const wert = el.value.trim();
+    if(wert) topf[el.dataset.code] = wert;
+    else delete topf[el.dataset.code];
+  });
+  if(bearbeite){
+    bearbeite.name_uebersetzungen = Object.keys(uebEntwurf.name).length ? uebEntwurf.name : null;
+    bearbeite.uebersetzungen      = Object.keys(uebEntwurf.beschreibung).length ? uebEntwurf.beschreibung : null;
+    uebStandSetzen(bearbeite);
+    melde("Übernommen — mit „Sichern“ speichern");
+  }
+  uebSchliessen();
+};
+
+/* „Jetzt übersetzen“ arbeitet auf dem, was IM FORMULAR steht, nicht
+   auf dem gespeicherten Stand — sonst übersetzt der Knopf den alten
+   Text, während der Wirt den neuen vor sich sieht. */
+$("#uebJetzt").onclick = async () => {
+  const name   = $("#fName").value.trim();
+  const beschr = $("#fBeschr").value.trim();
+  if(!name && !beschr) return melde("Erst Name oder Beschreibung eintragen", true);
+  melde("Übersetze in elf Sprachen …");
+  const fertig = await uebersetzenLassen([name, beschr]);
+  if(!Object.keys(fertig).length)
+    return melde("Der Übersetzer hat nicht geantwortet — später noch einmal", true);
+  const ziel = bearbeite || {};
+  if(fertig[name])   ziel.name_uebersetzungen = fertig[name];
+  if(fertig[beschr]) ziel.uebersetzungen      = fertig[beschr];
+  ziel.name = name; ziel.beschreibung = beschr;
+  uebStandSetzen(ziel);
+  melde(bearbeite ? "Übersetzt — mit „Sichern“ speichern" : "Übersetzt");
+};
 
 $("#loeschen").onclick = async () => {
   if(!bearbeite) return;

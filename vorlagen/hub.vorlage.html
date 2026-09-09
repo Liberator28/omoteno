@@ -10266,7 +10266,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_woerter");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -10286,6 +10286,34 @@ async function karteHolen(erstesMal){
        keine davon. */
     hubTexte = (b[0].hub_texte && typeof b[0].hub_texte === "object")
       ? b[0].hub_texte : {};
+
+    /* ─── Was der Betrieb selbst schreibt, in elf Sprachen ───────
+       hub_woerter hat die Form { "tr": { "Deutscher Satz": "…" } } —
+       nach Sprache zuerst, weil das Board sie so füllt und weil man
+       so eine einzelne Sprache nachliefern kann, ohne die anderen
+       anzufassen.
+
+       Gemischt wird ADDITIV, und der Betrieb gewinnt: Er darf einen
+       Satz aus dem Gerüst überschreiben (sein Haus, sein Ton), aber
+       ein fehlender Eintrag darf nie einen vorhandenen löschen.
+
+       Warum das überhaupt hier steht: t() ist nach dem deutschen Satz
+       geschlüsselt. Ein Satz, den der Wirt im Board eintippt, steht
+       im Gerüst nicht — und blieb deshalb in allen zwölf Sprachen
+       deutsch, obwohl alles andere übersetzt war. */
+    const woerter = b[0].hub_woerter;
+    if(woerter && typeof woerter === "object"){
+      Object.keys(woerter).forEach(code => {
+        const topf = woerter[code];
+        if(!topf || typeof topf !== "object") return;
+        Object.keys(topf).forEach(deutsch => {
+          const wert = topf[deutsch];
+          if(typeof wert !== "string" || !wert.trim()) return;
+          TEXTE[deutsch] = Object.assign({}, TEXTE[deutsch] || {});
+          TEXTE[deutsch][code] = wert;
+        });
+      });
+    }
     const kurz = (w, n) => String(w || "").trim().slice(0, n);
     const vorher = BETRIEB.claim;
     if(kurz(hubTexte.claim, 48))        BETRIEB.claim        = kurz(hubTexte.claim, 48);
@@ -10344,6 +10372,13 @@ async function karteHolen(erstesMal){
            Karte auch nach Änderungen im Admin-Panel mehrsprachig. */
         if(z.uebersetzungen && typeof z.uebersetzungen === "object" && z.beschreibung)
           TEXTE[z.beschreibung] = Object.assign({}, TEXTE[z.beschreibung] || {}, z.uebersetzungen);
+        /* Der NAME geht durch dieselbe Funktion t() wie die
+           Beschreibung, hatte aber nirgends eine Übersetzung. Eigene
+           Spalte statt eines Unterobjekts in "uebersetzungen": Ein
+           Schlüssel "name" in derselben Zeile wäre hier ab sofort eine
+           Sprache namens „name“ geworden. */
+        if(z.name_uebersetzungen && typeof z.name_uebersetzungen === "object" && z.name)
+          TEXTE[z.name] = Object.assign({}, TEXTE[z.name] || {}, z.name_uebersetzungen);
         let g = topf.find(x => x.gruppe === z.kategorie);
         if(!g) topf.push(g = { gruppe:z.kategorie, eintraege:[] });
         const e = {

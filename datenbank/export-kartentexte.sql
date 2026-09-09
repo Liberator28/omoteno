@@ -80,7 +80,8 @@ select jsonb_pretty(jsonb_build_object(
              'name',               j->>'name',
              'bestell_pause_text', j->>'bestell_pause_text',
              'hub_texte',          j->'hub_texte',
-             'hub_kacheln',        j->'hub_kacheln'
+             'hub_kacheln',        j->'hub_kacheln',
+             'hub_woerter',        j->'hub_woerter'
            )) from betrieb),
 
   /* Jedes Gericht mit allem, was auf den Schirm kann. */
@@ -93,7 +94,8 @@ select jsonb_pretty(jsonb_build_object(
                  'stoff_hinweis',  nullif(j->>'stoff_hinweis',''),
                  'opt',            nullif(j->>'opt',''),
                  'verfuegbar',     j->>'verfuegbar',
-                 'uebersetzungen', j->'uebersetzungen'
+                 'uebersetzungen', j->'uebersetzungen',
+                 'name_uebersetzungen', j->'name_uebersetzungen'
                )) order by j->>'karte', j->>'kategorie', j->>'name')
                from zeile),
 

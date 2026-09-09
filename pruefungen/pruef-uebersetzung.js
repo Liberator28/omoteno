@@ -332,6 +332,153 @@ for(const c of Object.keys(ANREDE)){
     await wCtx.close();
   }
 
+  /* ══ 5 · Der Weg im Board ═══════════════════════════════════════
+     Der Wirt tippt einen deutschen Satz. Ab hier muss er in elf
+     Sprachen ankommen, ohne dass der Wirt ein Sprachfeld sieht.
+
+     Zwei Dinge werden gemessen, und das zweite ist das wichtigere:
+     dass Speichern auch dann geht, wenn der Uebersetzer schweigt.
+     Ein Gericht, das sich nicht speichern laesst, weil ein fremder
+     Dienst nicht antwortet, kostet Umsatz (CLAUDE.md §7).          */
+  console.log("\n══ Der Weg im Board ══");
+  const ADMIN = path.join(HIER, "seiten", "admin.html");
+  if(!fs.existsSync(ADMIN)){
+    pruef(false, "seiten/admin.html gefunden");
+  }else{
+    for(const fall of [
+      { name:"Übersetzer antwortet",
+        antwort: (texte) => {
+          const u = {};
+          for(const t of texte){
+            u[t] = {};
+            for(const c of SPR) u[t][c] = c.toUpperCase() + ":" + t;
+          }
+          return { uebersetzt: u };
+        } },
+      { name:"Übersetzer schweigt", antwort: null }
+    ]){
+      const bCtx = await browser.newContext({ viewport:{ width:390, height:844 } });
+      const b = await bCtx.newPage();
+      const kaputt = [];
+      b.on("pageerror", e => kaputt.push(String(e).slice(0, 120)));
+
+      let gerufen = 0;
+      await b.route("**/*", r => {
+        const u = r.request().url();
+        if(u.startsWith("file://")) return r.continue();
+        if(/functions\/v1\/uebersetzen/.test(u)){
+          gerufen++;
+          if(!fall.antwort) return r.abort();          /* der Dienst schweigt */
+          const d = JSON.parse(r.request().postData() || "{}");
+          return r.fulfill({ status:200, contentType:"application/json",
+            body: JSON.stringify(fall.antwort(d.texte || [])) });
+        }
+        return r.abort();
+      });
+      await b.goto("file://" + ADMIN);
+      await b.waitForTimeout(800);
+      await b.evaluate(() => {
+        document.getElementById("tor").hidden = true;
+        if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); }
+      });
+      await b.waitForTimeout(300);
+
+      /* Der Uebersetzer wird in der Demo-Betriebsart absichtlich NICHT
+         gerufen — dort ist niemand angemeldet, und der Aufruf käme als
+         401 zurück. Diese Probe muss also den scharfen Weg fahren.
+
+         Der Ersatz für db ist bewusst dünn und ruft für
+         functions.invoke ein echtes fetch: So geht der Aufruf durch
+         die Route dieser Prüfung, und die URL und die Nutzlast werden
+         wirklich gemessen — nicht nur, dass eine Funktion aufgerufen
+         wurde. Was gespeichert wird, landet im Speicher, nicht in
+         einer Datenbank; darum geht es hier nicht. */
+      await b.evaluate(() => {
+        demo = false;
+        betriebId = "11111111-2222-3333-4444-555555555555";
+        const nichts = async () => ({ data:null, error:null });
+        db = {
+          functions: { invoke: async (name, o) => {
+            try{
+              const r = await fetch(SUPABASE_URL + "/functions/v1/" + name, {
+                method:"POST",
+                headers:{ "Content-Type":"application/json" },
+                body: JSON.stringify((o && o.body) || {})
+              });
+              if(!r.ok) return { data:null, error:{ message:"http " + r.status } };
+              return { data: await r.json(), error:null };
+            }catch(e){ return { data:null, error:{ message:String(e) } }; }
+          } },
+          from: () => ({
+            update: (satz) => ({ eq: async (_f, id) => {
+              const g = gerichte.find(x => x.id === id);
+              if(g) Object.assign(g, satz);
+              return { error:null };
+            } }),
+            insert: (satz) => ({ select: () => ({ single: async () => {
+              const g = Object.assign({}, satz, { id:"probe-" + gerichte.length });
+              return { data:g, error:null };
+            } }) }),
+            delete: () => ({ eq: nichts })
+          })
+        };
+      });
+
+      /* Die zwei alten Handfelder duerfen nicht mehr da sein: zwei von
+         zwoelf Sprachen sind schlimmer als keine — der Gast findet
+         dann NUR auf Englisch und Tuerkisch etwas. */
+      const weg = await b.evaluate(() => ({
+        alteFelder: !!document.getElementById("fBeschrEn") ||
+                    !!document.getElementById("fBeschrTr"),
+        stand: !!document.getElementById("uebStand"),
+        knopf: !!document.getElementById("uebJetzt")
+      }));
+      pruef(!weg.alteFelder && weg.stand && weg.knopf,
+        fall.name + " · das Blatt zeigt einen Sprachstand statt zwei Handfelder",
+        "alteFelder=" + weg.alteFelder + " stand=" + weg.stand);
+
+      /* Ein Gericht anlegen — genau so, wie der Wirt es tut. */
+      const stand = await b.evaluate(async () => {
+        blattOeffnen(null);
+        document.getElementById("fName").value   = "Probe Waffel";
+        document.getElementById("fBeschr").value = "Frisch gebacken, warm serviert";
+        document.getElementById("fKat").value    = "Waffel";
+        document.getElementById("fPreis").value  = "9.90";
+        await sichern(false);
+        await new Promise(r => setTimeout(r, 600));
+        const g = gerichte.find(x => x.name === "Probe Waffel");
+        return g ? {
+          da: true,
+          name: g.name_uebersetzungen ? Object.keys(g.name_uebersetzungen).length : 0,
+          beschr: g.uebersetzungen ? Object.keys(g.uebersetzungen).length : 0,
+          probe: g.uebersetzungen ? g.uebersetzungen.tr : null
+        } : { da:false };
+      });
+
+      /* IMMER: das Gericht ist gespeichert. Das ist die Zusage, die
+         nicht von einem fremden Dienst abhaengen darf. */
+      pruef(stand.da, fall.name + " · das Gericht ist gespeichert",
+        stand.da ? "in der Karte" : "nicht angelegt");
+
+      if(fall.antwort){
+        pruef(stand.name === SPR.length && stand.beschr === SPR.length,
+          "Übersetzer antwortet · Name und Beschreibung in " + SPR.length + " Sprachen",
+          "Name " + stand.name + ", Beschreibung " + stand.beschr);
+        pruef(stand.probe === "TR:Frisch gebacken, warm serviert",
+          "Übersetzer antwortet · die Antwort landet am richtigen Text", String(stand.probe));
+      }else{
+        pruef(stand.name === 0 && stand.beschr === 0,
+          "Übersetzer schweigt · nichts Halbes wird geschrieben",
+          "Name " + stand.name + ", Beschreibung " + stand.beschr);
+        pruef(gerufen > 0, "Übersetzer schweigt · es wurde überhaupt versucht",
+          gerufen + " Aufruf(e)");
+      }
+      pruef(kaputt.length === 0, fall.name + " · kein Fehler in der Konsole",
+        kaputt[0] || "still");
+      await bCtx.close();
+    }
+  }
+
   await browser.close();
   console.log("\n" + (fehler ? fehler + " Fehler" : "Alles sauber."));
   process.exit(fehler ? 1 : 0);
