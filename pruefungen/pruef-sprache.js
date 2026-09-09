@@ -75,6 +75,24 @@ for(const k of [...gebraucht].sort()){
   if(ohne.length) luecken.push([k, ohne]);
 }
 
+/* JEDER Eintrag muss vollständig sein, nicht nur die, die als
+   t("wörtlicher Text") im Quelltext stehen.
+
+   > Vorfall. 77 Einträge — genau die Gerichtbeschreibungen — trugen
+   > nur en, tr und ar. In acht Sprachen las der Gast die ganze Karte
+   > auf Deutsch, und diese Prüfung meldete trotzdem grün: Sie ging
+   > die t()-Aufrufe durch, und eine Beschreibung kommt nicht als
+   > Literal im Quelltext vor, sondern aus den Daten. Über etwas, das
+   > nicht dasteht, iteriert keine Schleife (CLAUDE.md §8.1b).
+
+   Deshalb hier die zweite Runde über die Einträge SELBST. Sie kostet
+   nichts und hätte die 77 vom ersten Tag an gefunden. */
+let unvollstaendig = [];
+for(const [k, zeile] of schluessel){
+  const ohne = spr.filter(c => !new RegExp("\\b" + c + "\\s*:").test(zeile));
+  if(ohne.length) unvollstaendig.push([k, ohne]);
+}
+
 /* Platzhalter müssen in jeder Sprache stehen — sonst fehlt dem Gast
    die Zahl oder der Name mitten im Satz. */
 let platzhalter = [];
@@ -102,11 +120,19 @@ if(!luecken.length) console.log("  keine");
 luecken.forEach(([k, o]) => console.log("  LÜCKE  " + o.join(",") + "  " +
   JSON.stringify(k.slice(0, 70))));
 
+console.log("\n── Eintrag unvollständig (auch ungenutzte) ──");
+if(!unvollstaendig.length) console.log("  keine");
+unvollstaendig.slice(0, 40).forEach(([k, o]) => console.log("  UNVOLL " + o.join(",") +
+  "  " + JSON.stringify(k.slice(0, 62))));
+if(unvollstaendig.length > 40)
+  console.log("  … und " + (unvollstaendig.length - 40) + " weitere");
+
 console.log("\n── Platzhalter verloren ──");
 if(!platzhalter.length) console.log("  keine");
 platzhalter.forEach(([k, c, p]) => console.log("  WEG    " + c + " " + p + "  " +
   JSON.stringify(k.slice(0, 60))));
 
-const summe = fehlt.length + luecken.length + platzhalter.length;
+const summe = fehlt.length + luecken.length + platzhalter.length +
+              unvollstaendig.length;
 console.log("\n" + (summe ? summe + " Punkt(e) zu klären." : "Alles sauber."));
 process.exit(summe ? 1 : 0);

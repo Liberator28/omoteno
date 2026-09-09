@@ -1,0 +1,294 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PRÜFUNG · Übersetzungen, gegen eine ZWEITE Quelle gehalten
+
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-uebersetzung.js
+     (braucht dist/ — vorher: node erzeuger/erzeuge-hub.js --alle)
+
+   > Vorfall, 09.09. Der Nutzer schickte fünf Bildschirmfotos: deutsche
+   > Sätze mitten in der türkischen und der arabischen Karte. Gemessen
+   > waren es zwei getrennte Fehler.
+   >
+   > 77 Einträge — genau die Gerichtbeschreibungen — trugen nur en, tr
+   > und ar; in acht Sprachen las der Gast die ganze Karte auf Deutsch.
+   > Und 25 Sätze aus KACHELARTEN, AVATAR_TEXTE und den Markenblättern
+   > hatten überhaupt keinen Eintrag.
+   >
+   > pruef-sprache.js meldete beides nicht — sie liest die
+   > t("wörtlicher Text")-Aufrufe im Quelltext. Eine Kachelunterzeile
+   > steht aber in DATEN, nicht als Literal. Über etwas, das nicht
+   > dasteht, iteriert keine Schleife (CLAUDE.md §8.1b).
+
+   Deshalb hält diese Prüfung gegen eine zweite Quelle: nicht gegen
+   die Aufrufe, sondern gegen alles, was aus DATEN auf den Schirm
+   kommt — KACHELARTEN, AVATAR_TEXTE, OPTIONEN, die Karte im Gerüst
+   und beide Markenblätter.
+
+   Und danach misst sie das GEMALTE: In jeder der zwölf Sprachen darf
+   auf dem Schirm kein deutscher Wörterbuchschlüssel stehen, für den
+   es eine Übersetzung gibt. Das ist keine Heuristik — es ist der
+   Beweis, dass t() an dieser Stelle wirklich gelaufen ist.
+   ═══════════════════════════════════════════════════════════════════ */
+const { chromium } = require("playwright");
+const fs = require("fs");
+const path = require("path");
+
+const HIER    = path.resolve(__dirname, "..");
+const VORLAGE = path.join(HIER, "vorlagen", "hub.vorlage.html");
+const HUBS    = ["chocolamour", "blend"]
+  .map(s => ({ slug:s, datei: path.join(HIER, "dist", s, "index.html") }))
+  .filter(h => fs.existsSync(h.datei));
+
+if(!fs.existsSync(VORLAGE)){
+  console.error("vorlagen/hub.vorlage.html nicht gefunden.");
+  process.exit(1);
+}
+if(!HUBS.length){
+  console.error("Kein Hub in dist/. Vorher: node erzeuger/erzeuge-hub.js --alle");
+  process.exit(1);
+}
+
+let fehler = 0;
+function pruef(gut, text, zusatz){
+  console.log((gut ? "  ok   " : "  FEHL ") + text + (zusatz ? "  → " + zusatz : ""));
+  if(!gut) fehler++;
+}
+
+const s = fs.readFileSync(VORLAGE, "utf8");
+
+/* Die Sprachen aus der Datei lesen, nicht hier zweitpflegen — und nur
+   aus dem SPRACHEN-Block, sonst trifft das Muster auch das Beispiel
+   im Kommentar darüber. */
+const sprBlock = s.slice(s.indexOf("const SPRACHEN = ["),
+                         s.indexOf("];", s.indexOf("const SPRACHEN = [")));
+const SPR = [...sprBlock.matchAll(/code:"([a-z]{2})"/g)].map(m => m[1]).filter(c => c !== "de");
+
+/* Das Wörterbuch als echtes Objekt, nicht über Muster: Die Werte
+   tragen Apostrophe, Klammern und Anführungszeichen aus zwölf
+   Sprachen, und ein regulärer Ausdruck stolpert früher oder später
+   über eines davon. */
+const iT = s.indexOf("const TEXTE = {");
+const jT = s.indexOf("\n};", iT);
+const TEXTE = new Function("return " + s.slice(iT + "const TEXTE = ".length, jT + 2))();
+
+/* ══ 1 · Ist jeder Eintrag vollständig? ═════════════════════════════ */
+console.log("\n══ Das Wörterbuch selbst ══");
+const unvoll = Object.keys(TEXTE)
+  .map(k => [k, SPR.filter(c => !TEXTE[k][c])])
+  .filter(([, o]) => o.length);
+pruef(unvoll.length === 0, "jeder Eintrag trägt alle " + SPR.length + " Sprachen",
+  unvoll.length
+    ? unvoll.length + " unvollständig, z. B. „" + unvoll[0][0].slice(0, 40) +
+      "“ ohne " + unvoll[0][1].join(",")
+    : Object.keys(TEXTE).length + " Einträge");
+
+/* ══ 2 · Die zweite Quelle ══════════════════════════════════════════
+   Eigennamen und Marken gehören ausdrücklich NICHT ins Wörterbuch:
+   „Nutella Crêpe“ heißt überall so, und ein übersetzter Markenname
+   wäre schlimmer als ein deutscher. Die Liste steht hier benannt und
+   nicht als stille Ausnahme — wer einen Namen hinzufügt, muss sich
+   dabei ansehen, was er damit ungesehen durchlässt (CLAUDE.md §8.1g). */
+/* Die Ausnahmen stehen NAMENTLICH da, nicht als Muster.
+   > Vorfall, im ersten Gegenbeweis dieser Prüfung. Hier stand ein
+   > Muster „Grossbuchstabe, bis zu vier Woerter = Eigenname". Es
+   > verschluckte „Winken ohne zu winken" — eine ganz normale
+   > Kachelunterzeile aus Blends Markenblatt. Der Gegenbeweis (Eintrag
+   > testweise entfernt) blieb gruen, und die Pruefung haette den
+   > Anlassfall, fuer den sie geschrieben wurde, nicht gefunden.
+   >
+   > Ein selbst erdachter Grenzwert ist keine Messung (CLAUDE.md
+   > §5.2a). Wer eine Ausnahme braucht, schreibt sie hin — dann sieht
+   > man beim Lesen, was sie ungesehen durchlaesst. */
+const EIGENNAMEN = new Set([
+  "Choco L'AMouR", "Blend", "Omoteno",
+  "Dubai Crêpe", "Family Love", "Negroni Sbagliato",
+  "Campari, Vermouth, Spumante.",
+  "Don't get mad, get chocolate.",     /* Claim, englisch mit Absicht */
+  "Cocktail & Gastro Lab",             /* Claim, englisch mit Absicht */
+  "ChocoLamour-Gast",                  /* WLAN-Name */
+  "erdbeere", "platte"                 /* Figurenkennung, nie sichtbar */
+]);
+const KEIN_WORT  = /^[\s\p{P}\p{S}\d]*$/u;
+
+function blockText(name, muster){
+  const a = s.indexOf(name);
+  if(a < 0) return [];
+  const b = s.indexOf("\n};", a);
+  return [...s.slice(a, b).matchAll(muster)].map(m => m[1]).filter(x => x && x.trim());
+}
+
+const ausDaten = new Map();          // Text → wo er herkommt
+const merke = (wo, t) => { if(t && t.trim() && !ausDaten.has(t)) ausDaten.set(t, wo); };
+
+blockText("const KACHELARTEN", /titel:"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("KACHELARTEN.titel", t));
+blockText("const KACHELARTEN", /unter:"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("KACHELARTEN.unter", t));
+blockText("const AVATAR_TEXTE", /:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("AVATAR_TEXTE", t));
+blockText("const OPTIONEN", /titel:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("OPTIONEN.titel", t));
+blockText("const OPTIONEN", /hinweis:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("OPTIONEN.hinweis", t));
+
+/* Die Karte im Gerüst: b: ist die Beschreibung, gruppe: die Kategorie.
+   Der Name (n:) bleibt draußen — das sind Eigennamen. */
+[...s.matchAll(/\bb:\s*"((?:[^"\\]|\\.)*)"/g)].forEach(m => merke("Karte im Gerüst", m[1]));
+[...s.matchAll(/\bgruppe:\s*"((?:[^"\\]|\\.)*)"/g)].forEach(m => merke("Kategorie", m[1]));
+
+/* Und beide Markenblätter — das ist die Stelle, an der ein ZWEITES
+   Haus einen Satz mitbringt, den es im Gerüst nie gab (§8.1a). */
+const MB_TECH = new Set(["schluessel","icon","slug","code","farbe","stil","raster","gruppe",
+  "ziel","bild","logo","schrift","version","hex","typ","art","id","klasse","form","instagram",
+  "google","maps","web","tel","mail","ssid","passwort","figur","netz","strasse","ort","name",
+  "claim","gericht","was","zeiten","links","wlan","trinkgeld"]);
+function ausMarkenblatt(o, wo){
+  if(Array.isArray(o)) return o.forEach(v => ausMarkenblatt(v, wo));
+  if(o && typeof o === "object")
+    return Object.keys(o).forEach(k => { if(!MB_TECH.has(k)) ausMarkenblatt(o[k], wo + "." + k); });
+  if(typeof o === "string") merke(wo, o);
+}
+for(const f of fs.readdirSync(path.join(HIER, "markenblaetter")).filter(f => f.endsWith(".json")))
+  ausMarkenblatt(JSON.parse(fs.readFileSync(path.join(HIER, "markenblaetter", f), "utf8")),
+                 "markenblatt/" + f.replace(".json",""));
+
+console.log("\n══ Was aus Daten kommt ══");
+const ohneEintrag = [];
+for(const [t, wo] of ausDaten){
+  if(KEIN_WORT.test(t)) continue;
+  if(/^(?:https?:|#|@|rgba?\(|\d)/.test(t)) continue;
+  if(TEXTE[t]) continue;
+  if(EIGENNAMEN.has(t)) continue;
+  ohneEintrag.push(wo + ": " + t);
+}
+pruef(ohneEintrag.length === 0,
+  ausDaten.size + " Texte aus Daten haben einen Wörterbucheintrag",
+  ohneEintrag.length ? ohneEintrag.slice(0, 4).join(" | ") : "keine Lücke");
+
+/* ══ 3 · Das Gemalte, in jeder Sprache ══════════════════════════════ */
+(async () => {
+  const browser = await chromium.launch();
+
+  for(const hub of HUBS){
+    console.log("\n══ " + hub.slug + " · jede Sprache am fertigen Bild ══");
+    const ctx = await browser.newContext({ viewport:{ width:390, height:844 } });
+    const seite = await ctx.newPage();
+
+    /* Ohne Netz nach außen — und die Karte kommt aus einer Zeile mit
+       eigenen Übersetzungen, damit auch der Weg aus der DATENBANK
+       mitgeprüft wird und nicht nur der aus dem Gerüst. */
+    await seite.route("**/*", r => r.request().url().startsWith("file://")
+      ? r.continue()
+      : r.fulfill({ status:200, contentType:"application/json", body:"[]" }));
+    await seite.route("**/rest/v1/betriebe**", r =>
+      r.fulfill({ status:200, contentType:"application/json",
+        body: JSON.stringify([{ id:"af095b14-d9ef-41f4-9b97-c4422b0de63f",
+          bestell_pause:false, bestell_pause_text:"", hub_texte:{} }]) }));
+    await seite.route("**/rest/v1/gerichte**", r =>
+      r.fulfill({ status:200, contentType:"application/json", body: JSON.stringify([{
+        id:"11111111-1111-1111-1111-111111111111", name:"Probe Crêpe",
+        kategorie:"Crêpe", beschreibung:"Kekscreme und Krümel",
+        uebersetzungen:{ tr:"SONDERWEG-TR", ru:"SONDERWEG-RU" },
+        preis:9.9, karte:"speisekarte", verfuegbar:true,
+        kat_sort:0, reihenfolge:0 }]) }));
+
+    await seite.goto("file://" + hub.datei);
+    await seite.waitForTimeout(900);
+
+    /* Der Weg aus der Datenbank: Was in der Spalte steht, muss den
+       Eintrag im Gerüst überschreiben — sonst nützt dem Wirt jede
+       Übersetzung nichts, die er selbst pflegt. */
+    const ausDB = await seite.evaluate(() => ({
+      tr: typeof TEXTE === "object" && TEXTE["Kekscreme und Krümel"]
+            ? TEXTE["Kekscreme und Krümel"].tr : null,
+      ru: typeof TEXTE === "object" && TEXTE["Kekscreme und Krümel"]
+            ? TEXTE["Kekscreme und Krümel"].ru : null
+    }));
+    pruef(ausDB.tr === "SONDERWEG-TR" && ausDB.ru === "SONDERWEG-RU",
+      "Übersetzungen aus der Datenbank landen im Wörterbuch",
+      ausDB.tr + " / " + ausDB.ru);
+
+    for(const code of ["de"].concat(SPR)){
+      const rest = await seite.evaluate(async (code) => {
+        spracheSetzen(code);
+        zeichne();
+        await new Promise(r => setTimeout(r, 60));
+        const raus = [];
+        const geh = el => {
+          for(const k of el.childNodes){
+            if(k.nodeType === 3){
+              const t = k.textContent.trim();
+              if(t) raus.push(t);
+            } else if(k.nodeType === 1){
+              /* Der Willkommensschirm wird EINMAL gezeichnet, direkt
+                 nach spracheLaden(), und danach nie wieder. Ihn hier
+                 mitzumessen hiesse, etwas zu verlangen, was der Code
+                 nie behauptet hat — er ist beim Umschalten laengst
+                 fertig. Seine eigene Frage steht als eigene Probe
+                 darunter: Kommt er beim WIEDERKEHRENDEN Gast in
+                 dessen Sprache hoch? */
+              if(k.id === "willkommen") continue;
+              const st = getComputedStyle(k);
+              if(st.display === "none" || st.visibility === "hidden") continue;
+              geh(k);
+            }
+          }
+        };
+        geh(document.body);
+        return raus;
+      }, code);
+
+      if(code === "de"){
+        pruef(rest.length > 20, "de · die Seite trägt überhaupt Text",
+          rest.length + " Textknoten");
+        continue;
+      }
+      /* Ein sichtbarer Text, der WÖRTLICH ein deutscher Schlüssel ist,
+         obwohl es dafür eine andere Übersetzung gibt, beweist: t() ist
+         hier nicht gelaufen. Wo Übersetzung und Original gleich sind
+         („Instagram“, „Nutella“), ist nichts zu beweisen. */
+      const deutschGeblieben = [...new Set(rest)].filter(t =>
+        TEXTE[t] && TEXTE[t][code] && TEXTE[t][code] !== t);
+      pruef(deutschGeblieben.length === 0,
+        code + " · kein deutscher Satz stehengeblieben",
+        deutschGeblieben.length
+          ? deutschGeblieben.slice(0, 3).map(t => "„" + t.slice(0, 34) + "“").join(", ")
+          : rest.length + " Textknoten geprüft");
+    }
+    await ctx.close();
+
+    /* ── Der Willkommensschirm beim wiederkehrenden Gast ──────────
+       Der Hub startet absichtlich immer auf Deutsch; nur wer im Menü
+       aktiv gewählt hat, bekommt seine Sprache wieder (Zeile ~6700).
+       Genau dieser Gast sieht als ERSTES den Willkommensschirm — und
+       der wird gezeichnet, nachdem spracheLaden() gelaufen ist. Ob
+       diese Reihenfolge hält, ist von aussen nicht zu sehen: Steht
+       der Schirm ein paar Zeilen hoeher, ist er deutsch und niemand
+       merkt es, weil er nach drei Sekunden verschwindet. */
+    const wCtx = await browser.newContext({ viewport:{ width:390, height:844 } });
+    await wCtx.addInitScript(() => {
+      try{ localStorage.setItem("tapto-sprache", "tr"); }catch(e){}
+    });
+    const wSeite = await wCtx.newPage();
+    await wSeite.route("**/*", r => r.request().url().startsWith("file://")
+      ? r.continue()
+      : r.fulfill({ status:200, contentType:"application/json", body:"[]" }));
+    await wSeite.goto("file://" + hub.datei);
+    await wSeite.waitForTimeout(400);
+    const wk = await wSeite.evaluate(() => {
+      const el = document.getElementById("willkommen");
+      if(!el || el.hidden) return null;
+      return { wort: (document.getElementById("wkWort")  || {}).textContent,
+               tipp: (document.getElementById("wkTipp")  || {}).textContent };
+    });
+    pruef(!!wk, "der Willkommensschirm steht beim ersten Besuch überhaupt",
+      wk ? "sichtbar" : "nicht gefunden");
+    if(wk){
+      const nochDeutsch = ["wort","tipp"].filter(f =>
+        TEXTE[wk[f]] && TEXTE[wk[f]].tr && TEXTE[wk[f]].tr !== wk[f]);
+      pruef(nochDeutsch.length === 0,
+        "und beim türkischen Gast auf Türkisch, nicht auf Deutsch",
+        nochDeutsch.length ? nochDeutsch.join(",") + " deutsch: „" + wk.wort + "“"
+                           : "„" + wk.wort + "“ · „" + wk.tipp + "“");
+    }
+    await wCtx.close();
+  }
+
+  await browser.close();
+  console.log("\n" + (fehler ? fehler + " Fehler" : "Alles sauber."));
+  process.exit(fehler ? 1 : 0);
+})();
