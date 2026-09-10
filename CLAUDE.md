@@ -832,6 +832,42 @@ Und die Prüfung dazu: `pruef-konto-start.js` erwähnte Google mit
 keiner Zeile. Eine Seite, die eine Prüfung hat, ist nicht geprüft —
 geprüft ist, was in der Prüfung **vorkommt**.
 
+### 8.1i Zwei Hälften, jede gegen eine Erfindung der anderen geprüft
+
+> **Vorfall, gemeldet vom Betreiber — nicht von einer der 30
+> Prüfungen.** Der Gast konnte nicht stornieren: „Das geht hier gerade
+> nicht." Der Hub schickte die UUID der Zeile (`zeile.id`), die
+> SQL-Funktion suchte über die Quittungsnummer
+> (`where gast_kennung = nummer`). Eine UUID ist nie eine
+> Quittungsnummer — also nie ein Treffer, also `grund:'unbekannt'`.
+>
+> **Derselbe Fehler stand ein zweites Mal**, in `bestellung_restzeit`.
+> Dort fiel er **stumm** aus: kein Text, kein Zeichen, der Countdown
+> erschien einfach nie. Niemand hat ihn gemeldet, weil nichts fehlte,
+> was jemand kannte.
+>
+> Warum keine Prüfung ihn fand: `pruef-storno.js` **stellt die
+> Serverantwort nach** (`page.route`), `pruef-rechte.sql` prüft die
+> SQL für sich allein. Beide waren grün. Jede Hälfte war gegen eine
+> **Erfindung** der anderen geprüft, und die Erfindungen waren sich
+> einig, während die Wirklichkeit es nicht war.
+
+Wo ein Wert die Grenze zwischen zwei Systemen überquert, muss die
+**Grenze selbst** gemessen werden — nicht jede Seite für sich. Am
+besten am Stück gegen ein echtes Postgres; geht das nicht, wenigstens
+die beiden Quelltexte gegeneinander (`pruef-naht.js`).
+
+Zwei Regeln, die dabei abfielen:
+
+- **Ein Fehler, der stumm ausfällt, wird nicht gemeldet.** Der Storno
+  schrie und wurde gefunden; die Restzeit schwieg und blieb monatelang
+  kaputt. Wer einen Ausfallweg baut, überlegt, ob dabei jemand etwas
+  merken kann.
+- **Derselbe Griff steht selten nur einmal da.** Der Fund im Storno war
+  erst vollständig, als `grep` dieselbe Zeile in einer zweiten
+  Migration fand. Nach jedem Befund: den Griff im ganzen Verzeichnis
+  suchen, nicht nur die gemeldete Stelle reparieren.
+
 ### 8.1d Ein Board im Vollbild ist eine eigene Umgebung
 
 > **Vorfall.** Das Küchen-Board hatte einen Vollbildknopf, das
@@ -905,7 +941,8 @@ Dazu je nach Änderung:
 | **Startkacheln, Bereiche, Markenblatt** | `pruefungen/pruef-kacheln.js` — Kreuzvergleich: kein Hub trägt fremden Text |
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
-| **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand |
+| **Storno, Restzeit, jede Bestell-Funktion** | `pruefungen/pruef-naht.js` — hält den Wert, den der Hub schickt, gegen die Spalte, über die die SQL sucht |
+| **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand, und gleicht jedes Filter-Kästchen gegen die Stellen ab, die den Wert wirklich schreiben |
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
