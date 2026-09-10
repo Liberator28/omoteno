@@ -70,6 +70,24 @@ const iT = s.indexOf("const TEXTE = {");
 const jT = s.indexOf("\n};", iT);
 const TEXTE = new Function("return " + s.slice(iT + "const TEXTE = ".length, jT + 2))();
 
+/* ══ 0 · Der Browser darf nicht ein zweites Mal übersetzen ═════════
+   > Vorfall, 10.09. Auf zwei Bildschirmfotos des Nutzers standen
+   > Sätze wie „Karamelli bis zur Kremation und Verbrennung" — weder
+   > im Wörterbuch noch in der Datenbank vorhanden (gemessen im
+   > kompletten Export der 103 Gerichte: keine Zeile enthält
+   > „Kremation"). Der Hub übersetzt sich SELBST; ohne translate="no"
+   > übersetzt Chrome/Safari eine schon-türkische Seite ein ZWEITES
+   > Mal, und genau daraus entstehen solche Sätze.
+
+   NUR die Vorlage bekommt die Ansage: Die anderen acht ausgelieferten
+   Seiten haben kein eigenes Sprachsystem (gemessen: 0 Treffer für
+   SPRACHEN/TEXTE/spracheSetzen) — dort übersetzt der Browser einmal,
+   richtig, und soll das auch dürfen. */
+console.log("══ Der Browser darf nicht doppelt übersetzen ══");
+pruef(/<html[^>]*\btranslate="no"/.test(s), 'die Vorlage trägt <html translate="no">');
+pruef(/<meta\s+name="google"\s+content="notranslate">/.test(s),
+  "und die Google-Meta-Angabe dazu");
+
 /* ══ 1 · Ist jeder Eintrag vollständig? ═════════════════════════════ */
 console.log("\n══ Das Wörterbuch selbst ══");
 const unvoll = Object.keys(TEXTE)
@@ -266,6 +284,15 @@ for(const c of Object.keys(ANREDE)){
                  darunter: Kommt er beim WIEDERKEHRENDEN Gast in
                  dessen Sprache hoch? */
               if(k.id === "willkommen") continue;
+              /* .urname zeigt den deutschen Originalnamen ABSICHTLICH
+                 neben der Übersetzung (urnameHTML(), CLAUDE.md §6.1
+                 Vorfall A) — Personal und Gast sollen dasselbe Wort
+                 vor sich haben. Deutsch bleibt hier stehen, weil es
+                 stehen soll, nicht weil t() versagt hat. Gemessen: bei
+                 „Frisch gepresster Orangensaft" hätte diese Prüfung
+                 sonst eine korrekte Übersetzung als Fehler gemeldet —
+                 ihr eigener Anlassfall, nicht der des Hubs. */
+              if(typeof k.className === "string" && k.className.split(/\s+/).includes("urname")) continue;
               const st = getComputedStyle(k);
               if(st.display === "none" || st.visibility === "hidden") continue;
               geh(k);
