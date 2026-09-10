@@ -1295,6 +1295,14 @@ textarea{resize:vertical;min-height:66px}
 .torhilfe{font-size:13.5px;color:var(--gedaempft);margin:0 0 24px;line-height:1.55}
 .torfehler{font-size:13.5px;color:var(--warn);margin:14px 0 0;line-height:1.5}
 .torfehler[hidden]{display:none}
+.torlink{
+  display:block;width:100%;margin:14px 0 0;border:0;background:transparent;
+  color:var(--gedaempft);font-family:inherit;font-size:13.5px;
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer;
+  text-align:center;padding:6px 2px;
+}
+.torgesperrt{margin-top:16px;padding-top:16px;border-top:1px solid var(--linie)}
+.torgesperrt .torfehler{margin-top:0}
 
 /* Offline */
 .tonleiste{display:flex;align-items:center;gap:12px;flex-wrap:wrap;
@@ -1989,6 +1997,19 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <input type="password" id="lPass" autocomplete="current-password"></label>
     <button class="knopf" id="lKnopf">Anmelden</button>
     <p class="torfehler" id="lFehler" hidden></p>
+    <button type="button" class="torlink" id="lVergessen">Passwort vergessen?</button>
+    <p class="torhilfe" id="lVergessenStand" style="margin:6px 0 0;text-align:center" hidden></p>
+
+    <!-- Nach drei Fehlversuchen steht hier statt des Formulars nur
+         noch der Weg zur E-Mail-Bestätigung — kein weiterer
+         Rateversuch wird mehr beantwortet (admin_anmelden() lehnt
+         auch ein richtiges Passwort ab, solange gesperrt=true). -->
+    <div class="torgesperrt" id="lGesperrt" hidden>
+      <p class="torfehler" id="lGesperrtText">Zu viele falsche Versuche. Der Zugang ist
+        gesperrt, bis die E-Mail bestätigt wurde.</p>
+      <button type="button" class="knopf" id="lGesperrtSenden">Link zum Zurücksetzen schicken</button>
+      <p class="torhilfe" id="lGesperrtStand" style="margin-top:10px"></p>
+    </div>
   </div>
 </div>
 
@@ -3892,23 +3913,75 @@ $("#wechseln").onclick = () => {
 function torZeigen(fehler){
   $("#tor").hidden = false;
   $("#statusText").textContent = "nicht angemeldet";
+  $("#lGesperrt").hidden = true;
   const f = $("#lFehler");
   f.hidden = !fehler;
   if(fehler) f.textContent = fehler;
   setTimeout(()=> $("#lMail").focus(), 150);
 }
 
-async function anmelden(){
-  const mail = $("#lMail").value.trim();
-  const pass = $("#lPass").value;
-  if(!mail || !pass) return torZeigen("Bitte E-Mail und Passwort eintragen.");
+/* Nach drei Fehlversuchen bleibt der Zugang gesperrt, bis eine
+   E-Mail bestätigt wurde — kein Countdown, kein zweiter Weg daran
+   vorbei (admin_anmelden() in der Datenbank lehnt auch ein
+   richtiges Passwort ab, solange gesperrt=true). Hier steht nur
+   noch der Weg zur Bestätigung, kein weiterer Rateversuch. */
+function gesperrtZeigen(mail, nachricht){
+  $("#tor").hidden = false;
+  $("#statusText").textContent = "gesperrt";
+  $("#lFehler").hidden = true;
+  $("#lGesperrt").hidden = false;
+  /* Die genaue Meldung kommt von admin_anmelden() — sie unterscheidet
+     "das war gerade der dritte Fehlversuch" von "weiterhin gesperrt".
+     Ein fest eingetragener Text hätte diesen Unterschied nie gezeigt. */
+  $("#lGesperrtText").textContent = nachricht ||
+    "Zu viele falsche Versuche. Der Zugang ist gesperrt, bis die E-Mail bestätigt wurde.";
+  $("#lGesperrtStand").textContent = "";
+  $("#lGesperrtSenden").dataset.mail = mail;
+  $("#lGesperrtSenden").disabled = false;
+  $("#lGesperrtSenden").textContent = "Link zum Zurücksetzen schicken";
+}
 
-  const k = $("#lKnopf");
-  k.textContent = "Moment…"; k.disabled = true;
+/* Supabase antwortet auf Englisch, der Wirt nicht — dieselbe
+   Übersetzung wie im Gastkonto (konto.html), hier auf den Teil
+   beschränkt, den der Reset-Versand tatsächlich werfen kann. */
+function resetFehlertext(e){
+  const t = String((e && (e.message || e.error_description)) || e || "");
+  if(/rate limit|Too many/i.test(t)) return "Zu viele Versuche. Bitte einen Moment warten.";
+  if(/Failed to fetch|NetworkError/i.test(t)) return "Keine Verbindung. Bitte Netz prüfen.";
+  return t || "Das hat nicht geklappt.";
+}
 
+async function resetSchicken(mail, knopf, standEl){
+  if(!mail){
+    if(standEl) standEl.textContent = "Trag zuerst die E-Mail-Adresse oben ein.";
+    return;
+  }
+  /* Der ursprüngliche Text kommt zurück, egal welcher Knopf das war
+     ("Passwort vergessen?" oder "Link zum Zurücksetzen schicken") —
+     ein fest eingetragener Text hätte den jeweils anderen falsch
+     überschrieben. */
+  const urtext = knopf ? knopf.textContent : "";
+  if(knopf){ knopf.disabled = true; knopf.textContent = "Wird geschickt…"; }
+  try{
+    const {error} = await db.auth.resetPasswordForEmail(mail, {redirectTo: location.href});
+    if(error) throw error;
+    if(standEl) standEl.textContent = "Link geschickt. Er gilt eine Stunde — danach neu anfragen.";
+  }catch(e){
+    if(standEl) standEl.textContent = resetFehlertext(e);
+  }finally{
+    if(knopf){ knopf.disabled = false; knopf.textContent = urtext; }
+  }
+}
+
+/* Der eigentliche Supabase-Login, erst NACHDEM admin_anmelden() die
+   Sperre geprüft hat (oder — als Rückfall — wenn diese Prüfung
+   selbst nicht erreichbar war, siehe unten). Diese Abfolge bleibt
+   unverändert zum bisherigen Verhalten: dieselben Schritte danach,
+   dieselbe Fehlermeldung, falls Supabase selbst ablehnt. */
+async function anmeldenAbschliessen(mail, pass, k){
   const {error} = await db.auth.signInWithPassword({email: mail, password: pass});
 
-  k.textContent = "Anmelden"; k.disabled = false;
+  if(k){ k.textContent = "Anmelden"; k.disabled = false; }
 
   if(error){
     return torZeigen(
@@ -3935,6 +4008,55 @@ async function anmelden(){
     console.error(e);
     torZeigen("Angemeldet, aber kein Betrieb zugeordnet. In Supabase muss eine Zeile in betrieb_mitglieder stehen.");
   }
+}
+
+/* Drei Fehlversuche sperren den Zugang, bis die E-Mail bestätigt
+   wurde — geprüft in admin_anmelden() (SECURITY DEFINER, prüft das
+   Passwort selbst per pgcrypto GEGEN denselben Hash, den Supabase
+   auch benutzt, bevor der echte Login überhaupt versucht wird).
+
+   Die Migration dafür heißt migration-admin-login-schutz.sql. Ist
+   sie noch nicht eingespielt, wirft der Aufruf einen Fehler ("could
+   not find function") — und GENAU DANN wird ganz bewusst NICHT
+   gesperrt, sondern der bisherige, ungeschützte Weg gefahren
+   (anmeldenAbschliessen direkt). Ein fehlender Baustein darf niemals
+   jeden aussperren, der eigentlich rein dürfte — das wäre der
+   häufige Fall, der für den seltenen geopfert wird (CLAUDE.md §7). */
+async function anmelden(){
+  const mail = $("#lMail").value.trim();
+  const pass = $("#lPass").value;
+  if(!mail || !pass) return torZeigen("Bitte E-Mail und Passwort eintragen.");
+
+  const k = $("#lKnopf");
+  k.textContent = "Moment…"; k.disabled = true;
+
+  let pruefung = null, schutzErreichbar = true;
+  try{
+    const {data, error} = await db.rpc("admin_anmelden", {p_email: mail, p_passwort: pass});
+    if(error) throw error;
+    pruefung = data;
+  }catch(e){
+    schutzErreichbar = false;
+  }
+
+  if(!schutzErreichbar){
+    return anmeldenAbschliessen(mail, pass, k);
+  }
+
+  if(!pruefung || pruefung.erlaubt !== true){
+    k.textContent = "Anmelden"; k.disabled = false;
+    if(pruefung && pruefung.gesperrt) return gesperrtZeigen(mail, pruefung.nachricht);
+    let text = (pruefung && pruefung.nachricht) || "E-Mail oder Passwort stimmt nicht.";
+    /* Zeigt, wie viele Versuche vor der Sperre noch bleiben — sonst
+       kommt die Sperre beim dritten Mal wie aus dem Nichts. */
+    if(pruefung && Number.isInteger(pruefung.verbleibend))
+      text += pruefung.verbleibend === 1
+        ? " Noch ein Versuch, dann ist der Zugang gesperrt."
+        : " Noch " + pruefung.verbleibend + " Versuche.";
+    return torZeigen(text);
+  }
+
+  await anmeldenAbschliessen(mail, pass, k);
 }
 
 /* ─── Netzstatus ──────────────────────────────────────────── */
@@ -5957,6 +6079,13 @@ $("#karteSuche").oninput = e => { suchtext = e.target.value.trim(); zeichneKarte
 
 $("#lKnopf").onclick = anmelden;
 $("#lPass").onkeydown = e => { if(e.key === "Enter") anmelden(); };
+$("#lVergessen").onclick = () => {
+  $("#lVergessenStand").hidden = false;
+  resetSchicken($("#lMail").value.trim(), $("#lVergessen"), $("#lVergessenStand"));
+};
+$("#lGesperrtSenden").onclick = e =>
+  resetSchicken(e.currentTarget.dataset.mail || $("#lMail").value.trim(),
+                e.currentTarget, $("#lGesperrtStand"));
 $("#lMail").onkeydown = e => { if(e.key === "Enter") $("#lPass").focus(); };
 
 $("#abmelden").onclick = async () => {

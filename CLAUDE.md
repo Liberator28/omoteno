@@ -918,6 +918,7 @@ Dazu je nach Änderung:
 | **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung |
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
+| **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
 
 Und danach, immer:
 
