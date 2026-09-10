@@ -778,6 +778,20 @@ kann, muss die Voraussetzung selbst prüfen — und die Folgeproben daran
 hängen.** Sonst meldet die Prüfung nicht „es funktioniert", sondern
 „ich habe nichts gefunden", und das klingt gleich.
 
+> **Vorfall D, und er stand in der Prüfung selbst.** `pruef-uebersetzung.js`
+> hält gegen eine zweite Quelle: Jeder Satz, der aus Daten auf den
+> Schirm kommt, braucht einen Wörterbucheintrag. Eigennamen wie
+> „Dubai Crêpe" dürfen keinen haben — dafür stand dort ein **Muster**:
+> Großbuchstabe, bis zu vier Wörter. Es verschluckte
+> „Winken ohne zu winken", eine ganz gewöhnliche Kachelunterzeile.
+> Der Gegenbeweis — Eintrag testweise entfernt — blieb **grün**. Die
+> Prüfung hätte genau den Fall, für den sie geschrieben wurde, nicht
+> gefunden.
+>
+> Ersetzt durch eine **namentliche Liste**. Wer eine Ausnahme braucht,
+> schreibt sie hin; dann sieht man beim Lesen, was sie durchlässt. Ein
+> Muster versteckt das.
+
 Dazu die verwandte Falle bei Grenzwerten: **Eine Grenze, die man sich
 ausdenkt, ist keine Messung.** Die harte Länge für den Satz des
 Begleiters stand in meinem Entwurf auf 120 Zeichen — gemessen hatte ich
@@ -880,6 +894,7 @@ Dazu je nach Änderung:
 | Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
 | Figur des Hauses, Requisiten, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
+| **Irgendein Text, den ein Gast liest** | `pruefungen/pruef-uebersetzung.js` (braucht `dist/`) — zweite Quelle, jede Sprache am gemalten Bild, Anrede, und der Weg aus dem Board |
 | Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |
 | Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |
 | **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
@@ -903,6 +918,7 @@ Dazu je nach Änderung:
 | **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung |
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
+| **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
 
 Und danach, immer:
 
