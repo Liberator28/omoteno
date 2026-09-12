@@ -265,12 +265,29 @@ async function hubAuf(br, haus, liefer, adresszusatz){
       "Waffel": { n:"Waffel", m:2, p:"9,00" }
     }));
   }, haus);
+  /* „@OHNE@" heisst: ohne ?modus=liefern aufrufen. Ein eigener
+     Schalter statt einer zweiten, fast gleichen Funktion — zwei
+     Kopien wuerden auseinanderlaufen. */
+  const ohne = String(adresszusatz || "").indexOf("@OHNE@") === 0;
+  const rest = ohne ? String(adresszusatz).slice(6) : (adresszusatz || "");
   await p.goto("file://" + path.join(OBEN, "dist", haus, "index.html") +
-               "?modus=liefern" + (adresszusatz || ""));
+               (ohne ? (rest || "") : "?modus=liefern" + rest));
   await p.waitForTimeout(1500);
   await p.evaluate(() => { location.hash = "#/auswahl"; });
   await p.waitForTimeout(800);
   return { p, ctx, kons, gesendet, echt: () => echt(kons) };
+}
+
+/* Wie hubAuf, nur ohne „?modus=liefern" — fuer den Umschalter, der
+   ja genau den Weg HINEIN pruefen soll. */
+async function hubOhneModus(br, haus, liefer, suffix){
+  const h = await hubAuf(br, haus, liefer, "@OHNE@" + (suffix || ""));
+  /* hubAuf landet auf der Auswahl — dort gehoert das Band nicht hin,
+     es steht auf der STARTSEITE. Mein erster Anlauf suchte es auf
+     der falschen Seite und meldete „kein Band", wo eines war. */
+  await h.p.evaluate(() => { location.hash = "#/"; });
+  await h.p.waitForTimeout(700);
+  return h;
 }
 
 async function hubOhneMigration(br){
@@ -344,6 +361,227 @@ async function hubImGebiet(br){
      s ? String(s.p_summe) : "—");
   ok(h.echt().length === 0, "keine Fehler auf dem Weg", h.echt()[0] || "still");
   await h.ctx.close();
+}
+
+async function hubUmschalter(br){
+  console.log("\n══ Der sichtbare Umschalter ══");
+
+  /* 1 · Haus liefert, Gast nicht am Tisch → Band da, fuehrt HINEIN. */
+  const a = await hubOhneModus(br, "chocolamour", LIEFER_AN);
+  const s1 = await a.p.evaluate(() => {
+    const b = document.querySelector(".lieferband");
+    return b ? { da:true, ziel:b.getAttribute("href"),
+                 text:b.textContent.replace(/\s+/g," ").trim(),
+                 an:b.classList.contains("an"),
+                 hoch:Math.round(b.getBoundingClientRect().height) }
+             : { da:false };
+  });
+  ok(s1.da, "ohne Liefermodus steht das Band auf der Startseite");
+  ok(!!s1.ziel && /modus=liefern/.test(s1.ziel),
+     "und es fuehrt in den Liefermodus", s1.ziel || "kein Ziel");
+  ok(!s1.an, "es sieht dabei nicht aus wie der eingeschaltete Zustand");
+  ok(s1.hoch >= 44, "und man kann es antippen", s1.hoch + " px hoch");
+  await a.ctx.close();
+
+  /* 2 · Im Liefermodus fuehrt dasselbe Band ZURUECK. Ein Umschalter,
+         der nur in eine Richtung schaltet, ist eine Sackgasse. */
+  const b2 = await hubAuf(br, "chocolamour", LIEFER_AN);
+  const s2 = await b2.p.evaluate(() => {
+    location.hash = "#/";
+    return null;
+  });
+  await b2.p.waitForTimeout(700);
+  const s2b = await b2.p.evaluate(() => {
+    const b = document.querySelector(".lieferband");
+    return b ? { da:true, ziel:b.getAttribute("href"),
+                 an:b.classList.contains("an") } : { da:false };
+  });
+  ok(s2b.da && s2b.an, "im Liefermodus traegt das Band den eingeschalteten Zustand");
+  ok(s2b.da && !/modus=liefern/.test(s2b.ziel || "x"),
+     "und fuehrt zurueck ins Lokal", s2b.ziel || "kein Ziel");
+  await b2.ctx.close();
+
+  /* 3 · Am Tisch KEIN Band. Wer am Untersetzer sitzt, soll sich
+         nicht zu sich nach Hause liefern lassen. */
+  const c = await hubOhneModus(br, "chocolamour", LIEFER_AN, "?t=7");
+  ok(!(await c.p.evaluate(() => !!document.querySelector(".lieferband"))),
+     "am Tisch steht kein Lieferband");
+  await c.ctx.close();
+
+  /* 4 · Haus liefert nicht → kein Band. Der haeufigste Fall von
+         allen: Die meisten Haeuser liefern nicht. */
+  const d = await hubOhneModus(br, "chocolamour", undefined);
+  ok(!(await d.p.evaluate(() => !!document.querySelector(".lieferband"))),
+     "ohne Liefereinstellung steht auch kein Band da");
+  await d.ctx.close();
+
+  /* 5 · Ausserhalb der Lieferzeit steht das Band TROTZDEM — mit den
+         Uhrzeiten. Ein Band, das verschwindet, laesst den Gast
+         raetseln, ob es je eines gab. */
+  const jetzt = new Date();
+  const hh = d2 => String(d2.getHours()).padStart(2,"0") + ":" +
+                   String(d2.getMinutes()).padStart(2,"0");
+  const zu = Object.assign({}, LIEFER_AN, { zeiten: {
+    von: hh(new Date(jetzt.getTime() + 2*3600*1000)),
+    bis: hh(new Date(jetzt.getTime() + 4*3600*1000)), tage: [] } });
+  const e = await hubOhneModus(br, "chocolamour", zu);
+  const s5 = await e.p.evaluate(() => {
+    const b = document.querySelector(".lieferband");
+    return { da: !!b, text: b ? b.textContent : "", jetzt: liefertGerade() };
+  });
+  ok(!s5.jetzt, "Voraussetzung: das Fenster ist gerade zu");
+  ok(s5.da, "das Band steht auch ausserhalb der Lieferzeit da");
+  ok(new RegExp(zu.zeiten.von).test(s5.text),
+     "und nennt die Uhrzeiten statt einzuladen",
+     s5.text.replace(/\s+/g," ").trim().slice(0, 54));
+  await e.ctx.close();
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   KONTRAST DES BANDES · beide Häuser, beide Phasen, beide Zustände
+
+   VORFALL, und er war meiner. Das Band trug im eingeschalteten
+   Zustand „color:var(--gold)" auf „background:var(--gold-flaeche)" —
+   Gold auf goldgetönter Fläche. Gemessen: Choco 2,02:1, Blend
+   1,00:1. Bei Blend war der Titel buchstäblich unsichtbar; dessen
+   Hauptfarbe ist ein helles Grün, aus dem --gold-flaeche gemischt
+   wird. Genau §5.1, und zehn Zeilen darüber stand mein eigener
+   Kommentar, der davor warnt.
+
+   Warum pruef-lesbarkeit.js es NICHT fand: Sie fährt über die Seite,
+   wie sie ohne Datenbank aussieht — und ohne Datenbank ist
+   LIEFER.an false, also ist das Band gar nicht da. Eine Prüfung war
+   grün, weil der Gegenstand fehlte (§8.1g). Deshalb wird hier
+   gemessen, wo das Band wirklich steht.
+   ══════════════════════════════════════════════════════════════════ */
+const lum = c => { const [r,g,b] = c.map(v => { v /= 255;
+    return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); });
+  return 0.2126*r + 0.7152*g + 0.0722*b; };
+const zuRGB = t => (String(t).match(/\d+/g) || [0,0,0]).slice(0,3).map(Number);
+const kontrast = (a, b) => {
+  const l1 = lum(zuRGB(a)), l2 = lum(zuRGB(b));
+  return (Math.max(l1,l2) + 0.05) / (Math.min(l1,l2) + 0.05);
+};
+
+async function bandKontrast(br){
+  console.log("\n══ Kontrast des Bandes ══");
+  for(const haus of ["chocolamour", "blend"]){
+    for(const phase of ["tag", "abend"]){
+      for(const modus of ["aus", "an"]){
+        const h = modus === "an"
+          ? await hubAuf(br, haus, LIEFER_AN)
+          : await hubOhneModus(br, haus, LIEFER_AN);
+        await h.p.evaluate(ph => {
+          document.body.dataset.phase = ph;
+          document.documentElement.dataset.phase = ph;
+          if(typeof paletteAnwenden === "function") paletteAnwenden(ph);
+          location.hash = "#/";
+        }, phase);
+        await h.p.waitForTimeout(600);
+        const m = await h.p.evaluate(() => {
+          const b = document.querySelector(".lieferband");
+          if(!b) return null;
+          const g = el => getComputedStyle(el);
+          /* Der wirklich GEMALTE Grund: durchsichtige Flächen
+             durchlaufen, bis eine Farbe kommt. Wer am Element misst,
+             bekommt „rgba(0,0,0,0)" und rechnet gegen Schwarz —
+             dieselbe Lehre wie §5.2b. */
+          const grund = el => { let n = el;
+            while(n){ const c = g(n).backgroundColor;
+              if(c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c)) return c;
+              n = n.parentElement; }
+            return "rgb(255, 255, 255)"; };
+          return { band: grund(b),
+                   titel: g(b.querySelector(".lbt b")).color,
+                   unter: g(b.querySelector(".lbt span")).color };
+        });
+        await h.ctx.close();
+        const wo = haus + " · " + phase + " · Modus " + modus;
+        if(!m){ ok(false, wo, "kein Band gefunden"); continue; }
+        const kt = kontrast(m.titel, m.band), ku = kontrast(m.unter, m.band);
+        ok(kt >= 4.5 && ku >= 4.5, wo,
+           "Titel " + kt.toFixed(2) + ":1, Unterzeile " + ku.toFixed(2) + ":1");
+      }
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   DIE ADRESSE · /liefern
+   ══════════════════════════════════════════════════════════════════ */
+function adresse(){
+  console.log("\n══ Die Adresse /liefern ══");
+  const um = fs.readFileSync(path.join(OBEN, "auslieferung", "_redirects"), "utf8");
+  const zeilen = um.split("\n").filter(z => z.trim() && !z.trim().startsWith("#"));
+
+  /* ZWEITE QUELLE (§8.1b): nicht die Regeln zaehlen, sondern die
+     erzeugten Haeuser. Jeder Ordner unter dist/ ist ein Kunde, und
+     jeder Kunde braucht einen Liefer-Link. Eine Schleife ueber das
+     Vorhandene haette „Zeile vergessen" nie gefunden. */
+  const haeuser = fs.readdirSync(path.join(OBEN, "dist"))
+    .filter(d => fs.existsSync(path.join(OBEN, "dist", d, "index.html")));
+
+  /* Erst der Weg ohne eigene Adresse: eine Regel fuer alle. */
+  ok(zeilen.some(z => /^\/h\/:slug\/liefern/.test(z.trim())),
+     "Haeuser ohne eigene Adresse haben /h/<slug>/liefern");
+
+  /* Und jetzt der Punkt, an dem mein erster Versuch VERSAGT hat:
+     Die Probe „hat irgendeine Regel" blieb gruen, als ich Blends
+     Zeile testweise loeschte — die allgemeine /h/:slug-Regel deckte
+     sie ab. Sie deckt aber nur omoteno.de ab, NICHT die eigene
+     Adresse des Kunden.
+
+     Dort schluckt die Hub-Regel („…/* → /h/<slug>/:splat 200!") den
+     Pfad /liefern und liefert /h/<slug>/liefern aus — es gibt die
+     Datei nicht. Genau der Vorfall aus §8.1b, nur eine Ebene
+     weiter: Es fehlt eine ZEILE, und ueber etwas, das nicht
+     dasteht, iteriert keine Schleife.
+
+     Zweite Quelle sind deshalb die HUB-REGELN: Wer eine eigene
+     Adresse hat, braucht dort auch einen Liefer-Link. */
+  const eigene = [];
+  zeilen.forEach(z => {
+    const m = z.match(/^(https:\/\/[^\s\/]+)\/\*\s+\/h\/([a-z0-9-]+)\//);
+    if(m) eigene.push({ domain: m[1], haus: m[2] });
+  });
+  ok(eigene.length > 0, "die Kundenadressen sind lesbar",
+     eigene.map(e => e.haus).join(", ") || "keine gefunden");
+
+  eigene.forEach(e => {
+    const hat = zeilen.some(z => z.startsWith(e.domain + "/liefern"));
+    ok(hat, "„" + e.haus + "“ hat /liefern auf seiner EIGENEN Adresse",
+       hat ? e.domain + "/liefern" : "fehlt — die Hub-Regel schluckt es");
+  });
+
+  /* Und jedes erzeugte Haus muss ueberhaupt irgendwie erreichbar
+     sein — entweder ueber eine eigene Adresse oder ueber /h/. */
+  haeuser.forEach(h => {
+    const erreichbar = eigene.some(e => e.haus === h) ||
+      zeilen.some(z => /^\/h\/:slug/.test(z.trim()));
+    ok(erreichbar, "„" + h + "“ ist ueberhaupt erreichbar");
+  });
+
+  /* Und die Regel muss den Modus wirklich mitgeben — ein /liefern,
+     das ohne ?modus=liefern landet, zeigt die gewoehnliche
+     Tischfrage, und niemand merkt es. */
+  const lz = zeilen.filter(z => /\/liefern/.test(z));
+  ok(lz.length > 0 && lz.every(z => /modus=liefern/.test(z)),
+     "jede Liefer-Regel gibt ?modus=liefern mit", lz.length + " Regeln");
+
+  /* 301 und nicht 200: Bei einem Umschreiben bleibt die Adresse
+     stehen, der Hub sieht die Zielabfrage NIE, und BILDER.basis ist
+     relativ — die Karte kaeme ohne Bilder. */
+  ok(lz.every(z => /\b301/.test(z)),
+     "und springt sichtbar (301), statt still umzuschreiben (200)",
+     lz.every(z => /\b301/.test(z)) ? "alle 301" : "ein 200 dabei");
+
+  /* Reihenfolge: Die Liefer-Regel muss VOR der Hub-Regel desselben
+     Hauses stehen, sonst schluckt die den Pfad. */
+  const iLief = zeilen.findIndex(z => /\/liefern/.test(z));
+  const iHub  = zeilen.findIndex(z => /200!/.test(z) && /\/h\//.test(z));
+  ok(iLief > -1 && iHub > -1 && iLief < iHub,
+     "die Liefer-Regel steht vor der Hub-Regel",
+     "Liefern Zeile " + iLief + ", Hub Zeile " + iHub);
 }
 
 async function hubZu(br){
@@ -436,12 +674,15 @@ function naht(){
     }
   }
   naht();
+  adresse();
   const br = await chromium.launch();
   await board(br);
   await hubOhneMigration(br);
   await hubImGebiet(br);
   await hubZu(br);
   await hubAmTisch(br);
+  await hubUmschalter(br);
+  await bandKontrast(br);
 
   /* Zwei Häuser, nicht eines. Ein Test mit einem Kunden sieht jede
      eingebrannte Fremdangabe für richtig an (§8.1a). */
