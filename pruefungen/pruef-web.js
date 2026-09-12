@@ -513,6 +513,103 @@ async function ohneNetz(seite){
     balken.vorher.tf + " → " + balken.tf + ", Breite " + balken.w);
   await aCtx.close();
 
+  /* ═══ DER DURCHGANG · zwei Baeume treten zur Seite ═══════════
+     Vor dem Abschnitt, der erklaert, was Omotenashi heisst, geht der
+     Leser durch zwei Baumumrisse hindurch. Drei Fragen, und die
+     erste ist mit Abstand die wichtigste.                          */
+  console.log("\n── Der Durchgang vor „Woher der Name kommt“ ──");
+  const dCtx = await browser.newContext({ viewport:{width:1280,height:900} });
+  const d = await dCtx.newPage();
+  const dKons = [];
+  d.on("pageerror", e => dKons.push(String(e).slice(0,130)));
+  await ohneNetz(d);
+  await d.goto(ADRESSE);
+  await d.waitForTimeout(700);
+  /* html{scroll-behavior:smooth} verfaelscht JEDE Messung am Scroll:
+     scrollTo() laeuft dann als Animation, und wer danach misst,
+     trifft die Mitte der Bewegung. Meine ersten vier Proben waren
+     genau daran rot — sie meldeten "--auf 0" an einer Stelle, an der
+     die Seite noch gar nicht angekommen war. */
+  await d.addStyleTag({content:"html,body{scroll-behavior:auto!important}"});
+
+  const dY = await d.evaluate(() => window.scrollY +
+    document.getElementById("durchgangfeld").getBoundingClientRect().top);
+  const dStand = () => d.evaluate(() => {
+    const f = document.getElementById("durchgangfeld");
+    const l = document.getElementById("baumLinks");
+    const t = f && f.querySelector(".innen");
+    const h = f && f.querySelector("h2");
+    const g = el => getComputedStyle(el);
+    return {
+      auf:  g(f).getPropertyValue("--auf").trim(),
+      x:    l ? new DOMMatrixReadOnly(g(l).transform).m41 : null,
+      deck: l ? parseFloat(g(l).opacity) : null,
+      textDeck: t ? parseFloat(g(t).opacity) : null,
+      textHoch: t ? Math.round(t.getBoundingClientRect().height) : 0,
+      obenauf: (() => { if(!h) return "keine h2";
+        const r = h.getBoundingClientRect();
+        const e = document.elementFromPoint(r.left + 8, r.top + r.height/2);
+        return e ? (e === h || h.contains(e) ? "die Überschrift"
+                   : (e.id || e.className || e.tagName)) : "ausserhalb"; })()
+    };
+  });
+  const dZu = async off => { await d.evaluate(v => window.scrollTo(0, v), dY + off);
+                             await d.waitForTimeout(280); };
+
+  /* 1 · DER TEXT HAENGT AN NICHTS. Das ist der Punkt, an dem so
+     etwas kaputtgeht: ein Abschnitt, der auf einen Beobachter
+     wartet, der bei abgeschaltetem Skript nie kommt. Der Abschnitt
+     erklaert das Wort im Firmennamen — er darf nie verdeckt sein. */
+  await dZu(-300);
+  const dVor = await dStand();
+  pruef(dVor.textDeck === 1, "der Text steht VOR dem Durchgang schon voll da",
+    "opacity " + dVor.textDeck);
+  pruef(dVor.textHoch > 200, "und hat seine volle Höhe", dVor.textHoch + " px");
+  pruef(dVor.obenauf === "die Überschrift",
+    "kein Baum liegt über der Überschrift", dVor.obenauf);
+
+  /* 2 · Und sie gehen wirklich auf — gemessen am transform, nicht an
+     der Zahl. Die Zahl kann sich aendern, waehrend das Bild steht:
+     Genau das war hier der Fall, weil --auf am Baum deklariert war
+     und den geerbten Wert beschattete (§3.2 in Variablenform). */
+  await dZu(-640);
+  const dA = await dStand();
+  await dZu(-40);
+  const dB = await dStand();
+  pruef(parseFloat(dA.auf) < 0.25, "davor stehen sie zu", "--auf " + dA.auf);
+  pruef(parseFloat(dB.auf) > 0.85, "danach sind sie offen", "--auf " + dB.auf);
+  pruef(Math.abs(dB.x) > Math.abs(dA.x) + 10,
+    "und das Bild geht mit — nicht nur die Zahl",
+    Math.round(dA.x) + " px → " + Math.round(dB.x) + " px");
+  pruef(dB.deck < dA.deck, "beim Öffnen treten sie zurück",
+    dA.deck.toFixed(2) + " → " + dB.deck.toFixed(2));
+
+  /* 3 · Zurueckgescrollt gehen sie wieder zu. Sonst waere es eine
+     Animation mit fester Dauer statt einer am Scrollen — und der
+     Leser bestimmt hier das Tempo. */
+  await dZu(-640);
+  pruef(parseFloat((await dStand()).auf) < 0.25,
+    "zurückgescrollt gehen sie wieder zu");
+  pruef(dKons.length === 0, "keine Ausnahme dabei", dKons[0] || "still");
+  await dCtx.close();
+
+  /* 4 · Ohne Bewegung: offen, fertig, nichts wartet (§7). */
+  const rCtx = await browser.newContext({ viewport:{width:1280,height:900},
+                                          reducedMotion:"reduce" });
+  const r = await rCtx.newPage();
+  await ohneNetz(r);
+  await r.goto(ADRESSE);
+  await r.waitForTimeout(600);
+  const rStand = await r.evaluate(() => {
+    const f = document.getElementById("durchgangfeld");
+    return { auf: getComputedStyle(f).getPropertyValue("--auf").trim(),
+             textDeck: parseFloat(getComputedStyle(f.querySelector(".innen")).opacity) };
+  });
+  pruef(rStand.auf === "1",
+    "ohne Bewegung stehen die Bäume sofort offen", "--auf " + rStand.auf);
+  pruef(rStand.textDeck === 1, "und der Text ist voll da");
+  await rCtx.close();
+
   await browser.close();
   console.log("\n" + (fehler ? fehler + " Fehler" : "Alles sauber."));
   process.exit(fehler ? 1 : 0);

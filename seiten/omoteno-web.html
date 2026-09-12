@@ -917,6 +917,78 @@ p:last-child{margin-bottom:0}
 .ablauf .rufreihe{margin-top:clamp(30px,4vw,44px)}
 
 /* ═══ 5b · WOHER DER NAME KOMMT ═══════════════════════════════ */
+/* ═══ 5b · DER DURCHGANG ═══════════════════════════════════════
+   Vor dem Abschnitt, der erklaert, was Omotenashi heisst, geht der
+   Leser durch zwei Baeume hindurch. Sie stehen links und rechts,
+   nur als Umriss, und geben beim Weiterscrollen den Blick frei.
+
+   WARUM DAS UEBERHAUPT DA IST, und nicht als Schmuck: Der Abschnitt
+   dahinter ist der einzige, der das Versprechen im Namen erklaert.
+   Ein Durchgang davor macht aus dem Scrollen einen kurzen Weg statt
+   eines Sprungs — und das Gefuehl, um das es geht, ist Ruhe und
+   Verlaesslichkeit, nicht Ueberraschung. Deshalb oeffnen die Baeume
+   langsam und kippen nicht auf.
+
+   Nur transform und opacity — beides auf der Grafikkarte. Ein
+   filter oder eine Breitenaenderung wuerde hier bei jedem Bild neu
+   rechnen lassen, und zwar auf einer grossen Flaeche.
+
+   UND DAS WICHTIGSTE: Der TEXT haengt an nichts davon. Er steht von
+   der ersten Sekunde an voll da. Die Baeume sind eine Schicht
+   darueber, aria-hidden, ohne Zeigerereignisse. Wer kein JavaScript
+   hat, wer reduzierte Bewegung eingestellt hat, wer die Seite
+   ausdruckt: sieht den Abschnitt vollstaendig. Alles andere waere
+   dieselbe Falle wie ein Element, das auf opacity:0 auf einen
+   Beobachter wartet, der nie kommt. */
+/* --auf gehoert AN DEN ABSCHNITT, nicht an den Baum.
+
+   VORFALL, und es ist §3.2 in Variablenform: Ich hatte --auf:1 auf
+   .baum deklariert, als Startwert. Eine Custom Property am Element
+   schlaegt aber den geerbten Wert — das Skript setzte --auf brav am
+   Abschnitt, und der Baum las weiter seine eigene 1. Gemessen: Der
+   Baum stand bei -79 px und blieb bei -79 px, ueber den ganzen
+   Scrollweg. Die Zahl aenderte sich, das Bild nicht.
+
+   Jetzt steht der Startwert hier, und der Baum ERBT ihn. */
+.durchgangfeld{position:relative;overflow:hidden;--auf:1}
+
+.baum{
+  position:absolute;top:0;bottom:0;width:min(46vw,440px);
+  pointer-events:none;z-index:1;
+  /* --auf laeuft von 0 (zu) bis 1 (offen) und wird GEERBT — siehe
+     den Hinweis am Abschnitt. */
+  opacity:calc(.20 + .34 * (1 - var(--auf, 1)));
+  will-change:transform;
+}
+.baum svg{height:100%;width:100%;display:block}
+.baum .zug{
+  fill:none;stroke:var(--kreide-still);
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+}
+.baum .bluete{fill:none;stroke:var(--kreide-still);stroke-width:1.1}
+
+/* Sie treten AUS DER MITTE zurueck, nicht von aussen herein: Beim
+   Schliessen schieben sie sich zueinander und ueberlappen leicht —
+   das ist der Moment, in dem man "durch" sie hindurchsieht. */
+.baum.links {left:0;  transform:translate3d(calc(var(--auf, 1) * -18%),0,0)}
+.baum.rechts{right:0; transform:translate3d(calc(var(--auf, 1) *  18%),0,0) scaleX(-1)}
+
+/* Der Text liegt darueber und bleibt lesbar. */
+.durchgangfeld .innen{position:relative;z-index:2}
+
+/* Ohne Bewegung: offen, fertig, nichts wartet. */
+@media (prefers-reduced-motion:reduce){
+  .baum{transition:none}
+  .baum.links,.baum.rechts{transform:none}
+  .baum.rechts{transform:scaleX(-1)}
+}
+
+/* Auf dem Telefon nehmen zwei Baeume die halbe Breite weg. Sie
+   bleiben, aber schmaler und blasser — der Text hat Vorrang. */
+@media (max-width:620px){
+  .baum{width:38vw;opacity:calc(.13 + .20 * (1 - var(--auf, 1)))}
+}
+
 .herkunft{background:var(--sockel);color:var(--kreide);padding:clamp(76px,11vw,132px) 0}
 .herkunft .marke{color:var(--kreide-still);display:block;margin-bottom:14px}
 .herkunft h2{max-width:20ch;margin-bottom:22px}
@@ -2189,7 +2261,87 @@ html.starr{overflow:hidden}
      ganz — und damit stand über der ganzen Seite ein Wort, das
      niemand versteht. Ein Name ohne Geschichte ist ein Tippfehler,
      ein Name mit Geschichte ist ein Versprechen. -->
-<section class="herkunft">
+<section class="herkunft durchgangfeld" id="durchgangfeld">
+  <!-- Zwei Umrisse, links und rechts. aria-hidden, weil sie nichts
+       sagen, was der Text nicht sagt — ein Vorleseprogramm soll hier
+       nicht "Grafik" ansagen und den Leser aufhalten. -->
+  <div class="baum links" id="baumLinks">
+    <svg viewBox="0 0 200 640" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false">
+      <!-- Der Stamm. Leicht geneigt und ungleich dick — ein
+           senkrechter Strich liest sich als Mast, nicht als Baum. -->
+      <path class="zug" d="M6 640 C 14 520 26 430 34 352 C 40 292 44 236 40 178"/>
+      <path class="zug" d="M40 640 C 44 512 52 420 58 348"/>
+      <!-- Die tragenden Aeste: wenige, weit ausholend. Sie reichen
+           bis ueber die Mitte, damit sich links und rechts im
+           geschlossenen Zustand beruehren. -->
+      <path class="zug" d="M38 300 C 78 282 118 272 168 268"/>
+      <path class="zug" d="M41 214 C 84 198 126 190 178 190"/>
+      <path class="zug" d="M36 386 C 70 372 104 366 146 366"/>
+      <path class="zug" d="M42 140 C 76 126 110 120 152 120"/>
+      <!-- Verzweigungen. Kurz, damit die Zeichnung Umriss bleibt
+           und keine Zeichnung wird. -->
+      <path class="zug" d="M88 277 C 96 258 104 246 116 236"/>
+      <path class="zug" d="M124 270 C 132 254 142 244 154 238"/>
+      <path class="zug" d="M96 202 C 104 184 114 174 126 166"/>
+      <path class="zug" d="M140 191 C 148 176 158 168 170 162"/>
+      <path class="zug" d="M78 375 C 86 358 96 348 108 342"/>
+      <path class="zug" d="M104 122 C 112 106 122 98 134 92"/>
+      <!-- Bluetenstaende: offene Kreise, keine Flaechen. Sieben
+           Stueck, unregelmaessig — eine Reihe gleicher Punkte sieht
+           gedruckt aus, nicht gewachsen. -->
+      <circle class="bluete" cx="118" cy="232" r="5.5"/>
+      <circle class="bluete" cx="150" cy="239" r="4"/>
+      <circle class="bluete" cx="128" cy="163" r="5"/>
+      <circle class="bluete" cx="172" cy="160" r="3.5"/>
+      <circle class="bluete" cx="110" cy="340" r="4.5"/>
+      <circle class="bluete" cx="136" cy="90" r="4"/>
+      <circle class="bluete" cx="166" cy="266" r="3"/>
+      <!-- Zwei gefallene Blueten am Boden. Das ist der einzige
+           Zusatz, der nicht Baum ist — er macht aus dem Umriss
+           einen Ort. -->
+      <circle class="bluete" cx="74" cy="596" r="2.6"/>
+      <circle class="bluete" cx="112" cy="622" r="2"/>
+    </svg>
+  </div>
+  <div class="baum rechts" id="baumRechts">
+    <svg viewBox="0 0 200 640" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false">
+      <!-- Der Stamm. Leicht geneigt und ungleich dick — ein
+           senkrechter Strich liest sich als Mast, nicht als Baum. -->
+      <path class="zug" d="M6 640 C 14 520 26 430 34 352 C 40 292 44 236 40 178"/>
+      <path class="zug" d="M40 640 C 44 512 52 420 58 348"/>
+      <!-- Die tragenden Aeste: wenige, weit ausholend. Sie reichen
+           bis ueber die Mitte, damit sich links und rechts im
+           geschlossenen Zustand beruehren. -->
+      <path class="zug" d="M38 300 C 78 282 118 272 168 268"/>
+      <path class="zug" d="M41 214 C 84 198 126 190 178 190"/>
+      <path class="zug" d="M36 386 C 70 372 104 366 146 366"/>
+      <path class="zug" d="M42 140 C 76 126 110 120 152 120"/>
+      <!-- Verzweigungen. Kurz, damit die Zeichnung Umriss bleibt
+           und keine Zeichnung wird. -->
+      <path class="zug" d="M88 277 C 96 258 104 246 116 236"/>
+      <path class="zug" d="M124 270 C 132 254 142 244 154 238"/>
+      <path class="zug" d="M96 202 C 104 184 114 174 126 166"/>
+      <path class="zug" d="M140 191 C 148 176 158 168 170 162"/>
+      <path class="zug" d="M78 375 C 86 358 96 348 108 342"/>
+      <path class="zug" d="M104 122 C 112 106 122 98 134 92"/>
+      <!-- Bluetenstaende: offene Kreise, keine Flaechen. Sieben
+           Stueck, unregelmaessig — eine Reihe gleicher Punkte sieht
+           gedruckt aus, nicht gewachsen. -->
+      <circle class="bluete" cx="118" cy="232" r="5.5"/>
+      <circle class="bluete" cx="150" cy="239" r="4"/>
+      <circle class="bluete" cx="128" cy="163" r="5"/>
+      <circle class="bluete" cx="172" cy="160" r="3.5"/>
+      <circle class="bluete" cx="110" cy="340" r="4.5"/>
+      <circle class="bluete" cx="136" cy="90" r="4"/>
+      <circle class="bluete" cx="166" cy="266" r="3"/>
+      <!-- Zwei gefallene Blueten am Boden. Das ist der einzige
+           Zusatz, der nicht Baum ist — er macht aus dem Umriss
+           einen Ort. -->
+      <circle class="bluete" cx="74" cy="596" r="2.6"/>
+      <circle class="bluete" cx="112" cy="622" r="2"/>
+    </svg>
+  </div>
+
   <div class="innen eng">
     <p class="jp" lang="ja" aria-hidden="true">おもてなし</p>
     <span class="marke">Woher der Name kommt</span>
@@ -2483,6 +2635,85 @@ html.starr{overflow:hidden}
     warte = false;
   }
   addEventListener("scroll", function(){
+    if(!warte){ requestAnimationFrame(messen); warte = true; }
+  }, {passive:true});
+  messen();
+})();
+
+/* ─── Der Durchgang: zwei Baeume treten zur Seite ────────────
+   Der Leser scrollt auf den Abschnitt zu, der erklaert, was
+   Omotenashi heisst. Davor stehen zwei Baeume, geschlossen. Beim
+   Weiterscrollen geben sie den Blick frei.
+
+   DIE BEWEGUNG HAENGT AM SCROLLEN, nicht an einer Dauer. Eine
+   Animation mit fester Laufzeit waere hier falsch: Der Leser
+   bestimmt das Tempo, und wer zurueckscrollt, soll die Baeume
+   wieder zugehen sehen. Genau dafuer ist eine Fortschrittsgroesse
+   da und keine Keyframe.
+
+   Gerechnet wird EINE Zahl (0 = zu, 1 = offen) und als
+   Custom Property gesetzt. Das CSS macht daraus transform und
+   opacity — beides auf der Grafikkarte.
+
+   Dasselbe Muster wie beim Bildlauffortschritt weiter oben:
+   scroll-Horcher, rAF-gedrosselt, passive. Kein zweiter
+   Mechanismus fuer dieselbe Sache.                              */
+(function durchgang(){
+  var feld = document.getElementById("durchgangfeld");
+  if(!feld) return;
+
+  var stille = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /* Ohne Bewegung: offen stehen lassen und gar nicht erst horchen.
+     Der Endzustand muss RICHTIG sein — nicht bloss unbewegt. */
+  if(stille){ feld.style.setProperty("--auf", "1"); return; }
+
+  var warte = false, letzte = -1;
+
+  function messen(){
+    warte = false;
+    var k = feld.getBoundingClientRect();
+    var fenster = window.innerHeight || 1;
+
+    /* Der Weg durch den Durchgang: Er beginnt, wenn die Oberkante
+       des Abschnitts das untere Drittel des Fensters erreicht, und
+       ist zu Ende, wenn sie oben angekommen ist. In dieser Spanne
+       geht der Leser "hindurch".
+
+       Vorher 0 (die Baeume stehen zu, man sieht sie kommen),
+       nachher 1 (offen, der Text liegt frei). */
+    /* GEMESSEN, nicht geschaetzt. Mein erster Ansatz begann bei 0.86
+       der Fensterhoehe — die Baeume gingen damit auf, sobald der
+       Abschnitt den unteren Rand streifte, und man sah sie nie
+       geschlossen. Bei 640 px vom oberen Rand standen sie schon auf
+       halb offen (--auf 0.49).
+
+       Jetzt beginnt es erst, wenn der Abschnitt deutlich im Bild
+       ist. Der Leser sieht also zuerst zwei geschlossene Baeume und
+       geht dann hindurch — das ist die Reihenfolge, um die es
+       geht. */
+    var start = fenster * 0.60;
+    var ende  = fenster * 0.05;
+    var t = (start - k.top) / (start - ende);
+    if(t < 0) t = 0; else if(t > 1) t = 1;
+
+    /* Weich ausrollen statt linear — linear liest sich mechanisch,
+       und hier soll es sich ruhig anfuehlen. Dieselbe Form wie
+       --weich im Blatt (ease-out, sehr weiches Ausrollen). */
+    var auf = 1 - Math.pow(1 - t, 3);
+
+    /* NICHT NEU SETZEN, WENN SICH NICHTS GEAENDERT HAT. Auf zwei
+       Nachkommastellen gerundet: Das Auge sieht keinen Unterschied,
+       der Browser spart sich bei jedem Bild einen Stilwechsel. */
+    var gerundet = Math.round(auf * 100) / 100;
+    if(gerundet === letzte) return;
+    letzte = gerundet;
+    feld.style.setProperty("--auf", String(gerundet));
+  }
+
+  addEventListener("scroll", function(){
+    if(!warte){ requestAnimationFrame(messen); warte = true; }
+  }, {passive:true});
+  addEventListener("resize", function(){
     if(!warte){ requestAnimationFrame(messen); warte = true; }
   }, {passive:true});
   messen();
