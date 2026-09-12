@@ -131,7 +131,39 @@ function bloeckeVergleichen(){
       pruef(sichtbar, "Vollbildknopf ist da und sichtbar");
 
       if(sichtbar){
-        /* 3 · Er schaltet — und der Zustand steht am Element */
+        /* 3 · DIE ERSTE GESTE nimmt schon hinein.
+
+           Das ist neu und ausdrücklich gewollt: Ein Schirm, der
+           morgens eingeschaltet wird, soll randlos hochkommen, nicht
+           erst nach einer Einstellung. EINST.vollbild steht auf an,
+           und der Block bewaffnet sich; die erste beste Berührung
+           löst aus.
+
+           Beim Admin-Board ist diese erste Geste der Klick auf
+           „Ton und Hinweise aktivieren" weiter oben — genau daran
+           sind fünfzehn Proben rot geworden, als ich die Vorgabe
+           umstellte, ohne diese Prüfung nachzuziehen. Sie erwartete
+           „der Knopf führt HINEIN", und das Board war schon drin.
+           Der richtige Schluss war nicht, die Probe zu lockern,
+           sondern die neue Zusage zu messen. */
+        const vorherDrin = await seite.evaluate(() => !!document.fullscreenElement);
+        if(await seite.$("#scharfJetzt")){
+          pruef(vorherDrin,
+            "die erste Geste nimmt schon ins Vollbild — ohne Einstellung",
+            vorherDrin ? "drin" : "draußen geblieben");
+        }
+
+        /* Damit der Knopf danach als UMSCHALTER geprüft werden kann,
+           muss der Startzustand bekannt sein. Draußen anfangen. */
+        if(vorherDrin){
+          await seite.click("#" + b.knopf);
+          await seite.waitForTimeout(350);
+          const raus = await seite.evaluate(() => !document.fullscreenElement);
+          pruef(raus, "und der Knopf führt absichtlich wieder heraus",
+            raus ? "draußen" : "blieb drin");
+        }
+
+        /* 3b · Er schaltet — und der Zustand steht am Element */
         await knopf.click();
         await seite.waitForTimeout(350);
         const drin = await seite.evaluate(() => !!document.fullscreenElement);
@@ -177,6 +209,40 @@ function bloeckeVergleichen(){
         pruef(draussen, "derselbe Knopf führt wieder heraus");
         const wieder = await seite.getAttribute("#" + b.knopf, "aria-pressed");
         pruef(wieder === "false", "und stellt sich zurück", "aria-pressed=" + wieder);
+
+        /* 7 · ABSICHTLICH draußen bleibt draußen.
+           Wer den Knopf drückt, will heraus. Ein erneutes
+           Hineinspringen beim nächsten Tipp wäre ein Kampf gegen den
+           Nutzer — davor warnt der Quelltext des Blocks selbst. */
+        await seite.mouse.click(5, 5);
+        await seite.waitForTimeout(350);
+        pruef(await seite.evaluate(() => !document.fullscreenElement),
+          "nach dem Knopf bleibt es draußen — kein Kampf gegen den Nutzer");
+
+        /* 8 · UNGEWOLLT draußen kommt zurück.
+           Escape und die Systemgeste kann keine Seite verhindern; das
+           ist eine Zusage des Browsers, keine Lücke. Was sie kann:
+           die nächste Geste wieder hineinnehmen. Hier wird der Fall
+           nachgestellt, indem aus dem Vollbild heraus exitFullscreen
+           gerufen wird — dasselbe Ereignis, das Escape erzeugt. */
+        await seite.click("#" + b.knopf);          /* wieder hinein */
+        await seite.waitForTimeout(300);
+        /* exitFullscreen() gibt eine ABGEWIESENE Zusage zurueck, wenn
+           die Seite gar nicht im Vollbild ist — ohne catch fliegt das
+           als unbehandelte Abweisung aus evaluate heraus und reisst
+           die Pruefung ab. Genau das ist mir beim Kuechen-Board
+           passiert. */
+        await seite.evaluate(() => {
+          if(document.fullscreenElement && document.exitFullscreen)
+            return document.exitFullscreen().catch(() => {});
+        });
+        await seite.waitForTimeout(350);
+        pruef(await seite.evaluate(() => !document.fullscreenElement),
+          "Voraussetzung: das Verlassen von außen ist angekommen");
+        await seite.mouse.click(5, 5);
+        await seite.waitForTimeout(400);
+        pruef(await seite.evaluate(() => !!document.fullscreenElement),
+          "nach einem Escape nimmt die nächste Geste wieder hinein");
       }
 
       pruef(konsole.length === 0, "kein Fehler in der Konsole",

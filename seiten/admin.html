@@ -36,8 +36,20 @@
 <meta name="apple-mobile-web-app-title" content="Omoteno Board">
 <link rel="apple-touch-icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%230A1714'/%3E%3Ctext x='90' y='112' text-anchor='middle' font-family='-apple-system,Helvetica,Arial' font-size='84' font-weight='700' fill='%23D4AF37'%3EO%3C/text%3E%3C/svg%3E">
+<!-- Die App vom Home-Bildschirm ist der EINZIGE Weg zu einem
+     Vollbild, das niemand wegwischen kann — dort gibt es keine
+     Browserleiste, die man wegwischen koennte.
+
+     display:fullscreen wirkt auf Android: randlos, ohne Statusleiste.
+     iOS liest das Manifest fuer den Anzeigemodus NICHT; dort
+     entscheidet apple-mobile-web-app-capable, und das Maximum ist
+     standalone — die Statusleiste bleibt. Das ist Apples Grenze und
+     laesst sich von einer Seite aus nicht verschieben.
+     display_override nennt die Kette ausdruecklich, damit ein
+     Browser, der fullscreen nicht kann, auf standalone faellt statt
+     in den Browser-Tab. -->
 <link rel="manifest"
-      href='data:application/manifest+json,{"name":"Omoteno Board","short_name":"Omoteno","display":"standalone","background_color":"%230A1714","theme_color":"%230A1714","start_url":"."}'>
+      href='data:application/manifest+json,{"name":"Omoteno Board","short_name":"Omoteno","display":"fullscreen","display_override":["fullscreen","standalone"],"orientation":"any","background_color":"%230A1714","theme_color":"%230A1714","start_url":"."}'>
 
 <title>Omoteno · Verwaltung</title>
 
@@ -475,7 +487,46 @@ html{font-size:calc(16px * var(--skala,1))}
 
 @media (max-width:760px){
   .navleiste{display:none}
+
+  /* ── Die Filter wandern auf dem Telefon nach UNTEN ─────────────
+     Sie standen oben unter „Bestellungen laufen" — also genau dort,
+     wo die Hand hinlangen MUSS. Dieselbe Begruendung, die zehn
+     Zeilen hoeher schon fuer die Reiterleiste steht: unten, weil die
+     Hand dort ist.
+
+     Sie sitzen INNERHALB von #t-bestellungen. Ein position:fixed in
+     einem Vorfahren mit display:none wird nicht gezeichnet — die
+     Leiste erscheint also von selbst nur auf der Bestell-Flaeche und
+     verschwindet auf Karte, Tischen und Zahlen. Kein Schalter, kein
+     Aufraeumen, nichts, was man vergessen kann.
+
+     Die Reiterleiste ist 52 px hoch plus 12 px Polster plus
+     Sicherheitszone; darauf sitzt dieser Block. Die Zahlen stehen
+     als Variable, weil sie an DREI Stellen gebraucht werden und
+     sonst auseinanderlaufen. */
+  :root{
+    --leiste-h:calc(64px + env(safe-area-inset-bottom));
+    /* Startwert bis die Messung greift. Gemessen bei 390 px: 124 px.
+       Danach setzt filterHoeheMessen() den echten Wert. */
+    --filter-h:134px;
+  }
   main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+
+  #t-bestellungen .filterblock{
+    position:fixed;left:0;right:0;z-index:39;
+    bottom:var(--leiste-h);
+    margin:0;padding:8px 12px 6px;
+    background:var(--leiste-glas);
+    -webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);
+    border-top:1px solid var(--linie);
+  }
+  /* Der Platz darunter muss frei bleiben, sonst liegt die letzte
+     Bestellkarte unter den Filtern und niemand kommt an sie heran. */
+  #t-bestellungen{padding-bottom:var(--filter-h)}
+
+  /* Die Meldezeile („3 von 12 sichtbar") gehoert mit nach unten, aber
+     sie darf den Block nicht hoeher machen als gerechnet. */
+  #t-bestellungen .filterinfo{margin:2px 0 0;font-size:11.5px}
 
   .befehlsleiste{
     display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
@@ -511,7 +562,11 @@ html{font-size:calc(16px * var(--skala,1))}
   .mehrfach{
     display:grid;gap:6px;
     position:fixed;left:10px;right:10px;z-index:39;
-    bottom:calc(74px + env(safe-area-inset-bottom));
+    /* Schob sich bisher direkt ueber die Reiterleiste. Dort liegen
+       jetzt die Filter, also eine Etage hoeher. Gerechnet aus
+       denselben Variablen — eine zweite Zahl daneben waere eine
+       zweite Wahrheit. */
+    bottom:calc(var(--leiste-h) + var(--filter-h) + 6px);
     background:var(--karte);border:1px solid var(--linie);border-radius:16px;
     padding:8px;box-shadow:0 -10px 40px rgba(0,0,0,.5);
     animation:mehrauf .26s var(--ease-out) both;
@@ -2647,7 +2702,11 @@ const EINST_STANDARD = {
   /* Vollbild und Fern-Ansicht. Ein Board am Tresen hängt im Vollbild
      und wird aus zwei Metern gelesen — beides gab es bisher nur in
      der Küche. */
-  vollbild:     false,
+  /* AN als Vorgabe. Der Nutzer hat "direkt einen Vollbildmodus"
+     verlangt; vorher war es aus und musste einmal eingeschaltet
+     werden. Der Schalter bleibt — wer es nicht will, legt ihn um,
+     und das wird gemerkt. */
+  vollbild:     true,
   skala:        1      // 1 bis 1.6
 };
 let EINST = Object.assign({}, EINST_STANDARD);
@@ -2893,26 +2952,83 @@ function vollbildKnopfStellen(kennung){
    erneut hinein, wenn der Nutzer bewusst herausgegangen ist. */
 function vollbildAufWunsch(kennung, willVollbild, merken){
   var knopf = document.getElementById(kennung);
+
+  /* Der Unterschied, an dem alles haengt: Ist der Nutzer ABSICHTLICH
+     heraus, oder hat ihn etwas hinausgeworfen?
+
+     Escape, die Systemgeste und ein Wechsel der Anwendung beenden den
+     Vollbildmodus, ohne dass jemand das wollte — dort soll er
+     zurueckkommen. Wer dagegen den Knopf drueckt, will heraus, und
+     dann waere ein erneutes Hineinspringen beim naechsten Tipp ein
+     Kampf gegen den Nutzer. Genau davor warnte der Kommentar der
+     ersten Fassung; sie loeste es, indem sie sich NIE wieder
+     bewaffnete — und damit kam der Vollbildmodus nach einem
+     versehentlichen Escape bis zum Neuladen nicht zurueck. */
+  var absichtlichRaus = false;
+
   if(knopf) knopf.addEventListener("click", function(){
     var neu = !vollbildAn();
+    absichtlichRaus = !neu;
+    /* ABRAEUMEN, wenn er heraus will. Ohne diese Zeile blieb der
+       Horcher scharf: Der Knopf ist vom Bewaffnen ausgenommen, also
+       kehrte einmal() frueh zurueck OHNE abzuraeumen — und der
+       naechste Tipp irgendwo nahm den Nutzer wieder hinein, obwohl
+       er gerade selbst herausgegangen war. Gefunden hat es das
+       Kuechen-Board, das keinen Scharfschalt-Schirm hat und deshalb
+       mit noch scharfem Horcher in die Probe lief. */
+    if(absichtlichRaus) abraeumen(); else bewaffnen();
     if(neu) vollbildRein(); else vollbildRaus();
     if(merken) merken(neu);
   });
 
+  /* Die Horcher werden bei jedem Bewaffnen neu gesetzt und beim
+     Zugriff wieder abgeraeumt. capture, damit sie auch dann greifen,
+     wenn ein Kind das Ereignis stoppt. */
+  var arten = ["pointerdown", "keydown", "touchend"];
+  var einmal = function(e){
+    /* Der Vollbildknopf ist die EINE Geste, die hier nicht zaehlt.
+
+       VORFALL, gemessen von pruef-vollbild.js, sofort nachdem die
+       Vorgabe auf "an" ging: Der Horcher laeuft in der Capture-Phase,
+       also VOR dem Knopf. Ein Druck auf den Vollbildknopf schaltete
+       damit erst ein — und der Knopf rechnete danach
+       neu = !vollbildAn() = false und schaltete wieder aus. Der Wirt
+       drueckt "Vollbild" und es passiert nichts. Fuenfzehn Proben
+       waren rot, und zwar invertiert: erst "an" erwartet und "aus"
+       bekommen, dann umgekehrt.
+
+       Der Knopf spricht fuer sich selbst. Jede andere Geste bewaffnet. */
+    if(knopf && e && e.target && (e.target === knopf || knopf.contains(e.target))) return;
+    abraeumen();
+    if(!vollbildAn()) vollbildRein();
+  };
+  function abraeumen(){
+    arten.forEach(function(a){ document.removeEventListener(a, einmal, true); });
+  }
+  function bewaffnen(){
+    if(!document.documentElement.requestFullscreen) return;
+    abraeumen();
+    arten.forEach(function(a){ document.addEventListener(a, einmal, true); });
+  }
+
   document.addEventListener("fullscreenchange", function(){
     vollbildKnopfStellen(kennung);
+    /* Herausgeworfen und nicht selbst gegangen: die naechste Geste
+       nimmt uns wieder hinein. EIN Handgriff, nicht fuenf.
+
+       Was hier NICHT steht und nicht stehen kann: ein Verhindern des
+       Verlassens. Escape und die Systemgeste sind eine Zusage des
+       Browsers an den Nutzer, keine Luecke. Eine Seite, die das
+       abfangen koennte, waere eine Falle. */
+    /* Nicht willVollbild fragen: Das ist der Wunsch beim START und
+       veraltet in der Sekunde, in der der Nutzer den Knopf benutzt.
+       absichtlichRaus traegt die aktuelle Wahrheit. */
+    if(!vollbildAn() && !absichtlichRaus) bewaffnen();
   });
   vollbildKnopfStellen(kennung);
 
-  if(!willVollbild || !document.documentElement.requestFullscreen) return;
-  var arten = ["pointerdown", "keydown", "touchend"];
-  var einmal = function(){
-    arten.forEach(function(a){ document.removeEventListener(a, einmal, true); });
-    if(!vollbildAn()) vollbildRein();
-  };
-  arten.forEach(function(a){
-    document.addEventListener(a, einmal, true);
-  });
+  if(!willVollbild) return;
+  bewaffnen();
 }
 /* ╚═══ VOLLBILD · GETEILTER BLOCK · ENDE ══════════════════════════╝ */
 
@@ -5335,9 +5451,48 @@ function tabelle(){
   });
 })();
 
+/* ══════════════════════════════════════════════════════════════
+   WIE HOCH DIE FILTERLEISTE WIRKLICH IST
+
+   Auf dem Telefon liegt der Filterblock fest ueber der
+   Reiterleiste, und darunter muss so viel Platz frei bleiben, dass
+   die letzte Bestellkarte nicht darunter verschwindet.
+
+   Gemessen war der Block 124 px hoch, meine geschaetzte Variable
+   stand auf 96. Es ging trotzdem auf — mit 4 px Luft, und die kamen
+   aus einem doppelten Polster, nicht aus Absicht. Eine dritte
+   Filterzeile oder ein laengeres Wort haette es gekippt, und zwar
+   still: Die letzte Karte waere einfach nicht mehr antippbar.
+
+   Also wird die Zahl gemessen. Ein ResizeObserver kostet sechs
+   Zeilen und nimmt die ganze Fehlerklasse weg.                    */
+function filterHoeheMessen(){
+  const b = document.querySelector("#t-bestellungen .filterblock");
+  if(!b) return;
+  /* Nur auf dem Telefon liegt der Block fest; am Tresen steht er im
+     Fluss und braucht kein Polster darunter. */
+  const fest = getComputedStyle(b).position === "fixed";
+  document.documentElement.style.setProperty("--filter-h",
+    fest ? Math.ceil(b.getBoundingClientRect().height) + 10 + "px" : "0px");
+}
+
+if(typeof ResizeObserver === "function"){
+  const b = document.querySelector("#t-bestellungen .filterblock");
+  if(b) new ResizeObserver(filterHoeheMessen).observe(b);
+}
+/* Der Wechsel zwischen Telefon und Tresen aendert position, nicht die
+   Groesse — ein ResizeObserver allein merkt das nicht. */
+try{ window.matchMedia("(max-width:760px)").addEventListener("change", filterHoeheMessen); }
+catch(e){ /* aeltere Browser: dann bleibt der Startwert */ }
+window.addEventListener("orientationchange", filterHoeheMessen);
+
 function tafelZeigen(ziel){
   $$("[data-tafel]").forEach(x => x.setAttribute("aria-selected", x.dataset.tafel === ziel));
   $$(".tafel").forEach(t => t.hidden = t.id !== "t-" + ziel);
+
+  /* Erst jetzt ist der Block gezeichnet — vorher war er in einem
+     versteckten Vorfahren und 0 px hoch. */
+  if(ziel === "bestellungen") filterHoeheMessen();
 
   /* Angetippten Reiter ins Bild schieben. Ohne das bliebe „Einstellungen"
      am rechten Rand halb verdeckt, obwohl er gerade aktiv ist. */
