@@ -57,8 +57,20 @@
 --      "gratis_ab": 30.00,           -- ab dieser Warensumme frei, 0 = nie
 --      "dauer_min": 45,              -- zugesagte Lieferzeit in Minuten
 --      "bar":       true,            -- bar an der Tür
---      "karte":     true             -- Kartengerät an der Tür
+--      "karte":     true,            -- Kartengerät an der Tür
+--      "zeiten":    {                -- optional; fehlt = immer offen
+--        "von":  "17:00",
+--        "bis":  "01:00",            -- darf über Mitternacht gehen
+--        "tage": [4,5,6]             -- 1=Mo … 7=So; leer = jeden Tag
+--      }
 --    }
+--
+--  Die Zeitzone der Prüfung ist fest „Europe/Berlin". Das ist eine
+--  ehrliche Festlegung, keine Vergesslichkeit: Die Datenbank läuft in
+--  UTC, und ein Wirt, der „ab 17 Uhr" einstellt, meint seine Uhr, nicht
+--  die von Greenwich. Sobald ein Betrieb außerhalb dieser Zone steht,
+--  gehört die Zone an den Betrieb — dann ist es eine Spalte, kein
+--  Literal.
 --
 --  Eine Spalte, zur Laufzeit gelesen — dasselbe Muster wie hub_texte
 --  und hub_kacheln. Der Wirt ändert etwas im Board, der Gast sieht es
@@ -74,7 +86,7 @@ alter table public.betriebe
 comment on column public.betriebe.liefer is
   'Liefereinstellungen des Betriebs, vom Board gepflegt und vom Hub '
   'zur Laufzeit gelesen. Schluessel: an, plz[], mindest, gebuehr, '
-  'gratis_ab, dauer_min, bar, karte.';
+  'gratis_ab, dauer_min, bar, karte, zeiten{von,bis,tage[]}.';
 
 alter table public.bestellungen
   add column if not exists liefer_adresse jsonb,
@@ -148,6 +160,53 @@ begin
         where trim(p) = v_plz)
   then
     return jsonb_build_object('ok', false, 'grund', 'plz', 'plz', v_plz);
+  end if;
+
+  -- ── Liefert das Haus GERADE JETZT? ──────────────────────────
+  -- „zeitlich begrenzter Lieferservice" heisst: Es gibt Stunden, in
+  -- denen niemand faehrt. Das prueft der Server, nicht der Browser —
+  -- sonst waere das Zeitfenster Zierrat, das eine verstellte
+  -- Telefonuhr aushebelt.
+  --
+  -- Kein Fenster hinterlegt = keine Einschraenkung. Ein Haus, das
+  -- nichts eingestellt hat, soll liefern koennen, nicht nie (§7).
+  if v_liefer ? 'zeiten' and jsonb_typeof(v_liefer->'zeiten') = 'object' then
+    declare
+      v_jetzt   timestamp := now() at time zone 'Europe/Berlin';
+      v_von     time;
+      v_bis     time;
+      v_uhr     time;
+      v_tag     int;
+      v_tage    jsonb := v_liefer->'zeiten'->'tage';
+      v_offen   boolean;
+    begin
+      v_von := nullif(v_liefer->'zeiten'->>'von', '')::time;
+      v_bis := nullif(v_liefer->'zeiten'->>'bis', '')::time;
+      v_uhr := v_jetzt::time;
+      v_tag := extract(isodow from v_jetzt)::int;   -- 1 = Montag … 7 = Sonntag
+
+      -- Wochentag: leere oder fehlende Liste heisst „jeden Tag".
+      if jsonb_typeof(v_tage) = 'array' and jsonb_array_length(v_tage) > 0
+         and not exists (select 1 from jsonb_array_elements_text(v_tage) d
+                          where d::int = v_tag)
+      then
+        return jsonb_build_object('ok', false, 'grund', 'zeit');
+      end if;
+
+      if v_von is not null and v_bis is not null then
+        -- Ein Fenster darf ueber Mitternacht gehen: 18:00–01:00 ist
+        -- fuer einen Truck auf dem Festival der Normalfall, nicht die
+        -- Ausnahme. Dann gilt „nach von ODER vor bis".
+        v_offen := case when v_von <= v_bis
+                        then v_uhr >= v_von and v_uhr < v_bis
+                        else v_uhr >= v_von or  v_uhr < v_bis end;
+        if not v_offen then
+          return jsonb_build_object('ok', false, 'grund', 'zeit',
+                                    'von', to_char(v_von, 'HH24:MI'),
+                                    'bis', to_char(v_bis, 'HH24:MI'));
+        end if;
+      end if;
+    end;
   end if;
 
   -- ── Mindestbestellwert: Hausregel, siehe Kopf dieser Datei ───
@@ -335,6 +394,52 @@ commit;
 --   r := bestellung_liefern(v_betrieb, v_adr, '[]'::jsonb, 20);
 --   insert into probe values (8,'Liefermodus aus',
 --     case when r->>'grund' = 'aus' then 'ok, abgewiesen' else 'KAPUTT: '||r::text end);
+--
+--   -- ── Das Zeitfenster ──────────────────────────────────────────
+--   -- Gerechnet gegen die JETZIGE Uhrzeit in Europe/Berlin, damit die
+--   -- Probe zu jeder Tageszeit dasselbe beweist.
+--   declare
+--     v_jetzt timestamp := now() at time zone 'Europe/Berlin';
+--     v_tag   int := extract(isodow from v_jetzt)::int;
+--     v_basis jsonb := jsonb_build_object('an',true,'plz',jsonb_build_array('99999'),
+--               'mindest',0,'gebuehr',2.50,'gratis_ab',0,'dauer_min',45);
+--   begin
+--     -- 9 · Fenster offen (eine Stunde davor bis eine Stunde danach)
+--     update betriebe set liefer = v_basis || jsonb_build_object('zeiten',
+--       jsonb_build_object('von', to_char(v_jetzt - interval '1 hour','HH24:MI'),
+--                          'bis', to_char(v_jetzt + interval '1 hour','HH24:MI')))
+--      where id = v_betrieb;
+--     r := bestellung_liefern(v_betrieb, v_adr, '[]'::jsonb, 20);
+--     insert into probe values (9,'Fenster offen',
+--       case when r->>'ok' = 'true' then 'ok' else 'KAPUTT: '||r::text end);
+--
+--     -- 10 · Fenster zu (zwei bis drei Stunden spaeter)
+--     update betriebe set liefer = v_basis || jsonb_build_object('zeiten',
+--       jsonb_build_object('von', to_char(v_jetzt + interval '2 hour','HH24:MI'),
+--                          'bis', to_char(v_jetzt + interval '3 hour','HH24:MI')))
+--      where id = v_betrieb;
+--     r := bestellung_liefern(v_betrieb, v_adr, '[]'::jsonb, 20);
+--     insert into probe values (10,'Fenster zu',
+--       case when r->>'grund' = 'zeit' then 'ok, abgewiesen' else 'KAPUTT: '||r::text end);
+--
+--     -- 11 · Falscher Wochentag
+--     update betriebe set liefer = v_basis || jsonb_build_object('zeiten',
+--       jsonb_build_object('von','00:00','bis','23:59',
+--                          'tage', jsonb_build_array(((v_tag % 7) + 1))))
+--      where id = v_betrieb;
+--     r := bestellung_liefern(v_betrieb, v_adr, '[]'::jsonb, 20);
+--     insert into probe values (11,'falscher Wochentag',
+--       case when r->>'grund' = 'zeit' then 'ok, abgewiesen' else 'KAPUTT: '||r::text end);
+--
+--     -- 12 · Fenster ueber Mitternacht, jetzt DRIN (von > bis)
+--     update betriebe set liefer = v_basis || jsonb_build_object('zeiten',
+--       jsonb_build_object('von', to_char(v_jetzt - interval '1 hour','HH24:MI'),
+--                          'bis', to_char(v_jetzt - interval '2 hour','HH24:MI')))
+--      where id = v_betrieb;
+--     r := bestellung_liefern(v_betrieb, v_adr, '[]'::jsonb, 20);
+--     insert into probe values (12,'Fenster ueber Mitternacht',
+--       case when r->>'ok' = 'true' then 'ok' else 'KAPUTT: '||r::text end);
+--   end;
 --
 -- exception when others then
 --   insert into probe values (99,'ABBRUCH', sqlerrm);

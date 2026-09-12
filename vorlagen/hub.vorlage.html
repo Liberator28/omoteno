@@ -3100,7 +3100,13 @@ const LIEFER = {
   gratis_ab: 0,      /* ab dieser Warensumme frei, 0 = nie */
   dauer_min: 0,      /* zugesagte Lieferzeit in Minuten */
   bar:       true,   /* bar an der Tür */
-  karte:     false   /* Kartengerät an der Tür */
+  karte:     false,  /* Kartengerät an der Tür */
+  /* Zeitfenster. Leer = immer. Der Server prüft dasselbe noch einmal
+     und hat das letzte Wort — hier steht es, damit der Gast es sieht,
+     BEVOR er seine Adresse tippt. */
+  von:       "",     /* "17:00" */
+  bis:       "",     /* "01:00" — darf über Mitternacht gehen */
+  tage:      []      /* 1 = Mo … 7 = So; leer = jeden Tag */
 };
 
 const MUSIK = {
@@ -6745,7 +6751,9 @@ const TEXTE = {
 "Bitte passend in bar.":{en:"Cash please, exact change if possible.",tr:"Lütfen nakit, mümkünse bozuk para.",ru:"Пожалуйста, наличными, по возможности без сдачи.",fr:"En espèces, avec l’appoint si possible.",es:"En efectivo, a ser posible el importe exacto.",it:"In contanti, possibilmente con l’importo esatto.",pl:"Prosimy o gotówkę, w miarę możliwości odliczoną.",ar:"نقداً من فضلك، ويُفضّل المبلغ بالضبط.",uk:"Будь ласка, готівкою, по можливості без решти.",nl:"Graag contant, indien mogelijk gepast.",ro:"Numerar, de preferință suma exactă."},
 "Wir sind in etwa {m} Minuten bei Ihnen.":{en:"We’ll be with you in about {m} minutes.",tr:"Yaklaşık {m} dakika içinde yanınızdayız.",ru:"Будем у Вас примерно через {m} минут.",fr:"Nous serons chez vous dans environ {m} minutes.",es:"Estaremos con usted en unos {m} minutos.",it:"Saremo da Lei tra circa {m} minuti.",pl:"Będziemy u Pana/Pani za około {m} minut.",ar:"سنكون عندك خلال {m} دقيقة تقريباً.",uk:"Будемо у Вас приблизно за {m} хвилин.",nl:"We zijn er over ongeveer {m} minuten.",ro:"Ajungem la dumneavoastră în aproximativ {m} minute."},
 "Bitte füllen Sie Name, Adresse und Telefon aus.":{en:"Please fill in name, address and phone.",tr:"Lütfen ad, adres ve telefon bilgilerini doldurun.",ru:"Пожалуйста, заполните имя, адрес и телефон.",fr:"Merci d’indiquer nom, adresse et téléphone.",es:"Por favor, complete nombre, dirección y teléfono.",it:"La preghiamo di compilare nome, indirizzo e telefono.",pl:"Prosimy podać imię, adres i telefon.",ar:"يرجى إدخال الاسم والعنوان ورقم الهاتف.",uk:"Будь ласка, заповніть імʼя, адресу та телефон.",nl:"Vul uw naam, adres en telefoonnummer in.",ro:"Vă rugăm să completați numele, adresa și telefonul."},
-"Dorthin liefern wir leider nicht.":{en:"Unfortunately we don’t deliver there.",tr:"Maalesef oraya teslimat yapmıyoruz.",ru:"К сожалению, туда мы не доставляем.",fr:"Malheureusement, nous ne livrons pas à cette adresse.",es:"Lamentablemente no repartimos allí.",it:"Purtroppo non consegniamo a quell’indirizzo.",pl:"Niestety tam nie dowozimy.",ar:"للأسف لا نوصّل إلى هناك.",uk:"На жаль, туди ми не доставляємо.",nl:"Daar bezorgen wij helaas niet.",ro:"Din păcate, nu livrăm acolo."}
+"Dorthin liefern wir leider nicht.":{en:"Unfortunately we don’t deliver there.",tr:"Maalesef oraya teslimat yapmıyoruz.",ru:"К сожалению, туда мы не доставляем.",fr:"Malheureusement, nous ne livrons pas à cette adresse.",es:"Lamentablemente no repartimos allí.",it:"Purtroppo non consegniamo a quell’indirizzo.",pl:"Niestety tam nie dowozimy.",ar:"للأسف لا نوصّل إلى هناك.",uk:"На жаль, туди ми не доставляємо.",nl:"Daar bezorgen wij helaas niet.",ro:"Din păcate, nu livrăm acolo."},
+"Wir liefern gerade nicht.":{en:"We are not delivering right now.",tr:"Şu anda teslimat yapmıyoruz.",ru:"Сейчас мы не доставляем.",fr:"Nous ne livrons pas en ce moment.",es:"Ahora mismo no repartimos.",it:"Al momento non consegniamo.",pl:"W tej chwili nie dowozimy.",ar:"لا نقوم بالتوصيل في الوقت الحالي.",uk:"Зараз ми не доставляємо.",nl:"Op dit moment bezorgen wij niet.",ro:"Momentan nu livrăm."},
+"Wir liefern von {von} bis {bis} Uhr.":{en:"We deliver from {von} to {bis}.",tr:"{von} ile {bis} arası teslimat yapıyoruz.",ru:"Мы доставляем с {von} до {bis}.",fr:"Nous livrons de {von} à {bis}.",es:"Repartimos de {von} a {bis}.",it:"Consegniamo dalle {von} alle {bis}.",pl:"Dowozimy od {von} do {bis}.",ar:"نوصّل من {von} حتى {bis}.",uk:"Ми доставляємо з {von} до {bis}.",nl:"Wij bezorgen van {von} tot {bis}.",ro:"Livrăm de la {von} până la {bis}."}
 };
 
 const TAGE = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
@@ -7321,6 +7329,7 @@ SEITEN.auswahl = () => {
   const stopp = bestellStopp();
   const bestellbar = BESTELLUNG.an && serverBereit() && merkAnzahl() > 0 && !stopp;
   const liefern = liefermodus && LIEFER.an;
+  const lieferZu = liefern && !liefertGerade();
   const mindest = liefern ? LIEFER.mindest : BESTELLUNG.mindest;
   const unterMindest = mindest > 0 && summe < mindest;
 
@@ -7358,14 +7367,21 @@ SEITEN.auswahl = () => {
             '<input class="feld" id="bTisch" inputmode="numeric" placeholder="' + t("Tischnummer") + '">') +
       '<div class="label">' + t("ANMERKUNG (OPTIONAL)") + '</div>' +
       '<input class="feld" id="bNotiz" placeholder="' + t("z. B. ohne Zwiebeln") + '">' +
-      '<button class="knopf" data-aktion="bestellen"' + (unterMindest ? " disabled" : "") + '>' +
+      '<button class="knopf" data-aktion="bestellen"' +
+        ((unterMindest || lieferZu) ? " disabled" : "") + '>' +
       t("Bestellung abschicken") + '</button>' +
       '<div class="kopiert" id="melde"></div>' +
       '<div class="ersatzweg" id="ersatzweg">' +
         '<p>' + t("Die Verbindung ist gerade schwierig. Zeigen Sie Ihre Bestellung einfach unserem Serviceteam:") + '</p>' +
         '<button class="knopf zweit" data-aktion="bestellungPerNachricht">' +
         t("Bestellung zeigen") + '</button></div>' +
-      (unterMindest
+      (lieferZu
+        ? '<div class="hinweis">' + t("Wir liefern gerade nicht.") +
+          (LIEFER.von && LIEFER.bis
+            ? " " + t("Wir liefern von {von} bis {bis} Uhr.",
+                      {von: LIEFER.von, bis: LIEFER.bis})
+            : "") + '</div>'
+      : unterMindest
         ? '<div class="hinweis">' + (liefern
             ? t("Wir liefern ab {b}. Fehlt noch etwas Kleines?", {b: preisText(mindest)})
             : t("Bestellungen ab {b}. Darunter nehmen wir Ihre Wünsche gerne persönlich auf.",
@@ -9456,6 +9472,32 @@ function imLiefergebiet(plz){
 /* Was der Gast am Ende zahlt: Ware plus Gebühr, und die Gebühr
    entfällt ab der Schwelle. Dieselbe Rechnung führt der Server noch
    einmal — dort ist sie verbindlich, hier nur zum Anzeigen. */
+/* Liefert das Haus GERADE? Dieselbe Rechnung führt der Server noch
+   einmal und hat das letzte Wort — hier steht sie, damit der Gast es
+   sieht, bevor er seine Adresse tippt. Eine Absage nach dem Ausfüllen
+   ist eine Absage zu spät.
+
+   Kein Fenster hinterlegt heißt „immer", nicht „nie" (§7). */
+function liefertGerade(){
+  if(!LIEFER.an) return false;
+  const jetzt = new Date();
+  if(LIEFER.tage.length){
+    /* getDay(): 0 = Sonntag. Die Datenbank zählt nach ISO, 1 = Montag,
+       7 = Sonntag. Ohne diese Umrechnung liegt der ganze Wochenplan um
+       einen Tag daneben — und zwar still. */
+    const iso = jetzt.getDay() === 0 ? 7 : jetzt.getDay();
+    if(LIEFER.tage.indexOf(iso) === -1) return false;
+  }
+  if(!LIEFER.von || !LIEFER.bis) return true;
+  const min = h => { const [a,b] = h.split(":"); return (+a) * 60 + (+b); };
+  const jetztMin = jetzt.getHours() * 60 + jetzt.getMinutes();
+  const von = min(LIEFER.von), bis = min(LIEFER.bis);
+  /* Ein Fenster darf über Mitternacht gehen: 18:00–01:00 ist für einen
+     Truck auf dem Festival der Normalfall. */
+  return von <= bis ? (jetztMin >= von && jetztMin < bis)
+                    : (jetztMin >= von || jetztMin < bis);
+}
+
 function lieferGebuehrFuer(warensumme){
   if(!LIEFER.an) return 0;
   if(LIEFER.gratis_ab > 0 && warensumme >= LIEFER.gratis_ab) return 0;
@@ -10089,6 +10131,9 @@ $("inhalt").addEventListener("click", e => {
          prüft dasselbe noch einmal — eine Prüfung im Browser ist
          keine Prüfung, sie ist nur eine Höflichkeit. */
       let adresse = null, nr = "";
+      if(liefern && !liefertGerade()){
+        melden(t("Wir liefern gerade nicht."), true); return;
+      }
       if(liefern){
         adresse = {
           name:    wert("lName").slice(0, 80),
@@ -10549,6 +10594,11 @@ async function karteHolen(erstesMal){
       LIEFER.dauer_min = Math.round(Math.max(0, +lf.dauer_min || 0));
       LIEFER.bar       = lf.bar   !== false;
       LIEFER.karte     = lf.karte === true;
+      const z = (lf.zeiten && typeof lf.zeiten === "object") ? lf.zeiten : {};
+      LIEFER.von  = /^\d{1,2}:\d{2}$/.test(z.von || "") ? z.von : "";
+      LIEFER.bis  = /^\d{1,2}:\d{2}$/.test(z.bis || "") ? z.bis : "";
+      LIEFER.tage = Array.isArray(z.tage)
+        ? z.tage.map(Number).filter(n => n >= 1 && n <= 7) : [];
       if(!LIEFER.an && liefermodus){ liefermodus = false; zeichne(); }
     }
 
