@@ -557,6 +557,21 @@ function erzeuge(slug, nurPruefen){
 
   let aus = vorlage.replace("/*{{MARKENBLATT}}*/", alsQuelltext(mb));
 
+  /* Der Dateikopf nannte fest den ERSTEN Kunden mitsamt Strasse. In
+     jedem erzeugten Hub, also auch in denen der anderen. Das ist
+     keine Kosmetik: Wer die Datei aufmacht — der Kunde selbst, ein
+     Entwickler, ein Betriebspruefer — liest dort den Namen eines
+     fremden Betriebs.
+
+     Die Kommentare, die einen Vorfall dokumentieren ("gemessen:
+     Choco 2,02:1"), bleiben ausdruecklich stehen. Sie sind das
+     Gedaechtnis des Projekts, und sie nennen die Haeuser, WEIL der
+     Vorfall dort passiert ist. Der Unterschied ist: Das hier ist
+     eine ANGABE ueber den Kunden, jene sind Notizen ueber uns. */
+  const b2 = mb.betrieb || {};
+  aus = aus.replace("{{KUNDE}}",
+    [b2.name, b2.strasse, b2.ort].filter(Boolean).join(", ") || (b2.slug || "—"));
+
   /* Kopfangaben mitziehen. Der Titel steht im Browserreiter und im
      geteilten Link — er ist das Erste, was der Gast vom Haus sieht. */
   const h = t => String(t||"").replace(/[&<>"]/g, z =>
