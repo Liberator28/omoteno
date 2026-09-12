@@ -1082,13 +1082,34 @@ const ZUSTAND_TEXT = {
   test:"Testphase", aktiv:"Aktiv", pausiert:"Pausiert", gekuendigt:"Gekündigt"
 };
 
+/* ═══ Die Gast-Adresse — NICHT einfach slug + ".omoteno.de" ═══
+   VORFALL: Chocos Ordner/DB-Slug heißt "chocolamour", seine echte,
+   im DNS eingetragene Adresse aber "choco-lamour.omoteno.de" — mit
+   Bindestrich, so tippt der Gast sie (siehe _redirects, dort steht
+   es ausdrücklich: "Adresse und Slug müssen NICHT gleich heißen").
+   Diese Seite hat das nie gewusst und überall slug+".omoteno.de"
+   gerechnet — "Deine Adresse", der Kopieren-Knopf UND die
+   Tischzettel zum Drucken. Gemessen: chocolamour.omoteno.de löst im
+   DNS gar nicht auf (ERR_NAME_NOT_RESOLVED). Jeder gedruckte
+   Tischzettel mit dieser Adresse ist für den Gast eine Sackgasse.
+
+   Es gibt dafür (noch) keine eigene Spalte in der Datenbank — die
+   Abweichung lebt bisher nur in _redirects. Diese Liste MUSS mit
+   _redirects übereinstimmen; sie ist ein Notbehelf, keine Lösung.
+   Die eigentliche Lösung ist eine Spalte wie betriebe.hub_domain,
+   die der Wirt (oder Omoteno beim Anlegen) einmal setzt. */
+const ABWEICHENDE_ADRESSE = { chocolamour: "choco-lamour" };
+function gastAdresse(){
+  return (ABWEICHENDE_ADRESSE[betrieb.slug] || betrieb.slug) + ".omoteno.de";
+}
+
 async function kontoZeichnen(){
   const z = betrieb.zustand || "test";
   $("kopfZustand").textContent = ZUSTAND_TEXT[z] || z;
   $("kopfZustand").className = "zustand " + z;
 
   /* Übersicht */
-  const adresse = betrieb.slug + ".omoteno.de";
+  const adresse = gastAdresse();
   $("hubAdresse").textContent = adresse;
   $("hubKachel").href = "https://" + adresse;
 
@@ -1315,7 +1336,7 @@ document.addEventListener("click", e => {
   if(k) kopieren(k, k.dataset.kopieren);
 });
 $("adresseKopieren").onclick = () =>
-  kopieren($("adresseKopieren"), "https://" + betrieb.slug + ".omoteno.de");
+  kopieren($("adresseKopieren"), "https://" + gastAdresse());
 
 /* ─── Rechnung als PDF ───────────────────────────────────────────
    Der Eimer bleibt privat; abgerufen wird über eine Adresse, die nach
@@ -1361,7 +1382,7 @@ async function tischeZeichnen(){
         'Die legen wir an, sobald dein Hub steht.</p>';
       return;
     }
-    const basis = "https://" + betrieb.slug + ".omoteno.de/?k=";
+    const basis = "https://" + gastAdresse() + "/?k=";
     ziel.innerHTML =
       '<div class="rliste">' + data.map(t => {
         const url = basis + encodeURIComponent(t.schluessel);
