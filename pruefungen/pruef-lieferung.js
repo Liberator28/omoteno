@@ -233,8 +233,13 @@ server.listen(8899, async () => {
      Gast an Chocos Tisch erreicht unter Chocos Adresse Omotenos
      Anmeldung. Genau das war auf dem Bildschirmfoto vom 04.09. */
   console.log("\n── Fremde Seiten unter Kundenadressen ──");
+  /* Nur echte KUNDEN-Hubs — deren Regel zeigt nach /h/<slug>/.
+     admin.omoteno.de zeigt bewusst nach /admin.html: das ist die
+     eigene Adresse des Boards, kein Kunde, und soll dort genau
+     Omotenos Seite zeigen. Ohne dieses Sieb faengt jede neue
+     Nicht-Kunden-Adresse mit „/*"-Regel hier einen Fehlalarm. */
   const hubHosts = [...new Set(adressen
-    .filter(r => !r.nach.startsWith("http"))
+    .filter(r => !r.nach.startsWith("http") && /^\/h\//.test(r.nach))
     .map(r => { try { return new URL(r.von.replace(/\*$/,"")).hostname; }
                 catch(e){ return null; } })
     .filter(Boolean))];

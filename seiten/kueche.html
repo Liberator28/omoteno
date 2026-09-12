@@ -4,8 +4,8 @@
    OMOTENO · Küchen- und Thekendisplay
    © 2026 Elias Faber · hallo@omoteno.de
 
-   Gehört als kueche.html neben die index.html auf admin.omoteno.de.
-   Erreichbar dann unter:  admin.omoteno.de/kueche.html
+   Gehört als kueche.html neben die index.html auf omoteno.de.
+   Erreichbar dann unter:  omoteno.de/kueche
    Anmeldung mit demselben Konto wie das Bestell-Board.
 
    BEWUSSTE ENTSCHEIDUNGEN
@@ -682,6 +682,41 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
 
 <script>
 "use strict";
+/*  DOMAINSPERRE — GETEILTER BLOCK, wortgleich mit admin.html.
+    Der Hub läuft nur auf Adressen, die Omoteno freigegeben hat. Kopiert
+    jemand die Datei auf einen eigenen Server, erscheint statt der Karte
+    ein Hinweis. Das hält keinen Fachmann auf – es macht aber aus einem
+    "einfach mal kopieren" eine bewusste Rechtsverletzung, und genau das
+    ist der Zweck. Der echte Schutz liegt in Datenbank, Konten und Vertrag.
+
+    Bisher hatte NUR admin.html diese Sperre — kueche.html liess sich
+    unbemerkt auf jeder beliebigen Adresse aufrufen. Derselbe Griff
+    steht selten nur einmal da (CLAUDE.md §8.1i): hier war es keine
+    zweite fehlerhafte Kopie, sondern schlicht keine. */
+(function domainSperre(){
+  const ERLAUBT = [
+    "omoteno.de",          // alle Subdomains: blend., demo., admin.
+    "netlify.app",         // Netlify-Vorschauadressen
+    "localhost", "127.0.0.1", ""
+  ];
+  const host = (location.hostname || "").toLowerCase();
+  const frei = ERLAUBT.some(e => e === "" ? host === "" : (host === e || host.endsWith("." + e)));
+  if(frei || location.protocol === "file:") return;
+
+  document.documentElement.innerHTML =
+    '<body style="margin:0;min-height:100vh;display:flex;align-items:center;' +
+    'justify-content:center;background:#16181D;color:#F2EFE8;' +
+    'font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:32px">' +
+    '<div style="max-width:420px;text-align:center">' +
+    '<div style="font-size:26px;font-weight:600;letter-spacing:-.4px;margin-bottom:14px">omoteno</div>' +
+    '<p style="color:#8A8F98;line-height:1.6;font-size:15px">Diese Anwendung ist für den Betrieb ' +
+    'auf dieser Adresse nicht freigegeben.</p>' +
+    '<p style="color:#8A8F98;line-height:1.6;font-size:15px;margin-top:14px">Interesse an Omoteno ' +
+    'für Ihr Lokal? <a href="https://omoteno.de" style="color:#D4AF37">omoteno.de</a></p>' +
+    '</div></body>';
+  throw new Error("Omoteno: Domain nicht freigegeben");
+})();
+
 /* ═══════════════════════════════════════════════════════════════
    1 · EINSTELLUNGEN — dieselbe Datenbank wie Board und Hub
    ═══════════════════════════════════════════════════════════════ */
