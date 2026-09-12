@@ -196,7 +196,18 @@
      wie ein Produkt anfühlen. */
   --ease-out:cubic-bezier(.23,1,.32,1);
   --ease-blatt:cubic-bezier(.32,.72,0,1);
+  /* Die Gegenkurve. Sie stand bisher nur als Literal im Wischblock
+     ("ease-in, 200ms") und fehlte als Rolle — deshalb hatte das Board
+     ueberhaupt keine Ausgangsbewegung, nur Eingaenge. ease-in zieht
+     an und verschwindet. */
+  --ease-in:cubic-bezier(.4,0,1,1);
   --t-druck:140ms; --t-klein:180ms; --t-blatt:400ms;
+  /* HINAUSGEHEN IST SCHNELLER ALS HEREINKOMMEN — der Nutzer hat sich
+     schon entschieden, und niemand wartet dem Weggehen hinterher.
+     200 von 400 ms, also die Haelfte; der Skill nennt 60 bis 80
+     Prozent, und ein Blatt ueber die ganze Schirmhoehe darf am
+     unteren Ende davon liegen. */
+  --t-blatt-raus:200ms;
 }
 
 /* ── Helle Fassung ────────────────────────────────────────────────
@@ -580,6 +591,17 @@ html{font-size:calc(16px * var(--skala,1))}
   .mehrfach svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;
     stroke-linecap:round;stroke-linejoin:round;flex:none}
   @keyframes mehrauf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* Drei Knöpfe, gestaffelt um je 40 ms. Der Skill nennt 3 bis 5
+     Elemente und 30 bis 50 ms — darüber wirkt es langsam, darunter
+     merkt man es nicht. Genau drei sind es hier, also passt es.
+
+     both, damit der Endzustand steht und kein Knopf unsichtbar
+     liegen bleibt, wenn die Animation nicht läuft (§7). */
+  .mehrfach button{animation:mehrauf .24s var(--ease-out) both}
+  .mehrfach button:nth-child(1){animation-delay:.02s}
+  .mehrfach button:nth-child(2){animation-delay:.06s}
+  .mehrfach button:nth-child(3){animation-delay:.10s}
 }
 @media (max-width:760px) and (prefers-reduced-motion:reduce){
   .mehrfach{animation:none}
@@ -943,10 +965,25 @@ html{font-size:calc(16px * var(--skala,1))}
   display:block;width:100%;padding:14px;border-radius:11px;
   background:var(--messing);color:var(--nacht);
   font-size:15px;font-weight:700;text-align:center;
-  /* scale statt filter: filter kostet Paint, scale läuft auf der GPU */
-  transition:transform var(--t-druck) var(--ease-out), filter var(--t-druck) var(--ease-out);
+  /* VORFALL, und es war ein Widerspruch im eigenen Haus: Hier stand
+     "scale statt filter: filter kostet Paint, scale läuft auf der
+     GPU" — und die Zeile darunter machte BEIDES, scale UND
+     filter:brightness. Der Kommentar beschrieb eine Absicht, die
+     nie umgesetzt wurde.
+
+     Das Abdunkeln beim Druck ist nützlich und bleibt. Es kommt nur
+     jetzt aus einer Fläche mit opacity statt aus einem Filter —
+     dieselbe Optik, aber auf der Grafikkarte (§1). */
+  position:relative;overflow:hidden;
+  transition:transform var(--t-druck) var(--ease-out);
 }
-.knopf:active{transform:scale(.97);filter:brightness(.92)}
+.knopf::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  background:#000;opacity:0;pointer-events:none;
+  transition:opacity var(--t-druck) var(--ease-out);
+}
+.knopf:active::after{opacity:.10}
+.knopf:active{transform:scale(.97)}
 .knopf.leise{background:var(--tresen);color:var(--kreide);border:1px solid var(--linie)}
 .knopf.gefahr{background:transparent;color:var(--warn);border:1px solid var(--warn)}
 
@@ -955,10 +992,27 @@ html{font-size:calc(16px * var(--skala,1))}
   position:fixed;inset:0;z-index:60;
   background:rgba(10,9,7,.72);
   display:flex;align-items:flex-end;justify-content:center;
-  animation:auf .2s ease-out;
+  /* Das CSS-Schlüsselwort ease-out ist cubic-bezier(0,0,.58,1) — eine
+     ANDERE, schwächere Kurve als die des Hauses. Dieses eine Blatt
+     fiel damit anders als alles daneben. */
+  animation:auf .2s var(--ease-out);
 }
 .blatt[hidden]{display:none}
 @keyframes auf{from{opacity:0}to{opacity:1}}
+
+/* ── Das Blatt geht auch wieder ───────────────────────────────────
+   VORFALL, gemessen: Jedes der fuenf Blaetter fuhr in 400 ms herauf
+   und verschwand in NULL — hidden=true, und weg. Das ist der eine
+   Moment im Board, der am meisten unrund wirkt, und er kostet zwei
+   Keyframes.
+
+   Nur transform und opacity, also beides auf der Grafikkarte (§1).
+   Der Schleier blendet ab, der Inhalt faehrt nach unten heraus —
+   dorthin, wo er hergekommen ist. */
+@keyframes blattRunter{to{transform:translateY(100%)}}
+@keyframes schleierWeg{to{opacity:0}}
+.blatt.geht{animation:schleierWeg var(--t-blatt-raus) var(--ease-in) both}
+.blatt.geht .blattinhalt{animation:blattRunter var(--t-blatt-raus) var(--ease-in) both}
 .blattinhalt{
   background:var(--tresen);
   border-top:1px solid var(--linie);
@@ -977,6 +1031,12 @@ html{font-size:calc(16px * var(--skala,1))}
   .bestellung.frisch{animation:reinLeise 180ms linear both}
   @keyframes reinLeise{from{opacity:0}to{opacity:1}}
   .blattinhalt{animation:auf 180ms linear}
+  /* Wer keine Bewegung will, bekommt keine — aber der Endzustand
+     muss richtig sein, nicht ein unsichtbares Blatt, das noch liegt
+     (§7, dieselbe Falle wie [hidden] ohne Gegenregel). Der
+     Schliessweg prueft das zusaetzlich in JS und schliesst dann
+     ohne Umweg. */
+  .blatt.geht,.blatt.geht .blattinhalt{animation-duration:.01ms}
   .punkt.live::after{animation:none;opacity:0}
   .knopf:active,.schritt:active,.chip:active{transform:none}
   .lname{animation:auf 180ms linear}
@@ -5382,7 +5442,46 @@ function impOeffnen(){
   impVorschau();
   $("#impBlatt").hidden = false;
 }
-function impSchliessen(){ $("#impBlatt").hidden = true; }
+/* ══════════════════════════════════════════════════════════════
+   EIN BLATT GEHT MIT BEWEGUNG ZU — ODER SOFORT
+
+   Alle fuenf Blaetter schlossen mit hidden=true, also schlagartig.
+   Ein Ausgang gehoert dazu; er darf aber in drei Faellen NICHT
+   laufen, und jeder davon wird GEMESSEN, nicht per Absprache
+   geglaubt:
+
+   1 · Reduzierte Bewegung. Dann sofort zu, und der Endzustand muss
+       richtig sein (§7).
+   2 · Das Blatt ist schon unterwegs. Die Wischgeste schiebt es
+       selbst hinaus und ruft danach dieselbe Schliessfunktion —
+       eine zweite Animation waere ein Sprung zurueck an den offenen
+       Platz und dann wieder hinaus. Erkannt wird das an der
+       INLINE-Angabe, die die Geste gesetzt hat und erst nach dem
+       Schliessen wieder abraeumt. Kein Flag, das jemand setzen
+       muesste: der Zustand selbst ist die Auskunft (§8.1i).
+   3 · Es ist gar nicht offen. Beim Aufbau werden Schliessfunktionen
+       aufgerufen, bevor je etwas offen war; ohne diesen Zweig legte
+       sich eine Klasse auf ein verstecktes Blatt und die Zusage
+       kaeme 200 ms zu spaet.
+
+   Und: nicht zweimal. Wer doppelt tippt, darf keine zweite
+   Animation bekommen.                                            */
+function blattFortAnimieren(schirm, fertig){
+  if(!schirm || schirm.hidden){ fertig(); return; }
+  var inhalt = schirm.querySelector(".blattinhalt");
+  var ruhig = false;
+  try{ ruhig = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+  var schonUnterwegs = !!(inhalt && inhalt.style && inhalt.style.transform);
+  if(ruhig || !inhalt || schonUnterwegs){ fertig(); return; }
+  if(schirm.classList.contains("geht")) return;
+  schirm.classList.add("geht");
+  window.setTimeout(function(){
+    schirm.classList.remove("geht");
+    fertig();
+  }, 210);
+}
+
+function impSchliessen(){ blattFortAnimieren($("#impBlatt"), function(){ $("#impBlatt").hidden = true; }); }
 
 $("#karteImport").onclick   = impOeffnen;
 $("#impAbbrechen").onclick  = impSchliessen;
@@ -6158,7 +6257,8 @@ async function kbZuschnittFertig(){
   knopf.disabled = false;
 }
 
-function kbSchliessen(){ $("#kbBlatt").hidden = true; kbZuschnitt = null; }
+function kbSchliessen(){ blattFortAnimieren($("#kbBlatt"), function(){
+  $("#kbBlatt").hidden = true; kbZuschnitt = null; }); }
 
 /* ── Sichern ───────────────────────────────────────────────────── */
 async function kbSichern(){
@@ -6508,8 +6608,10 @@ function zeitBlattOeffnen(id){
 }
 
 function zeitBlattSchliessen(){
-  $("#zeitBlatt").hidden = true;
-  zeitFuerId = null;
+  blattFortAnimieren($("#zeitBlatt"), function(){
+    $("#zeitBlatt").hidden = true;
+    zeitFuerId = null;
+  });
 }
 
 $("#zeitAbbruch").onclick = zeitBlattSchliessen;
@@ -6850,7 +6952,8 @@ function uebOeffnen(){
   $("#uebFelder").innerHTML = html;
   $("#uebBlatt").hidden = false;
 }
-function uebSchliessen(){ $("#uebBlatt").hidden = true; uebEntwurf = null; }
+function uebSchliessen(){ blattFortAnimieren($("#uebBlatt"), function(){
+  $("#uebBlatt").hidden = true; uebEntwurf = null; }); }
 
 function blattOeffnen(g){
   bearbeite = g;
@@ -6878,7 +6981,8 @@ function blattOeffnen(g){
   $("#blatt").hidden     = false;
   setTimeout(()=> $("#fName").focus(), 120);
 }
-function blattSchliessen(){ $("#blatt").hidden = true; bearbeite = null; }
+function blattSchliessen(){ blattFortAnimieren($("#blatt"), function(){
+  $("#blatt").hidden = true; bearbeite = null; }); }
 
 $("#abbrechen").onclick = blattSchliessen;
 $("#blatt").onclick = e => { if(e.target === $("#blatt")) blattSchliessen(); };
