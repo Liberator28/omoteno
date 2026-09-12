@@ -67,6 +67,11 @@ const SEITEN = [
   ["seiten/konto.html",         "konto.html"],
   ["seiten/start.html",         "start.html"],
   ["seiten/marken-studio.html", "marken-studio.html"],
+  /* Das Master Board. Es gehoert NICHT dem Betrieb, sondern Omoteno:
+     Anfragen, Kunden, Zahlen ueber alle Haeuser. Der Zugang haengt an
+     ist_master() in den RLS-Regeln, nicht daran, dass die Adresse
+     schwer zu erraten ist — eine unverlinkte Seite ist kein Schutz. */
+  ["seiten/master.html",        "master.html"],
   /* Pflicht, nicht Kür. Beide sind aus dem Fuß von omoteno-web.html,
      konto.html und start.html verlinkt — sechs Links. Fehlt eine
      davon, bricht der Bau ab, statt eine Seite auszuliefern, deren
@@ -172,6 +177,7 @@ fs.writeFileSync(path.join(ZIEL, "robots.txt"),
 Disallow: /admin.html
 Disallow: /kueche.html
 Disallow: /konto.html
+Disallow: /master.html
 Disallow: /h/
 
 Sitemap: https://omoteno.de/sitemap.xml

@@ -41,17 +41,53 @@ const SWEEP = `
     const a = oben.length > 3 ? oben[3] : 1;
     return [0,1,2].map(i => Math.round(oben[i]*a + unten[i]*(1-a)));
   };
-  function grundVon(el){
+  /* Ein Verlauf steht in backgroundImage, nicht in backgroundColor —
+     dort liest man rgba(0,0,0,0) und steigt am Element vorbei.
+
+     VORFALL beim Master Board: Der Anmeldeknopf traegt
+     background:linear-gradient(#F5B87C,#E4913F) mit dunkler Schrift.
+     Gegen den Verlauf gerechnet sind das 7,06:1 im schlechtesten
+     Fall; wer daran vorbeisteigt, rechnet gegen die dunkle Seite
+     dahinter und meldet 1,07:1 — Fehlalarm. Und ein Werkzeug, das
+     Fehlalarme schlaegt, bringt einem bei, es zu uebergehen (§8.2).
+
+     Genommen wird die UNGUENSTIGSTE Kante des Verlaufs: Text muss
+     ueber der ganzen Flaeche lesbar sein, nicht nur oben. */
+  function verlaufStopps(st){
+    const t = String(st.backgroundImage || "").match(/rgba?\([^)]*\)/g);
+    if(!t || !t.length) return null;
+    return t.map(zahl).filter(v => v.length >= 3 && (v.length < 4 || v[3] > 0));
+  }
+  function grundStapel(el){
     const stapel = []; let k = el;
     while(k){
-      const b = zahl(getComputedStyle(k).backgroundColor);
-      if(b.length >= 3 && (b.length < 4 || b[3] > 0)) stapel.push(b);
+      const st = getComputedStyle(k);
+      const b = zahl(st.backgroundColor);
+      if(b.length >= 3 && (b.length < 4 || b[3] > 0)) stapel.push([b]);
       if(b.length === 3 || (b.length === 4 && b[3] === 1)) break;
+      const gr = verlaufStopps(st);
+      if(gr && gr.length){
+        stapel.push(gr);
+        /* Ein Verlauf mit lauter deckenden Stopps deckt ab. */
+        if(gr.every(v => v.length === 3 || v[3] === 1)) break;
+      }
       k = k.parentElement;
     }
-    let unten = stapel.pop() || [255,255,255];
-    while(stapel.length) unten = mischen(stapel.pop(), unten);
-    return unten;
+    return stapel;
+  }
+  /* Liefert je Verlaufskante einen fertig gemischten Grund. */
+  function gruendeVon(el){
+    const stapel = grundStapel(el);
+    if(!stapel.length) return [[255,255,255]];
+    const kanten = Math.max.apply(null, stapel.map(l => l.length));
+    const raus = [];
+    for(let i = 0; i < kanten; i++){
+      const spur = stapel.map(l => l[Math.min(i, l.length - 1)]);
+      let unten = spur.pop();
+      while(spur.length) unten = mischen(spur.pop(), unten);
+      raus.push(unten);
+    }
+    return raus;
   }
   /* Nur Elemente, die SELBST Text zeigen — sonst zählt jeder
      Container den Text seiner Kinder noch einmal mit. */
@@ -85,10 +121,14 @@ const SWEEP = `
     const dick = parseInt(s.fontWeight, 10) >= 700;
     const grenze = (groesse >= 24 || (groesse >= 18.66 && dick)) ? 3 : 4.5;
 
-    const grund = grundVon(el);
-    const vorne = mischen(zahl(s.color), grund);
-    const a = leucht(vorne), b = leucht(grund);
-    const wert = Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100;
+    const gruende = gruendeVon(el);
+    let wert = Infinity;
+    gruende.forEach(grund => {
+      const vorne = mischen(zahl(s.color), grund);
+      const a = leucht(vorne), b = leucht(grund);
+      const k = Math.round(((Math.max(a,b)+.05)/(Math.min(a,b)+.05))*100)/100;
+      if(k < wert) wert = k;
+    });
     if(wert < grenze){
       raus.push({
         wert, grenze,
@@ -135,6 +175,74 @@ const FLAECHEN = [
     lagen:[["dunkel", p => p.evaluate(() => { EINST.hell=false; document.body.classList.remove("hell"); })],
            ["hell",   p => p.evaluate(() => { EINST.hell=true;  document.body.classList.add("hell"); })]] },
 
+  /* Das Master Board. Eine Lage, nicht zwei: Es malt fest dunkel
+     (--bg-0 #14100E) und sagt das auch an. Ein zweiter Zustand waere
+     erfunden.
+
+     Gemessen wird die ANGEMELDETE Ansicht, nicht der Anmeldeschirm.
+     Wer nur das Tor prueft, prueft vier Beschriftungen und meldet
+     "alles sauber" fuer ein Brett mit Kacheln, Tabellen und
+     Verlauf — gruen, weil der Gegenstand fehlt (§8.1g). */
+  { datei:"master.html", name:"Master Board",
+    /* ZWEI Lagen, und die erste ist der Anmeldeschirm.
+
+       VORFALL, gefunden durch den eigenen Gegenbeweis: Mit nur der
+       angemeldeten Ansicht blieb die Probe gruen, als ich die
+       Knopfschrift des Anmeldeknopfs testweise auf die dunkle
+       Verlaufsfarbe setzte — der Schirm traegt dort .hidden, also
+       display:none, also sieht ihn der Durchgang gar nicht. Gruen,
+       weil der Gegenstand fehlt (§8.1g), und das beim ERSTEN, was
+       jeder zu sehen bekommt. */
+    lagen:[
+      ["Anmeldeschirm", async p => { await p.evaluate(() => {
+          const tor = document.getElementById("loginScreen");
+          const app = document.getElementById("app");
+          if(tor) tor.classList.remove("hidden");
+          if(app) app.classList.add("hidden");
+        }); }],
+      ["angemeldet", async p => { await p.evaluate(() => {
+          const tor = document.getElementById("loginScreen");
+          const app = document.getElementById("app");
+          if(tor) tor.classList.add("hidden");
+          if(app) app.classList.remove("hidden");
+        }); }]
+    ],
+    /* Das SDK kommt von einem fremden Server und ist hier
+       blockiert. Gestellt wird nur, was das Brett zum Zeichnen
+       braucht — leere Listen, keine erfundenen Daten. */
+    davor: p => p.addInitScript(() => {
+      const leer = { data:[], error:null };
+      const kette = {
+        select(){ return this; }, order(){ return this; },
+        gte(){ return this; }, eq(){ return this; }, limit(){ return this; },
+        then(f){ return Promise.resolve(f(leer)); },
+        catch(){ return Promise.resolve(leer); }
+      };
+      window.supabase = { createClient: () => ({
+        auth: {
+          getSession: () => Promise.resolve({ data:{ session:{
+            user:{ id:"m1", email:"pruefung@omoteno.de" } } } }),
+          signInWithPassword: () => Promise.resolve({ data:{}, error:null }),
+          onAuthStateChange: () => ({ data:{ subscription:{ unsubscribe(){} } } }),
+          signOut: () => Promise.resolve({})
+        },
+        from: () => Object.create(kette),
+        rpc: () => Promise.resolve(leer),
+        storage: { from: () => ({ createSignedUrl: () => Promise.resolve(leer) }) }
+      }) };
+    }),
+    /* Nach dem Umschalten wird gemessen, dass ueberhaupt etwas
+       dasteht. Sonst meldet die Probe "nichts gefunden", und das
+       klingt wie "alles sauber". */
+    nachher: async (p, lage) => {
+      const hoch = await p.evaluate(() => {
+        const el = document.querySelector("#loginScreen:not(.hidden), #app:not(.hidden)");
+        return el ? Math.round(el.getBoundingClientRect().height) : 0;
+      });
+      if(hoch < 200) throw new Error("Master Board · " + lage +
+        ": nichts sichtbar (" + hoch + " px) — die Werte danach sagen nichts aus.");
+    } },
+
   { hub:true, name:"Gäste-Hub",
     lagen:[["dunkel", p => p.evaluate(() => { lichtSetzen("dunkel"); })],
            ["hell",   p => p.evaluate(() => { lichtSetzen("hell");   })]],
@@ -164,11 +272,20 @@ const FLAECHEN = [
       const ctx = await browser.newContext({ viewport:{width:390,height:844} });
       const seite = await ctx.newPage();
       await fuellen(seite);
+      /* Manche Flaechen brauchen etwas, das VOR dem Laden da sein
+         muss (ein gestelltes SDK). vorher kommt zu spaet dafuer. */
+      if(f.davor) await f.davor(seite);
       await seite.goto(ziel);
       await seite.waitForTimeout(700);
       if(f.vorher) await f.vorher(seite);
       try{ await stellen(seite); }catch(e){}
       await seite.waitForTimeout(400);
+      /* Eine Probe, deren Voraussetzung fehlschlagen kann, muss die
+         Voraussetzung selbst pruefen (§8.1g, Vorfall C). */
+      if(f.nachher){
+        try{ await f.nachher(seite, lage); }
+        catch(e){ pruef(false, "Voraussetzung", String(e.message || e)); await ctx.close(); continue; }
+      }
 
       const wege = f.seiten || [null];
       const gesammelt = new Map();

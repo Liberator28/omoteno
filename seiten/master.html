@@ -1,0 +1,2062 @@
+<!DOCTYPE html>
+<html lang="de" translate="no">
+<head>
+<meta charset="UTF-8">
+<!-- Kein user-scalable=no: Safari ignoriert es ohnehin, und wer die Zahlen
+     schlecht liest, soll heranzoomen können. -->
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#14100E">
+<!-- Sagt an, was diese Seite WIRKLICH malt. Ohne die Angabe halten
+     Chrome auf Android und Samsung Internet die Seite fuer eine, die
+     kein Dunkel kennt, und kippen selbst die Helligkeiten — dunkle
+     Konturen werden hell. Als meta, weil der Browser entscheidet,
+     BEVOR ein Skript laeuft (CLAUDE.md §5.2c). Fest dunkel, weil
+     diese Seite nur dunkel malt: --bg-0 ist #14100E. Eine falsche
+     Ansage waere schlimmer als keine. -->
+<meta name="color-scheme" content="dark">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Omoteno Master</title>
+
+<!-- ================================================================
+     BLOCK 1 — ERUDA (mobile Konsole)
+
+     Wird NICHT mehr bei jedem Start geladen. Gründe: Es sind rund
+     100 KB von einem fremden Server bei jedem Öffnen, und die Konsole
+     stünde offen, bevor irgendjemand angemeldet ist.
+
+     Du kommst weiterhin in zwei Wegen dran:
+       · „⋯" antippen -> Diagnose -> „Konsole öffnen"
+       · oder die Adresse mit #debug aufrufen
+================================================================= -->
+<script>
+  window.OMO_KONSOLE = function(){
+    if(window.eruda){ try{ eruda.show(); }catch(e){} return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+    s.onload = function(){ try{ eruda.init(); eruda.show(); console.log('[MASTER] Eruda gestartet'); }catch(e){} };
+    s.onerror = function(){ alert('Konsole konnte nicht geladen werden — keine Verbindung zu jsdelivr.'); };
+    document.head.appendChild(s);
+  };
+  if(location.hash === '#debug') window.addEventListener('DOMContentLoaded', window.OMO_KONSOLE);
+</script>
+
+<!-- ================================================================
+     BLOCK 2 — SUPABASE SDK
+================================================================= -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+
+<!-- ================================================================
+     BLOCK 3 — STYLES
+================================================================= -->
+<style>
+:root{
+  /* Die meta-Angabe im Kopf gilt fuer den ERSTEN Anstrich, bevor
+     ein Skript laeuft. Diese hier gilt danach und ist die, die
+     getComputedStyle zurueckgibt — ohne sie steht dort "normal",
+     und eine Pruefung, die nur den Laufzeitwert misst, meldet
+     "keine Ansage". Beide braucht es, und beide sagen dasselbe
+     (§5.2c). */
+  color-scheme:dark;
+
+  --bg-0:#14100E;
+  --glass:rgba(255,247,240,.075);
+  --glass-strong:rgba(255,247,240,.12);
+  --stroke:rgba(255,240,228,.16);
+  --stroke-strong:rgba(255,240,228,.26);
+  --sheen:rgba(255,255,255,.30);
+
+  --text:#F6EFE8;
+  --text-dim:#A69B92;
+  /* War #6F655D. Gemessen auf --bg-0: 3,33:1 — unter der Grenze von
+     4,5:1, und es traegt Fusszeilen und Standangaben, also Text den
+     man LIEST. Auf #8A7F75 angehoben: 4,84:1. Nicht angesehen,
+     gerechnet (§5.2). Steht an 19 Stellen; ein Token geaendert,
+     nicht neunzehn Regeln. */
+  --text-faint:#8A7F75;
+
+  --gold-1:#F5D79B;
+  --gold-2:#D8A93F;
+  --amber:#F0A868;
+  --amber-hot:#FFC48A;
+  --sage:#7FCFA6;
+  --alert:#FF6A5E;
+
+  /* VORFALL. --danger wurde an zwei Stellen benutzt und nirgends
+     festgelegt: .tr-zahl.kritisch b (Schriftfarbe) und
+     .tr-punkt.kritisch (Flaeche). var() ohne Wert ist ungueltig,
+     color faellt auf den Erbwert und background auf durchsichtig —
+     die kritische Zahl war nicht rot, der kritische Punkt gar nicht
+     da. Genau §3.1, derselbe Fehler, der im Admin-Board die
+     "Kreise" verursacht hat.
+
+     Der Wert ist nicht geraten: Direkt daneben steht
+     box-shadow: rgba(232,139,125,.6) — das ist #E88B7D. Die Absicht
+     des Autors, aus der Datei gelesen. Gemessen auf --bg-0
+     (#14100E): 7,47:1. */
+  --danger:#E88B7D;
+
+  --r:16px;
+  --r-lg:24px;
+  --blur:blur(30px) saturate(165%);
+  --shadow:0 18px 50px rgba(0,0,0,.50), 0 2px 6px rgba(0,0,0,.30);
+  --ease:cubic-bezier(.22,.9,.28,1);
+
+  --font-display:"Bricolage Grotesque", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body:-apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", sans-serif;
+  --font-mono:ui-monospace, "SF Mono", Menlo, monospace;
+
+  --pad: max(18px, env(safe-area-inset-left));
+}
+
+*{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+html,body{margin:0; padding:0; min-height:100%;}
+
+body{
+  background:
+    radial-gradient(90vw 60vh at 85% -10%, rgba(240,168,104,.16), transparent 60%),
+    radial-gradient(80vw 50vh at 0% 105%, rgba(127,207,166,.10), transparent 60%),
+    var(--bg-0);
+  background-attachment:fixed;
+  color:var(--text);
+  font-family:var(--font-body);
+  font-size:16px; line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:calc(40px + env(safe-area-inset-bottom));
+}
+.hidden{display:none !important;}
+/* Die Klasse allein reicht nicht: Kommt irgendwann ein el.hidden = true
+   dazu, verliert die UA-Regel gegen JEDE Angabe im Blatt, und das
+   Element bleibt stehen — der schwerste Vorfall dieses Projekts
+   (§8.1). Die Gegenregel kostet eine Zeile. */
+[hidden]{display:none !important}
+
+/* ---------- Glaskarte ---------- */
+.card{
+  position:relative;
+  background:linear-gradient(180deg, rgba(255,247,240,.10), rgba(255,247,240,.045));
+  border:1px solid var(--stroke);
+  border-radius:var(--r);
+  -webkit-backdrop-filter:var(--blur);
+  backdrop-filter:var(--blur);
+  box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.12);
+}
+.card::before{
+  content:""; position:absolute; left:14px; right:14px; top:0; height:1px;
+  background:linear-gradient(90deg, transparent, var(--sheen), transparent);
+  pointer-events:none;
+}
+
+/* ---------- WORTMARKE: das o als Tap-Punkt ---------- */
+.wordmark{
+  font-family:var(--font-display); font-weight:800;
+  letter-spacing:-.03em; line-height:1;
+  display:inline-flex; align-items:center; white-space:nowrap;
+  color:var(--text);
+}
+.wordmark .mark{
+  height:1em; width:auto; display:block;
+  margin-left:.02em; margin-right:-.18em;
+  overflow:visible;
+}
+.wordmark .mark .ring, .wordmark .mark .arc{fill:none; stroke:url(#goldGrad); stroke-linecap:round;}
+.wordmark .mark .dot{fill:url(#goldGrad); stroke:none;}
+.wordmark .mark .arc{opacity:.9;}
+.wordmark .mark .arc.a2{opacity:.65;}
+.wordmark .mark .arc.a3{opacity:.38;}
+
+/* Wellen laufen beim Laden einmal nach außen */
+@keyframes emit{
+  0%{opacity:0; transform:translateX(-6px) scaleX(.7);}
+  60%{opacity:1; transform:none;}
+  100%{opacity:1; transform:none;}
+}
+.wordmark.animate .mark .arc{transform-origin:32% 58%; animation:emit .9s var(--ease) backwards;}
+.wordmark.animate .mark .arc.a1{animation-delay:.15s;}
+.wordmark.animate .mark .arc.a2{animation-delay:.30s;}
+.wordmark.animate .mark .arc.a3{animation-delay:.45s;}
+
+/* ================= LOGIN ================= */
+#loginScreen{
+  min-height:100vh; min-height:100dvh;
+  display:flex; flex-direction:column; justify-content:center;
+  padding:24px var(--pad);
+  max-width:460px; margin:0 auto;
+}
+.login-head{margin-bottom:28px;}
+.login-head .wordmark{font-size:34px;}
+.login-head small{
+  display:block; margin-top:10px;
+  font-size:13px; color:var(--text-dim); letter-spacing:.06em; text-transform:uppercase;
+}
+.login-box{padding:24px;}
+label{
+  display:block; font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--text-dim); margin:0 0 8px 2px;
+}
+
+input[type=email], input[type=password], input[type=date], input[type=text], select{
+  width:100%; height:58px; padding:0 18px;
+  font-size:16px; font-family:var(--font-body);
+  /* Beides, nicht nur color: Ohne -webkit-text-fill-color nimmt
+     Safari seine Systemfarbe — dunkel auf dunkel (§3.5). */
+  color:var(--text); -webkit-text-fill-color:var(--text);
+  background:rgba(0,0,0,.28);
+  border:1px solid var(--stroke-strong);
+  border-radius:var(--r);
+  outline:none; margin-bottom:18px; -webkit-appearance:none; appearance:none;
+  transition:border-color .25s var(--ease), box-shadow .25s var(--ease), background .25s var(--ease);
+}
+select{
+  background-image:linear-gradient(45deg,transparent 50%,var(--text-dim) 50%),linear-gradient(135deg,var(--text-dim) 50%,transparent 50%);
+  background-position:calc(100% - 22px) 26px, calc(100% - 16px) 26px;
+  background-size:6px 6px, 6px 6px; background-repeat:no-repeat;
+}
+input:focus, select:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.55);}
+input:focus-visible, select:focus-visible{border-color:var(--amber); box-shadow:0 0 0 3px rgba(240,168,104,.22);}
+
+button{
+  font-family:var(--font-body); cursor:pointer;
+  transition:transform .28s var(--ease), box-shadow .28s var(--ease),
+             background .28s var(--ease), border-color .28s var(--ease);
+}
+.btn-primary{
+  width:100%; height:60px; border:0; border-radius:var(--r);
+  background:linear-gradient(180deg,#F5B87C,#E4913F);
+  color:#241608; font-size:17px; font-weight:700;
+  box-shadow:0 10px 24px rgba(228,145,63,.28), inset 0 1px 0 rgba(255,255,255,.45);
+}
+.btn-primary:active{transform:scale(.97); box-shadow:0 4px 14px rgba(228,145,63,.22);}
+.btn-primary[disabled]{opacity:.55; transform:none;}
+
+.btn-ghost{
+  width:100%; height:54px; margin-top:14px;
+  background:transparent; border:1px solid var(--stroke-strong);
+  border-radius:var(--r); color:var(--text-dim); font-size:15px;
+}
+.btn-ghost:active{transform:scale(.97); background:var(--glass);}
+
+@media (hover:hover) and (pointer:fine){
+  .btn-primary:hover{transform:translateY(-2px); box-shadow:0 16px 34px rgba(228,145,63,.38), inset 0 1px 0 rgba(255,255,255,.45);}
+  .btn-ghost:hover{background:var(--glass); border-color:var(--amber); color:var(--text);}
+}
+
+.msg{
+  margin-top:14px; padding:12px 14px; border-radius:12px; font-size:14px;
+  border:1px solid rgba(255,106,94,.35); background:rgba(255,106,94,.10); color:#FFB5AE;
+}
+.msg.ok{border-color:rgba(127,207,166,.35); background:rgba(127,207,166,.10); color:#B7E9CF;}
+
+/* ================= APP ================= */
+#app{max-width:760px; margin:0 auto; padding:0 var(--pad);}
+
+.topbar{
+  position:sticky; top:0; z-index:20;
+  display:flex; align-items:center; gap:10px;
+  padding:calc(12px + env(safe-area-inset-top)) 2px 12px;
+  background:linear-gradient(180deg, var(--bg-0) 58%, rgba(20,16,14,0));
+}
+.topbar .who{flex:1; min-width:0; display:flex; flex-direction:column; gap:2px;}
+.topbar .wordmark{font-size:21px;}
+.topbar .who span{
+  font-size:11.5px; color:var(--text-faint);
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  display:flex; align-items:center; gap:6px;
+}
+.live-dot{
+  width:7px; height:7px; border-radius:50%; background:var(--text-faint);
+  flex:0 0 7px; transition:background .3s var(--ease), box-shadow .3s var(--ease);
+}
+.live-dot.on{background:var(--sage); box-shadow:0 0 10px rgba(127,207,166,.8); animation:beat 2.4s ease-in-out infinite;}
+.live-dot.err{background:var(--alert); box-shadow:0 0 10px rgba(255,106,94,.8);}
+@keyframes beat{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+.icon-btn{
+  width:52px; height:52px; flex:0 0 52px;
+  display:flex; align-items:center; justify-content:center;
+  background:var(--glass); border:1px solid var(--stroke);
+  border-radius:15px; color:var(--text); font-size:20px;
+  -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+}
+.icon-btn:active{background:var(--glass-strong); transform:scale(.92);}
+@media (hover:hover) and (pointer:fine){
+  .icon-btn:hover{background:var(--glass-strong); border-color:var(--stroke-strong); transform:translateY(-1px);}
+}
+
+.section-label{
+  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--text-faint); margin:24px 2px 10px;
+  display:flex; align-items:center; gap:8px;
+}
+.section-label .rechts{margin-left:auto; letter-spacing:.02em; text-transform:none; font-size:12px;}
+
+/* ---------- Zeitraum-Umschalter ---------- */
+.segmented{
+  display:flex; gap:4px; padding:4px; margin-top:4px;
+  background:rgba(0,0,0,.3); border:1px solid var(--stroke); border-radius:14px;
+}
+.segmented button{
+  flex:1; min-height:44px; border:0; border-radius:10px;
+  background:transparent; color:var(--text-dim);
+  font-size:14px; font-weight:600;
+}
+.segmented button.on{
+  background:var(--glass-strong); color:var(--text);
+  box-shadow:0 2px 8px rgba(0,0,0,.3), inset 0 1px 0 rgba(255,255,255,.14);
+}
+
+/* ---------- KPIs ---------- */
+.kpis{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-top:12px;}
+.kpi{padding:20px 16px; min-height:96px; display:flex; flex-direction:column; justify-content:center;}
+.kpi .val{
+  font-family:var(--font-mono); font-size:26px; font-weight:600;
+  letter-spacing:-.035em; font-variant-numeric:tabular-nums; display:block;
+}
+.kpi .lbl{font-size:12px; color:var(--text-dim); margin-top:6px; display:block; line-height:1.3;}
+.kpi.is-alert .val{color:var(--alert); text-shadow:0 0 24px rgba(255,106,94,.45);}
+.kpi.is-calm .val{color:var(--sage);}
+
+.kpis .kpi:first-child{grid-column:1 / -1; padding:26px 22px;}
+.kpis .kpi:first-child .val{
+  font-size:clamp(36px, 11vw, 48px);
+  color:var(--amber-hot); text-shadow:0 0 34px rgba(240,168,104,.42);
+}
+.kpis .kpi:first-child .lbl{font-size:13px; letter-spacing:.02em;}
+
+/* ---------- Verlaufschart ---------- */
+.chart-card{padding:18px 16px 12px;}
+.chart-head{display:flex; align-items:baseline; gap:8px; margin-bottom:14px;}
+.chart-head .t{font-size:12px; color:var(--text-dim);}
+.chart-head .v{
+  margin-left:auto; font-family:var(--font-mono); font-size:15px; color:var(--amber);
+  font-variant-numeric:tabular-nums;
+}
+.chart{display:flex; align-items:flex-end; gap:3px; height:110px;}
+.bar{
+  flex:1; min-width:6px; border-radius:5px 5px 3px 3px;
+  background:linear-gradient(180deg, rgba(240,168,104,.95), rgba(216,169,63,.35));
+  min-height:3px; position:relative;
+  transition:filter .2s var(--ease), transform .2s var(--ease);
+  transform-origin:bottom;
+  animation:grow .5s var(--ease) backwards;
+}
+@keyframes grow{from{transform:scaleY(0);}}
+.bar.leer{background:rgba(255,255,255,.07);}
+.bar.on{filter:brightness(1.35); transform:scaleX(1.15);}
+/* --text-faint traegt auf dem nackten Grund 4,84:1 — hier liegt es
+   aber auf der Glasflaeche der Karte, und die hebt den Grund an:
+   gemessen 3,77:1. Deshalb eine Stufe heller. Genau dafuer misst
+   pruef-lesbarkeit.js den GEMISCHTEN Grund und nicht das Token. */
+.chart-axis{display:flex; justify-content:space-between; margin-top:8px; font-size:10px; color:var(--text-dim);}
+
+/* ---------- Betriebskarte ---------- */
+.betrieb{
+  padding:20px; margin-bottom:14px;
+  display:flex; gap:16px; align-items:flex-start;
+  animation:rise .45s var(--ease) backwards;
+  transition:transform .3s var(--ease), border-color .3s var(--ease);
+}
+@media (hover:hover) and (pointer:fine){
+  .betrieb:hover{transform:translateY(-3px); border-color:var(--stroke-strong);}
+}
+@keyframes rise{from{opacity:0; transform:translateY(10px);}}
+
+.coaster{
+  position:relative; flex:0 0 46px; width:46px; height:46px;
+  display:flex; align-items:center; justify-content:center;
+  border-radius:50%; border:2px solid var(--sage); color:var(--sage);
+  font-family:var(--font-display); font-weight:800; font-size:17px;
+}
+.coaster::after{content:""; position:absolute; inset:-6px; border-radius:50%; border:2px solid currentColor; opacity:0;}
+.betrieb.is-offline .coaster{border-color:var(--text-faint); color:var(--text-faint);}
+.betrieb.is-alert .coaster{border-color:var(--alert); color:var(--alert);}
+.betrieb.is-alert .coaster::after{animation:tap 2s ease-out infinite;}
+@keyframes tap{0%{transform:scale(.9); opacity:.7;} 70%{transform:scale(1.5); opacity:0;} 100%{opacity:0;}}
+
+.b-main{flex:1; min-width:0;}
+.b-head{display:flex; align-items:baseline; gap:8px;}
+.b-name{
+  font-family:var(--font-display); font-weight:700; font-size:18px;
+  letter-spacing:-.015em; margin:0;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.b-ort{font-size:12px; color:var(--text-faint); flex:0 0 auto;}
+
+.b-stats{display:flex; gap:24px; margin-top:16px; flex-wrap:wrap;}
+.stat .n{
+  font-family:var(--font-mono); font-size:19px; font-variant-numeric:tabular-nums;
+  letter-spacing:-.02em; display:block;
+}
+.stat .t{font-size:11px; color:var(--text-dim); letter-spacing:.04em;}
+.b-stats .stat:first-child .n{font-size:23px; color:var(--amber);}
+.betrieb.is-alert .b-stats .stat:last-child .n{color:var(--alert); text-shadow:0 0 20px rgba(255,106,94,.5);}
+.betrieb.is-offline .b-stats .stat .n{color:var(--text-faint);}
+
+.b-split{font-size:11px; color:var(--text-faint); margin-top:8px; font-family:var(--font-mono);}
+
+.b-foot{
+  margin-top:16px; padding-top:14px; border-top:1px solid var(--stroke);
+  display:flex; align-items:center; gap:10px; font-size:12px; color:var(--text-faint);
+  flex-wrap:wrap;
+}
+.pill{
+  margin-left:auto; padding:9px 16px; border-radius:999px;
+  font-size:13px; font-weight:600; white-space:nowrap;
+  background:rgba(127,207,166,.12); color:var(--sage); border:1px solid rgba(127,207,166,.28);
+}
+.pill.alert{background:rgba(255,106,94,.16); color:var(--alert); border-color:rgba(255,106,94,.40); box-shadow:0 0 22px rgba(255,106,94,.20);}
+.pill.off{background:rgba(255,255,255,.05); color:var(--text-faint); border-color:var(--stroke);}
+
+.b-actions{display:flex; gap:10px; margin-top:14px;}
+.btn-small{
+  flex:1; min-height:48px; padding:0 14px;
+  background:var(--glass); border:1px solid var(--stroke-strong);
+  border-radius:13px; color:var(--text); font-size:14px; font-weight:600;
+}
+.btn-small:active{transform:scale(.96); background:var(--glass-strong);}
+.btn-small.accent{border-color:rgba(240,168,104,.45); color:var(--amber);}
+.btn-small.clear{border-color:rgba(255,106,94,.45); color:var(--alert);}
+@media (hover:hover) and (pointer:fine){ .btn-small:hover{background:var(--glass-strong);} }
+
+/* ---------- Anfragenkarte ----------
+   Bewusst flacher als die Betriebskarte: Eine Anfrage ist noch kein
+   Betrieb. Erst wenn sie „gewonnen" ist, wandert sie in die Liste
+   darunter — dann als echter Betrieb mit Umsatz. */
+.anfrage{
+  padding:18px 20px; margin-bottom:12px;
+  animation:rise .45s var(--ease) backwards;
+  transition:transform .3s var(--ease), border-color .3s var(--ease);
+}
+.anfrage.ist-neu{border-color:rgba(240,168,104,.45); box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.12), 0 0 30px rgba(240,168,104,.10);}
+.anfrage.ist-ruht{opacity:.62;}
+@media (hover:hover) and (pointer:fine){ .anfrage:hover{transform:translateY(-3px); border-color:var(--stroke-strong);} }
+
+.a-head{display:flex; align-items:flex-start; gap:10px;}
+.a-name{
+  font-family:var(--font-display); font-weight:700; font-size:17px;
+  letter-spacing:-.015em; margin:0; flex:1; min-width:0; overflow-wrap:anywhere;
+}
+.a-zeit{font-family:var(--font-mono); font-size:11px; color:var(--text-faint); flex:0 0 auto; padding-top:3px;}
+.a-ort{font-size:12.5px; color:var(--text-dim); margin:5px 0 0;}
+.a-marken{display:flex; flex-wrap:wrap; gap:6px; margin-top:13px;}
+.tag{
+  font-family:var(--font-mono); font-size:10.5px; letter-spacing:.02em;
+  padding:4px 10px; border-radius:999px;
+  background:rgba(0,0,0,.26); border:1px solid var(--stroke); color:var(--text-dim);
+}
+.tag.stark{color:var(--amber); border-color:rgba(240,168,104,.34);}
+.tag.datei{color:var(--sage); border-color:rgba(127,207,166,.30);}
+
+.stand{
+  flex:0 0 auto; padding:4px 11px; border-radius:999px;
+  font-size:11px; font-weight:700; letter-spacing:.03em; white-space:nowrap;
+}
+.stand.s-neu{background:rgba(240,168,104,.16); color:var(--amber-hot); border:1px solid rgba(240,168,104,.40);}
+.stand.s-gelesen{background:rgba(255,255,255,.06); color:var(--text-dim); border:1px solid var(--stroke);}
+.stand.s-im_gespraech{background:rgba(127,207,166,.12); color:var(--sage); border:1px solid rgba(127,207,166,.30);}
+.stand.s-gewonnen{background:rgba(127,207,166,.24); color:#B7E9CF; border:1px solid rgba(127,207,166,.5);}
+.stand.s-abgesagt{background:rgba(255,255,255,.04); color:var(--text-faint); border:1px solid var(--stroke);}
+
+/* Umschalter „erledigte zeigen" in der Abschnittszeile */
+.section-label button.mini{
+  background:transparent; border:1px solid var(--stroke); border-radius:999px;
+  color:var(--text-faint); font-size:11px; letter-spacing:.02em; text-transform:none;
+  padding:5px 12px; min-height:32px;
+}
+.section-label button.mini.on{border-color:rgba(240,168,104,.45); color:var(--amber);}
+
+/* Antwortpaare im Sheet */
+.paar{display:flex; gap:14px; padding:11px 0; border-top:1px solid var(--stroke); font-size:14px; align-items:baseline;}
+.paar .k{color:var(--text-dim); flex:0 0 43%; font-size:12.5px; line-height:1.4;}
+.paar .v{flex:1; min-width:0; text-align:right; overflow-wrap:anywhere;}
+.gruppe-titel{
+  font-size:11px; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--text-faint); margin:22px 0 2px;
+}
+
+textarea{
+  width:100%; min-height:92px; padding:14px 16px;
+  font-size:16px; font-family:var(--font-body);
+  /* Beides, nicht nur color: Ohne -webkit-text-fill-color nimmt
+     Safari seine Systemfarbe — dunkel auf dunkel (§3.5). */
+  color:var(--text); -webkit-text-fill-color:var(--text);
+  background:rgba(0,0,0,.28); border:1px solid var(--stroke-strong);
+  border-radius:var(--r); outline:none; margin-bottom:14px; resize:vertical;
+  -webkit-appearance:none; appearance:none;
+}
+textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.55);}
+
+.stand-wahl{display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 16px;}
+.stand-wahl button{
+  min-height:44px; padding:0 15px; border-radius:12px;
+  background:var(--glass); border:1px solid var(--stroke); color:var(--text-dim);
+  font-size:13px; font-weight:600;
+}
+.stand-wahl button.on{border-color:rgba(240,168,104,.5); color:var(--amber); background:var(--glass-strong);}
+
+.wege{display:flex; gap:9px; margin-bottom:20px; flex-wrap:wrap;}
+.wege .btn-small{flex:1 1 30%; min-width:96px;}
+.btn-small.wa{border-color:rgba(127,207,166,.45); color:var(--sage);}
+
+/* ---------- Trennungsbericht ----------
+   Rot heißt: ein fremder Betrieb kann mitlesen. Das ist die einzige
+   Stelle in Master, an der Rot wirklich Alarm bedeutet. */
+.tr-kopf{display:flex;gap:10px;margin-bottom:18px}
+.tr-zahl{
+  flex:1;text-align:center;padding:14px 8px;border-radius:14px;
+  background:var(--glass);border:1px solid var(--stroke);
+}
+.tr-zahl b{display:block;font-family:var(--font-display);font-size:26px;font-weight:700;line-height:1}
+.tr-zahl span{display:block;font-size:11px;color:var(--text-dim);margin-top:5px;letter-spacing:.02em}
+.tr-zahl.kritisch{border-color:rgba(232,139,125,.5);background:rgba(232,139,125,.10)}
+.tr-zahl.kritisch b{color:var(--danger)}
+.tr-zahl.pruefen b{color:var(--amber)}
+.tr-zahl.gut b{color:var(--sage)}
+
+.tr-gruppe{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--text-faint);margin:22px 0 6px}
+.tr-zeile{
+  padding:12px 0;border-top:1px solid var(--stroke);
+  display:flex;gap:11px;align-items:flex-start;
+}
+.tr-punkt{flex:none;width:9px;height:9px;border-radius:50%;margin-top:7px}
+.tr-punkt.kritisch{background:var(--danger);box-shadow:0 0 10px rgba(232,139,125,.6)}
+.tr-punkt.pruefen{background:var(--amber)}
+.tr-punkt.gut{background:var(--sage);opacity:.55}
+.tr-text{min-width:0;flex:1}
+.tr-text b{display:block;font-size:14.5px;font-weight:600;overflow-wrap:anywhere}
+.tr-text span{display:block;font-size:13px;color:var(--text-dim);margin-top:2px}
+.tr-text small{display:block;font-size:12.5px;color:var(--text-faint);margin-top:6px;line-height:1.5}
+.tr-ok{
+  padding:16px 18px;border-radius:14px;margin-top:18px;
+  background:rgba(127,207,166,.10);border:1px solid rgba(127,207,166,.3);
+  font-size:14px;line-height:1.55;color:var(--text-dim);
+}
+.tr-ok b{color:var(--sage)}
+
+/* ---------- Bottom Sheet ---------- */
+.overlay{
+  position:fixed; inset:0; z-index:60;
+  background:rgba(8,6,5,.62);
+  -webkit-backdrop-filter:blur(6px); backdrop-filter:blur(6px);
+  display:flex; align-items:flex-end; justify-content:center;
+  animation:fade .25s var(--ease);
+}
+@keyframes fade{from{opacity:0;}}
+.sheet{
+  width:100%; max-width:560px;
+  max-height:88vh; max-height:88dvh; overflow-y:auto; -webkit-overflow-scrolling:touch;
+  background:linear-gradient(180deg, #241D19, #191411);
+  border:1px solid var(--stroke-strong); border-bottom:0;
+  border-radius:var(--r-lg) var(--r-lg) 0 0;
+  padding:10px 20px calc(28px + env(safe-area-inset-bottom));
+  box-shadow:0 -20px 60px rgba(0,0,0,.6);
+  animation:slideUp .38s var(--ease);
+}
+@keyframes slideUp{from{transform:translateY(100%);}}
+.grabber{width:44px; height:5px; border-radius:99px; background:var(--stroke-strong); margin:0 auto 18px;}
+.sheet h3{font-family:var(--font-display); font-size:22px; font-weight:800; letter-spacing:-.02em; margin:0 0 4px;}
+.sheet .sub{font-size:13px; color:var(--text-dim); margin:0 0 22px;}
+
+.zeile{
+  display:flex; align-items:center; gap:12px; padding:13px 0;
+  border-top:1px solid var(--stroke); font-size:14px;
+}
+.zeile .z-wert{font-family:var(--font-mono); font-weight:600; color:var(--amber); min-width:82px; font-variant-numeric:tabular-nums;}
+.zeile .z-meta{flex:1; min-width:0; color:var(--text-dim); font-size:12px;}
+.zeile button{
+  min-width:46px; height:46px; padding:0 12px; flex:0 0 auto; border-radius:12px;
+  background:transparent; border:1px solid var(--stroke); color:var(--text-faint); font-size:14px;
+}
+.zeile button:active{border-color:var(--alert); color:var(--alert);}
+.zeile button.ok:active{border-color:var(--sage); color:var(--sage);}
+
+.detail-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin-bottom:22px;}
+.detail-grid div{
+  padding:14px 12px; border-radius:13px;
+  background:rgba(0,0,0,.25); border:1px solid var(--stroke);
+}
+.detail-grid .n{font-family:var(--font-mono); font-size:17px; display:block; font-variant-numeric:tabular-nums;}
+.detail-grid .t{font-size:10.5px; color:var(--text-faint); letter-spacing:.05em;}
+
+/* ---------- Toast ---------- */
+#toast{
+  position:fixed; left:50%; bottom:calc(26px + env(safe-area-inset-bottom));
+  transform:translateX(-50%); z-index:90;
+  padding:14px 22px; border-radius:999px;
+  background:rgba(36,29,25,.96); border:1px solid var(--stroke-strong);
+  -webkit-backdrop-filter:var(--blur); backdrop-filter:var(--blur);
+  font-size:14px; font-weight:600; box-shadow:var(--shadow);
+  animation:toastIn .3s var(--ease); max-width:88vw; text-align:center;
+}
+#toast.err{border-color:rgba(255,106,94,.5); color:#FFB5AE;}
+#toast.ok{border-color:rgba(127,207,166,.5); color:#B7E9CF;}
+@keyframes toastIn{from{opacity:0; transform:translate(-50%,14px);}}
+
+/* ---------- Diagnose ---------- */
+#diagBox{padding:18px; margin-top:10px; font-family:var(--font-mono); font-size:12px; line-height:1.7;}
+#diagBox .row{display:flex; gap:10px; align-items:flex-start; border-top:1px solid var(--stroke); padding:8px 0;}
+#diagBox .row:first-child{border-top:0;}
+#diagBox .k{color:var(--text-dim); flex:0 0 118px;}
+#diagBox .v{flex:1; word-break:break-word;}
+#diagBox .v.good{color:var(--sage);}
+#diagBox .v.bad{color:var(--alert);}
+
+/* ---------- Skeleton beim ersten Laden ---------- */
+.skeleton{height:132px; margin-bottom:14px; border-radius:var(--r);
+  background:linear-gradient(90deg, rgba(255,255,255,.045), rgba(255,255,255,.10), rgba(255,255,255,.045));
+  background-size:220% 100%; animation:shimmer 1.4s linear infinite;}
+@keyframes shimmer{from{background-position:220% 0;} to{background-position:-20% 0;}}
+
+.empty{padding:34px 22px; text-align:center; color:var(--text-dim); font-size:14px; line-height:1.6;}
+.foot-note{text-align:center; font-size:12px; color:var(--text-faint); margin:26px 0 10px;}
+
+@media (prefers-reduced-motion: reduce){ *{animation:none !important; transition:none !important;} }
+</style>
+</head>
+<body>
+
+<!-- Gold-Verlauf für alle Logo-Instanzen, einmal global definiert -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <linearGradient id="goldGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#F5D79B"/>
+      <stop offset="55%" stop-color="#D8A93F"/>
+      <stop offset="100%" stop-color="#B78427"/>
+    </linearGradient>
+  </defs>
+</svg>
+
+<!-- ================================================================
+     BLOCK 4 — LOGIN
+================================================================= -->
+<div id="loginScreen">
+  <div class="login-head">
+    <span class="wordmark animate">omoten<svg class="mark" viewBox="0 0 122 100" aria-label="o">
+      <circle class="ring" cx="32" cy="58" r="22" stroke-width="11"/>
+      <circle class="dot" cx="32" cy="58" r="6.5"/>
+      <path class="arc a1" d="M 66 40 A 24 24 0 0 1 66 76" stroke-width="9"/>
+      <path class="arc a2" d="M 83 27 A 39 39 0 0 1 83 89" stroke-width="9"/>
+      <path class="arc a3" d="M 100 15 A 54 54 0 0 1 100 101" stroke-width="9"/>
+    </svg></span>
+    <small>Master Control</small>
+  </div>
+
+  <div class="card login-box">
+    <label for="email">E-Mail</label>
+    <input id="email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="hallo@omoteno.de">
+
+    <label for="password">Passwort</label>
+    <input id="password" type="password" autocomplete="current-password" placeholder="••••••••">
+
+    <button id="loginBtn" class="btn-primary">Anmelden</button>
+    <div id="loginMsg" class="msg hidden"></div>
+  </div>
+
+  <p class="foot-note">Nur für dich. Kein Zugang für Betriebe.</p>
+</div>
+
+<!-- ================================================================
+     BLOCK 5 — DASHBOARD
+================================================================= -->
+<div id="app" class="hidden">
+
+  <div class="topbar">
+    <div class="who">
+      <span class="wordmark">omoten<svg class="mark" viewBox="0 0 122 100" aria-label="o">
+        <circle class="ring" cx="32" cy="58" r="22" stroke-width="11"/>
+        <circle class="dot" cx="32" cy="58" r="6.5"/>
+        <path class="arc a1" d="M 66 40 A 24 24 0 0 1 66 76" stroke-width="9"/>
+        <path class="arc a2" d="M 83 27 A 39 39 0 0 1 83 89" stroke-width="9"/>
+        <path class="arc a3" d="M 100 15 A 54 54 0 0 1 100 101" stroke-width="9"/>
+      </svg></span>
+      <span><i id="liveDot" class="live-dot"></i><em id="userLine" style="font-style:normal">—</em></span>
+    </div>
+    <button id="addBtn" class="icon-btn" aria-label="Umsatz eintragen">＋</button>
+    <button id="refreshBtn" class="icon-btn" aria-label="Neu laden">⟳</button>
+    <button id="menuBtn" class="icon-btn" aria-label="Diagnose">⋯</button>
+  </div>
+
+  <div class="segmented" id="zeitraum">
+    <button data-range="heute" class="on">Heute</button>
+    <button data-range="woche">7 Tage</button>
+    <button data-range="monat">30 Tage</button>
+  </div>
+
+  <div class="kpis">
+    <div class="card kpi"><span class="val" id="kpiUmsatz">—</span><span class="lbl" id="kpiUmsatzLbl">Umsatz heute</span></div>
+    <div class="card kpi is-calm"><span class="val" id="kpiBestell">—</span><span class="lbl">Bestellungen</span></div>
+    <div class="card kpi is-alert"><span class="val" id="kpiRufe">—</span><span class="lbl">Offene Servicerufe</span></div>
+  </div>
+
+  <p class="section-label">Verlauf<span class="rechts" id="chartWert">—</span></p>
+  <div class="card chart-card">
+    <div class="chart-head">
+      <span class="t" id="chartTag">Letzte 14 Tage</span>
+      <span class="v" id="chartSchnitt">—</span>
+    </div>
+    <div class="chart" id="chart"></div>
+    <div class="chart-axis"><span id="axisVon">—</span><span id="axisBis">heute</span></div>
+  </div>
+
+  <p class="section-label">Anfragen<span class="rechts" id="anfragenNote">—</span>
+    <button class="mini" id="anfragenToggle" type="button">Erledigte zeigen</button></p>
+  <div id="anfragenListe"></div>
+
+  <p class="section-label">Betriebe<span class="rechts" id="aktivNote">—</span></p>
+  <div id="betriebeListe"></div>
+
+  <div id="diagBox" class="card hidden"></div>
+
+  <p class="foot-note" id="standNote">—</p>
+</div>
+
+<!-- ================================================================
+     BLOCK 6 — JAVASCRIPT
+================================================================= -->
+<script>
+(function () {
+  'use strict';
+
+  /* ============================================================
+     6.1 KONFIGURATION — nur hier etwas eintragen
+     ============================================================ */
+  var CONFIG = {
+    SUPABASE_URL:      'https://quxwweuvdqtjsdwgjdrh.supabase.co',
+    SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk',
+
+    /* servicerufe ist bewusst KEIN Eintrag mehr: Hub, Board und Küche
+       legen Rufe als Bestellung mit quelle="service" an. Eine eigene
+       Tabelle gab es nie – der Master las ins Leere. */
+    TABELLEN: {
+      betriebe:     'betriebe',
+      bestellungen: 'bestellungen',
+      umsaetze:     'master_umsaetze',
+      anfragen:     'anfragen'
+    },
+
+    ANFRAGEN_EIMER: 'anfragen',
+
+    // null = wird beim ersten Laden automatisch erkannt
+    SPALTEN: {
+      betriebName:    null,
+      betriebOrt:     null,
+      bestellBetrag:  null,
+      bestellZeit:    'created_at',
+      bestellBetrieb: 'betrieb_id'
+    },
+
+    HISTORIE_TAGE: 30,
+    CHART_TAGE: 14,
+    AUTO_REFRESH_SEK: 60
+  };
+
+  var LOG = '[MASTER]';
+  console.log(LOG, 'Start', new Date().toISOString());
+
+  /* ============================================================
+     6.1b ANFRAGEN — Beschriftung der Formularfelder
+
+     Das Formular auf omoteno.de/start.html legt alle Antworten in
+     ein einziges JSON-Feld. Hier stehen die Klartext-Namen dazu.
+     Fügst du im Formular eine Frage hinzu, taucht sie hier unter
+     „Weitere Angaben" auf, auch wenn du diese Liste nicht anfasst.
+     ============================================================ */
+  var A_LABEL = {
+    betrieb_name:'Name des Betriebs', betrieb_art:'Art des Betriebs', betrieb_art_frei:'Art, genauer',
+    adresse:'Adresse', web:'Website / Instagram', tische:'Tische', bereich:'Sitzbereich', oeffnung:'Öffnungszeiten',
+    kontakt_name:'Ansprechpartner', kontakt_rolle:'Rolle', mail:'E-Mail', telefon:'Telefon',
+    weg:'Kontaktweg', zeit:'Erreichbar',
+    kasse:'Kassensystem', kasse_frei:'Kasse, genauer', kasse_export:'Artikel-Export möglich',
+    bestell_weg:'Bestellungen landen', funktionen:'Gewünschte Funktionen', wlan_name:'WLAN-Name',
+    service_anzahl:'Service gleichzeitig',
+    karte_form:'Karte liegt vor als', karte_umfang:'Umfang der Karte', karte_optionen:'Optionen / Toppings',
+    karte_allergene:'Allergene', karte_wechsel:'Wechsel der Karte', sprachen:'Sprachen', karte_notiz:'Zur Karte',
+    motiv:'Motiv', hausfarbe:'Hausfarbe', logo_status:'Logo', fotos:'Fotos',
+    traeger_form:'Untersetzer-Form', traeger_menge:'Untersetzer-Menge', vorbild:'Vorbilder', stimmung:'Stimmung',
+    start_wann:'Start', paket:'Paket', gefunden:'Gefunden über', nachricht:'Nachricht', einwilligung:'Einverständnis'
+  };
+  var A_GRUPPEN = [
+    { titel:'Betrieb',          keys:['betrieb_name','betrieb_art','betrieb_art_frei','adresse','web','tische','bereich','oeffnung'] },
+    { titel:'Kontakt',          keys:['kontakt_name','kontakt_rolle','mail','telefon','weg','zeit'] },
+    { titel:'Kasse und Ablauf', keys:['kasse','kasse_frei','kasse_export','bestell_weg','funktionen','wlan_name','service_anzahl'] },
+    { titel:'Karte',            keys:['karte_form','karte_umfang','karte_optionen','karte_allergene','karte_wechsel','sprachen','karte_notiz'] },
+    { titel:'Gestaltung',       keys:['motiv','hausfarbe','logo_status','fotos','traeger_form','traeger_menge','vorbild','stimmung'] },
+    { titel:'Start',            keys:['start_wann','paket','gefunden','nachricht','einwilligung'] }
+  ];
+  var A_STAENDE = [
+    { k:'neu', l:'Neu' }, { k:'gelesen', l:'Gelesen' }, { k:'im_gespraech', l:'Im Gespräch' },
+    { k:'gewonnen', l:'Gewonnen' }, { k:'abgesagt', l:'Abgesagt' }
+  ];
+  function standName(k){
+    for(var i=0;i<A_STAENDE.length;i++) if(A_STAENDE[i].k === k) return A_STAENDE[i].l;
+    return k || 'Neu';
+  }
+
+  /* ============================================================
+     6.2 HELFER
+     ============================================================ */
+  function $(id){ var el = document.getElementById(id); if(!el) console.log(LOG,'Element fehlt:',id); return el; }
+  function show(el){ if(el) el.classList.remove('hidden'); }
+  function hide(el){ if(el) el.classList.add('hidden'); }
+  function esc(s){ return String(s == null ? '' : s).replace(/[&<>"]/g, function(c){
+    return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]; }); }
+
+  var euro  = new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',maximumFractionDigits:0});
+  var euro2 = new Intl.NumberFormat('de-DE',{style:'currency',currency:'EUR',minimumFractionDigits:2});
+  var uhr   = new Intl.DateTimeFormat('de-DE',{hour:'2-digit',minute:'2-digit'});
+  var dfmt  = new Intl.DateTimeFormat('de-DE',{day:'2-digit',month:'2-digit'});
+
+  var toastTimer = null;
+  function toast(text, art){
+    console.log(LOG,'Toast:',text);
+    var alt = document.getElementById('toast'); if(alt) alt.remove();
+    var t = document.createElement('div');
+    t.id = 'toast'; t.className = art || ''; t.textContent = text;
+    document.body.appendChild(t);
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function(){ if(t.parentNode) t.remove(); }, 3200);
+  }
+
+  function meldung(text, ok){
+    var box = $('loginMsg'); if(!box) return;
+    box.textContent = text; box.className = 'msg' + (ok ? ' ok' : ''); show(box);
+    console.log(LOG,'Login-Meldung:',text);
+  }
+
+  // Lokaler Tagesschlüssel YYYY-MM-DD (nicht UTC, sonst kippt der Tag um 1-2 Uhr)
+  function tagKey(d){
+    d = (d instanceof Date) ? d : new Date(d);
+    return d.getFullYear() + '-' + ('0'+(d.getMonth()+1)).slice(-2) + '-' + ('0'+d.getDate()).slice(-2);
+  }
+  function heuteKey(){ return tagKey(new Date()); }
+  function vorTagen(n){ var d = new Date(); d.setHours(0,0,0,0); d.setDate(d.getDate() - n); return d; }
+  function findeSpalte(zeile, kandidaten){
+    if(!zeile) return null;
+    for(var i=0;i<kandidaten.length;i++){ if(kandidaten[i] in zeile) return kandidaten[i]; }
+    return null;
+  }
+
+  /* ============================================================
+     6.3 SUPABASE-CLIENT
+     ============================================================ */
+  var sb = null;
+  var T = CONFIG.TABELLEN;
+  var S = CONFIG.SPALTEN;
+  var DIAG = {};
+
+  function initSupabase(){
+    var keysOk = CONFIG.SUPABASE_URL.indexOf('http') === 0 &&
+                 CONFIG.SUPABASE_ANON_KEY.indexOf('HIER_') !== 0 &&
+                 CONFIG.SUPABASE_ANON_KEY.length > 20;
+
+    if(!keysOk){
+      console.log(LOG,'FEHLER: Keys fehlen in BLOCK 6.1');
+      meldung('Trage in BLOCK 6.1 deine Supabase-URL und den anon key ein.');
+      $('loginBtn').disabled = true;
+      return false;
+    }
+    if(!window.supabase || !window.supabase.createClient){
+      console.log(LOG,'FEHLER: Supabase-SDK nicht geladen');
+      meldung('Supabase-SDK nicht geladen. Verbindung prüfen, Seite neu laden.');
+      return false;
+    }
+    try{
+      sb = window.supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY, {
+        auth:{ persistSession:true, autoRefreshToken:true }
+      });
+      console.log(LOG,'Client erstellt für',CONFIG.SUPABASE_URL);
+
+      sb.auth.onAuthStateChange(function(event, session){
+        console.log(LOG,'Auth-Event:',event, session ? session.user.email : 'keine Session');
+        if(event === 'SIGNED_OUT') zeigeLogin();
+      });
+      return true;
+    }catch(e){
+      console.log(LOG,'FEHLER beim Client:',e);
+      meldung('Client konnte nicht erstellt werden. Siehe Konsole.');
+      return false;
+    }
+  }
+
+  /* ============================================================
+     6.4 AUTH
+     ============================================================ */
+  function login(){
+    var btn = $('loginBtn');
+    var mail = ($('email').value || '').trim();
+    var pw = $('password').value || '';
+    console.log(LOG,'Login-Versuch:',mail);
+
+    if(!mail || !pw){ meldung('E-Mail und Passwort eingeben.'); return; }
+    if(!sb){ meldung('Kein Client aktiv. Keys in BLOCK 6.1 prüfen.'); return; }
+
+    btn.disabled = true; btn.textContent = 'Melde an…'; hide($('loginMsg'));
+
+    sb.auth.signInWithPassword({ email: mail, password: pw })
+      .then(function(res){
+        if(res.error){
+          console.log(LOG,'Login abgelehnt:',res.error.message);
+          meldung('Anmeldung fehlgeschlagen: ' + res.error.message);
+          return;
+        }
+        console.log(LOG,'Login ok, User:',res.data.user.id);
+        oeffneDashboard(res.data.user.email);
+      })
+      .catch(function(err){
+        console.log(LOG,'FEHLER Login:',err);
+        meldung('Netzwerkfehler. Konsole öffnen (Button unten rechts).');
+      })
+      .then(function(){ btn.disabled = false; btn.textContent = 'Anmelden'; });
+  }
+
+  function pruefeSession(){
+    if(!sb) return;
+    console.log(LOG,'Prüfe Session…');
+    sb.auth.getSession().then(function(res){
+      var s = res && res.data ? res.data.session : null;
+      if(s && s.user){ console.log(LOG,'Session aktiv:',s.user.email); oeffneDashboard(s.user.email); }
+      else { console.log(LOG,'Keine Session'); }
+    }).catch(function(e){ console.log(LOG,'FEHLER Session:',e); });
+  }
+
+  function zeigeLogin(){
+    stoppeRealtime();
+    clearInterval(refreshTimer);
+    var ov = document.querySelector('.overlay'); if(ov) ov.remove();
+    hide($('app')); show($('loginScreen'));
+    $('password').value = ''; hide($('diagBox'));
+    console.log(LOG,'Login-Screen sichtbar');
+  }
+
+  function logout(){
+    console.log(LOG,'Abmelden…');
+    if(sb) sb.auth.signOut().then(zeigeLogin).catch(function(e){ console.log(LOG,'signOut Fehler:',e); zeigeLogin(); });
+    else zeigeLogin();
+  }
+
+  /* ============================================================
+     6.5 DATEN LADEN
+     RAW hält 30 Tage Rohdaten. Alle Ansichten werden daraus
+     berechnet, ohne neue Abfrage.
+     ============================================================ */
+  var RAW = { betriebe:[], bestellungen:[], rufe:[], umsaetze:[], anfragen:[] };
+  var STATE = { range:'heute', betriebe:[], ersterLauf:true, zeigeErledigte:false };
+
+  function pruefeAuthFehler(msg){
+    if(!msg) return false;
+    if(msg.indexOf('JWT') >= 0 || msg.indexOf('expired') >= 0){
+      console.log(LOG,'Session abgelaufen, zurück zum Login');
+      toast('Sitzung abgelaufen, bitte neu anmelden','err');
+      zeigeLogin();
+      return true;
+    }
+    return false;
+  }
+
+  function ladeAlles(){
+    if(!sb){ console.log(LOG,'ladeAlles ohne Client abgebrochen'); return Promise.resolve(); }
+    console.log(LOG,'--- Datenabruf gestartet ---');
+    var seit = vorTagen(CONFIG.HISTORIE_TAGE);
+
+    return Promise.all([
+      ladeBetriebe(),
+      ladeBestellungen(seit),
+      ladeServicerufe(),
+      ladeUmsaetze(tagKey(seit)),
+      ladeAnfragen()
+    ]).then(function(res){
+      RAW.betriebe     = res[0];
+      RAW.bestellungen = res[1];
+      RAW.rufe         = res[2];
+      RAW.umsaetze     = res[3];
+      RAW.anfragen     = res[4];
+      console.log(LOG,'Rohdaten:',{
+        betriebe:RAW.betriebe.length, bestellungen:RAW.bestellungen.length,
+        rufe:RAW.rufe.length, umsaetze:RAW.umsaetze.length, anfragen:RAW.anfragen.length
+      });
+      STATE.ersterLauf = false;
+      berechneUndZeichne();
+    }).catch(function(e){
+      console.log(LOG,'FEHLER in ladeAlles:',e);
+      toast('Daten konnten nicht geladen werden','err');
+    });
+  }
+
+  var reloadTimer = null;
+  function ladeAllesGedrosselt(){
+    clearTimeout(reloadTimer);
+    reloadTimer = setTimeout(ladeAlles, 900);   // bündelt Realtime-Schübe
+  }
+
+  function ladeBetriebe(){
+    return sb.from(T.betriebe).select('*').then(function(res){
+      if(res.error){
+        console.log(LOG,'FEHLER Tabelle',T.betriebe,':',res.error.message);
+        DIAG.betriebe = 'FEHLER: ' + res.error.message;
+        pruefeAuthFehler(res.error.message);
+        return [];
+      }
+      var rows = res.data || [];
+      DIAG.betriebe = rows.length + ' Zeilen';
+      if(rows.length){
+        console.log(LOG,'Spalten in',T.betriebe,':',Object.keys(rows[0]).join(', '));
+        if(!S.betriebName) S.betriebName = findeSpalte(rows[0],['name','betrieb_name','titel','firma','bezeichnung']);
+        if(!S.betriebOrt)  S.betriebOrt  = findeSpalte(rows[0],['ort','stadt','city','standort','adresse']);
+        DIAG.spalteName = S.betriebName || 'nicht gefunden';
+      }
+      return rows.map(function(r){
+        return {
+          id: String(r.id),
+          name: S.betriebName ? r[S.betriebName] : ('Betrieb ' + String(r.id).slice(0,6)),
+          ort:  S.betriebOrt  ? r[S.betriebOrt]  : ''
+        };
+      });
+    });
+  }
+
+  function ladeBestellungen(seitDate){
+    var q = sb.from(T.bestellungen).select('*').gte(S.bestellZeit, seitDate.toISOString());
+    return q.then(function(res){
+      if(res.error){
+        console.log(LOG,'FEHLER Tabelle',T.bestellungen,':',res.error.message);
+        // Zweiter Versuch ohne Datumsfilter, falls die Zeitspalte anders heißt
+        if(res.error.message.indexOf(S.bestellZeit) >= 0 || res.error.code === '42703'){
+          console.log(LOG,'Zeitspalte',S.bestellZeit,'existiert nicht — hole ohne Filter');
+          return sb.from(T.bestellungen).select('*').limit(500).then(function(r2){
+            if(r2.error){ DIAG.bestellungen = 'FEHLER: ' + r2.error.message; return []; }
+            DIAG.bestellungen = (r2.data||[]).length + ' (ohne Datumsfilter)';
+            return mappeBestellungen(r2.data || []);
+          });
+        }
+        DIAG.bestellungen = 'FEHLER: ' + res.error.message;
+        pruefeAuthFehler(res.error.message);
+        return [];
+      }
+      var rows = res.data || [];
+      DIAG.bestellungen = rows.length + ' in ' + CONFIG.HISTORIE_TAGE + ' Tagen';
+      return mappeBestellungen(rows);
+    });
+  }
+
+  function mappeBestellungen(rows){
+    if(rows.length){
+      console.log(LOG,'Spalten in',T.bestellungen,':',Object.keys(rows[0]).join(', '));
+      if(!S.bestellBetrag){
+        S.bestellBetrag = findeSpalte(rows[0],['gesamt','gesamtpreis','gesamtsumme','summe','betrag','preis','total']);
+        console.log(LOG,'Betragsspalte erkannt:',S.bestellBetrag);
+      }
+      if(!(S.bestellZeit in rows[0])){
+        var z = findeSpalte(rows[0],['created_at','erstellt_am','zeitpunkt','datum','inserted_at']);
+        if(z){ S.bestellZeit = z; console.log(LOG,'Zeitspalte korrigiert auf',z); }
+      }
+      DIAG.spalteBetrag = S.bestellBetrag || 'nicht gefunden';
+      DIAG.spalteZeit = S.bestellZeit;
+    }
+    return rows.map(function(r){
+      return {
+        id: r.id,
+        betrieb_id: String(r[S.bestellBetrieb]),
+        /* Für die Zählung nötig: ein Serviceruf ist keine Bestellung und
+           eine stornierte zählt nicht. Das Board rechnet genauso. */
+        quelle: r.quelle,
+        status: r.status,
+        betrag: S.bestellBetrag ? (parseFloat(r[S.bestellBetrag]) || 0) : 0,
+        zeit: r[S.bestellZeit],
+        tag: r[S.bestellZeit] ? tagKey(r[S.bestellZeit]) : null
+      };
+    });
+  }
+
+  /* Ein Serviceruf ist keine Bestellung und hat keinen Umsatz, eine
+     stornierte Bestellung würde die Zahlen schönen. Das Admin-Board
+     filtert an genau derselben Stelle so. Zeilen aus master_umsaetze
+     haben weder quelle noch status – die zählen weiterhin mit. */
+  function zaehltAlsUmsatz(r){
+    return r.quelle !== 'service' && r.status !== 'storniert';
+  }
+
+  /* Servicerufe sind KEINE eigene Tabelle. Hub, Board und Küche legen sie
+     als Bestellung mit quelle="service" an – das Board behandelt beide
+     gleich. Der Master muss dieselbe Quelle lesen, sonst zählt er ewig
+     null, obwohl Rufe eingehen. Rückgabeform bleibt wie vorher, damit
+     Kachel und Detailfenster unverändert weiterarbeiten. */
+  function ladeServicerufe(){
+    return sb.from(T.bestellungen)
+      .select('id,betrieb_id,tisch,notiz,zeitpunkt')
+      .eq('quelle', 'service')
+      .neq('status', 'fertig')
+      .neq('status', 'storniert')
+      .then(function(res){
+        if(res.error){
+          console.log(LOG,'FEHLER Servicerufe aus',T.bestellungen,':',res.error.message);
+          DIAG.servicerufe = 'FEHLER: ' + res.error.message;
+          pruefeAuthFehler(res.error.message);
+          return [];
+        }
+        var rows = res.data || [];
+        DIAG.servicerufe = rows.length + ' offen';
+        return rows.map(function(r){
+          return { id:r.id, betrieb_id:String(r.betrieb_id), tisch:r.tisch,
+                   grund:r.notiz, zeit:r.zeitpunkt };
+        });
+      });
+  }
+
+  function ladeUmsaetze(abTag){
+    return sb.from(T.umsaetze).select('*').gte('datum', abTag).then(function(res){
+      if(res.error){
+        console.log(LOG,'FEHLER Tabelle',T.umsaetze,':',res.error.message);
+        DIAG.umsaetze = 'FEHLER: ' + res.error.message;
+        pruefeAuthFehler(res.error.message);
+        return [];
+      }
+      var rows = res.data || [];
+      DIAG.umsaetze = rows.length + ' Einträge';
+      return rows.map(function(r){
+        return { id:r.id, betrieb_id:String(r.betrieb_id), betrag: parseFloat(r.betrag)||0,
+                 tag:r.datum, notiz:r.notiz, erstellt:r.created_at };
+      });
+    });
+  }
+
+  function ladeAnfragen(){
+    return sb.from(T.anfragen).select('*').order('erstellt_am', { ascending:false }).limit(200)
+      .then(function(res){
+        if(res.error){
+          console.log(LOG,'FEHLER Tabelle',T.anfragen,':',res.error.message);
+          /* 42P01 = Tabelle existiert nicht. Das ist kein Absturz, sondern
+             heißt schlicht: supabase-anfragen.sql ist noch nicht gelaufen. */
+          DIAG.anfragen = (res.error.code === '42P01')
+            ? 'Tabelle fehlt — supabase-anfragen.sql noch nicht ausgeführt'
+            : 'FEHLER: ' + res.error.message;
+          pruefeAuthFehler(res.error.message);
+          return [];
+        }
+        var rows = res.data || [];
+        var neue = rows.filter(function(r){ return (r.status || 'neu') === 'neu'; }).length;
+        DIAG.anfragen = rows.length + ' gesamt, ' + neue + ' neu';
+        return rows;
+      })
+      .catch(function(e){
+        console.log(LOG,'FEHLER ladeAnfragen:',e);
+        DIAG.anfragen = 'FEHLER: ' + (e && e.message ? e.message : 'unbekannt');
+        return [];
+      });
+  }
+
+  /* ============================================================
+     6.6 BERECHNUNG + RENDERING
+     ============================================================ */
+  function rangeTage(){
+    if(STATE.range === 'woche') return 7;
+    if(STATE.range === 'monat') return 30;
+    return 1;
+  }
+  function imZeitraum(tag){
+    if(!tag) return false;
+    if(STATE.range === 'heute') return tag === heuteKey();
+    var grenze = tagKey(vorTagen(rangeTage() - 1));
+    return tag >= grenze;
+  }
+
+  function berechneUndZeichne(){
+    var tage = rangeTage();
+    console.log(LOG,'Berechne Zeitraum:',STATE.range,'(' + tage + ' Tage)');
+
+    var map = {};
+    RAW.betriebe.forEach(function(b){
+      map[b.id] = {
+        id:b.id, name:b.name, ort:b.ort,
+        kuerzel:(b.name || '?').trim().charAt(0).toUpperCase(),
+        umsatzBestell:0, umsatzManuell:0, bestellungen:0,
+        servicerufe:0, rufeListe:[], letzteAktion:null
+      };
+    });
+
+    RAW.bestellungen.forEach(function(r){
+      var t = map[r.betrieb_id]; if(!t) return;
+      /* Jede Zeile ist ein Lebenszeichen – auch ein Serviceruf. */
+      if(!t.letzteAktion || r.zeit > t.letzteAktion) t.letzteAktion = r.zeit;
+      if(!imZeitraum(r.tag)) return;
+      if(!zaehltAlsUmsatz(r)) return;
+      t.bestellungen++; t.umsatzBestell += r.betrag;
+    });
+    RAW.umsaetze.forEach(function(r){
+      var t = map[r.betrieb_id]; if(!t) return;
+      if(!imZeitraum(r.tag)) return;
+      t.umsatzManuell += r.betrag;
+    });
+    RAW.rufe.forEach(function(r){
+      var t = map[r.betrieb_id]; if(!t) return;
+      t.servicerufe++; t.rufeListe.push(r);
+      if(!t.letzteAktion || r.zeit > t.letzteAktion) t.letzteAktion = r.zeit;
+    });
+
+    STATE.betriebe = Object.keys(map).map(function(k){
+      var t = map[k];
+      t.umsatzGesamt = t.umsatzBestell + t.umsatzManuell;
+      t.aktiv = t.bestellungen > 0 || t.servicerufe > 0 || t.umsatzManuell > 0;
+      return t;
+    });
+
+    renderKPIs();
+    renderChart();
+    renderAnfragen();
+    renderListe();
+    $('standNote').textContent = 'Stand ' + uhr.format(new Date()) + ' Uhr';
+  }
+
+  function renderKPIs(){
+    var umsatz=0, bestell=0, rufe=0, aktiv=0;
+    STATE.betriebe.forEach(function(b){
+      umsatz += b.umsatzGesamt; bestell += b.bestellungen;
+      rufe += b.servicerufe; if(b.aktiv) aktiv++;
+    });
+    var lbl = STATE.range === 'heute' ? 'Umsatz heute'
+            : (STATE.range === 'woche' ? 'Umsatz 7 Tage' : 'Umsatz 30 Tage');
+
+    $('kpiUmsatz').textContent = euro.format(umsatz);
+    $('kpiUmsatzLbl').textContent = lbl;
+    $('kpiBestell').textContent = bestell;
+    $('kpiRufe').textContent = rufe;
+    $('aktivNote').textContent = aktiv + ' von ' + STATE.betriebe.length + ' aktiv';
+    console.log(LOG,'KPIs:',{umsatz:umsatz,bestellungen:bestell,rufe:rufe,aktiv:aktiv});
+  }
+
+  function tagesUmsaetze(anzahl){
+    var werte = [];
+    for(var i = anzahl - 1; i >= 0; i--){
+      var d = vorTagen(i);
+      var k = tagKey(d);
+      var summe = 0;
+      RAW.bestellungen.forEach(function(r){ if(r.tag === k && zaehltAlsUmsatz(r)) summe += r.betrag; });
+      RAW.umsaetze.forEach(function(r){ if(r.tag === k) summe += r.betrag; });
+      werte.push({ tag:k, datum:d, summe:summe });
+    }
+    return werte;
+  }
+
+  function renderChart(){
+    var n = CONFIG.CHART_TAGE;
+    var daten = tagesUmsaetze(n);
+    var max = 0, gesamt = 0;
+    daten.forEach(function(d){ if(d.summe > max) max = d.summe; gesamt += d.summe; });
+    console.log(LOG,'Chart:',n,'Tage, Max',max,'Gesamt',gesamt);
+
+    var box = $('chart');
+    box.innerHTML = daten.map(function(d,i){
+      var h = max > 0 ? Math.max(3, Math.round((d.summe / max) * 110)) : 3;
+      return '<div class="bar' + (d.summe === 0 ? ' leer' : '') + '" data-i="' + i + '"' +
+             ' style="height:' + h + 'px; animation-delay:' + (i*25) + 'ms"></div>';
+    }).join('');
+
+    $('chartWert').textContent = euro.format(gesamt) + ' gesamt';
+    $('chartSchnitt').textContent = 'Ø ' + euro.format(gesamt / n) + '/Tag';
+    $('chartTag').textContent = 'Letzte ' + n + " Tage";
+    $('axisVon').textContent = dfmt.format(daten[0].datum);
+
+    box.onclick = function(e){
+      var bar = e.target.closest('.bar'); if(!bar) return;
+      var d = daten[parseInt(bar.getAttribute('data-i'),10)];
+      Array.prototype.forEach.call(box.children, function(c){ c.classList.remove('on'); });
+      bar.classList.add('on');
+      $('chartTag').textContent = dfmt.format(d.datum);
+      $('chartSchnitt').textContent = euro2.format(d.summe);
+      console.log(LOG,'Chart-Balken:',d.tag,d.summe);
+    };
+  }
+
+  function zeitText(iso){
+    if(!iso) return 'Noch keine Aktivität';
+    var min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if(min < 1) return 'Gerade eben';
+    if(min < 60) return 'Zuletzt vor ' + min + ' Min.';
+    if(min < 1440) return 'Zuletzt vor ' + Math.round(min/60) + ' Std.';
+    return 'Zuletzt vor ' + Math.round(min/1440) + ' Tagen';
+  }
+
+  function renderListe(){
+    var box = $('betriebeListe');
+    box.innerHTML = '';
+
+    if(!STATE.betriebe.length){
+      box.innerHTML = '<div class="card empty">Noch keine Betriebe in der Datenbank.<br>' +
+        'Lege in Supabase eine Zeile in der Tabelle <b>' + esc(T.betriebe) + '</b> an, dann erscheint sie hier.</div>';
+      return;
+    }
+
+    var sortiert = STATE.betriebe.slice().sort(function(a,b){
+      if(b.servicerufe !== a.servicerufe) return b.servicerufe - a.servicerufe;
+      return b.umsatzGesamt - a.umsatzGesamt;
+    });
+
+    sortiert.forEach(function(b,i){
+      var zustand = b.servicerufe > 0 ? 'is-alert' : (b.aktiv ? 'is-ok' : 'is-offline');
+      var pillK = b.servicerufe > 0 ? 'pill alert' : (b.aktiv ? 'pill' : 'pill off');
+      var pillT = b.servicerufe > 0 ? b.servicerufe + ' warten' : (b.aktiv ? 'Läuft' : 'Ruhig');
+
+      var el = document.createElement('div');
+      el.className = 'card betrieb ' + zustand;
+      el.setAttribute('data-open', b.id);
+      el.style.animationDelay = (i*60) + 'ms';
+      el.innerHTML =
+        '<div class="coaster">' + esc(b.kuerzel) + '</div>' +
+        '<div class="b-main">' +
+          '<div class="b-head">' +
+            '<h2 class="b-name">' + esc(b.name) + '</h2>' +
+            '<span class="b-ort">' + esc(b.ort) + '</span>' +
+          '</div>' +
+          '<div class="b-stats">' +
+            '<div class="stat"><span class="n">' + euro.format(b.umsatzGesamt) + '</span><span class="t">Umsatz</span></div>' +
+            '<div class="stat"><span class="n">' + b.bestellungen + '</span><span class="t">Bestellungen</span></div>' +
+            '<div class="stat"><span class="n">' + b.servicerufe + '</span><span class="t">Servicerufe</span></div>' +
+          '</div>' +
+          (b.umsatzManuell > 0
+            ? '<div class="b-split">' + euro2.format(b.umsatzBestell) + ' Hub &middot; ' + euro2.format(b.umsatzManuell) + ' manuell</div>'
+            : '') +
+          '<div class="b-actions">' +
+            '<button class="btn-small accent" data-add="' + esc(b.id) + '">Umsatz eintragen</button>' +
+            (b.servicerufe > 0 ? '<button class="btn-small clear" data-clear="' + esc(b.id) + '">Alle erledigt</button>' : '') +
+          '</div>' +
+          '<div class="b-foot">' + zeitText(b.letzteAktion) + '<span class="' + pillK + '">' + pillT + '</span></div>' +
+        '</div>';
+      box.appendChild(el);
+    });
+  }
+
+  /* ============================================================
+     6.6b ANFRAGEN — Liste, Detail, Anhänge
+     ============================================================ */
+  function aWert(v){
+    if(v === true) return 'Ja';
+    if(v === false || v == null || v === '') return '';
+    if(Array.isArray(v)) return v.join(', ');
+    return String(v);
+  }
+  function aOffen(a){
+    var s = a.status || 'neu';
+    return s !== 'gewonnen' && s !== 'abgesagt';
+  }
+
+  function renderAnfragen(){
+    var box = $('anfragenListe'); if(!box) return;
+    var alle = RAW.anfragen || [];
+    var neue = alle.filter(function(a){ return (a.status||'neu') === 'neu'; }).length;
+    var offen = alle.filter(aOffen).length;
+
+    $('anfragenNote').textContent = neue
+      ? neue + (neue === 1 ? ' neu' : ' neue')
+      : (offen ? offen + ' offen' : (alle.length ? 'alle erledigt' : '—'));
+
+    var sicht = STATE.zeigeErledigte ? alle : alle.filter(aOffen);
+
+    if(!sicht.length){
+      box.innerHTML = '<div class="card empty">' +
+        (alle.length
+          ? 'Keine offene Anfrage. Alles abgearbeitet.'
+          : (DIAG.anfragen && String(DIAG.anfragen).indexOf('Tabelle fehlt') === 0
+              ? 'Die Tabelle <b>anfragen</b> gibt es noch nicht.<br>Führ <b>supabase-anfragen.sql</b> im SQL-Editor aus.'
+              : 'Noch keine Anfrage.<br>Sobald jemand das Formular auf omoteno.de/start.html abschickt, steht sie hier.')) +
+        '</div>';
+      return;
+    }
+
+    /* Neue zuerst, dann nach Alter. Was du noch nicht gelesen hast,
+       soll ganz oben stehen — nicht das Neueste. */
+    var rang = { neu:0, gelesen:1, im_gespraech:2, gewonnen:3, abgesagt:4 };
+    var sortiert = sicht.slice().sort(function(x,y){
+      var rx = rang[x.status||'neu'], ry = rang[y.status||'neu'];
+      if(rx !== ry) return rx - ry;
+      return (y.erstellt_am || '') > (x.erstellt_am || '') ? 1 : -1;
+    });
+
+    box.innerHTML = sortiert.map(function(a, i){
+      var st = a.status || 'neu';
+      var dateien = Array.isArray(a.dateien) ? a.dateien : [];
+      var tags = [];
+      if(a.kasse)      tags.push({t:'Kasse: ' + a.kasse, c:'stark'});
+      if(a.tische)     tags.push({t:a.tische + ' Tische', c:''});
+      if(a.start_wann) tags.push({t:a.start_wann, c:''});
+      if(a.kontaktweg) tags.push({t:'per ' + a.kontaktweg, c:''});
+      if(dateien.length) tags.push({t:dateien.length + (dateien.length === 1 ? ' Anhang' : ' Anhänge'), c:'datei'});
+      tags.push({t:a.kennung || '—', c:''});
+
+      return '<div class="card anfrage' + (st === 'neu' ? ' ist-neu' : '') +
+             (aOffen(a) ? '' : ' ist-ruht') + '" data-anfrage="' + esc(a.id) + '"' +
+             ' style="animation-delay:' + (i*55) + 'ms">' +
+        '<div class="a-head">' +
+          '<h2 class="a-name">' + esc(a.betrieb || 'Ohne Namen') + '</h2>' +
+          '<span class="stand s-' + esc(st) + '">' + esc(standName(st)) + '</span>' +
+          '<span class="a-zeit">' + esc(anfrageZeit(a.erstellt_am)) + '</span>' +
+        '</div>' +
+        '<p class="a-ort">' + esc(a.ort || '') +
+          (a.ansprechpartner ? ' &middot; ' + esc(a.ansprechpartner) : '') + '</p>' +
+        '<div class="a-marken">' +
+          tags.map(function(t){ return '<span class="tag ' + t.c + '">' + esc(t.t) + '</span>'; }).join('') +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  function anfrageZeit(iso){
+    if(!iso) return '';
+    var min = Math.round((Date.now() - new Date(iso).getTime()) / 60000);
+    if(min < 2)    return 'gerade eben';
+    if(min < 60)   return 'vor ' + min + ' Min.';
+    if(min < 1440) return 'vor ' + Math.round(min/60) + ' Std.';
+    if(min < 2880) return 'gestern';
+    if(min < 10080)return 'vor ' + Math.round(min/1440) + ' Tagen';
+    return dfmt.format(new Date(iso));
+  }
+
+  function oeffneAnfrageSheet(id){
+    var a = (RAW.anfragen || []).filter(function(x){ return String(x.id) === String(id); })[0];
+    if(!a){ console.log(LOG,'Anfrage nicht gefunden:',id); return; }
+    console.log(LOG,'Anfrage öffnet:',a.kennung);
+
+    var ant = a.antworten || {};
+    var dateien = Array.isArray(a.dateien) ? a.dateien : [];
+    var st = a.status || 'neu';
+
+    /* Wege, sofort zu antworten. Aus 0151… wird 49151… für wa.me. */
+    var tel = String(a.telefon || '').replace(/[^\d+]/g, '');
+    var waNr = tel.replace(/\D/g, '').replace(/^0/, '49');
+    var gruss = 'Hallo ' + (a.ansprechpartner || '') + ', hier ist Elias von Omoteno. ' +
+                'Danke für deine Anfrage (' + (a.kennung || '') + ').';
+
+    var wege = '<div class="wege">' +
+      (waNr.length > 8 ? '<button class="btn-small wa" data-wa="' + esc(waNr) + '">WhatsApp</button>' : '') +
+      (tel     ? '<button class="btn-small" data-tel="' + esc(tel) + '">Anrufen</button>' : '') +
+      (a.email ? '<button class="btn-small" data-mail="' + esc(a.email) + '">E-Mail</button>' : '') +
+      '</div>';
+
+    var anhang = '';
+    if(dateien.length){
+      anhang = '<p class="gruppe-titel">Anhänge</p>' + dateien.map(function(f){
+        return '<div class="zeile">' +
+          '<span class="z-wert" style="min-width:56px">' +
+            esc(String(f.name || '').split('.').pop().toUpperCase().slice(0,4)) + '</span>' +
+          '<span class="z-meta">' + esc(f.name || 'Datei') +
+            (f.groesse ? ' &middot; ' + Math.round(f.groesse/1024) + ' KB' : '') + '</span>' +
+          '<button class="ok" data-datei="' + esc(f.pfad) + '">Öffnen</button>' +
+        '</div>';
+      }).join('');
+    }
+
+    var bekannt = {};
+    var inhalt = A_GRUPPEN.map(function(g){
+      var zeilen = g.keys.map(function(k){
+        bekannt[k] = 1;
+        var t = aWert(ant[k]);
+        if(!t) return '';
+        return '<div class="paar"><span class="k">' + esc(A_LABEL[k] || k) + '</span>' +
+               '<span class="v">' + esc(t) + '</span></div>';
+      }).join('');
+      return zeilen ? '<p class="gruppe-titel">' + esc(g.titel) + '</p>' + zeilen : '';
+    }).join('');
+
+    var rest = Object.keys(ant).filter(function(k){ return !bekannt[k] && aWert(ant[k]); })
+      .map(function(k){
+        return '<div class="paar"><span class="k">' + esc(A_LABEL[k] || k) + '</span>' +
+               '<span class="v">' + esc(aWert(ant[k])) + '</span></div>';
+      }).join('');
+    if(rest) inhalt += '<p class="gruppe-titel">Weitere Angaben</p>' + rest;
+
+    if(a.hinweise){
+      inhalt += '<p class="gruppe-titel">Hinweis</p>' +
+        '<div class="paar"><span class="v" style="text-align:left">' + esc(a.hinweise) + '</span></div>';
+    }
+
+    var ov = baueSheet(
+      '<h3>' + esc(a.betrieb || 'Ohne Namen') + '</h3>' +
+      '<p class="sub">' + esc(a.kennung || '') + ' &middot; ' +
+        esc(new Date(a.erstellt_am).toLocaleString('de-DE')) + '</p>' +
+      wege + anhang + inhalt +
+      '<p class="gruppe-titel">Bearbeitung</p>' +
+      '<div class="stand-wahl">' +
+        A_STAENDE.map(function(s){
+          return '<button data-setstand="' + s.k + '"' + (st === s.k ? ' class="on"' : '') + '>' + esc(s.l) + '</button>';
+        }).join('') +
+      '</div>' +
+      '<textarea id="aNotiz" placeholder="Notiz für dich — was besprochen wurde, was noch fehlt">' +
+        esc(a.notiz || '') + '</textarea>' +
+      '<button class="btn-primary" id="aSave">Notiz sichern</button>' +
+      '<button class="btn-ghost" id="aKopieren">Alles kopieren</button>' +
+      '<button class="btn-ghost" id="aClose">Schließen</button>'
+    );
+    if(!ov) return;
+
+    /* Beim ersten Öffnen still auf „gelesen" — das nimmt dir einen Handgriff ab. */
+    if(st === 'neu') setzeStand(a, 'gelesen', ov, true);
+
+    ov.querySelector('#aClose').addEventListener('click', function(){ ov.remove(); });
+    ov.querySelector('#aSave').addEventListener('click', function(){
+      var btn = this; btn.disabled = true;
+      aendereAnfrage(a.id, { notiz: ov.querySelector('#aNotiz').value })
+        .then(function(){ a.notiz = ov.querySelector('#aNotiz').value; toast('Notiz gesichert','ok'); })
+        .catch(function(e){ toast(e.message || 'Nicht gespeichert','err'); })
+        .then(function(){ btn.disabled = false; });
+    });
+    ov.querySelector('#aKopieren').addEventListener('click', function(){
+      kopiere(anfrageAlsText(a));
+    });
+    ov.addEventListener('click', function(e){
+      var s = e.target.closest('button[data-setstand]');
+      if(s){ setzeStand(a, s.getAttribute('data-setstand'), ov, false); return; }
+      var d = e.target.closest('button[data-datei]');
+      if(d){ oeffneAnhang(d.getAttribute('data-datei'), d); return; }
+      var w = e.target.closest('button[data-wa]');
+      if(w){ window.open('https://wa.me/' + w.getAttribute('data-wa') + '?text=' + encodeURIComponent(gruss), '_blank', 'noopener'); return; }
+      var t = e.target.closest('button[data-tel]');
+      if(t){ location.href = 'tel:' + t.getAttribute('data-tel'); return; }
+      var m = e.target.closest('button[data-mail]');
+      if(m){ location.href = 'mailto:' + m.getAttribute('data-mail') +
+             '?subject=' + encodeURIComponent('Deine Omoteno-Anfrage ' + (a.kennung||'')); return; }
+    });
+  }
+
+  function setzeStand(a, neu, ov, still){
+    aendereAnfrage(a.id, { status: neu }).then(function(){
+      a.status = neu;
+      if(ov){
+        Array.prototype.forEach.call(ov.querySelectorAll('button[data-setstand]'), function(b){
+          b.classList.toggle('on', b.getAttribute('data-setstand') === neu);
+        });
+      }
+      renderAnfragen();
+      if(!still) toast('Stand: ' + standName(neu), 'ok');
+    }).catch(function(e){
+      console.log(LOG,'Stand nicht gespeichert:',e);
+      if(!still) toast(e.message || 'Nicht gespeichert','err');
+    });
+  }
+
+  function aendereAnfrage(id, felder){
+    return sb.from(T.anfragen).update(felder).eq('id', id).then(function(res){
+      if(res.error){
+        pruefeAuthFehler(res.error.message);
+        throw new Error(res.error.message);
+      }
+      return true;
+    });
+  }
+
+  function oeffneAnhang(pfad, btn){
+    var alt = btn.textContent;
+    btn.textContent = '…'; btn.disabled = true;
+    /* Der Speicher ist nicht öffentlich. Der Link gilt eine Stunde und
+       wird bei jedem Antippen neu geholt. */
+    sb.storage.from(CONFIG.ANFRAGEN_EIMER).createSignedUrl(pfad, 3600).then(function(res){
+      btn.textContent = alt; btn.disabled = false;
+      if(res.error || !res.data){
+        console.log(LOG,'Anhang nicht erreichbar:', res.error);
+        toast('Datei nicht erreichbar — Speicher-Regeln prüfen','err');
+        return;
+      }
+      window.open(res.data.signedUrl, '_blank', 'noopener');
+    }).catch(function(e){
+      btn.textContent = alt; btn.disabled = false;
+      console.log(LOG,'FEHLER Anhang:',e);
+      toast('Datei nicht erreichbar','err');
+    });
+  }
+
+  function anfrageAlsText(a){
+    var ant = a.antworten || {};
+    var z = ['OMOTENO — Anfrage ' + (a.kennung||''), new Date(a.erstellt_am).toLocaleString('de-DE'), ''];
+    A_GRUPPEN.forEach(function(g){
+      var block = [];
+      g.keys.forEach(function(k){
+        var t = aWert(ant[k]);
+        if(t) block.push('- ' + (A_LABEL[k] || k) + ': ' + t);
+      });
+      if(block.length){ z.push(g.titel.toUpperCase()); z.push(block.join('\n')); z.push(''); }
+    });
+    (Array.isArray(a.dateien) ? a.dateien : []).forEach(function(f,i){
+      if(i === 0) z.push('ANHÄNGE');
+      z.push('- ' + f.name);
+    });
+    return z.join('\n');
+  }
+
+  function kopiere(text){
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(function(){ toast('Kopiert','ok'); },
+                                              function(){ toast('Kopieren ging nicht','err'); });
+      return;
+    }
+    try{
+      var ta = document.createElement('textarea');
+      ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+      document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+      document.body.removeChild(ta); toast('Kopiert','ok');
+    }catch(e){ toast('Kopieren ging nicht','err'); }
+  }
+
+  function skeleton(){
+    $('betriebeListe').innerHTML = '<div class="card skeleton"></div><div class="card skeleton"></div>';
+  }
+
+  /* ============================================================
+     6.7 SHEETS (Umsatz erfassen + Betriebsdetail)
+     ============================================================ */
+  function baueSheet(inhaltHTML){
+    if(document.querySelector('.overlay')){ console.log(LOG,'Sheet bereits offen'); return null; }
+    var ov = document.createElement('div');
+    ov.className = 'overlay';
+    ov.innerHTML = '<div class="sheet" role="dialog"><div class="grabber"></div>' + inhaltHTML + '</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', function(e){ if(e.target === ov) ov.remove(); });
+    return ov;
+  }
+
+  function oeffneUmsatzSheet(vorauswahlId){
+    console.log(LOG,'Umsatz-Formular öffnet, Betrieb:',vorauswahlId);
+    if(!STATE.betriebe.length){ toast('Erst Betriebe anlegen','err'); return; }
+
+    var optionen = STATE.betriebe.map(function(b){
+      return '<option value="' + esc(b.id) + '"' + (b.id === vorauswahlId ? ' selected' : '') + '>' + esc(b.name) + '</option>';
+    }).join('');
+
+    var ov = baueSheet(
+      '<h3>Umsatz eintragen</h3>' +
+      '<p class="sub">Für Umsätze, die nicht über das Gästehub laufen: Kasse, Theke, Vorbestellung.</p>' +
+      '<label for="uBetrieb">Betrieb</label>' +
+      '<select id="uBetrieb">' + optionen + '</select>' +
+      '<label for="uDatum">Datum</label>' +
+      '<input id="uDatum" type="date" value="' + heuteKey() + '">' +
+      '<label for="uBetrag">Betrag in Euro</label>' +
+      '<input id="uBetrag" type="text" inputmode="decimal" placeholder="248,50">' +
+      '<label for="uNotiz">Notiz (optional)</label>' +
+      '<input id="uNotiz" type="text" placeholder="Kassenumsatz Mittag">' +
+      '<button id="uSave" class="btn-primary">Speichern</button>' +
+      '<button id="uClose" class="btn-ghost">Abbrechen</button>' +
+      '<p class="section-label" style="margin-top:26px">Zuletzt erfasst</p>' +
+      '<div id="uListe"></div>'
+    );
+    if(!ov) return;
+
+    function schliesse(){ if(ov.parentNode) ov.remove(); console.log(LOG,'Formular geschlossen'); }
+    ov.querySelector('#uClose').addEventListener('click', schliesse);
+    ov.querySelector('#uSave').addEventListener('click', function(){ speichereUmsatz(ov, schliesse); });
+    ov.querySelector('#uBetrag').addEventListener('keydown', function(e){
+      if(e.key === 'Enter') speichereUmsatz(ov, schliesse);
+    });
+    ov.querySelector('#uListe').addEventListener('click', function(e){
+      var b = e.target.closest('button[data-del]');
+      if(b) loescheEintrag(b.getAttribute('data-del'), ov);
+    });
+    zeichneEintraege(ov);
+  }
+
+  function zeichneEintraege(ov){
+    var box = ov.querySelector('#uListe'); if(!box) return;
+    /* Gleichstand muss 0 ergeben, sonst ist die Reihenfolge bei
+       gleichzeitig erfassten Einträgen zufällig. */
+    var rows = RAW.umsaetze.slice().sort(function(a,b){
+      var x = a.erstellt || '', y = b.erstellt || '';
+      return x === y ? 0 : (x < y ? 1 : -1);
+    }).slice(0,8);
+
+    if(!rows.length){ box.innerHTML = '<p class="sub">Noch nichts erfasst.</p>'; return; }
+    var namen = {}; STATE.betriebe.forEach(function(b){ namen[b.id] = b.name; });
+
+    box.innerHTML = rows.map(function(r){
+      return '<div class="zeile">' +
+        '<span class="z-wert">' + euro2.format(r.betrag) + '</span>' +
+        '<span class="z-meta">' + esc(namen[r.betrieb_id] || 'Unbekannt') + ' &middot; ' +
+          esc(dfmt.format(new Date(r.tag + 'T12:00:00'))) +
+          (r.notiz ? ' &middot; ' + esc(r.notiz) : '') + '</span>' +
+        '<button data-del="' + esc(r.id) + '" aria-label="Löschen">✕</button>' +
+      '</div>';
+    }).join('');
+  }
+
+  function speichereUmsatz(ov, schliesse){
+    var btn = ov.querySelector('#uSave');
+    var betriebId = ov.querySelector('#uBetrieb').value;
+    var tag = ov.querySelector('#uDatum').value;
+    var roh = (ov.querySelector('#uBetrag').value || '').trim()
+                .replace(/\s/g,'').replace(/€/g,'').replace(/\./g,'').replace(',','.');
+    var notiz = (ov.querySelector('#uNotiz').value || '').trim();
+    var betrag = parseFloat(roh);
+
+    console.log(LOG,'Speichern:',{betrieb:betriebId,datum:tag,eingabe:roh,betrag:betrag,notiz:notiz});
+
+    if(!betriebId){ toast('Betrieb auswählen','err'); return; }
+    if(!tag){ toast('Datum fehlt','err'); return; }
+    if(isNaN(betrag)){ toast('Betrag prüfen, z.B. 248,50','err'); return; }
+
+    btn.disabled = true; btn.textContent = 'Speichere…';
+
+    sb.from(T.umsaetze).insert({
+      betrieb_id: betriebId, datum: tag, betrag: betrag, notiz: notiz || null
+    }).select().then(function(res){
+      if(res.error){
+        console.log(LOG,'FEHLER beim Insert:',res.error);
+        toast('Nicht gespeichert: ' + res.error.message,'err');
+        btn.disabled = false; btn.textContent = 'Speichern';
+        pruefeAuthFehler(res.error.message);
+        return;
+      }
+      console.log(LOG,'Gespeichert:',res.data);
+      toast(euro2.format(betrag) + ' eingetragen','ok');
+      schliesse();
+      ladeAlles();
+    }).catch(function(e){
+      console.log(LOG,'FEHLER Netzwerk beim Insert:',e);
+      toast('Netzwerkfehler beim Speichern','err');
+      btn.disabled = false; btn.textContent = 'Speichern';
+    });
+  }
+
+  function loescheEintrag(id, ov){
+    console.log(LOG,'Lösche Eintrag',id);
+    sb.from(T.umsaetze).delete().eq('id', id).then(function(res){
+      if(res.error){ console.log(LOG,'FEHLER Löschen:',res.error.message); toast('Löschen fehlgeschlagen','err'); return; }
+      toast('Eintrag gelöscht','ok');
+      RAW.umsaetze = RAW.umsaetze.filter(function(r){ return String(r.id) !== String(id); });
+      if(ov && ov.parentNode) zeichneEintraege(ov);
+      berechneUndZeichne();
+    });
+  }
+
+  function oeffneDetailSheet(betriebId){
+    var b = null;
+    STATE.betriebe.forEach(function(x){ if(x.id === betriebId) b = x; });
+    if(!b){ console.log(LOG,'Betrieb nicht gefunden:',betriebId); return; }
+    console.log(LOG,'Detail öffnet:',b.name);
+
+    var heute = 0, woche = 0, monat = 0;
+    var gWoche = tagKey(vorTagen(6)), gMonat = tagKey(vorTagen(29)), hK = heuteKey();
+    function zaehle(r){
+      if(r.betrieb_id !== b.id || !r.tag) return;
+      if(!zaehltAlsUmsatz(r)) return;
+      if(r.tag === hK) heute += r.betrag;
+      if(r.tag >= gWoche) woche += r.betrag;
+      if(r.tag >= gMonat) monat += r.betrag;
+    }
+    RAW.bestellungen.forEach(zaehle);
+    RAW.umsaetze.forEach(zaehle);
+
+    var letzte = RAW.bestellungen.filter(function(r){ return r.betrieb_id === b.id; })
+      .sort(function(x,y){ return (y.zeit||'') < (x.zeit||'') ? -1 : 1; }).slice(0,6);
+
+    var rufeHTML = b.rufeListe.length
+      ? b.rufeListe.map(function(r){
+          return '<div class="zeile">' +
+            '<span class="z-wert" style="color:var(--alert)">' + esc(r.tisch || 'Tisch ?') + '</span>' +
+            '<span class="z-meta">' + esc(r.grund || 'Serviceruf') + ' &middot; ' + esc(uhr.format(new Date(r.zeit))) + ' Uhr</span>' +
+            '<button class="ok" data-ruf="' + esc(r.id) + '">Erledigt</button>' +
+          '</div>';
+        }).join('')
+      : '<p class="sub">Keine offenen Rufe.</p>';
+
+    var bestellHTML = letzte.length
+      ? letzte.map(function(r){
+          return '<div class="zeile">' +
+            '<span class="z-wert">' + euro2.format(r.betrag) + '</span>' +
+            '<span class="z-meta">' + esc(dfmt.format(new Date(r.zeit))) + ' &middot; ' + esc(uhr.format(new Date(r.zeit))) + ' Uhr</span>' +
+          '</div>';
+        }).join('')
+      : '<p class="sub">Noch keine Bestellungen im Zeitraum.</p>';
+
+    var ov = baueSheet(
+      '<h3>' + esc(b.name) + '</h3>' +
+      '<p class="sub">' + esc(b.ort || 'Ohne Ortsangabe') + '</p>' +
+      '<div class="detail-grid">' +
+        '<div><span class="n" style="color:var(--amber-hot)">' + euro.format(heute) + '</span><span class="t">HEUTE</span></div>' +
+        '<div><span class="n">' + euro.format(woche) + '</span><span class="t">7 TAGE</span></div>' +
+        '<div><span class="n">' + euro.format(monat) + '</span><span class="t">30 TAGE</span></div>' +
+      '</div>' +
+      '<button class="btn-primary" data-add="' + esc(b.id) + '">Umsatz eintragen</button>' +
+      '<p class="section-label" style="margin-top:26px">Offene Servicerufe</p>' + rufeHTML +
+      '<p class="section-label" style="margin-top:22px">Letzte Bestellungen</p>' + bestellHTML +
+      '<button class="btn-ghost" id="dClose">Schließen</button>'
+    );
+    if(!ov) return;
+
+    ov.querySelector('#dClose').addEventListener('click', function(){ ov.remove(); });
+    ov.addEventListener('click', function(e){
+      var ruf = e.target.closest('button[data-ruf]');
+      if(ruf){ erledigeEinenRuf(ruf.getAttribute('data-ruf'), ov); return; }
+      var add = e.target.closest('button[data-add]');
+      if(add){ ov.remove(); setTimeout(function(){ oeffneUmsatzSheet(add.getAttribute('data-add')); }, 260); }
+    });
+  }
+
+  function erledigeEinenRuf(id, ov){
+    console.log(LOG,'Serviceruf erledigt:',id);
+    /* Abhaken heißt hier dasselbe wie im Board: status auf "fertig".
+       Ein Feld "erledigt" gibt es in bestellungen nicht. */
+    sb.from(T.bestellungen).update({ status:'fertig' }).eq('id', id).then(function(res){
+      if(res.error){ console.log(LOG,'FEHLER:',res.error.message); toast('Ging nicht: ' + res.error.message,'err'); return; }
+      toast('Erledigt','ok');
+      if(ov && ov.parentNode) ov.remove();
+      ladeAlles();
+    });
+  }
+
+  function erledigeRufe(betriebId){
+    console.log(LOG,'Alle Servicerufe abhaken für',betriebId);
+    sb.from(T.bestellungen).update({ status:'fertig' })
+      .eq('betrieb_id', betriebId).eq('quelle', 'service').neq('status', 'fertig')
+      .then(function(res){
+        if(res.error){ console.log(LOG,'FEHLER Abhaken:',res.error.message); toast('Ging nicht: ' + res.error.message,'err'); return; }
+        toast('Servicerufe abgehakt','ok');
+        ladeAlles();
+      });
+  }
+
+  /* ============================================================
+     6.8 REALTIME
+     ============================================================ */
+  var kanal = null;
+  function starteRealtime(){
+    if(!sb) return;
+    stoppeRealtime();
+    console.log(LOG,'Realtime wird abonniert…');
+    kanal = sb.channel('master-hub')
+      .on('postgres_changes', { event:'*', schema:'public', table:T.bestellungen }, function(p){
+        console.log(LOG,'Realtime Bestellung:',p.eventType);
+        /* Serviceruf und Bestellung kommen über dieselbe Tabelle herein.
+           An quelle unterscheidbar – der Ruf meldet auffälliger. Ein
+           zweites Abo auf dieselbe Tabelle gäbe zwei Meldungen je Zeile. */
+        if(p.eventType === 'INSERT'){
+          if(p.new && p.new.quelle === 'service') toast('Serviceruf eingegangen','err');
+          else toast('Neue Bestellung');
+        }
+        ladeAllesGedrosselt();
+      })
+      .on('postgres_changes', { event:'*', schema:'public', table:T.anfragen }, function(p){
+        console.log(LOG,'Realtime Anfrage:',p.eventType);
+        if(p.eventType === 'INSERT'){
+          var b = p.new && p.new.betrieb ? p.new.betrieb : 'Neue Anfrage';
+          toast('Neue Anfrage: ' + b, 'ok');
+        }
+        ladeAllesGedrosselt();
+      })
+      .subscribe(function(status){
+        console.log(LOG,'Realtime-Status:',status);
+        DIAG.realtime = status;
+        var dot = $('liveDot'); if(!dot) return;
+        dot.className = 'live-dot' + (status === 'SUBSCRIBED' ? ' on' : (status === 'CHANNEL_ERROR' ? ' err' : ''));
+      });
+  }
+  function stoppeRealtime(){
+    if(kanal && sb){
+      try{ sb.removeChannel(kanal); console.log(LOG,'Realtime beendet'); }
+      catch(e){ console.log(LOG,'Fehler removeChannel:',e); }
+    }
+    kanal = null;
+  }
+
+  /* ============================================================
+     6.9 DIAGNOSE
+     ============================================================ */
+  function zeigeDiagnose(){
+    var box = $('diagBox');
+    if(!box.classList.contains('hidden')){ hide(box); return; }
+    console.log(LOG,'Diagnose:',DIAG);
+
+    var zeilen = [
+      ['Projekt', CONFIG.SUPABASE_URL],
+      ['betriebe', DIAG.betriebe || 'nicht abgefragt'],
+      ['bestellungen', DIAG.bestellungen || 'nicht abgefragt'],
+      ['servicerufe', DIAG.servicerufe || 'nicht abgefragt'],
+      ['umsaetze', DIAG.umsaetze || 'nicht abgefragt'],
+      ['anfragen', DIAG.anfragen || 'nicht abgefragt'],
+      ['Spalte Name', DIAG.spalteName || '—'],
+      ['Spalte Betrag', DIAG.spalteBetrag || '—'],
+      ['Spalte Zeit', DIAG.spalteZeit || S.bestellZeit],
+      ['Realtime', DIAG.realtime || 'nicht verbunden']
+    ];
+    box.innerHTML = zeilen.map(function(z){
+      var v = String(z[1]);
+      var schlecht = v.indexOf('FEHLER') === 0 || v.indexOf('nicht ') === 0;
+      var gut = /^\d/.test(v) || v === 'SUBSCRIBED';
+      return '<div class="row"><span class="k">' + esc(z[0]) + '</span>' +
+             '<span class="v ' + (schlecht ? 'bad' : (gut ? 'good' : '')) + '">' + esc(v) + '</span></div>';
+    }).join('') +
+    '<div class="row"><span class="k">Konto</span><span class="v">' +
+      '<button class="btn-small" id="diagTrennung" style="margin-top:4px">Trennung prüfen</button> ' +
+      '<button class="btn-small" id="diagKonsole" style="margin-top:4px">Konsole öffnen</button> ' +
+      '<button class="btn-small" id="diagLogout" style="margin-top:4px">Abmelden</button></span></div>';
+
+    show(box);
+    $('diagLogout').addEventListener('click', logout);
+    $('diagKonsole').addEventListener('click', function(){
+      if(window.OMO_KONSOLE) window.OMO_KONSOLE(); else toast('Konsole nicht verfügbar','err');
+    });
+    $('diagTrennung').addEventListener('click', oeffneTrennung);
+  }
+
+  /* ============================================================
+     TRENNUNGSBERICHT
+
+     Fragt die Datenbank, ob die Betriebe wirklich getrennt sind.
+     Die Prüfung läuft dort, nicht hier — der Browser bekommt nur
+     das Ergebnis. Ein Kundenkonto kann die Funktion nicht aufrufen.
+     ============================================================ */
+  function oeffneTrennung(){
+    console.log(LOG,'Trennungsbericht wird geholt');
+    var ov = baueSheet(
+      '<h3>Trennung der Betriebe</h3>' +
+      '<p class="sub">Wird geprüft …</p>' +
+      '<div id="trInhalt"><div class="card empty">Einen Moment.</div></div>' +
+      '<button class="btn-ghost" id="trClose">Schließen</button>'
+    );
+    if(!ov) return;
+    ov.querySelector('#trClose').addEventListener('click', function(){ ov.remove(); });
+
+    sb.rpc('trennungsbericht').then(function(res){
+      var box = ov.querySelector('#trInhalt');
+      var sub = ov.querySelector('.sub');
+
+      if(res.error){
+        sub.textContent = 'Nicht abrufbar';
+        var fehlt = res.error.code === '42883' ||
+                    String(res.error.message).indexOf('trennungsbericht') > -1;
+        box.innerHTML = '<div class="card empty">' + (fehlt
+          ? 'Die Prüffunktion gibt es noch nicht.<br>Führ <b>supabase-trennung.sql</b> im SQL-Editor aus.'
+          : esc(res.error.message)) + '</div>';
+        return;
+      }
+
+      var zeilen = res.data || [];
+      var rang = { kritisch:0, pruefen:1, gut:2 };
+      zeilen.sort(function(a,b){
+        if(rang[a.stufe] !== rang[b.stufe]) return rang[a.stufe] - rang[b.stufe];
+        if(a.bereich !== b.bereich) return a.bereich < b.bereich ? -1 : 1;
+        return a.objekt < b.objekt ? -1 : 1;
+      });
+
+      var zaehl = { kritisch:0, pruefen:0, gut:0 };
+      zeilen.forEach(function(z){ if(zaehl[z.stufe] != null) zaehl[z.stufe]++; });
+
+      sub.textContent = new Date().toLocaleString('de-DE');
+
+      var s = '<div class="tr-kopf">' +
+        '<div class="tr-zahl' + (zaehl.kritisch ? ' kritisch' : '') + '"><b>' + zaehl.kritisch + '</b><span>kritisch</span></div>' +
+        '<div class="tr-zahl pruefen"><b>' + zaehl.pruefen + '</b><span>ansehen</span></div>' +
+        '<div class="tr-zahl gut"><b>' + zaehl.gut + '</b><span>in Ordnung</span></div>' +
+        '</div>';
+
+      if(!zaehl.kritisch){
+        s += '<div class="tr-ok"><b>Kein offener Punkt.</b> Damit ist geprüft, was in den ' +
+             'Regeln steht. Ob ein echtes Konto sich auch so verhält, zeigt erst Teil B ' +
+             'in supabase-trennung.sql — den machst du im SQL-Editor.</div>';
+      }
+
+      /* Gruppiert wird nach Dringlichkeit, nicht nach Bereich — sonst
+         stünde dieselbe Überschrift mehrfach da, weil Kritisches oben
+         einsortiert wird. Der Bereich steht stattdessen an der Zeile. */
+      var UEBERSCHRIFT = { kritisch:'Kritisch', pruefen:'Einmal ansehen', gut:'In Ordnung' };
+      var letzteStufe = null;
+      zeilen.forEach(function(z){
+        if(z.stufe !== letzteStufe){
+          s += '<p class="tr-gruppe">' + esc(UEBERSCHRIFT[z.stufe] || z.stufe) + '</p>';
+          letzteStufe = z.stufe;
+        }
+        s += '<div class="tr-zeile">' +
+             '<span class="tr-punkt ' + esc(z.stufe) + '"></span>' +
+             '<span class="tr-text"><b>' + esc(z.bereich) + ' &middot; ' + esc(z.objekt) + '</b>' +
+             '<span>' + esc(z.befund) + '</span>' +
+             (z.hinweis ? '<small>' + esc(z.hinweis) + '</small>' : '') +
+             '</span></div>';
+      });
+
+      box.innerHTML = s;
+      console.log(LOG,'Trennungsbericht:', zaehl);
+      if(zaehl.kritisch) toast(zaehl.kritisch + ' kritische Stelle' + (zaehl.kritisch>1?'n':''), 'err');
+    }).catch(function(e){
+      console.log(LOG,'FEHLER Trennungsbericht:',e);
+      ov.querySelector('#trInhalt').innerHTML =
+        '<div class="card empty">' + esc(e && e.message ? e.message : 'Unbekannter Fehler') + '</div>';
+    });
+  }
+
+  /* ============================================================
+     6.10 START
+     ============================================================ */
+  var refreshTimer = null;
+
+  function oeffneDashboard(email){
+    console.log(LOG,'Dashboard öffnet für',email);
+    $('userLine').textContent = email || '';
+    hide($('loginScreen')); show($('app'));
+    if(STATE.ersterLauf) skeleton();
+    ladeAlles();
+    starteRealtime();
+    clearInterval(refreshTimer);
+    refreshTimer = setInterval(function(){
+      console.log(LOG,'Auto-Refresh');
+      ladeAlles();
+    }, CONFIG.AUTO_REFRESH_SEK * 1000);
+  }
+
+  function start(){
+    console.log(LOG,'DOM bereit');
+    var ok = initSupabase();
+
+    $('loginBtn').addEventListener('click', login);
+    $('password').addEventListener('keydown', function(e){ if(e.key === 'Enter') login(); });
+    $('refreshBtn').addEventListener('click', function(){ toast('Aktualisiere…'); ladeAlles(); });
+    $('addBtn').addEventListener('click', function(){ oeffneUmsatzSheet(null); });
+    $('menuBtn').addEventListener('click', zeigeDiagnose);
+
+    $('zeitraum').addEventListener('click', function(e){
+      var b = e.target.closest('button[data-range]'); if(!b) return;
+      STATE.range = b.getAttribute('data-range');
+      console.log(LOG,'Zeitraum gewechselt:',STATE.range);
+      Array.prototype.forEach.call(this.children, function(c){ c.classList.remove('on'); });
+      b.classList.add('on');
+      berechneUndZeichne();
+    });
+
+    $('betriebeListe').addEventListener('click', function(e){
+      var add = e.target.closest('button[data-add]');
+      if(add){ oeffneUmsatzSheet(add.getAttribute('data-add')); return; }
+      var clr = e.target.closest('button[data-clear]');
+      if(clr){ erledigeRufe(clr.getAttribute('data-clear')); return; }
+      var karte = e.target.closest('[data-open]');
+      if(karte) oeffneDetailSheet(karte.getAttribute('data-open'));
+    });
+
+    $('anfragenListe').addEventListener('click', function(e){
+      var k = e.target.closest('[data-anfrage]');
+      if(k) oeffneAnfrageSheet(k.getAttribute('data-anfrage'));
+    });
+
+    $('anfragenToggle').addEventListener('click', function(){
+      STATE.zeigeErledigte = !STATE.zeigeErledigte;
+      this.classList.toggle('on', STATE.zeigeErledigte);
+      this.textContent = STATE.zeigeErledigte ? 'Nur offene' : 'Erledigte zeigen';
+      renderAnfragen();
+    });
+
+    document.addEventListener('visibilitychange', function(){
+      if(!document.hidden && !$('app').classList.contains('hidden')){
+        console.log(LOG,'App wieder im Vordergrund, lade neu');
+        ladeAlles();
+      }
+    });
+
+    if(ok) pruefeSession();
+    console.log(LOG,'Init fertig');
+  }
+
+  if(document.readyState === 'loading') document.addEventListener('DOMContentLoaded', start);
+  else start();
+
+  window.addEventListener('error', function(e){
+    console.log(LOG,'GLOBALER FEHLER:', e.message, '@', e.filename, 'Zeile', e.lineno);
+  });
+})();
+</script>
+</body>
+</html>
