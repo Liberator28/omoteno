@@ -52,7 +52,7 @@
 
 <!--
   ============================================================
-  OMOTENO HUB · Kunde: Choco L'AMouR, Frankfurter Str. 10, Kirchhain
+  OMOTENO HUB · Kunde: {{KUNDE}}
   Eine einzige Datei. Kein Server, keine Datenbank, kein Login.
   Hochladen und fertig.
 
@@ -766,6 +766,47 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
   display:inline-block;margin:2px 0 14px;font-size:12.5px;font-weight:600;
   color:var(--gold);background:var(--gold-flaeche);border-radius:999px;padding:6px 13px
 }
+
+/* ── Der Umschalter zwischen Haus und Lieferung ─────────────────
+   Bringt seine eigenen Maße mit: padding, Schriftgrößen und
+   Zeilenhöhe stehen hier ausdrücklich. §3.3 — ein Abschnitt, der auf
+   globale Werte hofft, bekommt Fließtext in Schlagzeilenschrift.
+
+   Mindestens 46 px hoch, weil man ihn antippt (§8.1d). Und die
+   Farben kommen aus den Rollen des Hauses, nie fest: Auf einer
+   Fläche, die der Kunde wählt, wird Schrift gerechnet, nicht
+   gesetzt (§5.1). */
+.lieferband{
+  display:flex;align-items:center;gap:11px;
+  margin:0 0 18px;padding:11px 14px;min-height:46px;
+  text-decoration:none;
+  border:1px solid var(--linie);border-radius:var(--rundung-klein);
+  background:var(--karte);color:var(--tinte);
+}
+.lieferband .lbz{
+  flex:0 0 22px;width:22px;height:22px;display:flex;
+  align-items:center;justify-content:center;color:var(--gold);
+}
+.lieferband .lbz svg{width:22px;height:22px}
+.lieferband .lbt{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lieferband .lbt b{font-size:14px;font-weight:600;line-height:1.3;color:var(--tinte)}
+.lieferband .lbt span{font-size:12px;line-height:1.45;color:var(--tinte-leise)}
+.lieferband .lbp{margin-left:auto;flex:0 0 auto;color:var(--tinte-leise);font-size:19px}
+
+/* Im Liefermodus wird der Zustand am RAND markiert, nicht an der
+   Schrift — dasselbe Mittel wie bei .aktion.
+
+   VORFALL, und es war genau die Falle, gegen die zehn Zeilen weiter
+   oben mein eigener Kommentar steht. Zuerst hatte ich
+   „background:var(--gold-flaeche)" mit „color:var(--gold)" — Gold
+   auf goldgetönter Fläche. Gemessen: Choco 2,02:1, Blend 1,00:1.
+   Bei Blend war der Titel buchstäblich unsichtbar; dessen Hauptfarbe
+   ist ein helles Grün, und --gold-flaeche ist daraus gemischt.
+
+   §5.1 sagt es: Wo der Kunde die Fläche bestimmt, wird Schriftfarbe
+   gerechnet, nie gesetzt. Der einfachste Weg, das nicht falsch zu
+   machen, ist die Fläche zu lassen, wie sie ist. */
+.lieferband.an{border-color:var(--gold);border-left-width:4px}
 
 /* ═══ Knöpfe ════════════════════════════════════════════════════ */
 .knopf{
@@ -2368,6 +2409,46 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 /* ▲▲▲ AB HIER NICHTS ÄNDERN ▲▲▲ */
 
 
+/* ═════════════════════════════════════════════════════════════
+   WELCHES HAUS IST DAS?
+
+   EIN Ort, an dem der Slug steht, und er kommt aus dem Markenblatt —
+   also aus der Datei, die je Kunde eine andere ist.
+
+   VORFALL, und er hätte Geld gekostet. Vorher stand der Slug an DREI
+   Stellen fest im Gerüst: SERVER.betrieb, OMOTENO_DB.slug und in fünf
+   Speicherschlüsseln — jedes Mal der Slug des ERSTEN Hauses.
+   Gemessen in
+   der erzeugten Datei des ZWEITEN Hauses: sein Hub fragte
+   betriebe?slug=eq.<erstes Haus>, bekam dessen id, und schrieb damit
+   JEDE Blend-Bestellung auf Chocos Betrieb. Blends Küche hätte nie
+   einen Bon gesehen, Chocos Küche fremde Gerichte. Dazu Chocos
+   hub_texte, hub_kacheln und Liefereinstellungen im falschen Haus.
+
+   Und die Speicherschlüssel: /h/<haus-a>/ und /h/<haus-b>/ liegen auf
+   DERSELBEN Domain, localStorage hängt am Ursprung, nicht am Pfad.
+   Ein Gast hätte seinen Korb, seine Tischnummer, seinen
+   Sitzungsschlüssel und seine Lieferadresse von einem Haus ins andere
+   getragen.
+
+   Warum es keine Prüfung fand: Choco ist der einzige Kunde mit
+   Bestellungen. Bei Choco war jeder dieser Werte RICHTIG — der Slug
+   ist ja sein eigener. §8.1a steht genau dafür in CLAUDE.md, und
+   der Vorfall dort war Chocos Siegel in Blends Kopf: dieselbe Klasse,
+   nur kosmetisch. Dieser hier routet Bestellungen.
+
+   Dass Chocos Schlüssel sich dabei NICHT ändern, ist kein Zufall,
+   sondern die Probe: Wo der alte Stand richtig war, kommt er bytegleich
+   heraus (§8.1a). Nur Blend ändert sich — und Blends alter Stand war
+   falsch.
+   ═════════════════════════════════════════════════════════════ */
+const HAUS = (MARKENBLATT.betrieb && MARKENBLATT.betrieb.slug) || "";
+
+/* Jeder Speicherschlüssel geht hier durch. Wer einen neuen braucht,
+   nimmt diese Funktion — dann kann er den Hausnamen nicht vergessen. */
+function hSchluessel(name){ return "omoteno-" + name + "-" + HAUS; }
+
+
 /* ═══════════════════════════════════════════════════════════════
    MARKE ANWENDEN
 
@@ -2914,7 +2995,11 @@ const WLAN = {
 
 const SERVICE = {
   whatsapp: "",                       /* BITTE EINTRAGEN */
-  mail:     "kirchhain@chocolamour.de",
+  /* Leer, und zwar absichtlich: Der Wert kommt aus dem Markenblatt
+     (inhaltAusMarkenblatt). Hier eine echte Adresse hinzuschreiben
+     hiesse, sie jedem anderen Haus mitzugeben — genau der Fehler,
+     der oben bei HAUS beschrieben ist. */
+  mail:     "",
   rufe: [
     { id:"zahlen", text:"Wir möchten zahlen",       i:"karte" },
     { id:"runde",  text:"Noch eine Runde, bitte",   i:"glas"  },
@@ -2934,11 +3019,6 @@ const SERVICE = {
     kann den Eintrag des Betriebs kosten. Deshalb sieht hier JEDER
     Gast dieselbe Auswahl – unabhängig davon, was er angetippt hat.
     Bitte nicht "optimieren".                                     */
-
-const RUECKMELDUNG = {
-  whatsapp: "",                       /* leer = E-Mail an mail */
-  mail:     "kirchhain@chocolamour.de"
-};
 
 /*  ============================================================
     BILDER ZU DEN GERICHTEN
@@ -3063,7 +3143,7 @@ const SERVER = {
   an:         true,
   adresse:    "https://quxwweuvdqtjsdwgjdrh.supabase.co",
   schluessel: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk",
-  betrieb:    "chocolamour"
+  betrieb:    HAUS          /* nie fest hinschreiben — siehe HAUS oben */
 };
 
 /*  ============================================================
@@ -3079,9 +3159,39 @@ const BESTELLUNG = {
   wartezeit: 30      /* Sekunden, bis erneut bestellt werden darf */
 };
 
+/*  LIEFERN
+    ============================================================
+    Kommt NICHT aus dem Markenblatt, sondern zur Laufzeit aus
+    betriebe.liefer — der Wirt stellt es im Board ein und der Gast
+    sieht es beim nächsten Öffnen. Gleiches Muster wie hub_texte.
+
+    Die Vorgaben hier sind bewusst AUS. Ein Haus, das nicht liefert,
+    darf nie versehentlich einen Lieferknopf zeigen; und solange die
+    Migration nicht eingespielt ist, kommt die Spalte gar nicht mit —
+    dann bleibt es aus, statt halb zu funktionieren.
+
+    Bezahlt wird an der Tür, beim Betrieb. Der Hub ist auch hier
+    keine Kasse.                                                   */
+const LIEFER = {
+  an:        false,
+  plz:       [],     /* Liefergebiet, leer = keins */
+  mindest:   0,      /* Mindestbestellwert, 0 = keiner */
+  gebuehr:   0,      /* Liefergebühr */
+  gratis_ab: 0,      /* ab dieser Warensumme frei, 0 = nie */
+  dauer_min: 0,      /* zugesagte Lieferzeit in Minuten */
+  bar:       true,   /* bar an der Tür */
+  karte:     false,  /* Kartengerät an der Tür */
+  /* Zeitfenster. Leer = immer. Der Server prüft dasselbe noch einmal
+     und hat das letzte Wort — hier steht es, damit der Gast es sieht,
+     BEVOR er seine Adresse tippt. */
+  von:       "",     /* "17:00" */
+  bis:       "",     /* "01:00" — darf über Mitternacht gehen */
+  tage:      []      /* 1 = Mo … 7 = So; leer = jeden Tag */
+};
+
 const MUSIK = {
   whatsapp: "",
-  mail:     "kirchhain@chocolamour.de",
+  mail:     "",                       /* aus dem Markenblatt, siehe SERVICE */
   stile:    ["Charts","Deutschrap","90er / 2000er","Latin","House","Rock"]
 };
 
@@ -5081,6 +5191,15 @@ function begleiterHTML(anlass){
     if(da(b[k])) BETRIEB[k] = b[k];
   });
 
+  /* Die Hauspost. SERVICE und MUSIK hatten je eine eigene, FEST
+     eingetragene Adresse — Chocos. In jedem erzeugten Hub, also auch
+     in Blends. Ein Musikwunsch aus Blend waere bei Choco gelandet.
+     Jetzt gibt es eine Quelle: die Adresse des Hauses. */
+  if(da(BETRIEB.mail)){
+    if(!da(SERVICE.mail)) SERVICE.mail = BETRIEB.mail;
+    if(!da(MUSIK.mail))   MUSIK.mail   = BETRIEB.mail;
+  }
+
   if(Array.isArray(mb.zeiten) && mb.zeiten.length === 7){
     ZEITEN.length = 0;
     mb.zeiten.forEach(z => ZEITEN.push(z));
@@ -5458,54 +5577,53 @@ let COCKTAILS = [
 const RUNDEN_ZAHL  = 3;
 const RUNDE_LAENGE = 5;
 
+/* ══════════════════════════════════════════════════════════════════
+   DIE FRAGEN DES HAUSES
+
+   VORFALL. Hier standen zwanzig Fragen FEST im Geruest — und sechs
+   davon nannten Kirchhain, die Ohm oder das erste Haus beim Namen.
+   Sie gingen damit an JEDES Haus mit: Ein Foodtruck haette seine
+   Gaeste gefragt, in welchem Landkreis eine fremde Stadt liegt.
+
+   Der Hebel dagegen gab es schon (quizAusMarkenblatt, gleich
+   darunter) — es fehlten nur die Daten. Gefunden hat es nicht die
+   Wache im Erzeuger: Die prueft SLUGS, und hier stand der
+   Anzeigename. Dieselbe Fehlerklasse, eine Ebene daneben (§8.1a).
+
+   Was hier bleibt, ist neutral: Wissen ueber Kakao, Kaffee, Waffeln
+   und Crepes, das in jedem Haus stimmt. Wer eigene Fragen will,
+   schreibt sie ins Markenblatt — ganz oder gar nicht, wie bei den
+   Empfehlungen.
+   ══════════════════════════════════════════════════════════════════ */
 const QUIZ = [
   { f:"Woraus wird Schokolade ursprünglich gemacht?", a:["Aus Kakaobohnen","Aus Kaffeebohnen","Aus Vanilleschoten"], r:0,
     i:"Die Bohnen wachsen in Schoten direkt am Stamm des Kakaobaums." },
   { f:"Welches Volk trank Kakao zuerst – allerdings bitter und gewürzt?", a:["Die Römer","Die Maya","Die Wikinger"], r:1,
     i:"Bei den Maya galt Kakao als Getränk der Götter." },
   { f:"Woher stammt der Crêpe ursprünglich?", a:["Aus der Bretagne","Aus Paris","Aus Belgien"], r:0,
-    i:"In der Bretagne wird er traditionell auf einer heißen Gusseisenplatte gebacken." },
-  { f:"Was ist Ashta?", a:["Eine arabische Sahne","Ein Gewürz","Eine Nusssorte"], r:0,
-    i:"Ashta ist eine cremige Sahne aus der arabischen Küche – bei uns in vielen Bechern." },
-  { f:"Was ist Kadayif, auch Engelshaar genannt?", a:["Feine Teigfäden","Zuckerwatte","Kokosraspel"], r:0,
-    i:"Hauchdünne Teigfäden, geröstet – der Knusper im Dubai-Crêpe." },
-  { f:"Welche Nuss steckt in Pistaziencreme?", a:["Die Pistazie","Die Cashew","Die Mandel"], r:0,
-    i:"Die besten kommen aus dem Iran und der Türkei." },
-  { f:"Was bedeutet 'L'amour' auf Deutsch?", a:["Die Liebe","Der Genuss","Der Traum"], r:0,
-    i:"Deshalb heißen wir so – und deshalb schmeckt es auch so." },
-  { f:"Wie viele Kakaobohnen stecken ungefähr in einer Tafel Schokolade?", a:["etwa 50","etwa 400","etwa 2000"], r:1,
-    i:"Rund 400 Bohnen – also etwa der Ertrag eines halben Kakaobaums pro Jahr." },
-  { f:"Welche Schokolade enthält gar keine Kakaomasse?", a:["Weiße Schokolade","Vollmilch","Zartbitter"], r:0,
-    i:"Sie besteht aus Kakaobutter, Milch und Zucker – deshalb ist sie hell." },
-  { f:"Was ist Zaatar?", a:["Eine Thymian-Gewürzmischung","Ein Käse","Ein Brotteig"], r:0,
-    i:"Thymian, Sesam und Sumach – das Herz vieler Manakish." },
-  { f:"Was ist Muhammara?", a:["Eine Paprika-Walnuss-Paste","Ein Joghurtdip","Eine Süßspeise"], r:0,
-    i:"Aus Paprika, Walnüssen und Granatapfelmelasse – herzhaft und leicht süßlich." },
-  { f:"Woraus besteht Labneh?", a:["Aus abgetropftem Joghurt","Aus Kichererbsen","Aus Auberginen"], r:0,
-    i:"Joghurt wird stundenlang abgetropft, bis er cremig wie Frischkäse ist." },
-  { f:"In welchem Landkreis liegt Kirchhain?", a:["Marburg-Biedenkopf","Gießen","Vogelsberg"], r:0,
-    i:"Kirchhain gehört zum Landkreis Marburg-Biedenkopf." },
-  { f:"Welcher Fluss fließt durch Kirchhain?", a:["Die Ohm","Die Lahn","Die Eder"], r:0,
-    i:"Die Ohm mündet später bei Cölbe in die Lahn." },
-  { f:"Seit wann gibt es Choco L'AMouR?", a:["seit 2023","seit 2015","seit 2008"], r:0,
-    i:"Gegründet 2023 – steht so auch in unserem Logo." },
-  { f:"In welcher Stadt hat Choco L'AMouR zuerst eröffnet?", a:["Wetzlar","Kirchhain","Gießen"], r:0,
-    i:"Zuerst Wetzlar, dann Kirchhain, zuletzt Gießen." },
-  { f:"Welche Frucht gehört klassisch auf unsere Becher?", a:["Die Erdbeere","Die Kirsche","Die Blaubeere"], r:0,
-    i:"Erdbeere und Banane – das Paar, das bei uns fast überall mitspielt." },
+    i:"In der Bretagne wird er traditionell aus Buchweizenmehl gebacken." },
   { f:"Wie heißt der italienische Begriff für Schlagsahne?", a:["Panna","Latte","Burro"], r:0,
     i:"Panna montata heißt geschlagene Sahne." },
   { f:"Was passiert, wenn Schokolade zu warm gelagert wird?", a:["Sie bekommt weiße Schlieren","Sie wird bitter","Sie wird hart"], r:0,
     i:"Das nennt man Fettreif – geschmacklich harmlos, optisch schade." },
-  { f:"Welches Getränk mixen wir aus Zitrone und frischer Minze?", a:["Polo","Mojito","Limonata"], r:0,
-    i:"Unser Polo – frisch gepresst, ohne Sirup." }
+  { f:"Welche Pflanze liefert Vanille?", a:["Eine Orchidee","Ein Farn","Ein Kaktus"], r:0,
+    i:"Vanille ist die Schote einer Kletterorchidee." },
+  { f:"Was ist Espresso im Vergleich zu Filterkaffee?", a:["Mit Druck gebrüht","Länger gebrüht","Kalt gebrüht"], r:0,
+    i:"Rund neun bar Druck in etwa fünfundzwanzig Sekunden." },
+  { f:"Woher kommt die Waffel mit den tiefen Taschen?", a:["Aus Belgien","Aus Wien","Aus Dänemark"], r:0,
+    i:"Die Brüsseler Waffel ist außen knusprig und innen luftig." },
+  { f:"Was macht Matcha grün?", a:["Der ganze gemahlene Blattstoff","Ein Farbstoff","Die Röstung"], r:0,
+    i:"Beim Matcha trinkt man das ganze Blatt mit, nicht nur den Aufguss." },
+  { f:"Welche Frucht ist botanisch KEINE Beere?", a:["Die Erdbeere","Die Banane","Die Kiwi"], r:0,
+    i:"Die Erdbeere ist eine Sammelnussfrucht – Banane und Kiwi sind Beeren." }
 ];
+
 
 /*  BESTENLISTE
     Die Ergebnisse werden auf dem Gerät des Gastes gespeichert.
     Für eine gemeinsame Liste über alle Tische hinweg braucht es einen
     kleinen Server – siehe Anleitung, Abschnitt „Bestenliste erweitern“. */
-const LISTE_SCHLUESSEL = "omoteno-bestenliste-chocolamour";
+const LISTE_SCHLUESSEL = hSchluessel("bestenliste");
 const LISTE_LAENGE     = 10;
 
 
@@ -6556,6 +6674,12 @@ const TEXTE = {
 "Tischnummer (optional)":{en:"Table number (optional)",tr:"Masa numarası (isteğe bağlı)",ru:"Номер столика (необязательно)",fr:"Numéro de table (facultatif)",es:"Número de mesa (opcional)",it:"Numero del tavolo (facoltativo)",pl:"Numer stolika (opcjonalnie)",ar:"رقم الطاولة (اختياري)",uk:"Номер столика (за бажанням)",nl:"Tafelnummer (optioneel)",ro:"Numărul mesei (opțional)"},
 "Wunsch an die Bar schicken":{en:"Send request to the bar",tr:"İsteği bara gönder",ru:"Отправить в бар",fr:"Envoyer au bar",es:"Enviar a la barra",it:"Invia al bar",pl:"Wyślij do baru",ar:"إرسال الطلب إلى البار",uk:"Надіслати в бар",nl:"Verzoek naar de bar sturen",ro:"Trimite la bar"},
 "Bitte tragen Sie noch ein Lied oder einen Künstler ein.":{en:"Please enter a song or an artist first.",tr:"Lütfen önce bir şarkı veya sanatçı yazın.",ru:"Пожалуйста, укажите песню или исполнителя.",fr:"Indiquez d'abord un titre ou un artiste.",es:"Escriba primero una canción o un artista.",it:"Inserisci prima un brano o un artista.",pl:"Najpierw wpisz utwór lub wykonawcę.",ar:"يرجى إدخال أغنية أو فنان أولاً.",uk:"Спершу вкажіть пісню або виконавця.",nl:"Vul eerst een nummer of artiest in.",ro:"Introduceți mai întâi o melodie sau un artist."},
+"Sich liefern lassen":{en:"Get it delivered",tr:"Eve teslim alın",ru:"Заказать доставку",fr:"Se faire livrer",es:"Pedir a domicilio",it:"Farsi consegnare",pl:"Zamów z dostawą",ar:"اطلب التوصيل",uk:"Замовити доставку",nl:"Laten bezorgen",ro:"Comandă cu livrare"},
+"Sie lassen sich liefern":{en:"You are ordering delivery",tr:"Eve teslim sipariş ediyorsunuz",ru:"Вы заказываете доставку",fr:"Vous commandez en livraison",es:"Está pidiendo a domicilio",it:"Stai ordinando la consegna",pl:"Zamawiasz z dostawą",ar:"أنت تطلب التوصيل",uk:"Ви замовляєте доставку",nl:"U laat bezorgen",ro:"Comandați cu livrare"},
+"Zurück zur Bestellung im Lokal":{en:"Back to ordering in the restaurant",tr:"Restoranda siparişe dön",ru:"Вернуться к заказу в заведении",fr:"Revenir à la commande sur place",es:"Volver al pedido en el local",it:"Torna all\u2019ordine sul posto",pl:"Powrót do zamówienia na miejscu",ar:"العودة إلى الطلب في المكان",uk:"Повернутися до замовлення в закладі",nl:"Terug naar bestellen in de zaak",ro:"Înapoi la comanda în local"},
+"Bezahlt wird an der Tür":{en:"You pay at the door",tr:"Ödeme kapıda",ru:"Оплата у двери",fr:"Paiement à la porte",es:"Se paga en la puerta",it:"Si paga alla porta",pl:"Płatność przy drzwiach",ar:"الدفع عند الباب",uk:"Оплата біля дверей",nl:"Betalen aan de deur",ro:"Plata la ușă"},
+"Ab {b}, bezahlt wird an der Tür":{en:"From {b}, you pay at the door",tr:"{b} üzerinden, ödeme kapıda",ru:"От {b}, оплата у двери",fr:"À partir de {b}, paiement à la porte",es:"Desde {b}, se paga en la puerta",it:"Da {b}, si paga alla porta",pl:"Od {b}, płatność przy drzwiach",ar:"من {b}، الدفع عند الباب",uk:"Від {b}, оплата біля дверей",nl:"Vanaf {b}, betalen aan de deur",ro:"De la {b}, plata la ușă"},
+"Sagen Sie Ihren Wunsch gerne unserem Team.":{en:"Just tell our team your request.",tr:"İsteğinizi ekibimize söyleyebilirsiniz.",ru:"Просто скажите о своём пожелании нашей команде.",fr:"Dites simplement votre souhait à notre équipe.",es:"Dígale su deseo a nuestro equipo.",it:"Dica il suo desiderio al nostro team.",pl:"Powiedz o swoim życzeniu naszemu zespołowi.",ar:"أخبر فريقنا برغبتك.",uk:"Просто скажіть про своє побажання нашій команді.",nl:"Vertel uw wens gewoon aan ons team.",ro:"Spuneți-i dorința echipei noastre."},
 "Nachricht wird geöffnet – bitte noch abschicken.":{en:"Opening your message – please send it.",tr:"Mesaj açılıyor – lütfen gönderin.",ru:"Открываем сообщение — не забудьте отправить.",fr:"Le message s'ouvre – envoyez-le.",es:"Se abre el mensaje: envíelo.",it:"Il messaggio si apre – invialo.",pl:"Wiadomość się otworzy – wyślij ją.",ar:"سيتم فتح الرسالة – يرجى إرسالها.",uk:"Повідомлення відкриється — надішліть його.",nl:"Het bericht opent – verstuur het nog.",ro:"Se deschide mesajul – trimiteți-l."},
 "Musikwunsch: ":{en:"Song request: ",tr:"Şarkı isteği: ",ru:"Заказ песни: ",fr:"Demande : ",es:"Petición: ",it:"Richiesta: ",pl:"Prośba o utwór: ",ar:"طلب أغنية: ",uk:"Прохання про пісню: ",nl:"Muziekverzoek: ",ro:"Cerere muzicală: "},
 " – Tisch ":{en:" – table ",tr:" – masa ",ru:" — столик ",fr:" – table ",es:" – mesa ",it:" – tavolo ",pl:" – stolik ",ar:" – طاولة ",uk:" — столик ",nl:" – tafel ",ro:" – masa "},
@@ -6700,7 +6824,30 @@ const TEXTE = {
 "0,2 l":{en:"0.2 l",tr:"0,2 l",ru:"0,2 л",fr:"0,2 l",es:"0,2 l",it:"0,2 l",pl:"0,2 l",ar:"0.2 لتر",uk:"0,2 л",nl:"0,2 l",ro:"0,2 l"},
 "0,25 l":{en:"0.25 l",tr:"0,25 l",ru:"0,25 л",fr:"0,25 l",es:"0,25 l",it:"0,25 l",pl:"0,25 l",ar:"0.25 لتر",uk:"0,25 л",nl:"0,25 l",ro:"0,25 l"},
 "0,5 l":{en:"0.5 l",tr:"0,5 l",ru:"0,5 л",fr:"0,5 l",es:"0,5 l",it:"0,5 l",pl:"0,5 l",ar:"0.5 لتر",uk:"0,5 л",nl:"0,5 l",ro:"0,5 l"},
-"Erdbeersaft lecker":{en:"Delicious strawberry juice",tr:"Nefis çilek suyu",ru:"Вкуснейший клубничный сок",fr:"Délicieux jus de fraise",es:"Delicioso zumo de fresa",it:"Delizioso succo di fragola",pl:"Pyszny sok truskawkowy",ar:"عصير فراولة لذيذ",uk:"Смачнющий полуничний сік",nl:"Heerlijk aardbeiensap",ro:"Suc delicios de căpșuni"}
+"Erdbeersaft lecker":{en:"Delicious strawberry juice",tr:"Nefis çilek suyu",ru:"Вкуснейший клубничный сок",fr:"Délicieux jus de fraise",es:"Delicioso zumo de fresa",it:"Delizioso succo di fragola",pl:"Pyszny sok truskawkowy",ar:"عصير فراولة لذيذ",uk:"Смачнющий полуничний сік",nl:"Heerlijk aardbeiensap",ro:"Suc delicios de căpșuni"},
+/* ─── Lieferung ─────────────────────────────────────────────────
+   Die Sätze des Liefermodus. Sie stehen hier und nicht im
+   Markenblatt, weil sie bei jedem Haus gleich sind — nur Gebiet,
+   Gebühr und Zeit unterscheiden sich, und die sind Zahlen. */
+"Lieferung":{en:"Delivery",tr:"Teslimat",ru:"Доставка",fr:"Livraison",es:"Entrega",it:"Consegna",pl:"Dostawa",ar:"التوصيل",uk:"Доставка",nl:"Bezorging",ro:"Livrare"},
+"Zu zahlen":{en:"Total to pay",tr:"Ödenecek tutar",ru:"К оплате",fr:"Total à payer",es:"Total a pagar",it:"Totale da pagare",pl:"Do zapłaty",ar:"المبلغ المستحق",uk:"До сплати",nl:"Te betalen",ro:"De plată"},
+"kostenlos":{en:"free",tr:"ücretsiz",ru:"бесплатно",fr:"offerte",es:"gratis",it:"gratuita",pl:"bezpłatnie",ar:"مجاناً",uk:"безкоштовно",nl:"gratis",ro:"gratuit"},
+"IHR NAME":{en:"YOUR NAME",tr:"ADINIZ",ru:"ВАШЕ ИМЯ",fr:"VOTRE NOM",es:"SU NOMBRE",it:"IL SUO NOME",pl:"IMIĘ I NAZWISKO",ar:"اسمك",uk:"ВАШЕ ІМʼЯ",nl:"UW NAAM",ro:"NUMELE DUMNEAVOASTRĂ"},
+"STRASSE UND HAUSNUMMER":{en:"STREET AND NUMBER",tr:"SOKAK VE KAPI NUMARASI",ru:"УЛИЦА И НОМЕР ДОМА",fr:"RUE ET NUMÉRO",es:"CALLE Y NÚMERO",it:"VIA E NUMERO CIVICO",pl:"ULICA I NUMER DOMU",ar:"الشارع ورقم المنزل",uk:"ВУЛИЦЯ І НОМЕР БУДИНКУ",nl:"STRAAT EN HUISNUMMER",ro:"STRADA ȘI NUMĂRUL"},
+"POSTLEITZAHL":{en:"POSTCODE",tr:"POSTA KODU",ru:"ПОЧТОВЫЙ ИНДЕКС",fr:"CODE POSTAL",es:"CÓDIGO POSTAL",it:"CAP",pl:"KOD POCZTOWY",ar:"الرمز البريدي",uk:"ПОШТОВИЙ ІНДЕКС",nl:"POSTCODE",ro:"COD POȘTAL"},
+"ORT":{en:"TOWN",tr:"ŞEHİR",ru:"ГОРОД",fr:"VILLE",es:"CIUDAD",it:"CITTÀ",pl:"MIEJSCOWOŚĆ",ar:"المدينة",uk:"МІСТО",nl:"PLAATS",ro:"LOCALITATE"},
+"TELEFON FÜR DEN FAHRER":{en:"PHONE FOR THE DRIVER",tr:"KURYE İÇİN TELEFON",ru:"ТЕЛЕФОН ДЛЯ КУРЬЕРА",fr:"TÉLÉPHONE POUR LE LIVREUR",es:"TELÉFONO PARA EL REPARTIDOR",it:"TELEFONO PER IL FATTORINO",pl:"TELEFON DLA KURIERA",ar:"هاتف لسائق التوصيل",uk:"ТЕЛЕФОН ДЛЯ КУРʼЄРА",nl:"TELEFOON VOOR DE BEZORGER",ro:"TELEFON PENTRU CURIER"},
+"KLINGEL ODER ETAGE (OPTIONAL)":{en:"DOORBELL OR FLOOR (OPTIONAL)",tr:"ZİL VEYA KAT (İSTEĞE BAĞLI)",ru:"ЗВОНОК ИЛИ ЭТАЖ (НЕОБЯЗАТЕЛЬНО)",fr:"SONNETTE OU ÉTAGE (FACULTATIF)",es:"TIMBRE O PISO (OPCIONAL)",it:"CITOFONO O PIANO (FACOLTATIVO)",pl:"DZWONEK LUB PIĘTRO (OPCJONALNIE)",ar:"الجرس أو الطابق (اختياري)",uk:"ДЗВІНОК АБО ПОВЕРХ (НЕОБОВʼЯЗКОВО)",nl:"BEL OF ETAGE (OPTIONEEL)",ro:"SONERIE SAU ETAJ (OPȚIONAL)"},
+"Wir liefern ab {b}. Fehlt noch etwas Kleines?":{en:"We deliver from {b}. Room for one more little thing?",tr:"{b} tutarından itibaren teslimat yapıyoruz. Küçük bir şey daha ekler misiniz?",ru:"Мы доставляем от {b}. Может, добавите что-нибудь ещё?",fr:"Nous livrons à partir de {b}. Envie d’ajouter une petite chose ?",es:"Repartimos a partir de {b}. ¿Le apetece añadir algo más?",it:"Consegniamo a partire da {b}. Aggiunge ancora qualcosina?",pl:"Dowozimy od {b}. Może dorzuci Pan/Pani coś małego?",ar:"نوصّل ابتداءً من {b}. هل تودّ إضافة شيء صغير؟",uk:"Ми доставляємо від {b}. Може, додасте ще щось невелике?",nl:"Wij bezorgen vanaf {b}. Nog iets kleins erbij?",ro:"Livrăm de la {b}. Mai adăugați ceva mic?"},
+"Bezahlt wird bei der Lieferung, direkt bei uns an der Tür.":{en:"Payment is made on delivery, directly to us at the door.",tr:"Ödeme teslimat sırasında, kapıda bize yapılır.",ru:"Оплата производится при доставке, непосредственно нам у двери.",fr:"Le paiement se fait à la livraison, directement auprès de nous à la porte.",es:"El pago se realiza en la entrega, directamente con nosotros en la puerta.",it:"Il pagamento avviene alla consegna, direttamente a noi alla porta.",pl:"Płatność następuje przy dostawie, bezpośrednio u nas przy drzwiach.",ar:"يتم الدفع عند التسليم، مباشرةً لنا عند الباب.",uk:"Оплата здійснюється під час доставки, безпосередньо нам біля дверей.",nl:"Er wordt bij de bezorging betaald, rechtstreeks aan ons aan de deur.",ro:"Plata se face la livrare, direct nouă, la ușă."},
+"Bar oder mit Karte.":{en:"Cash or card.",tr:"Nakit veya kartla.",ru:"Наличными или картой.",fr:"En espèces ou par carte.",es:"En efectivo o con tarjeta.",it:"In contanti o con carta.",pl:"Gotówką lub kartą.",ar:"نقداً أو بالبطاقة.",uk:"Готівкою або карткою.",nl:"Contant of met kaart.",ro:"Numerar sau card."},
+"Mit Karte.":{en:"By card.",tr:"Kartla.",ru:"Картой.",fr:"Par carte.",es:"Con tarjeta.",it:"Con carta.",pl:"Kartą.",ar:"بالبطاقة.",uk:"Карткою.",nl:"Met kaart.",ro:"Cu cardul."},
+"Bitte passend in bar.":{en:"Cash please, exact change if possible.",tr:"Lütfen nakit, mümkünse bozuk para.",ru:"Пожалуйста, наличными, по возможности без сдачи.",fr:"En espèces, avec l’appoint si possible.",es:"En efectivo, a ser posible el importe exacto.",it:"In contanti, possibilmente con l’importo esatto.",pl:"Prosimy o gotówkę, w miarę możliwości odliczoną.",ar:"نقداً من فضلك، ويُفضّل المبلغ بالضبط.",uk:"Будь ласка, готівкою, по можливості без решти.",nl:"Graag contant, indien mogelijk gepast.",ro:"Numerar, de preferință suma exactă."},
+"Wir sind in etwa {m} Minuten bei Ihnen.":{en:"We’ll be with you in about {m} minutes.",tr:"Yaklaşık {m} dakika içinde yanınızdayız.",ru:"Будем у Вас примерно через {m} минут.",fr:"Nous serons chez vous dans environ {m} minutes.",es:"Estaremos con usted en unos {m} minutos.",it:"Saremo da Lei tra circa {m} minuti.",pl:"Będziemy u Pana/Pani za około {m} minut.",ar:"سنكون عندك خلال {m} دقيقة تقريباً.",uk:"Будемо у Вас приблизно за {m} хвилин.",nl:"We zijn er over ongeveer {m} minuten.",ro:"Ajungem la dumneavoastră în aproximativ {m} minute."},
+"Bitte füllen Sie Name, Adresse und Telefon aus.":{en:"Please fill in name, address and phone.",tr:"Lütfen ad, adres ve telefon bilgilerini doldurun.",ru:"Пожалуйста, заполните имя, адрес и телефон.",fr:"Merci d’indiquer nom, adresse et téléphone.",es:"Por favor, complete nombre, dirección y teléfono.",it:"La preghiamo di compilare nome, indirizzo e telefono.",pl:"Prosimy podać imię, adres i telefon.",ar:"يرجى إدخال الاسم والعنوان ورقم الهاتف.",uk:"Будь ласка, заповніть імʼя, адресу та телефон.",nl:"Vul uw naam, adres en telefoonnummer in.",ro:"Vă rugăm să completați numele, adresa și telefonul."},
+"Dorthin liefern wir leider nicht.":{en:"Unfortunately we don’t deliver there.",tr:"Maalesef oraya teslimat yapmıyoruz.",ru:"К сожалению, туда мы не доставляем.",fr:"Malheureusement, nous ne livrons pas à cette adresse.",es:"Lamentablemente no repartimos allí.",it:"Purtroppo non consegniamo a quell’indirizzo.",pl:"Niestety tam nie dowozimy.",ar:"للأسف لا نوصّل إلى هناك.",uk:"На жаль, туди ми не доставляємо.",nl:"Daar bezorgen wij helaas niet.",ro:"Din păcate, nu livrăm acolo."},
+"Wir liefern gerade nicht.":{en:"We are not delivering right now.",tr:"Şu anda teslimat yapmıyoruz.",ru:"Сейчас мы не доставляем.",fr:"Nous ne livrons pas en ce moment.",es:"Ahora mismo no repartimos.",it:"Al momento non consegniamo.",pl:"W tej chwili nie dowozimy.",ar:"لا نقوم بالتوصيل في الوقت الحالي.",uk:"Зараз ми не доставляємо.",nl:"Op dit moment bezorgen wij niet.",ro:"Momentan nu livrăm."},
+"Wir liefern von {von} bis {bis} Uhr.":{en:"We deliver from {von} to {bis}.",tr:"{von} ile {bis} arası teslimat yapıyoruz.",ru:"Мы доставляем с {von} до {bis}.",fr:"Nous livrons de {von} à {bis}.",es:"Repartimos de {von} a {bis}.",it:"Consegniamo dalle {von} alle {bis}.",pl:"Dowozimy od {von} do {bis}.",ar:"نوصّل من {von} حتى {bis}.",uk:"Ми доставляємо з {von} до {bis}.",nl:"Wij bezorgen van {von} tot {bis}.",ro:"Livrăm de la {von} până la {bis}."}
 };
 
 const TAGE = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
@@ -7048,11 +7195,80 @@ function empfehlungHTML(){
     '</span></a>';
 }
 
+/* ══════════════════════════════════════════════════════════════════
+   DER SICHTBARE UMSCHALTER
+
+   Ohne ihn erreicht man den Liefermodus nur, wenn man „?modus=liefern"
+   von Hand tippt oder den gedruckten Link hat. Das Haus liefert
+   also, und der Gast auf der Startseite erfährt es nicht.
+
+   Drei Bedingungen, und jede hat einen Grund:
+
+   • LIEFER.an — ein Haus, das nicht liefert, zeigt keinen
+     Lieferknopf. Ist die Migration nicht eingespielt, ist das
+     ohnehin aus (§7, fail-open).
+
+   • kein tischNr — wer über den Untersetzer hereinkommt, SITZT im
+     Lokal. Ein Adressformular wäre dort schlicht falsch, und der
+     Untersetzer gewinnt ja auch sonst gegen die Adresszeile.
+
+   • liefertGerade() entscheidet NICHT über die Sichtbarkeit,
+     sondern nur über den Text. Ein Band, das außerhalb der
+     Lieferzeit verschwindet, lässt den Gast rätseln, ob es je eines
+     gab. Lieber dastehen und die Zeiten nennen — dann weiß er, wann
+     er wiederkommt.
+
+   Der Zustand hängt an der ADRESSE, nicht an einem Speicher: Das ist
+   ein gewöhnlicher Link. Wer ihn teilt, teilt den Modus mit; ein
+   Neuladen behält ihn; und der Zurück-Knopf des Browsers tut das,
+   was der Gast erwartet.
+   ══════════════════════════════════════════════════════════════════ */
+function lieferBandHTML(){
+  if(!LIEFER.an || tischNr) return "";
+
+  const jetzt = liefertGerade();
+  const pfad  = location.pathname;
+
+  if(liefermodus){
+    return '<a class="lieferband an" href="' + pfad + '">' +
+      '<span class="lbz">' + (ICONS.hand || "") + '</span>' +
+      '<span class="lbt"><b>' + t("Sie lassen sich liefern") + '</b>' +
+      '<span>' + t("Zurück zur Bestellung im Lokal") + '</span></span>' +
+      '<span class="lbp">›</span></a>';
+  }
+
+  /* Außerhalb der Lieferzeit steht das Band trotzdem da — mit den
+     Uhrzeiten statt mit einer Einladung. */
+  const unter = jetzt
+    ? (LIEFER.mindest > 0
+        ? t("Ab {b}, bezahlt wird an der Tür", {b: preisText(LIEFER.mindest)})
+        : t("Bezahlt wird an der Tür"))
+    : (LIEFER.von && LIEFER.bis
+        ? t("Wir liefern von {von} bis {bis} Uhr.",
+            {von: LIEFER.von, bis: LIEFER.bis})
+        : t("Wir liefern gerade nicht."));
+
+  return '<a class="lieferband" href="' + pfad + '?modus=liefern">' +
+    '<span class="lbz">' + (ICONS.hand || "") + '</span>' +
+    '<span class="lbt"><b>' + t("Sich liefern lassen") + '</b>' +
+    '<span>' + unter + '</span></span>' +
+    '<span class="lbp">›</span></a>';
+}
+
 function start(){
   /* wenn: optionale Bedingung an der Kachel. Ist sie da und ergibt
      false, erscheint die Kachel nicht – siehe Trinkgeld. */
+  /* Im Liefermodus fällt die ganze Gruppe „Jetzt am Tisch" weg —
+     Service rufen, WLAN, Tischquiz, Musikwunsch, Mein Tisch. Der Gast
+     sitzt zu Hause; nichts davon führt irgendwohin.
+
+     Bewusst die GRUPPE und nicht fünf einzelne Bedingungen: Wer
+     morgen eine sechste Kachel dorthin stellt, muss nicht daran
+     denken. Eine Regel, die man vergessen kann, ist eine Regel, die
+     man vergessen wird. */
   const sichtbar = KACHELN.filter(k =>
     stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
+    !(liefermodus && LIEFER.an && k.gruppe === "Jetzt am Tisch") &&
     (typeof k.wenn !== "function" || k.wenn()) &&
     /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
        neu. Lieber gar keine Kachel als eine, die im Kreis führt. */
@@ -7093,7 +7309,8 @@ function start(){
         '<div class="pfeil">›</div></a>';
   };
 
-  let html = aktionBandHTML() + begleiterHTML("start") + empfehlungHTML(), letzter = "";
+  let html = lieferBandHTML() + aktionBandHTML() +
+             begleiterHTML("start") + empfehlungHTML(), letzter = "";
   sichtbar.forEach(k => {
     if(k.gruppe !== letzter){
       if(letzter) html += '</div>';
@@ -7115,10 +7332,12 @@ const suchtext = { speisekarte:"", getraenke:"", cocktails:"" };
 
 /* Merkliste: Schlüssel je Gericht = Kartenname. Wert = { n, p, b } */
 let merk = {};
-try { merk = JSON.parse(localStorage.getItem("omoteno-merk-chocolamour") || "{}"); } catch(e){ merk = {}; }
+const MERK_SCHLUESSEL  = hSchluessel("merk");
+const TISCH_SCHLUESSEL = hSchluessel("tisch");
+try { merk = JSON.parse(localStorage.getItem(MERK_SCHLUESSEL) || "{}"); } catch(e){ merk = {}; }
 /* Ältere gespeicherte Einträge (ohne Menge) bekommen Menge 1 */
 Object.values(merk).forEach(g => { if(!g.m || g.m < 1) g.m = 1; });
-function merkSpeichern(){ try { localStorage.setItem("omoteno-merk-chocolamour", JSON.stringify(merk)); } catch(e){} }
+function merkSpeichern(){ try { localStorage.setItem(MERK_SCHLUESSEL, JSON.stringify(merk)); } catch(e){} }
 function preisNum(p){
   const m = String(p).replace(",", ".").match(/[0-9]+(\.[0-9]+)?/);
   return m ? parseFloat(m[0]) : 0;
@@ -7266,36 +7485,82 @@ SEITEN.auswahl = () => {
      der Betrieb gerade Bestellungen annimmt. */
   const stopp = bestellStopp();
   const bestellbar = BESTELLUNG.an && serverBereit() && merkAnzahl() > 0 && !stopp;
-  const unterMindest = BESTELLUNG.mindest > 0 && summe < BESTELLUNG.mindest;
+  const liefern = liefermodus && LIEFER.an;
+  const lieferZu = liefern && !liefertGerade();
+  const mindest = liefern ? LIEFER.mindest : BESTELLUNG.mindest;
+  const unterMindest = mindest > 0 && summe < mindest;
+
+  /* Im Liefermodus kommt zur Ware die Gebühr. Der Gast soll die Zahl
+     sehen, die er an der Tür bezahlt — nicht die halbe. */
+  const gebuehr = liefern ? lieferGebuehrFuer(summe) : 0;
+  const lieferSummeHTML = (liefern && summe > 0)
+    ? '<div class="summe"><span class="l">' + t("Lieferung") + '</span>' +
+      '<span class="b">' + (gebuehr > 0 ? preisText(gebuehr) : t("kostenlos")) + '</span></div>' +
+      '<div class="summe"><span class="l">' + t("Zu zahlen") + '</span>' +
+      '<span class="b">' + preisText(summe + gebuehr) + '</span></div>'
+    : "";
 
   let bestellteil = "";
   if(bestellbar){
+    const a = liefern ? lieferAdresseLesen() : {};
+    const f = (id, beschriftung, wertName, zusatz) =>
+      '<div class="label">' + beschriftung + '</div>' +
+      '<input class="feld" id="' + id + '" ' + (zusatz || "") +
+      ' value="' + sicherText(a[wertName] || "") + '">';
+
     bestellteil =
       '<div class="besttrenn"></div>' +
-      (tischNr
-        ? '<div class="tischnote">' + t("Tisch {n}", {n:tischNr}) + '</div>'
-        : '<div class="label">' + t("AN WELCHEM TISCH SITZEN SIE?") + '</div>' +
-          '<input class="feld" id="bTisch" inputmode="numeric" placeholder="' + t("Tischnummer") + '">') +
+      (liefern
+        ? f("lName",    t("IHR NAME"),            "name",    'autocomplete="name"') +
+          f("lStrasse", t("STRASSE UND HAUSNUMMER"), "strasse", 'autocomplete="street-address"') +
+          f("lPlz",     t("POSTLEITZAHL"),        "plz",     'inputmode="numeric" autocomplete="postal-code"') +
+          f("lOrt",     t("ORT"),                 "ort",     'autocomplete="address-level2"') +
+          f("lTelefon", t("TELEFON FÜR DEN FAHRER"), "telefon", 'inputmode="tel" autocomplete="tel"') +
+          f("lKlingel", t("KLINGEL ODER ETAGE (OPTIONAL)"), "klingel", "") +
+          '<div class="hinweis" id="lGebiet" hidden></div>'
+        : tischNr
+          ? '<div class="tischnote">' + t("Tisch {n}", {n:tischNr}) + '</div>'
+          : '<div class="label">' + t("AN WELCHEM TISCH SITZEN SIE?") + '</div>' +
+            '<input class="feld" id="bTisch" inputmode="numeric" placeholder="' + t("Tischnummer") + '">') +
       '<div class="label">' + t("ANMERKUNG (OPTIONAL)") + '</div>' +
       '<input class="feld" id="bNotiz" placeholder="' + t("z. B. ohne Zwiebeln") + '">' +
-      '<button class="knopf" data-aktion="bestellen"' + (unterMindest ? " disabled" : "") + '>' +
+      '<button class="knopf" data-aktion="bestellen"' +
+        ((unterMindest || lieferZu) ? " disabled" : "") + '>' +
       t("Bestellung abschicken") + '</button>' +
       '<div class="kopiert" id="melde"></div>' +
       '<div class="ersatzweg" id="ersatzweg">' +
         '<p>' + t("Die Verbindung ist gerade schwierig. Zeigen Sie Ihre Bestellung einfach unserem Serviceteam:") + '</p>' +
         '<button class="knopf zweit" data-aktion="bestellungPerNachricht">' +
         t("Bestellung zeigen") + '</button></div>' +
-      (unterMindest
-        ? '<div class="hinweis">' + t("Bestellungen ab {b}. Darunter nehmen wir Ihre Wünsche gerne persönlich auf.",
-            {b: preisText(BESTELLUNG.mindest)}) + '</div>'
-        : '<div class="hinweis"><b>' + t("Wichtig:") + '</b> ' +
-          t("Hier wird nicht bezahlt. Ihre Bestellung geht an unser Team, wir bestätigen sie bei Ihnen am Tisch. Abgerechnet wird wie immer beim Personal.") +
-          '</div>');
+      (lieferZu
+        ? '<div class="hinweis">' + t("Wir liefern gerade nicht.") +
+          (LIEFER.von && LIEFER.bis
+            ? " " + t("Wir liefern von {von} bis {bis} Uhr.",
+                      {von: LIEFER.von, bis: LIEFER.bis})
+            : "") + '</div>'
+      : unterMindest
+        ? '<div class="hinweis">' + (liefern
+            ? t("Wir liefern ab {b}. Fehlt noch etwas Kleines?", {b: preisText(mindest)})
+            : t("Bestellungen ab {b}. Darunter nehmen wir Ihre Wünsche gerne persönlich auf.",
+                {b: preisText(mindest)})) + '</div>'
+        : liefern
+          ? '<div class="hinweis"><b>' + t("Wichtig:") + '</b> ' +
+            t("Bezahlt wird bei der Lieferung, direkt bei uns an der Tür.") + " " +
+            (LIEFER.bar && LIEFER.karte ? t("Bar oder mit Karte.")
+             : LIEFER.karte             ? t("Mit Karte.")
+             :                            t("Bitte passend in bar.")) +
+            (LIEFER.dauer_min > 0
+              ? " " + t("Wir sind in etwa {m} Minuten bei Ihnen.", {m: LIEFER.dauer_min})
+              : "") +
+            '</div>'
+          : '<div class="hinweis"><b>' + t("Wichtig:") + '</b> ' +
+            t("Hier wird nicht bezahlt. Ihre Bestellung geht an unser Team, wir bestätigen sie bei Ihnen am Tisch. Abgerechnet wird wie immer beim Personal.") +
+            '</div>');
   }
 
   return '<div class="seite"><h2>' + t("Ihre Auswahl") + '</h2>' +
     '<p class="unter" id="artikelzahl">' + t("{n} Artikel", {n:merkAnzahl()}) + '</p>' +
-    zeilen + summeHTML +
+    zeilen + summeHTML + lieferSummeHTML +
     '<div style="height:14px"></div>' +
     '<a class="knopf zweit" href="#/speisekarte">' + t("Zur Karte") + '</a>' +
     '<button class="knopf zweit" data-weg="__alle__">' + t("Liste leeren") + '</button>' +
@@ -9311,7 +9576,90 @@ function auswahlAktualisieren(name){
 let tischNr    = "";
 let tischToken = "";
 
-const SITZ_SCHLUESSEL = "omoteno-sitzung-chocolamour";
+const SITZ_SCHLUESSEL = hSchluessel("sitzung");
+
+/* ─── Liefermodus ─────────────────────────────────────────────────
+   Der zweite Zustand des Hubs. Kein zweiter Hub: dieselbe Karte,
+   derselbe Korb, derselbe Bestellweg — nur ohne Tisch und mit
+   Adresse.
+
+   Der Zustand steht in der ADRESSZEILE (?modus=liefern), nicht im
+   Speicher. Grund: So kann der Wirt einen eigenen Link drucken
+   („…/liefern"), und wer ihn teilt, teilt den Liefermodus mit. Ein
+   gemerkter Zustand wäre am Tisch sogar gefährlich — der Gast säße
+   im Lokal und bekäme ein Adressformular.
+
+   Der Untersetzer gewinnt trotzdem: Wer über ?t=7 hereinkommt, sitzt
+   nachweislich am Tisch. Dann ist Liefern aus, egal was sonst in der
+   Adresszeile steht.                                                */
+let liefermodus = false;
+
+const LIEFERADRESSE_SCHLUESSEL = hSchluessel("lieferadresse");
+
+function liefermodusLaden(){
+  try{
+    liefermodus = /[?&]modus=liefern\b/i.test(location.search);
+  }catch(e){ liefermodus = false; }
+}
+
+/* Die Adresse bleibt im Gerät, wie der Bestellpass. Beim zweiten Mal
+   soll niemand seine Straße noch einmal tippen. try/catch, weil ein
+   privates Fenster den Zugriff selbst verweigern kann. */
+function lieferAdresseLesen(){
+  try{
+    const roh = localStorage.getItem(LIEFERADRESSE_SCHLUESSEL);
+    const a = roh ? JSON.parse(roh) : null;
+    return (a && typeof a === "object") ? a : {};
+  }catch(e){ return {}; }
+}
+
+function lieferAdresseMerken(a){
+  try{ localStorage.setItem(LIEFERADRESSE_SCHLUESSEL, JSON.stringify(a)); }
+  catch(e){}
+}
+
+/* Liefert der Betrieb an diese Postleitzahl? Wird im Hub geprüft,
+   damit der Gast es sieht BEVOR er alles ausfüllt — und noch einmal
+   auf dem Server, weil eine Prüfung im Browser keine Prüfung ist. */
+function imLiefergebiet(plz){
+  const p = String(plz || "").trim();
+  return !!p && LIEFER.plz.indexOf(p) > -1;
+}
+
+/* Was der Gast am Ende zahlt: Ware plus Gebühr, und die Gebühr
+   entfällt ab der Schwelle. Dieselbe Rechnung führt der Server noch
+   einmal — dort ist sie verbindlich, hier nur zum Anzeigen. */
+/* Liefert das Haus GERADE? Dieselbe Rechnung führt der Server noch
+   einmal und hat das letzte Wort — hier steht sie, damit der Gast es
+   sieht, bevor er seine Adresse tippt. Eine Absage nach dem Ausfüllen
+   ist eine Absage zu spät.
+
+   Kein Fenster hinterlegt heißt „immer", nicht „nie" (§7). */
+function liefertGerade(){
+  if(!LIEFER.an) return false;
+  const jetzt = new Date();
+  if(LIEFER.tage.length){
+    /* getDay(): 0 = Sonntag. Die Datenbank zählt nach ISO, 1 = Montag,
+       7 = Sonntag. Ohne diese Umrechnung liegt der ganze Wochenplan um
+       einen Tag daneben — und zwar still. */
+    const iso = jetzt.getDay() === 0 ? 7 : jetzt.getDay();
+    if(LIEFER.tage.indexOf(iso) === -1) return false;
+  }
+  if(!LIEFER.von || !LIEFER.bis) return true;
+  const min = h => { const [a,b] = h.split(":"); return (+a) * 60 + (+b); };
+  const jetztMin = jetzt.getHours() * 60 + jetzt.getMinutes();
+  const von = min(LIEFER.von), bis = min(LIEFER.bis);
+  /* Ein Fenster darf über Mitternacht gehen: 18:00–01:00 ist für einen
+     Truck auf dem Festival der Normalfall. */
+  return von <= bis ? (jetztMin >= von && jetztMin < bis)
+                    : (jetztMin >= von || jetztMin < bis);
+}
+
+function lieferGebuehrFuer(warensumme){
+  if(!LIEFER.an) return 0;
+  if(LIEFER.gratis_ab > 0 && warensumme >= LIEFER.gratis_ab) return 0;
+  return LIEFER.gebuehr;
+}
 
 function tischLaden(){
   let roh = "";
@@ -9319,11 +9667,11 @@ function tischLaden(){
     const treffer = location.search.match(/[?&]t(?:isch)?=([^&]*)/i);
     if(treffer) roh = decodeURIComponent(treffer[1]);
   } catch(e){}
-  if(!roh){ try { roh = sessionStorage.getItem("omoteno-tisch-chocolamour") || ""; } catch(e){} }
+  if(!roh){ try { roh = sessionStorage.getItem(TISCH_SCHLUESSEL) || ""; } catch(e){} }
   /* nur Ziffern und Buchstaben, höchstens 4 Zeichen – schützt vor Unfug */
   roh = String(roh).replace(/[^0-9A-Za-z]/g, "").slice(0, 4);
   tischNr = roh;
-  if(roh){ try { sessionStorage.setItem("omoteno-tisch-chocolamour", roh); } catch(e){} }
+  if(roh){ try { sessionStorage.setItem(TISCH_SCHLUESSEL, roh); } catch(e){} }
 
   try { tischToken = sessionStorage.getItem(SITZ_SCHLUESSEL) || ""; } catch(e){}
 
@@ -9370,7 +9718,7 @@ function sitzungOeffnen(){
     try { sessionStorage.setItem(SITZ_SCHLUESSEL, s.token); } catch(e){}
     if(s.tisch){
       tischNr = String(s.tisch).replace(/[^0-9A-Za-z]/g, "").slice(0, 4);
-      try { sessionStorage.setItem("omoteno-tisch-chocolamour", tischNr); } catch(e){}
+      try { sessionStorage.setItem(TISCH_SCHLUESSEL, tischNr); } catch(e){}
       /* Die Tischnummer steht auf mehreren Seiten. Steht der Gast
          schon auf einer davon, muss sie nachgezogen werden. */
       if(typeof zeichne === "function" && seiteJetzt !== "bestellt") zeichne();
@@ -9385,7 +9733,7 @@ function tischHolen(feldId){
   const nr = (eingabe || tischNr).replace(/[^0-9A-Za-z]/g, "").slice(0, 4);
   if(nr && nr !== tischNr){
     tischNr = nr;
-    try { sessionStorage.setItem("omoteno-tisch-chocolamour", nr); } catch(e){}
+    try { sessionStorage.setItem(TISCH_SCHLUESSEL, nr); } catch(e){}
   }
   return nr;
 }
@@ -9561,6 +9909,36 @@ function anServer(art, daten){
            sicher, an welchen Tisch es gehen muss. */
         p_sitzung:    tischToken || null
       };
+    } else if(istBestellung && daten.adresse){
+      /* ─── Lieferung ──────────────────────────────────────────
+         Eigene Funktion, nicht bestellung_aufgeben direkt: Sie prüft
+         das Liefergebiet und rechnet die Gebühr aus den Einstellungen
+         des Betriebs nach. Die Zahl aus diesem Browser ist ein
+         Wunsch, kein Wert — genau deshalb liegt die Rechnung dort und
+         nicht hier.
+
+         bestellung_liefern ruft intern dieselbe bestellung_aufgeben,
+         die auch der Tisch benutzt. Es gibt also keinen zweiten
+         Bestellweg, nur eine Vorstufe. */
+      const posten = (daten.inhalt && daten.inhalt.posten) || [];
+      ziel  = SERVER.adresse.replace(/\/+$/, "") + "/rest/v1/rpc/bestellung_liefern";
+      paket = {
+        p_betrieb_id:   bid,
+        p_adresse:      daten.adresse,
+        p_gast_kennung: daten.kennung || null,
+        p_geraet:       geraetKennung(),
+        p_summe:        daten.summe,
+        p_notiz:        (daten.inhalt && daten.inhalt.notiz) || null,
+        p_positionen:   posten.map(p => {
+          const auf = optAufpreis(p.n);
+          const zusatz = optText(p.n);
+          return {
+            name:  p.n + (zusatz ? " (" + zusatz + ")" : ""),
+            menge: p.m || 1,
+            preis: (Number(String(p.p).replace(",", ".")) || 0) + auf
+          };
+        })
+      };
     } else if(istBestellung){
       const posten = (daten.inhalt && daten.inhalt.posten) || [];
       ziel  = SERVER.adresse.replace(/\/+$/, "") + "/rest/v1/rpc/bestellung_aufgeben";
@@ -9626,12 +10004,23 @@ function anServer(art, daten){
       if(wecker) clearTimeout(wecker);
       if(!antwort.ok) return { ok:false, grund:"abgelehnt", code:antwort.status };
       if(!aufsBoard) return { ok:true, zeile:null };
-      /* Die Funktion gibt eine nackte uuid zurück, keine Zeile.
-         Aus "abc-123" wird also { id: "abc-123" }, damit der Rest des
-         Hubs unverändert weiterarbeiten kann. */
+      /* Zwei Rückgabeformen, weil es zwei Funktionen sind:
+         bestellung_aufgeben gibt eine nackte uuid zurück, aus
+         "abc-123" wird { id: "abc-123" }. bestellung_liefern gibt ein
+         Objekt zurück, weil sie auch ABLEHNEN kann und dann sagen
+         muss, warum — eine uuid hätte dafür keinen Platz. Beide
+         münden in dieselbe { id: … }, damit der Rest des Hubs
+         unverändert weiterarbeitet. */
       return antwort.json().then(
-        wert => ({ ok:true, zeile: (typeof wert === "string" && wert) ? { id: wert } : null }),
-        ()   => ({ ok:true, zeile: null })
+        wert => {
+          if(typeof wert === "string" && wert) return { ok:true, zeile:{ id: wert } };
+          if(wert && typeof wert === "object" && wert.ok === true && wert.id)
+            return { ok:true, zeile:{ id: wert.id } };
+          if(wert && typeof wert === "object" && wert.ok === false)
+            return { ok:false, grund:"abgelehnt", warum: wert.grund || null };
+          return { ok:true, zeile:null };
+        },
+        () => ({ ok:true, zeile:null })
       );
     }).catch(() => {
       if(wecker) clearTimeout(wecker);
@@ -9878,9 +10267,15 @@ $("inhalt").addEventListener("click", e => {
       if(tisch)     text += t(" – Tisch ") + tisch;
       if(MUSIK.whatsapp){
         oeffne("https://wa.me/" + MUSIK.whatsapp + "?text=" + encodeURIComponent(text));
-      } else {
+      } else if(MUSIK.mail){
         oeffne("mailto:" + MUSIK.mail + "?subject=" + encodeURIComponent(t("Musikwunsch")) +
                "&body=" + encodeURIComponent(text));
+      } else {
+        /* Weder WhatsApp noch E-Mail hinterlegt. Vorher ging hier ein
+           "mailto:" ohne Adresse auf — ein Weg, den es nicht gibt
+           (§8.1h). Lieber ehrlich sagen, dass es hier nicht geht. */
+        melden(t("Sagen Sie Ihren Wunsch gerne unserem Team."), true);
+        return;
       }
       melden(t("Nachricht wird geöffnet – bitte noch abschicken."));
     }
@@ -9892,8 +10287,37 @@ $("inhalt").addEventListener("click", e => {
         melden(t("Einen Moment noch – bitte warten Sie {s} Sekunden.", {s:rest}), true);
         return;
       }
-      const nr = tischHolen("bTisch");
-      if(!nr){ melden(t("Bitte tragen Sie noch Ihre Tischnummer ein."), true); return; }
+      const liefern = liefermodus && LIEFER.an;
+
+      /* ─── Liefermodus: Adresse statt Tisch ────────────────────
+         Geprüft wird hier, damit der Gast es sofort sieht. Der Server
+         prüft dasselbe noch einmal — eine Prüfung im Browser ist
+         keine Prüfung, sie ist nur eine Höflichkeit. */
+      let adresse = null, nr = "";
+      if(liefern && !liefertGerade()){
+        melden(t("Wir liefern gerade nicht."), true); return;
+      }
+      if(liefern){
+        adresse = {
+          name:    wert("lName").slice(0, 80),
+          strasse: wert("lStrasse").slice(0, 120),
+          plz:     wert("lPlz").trim().slice(0, 10),
+          ort:     wert("lOrt").slice(0, 80),
+          telefon: wert("lTelefon").slice(0, 40),
+          klingel: wert("lKlingel").slice(0, 80)
+        };
+        if(!adresse.name || !adresse.strasse || !adresse.plz || !adresse.ort || !adresse.telefon){
+          melden(t("Bitte füllen Sie Name, Adresse und Telefon aus."), true); return;
+        }
+        if(!imLiefergebiet(adresse.plz)){
+          melden(t("Dorthin liefern wir leider nicht."), true); return;
+        }
+        lieferAdresseMerken(adresse);
+      } else {
+        nr = tischHolen("bTisch");
+        if(!nr){ melden(t("Bitte tragen Sie noch Ihre Tischnummer ein."), true); return; }
+      }
+
       const posten = Object.keys(merk).map(k => ({
         n: merk[k].n, m: merk[k].m || 1, p: merk[k].p
       }));
@@ -9901,6 +10325,12 @@ $("inhalt").addEventListener("click", e => {
 
       const summe = merkSumme();
       const notiz = wert("bNotiz").slice(0, 200);
+
+      if(liefern && LIEFER.mindest > 0 && summe < LIEFER.mindest){
+        melden(t("Wir liefern ab {b}. Fehlt noch etwas Kleines?",
+                 {b: preisText(LIEFER.mindest)}), true);
+        return;
+      }
 
       /* ─── In die Warteschlange, dann senden ───────────────────
          Die Bestellung wird ZUERST im Gerät gespeichert. Damit ist sie
@@ -9912,12 +10342,14 @@ $("inhalt").addEventListener("click", e => {
          läuft im Hintergrund weiter. Das ist ehrlicher als ein Knopf,
          der sich zehn Sekunden lang dreht. */
       const eintrag = wsEintragen({
-        tisch:  nr,
-        summe:  summe > 0 ? Number(summe.toFixed(2)) : null,
-        inhalt: { posten: posten, notiz: notiz }
+        tisch:   liefern ? null : nr,
+        adresse: adresse,
+        summe:   summe > 0 ? Number(summe.toFixed(2)) : null,
+        inhalt:  { posten: posten, notiz: notiz }
       });
 
-      letzteBestellung = { nummer: null, tisch: nr, posten: posten,
+      letzteBestellung = { nummer: null, tisch: liefern ? null : nr,
+                           adresse: adresse, posten: posten,
                            summe: summe, notiz: notiz, kennung: eintrag.kennung };
 
       bestellSperre = Date.now() + (BESTELLUNG.wartezeit * 1000);
@@ -10172,6 +10604,10 @@ document.querySelectorAll("#demo button").forEach(b =>
   }));
 
 tischLaden();
+liefermodusLaden();
+/* Der Untersetzer schlägt die Adresszeile: Wer am Tisch sitzt, soll
+   kein Adressformular sehen, auch wenn er den Lieferlink erwischt hat. */
+if(tischNr) liefermodus = false;
 spracheLaden();
 zeichne();
 
@@ -10270,7 +10706,7 @@ document.addEventListener("visibilitychange", () => {
 const OMOTENO_DB = {
   url:  "https://quxwweuvdqtjsdwgjdrh.supabase.co",
   key:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk",
-  slug: "chocolamour",
+  slug: HAUS,                 /* nie fest hinschreiben — siehe HAUS oben */
   wartezeit: 6000
 };
 
@@ -10291,7 +10727,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_woerter");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_woerter,liefer");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -10299,6 +10735,35 @@ async function karteHolen(erstesMal){
        mit einem Tipp, der Gast sieht es beim nächsten Abgleich. */
     BETRIEB.bestellPause     = !!b[0].bestell_pause;
     BETRIEB.bestellPauseText = b[0].bestell_pause_text || "";
+
+    /* ─── Liefereinstellungen ────────────────────────────────────
+       Ganz oder gar nicht: Ein Haus mit Liefergebiet, aber ohne
+       Gebühr, ist in Ordnung — ein eingeschalteter Liefermodus ohne
+       eine einzige Postleitzahl dagegen wäre eine Falle. Der Gast
+       füllte das ganze Formular aus und bekäme am Ende „wir liefern
+       nicht zu Ihnen". Deshalb hier schon aus.
+
+       Fehlt die Spalte (Migration noch nicht eingespielt), ist
+       b[0].liefer schlicht undefined und alles bleibt aus. */
+    const lf = b[0].liefer;
+    if(lf && typeof lf === "object" && !Array.isArray(lf)){
+      const plz = Array.isArray(lf.plz)
+        ? lf.plz.map(p => String(p).trim()).filter(Boolean) : [];
+      LIEFER.an        = lf.an === true && plz.length > 0;
+      LIEFER.plz       = plz;
+      LIEFER.mindest   = Math.max(0, +lf.mindest   || 0);
+      LIEFER.gebuehr   = Math.max(0, +lf.gebuehr   || 0);
+      LIEFER.gratis_ab = Math.max(0, +lf.gratis_ab || 0);
+      LIEFER.dauer_min = Math.round(Math.max(0, +lf.dauer_min || 0));
+      LIEFER.bar       = lf.bar   !== false;
+      LIEFER.karte     = lf.karte === true;
+      const z = (lf.zeiten && typeof lf.zeiten === "object") ? lf.zeiten : {};
+      LIEFER.von  = /^\d{1,2}:\d{2}$/.test(z.von || "") ? z.von : "";
+      LIEFER.bis  = /^\d{1,2}:\d{2}$/.test(z.bis || "") ? z.bis : "";
+      LIEFER.tage = Array.isArray(z.tage)
+        ? z.tage.map(Number).filter(n => n >= 1 && n <= 7) : [];
+      if(!LIEFER.an && liefermodus){ liefermodus = false; zeichne(); }
+    }
 
     /* Worte, die der Betrieb selbst ändern darf — ohne dass der Hub
        neu erzeugt werden muss. Bewusst WENIGE: Farben, Schriften und

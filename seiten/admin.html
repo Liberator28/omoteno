@@ -36,8 +36,20 @@
 <meta name="apple-mobile-web-app-title" content="Omoteno Board">
 <link rel="apple-touch-icon"
       href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'%3E%3Crect width='180' height='180' rx='40' fill='%230A1714'/%3E%3Ctext x='90' y='112' text-anchor='middle' font-family='-apple-system,Helvetica,Arial' font-size='84' font-weight='700' fill='%23D4AF37'%3EO%3C/text%3E%3C/svg%3E">
+<!-- Die App vom Home-Bildschirm ist der EINZIGE Weg zu einem
+     Vollbild, das niemand wegwischen kann — dort gibt es keine
+     Browserleiste, die man wegwischen koennte.
+
+     display:fullscreen wirkt auf Android: randlos, ohne Statusleiste.
+     iOS liest das Manifest fuer den Anzeigemodus NICHT; dort
+     entscheidet apple-mobile-web-app-capable, und das Maximum ist
+     standalone — die Statusleiste bleibt. Das ist Apples Grenze und
+     laesst sich von einer Seite aus nicht verschieben.
+     display_override nennt die Kette ausdruecklich, damit ein
+     Browser, der fullscreen nicht kann, auf standalone faellt statt
+     in den Browser-Tab. -->
 <link rel="manifest"
-      href='data:application/manifest+json,{"name":"Omoteno Board","short_name":"Omoteno","display":"standalone","background_color":"%230A1714","theme_color":"%230A1714","start_url":"."}'>
+      href='data:application/manifest+json,{"name":"Omoteno Board","short_name":"Omoteno","display":"fullscreen","display_override":["fullscreen","standalone"],"orientation":"any","background_color":"%230A1714","theme_color":"%230A1714","start_url":"."}'>
 
 <title>Omoteno · Verwaltung</title>
 
@@ -157,6 +169,7 @@
   --tisch:#C9A227;          /* 5,64 */
   --telefon:#4FA5A8;        /* 4,73 */
   --reservierung:#A98BD4;   /* 4,77 */
+  --lieferung:#E8906B;      /* 5,61 — gerechnet, nicht ausgesucht (§5.2) */
 
   --warn:#E8776C;           /* 4,74 — vorher #D4574E mit 3,97 */
   --gut:#6FAE6A;            /* 5,16 */
@@ -183,7 +196,18 @@
      wie ein Produkt anfühlen. */
   --ease-out:cubic-bezier(.23,1,.32,1);
   --ease-blatt:cubic-bezier(.32,.72,0,1);
+  /* Die Gegenkurve. Sie stand bisher nur als Literal im Wischblock
+     ("ease-in, 200ms") und fehlte als Rolle — deshalb hatte das Board
+     ueberhaupt keine Ausgangsbewegung, nur Eingaenge. ease-in zieht
+     an und verschwindet. */
+  --ease-in:cubic-bezier(.4,0,1,1);
   --t-druck:140ms; --t-klein:180ms; --t-blatt:400ms;
+  /* HINAUSGEHEN IST SCHNELLER ALS HEREINKOMMEN — der Nutzer hat sich
+     schon entschieden, und niemand wartet dem Weggehen hinterher.
+     200 von 400 ms, also die Haelfte; der Skill nennt 60 bis 80
+     Prozent, und ein Blatt ueber die ganze Schirmhoehe darf am
+     unteren Ende davon liegen. */
+  --t-blatt-raus:200ms;
 }
 
 /* ── Helle Fassung ────────────────────────────────────────────────
@@ -207,6 +231,7 @@ body.hell{
   --tisch:#7A5A10;
   --telefon:#1F6E70;
   --reservierung:#5B3E93;
+  --lieferung:#94481C;      /* 6,22 auf dem Blatt */
   --warn:#8C2C21;           /* 7,98 */
   --gut:#3A6329;            /* 6,65 */
   --glut:#A8410F;
@@ -473,7 +498,46 @@ html{font-size:calc(16px * var(--skala,1))}
 
 @media (max-width:760px){
   .navleiste{display:none}
+
+  /* ── Die Filter wandern auf dem Telefon nach UNTEN ─────────────
+     Sie standen oben unter „Bestellungen laufen" — also genau dort,
+     wo die Hand hinlangen MUSS. Dieselbe Begruendung, die zehn
+     Zeilen hoeher schon fuer die Reiterleiste steht: unten, weil die
+     Hand dort ist.
+
+     Sie sitzen INNERHALB von #t-bestellungen. Ein position:fixed in
+     einem Vorfahren mit display:none wird nicht gezeichnet — die
+     Leiste erscheint also von selbst nur auf der Bestell-Flaeche und
+     verschwindet auf Karte, Tischen und Zahlen. Kein Schalter, kein
+     Aufraeumen, nichts, was man vergessen kann.
+
+     Die Reiterleiste ist 52 px hoch plus 12 px Polster plus
+     Sicherheitszone; darauf sitzt dieser Block. Die Zahlen stehen
+     als Variable, weil sie an DREI Stellen gebraucht werden und
+     sonst auseinanderlaufen. */
+  :root{
+    --leiste-h:calc(64px + env(safe-area-inset-bottom));
+    /* Startwert bis die Messung greift. Gemessen bei 390 px: 124 px.
+       Danach setzt filterHoeheMessen() den echten Wert. */
+    --filter-h:134px;
+  }
   main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+
+  #t-bestellungen .filterblock{
+    position:fixed;left:0;right:0;z-index:39;
+    bottom:var(--leiste-h);
+    margin:0;padding:8px 12px 6px;
+    background:var(--leiste-glas);
+    -webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);
+    border-top:1px solid var(--linie);
+  }
+  /* Der Platz darunter muss frei bleiben, sonst liegt die letzte
+     Bestellkarte unter den Filtern und niemand kommt an sie heran. */
+  #t-bestellungen{padding-bottom:var(--filter-h)}
+
+  /* Die Meldezeile („3 von 12 sichtbar") gehoert mit nach unten, aber
+     sie darf den Block nicht hoeher machen als gerechnet. */
+  #t-bestellungen .filterinfo{margin:2px 0 0;font-size:11.5px}
 
   .befehlsleiste{
     display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
@@ -509,7 +573,11 @@ html{font-size:calc(16px * var(--skala,1))}
   .mehrfach{
     display:grid;gap:6px;
     position:fixed;left:10px;right:10px;z-index:39;
-    bottom:calc(74px + env(safe-area-inset-bottom));
+    /* Schob sich bisher direkt ueber die Reiterleiste. Dort liegen
+       jetzt die Filter, also eine Etage hoeher. Gerechnet aus
+       denselben Variablen — eine zweite Zahl daneben waere eine
+       zweite Wahrheit. */
+    bottom:calc(var(--leiste-h) + var(--filter-h) + 6px);
     background:var(--karte);border:1px solid var(--linie);border-radius:16px;
     padding:8px;box-shadow:0 -10px 40px rgba(0,0,0,.5);
     animation:mehrauf .26s var(--ease-out) both;
@@ -523,6 +591,17 @@ html{font-size:calc(16px * var(--skala,1))}
   .mehrfach svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;
     stroke-linecap:round;stroke-linejoin:round;flex:none}
   @keyframes mehrauf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+
+  /* Drei Knöpfe, gestaffelt um je 40 ms. Der Skill nennt 3 bis 5
+     Elemente und 30 bis 50 ms — darüber wirkt es langsam, darunter
+     merkt man es nicht. Genau drei sind es hier, also passt es.
+
+     both, damit der Endzustand steht und kein Knopf unsichtbar
+     liegen bleibt, wenn die Animation nicht läuft (§7). */
+  .mehrfach button{animation:mehrauf .24s var(--ease-out) both}
+  .mehrfach button:nth-child(1){animation-delay:.02s}
+  .mehrfach button:nth-child(2){animation-delay:.06s}
+  .mehrfach button:nth-child(3){animation-delay:.10s}
 }
 @media (max-width:760px) and (prefers-reduced-motion:reduce){
   .mehrfach{animation:none}
@@ -554,7 +633,7 @@ html{font-size:calc(16px * var(--skala,1))}
 .chip[aria-pressed=true]{color:var(--kreide);background:var(--karte);border-color:var(--gedaempft)}
 .chip[data-quelle=tisch][aria-pressed=true]{color:var(--tisch);border-color:var(--tisch)}
 .chip[data-quelle=telefon][aria-pressed=true]{color:var(--telefon);border-color:var(--telefon)}
-.chip[data-quelle=reservierung][aria-pressed=true]{color:var(--reservierung);border-color:var(--reservierung)}
+.chip[data-quelle=lieferung][aria-pressed=true]{color:var(--lieferung);border-color:var(--lieferung)}
 .chip .anzahl{font-size:11.5px;opacity:.65;font-variant-numeric:tabular-nums}
 
 .filterinfo{font-size:12px;color:var(--gedaempft);margin-top:4px}
@@ -586,7 +665,7 @@ html{font-size:calc(16px * var(--skala,1))}
 }
 .bestellung[data-quelle=tisch]{--f:var(--tisch)}
 .bestellung[data-quelle=telefon]{--f:var(--telefon)}
-.bestellung[data-quelle=reservierung]{--f:var(--reservierung)}
+.bestellung[data-quelle=lieferung]{--f:var(--lieferung)}
 .bestellung.fertig{opacity:.42}
 
 .bkopf{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
@@ -636,6 +715,27 @@ html{font-size:calc(16px * var(--skala,1))}
   background:rgba(201,162,39,.09);
   border-left:2px solid var(--messing);
   padding:8px 11px;border-radius:0 6px 6px 0;margin-bottom:11px;
+}
+/* Die Lieferadresse. Gebaut wie .notiz, nur in der Quellenfarbe —
+   wer die Karten schon kennt, muss nichts Neues lernen. Die Adresse
+   und die Telefonnummer sind LINKS: Der Fahrer tippt sie an, statt
+   sie abzuschreiben. */
+.lieferadresse{
+  font-size:13.5px;color:var(--kreide);
+  background:color-mix(in srgb, var(--lieferung) 12%, transparent);
+  border-left:2px solid var(--lieferung);
+  padding:8px 11px;border-radius:0 6px 6px 0;margin-bottom:11px;
+}
+.lieferadresse b{
+  display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--lieferung);margin-bottom:3px;
+}
+.lieferadresse a{color:var(--kreide);text-decoration:underline;text-underline-offset:2px}
+/* Eigene Zeile, und gross genug zum Antippen: Eine Telefonnummer,
+   die man dreimal treffen muss, ruft niemand an (44px, §8.1d). */
+.lieferadresse .lz{
+  display:block;margin-top:4px;color:var(--gedaempft);
+  min-height:22px;line-height:22px;
 }
 .transkript{margin-bottom:11px}
 .transkript summary{
@@ -865,10 +965,25 @@ html{font-size:calc(16px * var(--skala,1))}
   display:block;width:100%;padding:14px;border-radius:11px;
   background:var(--messing);color:var(--nacht);
   font-size:15px;font-weight:700;text-align:center;
-  /* scale statt filter: filter kostet Paint, scale läuft auf der GPU */
-  transition:transform var(--t-druck) var(--ease-out), filter var(--t-druck) var(--ease-out);
+  /* VORFALL, und es war ein Widerspruch im eigenen Haus: Hier stand
+     "scale statt filter: filter kostet Paint, scale läuft auf der
+     GPU" — und die Zeile darunter machte BEIDES, scale UND
+     filter:brightness. Der Kommentar beschrieb eine Absicht, die
+     nie umgesetzt wurde.
+
+     Das Abdunkeln beim Druck ist nützlich und bleibt. Es kommt nur
+     jetzt aus einer Fläche mit opacity statt aus einem Filter —
+     dieselbe Optik, aber auf der Grafikkarte (§1). */
+  position:relative;overflow:hidden;
+  transition:transform var(--t-druck) var(--ease-out);
 }
-.knopf:active{transform:scale(.97);filter:brightness(.92)}
+.knopf::after{
+  content:"";position:absolute;inset:0;border-radius:inherit;
+  background:#000;opacity:0;pointer-events:none;
+  transition:opacity var(--t-druck) var(--ease-out);
+}
+.knopf:active::after{opacity:.10}
+.knopf:active{transform:scale(.97)}
 .knopf.leise{background:var(--tresen);color:var(--kreide);border:1px solid var(--linie)}
 .knopf.gefahr{background:transparent;color:var(--warn);border:1px solid var(--warn)}
 
@@ -877,10 +992,27 @@ html{font-size:calc(16px * var(--skala,1))}
   position:fixed;inset:0;z-index:60;
   background:rgba(10,9,7,.72);
   display:flex;align-items:flex-end;justify-content:center;
-  animation:auf .2s ease-out;
+  /* Das CSS-Schlüsselwort ease-out ist cubic-bezier(0,0,.58,1) — eine
+     ANDERE, schwächere Kurve als die des Hauses. Dieses eine Blatt
+     fiel damit anders als alles daneben. */
+  animation:auf .2s var(--ease-out);
 }
 .blatt[hidden]{display:none}
 @keyframes auf{from{opacity:0}to{opacity:1}}
+
+/* ── Das Blatt geht auch wieder ───────────────────────────────────
+   VORFALL, gemessen: Jedes der fuenf Blaetter fuhr in 400 ms herauf
+   und verschwand in NULL — hidden=true, und weg. Das ist der eine
+   Moment im Board, der am meisten unrund wirkt, und er kostet zwei
+   Keyframes.
+
+   Nur transform und opacity, also beides auf der Grafikkarte (§1).
+   Der Schleier blendet ab, der Inhalt faehrt nach unten heraus —
+   dorthin, wo er hergekommen ist. */
+@keyframes blattRunter{to{transform:translateY(100%)}}
+@keyframes schleierWeg{to{opacity:0}}
+.blatt.geht{animation:schleierWeg var(--t-blatt-raus) var(--ease-in) both}
+.blatt.geht .blattinhalt{animation:blattRunter var(--t-blatt-raus) var(--ease-in) both}
 .blattinhalt{
   background:var(--tresen);
   border-top:1px solid var(--linie);
@@ -899,6 +1031,12 @@ html{font-size:calc(16px * var(--skala,1))}
   .bestellung.frisch{animation:reinLeise 180ms linear both}
   @keyframes reinLeise{from{opacity:0}to{opacity:1}}
   .blattinhalt{animation:auf 180ms linear}
+  /* Wer keine Bewegung will, bekommt keine — aber der Endzustand
+     muss richtig sein, nicht ein unsichtbares Blatt, das noch liegt
+     (§7, dieselbe Falle wie [hidden] ohne Gegenregel). Der
+     Schliessweg prueft das zusaetzlich in JS und schliesst dann
+     ohne Umweg. */
+  .blatt.geht,.blatt.geht .blattinhalt{animation-duration:.01ms}
   .punkt.live::after{animation:none;opacity:0}
   .knopf:active,.schritt:active,.chip:active{transform:none}
   .lname{animation:auf 180ms linear}
@@ -924,6 +1062,27 @@ textarea{resize:vertical;min-height:66px}
   display:flex;align-items:center;justify-content:space-between;
   gap:12px;padding:13px 0;margin-bottom:6px;
   border-top:1px solid var(--linie);border-bottom:1px solid var(--linie);
+}
+
+/* Von–Bis nebeneinander, solange Platz ist. Darunter untereinander:
+   Zwei Uhrzeitfelder in einer 390px-Spalte sind zwei Felder, die
+   beide zu schmal sind (§3.6). */
+.lfzeit{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media (max-width:420px){ .lfzeit{grid-template-columns:1fr} }
+
+/* Die sieben Tage. Umbrechend, damit auf dem Telefon nichts
+   herausragt — und jeder Knopf 44px hoch, weil man ihn mit dem
+   Daumen trifft und nicht mit der Maus (§8.1d). */
+.lftage{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.tagknopf{
+  min-width:46px;min-height:44px;padding:0 10px;
+  border:1px solid var(--linie);border-radius:9px;
+  background:transparent;color:var(--gedaempft);
+  font:inherit;font-size:13px;cursor:pointer;
+}
+.tagknopf[aria-pressed=true]{
+  color:var(--lieferung);border-color:var(--lieferung);
+  background:color-mix(in srgb, var(--lieferung) 12%, transparent);
 }
 .schaltertext{font-size:14.5px}
 .schalterhilfe{font-size:12.5px;color:var(--gedaempft);margin-top:2px}
@@ -1372,6 +1531,25 @@ textarea{resize:vertical;min-height:66px}
   transition:background var(--t-klein) var(--ease-out),
              border-color var(--t-klein) var(--ease-out);
 }
+/* ── Antippfläche, nicht Optik ─────────────────────────────────
+   VORFALL. Die Wippen sind 50×29 px. §8.1d verlangt 44 px, und der
+   Grund steht dort: Ein Wirt bedient das mit dem Daumen, zwischen
+   zwei Tischen. Gemessen hat es pruef-liefern.js an den drei neuen
+   Liefer-Schaltern — die zwei alten waren genauso klein, nur hatte
+   nie eine Prüfung danach gesehen.
+
+   Die Optik bleibt, wie sie ist: Ein durchsichtiges ::before macht
+   die Fläche 44 px hoch, ohne den Schalter zu vergrößern. Der Knopf
+   (::after) malt danach und liegt deshalb oben.
+
+   Die Kästchen (.kipp) brauchen das nicht — sie stehen in einem
+   <label class="ezeile">, dort ist die ganze Zeile antippbar.
+   Nachgesehen, nicht angenommen. */
+.wippe::before{
+  content:"";position:absolute;left:0;right:0;
+  top:50%;transform:translateY(-50%);height:44px;
+}
+
 .wippe::after,
 .kipp::after{
   content:"";position:absolute;top:2px;left:2px;
@@ -1643,7 +1821,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="filterzeile" id="quellenFilter">
         <button class="chip" data-quelle="tisch"        aria-pressed="true"><span class="kasten"></span>Tisch <span class="anzahl" data-z="tisch">0</span></button>
         <button class="chip" data-quelle="telefon"      aria-pressed="true"><span class="kasten"></span>Alessia <span class="anzahl" data-z="telefon">0</span></button>
-        <button class="chip" data-quelle="reservierung" aria-pressed="true"><span class="kasten"></span>Reservierung <span class="anzahl" data-z="reservierung">0</span></button>
+        <button class="chip" data-quelle="lieferung"    aria-pressed="true"><span class="kasten"></span>Lieferung <span class="anzahl" data-z="lieferung">0</span></button>
       </div>
       <div class="filterzeile" id="statusFilter">
         <button class="chip" data-status="neu"    aria-pressed="true"><span class="kasten"></span>Neu</button>
@@ -1927,6 +2105,90 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <button class="knopf leise" id="hubTexteZurueck">Auf Vorgabe zurück</button>
       </div>
       <div class="epruefung" id="hubTextePruefung"></div>
+    </div>
+
+    <div class="egruppe">
+      <h2 class="etitel">Lieferung</h2>
+      <p class="ehilfe">Ist sie an, kann ein Gast sich von zu Hause beliefern lassen —
+        dieselbe Karte, derselbe Korb, nur mit Adresse statt Tischnummer.
+        Bezahlt wird bei Ihnen an der Tür; über Omoteno fließt kein Geld.</p>
+
+      <div class="schalter">
+        <div><div class="schaltertext">Wir liefern</div>
+        <div class="schalterhilfe">Aus = der Liefermodus ist für Gäste gar nicht sichtbar</div></div>
+        <button class="wippe" id="lfAn" aria-pressed="false" aria-label="Lieferung"></button>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Liefergebiet</b><i>Postleitzahlen, durch Komma getrennt. Ohne sie bleibt die Lieferung aus</i></span>
+        <label class="feld">
+          <span>Postleitzahlen</span>
+          <input id="lfPlz" autocomplete="off" inputmode="numeric" placeholder="35037, 35039, 35041">
+          <small class="feldhilfe">Nur wohin Sie wirklich fahren. Eine Postleitzahl
+            reicht oft weiter, als ein Fahrer fahren will.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Was eine Lieferung kostet</b><i>Der Server rechnet damit — nicht das Telefon des Gastes</i></span>
+        <label class="feld">
+          <span>Mindestbestellwert in Euro</span>
+          <input id="lfMindest" autocomplete="off" inputmode="decimal" placeholder="15">
+        </label>
+        <label class="feld">
+          <span>Liefergebühr in Euro</span>
+          <input id="lfGebuehr" autocomplete="off" inputmode="decimal" placeholder="2.50">
+        </label>
+        <label class="feld">
+          <span>Ab dieser Summe kostenlos <em class="mass">0 = nie</em></span>
+          <input id="lfGratis" autocomplete="off" inputmode="decimal" placeholder="30">
+        </label>
+        <label class="feld">
+          <span>Zugesagte Lieferzeit in Minuten</span>
+          <input id="lfDauer" autocomplete="off" inputmode="numeric" placeholder="45">
+          <small class="feldhilfe">Lieber großzügig. Eine Zusage, die hält, ist mehr
+            wert als eine, die beeindruckt.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Wann Sie liefern</b><i>Leer lassen heißt: immer, solange der Betrieb offen ist</i></span>
+        <div class="lfzeit">
+          <label class="feld"><span>Von</span>
+            <input id="lfVon" type="time" autocomplete="off"></label>
+          <label class="feld"><span>Bis</span>
+            <input id="lfBis" type="time" autocomplete="off"></label>
+        </div>
+        <small class="feldhilfe">Über Mitternacht ist erlaubt: 18:00 bis 01:00 nimmt
+          Bestellungen bis ein Uhr nachts an.</small>
+        <div class="lftage" id="lfTage" role="group" aria-label="Liefertage">
+          <button type="button" class="tagknopf" data-tag="1" aria-pressed="false">Mo</button>
+          <button type="button" class="tagknopf" data-tag="2" aria-pressed="false">Di</button>
+          <button type="button" class="tagknopf" data-tag="3" aria-pressed="false">Mi</button>
+          <button type="button" class="tagknopf" data-tag="4" aria-pressed="false">Do</button>
+          <button type="button" class="tagknopf" data-tag="5" aria-pressed="false">Fr</button>
+          <button type="button" class="tagknopf" data-tag="6" aria-pressed="false">Sa</button>
+          <button type="button" class="tagknopf" data-tag="7" aria-pressed="false">So</button>
+        </div>
+        <small class="feldhilfe">Kein Tag gewählt heißt: jeden Tag.</small>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Womit bei Ihnen an der Tür bezahlt wird</b><i>Der Gast liest es, bevor er bestellt</i></span>
+        <div class="schalter">
+          <div><div class="schaltertext">Bar</div></div>
+          <button class="wippe" id="lfBar" aria-pressed="true" aria-label="Bar"></button>
+        </div>
+        <div class="schalter">
+          <div><div class="schaltertext">Kartengerät</div></div>
+          <button class="wippe" id="lfKarte" aria-pressed="false" aria-label="Kartengerät"></button>
+        </div>
+      </div>
+
+      <div class="eknoepfe">
+        <button class="knopf" id="lfSichern">Übernehmen</button>
+      </div>
+      <div class="epruefung" id="lfPruefung"></div>
     </div>
 
     <div class="egruppe">
@@ -2420,7 +2682,12 @@ let bearbeite = null;
 let suchtext = "";
 let welcheKarte = "speisekarte";
 
-const zeigeQuelle = {tisch:true, telefon:true, reservierung:true, service:true};
+/* Reservierungen stehen NICHT hier. Sie sind keine Bestellungen,
+   liegen in einer eigenen Tabelle und haben unter „Tische" ihre eigene
+   Ansicht. Ein Kästchen dafür stand hier einmal — es filterte auf einen
+   quelle-Wert, den keine Bestellzeile je trägt, und zählte darum ewig
+   null. */
+const zeigeQuelle = {tisch:true, telefon:true, lieferung:true, service:true};
 const zeigeStatus = {neu:true, arbeit:true, fertig:false};
 
 const FELDER = [
@@ -2434,7 +2701,7 @@ const FELDER = [
   {id:"status",  text:"Status",           an:false},
 ];
 
-const QUELLE_TEXT = {tisch:"Tisch", telefon:"Alessio · Telefon", reservierung:"Reservierung", service:"Serviceruf"};
+const QUELLE_TEXT = {tisch:"Tisch", telefon:"Alessio · Telefon", lieferung:"Lieferung", reservierung:"Reservierung", service:"Serviceruf"};
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -2495,7 +2762,11 @@ const EINST_STANDARD = {
   /* Vollbild und Fern-Ansicht. Ein Board am Tresen hängt im Vollbild
      und wird aus zwei Metern gelesen — beides gab es bisher nur in
      der Küche. */
-  vollbild:     false,
+  /* AN als Vorgabe. Der Nutzer hat "direkt einen Vollbildmodus"
+     verlangt; vorher war es aus und musste einmal eingeschaltet
+     werden. Der Schalter bleibt — wer es nicht will, legt ihn um,
+     und das wird gemerkt. */
+  vollbild:     true,
   skala:        1      // 1 bis 1.6
 };
 let EINST = Object.assign({}, EINST_STANDARD);
@@ -2741,26 +3012,83 @@ function vollbildKnopfStellen(kennung){
    erneut hinein, wenn der Nutzer bewusst herausgegangen ist. */
 function vollbildAufWunsch(kennung, willVollbild, merken){
   var knopf = document.getElementById(kennung);
+
+  /* Der Unterschied, an dem alles haengt: Ist der Nutzer ABSICHTLICH
+     heraus, oder hat ihn etwas hinausgeworfen?
+
+     Escape, die Systemgeste und ein Wechsel der Anwendung beenden den
+     Vollbildmodus, ohne dass jemand das wollte — dort soll er
+     zurueckkommen. Wer dagegen den Knopf drueckt, will heraus, und
+     dann waere ein erneutes Hineinspringen beim naechsten Tipp ein
+     Kampf gegen den Nutzer. Genau davor warnte der Kommentar der
+     ersten Fassung; sie loeste es, indem sie sich NIE wieder
+     bewaffnete — und damit kam der Vollbildmodus nach einem
+     versehentlichen Escape bis zum Neuladen nicht zurueck. */
+  var absichtlichRaus = false;
+
   if(knopf) knopf.addEventListener("click", function(){
     var neu = !vollbildAn();
+    absichtlichRaus = !neu;
+    /* ABRAEUMEN, wenn er heraus will. Ohne diese Zeile blieb der
+       Horcher scharf: Der Knopf ist vom Bewaffnen ausgenommen, also
+       kehrte einmal() frueh zurueck OHNE abzuraeumen — und der
+       naechste Tipp irgendwo nahm den Nutzer wieder hinein, obwohl
+       er gerade selbst herausgegangen war. Gefunden hat es das
+       Kuechen-Board, das keinen Scharfschalt-Schirm hat und deshalb
+       mit noch scharfem Horcher in die Probe lief. */
+    if(absichtlichRaus) abraeumen(); else bewaffnen();
     if(neu) vollbildRein(); else vollbildRaus();
     if(merken) merken(neu);
   });
 
+  /* Die Horcher werden bei jedem Bewaffnen neu gesetzt und beim
+     Zugriff wieder abgeraeumt. capture, damit sie auch dann greifen,
+     wenn ein Kind das Ereignis stoppt. */
+  var arten = ["pointerdown", "keydown", "touchend"];
+  var einmal = function(e){
+    /* Der Vollbildknopf ist die EINE Geste, die hier nicht zaehlt.
+
+       VORFALL, gemessen von pruef-vollbild.js, sofort nachdem die
+       Vorgabe auf "an" ging: Der Horcher laeuft in der Capture-Phase,
+       also VOR dem Knopf. Ein Druck auf den Vollbildknopf schaltete
+       damit erst ein — und der Knopf rechnete danach
+       neu = !vollbildAn() = false und schaltete wieder aus. Der Wirt
+       drueckt "Vollbild" und es passiert nichts. Fuenfzehn Proben
+       waren rot, und zwar invertiert: erst "an" erwartet und "aus"
+       bekommen, dann umgekehrt.
+
+       Der Knopf spricht fuer sich selbst. Jede andere Geste bewaffnet. */
+    if(knopf && e && e.target && (e.target === knopf || knopf.contains(e.target))) return;
+    abraeumen();
+    if(!vollbildAn()) vollbildRein();
+  };
+  function abraeumen(){
+    arten.forEach(function(a){ document.removeEventListener(a, einmal, true); });
+  }
+  function bewaffnen(){
+    if(!document.documentElement.requestFullscreen) return;
+    abraeumen();
+    arten.forEach(function(a){ document.addEventListener(a, einmal, true); });
+  }
+
   document.addEventListener("fullscreenchange", function(){
     vollbildKnopfStellen(kennung);
+    /* Herausgeworfen und nicht selbst gegangen: die naechste Geste
+       nimmt uns wieder hinein. EIN Handgriff, nicht fuenf.
+
+       Was hier NICHT steht und nicht stehen kann: ein Verhindern des
+       Verlassens. Escape und die Systemgeste sind eine Zusage des
+       Browsers an den Nutzer, keine Luecke. Eine Seite, die das
+       abfangen koennte, waere eine Falle. */
+    /* Nicht willVollbild fragen: Das ist der Wunsch beim START und
+       veraltet in der Sekunde, in der der Nutzer den Knopf benutzt.
+       absichtlichRaus traegt die aktuelle Wahrheit. */
+    if(!vollbildAn() && !absichtlichRaus) bewaffnen();
   });
   vollbildKnopfStellen(kennung);
 
-  if(!willVollbild || !document.documentElement.requestFullscreen) return;
-  var arten = ["pointerdown", "keydown", "touchend"];
-  var einmal = function(){
-    arten.forEach(function(a){ document.removeEventListener(a, einmal, true); });
-    if(!vollbildAn()) vollbildRein();
-  };
-  arten.forEach(function(a){
-    document.addEventListener(a, einmal, true);
-  });
+  if(!willVollbild) return;
+  bewaffnen();
 }
 /* ╚═══ VOLLBILD · GETEILTER BLOCK · ENDE ══════════════════════════╝ */
 
@@ -3284,7 +3612,12 @@ function awAuswerten(zeilen, von, bis){
   });
   /* Servicerufe haben keinen Umsatz und würden den Schnitt verfälschen. */
   const mitUmsatz = drin.filter(b => b.quelle !== "service" && b.summe > 0);
-  const umsatz = mitUmsatz.reduce((s,b) => s + (+b.summe || 0), 0);
+  /* Die Liefergebühr liegt in einer eigenen Spalte und fiele sonst aus
+     dem Tagesumsatz heraus. Sie ist Geld, das der Betrieb einnimmt —
+     also zählt sie mit. Wer die Zahl mit gestern vergleicht, muss das
+     wissen, deshalb steht es hier und nicht im Kleingedruckten. */
+  const umsatz = mitUmsatz.reduce((s,b) =>
+    s + (+b.summe || 0) + (+b.liefergebuehr || 0), 0);
 
   const stunden = new Array(24).fill(0);
   drin.forEach(b => { stunden[new Date(b.zeitpunkt).getHours()]++; });
@@ -4099,7 +4432,7 @@ function demoStarten(){
 async function betriebeHolen(){
   const {data, error} = await db
     .from("betrieb_mitglieder")
-    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln)");
+    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer)");
 
   if(error) throw error;
 
@@ -4224,7 +4557,7 @@ async function betriebOeffnen(id){
 
   live_anmelden(id, marke);
   reservierungenLaden(id);
-  netzTakt = setInterval(() => nachholen(id), 25000);
+  netzTakt = setInterval(() => { nachholen(id); reservierungenNachholen(id); }, 25000);
   zeichneAlles();
 }
 
@@ -4344,6 +4677,49 @@ async function nachholen(id){
   }catch(e){ /* stiller Versuch, beim nächsten Takt erneut */ }
 }
 
+/* ─── Dasselbe Netz für Reservierungen ───────────────────────
+   Bestellungen hatten es, Reservierungen nicht: Sie hingen allein am
+   Realtime-Abo. Reißt die Leitung genau dann ab, wenn jemand einen
+   Tisch anfragt, sieht der Wirt sie nie — und merkt es auch nicht,
+   weil nichts fehlt, was er kennt.                              */
+async function reservierungenNachholen(id){
+  if(document.hidden) return;
+  if(!db || demo || !betriebId) return;
+  if(id && id !== betriebId) return;          /* Takt eines alten Betriebs */
+  const marke = ladeMarke;
+  try{
+    const {data, error} = await db.from("reservierungen")
+      .select("*").eq("betrieb_id", betriebId)
+      .order("wunsch", {ascending:true});
+    if(error || !data || marke !== ladeMarke) return;
+
+    let frisch = 0;
+    data.forEach(z => {
+      const i = reservierungen.findIndex(r => r.id === z.id);
+      if(i === -1){
+        reservierungen.push(z);
+        frisch++;
+        hinweisZeigen({ id: z.id, quelle: "reservierung",
+                        tisch: null, notiz: null, _res: z });
+      }else if(!inArbeit.has(z.id) && reservierungen[i].status !== z.status){
+        reservierungen[i] = z;                /* eigene Änderung ist die neuere */
+      }
+    });
+
+    /* Was der Aufräumer serverseitig entfernt hat, verschwindet auch
+       hier — sonst stünde eine Anfrage von gestern ewig auf dem
+       Schirm. */
+    const da = new Set(data.map(z => z.id));
+    for(let i = reservierungen.length - 1; i >= 0; i--){
+      if(!da.has(reservierungen[i].id)) reservierungen.splice(i, 1);
+    }
+
+    reservierungen.sort((a,b) => new Date(a.wunsch) - new Date(b.wunsch));
+    if(frisch) meldenGebuendelt();
+    zeichneReservierungen();
+  }catch(e){ /* stiller Versuch, beim nächsten Takt erneut */ }
+}
+
 /* EINMAL binden, nicht bei jedem Laden – sonst sammelt sich pro
    Betriebswechsel ein weiterer Horcher an. */
 document.addEventListener("visibilitychange", () => {
@@ -4354,6 +4730,7 @@ document.addEventListener("visibilitychange", () => {
      der ersten Bildschirmsperre still. */
   try{ if(tonWerk && tonWerk.state === "suspended") tonWerk.resume(); }catch(e){}
   nachholen();
+  reservierungenNachholen();
 });
 
 async function datenLaden(){
@@ -4380,11 +4757,6 @@ function beispieldaten(){
     {id:"b1", quelle:"tisch", status:"neu", tisch:"7", zeitpunkt:vor(3),
      positionen:[{name:"Blend Old Fashioned",menge:2,preis:12.50},{name:"Garden Spritz",menge:1,preis:6.50}],
      summe:31.50, notiz:"Einer ohne Zeste, Allergie"},
-
-    {id:"b2", quelle:"reservierung", status:"neu", gast_name:"Kerstin Adler",
-     gast_telefon:"0160 5540221", personen:6, wunschzeit:new Date(jetzt+3*3600000).toISOString(),
-     zeitpunkt:vor(11), positionen:[], summe:0, notiz:"Geburtstag, Tisch am Fenster wenn möglich",
-     transkript:"Alessio: Blend, guten Tag! — Gast: Ich würde gern einen Tisch für sechs Personen reservieren, heute Abend um acht."},
 
     {id:"b3", quelle:"tisch", status:"arbeit", tisch:"2", zeitpunkt:vor(19),
      positionen:[{name:"Flammkuchen Elsässer",menge:1,preis:11.50}], summe:11.50},
@@ -4465,7 +4837,7 @@ function gefiltert(){
 }
 
 function zeichneBoard(){
-  ["tisch","telefon","reservierung"].forEach(q => {
+  ["tisch","telefon","lieferung"].forEach(q => {
     const n = bestellungen.filter(b => b.quelle === q && zeigeStatus[b.status]).length;
     const el = document.querySelector(`[data-z="${q}"]`);
     if(el) el.textContent = n;
@@ -4502,14 +4874,35 @@ function zeichneBoard(){
       ? `<span class="ungeprueft" title="Der Untersetzer wurde nicht angetippt — Tischangabe stammt vom Gast">Tisch ungeprüft</span>`
       : "";
 
+    /* Bei einer Lieferung steht der Name in der Adresse, nicht in
+       gast_name — sonst stuende dort „Ohne Namen", obwohl der Gast
+       seinen Namen sehr wohl angegeben hat. */
+    const ladr = (b.quelle === "lieferung" && b.liefer_adresse) ? b.liefer_adresse : null;
+
     const kopf = (b.quelle === "tisch" || (b.quelle === "service" && b.tisch))
       ? `<div class="tischnr">Tisch ${sicher(b.tisch)}</div>${ungeprueft}`
-      : `<div class="tischnr">${sicher(b.gast_name || (b.tisch ? "Tisch " + b.tisch : "Ohne Namen"))}</div>` +
-        `<div class="gastzeile">${
-            b.quelle === "reservierung"
-              ? `${b.personen || "?"} Personen · ${b.wunschzeit ? uhrzeit(b.wunschzeit) + " Uhr" : "Zeit offen"}`
-              : (b.abholung ? "Abholung" : "Lieferung")
-          }</div>`;
+      : `<div class="tischnr">${sicher((ladr && ladr.name) || b.gast_name ||
+           (b.tisch ? "Tisch " + b.tisch : "Ohne Namen"))}</div>` +
+        `<div class="gastzeile">${b.abholung ? "Abholung" : "Lieferung"}</div>`;
+
+    /* Die Adresse gehoert auf die Karte. Antippbar, weil der Fahrer
+       sie in seine Karten-App braucht und niemand sie abtippen soll —
+       geo: waere eleganter, wird aber nicht ueberall verstanden. */
+    const lieferblock = ladr
+      ? `<div class="lieferadresse"><b>Liefern an</b>` +
+        `<a href="https://www.google.com/maps/search/?api=1&query=${
+           encodeURIComponent([ladr.strasse, ladr.plz, ladr.ort].filter(Boolean).join(", "))}"
+           target="_blank" rel="noopener">${
+           sicher([ladr.strasse, [ladr.plz, ladr.ort].filter(Boolean).join(" ")]
+             .filter(Boolean).join(" · "))}</a>` +
+        (ladr.klingel ? `<span class="lz">${sicher(ladr.klingel)}</span>` : "") +
+        (ladr.telefon
+          ? `<a class="lz" href="tel:${sicher(String(ladr.telefon).replace(/[^\d+]/g,""))}">${
+             sicher(ladr.telefon)}</a>` : "") +
+        (b.liefergebuehr > 0
+          ? `<span class="lz">Liefergebühr ${euro(b.liefergebuehr)}</span>` : "") +
+        `</div>`
+      : "";
 
     const welle = b.quelle === "telefon"
       ? `<span class="welle">${[5,9,11,7,10,4].map(h=>`<i style="height:${h}px"></i>`).join("")}</span>` : "";
@@ -4562,10 +4955,12 @@ function zeichneBoard(){
         <div class="rechts">
           <div class="uhr">${uhrzeit(b.zeitpunkt)}</div>
           ${dauer}
-          ${b.summe > 0 ? `<div class="preis">${euro(b.summe)}</div>` : ""}
+          ${b.summe > 0
+            ? `<div class="preis">${euro((+b.summe || 0) + (+b.liefergebuehr || 0))}</div>`
+            : ""}
         </div>
       </div>
-      ${pos}${notiz}${trans}${zusage}
+      ${pos}${lieferblock}${notiz}${trans}${zusage}
       <div class="schritte">
         ${["neu","arbeit","fertig"].map(s =>
           `<button class="schritt" data-id="${b.id}" data-status="${s}"
@@ -5047,7 +5442,46 @@ function impOeffnen(){
   impVorschau();
   $("#impBlatt").hidden = false;
 }
-function impSchliessen(){ $("#impBlatt").hidden = true; }
+/* ══════════════════════════════════════════════════════════════
+   EIN BLATT GEHT MIT BEWEGUNG ZU — ODER SOFORT
+
+   Alle fuenf Blaetter schlossen mit hidden=true, also schlagartig.
+   Ein Ausgang gehoert dazu; er darf aber in drei Faellen NICHT
+   laufen, und jeder davon wird GEMESSEN, nicht per Absprache
+   geglaubt:
+
+   1 · Reduzierte Bewegung. Dann sofort zu, und der Endzustand muss
+       richtig sein (§7).
+   2 · Das Blatt ist schon unterwegs. Die Wischgeste schiebt es
+       selbst hinaus und ruft danach dieselbe Schliessfunktion —
+       eine zweite Animation waere ein Sprung zurueck an den offenen
+       Platz und dann wieder hinaus. Erkannt wird das an der
+       INLINE-Angabe, die die Geste gesetzt hat und erst nach dem
+       Schliessen wieder abraeumt. Kein Flag, das jemand setzen
+       muesste: der Zustand selbst ist die Auskunft (§8.1i).
+   3 · Es ist gar nicht offen. Beim Aufbau werden Schliessfunktionen
+       aufgerufen, bevor je etwas offen war; ohne diesen Zweig legte
+       sich eine Klasse auf ein verstecktes Blatt und die Zusage
+       kaeme 200 ms zu spaet.
+
+   Und: nicht zweimal. Wer doppelt tippt, darf keine zweite
+   Animation bekommen.                                            */
+function blattFortAnimieren(schirm, fertig){
+  if(!schirm || schirm.hidden){ fertig(); return; }
+  var inhalt = schirm.querySelector(".blattinhalt");
+  var ruhig = false;
+  try{ ruhig = window.matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+  var schonUnterwegs = !!(inhalt && inhalt.style && inhalt.style.transform);
+  if(ruhig || !inhalt || schonUnterwegs){ fertig(); return; }
+  if(schirm.classList.contains("geht")) return;
+  schirm.classList.add("geht");
+  window.setTimeout(function(){
+    schirm.classList.remove("geht");
+    fertig();
+  }, 210);
+}
+
+function impSchliessen(){ blattFortAnimieren($("#impBlatt"), function(){ $("#impBlatt").hidden = true; }); }
 
 $("#karteImport").onclick   = impOeffnen;
 $("#impAbbrechen").onclick  = impSchliessen;
@@ -5116,9 +5550,48 @@ function tabelle(){
   });
 })();
 
+/* ══════════════════════════════════════════════════════════════
+   WIE HOCH DIE FILTERLEISTE WIRKLICH IST
+
+   Auf dem Telefon liegt der Filterblock fest ueber der
+   Reiterleiste, und darunter muss so viel Platz frei bleiben, dass
+   die letzte Bestellkarte nicht darunter verschwindet.
+
+   Gemessen war der Block 124 px hoch, meine geschaetzte Variable
+   stand auf 96. Es ging trotzdem auf — mit 4 px Luft, und die kamen
+   aus einem doppelten Polster, nicht aus Absicht. Eine dritte
+   Filterzeile oder ein laengeres Wort haette es gekippt, und zwar
+   still: Die letzte Karte waere einfach nicht mehr antippbar.
+
+   Also wird die Zahl gemessen. Ein ResizeObserver kostet sechs
+   Zeilen und nimmt die ganze Fehlerklasse weg.                    */
+function filterHoeheMessen(){
+  const b = document.querySelector("#t-bestellungen .filterblock");
+  if(!b) return;
+  /* Nur auf dem Telefon liegt der Block fest; am Tresen steht er im
+     Fluss und braucht kein Polster darunter. */
+  const fest = getComputedStyle(b).position === "fixed";
+  document.documentElement.style.setProperty("--filter-h",
+    fest ? Math.ceil(b.getBoundingClientRect().height) + 10 + "px" : "0px");
+}
+
+if(typeof ResizeObserver === "function"){
+  const b = document.querySelector("#t-bestellungen .filterblock");
+  if(b) new ResizeObserver(filterHoeheMessen).observe(b);
+}
+/* Der Wechsel zwischen Telefon und Tresen aendert position, nicht die
+   Groesse — ein ResizeObserver allein merkt das nicht. */
+try{ window.matchMedia("(max-width:760px)").addEventListener("change", filterHoeheMessen); }
+catch(e){ /* aeltere Browser: dann bleibt der Startwert */ }
+window.addEventListener("orientationchange", filterHoeheMessen);
+
 function tafelZeigen(ziel){
   $$("[data-tafel]").forEach(x => x.setAttribute("aria-selected", x.dataset.tafel === ziel));
   $$(".tafel").forEach(t => t.hidden = t.id !== "t-" + ziel);
+
+  /* Erst jetzt ist der Block gezeichnet — vorher war er in einem
+     versteckten Vorfahren und 0 px hoch. */
+  if(ziel === "bestellungen") filterHoeheMessen();
 
   /* Angetippten Reiter ins Bild schieben. Ohne das bliebe „Einstellungen"
      am rechten Rand halb verdeckt, obwohl er gerade aktiv ist. */
@@ -5127,7 +5600,7 @@ function tafelZeigen(ziel){
   mehrZu();
 
   if(ziel === "speisekarte")     aktionenLaden();
-  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); }
+  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); }
   if(ziel === "startseite")      kbStandLaden();
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
@@ -5319,6 +5792,98 @@ function hubTexteFuellen(){
   setz("hubRunner", HUBTEXTE.runner_titel);
   massVerdrahten();
   hubSchauZeichnen();
+}
+
+/* ─── Lieferung ───────────────────────────────────────────────
+   Gebaut wie „Ihre Worte im Gast-Hub": Felder, ein Knopf, eine
+   Meldezeile. Der Zwischenstand lebt im RAM (LFTAGE), damit kein
+   halbfertiger Wochenplan in die Datenbank geht — dasselbe Prinzip
+   wie beim Kachel-Baukasten.                                     */
+let LFTAGE = [];
+
+function lfFuellen(){
+  const b = meineBetriebe.find(x => x.id === betriebId);
+  const l = (b && b.liefer && typeof b.liefer === "object") ? b.liefer : {};
+  const z = (l.zeiten && typeof l.zeiten === "object") ? l.zeiten : {};
+
+  const setz = (id, wert) => { const e = $("#" + id); if(e) e.value = wert == null ? "" : String(wert); };
+  const wippe = (id, an) => { const e = $("#" + id); if(e) e.setAttribute("aria-pressed", an ? "true" : "false"); };
+
+  wippe("lfAn", l.an === true);
+  setz("lfPlz", Array.isArray(l.plz) ? l.plz.join(", ") : "");
+  setz("lfMindest", l.mindest || "");
+  setz("lfGebuehr", l.gebuehr || "");
+  setz("lfGratis",  l.gratis_ab || "");
+  setz("lfDauer",   l.dauer_min || "");
+  setz("lfVon", z.von || "");
+  setz("lfBis", z.bis || "");
+  wippe("lfBar",   l.bar !== false);
+  wippe("lfKarte", l.karte === true);
+
+  LFTAGE = Array.isArray(z.tage) ? z.tage.map(Number).filter(n => n >= 1 && n <= 7) : [];
+  lfTageZeichnen();
+}
+
+function lfTageZeichnen(){
+  $$("#lfTage .tagknopf").forEach(k =>
+    k.setAttribute("aria-pressed", LFTAGE.indexOf(+k.dataset.tag) > -1 ? "true" : "false"));
+}
+
+async function lfSichern(){
+  const raus = $("#lfPruefung");
+  const zahl = id => { const v = parseFloat(String($("#" + id).value).replace(",", ".")); return isFinite(v) && v > 0 ? v : 0; };
+  const an   = id => $("#" + id).getAttribute("aria-pressed") === "true";
+
+  const plz = String($("#lfPlz").value).split(",")
+    .map(s => s.trim()).filter(s => /^\d{4,5}$/.test(s));
+
+  /* Eingeschaltet ohne eine einzige Postleitzahl waere eine Falle:
+     Der Gast fuellt das ganze Formular aus und bekommt am Ende „wir
+     liefern nicht zu Ihnen". Lieber hier sagen, was fehlt. */
+  if(an("lfAn") && !plz.length){
+    raus.textContent = "Bitte mindestens eine Postleitzahl eintragen — sonst kann niemand bestellen.";
+    return;
+  }
+
+  const von = $("#lfVon").value, bis = $("#lfBis").value;
+  if((von && !bis) || (bis && !von)){
+    raus.textContent = "Bitte beide Zeiten angeben oder beide leer lassen.";
+    return;
+  }
+
+  const neu = {
+    an: an("lfAn"), plz: plz,
+    mindest: zahl("lfMindest"), gebuehr: zahl("lfGebuehr"),
+    gratis_ab: zahl("lfGratis"), dauer_min: Math.round(zahl("lfDauer")),
+    bar: an("lfBar"), karte: an("lfKarte")
+  };
+  if(von && bis) neu.zeiten = { von: von, bis: bis, tage: LFTAGE.slice().sort() };
+  else if(LFTAGE.length) neu.zeiten = { tage: LFTAGE.slice().sort() };
+
+  const knopf = $("#lfSichern");
+  knopf.disabled = true; knopf.textContent = "Wird übernommen …";
+  try{
+    if(demo || !db){
+      raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
+    }else{
+      const {error} = await db.from("betriebe").update({ liefer: neu }).eq("id", betriebId);
+      if(error) throw error;
+      const b = meineBetriebe.find(x => x.id === betriebId);
+      if(b) b.liefer = neu;          /* sonst zeigt das naechste Oeffnen den alten Stand */
+      raus.textContent = neu.an
+        ? "Übernommen. Gäste sehen es beim nächsten Öffnen."
+        : "Übernommen — die Lieferung ist aus.";
+    }
+    melde("Liefereinstellungen übernommen");
+  }catch(err){
+    /* Fehlt die Spalte, ist das kein Serverfehler, sondern eine
+       Migration, die noch nicht eingespielt wurde — und das gehoert
+       genau so gesagt, mit Namen. */
+    raus.textContent = /liefer/i.test(String(err && err.message))
+      ? "Die Spalte „liefer“ fehlt noch. Bitte migration-lieferung.sql einspielen."
+      : "Nicht gespeichert, bitte Verbindung prüfen.";
+  }
+  knopf.disabled = false; knopf.textContent = "Übernehmen";
 }
 
 async function hubTexteSichern(){
@@ -5692,7 +6257,8 @@ async function kbZuschnittFertig(){
   knopf.disabled = false;
 }
 
-function kbSchliessen(){ $("#kbBlatt").hidden = true; kbZuschnitt = null; }
+function kbSchliessen(){ blattFortAnimieren($("#kbBlatt"), function(){
+  $("#kbBlatt").hidden = true; kbZuschnitt = null; }); }
 
 /* ── Sichern ───────────────────────────────────────────────────── */
 async function kbSichern(){
@@ -5822,6 +6388,30 @@ if($("#hubTexteSichern")){
     $("#hubTextePruefung").textContent =
       "Felder geleert. Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
   };
+}
+
+/* Dieselbe Fläche, dieselbe Regel: einmal verdrahten, nicht bei jedem
+   Öffnen — sonst sammelt sich pro Tafelwechsel ein weiterer Horcher. */
+if($("#lfSichern")){
+  $("#lfSichern").onclick = lfSichern;
+
+  /* Wippen und Tagknöpfe sind Schalter, keine Formularfelder: Sie
+     tragen ihren Zustand in aria-pressed, und das ist auch der Wert,
+     den lfSichern liest. Eine zweite Ablage wäre eine zweite Wahrheit. */
+  ["lfAn","lfBar","lfKarte"].forEach(id => {
+    const k = $("#" + id);
+    if(k) k.onclick = () =>
+      k.setAttribute("aria-pressed", k.getAttribute("aria-pressed") === "true" ? "false" : "true");
+  });
+
+  const tage = $("#lfTage");
+  if(tage) tage.addEventListener("click", e => {
+    const k = e.target.closest(".tagknopf"); if(!k) return;
+    const tag = +k.dataset.tag;
+    const i = LFTAGE.indexOf(tag);
+    if(i > -1) LFTAGE.splice(i, 1); else LFTAGE.push(tag);
+    lfTageZeichnen();
+  });
 }
 
 if($("#runnerAuf")){
@@ -6018,8 +6608,10 @@ function zeitBlattOeffnen(id){
 }
 
 function zeitBlattSchliessen(){
-  $("#zeitBlatt").hidden = true;
-  zeitFuerId = null;
+  blattFortAnimieren($("#zeitBlatt"), function(){
+    $("#zeitBlatt").hidden = true;
+    zeitFuerId = null;
+  });
 }
 
 $("#zeitAbbruch").onclick = zeitBlattSchliessen;
@@ -6278,24 +6870,113 @@ function uebStandSetzen(g){
     el.textContent = "In elf Sprachen übersetzt.";
   }else{
     el.classList.add("offen");
-    el.textContent = hat
+    /* Der GRUND, wenn es einen gibt. Ohne ihn liest der Wirt
+       "noch nicht übersetzt" und weiss nicht, ob er warten,
+       nochmal drücken oder einen Schlüssel eintragen soll — und
+       zwölf Zeilen Klartextübersetzung weiter unten waeren
+       Zierrat, wenn sie hier nicht ankommen. */
+    const grund = uebGrundText();
+    const luecken = uebLueckenText();
+    el.textContent = (hat
       ? "Teilweise übersetzt — ein Gast liest den Rest auf Deutsch."
-      : "Noch nicht übersetzt — ein Gast liest das auf Deutsch.";
+      : "Noch nicht übersetzt — ein Gast liest das auf Deutsch.") +
+      (luecken ? " " + luecken : "") +
+      (grund ? " " + grund : "");
   }
+}
+
+/* Welche Sprachen beim letzten Anlauf offen blieben. Sie werden
+   BENANNT: Der Wirt darf zwei Felder selbst tippen — aber nur, wenn
+   er weiss, welche zwei. */
+function uebLueckenText(){
+  const namen = { en:"Englisch", tr:"Türkisch", ru:"Russisch", fr:"Französisch",
+                  es:"Spanisch", it:"Italienisch", pl:"Polnisch", ar:"Arabisch",
+                  uk:"Ukrainisch", nl:"Niederländisch", ro:"Rumänisch" };
+  const alle = new Set();
+  Object.values(uebTeilweise || {}).forEach(l =>
+    (Array.isArray(l) ? l : []).forEach(sp => alle.add(sp)));
+  if(!alle.size) return "";
+  const liste = [...alle].map(sp => namen[sp] || sp);
+  return "Offen: " + liste.join(", ") + ".";
+}
+
+/* Warum der Uebersetzer nichts geliefert hat — im Klartext.
+
+   VORFALL. Die Funktion liefert bei JEDEM Fehler einen Grund mit:
+   "kein_schluessel", "keine_antwort", "abgelehnt", oder die
+   Ausnahmemeldung. Hier stand dagegen
+
+     if(error || !data || !data.uebersetzt) return {};
+
+   und kippte alles in denselben leeren Topf. Der Wirt sah einen
+   Satz, egal ob der API-Schluessel fehlt, die Funktion nicht
+   ausgerollt ist oder das Modell gestolpert ist — und "fehlender
+   Schluessel" ist etwas, das man BEHEBEN kann, sobald man es liest.
+
+   Die Grenze bleibt dieselbe: Es wird nie geworfen. Ein Gericht, das
+   sich nicht speichern laesst, weil ein Uebersetzer schweigt, kostet
+   Umsatz (§7). */
+const UEB_GRUND = {
+  kein_schluessel: "Der Übersetzer ist noch nicht eingerichtet — " +
+    "in Supabase fehlt ANTHROPIC_API_KEY.",
+  keine_antwort:   "Der Übersetzer hat geantwortet, aber nichts geliefert. " +
+    "Bitte noch einmal versuchen.",
+  kein_json:       "Der Übersetzer hat die Anfrage nicht verstanden.",
+  abgelehnt:       "Das Sprachmodell hat diesen Text abgelehnt. " +
+    "Bitte die Formulierung ändern.",
+  nicht_erreichbar:"Der Übersetzer ist nicht erreichbar — " +
+    "ist die Funktion „uebersetzen“ ausgerollt?"
+};
+
+/* Was der letzte Aufruf gemeldet hat. Wird von der Anzeige gelesen.
+   Kein Rueckgabewert, weil uebersetzenLassen() an vielen Stellen
+   gerufen wird und ueberall nur die Uebersetzungen erwartet werden —
+   ein zweiter Rueckgabewert waere ein Umbau von fuenf Aufrufern fuer
+   eine Nebenauskunft. */
+let uebLetzterGrund = "";
+
+function uebGrundText(){
+  if(!uebLetzterGrund) return "";
+  return UEB_GRUND[uebLetzterGrund] ||
+    ("Der Übersetzer meldet: " + uebLetzterGrund);
 }
 
 /* Ruft die Edge Function. Gibt IMMER ein Objekt zurueck, nie einen
    Fehler: Der Wirt soll sein Gericht speichern koennen, auch wenn der
    Uebersetzer schweigt (CLAUDE.md 7). */
 async function uebersetzenLassen(texte){
+  uebLetzterGrund = "";
   const liste = [...new Set((texte || []).map(t => String(t || "").trim()).filter(Boolean))];
   if(!liste.length || demo || !db) return {};
   try{
     const { data, error } = await db.functions.invoke("uebersetzen", { body: { texte: liste } });
-    if(error || !data || !data.uebersetzt) return {};
+    if(error){
+      /* Ein Netzfehler heisst meist: die Funktion ist nicht
+         ausgerollt. Das ist eine andere Auskunft als "das Modell
+         hat nicht geantwortet". */
+      uebLetzterGrund = /fetch|network|Failed|404/i.test(String(error.message || error))
+        ? "nicht_erreichbar" : String(error.message || error);
+      return {};
+    }
+    if(!data){ uebLetzterGrund = "keine_antwort"; return {}; }
+    /* Ein Grund kommt auch dann mit, wenn TEILWEISE uebersetzt
+       wurde — dann ist er ein Hinweis, kein Ausfall. */
+    if(data.fehler) uebLetzterGrund = String(data.fehler);
+    if(!data.uebersetzt) return {};
+
+    /* Welche Saetze nur teilweise fertig wurden, und in welchen
+       Sprachen. Der Wirt kann zwei Felder selbst tippen — aber nur,
+       wenn er weiss, welche. */
+    uebTeilweise = (data.teilweise && typeof data.teilweise === "object")
+      ? data.teilweise : {};
     return data.uebersetzt;
-  }catch(e){ return {}; }
+  }catch(e){
+    uebLetzterGrund = /fetch|network|Failed/i.test(String(e && e.message))
+      ? "nicht_erreichbar" : String((e && e.message) || e);
+    return {};
+  }
 }
+let uebTeilweise = {};
 
 /* Nach dem Speichern, nicht davor. Ein Gericht, das sich nicht
    speichern laesst, weil ein Uebersetzer nicht antwortet, kostet
@@ -6314,7 +6995,14 @@ async function uebNachtragen(satz, melden){
   if(fertig[satz.beschreibung]) neu.uebersetzungen      = fertig[satz.beschreibung];
   if(fertig[satz.name])         neu.name_uebersetzungen = fertig[satz.name];
   if(!Object.keys(neu).length){
-    if(melden) melde("Gespeichert — übersetzt wurde nicht, das lässt sich nachholen", true);
+    /* Mit GRUND, wenn es einen gibt. "das lässt sich nachholen" ist
+       wahr und nutzlos — der Wirt weiss danach nicht, ob er warten,
+       nochmal druecken oder einen Schluessel eintragen soll. */
+    if(melden){
+      const grund = uebGrundText();
+      melde("Gespeichert — übersetzt wurde nicht." +
+            (grund ? " " + grund : " Das lässt sich nachholen."), true);
+    }
     return false;
   }
   Object.assign(satz, neu);
@@ -6325,7 +7013,18 @@ async function uebNachtragen(satz, melden){
       return false;
     }
   }
-  if(melden) melde("Gespeichert und in elf Sprachen übersetzt");
+  if(melden){
+    /* Ein Teilergebnis ist ein Erfolg mit Fussnote, kein Ausfall.
+       Vorher gab es diesen Zustand gar nicht: Fehlte eine Sprache,
+       flog der ganze Satz raus und es hiess "übersetzt wurde nicht".
+       Jetzt kommen die zehn an — und die eine wird benannt. */
+    const l = uebLueckenText();
+    melde(l ? "Gespeichert und übersetzt. " + l
+            : "Gespeichert und in elf Sprachen übersetzt");
+  }
+  /* Damit der Sprachstand im offenen Blatt den neuen Stand zeigt und
+     nicht den von vorher. */
+  if(bearbeite && bearbeite.id === satz.id) uebStandSetzen(satz);
   return true;
 }
 
@@ -6360,7 +7059,8 @@ function uebOeffnen(){
   $("#uebFelder").innerHTML = html;
   $("#uebBlatt").hidden = false;
 }
-function uebSchliessen(){ $("#uebBlatt").hidden = true; uebEntwurf = null; }
+function uebSchliessen(){ blattFortAnimieren($("#uebBlatt"), function(){
+  $("#uebBlatt").hidden = true; uebEntwurf = null; }); }
 
 function blattOeffnen(g){
   bearbeite = g;
@@ -6388,7 +7088,8 @@ function blattOeffnen(g){
   $("#blatt").hidden     = false;
   setTimeout(()=> $("#fName").focus(), 120);
 }
-function blattSchliessen(){ $("#blatt").hidden = true; bearbeite = null; }
+function blattSchliessen(){ blattFortAnimieren($("#blatt"), function(){
+  $("#blatt").hidden = true; bearbeite = null; }); }
 
 $("#abbrechen").onclick = blattSchliessen;
 $("#blatt").onclick = e => { if(e.target === $("#blatt")) blattSchliessen(); };

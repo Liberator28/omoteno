@@ -147,6 +147,11 @@ comment on column public.bestellungen.storno is
   'Die vom Gast zurueckgezogenen Posten, gleiche Form wie positionen. '
   'Sie bleiben stehen, damit die Kueche sieht, was wegfaellt.';
 
+-- ÜBERHOLT durch migration-bestellnummer.sql — NICHT mehr einspielen.
+-- Die Zeilensuche unten geht über gast_kennung, der Hub schickt aber
+-- die id der Zeile. Ergebnis: Der Gast konnte nie stornieren („Das
+-- geht hier gerade nicht"). Die Fassung bleibt hier nur als
+-- Verlaufsakte stehen; die gültige steht in migration-bestellnummer.sql.
 create or replace function public.bestellung_stornieren(
   nummer text,
   posten jsonb default null      -- Liste von STELLEN ("0","2"); null = alles

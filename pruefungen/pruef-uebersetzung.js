@@ -382,7 +382,31 @@ for(const c of Object.keys(ANREDE)){
           }
           return { uebersetzt: u };
         } },
-      { name:"Übersetzer schweigt", antwort: null }
+      { name:"Übersetzer schweigt", antwort: null },
+
+      /* DER TEILFALL, und er ist der Anlassfall dieses Blocks.
+
+         Vorher schrieb die Funktion einen Satz nur, wenn ALLE elf
+         Sprachen zurueckkamen. Fehlte eine, flog der ganze Satz raus
+         — der Wirt sah elf leere Felder und musste glauben, der
+         Uebersetzer sei kaputt, obwohl zehn Sprachen fertig dalagen.
+
+         Hier kommen zehn von elf: Arabisch fehlt. Erwartet wird, dass
+         die zehn ANKOMMEN und dass das Board sagt, welche offen ist. */
+      { name:"Übersetzer liefert zehn von elf", teil: true,
+        antwort: (texte) => {
+          const u = {}, offen = {};
+          for(const t of texte){
+            u[t] = {};
+            for(const c of SPR) if(c !== "ar") u[t][c] = c.toUpperCase() + ":" + t;
+            offen[t] = ["ar"];
+          }
+          return { uebersetzt: u, teilweise: offen, vorgelegt: texte.length, fertig: 0 };
+        } },
+
+      /* Und der Grund, den DU beheben kannst, sobald du ihn liest. */
+      { name:"Schlüssel fehlt", grund: "kein_schluessel",
+        antwort: () => ({ fehler: "kein_schluessel", uebersetzt: {} }) }
     ]){
       const bCtx = await browser.newContext({ viewport:{ width:390, height:844 } });
       const b = await bCtx.newPage();
@@ -487,7 +511,45 @@ for(const c of Object.keys(ANREDE)){
       pruef(stand.da, fall.name + " · das Gericht ist gespeichert",
         stand.da ? "in der Karte" : "nicht angelegt");
 
-      if(fall.antwort){
+      if(fall.teil){
+        /* Zehn von elf muessen ANKOMMEN. Vorher waren es null. */
+        pruef(stand.beschr === SPR.length - 1,
+          "Teilfall · die zehn gelieferten Sprachen werden behalten",
+          stand.beschr + " von " + SPR.length + " (Arabisch fehlt absichtlich)");
+        pruef(stand.probe === "TR:Frisch gebacken, warm serviert",
+          "Teilfall · und sie stehen am richtigen Text", String(stand.probe));
+        /* Und der Wirt muss LESEN, welche fehlt — sonst kann er die
+           eine nicht nachtragen. */
+        /* Gemessen wird die MELDEZEILE, nicht das Blatt. Mein erster
+           Anlauf las #uebStand — und das stand nach dem Speichern
+           schon wieder auf "Wird beim Speichern übersetzt", weil das
+           Blatt zu ist. Die Probe war rot und hat damit einen echten
+           Fehler gefunden: Die Auskunft kam nirgends an (§8.1h). */
+        const anzeige = await b.evaluate(() => {
+          const m = document.getElementById("melde") ||
+                    document.querySelector(".melde, #meldung, .meldung");
+          const s = document.getElementById("uebStand");
+          return [(m ? m.textContent : ""), (s ? s.textContent : "")].join(" | ");
+        });
+        pruef(/Arabisch/.test(anzeige),
+          "Teilfall · das Board benennt die fehlende Sprache",
+          anzeige.slice(0, 92) || "keine Anzeige");
+      }else if(fall.grund){
+        /* Der Grund im Klartext. "kein_schluessel" ist etwas, das der
+           Betreiber beheben kann — aber nur, wenn er es liest. */
+        const anzeige = await b.evaluate(() => {
+          const m = document.getElementById("melde") ||
+                    document.querySelector(".melde, #meldung, .meldung");
+          const s = document.getElementById("uebStand");
+          return [(m ? m.textContent : ""), (s ? s.textContent : "")].join(" | ");
+        });
+        pruef(/ANTHROPIC_API_KEY|eingerichtet/i.test(anzeige),
+          "Grund · der fehlende Schlüssel steht im Klartext da",
+          anzeige.slice(0, 78) || "keine Anzeige");
+        pruef(!/kein_schluessel/.test(anzeige),
+          "Grund · und nicht als Maschinenwort",
+          /kein_schluessel/.test(anzeige) ? "roher Schlüsselname" : "Klartext");
+      }else if(fall.antwort){
         pruef(stand.name === SPR.length && stand.beschr === SPR.length,
           "Übersetzer antwortet · Name und Beschreibung in " + SPR.length + " Sprachen",
           "Name " + stand.name + ", Beschreibung " + stand.beschr);

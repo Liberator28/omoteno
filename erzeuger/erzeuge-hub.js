@@ -557,6 +557,21 @@ function erzeuge(slug, nurPruefen){
 
   let aus = vorlage.replace("/*{{MARKENBLATT}}*/", alsQuelltext(mb));
 
+  /* Der Dateikopf nannte fest den ERSTEN Kunden mitsamt Strasse. In
+     jedem erzeugten Hub, also auch in denen der anderen. Das ist
+     keine Kosmetik: Wer die Datei aufmacht — der Kunde selbst, ein
+     Entwickler, ein Betriebspruefer — liest dort den Namen eines
+     fremden Betriebs.
+
+     Die Kommentare, die einen Vorfall dokumentieren ("gemessen:
+     Choco 2,02:1"), bleiben ausdruecklich stehen. Sie sind das
+     Gedaechtnis des Projekts, und sie nennen die Haeuser, WEIL der
+     Vorfall dort passiert ist. Der Unterschied ist: Das hier ist
+     eine ANGABE ueber den Kunden, jene sind Notizen ueber uns. */
+  const b2 = mb.betrieb || {};
+  aus = aus.replace("{{KUNDE}}",
+    [b2.name, b2.strasse, b2.ort].filter(Boolean).join(", ") || (b2.slug || "—"));
+
   /* Kopfangaben mitziehen. Der Titel steht im Browserreiter und im
      geteilten Link — er ist das Erste, was der Gast vom Haus sieht. */
   const h = t => String(t||"").replace(/[&<>"]/g, z =>
@@ -602,6 +617,57 @@ function erzeuge(slug, nurPruefen){
   if(!LOGO_MARKE.test(aus))
     throw new Error("Die Vorlage hat keine LOGO-Marke ({{LOGO}} … {{/LOGO}})");
   aus = aus.replace(LOGO_MARKE, () => siegelSVG(mb));
+
+  /* ═══════════════════════════════════════════════════════════════
+     KEIN FREMDER HAUSNAME IN DIESER DATEI
+
+     VORFALL. Der Slug stand an drei Stellen fest im Geruest. Blends
+     Hub trug „chocolamour" in SERVER.betrieb und OMOTENO_DB.slug —
+     er fragte also Chocos Betrieb ab, bekam Chocos id, und haette
+     jede Blend-Bestellung auf Chocos Betrieb geschrieben. Dazu fuenf
+     Speicherschluessel und drei E-Mail-Adressen.
+
+     Keine Pruefung konnte es sehen: Bei Choco war jeder dieser Werte
+     RICHTIG. Ein Test mit einem Kunden sieht jede eingebrannte
+     Fremdangabe fuer richtig an (§8.1a).
+
+     Deshalb hier eine ZWEITE QUELLE (§8.1b): nicht der Inhalt der
+     Datei gegen sich selbst, sondern gegen die LISTE ALLER HAEUSER.
+     Taucht der Name eines anderen Hauses auf, entsteht die Datei
+     nicht. Das faengt auch jede kuenftige eingebrannte Angabe, nicht
+     nur die drei bekannten.
+
+     Ein Slug, der Teil eines anderen ist („blend" in „blendwerk"),
+     wuerde falsch anschlagen — deshalb wird auf Wortgrenzen geprueft.
+     ═══════════════════════════════════════════════════════════════ */
+  const andereHaeuser = fs.readdirSync(BLAETTER)
+    .filter(d => d.endsWith(".json"))
+    .filter(d => d.slice(0, -5) !== slug && istMarkenblatt(path.join(BLAETTER, d)))
+    .map(d => d.slice(0, -5));
+
+  const fremd = andereHaeuser.filter(f =>
+    new RegExp("(^|[^a-z0-9-])" + f.replace(/[-]/g, "\\-") + "([^a-z0-9-]|$)")
+      .test(aus));
+
+  if(fremd.length){
+    /* Die Zeilen mitnennen. „Irgendwo steht ein fremder Name" ist
+       eine Meldung, die man nicht abarbeiten kann. */
+    const zeilen = aus.split("\n");
+    const treffer = [];
+    fremd.forEach(f => {
+      const re = new RegExp("(^|[^a-z0-9-])" + f + "([^a-z0-9-]|$)");
+      zeilen.forEach((z, i) => {
+        if(re.test(z) && treffer.length < 12)
+          treffer.push("     " + (i+1) + ": " + z.trim().slice(0, 90));
+      });
+    });
+    throw new Error(
+      "In dist/" + slug + " steht der Name eines ANDEREN Hauses: " +
+      fremd.join(", ") + "\n" +
+      "   Das ist der Fehler aus §8.1a. Der Wert gehoert ins Markenblatt\n" +
+      "   oder wird aus HAUS abgeleitet, nicht ins Geruest geschrieben.\n" +
+      treffer.join("\n"));
+  }
 
   const ordner = path.join(ZIEL, slug);
   fs.mkdirSync(ordner, {recursive:true});

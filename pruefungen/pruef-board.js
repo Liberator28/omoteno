@@ -42,7 +42,124 @@ const MASSE = [
   { name:"Großer Schirm", width:2560, height:1440 }
 ];
 
+/* ═══════════════════════════════════════════════════════════════════
+   Kein Kästchen ohne Schreiber — die zweite Quelle
+
+   VORFALL. Unter „Bestellungen" stand ein Kästchen „Reservierung".
+   Es filterte auf bestellungen.quelle === "reservierung" — einen Wert,
+   den keine Bestellzeile je trägt: Der Hub schreibt "tisch" und
+   "service", der Telefonweg "telefon", und eine Reservierung landet
+   ausdrücklich NICHT in bestellungen, sondern in einer eigenen
+   Tabelle. Der Zähler daneben stand darum dauerhaft auf 0. Der Wirt
+   hat es gemeldet, nicht die Prüfung.
+
+   Eine Schleife über das Vorhandene hätte das nie gefunden (§8.1b):
+   Das Kästchen war ja da und funktionierte tadellos — es traf nur
+   nichts. Deshalb wird hier gegen eine ZWEITE Quelle gehalten: die
+   Stellen, die den Wert wirklich SCHREIBEN.
+
+   Wichtig für den Zuschnitt: seiten/admin.html wird bewusst NICHT
+   als Schreiber gezählt. Dort steht zwar quelle:"reservierung" — aber
+   in einem Meldungsobjekt für die Benachrichtigung, nicht in einer
+   Bestellzeile. Wer das mitzählt, baut eine Prüfung, die ihren
+   eigenen Anlassfall nicht sehen kann (§8.1g).
+   ═══════════════════════════════════════════════════════════════════ */
+function quellenAbgleich(){
+  const WURZEL = path.join(__dirname, "..");
+  const admin  = fs.readFileSync(path.join(HIER, "admin.html"), "utf8");
+  const hub    = fs.readFileSync(path.join(WURZEL, "vorlagen", "hub.vorlage.html"), "utf8");
+  const dbDir  = path.join(WURZEL, "datenbank");
+
+  console.log("══ Kein Filter-Kästchen ohne Schreiber ══");
+
+  /* Zwei verschiedene Dinge, und sie werden getrennt gemessen — mein
+     erster Entwurf warf sie zusammen und meldete CSS-Selektoren als
+     „Kästchen". Ein Kästchen ist ein Bedienelement (sichtbarer
+     Fehler), eine CSS-Regel ist toter Anstrich (stiller Fehler). */
+  const kaestchen = [...new Set(
+    [...admin.matchAll(/class="chip"[^>]*?data-quelle="([a-z]+)"/g)].map(m => m[1]))];
+
+  const stile = [...new Set(
+    [...admin.matchAll(/\[data-quelle=["']?([a-z]+)["']?\]/g)].map(m => m[1]))];
+
+  /* Schreiber 1 · Der Hub reicht die Quelle an bestellung_aufgeben. */
+  const schreiber = new Set(
+    [...hub.matchAll(/p_quelle:\s*"([a-z]+)"/g)].map(m => m[1]));
+
+  /* Schreiber 2 · Eine SQL-Funktion, die bestellung_aufgeben mit
+     benanntem Parameter ruft — so legt bestellung_liefern ihre Zeile
+     an. Weder ein INSERT noch ein JS-Literal; diese Form fehlte hier
+     zuerst, und die Prüfung ging zu Recht rot, als der erste solche
+     Schreiber dazukam. */
+  for(const datei of fs.readdirSync(dbDir).filter(n => n.endsWith(".sql"))){
+    const text = fs.readFileSync(path.join(dbDir, datei), "utf8")
+      .split("\n").map(z => z.replace(/--.*$/, "")).join("\n");
+    for(const m of text.matchAll(/p_quelle\s*=>\s*'([a-z]+)'/gi))
+      schreiber.add(m[1].toLowerCase());
+  }
+
+  /* Schreiber 3 · Direkte INSERTs in bestellungen. Der Wert wird über
+     die STELLE in der Spaltenliste gefunden, nicht geraten — und die
+     Werteliste wird klammertief zerlegt, weil dort Ausdrücke wie
+     nullif(trim(coalesce(p_name, '')), '') stehen, die selbst Kommas
+     enthalten. */
+  for(const datei of fs.readdirSync(dbDir).filter(n => n.endsWith(".sql"))){
+    const text = fs.readFileSync(path.join(dbDir, datei), "utf8")
+      .split("\n").map(z => z.replace(/--.*$/, "")).join("\n");
+    const re = /insert\s+into\s+(?:public\.)?bestellungen\s*\(([^)]*)\)\s*values\s*\(/gi;
+    let m;
+    while((m = re.exec(text))){
+      const spalten = m[1].split(",").map(s => s.trim().toLowerCase());
+      const stelle  = spalten.indexOf("quelle");
+      if(stelle === -1) continue;
+
+      let i = m.index + m[0].length, tiefe = 0, feld = "", felder = [];
+      for(; i < text.length; i++){
+        const c = text[i];
+        if(c === "(") tiefe++;
+        else if(c === ")"){ if(tiefe === 0) break; tiefe--; }
+        if(c === "," && tiefe === 0){ felder.push(feld.trim()); feld = ""; continue; }
+        feld += c;
+      }
+      felder.push(feld.trim());
+
+      const wert = felder[stelle] || "";
+      const lit  = wert.match(/^'([a-z]+)'$/i);
+      if(lit) schreiber.add(lit[1].toLowerCase());
+    }
+  }
+
+  pruef(schreiber.size > 0, "es wurden überhaupt Schreiber gefunden",
+    [...schreiber].sort().join(", ") || "KEINE — die Prüfung misst nichts");
+
+  pruef(kaestchen.length > 0, "es wurden überhaupt Kästchen gefunden",
+    kaestchen.join(", ") || "KEINE — dann misst die Prüfung nichts");
+
+  const ohneSchreiber = kaestchen.filter(k => !schreiber.has(k));
+  pruef(ohneSchreiber.length === 0,
+    "jedes Kästchen filtert auf einen Wert, den auch jemand schreibt",
+    ohneSchreiber.length ? "ohne Schreiber: " + ohneSchreiber.join(", ")
+                         : kaestchen.join(", ") + " — alle gedeckt");
+
+  const toteStile = stile.filter(s => !schreiber.has(s));
+  pruef(toteStile.length === 0,
+    "keine CSS-Regel malt einen quelle-Wert an, den es nicht gibt",
+    toteStile.length ? "tot: " + toteStile.join(", ")
+                     : stile.join(", ") + " — alle gedeckt");
+
+  /* Andersherum ist es KEIN Fehler: „service" hat bewusst kein
+     Kästchen und wird deshalb immer gezeigt. Nur gemeldet, damit man
+     es beim Lesen sieht. */
+  const ohneKaestchen = [...schreiber].filter(s => !kaestchen.includes(s));
+  if(ohneKaestchen.length){
+    console.log("  (ohne eigenes Kästchen, immer sichtbar: " +
+                ohneKaestchen.join(", ") + ")");
+  }
+}
+
 (async () => {
+  quellenAbgleich();
+
   if(!fs.existsSync(path.join(HIER, "admin.html"))){
     console.log("admin.html fehlt."); process.exit(1);
   }

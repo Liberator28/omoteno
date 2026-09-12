@@ -57,9 +57,38 @@ function alleSeiten(){
 }
 
 const kanal = c => { c/=255; return c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4); };
-function dunkel(rgb){
-  const p = (String(rgb).match(/[\d.]+/g) || []).map(Number);
-  if(p.length < 3) return null;
+/* VORFALL, und die Pruefung war jahrelang aus dem falschen Grund
+   gruen. Sie zerlegte mit /[\d.]+/g — gedacht fuer "rgb(20, 16, 14)".
+   Bekommt sie aber einen HEX-Wert aus dem Markenblatt, findet
+   dieselbe Suche die ZIFFERN darin: "#F7F9F4" wird zu 7, 9, 4, also
+   rgb(7,9,4) — fast schwarz. Ein Haus mit fast weissem Grund galt
+   damit als dunkel.
+
+   Warum es nicht aufgefallen ist: Bei "#FBF6F2" findet die Suche nur
+   zwei Ziffern, gibt null zurueck, und null ist falsy — Ergebnis
+   zufaellig richtig. Bei "#0B0C0F" kommen drei Nullen heraus, also
+   schwarz — auch zufaellig richtig. Zwei Haeuser, zweimal aus dem
+   falschen Grund richtig. Erst das dritte hat es aufgedeckt (§8.1g).
+
+   Jetzt wird die Form ERKANNT statt geraten. */
+function dunkel(farbe){
+  const t = String(farbe).trim();
+  let p = null;
+
+  const hex = t.match(/^#?([0-9a-f]{3}|[0-9a-f]{6})$/i);
+  if(hex){
+    const h = hex[1].length === 3
+      ? hex[1].split("").map(c => c + c).join("")
+      : hex[1];
+    p = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16));
+  }else if(/^rgba?\(/i.test(t)){
+    const z = (t.match(/[\d.]+/g) || []).map(Number);
+    if(z.length >= 3) p = z.slice(0, 3);
+  }
+
+  /* Weder das eine noch das andere: NICHT stillschweigend null
+     zurueckgeben. Genau das hat den Fehler oben verdeckt. */
+  if(!p) throw new Error("dunkel(): unbekannte Farbform „" + t + "\u201c");
   return (.2126*kanal(p[0]) + .7152*kanal(p[1]) + .0722*kanal(p[2])) < 0.179;
 }
 

@@ -81,6 +81,10 @@ begin
   end if;
 end $$;
 
+-- ÜBERHOLT durch migration-bestellnummer.sql — NICHT mehr einspielen.
+-- Dieselbe Verwechslung wie beim Storno: Die Suche unten geht über
+-- gast_kennung, gerufen wird mit der id. Der Countdown fiel dadurch
+-- stumm aus. Die gültige Fassung steht in migration-bestellnummer.sql.
 create or replace function public.bestellung_restzeit(nummer text)
 returns integer
 language sql

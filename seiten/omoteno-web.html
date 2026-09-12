@@ -917,6 +917,86 @@ p:last-child{margin-bottom:0}
 .ablauf .rufreihe{margin-top:clamp(30px,4vw,44px)}
 
 /* ═══ 5b · WOHER DER NAME KOMMT ═══════════════════════════════ */
+/* ═══ 5b · DER DURCHGANG ═══════════════════════════════════════
+   Vor dem Abschnitt, der erklaert, was Omotenashi heisst, geht der
+   Leser durch zwei Baeume hindurch. Sie stehen links und rechts,
+   nur als Umriss, und geben beim Weiterscrollen den Blick frei.
+
+   WARUM DAS UEBERHAUPT DA IST, und nicht als Schmuck: Der Abschnitt
+   dahinter ist der einzige, der das Versprechen im Namen erklaert.
+   Ein Durchgang davor macht aus dem Scrollen einen kurzen Weg statt
+   eines Sprungs — und das Gefuehl, um das es geht, ist Ruhe und
+   Verlaesslichkeit, nicht Ueberraschung. Deshalb oeffnen die Baeume
+   langsam und kippen nicht auf.
+
+   Nur transform und opacity — beides auf der Grafikkarte. Ein
+   filter oder eine Breitenaenderung wuerde hier bei jedem Bild neu
+   rechnen lassen, und zwar auf einer grossen Flaeche.
+
+   UND DAS WICHTIGSTE: Der TEXT haengt an nichts davon. Er steht von
+   der ersten Sekunde an voll da. Die Baeume sind eine Schicht
+   darueber, aria-hidden, ohne Zeigerereignisse. Wer kein JavaScript
+   hat, wer reduzierte Bewegung eingestellt hat, wer die Seite
+   ausdruckt: sieht den Abschnitt vollstaendig. Alles andere waere
+   dieselbe Falle wie ein Element, das auf opacity:0 auf einen
+   Beobachter wartet, der nie kommt. */
+/* --auf gehoert AN DEN ABSCHNITT, nicht an den Baum.
+
+   VORFALL, und es ist §3.2 in Variablenform: Ich hatte --auf:1 auf
+   .baum deklariert, als Startwert. Eine Custom Property am Element
+   schlaegt aber den geerbten Wert — das Skript setzte --auf brav am
+   Abschnitt, und der Baum las weiter seine eigene 1. Gemessen: Der
+   Baum stand bei -79 px und blieb bei -79 px, ueber den ganzen
+   Scrollweg. Die Zahl aenderte sich, das Bild nicht.
+
+   Jetzt steht der Startwert hier, und der Baum ERBT ihn. */
+.durchgangfeld{position:relative;overflow:hidden;--auf:1}
+
+.baum{
+  position:absolute;top:0;bottom:0;width:min(46vw,440px);
+  pointer-events:none;z-index:1;
+  /* --auf laeuft von 0 (zu) bis 1 (offen) und wird GEERBT — siehe
+     den Hinweis am Abschnitt. */
+  opacity:calc(.20 + .34 * (1 - var(--auf, 1)));
+  will-change:transform;
+}
+.baum svg{height:100%;width:100%;display:block}
+.baum .zug{
+  fill:none;stroke:var(--kreide-still);
+  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;
+}
+/* Zwei Modifikatoren statt eines einzigen Strichgewichts — ein
+   Pinselstrich wird zum Stamm nicht durch mehr Punkte, sondern durch
+   eine Linie, die dicker anfaengt und duenner wird. .dick fuer den
+   Stamm, .fein fuer Zweige und die haengenden Spitzen. Zwei Klassen
+   auf einem Element wiegen mehr als eine (0,2,0 statt 0,1,0), also
+   gewinnen sie gegen .zug, ohne !important. */
+.baum .zug.dick{stroke-width:3.4}
+.baum .zug.fein{stroke-width:0.95}
+.baum .bluete{fill:none;stroke:var(--kreide-still);stroke-width:1.1}
+
+/* Sie treten AUS DER MITTE zurueck, nicht von aussen herein: Beim
+   Schliessen schieben sie sich zueinander und ueberlappen leicht —
+   das ist der Moment, in dem man "durch" sie hindurchsieht. */
+.baum.links {left:0;  transform:translate3d(calc(var(--auf, 1) * -18%),0,0)}
+.baum.rechts{right:0; transform:translate3d(calc(var(--auf, 1) *  18%),0,0) scaleX(-1)}
+
+/* Der Text liegt darueber und bleibt lesbar. */
+.durchgangfeld .innen{position:relative;z-index:2}
+
+/* Ohne Bewegung: offen, fertig, nichts wartet. */
+@media (prefers-reduced-motion:reduce){
+  .baum{transition:none}
+  .baum.links,.baum.rechts{transform:none}
+  .baum.rechts{transform:scaleX(-1)}
+}
+
+/* Auf dem Telefon nehmen zwei Baeume die halbe Breite weg. Sie
+   bleiben, aber schmaler und blasser — der Text hat Vorrang. */
+@media (max-width:620px){
+  .baum{width:38vw;opacity:calc(.13 + .20 * (1 - var(--auf, 1)))}
+}
+
 .herkunft{background:var(--sockel);color:var(--kreide);padding:clamp(76px,11vw,132px) 0}
 .herkunft .marke{color:var(--kreide-still);display:block;margin-bottom:14px}
 .herkunft h2{max-width:20ch;margin-bottom:22px}
@@ -2189,7 +2269,237 @@ html.starr{overflow:hidden}
      ganz — und damit stand über der ganzen Seite ein Wort, das
      niemand versteht. Ein Name ohne Geschichte ist ein Tippfehler,
      ein Name mit Geschichte ist ein Versprechen. -->
-<section class="herkunft">
+<section class="herkunft durchgangfeld" id="durchgangfeld">
+  <!-- Zwei Umrisse, links und rechts. aria-hidden, weil sie nichts
+       sagen, was der Text nicht sagt — ein Vorleseprogramm soll hier
+       nicht "Grafik" ansagen und den Leser aufhalten. -->
+  <div class="baum links" id="baumLinks">
+    <svg viewBox="0 0 200 640" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false">
+      <!-- Der Stamm. Dick am Boden, duenner nach oben, leicht
+           geneigt — drei uebereinandergelegte Zuege statt eines
+           gleichbleibend dicken Strichs, dieselbe Abnahme wie bei
+           einem Pinselstrich. Ein Knoten markiert, wo die Krone
+           beginnt. -->
+      <path class="zug dick" d="M8 640 C 14 566 20 494 26 428 C 30 384 32 344 30 306"/>
+      <path class="zug" d="M30 306 C 28 276 34 250 46 230"/>
+      <ellipse class="zug fein" cx="27" cy="352" rx="7" ry="3.5" transform="rotate(-18 27 352)"/>
+
+      <!-- Die haengenden Aeste. Das ist der eine Zug, an dem man eine
+           Kirschbluete von jedem anderen Baum unterscheidet: Sie
+           steigen aus der Krone auf und faellen dann wie ein
+           Springbrunnen wieder herab, statt gerade nach oben zu
+           wachsen. Vier Baegen, jeder eine andere Laenge und Tiefe. -->
+      <path class="zug" d="M46 230 C 84 210 132 202 182 214 C 158 234 128 244 108 268 C 92 288 84 312 88 336"/>
+      <path class="zug" d="M42 214 C 66 188 100 172 138 168 C 122 188 104 202 96 224 C 90 240 90 256 98 270"/>
+      <path class="zug" d="M32 300 C 62 288 94 292 116 312 C 100 328 82 336 70 354 C 60 368 56 384 62 400"/>
+      <path class="zug" d="M28 340 C 54 336 78 348 88 372 C 74 384 60 392 52 408 C 46 420 46 434 54 446"/>
+      <path class="zug fein" d="M34 380 C 52 392 62 410 60 430 C 52 438 44 448 42 460"/>
+
+      <!-- Zweige, die von den Hauptaesten abgehen. Kurz, mit einem
+           kleinen Knick, wie ein echter Zweig, der sich der Sonne
+           zudreht. -->
+      <path class="zug fein" d="M150 220 C 162 214 172 216 180 224"/>
+      <path class="zug fein" d="M112 274 C 122 264 134 262 144 266"/>
+      <path class="zug fein" d="M100 190 C 112 182 124 182 134 188"/>
+      <path class="zug fein" d="M78 320 C 90 314 102 316 110 324"/>
+      <path class="zug fein" d="M70 366 C 80 358 92 358 100 364"/>
+      <path class="zug fein" d="M58 410 C 68 404 78 406 84 414"/>
+
+      <!-- Bluetendolden: mehrere kleine Kreise je Bluete, nicht ein
+           einzelner Punkt — an den Zweigspitzen gehaeuft, wie an
+           einem echten Baum. -->
+      <circle class="bluete" cx="176.0" cy="254.9" r="1.9"/>
+      <circle class="bluete" cx="178.9" cy="257.0" r="1.9"/>
+      <circle class="bluete" cx="177.8" cy="260.5" r="1.9"/>
+      <circle class="bluete" cx="174.2" cy="260.5" r="1.9"/>
+      <circle class="bluete" cx="173.1" cy="257.0" r="1.9"/>
+      <circle class="bluete" cx="176.0" cy="258.0" r="0.9"/>
+      <circle class="bluete" cx="150.0" cy="229.4" r="1.6"/>
+      <circle class="bluete" cx="152.5" cy="231.2" r="1.6"/>
+      <circle class="bluete" cx="151.5" cy="234.1" r="1.6"/>
+      <circle class="bluete" cx="148.5" cy="234.1" r="1.6"/>
+      <circle class="bluete" cx="147.5" cy="231.2" r="1.6"/>
+      <circle class="bluete" cx="150.0" cy="232.0" r="0.8"/>
+      <circle class="bluete" cx="188.0" cy="297.5" r="1.5"/>
+      <circle class="bluete" cx="190.4" cy="299.2" r="1.5"/>
+      <circle class="bluete" cx="189.5" cy="302.0" r="1.5"/>
+      <circle class="bluete" cx="186.5" cy="302.0" r="1.5"/>
+      <circle class="bluete" cx="185.6" cy="299.2" r="1.5"/>
+      <circle class="bluete" cx="188.0" cy="300.0" r="0.7"/>
+      <circle class="bluete" cx="150.0" cy="352.9" r="1.9"/>
+      <circle class="bluete" cx="152.9" cy="355.0" r="1.9"/>
+      <circle class="bluete" cx="151.8" cy="358.5" r="1.9"/>
+      <circle class="bluete" cx="148.2" cy="358.5" r="1.9"/>
+      <circle class="bluete" cx="147.1" cy="355.0" r="1.9"/>
+      <circle class="bluete" cx="150.0" cy="356.0" r="0.9"/>
+      <circle class="bluete" cx="120.0" cy="389.4" r="1.6"/>
+      <circle class="bluete" cx="122.5" cy="391.2" r="1.6"/>
+      <circle class="bluete" cx="121.5" cy="394.1" r="1.6"/>
+      <circle class="bluete" cx="118.5" cy="394.1" r="1.6"/>
+      <circle class="bluete" cx="117.5" cy="391.2" r="1.6"/>
+      <circle class="bluete" cx="120.0" cy="392.0" r="0.8"/>
+      <circle class="bluete" cx="86.0" cy="417.7" r="1.4"/>
+      <circle class="bluete" cx="88.2" cy="419.3" r="1.4"/>
+      <circle class="bluete" cx="87.4" cy="421.9" r="1.4"/>
+      <circle class="bluete" cx="84.6" cy="421.9" r="1.4"/>
+      <circle class="bluete" cx="83.8" cy="419.3" r="1.4"/>
+      <circle class="bluete" cx="86.0" cy="420.0" r="0.7"/>
+      <circle class="bluete" cx="140.0" cy="153.2" r="1.7"/>
+      <circle class="bluete" cx="142.7" cy="155.1" r="1.7"/>
+      <circle class="bluete" cx="141.6" cy="158.3" r="1.7"/>
+      <circle class="bluete" cx="138.4" cy="158.3" r="1.7"/>
+      <circle class="bluete" cx="137.3" cy="155.1" r="1.7"/>
+      <circle class="bluete" cx="140.0" cy="156.0" r="0.8"/>
+      <circle class="bluete" cx="168.0" cy="173.7" r="1.4"/>
+      <circle class="bluete" cx="170.2" cy="175.3" r="1.4"/>
+      <circle class="bluete" cx="169.4" cy="177.9" r="1.4"/>
+      <circle class="bluete" cx="166.6" cy="177.9" r="1.4"/>
+      <circle class="bluete" cx="165.8" cy="175.3" r="1.4"/>
+      <circle class="bluete" cx="168.0" cy="176.0" r="0.7"/>
+      <circle class="bluete" cx="108.0" cy="125.8" r="1.3"/>
+      <circle class="bluete" cx="110.1" cy="127.3" r="1.3"/>
+      <circle class="bluete" cx="109.3" cy="129.8" r="1.3"/>
+      <circle class="bluete" cx="106.7" cy="129.8" r="1.3"/>
+      <circle class="bluete" cx="105.9" cy="127.3" r="1.3"/>
+      <circle class="bluete" cx="108.0" cy="128.0" r="0.6"/>
+      <circle class="bluete" cx="66.0" cy="466.0" r="1.2"/>
+      <circle class="bluete" cx="67.9" cy="467.4" r="1.2"/>
+      <circle class="bluete" cx="67.2" cy="469.6" r="1.2"/>
+      <circle class="bluete" cx="64.8" cy="469.6" r="1.2"/>
+      <circle class="bluete" cx="64.1" cy="467.4" r="1.2"/>
+      <circle class="bluete" cx="66.0" cy="468.0" r="0.6"/>
+
+      <!-- Fallende Blueten, tiefer und kleiner, auf dem Weg nach
+           unten. Das macht aus dem Umriss einen Ort, nicht nur eine
+           Form. -->
+      <circle class="bluete" cx="70.0" cy="558.3" r="1.0"/>
+      <circle class="bluete" cx="71.6" cy="559.5" r="1.0"/>
+      <circle class="bluete" cx="71.0" cy="561.4" r="1.0"/>
+      <circle class="bluete" cx="69.0" cy="561.4" r="1.0"/>
+      <circle class="bluete" cx="68.4" cy="559.5" r="1.0"/>
+      <circle class="bluete" cx="70.0" cy="560.0" r="0.5"/>
+      <circle class="bluete" cx="118.0" cy="602.6" r="0.9"/>
+      <circle class="bluete" cx="119.3" cy="603.6" r="0.9"/>
+      <circle class="bluete" cx="118.8" cy="605.1" r="0.9"/>
+      <circle class="bluete" cx="117.2" cy="605.1" r="0.9"/>
+      <circle class="bluete" cx="116.7" cy="603.6" r="0.9"/>
+      <circle class="bluete" cx="118.0" cy="604.0" r="0.4"/>
+    </svg>
+  </div>
+  <div class="baum rechts" id="baumRechts">
+    <svg viewBox="0 0 200 640" preserveAspectRatio="xMinYMid slice" aria-hidden="true" focusable="false">
+      <!-- Der Stamm. Dick am Boden, duenner nach oben, leicht
+           geneigt — drei uebereinandergelegte Zuege statt eines
+           gleichbleibend dicken Strichs, dieselbe Abnahme wie bei
+           einem Pinselstrich. Ein Knoten markiert, wo die Krone
+           beginnt. -->
+      <path class="zug dick" d="M8 640 C 14 566 20 494 26 428 C 30 384 32 344 30 306"/>
+      <path class="zug" d="M30 306 C 28 276 34 250 46 230"/>
+      <ellipse class="zug fein" cx="27" cy="352" rx="7" ry="3.5" transform="rotate(-18 27 352)"/>
+
+      <!-- Die haengenden Aeste. Das ist der eine Zug, an dem man eine
+           Kirschbluete von jedem anderen Baum unterscheidet: Sie
+           steigen aus der Krone auf und faellen dann wie ein
+           Springbrunnen wieder herab, statt gerade nach oben zu
+           wachsen. Vier Baegen, jeder eine andere Laenge und Tiefe. -->
+      <path class="zug" d="M46 230 C 84 210 132 202 182 214 C 158 234 128 244 108 268 C 92 288 84 312 88 336"/>
+      <path class="zug" d="M42 214 C 66 188 100 172 138 168 C 122 188 104 202 96 224 C 90 240 90 256 98 270"/>
+      <path class="zug" d="M32 300 C 62 288 94 292 116 312 C 100 328 82 336 70 354 C 60 368 56 384 62 400"/>
+      <path class="zug" d="M28 340 C 54 336 78 348 88 372 C 74 384 60 392 52 408 C 46 420 46 434 54 446"/>
+      <path class="zug fein" d="M34 380 C 52 392 62 410 60 430 C 52 438 44 448 42 460"/>
+
+      <!-- Zweige, die von den Hauptaesten abgehen. Kurz, mit einem
+           kleinen Knick, wie ein echter Zweig, der sich der Sonne
+           zudreht. -->
+      <path class="zug fein" d="M150 220 C 162 214 172 216 180 224"/>
+      <path class="zug fein" d="M112 274 C 122 264 134 262 144 266"/>
+      <path class="zug fein" d="M100 190 C 112 182 124 182 134 188"/>
+      <path class="zug fein" d="M78 320 C 90 314 102 316 110 324"/>
+      <path class="zug fein" d="M70 366 C 80 358 92 358 100 364"/>
+      <path class="zug fein" d="M58 410 C 68 404 78 406 84 414"/>
+
+      <!-- Bluetendolden: mehrere kleine Kreise je Bluete, nicht ein
+           einzelner Punkt — an den Zweigspitzen gehaeuft, wie an
+           einem echten Baum. -->
+      <circle class="bluete" cx="176.0" cy="254.9" r="1.9"/>
+      <circle class="bluete" cx="178.9" cy="257.0" r="1.9"/>
+      <circle class="bluete" cx="177.8" cy="260.5" r="1.9"/>
+      <circle class="bluete" cx="174.2" cy="260.5" r="1.9"/>
+      <circle class="bluete" cx="173.1" cy="257.0" r="1.9"/>
+      <circle class="bluete" cx="176.0" cy="258.0" r="0.9"/>
+      <circle class="bluete" cx="150.0" cy="229.4" r="1.6"/>
+      <circle class="bluete" cx="152.5" cy="231.2" r="1.6"/>
+      <circle class="bluete" cx="151.5" cy="234.1" r="1.6"/>
+      <circle class="bluete" cx="148.5" cy="234.1" r="1.6"/>
+      <circle class="bluete" cx="147.5" cy="231.2" r="1.6"/>
+      <circle class="bluete" cx="150.0" cy="232.0" r="0.8"/>
+      <circle class="bluete" cx="188.0" cy="297.5" r="1.5"/>
+      <circle class="bluete" cx="190.4" cy="299.2" r="1.5"/>
+      <circle class="bluete" cx="189.5" cy="302.0" r="1.5"/>
+      <circle class="bluete" cx="186.5" cy="302.0" r="1.5"/>
+      <circle class="bluete" cx="185.6" cy="299.2" r="1.5"/>
+      <circle class="bluete" cx="188.0" cy="300.0" r="0.7"/>
+      <circle class="bluete" cx="150.0" cy="352.9" r="1.9"/>
+      <circle class="bluete" cx="152.9" cy="355.0" r="1.9"/>
+      <circle class="bluete" cx="151.8" cy="358.5" r="1.9"/>
+      <circle class="bluete" cx="148.2" cy="358.5" r="1.9"/>
+      <circle class="bluete" cx="147.1" cy="355.0" r="1.9"/>
+      <circle class="bluete" cx="150.0" cy="356.0" r="0.9"/>
+      <circle class="bluete" cx="120.0" cy="389.4" r="1.6"/>
+      <circle class="bluete" cx="122.5" cy="391.2" r="1.6"/>
+      <circle class="bluete" cx="121.5" cy="394.1" r="1.6"/>
+      <circle class="bluete" cx="118.5" cy="394.1" r="1.6"/>
+      <circle class="bluete" cx="117.5" cy="391.2" r="1.6"/>
+      <circle class="bluete" cx="120.0" cy="392.0" r="0.8"/>
+      <circle class="bluete" cx="86.0" cy="417.7" r="1.4"/>
+      <circle class="bluete" cx="88.2" cy="419.3" r="1.4"/>
+      <circle class="bluete" cx="87.4" cy="421.9" r="1.4"/>
+      <circle class="bluete" cx="84.6" cy="421.9" r="1.4"/>
+      <circle class="bluete" cx="83.8" cy="419.3" r="1.4"/>
+      <circle class="bluete" cx="86.0" cy="420.0" r="0.7"/>
+      <circle class="bluete" cx="140.0" cy="153.2" r="1.7"/>
+      <circle class="bluete" cx="142.7" cy="155.1" r="1.7"/>
+      <circle class="bluete" cx="141.6" cy="158.3" r="1.7"/>
+      <circle class="bluete" cx="138.4" cy="158.3" r="1.7"/>
+      <circle class="bluete" cx="137.3" cy="155.1" r="1.7"/>
+      <circle class="bluete" cx="140.0" cy="156.0" r="0.8"/>
+      <circle class="bluete" cx="168.0" cy="173.7" r="1.4"/>
+      <circle class="bluete" cx="170.2" cy="175.3" r="1.4"/>
+      <circle class="bluete" cx="169.4" cy="177.9" r="1.4"/>
+      <circle class="bluete" cx="166.6" cy="177.9" r="1.4"/>
+      <circle class="bluete" cx="165.8" cy="175.3" r="1.4"/>
+      <circle class="bluete" cx="168.0" cy="176.0" r="0.7"/>
+      <circle class="bluete" cx="108.0" cy="125.8" r="1.3"/>
+      <circle class="bluete" cx="110.1" cy="127.3" r="1.3"/>
+      <circle class="bluete" cx="109.3" cy="129.8" r="1.3"/>
+      <circle class="bluete" cx="106.7" cy="129.8" r="1.3"/>
+      <circle class="bluete" cx="105.9" cy="127.3" r="1.3"/>
+      <circle class="bluete" cx="108.0" cy="128.0" r="0.6"/>
+      <circle class="bluete" cx="66.0" cy="466.0" r="1.2"/>
+      <circle class="bluete" cx="67.9" cy="467.4" r="1.2"/>
+      <circle class="bluete" cx="67.2" cy="469.6" r="1.2"/>
+      <circle class="bluete" cx="64.8" cy="469.6" r="1.2"/>
+      <circle class="bluete" cx="64.1" cy="467.4" r="1.2"/>
+      <circle class="bluete" cx="66.0" cy="468.0" r="0.6"/>
+
+      <!-- Fallende Blueten, tiefer und kleiner, auf dem Weg nach
+           unten. Das macht aus dem Umriss einen Ort, nicht nur eine
+           Form. -->
+      <circle class="bluete" cx="70.0" cy="558.3" r="1.0"/>
+      <circle class="bluete" cx="71.6" cy="559.5" r="1.0"/>
+      <circle class="bluete" cx="71.0" cy="561.4" r="1.0"/>
+      <circle class="bluete" cx="69.0" cy="561.4" r="1.0"/>
+      <circle class="bluete" cx="68.4" cy="559.5" r="1.0"/>
+      <circle class="bluete" cx="70.0" cy="560.0" r="0.5"/>
+      <circle class="bluete" cx="118.0" cy="602.6" r="0.9"/>
+      <circle class="bluete" cx="119.3" cy="603.6" r="0.9"/>
+      <circle class="bluete" cx="118.8" cy="605.1" r="0.9"/>
+      <circle class="bluete" cx="117.2" cy="605.1" r="0.9"/>
+      <circle class="bluete" cx="116.7" cy="603.6" r="0.9"/>
+      <circle class="bluete" cx="118.0" cy="604.0" r="0.4"/>
+    </svg>
+  </div>
+
   <div class="innen eng">
     <p class="jp" lang="ja" aria-hidden="true">おもてなし</p>
     <span class="marke">Woher der Name kommt</span>
@@ -2483,6 +2793,85 @@ html.starr{overflow:hidden}
     warte = false;
   }
   addEventListener("scroll", function(){
+    if(!warte){ requestAnimationFrame(messen); warte = true; }
+  }, {passive:true});
+  messen();
+})();
+
+/* ─── Der Durchgang: zwei Baeume treten zur Seite ────────────
+   Der Leser scrollt auf den Abschnitt zu, der erklaert, was
+   Omotenashi heisst. Davor stehen zwei Baeume, geschlossen. Beim
+   Weiterscrollen geben sie den Blick frei.
+
+   DIE BEWEGUNG HAENGT AM SCROLLEN, nicht an einer Dauer. Eine
+   Animation mit fester Laufzeit waere hier falsch: Der Leser
+   bestimmt das Tempo, und wer zurueckscrollt, soll die Baeume
+   wieder zugehen sehen. Genau dafuer ist eine Fortschrittsgroesse
+   da und keine Keyframe.
+
+   Gerechnet wird EINE Zahl (0 = zu, 1 = offen) und als
+   Custom Property gesetzt. Das CSS macht daraus transform und
+   opacity — beides auf der Grafikkarte.
+
+   Dasselbe Muster wie beim Bildlauffortschritt weiter oben:
+   scroll-Horcher, rAF-gedrosselt, passive. Kein zweiter
+   Mechanismus fuer dieselbe Sache.                              */
+(function durchgang(){
+  var feld = document.getElementById("durchgangfeld");
+  if(!feld) return;
+
+  var stille = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  /* Ohne Bewegung: offen stehen lassen und gar nicht erst horchen.
+     Der Endzustand muss RICHTIG sein — nicht bloss unbewegt. */
+  if(stille){ feld.style.setProperty("--auf", "1"); return; }
+
+  var warte = false, letzte = -1;
+
+  function messen(){
+    warte = false;
+    var k = feld.getBoundingClientRect();
+    var fenster = window.innerHeight || 1;
+
+    /* Der Weg durch den Durchgang: Er beginnt, wenn die Oberkante
+       des Abschnitts das untere Drittel des Fensters erreicht, und
+       ist zu Ende, wenn sie oben angekommen ist. In dieser Spanne
+       geht der Leser "hindurch".
+
+       Vorher 0 (die Baeume stehen zu, man sieht sie kommen),
+       nachher 1 (offen, der Text liegt frei). */
+    /* GEMESSEN, nicht geschaetzt. Mein erster Ansatz begann bei 0.86
+       der Fensterhoehe — die Baeume gingen damit auf, sobald der
+       Abschnitt den unteren Rand streifte, und man sah sie nie
+       geschlossen. Bei 640 px vom oberen Rand standen sie schon auf
+       halb offen (--auf 0.49).
+
+       Jetzt beginnt es erst, wenn der Abschnitt deutlich im Bild
+       ist. Der Leser sieht also zuerst zwei geschlossene Baeume und
+       geht dann hindurch — das ist die Reihenfolge, um die es
+       geht. */
+    var start = fenster * 0.60;
+    var ende  = fenster * 0.05;
+    var t = (start - k.top) / (start - ende);
+    if(t < 0) t = 0; else if(t > 1) t = 1;
+
+    /* Weich ausrollen statt linear — linear liest sich mechanisch,
+       und hier soll es sich ruhig anfuehlen. Dieselbe Form wie
+       --weich im Blatt (ease-out, sehr weiches Ausrollen). */
+    var auf = 1 - Math.pow(1 - t, 3);
+
+    /* NICHT NEU SETZEN, WENN SICH NICHTS GEAENDERT HAT. Auf zwei
+       Nachkommastellen gerundet: Das Auge sieht keinen Unterschied,
+       der Browser spart sich bei jedem Bild einen Stilwechsel. */
+    var gerundet = Math.round(auf * 100) / 100;
+    if(gerundet === letzte) return;
+    letzte = gerundet;
+    feld.style.setProperty("--auf", String(gerundet));
+  }
+
+  addEventListener("scroll", function(){
+    if(!warte){ requestAnimationFrame(messen); warte = true; }
+  }, {passive:true});
+  addEventListener("resize", function(){
     if(!warte){ requestAnimationFrame(messen); warte = true; }
   }, {passive:true});
   messen();

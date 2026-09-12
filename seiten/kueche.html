@@ -43,6 +43,21 @@
 <!-- KEIN Schriftlink. Siehe Entscheidung 1 oben: Ein Display am Pass
      hängt von keinem fremden Dienst ab — auch nicht für Buchstaben. -->
 <meta name="theme-color" content="#0A1714">
+
+<!-- Die Kueche hatte kein Manifest — und sie ist die Flaeche, die
+     wirklich an der Wand haengt. Ohne Manifest laeuft sie im
+     Browser-Tab, mit Adressleiste, und der Koch hat die halbe
+     Schirmhoehe fuer Omoteno.
+
+     Vom Home-Bildschirm gestartet gibt es keine Browserleiste, die
+     man wegwischen koennte. Auf Android randlos (fullscreen), auf
+     iOS standalone — dort bleibt die Statusleiste, das ist Apples
+     Grenze. black-translucent legt sie wenigstens UEBER die Seite,
+     statt Platz zu nehmen. -->
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest"
+      href='data:application/manifest+json,{"name":"Omoteno Küche","short_name":"Küche","display":"fullscreen","display_override":["fullscreen","standalone"],"orientation":"any","background_color":"%230A1714","theme_color":"%230A1714","start_url":"."}'>
 <meta name="robots" content="noindex, nofollow">
 <style>
 /* FARBSCHEMA — kein Schmuck, sondern die Ansage an den Browser.
@@ -698,7 +713,9 @@ var EINST = {
   /* Muss hier stehen, auch wenn die Vorgabe false ist: Das Zurücklesen
      unten siebt mit „if(s in EINST)" — ein Schlüssel, den die Vorgabe
      nicht kennt, käme nie zurück. */
-  vollbild:  false
+  /* AN als Vorgabe — siehe admin.html. Ein Schirm an der Wand
+     soll randlos hochkommen, nicht erst nach einer Einstellung. */
+  vollbild:  true
 };
 
 var sitzung = null, betrieb = null, betriebe = [];
@@ -857,6 +874,11 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
                       will er es abholen. Am Tisch sind die Felder leer
                       und kosten nichts. */
                    "gast_name,gast_telefon,abholung,wunschzeit,tagesnummer," +
+                   /* Wohin geliefert wird und was die Lieferung kostet.
+                      Fehlen die Spalten in der Abfrage, kaeme der Bon
+                      ohne Adresse an — und ein Fahrer ohne Adresse ist
+                      kein Fahrer. */
+                   "liefer_adresse,liefergebuehr," +
                    /* Die Zusage aus dem Admin-Board: wie viele Minuten
                       versprochen wurden und ab wann sie laufen. Erst
                       beide zusammen ergeben eine Restzeit — eine Zahl
@@ -887,7 +909,11 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
 function ladeBons(){
   var seit = new Date(Date.now() - RUECKBLICK_STD*3600*1000).toISOString();
   return ruf("/rest/v1/bestellungen?select="+BON_SPALTEN+"&betrieb_id=eq."+betrieb.id+
-             "&quelle=in.(tisch,telefon)"+
+             /* „lieferung" MUSS hier stehen. Ohne diesen einen Wert
+                landet eine Lieferbestellung im Board, die Küche sieht
+                sie nie — ein Bon, den niemand kocht, und niemand
+                merkt es, weil nichts fehlt, was jemand kennt. */
+             "&quelle=in.(tisch,telefon,lieferung)"+
              "&zeitpunkt=gte."+seit+"&order=zeitpunkt.asc")
     .then(function(a){
       if(!a.ok) throw new Error("Bons nicht lesbar ("+a.status+")");
@@ -1232,7 +1258,10 @@ function zeichne(){
              Nummer, unter der der Pass ausgerufen wird. Wer am Pass
              steht, muss auf einen Blick wissen, ob der Teller zum
              Gast geht oder in eine Tüte. */
-          (b.quelle === "telefon"
+          (b.quelle === "lieferung"
+            ? '<div class="tisch telefon"><small>Lieferung</small>' +
+                h(b.tagesnummer != null ? "#" + b.tagesnummer : "Aus") + '</div>'
+            : b.quelle === "telefon"
             ? '<div class="tisch telefon"><small>' +
                 (b.abholung === false ? 'Lieferung' : 'Abholung') + '</small>' +
                 h(b.tagesnummer != null ? "#" + b.tagesnummer : "Tel") + '</div>'
@@ -1250,6 +1279,22 @@ function zeichne(){
                 ? '<span class="wunsch">' + h(new Date(b.wunschzeit)
                     .toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})) + ' Uhr</span>'
                 : '') +
+            '</div>'
+          : '') +
+        /* Die Lieferadresse gehoert auf den Bon, nicht nur ins Board:
+           Wer packt, muss wissen, wohin — und der Zettel in der Tuete
+           ist oft das Einzige, was der Fahrer mitnimmt. Dieselbe
+           Flaeche wie beim Telefonbon, kein neuer Block. */
+        (b.quelle === "lieferung" && b.liefer_adresse
+          ? '<div class="anrufer"><b>Liefern an</b>' +
+              h([b.liefer_adresse.name,
+                 b.liefer_adresse.strasse,
+                 [b.liefer_adresse.plz, b.liefer_adresse.ort].filter(Boolean).join(" ")]
+                .filter(Boolean).join(" · ")) +
+              (b.liefer_adresse.klingel
+                ? '<span class="wunsch">' + h(b.liefer_adresse.klingel) + '</span>' : '') +
+              (b.liefer_adresse.telefon
+                ? '<span class="wunsch">' + h(b.liefer_adresse.telefon) + '</span>' : '') +
             '</div>'
           : '') +
         (b.notiz ? '<div class="notiz"><b>Hinweis vom Gast</b>' + h(b.notiz) + '</div>' : '') +
@@ -1810,26 +1855,83 @@ function vollbildKnopfStellen(kennung){
    erneut hinein, wenn der Nutzer bewusst herausgegangen ist. */
 function vollbildAufWunsch(kennung, willVollbild, merken){
   var knopf = document.getElementById(kennung);
+
+  /* Der Unterschied, an dem alles haengt: Ist der Nutzer ABSICHTLICH
+     heraus, oder hat ihn etwas hinausgeworfen?
+
+     Escape, die Systemgeste und ein Wechsel der Anwendung beenden den
+     Vollbildmodus, ohne dass jemand das wollte — dort soll er
+     zurueckkommen. Wer dagegen den Knopf drueckt, will heraus, und
+     dann waere ein erneutes Hineinspringen beim naechsten Tipp ein
+     Kampf gegen den Nutzer. Genau davor warnte der Kommentar der
+     ersten Fassung; sie loeste es, indem sie sich NIE wieder
+     bewaffnete — und damit kam der Vollbildmodus nach einem
+     versehentlichen Escape bis zum Neuladen nicht zurueck. */
+  var absichtlichRaus = false;
+
   if(knopf) knopf.addEventListener("click", function(){
     var neu = !vollbildAn();
+    absichtlichRaus = !neu;
+    /* ABRAEUMEN, wenn er heraus will. Ohne diese Zeile blieb der
+       Horcher scharf: Der Knopf ist vom Bewaffnen ausgenommen, also
+       kehrte einmal() frueh zurueck OHNE abzuraeumen — und der
+       naechste Tipp irgendwo nahm den Nutzer wieder hinein, obwohl
+       er gerade selbst herausgegangen war. Gefunden hat es das
+       Kuechen-Board, das keinen Scharfschalt-Schirm hat und deshalb
+       mit noch scharfem Horcher in die Probe lief. */
+    if(absichtlichRaus) abraeumen(); else bewaffnen();
     if(neu) vollbildRein(); else vollbildRaus();
     if(merken) merken(neu);
   });
 
+  /* Die Horcher werden bei jedem Bewaffnen neu gesetzt und beim
+     Zugriff wieder abgeraeumt. capture, damit sie auch dann greifen,
+     wenn ein Kind das Ereignis stoppt. */
+  var arten = ["pointerdown", "keydown", "touchend"];
+  var einmal = function(e){
+    /* Der Vollbildknopf ist die EINE Geste, die hier nicht zaehlt.
+
+       VORFALL, gemessen von pruef-vollbild.js, sofort nachdem die
+       Vorgabe auf "an" ging: Der Horcher laeuft in der Capture-Phase,
+       also VOR dem Knopf. Ein Druck auf den Vollbildknopf schaltete
+       damit erst ein — und der Knopf rechnete danach
+       neu = !vollbildAn() = false und schaltete wieder aus. Der Wirt
+       drueckt "Vollbild" und es passiert nichts. Fuenfzehn Proben
+       waren rot, und zwar invertiert: erst "an" erwartet und "aus"
+       bekommen, dann umgekehrt.
+
+       Der Knopf spricht fuer sich selbst. Jede andere Geste bewaffnet. */
+    if(knopf && e && e.target && (e.target === knopf || knopf.contains(e.target))) return;
+    abraeumen();
+    if(!vollbildAn()) vollbildRein();
+  };
+  function abraeumen(){
+    arten.forEach(function(a){ document.removeEventListener(a, einmal, true); });
+  }
+  function bewaffnen(){
+    if(!document.documentElement.requestFullscreen) return;
+    abraeumen();
+    arten.forEach(function(a){ document.addEventListener(a, einmal, true); });
+  }
+
   document.addEventListener("fullscreenchange", function(){
     vollbildKnopfStellen(kennung);
+    /* Herausgeworfen und nicht selbst gegangen: die naechste Geste
+       nimmt uns wieder hinein. EIN Handgriff, nicht fuenf.
+
+       Was hier NICHT steht und nicht stehen kann: ein Verhindern des
+       Verlassens. Escape und die Systemgeste sind eine Zusage des
+       Browsers an den Nutzer, keine Luecke. Eine Seite, die das
+       abfangen koennte, waere eine Falle. */
+    /* Nicht willVollbild fragen: Das ist der Wunsch beim START und
+       veraltet in der Sekunde, in der der Nutzer den Knopf benutzt.
+       absichtlichRaus traegt die aktuelle Wahrheit. */
+    if(!vollbildAn() && !absichtlichRaus) bewaffnen();
   });
   vollbildKnopfStellen(kennung);
 
-  if(!willVollbild || !document.documentElement.requestFullscreen) return;
-  var arten = ["pointerdown", "keydown", "touchend"];
-  var einmal = function(){
-    arten.forEach(function(a){ document.removeEventListener(a, einmal, true); });
-    if(!vollbildAn()) vollbildRein();
-  };
-  arten.forEach(function(a){
-    document.addEventListener(a, einmal, true);
-  });
+  if(!willVollbild) return;
+  bewaffnen();
 }
 /* ╚═══ VOLLBILD · GETEILTER BLOCK · ENDE ══════════════════════════╝ */
 

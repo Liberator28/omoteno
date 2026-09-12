@@ -276,6 +276,34 @@ nicht; er läuft als Teil der Anweisung.
 `datenbank/pruef-rechte.sql` macht beides richtig und fährt 36
 Angriffe und ehrliche Wege in einer zurückgedrehten Transaktion.
 
+### 2.3c Eine Spalte kann eine Liste führen, die nirgends im Code steht
+
+> **Vorfall.** `bestellungen.quelle` sollte den neuen Wert
+> `'lieferung'` bekommen. Kein `grep` dieses Projekts hätte gefunden,
+> was dem entgegenstand: `bestellungen_quelle_check` mit
+> `CHECK (quelle = ANY (ARRAY['tisch','telefon','reservierung','service']))`.
+> Es gibt kein `create table bestellungen` — die Tabelle ist älter als
+> diese Dateien, und die Liste lebt nur im Katalog von Postgres.
+>
+> Ohne Vorabfrage wäre `bestellung_liefern()` angelegt worden und
+> hätte `success: true` gemeldet — ein Funktionskörper wird beim
+> Anlegen nicht geprüft (§2.2). Gemerkt hätte es erst der **erste
+> Gast**: Adresse getippt, Korb gefüllt, Knopf gedrückt, dann ein
+> Fehler aus dem `insert`. Der Betrieb hätte ihn bei sich gesucht.
+
+Wer einen neuen Wert in eine Spalte einführt, fragt nicht den Code,
+sondern den Katalog:
+
+```sql
+select conname, pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid = 'public.<tabelle>'::regclass and contype = 'c';
+```
+
+Und beim Erweitern bleibt **jeder** alte Wert drin — auch einer, der
+heute keine Zeile hat. Der fehlende neue Wert fehlt laut; ein
+verlorener alter fehlt still.
+
 ### 2.4 Rollenwechsel allein simuliert PostgREST nicht
 
 `set role anon` reicht nicht. Der einzige verlässliche Weg:
@@ -832,6 +860,42 @@ Und die Prüfung dazu: `pruef-konto-start.js` erwähnte Google mit
 keiner Zeile. Eine Seite, die eine Prüfung hat, ist nicht geprüft —
 geprüft ist, was in der Prüfung **vorkommt**.
 
+### 8.1i Zwei Hälften, jede gegen eine Erfindung der anderen geprüft
+
+> **Vorfall, gemeldet vom Betreiber — nicht von einer der 30
+> Prüfungen.** Der Gast konnte nicht stornieren: „Das geht hier gerade
+> nicht." Der Hub schickte die UUID der Zeile (`zeile.id`), die
+> SQL-Funktion suchte über die Quittungsnummer
+> (`where gast_kennung = nummer`). Eine UUID ist nie eine
+> Quittungsnummer — also nie ein Treffer, also `grund:'unbekannt'`.
+>
+> **Derselbe Fehler stand ein zweites Mal**, in `bestellung_restzeit`.
+> Dort fiel er **stumm** aus: kein Text, kein Zeichen, der Countdown
+> erschien einfach nie. Niemand hat ihn gemeldet, weil nichts fehlte,
+> was jemand kannte.
+>
+> Warum keine Prüfung ihn fand: `pruef-storno.js` **stellt die
+> Serverantwort nach** (`page.route`), `pruef-rechte.sql` prüft die
+> SQL für sich allein. Beide waren grün. Jede Hälfte war gegen eine
+> **Erfindung** der anderen geprüft, und die Erfindungen waren sich
+> einig, während die Wirklichkeit es nicht war.
+
+Wo ein Wert die Grenze zwischen zwei Systemen überquert, muss die
+**Grenze selbst** gemessen werden — nicht jede Seite für sich. Am
+besten am Stück gegen ein echtes Postgres; geht das nicht, wenigstens
+die beiden Quelltexte gegeneinander (`pruef-naht.js`).
+
+Zwei Regeln, die dabei abfielen:
+
+- **Ein Fehler, der stumm ausfällt, wird nicht gemeldet.** Der Storno
+  schrie und wurde gefunden; die Restzeit schwieg und blieb monatelang
+  kaputt. Wer einen Ausfallweg baut, überlegt, ob dabei jemand etwas
+  merken kann.
+- **Derselbe Griff steht selten nur einmal da.** Der Fund im Storno war
+  erst vollständig, als `grep` dieselbe Zeile in einer zweiten
+  Migration fand. Nach jedem Befund: den Griff im ganzen Verzeichnis
+  suchen, nicht nur die gemeldete Stelle reparieren.
+
 ### 8.1d Ein Board im Vollbild ist eine eigene Umgebung
 
 > **Vorfall.** Das Küchen-Board hatte einen Vollbildknopf, das
@@ -905,7 +969,8 @@ Dazu je nach Änderung:
 | **Startkacheln, Bereiche, Markenblatt** | `pruefungen/pruef-kacheln.js` — Kreuzvergleich: kein Hub trägt fremden Text |
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
-| **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand |
+| **Storno, Restzeit, jede Bestell-Funktion** | `pruefungen/pruef-naht.js` — hält den Wert, den der Hub schickt, gegen die Spalte, über die die SQL sucht |
+| **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand, und gleicht jedes Filter-Kästchen gegen die Stellen ab, die den Wert wirklich schreiben |
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
@@ -919,6 +984,10 @@ Dazu je nach Änderung:
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
+| **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der Kontrast des Bandes |
+| **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint` |
+| **Animationen, Übergänge, Blätter** | `pruefungen/pruef-bewegung.js` — nur `transform`/`opacity`, Endzustand, Ausgang, Geste |
+| **Edge Functions (Übersetzer, Alessia)** | `pruefungen/pruef-edge.js` — `tsc --strict` und kein Schlüssel im Quelltext. Der einzige automatische Griff darauf: Beide Playwright-Prüfungen **stellen** die Serverantwort |
 
 Und danach, immer:
 
