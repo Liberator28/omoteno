@@ -2368,6 +2368,46 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 /* ▲▲▲ AB HIER NICHTS ÄNDERN ▲▲▲ */
 
 
+/* ═════════════════════════════════════════════════════════════
+   WELCHES HAUS IST DAS?
+
+   EIN Ort, an dem der Slug steht, und er kommt aus dem Markenblatt —
+   also aus der Datei, die je Kunde eine andere ist.
+
+   VORFALL, und er hätte Geld gekostet. Vorher stand der Slug an DREI
+   Stellen fest im Gerüst: SERVER.betrieb, OMOTENO_DB.slug und in fünf
+   Speicherschlüsseln — jedes Mal der Slug des ERSTEN Hauses.
+   Gemessen in
+   der erzeugten Datei des ZWEITEN Hauses: sein Hub fragte
+   betriebe?slug=eq.<erstes Haus>, bekam dessen id, und schrieb damit
+   JEDE Blend-Bestellung auf Chocos Betrieb. Blends Küche hätte nie
+   einen Bon gesehen, Chocos Küche fremde Gerichte. Dazu Chocos
+   hub_texte, hub_kacheln und Liefereinstellungen im falschen Haus.
+
+   Und die Speicherschlüssel: /h/<haus-a>/ und /h/<haus-b>/ liegen auf
+   DERSELBEN Domain, localStorage hängt am Ursprung, nicht am Pfad.
+   Ein Gast hätte seinen Korb, seine Tischnummer, seinen
+   Sitzungsschlüssel und seine Lieferadresse von einem Haus ins andere
+   getragen.
+
+   Warum es keine Prüfung fand: Choco ist der einzige Kunde mit
+   Bestellungen. Bei Choco war jeder dieser Werte RICHTIG — der Slug
+   ist ja sein eigener. §8.1a steht genau dafür in CLAUDE.md, und
+   der Vorfall dort war Chocos Siegel in Blends Kopf: dieselbe Klasse,
+   nur kosmetisch. Dieser hier routet Bestellungen.
+
+   Dass Chocos Schlüssel sich dabei NICHT ändern, ist kein Zufall,
+   sondern die Probe: Wo der alte Stand richtig war, kommt er bytegleich
+   heraus (§8.1a). Nur Blend ändert sich — und Blends alter Stand war
+   falsch.
+   ═════════════════════════════════════════════════════════════ */
+const HAUS = (MARKENBLATT.betrieb && MARKENBLATT.betrieb.slug) || "";
+
+/* Jeder Speicherschlüssel geht hier durch. Wer einen neuen braucht,
+   nimmt diese Funktion — dann kann er den Hausnamen nicht vergessen. */
+function hSchluessel(name){ return "omoteno-" + name + "-" + HAUS; }
+
+
 /* ═══════════════════════════════════════════════════════════════
    MARKE ANWENDEN
 
@@ -2914,7 +2954,11 @@ const WLAN = {
 
 const SERVICE = {
   whatsapp: "",                       /* BITTE EINTRAGEN */
-  mail:     "kirchhain@chocolamour.de",
+  /* Leer, und zwar absichtlich: Der Wert kommt aus dem Markenblatt
+     (inhaltAusMarkenblatt). Hier eine echte Adresse hinzuschreiben
+     hiesse, sie jedem anderen Haus mitzugeben — genau der Fehler,
+     der oben bei HAUS beschrieben ist. */
+  mail:     "",
   rufe: [
     { id:"zahlen", text:"Wir möchten zahlen",       i:"karte" },
     { id:"runde",  text:"Noch eine Runde, bitte",   i:"glas"  },
@@ -2934,11 +2978,6 @@ const SERVICE = {
     kann den Eintrag des Betriebs kosten. Deshalb sieht hier JEDER
     Gast dieselbe Auswahl – unabhängig davon, was er angetippt hat.
     Bitte nicht "optimieren".                                     */
-
-const RUECKMELDUNG = {
-  whatsapp: "",                       /* leer = E-Mail an mail */
-  mail:     "kirchhain@chocolamour.de"
-};
 
 /*  ============================================================
     BILDER ZU DEN GERICHTEN
@@ -3063,7 +3102,7 @@ const SERVER = {
   an:         true,
   adresse:    "https://quxwweuvdqtjsdwgjdrh.supabase.co",
   schluessel: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk",
-  betrieb:    "chocolamour"
+  betrieb:    HAUS          /* nie fest hinschreiben — siehe HAUS oben */
 };
 
 /*  ============================================================
@@ -3111,7 +3150,7 @@ const LIEFER = {
 
 const MUSIK = {
   whatsapp: "",
-  mail:     "kirchhain@chocolamour.de",
+  mail:     "",                       /* aus dem Markenblatt, siehe SERVICE */
   stile:    ["Charts","Deutschrap","90er / 2000er","Latin","House","Rock"]
 };
 
@@ -5111,6 +5150,15 @@ function begleiterHTML(anlass){
     if(da(b[k])) BETRIEB[k] = b[k];
   });
 
+  /* Die Hauspost. SERVICE und MUSIK hatten je eine eigene, FEST
+     eingetragene Adresse — Chocos. In jedem erzeugten Hub, also auch
+     in Blends. Ein Musikwunsch aus Blend waere bei Choco gelandet.
+     Jetzt gibt es eine Quelle: die Adresse des Hauses. */
+  if(da(BETRIEB.mail)){
+    if(!da(SERVICE.mail)) SERVICE.mail = BETRIEB.mail;
+    if(!da(MUSIK.mail))   MUSIK.mail   = BETRIEB.mail;
+  }
+
   if(Array.isArray(mb.zeiten) && mb.zeiten.length === 7){
     ZEITEN.length = 0;
     mb.zeiten.forEach(z => ZEITEN.push(z));
@@ -5535,7 +5583,7 @@ const QUIZ = [
     Die Ergebnisse werden auf dem Gerät des Gastes gespeichert.
     Für eine gemeinsame Liste über alle Tische hinweg braucht es einen
     kleinen Server – siehe Anleitung, Abschnitt „Bestenliste erweitern“. */
-const LISTE_SCHLUESSEL = "omoteno-bestenliste-chocolamour";
+const LISTE_SCHLUESSEL = hSchluessel("bestenliste");
 const LISTE_LAENGE     = 10;
 
 
@@ -6586,6 +6634,7 @@ const TEXTE = {
 "Tischnummer (optional)":{en:"Table number (optional)",tr:"Masa numarası (isteğe bağlı)",ru:"Номер столика (необязательно)",fr:"Numéro de table (facultatif)",es:"Número de mesa (opcional)",it:"Numero del tavolo (facoltativo)",pl:"Numer stolika (opcjonalnie)",ar:"رقم الطاولة (اختياري)",uk:"Номер столика (за бажанням)",nl:"Tafelnummer (optioneel)",ro:"Numărul mesei (opțional)"},
 "Wunsch an die Bar schicken":{en:"Send request to the bar",tr:"İsteği bara gönder",ru:"Отправить в бар",fr:"Envoyer au bar",es:"Enviar a la barra",it:"Invia al bar",pl:"Wyślij do baru",ar:"إرسال الطلب إلى البار",uk:"Надіслати в бар",nl:"Verzoek naar de bar sturen",ro:"Trimite la bar"},
 "Bitte tragen Sie noch ein Lied oder einen Künstler ein.":{en:"Please enter a song or an artist first.",tr:"Lütfen önce bir şarkı veya sanatçı yazın.",ru:"Пожалуйста, укажите песню или исполнителя.",fr:"Indiquez d'abord un titre ou un artiste.",es:"Escriba primero una canción o un artista.",it:"Inserisci prima un brano o un artista.",pl:"Najpierw wpisz utwór lub wykonawcę.",ar:"يرجى إدخال أغنية أو فنان أولاً.",uk:"Спершу вкажіть пісню або виконавця.",nl:"Vul eerst een nummer of artiest in.",ro:"Introduceți mai întâi o melodie sau un artist."},
+"Sagen Sie Ihren Wunsch gerne unserem Team.":{en:"Just tell our team your request.",tr:"İsteğinizi ekibimize söyleyebilirsiniz.",ru:"Просто скажите о своём пожелании нашей команде.",fr:"Dites simplement votre souhait à notre équipe.",es:"Dígale su deseo a nuestro equipo.",it:"Dica il suo desiderio al nostro team.",pl:"Powiedz o swoim życzeniu naszemu zespołowi.",ar:"أخبر فريقنا برغبتك.",uk:"Просто скажіть про своє побажання нашій команді.",nl:"Vertel uw wens gewoon aan ons team.",ro:"Spuneți-i dorința echipei noastre."},
 "Nachricht wird geöffnet – bitte noch abschicken.":{en:"Opening your message – please send it.",tr:"Mesaj açılıyor – lütfen gönderin.",ru:"Открываем сообщение — не забудьте отправить.",fr:"Le message s'ouvre – envoyez-le.",es:"Se abre el mensaje: envíelo.",it:"Il messaggio si apre – invialo.",pl:"Wiadomość się otworzy – wyślij ją.",ar:"سيتم فتح الرسالة – يرجى إرسالها.",uk:"Повідомлення відкриється — надішліть його.",nl:"Het bericht opent – verstuur het nog.",ro:"Se deschide mesajul – trimiteți-l."},
 "Musikwunsch: ":{en:"Song request: ",tr:"Şarkı isteği: ",ru:"Заказ песни: ",fr:"Demande : ",es:"Petición: ",it:"Richiesta: ",pl:"Prośba o utwór: ",ar:"طلب أغنية: ",uk:"Прохання про пісню: ",nl:"Muziekverzoek: ",ro:"Cerere muzicală: "},
 " – Tisch ":{en:" – table ",tr:" – masa ",ru:" — столик ",fr:" – table ",es:" – mesa ",it:" – tavolo ",pl:" – stolik ",ar:" – طاولة ",uk:" — столик ",nl:" – tafel ",ro:" – masa "},
@@ -7177,10 +7226,12 @@ const suchtext = { speisekarte:"", getraenke:"", cocktails:"" };
 
 /* Merkliste: Schlüssel je Gericht = Kartenname. Wert = { n, p, b } */
 let merk = {};
-try { merk = JSON.parse(localStorage.getItem("omoteno-merk-chocolamour") || "{}"); } catch(e){ merk = {}; }
+const MERK_SCHLUESSEL  = hSchluessel("merk");
+const TISCH_SCHLUESSEL = hSchluessel("tisch");
+try { merk = JSON.parse(localStorage.getItem(MERK_SCHLUESSEL) || "{}"); } catch(e){ merk = {}; }
 /* Ältere gespeicherte Einträge (ohne Menge) bekommen Menge 1 */
 Object.values(merk).forEach(g => { if(!g.m || g.m < 1) g.m = 1; });
-function merkSpeichern(){ try { localStorage.setItem("omoteno-merk-chocolamour", JSON.stringify(merk)); } catch(e){} }
+function merkSpeichern(){ try { localStorage.setItem(MERK_SCHLUESSEL, JSON.stringify(merk)); } catch(e){} }
 function preisNum(p){
   const m = String(p).replace(",", ".").match(/[0-9]+(\.[0-9]+)?/);
   return m ? parseFloat(m[0]) : 0;
@@ -9419,7 +9470,7 @@ function auswahlAktualisieren(name){
 let tischNr    = "";
 let tischToken = "";
 
-const SITZ_SCHLUESSEL = "omoteno-sitzung-chocolamour";
+const SITZ_SCHLUESSEL = hSchluessel("sitzung");
 
 /* ─── Liefermodus ─────────────────────────────────────────────────
    Der zweite Zustand des Hubs. Kein zweiter Hub: dieselbe Karte,
@@ -9437,7 +9488,7 @@ const SITZ_SCHLUESSEL = "omoteno-sitzung-chocolamour";
    Adresszeile steht.                                                */
 let liefermodus = false;
 
-const LIEFERADRESSE_SCHLUESSEL = "omoteno-lieferadresse-chocolamour";
+const LIEFERADRESSE_SCHLUESSEL = hSchluessel("lieferadresse");
 
 function liefermodusLaden(){
   try{
@@ -9510,11 +9561,11 @@ function tischLaden(){
     const treffer = location.search.match(/[?&]t(?:isch)?=([^&]*)/i);
     if(treffer) roh = decodeURIComponent(treffer[1]);
   } catch(e){}
-  if(!roh){ try { roh = sessionStorage.getItem("omoteno-tisch-chocolamour") || ""; } catch(e){} }
+  if(!roh){ try { roh = sessionStorage.getItem(TISCH_SCHLUESSEL) || ""; } catch(e){} }
   /* nur Ziffern und Buchstaben, höchstens 4 Zeichen – schützt vor Unfug */
   roh = String(roh).replace(/[^0-9A-Za-z]/g, "").slice(0, 4);
   tischNr = roh;
-  if(roh){ try { sessionStorage.setItem("omoteno-tisch-chocolamour", roh); } catch(e){} }
+  if(roh){ try { sessionStorage.setItem(TISCH_SCHLUESSEL, roh); } catch(e){} }
 
   try { tischToken = sessionStorage.getItem(SITZ_SCHLUESSEL) || ""; } catch(e){}
 
@@ -9561,7 +9612,7 @@ function sitzungOeffnen(){
     try { sessionStorage.setItem(SITZ_SCHLUESSEL, s.token); } catch(e){}
     if(s.tisch){
       tischNr = String(s.tisch).replace(/[^0-9A-Za-z]/g, "").slice(0, 4);
-      try { sessionStorage.setItem("omoteno-tisch-chocolamour", tischNr); } catch(e){}
+      try { sessionStorage.setItem(TISCH_SCHLUESSEL, tischNr); } catch(e){}
       /* Die Tischnummer steht auf mehreren Seiten. Steht der Gast
          schon auf einer davon, muss sie nachgezogen werden. */
       if(typeof zeichne === "function" && seiteJetzt !== "bestellt") zeichne();
@@ -9576,7 +9627,7 @@ function tischHolen(feldId){
   const nr = (eingabe || tischNr).replace(/[^0-9A-Za-z]/g, "").slice(0, 4);
   if(nr && nr !== tischNr){
     tischNr = nr;
-    try { sessionStorage.setItem("omoteno-tisch-chocolamour", nr); } catch(e){}
+    try { sessionStorage.setItem(TISCH_SCHLUESSEL, nr); } catch(e){}
   }
   return nr;
 }
@@ -10110,9 +10161,15 @@ $("inhalt").addEventListener("click", e => {
       if(tisch)     text += t(" – Tisch ") + tisch;
       if(MUSIK.whatsapp){
         oeffne("https://wa.me/" + MUSIK.whatsapp + "?text=" + encodeURIComponent(text));
-      } else {
+      } else if(MUSIK.mail){
         oeffne("mailto:" + MUSIK.mail + "?subject=" + encodeURIComponent(t("Musikwunsch")) +
                "&body=" + encodeURIComponent(text));
+      } else {
+        /* Weder WhatsApp noch E-Mail hinterlegt. Vorher ging hier ein
+           "mailto:" ohne Adresse auf — ein Weg, den es nicht gibt
+           (§8.1h). Lieber ehrlich sagen, dass es hier nicht geht. */
+        melden(t("Sagen Sie Ihren Wunsch gerne unserem Team."), true);
+        return;
       }
       melden(t("Nachricht wird geöffnet – bitte noch abschicken."));
     }
@@ -10543,7 +10600,7 @@ document.addEventListener("visibilitychange", () => {
 const OMOTENO_DB = {
   url:  "https://quxwweuvdqtjsdwgjdrh.supabase.co",
   key:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk",
-  slug: "chocolamour",
+  slug: HAUS,                 /* nie fest hinschreiben — siehe HAUS oben */
   wartezeit: 6000
 };
 
