@@ -137,78 +137,173 @@ Deno.serve(async (anfrage: Request) => {
     .slice(0, HOECHSTENS);
   if (!texte.length) return antwort({ uebersetzt: {} }, 200);
 
-  const eigenschaften: Record<string, unknown> = {};
-  for (const s of SPRACHEN) eigenschaften[s] = { type: "string" };
+  /* Das Werkzeug wird auf die GEFRAGTEN Sprachen zugeschnitten. Beim
+     zweiten Anlauf sind das nur noch die fehlenden — ein Schema, das
+     dann weiter alle elf verlangt, wuerde das Modell zwingen, die
+     schon fertigen neu zu erfinden. Anders und schlechter. */
+  const werkzeugFuer = (sprachen: readonly string[]) => {
+    const eigenschaften: Record<string, unknown> = {};
+    for (const sp of sprachen) eigenschaften[sp] = { type: "string" };
+    return {
+      name: "uebersetzt",
+      description: "Die fertigen Uebersetzungen zurueckgeben.",
+      /* strict erzwingt, dass die Argumente genau zum Schema passen —
+         ohne das kommt frueher oder spaeter eine Sprache zu wenig
+         zurueck, und der Gast liest wieder Deutsch.
 
-  const werkzeug = {
-    name: "uebersetzt",
-    description: "Die fertigen Uebersetzungen zurueckgeben.",
-    /* strict erzwingt, dass die Argumente genau zum Schema passen —
-       ohne das kommt frueher oder spaeter eine Sprache zu wenig
-       zurueck, und der Gast liest wieder Deutsch. */
-    strict: true,
-    input_schema: {
-      type: "object",
-      additionalProperties: false,
-      required: ["saetze"],
-      properties: {
-        saetze: {
-          type: "array",
-          description: "Ein Eintrag je vorgelegtem deutschen Satz, in derselben Reihenfolge.",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            required: ["deutsch", ...SPRACHEN],
-            properties: { deutsch: { type: "string" }, ...eigenschaften },
+         Es ist trotzdem KEINE Garantie: Genau deshalb gibt es unten
+         den zweiten Anlauf und die Liste der Luecken. Wer sich auf
+         strict allein verlaesst, baut wieder Alles-oder-nichts. */
+      strict: true,
+      input_schema: {
+        type: "object",
+        additionalProperties: false,
+        required: ["saetze"],
+        properties: {
+          saetze: {
+            type: "array",
+            description: "Ein Eintrag je vorgelegtem deutschen Satz, in derselben Reihenfolge.",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              required: ["deutsch", ...sprachen],
+              properties: { deutsch: { type: "string" }, ...eigenschaften },
+            },
           },
         },
       },
-    },
+    };
   };
 
-  try {
-    const claude = new Anthropic({ apiKey: schluessel });
-    const ergebnis = await claude.messages.create({
+  const claude = new Anthropic({ apiKey: schluessel });
+  const bekannt = new Set(texte);
+
+  /* Das Ergebnis wird ZUSAMMENGETRAGEN, nicht in einem Zug
+     abgenommen. Was schon da ist, bleibt; ein zweiter Anlauf fuellt
+     nur noch die Luecken. */
+  const fertig: Record<string, Record<string, string>> = {};
+
+  /* Ein Anlauf. Liefert zurueck, was nicht vollstaendig wurde. */
+  async function anlauf(
+    auftrag: string[],
+    nurSprachen: readonly string[],
+  ): Promise<{ fehler?: string; kategorie?: string }> {
+    const ergebnis = await claude.beta.messages.create({
       model: "claude-opus-5",
       max_tokens: 16000,
       system: ANWEISUNG,
       thinking: { type: "adaptive" },
-      tools: [werkzeug as never],
+      /* Opus 5 kann eine Anfrage aus Sicherheitsgruenden ablehnen.
+         fallbacks:"default" laesst sie serverseitig auf einem
+         anderen Modell laufen, statt uns die Ablehnung
+         zurueckzugeben — nach Ablehnungsgrund geroutet, also ohne
+         dass hier ein Modell festgenagelt wird, das irgendwann
+         abgekuendigt ist. */
+      betas: ["server-side-fallback-2026-07-01"],
+      fallbacks: "default",
+      tools: [werkzeugFuer(nurSprachen) as never],
       tool_choice: { type: "tool", name: "uebersetzt" },
       messages: [{
         role: "user",
-        content: "Uebersetze diese Texte:\n\n" +
-          texte.map((t, i) => (i + 1) + ". " + t).join("\n"),
+        content: (nurSprachen.length === SPRACHEN.length
+          ? "Uebersetze diese Texte:\n\n"
+          : "Uebersetze diese Texte, aber NUR in diese Sprachen: " +
+            nurSprachen.join(", ") + ".\n\n") +
+          auftrag.map((t, i) => (i + 1) + ". " + t).join("\n"),
       }],
-    });
+    } as never);
+
+    /* ZUERST stop_reason, DANN content. Bei einer Ablehnung steht in
+       content nichts Brauchbares, und "keine_antwort" waere eine
+       Falschauskunft: Der Wirt wuerde die Verbindung pruefen, wo das
+       Modell abgelehnt hat. */
+    if (ergebnis.stop_reason === "refusal") {
+      return {
+        fehler: "abgelehnt",
+        kategorie: String(
+          (ergebnis as { stop_details?: { category?: string } })
+            .stop_details?.category ?? "",
+        ),
+      };
+    }
 
     const block = ergebnis.content.find((b) => b.type === "tool_use");
-    if (!block || block.type !== "tool_use") {
-      return antwort({ fehler: "keine_antwort", uebersetzt: {} }, 200);
-    }
+    if (!block || block.type !== "tool_use") return { fehler: "keine_antwort" };
     const roh = (block.input as { saetze?: Array<Record<string, string>> })?.saetze ?? [];
 
     /* Nach dem DEUTSCHEN Satz einsortieren, nicht nach der Position.
        Eine Antwort in anderer Reihenfolge waere sonst still eine
        Uebersetzung am falschen Gericht — und das faellt erst dem Gast
        auf. Was nicht zu einem vorgelegten Satz passt, fliegt raus. */
-    const bekannt = new Set(texte);
-    const fertig: Record<string, Record<string, string>> = {};
     for (const zeile of roh) {
       const de = String(zeile?.deutsch ?? "").trim();
       if (!bekannt.has(de)) continue;
-      const eintrag: Record<string, string> = {};
-      for (const s of SPRACHEN) {
-        const v = String(zeile?.[s] ?? "").trim();
-        if (v) eintrag[s] = v;
+      const eintrag = fertig[de] ?? (fertig[de] = {});
+      for (const sp of nurSprachen) {
+        const v = String(zeile?.[sp] ?? "").trim();
+        if (v) eintrag[sp] = v;
       }
-      if (Object.keys(eintrag).length === SPRACHEN.length) fertig[de] = eintrag;
+    }
+    return {};
+  }
+
+  /* Welche Sprachen fehlen einem Satz noch? */
+  const luecken = (de: string) =>
+    SPRACHEN.filter((sp) => !(fertig[de] ?? {})[sp]);
+
+  try {
+    const erster = await anlauf(texte, SPRACHEN);
+    if (erster.fehler && !Object.keys(fertig).length) {
+      return antwort({
+        fehler: erster.fehler,
+        kategorie: erster.kategorie,
+        uebersetzt: {},
+      }, 200);
+    }
+
+    /* ═══ TEILERGEBNISSE ANNEHMEN ═══════════════════════════════
+       VORFALL, und es war die eigentliche Ursache der Beschwerde.
+       Hier stand:
+
+         if (Object.keys(eintrag).length === SPRACHEN.length)
+             fertig[de] = eintrag;
+
+       Alles oder nichts: Fehlte EINE der elf Sprachen, flog der
+       ganze Satz raus. Der Wirt sah danach elf leere Felder und
+       musste glauben, der Uebersetzer sei kaputt — obwohl zehn
+       Sprachen fertig dalagen und weggeworfen wurden.
+
+       Jetzt bleibt, was da ist, und es gibt EINEN zweiten Anlauf,
+       der ausschliesslich die fehlenden Sprachen holt. Genau einen:
+       Ein Wiederholen bis alles voll ist waere eine Rechnung ohne
+       Deckel, und beim dritten Versuch fehlt dieselbe Sprache aus
+       demselben Grund.                                            */
+    const nachzuholen = texte.filter((t) => luecken(t).length);
+    let zweiterFehler: string | undefined;
+    if (nachzuholen.length) {
+      /* Die Vereinigung aller Luecken — ein Aufruf statt einer je
+         Satz. */
+      const fehlendeSprachen = [...new Set(nachzuholen.flatMap(luecken))];
+      const zweiter = await anlauf(nachzuholen, fehlendeSprachen);
+      zweiterFehler = zweiter.fehler;
+    }
+
+    /* Was jetzt noch fehlt, wird BENANNT statt verschwiegen. Der
+       Wirt kann die zwei Felder selbst tippen — aber nur, wenn er
+       weiss, welche. */
+    const unvollstaendig: Record<string, string[]> = {};
+    for (const t of texte) {
+      const l = luecken(t);
+      if (l.length && l.length < SPRACHEN.length) unvollstaendig[t] = l;
     }
 
     return antwort({
       uebersetzt: fertig,
       vorgelegt: texte.length,
-      fertig: Object.keys(fertig).length,
+      fertig: texte.filter((t) => !luecken(t).length).length,
+      teilweise: unvollstaendig,
+      nachgeholt: nachzuholen.length,
+      fehler: zweiterFehler,
     });
   } catch (e) {
     /* Fail-open (CLAUDE.md 7). Der Wirt speichert sein Gericht auch

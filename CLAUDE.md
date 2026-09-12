@@ -276,6 +276,34 @@ nicht; er läuft als Teil der Anweisung.
 `datenbank/pruef-rechte.sql` macht beides richtig und fährt 36
 Angriffe und ehrliche Wege in einer zurückgedrehten Transaktion.
 
+### 2.3c Eine Spalte kann eine Liste führen, die nirgends im Code steht
+
+> **Vorfall.** `bestellungen.quelle` sollte den neuen Wert
+> `'lieferung'` bekommen. Kein `grep` dieses Projekts hätte gefunden,
+> was dem entgegenstand: `bestellungen_quelle_check` mit
+> `CHECK (quelle = ANY (ARRAY['tisch','telefon','reservierung','service']))`.
+> Es gibt kein `create table bestellungen` — die Tabelle ist älter als
+> diese Dateien, und die Liste lebt nur im Katalog von Postgres.
+>
+> Ohne Vorabfrage wäre `bestellung_liefern()` angelegt worden und
+> hätte `success: true` gemeldet — ein Funktionskörper wird beim
+> Anlegen nicht geprüft (§2.2). Gemerkt hätte es erst der **erste
+> Gast**: Adresse getippt, Korb gefüllt, Knopf gedrückt, dann ein
+> Fehler aus dem `insert`. Der Betrieb hätte ihn bei sich gesucht.
+
+Wer einen neuen Wert in eine Spalte einführt, fragt nicht den Code,
+sondern den Katalog:
+
+```sql
+select conname, pg_get_constraintdef(oid)
+from pg_constraint
+where conrelid = 'public.<tabelle>'::regclass and contype = 'c';
+```
+
+Und beim Erweitern bleibt **jeder** alte Wert drin — auch einer, der
+heute keine Zeile hat. Der fehlende neue Wert fehlt laut; ein
+verlorener alter fehlt still.
+
 ### 2.4 Rollenwechsel allein simuliert PostgREST nicht
 
 `set role anon` reicht nicht. Der einzige verlässliche Weg:
@@ -956,6 +984,10 @@ Dazu je nach Änderung:
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
+| **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der Kontrast des Bandes |
+| **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint` |
+| **Animationen, Übergänge, Blätter** | `pruefungen/pruef-bewegung.js` — nur `transform`/`opacity`, Endzustand, Ausgang, Geste |
+| **Edge Functions (Übersetzer, Alessia)** | `pruefungen/pruef-edge.js` — `tsc --strict` und kein Schlüssel im Quelltext. Der einzige automatische Griff darauf: Beide Playwright-Prüfungen **stellen** die Serverantwort |
 
 Und danach, immer:
 

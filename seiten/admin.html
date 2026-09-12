@@ -6870,24 +6870,113 @@ function uebStandSetzen(g){
     el.textContent = "In elf Sprachen übersetzt.";
   }else{
     el.classList.add("offen");
-    el.textContent = hat
+    /* Der GRUND, wenn es einen gibt. Ohne ihn liest der Wirt
+       "noch nicht übersetzt" und weiss nicht, ob er warten,
+       nochmal drücken oder einen Schlüssel eintragen soll — und
+       zwölf Zeilen Klartextübersetzung weiter unten waeren
+       Zierrat, wenn sie hier nicht ankommen. */
+    const grund = uebGrundText();
+    const luecken = uebLueckenText();
+    el.textContent = (hat
       ? "Teilweise übersetzt — ein Gast liest den Rest auf Deutsch."
-      : "Noch nicht übersetzt — ein Gast liest das auf Deutsch.";
+      : "Noch nicht übersetzt — ein Gast liest das auf Deutsch.") +
+      (luecken ? " " + luecken : "") +
+      (grund ? " " + grund : "");
   }
+}
+
+/* Welche Sprachen beim letzten Anlauf offen blieben. Sie werden
+   BENANNT: Der Wirt darf zwei Felder selbst tippen — aber nur, wenn
+   er weiss, welche zwei. */
+function uebLueckenText(){
+  const namen = { en:"Englisch", tr:"Türkisch", ru:"Russisch", fr:"Französisch",
+                  es:"Spanisch", it:"Italienisch", pl:"Polnisch", ar:"Arabisch",
+                  uk:"Ukrainisch", nl:"Niederländisch", ro:"Rumänisch" };
+  const alle = new Set();
+  Object.values(uebTeilweise || {}).forEach(l =>
+    (Array.isArray(l) ? l : []).forEach(sp => alle.add(sp)));
+  if(!alle.size) return "";
+  const liste = [...alle].map(sp => namen[sp] || sp);
+  return "Offen: " + liste.join(", ") + ".";
+}
+
+/* Warum der Uebersetzer nichts geliefert hat — im Klartext.
+
+   VORFALL. Die Funktion liefert bei JEDEM Fehler einen Grund mit:
+   "kein_schluessel", "keine_antwort", "abgelehnt", oder die
+   Ausnahmemeldung. Hier stand dagegen
+
+     if(error || !data || !data.uebersetzt) return {};
+
+   und kippte alles in denselben leeren Topf. Der Wirt sah einen
+   Satz, egal ob der API-Schluessel fehlt, die Funktion nicht
+   ausgerollt ist oder das Modell gestolpert ist — und "fehlender
+   Schluessel" ist etwas, das man BEHEBEN kann, sobald man es liest.
+
+   Die Grenze bleibt dieselbe: Es wird nie geworfen. Ein Gericht, das
+   sich nicht speichern laesst, weil ein Uebersetzer schweigt, kostet
+   Umsatz (§7). */
+const UEB_GRUND = {
+  kein_schluessel: "Der Übersetzer ist noch nicht eingerichtet — " +
+    "in Supabase fehlt ANTHROPIC_API_KEY.",
+  keine_antwort:   "Der Übersetzer hat geantwortet, aber nichts geliefert. " +
+    "Bitte noch einmal versuchen.",
+  kein_json:       "Der Übersetzer hat die Anfrage nicht verstanden.",
+  abgelehnt:       "Das Sprachmodell hat diesen Text abgelehnt. " +
+    "Bitte die Formulierung ändern.",
+  nicht_erreichbar:"Der Übersetzer ist nicht erreichbar — " +
+    "ist die Funktion „uebersetzen“ ausgerollt?"
+};
+
+/* Was der letzte Aufruf gemeldet hat. Wird von der Anzeige gelesen.
+   Kein Rueckgabewert, weil uebersetzenLassen() an vielen Stellen
+   gerufen wird und ueberall nur die Uebersetzungen erwartet werden —
+   ein zweiter Rueckgabewert waere ein Umbau von fuenf Aufrufern fuer
+   eine Nebenauskunft. */
+let uebLetzterGrund = "";
+
+function uebGrundText(){
+  if(!uebLetzterGrund) return "";
+  return UEB_GRUND[uebLetzterGrund] ||
+    ("Der Übersetzer meldet: " + uebLetzterGrund);
 }
 
 /* Ruft die Edge Function. Gibt IMMER ein Objekt zurueck, nie einen
    Fehler: Der Wirt soll sein Gericht speichern koennen, auch wenn der
    Uebersetzer schweigt (CLAUDE.md 7). */
 async function uebersetzenLassen(texte){
+  uebLetzterGrund = "";
   const liste = [...new Set((texte || []).map(t => String(t || "").trim()).filter(Boolean))];
   if(!liste.length || demo || !db) return {};
   try{
     const { data, error } = await db.functions.invoke("uebersetzen", { body: { texte: liste } });
-    if(error || !data || !data.uebersetzt) return {};
+    if(error){
+      /* Ein Netzfehler heisst meist: die Funktion ist nicht
+         ausgerollt. Das ist eine andere Auskunft als "das Modell
+         hat nicht geantwortet". */
+      uebLetzterGrund = /fetch|network|Failed|404/i.test(String(error.message || error))
+        ? "nicht_erreichbar" : String(error.message || error);
+      return {};
+    }
+    if(!data){ uebLetzterGrund = "keine_antwort"; return {}; }
+    /* Ein Grund kommt auch dann mit, wenn TEILWEISE uebersetzt
+       wurde — dann ist er ein Hinweis, kein Ausfall. */
+    if(data.fehler) uebLetzterGrund = String(data.fehler);
+    if(!data.uebersetzt) return {};
+
+    /* Welche Saetze nur teilweise fertig wurden, und in welchen
+       Sprachen. Der Wirt kann zwei Felder selbst tippen — aber nur,
+       wenn er weiss, welche. */
+    uebTeilweise = (data.teilweise && typeof data.teilweise === "object")
+      ? data.teilweise : {};
     return data.uebersetzt;
-  }catch(e){ return {}; }
+  }catch(e){
+    uebLetzterGrund = /fetch|network|Failed/i.test(String(e && e.message))
+      ? "nicht_erreichbar" : String((e && e.message) || e);
+    return {};
+  }
 }
+let uebTeilweise = {};
 
 /* Nach dem Speichern, nicht davor. Ein Gericht, das sich nicht
    speichern laesst, weil ein Uebersetzer nicht antwortet, kostet
@@ -6906,7 +6995,14 @@ async function uebNachtragen(satz, melden){
   if(fertig[satz.beschreibung]) neu.uebersetzungen      = fertig[satz.beschreibung];
   if(fertig[satz.name])         neu.name_uebersetzungen = fertig[satz.name];
   if(!Object.keys(neu).length){
-    if(melden) melde("Gespeichert — übersetzt wurde nicht, das lässt sich nachholen", true);
+    /* Mit GRUND, wenn es einen gibt. "das lässt sich nachholen" ist
+       wahr und nutzlos — der Wirt weiss danach nicht, ob er warten,
+       nochmal druecken oder einen Schluessel eintragen soll. */
+    if(melden){
+      const grund = uebGrundText();
+      melde("Gespeichert — übersetzt wurde nicht." +
+            (grund ? " " + grund : " Das lässt sich nachholen."), true);
+    }
     return false;
   }
   Object.assign(satz, neu);
@@ -6917,7 +7013,18 @@ async function uebNachtragen(satz, melden){
       return false;
     }
   }
-  if(melden) melde("Gespeichert und in elf Sprachen übersetzt");
+  if(melden){
+    /* Ein Teilergebnis ist ein Erfolg mit Fussnote, kein Ausfall.
+       Vorher gab es diesen Zustand gar nicht: Fehlte eine Sprache,
+       flog der ganze Satz raus und es hiess "übersetzt wurde nicht".
+       Jetzt kommen die zehn an — und die eine wird benannt. */
+    const l = uebLueckenText();
+    melde(l ? "Gespeichert und übersetzt. " + l
+            : "Gespeichert und in elf Sprachen übersetzt");
+  }
+  /* Damit der Sprachstand im offenen Blatt den neuen Stand zeigt und
+     nicht den von vorher. */
+  if(bearbeite && bearbeite.id === satz.id) uebStandSetzen(satz);
   return true;
 }
 
