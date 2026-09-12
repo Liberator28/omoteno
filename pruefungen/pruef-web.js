@@ -593,6 +593,33 @@ async function ohneNetz(seite){
   pruef(dKons.length === 0, "keine Ausnahme dabei", dKons[0] || "still");
   await dCtx.close();
 
+  /* 3b · Auf dem Telefon: die Baeume laufen nicht seitlich raus.
+     Die zwei Baeume nehmen zusammen einen guten Teil der Breite ein
+     (§3 im CSS begrenzt sie dort auf 38vw statt 46vw) — das wird
+     hier gemessen, nicht angenommen. */
+  const pCtx = await browser.newContext({ viewport:{width:390,height:844} });
+  const ph = await pCtx.newPage();
+  await ohneNetz(ph);
+  await ph.goto(ADRESSE);
+  await ph.waitForTimeout(600);
+  await ph.addStyleTag({content:"html,body{scroll-behavior:auto!important}"});
+  const pY = await ph.evaluate(() => window.scrollY +
+    document.getElementById("durchgangfeld").getBoundingClientRect().top);
+  await ph.evaluate(v => window.scrollTo(0, v), pY - 40);
+  await ph.waitForTimeout(300);
+  const pMass = await ph.evaluate(() => ({
+    quer: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+    textBreit: Math.round(document.querySelector("#durchgangfeld .innen")
+                 .getBoundingClientRect().width),
+    fenster: window.innerWidth
+  }));
+  pruef(pMass.quer <= 1, "390px · nichts läuft seitlich über",
+    pMass.quer > 1 ? pMass.quer + " px" : "kein Überlauf");
+  pruef(pMass.textBreit > pMass.fenster * 0.6,
+    "390px · der Text behält seine Breite",
+    pMass.textBreit + " von " + pMass.fenster + " px");
+  await pCtx.close();
+
   /* 4 · Ohne Bewegung: offen, fertig, nichts wartet (§7). */
   const rCtx = await browser.newContext({ viewport:{width:1280,height:900},
                                           reducedMotion:"reduce" });
