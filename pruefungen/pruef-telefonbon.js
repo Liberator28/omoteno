@@ -13,6 +13,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const path = require("path");
+const fs   = require("fs");
 
 const BETRIEB = "11111111-1111-4111-8111-111111111111";
 const jetzt = Date.now();
@@ -91,10 +92,45 @@ const BONS = [
   await p.goto("file://" + path.join(process.cwd(), "seiten/kueche.html"));
   await p.waitForTimeout(1600);
 
-  /* 1 · Fragt die Küche überhaupt nach Telefonbestellungen? */
-  ok(/quelle=in\.\(tisch,telefon\)/.test(decodeURIComponent(gesehen)),
-     "die Abfrage holt Tisch UND Telefon",
-     (decodeURIComponent(gesehen).match(/quelle=[^&]*/) || ["(keine)"])[0]);
+  /* 1 · Holt die Küche JEDE Sorte Bestellung, die gekocht wird?
+
+     VORFALL. Hier stand eine wörtliche Zeichenkette:
+     `quelle=in.(tisch,telefon)`. Als die Lieferung dazukam, war die
+     Küchenabfrage die eine Zeile, die man vergisst — eine
+     Lieferbestellung wäre im Board sichtbar und in der Küche
+     unsichtbar gewesen. Ein Bon, den niemand kocht.
+
+     Diese Prüfung hätte das NICHT gefunden: Sie hätte rot gemeldet,
+     dass die Zeichenkette sich geändert hat, nicht dass eine Sorte
+     fehlt — und ein Nachziehen der Zeichenkette hätte sie wieder grün
+     gemacht, ohne dass jemand hinsieht.
+
+     Deshalb jetzt gegen die ZWEITE QUELLE: Jeder quelle-Wert, den
+     irgendwo jemand in eine Bestellzeile schreibt, muss die Küche
+     auch holen. Ausgenommen ist allein „service" — ein Serviceruf
+     ist kein Gericht, den kocht niemand. */
+  const KEIN_GERICHT = new Set(["service"]);
+  const dbDir = path.join(__dirname, "..", "datenbank");
+  const schreiber = new Set(
+    [...fs.readFileSync(path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), "utf8")
+        .matchAll(/p_quelle:\s*"([a-z]+)"/g)].map(m => m[1]));
+  for(const d of fs.readdirSync(dbDir).filter(n => n.endsWith(".sql"))){
+    const t = fs.readFileSync(path.join(dbDir, d), "utf8")
+      .split("\n").map(z => z.replace(/--.*$/, "")).join("\n");
+    for(const m of t.matchAll(/p_quelle\s*=>\s*'([a-z]+)'/gi)) schreiber.add(m[1].toLowerCase());
+    for(const m of t.matchAll(/'(telefon|lieferung|tisch|service)'\s*,\s*'neu'/gi))
+      schreiber.add(m[1].toLowerCase());
+  }
+  const gesucht = [...schreiber].filter(q => !KEIN_GERICHT.has(q)).sort();
+  const inAbfrage = (decodeURIComponent(gesehen).match(/quelle=in\.\(([^)]*)\)/) || [,""])[1]
+    .split(",").map(s => s.trim()).filter(Boolean);
+  const fehlend = gesucht.filter(q => inAbfrage.indexOf(q) === -1);
+
+  ok(gesucht.length > 0, "es wurden überhaupt Bestellquellen gefunden", gesucht.join(", "));
+  ok(fehlend.length === 0,
+     "die Küche holt jede Sorte, die gekocht wird",
+     fehlend.length ? "FEHLT in der Abfrage: " + fehlend.join(", ")
+                    : gesucht.join(", ") + " — alle geholt");
 
   /* 2 · Steht der Telefonbon auf dem Schirm? */
   const bons = await p.evaluate(() =>

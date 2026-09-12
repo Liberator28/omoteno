@@ -157,6 +157,7 @@
   --tisch:#C9A227;          /* 5,64 */
   --telefon:#4FA5A8;        /* 4,73 */
   --reservierung:#A98BD4;   /* 4,77 */
+  --lieferung:#E8906B;      /* 5,61 — gerechnet, nicht ausgesucht (§5.2) */
 
   --warn:#E8776C;           /* 4,74 — vorher #D4574E mit 3,97 */
   --gut:#6FAE6A;            /* 5,16 */
@@ -207,6 +208,7 @@ body.hell{
   --tisch:#7A5A10;
   --telefon:#1F6E70;
   --reservierung:#5B3E93;
+  --lieferung:#94481C;      /* 6,22 auf dem Blatt */
   --warn:#8C2C21;           /* 7,98 */
   --gut:#3A6329;            /* 6,65 */
   --glut:#A8410F;
@@ -554,6 +556,7 @@ html{font-size:calc(16px * var(--skala,1))}
 .chip[aria-pressed=true]{color:var(--kreide);background:var(--karte);border-color:var(--gedaempft)}
 .chip[data-quelle=tisch][aria-pressed=true]{color:var(--tisch);border-color:var(--tisch)}
 .chip[data-quelle=telefon][aria-pressed=true]{color:var(--telefon);border-color:var(--telefon)}
+.chip[data-quelle=lieferung][aria-pressed=true]{color:var(--lieferung);border-color:var(--lieferung)}
 .chip .anzahl{font-size:11.5px;opacity:.65;font-variant-numeric:tabular-nums}
 
 .filterinfo{font-size:12px;color:var(--gedaempft);margin-top:4px}
@@ -585,6 +588,7 @@ html{font-size:calc(16px * var(--skala,1))}
 }
 .bestellung[data-quelle=tisch]{--f:var(--tisch)}
 .bestellung[data-quelle=telefon]{--f:var(--telefon)}
+.bestellung[data-quelle=lieferung]{--f:var(--lieferung)}
 .bestellung.fertig{opacity:.42}
 
 .bkopf{display:flex;align-items:flex-start;gap:12px;margin-bottom:10px}
@@ -634,6 +638,27 @@ html{font-size:calc(16px * var(--skala,1))}
   background:rgba(201,162,39,.09);
   border-left:2px solid var(--messing);
   padding:8px 11px;border-radius:0 6px 6px 0;margin-bottom:11px;
+}
+/* Die Lieferadresse. Gebaut wie .notiz, nur in der Quellenfarbe —
+   wer die Karten schon kennt, muss nichts Neues lernen. Die Adresse
+   und die Telefonnummer sind LINKS: Der Fahrer tippt sie an, statt
+   sie abzuschreiben. */
+.lieferadresse{
+  font-size:13.5px;color:var(--kreide);
+  background:color-mix(in srgb, var(--lieferung) 12%, transparent);
+  border-left:2px solid var(--lieferung);
+  padding:8px 11px;border-radius:0 6px 6px 0;margin-bottom:11px;
+}
+.lieferadresse b{
+  display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--lieferung);margin-bottom:3px;
+}
+.lieferadresse a{color:var(--kreide);text-decoration:underline;text-underline-offset:2px}
+/* Eigene Zeile, und gross genug zum Antippen: Eine Telefonnummer,
+   die man dreimal treffen muss, ruft niemand an (44px, §8.1d). */
+.lieferadresse .lz{
+  display:block;margin-top:4px;color:var(--gedaempft);
+  min-height:22px;line-height:22px;
 }
 .transkript{margin-bottom:11px}
 .transkript summary{
@@ -1641,6 +1666,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="filterzeile" id="quellenFilter">
         <button class="chip" data-quelle="tisch"        aria-pressed="true"><span class="kasten"></span>Tisch <span class="anzahl" data-z="tisch">0</span></button>
         <button class="chip" data-quelle="telefon"      aria-pressed="true"><span class="kasten"></span>Alessia <span class="anzahl" data-z="telefon">0</span></button>
+        <button class="chip" data-quelle="lieferung"    aria-pressed="true"><span class="kasten"></span>Lieferung <span class="anzahl" data-z="lieferung">0</span></button>
       </div>
       <div class="filterzeile" id="statusFilter">
         <button class="chip" data-status="neu"    aria-pressed="true"><span class="kasten"></span>Neu</button>
@@ -2422,7 +2448,7 @@ let welcheKarte = "speisekarte";
    Ansicht. Ein Kästchen dafür stand hier einmal — es filterte auf einen
    quelle-Wert, den keine Bestellzeile je trägt, und zählte darum ewig
    null. */
-const zeigeQuelle = {tisch:true, telefon:true, service:true};
+const zeigeQuelle = {tisch:true, telefon:true, lieferung:true, service:true};
 const zeigeStatus = {neu:true, arbeit:true, fertig:false};
 
 const FELDER = [
@@ -2436,7 +2462,7 @@ const FELDER = [
   {id:"status",  text:"Status",           an:false},
 ];
 
-const QUELLE_TEXT = {tisch:"Tisch", telefon:"Alessio · Telefon", reservierung:"Reservierung", service:"Serviceruf"};
+const QUELLE_TEXT = {tisch:"Tisch", telefon:"Alessio · Telefon", lieferung:"Lieferung", reservierung:"Reservierung", service:"Serviceruf"};
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -3286,7 +3312,12 @@ function awAuswerten(zeilen, von, bis){
   });
   /* Servicerufe haben keinen Umsatz und würden den Schnitt verfälschen. */
   const mitUmsatz = drin.filter(b => b.quelle !== "service" && b.summe > 0);
-  const umsatz = mitUmsatz.reduce((s,b) => s + (+b.summe || 0), 0);
+  /* Die Liefergebühr liegt in einer eigenen Spalte und fiele sonst aus
+     dem Tagesumsatz heraus. Sie ist Geld, das der Betrieb einnimmt —
+     also zählt sie mit. Wer die Zahl mit gestern vergleicht, muss das
+     wissen, deshalb steht es hier und nicht im Kleingedruckten. */
+  const umsatz = mitUmsatz.reduce((s,b) =>
+    s + (+b.summe || 0) + (+b.liefergebuehr || 0), 0);
 
   const stunden = new Array(24).fill(0);
   drin.forEach(b => { stunden[new Date(b.zeitpunkt).getHours()]++; });
@@ -4506,7 +4537,7 @@ function gefiltert(){
 }
 
 function zeichneBoard(){
-  ["tisch","telefon"].forEach(q => {
+  ["tisch","telefon","lieferung"].forEach(q => {
     const n = bestellungen.filter(b => b.quelle === q && zeigeStatus[b.status]).length;
     const el = document.querySelector(`[data-z="${q}"]`);
     if(el) el.textContent = n;
@@ -4543,10 +4574,35 @@ function zeichneBoard(){
       ? `<span class="ungeprueft" title="Der Untersetzer wurde nicht angetippt — Tischangabe stammt vom Gast">Tisch ungeprüft</span>`
       : "";
 
+    /* Bei einer Lieferung steht der Name in der Adresse, nicht in
+       gast_name — sonst stuende dort „Ohne Namen", obwohl der Gast
+       seinen Namen sehr wohl angegeben hat. */
+    const ladr = (b.quelle === "lieferung" && b.liefer_adresse) ? b.liefer_adresse : null;
+
     const kopf = (b.quelle === "tisch" || (b.quelle === "service" && b.tisch))
       ? `<div class="tischnr">Tisch ${sicher(b.tisch)}</div>${ungeprueft}`
-      : `<div class="tischnr">${sicher(b.gast_name || (b.tisch ? "Tisch " + b.tisch : "Ohne Namen"))}</div>` +
+      : `<div class="tischnr">${sicher((ladr && ladr.name) || b.gast_name ||
+           (b.tisch ? "Tisch " + b.tisch : "Ohne Namen"))}</div>` +
         `<div class="gastzeile">${b.abholung ? "Abholung" : "Lieferung"}</div>`;
+
+    /* Die Adresse gehoert auf die Karte. Antippbar, weil der Fahrer
+       sie in seine Karten-App braucht und niemand sie abtippen soll —
+       geo: waere eleganter, wird aber nicht ueberall verstanden. */
+    const lieferblock = ladr
+      ? `<div class="lieferadresse"><b>Liefern an</b>` +
+        `<a href="https://www.google.com/maps/search/?api=1&query=${
+           encodeURIComponent([ladr.strasse, ladr.plz, ladr.ort].filter(Boolean).join(", "))}"
+           target="_blank" rel="noopener">${
+           sicher([ladr.strasse, [ladr.plz, ladr.ort].filter(Boolean).join(" ")]
+             .filter(Boolean).join(" · "))}</a>` +
+        (ladr.klingel ? `<span class="lz">${sicher(ladr.klingel)}</span>` : "") +
+        (ladr.telefon
+          ? `<a class="lz" href="tel:${sicher(String(ladr.telefon).replace(/[^\d+]/g,""))}">${
+             sicher(ladr.telefon)}</a>` : "") +
+        (b.liefergebuehr > 0
+          ? `<span class="lz">Liefergebühr ${euro(b.liefergebuehr)}</span>` : "") +
+        `</div>`
+      : "";
 
     const welle = b.quelle === "telefon"
       ? `<span class="welle">${[5,9,11,7,10,4].map(h=>`<i style="height:${h}px"></i>`).join("")}</span>` : "";
@@ -4599,10 +4655,12 @@ function zeichneBoard(){
         <div class="rechts">
           <div class="uhr">${uhrzeit(b.zeitpunkt)}</div>
           ${dauer}
-          ${b.summe > 0 ? `<div class="preis">${euro(b.summe)}</div>` : ""}
+          ${b.summe > 0
+            ? `<div class="preis">${euro((+b.summe || 0) + (+b.liefergebuehr || 0))}</div>`
+            : ""}
         </div>
       </div>
-      ${pos}${notiz}${trans}${zusage}
+      ${pos}${lieferblock}${notiz}${trans}${zusage}
       <div class="schritte">
         ${["neu","arbeit","fertig"].map(s =>
           `<button class="schritt" data-id="${b.id}" data-status="${s}"

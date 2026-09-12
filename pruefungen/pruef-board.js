@@ -86,7 +86,19 @@ function quellenAbgleich(){
   const schreiber = new Set(
     [...hub.matchAll(/p_quelle:\s*"([a-z]+)"/g)].map(m => m[1]));
 
-  /* Schreiber 2 · Direkte INSERTs in bestellungen. Der Wert wird über
+  /* Schreiber 2 · Eine SQL-Funktion, die bestellung_aufgeben mit
+     benanntem Parameter ruft — so legt bestellung_liefern ihre Zeile
+     an. Weder ein INSERT noch ein JS-Literal; diese Form fehlte hier
+     zuerst, und die Prüfung ging zu Recht rot, als der erste solche
+     Schreiber dazukam. */
+  for(const datei of fs.readdirSync(dbDir).filter(n => n.endsWith(".sql"))){
+    const text = fs.readFileSync(path.join(dbDir, datei), "utf8")
+      .split("\n").map(z => z.replace(/--.*$/, "")).join("\n");
+    for(const m of text.matchAll(/p_quelle\s*=>\s*'([a-z]+)'/gi))
+      schreiber.add(m[1].toLowerCase());
+  }
+
+  /* Schreiber 3 · Direkte INSERTs in bestellungen. Der Wert wird über
      die STELLE in der Spaltenliste gefunden, nicht geraten — und die
      Werteliste wird klammertief zerlegt, weil dort Ausdrücke wie
      nullif(trim(coalesce(p_name, '')), '') stehen, die selbst Kommas

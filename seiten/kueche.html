@@ -857,6 +857,11 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
                       will er es abholen. Am Tisch sind die Felder leer
                       und kosten nichts. */
                    "gast_name,gast_telefon,abholung,wunschzeit,tagesnummer," +
+                   /* Wohin geliefert wird und was die Lieferung kostet.
+                      Fehlen die Spalten in der Abfrage, kaeme der Bon
+                      ohne Adresse an — und ein Fahrer ohne Adresse ist
+                      kein Fahrer. */
+                   "liefer_adresse,liefergebuehr," +
                    /* Die Zusage aus dem Admin-Board: wie viele Minuten
                       versprochen wurden und ab wann sie laufen. Erst
                       beide zusammen ergeben eine Restzeit — eine Zahl
@@ -887,7 +892,11 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
 function ladeBons(){
   var seit = new Date(Date.now() - RUECKBLICK_STD*3600*1000).toISOString();
   return ruf("/rest/v1/bestellungen?select="+BON_SPALTEN+"&betrieb_id=eq."+betrieb.id+
-             "&quelle=in.(tisch,telefon)"+
+             /* „lieferung" MUSS hier stehen. Ohne diesen einen Wert
+                landet eine Lieferbestellung im Board, die Küche sieht
+                sie nie — ein Bon, den niemand kocht, und niemand
+                merkt es, weil nichts fehlt, was jemand kennt. */
+             "&quelle=in.(tisch,telefon,lieferung)"+
              "&zeitpunkt=gte."+seit+"&order=zeitpunkt.asc")
     .then(function(a){
       if(!a.ok) throw new Error("Bons nicht lesbar ("+a.status+")");
@@ -1232,7 +1241,10 @@ function zeichne(){
              Nummer, unter der der Pass ausgerufen wird. Wer am Pass
              steht, muss auf einen Blick wissen, ob der Teller zum
              Gast geht oder in eine Tüte. */
-          (b.quelle === "telefon"
+          (b.quelle === "lieferung"
+            ? '<div class="tisch telefon"><small>Lieferung</small>' +
+                h(b.tagesnummer != null ? "#" + b.tagesnummer : "Aus") + '</div>'
+            : b.quelle === "telefon"
             ? '<div class="tisch telefon"><small>' +
                 (b.abholung === false ? 'Lieferung' : 'Abholung') + '</small>' +
                 h(b.tagesnummer != null ? "#" + b.tagesnummer : "Tel") + '</div>'
@@ -1250,6 +1262,22 @@ function zeichne(){
                 ? '<span class="wunsch">' + h(new Date(b.wunschzeit)
                     .toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})) + ' Uhr</span>'
                 : '') +
+            '</div>'
+          : '') +
+        /* Die Lieferadresse gehoert auf den Bon, nicht nur ins Board:
+           Wer packt, muss wissen, wohin — und der Zettel in der Tuete
+           ist oft das Einzige, was der Fahrer mitnimmt. Dieselbe
+           Flaeche wie beim Telefonbon, kein neuer Block. */
+        (b.quelle === "lieferung" && b.liefer_adresse
+          ? '<div class="anrufer"><b>Liefern an</b>' +
+              h([b.liefer_adresse.name,
+                 b.liefer_adresse.strasse,
+                 [b.liefer_adresse.plz, b.liefer_adresse.ort].filter(Boolean).join(" ")]
+                .filter(Boolean).join(" · ")) +
+              (b.liefer_adresse.klingel
+                ? '<span class="wunsch">' + h(b.liefer_adresse.klingel) + '</span>' : '') +
+              (b.liefer_adresse.telefon
+                ? '<span class="wunsch">' + h(b.liefer_adresse.telefon) + '</span>' : '') +
             '</div>'
           : '') +
         (b.notiz ? '<div class="notiz"><b>Hinweis vom Gast</b>' + h(b.notiz) + '</div>' : '') +
