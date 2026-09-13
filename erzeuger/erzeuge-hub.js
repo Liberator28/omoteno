@@ -73,6 +73,12 @@ const ICONNAMEN        = ausGeruest(/const ICONS = \{([\s\S]*?)\n\};/, "ICONS");
    Erzeuger abgelehnt — der Kunde hätte sie im Studio gewählt und den
    Hub nicht bekommen. */
 const FIGURNAMEN       = ausGeruest(/const AVATAR_FIGUREN = \{([\s\S]*?)\n\};/, "AVATAR_FIGUREN");
+/* Zwei feste Werte statt aus dem Gerüst gelesen — anders als bei den
+   Figuren gibt es hier (noch) keine Sammlung im Vorlage-Quelltext,
+   an der man das automatisch ablesen könnte: kopfbandSetzen() im
+   Gerüst kennt nur "laternen" als Sonderfall, alles andere bleibt
+   beim Guss. */
+const KOPFBAND_ARTEN    = ["guss", "laternen"];
 /* Was die Figur je Bestellphase tragen kann, und welche Phasen es
    gibt — beides aus dem Gerüst, aus demselben Grund wie oben. */
 const REQUISITEN       = ausGeruest(/const E_REQUISITEN = \{([\s\S]*?)\n\};/, "E_REQUISITEN");
@@ -279,6 +285,12 @@ function pruefeMarkenblatt(mb){
      FIGURNAMEN.indexOf(mb.avatar.figur) < 0)
     F("avatar.figur unbekannt: " + mb.avatar.figur +
       " — erlaubt: " + FIGURNAMEN.join(", "));
+  /* Derselbe Grund wie bei figur: ein Tippfehler bliebe wortlos beim
+     Guss statt beim gewählten Schmuck. Fehlt kopfband ganz, bleibt es
+     beim Guss — die Vorgabe für jedes bestehende Markenblatt. */
+  if(mb.kopfband !== undefined && KOPFBAND_ARTEN.indexOf(mb.kopfband) < 0)
+    F("kopfband unbekannt: " + mb.kopfband +
+      " — erlaubt: " + KOPFBAND_ARTEN.join(", "));
   /* Dieselbe Begründung wie bei figur: Ein Tippfehler in haende
      ergäbe im Hub wortlos wieder die Vorgabe. Der Kunde hätte seine
      Pfanne gewählt und bekäme den Kuchenstapel. */
@@ -411,6 +423,7 @@ function alsQuelltext(mb){
        der Platzhalter aus der Vorlage stehen — deshalb wird er auch
        nicht leer geschrieben, sondern weggelassen. */
     mb.avatar    ? block("avatar", mb.avatar, ["figur","art","name"]) : null,
+    mb.kopfband  ? liste("kopfband", mb.kopfband) : null,
     liste("zeiten",     mb.zeiten),
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,
