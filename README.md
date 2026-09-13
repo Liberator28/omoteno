@@ -43,8 +43,8 @@ liest diese Tabelle zuerst.
 | `seiten/konto.html` | `omoteno.de/konto.html` | Der Kunde: Vertrag, Rechnungen, Zugänge |
 | `seiten/start.html` | `omoteno.de/start.html` | Wer lieber redet als klickt — Formular für die Einrichtung |
 | `seiten/marken-studio.html` | `omoteno.de/marken-studio.html` | Der Kunde, wenn er seinen Hub gestaltet |
-| `seiten/admin.html` | `admin.omoteno.de` | Der Betrieb: Bestellungen, Karte, Auswertung |
-| `seiten/kueche.html` | `admin.omoteno.de/kueche.html` | Die Küche und die Theke am Pass |
+| `seiten/admin.html` | `omoteno.de/admin` | Der Betrieb: Bestellungen, Karte, Auswertung |
+| `seiten/kueche.html` | `omoteno.de/kueche` | Die Küche und die Theke am Pass |
 | `vorlagen/hub.vorlage.html` → `dist/<slug>/index.html` | `<slug>.omoteno.de` | Der Gast am Tisch |
 
 Links steht, wo die Datei **liegt**, rechts, unter welcher Adresse sie

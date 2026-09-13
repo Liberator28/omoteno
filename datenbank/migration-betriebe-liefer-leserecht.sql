@@ -1,0 +1,54 @@
+-- ═══════════════════════════════════════════════════════════════════
+--  ANGEWENDET · Der Gast-Hub konnte betriebe wieder nicht lesen
+--
+--  Angewendet am 13.09. Derselbe Fehler wie migration-betriebe-
+--  leserecht.sql vom 30.08., nur an einer neueren Spalte: Die
+--  Lieferfunktion (Liefern 1-5) fügte betriebe.liefer hinzu und ließ
+--  den Hub sie in karteHolen() mitlesen — aber das Spaltenrecht für
+--  anon wurde nie mitgezogen.
+--
+--  Postgres verweigert die GANZE Abfrage, sobald auch nur EINE
+--  ausgewählte Spalte kein Recht trägt (42501). Seit der
+--  Lieferfunktion schlug deshalb nicht nur "liefer", sondern der
+--  komplette Kartenabruf fehl — betroffen waren im selben try-Block
+--  auch die LIVE-Karte, bestellPause, hub_texte, hub_kacheln und
+--  hub_woerter. Der Hub fällt dabei sauber auf die beim Erzeugen
+--  eingebackene Karte zurück (kein Absturz) — genau deshalb fiel es
+--  ohne Messung nicht auf.
+--
+--  ── BEFUND, NACHGEWIESEN IN DEN LOGS ──────────────────────────────
+--  query_logs (postgres_logs), Rolle "anon", wiederholt am 12./13.09.:
+--
+--      permission denied for table betriebe
+--      HINT: Grant the required privileges to the current role with:
+--            GRANT SELECT ON public.betriebe TO anon;
+--
+--  Nachgemessen mit set local role anon, welche Spalten von anon
+--  tatsächlich lesbar sind (information_schema.column_privileges):
+--  id, slug, name, bestell_pause, bestell_pause_text, hub_texte,
+--  hub_kacheln, hub_woerter, tisch_pflicht — liefer fehlte als
+--  einzige.
+--
+--  ── WARUM SPALTENWEISE UND NICHT „grant select on betriebe" ───────
+--  Wie am 30.08.: In betriebe stehen auch plan, preis_monat,
+--  vertrag_ab, gekuendigt_zum, rechnung_an und test_bis — die
+--  Geschäftsdaten jedes Kunden. Nachgemessen nach der Migration,
+--  dass diese weiterhin verweigert werden.
+--
+--  ── GEPRÜFT IN EINER ZURÜCKGEDREHTEN TRANSAKTION ──────────────────
+--    1 id, bestell_pause, hub_texte, hub_kacheln, hub_woerter,
+--      liefer lesen ............................ chocolamour · ✓
+--    2 Spalte preis_monat ...... weiterhin verweigert          ✓
+-- ═══════════════════════════════════════════════════════════════════
+
+grant select (liefer) on public.betriebe to anon;
+
+-- ── DANACH GEPRÜFT (live, nicht nur in der Probe) ──────────────────
+--   begin; set local role anon;
+--   select id, bestell_pause, hub_texte, hub_kacheln, hub_woerter, liefer
+--     from betriebe where slug = 'chocolamour';
+--   rollback;
+-- → liefert alle sechs Felder, inklusive liefer.an/plz/gebuehr/...
+--
+--   begin; set local role anon; select preis_monat from betriebe limit 1; rollback;
+-- → weiterhin 42501, wie vor der Migration.

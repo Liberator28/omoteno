@@ -99,6 +99,28 @@ Ein Blick in die eigene Datei findet das nicht. Wer einen geteilten
 Block anfasst, `grep`t den Namen in **jeder** Datei, in die er kopiert
 wird. `pruef-figur.js` tut das jetzt für alle 41 Klassen des Blocks.
 
+**Auch in einer zusammengesetzten Klasse steckt jedes Wort einzeln im
+selben Namensraum.**
+
+> **Vorfall.** Ein neuer Platzhaltertext im Kategorie-Feld des
+> Admin-Boards bekam `class="auswahlwert leer"`. Gesucht hatte ich nur
+> nach der zusammengesetzten Form `auswahlwert.leer` — die gab es
+> nicht. Ein einzelnes `.leer` gab es längst: die große leere-Karte
+> („Diese Karte ist noch leer"), `padding:52px 20px;text-align:center`.
+> Ein Element trägt seine Klassen als **Menge**, nicht als ein Wort —
+> jede passende Regel greift, auch eine, die nur eine der beiden
+> Klassen kennt. Aus einer 22px hohen Zeile wurde eine 126px hohe
+> Fläche. Sichtbar im Bildschirmfoto als beinahe quadratischer statt
+> schmaler Knopf; gefunden nicht durch Ansehen, sondern durch einen
+> Diff aus `getComputedStyle` mit und ohne die Klasse.
+
+`grep -c 'class="[^"]*\bmarke\b'` prüft die zusammengesetzte Form. Für
+jedes **einzelne** Wort einer neuen Mehrfachklasse zählt zusätzlich:
+
+```bash
+grep -n '^\.leer{' datei.html      # steht das Wort schon ALLEIN da?
+```
+
 ### 1.1a Ein vorhandenes Feld heißt nicht, dass es das eigene ist
 
 > **Vorfall.** Das Gastkonto sollte an `bestellungen.gast_kennung`
@@ -955,12 +977,16 @@ Dazu je nach Änderung:
 | Farben, Paletten, Vorlagen | `pruefungen/pruef-kontrast.js` |
 | Karten-Zerleger | `pruefungen/pruef-import.js` |
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
+| **"Marke gestalten" im Board, Entwurfslink-Bridge** | `pruefungen/pruef-marke.js` — Rundlauf und die echte Naht: die im Board erzeugte Adresse wirklich im echten `marken-studio.html` geöffnet |
 | Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
 | Figur des Hauses, Requisiten, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
 | **Irgendein Text, den ein Gast liest** | `pruefungen/pruef-uebersetzung.js` (braucht `dist/`) — zweite Quelle, jede Sprache am gemalten Bild, Anrede, und der Weg aus dem Board |
 | Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |
+| **Allergene/Zusatzstoffe, Kennziffern-Zuordnung** | `pruefungen/pruef-stoffe.js` (braucht `dist/`) — Rundlauf admin.html ↔ hub.vorlage.html Ziffer für Ziffer, dazu die Überlauf-Prüfung (scrollWidth/scrollHeight) am längsten echten Zusatzstoff-Text |
 | Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |
+| **Kopfband-Schmuck (Guss/Laternen), neue Markenblatt-Varianten am Kopf** | `pruefungen/pruef-kopfband.js` (braucht `dist/`) — welches Band sichtbar ist je Haus, reduzierte Bewegung |
+| **Zierrat (Bambus/Tuschekleckse/Pfingstrose), neue Markenblatt-Stile** | `pruefungen/pruef-zierrat.js` (braucht `dist/`) — nur beim gewählten Haus sichtbar, kein Leck in andere Häuser, kein horizontales Überlaufen bei mehreren Breiten, Tag/Abend |
 | **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
 | Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
 | Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
@@ -971,6 +997,7 @@ Dazu je nach Änderung:
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Storno, Restzeit, jede Bestell-Funktion** | `pruefungen/pruef-naht.js` — hält den Wert, den der Hub schickt, gegen die Spalte, über die die SQL sucht |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand, und gleicht jedes Filter-Kästchen gegen die Stellen ab, die den Wert wirklich schreiben |
+| **Klapp-Felder, Segmente, animierte Auswahl im Board** | `pruefungen/pruef-auswahlfeld.js` — Tapflächen ≥ 44px, echtes Feld bleibt Quelle der Wahrheit, Endzustand ohne Bewegung |
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
@@ -986,6 +1013,7 @@ Dazu je nach Änderung:
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
 | **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der Kontrast des Bandes |
 | **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint` |
+| **Zeit-/Datumsfelder, Tagesknöpfe, Preis-Paare im Board** | `pruefungen/pruef-symmetrie.js` — Ränder, gleich breite Zeilen, drei Bildschirmbreiten |
 | **Animationen, Übergänge, Blätter** | `pruefungen/pruef-bewegung.js` — nur `transform`/`opacity`, Endzustand, Ausgang, Geste |
 | **Edge Functions (Übersetzer, Alessia)** | `pruefungen/pruef-edge.js` — `tsc --strict` und kein Schlüssel im Quelltext. Der einzige automatische Griff darauf: Beide Playwright-Prüfungen **stellen** die Serverantwort |
 

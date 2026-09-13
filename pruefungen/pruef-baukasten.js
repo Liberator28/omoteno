@@ -141,6 +141,30 @@ async function board(br){
   ok(a.kleinsteSchrift >= 16, "die Eingabefelder haben 16px",
     a.kleinsteSchrift + "px");
 
+  /* Die Symbolwahl startet zu — bei elf Kacheln wären sonst knapp 420
+     Symbolknöpfe auf einmal offen. Das gewählte Symbol steht schon in
+     der Vorschau (.kbschau); die Wahl selbst ist reiner Komfort. */
+  const zuVorher = await p.evaluate(() => {
+    const knopf = document.querySelector('[data-kb="tischruf"] .kbsymknopf');
+    const klapp = document.getElementById(knopf.getAttribute("aria-controls"));
+    return {
+      expanded: knopf.getAttribute("aria-expanded"),
+      hoehe: klapp.getBoundingClientRect().height
+    };
+  });
+  ok(zuVorher.expanded === "false" && zuVorher.hoehe < 2,
+    "die Symbolwahl startet zu", JSON.stringify(zuVorher));
+
+  await p.click('[data-kb="tischruf"] .kbsymknopf');
+  await p.waitForTimeout(450);
+  const aufNachher = await p.evaluate(() => {
+    const knopf = document.querySelector('[data-kb="tischruf"] .kbsymknopf');
+    const klapp = document.getElementById(knopf.getAttribute("aria-controls"));
+    return { expanded: knopf.getAttribute("aria-expanded"), hoehe: klapp.getBoundingClientRect().height };
+  });
+  ok(aufNachher.expanded === "true" && aufNachher.hoehe > 100,
+    "ein Tipp klappt sie auf", JSON.stringify(aufNachher));
+
   await p.click('[data-kb="tischruf"] [data-kb-icon="glocke"]');
   await p.waitForTimeout(150);
   const b = await p.evaluate(() => ({

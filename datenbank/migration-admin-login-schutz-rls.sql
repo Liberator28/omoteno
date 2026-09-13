@@ -1,0 +1,52 @@
+-- ═══════════════════════════════════════════════════════════════════
+--  ANGEWENDET · admin_login_schutz hatte Row Level Security aus
+--
+--  Angewendet am 13.09. Gefunden beim routinemäßigen Prüfen der
+--  Tabellenliste (list_tables meldet RLS-Status je Tabelle): Als
+--  einzige Tabelle im Schema hatte admin_login_schutz RLS aus. Der
+--  generische Hinweis dazu sagt "anyone with the anon key can read
+--  or modify every row" — das ist die Standardformulierung für JEDE
+--  Tabelle ohne RLS, unabhängig von den tatsächlichen Rechten.
+--
+--  Nachgemessen statt geglaubt (§2.3a: das Recht entscheidet, ob
+--  überhaupt, nicht die Regel):
+--
+--    select grantee, privilege_type from information_schema.table_privileges
+--    where table_name='admin_login_schutz';
+--    → nur service_role und postgres. Weder anon noch authenticated
+--      haben irgendein Recht auf diese Tabelle.
+--
+--    begin; set local role anon;
+--    select 1 from admin_login_schutz limit 1;
+--    → ERROR 42501: permission denied for table admin_login_schutz
+--
+--    (dasselbe für authenticated, mit gesetztem request.jwt.claims)
+--    → ebenfalls 42501
+--
+--  Das GRANT allein hat also schon jeden fremden Zugriff verweigert —
+--  RLS war hier nicht die aktive Tür. Trotzdem: Verteidigung in der
+--  Tiefe. Sollte je ein GRANT auf diese Tabelle dazukommen (aus
+--  Versehen oder für einen neuen Zweck), ohne dass jemand an RLS
+--  denkt, greift die Regel trotzdem.
+--
+--  admin_anmelden() und admin_login_entsperren() — die einzigen zwei
+--  Funktionen, die admin_login_schutz anfassen — sind beide
+--  SECURITY DEFINER und laufen als Tabelleneigentümer. Ein
+--  Tabelleneigentümer umgeht RLS unabhängig von Regeln, solange
+--  FORCE ROW LEVEL SECURITY nicht gesetzt ist (ist es hier nicht).
+--  Beide Funktionen bleiben deshalb unverändert nutzbar.
+--
+--  ── DANACH GEPRÜFT ─────────────────────────────────────────────────
+--    select relrowsecurity, relforcerowsecurity from pg_class
+--    where relname='admin_login_schutz';
+--    → true, false — RLS an, nicht erzwungen (Eigentümer bleibt frei)
+--
+--    select count(*) from admin_login_schutz;
+--    → 1 (normaler Lesezugriff funktioniert weiterhin)
+--
+--    node pruefungen/pruef-admin-login.js
+--    → Alles sauber (drei Fehlversuche sperren weiterhin, Freischaltung
+--      per E-Mail funktioniert weiterhin — Client-Verhalten unverändert)
+-- ═══════════════════════════════════════════════════════════════════
+
+alter table public.admin_login_schutz enable row level security;
