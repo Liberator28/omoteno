@@ -36,6 +36,19 @@
    transform:none}` testweise entfernt → genau diese Zusicherung wurde
    rot (transform blieb "matrix(...)" statt "none"). Zurückgenommen →
    grün.
+
+   Erweitert um Balken/Laterne als echte Bilder (1:1 aus Referenzbild
+   übernommen statt gezeichnet): Die Laternen haben jetzt ein eigenes
+   Seitenverhältnis und wachsen mit der Kartenbreite — ohne Freiraum
+   unter dem Kopfband hätte die Quaste in die erste Karte gehangen
+   (genau beobachtet, dann behoben: html.hat-laternen main{margin-top}).
+   Geprüft wird hier, dass dieser Freiraum wirklich da ist (kein
+   Überlapp) — UND dass er bei den Guss-Häusern NICHT dazukommt (kein
+   unnötiger Leerraum, wo der Guss ohnehin kurz bleibt).
+
+   Gegenbeweis: `html.hat-laternen main{margin-top:150px}` testweise
+   auf `0px` gesetzt → die Überlapp-Zusicherung wurde rot (Laternen-
+   Unterkante lag unterhalb der main-Oberkante). Zurückgenommen → grün.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const path = require("path");
@@ -74,6 +87,26 @@ function pruef(b, t, d) {
     if (haus === "minhkeey")
       pruef(zustand.laternenAnzahl === 7, "minhkeey: sieben Laternen gezeichnet", zustand.laternenAnzahl);
     pruef(konsole.length === 0, haus + ": keine Ausnahme in der Konsole", konsole.join(" | ") || "still");
+
+    /* Freiraum unter den Laternen: bei minhkeey muss main() unterhalb
+       der Laternen-Unterkante beginnen (kein Überlapp mit der Quaste),
+       bei den Guss-Häusern darf html.hat-laternen erst gar nicht
+       gesetzt sein — sonst stünde main() dort unnötig weit unten. */
+    if (haus === "minhkeey") {
+      await seite.waitForTimeout(900); // Einflug fertig, Maße stehen
+      const masse = await seite.evaluate(() => {
+        const laternenUnten = document.querySelector(".laternen").getBoundingClientRect().bottom;
+        const mainOben = document.querySelector("main").getBoundingClientRect().top;
+        return { laternenUnten, mainOben, hatKlasse: document.documentElement.classList.contains("hat-laternen") };
+      });
+      pruef(masse.hatKlasse, "minhkeey: html trägt hat-laternen");
+      pruef(masse.mainOben >= masse.laternenUnten,
+        "minhkeey: main beginnt unterhalb der Laternen (kein Überlapp)",
+        "main=" + masse.mainOben.toFixed(1) + " Laternen-Unterkante=" + masse.laternenUnten.toFixed(1));
+    } else {
+      const hatKlasse = await seite.evaluate(() => document.documentElement.classList.contains("hat-laternen"));
+      pruef(!hatKlasse, haus + ": html trägt hat-laternen NICHT (Guss braucht keinen Zusatz-Freiraum)");
+    }
     await seite.close();
   }
 
