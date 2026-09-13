@@ -153,11 +153,17 @@ blockText("const OPTIONEN", /hinweis:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merk
 const MB_TECH = new Set(["schluessel","icon","slug","code","farbe","stil","raster","gruppe",
   "ziel","bild","logo","schrift","version","hex","typ","art","id","klasse","form","instagram",
   "google","maps","web","tel","mail","ssid","passwort","figur","netz","strasse","ort","name",
-  "claim","gericht","was","zeiten","links","wlan","trinkgeld"]);
+  "claim","gericht","was","zeiten","links","wlan","trinkgeld","kopfband","zierrat"]);
 function ausMarkenblatt(o, wo){
   if(Array.isArray(o)) return o.forEach(v => ausMarkenblatt(v, wo));
   if(o && typeof o === "object")
-    return Object.keys(o).forEach(k => { if(!MB_TECH.has(k)) ausMarkenblatt(o[k], wo + "." + k); });
+    return Object.keys(o).forEach(k => {
+      /* Ein Feld, das mit "_" beginnt, ist eine interne Notiz von mir
+         an mich selbst (z. B. _hinweis, _zeiten_hinweis) — nie im Hub
+         gerendert, deshalb keine Übersetzung nötig. */
+      if(k.startsWith("_")) return;
+      if(!MB_TECH.has(k)) ausMarkenblatt(o[k], wo + "." + k);
+    });
   if(typeof o === "string") merke(wo, o);
 }
 for(const f of fs.readdirSync(path.join(HIER, "markenblaetter")).filter(f => f.endsWith(".json")))
