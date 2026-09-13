@@ -1150,18 +1150,51 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .kpreis{float:right;font-weight:700}
 [dir="rtl"] .kpreis{float:left}
 
-.wstoffe{display:flex;flex-wrap:wrap;gap:8px}
+/* ══ Allergene/Zusatzstoffe: eine Karte je Gruppe, die aufklappt ══
+   Vorher EIN gemeinsamer flex-wrap-Streifen für beide Listen — ohne
+   Titel, ohne Gruppierung, ohne eigene Tippfläche. Jetzt dieselbe
+   Sprache wie die Topping-Gruppen oben (.ogruppe/.otitel): Titel mit
+   Anzahl, ein Knopf mit voller Breite, ein aufklappbares Feld
+   darunter. Start OFFEN — Allergie-Angaben sind sicherheitsrelevant,
+   niemand soll erst tippen müssen, um sie zu sehen; "aufklappbar"
+   liefert nur Struktur, kein Verstecken. */
+.wgruppe{margin-bottom:14px}
+.wgruppe:last-of-type{margin-bottom:4px}
+.wgtitel{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  width:100%;min-height:44px;text-align:left;
+  background:none;border:0;padding:8px 2px;margin:0;
+  font-family:inherit;cursor:pointer;
+  font-size:10.5px;letter-spacing:1.6px;font-weight:700;
+  color:var(--tinte-leise);text-transform:uppercase;
+}
+.wgtitel em{font-style:normal;color:var(--tinte-still);font-weight:600;margin-left:2px}
+.wchevron{color:var(--tinte-still);flex:none;transition:transform var(--kurz) var(--weich)}
+.wgtitel[aria-expanded="true"] .wchevron{transform:rotate(180deg)}
+
+/* grid-template-rows 1fr→0fr statt height: der Inhalt ist unterschiedlich
+   lang, eine JS-Messung wäre nur für dieses eine Aufklappen nötig.
+   Bewusste Abweichung von "nur transform/opacity"
+   (.claude/skills/bewegung §1) — vertretbar, weil es eine einzelne,
+   selten getippte Karte ist, keine Liste und keine Dauerbewegung. */
+.wgklapp{display:grid;grid-template-rows:1fr;transition:grid-template-rows var(--kurz) var(--weich)}
+.wgruppe.zu .wgklapp{grid-template-rows:0fr}
+.wgklapp > div{overflow:hidden;min-height:0}
+.wstoffe{display:flex;flex-direction:column;gap:8px;padding-top:2px}
+@media (prefers-reduced-motion:reduce){ .wgklapp{transition:none} }
+
 .wstoff{
-  display:inline-flex;align-items:center;gap:7px;
+  display:flex;align-items:center;gap:9px;min-height:44px;
   background:var(--flaeche-2);border:1px solid var(--linie);border-radius:10px;
-  padding:8px 12px;font-size:13px;line-height:1.2
+  padding:8px 12px;font-size:13px;line-height:1.3
 }
 .wstoff .wcode{
-  display:inline-flex;align-items:center;justify-content:center;
+  display:inline-flex;align-items:center;justify-content:center;flex:none;
   min-width:19px;height:19px;border-radius:5px;padding:0 4px;
   background:var(--rot-flaeche);color:var(--rot);font-size:11px;font-weight:700
 }
 .wstoff.zusatz .wcode{background:var(--gold-flaeche);color:var(--gold)}
+.wstoff .wname{flex:1;min-width:0}
 .wleer{
   font-size:13.5px;color:var(--tinte-leise);line-height:1.6;
   background:var(--flaeche-2);border:1px dashed var(--linie-stark);
@@ -6568,6 +6601,8 @@ const TEXTE = {
 "koffeinhaltig":{en:"Contains caffeine",tr:"Kafein içerir",ru:"Содержит кофеин",fr:"Contient de la caféine",es:"Contiene cafeína",it:"Contiene caffeina",pl:"Zawiera kofeinę",ar:"يحتوي على الكافيين",uk:"Містить кофеїн",nl:"Bevat cafeïne",ro:"Conține cofeină"},
 "chininhaltig":{en:"Contains quinine",tr:"Kinin içerir",ru:"Содержит хинин",fr:"Contient de la quinine",es:"Contiene quinina",it:"Contiene chinino",pl:"Zawiera chininę",ar:"يحتوي على الكينين",uk:"Містить хінін",nl:"Bevat kinine",ro:"Conține chinină"},
 "Inhalt & Allergene":{en:"Ingredients & allergens",tr:"İçindekiler ve alerjenler",ru:"Состав и аллергены",fr:"Composition et allergènes",es:"Ingredientes y alérgenos",it:"Ingredienti e allergeni",pl:"Skład i alergeny",ar:"المكونات ومسببات الحساسية",uk:"Склад та алергени",nl:"Ingrediënten & allergenen",ro:"Ingrediente și alergeni"},
+"Allergene":{en:"Allergens",tr:"Alerjenler",ru:"Аллергены",fr:"Allergènes",es:"Alérgenos",it:"Allergeni",pl:"Alergeny",ar:"مسببات الحساسية",uk:"Алергени",nl:"Allergenen",ro:"Alergeni"},
+"Zusatzstoffe":{en:"Additives",tr:"Katkı maddeleri",ru:"Пищевые добавки",fr:"Additifs",es:"Aditivos",it:"Additivi",pl:"Dodatki",ar:"الإضافات الغذائية",uk:"Харчові добавки",nl:"Toevoegingen",ro:"Aditivi"},
 "Für dieses Gericht sind die Angaben noch nicht hinterlegt. Unser Serviceteam gibt Ihnen gerne persönlich Auskunft.":{en:"Details for this item have not been added yet. Our service team will gladly help you in person.",tr:"Bu ürün için bilgiler henüz eklenmedi. Servis ekibimiz size memnuniyetle bilgi verir.",ru:"Данные по этому блюду ещё не внесены. Наша команда с радостью подскажет лично.",fr:"Les informations pour ce plat ne sont pas encore renseignées. Notre équipe vous renseigne volontiers.",es:"Los datos de este plato aún no están registrados. Nuestro equipo le informa con mucho gusto.",it:"I dati per questo piatto non sono ancora inseriti. Il nostro team vi informa volentieri.",pl:"Dane dla tej pozycji nie zostały jeszcze dodane. Nasza obsługa chętnie udzieli informacji.",ar:"لم تُضف بيانات هذا الطبق بعد. يسعد فريق الخدمة بإفادتكم شخصياً.",uk:"Дані щодо цієї страви ще не внесені. Наша команда охоче підкаже особисто.",nl:"De gegevens voor dit gerecht zijn nog niet ingevoerd. Ons team helpt u graag persoonlijk.",ro:"Datele pentru acest preparat nu au fost încă adăugate. Echipa noastră vă informează cu plăcere."},
 "Angaben ohne Gewähr. Bei Allergien oder Unverträglichkeiten sprechen Sie bitte immer unser Serviceteam an.":{en:"Information without guarantee. In case of allergies or intolerances, please always speak to our service team.",tr:"Bilgiler garanti edilmez. Alerji veya intolerans durumunda lütfen daima servis ekibimize danışın.",ru:"Информация без гарантии. При аллергии или непереносимости всегда обращайтесь к нашей команде.",fr:"Informations sans garantie. En cas d'allergie ou d'intolérance, adressez-vous toujours à notre équipe.",es:"Información sin garantía. En caso de alergias o intolerancias, consulte siempre a nuestro equipo.",it:"Informazioni senza garanzia. In caso di allergie o intolleranze rivolgetevi sempre al nostro team.",pl:"Informacje bez gwarancji. W razie alergii lub nietolerancji prosimy zawsze pytać obsługę.",ar:"المعلومات دون ضمان. في حال وجود حساسية أو عدم تحمل، يُرجى دائماً مراجعة فريق الخدمة.",uk:"Інформація без гарантії. У разі алергії чи непереносимості завжди звертайтеся до нашої команди.",nl:"Informatie onder voorbehoud. Bij allergieën of intoleranties altijd ons team raadplegen.",ro:"Informații fără garanție. În caz de alergii sau intoleranțe, adresați-vă întotdeauna echipei noastre."},
 "Zur Auswahl hinzufügen":{en:"Add to selection",tr:"Seçime ekle",ru:"Добавить к выбору",fr:"Ajouter à la sélection",es:"Añadir a la selección",it:"Aggiungi alla selezione",pl:"Dodaj do wyboru",ar:"أضف إلى الاختيار",uk:"Додати до вибору",nl:"Aan selectie toevoegen",ro:"Adaugă la selecție"},
@@ -9284,10 +9319,24 @@ function bestellStatusSteuern(pfad){
 /* ---------- Warenkarte: Infokarte zu einem Gericht ---------- */
 let detailName = null;
 
-function stoffChips(codes, namen, klasse){
-  return codes.filter(c => namen[c]).map(c =>
-    '<span class="wstoff' + klasse + '"><span class="wcode">' + c + '</span>' +
-    t(namen[c]) + '</span>').join("");
+/* Eine aufklappbare Karte je Gruppe (Allergene ODER Zusatzstoffe),
+   nicht mehr ein gemeinsamer Streifen für beide. Start offen — siehe
+   Begründung bei den CSS-Regeln zu .wgruppe. kennung wird zur
+   aria-controls-Referenz, muss deshalb je Gruppe eindeutig sein. */
+function stoffGruppe(kennung, titel, codes, namen, klasse){
+  const gefiltert = (codes || []).filter(c => namen[c]);
+  if(!gefiltert.length) return "";
+  const chips = gefiltert.map(c =>
+    '<div class="wstoff' + klasse + '"><span class="wcode">' + c + '</span>' +
+    '<span class="wname">' + t(namen[c]) + '</span></div>').join("");
+  return '<div class="wgruppe">' +
+    '<button type="button" class="wgtitel" aria-expanded="true" aria-controls="wgpanel-' + kennung + '">' +
+    '<span>' + t(titel) + ' <em>' + gefiltert.length + '</em></span>' +
+    '<svg class="wchevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">' +
+    '<path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '</button>' +
+    '<div class="wgklapp"><div id="wgpanel-' + kennung + '"><div class="wstoffe">' + chips + '</div></div></div>' +
+  '</div>';
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -9358,10 +9407,9 @@ function warenkarteHTML(g){
 
   let stoffe;
   if(info && ((info.a && info.a.length) || (info.z && info.z.length) || info.hinweis)){
-    const a = info.a && info.a.length ? stoffChips(info.a, ALLERGEN_NAMEN, "") : "";
-    const z = info.z && info.z.length ? stoffChips(info.z, ZUSATZ_NAMEN, " zusatz") : "";
-    stoffe = (a || z ? '<div class="wstoffe">' + a + z + '</div>' : "") +
-             (info.hinweis ? '<div class="wfrei">' + t(info.hinweis) + '</div>' : "");
+    const a = stoffGruppe("allergene", "Allergene", info.a, ALLERGEN_NAMEN, "");
+    const z = stoffGruppe("zusatz", "Zusatzstoffe", info.z, ZUSATZ_NAMEN, " zusatz");
+    stoffe = a + z + (info.hinweis ? '<div class="wfrei">' + t(info.hinweis) + '</div>' : "");
   } else {
     /* Noch nichts eingepflegt – höflich bleiben, nichts erfinden */
     stoffe = '<div class="wleer">' +
@@ -10044,6 +10092,17 @@ $("warenkarte").addEventListener("click", e => {
      Karte, tat aber nichts. Nur Escape und ein Tipp auf die Blende
      schlossen sie. */
   if(e.target.closest("[data-wzu]")){ detailSchliessen(); return; }
+
+  /* Allergene/Zusatzstoffe zuklappen oder wieder öffnen. Reiner
+     Komfort — die Angaben starten offen, siehe die Begründung bei
+     .wgruppe im Stylesheet. */
+  const wg = e.target.closest(".wgtitel");
+  if(wg){
+    const offen = wg.getAttribute("aria-expanded") === "true";
+    wg.setAttribute("aria-expanded", String(!offen));
+    wg.closest(".wgruppe").classList.toggle("zu", offen);
+    return;
+  }
 
   /* Topping angetippt: Nur die Karte neu zeichnen, nicht die Seite.
      Der Gast soll den Preis auf dem Knopf sofort mitwandern sehen. */

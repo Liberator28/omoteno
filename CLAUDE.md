@@ -983,6 +983,7 @@ Dazu je nach Änderung:
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
 | **Irgendein Text, den ein Gast liest** | `pruefungen/pruef-uebersetzung.js` (braucht `dist/`) — zweite Quelle, jede Sprache am gemalten Bild, Anrede, und der Weg aus dem Board |
 | Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |
+| **Allergene/Zusatzstoffe, Kennziffern-Zuordnung** | `pruefungen/pruef-stoffe.js` (braucht `dist/`) — Rundlauf admin.html ↔ hub.vorlage.html Ziffer für Ziffer, dazu die Überlauf-Prüfung (scrollWidth/scrollHeight) am längsten echten Zusatzstoff-Text |
 | Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |
 | **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
 | Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
