@@ -1200,7 +1200,25 @@ textarea{resize:vertical;min-height:66px}
   font:inherit;font-size:16px;   /* 16px, sonst zoomt iOS beim Antippen */
   -webkit-appearance:none;
 }
-.kbsymbole{display:flex;flex-direction:column;gap:7px}
+/* Vorher stand die volle Symbolwahl (4 Gruppen, 38 Symbole) bei
+   JEDER Kachel offen da — bei elf Kacheln fast 420 Knöpfe auf einmal.
+   Das gewählte Symbol steht schon in der Vorschau (.kbschau) darüber;
+   die Wahl selbst klappt jetzt zu, Start ZU (reiner Bequemlichkeits-
+   knopf, keine sicherheitsrelevante Angabe wie bei den Allergenen). */
+.kbsymknopf{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  width:100%;min-height:40px;text-align:left;
+  background:none;border:1px solid var(--linie);border-radius:9px;
+  padding:8px 11px;margin:0 0 7px;font:inherit;font-size:13px;
+  color:var(--gedaempft);cursor:pointer;
+}
+.kbsymknopf .chevron{transition:transform var(--t-druck) var(--ease-out)}
+.kbsymknopf[aria-expanded=true] .chevron{transform:rotate(180deg)}
+.kbklapp{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--t-blatt) var(--ease-blatt)}
+.kbklapp.offen{grid-template-rows:1fr}
+.kbklapp>div{overflow:hidden;min-height:0}
+@media (prefers-reduced-motion:reduce){ .kbklapp{transition:none} }
+.kbsymbole{display:flex;flex-direction:column;gap:7px;padding-top:1px}
 .kbgruppe{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;
   color:var(--gedaempft)}
 .kbwahl{display:flex;flex-wrap:wrap;gap:6px}
@@ -6209,13 +6227,18 @@ function kbZeichnen(){
         '<label><span>Unterzeile</span>' +
           '<input data-kb-unter maxlength="52" value="' + sicher(k.unter) + '"></label>') +
       '</div>' +
-      '<div class="kbsymbole">' + KB_SYMBOLGRUPPEN.map(g =>
+      '<button type="button" class="kbsymknopf" data-kb-symauf aria-expanded="false" aria-controls="kbklapp-' + sicher(k.schluessel) + '">' +
+        '<span>Symbol ändern</span>' +
+        '<svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">' +
+        '<path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+      '</button>' +
+      '<div class="kbklapp" id="kbklapp-' + sicher(k.schluessel) + '"><div><div class="kbsymbole">' + KB_SYMBOLGRUPPEN.map(g =>
         '<div class="kbgruppe">' + sicher(g.name) + '</div>' +
         '<div class="kbwahl">' + g.icons.map(n =>
           '<button type="button" data-kb-icon="' + sicher(n) + '" aria-label="' + sicher(n) + '"' +
           ' aria-pressed="' + (k.icon === n ? "true" : "false") + '">' +
           (ICONS[n] || "") + '</button>').join("") + '</div>').join("") +
-      '</div>' +
+      '</div></div></div>' +
       '<div class="kbbildreihe">' +
         '<input type="file" accept="image/*" hidden data-kb-datei>' +
         '<button type="button" data-kb-waehlen>' +
@@ -6244,6 +6267,17 @@ document.addEventListener("click", e => {
 
   const sym = e.target.closest("[data-kb-icon]");
   if(sym){ kbAendern(sch, "icon", sym.dataset.kbIcon); return; }
+
+  /* Zu/Auf für die Symbolwahl. Reiner Komfort — das gewählte Symbol
+     steht schon in der Vorschau (.kbschau), siehe Begründung im CSS. */
+  const symKnopf = e.target.closest("[data-kb-symauf]");
+  if(symKnopf){
+    const offen = symKnopf.getAttribute("aria-expanded") === "true";
+    symKnopf.setAttribute("aria-expanded", String(!offen));
+    const klapp = document.getElementById(symKnopf.getAttribute("aria-controls"));
+    if(klapp) klapp.classList.toggle("offen", !offen);
+    return;
+  }
 
   if(e.target.closest("[data-kb-waehlen]")){
     const d = zeile.querySelector("[data-kb-datei]");
