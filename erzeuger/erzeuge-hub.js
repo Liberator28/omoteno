@@ -79,6 +79,11 @@ const FIGURNAMEN       = ausGeruest(/const AVATAR_FIGUREN = \{([\s\S]*?)\n\};/, 
    Gerüst kennt nur "laternen" als Sonderfall, alles andere bleibt
    beim Guss. */
 const KOPFBAND_ARTEN    = ["guss", "laternen"];
+/* Zierrat: zusätzlicher, wählbarer Gestaltungs-Zierrat (Bambus im
+   Kopf, Tuschekleckse statt Farbwolken, Pfingstrosen-Knospe vor jeder
+   .bereich-Überschrift). Fehlt zierrat ganz, bleibt der Hub wie
+   bisher — zierratSetzen() im Gerüst kennt nur "tusche". */
+const ZIERRAT_ARTEN     = ["tusche"];
 /* Was die Figur je Bestellphase tragen kann, und welche Phasen es
    gibt — beides aus dem Gerüst, aus demselben Grund wie oben. */
 const REQUISITEN       = ausGeruest(/const E_REQUISITEN = \{([\s\S]*?)\n\};/, "E_REQUISITEN");
@@ -291,6 +296,11 @@ function pruefeMarkenblatt(mb){
   if(mb.kopfband !== undefined && KOPFBAND_ARTEN.indexOf(mb.kopfband) < 0)
     F("kopfband unbekannt: " + mb.kopfband +
       " — erlaubt: " + KOPFBAND_ARTEN.join(", "));
+  /* Derselbe Grund wie bei kopfband: ein Tippfehler bliebe wortlos
+     ohne Zierrat. Fehlt zierrat ganz, bleibt der Hub wie bisher. */
+  if(mb.zierrat !== undefined && ZIERRAT_ARTEN.indexOf(mb.zierrat) < 0)
+    F("zierrat unbekannt: " + mb.zierrat +
+      " — erlaubt: " + ZIERRAT_ARTEN.join(", "));
   /* Dieselbe Begründung wie bei figur: Ein Tippfehler in haende
      ergäbe im Hub wortlos wieder die Vorgabe. Der Kunde hätte seine
      Pfanne gewählt und bekäme den Kuchenstapel. */
@@ -424,6 +434,7 @@ function alsQuelltext(mb){
        nicht leer geschrieben, sondern weggelassen. */
     mb.avatar    ? block("avatar", mb.avatar, ["figur","art","name"]) : null,
     mb.kopfband  ? liste("kopfband", mb.kopfband) : null,
+    mb.zierrat   ? liste("zierrat", mb.zierrat) : null,
     liste("zeiten",     mb.zeiten),
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,

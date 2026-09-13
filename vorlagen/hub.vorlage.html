@@ -164,6 +164,17 @@ body[data-phase="tag"]{
   --schoko:#8B5E3C;
   --schatten-hoch:0 18px 44px rgba(42,26,20,.20);
 
+  /* Zierrat "tusche" — feste Material-/Motivfarben (§5.3: ein
+     Pinselstrich ist Material, kein Markenakzent, wie der
+     Tempelbalken). Nur wirksam, wenn MARKENBLATT.zierrat==="tusche",
+     siehe zierratSetzen() und body[data-zierrat] weiter unten. */
+  --tusche-kiefer:#3B4A3A;
+  --tusche-blatt:#6B8A5A;
+  --tusche-teal:#2F5C56;
+  --tusche-koralle:#C1594B;
+  --tusche-gold:#C79A44;
+  --tusche-papier:#F3ECDD;
+
   /* Altbezeichner aus v6 – damit nichts ins Leere greift */
   --bg:var(--grund); --karte:var(--flaeche); --text:var(--tinte);
   --grau:var(--tinte-leise); --cyan:var(--pistazie); --gruen:var(--pistazie);
@@ -183,6 +194,15 @@ body[data-phase="abend"]{
   --w-pistazie:#415233;
   --guss-schatten:0 4px 10px rgba(0,0,0,.55);
   --schatten-hoch:0 20px 50px rgba(0,0,0,.55);
+
+  /* Zierrat "tusche" am Abend: hellere, kräftigere Töne, sonst
+     verschwindet Tusche auf dunklem Papier wie die Wolken auch. */
+  --tusche-kiefer:#7FA07A;
+  --tusche-blatt:#9CBB8C;
+  --tusche-teal:#5C9C90;
+  --tusche-koralle:#D98A76;
+  --tusche-gold:#D9B769;
+  --tusche-papier:#221F1B;
 }
 
 /* ═══ Grundgerüst ═══════════════════════════════════════════════ */
@@ -263,6 +283,22 @@ header{
   column-gap:14px;align-items:center;
   transition:background-color .9s ease;
 }
+
+/* Zierrat "tusche": ein Bambuszweig wächst aus der oberen rechten
+   Ecke des Kopfbandes. position:absolute nimmt ihn aus dem Raster,
+   er stört also die drei Spalten (logo/titel/sprache) nicht. Läuft
+   an der Kante entlang nach unten statt diagonal durchs Band — sonst
+   kreuzt er die Sprachwahl (gemessen, erst danach so verschoben).
+   right:0, nicht negativ: header bleedet per negativem Rand schon bis
+   zur Bildschirmkante (Zeile 272) — ein zusätzliches negatives right
+   schob den Zweig 8px über DIESE Kante hinaus und erzeugte echtes
+   horizontales Überlaufen (scrollWidth 428 statt 420 bei 420px
+   Bildschirmbreite, gemessen). */
+.bambus-kopf{
+  position:absolute;top:-8px;right:0;width:54px;height:66px;
+  pointer-events:none;overflow:visible;opacity:.85;display:none;
+}
+body[data-zierrat="tusche"] .bambus-kopf{display:block}
 /* ═══ Das Siegel ═════════════════════════════════════════════════
    Das Logo ist der einzige Eyecatcher im Kopf. Damit es nicht wie ein
    aufgeklebtes Bild wirkt, bekommt es drei Dinge:
@@ -419,6 +455,25 @@ html.hat-laternen main{margin-top:150px}
 @media (prefers-reduced-motion: reduce){
   .ebene{transform:none !important}
 }
+
+/* ═══ Zierrat "tusche": Tuschekleckse statt Farbwolken ═════════════
+   Nur wenn MARKENBLATT.zierrat==="tusche" (zierratSetzen() setzt
+   body[data-zierrat]). Die Farbwolken bleiben für jedes andere Haus
+   unverändert — hier wird nur umgeschaltet, nie ersetzt. Vier ruhige,
+   unbewegte Flecken statt acht wandernder Wolken: Tuscheflecken auf
+   Papier verschieben sich nicht beim Scrollen, das wäre der falsche
+   Eindruck. */
+body[data-zierrat="tusche"] .raum{display:none}
+.raum-tusche{
+  position:fixed;inset:0;pointer-events:none;overflow:hidden;z-index:-1;
+  display:none;
+}
+body[data-zierrat="tusche"] .raum-tusche{display:block}
+.klecks{position:absolute;border-radius:50%;filter:blur(64px);opacity:.16}
+.klecks.k1{width:46vw;height:46vw;top:-10%;left:-12%;background:var(--tusche-teal)}
+.klecks.k2{width:38vw;height:38vw;top: 22%;left: 78%;background:var(--tusche-koralle)}
+.klecks.k3{width:50vw;height:50vw;top: 74%;left:-10%;background:var(--tusche-gold)}
+.klecks.k4{width:32vw;height:32vw;top:  6%;left: 52%;background:var(--tusche-blatt)}
 
 /* Öffnungsanzeige */
 .status{
@@ -715,6 +770,20 @@ a.tipp:active{transform:scale(.985)}
 }
 .bereich::after{content:"";flex:1;height:1px;background:var(--linie)}
 .bereich:first-child{margin-top:0}
+/* Zierrat "tusche": eine kleine Pfingstrosen-Knospe vor jeder
+   Abschnittsüberschrift — derselbe Trenner auf jeder Seite, die
+   .bereich benutzt (Startseite, Speisekarte, …), ohne dass irgendeine
+   dieser Seiten selbst etwas dafür wissen muss. Fest verdrahtete
+   Farben je Tag/Abend (data-URI, kein var() innerhalb von SVG-Text
+   möglich) statt aus der Marke hergeleitet — Motiv, kein Akzent. */
+body[data-zierrat="tusche"] .bereich::before{
+  content:"";width:15px;height:15px;flex:none;
+  background-repeat:no-repeat;background-size:contain;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M16 16 C10 10 6 11 4 6' stroke='%236B8A5A' stroke-width='2'/%3E%3Cpath d='M6 6 Q2 4 1 1 Q7 2 9 6Z' fill='%236B8A5A'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='16' cy='18' r='9.5' fill='%232F5C56' opacity='.9'/%3E%3Cpath d='M16 10 Q23 12 24 19 Q22 26 16 27 Q10 26 8 19 Q9 12 16 10Z' fill='%23F3ECDD' opacity='.9'/%3E%3Cpath d='M16 13.5 Q20.5 15 21 19.2 Q19.6 23.6 16 24.3 Q12.4 23.6 11 19.2 Q11.5 15 16 13.5Z' fill='%23C1594B' opacity='.85'/%3E%3Ccircle cx='16' cy='18.6' r='2.1' fill='%23C79A44'/%3E%3C/g%3E%3C/svg%3E");
+}
+body[data-zierrat="tusche"][data-phase="abend"] .bereich::before{
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Cg fill='none' stroke-linecap='round'%3E%3Cpath d='M16 16 C10 10 6 11 4 6' stroke='%239CBB8C' stroke-width='2'/%3E%3Cpath d='M6 6 Q2 4 1 1 Q7 2 9 6Z' fill='%239CBB8C'/%3E%3C/g%3E%3Cg%3E%3Ccircle cx='16' cy='18' r='9.5' fill='%235C9C90' opacity='.9'/%3E%3Cpath d='M16 10 Q23 12 24 19 Q22 26 16 27 Q10 26 8 19 Q9 12 16 10Z' fill='%23221F1B' opacity='.9'/%3E%3Cpath d='M16 13.5 Q20.5 15 21 19.2 Q19.6 23.6 16 24.3 Q12.4 23.6 11 19.2 Q11.5 15 16 13.5Z' fill='%23D98A76' opacity='.85'/%3E%3Ccircle cx='16' cy='18.6' r='2.1' fill='%23D9B769'/%3E%3C/g%3E%3C/svg%3E");
+}
 .gitter{display:grid;gap:9px}
 
 /* Die drei Karten-Säulen: das, weshalb der Gast das Handy überhaupt
@@ -2760,8 +2829,35 @@ function markeAnwenden(abend){
     <span class="wolke w8"></span>
   </div>
 </div>
+<!-- Zierrat "tusche": vier ruhige Tuschekleckse statt der Farbwolken.
+     Steht immer im Auszeichnungstext, wird aber nur bei
+     MARKENBLATT.zierrat==="tusche" sichtbar (siehe .raum-tusche in
+     der Regel oben und zierratSetzen() im Skript). -->
+<div class="raum-tusche" aria-hidden="true">
+  <span class="klecks k1"></span>
+  <span class="klecks k2"></span>
+  <span class="klecks k3"></span>
+  <span class="klecks k4"></span>
+</div>
 
 <header>
+  <!-- Zierrat "tusche": Bambuszweig in der oberen rechten Ecke, siehe
+       .bambus-kopf oben — steht immer im Auszeichnungstext, wird nur
+       bei MARKENBLATT.zierrat==="tusche" sichtbar. -->
+  <svg class="bambus-kopf" viewBox="0 0 58 70" aria-hidden="true" focusable="false">
+    <path d="M50 2 C48 14 47 24 48 36 C49 48 51 58 49 68" fill="none" stroke="var(--tusche-kiefer)" stroke-width="2.6" stroke-linecap="round"/>
+    <path d="M56 6 C55 18 55 28 56 40" fill="none" stroke="var(--tusche-kiefer)" stroke-width="2" stroke-linecap="round" opacity=".7"/>
+    <g stroke="var(--tusche-kiefer)" stroke-width="1.6" opacity=".55">
+      <path d="M46.5 26 q2.5 1.4 5 0"/>
+      <path d="M47.5 46 q2.8 1.4 5.4 0"/>
+    </g>
+    <g fill="var(--tusche-blatt)">
+      <path d="M50 2 Q28 -4 18 8 Q36 6 50 2Z"/>
+      <path d="M50 2 Q58 -8 56 -18 Q46 -6 50 2Z"/>
+      <path d="M50 2 Q34 12 22 12 Q38 2 50 2Z" opacity=".8"/>
+      <path d="M47 14 Q30 18 20 26 Q34 14 47 14Z" opacity=".65"/>
+    </g>
+  </svg>
   <button class="logo" id="logo" type="button" aria-label="Zur Übersicht">
     <span class="led" aria-hidden="true"></span>
     <!--{{LOGO}}
@@ -3098,6 +3194,17 @@ function markeAnwenden(abend){
      dieses Verzeichnisses, siehe Zeile 219). Ohne Platz darunter würde
      die Quaste in die erste Karte hineinhängen. */
   document.documentElement.classList.add("hat-laternen");
+})();
+
+/* Zierrat "tusche": Bambus im Kopf, Tuschekleckse statt Farbwolken,
+   Pfingstrosen-Knospe vor jeder .bereich-Überschrift — auf jeder
+   Seite, die .bereich benutzt, ohne dass eine von ihnen etwas davon
+   wissen muss. body[data-zierrat] ist der einzige Schalter, den alle
+   drei CSS-Regeln lesen (§8.1a: ein Attribut, keine drei Stellen, die
+   synchron bleiben müssten). */
+(function zierratSetzen(){
+  if(MARKENBLATT.zierrat !== "tusche") return;
+  document.body.dataset.zierrat = "tusche";
 })();
 
 /* ==========================================================
