@@ -1090,6 +1090,86 @@ textarea{resize:vertical;min-height:66px}
 
 .blattfuss{display:flex;flex-direction:column;gap:9px;margin-top:20px}
 
+/* ═══ Auswahlfeld — animiertes Klapp-Feld statt nativer Steuerelemente ═══
+   Ein natives <select> ist auf dem Telefon ein Rad, ein datalist-Dropdown
+   sieht je nach Browser anders aus — beides laesst sich weder gestalten
+   noch animieren. Das Klapp-Feld ersetzt nur die BEDIENOBERFLAECHE; das
+   echte Feld bleibt im Dokument und traegt weiter den Wert. */
+.auswahlfeld{position:relative;margin-bottom:14px}
+.sr-nur{position:absolute;width:1px;height:1px;padding:0;margin:-1px;
+  overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+.auswahlknopf{
+  width:100%;display:flex;align-items:center;justify-content:space-between;
+  gap:10px;text-align:left;font:inherit;font-size:15px;cursor:pointer;
+  padding:12px 13px;background:var(--nacht);border:1px solid var(--linie);
+  border-radius:9px;color:var(--kreide);
+}
+.auswahlknopf:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
+.auswahlwert{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
+/* NICHT ".leer" — die gibt es schon (Zeile 1277, die grosse leere-Karte
+   fuer "Diese Karte ist noch leer"): padding 52px, zentrierter Text.
+   Ein Span mit beiden Klassen erbte das mit, aus 22px wurden 126px.
+   Gemessen per Diff der computed style mit/ohne Klasse — genau der
+   Fehler aus CLAUDE.md §1.1. ".platzhalter" ist eigens geprueft frei. */
+.auswahlwert.platzhalter{color:var(--gedaempft)}
+.chevron{color:var(--gedaempft);flex:none;
+  transition:transform var(--t-druck) var(--ease-out)}
+.auswahlknopf[aria-expanded=true] .chevron{transform:rotate(180deg)}
+
+/* Tritt AUS DEM KNOPF heraus, nicht von der Seite herein — derselbe
+   Grundsatz wie beim Menue unter einem Knopf (.claude/skills/bewegung
+   §5): transform-origin oben, wo der Knopf sitzt. Und schneller raus
+   als rein (§3) — die zweite Regel darunter verkuerzt nur den Ausgang. */
+.auswahlpanel{
+  position:absolute;top:calc(100% + 6px);left:0;right:0;z-index:6;
+  background:var(--flaeche);border:1px solid var(--linie);border-radius:12px;
+  padding:12px;box-shadow:0 16px 40px rgba(0,0,0,.35);
+  transform-origin:top center;
+  transform:scale(.92) translateY(-6px);opacity:0;pointer-events:none;
+  transition:transform var(--t-klein) var(--ease-out),
+             opacity var(--t-klein) var(--ease-out);
+}
+.auswahlfeld.offen .auswahlpanel{
+  transform:scale(1) translateY(0);opacity:1;pointer-events:auto;
+}
+.auswahlfeld:not(.offen) .auswahlpanel{transition-duration:var(--t-druck)}
+.auswahlpanel input[type=text]{margin-bottom:10px}
+
+.chipgitter{display:flex;flex-wrap:wrap;gap:8px;max-height:190px;overflow-y:auto}
+.katchip{
+  min-height:44px;padding:0 14px;border-radius:999px;
+  border:1px solid var(--linie);background:transparent;color:var(--kreide);
+  font:inherit;font-size:13.5px;cursor:pointer;
+}
+.katchip[aria-selected=true]{
+  color:var(--sockel);background:var(--messing);border-color:var(--messing);
+  font-weight:600;
+}
+
+/* Segment mit gleitendem Schieber — drei feste Werte, kein Freitext. */
+.segment{
+  position:relative;display:flex;background:var(--flaeche-2);
+  border:1px solid var(--linie);border-radius:11px;padding:3px;gap:2px;
+}
+.segment button{
+  position:relative;z-index:1;flex:1;min-height:44px;
+  background:transparent;border:0;color:var(--gedaempft);font:inherit;
+  font-size:13.5px;font-weight:600;cursor:pointer;border-radius:8px;
+  transition:color var(--t-druck) var(--ease-out);
+}
+.segment button:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
+.segment button[aria-checked=true]{color:var(--sockel)}
+.segmentschieber{
+  position:absolute;top:3px;bottom:3px;left:3px;
+  width:calc((100% - 6px) / 3);border-radius:8px;background:var(--messing);
+  transition:transform var(--t-klein) var(--ease-out);will-change:transform;
+}
+
+@media (prefers-reduced-motion:reduce){
+  .auswahlpanel,.chevron,.segmentschieber,.segment button{transition:none}
+}
+
 /* ═══ Kachel-Baukasten ══════════════════════════════════════════
    Eine Zeile je Knopf des Hubs. Bewusst untereinander statt in einem
    Raster: Der Wirt bedient das am Telefon zwischen zwei Gästen, und
@@ -2447,9 +2527,30 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="zweispalt">
       <label><span class="lname">Preis</span>
         <input type="number" id="fPreis" step="0.10" min="0" inputmode="decimal" placeholder="9.50"></label>
-      <label><span class="lname">Kategorie</span>
-        <input type="text" id="fKat" list="katListe" placeholder="Cocktails">
-        <datalist id="katListe"></datalist></label>
+
+      <!-- Auswahlfeld statt Feld+datalist: das native datalist-Dropdown
+           sieht auf jedem Geraet anders aus und laesst sich nicht
+           gestalten. #fKat bleibt das echte Feld — jeder vorhandene
+           Lese-/Schreibzugriff (7072, 7231…) funktioniert unveraendert,
+           er sitzt nur jetzt in einem Klapp-Feld statt offen daneben. -->
+      <div class="auswahlfeld" id="katFeld">
+        <span class="lname">Kategorie</span>
+        <button type="button" class="auswahlknopf" id="katKnopf"
+                aria-haspopup="listbox" aria-expanded="false" aria-controls="katPanel">
+          <span id="katWert" class="auswahlwert">Kategorie wählen</span>
+          <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">
+            <path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </button>
+        <div class="auswahlpanel" id="katPanel" role="dialog" aria-label="Kategorie wählen">
+          <input type="text" id="fKat" placeholder="Neue Kategorie, z. B. Cocktails" autocomplete="off">
+          <!-- Traegt weiter die Kategorien der aktuellen Karte, gefuellt
+               von zeichneKarte() wie zuvor — nur ohne list="katListe"
+               am Feld oben, das native Dropdown wird nicht mehr gebraucht. -->
+          <datalist id="katListe"></datalist>
+          <div class="chipgitter" id="katChips" role="listbox" aria-label="Vorhandene Kategorien"></div>
+        </div>
+      </div>
     </div>
 
     <div class="stoffblock">
@@ -2490,12 +2591,25 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <input type="text" id="fBild" placeholder="wird beim Hochladen gefüllt">
     </div>
 
-    <label><span class="lname">Gehört zur Karte</span>
-      <select id="fKarte">
+    <!-- Segment statt natives <select>: drei feste Werte, keine
+         Texteingabe noetig. #fKarte bleibt das echte Feld (jeder
+         Aufruf wie $("#fKarte").value oder .onchange greift weiter),
+         nur visuell verborgen — die Segmente setzen seinen Wert und
+         loesen ein echtes "change" aus, mehr aendert sich nicht. -->
+    <div class="auswahlfeld">
+      <span class="lname">Gehört zur Karte</span>
+      <select id="fKarte" class="sr-nur">
         <option value="speisekarte">Speisekarte</option>
         <option value="getraenke">Getränke</option>
         <option value="cocktails">Cocktails</option>
-      </select></label>
+      </select>
+      <div class="segment" id="karteSegment" role="radiogroup" aria-label="Gehört zur Karte">
+        <button type="button" data-wert="speisekarte" role="radio">Speisekarte</button>
+        <button type="button" data-wert="getraenke" role="radio">Getränke</button>
+        <button type="button" data-wert="cocktails" role="radio">Cocktails</button>
+        <i class="segmentschieber" aria-hidden="true"></i>
+      </div>
+    </div>
 
     <div class="stoffblock">
       <span class="lname">Wer macht das? <span class="lzusatz">bestimmt, wer es im Küchendisplay sieht</span></span>
@@ -6814,8 +6928,98 @@ $("#fKarte").onchange = () => {
   const jetzt = spurLesen();
   if(jetzt === spurAusKarte(karteVorher)) spurSetzen(spurAusKarte($("#fKarte").value));
   karteVorher = $("#fKarte").value;
+  karteSegmentAktualisieren();
 };
 let karteVorher = "speisekarte";
+
+/* ═══════════════════════════════════════════════════════════════
+   AUSWAHLFELD — Kategorie und "Gehört zur Karte"
+
+   Zwei native Steuerelemente ersetzt, die sich weder gestalten noch
+   animieren lassen (das datalist-Dropdown sieht auf iOS, Android und
+   am Rechner jeweils anders aus; ein <select> ist auf dem Telefon ein
+   Rad). Beide echten Felder (#fKat, #fKarte) bleiben im Dokument und
+   tragen weiter den Wert — jeder vorhandene Zugriff im Skript
+   funktioniert unveraendert. Nur die Bedienoberflaeche ist neu.
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── Kategorie ──────────────────────────────────────────────────── */
+function katWertAktualisieren(){
+  const wert = $("#fKat").value.trim();
+  const feld = $("#katWert");
+  feld.textContent = wert || "Kategorie wählen";
+  feld.classList.toggle("platzhalter", !wert);
+}
+function katChipsZeichnen(filter){
+  const f = (filter || "").toLowerCase();
+  const jetzt = $("#fKat").value.trim();
+  const kats = [...$("#katListe").querySelectorAll("option")].map(o => o.value);
+  const gefiltert = f ? kats.filter(k => k.toLowerCase().includes(f)) : kats;
+  $("#katChips").innerHTML = gefiltert.length
+    ? gefiltert.map(k =>
+        `<button type="button" class="katchip" role="option" aria-selected="${k === jetzt}">${sicher(k)}</button>`
+      ).join("")
+    : '<p class="stoffhilfe" style="margin:2px 0">Noch keine Kategorie in dieser Karte — einfach oben eintippen.</p>';
+}
+function katPanelOeffnen(){
+  $("#katFeld").classList.add("offen");
+  $("#katKnopf").setAttribute("aria-expanded", "true");
+  katChipsZeichnen();
+  setTimeout(() => $("#fKat").focus(), 10);
+  document.addEventListener("pointerdown", katAussenKlick, true);
+}
+function katPanelSchliessen(zurueckfokussieren){
+  $("#katFeld").classList.remove("offen");
+  $("#katKnopf").setAttribute("aria-expanded", "false");
+  document.removeEventListener("pointerdown", katAussenKlick, true);
+  if(zurueckfokussieren) $("#katKnopf").focus();
+}
+function katAussenKlick(e){
+  if(!$("#katFeld").contains(e.target)) katPanelSchliessen(false);
+}
+$("#katKnopf").onclick = () => {
+  const offen = $("#katFeld").classList.contains("offen");
+  if(offen) katPanelSchliessen(true); else katPanelOeffnen();
+};
+$("#fKat").addEventListener("input", () => {
+  katWertAktualisieren();
+  katChipsZeichnen($("#fKat").value);
+});
+$("#katChips").onclick = e => {
+  const c = e.target.closest(".katchip"); if(!c) return;
+  $("#fKat").value = c.textContent;
+  katWertAktualisieren();
+  $("#fKat").dispatchEvent(new Event("input", {bubbles:true}));
+  katPanelSchliessen(true);
+};
+$("#katPanel").addEventListener("keydown", e => {
+  if(e.key === "Escape"){ e.stopPropagation(); katPanelSchliessen(true); }
+});
+
+/* ── Gehört zur Karte (Segment mit gleitendem Schieber) ──────────── */
+const KARTE_WERTE = ["speisekarte","getraenke","cocktails"];
+function karteSegmentAktualisieren(){
+  const wert = $("#fKarte").value || "speisekarte";
+  const i = Math.max(0, KARTE_WERTE.indexOf(wert));
+  $("#karteSegment").querySelectorAll("button").forEach(b => {
+    b.setAttribute("aria-checked", b.dataset.wert === wert);
+  });
+  /* transform statt left/width — siehe .claude/skills/bewegung §1:
+     nur transform und opacity, nie Layout-Eigenschaften animieren. */
+  $("#karteSegment .segmentschieber").style.transform =
+    `translateX(${i * 100}%)`;
+}
+$("#karteSegment").onclick = e => {
+  const b = e.target.closest("button[data-wert]"); if(!b) return;
+  $("#fKarte").value = b.dataset.wert;
+  $("#fKarte").dispatchEvent(new Event("change", {bubbles:true}));
+  karteSegmentAktualisieren();
+};
+/* Ohne Bewegung ist der Schieber sofort da — kein Nachziehen, das bei
+   reduzierter Bewegung wie ein Ruckeln wirken wuerde. */
+if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
+  $("#karteSegment .segmentschieber").style.transition = "none";
+}
 
 /* ═══════════════════════════════════════════════════════════════
    SPRACHEN AM GERICHT
@@ -7070,6 +7274,8 @@ function blattOeffnen(g){
   uebStandSetzen(g);
   $("#fPreis").value     = g?.preis ?? "";
   $("#fKat").value       = g?.kategorie || "";
+  katWertAktualisieren();
+  katPanelSchliessen(false);
   stoffeSetzen("#fAllergene", g?.allergene);
   stoffeSetzen("#fZusatz",    g?.zusatzstoffe);
   karteVorher = g?.karte || welcheKarte;
@@ -7081,6 +7287,7 @@ function blattOeffnen(g){
   bildSchauSetzen(g?.bild || "");
   bildStand("");
   $("#fKarte").value = g?.karte || welcheKarte;
+  karteSegmentAktualisieren();
   $("#fVeg").setAttribute("aria-pressed", g ? !!g.veg : false);
   $("#fVerf").setAttribute("aria-pressed", g ? !!g.verfuegbar : true);
   $("#loeschen").hidden  = !g;

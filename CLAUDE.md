@@ -99,6 +99,28 @@ Ein Blick in die eigene Datei findet das nicht. Wer einen geteilten
 Block anfasst, `grep`t den Namen in **jeder** Datei, in die er kopiert
 wird. `pruef-figur.js` tut das jetzt für alle 41 Klassen des Blocks.
 
+**Auch in einer zusammengesetzten Klasse steckt jedes Wort einzeln im
+selben Namensraum.**
+
+> **Vorfall.** Ein neuer Platzhaltertext im Kategorie-Feld des
+> Admin-Boards bekam `class="auswahlwert leer"`. Gesucht hatte ich nur
+> nach der zusammengesetzten Form `auswahlwert.leer` — die gab es
+> nicht. Ein einzelnes `.leer` gab es längst: die große leere-Karte
+> („Diese Karte ist noch leer"), `padding:52px 20px;text-align:center`.
+> Ein Element trägt seine Klassen als **Menge**, nicht als ein Wort —
+> jede passende Regel greift, auch eine, die nur eine der beiden
+> Klassen kennt. Aus einer 22px hohen Zeile wurde eine 126px hohe
+> Fläche. Sichtbar im Bildschirmfoto als beinahe quadratischer statt
+> schmaler Knopf; gefunden nicht durch Ansehen, sondern durch einen
+> Diff aus `getComputedStyle` mit und ohne die Klasse.
+
+`grep -c 'class="[^"]*\bmarke\b'` prüft die zusammengesetzte Form. Für
+jedes **einzelne** Wort einer neuen Mehrfachklasse zählt zusätzlich:
+
+```bash
+grep -n '^\.leer{' datei.html      # steht das Wort schon ALLEIN da?
+```
+
 ### 1.1a Ein vorhandenes Feld heißt nicht, dass es das eigene ist
 
 > **Vorfall.** Das Gastkonto sollte an `bestellungen.gast_kennung`
@@ -971,6 +993,7 @@ Dazu je nach Änderung:
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Storno, Restzeit, jede Bestell-Funktion** | `pruefungen/pruef-naht.js` — hält den Wert, den der Hub schickt, gegen die Spalte, über die die SQL sucht |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand, und gleicht jedes Filter-Kästchen gegen die Stellen ab, die den Wert wirklich schreiben |
+| **Klapp-Felder, Segmente, animierte Auswahl im Board** | `pruefungen/pruef-auswahlfeld.js` — Tapflächen ≥ 44px, echtes Feld bleibt Quelle der Wahrheit, Endzustand ohne Bewegung |
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
