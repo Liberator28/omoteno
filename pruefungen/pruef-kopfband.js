@@ -18,6 +18,24 @@
    Gegenbeweis gefahren: markenblaetter/minhkeey.json testweise auf
    kopfband:"guss" gesetzt, neu erzeugt — die Prüfung wurde an genau
    den beiden Zusicherungen für minhkeey rot. Zurückgenommen → grün.
+
+   Erweitert um Wind-Schwingen, Innenglühen, Tempelbalken: Jede Laterne
+   trägt jetzt eine verschachtelte .schwung-Ebene (Dauerrotation) und
+   eine .gluehen-Ellipse (Dauer-Opazität), beide per --schwungversatz/
+   --gluehversatz je Laterne entkoppelt. Geprüft wird hier zusätzlich:
+   reduzierte Bewegung friert BEIDE neuen Ebenen im richtigen
+   Endzustand ein (nicht nur die bestehende .laterne-Klasse), und die
+   Streuung wirkt wirklich — zwei Laternen zur selben Zeit tragen
+   unterschiedliche transform-Werte, nicht nur irgendeine Rotation.
+
+   Gegenbeweis für die Erweiterung: --schwungversatz aus dem CSS
+   entfernt (testweise `calc(var(--schwungversatz,0s) * -1)` durch
+   `0s` ersetzt) → die Desync-Zusicherung wurde rot (alle sieben
+   Laternen trugen denselben transform-Wert). Zurückgenommen → grün.
+   Für die reduzierte Bewegung: `.laternen .schwung{animation:none;
+   transform:none}` testweise entfernt → genau diese Zusicherung wurde
+   rot (transform blieb "matrix(...)" statt "none"). Zurückgenommen →
+   grün.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const path = require("path");
@@ -73,7 +91,45 @@ function pruef(b, t, d) {
   });
   pruef(ruhig.opacity === "1", "reduzierte Bewegung: Laterne sofort sichtbar", ruhig.opacity);
   pruef(ruhig.transform === "none", "reduzierte Bewegung: keine Transform-Reste", ruhig.transform);
+
+  /* Dieselbe Prüfung für die beiden NEUEN Dauerschleifen — dieselbe
+     Falle wie beim Guss/der äußeren .laterne: eine abgeschaltete
+     Animation ohne korrekten Endzustand hinterlässt einen falschen
+     Ruhewert. */
+  const ruhigNeu = await seiteRuhig.evaluate(() => {
+    const l = document.querySelector(".laternen .laterne");
+    const schwung = l.querySelector(".schwung");
+    const gluehen = l.querySelector(".gluehen");
+    return {
+      schwungTransform: getComputedStyle(schwung).transform,
+      gluehenOpacity: getComputedStyle(gluehen).opacity,
+    };
+  });
+  pruef(ruhigNeu.schwungTransform === "none",
+    "reduzierte Bewegung: kein Windschwingen", ruhigNeu.schwungTransform);
+  pruef(ruhigNeu.gluehenOpacity === "0.5",
+    "reduzierte Bewegung: Glühen steht auf der Mitte des Pulses", ruhigNeu.gluehenOpacity);
   await seiteRuhig.close();
+
+  /* Streuung: Ohne --schwungversatz/--gluehversatz würden alle sieben
+     Laternen im exakten Gleichtakt schwingen — ein Windstoß, der jede
+     Laterne gleichzeitig gleich weit auslenkt, sieht aus wie eine
+     einzige, siebenfach kopierte Bewegung. Gemessen wird deshalb, ob
+     zur selben Millisekunde tatsächlich unterschiedliche
+     transform-Werte anliegen. */
+  const seiteBewegt = await (await browser.newContext()).newPage();
+  await seiteBewegt.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+  await seiteBewegt.goto("file://" + path.join(DIST, "minhkeey", "index.html"));
+  await seiteBewegt.waitForTimeout(2500); // Einflug vorbei, mitten in der Schwungschleife
+  const streuung = await seiteBewegt.evaluate(() => {
+    const laternen = [...document.querySelectorAll(".laternen .laterne")];
+    return laternen.map(l => getComputedStyle(l.querySelector(".schwung")).transform);
+  });
+  const einzigartig = new Set(streuung);
+  pruef(einzigartig.size >= 2,
+    "Laternen schwingen versetzt (nicht im Gleichtakt)",
+    einzigartig.size + " von " + streuung.length + " unterschiedliche Werte");
+  await seiteBewegt.close();
 
   await browser.close();
   console.log(`\n${n - f} von ${n} ok`);
