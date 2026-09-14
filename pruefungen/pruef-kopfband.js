@@ -46,9 +46,31 @@
    Überlapp) — UND dass er bei den Guss-Häusern NICHT dazukommt (kein
    unnötiger Leerraum, wo der Guss ohnehin kurz bleibt).
 
-   Gegenbeweis: `html.hat-laternen main{margin-top:150px}` testweise
+   Gegenbeweis: `html.hat-laternen main{margin-top:96px}` testweise
    auf `0px` gesetzt → die Überlapp-Zusicherung wurde rot (Laternen-
    Unterkante lag unterhalb der main-Oberkante). Zurückgenommen → grün.
+
+   Überarbeitet nach Nutzerprobe (Bildschirmfoto, 13.09.): der Balken
+   passte farblich nicht zum Band, die Laternen "flogen" ohne
+   sichtbare Befestigung, und die weichgezeichnete Bild-Kopie fürs
+   Glühen (.gluehen) sah wie eine zweite, blass durchscheinende
+   Laterne direkt daneben aus statt wie Licht. Behoben: der Balken ist
+   komplett raus (kein .tempelbalken-bild mehr), jede Laterne kleiner
+   und an einem gezeichneten Seil (.seil, eine <line> im selben
+   .schwung wie die Laterne — Aufhängepunkt und Pendel teilen sich
+   denselben Drehpunkt), und statt der Bild-Kopie ein weicher
+   Farbverlauf ohne eigene Kontur (.glanz, eine <ellipse> mit
+   radialGradient #laterneLicht), der nur in der Deckkraft pulsiert.
+   Zusätzlich großzügigere Ränder links/rechts, damit keine Laterne
+   mehr an der Bildschirmkante klebt — hier über mehrere Breiten
+   gemessen (scrollWidth/clientWidth UND die Bounding-Box jeder
+   einzelnen Laterne gegen den sichtbaren Bereich), nicht nur
+   angesehen.
+
+   Gegenbeweis für die Überarbeitung: cx der ersten Laterne testweise
+   auf -20 gesetzt (jenseits des linken Rands) → sowohl die
+   Überlauf-Zusicherung als auch die Kein-Abschneiden-Zusicherung der
+   ersten Laterne wurden rot. Zurückgenommen → grün.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const path = require("path");
@@ -110,6 +132,53 @@ function pruef(b, t, d) {
     await seite.close();
   }
 
+  /* Kein Balken mehr, und jede Laterne hängt an einem sichtbaren Seil
+     im selben .schwung wie die Laterne selbst — direkt nachgesehen,
+     nicht nur angenommen (CLAUDE.md §0). */
+  {
+    const seite = await (await browser.newContext()).newPage();
+    await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await seite.goto("file://" + path.join(DIST, "minhkeey", "index.html"));
+    await seite.waitForTimeout(300);
+    const struktur = await seite.evaluate(() => {
+      const balken = document.querySelector(".laternen .tempelbalken-bild");
+      const seile = [...document.querySelectorAll(".laternen .seil")];
+      const seileImSchwung = seile.length > 0 && seile.every(s => s.closest(".schwung") !== null);
+      return { balkenDa: !!balken, seilAnzahl: seile.length, seileImSchwung };
+    });
+    pruef(!struktur.balkenDa, "minhkeey: kein Tempelbalken mehr", struktur.balkenDa);
+    pruef(struktur.seilAnzahl === 7, "minhkeey: sieben Seile gezeichnet", struktur.seilAnzahl);
+    pruef(struktur.seileImSchwung, "minhkeey: jedes Seil sitzt im selben .schwung wie seine Laterne");
+    await seite.close();
+  }
+
+  /* Keine Laterne ragt über den sichtbaren Rand hinaus — bei mehreren
+     Breiten gemessen, genau der Fehler aus dem Bildschirmfoto
+     ("ein paar Stellen abgeschnitten"). */
+  for (const breite of [360, 390, 420, 540, 768]) {
+    const seite = await (await browser.newContext({ viewport: { width: breite, height: 900 } })).newPage();
+    await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await seite.goto("file://" + path.join(DIST, "minhkeey", "index.html"));
+    await seite.waitForTimeout(900);
+    const masse = await seite.evaluate(() => {
+      const laternen = [...document.querySelectorAll(".laternen .laterne-bild")];
+      const boxen = laternen.map(l => l.getBoundingClientRect());
+      return {
+        scrollWidth: document.documentElement.scrollWidth,
+        clientWidth: document.documentElement.clientWidth,
+        minLinks: Math.min(...boxen.map(b => b.left)),
+        maxRechts: Math.max(...boxen.map(b => b.right)),
+      };
+    });
+    pruef(masse.scrollWidth === masse.clientWidth,
+      "minhkeey " + breite + "px: kein horizontales Überlaufen",
+      "scrollWidth=" + masse.scrollWidth + " clientWidth=" + masse.clientWidth);
+    pruef(masse.minLinks >= 0 && masse.maxRechts <= masse.clientWidth,
+      "minhkeey " + breite + "px: keine Laterne ragt über den Rand",
+      "links=" + masse.minLinks.toFixed(1) + " rechts=" + masse.maxRechts.toFixed(1) + " Breite=" + masse.clientWidth);
+    await seite.close();
+  }
+
   /* Reduzierte Bewegung: die Laternen müssen sofort im Endzustand
      stehen (opacity 1, kein translateY) statt auf eine Animation zu
      warten, die nie läuft — dieselbe Falle wie beim Guss. */
@@ -132,16 +201,16 @@ function pruef(b, t, d) {
   const ruhigNeu = await seiteRuhig.evaluate(() => {
     const l = document.querySelector(".laternen .laterne");
     const schwung = l.querySelector(".schwung");
-    const gluehen = l.querySelector(".gluehen");
+    const glanz = l.querySelector(".glanz");
     return {
       schwungTransform: getComputedStyle(schwung).transform,
-      gluehenOpacity: getComputedStyle(gluehen).opacity,
+      glanzOpacity: getComputedStyle(glanz).opacity,
     };
   });
   pruef(ruhigNeu.schwungTransform === "none",
     "reduzierte Bewegung: kein Windschwingen", ruhigNeu.schwungTransform);
-  pruef(ruhigNeu.gluehenOpacity === "0.5",
-    "reduzierte Bewegung: Glühen steht auf der Mitte des Pulses", ruhigNeu.gluehenOpacity);
+  pruef(ruhigNeu.glanzOpacity === "0.5",
+    "reduzierte Bewegung: Glühen steht auf der Mitte des Pulses", ruhigNeu.glanzOpacity);
   await seiteRuhig.close();
 
   /* Streuung: Ohne --schwungversatz/--gluehversatz würden alle sieben
