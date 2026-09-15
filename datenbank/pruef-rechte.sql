@@ -183,6 +183,57 @@ begin
 end $$;
 reset role;
 
+-- ═══ TEIL 3 · rabattcodes / rechnung_rabattieren / rabattcode_anlegen ═══
+-- Braucht migration-rechnung-rabatt.sql. Lokal gegen ein nachgebildetes
+-- Mindestschema bereits durchgespielt (siehe Kommentar dort) — hier
+-- dieselben Faelle gegen den ECHTEN, gewachsenen Bestand.
+do $$ begin
+  if to_regclass('public.rabattcodes') is null then
+    insert into probe values (60,'—','TEIL 3 uebersprungen','migration-rechnung-rabatt.sql noch nicht eingespielt');
+  end if;
+end $$;
+
+set local role anon;
+do $$ begin
+  begin perform count(*) from rabattcodes;
+    insert into probe values (60,'Gast','Rabattcodes lesen','OFFEN !!!');
+  exception when others then insert into probe values (60,'Gast','Rabattcodes lesen','abgewiesen'); end;
+  begin perform rabattcode_anlegen((select id from betriebe limit 1),'X',1,null,null);
+    insert into probe values (61,'Gast','rabattcode_anlegen aufrufen','OFFEN !!!');
+  exception when others then insert into probe values (61,'Gast','rabattcode_anlegen aufrufen','abgewiesen'); end;
+end $$;
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub','00000000-0000-4000-8000-000000000001',
+                    'role','authenticated')::text, true);
+set local role authenticated;
+do $$
+declare n int; r jsonb; v_bestellung uuid;
+begin
+  begin select count(*) into n from rabattcodes;
+    insert into probe values (62,'Fremder','fremde Rabattcodes lesen',
+      case when n=0 then 'nichts sichtbar' else 'LECK !!! '||n end);
+  exception when others then insert into probe values (62,'Fremder','Rabattcodes lesen','abgewiesen'); end;
+
+  begin perform rabattcode_anlegen((select id from betriebe limit 1),'PROBE-FREMD',1,null,null);
+    insert into probe values (63,'Fremder','rabattcode_anlegen aufrufen','LECK !!!');
+  exception when others then insert into probe values (63,'Fremder','rabattcode_anlegen aufrufen','abgewiesen'); end;
+
+  -- rechnung_rabattieren wirft NICHT — sie antwortet mit {ok:false,...}.
+  -- Wer nur die Ausnahme abfaengt, misst hier gar nichts (CLAUDE.md §2.3b).
+  select id into v_bestellung from bestellungen limit 1;
+  if v_bestellung is not null then
+    r := rechnung_rabattieren(v_bestellung, 'IRGENDEIN-CODE');
+    insert into probe values (64,'Fremder','rechnung_rabattieren auf fremde Bestellung',
+      case when (r->>'ok')::boolean is true then 'LECK !!! ' || r::text
+           else 'abgewiesen: ' || (r->>'grund') end);
+  else
+    insert into probe values (64,'—','rechnung_rabattieren-Probe uebersprungen','keine Bestellung vorhanden');
+  end if;
+end $$;
+reset role;
+
 select nr, wer, was, ergebnis from probe order by nr;
 
 -- Und der Bestand selbst: was darf anon ueberhaupt noch anfassen?

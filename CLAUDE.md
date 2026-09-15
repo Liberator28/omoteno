@@ -1016,7 +1016,9 @@ Dazu je nach Änderung:
 | **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint` |
 | **Zeit-/Datumsfelder, Tagesknöpfe, Preis-Paare im Board** | `pruefungen/pruef-symmetrie.js` — Ränder, gleich breite Zeilen, drei Bildschirmbreiten |
 | **Animationen, Übergänge, Blätter** | `pruefungen/pruef-bewegung.js` — nur `transform`/`opacity`, Endzustand, Ausgang, Geste |
-| **Edge Functions (Übersetzer, Alessia)** | `pruefungen/pruef-edge.js` — `tsc --strict` und kein Schlüssel im Quelltext. Der einzige automatische Griff darauf: Beide Playwright-Prüfungen **stellen** die Serverantwort |
+| **Edge Functions (Übersetzer, Alessia, Klaviyo-Newsletter)** | `pruefungen/pruef-edge.js` — `tsc --strict` und kein Schlüssel im Quelltext. Der einzige automatische Griff darauf: Beide Playwright-Prüfungen **stellen** die Serverantwort |
+| **Schwebende Fußleisten, Karte-Knöpfe** | `pruefungen/pruef-kartenknoepfe.js` — fixiert unter 760px, Fluss darüber, Endzustand nach Animation, letzte Zeile nicht verdeckt (erst nach dem Scrollen ans Ende gemessen) |
+| **Rabattcode-Einlösung, Gäste-Newsletter im Board** | `pruefungen/pruef-rabatt-board.js` — Eingabefeld auf/zu, ehrliche Meldung im Vorführmodus; die eigentliche RPC-Logik (unbekannt/abgelaufen/bereits eingelöst/kein Zugriff) steht in `datenbank/pruef-rechte.sql` Teil 3 |
 
 Und danach, immer:
 
