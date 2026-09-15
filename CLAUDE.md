@@ -1022,6 +1022,7 @@ Dazu je nach Änderung:
 | **Schwebende Fußleisten, Karte-Knöpfe** | `pruefungen/pruef-kartenknoepfe.js` — fixiert unter 760px, Fluss darüber, Endzustand nach Animation, letzte Zeile nicht verdeckt (erst nach dem Scrollen ans Ende gemessen) |
 | **Rabattcode-Einlösung, Gäste-Newsletter im Board** | `pruefungen/pruef-rabatt-board.js` — Eingabefeld auf/zu, ehrliche Meldung im Vorführmodus; die eigentliche RPC-Logik (unbekannt/abgelaufen/bereits eingelöst/kein Zugriff) steht in `datenbank/pruef-rechte.sql` Teil 3 |
 | **Bildvorschau im Board (Tiefeneffekt, Zuschnitt-Vorschau)** | `pruefungen/pruef-bildschau.js` — Vignette und Schatten an `.bildschau` und `#bildCropContainer`, dabei bleibt das Zuschnitt-Rechteck selbst unverändert |
+| **Aufklappbare Gerichte-Zeilen in der Speisekarte** | `pruefungen/pruef-speisekarte-klapp.js` — Ruhelage nur Name/Preis, Aufklappen zeigt Beschreibung, „Bearbeiten" öffnet weiterhin das echte Blatt (eigene Geste), Zustand übersteht ein Neuzeichnen (Suche), Tapflächen ≥44px, `prefers-reduced-motion` |
 
 Und danach, immer:
 
