@@ -993,7 +993,7 @@ Dazu je nach Änderung:
 | Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
 | Marken-Studio (Bedienung) | `pruefungen/pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
 | Auslieferung, Umleitungen | `erzeuger/bauen.js` und dann `pruefungen/pruef-lieferung.js` |
-| **Startkacheln, Bereiche, Markenblatt** | `pruefungen/pruef-kacheln.js` — Kreuzvergleich: kein Hub trägt fremden Text |
+| **Startkacheln, Bereiche, Markenblatt, iconAus-Schalter** | `pruefungen/pruef-kacheln.js` — Kreuzvergleich: kein Hub trägt fremden Text; iconAus schaltet nur das Symbol ab (strikt `=== true`, keine Zeichenkette) |
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Storno, Restzeit, jede Bestell-Funktion** | `pruefungen/pruef-naht.js` — hält den Wert, den der Hub schickt, gegen die Spalte, über die die SQL sucht |

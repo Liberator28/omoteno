@@ -299,6 +299,69 @@ function eigeneTexte(blatt){
       uebrig.length ? uebrig.join(", ") : "aus: " + aus.join(", "));
   });
 
+  /* ── 5 · iconAus schaltet NUR das Symbol ab, nichts sonst ────────
+     Block B (Admin-Board Icon-Schalter): der Wirt darf das Symbol
+     je Kachel abschalten, unabhängig vom Banner. Live über
+     betriebe.hub_kacheln, genau wie titel/unter/banner schon
+     funktionieren — deshalb hier mit derselben Technik geprüft wie
+     pruef-baukasten.js seinen Hub-Abschnitt: die REST-Antwort auf
+     betriebe wird gefälscht, kein Supabase nötig. */
+  console.log("\n══ iconAus (Block B) ══");
+  {
+    const BID = "22222222-2222-2222-2222-222222222222";
+    const BILD = '<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10">' +
+                 '<rect width="10" height="10" fill="teal"/></svg>';
+    /* Der ursprüngliche Browser ist zu diesem Zeitpunkt schon
+       geschlossen (Zeile 105) — ein eigener, kleiner. */
+    const browser2 = await chromium.launch();
+    const p = await browser2.newPage({ viewport:{ width:390, height:844 } });
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue()
+      : r.fulfill({ status:200, contentType:"application/json", body:"[]" }));
+    await p.route("**/rest/v1/betriebe**", r =>
+      r.fulfill({ status:200, contentType:"application/json",
+        body: JSON.stringify([{ id:BID, bestell_pause:false, bestell_pause_text:"",
+          hub_texte:{}, hub_kacheln:[
+            { schluessel:"tischruf", titel:"Ohne Symbol", iconAus:true },
+            { schluessel:"wlan", titel:"Mit Symbol", iconAus:false },
+            /* Die gefährliche Verwechslung: "false" als ZEICHENKETTE
+               ist in JS wahrheitswertig. erzeuge-hub.js prüft das für
+               das Markenblatt vorab (§2.2), aber hub_kacheln ist eine
+               Live-Spalte, die kachelBauen() ungeprüft übernimmt — nur
+               das strikte "=== true" in kachelHTML() schützt hier. */
+            { schluessel:"bewertung", titel:"String \"false\" statt boolean", iconAus:"false" }
+          ] }]) }));
+    await p.route("https://bild.test/**", r =>
+      r.fulfill({ status:200, contentType:"image/svg+xml", body:BILD }));
+    await p.addInitScript(() => localStorage.setItem("omoteno-willkommen","1"));
+    await p.goto("file://" + h[0].hub);
+    await p.waitForTimeout(1300);
+
+    const info = await p.evaluate(() => {
+      const holen = titel => {
+        const el = [...document.querySelectorAll("a.kachel")]
+          .find(k => (k.querySelector("strong")||{}).textContent === titel);
+        return el ? !!el.querySelector(".ico") : null;
+      };
+      return {
+        ohneSymbol: holen("Ohne Symbol"),
+        mitSymbol: holen("Mit Symbol"),
+        stringFalsch: holen("String \"false\" statt boolean"),
+      };
+    });
+    pruef(info.ohneSymbol === false,
+      "iconAus:true → kein .ico-Element im Auszeichnungstext (nicht nur versteckt)",
+      String(info.ohneSymbol));
+    pruef(info.mitSymbol === true,
+      "eine Nachbar-Kachel ohne iconAus zeigt ihr Symbol weiter",
+      String(info.mitSymbol));
+    pruef(info.stringFalsch === true,
+      "iconAus als Zeichenkette \"false\" schaltet NICHT versehentlich ab " +
+      "(nur echtes boolean true zählt, strikter Vergleich in kachelHTML)",
+      String(info.stringFalsch));
+
+    await browser2.close();
+  }
+
   console.log(fehler ? "\n  " + fehler + " Fehler." : "\n  Alles sauber.");
   process.exit(fehler ? 1 : 0);
 })();

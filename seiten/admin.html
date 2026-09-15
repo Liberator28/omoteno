@@ -1207,6 +1207,11 @@ textarea{resize:vertical;min-height:66px}
 .kbzeile.aus{opacity:.55}
 .kbkopf{display:flex;align-items:center;gap:10px}
 .kbkopf b{font-size:15px;font-weight:700;flex:1;min-width:0}
+/* Eigene Zeile statt in .kbkopf verschachtelt: der An/Aus-Schalter
+   dort steuert die ganze Kachel, dieser nur das Symbol — zwei
+   verschiedene Dinge sollen nicht wie eine Einheit aussehen. */
+.kbsymzeile{display:flex;align-items:center;gap:10px}
+.kbsymzeile span{font-size:13.5px;color:var(--gedaempft);flex:1;min-width:0}
 .kbfelder{display:flex;flex-direction:column;gap:8px}
 /* Beschriftung ÜBER dem Feld, nicht daneben (CLAUDE.md §3.6): Auf dem
    Telefon blieben daneben vier Zeichen übrig. */
@@ -6371,11 +6376,17 @@ const KB_SYMBOLGRUPPEN = [
   { name:"Restaurant",        icons:["speise","teller","glocke","stuhl","buch","muenze"] }
 ];
 
-/* Seitenverhältnis je Kachelform, gemessen an der Kachel im Hub:
-   Reihe 165×66, Säule 110×58, Zweierraster 62×62 sichtbarer Streifen.
-   Der Rahmen im Zuschnitt bekommt genau diesen Wert — deshalb kann
-   der Wirt keine Fehlproportion erzeugen. */
-const KB_FORMAT = { reihe:2.50, saeule:1.90, zwei:1.70 };
+/* Seitenverhältnis je Kachelform, GEMESSEN im echten Hub (390px
+   Schirmbreite, getBoundingClientRect auf .kbanner) — nicht im Kopf
+   ausgerechnet, CLAUDE.md §1.3: Reihe 165×66 (unverändert — einzige
+   Form mit Unterzeile, siehe Begründung bei .kbanner in
+   hub.vorlage.html), Säule 110×100, Zweierraster 75×66. Säule und
+   Zweier hier nachgezogen, weil ihr Bildanteil gewachsen ist —
+   sonst würde der Zuschnitt-Rahmen ein anderes Verhältnis zeigen als
+   die Kachel im Hub am Ende hat. Der Rahmen im Zuschnitt bekommt
+   genau diesen Wert — deshalb kann der Wirt keine Fehlproportion
+   erzeugen. */
+const KB_FORMAT = { reihe:2.50, saeule:1.10, zwei:1.15 };
 /* Lange Kante der hochgeladenen Datei. Doppelt so breit wie die
    Kachel auf einem dichten Schirm, mehr trägt kein Café-WLAN. */
 const KB_BREITE = 600;
@@ -6398,7 +6409,11 @@ function kbAusZeile(roh){
       titel:  typeof e.titel === "string" && e.titel.trim() ? e.titel : k.titel,
       unter:  typeof e.unter === "string" ? e.unter : k.unter,
       icon:   ICONS[e.icon] ? e.icon : k.icon,
-      banner: /^https:\/\//i.test(String(e.banner || "")) ? e.banner : ""
+      banner: /^https:\/\//i.test(String(e.banner || "")) ? e.banner : "",
+      /* Vorgabe: Symbol AN. Nur ein bewusster Klick im Board schaltet
+         es ab — nie automatisch, weil ein Banner da ist (Nutzer-
+         Entscheidung, siehe Plan-Text). */
+      iconAus: !!e.iconAus
     };
   });
 }
@@ -6417,7 +6432,10 @@ function kbSchau(k){
   const p = kbPlan(k.schluessel) || {};
   return '<div class="kbschau">' +
     (k.banner ? '<span class="kbsbild"><img src="' + sicher(k.banner) + '" alt=""></span>' : "") +
-    '<span class="kbsico">' + (ICONS[k.icon] || "") + '</span>' +
+    /* Spiegelt kachelHTML() im Hub: bei iconAus fehlt das Symbolfeld
+       ganz, nicht nur unsichtbar — sonst zeigt die Vorschau etwas, das
+       der Gast gar nicht sieht. */
+    (k.iconAus ? "" : '<span class="kbsico">' + (ICONS[k.icon] || "") + '</span>') +
     '<span class="kbstxt"><b>' + sicher(k.titel || p.titel || "") + '</b>' +
       (k.unter ? '<i>' + sicher(k.unter) + '</i>' : "") + '</span>' +
   '</div>';
@@ -6441,6 +6459,12 @@ function kbZeichnen(){
         '<label><span>Unterzeile</span>' +
           '<input data-kb-unter maxlength="52" value="' + sicher(k.unter) + '"></label>') +
       '</div>' +
+      /* Eigener Schalter, nicht automatisch bei vorhandenem Banner —
+         der Wirt entscheidet, nicht das Bild (Nutzer-Entscheidung,
+         Plan-Text Block B). */
+      '<div class="kbsymzeile"><span>Symbol zeigen</span>' +
+        '<input type="checkbox" class="kipp" data-kb-iconaus ' + (!k.iconAus ? "checked" : "") +
+        ' aria-label="Symbol bei ' + sicher(p.titel || k.schluessel) + ' zeigen"></div>' +
       '<button type="button" class="kbsymknopf" data-kb-symauf aria-expanded="false" aria-controls="kbklapp-' + sicher(k.schluessel) + '">' +
         '<span>Symbol ändern</span>' +
         '<svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">' +
@@ -6506,6 +6530,9 @@ document.addEventListener("change", e => {
   if(!zeile) return;
   const sch = zeile.dataset.kb;
   if(e.target.matches("[data-kb-an]")) kbAendern(sch, "an", e.target.checked);
+  /* Das Feld heißt iconAus, der Schalter fragt "Symbol zeigen" —
+     deshalb hier umgekehrt: angehakt (zeigen) heißt iconAus:false. */
+  if(e.target.matches("[data-kb-iconaus]")) kbAendern(sch, "iconAus", !e.target.checked);
   if(e.target.matches("[data-kb-datei]")){
     const datei = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -6679,6 +6706,7 @@ async function kbSichern(){
     if((k.unter||"") !== (v.unter||"")) e.unter = k.unter;
     if(k.icon   !== v.icon)         e.icon   = k.icon;
     if(k.banner)                    e.banner = k.banner;
+    if(k.iconAus)                   e.iconAus = true;
     return e;
   });
 

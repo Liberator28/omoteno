@@ -240,6 +240,12 @@ function pruefeMarkenblatt(mb){
         else if(!/^https:\/\//i.test(k.banner))
           F(wo + '.banner muss mit https:// beginnen: "' + k.banner + '"');
       }
+      /* iconAus ist ein echtes boolean-Feld. Eine Zeichenkette "false"
+         wäre in JS wahr (!!"false" === true) und würde das Symbol
+         genau umgekehrt zur Absicht abschalten — deshalb hier prüfen,
+         nicht erst beim Zeichnen bemerken. */
+      if(k.iconAus !== undefined && typeof k.iconAus !== "boolean")
+        F(wo + ".iconAus muss true oder false sein");
     });
     const doppelt = {};
     (Array.isArray(mb.kacheln) ? mb.kacheln : []).forEach(k => {

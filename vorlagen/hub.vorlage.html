@@ -983,6 +983,16 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
   overflow:hidden;pointer-events:none;
   border-radius:0 var(--rundung) var(--rundung) 0;
 }
+/* NICHT angehoben, anders als Säule und Zweierraster unten — und das
+   ist gemessen, kein Zögern: Diese Reihen-Kachel ist die EINZIGE
+   Form, die eine Unterzeile zeigt (.txt > span bleibt hier sichtbar,
+   bei Säule und Zweier ausgeblendet). Der erste Versuch mit 50%
+   drückte bei einer Beispiel-Kachel mit Titel und langer Unterzeile
+   (pruef-baukasten.js) die Schrift 5px unter das Bild — CLAUDE.md
+   §5.1 verbietet genau das, unabhängig von der Sprache der Unterzeile.
+   .txt sitzt am eigenen Inhalt (Unterzeile ist meist die längere
+   Zeile), nicht an max-width — die Bremse geht hier über die
+   Bildbreite, nicht über den Text. */
 .kbanner img{width:100%;height:100%;object-fit:cover;display:block}
 /* Der Verlauf gehört ÜBER das Bild, nicht darunter — sonst deckt
    das Bild ihn zu. Er läuft von der Flächenfarbe ins Durchsichtige,
@@ -1008,15 +1018,25 @@ a.kachel.hatbanner > .txt{max-width:56%}
    andere Richtung. */
 a.kachel.saeule.hatbanner{padding-top:0}
 .kachel.saeule .kbanner{
-  position:static;width:calc(100% + 24px);height:58px;
+  position:static;width:calc(100% + 24px);height:100px;
   margin:0 -12px 0;flex:none;
   border-radius:var(--rundung) var(--rundung) 0 0;
 }
+/* Bildanteil hier am stärksten angehoben (58px → 100px, CLAUDE.md-
+   Plan Block B): die Säule ist die einzige Kachelform ohne Unterzeile
+   (.txt > span bleibt ausgeblendet, Zeile 913) — unter dem Bild steht
+   nur noch Symbol + eine Titelzeile, das bleibt bei 100px klar
+   getrennt und lesbar (CLAUDE.md §5.1/§3.7). Kein fester Wert für die
+   Kartenhöhe: min-height:132px ist ein Minimum, die Karte wächst mit. */
 .kachel.saeule .kbanner::after{
   background:linear-gradient(to bottom, transparent 40%, var(--flaeche) 100%);
 }
 a.kachel.saeule.hatbanner > .txt{max-width:100%}
-.gitter.zwei .kbanner{width:38%}
+/* 44% statt 38%: moderater angehoben als die Säule — die Zweier-
+   Kachel ist knapp 60px hoch und zeigt nur eine Titelzeile ohne
+   Unterzeile (Zeile 963), da bleibt bei stärkerem Zuwachs zu wenig
+   Luft neben dem Symbol. */
+.gitter.zwei .kbanner{width:44%}
 
 /* ═══ Unterseiten ═══════════════════════════════════════════════ */
 .seite h2{font-size:26px;margin:0 0 7px;font-weight:600;letter-spacing:-.4px;line-height:1.15}
@@ -3854,7 +3874,7 @@ const KACHELFOLGE = ["speisekarte","getraenke","cocktails",
    Kachel bauen. Was der Wirt schicken darf, steht in ERLAUBT — alles
    andere aus dem Markenblatt wird ignoriert, nicht übernommen. */
 const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
-                        "farbe","von","bis","neu","cyan","banner"];
+                        "farbe","von","bis","neu","cyan","banner","iconAus"];
 
 function kachelBauen(schluessel, wunsch){
   const art = KACHELARTEN[schluessel];
@@ -3870,7 +3890,12 @@ function kachelBauen(schluessel, wunsch){
     banner: "",
     farbe: art.farbe || "", neu: !!art.neu, cyan: !!art.cyan,
     von: art.von === undefined ? 0 : art.von,
-    bis: art.bis === undefined ? 24 : art.bis
+    bis: art.bis === undefined ? 24 : art.bis,
+    /* Kein Symbol steht standardmäßig aus - die bestehenden Häuser
+       sollen nach diesem Umbau unverändert aussehen (CLAUDE.md §8.1a:
+       eine neue Option greift nie rückwirkend). Erst der Wirt schaltet
+       im Board bewusst ab. */
+    iconAus: false
   };
   if(wunsch) KACHEL_ERLAUBT.forEach(f => {
     if(wunsch[f] !== undefined && wunsch[f] !== null) k[f] = wunsch[f];
@@ -7949,9 +7974,20 @@ function start(){
                   '" alt="" loading="lazy" decoding="async"></span>' : "") +
         /* Ein Emoji überschreibt den Strich — bewusst zweite Wahl,
            weil es auf jedem Gerät anders aussieht. Der Wirt darf, er
-           muss nicht. */
-        '<div class="ico' + (k.emoji ? " zeichen" : "") + '">' +
-          (k.emoji ? hs(k.emoji) : (ICONS[k.icon] || "")) + '</div>' +
+           muss nicht.
+           iconAus: der Wirt kann das Symbol ganz abschalten (Board-
+           Schalter je Kachel, nicht automatisch bei vorhandenem
+           Banner - Nutzerentscheidung). Der div fällt dann komplett
+           weg statt nur unsichtbar zu sein, sonst bliebe eine leere
+           Lücke im Flex-Fluss stehen (CLAUDE.md §8.1: kein Platzhalter
+           ohne Zweck). */
+        /* Strikt === true, nicht nur wahrheitswertig: hub_kacheln ist
+           eine Live-Spalte, die kachelBauen() UNGEPRÜFT übernimmt
+           (anders als das Markenblatt, das erzeuge-hub.js vorab
+           prüft, CLAUDE.md §2.2). Eine Zeichenkette "false" wäre in
+           JS wahr und würde das Symbol genau verkehrt abschalten. */
+        (k.iconAus === true ? "" : '<div class="ico' + (k.emoji ? " zeichen" : "") + '">' +
+          (k.emoji ? hs(k.emoji) : (ICONS[k.icon] || "")) + '</div>') +
         '<div class="txt"><strong>' + hs(t(k.titel)) +
         (k.neu ? '<span class="neu">' + hs(t("NEU")) + '</span>' : "") +
         '</strong>' + (k.unter ? '<span>' + hs(t(k.unter)) + '</span>' : "") + '</div>' +
