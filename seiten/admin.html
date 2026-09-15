@@ -1784,6 +1784,30 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
    Preis rechtsbündig mit Ziffern gleicher Breite, damit man beim
    Überfliegen sofort sieht, wenn einer aus der Reihe fällt. */
 .kartenknoepfe{display:flex;flex-direction:column;gap:9px}
+/* Schwebend am unteren Rand, statt mit der Liste mitzuscrollen —
+   dasselbe Muster wie .befehlsleiste/.filterblock weiter oben in
+   dieser Datei: fixiert, ueber der globalen Reiterleiste (var(--leiste-h)),
+   mit Sicherheitsabstand fuers iPhone. Nur unter 760px: darueber hat
+   das Board eine andere Aufteilung, dort bleibt die alte Fliess-Lage. */
+@media (max-width:760px){
+  /* 132px = zwei .knopf (je ~46px) + 9px Zwischenraum + 10px Polster
+     oben/unten der Leiste selbst — von Hand gemessen, keine JS-Messung
+     noetig (die Leiste hat immer genau diese zwei Zeilen). */
+  #t-speisekarte{padding-bottom:132px}
+  .kartenknoepfe{
+    position:fixed;left:0;right:0;z-index:39;
+    bottom:var(--leiste-h);
+    margin:0;padding:10px 16px;
+    background:var(--leiste-glas);
+    -webkit-backdrop-filter:blur(16px) saturate(140%);backdrop-filter:blur(16px) saturate(140%);
+    border-top:1px solid var(--linie);
+    animation:kartenknoepfeauf .22s var(--ease-out) both;
+  }
+  @keyframes kartenknoepfeauf{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+}
+@media (max-width:760px) and (prefers-reduced-motion:reduce){
+  .kartenknoepfe{animation:none}
+}
 .impstand{
   font-size:13px;color:var(--gedaempft);line-height:1.5;
   padding:11px 13px;margin:4px 0 10px;
@@ -7745,28 +7769,28 @@ function bildCropAbbrechen(){
 function bildVerkleinern(datei){
   return new Promise((fertig, schief) => {
     const leser = new FileReader();
-    leser.onerror = () => schief(new Error(“Datei nicht lesbar”));
+    leser.onerror = () => schief(new Error("Datei nicht lesbar"));
     leser.onload = () => {
       const bild = new Image();
       bild.onerror = () => schief(new Error(
-        “Dieses Bildformat kann der Browser nicht öffnen. “ +
-        “Bitte im Fotoalbum über „Teilen” als JPEG sichern.”));
+        "Dieses Bildformat kann der Browser nicht öffnen. " +
+        "Bitte im Fotoalbum über „Teilen“ als JPEG sichern."));
       bild.onload = () => {
         let {width: b, height: h} = bild;
         const gr = Math.max(b, h);
         if(gr > BILD_KANTE){ b = Math.round(b * BILD_KANTE / gr); h = Math.round(h * BILD_KANTE / gr); }
-        const flaeche = document.createElement(“canvas”);
+        const flaeche = document.createElement("canvas");
         flaeche.width = b; flaeche.height = h;
-        const stift = flaeche.getContext(“2d”);
+        const stift = flaeche.getContext("2d");
         /* Weißer Grund: Bei durchsichtigen PNG wäre der Rest sonst
            schwarz, sobald wir nach JPEG wandeln. */
-        stift.fillStyle = “#FFFFFF”;
+        stift.fillStyle = "#FFFFFF";
         stift.fillRect(0, 0, b, h);
         stift.drawImage(bild, 0, 0, b, h);
         flaeche.toBlob(blob => {
           if(blob) fertig(blob);
-          else schief(new Error(“Umwandeln fehlgeschlagen”));
-        }, “image/jpeg”, BILD_GUETE);
+          else schief(new Error("Umwandeln fehlgeschlagen"));
+        }, "image/jpeg", BILD_GUETE);
       };
       bild.src = leser.result;
     };
@@ -7776,80 +7800,80 @@ function bildVerkleinern(datei){
 
 /* Nach dem Zuschneiden: Blob direkt verarbeiten (ohne FileReader) */
 async function bildHochladenMitBlob(blob, dateiName){
-  if(!betriebId){ bildStand(“Kein Betrieb gewählt”, “schief”); return; }
-  if(demo){ bildStand(“Im Vorführmodus wird nichts hochgeladen”, “schief”); return; }
+  if(!betriebId){ bildStand("Kein Betrieb gewählt", "schief"); return; }
+  if(demo){ bildStand("Im Vorführmodus wird nichts hochgeladen", "schief"); return; }
 
   try{
-    bildStand(“Wird verkleinert …”, “laeuft”);
+    bildStand("Wird verkleinert …", "laeuft");
     /* Blob ist schon Image, einfach resizen */
     const bild = new Image();
-    bild.onerror = () => { bildStand(“Bild verarbeitung fehlgeschlagen”, “schief”); };
+    bild.onerror = () => { bildStand("Bild verarbeitung fehlgeschlagen", "schief"); };
     bild.onload = async () => {
       let {width: b, height: h} = bild;
       const gr = Math.max(b, h);
       if(gr > BILD_KANTE){ b = Math.round(b * BILD_KANTE / gr); h = Math.round(h * BILD_KANTE / gr); }
-      const flaeche = document.createElement(“canvas”);
+      const flaeche = document.createElement("canvas");
       flaeche.width = b; flaeche.height = h;
-      const stift = flaeche.getContext(“2d”);
-      stift.fillStyle = “#FFFFFF”;
+      const stift = flaeche.getContext("2d");
+      stift.fillStyle = "#FFFFFF";
       stift.fillRect(0, 0, b, h);
       stift.drawImage(bild, 0, 0, b, h);
       flaeche.toBlob(async resizedBlob => {
-        if(!resizedBlob){ bildStand(“Umwandeln fehlgeschlagen”, “schief”); return; }
+        if(!resizedBlob){ bildStand("Umwandeln fehlgeschlagen", "schief"); return; }
 
-        const sauber = (dateiName || “foto”)
+        const sauber = (dateiName || "foto")
           .toLowerCase()
-          .replace(/\.[a-z0-9]+$/, “”)
-          .replace(/[^a-z0-9]+/g, “-”)
-          .replace(/^-+|-+$/g, “”)
-          .slice(0, 40) || “foto”;
-        const pfad = betriebId + “/” + Date.now() + “-” + sauber + “.jpg”;
+          .replace(/\.[a-z0-9]+$/, "")
+          .replace(/[^a-z0-9]+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 40) || "foto";
+        const pfad = betriebId + "/" + Date.now() + "-" + sauber + ".jpg";
 
-        bildStand(“Wird hochgeladen … (“ + Math.round(resizedBlob.size/1024) + “ KB)”, “laeuft”);
-        const {error} = await db.storage.from(“gerichte”)
-          .upload(pfad, resizedBlob, {contentType: “image/jpeg”, upsert: false});
+        bildStand("Wird hochgeladen … (" + Math.round(resizedBlob.size/1024) + " KB)", "laeuft");
+        const {error} = await db.storage.from("gerichte")
+          .upload(pfad, resizedBlob, {contentType: "image/jpeg", upsert: false});
         if(error) throw error;
 
-        const {data} = db.storage.from(“gerichte”).getPublicUrl(pfad);
+        const {data} = db.storage.from("gerichte").getPublicUrl(pfad);
         const adresse = data.publicUrl;
-        $(“#fBild”).value = adresse;
+        $("#fBild").value = adresse;
         bildSchauSetzen(adresse);
-        bildStand(“Foto liegt bereit. Es wird mit „Sichern” übernommen.”);
-      }, “image/jpeg”, BILD_GUETE);
+        bildStand("Foto liegt bereit. Es wird mit „Sichern“ übernommen.");
+      }, "image/jpeg", BILD_GUETE);
     };
     bild.src = URL.createObjectURL(blob);
   }catch(e){
     console.error(e);
-    bildStand(e.message || “Hochladen fehlgeschlagen”, “schief”);
+    bildStand(e.message || "Hochladen fehlgeschlagen", "schief");
   }
 }
 
 async function bildHochladen(datei){
   if(!datei) return;
-  if(!betriebId){ bildStand(“Kein Betrieb gewählt”, “schief”); return; }
-  if(demo){ bildStand(“Im Vorführmodus wird nichts hochgeladen”, “schief”); return; }
+  if(!betriebId){ bildStand("Kein Betrieb gewählt", "schief"); return; }
+  if(demo){ bildStand("Im Vorführmodus wird nichts hochgeladen", "schief"); return; }
 
   /* Zeige Crop-UI statt direkt zu verkleinern */
   bildCropZeigen(datei);
 }
 
-$(“#fDatei”).onchange = e => {
+$("#fDatei").onchange = e => {
   const d = e.target.files && e.target.files[0];
   bildHochladen(d);
-  e.target.value = “”;     /* damit dieselbe Datei erneut wählbar bleibt */
+  e.target.value = "";     /* damit dieselbe Datei erneut wählbar bleibt */
 };
 
 /* Crop UI Buttons */
-$(“#bildCropBestaetigen”).onclick = bildCropBestaetigen;
-$(“#bildCropAbbrechen”).onclick = bildCropAbbrechen;
+$("#bildCropBestaetigen").onclick = bildCropBestaetigen;
+$("#bildCropAbbrechen").onclick = bildCropAbbrechen;
 
-$(“#bildWeg”).onclick = () => {
-  $(“#fBild”).value = “”;
-  bildSchauSetzen(“”);
-  bildStand(“Foto entfernt. Mit „Sichern” übernehmen.”);
+$("#bildWeg").onclick = () => {
+  $("#fBild").value = "";
+  bildSchauSetzen("");
+  bildStand("Foto entfernt. Mit „Sichern“ übernehmen.");
 };
 
-$(“#fBild”).oninput = () => bildSchauSetzen($(“#fBild”).value.trim());
+$("#fBild").oninput = () => bildSchauSetzen($("#fBild").value.trim());
 
 async function sichern(alsKopie){
   const name = $("#fName").value.trim();
@@ -7957,8 +7981,14 @@ $("#uebJetzt").onclick = async () => {
   if(!name && !beschr) return melde("Erst Name oder Beschreibung eintragen", true);
   melde("Übersetze in elf Sprachen …");
   const fertig = await uebersetzenLassen([name, beschr]);
-  if(!Object.keys(fertig).length)
-    return melde("Der Übersetzer hat nicht geantwortet — später noch einmal", true);
+  if(!Object.keys(fertig).length){
+    /* Denselben echten Grund zeigen, den uebNachtragen() nach dem
+       Speichern schon zeigt (uebGrundText()) — statt eines festen
+       Satzes, der "kein Schluessel" und "nicht erreichbar" gleich
+       aussehen laesst. */
+    const grund = uebGrundText();
+    return melde("Nicht übersetzt." + (grund ? " " + grund : " Später noch einmal versuchen."), true);
+  }
   const ziel = bearbeite || {};
   if(fertig[name])   ziel.name_uebersetzungen = fertig[name];
   if(fertig[beschr]) ziel.uebersetzungen      = fertig[beschr];
