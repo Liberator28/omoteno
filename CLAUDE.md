@@ -560,6 +560,28 @@ Theme nicht — fünf Flag-Varianten durchprobiert, keine greift. Die
 Prüfung zeigt, dass die Ansage da ist und stimmt, **nicht**, dass das
 Umfärben aufhört. Der Beweis dafür steht auf dem Gerät des Gastes.
 
+> **Vorfall, genau diese Grenze eingetroffen.** Ein Gast öffnete
+> omoteno.de auf einem Xiaomi-Telefon (MIUI-Browser): Abschnitte mit
+> hellem Grund zeigten gar keinen Text, nur leere helle Flächen.
+> `omoteno-web.html` hatte `:root{color-scheme:light}` längst — genau
+> der Fix von oben. Nachgesehen: **acht von neun statischen Seiten**
+> unter `seiten/` (admin, datenschutz, impressum, konto, kueche,
+> marken-studio, omoteno-web, start) hatten nur die CSS-Angabe, kein
+> `<meta name="color-scheme">` im Kopf. „Der erste Anstrich zählt" war
+> beim Hub-Erzeuger umgesetzt — und nie auf die Seiten übertragen, die
+> von Hand ausgeliefert werden.
+>
+> `pruef-farbschema.js` hatte das nie sehen können: Ihre Meta-Prüfung
+> filterte von Anfang an auf `startsWith("hub:")`. Eine Prüfung, die
+> nur den erzeugten Hub ansieht, kann eine fehlende Angabe auf einer
+> STATISCHEN Seite nicht finden — derselbe Fehler wie in §8.1a, nur
+> eine Ebene höher: Was mehrfach existiert (hier: neun Kopf-Bereiche
+> statt einer Vorlage), muss auch mehrfach geprüft werden.
+
+Die Prüfung deckt jetzt beides ab, mit derselben Messung: das Meta
+jeder statischen Seite gegen ihre eigene CSS-Angabe (`getComputedStyle`
+auf `colorScheme`), nicht nur der erzeugte Hub gegen sein Markenblatt.
+
 ### 5.3 Bewusste Ungereimtheiten nicht wegsystematisieren
 
 > **Vorfall.** Chocos Goldfläche am Tag war seit jeher aus dem hellen

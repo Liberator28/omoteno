@@ -121,6 +121,11 @@ const MESSUNG = `(() => {
   console.log("\n── Was jede Seite ansagt, gegen das, was sie malt ──");
   pruef(seiten.length >= 8, "Seiten gefunden", seiten.map(s => s[0]).join(", "));
 
+  /* Fuer 3c weiter unten: was jede Seite per CSS ansagt, gemerkt
+     waehrend dieser ersten Runde — sonst muesste die Seite ein
+     zweites Mal geladen werden, nur um denselben Wert zu lesen. */
+  const angesagtProSeite = {};
+
   const browser = await chromium.launch();
   for(const [name, datei] of seiten){
     const ctx = await browser.newContext({ colorScheme:"light", viewport:{width:412,height:915} });
@@ -138,6 +143,7 @@ const MESSUNG = `(() => {
 
     const angesagt = String(m.schema || "normal").trim();
     const istDunkel = dunkel(m.grund);
+    angesagtProSeite[name] = angesagt;
 
     /* 1 · Überhaupt eine Ansage. „normal" heißt: keine — und genau
        dann färbt der Browser im Dunkelmodus selbst um. */
@@ -182,14 +188,48 @@ const MESSUNG = `(() => {
         werte.light.grund + " / " + werte.dark.grund);
   }
 
-  /* 3b · Der ERSTE Anstrich. Beim Gegenbeweis blieb diese Prüfung
-     grün, als der Erzeuger fest „light" ins Meta schrieb: nachtSchalten()
-     überschreibt den Wert sofort, und gemessen wurde nur das Ergebnis
-     danach. Der Browser entscheidet aber VORHER, bevor ein Skript
-     läuft — genau dort fällt die Entscheidung übers Umfärben. Deshalb
-     wird jetzt das Meta selbst gelesen und gegen die TAGpalette des
-     Markenblatts gehalten (zweite Quelle, §8.1b). */
-  console.log("\n── Das Meta für den ersten Anstrich ──");
+  /* 3b · Derselbe erste Anstrich, aber für die STATISCHEN Seiten unter
+     seiten/ — admin, konto, kueche, start, und die dazu gemeldete
+     omoteno-web.html.
+
+     VORFALL. Ein Gast öffnete omoteno.de auf einem Xiaomi-Telefon
+     (MIUI-Browser): Abschnitte mit hellem Grund zeigten gar keinen
+     Text, nur leere helle Flächen. omoteno-web.html hatte die CSS-
+     Angabe `:root{color-scheme:light}` längst — genau das, was §5.2c
+     als Fix nennt. Nachgesehen: Acht von neun statischen Seiten
+     hatten NUR die CSS-Angabe, kein `<meta name="color-scheme">` im
+     Kopf. Nur master.html und der erzeugte Hub hatten beides.
+
+     Der ERSTE Anstrich fällt, bevor die Style-Engine die volle Kaskade
+     ausgewertet hat — manche Android-Browser entscheiden dort nur
+     nach dem Meta, nicht nach einer Regel im Stylesheet (dieselbe
+     Lehre wie beim Hub, nur nie auf die statischen Seiten übertragen).
+
+     Und diese Prüfung selbst hatte genau diese Lücke: Die Schleife
+     darunter filterte von Anfang an auf `startsWith("hub:")` — eine
+     Prüfung, die nur erzeugte Hubs ansieht, kann eine fehlende Angabe
+     auf einer STATISCHEN Seite nie finden (§8.1a: Bausteine prüfen
+     findet nicht, was zwischen ihnen fehlt — hier: was AUSSERHALB des
+     geprüften Kreises liegt). */
+  console.log("\n── Das Meta für den ersten Anstrich, statische Seiten ──");
+  for(const [name, datei] of seiten.filter(s => !s[0].startsWith("hub:"))){
+    const m = fs.readFileSync(datei, "utf8")
+      .match(/<meta name="color-scheme" content="([^"]*)">/);
+    pruef(!!m, name.padEnd(16) + "hat ein color-scheme-Meta im Kopf",
+      m ? m[1] : "keins");
+    if(m) pruef(m[1] === angesagtProSeite[name],
+      name.padEnd(16) + "das Meta passt zur CSS-Angabe der Seite",
+      m[1] + " vs. " + angesagtProSeite[name]);
+  }
+
+  /* 3c · Der ERSTE Anstrich der erzeugten Hubs. Beim Gegenbeweis blieb
+     diese Prüfung grün, als der Erzeuger fest „light" ins Meta schrieb:
+     nachtSchalten() überschreibt den Wert sofort, und gemessen wurde
+     nur das Ergebnis danach. Der Browser entscheidet aber VORHER,
+     bevor ein Skript läuft — genau dort fällt die Entscheidung übers
+     Umfärben. Deshalb wird jetzt das Meta selbst gelesen und gegen die
+     TAGpalette des Markenblatts gehalten (zweite Quelle, §8.1b). */
+  console.log("\n── Das Meta für den ersten Anstrich, erzeugte Hubs ──");
   for(const [name, datei] of seiten.filter(s => s[0].startsWith("hub:"))){
     const slug = name.slice(4);
     const blatt = path.join(OBEN, "markenblaetter", slug + ".json");
