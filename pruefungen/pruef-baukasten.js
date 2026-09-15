@@ -292,6 +292,13 @@ async function hub(br, datei, hausName){
             banner:"https://bild.test/banner.svg" },
           { schluessel:"tischruf", titel:"Service", unter:"Kurz Bescheid geben",
             banner:"https://bild.test/banner.svg" },
+          /* Zusätzlich eine Zweierraster-Kachel mit Bild — die
+             ursprüngliche Prüfung maß nur die Reihen-Form
+             (:not(.saeule) traf immer auf "tischruf"). Säule und
+             Zweier haben seit Block B einen größeren Bildanteil und
+             brauchen ihr eigenes, dazu passendes Fenster. */
+          { schluessel:"bewertung", titel:"Uns bewerten",
+            banner:"https://bild.test/banner.svg" },
           /* Kein https → muss ignoriert werden, nicht gezeichnet. */
           { schluessel:"wlan", banner:"javascript:alert(1)" },
           { schluessel:"quiz", an:false }
@@ -325,22 +332,50 @@ async function hub(br, datei, hausName){
       unterSchrift = luecke >= 0 ? "Fläche" : "BILD";
       bildAnteil = Math.round(b.width / eine.getBoundingClientRect().width * 100);
     }
+    /* Säule und Zweier messen ANDERS als die Reihe oben: Bei der
+       Säule liegt das Bild OBEN, quer über die ganze Breite — dort
+       zählt die Höhe, nicht die Breite (CLAUDE.md-Plan Block B). */
+    let saeuleAnteil = null, zweiAnteil = null;
+    const eineSaeule = document.querySelector("a.kachel.saeule.hatbanner");
+    if(eineSaeule){
+      const card = eineSaeule.getBoundingClientRect();
+      const banner = eineSaeule.querySelector(".kbanner").getBoundingClientRect();
+      saeuleAnteil = Math.round(banner.height / card.height * 100);
+    }
+    const eineZwei = document.querySelector(".gitter.zwei a.kachel.hatbanner");
+    if(eineZwei){
+      const card = eineZwei.getBoundingClientRect();
+      const banner = eineZwei.querySelector(".kbanner").getBoundingClientRect();
+      zweiAnteil = Math.round(banner.width / card.width * 100);
+    }
     return { anzahl: alle.length, titel: titel, mitBanner: mit.length,
-             unterSchrift, bildAnteil, luecke,
+             unterSchrift, bildAnteil, luecke, saeuleAnteil, zweiAnteil,
              quiz: titel.some(x => /Quiz/i.test(x || "")),
              fuerbetrieb: !!document.getElementById("fuerbetrieb") };
   });
 
   ok(d.titel.indexOf("Unsere Karte") >= 0,
     "der Titel aus dem Board steht im Hub", d.titel.slice(0,3).join(" · "));
-  ok(d.mitBanner === 2, "genau die zwei Kacheln mit Bild tragen eins",
+  ok(d.mitBanner === 3, "genau die drei Kacheln mit Bild tragen eins",
     d.mitBanner + " von " + d.anzahl);
   ok(d.unterSchrift === "Fläche",
     "die Schrift liegt auf der Fläche, NIE auf dem Bild",
     d.unterSchrift + " (" + d.luecke + "px Abstand)");
+  /* Drei Fenster statt eines — je Kachelform gemessen, nicht geraten
+     (CLAUDE.md §1.3). Reihe: unverändert bei ~46% (einzige Form mit
+     Unterzeile, bewusst nicht angehoben). Säule/Zweier: seit Block B
+     größer, echt gemessen bei ~49%/~43% (mess-bildanteil.js) — die
+     Fenster liegen darum, mit Luft für Schriftgrößen-Unterschiede
+     zwischen den Häusern. */
   ok(d.bildAnteil > 20 && d.bildAnteil < 60,
-    "das Bild nimmt einen sichtbaren, aber nicht den ganzen Knopf ein",
+    "Reihe: das Bild nimmt einen sichtbaren, aber nicht den ganzen Knopf ein",
     d.bildAnteil + "%");
+  ok(d.saeuleAnteil !== null && d.saeuleAnteil > 35 && d.saeuleAnteil < 65,
+    "Säule: das Bild oben nimmt den größten Anteil aller Formen ein",
+    d.saeuleAnteil + "%");
+  ok(d.zweiAnteil !== null && d.zweiAnteil > 30 && d.zweiAnteil < 55,
+    "Zweierraster: moderater angehoben als die Säule",
+    d.zweiAnteil + "%");
   ok(!d.quiz, "eine abgeschaltete Kachel erscheint nicht");
   ok(!d.fuerbetrieb, "„Für den Betrieb“ steht dem Gast nicht mehr im Weg");
   ok(kons.length === 0, "kein Fehler in der Konsole", kons[0] || "still");
