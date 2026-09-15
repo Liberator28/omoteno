@@ -751,15 +751,21 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 .zurueck:active{color:var(--rot)}
 
 /* ═══ Empfehlung des Hauses ═════════════════════════════════════ */
+/* Der Sofort-Knopf steht AUSSERHALB von <a> (ein <button> darin wäre
+   ungültiges HTML) und liegt über der rechten unteren Ecke — dafür
+   braucht der Wrapper die Positionierung, die vorher am <a> selbst
+   stand. */
+.tippwrap{position:relative;margin-bottom:26px}
 a.tipp{
   display:block;text-decoration:none;color:inherit;
-  border-radius:var(--rundung);padding:16px 17px;margin-bottom:26px;
+  border-radius:var(--rundung);padding:16px 17px;
   background:var(--flaeche);border:1px solid var(--linie);
   border-left:3px solid var(--rot);
   box-shadow:var(--schatten);
   transition:transform var(--kurz) var(--feder)
 }
 a.tipp:active{transform:scale(.985)}
+.tippsofort{position:absolute;right:14px;bottom:14px;box-shadow:var(--schatten)}
 .tipp .oben{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:7px;gap:12px}
 .tipp .kennz{font-size:10px;letter-spacing:1.6px;font-weight:700;color:var(--rot)}
 .tipp .preis{font-size:15px;font-weight:600;color:var(--gold);white-space:nowrap}
@@ -2283,6 +2289,17 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   border-radius:var(--rundung-klein);
   background:var(--rot-flaeche);
 }
+/* Öffnet die Gerichtsvorschau — ein echter <button>, kein Klick auf
+   ein bloßes <div>: dieselbe Regel wie beim Info-Knopf in der
+   Kartenliste (.ginfo, weiter unten), nur diesmal deckt der Knopf
+   die ganze Fläche außer dem Sofort-Kreis. Ohne Gericht in der Karte
+   bleibt es ein <div> — nichts zum Öffnen, nichts zum Anklicken. */
+.aktionklick{
+  display:flex;align-items:center;gap:12px;flex-wrap:wrap;flex:1 1 100%;
+  background:none;border:0;padding:0;margin:0;text-align:left;
+  color:inherit;font:inherit;cursor:pointer;
+}
+.aktionklick:active{opacity:.78}
 .aktion .was{flex:1;min-width:150px}
 .aktion .kennz{
   display:block;font-size:10px;letter-spacing:1.6px;font-weight:700;
@@ -2292,10 +2309,36 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 .aktion .preise{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
 .aktion .alt{color:var(--tinte-still);text-decoration:line-through;font-size:13px}
 .aktion .neu{color:var(--rot);font-weight:700;font-size:19px}
-.aktion .rest{
-  width:100%;font-size:11.5px;color:var(--tinte-leise);
+/* Die Fußzeile trägt jetzt zwei Dinge nebeneinander statt einer
+   Zeile allein: die Restzeit links, der Sofort-Knopf unten rechts. */
+.aktionfuss{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  width:100%;
+}
+.aktionfuss .rest{
+  font-size:11.5px;color:var(--tinte-leise);
   font-variant-numeric:tabular-nums;
 }
+/* Sofort bestellen — derselbe Kreisknopf wie bei der Empfehlung
+   (.tippsofort teilt diese Regeln über denselben Klassennamen). Eine
+   eigene, auffällige Fläche: Das ist die einzige Stelle im Hub, an
+   der EIN Tipp sofort eine Bestellung auslöst, ohne über die
+   Detailkarte zu gehen — das muss sich bewusst anders anfühlen als
+   das leise Herz in der Kartenliste. */
+.sofort{
+  flex:0 0 auto;display:flex;align-items:center;justify-content:center;
+  width:44px;height:44px;border-radius:50%;
+  background:var(--rot);color:var(--auf-rot);
+  transition:transform var(--kurz) var(--feder);
+}
+.sofort:active{transform:scale(.88)}
+.sofort svg{width:21px;height:21px;transition:transform var(--kurz) var(--feder)}
+/* Schon in der Auswahl: dasselbe Plus dreht sich zum Kreuz — antippen
+   nimmt es wieder heraus, wie das Herz in der Kartenliste. Die Fläche
+   bleibt Rot: Das ist dieselbe, bereits gerechnete Schriftfarbe
+   (--auf-rot), ein zweites Grund/Schrift-Paar hätte eine eigene
+   Kontrastrechnung gebraucht (CLAUDE.md §5.1). */
+.sofort.an svg{transform:rotate(45deg)}
 
 /* Startet die Aktion, während der Gast im Hub ist, schiebt sich
    dieser Streifen einmal von oben ins Bild. Kein Neuaufbau der
@@ -3952,6 +3995,13 @@ function sicherText(w){
     ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[z]));
 }
 
+/* Ein einziges Plus-Zeichen für beide Sofort-Bestellen-Knöpfe unten
+   (Top-Runner und Empfehlung des Hauses) — kein Eintrag im geteilten
+   ICONS-Block, der auch das Marken-Studio versorgt und von
+   pruef-figur.js zeichengenau abgeglichen wird; ein einzelnes Plus
+   für einen einzigen Knopftyp hier gehört da nicht hinein. */
+const SOFORT_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>';
+
 let aktionen = [];          /* was gerade läuft */
 /* Wie die Aktionen dieses Hauses überschrieben heißen. Die einzelne
    Aktion darf einen eigenen Titel tragen; fehlt er, gilt dieser. */
@@ -3988,12 +4038,27 @@ function aktionBandHTML(){
     const rest = restMin >= 60
       ? t("noch {n} Stunden", {n: Math.floor(restMin / 60)})
       : t("nur noch {n} Minuten", {n: restMin});
+    /* Nur anklickbar/bestellbar, wenn das Gericht wirklich in DIESER
+       Karte steht — eine Aktion kann ein Gericht tragen, das
+       inzwischen aus der Karte genommen wurde (gericht_id ist
+       nullable, siehe Migration). Dann bleibt der Streifen ein reiner
+       Hinweis, wie bisher. */
+    const g = findeGericht(a.gericht_name);
     return '<div class="aktion">' +
-      '<div class="was"><span class="kennz">' + t(a.titel || RUNNER_TITEL) + '</span>' +
-      '<span class="name">' + sicherText(a.gericht_name) + '</span></div>' +
-      '<div class="preise"><span class="alt">' + preisText(a.preis_alt) + '</span>' +
-      '<span class="neu">' + preisText(a.preis_neu) + '</span></div>' +
-      '<div class="rest">' + rest + '</div></div>';
+      (g
+        ? '<button type="button" class="aktionklick" data-detail="' +
+          encodeURIComponent(a.gericht_name) + '">'
+        : '<div class="aktionklick">') +
+        '<span class="was"><span class="kennz">' + t(a.titel || RUNNER_TITEL) + '</span>' +
+        '<span class="name">' + sicherText(a.gericht_name) + '</span></span>' +
+        '<span class="preise"><span class="alt">' + preisText(a.preis_alt) + '</span>' +
+        '<span class="neu">' + preisText(a.preis_neu) + '</span></span>' +
+      (g ? '</button>' : '</div>') +
+      '<div class="aktionfuss"><span class="rest">' + rest + '</span>' +
+      (g ? '<button type="button" class="sofort" data-aktionmerk="' +
+        encodeURIComponent(a.gericht_name) + '" data-preis="' + sicherText(preisText(a.preis_neu)) +
+        '" aria-label="' + t("Sofort bestellen") + '">' + SOFORT_SVG + '</button>' : '') +
+      '</div></div>';
   }).join("");
 }
 
@@ -6622,6 +6687,7 @@ const TEXTE = {
 "Suchen …":{en:"Search …",tr:"Ara …",ru:"Поиск …",fr:"Rechercher …",es:"Buscar …",it:"Cerca …",pl:"Szukaj …",ar:"بحث …",uk:"Пошук …",nl:"Zoeken …",ro:"Căutare …"},
 "Löschen":{en:"Clear",tr:"Temizle",ru:"Очистить",fr:"Effacer",es:"Borrar",it:"Cancella",pl:"Wyczyść",ar:"مسح",uk:"Очистити",nl:"Wissen",ro:"Șterge"},
 "Merken":{en:"Save",tr:"Kaydet",ru:"В избранное",fr:"Garder",es:"Guardar",it:"Salva",pl:"Zapisz",ar:"حفظ",uk:"Зберегти",nl:"Bewaren",ro:"Salvează"},
+"Sofort bestellen":{en:"Order now",tr:"Hemen sipariş ver",ru:"Заказать сразу",fr:"Commander maintenant",es:"Pedir ahora",it:"Ordina subito",pl:"Zamów od razu",ar:"اطلب الآن",uk:"Замовити зараз",nl:"Nu bestellen",ro:"Comandă acum"},
 "Bestellung zeigen":{en:"Show order",tr:"Siparişi göster",ru:"Показать заказ",fr:"Montrer la commande",es:"Mostrar el pedido",it:"Mostra l'ordine",pl:"Pokaż zamówienie",ar:"عرض الطلب",uk:"Показати замовлення",nl:"Bestelling tonen",ro:"Arată comanda"},
 "Zeigen Sie unserem Team einfach diese Bestellung – wir nehmen sie direkt auf.":{en:"Just show this order to our team, we will take it straight away.",tr:"Bu siparişi ekibimize gösterin, hemen alalım.",ru:"Просто покажите заказ нашему персоналу, мы сразу его примем.",fr:"Montrez simplement cette commande à notre équipe, nous la prenons aussitôt.",es:"Muestre este pedido a nuestro equipo, lo tomamos enseguida.",it:"Mostri l'ordine al nostro team, lo prendiamo subito.",pl:"Pokaż to zamówienie obsłudze, przyjmiemy je od razu.",ar:"أظهروا هذا الطلب لفريقنا، وسنأخذه فوراً.",uk:"Просто покажіть замовлення нашому персоналу, ми одразу його приймемо.",nl:"Laat deze bestelling aan ons team zien, we nemen hem meteen op.",ro:"Arătați comanda echipei noastre, o preluăm imediat."},
 "Bitte zeigen Sie diesen Bildschirm unserem Serviceteam. Wir nehmen die Bestellung dann direkt auf.":{en:"Please show this screen to our team. We will take your order right away.",tr:"Lütfen bu ekranı ekibimize gösterin. Siparişinizi hemen alalım.",ru:"Покажите, пожалуйста, этот экран персоналу. Мы сразу примем заказ.",fr:"Montrez cet écran à notre équipe. Nous prenons votre commande aussitôt.",es:"Muestre esta pantalla a nuestro equipo. Tomamos su pedido enseguida.",it:"Mostri questo schermo al nostro team. Prendiamo subito l'ordine.",pl:"Pokaż ten ekran obsłudze. Przyjmiemy zamówienie od razu.",ar:"يرجى عرض هذه الشاشة على فريقنا. سنأخذ طلبكم فوراً.",uk:"Покажіть, будь ласка, цей екран персоналу. Ми одразу приймемо замовлення.",nl:"Laat dit scherm aan ons team zien. We nemen uw bestelling meteen op.",ro:"Vă rugăm să arătați acest ecran echipei. Preluăm comanda imediat."},
@@ -7854,7 +7920,21 @@ function empfehlungHTML(){
       'this.closest(&quot;.tbild&quot;).remove()"></span>'
     : "";
 
-  return '<a class="tipp' + (bild ? " mitbild" : "") + '" href="' + ziel + '">' +
+  /* Der Sofort-Knopf muss AUSSERHALB von <a> stehen — ein <button>
+     in einem <a> ist ungültiges HTML und der Klick wäre nicht
+     zuverlässig zu trennen. Deshalb ein Wrapper außenherum, der
+     Knopf absolut in dessen rechter unterer Ecke. Nur da, wenn das
+     Gericht wirklich bestellbar ist (dieselbe Bedingung wie beim
+     Herz-Knopf in der Kartenliste, admin.html-Pendant merkbar). */
+  const bestellbar = g && g.p !== "–";
+  const sofort = bestellbar
+    ? '<button type="button" class="sofort tippsofort" data-merk="' +
+      encodeURIComponent(e.gericht) + '" aria-label="' + t("Sofort bestellen") + '">' +
+      SOFORT_SVG + '</button>'
+    : "";
+
+  return '<div class="tippwrap">' +
+    '<a class="tipp' + (bild ? " mitbild" : "") + '" href="' + ziel + '">' +
     bild +
     '<span class="tinhalt">' +
       '<span class="oben"><span class="kennz">' + t(e.kennz) + '</span>' +
@@ -7866,7 +7946,7 @@ function empfehlungHTML(){
          zurück; Eigennamen bleiben also weiterhin stehen. */
       '<span class="name">' + t(e.name) + '</span>' + urnameHTML(e.name) +
       '<span class="was">' + t(e.was) + '</span>' +
-    '</span></a>';
+    '</span></a>' + sofort + '</div>';
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -10828,6 +10908,25 @@ $("inhalt").addEventListener("click", e => {
     else if(g) merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 };
     merkSpeichern();
     herz.classList.toggle("an", !!merk[name]);
+    balkenAktualisieren();
+    return;
+  }
+
+  /* Sofort bestellen, Top-Runner: derselbe Schalter wie das Herz
+     oben, aber mit dem Aktionspreis statt dem Kartenpreis — sonst
+     bekäme der Gast im Warenkorb den vollen Preis zu sehen, obwohl
+     ihm gerade der reduzierte gezeigt wurde. Der Preis kommt aus dem
+     Knopf selbst (data-preis), nicht neu berechnet: Es ist derselbe
+     Text, der auf der Karte stand, kein zweiter Rechenweg, der vom
+     ersten abweichen könnte. */
+  const sofort = e.target.closest("[data-aktionmerk]");
+  if(sofort){
+    const name = decodeURIComponent(sofort.dataset.aktionmerk);
+    const g = findeGericht(name);
+    if(merk[name]) delete merk[name];
+    else if(g) merk[name] = { n:g.n, p:sofort.dataset.preis, b:g.b || "", m:1 };
+    merkSpeichern();
+    sofort.classList.toggle("an", !!merk[name]);
     balkenAktualisieren();
     return;
   }

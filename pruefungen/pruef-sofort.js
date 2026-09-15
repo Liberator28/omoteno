@@ -1,0 +1,214 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PRÜFUNG · Sofort bestellen — Top-Runner und Empfehlung des Hauses
+
+     node erzeuger/erzeuge-hub.js --alle
+     NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-sofort.js
+
+   Zwei Knöpfe, zwei Preisquellen: Der Top-Runner-Streifen bestellt zum
+   AKTIONSPREIS (aus aktionen.preis_neu, nicht aus der Karte), die
+   Empfehlung des Hauses zum normalen Kartenpreis. Ein Klick auf den
+   Top-Runner-Streifen SELBST öffnet die Vorschau; der Sofort-Knopf
+   daneben legt direkt in den Korb, ohne über die Vorschau zu gehen.
+
+   Kritischste Zusicherung: Der Sofort-Preis beim Top-Runner weicht
+   wirklich vom Kartenpreis ab. Würde jemand versehentlich g.p statt
+   dem Aktionspreis einsetzen, sähe die Bedienung noch genauso aus —
+   nur der Preis im Korb wäre falsch. Das findet keine Sichtprüfung.
+   ═══════════════════════════════════════════════════════════════════ */
+const { chromium } = require("playwright");
+const fs = require("fs");
+const path = require("path");
+
+const HIER = path.resolve(__dirname, "..");
+const BID  = "af095b14-d9ef-41f4-9b97-c4422b0de63f";
+
+let fehler = 0;
+function pruef(gut, text, zusatz){
+  console.log((gut ? "  ok   " : "  FEHL ") + text + (zusatz ? "  → " + zusatz : ""));
+  if(!gut) fehler++;
+}
+
+function hubDatei(){
+  const o = path.join(HIER, "dist", "chocolamour", "index.html");
+  return fs.existsSync(o) ? "file://" + o : null;
+}
+
+/* Ein aktives Top-Runner-Angebot auf ein echtes Gericht der Karte,
+   mit einem Preis, der sich vom Kartenpreis unterscheidet — sonst
+   könnte ein vertauschter Preis nie auffallen. */
+function aktionMock(name, extra){
+  return Object.assign({
+    id: "aktion-1", gericht_name: name, titel: null,
+    preis_alt: 15.90, preis_neu: 11.90,
+    bis: new Date(Date.now() + 2 * 3600000).toISOString()
+  }, extra || {});
+}
+
+(async () => {
+  const datei = hubDatei();
+  if(!datei){
+    console.log("Kein erzeugter Hub in dist/chocolamour/. Erst „node erzeuger/erzeuge-hub.js --alle“ laufen lassen.");
+    process.exit(1);
+  }
+
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ viewport:{width:390,height:844} });
+  const seite = await ctx.newPage();
+
+  let aktionenAntwort = [aktionMock("Dubai Crêpe")];
+
+  await seite.route("**/*", r => r.request().url().startsWith("file://")
+    ? r.continue()
+    : r.fulfill({ status:200, contentType:"application/json", body:"[]" }));
+  await seite.route("**/rest/v1/betriebe**", r =>
+    r.fulfill({ status:200, contentType:"application/json",
+      body: JSON.stringify([{ id:BID, bestell_pause:false, bestell_pause_text:"", hub_texte:{} }]) }));
+  await seite.route("**/rest/v1/rpc/gast_melden", r =>
+    r.fulfill({ status:200, contentType:"application/json",
+      body: JSON.stringify({ ok:true, neu:false, besuche:1, lieblinge:[], gutscheine:[] }) }));
+  await seite.route("**/rest/v1/rpc/bestellung_aufgeben", r =>
+    r.fulfill({ status:200, contentType:"application/json",
+      body: JSON.stringify("aaaaaaaa-bbbb-cccc-dddd-000000000001") }));
+  await seite.route("**/rest/v1/aktionen**", r =>
+    r.fulfill({ status:200, contentType:"application/json",
+      headers:{ "Cache-Control":"no-store" }, body: JSON.stringify(aktionenAntwort) }));
+
+  await seite.goto(datei);
+  await seite.waitForTimeout(500);
+  if(await seite.isVisible(".willkommen")){ await seite.click(".willkommen"); await seite.waitForTimeout(500); }
+
+  /* aktionenLaden() läuft asynchron beim Start — auf die Ankunft warten,
+     nicht auf eine feste Wartezeit verlassen (CLAUDE.md §8.1g). */
+  await seite.waitForFunction(() => typeof aktionen !== "undefined" && Array.isArray(aktionen) && aktionen.length > 0, null, { timeout: 5000 }).catch(() => {});
+  await seite.evaluate(() => { location.hash = ""; zeichne(); });
+  await seite.waitForTimeout(300);
+
+  /* ───── 1 · Top-Runner: Klick auf den Streifen öffnet die Vorschau ───── */
+  console.log("\n── Top-Runner: Klick öffnet die Vorschau ──");
+  const klickKnopf = await seite.$(".aktion .aktionklick");
+  pruef(!!klickKnopf, "der Streifen ist ein echter <button>, kein bloßes <div>");
+  if(klickKnopf){
+    await klickKnopf.click();
+    await seite.waitForTimeout(400);
+    const offen = await seite.evaluate(() => ({
+      an: document.getElementById("warenkarte").classList.contains("an"),
+      name: typeof detailName !== "undefined" ? detailName : null
+    }));
+    pruef(offen.an, "die Vorschau öffnet sich");
+    pruef(offen.name === "Dubai Crêpe", "und zeigt das richtige Gericht", String(offen.name));
+    await seite.evaluate(() => { detailSchliessen(); });
+    await seite.waitForTimeout(300);
+  }
+
+  /* ───── 2 · Top-Runner: Sofort-Knopf bestellt zum AKTIONSPREIS ───── */
+  console.log("\n── Top-Runner: Sofort-Knopf ──");
+  const vorher = await seite.evaluate(() => Object.keys(merk).length);
+  pruef(vorher === 0, "der Korb ist vor dem Tippen leer");
+
+  const sofort = await seite.$(".aktion .sofort[data-aktionmerk]");
+  pruef(!!sofort, "der Sofort-Knopf steht neben der Restzeit");
+  if(sofort){
+    const box = await sofort.boundingBox();
+    pruef(!!box && box.width >= 44 && box.height >= 44,
+      "Tapfläche mindestens 44×44px", box ? Math.round(box.width) + "×" + Math.round(box.height) : "–");
+
+    await sofort.click();
+    await seite.waitForTimeout(300);
+    const nachTipp = await seite.evaluate(() => merk["Dubai Crêpe"] || null);
+    pruef(!!nachTipp, "das Gericht liegt im Korb");
+    if(nachTipp){
+      pruef(nachTipp.p === "11,90 €", "zum AKTIONSPREIS, nicht zum Kartenpreis (15,90 €)", nachTipp.p);
+    }
+    pruef(await seite.evaluate(() => document.querySelector('.aktion .sofort[data-aktionmerk]').classList.contains("an")),
+      "der Knopf zeigt seinen aktiven Zustand");
+    pruef(await seite.isVisible("#auswahlbalken"), "der Balken unten zeigt den Korb");
+
+    /* Zweiter Tipp nimmt wieder heraus — dieselbe Geste wie beim Herz. */
+    await sofort.click();
+    await seite.waitForTimeout(300);
+    pruef(!(await seite.evaluate(() => !!merk["Dubai Crêpe"])), "erneutes Tippen nimmt es wieder heraus");
+  }
+
+  /* ───── 3 · Fehlt das Gericht in der Karte, bleibt es ein Hinweis ───── */
+  console.log("\n── Aktion ohne passendes Gericht in der Karte ──");
+  aktionenAntwort = [aktionMock("Gibt es hier nicht", { id:"aktion-2" })];
+  await seite.evaluate(() => { aktionGesehen = {}; try{ sessionStorage.removeItem("omoteno-aktionen"); }catch(e){} });
+  await seite.reload();
+  await seite.waitForTimeout(500);
+  if(await seite.isVisible(".willkommen")){ await seite.click(".willkommen"); await seite.waitForTimeout(500); }
+  await seite.waitForFunction(() => typeof aktionen !== "undefined" && Array.isArray(aktionen) && aktionen.length > 0, null, { timeout: 5000 }).catch(() => {});
+  await seite.evaluate(() => { location.hash = ""; zeichne(); });
+  await seite.waitForTimeout(300);
+  const ohneGericht = await seite.evaluate(() => ({
+    div: !!document.querySelector(".aktion"),
+    knopf: !!document.querySelector(".aktion button.aktionklick"),
+    sofort: !!document.querySelector(".aktion .sofort")
+  }));
+  pruef(ohneGericht.div, "der Streifen steht weiterhin als Hinweis");
+  pruef(!ohneGericht.knopf, "aber ohne anklickbare Vorschau");
+  pruef(!ohneGericht.sofort, "und ohne Sofort-Knopf — es gäbe nichts zu bestellen");
+
+  /* ───── 4 · Empfehlung des Hauses: Sofort-Knopf zum Kartenpreis ───── */
+  console.log("\n── Empfehlung des Hauses ──");
+  aktionenAntwort = [];
+  await seite.evaluate(() => { stunde = 21; location.hash = ""; zeichne(); });
+  await seite.waitForTimeout(300);
+  const tipp = await seite.evaluate(() => ({
+    wrap: !!document.querySelector(".tippwrap"),
+    kennz: (document.querySelector(".tipp .kennz") || {}).textContent || "",
+    sofortDa: !!document.querySelector(".tippwrap .tippsofort")
+  }));
+  pruef(tipp.wrap, "die Karte steht in ihrem eigenen Rahmen (kein <button> in <a>)");
+  pruef(/THEKE/i.test(tipp.kennz), "„Heute an der Theke“ zur passenden Uhrzeit", tipp.kennz);
+
+  pruef(tipp.sofortDa, "der Sofort-Knopf sitzt daneben");
+
+  const tsofort = await seite.$(".tippwrap .tippsofort");
+  if(tsofort){
+    await tsofort.click();
+    await seite.waitForTimeout(300);
+    const g = await seite.evaluate(() => merk["Arabischer Kaiser"] || null);
+    pruef(!!g, "das Gericht liegt im Korb");
+    if(g) pruef(g.p === "12,20", "zum normalen Kartenpreis (keine Aktion aktiv)", g.p);
+
+    /* Klick auf die Karte selbst öffnet die Vorschau — unabhängig vom
+       Sofort-Knopf, der darüber liegt, aber nicht sein Zielfeld
+       überlappt (position:absolute in der rechten unteren Ecke). */
+    await seite.evaluate(() => { detailSchliessen(); });
+    await seite.click(".tipp");
+    await seite.waitForTimeout(400);
+    const offen = await seite.evaluate(() => document.getElementById("warenkarte").classList.contains("an"));
+    pruef(offen, "ein Klick auf die Karte selbst öffnet trotzdem die Vorschau");
+    pruef((await seite.evaluate(() => Object.keys(merk).length)) === 1,
+      "und verändert den Korb dabei nicht ein zweites Mal");
+  }
+
+  /* ───── 5 · Reduzierte Bewegung ───── */
+  console.log("\n── Reduzierte Bewegung ──");
+  await ctx.close();
+  const ctx2 = await browser.newContext({ viewport:{width:390,height:844}, reducedMotion:"reduce" });
+  const seite2 = await ctx2.newPage();
+  await seite2.route("**/*", r => r.request().url().startsWith("file://")
+    ? r.continue()
+    : r.fulfill({ status:200, contentType:"application/json", body:"[]" }));
+  await seite2.route("**/rest/v1/betriebe**", r =>
+    r.fulfill({ status:200, contentType:"application/json",
+      body: JSON.stringify([{ id:BID, bestell_pause:false, bestell_pause_text:"", hub_texte:{} }]) }));
+  await seite2.route("**/rest/v1/aktionen**", r =>
+    r.fulfill({ status:200, contentType:"application/json", body: JSON.stringify([aktionMock("Dubai Crêpe")]) }));
+  await seite2.goto(datei);
+  await seite2.waitForTimeout(500);
+  if(await seite2.isVisible(".willkommen")){ await seite2.click(".willkommen"); await seite2.waitForTimeout(500); }
+  await seite2.waitForFunction(() => typeof aktionen !== "undefined" && Array.isArray(aktionen) && aktionen.length > 0, null, { timeout: 5000 }).catch(() => {});
+  const s2 = await seite2.$(".aktion .sofort[data-aktionmerk]");
+  if(s2){
+    await s2.click();
+    await seite2.waitForTimeout(200);
+    pruef(await seite2.evaluate(() => document.querySelector('.aktion .sofort[data-aktionmerk]').classList.contains("an")),
+      "der Zustand wechselt auch ohne Bewegung zuverlässig");
+  }
+  await browser.close();
+
+  console.log("\n" + (fehler ? fehler + " Fehler" : "Alles sauber."));
+  process.exit(fehler ? 1 : 0);
+})();

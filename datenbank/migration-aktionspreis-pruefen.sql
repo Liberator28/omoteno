@@ -1,0 +1,117 @@
+-- ═══════════════════════════════════════════════════════════════════
+--  BEFUND, NICHT ANGEWENDET — bestellung_aufgeben kennt keine
+--  Top-Runner-Preise
+--
+--  ACHTUNG, ehrlich vorweg: Diese Datei enthaelt KEIN lauffaehiges
+--  "create or replace". Der Supabase-Zugang ist aus der
+--  Arbeitsumgebung gerade gesperrt (beide MCP-Server, 403
+--  AUTH_HEADER_REJECTED) — ich konnte den echten Funktionskoerper
+--  nicht nachlesen. CLAUDE.md 2.1 verlangt bei "create or replace"
+--  die IDENTISCHE Signatur, und CLAUDE.md 0 verbietet, eine Migration
+--  aus der Erinnerung zu schreiben, wenn Nachsehen moeglich waere.
+--  Ein geratener Funktionskoerper haette hier mehr kaputt machen
+--  koennen, als er repariert — deshalb nur der Befund und der Weg
+--  dorthin, kein Fix.
+--
+--  WAS GEFUNDEN WURDE (aus einer fruehen Sitzung, live gelesen, bevor
+--  die Verbindung getrennt wurde): bestellung_aufgeben rechnet die
+--  Summe jeder Position ausschliesslich aus gerichte.preis nach. Die
+--  Tabelle aktionen (Top-Runner-Rabatte) kommt in der Funktion an
+--  KEINER Stelle vor.
+--
+--  FOLGE: Der neue "Sofort bestellen"-Knopf im Hub (siehe
+--  vorlagen/hub.vorlage.html, aktionBandHTML()) legt einen Posten mit
+--  dem AKTIONSPREIS in den Korb. Sobald der Gast wirklich bestellt,
+--  prueft bestellung_aufgeben die Summe gegen den vollen Kartenpreis
+--  nach — und lehnt ab: "Der Preis stimmt nicht. Bitte die Karte neu
+--  laden." Der Knopf sieht heute funktionsfaehig aus, ist es am Ende
+--  des Bestellwegs aber nicht. Das ist keine Bagatelle: Ein Gast, der
+--  auf den Rabatt vertraut, bekommt am Schluss eine Fehlermeldung
+--  statt einer Bestellung.
+-- ═══════════════════════════════════════════════════════════════════
+
+-- ── SCHRITT 1 · Sobald die Verbindung wieder da ist ────────────────
+-- Den WIRKLICHEN Koerper lesen, nicht raten:
+--   select pg_get_functiondef(oid)
+--   from pg_proc
+--   where proname = 'bestellung_aufgeben'
+--     and pg_get_function_identity_arguments(oid) =
+--       'p_betrieb_id uuid, p_quelle text, p_tisch text, p_summe numeric,
+--        p_notiz text, p_positionen jsonb, p_gast_kennung text,
+--        p_tisch_schluessel text, p_sitzung text, p_geraet text';
+--
+-- Genau EINE Zeile muss zurueckkommen (CLAUDE.md 2.1). Mehr als eine
+-- heisst: eine altere Fassung ist bei einer fruehreren Signaturaenderung
+-- liegengeblieben und muss zuerst aufgeraeumt werden, bevor hier
+-- irgendetwas angefasst wird.
+
+-- ── SCHRITT 2 · Was sich in der Schleife aendern muss ──────────────
+-- Die Funktion loopt heute sinngemaess (aus dem gelesenen Koerper,
+-- Variablennamen koennen abweichen):
+--
+--   for v_pos in select * from jsonb_array_elements(p_positionen) loop
+--     select preis into v_preis from gerichte
+--      where id = ... /* oder name-basiert, siehe echten Koerper */;
+--     v_summe := v_summe + v_preis * v_menge;
+--   end loop;
+--
+-- Das MUSS um eine Nachfrage gegen aktionen ergaenzt werden, nach
+-- demselben Vorsichtsprinzip wie ueberall in diesem Projekt: der
+-- GAST liefert nie den Preis, die Funktion RECHNET ihn nach — hier
+-- eben unter Beruecksichtigung eines echten, gerade laufenden
+-- Rabatts, nicht blind zum Kartenpreis:
+--
+--   select least(v_preis, a.preis_neu) into v_preis
+--     from aktionen a
+--    where a.betrieb_id = p_betrieb_id
+--      and a.gericht_name = v_gericht_name   -- exakt der Bezug, den
+--                                             -- der Hub auch benutzt
+--                                             -- (gericht_id bleibt
+--                                             -- ungenutzt, siehe
+--                                             -- aktionenLaden() im Hub)
+--      and coalesce(a.aktiv, true)
+--      and now() between coalesce(a.von, '-infinity') and a.bis
+--    order by a.preis_neu asc
+--    limit 1;
+--   -- kein Treffer -> v_preis bleibt beim Kartenpreis, wie bisher.
+--
+-- WICHTIG, aus CLAUDE.md 2.3a/2.3b gelernt: least(), nicht der
+-- Aktionspreis blind uebernommen — ein Gast darf nie MEHR als den
+-- Kartenpreis zahlen, nur weil zufaellig eine falsch gepflegte Aktion
+-- mit hoeherem preis_neu existiert. Und die Spalte aktiv/von koennen
+-- in der echten Tabelle anders heissen oder fehlen — das steht erst
+-- fest, wenn Schritt 1 gelaufen ist (\d aktionen oder
+-- information_schema.columns).
+
+-- ── SCHRITT 3 · Erst dann "create or replace", mit EXAKT derselben
+--    Signatur wie in Schritt 1 gelesen, sonst legt Postgres eine
+--    ZWEITE Funktion an (CLAUDE.md 2.1) ───────────────────────────
+-- Kein Beispielkoerper hier — der echte Koerper aus Schritt 1 ist die
+-- einzige sichere Grundlage, alles andere waere geraten.
+
+-- ── SCHRITT 4 · Nachpruefung in einer zurueckgedrehten Transaktion,
+--    NICHT nur "success: true" glauben (CLAUDE.md 2.2) ─────────────
+-- Zwei Faelle, nicht nur der gute:
+--   begin;
+--   create temp table probe(schritt text, ergebnis text);
+--   do $$
+--   declare a jsonb;
+--   begin
+--     -- Fall 1: echte, aktive Aktion -> Bestellung mit dem
+--     -- AKTIONSPREIS als p_summe muss durchgehen.
+--     -- Fall 2: KEINE Aktion aktiv -> derselbe niedrige Preis als
+--     -- p_summe muss weiterhin abgelehnt werden. Sonst waere die
+--     -- Ergaenzung selbst die neue offene Tuer aus CLAUDE.md 2.3a.
+--   end $$;
+--   select * from probe;
+--   rollback;
+--
+-- Und danach die Signaturpruefung aus Schritt 1 ein zweites Mal, um
+-- sicherzugehen, dass wirklich ersetzt und nicht verdoppelt wurde.
+
+-- ── BIS DAHIN ────────────────────────────────────────────────────
+-- Der "Sofort bestellen"-Knopf im Hub bleibt an dieser einen Stelle
+-- unehrlich: Er zeigt den Rabatt, kann ihn am Bestellknopf aber noch
+-- nicht einloesen. Alles andere am Knopf (Korb, Preis-Anzeige, Klick
+-- oeffnet die Vorschau, Rueckfall ohne Gericht in der Karte) ist
+-- gebaut und mit pruefungen/pruef-sofort.js geprueft.

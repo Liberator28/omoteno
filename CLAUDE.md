@@ -998,6 +998,7 @@ Dazu je nach Änderung:
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Storno, Restzeit, jede Bestell-Funktion** | `pruefungen/pruef-naht.js` — hält den Wert, den der Hub schickt, gegen die Spalte, über die die SQL sucht |
+| **Top-Runner-Streifen, Empfehlung des Hauses, "Sofort bestellen"** | `pruefungen/pruef-sofort.js` (braucht `dist/`) — Klick auf den Streifen öffnet die Vorschau, der Sofort-Knopf bestellt zum AKTIONSPREIS statt zum Kartenpreis, stiller Rückfall ohne anklickbaren Knopf, wenn das Gericht nicht mehr in der Karte steht |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand, und gleicht jedes Filter-Kästchen gegen die Stellen ab, die den Wert wirklich schreiben |
 | **Klapp-Felder, Segmente, animierte Auswahl im Board** | `pruefungen/pruef-auswahlfeld.js` — Tapflächen ≥ 44px, echtes Feld bleibt Quelle der Wahrheit, Endzustand ohne Bewegung |
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
