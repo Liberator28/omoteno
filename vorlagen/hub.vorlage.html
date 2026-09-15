@@ -11436,7 +11436,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_woerter,liefer");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_woerter,liefer,hub_avatar");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -11544,6 +11544,26 @@ async function karteHolen(erstesMal){
            sonst reißt es ihm die Karte unter dem Finger weg. */
         if(seiteJetzt === "start") zeichne();
       }
+    }
+
+    /* Die Figur des Hauses aus dem Board — dieselbe Bauart wie die
+       Kacheln: eine Live-Spalte, die der Hub zur Laufzeit liest, statt
+       des Markenblatts, das erst beim nächsten Erzeugen griffe. KEINE
+       eigene Prüfung nötig: avatarFigur()/avatarArt()/avatarHaende()
+       validieren JEDEN Wert schon bei jedem Lesen (unbekannt fällt
+       still auf Untersetzer/freundlich/Phasenvorgabe zurück) — das
+       schützt hier genauso vor einer kaputten Live-Spalte wie sonst
+       vor einem alten Markenblatt. avatar.name (freier Figurname aus
+       dem Studio) wird im Hub nirgends gelesen, geht also nicht
+       verloren, wenn diese Spalte ihn nicht mitschickt. */
+    const av = b[0].hub_avatar;
+    if(av && typeof av === "object" && !Array.isArray(av)){
+      const vorAvatar = JSON.stringify(MARKENBLATT.avatar || {});
+      MARKENBLATT.avatar = av;
+      /* Anders als bei den Kacheln: die Figur steht auf JEDER Seite
+         (Begrüßung, Bestellpass, Statuskarte), nicht nur auf der
+         Startseite — deshalb ohne seiteJetzt-Wächter neu zeichnen. */
+      if(JSON.stringify(MARKENBLATT.avatar) !== vorAvatar) zeichne();
     }
 
     /* Sortierung: karte, kat_sort, reihenfolge, id.

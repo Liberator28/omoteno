@@ -1256,6 +1256,25 @@ textarea{resize:vertical;min-height:66px}
 .kbwahl button[aria-pressed=true]{
   border-color:var(--messing);background:rgba(201,162,39,.16);color:var(--messing)}
 
+/* Figur/Stimmung/Requisite: dieselbe .kbwahl-Fläche (flex-wrap+Lücke),
+   aber Wörter statt Symbole — deshalb eigene Knopfform statt der
+   40×40-Quadrate oben, sonst bräche der Text um oder liefe über. */
+.avwahl{
+  min-height:44px;padding:9px 14px;border-radius:999px;
+  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);
+  font:inherit;font-size:13.5px;cursor:pointer;
+  transition:border-color var(--t-klein) var(--ease-out),
+             color var(--t-klein) var(--ease-out),
+             background var(--t-klein) var(--ease-out);
+}
+.avwahl[aria-pressed=true]{
+  border-color:var(--messing);background:rgba(201,162,39,.16);
+  color:var(--messing);font-weight:600;
+}
+.hfeld{display:flex;flex-direction:column;gap:8px;margin-top:14px}
+.hfeld:first-child{margin-top:2px}
+.hbez{font-size:12.5px;color:var(--gedaempft);letter-spacing:.02em}
+
 /* Die Vorschau ist die Kachel selbst, in den Farben des Hubs — nicht
    ein Kasten, der so ähnlich aussieht. Wer hier etwas verschiebt,
    sieht genau das, was der Gast bekommt. */
@@ -2412,6 +2431,18 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </div>
       </div>
       <div class="epruefung" id="nlPruefung"></div>
+    </div>
+
+    <div class="egruppe">
+      <h2 class="etitel">Figur des Hauses</h2>
+      <p class="ehilfe">Welche Figur den Gast im Hub begleitet, welche
+        Stimmung sie hat und was sie je Bestellphase in der Hand hält —
+        gilt sofort, ohne dass der Hub neu erzeugt werden muss.</p>
+      <div id="avListe"></div>
+      <div class="eknoepfe">
+        <button class="knopf" id="avSichern">Übernehmen</button>
+      </div>
+      <div class="epruefung" id="avPruefung"></div>
     </div>
 
     <div class="egruppe">
@@ -4787,10 +4818,20 @@ async function betriebeHolen(){
      zuerst probieren, bei genau diesem Fehler ohne die zwei Spalten
      erneut fragen (CLAUDE.md §7 — ein blockierter Login kostet mehr
      als ein Newsletter-Schalter, der fehlt). */
+  /* hub_avatar kommt erst mit migration-hub-avatar.sql dazu — dieselbe
+     Vorsicht wie bei newsletter_aktiv/klaviyo_liste_id: erst mit,
+     dann ohne versuchen, nie den Login blockieren (§7). Eine dritte
+     Stufe, weil die beiden neuen Spalten-Gruppen unabhängig
+     voneinander eingespielt werden können. */
   let { data, error } = await db
     .from("betrieb_mitglieder")
-    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id)");
+    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar)");
 
+  if(error && /hub_avatar|column/i.test(error.message || "")){
+    ({data, error} = await db
+      .from("betrieb_mitglieder")
+      .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id)"));
+  }
   if(error && /newsletter_aktiv|klaviyo_liste_id|column/i.test(error.message || "")){
     ({data, error} = await db
       .from("betrieb_mitglieder")
@@ -4803,9 +4844,12 @@ async function betriebeHolen(){
     .map(z => ({id:z.betriebe.id, slug:z.betriebe.slug, name:z.betriebe.name,
                 bestell_pause: z.betriebe.bestell_pause,
                 hub_texte: z.betriebe.hub_texte || {},
+                hub_kacheln: z.betriebe.hub_kacheln || null,
+                liefer: z.betriebe.liefer || null,
                 markenblatt: z.betriebe.markenblatt || null, rolle:z.rolle,
                 newsletter_aktiv: z.betriebe.newsletter_aktiv,
-                klaviyo_liste_id: z.betriebe.klaviyo_liste_id || null}))
+                klaviyo_liste_id: z.betriebe.klaviyo_liste_id || null,
+                hub_avatar: z.betriebe.hub_avatar || null}))
     .sort((a,b) => a.name.localeCompare(b.name, "de"));
 }
 
@@ -5993,7 +6037,7 @@ function tafelZeigen(ziel){
   mehrZu();
 
   if(ziel === "speisekarte")     aktionenLaden();
-  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); }
+  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); }
   if(ziel === "startseite")      kbStandLaden();
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
@@ -6757,6 +6801,207 @@ $("#kbZoom").oninput = e => {
   kbZuschnitt.zoom = Math.max(1, Number(e.target.value) / 100);
   kbSetzen();
 };
+
+
+/* ══════════════════════════════════════════════════════════════════
+   DIE FIGUR DES HAUSES
+
+   Welche Figur im Hub erscheint, welche Stimmung sie hat und was sie
+   je Bestellphase in der Hand hält, stellt der Wirt hier ein — genau
+   wie bei den Startkacheln über eine LIVE-Spalte (betriebe.hub_avatar,
+   migration-hub-avatar.sql), nicht über das Marken-Studio: Eine
+   Änderung dort griffe erst beim nächsten Erzeugen des Hubs, das
+   Board soll sie sofort zeigen.
+
+   Die Figur selbst — ihr SVG, ihre Haltungen — ist der GETEILTE BLOCK
+   aus vorlagen/hub.vorlage.html/seiten/marken-studio.html
+   (pruef-figur.js hält beide zeichengenau gleich). Hier steht davon
+   NICHTS noch einmal: nur eine kurze {schluessel,name}-Liste, die
+   dieselben Namen trägt wie dort — eine ZWEITE QUELLE nach demselben
+   Muster wie KACHELPLAN/KACHELARTEN (CLAUDE.md §8.1b), die
+   pruef-figur.js gegen den geteilten Block hält. */
+
+/* Namen wie in AVATAR_FIGUREN, ohne den Untersetzer — der bleibt
+   Omotenos eigene Figur und der stille Rückfall bei einem unbekannten
+   Wert, keine Wahl für ein fremdes Haus (siehe Kommentar dort). */
+const AV_FIGUREN = [
+  {s:"erdbeere",    name:"Erdbeere"},
+  {s:"kaffeebohne", name:"Kaffeebohne"},
+  {s:"burger",      name:"Burger"},
+  {s:"brezel",      name:"Brezel"},
+  {s:"pizzaecke",   name:"Pizzaecke"},
+  {s:"sushi",       name:"Sushi"},
+  {s:"traube",      name:"Weintraube"},
+  {s:"platte",      name:"Schallplatte"},
+  {s:"eiswaffel",   name:"Eiswaffel"}
+];
+/* Nur die drei echten Stimmungen aus AVATAR_ZUEGE — der Block kennt
+   dort weitere Schlüssel (Haltungen für Requisiten), die keine
+   Stimmung sind und hier nichts zu wählen haben. */
+const AV_ZUEGE = [
+  {s:"freundlich", name:"Freundlich"},
+  {s:"ruhig",       name:"Ruhig"},
+  {s:"witzig",      name:"Witzig"}
+];
+/* Namen wie in E_REQUISITEN. */
+const AV_REQUISITEN = [
+  {s:"zettel",   name:"Bestellzettel"},
+  {s:"flasche",  name:"Flasche"},
+  {s:"teller",   name:"Teller"},
+  {s:"tasse",    name:"Tasse Kaffee"},
+  {s:"glas",     name:"Glas"},
+  {s:"becher",   name:"Becher zum Mitnehmen"},
+  {s:"glocke",   name:"Servierglocke"},
+  {s:"pancakes", name:"Pancakes"},
+  {s:"pfanne",   name:"Pfanne"},
+  {s:"schale",   name:"Schale"},
+  {s:"tuete",    name:"Box zum Mitnehmen"},
+  {s:"eis",      name:"Eis"}
+];
+/* Namen und Vorgaben wie E_PHASENNAMEN/E_PHASENVORGABE. */
+const AV_PHASEN = [
+  {s:"neu",    name:"Bestellzettel hängt", vorgabe:"zettel"},
+  {s:"arbeit", name:"In Arbeit",           vorgabe:"flasche"},
+  {s:"fertig", name:"Fertig",              vorgabe:"teller"}
+];
+
+let AVATARSTAND = null;
+
+/* Aus der Datenbank in den Stand — mit dem MARKENBLATT als Grundlage,
+   nicht mit einer blind geratenen Vorgabe: Ohne eigene Live-Spalte
+   zeigt der Hub genau das, was im Markenblatt steht (avatarFigur()),
+   und das Board soll dieselbe Wahl vorausgefüllt zeigen, nicht auf
+   „Erdbeere" zurückspringen, nur weil hub_avatar noch leer ist. */
+function avAusZeile(b){
+  const basis = (b && b.markenblatt && typeof b.markenblatt === "object" &&
+                 b.markenblatt.avatar && typeof b.markenblatt.avatar === "object")
+    ? b.markenblatt.avatar : {};
+  const av = (b && b.hub_avatar && typeof b.hub_avatar === "object" &&
+              !Array.isArray(b.hub_avatar)) ? b.hub_avatar : {};
+  const figurOk = k => AV_FIGUREN.some(f => f.s === k);
+  const zugOk   = k => AV_ZUEGE.some(z => z.s === k);
+  const dingOk  = k => AV_REQUISITEN.some(r => r.s === k);
+  const haendeAv = (av.haende && typeof av.haende === "object") ? av.haende : {};
+  const haendeBasis = (basis.haende && typeof basis.haende === "object") ? basis.haende : {};
+  AVATARSTAND = {
+    figur: figurOk(av.figur) ? av.figur : (figurOk(basis.figur) ? basis.figur : AV_FIGUREN[0].s),
+    art:   zugOk(av.art)     ? av.art   : (zugOk(basis.art)     ? basis.art   : "freundlich"),
+    haende: {}
+  };
+  AV_PHASEN.forEach(p => {
+    AVATARSTAND.haende[p.s] = dingOk(haendeAv[p.s]) ? haendeAv[p.s] :
+      (dingOk(haendeBasis[p.s]) ? haendeBasis[p.s] : p.vorgabe);
+  });
+}
+
+function avStandLaden(){
+  const b = meineBetriebe.find(x => x.id === betriebId);
+  avAusZeile(b);
+  avZeichnen();
+}
+
+/* ── Zeichnen: drei eingeklappte Karten, nach dem Muster von
+   .kbklapp/.kbsymknopf (derselbe Baustein wie bei der Symbolwahl der
+   Kacheln, oben) ─────────────────────────────────────────────────── */
+function avKarte(id, titel, hilfe, stand, innen){
+  return '<div class="kbzeile">' +
+    '<button type="button" class="kbsymknopf" data-av-auf="' + id + '" ' +
+      'aria-expanded="false" aria-controls="avklapp-' + id + '">' +
+      '<span>' + sicher(titel) + (stand ? ' — ' + sicher(stand) : "") + '</span>' +
+      '<svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">' +
+      '<path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '</button>' +
+    (hilfe ? '<p class="ehilfe" style="margin:2px 0 0">' + sicher(hilfe) + '</p>' : "") +
+    '<div class="kbklapp" id="avklapp-' + id + '"><div>' + innen + '</div></div>' +
+  '</div>';
+}
+
+function avWahlReihe(gruppe, liste, aktiv){
+  return '<div class="kbwahl">' + liste.map(e =>
+    '<button type="button" class="avwahl" data-av-wahl="' + gruppe + '" data-av-wert="' + sicher(e.s) + '" ' +
+    'aria-pressed="' + (e.s === aktiv ? "true" : "false") + '">' + sicher(e.name) + '</button>'
+  ).join("") + '</div>';
+}
+
+function avZeichnen(){
+  const feld = $("#avListe"); if(!feld || !AVATARSTAND) return;
+  const figurName = (AV_FIGUREN.find(f => f.s === AVATARSTAND.figur) || {}).name || AVATARSTAND.figur;
+  const zugName   = (AV_ZUEGE.find(z => z.s === AVATARSTAND.art) || {}).name || AVATARSTAND.art;
+
+  feld.innerHTML =
+    avKarte("figur", "Wer begleitet", "", figurName,
+      avWahlReihe("figur", AV_FIGUREN, AVATARSTAND.figur)) +
+    avKarte("zug", "Wie sie auftritt",
+      "Ändert Augen, Mund und einen Zug — dieselbe Figur, andere Laune", zugName,
+      avWahlReihe("zug", AV_ZUEGE, AVATARSTAND.art)) +
+    avKarte("haende", "Was sie in der Hand hält",
+      "Je Bestellphase eigen — ein Café zeigt die Tasse, ein Imbiss die Pfanne", "",
+      AV_PHASEN.map(p => {
+        const dingName = (AV_REQUISITEN.find(r => r.s === AVATARSTAND.haende[p.s]) || {}).name || "";
+        return '<div class="hfeld"><span class="hbez">' + sicher(p.name) +
+          (dingName ? ' — ' + sicher(dingName) : "") + '</span>' +
+          avWahlReihe("hand-" + p.s, AV_REQUISITEN, AVATARSTAND.haende[p.s]) + '</div>';
+      }).join(""));
+}
+
+document.addEventListener("click", e => {
+  const auf = e.target.closest && e.target.closest("[data-av-auf]");
+  if(auf){
+    const offen = auf.getAttribute("aria-expanded") === "true";
+    auf.setAttribute("aria-expanded", String(!offen));
+    const klapp = document.getElementById(auf.getAttribute("aria-controls"));
+    if(klapp) klapp.classList.toggle("offen", !offen);
+    return;
+  }
+  const wahl = e.target.closest && e.target.closest("[data-av-wahl]");
+  if(wahl && AVATARSTAND){
+    const gruppe = wahl.dataset.avWahl, wert = wahl.dataset.avWert;
+    if(gruppe === "figur") AVATARSTAND.figur = wert;
+    else if(gruppe === "zug") AVATARSTAND.art = wert;
+    else if(gruppe.indexOf("hand-") === 0) AVATARSTAND.haende[gruppe.slice(5)] = wert;
+    /* Ganz neu zeichnen statt nur das Häkchen zu verschieben: Kopfzeile
+       einer Karte (z. B. "Wer begleitet — Erdbeere") und die
+       aufgeklappten Karten selbst müssen den neuen Stand zeigen —
+       dieselbe Lehre wie bei kbAendern() oben. */
+    const offeneIds = $$(".kbklapp.offen").map(k => k.id);
+    avZeichnen();
+    offeneIds.forEach(id => {
+      const klapp = document.getElementById(id);
+      const knopf = document.querySelector('[aria-controls="' + id + '"]');
+      if(klapp) klapp.classList.add("offen");
+      if(knopf) knopf.setAttribute("aria-expanded", "true");
+    });
+  }
+});
+
+async function avSichern(){
+  const raus = $("#avPruefung");
+  if(!AVATARSTAND) return;
+  const knopf = $("#avSichern");
+  knopf.disabled = true; knopf.textContent = "Wird übernommen …";
+  try{
+    if(demo || !db){
+      raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
+    }else{
+      const { error } = await db.from("betriebe")
+        .update({ hub_avatar: AVATARSTAND }).eq("id", betriebId);
+      if(error) throw error;
+      const b = meineBetriebe.find(x => x.id === betriebId);
+      if(b) b.hub_avatar = AVATARSTAND;
+      raus.textContent = "Übernommen. Gäste sehen es beim nächsten Öffnen.";
+    }
+    melde("Figur des Hauses übernommen");
+  }catch(err){
+    const txt = String(err && err.message || "");
+    raus.textContent = /hub_avatar/.test(txt)
+      ? "Die Spalte hub_avatar fehlt noch. Bitte migration-hub-avatar.sql einspielen."
+      : (/masse|check/i.test(txt)
+          ? "Das ist zu groß für die Spalte."
+          : "Nicht gespeichert, bitte Verbindung prüfen.");
+  }
+  knopf.disabled = false; knopf.textContent = "Übernehmen";
+}
+$("#avSichern").onclick = avSichern;
 
 
 function runnerGerichteFuellen(){

@@ -980,6 +980,7 @@ Dazu je nach Änderung:
 | **"Marke gestalten" im Board, Entwurfslink-Bridge** | `pruefungen/pruef-marke.js` — Rundlauf und die echte Naht: die im Board erzeugte Adresse wirklich im echten `marken-studio.html` geöffnet |
 | Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
 | Figur des Hauses, Requisiten, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
+| **Figur/Stimmung/Requisiten wählbar im Admin-Board** | `pruefungen/pruef-figur-board.js` (braucht `dist/`) — Zweite Quelle gegen AVATAR_FIGUREN/AVATAR_ZUEGE/E_REQUISITEN und ZUGNAMEN, Bedienung im Board, Vorrang hub_avatar vor Markenblatt, stiller Rückfall bei unbekanntem Wert — im Board UND im Hub selbst |
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
 | **Irgendein Text, den ein Gast liest** | `pruefungen/pruef-uebersetzung.js` (braucht `dist/`) — zweite Quelle, jede Sprache am gemalten Bild, Anrede, und der Weg aus dem Board |
 | Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |
