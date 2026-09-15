@@ -137,12 +137,35 @@ function pruef(b, t, d) {
     await seite.waitForTimeout(300);
     await seite.click("body");
     await seite.waitForTimeout(800);
-    const tagKiefer = await seite.evaluate(() => getComputedStyle(document.body).getPropertyValue("--tusche-kiefer").trim());
-    await seite.click("#lichtknopf"); await seite.waitForTimeout(200);
-    await seite.click("#lichtknopf"); await seite.waitForTimeout(700);
-    const abendPhase = await seite.evaluate(() => document.body.dataset.phase);
+    /* NICHT die Uhrzeit der Maschine als "Start ist Tag" annehmen, und
+       auch nicht "zwei Klicks sind immer Abend": Der Lichtknopf zyklt
+       automatisch → hell → dunkel → automatisch (siehe Handler im
+       Gerüst), und "automatisch" löst sich nach der Systemstunde auf.
+       Seit minhkeey abend.an=true trägt (Thema "kaiserlich"), kann
+       JEDER Punkt im Zyklus, an dem "automatisch" ansteht, sich als
+       Abend zeigen — gemessen: Sandbox stand auf 01:09 Uhr UTC, mitten
+       in markeGrundlegen()s "< 5"-Fenster. Ein fester Klickzähler
+       (2× für Abend, 1× mehr für Tag) traf deshalb beim dritten Klick
+       wieder auf "automatisch" → "abend", nicht auf "hell". Robust ist
+       nur: klicken, bis data-phase wirklich die gesuchte Phase zeigt —
+       höchstens dreimal, mehr Zustände hat der Zyklus nicht. */
+    async function phaseErzwingen(gesucht){
+      for(let i = 0; i < 3; i++){
+        const jetzt = await seite.evaluate(() => document.body.dataset.phase);
+        if(jetzt === gesucht) return jetzt;
+        await seite.click("#lichtknopf");
+        await seite.waitForTimeout(500);
+      }
+      return seite.evaluate(() => document.body.dataset.phase);
+    }
+    const abendPhase = await phaseErzwingen("abend");
     const abendKiefer = await seite.evaluate(() => getComputedStyle(document.body).getPropertyValue("--tusche-kiefer").trim());
-    pruef(abendPhase === "abend", "minhkeey: Lichtknopf erreicht die Abendphase (zwei Klicks)", abendPhase);
+    pruef(abendPhase === "abend", "minhkeey: der Lichtknopf erreicht die Abendphase", abendPhase);
+
+    const tagPhase = await phaseErzwingen("tag");
+    const tagKiefer = await seite.evaluate(() => getComputedStyle(document.body).getPropertyValue("--tusche-kiefer").trim());
+    pruef(tagPhase === "tag", "minhkeey: der Lichtknopf erreicht die Tagphase", tagPhase);
+
     pruef(tagKiefer !== abendKiefer,
       "minhkeey: Bambusfarbe unterscheidet sich Tag/Abend",
       "tag=" + tagKiefer + " abend=" + abendKiefer);

@@ -84,6 +84,12 @@ const KOPFBAND_ARTEN    = ["guss", "laternen"];
    .bereich-Überschrift). Fehlt zierrat ganz, bleibt der Hub wie
    bisher — zierratSetzen() im Gerüst kennt nur "tusche". */
 const ZIERRAT_ARTEN     = ["tusche"];
+/* Thema: fest gebundene Neueinfärbung samt Rahmen-/Knopf-Stil für
+   EIN Haus, nicht wie zierrat als übertragbarer Stil gedacht — aber
+   trotzdem über das Markenblatt geschaltet statt an den Slug
+   hartkodiert (§8.1a), damit kein Codepfad je "HAUS===minhkeey"
+   prüfen muss. themaSetzen() im Gerüst kennt nur "kaiserlich". */
+const THEMA_ARTEN       = ["kaiserlich"];
 /* Was die Figur je Bestellphase tragen kann, und welche Phasen es
    gibt — beides aus dem Gerüst, aus demselben Grund wie oben. */
 const REQUISITEN       = ausGeruest(/const E_REQUISITEN = \{([\s\S]*?)\n\};/, "E_REQUISITEN");
@@ -301,6 +307,11 @@ function pruefeMarkenblatt(mb){
   if(mb.zierrat !== undefined && ZIERRAT_ARTEN.indexOf(mb.zierrat) < 0)
     F("zierrat unbekannt: " + mb.zierrat +
       " — erlaubt: " + ZIERRAT_ARTEN.join(", "));
+  /* Dieselbe Begründung wie bei zierrat: ein Tippfehler in thema
+     bliebe wortlos ohne die neue Einfärbung. */
+  if(mb.thema !== undefined && THEMA_ARTEN.indexOf(mb.thema) < 0)
+    F("thema unbekannt: " + mb.thema +
+      " — erlaubt: " + THEMA_ARTEN.join(", "));
   /* Dieselbe Begründung wie bei figur: Ein Tippfehler in haende
      ergäbe im Hub wortlos wieder die Vorgabe. Der Kunde hätte seine
      Pfanne gewählt und bekäme den Kuchenstapel. */
@@ -435,6 +446,7 @@ function alsQuelltext(mb){
     mb.avatar    ? block("avatar", mb.avatar, ["figur","art","name"]) : null,
     mb.kopfband  ? liste("kopfband", mb.kopfband) : null,
     mb.zierrat   ? liste("zierrat", mb.zierrat) : null,
+    mb.thema     ? liste("thema", mb.thema) : null,
     liste("zeiten",     mb.zeiten),
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,

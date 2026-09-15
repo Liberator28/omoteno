@@ -153,7 +153,7 @@ blockText("const OPTIONEN", /hinweis:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merk
 const MB_TECH = new Set(["schluessel","icon","slug","code","farbe","stil","raster","gruppe",
   "ziel","bild","logo","schrift","version","hex","typ","art","id","klasse","form","instagram",
   "google","maps","web","tel","mail","ssid","passwort","figur","netz","strasse","ort","name",
-  "claim","gericht","was","zeiten","links","wlan","trinkgeld","kopfband","zierrat"]);
+  "claim","gericht","was","zeiten","links","wlan","trinkgeld","kopfband","zierrat","thema"]);
 function ausMarkenblatt(o, wo){
   if(Array.isArray(o)) return o.forEach(v => ausMarkenblatt(v, wo));
   if(o && typeof o === "object")
