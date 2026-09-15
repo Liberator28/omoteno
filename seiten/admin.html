@@ -7169,14 +7169,38 @@ async function avSichern(){
 $("#avSichern").onclick = avSichern;
 
 
+/* Nach Kategorie gruppiert, dieselbe Reihenfolge wie in der
+   Speisekarte selbst (katSortVon) — vorher eine einzige alphabetische
+   Liste über alle Kategorien hinweg, bei hundert Gerichten unbrauchbar
+   zum Scrollen. Läuft über beide Karten (Speisekarte/Getränke, falls
+   ein Haus beide führt), deshalb die Karte in den Sortierschlüssel
+   UND, wenn wirklich beide vorkommen, in die Gruppenüberschrift. */
 function runnerGerichteFuellen(){
   const w = $("#runnerGericht");
   if(!w) return;
-  const liste = gerichte.filter(g => Number(g.preis) > 0)
-    .slice().sort((a,b) => (a.name||"").localeCompare(b.name||"", "de") || String(a.id).localeCompare(String(b.id)));
-  w.innerHTML = liste.map(g =>
-    '<option value="' + g.id + '" data-preis="' + g.preis + '">' +
-    sicher(g.name) + " · " + euro(g.preis) + '</option>').join("");
+  const liste = gerichte.filter(g => Number(g.preis) > 0);
+  const karten = [...new Set(liste.map(g => g.karte || "speisekarte"))];
+  const gruppen = karten.flatMap(k =>
+    [...new Set(liste.filter(g => (g.karte||"speisekarte") === k).map(g => g.kategorie))]
+      .map(kat => ({ karte: k, kategorie: kat, sort: katSortVon(kat, k) }))
+  ).sort((a, b) => a.karte.localeCompare(b.karte) || a.sort - b.sort ||
+                    (a.kategorie||"").localeCompare(b.kategorie||"", "de"));
+
+  /* Dieselben drei Namen wie bei den Karte-Chips/-Auswahlfeldern
+     anderswo im Blatt (admin.html:2156-2158, 2725-2727) — nicht neu
+     benannt. Es gibt genau diese drei, nachgesehen statt angenommen:
+     ein früherer Entwurf kannte nur "speisekarte"/"getraenke" und
+     hätte "cocktails" fälschlich als "Speisekarte" beschriftet. */
+  const KARTENNAMEN = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+  w.innerHTML = gruppen.map(({karte: k, kategorie: kat}) => {
+    const drin = liste.filter(g => (g.karte||"speisekarte") === k && g.kategorie === kat)
+      .sort((a,b) => (a.name||"").localeCompare(b.name||"", "de") || String(a.id).localeCompare(String(b.id)));
+    const label = (karten.length > 1 ? (KARTENNAMEN[k] || k) + " — " : "") +
+      (kat || "Ohne Kategorie");
+    return '<optgroup label="' + sicher(label) + '">' + drin.map(g =>
+      '<option value="' + g.id + '" data-preis="' + g.preis + '">' +
+      sicher(g.name) + " · " + euro(g.preis) + '</option>').join("") + '</optgroup>';
+  }).join("");
   runnerVorschlagen();
 }
 

@@ -87,6 +87,16 @@ async function kueche(br){
   const kons = [];
   p.on("pageerror", e => kons.push("JS: " + String(e).slice(0,140)));
   let abfrage = "", patch = null;
+  /* Der Küchen-Takt fragt alle vier Sekunden von selbst nach (TAKT_MS).
+     Läuft diese Probe — mit mehreren data-tun-Klicks und Wartezeiten
+     dazwischen — einmal länger als vier Sekunden, holt ein solcher
+     Zwischenpoll sonst wieder die unveränderte BONS()-Ausgangslage
+     und überschreibt still, was gerade eben gesetzt wurde: eine
+     Prüfung, die zufällig rot wird, je nachdem, wie lange Playwright
+     gerade braucht. Deshalb merkt sich der Mock jede PATCH-Änderung
+     und mischt sie in jede folgende GET-Antwort ein — genau das
+     Verhalten der echten Datenbank, nicht nur ihre erste Antwort. */
+  const patches = {};
 
   await p.route("**/*", r => {
     const u = r.request().url();
@@ -94,11 +104,14 @@ async function kueche(br){
     if(u.includes("/rest/v1/bestellungen")){
       if(r.request().method() === "PATCH"){
         patch = JSON.parse(r.request().postData() || "{}");
+        const treffer = decodeURIComponent(u).match(/id=eq\.([^&]+)/);
+        if(treffer) patches[treffer[1]] = Object.assign({}, patches[treffer[1]], patch);
         return r.fulfill({ status:204, body:"" });
       }
       abfrage = decodeURIComponent(u);
+      const aktuell = BONS().map(b => Object.assign({}, b, patches[b.id]));
       return r.fulfill({ status:200, contentType:"application/json",
-                         body:JSON.stringify(BONS()) });
+                         body:JSON.stringify(aktuell) });
     }
     if(u.includes("/rest/v1/betriebe"))
       return r.fulfill({ status:200, contentType:"application/json",
@@ -133,11 +146,13 @@ async function kueche(br){
     if(!e) return null;
     const w = e.querySelector(".wartet"), m = e.querySelector(".mass span");
     const c = e.querySelector('[data-tun="zeit"]');
+    const aktiv = e.querySelector('[data-tun="zeit"].aktiv');
     return { text: w ? w.textContent.trim() : "",
              breite: m ? m.style.width : "",
              rot: e.classList.contains("sehr-spaet"),
              chips: e.querySelectorAll('[data-tun="zeit"]').length,
-             chipHoch: c ? Math.round(c.getBoundingClientRect().height) : 0 };
+             chipHoch: c ? Math.round(c.getBoundingClientRect().height) : 0,
+             aktivMin: aktiv ? aktiv.dataset.min : null };
   }, id);
 
   const mit = await lies("mit");
@@ -154,14 +169,25 @@ async function kueche(br){
   const ohne = await lies("ohne");
   ok(!!ohne && /wartet/.test(ohne.text),
     "ohne Zusage bleibt es bei der gelaufenen Zeit", ohne ? ohne.text : "—");
-  ok(!!ohne && ohne.chips === 4,
-    "und der Koch bekommt vier Knöpfe, um selbst eine zu geben",
+  /* VORFALL (Nutzer-Rückmeldung): "Dauert ca." bot bisher nur vier
+     feste Werte (10/15/20/30), abgeschnitten am Kartenrand sichtbar,
+     und verschwand ganz, sobald eine Zusage stand — als sei sie dann
+     unveränderlich. Beides war falsch: eine erste Schätzung ist
+     selten die letzte, und der Koch soll auch außerhalb von
+     10-15-20-30 landen können. Jetzt zehn Werte, umbrechend statt
+     abgeschnitten, UND weiterhin da, wenn schon eine Zusage steht —
+     mit der aktuell gültigen Minute markiert. */
+  ok(!!ohne && ohne.chips === 10,
+    "und der Koch bekommt zehn Knöpfe, um selbst eine zu geben",
     ohne ? ohne.chips + " Stück" : "—");
   ok(!!ohne && ohne.chipHoch >= 44,
     "die Knöpfe sind mit der ganzen Hand zu treffen (44px)",
     ohne ? ohne.chipHoch + "px" : "—");
-  ok(!!mit && mit.chips === 0,
-    "wo eine Zusage steht, sind die Knöpfe weg", mit ? mit.chips + " Stück" : "—");
+  ok(!!mit && mit.chips === 10,
+    "wo schon eine Zusage steht, bleiben die Knöpfe da — sie ist änderbar",
+    mit ? mit.chips + " Stück" : "—");
+  ok(!!mit && mit.aktivMin === "20",
+    "die gültige Minute (20) ist als aktiv markiert", mit ? mit.aktivMin : "—");
 
   /* Tippen: Was geht wirklich an den Server, und was macht die Karte? */
   await p.click('[data-id="ohne"] [data-tun="zeit"][data-min="15"]');
@@ -175,18 +201,45 @@ async function kueche(br){
     "der Bon geht zugleich in Arbeit", patch ? patch.status : "—");
 
   const danach = await lies("ohne");
-  ok(!!danach && /noch/.test(danach.text) && danach.chips === 0,
-    "die Karte zeigt sofort die Restzeit, die Knöpfe verschwinden",
-    danach ? danach.text + ", " + danach.chips + " Knöpfe" : "—");
+  ok(!!danach && /noch/.test(danach.text) && danach.chips === 10 && danach.aktivMin === "15",
+    "die Karte zeigt sofort die Restzeit, die Knöpfe bleiben — jetzt mit 15 aktiv",
+    danach ? danach.text + ", " + danach.chips + " Knöpfe, aktiv=" + danach.aktivMin : "—");
 
   /* Und derselbe Tipp auf einem Bon, der SCHON läuft. Hier ändert sich
      nur wartezeit_min — der einzige Weg, an dem die Signatur hängt. */
   await p.click('[data-id="laeuft"] [data-tun="zeit"][data-min="20"]');
   await p.waitForTimeout(700);
   const lief = await lies("laeuft");
-  ok(!!lief && /noch/.test(lief.text) && lief.chips === 0,
+  ok(!!lief && /noch/.test(lief.text) && lief.chips === 10 && lief.aktivMin === "20",
     "auch auf einem laufenden Bon zieht die Karte sofort nach",
-    lief ? lief.text + ", " + lief.chips + " Knöpfe" : "—");
+    lief ? lief.text + ", " + lief.chips + " Knöpfe, aktiv=" + lief.aktivMin : "—");
+
+  /* Nachträglich ändern: ein zweites Tippen auf einen ANDEREN Wert
+     muss die Zusage wirklich überschreiben, nicht nur die Anzeige. */
+  await p.click('[data-id="laeuft"] [data-tun="zeit"][data-min="40"]');
+  await p.waitForTimeout(700);
+  ok(!!patch && patch.wartezeit_min === 40,
+    "ein zweites Tippen schickt die NEUE Minute an den Server",
+    patch ? JSON.stringify(patch).slice(0,60) : "—");
+  const geaendert = await lies("laeuft");
+  ok(!!geaendert && geaendert.aktivMin === "40",
+    "und die Markierung zieht auf den neuen Wert um",
+    geaendert ? geaendert.aktivMin : "—");
+
+  /* "Andere…" — echte Freiheit jenseits der zehn Werte. */
+  await p.click('[data-id="ohne"] [data-tun="zeit-frei-auf"]');
+  await p.waitForTimeout(200);
+  const feldDa = await p.evaluate(() => !!document.getElementById("zeitfrei-ohne"));
+  ok(feldDa, "„Andere…“ öffnet ein Eingabefeld für beliebige Minuten");
+  await p.fill('input[id="zeitfrei-ohne"]', "120");
+  await p.click('[data-id="ohne"] [data-tun="zeit-frei-los"]');
+  await p.waitForTimeout(700);
+  ok(!!patch && patch.wartezeit_min === 120,
+    "ein frei getippter Wert jenseits der Knöpfe (120) geht an den Server",
+    patch ? JSON.stringify(patch).slice(0,60) : "—");
+  const freiDanach = await lies("ohne");
+  ok(!!freiDanach && /noch/.test(freiDanach.text),
+    "und die Karte zeigt sofort die neue Restzeit", freiDanach ? freiDanach.text : "—");
 
   ok(kons.length === 0, "kein Fehler in der Konsole", kons[0] || "still");
   await ctx.close();

@@ -497,7 +497,7 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
    wird mit der ganzen Hand bedient, nicht mit der Fingerspitze
    (CLAUDE.md §8.1d). */
 .zeitwahl{
-  display:flex; gap:1px; align-items:stretch;
+  display:flex; flex-wrap:wrap; gap:1px; align-items:stretch;
   background:var(--linie); border-top:1px solid var(--linie);
 }
 .zeitwahl small{
@@ -514,6 +514,33 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
   transition:background .14s;
 }
 .zeitwahl button:active{background:rgba(201,162,39,.22)}
+/* Die gerade gültige Minutenzahl bleibt sichtbar markiert — die
+   Zusage lässt sich jetzt jederzeit ändern (nicht mehr nur einmal),
+   ohne dass die Reihe verschwindet und der Koch raten muss, welcher
+   Wert gerade steht. */
+.zeitwahl button.aktiv{background:var(--messing);color:var(--nacht)}
+.zeitwahl button.aktiv:active{background:var(--messing)}
+.zeitwahl .frei{
+  flex:1; min-width:calc(76px * var(--skala));
+  color:var(--gedaempft); font-weight:600; font-style:normal;
+}
+.zeitfrei{
+  display:flex; gap:1px; align-items:stretch;
+  background:var(--linie); border-top:1px solid var(--linie);
+}
+.zeitfrei input{
+  flex:1; min-width:0; border:0; background:var(--karte);
+  color:var(--kreide); text-align:center;
+  font-variant-numeric:tabular-nums;
+  font-size:16px; /* nie kleiner, sonst zoomt iOS beim Antippen (CLAUDE.md §3.5) */
+  padding:calc(13px * var(--skala)) 4px;
+}
+.zeitfrei button{
+  flex:none; min-width:calc(56px * var(--skala));
+  padding:calc(13px * var(--skala)) 12px; background:var(--messing);
+  color:var(--nacht); font-weight:700;
+}
+.zeitfrei button:active{background:var(--messing);opacity:.85}
 
 .bon-fuss{display:flex;gap:1px;background:var(--linie);border-top:1px solid var(--linie)}
 .bon-fuss button{
@@ -755,6 +782,11 @@ var EINST = {
 
 var sitzung = null, betrieb = null, betriebe = [];
 var bons = [], spurNachName = {}, gesehen = {}, ersterLauf = true;
+/* Welche Bons das freie Minutenfeld gerade offen haben — reiner
+   UI-Zustand, steht nicht in wartezeit_min und darf ein Neuzeichnen
+   (bonSignatur ändert sich bei jedem Tippen NICHT) trotzdem
+   überstehen, genau wie offeneGerichte im Admin-Board. */
+var freieZeitOffen = {};
 var takt = null, wachSchloss = null;
 var netzStand = "gut";       /* gut | reconnect | offline */
 var fehlSerie = 0;           /* wie oft in Folge die Abfrage misslang */
@@ -1337,14 +1369,32 @@ function zeichne(){
            Admin-Board. Steht dort keine, kann der Koch sie hier selbst
            geben — er ist der Einzige, der es wirklich weiß, und der
            Gast sieht die Minuten binnen 15 Sekunden in seinem Hub.
-           Sobald eine Zusage steht, verschwindet die Reihe: Sie ist
-           gesetzt, nicht dauernd verstellbar. */
-        (!L.zusage && !alleAbgehakt
-          ? '<div class="zeitwahl"><small>Dauert ca.</small>' +
-            [10,15,20,30].map(function(m){
+           VORFALL (Nutzer-Rückmeldung): Die Reihe verschwand bisher,
+           sobald eine Zusage stand — "gesetzt, nicht verstellbar".
+           Das war Absicht, aber falsch: Eine Schätzung kann sich
+           während der Zubereitung ändern, und der Koch sollte das
+           nachtragen können, nicht neu erfinden müssen. Jetzt bleibt
+           die Reihe stehen, die aktive Minute ist markiert, und ein
+           zweites Tippen ändert die Zusage — der Gast bekommt die
+           neue Zahl genauso in 15 Sekunden. */
+        (!alleAbgehakt
+          ? '<div class="zeitwahl"><small>' + (L.zusage ? "Zeit ändern" : "Dauert ca.") + '</small>' +
+            [5,10,15,20,25,30,40,45,60,90].map(function(m){
+              var aktiv = L.zusage && Number(b.wartezeit_min) === m;
               return '<button data-tun="zeit" data-min="' + m + '" data-id="' +
-                     h(b.id) + '">' + m + '′</button>';
-            }).join("") + '</div>'
+                     h(b.id) + '"' + (aktiv ? ' class="aktiv"' : '') + '>' + m + '′</button>';
+            }).join("") +
+            (freieZeitOffen[b.id] ? "" :
+              '<button data-tun="zeit-frei-auf" data-id="' + h(b.id) + '" class="frei">Andere…</button>') +
+            '</div>' +
+            (freieZeitOffen[b.id]
+              ? '<div class="zeitfrei">' +
+                '<input type="number" inputmode="numeric" min="1" max="480" step="1" ' +
+                'placeholder="Minuten" id="zeitfrei-' + h(b.id) + '" ' +
+                (L.zusage ? 'value="' + h(b.wartezeit_min) + '"' : '') + '>' +
+                '<button data-tun="zeit-frei-los" data-id="' + h(b.id) + '">Setzen</button>' +
+                '</div>'
+              : '')
           : '') +
         '<div class="bon-fuss">' +
           (b.status === "arbeit" && !alleAbgehakt
@@ -1426,6 +1476,27 @@ $('feld').addEventListener('click', function(ev){
   var k = ev.target.closest ? ev.target.closest('[data-tun]') : null;
   if(!k) return;
   var b = bonFinden(k.dataset.id); if(!b) return;
+
+  /* "Andere…" — reiner UI-Zustand, kein Schreibzugriff. zeichne()
+     baut die Karte neu (dieselbe Funktion, die auch den ersten
+     Aufbau macht), damit das Eingabefeld an derselben Stelle
+     erscheint wie die Minuten-Knöpfe. */
+  if(k.dataset.tun === "zeit-frei-auf"){
+    freieZeitOffen[b.id] = true;
+    letzteSignatur = null; zeichne();
+    var feld = document.getElementById("zeitfrei-" + b.id);
+    if(feld) feld.focus();
+    return;
+  }
+  if(k.dataset.tun === "zeit-frei-los"){
+    var eingabe = document.getElementById("zeitfrei-" + b.id);
+    var wert = eingabe ? Math.round(Number(eingabe.value)) : NaN;
+    if(!wert || wert < 1){ eingabe && eingabe.focus(); return; }
+    delete freieZeitOffen[b.id];
+    ausfuehren(b, "zeit", Math.min(480, wert));
+    return;
+  }
+
   k.disabled = true;
   ausfuehren(b, k.dataset.tun, k.dataset.min);
 });

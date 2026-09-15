@@ -266,6 +266,28 @@ function quellenAbgleich(){
       "die Vorschau sagt vorher, was der Gast sehen wird",
       form.vorschau.slice(0, 58));
 
+    /* VORFALL (Nutzer-Rückmeldung): Die Gerichte-Auswahl der Aktion
+       war eine einzige alphabetische Liste über alle Kategorien
+       hinweg — bei vielen Gerichten unbrauchbar zum Scrollen. Jetzt
+       nach Kategorie gruppiert (<optgroup>), wie in der Speisekarte
+       selbst. Führt ein Haus mehrere Karten (Speisekarte/Getränke/
+       Cocktails), steht die Karte mit im Gruppennamen — sonst nicht,
+       um bei einer einzigen Karte nicht unnötig zu beschriften. */
+    const runnerGruppen = await seite.evaluate(() => {
+      const sel = document.getElementById("runnerGericht");
+      if(!sel) return null;
+      return {
+        gruppen: sel.querySelectorAll("optgroup").length,
+        optionen: sel.querySelectorAll("option").length,
+        ersteBeschriftung: (sel.querySelector("optgroup") || {}).label || "",
+      };
+    });
+    pruef(!!runnerGruppen && runnerGruppen.gruppen >= 1 && runnerGruppen.optionen >= 1,
+      "die Gerichte-Auswahl der Aktion ist nach Kategorie gruppiert (<optgroup>)",
+      runnerGruppen ? runnerGruppen.gruppen + " Gruppen, " + runnerGruppen.optionen + " Gerichte" : "—");
+    pruef(!!runnerGruppen && runnerGruppen.ersteBeschriftung.length > 0,
+      "jede Gruppe trägt eine lesbare Beschriftung", runnerGruppen ? runnerGruppen.ersteBeschriftung : "—");
+
     /* ── 3 · Der erste Tipp darf nicht verloren gehen ── */
     await seite.evaluate(() => tafelZeigen("bestellungen"));
     await seite.waitForTimeout(300);
