@@ -1,5 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════════
---  betriebe.hub_avatar — Figur, Stimmung und Requisiten im Admin-Board
+--  EINGESPIELT (15.09.2026) · betriebe.hub_avatar — Figur, Stimmung
+--  und Requisiten im Admin-Board
+--
+--  Angewendet gegen das echte Projekt UND Probe 1 live gefahren:
+--  Schreiben ok (1 Zeile), zu großer Wert von der Schranke abgelehnt
+--  (betriebe_hub_avatar_masse), anon liest die Spalte, schreibt aber
+--  nicht. Zurückgedreht, keine echte Zeile blieb verändert.
 --
 --  Im SQL-Editor von Supabase ausführen. Die Proben am Dateiende
 --  gehören dazu: Eine Migration, die „success" meldet, sagt NICHTS

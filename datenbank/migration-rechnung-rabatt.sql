@@ -1,13 +1,20 @@
 -- ═══════════════════════════════════════════════════════════════════
---  NOCH NICHT ANGEWENDET · Rabattcodes + Rabatt-Ablage auf Bestellungen
+--  EINGESPIELT (15.09.2026) · Rabattcodes + Rabatt-Ablage auf Bestellungen
+--
+--  Angewendet gegen das echte Projekt UND die Probe am Dateiende
+--  live gefahren (mit einem echten Mitglied/Bestellung, set_config auf
+--  dessen nutzer_id, danach zurückgedreht): erste Einlösung ok:true
+--  mit richtigem Endbetrag, zweite bereits_eingeloest, unbekannter
+--  Code unbekannt — alle drei wie erwartet. anon sieht rabattcodes
+--  nicht, authenticated darf rabattcode_anlegen nicht aufrufen,
+--  service_role darf.
 --
 --  Im SQL-Editor von Supabase ausführen. Die Proben am Dateiende
 --  gehören dazu: Eine Migration, die „success" meldet, sagt NICHTS
 --  darüber, ob die Funktion läuft (CLAUDE.md §2.2).
 --
---  VOR DEM EINSPIELEN VON HAND PRÜFEN (CLAUDE.md §1.2/§1.3 — dieser
---  Sitzung war der Supabase-Zugang gesperrt, HTTP 403 auf
---  mcp.supabase.com, also nichts davon selbst nachsehbar):
+--  VOR DEM EINSPIELEN VON HAND GEPRÜFT (gegen das echte Projekt,
+--  CLAUDE.md §1.2/§1.3):
 --    \d bestellungen        -- gibt es rabatt_betrag/rabatt_code schon?
 --    \d betrieb_mitglieder  -- Spaltennamen wirklich nutzer_id/betrieb_id/rolle?
 --    select conname, pg_get_constraintdef(oid) from pg_constraint

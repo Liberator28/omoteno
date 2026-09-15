@@ -1,12 +1,30 @@
 -- ═══════════════════════════════════════════════════════════════════
---  NOCH NICHT ANGEWENDET · Gäste-Newsletter über Klaviyo — DB-Seite
+--  EINGESPIELT (15.09.2026) · Gäste-Newsletter über Klaviyo — DB-Seite
 --
---  Im SQL-Editor von Supabase ausführen, NACHDEM
---  migration-rechnung-rabatt.sql eingespielt ist (dort steht
---  rabattcode_anlegen, das Block D beim Auffüllen des Coupon-Vorrats
---  braucht) und NACHDEM die beiden Edge Functions deployt sind
---  (sonst laufen die pg_net-Aufrufe ins Leere — harmlos, aber
---  sinnlos, siehe Hinweis bei Punkt 3).
+--  Angewendet gegen das echte Projekt. Die drei Edge Functions sind
+--  deployt, die beiden Trigger-Funktionen laufen mit einem echten,
+--  zufällig erzeugten Geheimnis statt dem Platzhalter unten — DAS
+--  GEHEIMNIS STEHT NICHT IN DIESER DATEI und nirgends im Repo, nur in
+--  Supabase (Funktionskörper der beiden Trigger-Funktionen) und als
+--  Secret OMOTENO_TRIGGER_SECRET der beiden Edge Functions. Wer diese
+--  Datei ein zweites Mal — etwa gegen ein neues Projekt — einspielt,
+--  ersetzt <OMOTENO_TRIGGER_SECRET> unten zuerst durch einen NEUEN,
+--  selbst erzeugten Zufallswert (z. B. `openssl rand -base64 32`) und
+--  setzt denselben Wert als Secret auf beiden Functions — niemals den
+--  Platzhalter unverändert einspielen.
+--
+--  Nachgetragen nach dem ersten Einspielen, per get_advisors gefunden:
+--  beide Trigger-Funktionen waren ohne Revoke über
+--  /rest/v1/rpc/<name> für anon UND authenticated direkt aufrufbar
+--  (CLAUDE.md §2.3a). Jetzt am Ende von Punkt 2 und 3 mit
+--  `revoke all … from public, anon, authenticated` geschlossen —
+--  geprüft, dass der Trigger selbst danach unverändert weiter feuert.
+--
+--  Ursprünglich einzuspielen NACHDEM migration-rechnung-rabatt.sql
+--  eingespielt ist (dort steht rabattcode_anlegen, das Block D beim
+--  Auffüllen des Coupon-Vorrats braucht) und NACHDEM die beiden
+--  Edge Functions deployt sind (sonst laufen die pg_net-Aufrufe ins
+--  Leere — harmlos, aber sinnlos, siehe Hinweis bei Punkt 3):
 --
 --    supabase functions deploy klaviyo-profil-melden --no-verify-jwt
 --    supabase functions deploy klaviyo-ereignis-melden --no-verify-jwt
@@ -20,19 +38,20 @@
 --  rufen. OHNE --no-verify-jwt, weil ein eingeloggter Wirt sie ruft,
 --  nicht ein fremder Dienst (Muster wie bei uebersetzen).
 --
---  VOR DEM EINSPIELEN VON HAND PRÜFEN (CLAUDE.md §1.2/§1.3 — Supabase
---  war diese Sitzung gesperrt, HTTP 403):
---    \d gaeste         -- Spalten wirklich betrieb_id, kennung, email?
+--  VOR DEM EINSPIELEN VON HAND GEPRÜFT (gegen das echte Projekt,
+--  CLAUDE.md §1.2/§1.3):
+--    \d gaeste         -- Spalten wirklich betrieb_id, kennung, email? Ja.
 --    \d bestellungen   -- Spalte wirklich "geraet" (nicht gast_kennung
---                         — das ist die Quittungsnummer, CLAUDE.md §1.1a)?
---    select extname from pg_extension where extname = 'pg_net';
+--                         — das ist die Quittungsnummer, CLAUDE.md §1.1a)? Ja.
+--    select extname from pg_extension where extname = 'pg_net'; -- vorhanden.
 --
---  <OMOTENO_TRIGGER_SECRET> unten durch denselben Wert ersetzen, der
---  bei "supabase secrets set" steht — sonst weisen die Funktionen
---  jeden Aufruf mit 401 ab (CLAUDE.md-Muster wie VAPI_SECRET bei
---  alessia-bestellung: die Echtheit haengt an einem gemeinsamen
---  Geheimnis im Kopf, nicht an einem Supabase-Nutzertoken, weil ein
---  DB-Trigger kein Nutzertoken hat).
+--  <OMOTENO_TRIGGER_SECRET> unten ist ein PLATZHALTER, kein echter
+--  Wert — vor jedem Einspielen (auch gegen ein weiteres Projekt) durch
+--  denselben Wert ersetzen, der bei "supabase secrets set" steht,
+--  sonst weisen die Funktionen jeden Aufruf mit 401 ab (CLAUDE.md-
+--  Muster wie VAPI_SECRET bei alessia-bestellung: die Echtheit haengt
+--  an einem gemeinsamen Geheimnis im Kopf, nicht an einem Supabase-
+--  Nutzertoken, weil ein DB-Trigger kein Nutzertoken hat).
 -- ═══════════════════════════════════════════════════════════════════
 
 begin;
@@ -107,6 +126,16 @@ create trigger gaeste_klaviyo_melden_trg
   after insert or update of email on public.gaeste
   for each row execute function public.gaeste_klaviyo_melden();
 
+-- Nachgetragen nach dem ersten Einspielen: get_advisors meldete diese
+-- Funktion als über /rest/v1/rpc/gaeste_klaviyo_melden fuer anon UND
+-- authenticated aufrufbar (CLAUDE.md §2.3a — PostgREST stellt JEDE
+-- Funktion in public als RPC bereit, sobald die Rolle EXECUTE hat,
+-- Trigger-Funktionen eingeschlossen). Ein Trigger braucht dieses Recht
+-- nicht, er laeuft als Teil der Anweisung — verifiziert: der Trigger
+-- feuert nach dem Revoke unveraendert (net.http_request_queue waechst
+-- weiter bei aktivem Newsletter).
+revoke all on function public.gaeste_klaviyo_melden() from public, anon, authenticated;
+
 
 -- ══════════════════════════════════════════════════════════════════
 --  3 · Trigger bestellungen → klaviyo-ereignis-melden
@@ -163,9 +192,20 @@ create trigger bestellung_klaviyo_melden_trg
   after insert on public.bestellungen
   for each row execute function public.bestellung_klaviyo_melden();
 
+-- Nachgetragen, dieselbe Begründung wie bei gaeste_klaviyo_melden oben.
+revoke all on function public.bestellung_klaviyo_melden() from public, anon, authenticated;
+
 commit;
 
--- ── PROBE — in einer eigenen, zurueckgedrehten Transaktion fahren ──
+-- ── PROBE — GEFAHREN, gegen das echte Projekt, zurueckgedreht ──────
+-- newsletter_aktiv=true + neue E-Mail: Warteschlange 0 → 1.
+-- newsletter_aktiv=false + neue E-Mail: Warteschlange unveraendert
+--   (1 → 1, kein neuer Eintrag). Danach denselben Ablauf nach dem
+--   Revoke oben wiederholt: Trigger feuert unveraendert (0 → 1) —
+--   das Revoke nimmt nur den direkten RPC-Aufruf weg, nicht den
+--   Trigger selbst. Alle drei Laeufe rollten zurueck, keine der
+--   Probe-Zeilen (probe-geraet-0000x@example.com) blieb stehen.
+--
 -- pg_net feuert asynchron (die Anfrage geht in eine Warteschlange,
 -- net._http_response zeigt spaeter das Ergebnis) — deshalb genuegt
 -- hier NICHT "kein Fehler", sondern es muss geprueft werden, dass
