@@ -10,8 +10,15 @@
 --
 --    supabase functions deploy klaviyo-profil-melden --no-verify-jwt
 --    supabase functions deploy klaviyo-ereignis-melden --no-verify-jwt
+--    supabase functions deploy newsletter-vorrat-auffuellen
 --    supabase secrets set OMOTENO_TRIGGER_SECRET=<langer Zufallswert>
 --    supabase secrets set KLAVIYO_API_KEY=pk_... (Private API Key)
+--
+--  newsletter-vorrat-auffuellen ist die Bruecke fuer den "Vorrat
+--  auffuellen"-Knopf im Board: rabattcode_anlegen ist absichtlich nur
+--  fuer service_role freigegeben, der Browser darf sie nicht direkt
+--  rufen. OHNE --no-verify-jwt, weil ein eingeloggter Wirt sie ruft,
+--  nicht ein fremder Dienst (Muster wie bei uebersetzen).
 --
 --  VOR DEM EINSPIELEN VON HAND PRÜFEN (CLAUDE.md §1.2/§1.3 — Supabase
 --  war diese Sitzung gesperrt, HTTP 403):

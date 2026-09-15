@@ -699,6 +699,7 @@ html{font-size:calc(16px * var(--skala,1))}
 .rechts{text-align:right;flex-shrink:0}
 .uhr{font-size:13px;color:var(--gedaempft)}
 .preis{font-size:19px;font-weight:700;margin-top:2px}
+.preisalt{font-size:13px;font-weight:400;color:var(--gedaempft);margin-right:4px}
 
 .positionen{
   border-top:1px solid var(--linie);
@@ -909,6 +910,24 @@ html{font-size:calc(16px * var(--skala,1))}
 }
 .bestellung[data-quelle="service"]{border-left:3px solid var(--messing)}
 .bestellung[data-quelle="service"] .hmarke{color:var(--messing)}
+
+.rabattzeile{margin:8px 0 0}
+.rabattoeffnen{
+  font-family:inherit;font-size:12px;color:var(--gedaempft);
+  text-decoration:underline;text-underline-offset:3px;cursor:pointer;padding:2px 0;
+}
+.rabattzeile.aktiv{
+  font-size:12.5px;font-weight:600;color:var(--gut);
+}
+.rabatteingabe{display:flex;gap:7px;margin-top:6px}
+.rabatteingabe[hidden]{display:none}
+.rabattfeld{
+  flex:1;min-width:0;padding:9px 10px;border-radius:9px;
+  border:1px solid var(--linie);background:var(--tresen);
+  color:var(--kreide);font-size:14px;text-transform:uppercase;
+  -webkit-text-fill-color:var(--kreide);
+}
+.rabatteingabe button{flex:none;width:auto;padding:9px 14px;font-size:13px}
 
 .schritte{display:flex;gap:7px}
 .schritt{
@@ -2352,6 +2371,30 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <button class="knopf" id="lfSichern">Übernehmen</button>
       </div>
       <div class="epruefung" id="lfPruefung"></div>
+    </div>
+
+    <div class="egruppe">
+      <h2 class="etitel">Gäste-Newsletter</h2>
+      <p class="ehilfe">Gäste, die im Hub unter „Mein Tisch" ihre E-Mail
+        hinterlegen, bekommen wöchentlich einen kleinen Gutschein und —
+        wenn 20 Tage lang keine neue Bestellung kam — eine Erinnerung
+        mit Gutschein. Die E-Mail bestätigt sich selbst, bevor
+        irgendetwas verschickt wird.</p>
+
+      <div class="schalter">
+        <div><div class="schaltertext">Newsletter aktiv</div>
+        <div class="schalterhilfe">Aus = keine neue Gast-E-Mail geht an Klaviyo, auch wenn eine hinterlegt wird</div></div>
+        <button class="wippe" id="nlAn" aria-pressed="false" aria-label="Gäste-Newsletter"></button>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Rabattcode-Vorrat</b><i>Für den Wochen-Flow — ohne Vorrat kann Klaviyo niemandem einen Code zuteilen</i></span>
+        <p class="epruefung" id="nlVorratStand">Vorrat wird geladen …</p>
+        <div class="eknoepfe">
+          <button class="knopf leise" id="nlVorratAuffuellen">20 neue Codes anlegen</button>
+        </div>
+      </div>
+      <div class="epruefung" id="nlPruefung"></div>
     </div>
 
     <div class="egruppe">
@@ -3974,6 +4017,84 @@ async function pauseUmschalten(){
 $("#pauseKnopf").onclick = pauseUmschalten;
 
 /* ══════════════════════════════════════════════════════════════════
+   GÄSTE-NEWSLETTER
+
+   Der Schalter selbst ist additiv wie bestell_pause — spaltenweises
+   Recht, kein RLS-Eingriff (siehe migration-newsletter-klaviyo.sql).
+   Der Vorrat-Knopf ruft NICHT direkt rabattcode_anlegen (die RPC ist
+   absichtlich nur für service_role da) — er geht über die Edge
+   Function newsletter-vorrat-auffuellen, die das Nutzertoken selbst
+   prüft, bevor sie mit dem service_role-Schlüssel schreibt.
+   ══════════════════════════════════════════════════════════════════ */
+let newsletterAktiv = false;
+
+function newsletterZeichnen(){
+  const k = $("#nlAn"); if(!k) return;
+  k.setAttribute("aria-pressed", String(newsletterAktiv));
+}
+
+async function newsletterUmschalten(){
+  const vorher = newsletterAktiv;
+  newsletterAktiv = !newsletterAktiv;
+  newsletterZeichnen();
+
+  if(demo){ melde(newsletterAktiv ? "Newsletter aktiv" : "Newsletter aus"); return; }
+  const {error} = await db.from("betriebe")
+    .update({newsletter_aktiv: newsletterAktiv})
+    .eq("id", betriebId);
+  if(error){
+    newsletterAktiv = vorher; newsletterZeichnen();
+    melde("Nicht gespeichert, bitte Verbindung prüfen", true);
+    return;
+  }
+  melde(newsletterAktiv
+    ? "Newsletter aktiv. Neue E-Mail-Adressen gehen ab jetzt an Klaviyo."
+    : "Newsletter aus.");
+}
+
+$("#nlAn").onclick = newsletterUmschalten;
+
+async function nlVorratLaden(id){
+  const el = $("#nlVorratStand"); if(!el) return;
+  if(demo){ el.textContent = "Im Vorführmodus nicht verfügbar."; return; }
+  const {count, error} = await db.from("rabattcodes")
+    .select("id", {count: "exact", head: true})
+    .eq("betrieb_id", id).eq("eingeloest", false);
+  if(error){
+    /* Fehlt die Tabelle noch (Migration nicht eingespielt), ist das
+       kein Absturz — nur ein ehrlicher Hinweis statt einer Zahl. */
+    el.textContent = "Noch nicht eingerichtet.";
+    return;
+  }
+  el.textContent = (count || 0) + (count === 1 ? " Code übrig" : " Codes übrig");
+}
+
+$("#nlVorratAuffuellen").onclick = async () => {
+  const knopf = $("#nlVorratAuffuellen");
+  if(demo){ melde("Im Vorführmodus nicht verfügbar", true); return; }
+  knopf.disabled = true;
+  const vorher = knopf.textContent;
+  knopf.textContent = "Wird angelegt …";
+  try{
+    const {data, error} = await db.functions.invoke("newsletter-vorrat-auffuellen",
+      {body: {betrieb_id: betriebId, anzahl: 20}});
+    if(error || !data || !data.ok){
+      melde("Vorrat nicht aufgefüllt — " +
+        (data && data.fehler ? data.fehler : "Verbindung prüfen"), true);
+      return;
+    }
+    melde(data.angelegt + " neue Codes angelegt" +
+      (data.klaviyo === false ? " (Klaviyo-Upload fehlgeschlagen, bitte später erneut versuchen)" : ""));
+    nlVorratLaden(betriebId);
+  }catch(e){
+    melde("Vorrat nicht aufgefüllt — Verbindung prüfen", true);
+  }finally{
+    knopf.disabled = false;
+    knopf.textContent = vorher;
+  }
+};
+
+/* ══════════════════════════════════════════════════════════════════
    SCHNELLLISTE „HEUTE VERFÜGBAR"
 
    Morgens sind manchmal zehn Gerichte aus. Jedes einzeln zu öffnen
@@ -4638,10 +4759,24 @@ function demoStarten(){
    durchlässt – ein fremder Betrieb taucht hier gar nicht erst auf.
    ═══════════════════════════════════════════════════════════════ */
 async function betriebeHolen(){
-  const {data, error} = await db
+  /* newsletter_aktiv/klaviyo_liste_id kommen erst mit
+     migration-newsletter-klaviyo.sql dazu. Ist die Migration auf
+     diesem Betrieb noch nicht eingespielt, weist PostgREST die ganze
+     Abfrage ab (unbekannte Spalte) — und das darf NIEMALS den Login
+     verhindern: betriebeHolen() laeuft bei jeder Anmeldung, nicht nur
+     wenn jemand den Newsletter oeffnet. Deshalb mit Ruecksicht:
+     zuerst probieren, bei genau diesem Fehler ohne die zwei Spalten
+     erneut fragen (CLAUDE.md §7 — ein blockierter Login kostet mehr
+     als ein Newsletter-Schalter, der fehlt). */
+  let { data, error } = await db
     .from("betrieb_mitglieder")
-    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt)");
+    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id)");
 
+  if(error && /newsletter_aktiv|klaviyo_liste_id|column/i.test(error.message || "")){
+    ({data, error} = await db
+      .from("betrieb_mitglieder")
+      .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt)"));
+  }
   if(error) throw error;
 
   return (data || [])
@@ -4649,7 +4784,9 @@ async function betriebeHolen(){
     .map(z => ({id:z.betriebe.id, slug:z.betriebe.slug, name:z.betriebe.name,
                 bestell_pause: z.betriebe.bestell_pause,
                 hub_texte: z.betriebe.hub_texte || {},
-                markenblatt: z.betriebe.markenblatt || null, rolle:z.rolle}))
+                markenblatt: z.betriebe.markenblatt || null, rolle:z.rolle,
+                newsletter_aktiv: z.betriebe.newsletter_aktiv,
+                klaviyo_liste_id: z.betriebe.klaviyo_liste_id || null}))
     .sort((a,b) => a.name.localeCompare(b.name, "de"));
 }
 
@@ -4763,6 +4900,10 @@ async function betriebOeffnen(id){
   const bb = meineBetriebe.find(x => x.id === id);
   bestellPause = !!(bb && bb.bestell_pause);
   pauseZeichnen();
+
+  newsletterAktiv = !!(bb && bb.newsletter_aktiv);
+  newsletterZeichnen();
+  nlVorratLaden(id);
 
   live_anmelden(id, marke);
   reservierungenLaden(id);
@@ -5045,6 +5186,26 @@ function gefiltert(){
   return bestellungen.filter(b => zeigeQuelle[b.quelle] && zeigeStatus[b.status]);
 }
 
+/* Rabattcode-Einlösung auf der Bestellkarte. Bewusst KEIN eigener
+   Reiter "Rechnungen" — den Namen trägt in diesem Projekt schon
+   Omotenos eigene SaaS-Abrechnung an den Betrieb (seiten/konto.html).
+   Ein zweites "Rechnungen" hätte genau die Verwechslung aus
+   CLAUDE.md §1.1a erzeugt. */
+function rabattZeile(b){
+  if((+b.rabatt_betrag || 0) > 0){
+    return `<div class="rabattzeile aktiv">Rabatt −${euro(+b.rabatt_betrag)}
+      ${b.rabatt_code ? "(" + sicher(b.rabatt_code) + ")" : ""}</div>`;
+  }
+  return `<div class="rabattzeile">
+    <button type="button" class="rabattoeffnen" data-rabattoeffnen="${sicher(b.id)}">Rabattcode einlösen</button>
+    <div class="rabatteingabe" data-rabatteingabe="${sicher(b.id)}" hidden>
+      <input type="text" class="rabattfeld" placeholder="CODE" maxlength="24"
+        autocapitalize="characters" autocomplete="off" spellcheck="false">
+      <button type="button" class="knopf schmal" data-rabatteinloesen="${sicher(b.id)}">Einlösen</button>
+    </div>
+  </div>`;
+}
+
 function zeichneBoard(){
   ["tisch","telefon","lieferung"].forEach(q => {
     const n = bestellungen.filter(b => b.quelle === q && zeigeStatus[b.status]).length;
@@ -5165,11 +5326,15 @@ function zeichneBoard(){
           <div class="uhr">${uhrzeit(b.zeitpunkt)}</div>
           ${dauer}
           ${b.summe > 0
-            ? `<div class="preis">${euro((+b.summe || 0) + (+b.liefergebuehr || 0))}</div>`
+            ? `<div class="preis">${(+b.rabatt_betrag || 0) > 0
+                ? `<s class="preisalt">${euro((+b.summe || 0) + (+b.liefergebuehr || 0))}</s> ` +
+                  euro((+b.summe || 0) + (+b.liefergebuehr || 0) - (+b.rabatt_betrag || 0))
+                : euro((+b.summe || 0) + (+b.liefergebuehr || 0))}</div>`
             : ""}
         </div>
       </div>
       ${pos}${lieferblock}${notiz}${trans}${zusage}
+      ${b.summe > 0 ? rabattZeile(b) : ""}
       <div class="schritte">
         ${["neu","arbeit","fertig"].map(s =>
           `<button class="schritt" data-id="${b.id}" data-status="${s}"
@@ -6859,6 +7024,53 @@ $("#statusFilter").onclick = e => {
 
 // Status einer Bestellung ändern
 $("#karten").onclick = async e => {
+  /* Rabattcode-Eingabe auf-/zuklappen */
+  const rOeffnen = e.target.closest("[data-rabattoeffnen]");
+  if(rOeffnen){
+    const feld = document.querySelector(`[data-rabatteingabe="${CSS.escape(rOeffnen.dataset.rabattoeffnen)}"]`);
+    if(feld){
+      feld.hidden = !feld.hidden;
+      if(!feld.hidden) feld.querySelector(".rabattfeld").focus();
+    }
+    return;
+  }
+
+  /* Rabattcode einlösen */
+  const rEin = e.target.closest("[data-rabatteinloesen]");
+  if(rEin){
+    const id = rEin.dataset.rabatteinloesen;
+    const eingabe = document.querySelector(`[data-rabatteingabe="${CSS.escape(id)}"]`);
+    const code = (eingabe?.querySelector(".rabattfeld")?.value || "").trim();
+    if(!code) return;
+    if(demo){ melde("Im Vorführmodus nicht verfügbar", true); return; }
+    rEin.disabled = true;
+    try{
+      const {data, error} = await db.rpc("rechnung_rabattieren",
+        {p_bestellung_id: id, p_code: code});
+      if(error){ melde("Nicht eingelöst — Verbindung prüfen", true); return; }
+      if(!data || !data.ok){
+        const GRUND = {
+          bestellung_unbekannt: "Diese Bestellung wurde nicht gefunden.",
+          kein_zugriff: "Dieser Code gehört nicht zu Ihrem Betrieb.",
+          unbekannt: "Diesen Code gibt es hier nicht.",
+          bereits_eingeloest: "Dieser Code ist schon eingelöst.",
+          abgelaufen: "Dieser Code ist abgelaufen.",
+        };
+        melde(GRUND[data?.grund] || "Nicht eingelöst.", true);
+        return;
+      }
+      const b = bestellungen.find(x => x.id === id);
+      if(b){ b.rabatt_betrag = data.rabatt_betrag; b.rabatt_code = code; }
+      melde("Rabatt eingelöst — neuer Betrag " + euro(data.endbetrag));
+      neuZeichnen();
+    }catch(fehler){
+      melde("Nicht eingelöst — Verbindung prüfen", true);
+    }finally{
+      rEin.disabled = false;
+    }
+    return;
+  }
+
   /* Andere Zeit wählen */
   const mehr = e.target.closest("[data-mehr]");
   if(mehr){ zeitBlattOeffnen(mehr.dataset.mehr); return; }
