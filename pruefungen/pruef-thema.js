@@ -25,10 +25,27 @@
        .sprachknopf/.lichtknopf einen Goldring statt des mattweißen
        Rands aus der Grundausstattung
 
+   Erweitert nach einer zweiten Nutzerprobe (weiteres Bildschirmfoto,
+   diesmal mit Browser-Rahmen und iOS-Teilen-Leiste — auch das kein
+   echter Screenshot der eigenen Seite, sondern ein generiertes Mockup
+   mit denselben Fremd-Signaturen wie beim ersten Bild): Auftrag war,
+   Stil und Technik zu verbinden, ohne Funktion zu verlieren. Zwei
+   Bausteine dafür, beide reine CSS, keine neue Bilddatei:
+     - .ico bekommt einen geprägten Rand (box-shadow inset, hell oben/
+       dunkel unten) statt der flachen Fläche — wirkt wie eine
+       geschnitzte Plakette.
+     - a.kachel/a.tipp bekommen zwei gegenüberliegende Goldwinkel
+       (::before/::after) statt eines vollen Zierrahmens — dieselbe
+       Wirkung wie die Schnörkel-Ecken im Bild, bleibt aber bei jeder
+       Kartengröße scharf.
+
    Gegenbeweis gefahren: "thema":"kaiserlich" in minhkeey.json
-   testweise entfernt, neu erzeugt → alle vier minhkeey-Zusicherungen
+   testweise entfernt, neu erzeugt → alle sechs minhkeey-Zusicherungen
    unten wurden rot (kein data-thema, Standardschrift statt Serif,
-   kein Goldring an den Karten/Knöpfen). Zurückgenommen → grün.
+   kein Goldring/Medaillon/Eckwinkel an den Karten/Knöpfen).
+   Zurückgenommen → grün. Für die Erweiterung eigens: border-top-width
+   des ::before testweise auf 0 gesetzt → genau die Eckwinkel-
+   Zusicherung wurde rot, keine der anderen. Zurückgenommen → grün.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const path = require("path");
@@ -59,11 +76,15 @@ function pruef(b, t, d) {
       const kachel = document.querySelector("a.kachel");
       const licht = document.querySelector(".lichtknopf");
       const h1 = document.querySelector("h1");
+      const ico = document.querySelector("a.kachel .ico");
+      const eckeVorher = kachel ? getComputedStyle(kachel, "::before") : null;
       return {
         thema: document.body.dataset.thema,
         kachelSchatten: kachel ? getComputedStyle(kachel).boxShadow : "kein a.kachel",
         lichtRand: licht ? getComputedStyle(licht).borderColor : "kein .lichtknopf",
         kopfSchrift: h1 ? getComputedStyle(h1).fontFamily : "kein h1",
+        icoSchatten: ico ? getComputedStyle(ico).boxShadow : "kein .ico",
+        eckeBreite: eckeVorher ? eckeVorher.borderTopWidth : "kein ::before",
       };
     });
     pruef(info.thema === "kaiserlich", "minhkeey: body trägt data-thema=kaiserlich", info.thema);
@@ -73,6 +94,10 @@ function pruef(b, t, d) {
       "minhkeey: .lichtknopf trägt den Goldring statt des mattweißen Rands", info.lichtRand);
     pruef(/Iowan|Palatino|Charter/.test(info.kopfSchrift),
       "minhkeey: Kopf-Schrift ist die Serife aus dem Markenblatt", info.kopfSchrift);
+    pruef(info.icoSchatten.includes("inset"),
+      "minhkeey: .ico-Medaillon trägt die geprägte Innenlinie", info.icoSchatten);
+    pruef(parseFloat(info.eckeBreite) > 0,
+      "minhkeey: a.kachel trägt den goldenen Eckwinkel (::before)", info.eckeBreite);
     pruef(konsole.length === 0, "minhkeey: keine Ausnahme in der Konsole", konsole.join(" | ") || "still");
     await seite.close();
   }
@@ -90,14 +115,18 @@ function pruef(b, t, d) {
     await seite.waitForTimeout(800);
     const info = await seite.evaluate(() => {
       const kachel = document.querySelector("a.kachel");
+      const eckeVorher = kachel ? getComputedStyle(kachel, "::before") : null;
       return {
         thema: document.body.dataset.thema || null,
         kachelSchatten: kachel ? getComputedStyle(kachel).boxShadow : "kein a.kachel",
+        eckeBreite: eckeVorher ? eckeVorher.borderTopWidth : "kein ::before",
       };
     });
     pruef(info.thema === null, haus + ": kein data-thema", info.thema);
     pruef(!info.kachelSchatten.includes("inset"),
       haus + ": a.kachel ohne die goldene Innenlinie", info.kachelSchatten);
+    pruef(parseFloat(info.eckeBreite) === 0,
+      haus + ": a.kachel ohne den goldenen Eckwinkel", info.eckeBreite);
     await seite.close();
   }
 
