@@ -2635,6 +2635,17 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 
       <div class="bildzeile">
         <div class="bildschau" id="bildSchau" aria-hidden="true"></div>
+        <div id="bildCropContainer" hidden style="position:relative;
+          width:100%;max-width:600px;background:#f5f5f5;margin:12px 0;
+          border:1px solid #ccc;aspect-ratio:4/3">
+          <canvas id="bildCropCanvas" style="display:block;width:100%;height:100%"></canvas>
+          <div id="bildCropOverlay" style="position:absolute;border:2px dashed rgba(224,178,78,.7);
+            background:rgba(224,178,78,.08);cursor:move;touch-action:none"></div>
+          <div style="position:absolute;bottom:8px;left:8px;right:8px;display:flex;gap:8px">
+            <button type="button" class="knopf" id="bildCropBestaetigen">Zuschnitt übernehmen</button>
+            <button type="button" class="knopf leise" id="bildCropAbbrechen">Abbrechen</button>
+          </div>
+        </div>
         <div class="bildknoepfe">
           <!-- accept="image/*" öffnet auf dem iPhone direkt Kamera,
                Fotomediathek und Dateien zur Auswahl. -->
@@ -7553,32 +7564,209 @@ function bildSchauSetzen(adresse){
   const weg = $("#bildWeg"); if(weg) weg.hidden = !adresse;
 }
 
+/* Zeigt Crop-Canvas und Overlay-Rechteck zum Zuschneiden */
+let bildCropState = null;
+function bildCropZeigen(dateiObj){
+  const leser = new FileReader();
+  leser.onerror = () => bildStand("Datei nicht lesbar", "schief");
+  leser.onload = () => {
+    const bild = new Image();
+    bild.onerror = () => bildStand("Bildformat nicht unterstützt", "schief");
+    bild.onload = () => {
+      const container = $("#bildCropContainer");
+      const canvas = $("#bildCropCanvas");
+      const overlay = $("#bildCropOverlay");
+
+      /* Canvas auf Bild-Größe setzen */
+      const {width: bw, height: bh} = bild;
+      const aspectRatio = bw / bh;
+
+      /* Container-Größe berechnen (600px breit oder weniger) */
+      const containerW = Math.min(600, bw);
+      const containerH = containerW / aspectRatio;
+      container.style.maxWidth = containerW + "px";
+      container.style.aspectRatio = aspectRatio;
+
+      /* Canvas-Kontext zeichnen */
+      canvas.width = bw;
+      canvas.height = bh;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(bild, 0, 0);
+
+      /* Overlay initial auf 80% der Bildgröße setzen */
+      const ow = Math.round(bw * 0.8);
+      const oh = Math.round(bh * 0.8);
+      const ox = Math.round((bw - ow) / 2);
+      const oy = Math.round((bh - oh) / 2);
+
+      /* Speichere State für Crop-Bestätigung */
+      bildCropState = {
+        dateiObj,
+        bild,
+        canvas,
+        overlay,
+        oxAktuell: ox,
+        oyAktuell: oy,
+        owAktuell: ow,
+        ohAktuell: oh,
+        containerW,
+        containerH
+      };
+
+      /* Overlay positionieren (CSS) */
+      overlay.style.left = (ox * containerW / bw) + "px";
+      overlay.style.top = (oy * containerH / bh) + "px";
+      overlay.style.width = (ow * containerW / bw) + "px";
+      overlay.style.height = (oh * containerH / bh) + "px";
+
+      container.hidden = false;
+      bildStand("Zuschnitt ziehen oder die Ecke zum Resizen greifen");
+
+      /* Draggable/Resizable Overlay */
+      bildCropInitDrag(overlay);
+    };
+    bild.src = leser.result;
+  };
+  leser.readAsDataURL(dateiObj);
+}
+
+/* Macht Overlay draggbar und resizable */
+function bildCropInitDrag(overlay){
+  let isDragging = false;
+  let isResizing = false;
+  let dragStartX, dragStartY, dragStartLeft, dragStartTop;
+
+  overlay.onmousedown = (e) => {
+    const rect = overlay.getBoundingClientRect();
+    const nearRight = Math.abs(e.clientX - (rect.right)) < 12;
+    const nearBottom = Math.abs(e.clientY - (rect.bottom)) < 12;
+
+    if(nearRight && nearBottom){
+      isResizing = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragStartLeft = parseFloat(overlay.style.width);
+      dragStartTop = parseFloat(overlay.style.height);
+      overlay.style.cursor = "nwse-resize";
+    } else {
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      dragStartLeft = parseFloat(overlay.style.left);
+      dragStartTop = parseFloat(overlay.style.top);
+      overlay.style.cursor = "grabbing";
+    }
+    e.preventDefault();
+  };
+
+  const container = overlay.parentElement;
+  document.addEventListener("mousemove", (e) => {
+    if(!isDragging && !isResizing) return;
+
+    if(isDragging){
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      const newLeft = Math.max(0, Math.min(dragStartLeft + dx,
+        container.clientWidth - parseFloat(overlay.style.width)));
+      const newTop = Math.max(0, Math.min(dragStartTop + dy,
+        container.clientHeight - parseFloat(overlay.style.height)));
+      overlay.style.left = newLeft + "px";
+      overlay.style.top = newTop + "px";
+
+      /* Berechne echte Pixel im Bild */
+      const bw = bildCropState.bw || bildCropState.canvas.width;
+      const bh = bildCropState.bh || bildCropState.canvas.height;
+      bildCropState.oxAktuell = Math.round(newLeft * bw / container.clientWidth);
+      bildCropState.oyAktuell = Math.round(newTop * bh / container.clientHeight);
+    }
+
+    if(isResizing){
+      const dx = e.clientX - dragStartX;
+      const dy = e.clientY - dragStartY;
+      const newW = Math.max(100, dragStartLeft + dx);
+      const newH = Math.max(100, dragStartTop + dy);
+      overlay.style.width = newW + "px";
+      overlay.style.height = newH + "px";
+
+      const bw = bildCropState.bw || bildCropState.canvas.width;
+      const bh = bildCropState.bh || bildCropState.canvas.height;
+      bildCropState.owAktuell = Math.round(newW * bw / container.clientWidth);
+      bildCropState.ohAktuell = Math.round(newH * bh / container.clientHeight);
+    }
+  });
+
+  document.addEventListener("mouseup", () => {
+    isDragging = false;
+    isResizing = false;
+    overlay.style.cursor = isDragging ? "grab" : "move";
+  });
+}
+
+/* Crop bestätigen und bildHochladenMitBlob aufrufen */
+function bildCropBestaetigen(){
+  if(!bildCropState) return;
+
+  const {canvas, oxAktuell, oyAktuell, owAktuell, ohAktuell, dateiObj} = bildCropState;
+  const ctx = canvas.getContext("2d");
+
+  /* Cropped ImageData extrahieren */
+  const imageData = ctx.getImageData(oxAktuell, oyAktuell, owAktuell, ohAktuell);
+
+  /* Neues Canvas für gecroppes Bild */
+  const croppedCanvas = document.createElement("canvas");
+  croppedCanvas.width = owAktuell;
+  croppedCanvas.height = ohAktuell;
+  croppedCanvas.getContext("2d").putImageData(imageData, 0, 0);
+
+  /* Canvas zu Blob und dann zu bildHochladenMitBlob */
+  croppedCanvas.toBlob(async blob => {
+    if(!blob){
+      bildStand("Zuschnitt fehlgeschlagen", "schief");
+      return;
+    }
+
+    /* Verstecke Crop-UI */
+    $("#bildCropContainer").hidden = true;
+    bildCropState = null;
+
+    /* Rufe bildHochladenMitBlob auf (neuer Weg ohne FileReader) */
+    bildHochladenMitBlob(blob, dateiObj.name);
+  }, "image/jpeg", BILD_GUETE);
+}
+
+function bildCropAbbrechen(){
+  $("#bildCropContainer").hidden = true;
+  bildCropState = null;
+  bildStand("");
+  $("#fDatei").value = "";
+}
+
 /* Verkleinert und wandelt um. Gibt einen Blob zurück. */
 function bildVerkleinern(datei){
   return new Promise((fertig, schief) => {
     const leser = new FileReader();
-    leser.onerror = () => schief(new Error("Datei nicht lesbar"));
+    leser.onerror = () => schief(new Error(“Datei nicht lesbar”));
     leser.onload = () => {
       const bild = new Image();
       bild.onerror = () => schief(new Error(
-        "Dieses Bildformat kann der Browser nicht öffnen. " +
-        "Bitte im Fotoalbum über „Teilen“ als JPEG sichern."));
+        “Dieses Bildformat kann der Browser nicht öffnen. “ +
+        “Bitte im Fotoalbum über „Teilen” als JPEG sichern.”));
       bild.onload = () => {
         let {width: b, height: h} = bild;
         const gr = Math.max(b, h);
         if(gr > BILD_KANTE){ b = Math.round(b * BILD_KANTE / gr); h = Math.round(h * BILD_KANTE / gr); }
-        const flaeche = document.createElement("canvas");
+        const flaeche = document.createElement(“canvas”);
         flaeche.width = b; flaeche.height = h;
-        const stift = flaeche.getContext("2d");
+        const stift = flaeche.getContext(“2d”);
         /* Weißer Grund: Bei durchsichtigen PNG wäre der Rest sonst
            schwarz, sobald wir nach JPEG wandeln. */
-        stift.fillStyle = "#FFFFFF";
+        stift.fillStyle = “#FFFFFF”;
         stift.fillRect(0, 0, b, h);
         stift.drawImage(bild, 0, 0, b, h);
         flaeche.toBlob(blob => {
           if(blob) fertig(blob);
-          else schief(new Error("Umwandeln fehlgeschlagen"));
-        }, "image/jpeg", BILD_GUETE);
+          else schief(new Error(“Umwandeln fehlgeschlagen”));
+        }, “image/jpeg”, BILD_GUETE);
       };
       bild.src = leser.result;
     };
@@ -7586,52 +7774,82 @@ function bildVerkleinern(datei){
   });
 }
 
-async function bildHochladen(datei){
-  if(!datei) return;
-  if(!betriebId){ bildStand("Kein Betrieb gewählt", "schief"); return; }
-  if(demo){ bildStand("Im Vorführmodus wird nichts hochgeladen", "schief"); return; }
+/* Nach dem Zuschneiden: Blob direkt verarbeiten (ohne FileReader) */
+async function bildHochladenMitBlob(blob, dateiName){
+  if(!betriebId){ bildStand(“Kein Betrieb gewählt”, “schief”); return; }
+  if(demo){ bildStand(“Im Vorführmodus wird nichts hochgeladen”, “schief”); return; }
 
   try{
-    bildStand("Wird verkleinert …", "laeuft");
-    const blob = await bildVerkleinern(datei);
+    bildStand(“Wird verkleinert …”, “laeuft”);
+    /* Blob ist schon Image, einfach resizen */
+    const bild = new Image();
+    bild.onerror = () => { bildStand(“Bild verarbeitung fehlgeschlagen”, “schief”); };
+    bild.onload = async () => {
+      let {width: b, height: h} = bild;
+      const gr = Math.max(b, h);
+      if(gr > BILD_KANTE){ b = Math.round(b * BILD_KANTE / gr); h = Math.round(h * BILD_KANTE / gr); }
+      const flaeche = document.createElement(“canvas”);
+      flaeche.width = b; flaeche.height = h;
+      const stift = flaeche.getContext(“2d”);
+      stift.fillStyle = “#FFFFFF”;
+      stift.fillRect(0, 0, b, h);
+      stift.drawImage(bild, 0, 0, b, h);
+      flaeche.toBlob(async resizedBlob => {
+        if(!resizedBlob){ bildStand(“Umwandeln fehlgeschlagen”, “schief”); return; }
 
-    const sauber = (datei.name || "foto")
-      .toLowerCase()
-      .replace(/\.[a-z0-9]+$/, "")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 40) || "foto";
-    const pfad = betriebId + "/" + Date.now() + "-" + sauber + ".jpg";
+        const sauber = (dateiName || “foto”)
+          .toLowerCase()
+          .replace(/\.[a-z0-9]+$/, “”)
+          .replace(/[^a-z0-9]+/g, “-”)
+          .replace(/^-+|-+$/g, “”)
+          .slice(0, 40) || “foto”;
+        const pfad = betriebId + “/” + Date.now() + “-” + sauber + “.jpg”;
 
-    bildStand("Wird hochgeladen … (" + Math.round(blob.size/1024) + " KB)", "laeuft");
-    const {error} = await db.storage.from("gerichte")
-      .upload(pfad, blob, {contentType: "image/jpeg", upsert: false});
-    if(error) throw error;
+        bildStand(“Wird hochgeladen … (“ + Math.round(resizedBlob.size/1024) + “ KB)”, “laeuft”);
+        const {error} = await db.storage.from(“gerichte”)
+          .upload(pfad, resizedBlob, {contentType: “image/jpeg”, upsert: false});
+        if(error) throw error;
 
-    const {data} = db.storage.from("gerichte").getPublicUrl(pfad);
-    const adresse = data.publicUrl;
-    $("#fBild").value = adresse;
-    bildSchauSetzen(adresse);
-    bildStand("Foto liegt bereit. Es wird mit „Sichern“ übernommen.");
+        const {data} = db.storage.from(“gerichte”).getPublicUrl(pfad);
+        const adresse = data.publicUrl;
+        $(“#fBild”).value = adresse;
+        bildSchauSetzen(adresse);
+        bildStand(“Foto liegt bereit. Es wird mit „Sichern” übernommen.”);
+      }, “image/jpeg”, BILD_GUETE);
+    };
+    bild.src = URL.createObjectURL(blob);
   }catch(e){
     console.error(e);
-    bildStand(e.message || "Hochladen fehlgeschlagen", "schief");
+    bildStand(e.message || “Hochladen fehlgeschlagen”, “schief”);
   }
 }
 
-$("#fDatei").onchange = e => {
+async function bildHochladen(datei){
+  if(!datei) return;
+  if(!betriebId){ bildStand(“Kein Betrieb gewählt”, “schief”); return; }
+  if(demo){ bildStand(“Im Vorführmodus wird nichts hochgeladen”, “schief”); return; }
+
+  /* Zeige Crop-UI statt direkt zu verkleinern */
+  bildCropZeigen(datei);
+}
+
+$(“#fDatei”).onchange = e => {
   const d = e.target.files && e.target.files[0];
   bildHochladen(d);
-  e.target.value = "";     /* damit dieselbe Datei erneut wählbar bleibt */
+  e.target.value = “”;     /* damit dieselbe Datei erneut wählbar bleibt */
 };
 
-$("#bildWeg").onclick = () => {
-  $("#fBild").value = "";
-  bildSchauSetzen("");
-  bildStand("Foto entfernt. Mit „Sichern“ übernehmen.");
+/* Crop UI Buttons */
+$(“#bildCropBestaetigen”).onclick = bildCropBestaetigen;
+$(“#bildCropAbbrechen”).onclick = bildCropAbbrechen;
+
+$(“#bildWeg”).onclick = () => {
+  $(“#fBild”).value = “”;
+  bildSchauSetzen(“”);
+  bildStand(“Foto entfernt. Mit „Sichern” übernehmen.”);
 };
 
-$("#fBild").oninput = () => bildSchauSetzen($("#fBild").value.trim());
+$(“#fBild”).oninput = () => bildSchauSetzen($(“#fBild”).value.trim());
 
 async function sichern(alsKopie){
   const name = $("#fName").value.trim();
