@@ -208,6 +208,12 @@
      Prozent, und ein Blatt ueber die ganze Schirmhoehe darf am
      unteren Ende davon liegen. */
   --t-blatt-raus:200ms;
+  /* Dieselbe Feder wie in hub.vorlage.html (§bewegung, "im Verzeichnis
+     stehen die Kurven schon als Variablen — benutzen, nicht neue
+     erfinden"). Fehlte hier bisher komplett, gebraucht für die
+     Reiterleisten-Pille unten: ein federndes Landen mit leichtem
+     Überschwingen, wo --ease-out zu gedämpft wirkt. */
+  --feder:cubic-bezier(.34,1.28,.64,1);
 }
 
 /* ── Helle Fassung ────────────────────────────────────────────────
@@ -547,11 +553,25 @@ html{font-size:calc(16px * var(--skala,1))}
     border-top:1px solid var(--linie);
     padding:6px 4px calc(6px + env(safe-area-inset-bottom));
   }
+  /* Die Pille: EIN geteiltes Element statt eines eigenen Hintergrunds
+     je Knopf (früher: button[aria-selected=true]{background:…} an
+     jedem Knopf einzeln — zwei unabhängige Ein-/Ausblendungen beim
+     Wechsel, kein Zusammenhang zwischen ihnen). Jetzt wandert sie
+     zwischen den Knöpfen, mit FLIP bewegt (leistePilleBewegen()) —
+     ausschließlich über transform, wie es §bewegung verlangt. left/
+     width werden von der Funktion in px gesetzt (Messwerte, keine
+     Prozentangaben), die Übergangsbewegung läuft komplett in transform.
+     pointer-events:none, damit sie keinen Klick abfängt. */
+  .leiste-pille{
+    position:absolute;top:6px;bottom:calc(6px + env(safe-area-inset-bottom));
+    border-radius:12px;background:rgba(201,162,39,.10);
+    pointer-events:none;z-index:0;transform-origin:center;
+  }
   .befehlsleiste button{
     display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
     padding:8px 2px 6px;border-radius:12px;min-height:52px;
-    color:var(--gedaempft);position:relative;
-    transition:color var(--t-klein) var(--ease-out),background var(--t-klein) var(--ease-out);
+    color:var(--gedaempft);position:relative;z-index:1;
+    transition:color var(--t-klein) var(--ease-out);
   }
   .befehlsleiste button span{
     font-size:10.5px;font-weight:600;letter-spacing:.01em;
@@ -559,7 +579,7 @@ html{font-size:calc(16px * var(--skala,1))}
   }
   .befehlsleiste svg{width:21px;height:21px;fill:none;stroke:currentColor;
     stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
-  .befehlsleiste button[aria-selected=true]{color:var(--messing);background:rgba(201,162,39,.10)}
+  .befehlsleiste button[aria-selected=true]{color:var(--messing)}
   .befehlsleiste button:active{transform:scale(.94)}
   .befehlsleiste .zahl{
     position:absolute;top:4px;right:calc(50% - 22px);
@@ -1977,6 +1997,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 <!-- Befehlsleiste für das Telefon. Dieselben data-tafel-Werte wie
      oben — ein Umschalter, zwei Leisten, kein zweiter Zustand. -->
 <nav class="befehlsleiste" id="befehlsleiste" aria-label="Bereiche">
+  <span class="leiste-pille" id="leistePille" aria-hidden="true"></span>
   <button type="button" data-tafel="bestellungen" aria-selected="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16M4 12h16M4 19h10"/></svg><span>Bestellungen</span></button>
   <button type="button" data-tafel="speisekarte" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M9 9h6M9 13h4"/></svg><span>Karte</span></button>
   <button type="button" data-tafel="reservierungen" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg><span class="zahl" id="resZahlUnten" hidden>0</span><span>Tische</span></button>
@@ -6025,6 +6046,7 @@ window.addEventListener("orientationchange", filterHoeheMessen);
 function tafelZeigen(ziel){
   $$("[data-tafel]").forEach(x => x.setAttribute("aria-selected", x.dataset.tafel === ziel));
   $$(".tafel").forEach(t => t.hidden = t.id !== "t-" + ziel);
+  leistePilleBewegen();
 
   /* Erst jetzt ist der Block gezeichnet — vorher war er in einem
      versteckten Vorfahren und 0 px hoch. */
@@ -6044,6 +6066,82 @@ function tafelZeigen(ziel){
   if(ziel === "auswertung")      awLaden();
 }
 $$("[data-tafel]").forEach(k => k.onclick = () => tafelZeigen(k.dataset.tafel));
+
+/* ── Die Pille der Befehlsleiste: ein Ball, der sich zusammenzieht und
+   zum neuen Reiter hinüberfließt (Vorbild: Uber Eats/Lieferando-Art
+   Kategorie-Umschalter), statt zwei unabhängiger Ein-/Ausblendungen.
+
+   FLIP (§bewegung: "erst messen, dann mit transform vortäuschen, dann
+   laufen lassen"): Erst wird die ALTE Lage gemessen (First), dann
+   werden left/width SOFORT auf die neue Lage gesetzt (Last) — das ist
+   ein Layout-Sprung ohne eigene Bewegung. Ein transform, das die
+   Differenz genau umkehrt, hält die Pille optisch noch an der alten
+   Stelle fest (Invert). Erst danach läuft eine dreistufige
+   Web-Animations-Sequenz zurück auf die Ruhelage (Play) — mit einer
+   Stauchung in der Mitte, das ist der "Ball, der sich zusammenzieht".
+   Ausschließlich transform, kein left/width wird ANIMIERT — beides
+   wird nur einmal pro Wechsel HART gesetzt, das kostet kein Layout
+   während der Bewegung. */
+function leistePilleBewegen(){
+  const leiste = $("#befehlsleiste"), pille = $("#leistePille");
+  /* Über 760px ist die Leiste display:none (die Wippe gehört dem
+     Telefon) — dann liefert getBoundingClientRect() nur Nullen, und
+     eine Pille auf 0×0px zu setzen wäre kein Fehler, aber sinnlos.
+     dataset.gesetzt fällt dabei weg, damit die Pille beim nächsten
+     Sichtbarwerden (Drehung, Fenster verkleinert) neu einrastet statt
+     von einer inzwischen veralteten Stelle "loszufließen". */
+  if(!leiste || !pille) return;
+  if(getComputedStyle(leiste).display === "none"){ delete pille.dataset.gesetzt; return; }
+
+  /* Kein Knopf DIREKT in der Leiste aktiv (die Auswahl liegt im
+     "Mehr"-Fach, z. B. „Einstellungen") — dann sitzt die Pille auf
+     dem Mehr-Knopf selbst, statt ins Leere zu zeigen. */
+  const ziel = leiste.querySelector(':scope > button[aria-selected="true"]')
+    || $("#mehrKnopf");
+  if(!ziel) return;
+
+  const leisteRect = leiste.getBoundingClientRect();
+  const zielRect = ziel.getBoundingClientRect();
+  const randInnen = 4;
+  const neuLinks = zielRect.left - leisteRect.left + randInnen;
+  const neuBreite = zielRect.width - randInnen * 2;
+
+  const vorherLinks = pille.dataset.gesetzt === "1" ? parseFloat(pille.style.left) : null;
+  const vorherBreite = pille.dataset.gesetzt === "1" ? parseFloat(pille.style.width) : null;
+
+  pille.getAnimations().forEach(a => a.cancel()); // unterbrechbar (§bewegung)
+  pille.style.left = neuLinks + "px";
+  pille.style.width = neuBreite + "px";
+  pille.dataset.gesetzt = "1";
+
+  const reduziert = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if(vorherLinks === null || reduziert){
+    pille.style.transform = "none";
+    return;
+  }
+  /* Invert: wie weit müsste die Pille von der neuen Lage aus
+     zurückgeschoben/gestaucht werden, um noch an der alten Stelle zu
+     stehen? */
+  const dx = vorherLinks - neuLinks;
+  const skalaStart = vorherBreite / neuBreite;
+  const mitteSkala = Math.min(skalaStart, 1) * 0.62; // der "Zusammenzieh"-Punkt
+
+  /* element.animate() liest keine CSS-Variablen — anders als bei einer
+     transition reicht "var(--feder)" hier nicht, das Ergebnis wäre
+     ein ungültiger, still auf linear zurückfallender Wert. Der
+     berechnete Wert wird deshalb einmal ausgelesen. */
+  const feder = getComputedStyle(document.documentElement).getPropertyValue("--feder").trim()
+    || "cubic-bezier(.34,1.28,.64,1)";
+  pille.animate([
+    { transform: `translateX(${dx}px) scaleX(${skalaStart})` },
+    { transform: `translateX(${dx / 2}px) scaleX(${mitteSkala})`, offset: 0.55 },
+    { transform: "translateX(0) scaleX(1)" }
+  ], { duration: 420, easing: feder, fill: "forwards" });
+}
+addEventListener("resize", () => { if($("#leistePille")) leistePilleBewegen(); });
+/* Erststellung: die Pille existiert in der statischen Auszeichnung
+   ohne left/width, requestAnimationFrame wartet auf das erste Layout. */
+requestAnimationFrame(() => requestAnimationFrame(leistePilleBewegen));
 
 /* „Mehr" ist der einzige Knopf der Befehlsleiste ohne eigene Tafel. */
 function mehrZu(){
