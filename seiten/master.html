@@ -675,6 +675,13 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
       </svg></span>
       <span><i id="liveDot" class="live-dot"></i><em id="userLine" style="font-style:normal">—</em></span>
     </div>
+    <button id="tonBtn" class="icon-btn" aria-label="Ton bei neuer Anfrage" aria-pressed="true">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M9 18a3 3 0 0 0 6 0"/>
+        <path d="M6 18v-6a6 6 0 0 1 12 0v6H6z"/>
+        <line id="tonBtnAus" x1="4" y1="4" x2="20" y2="20" stroke-width="2" opacity="0"/>
+      </svg>
+    </button>
     <button id="addBtn" class="icon-btn" aria-label="Umsatz eintragen">＋</button>
     <button id="refreshBtn" class="icon-btn" aria-label="Neu laden">⟳</button>
     <button id="menuBtn" class="icon-btn" aria-label="Diagnose">⋯</button>
@@ -819,6 +826,35 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
     document.body.appendChild(t);
     clearTimeout(toastTimer);
     toastTimer = setTimeout(function(){ if(t.parentNode) t.remove(); }, 3200);
+  }
+
+  /* Ein kurzer Ton bei neuer Anfrage — wortgleich mit piep() aus
+     kueche.html, nicht neu erfunden (§bewegung-Grundsatz: vorhandenes
+     Muster übernehmen). Der Toast allein verpasst, wer den Tab nicht
+     offen hat; anfragenNote im Abschnittskopf bleibt zwar stehen,
+     aber ohne Ton bemerkt niemand, WANN sie sich geändert hat. */
+  function piep(){
+    try{
+      var K = window.AudioContext || window.webkitAudioContext; if(!K) return;
+      var ctx = new K(), o = ctx.createOscillator(), g = ctx.createGain();
+      o.type = "sine"; o.frequency.value = 880;
+      g.gain.setValueAtTime(0.0001, ctx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.35, ctx.currentTime + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.5);
+      o.connect(g); g.connect(ctx.destination);
+      o.start(); o.stop(ctx.currentTime + 0.52);
+      if(navigator.vibrate) navigator.vibrate(120);
+    }catch(e){}
+  }
+
+  var TON_SCHLUESSEL = 'omoteno-master-ton';
+  var tonAn = true;
+  try{ tonAn = localStorage.getItem(TON_SCHLUESSEL) !== 'aus'; }catch(e){}
+  function tonKnopfZeichnen(){
+    var btn = $('tonBtn'); if(!btn) return;
+    btn.setAttribute('aria-pressed', tonAn ? 'true' : 'false');
+    btn.title = tonAn ? 'Ton bei neuer Anfrage — an' : 'Ton bei neuer Anfrage — aus';
+    var strich = $('tonBtnAus'); if(strich) strich.style.opacity = tonAn ? '0' : '1';
   }
 
   function meldung(text, ok){
@@ -1837,6 +1873,7 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
         if(p.eventType === 'INSERT'){
           var b = p.new && p.new.betrieb ? p.new.betrieb : 'Neue Anfrage';
           toast('Neue Anfrage: ' + b, 'ok');
+          if(tonAn) piep();
         }
         ladeAllesGedrosselt();
       })
@@ -2008,6 +2045,13 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
     $('refreshBtn').addEventListener('click', function(){ toast('Aktualisiere…'); ladeAlles(); });
     $('addBtn').addEventListener('click', function(){ oeffneUmsatzSheet(null); });
     $('menuBtn').addEventListener('click', zeigeDiagnose);
+    tonKnopfZeichnen();
+    $('tonBtn').addEventListener('click', function(){
+      tonAn = !tonAn;
+      try{ localStorage.setItem(TON_SCHLUESSEL, tonAn ? 'an' : 'aus'); }catch(e){}
+      tonKnopfZeichnen();
+      if(tonAn) piep();
+    });
 
     $('zeitraum').addEventListener('click', function(e){
       var b = e.target.closest('button[data-range]'); if(!b) return;
