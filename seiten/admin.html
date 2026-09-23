@@ -2068,6 +2068,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   <div class="navleiste">
   <nav role="tablist">
     <button role="tab" aria-selected="true"  data-tafel="bestellungen">Bestellungen</button>
+    <button role="tab" aria-selected="false" data-tafel="lieferungen">
+      Lieferungen<span class="zahl" id="lieferZahl" hidden>0</span></button>
     <button role="tab" aria-selected="false" data-tafel="speisekarte">Speisekarte</button>
     <button role="tab" aria-selected="false" data-tafel="reservierungen">
       Reservierungen<span class="zahl" id="resZahl" hidden>0</span></button>
@@ -2091,6 +2093,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 </nav>
 
 <div class="mehrfach" id="mehrfach" hidden>
+  <button type="button" data-tafel="lieferungen" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 11V4.6a1.6 1.6 0 0 1 3.2 0V11"/><path d="M12.2 10.4V3.8a1.6 1.6 0 0 1 3.2 0v7.8"/><path d="M15.4 11.6V6.6a1.6 1.6 0 0 1 3.2 0v7.6a6.4 6.4 0 0 1-6.4 6.4h-1a5.2 5.2 0 0 1-4.4-2.4L4 14.4a1.7 1.7 0 0 1 2.7-2l2.3 2.6"/></svg><span class="zahl" id="lieferZahlUnten" hidden>0</span><span>Lieferungen</span></button>
   <button type="button" data-tafel="ausgabe" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4z"/><path d="M4 11h16M9 7V4h6v3"/></svg><span>Ausgabe</span></button>
   <button type="button" data-tafel="verfuegbar" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17l9-10"/></svg><span>Verfügbar</span></button>
   <button type="button" data-tafel="startseite" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="7" rx="2"/><rect x="3.5" y="14" width="7.5" height="5.5" rx="2"/><rect x="13" y="14" width="7.5" height="5.5" rx="2"/></svg><span>Startseite</span></button>
@@ -5387,6 +5390,18 @@ function zeichneBoard(){
     if(el) el.textContent = n;
   });
 
+  /* Zwei Anzeigen, ein Wert — dasselbe Muster wie resZahl/resZahlUnten
+     bei den Reservierungen: oben im Reiter, unten in der Befehlsleiste,
+     beide bei jedem Board-Aufbau neu gesetzt statt nur beim Öffnen des
+     Reiters, damit die Zahl auch bei geschlossenem "Lieferungen" sagt,
+     ob dort gerade etwas wartet. */
+  const lieferOffen = bestellungen.filter(b => b.quelle === "lieferung" && b.status === "neu").length;
+  [$("#lieferZahl"), $("#lieferZahlUnten")].forEach(z => {
+    if(!z) return;
+    z.hidden = lieferOffen === 0;
+    z.textContent = lieferOffen;
+  });
+
   const alle = gefiltert();
   const liste = alle.slice(0, KARTEN_MAX);
   const versteckt = alle.length - liste.length;
@@ -6149,14 +6164,23 @@ try{ window.matchMedia("(max-width:760px)").addEventListener("change", filterHoe
 catch(e){ /* aeltere Browser: dann bleibt der Startwert */ }
 window.addEventListener("orientationchange", filterHoeheMessen);
 
+/* "Lieferungen" ist kein eigener Reiter mit eigener Kartenliste —
+   dieselbe Fläche wie "Bestellungen" (#karten, gefiltert(),
+   zeichneBoard()), nur mit vorgesetztem Quelle-Filter. Das
+   Bestellungen-Board kennt "nur Lieferung zeigen" ohnehin schon als
+   Filter-Kästchen (#quellenFilter); ein zweiter Weg, dieselben Karten
+   zu zeigen, hätte zwei Stellen geschaffen, die auseinanderlaufen
+   können (CLAUDE.md §1.1a) — derselbe Grundsatz, der rabattZeile()
+   schon von einem eigenen "Rechnungen"-Reiter abgehalten hat. */
 function tafelZeigen(ziel){
+  const tafelId = ziel === "lieferungen" ? "bestellungen" : ziel;
   $$("[data-tafel]").forEach(x => x.setAttribute("aria-selected", x.dataset.tafel === ziel));
-  $$(".tafel").forEach(t => t.hidden = t.id !== "t-" + ziel);
+  $$(".tafel").forEach(t => t.hidden = t.id !== "t-" + tafelId);
   leistePilleBewegen();
 
   /* Erst jetzt ist der Block gezeichnet — vorher war er in einem
      versteckten Vorfahren und 0 px hoch. */
-  if(ziel === "bestellungen") filterHoeheMessen();
+  if(tafelId === "bestellungen") filterHoeheMessen();
 
   /* Angetippten Reiter ins Bild schieben. Ohne das bliebe „Einstellungen"
      am rechten Rand halb verdeckt, obwohl er gerade aktiv ist. */
@@ -6170,6 +6194,12 @@ function tafelZeigen(ziel){
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
   if(ziel === "auswertung")      awLaden();
+  /* Wer über "Lieferungen" hereinkommt, sieht nur Lieferungen; wer
+     regulär auf "Bestellungen" tippt, sieht wieder alle Quellen —
+     sonst bliebe ein Tischgast unsichtbar, weil vorhin jemand den
+     Lieferungen-Reiter verlassen hat. */
+  if(ziel === "lieferungen" || ziel === "bestellungen")
+    lieferungenFilterAnwenden(ziel === "lieferungen");
 }
 $$("[data-tafel]").forEach(k => k.onclick = () => tafelZeigen(k.dataset.tafel));
 
@@ -7601,6 +7631,17 @@ $("#quellenFilter").onclick = e => {
   c.setAttribute("aria-pressed", zeigeQuelle[c.dataset.quelle]);
   zeichneBoard(); zeichneAusgabe();
 };
+
+/* Setzt/löst den Quelle-Filter, den der Lieferungen-Reiter benutzt —
+   siehe Kommentar bei tafelZeigen(). Dieselben Kästchen, derselbe
+   Zustand (zeigeQuelle), nur von Code statt von einem Klick gesetzt. */
+function lieferungenFilterAnwenden(nurLieferung){
+  ["tisch","telefon","service"].forEach(q => zeigeQuelle[q] = !nurLieferung);
+  zeigeQuelle.lieferung = true;
+  $$("#quellenFilter .chip").forEach(c =>
+    c.setAttribute("aria-pressed", String(zeigeQuelle[c.dataset.quelle])));
+  zeichneBoard(); zeichneAusgabe();
+}
 $("#statusFilter").onclick = e => {
   const c = e.target.closest(".chip"); if(!c) return;
   zeigeStatus[c.dataset.status] = !zeigeStatus[c.dataset.status];

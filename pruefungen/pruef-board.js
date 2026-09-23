@@ -212,7 +212,12 @@ function quellenAbgleich(){
       await seite.evaluate(z => tafelZeigen(z), t);
       await seite.waitForTimeout(350);
       const stand = await seite.evaluate(z => {
-        const el = document.getElementById("t-" + z);
+        /* "lieferungen" ist bewusst kein eigenes Panel (siehe
+           tafelZeigen()) — dieselbe Fläche wie "bestellungen", nur
+           mit vorgesetztem Filter. Ein #t-lieferungen zu erwarten
+           wäre also der falsche Test, nicht ein fehlendes Panel. */
+        const echtesZiel = z === "lieferungen" ? "bestellungen" : z;
+        const el = document.getElementById("t-" + echtesZiel);
         if(!el) return { da:false };
         return { da:true, sichtbar: !el.hidden,
                  zeichen: (el.textContent || "").trim().length,
@@ -222,6 +227,50 @@ function quellenAbgleich(){
         "„" + t + "“ ist gefüllt",
         stand.da ? stand.zeichen + " Zeichen, " + stand.knoepfe + " Bedienelemente" : "fehlt");
     }
+
+    /* ── 1b · "Lieferungen" ist derselbe Ort, nur gefiltert ──
+       CLAUDE.md §1.1a: kein zweiter Code-Pfad für denselben Vorgang.
+       Zwei Testbestellungen (Tisch, Lieferung) zeigen, dass der
+       Reiter wirklich filtert und die Rückkehr zu "Bestellungen"
+       den Filter wieder öffnet — nicht nur, dass beide Reiter
+       irgendeinen Text zeigen. */
+    await seite.evaluate(() => {
+      bestellungen.length = 0;
+      bestellungen.push(
+        { id:"probe-tisch", quelle:"tisch", status:"neu", tisch:"4",
+          zeitpunkt:new Date().toISOString(), summe:12,
+          positionen:[{name:"Probe", menge:1, preis:12}] },
+        { id:"probe-liefer", quelle:"lieferung", status:"neu",
+          zeitpunkt:new Date().toISOString(), summe:20,
+          adresse:{ name:"Weber", strasse:"Bahnhofstr. 1", plz:"35037", ort:"Kirchhain" },
+          positionen:[{name:"Probe", menge:1, preis:20}] });
+      zeichneAlles();
+    });
+    await seite.waitForTimeout(300);
+
+    await seite.evaluate(() => tafelZeigen("lieferungen"));
+    await seite.waitForTimeout(300);
+    const imLieferReiter = await seite.evaluate(() => ({
+      panelId: document.querySelector(".tafel:not([hidden])").id,
+      quellen: [...document.querySelectorAll("#karten [data-quelle]")]
+        .map(k => k.dataset.quelle),
+      badge: (document.getElementById("lieferZahl") || {}).textContent
+    }));
+    pruef(imLieferReiter.panelId === "t-bestellungen",
+      "„Lieferungen“ zeigt dieselbe Fläche wie „Bestellungen“, keine zweite");
+    pruef(imLieferReiter.quellen.length === 1 && imLieferReiter.quellen[0] === "lieferung",
+      "im Lieferungen-Reiter steht nur die Lieferung, der Tisch ist herausgefiltert",
+      imLieferReiter.quellen.join(",") || "leer");
+    pruef(imLieferReiter.badge === "1",
+      "die Anzahl offener Lieferungen steht im Reiter", imLieferReiter.badge);
+
+    await seite.evaluate(() => tafelZeigen("bestellungen"));
+    await seite.waitForTimeout(300);
+    const zurueck = await seite.evaluate(() =>
+      [...document.querySelectorAll("#karten [data-quelle]")].map(k => k.dataset.quelle).sort());
+    pruef(zurueck.length === 2 && zurueck.join(",") === "lieferung,tisch",
+      "„Bestellungen“ zeigt danach wieder alle Quellen, der Filter bleibt nicht hängen",
+      zurueck.join(",") || "leer");
 
     /* ── 2 · Wege im Alltag ── */
     await seite.evaluate(() => tafelZeigen("bestellungen"));
