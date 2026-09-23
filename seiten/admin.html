@@ -1321,21 +1321,57 @@ textarea{resize:vertical;min-height:66px}
 .kbwahl button[aria-pressed=true]{
   border-color:var(--messing);background:rgba(201,162,39,.16);color:var(--messing)}
 
-/* Figur/Stimmung/Requisite: dieselbe .kbwahl-Fläche (flex-wrap+Lücke),
-   aber Wörter statt Symbole — deshalb eigene Knopfform statt der
-   40×40-Quadrate oben, sonst bräche der Text um oder liefe über. */
-.avwahl{
-  min-height:44px;padding:9px 14px;border-radius:999px;
-  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);
-  font:inherit;font-size:13.5px;cursor:pointer;
-  transition:border-color var(--t-klein) var(--ease-out),
-             color var(--t-klein) var(--ease-out),
-             background var(--t-klein) var(--ease-out);
+/* Figur/Stimmung/Requisite: ein rollbares Rad statt umbrechender
+   Pillen — CLAUDE.md-Vorfall/Anfrage: "wie ein Zahnrad rollbar,
+   Charakter-Editor". Dieselbe Scroll-Snap-Technik wie die
+   Abend-Stufenleiste der Landingpage (omoteno-web.html .abend-stufen/
+   .stufe) — wiederverwendet, nicht neu erfunden. `padding-inline`
+   lässt auch das erste/letzte Stück bis zur Mitte rollen (sonst
+   könnte man den Rand nie zentrieren). */
+.avgruppe{margin-top:20px}
+.avgruppe:first-child{margin-top:2px}
+.avgtitel{font-size:13.5px;font-weight:600;color:var(--kreide);margin:0 0 4px}
+.avrad{position:relative;margin-top:8px}
+.avspur{
+  display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;
+  scroll-snap-type:x mandatory;scrollbar-width:none;-webkit-overflow-scrolling:touch;
+  padding-block:6px;padding-inline:calc(50% - 38px);outline:none;
 }
-.avwahl[aria-pressed=true]{
-  border-color:var(--messing);background:rgba(201,162,39,.16);
-  color:var(--messing);font-weight:600;
+.avspur::-webkit-scrollbar{display:none}
+.avspur:focus-visible{box-shadow:inset 0 0 0 2px var(--messing);border-radius:14px}
+.avstueck{
+  flex:0 0 76px;scroll-snap-align:center;
+  display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  min-height:88px;padding:10px 6px;border-radius:14px;
+  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--gedaempft);
+  font:inherit;cursor:pointer;transform:scale(.86);opacity:.55;
+  transition:transform var(--t-blatt) var(--ease-blatt),opacity var(--t-blatt) var(--ease-blatt),
+             border-color var(--t-klein) var(--ease-out),background var(--t-klein) var(--ease-out),
+             color var(--t-klein) var(--ease-out);
 }
+.avstueck svg{width:28px;height:28px;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.avstueck span{font-size:11px;line-height:1.15;text-align:center;max-width:68px}
+.avstueck.aktiv{
+  transform:scale(1);opacity:1;border-color:var(--messing);
+  background:rgba(201,162,39,.16);color:var(--messing);font-weight:600;
+}
+@media (prefers-reduced-motion:reduce){ .avstueck{transition:none} }
+
+/* Die Kombination aus allen drei Rädern in Worten, auf einen Blick —
+   das "Charakter-Editor"-Gefühl: nicht nur EIN Rad zeigt seine Wahl
+   groß, sondern die ganze Figur steht als Satz obendrüber. Zieht bei
+   jeder Radbewegung sofort nach (avVorschauZeichnen()), ohne dass
+   die Räder selbst neu gezeichnet werden. */
+.avvorschau{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  padding:12px 14px;border-radius:12px;margin-bottom:16px;
+  background:var(--flaeche-2);border:1px solid var(--linie);
+  font-size:13px;color:var(--kreide);
+}
+.avvorschau b{color:var(--messing)}
+.avvorschau svg{width:20px;height:20px;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
 .hfeld{display:flex;flex-direction:column;gap:8px;margin-top:14px}
 .hfeld:first-child{margin-top:2px}
 .hbez{font-size:12.5px;color:var(--gedaempft);letter-spacing:.02em}
@@ -7033,6 +7069,37 @@ const AV_PHASEN = [
   {s:"fertig", name:"Fertig",              vorgabe:"teller"}
 ];
 
+/* Kleine Vorschau-Symbole fürs Rad — NICHT der geteilte ICONS-Block
+   (CLAUDE.md §1.1: erst nachgesehen, dann benannt — ICONS ist
+   wortgleich in hub.vorlage.html/marken-studio.html/admin.html und
+   wird von pruef-kacheln.js verglichen; neue Einträge dort bräuchten
+   dieselbe Änderung an drei Stellen für eine Vorschau, die nur hier
+   gebraucht wird). Acht Schlüssel decken sich zufällig mit ICONS und
+   werden von dort übernommen (keine zweite Zeichnung derselben Form);
+   der Rest ist admin-eigen, im selben Strich-Stil (viewBox 0 0 24 24,
+   fill:none, stroke-width 1.7, runde Enden, Punkte gefüllt). */
+const AV_ICONS = Object.assign({
+  zettel:'<svg viewBox="0 0 24 24"><path d="M6 3.4h12v15.2l-1.8-1.3-1.8 1.3-1.8-1.3-1.8 1.3-1.8-1.3-1.8 1.3-1.8-1.3z"/><path d="M9 7.6h6M9 11h6M9 14.4h3.6"/></svg>',
+  pancakes:'<svg viewBox="0 0 24 24"><ellipse cx="12" cy="16.4" rx="7.6" ry="1.8"/><ellipse cx="12" cy="13" rx="6.8" ry="1.7"/><ellipse cx="12" cy="9.8" rx="6" ry="1.6"/><rect x="10.4" y="6.6" width="3.2" height="2.2" rx="0.6"/><path d="M15.4 7.4c1 .6 1.6 1.6 1.6 2.8"/></svg>',
+  pfanne:'<svg viewBox="0 0 24 24"><circle cx="10.4" cy="13.6" r="6.6"/><circle cx="10.4" cy="13.6" r="3"/><path d="M16.4 11.6 21.6 9.4"/></svg>',
+  schale:'<svg viewBox="0 0 24 24"><path d="M3.6 11.4c0 4.6 3.8 7.4 8.4 7.4s8.4-2.8 8.4-7.4"/><ellipse cx="12" cy="11.4" rx="8.4" ry="2.4"/></svg>',
+  tuete:'<svg viewBox="0 0 24 24"><path d="M5.6 8.4h12.8l-1 11a2 2 0 0 1-2 1.8H8.6a2 2 0 0 1-2-1.8z"/><path d="M8.4 8.4V6a3.6 3.6 0 0 1 7.2 0v2.4"/></svg>',
+  erdbeere:'<svg viewBox="0 0 24 24"><path d="M12 8.2c4.2 0 6.6 3.4 5.4 8-.9 3.4-3.2 5.2-5.4 5.2s-4.5-1.8-5.4-5.2c-1.2-4.6 1.2-8 5.4-8z"/><path d="M12 8.2 9.6 4.6M12 8.2l1-4M12 8.2l2.6-3"/><circle cx="9.6" cy="12.4" r=".5" fill="currentColor" stroke="none"/><circle cx="13.6" cy="12" r=".5" fill="currentColor" stroke="none"/><circle cx="11.4" cy="16" r=".5" fill="currentColor" stroke="none"/><circle cx="14.4" cy="16.4" r=".5" fill="currentColor" stroke="none"/></svg>',
+  kaffeebohne:'<svg viewBox="0 0 24 24"><path d="M12 3.6c4.6 0 8.4 3.8 8.4 8.4s-3.8 8.4-8.4 8.4-8.4-3.8-8.4-8.4S7.4 3.6 12 3.6z"/><path d="M12 4.2c-2.6 3-2.6 12.6 0 15.6"/></svg>',
+  burger:'<svg viewBox="0 0 24 24"><path d="M4 9.4c0-3.4 3.6-5.8 8-5.8s8 2.4 8 5.8"/><path d="M3.4 12.4h17.2M3.4 15.4h17.2"/><path d="M4.4 18.4c0 1.4 1.6 2.2 7.6 2.2s7.6-.8 7.6-2.2"/></svg>',
+  brezel:'<svg viewBox="0 0 24 24"><path d="M6 5.6c-3 2-3 6 .4 7.4L15 17c3 1.4 5.6-1 4.6-3.6-.8-2-3.4-2.2-5-.8L8 17.4c-2 1.6-4.6-.4-3.6-2.8"/></svg>',
+  pizzaecke:'<svg viewBox="0 0 24 24"><path d="M12 3.4 20.6 20h-17.2z"/><path d="M4.6 18.6a16 16 0 0 1 14.8 0"/><circle cx="11" cy="11.6" r="1" fill="currentColor" stroke="none"/><circle cx="14.2" cy="14.6" r="1" fill="currentColor" stroke="none"/></svg>',
+  sushi:'<svg viewBox="0 0 24 24"><rect x="4" y="12.6" width="16" height="6.4" rx="2.6"/><path d="M4 15.4h16"/><ellipse cx="12" cy="10.4" rx="5.2" ry="3.2"/></svg>',
+  traube:'<svg viewBox="0 0 24 24"><path d="M12 3.4V6.4"/><circle cx="10" cy="8.4" r="1.6" fill="currentColor" stroke="none"/><circle cx="14" cy="8.4" r="1.6" fill="currentColor" stroke="none"/><circle cx="8" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="16" cy="12" r="1.6" fill="currentColor" stroke="none"/><circle cx="10" cy="15.6" r="1.6" fill="currentColor" stroke="none"/><circle cx="14" cy="15.6" r="1.6" fill="currentColor" stroke="none"/><circle cx="12" cy="19.2" r="1.6" fill="currentColor" stroke="none"/></svg>',
+  eiswaffel:'<svg viewBox="0 0 24 24"><path d="M8.4 11.6 12 20.6l3.6-9"/><path d="M9.2 13.6h5.6M9.9 15.6h4.2M10.6 17.6h2.8"/><path d="M6.4 11.6a5.6 5.6 0 0 1 11.2 0c0 1.8-2.5 3.2-5.6 3.2s-5.6-1.4-5.6-3.2z"/></svg>',
+  freundlich:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><circle cx="9" cy="10.4" r="1" fill="currentColor" stroke="none"/><circle cx="15" cy="10.4" r="1" fill="currentColor" stroke="none"/><path d="M8.4 14.2a4.4 4.4 0 0 0 7.2 0"/></svg>',
+  ruhig:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M7.6 10.4h3M13.4 10.4h3"/><path d="M8.6 15h6.8"/></svg>',
+  witzig:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.4"/><path d="M7.6 10.4h3"/><circle cx="15" cy="10.4" r="1" fill="currentColor" stroke="none"/><path d="M8 14.4c1.2 1.8 6.4 1.8 7.6-.4"/></svg>'
+}, {
+  teller:ICONS.teller, tasse:ICONS.tasse, flasche:ICONS.flasche, becher:ICONS.becher,
+  glocke:ICONS.glocke, glas:ICONS.glas, eis:ICONS.eis, platte:ICONS.platte
+});
+
 let AVATARSTAND = null;
 
 /* Aus der Datenbank in den Stand — mit dem MARKENBLATT als Grundlage,
@@ -7068,77 +7135,117 @@ function avStandLaden(){
   avZeichnen();
 }
 
-/* ── Zeichnen: drei eingeklappte Karten, nach dem Muster von
-   .kbklapp/.kbsymknopf (derselbe Baustein wie bei der Symbolwahl der
-   Kacheln, oben) ─────────────────────────────────────────────────── */
-function avKarte(id, titel, hilfe, stand, innen){
-  return '<div class="kbzeile">' +
-    '<button type="button" class="kbsymknopf" data-av-auf="' + id + '" ' +
-      'aria-expanded="false" aria-controls="avklapp-' + id + '">' +
-      '<span>' + sicher(titel) + (stand ? ' — ' + sicher(stand) : "") + '</span>' +
-      '<svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">' +
-      '<path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
-    '</button>' +
-    (hilfe ? '<p class="ehilfe" style="margin:2px 0 0">' + sicher(hilfe) + '</p>' : "") +
-    '<div class="kbklapp" id="avklapp-' + id + '"><div>' + innen + '</div></div>' +
-  '</div>';
+/* ── Zeichnen: ein rollbares Rad je Wahl, alle gleichzeitig offen
+   (kein Akkordeon mehr — ein Charakter-Editor zeigt seine Regler auf
+   einmal, nicht eingeklappt). Scroll-Snap zentriert das gewählte
+   Stück; welches gerade in der Mitte steht, meldet ein
+   IntersectionObserver je Rad (avRadVerdrahten()), NICHT ein
+   Scroll-Listener mit Neuzeichnen — während einer Wischgeste wird
+   nichts neu aufgebaut (CLAUDE.md/bewegung §4.2), nur die .aktiv-
+   Klasse wandert und AVATARSTAND wird geschrieben. ────────────────── */
+function avStueck(gruppe, s, name){
+  return '<button type="button" class="avstueck" data-av-wahl="' + gruppe + '" ' +
+    'data-av-wert="' + sicher(s) + '" role="option" tabindex="-1">' +
+    (AV_ICONS[s] || "") + '<span>' + sicher(name) + '</span></button>';
 }
 
-function avWahlReihe(gruppe, liste, aktiv){
-  return '<div class="kbwahl">' + liste.map(e =>
-    '<button type="button" class="avwahl" data-av-wahl="' + gruppe + '" data-av-wert="' + sicher(e.s) + '" ' +
-    'aria-pressed="' + (e.s === aktiv ? "true" : "false") + '">' + sicher(e.name) + '</button>'
-  ).join("") + '</div>';
+function avRad(gruppe, liste, ariaLabel){
+  return '<div class="avrad"><div class="avspur" id="avspur-' + gruppe + '" ' +
+    'role="listbox" tabindex="0" aria-label="' + sicher(ariaLabel) + '">' +
+    liste.map(e => avStueck(gruppe, e.s, e.name)).join("") +
+  '</div></div>';
+}
+
+/* Die Kombination in Worten — zieht bei jeder Radbewegung sofort nach
+   (avVorschauZeichnen()), ohne die Räder selbst neu zu zeichnen. */
+function avVorschauZeichnen(){
+  const feld = $("#avVorschau"); if(!feld || !AVATARSTAND) return;
+  const figurName = (AV_FIGUREN.find(f => f.s === AVATARSTAND.figur) || {}).name || AVATARSTAND.figur;
+  const zugName   = (AV_ZUEGE.find(z => z.s === AVATARSTAND.art) || {}).name || AVATARSTAND.art;
+  const haende = AV_PHASEN.map(p => {
+    const dingName = (AV_REQUISITEN.find(r => r.s === AVATARSTAND.haende[p.s]) || {}).name || "";
+    return (AV_ICONS[AVATARSTAND.haende[p.s]] || "") + '<span>' + sicher(dingName) + '</span>';
+  }).join('<span style="opacity:.4;margin:0 2px">·</span>');
+  feld.innerHTML =
+    (AV_ICONS[AVATARSTAND.figur] || "") + '<b>' + sicher(figurName) + '</b>' +
+    '<span style="opacity:.6">' + sicher(zugName) + '</span>' +
+    '<span style="opacity:.4">—</span>' + haende;
 }
 
 function avZeichnen(){
   const feld = $("#avListe"); if(!feld || !AVATARSTAND) return;
-  const figurName = (AV_FIGUREN.find(f => f.s === AVATARSTAND.figur) || {}).name || AVATARSTAND.figur;
-  const zugName   = (AV_ZUEGE.find(z => z.s === AVATARSTAND.art) || {}).name || AVATARSTAND.art;
 
   feld.innerHTML =
-    avKarte("figur", "Wer begleitet", "", figurName,
-      avWahlReihe("figur", AV_FIGUREN, AVATARSTAND.figur)) +
-    avKarte("zug", "Wie sie auftritt",
-      "Ändert Augen, Mund und einen Zug — dieselbe Figur, andere Laune", zugName,
-      avWahlReihe("zug", AV_ZUEGE, AVATARSTAND.art)) +
-    avKarte("haende", "Was sie in der Hand hält",
-      "Je Bestellphase eigen — ein Café zeigt die Tasse, ein Imbiss die Pfanne", "",
-      AV_PHASEN.map(p => {
-        const dingName = (AV_REQUISITEN.find(r => r.s === AVATARSTAND.haende[p.s]) || {}).name || "";
-        return '<div class="hfeld"><span class="hbez">' + sicher(p.name) +
-          (dingName ? ' — ' + sicher(dingName) : "") + '</span>' +
-          avWahlReihe("hand-" + p.s, AV_REQUISITEN, AVATARSTAND.haende[p.s]) + '</div>';
-      }).join(""));
+    '<div class="avvorschau" id="avVorschau"></div>' +
+    '<div class="avgruppe"><h3 class="avgtitel">Wer begleitet</h3>' +
+      avRad("figur", AV_FIGUREN, "Figur wählen") + '</div>' +
+    '<div class="avgruppe"><h3 class="avgtitel">Wie sie auftritt</h3>' +
+      '<p class="ehilfe" style="margin:0 0 2px">Ändert Augen, Mund und einen Zug — dieselbe Figur, andere Laune</p>' +
+      avRad("zug", AV_ZUEGE, "Stimmung wählen") + '</div>' +
+    '<div class="avgruppe"><h3 class="avgtitel">Was sie in der Hand hält</h3>' +
+      '<p class="ehilfe" style="margin:0 0 2px">Je Bestellphase eigen — ein Café zeigt die Tasse, ein Imbiss die Pfanne</p>' +
+      AV_PHASEN.map(p =>
+        '<div class="hfeld"><span class="hbez">' + sicher(p.name) + '</span>' +
+        avRad("hand-" + p.s, AV_REQUISITEN, p.name + " — Requisite wählen") + '</div>'
+      ).join("") + '</div>';
+
+  avVorschauZeichnen();
+  $$(".avspur").forEach(avRadVerdrahten);
+}
+
+/* Ein Rad einrichten: aktives Stück markieren, ohne Sprung mittig
+   scrollen, dann per IntersectionObserver auf die Mitte horchen. */
+function avRadVerdrahten(spur){
+  const gruppe = spur.id.slice(7); /* "avspur-" ist 7 Zeichen lang */
+  const wertVon = () => gruppe === "figur" ? AVATARSTAND.figur
+    : gruppe === "zug" ? AVATARSTAND.art
+    : AVATARSTAND.haende[gruppe.slice(5)];
+  const stuecke = [...spur.querySelectorAll(".avstueck")];
+  const reduziert = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  function aktivSetzen(stueck, schreiben){
+    stuecke.forEach(s => { s.classList.remove("aktiv"); s.setAttribute("aria-selected", "false"); s.tabIndex = -1; });
+    stueck.classList.add("aktiv"); stueck.setAttribute("aria-selected", "true"); stueck.tabIndex = 0;
+    if(schreiben && AVATARSTAND){
+      const wert = stueck.dataset.avWert;
+      if(gruppe === "figur") AVATARSTAND.figur = wert;
+      else if(gruppe === "zug") AVATARSTAND.art = wert;
+      else if(gruppe.indexOf("hand-") === 0) AVATARSTAND.haende[gruppe.slice(5)] = wert;
+      avVorschauZeichnen();
+    }
+  }
+
+  const start = stuecke.find(s => s.dataset.avWert === wertVon()) || stuecke[0];
+  if(start){
+    aktivSetzen(start, false);
+    start.scrollIntoView({ inline:"center", block:"nearest", behavior:"auto" });
+  }
+
+  const beob = new IntersectionObserver(eintraege => {
+    let bester = null;
+    eintraege.forEach(e => { if(e.isIntersecting && (!bester || e.intersectionRatio > bester.intersectionRatio)) bester = e; });
+    if(bester) aktivSetzen(bester.target, true);
+  }, { root: spur, rootMargin: "0px -35% 0px -35%", threshold: [0, .25, .5, .75, 1] });
+  stuecke.forEach(s => beob.observe(s));
+
+  spur.addEventListener("keydown", e => {
+    if(e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
+    e.preventDefault();
+    const jetzt = stuecke.findIndex(s => s.classList.contains("aktiv"));
+    let ziel = jetzt;
+    if(e.key === "ArrowRight") ziel = Math.min(stuecke.length - 1, jetzt + 1);
+    else if(e.key === "ArrowLeft") ziel = Math.max(0, jetzt - 1);
+    else if(e.key === "Home") ziel = 0;
+    else if(e.key === "End") ziel = stuecke.length - 1;
+    stuecke[ziel].scrollIntoView({ inline:"center", block:"nearest", behavior: reduziert ? "auto" : "smooth" });
+  });
 }
 
 document.addEventListener("click", e => {
-  const auf = e.target.closest && e.target.closest("[data-av-auf]");
-  if(auf){
-    const offen = auf.getAttribute("aria-expanded") === "true";
-    auf.setAttribute("aria-expanded", String(!offen));
-    const klapp = document.getElementById(auf.getAttribute("aria-controls"));
-    if(klapp) klapp.classList.toggle("offen", !offen);
-    return;
-  }
-  const wahl = e.target.closest && e.target.closest("[data-av-wahl]");
-  if(wahl && AVATARSTAND){
-    const gruppe = wahl.dataset.avWahl, wert = wahl.dataset.avWert;
-    if(gruppe === "figur") AVATARSTAND.figur = wert;
-    else if(gruppe === "zug") AVATARSTAND.art = wert;
-    else if(gruppe.indexOf("hand-") === 0) AVATARSTAND.haende[gruppe.slice(5)] = wert;
-    /* Ganz neu zeichnen statt nur das Häkchen zu verschieben: Kopfzeile
-       einer Karte (z. B. "Wer begleitet — Erdbeere") und die
-       aufgeklappten Karten selbst müssen den neuen Stand zeigen —
-       dieselbe Lehre wie bei kbAendern() oben. */
-    const offeneIds = $$(".kbklapp.offen").map(k => k.id);
-    avZeichnen();
-    offeneIds.forEach(id => {
-      const klapp = document.getElementById(id);
-      const knopf = document.querySelector('[aria-controls="' + id + '"]');
-      if(klapp) klapp.classList.add("offen");
-      if(knopf) knopf.setAttribute("aria-expanded", "true");
-    });
+  const stueck = e.target.closest && e.target.closest(".avstueck");
+  if(stueck){
+    const reduziert = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    stueck.scrollIntoView({ inline:"center", block:"nearest", behavior: reduziert ? "auto" : "smooth" });
   }
 });
 

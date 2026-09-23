@@ -145,8 +145,12 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
       falsch.map(r => r.s + ": " + r.name + " ≠ " + requisitenQuelle[r.s].name).join(", ") || "alle gleich");
   }
 
-  /* ── Bedienung im Board ─────────────────────────────────────────── */
-  console.log("\n══ Bedienung: drei Karten, Klappverhalten, Auswahl ══");
+  /* ── Bedienung im Board: das Rad ──────────────────────────────────
+     Kein Akkordeon mehr (CLAUDE.md-Vorfall/Anfrage "wie ein Zahnrad
+     rollbar, Charakter-Editor") — alle Räder stehen gleichzeitig
+     offen, Scroll-Snap zentriert die Wahl, ein IntersectionObserver
+     je Rad meldet, welches Stück in der Mitte steht. */
+  console.log("\n══ Bedienung: Räder, Zentrieren, Auswahl, Vorschau ══");
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 420, height: 900 } });
   const seite = await ctx.newPage();
@@ -166,17 +170,17 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
   await seite.evaluate(() => document.querySelector('[data-tafel="einstellungen"]').click());
   await seite.waitForTimeout(400);
 
-  const anzahl = await seite.evaluate(() => document.querySelectorAll("#avListe [data-av-auf]").length);
-  pruef(anzahl === 3, "drei Karten stehen im Board (Figur, Stimmung, Hände)", anzahl + "");
+  const gruppen = await seite.evaluate(() => document.querySelectorAll("#avListe .avgruppe").length);
+  pruef(gruppen === 3, "drei Gruppen stehen im Board (Figur, Stimmung, Hände)", gruppen + "");
 
-  const zuKlappen = await seite.evaluate(() => [...document.querySelectorAll(".egruppe #avListe .kbklapp")]
-    .every(k => !k.classList.contains("offen")));
-  pruef(zuKlappen, "alle drei Karten starten eingeklappt");
+  const raeder = await seite.evaluate(() => document.querySelectorAll("#avListe .avspur").length);
+  pruef(raeder === 5, "fünf Räder (Figur, Stimmung, drei Phasen der Hände)", raeder + "");
 
-  await seite.click('[data-av-auf="figur"]');
-  await seite.waitForTimeout(250);
-  const offenNachKlick = await seite.evaluate(() => document.getElementById("avklapp-figur").classList.contains("offen"));
-  pruef(offenNachKlick, "Karte klappt bei Klick auf");
+  const jeEinsAktiv = await seite.evaluate(() =>
+    [...document.querySelectorAll("#avListe .avspur")].every(s =>
+      s.querySelectorAll(".avstueck.aktiv").length === 1));
+  pruef(jeEinsAktiv, "jedes Rad startet mit genau einem zentrierten Stück");
+
   const figurKnoepfe = await seite.evaluate(() => document.querySelectorAll('[data-av-wahl="figur"]').length);
   pruef(figurKnoepfe === 9, "neun Figuren stehen zur Wahl", figurKnoepfe + "");
   const tapHoehe = await seite.evaluate(() => {
@@ -186,19 +190,61 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
   pruef(tapHoehe >= 44, "Tapfläche ist mindestens 44px hoch", tapHoehe + "px");
 
   await seite.click('[data-av-wahl="figur"][data-av-wert="sushi"]');
-  await seite.waitForTimeout(250);
-  const pressed = await seite.evaluate(() =>
-    document.querySelector('[data-av-wahl="figur"][data-av-wert="sushi"]').getAttribute("aria-pressed"));
-  pruef(pressed === "true", "Auswahl markiert sich selbst (aria-pressed)");
-  const kopfzeile = await seite.evaluate(() => document.querySelector('[data-av-auf="figur"] span').textContent);
-  pruef(/Sushi/.test(kopfzeile), "die Kopfzeile der Karte zeigt die neue Wahl sofort", kopfzeile);
-  const bleibtOffen = await seite.evaluate(() => document.getElementById("avklapp-figur").classList.contains("offen"));
-  pruef(bleibtOffen, "die Karte bleibt nach der Auswahl offen (kein Zuklappen unter dem Finger)");
+  await seite.waitForTimeout(600); /* Smooth-Scroll + Observer brauchen etwas Zeit */
+  const gewaehlt = await seite.evaluate(() => {
+    const b = document.querySelector('[data-av-wahl="figur"][data-av-wert="sushi"]');
+    return { aktiv: b.classList.contains("aktiv"), aria: b.getAttribute("aria-selected"),
+      stand: typeof AVATARSTAND !== "undefined" ? AVATARSTAND.figur : null };
+  });
+  pruef(gewaehlt.aktiv && gewaehlt.aria === "true", "Auswahl markiert sich selbst (.aktiv/aria-selected)");
+  pruef(gewaehlt.stand === "sushi", "und der Stand wird wirklich geschrieben, nicht nur die Optik", gewaehlt.stand);
+  const nurEins = await seite.evaluate(() =>
+    document.querySelectorAll('[data-av-wahl="figur"].aktiv').length);
+  pruef(nurEins === 1, "genau ein Stück ist aktiv, kein zweites bleibt hängen");
+
+  const vorschau = await seite.evaluate(() => document.getElementById("avVorschau").textContent);
+  pruef(/Sushi/.test(vorschau), "die Vorschau oben zeigt die neue Wahl sofort", vorschau.trim());
+
+  /* Tastatur: ArrowRight bewegt das Rad, ohne dass irgendwo Text
+     verschwindet oder sich das Zeichen selbst verdoppelt. */
+  await seite.focus("#avspur-zug");
+  const vorZug = await seite.evaluate(() => AVATARSTAND.art);
+  await seite.keyboard.press("ArrowRight");
+  await seite.waitForTimeout(500);
+  const nachZug = await seite.evaluate(() => AVATARSTAND.art);
+  pruef(nachZug !== vorZug, "Pfeiltaste bewegt das Rad auf ein anderes Stück", vorZug + " → " + nachZug);
 
   await seite.click("#avSichern");
   await seite.waitForTimeout(300);
   const meldung = await seite.evaluate(() => document.getElementById("avPruefung").textContent);
   pruef(/Vorführmodus/.test(meldung), "Demo-Modus meldet ehrlich statt zu behaupten", meldung.trim());
+
+  await ctx.close();
+
+  /* Reduzierte Bewegung: dieselbe Bedienung, ohne Trägheit. */
+  const ctxR = await browser.newContext({ viewport:{ width:420, height:900 }, reducedMotion:"reduce" });
+  const seiteR = await ctxR.newPage();
+  const konsoleR = [];
+  seiteR.on("pageerror", e => konsoleR.push(String(e).slice(0, 300)));
+  await seiteR.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+  await seiteR.goto("file://" + ADMIN);
+  await seiteR.waitForTimeout(700);
+  await seiteR.evaluate(() => {
+    document.getElementById("tor").hidden = true;
+    if (typeof demoStarten === "function") { demoStarten(); zeichneAlles(); }
+  });
+  await seiteR.waitForTimeout(500);
+  const scharfR = await seiteR.$("#scharfJetzt");
+  if (scharfR && await seiteR.isVisible("#scharf")) { await scharfR.click(); await seiteR.waitForTimeout(200); }
+  await seiteR.evaluate(() => document.querySelector('[data-tafel="einstellungen"]').click());
+  await seiteR.waitForTimeout(400);
+  await seiteR.click('[data-av-wahl="figur"][data-av-wert="burger"]');
+  await seiteR.waitForTimeout(300); /* kein "smooth", darf sofort stehen */
+  const sofortAktiv = await seiteR.evaluate(() =>
+    document.querySelector('[data-av-wahl="figur"][data-av-wert="burger"]').classList.contains("aktiv"));
+  pruef(sofortAktiv, "reduzierte Bewegung: die Wahl steht ohne Verzögerung");
+  pruef(konsoleR.length === 0, "keine Ausnahme in der Konsole (reduzierte Bewegung)", konsoleR.join(" | ") || "still");
+  await ctxR.close();
 
   pruef(konsole.length === 0, "keine Ausnahme in der Konsole", konsole.join(" | ") || "still");
   await browser.close();
