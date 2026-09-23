@@ -1,11 +1,15 @@
 -- ═══════════════════════════════════════════════════════════════════
---  NOCH NICHT ANGEWENDET · 'lieferung' in die erlaubten Quellen
+--  BEREITS ANGEWENDET · 'lieferung' in die erlaubten Quellen
 --
 --  ┌───────────────────────────────────────────────────────────────┐
---  │  DIESE DATEI GEHT VOR migration-lieferung.sql.                │
---  │  Ohne sie legt jene Datei bestellung_liefern() an, und der    │
---  │  erste echte Gast scheitert an der Bedingung unten — nach     │
---  │  Adresse, nach Korb, nach allem.                              │
+--  │  Am 2026-09-23 aus dem Katalog bestätigt: die CHECK-Regel      │
+--  │  bestellungen_quelle_check erlaubt 'lieferung' bereits live.   │
+--  │  Die Kopfzeile hier war stehen geblieben, obwohl der Schritt   │
+--  │  längst gelaufen war — siehe migration-lieferung-quelle-fix.sql│
+--  │  für den DANACH gefundenen zweiten Fehler (die Funktion        │
+--  │  bestellung_aufgeben() kannte 'lieferung' trotzdem nicht).     │
+--  │  Diese Datei bleibt idempotent (Zeile 67-70) und richtet bei   │
+--  │  erneutem Ausführen nichts an.                                 │
 --  └───────────────────────────────────────────────────────────────┘
 --
 --  ── WARUM ES DIESE DATEI ÜBERHAUPT GIBT ───────────────────────
