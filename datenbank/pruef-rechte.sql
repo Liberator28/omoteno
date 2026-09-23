@@ -234,6 +234,85 @@ begin
 end $$;
 reset role;
 
+-- ═══ TEIL 4 · Aktionspreise und Gast-Rabattcode in bestellung_aufgeben ═══
+-- migration-aktionspreis-pruefen.sql: bestellung_aufgeben rechnet jetzt
+-- aktionen mit und kennt einen optionalen p_rabattcode. Angriffe: der
+-- Gast darf nie WENIGER zahlen, als Aktion/Code wirklich hergeben.
+--
+-- Die Testdaten (Aktion, Gericht, Rabattcode) legt der Betrieb selbst
+-- an, nicht der Gast — deshalb NOCH ALS STANDARDROLLE eingefuegt,
+-- bevor auf anon umgeschaltet wird. Sonst wuerde diese Pruefung genau
+-- die Schreibsperre pruefen, die TEIL 1 (Zeile 57) schon fuer
+-- 'delete from aktionen' bestaetigt — anon darf hier gar nichts
+-- einfuegen, und die Probe wuerde nie zu den eigentlichen Angriffen
+-- kommen.
+do $$
+declare v uuid;
+begin
+  select id into v from betriebe limit 1;
+  insert into aktionen (betrieb_id, gericht_name, titel, preis_alt, preis_neu, von, bis, aktiv)
+  values (v, 'Pruef-Rechte-Aktionsgericht', 'Probe', 99.00, 5.00, now() - interval '1 hour', now() + interval '1 hour', true);
+  insert into gerichte (betrieb_id, kategorie, name, preis, verfuegbar)
+  values (v, 'Pruefung', 'Pruef-Rechte-Aktionsgericht', 99.00, true);
+  insert into rabattcodes (betrieb_id, code, betrag, gueltig_bis)
+  values (v, 'PRUEF-RECHTE-2', 2.00, now() + interval '1 day');
+end $$;
+
+set local role anon;
+do $$
+declare
+  v uuid; v_id uuid; n int;
+begin
+  select id into v from betriebe limit 1;
+
+  -- Angriff: unter dem Aktionspreis bestellen (0.01 statt 5.00)
+  begin
+    v_id := bestellung_aufgeben(v,'tisch','7',0.01,'Pruefung',
+      '[{"name":"Pruef-Rechte-Aktionsgericht","menge":1}]'::jsonb);
+    insert into probe values (70,'Gast','unter dem Aktionspreis bestellen','OFFEN !!!');
+  exception when others then insert into probe values (70,'Gast','unter dem Aktionspreis bestellen','abgewiesen'); end;
+
+  -- Ehrlicher Weg: genau zum Aktionspreis
+  begin
+    v_id := bestellung_aufgeben(v,'tisch','7',5.00,'Pruefung',
+      '[{"name":"Pruef-Rechte-Aktionsgericht","menge":1}]'::jsonb);
+    insert into probe values (71,'Gast','genau zum Aktionspreis bestellen','ok');
+  exception when others then insert into probe values (71,'Gast','zum Aktionspreis bestellen','KAPUTT: '||sqlerrm); end;
+
+  -- Angriff: einen erfundenen Rabattcode angeben
+  begin
+    v_id := bestellung_aufgeben(v,'tisch','7',0.01,'Pruefung',
+      '[{"name":"Pruef-Rechte-Aktionsgericht","menge":1}]'::jsonb,
+      null, null, null, null, 'PRUEF-RECHTE-ERFUNDEN');
+    insert into probe values (72,'Gast','erfundenen Rabattcode angeben','OFFEN !!!');
+  exception when others then insert into probe values (72,'Gast','erfundenen Rabattcode angeben','abgewiesen'); end;
+
+  -- Angriff: gueltigen Code kennen, aber weniger zahlen als Aktion minus Code
+  begin
+    v_id := bestellung_aufgeben(v,'tisch','7',0.01,'Pruefung',
+      '[{"name":"Pruef-Rechte-Aktionsgericht","menge":1}]'::jsonb,
+      null, null, null, null, 'PRUEF-RECHTE-2');
+    insert into probe values (73,'Gast','Aktion+Code, aber zu wenig zahlen','OFFEN !!!');
+  exception when others then insert into probe values (73,'Gast','Aktion+Code, aber zu wenig zahlen','abgewiesen'); end;
+
+  -- Ehrlicher Weg: Aktion (5.00) minus Code (2.00) = 3.00, korrekt gezahlt
+  begin
+    v_id := bestellung_aufgeben(v,'tisch','7',3.00,'Pruefung',
+      '[{"name":"Pruef-Rechte-Aktionsgericht","menge":1}]'::jsonb,
+      null, null, null, null, 'PRUEF-RECHTE-2');
+    insert into probe values (74,'Gast','Aktion+Code, korrekt gezahlt (5-2=3)','ok');
+  exception when others then insert into probe values (74,'Gast','Aktion+Code korrekt','KAPUTT: '||sqlerrm); end;
+
+  -- Angriff: denselben Code ein zweites Mal einloesen
+  begin
+    v_id := bestellung_aufgeben(v,'tisch','7',3.00,'Pruefung',
+      '[{"name":"Pruef-Rechte-Aktionsgericht","menge":1}]'::jsonb,
+      null, null, null, null, 'PRUEF-RECHTE-2');
+    insert into probe values (75,'Gast','Rabattcode ein zweites Mal einloesen','OFFEN !!!');
+  exception when others then insert into probe values (75,'Gast','Rabattcode zweites Mal','abgewiesen'); end;
+end $$;
+reset role;
+
 select nr, wer, was, ergebnis from probe order by nr;
 
 -- Und der Bestand selbst: was darf anon ueberhaupt noch anfassen?
