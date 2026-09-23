@@ -366,9 +366,16 @@ async function hubImGebiet(br){
 async function hubUmschalter(br){
   console.log("\n══ Der sichtbare Umschalter ══");
 
-  /* 1 · Haus liefert, Gast nicht am Tisch → Band da, fuehrt HINEIN. */
+  /* 1 · Haus liefert, Gast nicht am Tisch → Band da, fuehrt HINEIN.
+         Seit "#/liefern" eine echte Hash-Route ist (statt eines vollen
+         Seiten-Neuaufbaus über "?modus=liefern"), wird hier wirklich
+         GEKLICKT und der neue Zustand gemessen — ein bloßer Blick auf
+         href haette den Fall verpasst, in dem der Klick zwar navigiert,
+         aber liefermodus() nie wirklich wahr wird (CLAUDE.md §8.1g:
+         eine Probe, die den echten Fehler nicht treffen kann, ist
+         keine Probe). */
   const a = await hubOhneModus(br, "chocolamour", LIEFER_AN);
-  const s1 = await a.p.evaluate(() => {
+  const s1vorher = await a.p.evaluate(() => {
     const b = document.querySelector(".lieferband");
     return b ? { da:true, ziel:b.getAttribute("href"),
                  text:b.textContent.replace(/\s+/g," ").trim(),
@@ -376,29 +383,56 @@ async function hubUmschalter(br){
                  hoch:Math.round(b.getBoundingClientRect().height) }
              : { da:false };
   });
-  ok(s1.da, "ohne Liefermodus steht das Band auf der Startseite");
-  ok(!!s1.ziel && /modus=liefern/.test(s1.ziel),
-     "und es fuehrt in den Liefermodus", s1.ziel || "kein Ziel");
-  ok(!s1.an, "es sieht dabei nicht aus wie der eingeschaltete Zustand");
-  ok(s1.hoch >= 44, "und man kann es antippen", s1.hoch + " px hoch");
+  ok(s1vorher.da, "ohne Liefermodus steht das Band auf der Startseite");
+  ok(s1vorher.ziel === "#/liefern",
+     "und sein Ziel ist die echte Hash-Route", s1vorher.ziel || "kein Ziel");
+  ok(!s1vorher.an, "es sieht dabei nicht aus wie der eingeschaltete Zustand");
+  ok(s1vorher.hoch >= 44, "und man kann es antippen", s1vorher.hoch + " px hoch");
+
+  await a.p.click(".lieferband");
+  await a.p.waitForTimeout(500);
+  const s1nachher = await a.p.evaluate(() => ({
+    modus: liefermodus, hash: location.hash, suche: location.search,
+    an: (document.querySelector(".lieferband") || {}).classList
+          ? document.querySelector(".lieferband").classList.contains("an") : false
+  }));
+  ok(s1nachher.modus === true, "der Klick schaltet liefermodus wirklich ein",
+     "modus=" + s1nachher.modus);
+  ok(s1nachher.an, "und das Band zeigt danach den eingeschalteten Zustand");
+  ok(!s1nachher.hash && !s1nachher.suche,
+     "die Adresse räumt sich danach auf (kein #/liefern, kein ?modus hängen)",
+     JSON.stringify({hash:s1nachher.hash, suche:s1nachher.suche}));
+  ok(a.echt().length === 0, "kein Fehler beim Umschalten", a.echt()[0] || "still");
   await a.ctx.close();
 
-  /* 2 · Im Liefermodus fuehrt dasselbe Band ZURUECK. Ein Umschalter,
-         der nur in eine Richtung schaltet, ist eine Sackgasse. */
+  /* 2 · Im Liefermodus fuehrt dasselbe Band ZURUECK — jetzt ein
+         <button>, kein <a href> mehr (siehe lieferBandHTML): zwei
+         Wege für denselben Klick (JS-Abschalten UND native
+         Hash-Navigation) waeren sonst nie ganz dasselbe Ziel gewesen. */
   const b2 = await hubAuf(br, "chocolamour", LIEFER_AN);
-  const s2 = await b2.p.evaluate(() => {
-    location.hash = "#/";
-    return null;
-  });
+  await b2.p.evaluate(() => { location.hash = "#/"; });
   await b2.p.waitForTimeout(700);
-  const s2b = await b2.p.evaluate(() => {
+  const s2vorher = await b2.p.evaluate(() => {
     const b = document.querySelector(".lieferband");
-    return b ? { da:true, ziel:b.getAttribute("href"),
+    return b ? { da:true, istKnopf: b.tagName === "BUTTON",
+                 hatHref: b.hasAttribute("href"),
                  an:b.classList.contains("an") } : { da:false };
   });
-  ok(s2b.da && s2b.an, "im Liefermodus traegt das Band den eingeschalteten Zustand");
-  ok(s2b.da && !/modus=liefern/.test(s2b.ziel || "x"),
-     "und fuehrt zurueck ins Lokal", s2b.ziel || "kein Ziel");
+  ok(s2vorher.da && s2vorher.an, "im Liefermodus traegt das Band den eingeschalteten Zustand");
+  ok(s2vorher.istKnopf && !s2vorher.hatHref,
+     "es ist ein Knopf ohne eigenes Sprungziel, nicht mehr ein Link");
+
+  await b2.p.click(".lieferband.an");
+  await b2.p.waitForTimeout(500);
+  const s2nachher = await b2.p.evaluate(() => ({
+    modus: liefermodus, hash: location.hash,
+    an: !!document.querySelector(".lieferband.an")
+  }));
+  ok(s2nachher.modus === false, "der Klick schaltet liefermodus wirklich aus",
+     "modus=" + s2nachher.modus);
+  ok(s2nachher.hash === "#/", "und führt zurück auf die Startseite", s2nachher.hash);
+  ok(!s2nachher.an, "das Band zeigt danach wieder den ausgeschalteten Zustand");
+  ok(b2.echt().length === 0, "kein Fehler beim Zurückschalten", b2.echt()[0] || "still");
   await b2.ctx.close();
 
   /* 3 · Am Tisch KEIN Band. Wer am Untersetzer sitzt, soll sich

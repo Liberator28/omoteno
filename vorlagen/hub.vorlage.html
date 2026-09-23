@@ -1074,9 +1074,10 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
    Fläche, die der Kunde wählt, wird Schrift gerechnet, nicht
    gesetzt (§5.1). */
 .lieferband{
-  display:flex;align-items:center;gap:11px;
+  display:flex;align-items:center;gap:11px;width:100%;
   margin:0 0 18px;padding:11px 14px;min-height:46px;
-  text-decoration:none;
+  text-decoration:none;font:inherit;text-align:left;cursor:pointer;
+  -webkit-appearance:none;
   border:1px solid var(--linie);border-radius:var(--rundung-klein);
   background:var(--karte);color:var(--tinte);
 }
@@ -7972,23 +7973,30 @@ function empfehlungHTML(){
      gab. Lieber dastehen und die Zeiten nennen — dann weiß er, wann
      er wiederkommt.
 
-   Der Zustand hängt an der ADRESSE, nicht an einem Speicher: Das ist
-   ein gewöhnlicher Link. Wer ihn teilt, teilt den Modus mit; ein
-   Neuladen behält ihn; und der Zurück-Knopf des Browsers tut das,
-   was der Gast erwartet.
-   ══════════════════════════════════════════════════════════════════ */
+   Der Zustand hängt an der ADRESSE, nicht an einem Speicher: Ein
+   Neuladen behält ihn, ein geteilter Link "#/liefern" gibt ihn
+   weiter. Anders als früher ist das jetzt aber eine echte Route
+   der Einseiten-Anwendung (Hash-Wechsel über zeichne(), siehe
+   liefermodusAbgleichen()), kein voller Seiten-Neuaufbau mehr — der
+   Wechsel fühlt sich so an wie jeder andere Tipp im Hub, nicht wie
+   ein Neuladen. "?modus=liefern" bleibt als alter, gedruckter Link
+   gültig; liefermodusLaden() erkennt beide Formen. */
 function lieferBandHTML(){
   if(!LIEFER.an || tischNr) return "";
 
   const jetzt = liefertGerade();
-  const pfad  = location.pathname;
 
   if(liefermodus){
-    return '<a class="lieferband an" href="' + pfad + '">' +
+    /* Ein <button>, kein <a href> — sonst liefe neben dem
+       JS-gesteuerten nachHause() (das den Liefermodus zuerst
+       abschaltet) noch eine zweite, native Hash-Navigation her, und
+       zwei Wege für denselben Klick sind nie richtig. Die "Sofort
+       bestellen"-Knöpfe im selben Hub lösen dasselbe Problem gleich. */
+    return '<button type="button" class="lieferband an" data-heim data-liefer-verlassen>' +
       '<span class="lbz">' + (ICONS.hand || "") + '</span>' +
       '<span class="lbt"><b>' + t("Sie lassen sich liefern") + '</b>' +
       '<span>' + t("Zurück zur Bestellung im Lokal") + '</span></span>' +
-      '<span class="lbp">›</span></a>';
+      '<span class="lbp">›</span></button>';
   }
 
   /* Außerhalb der Lieferzeit steht das Band trotzdem da — mit den
@@ -8002,7 +8010,7 @@ function lieferBandHTML(){
             {von: LIEFER.von, bis: LIEFER.bis})
         : t("Wir liefern gerade nicht."));
 
-  return '<a class="lieferband" href="' + pfad + '?modus=liefern">' +
+  return '<a class="lieferband" href="#/liefern">' +
     '<span class="lbz">' + (ICONS.hand || "") + '</span>' +
     '<span class="lbt"><b>' + t("Sich liefern lassen") + '</b>' +
     '<span>' + unter + '</span></span>' +
@@ -9642,6 +9650,18 @@ function zeichne(){
   if(detailName) detailSchliessen();
   serviceRuf = "";
   nachtSchalten();
+  /* "#/liefern" ist keine eigene SEITEN-Route (siehe Kommentar bei
+     lieferBandHTML): Sie schaltet nur liefermodus ein und fällt
+     danach auf die normale Startseite zurück, die den Unterschied
+     längst kennt (KACHELN-Filter, Warenkorb-Gebühr). liefermodusLaden()
+     erkennt die Absicht nur beim ALLERERSTEN Aufruf (aus der Adresse,
+     mit der die Seite geladen wurde) — ein Tipp auf das Lieferband
+     mitten in der Sitzung ist ein ganz gewöhnlicher Hash-Wechsel und
+     muss hier genauso erkannt werden. Steht LIEFER zu diesem
+     Zeitpunkt schon fest, geschieht der Wechsel genau hier; sonst
+     holt die Stelle bei LIEFER.an es nach. */
+  if(/^#\/liefern\b/i.test(location.hash)) liefernAngefragt = true;
+  liefermodusAbgleichen();
 
   /* Hier stand bis zum 08.09. die Übersetzung der Fußzeile „Für den
      Betrieb". Der Link ist entfernt (siehe Fuß im Gerüst), und mit
@@ -10369,15 +10389,51 @@ const SITZ_SCHLUESSEL = hSchluessel("sitzung");
 
    Der Untersetzer gewinnt trotzdem: Wer über ?t=7 hereinkommt, sitzt
    nachweislich am Tisch. Dann ist Liefern aus, egal was sonst in der
-   Adresszeile steht.                                                */
+   Adresszeile steht.
+
+   Zweite Zeile, seit "#/liefern" eine echte, verlinkbare Adresse
+   wurde statt nur "?modus=liefern": Beim allerersten Zeichnen ist
+   LIEFER noch leer (der Betrieb ist noch nicht geladen, siehe
+   karteHolen()) — ob das Haus wirklich liefert, weiß der Hub also
+   erst später. liefernAngefragt hält die ABSICHT fest ("die
+   Adresszeile hat danach gefragt"), liefermodusAbgleichen() macht
+   daraus liefermodus, sobald LIEFER wirklich feststeht — einmal
+   sofort beim Zeichnen, ein zweites Mal, sobald die Antwort da ist
+   (dieselbe Stelle, die liefermodus bisher nur AUSschalten konnte). */
 let liefermodus = false;
+let liefernAngefragt = false;
 
 const LIEFERADRESSE_SCHLUESSEL = hSchluessel("lieferadresse");
 
 function liefermodusLaden(){
   try{
-    liefermodus = /[?&]modus=liefern\b/i.test(location.search);
-  }catch(e){ liefermodus = false; }
+    liefernAngefragt = /[?&]modus=liefern\b/i.test(location.search) ||
+                        /^#\/liefern\b/i.test(location.hash);
+  }catch(e){ liefernAngefragt = false; }
+}
+
+/* Trägt die Absicht (liefernAngefragt) in den wirklichen Zustand
+   (liefermodus) ein, sobald LIEFER.an feststeht — und dreht es
+   zurück, falls das Haus doch nicht liefert oder der Gast
+   nachweislich am Tisch sitzt (Untersetzer gewinnt, siehe oben).
+   Gibt true zurück, wenn sich etwas geändert hat, damit die
+   Aufrufstelle weiß, ob ein erneutes zeichne() nötig ist. */
+function liefermodusAbgleichen(){
+  if(tischNr){
+    const geaendert = liefermodus || liefernAngefragt;
+    liefermodus = false; liefernAngefragt = false;
+    return geaendert;
+  }
+  if(liefernAngefragt && LIEFER.an && !liefermodus){
+    liefermodus = true; liefernAngefragt = false;
+    /* Die Adresse aufräumen wie beim "?g="-Sprung oben: replaceState
+       löst kein hashchange aus, zeichne() läuft also nicht zweimal,
+       und ein Neuladen später öffnet nicht wortlos wieder "#/liefern". */
+    try{ history.replaceState(null, "", location.pathname); }catch(e){}
+    return true;
+  }
+  if(liefermodus && !LIEFER.an){ liefermodus = false; return true; }
+  return false;
 }
 
 /* Die Adresse bleibt im Gerät, wie der Bestellpass. Beim zweiten Mal
@@ -10883,7 +10939,15 @@ $("inhalt").addEventListener("input", e => {
 });
 
 $("inhalt").addEventListener("click", e => {
-  if(e.target.closest("[data-heim]")){ nachHause(); return; }
+  if(e.target.closest("[data-heim]")){
+    /* Das "an"-Lieferband trägt data-heim UND data-liefer-verlassen:
+       derselbe Weg nach Hause wie überall sonst, nur dass er den
+       Liefermodus zuerst wirklich abschaltet — sonst zeigte die
+       Startseite trotz Rückkehr weiter das Adressformular. */
+    if(e.target.closest("[data-liefer-verlassen]")) liefermodus = false;
+    nachHause();
+    return;
+  }
 
   const chip = e.target.closest(".chip");
   if(chip){
@@ -11415,8 +11479,15 @@ tischLaden();
 liefermodusLaden();
 /* Der Untersetzer schlägt die Adresszeile: Wer am Tisch sitzt, soll
    kein Adressformular sehen, auch wenn er den Lieferlink erwischt hat. */
-if(tischNr) liefermodus = false;
+if(tischNr) liefernAngefragt = false;
 spracheLaden();
+/* LIEFER steht hier noch nicht fest (kommt erst mit dem Betrieb aus
+   karteHolen()) — trotzdem schon versuchen: Ist das Haus zufällig
+   schon aus einem früheren Aufruf bekannt (selten, aber möglich bei
+   einer Rückkehr in derselben Sitzung), zeigt schon der erste
+   Anstrich den Liefermodus statt eines kurzen Umschaltens. Der
+   verlässliche zweite Versuch steht bei LIEFER.an weiter unten. */
+liefermodusAbgleichen();
 zeichne();
 
 /* ---------- Willkommen ----------
@@ -11570,7 +11641,7 @@ async function karteHolen(erstesMal){
       LIEFER.bis  = /^\d{1,2}:\d{2}$/.test(z.bis || "") ? z.bis : "";
       LIEFER.tage = Array.isArray(z.tage)
         ? z.tage.map(Number).filter(n => n >= 1 && n <= 7) : [];
-      if(!LIEFER.an && liefermodus){ liefermodus = false; zeichne(); }
+      if(liefermodusAbgleichen()) zeichne();
     }
 
     /* Worte, die der Betrieb selbst ändern darf — ohne dass der Hub
