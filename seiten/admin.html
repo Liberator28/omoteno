@@ -947,6 +947,23 @@ html{font-size:calc(16px * var(--skala,1))}
   font-family:inherit;font-size:12px;text-decoration:underline;
   text-underline-offset:3px;cursor:pointer;padding:4px 2px;
 }
+/* ── Annahme-Leiste: eine neue Bestellung, noch nicht angenommen.
+   Deutlich auffälliger als die spätere "fehlt nur die Zeit"-Zeile
+   (.zusage ohne .neu) — derselbe Tipp, dieselbe Funktion, nur so
+   gerahmt, dass er aus zwei Metern als "hier warten" erkennbar ist,
+   wie die Annahme-Geste bei Lieferando/Uber Eats. */
+.zusage.neu{
+  flex-direction:column;align-items:stretch;gap:9px;
+  padding:12px 14px 14px;margin-top:8px;
+  border-top:none;border-radius:12px;
+  background:color-mix(in srgb, var(--gut) 5%, var(--karte));
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb, var(--gut) 40%, transparent);
+}
+.zusage.neu .zt{
+  font-size:13.5px;font-weight:700;color:var(--gut);margin:0;
+}
+.zusage.neu .zminreihe{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.zusage.neu .zmin{min-height:44px;font-size:15px;padding:10px 12px}
 .bestellung[data-quelle="service"]{border-left:3px solid var(--messing)}
 .bestellung[data-quelle="service"] .hmarke{color:var(--messing)}
 
@@ -5489,13 +5506,28 @@ function zeichneBoard(){
              <b>ca. ${b.wartezeit_min} Min</b>
              <button class="zurueck" data-warte="0" data-id="${sicher(b.id)}">ändern</button>
            </div>`
-        : `<div class="zusage">
-             <span class="zt">${b.quelle === "service" ? "Wir kommen in" : "Dauert ca."}</span>
-             ${warteWerte.map(m =>
-               `<button class="zmin" data-warte="${m}" data-id="${sicher(b.id)}">${m}</button>`).join("")}
-             <span class="ze">Min</span>
-             <button class="zmehr" data-mehr="${sicher(b.id)}" aria-label="Andere Zeit wählen">…</button>
-           </div>`);
+        : (b.status === "neu"
+          /* Noch niemand hat sich der Bestellung angenommen — anders als
+             bei "arbeit" ohne Zusage (schon in Arbeit, Zeit fehlt nur
+             noch) ist das der Moment, der sofort auffallen muss. Selber
+             Tipp, selbe Funktion (bestaetigen()) — nur auffälliger
+             gerahmt, wie eine Annahme-Geste bei Lieferando/Uber Eats. */
+          ? `<div class="zusage neu">
+               <span class="zt">${b.quelle === "service" ? "Ruf annehmen" : "Bestellung annehmen"}</span>
+               <div class="zminreihe">
+                 ${warteWerte.map(m =>
+                   `<button class="zmin" data-warte="${m}" data-id="${sicher(b.id)}">${m}</button>`).join("")}
+                 <span class="ze">Min</span>
+                 <button class="zmehr" data-mehr="${sicher(b.id)}" aria-label="Andere Zeit wählen">…</button>
+               </div>
+             </div>`
+          : `<div class="zusage">
+               <span class="zt">${b.quelle === "service" ? "Wir kommen in" : "Dauert ca."}</span>
+               ${warteWerte.map(m =>
+                 `<button class="zmin" data-warte="${m}" data-id="${sicher(b.id)}">${m}</button>`).join("")}
+               <span class="ze">Min</span>
+               <button class="zmehr" data-mehr="${sicher(b.id)}" aria-label="Andere Zeit wählen">…</button>
+             </div>`));
 
     /* Wie lange steht sie schon? Die Uhrzeit allein sagt das nicht -
        im Trubel rechnet niemand nach. */
