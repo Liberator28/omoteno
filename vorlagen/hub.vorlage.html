@@ -7190,6 +7190,8 @@ const TEXTE = {
 "Wird gesendet …":{en:"Sending …",tr:"Gönderiliyor …",ru:"Отправляем …",fr:"Envoi …",es:"Enviando …",it:"Invio …",pl:"Wysyłanie …",ar:"جارٍ الإرسال …",uk:"Надсилаємо …",nl:"Versturen …",ro:"Se trimite …"},
 "ANMERKUNG (OPTIONAL)":{en:"NOTE (OPTIONAL)",tr:"NOT (İSTEĞE BAĞLI)",ru:"ПРИМЕЧАНИЕ (НЕОБЯЗАТЕЛЬНО)",fr:"REMARQUE (FACULTATIF)",es:"NOTA (OPCIONAL)",it:"NOTA (FACOLTATIVO)",pl:"UWAGA (OPCJONALNIE)",ar:"ملاحظة (اختياري)",uk:"ПРИМІТКА (НЕОБОВ'ЯЗКОВО)",nl:"OPMERKING (OPTIONEEL)",ro:"OBSERVAȚIE (OPȚIONAL)"},
 "z. B. ohne Zwiebeln":{en:"e.g. no onions",tr:"örn. soğansız",ru:"например, без лука",fr:"p. ex. sans oignons",es:"p. ej. sin cebolla",it:"es. senza cipolla",pl:"np. bez cebuli",ar:"مثلاً بدون بصل",uk:"наприклад, без цибулі",nl:"bijv. zonder ui",ro:"de ex. fără ceapă"},
+"RABATTCODE (OPTIONAL)":{en:"DISCOUNT CODE (OPTIONAL)",tr:"İNDİRİM KODU (İSTEĞE BAĞLI)",ru:"ПРОМОКОД (НЕОБЯЗАТЕЛЬНО)",fr:"CODE DE RÉDUCTION (FACULTATIF)",es:"CÓDIGO DE DESCUENTO (OPCIONAL)",it:"CODICE SCONTO (FACOLTATIVO)",pl:"KOD RABATOWY (OPCJONALNIE)",ar:"رمز الخصم (اختياري)",uk:"ПРОМОКОД (НЕОБОВ'ЯЗКОВО)",nl:"KORTINGSCODE (OPTIONEEL)",ro:"COD DE REDUCERE (OPȚIONAL)"},
+"z. B. WILLKOMMEN10":{en:"e.g. WELCOME10",tr:"örn. HOSGELDIN10",ru:"например, WELCOME10",fr:"p. ex. BIENVENUE10",es:"p. ej. BIENVENIDO10",it:"es. BENVENUTO10",pl:"np. WITAMY10",ar:"مثلاً WELCOME10",uk:"наприклад, WELCOME10",nl:"bijv. WELKOM10",ro:"de ex. BINEVENIT10"},
 "Wichtig:":{en:"Important:",tr:"Önemli:",ru:"Важно:",fr:"Important :",es:"Importante:",it:"Importante:",pl:"Ważne:",ar:"مهم:",uk:"Важливо:",nl:"Belangrijk:",ro:"Important:"},
 "Hier wird nicht bezahlt. Ihre Bestellung geht an unser Team, wir bestätigen sie bei Ihnen am Tisch. Abgerechnet wird wie immer beim Personal.":{en:"No payment here. Your order goes to our team and we'll confirm it at your table. You settle up with our staff as usual.",tr:"Burada ödeme yapılmaz. Siparişiniz ekibimize gider, masanızda onaylarız. Hesap her zamanki gibi personelde ödenir.",ru:"Здесь не оплачивают. Заказ уходит нашей команде, мы подтвердим его у вашего столика. Рассчитываетесь, как обычно, у персонала.",fr:"Aucun paiement ici. Votre commande part vers notre équipe, nous la confirmons à votre table. Le règlement se fait comme d'habitude auprès du personnel.",es:"Aquí no se paga. Su pedido llega a nuestro equipo y se lo confirmamos en la mesa. Se abona como siempre al personal.",it:"Qui non si paga. L'ordine arriva al nostro team e ve lo confermiamo al tavolo. Si salda come sempre con il personale.",pl:"Tu się nie płaci. Zamówienie trafia do naszego zespołu, potwierdzimy je przy stoliku. Rachunek regulujesz jak zwykle u obsługi.",ar:"لا دفع هنا. يصل طلبكم إلى فريقنا ونؤكده لكم على الطاولة. الحساب كالمعتاد لدى الموظفين.",uk:"Тут не платять. Замовлення надходить нашій команді, ми підтвердимо його біля столика. Розрахунок, як завжди, у персоналу.",nl:"Hier wordt niet betaald. Uw bestelling gaat naar ons team en we bevestigen die aan tafel. Afrekenen doet u zoals altijd bij het personeel.",ro:"Aici nu se plătește. Comanda ajunge la echipa noastră și o confirmăm la masă. Plata se face ca de obicei la personal."},
 "Bestellung ist da!":{en:"Order received!",tr:"Siparişiniz alındı!",ru:"Заказ получен!",fr:"Commande reçue !",es:"¡Pedido recibido!",it:"Ordine ricevuto!",pl:"Zamówienie przyjęte!",ar:"تم استلام الطلب!",uk:"Замовлення отримано!",nl:"Bestelling ontvangen!",ro:"Comandă primită!"},
@@ -8297,6 +8299,9 @@ SEITEN.auswahl = () => {
             '<input class="feld" id="bTisch" inputmode="numeric" placeholder="' + t("Tischnummer") + '">') +
       '<div class="label">' + t("ANMERKUNG (OPTIONAL)") + '</div>' +
       '<input class="feld" id="bNotiz" placeholder="' + t("z. B. ohne Zwiebeln") + '">' +
+      '<div class="label">' + t("RABATTCODE (OPTIONAL)") + '</div>' +
+      '<input class="feld" id="bRabattcode" autocapitalize="characters" placeholder="' +
+        t("z. B. WILLKOMMEN10") + '">' +
       '<button class="knopf" data-aktion="bestellen"' +
         ((unterMindest || lieferZu) ? " disabled" : "") + '>' +
       t("Bestellung abschicken") + '</button>' +
@@ -10763,6 +10768,7 @@ function anServer(art, daten){
         p_geraet:       geraetKennung(),
         p_summe:        daten.summe,
         p_notiz:        (daten.inhalt && daten.inhalt.notiz) || null,
+        p_rabattcode:   daten.rabattcode || null,
         p_positionen:   posten.map(p => {
           const auf = optAufpreis(p.n);
           const zusatz = optText(p.n);
@@ -10797,6 +10803,7 @@ function anServer(art, daten){
         p_sitzung:    tischToken || null,
         p_summe:      daten.summe,
         p_notiz:      (daten.inhalt && daten.inhalt.notiz) || null,
+        p_rabattcode: daten.rabattcode || null,
         p_positionen: posten.map(p => {
           const auf = optAufpreis(p.n);
           const zusatz = optText(p.n);
@@ -11197,6 +11204,12 @@ $("inhalt").addEventListener("click", e => {
 
       const summe = merkSumme();
       const notiz = wert("bNotiz").slice(0, 200);
+      /* Unverändert übernommen, nicht groß-/kleingeschrieben: rabattcodes.code
+         hat keine eigene Normalisierung (weder in der Tabelle noch in
+         rabattcode_anlegen), der Server vergleicht exakt. Ein Umschreiben
+         hier würde bei einem klein angelegten Code raten statt prüfen
+         (CLAUDE.md §0). */
+      const rabattcode = wert("bRabattcode").trim().slice(0, 40) || null;
 
       if(liefern && LIEFER.mindest > 0 && summe < LIEFER.mindest){
         melden(t("Wir liefern ab {b}. Fehlt noch etwas Kleines?",
@@ -11214,10 +11227,11 @@ $("inhalt").addEventListener("click", e => {
          läuft im Hintergrund weiter. Das ist ehrlicher als ein Knopf,
          der sich zehn Sekunden lang dreht. */
       const eintrag = wsEintragen({
-        tisch:   liefern ? null : nr,
-        adresse: adresse,
-        summe:   summe > 0 ? Number(summe.toFixed(2)) : null,
-        inhalt:  { posten: posten, notiz: notiz }
+        tisch:      liefern ? null : nr,
+        adresse:    adresse,
+        summe:      summe > 0 ? Number(summe.toFixed(2)) : null,
+        rabattcode: rabattcode,
+        inhalt:     { posten: posten, notiz: notiz }
       });
 
       letzteBestellung = { nummer: null, tisch: liefern ? null : nr,
