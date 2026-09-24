@@ -34,7 +34,22 @@ function pruef(gut, text, zusatz){
 
 const SWEEP = `
 (() => {
-  const zahl = t => (String(t).match(/[\\d.]+/g) || []).map(Number);
+  /* Chromium gibt eine aus color-mix() berechnete Farbe nicht als
+     rgb()/rgba() zurueck, sondern als "color(srgb r g b)" mit Werten
+     0..1 statt 0..255. Ohne diesen Zweig liest die einfache Ziffern-
+     Regex darunter 0.94 als "94" auf 255-Skala und rechnet eine fast
+     schwarze Flaeche — Vorfall vom 24.09., dieselbe Falle, die
+     pruefungen/pruef-annahme.js' parseRgb() bereits kennt. */
+  const zahl = t => {
+    const s = String(t);
+    const srgb = s.match(/color\\(srgb\\s+([\\d.]+)\\s+([\\d.]+)\\s+([\\d.]+)(?:\\s*\\/\\s*([\\d.]+))?\\)/);
+    if(srgb){
+      const werte = [+srgb[1]*255, +srgb[2]*255, +srgb[3]*255];
+      if(srgb[4] !== undefined) werte.push(+srgb[4]);
+      return werte;
+    }
+    return (s.match(/[\\d.]+/g) || []).map(Number);
+  };
   const kanal = c => { c/=255; return c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4); };
   const leucht = p => .2126*kanal(p[0]) + .7152*kanal(p[1]) + .0722*kanal(p[2]);
   const mischen = (oben, unten) => {
