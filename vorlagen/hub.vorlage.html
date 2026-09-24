@@ -1053,6 +1053,64 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
    Luft neben dem Symbol. */
 .gitter.zwei .kbanner{width:44%}
 
+/* ═══ Aktions-Banner-Rad ═══════════════════════════════════════════
+   Anders als .kbanner oben ausdrücklich Text AUF dem Foto, wischbar
+   wie ein Instagram-Karussell — auf Wunsch des Betreibers. Die
+   Begründung für .kbannners Umweg (Text neben statt auf dem Bild,
+   CLAUDE.md §5.1: „bei einem Foto lässt sich nichts rechnen") gilt
+   hier genauso — gelöst wird sie anders: ein fester, ausreichend
+   dunkler Verlauf plus feste helle Schrift, GERECHNET für den
+   ungünstigsten Fall (ein fast weißes Foto dahinter). rgba(0,0,0,.82)
+   ergibt dort rechnerisch 12,6:1 für weiße Schrift (Python-Probe,
+   sRGB-Kontrastformel) — weit über 4,5:1, mit Sicherheitsabstand.
+   Bewusst NICHT aus --tinte/--flaeche hergeleitet: Diese Fläche ist
+   in jedem Haus und in jeder Tag/Abend-Lage gleich dunkel, unabhängig
+   von der sonst gültigen Markenpalette — wie --schleier im
+   Admin-Board eine Sperrfläche ist, keine Glas-Fläche. */
+.bnrad{margin:0 0 18px}
+.bnspur{
+  display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
+  scrollbar-width:none;
+  /* Zentrier-Trick wie .avspur im Admin-Board: die halbe Kartenbreite
+     (87%/2) als Innenabstand lässt die erste/letzte Karte mittig
+     ankommen. */
+  padding-inline:calc(50% - 43.5%);
+}
+.bnspur::-webkit-scrollbar{display:none}
+.bnkarte{
+  flex:0 0 87%;scroll-snap-align:center;position:relative;
+  aspect-ratio:4/3;border-radius:var(--rundung);overflow:hidden;
+  display:block;color:#fff;text-decoration:none;
+  border:0;background:var(--flaeche-2);padding:0;font:inherit;
+  text-align:left;cursor:pointer;
+}
+.bnkarte img{width:100%;height:100%;object-fit:cover;display:block}
+.bnkarte::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(to top,
+    rgba(0,0,0,.82) 0%, rgba(0,0,0,.82) 40%, transparent 78%);
+}
+.bntxt{
+  position:absolute;left:0;right:0;bottom:0;z-index:1;
+  padding:16px 18px;
+}
+.bntxt b{
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;font-size:17px;font-weight:700;line-height:1.25;
+  text-shadow:0 1px 3px rgba(0,0,0,.35);
+}
+.bntxt span{
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow:hidden;font-size:13px;margin-top:3px;opacity:.92;line-height:1.35;
+}
+.bnpunkte{display:flex;justify-content:center;gap:6px;margin-top:10px}
+.bnpunkt{
+  width:6px;height:6px;border-radius:50%;background:var(--linie-stark);
+  transition:background var(--kurz) var(--weich), transform var(--kurz) var(--weich);
+}
+.bnpunkt.an{background:var(--tinte);transform:scale(1.35)}
+@media (prefers-reduced-motion:reduce){ .bnpunkt{transition:none} }
+
 /* ═══ Unterseiten ═══════════════════════════════════════════════ */
 .seite h2{font-size:26px;margin:0 0 7px;font-weight:600;letter-spacing:-.4px;line-height:1.15}
 .seite .unter{color:var(--tinte-leise);font-size:14px;margin:0 0 24px;line-height:1.5}
@@ -4113,6 +4171,123 @@ function aktionAnzeigen(){
     ruf.classList.remove("an");
     setTimeout(() => { ruf.hidden = true; }, 600);
   }, 6000);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   AKTIONS-BANNER-RAD
+
+   Anders als die Kacheln (KACHELN, KACHELPLAN-artig fest an dreizehn
+   Schlüssel gebunden) ist hub_banner eine echte FREIE Liste — der
+   Betrieb legt so viele Banner an, wie er will, jedes mit eigenem
+   Bild/Text/Ziel. Vier Zieltypen, alle über schon vorhandene Wege
+   aufgelöst statt neu erfunden:
+     produkt → dasselbe data-detail wie aktionBandHTML() → detailOeffnen()
+     seite   → ein echter Hash aus der Zulassungsliste unten
+     url     → externer Link wie bei den Kacheln
+     aktion  → NIE ein gespeicherter Preis, sondern live aus dem schon
+               geladenen aktionen-Array gelesen (CLAUDE.md §2.3a) — ist
+               die Aktion nicht mehr da, bleibt die Karte stehen, aber
+               ohne Ziel, genau wie aktionBandHTML() bei einem Gericht,
+               das nicht mehr in der Karte steht.
+   ══════════════════════════════════════════════════════════════════ */
+const BANNER_ERLAUBT = ["id","an","bild","titel","text","farbe","zielTyp","zielWert","reihenfolge"];
+let hubBanner = [];
+
+/* Positivliste wie kachelBauen()/KACHEL_ERLAUBT: was der Wirt nicht
+   schicken darf, wird ignoriert, nicht übernommen. hub_banner ist
+   eine Live-Spalte und wird UNGEPRÜFT von der Datenbank gelesen
+   (anders als das Markenblatt, das erzeuge-hub.js vorab prüft). */
+function bannerAusZeile(roh){
+  hubBanner = (Array.isArray(roh) ? roh : [])
+    .filter(e => e && typeof e === "object" && !Array.isArray(e))
+    .map(e => {
+      const b = {};
+      BANNER_ERLAUBT.forEach(f => { if(e[f] !== undefined) b[f] = e[f]; });
+      return b;
+    })
+    /* Ohne gültiges https-Bild oder abgeschaltet: keine Karte. Dieselbe
+       Regel wie beim Kachel-Banner (kachelHTML) — kein javascript:,
+       kein data:. */
+    .filter(b => b.an !== false && /^https:\/\//i.test(String(b.bild || "")))
+    .sort((a,c) => (+a.reihenfolge || 0) - (+c.reihenfolge || 0));
+}
+
+/* Nur echte Hub-Routen, keine Cart-/Bestellt-Seite — ein Marketing-
+   Banner, das auf den eigenen Warenkorb zeigt, wäre kein Ziel. */
+const BANNER_SEITEN = ["speisekarte","getraenke","cocktails","meintisch",
+  "rueckmeldung","reservieren","kontakt","quiz","musik","service","trinkgeld"];
+
+/* { attr, href } oder null (kein gültiges Ziel — die Karte bleibt
+   dann sichtbar, aber nicht antippbar, statt in einen toten Link zu
+   führen, CLAUDE.md §8.1: kachelZiel() !== "" ist dieselbe Haltung
+   eine Ebene höher). */
+function bannerZiel(b){
+  if(b.zielTyp === "produkt" && b.zielWert){
+    return { attr:' data-detail="' + encodeURIComponent(b.zielWert) + '"', href:"" };
+  }
+  if(b.zielTyp === "seite" && BANNER_SEITEN.indexOf(b.zielWert) >= 0){
+    return { attr:"", href:"#/" + b.zielWert };
+  }
+  if(b.zielTyp === "url" && /^https:\/\//i.test(String(b.zielWert || ""))){
+    return { attr:' target="_blank" rel="noopener"', href:b.zielWert };
+  }
+  if(b.zielTyp === "aktion" && b.zielWert){
+    const a = aktionen.find(x => x.id === b.zielWert);
+    if(a) return { attr:' data-detail="' + encodeURIComponent(a.gericht_name) + '"', href:"" };
+    return null;
+  }
+  return null;
+}
+
+function bannerRadHTML(){
+  if(!hubBanner.length) return "";
+  const karten = hubBanner.map((b, i) => {
+    const ziel = bannerZiel(b);
+    const tag = !ziel ? "div" : (ziel.href ? "a" : "button");
+    /* Ein aktion-gekoppeltes Banner zeigt IMMER den Live-Stand aus
+       aktionen — Titel/Name kommen dann nicht aus hub_banner. */
+    let titel = b.titel || "", text = b.text || "";
+    if(b.zielTyp === "aktion"){
+      const a = aktionen.find(x => x.id === b.zielWert);
+      if(a){ titel = a.titel || RUNNER_TITEL; text = a.gericht_name || ""; }
+    }
+    return "<" + tag + ' class="bnkarte" data-bn="' + i + '"' +
+      (tag === "button" ? ' type="button"' : "") +
+      (ziel ? ziel.attr + (ziel.href ? ' href="' + hs(ziel.href) + '"' : "") : "") +
+      '><img src="' + hs(b.bild) + '" alt="" loading="lazy" decoding="async">' +
+      '<div class="bntxt"><b>' + hs(t(titel)) + '</b>' +
+      (text ? '<span>' + hs(t(text)) + '</span>' : "") + '</div></' + tag + '>';
+  }).join("");
+  const punkte = hubBanner.length > 1
+    ? '<div class="bnpunkte">' + hubBanner.map((b, i) =>
+        '<span class="bnpunkt' + (i === 0 ? " an" : "") + '"></span>').join("") + '</div>'
+    : "";
+  return '<div class="bnrad"><div class="bnspur" id="bnSpur">' + karten + '</div>' + punkte + '</div>';
+}
+
+/* Dieselbe Zentrier-Erkennung wie avRadVerdrahten() im Admin-Board
+   (Figuren-Rad): ein IntersectionObserver mit beidseitig verengtem
+   rootMargin bestimmt die Karte mit der höchsten Schnittfläche — kein
+   Scroll-Debounce, keine scrollLeft-Rechnung. Nach jedem zeichne()
+   neu verdrahtet, weil #bnSpur dabei komplett neu gebaut wird. */
+function bnRadVerdrahten(){
+  const spur = $("bnSpur"); if(!spur) return;
+  const punkte = spur.parentElement.querySelectorAll(".bnpunkt");
+  if(!punkte.length) return;
+  const beob = new IntersectionObserver(eintraege => {
+    let bestes = null;
+    eintraege.forEach(e => {
+      if(e.isIntersecting && (!bestes || e.intersectionRatio > bestes.intersectionRatio)) bestes = e;
+    });
+    if(!bestes) return;
+    const i = +bestes.target.dataset.bn;
+    punkte.forEach((p, j) => {
+      p.classList.toggle("an", j === i);
+      p.style.background = (j === i && hubBanner[i] && hubBanner[i].farbe)
+        ? "var(--" + hubBanner[i].farbe + ")" : "";
+    });
+  }, { root:spur, rootMargin:"0px -35% 0px -35%", threshold:[0,.25,.5,.75,1] });
+  spur.querySelectorAll(".bnkarte").forEach(k => beob.observe(k));
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -8113,7 +8288,7 @@ function start(){
         '<div class="pfeil">›</div></a>';
   };
 
-  let html = lieferBandHTML() + aktionBandHTML() +
+  let html = lieferBandHTML() + aktionBandHTML() + bannerRadHTML() +
              begleiterHTML("start") + empfehlungHTML(), letzter = "";
   sichtbar.forEach(k => {
     if(k.gruppe !== letzter){
@@ -9748,6 +9923,10 @@ function zeichne(){
   bestellStatusSteuern(seiteJetzt);
   vorgangStreifenZeichnen();
   balkenMalen();
+  /* #bnSpur existiert nur auf der Startseite — auf jeder anderen
+     Seite tut bnRadVerdrahten() dank seiner eigenen $("bnSpur")-Probe
+     einfach nichts (§8.1g: die Voraussetzung wird selbst geprüft). */
+  bnRadVerdrahten();
   window.scrollTo(0,0);
 
   /* Erst zeichnen, dann das Gericht öffnen. Andersherum würde
@@ -11649,7 +11828,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_woerter,liefer,hub_avatar");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -11757,6 +11936,15 @@ async function karteHolen(erstesMal){
            sonst reißt es ihm die Karte unter dem Finger weg. */
         if(seiteJetzt === "start") zeichne();
       }
+    }
+
+    /* Das Aktions-Banner-Rad aus dem Board — dieselbe Live-Spalten-
+       Bauart wie hub_kacheln, aber eine echte freie Liste statt eines
+       Overrides fester Plätze (bannerAusZeile() filtert/ordnet selbst,
+       kein kachelBauen()-Äquivalent nötig). */
+    if(Array.isArray(b[0].hub_banner) && b[0].hub_banner.length){
+      bannerAusZeile(b[0].hub_banner);
+      if(hubBanner.length && seiteJetzt === "start") zeichne();
     }
 
     /* Die Figur des Hauses aus dem Board — dieselbe Bauart wie die
