@@ -2456,11 +2456,25 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 :root{
   --schrift-zahl:ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
 }
+/* Eine Fläche für alles, was auf „Mein Tisch" dem Gast GEHÖRT:
+   Besuche, Gutscheine, die Post vom Haus. Deckend, nicht
+   durchscheinend — dahinter liegt nur der Seitengrund (bei manchen
+   Häusern Zierrat). Ein backdrop-filter hätte nichts zu verwischen
+   und machte den Kontrast von dem abhängig, was zufällig dahinter
+   liegt. Die Wertigkeit kommt aus einem Hauch Hausgold IN der
+   Fläche (einfarbig, damit getComputedStyle genau die Farbe liefert,
+   auf der die Schrift steht), einer hellen Oberkante und dem
+   Hausschatten. Kontrast: pruef-gastkonto.js, jedes Haus, Tag und
+   Abend. */
+.gastkopf,.gutschein,.gastpost{
+  border-radius:calc(var(--rundung-klein) + 5px);
+  background:color-mix(in srgb, var(--flaeche) 95%, var(--gold));
+  box-shadow:inset 0 1px 0 color-mix(in srgb, #fff 20%, transparent), var(--schatten);
+}
 .gastkopf{
   display:flex;align-items:center;gap:16px;
-  margin:0 0 18px;padding:16px;
-  border:1px solid var(--linie);border-radius:var(--rundung-klein);
-  background:var(--flaeche);
+  margin:0 0 18px;padding:18px;
+  border:1px solid color-mix(in srgb, var(--gold) 35%, var(--linie));
 }
 .gastkopf .zahl{
   font-family:var(--schrift-zahl);
@@ -2493,12 +2507,12 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 /* Der Gutschein trägt Gold im Rand und am Code, aber NICHT unter der
    Schrift. Gemessen: Auf der Goldfläche kam der Text je nach Haus und
    Tageszeit auf 2,5:1 bis 4,3:1 — die Fläche hellt den Abendgrund auf,
-   und heller Text verliert genau dort. Der Kartengrund trägt jede
-   Palette; die Marke steckt im Rand. */
+   und heller Text verliert genau dort. Unter der Schrift liegt deshalb
+   die gemeinsame Fläche oben (5 % Gold, nicht 20 %) — und die wird
+   gemessen, nicht übernommen. Die Marke steckt im Rand. */
 .gutschein{
-  margin:0 0 10px;padding:13px 14px;
-  border:1px dashed var(--gold);border-radius:var(--rundung-klein);
-  background:var(--karte);
+  margin:0 0 10px;padding:15px 16px;
+  border:1px dashed var(--gold);
 }
 .gutschein b{display:block;font-size:15px;margin-bottom:2px}
 .gutschein p{margin:0;font-size:13px;color:var(--tinte-leise)}
@@ -2510,6 +2524,38 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 /* Eine Frist ist Information, kein Zierrat: --tinte-still lag bei
    1,6:1 bis 2,8:1 und ist für Linien gedacht, nicht für Text. */
 .gutschein .bis{margin-top:6px;font-size:11.5px;color:var(--tinte-leise)}
+
+/* Post vom Haus: die freiwillige Anmeldung als eigene Karte, nicht
+   als loses Feld unter allem anderen. Eine Adresse, ein Knopf — kein
+   Name, kein Passwort. Der Knopf ist der Hauptknopf des Hauses
+   (Schrift aus --auf-rot gerechnet, CLAUDE.md §5.1). Auf dem Telefon
+   untereinander (§3.6), ab 520px in einer Zeile. */
+.gastpost{
+  margin:26px 0 0;padding:18px 16px 14px;
+  border:1px solid color-mix(in srgb, var(--gold) 35%, var(--linie));
+}
+.gastpost-kopf{display:flex;gap:13px;align-items:flex-start;margin-bottom:14px}
+.gastpost-kopf svg{
+  flex:none;width:40px;height:40px;padding:9px;border-radius:50%;
+  background:var(--gold-flaeche);color:var(--gold);
+  fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;
+}
+.gastpost-kopf .label{margin:1px 0 5px}
+.gastpost-kopf b{
+  display:block;font-family:var(--schrift-kopf);font-size:18px;line-height:1.25;
+  font-weight:600;color:var(--tinte);text-wrap:balance;
+}
+/* Auf dunklem Grund liegen --flaeche-2 und die Karte fast gleich —
+   ohne Kante sähe man das Feld nicht. :not(:focus), damit die
+   Fokus-Kante aus .feld:focus weiter gewinnt. */
+.gastpost .feld:not(:focus){border-color:var(--linie-stark)}
+.gastpost .knopf{margin-bottom:8px}
+.gastpost .hinweis{margin-top:8px}
+@media (min-width:520px){
+  .gastpost-zeile{display:flex;gap:10px;align-items:stretch;margin-bottom:10px}
+  .gastpost-zeile .feld{flex:1;min-width:0;margin-bottom:0}
+  .gastpost-zeile .knopf{width:auto;flex:none;margin-bottom:0;padding:14px 20px}
+}
 
 /* Ladezustand im Maß des Inhalts statt eines drehenden Kreises:
    Der Gast sieht, WAS gleich kommt, nicht nur DASS etwas kommt. */
@@ -7533,6 +7579,7 @@ const TEXTE = {
 "Ihr {n}. Besuch bei uns.":{en:"Your visit no. {n} with us.",tr:"Bizdeki {n}. ziyaretiniz.",ru:"Ваш {n}-й визит к нам.",fr:"Votre {n}e visite chez nous.",es:"Su visita n.º {n} con nosotros.",it:"La sua {n}ª visita da noi.",pl:"Państwa {n}. wizyta u nas.",ar:"زيارتك رقم {n} لنا.",uk:"Ваш {n}-й візит до нас.",nl:"Uw {n}e bezoek bij ons.",ro:"A {n}-a vizită la noi."},
 "Ihre Besuche merkt sich Ihr Gerät, nicht wir – dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.":{en:"Your device remembers your visits, not us – that needs a brief connection. Ordering and everything else works without it.",tr:"Ziyaretlerinizi biz değil cihazınız hatırlar – bunun için kısa bir bağlantı gerekir. Sipariş ve diğer her şey bağlantısız da çalışır.",ru:"Ваши визиты помнит ваше устройство, а не мы — для этого нужна короткая связь. Заказ и всё остальное работает и без неё.",fr:"C'est votre appareil qui retient vos visites, pas nous – il lui faut une brève connexion. Commander et tout le reste fonctionne sans.",es:"Sus visitas las recuerda su dispositivo, no nosotros: para eso hace falta conexión un momento. Pedir y todo lo demás funciona igual sin ella.",it:"Le sue visite se le ricorda il suo dispositivo, non noi: serve una breve connessione. Ordinare e tutto il resto funziona anche senza.",pl:"Państwa wizyty pamięta Państwa urządzenie, nie my – potrzebne jest do tego krótkie połączenie. Zamawianie i reszta działa też bez niego.",ar:"جهازك هو من يتذكر زياراتك، لا نحن — ويحتاج ذلك إلى اتصال قصير. الطلب وكل شيء آخر يعمل بدونه.",uk:"Ваші візити пам'ятає ваш пристрій, а не ми — для цього потрібен короткий зв'язок. Замовлення й усе інше працює й без нього.",nl:"Uw toestel onthoudt uw bezoeken, wij niet – daarvoor is even verbinding nodig. Bestellen en al het andere gaat ook zonder.",ro:"Vizitele le ține minte dispozitivul dumneavoastră, nu noi – pentru asta e nevoie de o scurtă conexiune. Comanda și restul funcționează și fără."},
 "Ihre E-Mail-Adresse":{en:"Your email address",tr:"E-posta adresiniz",ru:"Ваш адрес электронной почты",fr:"Votre adresse e-mail",es:"Su dirección de correo",it:"Il suo indirizzo e-mail",pl:"Państwa adres e-mail",ar:"بريدك الإلكتروني",uk:"Ваша електронна адреса",nl:"Uw e-mailadres",ro:"Adresa dumneavoastră de e-mail"},
+"Ihre Gutscheine, direkt ins Postfach.":{en:"Your vouchers, straight to your inbox.",tr:"Kuponlarınız doğrudan e-posta kutunuza.",ru:"Ваши купоны — прямо на вашу почту.",fr:"Vos bons, directement dans votre boîte mail.",es:"Sus vales, directamente en su bandeja de entrada.",it:"I suoi buoni, direttamente nella sua casella di posta.",pl:"Państwa kupony prosto do skrzynki odbiorczej.",ar:"قسائمك مباشرة إلى بريدك الوارد.",uk:"Ваші купони — просто на вашу пошту.",nl:"Uw tegoedbonnen, direct in uw inbox.",ro:"Voucherele dumneavoastră, direct în căsuța de e-mail."},
 "Karte, bestellen und rufen — direkt am Tisch.":{en:"Menu, ordering and service — right at the table.",tr:"Menü, sipariş ve servis — doğrudan masada.",ru:"Меню, заказ и вызов — прямо за столом.",fr:"Carte, commande et service — directement à table.",es:"Carta, pedidos y servicio: directamente en la mesa.",it:"Menù, ordini e servizio — direttamente al tavolo.",pl:"Karta, zamawianie i obsługa — prosto przy stoliku.",ar:"القائمة والطلب والنداء — من الطاولة مباشرة.",uk:"Меню, замовлення та виклик — прямо за столом.",nl:"Kaart, bestellen en roepen — direct aan tafel.",ro:"Meniu, comandă și chemare — direct la masă."},
 "Mein Tisch":{en:"My table",tr:"Masam",ru:"Мой стол",fr:"Ma table",es:"Mi mesa",it:"Il mio tavolo",pl:"Mój stolik",ar:"طاولتي",uk:"Мій стіл",nl:"Mijn tafel",ro:"Masa mea"},
 "Notiert. Sie hören erst von uns, wenn Sie die Adresse bestätigt haben.":{en:"Noted. You'll only hear from us once you've confirmed the address.",tr:"Not edildi. Adresi onaylayana kadar sizden haber almayız.",ru:"Записано. Мы напишем только после того, как вы подтвердите адрес.",fr:"C'est noté. Vous n'aurez de nos nouvelles qu'après confirmation de l'adresse.",es:"Anotado. Solo tendrá noticias nuestras cuando confirme la dirección.",it:"Annotato. Le scriveremo solo dopo che avrà confermato l'indirizzo.",pl:"Zapisane. Odezwiemy się dopiero po potwierdzeniu adresu.",ar:"تم التسجيل. لن نراسلك إلا بعد تأكيد العنوان.",uk:"Записано. Ми напишемо лише після підтвердження адреси.",nl:"Genoteerd. U hoort pas van ons zodra u het adres bevestigd hebt.",ro:"Notat. Vă scriem doar după ce confirmați adresa."},
@@ -9658,14 +9705,21 @@ SEITEN.meintisch = () => {
 
   /* Freiwillig heißt: Der Zweck steht daneben, nicht im Kleingedruckten,
      und ohne Adresse funktioniert alles hier genauso. */
-  html += '<div class="label">' + t("POST VOM HAUS (FREIWILLIG)") + '</div>' +
-    '<input class="feld" id="gastMail" type="email" inputmode="email" autocomplete="email" ' +
-    'placeholder="' + t("Ihre E-Mail-Adresse") + '">' +
-    '<button class="knopf zweit" data-aktion="gastMail">' + t("Adresse hinterlegen") + '</button>' +
+  html += '<section class="gastpost" aria-labelledby="gastPostTitel">' +
+    '<div class="gastpost-kopf">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="m4 7.5 8 6 8-6"/></svg>' +
+      '<div><div class="label">' + t("POST VOM HAUS (FREIWILLIG)") + '</div>' +
+      '<b id="gastPostTitel">' + t("Ihre Gutscheine, direkt ins Postfach.") + '</b></div>' +
+    '</div>' +
+    '<div class="gastpost-zeile">' +
+      '<input class="feld" id="gastMail" type="email" inputmode="email" autocomplete="email" ' +
+      'aria-labelledby="gastPostTitel" placeholder="' + t("Ihre E-Mail-Adresse") + '">' +
+      '<button class="knopf" data-aktion="gastMail">' + t("Adresse hinterlegen") + '</button>' +
+    '</div>' +
     '<div class="kopiert" id="melde"></div>' +
     '<div class="hinweis">' +
     t("Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – sonst nichts. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.") +
-    '</div>';
+    '</div></section>';
 
   return html + '</div>';
 };

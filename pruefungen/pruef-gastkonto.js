@@ -106,7 +106,16 @@ async function erstesGericht(seite){
 /* ═══ Kontrast am fertigen Bild ═══════════════════════════════════ */
 const MESSUNG = `
 (() => {
-  const zahl = t => (String(t).match(/[\\d.]+/g) || []).map(Number);
+  /* Eine aus color-mix() gerechnete Fläche kommt als
+     "color(srgb r g b / a)" mit Werten 0..1 zurück, nicht als rgb().
+     Ohne Umrechnung läse man sie als fast Schwarz — und die Messung
+     träfe die neue Fläche von „Mein Tisch" gar nicht (CLAUDE.md §8.1g). */
+  const zahl = t => {
+    const s = String(t);
+    const w = (s.match(/[\\d.]+/g) || []).map(Number);
+    if(/^color\\(srgb/.test(s)) return w.map((x, i) => i < 3 ? x * 255 : x);
+    return w;
+  };
   const kanal = c => { c/=255; return c<=0.03928 ? c/12.92 : Math.pow((c+0.055)/1.055,2.4); };
   const leucht = p => .2126*kanal(p[0]) + .7152*kanal(p[1]) + .0722*kanal(p[2]);
   const mischen = (oben, unten) => {
@@ -136,7 +145,11 @@ const MESSUNG = `
     [".gutschein b",          "Gutscheintitel"],
     [".gutschein p",          "Gutscheintext"],
     [".gutschein .code",      "Code auf Goldfläche"],
-    [".gutschein .bis",       "Frist"]
+    [".gutschein .bis",       "Frist"],
+    [".gastpost .label",      "Post: Überzeile"],
+    [".gastpost-kopf b",      "Post: Titel"],
+    [".gastpost .hinweis",    "Post: Wofür-Text"],
+    [".gastpost .knopf",      "Post: Knopfschrift"]
   ];
   return paare.map(([w, name]) => {
     const el = document.querySelector(w);
