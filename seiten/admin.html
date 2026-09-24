@@ -529,6 +529,44 @@ html{font-size:calc(16px * var(--skala,1))}
 }
 .rz .rgeplant{background:rgba(201,162,39,.14);color:var(--messing)}
 
+/* ═══ Gutscheine für Stammgäste ═════════════════════════════════
+   Gestrichelter Messingrand wie der Gutschein beim Gast — dieselbe
+   Form, damit der Wirt wiedererkennt, was der Gast sieht. */
+.gs-liste{display:grid;gap:8px;margin:6px 0 2px}
+.gs-zeile{
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:var(--flaeche-2);border:1px dashed var(--messing);
+  border-radius:10px;padding:10px 12px;
+}
+.gs-was{flex:1;min-width:150px}
+.gs-was b{display:block;font-size:14px;font-weight:600;color:var(--kreide)}
+.gs-was i{display:block;font-style:normal;font-size:12px;line-height:1.45;color:var(--gedaempft)}
+.gs-code{
+  font-family:var(--mono);font-size:12.5px;letter-spacing:.08em;white-space:nowrap;
+  padding:3px 8px;border:1px solid var(--messing);border-radius:6px;color:var(--messing);
+}
+.gs-frist{font-family:var(--mono);font-size:11.5px;color:var(--gedaempft);white-space:nowrap}
+.gs-zeile .knopf{min-height:44px;width:auto;flex:none;margin-left:auto}
+/* Zwei Spalten, verschieden viel Hilfetext darunter: ohne
+   align-content:start verteilt das Raster die Resthöhe auf die
+   Zeilen, und das Datumsfeld rutscht tiefer und wird höher als das
+   Code-Feld daneben (gemessen: 73 statt 45 px). */
+.gs-form .feld{align-content:start}
+/* Chrome gibt einem Datumsfeld eine eigene Mindestbreite — ohne
+   min-width:0 ragte es bei 390 px über den Kartenrand. */
+.gs-form input[type=date]{min-width:0;max-width:100%;display:block}
+/* CLAUDE.md §3.5: eigene Schriftfarbe und 16px, sonst dunkel auf
+   dunkel in Safari und Hineinzoomen beim Antippen auf iOS. */
+.gs-form input{
+  width:100%;min-height:44px;padding:11px 12px;border-radius:9px;
+  background:var(--nacht);border:1px solid var(--linie);
+  color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font-size:16px;-webkit-appearance:none;appearance:none;scroll-margin-top:96px;
+}
+.gs-form input:focus{outline:none;border-color:var(--messing)}
+.gs-form input::placeholder{color:var(--gedaempft);-webkit-text-fill-color:var(--gedaempft);opacity:1}
+#gsCode{font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
+
 /* ═══ Befehlsleiste unten ═══════════════════════════════════════
    Die Reiterleiste oben bleibt, wo Platz ist. Auf dem Telefon
    nicht: Dort sieht man von sieben Reitern drei, und die anderen
@@ -2698,6 +2736,50 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </div>
       </div>
       <div class="epruefung" id="nlPruefung"></div>
+    </div>
+
+    <!-- Gutscheine: ein eigenes System neben dem Newsletter. Der
+         Newsletter-Rabattcode wird online eingelöst und kommt von
+         Klaviyo; ein Gutschein hier steht beim Gast unter „Mein Tisch"
+         und wird am Tisch gezeigt. Kein Betrag — die Tabelle kennt
+         keinen, das Team entscheidet am Tisch. -->
+    <div class="egruppe" id="gsGruppe">
+      <h2 class="etitel">Gutscheine für Stammgäste</h2>
+      <p class="ehilfe">Was Sie hier anlegen, sehen Ihre Gäste sofort im Hub
+        unter „Mein Tisch" — ohne Konto, ohne Passwort. Eingelöst wird am
+        Tisch: Der Gast zeigt den Code, Ihr Team entscheidet.</p>
+
+      <div class="gs-liste" id="gsListe" aria-live="polite"></div>
+
+      <form class="runner-form gs-form" id="gsForm" novalidate>
+        <label class="feld">
+          <span>Was es gibt <em class="mass" id="gsTitelMass"></em></span>
+          <input type="text" id="gsTitel" maxlength="60" autocomplete="off"
+                 placeholder="Ein Heißgetränk aufs Haus">
+          <small class="feldhilfe" id="gsTitelHilfe">Pflicht. Das Erste, was der Gast liest.</small>
+        </label>
+        <label class="feld">
+          <span>Ein Satz dazu (freiwillig) <em class="mass" id="gsTextMass"></em></span>
+          <input type="text" id="gsText" maxlength="160" autocomplete="off"
+                 placeholder="Weil Sie öfter bei uns sind.">
+          <small class="feldhilfe" id="gsTextHilfe">Steht klein unter dem Titel.</small>
+        </label>
+        <div class="runner-zwei">
+          <label class="feld">
+            <span>Code</span>
+            <input type="text" id="gsCode" maxlength="24" autocomplete="off"
+                   autocapitalize="characters" spellcheck="false">
+            <small class="feldhilfe">Wird am Tisch vorgelesen — nur A–Z, 0–9 und Bindestrich.</small>
+          </label>
+          <label class="feld">
+            <span>Gültig bis (freiwillig)</span>
+            <input type="date" id="gsBis">
+          </label>
+        </div>
+        <div class="runner-knoepfe">
+          <button type="submit" class="knopf schmal" id="gsAnlegen">Gutschein anlegen</button>
+        </div>
+      </form>
     </div>
 
     <div class="egruppe">
@@ -6394,7 +6476,7 @@ function tafelZeigen(ziel){
   mehrZu();
 
   if(ziel === "speisekarte")     aktionenLaden();
-  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); }
+  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); gsLaden(); }
   /* aktionenLaden() zusätzlich hier: Der "Aktion"-Ziel-Wähler im
      Banner-Rad braucht das aktionen-Array, das sonst erst beim
      Öffnen des Speisekarte-Reiters gefüllt wird — ein Wirt, der
@@ -6588,6 +6670,13 @@ const TEXTMASS = {
     warnung:"Ab 22 Zeichen braucht der Slogan auf schmalen Telefonen zwei Zeilen. Das geht — ab 48 werden es drei." },
   hubGruss:    { gut:56, hart:80,
     warnung:"Ab 56 Zeichen wird der Gruß auf dem Willkommensschirm dreizeilig." },
+  /* Gemessen im Hub unter „Mein Tisch" bei 360 und 390 px: Titel
+     bis 38 Zeichen eine Zeile, Text bis 89 zwei Zeilen. „hart" ist
+     dieselbe Zahl wie der CHECK gutscheine_masse in der Datenbank. */
+  gsTitel:     { gut:36, hart:60,
+    warnung:"Ab 36 Zeichen braucht der Titel beim Gast eine zweite Zeile. Das geht — kürzer liest sich schneller." },
+  gsText:      { gut:88, hart:160,
+    warnung:"Ab 88 Zeichen wird der Satz auf schmalen Telefonen dreizeilig." },
   hubRunner:   { gut:20, hart:24,
     warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." }
 };
@@ -8261,6 +8350,153 @@ if($("#runnerAuf")){
       await aktionenLaden();
       melde("Aktion beendet");
     }catch(err){ k.disabled = false; melde("Konnte nicht beendet werden."); }
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   GUTSCHEINE FÜR STAMMGÄSTE
+
+   Schreibt direkt in `gutscheine` — kein eigener Server-Weg nötig:
+   authenticated darf schreiben, die RLS-Regel „gutscheine team
+   pflegt" lässt nur das eigene Haus zu (live geprobt, siehe
+   datenbank/migration-gutscheine-masse.sql). Der Gast liest über
+   gast_melden(), das nur offene, nicht abgelaufene zeigt.
+
+   Beenden heißt beenden, nicht löschen: gueltig_bis = jetzt. Der
+   Code bleibt belegt (UNIQUE je Haus) — ein beendeter Gutschein
+   kann nicht unter demselben Code wieder auftauchen.
+   ══════════════════════════════════════════════════════════════════ */
+let gutscheine = [];
+/* Ohne 0/O und 1/I: Der Code wird am Tisch vorgelesen. */
+const GS_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const GS_CODE_OK = /^[A-Z0-9-]{3,24}$/;
+
+function gsVorschlag(){
+  const z = new Uint32Array(4);
+  crypto.getRandomValues(z);
+  return "DANKE-" + Array.from(z, x => GS_ZEICHEN[x % GS_ZEICHEN.length]).join("");
+}
+
+/* Was die Datenbank annimmt, schon beim Tippen: groß, Umlaute
+   ausgeschrieben, Leerzeichen zu Bindestrich, alles andere raus. */
+function gsCodeSauber(v){
+  return String(v || "").toUpperCase()
+    .replace(/Ä/g, "AE").replace(/Ö/g, "OE").replace(/Ü/g, "UE").replace(/ß/g, "SS")
+    .replace(/\s+/g, "-").replace(/[^A-Z0-9-]/g, "").slice(0, 24);
+}
+
+/* Datenbankfehler in Klartext — nie das rohe JSON (CLAUDE.md §8.1h). */
+function gsFehlerText(err){
+  const code = err && err.code, text = (err && err.message) || "";
+  if(code === "23505" || /duplicate|unique/i.test(text))
+    return "Diesen Code gab es bei Ihnen schon — bitte einen anderen nehmen.";
+  if(code === "23514" || /gutscheine_masse|check constraint/i.test(text))
+    return "Titel, Text oder Code passen nicht — zu lang oder mit Zeichen, die nicht gehen.";
+  if(code === "42501" || /row-level|permission/i.test(text))
+    return "Dafür fehlt diesem Zugang die Berechtigung.";
+  return "Nicht gespeichert — bitte Verbindung prüfen.";
+}
+
+async function gsLaden(){
+  massVerdrahten();
+  const code = $("#gsCode");
+  if(code && !code.value) code.value = gsVorschlag();
+  if(demo || !db || !betriebId){ gsZeichnen(); return; }
+  try{
+    const jetzt = new Date().toISOString();
+    const {data, error} = await db.from("gutscheine")
+      .select("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt")
+      .eq("betrieb_id", betriebId)
+      .is("eingeloest_am", null)
+      .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
+      /* Eindeutiges Feld am Ende (CLAUDE.md §2.6). */
+      .order("angelegt", {ascending:false}).order("id");
+    if(error) throw error;
+    gutscheine = data || [];
+  }catch(e){ gutscheine = []; }
+  gsZeichnen();
+}
+
+function gsZeichnen(){
+  const ziel = $("#gsListe"); if(!ziel) return;
+  if(!gutscheine.length){
+    ziel.innerHTML = '<p class="ehilfe" id="gsNichts">Gerade liegt kein Gutschein bereit.</p>';
+    return;
+  }
+  ziel.innerHTML = gutscheine.map(g =>
+    '<div class="gs-zeile" data-gs="' + sicher(g.id) + '">' +
+      '<span class="gs-was"><b>' + sicher(g.titel) + '</b>' +
+        (g.beschreibung ? '<i>' + sicher(g.beschreibung) + '</i>' : '') + '</span>' +
+      '<span class="gs-code">' + sicher(g.code) + '</span>' +
+      '<span class="gs-frist">' +
+        (g.gueltig_bis ? "bis " + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist") +
+        (g.gast_id ? " · persönlich" : "") + '</span>' +
+      '<button type="button" class="knopf leise schmal" data-gs-ende="' + sicher(g.id) + '">Beenden</button>' +
+    '</div>').join("");
+}
+
+if($("#gsForm")){
+  $("#gsCode").addEventListener("input", e => {
+    const el = e.target, sauber = gsCodeSauber(el.value);
+    if(sauber !== el.value) el.value = sauber;
+  });
+
+  $("#gsForm").onsubmit = async e => {
+    e.preventDefault();
+    const titel = $("#gsTitel").value.trim();
+    const text  = $("#gsText").value.trim();
+    const code  = gsCodeSauber($("#gsCode").value);
+    const bis   = $("#gsBis").value;
+    if(!titel){ melde("Bitte zuerst eintragen, was es gibt.", true); $("#gsTitel").focus(); return; }
+    if(!GS_CODE_OK.test(code)){ melde("Der Code braucht 3 bis 24 Zeichen: A–Z, 0–9, Bindestrich.", true); $("#gsCode").focus(); return; }
+    /* Das Datumsfeld liefert einen Kalendertag — gültig bis zu
+       dessen Ende, in der Zeit des Hauses, nicht bis Mitternacht UTC. */
+    const ende = bis ? new Date(bis + "T23:59:59").toISOString() : null;
+    if(ende && new Date(ende) <= new Date()){ melde("Dieses Datum liegt schon hinter uns.", true); return; }
+
+    const knopf = $("#gsAnlegen");
+    knopf.disabled = true; knopf.textContent = "Wird angelegt …";
+    try{
+      if(demo || !db){
+        if(gutscheine.some(g => g.code === code)) throw {code:"23505"};
+        gutscheine.unshift({id:"demo-" + Date.now(), titel, beschreibung:text, code,
+          gueltig_bis:ende, gast_id:null, angelegt:new Date().toISOString()});
+        gsZeichnen();
+      }else{
+        const {error} = await db.from("gutscheine").insert({
+          betrieb_id: betriebId, titel, beschreibung: text, code, gueltig_bis: ende
+        });
+        if(error) throw error;
+        await gsLaden();
+      }
+      $("#gsTitel").value = ""; $("#gsText").value = ""; $("#gsBis").value = "";
+      $("#gsCode").value = gsVorschlag();
+      massZeigen("gsTitel"); massZeigen("gsText");
+      melde("Gutschein liegt bereit — Ihre Gäste sehen ihn unter „Mein Tisch“.");
+    }catch(err){
+      melde(gsFehlerText(err), true);
+    }
+    knopf.disabled = false; knopf.textContent = "Gutschein anlegen";
+  };
+
+  $("#gsListe").onclick = async e => {
+    const k = e.target.closest("[data-gs-ende]"); if(!k) return;
+    const id = k.dataset.gsEnde;
+    const g = gutscheine.find(x => String(x.id) === id);
+    if(!confirm("„" + (g ? g.titel : "Gutschein") + "“ beenden? Gäste sehen ihn danach nicht mehr.")) return;
+    k.disabled = true;
+    if(demo || !db){
+      gutscheine = gutscheine.filter(x => String(x.id) !== id);
+      gsZeichnen(); melde("Gutschein beendet");
+      return;
+    }
+    try{
+      const {error} = await db.from("gutscheine")
+        .update({gueltig_bis: new Date().toISOString()}).eq("id", id);
+      if(error) throw error;
+      await gsLaden();
+      melde("Gutschein beendet");
+    }catch(err){ k.disabled = false; melde(gsFehlerText(err), true); }
   };
 }
 
