@@ -1166,7 +1166,17 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
   display:flex;gap:7px;overflow-x:auto;margin:0 calc(-1 * var(--rand)) 6px;
   padding:6px var(--rand) 12px;scrollbar-width:none;
   position:sticky;top:0;z-index:6;
-  background:linear-gradient(var(--grund) 78%, transparent)
+  /* Glas statt reinem Verlauf: die Chips selbst sind opak (siehe
+     .chip unten), nur der Streifen dahinter wird durchscheinend —
+     Schrift sitzt nie direkt auf der Glasfläche, deshalb unkritisch
+     für den Kontrast. color-mix() statt eines festen Werts: rechnet
+     sich aus der Markenfarbe --grund, die jedes Haus selbst setzt
+     (CLAUDE.md §5.1), nicht aus einem geratenen Weiß/Schwarz. */
+  background:color-mix(in srgb, var(--grund) 80%, transparent);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+}
+@media (prefers-reduced-transparency:reduce){
+  .chips{background:var(--grund);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 .chips::-webkit-scrollbar{display:none}
 .chip{
@@ -1880,8 +1890,18 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 .summe{
   position:sticky;bottom:calc(10px + env(safe-area-inset-bottom));z-index:5;
   display:flex;justify-content:space-between;align-items:baseline;
-  background:var(--flaeche);border:1px solid var(--linie-stark);border-radius:14px;
+  /* Schrift sitzt hier DIREKT auf der Fläche (anders als bei .chips,
+     wo nur opake Pillen davorstehen) — deshalb vorsichtiger gewählte
+     Deckkraft, gegen alle drei Häuser (Tag/Abend) gegengerechnet:
+     schlechtester gemessener Wert 7,52:1 (Minhkeey Tag), weit über
+     4,5:1 (CLAUDE.md §5.2). */
+  background:color-mix(in srgb, var(--flaeche) 82%, transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);
+  border:1px solid var(--linie-stark);border-radius:14px;
   padding:15px 17px;margin:14px 0;box-shadow:var(--schatten)
+}
+@media (prefers-reduced-transparency:reduce){
+  .summe{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 .summe .l{font-size:13px;color:var(--tinte-leise)}
 .summe .b{font-size:23px;font-weight:600}
