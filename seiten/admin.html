@@ -1421,6 +1421,54 @@ textarea{resize:vertical;min-height:66px}
 .hfeld:first-child{margin-top:2px}
 .hbez{font-size:12.5px;color:var(--gedaempft);letter-spacing:.02em}
 
+/* ═══ Aktions-Banner-Rad (Bedienung im Board) ═══════════════════════
+   Bewusst KEIN Formular in einer wischbaren Karte — ein volles
+   Bearbeitungsformular (Bild, Titel, Ziel-Wahl) passt nicht bequem
+   hinein, und eine Wischgeste und ein Texteingabefeld stören sich in
+   derselben Fläche. Die Vorschau oben ist deshalb nur ein schmaler,
+   scrollbarer Streifen (wie der Gast die Reihenfolge sieht), bearbeitet
+   wird darunter in einer normalen Liste — dasselbe Muster wie der
+   Kachel-Baukasten direkt darüber (.kbliste/.kbzeile), damit beide
+   Bausteine sich wie EIN Werkzeug anfühlen. */
+.bnvorschau{
+  display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;
+  margin:10px 0 16px;padding-bottom:2px;
+}
+.bnvorschau::-webkit-scrollbar{display:none}
+.bnvorschau:empty{display:none}
+.bnvschaukarte{
+  flex:0 0 108px;border-radius:11px;overflow:hidden;position:relative;
+  aspect-ratio:4/3;border:1px solid var(--linie);background:var(--flaeche-2);
+}
+.bnvschaukarte img{width:100%;height:100%;object-fit:cover;display:block}
+.bnvschaukarte span{
+  position:absolute;left:0;right:0;bottom:0;padding:6px 7px;
+  background:linear-gradient(to top, rgba(0,0,0,.75), transparent);
+  color:#fff;font-size:11px;font-weight:600;line-height:1.2;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+}
+.bnliste{display:flex;flex-direction:column;gap:12px;margin:0 0 12px}
+.bnzeile{border:1px solid var(--linie);border-radius:12px;padding:12px;
+  background:var(--flaeche);display:flex;flex-direction:column;gap:11px}
+.bnzeile.aus{opacity:.55}
+.bnzielwahl{display:flex;flex-direction:column;gap:8px}
+.bnzielwahl label{display:flex;flex-direction:column;gap:4px}
+.bnzielwahl label span{font-size:11.5px;color:var(--gedaempft);letter-spacing:.04em}
+.bnzielwahl select,.bnzielwahl input{
+  width:100%;padding:10px 11px;border-radius:9px;
+  border:1px solid var(--linie);background:var(--flaeche-2);
+  color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font:inherit;font-size:16px;-webkit-appearance:none;
+}
+.bnreihe{display:flex;align-items:center;gap:8px}
+.bnreihe button{
+  min-width:40px;min-height:40px;border-radius:9px;
+  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);
+}
+.bnreihe .weg{margin-left:auto;color:var(--warn,#E0685A);border-color:currentColor;
+  background:none;padding:0 12px;font-size:13px}
+.bnneu{margin-bottom:4px}
+
 /* Die Vorschau ist die Kachel selbst, in den Farben des Hubs — nicht
    ein Kasten, der so ähnlich aussieht. Wer hier etwas verschiebt,
    sieht genau das, was der Gast bekommt. */
@@ -2372,6 +2420,36 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
       <div class="epruefung" id="kbPruefung"></div>
     </div>
+
+    <!-- ══ AKTIONS-BANNER-RAD ══
+         Eigener Baustein, eigener Sichern-Knopf: schreibt nach
+         hub_banner statt hub_kacheln, ein ungültiges Banner soll eine
+         gültige Kachel-Änderung nicht blockieren und umgekehrt.
+         Anders als die Kacheln oben (feste 13 Plätze) eine echte
+         freie Liste — deshalb kein Akkordeon aus festen Zeilen,
+         sondern eine Liste, die wächst und schrumpft. Die Vorschau
+         oben zeigt das Wisch-Rad, wie der Gast es sieht; bearbeitet
+         wird darunter in einer normalen Liste — ein volles
+         Bearbeitungsformular (Bild, Titel, Ziel-Wahl) passt nicht
+         bequem in eine wischbare Karte hinein. -->
+    <div class="egruppe">
+      <h2 class="etitel">Aktions-Banner-Rad</h2>
+      <p class="ehilfe">Ein wischbares Bilderkarussell ganz oben auf der
+        Startseite — für ein Angebot, eine Neuigkeit oder eine laufende
+        Aktion. Bild, Text, Farbe und Ziel bestimmen Sie je Banner.</p>
+
+      <div class="bnvorschau" id="bnVorschau"></div>
+      <div class="bnliste" id="bnListe"></div>
+      <button type="button" class="knopf leise bnneu" id="bnNeuKnopf">+ Banner hinzufügen</button>
+
+      <div class="ezeile senkrecht">
+        <span><b>Übernehmen</b><i>Gäste sehen es beim nächsten Öffnen</i></span>
+        <div class="kbknoepfe">
+          <button class="knopf" id="bnSichern">Übernehmen</button>
+        </div>
+      </div>
+      <div class="epruefung" id="bnPruefung"></div>
+    </div>
   </section>
 
   <section class="tafel" id="t-einstellungen" hidden>
@@ -2781,6 +2859,38 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="blattfuss">
       <button class="knopf" id="kbBlattOk">Übernehmen</button>
       <button class="knopf leise" id="kbBlattWeg">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ Banner-Bild zuschneiden ══
+     Eigener Ablauf statt Verallgemeinerung von #kbBlatt — bewusst
+     dupliziert (CLAUDE.md/Systemregel: keine Abstraktion über den
+     Bedarf hinaus), damit der laufende, geprüfte Kachel-Zuschnitt
+     unangetastet bleibt. Gleiches Prinzip: der Rahmen trägt das
+     Seitenverhältnis der Karussell-Karte, nicht das des Bildes. -->
+<div class="blatt" id="bnBlatt" hidden>
+  <div class="blattinhalt">
+    <div class="griff"></div>
+    <h2 class="blatttitel">Banner-Bild zuschneiden</h2>
+    <p class="ehilfe">Ziehen Sie das Bild zurecht.</p>
+
+    <div class="kbrahmen" id="bnRahmen">
+      <img id="bnBild" alt="">
+      <div class="kbraster"></div>
+    </div>
+
+    <label class="kbzoom">
+      <span>Größe</span>
+      <input type="range" id="bnZoom" min="100" max="300" step="1" value="100"
+             class="regler" aria-label="Bild vergrößern">
+    </label>
+
+    <div class="epruefung" id="bnBlattStand"></div>
+
+    <div class="blattfuss">
+      <button class="knopf" id="bnBlattOk">Übernehmen</button>
+      <button class="knopf leise" id="bnBlattWeg">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -6271,7 +6381,12 @@ function tafelZeigen(ziel){
 
   if(ziel === "speisekarte")     aktionenLaden();
   if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); }
-  if(ziel === "startseite")      kbStandLaden();
+  /* aktionenLaden() zusätzlich hier: Der "Aktion"-Ziel-Wähler im
+     Banner-Rad braucht das aktionen-Array, das sonst erst beim
+     Öffnen des Speisekarte-Reiters gefüllt wird — ein Wirt, der
+     direkt auf "Startseite" geht, sähe sonst fälschlich "keine
+     laufende Aktion", obwohl welche liefen. */
+  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); aktionenLaden(); }
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
   if(ziel === "auswertung")      awLaden();
@@ -6406,6 +6521,11 @@ async function aktionenLaden(){
     aktionen = data || [];
   }catch(e){ aktionen = []; }
   aktionenZeichnen();
+  /* Der "Aktion"-Ziel-Wähler im Banner-Rad hängt am selben Array —
+     aktionenLaden() lief bisher asynchron NACH bnZeichnen(), die
+     Auswahl blieb also beim ersten Zeichnen leer. bnZeichnen() prüft
+     selbst, ob #bnListe überhaupt da ist (anderer Reiter offen). */
+  bnZeichnen();
 }
 
 function aktionenZeichnen(){
@@ -7388,6 +7508,431 @@ async function avSichern(){
   knopf.disabled = false; knopf.textContent = "Übernehmen";
 }
 $("#avSichern").onclick = avSichern;
+
+/* ══════════════════════════════════════════════════════════════════
+   AKTIONS-BANNER-RAD (Board-Bedienung)
+
+   Anders als die Kacheln oben (KACHELPLAN, feste 13 Plätze,
+   kbAusZeile() = ein reines Überschreiben) ist hub_banner eine echte
+   FREIE Liste — der Wirt legt so viele Banner an, wie er will. Bild-
+   Zuschnitt bewusst als eigener, duplizierter Ablauf (bn* statt einer
+   Verallgemeinerung von kb*) — siehe Kommentar bei #bnBlatt.
+   ══════════════════════════════════════════════════════════════════ */
+const BANNER_FARBEN = [
+  { s:"", name:"Keine" }, { s:"rot", name:"Rot" },
+  { s:"gold", name:"Gold" }, { s:"pistazie", name:"Pistazie" }
+];
+/* Dieselbe Zulassungsliste wie hub.vorlage.html BANNER_SEITEN — beide
+   Dateien führen sie unabhängig, wie KACHELPLAN/KACHELARTEN es auch
+   tun (CLAUDE.md §8.1b: eine zweite Quelle, die auseinanderlaufen
+   KANN — pruefungen/pruef-banner-rad.js hält beide gegeneinander). */
+const BANNER_SEITEN = [
+  { s:"speisekarte", name:"Speisekarte" }, { s:"getraenke", name:"Getränke" },
+  { s:"cocktails", name:"Cocktails" }, { s:"meintisch", name:"Mein Tisch" },
+  { s:"rueckmeldung", name:"Bewertung" }, { s:"reservieren", name:"Reservierung" },
+  { s:"kontakt", name:"Kontakt" }, { s:"quiz", name:"Tischquiz" },
+  { s:"musik", name:"Musikwunsch" }, { s:"service", name:"Service rufen" },
+  { s:"trinkgeld", name:"Trinkgeld" }
+];
+/* Seitenverhältnis der Karussell-Karte im Hub (.bnkarte, GEMESSEN
+   dort: aspect-ratio:4/3) — der Zuschnitt-Rahmen bekommt exakt diesen
+   Wert, damit der Wirt keine Fehlproportion erzeugen kann. */
+const BN_FORMAT = 4 / 3;
+const BN_BREITE = 600;
+
+let BANNERSTAND = [];
+let bnZuschnitt = null;
+
+function bnAusZeile(roh){
+  BANNERSTAND = (Array.isArray(roh) ? roh : [])
+    .filter(e => e && typeof e === "object" && !Array.isArray(e))
+    .map((e, i) => ({
+      id: typeof e.id === "string" && e.id ? e.id : "b_" + Math.random().toString(16).slice(2, 10),
+      an: e.an !== false,
+      bild: /^https:\/\//i.test(String(e.bild || "")) ? e.bild : "",
+      titel: typeof e.titel === "string" ? e.titel : "",
+      text: typeof e.text === "string" ? e.text : "",
+      farbe: BANNER_FARBEN.some(f => f.s === e.farbe) ? e.farbe : "",
+      zielTyp: ["produkt","seite","url","aktion"].indexOf(e.zielTyp) >= 0 ? e.zielTyp : "seite",
+      zielWert: typeof e.zielWert === "string" ? e.zielWert : "",
+      reihenfolge: i
+    }))
+    .sort((a, c) => (+a.reihenfolge || 0) - (+c.reihenfolge || 0));
+}
+
+function bnStandLaden(){
+  const b = meineBetriebe.find(x => x.id === betriebId);
+  bnAusZeile(b && b.hub_banner);
+  bnZeichnen();
+}
+
+function bnFinden(id){ return BANNERSTAND.find(b => b.id === id); }
+
+/* ── Vorschau: wie der Gast das Rad sieht — ein schmaler, scrollbarer
+   Streifen (Bild+Titel), KEIN Nachbau des Scrims/Kontrasts aus
+   hub.vorlage.html. Rein illustrativ, deshalb kein "geteilter Block"
+   im Sinn von CLAUDE.md §8.1e, der Byte für Byte mitgehen müsste. ── */
+function bnVorschauZeichnen(){
+  const feld = $("#bnVorschau"); if(!feld) return;
+  feld.innerHTML = BANNERSTAND.filter(b => b.an && b.bild).map(b =>
+    '<div class="bnvschaukarte"><img src="' + sicher(b.bild) + '" alt="">' +
+    '<span>' + sicher(b.titel || "(ohne Titel)") + '</span></div>').join("");
+}
+
+function bnGerichteOptionen(gewaehlt){
+  const liste = gerichte.filter(g => Number(g.preis) >= 0);
+  const karten = [...new Set(liste.map(g => g.karte || "speisekarte"))];
+  const KARTENNAMEN = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+  const gruppen = karten.flatMap(k =>
+    [...new Set(liste.filter(g => (g.karte||"speisekarte") === k).map(g => g.kategorie))]
+      .map(kat => ({ karte:k, kategorie:kat, sort:katSortVon(kat, k) }))
+  ).sort((a, c) => a.karte.localeCompare(c.karte) || a.sort - c.sort ||
+                    (a.kategorie||"").localeCompare(c.kategorie||"", "de"));
+  return gruppen.map(({karte:k, kategorie:kat}) => {
+    const drin = liste.filter(g => (g.karte||"speisekarte") === k && g.kategorie === kat)
+      .sort((a, c) => (a.name||"").localeCompare(c.name||"", "de"));
+    const label = (karten.length > 1 ? (KARTENNAMEN[k]||k) + " — " : "") + (kat || "Ohne Kategorie");
+    return '<optgroup label="' + sicher(label) + '">' + drin.map(g =>
+      '<option value="' + sicher(g.name) + '"' + (gewaehlt === g.name ? " selected" : "") + '>' +
+      sicher(g.name) + '</option>').join("") + '</optgroup>';
+  }).join("");
+}
+
+/* Je nach zielTyp ein anderes Unterfeld — vier Zieltypen, wie im Hub
+   (bannerZiel() in hub.vorlage.html): produkt/seite/url/aktion. */
+function bnZielFeldHTML(b){
+  if(b.zielTyp === "produkt"){
+    return '<label><span>Gericht</span><select data-bn-zielwert>' +
+      '<option value="">— wählen —</option>' + bnGerichteOptionen(b.zielWert) + '</select></label>';
+  }
+  if(b.zielTyp === "seite"){
+    return '<label><span>Seite</span><select data-bn-zielwert>' +
+      '<option value="">— wählen —</option>' +
+      BANNER_SEITEN.map(s => '<option value="' + s.s + '"' +
+        (b.zielWert === s.s ? " selected" : "") + '>' + sicher(s.name) + '</option>').join("") +
+      '</select></label>';
+  }
+  if(b.zielTyp === "url"){
+    return '<label><span>Adresse (https://…)</span>' +
+      '<input type="url" data-bn-zielwert placeholder="https://…" value="' + sicher(b.zielWert) + '"></label>';
+  }
+  if(b.zielTyp === "aktion"){
+    const laufend = aktionen.filter(a => a.aktiv);
+    return '<label><span>Laufende Aktion</span><select data-bn-zielwert' +
+      (laufend.length ? "" : " disabled") + '>' +
+      '<option value="">— wählen —</option>' +
+      (laufend.length ? laufend.map(a => '<option value="' + a.id + '"' +
+        (b.zielWert === a.id ? " selected" : "") + '>' + sicher(a.gericht_name) + " (" +
+        euro(a.preis_alt) + " → " + euro(a.preis_neu) + ")" + '</option>').join("") : "") +
+      '</select>' +
+      (laufend.length ? "" :
+        '<span style="font-size:12px;color:var(--gedaempft)">Erst eine Aktion anlegen (Reiter „Aktionen“), dann hier wählen.</span>') +
+      '</label>';
+  }
+  return "";
+}
+
+function bnZeile(b, i){
+  return '<article class="bnzeile' + (b.an ? "" : " aus") + '" data-bn="' + sicher(b.id) + '">' +
+    '<div class="kbkopf">' +
+      '<b>Banner ' + (i + 1) + '</b>' +
+      '<input type="checkbox" class="kipp" data-bn-an ' + (b.an ? "checked" : "") +
+        ' aria-label="Banner ' + (i + 1) + ' anzeigen">' +
+    '</div>' +
+    '<div class="kbschau">' +
+      (b.bild ? '<span class="kbsbild"><img src="' + sicher(b.bild) + '" alt=""></span>' : "") +
+      '<span class="kbstxt"><b>' + sicher(b.titel || "(ohne Titel)") + '</b>' +
+        (b.text ? '<i>' + sicher(b.text) + '</i>' : "") + '</span>' +
+    '</div>' +
+    '<div class="kbfelder">' +
+      '<label><span>Titel</span><input data-bn-titel maxlength="32" value="' + sicher(b.titel) + '"></label>' +
+      '<label><span>Unterzeile</span><input data-bn-text maxlength="60" value="' + sicher(b.text) + '"></label>' +
+    '</div>' +
+    '<div class="kbbildreihe">' +
+      '<input type="file" accept="image/*" hidden data-bn-datei>' +
+      '<button type="button" data-bn-waehlen>' + (b.bild ? "Bild austauschen" : "Bild hochladen") + '</button>' +
+      (b.bild ? '<button type="button" class="weg" data-bn-bildweg>Bild entfernen</button>' : "") +
+    '</div>' +
+    '<div class="bnzielwahl">' +
+      '<label><span>Farbe (Punkt-Anzeige beim Gast)</span><select data-bn-farbe>' +
+        BANNER_FARBEN.map(f => '<option value="' + f.s + '"' + (b.farbe === f.s ? " selected" : "") +
+          '>' + sicher(f.name) + '</option>').join("") + '</select></label>' +
+      '<label><span>Ziel</span><select data-bn-zieltyp>' +
+        '<option value="produkt"' + (b.zielTyp === "produkt" ? " selected" : "") + '>Ein Gericht aus der Karte</option>' +
+        '<option value="seite"' + (b.zielTyp === "seite" ? " selected" : "") + '>Eine Seite im Hub</option>' +
+        '<option value="url"' + (b.zielTyp === "url" ? " selected" : "") + '>Eine externe Adresse</option>' +
+        '<option value="aktion"' + (b.zielTyp === "aktion" ? " selected" : "") + '>Eine laufende Aktion</option>' +
+      '</select></label>' +
+      bnZielFeldHTML(b) +
+    '</div>' +
+    '<div class="bnreihe">' +
+      '<button type="button" data-bn-hoch' + (i === 0 ? " disabled" : "") + ' aria-label="Nach oben">↑</button>' +
+      '<button type="button" data-bn-runter' + (i === BANNERSTAND.length - 1 ? " disabled" : "") + ' aria-label="Nach unten">↓</button>' +
+      '<button type="button" class="weg" data-bn-loeschen>Banner löschen</button>' +
+    '</div>' +
+  '</article>';
+}
+
+function bnZeichnen(){
+  const feld = $("#bnListe"); if(!feld) return;
+  feld.innerHTML = BANNERSTAND.map((b, i) => bnZeile(b, i)).join("");
+  bnVorschauZeichnen();
+}
+
+/* Eine Zeile allein neu zu zeichnen wäre schöner, ist aber trügerisch
+   (dieselbe Begründung wie bei kbAendern) — der Bereich ist klein
+   genug, um ihn ganz zu zeichnen. */
+function bnAendern(id, feld, wert){
+  const b = bnFinden(id); if(!b) return;
+  b[feld] = wert;
+  bnZeichnen();
+}
+
+function bnNeu(){
+  BANNERSTAND.push({
+    id: "b_" + Math.random().toString(16).slice(2, 10), an:true, bild:"",
+    titel:"", text:"", farbe:"", zielTyp:"seite", zielWert:"",
+    reihenfolge: BANNERSTAND.length
+  });
+  bnZeichnen();
+  const neu = $("#bnListe").lastElementChild;
+  if(neu) neu.scrollIntoView({ block:"nearest", behavior:"smooth" });
+}
+
+function bnLoeschen(id){
+  if(!confirm("Dieses Banner wirklich löschen? Gäste sehen es nach dem Übernehmen nicht mehr.")) return;
+  BANNERSTAND = BANNERSTAND.filter(b => b.id !== id);
+  BANNERSTAND.forEach((b, i) => { b.reihenfolge = i; });
+  bnZeichnen();
+}
+
+function bnVerschieben(id, richtung){
+  const i = BANNERSTAND.findIndex(b => b.id === id);
+  const j = i + richtung;
+  if(i < 0 || j < 0 || j >= BANNERSTAND.length) return;
+  const [b] = BANNERSTAND.splice(i, 1);
+  BANNERSTAND.splice(j, 0, b);
+  BANNERSTAND.forEach((x, k) => { x.reihenfolge = k; });
+  bnZeichnen();
+}
+
+/* ── Bedienung ─────────────────────────────────────────────────── */
+document.addEventListener("click", e => {
+  const zeile = e.target.closest && e.target.closest("[data-bn]");
+  if(zeile){
+    const id = zeile.dataset.bn;
+    if(e.target.closest("[data-bn-waehlen]")){
+      const d = zeile.querySelector("[data-bn-datei]");
+      if(d) d.click();
+      return;
+    }
+    if(e.target.closest("[data-bn-bildweg]")){ bnAendern(id, "bild", ""); return; }
+    if(e.target.closest("[data-bn-hoch]"))    { bnVerschieben(id, -1); return; }
+    if(e.target.closest("[data-bn-runter]"))  { bnVerschieben(id, 1);  return; }
+    if(e.target.closest("[data-bn-loeschen]")){ bnLoeschen(id); return; }
+  }
+  if(e.target.closest("[data-bn-neu]")) bnNeu();
+});
+
+document.addEventListener("change", e => {
+  const zeile = e.target.closest && e.target.closest("[data-bn]");
+  if(!zeile) return;
+  const id = zeile.dataset.bn;
+  if(e.target.matches("[data-bn-an]"))     bnAendern(id, "an", e.target.checked);
+  if(e.target.matches("[data-bn-farbe]"))  bnAendern(id, "farbe", e.target.value);
+  if(e.target.matches("[data-bn-zieltyp]")){
+    /* Ein Wechsel des Zieltyps macht den alten Wert ungültig — sonst
+       stünde z. B. eine URL im zielWert eines "seite"-Banners. */
+    bnAendern(id, "zielTyp", e.target.value);
+    bnAendern(id, "zielWert", "");
+  }
+  if(e.target.matches("[data-bn-zielwert]")) bnAendern(id, "zielWert", e.target.value);
+  if(e.target.matches("[data-bn-datei]")){
+    const datei = e.target.files && e.target.files[0];
+    e.target.value = "";
+    if(datei) bnZuschnittOeffnen(id, datei);
+  }
+});
+
+document.addEventListener("input", e => {
+  const zeile = e.target.closest && e.target.closest("[data-bn]");
+  if(!zeile) return;
+  const b = bnFinden(zeile.dataset.bn); if(!b) return;
+  /* Beim Tippen NICHT neu zeichnen — sonst verliert das Feld den
+     Blinker nach jedem Buchstaben (dasselbe Muster wie bei kb*). */
+  if(e.target.matches("[data-bn-titel]")) b.titel = e.target.value;
+  if(e.target.matches("[data-bn-text]"))  b.text  = e.target.value;
+  if(e.target.matches("[data-bn-zielwert]") && e.target.matches('input[type="url"]')) b.zielWert = e.target.value;
+  const schau = zeile.querySelector(".kbschau");
+  if(schau) schau.outerHTML =
+    '<div class="kbschau">' +
+      (b.bild ? '<span class="kbsbild"><img src="' + sicher(b.bild) + '" alt=""></span>' : "") +
+      '<span class="kbstxt"><b>' + sicher(b.titel || "(ohne Titel)") + '</b>' +
+        (b.text ? '<i>' + sicher(b.text) + '</i>' : "") + '</span>' +
+    '</div>';
+});
+
+$("#bnNeuKnopf").onclick = bnNeu;
+
+/* ── Der Zuschnitt (dupliziert von kb*, siehe Kommentar bei #bnBlatt) ── */
+function bnZuschnittOeffnen(id, datei){
+  const leser = new FileReader();
+  leser.onerror = () => melde("Datei nicht lesbar");
+  leser.onload = () => {
+    const bild = new Image();
+    bild.onerror = () => melde("Das ist kein Bild, das der Browser öffnen kann");
+    bild.onload = () => {
+      $("#bnBild").src = bild.src;
+      bnZuschnitt = { id: id, bild: bild, zoom:1, dx:0, dy:0 };
+      $("#bnZoom").value = 100;
+      $("#bnBlattStand").textContent = "";
+      $("#bnBlatt").hidden = false;
+
+      const rahmen = $("#bnRahmen");
+      const breite = Math.max(160, Math.min(rahmen.parentElement.clientWidth - 4, 520));
+      rahmen.style.width  = breite + "px";
+      rahmen.style.height = Math.round(breite / BN_FORMAT) + "px";
+      bnMitte();
+    };
+    bild.src = leser.result;
+  };
+  leser.readAsDataURL(datei);
+}
+
+function bnGrundmass(){
+  const r = $("#bnRahmen").getBoundingClientRect();
+  const b = bnZuschnitt.bild;
+  return Math.max(r.width / b.naturalWidth, r.height / b.naturalHeight);
+}
+function bnMitte(){
+  const r = $("#bnRahmen").getBoundingClientRect();
+  const m = bnGrundmass() * bnZuschnitt.zoom;
+  bnZuschnitt.dx = (r.width  - bnZuschnitt.bild.naturalWidth  * m) / 2;
+  bnZuschnitt.dy = (r.height - bnZuschnitt.bild.naturalHeight * m) / 2;
+  bnSetzen();
+}
+function bnGrenzen(){
+  const r = $("#bnRahmen").getBoundingClientRect();
+  const m = bnGrundmass() * bnZuschnitt.zoom;
+  const bw = bnZuschnitt.bild.naturalWidth * m, bh = bnZuschnitt.bild.naturalHeight * m;
+  bnZuschnitt.dx = Math.min(0, Math.max(r.width  - bw, bnZuschnitt.dx));
+  bnZuschnitt.dy = Math.min(0, Math.max(r.height - bh, bnZuschnitt.dy));
+}
+function bnSetzen(){
+  if(!bnZuschnitt) return;
+  bnGrenzen();
+  const m = bnGrundmass() * bnZuschnitt.zoom;
+  $("#bnBild").style.transform =
+    "translate(" + bnZuschnitt.dx + "px," + bnZuschnitt.dy + "px) scale(" + m + ")";
+}
+
+(function(){
+  const rahmen = () => $("#bnRahmen");
+  let zieht = null;
+  document.addEventListener("pointerdown", e => {
+    if(!bnZuschnitt || !e.target.closest || !e.target.closest("#bnRahmen")) return;
+    zieht = { x:e.clientX, y:e.clientY, dx:bnZuschnitt.dx, dy:bnZuschnitt.dy };
+    rahmen().setPointerCapture(e.pointerId);
+  });
+  document.addEventListener("pointermove", e => {
+    if(!zieht || !bnZuschnitt) return;
+    bnZuschnitt.dx = zieht.dx + (e.clientX - zieht.x);
+    bnZuschnitt.dy = zieht.dy + (e.clientY - zieht.y);
+    bnSetzen();
+  });
+  document.addEventListener("pointerup", () => { zieht = null; });
+  document.addEventListener("pointercancel", () => { zieht = null; });
+})();
+
+function bnAusschnitt(){
+  const r = $("#bnRahmen").getBoundingClientRect();
+  const m = bnGrundmass() * bnZuschnitt.zoom;
+  const B = BN_BREITE, H = Math.round(BN_BREITE / BN_FORMAT);
+  const flaeche = document.createElement("canvas");
+  flaeche.width = B; flaeche.height = H;
+  const stift = flaeche.getContext("2d");
+  stift.fillStyle = "#FFFFFF";
+  stift.fillRect(0, 0, B, H);
+  stift.drawImage(bnZuschnitt.bild,
+    -bnZuschnitt.dx / m, -bnZuschnitt.dy / m, r.width / m, r.height / m,
+    0, 0, B, H);
+  return new Promise((fertig, schief) => {
+    flaeche.toBlob(b => b ? fertig(b) : schief(new Error("Umwandeln fehlgeschlagen")),
+      "image/jpeg", BILD_GUETE);
+  });
+}
+
+async function bnZuschnittFertig(){
+  if(!bnZuschnitt) return;
+  const knopf = $("#bnBlattOk");
+  const stand = t => { $("#bnBlattStand").textContent = t; };
+  if(!betriebId){ stand("Kein Betrieb gewählt."); return; }
+  if(demo){ stand("Im Vorführmodus wird nichts hochgeladen."); return; }
+  knopf.disabled = true;
+  try{
+    stand("Wird zugeschnitten …");
+    const blob = await bnAusschnitt();
+    stand("Wird hochgeladen … (" + Math.round(blob.size/1024) + " KB)");
+    const pfad = betriebId + "/banner/" + bnZuschnitt.id + "-" + Date.now() + ".jpg";
+    const {error} = await db.storage.from("gerichte")
+      .upload(pfad, blob, {contentType:"image/jpeg", upsert:false});
+    if(error) throw error;
+    const {data} = db.storage.from("gerichte").getPublicUrl(pfad);
+    bnAendern(bnZuschnitt.id, "bild", data.publicUrl);
+    bnSchliessen();
+    melde("Bild übernommen — mit „Übernehmen“ wird es sichtbar");
+  }catch(e){
+    console.error(e);
+    stand(e.message || "Hochladen fehlgeschlagen");
+  }
+  knopf.disabled = false;
+}
+
+function bnSchliessen(){ blattFortAnimieren($("#bnBlatt"), function(){
+  $("#bnBlatt").hidden = true; bnZuschnitt = null; }); }
+
+$("#bnBlattOk").onclick  = bnZuschnittFertig;
+$("#bnBlattWeg").onclick = bnSchliessen;
+$("#bnBlatt").onclick = e => { if(e.target === $("#bnBlatt")) bnSchliessen(); };
+$("#bnZoom").oninput = e => {
+  if(!bnZuschnitt) return;
+  bnZuschnitt.zoom = Number(e.target.value) / 100;
+  bnSetzen();
+};
+
+/* ── Sichern ───────────────────────────────────────────────────── */
+async function bnSichern(){
+  const raus = $("#bnPruefung");
+  const knopf = $("#bnSichern");
+  /* Nur Banner mit gültigem Bild schicken — ein Eintrag ohne Bild
+     wäre im Hub sowieso unsichtbar (dieselbe Regel wie kachelHTML()),
+     bleibt hier aber in der Liste stehen (nicht gelöscht), falls der
+     Wirt erst den Rest ausfüllt und das Bild zuletzt hochlädt. */
+  const raw = BANNERSTAND.map((b, i) => Object.assign({}, b, { reihenfolge:i }));
+  knopf.disabled = true; knopf.textContent = "Wird übernommen …";
+  try{
+    if(demo || !db){
+      raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
+    }else{
+      const {error} = await db.from("betriebe")
+        .update({ hub_banner: raw }).eq("id", betriebId);
+      if(error) throw error;
+      const b = meineBetriebe.find(x => x.id === betriebId);
+      if(b) b.hub_banner = raw;
+      raus.textContent = "Übernommen. Gäste sehen es beim nächsten Öffnen.";
+    }
+    melde("Banner-Rad übernommen");
+  }catch(err){
+    const txt = String(err && err.message || "");
+    raus.textContent = /hub_banner/.test(txt)
+      ? "Die Spalte hub_banner fehlt noch. Bitte migration-banner-rad.sql einspielen."
+      : (/masse|check/i.test(txt)
+          ? "Zu viele Banner oder ein Text ist zu lang (höchstens 12 Banner)."
+          : "Nicht gespeichert, bitte Verbindung prüfen.");
+  }
+  knopf.disabled = false; knopf.textContent = "Übernehmen";
+}
+$("#bnSichern").onclick = bnSichern;
 
 
 /* Nach Kategorie gruppiert, dieselbe Reihenfolge wie in der
