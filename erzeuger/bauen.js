@@ -209,6 +209,30 @@ for(const n of ["_headers", "_redirects"]){
   }
 }
 
+/* ─── 5b · Bewegte Zeichen ──────────────────────────────────────
+   Lottie-Emojis und ihr Abspieler, nach /emoji/. Der Hub lädt sie von
+   https://omoteno.de/emoji/ — FEST von der Hauptadresse, nicht
+   relativ: Auf den Kundenadressen (choco-lamour.omoteno.de/*) lenkt
+   _redirects ALLES in den Hub-Ordner um, ein /emoji/ dort liefe ins
+   Leere. Deshalb auch der CORS-Kopf in _headers.
+
+   Fehlt der Ordner, bricht der Bau NICHT ab: Ohne die Dateien zeigt
+   der Hub das Emoji des Geräts, still statt bewegt. Das ist ein
+   Rückfall, kein Schaden — aber er wird laut gesagt. */
+{
+  const von = path.join(WURZEL, "auslieferung", "emoji");
+  if(fs.existsSync(von)){
+    ordner(path.join(ZIEL, "emoji"));
+    let n = 0;
+    for(const f of fs.readdirSync(von)){
+      fs.copyFileSync(path.join(von, f), path.join(ZIEL, "emoji", f)); n++;
+    }
+    console.log("\n   emoji/ übernommen (" + n + " Dateien)");
+  } else {
+    console.log("\n   emoji/ fehlt — der Hub zeigt stille Geräte-Emojis.");
+  }
+}
+
 /* ─── 6 · Was noch fehlt, laut sagen ────────────────────────────
    Ein Bau, der stillschweigend etwas ausklammert, erzieht dazu,
    seine Ausgabe nicht zu lesen. */

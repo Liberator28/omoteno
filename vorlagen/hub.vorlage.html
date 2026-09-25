@@ -950,6 +950,32 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
    sitzt er schief im Feld. */
 .ico.zeichen{font-size:20px;line-height:1}
 .kachel.saeule .ico.zeichen{font-size:21px}
+
+/* ── Bewegte Zeichen ─────────────────────────────────────────────
+   Zwei Ebenen im selben Rasterfeld: unten das stille Emoji des
+   Geräts, darüber der Film. Umgeblendet wird erst, wenn der Film
+   sein erstes Bild gemalt hat (.bz-bereit) — vorher bliebe sonst
+   ein leerer Rahmen stehen. Die Größe kommt aus font-size (1em),
+   damit jede Stelle sie mit einer Zeile setzen kann. */
+.bz{display:inline-grid;place-items:center;width:1em;height:1em;line-height:1;flex:none;
+    transition:transform .16s cubic-bezier(.2,.8,.3,1)}
+.bz > *{grid-area:1/1}
+/* Ohne Farb-Emoji-Schrift zeichnet der Browser das Zeichen einfarbig
+   in der geerbten Schriftfarbe — deshalb setzt jedes Feld, das ein
+   Zeichen trägt, eine lesbare Farbe (Chip: die des Chips, Symbolfeld:
+   --tinte statt des blassen --schoko, gemessen 2,89:1). */
+.bz-still{font-size:.84em;transition:opacity .18s ease-out}
+.bz-film{display:block;width:100%;height:100%;opacity:0;transition:opacity .18s ease-out}
+.bz-film svg{display:block}
+.bz.bz-bereit .bz-film{opacity:1}
+.bz.bz-bereit .bz-still{opacity:0}
+/* Ein Emoji trägt seine eigenen Farben — die farbige Fläche dahinter
+   wäre doppelt. Das Feld bleibt als ruhiger Grund, die Größe wächst. */
+.ico.bz-ico{font-size:30px;background:var(--flaeche-2);color:var(--tinte);overflow:visible}
+.kachel.saeule .ico.bz-ico{font-size:32px}
+.gitter.zwei .ico.bz-ico{font-size:27px}
+a.kachel:active .bz, .rufknopf:active .bz{transform:scale(1.14)}
+@media (prefers-reduced-motion:reduce){ .bz, .bz-still, .bz-film{transition:none} }
 /* Ein gezeichnetes Zeichen im Knopf, dort wo vorher ein Emoji stand. */
 .kzeichen{display:inline-flex;flex:none}
 .kzeichen svg{width:18px;height:18px;fill:none;stroke:currentColor;
@@ -2167,6 +2193,16 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .rufknopf.an{border-color:var(--rot);box-shadow:0 0 0 1px var(--rot) inset}
 .rufknopf.an .rufico{background:var(--rot);color:var(--auf-rot)}
+.rufknopf .rufico.bz-ico{font-size:31px;color:var(--tinte)}
+/* Ein bewegtes Emoji braucht keinen roten Grund, um „gewählt" zu
+   sagen — das sagt der Rahmen. Der rote Grund würde die Emojifarben
+   nur verschmieren. */
+.rufknopf.an .rufico.bz-ico{background:var(--rot-flaeche)}
+.bz-sterne{display:flex;gap:6px;font-size:30px;letter-spacing:0}
+/* Kategorie-Chips mit Emoji: Lieferando-Bauart, Zeichen links vom
+   Wort, etwas mehr Luft links. */
+.chip.mitbz{display:inline-flex;align-items:center;gap:7px;padding:8px 14px 8px 10px}
+.chip.mitbz .bz{font-size:21px}
 
 /* Eintrag für eine weitere, noch offene Bestellung auf der
    Bestätigungsseite. Bewusst ruhig - er soll die aktuelle Bestellung
@@ -4079,6 +4115,217 @@ function kachelBauen(schluessel, wunsch){
   });
   return k;
 }
+
+/* ═══ BEWEGTE ZEICHEN ═════════════════════════════════════════════
+   Animierte Emojis (Google Noto, CC BY 4.0) an Kacheln, Servicerufen
+   und Kategorien. Drei Regeln tragen das Ganze:
+
+   1 · ZUERST STEHT DAS EMOJI DES GERÄTS. Im Auszeichnungstext liegt
+       immer das gewöhnliche Zeichen. Erst wenn Abspieler UND Datei da
+       sind und das erste Bild gemalt ist, blendet die Bewegung darüber.
+       Ohne Netz, ohne omoteno.de, mit Werbeblocker: der Gast sieht ein
+       stilles Emoji, nie ein Loch (CLAUDE.md §7 — der tägliche Fall
+       zählt mehr als der schöne).
+
+   2 · GELADEN WIRD, WAS SICHTBAR WIRD. Der Abspieler (46 KB) kommt
+       beim ersten sichtbaren Zeichen, jede Datei (~5 KB) erst, wenn
+       ihr Platz ins Bild rückt.
+
+   3 · EINMAL SPIELEN, NICHT DAUERND. Beim Erscheinen spielt jedes
+       Zeichen einmal, danach steht es. Alle paar Sekunden erwacht EIN
+       sichtbares Zeichen — das Haus wirkt lebendig, der Akku des
+       Gastes merkt nichts davon. Wird dieselbe Seite nur neu gezeichnet
+       (Aktionen alle 120 s, Board-Änderung), spielt nichts erneut
+       (CLAUDE.md §4.1: Einflug nur an Neues).
+
+   Die Adresse ist FEST die Hauptadresse: Unter choco-lamour.omoteno.de
+   lenkt _redirects jeden Pfad in den Hub-Ordner, ein relatives
+   „emoji/" liefe dort ins Leere. */
+const BZ_QUELLE    = "https://omoteno.de/emoji/";
+const BZ_ABSPIELER = BZ_QUELLE + "lottie-5.13.0.min.js";
+
+/* Nach Kachel, wo die Kachel etwas Eigenes verdient; sonst nach ihrem
+   Symbol — so folgt das Emoji, wenn der Wirt im Board ein anderes
+   Symbol gewählt hat. Ein Symbol ohne passendes bewegtes Emoji behält
+   seinen Strich. */
+const BZ_KACHEL = { tischruf:"1f6ce", trinkgeld:"1f64f" };
+const BZ_ICON = {
+  speise:"1f37d", teller:"1f37d", glas:"1f9c3", cocktail:"1f379", shaker:"1f379",
+  wlan:"26a1", musik:"1f3b6", note:"1f3b6", quiz:"1f9e0", herz:"1f970",
+  stern:"1f31f", kamera:"1f4f8", kalender:"1f942", sekt:"1f942", ort:"1f697",
+  karte:"1f4b8", muenze:"1f4b8", hand:"1f44b", glocke:"1f6ce", tasse:"2615",
+  kanne:"1f375", becher:"1f9cb", flasche:"1f37e", eis:"1f366"
+};
+const BZ_RUF = { zahlen:"1f4b8", runde:"1f37b", kommen:"1f44b" };
+
+/* Kategorie → Emoji über Stichworte im DEUTSCHEN Namen (übersetzt wird
+   erst beim Zeichnen). Die Reihenfolge ist Teil der Regel:
+   „Obstsalat" muss Obst werden, nicht Salat; „Reis" darf nicht in
+   „Eis" landen; „Softdrinks" nicht bei „Drink"/Cocktail. Gegen die
+   echten Kategorien aller Häuser geprüft (pruef-bewegte-zeichen.js). */
+const BZ_KATEGORIE = [
+  [/crêpe|crepe/,                              "1f353"],
+  [/waffel|waffle/,                            "1f36a"],
+  [/pancake|pfannkuchen/,                      "1f95e"],
+  [/\breis\b|rice/,                            "1f368"],
+  [/fettuccine|pasta|nudel|spaghetti|penne|tagliatelle/, "1f35d"],
+  [/obst|frucht|früchte|fruit/,                "1f96d"],
+  [/runde|teilen|sharing|platte/,              "1f973"],
+  [/manakish|pizza|flammkuchen|herzhaft/,      "1f355"],
+  [/gepresst|saft|juice/,                      "1f34a"],
+  [/limo|softdrink|soda|cola/,                 "1f34b"],
+  [/kaiser|flasche|sekt|champagner|prosecco/,  "1f37e"],
+  [/bubble|boba/,                              "1f9cb"],
+  [/cocktail|mocktail|longdrink|drink/,        "1f379"],
+  [/\beis|gelato|sorbet|ice ?cream/,           "1f366"],
+  [/kaffee|coffee|espresso|cappuccino|latte/,  "2615"],
+  [/\btee\b|\btea\b|matcha/,                   "1f375"],
+  [/bier|beer/,                                "1f37b"],
+  [/wein|wine/,                                "1f377"],
+  [/burger/,                                   "1f354"],
+  [/suppe|ramen|soup/,                         "1f35c"],
+  [/frühstück|breakfast|omelett/,              "1f373"],
+  [/salat|salad|bowl/,                         "1f957"],
+  [/kuchen|torte|cake|dessert|nachtisch/,      "1f382"],
+  [/donut|gebäck/,                             "1f369"],
+  [/chicken|hähnchen|huhn|grill|fleisch|wings/,"1f357"],
+  [/vegan|avocado|veggie/,                     "1f951"],
+  [/erdbeer|strawberr/,                        "1f353"],
+  [/kirsch|cherry|beere/,                      "1f352"]
+];
+const BZ_KARTE = { speisekarte:"1f37d", getraenke:"1f9c3", cocktails:"1f379" };
+
+/* Ruhebild je Emoji — GEMESSEN, nicht Bild 0. Einige Noto-Filme
+   beginnen leer und zeichnen sich erst herein (🌟 🍦 🎂 🙌), andere
+   enden leer (🍕 🍪). Mit Bild 0 als Ruhe stünde bei „Bewegung
+   reduzieren" eine leere Fläche da, und die Pizza verschwände nach
+   dem Abspielen. Wert: das erste Bild mit ≥ 92 % der größten
+   gemalten Fläche (Pixel gezählt je Bild, pruef-bewegte-zeichen.js
+   misst es nach). Fehlt ein Eintrag, ist Bild 0 schon voll. */
+const BZ_RUHE = {"1f31f":45,"1f355":10,"1f35c":7,"1f35d":9,"1f366":90,"1f36a":13,"1f373":66,"1f37b":10,"1f37e":46,"1f382":19,"1f389":25,"1f64c":11,"1f64f":11,"1f942":29,"1f957":129,"1f9e0":23};
+
+/* Live-Schalter aus dem Board (betriebe.hub_stil), dann das
+   Markenblatt, dann an. Strikt boolean: hub_stil ist eine Live-Spalte,
+   und eine Zeichenkette "false" wäre wahr (dieselbe Falle wie iconAus). */
+let HUBSTIL = {};
+function bewegteZeichenAn(){
+  if(HUBSTIL && typeof HUBSTIL.emoji === "boolean") return HUBSTIL.emoji;
+  if(typeof MARKENBLATT.bewegteZeichen === "boolean") return MARKENBLATT.bewegteZeichen;
+  return true;
+}
+
+function bzZeichen(cp){ return String.fromCodePoint(parseInt(cp, 16)) + "️"; }
+function bzKategorie(name, karte){
+  if(name === "Alle") return "2728";
+  if(name === "Beliebt") return "1f525";
+  const n = String(name || "").toLowerCase();
+  for(const [muster, cp] of BZ_KATEGORIE) if(muster.test(n)) return cp;
+  return BZ_KARTE[karte] || "1f37d";
+}
+function bzKachelCode(k){
+  const art = KACHELARTEN[k.schluessel];
+  if(art && k.icon === art.icon && BZ_KACHEL[k.schluessel]) return BZ_KACHEL[k.schluessel];
+  return BZ_ICON[k.icon] || "";
+}
+/* schl: woran sich „schon gespielt" merkt — je Platz, nicht je
+   Emoji, sonst spielte die zweite 🥰 auf derselben Seite nie. */
+function bzHTML(cp, schl){
+  return '<span class="bz" data-bz="' + cp + '" data-bz-schl="' + hs(schl || cp) +
+         '" aria-hidden="true"><span class="bz-still">' + bzZeichen(cp) + '</span></span>';
+}
+
+let bzAbspieler = null, bzBeob = null, bzBesuch = 0, bzLetzte = null;
+const bzTexte = new Map(), bzFilme = new Set(), bzGespielt = new Set();
+const bzRuhig = () => !!(window.matchMedia && matchMedia("(prefers-reduced-motion: reduce)").matches);
+
+function bzAbspielerLaden(){
+  if(!bzAbspieler) bzAbspieler = new Promise((ok, nein) => {
+    if(window.lottie) return ok(window.lottie);
+    const s = document.createElement("script");
+    s.src = BZ_ABSPIELER; s.async = true;
+    s.onload  = () => window.lottie ? ok(window.lottie) : nein(new Error("kein lottie"));
+    s.onerror = () => nein(new Error("Abspieler nicht erreichbar"));
+    document.head.appendChild(s);
+  });
+  return bzAbspieler;
+}
+function bzText(cp){
+  if(!bzTexte.has(cp)) bzTexte.set(cp, fetch(BZ_QUELLE + cp + ".json")
+    .then(a => { if(!a.ok) throw new Error(String(a.status)); return a.text(); }));
+  return bzTexte.get(cp);
+}
+
+function bzStarten(el){
+  if(el.dataset.bzLos) return;
+  el.dataset.bzLos = "1";
+  const cp = el.dataset.bz;
+  Promise.all([bzAbspielerLaden(), bzText(cp)]).then(([lottie, text]) => {
+    if(!el.isConnected) return;
+    const film = document.createElement("span");
+    film.className = "bz-film";
+    el.appendChild(film);
+    /* JSON je Film frisch einlesen: lottie verändert die Daten, die es
+       bekommt — zwei Filme auf einem Objekt stören sich gegenseitig. */
+    const anim = lottie.loadAnimation({
+      container:film, renderer:"svg", loop:false, autoplay:false,
+      animationData: JSON.parse(text),
+      rendererSettings:{ preserveAspectRatio:"xMidYMid meet" }
+    });
+    el._bz = anim;
+    bzFilme.add(anim);
+    const ruhe = BZ_RUHE[cp] || 0;
+    /* Nach dem Abspielen zurück aufs Ruhebild — nicht auf dem letzten
+       Bild stehen bleiben, das bei manchen Filmen leer ist. */
+    anim.addEventListener("complete", () => anim.goToAndStop(ruhe, true));
+    anim.addEventListener("DOMLoaded", () => {
+      el.classList.add("bz-bereit");
+      const schl = bzBesuch + "|" + (el.dataset.bzSchl || cp);
+      if(bzRuhig() || bzGespielt.has(schl)){ anim.goToAndStop(ruhe, true); return; }
+      bzGespielt.add(schl);
+      anim.goToAndPlay(0, true);
+    });
+  }).catch(() => { el.dataset.bzFehler = "1"; });
+}
+
+/* Nach jedem Zeichnen: Filme, deren Platz weg ist, freigeben; neue
+   Plätze beobachten. */
+function bzVerdrahten(){
+  bzFilme.forEach(a => {
+    if(!a.wrapper || !a.wrapper.isConnected){ try{ a.destroy(); }catch(e){} bzFilme.delete(a); }
+  });
+  if(!bewegteZeichenAn()) return;
+  const els = document.querySelectorAll(".bz:not([data-bz-los])");
+  if(!els.length) return;
+  if(!("IntersectionObserver" in window)){ els.forEach(bzStarten); return; }
+  if(!bzBeob) bzBeob = new IntersectionObserver(eintraege => eintraege.forEach(e => {
+    if(e.isIntersecting){ bzBeob.unobserve(e.target); bzStarten(e.target); }
+  }), { rootMargin:"120px 0px" });
+  els.forEach(el => bzBeob.observe(el));
+}
+
+function bzSpielen(el){
+  if(el && el._bz && !bzRuhig()) el._bz.goToAndPlay(0, true);
+}
+
+/* Antippen weckt das Zeichen im angetippten Element. pointerdown statt
+   click: Die Reaktion soll unter dem Finger beginnen, nicht erst beim
+   Loslassen. */
+document.addEventListener("pointerdown", e => {
+  const ziel = e.target.closest && e.target.closest(".kachel,.rufknopf,.chip,.bz-tipp");
+  if(ziel) bzSpielen(ziel.querySelector(".bz.bz-bereit"));
+}, { passive:true });
+
+/* Alle 6,5 s erwacht EIN sichtbares Zeichen. Nicht im Hintergrund,
+   nicht bei „Bewegung reduzieren". */
+setInterval(() => {
+  if(document.hidden || bzRuhig() || !bewegteZeichenAn()) return;
+  const h = window.innerHeight;
+  const sichtbar = Array.from(document.querySelectorAll(".bz.bz-bereit")).filter(el => {
+    const r = el.getBoundingClientRect();
+    return r.bottom > 0 && r.top < h && r.width > 0;
+  });
+  if(sichtbar.length) bzSpielen(sichtbar[Math.floor(Math.random() * sichtbar.length)]);
+}, 6500);
 
 /* Alles aus dem Markenblatt, das in eine Zeichenkette statt in
    textContent geht, muss hier durch.
@@ -8327,8 +8574,14 @@ function start(){
            (anders als das Markenblatt, das erzeuge-hub.js vorab
            prüft, CLAUDE.md §2.2). Eine Zeichenkette "false" wäre in
            JS wahr und würde das Symbol genau verkehrt abschalten. */
-        (k.iconAus === true ? "" : '<div class="ico' + (k.emoji ? " zeichen" : "") + '">' +
-          (k.emoji ? hs(k.emoji) : (ICONS[k.icon] || "")) + '</div>') +
+        (k.iconAus === true ? "" : (() => {
+          /* Das Emoji des Wirts gewinnt vor dem bewegten Zeichen: Er
+             hat es bewusst gewählt. */
+          const cp = !k.emoji && bewegteZeichenAn() ? bzKachelCode(k) : "";
+          return '<div class="ico' + (k.emoji ? " zeichen" : "") + (cp ? " bz-ico" : "") + '">' +
+            (cp ? bzHTML(cp, "kachel:" + k.schluessel)
+                : k.emoji ? hs(k.emoji) : (ICONS[k.icon] || "")) + '</div>';
+        })()) +
         '<div class="txt"><strong>' + hs(t(k.titel)) +
         (k.neu ? '<span class="neu">' + hs(t("NEU")) + '</span>' : "") +
         '</strong>' + (k.unter ? '<span>' + hs(t(k.unter)) + '</span>' : "") + '</div>' +
@@ -8431,9 +8684,12 @@ function karteSeite(id, daten, titel, unter, fuss){
      gleich wichtig aus und der Gast nimmt das Erstbeste. */
   const hatTop  = daten.some(x => x.eintraege.some(e => e.top));
   const gruppen = ["Alle"].concat(hatTop ? ["Beliebt"] : []).concat(daten.map(x => x.gruppe));
+  const mitZeichen = bewegteZeichenAn();
   const chips = gruppen.map(g =>
-    '<button class="chip ' + (g === filter[id] ? "an" : "") + '" data-seite="' + id +
-    '" data-g="' + g + '">' + t(g) + '</button>').join("");
+    '<button class="chip ' + (g === filter[id] ? "an" : "") + (mitZeichen ? " mitbz" : "") +
+    '" data-seite="' + id + '" data-g="' + g + '">' +
+    (mitZeichen ? bzHTML(bzKategorie(g, id), "chip:" + id + ":" + g) : "") +
+    '<span>' + t(g) + '</span></button>').join("");
 
   const q = suchtext[id].trim().toLowerCase();
   const passt = g => !q || (t(g.n) + " " + g.n + " " + (g.b ? t(g.b) : "")).toLowerCase().indexOf(q) >= 0;
@@ -9501,7 +9757,10 @@ let serviceRuf = "";
 SEITEN.service = () => {
   const knoepfe = SERVICE.rufe.map(r =>
     '<button class="rufknopf' + (serviceRuf === r.id ? " an" : "") + '" data-ruf="' + r.id + '">' +
-    '<span class="rufico">' + (ICONS[r.i] || ICONS.hand) + '</span>' +
+    '<span class="rufico' + (bewegteZeichenAn() && (BZ_RUF[r.id] || BZ_ICON[r.i]) ? " bz-ico" : "") + '">' +
+      (bewegteZeichenAn() && (BZ_RUF[r.id] || BZ_ICON[r.i])
+        ? bzHTML(BZ_RUF[r.id] || BZ_ICON[r.i], "ruf:" + r.id)
+        : (ICONS[r.i] || ICONS.hand)) + '</span>' +
     '<span class="ruftext">' + t(r.text) + '</span></button>').join("");
 
   return '<div class="seite"><h2>' + t("Service rufen") + '</h2>' +
@@ -9532,7 +9791,10 @@ SEITEN.rueckmeldung = () =>
   begleiterHTML("bewerten") +
   '<p class="unter">' + t("Wenn Sie mögen, hinterlassen Sie uns ein paar Worte auf Google. Wir freuen uns über jede ehrliche Rückmeldung.") + '</p>' +
   '<a class="knopf gross-cta" href="' + LINKS.bewertung + '" target="_blank" rel="noopener">' +
-    '<span class="sterne">★★★★★</span>' + t("Auf Google bewerten") + '</a>' +
+    (bewegteZeichenAn()
+      ? '<span class="sterne bz-sterne">' + bzHTML("1f31f", "bewerten:1") + bzHTML("1f31f", "bewerten:2") +
+        bzHTML("1f31f", "bewerten:3") + '</span>'
+      : '<span class="sterne">★★★★★</span>') + t("Auf Google bewerten") + '</a>' +
   '<p class="unter" style="margin-top:18px">' + t("Etwas passt nicht? Sagen Sie es uns gerne direkt – wir sind am Tisch für Sie da.") + '</p>' +
   '</div>';
 
@@ -9945,6 +10207,9 @@ function zeichne(){
 
   const istStart = !pfad || !SEITEN[pfad];
   seiteJetzt = istStart ? "start" : pfad;
+  /* Ein neuer Besuch der Seite — nicht ein Neuzeichnen derselben. Nur
+     dann dürfen die bewegten Zeichen erneut einmal spielen. */
+  if(roh !== bzLetzte){ bzLetzte = roh; bzBesuch++; }
   /* Fangnetz: lieber eine höfliche Ersatzseite als ein weißer Bildschirm. */
   try {
     $("inhalt").innerHTML = istStart ? start() : SEITEN[pfad]();
@@ -9981,6 +10246,7 @@ function zeichne(){
      Seite tut bnRadVerdrahten() dank seiner eigenen $("bnSpur")-Probe
      einfach nichts (§8.1g: die Voraussetzung wird selbst geprüft). */
   bnRadVerdrahten();
+  bzVerdrahten();
   window.scrollTo(0,0);
 
   /* Erst zeichnen, dann das Gericht öffnen. Andersherum würde
@@ -11882,7 +12148,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -12011,6 +12277,16 @@ async function karteHolen(erstesMal){
        vor einem alten Markenblatt. avatar.name (freier Figurname aus
        dem Studio) wird im Hub nirgends gelesen, geht also nicht
        verloren, wenn diese Spalte ihn nicht mitschickt. */
+    /* Anmutung aus dem Board: bewegte Emojis an/aus. Nur ein Objekt
+       wird übernommen; bewegteZeichenAn() nimmt daraus nur ein echtes
+       boolean. Ändert es den Stand, wird neu gezeichnet. */
+    const stil = b[0].hub_stil;
+    if(stil && typeof stil === "object" && !Array.isArray(stil)){
+      const vorher = bewegteZeichenAn();
+      HUBSTIL = stil;
+      if(bewegteZeichenAn() !== vorher) zeichne();
+    }
+
     const av = b[0].hub_avatar;
     if(av && typeof av === "object" && !Array.isArray(av)){
       const vorAvatar = JSON.stringify(MARKENBLATT.avatar || {});

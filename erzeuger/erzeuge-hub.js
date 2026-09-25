@@ -315,6 +315,12 @@ function pruefeMarkenblatt(mb){
       " — erlaubt: " + ZIERRAT_ARTEN.join(", "));
   /* Dieselbe Begründung wie bei zierrat: ein Tippfehler in thema
      bliebe wortlos ohne die neue Einfärbung. */
+  /* Strikt boolean: Ein "false" in Anführungszeichen wäre im Hub
+     kein boolean und fiele still auf „an" zurück — das Haus hätte
+     abgeschaltet und sähe trotzdem Emojis. Lieber hier laut. */
+  if(mb.bewegteZeichen !== undefined && typeof mb.bewegteZeichen !== "boolean")
+    F("bewegteZeichen muss true oder false sein (ohne Anführungszeichen), steht: " +
+      JSON.stringify(mb.bewegteZeichen));
   if(mb.thema !== undefined && THEMA_ARTEN.indexOf(mb.thema) < 0)
     F("thema unbekannt: " + mb.thema +
       " — erlaubt: " + THEMA_ARTEN.join(", "));
@@ -453,6 +459,9 @@ function alsQuelltext(mb){
     mb.kopfband  ? liste("kopfband", mb.kopfband) : null,
     mb.zierrat   ? liste("zierrat", mb.zierrat) : null,
     mb.thema     ? liste("thema", mb.thema) : null,
+    /* false ist ein Wert, kein Fehlen: typeof statt Wahrheitswert,
+       sonst verschwände genau das Abschalten. */
+    typeof mb.bewegteZeichen === "boolean" ? liste("bewegteZeichen", mb.bewegteZeichen) : null,
     liste("zeiten",     mb.zeiten),
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,

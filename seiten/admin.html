@@ -2454,6 +2454,12 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         erscheint: zuerst eine laufende Aktion oder Ihr Banner-Rad, danach
         die Kacheln. Beides stellen Sie hier ein, beides gilt sofort, ohne
         dass irgendetwas neu erzeugt werden muss.</p>
+
+      <div class="schalter">
+        <div><div class="schaltertext">Bewegte Emojis</div>
+        <div class="schalterhilfe">Kacheln, Servicerufe und Kategorien bekommen lebendige Emojis, die beim Antippen reagieren. Aus = die ruhigen, gezeichneten Symbole — passend zu einem edlen Auftritt.</div></div>
+        <button class="wippe" id="stilAn" aria-pressed="true" aria-label="Bewegte Emojis"></button>
+      </div>
     </div>
 
     <div class="egruppe">
@@ -4490,6 +4496,44 @@ async function newsletterUmschalten(){
 
 $("#nlAn").onclick = newsletterUmschalten;
 
+/* ══ Bewegte Emojis im Hub (betriebe.hub_stil) ══════════════════════
+   Dieselbe Rangfolge wie im Hub (bewegteZeichenAn): Board-Wert, dann
+   Markenblatt, dann an. Strikt boolean — sonst zeigte der Schalter
+   „aus", während der Hub „an" liest. */
+let stilEmoji = true;
+function stilEmojiAus(bb){
+  const st = bb && bb.hub_stil;
+  if(st && typeof st === "object" && typeof st.emoji === "boolean") return st.emoji;
+  const mb = bb && bb.markenblatt;
+  if(mb && typeof mb === "object" && typeof mb.bewegteZeichen === "boolean") return mb.bewegteZeichen;
+  return true;
+}
+function stilZeichnen(){
+  const k = $("#stilAn"); if(k) k.setAttribute("aria-pressed", String(stilEmoji));
+}
+async function stilUmschalten(){
+  const vorher = stilEmoji;
+  stilEmoji = !stilEmoji;
+  stilZeichnen();
+  const text = stilEmoji ? "Bewegte Emojis an — Gäste sehen sie beim nächsten Öffnen."
+                         : "Bewegte Emojis aus — der Hub zeigt die gezeichneten Symbole.";
+  if(demo || !db){ melde(text); return; }
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  const neu = Object.assign({}, (bb && bb.hub_stil && typeof bb.hub_stil === "object") ? bb.hub_stil : {},
+                            { emoji: stilEmoji });
+  const {error} = await db.from("betriebe").update({ hub_stil: neu }).eq("id", betriebId);
+  if(error){
+    stilEmoji = vorher; stilZeichnen();
+    melde(/hub_stil/.test(error.message || "")
+      ? "Dieser Schalter braucht noch migration-hub-stil.sql in der Datenbank."
+      : "Nicht gespeichert, bitte Verbindung prüfen", true);
+    return;
+  }
+  if(bb) bb.hub_stil = neu;
+  melde(text);
+}
+$("#stilAn").onclick = stilUmschalten;
+
 async function nlVorratLaden(id){
   const el = $("#nlVorratStand"); if(!el) return;
   if(demo){ el.textContent = "Im Vorführmodus nicht verfügbar."; return; }
@@ -5209,10 +5253,17 @@ async function betriebeHolen(){
      dann ohne versuchen, nie den Login blockieren (§7). Eine dritte
      Stufe, weil die beiden neuen Spalten-Gruppen unabhängig
      voneinander eingespielt werden können. */
+  /* hub_stil (migration-hub-stil.sql) als vierte Stufe davor — dieselbe
+     Regel: eine fehlende Spalte kostet einen Schalter, nie den Login. */
   let { data, error } = await db
     .from("betrieb_mitglieder")
-    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar)");
+    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar, hub_stil)");
 
+  if(error && /hub_stil|column/i.test(error.message || "")){
+    ({data, error} = await db
+      .from("betrieb_mitglieder")
+      .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar)"));
+  }
   if(error && /hub_avatar|column/i.test(error.message || "")){
     ({data, error} = await db
       .from("betrieb_mitglieder")
@@ -5235,7 +5286,8 @@ async function betriebeHolen(){
                 markenblatt: z.betriebe.markenblatt || null, rolle:z.rolle,
                 newsletter_aktiv: z.betriebe.newsletter_aktiv,
                 klaviyo_liste_id: z.betriebe.klaviyo_liste_id || null,
-                hub_avatar: z.betriebe.hub_avatar || null}))
+                hub_avatar: z.betriebe.hub_avatar || null,
+                hub_stil: z.betriebe.hub_stil || null}))
     .sort((a,b) => a.name.localeCompare(b.name, "de"));
 }
 
@@ -5351,6 +5403,8 @@ async function betriebOeffnen(id){
   pauseZeichnen();
 
   newsletterAktiv = !!(bb && bb.newsletter_aktiv);
+  stilEmoji = stilEmojiAus(bb);
+  stilZeichnen();
   newsletterZeichnen();
   nlVorratLaden(id);
 

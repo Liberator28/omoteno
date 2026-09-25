@@ -88,7 +88,9 @@ function eigeneTexte(blatt){
     await p.goto("file://" + x.hub);
     await p.waitForTimeout(1300);
     gezeigt[x.slug] = await p.$$eval(".kachel", e => e.map(el => {
-      const svg = el.querySelector(".ico svg");
+      /* Ein bewegtes Zeichen (.bz) ist genauso ein Symbol wie ein
+         Strich — gemessen wird, dass ÜBERHAUPT etwas mit Breite dasteht. */
+      const svg = el.querySelector(".ico svg, .ico .bz");
       return {
         titel: el.querySelector("strong") ? el.querySelector("strong").textContent.trim() : "",
         unter: el.querySelector(".txt span:not(.neu)")
@@ -258,7 +260,7 @@ function eigeneTexte(blatt){
     const ohneBild = gezeigt[x.slug].filter(k => k.symbolBreit <= 0);
     pruef(ohneBild.length === 0, x.slug.padEnd(14) + " zeichnet überall ein Symbol",
       ohneBild.length ? ohneBild.map(k => k.titel).join(", ")
-                      : gezeigt[x.slug].length + " Kacheln, alle mit Strich");
+                      : gezeigt[x.slug].length + " Kacheln, alle mit Strich oder Zeichen");
   });
 
   /* ── 3d · Kacheltext ist Text, keine Auszeichnung ───────────────
