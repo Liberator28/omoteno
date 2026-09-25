@@ -487,6 +487,23 @@ Zustand, nach dem gesucht wird, gehört in ein eigenes Attribut
 (`data-…`), nie in den `style`-Text. Den schreibt der Browser, wie er
 will.
 
+### 4.5 Was nach dem Zeichnen verdrahtet wird, braucht EINE Stelle
+
+> **Vorfall, gemeldet vom Nutzer mit Bildschirmfoto.** Die bewegten
+> Emojis waren nach dem ersten Tipp auf eine Kategorie wieder stille
+> Geräte-Emojis. `bzVerdrahten()` hing an `zeichne()` — der Chip, die
+> Suche und der Serviceruf bauen aber per `innerHTML` neu, ohne
+> `zeichne()`. Neue Hüllen ohne Film. Die Prüfung war grün, weil sie
+> nur den ersten Aufbau der Seite ansah.
+
+Wer nach jedem Neuzeichnen etwas anschließen muss (Filme, Beobachter,
+Horcher), hängt es nicht an jede Zeichenstelle — die nächste wird
+vergessen. EIN `MutationObserver` sieht jede neue Hülle, einmal je
+Bild gebündelt, und das Angeschlossene trägt die Klasse selbst nicht,
+sonst weckt es sich selbst. Die Prüfung dazu zeichnet über **jeden**
+Weg neu (Chip, Suche, fremdes `innerHTML`) und zählt danach, was
+wirklich läuft.
+
 ---
 
 ## 5 · Farben, die der Kunde wählt
@@ -1115,7 +1132,7 @@ Dazu je nach Änderung:
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
-| **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der Kontrast des Bandes |
+| **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der Kontrast des Bandes (Glasfläche mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen), die Glas-Pille (mittig auf 1 px, ≥ 44 px, Weichzeichner, deckend bei „Transparenz reduzieren“, Fahrrad als bewegtes Zeichen, still bei abgeschalteten Zeichen) |
 | **Annahme-Leiste für neue Bestellungen im Board** | `pruefungen/pruef-annahme.js` — auffälligere Rahmung nur bei status="neu", In-Arbeit-ohne-Zusage bleibt bei der stillen Zeile, Tapflächen ≥44px, Kontrast Tag/Abend |
 | **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint` |
 | **Ball-Übergang der Reiterleiste (`.leiste-pille`)** | `pruefungen/pruef-leistenpille.js` — Ruhelage, Stauchung in der Mitte, Landung, Unterbrechbarkeit, Überlauf-Rückfall auf „Mehr", `prefers-reduced-motion`, Größenwechsel ohne veralteten Sprung |
@@ -1129,7 +1146,7 @@ Dazu je nach Änderung:
 | **Gutscheine für Stammgäste im Board, „Mein Tisch" beim Gast** | `pruefungen/pruef-gutschein-board.js` — Grenzen gegen die CHECK-Schranke in `datenbank/migration-gutscheine-masse.sql`, Anlegen/doppelter Code/Beenden, kein rohes JSON, Datumsfeld in der Karte, und die Naht Board → `gast_melden` → Hub gegen `datenbank/stand-gast-melden.sql` (bytegleiche Kopie der Live-Funktion); dazu `pruef-gastkonto.js` für den Kontrast der Karten je Haus, Tag und Abend |
 | **Bildvorschau im Board (Tiefeneffekt, Zuschnitt-Vorschau)** | `pruefungen/pruef-bildschau.js` — Vignette und Schatten an `.bildschau` und `#bildCropContainer`, dabei bleibt das Zuschnitt-Rechteck selbst unverändert |
 | **Aufklappbare Gerichte-Zeilen in der Speisekarte** | `pruefungen/pruef-speisekarte-klapp.js` — Ruhelage nur Name/Preis, Aufklappen zeigt Beschreibung, „Bearbeiten" öffnet weiterhin das echte Blatt (eigene Geste), Zustand übersteht ein Neuzeichnen (Suche), Tapflächen ≥44px, `prefers-reduced-motion` |
-| **Bewegte Emojis, Speisekarte mit Korbknopf, Entscheidungshilfe (Wischstapel, „Für mich entscheiden“, Lust-Chips, „Neu für Sie“), Feier nach dem Bestellen** | `pruefungen/pruef-bewegte-zeichen.js` (braucht `dist/`) — zweite Quelle: jeder im Hub genannte Codepunkt liegt als Datei in `auslieferung/emoji/`; Ruhebild in Pixeln nachgezählt; Kategorie→Emoji gegen die echten Namen; Schalter strikt boolean (Board vor Markenblatt); ohne Netz steht das Geräte-Emoji; „+“/Regler/Flug; Symmetrie bei 360 und 430 px mit `getBoundingClientRect` (1 px); Nachrücken als DASSELBE Element mit laufender Transition; Wurf mindestens mit Fingertempo; Bildlücken ≤ 50 ms; kein fremder Markenname im Quelltext (namentliche Liste); Entscheidungshilfe ganz oben in der Speisekarte, gezogene Wahl gegen die Karte gehalten, Lust-Chip gegen `gerichtOrt`, Neues vor Bestelltem, Allergene gegen `INHALTSSTOFFE`, „probiert“ nach echtem Abschicken |
+| **Bewegte Emojis, Speisekarte mit Korbknopf, Entscheidungshilfe (Wischstapel, „Für mich entscheiden“, Lust-Chips, „Neu für Sie“), Feier nach dem Bestellen** | `pruefungen/pruef-bewegte-zeichen.js` (braucht `dist/`) — zweite Quelle: jeder im Hub genannte Codepunkt liegt als Datei in `auslieferung/emoji/`; Ruhebild in Pixeln nachgezählt; Kategorie→Emoji gegen die echten Namen; Schalter strikt boolean (Board vor Markenblatt); ohne Netz steht das Geräte-Emoji; „+“/Regler/Flug; Symmetrie bei 360 und 430 px mit `getBoundingClientRect` (1 px); Nachrücken als DASSELBE Element mit laufender Transition; Wurf mindestens mit Fingertempo; Bildlücken ≤ 50 ms; kein fremder Markenname im Quelltext (namentliche Liste); Entscheidungshilfe ganz oben in der Speisekarte, gezogene Wahl gegen die Karte gehalten, Lust-Chip gegen `gerichtOrt`, Neues vor Bestelltem, Allergene gegen `INHALTSSTOFFE`, „probiert“ nach echtem Abschicken; nach jedem Neuzeichnen (Chip, Suche, fremdes `innerHTML`) laufen die Filme wieder (§4.5); eigene Zeichen (`BZ_EIGEN`, z. B. Crêpe) liegen als Datei vor und stehen in `LIZENZEN.txt` |
 | **Profi-Foto und Freisteller (Edge Function gericht-bild), Pop-Ansicht im Hub** | `pruefungen/pruef-profifoto.js` (braucht `dist/`) — die Naht als Quelltext: Tarif-Liste Board = Edge Function ⊆ CHECK in `migration-bild-ki.sql`, jeder Fehlergrund hat einen Satz, gesendete = gelesene Felder, Antwortfelder, gleicher Speicherordner, Reihenfolge angemeldet → gezählt → erst dann fal; Board mit gestellter Funktion: Knopf nur bei eigenem Foto und Tarif, nichts ohne Blick ersetzt, Übernehmen einzeln, „Sichern“ schreibt bild_frei; Hub mit nachgestellter Zeile und echtem PNG: schwebt ohne Rahmen, nur https, kaputter Freisteller → Foto, Detailblatt zeigt das Profi-Foto, Aufdecken springt heraus (nicht bei reduzierter Bewegung). Dazu `datenbank/pruef-rechte.sql` TEIL 5 |
 
 Und danach, immer:

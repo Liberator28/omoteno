@@ -42,7 +42,7 @@ function pruef(b, t, d) {
 
 /* Die echten Kategorien und was sie zeigen SOLLEN. */
 const ERWARTET = {
-  speisekarte: { "Crêpe":"1f353", "Waffel":"1f36a", "Mini-Pancakes":"1f95e", "Creamy Rice":"1f368",
+  speisekarte: { "Crêpe":"crepe", "Waffel":"1f36a", "Mini-Pancakes":"1f95e", "Creamy Rice":"1f368",
                  "Fettuccine":"1f35d", "Obstsalat":"1f96d", "Für die Runde":"1f973",
                  "Herzhaft · Manakish":"1f355", "Alle":"2728", "Beliebt":"1f525" },
   getraenke:   { "Frisch gepresst":"1f34a", "Softdrinks":"1f34b" },
@@ -113,6 +113,13 @@ async function oeffnen(browser, slug, hash, opt = {}) {
   const fehlt = [...genannt].filter(cp => /^(1f|2[67b])/.test(cp) && !fs.existsSync(path.join(EMO, cp + ".json")));
   pruef(genannt.size >= 40, "Codepunkte im Hub gefunden", genannt.size);
   pruef(!fehlt.length, "jede genannte Datei liegt in auslieferung/emoji/", fehlt.join(",") || "alle da");
+  /* Eigene Zeichen (kein Unicode-Codepunkt): jedes braucht seine Datei
+     UND einen Geräte-Emoji-Rückfall, der selbst als Noto-Film existiert. */
+  const eigen = JSON.parse(((quelle.match(/const BZ_EIGEN = (\{[^}]*\})/) || [])[1] || "{}").replace(/(\w+):/g, '"$1":'));
+  const eigenFehlt = Object.entries(eigen).filter(([k, ersatz]) => !fs.existsSync(path.join(EMO, k + ".json")) || !/^1f|^2/.test(ersatz));
+  pruef(Object.keys(eigen).length >= 1 && !eigenFehlt.length, "eigene Zeichen liegen als Datei bereit, mit Rückfall-Emoji",
+    Object.entries(eigen).map(([k, e]) => k + "→" + e).join(", "));
+  pruef(/crepe\.json/.test(fs.readFileSync(path.join(EMO, "LIZENZEN.txt"), "utf8")), "das eigene Zeichen steht mit Herkunft in LIZENZEN.txt");
   pruef(fs.existsSync(path.join(EMO, "lottie-5.13.0.min.js")) &&
         quelle.includes('BZ_QUELLE + "lottie-5.13.0.min.js"'), "Abspieler liegt unter dem Namen, den der Hub lädt");
   pruef(fs.existsSync(path.join(EMO, "LIZENZEN.txt")) &&
@@ -304,6 +311,48 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     });
     pruef(r.n > 0 && r.laeuft === 0 && r.bild, "Bewegung reduzieren: nichts läuft, jedes Zeichen steht auf seinem Ruhebild",
       r.laeuft + " laufen, Ruhebild " + r.bild);
+    await ctx.close();
+  }
+
+  console.log("\n══ Nach dem Neuzeichnen bleiben die Filme ══");
+  {
+    /* VORFALL, gemeldet vom Betreiber mit Bildschirmfoto: Nach dem ersten
+       Tipp auf eine Kategorie standen nur noch stille Geräte-Emojis da.
+       neuKarte() zeichnete per innerHTML neu, ohne bzVerdrahten(). Diese
+       Prüfung sah bis dahin nur den ERSTEN Aufbau jeder Seite. */
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/speisekarte");
+    const zaehl = () => s.evaluate(() => {
+      /* In BEIDEN Richtungen sichtbar: Die Chip-Leiste rollt waagrecht,
+         und was rechts draußen liegt, lädt absichtlich erst beim Hinrollen. */
+      const h = innerHeight, w = innerWidth;
+      const sicht = [...document.querySelectorAll("#inhalt .bz")].filter(el => {
+        const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < h && r.right > 0 && r.left < w && r.width > 0; });
+      return { n: sicht.length, bereit: sicht.filter(el => el.classList.contains("bz-bereit")).length };
+    });
+    const vorher = await zaehl();
+    const chips = await s.$$(".chip.mitbz");
+    await chips[2].click(); await s.waitForTimeout(1400);
+    const nachChip = await zaehl();
+    pruef(vorher.n > 0 && nachChip.n > 0 && nachChip.bereit === nachChip.n,
+      "Kategorie gewählt: jedes sichtbare Emoji hat wieder seinen Film", nachChip.bereit + "/" + nachChip.n);
+    /* Die Leiste waagrecht ans Ende rollen: Auch die dort liegenden Chips
+       müssen jetzt ihren Film bekommen (neu gezeichnet, dann erst gesehen). */
+    await s.evaluate(() => { const l = document.querySelector(".chips"); l.scrollLeft = l.scrollWidth; });
+    await s.waitForTimeout(1400);
+    const nachRollen = await zaehl();
+    pruef(nachRollen.n > 0 && nachRollen.bereit === nachRollen.n, "Chip-Leiste gerollt: auch die hinteren Chips haben ihren Film",
+      nachRollen.bereit + "/" + nachRollen.n);
+    await s.fill("#suchfeld", "cr"); await s.waitForTimeout(1400);
+    const nachSuche = await zaehl();
+    pruef(nachSuche.n > 0 && nachSuche.bereit === nachSuche.n, "nach dem Tippen in die Suche ebenso", nachSuche.bereit + "/" + nachSuche.n);
+    /* Irgendein Neuzeichnen, das keiner kennt: der Beobachter muss es sehen */
+    await s.evaluate(() => { location.hash = "#/service"; }); await s.waitForTimeout(1400);
+    await s.evaluate(() => { document.getElementById("inhalt").innerHTML = SEITEN.service(); });
+    await s.waitForTimeout(1400);
+    const ruf = await s.evaluate(() => { const l = [...document.querySelectorAll(".rufknopf .bz")];
+      return { n: l.length, bereit: l.filter(el => el.classList.contains("bz-bereit")).length }; });
+    pruef(ruf.n === 3 && ruf.bereit === 3, "Servicerufe neu gezeichnet: alle drei Filme wieder da", ruf.bereit + "/" + ruf.n);
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
     await ctx.close();
   }
 

@@ -482,6 +482,88 @@ async function hubUmschalter(br){
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   DIE PILLE · Glas, leise, mittig, mit Fahrrad
+
+   Wunsch: „etwas unscheinbarer, mit Emoji und passender Animation,
+   mit passendem Glass Button". Gemessen wird, was das heißt:
+   schmaler als die Seite, mittig (links = rechts auf 1 px), Glas mit
+   Weichzeichner, ohne Glas bei „Transparenz reduzieren" eine deckende
+   Fläche, im Knopf das Fahrrad als bewegtes Zeichen, das beim
+   Antippen wieder abspielt. Und mit abgeschalteten bewegten Zeichen
+   ein stilles Fahrrad, kein leerer Kreis.
+   ══════════════════════════════════════════════════════════════════ */
+async function hubPille(br){
+  console.log("\n══ Die Pille · Glas und Fahrrad ══");
+  for(const modus of ["aus", "an"]){
+    const h = modus === "an" ? await hubAuf(br, "chocolamour", LIEFER_AN)
+                             : await hubOhneModus(br, "chocolamour", LIEFER_AN);
+    await h.p.evaluate(() => { location.hash = "#/"; });
+    await h.p.waitForTimeout(600);
+    const m = await h.p.evaluate(() => {
+      const b = document.querySelector(".lieferband");
+      if(!b) return null;
+      const r = b.getBoundingClientRect(), st = getComputedStyle(b);
+      const z = b.querySelector(".lbz .bz");
+      return { breite: r.width, seite: document.documentElement.clientWidth,
+               links: r.left, rechts: document.documentElement.clientWidth - r.right,
+               hoch: r.height, filter: st.backdropFilter || st.webkitBackdropFilter || "",
+               grund: st.backgroundColor, rund: parseFloat(st.borderTopLeftRadius),
+               zeichen: z ? z.dataset.bz : null, tipp: b.classList.contains("bz-tipp") };
+    });
+    const wo = "Modus " + modus + " · ";
+    if(!m){ ok(false, wo + "Band gefunden"); await h.ctx.close(); continue; }
+    ok(m.breite < m.seite * 0.8, wo + "schmaler als die Seite (leiser als eine volle Karte)",
+       Math.round(m.breite) + " von " + m.seite + " px");
+    ok(Math.abs(m.links - m.rechts) <= 1, wo + "mittig: links = rechts auf 1 px",
+       m.links.toFixed(1) + " / " + m.rechts.toFixed(1));
+    ok(m.hoch >= 44, wo + "antippbar (≥ 44 px)", Math.round(m.hoch) + " px");
+    ok(m.rund >= m.hoch / 2 - 0.5, wo + "eine Pille: Rundung ≥ halbe Höhe", m.rund + " px");
+    ok(/blur\(/.test(m.filter), wo + "Glas: backdrop-filter mit Weichzeichner", m.filter || "(leer)");
+    ok(/\/\s*0?\.\d|rgba\(.*,\s*0?\.\d+\)/.test(m.grund), wo + "Glas: die Fläche lässt durchscheinen", m.grund);
+    ok(m.zeichen === "1f6b2", wo + "im Knopf steht das Fahrrad als bewegtes Zeichen", m.zeichen || "kein .bz");
+    ok(m.tipp, wo + "Antippen spielt es erneut ab (.bz-tipp)");
+    await h.ctx.close();
+  }
+
+  /* Transparenz reduzieren: dieselbe Pille, deckend, ohne Filter. */
+  const r = await hubOhneModus(br, "chocolamour", LIEFER_AN);
+  /* Playwright kennt reducedTransparency nicht; über CDP wie in
+     pruef-glas.js. */
+  const cdp = await r.ctx.newCDPSession(r.p);
+  await cdp.send("Emulation.setEmulatedMedia", {
+    features: [{ name:"prefers-reduced-transparency", value:"reduce" }] });
+  const fest = await r.p.evaluate(() => {
+    const b = document.querySelector(".lieferband");
+    const st = getComputedStyle(b);
+    return { mq: matchMedia("(prefers-reduced-transparency: reduce)").matches,
+             filter: st.backdropFilter || "none", grund: st.backgroundColor,
+             flaeche: getComputedStyle(document.documentElement).getPropertyValue("--flaeche").trim() };
+  });
+  /* Voraussetzung zuerst (§8.1g, Vorfall C): Greift die Emulation gar
+     nicht, misst der Rest nichts. */
+  ok(fest.mq, "Voraussetzung: „Transparenz reduzieren“ ist wirklich eingeschaltet");
+  if(fest.mq){
+    ok(fest.filter === "none", "ohne Transparenz: kein Weichzeichner mehr", fest.filter);
+    ok(!/\/\s*0?\.\d|rgba\(/.test(fest.grund), "ohne Transparenz: die Fläche deckt", fest.grund);
+  }
+  await r.ctx.close();
+
+  /* Bewegte Zeichen im Board abgeschaltet: stilles Fahrrad statt Film. */
+  const s = await hubOhneModus(br, "chocolamour", LIEFER_AN);
+  const still = await s.p.evaluate(() => {
+    HUBSTIL = { emoji:false };
+    zeichne();
+    return new Promise(ok => setTimeout(() => {
+      const z = document.querySelector(".lieferband .lbz");
+      ok({ bz: !!(z && z.querySelector(".bz")), text: z ? z.textContent.trim() : "" });
+    }, 500));
+  });
+  ok(!still.bz && /\u{1F6B2}/u.test(still.text),
+     "bewegte Zeichen aus: ein stilles Fahrrad, kein Film", JSON.stringify(still));
+  await s.ctx.close();
+}
+
+/* ══════════════════════════════════════════════════════════════════
    KONTRAST DES BANDES · beide Häuser, beide Phasen, beide Zustände
 
    VORFALL, und er war meiner. Das Band trug im eingeschalteten
@@ -501,7 +583,32 @@ async function hubUmschalter(br){
 const lum = c => { const [r,g,b] = c.map(v => { v /= 255;
     return v <= 0.03928 ? v/12.92 : Math.pow((v+0.055)/1.055, 2.4); });
   return 0.2126*r + 0.7152*g + 0.0722*b; };
-const zuRGB = t => (String(t).match(/\d+/g) || [0,0,0]).slice(0,3).map(Number);
+/* Farbe mit Deckkraft lesen. Eine Glasfläche (color-mix mit
+   transparent) gibt Chromium als „color(srgb 0.97 0.95 0.93 / 0.82)"
+   zurück, Werte 0..1. Die erste Fassung las jede Farbe per /\d+/ —
+   daraus wurde 0, 97, 0 … und ein Kontrast, den es nicht gibt
+   (dieselbe Falle steht in pruef-glas.js). */
+const zuRGBA = t => {
+  t = String(t);
+  const s = t.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/);
+  if(s) return [s[1]*255, s[2]*255, s[3]*255, s[4] !== undefined ? +s[4] : 1];
+  const r = t.match(/rgba?\(([\d.]+),\s*([\d.]+),\s*([\d.]+)(?:,\s*([\d.]+))?\)/);
+  if(r) return [+r[1], +r[2], +r[3], r[4] !== undefined ? +r[4] : 1];
+  throw new Error("Farbe nicht lesbar: " + t);
+};
+const zuRGB = t => zuRGBA(t).slice(0,3);
+/* Schichten von oben nach unten übereinander mischen, bis eine deckt. */
+const gemalt = schichten => {
+  let aus = [255,255,255], rest = 1, summe = [0,0,0];
+  for(const c of schichten){
+    const [r,g,b,a] = zuRGBA(c);
+    summe = [summe[0] + r*a*rest, summe[1] + g*a*rest, summe[2] + b*a*rest];
+    rest *= (1 - a);
+    if(rest < 0.001) break;
+  }
+  aus = summe.map((v,i) => v + aus[i]*rest);
+  return "rgb(" + aus.map(v => v.toFixed(2)).join(", ") + ")";
+};
 const kontrast = (a, b) => {
   const l1 = lum(zuRGB(a)), l2 = lum(zuRGB(b));
   return (Math.max(l1,l2) + 0.05) / (Math.min(l1,l2) + 0.05);
@@ -515,36 +622,44 @@ async function bandKontrast(br){
         const h = modus === "an"
           ? await hubAuf(br, haus, LIEFER_AN)
           : await hubOhneModus(br, haus, LIEFER_AN);
-        await h.p.evaluate(ph => {
-          document.body.dataset.phase = ph;
-          document.documentElement.dataset.phase = ph;
-          if(typeof paletteAnwenden === "function") paletteAnwenden(ph);
+        /* VORFALL in dieser Prüfung selbst: Hier stand
+           „paletteAnwenden(ph)" — eine Funktion, die es im Hub nicht
+           gibt. Die Abend-Hälfte maß also viermal den Tag und war grün
+           (§8.1g). Umgeschaltet wird jetzt über den echten Schalter des
+           Gastes, und die Voraussetzung wird gemessen. */
+        const phaseDa = await h.p.evaluate(ph => {
+          lichtSetzen(ph === "abend" ? "dunkel" : "hell");
           location.hash = "#/";
+          return document.body.dataset.phase;
         }, phase);
         await h.p.waitForTimeout(600);
+        ok(phaseDa === phase, "Voraussetzung: " + haus + " steht wirklich auf " + phase, phaseDa);
         const m = await h.p.evaluate(() => {
           const b = document.querySelector(".lieferband");
           if(!b) return null;
           const g = el => getComputedStyle(el);
-          /* Der wirklich GEMALTE Grund: durchsichtige Flächen
-             durchlaufen, bis eine Farbe kommt. Wer am Element misst,
-             bekommt „rgba(0,0,0,0)" und rechnet gegen Schwarz —
-             dieselbe Lehre wie §5.2b. */
-          const grund = el => { let n = el;
-            while(n){ const c = g(n).backgroundColor;
-              if(c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c)) return c;
-              n = n.parentElement; }
-            return "rgb(255, 255, 255)"; };
-          return { band: grund(b),
+          /* Der wirklich GEMALTE Grund: alle Flächen vom Band bis
+             hinauf zu <html>, von oben nach unten. Wer am Element
+             misst, bekommt bei Glas eine halb durchsichtige Farbe
+             und rechnet, als läge nichts darunter — dieselbe Lehre
+             wie §5.2b. Gemischt wird in Node (gemalt()). */
+          const schichten = [];
+          for(let n = b; n; n = n.parentElement){
+            const c = g(n).backgroundColor;
+            if(c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c)) schichten.push(c);
+          }
+          return { band: schichten, roh: g(b).backgroundColor,
                    titel: g(b.querySelector(".lbt b")).color,
                    unter: g(b.querySelector(".lbt span")).color };
         });
         await h.ctx.close();
         const wo = haus + " · " + phase + " · Modus " + modus;
         if(!m){ ok(false, wo, "kein Band gefunden"); continue; }
-        const kt = kontrast(m.titel, m.band), ku = kontrast(m.unter, m.band);
+        const grund = gemalt(m.band);
+        const kt = kontrast(m.titel, grund), ku = kontrast(m.unter, grund);
         ok(kt >= 4.5 && ku >= 4.5, wo,
-           "Titel " + kt.toFixed(2) + ":1, Unterzeile " + ku.toFixed(2) + ":1");
+           "Titel " + kt.toFixed(2) + ":1, Unterzeile " + ku.toFixed(2) + ":1" +
+           " (Fläche " + m.roh + ")");
       }
     }
   }
@@ -726,6 +841,7 @@ function naht(){
   await hubZu(br);
   await hubAmTisch(br);
   await hubUmschalter(br);
+  await hubPille(br);
   await bandKontrast(br);
 
   /* Zwei Häuser, nicht eines. Ein Test mit einem Kunden sieht jede
