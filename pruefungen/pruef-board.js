@@ -265,7 +265,7 @@ function quellenAbgleich(){
       panelId: document.querySelector(".tafel:not([hidden])").id,
       quellen: [...document.querySelectorAll("#karten [data-quelle]")]
         .map(k => k.dataset.quelle),
-      badge: (document.getElementById("lieferZahl") || {}).textContent
+      badge: (z => z && !z.hidden && z.offsetParent !== null ? z.textContent : "unsichtbar")(document.getElementById("lieferZahl"))
     }));
     pruef(imLieferReiter.panelId === "t-bestellungen",
       "„Lieferungen“ zeigt dieselbe Fläche wie „Bestellungen“, keine zweite");
