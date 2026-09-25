@@ -1,3 +1,7 @@
+> **VERALTET (25.09.2026).** Diese Anleitung vermutete den Fehler im
+> Schlüssel. Gemessen lag er im Vorflug des Browsers (CORS). Gültig ist
+> jetzt `anleitung-uebersetzer.md`.
+
 # Übersetzer reparieren — Anleitung für einen Chat mit Supabase-Zugriff
 
 **Was das hier ist.** Diese Sitzung (Claude Code) erreicht Supabase

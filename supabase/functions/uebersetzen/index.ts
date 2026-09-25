@@ -51,7 +51,13 @@ const antwort = (koerper: unknown, status = 200) =>
     headers: {
       "Content-Type": "application/json",
       "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "authorization, content-type, apikey",
+      /* Genau die Liste, die supabase-js selbst als nötig ausgibt
+         (@supabase/supabase-js/cors, SUPABASE_HEADERS, Stand 2.117.2 —
+         Kopie in pruefungen/stand-supabase-cors.mjs). VORFALL: Hier
+         fehlte x-client-info; der Browser brach nach dem OPTIONS ab,
+         die Funktion sah nie einen POST, das Board sagte „keine
+         Verbindung“. pruef-edge.js hält jede Funktion gegen die Liste. */
+      "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-retry-count, traceparent, tracestate, baggage",
     },
   });
 

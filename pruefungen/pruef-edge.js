@@ -87,6 +87,56 @@ function tscPfad(){
     .filter(d => fs.existsSync(path.join(FUNKTIONEN, d, "index.ts")));
   ok(namen.length > 0, "Funktionen gefunden", namen.join(", "));
 
+  /* ── Vorflug (CORS): Welche Kopfzeilen schickt der Browser? ──
+     VORFALL: „uebersetzen“ erlaubte nur authorization, content-type,
+     apikey. supabase-js schickt dazu x-client-info — der Browser brach
+     nach dem OPTIONS ab, in den Logs stand nur „OPTIONS 200“, nie ein
+     POST, und das Board sagte „keine Verbindung“. Der Schlüssel war
+     nie das Problem. Derselbe Griff stand in „newsletter-vorrat-
+     auffuellen“ (§8.1i: derselbe Griff steht selten nur einmal da).
+
+     Zweite Quelle, nicht abgeschrieben: pruefungen/stand-supabase-
+     cors.mjs ist die bytegleiche Datei dist/cors.mjs aus dem Paket
+     @supabase/supabase-js (Stand 2.117.2) — die Liste, die die
+     Bibliothek selbst als nötig ausgibt. Neue Fassung: `npm pack
+     @supabase/supabase-js@2`, Datei ersetzen, diese Prüfung laufen
+     lassen. Und welche Funktionen der Browser ruft, steht nicht hier,
+     sondern wird aus den Seiten gelesen (functions.invoke, /functions/v1/). */
+  const cors = fs.readFileSync(path.join(__dirname, "stand-supabase-cors.mjs"), "utf8");
+  const listeRoh = (cors.match(/const SUPABASE_HEADERS = \[([\s\S]*?)\]/) || [])[1] || "";
+  const pflicht = [...listeRoh.matchAll(/"([^"]+)"/g)].map(m => m[1].toLowerCase());
+  ok(pflicht.includes("x-client-info") && pflicht.length >= 4,
+     "die Kopfzeilen-Liste aus supabase-js ist gelesen", pflicht.join(", "));
+
+  const gerufen = new Map();
+  for(const ordner of ["seiten", "vorlagen"]){
+    const wo = path.join(OBEN, ordner);
+    if(!fs.existsSync(wo)) continue;
+    for(const d of fs.readdirSync(wo).filter(d => d.endsWith(".html"))){
+      const t = fs.readFileSync(path.join(wo, d), "utf8");
+      for(const m of t.matchAll(/functions\.invoke\(\s*["'`]([a-z0-9-]+)["'`]|\/functions\/v1\/([a-z0-9-]+)/g)){
+        const n = m[1] || m[2];
+        if(!gerufen.has(n)) gerufen.set(n, []);
+        gerufen.get(n).push(ordner + "/" + d);
+      }
+    }
+  }
+  ok(gerufen.size > 0, "die Seiten rufen Funktionen", [...gerufen.keys()].join(", "));
+
+  for(const n of namen){
+    const s = fs.readFileSync(path.join(FUNKTIONEN, n, "index.ts"), "utf8");
+    const erlaubt = (s.match(/"Access-Control-Allow-Headers":\s*"([^"]*)"/) || [])[1];
+    if(!gerufen.has(n) && erlaubt === undefined) continue; // nur vom Server gerufen
+    ok(/method\s*===\s*"OPTIONS"/.test(s), "„" + n + "“ beantwortet den Vorflug (OPTIONS)");
+    const hat = (erlaubt || "").toLowerCase().split(",").map(x => x.trim());
+    const fehlt = pflicht.filter(h => !hat.includes(h));
+    ok(fehlt.length === 0, "„" + n + "“ erlaubt jede Kopfzeile, die supabase-js schickt",
+       fehlt.length ? "fehlt: " + fehlt.join(", ") + (gerufen.has(n) ? "  (gerufen aus " + gerufen.get(n).join(", ") + ")" : "") : "alle " + pflicht.length);
+  }
+  for(const [n, wo] of gerufen){
+    ok(namen.includes(n), "die Seite ruft „" + n + "“ — und die Funktion liegt im Verzeichnis", wo.join(", "));
+  }
+
   const tsc = tscPfad();
   if(!tsc){
     /* Eine Prüfung, die nicht startet, ist keine — aber sie darf auch
@@ -131,7 +181,7 @@ function tscPfad(){
   }
 
   console.log(fehler === 0
-    ? "\n✓ Beide Funktionen prüfen durch. (Nicht geprüft: der echte API-Lauf.)"
+    ? "\n✓ Alle Funktionen prüfen durch. (Nicht geprüft: der echte API-Lauf.)"
     : "\n✗ " + fehler + " Fehler.");
   process.exit(fehler ? 1 : 0);
 })();
