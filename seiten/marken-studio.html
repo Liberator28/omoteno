@@ -207,7 +207,10 @@ button{cursor:pointer;border:none;background:none;padding:0}
 
 /* Abteilungsleiste, waagerecht scrollbar. Umbrechen würde auf
    schmalen Geräten drei Zeilen erzeugen und das halbe Blatt kosten. */
-.reiter{display:flex;gap:6px;overflow-x:auto;padding:0 14px 11px;scrollbar-width:none}
+/* touch-action: Der Griff darüber nimmt dem Browser jede Geste
+   (touch-action:none). Die Leiste ist breiter als das Telefon —
+   waagerecht wischen muss sie trotzdem können. */
+.reiter{display:flex;gap:6px;overflow-x:auto;padding:0 14px 11px;scrollbar-width:none;touch-action:pan-x}
 .reiter::-webkit-scrollbar{display:none}
 .reiter button{
   flex:0 0 auto;font-size:13px;font-weight:600;
@@ -229,12 +232,36 @@ button{cursor:pointer;border:none;background:none;padding:0}
 
 /* ─── Abteilungen ──────────────────────────────────────────── */
 .abteilung{padding:12px 0 24px;border-bottom:1px solid var(--kante)}
-.abteilung:last-child{border-bottom:none;min-height:60vh}
+.abteilung:last-child{border-bottom:none}
 .abteilungstitel{
   font-size:10.5px;font-weight:700;letter-spacing:.2em;text-transform:uppercase;
   color:var(--schrift-still);margin:0 0 5px;
 }
 .abteilungssatz{font-size:12.5px;color:var(--schrift-leise);margin:0 0 15px;line-height:1.55}
+
+/* Aufklappbare Abteilungen. Der Kopf ist die ganze Zeile (≥ 52 px
+   Tapfläche), der Satz darunter sagt in einem Satz, was hier drin ist.
+   Es ist immer nur EINE offen — das Blatt ist auf dem Telefon kurz,
+   und zehn offene Abteilungen waren eine Liste, in der man sucht. */
+.abteilung:has(> .abteilungstitel .abt-kopf){padding:0}
+.abteilung:has(> .abt-rumpf:not([hidden])){padding-bottom:22px}
+.abteilungstitel:has(.abt-kopf){margin:0}
+.abt-kopf{
+  display:grid;grid-template-columns:1fr 22px;column-gap:10px;align-items:center;
+  width:100%;min-height:56px;padding:11px 2px;text-align:left;
+  text-transform:none;letter-spacing:normal;color:var(--schrift);
+}
+.abt-name{grid-column:1;font-size:15px;font-weight:650}
+.abt-satz{grid-column:1;font-size:12.5px;font-weight:400;color:var(--schrift-leise);line-height:1.4;margin-top:2px}
+.abt-pfeil{
+  grid-column:2;grid-row:1 / span 2;width:9px;height:9px;justify-self:center;
+  border-right:2px solid var(--schrift-leise);border-bottom:2px solid var(--schrift-leise);
+  transform:rotate(45deg) translate(-2px,-2px);transition:transform var(--tempo) var(--kurve);
+}
+.abt-kopf[aria-expanded="true"] .abt-pfeil{transform:rotate(-135deg) translate(-2px,-2px)}
+.abt-kopf:focus-visible{outline:2px solid var(--kante-hell);outline-offset:2px;border-radius:10px}
+.abt-rumpf:not([hidden]){animation:abt-auf 200ms var(--kurve)}
+@keyframes abt-auf{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 
 /* Eine Regelzeile: Beschriftung oben, Bedienung darunter.
    Vorher standen Beschriftung, Regler und Wert nebeneinander — auf
@@ -984,15 +1011,17 @@ button{cursor:pointer;border:none;background:none;padding:0}
   <div class="blattinhalt" id="blattinhalt">
 
     <section class="abteilung" data-abt="vorlagen">
-      <h2 class="abteilungstitel">Schnellstart</h2>
-      <p class="abteilungssatz">Zwölf Häuser zum Antippen, nach Branche sortiert. Suchen Sie
-        das, was Ihrem am nächsten kommt — danach ist alles frei änderbar, und was Sie
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="vorlagen" aria-expanded="false" aria-controls="rumpf-vorlagen"><span class="abt-name">Schnellstart</span><span class="abt-satz">Ein fertiges Haus antippen – danach ist alles frei änderbar.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-vorlagen" hidden>
+      <p class="abteilungssatz">Nehmen Sie das Haus, das Ihrem am nächsten kommt. Was Sie
         selbst geschrieben haben, bleibt beim Wechsel stehen.</p>
       <div class="vorlagen" id="vorlagen"></div>
+      </div>
     </section>
 
     <section class="abteilung" data-abt="haus">
-      <h2 class="abteilungstitel">Das Haus</h2>
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="haus" aria-expanded="false" aria-controls="rumpf-haus"><span class="abt-name">Das Haus</span><span class="abt-satz">Name, Zeile darunter und die Begrüßung.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-haus" hidden>
       <div class="stell">
         <div class="kopfzeile"><span class="bez">Name</span></div>
         <input class="text" id="fName" maxlength="40" autocomplete="off">
@@ -1005,16 +1034,20 @@ button{cursor:pointer;border:none;background:none;padding:0}
         <div class="kopfzeile"><span class="bez">Begrüßung auf der Startseite</span></div>
         <input class="text" id="fGruss" maxlength="60" autocomplete="off">
       </div>
+      </div>
     </section>
 
     <section class="abteilung" data-abt="farben">
-      <h2 class="abteilungstitel">Farben bei Tag</h2>
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="farben" aria-expanded="false" aria-controls="rumpf-farben"><span class="abt-name">Farben bei Tag</span><span class="abt-satz">Die Farben, die der Gast tagsüber sieht.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-farben" hidden>
       <div id="warnungRaum"></div>
       <div class="farbgitter" id="farbenTag"></div>
+      </div>
     </section>
 
     <section class="abteilung" data-abt="abend">
-      <h2 class="abteilungstitel">Abend</h2>
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="abend" aria-expanded="false" aria-controls="rumpf-abend"><span class="abt-name">Abend</span><span class="abt-satz">Ab einer Uhrzeit dunkel – oder den ganzen Tag gleich.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-abend" hidden>
       <div class="stell mitwippe">
         <div class="kopfzeile">
           <span class="bez">Abendvariante
@@ -1028,10 +1061,12 @@ button{cursor:pointer;border:none;background:none;padding:0}
         <input type="range" class="regler" id="fAbendAb" min="15" max="22" step="1">
       </div>
       <div class="farbgitter" id="farbenAbend"></div>
+      </div>
     </section>
 
     <section class="abteilung" data-abt="form">
-      <h2 class="abteilungstitel">Form</h2>
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="form" aria-expanded="false" aria-controls="rumpf-form"><span class="abt-name">Form</span><span class="abt-satz">Wie rund Karten und Knöpfe sind, wie viel Rand.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-form" hidden>
       <div class="stell">
         <div class="kopfzeile"><span class="bez">Rundung der Karten</span>
           <span class="wert" id="wRundung"></span></div>
@@ -1051,14 +1086,14 @@ button{cursor:pointer;border:none;background:none;padding:0}
         <div class="kopfzeile"><span class="bez">Karten</span></div>
         <div class="wahl" id="fSchatten"></div>
       </div>
+      </div>
     </section>
 
     <section class="abteilung" data-abt="schrift">
-      <h2 class="abteilungstitel">Schrift</h2>
-      <p class="abteilungssatz">Drei Rollen, zehn Schriften — jede Rolle einzeln. Feste Auswahl
-        statt freier Eingabe: Ein Tablet hinter dem Tresen hat oft kein Netz zum Nachladen,
-        und eine Schrift, die zu spät ankommt, verschiebt beim Eintreffen die halbe Karte.
-        Deshalb stehen hier nur Schriften, die auf dem Gerät schon liegen.</p>
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="schrift" aria-expanded="false" aria-controls="rumpf-schrift"><span class="abt-name">Schrift</span><span class="abt-satz">Je eine Schrift für Überschriften, Text und Preise.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-schrift" hidden>
+      <p class="abteilungssatz">Zur Wahl stehen nur Schriften, die jedes Gerät schon hat –
+        so lädt nichts nach und die Karte springt nicht.</p>
       <div class="stell">
         <div class="kopfzeile"><span class="bez">Überschriften und Namen</span></div>
         <div class="wahl" id="fSchrift-kopf"></div>
@@ -1082,14 +1117,14 @@ button{cursor:pointer;border:none;background:none;padding:0}
         </div>
         <input type="range" class="regler" id="fGroesse" min="94" max="112" step="2">
       </div>
+      </div>
     </section>
 
     <section class="abteilung" data-abt="figur">
-      <h2 class="abteilungstitel">Figur</h2>
-      <p class="abteilungssatz">Die Figur begrüßt den Gast beim Öffnen, meldet sich
-        bei der Bestellung und wartet mit ihm, bis das Essen kommt. Jede Figur
-        bringt dieselben Haltungen mit; was sie dabei in der Hand hält, wählst
-        du weiter unten je Bestellphase.</p>
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="figur" aria-expanded="false" aria-controls="rumpf-figur"><span class="abt-name">Figur</span><span class="abt-satz">Wer den Gast begrüßt und beim Warten begleitet.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-figur" hidden>
+      <p class="abteilungssatz">Sie begrüßt beim Öffnen, meldet sich bei der Bestellung
+        und wartet mit dem Gast aufs Essen.</p>
       <div id="figurschau"></div>
       <div class="stell">
         <div class="kopfzeile"><span class="bez">Wer begleitet</span></div>
@@ -1115,14 +1150,14 @@ button{cursor:pointer;border:none;background:none;padding:0}
           <small>Freiwillig. Steht heute nirgends, ist aber im Markenblatt hinterlegt</small></span></div>
         <input class="text" id="fFigurName" maxlength="30" placeholder="z. B. Fräulein Fraise" autocomplete="off">
       </div>
+      </div>
     </section>
 
     <section class="abteilung" data-abt="texte">
-      <h2 class="abteilungstitel">Texte</h2>
-      <p class="abteilungssatz">Was auf dem Bestellpass steht und was die Figur
-        sagt. Leer lassen heißt: Omotenos Satz, übersetzt in alle zwölf Sprachen.
-        Wer selbst schreibt, bekommt genau seinen Satz — <b>in jeder Sprache
-        denselben</b>, denn übersetzen kann ihn niemand.</p>
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="texte" aria-expanded="false" aria-controls="rumpf-texte"><span class="abt-name">Texte</span><span class="abt-satz">Eigene Sätze für den Bestellpass und die Figur.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-texte" hidden>
+      <p class="abteilungssatz">Leer lassen: Omotenos Satz, in zwölf Sprachen. Eigener Satz:
+        steht <b>in jeder Sprache genau so</b> da.</p>
       <div id="txtWarnung" class="txthinweis"></div>
       <div class="stell">
         <div class="kopfzeile"><span class="bez">Auf dem Bestellpass
@@ -1134,29 +1169,29 @@ button{cursor:pointer;border:none;background:none;padding:0}
           <small>Ein eigener Satz ersetzt alle drei Launen — ein Haus hat eine Stimme</small></span></div>
         <div id="fTexteFigur"></div>
       </div>
+      </div>
     </section>
 
     <section class="abteilung" data-abt="bereiche">
-      <h2 class="abteilungstitel">Was der Gast sieht</h2>
-      <p class="abteilungssatz">Am Griff links ziehen, um die Reihenfolge zu ändern —
-        die oberste Zeile steht auf der Startseite oben links.</p>
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="bereiche" aria-expanded="false" aria-controls="rumpf-bereiche"><span class="abt-name">Was der Gast sieht</span><span class="abt-satz">Welche Kacheln auf der Startseite stehen, in welcher Reihenfolge.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-bereiche" hidden>
+      <p class="abteilungssatz">Am Griff links ziehen, um die Reihenfolge zu ändern. Die
+        oberste Zeile steht oben links.</p>
       <div class="bereichsliste" id="bereichsliste"></div>
+      </div>
     </section>
 
     <section class="abteilung" data-abt="teilen">
-      <h2 class="abteilungstitel">Fertig?</h2>
-      <p class="merk"><b>Entwurf schicken</b> erzeugt eine Adresse, in der Ihre
-        Einstellungen vollständig enthalten sind. Wer sie öffnet, sieht genau diesen
-        Stand. Nichts wird gespeichert, nichts an einen Server geschickt.</p>
+      <h2 class="abteilungstitel"><button type="button" class="abt-kopf" data-abtauf="teilen" aria-expanded="false" aria-controls="rumpf-teilen"><span class="abt-name">Fertig?</span><span class="abt-satz">Entwurf weitergeben oder an Omoteno schicken.</span><span class="abt-pfeil" aria-hidden="true"></span></button></h2>
+      <div class="abt-rumpf" id="rumpf-teilen" hidden>
+      <p class="merk"><b>Adresse zum Weitergeben</b> ist ein Link mit genau diesem
+        Entwurf. Wer ihn öffnet, sieht, was Sie hier sehen. Gespeichert wird nichts.</p>
       <button class="knopf leise" id="teilen">Adresse zum Weitergeben</button>
-      <button class="knopf leise" id="kopieren">Markenblatt kopieren</button>
-      <button class="knopf leise" id="einlesen">Markenblatt einlesen</button>
 
       <div style="height:18px"></div>
       <h2 class="abteilungstitel">An Omoteno schicken</h2>
-      <p class="merk">Wir sehen uns Ihren Entwurf an und melden uns. Sie brauchen
-        dafür kein Konto. <b>Es geht genau das raus, was Sie hier sehen</b> —
-        Farben, Schrift, Form, Figur und die gewählten Bereiche.</p>
+      <p class="merk">Wir sehen uns Ihren Entwurf an und melden uns – ohne Konto.
+        <b>Es geht genau das raus, was Sie hier sehen.</b></p>
       <div class="stell">
         <div class="kopfzeile"><span class="bez">Ihr Name</span></div>
         <input class="text" type="text" id="sName" maxlength="80" autocomplete="name">
@@ -1177,13 +1212,24 @@ button{cursor:pointer;border:none;background:none;padding:0}
              style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0">
       <button class="knopf" id="schicken">An Omoteno schicken</button>
       <div id="schickMeldung"></div>
-      <p class="merk" style="border-left-color:var(--kante-hell)">Schon ein Konto?
-        Dann übernehmen Sie den Entwurf dort selbst: <b>Konto → Marke →
-        Markenblatt übernehmen.</b> Der Knopf unten legt die Adresse dafür in
-        Ihre Zwischenablage und öffnet das Konto.</p>
+      <p class="merk" style="border-left-color:var(--kante-hell)">Schon ein Konto? Der
+        Knopf kopiert den Entwurf und öffnet Ihr Konto – dort unter <b>Marke</b>
+        einfügen.</p>
       <button class="knopf leise" id="zumKonto">Im Konto selbst übernehmen</button>
-      <div style="height:8px"></div>
-      <textarea class="ausgabe" id="ausgabe" readonly spellcheck="false"></textarea>
+      <!-- Das Markenblatt als Text ist Werkzeug für das Omoteno-Team, nicht
+           für den Wirt: Ein Kunde sah auf dem Telefon plötzlich
+           „const MARKENBLATT = {…}“ und hielt es für einen Fehler.
+           Sichtbar nur mit ?fachleute=1. Das Feld bleibt im DOM, weil
+           „kopieren“ und die Ausgabe daraus lesen. -->
+      <div class="fachleute" id="fachleute" hidden>
+        <div style="height:18px"></div>
+        <h2 class="abteilungstitel">Für Fachleute</h2>
+        <button class="knopf leise" id="kopieren">Markenblatt kopieren</button>
+        <button class="knopf leise" id="einlesen">Markenblatt einlesen</button>
+        <div style="height:8px"></div>
+        <textarea class="ausgabe" id="ausgabe" readonly spellcheck="false"></textarea>
+      </div>
+      </div>
     </section>
 
   </div>
@@ -3170,11 +3216,9 @@ var zug = null;
 
 function zugStart(ev, ausInhalt){
   if(!schmal()) return;
-  zug = { y:ev.clientY, start:sicht, zeit:Date.now(), ausInhalt:ausInhalt, aktiv:!ausInhalt };
-  if(!ausInhalt){
-    document.body.classList.add("zieht");
-    try { ev.currentTarget.setPointerCapture(ev.pointerId); } catch(e){}
-  }
+  zug = { y:ev.clientY, start:sicht, zeit:Date.now(), ausInhalt:ausInhalt, aktiv:!ausInhalt,
+          fang: ausInhalt ? null : ev.currentTarget, zeiger: ev.pointerId };
+  if(!ausInhalt) document.body.classList.add("zieht");
 }
 
 /* Aus dem Inhalt heraus darf nur gezogen werden, wenn er ganz oben
@@ -3188,6 +3232,15 @@ function zugBewegen(ev){
       zug.aktiv = true;
       document.body.classList.add("zieht");
     } else return;
+  }
+  /* Den Zeiger erst einfangen, wenn er sich WIRKLICH bewegt. Vorher
+     fing der Griff ihn schon beim Drücken — dann ging der Klick an
+     den Griff statt an den Reiter darin, und mit der Maus war die
+     Reiterleiste in einem schmalen Fenster tot (gemessen: Tipp auf
+     „Form“, markiert blieb „Schnellstart“). */
+  if(zug.fang && Math.abs(weg) > 3){
+    try { zug.fang.setPointerCapture(zug.zeiger); } catch(e){}
+    zug.fang = null;
   }
   sichtSetzen(zug.start + weg, true);
   if(ev.cancelable) ev.preventDefault();
@@ -3319,9 +3372,25 @@ $("bereichsliste").addEventListener("keydown", function(ev){
    das Ziel nie erreicht (zu kurze Seite, abgebrochene Geste). */
 var sprungZiel = null, sprungFrist = 0;
 
+/* Aufklappen: immer nur eine Abteilung offen. Die Reiterleiste zeigt
+   die offene — nicht mehr die, die gerade oben im Bild steht, denn
+   bei zugeklappten Nachbarn ist das fast immer die erste. */
+function abteilungOeffnen(kennung){
+  document.querySelectorAll(".abt-kopf").forEach(function(k){
+    var auf = k.dataset.abtauf === kennung;
+    k.setAttribute("aria-expanded", String(auf));
+    var rumpf = document.getElementById("rumpf-" + k.dataset.abtauf);
+    if(rumpf) rumpf.hidden = !auf;
+  });
+  document.querySelectorAll("[data-abtziel]").forEach(function(b){
+    b.setAttribute("aria-current", b.dataset.abtziel === kennung);
+  });
+}
+
 function abteilungZeigen(kennung){
   var ziel = document.querySelector('[data-abt="' + kennung + '"]');
   if(!ziel) return;
+  abteilungOeffnen(kennung);
   var warten = 0;
   if(schmal() && raste < 2){ zuRaste(2); warten = 240; }
   sprungZiel = kennung;
@@ -3338,6 +3407,16 @@ var markUhr = null;
 $("blattinhalt").addEventListener("scroll", function(){
   clearTimeout(markUhr);
   markUhr = setTimeout(function(){
+    /* Mit aufklappbaren Abteilungen zählt die OFFENE, nicht die oben
+       stehende — sonst hieße es nach jedem Bildlauf „Schnellstart“. */
+    var offen = document.querySelector('.abt-kopf[aria-expanded="true"]');
+    if(offen){
+      sprungZiel = null;
+      document.querySelectorAll("[data-abtziel]").forEach(function(b){
+        b.setAttribute("aria-current", b.dataset.abtziel === offen.dataset.abtauf);
+      });
+      return;
+    }
     var oben = $("blattinhalt").scrollTop + 40, jetzt = ABTEILUNGEN[0][0];
     document.querySelectorAll("[data-abt]").forEach(function(s){
       if(s.offsetTop <= oben) jetzt = s.dataset.abt;
@@ -3574,15 +3653,22 @@ function melde(text){
 }
 
 function inZwischenablage(text, gut){
+  /* Rückfall ohne Zwischenablage-Schnittstelle. Früher wurde dafür
+     das sichtbare Markenblatt-Feld benutzt — das ist jetzt nur noch
+     für Fachleute da und sonst versteckt, und ein verstecktes Feld
+     lässt sich nicht markieren. Also ein eigenes, unsichtbares, aber
+     NICHT display:none. Geht auch das nicht: Der Text steht in einem
+     Fenster zum Selbstkopieren — nie ein stilles Nichts. */
   function ersatz(){
-    var feld = $("ausgabe"), merk = feld.value, ok = false;
+    var feld = document.createElement("textarea"), ok = false;
     feld.value = text;
-    feld.removeAttribute("readonly");
-    feld.select(); feld.setSelectionRange(0, 99999);
+    feld.setAttribute("readonly", "");
+    feld.style.cssText = "position:fixed;left:0;top:0;width:1px;height:1px;opacity:0";
+    document.body.appendChild(feld);
+    feld.select(); feld.setSelectionRange(0, text.length);
     try { ok = document.execCommand("copy"); } catch(e){}
-    feld.setAttribute("readonly","");
-    if(!ok){ melde("Markiert — bitte selbst kopieren"); return; }
-    feld.value = merk;
+    feld.remove();
+    if(!ok){ prompt("Bitte selbst kopieren:", text); return; }
     melde(gut);
   }
   if(navigator.clipboard && navigator.clipboard.writeText){
@@ -3674,6 +3760,21 @@ document.addEventListener("click", function(e){
   if(!k) return;
 
   if(k.dataset.abtziel){ abteilungZeigen(k.dataset.abtziel); return; }
+  if(k.dataset.abtauf){
+    /* Offen → zu. Zu → auf, die anderen zu, und der Kopf bleibt dort
+       stehen, wo der Finger war: Klappt eine Abteilung DARÜBER zu,
+       rutscht sonst alles nach oben weg. */
+    if(k.getAttribute("aria-expanded") === "true"){
+      k.setAttribute("aria-expanded", "false");
+      document.getElementById("rumpf-" + k.dataset.abtauf).hidden = true;
+      document.querySelectorAll("[data-abtziel]").forEach(function(b){ b.setAttribute("aria-current", "false"); });
+      return;
+    }
+    var vorher = k.getBoundingClientRect().top;
+    abteilungOeffnen(k.dataset.abtauf);
+    $("blattinhalt").scrollTop += k.getBoundingClientRect().top - vorher;
+    return;
+  }
 
   if(k.id === "zurueck"){ standSetzen(verlaufNun - 1); melde("Zurück"); return; }
   if(k.id === "vorwaerts"){ standSetzen(verlaufNun + 1); melde("Wiederholt"); return; }
@@ -3996,6 +4097,10 @@ var HIN_NAMEN = {
    erst etwas bauen, bevor er sieht, worum es geht.
    ═══════════════════════════════════════════════════════════════ */
 reiterBauen();
+abteilungOeffnen("vorlagen");
+try{
+  if(new URLSearchParams(location.search).get("fachleute") === "1") $("fachleute").hidden = false;
+}catch(e){}
 /* frisch: Beim Start gibt es nichts zu übernehmen — M ist null. Der
    Parameter steht trotzdem da, weil er die Absicht benennt. */
 vorlageLaden("nordstern", true);

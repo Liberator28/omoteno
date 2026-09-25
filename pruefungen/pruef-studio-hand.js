@@ -79,8 +79,123 @@ const hex = rgb => "#" + rgb.match(/\d+/g).slice(0,3)
     pruef(schwach.length === 0, "die Knopfschrift ist auf jeder Kundenfarbe lesbar",
       schwach.length ? schwach.join(" | ") : vorlagen.length*2 + " Paare geprüft, alle ≥ 4,5:1");
 
+    /* ── 1b · Aufgeräumt: kein Code, eine Abteilung offen ──
+       VORFALL: Auf dem Telefon eines Kunden stand „const MARKENBLATT =
+       {…}“ mitten im Studio. Das Markenblatt als Text ist Werkzeug
+       für das Team und nur mit ?fachleute=1 da. Und zehn offene
+       Abteilungen waren eine Liste, in der man sucht — jetzt ist
+       immer nur eine offen, und jeder Kopf sagt in einem Satz, was
+       drin ist. */
+    const zustand = () => p.evaluate(() => ({
+      code: /MARKENBLATT/.test(document.body.innerText),
+      ausgabeSichtbar: !!document.getElementById("ausgabe").offsetParent,
+      kopierenSichtbar: !!document.getElementById("kopieren").offsetParent,
+      offen: [...document.querySelectorAll('.abt-kopf[aria-expanded="true"]')].map(k => k.dataset.abtauf),
+      rumpfAuf: [...document.querySelectorAll(".abt-rumpf")].filter(r => !r.hidden).map(r => r.id),
+      markiert: [...document.querySelectorAll('[data-abtziel][aria-current="true"]')].map(b => b.dataset.abtziel),
+    }));
+    let z = await zustand();
+    pruef(!z.code && !z.ausgabeSichtbar && !z.kopierenSichtbar,
+      "kein Markenblatt-Code sichtbar, kein Kopieren/Einlesen für jedermann", JSON.stringify({code:z.code, feld:z.ausgabeSichtbar, knopf:z.kopierenSichtbar}));
+    pruef(z.offen.join() === "vorlagen" && z.rumpfAuf.join() === "rumpf-vorlagen",
+      "beim Start ist genau „Schnellstart“ offen", z.offen.join() + " / " + z.rumpfAuf.join());
+    const koepfe = await p.$$eval(".abt-kopf", ks => ks.map(k => ({ abt:k.dataset.abtauf,
+      hoch:Math.round(k.getBoundingClientRect().height),
+      satz:(k.querySelector(".abt-satz") || {}).textContent || "" })));
+    const schlecht = koepfe.filter(k => k.hoch < 44 || k.satz.trim().length < 12 || k.satz.length > 80);
+    pruef(koepfe.length === 10 && schlecht.length === 0,
+      "jede der 10 Abteilungen hat einen Kopf ≥ 44 px mit einem kurzen Satz",
+      schlecht.map(k => k.abt + " " + k.hoch + "px „" + k.satz + "“").join(" | ") || koepfe.map(k => k.hoch).join("/"));
+    /* Tippen mit dem Finger auf „Das Haus“: auf, die anderen zu. */
+    await p.evaluate(() => { if(typeof zuRaste === "function") zuRaste(2); });
+    await p.waitForTimeout(500);
+    await p.click('.abt-kopf[data-abtauf="haus"]');
+    await p.waitForTimeout(300);
+    z = await zustand();
+    pruef(z.offen.join() === "haus" && z.rumpfAuf.join() === "rumpf-haus" && z.markiert.join() === "haus",
+      "Tipp auf „Das Haus“ öffnet es, schließt den Rest, der Reiter zeigt es", JSON.stringify(z.offen) + " " + JSON.stringify(z.markiert));
+    pruef(await p.isVisible("#fName"), "das Namensfeld ist danach bedienbar");
+    /* Nach einem Bildlauf darf die Markierung nicht auf „Schnellstart“ zurückfallen. */
+    await p.evaluate(() => { const b = document.getElementById("blattinhalt"); b.scrollTop = b.scrollHeight; b.dispatchEvent(new Event("scroll")); });
+    await p.waitForTimeout(300);
+    z = await zustand();
+    pruef(z.markiert.join() === "haus", "nach dem Bildlauf bleibt der Reiter auf der offenen Abteilung", z.markiert.join());
+    /* Ein Sprung über die Reiterleiste öffnet die Abteilung. */
+    /* Die Reiterleiste sitzt im Griff — auf dem großen Schirm gibt es
+       keinen Griff, dort sind die Köpfe selbst die Navigation. Dann
+       der zweite Weg zum Sprung: derselbe, den ein Tipp in der
+       Vorschau nimmt. */
+    if(await p.isVisible('[data-abtziel="schrift"]')) await p.click('[data-abtziel="schrift"]');
+    else await p.evaluate(() => abteilungZeigen("schrift"));
+    await p.waitForTimeout(500);
+    z = await zustand();
+    pruef(z.offen.join() === "schrift" && z.rumpfAuf.join() === "rumpf-schrift",
+      "ein Tipp in der Reiterleiste öffnet „Schrift“", z.offen.join());
+    /* Auf dem Telefon mit der MAUS (schmales Fenster am Rechner):
+       Früher fing der Griff den Zeiger schon beim Drücken, der Klick
+       ging an den Griff, die Reiterleiste war tot. Und der Griff muss
+       trotzdem noch ziehen. */
+    if(await p.isVisible('[data-abtziel="form"]')){
+      await p.locator('[data-abtziel="form"]').scrollIntoViewIfNeeded();
+      const k = await p.locator('[data-abtziel="form"]').boundingBox();
+      await p.mouse.click(k.x + k.width/2, k.y + k.height/2);
+      await p.waitForTimeout(500);
+      z = await zustand();
+      pruef(z.markiert.join() === "form" && z.offen.join() === "form", "ein Mausklick auf einen Reiter wirkt (Griff fängt ihn nicht ab)", z.markiert.join());
+      const vorRaste = await p.evaluate(() => raste);
+      const g = await p.locator(".griffstrich").boundingBox();
+      await p.mouse.move(g.x + g.width/2, g.y + 2);
+      await p.mouse.down();
+      for(let i = 1; i <= 12; i++) await p.mouse.move(g.x + g.width/2, g.y + 2 + i * 40);
+      await p.mouse.up();
+      await p.waitForTimeout(700);
+      const nachRaste = await p.evaluate(() => raste);
+      pruef(nachRaste < vorRaste, "der Griff zieht das Blatt trotzdem herunter", vorRaste + " → " + nachRaste);
+      await p.evaluate(() => zuRaste(2));
+      await p.waitForTimeout(500);
+      await p.evaluate(() => abteilungZeigen("schrift"));
+      await p.waitForTimeout(400);
+    }
+    /* Zweiter Tipp auf den offenen Kopf klappt zu. */
+    await p.click('.abt-kopf[data-abtauf="schrift"]');
+    await p.waitForTimeout(250);
+    z = await zustand();
+    pruef(z.offen.length === 0 && z.rumpfAuf.length === 0, "ein zweiter Tipp klappt wieder zu", z.offen.join() || "alles zu");
+    /* Kopieren ohne sichtbares Feld: der Rückfall muss trotzdem tragen. */
+    const kopie = await p.evaluate(() => {
+      const alt = navigator.clipboard;
+      try{ Object.defineProperty(navigator, "clipboard", { value: undefined, configurable: true }); }catch(e){}
+      let markiert = "", gefragt = false;
+      const exec = document.execCommand, frag = window.prompt;
+      document.execCommand = function(){ markiert = String(window.getSelection()) || (document.activeElement && document.activeElement.value) || ""; return true; };
+      window.prompt = function(){ gefragt = true; return null; };
+      inZwischenablage("https://beispiel/#m=abc", "Adresse kopiert");
+      document.execCommand = exec; window.prompt = frag;
+      try{ Object.defineProperty(navigator, "clipboard", { value: alt, configurable: true }); }catch(e){}
+      return { markiert, gefragt, meldung: document.getElementById("meldung").textContent,
+               reste: document.querySelectorAll("body > textarea").length };
+    });
+    pruef(kopie.markiert === "https://beispiel/#m=abc" && !kopie.gefragt && /kopiert/.test(kopie.meldung) && kopie.reste === 0,
+      "ohne Zwischenablage-Schnittstelle wird trotzdem kopiert — ohne das versteckte Feld, ohne Reste", JSON.stringify(kopie));
+    /* Für Fachleute ist alles noch da. */
+    const f = await ctx.newPage();
+    await f.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await f.goto(ADRESSE + "?fachleute=1");
+    await f.waitForTimeout(400);
+    await f.evaluate(() => abteilungZeigen("teilen"));
+    await f.waitForTimeout(500);
+    const fach = await f.evaluate(() => ({ feld: !!document.getElementById("ausgabe").offsetParent,
+      knopf: !!document.getElementById("kopieren").offsetParent,
+      inhalt: /const MARKENBLATT/.test(document.getElementById("ausgabe").value) }));
+    pruef(fach.feld && fach.knopf && fach.inhalt, "mit ?fachleute=1 sind Markenblatt, Kopieren und Einlesen da", JSON.stringify(fach));
+    await f.close();
+
     /* ── 2 · Rückgängig ── */
+    await p.evaluate(() => abteilungZeigen("vorlagen"));
+    await p.waitForTimeout(400);
     await p.click('[data-vorlage="' + vorlagen[0] + '"]');
+    await p.waitForTimeout(300);
+    await p.click('.abt-kopf[data-abtauf="haus"]');
     await p.waitForTimeout(300);
     const vorher = await p.inputValue("#fName");
     await p.fill("#fName", "Testhaus Eins");
