@@ -105,10 +105,14 @@ Deno.serve(async (anfrage) => {
   const anzahl = Math.min(Math.max(Number(roh?.anzahl) || 20, 1), 100);
   if (!betriebId) return antwort({ fehler: "betrieb_id fehlt" }, 400);
 
+  /* Über die Betriebszeile, nicht über betrieb_mitglieder: Deren Regel
+     („mitglied liest sich selbst") kennt die PIN nicht — die Zeile
+     käme auch ohne zweiten Faktor. betriebe hängt an meine_betriebe()
+     und damit an pin_ok() (migration-pin.sql). */
   const { data: mitglied } = await alsNutzer
-    .from("betrieb_mitglieder")
-    .select("betrieb_id")
-    .eq("betrieb_id", betriebId)
+    .from("betriebe")
+    .select("id")
+    .eq("id", betriebId)
     .maybeSingle();
   if (!mitglied) return antwort({ fehler: "kein_zugriff" }, 403);
 

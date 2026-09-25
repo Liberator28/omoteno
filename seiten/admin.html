@@ -4810,6 +4810,10 @@ async function start(){
 
 /* Nach Anmeldung oder neuem Passwort: dieselben Schritte. */
 async function boardOeffnen(session){
+  /* Zweiter Faktor, bevor Daten geladen werden — auch bei einer
+     gemerkten Sitzung (Neuladen), nicht nur nach dem Passwort. */
+  try{ await pinTor(pinRufen); }
+  catch(e){ await db.auth.signOut(); return torZeigen("Abgemeldet."); }
   letzterNutzer = session.user.id;
   letzteMail = session.user.email || "";
 
@@ -6486,6 +6490,174 @@ $("#wechseln").onclick = () => {
   betriebsWahlZeigen();
 };
 
+/* ╔═══ PIN · GETEILTER BLOCK · ANFANG ═════════════════════════════╗
+   ║ Wortgleich in admin.html, kueche.html und master.html —        ║
+   ║ pruef-pin.js vergleicht die drei Kopien Zeichen für Zeichen    ║
+   ║ und misst den Schirm in jeder Datei. ES5, weil Küche und        ║
+   ║ Master ohne Übersetzer laufen. Bringt Stil und Farben selbst    ║
+   ║ mit (§8.1e): Nichts hier stützt sich auf die Seite.             ║
+   ╚════════════════════════════════════════════════════════════════╝
+   Der Schirm ist Bedienung, nicht Schutz. Geschützt wird serverseitig:
+   meine_betriebe() liefert einen Betrieb mit PIN-Pflicht erst, wenn
+   pin_pruefen() für DIESE Anmeldung stimmte (migration-pin.sql). Wer
+   den Schirm umgeht, sieht leere Listen.
+
+   rufen(name, args) → Promise<{data, error}> — die Seite reicht ihren
+   eigenen Weg zur Datenbank herein (supabase-js oder fetch).
+   pinTor(rufen) → Promise: erfüllt, sobald weitergemacht werden darf;
+   verworfen, wenn der Mensch sich abmeldet. */
+var PIN_STIL =
+  ".pin-decke{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;" +
+  "padding:24px 16px;background:rgba(8,9,11,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);" +
+  "--pin-karte:#1A1D21;--pin-kante:#343A42;--pin-schrift:#EEF0F2;--pin-leise:#A5ACB5;--pin-akzent:#D8A63C;" +
+  "--pin-auf-akzent:#16130C;--pin-fehler:#FF9A8B;color-scheme:dark;" +
+  "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}" +
+  ".pin-decke [hidden]{display:none !important}" +
+  ".pin-karte{width:100%;max-width:360px;background:var(--pin-karte);border:1px solid var(--pin-kante);" +
+  "border-radius:22px;padding:26px 22px 20px;color:var(--pin-schrift);text-align:center;" +
+  "box-shadow:0 24px 60px rgba(0,0,0,.5)}" +
+  ".pin-marke{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--pin-akzent);margin-bottom:10px}" +
+  ".pin-titel{font-size:21px;font-weight:650;margin:0 0 8px;line-height:1.25}" +
+  ".pin-text{font-size:14.5px;line-height:1.5;color:var(--pin-leise);margin:0 0 20px}" +
+  ".pin-eingabe{position:relative;margin:0 auto 6px;width:max-content;max-width:100%}" +
+  ".pin-punkte{display:flex;gap:10px;justify-content:center;padding:14px 4px}" +
+  ".pin-punkte i{width:16px;height:16px;border-radius:50%;border:2px solid var(--pin-leise);" +
+  "transition:background-color 120ms ease-out,border-color 120ms ease-out,transform 120ms ease-out}" +
+  ".pin-punkte i.voll{background:var(--pin-akzent);border-color:var(--pin-akzent);transform:scale(1.08)}" +
+  ".pin-feld{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;border:0;" +
+  "background:transparent;color:transparent;caret-color:transparent;cursor:pointer}" +
+  ".pin-eingabe:focus-within .pin-punkte{outline:2px solid var(--pin-akzent);outline-offset:4px;border-radius:14px}" +
+  ".pin-meldung{min-height:21px;font-size:14px;line-height:1.5;color:var(--pin-fehler);margin:6px 0 12px}" +
+  ".pin-los,.pin-aus{display:block;width:100%;min-height:48px;border-radius:14px;font:inherit;font-size:15.5px;" +
+  "font-weight:600;cursor:pointer}" +
+  ".pin-los{background:var(--pin-akzent);color:var(--pin-auf-akzent);border:0;margin-bottom:8px}" +
+  ".pin-los:disabled{opacity:.55;cursor:default}" +
+  ".pin-aus{background:transparent;color:var(--pin-leise);border:1px solid var(--pin-kante)}" +
+  ".pin-los:focus-visible,.pin-aus:focus-visible{outline:2px solid var(--pin-schrift);outline-offset:2px}" +
+  ".pin-wackeln{animation:pin-wackeln 260ms ease-in-out}" +
+  "@keyframes pin-wackeln{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}" +
+  "@media (prefers-reduced-motion:reduce){.pin-wackeln{animation:none}.pin-punkte i{transition:none}}";
+
+var PIN_TEXT = {
+  frage:     "Bitte geben Sie Ihre 8-stellige PIN ein. Sie haben sie vom Omoteno-Team bekommen.",
+  keine:     "Für dieses Konto ist noch keine PIN vergeben. Bitte beim Omoteno-Team melden.",
+  gesperrt:  "Zu viele falsche Eingaben. Die PIN ist gesperrt — das Omoteno-Team entsperrt sie.",
+  falsch:    "Das war nicht richtig.",
+  form:      "Bitte genau 8 Ziffern.",
+  sitzung:   "Bitte einmal ab- und wieder anmelden.",
+  netz:      "Keine Verbindung. Bitte noch einmal versuchen."
+};
+
+function pinTor(rufen){
+  return Promise.resolve().then(function(){ return rufen("pin_status", {}); })
+    .then(function(r){
+      /* Keine Antwort (Migration fehlt, Netz weg): weiter. Der Server
+         hält trotzdem zurück, was er zurückhalten soll — ein Schirm,
+         der bei jedem Aussetzer die Küche anhält, wäre die falsche
+         Abwägung (§7). */
+      if(!r || r.error || !r.data) return true;
+      var s = r.data;
+      if(!s.pflicht || s.ok) return true;
+      return pinSchirm(rufen, s);
+    }, function(){ return true; });
+}
+
+function pinSchirm(rufen, s){
+  return new Promise(function(fertig, abbruch){
+    if(!document.getElementById("pin-stil")){
+      var st = document.createElement("style");
+      st.id = "pin-stil"; st.textContent = PIN_STIL;
+      document.head.appendChild(st);
+    }
+    var alt = document.querySelector(".pin-decke");
+    if(alt) alt.remove();
+    var d = document.createElement("div");
+    d.className = "pin-decke";
+    d.setAttribute("role", "dialog");
+    d.setAttribute("aria-modal", "true");
+    d.setAttribute("aria-labelledby", "pin-titel");
+    var punkte = "";
+    for(var i = 0; i < 8; i++) punkte += "<i></i>";
+    d.innerHTML =
+      '<div class="pin-karte">' +
+        '<div class="pin-marke">Omoteno</div>' +
+        '<h2 class="pin-titel" id="pin-titel">Zweiter Schritt</h2>' +
+        '<p class="pin-text" id="pin-text"></p>' +
+        '<div class="pin-eingabe" id="pin-eingabe">' +
+          '<div class="pin-punkte" aria-hidden="true">' + punkte + '</div>' +
+          '<input class="pin-feld" id="pin-feld" type="text" inputmode="numeric" pattern="[0-9]*"' +
+          ' autocomplete="one-time-code" maxlength="8" aria-label="PIN, 8 Ziffern" aria-describedby="pin-meldung">' +
+        '</div>' +
+        '<p class="pin-meldung" id="pin-meldung" role="alert"></p>' +
+        '<button type="button" class="pin-los" id="pin-los" disabled>Bestätigen</button>' +
+        '<button type="button" class="pin-aus" id="pin-aus">Abmelden</button>' +
+      '</div>';
+    document.body.appendChild(d);
+
+    var feld = document.getElementById("pin-feld"),
+        los = document.getElementById("pin-los"),
+        meldung = document.getElementById("pin-meldung"),
+        text = document.getElementById("pin-text"),
+        eingabe = document.getElementById("pin-eingabe"),
+        laeuft = false;
+
+    function zu(){ feld.value = ""; zeichnen(); eingabe.hidden = true; los.hidden = true; }
+    function zeichnen(){
+      var n = feld.value.length, p = d.querySelectorAll(".pin-punkte i");
+      for(var j = 0; j < p.length; j++) p[j].className = j < n ? "voll" : "";
+      los.disabled = laeuft || n !== 8;
+    }
+    function wackeln(){
+      var p = d.querySelector(".pin-punkte");
+      p.classList.remove("pin-wackeln"); void p.offsetWidth; p.classList.add("pin-wackeln");
+    }
+
+    if(!s.hat_pin){ text.textContent = PIN_TEXT.keine; zu(); }
+    else if(s.gesperrt){ text.textContent = PIN_TEXT.gesperrt; zu(); }
+    else { text.textContent = PIN_TEXT.frage; setTimeout(function(){ feld.focus(); }, 60); }
+
+    function senden(){
+      if(laeuft || feld.value.length !== 8) return;
+      laeuft = true; zeichnen(); meldung.textContent = "";
+      var wert = feld.value;
+      Promise.resolve().then(function(){ return rufen("pin_pruefen", { p_pin: wert }); })
+        .then(function(r){
+          laeuft = false;
+          var a = r && r.data;
+          if(a && a.ok === true){ d.remove(); fertig(true); return; }
+          feld.value = ""; zeichnen(); wackeln();
+          if(!a){ meldung.textContent = PIN_TEXT.netz; return; }
+          if(a.grund === "gesperrt"){ text.textContent = PIN_TEXT.gesperrt; meldung.textContent = ""; zu(); return; }
+          if(a.grund === "keine_pin"){ text.textContent = PIN_TEXT.keine; zu(); return; }
+          if(a.grund === "keine_sitzung"){ meldung.textContent = PIN_TEXT.sitzung; return; }
+          if(a.grund === "form"){ meldung.textContent = PIN_TEXT.form; return; }
+          var rest = a.verbleibend;
+          meldung.textContent = PIN_TEXT.falsch + (rest === 1 ? " Noch ein Versuch, dann ist die PIN gesperrt."
+            : (typeof rest === "number" ? " Noch " + rest + " Versuche." : ""));
+          feld.focus();
+        }, function(){
+          laeuft = false; feld.value = ""; zeichnen(); meldung.textContent = PIN_TEXT.netz;
+        });
+    }
+
+    feld.addEventListener("input", function(){
+      var sauber = feld.value.replace(/[^0-9]/g, "").slice(0, 8);
+      if(sauber !== feld.value) feld.value = sauber;
+      zeichnen();
+      if(sauber.length === 8) senden();
+    });
+    feld.addEventListener("keydown", function(e){ if(e.key === "Enter") senden(); });
+    los.addEventListener("click", senden);
+    document.getElementById("pin-aus").addEventListener("click", function(){
+      d.remove(); abbruch(new Error("abgemeldet"));
+    });
+  });
+}
+/* ╚═══ PIN · GETEILTER BLOCK · ENDE ═══════════════════════════════╝ */
+
+/* Der Weg des Boards zur Datenbank, für den PIN-Block. */
+const pinRufen = (name, args) => db.rpc(name, args);
+
 /* ─── Anmeldung ───────────────────────────────────────────── */
 function neuesPasswortZeigen(){
   $("#tor").hidden = false;
@@ -6610,6 +6782,8 @@ async function anmeldenAbschliessen(mail, pass, k){
 
   $("#lPass").value = "";
   $("#tor").hidden = true;
+  try{ await pinTor(pinRufen); }
+  catch(e){ await db.auth.signOut(); return torZeigen("Abgemeldet."); }
   tonFreischalten();
   wachHalten();
 

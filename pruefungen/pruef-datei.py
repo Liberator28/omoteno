@@ -40,8 +40,12 @@ if klammern: fehler += 1
 ohneKomm = re.sub(r'/\*.*?\*/', ' ', s, flags=re.S)
 cssOhneKomm = re.sub(r'/\*.*?\*/', ' ', css, flags=re.S)
 
+# Dritte Quelle: ein Block, der seinen Stil als Zeichenkette selbst
+# mitbringt (geteilter PIN-Block, §8.1e) — dort steht die Festlegung
+# als echte CSS-Deklaration im Skript: „;--pin-karte:#1A1D21;“.
 defined = set(re.findall(r'(--[a-zA-Z0-9-]+)\s*:', cssOhneKomm)) | \
-          set(re.findall(r'setProperty\("(--[a-zA-Z0-9-]+)"', ohneKomm))
+          set(re.findall(r'setProperty\("(--[a-zA-Z0-9-]+)"', ohneKomm)) | \
+          set(re.findall(r'[;{"]\s*(--[a-zA-Z0-9-]+)\s*:\s*[^;}"\s][^;}"]*(?=[;}])', ohneKomm))
 mitRueckfall = set(re.findall(r'var\((--[a-zA-Z0-9-]+)\s*,', ohneKomm))
 ohne = set(re.findall(r'var\((--[a-zA-Z0-9-]+)\s*\)', ohneKomm)) - defined
 print(f"  Variablen ohne Wert und ohne Rückfall {sorted(ohne) or 'keine'}")
