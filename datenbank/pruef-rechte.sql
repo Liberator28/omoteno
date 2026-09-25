@@ -111,6 +111,13 @@ reset role;
 -- ═══ TEIL 2 · Ein Angemeldeter, der Mitglied von NICHTS ist ═══
 -- Rollenwechsel allein reicht nicht — PostgREST setzt auch die
 -- Ansprueche im Token (CLAUDE.md 2.4).
+--
+-- Vorher ein echter Gutschein, NOCH als Standardrolle angelegt: Die
+-- Tabelle ist sonst leer, und „0 Zeilen beendet / nichts sichtbar"
+-- (Nr. 58/59) waere auch ohne jede Regel wahr — wo nie etwas war, ist
+-- auch nichts zu sehen (CLAUDE.md §8.1g, Vorfall C).
+insert into gutscheine (betrieb_id, titel, code)
+  values ((select id from betriebe limit 1), 'Pruef-Rechte-Gutschein', 'PRUEF-RECHTE-GS');
 select set_config('request.jwt.claims',
   json_build_object('sub','00000000-0000-4000-8000-000000000001',
                     'role','authenticated')::text, true);
@@ -180,6 +187,21 @@ begin
         values ((select id from betriebe limit 1),'Untergeschoben',0,'X',true);
     insert into probe values (56,'Fremder','Gericht in fremde Karte schieben','LECK !!!');
   exception when others then insert into probe values (56,'Fremder','Gericht in fremde Karte schieben','abgewiesen'); end;
+  -- Gutscheine legt das Board jetzt direkt an (kein Server-Weg):
+  -- ein Fremder darf weder in ein fremdes Haus schreiben noch dort
+  -- einen Gutschein beenden oder lesen.
+  begin insert into gutscheine (betrieb_id,titel,code)
+        values ((select id from betriebe limit 1),'Untergeschoben','FREMD-GUTSCHEIN');
+    insert into probe values (57,'Fremder','Gutschein in fremdes Haus schreiben','LECK !!!');
+  exception when others then insert into probe values (57,'Fremder','Gutschein in fremdes Haus schreiben','abgewiesen'); end;
+  begin update gutscheine set gueltig_bis=now(); get diagnostics n = row_count;
+    insert into probe values (58,'Fremder','fremde Gutscheine beenden',
+      case when n=0 then 'RLS haelt (0 Zeilen)' else 'LECK !!! '||n end);
+  exception when others then insert into probe values (58,'Fremder','fremde Gutscheine beenden','abgewiesen'); end;
+  begin select count(*) into n from gutscheine;
+    insert into probe values (59,'Fremder','fremde Gutscheincodes lesen',
+      case when n=0 then 'nichts sichtbar' else 'LECK !!! '||n end);
+  exception when others then insert into probe values (59,'Fremder','Gutscheine lesen','abgewiesen'); end;
 end $$;
 reset role;
 
@@ -246,6 +268,13 @@ reset role;
 -- 'delete from aktionen' bestaetigt — anon darf hier gar nichts
 -- einfuegen, und die Probe wuerde nie zu den eigentlichen Angriffen
 -- kommen.
+--
+-- Die Token-Ansprüche aus TEIL 3 gelten sonst weiter (set_config mit
+-- true gilt für die ganze Transaktion, nicht nur für den Block).
+-- aktionen.angelegt_von kommt aus auth.uid() — mit dem erfundenen
+-- Fremden darin brach der ganze Lauf an einem Fremdschlüssel ab, und
+-- TEIL 4 lief in dieser Datei nie am Stück.
+select set_config('request.jwt.claims', '', true);
 do $$
 declare v uuid;
 begin
