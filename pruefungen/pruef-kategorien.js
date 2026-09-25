@@ -83,10 +83,13 @@ const pruef = (gut, text, mehr) => { n++; if(!gut) f++;
      verschieben oder zusammenzulegen (§8.1g C). */
   await p.evaluate(() => { document.getElementById("tor").hidden = true; demoStarten();
     let i = 0;
-    const z = (kategorie, name, kat_sort, karte = "speisekarte") => ({ id:"p" + (++i), betrieb_id:betriebId, karte, kategorie, name,
-      beschreibung:"", preis:5 + i, verfuegbar:true, kat_sort, reihenfolge:i, kat_emoji:null });
-    gerichte = [z("Burger","Classic",1), z("Burger","Cheese",1), z("Burger","Veggie",1),
-                z("Salate","Caesar",2), z("Salate","Greek",2),
+    const z = (kategorie, name, kat_sort, karte = "speisekarte", rf) => ({ id:"p" + (++i), betrieb_id:betriebId, karte, kategorie, name,
+      beschreibung:"", preis:5 + i, verfuegbar:true, kat_sort, reihenfolge:rf ?? i, kat_emoji:null });
+    /* Salate mit KLEINEREN Reihenfolge-Werten als Burger: Sonst stünden
+       sie beim Zusammenlegen auch ohne Anhängen schon „hinten“, und die
+       Probe könnte den Fehler nicht zeigen (Gegenbeweis S5 blieb grün). */
+    gerichte = [z("Burger","Classic",1,"speisekarte",5), z("Burger","Cheese",1,"speisekarte",6), z("Burger","Veggie",1,"speisekarte",7),
+                z("Salate","Caesar",2,"speisekarte",0), z("Salate","Greek",2,"speisekarte",1),
                 z("Desserts","Brownie",3), z("Desserts","Tiramisu",3),
                 z("Softdrinks","Cola",1,"getraenke"), z("Softdrinks","Zitrone",1,"getraenke")];
     zeichneAlles();
