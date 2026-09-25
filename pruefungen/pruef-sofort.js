@@ -156,7 +156,14 @@ function aktionMock(name, extra){
      unter dem Knopf liegt, und dass Plus und Minus wirklich zählen. */
   console.log("\n── Empfehlung des Hauses ──");
   aktionenAntwort = [];
-  await seite.evaluate(() => { stunde = 21; location.hash = ""; zeichne(); });
+  /* Eine LANGE Beschreibung, wie auf dem Bildschirmfoto des Betreibers.
+     Mit der kurzen Probe-Empfehlung reichte der Text nie bis zum Knopf
+     — der Gegenbeweis (Fußzeile entfernt) blieb grün (§8.1g). Jetzt
+     läuft die letzte Zeile bis an den rechten Rand. */
+  await seite.evaluate(() => {
+    stunde = 21;
+    EMPFEHLUNG.forEach(e => { e.was = "Pistaziencreme, Engelshaar, Schokolade. Der Grund, warum so viele von weit her wiederkommen und immer wieder danach fragen, jeden einzelnen Abend"; });
+    location.hash = ""; zeichne(); });
   await seite.waitForTimeout(300);
   const tipp = await seite.evaluate(() => {
     const knopf = document.querySelector(".tippwrap .tippmenge");
