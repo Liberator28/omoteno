@@ -1175,6 +1175,7 @@ Dazu je nach Änderung:
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
+| **Zweiter Faktor (PIN), PIN-Schirm in Board/Küche/Master** | `pruefungen/pruef-pin.js` — geteilter Block in drei Dateien Zeichen für Zeichen gleich, Felder und Gründe gegen `migration-pin.sql` gehalten, Schirm nach Passwort UND bei gemerkter Sitzung, vor der PIN wird nichts geladen, Master prüft die Rolle erst danach, gesperrt/keine PIN ohne Eingabefeld, Server stumm → kein Schirm; Kontrast, 16 px, Tapflächen, 360 px. Die Erzwingung selbst: `datenbank/pruef-rechte.sql` TEIL 7 (ohne PIN 0 Zeilen, andere Anmeldung 0 Zeilen, §2.7 andere Spalte) |
 | Konto, Anfrageformular, **Google-Knopf** | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links, Anbieterliste |
 | **Alessia, der Telefonweg** | `pruefungen/pruef-alessia.js` — liest die Nutzlast, ohne Netz |
 | **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
