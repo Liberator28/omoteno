@@ -1161,7 +1161,7 @@ Dazu je nach Änderung:
 | **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
 | Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
 | Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
-| Marken-Studio (Bedienung) | `pruefungen/pruef-studio-hand.js` — Rückgängig, Sprung, Schicken |
+| Marken-Studio (Bedienung) | `pruefungen/pruef-studio-hand.js` — Rückgängig, Sprung, Schicken, aufklappbare Abteilungen (eine offen, Kopf ≥ 44 px mit Satz), kein Markenblatt-Code ohne `?fachleute=1` (gemessen bei OFFENEM „Fertig?“), Mausklick auf Reiter im schmalen Fenster, Griff zieht trotzdem |
 | Auslieferung, Umleitungen | `erzeuger/bauen.js` und dann `pruefungen/pruef-lieferung.js` |
 | **Startkacheln, Bereiche, Markenblatt, iconAus-Schalter** | `pruefungen/pruef-kacheln.js` — Kreuzvergleich: kein Hub trägt fremden Text; iconAus schaltet nur das Symbol ab (strikt `=== true`, keine Zeichenkette) |
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |

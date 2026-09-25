@@ -95,8 +95,22 @@ const hex = rgb => "#" + rgb.match(/\d+/g).slice(0,3)
       markiert: [...document.querySelectorAll('[data-abtziel][aria-current="true"]')].map(b => b.dataset.abtziel),
     }));
     let z = await zustand();
-    pruef(!z.code && !z.ausgabeSichtbar && !z.kopierenSichtbar,
-      "kein Markenblatt-Code sichtbar, kein Kopieren/Einlesen für jedermann", JSON.stringify({code:z.code, feld:z.ausgabeSichtbar, knopf:z.kopierenSichtbar}));
+    const startZustand = z;
+    /* Gemessen wird bei OFFENEM „Fertig?“ — zugeklappt ist dort ohnehin
+       nichts zu sehen, und „nichts da“ sähe aus wie „versteckt“
+       (§8.1g; der erste Gegenbeweis blieb genau deshalb grün). Die
+       Voraussetzung wird mitgeprüft: Der Schicken-Knopf daneben MUSS
+       sichtbar sein. */
+    await p.evaluate(() => abteilungZeigen("teilen"));
+    await p.waitForTimeout(500);
+    z = await zustand();
+    const teilenOffen = await p.isVisible("#schicken");
+    pruef(teilenOffen && !z.code && !z.ausgabeSichtbar && !z.kopierenSichtbar,
+      "„Fertig?“ offen: kein Markenblatt-Code, kein Kopieren/Einlesen für jedermann",
+      JSON.stringify({offen:teilenOffen, code:z.code, feld:z.ausgabeSichtbar, knopf:z.kopierenSichtbar}));
+    await p.evaluate(() => abteilungZeigen("vorlagen"));
+    await p.waitForTimeout(400);
+    z = startZustand;
     pruef(z.offen.join() === "vorlagen" && z.rumpfAuf.join() === "rumpf-vorlagen",
       "beim Start ist genau „Schnellstart“ offen", z.offen.join() + " / " + z.rumpfAuf.join());
     const koepfe = await p.$$eval(".abt-kopf", ks => ks.map(k => ({ abt:k.dataset.abtauf,
