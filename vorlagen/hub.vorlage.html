@@ -4465,7 +4465,7 @@ const BZ_KATEGORIE = [
   [/runde|teilen|sharing|platte/,              "1f973"],
   [/manakish|pizza|flammkuchen|herzhaft/,      "1f355"],
   [/gepresst|saft|juice/,                      "1f34a"],
-  [/limo|softdrink|soda|cola/,                 "1f34b"],
+  [/limo|softdrink|soda|cola|brause/,          "soda"],
   [/kaiser|flasche|sekt|champagner|prosecco/,  "1f37e"],
   [/bubble|boba/,                              "1f9cb"],
   [/cocktail|mocktail|longdrink|drink/,        "1f379"],
@@ -4483,7 +4483,23 @@ const BZ_KATEGORIE = [
   [/chicken|hähnchen|huhn|grill|fleisch|wings/,"1f357"],
   [/vegan|avocado|veggie/,                     "1f951"],
   [/erdbeer|strawberr/,                        "1f353"],
-  [/kirsch|cherry|beere/,                      "1f352"]
+  [/kirsch|cherry|beere/,                      "1f352"],
+  /* Ab hier die Zeichen, die mit der Emoji-Wahl dazukamen. Bewusst
+     AM ENDE: Die erste Regel gewinnt, und „Käsekuchen“ soll Kuchen
+     bleiben, nicht Käse werden. mate/pie nur als ganzes Wort — sonst
+     wäre „Tomate“ ein Mate-Becher. */
+  [/hot ?dog|würstchen/,                       "1f32d"],
+  [/taco|nacho/,                               "1f32e"],
+  [/burrito|wrap/,                             "1f32f"],
+  [/spieß|spiess|kebab|yakitori|skewer/,       "1f362"],
+  [/fisch|fish|sushi/,                         "1f41f"],
+  [/hummer|meeresfrücht|seafood|garnel/,       "1f99e"],
+  [/brezel|pretzel/,                           "1f968"],
+  [/käse|kaese|cheese/,                        "1f9c0"],
+  [/\bbrot|bread|toast|sandwich|stulle/,       "1f35e"],
+  [/popcorn|snack/,                            "1f37f"],
+  [/\bpie\b|tarte/,                            "1f967"],
+  [/\bmate\b/,                                 "1f9c9"]
 ];
 const BZ_KARTE = { speisekarte:"1f37d", getraenke:"1f9c3", cocktails:"1f379" };
 
@@ -4494,7 +4510,7 @@ const BZ_KARTE = { speisekarte:"1f37d", getraenke:"1f9c3", cocktails:"1f379" };
    dem Abspielen. Wert: das erste Bild mit ≥ 92 % der größten
    gemalten Fläche (Pixel gezählt je Bild, pruef-bewegte-zeichen.js
    misst es nach). Fehlt ein Eintrag, ist Bild 0 schon voll. */
-const BZ_RUHE = {"crepe":99,"1f31f":45,"1f355":10,"1f35c":7,"1f35d":9,"1f366":90,"1f36a":13,"1f373":66,"1f37b":10,"1f37e":46,"1f382":19,"1f389":25,"1f64c":11,"1f64f":11,"1f942":29,"1f957":129,"1f9e0":23};
+const BZ_RUHE = {"soda":99,"1f32d":20,"1f32e":97,"1f35e":29,"1fad6":36,"1f32f":15,"1f345":96,"1fad7":84,"crepe":99,"1f31f":45,"1f355":10,"1f35c":7,"1f35d":9,"1f366":90,"1f36a":13,"1f373":66,"1f37b":10,"1f37e":46,"1f382":19,"1f389":25,"1f64c":11,"1f64f":11,"1f942":29,"1f957":129,"1f9e0":23};
 
 /* Live-Schalter aus dem Board (betriebe.hub_stil), dann das
    Markenblatt, dann an. Strikt boolean: hub_stil ist eine Live-Spalte,
@@ -4511,11 +4527,27 @@ function bewegteZeichenAn(){
    liegt unter seinem Namen in auslieferung/emoji/, gebaut von
    erzeuger/erzeuge-crepe-zeichen.py; bis er lädt — und wenn er nicht
    lädt — steht das nächstverwandte Geräte-Emoji da. */
-const BZ_EIGEN = { crepe:"1f95e" };
+const BZ_EIGEN = { crepe:"1f95e", soda:"1f37e" };
+
+/* Was der Betrieb im Board je Kategorie wählen darf (gerichte.kat_emoji).
+   Dieselbe Liste steht als KAT_ZEICHEN im Board; pruef-kategorien.js
+   hält beide gegeneinander und gegen die Dateien in /emoji/. Ein Wert,
+   der hier fehlt, fällt still auf die Automatik nach dem Namen zurück —
+   ein Tippfehler in der Datenbank zeigt nie ein leeres Kästchen. */
+const BZ_WAHL = ["1f37d","1f355","1f354","1f32d","1f32e","1f32f","1f35d","1f35c","1f957","1f373","1f357","1f953","1f362","1f41f","1f99e","1f35e","1f968","1f9c0","1f95e","crepe","1f37f","1f954","1f9c2",
+  "1f951","1f345","1f952","1f966","1f955","1f33d","1f344","1fad1","1f9c4","1f9c5","1f96c","1f34e","1f34a","1f34b","1f347","1f348","1f349","1f34d","1f95d","1f96d","1f353","1f352","1fad0",
+  "1f382","1f967","1f369","1f36a","1f366","1f368",
+  "soda","1f9c3","2615","1f375","1fad6","1f9c9","1f9cb","1f379","1f377","1f942","1f37e","1f37b","1fad7",
+  "1f525","2728","1f31f","1f973"];
 function bzZeichen(cp){ return String.fromCodePoint(parseInt(BZ_EIGEN[cp] || cp, 16)) + "️"; }
 function bzKategorie(name, karte){
   if(name === "Alle") return "2728";
   if(name === "Beliebt") return "1f525";
+  /* Vom Betrieb gewählt (gerichte.kat_emoji) schlägt die Automatik —
+     aber nur, was in BZ_WAHL steht. */
+  const liste = { speisekarte:SPEISEKARTE, getraenke:GETRAENKE, cocktails:COCKTAILS }[karte];
+  const gr = liste && liste.find(x => x && x.gruppe === name);
+  if(gr && typeof gr.zeichen === "string" && BZ_WAHL.includes(gr.zeichen)) return gr.zeichen;
   const n = String(name || "").toLowerCase();
   for(const [muster, cp] of BZ_KATEGORIE) if(muster.test(n)) return cp;
   return BZ_KARTE[karte] || "1f37d";
@@ -13525,6 +13557,10 @@ async function karteHolen(erstesMal){
           TEXTE[z.name] = Object.assign({}, TEXTE[z.name] || {}, z.name_uebersetzungen);
         let g = topf.find(x => x.gruppe === z.kategorie);
         if(!g) topf.push(g = { gruppe:z.kategorie, eintraege:[] });
+        /* Das Zeichen der Kategorie steht an jedem ihrer Gerichte; es
+           reist in der Gruppe mit, damit auch eine Änderung NUR am
+           Zeichen den Fingerabdruck unten ändert und neu gezeichnet wird. */
+        if(!g.zeichen && typeof z.kat_emoji === "string" && z.kat_emoji) g.zeichen = z.kat_emoji;
         const e = {
           n: z.name,
           b: z.beschreibung || "",

@@ -5,7 +5,7 @@ letztes Bild: die offene Flasche mit Schaumkrone (nichts Leeres, nichts
 Halbes — dieselbe Regel wie beim Crêpe, BZ_RUHE).
 
 Es gibt kein Unicode-Emoji für eine Sodaflasche; auf dem Gerät steht
-ersatzweise 🥤 (BZ_EIGEN.soda in hub.vorlage.html)."""
+ersatzweise 🍾 (BZ_EIGEN.soda in hub.vorlage.html) — die Flasche mit knallendem Korken, selbst als Noto-Film vorhanden."""
 import json, os
 K = 0.5523
 def col(h, a=1):

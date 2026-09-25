@@ -45,7 +45,7 @@ const ERWARTET = {
   speisekarte: { "Crêpe":"crepe", "Waffel":"1f36a", "Mini-Pancakes":"1f95e", "Creamy Rice":"1f368",
                  "Fettuccine":"1f35d", "Obstsalat":"1f96d", "Für die Runde":"1f973",
                  "Herzhaft · Manakish":"1f355", "Alle":"2728", "Beliebt":"1f525" },
-  getraenke:   { "Frisch gepresst":"1f34a", "Softdrinks":"1f34b" },
+  getraenke:   { "Frisch gepresst":"1f34a", "Softdrinks":"soda" },   // Wunsch: Flasche, die aufspritzt
   cocktails:   { "Kaiser · 0,5 l":"1f37e", "Cocktails":"1f379", "Arabisches Eis":"1f366" }
 };
 
