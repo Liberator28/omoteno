@@ -7735,24 +7735,36 @@ async function katAendern(karte, alt, felder, anhaengenAn){
    in betriebe.hub_woerter, dieselbe Stelle, aus der der Hub eigene
    Sätze des Betriebs liest. Scheitert es, bleibt der Name deutsch
    und das Board sagt es (fail-open, §7). */
-async function katUebersetzen(name){
+/* leise: beim Speichern eines Gerichts. Dann steht die Meldung zum
+   Gericht (z. B. welche Sprache fehlt) auf dem Schirm und darf nicht
+   von dieser Nebensache überschrieben werden — pruef-uebersetzung.js
+   hat genau das gefunden. */
+async function katUebersetzen(name, leise){
   if(demo || !db || !name) return;
   const fertig = await uebersetzenLassen([name]);
   const u = fertig && fertig[name];
   if(!u || typeof u !== "object"){
     const grund = uebGrundText();
-    if(grund) melde("Kategorie gesichert — übersetzt wurde nicht. " + grund, true);
+    if(grund && !leise) melde("Kategorie gesichert — übersetzt wurde nicht. " + grund, true);
     return;
   }
-  const {data, error} = await db.from("betriebe").select("hub_woerter").eq("id", betriebId).maybeSingle();
-  if(error) return;
-  const w = (data && data.hub_woerter && typeof data.hub_woerter === "object") ? data.hub_woerter : {};
-  Object.keys(u).forEach(code => {
-    const txt = u[code];
-    if(typeof txt !== "string" || !txt.trim() || !/^[a-z]{2}$/.test(code)) return;
-    w[code] = Object.assign({}, w[code] || {}); w[code][name] = txt.trim();
-  });
-  await db.from("betriebe").update({ hub_woerter:w }).eq("id", betriebId);
+  /* Nie werfen: Läuft dieser Nachschlag schief, ist die Kategorie
+     trotzdem gesichert — pruef-uebersetzung.js fand hier einen
+     unbehandelten Fehler, als die Datenbank anders antwortete. */
+  try{
+    const {data, error} = await db.from("betriebe").select("hub_woerter").eq("id", betriebId).maybeSingle();
+    if(error) throw error;
+    const w = (data && data.hub_woerter && typeof data.hub_woerter === "object") ? data.hub_woerter : {};
+    Object.keys(u).forEach(code => {
+      const txt = u[code];
+      if(typeof txt !== "string" || !txt.trim() || !/^[a-z]{2}$/.test(code)) return;
+      w[code] = Object.assign({}, w[code] || {}); w[code][name] = txt.trim();
+    });
+    const r = await db.from("betriebe").update({ hub_woerter:w }).eq("id", betriebId);
+    if(r && r.error) throw r.error;
+  }catch(e){
+    if(!leise) melde("Kategorie gesichert — die Übersetzung ließ sich nicht ablegen.", true);
+  }
 }
 
 async function ktedSichern(){
@@ -11658,7 +11670,7 @@ async function sichern(alsKopie){
     const nachher = await uebNachtragen(gespeichert, true);
     if(nachher) zeichneKarte();
   }
-  if(neueKategorie){ katNeuWunsch = null; katUebersetzen(kat); }
+  if(neueKategorie){ katNeuWunsch = null; katUebersetzen(kat, true); }
 }
 
 $("#uebZeigen").onclick = () => uebOeffnen();
