@@ -5,8 +5,7 @@
 
    Auftrag: Beim Wechsel zwischen den Reitern der telefontauglichen
    Befehlsleiste soll EIN Element von einem Knopf zum anderen fließen
-   — ein Ball, der sich zusammenzieht und hinüberfließt (Vorbild:
-   Uber Eats/Lieferando-Art Kategorie-Umschalter), statt der bisherigen
+   — ein Ball, der sich zusammenzieht und hinüberfließt, statt der bisherigen
    zwei unabhängigen Ein-/Ausblendungen (alter Knopf blendet seinen
    eigenen Hintergrund aus, neuer blendet seinen eigenen ein — zwei
    getrennte Bewegungen an zwei Stellen gleichzeitig, kein Zusammenhang
