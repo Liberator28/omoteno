@@ -273,6 +273,16 @@ async function hubAuf(br, haus, liefer, adresszusatz){
   await p.goto("file://" + path.join(OBEN, "dist", haus, "index.html") +
                (ohne ? (rest || "") : "?modus=liefern" + rest));
   await p.waitForTimeout(1500);
+  /* Öffnungszeiten für JEDES Haus festlegen, nicht nur für Blend: Choco
+     öffnet um 10:30. Vorher zeigt der Hub zu Recht kein Bestellfeld,
+     und diese Prüfung wurde morgens rot („0 Felder“), obwohl der
+     Liefermodus in Ordnung war — gemessen am 25.09. um 10:24 UTC. Eine
+     Prüfung, die an der Uhr des Rechners hängt, prüft die Uhr. */
+  await p.evaluate(() => {
+    if (typeof ZEITEN === "undefined") return;
+    ZEITEN.length = 0;
+    for (let i = 0; i < 7; i++) ZEITEN.push("00:00 - 23:59");
+  });
   await p.evaluate(() => { location.hash = "#/auswahl"; });
   await p.waitForTimeout(800);
   return { p, ctx, kons, gesendet, echt: () => echt(kons) };

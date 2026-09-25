@@ -510,6 +510,22 @@ async function oeffnen(browser, slug, hash, opt = {}) {
       const t1 = performance.now(), nachher = k.getBoundingClientRect().left;
       return { finger:fingerTempo, karte:+((nachher - vor) / (t1 - t0)).toFixed(2) };
     });
+    await s.waitForTimeout(500);
+    /* 1:1 am Finger: Nach einem Zug steht die Karte im NÄCHSTEN Bild
+       dort, wo der Finger ist — nicht auf dem Weg dorthin. Eine
+       CSS-Transition auf transform (0,28 s) ließe sie nachhinken. */
+    const folgt = await s.evaluate(async () => {
+      const k = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]');
+      const b = k.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2;
+      k.dispatchEvent(new PointerEvent("pointerdown", { clientX:x, clientY:y, pointerId:9, bubbles:true, isPrimary:true }));
+      document.dispatchEvent(new PointerEvent("pointermove", { clientX:x + 20, clientY:y, pointerId:9, bubbles:true }));
+      document.dispatchEvent(new PointerEvent("pointermove", { clientX:x + 60, clientY:y, pointerId:9, bubbles:true }));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const m = new DOMMatrixReadOnly(getComputedStyle(k).transform);
+      document.dispatchEvent(new PointerEvent("pointerup", { clientX:x + 60, clientY:y, pointerId:9, bubbles:true }));
+      return { soll:60, ist:+m.m41.toFixed(1) };
+    });
+    pruef(Math.abs(folgt.ist - folgt.soll) <= 1, "die Karte folgt dem Finger ohne Verzug", "Finger +" + folgt.soll + " px, Karte +" + folgt.ist + " px");
     pruef(wurf.karte >= wurf.finger * .8, "die Karte fliegt mit mindestens dem Fingertempo weiter",
       "Finger " + wurf.finger + " px/ms, Karte " + wurf.karte + " px/ms");
     pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
