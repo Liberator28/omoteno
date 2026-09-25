@@ -270,6 +270,26 @@ const kontrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1
   /* ── 5 · Einstellungen ── */
   console.log("\n══ Einstellungen ══");
   const e = await board(br, 390, false, "einstellungen");
+
+  /* Hell/Dunkel mit dem Finger (Vorfall: einstSpeichern() gab es nicht,
+     jeder Tipp warf, bevor lichtAnwenden() lief — das Board „klemmte“).
+     Gemessen wird die Klasse am body UND die gemalte Fläche, nicht nur
+     EINST: EINST stand schon vorher richtig, das Bild nicht. */
+  const lichtFehler = [];
+  e.p.on("pageerror", x => lichtFehler.push(String(x).slice(0, 120)));
+  const licht = [];
+  for(const w of ["dunkel", "hell", "dunkel"]){
+    await e.p.click('#lichtWahl [data-licht="' + w + '"]');
+    await e.p.waitForTimeout(250);
+    licht.push(await e.p.evaluate(() => ({ hell:document.body.classList.contains("hell"),
+      grund:getComputedStyle(document.body).backgroundColor,
+      gemerkt:(JSON.parse(localStorage.getItem("omoteno-einstellungen") || "{}").licht) })));
+  }
+  pruef(!licht[0].hell && licht[1].hell && !licht[2].hell,
+    "Hell/Dunkel: Antippen schaltet das Board wirklich um (dunkel → hell → dunkel)", JSON.stringify(licht.map(x => x.hell)));
+  pruef(licht[0].grund !== licht[1].grund, "die gemalte Fläche wechselt mit", licht[0].grund + " / " + licht[1].grund);
+  pruef(licht[1].gemerkt === "hell" && licht[2].gemerkt === "dunkel", "die Wahl wird gemerkt", licht.map(x => x.gemerkt).join(","));
+  pruef(!lichtFehler.length, "kein Laufzeitfehler beim Umschalten", lichtFehler[0] || "still");
   const ue = await e.p.evaluate(() => {
     const reihen = [...document.querySelectorAll(".eu-reihe")];
     const gruppen = [...document.querySelectorAll("#t-einstellungen > .egruppe[data-eu]")];
