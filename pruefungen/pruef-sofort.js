@@ -148,39 +148,70 @@ function aktionMock(name, extra){
   pruef(!ohneGericht.knopf, "aber ohne anklickbare Vorschau");
   pruef(!ohneGericht.sofort, "und ohne Sofort-Knopf — es gäbe nichts zu bestellen");
 
-  /* ───── 4 · Empfehlung des Hauses: Sofort-Knopf zum Kartenpreis ───── */
+  /* ───── 4 · Empfehlung des Hauses: Menge zum Kartenpreis ─────
+     VORFALL (Bildschirmfoto des Betreibers): Der runde Sofort-Knopf
+     lag absolut über dem Text — von der Beschreibung fehlte ein Stück.
+     Jetzt steht dort dieselbe Mengensteuerung wie in der Karte, in
+     einer eigenen Fußzeile. Gemessen wird, dass KEIN Textrechteck
+     unter dem Knopf liegt, und dass Plus und Minus wirklich zählen. */
   console.log("\n── Empfehlung des Hauses ──");
   aktionenAntwort = [];
   await seite.evaluate(() => { stunde = 21; location.hash = ""; zeichne(); });
   await seite.waitForTimeout(300);
-  const tipp = await seite.evaluate(() => ({
-    wrap: !!document.querySelector(".tippwrap"),
-    kennz: (document.querySelector(".tipp .kennz") || {}).textContent || "",
-    sofortDa: !!document.querySelector(".tippwrap .tippsofort")
-  }));
+  const tipp = await seite.evaluate(() => {
+    const knopf = document.querySelector(".tippwrap .tippmenge");
+    const k = knopf ? knopf.getBoundingClientRect() : null;
+    /* Jede Textzeile einzeln (Range je Textknoten), nicht nur die
+       Kästen — ein Kasten reicht über die ganze Breite, die Zeile
+       darin vielleicht nicht. */
+    let ueber = 0, zeilen = 0;
+    document.querySelectorAll(".tipp .tinhalt .name, .tipp .tinhalt .was, .tipp .tinhalt .kennz").forEach(el => {
+      const r = document.createRange(); r.selectNodeContents(el);
+      [...r.getClientRects()].forEach(z => { zeilen++;
+        if(k && z.right > k.left && z.left < k.right && z.bottom > k.top && z.top < k.bottom) ueber++; });
+    });
+    return { wrap: !!document.querySelector(".tippwrap"),
+             kennz: (document.querySelector(".tipp .kennz") || {}).textContent || "",
+             mengeDa: !!knopf, ueber, zeilen };
+  });
   pruef(tipp.wrap, "die Karte steht in ihrem eigenen Rahmen (kein <button> in <a>)");
   pruef(/THEKE/i.test(tipp.kennz), "„Heute an der Theke“ zur passenden Uhrzeit", tipp.kennz);
+  pruef(tipp.mengeDa, "die Mengensteuerung sitzt in der Karte");
+  pruef(tipp.zeilen > 0 && tipp.ueber === 0, "kein Stück Text liegt unter dem Knopf",
+    tipp.ueber + " von " + tipp.zeilen + " Zeilen verdeckt");
 
-  pruef(tipp.sofortDa, "der Sofort-Knopf sitzt daneben");
-
-  const tsofort = await seite.$(".tippwrap .tippsofort");
-  if(tsofort){
-    await tsofort.click();
-    await seite.waitForTimeout(300);
+  const tplus = await seite.$(".tippwrap .tippmenge .gplus");
+  pruef(!!tplus, "zuerst ein „+“");
+  if(tplus){
+    await tplus.click();
+    await seite.waitForTimeout(350);
     const g = await seite.evaluate(() => merk["Arabischer Kaiser"] || null);
     pruef(!!g, "das Gericht liegt im Korb");
     if(g) pruef(g.p === "12,20", "zum normalen Kartenpreis (keine Aktion aktiv)", g.p);
+    const hoch = await seite.$('.tippwrap .tippmenge [data-kschritt="1"]');
+    pruef(!!hoch, "aus dem „+“ wird − Zahl +");
+    if(hoch){
+      /* Je Klick frisch suchen: korbSteuerungNeu() setzt die Stelle neu,
+         ein gemerkter Griff hinge danach an einem entfernten Knopf. */
+      await seite.click('.tippwrap .tippmenge [data-kschritt="1"]');
+      await seite.waitForTimeout(150);
+      await seite.click('.tippwrap .tippmenge [data-kschritt="1"]');
+      await seite.waitForTimeout(250);
+      const m = await seite.evaluate(() => ({ m:(merk["Arabischer Kaiser"] || {}).m,
+        zahl:(document.querySelector(".tippwrap .tippmenge .gmz") || {}).textContent }));
+      pruef(m.m === 3 && m.zahl === "3", "zweimal Plus: drei Stück, Zahl und Korb gleich", JSON.stringify(m));
+      await seite.click('.tippwrap .tippmenge [data-kschritt="-1"]');
+      await seite.waitForTimeout(250);
+      pruef((await seite.evaluate(() => (merk["Arabischer Kaiser"] || {}).m)) === 2, "Minus nimmt eins weg");
+    }
 
-    /* Klick auf die Karte selbst öffnet die Vorschau — unabhängig vom
-       Sofort-Knopf, der darüber liegt, aber nicht sein Zielfeld
-       überlappt (position:absolute in der rechten unteren Ecke). */
     await seite.evaluate(() => { detailSchliessen(); });
-    await seite.click(".tipp");
+    await seite.click(".tipp .name");
     await seite.waitForTimeout(400);
     const offen = await seite.evaluate(() => document.getElementById("warenkarte").classList.contains("an"));
     pruef(offen, "ein Klick auf die Karte selbst öffnet trotzdem die Vorschau");
-    pruef((await seite.evaluate(() => Object.keys(merk).length)) === 1,
-      "und verändert den Korb dabei nicht ein zweites Mal");
+    pruef((await seite.evaluate(() => (merk["Arabischer Kaiser"] || {}).m)) === 2,
+      "und verändert den Korb dabei nicht");
   }
 
   /* ───── 5 · Reduzierte Bewegung ───── */

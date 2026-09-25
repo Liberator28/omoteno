@@ -463,6 +463,19 @@ nav button:active{color:var(--kreide)}
 }
 
 main{padding:18px 16px 90px;max-width:820px;margin:0 auto}
+/* Jede Tafel mindestens so hoch wie der GROSSE Sichtbereich.
+   VORFALL (Bildschirmfoto des Betreibers, iPhone): Auf „Tische“ stand
+   die Reiterleiste 140 px höher als auf „Mehr“, darunter ein leerer
+   Streifen. Gemessen im kopflosen Browser lag die Leiste überall an
+   derselben Stelle — der Unterschied entsteht in Safari: Die leere
+   Tische-Seite war genau bildschirmhoch (844 = 844), ließ sich nicht
+   scrollen, also klappte Safaris Werkzeugleiste nie ein, und die feste
+   Leiste rückte über sie. Mit 100lvh (Leiste eingeklappt) ist jede
+   Tafel so scrollbar wie die langen, und alle verhalten sich gleich.
+   100vh davor für Browser ohne lvh. */
+@media (max-width:760px){
+  .tafel{min-height:100vh;min-height:100lvh}
+}
 /* Fern-Ansicht. Dieselbe Mechanik wie in der Küche: eine Zahl auf
    <html>, alles andere rechnet daran. Vorgabe 1 — ohne Zutun sieht
    das Board aus wie vorher. */
@@ -1616,10 +1629,19 @@ textarea{resize:vertical;min-height:66px}
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
   min-height:88px;padding:10px 6px;border-radius:14px;
   border:1px solid var(--linie);background:var(--flaeche-2);color:var(--gedaempft);
-  font:inherit;cursor:pointer;transform:scale(.86);opacity:.55;
-  transition:transform var(--t-blatt) var(--ease-blatt),opacity var(--t-blatt) var(--ease-blatt),
-             border-color var(--t-klein) var(--ease-out),background var(--t-klein) var(--ease-out),
+  font:inherit;cursor:pointer;scroll-snap-stop:always;
+  /* Größe und Deckkraft folgen dem Finger, Bild für Bild: --naehe
+     (0 am Rand … 1 in der Mitte) setzt avRadFormen() beim Scrollen.
+     KEINE Transition auf transform/opacity — VORFALL (Betreiber: „es
+     hängt und biegt“): Hier stand eine 400-ms-Transition, und ein
+     IntersectionObserver schaltete .aktiv mitten in der Geste hin und
+     her. Jede Umschaltung startete die Skalierung neu; sie lief dem
+     Finger hinterher und sprang an den Schwellen. */
+  transform:scale(calc(.86 + .14 * var(--naehe, 0)));
+  opacity:calc(.55 + .45 * var(--naehe, 0));
+  transition:border-color var(--t-klein) var(--ease-out),background var(--t-klein) var(--ease-out),
              color var(--t-klein) var(--ease-out);
+  will-change:transform;
 }
 .avstueck svg{width:28px;height:28px;fill:none;stroke:currentColor;
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
@@ -1632,10 +1654,10 @@ textarea{resize:vertical;min-height:66px}
      wird --kreide wie andere ausgewählte Zustände in dieser Datei
      (z. B. .schritt[aria-pressed=true]) — hell auf dunkel in Dunkel,
      dunkel auf hellem Goldton in Hell, beides klar über 4,5:1. */
-  transform:scale(1);opacity:1;border-color:var(--messing);
+  border-color:var(--messing);
   background:rgba(201,162,39,.16);color:var(--kreide);font-weight:600;
 }
-@media (prefers-reduced-motion:reduce){ .avstueck{transition:none} }
+@media (prefers-reduced-motion:reduce){ .avstueck{transition:none;transform:none} }
 
 /* Die Kombination aus allen drei Rädern in Worten, auf einen Blick —
    das "Charakter-Editor"-Gefühl: nicht nur EIN Rad zeigt seine Wahl
@@ -1892,6 +1914,66 @@ textarea{resize:vertical;min-height:66px}
   cursor:pointer;border:0;box-shadow:0 0 0 .5px rgba(0,0,0,.12),0 3px 8px rgba(0,0,0,.28);
 }
 .regler:focus-visible{outline:2px solid var(--messing);outline-offset:6px}
+
+/* ── Einstellungen auf einen Blick ──────────────────────────────
+   Übersicht wie in den iPhone-Einstellungen und je Bereich ein Kopf
+   mit Symbol, Zustand und kleiner Live-Grafik. --ton trägt die Farbe
+   des Bereichs; Schrift bleibt in --kreide/--gedaempft (Farbe nie
+   allein Träger einer Aussage). */
+.eu-uebersicht{padding:6px 10px 10px}
+.eu-uebersicht > .etitel{margin:12px 8px 6px}
+.eu-reihe{
+  display:grid;grid-template-columns:34px minmax(0,1fr) auto 14px;align-items:center;gap:12px;
+  min-height:60px;padding:8px;border-radius:14px;text-decoration:none;color:var(--kreide);
+  transition:background var(--t-klein) var(--ease-out),transform var(--t-druck) var(--ease-out);
+}
+.eu-reihe + .eu-reihe{box-shadow:0 -1px 0 var(--linie)}
+.eu-reihe:active{transform:scale(.985);background:var(--flaeche-2)}
+.eu-reihe:focus-visible{outline:2px solid var(--messing);outline-offset:1px}
+.eu-symbol{
+  width:34px;height:34px;border-radius:10px;display:grid;place-items:center;flex:none;
+  color:var(--ton);background:color-mix(in srgb, var(--ton) 16%, transparent);
+}
+.eu-symbol svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.eu-text{min-width:0;display:flex;flex-direction:column;gap:2px}
+.eu-text b{font-size:15px;font-weight:600}
+.eu-text i{font-size:12.5px;font-style:normal;color:var(--gedaempft);line-height:1.35}
+.eu-wert{font-size:12.5px;color:var(--gedaempft);text-align:right;max-width:120px;line-height:1.3;overflow-wrap:anywhere}
+.eu-pfeil{color:var(--gedaempft);font-size:18px}
+@media (max-width:420px){
+  .eu-reihe{grid-template-columns:34px minmax(0,1fr) 14px}
+  .eu-wert{grid-column:2;grid-row:2;text-align:left;max-width:none;color:var(--kreide)}
+  .eu-pfeil{grid-column:3;grid-row:1 / span 2}
+}
+.egruppe[data-eu]{scroll-margin-top:84px}
+.eu-kopf{display:grid;grid-template-columns:40px minmax(0,1fr) 56px;align-items:center;gap:12px;margin:14px 0 8px}
+.eu-kopf .eu-symbol{width:40px;height:40px;border-radius:12px}
+.eu-kopf .eu-symbol svg{width:22px;height:22px}
+.eu-mitte{min-width:0}
+.eu-mitte .etitel{margin:0 0 3px}
+.eu-stand{display:block;font-size:13.5px;font-weight:600;color:var(--kreide);line-height:1.35;overflow-wrap:anywhere}
+.eu-bild{width:56px;height:56px;border-radius:14px;background:var(--flaeche-2);border:1px solid var(--linie);padding:4px;
+  color:var(--ton)}
+.eu-bild .eu-strich,.eu-bild .eu-strich *{fill:none;stroke:currentColor;stroke-width:1.2;stroke-linecap:round;stroke-linejoin:round}
+.eu-bild .eu-blass{opacity:.35}
+.eu-bild .eu-welle{fill:none;stroke:var(--linie);stroke-width:2.2;stroke-linecap:round}
+.eu-bild .eu-welle.an{stroke:currentColor}
+.eu-bild .eu-aus{stroke:var(--warn);stroke-width:2.4;stroke-linecap:round}
+.eu-bild .eu-rahmen{fill:var(--flaeche);stroke:var(--linie);stroke-width:1.5}
+.eu-bild .eu-fuell{fill:currentColor;opacity:.8}
+.eu-bild .eu-linie{stroke:var(--gedaempft);stroke-width:2;stroke-linecap:round}
+.eu-bild .eu-farbe{fill:var(--linie);stroke:var(--flaeche);stroke-width:2}
+.eu-bild .eu-punkt{fill:currentColor}
+.eu-bild .eu-punkt.gut{fill:var(--gut)}
+.eu-bild .eu-punkt.warn{fill:var(--warn)}
+.eu-bild .eu-haken{fill:none;stroke:var(--nacht);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.eu-bild .eu-zahl{font:700 10px var(--mono);fill:var(--nacht)}
+.eu-bild .eu-zahl.dunkel{font-size:12px;fill:var(--kreide)}
+.eu-bild .eu-hell{fill:#FBF9F1}
+.eu-bild .eu-dunkel{fill:#0A1714}
+.eu-bild .eu-wahl{stroke:currentColor;stroke-width:3;stroke-linecap:round}
+.eu-bild .eu-bahn{fill:none;stroke:var(--linie);stroke-width:5}
+.eu-bild .eu-bogen{fill:none;stroke:currentColor;stroke-width:5;stroke-linecap:round}
 
 /* Klangwahl als Segment wie auf dem iPhone. Ein Tipp wählt UND
    spielt sofort vor - anders lässt sich ein Ton nicht beurteilen.
@@ -5857,6 +5939,7 @@ function einstZeichnen(){
 
   geraetLageZeichnen();
   reglerFuellen();
+  euBald();
 }
 
 /* Sagt ehrlich, was auf diesem Gerät geht und was nicht. Das erspart
@@ -5887,6 +5970,7 @@ function geraetLageZeichnen(){
     : "Bildschirm wird nicht wach gehalten"));
 
   ziel.innerHTML = punkte.join("");
+  euBald();
 }
 
 $("#t-einstellungen").addEventListener("change", e => {
@@ -5910,6 +5994,186 @@ $("#t-einstellungen").addEventListener("change", e => {
     geraetLageZeichnen();
   }
 });
+
+/* ══════════════════════════════════════════════════════════════════
+   EINSTELLUNGEN AUF EINEN BLICK
+
+   Wunsch des Betreibers: „übersichtlicher, einfacher — auf einen Blick
+   sehen, was welche Funktion macht, gerne mit grafischer Darstellung
+   daneben“. Oben deshalb eine Übersicht wie in den iPhone-
+   Einstellungen (Symbol, Zweck in einem Satz, aktueller Zustand), und
+   jeder Bereich bekommt denselben Kopf mit einer kleinen Live-Grafik
+   dessen, was die Einstellung bewirkt.
+
+   Die Formulare selbst bleiben, wie sie sind — ihre ids tragen Skripte
+   und Prüfungen. Hier wird nur ergänzt. Zustände werden aus denselben
+   Quellen gelesen, die die Bereiche schon setzen (EINST, die Schalter
+   selbst, AVATARSTAND …): keine zweite Ablage, die auseinanderläuft.
+   ══════════════════════════════════════════════════════════════════ */
+const EU_SYMBOL = {
+  glocke: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
+  blase:  '<path d="M4 6h16v10H9l-5 4z"/><path d="M8 10h8M8 13h5"/>',
+  pinsel: '<path d="M14 4l6 6-8 8-6-6z"/><path d="M6 12l-2 8 8-2"/>',
+  roller: '<circle cx="6.5" cy="17" r="2.5"/><circle cx="17.5" cy="17" r="2.5"/><path d="M9 17h6l3-7h-4M6.5 14.5L9 9h4"/>',
+  brief:  '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 8l9 6 9-6"/>',
+  karte:  '<path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M13 7v10" stroke-dasharray="2 2"/>',
+  figur:  '<circle cx="12" cy="9" r="4"/><path d="M5 20c1.5-4 4-5 7-5s5.5 1 7 5"/>',
+  schirm: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/>',
+  uhr:    '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  haus:   '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>',
+  geraet: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>'
+};
+const euIcon = s => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (EU_SYMBOL[s] || "") + '</svg>';
+const euWippe = id => { const k = $("#" + id); return !!k && k.getAttribute("aria-pressed") === "true"; };
+const euKlang = { ruhig:"Ruhig", moderat:"Moderat", stark:"Stark" };
+
+/* Je Bereich: woran er erkannt wird (Überschrift), Symbol und Ton, was
+   er tut, sein Zustand und seine kleine Grafik. */
+const EU_BEREICHE = [
+  { titel:"Melden", sym:"glocke", ton:"var(--messing)",
+    satz:"Ton, Vibration und Mitteilungen bei neuen Bestellungen",
+    stand:() => EINST.ton ? "Ton an · " + (euKlang[EINST.klang] || EINST.klang) + " · " + EINST.lautstaerke + " %" : "Ton aus",
+    bild:() => {
+      const n = !EINST.ton ? 0 : EINST.klang === "stark" ? 3 : EINST.klang === "ruhig" ? 1 : 2;
+      return '<g class="eu-strich">' + EU_SYMBOL.glocke.replace(/<path/g, '<path transform="translate(8 8)"') + '</g>' +
+        [0,1,2].map(i => '<path class="eu-welle' + (i < n ? " an" : "") + '" d="M' + (35 + i * 5) + ' ' + (13 - i * 3) + 'q' + (5 + i * 2) + ' ' + (7 + i * 3) + ' 0 ' + (14 + i * 6) + '"/>').join("") +
+        (n ? "" : '<path class="eu-aus" d="M6 34L34 6"/>');
+    } },
+  { titel:"Ihre Worte im Gast-Hub", sym:"blase", ton:"var(--telefon)",
+    satz:"Slogan, Gruß beim Öffnen und der Name Ihrer Aktionen",
+    stand:() => (HUBTEXTE.claim || "").trim() ? "„" + (HUBTEXTE.claim.trim().length > 26 ? HUBTEXTE.claim.trim().slice(0, 25) + "…" : HUBTEXTE.claim.trim()) + "“" : "Vorgaben des Hauses",
+    bild:() => '<rect class="eu-rahmen" x="14" y="2" width="28" height="44" rx="5"/><rect class="eu-fuell" x="17" y="6" width="22" height="9" rx="2"/>' +
+      '<path class="eu-linie" d="M19 20h18M19 25h13M19 30h16"/>' },
+  { titel:"Marke gestalten", sym:"pinsel", ton:"var(--reservierung)",
+    satz:"Farben, Schrift und Figur im Marken-Studio",
+    stand:() => { const b = meineBetriebe.find(x => x.id === betriebId); return b && b.markenblatt ? "Eigene Marke hinterlegt" : "Noch kein Markenblatt"; },
+    bild:() => {
+      const b = meineBetriebe.find(x => x.id === betriebId);
+      const f = (b && b.markenblatt && b.markenblatt.farben) || {};
+      const farben = [f.akzent, f.akzent2, f.band].map(c => /^#[0-9a-f]{3,8}$/i.test(c || "") ? c : null);
+      return [0,1,2].map(i => '<circle cx="' + (12 + i * 14) + '" cy="24" r="9" class="eu-farbe"' +
+        (farben[i] ? ' style="fill:' + farben[i] + '"' : '') + '/>').join(""); } },
+  { titel:"Lieferung", sym:"roller", ton:"var(--lieferung)",
+    satz:"Ob, wohin, wann und zu welchen Kosten Sie liefern",
+    stand:() => { const plz = ($("#lfPlz") ? $("#lfPlz").value : "").split(/[,\s]+/).filter(x => /^\d{5}$/.test(x)).length;
+      return euWippe("lfAn") ? "An · " + plz + (plz === 1 ? " Postleitzahl" : " Postleitzahlen") : "Aus"; },
+    bild:() => '<g class="' + (euWippe("lfAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
+      EU_SYMBOL.roller.replace(/<(path|circle)/g, '<$1 transform="translate(8 8) scale(1.4)"') + '</g>' },
+  { titel:"Gäste-Newsletter", sym:"brief", ton:"var(--gut)",
+    satz:"Wöchentlicher Gutschein und Erinnerung per E-Mail",
+    stand:() => euWippe("nlAn") ? "An" : "Aus",
+    bild:() => '<g class="' + (euWippe("nlAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
+      EU_SYMBOL.brief.replace(/<(path|rect)/g, '<$1 transform="translate(6 4) scale(1.5)"') + '</g>' },
+  { titel:"Gutscheine für Stammgäste", sym:"karte", ton:"var(--glut)",
+    satz:"Codes, die Gäste unter „Mein Tisch“ sehen",
+    stand:() => { const n = $$("#gsListe .gs-zeile").length; return n ? n + (n === 1 ? " Gutschein aktiv" : " Gutscheine aktiv") : "Keiner aktiv"; },
+    bild:() => { const n = $$("#gsListe .gs-zeile").length;
+      return '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
+        (n ? '<circle class="eu-punkt" cx="42" cy="9" r="8"/><text class="eu-zahl" x="42" y="12.5" text-anchor="middle">' + n + '</text>' : ""); } },
+  { titel:"Figur des Hauses", sym:"figur", ton:"var(--messing)",
+    satz:"Wer den Gast begleitet, mit welcher Laune, was er hält",
+    stand:() => AVATARSTAND ? ((AV_FIGUREN.find(f => f.s === AVATARSTAND.figur) || {}).name || AVATARSTAND.figur) +
+      " · " + ((AV_ZUEGE.find(z => z.s === AVATARSTAND.art) || {}).name || AVATARSTAND.art) : "—",
+    bild:() => AVATARSTAND && AV_ICONS[AVATARSTAND.figur]
+      ? '<g class="eu-strich" transform="translate(4 0) scale(1.7)">' + AV_ICONS[AVATARSTAND.figur].replace(/^<svg[^>]*>|<\/svg>$/g, "") + '</g>' : "" },
+  { titel:"Bildschirm", sym:"schirm", ton:"var(--telefon)",
+    satz:"Hell oder dunkel, Schriftgröße, wach halten",
+    stand:() => ({auto:"Automatisch", hell:"Hell", dunkel:"Dunkel"}[EINST.licht] || EINST.licht) + " · " + Math.round(EINST.skala * 100) + " %",
+    bild:() => '<rect class="eu-rahmen" x="4" y="8" width="40" height="28" rx="4"/>' +
+      '<path class="eu-hell" d="M5 9h19v26H9a4 4 0 0 1-4-4z"/><path class="eu-dunkel" d="M24 9h16a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H24z"/>' +
+      (EINST.licht === "hell" ? '<path class="eu-wahl" d="M8 40h13"/>' : EINST.licht === "dunkel" ? '<path class="eu-wahl" d="M27 40h13"/>' : '<path class="eu-wahl" d="M8 40h32"/>') },
+  { titel:"Nichts übersehen", sym:"uhr", ton:"var(--warn)",
+    satz:"Mahnt, wenn eine Bestellung zu lange auf „Neu“ steht",
+    stand:() => EINST.mahnungAb ? "Mahnt nach " + EINST.mahnungAb + " Minuten" : "Aus",
+    bild:() => { const a = Math.min(1, (EINST.mahnungAb || 0) / 30), r = 16, u = 2 * Math.PI * r;
+      return '<circle class="eu-bahn" cx="24" cy="24" r="' + r + '"/>' +
+        '<circle class="eu-bogen" cx="24" cy="24" r="' + r + '" stroke-dasharray="' + (u * a).toFixed(1) + ' ' + u.toFixed(1) + '" transform="rotate(-90 24 24)"/>' +
+        '<text class="eu-zahl dunkel" x="24" y="28" text-anchor="middle">' + (EINST.mahnungAb || "–") + '</text>'; } },
+  { titel:"Betrieb", sym:"haus", ton:"var(--gut)",
+    satz:"Mit welchem Konto und für welches Haus Sie arbeiten",
+    stand:() => ($("#eBetrieb") ? $("#eBetrieb").textContent.trim() : "") || "—",
+    bild:() => '<g class="eu-strich">' + EU_SYMBOL.haus.replace(/<path/g, '<path transform="translate(6 4) scale(1.5)"') + '</g>' },
+  { titel:"Dieses Gerät", sym:"geraet", ton:"var(--reservierung)",
+    satz:"Ist dieses Gerät bereit für den Dienst?",
+    stand:() => { const w = $$("#geraetLage .warn").length; return w ? w + (w === 1 ? " Hinweis" : " Hinweise") : "Alles bereit"; },
+    bild:() => { const w = $$("#geraetLage .warn").length;
+      return '<g class="eu-strich">' + EU_SYMBOL.geraet.replace(/<(path|rect)/g, '<$1 transform="translate(6 2) scale(1.5)"') + '</g>' +
+        '<circle class="' + (w ? "eu-punkt warn" : "eu-punkt gut") + '" cx="40" cy="10" r="7"/>' +
+        '<path class="eu-haken" d="' + (w ? "M40 6.5v4M40 13v.1" : "M37 10l2 2 4-4") + '"/>'; } }
+];
+
+/* Einmal: Köpfe in die Bereiche, Übersicht nach oben. */
+function euEinrichten(){
+  const tafel = $("#t-einstellungen"); if(!tafel || tafel.querySelector(".eu-uebersicht")) return;
+  const liste = [];
+  tafel.querySelectorAll(":scope > .egruppe").forEach(gruppe => {
+    const h = gruppe.querySelector(":scope > h2.etitel"); if(!h) return;
+    const b = EU_BEREICHE.find(x => x.titel === h.textContent.trim()); if(!b) return;
+    const id = "eu-" + b.sym;
+    gruppe.id = gruppe.id || id;
+    gruppe.dataset.eu = b.sym;
+    gruppe.style.setProperty("--ton", b.ton);
+    const kopf = document.createElement("div");
+    kopf.className = "eu-kopf";
+    kopf.innerHTML = '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
+      '<div class="eu-mitte"></div>' +
+      '<svg class="eu-bild" viewBox="0 0 48 48" aria-hidden="true" data-eu-bild="' + b.sym + '"></svg>';
+    gruppe.insertBefore(kopf, h);
+    const mitte = kopf.querySelector(".eu-mitte");
+    mitte.appendChild(h);
+    const stand = document.createElement("span");
+    stand.className = "eu-stand"; stand.dataset.euStand = b.sym;
+    mitte.appendChild(stand);
+    liste.push({ b, ziel: gruppe.id });
+  });
+  /* Ein div mit Rolle, KEIN <nav>: nav{…} ist im Board die Reiterleiste
+     (display:flex, waagerecht rollbar) — die Übersicht erbte das und
+     stand als eine Zeile nebeneinander (§1.1, gesehen im ersten Foto). */
+  const nav = document.createElement("div");
+  nav.setAttribute("role", "navigation");
+  nav.className = "egruppe eu-uebersicht"; nav.id = "euUebersicht";
+  nav.setAttribute("aria-label", "Alle Einstellungen auf einen Blick");
+  nav.innerHTML = '<h2 class="etitel">Auf einen Blick</h2>' + liste.map(({b, ziel}) =>
+    '<a class="eu-reihe" href="#' + ziel + '" data-eu-ziel="' + ziel + '" style="--ton:' + b.ton + '">' +
+      '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
+      '<span class="eu-text"><b>' + sicher(b.titel) + '</b><i>' + sicher(b.satz) + '</i></span>' +
+      '<span class="eu-wert" data-eu-stand="' + b.sym + '"></span>' +
+      '<span class="eu-pfeil" aria-hidden="true">›</span></a>').join("");
+  tafel.insertBefore(nav, tafel.firstElementChild);
+  nav.addEventListener("click", e => {
+    const a = e.target.closest("[data-eu-ziel]"); if(!a) return;
+    e.preventDefault();
+    const ziel = document.getElementById(a.dataset.euZiel); if(!ziel) return;
+    const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    ziel.scrollIntoView({ block:"start", behavior: ruhig ? "auto" : "smooth" });
+  });
+  euZeichnen();
+}
+
+/* Zustände und Grafiken nachziehen — gebündelt auf ein Bild, und nie
+   mitten in einer Radgeste (das Rad schreibt erst am Ende). */
+/* var, nicht let: einstZeichnen() ruft euBald() schon beim Start,
+   bevor diese Zeile gelaufen ist — let stünde dann in der „temporal
+   dead zone“ und würfe (CLAUDE.md §8.1l). */
+var euGeplant = false;
+function euZeichnen(){
+  EU_BEREICHE.forEach(b => {
+    let text = "";
+    try{ text = b.stand() || ""; }catch(e){ text = ""; }
+    $$('[data-eu-stand="' + b.sym + '"]').forEach(el => { if(el.textContent !== text) el.textContent = text; });
+    const bild = $('[data-eu-bild="' + b.sym + '"]');
+    if(bild){ let inhalt = ""; try{ inhalt = b.bild() || ""; }catch(e){}
+      if(bild._inhalt !== inhalt){ bild.innerHTML = inhalt; bild._inhalt = inhalt; } }
+  });
+}
+function euBald(){
+  if(euGeplant) return;
+  euGeplant = true;
+  requestAnimationFrame(() => { euGeplant = false; euZeichnen(); });
+}
+["click","change","input"].forEach(art =>
+  $("#t-einstellungen").addEventListener(art, () => euBald()));
+euEinrichten();
 
 /* Die gefüllte Spur der Regler. Auch ein Wert, der per Skript gesetzt
    wird, soll stimmen — deshalb nach einstZeichnen() und bei jeder
@@ -7568,7 +7832,7 @@ function tafelZeigen(ziel){
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
   if(ziel === "auswertung")      awLaden();
-  if(ziel === "einstellungen")   reglerFuellen();
+  if(ziel === "einstellungen"){ reglerFuellen(); avRaederAusrichten(); euBald(); }
   /* Wer über "Lieferungen" hereinkommt, sieht nur Lieferungen; wer
      regulär auf "Bestellungen" tippt, sieht wieder alle Quellen —
      sonst bliebe ein Tischgast unsichtbar, weil vorhin jemand den
@@ -8554,11 +8818,10 @@ function avStandLaden(){
 /* ── Zeichnen: ein rollbares Rad je Wahl, alle gleichzeitig offen
    (kein Akkordeon mehr — ein Charakter-Editor zeigt seine Regler auf
    einmal, nicht eingeklappt). Scroll-Snap zentriert das gewählte
-   Stück; welches gerade in der Mitte steht, meldet ein
-   IntersectionObserver je Rad (avRadVerdrahten()), NICHT ein
-   Scroll-Listener mit Neuzeichnen — während einer Wischgeste wird
-   nichts neu aufgebaut (CLAUDE.md/bewegung §4.2), nur die .aktiv-
-   Klasse wandert und AVATARSTAND wird geschrieben. ────────────────── */
+   Stück; beim Scrollen formt avRadFormen() Größe und Deckkraft Bild
+   für Bild, gewählt wird erst, wenn das Rad steht (scrollend).
+   Während einer Wischgeste wird nichts neu aufgebaut (CLAUDE.md/
+   bewegung §4.2). ─────────────────────────────────────────────────── */
 function avStueck(gruppe, s, name){
   return '<button type="button" class="avstueck" data-av-wahl="' + gruppe + '" ' +
     'data-av-wert="' + sicher(s) + '" role="option" tabindex="-1">' +
@@ -8586,6 +8849,7 @@ function avVorschauZeichnen(){
     (AV_ICONS[AVATARSTAND.figur] || "") + '<b>' + sicher(figurName) + '</b>' +
     '<span style="opacity:.6">' + sicher(zugName) + '</span>' +
     '<span style="opacity:.4">—</span>' + haende;
+  euBald();
 }
 
 function avZeichnen(){
@@ -8610,7 +8874,17 @@ function avZeichnen(){
 }
 
 /* Ein Rad einrichten: aktives Stück markieren, ohne Sprung mittig
-   scrollen, dann per IntersectionObserver auf die Mitte horchen. */
+   scrollen, dann beim Scrollen formen und am Ende wählen. */
+/* Ein Rad, das gezeichnet wurde, während der Reiter versteckt war, hat
+   keine Breite — es kann weder mitten stehen noch formen. Beim Zeigen
+   deshalb einmal ausrichten. */
+function avRaederAusrichten(){
+  $$(".avspur").forEach(spur => {
+    const a = spur.querySelector(".avstueck.aktiv"); if(!a) return;
+    spur.scrollLeft = a.offsetLeft + a.offsetWidth / 2 - spur.clientWidth / 2;
+    if(spur._avFormen) spur._avFormen();
+  });
+}
 function avRadVerdrahten(spur){
   const gruppe = spur.id.slice(7); /* "avspur-" ist 7 Zeichen lang */
   const wertVon = () => gruppe === "figur" ? AVATARSTAND.figur
@@ -8631,18 +8905,44 @@ function avRadVerdrahten(spur){
     }
   }
 
+  /* Welches Stück steht der Mitte am nächsten — gemessen, nicht aus
+     der Scrollposition gerechnet (padding-inline und gap stecken sonst
+     als Annahme in der Formel). */
+  function mitteFinden(){
+    const r = spur.getBoundingClientRect(), mitte = r.left + r.width / 2;
+    let bester = stuecke[0], abstand = Infinity;
+    stuecke.forEach(s => { const b = s.getBoundingClientRect();
+      const d = Math.abs(b.left + b.width / 2 - mitte); if(d < abstand){ abstand = d; bester = s; } });
+    return bester;
+  }
+  /* Je Bild: Nähe zur Mitte als Zahl, daraus Größe und Deckkraft im
+     CSS. Nur transform/opacity ändern sich — nichts wird neu gebaut. */
+  function avRadFormen(){
+    const r = spur.getBoundingClientRect(), mitte = r.left + r.width / 2;
+    const schritt = stuecke[1] ? stuecke[1].offsetLeft - stuecke[0].offsetLeft : 86;
+    stuecke.forEach(s => { const b = s.getBoundingClientRect();
+      const d = Math.min(1, Math.abs(b.left + b.width / 2 - mitte) / schritt);
+      s.style.setProperty("--naehe", (1 - d).toFixed(3)); });
+  }
+  spur._avFormen = avRadFormen;
+
   const start = stuecke.find(s => s.dataset.avWert === wertVon()) || stuecke[0];
   if(start){
     aktivSetzen(start, false);
-    start.scrollIntoView({ inline:"center", block:"nearest", behavior:"auto" });
+    spur.scrollLeft = start.offsetLeft + start.offsetWidth / 2 - spur.clientWidth / 2;
   }
+  avRadFormen();
 
-  const beob = new IntersectionObserver(eintraege => {
-    let bester = null;
-    eintraege.forEach(e => { if(e.isIntersecting && (!bester || e.intersectionRatio > bester.intersectionRatio)) bester = e; });
-    if(bester) aktivSetzen(bester.target, true);
-  }, { root: spur, rootMargin: "0px -35% 0px -35%", threshold: [0, .25, .5, .75, 1] });
-  stuecke.forEach(s => beob.observe(s));
+  /* Gewählt wird erst, wenn das Rad steht: scrollend, wo es das gibt,
+     sonst 120 ms Ruhe. Mitten in der Geste wandert weder .aktiv noch
+     wird die Vorschau neu geschrieben (CLAUDE.md §4.2). */
+  let bild = 0, ruhe = 0;
+  const fertig = () => { const m = mitteFinden(); if(!m.classList.contains("aktiv")) aktivSetzen(m, true); };
+  spur.addEventListener("scroll", () => {
+    if(!bild) bild = requestAnimationFrame(() => { bild = 0; avRadFormen(); });
+    if(!("onscrollend" in window)){ clearTimeout(ruhe); ruhe = setTimeout(fertig, 120); }
+  }, { passive:true });
+  if("onscrollend" in window) spur.addEventListener("scrollend", fertig);
 
   spur.addEventListener("keydown", e => {
     if(e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") return;
@@ -9515,6 +9815,7 @@ function gsZeichnen(){
         (g.gast_id ? " · persönlich" : "") + '</span>' +
       '<button type="button" class="knopf leise schmal" data-gs-ende="' + sicher(g.id) + '">Beenden</button>' +
     '</div>').join("");
+  euBald();
 }
 
 if($("#gsForm")){

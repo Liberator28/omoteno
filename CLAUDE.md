@@ -114,6 +114,11 @@ selben Namensraum.**
 > schmaler Knopf; gefunden nicht durch Ansehen, sondern durch einen
 > Diff aus `getComputedStyle` mit und ohne die Klasse.
 
+**Auch ein Element-Name ist ein Name.** Die neue Einstellungs-Übersicht
+war ein `<nav>` — und `nav{display:flex;overflow-x:auto}` ist im Board
+die Reiterleiste. Elf Zeilen standen als eine waagerechte Reihe da.
+Vor jedem neuen Element-Typ: `grep -n '^nav{\|[ ,]nav{' datei.html`.
+
 `grep -c 'class="[^"]*\bmarke\b'` prüft die zusammengesetzte Form. Für
 jedes **einzelne** Wort einer neuen Mehrfachklasse zählt zusätzlich:
 
@@ -358,6 +363,25 @@ Voraussetzung (Untersetzer auf den Tischen) da ist.
 Ohne diesen Notnagel ist die Reihenfolge Zufall, der sich als Fehler
 tarnt.
 
+### 2.7 Eine CHECK-Schranke läuft mit den Rechten dessen, der ändert
+
+> **Vorfall, im lokalen Postgres 16 gemessen, bevor er live ging.**
+> `betriebe.ziele` bekam eine Formprüfung. Weil eine CHECK-Schranke
+> keine Unterabfrage enthalten darf, stand sie in einer Funktion —
+> und der Funktion wurde `EXECUTE` für `authenticated` entzogen („kein
+> rpc-Endpunkt“, §2.3a). Ergebnis: **jede** Änderung an `betriebe`
+> durch das Team scheiterte mit „permission denied for function“,
+> auch nur der Name. Liefer-, Hub- und Banner-Einstellungen wären
+> live gesperrt gewesen.
+
+Wer eine Funktion in eine Schranke, einen Standardwert oder eine
+Regel hängt, gibt `EXECUTE` jeder Rolle, die die Zeile schreibt. Und
+geprüft wird nicht nur die neue Spalte, sondern eine **andere** Spalte
+derselben Zeile — dort zeigt sich der Fehler. Ohne Zugriff auf die
+Datenbank läuft das im lokalen Postgres (`/usr/lib/postgresql/16`),
+Datenverzeichnis im Heim des Postgres-Nutzers, nicht im Scratch-
+Ordner (dessen Rechte werden zurückgesetzt, der Server stürzt ab).
+
 ---
 
 ## 3 · CSS
@@ -389,6 +413,14 @@ Wer Variablen zur Laufzeit setzt, muss dieselben Variablen aus dem
 Stylesheet **entfernen** — oder sie bewusst als Rückfall in `:root`
 belassen, wo die Angabe am Element gewinnt. Beide Ebenen zu
 bespielen und zu hoffen, ist keine Lösung.
+
+> **Vorfall, dieselbe Falle andersherum.** `--glas:color-mix(… var(--flaeche) …)`
+> stand in `:root`. `body.hell` setzt `--flaeche` neu — `--glas` aber
+> nicht, und eine Variable wird dort ausgerechnet, wo sie steht. Die
+> Glaskarten blieben im Hellen dunkelgrün.
+
+Eine Variable, die aus einer anderen **abgeleitet** ist, wird in jeder
+Fassung neu festgelegt, in der sich ihre Quelle ändert.
 
 ### 3.3 Jeder Abschnitt bringt seine eigenen Maße mit
 
@@ -1119,6 +1151,8 @@ Dazu je nach Änderung:
 | **Top-Runner-Streifen, Empfehlung des Hauses, "Sofort bestellen"** | `pruefungen/pruef-sofort.js` (braucht `dist/`) — Klick auf den Streifen öffnet die Vorschau, der Sofort-Knopf bestellt zum AKTIONSPREIS statt zum Kartenpreis, stiller Rückfall ohne anklickbaren Knopf, wenn das Gericht nicht mehr in der Karte steht |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand, und gleicht jedes Filter-Kästchen gegen die Stellen ab, die den Wert wirklich schreiben |
 | **Klapp-Felder, Segmente, animierte Auswahl im Board** | `pruefungen/pruef-auswahlfeld.js` — Tapflächen ≥ 44px, echtes Feld bleibt Quelle der Wahrheit, Endzustand ohne Bewegung |
+| **Auswertung, Umsatzziele, Export, Einstellungs-Übersicht, Figuren-Rad, Rundung (`--ecke`)** | `pruefungen/pruef-auswertung.js` — Rechnung mit gestellten Zeilen (Liefergebühr, Rabatt, storniert UND abgelehnt, Serviceruf), gleich langer Vorzeitraum, „nie bestellt“ gegen die Karte, Schwelle mit Gegenfall, Handeln trifft das richtige Gericht, Ziel „2.800“, CSV, Überlauf/Kachelhöhe/Tapflächen bei 360–1280 px, Schrift auf Glas über dem Schleier, jede Tafel scrollbar, Rad ohne Transition. Dazu `datenbank/migration-auswertung-ziele.sql` (Schranke mit EXECUTE, §2.7) |
+| **Warenkorb, „Passt dazu“, Liebling-Karte mit Menge** | `pruefungen/pruef-korb-vorschlag.js` (braucht `dist/`) und `pruefungen/pruef-sofort.js` — nichts Doppeltes, nichts ohne Preis, Getränk zuerst, „+“ legt wirklich hinein, getippte Tischnummer bleibt, Englisch; auf der Liebling-Karte liegt kein Text unter dem Knopf (Zeilen-Rechtecke gemessen) |
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
