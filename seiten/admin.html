@@ -1765,6 +1765,38 @@ textarea{resize:vertical;min-height:66px}
 .bildstand.laeuft{color:var(--messing)}
 .bildstand.schief{color:var(--warn, #E0685A)}
 
+/* ── Profi-Foto und Freisteller ───────────────────────────────── */
+.bk-feld{margin:10px 0 4px;display:grid;gap:8px}
+.bk-los{padding:12px 14px;font-size:14.5px}
+.bk-los:disabled{opacity:.45;cursor:not-allowed;transform:none}
+.bk-hinweis{margin:0;font-size:12.5px;line-height:1.5;color:var(--gedaempft)}
+/* Drei gleich breite Spalten — Original, Profi, Freisteller stehen
+   auf einer Linie, damit der Vergleich ein Blick ist, kein Rollen. */
+.bk-wahl{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;align-items:start}
+.bk-wahl[hidden]{display:none}
+.bk-bild{margin:0;display:grid;gap:6px;justify-items:stretch}
+.bk-bild img{width:100%;aspect-ratio:1;object-fit:cover;border-radius:12px;border:1px solid var(--linie);
+  background:var(--flaeche-2);display:block}
+.bk-bild figcaption{font-size:12px;color:var(--gedaempft);text-align:center}
+.bk-nimm{padding:9px 8px;font-size:13px;min-height:44px}
+.bk-behalten{grid-column:1 / -1;padding:10px;font-size:13.5px;min-height:44px}
+/* Schachbrett: So sieht man, dass der Freisteller WIRKLICH keinen
+   Hintergrund hat — auf einfarbigem Grund wäre das nicht zu erkennen. */
+.bk-schach img, .bk-mini{
+  object-fit:contain;
+  background-color:#fff;
+  background-image:linear-gradient(45deg,#d9d9d9 25%,transparent 25%),linear-gradient(-45deg,#d9d9d9 25%,transparent 25%),
+    linear-gradient(45deg,transparent 75%,#d9d9d9 75%),linear-gradient(-45deg,transparent 75%,#d9d9d9 75%);
+  background-size:14px 14px;background-position:0 0,0 7px,7px -7px,-7px 0
+}
+.bk-freizeile{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--gedaempft)}
+.bk-freizeile[hidden]{display:none}
+.bk-freizeile span{flex:1;min-width:0}
+.bk-mini{flex:0 0 44px;width:44px;height:44px;border-radius:10px;border:1px solid var(--linie);overflow:hidden}
+.bk-mini img{width:100%;height:100%;object-fit:contain;display:block}
+.bk-weg{width:auto;padding:9px 12px;font-size:13px;min-height:44px}
+@media (max-width:420px){ .bk-wahl{grid-template-columns:repeat(3,minmax(0,1fr));gap:6px} .bk-nimm{font-size:12px;padding:8px 4px} }
+
 /* ══ Zeitrad ══ */
 .zmehr{
   min-width:38px;padding:8px 10px;border-radius:9px;
@@ -3162,6 +3194,29 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <!-- Die Adresse bleibt sichtbar und änderbar: Wer schon Bilder auf
            einem eigenen Server hat, soll sie weiter eintragen können. -->
       <input type="text" id="fBild" placeholder="wird beim Hochladen gefüllt">
+
+      <!-- Profi-Foto und Freisteller (Edge Function gericht-bild). Nichts
+           wird ohne Blick ersetzt: Der Betrieb sieht Original, Profi-Foto
+           und Freisteller nebeneinander und übernimmt einzeln. -->
+      <div class="bk-feld" id="bkFeld">
+        <button type="button" class="knopf bk-los" id="bkLos" disabled>✨ Profi-Foto erstellen</button>
+        <p class="bk-hinweis" id="bkHinweis">Das Gericht wird nicht neu gemalt – nur Hintergrund, Licht und Schatten.
+          Dazu entsteht ein Freisteller ohne Hintergrund für die Pop-Ansicht. Bitte keine Personen im Bild.</p>
+        <div class="bk-wahl" id="bkWahl" hidden>
+          <figure class="bk-bild"><img id="bkOriginal" alt="Original"><figcaption>Original</figcaption></figure>
+          <figure class="bk-bild"><img id="bkProfi" alt="Profi-Foto"><figcaption>Profi-Foto</figcaption>
+            <button type="button" class="knopf leise bk-nimm" id="bkProfiNehmen">Übernehmen</button></figure>
+          <figure class="bk-bild bk-schach"><img id="bkFrei" alt="Freisteller"><figcaption>Freisteller</figcaption>
+            <button type="button" class="knopf leise bk-nimm" id="bkFreiNehmen">Übernehmen</button></figure>
+          <button type="button" class="knopf leise bk-behalten" id="bkBehalten">Original behalten</button>
+        </div>
+        <div class="bk-freizeile" id="bkFreiZeile" hidden>
+          <div class="bk-mini bk-schach" aria-hidden="true"><img id="bkFreiSchau" alt=""></div>
+          <span>Freisteller für die Pop-Ansicht ist gesetzt.</span>
+          <button type="button" class="knopf leise bk-weg" id="bkFreiWeg">Entfernen</button>
+        </div>
+        <input type="hidden" id="fBildFrei">
+      </div>
     </div>
 
     <!-- Segment statt natives <select>: drei feste Werte, keine
@@ -5254,10 +5309,18 @@ async function betriebeHolen(){
      voneinander eingespielt werden können. */
   /* hub_stil (migration-hub-stil.sql) als vierte Stufe davor — dieselbe
      Regel: eine fehlende Spalte kostet einen Schalter, nie den Login. */
+  /* plan (Tarif) als fünfte Stufe davor: entscheidet, ob „Profi-Foto
+     erstellen“ angeboten wird. Fehlt die Spalte, fällt es auf null =
+     Bestandskunde zurück — nie auf einen gesperrten Login. */
   let { data, error } = await db
     .from("betrieb_mitglieder")
-    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar, hub_stil)");
+    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar, hub_stil, plan)");
 
+  if(error && /plan|column/i.test(error.message || "")){
+    ({data, error} = await db
+      .from("betrieb_mitglieder")
+      .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar, hub_stil)"));
+  }
   if(error && /hub_stil|column/i.test(error.message || "")){
     ({data, error} = await db
       .from("betrieb_mitglieder")
@@ -5286,7 +5349,8 @@ async function betriebeHolen(){
                 newsletter_aktiv: z.betriebe.newsletter_aktiv,
                 klaviyo_liste_id: z.betriebe.klaviyo_liste_id || null,
                 hub_avatar: z.betriebe.hub_avatar || null,
-                hub_stil: z.betriebe.hub_stil || null}))
+                hub_stil: z.betriebe.hub_stil || null,
+                plan: typeof z.betriebe.plan === "string" ? z.betriebe.plan : null}))
     .sort((a,b) => a.name.localeCompare(b.name, "de"));
 }
 
@@ -9304,6 +9368,9 @@ function blattOeffnen(g){
      sonst zeigt das Blatt beim nächsten Gericht noch das alte Foto. */
   bildSchauSetzen(g?.bild || "");
   bildStand("");
+  $("#fBildFrei").value = g?.bild_frei || "";
+  bkWahlZu();
+  bkZeichnen();
   $("#fKarte").value = g?.karte || welcheKarte;
   karteSegmentAktualisieren();
   $("#fVeg").setAttribute("aria-pressed", g ? !!g.veg : false);
@@ -9621,6 +9688,7 @@ async function bildHochladenMitBlob(blob, dateiName){
         const adresse = data.publicUrl;
         $("#fBild").value = adresse;
         bildSchauSetzen(adresse);
+        bkWahlZu(); bkZeichnen();
         bildStand("Foto liegt bereit. Es wird mit „Sichern“ übernommen.");
       }, "image/jpeg", BILD_GUETE);
     };
@@ -9656,7 +9724,105 @@ $("#bildWeg").onclick = () => {
   bildStand("Foto entfernt. Mit „Sichern“ übernehmen.");
 };
 
-$("#fBild").oninput = () => bildSchauSetzen($("#fBild").value.trim());
+$("#fBild").oninput = () => { bildSchauSetzen($("#fBild").value.trim()); bkZeichnen(); };
+
+/* ═══ Profi-Foto und Freisteller ════════════════════════════════════
+   Ruft die Edge Function gericht-bild. Dieselbe Tarif-Liste steht dort
+   (PLAENE_BILD_KI) und als CHECK in migration-bild-ki.sql; pruef-
+   profifoto.js hält alle drei gegeneinander. null = noch keinem Tarif
+   zugeordnet = Bestandskunde = frei (CLAUDE.md §7). */
+const BK_PLAENE = ["assistent", "alessia"];
+const BK_FEHLER = {
+  kein_schluessel: "Der Bilddienst ist noch nicht verbunden. Dein Foto bleibt, wie es ist.",
+  tarif:           "Profi-Fotos gibt es im Tarif Assistent.",
+  grenze:          "Die Profi-Fotos für diesen Monat sind aufgebraucht. Ab dem 1. geht es weiter.",
+  quelle:          "Lade das Foto zuerst hier hoch — Bilder von fremden Adressen kann der Bilddienst nicht bearbeiten.",
+  zugriff:         "Keine Berechtigung für diesen Betrieb. Melde dich bitte neu an.",
+  anbieter:        "Der Bilddienst hat gerade nicht geantwortet. Versuch es gleich noch einmal.",
+  speichern:       "Die Bilder kamen an, ließen sich aber nicht ablegen. Versuch es bitte noch einmal.",
+  ungueltig:       "Da fehlte etwas — lade das Foto bitte neu hoch."
+};
+let bkLaeuft = false, bkErgebnis = null;
+
+function bkPlanErlaubt(){
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  const plan = bb ? bb.plan : null;
+  return plan === null || plan === undefined || BK_PLAENE.includes(plan);
+}
+/* Nur ein Foto aus dem EIGENEN Speicherordner — dieselbe Regel wie in
+   der Edge Function, damit der Knopf nicht erst nach dem Tippen Nein sagt. */
+function bkEigenesFoto(adresse){
+  return !!betriebId && typeof adresse === "string" &&
+    adresse.indexOf(SUPABASE_URL + "/storage/v1/object/public/gerichte/" + betriebId + "/") === 0;
+}
+function bkZeichnen(){
+  const knopf = $("#bkLos"), hinweis = $("#bkHinweis");
+  if(!knopf) return;
+  const foto = $("#fBild").value.trim();
+  const erlaubt = bkPlanErlaubt();
+  knopf.disabled = bkLaeuft || !erlaubt || !bkEigenesFoto(foto);
+  knopf.textContent = bkLaeuft ? "Wird erstellt …" : "✨ Profi-Foto erstellen";
+  if(hinweis){
+    if(!hinweis.dataset.grund) hinweis.dataset.grund = hinweis.textContent;
+    hinweis.dataset.stand = !erlaubt ? "tarif" : (!foto ? "leer" : (!bkEigenesFoto(foto) ? "fremd" : "bereit"));
+    hinweis.textContent = erlaubt ? hinweis.dataset.grund : BK_FEHLER.tarif;
+  }
+  const frei = $("#fBildFrei").value.trim();
+  $("#bkFreiZeile").hidden = !frei;
+  const mini = $("#bkFreiSchau");
+  if(mini){ if(frei) mini.src = frei; else mini.removeAttribute("src"); }
+}
+function bkWahlZu(){ bkErgebnis = null; const w = $("#bkWahl"); if(w) w.hidden = true; }
+
+async function bkErstellen(){
+  if(bkLaeuft) return;
+  const quelle = $("#fBild").value.trim();
+  if(demo){ bildStand("Im Vorführmodus wird nichts erstellt", "schief"); return; }
+  if(!bkPlanErlaubt()){ bildStand(BK_FEHLER.tarif, "schief"); return; }
+  if(!bkEigenesFoto(quelle)){ bildStand(BK_FEHLER.quelle, "schief"); return; }
+  bkLaeuft = true; bkWahlZu(); bkZeichnen();
+  bildStand("Profi-Foto und Freisteller entstehen … das dauert meist 15 bis 30 Sekunden.", "laeuft");
+  let data = null, error = null;
+  try{
+    ({ data, error } = await db.functions.invoke("gericht-bild",
+      { body: { betrieb_id: betriebId, quelle: quelle, gericht: $("#fName").value.trim() } }));
+  }catch(e){ error = e; }
+  bkLaeuft = false; bkZeichnen();
+  /* Nie rohes JSON zeigen (CLAUDE.md §8.1h): Jeder Grund hat einen Satz. */
+  if(error || !data){ bildStand(BK_FEHLER.anbieter, "schief"); return; }
+  if(data.fehler){ bildStand(BK_FEHLER[data.fehler] || BK_FEHLER.anbieter, "schief"); return; }
+  if(!data.profi && !data.frei){ bildStand(BK_FEHLER.anbieter, "schief"); return; }
+  bkErgebnis = { profi: data.profi || "", frei: data.frei || "" };
+  $("#bkOriginal").src = quelle;
+  const zeige = (id, url) => { const el = $(id); el.closest(".bk-bild").hidden = !url; if(url) el.src = url; };
+  zeige("#bkProfi", bkErgebnis.profi);
+  zeige("#bkFrei", bkErgebnis.frei);
+  $("#bkWahl").hidden = false;
+  bildStand(data.teilweise
+    ? "Nur ein Teil kam zurück — was da ist, kannst du übernehmen."
+    : "Fertig. Vergleiche und übernimm, was dir gefällt — gespeichert wird mit „Sichern“.");
+}
+
+$("#bkLos").onclick = bkErstellen;
+$("#bkProfiNehmen").onclick = () => {
+  if(!bkErgebnis || !bkErgebnis.profi) return;
+  $("#fBild").value = bkErgebnis.profi;
+  bildSchauSetzen(bkErgebnis.profi);
+  bkZeichnen();
+  bildStand("Profi-Foto übernommen. Mit „Sichern“ speichern.");
+};
+$("#bkFreiNehmen").onclick = () => {
+  if(!bkErgebnis || !bkErgebnis.frei) return;
+  $("#fBildFrei").value = bkErgebnis.frei;
+  bkZeichnen();
+  bildStand("Freisteller übernommen — er erscheint im Hub als Pop-Ansicht. Mit „Sichern“ speichern.");
+};
+$("#bkBehalten").onclick = () => { bkWahlZu(); bildStand("Original bleibt."); };
+$("#bkFreiWeg").onclick = () => {
+  $("#fBildFrei").value = "";
+  bkZeichnen();
+  bildStand("Freisteller entfernt. Mit „Sichern“ übernehmen.");
+};
 
 async function sichern(alsKopie){
   const name = $("#fName").value.trim();
@@ -9683,6 +9849,7 @@ async function sichern(alsKopie){
     stoff_hinweis: $("#fStoffHinweis").value.trim(),
     spur: spurLesen(),
     bild: $("#fBild").value.trim(),
+    bild_frei: $("#fBildFrei").value.trim() || null,
     verfuegbar: $("#fVerf").getAttribute("aria-pressed") === "true",
     karte: $("#fKarte").value,
     veg:   $("#fVeg").getAttribute("aria-pressed") === "true",

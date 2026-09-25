@@ -342,6 +342,78 @@ begin
 end $$;
 reset role;
 
+-- ═══ TEIL 5 · Bild-KI: gerichte.bild_frei und bild_auftraege ═══
+-- Braucht migration-bild-ki.sql. bild_auftraege ist die Tür vor einem
+-- Dienst, der pro Bild kostet: Wer dort eine Zeile anlegen darf, darf
+-- Guthaben verbrauchen; wer Zeilen löschen oder zurückdatieren darf,
+-- hebelt die Monatsgrenze aus.
+--
+-- Vorher eine echte Zeile, als Standardrolle — sonst hieße „Fremder
+-- sieht 0 Zeilen" auch ohne jede Regel „0" (§8.1g, Vorfall C).
+select set_config('request.jwt.claims', '', true);
+do $$ begin
+  if to_regclass('public.bild_auftraege') is null then
+    insert into probe values (80,'—','TEIL 5 uebersprungen','migration-bild-ki.sql noch nicht eingespielt');
+  else
+    insert into bild_auftraege (betrieb_id, gericht_name)
+      values ((select id from betriebe order by id limit 1), 'Pruef-Rechte-Bild');
+  end if;
+end $$;
+
+set local role anon;
+do $$ declare n int; begin
+  if to_regclass('public.bild_auftraege') is null then return; end if;
+  begin perform count(*) from bild_auftraege;
+    insert into probe values (80,'Gast','Bildauftraege lesen','OFFEN !!!');
+  exception when others then insert into probe values (80,'Gast','Bildauftraege lesen','abgewiesen'); end;
+  begin insert into bild_auftraege (betrieb_id) values ((select id from betriebe_oeffentlich limit 1));
+    insert into probe values (81,'Gast','Bildauftrag anlegen (Guthaben verbrauchen)','OFFEN !!!');
+  exception when others then insert into probe values (81,'Gast','Bildauftrag anlegen','abgewiesen'); end;
+  begin update gerichte set bild_frei = 'https://boese.example/x.png'; get diagnostics n = row_count;
+    insert into probe values (82,'Gast','bild_frei ueberschreiben', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  exception when others then insert into probe values (82,'Gast','bild_frei ueberschreiben','abgewiesen'); end;
+end $$;
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub','00000000-0000-4000-8000-000000000001','role','authenticated')::text, true);
+set local role authenticated;
+do $$ declare n int; begin
+  if to_regclass('public.bild_auftraege') is null then return; end if;
+  select count(*) into n from bild_auftraege;
+  insert into probe values (83,'Fremder','Bildauftraege anderer Betriebe sehen', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  begin insert into bild_auftraege (betrieb_id) values ((select id from betriebe order by id limit 1));
+    insert into probe values (84,'Fremder','Bildauftrag fuer fremden Betrieb','OFFEN !!!');
+  exception when others then insert into probe values (84,'Fremder','Bildauftrag fuer fremden Betrieb','abgewiesen'); end;
+end $$;
+reset role;
+
+-- Ein echtes Mitglied: darf anlegen (sonst liefe die Edge Function nie),
+-- aber weder loeschen noch zurueckdatieren.
+select set_config('request.jwt.claims',
+  json_build_object('sub',(select nutzer_id from betrieb_mitglieder order by nutzer_id limit 1)::text,'role','authenticated')::text, true);
+set local role authenticated;
+do $$ declare n int; v uuid; begin
+  if to_regclass('public.bild_auftraege') is null then return; end if;
+  select betrieb_id into v from betrieb_mitglieder where nutzer_id = auth.uid() limit 1;
+  begin insert into bild_auftraege (betrieb_id, gericht_name) values (v, 'Pruef-Rechte-Bild');
+    get diagnostics n = row_count;
+    insert into probe values (85,'Mitglied','Bildauftrag fuer eigenen Betrieb', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  exception when others then insert into probe values (85,'Mitglied','Bildauftrag eigener Betrieb','KAPUTT: '||sqlerrm); end;
+  begin delete from bild_auftraege where betrieb_id = v; get diagnostics n = row_count;
+    insert into probe values (86,'Mitglied','Monatsgrenze durch Loeschen umgehen', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  exception when others then insert into probe values (86,'Mitglied','Monatsgrenze durch Loeschen umgehen','abgewiesen'); end;
+  begin update bild_auftraege set erstellt_am = now() - interval '60 days' where betrieb_id = v; get diagnostics n = row_count;
+    insert into probe values (87,'Mitglied','Monatsgrenze durch Zurueckdatieren umgehen', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  exception when others then insert into probe values (87,'Mitglied','Monatsgrenze durch Zurueckdatieren','abgewiesen'); end;
+  begin update gerichte set bild_frei = 'http://unsicher.example/x.png' where betrieb_id = v;
+    get diagnostics n = row_count;
+    insert into probe values (88,'Mitglied','bild_frei ohne https',
+      case when n = 0 then 'NICHT MESSBAR (Betrieb ohne Gerichte)' else 'OFFEN !!!' end);
+  exception when others then insert into probe values (88,'Mitglied','bild_frei ohne https','abgewiesen'); end;
+end $$;
+reset role;
+
 select nr, wer, was, ergebnis from probe order by nr;
 
 -- Und der Bestand selbst: was darf anon ueberhaupt noch anfassen?

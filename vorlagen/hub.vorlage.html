@@ -1393,6 +1393,8 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
   pointer-events:none;box-shadow:0 8px 20px rgba(0,0,0,.22);will-change:transform
 }
 .korbflug img{width:100%;height:100%;object-fit:cover;display:block}
+.korbflug.kf-frei{overflow:visible;box-shadow:none;border-radius:0}
+.korbflug.kf-frei img{object-fit:contain;filter:drop-shadow(0 6px 8px rgba(42,26,20,.25))}
 /* ═══ Entdecken ═══════════════════════════════════════════════════
    Karten wie ein Stapel Spielkarten: die oberste voll, die zwei
    dahinter kleiner und etwas tiefer. Ohne Foto trägt die Karte das
@@ -1430,7 +1432,27 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
 .ed-bildflaeche.mitfoto .ed-foto{opacity:1}
 .ed-emo{font-size:clamp(96px, 30vw, 150px);line-height:1;color:var(--tinte)}
 .ed-emo .bz{width:1em;height:1em}
-/* Mit Foto wird das Emoji zum Abzeichen oben links. */
+/* Der Freisteller schwebt über dem Verlauf — ohne Rahmen, mit einem
+   Schatten darunter, der aus dem Ausschnitt ein Ding macht. contain,
+   nie cover: ein beschnittenes Gericht ist schlimmer als ein kleineres. */
+.ed-pop{
+  position:absolute;left:8%;top:9%;width:84%;height:84%;object-fit:contain;
+  opacity:0;transition:opacity var(--mittel) var(--weich);
+  filter:drop-shadow(0 18px 22px rgba(42,26,20,.28)) drop-shadow(0 3px 6px rgba(42,26,20,.16))
+}
+.ed-bildflaeche.mitpop .ed-pop{opacity:1}
+/* In der aufgedeckten Wahl springt es leicht heraus — erst wenn das
+   Bild da ist (mitpop kommt aus onload), sonst liefe die Bewegung ins Leere. */
+.eh-wahl .ed-pop{top:16%;height:78%}
+.eh-wahl.eh-rollt .ed-pop{opacity:0}
+.eh-wahl .ed-bildflaeche.mitpop .ed-pop{animation:ehPopRein 520ms var(--feder) both}
+@keyframes ehPopRein{from{transform:translateY(10px) scale(.94)}to{transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .ed-pop{transition:none}
+  .eh-wahl .ed-bildflaeche.mitpop .ed-pop{animation:none}
+}
+/* Mit Foto oder Freisteller wird das Emoji zum Abzeichen oben links. */
+.ed-bildflaeche.mitpop .ed-emo,
 .ed-bildflaeche.mitfoto .ed-emo{
   position:absolute;left:14px;top:14px;font-size:44px;
   background:var(--flaeche);border-radius:50%;padding:8px;box-shadow:var(--schatten)
@@ -8644,16 +8666,15 @@ function empfehlungHTML(){
   const g    = e.gericht ? findeGericht(e.gericht) : null;
   const ziel = g ? e.ziel + "?g=" + encodeURIComponent(e.gericht) : e.ziel;
 
-  const quelle = g ? bildFuer(g, true) : "";
+  const quelle = g ? vorschauBild(g, true) : "";
   const bild = quelle
     /* onerror wie bei den Kartenbildern: Fehlt die Datei, verschwindet
        die ganze Hülle. Ohne das stand hier als einziger Stelle im Hub
        ein kaputtes Bildsymbol — ausgerechnet auf der Empfehlung, der
        auffälligsten Karte der Startseite. */
-    ? '<span class="tbild' + (schwebt(g) ? " frei" : "") + '">' +
-      '<img src="' + quelle + '" alt="" loading="lazy" decoding="async" ' +
-      'onerror="this.closest(&quot;.tipp&quot;).classList.remove(&quot;mitbild&quot;);' +
-      'this.closest(&quot;.tbild&quot;).remove()"></span>'
+    ? '<span class="tbild' + (vorschauSchwebt(g) ? " frei" : "") + '">' +
+      '<img src="' + hs(quelle) + '" alt="" loading="lazy" decoding="async" ' + ersatzAttr(g, true) +
+      'onerror="vorschauFehler(this,&quot;.tbild&quot;,&quot;.tipp&quot;,&quot;mitbild&quot;)"></span>'
     : "";
 
   /* Der Sofort-Knopf muss AUSSERHALB von <a> stehen — ein <button>
@@ -8886,18 +8907,18 @@ function gerichtHTML(g){
      Gerichte ohne Foto bekommen KEINEN Platzhalter. Eine Reihe leerer
      Kästen sieht kaputt aus – ohne Bild rückt der Text einfach nach
      links, wie bisher. */
-  const vorschau = g.bild
-    ? '<span class="gbild' + (schwebt(g) ? ' schwebt' : '') + '"><img src="' +
-      bildFuer(g, true) + '" alt="" ' +
+  const vorschau = hatVorschau(g)
+    ? '<span class="gbild' + (vorschauSchwebt(g) ? ' schwebt' : '') + '"><img src="' +
+      hs(vorschauBild(g, true)) + '" alt="" ' + ersatzAttr(g, true) +
       'loading="lazy" decoding="async" ' +
       'onload="this.classList.add(&quot;geladen&quot;)" ' +
-      'onerror="this.closest(&quot;.gericht&quot;).classList.remove(&quot;gmitbild&quot;);this.closest(&quot;.gbild&quot;).remove()"></span>'
+      'onerror="vorschauFehler(this,&quot;.gbild&quot;,&quot;.gericht&quot;,&quot;gmitbild&quot;)"></span>'
     : "";
 
   /* Text und Preis links, das Bild rechts, der
      Knopf sitzt auf der Bildecke. Ohne Bild steht der Knopf allein
      rechts, mittig zur Zeile. */
-  return '<div class="gericht' + (g.bild ? " gmitbild" : "") + '">' +
+  return '<div class="gericht' + (hatVorschau(g) ? " gmitbild" : "") + '">' +
          '<button class="ginfo" data-detail="' + encodeURIComponent(g.n) + '" aria-label="' +
          t("Infos zu {x}", {x:t(g.n)}) + '">' +
          '<span class="gtext">' +
@@ -9002,6 +9023,8 @@ function inDenKorbFliegen(quelle, name){
   f.setAttribute("aria-hidden", "true");
   if(quelle.tagName === "IMG" && quelle.currentSrc){
     f.innerHTML = '<img alt="" src="' + hs(quelle.currentSrc) + '">';
+    /* Ein Freisteller fliegt als Ding, nicht als Kachel: ohne Rahmen. */
+    if(quelle.classList.contains("ed-pop") || quelle.closest(".schwebt")) f.classList.add("kf-frei");
   } else {
     const ort = gerichtOrt(name);
     f.classList.add("kf-zeichen");
@@ -9155,12 +9178,22 @@ function ehInfoHTML(g){
   return teile.length ? '<div class="eh-info">' + hs(teile.join(" · ")) + '</div>' : "";
 }
 
+function ehPopHTML(g){
+  return g && g.bf
+    ? '<img class="ed-pop" alt="" src="' + hs(g.bf) + '" decoding="async" ' +
+      'onload="this.closest(&quot;.ed-bildflaeche&quot;).classList.add(&quot;mitpop&quot;)" ' +
+      'onerror="this.remove()">'
+    : "";
+}
+
 function edKarteHTML(name, tiefe){
   const g = findeGericht(name);
   if(!g) return "";
   const ort = gerichtOrt(name) || { karte:"speisekarte", gruppe:"" };
   const cp = bzKategorie(ort.gruppe, ort.karte);
-  const foto = g.bild
+  /* Freisteller zuerst: Er schwebt über dem Verlauf in den Hausfarben
+     — die Pop-Ansicht. Ohne ihn das Foto randlos, ohne beides das Emoji. */
+  const foto = g.bf ? ehPopHTML(g) : g.bild
     ? '<img class="ed-foto" alt="" src="' + bildFuer(g, false) + '" decoding="async" ' +
       'onload="this.closest(&quot;.ed-bildflaeche&quot;).classList.add(&quot;mitfoto&quot;)" ' +
       'onerror="this.remove()">'
@@ -9293,7 +9326,8 @@ function edWaehlen(ja, ausX, tempo){
     const g = findeGericht(name);
     if(g && !merk[name]){ merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 }; merkSpeichern(); }
     balkenAktualisieren();
-    const quelle = karte.querySelector(".ed-bildflaeche.mitfoto .ed-foto") || karte.querySelector(".ed-emo");
+    const quelle = karte.querySelector(".ed-bildflaeche.mitpop .ed-pop") ||
+                   karte.querySelector(".ed-bildflaeche.mitfoto .ed-foto") || karte.querySelector(".ed-emo");
     inDenKorbFliegen(quelle, name);
     edJa++;
   }
@@ -9359,7 +9393,7 @@ function ehWahlHTML(g){
   const cp = bzKategorie(ort.gruppe, ort.karte);
   return '<div class="eh-wahl-kopf"><span>' + t("Unsere Wahl für Sie") + '</span></div>' +
     '<button type="button" class="eh-zu" data-eh-zu="1" aria-label="' + t("Schließen") + '">×</button>' +
-    '<div class="ed-bildflaeche"><span class="ed-emo eh-wahl-emo">' + bzZeichen(cp) + '</span></div>' +
+    '<div class="ed-bildflaeche">' + ehPopHTML(g) + '<span class="ed-emo eh-wahl-emo">' + bzZeichen(cp) + '</span></div>' +
     '<div class="ed-text">' +
       '<div class="eh-mehr">' + ehMarkenHTML(g) + '</div>' +
       '<h3 class="eh-name">' + hs(t(g.n)) + '</h3>' +
@@ -11619,10 +11653,15 @@ function warenkarteHTML(g){
      Auftritt, den man von guten Liefer-Apps kennt. Wo kein sauberer
      Freisteller vorliegt, bleibt das Rechteckbild: ein halb misslungener
      Freisteller sähe schlechter aus als ein ehrliches Foto. */
-  const bild = g.bild
-    ? '<div class="wbild' + (schwebt(g) ? ' schwebt' : '') + '" style="aspect-ratio:' +
-      (schwebt(g) ? '1 / 1' : '16 / 10') + '">' +
-      '<img src="' + bildFuer(g, false) + '" alt="' + t(g.n) +
+  /* Im Detailblatt steht das Profi-Foto (bild) groß; nur wo es keines
+     gibt, schwebt der Freisteller. So sieht der Gast beides: in der
+     Liste die Pop-Ansicht, hier das ganze Foto. */
+  const detailFrei = !g.bild && !!g.bf;
+  const detailSchwebt = detailFrei || schwebt(g);
+  const bild = hatVorschau(g)
+    ? '<div class="wbild' + (detailSchwebt ? ' schwebt' : '') + '" style="aspect-ratio:' +
+      (detailSchwebt ? '1 / 1' : '16 / 10') + '">' +
+      '<img src="' + hs(detailFrei ? g.bf : bildFuer(g, false)) + '" alt="' + t(g.n) +
       '" loading="lazy" decoding="async" ' +
       'onload="this.classList.add(&quot;geladen&quot;)" ' +
       'onerror="this.closest(&quot;.wbild&quot;).style.visibility=&quot;hidden&quot;"></div>'
@@ -11631,10 +11670,10 @@ function warenkarteHTML(g){
   /* Ohne Bild liegt der Schließknopf auf derselben Höhe wie der Preis und
      verdeckt ihn. Mit Bild schwebt er über dem Bild und stört nicht.
      Deshalb bekommt die Kopfzeile nur im Fall OHNE Bild rechts Platz. */
-  return '<button class="wzu' + (g.bild ? ' aufbild' : '') + '" data-wzu aria-label="' +
+  return '<button class="wzu' + (hatVorschau(g) ? ' aufbild' : '') + '" data-wzu aria-label="' +
     t("Schließen") + '">✕</button>' +
     '<div class="wgriff"></div>' + bild +
-    '<div class="wkopf' + (g.bild ? '' : ' frei') + '">' +
+    '<div class="wkopf' + (hatVorschau(g) ? '' : ' frei') + '">' +
     '<div><div class="wn" id="wname">' + t(g.n) + tags + '</div>' +
       urnameHTML(g.n) + '</div>' +
     '<div class="wp">' + g.p + (g.p === "–" ? "" : " €") + '</div></div>' +
@@ -12028,6 +12067,29 @@ function bildFuer(g, klein){
    hat einen Hintergrund und bekommt deshalb den Rahmen. */
 function schwebt(g){ return !!g.frei && !istAdresse(g.bild); }
 
+/* Die Pop-Ansicht: Wo ein Freisteller aus dem Board vorliegt, schwebt
+   er in Liste, Empfehlung und Entscheidungshilfe — sonst das Foto wie
+   bisher. Lädt der Freisteller nicht, springt das Foto ein (data-ersatz),
+   und erst wenn auch das fehlt, verschwindet die Hülle. */
+function vorschauBild(g, klein){ return g.bf || bildFuer(g, klein); }
+function vorschauSchwebt(g){ return !!g.bf || schwebt(g); }
+function hatVorschau(g){ return !!(g.bf || g.bild); }
+function ersatzAttr(g, klein){
+  return g.bf && g.bild ? ' data-ersatz="' + hs(bildFuer(g, klein)) + '"' : "";
+}
+/* Ein onerror für alle Vorschauen: erst auf das Foto zurück, dann weg. */
+function vorschauFehler(img, huelle, rahmen, klasse){
+  if(img.dataset.ersatz){
+    const e = img.dataset.ersatz;
+    img.removeAttribute("data-ersatz");
+    const h = img.closest(huelle); if(h) h.classList.remove("schwebt", "frei");
+    img.src = e;
+    return;
+  }
+  const r = rahmen && img.closest(rahmen); if(r && klasse) r.classList.remove(klasse);
+  const h = img.closest(huelle); if(h) h.remove();
+}
+
 /* ---------- Verbindung zum Personal-Hub ----------
    Gibt immer ein Ergebnisobjekt zurück, wirft nie. Wenn irgendetwas
    nicht klappt, meldet der Hub das ehrlich und bietet den alten Weg
@@ -12379,7 +12441,8 @@ $("inhalt").addEventListener("click", e => {
     const name = decodeURIComponent(nehm.dataset.ehNehm), g = findeGericht(name);
     if(g && !merk[name]){ merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 }; merkSpeichern(); }
     balkenAktualisieren();
-    inDenKorbFliegen(document.querySelector("#edFlaeche .eh-wahl .ed-emo"), name);
+    inDenKorbFliegen(document.querySelector("#edFlaeche .eh-wahl .ed-bildflaeche.mitpop .ed-pop") ||
+                     document.querySelector("#edFlaeche .eh-wahl .ed-emo"), name);
     ehSchliessen();
     /* Der Stapel darunter darf das Gewählte nicht noch einmal zeigen. */
     const i = edStapel.indexOf(name);
@@ -13283,6 +13346,9 @@ async function karteHolen(erstesMal){
         /* frei nur bei eigenen Dateien: Ein aus dem Board hochgeladenes
            Foto hat einen Hintergrund und darf nicht schweben. */
         if(z.frei && !/^https?:/i.test(String(z.bild || ""))) e.frei = 1;
+        /* Freisteller aus dem Board (Edge Function gericht-bild). Nur
+           https — dieselbe Regel steht als CHECK auf der Spalte. */
+        if(typeof z.bild_frei === "string" && /^https:\/\//.test(z.bild_frei)) e.bf = z.bild_frei;
         /* Toppings kommen als Text „suess,sauce" aus der Datenbank */
         if(z.opt) e.opt = String(z.opt).split(",").map(x => x.trim()).filter(Boolean);
         /* Allergene und Zusatzstoffe aus der Datenbank übernehmen.
