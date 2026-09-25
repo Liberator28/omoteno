@@ -268,6 +268,16 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     await s.evaluate(() => { MARKENBLATT.bewegteZeichen = false; zeichne(); });
     const bz = await s.evaluate(() => document.querySelectorAll("a.kachel .bz").length);
     pruef(bz === 0, "Markenblatt bewegteZeichen:false schaltet ab", bz + " Zeichen");
+    /* Rangfolge: Ein UNGÜLTIGER Wert im Board darf das Markenblatt nicht
+       überdecken, sondern muss zu ihm durchfallen. Erst diese Probe
+       trennt „strikt boolean" von „irgendwie wahr" — die Probe oben mit
+       "false" allein kann das nicht (Gegenbeweis 1 blieb dort grün). */
+    const durch = await s.evaluate(() => { HUBSTIL = { emoji:"false" }; MARKENBLATT.bewegteZeichen = false; zeichne();
+      return document.querySelectorAll("a.kachel .bz").length; });
+    pruef(durch === 0, "ungültiger Board-Wert fällt zum Markenblatt durch (dort aus → aus)", durch + " Zeichen");
+    const vorrang = await s.evaluate(() => { HUBSTIL = { emoji:false }; MARKENBLATT.bewegteZeichen = true; zeichne();
+      return document.querySelectorAll("a.kachel .bz").length; });
+    pruef(vorrang === 0, "gültiger Board-Wert schlägt das Markenblatt", vorrang + " Zeichen");
     await ctx.close();
   }
 
