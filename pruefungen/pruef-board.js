@@ -248,7 +248,18 @@ function quellenAbgleich(){
     });
     await seite.waitForTimeout(300);
 
-    await seite.evaluate(() => tafelZeigen("lieferungen"));
+    /* Seit dem Zusammenlegen gibt es keinen Lieferungen-Reiter mehr:
+       Der Umschalter „Alle · Lieferungen“ oben in Bestellungen setzt
+       denselben Filter. Geprüft wird der Weg mit dem Finger — und dass
+       kein zweiter Knopf mehr irgendwo „lieferungen“ ansteuert. */
+    const reiterReste = await seite.evaluate(() => document.querySelectorAll('[data-tafel="lieferungen"]').length);
+    pruef(reiterReste === 0, "kein eigener Lieferungen-Reiter mehr (oben, unten, unter „Mehr“)", reiterReste + " übrig");
+    await seite.evaluate(() => tafelZeigen("bestellungen"));
+    await seite.waitForTimeout(200);
+    const ansichtSichtbar = await seite.evaluate(() => { const r = document.getElementById("bestellAnsicht").getBoundingClientRect();
+      return Math.round(r.width) + "×" + Math.round(r.height); });
+    pruef(!/^0×|×0$/.test(ansichtSichtbar), "der Umschalter „Alle · Lieferungen“ steht sichtbar oben in Bestellungen", ansichtSichtbar);
+    await seite.click('#bestellAnsicht [data-ansicht="lieferung"]');
     await seite.waitForTimeout(300);
     const imLieferReiter = await seite.evaluate(() => ({
       panelId: document.querySelector(".tafel:not([hidden])").id,
@@ -259,18 +270,36 @@ function quellenAbgleich(){
     pruef(imLieferReiter.panelId === "t-bestellungen",
       "„Lieferungen“ zeigt dieselbe Fläche wie „Bestellungen“, keine zweite");
     pruef(imLieferReiter.quellen.length === 1 && imLieferReiter.quellen[0] === "lieferung",
-      "im Lieferungen-Reiter steht nur die Lieferung, der Tisch ist herausgefiltert",
+      "Umschalter „Lieferungen“: nur die Lieferung, der Tisch ist herausgefiltert",
       imLieferReiter.quellen.join(",") || "leer");
     pruef(imLieferReiter.badge === "1",
-      "die Anzahl offener Lieferungen steht im Reiter", imLieferReiter.badge);
+      "die Anzahl offener Lieferungen steht am Umschalter", imLieferReiter.badge);
 
-    await seite.evaluate(() => tafelZeigen("bestellungen"));
+    const nurHaken = await seite.evaluate(() =>
+      [...document.querySelectorAll("#bestellAnsicht [data-ansicht]")].map(k => k.dataset.ansicht + ":" + k.getAttribute("aria-checked")).join(" "));
+    pruef(nurHaken === "alle:false lieferung:true", "der Umschalter steht auf „Lieferungen“", nurHaken);
+
+    await seite.click('#bestellAnsicht [data-ansicht="alle"]');
     await seite.waitForTimeout(300);
     const zurueck = await seite.evaluate(() =>
       [...document.querySelectorAll("#karten [data-quelle]")].map(k => k.dataset.quelle).sort());
     pruef(zurueck.length === 2 && zurueck.join(",") === "lieferung,tisch",
-      "„Bestellungen“ zeigt danach wieder alle Quellen, der Filter bleibt nicht hängen",
+      "„Alle“ zeigt wieder alle Quellen — die offene Lieferung steht mit darin",
       zurueck.join(",") || "leer");
+    const zahlUnterAlle = await seite.evaluate(() => { const z = document.getElementById("lieferZahl");
+      return z && !z.hidden && z.offsetParent !== null ? z.textContent : "unsichtbar"; });
+    pruef(zahlUnterAlle === "1", "auch unter „Alle“ zeigt der Umschalter die Zahl offener Lieferungen", zahlUnterAlle);
+
+    /* Alte Wege (Links, Meldungen) auf „lieferungen“ landen weiter richtig. */
+    await seite.evaluate(() => tafelZeigen("lieferungen"));
+    await seite.waitForTimeout(300);
+    const alt = await seite.evaluate(() => ({ tafel: document.querySelector(".tafel:not([hidden])").id,
+      markiert: [...document.querySelectorAll('[data-tafel="bestellungen"]')].every(b => b.getAttribute("aria-selected") === "true"),
+      quellen: [...document.querySelectorAll("#karten [data-quelle]")].map(k => k.dataset.quelle).join(",") }));
+    pruef(alt.tafel === "t-bestellungen" && alt.markiert && alt.quellen === "lieferung",
+      "ein alter Sprung auf „lieferungen“ landet in Bestellungen, Reiter markiert, nur Lieferungen", JSON.stringify(alt));
+    await seite.evaluate(() => tafelZeigen("bestellungen"));
+    await seite.waitForTimeout(200);
 
     /* ── 2 · Wege im Alltag ── */
     await seite.evaluate(() => tafelZeigen("bestellungen"));
