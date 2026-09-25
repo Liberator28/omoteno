@@ -481,6 +481,87 @@ do $$ declare n int; begin
 end $$;
 reset role;
 
+-- ═══ TEIL 7 · Zweiter Faktor: PIN (migration-pin.sql) ═══
+-- Voraussetzungen VOR dem Rollenwechsel (§2.3b): Unter authenticated
+-- sieht der Master von betrieb_mitglieder nur sich selbst.
+select set_config('probe.pin', (select (count(*) = 1)::text from pg_class
+   where relname = 'konto_pin' and relnamespace = 'public'::regnamespace), true);
+do $$ begin
+  if current_setting('probe.pin') <> 'true' then
+    insert into probe values (100,'—','TEIL 7 uebersprungen','migration-pin.sql noch nicht eingespielt');
+  end if;
+end $$;
+select set_config('probe.master', coalesce((select benutzer_id::text from master_konten order by benutzer_id limit 1), ''), true);
+select set_config('probe.mitglieder', coalesce((select string_agg(nutzer_id::text, ',') from betrieb_mitglieder
+   where betrieb_id::text = current_setting('probe.eigen')), ''), true);
+select set_config('probe.gericht', coalesce((select count(*)::text from gerichte
+   where betrieb_id::text = current_setting('probe.eigen')), '0'), true);
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', current_setting('probe.master'),'role','authenticated','session_id','probe-m1')::text, true);
+set local role authenticated;
+do $$ declare j jsonb; u text; alle boolean := true; begin
+  if current_setting('probe.pin') <> 'true' or current_setting('probe.master') = '' then return; end if;
+  j := pin_pflicht_setzen(current_setting('probe.eigen')::uuid, true);
+  insert into probe values (100,'Master','Pflicht an, solange Mitglieder keine PIN haben',
+    case when j->>'grund' = 'pin_fehlt' then 'abgewiesen' else 'OFFEN !!! '||j::text end);
+  foreach u in array string_to_array(current_setting('probe.mitglieder'), ',') loop
+    alle := alle and coalesce((pin_setzen(u::uuid, '48151623')->>'ok')::boolean, false);
+  end loop;
+  j := pin_pflicht_setzen(current_setting('probe.eigen')::uuid, true);
+  insert into probe values (101,'Master','PIN an alle Mitglieder, dann Pflicht an',
+    case when alle and (j->>'ok')::boolean then 'ok' else 'KAPUTT: '||j::text end);
+  j := pin_setzen(current_setting('probe.master')::uuid, '1111111');
+  insert into probe values (102,'Master','PIN mit 7 Ziffern', case when j->>'grund' = 'form' then 'abgewiesen' else 'OFFEN !!! '||j::text end);
+end $$;
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', current_setting('probe.nutzer'),'role','authenticated','session_id','probe-w1')::text, true);
+set local role authenticated;
+do $$ declare n int; j jsonb; begin
+  if current_setting('probe.pin') <> 'true' or current_setting('probe.master') = '' then return; end if;
+  select count(*) into n from betriebe where id::text = current_setting('probe.eigen');
+  insert into probe values (103,'Mitglied','OHNE PIN-Eingabe: eigener Betrieb', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  select count(*) into n from gerichte where betrieb_id::text = current_setting('probe.eigen');
+  insert into probe values (104,'Mitglied','OHNE PIN-Eingabe: eigene Karte', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  update betriebe set name = name where id::text = current_setting('probe.eigen'); get diagnostics n = row_count;
+  insert into probe values (105,'Mitglied','OHNE PIN-Eingabe: Betrieb aendern', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  j := pin_pruefen('00000001');
+  insert into probe values (106,'Mitglied','falsche PIN zaehlt', case when j->>'grund' = 'falsch' and (j->>'verbleibend')::int = 4 then 'ok' else 'KAPUTT: '||j::text end);
+  j := pin_pruefen('48151623');
+  insert into probe values (107,'Mitglied','richtige PIN', case when (j->>'ok')::boolean then 'ok' else 'KAPUTT: '||j::text end);
+end $$;
+-- Neue Anweisung = neuer Schnappschuss: erst jetzt ist die Freigabe sichtbar.
+do $$ declare n int; begin
+  if current_setting('probe.pin') <> 'true' or current_setting('probe.master') = '' then return; end if;
+  select count(*) into n from gerichte where betrieb_id::text = current_setting('probe.eigen');
+  insert into probe values (108,'Mitglied','MIT PIN: eigene Karte wieder da',
+    case when n::text = current_setting('probe.gericht') then 'ok ('||n||')' else 'KAPUTT: '||n||' statt '||current_setting('probe.gericht') end);
+  update betriebe set name = name where id::text = current_setting('probe.eigen'); get diagnostics n = row_count;
+  insert into probe values (109,'Mitglied','MIT PIN: andere Spalte aendern (§2.7)', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  if pin_setzen(current_setting('probe.nutzer')::uuid, '55667788')->>'grund' = 'kein_master' then
+    insert into probe values (110,'Mitglied','Nicht-Master setzt PIN','abgewiesen');
+  else insert into probe values (110,'Mitglied','Nicht-Master setzt PIN','OFFEN !!!'); end if;
+end $$;
+reset role;
+select set_config('request.jwt.claims',
+  json_build_object('sub', current_setting('probe.nutzer'),'role','authenticated','session_id','probe-w2')::text, true);
+set local role authenticated;
+do $$ declare n int; begin
+  if current_setting('probe.pin') <> 'true' or current_setting('probe.master') = '' then return; end if;
+  select count(*) into n from gerichte where betrieb_id::text = current_setting('probe.eigen');
+  insert into probe values (111,'Mitglied','ANDERE Anmeldung desselben Kontos', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+end $$;
+reset role;
+set local role anon;
+do $$ begin
+  if current_setting('probe.pin') <> 'true' then return; end if;
+  begin perform pin_pruefen('48151623'); insert into probe values (112,'anon','pin_pruefen rufen','OFFEN !!!');
+  exception when insufficient_privilege then insert into probe values (112,'anon','pin_pruefen rufen','abgewiesen'); end;
+end $$;
+reset role;
+
 select nr, wer, was, ergebnis from probe order by nr;
 
 -- Und der Bestand selbst: was darf anon ueberhaupt noch anfassen?
