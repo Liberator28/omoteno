@@ -525,6 +525,120 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     await ctx.close();
   }
 
+  console.log("\n══ Entscheidungshilfe über der Speisekarte ══");
+  {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/speisekarte");
+    /* Ganz oben: direkt nach Titel und Untertitel, vor Aktion, Suche, Chips. */
+    const ort = await s.evaluate(() => {
+      const cta = document.querySelector(".eh-cta"), such = document.querySelector(".suche");
+      return { da: !!cta, vorSuche: !!cta && !!such && !!(cta.compareDocumentPosition(such) & Node.DOCUMENT_POSITION_FOLLOWING),
+               davor: cta && cta.previousElementSibling && cta.previousElementSibling.className };
+    });
+    pruef(ort.da && ort.vorSuche && ort.davor === "unter", "der Knopf steht ganz oben in der Speisekarte, vor der Suche", JSON.stringify(ort));
+    const kn = await s.evaluate(() => [...document.querySelectorAll(".eh-cta .eh-knopf")].map(k => +k.getBoundingClientRect().width.toFixed(1)));
+    pruef(kn.length === 2 && kn[0] === kn[1], "beide Wege gleich breit", kn.join(" / "));
+    const start = await s.evaluate(() => { location.hash = "#/"; return new Promise(r => setTimeout(() => r(!!document.querySelector(".eh-cta, .ed-cta")), 500)); });
+    pruef(!start, "auf der Startseite steht er nicht mehr doppelt");
+    await s.evaluate(() => { location.hash = "#/speisekarte"; }); await s.waitForTimeout(500);
+
+    /* Für mich entscheiden: Seite wechselt, gemischt wird, dann liegt EIN
+       bestellbares Gericht offen. Zweite Quelle: die Karte selbst. */
+    await s.evaluate(() => localStorage.setItem(PROBIERT_SCHLUESSEL, JSON.stringify(["Family Love"])));
+    await s.click("[data-eh-los]");
+    await s.waitForTimeout(250);
+    const mitten = await s.evaluate(() => ({ seite: seiteJetzt, rollt: !!document.querySelector(".eh-wahl.eh-rollt") }));
+    pruef(mitten.seite === "entdecken" && mitten.rollt, "„Für mich entscheiden“ öffnet die Hilfe und mischt sichtbar", JSON.stringify(mitten));
+    await s.waitForTimeout(1500);
+    const wahl = await s.evaluate(() => {
+      const w = document.querySelector(".eh-wahl"); if (!w) return null;
+      const name = decodeURIComponent(w.querySelector("[data-eh-nehm]").dataset.ehNehm);
+      const g = findeGericht(name);
+      return { name, rollt: w.classList.contains("eh-rollt"), bestellbar: !!g && g.p !== "–",
+               gezeigt: w.querySelector(".eh-name").textContent === t(name), neu: !!w.querySelector(".eh-neu"),
+               probiert: name === "Family Love" };
+    });
+    pruef(!!wahl && !wahl.rollt && wahl.bestellbar && wahl.gezeigt, "danach liegt EIN bestellbares Gericht offen, Name stimmt", wahl && wahl.name);
+    pruef(!!wahl && wahl.neu !== wahl.probiert, "„Neu für Sie“ genau dann, wenn es nicht schon bestellt wurde", JSON.stringify(wahl));
+    /* Details öffnet das echte Blatt des Gerichts */
+    await s.click(".eh-wahl .eh-details"); await s.waitForTimeout(500);
+    const blatt = await s.evaluate(() => ({ offen: document.body.classList.contains("fest"), name: detailName }));
+    pruef(blatt.offen && blatt.name === wahl.name, "„Details“ öffnet das Blatt genau dieses Gerichts", JSON.stringify(blatt));
+    await s.keyboard.press("Escape"); await s.waitForTimeout(400);
+    await s.evaluate(() => { if (document.body.classList.contains("fest")) { const z = document.querySelector("[data-zu], .warenkarte-zu"); if (z) z.click(); } });
+    await s.waitForTimeout(300);
+    /* Nehm ich! legt in den Korb und schließt */
+    await s.evaluate(() => document.querySelector("[data-eh-nehm]").click());
+    await s.waitForTimeout(600);
+    const genommen = await s.evaluate(n => ({ imKorb: !!merk[n], offen: !!document.querySelector(".eh-wahl"),
+      imStapel: edStapel.slice(edPos).includes(n) }), wahl.name);
+    pruef(genommen.imKorb && !genommen.offen && !genommen.imStapel, "„Nehm ich!“ legt es in den Korb, schließt, und es kommt im Stapel nicht noch einmal", JSON.stringify(genommen));
+
+    /* Lust: nur noch Gerichte dieser Kategorie — gegen gerichtOrt gehalten */
+    const lust = await s.evaluate(async () => {
+      const c = [...document.querySelectorAll("[data-eh-lust]")].find(x => x.dataset.ehLust);
+      if (!c) return null;
+      const w = decodeURIComponent(c.dataset.ehLust);
+      c.click(); await new Promise(r => setTimeout(r, 300));
+      const falsch = edStapel.filter(n => { const o = gerichtOrt(n); return !o || o.karte + "|" + o.gruppe !== w; });
+      return { w, n: edStapel.length, falsch, an: c.classList.contains("an") };
+    });
+    pruef(!!lust && lust.n > 0 && !lust.falsch.length && lust.an, "Lust-Chip: nur noch Gerichte dieser Kategorie", lust && (lust.w + ", " + lust.n + " Karten"));
+    /* Neues zuerst: Bereits bestellte Gerichte stehen hinter allen neuen */
+    /* Alles bis auf drei gilt als schon bestellt — dann MUSS der Stapel
+       mit genau diesen drei beginnen (Probe kann den Fehler treffen:
+       ohne die Regel landen sie irgendwo unter 30). */
+    const reihe = await s.evaluate(() => {
+      edLust = ""; const alle = edKandidaten().map(e => e.n);
+      const neu = alle.slice(0, 3);
+      localStorage.setItem(PROBIERT_SCHLUESSEL, JSON.stringify(alle.slice(3)));
+      entdeckenMischen();
+      return { vorn: edStapel.slice(0, 3).sort().join(" | "), soll: neu.sort().join(" | "), kandidaten: alle.length };
+    });
+    pruef(reihe.kandidaten > 30 && reihe.vorn === reihe.soll, "Neues kommt zuerst, schon Bestelltes danach",
+      reihe.vorn + " (von " + reihe.kandidaten + ")");
+    /* Ohne Bestellhistorie ist nichts „neu“ — sonst sagte die Marke nichts */
+    const leer = await s.evaluate(() => { localStorage.removeItem(PROBIERT_SCHLUESSEL); entdeckenMischen(); edNeuZeichnen();
+      return document.querySelectorAll("#edStapel .eh-neu").length; });
+    pruef(leer === 0, "ohne Bestellung vorher steht nirgends „Neu für Sie“", leer);
+    /* Allergene auf der Karte: zweite Quelle INHALTSSTOFFE */
+    const alg = await s.evaluate(() => {
+      /* Ein Gericht MIT Allergenen nach oben legen — sonst prüft die Probe nichts */
+      const mit = edKandidaten().find(e => INHALTSSTOFFE[e.n] && INHALTSSTOFFE[e.n].a && INHALTSSTOFFE[e.n].a.length);
+      if (!mit) return { ok:false, n:"kein Gericht mit Allergenen gefunden", ist:"" };
+      edStapel = [mit.n].concat(edStapel.filter(x => x !== mit.n)); edPos = 0; edNeuZeichnen();
+      const k = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]'), n = decodeURIComponent(k.dataset.ed);
+      const st = INHALTSSTOFFE[n], info = k.querySelector(".eh-info");
+      const soll = st && st.a ? st.a.map(x => ALLERGEN_NAMEN[x]).filter(Boolean).map(x => t(x)) : [];
+      return { n, soll, ist: info ? info.textContent : "", ok: soll.length > 0 && soll.every(x => info && info.textContent.includes(x)) };
+    });
+    pruef(alg.ok, "Allergene auf der Karte stimmen mit der Karte des Hauses überein", alg.n + ": " + (alg.ist || "keine"));
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    /* Bewegung reduzieren: Die Wahl steht sofort, kein Mischen */
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/speisekarte", { ruhig:true });
+    await s.click("[data-eh-los]"); await s.waitForTimeout(300);
+    const r = await s.evaluate(() => ({ da: !!document.querySelector(".eh-wahl"), rollt: !!document.querySelector(".eh-wahl.eh-rollt") }));
+    pruef(r.da && !r.rollt, "Bewegung reduzieren: die Wahl steht sofort da", JSON.stringify(r));
+    await ctx.close();
+  }
+  {
+    /* Die Bestellung merkt sich, was probiert wurde */
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/speisekarte");
+    await s.evaluate(() => { try{ bestellStopp = () => null; }catch(e){} });
+    const n = await s.evaluate(() => document.querySelector(".gplus").dataset.merk);
+    await (await s.$(".gplus")).click(); await s.waitForTimeout(500);
+    await s.evaluate(() => { location.hash = "#/auswahl"; }); await s.waitForTimeout(500);
+    const feld = await s.$("#bTisch"); if (feld) await feld.fill("7");
+    await s.evaluate(() => { try{ bestellSperre = 0; }catch(e){} });
+    const knopf = await s.$('[data-aktion="bestellen"]');
+    if (knopf) { await knopf.click(); await s.waitForTimeout(800); }
+    const p = await s.evaluate(() => probiertLaden());
+    pruef(!!knopf && p.includes(decodeURIComponent(n)), "nach dem Abschicken steht das Gericht in „probiert“", JSON.stringify(p));
+    await ctx.close();
+  }
+
   console.log("\n══ Feiern nach dem Abschicken ══");
   for (const ruhig of [false, true]) {
     const { ctx, s } = await oeffnen(browser, "chocolamour", "#/speisekarte", { ruhig });
