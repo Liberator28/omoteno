@@ -232,13 +232,18 @@ const kontrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1
   const ue = await e.p.evaluate(() => {
     const reihen = [...document.querySelectorAll(".eu-reihe")];
     const gruppen = [...document.querySelectorAll("#t-einstellungen > .egruppe[data-eu]")];
+    const r = reihen.map(x => x.getBoundingClientRect());
     return { reihen:reihen.length, gruppen:gruppen.length,
+      untereinander: r.every((x, i) => i === 0 || (Math.abs(x.left - r[0].left) < 1 && x.top >= r[i - 1].bottom - 1)),
       tot: reihen.filter(r => !document.getElementById(r.dataset.euZiel)).map(r => r.dataset.euZiel),
       ohneKopf: [...document.querySelectorAll("#t-einstellungen > .egruppe")].filter(g => !g.classList.contains("eu-uebersicht") && !g.querySelector(".eu-kopf")).map(g => (g.querySelector(".etitel") || {}).textContent) };
   });
   pruef(ue.reihen === ue.gruppen && ue.reihen >= 10, "jede Zeile der Übersicht hat ihren Bereich (zweite Quelle: die Bereiche)",
     ue.reihen + " Zeilen / " + ue.gruppen + " Bereiche");
   pruef(!ue.tot.length, "keine Zeile führt ins Leere", ue.tot.join(",") || "keine");
+  /* VORFALL: Als <nav> erbte die Übersicht die Reiterleiste und stand
+     als eine Zeile nebeneinander. Gemessen wird die Lage, nicht der Tag. */
+  pruef(ue.untereinander, "die Zeilen stehen untereinander, bündig");
   pruef(!ue.ohneKopf.length, "jeder Bereich hat Symbol, Zustand und Grafik", ue.ohneKopf.join(",") || "alle");
   const tonVorher = await e.p.evaluate(() => document.querySelector('.eu-reihe [data-eu-stand="glocke"]').textContent);
   await e.p.click('label.ezeile:has([data-einst="ton"])');
