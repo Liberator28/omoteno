@@ -414,6 +414,73 @@ do $$ declare n int; v uuid; begin
 end $$;
 reset role;
 
+-- ═══ TEIL 6 · Umsatzziele: betriebe.ziele (migration-auswertung-ziele.sql) ═══
+-- Die Schranke ruft betriebe_ziele_gueltig mit den Rechten dessen, der
+-- die ZEILE aendert (CLAUDE.md §2.7). Deshalb zuerst: Das Team aendert
+-- eine ANDERE Spalte — dort zeigt sich ein fehlendes EXECUTE.
+-- Ob die Spalte da ist, wird EINMAL in der Standardrolle gefragt:
+-- information_schema zeigt jeder Rolle nur die Spalten, auf die sie
+-- ein Recht hat. Als anon ist ziele dort also unsichtbar — genau weil
+-- die Migration wirkt. Die anon-Proben 96/97 hielten die Migration
+-- deshalb im ersten Lauf am Stueck fuer „nicht eingespielt“ und
+-- schrieben gar keine Zeile (§8.1g, Vorfall C).
+select set_config('probe.ziele', (exists (select 1 from information_schema.columns
+  where table_schema='public' and table_name='betriebe' and column_name='ziele'))::text, true);
+do $$ begin
+  if current_setting('probe.ziele') <> 'true' then
+    insert into probe values (90,'—','TEIL 6 uebersprungen','migration-auswertung-ziele.sql noch nicht eingespielt');
+  end if;
+end $$;
+-- Eigener und FREMDER Betrieb werden VOR dem Rollenwechsel bestimmt:
+-- Als Mitglied verbirgt die RLS die fremden Betriebe schon beim Lesen,
+-- „fremd“ bliebe leer und Nr. 95 hiesse immer „nicht messbar“ — beim
+-- ersten Lauf gegen den echten Bestand genau so passiert (§8.1g).
+select set_config('probe.nutzer', (select m.nutzer_id from betrieb_mitglieder m
+     where not exists (select 1 from master_konten k where k.benutzer_id = m.nutzer_id)
+     order by m.nutzer_id limit 1)::text, true);
+select set_config('probe.eigen', (select betrieb_id::text from betrieb_mitglieder
+     where nutzer_id::text = current_setting('probe.nutzer') limit 1), true);
+select set_config('probe.fremd', coalesce((select id::text from betriebe where id not in
+     (select betrieb_id from betrieb_mitglieder where nutzer_id::text = current_setting('probe.nutzer'))
+     order by id limit 1), ''), true);
+select set_config('request.jwt.claims',
+  json_build_object('sub', current_setting('probe.nutzer'),'role','authenticated')::text, true);
+set local role authenticated;
+do $$ declare n int; eigen uuid; fremd uuid; v text; begin
+  if current_setting('probe.ziele') <> 'true' then return; end if;
+  eigen := nullif(current_setting('probe.eigen'), '')::uuid;
+  fremd := nullif(current_setting('probe.fremd'), '')::uuid;
+  begin update betriebe set name = name where id = eigen; get diagnostics n = row_count;
+    insert into probe values (90,'Mitglied','andere Spalte (name) aendern trotz Ziel-Schranke', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  exception when others then insert into probe values (90,'Mitglied','andere Spalte trotz Ziel-Schranke','KAPUTT: '||sqlerrm); end;
+  update betriebe set ziele = '{"tag":450,"woche":2800}' where id = eigen; get diagnostics n = row_count;
+  select ziele->>'woche' into v from betriebe where id = eigen;
+  insert into probe values (91,'Mitglied','Ziele setzen und zuruecklesen', case when n = 1 and v = '2800' then 'ok' else 'KAPUTT: '||n||' / '||coalesce(v,'null') end);
+  begin update betriebe set ziele = '{"tag":-5}' where id = eigen;
+    insert into probe values (92,'Mitglied','negatives Ziel','OFFEN !!!');
+  exception when check_violation then insert into probe values (92,'Mitglied','negatives Ziel','abgewiesen'); end;
+  begin update betriebe set ziele = '{"jahr":5}' where id = eigen;
+    insert into probe values (93,'Mitglied','fremder Schluessel im Ziel','OFFEN !!!');
+  exception when check_violation then insert into probe values (93,'Mitglied','fremder Schluessel im Ziel','abgewiesen'); end;
+  begin update betriebe set ziele = '{"tag":"450"}' where id = eigen;
+    insert into probe values (94,'Mitglied','Ziel als Zeichenkette','OFFEN !!!');
+  exception when check_violation then insert into probe values (94,'Mitglied','Ziel als Zeichenkette','abgewiesen'); end;
+  update betriebe set ziele = '{"tag":1}' where id = fremd; get diagnostics n = row_count;
+  insert into probe values (95,'Mitglied','Ziele eines FREMDEN Betriebs', case when fremd is null then 'NICHT MESSBAR (es gibt nur einen Betrieb)'
+    when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+end $$;
+reset role;
+set local role anon;
+do $$ declare n int; begin
+  if current_setting('probe.ziele') <> 'true' then return; end if;
+  begin perform ziele from betriebe limit 1; insert into probe values (96,'anon','Umsatzziele lesen','OFFEN !!!');
+  exception when insufficient_privilege then insert into probe values (96,'anon','Umsatzziele lesen','abgewiesen'); end;
+  begin update betriebe set ziele = '{"tag":1}'; get diagnostics n = row_count;
+    insert into probe values (97,'anon','Umsatzziele schreiben','KEINE Ausnahme, '||n||' Zeilen');
+  exception when insufficient_privilege then insert into probe values (97,'anon','Umsatzziele schreiben','abgewiesen'); end;
+end $$;
+reset role;
+
 select nr, wer, was, ergebnis from probe order by nr;
 
 -- Und der Bestand selbst: was darf anon ueberhaupt noch anfassen?

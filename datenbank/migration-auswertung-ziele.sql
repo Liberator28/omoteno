@@ -1,6 +1,10 @@
 -- ═══════════════════════════════════════════════════════════════════
---  NOCH NICHT ANGEWENDET (lokal gegen Postgres 16 geprobt) · betriebe.ziele — Umsatzziele für die
---  Auswertung im Board
+--  ANGEWENDET 2026-09-25 (Supabase, Migration „auswertung_ziele“) ·
+--  betriebe.ziele — Umsatzziele für die Auswertung im Board
+--
+--  Vorher lokal gegen Postgres 16 geprobt, danach live in einer
+--  zurückgedrehten Transaktion: datenbank/pruef-rechte.sql TEIL 6
+--  (Nr. 90–97), jede Probe mit Gegenbeweis rot gesehen.
 --
 --  Form: {"tag": Zahl, "woche": Zahl, "monat": Zahl}, jeder Schlüssel
 --  optional, Beträge in Euro, > 0 und ≤ 1 000 000. Das Board prüft

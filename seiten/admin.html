@@ -4886,8 +4886,11 @@ const awZielSchluessel = () => "omoteno-ziele-" + (betriebId || "demo");
 function awZielPruefen(z){
   const aus = {};
   ["tag","woche","monat"].forEach(k => {
-    const v = z && Number(z[k]);
-    if(Number.isFinite(v) && v > 0 && v <= 1e6) aus[k] = Math.round(v * 100) / 100;
+    /* Erst runden, DANN prüfen: 0,004 hätte „> 0“ bestanden und wäre
+       als 0 gesendet worden — die Schranke betriebe_ziele_form weist
+       das ab, und das Ziel wäre still auf dem Gerät gelandet. */
+    const v = z && Math.round(Number(z[k]) * 100) / 100;
+    if(Number.isFinite(v) && v > 0 && v <= 1e6) aus[k] = v;
   });
   return aus;
 }
@@ -4898,6 +4901,11 @@ async function awZielLaden(){
   if(!db || demo || !betriebId) return;
   const {data, error} = await db.from("betriebe").select("ziele").eq("id", betriebId).maybeSingle();
   if(error || !data) return;
+  /* Ziele, die vor der Migration auf diesem Gerät lagen, ziehen EINMAL
+     in den Betrieb um. Ohne das läse das Board ab jetzt null aus der
+     Spalte und das eingegebene Ziel wäre still weg. Nur bei null —
+     ein bewusst geleertes Ziel ({}) bleibt leer. */
+  if(data.ziele == null && Object.keys(awZiele).length){ await awZielSichern(awZiele); return; }
   awZielLokal = false;
   awZiele = awZielPruefen(data.ziele);
 }

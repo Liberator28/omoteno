@@ -171,6 +171,47 @@ const kontrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1
     "Ziele: „2.800“ ist zweitausendachthundert, „12000,50“ mit Komma", JSON.stringify(ziel.z));
   pruef(ziel.ring, "mit Ziel steht der Ring an der Umsatzkachel");
 
+  /* Naht Board → betriebe.ziele (§8.1i). Zweite Quelle ist die
+     CHECK-Schranke in datenbank/migration-auswertung-ziele.sql: nur
+     tag/woche/monat, Zahl, > 0, ≤ 1 000 000. Was das Board sendet, muss
+     dort durchgehen — sonst fällt es still auf das Gerät zurück. */
+  const mig = fs.readFileSync(path.join(OBEN, "datenbank", "migration-auswertung-ziele.sql"), "utf8");
+  pruef(/::numeric <= 0/.test(mig) && /::numeric > 1000000/.test(mig) && /not in \('tag','woche','monat'\)/.test(mig),
+    "Voraussetzung: die Grenzen der Schranke stehen so in der Migration");
+  const naht = await b.p.evaluate(async () => {
+    const proben = [{tag:0.004}, {tag:0.005}, {woche:1000000.004}, {monat:"12"}, {tag:-1}, {jahr:5}, {tag:NaN}];
+    const aus = proben.map(p => awZielPruefen(p));
+    const schranke = z => Object.entries(z).every(([k, v]) =>
+      ["tag","woche","monat"].includes(k) && typeof v === "number" && v > 0 && v <= 1000000);
+    const alle = aus.every(schranke);
+    /* Umzug: gestellter Client, Spalte da, aber noch null; auf dem Gerät
+       liegt ein Ziel aus der Zeit vor der Migration. */
+    const alt = { db, demo, betriebId }, gesendet = [];
+    const stell = ziele => ({ from: () => ({
+      select: () => ({ eq: () => ({ maybeSingle: async () => ({ data:{ ziele }, error:null }) }) }),
+      update: w => { gesendet.push(w); return { eq: async () => ({ error:null }) }; } }) });
+    betriebId = "probe-betrieb"; demo = false;
+    db = stell(null);
+    localStorage.setItem(awZielSchluessel(), JSON.stringify({ tag:300 }));
+    await awZielLaden();
+    const umzug = { z:JSON.stringify(awZiele), lokal:awZielLokal, gesendet:JSON.stringify(gesendet),
+      rest:localStorage.getItem(awZielSchluessel()) };
+    /* Gegenfall: im Betrieb steht schon ein Ziel — das gewinnt, nichts wird gesendet. */
+    gesendet.length = 0;
+    db = stell({ woche:2800 });
+    localStorage.setItem(awZielSchluessel(), JSON.stringify({ tag:300 }));
+    await awZielLaden();
+    const betrieb = { z:JSON.stringify(awZiele), gesendet:gesendet.length };
+    localStorage.removeItem(awZielSchluessel());
+    ({ db, demo, betriebId } = alt);
+    return { aus:JSON.stringify(aus), alle, umzug, betrieb };
+  });
+  pruef(naht.alle, "jedes Ziel, das das Board sendet, besteht die Schranke (0,004 wird nicht zu 0)", naht.aus);
+  pruef(naht.umzug.gesendet === '[{"ziele":{"tag":300}}]' && naht.umzug.z === '{"tag":300}' && !naht.umzug.lokal && naht.umzug.rest === null,
+    "Ziel vom Gerät zieht einmal in den Betrieb um, wenn die Spalte noch leer ist", JSON.stringify(naht.umzug));
+  pruef(naht.betrieb.z === '{"woche":2800}' && naht.betrieb.gesendet === 0,
+    "steht schon ein Ziel im Betrieb, gewinnt das und nichts wird überschrieben", JSON.stringify(naht.betrieb));
+
   const [dl] = await Promise.all([b.p.waitForEvent("download"), b.p.click("#awCsvBestellungen")]);
   const csv = fs.readFileSync(await dl.path(), "utf8");
   const kopf = csv.replace(/^﻿/, "").split("\r\n")[0];
