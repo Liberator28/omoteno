@@ -303,6 +303,25 @@ nicht; er läuft als Teil der Anweisung.
 `datenbank/pruef-rechte.sql` macht beides richtig und fährt 36
 Angriffe und ehrliche Wege in einer zurückgedrehten Transaktion.
 
+> **Vorfall, zwei weitere, beim ersten Lauf gegen den echten Bestand.**
+> Die Proben für `betriebe.ziele` fragten „ist die Spalte da?“ über
+> `information_schema.columns` — **in der Rolle `anon`**. Der Katalog
+> zeigt jeder Rolle nur die Spalten, auf die sie ein Recht hat; weil
+> die Migration anon das Recht nimmt, war die Spalte unsichtbar, und
+> die anon-Proben meldeten sich als „nicht eingespielt“ ab — ohne
+> eine Zeile. Genau weil die Sperre wirkte, fehlte der Beleg dafür.
+> Daneben suchte die Probe den **fremden** Betrieb als Mitglied — die
+> RLS verbirgt ihn schon beim Lesen, und die Probe hieß immer
+> „nicht messbar“.
+
+- Voraussetzungen (Spalte da? welcher Betrieb ist fremd?) werden
+  **vor** dem Rollenwechsel bestimmt und mit `set_config('probe.…')`
+  hinübergereicht. Unter einer eingeschränkten Rolle ist der Katalog
+  so eingeschränkt wie die Rolle.
+- Ein Gegenbeweis für „fremde Zeile nicht änderbar“ muss auch die
+  **Lese**-Regel öffnen: `UPDATE … WHERE` trifft nur Zeilen, die die
+  SELECT-Regel durchlässt. Nur die UPDATE-Regel zu öffnen, blieb grün.
+
 ### 2.3c Eine Spalte kann eine Liste führen, die nirgends im Code steht
 
 > **Vorfall.** `bestellungen.quelle` sollte den neuen Wert
