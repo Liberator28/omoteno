@@ -460,6 +460,33 @@ ist jede Minute ein Neuaufbau fällig. Laufende Zeiten am bestehenden
 Element nachziehen. Während einer Wischgeste gar nicht neu zeichnen,
 sonst rutscht die Karte dem Finger weg.
 
+### 4.3 Wer nachrücken soll, muss dasselbe Element bleiben
+
+> **Vorfall.** Im Wischstapel baute `edNeuZeichnen()` nach jeder Wahl
+> den ganzen Stapel per `innerHTML` neu. Die zweite Karte hatte eine
+> Transition auf `transform` — und sprang trotzdem auf Platz eins. Ein
+> neues Element hat keinen alten Zustand, von dem eine Transition
+> laufen könnte.
+
+Karten, Zeilen, Pillen, die sich verschieben sollen: Element behalten,
+nur Attribut oder Variable ändern (`data-tiefe`, `--tiefe`), wirklich
+Neues anhängen und nur das einblenden. Die Prüfung dazu hält das
+Element vorher und nachher gegeneinander (`oben === zweite`) und
+fragt nach einer laufenden `CSSTransition` — nicht nach dem Bild.
+
+### 4.4 Ein Selektor auf den `style`-Text misst die Schreibweise
+
+> **Vorfall.** Die oberste Karte wurde mit
+> `[style*="--tiefe:0"]` gesucht. Sobald der Finger zog, setzte das
+> Skript `el.style.transform` — und der Browser schrieb das ganze
+> Attribut neu als `--tiefe: 0; transform: …`, mit Leerzeichen. Der
+> Selektor fand nichts mehr, zwei Prüfskripte fielen mit
+> `Cannot read properties of null`.
+
+Zustand, nach dem gesucht wird, gehört in ein eigenes Attribut
+(`data-…`), nie in den `style`-Text. Den schreibt der Browser, wie er
+will.
+
 ---
 
 ## 5 · Farben, die der Kunde wählt
@@ -869,6 +896,58 @@ ausdenkt, ist keine Messung.** Die harte Länge für den Satz des
 Begleiters stand in meinem Entwurf auf 120 Zeichen — gemessen hatte ich
 nur bis 96. Die eigene Prüfung hat den Wert widerlegt: Bei 360 px waren
 120 Zeichen vier Zeilen. Nachgemessen sind es 108.
+
+> **Vorfall E, zweimal in derselben Runde.** Gegenbeweis
+> „strikt boolean entfernt“: `!!HUBSTIL.emoji` statt
+> `typeof … === "boolean"`. Die Probe setzte `{emoji:"false"}` und
+> erwartete „an“ — genau das liefern **beide** Fassungen. Grün. Erst
+> eine Probe, bei der die Zeichenkette zum Markenblatt durchfallen
+> MUSS (dort „aus“), trennt die beiden. Kurz darauf dasselbe mit
+> „Transition beim Wurf nicht abgeschaltet“: Auf keinem heutigen Weg
+> ändert sich an dieser Stelle `transform`, die Zeile ist Vorsorge.
+> Tragend war das Abschalten beim ZIEHEN — und das prüfte niemand.
+
+Ein grüner Gegenbeweis heißt eine von zwei Sachen: Die Prüfung ist
+blind, oder die sabotierte Zeile trägt nichts. Beides muss man
+herausfinden, nicht wegerklären.
+
+### 8.1j Eine Prüfung, die an der Uhr hängt, prüft die Uhr
+
+> **Vorfall.** `pruef-liefern.js` war um 10:24 UTC rot: „0 Felder“,
+> „Adresse statt Tischnummer“ fehlt. Der Liefermodus war in Ordnung —
+> Choco öffnet um 10:30, vorher zeigt der Hub zu Recht kein
+> Bestellfeld. Für Blend hatte die Prüfung die Öffnungszeiten längst
+> festgelegt, für Choco nicht. Am Nachmittag geschrieben, am
+> Nachmittag grün.
+
+Alles, was von Uhrzeit, Wochentag oder Datum abhängt, legt die Prüfung
+selbst fest — für **jedes** Haus — und misst danach, dass die
+Voraussetzung gilt. Eine rote Prüfung zu einer bestimmten Uhrzeit ist
+kein Wackler, sondern ein Befund.
+
+### 8.1k Gegenbeweise nie im Arbeitsordner
+
+> **Vorfall.** Zwölf Sabotagen liefen nacheinander direkt in
+> `vorlagen/hub.vorlage.html`. Währenddessen stand der Ordner jeweils
+> zwanzig Minuten mit einer absichtlich kaputten Zeile da. Ein Commit
+> in dieser Zeit — und der Stop-Hook verlangte genau das — hätte den
+> Fehler eingecheckt. Gerettet hat eine Sicherungskopie und ein Commit
+> über `git update-index --cacheinfo` an der Arbeitskopie vorbei.
+
+Gegenbeweise laufen in einem eigenen `git worktree` auf dem
+committeten Stand. Der Arbeitsordner bleibt, was er ist.
+
+### 8.1l Syntax sauber heißt nicht: läuft
+
+> **Vorfall.** `SEITEN.entdecken = …` stand zwanzig Zeilen VOR
+> `const SEITEN = {}`. Jeder Syntaxprüfer ist damit zufrieden — erst
+> beim Ausführen wirft die „temporal dead zone“ einen
+> `ReferenceError`, und der Hub blieb eine leere farbige Fläche.
+> `pruef-datei.py` meldete „Alles sauber“.
+
+Nach jedem neuen Block im Skript: die Seite einmal wirklich öffnen und
+`pageerror` abhören. Eine Syntaxprüfung sieht Klammern, keine
+Reihenfolge.
 
 ### 8.1h Eine Fehlerbehandlung, die nie erreicht wird, ist keine
 
