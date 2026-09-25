@@ -2899,7 +2899,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   <!-- ══ Reservierungen ══ -->
   <section class="tafel" id="t-reservierungen" hidden>
     <div class="hinweisfeld">
-      Anfragen vom Tisch und von Alessio. Eine Reservierung verschwindet
+      Anfragen vom Tisch und von Alessia. Eine Reservierung verschwindet
       <b>zwei Stunden nach der gewünschten Uhrzeit</b> von selbst, wenn sie
       niemand angenommen hat. Angenommene bleiben bis zum Tagesende stehen.
     </div>
@@ -3339,6 +3339,21 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 <div class="tor" id="tor" hidden>
   <div class="torinhalt">
     <div class="marke" style="margin-bottom:8px;display:block">Omoteno<span class="jp" lang="ja">おもてなし</span></div>
+    <!-- Nach dem Link aus „Passwort vergessen“ steht hier das Formular
+         für das NEUE Passwort. Ohne es gab es keinen Weg aus der Sperre:
+         admin_login_entsperren() hebt sie erst auf, wenn sich das
+         Passwort ändert — und keine Seite ließ es ändern. -->
+    <div id="lNeuTeil" hidden>
+      <h1 class="tortitel">Neues Passwort</h1>
+      <p class="torhilfe">Mindestens acht Zeichen. Danach sind Sie angemeldet, und eine Sperre ist aufgehoben.</p>
+      <label><span class="lname">Neues Passwort</span>
+        <input type="password" id="lNeu1" autocomplete="new-password" minlength="8"></label>
+      <label><span class="lname">Noch einmal</span>
+        <input type="password" id="lNeu2" autocomplete="new-password" minlength="8"></label>
+      <button class="knopf" id="lNeuKnopf">Passwort speichern</button>
+      <p class="torfehler" id="lNeuFehler" hidden></p>
+    </div>
+    <div id="lAnmeldeteil">
     <h1 class="tortitel">Anmelden</h1>
     <p class="torhilfe">Mit der Adresse, die für diesen Betrieb hinterlegt ist.</p>
     <label><span class="lname">E-Mail</span>
@@ -3349,6 +3364,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <p class="torfehler" id="lFehler" hidden></p>
     <button type="button" class="torlink" id="lVergessen">Passwort vergessen?</button>
     <p class="torhilfe" id="lVergessenStand" style="margin:6px 0 0;text-align:center" hidden></p>
+    </div>
 
     <!-- Nach drei Fehlversuchen steht hier statt des Formulars nur
          noch der Weg zur E-Mail-Bestätigung — kein weiterer
@@ -3807,6 +3823,9 @@ const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 /* ─── Zustand ─────────────────────────────────────────────── */
 let db = null, betriebId = null, demo = false;
+/* Kommt die Seite aus dem Link „Passwort zurücksetzen“? Das steht nur
+   jetzt in der Adresse — supabase-js räumt sie beim Start ab. */
+const WIEDERHERSTELLEN = /type=recovery/.test(location.hash + location.search);
 
 /* ─── Mehrere Betriebe ──────────────────────────────────────────
    meineBetriebe  alle Betriebe, zu denen das Konto gehört
@@ -3935,7 +3954,7 @@ const FELDER = [
   {id:"status",  text:"Status",           an:false},
 ];
 
-const QUELLE_TEXT = {tisch:"Tisch", telefon:"Alessio · Telefon", lieferung:"Lieferung", reservierung:"Reservierung", service:"Serviceruf"};
+const QUELLE_TEXT = {tisch:"Tisch", telefon:"Alessia · Telefon", lieferung:"Lieferung", reservierung:"Reservierung", service:"Serviceruf"};
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -4779,9 +4798,18 @@ async function start(){
 
   db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   $("#abmelden").hidden = false;
+  db.auth.onAuthStateChange(ereignis => {
+    if(ereignis === "PASSWORD_RECOVERY") neuesPasswortZeigen();
+  });
 
   const {data:{session}} = await db.auth.getSession();
   if(!session){ torZeigen(); return; }
+  if(WIEDERHERSTELLEN){ neuesPasswortZeigen(); return; }
+  await boardOeffnen(session);
+}
+
+/* Nach Anmeldung oder neuem Passwort: dieselben Schritte. */
+async function boardOeffnen(session){
   letzterNutzer = session.user.id;
   letzteMail = session.user.email || "";
 
@@ -5928,7 +5956,7 @@ function zeichneReservierungen(){
   if(!liste.length){
     ziel.innerHTML = `<div class="leer">
       <div class="gross">Keine Reservierungen</div>
-      <p>Anfragen vom Tisch und von Alessio<br>erscheinen hier automatisch.</p></div>`;
+      <p>Anfragen vom Tisch und von Alessia<br>erscheinen hier automatisch.</p></div>`;
     return;
   }
 
@@ -5941,7 +5969,7 @@ function zeichneReservierungen(){
       <div class="reskopf">
         <span class="reswann">${w.uhr}</span>
         <span class="restag">${w.wann}${r.personen ? " · " + r.personen + " Pers." : ""}</span>
-        <span class="resmarke">${r.quelle === "telefon" ? "Alessio" : "Tisch"}${
+        <span class="resmarke">${r.quelle === "telefon" ? "Alessia" : "Tisch"}${
           r.status === "bestaetigt" ? " · angenommen" : r.status === "abgelehnt" ? " · abgelehnt" : ""}</span>
       </div>
       <div class="resname">${sicher(r.name)}</div>
@@ -6459,8 +6487,47 @@ $("#wechseln").onclick = () => {
 };
 
 /* ─── Anmeldung ───────────────────────────────────────────── */
+function neuesPasswortZeigen(){
+  $("#tor").hidden = false;
+  $("#statusText").textContent = "neues Passwort";
+  $("#lAnmeldeteil").hidden = true;
+  $("#lGesperrt").hidden = true;
+  $("#lNeuTeil").hidden = false;
+  setTimeout(() => $("#lNeu1").focus(), 150);
+}
+
+async function neuesPasswortSpeichern(){
+  const a = $("#lNeu1").value, b = $("#lNeu2").value, f = $("#lNeuFehler");
+  const fehler = t => { f.hidden = false; f.textContent = t; };
+  if(a.length < 8) return fehler("Bitte mindestens acht Zeichen.");
+  if(a !== b) return fehler("Die beiden Eingaben sind nicht gleich.");
+  const k = $("#lNeuKnopf");
+  k.disabled = true; k.textContent = "Wird gespeichert…";
+  try{
+    const {error} = await db.auth.updateUser({password: a});
+    if(error) throw error;
+  }catch(e){
+    k.disabled = false; k.textContent = "Passwort speichern";
+    const t = String((e && e.message) || e);
+    return fehler(/same|different/i.test(t) ? "Bitte ein anderes Passwort als das alte wählen."
+      : /session|expired|JWT/i.test(t) ? "Der Link ist abgelaufen. Bitte unter „Passwort vergessen“ einen neuen anfordern."
+      : resetFehlertext(e));
+  }
+  $("#lNeu1").value = $("#lNeu2").value = "";
+  try{ history.replaceState(null, "", location.pathname); }catch(e){}
+  $("#lNeuTeil").hidden = true;
+  $("#lAnmeldeteil").hidden = false;
+  $("#tor").hidden = true;
+  k.disabled = false; k.textContent = "Passwort speichern";
+  melde("Neues Passwort gespeichert — Sie sind angemeldet.");
+  const {data:{session}} = await db.auth.getSession();
+  if(session) await boardOeffnen(session); else torZeigen();
+}
+
 function torZeigen(fehler){
   $("#tor").hidden = false;
+  $("#lNeuTeil").hidden = true;
+  $("#lAnmeldeteil").hidden = false;
   $("#statusText").textContent = "nicht angemeldet";
   $("#lGesperrt").hidden = true;
   const f = $("#lFehler");
@@ -6477,6 +6544,8 @@ function torZeigen(fehler){
 function gesperrtZeigen(mail, nachricht){
   $("#tor").hidden = false;
   $("#statusText").textContent = "gesperrt";
+  $("#lNeuTeil").hidden = true;
+  $("#lAnmeldeteil").hidden = false;
   $("#lFehler").hidden = true;
   $("#lGesperrt").hidden = false;
   /* Die genaue Meldung kommt von admin_anmelden() — sie unterscheidet
@@ -6632,9 +6701,9 @@ function demoStarten(){
       positionen:[{name:"Flammkuchen Elsässer", menge:2, preis:11.50},
                   {name:"Pommes mit Aioli", menge:1, preis:5.50}],
       summe:28.50, notiz:"Abholung gegen 19:30",
-      transkript:"Alessio: Blend, guten Tag! — Gast: Ja hallo, ich wollte etwas zum Abholen bestellen. Zwei Flammkuchen Elsässer und einmal Pommes. — Alessio: Sehr gern. Zwei Flammkuchen Elsässer, einmal Pommes mit Aioli, zusammen 28,50 Euro. Auf welchen Namen darf ich das notieren?"
+      transkript:"Alessia: Blend, guten Tag! — Gast: Ja hallo, ich wollte etwas zum Abholen bestellen. Zwei Flammkuchen Elsässer und einmal Pommes. — Alessia: Sehr gern. Zwei Flammkuchen Elsässer, einmal Pommes mit Aioli, zusammen 28,50 Euro. Auf welchen Namen darf ich das notieren?"
     });
-    klingel(); zeichneAlles(); melde("Neue Bestellung von Alessio");
+    klingel(); zeichneAlles(); melde("Neue Bestellung von Alessia");
   }, 9000);
 }
 
@@ -7155,7 +7224,7 @@ function zeichneBoard(){
   if(liste.length === 0){
     ziel.innerHTML = `<div class="leer">
       <div class="gross">Nichts zu tun</div>
-      <p>Sobald jemand einen Untersetzer antippt oder Alessio<br>
+      <p>Sobald jemand einen Untersetzer antippt oder Alessia<br>
       ans Telefon geht, erscheint es hier.</p></div>`;
     return;
   }
@@ -10653,6 +10722,8 @@ $("#karteSuche").oninput = e => { suchtext = e.target.value.trim(); zeichneKarte
 
 $("#lKnopf").onclick = anmelden;
 $("#lPass").onkeydown = e => { if(e.key === "Enter") anmelden(); };
+$("#lNeuKnopf").onclick = neuesPasswortSpeichern;
+$("#lNeu2").addEventListener("keydown", e => { if(e.key === "Enter") neuesPasswortSpeichern(); });
 $("#lVergessen").onclick = () => {
   $("#lVergessenStand").hidden = false;
   resetSchicken($("#lMail").value.trim(), $("#lVergessen"), $("#lVergessenStand"));

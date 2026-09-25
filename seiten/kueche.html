@@ -884,7 +884,35 @@ function wieAltZeichnen(){
 /* ═══════════════════════════════════════════════════════════════
    3 · ANMELDUNG
    ═══════════════════════════════════════════════════════════════ */
+/* Dieselbe Sperre wie am Board: drei Fehlversuche, dann gesperrt, bis
+   am Board über „Passwort vergessen“ ein neues Passwort gesetzt ist.
+   VORFALL: Die Sperre stand nur im Board — hier (und im Master, im
+   Konto) konnte man mit demselben Konto beliebig weiterraten.
+   Ist die Prüfung nicht erreichbar (Migration fehlt, Netz), wird wie
+   im Board NICHT gesperrt, sondern normal angemeldet (§7). */
+function sperrePruefen(mail, wort){
+  return fetch(basis()+"/rest/v1/rpc/admin_anmelden", {
+    method:"POST",
+    headers:{apikey:DB.schluessel, Authorization:"Bearer "+DB.schluessel, "Content-Type":"application/json"},
+    body: JSON.stringify({p_email:mail, p_passwort:wort})
+  }).then(function(a){ return a.ok ? a.json() : null; })
+    .catch(function(){ return null; });
+}
+function sperreText(p){
+  if(p.gesperrt) return (p.nachricht || "Zu viele falsche Versuche. Der Zugang ist gesperrt.") +
+    " Entsperren: am Bestell-Board auf „Passwort vergessen“ tippen.";
+  var t = p.nachricht || "E-Mail oder Passwort stimmt nicht.";
+  if(p.verbleibend === 1) t += " Noch ein Versuch, dann ist der Zugang gesperrt.";
+  else if(typeof p.verbleibend === "number") t += " Noch " + p.verbleibend + " Versuche.";
+  return t;
+}
 function anmelden(mail, wort){
+  return sperrePruefen(mail, wort).then(function(p){
+    if(p && p.erlaubt !== true) throw new Error(sperreText(p));
+    return anmeldenOhnePruefung(mail, wort);
+  });
+}
+function anmeldenOhnePruefung(mail, wort){
   return fetch(basis()+"/auth/v1/token?grant_type=password", {
     method:"POST", headers:{apikey:DB.schluessel,"Content-Type":"application/json"},
     body: JSON.stringify({email:mail, password:wort})

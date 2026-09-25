@@ -932,15 +932,32 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
 
     btn.disabled = true; btn.textContent = 'Melde an…'; hide($('loginMsg'));
 
-    sb.auth.signInWithPassword({ email: mail, password: pw })
+    /* Dieselbe Sperre wie am Board (admin_anmelden): drei Fehlversuche,
+       dann gesperrt bis zum neuen Passwort. Nicht erreichbar → wie im
+       Board normal weiter (§7), die Rolle wird danach ohnehin geprüft. */
+    sb.rpc('admin_anmelden', { p_email: mail, p_passwort: pw })
+      .then(function(r){ return r && !r.error ? r.data : null; }, function(){ return null; })
+      .then(function(p){
+        if(p && p.erlaubt !== true){
+          var t = p.nachricht || 'E-Mail oder Passwort stimmt nicht.';
+          if(p.gesperrt) t += ' Entsperren: am Bestell-Board auf „Passwort vergessen“ tippen.';
+          else if(p.verbleibend === 1) t += ' Noch ein Versuch, dann ist der Zugang gesperrt.';
+          else if(typeof p.verbleibend === 'number') t += ' Noch ' + p.verbleibend + ' Versuche.';
+          meldung(t);
+          return null;
+        }
+        return sb.auth.signInWithPassword({ email: mail, password: pw });
+      })
       .then(function(res){
+        if(!res) return;
         if(res.error){
           console.log(LOG,'Login abgelehnt:',res.error.message);
-          meldung('Anmeldung fehlgeschlagen: ' + res.error.message);
+          meldung(/Invalid/i.test(res.error.message) ? 'E-Mail oder Passwort stimmt nicht.'
+            : 'Anmeldung fehlgeschlagen: ' + res.error.message);
           return;
         }
         console.log(LOG,'Login ok, User:',res.data.user.id);
-        oeffneDashboard(res.data.user.email);
+        return nurMaster(res.data.user.email);
       })
       .catch(function(err){
         console.log(LOG,'FEHLER Login:',err);
@@ -954,9 +971,32 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
     console.log(LOG,'Prüfe Session…');
     sb.auth.getSession().then(function(res){
       var s = res && res.data ? res.data.session : null;
-      if(s && s.user){ console.log(LOG,'Session aktiv:',s.user.email); oeffneDashboard(s.user.email); }
+      if(s && s.user){ console.log(LOG,'Session aktiv:',s.user.email); nurMaster(s.user.email); }
       else { console.log(LOG,'Keine Session'); }
     }).catch(function(e){ console.log(LOG,'FEHLER Session:',e); });
+  }
+
+  /* VORFALL: Die Zentrale prüfte die Rolle nie. Jedes Konto — auch
+     das eines Wirts — kam hinein und sah die Oberfläche; nur die
+     RLS-Regeln verhinderten, dass es Fremdes las. Eine Oberfläche,
+     die einem Wirt „Alle Betriebe“ mit leeren Zahlen zeigt, ist
+     trotzdem falsch. Jetzt: ist_master() — nein heißt sofort wieder
+     abmelden. Fehlt die Antwort, bleibt die Tür zu (hier gibt es
+     keinen Gast, der deshalb nicht bestellen könnte). */
+  function nurMaster(email){
+    return sb.rpc('ist_master').then(function(r){
+      if(r && !r.error && r.data === true){ oeffneDashboard(email); return; }
+      console.log(LOG,'Kein Master-Konto:', r && r.error ? r.error.message : r && r.data);
+      return sb.auth.signOut().catch(function(){}).then(function(){
+        zeigeLogin();
+        meldung(r && r.error
+          ? 'Die Zentrale ist gerade nicht erreichbar. Bitte gleich noch einmal.'
+          : 'Dieses Konto hat keinen Zugang zur Zentrale. Wirte melden sich am Bestell-Board an.');
+      });
+    }, function(){
+      zeigeLogin();
+      meldung('Die Zentrale ist gerade nicht erreichbar. Bitte gleich noch einmal.');
+    });
   }
 
   function zeigeLogin(){

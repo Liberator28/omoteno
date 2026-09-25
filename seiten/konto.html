@@ -497,6 +497,27 @@ a{color:var(--kuli)}
   </p>
 </div>
 
+<!-- ═══ NEUES PASSWORT ═══
+     Nach dem Link aus „Passwort vergessen“. Ohne diese Seite kam man
+     mit dem Link zwar hinein, konnte das Passwort aber nie ändern —
+     und eine Sperre nach drei Fehlversuchen hob sich nie auf. -->
+<div class="innen" id="neuPass" hidden>
+  <div class="tafel">
+    <h2>Neues Passwort</h2>
+    <p class="unter">Mindestens acht Zeichen. Danach bist du angemeldet, und eine Sperre ist aufgehoben.</p>
+    <div class="meldung fehler" id="npMeldung" hidden></div>
+    <div class="feld">
+      <label for="npEins">Neues Passwort</label>
+      <input type="password" id="npEins" autocomplete="new-password" minlength="8">
+    </div>
+    <div class="feld">
+      <label for="npZwei">Noch einmal</label>
+      <input type="password" id="npZwei" autocomplete="new-password" minlength="8">
+    </div>
+    <button class="knopf" id="npKnopf">Passwort speichern</button>
+  </div>
+</div>
+
 <!-- ═══ BETRIEB FEHLT ═══ -->
 <div class="innen" id="ohneBetrieb" hidden>
   <div class="tafel">
@@ -739,6 +760,9 @@ if(typeof supabase === "undefined" || !supabase.createClient){
   throw new Error("Supabase-Bibliothek nicht geladen");
 }
 
+/* Kommt die Seite aus dem Link „Passwort zurücksetzen“? Nur JETZT
+   steht das in der Adresse — supabase-js räumt sie beim Start ab. */
+let wiederherstellen = /type=recovery/.test(location.hash + location.search);
 const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
 
@@ -817,8 +841,8 @@ adressvorschau("obName",   "obSlug");
 
 /* ─── Ansicht schalten ───────────────────────────────────────── */
 function zeige(welche){
-  ["tor","ohneBetrieb","konto"].forEach(id => $(id).hidden = (id !== welche));
-  $("kopfRechts").hidden = (welche === "tor");
+  ["tor","neuPass","ohneBetrieb","konto"].forEach(id => $(id).hidden = (id !== welche));
+  $("kopfRechts").hidden = (welche === "tor" || welche === "neuPass");
 }
 
 /* ─── Welche Anbieter sind überhaupt eingeschaltet? ──────────────
@@ -998,6 +1022,21 @@ $("torKnopf").onclick = async () => {
   knopf.textContent = "Einen Moment …";
   try{
     if(modus === "anmelden"){
+      /* Dieselbe Sperre wie am Board (admin_anmelden): drei
+         Fehlversuche, dann gesperrt bis zum neuen Passwort. Nicht
+         erreichbar → normal weiter, wie im Board (§7). */
+      let sperre = null;
+      try{
+        const r = await db.rpc("admin_anmelden", {p_email: mail, p_passwort: pass});
+        if(!r.error) sperre = r.data;
+      }catch(e){}
+      if(sperre && sperre.erlaubt !== true){
+        let t = sperre.nachricht || "E-Mail oder Passwort stimmen nicht.";
+        if(sperre.gesperrt) t += " Unten auf „Passwort vergessen?“ tippen, dann kommt der Link.";
+        else if(sperre.verbleibend === 1) t += " Noch ein Versuch, dann ist der Zugang gesperrt.";
+        else if(Number.isInteger(sperre.verbleibend)) t += " Noch " + sperre.verbleibend + " Versuche.";
+        throw new Error(t);
+      }
       const {error} = await db.auth.signInWithPassword({email:mail, password:pass});
       if(error) throw error;
     } else {
@@ -1454,6 +1493,7 @@ $("reiter").onclick = e => {
 async function starten(){
   const {data:{session}} = await db.auth.getSession();
   if(!session){ zeige("tor"); return; }
+  if(wiederherstellen){ zeige("neuPass"); setTimeout(() => $("npEins").focus(), 120); return; }
 
   /* Nach der Bestätigungsmail: Betrieb jetzt nachholen. */
   let gemerkt = null;
@@ -1518,8 +1558,36 @@ magnetisieren();
 new MutationObserver(magnetisieren).observe(document.body, {childList:true, subtree:true});
 
 db.auth.onAuthStateChange((ereignis) => {
+  if(ereignis === "PASSWORD_RECOVERY"){ wiederherstellen = true; zeige("neuPass"); return; }
   if(ereignis === "SIGNED_IN" || ereignis === "SIGNED_OUT") starten();
 });
+
+async function neuesPasswortSpeichern(){
+  const a = $("npEins").value, b = $("npZwei").value;
+  if(a.length < 8) return melde("npMeldung", "Bitte mindestens acht Zeichen.", "fehler");
+  if(a !== b) return melde("npMeldung", "Die beiden Eingaben sind nicht gleich.", "fehler");
+  const k = $("npKnopf");
+  k.disabled = true; k.textContent = "Einen Moment …";
+  try{
+    const {error} = await db.auth.updateUser({password: a});
+    if(error) throw error;
+  }catch(e){
+    k.disabled = false; k.textContent = "Passwort speichern";
+    const t = String((e && e.message) || e);
+    return melde("npMeldung",
+      /same|different/i.test(t) ? "Bitte ein anderes Passwort als das alte wählen."
+      : /session|expired|JWT/i.test(t) ? "Der Link ist abgelaufen. Bitte unter „Passwort vergessen“ einen neuen anfordern."
+      : fehlertext(e), "fehler");
+  }
+  wiederherstellen = false;
+  $("npEins").value = $("npZwei").value = "";
+  try{ history.replaceState(null, "", location.pathname); }catch(e){}
+  k.disabled = false; k.textContent = "Passwort speichern";
+  melde("npMeldung", "", "");
+  starten();
+}
+$("npKnopf").onclick = neuesPasswortSpeichern;
+$("npZwei").addEventListener("keydown", e => { if(e.key === "Enter") neuesPasswortSpeichern(); });
 
 starten();
 </script>
