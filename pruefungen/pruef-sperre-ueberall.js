@@ -235,10 +235,22 @@ async function seiteMit(browser, datei, lage, zusatz){
     pruef(r.signIn.length === 1, "Konto · Sperrprüfung fehlt: niemand ausgesperrt (§7)", "signIn " + r.signIn.length + "×");
     await ctx.close();
   }
+  /* Zwei Wege, auf denen der Link sich zeigt: die Adresse (type=recovery,
+     klassischer Ablauf) und das Ereignis PASSWORD_RECOVERY (auch beim
+     PKCE-Ablauf mit ?code=). Jeder wird EINZELN geprüft — zusammen
+     würde der eine den Ausfall des anderen verdecken. */
+  for(const [weg, lage, adresse] of [["nur Adresse", { sitzung:true }, "#access_token=x&type=recovery"],
+                                     ["nur Ereignis", { sitzung:true, wieder:true }, ""]]){
+    const { ctx, p } = await seiteMit(browser, "konto.html", lage, adresse);
+    const neu = await p.evaluate(() => !document.getElementById("neuPass").hidden);
+    pruef(neu, "Konto · " + weg + ": „Neues Passwort“ erscheint");
+    await ctx.close();
+  }
   {
     const { ctx, p, kons } = await seiteMit(browser, "konto.html", { sitzung:true, wieder:true }, "#access_token=x&type=recovery");
     const sicht = await p.evaluate(() => ({ neu: !document.getElementById("neuPass").hidden, konto: !document.getElementById("konto").hidden }));
     pruef(sicht.neu && !sicht.konto, "Konto · nach dem Link steht „Neues Passwort“, nicht das Konto", JSON.stringify(sicht));
+    if(sicht.neu){
     await p.fill("#npEins", "neuesPasswort1");
     await p.fill("#npZwei", "anderes");
     await p.click("#npKnopf");
@@ -251,12 +263,21 @@ async function seiteMit(browser, datei, lage, zusatz){
     r = await p.evaluate(() => ({ rufe: window.__rufe.updateUser, neu: !document.getElementById("neuPass").hidden, hash: location.hash }));
     pruef(r.rufe.length === 1 && r.rufe[0].password === "neuesPasswort1" && !r.neu && !/recovery/.test(r.hash),
       "Konto · das neue Passwort wird gesetzt, das Formular verschwindet, die Adresse ist sauber", JSON.stringify(r));
+    } else pruef(false, "Konto · Formular-Proben übersprungen — die Voraussetzung fehlt");
     pruef(kons.length === 0, "Konto · keine Ausnahme", kons[0] || "still");
     await ctx.close();
   }
 
   /* ══ 4 · Board: der Weg aus der Sperre ══════════════════════════ */
   console.log("\n══ Board ══");
+  for(const [weg, lage, adresse] of [["nur Adresse", { sitzung:true }, "#access_token=x&type=recovery"],
+                                     ["nur Ereignis", { sitzung:true, wieder:true }, ""]]){
+    const { ctx, p } = await seiteMit(browser, "admin.html", lage, adresse);
+    await p.waitForTimeout(200);
+    const neu = await p.evaluate(() => !document.getElementById("tor").hidden && !document.getElementById("lNeuTeil").hidden);
+    pruef(neu, "Board · " + weg + ": „Neues Passwort“ erscheint");
+    await ctx.close();
+  }
   {
     const { ctx, p, kons } = await seiteMit(browser, "admin.html", { sitzung:true, wieder:true }, "#access_token=x&type=recovery");
     const scharf = await p.$("#scharfJetzt");
@@ -264,6 +285,7 @@ async function seiteMit(browser, datei, lage, zusatz){
     const sicht = await p.evaluate(() => ({ tor: !document.getElementById("tor").hidden,
       neu: !document.getElementById("lNeuTeil").hidden, login: !document.getElementById("lAnmeldeteil").hidden }));
     pruef(sicht.tor && sicht.neu && !sicht.login, "Board · nach dem Link steht „Neues Passwort“ statt der Anmeldung", JSON.stringify(sicht));
+    if(sicht.neu){
     await p.fill("#lNeu1", "kurz");
     await p.fill("#lNeu2", "kurz");
     await p.click("#lNeuKnopf");
@@ -277,6 +299,7 @@ async function seiteMit(browser, datei, lage, zusatz){
     r = await p.evaluate(() => ({ rufe: window.__rufe.updateUser, tor: !document.getElementById("tor").hidden, hash: location.hash }));
     pruef(r.rufe.length === 1 && r.rufe[0].password === "neuesPasswort1" && !r.tor && !/recovery/.test(r.hash),
       "Board · neues Passwort gesetzt, Board offen, Adresse sauber", JSON.stringify(r));
+    } else pruef(false, "Board · Formular-Proben übersprungen — die Voraussetzung fehlt");
     pruef(kons.length === 0, "Board · keine Ausnahme", kons[0] || "still");
     await ctx.close();
   }
