@@ -517,6 +517,44 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
 .notiz b{display:block;font-size:calc(10px * var(--skala));letter-spacing:.12em;
   text-transform:uppercase;color:var(--warn);margin-bottom:3px}
 
+/* ── Notizen des Teams (migration-notizen.sql) ──
+   Gebaut wie .notiz (§3.3), Farbe sagt an wen: Türkis nur Team, Grün
+   beim Gast angekommen, Glut für den Gast geschrieben, aber noch nicht
+   bestätigt. Der ganze Eintrag ist der Knopf zum Bearbeiten. */
+.nzliste{margin:0 calc(13px * var(--skala)) calc(11px * var(--skala));display:flex;flex-direction:column;gap:6px}
+.nzeintrag{
+  display:block;width:100%;text-align:left;min-height:44px;
+  padding:calc(9px * var(--skala)) calc(11px * var(--skala));
+  background:rgba(79,165,168,.12);border-left:3px solid var(--telefon);border-radius:6px;
+  font-size:calc(14.5px * var(--skala));line-height:1.45;color:var(--kreide);
+}
+.nzeintrag.gast{background:rgba(111,174,106,.13);border-left-color:var(--gut)}
+.nzeintrag.offen{background:rgba(232,137,94,.13);border-left-color:var(--glut)}
+.nzmarke{display:block;font-size:calc(10px * var(--skala));letter-spacing:.12em;
+  text-transform:uppercase;color:var(--gedaempft);margin-bottom:3px}
+.nztext{display:block;white-space:pre-wrap;overflow-wrap:anywhere}
+.nzreihe{display:flex;background:var(--linie);border-top:1px solid var(--linie)}
+.nzreihe button{
+  flex:1;min-height:44px;padding:calc(10px * var(--skala)) 12px;background:var(--karte);
+  color:var(--gedaempft);font-size:calc(13.5px * var(--skala));font-weight:600;text-align:left;
+}
+.nzfeld{
+  width:100%;min-height:110px;resize:vertical;font:inherit;font-size:16px;line-height:1.45;
+  color:var(--kreide);-webkit-text-fill-color:var(--kreide);background:var(--karte);
+  border:1px solid var(--linie);border-radius:10px;padding:12px 13px;-webkit-appearance:none;appearance:none;
+}
+.nzfeld:focus{border-color:var(--messing);outline:none}
+.nzvorschau{
+  margin:6px 0 14px;padding:12px 14px;font-size:16px;line-height:1.5;color:var(--kreide);
+  white-space:pre-wrap;overflow-wrap:anywhere;background:rgba(111,174,106,.13);
+  border-left:3px solid var(--gut);border-radius:6px;
+}
+.nzhilfe{font-size:13px;color:var(--gedaempft);margin:8px 0 14px;line-height:1.45}
+.nzmeldung{min-height:1.3em;font-size:13.5px;color:var(--warn);margin-top:10px}
+.nzleise{width:100%;margin-top:9px;padding:13px;border-radius:var(--ecke);border:1px solid var(--linie);
+  color:var(--kreide);font-size:15px;font-weight:600;background:transparent}
+.nzleise.warn{color:var(--warn)}
+
 /* Wie lange dauert es? Nur da, solange niemand es gesagt hat.
    Die Knöpfe sind so hoch wie die im Fuß — ein Schirm an der Wand
    wird mit der ganzen Hand bedient, nicht mit der Fingerspitze
@@ -812,6 +850,8 @@ var bons = [], spurNachName = {}, gesehen = {}, ersterLauf = true;
    (bonSignatur ändert sich bei jedem Tippen NICHT) trotzdem
    überstehen, genau wie offeneGerichte im Admin-Board. */
 var freieZeitOffen = {};
+/* Notizen des Teams zu Bons (migration-notizen.sql). */
+var nzListe = [], nzSig = "", nzZuletzt = 0;
 var takt = null, wachSchloss = null;
 var netzStand = "gut";       /* gut | reconnect | offline */
 var fehlSerie = 0;           /* wie oft in Folge die Abfrage misslang */
@@ -1118,10 +1158,13 @@ function auffrischen(){
    wiederholt. Ohne das steht die Küche nach einer Stunde still. */
 function ruf(pfad, opt){
   opt = opt || {}; opt.headers = kopf();
+  /* opt.dazu: weitere Kopfzeilen, z. B. Prefer:return=representation. */
+  if(opt.dazu) for(var dk in opt.dazu) opt.headers[dk] = opt.dazu[dk];
   return fetch(basis()+pfad, opt).then(function(a){
     if(a.status !== 401) return a;
     return auffrischen().then(function(){
       opt.headers = kopf();
+      if(opt.dazu) for(var dk in opt.dazu) opt.headers[dk] = opt.dazu[dk];
       return fetch(basis()+pfad, opt);
     });
   });
@@ -1394,7 +1437,8 @@ var letzteSignatur = null;
 var wischtGerade   = false;
 
 function bonSignatur(liste){
-  return EINST.spur + "|" + EINST.sortierung + "|" + liste.map(function(b){
+  /* Eine neue oder geänderte Notiz ist eine Änderung am Bon. */
+  return EINST.spur + "|" + EINST.sortierung + "|" + nzSig + "|" + liste.map(function(b){
     return b.id + ":" + (b.status || "") + ":" +
            (b.kueche_fertig_um || "") + ":" + (b.theke_fertig_um || "") + ":" +
            /* Die Zusage MUSS mitzählen: Ohne sie blieben die
@@ -1595,6 +1639,7 @@ function zeichne(){
             '</div>'
           : '') +
         (b.notiz ? '<div class="notiz"><b>Hinweis vom Gast</b>' + h(b.notiz) + '</div>' : '') +
+        nzBonHTML(b) +
         /* Wie lange dauert es? Die Zusage kommt normalerweise aus dem
            Admin-Board. Steht dort keine, kann der Koch sie hier selbst
            geben — er ist der Einzige, der es wirklich weiß, und der
@@ -1702,6 +1747,176 @@ function ausfuehren(b, tun, zusatz){
   });
 }
 
+/* ═══════════════════════════════════════════════════════════════
+   7a · NOTIZEN DES TEAMS
+   Wie im Board: „Nur Team“ bleibt in der Küche und im Board; „An den
+   Gast“ braucht eine zweite Bestätigung mit genau dem Text, den der
+   Gast liest — der Server vergleicht ihn (notiz_senden, text_anders).
+   ═══════════════════════════════════════════════════════════════ */
+function notizenHolen(){
+  if(!betrieb) return;
+  nzZuletzt = Date.now();
+  var seit = new Date(Date.now() - RUECKBLICK_STD*3600*1000).toISOString();
+  return ruf("/rest/v1/notizen?select=id,bestellung_id,an,text,von_name,erstellt,gesendet_am,gesendet_text" +
+             "&betrieb_id=eq." + betrieb.id + "&geloescht=is.false&bestellung_id=not.is.null" +
+             "&erstellt=gte." + seit + "&order=erstellt.asc,id.asc")
+    .then(function(a){ return a.ok ? a.json() : null; })
+    .then(function(liste){
+      /* Fehlt die Tabelle noch oder fehlt das Recht: still weiter ohne
+         Notizen. Die Bons sind wichtiger als die Anmerkungen daran. */
+      if(!liste) return;
+      nzListe = liste;
+      var sig = liste.map(function(n){
+        return n.id + ":" + n.text + ":" + n.an + ":" + (n.gesendet_am || "") + ":" + (n.gesendet_text || "");
+      }).join("|");
+      if(sig !== nzSig){ nzSig = sig; zeichne(); }
+    })
+    ["catch"](function(){});
+}
+function nzUhr(iso){
+  try{ return new Date(iso).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}); }catch(e){ return ""; }
+}
+function nzMarke(n){
+  if(n.an === "team") return "Nur Team";
+  if(!n.gesendet_am) return "An den Gast · noch nicht gesendet";
+  return "An den Gast · gesendet " + nzUhr(n.gesendet_am) +
+    (n.gesendet_text !== n.text ? " · Änderung nicht gesendet" : "");
+}
+function nzBonHTML(b){
+  var eigene = nzListe.filter(function(n){ return n.bestellung_id === b.id; });
+  var html = eigene.length ? '<div class="nzliste">' + eigene.map(function(n){
+    var klasse = n.an === "team" ? "" : (n.gesendet_am && n.gesendet_text === n.text ? " gast" : " offen");
+    return '<button class="nzeintrag' + klasse + '" data-tun="nz" data-nz="' + h(n.id) + '" data-id="' + h(b.id) + '">' +
+      '<span class="nzmarke">' + h(nzMarke(n)) + (n.von_name ? " · " + h(n.von_name) : "") + '</span>' +
+      '<span class="nztext">' + h(n.text) + '</span></button>';
+  }).join("") + '</div>' : "";
+  return html + '<div class="nzreihe"><button data-tun="nz-neu" data-id="' + h(b.id) + '">+ Notiz</button></div>';
+}
+
+function nzOeffnen(b, id, ausloeser){
+  var n = null;
+  for(var i=0;i<nzListe.length;i++) if(nzListe[i].id === id) n = nzListe[i];
+  var z = { an: n ? n.an : "team", id: n ? n.id : null };
+  var d = document.createElement('div');
+  d.className = 'decke';
+  var fuer = b.quelle === "tisch" ? "Tisch " + (b.tisch || "—")
+    : (b.tagesnummer != null ? "#" + b.tagesnummer : "Bon");
+  d.innerHTML = '<div class="blatt" role="dialog" aria-modal="true" aria-label="Notiz" tabindex="-1">' +
+    '<div class="griff"></div>' +
+    '<h2>' + (n ? "Notiz bearbeiten" : "Neue Notiz") + '</h2>' +
+    '<p class="sub">' + h(fuer) + '</p>' +
+    '<div id="nzS1">' +
+      '<div class="satz"><label>An wen</label><div class="reihe" id="nzAn">' +
+        '<button data-w="team">Nur Team</button><button data-w="gast">An den Gast</button></div>' +
+        '<p class="dazu" id="nzAnHilfe"></p></div>' +
+      '<div class="satz"><label for="nzText">Text</label>' +
+        '<textarea class="nzfeld" id="nzText" maxlength="500"></textarea></div>' +
+      '<button class="knopf-voll" id="nzWeiter">Speichern</button>' +
+      (n ? (n.an === "gast" && n.gesendet_am ? '<button class="nzleise" id="nzZurueck">Beim Gast zurückziehen</button>' : '') +
+           '<button class="nzleise warn" id="nzLoeschen">Notiz löschen</button>' : '') +
+      '<button class="nzleise" id="nzWeg">Abbrechen</button>' +
+    '</div>' +
+    '<div id="nzS2" hidden>' +
+      '<div class="satz"><label>Der Gast sieht genau diesen Text</label>' +
+        '<div class="nzvorschau" id="nzVorschau"></div>' +
+        '<p class="nzhilfe">Erst nach „Wirklich senden“ erscheint er beim Gast. Ändern und zurückziehen geht danach jederzeit.</p></div>' +
+      '<button class="knopf-voll" id="nzSenden">Wirklich an den Gast senden</button>' +
+      '<button class="nzleise" id="nzAendern">Zurück und ändern</button>' +
+    '</div>' +
+    '<p class="nzmeldung" id="nzMeldung" role="status"></p>' +
+    '</div>';
+  document.body.appendChild(d);
+  var q = function(sel){ return d.querySelector(sel); };
+  q('#nzText').value = n ? n.text : "";
+
+  function anSetzen(an){
+    z.an = an;
+    var k = d.querySelectorAll('#nzAn [data-w]');
+    for(var i=0;i<k.length;i++){ k[i].classList.toggle('an', k[i].dataset.w === an); k[i].setAttribute('aria-pressed', String(k[i].dataset.w === an)); }
+    q('#nzAnHilfe').textContent = an === "gast"
+      ? "Der Gast sieht den Text in seinem Hub — erst nach einer zweiten Bestätigung."
+      : "Sieht nur euer Team — hier und im Board.";
+    q('#nzWeiter').textContent = an === "gast" ? "Weiter zur Bestätigung" : "Speichern";
+  }
+  anSetzen(z.an);
+  function schritt(zwei){ q('#nzS1').hidden = !!zwei; q('#nzS2').hidden = !zwei; q('#nzMeldung').textContent = ""; }
+  function schliessen(){
+    document.removeEventListener('keydown', aufTaste);
+    d.remove();
+    if(ausloeser && ausloeser.isConnected && ausloeser.focus) ausloeser.focus();
+  }
+  function aufTaste(ev){ if(ev.key === "Escape") schliessen(); }
+  document.addEventListener('keydown', aufTaste);
+  d.addEventListener('click', function(ev){ if(ev.target === d) schliessen(); });
+  wischZu({ blatt: q('.blatt'), zu: schliessen, griff: '.griff' });
+  q('#nzAn').addEventListener('click', function(ev){ var k = ev.target.closest('[data-w]'); if(k) anSetzen(k.dataset.w); });
+  q('#nzWeg').addEventListener('click', schliessen);
+  q('#nzAendern').addEventListener('click', function(){ schritt(false); });
+  function fehler(t){ q('#nzMeldung').textContent = t; }
+  function fertig(t){ letzteSignatur = null; nzSig = ""; notizenHolen(); toast(t, "ok"); schliessen(); }
+
+  /* Stufe 1: speichern. Eine Gast-Nachricht wird nur als Entwurf
+     gespeichert — der Gast sieht nichts, bis Stufe 2 bestätigt. */
+  q('#nzWeiter').addEventListener('click', function(){
+    var text = q('#nzText').value.replace(/^\s+|\s+$/g, "");
+    if(!text) return fehler("Bitte einen Text eingeben.");
+    var knopf = this; knopf.disabled = true;
+    var weg = z.id
+      ? ruf("/rest/v1/notizen?id=eq." + encodeURIComponent(z.id), { method:"PATCH",
+          body: JSON.stringify({ text: text, an: z.an }), dazu:{ Prefer:"return=representation" } })
+      : ruf("/rest/v1/notizen", { method:"POST",
+          body: JSON.stringify({ betrieb_id: betrieb.id, bestellung_id: b.id, an: z.an, text: text }),
+          dazu:{ Prefer:"return=representation" } });
+    weg.then(function(a){ if(!a.ok) throw new Error(a.status); return a.json(); })
+      .then(function(zeilen){
+        var neu = zeilen && zeilen[0]; if(!neu) throw new Error("leer");
+        z.id = neu.id;
+        if(neu.an === "gast" && !(neu.gesendet_am && neu.gesendet_text === neu.text)){
+          q('#nzVorschau').textContent = neu.text;
+          letzteSignatur = null; nzSig = ""; notizenHolen();
+          schritt(true);
+          return;
+        }
+        fertig(neu.an === "gast" ? "Unverändert — der Gast sieht schon diesen Text" : "Notiz gespeichert");
+      })
+      ["catch"](function(){ fehler("Nicht gespeichert — bitte Verbindung prüfen."); })
+      .then(function(){ knopf.disabled = false; });
+  });
+
+  /* Stufe 2: geschickt wird der Text AUS DER VORSCHAU. */
+  q('#nzSenden').addEventListener('click', function(){
+    var knopf = this; knopf.disabled = true;
+    ruf("/rest/v1/rpc/notiz_senden", { method:"POST",
+        body: JSON.stringify({ p_id: z.id, p_text: q('#nzVorschau').textContent }) })
+      .then(function(a){ if(!a.ok) throw new Error(a.status); return a.json(); })
+      .then(function(j){
+        if(j && j.ok) return fertig("An den Gast gesendet");
+        if(j && j.grund === "text_anders"){
+          q('#nzVorschau').textContent = j.text || "";
+          return fehler("Der Text wurde inzwischen geändert. Bitte den neuen Stand prüfen und erneut bestätigen.");
+        }
+        fehler({ nur_team:"Diese Notiz ist nur fürs Team.", geloescht:"Diese Notiz wurde gelöscht.",
+                 unbekannt:"Diese Notiz gibt es nicht mehr." }[j && j.grund] || "Nicht gesendet.");
+      })
+      ["catch"](function(){ fehler("Nicht gesendet — bitte Verbindung prüfen."); })
+      .then(function(){ knopf.disabled = false; });
+  });
+
+  if(q('#nzLoeschen')) q('#nzLoeschen').addEventListener('click', function(){
+    if(!confirm(n.an === "gast" && n.gesendet_am ? "Notiz löschen? Der Gast sieht sie danach nicht mehr." : "Notiz löschen?")) return;
+    ruf("/rest/v1/notizen?id=eq." + encodeURIComponent(z.id), { method:"PATCH", body: JSON.stringify({ geloescht: true }) })
+      .then(function(a){ if(!a.ok) throw new Error(a.status); fertig("Notiz gelöscht"); })
+      ["catch"](function(){ fehler("Nicht gelöscht — bitte Verbindung prüfen."); });
+  });
+  if(q('#nzZurueck')) q('#nzZurueck').addEventListener('click', function(){
+    ruf("/rest/v1/rpc/notiz_zurueckziehen", { method:"POST", body: JSON.stringify({ p_id: z.id }) })
+      .then(function(a){ if(!a.ok) throw new Error(a.status); return a.json(); })
+      .then(function(j){ if(!j || !j.ok) throw new Error("nein"); fertig("Beim Gast zurückgezogen"); })
+      ["catch"](function(){ fehler("Nicht zurückgezogen — bitte Verbindung prüfen."); });
+  });
+  setTimeout(function(){ try{ q('#nzText').focus(); }catch(e){} }, 60);
+}
+
 $('feld').addEventListener('click', function(ev){
   var k = ev.target.closest ? ev.target.closest('[data-tun]') : null;
   if(!k) return;
@@ -1711,6 +1926,8 @@ $('feld').addEventListener('click', function(ev){
      baut die Karte neu (dieselbe Funktion, die auch den ersten
      Aufbau macht), damit das Eingabefeld an derselben Stelle
      erscheint wie die Minuten-Knöpfe. */
+  if(k.dataset.tun === "nz-neu"){ nzOeffnen(b, null, k); return; }
+  if(k.dataset.tun === "nz"){ nzOeffnen(b, k.dataset.nz, k); return; }
   if(k.dataset.tun === "zeit-frei-auf"){
     freieZeitOffen[b.id] = true;
     letzteSignatur = null; zeichne();
@@ -1808,6 +2025,7 @@ function aktualisieren(){
     ersterLauf = false;
     bons = liste || [];
     zeichne();
+    if(Date.now() - nzZuletzt > 11000) notizenHolen();
     netzMelden(true);
     /* Storno hat Vorrang: Es ist die seltenere und die dringendere
        Nachricht. Beide Töne übereinander wären nur Lärm. */

@@ -350,6 +350,35 @@ Und beim Erweitern bleibt **jeder** alte Wert drin — auch einer, der
 heute keine Zeile hat. Der fehlende neue Wert fehlt laut; ein
 verlorener alter fehlt still.
 
+### 2.3d Was ausgerollt ist, aber nicht im Verzeichnis steht, prüft niemand
+
+> **Vorfall.** Die Edge Function „melden“ (Push an die Geräte des
+> Teams, ausgerollt als `swift-processor`, ohne JWT-Prüfung) lag
+> nirgends im Verzeichnis. `pruef-edge.js` geht die Ordner unter
+> `supabase/functions/` durch — über eine Funktion, die dort fehlt,
+> iteriert keine Schleife (§8.1b). Sie nahm den Meldungstext
+> ungeprüft aus der Anfrage: Jeder mit der Adresse konnte jedem
+> Betrieb beliebigen Text als „Serviceruf“ auf die Sperrbildschirme
+> des Personals schicken.
+
+Zweite Quelle ist die **Liste der ausgerollten Funktionen**
+(`list_edge_functions`), nicht der Ordner. Jede dort muss hier liegen.
+Und eine Funktion ohne JWT nimmt aus der Anfrage nur einen Schlüssel
+(eine id) und holt den Inhalt selbst — dann ist eine gefälschte
+Anfrage wertlos, auch ohne geteiltes Geheimnis.
+
+### 2.3e Die erste Adresse in `x-forwarded-for` schreibt der Aufrufer
+
+> **Gemessen, bevor die Bremse gebaut wurde.** Eine Anfrage mit
+> gefälschtem `X-Forwarded-For: 6.6.6.6` kam in PostgREST als
+> `6.6.6.6,3.68.61.57` an. `x-real-ip` und `cf-connecting-ip` trugen
+> die echte Adresse; ein gefälschtes `CF-Connecting-IP` wies Cloudflare
+> schon am Rand ab (403, error 1000).
+
+Wer nach Herkunft bremst, liest `cf-connecting-ip` (Rückfall
+`x-real-ip`) — nie das erste Element von `x-forwarded-for`, sonst
+wählt der Angreifer seine Adresse für jede Anfrage neu.
+
 ### 2.4 Rollenwechsel allein simuliert PostgREST nicht
 
 `set role anon` reicht nicht. Der einzige verlässliche Weg:
@@ -1183,6 +1212,7 @@ Dazu je nach Änderung:
 | **Kacheln, Symbole, Banner, Baukasten im Board** | `pruefungen/pruef-baukasten.js` (braucht `dist/`) — zweite Quelle, Zuschnitt, Schrift nie auf dem Bild |
 | **Besuchsbild, Sterne, Foto** | `pruefungen/pruef-besuchsbild.js` (braucht `dist/`) — Sterne auf der Leinwand, Bild aus der Karte |
 | **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung |
+| **Notizen des Teams (Board, Küche), Nachricht an den Gast, Reservierung mit Nummer** | `pruefungen/pruef-notizen.js` (braucht `dist/`) — Naht als Quelltext gegen `migration-notizen.sql` (Parameter, Gründe, Spaltenrechte), Board: Stufe 1 sendet NICHTS, Stufe 2 genau den Vorschautext, `text_anders` zeigt den neuen Stand, Bearbeiten ohne Bestätigung lässt den Gast die alte Fassung sehen, Tipp ändert keinen Status, 44 px; Küche dasselbe am Bon; Hub: Streifen „Neue Nachricht“, Text nie als Auszeichnung, Englisch nur der Rahmen, Reservierung zeigt Stand und Nachricht. Die DB-Hälfte: zurückgedrehter Probelauf, 24 Proben |
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |

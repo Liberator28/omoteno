@@ -67,6 +67,16 @@ declare module "npm:@anthropic-ai/sdk" {
 declare module "npm:@supabase/supabase-js@2" {
   export function createClient(a: string, b: string, c?: unknown): any;
 }
+declare module "jsr:@supabase/supabase-js@2" {
+  export function createClient(a: string, b: string, c?: unknown): any;
+}
+declare module "npm:web-push@3.6.7" {
+  const webpush: {
+    setVapidDetails(mail: string, pub: string, priv: string): void;
+    sendNotification(ziel: unknown, inhalt: string, opt?: unknown): Promise<unknown>;
+  };
+  export default webpush;
+}
 `;
 
 function tscPfad(){

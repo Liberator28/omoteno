@@ -2128,6 +2128,44 @@ textarea{resize:vertical;min-height:66px}
   border-top:1px solid var(--linie);line-height:1.55;
 }
 .reslaeuft{font-size:12px;color:var(--messing);margin-top:9px}
+
+/* ══ Notizen des Teams ══
+   Gebaut wie .notiz (§3.3: dieselben Maße, derselbe Rand), die Farbe
+   sagt, an wen: Türkis = nur Team, Grün = beim Gast angekommen,
+   Glut = für den Gast geschrieben, aber noch NICHT gesendet (die
+   zweite Bestätigung fehlt). Ein ganzer Eintrag ist der Knopf zum
+   Bearbeiten — 44 px hoch, auch auf dem Telefon. */
+.nzliste{display:flex;flex-direction:column;gap:6px;margin:0 0 11px}
+.res .nzliste{margin-top:9px;margin-bottom:0}
+.nzeintrag{
+  display:block;width:100%;min-height:44px;text-align:left;cursor:pointer;
+  font:inherit;font-size:13.5px;line-height:1.45;color:var(--kreide);
+  background:color-mix(in srgb, var(--telefon) 10%, transparent);
+  border:0;border-left:2px solid var(--telefon);
+  padding:8px 11px;border-radius:0 6px 6px 0;
+}
+.nzeintrag.gast{background:color-mix(in srgb, var(--gut) 11%, transparent);border-left-color:var(--gut)}
+.nzeintrag.offen{background:color-mix(in srgb, var(--glut) 11%, transparent);border-left-color:var(--glut)}
+.nzmarke{display:block;font-size:11px;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--gedaempft);margin-bottom:2px}
+.nztext{display:block;white-space:pre-wrap;overflow-wrap:anywhere}
+.nzneu{
+  display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:0 12px;
+  margin:0 0 11px;border-radius:10px;cursor:pointer;font:inherit;font-size:13.5px;
+  color:var(--gedaempft);background:transparent;border:1px dashed var(--linie);
+}
+.res .nzneu{margin:9px 0 0}
+.nzneu:hover{color:var(--kreide);border-color:var(--gedaempft)}
+#nzAn{margin:4px 0 6px}
+.nzvorschau{
+  margin:6px 0 12px;padding:12px 14px;font-size:16px;line-height:1.5;color:var(--kreide);
+  white-space:pre-wrap;overflow-wrap:anywhere;
+  background:color-mix(in srgb, var(--gut) 11%, transparent);
+  border-left:3px solid var(--gut);border-radius:0 8px 8px 0;
+}
+.nzfrage{font-size:15px;font-weight:600;color:var(--kreide);margin:4px 0 0}
+.nzmeldung{min-height:1.3em;font-size:13.5px;color:var(--warn);margin:8px 0 0}
+.nzextra{margin-top:4px}
 .resknoepfe{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap}
 .resknoepfe .knopf{flex:1;min-width:110px;padding:11px 12px;font-size:14px}
 
@@ -3545,6 +3583,45 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <button class="knopf" id="uebBlattOk">Übernehmen</button>
       <button class="knopf leise" id="uebBlattWeg">Abbrechen</button>
     </div>
+  </div>
+</div>
+
+<!-- Notiz zu einer Bestellung oder Reservierung. Zwei Stufen, wenn sie
+     an den Gast geht: schreiben — und dann GENAU den Text bestätigen,
+     den der Gast lesen wird. Gesendet wird serverseitig nur, was diese
+     zweite Stufe gezeigt hat (notiz_senden, migration-notizen.sql). -->
+<div class="blatt" id="nzBlatt" hidden>
+  <div class="blattinhalt">
+    <div class="griff"></div>
+    <h2 class="blatttitel" id="nzTitel">Notiz</h2>
+    <p class="ehilfe" id="nzFuer"></p>
+    <div id="nzSchritt1">
+      <div class="aw-segment seg-zwei" id="nzAn" role="radiogroup" aria-label="An wen geht die Notiz">
+        <button type="button" class="aw-seg" role="radio" data-an="team" aria-checked="true">Nur Team</button>
+        <button type="button" class="aw-seg" role="radio" data-an="gast" aria-checked="false">An den Gast</button>
+      </div>
+      <p class="ehilfe" id="nzAnHilfe">Sieht nur euer Team — im Board und in der Küche.</p>
+      <label><span class="lname">Text</span>
+        <textarea id="nzText" maxlength="500" rows="4"></textarea></label>
+      <div class="blattfuss">
+        <button class="knopf" id="nzWeiter">Speichern</button>
+        <button class="knopf leise" id="nzWeg">Abbrechen</button>
+      </div>
+      <div class="blattfuss nzextra" id="nzExtra" hidden>
+        <button class="knopf leise" id="nzZurueck" hidden>Beim Gast zurückziehen</button>
+        <button class="knopf gefahr" id="nzLoeschen">Notiz löschen</button>
+      </div>
+    </div>
+    <div id="nzSchritt2" hidden>
+      <p class="nzfrage">Der Gast sieht genau diesen Text:</p>
+      <div class="nzvorschau" id="nzVorschau"></div>
+      <p class="ehilfe">Erst nach „Wirklich senden“ erscheint er beim Gast. Ändern und zurückziehen könnt ihr danach jederzeit.</p>
+      <div class="blattfuss">
+        <button class="knopf" id="nzSenden">Wirklich an den Gast senden</button>
+        <button class="knopf leise" id="nzAendern">Zurück und ändern</button>
+      </div>
+    </div>
+    <p class="nzmeldung" id="nzMeldung" role="status"></p>
   </div>
 </div>
 
@@ -5896,6 +5973,9 @@ $("#vAlleAn").onclick = async () => {
    Daten, die nicht länger liegen bleiben sollen als nötig.
    ═══════════════════════════════════════════════════════════════ */
 let reservierungen = [];
+/* Notizen des Teams (migration-notizen.sql). Eigene Liste statt eingebettet
+   in bestellungen: Fehlt die Tabelle, laden Bestellungen trotzdem. */
+let notizen = [], nzSignatur = "";
 const resGezeigt = new Set();
 const zeigeRes = {offen:true, bestaetigt:true, abgelehnt:false};
 
@@ -5979,6 +6059,7 @@ function zeichneReservierungen(){
       <div class="resname">${sicher(r.name)}</div>
       ${tel ? `<div class="reszeile"><a href="tel:${sicher(tel)}">${sicher(r.telefon)}</a></div>` : ""}
       ${r.notiz ? `<div class="resnotiz">${sicher(r.notiz)}</div>` : ""}
+      ${nzHTML("reservierung", r.id)}
       ${offen ? `<div class="reslaeuft">${resRestzeit(r.wunsch)}</div>` : ""}
       ${offen ? `<div class="resknoepfe">
         <button class="knopf" data-res-ja="${sicher(r.id)}">Annehmen</button>
@@ -6013,6 +6094,229 @@ async function resStatus(id, neu){
   }
   melde(neu === "bestaetigt" ? "Reservierung angenommen" : "Reservierung abgelehnt");
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   NOTIZEN DES TEAMS
+   An jede Bestellung und Reservierung. „Nur Team“ bleibt im Haus;
+   „An den Gast“ braucht eine zweite Bestätigung mit genau dem Text,
+   den der Gast lesen wird — der Server vergleicht ihn (text_anders).
+   ═══════════════════════════════════════════════════════════════ */
+async function notizenLaden(id){
+  if(!db || demo || !betriebId) return;
+  if(id && id !== betriebId) return;
+  const marke = ladeMarke;
+  /* Zwei Tage zurück: Reservierungen von morgen tragen Notizen von heute. */
+  const seit = new Date(Date.now() - 2 * 86400000).toISOString();
+  const {data, error} = await db.from("notizen").select("*")
+    .eq("betrieb_id", betriebId).eq("geloescht", false).gte("erstellt", seit)
+    .order("erstellt", {ascending:true}).order("id");
+  if(error || !data || marke !== ladeMarke) return;
+  notizen = data.filter(n => n.betrieb_id === betriebId);
+  /* Nur neu zeichnen, wenn sich wirklich etwas geändert hat (§4.2). */
+  const sig = notizen.map(n => n.id + ":" + n.text + ":" + n.an + ":" + (n.gesendet_am || "") + ":" + (n.gesendet_text || "")).join("|");
+  if(sig === nzSignatur) return;
+  nzSignatur = sig;
+  zeichneBoard(); zeichneReservierungen();
+}
+
+function nzVon(art, bezug){
+  return notizen.filter(n => !n.geloescht &&
+    (art === "bestellung" ? n.bestellung_id : n.reservierung_id) === bezug);
+}
+function nzUhr(iso){
+  try{ return new Date(iso).toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}); }
+  catch(e){ return ""; }
+}
+function nzMarke(n){
+  if(n.an === "team") return "Nur Team";
+  if(!n.gesendet_am) return "An den Gast · noch nicht gesendet";
+  return "An den Gast · gesendet " + nzUhr(n.gesendet_am) +
+    (n.gesendet_text !== n.text ? " · Änderung noch nicht gesendet" : "");
+}
+function nzHTML(art, bezug){
+  const liste = nzVon(art, bezug);
+  const eintraege = liste.map(n => {
+    const klasse = n.an === "team" ? "" : (n.gesendet_am && n.gesendet_text === n.text ? " gast" : " offen");
+    return `<button type="button" class="nzeintrag${klasse}" data-nz="${sicher(n.id)}">` +
+      `<span class="nzmarke">${sicher(nzMarke(n))}${n.von_name ? " · " + sicher(n.von_name) : ""}</span>` +
+      `<span class="nztext">${sicher(n.text)}</span></button>`;
+  }).join("");
+  return (eintraege ? `<div class="nzliste">${eintraege}</div>` : "") +
+    `<button type="button" class="nzneu" data-nz-neu="${art}:${sicher(bezug)}">+ Notiz</button>`;
+}
+
+let nzZustand = null;   /* {art, bezug, id, an} */
+function nzAnSetzen(an){
+  nzZustand.an = an;
+  $$("#nzAn [data-an]").forEach(k => k.setAttribute("aria-checked", String(k.dataset.an === an)));
+  $("#nzAnHilfe").textContent = an === "gast"
+    ? "Der Gast sieht den Text in seinem Hub — erst nach einer zweiten Bestätigung."
+    : "Sieht nur euer Team — im Board und in der Küche.";
+  $("#nzWeiter").textContent = an === "gast" ? "Weiter zur Bestätigung" : "Speichern";
+}
+function nzSchritt(zwei){
+  $("#nzSchritt1").hidden = !!zwei;
+  $("#nzSchritt2").hidden = !zwei;
+  $("#nzMeldung").textContent = "";
+}
+function nzOeffnen(art, bezug, id){
+  const n = id ? notizen.find(x => x.id === id) : null;
+  nzZustand = { art, bezug, id: n ? n.id : null, an: n ? n.an : "team" };
+  let fuer = "";
+  if(art === "bestellung"){
+    const b = bestellungen.find(x => x.id === bezug);
+    fuer = b ? (b.tisch ? "Bestellung · Tisch " + b.tisch : "Bestellung" +
+      (b.tagesnummer != null ? " #" + b.tagesnummer : "") + (b.gast_name ? " · " + b.gast_name : "")) : "Bestellung";
+  } else {
+    const r = reservierungen.find(x => x.id === bezug);
+    fuer = r ? "Reservierung · " + r.name + " · " + resWann(r.wunsch).uhr : "Reservierung";
+  }
+  $("#nzTitel").textContent = n ? "Notiz bearbeiten" : "Neue Notiz";
+  $("#nzFuer").textContent = fuer;
+  $("#nzText").value = n ? n.text : "";
+  nzAnSetzen(nzZustand.an);
+  $("#nzExtra").hidden = !n;
+  $("#nzZurueck").hidden = !(n && n.an === "gast" && n.gesendet_am);
+  nzSchritt(false);
+  $("#nzBlatt").hidden = false;
+  setTimeout(() => { try{ $("#nzText").focus(); }catch(e){} }, 60);
+}
+function nzSchliessen(){
+  blattFortAnimieren($("#nzBlatt"), function(){ $("#nzBlatt").hidden = true; nzZustand = null; });
+}
+
+/* Stufe 1: speichern. Eine Gast-Nachricht wird dabei nur als Entwurf
+   gespeichert — der Gast sieht davon nichts, bis Stufe 2 bestätigt. */
+async function nzSpeichern(){
+  if(!nzZustand) return;
+  const text = $("#nzText").value.trim();
+  if(!text){ $("#nzMeldung").textContent = "Bitte einen Text eingeben."; return; }
+  if(text.length > 500){ $("#nzMeldung").textContent = "Höchstens 500 Zeichen."; return; }
+  const knopf = $("#nzWeiter"); knopf.disabled = true;
+  try{
+    let n = nzZustand.id ? notizen.find(x => x.id === nzZustand.id) : null;
+    if(demo){
+      if(n){ n.text = text; n.an = nzZustand.an; if(n.an === "team"){ n.gesendet_am = null; n.gesendet_text = null; } }
+      else {
+        n = { id: "demo-" + Date.now(), betrieb_id: betriebId, an: nzZustand.an, text, von_name: "demo",
+              erstellt: new Date().toISOString(), gesendet_am: null, gesendet_text: null, geloescht: false,
+              bestellung_id: nzZustand.art === "bestellung" ? nzZustand.bezug : null,
+              reservierung_id: nzZustand.art === "reservierung" ? nzZustand.bezug : null };
+        notizen.push(n);
+      }
+    } else if(n){
+      const {data, error} = await db.from("notizen").update({ text, an: nzZustand.an })
+        .eq("id", n.id).select("*").single();
+      if(error) throw error;
+      Object.assign(n, data);
+    } else {
+      const zeile = { betrieb_id: betriebId, an: nzZustand.an, text };
+      zeile[nzZustand.art === "bestellung" ? "bestellung_id" : "reservierung_id"] = nzZustand.bezug;
+      const {data, error} = await db.from("notizen").insert(zeile).select("*").single();
+      if(error) throw error;
+      n = data; notizen.push(n);
+    }
+    nzZustand.id = n.id;
+    nzSignatur = ""; zeichneBoard(); zeichneReservierungen();
+    /* An den Gast und noch nicht genau so gesendet → zweite Stufe. */
+    if(n.an === "gast" && !(n.gesendet_am && n.gesendet_text === n.text)){
+      $("#nzVorschau").textContent = n.text;
+      nzSchritt(true);
+      return;
+    }
+    melde(n.an === "gast" ? "Unverändert — der Gast sieht schon diesen Text" : "Notiz gespeichert");
+    nzSchliessen();
+  }catch(e){
+    $("#nzMeldung").textContent = "Nicht gespeichert — bitte Verbindung prüfen.";
+  }finally{ knopf.disabled = false; }
+}
+
+/* Stufe 2: senden. Geschickt wird der Text, der IN DER VORSCHAU steht —
+   nicht der im Feld. Hat ihn jemand dazwischen geändert, sagt der
+   Server text_anders, und die Vorschau zeigt den neuen Stand. */
+async function nzSenden(){
+  if(!nzZustand || !nzZustand.id) return;
+  const text = $("#nzVorschau").textContent;
+  const knopf = $("#nzSenden"); knopf.disabled = true;
+  try{
+    const n = notizen.find(x => x.id === nzZustand.id);
+    if(demo){
+      n.gesendet_text = text; n.gesendet_am = new Date().toISOString();
+    } else {
+      const {data, error} = await db.rpc("notiz_senden", { p_id: nzZustand.id, p_text: text });
+      if(error) throw error;
+      if(!data || !data.ok){
+        if(data && data.grund === "text_anders"){
+          $("#nzVorschau").textContent = data.text || "";
+          if(n && data.text) n.text = data.text;
+          $("#nzMeldung").textContent = "Der Text wurde inzwischen geändert. Bitte den neuen Stand prüfen und erneut bestätigen.";
+          return;
+        }
+        $("#nzMeldung").textContent = ({ nur_team: "Diese Notiz ist nur fürs Team.",
+          geloescht: "Diese Notiz wurde gelöscht.", unbekannt: "Diese Notiz gibt es nicht mehr." })[data && data.grund]
+          || "Nicht gesendet.";
+        return;
+      }
+      if(n){ n.gesendet_text = text; n.gesendet_am = data.am || new Date().toISOString(); }
+    }
+    nzSignatur = ""; zeichneBoard(); zeichneReservierungen();
+    melde("An den Gast gesendet");
+    nzSchliessen();
+  }catch(e){
+    $("#nzMeldung").textContent = "Nicht gesendet — bitte Verbindung prüfen.";
+  }finally{ knopf.disabled = false; }
+}
+
+async function nzLoeschen(){
+  if(!nzZustand || !nzZustand.id) return;
+  const n = notizen.find(x => x.id === nzZustand.id); if(!n) return nzSchliessen();
+  if(!confirm(n.an === "gast" && n.gesendet_am
+      ? "Notiz löschen? Der Gast sieht sie danach nicht mehr."
+      : "Notiz löschen?")) return;
+  if(!demo){
+    const {error} = await db.from("notizen").update({ geloescht: true }).eq("id", n.id);
+    if(error){ $("#nzMeldung").textContent = "Nicht gelöscht — bitte Verbindung prüfen."; return; }
+  }
+  notizen = notizen.filter(x => x.id !== n.id);
+  nzSignatur = ""; zeichneBoard(); zeichneReservierungen();
+  melde("Notiz gelöscht");
+  nzSchliessen();
+}
+async function nzZurueckziehen(){
+  if(!nzZustand || !nzZustand.id) return;
+  const n = notizen.find(x => x.id === nzZustand.id); if(!n) return;
+  if(!demo){
+    const {data, error} = await db.rpc("notiz_zurueckziehen", { p_id: n.id });
+    if(error || !data || !data.ok){ $("#nzMeldung").textContent = "Nicht zurückgezogen — bitte Verbindung prüfen."; return; }
+  }
+  n.gesendet_am = null; n.gesendet_text = null;
+  nzSignatur = ""; zeichneBoard(); zeichneReservierungen();
+  melde("Beim Gast zurückgezogen");
+  nzSchliessen();
+}
+
+function nzKlick(e){
+  const neu = e.target.closest("[data-nz-neu]");
+  if(neu){ e.stopPropagation(); const [art, bezug] = neu.dataset.nzNeu.split(":"); return nzOeffnen(art, bezug, null); }
+  const alt = e.target.closest("[data-nz]");
+  if(alt){
+    e.stopPropagation();
+    const n = notizen.find(x => x.id === alt.dataset.nz); if(!n) return;
+    return nzOeffnen(n.bestellung_id ? "bestellung" : "reservierung", n.bestellung_id || n.reservierung_id, n.id);
+  }
+}
+/* Im Einfangen, damit die Karten-Handler (Status, Zusage) den Tipp auf
+   eine Notiz nicht auch noch als ihren lesen. */
+$("#karten").addEventListener("click", nzKlick, true);
+$("#resListe").addEventListener("click", nzKlick, true);
+$("#nzAn").onclick = e => { const k = e.target.closest("[data-an]"); if(k && nzZustand) nzAnSetzen(k.dataset.an); };
+$("#nzWeiter").onclick = nzSpeichern;
+$("#nzWeg").onclick = () => nzSchliessen();
+$("#nzSenden").onclick = nzSenden;
+$("#nzAendern").onclick = () => nzSchritt(false);
+$("#nzLoeschen").onclick = nzLoeschen;
+$("#nzZurueck").onclick = nzZurueckziehen;
+$("#nzBlatt").onclick = e => { if(e.target === $("#nzBlatt")) nzSchliessen(); };
 
 $("#resListe").onclick = e => {
   const ja = e.target.closest("[data-res-ja]");
@@ -7014,7 +7318,7 @@ async function betriebOeffnen(id){
   /* 1 · Alles Alte abbauen */
   if(kanal){ try{ await db.removeChannel(kanal); }catch(e){} kanal = null; }
   clearInterval(netzTakt); netzTakt = null;
-  gerichte = []; bestellungen = []; reservierungen = [];
+  gerichte = []; bestellungen = []; reservierungen = []; notizen = []; nzSignatur = "";
   schonGezeigt.clear();
   bekannt.clear();
   resGezeigt.clear();
@@ -7069,7 +7373,8 @@ async function betriebOeffnen(id){
 
   live_anmelden(id, marke);
   reservierungenLaden(id);
-  netzTakt = setInterval(() => { nachholen(id); reservierungenNachholen(id); }, 25000);
+  notizenLaden(id);
+  netzTakt = setInterval(() => { nachholen(id); reservierungenNachholen(id); notizenLaden(id); }, 25000);
   zeichneAlles();
 }
 
@@ -7243,6 +7548,7 @@ document.addEventListener("visibilitychange", () => {
   try{ if(tonWerk && tonWerk.state === "suspended") tonWerk.resume(); }catch(e){}
   nachholen();
   reservierungenNachholen();
+  notizenLaden();
 });
 
 async function datenLaden(){
@@ -7520,7 +7826,7 @@ function zeichneBoard(){
             : ""}
         </div>
       </div>
-      ${pos}${lieferblock}${notiz}${trans}${zusage}
+      ${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
       ${b.summe > 0 ? rabattZeile(b) : ""}
       <div class="schritte">
         ${["neu","arbeit","fertig"].map(s =>
@@ -8499,7 +8805,8 @@ function tabelle(){
    ["#impBlatt",  function(){ impSchliessen(); }],
    ["#uebBlatt",  function(){ uebSchliessen(); }],
    ["#awBlatt",   function(){ awBlattZu(); }],
-   ["#ktedBlatt", function(){ ktedZu(); }]].forEach(function(paar){
+   ["#ktedBlatt", function(){ ktedZu(); }],
+   ["#nzBlatt",   function(){ nzSchliessen(); }]].forEach(function(paar){
     var schirm = document.querySelector(paar[0]); if(!schirm) return;
     var inhalt = schirm.querySelector(".blattinhalt"); if(!inhalt) return;
     wischZu({ blatt: inhalt, zu: paar[1], griff: ".griff, .blattgriff" });
