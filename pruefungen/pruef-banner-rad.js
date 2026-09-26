@@ -142,6 +142,109 @@ async function boardPruefen() {
   await browser.close();
 }
 
+/* ── Board · Neu öffnen: die gespeicherten Banner stehen wieder da ──
+   VORFALL 26.09. (Bildschirmfoto vom Betreiber): Nach dem Neuöffnen
+   war das Rad im Board leer, obwohl im Hub ein Banner lief —
+   betriebeHolen() las hub_banner nie. Ein „Übernehmen“ hätte den
+   laufenden Banner mit einer leeren Liste überschrieben.
+   Gestellt wird nur die Datenbank (ein kleines db-Double, das jede
+   Abfrage mitschreibt), der Weg im Board ist der echte:
+   betriebeHolen() → bnStandLaden() → bnSichern(). */
+async function boardNeuOeffnen() {
+  console.log("\n══ Board · gespeicherte Banner nach dem Neuöffnen ══");
+  const browser = await chromium.launch();
+  const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+  const seite = await ctx.newPage();
+  const konsole = [];
+  seite.on("pageerror", e => konsole.push(String(e).slice(0, 200)));
+  await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+  await seite.goto("file://" + ADMIN);
+  await seite.waitForTimeout(700);
+
+  const erg = await seite.evaluate(async () => {
+    const GESPEICHERT = { id:"alt", an:true, bild:"https://x/alt.jpg", titel:"Sommer", zielTyp:"seite", zielWert:"speisekarte", reihenfolge:0 };
+    const NEUER = { id:"neu", an:true, bild:"https://x/neu.jpg", titel:"Herbst", zielTyp:"seite", zielWert:"speisekarte", reihenfolge:0 };
+    const log = [];
+    let frischWarten = null, frischAntwort = { data:{ hub_banner:[NEUER] }, error:null };
+    const kette = tab => {
+      const q = { tab, cols:"", single:false };
+      const antwort = () => {
+        if(q.update) return { data:null, error:null };
+        if(tab === "betrieb_mitglieder")
+          return { data:[{ rolle:"inhaber", betriebe:Object.assign(
+            { id:"B1", slug:"probe", name:"Probe", bestell_pause:false, hub_texte:null, hub_kacheln:null,
+              liefer:null, markenblatt:null, newsletter_aktiv:false, klaviyo_liste_id:null,
+              hub_avatar:null, hub_stil:null, plan:null },
+            /hub_banner/.test(q.cols) ? { hub_banner:[GESPEICHERT] } : {}) }], error:null };
+        if(tab === "betriebe" && /hub_banner/.test(q.cols)) return frischAntwort;
+        return { data:[], error:null };
+      };
+      const o = {
+        select(c){ q.cols = c; log.push(tab + " select " + c); return o; },
+        update(v){ q.update = v; log.push(tab + " update " + Object.keys(v).join(",")); return o; },
+        eq(){ return o; }, order(){ return o; }, limit(){ return o; },
+        maybeSingle(){ return (frischWarten || Promise.resolve()).then(antwort); },
+        single(){ return Promise.resolve(antwort()); },
+        then(res, rej){ return Promise.resolve(antwort()).then(res, rej); }
+      };
+      return o;
+    };
+    db = { from: kette };
+    demo = false;
+
+    /* 1 · Anmelden: Der Stand kommt MIT hub_banner. */
+    meineBetriebe = await betriebeHolen();
+    betriebId = "B1";
+    const nachAnmelden = meineBetriebe[0] && meineBetriebe[0].hub_banner;
+
+    /* 2 · Reiter öffnen, die frische Abfrage hängt noch: Das Rad zeigt
+       den Stand vom Anmelden, und Übernehmen ist schon erlaubt. */
+    let loesen; frischWarten = new Promise(r => { loesen = r; });
+    const laeuft = bnStandLaden();
+    const sofort = BANNERSTAND.map(b => b.titel).join(",");
+    const geladenSofort = bnGeladen;
+    /* 3 · Frische Antwort (ein zweites Gerät hat inzwischen geändert). */
+    loesen(); await laeuft;
+    const nachFrisch = BANNERSTAND.map(b => b.titel).join(",");
+
+    /* 4 · Der Wirt tippt schon, dann kommt die frische Antwort: Seine
+       Eingabe bleibt stehen. */
+    frischWarten = new Promise(r => { loesen = r; });
+    const zwei = bnStandLaden();
+    bnNeu();
+    const eigene = BANNERSTAND.length;
+    loesen(); await zwei;
+    const nachEingabe = BANNERSTAND.length;
+
+    /* 5 · Nichts gelesen (alte Stufe ohne hub_banner, frische Abfrage
+       scheitert): Übernehmen schreibt NICHTS. */
+    meineBetriebe[0].hub_banner = undefined;
+    frischWarten = null; frischAntwort = { data:null, error:{ message:"netz weg" } };
+    await bnStandLaden();
+    const geladenOhne = bnGeladen;
+    const vorher = log.length;
+    await bnSichern();
+    const geschrieben = log.slice(vorher).filter(x => / update /.test(x));
+    const satz = (document.getElementById("bnPruefung") || {}).textContent || "";
+    return { nachAnmelden, sofort, geladenSofort, nachFrisch, eigene, nachEingabe,
+             geladenOhne, geschrieben, satz,
+             selectMitBanner: log.some(x => /^betrieb_mitglieder select .*hub_banner/.test(x)) };
+  });
+
+  pruef(erg.selectMitBanner, "betriebeHolen fragt hub_banner mit ab");
+  pruef(Array.isArray(erg.nachAnmelden) && erg.nachAnmelden.length === 1,
+    "nach dem Anmelden liegt der gespeicherte Banner im Stand", JSON.stringify(erg.nachAnmelden && erg.nachAnmelden.map(b => b.titel)));
+  pruef(erg.sofort === "Sommer", "Reiter geöffnet: das Rad zeigt sofort den gespeicherten Banner", erg.sofort || "(leer)");
+  pruef(erg.geladenSofort === true, "Übernehmen ist mit gelesenem Stand erlaubt");
+  pruef(erg.nachFrisch === "Herbst", "die frische Abfrage zeigt den Stand eines zweiten Geräts", erg.nachFrisch || "(leer)");
+  pruef(erg.nachEingabe === erg.eigene, "tippt der Wirt schon, bleibt seine Eingabe stehen", erg.eigene + " → " + erg.nachEingabe);
+  pruef(erg.geladenOhne === false, "nichts gelesen → Übernehmen gesperrt");
+  pruef(erg.geschrieben.length === 0, "gesperrt: bnSichern schreibt nichts in die Datenbank", erg.geschrieben.join(" | ") || "nichts");
+  pruef(/noch nicht geladen/.test(erg.satz), "und sagt dem Wirt, warum", erg.satz.slice(0, 60));
+  pruef(konsole.length === 0, "keine Ausnahme auf dem ganzen Weg", konsole.join(" | ") || "still");
+  await browser.close();
+}
+
 /* ── Gast-Hub: alle vier Zieltypen, live-aktion, verwaiste Aktion ── */
 async function hubPruefen() {
   console.log("\n══ Gast-Hub · Karussell, vier Zieltypen ══");
@@ -280,6 +383,7 @@ async function hubPruefen() {
 (async () => {
   kreuzvergleichSeiten();
   await boardPruefen();
+  await boardNeuOeffnen();
   await hubPruefen();
 
   console.log(`\n${n - f} von ${n} ok`);

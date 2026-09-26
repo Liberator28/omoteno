@@ -730,7 +730,13 @@ html{font-size:calc(16px * var(--skala,1))}
      Bedienmuster, dieselben Knöpfe mit denselben Daten. */
   .mehrfach{
     display:grid;gap:6px;
-    position:fixed;left:10px;right:10px;z-index:39;
+    /* 41: über der Befehlsleiste (40) UND der schwebenden Leiste
+       „Gericht hinzufügen“ (.kartenknoepfe, 39). VORFALL 26.09.
+       (Bildschirmfoto): Beide standen auf 39, bei Gleichstand gewinnt
+       das spätere Element — auf dem Karte-Reiter lagen „Gericht
+       hinzufügen“ und „Karte einlesen“ über „Startseite“ und
+       „Einstellungen“, die Menüpunkte waren nicht zu erreichen. */
+    position:fixed;left:10px;right:10px;z-index:41;
     /* Schob sich bisher direkt ueber die Reiterleiste. Dort liegen
        jetzt die Filter, also eine Etage hoeher. Gerechnet aus
        denselben Variablen — eine zweite Zahl daneben waere eine
@@ -7419,10 +7425,20 @@ async function betriebeHolen(){
   /* plan (Tarif) als fünfte Stufe davor: entscheidet, ob „Profi-Foto
      erstellen“ angeboten wird. Fehlt die Spalte, fällt es auf null =
      Bestandskunde zurück — nie auf einen gesperrten Login. */
+  /* hub_banner als sechste Stufe davor. VORFALL 26.09. (Bildschirmfoto
+     vom Betreiber): Nach dem Neuladen war das Banner-Rad im Board LEER,
+     obwohl im Hub ein Banner lief — die Spalte wurde gespeichert, aber
+     hier nie gelesen. Ein Tipp auf „Übernehmen“ hätte den Banner in
+     der Datenbank mit einer leeren Liste überschrieben. */
   let { data, error } = await db
     .from("betrieb_mitglieder")
-    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar, hub_stil, plan)");
+    .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar, hub_stil, plan, hub_banner)");
 
+  if(error && /hub_banner|column/i.test(error.message || "")){
+    ({data, error} = await db
+      .from("betrieb_mitglieder")
+      .select("rolle, betriebe(id, slug, name, bestell_pause, hub_texte, hub_kacheln, liefer, markenblatt, newsletter_aktiv, klaviyo_liste_id, hub_avatar, hub_stil, plan)"));
+  }
   if(error && /plan|column/i.test(error.message || "")){
     ({data, error} = await db
       .from("betrieb_mitglieder")
@@ -7457,6 +7473,10 @@ async function betriebeHolen(){
                 klaviyo_liste_id: z.betriebe.klaviyo_liste_id || null,
                 hub_avatar: z.betriebe.hub_avatar || null,
                 hub_stil: z.betriebe.hub_stil || null,
+                /* undefined = Spalte nicht gelesen (Stufe ohne hub_banner):
+                   dann darf das Board die Banner auch nicht überschreiben. */
+                hub_banner: z.betriebe.hub_banner === undefined ? undefined
+                  : (Array.isArray(z.betriebe.hub_banner) ? z.betriebe.hub_banner : []),
                 plan: typeof z.betriebe.plan === "string" ? z.betriebe.plan : null}))
     .sort((a,b) => a.name.localeCompare(b.name, "de"));
 }
@@ -10714,10 +10734,28 @@ function bnAusZeile(roh){
     .sort((a, c) => (+a.reihenfolge || 0) - (+c.reihenfolge || 0));
 }
 
-function bnStandLaden(){
+/* Beim Öffnen des Reiters FRISCH aus der Datenbank — wie ziele und
+   hub_woerter: Ein zweites Gerät hat vielleicht gerade Banner
+   geändert, und der Stand vom Anmelden ist dann veraltet. Solange
+   nichts geladen ist, bleibt „Übernehmen“ gesperrt (bnGeladen). */
+let bnGeladen = false, bnGeaendert = false;
+async function bnStandLaden(){
+  bnGeaendert = false;
   const b = meineBetriebe.find(x => x.id === betriebId);
+  bnGeladen = !!demo || !db || (b && b.hub_banner !== undefined);
   bnAusZeile(b && b.hub_banner);
   bnZeichnen();
+  if(demo || !db || !betriebId) return;
+  try{
+    const {data, error} = await db.from("betriebe").select("hub_banner").eq("id", betriebId).maybeSingle();
+    if(error) throw error;
+    const frisch = Array.isArray(data && data.hub_banner) ? data.hub_banner : [];
+    if(b) b.hub_banner = frisch;
+    bnGeladen = true;
+    /* Nur neu zeichnen, wenn der Wirt noch nichts angefasst hat —
+       sonst risse es ihm die Eingabe unter dem Finger weg. */
+    if(!bnGeaendert){ bnAusZeile(frisch); bnZeichnen(); }
+  }catch(e){ /* bleibt beim Stand vom Anmelden, falls der gelesen wurde */ }
 }
 
 function bnFinden(id){ return BANNERSTAND.find(b => b.id === id); }
@@ -10852,11 +10890,13 @@ function bnZeichnen(){
    genug, um ihn ganz zu zeichnen. */
 function bnAendern(id, feld, wert){
   const b = bnFinden(id); if(!b) return;
+  bnGeaendert = true;
   b[feld] = wert;
   bnZeichnen();
 }
 
 function bnNeu(){
+  bnGeaendert = true;
   BANNERSTAND.push({
     id: "b_" + Math.random().toString(16).slice(2, 10), an:true, bild:"",
     titel:"", text:"", farbe:"", zielTyp:"seite", zielWert:"",
@@ -10868,6 +10908,7 @@ function bnNeu(){
 }
 
 function bnLoeschen(id){
+  bnGeaendert = true;
   if(!confirm("Dieses Banner wirklich löschen? Gäste sehen es nach dem Übernehmen nicht mehr.")) return;
   BANNERSTAND = BANNERSTAND.filter(b => b.id !== id);
   BANNERSTAND.forEach((b, i) => { b.reihenfolge = i; });
@@ -10875,6 +10916,7 @@ function bnLoeschen(id){
 }
 
 function bnVerschieben(id, richtung){
+  bnGeaendert = true;
   const i = BANNERSTAND.findIndex(b => b.id === id);
   const j = i + richtung;
   if(i < 0 || j < 0 || j >= BANNERSTAND.length) return;
@@ -10937,6 +10979,7 @@ document.addEventListener("input", e => {
       e.target.value = sauber; e.target.setSelectionRange(pos, pos);
     }
   }
+  bnGeaendert = true;
   if(e.target.matches("[data-bn-titel]")) b.titel = e.target.value;
   if(e.target.matches("[data-bn-text]"))  b.text  = e.target.value;
   if(e.target.matches("[data-bn-zielwert]") && e.target.matches('input[type="url"]')) b.zielWert = e.target.value;
@@ -11095,6 +11138,11 @@ function bnRoh(){
 async function bnSichern(){
   const raus = $("#bnPruefung");
   const knopf = $("#bnSichern");
+  if(!bnGeladen){
+    raus.textContent = "Die gespeicherten Banner sind noch nicht geladen — bitte kurz warten " +
+      "oder die Seite neu laden. So wird nichts versehentlich überschrieben.";
+    return;
+  }
   /* Nur Banner mit gültigem Bild schicken — ein Eintrag ohne Bild
      wäre im Hub sowieso unsichtbar (dieselbe Regel wie kachelHTML()),
      bleibt hier aber in der Liste stehen (nicht gelöscht), falls der

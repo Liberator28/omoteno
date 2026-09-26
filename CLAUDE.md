@@ -549,6 +549,21 @@ Chromium wirklich. Zwei Messfallen dabei, beide getroffen:
   `localStorage`. Mit dem falschen Schlüssel fing er den Finger je
   nach Tempo ab, und die Probe wurde rot und grün im Wechsel.
 
+### 3.9 Gleichstand im `z-index` entscheidet die Reihenfolge im Dokument
+
+> **Vorfall, gemeldet vom Nutzer mit Bildschirmfoto.** Das Menü „Mehr“
+> im Board (`.mehrfach`) und die schwebende Leiste „Gericht
+> hinzufügen / Karte einlesen“ standen beide auf `z-index:39`. Bei
+> Gleichstand malt das spätere Element obenauf — auf dem Karte-Reiter
+> lagen die beiden Knöpfe über „Startseite“ und „Einstellungen“, die
+> Menüpunkte waren nicht zu erreichen. Auf jedem anderen Reiter fehlt
+> die Leiste, dort sah alles richtig aus.
+
+Wer eine feste Ebene anlegt, sucht zuerst jede andere mit derselben
+Zahl (`grep -n 'z-index:39' datei.html`) und prüft **auf jedem Reiter**,
+was ein Finger trifft (`elementFromPoint`) — nicht nur auf dem, auf dem
+man gerade baut.
+
 ## 4 · Animation und Neuzeichnen
 
 ### 4.1 Eine Einflug-Animation gehört nur an neue Elemente
@@ -1144,6 +1159,26 @@ Zwei Regeln, die dabei abfielen:
   Migration fand. Nach jedem Befund: den Griff im ganzen Verzeichnis
   suchen, nicht nur die gemeldete Stelle reparieren.
 
+### 8.1m Was gespeichert, aber nie gelesen wird, wird mit Leere überschrieben
+
+> **Vorfall, gemeldet vom Nutzer mit Bildschirmfoto.** Nach dem
+> Neuöffnen war das Banner-Rad im Board leer, obwohl im Hub ein Banner
+> lief. `betriebeHolen()` fragte `hub_banner` nie ab — das Board
+> startete jedes Mal mit einer leeren Liste. Ein Tipp auf
+> „Übernehmen“ hätte den laufenden Banner in der Datenbank gelöscht.
+> Die Prüfung des Rads war grün: Sie legte Banner im Board an und las
+> sie im selben Durchgang zurück, ohne je neu zu laden.
+
+Zwei Regeln:
+
+- **Zu jedem Schreibweg gehört ein Leseweg, und die Prüfung geht über
+  ein Neuladen.** Wer nur im selben Durchgang zurückliest, prüft den
+  Speicher des Browsers, nicht die Datenbank.
+- **Ein Formular, das eine ganze Liste ersetzt, darf erst schreiben,
+  wenn es die alte gelesen hat.** Nicht gelesen heißt nicht „leer“,
+  sondern „unbekannt“ — `undefined` statt `[]`, und „Übernehmen“ bleibt
+  gesperrt, bis der Stand da ist.
+
 ### 8.1d Ein Board im Vollbild ist eine eigene Umgebung
 
 > **Vorfall.** Das Küchen-Board hatte einen Vollbildknopf, das
@@ -1251,14 +1286,14 @@ Dazu je nach Änderung:
 | **Anmeldung an Küche, Konto, Master; Rolle im Master; „Neues Passwort“ nach dem Reset-Link** | `pruefungen/pruef-sperre-ueberall.js` — jede Tür fragt die Sperre VOR dem Login (gesperrt/falsch → kein Login-Versuch, fehlt → niemand ausgesperrt), Master wirft Nicht-Master hinaus (auch bei gemerkter Sitzung), der Reset-Link zeigt in Board und Konto das Passwort-Formular — Adresse und Ereignis EINZELN geprüft |
 | **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der Kontrast des Bandes (Glasfläche mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen), die Glas-Pille (mittig auf 1 px, ≥ 44 px, Weichzeichner, deckend bei „Transparenz reduzieren“, Fahrrad als bewegtes Zeichen, still bei abgeschalteten Zeichen) |
 | **Annahme-Leiste für neue Bestellungen im Board** | `pruefungen/pruef-annahme.js` — auffälligere Rahmung nur bei status="neu", In-Arbeit-ohne-Zusage bleibt bei der stillen Zeile, Tapflächen ≥44px, Kontrast Tag/Abend |
-| **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint` |
+| **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint`; dazu „Mehr“ auf Karte, Bestellungen und Reservierungen: jede Zeile mit dem Finger erreichbar (§3.9) |
 | **Ball-Übergang der Reiterleiste (`.leiste-pille`)** | `pruefungen/pruef-leistenpille.js` — Ruhelage, Stauchung in der Mitte, Landung, Unterbrechbarkeit, Überlauf-Rückfall auf „Mehr", `prefers-reduced-motion`, Größenwechsel ohne veralteten Sprung |
 | **Zeit-/Datumsfelder, Tagesknöpfe, Preis-Paare im Board** | `pruefungen/pruef-symmetrie.js` — Ränder, gleich breite Zeilen, drei Bildschirmbreiten |
 | **Animationen, Übergänge, Blätter** | `pruefungen/pruef-bewegung.js` — nur `transform`/`opacity`, Endzustand, Ausgang, Geste |
 | **Edge Functions (Übersetzer, Alessia, Klaviyo-Newsletter)** | `pruefungen/pruef-edge.js` — `tsc --strict`, kein Schlüssel im Quelltext, und jede vom Browser gerufene Funktion erlaubt im Vorflug jede Kopfzeile, die supabase-js schickt (zweite Quelle: `stand-supabase-cors.mjs` aus dem Paket; Anlass: Übersetzer mit nur `OPTIONS` in den Logs). Der einzige automatische Griff darauf: Beide Playwright-Prüfungen **stellen** die Serverantwort |
 | **Schwebende Fußleisten, Karte-Knöpfe** | `pruefungen/pruef-kartenknoepfe.js` — fixiert unter 760px, Fluss darüber, Endzustand nach Animation, letzte Zeile nicht verdeckt (erst nach dem Scrollen ans Ende gemessen) |
 | **Glas-Flächen (backdrop-filter), neue durchscheinende Bedienoberfläche** | `pruefungen/pruef-glas.js` — backdrop-filter an jeder Glas-Fläche (admin/kueche/Hub), `prefers-reduced-transparency` fällt wirklich auf die feste Fläche zurück (nicht nur eine spätere, gleich spezifische Regel im selben Blatt), Kontrast der Schrift auf Glas gegen Schwarz UND Weiß dahinter gerechnet, je Haus im Hub |
-| **Aktions-Banner-Rad (hub_banner), Board-Bedienung oder Gast-Karussell** | `pruefungen/pruef-banner-rad.js` — BANNER_SEITEN als zweite Quelle zwischen admin.html und hub.vorlage.html gegeneinander gehalten, bnAusZeile()-Rundlauf für alle vier Zieltypen + unbekannten Wert + unsicheres Bild, Anlegen/Umsortieren/Löschen im Board, im Hub: alle vier Zieltypen lösen ihr Ziel richtig auf (ungültiges Ziel bleibt sichtbar, aber nicht klickbar), ein aktion-Banner zeigt nachweislich den LIVE-Stand aus `aktionen` statt des gespeicherten, Kontrast der Bannerschrift gegen den ungünstigsten Fall (fast weißes Foto) gerechnet; Breite: Karte so breit und bündig wie die Kachelreihe, Nachbarkarte lugt ≥ 8 px herein, kein Überlaufen bei 360–1280 px |
+| **Aktions-Banner-Rad (hub_banner), Board-Bedienung oder Gast-Karussell** | `pruefungen/pruef-banner-rad.js` — BANNER_SEITEN als zweite Quelle zwischen admin.html und hub.vorlage.html gegeneinander gehalten, bnAusZeile()-Rundlauf für alle vier Zieltypen + unbekannten Wert + unsicheres Bild, Anlegen/Umsortieren/Löschen im Board, im Hub: alle vier Zieltypen lösen ihr Ziel richtig auf (ungültiges Ziel bleibt sichtbar, aber nicht klickbar), ein aktion-Banner zeigt nachweislich den LIVE-Stand aus `aktionen` statt des gespeicherten, Kontrast der Bannerschrift gegen den ungünstigsten Fall (fast weißes Foto) gerechnet; Breite: Karte so breit und bündig wie die Kachelreihe, Nachbarkarte lugt ≥ 8 px herein, kein Überlaufen bei 360–1280 px; **Neuöffnen**: `betriebeHolen` liest `hub_banner`, das Rad zeigt den gespeicherten Stand, eine frische Abfrage zieht den Stand eines zweiten Geräts nach (ohne getippte Eingabe zu überschreiben), und ohne gelesenen Stand schreibt „Übernehmen“ nichts (§8.1m) |
 | **Rabattcode-Einlösung, Gäste-Newsletter im Board** | `pruefungen/pruef-rabatt-board.js` — Eingabefeld auf/zu, ehrliche Meldung im Vorführmodus; die eigentliche RPC-Logik (unbekannt/abgelaufen/bereits eingelöst/kein Zugriff) steht in `datenbank/pruef-rechte.sql` Teil 3 |
 | **Gutscheine für Stammgäste im Board, „Mein Tisch" beim Gast** | `pruefungen/pruef-gutschein-board.js` — Grenzen gegen die CHECK-Schranke in `datenbank/migration-gutscheine-masse.sql`, Anlegen/doppelter Code/Beenden, kein rohes JSON, Datumsfeld in der Karte, und die Naht Board → `gast_melden` → Hub gegen `datenbank/stand-gast-melden.sql` (bytegleiche Kopie der Live-Funktion); dazu `pruef-gastkonto.js` für den Kontrast der Karten je Haus, Tag und Abend |
 | **Bildvorschau im Board (Tiefeneffekt, Zuschnitt-Vorschau)** | `pruefungen/pruef-bildschau.js` — Vignette und Schatten an `.bildschau` und `#bildCropContainer`, dabei bleibt das Zuschnitt-Rechteck selbst unverändert |
