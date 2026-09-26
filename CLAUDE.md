@@ -521,6 +521,34 @@ Text und die Nachbarin steht halb leer daneben.
 
 ---
 
+### 3.8 Ein Blatt, ein Scrollbereich
+
+> **Vorfall, gemeldet vom Nutzer mit iPhone-Bildschirmfoto.** Im
+> Kategorie-Blatt des Boards lag das Emoji-Raster als eigener
+> Scrollbereich (`max-height:44dvh;overflow-y:auto;
+> overscroll-behavior:contain`) im scrollenden Blatt. Der Finger liegt
+> fast immer auf dem Raster; das Raster lief an sein Ende und hielt
+> dort fest. Gemessen: Blatt 0 von 192 px gerollt, „Sichern" bei
+> y=891 unter dem Schirm, ein Wisch nach unten rollte das Raster statt
+> das Blatt zu schließen. „Die Seite bleibt hängen."
+
+Ein Scrollbereich im Scrollbereich ist auf dem Telefon fast immer
+falsch: Welcher rollt, entscheidet die Stelle, auf die der Finger
+zufällig fällt. Lange Auswahllisten fließen im Blatt mit.
+
+Und gemessen wird mit dem **Finger**, nicht mit der Maus: Eine
+Maus-Probe rollt nichts und hat den Fehler nie gesehen. Echte
+Touch-Folgen gehen über `Input.dispatchTouchEvent` (CDP); dort rollt
+Chromium wirklich. Zwei Messfallen dabei, beide getroffen:
+
+- „Scharf schalten" im Board geht in den Vollbildmodus, und der
+  kopflose Schirm ist 800×600. Danach landete jeder Finger unterhalb
+  von y≈590 im Board — eine erfundene Grenze, die fast als Befund
+  durchgegangen wäre. `requestFullscreen` in der Probe abklemmen.
+- Der Willkommensschirm des Hubs steht in `sessionStorage`, nicht in
+  `localStorage`. Mit dem falschen Schlüssel fing er den Finger je
+  nach Tempo ab, und die Probe wurde rot und grün im Wechsel.
+
 ## 4 · Animation und Neuzeichnen
 
 ### 4.1 Eine Einflug-Animation gehört nur an neue Elemente
@@ -1211,7 +1239,7 @@ Dazu je nach Änderung:
 | **Zugesagte Zeit, Countdown in Küche und Hub** | `pruefungen/pruef-zusage.js` (braucht `dist/`) — beide Seiten, und der Fall „Migration fehlt noch" |
 | **Kacheln, Symbole, Banner, Baukasten im Board** | `pruefungen/pruef-baukasten.js` (braucht `dist/`) — zweite Quelle, Zuschnitt, Schrift nie auf dem Bild |
 | **Besuchsbild, Sterne, Foto** | `pruefungen/pruef-besuchsbild.js` (braucht `dist/`) — Sterne auf der Leinwand, Bild aus der Karte |
-| **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung |
+| **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung; dazu mit echtem Finger (CDP-Touch): kein zweiter Scrollbereich im Kategorie-Blatt, Wische rollen bis „Sichern", gescrollt schließt ein Wisch nach unten NICHT, oben schließt er auch auf einem Knopf, Antippen wählt weiterhin, Schleier rollt das Board nicht, im Hub zählt ein Wisch nicht zusätzlich als „Zurück" |
 | **Notizen des Teams (Board, Küche), Nachricht an den Gast, Reservierung mit Nummer** | `pruefungen/pruef-notizen.js` (braucht `dist/`) — Naht als Quelltext gegen `migration-notizen.sql` (Parameter, Gründe, Spaltenrechte), Board: Stufe 1 sendet NICHTS, Stufe 2 genau den Vorschautext, `text_anders` zeigt den neuen Stand, Bearbeiten ohne Bestätigung lässt den Gast die alte Fassung sehen, Tipp ändert keinen Status, 44 px; Küche dasselbe am Bon; Hub: Streifen „Neue Nachricht“, Text nie als Auszeichnung, Englisch nur der Rahmen, Reservierung zeigt Stand und Nachricht. Die DB-Hälfte: zurückgedrehter Probelauf, 24 Proben |
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |

@@ -2280,7 +2280,17 @@ function einstOeffnen(ausloeser){
    o.basisX  waagerechter Anteil, der erhalten bleiben muss —
              .warenkarte steht auf translate3d(-50%,…) und läge ohne
              das plötzlich halb außerhalb des Schirms
-   o.kopf    wie weit oben eine Geste beginnen darf (Vorgabe 72px) */
+   o.kopf    wie weit oben eine Geste mit Maus oder Stift beginnen darf
+             (Vorgabe 72px)
+
+   Finger und Maus gehen getrennte Wege. VORFALL, gemessen im
+   Kategorie-Blatt des Boards: Mit Zeigerereignissen allein gehörte
+   jede Fingergeste außerhalb des 4px-Balkens dem Browser — er rollte,
+   schickte pointercancel, und das Blatt federte zurück. Auf einem
+   Raster aus Knöpfen begann sie gar nicht erst. Ob ein Finger zieht
+   oder rollt, entscheidet deshalb sein ERSTER Zug: nach unten, und
+   nichts zwischen Finger und Blatt ist gescrollt → das Blatt folgt.
+   Sonst gehört die ganze Geste dem Rollen. */
 function wischZu(o){
   var blatt = o && o.blatt, zu = o && o.zu;
   if(!blatt || typeof zu !== "function") return;
@@ -2296,6 +2306,7 @@ function wischZu(o){
   if(griff) griff.style.touchAction = "none";
 
   var zieht = false, y0 = 0, dy = 0, tLetzt = 0, yLetzt = 0, tempo = 0, alterUebergang = "";
+  var finger = false, fx0 = 0, fy0 = 0, fZiel = null, fGriff = false, fEntschieden = false;
 
   function ruhig(){
     return !!(window.matchMedia &&
@@ -2305,8 +2316,38 @@ function wischZu(o){
     blatt.style.transition = alterUebergang;
     blatt.style.transform  = "";
   }
+  function anfangen(y, t){
+    zieht = true; y0 = y; dy = 0; tempo = 0;
+    yLetzt = y; tLetzt = t;
+    alterUebergang = blatt.style.transition;
+    blatt.style.transition = "none";
+  }
+  function folgen(y, t){
+    dy = y - y0;
+    /* Nach oben gibt es kaum nach — das Blatt ist schon oben. */
+    if(dy < 0) dy = dy / 5;
+    var dt = t - tLetzt;
+    if(dt > 0){
+      tempo  = (y - yLetzt) / dt;   /* px je Millisekunde */
+      yLetzt = y; tLetzt = t;
+    }
+    /* Wer Bewegung reduziert hat, bekommt kein Mitziehen — aber
+       dieselbe Geste und dasselbe Ergebnis. */
+    if(!ruhig()) blatt.style.transform = "translate3d(" + basisX + "," + dy + "px,0)";
+  }
+  /* Ist zwischen Finger und Blatt alles ganz oben? Ein Raster, das
+     selbst noch gescrollt ist, will zuerst zurückrollen. */
+  function obenAngekommen(el){
+    for(var e = el; e && e.nodeType === 1; e = e.parentNode){
+      if(e.scrollTop > 0) return false;
+      if(e === blatt) return true;
+    }
+    return true;
+  }
 
+  /* ── Maus und Stift ── */
   blatt.addEventListener("pointerdown", function(ev){
+    if(ev.pointerType === "touch") return;
     if(ev.pointerType === "mouse" && ev.button !== 0) return;
     /* Auf einem Bedienelement fängt keine Geste an: Wer einen Regler
        zieht, will den Regler bewegen und nicht das Blatt. */
@@ -2320,27 +2361,61 @@ function wischZu(o){
       (ev.clientY - blatt.getBoundingClientRect().top) <= kopf;
     if(!aufGriff && !obenAmBlatt) return;
 
-    zieht = true; y0 = ev.clientY; dy = 0; tempo = 0;
-    yLetzt = ev.clientY; tLetzt = ev.timeStamp;
-    alterUebergang = blatt.style.transition;
-    blatt.style.transition = "none";
+    anfangen(ev.clientY, ev.timeStamp);
     try{ blatt.setPointerCapture(ev.pointerId); }catch(e){}
   }, {passive:true});
 
   blatt.addEventListener("pointermove", function(ev){
-    if(!zieht) return;
-    dy = ev.clientY - y0;
-    /* Nach oben gibt es kaum nach — das Blatt ist schon oben. */
-    if(dy < 0) dy = dy / 5;
-    var dt = ev.timeStamp - tLetzt;
-    if(dt > 0){
-      tempo  = (ev.clientY - yLetzt) / dt;   /* px je Millisekunde */
-      yLetzt = ev.clientY; tLetzt = ev.timeStamp;
-    }
-    /* Wer Bewegung reduziert hat, bekommt kein Mitziehen — aber
-       dieselbe Geste und dasselbe Ergebnis. */
-    if(!ruhig()) blatt.style.transform = "translate3d(" + basisX + "," + dy + "px,0)";
+    if(!zieht || ev.pointerType === "touch") return;
+    folgen(ev.clientY, ev.timeStamp);
   }, {passive:true});
+
+  /* ── Finger ── */
+  blatt.addEventListener("touchstart", function(ev){
+    finger = false;
+    if(zieht || ev.touches.length !== 1) return;
+    /* In einem Textfeld markiert der Finger Text — das bleibt so.
+       Knöpfe dagegen nicht: Ob getippt oder gezogen wird, zeigt erst
+       die Bewegung. */
+    if(ev.target.closest &&
+       ev.target.closest("input,select,textarea,[contenteditable],[data-kein-wisch]")) return;
+    finger = true; fEntschieden = false;
+    fx0 = ev.touches[0].clientX; fy0 = ev.touches[0].clientY;
+    fZiel = ev.target;
+    fGriff = !!(griff && griff.contains(ev.target));
+  }, {passive:true});
+
+  blatt.addEventListener("touchmove", function(ev){
+    if(!finger) return;
+    if(ev.touches.length !== 1){ finger = false; if(zieht) los(); return; }
+    var f = ev.touches[0];
+    if(!fEntschieden){
+      var ddx = f.clientX - fx0, ddy = f.clientY - fy0;
+      /* Unter drei Pixeln hat der Finger noch keine Richtung. Der
+         Browser rollt erst weit später los; bis dahin ist jeder Zug
+         noch abbrechbar. */
+      if(Math.abs(ddx) < 3 && Math.abs(ddy) < 3) return;
+      fEntschieden = true;
+      var runter = ddy > 0 && Math.abs(ddy) >= Math.abs(ddx);
+      if(!ev.cancelable || !(fGriff || (runter && obenAngekommen(fZiel)))){
+        finger = false; return;
+      }
+      anfangen(fy0, ev.timeStamp);
+    }
+    ev.preventDefault();
+    folgen(f.clientY, ev.timeStamp);
+  }, {passive:false});
+
+  function fingerWeg(ev){
+    if(!finger) return;
+    finger = false;
+    if(!zieht) return;
+    /* Der Zug gehörte dem Blatt. Kein anderer Horcher — etwa das
+       Zurück-Ziehen am oberen Rand im Hub — wertet ihn noch einmal
+       aus. */
+    ev.stopPropagation();
+    los();
+  }
 
   function los(){
     if(!zieht) return;
@@ -2374,8 +2449,11 @@ function wischZu(o){
     }, 205);
   }
 
-  blatt.addEventListener("pointerup",     los, {passive:true});
-  blatt.addEventListener("pointercancel", los, {passive:true});
+  function zeigerWeg(ev){ if(ev.pointerType !== "touch") los(); }
+  blatt.addEventListener("pointerup",     zeigerWeg, {passive:true});
+  blatt.addEventListener("pointercancel", zeigerWeg, {passive:true});
+  blatt.addEventListener("touchend",      fingerWeg, {passive:true});
+  blatt.addEventListener("touchcancel",   fingerWeg, {passive:true});
 }
 /* ╚═══ WISCHZU · GETEILTER BLOCK · ENDE ═══════════════════════════╝ */
 
