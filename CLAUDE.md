@@ -1203,6 +1203,31 @@ Zwei Regeln:
   sondern „unbekannt“ — `undefined` statt `[]`, und „Übernehmen“ bleibt
   gesperrt, bis der Stand da ist.
 
+### 8.1n Jede Tür mit einer Sperre braucht ihren eigenen Weg hinaus
+
+> **Vorfall, gemeldet vom Nutzer mit Bildschirmfoto — er stand vor der
+> eigenen Zentrale.** Drei Fehlversuche, Sperre. Die Meldung sagte
+> „Entsperren: am Bestell-Board auf ‚Passwort vergessen‘ tippen“ — in
+> der Zentrale selbst gab es keinen solchen Knopf. Und hätte er den
+> Link doch bekommen: master.html fragte nie nach dem neuen Passwort.
+> supabase-js meldet aus dem Link eine ganz normale Sitzung, die Seite
+> öffnete das Dashboard, das Passwort blieb das alte, die Sperre auch.
+> Board und Konto hatten den Weg längst; die dritte Tür war beim
+> Einbau der Sperre vergessen worden. Im Feld darüber stand
+> `placeholder="hallo@omoteno.de"` — die Adresse des echten Kontos,
+> öffentlich, und auf iOS fast weiß, als wäre sie eingetragen.
+
+- Wer eine Sperre an eine Anmeldung hängt, baut den Rückweg an
+  **dieselbe** Seite: „Passwort vergessen?“, Rücksprung auf diese
+  Adresse (`redirectTo`), und `type=recovery` VOR `createClient`
+  merken — danach steht es nicht mehr in der Adresse.
+- Ein Platzhalter ist Text auf einer öffentlichen Seite. Keine echte
+  Adresse, kein echter Name darin.
+- Der Rückweg hängt an Einstellungen, die nicht im Verzeichnis stehen
+  (Site URL, erlaubte Rücksprung-Adressen, Mailversand in Supabase).
+  Die Prüfung stellt die Antwort — ob die Mail ankommt, zeigt nur ein
+  echter Versuch.
+
 ### 8.1d Ein Board im Vollbild ist eine eigene Umgebung
 
 > **Vorfall.** Das Küchen-Board hatte einen Vollbildknopf, das
@@ -1309,7 +1334,7 @@ Dazu je nach Änderung:
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
-| **Anmeldung an Küche, Konto, Master; Rolle im Master; „Neues Passwort“ nach dem Reset-Link** | `pruefungen/pruef-sperre-ueberall.js` — jede Tür fragt die Sperre VOR dem Login (gesperrt/falsch → kein Login-Versuch, fehlt → niemand ausgesperrt), Master wirft Nicht-Master hinaus (auch bei gemerkter Sitzung), der Reset-Link zeigt in Board und Konto das Passwort-Formular — Adresse und Ereignis EINZELN geprüft |
+| **Anmeldung an Küche, Konto, Master; Rolle im Master; „Neues Passwort“ nach dem Reset-Link** | `pruefungen/pruef-sperre-ueberall.js` — jede Tür fragt die Sperre VOR dem Login (gesperrt/falsch → kein Login-Versuch, fehlt → niemand ausgesperrt), Master wirft Nicht-Master hinaus (auch bei gemerkter Sitzung), der Reset-Link zeigt in Board, Konto UND Master das Passwort-Formular — Adresse und Ereignis EINZELN geprüft; Master: „Passwort vergessen?“ auf der Seite selbst (Rücksprung auf diese Adresse, kein Versand ohne Adresse, „not authorized“ als Satz), nach dem Link nie das Dashboard vor dem neuen Passwort, keine echte Adresse als Platzhalter auf irgendeiner Seite (§8.1n) |
 | **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der Kontrast des Bandes (Glasfläche mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen), die Glas-Pille (mittig auf 1 px, ≥ 44 px, Weichzeichner, deckend bei „Transparenz reduzieren“, Fahrrad als bewegtes Zeichen, still bei abgeschalteten Zeichen) |
 | **Annahme-Leiste für neue Bestellungen im Board** | `pruefungen/pruef-annahme.js` — auffälligere Rahmung nur bei status="neu", In-Arbeit-ohne-Zusage bleibt bei der stillen Zeile, Tapflächen ≥44px, Kontrast Tag/Abend |
 | **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint`; dazu „Mehr“ auf Karte, Bestellungen und Reservierungen: jede Zeile mit dem Finger erreichbar (§3.9) |
