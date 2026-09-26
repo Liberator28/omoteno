@@ -246,6 +246,15 @@ function pruefeMarkenblatt(mb){
          nicht erst beim Zeichnen bemerken. */
       if(k.iconAus !== undefined && typeof k.iconAus !== "boolean")
         F(wo + ".iconAus muss true oder false sein");
+      /* Breite, Bildform, Farbe: dieselben Listen wie KACHEL_WERTE im
+         Hub. Der Hub fällt still zurück — hier wird angehalten, damit
+         der Tippfehler nicht still verschwindet. */
+      if(k.breite !== undefined && ["drittel","halb","voll"].indexOf(k.breite) < 0)
+        F(wo + '.breite muss "drittel", "halb" oder "voll" sein');
+      if(k.bildform !== undefined && ["seite","flaeche","rund"].indexOf(k.bildform) < 0)
+        F(wo + '.bildform muss "seite", "flaeche" oder "rund" sein');
+      if(k.grund !== undefined && k.grund !== "" && !/^#[0-9a-f]{6}$/i.test(String(k.grund)))
+        F(wo + '.grund muss eine Farbe wie "#A83A2E" sein');
     });
     const doppelt = {};
     (Array.isArray(mb.kacheln) ? mb.kacheln : []).forEach(k => {

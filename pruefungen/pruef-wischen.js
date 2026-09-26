@@ -20,6 +20,18 @@
        stehen, öffnete sich das Fenster beim nächsten Mal an der
        falschen Stelle — und niemand fände den Grund.
 
+   5 · Mit dem FINGER (echte Touch-Folgen, nicht Maus): Ein Blatt hat
+       genau einen Scrollbereich, rollt bis ans Ende, und ein Wisch
+       nach unten schließt nur, wenn zwischen Finger und Blatt alles
+       ganz oben steht — auch auf einem Raster aus Knöpfen.
+
+   > Anlass zu 5. Im Kategorie-Blatt des Boards lag das Emoji-Raster
+   > als eigener Scrollbereich (44dvh) im Blatt. Gemessen: Sechs
+   > Wische nach oben ließen das Raster an sein Ende laufen, das
+   > Blatt blieb bei 0 von 192 stehen, „Sichern" lag bei y=891 unter
+   > dem Schirm. Ein Wisch nach unten rollte das Raster, statt das
+   > Blatt zu schließen. Die Maus-Proben oben sahen davon nichts.
+
    Und: Wer Bewegung reduziert hat, bekommt dieselbe Geste mit
    demselben Ergebnis, nur ohne Mitziehen. Ein Fenster, das sich für
    diese Menschen nicht mehr schließen ließe, wäre der schlechtere
@@ -55,6 +67,37 @@ async function ziehe(p, wo, dy, schritte){
   await p.mouse.up();
   await p.waitForTimeout(430);
   return true;
+}
+
+/* Ein echter Finger über das DevTools-Protokoll: Chromium rollt dabei
+   wirklich, wie auf dem Telefon. Mit der Maus (oben) rollt nichts —
+   deshalb sah keine Maus-Probe den Fehler im Kategorie-Blatt. */
+async function finger(p, cdp, x, y, dy, schritte){
+  const n = schritte || 12;
+  await cdp.send("Input.dispatchTouchEvent", { type:"touchStart", touchPoints:[{ x, y }] });
+  for(let i = 1; i <= n; i++){
+    await cdp.send("Input.dispatchTouchEvent", { type:"touchMove", touchPoints:[{ x, y: y + dy * i / n }] });
+    await p.waitForTimeout(16);
+  }
+  await cdp.send("Input.dispatchTouchEvent", { type:"touchEnd", touchPoints:[] });
+  await p.waitForTimeout(650);
+}
+async function tippen(p, cdp, x, y){
+  await cdp.send("Input.dispatchTouchEvent", { type:"touchStart", touchPoints:[{ x, y }] });
+  await p.waitForTimeout(40);
+  await cdp.send("Input.dispatchTouchEvent", { type:"touchEnd", touchPoints:[] });
+  await p.waitForTimeout(300);
+}
+/* Mitte eines Elements, das wirklich obenauf liegt. */
+async function mitte(p, sel){
+  return p.evaluate(s => {
+    for(const e of document.querySelectorAll(s)){
+      const b = e.getBoundingClientRect();
+      const x = b.left + b.width / 2, y = b.top + b.height / 2;
+      if(b.width && y > 60 && y < innerHeight - 60 && e.contains(document.elementFromPoint(x, y))) return { x, y };
+    }
+    return null;
+  }, sel);
 }
 
 /* ── Der geteilte Block ──────────────────────────────────────────── */
@@ -105,7 +148,12 @@ async function hub(br, ruhig){
   p.on("pageerror", e => kons.push("JS: " + String(e).slice(0,150)));
   await p.route("**/*", r => r.request().url().startsWith("file://")
     ? r.continue() : r.fulfill({ status:200, contentType:"application/json", body:"[]" }));
-  await p.addInitScript(() => localStorage.setItem("omoteno-willkommen","1"));
+  /* Der Hub merkt sich den Willkommensschirm in sessionStorage, nicht
+     in localStorage. Mit dem falschen Schlüssel stand der Schirm
+     3,5 s über allem und fing je nach Tempo des Browsers den Finger
+     ab — die Fingerprobe wurde dadurch rot und grün im Wechsel. */
+  await p.addInitScript(() => { localStorage.setItem("omoteno-willkommen","1");
+                                sessionStorage.setItem("omoteno-willkommen","1"); });
   await p.goto("file://" + path.join(OBEN, "dist", "chocolamour", "index.html"));
   await p.waitForTimeout(1100);
 
@@ -193,6 +241,167 @@ async function board(br){
   await ctx.close();
 }
 
+/* ── Das Board mit dem Finger: Kategorie-Blatt ─────────────────── */
+async function boardFinger(br){
+  console.log("\n══ Board · Finger · Kategorie bearbeiten ══");
+  const ctx = await br.newContext({ viewport:{width:390,height:844}, hasTouch:true, isMobile:true });
+  const p = await ctx.newPage();
+  const kons = [];
+  p.on("pageerror", e => kons.push("JS: " + String(e).slice(0,150)));
+  /* „Scharf schalten" geht in den Vollbildmodus, und der kopflose
+     Schirm ist 800×600. Danach landete jeder Finger unterhalb von
+     y≈590 im Board statt im Blatt — gemessen, und ich hätte es fast
+     für den Fehler gehalten. Vollbild ist hier Messfehler, nicht
+     Gegenstand; pruef-vollbild.js prüft es für sich. */
+  await p.addInitScript(() => { Element.prototype.requestFullscreen = function(){ return Promise.resolve(); }; });
+  await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+  await p.goto("file://" + path.join(OBEN, "seiten", "admin.html"));
+  await p.waitForTimeout(900);
+  await p.evaluate(() => {
+    document.getElementById("tor").hidden = true;
+    if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); }
+  });
+  await p.waitForTimeout(400);
+  const scharf = await p.$("#scharfJetzt");
+  if(scharf && await p.isVisible("#scharf")){ await scharf.click(); await p.waitForTimeout(300); }
+  const cdp = await ctx.newCDPSession(p);
+
+  const oeffnen = async () => {
+    await p.evaluate(() => { const k = katNamen(welcheKarte)[0]; if(k) ktedOeffnen(k); });
+    await p.waitForTimeout(800);
+    return p.evaluate(() => !document.getElementById("ktedBlatt").hidden &&
+      document.querySelectorAll("#ktedWahl .kted-zeichen").length > 20 && !document.fullscreenElement);
+  };
+  const stand = () => p.evaluate(() => {
+    const i = document.querySelector("#ktedBlatt .blattinhalt");
+    return { offen: !document.getElementById("ktedBlatt").hidden, oben: Math.round(i.scrollTop),
+             max: i.scrollHeight - i.clientHeight, inline: i.style.transform, board: Math.round(scrollY) };
+  });
+
+  const auf = await oeffnen();
+  ok(auf, "das Blatt geht auf, das Raster ist gezeichnet, kein Vollbild");
+  if(!auf){ ok(false, "Fingerproben", "nichts offen — nicht prüfbar"); await ctx.close(); return; }
+
+  const zweite = await p.evaluate(() => [...document.querySelectorAll("#ktedBlatt .blattinhalt *")]
+    .filter(e => /auto|scroll/.test(getComputedStyle(e).overflowY) && e.scrollHeight > e.clientHeight + 1)
+    .map(e => e.id || e.className));
+  ok(zweite.length === 0, "im Blatt liegt kein zweiter Scrollbereich", zweite.join(", ") || "einer");
+
+  let a = await stand();
+  ok(a.max > 100, "das Blatt ist länger als der Schirm (sonst prüft das Folgende nichts)", a.max + " px");
+  const rast = await mitte(p, "#ktedWahl .kted-zeichen");
+  for(let k = 0; k < 8; k++) await finger(p, cdp, 195, 700, -450);
+  a = await stand();
+  ok(a.oben >= a.max - 2, "Wische auf dem Raster rollen das Blatt bis ans Ende", a.oben + " von " + a.max);
+  const sichern = await p.evaluate(() => {
+    const b = document.getElementById("ktedSichern").getBoundingClientRect();
+    const e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
+    return { y: Math.round(b.top), trifft: !!e && !!e.closest("#ktedSichern") };
+  });
+  ok(sichern.trifft, "„Sichern“ ist danach erreichbar", "y=" + sichern.y);
+
+  const vorher = a.oben;
+  await finger(p, cdp, 195, 250, 300);
+  a = await stand();
+  ok(a.offen && a.oben < vorher, "gescrollt: ein Wisch nach unten rollt zurück und schließt NICHT",
+    (a.offen ? "offen" : "ZU") + ", " + vorher + " → " + a.oben);
+
+  await p.evaluate(() => { document.querySelector("#ktedBlatt .blattinhalt").scrollTop = 0; });
+  await p.waitForTimeout(200);
+  const gewaehlt = () => p.evaluate(() =>
+    (document.querySelector('#ktedWahl [aria-checked="true"]') || {}).dataset?.zeichen || null);
+  const g0 = await gewaehlt();
+  const k = await mitte(p, "#ktedWahl .kted-zeichen");
+  /* Langsam, wie ein Finger, der nur verrutscht: 30 px in 10 Zügen.
+     In vier Zügen wären es 0,6 px/ms — ein Wurf, und der schließt
+     zu Recht. */
+  await finger(p, cdp, k.x, k.y, 30, 10);
+  a = await stand();
+  ok(a.offen && a.inline === "", "oben: ein kurzer Zug auf einem Knopf federt zurück",
+    (a.offen ? "offen" : "ZU") + ", " + (a.inline || "keine Angabe"));
+  ok(await gewaehlt() === g0, "und wählt dabei kein Zeichen", String(await gewaehlt()));
+
+  await finger(p, cdp, k.x, k.y, 380);
+  a = await stand();
+  ok(!a.offen, "oben: ein langer Wisch auf dem Raster schließt", a.offen ? "noch offen" : "zu");
+  ok(a.inline === "", "keine Inline-Angabe bleibt zurück", a.inline || "leer");
+  ok(await gewaehlt() === g0, "der Wisch hat kein Zeichen gewählt", String(await gewaehlt()));
+
+  await oeffnen();
+  const k2 = await p.evaluate(() => {
+    const e = [...document.querySelectorAll("#ktedWahl .kted-zeichen")].find(x => x.getAttribute("aria-checked") !== "true");
+    const b = e.getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, code: e.dataset.zeichen };
+  });
+  await tippen(p, cdp, k2.x, k2.y);
+  ok(await gewaehlt() === k2.code, "Antippen wählt weiterhin", String(await gewaehlt()) + " / " + k2.code);
+  a = await stand();
+  ok(a.offen && a.inline === "", "und bewegt das Blatt nicht", a.inline || "ruhig");
+
+  /* Der Schleier über dem Blatt: Dort gibt es nichts zu rollen. */
+  await p.evaluate(() => scrollTo(0, 0));
+  const hoch = await p.evaluate(() => document.documentElement.scrollHeight - innerHeight);
+  const schleier = await p.evaluate(() => {
+    const t = document.querySelector("#ktedBlatt .blattinhalt").getBoundingClientRect().top;
+    const e = document.elementFromPoint(195, Math.max(4, t - 20));
+    return { y: Math.max(4, t - 20), trifft: e && e.id === "ktedBlatt" };
+  });
+  if(hoch > 50 && schleier.trifft){
+    await finger(p, cdp, 195, schleier.y, -200, 8);
+    a = await stand();
+    ok(a.board === 0, "ein Wisch auf dem Schleier rollt das Board NICHT", "scrollY " + a.board);
+  }else{
+    ok(false, "ein Wisch auf dem Schleier rollt das Board NICHT",
+      "nicht prüfbar: Board " + hoch + " px rollbar, Schleier " + (schleier.trifft ? "da" : "nicht getroffen"));
+  }
+
+  ok(echt(kons).length === 0, "kein Fehler in der Konsole", echt(kons)[0] || "still");
+  await ctx.close();
+}
+
+/* ── Der Hub mit dem Finger: Besuchsbild ───────────────────────── */
+async function hubFinger(br){
+  console.log("\n══ Hub · Finger · Besuchsbild ══");
+  const ctx = await br.newContext({ viewport:{width:390,height:844}, hasTouch:true, isMobile:true });
+  const p = await ctx.newPage();
+  const kons = [];
+  p.on("pageerror", e => kons.push("JS: " + String(e).slice(0,150)));
+  await p.route("**/*", r => r.request().url().startsWith("file://")
+    ? r.continue() : r.fulfill({ status:200, contentType:"application/json", body:"[]" }));
+  /* Der Hub merkt sich den Willkommensschirm in sessionStorage, nicht
+     in localStorage. Mit dem falschen Schlüssel stand der Schirm
+     3,5 s über allem und fing je nach Tempo des Browsers den Finger
+     ab — die Fingerprobe wurde dadurch rot und grün im Wechsel. */
+  await p.addInitScript(() => { localStorage.setItem("omoteno-willkommen","1");
+                                sessionStorage.setItem("omoteno-willkommen","1"); });
+  await p.goto("file://" + path.join(OBEN, "dist", "chocolamour", "index.html"));
+  await p.waitForTimeout(1100);
+  const cdp = await ctx.newCDPSession(p);
+  await p.evaluate(() => { location.hash = "#/speisekarte"; });
+  await p.waitForTimeout(500);
+  await p.evaluate(() => { scrollTo(0, 0); storyOeffnen([{ n:"Nutella Crêpe", m:1 }]); });
+  await p.waitForTimeout(1300);
+  const vor = await p.evaluate(() => ({ auf: !document.getElementById("story").hidden,
+    hash: location.hash, oben: document.getElementById("story").scrollTop }));
+  /* Die Voraussetzung selbst prüfen: Stünde der Hub schon auf der
+     Startseite, sähe „springt nicht zur Startseite" immer grün aus. */
+  const auf = vor.auf && vor.hash === "#/speisekarte" && vor.oben === 0;
+  ok(auf, "das Besuchsbild geht auf, auf einer Unterseite, ganz oben", JSON.stringify(vor));
+  if(auf){
+    const z = await p.evaluate(() => {
+      const b = document.getElementById("story").getBoundingClientRect();
+      return { x: b.left + b.width / 2, y: b.top + 60 };
+    });
+    await finger(p, cdp, z.x, z.y, 360);
+    const a = await p.evaluate(() => ({ zu: document.getElementById("story").hidden, hash: location.hash }));
+    ok(a.zu, "ein Fingerwisch nach unten schließt es", a.zu ? "zu" : "offen");
+    /* Das Zurück-Ziehen am oberen Rand hört auf document. Ohne
+       stopPropagation zählte derselbe Wisch dort ein zweites Mal. */
+    ok(a.hash === "#/speisekarte", "und springt NICHT zusätzlich zur Startseite", a.hash);
+  }
+  ok(echt(kons).length === 0, "kein Fehler in der Konsole", echt(kons)[0] || "still");
+  await ctx.close();
+}
+
 /* ── Die Küche ───────────────────────────────────────────────────── */
 async function kueche(br){
   console.log("\n══ Küche ══");
@@ -264,6 +473,8 @@ async function kueche(br){
   await hub(br, false);
   await hub(br, true);
   await board(br);
+  await boardFinger(br);
+  await hubFinger(br);
   await kueche(br);
   await br.close();
   console.log("\n" + (fehler ? fehler + " Fehler" : "Keine Fehler"));

@@ -1,6 +1,6 @@
 # Übersetzer: So bringst du ihn zum Laufen
 
-Stand 25.09.2026. Ersetzt `uebersetzer-fix-anleitung.md` — die lag
+Stand 26.09.2026. Ersetzt `uebersetzer-fix-anleitung.md` — die lag
 falsch (siehe unten).
 
 ## Was kaputt war — gemessen, nicht vermutet
@@ -25,6 +25,92 @@ Derselbe Fehler stand in `newsletter-vorrat-auffuellen` (Knopf
 Liste, die supabase-js selbst vorgibt, und sind neu ausgerollt
 (`uebersetzen` Version 5, `newsletter-vorrat-auffuellen` Version 4).
 `pruefungen/pruef-edge.js` prüft das künftig bei jeder Funktion.
+
+## Stand 26.09.2026, 17:00 — gemessen: im Feld steht NICHT der Schlüssel
+
+Dein Versuch um 16:53 kam an (`POST 200`), die Anmeldung stimmte. Die
+Funktion (Version 7) prüft jetzt selbst, was unter
+`ANTHROPIC_API_KEY` liegt — ohne den Wert zu verraten:
+
+```
+{"art":"zu_kurz","laenge":17,"andere_namen":[],"anthropic":"nicht_gefragt"}
+```
+
+- Dort stehen **17 Zeichen**. Ein Anthropic-API-Schlüssel hat **über
+  100 Zeichen** und beginnt mit **`sk-ant-api03-`**.
+- `ANTHROPIC_API_KEY` selbst hat genau 17 Zeichen. Sehr
+  wahrscheinlich steht im Feld **„Value“ der Name** (klein oder
+  gemischt geschrieben) statt des Schlüssels.
+- Einen zweiten Eintrag mit „Anthropic“ oder „Claude“ im Namen gibt
+  es nicht — der Schlüssel liegt also nirgends in Supabase.
+
+**Guthaben:** Die 5 € müssen in der **Anthropic-Konsole**
+(console.anthropic.com → Billing) liegen. Guthaben oder ein Abo auf
+claude.ai gilt für die API **nicht** — das sind zwei getrennte
+Konten, auch wenn beide „Claude“ heißen.
+
+**Was du tun musst:** Schritt 3 unten, und dabei in Punkt 3 ins Feld
+**Value** den langen Schlüssel einfügen, nicht den Namen.
+
+**Selbst nachprüfen, ohne Board:** Die Funktion beantwortet
+`{"diagnose":true}` ohne Anmeldung, kostenlos, und nennt nur Art und
+Länge. Nach dem Eintragen muss dort `"art":"ok"` und
+`"anthropic":"ok"` stehen. (Ich frage das für dich ab, sag einfach
+Bescheid.)
+
+| `art` | heißt | was tun |
+|---|---|---|
+| `ok` + `anthropic:"ok"` | läuft | nichts |
+| `ok` + `anthropic:"schluessel_ungueltig"` | Form stimmt, Anthropic lehnt ab | neuen Schlüssel anlegen |
+| `ok` + `anthropic:"guthaben_leer"` | Konsole ohne Guthaben | console.anthropic.com → Billing |
+| `anderer_name` | Schlüssel liegt unter einem anderen Namen | geht trotzdem; aufräumen, wenn du magst |
+| `zu_kurz`, `name_statt_wert` | Name oder kurzer Text statt Schlüssel | Schritt 3 |
+| `abo_token` | Token aus einem Claude-Abo (`sk-ant-oat…`) | API-Schlüssel aus der Konsole nehmen |
+| `admin_schluessel` | Admin-Schlüssel, kann nicht übersetzen | normalen API-Schlüssel anlegen |
+| `kennung_statt_schluessel` | die ID des Schlüssels statt des Schlüssels | neu anlegen, **sofort** kopieren |
+| `anderer_anbieter` | z. B. OpenAI (`sk-proj…`) | Anthropic-Schlüssel nehmen |
+| `leer` | nichts eingetragen | Schritt 3 |
+
+Die Funktion findet den Schlüssel auch, wenn er mit `ANTHROPIC_API_KEY=`
+davor, in Anführungszeichen oder unter einem anderen Namen eingetragen
+ist. Nur wenn er **nirgends** steht, kann sie nichts tun.
+
+## Stand 26.09.2026, vormittags — gemessen: der Schlüssel war UNGÜLTIG
+
+Probe direkt gegen die ausgerollte Funktion (aus der Datenbank über
+`pg_net`, nicht aus einem Browser):
+
+| Anfrage | Antwort | heißt |
+|---|---|---|
+| `{"texte":[]}` | `{"uebersetzt":{}}` | Funktion läuft, `ANTHROPIC_API_KEY` **ist gesetzt** |
+| `{"texte":["Guten Appetit"]}` | `401 authentication_error: invalid x-api-key` | Anthropic **lehnt den Schlüssel ab** |
+
+Der Vorflug ist also nicht mehr das Problem — die Anfrage kommt an,
+der Schlüssel wird benutzt, und Anthropic sagt nein. Das passiert,
+wenn der Schlüssel widerrufen/gelöscht wurde, zu einer anderen
+Organisation gehört, oder beim Kopieren etwas fehlt oder dazukam.
+
+**Was du tun musst: nur Schritt 3** (neuen Schlüssel anlegen und in
+Supabase ersetzen). Danach Board neu laden und ein Gericht sichern.
+
+Seit Version 6 der Funktion (26.09.):
+- Leerzeichen, Zeilenumbrüche, Anführungszeichen und ein „Bearer "
+  vor dem Schlüssel werden abgeschnitten; ein Wert, der nicht mit
+  `sk-ant-` beginnt, meldet „kein Anthropic-Schlüssel".
+- Das Board zeigt statt des rohen 401-Textes: „Der hinterlegte
+  Anthropic-Schlüssel wird abgelehnt … Anleitung „Übersetzer“,
+  Schritt 3."
+- **Nur noch angemeldete Teammitglieder** (nach der PIN) dürfen
+  übersetzen. Vorher reichte der öffentliche Schlüssel aus jedem Hub,
+  um auf deine Rechnung übersetzen zu lassen. Gemessen: Aufruf mit dem
+  öffentlichen Schlüssel → `kein_zugriff`, kein Anthropic-Aufruf.
+- `{"probe":true}` prüft den Schlüssel kostenlos (Modellliste statt
+  Übersetzung).
+
+**Ehrliche Grenze:** Den Weg „angemeldet im Board → übersetzt“ konnte
+ich nicht selbst gehen — ohne gültigen Schlüssel und ohne dein
+Anmeldetoken. Der erste echte Lauf nach dem Schlüsseltausch ist deiner;
+im Log steht dann `POST 200`.
 
 ## Was du jetzt tun musst
 
@@ -59,8 +145,10 @@ Die Meldung im Board sagt jetzt, was los ist, statt „keine Verbindung“:
    `sk-ant-`), er wird nur einmal angezeigt.
 2. **supabase.com/dashboard** → Projekt → links **Edge Functions** →
    oben **Secrets**.
-3. Name **genau** `ANTHROPIC_API_KEY` (Großbuchstaben, Unterstriche,
-   kein Leerzeichen davor oder dahinter). Wert: der Schlüssel.
+3. Den vorhandenen Eintrag `ANTHROPIC_API_KEY` bearbeiten (oder
+   löschen und neu anlegen). **Name:** `ANTHROPIC_API_KEY`.
+   **Value:** der lange Schlüssel aus Punkt 1, der mit
+   `sk-ant-api03-` beginnt — **nicht** noch einmal der Name.
    **Save**.
 4. Neue Geheimnisse gelten ab dem nächsten Aufruf, ein neues Ausrollen
    ist nicht nötig.

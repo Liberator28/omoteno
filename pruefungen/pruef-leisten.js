@@ -38,7 +38,7 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
     const kons = [];
     p.on("pageerror", e => kons.push(String(e).slice(0,140)));
     await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
-    await p.goto("file:///home/user/omoteno/seiten/admin.html");
+    await p.goto("file://" + path.join(__dirname, "..", "seiten", "admin.html"));
     await p.waitForTimeout(900);
     await p.evaluate(() => { document.getElementById("tor").hidden = true;
       if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); } });
@@ -104,6 +104,36 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
          passen und trotzdem verdeckt sein. */
       ok(g.letzteTrifft === "die Karte",
          "und ein Finger trifft sie auch", g.letzteTrifft);
+      /* „Mehr“ auf jedem Reiter, der eine schwebende Leiste hat.
+         VORFALL 26.09. (Bildschirmfoto): Auf dem Karte-Reiter lagen
+         „Gericht hinzufügen“ und „Karte einlesen“ (.kartenknoepfe,
+         z-index 39) über dem Menü (.mehrfach, ebenfalls 39) — bei
+         Gleichstand gewinnt das spätere Element. Gemessen wird jede
+         Zeile mit dem Finger, nicht der Kasten. */
+      for(const tafel of ["speisekarte", "bestellungen", "reservierungen"]){
+        await p.evaluate(t => { window.scrollTo(0, 0); tafelZeigen(t); }, tafel);
+        await p.waitForTimeout(300);
+        await p.click("#mehrKnopf");
+        await p.waitForTimeout(450);
+        const mehr = await p.evaluate(() => {
+          const f = document.getElementById("mehrfach");
+          if(!f || f.hidden) return { offen:false, zeilen:[] };
+          return { offen:true, zeilen:[...f.querySelectorAll("button")].map(b => {
+            const r = b.getBoundingClientRect();
+            const el = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+            return { text:b.textContent.trim(), frei: !!el && (el === b || b.contains(el)),
+                     trifft: el ? (el.id || el.className || el.tagName) : "nichts" };
+          }) };
+        });
+        ok(mehr.offen && mehr.zeilen.length >= 3, tafel + ": „Mehr“ öffnet sich", mehr.zeilen.length + " Zeilen");
+        const verdeckt = mehr.zeilen.filter(z => !z.frei);
+        ok(mehr.offen && !verdeckt.length, tafel + ": jede Zeile in „Mehr“ ist mit dem Finger erreichbar",
+           verdeckt.map(z => z.text + " unter " + z.trifft).join(" | ") || "alle frei");
+        await p.keyboard.press("Escape");
+        await p.evaluate(() => { const f = document.getElementById("mehrfach");
+          if(f && !f.hidden) document.getElementById("mehrKnopf").click(); });
+        await p.waitForTimeout(200);
+      }
     } else {
       ok(g.filter && g.filter.pos === "static", "am Tresen bleiben die Filter oben stehen",
          g.filter ? g.filter.pos : "fehlt");

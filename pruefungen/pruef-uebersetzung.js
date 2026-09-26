@@ -411,8 +411,18 @@ for(const c of Object.keys(ANREDE)){
         } },
 
       /* Und der Grund, den DU beheben kannst, sobald du ihn liest. */
-      { name:"Schlüssel fehlt", grund: "kein_schluessel",
-        antwort: () => ({ fehler: "kein_schluessel", uebersetzt: {} }) }
+      { name:"Schlüssel fehlt", grund: "kein_schluessel", soll: /ANTHROPIC_API_KEY|eingerichtet/i,
+        antwort: () => ({ fehler: "kein_schluessel", uebersetzt: {} }) },
+
+      /* VORFALL 26.09., 16:53, live gemessen: Unter ANTHROPIC_API_KEY
+         standen 17 Zeichen — so lang wie der Name selbst. Das Board
+         zeigte „Der Übersetzer meldet: schluessel_form“. Die Funktion
+         liefert jetzt Art und Länge (nie den Wert), und das Board
+         muss daraus einen Satz machen, nach dem man handeln kann. */
+      { name:"Schlüssel falsch eingetragen", grund: "schluessel_form",
+        soll: /17 Zeichen.*sk-ant-api03-/,
+        antwort: () => ({ fehler: "schluessel_form", art: "zu_kurz", laenge: 17,
+                          andere_namen: [], uebersetzt: {} }) }
     ]){
       const bCtx = await browser.newContext({ viewport:{ width:390, height:844 } });
       const b = await bCtx.newPage();
@@ -549,12 +559,12 @@ for(const c of Object.keys(ANREDE)){
           const s = document.getElementById("uebStand");
           return [(m ? m.textContent : ""), (s ? s.textContent : "")].join(" | ");
         });
-        pruef(/ANTHROPIC_API_KEY|eingerichtet/i.test(anzeige),
-          "Grund · der fehlende Schlüssel steht im Klartext da",
-          anzeige.slice(0, 78) || "keine Anzeige");
-        pruef(!/kein_schluessel/.test(anzeige),
-          "Grund · und nicht als Maschinenwort",
-          /kein_schluessel/.test(anzeige) ? "roher Schlüsselname" : "Klartext");
+        pruef(fall.soll.test(anzeige),
+          fall.name + " · der Grund steht im Klartext da",
+          anzeige.slice(0, 110) || "keine Anzeige");
+        pruef(!anzeige.includes(fall.grund),
+          fall.name + " · und nicht als Maschinenwort",
+          anzeige.includes(fall.grund) ? "roher Grund: " + fall.grund : "Klartext");
       }else if(fall.antwort){
         pruef(stand.name === SPR.length && stand.beschr === SPR.length,
           "Übersetzer antwortet · Name und Beschreibung in " + SPR.length + " Sprachen",

@@ -46,9 +46,9 @@
 ================================================================= -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<!-- Schrift vom eigenen Server (schriften/seiten.css), nicht mehr von
+     Google: Das schickte bei jedem Aufruf die IP-Adresse dorthin. -->
+<link rel="stylesheet" href="/schriften/seiten.css">
 
 <!-- ================================================================
      BLOCK 3 — STYLES
@@ -250,6 +250,17 @@ button{
   border:1px solid rgba(255,106,94,.35); background:rgba(255,106,94,.10); color:#FFB5AE;
 }
 .msg.ok{border-color:rgba(127,207,166,.35); background:rgba(127,207,166,.10); color:#B7E9CF;}
+/* Ein Textknopf, kein zweiter großer Knopf: Anmelden bleibt die
+   Hauptsache. 44 px hoch, damit er mit dem Daumen zu treffen ist. */
+.btn-link{
+  display:block; margin:12px auto 0; min-height:44px; padding:0 12px;
+  background:none; border:0; color:var(--text-dim); font-size:15px;
+  text-decoration:underline; text-underline-offset:4px;
+}
+.btn-link:active{transform:scale(.97);}
+.btn-link.betont{color:var(--amber);}
+.neu-titel{margin:0 0 6px; font-size:20px; font-weight:700; color:var(--text);}
+.neu-hilfe{margin:0 0 18px; font-size:14px; line-height:1.5; color:var(--text-dim);}
 
 /* ================= APP ================= */
 #app{max-width:760px; margin:0 auto; padding:0 var(--pad);}
@@ -645,15 +656,39 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
     <small>Master Control</small>
   </div>
 
-  <div class="card login-box">
+  <!-- VORFALL 26.09. (Bildschirmfoto): Im Feld stand „hallo@omoteno.de“
+       — ein PLATZHALTER, den iOS auf dem dunklen Grund fast weiß zeigt,
+       wie eingetragen. Es ist die Adresse eines echten Kontos, und sie
+       stand für jeden sichtbar auf einer öffentlichen Seite. Kein
+       Platzhalter mehr, in keinem der Felder. -->
+  <div class="card login-box" id="loginBox">
     <label for="email">E-Mail</label>
-    <input id="email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false" placeholder="hallo@omoteno.de">
+    <input id="email" type="email" autocomplete="username" inputmode="email" autocapitalize="none" spellcheck="false">
 
     <label for="password">Passwort</label>
-    <input id="password" type="password" autocomplete="current-password" placeholder="••••••••">
+    <input id="password" type="password" autocomplete="current-password">
 
     <button id="loginBtn" class="btn-primary">Anmelden</button>
     <div id="loginMsg" class="msg hidden"></div>
+    <!-- Der Weg aus der Sperre. Vorher verwies die Meldung nur aufs
+         Bestell-Board — hier gab es keinen, und nach dem Link aus der
+         E-Mail keine Seite, die nach dem neuen Passwort fragte. -->
+    <button type="button" id="vergessenBtn" class="btn-link">Passwort vergessen?</button>
+    <div id="vergessenStand" class="msg hidden" aria-live="polite"></div>
+  </div>
+
+  <!-- Nach dem Link aus der E-Mail: hier das NEUE Passwort. Erst wenn es
+       gespeichert ist, hebt die Datenbank die Sperre auf
+       (admin_login_entsperren, Trigger auf auth.users). -->
+  <div class="card login-box hidden" id="neuBox">
+    <p class="neu-titel">Neues Passwort</p>
+    <p class="neu-hilfe">Mindestens acht Zeichen. Danach bist du angemeldet, und die Sperre ist aufgehoben.</p>
+    <label for="neu1">Neues Passwort</label>
+    <input id="neu1" type="password" autocomplete="new-password" minlength="8">
+    <label for="neu2">Noch einmal</label>
+    <input id="neu2" type="password" autocomplete="new-password" minlength="8">
+    <button id="neuBtn" class="btn-primary">Passwort speichern</button>
+    <div id="neuMsg" class="msg hidden" aria-live="polite"></div>
   </div>
 
   <p class="foot-note">Nur für dich. Kein Zugang für Betriebe.</p>
@@ -731,6 +766,13 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
   /* ============================================================
      6.1 KONFIGURATION — nur hier etwas eintragen
      ============================================================ */
+  /* Kommt die Seite aus dem Link „Passwort zurücksetzen“? Das steht nur
+     jetzt in der Adresse — supabase-js räumt sie beim Start ab und
+     meldet danach eine ganz normale Sitzung. Ohne diese Zeile lief der
+     Link direkt ins Dashboard, ohne nach dem neuen Passwort zu fragen,
+     und die Sperre blieb bestehen. */
+  var WIEDERHERSTELLEN = /type=recovery/.test(location.hash + location.search);
+
   var CONFIG = {
     SUPABASE_URL:      'https://quxwweuvdqtjsdwgjdrh.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk',
@@ -908,7 +950,9 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
 
       sb.auth.onAuthStateChange(function(event, session){
         console.log(LOG,'Auth-Event:',event, session ? session.user.email : 'keine Session');
+        if(event === 'SIGNED_OUT' && !$('neuBox').classList.contains('hidden')) return;
         if(event === 'SIGNED_OUT') zeigeLogin();
+        if(event === 'PASSWORD_RECOVERY') neuesPasswortZeigen();
       });
       return true;
     }catch(e){
@@ -962,7 +1006,7 @@ var PIN_STIL =
   ".pin-los:disabled{opacity:.55;cursor:default}" +
   ".pin-aus{background:transparent;color:var(--pin-leise);border:1px solid var(--pin-kante)}" +
   ".pin-los:focus-visible,.pin-aus:focus-visible{outline:2px solid var(--pin-schrift);outline-offset:2px}" +
-  ".pin-wackeln{animation:pin-wackeln 260ms ease-in-out}" +
+  ".pin-wackeln{animation:pin-wackeln 260ms cubic-bezier(.36,.07,.19,.97)}" +
   "@keyframes pin-wackeln{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}" +
   "@media (prefers-reduced-motion:reduce){.pin-wackeln{animation:none}.pin-punkte i{transition:none}}";
 
@@ -1104,8 +1148,12 @@ function pinSchirm(rufen, s){
       .then(function(r){ return r && !r.error ? r.data : null; }, function(){ return null; })
       .then(function(p){
         if(p && p.erlaubt !== true){
-          var t = p.nachricht || 'E-Mail oder Passwort stimmt nicht.';
-          if(p.gesperrt) t += ' Entsperren: am Bestell-Board auf „Passwort vergessen“ tippen.';
+          var t = (p.nachricht || 'E-Mail oder Passwort stimmt nicht.')
+            .replace(/\s*[—-]\s*bitte über „Passwort vergessen["“] die E-Mail bestätigen\.?/, '.');
+          if(p.gesperrt){
+            t += ' Tipp unten auf „Passwort vergessen?“ — mit dem Link aus der E-Mail setzt du ein neues Passwort, dann ist der Zugang wieder offen.';
+            $('vergessenBtn').classList.add('betont');
+          }
           else if(p.verbleibend === 1) t += ' Noch ein Versuch, dann ist der Zugang gesperrt.';
           else if(typeof p.verbleibend === 'number') t += ' Noch ' + p.verbleibend + ' Versuche.';
           meldung(t);
@@ -1136,6 +1184,7 @@ function pinSchirm(rufen, s){
     console.log(LOG,'Prüfe Session…');
     sb.auth.getSession().then(function(res){
       var s = res && res.data ? res.data.session : null;
+      if(s && s.user && WIEDERHERSTELLEN){ neuesPasswortZeigen(); return; }
       if(s && s.user){ console.log(LOG,'Session aktiv:',s.user.email); nurMaster(s.user.email); }
       else { console.log(LOG,'Keine Session'); }
     }).catch(function(e){ console.log(LOG,'FEHLER Session:',e); });
@@ -1171,11 +1220,69 @@ function pinSchirm(rufen, s){
     });
   }
 
+  /* ── Passwort vergessen ──────────────────────────────────────────
+     Derselbe Weg wie am Board: Supabase schickt einen signierten Link,
+     der zurück auf DIESE Seite führt (redirectTo). Die Adresse muss in
+     Supabase unter Authentication → URL Configuration erlaubt sein,
+     sonst landet der Link auf der „Site URL“. */
+  function resetFehlertext(e){
+    var t = String((e && (e.message || e.error_description)) || e || '');
+    if(/rate limit|Too many|security purposes/i.test(t)) return 'Gerade wurde schon ein Link verschickt. Bitte kurz warten und dann noch einmal.';
+    if(/not authorized|Email address not authorized/i.test(t))
+      return 'Supabase darf an diese Adresse noch keine E-Mails schicken — im Projekt fehlt ein eigener Mailversand (SMTP).';
+    if(/redirect/i.test(t)) return 'Diese Seite ist in Supabase noch nicht als Rücksprung-Adresse erlaubt.';
+    if(/Failed to fetch|NetworkError/i.test(t)) return 'Keine Verbindung. Bitte Netz prüfen.';
+    return t || 'Das hat nicht geklappt.';
+  }
+  function vergessen(){
+    var mail = ($('email').value || '').trim();
+    var stand = $('vergessenStand'), knopf = $('vergessenBtn');
+    var zeige = function(text, ok){ stand.textContent = text; stand.className = 'msg' + (ok ? ' ok' : ''); show(stand); };
+    if(!mail){ zeige('Trag oben zuerst deine E-Mail-Adresse ein.'); $('email').focus(); return; }
+    if(!sb){ zeige('Kein Client aktiv. Seite neu laden.'); return; }
+    knopf.disabled = true; knopf.textContent = 'Wird geschickt…';
+    sb.auth.resetPasswordForEmail(mail, { redirectTo: location.origin + location.pathname })
+      .then(function(r){
+        if(r && r.error) throw r.error;
+        zeige('Wenn es für diese Adresse ein Konto gibt, ist ein Link unterwegs. Er gilt eine Stunde — öffne ihn auf diesem Gerät.', true);
+      })
+      .catch(function(e){ console.log(LOG,'Reset-Fehler:', e); zeige(resetFehlertext(e)); })
+      .then(function(){ knopf.disabled = false; knopf.textContent = 'Passwort vergessen?'; });
+  }
+  function neuesPasswortZeigen(){
+    hide($('app')); show($('loginScreen'));
+    hide($('loginBox')); show($('neuBox')); hide($('neuMsg'));
+    setTimeout(function(){ $('neu1').focus(); }, 150);
+  }
+  function neuesPasswortSpeichern(){
+    var a = $('neu1').value || '', b2 = $('neu2').value || '', box = $('neuMsg'), knopf = $('neuBtn');
+    var fehler = function(t){ box.textContent = t; box.className = 'msg'; show(box); };
+    if(a.length < 8) return fehler('Bitte mindestens acht Zeichen.');
+    if(a !== b2) return fehler('Die beiden Eingaben sind nicht gleich.');
+    knopf.disabled = true; knopf.textContent = 'Wird gespeichert…';
+    sb.auth.updateUser({ password: a }).then(function(r){
+      if(r && r.error) throw r.error;
+      $('neu1').value = $('neu2').value = '';
+      WIEDERHERSTELLEN = false;
+      try{ history.replaceState(null, '', location.pathname); }catch(e){}
+      hide($('neuBox')); show($('loginBox'));
+      meldung('Neues Passwort gespeichert — die Sperre ist aufgehoben.', true);
+      var u = r && r.data && r.data.user;
+      return nurMaster(u ? u.email : '');
+    }).catch(function(e){
+      var t = String((e && e.message) || e);
+      fehler(/same|different/i.test(t) ? 'Bitte ein anderes Passwort als das alte wählen.'
+        : /session|expired|JWT|missing/i.test(t) ? 'Der Link ist abgelaufen. Bitte unter „Passwort vergessen?“ einen neuen anfordern.'
+        : resetFehlertext(e));
+    }).then(function(){ knopf.disabled = false; knopf.textContent = 'Passwort speichern'; });
+  }
+
   function zeigeLogin(){
     stoppeRealtime();
     clearInterval(refreshTimer);
     var ov = document.querySelector('.overlay'); if(ov) ov.remove();
     hide($('app')); show($('loginScreen'));
+    hide($('neuBox')); show($('loginBox'));
     $('password').value = ''; hide($('diagBox'));
     console.log(LOG,'Login-Screen sichtbar');
   }
@@ -2254,6 +2361,9 @@ function pinSchirm(rufen, s){
 
     $('loginBtn').addEventListener('click', login);
     $('password').addEventListener('keydown', function(e){ if(e.key === 'Enter') login(); });
+    $('vergessenBtn').addEventListener('click', vergessen);
+    $('neuBtn').addEventListener('click', neuesPasswortSpeichern);
+    $('neu2').addEventListener('keydown', function(e){ if(e.key === 'Enter') neuesPasswortSpeichern(); });
     $('refreshBtn').addEventListener('click', function(){ toast('Aktualisiere…'); ladeAlles(); });
     $('addBtn').addEventListener('click', function(){ oeffneUmsatzSheet(null); });
     $('menuBtn').addEventListener('click', zeigeDiagnose);

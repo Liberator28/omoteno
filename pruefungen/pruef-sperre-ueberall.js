@@ -44,7 +44,7 @@ function pruef(gut, text, zusatz){
    wieder: true → PASSWORD_RECOVERY wird gemeldet */
 function ersatz(lage){
   return "(function(lage){" + `
-    window.__rufe = { anmelden:[], signIn:[], signOut:0, updateUser:[], master:0 };
+    window.__rufe = { anmelden:[], signIn:[], signOut:0, updateUser:[], master:0, reset:[] };
     const nutzer = { id:"00000000-0000-0000-0000-000000000001", email:"wirt@probe.de" };
     let sitzung = lage.sitzung ? { user:nutzer, access_token:"x" } : null;
     const horcher = [];
@@ -69,7 +69,8 @@ function ersatz(lage){
             return { data:{ user:nutzer, session:sitzung }, error:null }; },
           signOut: async () => { window.__rufe.signOut++; sitzung = null; horcher.forEach(f => f("SIGNED_OUT", null)); return {}; },
           updateUser: async (a) => { window.__rufe.updateUser.push(a); return { data:{ user:nutzer }, error:null }; },
-          resetPasswordForEmail: async () => ({ error:null }),
+          resetPasswordForEmail: async (mail, opt) => { window.__rufe.reset.push({ mail, opt });
+            return lage.resetFehler ? { error:{ message:lage.resetFehler } } : { error:null }; },
           onAuthStateChange: (f) => { horcher.push(f);
             if(lage.wieder) setTimeout(() => f("PASSWORD_RECOVERY", sitzung), 30);
             return { data:{ subscription:{ unsubscribe(){} } } }; },
@@ -207,6 +208,90 @@ async function seiteMit(browser, datei, lage, zusatz){
     const r = await p.evaluate(() => ({ app: getComputedStyle(document.getElementById("app")).display !== "none", rufe: window.__rufe }));
     pruef(r.rufe.master >= 1 && r.rufe.signOut >= 1 && !r.app, "Master · gemerkte Sitzung eines Wirts: beim Laden abgemeldet",
       JSON.stringify({ ist_master:r.rufe.master, signOut:r.rufe.signOut, app:r.app }));
+    await ctx.close();
+  }
+
+  /* ══ 2b · Master: der Weg aus der Sperre ═════════════════════════
+     VORFALL 26.09. (Bildschirmfoto): Nach drei Fehlversuchen stand in
+     der Zentrale nur „Entsperren: am Bestell-Board …“. Hier gab es kein
+     „Passwort vergessen“, und der Link aus der E-Mail führte direkt ins
+     Dashboard, ohne nach dem neuen Passwort zu fragen — die Sperre
+     blieb. Dazu stand eine echte Adresse als Platzhalter im Feld. */
+  console.log("\n══ Master: Passwort vergessen ══");
+  {
+    const fs = require("fs");
+    const seiten = fs.readdirSync(path.join(__dirname, "..", "seiten")).filter(n => n.endsWith(".html"));
+    const echte = [];
+    seiten.forEach(n => { const t = fs.readFileSync(path.join(__dirname, "..", "seiten", n), "utf8");
+      for(const m of t.matchAll(/placeholder="([^"]*@[^"]*)"/g)) if(/omoteno|choco|blend|minhkeey/i.test(m[1])) echte.push(n + ": " + m[1]); });
+    pruef(echte.length === 0, "keine echte Adresse als Platzhalter, auf keiner Seite", echte.join(" | ") || seiten.length + " Seiten");
+    const { ctx, p, kons } = await seiteMit(browser, "master.html", { sperre:"gesperrt", master:true });
+    const leer = await p.evaluate(() => ({ mail: document.getElementById("email").value, ph: document.getElementById("email").placeholder,
+      pw: document.getElementById("password").placeholder }));
+    pruef(!leer.mail && !leer.ph && !leer.pw, "Master · Felder ohne vorgeschlagene Adresse", JSON.stringify(leer));
+    const r = await anmeldenMaster(p);
+    const knopf = await p.evaluate(() => { const b = document.getElementById("vergessenBtn"); const q = b.getBoundingClientRect();
+      return { da: q.height >= 44 && getComputedStyle(b).display !== "none", betont: b.classList.contains("betont") }; });
+    pruef(/Passwort vergessen\?/.test(r.text) && knopf.da && knopf.betont, "Master · gesperrt: zeigt auf „Passwort vergessen?“ HIER, nicht aufs Board",
+      r.text.slice(0, 90));
+    pruef(!/Bestell-Board/.test(r.text), "Master · kein Verweis mehr aufs Bestell-Board");
+    await p.fill("#email", "");
+    await p.click("#vergessenBtn"); await p.waitForTimeout(200);
+    let v = await p.evaluate(() => ({ t: document.getElementById("vergessenStand").textContent, n: window.__rufe.reset.length }));
+    pruef(v.n === 0 && /E-Mail-Adresse/.test(v.t), "Master · ohne Adresse: nichts verschickt, sagt warum", v.t);
+    await p.fill("#email", "master@probe.de");
+    await p.click("#vergessenBtn"); await p.waitForTimeout(300);
+    v = await p.evaluate(() => ({ t: document.getElementById("vergessenStand").textContent, r: window.__rufe.reset }));
+    pruef(v.r.length === 1 && v.r[0].mail === "master@probe.de" && /master\.html$/.test((v.r[0].opt || {}).redirectTo || ""),
+      "Master · Link wird angefordert, Rücksprung auf DIESE Seite", JSON.stringify(v.r[0]));
+    pruef(/Link/.test(v.t), "Master · und sagt, dass er unterwegs ist", v.t.slice(0, 60));
+    pruef(kons.length === 0, "Master · keine Ausnahme", kons[0] || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, p } = await seiteMit(browser, "master.html", { sperre:"gesperrt", master:true, resetFehler:"Email address not authorized" });
+    await p.fill("#email", "master@probe.de");
+    await p.click("#vergessenBtn"); await p.waitForTimeout(300);
+    const t = await p.evaluate(() => document.getElementById("vergessenStand").textContent);
+    pruef(/Mailversand|SMTP/.test(t) && !/not authorized/.test(t), "Master · kein Mailversand: ein Satz statt Englisch", t.slice(0, 80));
+    await ctx.close();
+  }
+  for(const [weg, lage, adresse] of [["nur Adresse", { sitzung:true, master:true }, "#access_token=x&type=recovery"],
+                                     ["nur Ereignis", { sitzung:true, master:true, wieder:true }, ""]]){
+    const { ctx, p } = await seiteMit(browser, "master.html", lage, adresse);
+    await p.waitForTimeout(300);
+    const s = await p.evaluate(() => ({ neu: !document.getElementById("neuBox").classList.contains("hidden"),
+      login: !document.getElementById("loginBox").classList.contains("hidden"),
+      app: getComputedStyle(document.getElementById("app")).display !== "none" }));
+    pruef(s.neu && !s.login && !s.app, "Master · " + weg + ": „Neues Passwort“ statt Dashboard", JSON.stringify(s));
+    await ctx.close();
+  }
+  {
+    const { ctx, p, kons } = await seiteMit(browser, "master.html", { sitzung:true, master:true }, "#access_token=x&type=recovery");
+    await p.waitForTimeout(300);
+    await p.fill("#neu1", "kurz"); await p.fill("#neu2", "kurz");
+    await p.click("#neuBtn"); await p.waitForTimeout(200);
+    let r = await p.evaluate(() => ({ t: document.getElementById("neuMsg").textContent, n: window.__rufe.updateUser.length }));
+    pruef(r.n === 0 && /acht Zeichen/.test(r.t), "Master · zu kurz wird nicht gespeichert", r.t);
+    await p.fill("#neu1", "neuesPasswort1"); await p.fill("#neu2", "neuesPasswort2");
+    await p.click("#neuBtn"); await p.waitForTimeout(200);
+    r = await p.evaluate(() => ({ t: document.getElementById("neuMsg").textContent, n: window.__rufe.updateUser.length }));
+    pruef(r.n === 0 && /nicht gleich/.test(r.t), "Master · zwei verschiedene Eingaben werden nicht gespeichert", r.t);
+    await p.fill("#neu2", "neuesPasswort1");
+    await p.click("#neuBtn"); await p.waitForTimeout(900);
+    r = await p.evaluate(() => ({ rufe: window.__rufe.updateUser, master: window.__rufe.master, hash: location.hash,
+      app: getComputedStyle(document.getElementById("app")).display !== "none" }));
+    pruef(r.rufe.length === 1 && r.rufe[0].password === "neuesPasswort1" && !/recovery/.test(r.hash) && r.master >= 1 && r.app,
+      "Master · neues Passwort gesetzt, Rolle geprüft, Zentrale offen, Adresse sauber", JSON.stringify({ n:r.rufe.length, master:r.master, app:r.app, hash:r.hash }));
+    pruef(kons.length === 0, "Master · keine Ausnahme", kons[0] || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, p } = await seiteMit(browser, "master.html", { sitzung:true, master:true });
+    await p.waitForTimeout(300);
+    const s = await p.evaluate(() => ({ neu: !document.getElementById("neuBox").classList.contains("hidden"),
+      app: getComputedStyle(document.getElementById("app")).display !== "none" }));
+    pruef(!s.neu && s.app, "Master · ohne Link kein Passwort-Formular, Zentrale wie gewohnt", JSON.stringify(s));
     await ctx.close();
   }
 

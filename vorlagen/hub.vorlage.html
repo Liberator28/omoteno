@@ -388,9 +388,13 @@ h1{
   font-weight:600;letter-spacing:-.2px;align-self:end;
 }
 .claim{
-  grid-area:claim;margin:3px 0 0;align-self:start;
+  grid-area:claim;margin:3px 0 0;align-self:start;text-wrap:balance;
   font-size:12.5px;line-height:1.4;color:rgba(251,246,242,.62);
   font-style:italic;
+  /* Bis 90 Zeichen erlaubt (seit 26.09.). Mehr als drei Zeilen würden
+     den Kopf auf JEDER Seite hochschieben — die dritte endet mit „…",
+     und die Vorschau im Board zeigt genau das. */
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
 #status{grid-area:status;padding:14px 0 0}
 /* Platz reservieren: h1, .claim, #status und #inhalt sind im HTML leer und
@@ -920,7 +924,13 @@ body[data-thema="kaiserlich"] a.tipp::after{
 
 /* Die drei Karten-Säulen: das, weshalb der Gast das Handy überhaupt
    ans Holz hält. Deshalb groß, nebeneinander, farbig. */
-.gitter.saeulen{grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:4px}
+/* Sechs Spalten tragen Drittel, Hälfte und ganz (kachelReihen). */
+.gitter.kraster{grid-template-columns:repeat(6,minmax(0,1fr))}
+.gitter.kraster > a.kachel{grid-column:span 6;min-width:0}
+.gitter.kraster > a.kachel[data-spalten="2"]{grid-column:span 2}
+.gitter.kraster > a.kachel[data-spalten="3"]{grid-column:span 3}
+.gitter.kraster > a.kachel[data-spalten="4"]{grid-column:span 4}
+.gitter.mitsaeulen{margin-bottom:4px}
 a.kachel.saeule{
   flex-direction:column;align-items:flex-start;justify-content:space-between;
   gap:14px;padding:14px 12px 13px;min-height:132px;text-align:left
@@ -976,7 +986,7 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
    wäre doppelt. Das Feld bleibt als ruhiger Grund, die Größe wächst. */
 .ico.bz-ico{font-size:30px;background:var(--flaeche-2);color:var(--tinte);overflow:visible}
 .kachel.saeule .ico.bz-ico{font-size:32px}
-.gitter.zwei .ico.bz-ico{font-size:27px}
+.kachel.khalb .ico.bz-ico{font-size:27px}
 a.kachel:active .bz, .rufknopf:active .bz{transform:scale(1.14)}
 @media (prefers-reduced-motion:reduce){ .bz, .bz-still, .bz-film{transition:none} }
 /* Ein gezeichnetes Zeichen im Knopf, dort wo vorher ein Emoji stand. */
@@ -985,8 +995,13 @@ a.kachel:active .bz, .rufknopf:active .bz{transform:scale(1.14)}
          stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .kachel.cyan .ico{background:var(--pistazie-flaeche);color:var(--pistazie)}
 .txt{min-width:0}
-.txt strong{display:block;font-size:14.5px;font-weight:600;margin-bottom:1px;letter-spacing:-.1px}
-.txt > span{font-size:12px;color:var(--tinte-leise);line-height:1.35;display:block}
+/* Kacheltexte: Titel bis 40, Unterzeile bis 90 Zeichen (seit 26.09.).
+   Feste Zeilengrenze, damit eine lange Kachel ihre Nachbarin nicht
+   mitzieht (§3.7) — was abgeschnitten wird, zeigt die Board-Vorschau. */
+.txt strong{font-size:14.5px;font-weight:600;margin-bottom:1px;letter-spacing:-.1px;text-wrap:balance;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.txt > span{font-size:12px;color:var(--tinte-leise);line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .txt .neu{
   display:inline-block;font-size:8.5px;letter-spacing:1px;font-weight:700;
   color:var(--flaeche);background:var(--rot);border-radius:4px;padding:2px 5px;
@@ -999,13 +1014,13 @@ a.kachel:active .bz, .rufknopf:active .bz{transform:scale(1.14)}
 .leer{color:var(--tinte-leise);font-size:14px;text-align:center;padding:36px 12px;line-height:1.6}
 
 /* Kleine Kacheln in zwei Spalten für alles Nebensächliche */
-.gitter.zwei{grid-template-columns:1fr 1fr}
-.gitter.zwei a.kachel{padding:12px;gap:10px;align-items:center;min-height:60px}
-.gitter.zwei .ico{width:34px;height:34px;flex:0 0 34px;border-radius:10px}
-.gitter.zwei .ico svg{width:17px;height:17px}
-.gitter.zwei .txt strong{font-size:13.5px}
-.gitter.zwei .txt > span{display:none}
-.gitter.zwei .pfeil{display:none}
+/* Die halbe Kachel (früher „Zweierraster“): kompakt, nur der Titel. */
+a.kachel.khalb{padding:12px;gap:10px;align-items:center;min-height:60px}
+.kachel.khalb .ico{width:34px;height:34px;flex:0 0 34px;border-radius:10px}
+.kachel.khalb .ico svg{width:17px;height:17px}
+.kachel.khalb .txt strong{font-size:13.5px}
+.kachel.khalb .txt > span{display:none}
+.kachel.khalb .pfeil{display:none}
 
 /* ═══ Banner auf der Kachel ═════════════════════════════════════
    Der Wirt lädt im Board ein Bild hoch. Die entscheidende Regel
@@ -1080,7 +1095,75 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
    Kachel ist knapp 60px hoch und zeigt nur eine Titelzeile ohne
    Unterzeile (Zeile 963), da bleibt bei stärkerem Zuwachs zu wenig
    Luft neben dem Symbol. */
-.gitter.zwei .kbanner{width:44%}
+.kachel.khalb .kbanner{width:44%}
+
+/* ═══ Eigene Farbe der Kachel (hub_kacheln.grund) ═══════════════
+   Die Fläche wählt der Wirt, die Schrift rechnet kachelTinte() —
+   reines Schwarz oder Weiß, im ungünstigsten Fall 4,58:1. Alles auf
+   der Kachel nimmt --k-tinte: Titel, Unterzeile, Symbol, Pfeil. */
+/* Vorgabe an JEDER Kachel, damit die Variablen immer einen Wert haben
+   (§3.1); die Angabe im style= der Kachel des Wirts schlägt sie. */
+a.kachel{--k-grund:var(--flaeche);--k-tinte:var(--tinte)}
+a.kachel.hatgrund{background:var(--k-grund);border-color:transparent;color:var(--k-tinte)}
+a.kachel.hatgrund .txt strong,
+a.kachel.hatgrund .txt > span,
+a.kachel.hatgrund .pfeil{color:var(--k-tinte)}
+a.kachel.hatgrund .ico,
+a.kachel.hatgrund.cyan .ico,
+a.kachel.hatgrund.saeule[data-farbe] .ico{background:color-mix(in srgb, var(--k-tinte) 14%, transparent);color:var(--k-tinte)}
+a.kachel.hatgrund .kbanner::after{background:linear-gradient(to right, var(--k-grund) 0%, var(--k-grund) 12%, transparent 62%)}
+a.kachel.hatgrund.saeule .kbanner::after{background:linear-gradient(to bottom, transparent 40%, var(--k-grund) 100%)}
+
+/* ═══ Bildform (hub_kacheln.bildform) ═══════════════════════════
+   seite   — wie bisher: das Bild neben bzw. über der Schrift.
+   flaeche — das Bild füllt die ganze Kachel. Hier liegt Schrift AUF
+             dem Foto, deshalb ein gleichmäßiger Schleier von 58 %
+             Schwarz und weiße Schrift: Selbst über einem rein weißen
+             Foto bleibt das 5,3:1 (gerechnet und in pruef-kachelraster
+             nachgemessen) — die Regel „nie Schrift auf dem Foto“ oben
+             gilt für alle Formen, bei denen man es nicht rechnen kann.
+   rund    — das Foto als Kreis an der Stelle des Symbols. */
+a.kachel.bild-flaeche{background:#000;border-color:transparent;color:#fff;min-height:88px}
+a.kachel.bild-flaeche > .kbanner,
+.kachel.saeule.bild-flaeche > .kbanner{position:absolute;inset:0;width:auto;height:auto;margin:0;border-radius:inherit}
+a.kachel.bild-flaeche > .kbanner::after,
+a.kachel.hatgrund.bild-flaeche > .kbanner::after,
+.kachel.saeule.bild-flaeche > .kbanner::after{background:rgba(0,0,0,.58)}
+a.kachel.bild-flaeche > .txt{max-width:100%}
+a.kachel.bild-flaeche .txt strong,
+a.kachel.bild-flaeche .txt > span,
+a.kachel.bild-flaeche .pfeil{color:#fff}
+a.kachel.bild-flaeche .ico,
+a.kachel.bild-flaeche.saeule[data-farbe] .ico,
+a.kachel.bild-flaeche.cyan .ico{background:rgba(255,255,255,.16);color:#fff}
+a.kachel.saeule.bild-flaeche{padding-top:14px;justify-content:flex-end}
+a.kachel.bild-flaeche > .pfeil{display:block}
+.kachel.saeule.bild-flaeche > .pfeil,.kachel.khalb.bild-flaeche > .pfeil{display:none}
+
+a.kachel.bild-rund > .kbanner,
+.kachel.saeule.bild-rund > .kbanner{position:static;width:52px;height:52px;flex:0 0 52px;margin:0;
+  border-radius:50%;box-shadow:0 0 0 2px var(--flaeche)}
+.kachel.khalb.bild-rund > .kbanner{width:40px;height:40px;flex:0 0 40px}
+a.kachel.bild-rund > .kbanner::after{display:none}
+a.kachel.bild-rund > .txt{max-width:100%}
+a.kachel.saeule.bild-rund{padding-top:14px}
+a.kachel.bild-rund > .pfeil{display:block}
+.kachel.khalb.bild-rund > .pfeil,.kachel.saeule.bild-rund > .pfeil{display:none}
+
+/* ═══ Ohne Symbol ═══════════════════════════════════════════════
+   Wunsch des Betreibers: „auch wenn die Emojis entfernt werden, soll
+   es trotzdem gut aussehen und nicht so leer“. Die Schrift wird größer
+   und bekommt einen kurzen Akzentstrich; die Säule setzt sie nach
+   unten, damit oben kein Loch bleibt, wo das Symbol stand. */
+a.kachel.ohneico .txt::before{content:"";display:block;width:22px;height:3px;border-radius:2px;
+  background:var(--rot);margin-bottom:8px;opacity:.9}
+a.kachel.hatgrund.ohneico .txt::before{background:var(--k-tinte)}
+a.kachel.ohneico .txt strong{font-size:16px;line-height:1.22}
+a.kachel.saeule.ohneico{justify-content:flex-end}
+a.kachel.saeule.ohneico .txt strong{font-size:17px}
+a.kachel.khalb.ohneico{padding-left:14px}
+a.kachel.khalb.ohneico .txt::before{margin-bottom:6px}
+a.kachel.khalb.ohneico .txt strong{font-size:14.5px}
 
 /* ═══ Aktions-Banner-Rad ═══════════════════════════════════════════
    Anders als .kbanner oben ausdrücklich Text AUF dem Foto, wischbar
@@ -1096,18 +1179,22 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
    in jedem Haus und in jeder Tag/Abend-Lage gleich dunkel, unabhängig
    von der sonst gültigen Markenpalette — wie --schleier im
    Admin-Board eine Sperrfläche ist, keine Glas-Fläche. */
-.bnrad{margin:0 0 18px}
+.bnrad{margin:0 calc(-1 * var(--rand)) 18px}
 .bnspur{
-  display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
+  display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;
   scrollbar-width:none;
-  /* Zentrier-Trick wie .avspur im Admin-Board: die halbe Kartenbreite
-     (87%/2) als Innenabstand lässt die erste/letzte Karte mittig
-     ankommen. */
-  padding-inline:calc(50% - 43.5%);
+  /* Das Rad läuft bis an den Schirmrand (negativer Rand = --rand des
+     body), die Karte ist genau so breit wie die Kacheln darunter. Der
+     Innenabstand --rand lässt die erste/letzte Karte bündig mit den
+     Kacheln mittig ankommen; die Nachbarkarte lugt um --rand − gap
+     (9 px bei 360, 12 px darüber) herein — sichtbar, dass es weitergeht.
+     Vorher 87 % der Innenbreite: bei 360 px 250 statt 330 px, die
+     Seite wirkte halb leer. */
+  padding-inline:var(--rand);
 }
 .bnspur::-webkit-scrollbar{display:none}
 .bnkarte{
-  flex:0 0 87%;scroll-snap-align:center;position:relative;
+  flex:0 0 100%;scroll-snap-align:center;position:relative;
   aspect-ratio:4/3;border-radius:var(--rundung);overflow:hidden;
   display:block;color:#fff;text-decoration:none;
   border:0;background:var(--flaeche-2);padding:0;font:inherit;
@@ -1123,13 +1210,23 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
   position:absolute;left:0;right:0;bottom:0;z-index:1;
   padding:16px 18px;
 }
+/* Drei Zeilen statt zwei: Titel bis 80, Unterzeile bis 160 Zeichen
+   (seit 26.09.). Bei 360 px und 4:3 bleibt das Bild darüber sichtbar;
+   was darüber hinausgeht, endet mit „…" — die Vorschau im Board
+   zeigt es. */
+/* Ausgewogen statt „alles in die erste Zeile“: text-wrap:balance
+   verteilt die Wörter gleichmäßig (Wunsch 26.09.: „ansehnlich und
+   symmetrisch“). pre-line lässt eine Zeile, die der Wirt mit Enter
+   selbst beendet hat, genau dort brechen. */
+.bntxt b,.bntxt span{text-wrap:balance;white-space:pre-line}
+.bnkarte[data-ausrichtung="mitte"] .bntxt{text-align:center}
 .bntxt b{
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
   overflow:hidden;font-size:17px;font-weight:700;line-height:1.25;
   text-shadow:0 1px 3px rgba(0,0,0,.35);
 }
 .bntxt span{
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;
   overflow:hidden;font-size:13px;margin-top:3px;opacity:.92;line-height:1.35;
 }
 .bnpunkte{display:flex;justify-content:center;gap:6px;margin-top:10px}
@@ -1459,8 +1556,20 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
 }
 .ed-foto{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity var(--mittel) var(--weich)}
 .ed-bildflaeche.mitfoto .ed-foto{opacity:1}
-.ed-emo{font-size:clamp(96px, 30vw, 150px);line-height:1;color:var(--tinte)}
+.ed-emo{font-size:clamp(120px, 40vw, 184px);line-height:1;color:var(--tinte)}
 .ed-emo .bz{width:1em;height:1em}
+/* Die oberste Karte ohne Bild atmet: Das Zeichen schwebt langsam auf
+   und ab, während der Film in seinem Takt spielt. Nur translate — ein
+   scale auf der Ebene würde auf manchen Geräten das Vektorbild als
+   Raster strecken und weich zeichnen. */
+/* Nur unter no-preference: Eine Gegenregel unter reduce verlor hier
+   gegen die spezifischere Regel (gemessen: animationName blieb
+   edSchweben). */
+@media (prefers-reduced-motion:no-preference){
+  .ed-karte[data-tiefe="0"] .ed-bildflaeche:not(.mitfoto):not(.mitpop) .ed-emo{
+    animation:edSchweben 2.8s ease-in-out infinite alternate}
+}
+@keyframes edSchweben{from{transform:translateY(4px)}to{transform:translateY(-6px)}}
 /* Der Freisteller schwebt über dem Verlauf — ohne Rahmen, mit einem
    Schatten darunter, der aus dem Ausschnitt ein Ding macht. contain,
    nie cover: ein beschnittenes Gericht ist schlimmer als ein kleineres. */
@@ -1898,7 +2007,13 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 
 /* ── Passt dazu ── eine waagerecht rollbare Reihe kleiner Karten. */
 .dazu{margin:18px 0 6px}
-.dazu-kopf{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tinte-leise);margin:0 0 10px}
+.dazu-kopf{font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--tinte-leise);margin:0 0 3px}
+.dazu-satz{font-size:14px;line-height:1.4;color:var(--tinte);margin:0 0 10px}
+/* Bild, Grund und Name sind EIN Knopf (Details). Zurückgesetzt, damit
+   er aussieht wie der Kartenteil, der er vorher war. */
+.dazu-info{display:flex;flex-direction:column;gap:3px;background:none;border:0;padding:0;margin:0;
+  font:inherit;color:inherit;text-align:left;cursor:pointer;width:100%}
+.dazu-info:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:calc(var(--rundung) - 4px)}
 /* Unten Luft für den Kartenschatten: Ein Rollbereich schneidet alles
    ab, was über ihn hinausragt — mit 8 px stand eine harte Kante unter
    den Karten (gesehen im ersten Bildschirmfoto). */
@@ -1933,6 +2048,16 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .merkzeile .mn{flex:1;font-size:14.5px;font-weight:600;line-height:1.3;padding-top:2px}
 .merkzeile .mn small{display:block;font-size:12.5px;color:var(--tinte-leise);font-weight:400;margin-top:3px;line-height:1.45}
 .merkzeile .mn .stueck{display:block;font-size:12.5px;color:var(--tinte-still);font-weight:400;margin-top:4px}
+/* Als Knopf (Details öffnen): Die Schrift des Knopfes ist die des
+   Systems, der Text zentriert, der Grund grau — alles zurücksetzen,
+   damit die Zeile aussieht wie vorher, nur antippbar. */
+button.mn{display:block;text-align:left;background:none;border:0;padding:2px 0 0;margin:0;
+  font:inherit;font-size:14.5px;font-weight:600;line-height:1.3;color:var(--tinte);cursor:pointer;
+  min-height:44px;-webkit-tap-highlight-color:transparent}
+button.mn:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-radius:6px}
+.merkzeile .mn .mdetail{display:inline-flex;align-items:center;gap:4px;margin-top:6px;font-size:12px;font-weight:600;
+  color:var(--tinte-leise);text-decoration:underline;text-underline-offset:3px;text-decoration-thickness:1px}
+.merkzeile .mn .mdetail::after{content:"›";display:inline-block;text-decoration:none;font-size:14px;line-height:1}
 .merkzeile .rechts{display:flex;flex-direction:column;align-items:flex-end;gap:9px;flex:0 0 auto}
 /* ══ Bestellung zum Zeigen ══════════════════════════════════════
    Alles darauf ist für den ZWEITEN Leser gemacht: die Servicekraft,
@@ -2464,6 +2589,24 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 .bs-warte b{font-size:16.5px;font-weight:700;color:var(--pistazie)}
 .bs-warte span{font-size:12.5px;color:var(--tinte-still)}
 [dir="rtl"] .bs-stufe{flex-direction:row-reverse}
+/* Nachricht vom Haus (Notiz des Teams, zweimal bestätigt). Steht unter
+   den Stufen, mit eigenem Rand: Sie ist ein Satz von Menschen, keine
+   Anzeige der Software. Der Text kommt ungefiltert vom Betrieb und wird
+   NICHT übersetzt — er ist ein eigener Satz des Hauses (§8.1g A). */
+.hausnachricht{margin-top:13px;padding-top:13px;border-top:1px solid var(--linie)}
+.hn-titel{font-size:10.5px;font-weight:700;letter-spacing:1.6px;text-transform:uppercase;
+  color:var(--tinte-leise);margin-bottom:8px}
+.hn-text{margin:0 0 8px;font-size:15px;line-height:1.5;color:var(--tinte);
+  white-space:pre-wrap;overflow-wrap:anywhere}
+.hn-text:last-child{margin-bottom:0}
+.hn-zeit{display:block;font-size:12px;color:var(--tinte-leise);margin-top:2px}
+/* Die eigenen Reservierungsanfragen, oben auf der Reservierungsseite. */
+.resstand{display:flex;flex-direction:column;gap:10px;margin:0 0 20px}
+.rs-karte{background:var(--flaeche);border:1px solid var(--linie);border-radius:var(--rundung);
+  padding:14px 16px;box-shadow:var(--schatten)}
+.rs-wann{font-size:15.5px;font-weight:600;color:var(--tinte)}
+.rs-stand{font-size:13.5px;color:var(--tinte-leise);margin-top:3px}
+.rs-stand.bestaetigt{color:var(--pistazie);font-weight:600}
 
 /* ═══ Service rufen ═════════════════════════════════════════════ */
 .rufreihe{display:flex;flex-direction:column;gap:9px;margin-bottom:20px}
@@ -2721,7 +2864,7 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   display:block;font-size:10px;letter-spacing:1.6px;font-weight:700;
   color:var(--rot);text-transform:uppercase;margin-bottom:2px;
 }
-.aktion .name{font-weight:700;font-size:15.5px;line-height:1.25}
+.aktion .name{font-weight:700;font-size:15.5px;line-height:1.25;text-wrap:balance}
 .aktion .preise{display:flex;align-items:baseline;gap:8px;white-space:nowrap}
 .aktion .alt{color:var(--tinte-still);text-decoration:line-through;font-size:13px}
 .aktion .neu{color:var(--rot);font-weight:700;font-size:19px}
@@ -2927,7 +3070,7 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .1s both;
 }
 .willkommen .wort{
-  font-size:15px;color:var(--tinte-leise);max-width:24ch;margin:0;
+  font-size:15px;color:var(--tinte-leise);max-width:30ch;margin:0;text-wrap:balance;
   animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .26s both;
 }
 .willkommen .figur{animation:wkFigur .9s cubic-bezier(.16,1,.3,1) both}
@@ -3232,7 +3375,7 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 @media (max-width:360px){
   body{--rand:15px}
   h1{font-size:19px}
-  .gitter.saeulen{gap:7px}
+  .gitter.mitsaeulen{gap:7px}
   a.kachel.saeule{min-height:124px;padding:12px 10px}
   .kachel.saeule .txt strong{font-size:14px}
 }
@@ -3309,6 +3452,44 @@ const SCHRIFTEN = {
   "mono":            'ui-monospace,SFMono-Regular,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace',
   "schreib":         '"Snell Roundhand","Apple Chancery","Segoe Script","Brush Script MT",cursive'
 };
+
+/* ═══ SCHRIFTEN AUS DEM BOARD ══════════════════════════════════════
+   Wunsch (26.09.): Schriften im Board wählen — aus einer Auswahl oder
+   eine eigene. SCHRIFTEN oben sind Systemschriften: „Didot“ gibt es
+   auf dem iPhone, auf Android nicht, und der Gast sähe dort Georgia.
+   Die Auswahl hier sind echte Webschriften, selbst ausgeliefert unter
+   omoteno.de/schriften/ (SIL OFL, auslieferung/schriften/LIZENZEN.txt)
+   — NICHT von Google: Deren Server bekämen die IP-Adresse jedes Gastes
+   (LG München I, 3 O 17493/20).
+
+   Geladen wird nur, was gewählt ist: je Stärke eine latin-Datei, die
+   latin-ext-Datei nur, wenn Türkisch/Polnisch/Rumänisch sie braucht
+   (unicode-range). Rückfall ist die Systemschrift gleicher Art, damit
+   ein fehlendes Zeichen nicht in einer ganz anderen Form erscheint.
+
+   Zweite Quelle: SCHRIFT_WAHL in seiten/admin.html — pruef-schriften.js
+   hält beide Listen und die Dateien gegeneinander. */
+const SCHRIFT_BEREICH = {
+  "latin":     "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+  "latin-ext": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF"
+};
+const SCHRIFT_WEB = {
+  playfair:   { familie:"Playfair Display",   datei:"playfair-display",   staerken:[400,700], rueck:"serif-hoch" },
+  cormorant:  { familie:"Cormorant Garamond", datei:"cormorant-garamond", staerken:[400,700], rueck:"serif-klassisch" },
+  dmserif:    { familie:"DM Serif Display",   datei:"dm-serif-display",   staerken:[400],     rueck:"serif-hoch" },
+  fraunces:   { familie:"Fraunces",           datei:"fraunces",           staerken:[400,700], rueck:"serif-klassisch" },
+  bebas:      { familie:"Bebas Neue",         datei:"bebas-neue",         staerken:[400],     rueck:"grotesk-eng" },
+  pacifico:   { familie:"Pacifico",           datei:"pacifico",           staerken:[400],     rueck:"schreib" },
+  caveat:     { familie:"Caveat",             datei:"caveat",             staerken:[400,700], rueck:"schreib" },
+  lora:       { familie:"Lora",               datei:"lora",               staerken:[400,700], rueck:"serif-eng" },
+  nunito:     { familie:"Nunito",             datei:"nunito",             staerken:[400,700], rueck:"rund" },
+  worksans:   { familie:"Work Sans",          datei:"work-sans",          staerken:[400,700], rueck:"grotesk" },
+  sourcesans: { familie:"Source Sans 3",      datei:"source-sans-3",      staerken:[400,700], rueck:"grotesk" },
+  dmsans:     { familie:"DM Sans",            datei:"dm-sans",            staerken:[400,700], rueck:"grotesk" }
+};
+/* Fest von der Hauptadresse — wie /emoji/: Auf choco-lamour.omoteno.de
+   lenkt _redirects alles in den Hub-Ordner. */
+const SCHRIFT_BASIS = window.OMOTENO_SCHRIFT_BASIS || "https://omoteno.de/schriften/";
 
 const SCHATTEN = {
   weich: "0 1px 2px rgba(42,26,20,.05), 0 8px 22px rgba(42,26,20,.06)",
@@ -4379,7 +4560,21 @@ const KACHELFOLGE = ["speisekarte","getraenke","cocktails",
    Kachel bauen. Was der Wirt schicken darf, steht in ERLAUBT — alles
    andere aus dem Markenblatt wird ignoriert, nicht übernommen. */
 const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
-                        "farbe","von","bis","neu","cyan","banner","iconAus"];
+                        "farbe","von","bis","neu","cyan","banner","iconAus",
+                        "breite","bildform","grund"];
+
+/* Was aus hub_kacheln kommt, geht UNGEPRÜFT an kachelBauen — eine
+   Live-Spalte, die das Team schreibt. raster, stil und farbe landeten
+   bis zum 26.09. roh in class= und data-farbe= (ein Anführungszeichen
+   darin hätte ein eigenes Attribut aufgemacht). Jetzt je Feld eine
+   feste Liste; was nicht darauf steht, fällt still auf die Vorgabe. */
+const KACHEL_WERTE = {
+  raster:   ["saeulen", "zwei"],
+  stil:     ["saeule"],
+  farbe:    ["rot", "gold", "pistazie"],
+  breite:   ["drittel", "halb", "voll"],
+  bildform: ["seite", "flaeche", "rund"]
+};
 
 function kachelBauen(schluessel, wunsch){
   const art = KACHELARTEN[schluessel];
@@ -4405,8 +4600,69 @@ function kachelBauen(schluessel, wunsch){
   if(wunsch) KACHEL_ERLAUBT.forEach(f => {
     if(wunsch[f] !== undefined && wunsch[f] !== null) k[f] = wunsch[f];
   });
+  Object.keys(KACHEL_WERTE).forEach(f => {
+    if(k[f] !== undefined && k[f] !== "" && !KACHEL_WERTE[f].includes(k[f]))
+      k[f] = f === "breite" || f === "bildform" ? "" : (art[f] || "");
+  });
+  /* Eigene Farbe der Kachel: nur #RRGGBB. */
+  k.grund = /^#[0-9a-f]{6}$/i.test(String(k.grund || "")) ? String(k.grund) : "";
   return k;
 }
+
+/* KACHELRASTER — GETEILTER BLOCK, wortgleich in seiten/admin.html.
+   pruef-kachelraster.js vergleicht beide Zeichen für Zeichen: Das Board
+   zeichnet die Anordnung mit DERSELBEN Rechnung, die der Hub benutzt. */
+/* ── Breite der Kacheln ────────────────────────────────────────────
+   Wunsch des Betreibers: Die Knöpfe richten Lage und Breite danach,
+   wie viele aktiv sind — steht nur die Speisekarte da, zieht sie sich
+   über die ganze Breite. Und der Wirt kann die Breite je Kachel
+   selbst wählen (Drittel, Hälfte, ganz).
+
+   Ein Raster aus sechs Spalten trägt alle drei. Gepackt wird Reihe
+   für Reihe; bleibt am Ende einer Reihe Platz, strecken sich die
+   Kacheln DIESER Reihe gleichmäßig, bis sie voll ist. So steht nie
+   eine Lücke da, und nie eine Kachel allein auf einem Drittel. */
+const KACHEL_SPALTEN = { drittel:2, halb:3, voll:6 };
+function kachelBreiteWunsch(k){
+  if(KACHEL_SPALTEN[k.breite]) return k.breite;
+  return k.raster === "saeulen" ? "drittel" : k.raster === "zwei" ? "halb" : "voll";
+}
+function kachelReihen(liste){
+  const reihen = [];
+  let reihe = [], frei = 6;
+  liste.forEach(k => {
+    const wunsch = kachelBreiteWunsch(k), spalten = KACHEL_SPALTEN[wunsch];
+    if(spalten > frei){ reihen.push(reihe); reihe = []; frei = 6; }
+    reihe.push({ k, wunsch, spalten });
+    frei -= spalten;
+    if(frei === 0){ reihen.push(reihe); reihe = []; frei = 6; }
+  });
+  if(reihe.length) reihen.push(reihe);
+  reihen.forEach(r => {
+    let rest = 6 - r.reduce((a, x) => a + x.spalten, 0);
+    if(rest <= 0) return;
+    if(6 % r.length === 0) r.forEach(x => { x.spalten = 6 / r.length; });
+    else for(let i = r.length - 1; rest > 0; i = (i - 1 + r.length) % r.length){ r[i].spalten++; rest--; }
+  });
+  /* Die Form folgt der Breite, die am Ende herauskommt: zwei Spalten
+     ist die hohe Säule, ganz breit die Reihe mit Unterzeile. Dazwischen
+     bleibt eine gewünschte Säule eine Säule (groß, zwei nebeneinander),
+     alles andere wird die kompakte halbe Kachel. */
+  return reihen.map(r => r.map(x => Object.assign(x, {
+    form: x.spalten === 6 ? "voll" : x.spalten === 2 || x.wunsch === "drittel" ? "saeule" : "halb"
+  })));
+}
+/* Schrift auf der Farbe des Wirts wird gerechnet, nie gesetzt (§5.1):
+   Schwarz oder Weiß, was mehr Kontrast gibt — mit REINEM Schwarz und
+   Weiß ist das im ungünstigsten Fall 4,58:1. Ein fast-schwarzes
+   #17120F fiele bei mittleren Tönen auf 4,31:1 (gerechnet). */
+function kachelTinte(hex){
+  const f = i => { const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+  const L = .2126 * f(1) + .7152 * f(3) + .0722 * f(5);
+  return (1.05 / (L + .05)) >= ((L + .05) / .05) ? "#FFFFFF" : "#000000";
+}
+/* ENDE KACHELRASTER */
 
 /* ═══ BEWEGTE ZEICHEN ═════════════════════════════════════════════
    Animierte Emojis (Google Noto, CC BY 4.0) an Kacheln, Servicerufen
@@ -4521,6 +4777,15 @@ function bewegteZeichenAn(){
   if(typeof MARKENBLATT.bewegteZeichen === "boolean") return MARKENBLATT.bewegteZeichen;
   return true;
 }
+/* Sieht der Gast, wie lange es noch dauert — oder nur, dass gerade
+   gearbeitet wird? Wahl des Betriebs im Board (hub_stil.restzeit).
+   Strikt boolean, sonst an: So war es vorher, und ein kaputter Wert
+   soll nicht still eine Angabe verschwinden lassen. Eine Anzeigewahl,
+   kein Geheimnis: bestellung_restzeit bleibt abrufbar. */
+function restzeitZeigen(){
+  if(HUBSTIL && typeof HUBSTIL.restzeit === "boolean") return HUBSTIL.restzeit;
+  return true;
+}
 
 /* Eigene Zeichen, wo Unicode kein passendes kennt: Für einen Crêpe gibt
    es kein Emoji (🥞 ist ein Pfannkuchenstapel, 🌯 ein Burrito). Der Film
@@ -4564,7 +4829,7 @@ function bzHTML(cp, schl){
          '" aria-hidden="true"><span class="bz-still">' + bzZeichen(cp) + '</span></span>';
 }
 
-let bzAbspieler = null, bzBeob = null, bzBesuch = 0, bzLetzte = null;
+let bzAbspieler = null, bzBeob = null, bzSicht = null, bzBesuch = 0, bzLetzte = null;
 const bzTexte = new Map(), bzFilme = new Set(), bzGespielt = new Set();
 const bzRuhig = () => ruhigeBewegung();
 
@@ -4605,12 +4870,19 @@ function bzStarten(el){
     bzFilme.add(anim);
     const ruhe = BZ_RUHE[cp] || 0;
     /* Nach dem Abspielen zurück aufs Ruhebild — nicht auf dem letzten
-       Bild stehen bleiben, das bei manchen Filmen leer ist. */
-    anim.addEventListener("complete", () => anim.goToAndStop(ruhe, true));
+       Bild stehen bleiben, das bei manchen Filmen leer ist. Und dann
+       nach einer Atempause WIEDER: Vorher lief jeder Film genau einmal
+       je Besuch und blieb danach stehen (gemessen: Orange in der
+       Entscheidungshilfe, Bild 19→99 in 1,6 s, danach für immer p99). */
+    anim.addEventListener("complete", () => { anim.goToAndStop(ruhe, true); bzNochmal(el); });
     anim.addEventListener("DOMLoaded", () => {
       el.classList.add("bz-bereit");
+      bzSichtBeobachten(el);
       const schl = bzBesuch + "|" + (el.dataset.bzSchl || cp);
-      if(bzRuhig() || bzGespielt.has(schl)){ anim.goToAndStop(ruhe, true); return; }
+      if(bzRuhig()){ anim.goToAndStop(ruhe, true); return; }
+      /* Schon gespielt (Neuzeichnen derselben Seite): nicht alle
+         gleichzeitig von vorn, sondern mit der Pause in den Takt. */
+      if(bzGespielt.has(schl)){ anim.goToAndStop(ruhe, true); bzNochmal(el); return; }
       bzGespielt.add(schl);
       anim.goToAndPlay(0, true);
     });
@@ -4621,7 +4893,11 @@ function bzStarten(el){
    Plätze beobachten. */
 function bzVerdrahten(){
   bzFilme.forEach(a => {
-    if(!a.wrapper || !a.wrapper.isConnected){ try{ a.destroy(); }catch(e){} bzFilme.delete(a); }
+    if(!a.wrapper || !a.wrapper.isConnected){
+      const el = a.wrapper && a.wrapper.parentElement;
+      if(el){ clearTimeout(el._bzUhr); if(bzSicht) bzSicht.unobserve(el); }
+      try{ a.destroy(); }catch(e){} bzFilme.delete(a);
+    }
   });
   if(!bewegteZeichenAn()) return;
   const els = document.querySelectorAll(".bz:not([data-bz-los])");
@@ -4652,8 +4928,49 @@ if("MutationObserver" in window) new MutationObserver(liste => {
 }).observe(document.documentElement, { childList:true, subtree:true });
 
 function bzSpielen(el){
-  if(el && el._bz && !bzRuhig()) el._bz.goToAndPlay(0, true);
+  if(!el || !el._bz || bzRuhig()) return;
+  clearTimeout(el._bzUhr); el._bzUhr = 0; el._bzWartet = false;
+  el._bz.goToAndPlay(0, true);
 }
+
+/* Der Takt: Jeder Film spielt, ruht kurz und spielt wieder — solange
+   er zu sehen ist. In der Entscheidungshilfe kurz (0,4–1,2 s), sonst
+   länger und gestreut (2,5–6 s), damit die Startseite nicht im
+   Gleichschritt zappelt. Außer Sicht, im Hintergrund oder bei
+   „Bewegung reduzieren" wartet er auf dem Ruhebild und kostet nichts;
+   sobald er wieder zu sehen ist, geht es weiter. */
+function bzNochmal(el){
+  if(!el || !el._bz || bzRuhig() || !bewegteZeichenAn()) return;
+  clearTimeout(el._bzUhr);
+  const dauer = !!el.closest(".ed-seite");
+  const pause = dauer ? 400 + Math.random() * 800 : 2500 + Math.random() * 3500;
+  el._bzUhr = setTimeout(() => {
+    el._bzUhr = 0;
+    if(!el.isConnected) return;
+    if(document.hidden || !el._bzSicht){ el._bzWartet = true; return; }
+    bzSpielen(el);
+  }, pause);
+}
+/* Ein eigener, DAUERHAFTER Beobachter — bzBeob löst sich nach dem
+   ersten Start vom Element, der hier nie (außer beim Aufräumen in
+   bzVerdrahten). */
+function bzSichtBeobachten(el){
+  el._bzSicht = true;
+  if(!("IntersectionObserver" in window)) return;
+  if(!bzSicht) bzSicht = new IntersectionObserver(eintraege => eintraege.forEach(e => {
+    const el = e.target;
+    el._bzSicht = e.isIntersecting;
+    if(e.isIntersecting && el._bzWartet && !document.hidden) bzSpielen(el);
+  }));
+  bzSicht.observe(el);
+}
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden) return;
+  bzFilme.forEach(a => {
+    const el = a.wrapper && a.wrapper.parentElement;
+    if(el && el._bzWartet && el._bzSicht && el.isConnected) bzSpielen(el);
+  });
+});
 
 /* Antippen weckt das Zeichen im angetippten Element. pointerdown statt
    click: Die Reaktion soll unter dem Finger beginnen, nicht erst beim
@@ -4663,17 +4980,9 @@ document.addEventListener("pointerdown", e => {
   if(ziel) bzSpielen(ziel.querySelector(".bz.bz-bereit"));
 }, { passive:true });
 
-/* Alle 6,5 s erwacht EIN sichtbares Zeichen. Nicht im Hintergrund,
-   nicht bei „Bewegung reduzieren". */
-setInterval(() => {
-  if(document.hidden || bzRuhig() || !bewegteZeichenAn()) return;
-  const h = window.innerHeight;
-  const sichtbar = Array.from(document.querySelectorAll(".bz.bz-bereit")).filter(el => {
-    const r = el.getBoundingClientRect();
-    return r.bottom > 0 && r.top < h && r.width > 0;
-  });
-  if(sichtbar.length) bzSpielen(sichtbar[Math.floor(Math.random() * sichtbar.length)]);
-}, 6500);
+/* Früher erwachte alle 6,5 s EIN zufälliges sichtbares Zeichen —
+   das war alles, was nach dem ersten Durchlauf noch lief. Jetzt hat
+   jeder Film seinen eigenen Takt (bzNochmal). */
 
 /* Alles aus dem Markenblatt, das in eine Zeichenkette statt in
    textContent geht, muss hier durch.
@@ -4731,6 +5040,11 @@ function sicherText(w){
    für einen einzigen Knopftyp hier gehört da nicht hinein. */
 const SOFORT_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>';
 
+/* Vorschau im Board (siehe vorschauSetzen). Steht HIER oben, weil
+   schon der Start (gastLaden, Warteschlange) danach fragt — weiter
+   unten hätte die „temporal dead zone“ den Hub leer gelassen (§8.1l). */
+const VORSCHAU = window.OMOTENO_VORSCHAU === true;
+let vorschauEntwurf = null;
 let aktionen = [];          /* was gerade läuft */
 /* Wie die Aktionen dieses Hauses überschrieben heißen. Die einzelne
    Aktion darf einen eigenen Titel tragen; fehlt er, gilt dieser. */
@@ -4752,6 +5066,8 @@ function aktionenLaden(){
       .then(liste => {
         const vorher = aktionen.map(a => a.id).join(",");
         aktionen = Array.isArray(liste) ? liste : [];
+        /* Vorschau: Die Beispiel-Aktion des Boards bleibt stehen. */
+        if(VORSCHAU && vorschauAktion()) return;
         if(aktionen.map(a => a.id).join(",") !== vorher) aktionAnzeigen();
       })
       .catch(() => {});
@@ -4831,7 +5147,7 @@ function aktionAnzeigen(){
                ohne Ziel, genau wie aktionBandHTML() bei einem Gericht,
                das nicht mehr in der Karte steht.
    ══════════════════════════════════════════════════════════════════ */
-const BANNER_ERLAUBT = ["id","an","bild","titel","text","farbe","zielTyp","zielWert","reihenfolge"];
+const BANNER_ERLAUBT = ["id","an","bild","titel","text","farbe","zielTyp","zielWert","reihenfolge","ausrichtung"];
 let hubBanner = [];
 
 /* Positivliste wie kachelBauen()/KACHEL_ERLAUBT: was der Wirt nicht
@@ -4893,6 +5209,9 @@ function bannerRadHTML(){
       if(a){ titel = a.titel || RUNNER_TITEL; text = a.gericht_name || ""; }
     }
     return "<" + tag + ' class="bnkarte" data-bn="' + i + '"' +
+      ' data-bnid="' + hs(String(b.id || "")) + '"' +
+      /* Nur zwei erlaubte Werte — die Spalte ist live und ungeprüft. */
+      (b.ausrichtung === "mitte" ? ' data-ausrichtung="mitte"' : "") +
       (tag === "button" ? ' type="button"' : "") +
       (ziel ? ziel.attr + (ziel.href ? ' href="' + hs(ziel.href) + '"' : "") : "") +
       '><img src="' + hs(b.bild) + '" alt="" loading="lazy" decoding="async">' +
@@ -7525,7 +7844,16 @@ const TEXTE = {
 "Passt dazu":{en:"Goes well with it",tr:"Yanına yakışır",ru:"Хорошо сочетается",fr:"Pour accompagner",es:"Para acompañar",it:"Da abbinare",pl:"Pasuje do tego",ar:"يناسبه",uk:"Добре пасує",nl:"Past erbij",ro:"Se potrivește"},
 "Dazu trinken":{en:"Something to drink",tr:"Yanına içecek",ru:"Что выпить",fr:"À boire avec",es:"Para beber",it:"Da bere",pl:"Do picia",ar:"للشرب معه",uk:"Що випити",nl:"Om erbij te drinken",ro:"De băut"},
 "Zum Nachtisch":{en:"For dessert",tr:"Tatlı olarak",ru:"На десерт",fr:"En dessert",es:"De postre",it:"Per dessert",pl:"Na deser",ar:"للتحلية",uk:"На десерт",nl:"Als dessert",ro:"La desert"},
-"Auch beliebt":{en:"Also popular",tr:"Bu da sevilir",ru:"Тоже популярно",fr:"Aussi apprécié",es:"También popular",it:"Anche amato",pl:"Też popularne",ar:"مطلوب أيضاً",uk:"Теж популярне",nl:"Ook populair",ro:"Și acesta e căutat"},
+"Im Angebot":{en:"On offer",tr:"Kampanyada",ru:"По акции",fr:"En promotion",es:"En oferta",it:"In offerta",pl:"W promocji",ar:"عرض خاص",uk:"За акцією",nl:"In de aanbieding",ro:"În ofertă"},
+"Etwas Herzhaftes":{en:"Something savoury",tr:"Tuzlu bir şey",ru:"Что-то сытное",fr:"Un peu de salé",es:"Algo salado",it:"Qualcosa di salato",pl:"Coś wytrawnego",ar:"شيء مالح",uk:"Щось ситне",nl:"Iets hartigs",ro:"Ceva sărat"},
+"Auch vegetarisch":{en:"Also vegetarian",tr:"Bu da vejetaryen",ru:"Тоже вегетарианское",fr:"Aussi végétarien",es:"También vegetariano",it:"Anche vegetariano",pl:"Też wegetariańskie",ar:"نباتي أيضاً",uk:"Теж вегетаріанське",nl:"Ook vegetarisch",ro:"Tot vegetarian"},
+"Kleine Ergänzung":{en:"A little extra",tr:"Küçük bir ek",ru:"Небольшое дополнение",fr:"Un petit plus",es:"Un pequeño extra",it:"Un piccolo extra",pl:"Mały dodatek",ar:"إضافة صغيرة",uk:"Невеличке доповнення",nl:"Kleine aanvulling",ro:"Un mic extra"},
+"Beliebt bei Gästen":{en:"Guest favourite",tr:"Misafirlerin favorisi",ru:"Любимое гостями",fr:"Apprécié des clients",es:"Favorito de los clientes",it:"Amato dagli ospiti",pl:"Ulubione gości",ar:"مفضل لدى الضيوف",uk:"Улюблене гостей",nl:"Favoriet bij gasten",ro:"Preferat de oaspeți"},
+"Mal etwas anderes":{en:"Try something different",tr:"Farklı bir şey",ru:"Что-то новенькое",fr:"Pour changer",es:"Algo diferente",it:"Qualcosa di diverso",pl:"Coś innego",ar:"شيء مختلف",uk:"Щось інше",nl:"Eens iets anders",ro:"Ceva diferit"},
+"Etwas zu Ihrem Getränk?":{en:"Something to go with your drink?",tr:"İçeceğinizin yanına bir şey?",ru:"Что-нибудь к напитку?",fr:"Quelque chose avec votre boisson ?",es:"¿Algo para acompañar su bebida?",it:"Qualcosa con la Sua bevanda?",pl:"Coś do napoju?",ar:"شيء مع مشروبك؟",uk:"Щось до напою?",nl:"Iets bij uw drankje?",ro:"Ceva lângă băutură?"},
+"Dazu noch etwas zu trinken?":{en:"Anything to drink with it?",tr:"Yanına içecek ister misiniz?",ru:"Что-нибудь выпить к этому?",fr:"Quelque chose à boire avec ?",es:"¿Algo de beber para acompañar?",it:"Qualcosa da bere?",pl:"Coś do picia do tego?",ar:"هل تريد شيئاً للشرب معه؟",uk:"Щось випити до цього?",nl:"Iets te drinken erbij?",ro:"Ceva de băut alături?"},
+"Noch Platz für etwas Süßes?":{en:"Room for something sweet?",tr:"Tatlıya yer var mı?",ru:"Найдётся место для сладкого?",fr:"Encore de la place pour un dessert ?",es:"¿Queda sitio para algo dulce?",it:"C'è posto per qualcosa di dolce?",pl:"Znajdzie się miejsce na coś słodkiego?",ar:"هل يتسع المجال لشيء حلو؟",uk:"Знайдеться місце для солодкого?",nl:"Nog ruimte voor iets zoets?",ro:"Mai e loc de ceva dulce?"},
+"Das bestellen Gäste gern dazu.":{en:"Guests like to order these with it.",tr:"Misafirler bunları yanına sık sipariş eder.",ru:"Это гости часто заказывают вместе.",fr:"Nos clients les prennent volontiers avec.",es:"Los clientes suelen pedir esto también.",it:"Gli ospiti lo ordinano volentieri insieme.",pl:"Goście chętnie zamawiają to do tego.",ar:"يطلب الضيوف هذه غالباً معه.",uk:"Це гості охоче замовляють разом.",nl:"Gasten bestellen dit er graag bij.",ro:"Oaspeții comandă adesea și acestea."},
 "Beliebt":{en:"Popular",tr:"Popüler",ru:"Популярное",fr:"Populaires",es:"Populares",it:"Popolari",pl:"Popularne",ar:"الأكثر طلباً",uk:"Популярне",nl:"Populair",ro:"Populare"},
 "Der Ruf geht sofort an unser Team – ohne Umweg über eine App. Wenn gerade viel los ist, kann es einen Moment dauern. Winken Sie uns dann bitte einfach zu, wir sind Menschen und keine Maschine.":{en:"Your call goes straight to our team – no app needed. When it is busy it can take a moment. Just wave at us then, we are people, not a machine.",tr:"Çağrınız doğrudan ekibimize ulaşır, uygulamaya gerek yok. Yoğun olduğunda biraz sürebilir; o zaman bize el sallamanız yeterli, biz makine değil insanız.",ru:"Вызов сразу поступает нашей команде — без приложений. Когда много гостей, это может занять минуту. Тогда просто помашите нам: мы люди, а не машина.",fr:"Votre appel arrive directement à notre équipe, sans application. Quand il y a du monde, cela peut prendre un instant. Faites-nous simplement signe : nous sommes des humains, pas une machine.",es:"Su llamada llega directamente a nuestro equipo, sin aplicación. Cuando hay mucha gente puede tardar un momento. Entonces basta con hacernos una señal: somos personas, no una máquina.",it:"La chiamata arriva subito al nostro team, senza app. Quando c'è molta gente può volerci un attimo: in quel caso basta un cenno, siamo persone e non una macchina.",pl:"Wezwanie trafia od razu do naszego zespołu, bez aplikacji. Gdy jest tłoczno, może to chwilę potrwać – wtedy wystarczy do nas pomachać: jesteśmy ludźmi, nie maszyną.",ar:"يصل النداء مباشرة إلى فريقنا دون تطبيق. عند الازدحام قد يستغرق الأمر لحظة، عندها لوّحوا لنا فقط — نحن بشر لا آلة.",uk:"Виклик одразу надходить нашій команді — без застосунку. Коли багато гостей, це може зайняти хвилину. Тоді просто помахайте нам: ми люди, а не машина.",nl:"Uw oproep gaat direct naar ons team, zonder app. Als het druk is kan het even duren. Zwaai dan gewoon even: wij zijn mensen en geen machine.",ro:"Apelul ajunge direct la echipa noastră, fără aplicație. Când e aglomerat poate dura un moment – atunci faceți-ne pur și simplu semn: suntem oameni, nu o mașină."},
 "Ihre Auswahl liegt aktuell bei {x}.":{en:"Your selection currently adds up to {x}.",tr:"Seçiminiz şu anda {x} tutuyor.",ru:"Ваш выбор сейчас составляет {x}.",fr:"Votre sélection s'élève actuellement à {x}.",es:"Su selección suma actualmente {x}.",it:"La vostra selezione ammonta a {x}.",pl:"Państwa wybór wynosi obecnie {x}.",ar:"اختياركم يبلغ حالياً {x}.",uk:"Ваш вибір зараз становить {x}.",nl:"Uw selectie komt momenteel op {x}.",ro:"Selecția dvs. ajunge acum la {x}."},
@@ -8139,6 +8467,16 @@ const TEXTE = {
 "Bitte eine Telefonnummer, damit wir bestätigen können.":{en:"A phone number, so we can confirm.",tr:"Onaylayabilmemiz için bir telefon numarası.",ru:"Телефон, чтобы мы могли подтвердить.",fr:"Un numéro, pour que nous puissions confirmer.",es:"Un teléfono para poder confirmar.",it:"Un numero, così possiamo confermare.",pl:"Numer telefonu, żebyśmy mogli potwierdzić.",ar:"رقم هاتف حتى نتمكن من التأكيد.",uk:"Телефон, щоб ми могли підтвердити.",nl:"Een telefoonnummer, zodat we kunnen bevestigen.",ro:"Un număr de telefon, ca să putem confirma."},
 "Datum oder Uhrzeit stimmt nicht.":{en:"That date or time is not valid.",tr:"Tarih veya saat geçerli değil.",ru:"Дата или время указаны неверно.",fr:"La date ou l'heure n'est pas valide.",es:"La fecha o la hora no es válida.",it:"Data od ora non valida.",pl:"Data lub godzina jest nieprawidłowa.",ar:"التاريخ أو الوقت غير صحيح.",uk:"Дата або час указані невірно.",nl:"Die datum of tijd klopt niet.",ro:"Data sau ora nu este validă."},
 "Dieser Zeitpunkt liegt in der Vergangenheit.":{en:"That time is in the past.",tr:"Bu zaman geçmişte kaldı.",ru:"Это время уже прошло.",fr:"Ce moment est déjà passé.",es:"Ese momento ya ha pasado.",it:"Quel momento è già passato.",pl:"Ten termin już minął.",ar:"هذا الموعد في الماضي.",uk:"Цей час уже минув.",nl:"Dat moment ligt in het verleden.",ro:"Acest moment este în trecut."},
+"Nachricht vom Haus":{en:"Message from the house",tr:"İşletmeden mesaj",ru:"Сообщение от заведения",fr:"Message de la maison",es:"Mensaje de la casa",it:"Messaggio dal locale",pl:"Wiadomość od lokalu",ar:"رسالة من المطعم",uk:"Повідомлення від закладу",nl:"Bericht van het huis",ro:"Mesaj de la local"},
+"Neue Nachricht vom Haus":{en:"New message from the house",tr:"İşletmeden yeni mesaj",ru:"Новое сообщение от заведения",fr:"Nouveau message de la maison",es:"Nuevo mensaje de la casa",it:"Nuovo messaggio dal locale",pl:"Nowa wiadomość od lokalu",ar:"رسالة جديدة من المطعم",uk:"Нове повідомлення від закладу",nl:"Nieuw bericht van het huis",ro:"Mesaj nou de la local"},
+"aktualisiert":{en:"updated",tr:"güncellendi",ru:"обновлено",fr:"mis à jour",es:"actualizado",it:"aggiornato",pl:"zaktualizowano",ar:"محدَّث",uk:"оновлено",nl:"bijgewerkt",ro:"actualizat"},
+"Ihre Anfragen":{en:"Your requests",tr:"Talepleriniz",ru:"Ваши запросы",fr:"Vos demandes",es:"Sus solicitudes",it:"Le Sue richieste",pl:"Państwa zapytania",ar:"طلباتكم",uk:"Ваші запити",nl:"Uw aanvragen",ro:"Cererile dumneavoastră"},
+"Wartet auf Bestätigung":{en:"Awaiting confirmation",tr:"Onay bekleniyor",ru:"Ожидает подтверждения",fr:"En attente de confirmation",es:"Pendiente de confirmación",it:"In attesa di conferma",pl:"Oczekuje na potwierdzenie",ar:"بانتظار التأكيد",uk:"Очікує підтвердження",nl:"Wacht op bevestiging",ro:"Așteaptă confirmarea"},
+"Bestätigt":{en:"Confirmed",tr:"Onaylandı",ru:"Подтверждено",fr:"Confirmée",es:"Confirmada",it:"Confermata",pl:"Potwierdzono",ar:"تم التأكيد",uk:"Підтверджено",nl:"Bevestigd",ro:"Confirmată"},
+"Leider nicht möglich – bitte rufen Sie uns an.":{en:"Unfortunately not possible – please give us a call.",tr:"Maalesef mümkün değil – lütfen bizi arayın.",ru:"К сожалению, невозможно – пожалуйста, позвоните нам.",fr:"Malheureusement impossible – appelez-nous, s'il vous plaît.",es:"Lamentablemente no es posible – llámenos, por favor.",it:"Purtroppo non è possibile – La preghiamo di chiamarci.",pl:"Niestety nie jest to możliwe – prosimy o telefon.",ar:"للأسف غير ممكن – يرجى الاتصال بنا.",uk:"На жаль, неможливо – будь ласка, зателефонуйте нам.",nl:"Helaas niet mogelijk – belt u ons alstublieft.",ro:"Din păcate nu este posibil – vă rugăm să ne sunați."},
+"{n} Personen":{en:"{n} people",tr:"{n} kişi",ru:"Человек: {n}",fr:"{n} personnes",es:"{n} personas",it:"{n} persone",pl:"Osób: {n}",ar:"{n} أشخاص",uk:"Осіб: {n}",nl:"{n} personen",ro:"{n} persoane"},
+"Es liegen bereits Anfragen von Ihnen vor. Bitte rufen Sie uns an.":{en:"We already have requests from you. Please give us a call.",tr:"Sizden zaten talepler var. Lütfen bizi arayın.",ru:"От вас уже есть запросы. Пожалуйста, позвоните нам.",fr:"Nous avons déjà reçu vos demandes. Appelez-nous, s'il vous plaît.",es:"Ya tenemos solicitudes suyas. Llámenos, por favor.",it:"Abbiamo già ricevuto Sue richieste. La preghiamo di chiamarci.",pl:"Mamy już Państwa zapytania. Prosimy o telefon.",ar:"لدينا طلبات منكم بالفعل. يرجى الاتصال بنا.",uk:"Від вас уже є запити. Будь ласка, зателефонуйте нам.",nl:"We hebben al aanvragen van u. Belt u ons alstublieft.",ro:"Avem deja cereri de la dumneavoastră. Vă rugăm să ne sunați."},
+"Gerade sehr viele Anfragen. Bitte kurz warten.":{en:"Lots of requests right now. Please wait a moment.",tr:"Şu anda çok fazla talep var. Lütfen biraz bekleyin.",ru:"Сейчас очень много запросов. Пожалуйста, подождите немного.",fr:"Beaucoup de demandes en ce moment. Veuillez patienter un instant.",es:"Ahora mismo hay muchas solicitudes. Espere un momento, por favor.",it:"Al momento ci sono molte richieste. La preghiamo di attendere un attimo.",pl:"W tej chwili jest bardzo dużo zapytań. Prosimy chwilę poczekać.",ar:"هناك طلبات كثيرة الآن. يرجى الانتظار قليلاً.",uk:"Зараз дуже багато запитів. Будь ласка, зачекайте трохи.",nl:"Er zijn nu heel veel aanvragen. Wacht u even.",ro:"Sunt foarte multe cereri acum. Vă rugăm să așteptați puțin."},
 "Anfrage ist angekommen. Wir melden uns kurz zur Bestätigung.":{en:"Your request arrived. We will confirm shortly.",tr:"Talebiniz ulaştı. Kısaca onaylayacağız.",ru:"Запрос получен. Мы скоро подтвердим.",fr:"Votre demande est arrivée. Nous confirmons sous peu.",es:"Su solicitud ha llegado. Le confirmamos en breve.",it:"La richiesta è arrivata. Confermiamo a breve.",pl:"Zapytanie dotarło. Wkrótce potwierdzimy.",ar:"وصل طلبكم. سنؤكد لكم قريباً.",uk:"Запит отримано. Скоро підтвердимо.",nl:"Uw aanvraag is aangekomen. We bevestigen zo.",ro:"Cererea a ajuns. Confirmăm în scurt timp."},
 "Guten Tag,\n\nich möchte gerne einen Tisch reservieren.\n\nWann: {w}\nPersonen: {p}":{en:"Hello,\n\nI would like to book a table.\n\nWhen: {w}\nGuests: {p}",tr:"Merhaba,\n\nbir masa ayırtmak istiyorum.\n\nNe zaman: {w}\nKişi: {p}",ru:"Здравствуйте,\n\nхочу забронировать столик.\n\nКогда: {w}\nГостей: {p}",fr:"Bonjour,\n\nje souhaite réserver une table.\n\nQuand : {w}\nPersonnes : {p}",es:"Hola:\n\nquisiera reservar una mesa.\n\nCuándo: {w}\nPersonas: {p}",it:"Buongiorno,\n\nvorrei prenotare un tavolo.\n\nQuando: {w}\nPersone: {p}",pl:"Dzień dobry,\n\nchciałbym zarezerwować stolik.\n\nKiedy: {w}\nOsoby: {p}",ar:"مرحباً،\n\nأود حجز طاولة.\n\nالموعد: {w}\nعدد الأشخاص: {p}",uk:"Доброго дня,\n\nхочу забронювати столик.\n\nКоли: {w}\nОсіб: {p}",nl:"Goedendag,\n\nik wil graag een tafel reserveren.\n\nWanneer: {w}\nPersonen: {p}",ro:"Bună ziua,\n\naș dori să rezerv o masă.\n\nCând: {w}\nPersoane: {p}"},
 "\nName: ":{en:"\nName: ",tr:"\nAd: ",ru:"\nИмя: ",fr:"\nNom : ",es:"\nNombre: ",it:"\nNome: ",pl:"\nImię: ",ar:"\nالاسم: ",uk:"\nІм'я: ",nl:"\nNaam: ",ro:"\nNume: "},
@@ -8923,7 +9261,8 @@ function start(){
            t("Schauen Sie später noch einmal vorbei.") + '</div>';
   }
 
-  const kachelHTML = k => {
+  const kachelHTML = x => {
+    const k = x.k;
     /* EINMAL auflösen, nicht dreimal: Ein Ziel darf eine Funktion
        sein, und ein Aufruf pro Zweig würde sie dreifach auswerten. */
     const ziel = kachelZiel(k);
@@ -8931,9 +9270,16 @@ function start(){
        ein Feld, das der WIRT füllt — dort darf kein javascript:
        und kein data: hinein (dieselbe Sorgfalt wie bei hs()). */
     const banner = /^https:\/\//i.test(String(k.banner || "")) ? k.banner : "";
-    return '<a class="kachel' + (k.stil ? " " + k.stil : "") +
-      (k.cyan ? " cyan" : "") + (banner ? " hatbanner" : "") + '"' +
-      (k.farbe ? ' data-farbe="' + k.farbe + '"' : "") +
+    const form = x.form, bildform = banner ? (k.bildform || "seite") : "";
+    /* Rund: Das Foto nimmt den Platz des Symbols ein. */
+    const ohneIco = k.iconAus === true || bildform === "rund";
+    return '<a class="kachel' + (form === "saeule" ? " saeule" : form === "halb" ? " khalb" : "") +
+      (k.cyan ? " cyan" : "") + (banner ? " hatbanner bild-" + bildform : "") +
+      (k.grund ? " hatgrund" : "") + (ohneIco && !banner ? " ohneico" : "") + '"' +
+      ' data-kachel="' + hs(k.schluessel || "") + '"' +
+      ' data-spalten="' + x.spalten + '"' +
+      (k.farbe ? ' data-farbe="' + hs(k.farbe) + '"' : "") +
+      (k.grund ? ' style="--k-grund:' + k.grund + ';--k-tinte:' + kachelTinte(k.grund) + '"' : "") +
       ' href="' + ziel + '"' +
       (ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
         /* Das Bild steht VOR Symbol und Text im Auszeichnungstext:
@@ -8957,7 +9303,7 @@ function start(){
            (anders als das Markenblatt, das erzeuge-hub.js vorab
            prüft, CLAUDE.md §2.2). Eine Zeichenkette "false" wäre in
            JS wahr und würde das Symbol genau verkehrt abschalten. */
-        (k.iconAus === true ? "" : (() => {
+        (ohneIco ? "" : (() => {
           /* Das Emoji des Wirts gewinnt vor dem bewegten Zeichen: Er
              hat es bewusst gewählt. */
           const cp = !k.emoji && bewegteZeichenAn() ? bzKachelCode(k) : "";
@@ -8972,20 +9318,22 @@ function start(){
   };
 
   let html = lieferBandHTML() + aktionBandHTML() + bannerRadHTML() +
-             begleiterHTML("start") + empfehlungHTML(), letzter = "";
+             begleiterHTML("start") + empfehlungHTML();
+  /* Aufeinanderfolgende Kacheln derselben Gruppe bilden einen Bereich;
+     jeder Bereich packt seine Reihen selbst (kachelReihen). */
+  const bereiche = [];
   sichtbar.forEach(k => {
-    if(k.gruppe !== letzter){
-      if(letzter) html += '</div>';
-      /* Das Raster kommt von der ersten Kachel der Gruppe:
-         saeulen = drei große nebeneinander, zwei = zwei kleine,
-         ohne Angabe = untereinander. */
-      html += '<div class="bereich">' + hs(t(k.gruppe).toUpperCase()) + '</div>' +
-              '<div class="gitter' + (k.raster ? " " + k.raster : "") + '">';
-      letzter = k.gruppe;
-    }
-    html += kachelHTML(k);
+    if(!bereiche.length || bereiche[bereiche.length - 1].gruppe !== k.gruppe)
+      bereiche.push({ gruppe:k.gruppe, kacheln:[] });
+    bereiche[bereiche.length - 1].kacheln.push(k);
   });
-  return html + '</div>';
+  bereiche.forEach(b => {
+    const reihen = kachelReihen(b.kacheln), alle = [].concat(...reihen);
+    html += '<div class="bereich">' + hs(t(b.gruppe).toUpperCase()) + '</div>' +
+            '<div class="gitter kraster' + (alle.some(x => x.form === "saeule") ? " mitsaeulen" : "") + '">' +
+            alle.map(kachelHTML).join("") + '</div>';
+  });
+  return html;
 }
 
 /* ---------- Karten-Seiten ---------- */
@@ -9774,48 +10122,126 @@ SEITEN.entdecken = () => {
    Reihe beim Neuzeichnen nicht springt (CLAUDE.md §4.2). */
 const DAZU_SUESS = /cr[êe]pe|waffel|eis\b|eisbecher|dessert|nachtisch|kuchen|torte|s[üu]ß|pancake|churro|tiramisu|brownie|kaiser/i;
 const DAZU_HOECHST = 4;
-function dazuVorschlaege(){
+/* Vorfall (Bildschirmfoto vom Betreiber): Nach „Dazu trinken“ füllten
+   zwei Runden „Auch beliebt“ in Kartenreihenfolge auf — fast immer aus
+   DERSELBEN Gruppe. Vier Karten, derselbe Grund, dasselbe Emoji.
+   Jetzt: höchstens eine Karte je Gruppe, ohne eigenes Bild kein Emoji
+   doppelt, und jede Karte trägt den Grund, der auf sie zutrifft —
+   jeder Grund höchstens zweimal. Die Reihenfolge unter Gleichrangigen
+   kommt aus den Namen im Korb: Derselbe Korb zeigt dieselbe Reihe
+   (§4.2, kein Springen beim Neuzeichnen), ein anderer Korb eine andere. */
+function dazuSamen(namen){
+  let h = 2166136261;
+  const text = namen.slice().sort().join("|");
+  for(let i = 0; i < text.length; i++){ h ^= text.charCodeAt(i); h = Math.imul(h, 16777619) >>> 0; }
+  return h;
+}
+function dazuLage(){
   const imKorb = Object.keys(merk);
-  if(!imKorb.length) return [];
   const orte = imKorb.map(gerichtOrt).filter(Boolean);
-  const hatGetraenk = orte.some(o => o.karte !== "speisekarte");
-  const hatSuess = orte.some(o => o.karte === "speisekarte" && DAZU_SUESS.test(o.gruppe || ""));
-  const gruppenImKorb = new Set(orte.map(o => o.karte + "|" + o.gruppe));
+  const essen = orte.filter(o => o.karte === "speisekarte");
+  return {
+    imKorb, orte,
+    hatGetraenk: orte.some(o => o.karte !== "speisekarte"),
+    hatEssen: essen.length > 0,
+    hatSuess: essen.some(o => DAZU_SUESS.test(o.gruppe || "")),
+    hatHerzhaft: essen.some(o => !DAZU_SUESS.test(o.gruppe || ""))
+  };
+}
+function dazuVorschlaege(){
+  const L = dazuLage();
+  if(!L.imKorb.length) return [];
+  const gruppenImKorb = new Set(L.orte.map(o => o.karte + "|" + o.gruppe));
+  const korbEssen = L.imKorb.map(n => ({ n, o:gerichtOrt(n), g:findeGericht(n) }))
+    .filter(x => x.o && x.g && x.o.karte === "speisekarte");
+  const allesVeg = korbEssen.length > 0 && korbEssen.every(x => x.g.veg);
+  const preise = L.imKorb.map(n => preisNum((merk[n] || {}).p)).filter(v => v > 0);
+  const schnitt = preise.length ? preise.reduce((a, b) => a + b, 0) / preise.length : 0;
+  const probiert = probiertLaden();
+  const angebot = n => aktionen.some(a => a && a.gericht_name === n);
+  const samen = dazuSamen(L.imKorb);
+
   const alle = [];
   let rang = 0;
   [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE], ["cocktails", COCKTAILS]].forEach(([karte, daten]) =>
     daten.forEach(gr => gr.eintraege.forEach(e => {
       rang++;
-      /* merk[e.n] ist Vorsorge, nicht tragend: Gegenbeweis ohne diese
-         Bedingung blieb grün — und das zu Recht. Kein Gericht aus dem
-         Korb kann über die drei Regeln unten zurückkommen (Getränk nur
-         ohne Getränk im Korb, Süßes nur ohne Süßes, „Auch beliebt“ nur
-         aus Gruppen, die nicht im Korb sind). Ändert jemand eine Regel,
-         hält diese Zeile trotzdem (CLAUDE.md §8.1g, Vorfall E). */
-      if(e.p === "–" || merk[e.n]) return;
-      alle.push({ e, karte, gruppe:gr.gruppe, rang,
-        suess: karte === "speisekarte" && DAZU_SUESS.test(gr.gruppe || "") });
+      /* merk[e.n] ist Vorsorge: Gruppen im Korb sind ohnehin aus. */
+      if(e.p === "–" || merk[e.n] || gruppenImKorb.has(karte + "|" + gr.gruppe)) return;
+      const suess = karte === "speisekarte" && DAZU_SUESS.test(gr.gruppe || "");
+      const trinken = karte !== "speisekarte";
+      /* Wonach geordnet wird: was fehlt, zuerst — ein Getränk, wenn
+         keins im Korb liegt; dann Süßes; dann ein Angebot; dann
+         Herzhaftes zu lauter Süßem; dann der Rest. */
+      const stufe = (!L.hatGetraenk && trinken) ? 0
+                  : (!L.hatSuess && L.hatEssen && suess) ? 1
+                  : angebot(e.n) ? 2
+                  : (!L.hatHerzhaft && karte === "speisekarte" && !suess) ? 3
+                  : 4;
+      /* Was draufsteht: der genaueste Grund zuerst. */
+      const gruende = [];
+      if(angebot(e.n)) gruende.push("Im Angebot");
+      if(probiert.length && !probiert.includes(e.n)) gruende.push("Neu für Sie");
+      if(!L.hatGetraenk && trinken) gruende.push("Dazu trinken");
+      if(!L.hatSuess && suess) gruende.push("Zum Nachtisch");
+      if(!L.hatHerzhaft && karte === "speisekarte" && !suess) gruende.push("Etwas Herzhaftes");
+      if(allesVeg && karte === "speisekarte" && e.veg) gruende.push("Auch vegetarisch");
+      if(e.top) gruende.push("Beliebt bei Gästen");
+      if(schnitt > 0 && preisNum(e.p) > 0 && preisNum(e.p) <= schnitt / 2) gruende.push("Kleine Ergänzung");
+      gruende.push("Mal etwas anderes");
+      alle.push({ e, karte, gruppe:gr.gruppe, rang, stufe, gruende,
+        zeichen: hatVorschau(e) ? null : bzKategorie(gr.gruppe, karte) });
     })));
-  const ordnen = l => l.sort((a, b) => (b.e.top ? 1 : 0) - (a.e.top ? 1 : 0) || a.rang - b.rang);
-  const aus = [], genommen = new Set();
-  const nimm = (liste, grund, wieviele) => {
-    for(const x of ordnen(liste)){
-      if(aus.length >= DAZU_HOECHST || wieviele <= 0) break;
-      if(genommen.has(x.e.n)) continue;
-      genommen.add(x.e.n); aus.push({ ...x, grund }); wieviele--;
+  /* Beliebtes bekommt einen Vorsprung, keinen Vorrang: Mit festem
+     Vorrang stand in jeder Gruppe immer dasselbe Beliebte vorn, und
+     jeder Korb bekam dieselbe Reihe (gemessen, pruef-korb-vorschlag). */
+  const n = alle.length || 1;
+  const schluessel = x => ((x.rang + samen) % n) - (x.e.top ? n / 3 : 0);
+  alle.sort((a, b) => a.stufe - b.stufe || schluessel(a) - schluessel(b));
+  /* Je Stufe eine Obergrenze: Fehlt ein Getränk, sind ALLE Getränke
+     Stufe 0 — ohne Grenze war die Reihe dann nur Getränke. */
+  const GRENZE = { 0:2, 1:1, 2:2, 3:1, 4:DAZU_HOECHST };
+  const aus = [], gruppen = new Set(), zeichen = new Set(), zaehl = {}, jeStufe = {};
+  const nimm = (streng, begrenzt) => {
+    for(const x of alle){
+      if(aus.length >= DAZU_HOECHST) break;
+      if(aus.includes(x) || gruppen.has(x.karte + "|" + x.gruppe)) continue;
+      if(streng && x.zeichen && zeichen.has(x.zeichen)) continue;
+      if(begrenzt && (jeStufe[x.stufe] || 0) >= GRENZE[x.stufe]) continue;
+      const grund = x.gruende.find(g => (zaehl[g] || 0) < 2 || g === "Mal etwas anderes");
+      zaehl[grund] = (zaehl[grund] || 0) + 1;
+      jeStufe[x.stufe] = (jeStufe[x.stufe] || 0) + 1;
+      gruppen.add(x.karte + "|" + x.gruppe);
+      if(x.zeichen) zeichen.add(x.zeichen);
+      aus.push(Object.assign(x, { grund }));
     }
   };
-  if(!hatGetraenk) nimm(alle.filter(x => x.karte !== "speisekarte"), "Dazu trinken", 2);
-  if(!hatSuess)    nimm(alle.filter(x => x.suess), "Zum Nachtisch", 2);
-  nimm(alle.filter(x => !gruppenImKorb.has(x.karte + "|" + x.gruppe) && x.e.top), "Auch beliebt", DAZU_HOECHST);
-  nimm(alle.filter(x => !gruppenImKorb.has(x.karte + "|" + x.gruppe)), "Auch beliebt", DAZU_HOECHST);
+  nimm(true, true);
+  /* Gibt die Karte nicht genug her, lieber ein Emoji zweimal oder ein
+     drittes Getränk als eine halbe Reihe. Die Gruppe bleibt Pflicht.
+     Danach wieder in der Reihenfolge der Stufen, damit das Getränk
+     vorn bleibt, wenn eins fehlt. */
+  if(aus.length < DAZU_HOECHST) nimm(false, true);
+  if(aus.length < DAZU_HOECHST) nimm(false, false);
+  aus.sort((a, b) => a.stufe - b.stufe);
   return aus;
+}
+/* Ein Satz über der Reihe, der auf den Korb eingeht — ohne den Namen
+   eines Gerichts: „Ihrem Crêpe“/„Ihrer Waffel“ wäre in zehn Sprachen
+   zehnmal falsch gebeugt. */
+function dazuSatz(){
+  const L = dazuLage();
+  if(!L.hatEssen)    return "Etwas zu Ihrem Getränk?";
+  if(!L.hatGetraenk) return "Dazu noch etwas zu trinken?";
+  if(!L.hatSuess)    return "Noch Platz für etwas Süßes?";
+  return "Das bestellen Gäste gern dazu.";
 }
 function dazuHTML(){
   const liste = dazuVorschlaege();
   if(!liste.length) return "";
   return '<section class="dazu" aria-label="' + t("Passt dazu") + '">' +
     '<h3 class="dazu-kopf">' + t("Passt dazu") + '</h3>' +
+    '<p class="dazu-satz">' + t(dazuSatz()) + '</p>' +
     '<div class="dazu-reihe">' + liste.map(x => {
       const g = x.e;
       const bild = hatVorschau(g)
@@ -9823,10 +10249,14 @@ function dazuHTML(){
           'onerror="this.replaceWith(Object.assign(document.createElement(&quot;span&quot;),{className:&quot;dazu-emo&quot;,textContent:&quot;' +
           bzZeichen(bzKategorie(x.gruppe, x.karte)) + '&quot;}))">'
         : '<span class="dazu-emo" aria-hidden="true">' + bzZeichen(bzKategorie(x.gruppe, x.karte)) + '</span>';
-      return '<div class="dazu-karte">' +
+      /* Bild und Name öffnen die Details (Allergene, Beschreibung) —
+         wie in der Karte. Das „+“ bleibt ein eigener Knopf daneben. */
+      return '<div class="dazu-karte" data-grund="' + hs(x.grund) + '">' +
+        '<button type="button" class="dazu-info" data-detail="' + encodeURIComponent(g.n) + '" aria-label="' +
+          t("Infos zu {x}", {x:t(g.n)}) + '">' +
         '<span class="dazu-bild">' + bild + '</span>' +
         '<span class="dazu-grund">' + t(x.grund) + '</span>' +
-        '<b class="dazu-name">' + t(g.n) + '</b>' +
+        '<b class="dazu-name">' + t(g.n) + '</b></button>' +
         '<span class="dazu-fuss"><span class="dazu-preis">' + g.p + ' €</span>' +
         '<button type="button" class="dazu-plus" data-dazu="' + encodeURIComponent(g.n) + '" aria-label="' +
           t("Zur Auswahl hinzufügen") + ': ' + hs(t(g.n)) + '">' + KORB_PLUS + '</button></span>' +
@@ -9864,8 +10294,17 @@ SEITEN.auswahl = () => {
     const zeilenpreis = einzel > 0 ? preisText(einzel * menge) : g.p;
     const stueck = '<span class="stueck">' +
       ((menge > 1 && einzel > 0) ? menge + ' × ' + g.p + ' €' : "") + '</span>';
-    return '<div class="merkzeile" data-zeile="' + encodeURIComponent(n) + '"><div class="mn">' + t(g.n) +
-      (g.b ? '<small>' + t(g.b) + '</small>' : "") + stueck + '</div>' +
+    /* Antippen öffnet die Details — Allergene, Zusatzstoffe, Toppings —
+       wie in der Karte (Wunsch des Betreibers). Nur, wenn die Karte das
+       Gericht noch kennt; sonst bliebe ein Knopf, der nichts tut. */
+    const kennt = !!findeGericht(n);
+    const mn = kennt
+      ? '<button type="button" class="mn" data-detail="' + encodeURIComponent(n) + '" aria-label="' +
+          t("Infos zu {x}", {x:t(g.n)}) + '">'
+      : '<div class="mn">';
+    return '<div class="merkzeile" data-zeile="' + encodeURIComponent(n) + '">' + mn + t(g.n) +
+      (g.b ? '<small>' + t(g.b) + '</small>' : "") + stueck +
+      (kennt ? '<span class="mdetail">' + t("Details") + '</span></button>' : '</div>') +
       '<div class="rechts"><div class="mp">' + zeilenpreis + '</div>' +
       '<div class="stepper">' +
       '<button data-menge="' + encodeURIComponent(n) + '" data-dir="-1" aria-label="' +
@@ -10018,7 +10457,10 @@ function vorgaengeAufraeumen(){
   const vorher = vorgaenge.length;
   vorgaenge = vorgaenge.filter(v => {
     if(jetzt - (v.zeit || 0) > VORGANG_MAXALTER) return false;
-    if(v.status === "fertig" && jetzt - (v.fertigSeit || jetzt) > VORGANG_NACHFERTIG) return false;
+    /* Mit einer Nachricht vom Haus bleibt er bis zum Höchstalter: Der
+       Satz „Ihr Taxi ist da“ kommt oft erst nach dem letzten Teller. */
+    if(v.status === "fertig" && jetzt - (v.fertigSeit || jetzt) > VORGANG_NACHFERTIG &&
+       !(v.nachrichten && v.nachrichten.length)) return false;
     return true;
   });
   if(vorgaenge.length !== vorher) vorgaengeSichern();
@@ -10975,6 +11417,7 @@ function heuteISO(){
 
 SEITEN.reservieren = () =>
   '<div class="seite"><h2>' + t("Tisch reservieren") + '</h2>' +
+  '<div class="resstand" id="resStand" hidden></div>' +
   '<p class="unter">' + t("Am schnellsten geht es telefonisch – wir sind direkt dran.") + '</p>' +
   '<a class="knopf" href="tel:' + BETRIEB.telefon.replace(/\s/g,"") + '">' + BETRIEB.telefon + '</a>' +
   '<div class="label">' + t("ODER ANFRAGE SCHREIBEN") + '</div>' +
@@ -11357,6 +11800,7 @@ function zeichne(){
   const st = jetztOffen();
   $("status").innerHTML = '<span class="status ' + (st.offen ? "offen" : "") + '"><i></i>' + st.text + '</span>';
   bestellStatusSteuern(seiteJetzt);
+  resStandSteuern(seiteJetzt);
   vorgangStreifenZeichnen();
   balkenMalen();
   /* #bnSpur existiert nur auf der Startseite — auf jeder anderen
@@ -11483,6 +11927,7 @@ function vorgangStreifenZeichnen(){
   const rest = restMinuten(v);
   const warte = (v.status === "fertig")
     ? '<span class="vwarte">✓</span>'
+    : !restzeitZeigen() ? ""
     : (rest != null
         ? '<span class="vwarte">' +
           (rest > 0 ? t("noch {a} Min", {a: rest}) : t("Jeden Moment")) + '</span>'
@@ -11494,13 +11939,58 @@ function vorgangStreifenZeichnen(){
     '<span class="vpunkt"></span>' +
     '<span class="vtext">' +
       '<span class="vtitel">' + titel + '</span>' +
-      '<span class="vunter">' + t(st.text) + weitere + '</span>' +
+      '<span class="vunter">' + ((v.nachrichten && v.nachrichten.length > (v.gelesen || 0))
+        ? t("Neue Nachricht vom Haus") : t(st.text)) + weitere + '</span>' +
     '</span>' + warte +
     '<span class="vpfeil">›</span>';
 }
 
+/* Nachrichten vom Haus zu EINEM Vorgang (bestellung_nachrichten,
+   migration-notizen.sql). Liefert true, wenn sich etwas geändert hat.
+   Fehlt die Funktion oder das Netz: still nichts — die Bestellung ist
+   davon nicht berührt. */
+function nachrichtenAbfragen(v){
+  if(!v || !v.nummer || !serverBereit()) return Promise.resolve(false);
+  return sicherFetch(SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/bestellung_nachrichten",
+    { method:"POST",
+      headers:{ apikey:SERVER.schluessel, Authorization:"Bearer " + SERVER.schluessel,
+                "Content-Type":"application/json" },
+      body: JSON.stringify({ nummer: v.nummer }) })
+  .then(a => a.ok ? a.json() : null)
+  .then(liste => {
+    if(!Array.isArray(liste)) return false;
+    const neu = liste.filter(n => n && typeof n.text === "string" && n.text)
+      .map(n => ({ text: n.text, am: n.am || null, bearbeitet: n.bearbeitet === true }));
+    if(JSON.stringify(neu) === JSON.stringify(v.nachrichten || [])) return false;
+    v.nachrichten = neu;
+    vorgaengeSichern();
+    return true;
+  })
+  .catch(() => false);
+}
+function hnUhr(iso){
+  try{ return new Date(iso).toLocaleTimeString(sprache === "de" ? "de-DE" : sprache,
+    {hour:"2-digit", minute:"2-digit"}); }catch(e){ return ""; }
+}
+function hausNachrichtenHTML(liste){
+  if(!liste || !liste.length) return "";
+  return '<div class="hausnachricht" role="status"><div class="hn-titel">' + t("Nachricht vom Haus") + '</div>' +
+    liste.map(n => '<p class="hn-text">' + hs(n.text) +
+      '<span class="hn-zeit">' + hs(hnUhr(n.am)) + (n.bearbeitet ? " · " + t("aktualisiert") : "") + '</span></p>').join("") +
+    '</div>';
+}
+
 /* Fragt den Stand aller offenen Vorgänge ab. */
 function vorgaengeAbfragen(){
+  /* Nachrichten auch zu fertigen Vorgängen — ein Satz vom Haus kommt
+     oft erst nach dem letzten Teller. */
+  offeneVorgaenge().filter(v => v.nummer).forEach(v => {
+    nachrichtenAbfragen(v).then(anders => {
+      if(!anders) return;
+      vorgangStreifenZeichnen();
+      if(seiteJetzt === "bestellt") bestellStatusSteuern("bestellt");
+    });
+  });
   const liste = offeneVorgaenge().filter(v => v.nummer && v.status !== "fertig");
   if(!liste.length || !serverBereit()) return;
 
@@ -11637,7 +12127,7 @@ function bestellStatusSteuern(pfad){
        einen Vorwurf, den der Gast vor sich hat, während er wartet. */
     const restV = vorgaenge.find(x => String(x.nummer) === String(b.nummer));
     const rest  = restMinuten(restV);
-    const kopf  = (status === "fertig") ? null
+    const kopf  = (status === "fertig" || !restzeitZeigen()) ? null
                 : (rest != null
                     ? (rest > 0 ? t("noch ca. {a} Minuten", {a: rest}) : t("Jeden Moment"))
                     : (minuten ? t("ca. {a} Minuten", {a: minuten}) : null));
@@ -11653,12 +12143,17 @@ function bestellStatusSteuern(pfad){
       '<div class="bs-stufen">' + STUFEN.map((s,i) =>
         '<div class="bs-stufe' + (i <= idx ? " an" : "") + '"><i></i><span>' +
         t(s[1]) + '</span></div>').join("") + '</div>' + zusage +
+      hausNachrichtenHTML(restV && restV.nachrichten) +
       /* Zwei Minuten lang darf der Gast zurück. Der Knopf steht hier
          und nicht im Pass: Der Pass wird über outerHTML verglichen,
          und ein Knopf, der nach zwei Minuten verschwindet, ließe die
          Einflug-Animation neu starten. */
       stornoHTML(b, status);
     if(kasten.innerHTML !== neuHTML) kasten.innerHTML = neuHTML;
+    /* Was hier steht, ist gelesen — der Streifen sagt danach nicht mehr „neu“. */
+    if(restV && restV.nachrichten && (restV.gelesen || 0) !== restV.nachrichten.length){
+      restV.gelesen = restV.nachrichten.length; vorgaengeSichern();
+    }
 
     /* Genau einmal am Ende der Frist noch einmal zeichnen. Ohne das
        stünde der Knopf bis zum nächsten Takt da und behauptete etwas,
@@ -11696,6 +12191,10 @@ function bestellStatusSteuern(pfad){
     .then(reihen => {
       if(!reihen || !reihen[0] || !reihen[0].status) return;
       malen(reihen[0].status, reihen[0].wartezeit_min, reihen[0].tagesnummer);
+      const vv = vorgaenge.find(x => String(x.nummer) === String(b.nummer));
+      nachrichtenAbfragen(vv).then(anders => {
+        if(anders) malen(reihen[0].status, reihen[0].wartezeit_min, reihen[0].tagesnummer);
+      });
       /* Und einmal mit der Restzeit hinterher — sie kommt aus einer
          eigenen Anfrage und soll das erste Zeichnen nicht aufhalten. */
       restzeitAbfragen(b.nummer).then(sek => {
@@ -11905,6 +12404,7 @@ function warenkarteHTML(g){
    3. Der Hintergrund kann nicht mehr wegscrollen (iOS braucht position:fixed) */
 let fokusVorher = null;
 let scrollMerk  = 0;
+let korbVorDetail = "";   /* Korb beim Öffnen des Blatts, siehe detailSchliessen */
 
 function fangbare(wurzel){
   const roh = wurzel.querySelectorAll(
@@ -11931,6 +12431,7 @@ function detailOeffnen(name){
   const karte = $("warenkarte");
   fokusVorher = document.activeElement;
   detailName  = name;
+  korbVorDetail = korbAbdruck();
   karte.innerHTML = warenkarteHTML(g);
   karte.scrollTop = 0;
 
@@ -11966,9 +12467,25 @@ function detailSchliessen(){
   document.body.style.top = "";
   window.scrollTo(0, scrollMerk);
 
+  /* Aus dem Warenkorb geöffnet: Im Blatt kann der Gast herausnehmen
+     oder Toppings wählen — dann stimmen Zeile und Summe dahinter nicht
+     mehr. Nur neu zeichnen, wenn sich wirklich etwas geändert hat
+     (§4.2); getippte Felder bleiben (auswahlNeuMitFeldern). */
+  if(/^#\/auswahl/.test(location.hash) && korbAbdruck() !== korbVorDetail){
+    const name = fokusVorher && fokusVorher.dataset ? fokusVorher.dataset.detail : null;
+    auswahlNeuMitFeldern();
+    const neu = name && document.querySelector('[data-detail="' + name + '"]');
+    fokusVorher = neu || null;
+  }
+
   if(fokusVorher && document.contains(fokusVorher))
     fokusVorher.focus({preventScroll:true});
   fokusVorher = null;
+}
+/* Was im Korb liegt, samt Menge und Toppings — als eine Zeichenkette,
+   damit „hat sich etwas geändert?“ ein Vergleich ist. */
+function korbAbdruck(){
+  try{ return JSON.stringify(merk) + "|" + JSON.stringify(optWahl); }catch(e){ return String(Math.random()); }
 }
 
 /* Ändert im Warenkorb NUR die betroffene Zeile und die Summe.
@@ -12344,9 +12861,13 @@ function sicherFetch(ziel, optionen){
   }
 }
 
-/* Schickt eine Reservierungsanfrage direkt in die Tabelle reservierungen.
-   Bewusst getrennt von anServer(): andere Tabelle, andere Felder, und die
-   Anfrage darf NICHT als Bestellung auf dem Board landen. */
+/* Schickt eine Reservierungsanfrage ins Board — über die Funktion
+   reservierung_anfragen (migration-notizen.sql), nicht mehr direkt in
+   die Tabelle. Der direkte Weg gab keine Nummer zurück (return=minimal,
+   kein Leserecht); ohne Nummer sieht der Gast weder, ob seine Anfrage
+   angenommen wurde, noch eine Nachricht des Hauses dazu.
+   Fehlt die Funktion (404, Migration noch nicht eingespielt), geht es
+   den alten Weg — der Gast soll nie ohne Antwort dastehen (§7). */
 function anReservierung(daten){
   return betriebIdHolen().then(bid => {
     if(!bid){
@@ -12354,39 +12875,103 @@ function anReservierung(daten){
         + "(\"" + SERVER.betrieb + "\") mit betriebe.slug überein?");
       return {ok:false, grund:"kein Betrieb"};
     }
-    const ziel = SERVER.adresse.replace(/\/+$/, "") + "/rest/v1/reservierungen";
-    return sicherFetch(ziel, {
-      method: "POST",
-      headers: {
-        apikey: SERVER.schluessel,
-        Authorization: "Bearer " + SERVER.schluessel,
-        "Content-Type": "application/json",
-        Prefer: "return=minimal"
-      },
-      body: JSON.stringify(Object.assign({
-        betrieb_id: bid,
-        quelle: "tisch",
-        status: "offen"
-      }, daten))
+    const basisUrl = SERVER.adresse.replace(/\/+$/, "");
+    const kopf = { apikey: SERVER.schluessel, Authorization: "Bearer " + SERVER.schluessel,
+                   "Content-Type": "application/json" };
+    return sicherFetch(basisUrl + "/rest/v1/rpc/reservierung_anfragen", {
+      method: "POST", headers: kopf,
+      body: JSON.stringify({ p_betrieb_id: bid, p_name: daten.name, p_telefon: daten.telefon || null,
+        p_personen: daten.personen, p_wunsch: daten.wunsch, p_notiz: daten.notiz || null })
     }).then(a => {
-      if(!a.ok){
-        /* Ohne diese Meldung sieht der Gast nur die E-Mail aufgehen und
-           niemand erfährt, warum. Die häufigsten Fälle:
-             404 – die Tabelle reservierungen gibt es noch nicht
-                   (supabase-reservierungen.sql wurde nicht ausgeführt)
-             401/403 – die Regel „res gast fragt an" fehlt
-             400 – ein Feld passt nicht zur Prüfung in der Regel        */
-        return a.text().then(txt => {
-          console.warn("[Omoteno] Reservierung abgelehnt · HTTP " + a.status + " · " + txt);
-          return {ok:false, status:a.status, grund:txt};
-        }).catch(() => ({ok:false, status:a.status}));
-      }
-      return {ok:true, status:a.status};
+      if(a.status === 404) return alterWeg();
+      if(!a.ok) return a.text().then(txt => {
+        console.warn("[Omoteno] Reservierung abgelehnt · HTTP " + a.status + " · " + txt);
+        return {ok:false, status:a.status, grund:txt};
+      });
+      return a.json().then(j => {
+        if(j && j.ok && j.id){
+          resMerken({ id: j.id, wunsch: daten.wunsch, personen: daten.personen });
+          return {ok:true, id:j.id};
+        }
+        return {ok:false, grund:(j && j.grund) || "?", text:(j && j.text) || ""};
+      });
     });
+
+    /* Der alte Weg, unverändert: direkt in die Tabelle, ohne Nummer. */
+    function alterWeg(){
+      return sicherFetch(basisUrl + "/rest/v1/reservierungen", {
+        method: "POST",
+        headers: Object.assign({ Prefer: "return=minimal" }, kopf),
+        body: JSON.stringify(Object.assign({ betrieb_id: bid, quelle: "tisch", status: "offen" }, daten))
+      }).then(a => a.ok ? {ok:true, status:a.status}
+                        : a.text().then(txt => ({ok:false, status:a.status, grund:txt})));
+    }
   }).catch(fehler => {
     console.warn("[Omoteno] Reservierung nicht zustellbar:", fehler);
     return {ok:false};
   });
+}
+
+/* ─── Die eigenen Reservierungsanfragen ───────────────────────────
+   Nummer, Wunschzeit, Personen — im Gerät, je Betrieb. Bis einen Tag
+   nach der Wunschzeit; länger fragt auch reservierung_stand nicht. */
+function resSchluessel(){ return "omoteno-res-" + (SERVER.betrieb || ""); }
+function resListe(){
+  let l = [];
+  try{ l = JSON.parse(localStorage.getItem(resSchluessel()) || "[]"); }catch(e){ l = []; }
+  if(!Array.isArray(l)) l = [];
+  const frist = Date.now() - 86400000;
+  return l.filter(r => r && r.id && Date.parse(r.wunsch) > frist);
+}
+function resSichern(l){ try{ localStorage.setItem(resSchluessel(), JSON.stringify(l.slice(0, 5))); }catch(e){} }
+function resMerken(r){ resSichern([r].concat(resListe().filter(x => x.id !== r.id))); }
+
+let resStandWecker = null;
+function resStandZeichnen(){
+  const ziel = $("resStand"); if(!ziel) return;
+  const l = resListe();
+  if(!l.length){ ziel.hidden = true; ziel.innerHTML = ""; return; }
+  const wann = r => {
+    try{ return new Date(r.wunsch).toLocaleString(sprache === "de" ? "de-DE" : sprache,
+      {weekday:"short", day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}); }
+    catch(e){ return ""; }
+  };
+  const stand = r => r.status === "bestaetigt" ? t("Bestätigt")
+    : r.status === "abgelehnt" ? t("Leider nicht möglich – bitte rufen Sie uns an.")
+    : t("Wartet auf Bestätigung");
+  const html = '<div class="label">' + t("Ihre Anfragen") + '</div>' + l.map(r =>
+    '<div class="rs-karte"><div class="rs-wann">' + hs(wann(r)) +
+    (r.personen ? " · " + t("{n} Personen", {n: r.personen}) : "") + '</div>' +
+    '<div class="rs-stand' + (r.status === "bestaetigt" ? " bestaetigt" : "") + '">' + stand(r) + '</div>' +
+    hausNachrichtenHTML(r.nachrichten) + '</div>').join("");
+  if(ziel.innerHTML !== html) ziel.innerHTML = html;
+  ziel.hidden = false;
+}
+function resStandHolen(){
+  const l = resListe();
+  if(!l.length || !serverBereit()) return;
+  Promise.all(l.map(r => sicherFetch(SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/reservierung_stand",
+      { method:"POST",
+        headers:{ apikey:SERVER.schluessel, Authorization:"Bearer " + SERVER.schluessel,
+                  "Content-Type":"application/json" },
+        body: JSON.stringify({ nummer: r.id }) })
+    .then(a => a.ok ? a.json() : null)
+    .then(j => {
+      if(!j || !j.ok) return;
+      r.status = String(j.status || "offen");
+      r.nachrichten = (Array.isArray(j.nachrichten) ? j.nachrichten : [])
+        .filter(n => n && typeof n.text === "string" && n.text)
+        .map(n => ({ text:n.text, am:n.am || null, bearbeitet:n.bearbeitet === true }));
+    })
+    .catch(() => {})))
+  .then(() => { resSichern(l); resStandZeichnen(); });
+}
+function resStandSteuern(pfad){
+  if(resStandWecker){ clearInterval(resStandWecker); resStandWecker = null; }
+  if(pfad !== "reservieren") return;
+  resStandZeichnen();
+  resStandHolen();
+  resStandWecker = setInterval(() => { if(!document.hidden) resStandHolen(); }, 30000);
 }
 
 function anServer(art, daten){
@@ -13121,6 +13706,12 @@ $("inhalt").addEventListener("click", e => {
           ["rTag","rZeit","rPers","rName","rTel","rNotiz"].forEach(id => {
             const f = $(id); if(f) f.value = "";
           });
+          resStandZeichnen();
+          resStandHolen();
+        }else if(erg.grund === "bremse"){
+          /* Zu viele Anfragen hintereinander: kein zweiter Weg per
+             E-Mail, sondern der Satz des Servers, übersetzt. */
+          melden(t(erg.text || "Gerade sehr viele Anfragen. Bitte kurz warten."), true);
         }else{
           perMail();
         }
@@ -13270,6 +13861,10 @@ zeichne();
 (function willkommen(){
   const schirm = $("willkommen");
   if(!schirm) return;
+  /* Vorschau im Board: Der Schirm bleibt im Gerüst (vorschauZeige
+     „gruss“ braucht ihn), erscheint aber nicht von selbst — und die
+     Sitzung des Boards wird nicht als „schon begrüßt“ markiert. */
+  if(VORSCHAU){ schirm.hidden = true; return; }
 
   const SCHLUESSEL = "omoteno-willkommen";
   let schon = false;
@@ -13323,23 +13918,29 @@ setInterval(aktionenLaden, 120000);
 /* Einmal beim Öffnen melden: Das zählt den Besuch und holt Lieblinge
    und Gutscheine. Kein Takt dahinter — was sich hier ändert, ändert
    sich zwischen Besuchen und nicht während einem. */
-gastLaden();
+/* In der Vorschau des Boards: kein Besuch, keine Gastzeile. */
+if(!VORSCHAU) gastLaden();
 
 /* Lief beim letzten Besuch noch etwas? Dann sofort nachfragen und
    den Streifen zeigen - der Gast soll nicht suchen müssen. */
-vorgangWeckerStellen();
+if(!VORSCHAU) vorgangWeckerStellen();
 
 /* Warteschlange aufnehmen und weiterarbeiten. Eine Bestellung, die
    beim letzten Besuch nicht durchkam, wird jetzt zugestellt - ohne
    dass der Gast noch einmal tippen muss. */
-wsLaden();
-wsStreifenZeichnen();
-if(wsOffen().length) wsAbarbeiten();
+/* Die Vorschau teilt den Speicher mit dem Board (dieselbe Adresse).
+   Eine wartende Bestellung aus einem früheren Gastbesuch auf diesem
+   Gerät darf sie NIE abschicken. */
+if(!VORSCHAU){
+  wsLaden();
+  wsStreifenZeichnen();
+  if(wsOffen().length) wsAbarbeiten();
+}
 
 /* Kommt das Gerät aus dem Ruhezustand zurück, sofort weiterversuchen
    statt auf den nächsten Takt zu warten. */
 document.addEventListener("visibilitychange", () => {
-  if(!document.hidden && wsOffen().length) wsAbarbeiten();
+  if(!VORSCHAU && !document.hidden && wsOffen().length) wsAbarbeiten();
 });
 
 /* ═══════════════════════════════════════════════════════════════
@@ -13360,6 +13961,234 @@ const OMOTENO_DB = {
 /* Merkzettel, um unnötiges Neuzeichnen zu vermeiden: Nur wenn sich die
    Karte wirklich geändert hat, wird die Ansicht aufgefrischt. */
 let karteFingerabdruck = "";
+
+/* ═══ Schriften anwenden (hub_stil.schrift) ═══════════════════════
+   { kopf:"playfair"|"eigen"|"", text:…, kopf_datei:"https://…", text_datei:… }
+   Leer oder unbekannt heißt: die Schrift aus dem Marken-Studio.
+
+   Eine EIGENE Schrift kommt nur aus dem Eimer „schriften“ dieses
+   Projekts (migration-schriften.sql), mit festem Namensmuster. Das
+   ist die Sicherung gegen alles andere: Die Adresse landet in einer
+   url()-Angabe, und die Spalte ist live und ungeprüft. Ein
+   Anführungszeichen, ein fremder Server, javascript: — nichts davon
+   passt auf das Muster. In der Vorschau des Boards zusätzlich blob:
+   aus demselben Rahmen (die Datei ist dann noch nicht hochgeladen). */
+function schriftUrlOk(u){
+  u = String(u || "");
+  const eimer = OMOTENO_DB.url.replace(/\/+$/, "") + "/storage/v1/object/public/schriften/";
+  if(u.indexOf(eimer) === 0 &&
+     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9_-]{1,60}\.(woff2|woff|ttf|otf)$/
+       .test(u.slice(eimer.length))) return u;
+  if(VORSCHAU && /^blob:[A-Za-z0-9:/._-]+$/.test(u)) return u;
+  return "";
+}
+
+const schriftGeladen = {};
+function schriftLaden(familie, quellen){
+  if(schriftGeladen[familie] || typeof FontFace !== "function" || !document.fonts) return;
+  schriftGeladen[familie] = true;
+  quellen.forEach(q => {
+    try{
+      const ff = new FontFace(familie, 'url("' + q.url + '")',
+        Object.assign({ weight: q.staerke, display:"swap" }, q.bereich ? { unicodeRange: q.bereich } : {}));
+      document.fonts.add(ff);
+      ff.load().catch(() => {});      /* scheitert still: der Rückfall steht schon */
+    }catch(e){}
+  });
+}
+
+/* Kurzer, stabiler Name je Adresse — eine neue eigene Datei bekommt
+   eine neue Familie, statt die alte im Speicher zu überdecken. */
+function schriftKennung(u){
+  let h = 0;
+  for(let i = 0; i < u.length; i++) h = (h * 31 + u.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+let schriftStand = null;
+function schriftenAnwenden(stil){
+  const sch = (stil && typeof stil === "object" && stil.schrift && typeof stil.schrift === "object" &&
+               !Array.isArray(stil.schrift)) ? stil.schrift : {};
+  const fp = JSON.stringify(sch);
+  if(fp === schriftStand) return false;
+  schriftStand = fp;
+  const s = document.documentElement.style, mb = MARKENBLATT;
+  ["kopf", "text"].forEach(rolle => {
+    const marke = SCHRIFTEN[mb.schrift && mb.schrift[rolle]] || SCHRIFTEN.system;
+    const wahl = String(sch[rolle] || "");
+    let familie = "", rueck = marke;
+    if(wahl === "eigen"){
+      const u = schriftUrlOk(sch[rolle + "_datei"]);
+      if(u){
+        familie = "omo-e-" + rolle + "-" + schriftKennung(u);
+        schriftLaden(familie, [{ url:u, staerke:"100 900" }]);
+      }
+    }else if(Object.prototype.hasOwnProperty.call(SCHRIFT_WEB, wahl)){
+      const w = SCHRIFT_WEB[wahl];
+      familie = "omo-" + wahl;
+      rueck = SCHRIFTEN[w.rueck] || marke;
+      const quellen = [];
+      w.staerken.forEach(st => ["latin", "latin-ext"].forEach(teil => quellen.push({
+        url: SCHRIFT_BASIS + w.datei + "-" + teil + "-" + st + ".woff2",
+        staerke: String(st), bereich: SCHRIFT_BEREICH[teil] })));
+      schriftLaden(familie, quellen);
+    }
+    s.setProperty("--schrift-" + rolle, familie ? '"' + familie + '",' + rueck : marke);
+  });
+  return true;
+}
+
+/* ═══ Eigene Worte, Kacheln, Banner — aus der Datenbank ODER dem Board ═══
+   Gekürzt wird trotzdem. Die Datenbank hat eine Schranke
+   (hub_texte_masse), das Board warnt früher — aber ein alter Wert
+   oder ein anderer Weg in die Tabelle darf den Kopf des Hubs nicht
+   auseinanderziehen. Wer drei Schranken hat, verliert keine davon.
+
+   Nur Teile, die in z WIRKLICH vorkommen, werden angefasst: Die
+   Vorschau schickt oft nur die Banner, und dann sollen die Kacheln
+   bleiben, wie sie sind. Gibt zurück, ob neu gezeichnet werden muss.
+
+   „immer“ (Vorschau): Eine leere Liste heißt dann „zurück auf die
+   Vorgabe“, nicht „nichts geändert“ — der Wirt hat gerade alles
+   gelöscht und will das Ergebnis sehen. */
+let hubGrund = null;
+function betriebsTeileAnwenden(z, immer){
+  if(!z || typeof z !== "object") return false;
+  if(!hubGrund) hubGrund = { claim:BETRIEB.claim, gruss:BETRIEB.begruessung,
+                             runner:RUNNER_TITEL, kacheln:KACHELN.slice() };
+  const kurz = (w, n) => String(w || "").trim().slice(0, n);
+  let neu = false;
+
+  if("hub_texte" in z){
+    hubTexte = (z.hub_texte && typeof z.hub_texte === "object") ? z.hub_texte : {};
+    const vorher = BETRIEB.claim + "|" + RUNNER_TITEL;
+    /* Dieselben Zahlen wie hub_texte_masse (migration-texte-laenger.sql).
+       Ein leeres Feld heißt: die Worte aus dem Markenblatt. */
+    BETRIEB.claim       = kurz(hubTexte.claim, 90)        || hubGrund.claim;
+    BETRIEB.begruessung = kurz(hubTexte.gruss, 160)       || hubGrund.gruss;
+    RUNNER_TITEL        = kurz(hubTexte.runner_titel, 40) || hubGrund.runner;
+    /* Der Kopf steht schon auf dem Schirm. Neu zeichnen nur, wenn sich
+       etwas Sichtbares geändert hat — sonst blitzt er bei jedem
+       Abgleich einmal auf, ohne dass etwas anders wäre. */
+    if(immer || BETRIEB.claim + "|" + RUNNER_TITEL !== vorher) neu = true;
+  }
+
+  /* Die Startkacheln aus dem Board. Ganz oder gar nicht, wie beim
+     Markenblatt: Eine halb übernommene Liste wäre eine Mischung aus
+     zwei Ständen. Und durch dieselbe Positivliste (kachelBauen) — was
+     der Wirt nicht schicken darf, wird ignoriert, nicht übernommen. */
+  if("hub_kacheln" in z){
+    const gebaut = (Array.isArray(z.hub_kacheln) ? z.hub_kacheln : [])
+      .filter(e => e && e.schluessel && e.an !== false)
+      .map(e => kachelBauen(e.schluessel, e))
+      .filter(Boolean);
+    const liste = gebaut.length ? gebaut : (immer ? hubGrund.kacheln : null);
+    if(liste){
+      KACHELN.length = 0;
+      liste.forEach(k => KACHELN.push(k));
+      /* Nur zeichnen, wenn der Gast die Startseite auch ansieht —
+         sonst reißt es ihm die Karte unter dem Finger weg. */
+      if(immer || seiteJetzt === "start") neu = true;
+    }
+  }
+
+  /* Schrift: im laufenden Betrieb nur beim ersten Laden (siehe
+     karteHolen) — in der Vorschau sofort, dafür ist sie da. */
+  if("hub_stil" in z && immer){
+    if(schriftenAnwenden(z.hub_stil)) neu = true;
+  }
+
+  /* Das Aktions-Banner-Rad: eine echte freie Liste, bannerAusZeile()
+     filtert und ordnet selbst. */
+  if("hub_banner" in z){
+    const roh = Array.isArray(z.hub_banner) ? z.hub_banner : [];
+    if(roh.length || immer){
+      bannerAusZeile(roh);
+      if(immer || (hubBanner.length && seiteJetzt === "start")) neu = true;
+    }
+  }
+  return neu;
+}
+
+/* ═══ VORSCHAU im Board ═══════════════════════════════════════════
+   Das Board zeigt diesen Hub als kleines Bild, während der Wirt
+   tippt (Wunsch vom 26.09.: „ein direkter Editor, wo man eine kleine
+   Vorschau sieht wie im Hub“). Es lädt DIESE Datei als srcdoc und
+   setzt vorher window.OMOTENO_VORSCHAU = true — X-Frame-Options bleibt
+   DENY, ein srcdoc ist keine Navigation.
+
+   In der Vorschau passiert nichts, was Spuren hinterlässt: keine
+   Gastzeile, kein Nachsenden einer wartenden Bestellung, kein
+   Willkommensschirm (außer er wird ausdrücklich gezeigt). Der
+   Entwurf lebt nur im Speicher dieses Rahmens. */
+
+function vorschauSetzen(teil){
+  if(!VORSCHAU || !teil || typeof teil !== "object") return;
+  vorschauEntwurf = Object.assign({}, vorschauEntwurf || {}, teil);
+  /* Kein Aktions-Entwurf mehr: wieder die echten Aktionen. */
+  if("aktion" in teil && !vorschauAktion()){ aktionen = []; aktionenLaden(); }
+  betriebsTeileAnwenden(teil, true);
+  zeichne();
+}
+
+/* Eine Beispiel-Aktion, damit der Aktionsname beim Tippen sichtbar
+   ist. Ohne Entwurf: die echten Aktionen. */
+function vorschauAktion(){
+  const a = vorschauEntwurf && vorschauEntwurf.aktion;
+  if(!a || typeof a !== "object") return false;
+  aktionen = [{ id:"vorschau", gericht_name:String(a.gericht_name || ""),
+    titel:String(a.titel || ""), preis_alt:+a.preis_alt || 0, preis_neu:+a.preis_neu || 0,
+    bis:new Date(Date.now() + (+a.minuten || 60) * 60000).toISOString() }];
+  return true;
+}
+
+/* Zu dem Teil springen, an dem der Wirt gerade schreibt. */
+function vorschauZeige(ziel){
+  if(!VORSCHAU) return;
+  const wk = $("willkommen");
+  if(ziel === "gruss" && wk){
+    if(!$("wkFigur").innerHTML) $("wkFigur").innerHTML = avatarSVG(120);
+    $("wkHaus").textContent = BETRIEB.name;
+    $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
+    $("wkTipp").textContent = t("Antippen zum Überspringen");
+    wk.classList.remove("weg");
+    wk.hidden = false;
+    return;
+  }
+  if(wk) wk.hidden = true;
+  if(seiteJetzt !== "start"){ location.hash = "#/"; }
+  const finde = { kopf:   () => $("claim"),
+                  banner: () => document.querySelector(".bnrad"),
+                  kacheln:() => document.querySelector("a.kachel"),
+                  aktion: () => document.querySelector(".aktion") }[ziel];
+  requestAnimationFrame(() => {
+    const el = finde ? finde() : null;
+    if(el) el.scrollIntoView({ block: ziel === "kopf" ? "start" : "center" });
+    else window.scrollTo(0, 0);
+  });
+}
+
+/* Was wird beim Gast abgeschnitten? Gemessen am gezeichneten Element
+   (scrollHeight über clientHeight = line-clamp hat gegriffen), nicht
+   an einer Zeichenzahl — ein Titel aus lauter „i“ passt länger als
+   einer aus lauter „M“. */
+function vorschauMessen(){
+  const ab = el => !!el && el.scrollHeight > el.clientHeight + 1;
+  const sicht = el => !!el && getComputedStyle(el).display !== "none";
+  return {
+    claim: ab($("claim")),
+    banner: [...document.querySelectorAll(".bnkarte")].map(k => ({
+      id: k.getAttribute("data-bnid") || "",
+      titel: ab(k.querySelector(".bntxt b")), text: ab(k.querySelector(".bntxt span")) })),
+    kacheln: [...document.querySelectorAll("a.kachel")].map(k => {
+      const sp = k.querySelector(".txt > span");
+      return { s: k.getAttribute("data-kachel") || "",
+               titel: ab(k.querySelector(".txt strong")), unter: sicht(sp) && ab(sp),
+               unterVersteckt: !!sp && !sicht(sp) && !!sp.textContent.trim() };
+    }),
+    aktion: ab(document.querySelector(".aktion .kennz"))
+  };
+}
 
 async function karteHolen(erstesMal){
   if(!OMOTENO_DB.url || !OMOTENO_DB.key) return;
@@ -13421,9 +14250,6 @@ async function karteHolen(erstesMal){
        Schranke oder ein anderer Weg in die Tabelle darf den Kopf des
        Hubs nicht auseinanderziehen. Wer drei Schranken hat, verliert
        keine davon. */
-    hubTexte = (b[0].hub_texte && typeof b[0].hub_texte === "object")
-      ? b[0].hub_texte : {};
-
     /* ─── Was der Betrieb selbst schreibt, in elf Sprachen ───────
        hub_woerter hat die Form { "tr": { "Deutscher Satz": "…" } } —
        nach Sprache zuerst, weil das Board sie so füllt und weil man
@@ -13451,47 +14277,14 @@ async function karteHolen(erstesMal){
         });
       });
     }
-    const kurz = (w, n) => String(w || "").trim().slice(0, n);
-    const vorher = BETRIEB.claim;
-    if(kurz(hubTexte.claim, 48))        BETRIEB.claim        = kurz(hubTexte.claim, 48);
-    if(kurz(hubTexte.gruss, 80))        BETRIEB.begruessung  = kurz(hubTexte.gruss, 80);
-    if(kurz(hubTexte.runner_titel, 24)) RUNNER_TITEL         = kurz(hubTexte.runner_titel, 24);
-    /* Der Kopf steht schon auf dem Schirm. Neu zeichnen nur, wenn sich
-       der Slogan wirklich geändert hat — sonst blitzt er bei jedem
-       Abgleich einmal auf, ohne dass etwas anders wäre. */
-    if(BETRIEB.claim !== vorher) zeichne();
-
-    /* Die Startkacheln aus dem Board. Sie kommen aus der DATENBANK,
-       nicht aus dem Markenblatt: Der Wirt stellt sie im Board ein
-       und will sie beim nächsten Öffnen sehen, nicht beim nächsten
-       Erzeugen des Hubs.
-
-       Ganz oder gar nicht, wie beim Markenblatt: Eine halb
-       übernommene Liste wäre eine Mischung aus zwei Ständen. Und
-       durch dieselbe Positivliste wie dort — was der Wirt nicht
-       schicken darf, wird ignoriert, nicht übernommen. */
-    if(Array.isArray(b[0].hub_kacheln) && b[0].hub_kacheln.length){
-      const gebaut = b[0].hub_kacheln
-        .filter(e => e && e.schluessel && e.an !== false)
-        .map(e => kachelBauen(e.schluessel, e))
-        .filter(Boolean);
-      if(gebaut.length){
-        KACHELN.length = 0;
-        gebaut.forEach(k => KACHELN.push(k));
-        /* Nur zeichnen, wenn der Gast die Startseite auch ansieht —
-           sonst reißt es ihm die Karte unter dem Finger weg. */
-        if(seiteJetzt === "start") zeichne();
-      }
-    }
-
-    /* Das Aktions-Banner-Rad aus dem Board — dieselbe Live-Spalten-
-       Bauart wie hub_kacheln, aber eine echte freie Liste statt eines
-       Overrides fester Plätze (bannerAusZeile() filtert/ordnet selbst,
-       kein kachelBauen()-Äquivalent nötig). */
-    if(Array.isArray(b[0].hub_banner) && b[0].hub_banner.length){
-      bannerAusZeile(b[0].hub_banner);
-      if(hubBanner.length && seiteJetzt === "start") zeichne();
-    }
+    /* Slogan, Gruß, Aktionsname, Kacheln und Banner-Rad: EIN Weg für
+       die Datenbank und für die Vorschau im Board (betriebsTeileAnwenden
+       unten). Zwei Wege liefen früher oder später auseinander — und die
+       Vorschau zeigte dann etwas, das der Gast nie sieht. */
+    if(betriebsTeileAnwenden(b[0], false)) zeichne();
+    /* In der Vorschau des Boards liegt der Entwurf ÜBER dem Stand der
+       Datenbank — sonst wischte der nächste Abgleich (90 s) ihn weg. */
+    if(VORSCHAU && vorschauEntwurf){ betriebsTeileAnwenden(vorschauEntwurf, true); zeichne(); }
 
     /* Die Figur des Hauses aus dem Board — dieselbe Bauart wie die
        Kacheln: eine Live-Spalte, die der Hub zur Laufzeit liest, statt
@@ -13508,9 +14301,22 @@ async function karteHolen(erstesMal){
        boolean. Ändert es den Stand, wird neu gezeichnet. */
     const stil = b[0].hub_stil;
     if(stil && typeof stil === "object" && !Array.isArray(stil)){
-      const vorher = bewegteZeichenAn();
+      const vorher = bewegteZeichenAn(), restVorher = restzeitZeigen();
       HUBSTIL = stil;
       if(bewegteZeichenAn() !== vorher) zeichne();
+      /* Der Streifen steht schon aus dem Speicher des Geräts da, bevor
+         diese Antwort kommt — und wird sonst nur neu gezeichnet, wenn
+         sich die Restzeit ändert. Ohne diese Zeile zeigte er bei „Nur
+         Stand“ weiter „ca. 20 Min“ (gefunden von pruef-zusage.js). */
+      if(restzeitZeigen() !== restVorher) vorgangStreifenZeichnen();
+    }
+    /* Schrift nur beim ERSTEN Laden: Ein Wechsel mitten im Lesen würde
+       jede Zeile neu umbrechen (dieselbe Regel wie markeGrundlegen).
+       Gemerkt für den nächsten Besuch, damit sie dann gleich steht. */
+    if(erstesMal){
+      schriftenAnwenden(stil);
+      try{ localStorage.setItem("omoteno-schrift-" + HAUS,
+             JSON.stringify((stil && typeof stil === "object" && stil.schrift) || null)); }catch(e){}
     }
 
     const av = b[0].hub_avatar;
@@ -13651,6 +14457,15 @@ async function karteHolen(erstesMal){
    Ändert das Team im Admin-Panel einen Preis oder setzt ein Gericht auf
    "nicht verfügbar", sieht der Gast das ohne Neuladen. Wir fragen alle
    90 Sekunden nach – und sofort, wenn der Gast zur Seite zurückkehrt. */
+/* Die Schrift vom letzten Besuch gleich setzen — der Abgleich dauert,
+   und dazwischen stünde die Markenschrift da und spränge dann um.
+   Nicht in der Vorschau: Dort gilt, was das Board schickt. */
+if(!VORSCHAU){
+  try{
+    const gemerkt = JSON.parse(localStorage.getItem("omoteno-schrift-" + HAUS) || "null");
+    if(gemerkt && typeof gemerkt === "object") schriftenAnwenden({ schrift: gemerkt });
+  }catch(e){}
+}
 karteHolen(true);
 
 let letzterAbruf = Date.now();
@@ -13709,7 +14524,17 @@ document.addEventListener("visibilitychange", () => {
    o.basisX  waagerechter Anteil, der erhalten bleiben muss —
              .warenkarte steht auf translate3d(-50%,…) und läge ohne
              das plötzlich halb außerhalb des Schirms
-   o.kopf    wie weit oben eine Geste beginnen darf (Vorgabe 72px) */
+   o.kopf    wie weit oben eine Geste mit Maus oder Stift beginnen darf
+             (Vorgabe 72px)
+
+   Finger und Maus gehen getrennte Wege. VORFALL, gemessen im
+   Kategorie-Blatt des Boards: Mit Zeigerereignissen allein gehörte
+   jede Fingergeste außerhalb des 4px-Balkens dem Browser — er rollte,
+   schickte pointercancel, und das Blatt federte zurück. Auf einem
+   Raster aus Knöpfen begann sie gar nicht erst. Ob ein Finger zieht
+   oder rollt, entscheidet deshalb sein ERSTER Zug: nach unten, und
+   nichts zwischen Finger und Blatt ist gescrollt → das Blatt folgt.
+   Sonst gehört die ganze Geste dem Rollen. */
 function wischZu(o){
   var blatt = o && o.blatt, zu = o && o.zu;
   if(!blatt || typeof zu !== "function") return;
@@ -13725,6 +14550,7 @@ function wischZu(o){
   if(griff) griff.style.touchAction = "none";
 
   var zieht = false, y0 = 0, dy = 0, tLetzt = 0, yLetzt = 0, tempo = 0, alterUebergang = "";
+  var finger = false, fx0 = 0, fy0 = 0, fZiel = null, fGriff = false, fEntschieden = false;
 
   function ruhig(){
     return !!(window.matchMedia &&
@@ -13734,8 +14560,38 @@ function wischZu(o){
     blatt.style.transition = alterUebergang;
     blatt.style.transform  = "";
   }
+  function anfangen(y, t){
+    zieht = true; y0 = y; dy = 0; tempo = 0;
+    yLetzt = y; tLetzt = t;
+    alterUebergang = blatt.style.transition;
+    blatt.style.transition = "none";
+  }
+  function folgen(y, t){
+    dy = y - y0;
+    /* Nach oben gibt es kaum nach — das Blatt ist schon oben. */
+    if(dy < 0) dy = dy / 5;
+    var dt = t - tLetzt;
+    if(dt > 0){
+      tempo  = (y - yLetzt) / dt;   /* px je Millisekunde */
+      yLetzt = y; tLetzt = t;
+    }
+    /* Wer Bewegung reduziert hat, bekommt kein Mitziehen — aber
+       dieselbe Geste und dasselbe Ergebnis. */
+    if(!ruhig()) blatt.style.transform = "translate3d(" + basisX + "," + dy + "px,0)";
+  }
+  /* Ist zwischen Finger und Blatt alles ganz oben? Ein Raster, das
+     selbst noch gescrollt ist, will zuerst zurückrollen. */
+  function obenAngekommen(el){
+    for(var e = el; e && e.nodeType === 1; e = e.parentNode){
+      if(e.scrollTop > 0) return false;
+      if(e === blatt) return true;
+    }
+    return true;
+  }
 
+  /* ── Maus und Stift ── */
   blatt.addEventListener("pointerdown", function(ev){
+    if(ev.pointerType === "touch") return;
     if(ev.pointerType === "mouse" && ev.button !== 0) return;
     /* Auf einem Bedienelement fängt keine Geste an: Wer einen Regler
        zieht, will den Regler bewegen und nicht das Blatt. */
@@ -13749,27 +14605,61 @@ function wischZu(o){
       (ev.clientY - blatt.getBoundingClientRect().top) <= kopf;
     if(!aufGriff && !obenAmBlatt) return;
 
-    zieht = true; y0 = ev.clientY; dy = 0; tempo = 0;
-    yLetzt = ev.clientY; tLetzt = ev.timeStamp;
-    alterUebergang = blatt.style.transition;
-    blatt.style.transition = "none";
+    anfangen(ev.clientY, ev.timeStamp);
     try{ blatt.setPointerCapture(ev.pointerId); }catch(e){}
   }, {passive:true});
 
   blatt.addEventListener("pointermove", function(ev){
-    if(!zieht) return;
-    dy = ev.clientY - y0;
-    /* Nach oben gibt es kaum nach — das Blatt ist schon oben. */
-    if(dy < 0) dy = dy / 5;
-    var dt = ev.timeStamp - tLetzt;
-    if(dt > 0){
-      tempo  = (ev.clientY - yLetzt) / dt;   /* px je Millisekunde */
-      yLetzt = ev.clientY; tLetzt = ev.timeStamp;
-    }
-    /* Wer Bewegung reduziert hat, bekommt kein Mitziehen — aber
-       dieselbe Geste und dasselbe Ergebnis. */
-    if(!ruhig()) blatt.style.transform = "translate3d(" + basisX + "," + dy + "px,0)";
+    if(!zieht || ev.pointerType === "touch") return;
+    folgen(ev.clientY, ev.timeStamp);
   }, {passive:true});
+
+  /* ── Finger ── */
+  blatt.addEventListener("touchstart", function(ev){
+    finger = false;
+    if(zieht || ev.touches.length !== 1) return;
+    /* In einem Textfeld markiert der Finger Text — das bleibt so.
+       Knöpfe dagegen nicht: Ob getippt oder gezogen wird, zeigt erst
+       die Bewegung. */
+    if(ev.target.closest &&
+       ev.target.closest("input,select,textarea,[contenteditable],[data-kein-wisch]")) return;
+    finger = true; fEntschieden = false;
+    fx0 = ev.touches[0].clientX; fy0 = ev.touches[0].clientY;
+    fZiel = ev.target;
+    fGriff = !!(griff && griff.contains(ev.target));
+  }, {passive:true});
+
+  blatt.addEventListener("touchmove", function(ev){
+    if(!finger) return;
+    if(ev.touches.length !== 1){ finger = false; if(zieht) los(); return; }
+    var f = ev.touches[0];
+    if(!fEntschieden){
+      var ddx = f.clientX - fx0, ddy = f.clientY - fy0;
+      /* Unter drei Pixeln hat der Finger noch keine Richtung. Der
+         Browser rollt erst weit später los; bis dahin ist jeder Zug
+         noch abbrechbar. */
+      if(Math.abs(ddx) < 3 && Math.abs(ddy) < 3) return;
+      fEntschieden = true;
+      var runter = ddy > 0 && Math.abs(ddy) >= Math.abs(ddx);
+      if(!ev.cancelable || !(fGriff || (runter && obenAngekommen(fZiel)))){
+        finger = false; return;
+      }
+      anfangen(fy0, ev.timeStamp);
+    }
+    ev.preventDefault();
+    folgen(f.clientY, ev.timeStamp);
+  }, {passive:false});
+
+  function fingerWeg(ev){
+    if(!finger) return;
+    finger = false;
+    if(!zieht) return;
+    /* Der Zug gehörte dem Blatt. Kein anderer Horcher — etwa das
+       Zurück-Ziehen am oberen Rand im Hub — wertet ihn noch einmal
+       aus. */
+    ev.stopPropagation();
+    los();
+  }
 
   function los(){
     if(!zieht) return;
@@ -13803,8 +14693,11 @@ function wischZu(o){
     }, 205);
   }
 
-  blatt.addEventListener("pointerup",     los, {passive:true});
-  blatt.addEventListener("pointercancel", los, {passive:true});
+  function zeigerWeg(ev){ if(ev.pointerType !== "touch") los(); }
+  blatt.addEventListener("pointerup",     zeigerWeg, {passive:true});
+  blatt.addEventListener("pointercancel", zeigerWeg, {passive:true});
+  blatt.addEventListener("touchend",      fingerWeg, {passive:true});
+  blatt.addEventListener("touchcancel",   fingerWeg, {passive:true});
 }
 /* ╚═══ WISCHZU · GETEILTER BLOCK · ENDE ═══════════════════════════╝ */
 

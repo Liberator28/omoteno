@@ -24,7 +24,7 @@ grant insert on probe to anon, authenticated;
 -- ═══ TEIL 1 · Der anonyme Gast ═══
 set local role anon;
 do $$
-declare v uuid; s text; nm text; n int; v_id uuid;
+declare v uuid; s text; nm text; n int; v_id uuid; v_hat uuid; v_pos jsonb; v_preis numeric;
 begin
   select id, slug, name into v, s, nm from betriebe limit 1;
 
@@ -83,7 +83,15 @@ begin
   begin select count(*) into n from betriebe_oeffentlich;
     insert into probe values (23,'Gast','Sicht betriebe_oeffentlich lesen','ok, '||n);
   exception when others then insert into probe values (23,'Gast','Sicht lesen','KAPUTT: '||sqlerrm); end;
-  begin v_id := bestellung_aufgeben(v,'tisch','7',0,'Pruefung','[]'::jsonb);
+  -- Seit migration-missbrauch.sql (26.09.) nimmt der Server keine leere
+  -- Bestellung mehr an und rechnet den Preis aus der Karte. Der richtige
+  -- Weg ist also: ein echtes, verfügbares Gericht zum Kartenpreis — aus
+  -- einem Betrieb, der überhaupt eine Karte hat.
+  begin
+    select g.betrieb_id, jsonb_build_array(jsonb_build_object('name', g.name, 'menge', 1, 'preis', g.preis)), g.preis
+      into v_hat, v_pos, v_preis
+      from gerichte g where g.verfuegbar order by g.betrieb_id, g.id limit 1;
+    v_id := bestellung_aufgeben(v_hat,'tisch','7',v_preis,'Pruefung',v_pos);
     insert into probe values (24,'Gast','bestellen (der richtige Weg)','ok');
   exception when others then insert into probe values (24,'Gast','bestellen','KAPUTT: '||sqlerrm); end;
   begin perform bestellung_status(v_id);

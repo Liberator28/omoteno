@@ -271,7 +271,7 @@ function eigeneTexte(blatt){
   console.log("\n══ Kacheltext wird maskiert ══");
   {
     const hub = fs.readFileSync(path.join(OBEN, "vorlagen", "hub.vorlage.html"), "utf8");
-    const start = hub.match(/const kachelHTML = k => \{[\s\S]*?\n  \};/);
+    const start = hub.match(/const kachelHTML = x => \{[\s\S]*?\n  \};/);
     pruef(!!start && /hs\(t\(k\.titel\)\)/.test(start[0]),
       "der Titel geht durch die Maskierung",
       start ? (/hs\(t\(k\.titel\)\)/.test(start[0]) ? "hs(t(k.titel))" : "ROH") : "nicht gefunden");

@@ -45,7 +45,7 @@ const ok = (g, t, z) => {
    Fehler durchlassen, um die es hier geht. */
 const STELLEN = `
 declare const Deno: {
-  env: { get(k: string): string | undefined };
+  env: { get(k: string): string | undefined; toObject(): Record<string, string> };
   serve(h: (r: Request) => Response | Promise<Response>): void;
 };
 declare module "npm:@anthropic-ai/sdk" {
@@ -60,11 +60,22 @@ declare module "npm:@anthropic-ai/sdk" {
     constructor(o: { apiKey: string });
     messages: { create(p: Record<string, unknown>): Promise<Antwort> };
     beta: { messages: { create(p: Record<string, unknown>): Promise<Antwort> } };
+    models: { list(p?: Record<string, unknown>): Promise<unknown> };
   }
   export default Anthropic;
 }
 declare module "npm:@supabase/supabase-js@2" {
   export function createClient(a: string, b: string, c?: unknown): any;
+}
+declare module "jsr:@supabase/supabase-js@2" {
+  export function createClient(a: string, b: string, c?: unknown): any;
+}
+declare module "npm:web-push@3.6.7" {
+  const webpush: {
+    setVapidDetails(mail: string, pub: string, priv: string): void;
+    sendNotification(ziel: unknown, inhalt: string, opt?: unknown): Promise<unknown>;
+  };
+  export default webpush;
 }
 `;
 

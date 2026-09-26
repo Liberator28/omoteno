@@ -196,8 +196,13 @@ async function verdrahten(seite, texte){
     console.log("  " + breite + "px");
     pruef(zahl.claimBeiGut <= 1,
       "    Slogan bei „gut" + '"' + " noch einzeilig", zahl.claimBeiGut + " Zeile(n)");
-    pruef(zahl.claimBeiHart <= 2,
-      "    Slogan bei „hart" + '"' + " höchstens zweizeilig", zahl.claimBeiHart + " Zeile(n)");
+    /* Seit 26.09. darf der Slogan 90 Zeichen haben (Wunsch des
+       Betreibers: mehr Platz für eigene Worte). Die Regel lautet
+       jetzt: Der Kopf wächst höchstens auf DREI Zeilen, der Rest
+       endet mit „…" (line-clamp) — gemessen an der gezeichneten Höhe,
+       nicht an der Zeichenzahl. */
+    pruef(zahl.claimBeiHart <= 3,
+      "    Slogan bei „hart" + '"' + " höchstens dreizeilig", zahl.claimBeiHart + " Zeile(n)");
     pruef(zahl.runnerBeiGut <= 1,
       "    Aktionsname bei „gut" + '"' + " noch einzeilig", zahl.runnerBeiGut + " Zeile(n)");
     await ctx.close();

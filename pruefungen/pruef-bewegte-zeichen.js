@@ -428,6 +428,88 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     await ctx.close();
   }
 
+  console.log("\n══ Takt: die Filme laufen weiter, solange man sie sieht ══");
+  /* VORFALL (Nutzer, 26.09.): „Die Animationen machen nur einen
+     Durchlauf, danach bleiben sie stehen." Gemessen: loop:false, und
+     jeder Film spielte genau einmal je Besuch — die Orange in der
+     Entscheidungshilfe Bild 19→99 in 1,6 s, danach für immer p99.
+     Jede Probe stellt zuerst fest, dass es den Film überhaupt gibt
+     (§8.1g C: „kein Film“ sähe sonst aus wie „steht still“). */
+  const verlauf = (s, sel, ms, schritt = 250) => s.evaluate(([sel, ms, schritt]) => new Promise(fertig => {
+    const spur = [], t0 = performance.now();
+    (function z(){
+      const el = document.querySelector(sel);
+      spur.push(el && el._bz ? { p: el._bz.isPaused, f: Math.round(el._bz.currentFrame) } : null);
+      if (performance.now() - t0 < ms) setTimeout(z, schritt); else fertig(spur);
+    })();
+  }), [sel, ms, schritt]);
+  /* Wie oft beginnt ein Durchlauf? Ein Wechsel von „steht" auf „spielt". */
+  const anlaeufe = spur => spur.reduce((n, x, i) => n + (i && x && !x.p && spur[i - 1] && spur[i - 1].p ? 1 : 0), 0);
+  {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken");
+    const SEL = '#edStapel .ed-karte[data-tiefe="0"] .ed-emo .bz';
+    const spur = await verlauf(s, SEL, 9000);
+    const da = spur.filter(Boolean).length;
+    pruef(da > spur.length * .9, "Entscheidungshilfe: der Film der obersten Karte ist da", da + " von " + spur.length + " Proben");
+    if (da) {
+      const n = anlaeufe(spur);
+      pruef(n >= 2, "Entscheidungshilfe: nach dem ersten Durchlauf spielt der Film WIEDER (≥ 2 neue Anläufe in 9 s)",
+        n + " Anläufe · " + spur.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" ").slice(0, 160));
+      const laeuft = spur.filter(x => x && !x.p).length / da;
+      pruef(laeuft >= .5, "Entscheidungshilfe: der Film läuft die meiste Zeit (Pausen kurz)", Math.round(laeuft * 100) + " % der Proben spielend");
+    }
+    const schwebt = await s.evaluate(sel => {
+      const e = document.querySelector(sel); if (!e) return null;
+      const emo = e.closest(".ed-emo");
+      return getComputedStyle(emo).animationName;
+    }, SEL);
+    pruef(schwebt === "edSchweben", "Entscheidungshilfe: das Zeichen der obersten Karte schwebt", schwebt);
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    /* Außer Sicht: wartet auf dem Ruhebild und läuft erst weiter, wenn
+       es wieder zu sehen ist. Ein kurzes Fenster, damit die obersten
+       Kacheln sicher aus dem Bild rollen. */
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "", { breite:390 });
+    await s.setViewportSize({ width:390, height:420 });
+    const erste = await s.evaluate(() => {
+      const el = document.querySelector(".bz.bz-bereit"); if (!el || !el._bz) return null;
+      el.id = el.id || "bzProbe"; return el.id;
+    });
+    pruef(!!erste, "Startseite: ein bewegtes Zeichen ist bereit");
+    if (erste) {
+      await s.evaluate(() => window.scrollTo(0, document.documentElement.scrollHeight));
+      const weg = await s.evaluate(id => document.getElementById(id).getBoundingClientRect().bottom, erste);
+      pruef(weg < 0, "Voraussetzung: das Zeichen ist aus dem Bild gerollt", "unterkante " + Math.round(weg) + " px");
+      await s.waitForTimeout(7000);   // länger als ein Durchlauf plus längste Pause (6 s)
+      const spur = await verlauf(s, "#" + erste, 1500);
+      pruef(weg < 0 && spur.every(x => x && x.p), "außer Sicht: der Film wartet auf dem Ruhebild", spur.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" "));
+      const wartet = await s.evaluate(id => document.getElementById(id)._bzWartet === true, erste);
+      /* Zurück INS Bild, nicht an den Anfang: Bei 420 px Höhe liegt
+         das erste Zeichen womöglich auch oben noch darunter. */
+      const drin = await s.evaluate(id => { const el = document.getElementById(id);
+        el.scrollIntoView({ block:"center" }); const r = el.getBoundingClientRect();
+        return r.top >= 0 && r.bottom <= innerHeight; }, erste);
+      pruef(drin, "Voraussetzung: das Zeichen ist wieder ganz im Bild");
+      const zurueck = await verlauf(s, "#" + erste, 700, 100);
+      pruef(wartet && zurueck.some(x => x && !x.p), "wieder im Bild: der wartende Film spielt sofort weiter",
+        "wartete " + wartet + " · " + zurueck.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" "));
+    }
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { ruhig:true });
+    const SEL = '#edStapel .ed-karte[data-tiefe="0"] .ed-emo .bz';
+    const spur = await verlauf(s, SEL, 4000);
+    const da = spur.filter(Boolean).length;
+    pruef(!da || spur.every(x => !x || x.p), "Bewegung reduzieren: kein Film läuft", da ? spur.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" ") : "kein Film geladen");
+    const schwebt = await s.evaluate(() => { const e = document.querySelector('#edStapel .ed-karte[data-tiefe="0"] .ed-emo'); return e ? getComputedStyle(e).animationName : null; });
+    pruef(schwebt === "none", "Bewegung reduzieren: das Zeichen schwebt nicht", schwebt);
+    await ctx.close();
+  }
+
   console.log("\n══ Symmetrie: gemessen, nicht angesehen ══");
   /* Toleranz 1 px. Jede Probe misst die Stelle selbst UND stellt vorher
      fest, dass es sie gibt (§8.1g C: „nichts da“ sieht aus wie „passt“). */

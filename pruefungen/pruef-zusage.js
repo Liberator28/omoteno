@@ -251,7 +251,7 @@ async function kueche(br){
 async function hub(br, datei){
   console.log("\n══ Hub · was der Gast sieht");
 
-  async function fall(name, antwort, erwartetStreifen, erwartetGross){
+  async function fall(name, antwort, erwartetStreifen, erwartetGross, stil){
     const ctx = await br.newContext({ viewport:{width:390,height:844} });
     const p = await ctx.newPage();
     const kons = [];
@@ -263,8 +263,9 @@ async function hub(br, datei){
       : r.fulfill({ status:200, contentType:"application/json", body:"[]" }));
     await p.route("**/rest/v1/betriebe**", r =>
       r.fulfill({ status:200, contentType:"application/json",
-        body: JSON.stringify([{ id:BETRIEB, bestell_pause:false,
-                                bestell_pause_text:"", hub_texte:{} }]) }));
+        body: JSON.stringify([Object.assign({ id:BETRIEB, bestell_pause:false,
+                                bestell_pause_text:"", hub_texte:{} },
+                                stil !== undefined ? { hub_stil:stil } : {})]) }));
     await p.route("**/rest/v1/rpc/bestellung_status", r =>
       r.fulfill({ status:200, contentType:"application/json",
         body: JSON.stringify([{ status:"arbeit", wartezeit_min:20, tagesnummer:7 }]) }));
@@ -277,6 +278,7 @@ async function hub(br, datei){
 
     await p.addInitScript(() => {
       localStorage.setItem("omoteno-willkommen", "1");
+      try{ sessionStorage.setItem("omoteno-willkommen", "1"); }catch(e){}
       localStorage.setItem("omoteno-vorgaenge", JSON.stringify([{
         nummer:"probe_kennung_0001", art:"bestellung", status:"arbeit",
         warte:20, summe:12.5, zeit:Date.now(), tagesnummer:7,
@@ -290,6 +292,8 @@ async function hub(br, datei){
       const w = document.querySelector(".vwarte");
       return w ? w.textContent.trim() : "(kein Streifen)";
     });
+    const streifenDa = await p.evaluate(() => { const v = document.getElementById("vstreifen");
+      return !!v && !v.hidden && v.getClientRects().length > 0; });
     /* Über den Streifen gehen, nicht über den Hash: Erst der Tipp setzt
        letzteBestellung, und ohne die steigt bestellStatusSteuern aus. */
     await p.click("#vstreifen");
@@ -298,6 +302,11 @@ async function hub(br, datei){
       const b = document.querySelector(".bs-warte b");
       return b ? b.textContent.trim() : "(keine Anzeige)";
     });
+    const stufen = await p.evaluate(() => [...document.querySelectorAll(".bs-stufe.an span")].map(x => x.textContent.trim()));
+    /* Voraussetzung (§8.1g C): Streifen und Stufen stehen da — sonst
+       hieße „keine Minuten“ nur „nichts gefunden“. */
+    ok(streifenDa, name + " · Streifen steht da");
+    ok(stufen.length >= 2, name + " · Stufen stehen da", stufen.join(" · "));
 
     ok(streifen === erwartetStreifen, name + " · Streifen", streifen);
     ok(gross === erwartetGross,       name + " · große Anzeige", gross);
@@ -316,6 +325,55 @@ async function hub(br, datei){
   const gefragt = await fall("Migration fehlt (404)", 404, "ca. 20 Min", "ca. 20 Minuten");
   ok(gefragt === 1, "nach einer 404 fragt der Hub nicht weiter",
      gefragt + " Anfrage(n)");
+
+  /* Wahl des Betriebs im Board (hub_stil.restzeit): „Nur Stand“. Der
+     Gast sieht keine Minuten, weder im Streifen noch im Kasten — die
+     Stufen aber schon. Strikt boolean: eine Zeichenkette "false" wäre
+     in JS wahr und liefe sonst still als „aus“ durch, oder umgekehrt. */
+  await fall("Nur Stand, Restzeit läuft", 900, "(kein Streifen)", "(keine Anzeige)", { restzeit:false });
+  await fall("Nur Stand, keine Restzeit", "null", "(kein Streifen)", "(keine Anzeige)", { restzeit:false, emoji:true });
+  await fall("Mit Restzeit ausdrücklich", 900, "noch 15 Min", "noch ca. 15 Minuten", { restzeit:true });
+  await fall("Zeichenkette \"false\" zählt nicht", 900, "noch 15 Min", "noch ca. 15 Minuten", { restzeit:"false" });
+}
+
+/* Board: das Segment „Bestellstand beim Gast“ schreibt hub_stil
+   ZUSAMMENGEFÜHRT — emoji und schrift bleiben, restzeit kommt dazu. */
+async function board(br){
+  console.log("\n══ Board · Bestellstand beim Gast");
+  const ctx = await br.newContext({ viewport:{width:390,height:844} });
+  const p = await ctx.newPage();
+  const kons = [];
+  p.on("pageerror", e => kons.push("JS: " + String(e).slice(0,140)));
+  await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+  await p.goto("file://" + path.join(__dirname, "..", "seiten", "admin.html"));
+  await p.waitForTimeout(800);
+  const erg = await p.evaluate(async () => {
+    const geschrieben = [];
+    const o = { update(v){ geschrieben.push(JSON.parse(JSON.stringify(v))); return o; },
+                eq(){ return Promise.resolve({ error:null }); } };
+    db = { from: () => o };
+    demo = false; betriebId = "B1";
+    meineBetriebe = [{ id:"B1", name:"Probe", hub_stil:{ emoji:false, schrift:{ kopf:"fraunces" } } }];
+    document.getElementById("tor").hidden = true;
+    rzZeigen = rzAus(meineBetriebe[0]); rzZeichnen();
+    const vorher = document.querySelector('#rzWahl [aria-checked="true"]').dataset.rz;
+    document.querySelector('#rzWahl [data-rz="aus"]').click();
+    await new Promise(r => setTimeout(r, 50));
+    const nachher = document.querySelector('#rzWahl [aria-checked="true"]').dataset.rz;
+    const stand = (document.querySelector('[data-eu-stand="sanduhr"]') || {}).textContent || "";
+    return { vorher, nachher, geschrieben, hilfe: document.getElementById("rzHilfe").textContent,
+             ausString: rzAus({ hub_stil:{ restzeit:"false" } }) };
+  });
+  ok(erg.vorher === "an", "ohne Wert steht „Mit Restzeit“", erg.vorher);
+  ok(erg.nachher === "aus", "Tipp auf „Nur Stand“ wählt es", erg.nachher);
+  const w = erg.geschrieben[0] && erg.geschrieben[0].hub_stil;
+  ok(!!w && w.restzeit === false, "schreibt hub_stil.restzeit = false", JSON.stringify(w));
+  ok(!!w && w.emoji === false && w.schrift && w.schrift.kopf === "fraunces",
+     "zusammengeführt: emoji und schrift bleiben", JSON.stringify(w));
+  ok(/ohne Minuten/.test(erg.hilfe), "der Satz darunter sagt, was der Gast sieht", erg.hilfe.slice(0, 50));
+  ok(erg.ausString === true, "Zeichenkette \"false\" liest das Board als „an“ (wie der Hub)");
+  ok(kons.length === 0, "Konsole still", kons[0] || "still");
+  await ctx.close();
 }
 
 (async () => {
@@ -327,6 +385,7 @@ async function hub(br, datei){
   const br = await chromium.launch();
   await kueche(br);
   await hub(br, datei);
+  await board(br);
   await br.close();
   console.log("\n" + (fehler ? fehler + " Fehler" : "Keine Fehler"));
   process.exit(fehler ? 1 : 0);

@@ -80,14 +80,19 @@ function zweiteQuelle(){
      Board einen Namen vor, den der Hub nie zeigt. */
   const abw = [];
   planS.forEach(s => {
-    const pT = (planBlock.match(new RegExp('s:"' + s + '",\\s*titel:"([^"]*)"')) || [])[1];
+    const pT = (planBlock.match(new RegExp('s:"' + s + '",(?:\\s*gruppe:"[^"]*",)?\\s*titel:"([^"]*)"')) || [])[1];
+    /* Seit der Anordnung im Board (26.09.) trägt KACHELPLAN auch die
+       Gruppe — das Board packt die Reihen je Gruppe wie der Hub. */
+    const pG = (planBlock.match(new RegExp('s:"' + s + '",\\s*gruppe:"([^"]*)"')) || [])[1];
+    const aG = (artBlock.match(new RegExp('^  ' + s + ':[\\s\\S]*?gruppe:"([^"]*)"', "m")) || [])[1];
+    if(pG !== aG) abw.push(s + ": Gruppe " + pG + " gegen " + aG);
     const aT = (artBlock.match(new RegExp('^  ' + s + ':[\\s\\S]*?titel:"([^"]*)"', "m")) || [])[1];
     const pI = (planBlock.match(new RegExp('s:"' + s + '"[\\s\\S]{0,220}?icon:"([a-z]+)"')) || [])[1];
     const aI = (artBlock.match(new RegExp('^  ' + s + ':[\\s\\S]*?icon:"([a-z]+)"', "m")) || [])[1];
     if(pT !== aT) abw.push(s + ": Titel " + pT + " gegen " + aT);
     if(pI !== aI) abw.push(s + ": Symbol " + pI + " gegen " + aI);
   });
-  ok(abw.length === 0, "Titel und Symbol stimmen überein",
+  ok(abw.length === 0, "Titel, Symbol und Gruppe stimmen überein",
     abw.slice(0,3).join(" · ") || planS.length + " geprüft");
 
   /* Jedes vorgeschlagene Symbol muss es geben. Ein erfundener Name
@@ -140,6 +145,18 @@ async function board(br){
   ok(a.leereSymbole === 0, "kein Symbolknopf ist leer", a.leereSymbole + " leer");
   ok(a.kleinsteSchrift >= 16, "die Eingabefelder haben 16px",
     a.kleinsteSchrift + "px");
+
+  /* Seit dem 26.09. ist jede Kachel eine zugeklappte Zeile (Wunsch:
+     „smart und komprimiert“). Erst aufklappen, dann bedienen. */
+  const zuAnfangs = await p.evaluate(() => [...document.querySelectorAll("[data-kb-auf]")]
+    .every(b => b.getAttribute("aria-expanded") === "false"));
+  ok(zuAnfangs, "alle Kachelzeilen starten zugeklappt");
+  await p.click('[data-kb="tischruf"] [data-kb-auf]');
+  await p.waitForTimeout(450);
+  const zeileOffen = await p.evaluate(() => {
+    const i = document.getElementById("kbinhalt-tischruf");
+    return !!i && i.getBoundingClientRect().height > 200; });
+  ok(zeileOffen, "ein Tipp auf die Zeile klappt ihre Einstellungen auf");
 
   /* Die Symbolwahl startet zu — bei elf Kacheln wären sonst knapp 420
      Symbolknöpfe auf einmal offen. Das gewählte Symbol steht schon in
@@ -290,6 +307,13 @@ async function hub(br, datei, hausName){
         hub_texte:{}, hub_kacheln:[
           { schluessel:"speisekarte", titel:"Unsere Karte",
             banner:"https://bild.test/banner.svg" },
+          /* Seit dem Selbst-Füllen (26.09.) streckt sich eine Kachel,
+             die allein in ihrer Reihe steht — eine einzelne Speisekarte
+             wäre keine Säule mehr, eine einzelne Bewertung keine halbe.
+             Die Nachbarn halten die Form, die hier gemessen wird; in
+             der Reihenfolge des Boards, denn aufeinanderfolgende
+             Kacheln derselben Gruppe bilden erst einen Bereich. */
+          { schluessel:"getraenke" }, { schluessel:"cocktails" },
           { schluessel:"tischruf", titel:"Service", unter:"Kurz Bescheid geben",
             banner:"https://bild.test/banner.svg" },
           /* Zusätzlich eine Zweierraster-Kachel mit Bild — die
@@ -299,6 +323,8 @@ async function hub(br, datei, hausName){
              brauchen ihr eigenes, dazu passendes Fenster. */
           { schluessel:"bewertung", titel:"Uns bewerten",
             banner:"https://bild.test/banner.svg" },
+          { schluessel:"reservierung" },
+
           /* Kein https → muss ignoriert werden, nicht gezeichnet. */
           { schluessel:"wlan", banner:"javascript:alert(1)" },
           { schluessel:"quiz", an:false }
@@ -342,7 +368,7 @@ async function hub(br, datei, hausName){
       const banner = eineSaeule.querySelector(".kbanner").getBoundingClientRect();
       saeuleAnteil = Math.round(banner.height / card.height * 100);
     }
-    const eineZwei = document.querySelector(".gitter.zwei a.kachel.hatbanner");
+    const eineZwei = document.querySelector("a.kachel.khalb.hatbanner");
     if(eineZwei){
       const card = eineZwei.getBoundingClientRect();
       const banner = eineZwei.querySelector(".kbanner").getBoundingClientRect();
