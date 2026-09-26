@@ -1,5 +1,6 @@
 -- ═══════════════════════════════════════════════════════════════════
 --  PRÜFUNG · migration-missbrauch.sql, Teil 2 (Bestellungen, Bremse)
+--                                     und Teil 3 (die übrigen Gastwege)
 --
 --  Im SQL-Editor ausführen, NACH der Migration. Legt echte Zeilen an
 --  und endet mit raise exception 'PROBE …' — alles wird zurückgedreht,
@@ -17,6 +18,17 @@
 --    Q7  ffffffffmmmm            (Netz: ab der 31. markiert)
 --    Q8  summe=0.00 | [] | pruefen=false                    Q10 grund mindest
 --    Q11 h:64 (nur ein Hash)                                 Q12 0
+--  Teil 3 (eigene Herkunft 198.51.100.9, damit Teil 2 nicht mitzählt):
+--    R1  ffffffm      (Tisch: ab der 7. in 2 Minuten markiert)
+--    R2a abgewiesen: Die Anfrage ist zu lang …   R2b fffX (4. Anfrage aus einem Netz)
+--    R3a abgewiesen: Meldung zu lang  R3b abgewiesen: Unbekannter Betrieb
+--    R3c fffffX (6. Serviceruf-Ereignis vom selben Tisch)
+--    R4  ffffX        (5. Reservierung aus einem Netz, je anderer Name)
+--    R5  40× ok, dann bremse; bekannte Kennung bleibt ok
+--    R6  fffffB       (6. Adresse aus einem Netz: bremse)
+--    R7  false,false,true (fremder Pfad, Pfad mit /../, echte Anfragenummer)
+--    R8  0            (keine Adresse im Zähler)
+--    Teil 3 so gemessen am 26.09.2026, live, zurückgedreht.
 --  Voraussetzung: „Bounty Waffel“ (10,40) und „Salami + Käse“ (3,50)
 --  stehen verfügbar in der Karte von chocolamour.
 -- ═══════════════════════════════════════════════════════════════════
@@ -125,4 +137,96 @@ begin
     (select count(*)::text from schutz_zaehler where schluessel like '%6.6.6.6%' or schluessel like '%203.0.113%'));
 end
 $p$;
+do $p3$
+declare
+  B1 uuid := 'af095b14-d9ef-41f4-9b97-c4422b0de63f';
+  S1 text; id1 uuid; e text; i int; j jsonb;
+begin
+  select slug into S1 from betriebe where id = B1;
+  perform set_config('request.jwt.claims', json_build_object('role','anon')::text, true);
+  perform set_config('request.headers', '{"cf-connecting-ip":"198.51.100.9","x-forwarded-for":"6.6.6.6, 198.51.100.9"}', true);
+  perform set_config('role','anon', true);
+
+  -- R1 3a: sieben Bestellungen vom selben Tisch, je eigenes Gerät
+  e := '';
+  for i in 1..7 loop
+    id1 := bestellung_aufgeben(p_betrieb_id=>B1, p_quelle=>'tisch', p_tisch=>'97', p_summe=>10.4,
+             p_positionen=>'[{"name":"Bounty Waffel","menge":1,"preis":10.4}]', p_geraet=>'r1geraet'||lpad(i::text,6,'0'));
+    perform set_config('role','postgres', true);
+    e := e || (select case when pruefen then 'm' else 'f' end from bestellungen where id=id1);
+    perform set_config('role','anon', true);
+  end loop;
+  insert into probe values ('R1 Tisch 97, 7 Bestellungen', e);
+
+  -- R2 3b: Länge, dann vier Anfragen aus einem Netz (Zeilen gezählt, kein returning, §2.3b)
+  begin
+    insert into anfragen(kennung, notiz) values ('OMO-R2LNG', repeat('x', 4001));
+    insert into probe values ('R2a Anfrage 4001 Zeichen', 'DURCH (FEHLER)');
+  exception when others then insert into probe values ('R2a Anfrage 4001 Zeichen', 'abgewiesen: '||sqlerrm); end;
+  e := '';
+  for i in 1..4 loop
+    begin
+      insert into anfragen(kennung, betrieb) values ('OMO-R2' || i::text || 'X', 'Probe');
+      e := e || 'f';
+    exception when others then e := e || 'X'; end;
+  end loop;
+  insert into probe values ('R2b vier Anfragen aus einem Netz', e);
+
+  -- R3 3c: ereignisse
+  begin
+    insert into ereignisse(betrieb, betrieb_id, art, tisch, inhalt)
+      values (S1, B1, 'probe', '98', jsonb_build_object('x', repeat('y', 4100)));
+    insert into probe values ('R3a Ereignis 4100 Zeichen', 'DURCH (FEHLER)');
+  exception when others then insert into probe values ('R3a Ereignis 4100 Zeichen', 'abgewiesen: '||sqlerrm); end;
+  begin
+    insert into ereignisse(betrieb, art, tisch) values ('gibt-es-nicht-r3', 'probe', '98');
+    insert into probe values ('R3b Ereignis fremder Betrieb', 'DURCH (FEHLER)');
+  exception when others then insert into probe values ('R3b Ereignis fremder Betrieb', 'abgewiesen: '||sqlerrm); end;
+  e := '';
+  for i in 1..6 loop
+    begin
+      insert into ereignisse(betrieb, art, tisch) values (S1, 'probe', '98');
+      e := e || 'f';
+    exception when others then e := e || 'X'; end;
+  end loop;
+  insert into probe values ('R3c sechs Ereignisse Tisch 98', e);
+
+  -- R4 3d: fünf Reservierungen aus einem Netz, je anderer Name und Telefon
+  e := '';
+  for i in 1..5 loop
+    begin
+      insert into reservierungen(betrieb_id, name, telefon, personen, wunsch, quelle)
+        values (B1, 'Probe R4 ' || i, '0170000000' || i, 2, now() + interval '2 days', 'tisch');
+      e := e || 'f';
+    exception when others then e := e || 'X'; end;
+  end loop;
+  insert into probe values ('R4 fünf Reservierungen aus einem Netz', e);
+
+  -- R5 3e: 41 neue Gastkennungen aus einem Netz
+  e := '';
+  for i in 1..41 loop
+    j := gast_melden(S1, 'r5kennung' || lpad(i::text, 6, '0'));
+    if i = 40 then e := e || '40:' || coalesce(j->>'ok','?') || ' '; end if;
+    if i = 41 then e := e || '41:' || coalesce(j->>'grund', j->>'ok') || ' '; end if;
+  end loop;
+  j := gast_melden(S1, 'r5kennung000001');
+  insert into probe values ('R5 Gastzeilen aus einem Netz', e || 'bekannt:' || coalesce(j->>'ok','?'));
+
+  -- R6 3f: sechs Adressen aus einem Netz
+  e := '';
+  for i in 1..6 loop
+    j := gast_mail_merken(S1, 'r5kennung000001', 'probe' || i || '@example.org');
+    e := e || case when j->>'grund' = 'bremse' then 'B' when (j->>'ok')::boolean then 'f' else coalesce(j->>'grund','?') end;
+  end loop;
+  insert into probe values ('R6 Adressen aus einem Netz', e);
+
+  -- R7 3g: Pfade
+  insert into probe values ('R7 Pfade', anfrage_anhang_ok('irgendwo/datei.pdf')::text || ',' ||
+    anfrage_anhang_ok('OMO-ABCDE/../x.pdf')::text || ',' || anfrage_anhang_ok('OMO-ABCDE/karte.pdf')::text);
+
+  perform set_config('role','postgres', true);
+  insert into probe values ('R8 Adressen tauchen nirgends auf (Teil 3)',
+    (select count(*)::text from schutz_zaehler where schluessel like '%198.51.100%' or schluessel like '%6.6.6.6%'));
+end
+$p3$;
 do $e$ declare t text; begin select string_agg(nr||' → '||ergebnis, E'\n' order by nr) into t from probe; raise exception E'PROBE\n%', t; end $e$;
