@@ -259,6 +259,127 @@ const MESSEN = () => {
       await ctx.close();
     }
   }
+  /* ── 6 · Geteilter Block: Board und Hub rechnen gleich ─────────── */
+  console.log("\n══ Geteilter Block KACHELRASTER ══");
+  {
+    const aus = datei => { const t = fs.readFileSync(path.join(OBEN, datei), "utf8");
+      const m = t.match(/\/\* KACHELRASTER — GETEILTER BLOCK[\s\S]*?\/\* ENDE KACHELRASTER \*\//); return m ? m[0] : null; };
+    const hub = aus("vorlagen/hub.vorlage.html"), board = aus("seiten/admin.html");
+    pruef(!!hub && !!board, "der Block steht in beiden Dateien");
+    pruef(!!hub && hub === board, "Zeichen für Zeichen gleich", hub && board ? (hub === board ? hub.length + " Zeichen" : "VERSCHIEDEN") : "fehlt");
+  }
+
+  /* ── 7 · Board: kompakt, Anordnung, Ziehen, Wahlen ──────────────── */
+  console.log("\n══ Board · Kacheln kompakt, Breite ziehen ══");
+  for(const breite of [390, 1280]){
+    const ctx = await br.newContext({ viewport:{ width:breite, height:900 }, hasTouch:true });
+    const p = await ctx.newPage();
+    const fehler = [];
+    p.on("pageerror", e => fehler.push(String(e).slice(0, 160)));
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.addInitScript(() => { Element.prototype.requestFullscreen = () => Promise.resolve(); });
+    await p.goto("file://" + path.join(OBEN, "seiten", "admin.html"));
+    await p.waitForTimeout(800);
+    await p.evaluate(() => { document.getElementById("tor").hidden = true; demoStarten(); zeichneAlles();
+      const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("startseite");
+      kbAusZeile([]); kbZeichnen(); });
+    await p.waitForTimeout(400);
+    const vor = await p.evaluate(() => ({
+      zu: [...document.querySelectorAll("#kbListe [data-kb-auf]")].every(b => b.getAttribute("aria-expanded") === "false"),
+      zeilenHoehe: Math.max(...[...document.querySelectorAll("#kbListe .kbzeile")].map(z => z.getBoundingClientRect().height)),
+      karte: [...document.querySelectorAll('#kbAnordnung .kbr-gitter')][0] ?
+        [...document.querySelectorAll('#kbAnordnung .kbr-gitter')][0].querySelectorAll(".kbr-kachel").length : 0,
+      spalten: [...document.querySelectorAll('#kbAnordnung [data-kbr]')].map(k => k.dataset.kbr + ":" + k.dataset.spalten).join(" "),
+      ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+      klein: [...document.querySelectorAll("#kbListe .kbkopfknopf, #kbAnordnung .kbr-name")]
+        .filter(b => b.getBoundingClientRect().height < 44).length
+    }));
+    pruef(vor.zu, breite + " px: jede Kachel startet als zugeklappte Zeile");
+    pruef(vor.zeilenHoehe <= 90, breite + " px: eine Zeile ist kompakt", Math.round(vor.zeilenHoehe) + " px");
+    pruef(vor.karte === 3 && /speisekarte:2 getraenke:2 cocktails:2/.test(vor.spalten),
+      breite + " px: die Anordnung rechnet wie der Hub (drei Säulen)", vor.spalten.split(" ").slice(0, 4).join(" "));
+    pruef(vor.ueber <= 0, breite + " px: kein seitlicher Überlauf", vor.ueber + " px");
+    pruef(vor.klein === 0, breite + " px: Tapflächen ≥ 44 px", vor.klein + " zu klein");
+
+    /* Tippen auf den Namen in der Anordnung öffnet genau diese Zeile. */
+    await p.click('#kbAnordnung [data-kbr="wlan"] [data-kbr-auf]');
+    await p.waitForTimeout(500);
+    const auf = await p.evaluate(() => ({
+      exp: document.querySelector('[data-kb="wlan"] [data-kb-auf]').getAttribute("aria-expanded"),
+      h: document.getElementById("kbinhalt-wlan").getBoundingClientRect().height }));
+    pruef(auf.exp === "true" && auf.h > 200, breite + " px: Tipp auf den Namen öffnet die Einstellungen dieser Kachel", JSON.stringify(auf));
+
+    /* Ziehen mit der Maus: Tischruf (ganz) am Griff nach links auf ein Drittel. */
+    const zieh = async (sch, anteil, finger) => {
+      await p.evaluate(s => document.querySelector('#kbAnordnung [data-kbr="' + s + '"]').scrollIntoView({ block:"center" }), sch);
+      await p.waitForTimeout(150);
+      const g = await p.evaluate(s => { const k = document.querySelector('#kbAnordnung [data-kbr="' + s + '"]');
+        const gr = k.querySelector("[data-kbr-griff]").getBoundingClientRect(), git = k.parentElement.getBoundingClientRect();
+        return { x: gr.left + gr.width / 2, y: gr.top + gr.height / 2, links: git.left, breite: git.width }; }, sch);
+      const zielX = g.links + g.breite * anteil;
+      const scrollVor = await p.evaluate(() => scrollY);
+      if(finger){
+        const cdp = await ctx.newCDPSession(p);
+        const t = (type, x) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y:g.y, id:1 }] });
+        await t("touchStart", g.x);
+        for(let i = 1; i <= 8; i++){ await t("touchMove", g.x + (zielX - g.x) * i / 8); await p.waitForTimeout(16); }
+        await t("touchEnd", zielX);
+      }else{
+        await p.mouse.move(g.x, g.y); await p.mouse.down();
+        await p.mouse.move(zielX, g.y, { steps:8 }); await p.mouse.up();
+      }
+      await p.waitForTimeout(300);
+      return p.evaluate(([s, sv]) => ({ breite: KACHELSTAND.find(k => k.schluessel === s).breite,
+        spalten: document.querySelector('#kbAnordnung [data-kbr="' + s + '"]').dataset.spalten,
+        roh: (kbRoh().find(e => e.schluessel === s) || {}).breite, gerollt: Math.abs(scrollY - sv) }), [sch, scrollVor]);
+    };
+    const m = await zieh("tischruf", 0.3, false);
+    pruef(m.breite === "drittel" && m.roh === "drittel", breite + " px: Griff mit der Maus auf ⅓ gezogen → Drittel, geht mit „Übernehmen“", JSON.stringify(m));
+    /* Tischruf steht allein in der Reihe (WLAN darunter ist ganz) und
+       füllt sie weiter — dann muss das Board sagen, warum. */
+    const satz = await p.evaluate(() => { const m = document.getElementById("meldung"); return m ? m.textContent : ""; });
+    pruef(m.spalten === "6" && /allein in ihrer Reihe/.test(satz), breite + " px: bleibt sie breit, sagt das Board warum", satz.slice(0, 60));
+    /* Gegenfall: Nachbar auch schmaler → jetzt stehen beide im Drittel-Raster. */
+    const n2 = await zieh("wlan", 0.3, false);
+    const beide = await p.evaluate(() => ["tischruf","wlan"].map(s => document.querySelector('#kbAnordnung [data-kbr="' + s + '"]').dataset.spalten).join(","));
+    pruef(n2.breite === "drittel" && beide === "3,3", breite + " px: mit schmalerem Nachbarn teilen sich beide die Reihe", beide);
+    const t = await zieh("tischruf", 0.97, true);
+    pruef(t.breite === "" && t.roh === undefined, breite + " px: mit dem FINGER zurück auf ganz → wieder Vorgabe, nichts extra gespeichert", JSON.stringify(t));
+    pruef(t.gerollt <= 2, breite + " px: beim Ziehen rollt die Seite nicht mit", t.gerollt + " px");
+
+    /* Pfeiltasten am Griff. */
+    await p.focus('#kbAnordnung [data-kbr="kontakt"] [data-kbr-griff]');
+    await p.keyboard.press("ArrowRight");
+    await p.waitForTimeout(150);
+    const taste = await p.evaluate(() => KACHELSTAND.find(k => k.schluessel === "kontakt").breite);
+    pruef(taste === "voll", breite + " px: Pfeiltaste am Griff ändert die Breite (Hälfte → ganz)", taste);
+
+    /* Wahlen in der Zeile: Farbe, eigene Farbe, Bildform, Breite. */
+    /* Über den echten Tipp auf den Kopf öffnen, nicht über kbOffen — der
+       erste Gegenbeweis (Merken beim Tipp entfernt) blieb sonst grün. */
+    await p.click('[data-kb="speisekarte"] [data-kb-auf]');
+    await p.waitForTimeout(450);
+    await p.click('[data-kb="speisekarte"] [data-kb-grund="#A83A2E"]', { timeout:3000 }).catch(() => {});
+    const nochOffen = await p.evaluate(() => document.querySelector('[data-kb="speisekarte"] [data-kb-auf]').getAttribute("aria-expanded"));
+    pruef(nochOffen === "true", breite + " px: nach einer Wahl (Neuzeichnen) bleibt die angetippte Zeile offen", nochOffen);
+    await p.click('[data-kb="speisekarte"] [data-kb-bildform="rund"]', { timeout:3000 }).catch(() => {});
+    await p.click('[data-kb="speisekarte"] [data-kb-breite="voll"]', { timeout:3000 }).catch(() => {});
+    await p.$eval('[data-kb="speisekarte"] [data-kb-grundwahl]', el => { el.value = "#123abc"; el.dispatchEvent(new Event("change", { bubbles:true })); });
+    await p.waitForTimeout(200);
+    const w = await p.evaluate(() => ({ roh: kbRoh().find(e => e.schluessel === "speisekarte"),
+      zusammen: document.querySelector('[data-kb="speisekarte"] .kbkopftext i').textContent,
+      verh: kbSeitenverhaeltnis(KACHELSTAND.find(k => k.schluessel === "speisekarte")),
+      verhFl: kbSeitenverhaeltnis({ schluessel:"tischruf", bildform:"flaeche" }),
+      offen: document.querySelector('[data-kb="speisekarte"] [data-kb-auf]').getAttribute("aria-expanded") }));
+    pruef(w.roh && w.roh.grund === "#123ABC" && w.roh.bildform === "rund" && w.roh.breite === "voll",
+      breite + " px: Farbe (eigene), Bildform und Breite gehen mit „Übernehmen“", JSON.stringify(w.roh));
+    pruef(/Ganz/.test(w.zusammen) && /eigene Farbe/.test(w.zusammen), breite + " px: die zugeklappte Zeile sagt, was eingestellt ist", w.zusammen);
+    pruef(w.offen === "true", breite + " px: die Zeile bleibt beim Neuzeichnen offen");
+    pruef(w.verh === 1 && w.verhFl === 3.6, breite + " px: Zuschnitt folgt der Bildform (rund 1:1, füllend ganz 3,6:1)", w.verh + " / " + w.verhFl);
+    pruef(!fehler.length, breite + " px: keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
   await br.close();
   console.log("\n" + (f ? f + " von " + n + " Fehler." : n + " von " + n + " ok\nAlles sauber."));
   process.exit(f ? 1 : 0);

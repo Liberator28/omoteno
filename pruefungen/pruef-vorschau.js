@@ -198,6 +198,9 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
     pruef(gespeichert === "mitte", "die Ausrichtung geht mit „Übernehmen“ mit", gespeichert);
   }
 
+  /* Die Kachelzeilen sind zugeklappt (26.09.) — die erste aufklappen. */
+  const ersteAuf = await p.$('#kbListe .kbzeile [data-kb-auf]');
+  if(ersteAuf){ await ersteAuf.click(); await p.waitForTimeout(450); }
   const kbFeld = await p.$('#kbListe .kbzeile [data-kb-titel]');
   pruef(!!kbFeld, "ein Kacheltitel-Feld steht da (Voraussetzung)");
   if(kbFeld){
@@ -208,6 +211,21 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
       `const k = document.querySelector('a.kachel[data-kachel="' + a + '"] .txt strong');
        return k ? k.childNodes[0].textContent : null;`, sch);
     pruef(t === "Unsere ganze Karte", "der Kacheltitel ändert sich im Hub beim Tippen", String(t));
+
+    /* Die neuen Wahlen gehen denselben Weg (kbRoh → Rahmen): Farbe und
+       Breite erscheinen im echten Hub, ohne „Übernehmen“. */
+    await p.click('[data-kb="' + sch + '"] [data-kb-grund="#1E3A8A"]');
+    await p.waitForTimeout(600);
+    const farbe = await imRahmen("startseite",
+      `const k = document.querySelector('a.kachel[data-kachel="' + a + '"]');
+       return k ? { grund:k.classList.contains("hatgrund"), bg:getComputedStyle(k).backgroundColor } : null;`, sch);
+    pruef(!!farbe && farbe.grund && farbe.bg === "rgb(30, 58, 138)", "eine gewählte Farbe erscheint im Hub", JSON.stringify(farbe));
+    await p.click('[data-kb="' + sch + '"] [data-kb-breite="voll"]');
+    await p.waitForTimeout(600);
+    const spalten = await imRahmen("startseite",
+      `const k = document.querySelector('a.kachel[data-kachel="' + a + '"]');
+       return k ? k.dataset.spalten : null;`, sch);
+    pruef(spalten === "6", "eine gewählte Breite erscheint im Hub", String(spalten));
   }
 
   /* ── 2 · Ihre Worte ──────────────────────────────────────────── */
