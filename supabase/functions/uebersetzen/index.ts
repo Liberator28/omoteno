@@ -132,9 +132,87 @@ function grundAus(e: unknown): string {
   return text.slice(0, 300);
 }
 
+/* ── Wo liegt der Schluessel, und wenn nicht: was liegt dort? ──────
+   VORFALL 26.09., 16:53: Das Board meldete „schluessel_form“ — unter
+   ANTHROPIC_API_KEY stand etwas, das nicht mit sk-ant- beginnt. Den
+   Wert kann niemand auslesen, auch nicht der Betreiber im Dashboard.
+   Also sucht die Funktion selbst:
+   1. einen echten API-Schluessel im richtigen Eintrag, auch mit
+      Beiwerk („ANTHROPIC_API_KEY=sk-ant-…“, Anfuehrungszeichen,
+      „Bearer “, Zeilenumbruch);
+   2. denselben in JEDEM anderen Eintrag — wer ihn als CLAUDE_API_KEY
+      angelegt hat, soll nicht daran scheitern;
+   3. sonst eine ART, die sagt, was stattdessen dort steht. Nie ein
+      Zeichen des Wertes: nur Kategorie, Laenge und die NAMEN
+      verwandter Eintraege. */
+const API_MUSTER = /sk-ant-api\d{2}-[A-Za-z0-9_-]{20,}/;
+function schluesselSuchen(): { schluessel: string; art: string; laenge: number; namen: string[] } {
+  const roh = Deno.env.get("ANTHROPIC_API_KEY") ?? "";
+  let alle: Record<string, string> = {};
+  try { alle = Deno.env.toObject(); } catch { /* ohne Leserecht: nur der eine Eintrag */ }
+  const namen = Object.keys(alle)
+    .filter((n) => /ANTHROP|CLAUDE/i.test(n) && n !== "ANTHROPIC_API_KEY").sort();
+
+  const hier = roh.match(API_MUSTER);
+  if (hier) return { schluessel: hier[0], art: "ok", laenge: hier[0].length, namen };
+  for (const n of Object.keys(alle).sort()) {
+    const t = (alle[n] ?? "").match(API_MUSTER);
+    if (t) return { schluessel: t[0], art: "anderer_name", laenge: t[0].length, namen };
+  }
+
+  const v = roh.trim().replace(/^["'`]+|["'`]+$/g, "").replace(/^Bearer\s+/i, "")
+    .replace(/^ANTHROPIC_API_KEY\s*[=:]\s*/i, "").trim();
+  const art =
+    !v                                   ? "leer" :
+    /^sk-ant-oat/i.test(v)               ? "abo_token" :
+    /^sk-ant-admin/i.test(v)             ? "admin_schluessel" :
+    /^sk-ant-/i.test(v)                  ? "ok" :          /* kuenftige Form: versuchen */
+    /^sk-/i.test(v)                      ? "anderer_anbieter" :
+    /^[A-Z][A-Z0-9_]{2,}$/.test(v)       ? "name_statt_wert" :
+    /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(v) ? "kennung_statt_schluessel" :
+    /^https?:\/\//i.test(v)              ? "adresse" :
+    /^(apikey_|key_)/i.test(v)           ? "kennung_statt_schluessel" :
+    v.length < 40                        ? "zu_kurz" : "unbekannt";
+  return { schluessel: art === "ok" ? v : "", art, laenge: v.length, namen };
+}
+
+/* Die kostenlose Modellliste als Beweis, dass der Schluessel gilt.
+   Fuenf Minuten gemerkt: Die Diagnose unten ist ohne Anmeldung
+   erreichbar und soll Anthropic nicht mit jedem Aufruf fragen. */
+let gueltigGemerkt: { wert: string; bis: number } | null = null;
+async function schluesselGilt(schluessel: string): Promise<string> {
+  if (gueltigGemerkt && gueltigGemerkt.bis > Date.now()) return gueltigGemerkt.wert;
+  let wert = "ok";
+  try { await new Anthropic({ apiKey: schluessel }).models.list({ limit: 1 }); }
+  catch (e) { wert = grundAus(e); }
+  gueltigGemerkt = { wert, bis: Date.now() + 5 * 60 * 1000 };
+  return wert;
+}
+
 Deno.serve(async (anfrage: Request) => {
   if (anfrage.method === "OPTIONS") return antwort({}, 200);
   if (anfrage.method !== "POST") return antwort({ fehler: "nur POST" }, 405);
+
+  let roh: { texte?: unknown; probe?: unknown; diagnose?: unknown } = {};
+  try {
+    roh = await anfrage.json();
+  } catch {
+    return antwort({ fehler: "kein_json", uebersetzt: {} }, 400);
+  }
+
+  /* Diagnose ohne Anmeldung: sagt nur, OB und in welcher FORM ein
+     Schluessel eingerichtet ist und ob Anthropic ihn annimmt — nie
+     den Wert, nie ein Zeichen daraus. Damit laesst sich die
+     Einrichtung pruefen, ohne sich ins Board einzuloggen, und es
+     kostet nichts. Wer den anon-Schluessel hat, erfaehrt hoechstens,
+     ob der Uebersetzer laeuft. */
+  if (roh?.diagnose === true) {
+    const s = schluesselSuchen();
+    return antwort({
+      diagnose: true, art: s.art, laenge: s.laenge, andere_namen: s.namen,
+      anthropic: s.schluessel ? await schluesselGilt(s.schluessel) : "nicht_gefragt",
+    }, 200);
+  }
 
   /* Nur wer im Board angemeldet ist und einen Betrieb hat, darf das
      Guthaben verbrauchen. VORHER: jeder mit dem oeffentlichen
@@ -159,10 +237,11 @@ Deno.serve(async (anfrage: Request) => {
   /* Den Schluessel so nehmen, wie Menschen ihn einfuegen: mit
      Leerzeichen, Zeilenumbruch, Anfuehrungszeichen oder „Bearer "
      davor. Jedes davon ergibt bei Anthropic „invalid x-api-key". */
-  const schluessel = (Deno.env.get("ANTHROPIC_API_KEY") ?? "")
-    .trim().replace(/^["'`]+|["'`]+$/g, "").replace(/^Bearer\s+/i, "").trim();
-  if (schluessel && !/^sk-ant-/.test(schluessel)) {
-    return antwort({ fehler: "schluessel_form", uebersetzt: {} }, 200);
+  const gefunden = schluesselSuchen();
+  const schluessel = gefunden.schluessel;
+  if (!schluessel && gefunden.art !== "leer") {
+    return antwort({ fehler: "schluessel_form", art: gefunden.art, laenge: gefunden.laenge,
+                     andere_namen: gefunden.namen, uebersetzt: {} }, 200);
   }
   if (!schluessel) {
     /* Kein Schluessel heisst NICHT "kaputt", sondern "diese Funktion
@@ -171,15 +250,8 @@ Deno.serve(async (anfrage: Request) => {
     return antwort({ fehler: "kein_schluessel", uebersetzt: {} }, 200);
   }
 
-  let texte: string[] = [];
-  let probe = false;
-  try {
-    const roh = await anfrage.json();
-    texte = Array.isArray(roh?.texte) ? roh.texte : [];
-    probe = roh?.probe === true;
-  } catch {
-    return antwort({ fehler: "kein_json", uebersetzt: {} }, 400);
-  }
+  let texte: string[] = Array.isArray(roh?.texte) ? roh.texte as string[] : [];
+  const probe = roh?.probe === true;
 
   /* Probe ohne Kosten: Die Modellliste kostet nichts, verlangt aber
      einen gueltigen Schluessel. Damit sagt das Board „Schluessel

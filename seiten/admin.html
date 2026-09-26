@@ -11722,9 +11722,34 @@ const UEB_GRUND = {
    ein zweiter Rueckgabewert waere ein Umbau von fuenf Aufrufern fuer
    eine Nebenauskunft. */
 let uebLetzterGrund = "";
+/* Was stattdessen unter ANTHROPIC_API_KEY steht — die Funktion nennt
+   nur die ART und die Länge, nie ein Zeichen des Wertes. VORFALL
+   26.09.: Dort standen 17 Zeichen; „ANTHROPIC_API_KEY“ hat genau 17.
+   Der Wirt sah „schluessel_form“ und wusste nicht, was er tun soll. */
+let uebLetzteArt = { art:"", laenge:0 };
+const UEB_ART = {
+  zu_kurz: n => "Unter ANTHROPIC_API_KEY stehen nur " + n + " Zeichen. Ein Anthropic-Schlüssel hat über 100 " +
+    "und beginnt mit sk-ant-api03-. Oft steht dort versehentlich der Name statt des Schlüssels.",
+  name_statt_wert: () => "Unter ANTHROPIC_API_KEY steht der Name selbst, nicht der Schlüssel. " +
+    "Ins Feld „Value“ gehört der lange Schlüssel, der mit sk-ant-api03- beginnt.",
+  abo_token: () => "Unter ANTHROPIC_API_KEY steht ein Zugang aus einem Claude-Abo (sk-ant-oat…). " +
+    "Der Übersetzer braucht einen API-Schlüssel aus console.anthropic.com → API Keys.",
+  admin_schluessel: () => "Unter ANTHROPIC_API_KEY steht ein Admin-Schlüssel. Der kann nicht übersetzen — " +
+    "bitte einen normalen API-Schlüssel anlegen (console.anthropic.com → API Keys).",
+  anderer_anbieter: () => "Unter ANTHROPIC_API_KEY steht ein Schlüssel eines anderen Anbieters " +
+    "(beginnt mit sk-, aber nicht sk-ant-). Gebraucht wird ein Anthropic-Schlüssel.",
+  kennung_statt_schluessel: () => "Unter ANTHROPIC_API_KEY steht die Kennung eines Schlüssels, nicht der " +
+    "Schlüssel selbst. Der eigentliche Schlüssel wird nur einmal beim Anlegen angezeigt — neu anlegen und sofort kopieren.",
+  adresse: () => "Unter ANTHROPIC_API_KEY steht eine Web-Adresse statt des Schlüssels.",
+  unbekannt: n => "Unter ANTHROPIC_API_KEY steht ein Wert mit " + n + " Zeichen, aber kein Anthropic-Schlüssel " +
+    "(der beginnt mit sk-ant-api03-)."
+};
 
 function uebGrundText(){
   if(!uebLetzterGrund) return "";
+  if(uebLetzterGrund === "schluessel_form" && UEB_ART[uebLetzteArt.art]){
+    return UEB_ART[uebLetzteArt.art](uebLetzteArt.laenge) + " Anleitung „Übersetzer“, Schritt 3.";
+  }
   if(!UEB_GRUND[uebLetzterGrund]){
     if(/invalid x-api-key|authentication_error/i.test(uebLetzterGrund)) uebLetzterGrund = "schluessel_ungueltig";
     else if(/credit balance/i.test(uebLetzterGrund)) uebLetzterGrund = "guthaben_leer";
@@ -11737,7 +11762,7 @@ function uebGrundText(){
    Fehler: Der Wirt soll sein Gericht speichern koennen, auch wenn der
    Uebersetzer schweigt (CLAUDE.md 7). */
 async function uebersetzenLassen(texte){
-  uebLetzterGrund = "";
+  uebLetzterGrund = ""; uebLetzteArt = { art:"", laenge:0 };
   const liste = [...new Set((texte || []).map(t => String(t || "").trim()).filter(Boolean))];
   if(!liste.length || demo || !db) return {};
   try{
@@ -11754,6 +11779,7 @@ async function uebersetzenLassen(texte){
     /* Ein Grund kommt auch dann mit, wenn TEILWEISE uebersetzt
        wurde — dann ist er ein Hinweis, kein Ausfall. */
     if(data.fehler) uebLetzterGrund = String(data.fehler);
+    uebLetzteArt = { art:String(data.art || ""), laenge:Number(data.laenge) || 0 };
     if(!data.uebersetzt) return {};
 
     /* Welche Saetze nur teilweise fertig wurden, und in welchen

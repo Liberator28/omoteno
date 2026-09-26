@@ -45,7 +45,7 @@ const ok = (g, t, z) => {
    Fehler durchlassen, um die es hier geht. */
 const STELLEN = `
 declare const Deno: {
-  env: { get(k: string): string | undefined };
+  env: { get(k: string): string | undefined; toObject(): Record<string, string> };
   serve(h: (r: Request) => Response | Promise<Response>): void;
 };
 declare module "npm:@anthropic-ai/sdk" {
