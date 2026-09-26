@@ -4822,6 +4822,11 @@ function sicherText(w){
    für einen einzigen Knopftyp hier gehört da nicht hinein. */
 const SOFORT_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.3" stroke-linecap="round"/></svg>';
 
+/* Vorschau im Board (siehe vorschauSetzen). Steht HIER oben, weil
+   schon der Start (gastLaden, Warteschlange) danach fragt — weiter
+   unten hätte die „temporal dead zone“ den Hub leer gelassen (§8.1l). */
+const VORSCHAU = window.OMOTENO_VORSCHAU === true;
+let vorschauEntwurf = null;
 let aktionen = [];          /* was gerade läuft */
 /* Wie die Aktionen dieses Hauses überschrieben heißen. Die einzelne
    Aktion darf einen eigenen Titel tragen; fehlt er, gilt dieser. */
@@ -4843,6 +4848,8 @@ function aktionenLaden(){
       .then(liste => {
         const vorher = aktionen.map(a => a.id).join(",");
         aktionen = Array.isArray(liste) ? liste : [];
+        /* Vorschau: Die Beispiel-Aktion des Boards bleibt stehen. */
+        if(VORSCHAU && vorschauAktion()) return;
         if(aktionen.map(a => a.id).join(",") !== vorher) aktionAnzeigen();
       })
       .catch(() => {});
@@ -4984,6 +4991,7 @@ function bannerRadHTML(){
       if(a){ titel = a.titel || RUNNER_TITEL; text = a.gericht_name || ""; }
     }
     return "<" + tag + ' class="bnkarte" data-bn="' + i + '"' +
+      ' data-bnid="' + hs(String(b.id || "")) + '"' +
       (tag === "button" ? ' type="button"' : "") +
       (ziel ? ziel.attr + (ziel.href ? ' href="' + hs(ziel.href) + '"' : "") : "") +
       '><img src="' + hs(b.bild) + '" alt="" loading="lazy" decoding="async">' +
@@ -9034,6 +9042,7 @@ function start(){
     const banner = /^https:\/\//i.test(String(k.banner || "")) ? k.banner : "";
     return '<a class="kachel' + (k.stil ? " " + k.stil : "") +
       (k.cyan ? " cyan" : "") + (banner ? " hatbanner" : "") + '"' +
+      ' data-kachel="' + hs(k.schluessel || "") + '"' +
       (k.farbe ? ' data-farbe="' + k.farbe + '"' : "") +
       ' href="' + ziel + '"' +
       (ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
@@ -13504,6 +13513,10 @@ zeichne();
 (function willkommen(){
   const schirm = $("willkommen");
   if(!schirm) return;
+  /* Vorschau im Board: Der Schirm bleibt im Gerüst (vorschauZeige
+     „gruss“ braucht ihn), erscheint aber nicht von selbst — und die
+     Sitzung des Boards wird nicht als „schon begrüßt“ markiert. */
+  if(VORSCHAU){ schirm.hidden = true; return; }
 
   const SCHLUESSEL = "omoteno-willkommen";
   let schon = false;
@@ -13557,23 +13570,29 @@ setInterval(aktionenLaden, 120000);
 /* Einmal beim Öffnen melden: Das zählt den Besuch und holt Lieblinge
    und Gutscheine. Kein Takt dahinter — was sich hier ändert, ändert
    sich zwischen Besuchen und nicht während einem. */
-gastLaden();
+/* In der Vorschau des Boards: kein Besuch, keine Gastzeile. */
+if(!VORSCHAU) gastLaden();
 
 /* Lief beim letzten Besuch noch etwas? Dann sofort nachfragen und
    den Streifen zeigen - der Gast soll nicht suchen müssen. */
-vorgangWeckerStellen();
+if(!VORSCHAU) vorgangWeckerStellen();
 
 /* Warteschlange aufnehmen und weiterarbeiten. Eine Bestellung, die
    beim letzten Besuch nicht durchkam, wird jetzt zugestellt - ohne
    dass der Gast noch einmal tippen muss. */
-wsLaden();
-wsStreifenZeichnen();
-if(wsOffen().length) wsAbarbeiten();
+/* Die Vorschau teilt den Speicher mit dem Board (dieselbe Adresse).
+   Eine wartende Bestellung aus einem früheren Gastbesuch auf diesem
+   Gerät darf sie NIE abschicken. */
+if(!VORSCHAU){
+  wsLaden();
+  wsStreifenZeichnen();
+  if(wsOffen().length) wsAbarbeiten();
+}
 
 /* Kommt das Gerät aus dem Ruhezustand zurück, sofort weiterversuchen
    statt auf den nächsten Takt zu warten. */
 document.addEventListener("visibilitychange", () => {
-  if(!document.hidden && wsOffen().length) wsAbarbeiten();
+  if(!VORSCHAU && !document.hidden && wsOffen().length) wsAbarbeiten();
 });
 
 /* ═══════════════════════════════════════════════════════════════
@@ -13594,6 +13613,152 @@ const OMOTENO_DB = {
 /* Merkzettel, um unnötiges Neuzeichnen zu vermeiden: Nur wenn sich die
    Karte wirklich geändert hat, wird die Ansicht aufgefrischt. */
 let karteFingerabdruck = "";
+
+/* ═══ Eigene Worte, Kacheln, Banner — aus der Datenbank ODER dem Board ═══
+   Gekürzt wird trotzdem. Die Datenbank hat eine Schranke
+   (hub_texte_masse), das Board warnt früher — aber ein alter Wert
+   oder ein anderer Weg in die Tabelle darf den Kopf des Hubs nicht
+   auseinanderziehen. Wer drei Schranken hat, verliert keine davon.
+
+   Nur Teile, die in z WIRKLICH vorkommen, werden angefasst: Die
+   Vorschau schickt oft nur die Banner, und dann sollen die Kacheln
+   bleiben, wie sie sind. Gibt zurück, ob neu gezeichnet werden muss.
+
+   „immer“ (Vorschau): Eine leere Liste heißt dann „zurück auf die
+   Vorgabe“, nicht „nichts geändert“ — der Wirt hat gerade alles
+   gelöscht und will das Ergebnis sehen. */
+let hubGrund = null;
+function betriebsTeileAnwenden(z, immer){
+  if(!z || typeof z !== "object") return false;
+  if(!hubGrund) hubGrund = { claim:BETRIEB.claim, gruss:BETRIEB.begruessung,
+                             runner:RUNNER_TITEL, kacheln:KACHELN.slice() };
+  const kurz = (w, n) => String(w || "").trim().slice(0, n);
+  let neu = false;
+
+  if("hub_texte" in z){
+    hubTexte = (z.hub_texte && typeof z.hub_texte === "object") ? z.hub_texte : {};
+    const vorher = BETRIEB.claim + "|" + RUNNER_TITEL;
+    /* Dieselben Zahlen wie hub_texte_masse (migration-texte-laenger.sql).
+       Ein leeres Feld heißt: die Worte aus dem Markenblatt. */
+    BETRIEB.claim       = kurz(hubTexte.claim, 90)        || hubGrund.claim;
+    BETRIEB.begruessung = kurz(hubTexte.gruss, 160)       || hubGrund.gruss;
+    RUNNER_TITEL        = kurz(hubTexte.runner_titel, 40) || hubGrund.runner;
+    /* Der Kopf steht schon auf dem Schirm. Neu zeichnen nur, wenn sich
+       etwas Sichtbares geändert hat — sonst blitzt er bei jedem
+       Abgleich einmal auf, ohne dass etwas anders wäre. */
+    if(immer || BETRIEB.claim + "|" + RUNNER_TITEL !== vorher) neu = true;
+  }
+
+  /* Die Startkacheln aus dem Board. Ganz oder gar nicht, wie beim
+     Markenblatt: Eine halb übernommene Liste wäre eine Mischung aus
+     zwei Ständen. Und durch dieselbe Positivliste (kachelBauen) — was
+     der Wirt nicht schicken darf, wird ignoriert, nicht übernommen. */
+  if("hub_kacheln" in z){
+    const gebaut = (Array.isArray(z.hub_kacheln) ? z.hub_kacheln : [])
+      .filter(e => e && e.schluessel && e.an !== false)
+      .map(e => kachelBauen(e.schluessel, e))
+      .filter(Boolean);
+    const liste = gebaut.length ? gebaut : (immer ? hubGrund.kacheln : null);
+    if(liste){
+      KACHELN.length = 0;
+      liste.forEach(k => KACHELN.push(k));
+      /* Nur zeichnen, wenn der Gast die Startseite auch ansieht —
+         sonst reißt es ihm die Karte unter dem Finger weg. */
+      if(immer || seiteJetzt === "start") neu = true;
+    }
+  }
+
+  /* Das Aktions-Banner-Rad: eine echte freie Liste, bannerAusZeile()
+     filtert und ordnet selbst. */
+  if("hub_banner" in z){
+    const roh = Array.isArray(z.hub_banner) ? z.hub_banner : [];
+    if(roh.length || immer){
+      bannerAusZeile(roh);
+      if(immer || (hubBanner.length && seiteJetzt === "start")) neu = true;
+    }
+  }
+  return neu;
+}
+
+/* ═══ VORSCHAU im Board ═══════════════════════════════════════════
+   Das Board zeigt diesen Hub als kleines Bild, während der Wirt
+   tippt (Wunsch vom 26.09.: „ein direkter Editor, wo man eine kleine
+   Vorschau sieht wie im Hub“). Es lädt DIESE Datei als srcdoc und
+   setzt vorher window.OMOTENO_VORSCHAU = true — X-Frame-Options bleibt
+   DENY, ein srcdoc ist keine Navigation.
+
+   In der Vorschau passiert nichts, was Spuren hinterlässt: keine
+   Gastzeile, kein Nachsenden einer wartenden Bestellung, kein
+   Willkommensschirm (außer er wird ausdrücklich gezeigt). Der
+   Entwurf lebt nur im Speicher dieses Rahmens. */
+
+function vorschauSetzen(teil){
+  if(!VORSCHAU || !teil || typeof teil !== "object") return;
+  vorschauEntwurf = Object.assign({}, vorschauEntwurf || {}, teil);
+  /* Kein Aktions-Entwurf mehr: wieder die echten Aktionen. */
+  if("aktion" in teil && !vorschauAktion()){ aktionen = []; aktionenLaden(); }
+  betriebsTeileAnwenden(teil, true);
+  zeichne();
+}
+
+/* Eine Beispiel-Aktion, damit der Aktionsname beim Tippen sichtbar
+   ist. Ohne Entwurf: die echten Aktionen. */
+function vorschauAktion(){
+  const a = vorschauEntwurf && vorschauEntwurf.aktion;
+  if(!a || typeof a !== "object") return false;
+  aktionen = [{ id:"vorschau", gericht_name:String(a.gericht_name || ""),
+    titel:String(a.titel || ""), preis_alt:+a.preis_alt || 0, preis_neu:+a.preis_neu || 0,
+    bis:new Date(Date.now() + (+a.minuten || 60) * 60000).toISOString() }];
+  return true;
+}
+
+/* Zu dem Teil springen, an dem der Wirt gerade schreibt. */
+function vorschauZeige(ziel){
+  if(!VORSCHAU) return;
+  const wk = $("willkommen");
+  if(ziel === "gruss" && wk){
+    if(!$("wkFigur").innerHTML) $("wkFigur").innerHTML = avatarSVG(120);
+    $("wkHaus").textContent = BETRIEB.name;
+    $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
+    $("wkTipp").textContent = t("Antippen zum Überspringen");
+    wk.classList.remove("weg");
+    wk.hidden = false;
+    return;
+  }
+  if(wk) wk.hidden = true;
+  if(seiteJetzt !== "start"){ location.hash = "#/"; }
+  const finde = { kopf:   () => $("claim"),
+                  banner: () => document.querySelector(".bnrad"),
+                  kacheln:() => document.querySelector("a.kachel"),
+                  aktion: () => document.querySelector(".aktion") }[ziel];
+  requestAnimationFrame(() => {
+    const el = finde ? finde() : null;
+    if(el) el.scrollIntoView({ block: ziel === "kopf" ? "start" : "center" });
+    else window.scrollTo(0, 0);
+  });
+}
+
+/* Was wird beim Gast abgeschnitten? Gemessen am gezeichneten Element
+   (scrollHeight über clientHeight = line-clamp hat gegriffen), nicht
+   an einer Zeichenzahl — ein Titel aus lauter „i“ passt länger als
+   einer aus lauter „M“. */
+function vorschauMessen(){
+  const ab = el => !!el && el.scrollHeight > el.clientHeight + 1;
+  const sicht = el => !!el && getComputedStyle(el).display !== "none";
+  return {
+    claim: ab($("claim")),
+    banner: [...document.querySelectorAll(".bnkarte")].map(k => ({
+      id: k.getAttribute("data-bnid") || "",
+      titel: ab(k.querySelector(".bntxt b")), text: ab(k.querySelector(".bntxt span")) })),
+    kacheln: [...document.querySelectorAll("a.kachel")].map(k => {
+      const sp = k.querySelector(".txt > span");
+      return { s: k.getAttribute("data-kachel") || "",
+               titel: ab(k.querySelector(".txt strong")), unter: sicht(sp) && ab(sp),
+               unterVersteckt: !!sp && !sicht(sp) && !!sp.textContent.trim() };
+    }),
+    aktion: ab(document.querySelector(".aktion .kennz"))
+  };
+}
 
 async function karteHolen(erstesMal){
   if(!OMOTENO_DB.url || !OMOTENO_DB.key) return;
@@ -13655,9 +13820,6 @@ async function karteHolen(erstesMal){
        Schranke oder ein anderer Weg in die Tabelle darf den Kopf des
        Hubs nicht auseinanderziehen. Wer drei Schranken hat, verliert
        keine davon. */
-    hubTexte = (b[0].hub_texte && typeof b[0].hub_texte === "object")
-      ? b[0].hub_texte : {};
-
     /* ─── Was der Betrieb selbst schreibt, in elf Sprachen ───────
        hub_woerter hat die Form { "tr": { "Deutscher Satz": "…" } } —
        nach Sprache zuerst, weil das Board sie so füllt und weil man
@@ -13685,48 +13847,14 @@ async function karteHolen(erstesMal){
         });
       });
     }
-    const kurz = (w, n) => String(w || "").trim().slice(0, n);
-    const vorher = BETRIEB.claim;
-    /* Dieselben Zahlen wie hub_texte_masse (migration-texte-laenger.sql). */
-    if(kurz(hubTexte.claim, 90))        BETRIEB.claim        = kurz(hubTexte.claim, 90);
-    if(kurz(hubTexte.gruss, 160))       BETRIEB.begruessung  = kurz(hubTexte.gruss, 160);
-    if(kurz(hubTexte.runner_titel, 40)) RUNNER_TITEL         = kurz(hubTexte.runner_titel, 40);
-    /* Der Kopf steht schon auf dem Schirm. Neu zeichnen nur, wenn sich
-       der Slogan wirklich geändert hat — sonst blitzt er bei jedem
-       Abgleich einmal auf, ohne dass etwas anders wäre. */
-    if(BETRIEB.claim !== vorher) zeichne();
-
-    /* Die Startkacheln aus dem Board. Sie kommen aus der DATENBANK,
-       nicht aus dem Markenblatt: Der Wirt stellt sie im Board ein
-       und will sie beim nächsten Öffnen sehen, nicht beim nächsten
-       Erzeugen des Hubs.
-
-       Ganz oder gar nicht, wie beim Markenblatt: Eine halb
-       übernommene Liste wäre eine Mischung aus zwei Ständen. Und
-       durch dieselbe Positivliste wie dort — was der Wirt nicht
-       schicken darf, wird ignoriert, nicht übernommen. */
-    if(Array.isArray(b[0].hub_kacheln) && b[0].hub_kacheln.length){
-      const gebaut = b[0].hub_kacheln
-        .filter(e => e && e.schluessel && e.an !== false)
-        .map(e => kachelBauen(e.schluessel, e))
-        .filter(Boolean);
-      if(gebaut.length){
-        KACHELN.length = 0;
-        gebaut.forEach(k => KACHELN.push(k));
-        /* Nur zeichnen, wenn der Gast die Startseite auch ansieht —
-           sonst reißt es ihm die Karte unter dem Finger weg. */
-        if(seiteJetzt === "start") zeichne();
-      }
-    }
-
-    /* Das Aktions-Banner-Rad aus dem Board — dieselbe Live-Spalten-
-       Bauart wie hub_kacheln, aber eine echte freie Liste statt eines
-       Overrides fester Plätze (bannerAusZeile() filtert/ordnet selbst,
-       kein kachelBauen()-Äquivalent nötig). */
-    if(Array.isArray(b[0].hub_banner) && b[0].hub_banner.length){
-      bannerAusZeile(b[0].hub_banner);
-      if(hubBanner.length && seiteJetzt === "start") zeichne();
-    }
+    /* Slogan, Gruß, Aktionsname, Kacheln und Banner-Rad: EIN Weg für
+       die Datenbank und für die Vorschau im Board (betriebsTeileAnwenden
+       unten). Zwei Wege liefen früher oder später auseinander — und die
+       Vorschau zeigte dann etwas, das der Gast nie sieht. */
+    if(betriebsTeileAnwenden(b[0], false)) zeichne();
+    /* In der Vorschau des Boards liegt der Entwurf ÜBER dem Stand der
+       Datenbank — sonst wischte der nächste Abgleich (90 s) ihn weg. */
+    if(VORSCHAU && vorschauEntwurf){ betriebsTeileAnwenden(vorschauEntwurf, true); zeichne(); }
 
     /* Die Figur des Hauses aus dem Board — dieselbe Bauart wie die
        Kacheln: eine Live-Spalte, die der Hub zur Laufzeit liest, statt

@@ -548,6 +548,27 @@ html{font-size:calc(16px * var(--skala,1))}
   background:rgba(251,246,242,.06);font-size:14px;line-height:1.4;
 }
 .hubschau .hs-zuviel{outline:2px solid var(--warn);outline-offset:2px;border-radius:4px}
+/* ── Live-Vorschau des echten Hubs (Präfix hv, vorher gesucht §1.1) ──
+   Der Hub rechnet mit 390 px Breite; hier wird er verkleinert gezeigt.
+   Nicht bedienbar (pointer-events:none): Ein Tipp in die kleine Seite
+   soll nichts bestellen, sondern der Wirt tippt in SEINE Felder. */
+.hvrahmen{--hv-mass:.6;--hv-hoehe:400px;margin:14px 0 4px}
+.hvrahmen.gross{--hv-mass:.82;--hv-hoehe:620px}
+.hvrahmen:empty{display:none}
+.hvkopf{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px}
+.hvkopf b{font-size:13px;font-weight:600;color:var(--kreide)}
+.hvgroesse{min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);border:1px solid var(--linie);
+  background:transparent;color:var(--kreide);font-size:13px;font-weight:600}
+.hvfenster{position:relative;margin:0 auto;overflow:hidden;
+  width:calc(390px * var(--hv-mass));max-width:100%;height:var(--hv-hoehe);
+  border:1px solid var(--linie);border-radius:22px;background:var(--nacht);
+  box-shadow:0 10px 30px rgba(0,0,0,.18)}
+.hvfenster iframe{position:absolute;left:0;top:0;border:0;display:block;
+  width:390px;height:calc(var(--hv-hoehe) / var(--hv-mass));
+  transform:scale(var(--hv-mass));transform-origin:0 0;pointer-events:none}
+.hvstand{font-size:12.5px;line-height:1.45;color:var(--gedaempft);margin:8px 0 0;text-align:center}
+.hvwarn{display:block;font-size:12.5px;line-height:1.45;color:var(--messing);margin-top:6px}
+.hvwarn:empty{display:none}
 .runner-zwei{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:12px}
 .runner-vorschau{
   font-family:var(--mono);font-size:12px;line-height:1.6;color:var(--messing);
@@ -2799,6 +2820,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
                  placeholder="Top-Runner">
           <small class="feldhilfe" id="runnerTitelHilfe">Steht im Gast-Hub über dem
             Gericht. „Happy Hour", „Mittagsknaller", wie Sie mögen.</small>
+          <small class="hvwarn" data-hvwarn="aktion"></small>
         </label>
         <div class="runner-zwei">
           <label class="feld">
@@ -2825,6 +2847,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
           </select>
         </label>
         <p class="runner-vorschau" id="runnerVorschau"></p>
+        <div class="hvrahmen" data-hv="aktion"></div>
         <div class="runner-knoepfe">
           <button type="submit" class="knopf schmal" id="runnerStarten">Aktion anlegen</button>
           <button type="button" class="knopf leise schmal" id="runnerAbbrechen">Abbrechen</button>
@@ -2993,6 +3016,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <div class="schalterhilfe">Kacheln, Servicerufe und Kategorien bekommen lebendige Emojis, die beim Antippen reagieren. Aus = die ruhigen, gezeichneten Symbole — passend zu einem edlen Auftritt.</div></div>
         <button class="wippe" id="stilAn" aria-pressed="true" aria-label="Bewegte Emojis"></button>
       </div>
+
+      <!-- Der echte Hub, klein: jede Änderung an Kacheln und Banner
+           erscheint hier, bevor sie übernommen wird. -->
+      <div class="hvrahmen" data-hv="startseite"></div>
     </div>
 
     <div class="egruppe">
@@ -3103,6 +3130,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
           <input id="hubClaim" autocomplete="off" placeholder="Don't get mad, get chocolate.">
           <small class="feldhilfe" id="hubClaimHilfe">Kurz wirkt am besten — eine Zeile,
             die man im Vorbeigehen liest.</small>
+          <small class="hvwarn" data-hvwarn="claim"></small>
         </label>
       </div>
 
@@ -3128,7 +3156,9 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 
       <div class="ezeile senkrecht">
         <span><b>So sieht es der Gast</b><i>Kopf des Hubs in Telefonbreite, mit Ihren Worten</i></span>
-        <div class="hubschau" id="hubSchau" aria-live="polite"></div>
+        <div class="hvrahmen" data-hv="worte"></div>
+        <!-- Rückfall, wenn der echte Hub nicht zu laden ist (offline). -->
+        <div class="hubschau" id="hubSchau" aria-live="polite" hidden></div>
       </div>
 
       <div class="eknoepfe">
@@ -9263,8 +9293,12 @@ function massVerdrahten(){
       el.dataset.verdrahtet = "1";
       el.addEventListener("input", () => {
         massZeigen(id);
-        if(id.indexOf("hub") === 0) hubSchauZeichnen();
+        if(id.indexOf("hub") === 0){ hubSchauZeichnen(); hvWorte(id === "hubGruss" ? "gruss" : id === "hubRunner" ? "aktion" : "kopf"); }
       });
+      /* Wer ins Gruß-Feld tippt, will den Willkommensschirm sehen,
+         nicht den Kopf der Startseite. */
+      if(id.indexOf("hub") === 0) el.addEventListener("focus", () =>
+        hvWorte(id === "hubGruss" ? "gruss" : id === "hubRunner" ? "aktion" : "kopf"));
     }
     massZeigen(id);
   });
@@ -9307,6 +9341,179 @@ function hubSchauZeichnen(){
   });
 }
 
+/* ══ LIVE-VORSCHAU: der echte Hub, klein im Board ═════════════════
+   Wunsch vom 26.09.: „wie ein direkter Editor, wo man eine kleine
+   Vorschau sieht wie im Hub“. Kein Nachbau: Das Board holt die
+   ausgelieferte Hub-Datei (/h/<slug>/) und zeigt sie als srcdoc.
+
+   Warum srcdoc und kein <iframe src>: _headers setzt für ALLE Seiten
+   X-Frame-Options DENY und frame-ancestors 'none' — das schützt das
+   Board davor, in einen fremden Rahmen gesetzt zu werden, und bleibt
+   so. Ein srcdoc ist keine Navigation, die Kopfzeilen greifen nicht.
+   Der Rahmen hat dieselbe Herkunft wie das Board; das ist nicht mehr,
+   als der Hub unter omoteno.de/h/… ohnehin hat.
+
+   Der Hub weiß durch window.OMOTENO_VORSCHAU, dass er Vorschau ist:
+   keine Gastzeile, kein Nachsenden, kein Willkommensschirm von selbst.
+   Hier wird nur vorschauSetzen/vorschauZeige/vorschauMessen gerufen.
+
+   Zustand hängt an der Funktion, nicht an einer Konstante: kbZeichnen
+   kann laufen, bevor diese Zeilen erreicht sind (§8.1l). */
+function hvAlle(){ return hvAlle.stand || (hvAlle.stand = {}); }
+
+function hvQuelle(){
+  const b = meineBetriebe.find(x => x.id === betriebId);
+  const slug = (b && b.slug) || (demo ? "blend" : "");
+  if(!slug) return "";
+  /* Als lokale Datei geöffnet (Prüfungen, Entwicklung) gibt es kein
+     /h/ daneben — nicht erst eine Anfrage schicken, die nie gelingt
+     und nur die Konsole füllt. */
+  if(!window.HUB_VORSCHAU_BASIS && !/^https?:$/.test(location.protocol)) return "lokal";
+  try{
+    return new URL((window.HUB_VORSCHAU_BASIS || "/h/") + encodeURIComponent(slug) + "/",
+                   location.href).href;
+  }catch(e){ return ""; }
+}
+
+function hvStand(h, text){
+  const el = h.rahmen.querySelector(".hvstand");
+  if(el) el.textContent = text;
+}
+
+/* Lädt die Vorschau eines Bereichs einmal — erst, wenn er gebraucht
+   wird. Wechselt der Betrieb, wird neu geladen. */
+function hvStart(schl){
+  const rahmen = document.querySelector('[data-hv="' + schl + '"]');
+  if(!rahmen) return null;
+  const alle = hvAlle(), quelle = hvQuelle();
+  let h = alle[schl];
+  if(h && h.quelle === quelle) return h;
+  if(!quelle || quelle === "lokal"){
+    rahmen.innerHTML = '<p class="hvstand">' + (quelle === "lokal"
+      ? "Die Vorschau gibt es im ausgelieferten Board unter omoteno.de/admin."
+      : "Die Vorschau erscheint, sobald ein Betrieb gewählt ist.") + '</p>';
+    if(schl === "worte"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
+    return null;
+  }
+  rahmen.innerHTML =
+    '<div class="hvkopf"><b>So sieht es der Gast</b>' +
+      '<button type="button" class="hvgroesse" data-hv-gross aria-pressed="false">Größer</button></div>' +
+    '<div class="hvfenster"><iframe title="Vorschau des Gast-Hubs" tabindex="-1"></iframe></div>' +
+    '<p class="hvstand" aria-live="polite">Vorschau lädt …</p>';
+  h = alle[schl] = { quelle, rahmen, frame: rahmen.querySelector("iframe"),
+                     bereit:false, entwurf:{}, ziel:"", uhr:0 };
+  fetch(quelle, { cache:"no-cache" })
+    .then(a => { if(!a.ok) throw new Error("HTTP " + a.status); return a.text(); })
+    .then(html => {
+      if(hvAlle()[schl] !== h) return;
+      const zusatz = '<base href="' + sicher(quelle) + '">' +
+        '<script>window.OMOTENO_VORSCHAU=true<\/script>';
+      h.frame.addEventListener("load", () => {
+        h.bereit = true;
+        hvStand(h, "Live — ändert sich beim Tippen. Übernommen ist erst nach „Übernehmen“.");
+        hvAnwenden(schl);
+        /* Der Hub gleicht nach dem Laden mit der Datenbank ab und
+           zeichnet dabei neu — danach noch einmal messen. */
+        setTimeout(() => hvAnwenden(schl), 1600);
+      }, { once:true });
+      h.frame.srcdoc = /<head[^>]*>/i.test(html)
+        ? html.replace(/<head[^>]*>/i, m => m + zusatz) : zusatz + html;
+    })
+    .catch(() => {
+      if(hvAlle()[schl] !== h) return;
+      hvStand(h, "Die Vorschau ist gerade nicht zu laden. Gespeichert wird trotzdem.");
+      rahmen.querySelector(".hvfenster").hidden = true;
+      if(schl === "worte"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
+    });
+  return h;
+}
+
+/* Entwurf merken und kurz gebündelt anwenden — nicht bei jedem
+   Buchstaben neu zeichnen, aber schnell genug, dass es sich wie
+   Tippen im Hub anfühlt. */
+function hvSenden(schl, teil, ziel){
+  const h = hvStart(schl); if(!h) return;
+  Object.assign(h.entwurf, teil || {});
+  if(ziel) h.ziel = ziel;
+  clearTimeout(h.uhr);
+  h.uhr = setTimeout(() => hvAnwenden(schl), 120);
+}
+
+function hvAnwenden(schl){
+  const h = hvAlle()[schl]; if(!h || !h.bereit) return;
+  let w = null;
+  try{ w = h.frame.contentWindow; }catch(e){ return; }
+  if(!w || typeof w.vorschauSetzen !== "function") return;
+  try{
+    w.vorschauSetzen(h.entwurf);
+    if(h.ziel) w.vorschauZeige(h.ziel);
+  }catch(e){ return; }
+  /* Gemessen wird nach dem Zeichnen — zwei Bilder später. */
+  w.requestAnimationFrame(() => w.requestAnimationFrame(() => {
+    let m = null;
+    try{ m = w.vorschauMessen(); }catch(e){}
+    if(m) hvWarnungen(schl, m);
+  }));
+}
+
+/* Was der Hub abschneidet, steht direkt unter dem Feld. */
+function hvWarnungen(schl, m){
+  const setz = (sel, text) => $$('[data-hvwarn="' + sel + '"]').forEach(el => { el.textContent = text; });
+  if(schl === "worte"){
+    setz("claim", m.claim ? "Beim Gast wird der Slogan nach drei Zeilen mit „…“ gekürzt." : "");
+  }
+  if(schl === "aktion"){
+    setz("aktion", m.aktion ? "Beim Gast wird der Aktionsname gekürzt — die Vorschau zeigt, wo." : "");
+  }
+  if(schl === "startseite"){
+    $$('[data-hvwarn^="bn:"]').forEach(el => {
+      const id = el.getAttribute("data-hvwarn").slice(3);
+      const b = (m.banner || []).find(x => x.id === id);
+      const t = b && b.titel, u = b && b.text;
+      el.textContent =
+        t && u ? "Beim Gast werden Titel und Unterzeile nach drei Zeilen mit „…“ gekürzt." :
+        t      ? "Beim Gast wird der Titel nach drei Zeilen mit „…“ gekürzt." :
+        u      ? "Beim Gast wird die Unterzeile nach drei Zeilen mit „…“ gekürzt." : "";
+    });
+    $$('[data-hvwarn^="kb:"]').forEach(el => {
+      const s = el.getAttribute("data-hvwarn").slice(3);
+      const k = (m.kacheln || []).find(x => x.s === s);
+      el.textContent = !k ? "" :
+        k.titel ? "Beim Gast wird der Titel nach zwei Zeilen gekürzt." :
+        k.unter ? "Beim Gast wird die Unterzeile nach drei Zeilen gekürzt." :
+        k.unterVersteckt ? "Diese Kachelform zeigt beim Gast keine Unterzeile." : "";
+    });
+  }
+}
+
+/* Die drei Anschlüsse. */
+function hvStartseite(ziel){
+  if($("#t-startseite") && $("#t-startseite").hidden) return;
+  hvSenden("startseite", { hub_kacheln: kbRoh(), hub_banner: bnRoh() }, ziel || "");
+}
+function hvWorte(ziel){
+  const wert = id => ($("#" + id) || {}).value || "";
+  hvSenden("worte", { hub_texte:{ claim:wert("hubClaim"), gruss:wert("hubGruss"),
+                                  runner_titel:wert("hubRunner") },
+                      /* Ohne laufende Aktion wäre der Aktionsname nirgends zu sehen. */
+                      aktion: ziel === "aktion" && gerichte[0]
+                        ? { titel:"", gericht_name:gerichte[0].name,
+                            preis_alt:+gerichte[0].preis || 10, preis_neu:(+gerichte[0].preis || 10) * 0.7 }
+                        : null },
+            ziel || "kopf");
+}
+
+/* „Größer“: dieselbe Vorschau, mehr Fläche. */
+document.addEventListener("click", e => {
+  const k = e.target.closest && e.target.closest("[data-hv-gross]");
+  if(!k) return;
+  const rahmen = k.closest(".hvrahmen");
+  const an = !rahmen.classList.contains("gross");
+  rahmen.classList.toggle("gross", an);
+  k.setAttribute("aria-pressed", String(an));
+  k.textContent = an ? "Kleiner" : "Größer";
+});
+
 function hubTexteFuellen(){
   const setz = (id, wert) => { const el = $("#" + id); if(el) el.value = wert || ""; };
   setz("hubClaim",  HUBTEXTE.claim);
@@ -9314,6 +9521,7 @@ function hubTexteFuellen(){
   setz("hubRunner", HUBTEXTE.runner_titel);
   massVerdrahten();
   hubSchauZeichnen();
+  hvWorte("kopf");
 }
 
 /* ─── Lieferung ───────────────────────────────────────────────
@@ -9587,6 +9795,7 @@ function kbZeichnen(){
         (p.form === "saeule" ? "" :
         '<label><span>Unterzeile</span>' +
           '<input data-kb-unter maxlength="90" value="' + sicher(k.unter) + '"></label>') +
+        '<small class="hvwarn" data-hvwarn="kb:' + sicher(k.schluessel) + '"></small>' +
       '</div>' +
       /* Eigener Schalter, nicht automatisch bei vorhandenem Banner —
          der Wirt entscheidet, nicht das Bild (Nutzer-Entscheidung,
@@ -9614,6 +9823,7 @@ function kbZeichnen(){
       '</div>' +
     '</article>';
   }).join("");
+  hvStartseite("kacheln");
 }
 
 /* Eine Zeile allein neu zeichnen wäre schöner, ist aber trügerisch:
@@ -9680,6 +9890,7 @@ document.addEventListener("input", e => {
   if(e.target.matches("[data-kb-unter]")) k.unter = e.target.value;
   const schau = zeile.querySelector(".kbschau");
   if(schau) schau.outerHTML = kbSchau(k);
+  hvStartseite("kacheln");
 });
 
 /* ── Der Zuschnitt ─────────────────────────────────────────────── */
@@ -9821,13 +10032,15 @@ function kbSchliessen(){ blattFortAnimieren($("#kbBlatt"), function(){
   $("#kbBlatt").hidden = true; kbZuschnitt = null; }); }
 
 /* ── Sichern ───────────────────────────────────────────────────── */
-async function kbSichern(){
-  const raus = $("#kbPruefung");
+/* Was in hub_kacheln geht — dieselbe Liste für „Übernehmen“ und für
+   die Live-Vorschau. Zwei Bauregeln liefen auseinander, und die
+   Vorschau zeigte etwas, das nie gespeichert wird. */
+function kbRoh(){
   /* Nur schicken, was vom Standard abweicht — eine Liste, die jeden
      Vorgabewert mitschleppt, macht aus einer Umbenennung im Gerüst
      eine Zeile, die nie wieder ankommt. */
   const p = s => kbPlan(s) || {};
-  const raw = KACHELSTAND.map(k => {
+  return KACHELSTAND.map(k => {
     const v = p(k.schluessel);
     const e = { schluessel: k.schluessel };
     if(!k.an)                       e.an     = false;
@@ -9838,7 +10051,11 @@ async function kbSichern(){
     if(k.iconAus)                   e.iconAus = true;
     return e;
   });
+}
 
+async function kbSichern(){
+  const raus = $("#kbPruefung");
+  const raw = kbRoh();
   const knopf = $("#kbSichern");
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
   try{
@@ -10333,6 +10550,7 @@ function bnZeile(b, i){
     '<div class="kbfelder">' +
       '<label><span>Titel</span><input data-bn-titel maxlength="80" value="' + sicher(b.titel) + '"></label>' +
       '<label><span>Unterzeile</span><input data-bn-text maxlength="160" value="' + sicher(b.text) + '"></label>' +
+      '<small class="hvwarn" data-hvwarn="bn:' + sicher(b.id) + '"></small>' +
     '</div>' +
     '<div class="kbbildreihe">' +
       '<input type="file" accept="image/*" hidden data-bn-datei>' +
@@ -10363,6 +10581,7 @@ function bnZeichnen(){
   const feld = $("#bnListe"); if(!feld) return;
   feld.innerHTML = BANNERSTAND.map((b, i) => bnZeile(b, i)).join("");
   bnVorschauZeichnen();
+  hvStartseite("banner");
 }
 
 /* Eine Zeile allein neu zu zeichnen wäre schöner, ist aber trügerisch
@@ -10456,6 +10675,7 @@ document.addEventListener("input", e => {
       '<span class="kbstxt"><b>' + sicher(b.titel || "(ohne Titel)") + '</b>' +
         (b.text ? '<i>' + sicher(b.text) + '</i>' : "") + '</span>' +
     '</div>';
+  hvStartseite("banner");
 });
 
 $("#bnNeuKnopf").onclick = bnNeu;
@@ -10587,6 +10807,11 @@ $("#bnZoom").oninput = e => {
 };
 
 /* ── Sichern ───────────────────────────────────────────────────── */
+/* Was in hub_banner geht — für „Übernehmen“ und die Live-Vorschau. */
+function bnRoh(){
+  return BANNERSTAND.map((b, i) => Object.assign({}, b, { reihenfolge:i }));
+}
+
 async function bnSichern(){
   const raus = $("#bnPruefung");
   const knopf = $("#bnSichern");
@@ -10594,7 +10819,7 @@ async function bnSichern(){
      wäre im Hub sowieso unsichtbar (dieselbe Regel wie kachelHTML()),
      bleibt hier aber in der Liste stehen (nicht gelöscht), falls der
      Wirt erst den Rest ausfüllt und das Bild zuletzt hochlädt. */
-  const raw = BANNERSTAND.map((b, i) => Object.assign({}, b, { reihenfolge:i }));
+  const raw = bnRoh();
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
   try{
     if(demo || !db){
@@ -10678,6 +10903,9 @@ function runnerVorschau(){
     return;
   }
   const proz = Math.round((1 - neu / alt) * 100);
+  const g = gerichte.find(x => String(x.id) === String(w.value));
+  hvSenden("aktion", { aktion:{ titel: runnerTitelWert(), gericht_name: g ? g.name : "",
+    preis_alt: alt, preis_neu: neu, minuten: Number($("#runnerDauer").value) || 60 } }, "aktion");
   /* Die Vorschau zeigt jetzt auch, wie die Aktion HEISST — sonst
      tippt der Gastgeber einen Titel und sieht nie, wo er landet. */
   z.textContent = runnerTitelWert() + " · " +
