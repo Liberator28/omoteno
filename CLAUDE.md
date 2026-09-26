@@ -283,6 +283,17 @@ Dazu: PostgREST stellt **jede** Funktion in `public` als
 Trigger-Funktionen eingeschlossen. Ein Trigger braucht dieses Recht
 nicht; er läuft als Teil der Anweisung.
 
+> **Vorfall, dieselbe Tür im Hub.** `hub_kacheln` schreibt das Team,
+> der Hub las `raster`, `stil` und `farbe` daraus ungeprüft und setzte
+> sie roh in `class=` und `data-farbe=`. Ein Anführungszeichen im Wert
+> hätte ein eigenes Attribut aufgemacht — `onclick` an einer Kachel,
+> die jeder Gast antippt. Gegenbeweis mit der Positivliste entfernt:
+> `onclick` stand an der Kachel.
+
+Was aus einer Live-Spalte in ein Attribut geht, läuft über eine feste
+Liste oder `hs()` — auch wenn nur das eigene Team schreiben darf. Ein
+gestohlenes Konto ist dann ein Konto, kein Zugang zu jedem Gast.
+
 ### 2.3b Zwei Messfehler, die Löcher verstecken und erfinden
 
 > **Vorfall, beide in derselben Sitzung.** Der erste Angriffstest
@@ -1290,6 +1301,7 @@ Dazu je nach Änderung:
 | **Alessia, der Telefonweg** | `pruefungen/pruef-alessia.js` — liest die Nutzlast, ohne Netz |
 | **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
 | **Zugesagte Zeit, Countdown in Küche und Hub** | `pruefungen/pruef-zusage.js` (braucht `dist/`) — beide Seiten, und der Fall „Migration fehlt noch"; dazu die Wahl **„Bestellstand beim Gast“** (`hub_stil.restzeit`): „Nur Stand“ zeigt weder im Streifen noch im Kasten Minuten, die Stufen bleiben; strikt boolean (Zeichenkette "false" = an); der Streifen aus dem Gerätespeicher wird nach dem Laden der Wahl neu gezeichnet; Board führt `hub_stil` zusammen (emoji, schrift bleiben) |
+| **Kachel-Raster im Hub: Breite, Selbst-Füllen, Farbe, Bildform, ohne Symbol** | `pruefungen/pruef-kachelraster.js` (braucht `dist/`) — Packen als Rechnung (allein → ganz, zwei → halb/halb, Reihen gehen immer auf), Standard wie vorher (drei Säulen), „nur Speisekarte“ zieht sich breit, Positivliste für raster/stil/farbe/breite/bildform (Anführungszeichen MIT Bild), Schrift ≥ 4,5:1 auf jeder Farbe inkl. Mittelgrau, „flaeche“ über rein weißem Foto ≥ 4,5:1, „rund“ ist ein Kreis statt Symbol, ohne Symbol: Strich, größere Schrift, Säule unten bündig (Säule mit Nachbarn, sonst keine Säule), 360–1280 px, zwei Häuser, Uhr fest auf 14 Uhr |
 | **Kacheln, Symbole, Banner, Baukasten im Board** | `pruefungen/pruef-baukasten.js` (braucht `dist/`) — zweite Quelle, Zuschnitt, Schrift nie auf dem Bild |
 | **Besuchsbild, Sterne, Foto** | `pruefungen/pruef-besuchsbild.js` (braucht `dist/`) — Sterne auf der Leinwand, Bild aus der Karte |
 | **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung; dazu mit echtem Finger (CDP-Touch): kein zweiter Scrollbereich im Kategorie-Blatt, Wische rollen bis „Sichern", gescrollt schließt ein Wisch nach unten NICHT, oben schließt er auch auf einem Knopf, Antippen wählt weiterhin, Schleier rollt das Board nicht, im Hub zählt ein Wisch nicht zusätzlich als „Zurück" |

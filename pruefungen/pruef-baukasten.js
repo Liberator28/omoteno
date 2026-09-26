@@ -290,6 +290,13 @@ async function hub(br, datei, hausName){
         hub_texte:{}, hub_kacheln:[
           { schluessel:"speisekarte", titel:"Unsere Karte",
             banner:"https://bild.test/banner.svg" },
+          /* Seit dem Selbst-Füllen (26.09.) streckt sich eine Kachel,
+             die allein in ihrer Reihe steht — eine einzelne Speisekarte
+             wäre keine Säule mehr, eine einzelne Bewertung keine halbe.
+             Die Nachbarn halten die Form, die hier gemessen wird; in
+             der Reihenfolge des Boards, denn aufeinanderfolgende
+             Kacheln derselben Gruppe bilden erst einen Bereich. */
+          { schluessel:"getraenke" }, { schluessel:"cocktails" },
           { schluessel:"tischruf", titel:"Service", unter:"Kurz Bescheid geben",
             banner:"https://bild.test/banner.svg" },
           /* Zusätzlich eine Zweierraster-Kachel mit Bild — die
@@ -299,6 +306,8 @@ async function hub(br, datei, hausName){
              brauchen ihr eigenes, dazu passendes Fenster. */
           { schluessel:"bewertung", titel:"Uns bewerten",
             banner:"https://bild.test/banner.svg" },
+          { schluessel:"reservierung" },
+
           /* Kein https → muss ignoriert werden, nicht gezeichnet. */
           { schluessel:"wlan", banner:"javascript:alert(1)" },
           { schluessel:"quiz", an:false }
@@ -342,7 +351,7 @@ async function hub(br, datei, hausName){
       const banner = eineSaeule.querySelector(".kbanner").getBoundingClientRect();
       saeuleAnteil = Math.round(banner.height / card.height * 100);
     }
-    const eineZwei = document.querySelector(".gitter.zwei a.kachel.hatbanner");
+    const eineZwei = document.querySelector("a.kachel.khalb.hatbanner");
     if(eineZwei){
       const card = eineZwei.getBoundingClientRect();
       const banner = eineZwei.querySelector(".kbanner").getBoundingClientRect();

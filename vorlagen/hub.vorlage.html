@@ -924,7 +924,13 @@ body[data-thema="kaiserlich"] a.tipp::after{
 
 /* Die drei Karten-Säulen: das, weshalb der Gast das Handy überhaupt
    ans Holz hält. Deshalb groß, nebeneinander, farbig. */
-.gitter.saeulen{grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:4px}
+/* Sechs Spalten tragen Drittel, Hälfte und ganz (kachelReihen). */
+.gitter.kraster{grid-template-columns:repeat(6,minmax(0,1fr))}
+.gitter.kraster > a.kachel{grid-column:span 6;min-width:0}
+.gitter.kraster > a.kachel[data-spalten="2"]{grid-column:span 2}
+.gitter.kraster > a.kachel[data-spalten="3"]{grid-column:span 3}
+.gitter.kraster > a.kachel[data-spalten="4"]{grid-column:span 4}
+.gitter.mitsaeulen{margin-bottom:4px}
 a.kachel.saeule{
   flex-direction:column;align-items:flex-start;justify-content:space-between;
   gap:14px;padding:14px 12px 13px;min-height:132px;text-align:left
@@ -980,7 +986,7 @@ a.kachel:active{transform:scale(.978);border-color:var(--linie-stark)}
    wäre doppelt. Das Feld bleibt als ruhiger Grund, die Größe wächst. */
 .ico.bz-ico{font-size:30px;background:var(--flaeche-2);color:var(--tinte);overflow:visible}
 .kachel.saeule .ico.bz-ico{font-size:32px}
-.gitter.zwei .ico.bz-ico{font-size:27px}
+.kachel.khalb .ico.bz-ico{font-size:27px}
 a.kachel:active .bz, .rufknopf:active .bz{transform:scale(1.14)}
 @media (prefers-reduced-motion:reduce){ .bz, .bz-still, .bz-film{transition:none} }
 /* Ein gezeichnetes Zeichen im Knopf, dort wo vorher ein Emoji stand. */
@@ -1008,13 +1014,13 @@ a.kachel:active .bz, .rufknopf:active .bz{transform:scale(1.14)}
 .leer{color:var(--tinte-leise);font-size:14px;text-align:center;padding:36px 12px;line-height:1.6}
 
 /* Kleine Kacheln in zwei Spalten für alles Nebensächliche */
-.gitter.zwei{grid-template-columns:1fr 1fr}
-.gitter.zwei a.kachel{padding:12px;gap:10px;align-items:center;min-height:60px}
-.gitter.zwei .ico{width:34px;height:34px;flex:0 0 34px;border-radius:10px}
-.gitter.zwei .ico svg{width:17px;height:17px}
-.gitter.zwei .txt strong{font-size:13.5px}
-.gitter.zwei .txt > span{display:none}
-.gitter.zwei .pfeil{display:none}
+/* Die halbe Kachel (früher „Zweierraster“): kompakt, nur der Titel. */
+a.kachel.khalb{padding:12px;gap:10px;align-items:center;min-height:60px}
+.kachel.khalb .ico{width:34px;height:34px;flex:0 0 34px;border-radius:10px}
+.kachel.khalb .ico svg{width:17px;height:17px}
+.kachel.khalb .txt strong{font-size:13.5px}
+.kachel.khalb .txt > span{display:none}
+.kachel.khalb .pfeil{display:none}
 
 /* ═══ Banner auf der Kachel ═════════════════════════════════════
    Der Wirt lädt im Board ein Bild hoch. Die entscheidende Regel
@@ -1089,7 +1095,75 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
    Kachel ist knapp 60px hoch und zeigt nur eine Titelzeile ohne
    Unterzeile (Zeile 963), da bleibt bei stärkerem Zuwachs zu wenig
    Luft neben dem Symbol. */
-.gitter.zwei .kbanner{width:44%}
+.kachel.khalb .kbanner{width:44%}
+
+/* ═══ Eigene Farbe der Kachel (hub_kacheln.grund) ═══════════════
+   Die Fläche wählt der Wirt, die Schrift rechnet kachelTinte() —
+   reines Schwarz oder Weiß, im ungünstigsten Fall 4,58:1. Alles auf
+   der Kachel nimmt --k-tinte: Titel, Unterzeile, Symbol, Pfeil. */
+/* Vorgabe an JEDER Kachel, damit die Variablen immer einen Wert haben
+   (§3.1); die Angabe im style= der Kachel des Wirts schlägt sie. */
+a.kachel{--k-grund:var(--flaeche);--k-tinte:var(--tinte)}
+a.kachel.hatgrund{background:var(--k-grund);border-color:transparent;color:var(--k-tinte)}
+a.kachel.hatgrund .txt strong,
+a.kachel.hatgrund .txt > span,
+a.kachel.hatgrund .pfeil{color:var(--k-tinte)}
+a.kachel.hatgrund .ico,
+a.kachel.hatgrund.cyan .ico,
+a.kachel.hatgrund.saeule[data-farbe] .ico{background:color-mix(in srgb, var(--k-tinte) 14%, transparent);color:var(--k-tinte)}
+a.kachel.hatgrund .kbanner::after{background:linear-gradient(to right, var(--k-grund) 0%, var(--k-grund) 12%, transparent 62%)}
+a.kachel.hatgrund.saeule .kbanner::after{background:linear-gradient(to bottom, transparent 40%, var(--k-grund) 100%)}
+
+/* ═══ Bildform (hub_kacheln.bildform) ═══════════════════════════
+   seite   — wie bisher: das Bild neben bzw. über der Schrift.
+   flaeche — das Bild füllt die ganze Kachel. Hier liegt Schrift AUF
+             dem Foto, deshalb ein gleichmäßiger Schleier von 58 %
+             Schwarz und weiße Schrift: Selbst über einem rein weißen
+             Foto bleibt das 5,3:1 (gerechnet und in pruef-kachelraster
+             nachgemessen) — die Regel „nie Schrift auf dem Foto“ oben
+             gilt für alle Formen, bei denen man es nicht rechnen kann.
+   rund    — das Foto als Kreis an der Stelle des Symbols. */
+a.kachel.bild-flaeche{background:#000;border-color:transparent;color:#fff;min-height:88px}
+a.kachel.bild-flaeche > .kbanner,
+.kachel.saeule.bild-flaeche > .kbanner{position:absolute;inset:0;width:auto;height:auto;margin:0;border-radius:inherit}
+a.kachel.bild-flaeche > .kbanner::after,
+a.kachel.hatgrund.bild-flaeche > .kbanner::after,
+.kachel.saeule.bild-flaeche > .kbanner::after{background:rgba(0,0,0,.58)}
+a.kachel.bild-flaeche > .txt{max-width:100%}
+a.kachel.bild-flaeche .txt strong,
+a.kachel.bild-flaeche .txt > span,
+a.kachel.bild-flaeche .pfeil{color:#fff}
+a.kachel.bild-flaeche .ico,
+a.kachel.bild-flaeche.saeule[data-farbe] .ico,
+a.kachel.bild-flaeche.cyan .ico{background:rgba(255,255,255,.16);color:#fff}
+a.kachel.saeule.bild-flaeche{padding-top:14px;justify-content:flex-end}
+a.kachel.bild-flaeche > .pfeil{display:block}
+.kachel.saeule.bild-flaeche > .pfeil,.kachel.khalb.bild-flaeche > .pfeil{display:none}
+
+a.kachel.bild-rund > .kbanner,
+.kachel.saeule.bild-rund > .kbanner{position:static;width:52px;height:52px;flex:0 0 52px;margin:0;
+  border-radius:50%;box-shadow:0 0 0 2px var(--flaeche)}
+.kachel.khalb.bild-rund > .kbanner{width:40px;height:40px;flex:0 0 40px}
+a.kachel.bild-rund > .kbanner::after{display:none}
+a.kachel.bild-rund > .txt{max-width:100%}
+a.kachel.saeule.bild-rund{padding-top:14px}
+a.kachel.bild-rund > .pfeil{display:block}
+.kachel.khalb.bild-rund > .pfeil,.kachel.saeule.bild-rund > .pfeil{display:none}
+
+/* ═══ Ohne Symbol ═══════════════════════════════════════════════
+   Wunsch des Betreibers: „auch wenn die Emojis entfernt werden, soll
+   es trotzdem gut aussehen und nicht so leer“. Die Schrift wird größer
+   und bekommt einen kurzen Akzentstrich; die Säule setzt sie nach
+   unten, damit oben kein Loch bleibt, wo das Symbol stand. */
+a.kachel.ohneico .txt::before{content:"";display:block;width:22px;height:3px;border-radius:2px;
+  background:var(--rot);margin-bottom:8px;opacity:.9}
+a.kachel.hatgrund.ohneico .txt::before{background:var(--k-tinte)}
+a.kachel.ohneico .txt strong{font-size:16px;line-height:1.22}
+a.kachel.saeule.ohneico{justify-content:flex-end}
+a.kachel.saeule.ohneico .txt strong{font-size:17px}
+a.kachel.khalb.ohneico{padding-left:14px}
+a.kachel.khalb.ohneico .txt::before{margin-bottom:6px}
+a.kachel.khalb.ohneico .txt strong{font-size:14.5px}
 
 /* ═══ Aktions-Banner-Rad ═══════════════════════════════════════════
    Anders als .kbanner oben ausdrücklich Text AUF dem Foto, wischbar
@@ -3301,7 +3375,7 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 @media (max-width:360px){
   body{--rand:15px}
   h1{font-size:19px}
-  .gitter.saeulen{gap:7px}
+  .gitter.mitsaeulen{gap:7px}
   a.kachel.saeule{min-height:124px;padding:12px 10px}
   .kachel.saeule .txt strong{font-size:14px}
 }
@@ -4486,7 +4560,21 @@ const KACHELFOLGE = ["speisekarte","getraenke","cocktails",
    Kachel bauen. Was der Wirt schicken darf, steht in ERLAUBT — alles
    andere aus dem Markenblatt wird ignoriert, nicht übernommen. */
 const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
-                        "farbe","von","bis","neu","cyan","banner","iconAus"];
+                        "farbe","von","bis","neu","cyan","banner","iconAus",
+                        "breite","bildform","grund"];
+
+/* Was aus hub_kacheln kommt, geht UNGEPRÜFT an kachelBauen — eine
+   Live-Spalte, die das Team schreibt. raster, stil und farbe landeten
+   bis zum 26.09. roh in class= und data-farbe= (ein Anführungszeichen
+   darin hätte ein eigenes Attribut aufgemacht). Jetzt je Feld eine
+   feste Liste; was nicht darauf steht, fällt still auf die Vorgabe. */
+const KACHEL_WERTE = {
+  raster:   ["saeulen", "zwei"],
+  stil:     ["saeule"],
+  farbe:    ["rot", "gold", "pistazie"],
+  breite:   ["drittel", "halb", "voll"],
+  bildform: ["seite", "flaeche", "rund"]
+};
 
 function kachelBauen(schluessel, wunsch){
   const art = KACHELARTEN[schluessel];
@@ -4512,7 +4600,64 @@ function kachelBauen(schluessel, wunsch){
   if(wunsch) KACHEL_ERLAUBT.forEach(f => {
     if(wunsch[f] !== undefined && wunsch[f] !== null) k[f] = wunsch[f];
   });
+  Object.keys(KACHEL_WERTE).forEach(f => {
+    if(k[f] !== undefined && k[f] !== "" && !KACHEL_WERTE[f].includes(k[f]))
+      k[f] = f === "breite" || f === "bildform" ? "" : (art[f] || "");
+  });
+  /* Eigene Farbe der Kachel: nur #RRGGBB. */
+  k.grund = /^#[0-9a-f]{6}$/i.test(String(k.grund || "")) ? String(k.grund) : "";
   return k;
+}
+
+/* ── Breite der Kacheln ────────────────────────────────────────────
+   Wunsch des Betreibers: Die Knöpfe richten Lage und Breite danach,
+   wie viele aktiv sind — steht nur die Speisekarte da, zieht sie sich
+   über die ganze Breite. Und der Wirt kann die Breite je Kachel
+   selbst wählen (Drittel, Hälfte, ganz).
+
+   Ein Raster aus sechs Spalten trägt alle drei. Gepackt wird Reihe
+   für Reihe; bleibt am Ende einer Reihe Platz, strecken sich die
+   Kacheln DIESER Reihe gleichmäßig, bis sie voll ist. So steht nie
+   eine Lücke da, und nie eine Kachel allein auf einem Drittel. */
+const KACHEL_SPALTEN = { drittel:2, halb:3, voll:6 };
+function kachelBreiteWunsch(k){
+  if(KACHEL_SPALTEN[k.breite]) return k.breite;
+  return k.raster === "saeulen" ? "drittel" : k.raster === "zwei" ? "halb" : "voll";
+}
+function kachelReihen(liste){
+  const reihen = [];
+  let reihe = [], frei = 6;
+  liste.forEach(k => {
+    const wunsch = kachelBreiteWunsch(k), spalten = KACHEL_SPALTEN[wunsch];
+    if(spalten > frei){ reihen.push(reihe); reihe = []; frei = 6; }
+    reihe.push({ k, wunsch, spalten });
+    frei -= spalten;
+    if(frei === 0){ reihen.push(reihe); reihe = []; frei = 6; }
+  });
+  if(reihe.length) reihen.push(reihe);
+  reihen.forEach(r => {
+    let rest = 6 - r.reduce((a, x) => a + x.spalten, 0);
+    if(rest <= 0) return;
+    if(6 % r.length === 0) r.forEach(x => { x.spalten = 6 / r.length; });
+    else for(let i = r.length - 1; rest > 0; i = (i - 1 + r.length) % r.length){ r[i].spalten++; rest--; }
+  });
+  /* Die Form folgt der Breite, die am Ende herauskommt: zwei Spalten
+     ist die hohe Säule, ganz breit die Reihe mit Unterzeile. Dazwischen
+     bleibt eine gewünschte Säule eine Säule (groß, zwei nebeneinander),
+     alles andere wird die kompakte halbe Kachel. */
+  return reihen.map(r => r.map(x => Object.assign(x, {
+    form: x.spalten === 6 ? "voll" : x.spalten === 2 || x.wunsch === "drittel" ? "saeule" : "halb"
+  })));
+}
+/* Schrift auf der Farbe des Wirts wird gerechnet, nie gesetzt (§5.1):
+   Schwarz oder Weiß, was mehr Kontrast gibt — mit REINEM Schwarz und
+   Weiß ist das im ungünstigsten Fall 4,58:1. Ein fast-schwarzes
+   #17120F fiele bei mittleren Tönen auf 4,31:1 (gerechnet). */
+function kachelTinte(hex){
+  const f = i => { const v = parseInt(hex.slice(i, i + 2), 16) / 255;
+    return v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4); };
+  const L = .2126 * f(1) + .7152 * f(3) + .0722 * f(5);
+  return (1.05 / (L + .05)) >= ((L + .05) / .05) ? "#FFFFFF" : "#000000";
 }
 
 /* ═══ BEWEGTE ZEICHEN ═════════════════════════════════════════════
@@ -9112,7 +9257,8 @@ function start(){
            t("Schauen Sie später noch einmal vorbei.") + '</div>';
   }
 
-  const kachelHTML = k => {
+  const kachelHTML = x => {
+    const k = x.k;
     /* EINMAL auflösen, nicht dreimal: Ein Ziel darf eine Funktion
        sein, und ein Aufruf pro Zweig würde sie dreifach auswerten. */
     const ziel = kachelZiel(k);
@@ -9120,10 +9266,16 @@ function start(){
        ein Feld, das der WIRT füllt — dort darf kein javascript:
        und kein data: hinein (dieselbe Sorgfalt wie bei hs()). */
     const banner = /^https:\/\//i.test(String(k.banner || "")) ? k.banner : "";
-    return '<a class="kachel' + (k.stil ? " " + k.stil : "") +
-      (k.cyan ? " cyan" : "") + (banner ? " hatbanner" : "") + '"' +
+    const form = x.form, bildform = banner ? (k.bildform || "seite") : "";
+    /* Rund: Das Foto nimmt den Platz des Symbols ein. */
+    const ohneIco = k.iconAus === true || bildform === "rund";
+    return '<a class="kachel' + (form === "saeule" ? " saeule" : form === "halb" ? " khalb" : "") +
+      (k.cyan ? " cyan" : "") + (banner ? " hatbanner bild-" + bildform : "") +
+      (k.grund ? " hatgrund" : "") + (ohneIco && !banner ? " ohneico" : "") + '"' +
       ' data-kachel="' + hs(k.schluessel || "") + '"' +
-      (k.farbe ? ' data-farbe="' + k.farbe + '"' : "") +
+      ' data-spalten="' + x.spalten + '"' +
+      (k.farbe ? ' data-farbe="' + hs(k.farbe) + '"' : "") +
+      (k.grund ? ' style="--k-grund:' + k.grund + ';--k-tinte:' + kachelTinte(k.grund) + '"' : "") +
       ' href="' + ziel + '"' +
       (ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
         /* Das Bild steht VOR Symbol und Text im Auszeichnungstext:
@@ -9147,7 +9299,7 @@ function start(){
            (anders als das Markenblatt, das erzeuge-hub.js vorab
            prüft, CLAUDE.md §2.2). Eine Zeichenkette "false" wäre in
            JS wahr und würde das Symbol genau verkehrt abschalten. */
-        (k.iconAus === true ? "" : (() => {
+        (ohneIco ? "" : (() => {
           /* Das Emoji des Wirts gewinnt vor dem bewegten Zeichen: Er
              hat es bewusst gewählt. */
           const cp = !k.emoji && bewegteZeichenAn() ? bzKachelCode(k) : "";
@@ -9162,20 +9314,22 @@ function start(){
   };
 
   let html = lieferBandHTML() + aktionBandHTML() + bannerRadHTML() +
-             begleiterHTML("start") + empfehlungHTML(), letzter = "";
+             begleiterHTML("start") + empfehlungHTML();
+  /* Aufeinanderfolgende Kacheln derselben Gruppe bilden einen Bereich;
+     jeder Bereich packt seine Reihen selbst (kachelReihen). */
+  const bereiche = [];
   sichtbar.forEach(k => {
-    if(k.gruppe !== letzter){
-      if(letzter) html += '</div>';
-      /* Das Raster kommt von der ersten Kachel der Gruppe:
-         saeulen = drei große nebeneinander, zwei = zwei kleine,
-         ohne Angabe = untereinander. */
-      html += '<div class="bereich">' + hs(t(k.gruppe).toUpperCase()) + '</div>' +
-              '<div class="gitter' + (k.raster ? " " + k.raster : "") + '">';
-      letzter = k.gruppe;
-    }
-    html += kachelHTML(k);
+    if(!bereiche.length || bereiche[bereiche.length - 1].gruppe !== k.gruppe)
+      bereiche.push({ gruppe:k.gruppe, kacheln:[] });
+    bereiche[bereiche.length - 1].kacheln.push(k);
   });
-  return html + '</div>';
+  bereiche.forEach(b => {
+    const reihen = kachelReihen(b.kacheln), alle = [].concat(...reihen);
+    html += '<div class="bereich">' + hs(t(b.gruppe).toUpperCase()) + '</div>' +
+            '<div class="gitter kraster' + (alle.some(x => x.form === "saeule") ? " mitsaeulen" : "") + '">' +
+            alle.map(kachelHTML).join("") + '</div>';
+  });
+  return html;
 }
 
 /* ---------- Karten-Seiten ---------- */
