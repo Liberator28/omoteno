@@ -1096,18 +1096,22 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
    in jedem Haus und in jeder Tag/Abend-Lage gleich dunkel, unabhängig
    von der sonst gültigen Markenpalette — wie --schleier im
    Admin-Board eine Sperrfläche ist, keine Glas-Fläche. */
-.bnrad{margin:0 0 18px}
+.bnrad{margin:0 calc(-1 * var(--rand)) 18px}
 .bnspur{
-  display:flex;gap:10px;overflow-x:auto;scroll-snap-type:x mandatory;
+  display:flex;gap:6px;overflow-x:auto;scroll-snap-type:x mandatory;
   scrollbar-width:none;
-  /* Zentrier-Trick wie .avspur im Admin-Board: die halbe Kartenbreite
-     (87%/2) als Innenabstand lässt die erste/letzte Karte mittig
-     ankommen. */
-  padding-inline:calc(50% - 43.5%);
+  /* Das Rad läuft bis an den Schirmrand (negativer Rand = --rand des
+     body), die Karte ist genau so breit wie die Kacheln darunter. Der
+     Innenabstand --rand lässt die erste/letzte Karte bündig mit den
+     Kacheln mittig ankommen; die Nachbarkarte lugt um --rand − gap
+     (9 px bei 360, 12 px darüber) herein — sichtbar, dass es weitergeht.
+     Vorher 87 % der Innenbreite: bei 360 px 250 statt 330 px, die
+     Seite wirkte halb leer. */
+  padding-inline:var(--rand);
 }
 .bnspur::-webkit-scrollbar{display:none}
 .bnkarte{
-  flex:0 0 87%;scroll-snap-align:center;position:relative;
+  flex:0 0 100%;scroll-snap-align:center;position:relative;
   aspect-ratio:4/3;border-radius:var(--rundung);overflow:hidden;
   display:block;color:#fff;text-decoration:none;
   border:0;background:var(--flaeche-2);padding:0;font:inherit;
@@ -1459,8 +1463,20 @@ a.kachel.saeule.hatbanner > .txt{max-width:100%}
 }
 .ed-foto{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:0;transition:opacity var(--mittel) var(--weich)}
 .ed-bildflaeche.mitfoto .ed-foto{opacity:1}
-.ed-emo{font-size:clamp(96px, 30vw, 150px);line-height:1;color:var(--tinte)}
+.ed-emo{font-size:clamp(120px, 40vw, 184px);line-height:1;color:var(--tinte)}
 .ed-emo .bz{width:1em;height:1em}
+/* Die oberste Karte ohne Bild atmet: Das Zeichen schwebt langsam auf
+   und ab, während der Film in seinem Takt spielt. Nur translate — ein
+   scale auf der Ebene würde auf manchen Geräten das Vektorbild als
+   Raster strecken und weich zeichnen. */
+/* Nur unter no-preference: Eine Gegenregel unter reduce verlor hier
+   gegen die spezifischere Regel (gemessen: animationName blieb
+   edSchweben). */
+@media (prefers-reduced-motion:no-preference){
+  .ed-karte[data-tiefe="0"] .ed-bildflaeche:not(.mitfoto):not(.mitpop) .ed-emo{
+    animation:edSchweben 2.8s ease-in-out infinite alternate}
+}
+@keyframes edSchweben{from{transform:translateY(4px)}to{transform:translateY(-6px)}}
 /* Der Freisteller schwebt über dem Verlauf — ohne Rahmen, mit einem
    Schatten darunter, der aus dem Ausschnitt ein Ding macht. contain,
    nie cover: ein beschnittenes Gericht ist schlimmer als ein kleineres. */
@@ -4564,7 +4580,7 @@ function bzHTML(cp, schl){
          '" aria-hidden="true"><span class="bz-still">' + bzZeichen(cp) + '</span></span>';
 }
 
-let bzAbspieler = null, bzBeob = null, bzBesuch = 0, bzLetzte = null;
+let bzAbspieler = null, bzBeob = null, bzSicht = null, bzBesuch = 0, bzLetzte = null;
 const bzTexte = new Map(), bzFilme = new Set(), bzGespielt = new Set();
 const bzRuhig = () => ruhigeBewegung();
 
@@ -4605,12 +4621,19 @@ function bzStarten(el){
     bzFilme.add(anim);
     const ruhe = BZ_RUHE[cp] || 0;
     /* Nach dem Abspielen zurück aufs Ruhebild — nicht auf dem letzten
-       Bild stehen bleiben, das bei manchen Filmen leer ist. */
-    anim.addEventListener("complete", () => anim.goToAndStop(ruhe, true));
+       Bild stehen bleiben, das bei manchen Filmen leer ist. Und dann
+       nach einer Atempause WIEDER: Vorher lief jeder Film genau einmal
+       je Besuch und blieb danach stehen (gemessen: Orange in der
+       Entscheidungshilfe, Bild 19→99 in 1,6 s, danach für immer p99). */
+    anim.addEventListener("complete", () => { anim.goToAndStop(ruhe, true); bzNochmal(el); });
     anim.addEventListener("DOMLoaded", () => {
       el.classList.add("bz-bereit");
+      bzSichtBeobachten(el);
       const schl = bzBesuch + "|" + (el.dataset.bzSchl || cp);
-      if(bzRuhig() || bzGespielt.has(schl)){ anim.goToAndStop(ruhe, true); return; }
+      if(bzRuhig()){ anim.goToAndStop(ruhe, true); return; }
+      /* Schon gespielt (Neuzeichnen derselben Seite): nicht alle
+         gleichzeitig von vorn, sondern mit der Pause in den Takt. */
+      if(bzGespielt.has(schl)){ anim.goToAndStop(ruhe, true); bzNochmal(el); return; }
       bzGespielt.add(schl);
       anim.goToAndPlay(0, true);
     });
@@ -4621,7 +4644,11 @@ function bzStarten(el){
    Plätze beobachten. */
 function bzVerdrahten(){
   bzFilme.forEach(a => {
-    if(!a.wrapper || !a.wrapper.isConnected){ try{ a.destroy(); }catch(e){} bzFilme.delete(a); }
+    if(!a.wrapper || !a.wrapper.isConnected){
+      const el = a.wrapper && a.wrapper.parentElement;
+      if(el){ clearTimeout(el._bzUhr); if(bzSicht) bzSicht.unobserve(el); }
+      try{ a.destroy(); }catch(e){} bzFilme.delete(a);
+    }
   });
   if(!bewegteZeichenAn()) return;
   const els = document.querySelectorAll(".bz:not([data-bz-los])");
@@ -4652,8 +4679,49 @@ if("MutationObserver" in window) new MutationObserver(liste => {
 }).observe(document.documentElement, { childList:true, subtree:true });
 
 function bzSpielen(el){
-  if(el && el._bz && !bzRuhig()) el._bz.goToAndPlay(0, true);
+  if(!el || !el._bz || bzRuhig()) return;
+  clearTimeout(el._bzUhr); el._bzUhr = 0; el._bzWartet = false;
+  el._bz.goToAndPlay(0, true);
 }
+
+/* Der Takt: Jeder Film spielt, ruht kurz und spielt wieder — solange
+   er zu sehen ist. In der Entscheidungshilfe kurz (0,4–1,2 s), sonst
+   länger und gestreut (2,5–6 s), damit die Startseite nicht im
+   Gleichschritt zappelt. Außer Sicht, im Hintergrund oder bei
+   „Bewegung reduzieren" wartet er auf dem Ruhebild und kostet nichts;
+   sobald er wieder zu sehen ist, geht es weiter. */
+function bzNochmal(el){
+  if(!el || !el._bz || bzRuhig() || !bewegteZeichenAn()) return;
+  clearTimeout(el._bzUhr);
+  const dauer = !!el.closest(".ed-seite");
+  const pause = dauer ? 400 + Math.random() * 800 : 2500 + Math.random() * 3500;
+  el._bzUhr = setTimeout(() => {
+    el._bzUhr = 0;
+    if(!el.isConnected) return;
+    if(document.hidden || !el._bzSicht){ el._bzWartet = true; return; }
+    bzSpielen(el);
+  }, pause);
+}
+/* Ein eigener, DAUERHAFTER Beobachter — bzBeob löst sich nach dem
+   ersten Start vom Element, der hier nie (außer beim Aufräumen in
+   bzVerdrahten). */
+function bzSichtBeobachten(el){
+  el._bzSicht = true;
+  if(!("IntersectionObserver" in window)) return;
+  if(!bzSicht) bzSicht = new IntersectionObserver(eintraege => eintraege.forEach(e => {
+    const el = e.target;
+    el._bzSicht = e.isIntersecting;
+    if(e.isIntersecting && el._bzWartet && !document.hidden) bzSpielen(el);
+  }));
+  bzSicht.observe(el);
+}
+document.addEventListener("visibilitychange", () => {
+  if(document.hidden) return;
+  bzFilme.forEach(a => {
+    const el = a.wrapper && a.wrapper.parentElement;
+    if(el && el._bzWartet && el._bzSicht && el.isConnected) bzSpielen(el);
+  });
+});
 
 /* Antippen weckt das Zeichen im angetippten Element. pointerdown statt
    click: Die Reaktion soll unter dem Finger beginnen, nicht erst beim
@@ -4663,17 +4731,9 @@ document.addEventListener("pointerdown", e => {
   if(ziel) bzSpielen(ziel.querySelector(".bz.bz-bereit"));
 }, { passive:true });
 
-/* Alle 6,5 s erwacht EIN sichtbares Zeichen. Nicht im Hintergrund,
-   nicht bei „Bewegung reduzieren". */
-setInterval(() => {
-  if(document.hidden || bzRuhig() || !bewegteZeichenAn()) return;
-  const h = window.innerHeight;
-  const sichtbar = Array.from(document.querySelectorAll(".bz.bz-bereit")).filter(el => {
-    const r = el.getBoundingClientRect();
-    return r.bottom > 0 && r.top < h && r.width > 0;
-  });
-  if(sichtbar.length) bzSpielen(sichtbar[Math.floor(Math.random() * sichtbar.length)]);
-}, 6500);
+/* Früher erwachte alle 6,5 s EIN zufälliges sichtbares Zeichen —
+   das war alles, was nach dem ersten Durchlauf noch lief. Jetzt hat
+   jeder Film seinen eigenen Takt (bzNochmal). */
 
 /* Alles aus dem Markenblatt, das in eine Zeichenkette statt in
    textContent geht, muss hier durch.

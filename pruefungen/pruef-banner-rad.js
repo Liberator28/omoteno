@@ -234,6 +234,47 @@ async function hubPruefen() {
 
   pruef(konsole.length === 0, "keine Ausnahme auf dem ganzen Weg", konsole.join(" | ") || "still");
   await browser.close();
+
+  /* Breite (Auftrag: „Der Banner kann ruhig breiter sein, die Seiten
+     sollen voll aussehen"). Vorher 87 % der Innenbreite — bei 360 px
+     250 statt 330 px. Gemessen wird gegen die ZWEITE Quelle auf der
+     Seite, die Kachelreihe darunter: Die Karte ist genau so breit und
+     steht genau so weit links. Dazu: kein seitliches Überlaufen der
+     Seite, und die Nachbarkarte lugt sichtbar herein (≥ 8 px), sonst
+     sieht niemand, dass es weitergeht. */
+  console.log("\n══ Gast-Hub · Breite des Rads ══");
+  for (const breite of [360, 430, 768, 1280]) {
+    const b2 = await chromium.launch();
+    const ctx = await b2.newContext({ viewport: { width: breite, height: 900 } });
+    const s2 = await ctx.newPage();
+    await s2.route("**/*", r => {
+      const url = r.request().url();
+      if (url.startsWith("file://")) return r.continue();
+      if (url.includes("/rest/v1/betriebe")) return r.fulfill({ status:200, contentType:"application/json",
+        body: JSON.stringify([{ id: BID, bestell_pause:false, hub_texte:{}, hub_kacheln:null,
+          hub_banner: BANNER.slice(0, 3), hub_woerter:{}, liefer:null, hub_avatar:null }]) });
+      if (url.includes("/rest/v1/")) return r.fulfill({ status:200, contentType:"application/json", body:"[]" });
+      return r.abort();
+    });
+    await s2.addInitScript(() => { try{ sessionStorage.setItem("omoteno-willkommen","1"); }catch(e){} });
+    await s2.goto("file://" + DIST);
+    await s2.waitForTimeout(1000);
+    const m = await s2.evaluate(() => {
+      const spur = document.getElementById("bnSpur"), git = document.querySelector("#inhalt .gitter");
+      if (!spur || !git) return null;
+      const rad = spur.parentElement.getBoundingClientRect();
+      const k = spur.querySelectorAll(".bnkarte"), a = k[0].getBoundingClientRect(), b = k[1].getBoundingClientRect();
+      const g = git.getBoundingClientRect();
+      return { kl: a.left, kw: a.width, gl: g.left, gw: g.width, lugt: rad.right - b.left,
+               sw: document.documentElement.scrollWidth, iw: innerWidth };
+    });
+    if (!m) { pruef(false, breite + " px: Rad und Kachelreihe vorhanden", "fehlt"); await b2.close(); continue; }
+    pruef(Math.abs(m.kw - m.gw) <= 1 && Math.abs(m.kl - m.gl) <= 1,
+      breite + " px: Karte so breit wie die Kachelreihe und bündig", "Karte " + Math.round(m.kl) + "/" + Math.round(m.kw) + " · Kacheln " + Math.round(m.gl) + "/" + Math.round(m.gw));
+    pruef(m.lugt >= 8, breite + " px: Nachbarkarte lugt ≥ 8 px herein", Math.round(m.lugt) + " px");
+    pruef(m.sw <= m.iw, breite + " px: kein seitliches Überlaufen der Seite", m.sw + " / " + m.iw);
+    await b2.close();
+  }
 }
 
 (async () => {

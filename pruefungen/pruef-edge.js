@@ -60,6 +60,7 @@ declare module "npm:@anthropic-ai/sdk" {
     constructor(o: { apiKey: string });
     messages: { create(p: Record<string, unknown>): Promise<Antwort> };
     beta: { messages: { create(p: Record<string, unknown>): Promise<Antwort> } };
+    models: { list(p?: Record<string, unknown>): Promise<unknown> };
   }
   export default Anthropic;
 }

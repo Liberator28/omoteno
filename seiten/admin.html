@@ -6534,7 +6534,7 @@ var PIN_STIL =
   ".pin-los:disabled{opacity:.55;cursor:default}" +
   ".pin-aus{background:transparent;color:var(--pin-leise);border:1px solid var(--pin-kante)}" +
   ".pin-los:focus-visible,.pin-aus:focus-visible{outline:2px solid var(--pin-schrift);outline-offset:2px}" +
-  ".pin-wackeln{animation:pin-wackeln 260ms ease-in-out}" +
+  ".pin-wackeln{animation:pin-wackeln 260ms cubic-bezier(.36,.07,.19,.97)}" +
   "@keyframes pin-wackeln{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}" +
   "@media (prefers-reduced-motion:reduce){.pin-wackeln{animation:none}.pin-punkte i{transition:none}}";
 
@@ -11246,7 +11246,23 @@ const UEB_GRUND = {
      Kopfzeile x-client-info nicht erlaubt. Die alte Frage „ist sie
      ausgerollt?“ schickte den Wirt an die falsche Stelle. */
   nicht_erreichbar:"Der Übersetzer ist nicht erreichbar. Bitte die Seite " +
-    "einmal neu laden. Bleibt es so: Anleitung „Übersetzer“, Schritt 2."
+    "einmal neu laden. Bleibt es so: Anleitung „Übersetzer“, Schritt 2.",
+  /* VORFALL 26.09.: Hier stand roh „Der Übersetzer meldet: 401
+     {"type":"error",…invalid x-api-key…}". Die Funktion liefert jetzt
+     Gründe; uebGrundText() übersetzt ältere Rohtexte zusätzlich. */
+  schluessel_ungueltig:"Der hinterlegte Anthropic-Schlüssel wird abgelehnt " +
+    "(abgelaufen, widerrufen oder falsch kopiert). Neuen Schlüssel anlegen und " +
+    "in Supabase als ANTHROPIC_API_KEY ersetzen — Anleitung „Übersetzer“, Schritt 3.",
+  schluessel_form: "In Supabase steht unter ANTHROPIC_API_KEY kein Anthropic-Schlüssel " +
+    "(er beginnt immer mit sk-ant-). Anleitung „Übersetzer“, Schritt 3.",
+  schluessel_ohne_recht:"Der Anthropic-Schlüssel darf dieses Modell nicht nutzen. " +
+    "In der Anthropic-Konsole den Arbeitsbereich des Schlüssels prüfen.",
+  guthaben_leer:   "Das Guthaben bei Anthropic ist aufgebraucht. " +
+    "console.anthropic.com → Billing → aufladen.",
+  zu_viele:        "Gerade zu viele Anfragen auf einmal. Bitte in einer Minute noch einmal.",
+  ueberlastet:     "Der Übersetzungsdienst ist gerade überlastet. Bitte gleich noch einmal.",
+  kein_zugriff:    "Übersetzen geht nur angemeldet, mit Zugang zu einem Betrieb " +
+    "(und nach der PIN, falls eingeschaltet). Bitte neu anmelden."
 };
 
 /* Was der letzte Aufruf gemeldet hat. Wird von der Anzeige gelesen.
@@ -11258,6 +11274,10 @@ let uebLetzterGrund = "";
 
 function uebGrundText(){
   if(!uebLetzterGrund) return "";
+  if(!UEB_GRUND[uebLetzterGrund]){
+    if(/invalid x-api-key|authentication_error/i.test(uebLetzterGrund)) uebLetzterGrund = "schluessel_ungueltig";
+    else if(/credit balance/i.test(uebLetzterGrund)) uebLetzterGrund = "guthaben_leer";
+  }
   return UEB_GRUND[uebLetzterGrund] ||
     ("Der Übersetzer meldet: " + uebLetzterGrund);
 }

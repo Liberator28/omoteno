@@ -1,6 +1,6 @@
 # Übersetzer: So bringst du ihn zum Laufen
 
-Stand 25.09.2026. Ersetzt `uebersetzer-fix-anleitung.md` — die lag
+Stand 26.09.2026. Ersetzt `uebersetzer-fix-anleitung.md` — die lag
 falsch (siehe unten).
 
 ## Was kaputt war — gemessen, nicht vermutet
@@ -25,6 +25,43 @@ Derselbe Fehler stand in `newsletter-vorrat-auffuellen` (Knopf
 Liste, die supabase-js selbst vorgibt, und sind neu ausgerollt
 (`uebersetzen` Version 5, `newsletter-vorrat-auffuellen` Version 4).
 `pruefungen/pruef-edge.js` prüft das künftig bei jeder Funktion.
+
+## Stand 26.09.2026 — gemessen: der Schlüssel ist UNGÜLTIG
+
+Probe direkt gegen die ausgerollte Funktion (aus der Datenbank über
+`pg_net`, nicht aus einem Browser):
+
+| Anfrage | Antwort | heißt |
+|---|---|---|
+| `{"texte":[]}` | `{"uebersetzt":{}}` | Funktion läuft, `ANTHROPIC_API_KEY` **ist gesetzt** |
+| `{"texte":["Guten Appetit"]}` | `401 authentication_error: invalid x-api-key` | Anthropic **lehnt den Schlüssel ab** |
+
+Der Vorflug ist also nicht mehr das Problem — die Anfrage kommt an,
+der Schlüssel wird benutzt, und Anthropic sagt nein. Das passiert,
+wenn der Schlüssel widerrufen/gelöscht wurde, zu einer anderen
+Organisation gehört, oder beim Kopieren etwas fehlt oder dazukam.
+
+**Was du tun musst: nur Schritt 3** (neuen Schlüssel anlegen und in
+Supabase ersetzen). Danach Board neu laden und ein Gericht sichern.
+
+Seit Version 6 der Funktion (26.09.):
+- Leerzeichen, Zeilenumbrüche, Anführungszeichen und ein „Bearer "
+  vor dem Schlüssel werden abgeschnitten; ein Wert, der nicht mit
+  `sk-ant-` beginnt, meldet „kein Anthropic-Schlüssel".
+- Das Board zeigt statt des rohen 401-Textes: „Der hinterlegte
+  Anthropic-Schlüssel wird abgelehnt … Anleitung „Übersetzer“,
+  Schritt 3."
+- **Nur noch angemeldete Teammitglieder** (nach der PIN) dürfen
+  übersetzen. Vorher reichte der öffentliche Schlüssel aus jedem Hub,
+  um auf deine Rechnung übersetzen zu lassen. Gemessen: Aufruf mit dem
+  öffentlichen Schlüssel → `kein_zugriff`, kein Anthropic-Aufruf.
+- `{"probe":true}` prüft den Schlüssel kostenlos (Modellliste statt
+  Übersetzung).
+
+**Ehrliche Grenze:** Den Weg „angemeldet im Board → übersetzt“ konnte
+ich nicht selbst gehen — ohne gültigen Schlüssel und ohne dein
+Anmeldetoken. Der erste echte Lauf nach dem Schlüsseltausch ist deiner;
+im Log steht dann `POST 200`.
 
 ## Was du jetzt tun musst
 
