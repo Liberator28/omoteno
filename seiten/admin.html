@@ -61,13 +61,11 @@
      Hauses. Ein blockierender Stilbogen von einem fremden Dienst hält
      dabei das erste Bild auf; hier holt ihn preload und macht ihn
      erst im onload gültig. --schrift und --mono tragen bis dahin. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="preload" as="style"
-      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&family=JetBrains+Mono:wght@400;500;700&display=swap"
+<!-- Schriften vom eigenen Server (schriften/seiten.css), nicht mehr von
+     Google: Das schickte bei jedem Aufruf die IP-Adresse dorthin. -->
+<link rel="preload" as="style" href="/schriften/seiten.css"
       onload="this.onload=null;this.rel='stylesheet'">
-<noscript><link rel="stylesheet"
-      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=Instrument+Serif&family=JetBrains+Mono:wght@400;500;700&display=swap"></noscript>
+<noscript><link rel="stylesheet" href="/schriften/seiten.css"></noscript>
 
 <!--
 ═══════════════════════════════════════════════════════════════════
@@ -1884,6 +1882,18 @@ textarea{resize:vertical;min-height:66px}
   background:var(--flaeche-2);color:var(--kreide);font-size:13.5px;font-weight:600}
 .bnausricht button[aria-checked="true"]{border-color:var(--messing);color:var(--messing)}
 
+/* ── Schriftwahl (Präfix sw, vorher gesucht §1.1) ── */
+.swrolle{margin:0 0 18px}
+.swtitel{display:block;font-size:13px;font-weight:600;color:var(--kreide);margin:0 0 8px}
+.swliste{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));grid-auto-rows:1fr;gap:8px}
+.swwahl{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;
+  min-height:64px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--linie);
+  background:var(--flaeche-2);color:var(--kreide);text-align:left;cursor:pointer}
+.swwahl[aria-checked="true"]{border-color:var(--messing);background:var(--flaeche)}
+.swprobe{font-size:19px;line-height:1.15;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.swname{font-size:11.5px;color:var(--gedaempft);line-height:1.3}
+.swwahl[aria-checked="true"] .swname{color:var(--kreide)}
+
 .kbbildreihe{display:flex;flex-wrap:wrap;gap:8px}
 .kbbildreihe button{
   padding:10px 13px;border-radius:9px;border:1px solid var(--linie);
@@ -3038,6 +3048,33 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <!-- Der echte Hub, klein: jede Änderung an Kacheln und Banner
            erscheint hier, bevor sie übernommen wird. -->
       <div class="hvrahmen" data-hv="startseite"></div>
+    </div>
+
+    <div class="egruppe" id="swGruppe">
+      <h2 class="etitel">Schrift</h2>
+      <p class="ehilfe">Für Überschriften und Text Ihrer Seite — aus unserer Auswahl
+        oder Ihre eigene Schriftdatei. Die Vorschau oben zeigt sie sofort; Gäste
+        sehen sie, sobald Sie übernehmen.</p>
+      <div class="swrolle" data-sw-rolle="kopf">
+        <b class="swtitel">Überschriften</b>
+        <div class="swliste" role="radiogroup" aria-label="Schrift der Überschriften"></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="kopf">
+      </div>
+      <div class="swrolle" data-sw-rolle="text">
+        <b class="swtitel">Text</b>
+        <div class="swliste" role="radiogroup" aria-label="Schrift des Textes"></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="text">
+      </div>
+      <p class="feldhilfe">Eigene Schrift: woff2, woff, ttf oder otf, höchstens 1,5 MB.
+        Bitte nur Schriften, die Sie im Web verwenden dürfen — viele gekaufte
+        Desktop-Schriften erlauben das nicht.</p>
+      <div class="ezeile senkrecht">
+        <span><b>Übernehmen</b><i>Gäste sehen es beim nächsten Öffnen</i></span>
+        <div class="kbknoepfe">
+          <button class="knopf" id="swSichern">Übernehmen</button>
+        </div>
+      </div>
+      <div class="epruefung" id="swPruefung" aria-live="polite"></div>
     </div>
 
     <div class="egruppe">
@@ -9074,7 +9111,7 @@ function tafelZeigen(ziel){
      Öffnen des Speisekarte-Reiters gefüllt wird — ein Wirt, der
      direkt auf "Startseite" geht, sähe sonst fälschlich "keine
      laufende Aktion", obwohl welche liefen. */
-  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); aktionenLaden(); }
+  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); aktionenLaden(); }
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
   if(ziel === "auswertung")      awLaden();
@@ -9504,10 +9541,205 @@ function hvWarnungen(schl, m){
   }
 }
 
+/* ══ SCHRIFT: Auswahl oder eigene Datei (betriebe.hub_stil.schrift) ══
+   Wunsch 26.09.: „Schriften ändern im Admin Hub, von voreingestellten
+   Schriften oder man kann welche importieren“. Die Auswahl sind echte
+   Webschriften unter /schriften/ (selbst ausgeliefert, SIL OFL); eine
+   eigene Datei geht in den Eimer „schriften“ (migration-schriften.sql).
+
+   Zweite Quelle: SCHRIFT_WEB in vorlagen/hub.vorlage.html — Schlüssel
+   und Dateinamen müssen gleich sein (pruef-schriften.js). „rollen“
+   steht nur hier: Eine Schreibschrift als Fließtext ist auf dem
+   Telefon kaum zu lesen, also wird sie für „Text“ nicht angeboten. */
+const SCHRIFT_WAHL = [
+  { s:"playfair",   familie:"Playfair Display",   datei:"playfair-display",   art:"Serif, festlich",     rollen:["kopf"] },
+  { s:"cormorant",  familie:"Cormorant Garamond", datei:"cormorant-garamond", art:"Serif, fein",         rollen:["kopf"] },
+  { s:"dmserif",    familie:"DM Serif Display",   datei:"dm-serif-display",   art:"Serif, kräftig",      rollen:["kopf"] },
+  { s:"fraunces",   familie:"Fraunces",           datei:"fraunces",           art:"Serif, weich",        rollen:["kopf","text"] },
+  { s:"bebas",      familie:"Bebas Neue",         datei:"bebas-neue",         art:"Versalien, schmal",   rollen:["kopf"] },
+  { s:"pacifico",   familie:"Pacifico",           datei:"pacifico",           art:"Schreibschrift",      rollen:["kopf"] },
+  { s:"caveat",     familie:"Caveat",             datei:"caveat",             art:"Handschrift, Kreide", rollen:["kopf"] },
+  { s:"lora",       familie:"Lora",               datei:"lora",               art:"Serif, gut lesbar",   rollen:["kopf","text"] },
+  { s:"nunito",     familie:"Nunito",             datei:"nunito",             art:"Rund, freundlich",    rollen:["kopf","text"] },
+  { s:"worksans",   familie:"Work Sans",          datei:"work-sans",          art:"Grotesk, klar",       rollen:["kopf","text"] },
+  { s:"sourcesans", familie:"Source Sans 3",      datei:"source-sans-3",      art:"Grotesk, ruhig",      rollen:["kopf","text"] },
+  { s:"dmsans",     familie:"DM Sans",            datei:"dm-sans",            art:"Grotesk, modern",     rollen:["kopf","text"] }
+];
+const SW_MAX = 1572864;   /* = file_size_limit des Eimers */
+let SW = { kopf:"", text:"", kopf_datei:"", text_datei:"", neu:{ kopf:null, text:null } };
+
+function swBasis(){
+  if(window.OMOTENO_SCHRIFT_BASIS) return window.OMOTENO_SCHRIFT_BASIS;
+  return /^https?:$/.test(location.protocol) ? new URL("/schriften/", location.href).href : "";
+}
+/* Die Proben im Board in ihrer eigenen Schrift — nur die latin-400-Datei. */
+function swProbenLaden(){
+  const basis = swBasis();
+  if(!basis || typeof FontFace !== "function" || !document.fonts || swProbenLaden.fertig) return;
+  swProbenLaden.fertig = true;
+  SCHRIFT_WAHL.forEach(w => {
+    try{
+      const ff = new FontFace("omo-sw-" + w.s, 'url("' + basis + w.datei + '-latin-400.woff2")');
+      document.fonts.add(ff); ff.load().catch(() => {});
+    }catch(e){}
+  });
+}
+function swEigenProbe(rolle){
+  const n = SW.neu[rolle];
+  const quelle = n ? n.blob : SW[rolle + "_datei"];
+  if(!quelle || typeof FontFace !== "function" || !document.fonts) return "";
+  const familie = "omo-sw-eigen-" + rolle + "-" + quelle.length;
+  if(!swEigenProbe[familie]){
+    swEigenProbe[familie] = true;
+    try{ const ff = new FontFace(familie, 'url("' + quelle + '")'); document.fonts.add(ff); ff.load().catch(() => {}); }catch(e){}
+  }
+  return familie;
+}
+
+function swLaden(){
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  const st = bb && bb.hub_stil && typeof bb.hub_stil === "object" ? bb.hub_stil : {};
+  const sch = st.schrift && typeof st.schrift === "object" && !Array.isArray(st.schrift) ? st.schrift : {};
+  const gueltig = (rolle, w) => w === "eigen" || SCHRIFT_WAHL.some(x => x.s === w && x.rollen.indexOf(rolle) >= 0) ? w : "";
+  SW = { kopf:gueltig("kopf", String(sch.kopf || "")), text:gueltig("text", String(sch.text || "")),
+         kopf_datei:String(sch.kopf_datei || ""), text_datei:String(sch.text_datei || ""),
+         neu:{ kopf:null, text:null } };
+  swProbenLaden();
+  swZeichnen();
+}
+
+function swZeichnen(){
+  ["kopf", "text"].forEach(rolle => {
+    const liste = document.querySelector('[data-sw-rolle="' + rolle + '"] .swliste');
+    if(!liste) return;
+    const knopf = (wert, name, art, familie) =>
+      '<button type="button" role="radio" class="swwahl" data-sw="' + wert + '" aria-checked="' +
+        (SW[rolle] === wert) + '">' +
+        '<span class="swprobe"' + (familie ? ' style="font-family:' + sicher(familie) + '"' : "") + '>Probier gerne</span>' +
+        '<span class="swname">' + sicher(name) + ' · ' + sicher(art) + '</span></button>';
+    const eigen = SW.neu[rolle] ? SW.neu[rolle].datei.name :
+                  SW[rolle + "_datei"] ? "hochgeladen" : "Datei wählen …";
+    const ef = swEigenProbe(rolle);
+    liste.innerHTML =
+      knopf("", "Wie im Marken-Studio", "Vorgabe", "") +
+      SCHRIFT_WAHL.filter(w => w.rollen.indexOf(rolle) >= 0)
+        .map(w => knopf(w.s, w.familie, w.art, '"omo-sw-' + w.s + '",serif')).join("") +
+      knopf("eigen", "Eigene Schrift", eigen, ef ? '"' + ef + '",serif' : "");
+  });
+  hvStartseite("kopf");
+}
+
+/* Für den Hub: die gewählten Schlüssel, bei „eigen“ die Adresse. In
+   der Vorschau darf das die noch nicht hochgeladene Datei sein
+   (blob:) — der Hub nimmt blob: nur in der Vorschau an. */
+function swFuerHub(vorschau){
+  const raus = { kopf:SW.kopf, text:SW.text };
+  ["kopf", "text"].forEach(rolle => {
+    if(SW[rolle] !== "eigen") return;
+    const n = SW.neu[rolle];
+    raus[rolle + "_datei"] = vorschau && n ? n.blob : SW[rolle + "_datei"];
+  });
+  return raus;
+}
+
+/* Ist das wirklich eine Schrift? Die Endung sagt nichts — gelesen
+   werden die ersten vier Bytes und dann lädt der Browser sie einmal
+   probeweise. Eine umbenannte Bilddatei kommt so nicht in den Eimer. */
+async function swDateiPruefen(rolle, datei){
+  const raus = $("#swPruefung");
+  if(!datei) return;
+  if(datei.size > SW_MAX){ raus.textContent = "Die Datei ist größer als 1,5 MB. Bitte eine Webschrift (woff2) nehmen."; return; }
+  const kopf = new Uint8Array(await datei.slice(0, 4).arrayBuffer());
+  const zeichen = String.fromCharCode.apply(null, kopf);
+  const art = zeichen === "wOF2" ? "woff2" : zeichen === "wOFF" ? "woff" : zeichen === "OTTO" ? "otf" :
+              (zeichen === "true" || (kopf[0] === 0 && kopf[1] === 1 && kopf[2] === 0 && kopf[3] === 0)) ? "ttf" : "";
+  if(!art){ raus.textContent = "Das ist keine Schriftdatei. Erlaubt sind woff2, woff, ttf und otf."; return; }
+  try{
+    const ff = new FontFace("omo-sw-pruef", await datei.arrayBuffer());
+    await ff.load();
+  }catch(e){ raus.textContent = "Die Datei lässt sich nicht als Schrift lesen. Bitte eine andere nehmen."; return; }
+  const name = (datei.name.replace(/\.[^.]*$/, "").replace(/[^A-Za-z0-9_-]+/g, "-").replace(/^-+|-+$/g, "")
+                .slice(0, 40) || "schrift") + "-" + Date.now().toString(36);
+  const alt = SW.neu[rolle]; if(alt) URL.revokeObjectURL(alt.blob);
+  SW.neu[rolle] = { datei, art, name, blob: URL.createObjectURL(datei) };
+  SW[rolle] = "eigen";
+  raus.textContent = "„" + datei.name + "“ steht in der Vorschau. Mit „Übernehmen“ gilt sie für Gäste.";
+  swZeichnen();
+}
+
+async function swSichern(){
+  const raus = $("#swPruefung"), knopf = $("#swSichern");
+  knopf.disabled = true; knopf.textContent = "Wird übernommen …";
+  try{
+    const probe = !!(demo || !db);
+    for(const rolle of ["kopf", "text"]){
+      if(SW[rolle] !== "eigen") continue;
+      const n = SW.neu[rolle];
+      if(n && !probe){
+        const pfad = betriebId + "/" + n.name + "." + n.art;
+        const {error} = await db.storage.from("schriften")
+          .upload(pfad, n.datei, { contentType:"font/" + n.art, upsert:false });
+        if(error) throw error;
+        const {data} = db.storage.from("schriften").getPublicUrl(pfad);
+        SW[rolle + "_datei"] = data.publicUrl;
+        SW.neu[rolle] = null;
+      }
+      if(!n && !SW[rolle + "_datei"]) throw new Error("eigen_ohne_datei");
+    }
+    if(probe){
+      raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
+    }else{
+      const bb = meineBetriebe.find(x => x.id === betriebId);
+      /* Zusammenführen, nicht ersetzen: hub_stil trägt auch den
+         Emoji-Schalter (stilUmschalten macht es genauso). */
+      const neu = Object.assign({}, (bb && bb.hub_stil && typeof bb.hub_stil === "object") ? bb.hub_stil : {},
+                                { schrift: swFuerHub(false) });
+      const {error} = await db.from("betriebe").update({ hub_stil: neu }).eq("id", betriebId);
+      if(error) throw error;
+      if(bb) bb.hub_stil = neu;
+      raus.textContent = "Übernommen. Gäste sehen die Schrift beim nächsten Öffnen.";
+    }
+    melde("Schrift übernommen");
+  }catch(err){
+    const t = String(err && err.message || err);
+    raus.textContent =
+      /eigen_ohne_datei/.test(t) ? "Für „Eigene Schrift“ fehlt noch die Datei." :
+      /mime|content.?type|size|too large|payload/i.test(t) ? "Die Datei wurde abgelehnt — erlaubt sind woff2, woff, ttf und otf bis 1,5 MB." :
+      /hub_stil_form|check/i.test(t) ? "Die Einstellung ist zu groß geworden. Bitte eine Schrift weniger wählen." :
+      /hub_stil/.test(t) ? "Die Spalte hub_stil fehlt noch. Bitte migration-hub-stil.sql einspielen." :
+      /row-level|policy|permission/i.test(t) ? "Keine Berechtigung für diesen Betrieb. Bitte neu anmelden." :
+      "Nicht gespeichert, bitte Verbindung prüfen.";
+  }
+  knopf.disabled = false; knopf.textContent = "Übernehmen";
+  swZeichnen();
+}
+
+document.addEventListener("click", e => {
+  const k = e.target.closest && e.target.closest("[data-sw]");
+  if(!k) return;
+  const rolle = k.closest("[data-sw-rolle]").dataset.swRolle;
+  const wert = k.dataset.sw;
+  /* „Eigene Schrift“ ohne Datei: gleich die Auswahl öffnen. Mit
+     Datei: ein zweiter Tipp auf die schon gewählte Karte tauscht sie. */
+  if(wert === "eigen" && (!(SW.neu[rolle] || SW[rolle + "_datei"]) || SW[rolle] === "eigen")){
+    const f = document.querySelector('[data-sw-datei="' + rolle + '"]');
+    if(f){ f.value = ""; f.click(); }
+    if(!(SW.neu[rolle] || SW[rolle + "_datei"])) return;
+  }
+  SW[rolle] = wert;
+  swZeichnen();
+});
+document.addEventListener("change", e => {
+  const f = e.target.closest && e.target.closest("[data-sw-datei]");
+  if(f && f.files && f.files[0]) swDateiPruefen(f.dataset.swDatei, f.files[0]);
+});
+$("#swSichern").onclick = swSichern;
+
 /* Die drei Anschlüsse. */
 function hvStartseite(ziel){
   if($("#t-startseite") && $("#t-startseite").hidden) return;
-  hvSenden("startseite", { hub_kacheln: kbRoh(), hub_banner: bnRoh() }, ziel || "");
+  hvSenden("startseite", { hub_kacheln: kbRoh(), hub_banner: bnRoh(),
+                           hub_stil: { schrift: swFuerHub(true) } }, ziel || "");
 }
 function hvWorte(ziel){
   const wert = id => ($("#" + id) || {}).value || "";

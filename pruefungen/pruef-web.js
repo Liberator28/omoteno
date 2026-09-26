@@ -93,12 +93,16 @@ async function ohneNetz(seite){
     const seite = await ctx.newPage();
     await seite.route("**/*", r => {
       const u = r.request().url();
-      if(u.startsWith("file://")) return r.continue();
-      if(/fonts\.(googleapis|gstatic)\.com/.test(u)){
+      /* Seit 26.09. kommen die Schriften vom eigenen Server
+         (/schriften/seiten.css) statt von Google. Der schlimmste Fall
+         bleibt derselbe: der Schriftdienst hängt. Die Regel steht VOR
+         dem file://-Durchlass, sonst träfe sie die eigene Datei nie. */
+      if(/\/schriften\/|fonts\.(googleapis|gstatic)\.com/.test(u)){
         if(art === "haengen")  return new Promise(() => {});   /* nie antworten */
         if(art === "abweisen") return r.abort();
         return r.abort();          /* auch „durch" hat hier kein Netz */
       }
+      if(u.startsWith("file://")) return r.continue();
       return r.abort();
     });
     await seite.goto(ADRESSE, { waitUntil:"domcontentloaded" });

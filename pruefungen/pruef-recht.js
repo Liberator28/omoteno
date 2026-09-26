@@ -51,8 +51,10 @@ const hex = rgb => { const n=rgb.match(/[\d.]+/g); return "#"+n.slice(0,3)
     /* Schriftdienst haengt — der schlimmste Fall. */
     await p.route("**/*", r => {
       const u = r.request().url();
+      /* Eigene Schriftdatei (seit 26.09.) oder Google — hängen lassen,
+         und zwar VOR dem file://-Durchlass. */
+      if(/\/schriften\/|fonts\.(googleapis|gstatic)/.test(u)) return new Promise(()=>{});
       if(u.startsWith("file://")) return r.continue();
-      if(/fonts\.(googleapis|gstatic)/.test(u)) return new Promise(()=>{});
       return r.abort();
     });
     await p.goto(ADRESSE(d), {waitUntil:"domcontentloaded"});

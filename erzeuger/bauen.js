@@ -233,6 +233,26 @@ for(const n of ["_headers", "_redirects"]){
   }
 }
 
+/* ─── 5c · Schriften ────────────────────────────────────────────
+   Die Webschriften, die das Board zur Wahl stellt (SIL OFL, siehe
+   LIZENZEN.txt im Ordner), nach /schriften/. Dieselbe Begründung wie
+   bei den Emojis: Der Hub lädt sie fest von https://omoteno.de/, auch
+   auf den Kundenadressen — deshalb der CORS-Kopf in _headers. Fehlt
+   der Ordner, steht die Systemschrift da: Rückfall, kein Schaden. */
+{
+  const von = path.join(WURZEL, "auslieferung", "schriften");
+  if(fs.existsSync(von)){
+    ordner(path.join(ZIEL, "schriften"));
+    let n = 0;
+    for(const f of fs.readdirSync(von)){
+      fs.copyFileSync(path.join(von, f), path.join(ZIEL, "schriften", f)); n++;
+    }
+    console.log("\n   schriften/ übernommen (" + n + " Dateien)");
+  } else {
+    console.log("\n   schriften/ fehlt — gewählte Schriften fallen auf die Systemschrift zurück.");
+  }
+}
+
 /* ─── 6 · Was noch fehlt, laut sagen ────────────────────────────
    Ein Bau, der stillschweigend etwas ausklammert, erzieht dazu,
    seine Ausgabe nicht zu lesen. */

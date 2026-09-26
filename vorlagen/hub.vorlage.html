@@ -3363,6 +3363,44 @@ const SCHRIFTEN = {
   "schreib":         '"Snell Roundhand","Apple Chancery","Segoe Script","Brush Script MT",cursive'
 };
 
+/* ═══ SCHRIFTEN AUS DEM BOARD ══════════════════════════════════════
+   Wunsch (26.09.): Schriften im Board wählen — aus einer Auswahl oder
+   eine eigene. SCHRIFTEN oben sind Systemschriften: „Didot“ gibt es
+   auf dem iPhone, auf Android nicht, und der Gast sähe dort Georgia.
+   Die Auswahl hier sind echte Webschriften, selbst ausgeliefert unter
+   omoteno.de/schriften/ (SIL OFL, auslieferung/schriften/LIZENZEN.txt)
+   — NICHT von Google: Deren Server bekämen die IP-Adresse jedes Gastes
+   (LG München I, 3 O 17493/20).
+
+   Geladen wird nur, was gewählt ist: je Stärke eine latin-Datei, die
+   latin-ext-Datei nur, wenn Türkisch/Polnisch/Rumänisch sie braucht
+   (unicode-range). Rückfall ist die Systemschrift gleicher Art, damit
+   ein fehlendes Zeichen nicht in einer ganz anderen Form erscheint.
+
+   Zweite Quelle: SCHRIFT_WAHL in seiten/admin.html — pruef-schriften.js
+   hält beide Listen und die Dateien gegeneinander. */
+const SCHRIFT_BEREICH = {
+  "latin":     "U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD",
+  "latin-ext": "U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF"
+};
+const SCHRIFT_WEB = {
+  playfair:   { familie:"Playfair Display",   datei:"playfair-display",   staerken:[400,700], rueck:"serif-hoch" },
+  cormorant:  { familie:"Cormorant Garamond", datei:"cormorant-garamond", staerken:[400,700], rueck:"serif-klassisch" },
+  dmserif:    { familie:"DM Serif Display",   datei:"dm-serif-display",   staerken:[400],     rueck:"serif-hoch" },
+  fraunces:   { familie:"Fraunces",           datei:"fraunces",           staerken:[400,700], rueck:"serif-klassisch" },
+  bebas:      { familie:"Bebas Neue",         datei:"bebas-neue",         staerken:[400],     rueck:"grotesk-eng" },
+  pacifico:   { familie:"Pacifico",           datei:"pacifico",           staerken:[400],     rueck:"schreib" },
+  caveat:     { familie:"Caveat",             datei:"caveat",             staerken:[400,700], rueck:"schreib" },
+  lora:       { familie:"Lora",               datei:"lora",               staerken:[400,700], rueck:"serif-eng" },
+  nunito:     { familie:"Nunito",             datei:"nunito",             staerken:[400,700], rueck:"rund" },
+  worksans:   { familie:"Work Sans",          datei:"work-sans",          staerken:[400,700], rueck:"grotesk" },
+  sourcesans: { familie:"Source Sans 3",      datei:"source-sans-3",      staerken:[400,700], rueck:"grotesk" },
+  dmsans:     { familie:"DM Sans",            datei:"dm-sans",            staerken:[400,700], rueck:"grotesk" }
+};
+/* Fest von der Hauptadresse — wie /emoji/: Auf choco-lamour.omoteno.de
+   lenkt _redirects alles in den Hub-Ordner. */
+const SCHRIFT_BASIS = window.OMOTENO_SCHRIFT_BASIS || "https://omoteno.de/schriften/";
+
 const SCHATTEN = {
   weich: "0 1px 2px rgba(42,26,20,.05), 0 8px 22px rgba(42,26,20,.06)",
   kante: "0 2px 0 rgba(42,26,20,.14)",
@@ -13622,6 +13660,82 @@ const OMOTENO_DB = {
    Karte wirklich geändert hat, wird die Ansicht aufgefrischt. */
 let karteFingerabdruck = "";
 
+/* ═══ Schriften anwenden (hub_stil.schrift) ═══════════════════════
+   { kopf:"playfair"|"eigen"|"", text:…, kopf_datei:"https://…", text_datei:… }
+   Leer oder unbekannt heißt: die Schrift aus dem Marken-Studio.
+
+   Eine EIGENE Schrift kommt nur aus dem Eimer „schriften“ dieses
+   Projekts (migration-schriften.sql), mit festem Namensmuster. Das
+   ist die Sicherung gegen alles andere: Die Adresse landet in einer
+   url()-Angabe, und die Spalte ist live und ungeprüft. Ein
+   Anführungszeichen, ein fremder Server, javascript: — nichts davon
+   passt auf das Muster. In der Vorschau des Boards zusätzlich blob:
+   aus demselben Rahmen (die Datei ist dann noch nicht hochgeladen). */
+function schriftUrlOk(u){
+  u = String(u || "");
+  const eimer = OMOTENO_DB.url.replace(/\/+$/, "") + "/storage/v1/object/public/schriften/";
+  if(u.indexOf(eimer) === 0 &&
+     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/[A-Za-z0-9_-]{1,60}\.(woff2|woff|ttf|otf)$/
+       .test(u.slice(eimer.length))) return u;
+  if(VORSCHAU && /^blob:[A-Za-z0-9:/._-]+$/.test(u)) return u;
+  return "";
+}
+
+const schriftGeladen = {};
+function schriftLaden(familie, quellen){
+  if(schriftGeladen[familie] || typeof FontFace !== "function" || !document.fonts) return;
+  schriftGeladen[familie] = true;
+  quellen.forEach(q => {
+    try{
+      const ff = new FontFace(familie, 'url("' + q.url + '")',
+        Object.assign({ weight: q.staerke, display:"swap" }, q.bereich ? { unicodeRange: q.bereich } : {}));
+      document.fonts.add(ff);
+      ff.load().catch(() => {});      /* scheitert still: der Rückfall steht schon */
+    }catch(e){}
+  });
+}
+
+/* Kurzer, stabiler Name je Adresse — eine neue eigene Datei bekommt
+   eine neue Familie, statt die alte im Speicher zu überdecken. */
+function schriftKennung(u){
+  let h = 0;
+  for(let i = 0; i < u.length; i++) h = (h * 31 + u.charCodeAt(i)) >>> 0;
+  return h.toString(36);
+}
+
+let schriftStand = null;
+function schriftenAnwenden(stil){
+  const sch = (stil && typeof stil === "object" && stil.schrift && typeof stil.schrift === "object" &&
+               !Array.isArray(stil.schrift)) ? stil.schrift : {};
+  const fp = JSON.stringify(sch);
+  if(fp === schriftStand) return false;
+  schriftStand = fp;
+  const s = document.documentElement.style, mb = MARKENBLATT;
+  ["kopf", "text"].forEach(rolle => {
+    const marke = SCHRIFTEN[mb.schrift && mb.schrift[rolle]] || SCHRIFTEN.system;
+    const wahl = String(sch[rolle] || "");
+    let familie = "", rueck = marke;
+    if(wahl === "eigen"){
+      const u = schriftUrlOk(sch[rolle + "_datei"]);
+      if(u){
+        familie = "omo-e-" + rolle + "-" + schriftKennung(u);
+        schriftLaden(familie, [{ url:u, staerke:"100 900" }]);
+      }
+    }else if(Object.prototype.hasOwnProperty.call(SCHRIFT_WEB, wahl)){
+      const w = SCHRIFT_WEB[wahl];
+      familie = "omo-" + wahl;
+      rueck = SCHRIFTEN[w.rueck] || marke;
+      const quellen = [];
+      w.staerken.forEach(st => ["latin", "latin-ext"].forEach(teil => quellen.push({
+        url: SCHRIFT_BASIS + w.datei + "-" + teil + "-" + st + ".woff2",
+        staerke: String(st), bereich: SCHRIFT_BEREICH[teil] })));
+      schriftLaden(familie, quellen);
+    }
+    s.setProperty("--schrift-" + rolle, familie ? '"' + familie + '",' + rueck : marke);
+  });
+  return true;
+}
+
 /* ═══ Eigene Worte, Kacheln, Banner — aus der Datenbank ODER dem Board ═══
    Gekürzt wird trotzdem. Die Datenbank hat eine Schranke
    (hub_texte_masse), das Board warnt früher — aber ein alter Wert
@@ -13674,6 +13788,12 @@ function betriebsTeileAnwenden(z, immer){
          sonst reißt es ihm die Karte unter dem Finger weg. */
       if(immer || seiteJetzt === "start") neu = true;
     }
+  }
+
+  /* Schrift: im laufenden Betrieb nur beim ersten Laden (siehe
+     karteHolen) — in der Vorschau sofort, dafür ist sie da. */
+  if("hub_stil" in z && immer){
+    if(schriftenAnwenden(z.hub_stil)) neu = true;
   }
 
   /* Das Aktions-Banner-Rad: eine echte freie Liste, bannerAusZeile()
@@ -13883,6 +14003,14 @@ async function karteHolen(erstesMal){
       HUBSTIL = stil;
       if(bewegteZeichenAn() !== vorher) zeichne();
     }
+    /* Schrift nur beim ERSTEN Laden: Ein Wechsel mitten im Lesen würde
+       jede Zeile neu umbrechen (dieselbe Regel wie markeGrundlegen).
+       Gemerkt für den nächsten Besuch, damit sie dann gleich steht. */
+    if(erstesMal){
+      schriftenAnwenden(stil);
+      try{ localStorage.setItem("omoteno-schrift-" + HAUS,
+             JSON.stringify((stil && typeof stil === "object" && stil.schrift) || null)); }catch(e){}
+    }
 
     const av = b[0].hub_avatar;
     if(av && typeof av === "object" && !Array.isArray(av)){
@@ -14022,6 +14150,15 @@ async function karteHolen(erstesMal){
    Ändert das Team im Admin-Panel einen Preis oder setzt ein Gericht auf
    "nicht verfügbar", sieht der Gast das ohne Neuladen. Wir fragen alle
    90 Sekunden nach – und sofort, wenn der Gast zur Seite zurückkehrt. */
+/* Die Schrift vom letzten Besuch gleich setzen — der Abgleich dauert,
+   und dazwischen stünde die Markenschrift da und spränge dann um.
+   Nicht in der Vorschau: Dort gilt, was das Board schickt. */
+if(!VORSCHAU){
+  try{
+    const gemerkt = JSON.parse(localStorage.getItem("omoteno-schrift-" + HAUS) || "null");
+    if(gemerkt && typeof gemerkt === "object") schriftenAnwenden({ schrift: gemerkt });
+  }catch(e){}
+}
 karteHolen(true);
 
 let letzterAbruf = Date.now();
