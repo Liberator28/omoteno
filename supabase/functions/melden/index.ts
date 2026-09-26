@@ -40,6 +40,7 @@ interface Posten { menge?: number; name?: string }
 interface Zeile {
   id: string; betrieb_id: string; quelle: string; status: string; tisch: string | null;
   positionen: Posten[] | null; summe: number | null; notiz: string | null; zeitpunkt: string;
+  pruefen: boolean | null;
 }
 
 /* Die Zeile auf dem Sperrbildschirm. Sie muss ohne Entsperren
@@ -68,12 +69,16 @@ Deno.serve(async (anfrage: Request) => {
     if (!UUID.test(id)) return antwort({ fehler: "keine id" }, 400);
 
     const { data: b, error } = await db.from("bestellungen")
-      .select("id, betrieb_id, quelle, status, tisch, positionen, summe, notiz, zeitpunkt")
+      .select("id, betrieb_id, quelle, status, tisch, positionen, summe, notiz, zeitpunkt, pruefen")
       .eq("id", id).maybeSingle();
     if (error) throw error;
     if (!b) return antwort({ uebersprungen: "unbekannt" });
     const zeile = b as Zeile;
     if (zeile.status !== "neu") return antwort({ uebersprungen: "nicht neu" });
+    /* Markiert (migration-missbrauch.sql, Teil 2): Eine Flut soll nicht
+       auf den Telefonen des Teams klingeln. Das Board zeigt sie zur
+       Freigabe. */
+    if (zeile.pruefen === true) return antwort({ uebersprungen: "zu prüfen" });
     if (Date.now() - Date.parse(zeile.zeitpunkt) > 3 * 60 * 1000) return antwort({ uebersprungen: "zu alt" });
 
     /* Genau einmal: Der Eintrag gelingt nur beim ersten Aufruf. */

@@ -1228,7 +1228,16 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
                       hat. Die Zeilen bleiben stehen — wer schon kocht,
                       muss sehen, WAS wegfällt, nicht nur DASS etwas
                       wegfiel. */
-                   "storno";
+                   "storno," +
+                   /* Markiert vom Server (migration-missbrauch.sql):
+                      Flut oder Gericht, das es nicht gibt. Der Bon
+                      erscheint erst, wenn das Board ihn freigibt. */
+                   "pruefen";
+/* Fehlt die Spalte noch (Migration nicht eingespielt), antwortet der
+   Server 400 — dann ohne sie, genau wie vorher. */
+var BON_SPALTEN_ALT = BON_SPALTEN.replace(",pruefen", "");
+var ohnePruefSpalte = false;
+var zuPruefen = 0;
 
 /* Servicerufe bleiben draußen, Telefonbestellungen kommen herein.
 
@@ -1248,7 +1257,7 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
    Zähler oben können sich nicht mehr an ihnen verrechnen. */
 function ladeBons(){
   var seit = new Date(Date.now() - RUECKBLICK_STD*3600*1000).toISOString();
-  return ruf("/rest/v1/bestellungen?select="+BON_SPALTEN+"&betrieb_id=eq."+betrieb.id+
+  return ruf("/rest/v1/bestellungen?select="+(ohnePruefSpalte ? BON_SPALTEN_ALT : BON_SPALTEN)+"&betrieb_id=eq."+betrieb.id+
              /* „lieferung" MUSS hier stehen. Ohne diesen einen Wert
                 landet eine Lieferbestellung im Board, die Küche sieht
                 sie nie — ein Bon, den niemand kocht, und niemand
@@ -1256,6 +1265,7 @@ function ladeBons(){
              "&quelle=in.(tisch,telefon,lieferung)"+
              "&zeitpunkt=gte."+seit+"&order=zeitpunkt.asc")
     .then(function(a){
+      if(a.status === 400 && !ohnePruefSpalte){ ohnePruefSpalte = true; return ladeBons(); }
       if(!a.ok) throw new Error("Bons nicht lesbar ("+a.status+")");
       return a.json();
     });
@@ -1491,7 +1501,8 @@ function zeichne(){
      verschwand das darin liegende #wieAlt für einen Augenblick und die
      Kopfzeile zuckte in der Breite. Jetzt nur noch bei echter Änderung. */
   var lageText = ((zK + zT) === 0 ? "nichts offen"
-    : (zK + zT) + (zK + zT === 1 ? " Bon offen" : " Bons offen"));
+    : (zK + zT) + (zK + zT === 1 ? " Bon offen" : " Bons offen")) +
+    (zuPruefen ? " · " + zuPruefen + (zuPruefen === 1 ? " wartet" : " warten") + " auf Freigabe im Board" : "");
   var lageEl = $('lage');
   if(lageEl.getAttribute('data-text') !== lageText){
     lageEl.setAttribute('data-text', lageText);
@@ -2007,7 +2018,13 @@ $('feld').addEventListener('click', function(ev){
    8 · TAKT
    ═══════════════════════════════════════════════════════════════ */
 function aktualisieren(){
-  return ladeBons().then(function(liste){
+  return ladeBons().then(function(alle){
+    /* Markierte Bestellungen (pruefen) sind KEIN Bon: nicht auf dem
+       Schirm, kein Ton. Die Zahl steht in der Kopfzeile, damit niemand
+       glaubt, es sei nichts gekommen. */
+    alle = alle || [];
+    var liste = alle.filter(function(b){ return b.pruefen !== true; });
+    zuPruefen = alle.length - liste.length;
     /* Ton nur bei wirklich neuen Bons, nicht beim ersten Laden. */
     var neueDa = false, stornoDa = false;
     (liste||[]).forEach(function(b){

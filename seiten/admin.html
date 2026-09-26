@@ -850,6 +850,15 @@ html{font-size:calc(16px * var(--skala,1))}
 .pname{flex:1}
 .ppreis{font-family:var(--mono);color:var(--gedaempft);font-variant-numeric:tabular-nums}
 
+.pruefband{
+  display:grid;gap:6px;margin:0 0 11px;padding:10px 12px;border-radius:0 8px 8px 0;
+  font-size:13.5px;color:var(--kreide);line-height:1.45;
+  background:color-mix(in srgb, var(--warn) 12%, transparent);border-left:3px solid var(--warn);
+}
+.pruefband b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn)}
+.pruefknoepfe{display:flex;gap:8px;flex-wrap:wrap}
+.pruefknoepfe .knopf{flex:1;min-width:120px;min-height:44px}
+.bestellung.zupruefen{border-style:dashed}
 .notiz{
   font-size:13.5px;color:var(--kreide);
   background:rgba(201,162,39,.09);
@@ -4927,7 +4936,7 @@ async function boardOeffnen(session){
      · Rabatte wurden nicht abgezogen, und bei 5000 Zeilen war still
        Schluss.
    ══════════════════════════════════════════════════════════════════ */
-const AW_SPALTEN     = "id,quelle,status,summe,liefergebuehr,rabatt_betrag,zeitpunkt,positionen";
+const AW_SPALTEN     = "id,quelle,status,summe,liefergebuehr,rabatt_betrag,zeitpunkt,positionen,pruefen";
 const AW_SPALTEN_ALT = "id,quelle,status,summe,zeitpunkt,positionen";
 const AW_SEITE = 1000, AW_HOECHST = 20000;
 const AW_RAUS = ["storniert", "abgelehnt"];
@@ -5000,6 +5009,9 @@ function awAuswerten(zeilen, von, bis){
     const t = new Date(b.zeitpunkt);
     if(!(t >= von && t < bis)) return;
     if(AW_RAUS.includes(b.status)){ aus.storno++; return; }
+    /* Nie freigegeben (vom Server markiert): kein Umsatz, bis jemand
+       entschieden hat — eine Flut darf den Tagesbogen nicht aufblähen. */
+    if(b.pruefen === true) return;
     if(b.quelle === "service"){ aus.service++; return; }
     const u = awUmsatzVon(b), st = t.getHours(), k = awSchluessel(t);
     aus.bestellungen++;
@@ -5043,7 +5055,7 @@ async function awLaden(){
     if(marke !== awMarke || lade !== ladeMarke) return;
     /* Fehlt eine der beiden Geldspalten noch (ältere Datenbank), wird
        ohne sie gerechnet statt gar nicht — und es steht im Fuß. */
-    if(error && spalten === AW_SPALTEN && /liefergebuehr|rabatt_betrag|column/i.test(error.message || "")){
+    if(error && spalten === AW_SPALTEN && /liefergebuehr|rabatt_betrag|pruefen|column/i.test(error.message || "")){
       spalten = AW_SPALTEN_ALT; alle = []; ab = -AW_SEITE; continue;
     }
     if(error){ awDaten = null; awZeichnen(); return; }
@@ -5633,7 +5645,7 @@ function awCsv(art){
       .map(b => { const t = new Date(b.zeitpunkt);
         return [t.toLocaleDateString("de-DE"), uhrzeit(b.zeitpunkt), QUELLE_TEXT[b.quelle] || b.quelle || "", b.status || "",
           +b.summe || 0, +b.liefergebuehr || 0, +b.rabatt_betrag || 0,
-          AW_RAUS.includes(b.status) ? 0 : awUmsatzVon(b),
+          (AW_RAUS.includes(b.status) || b.pruefen === true) ? 0 : awUmsatzVon(b),
           (Array.isArray(b.positionen) ? b.positionen : []).map(p => (+p.menge || 1) + "× " + awName(p)).join(", ")]; });
   }else{
     kopf = ["Gericht","Stück","Umsatz","Stück davor","Umsatz davor","Anteil am Umsatz %"];
@@ -6308,6 +6320,31 @@ function nzKlick(e){
 /* Im Einfangen, damit die Karten-Handler (Status, Zusage) den Tipp auf
    eine Notiz nicht auch noch als ihren lesen. */
 $("#karten").addEventListener("click", nzKlick, true);
+/* Freigeben / Verwerfen einer markierten Bestellung. */
+async function pruefEntscheiden(id, freigeben){
+  const b = bestellungen.find(x => x.id === id); if(!b || inArbeit.has(id)) return;
+  const felder = freigeben ? { pruefen:false, pruef_grund:null } : { status:"abgelehnt", pruefen:false };
+  if(!freigeben && !confirm("Diese Bestellung verwerfen? Sie erscheint dann nirgends mehr als offen.")) return;
+  inArbeit.add(id);
+  const vorher = { pruefen:b.pruefen, pruef_grund:b.pruef_grund, status:b.status };
+  Object.assign(b, felder);
+  neuZeichnen();
+  if(!demo){
+    const {error} = await db.from("bestellungen").update(felder).eq("id", id).eq("betrieb_id", betriebId);
+    if(error){
+      Object.assign(b, vorher); inArbeit.delete(id); neuZeichnen();
+      melde("Nicht gespeichert, bitte Verbindung prüfen", true); return;
+    }
+  }
+  inArbeit.delete(id);
+  melde(freigeben ? "Freigegeben — die Küche sieht sie jetzt" : "Verworfen");
+}
+$("#karten").addEventListener("click", e => {
+  const f = e.target.closest("[data-freigeben]");
+  if(f){ e.stopPropagation(); return pruefEntscheiden(f.dataset.freigeben, true); }
+  const v = e.target.closest("[data-verwerfen]");
+  if(v){ e.stopPropagation(); return pruefEntscheiden(v.dataset.verwerfen, false); }
+}, true);
 $("#resListe").addEventListener("click", nzKlick, true);
 $("#nzAn").onclick = e => { const k = e.target.closest("[data-an]"); if(k && nzZustand) nzAnSetzen(k.dataset.an); };
 $("#nzWeiter").onclick = nzSpeichern;
@@ -7406,8 +7443,9 @@ function live_anmelden(id, marke){
       nutz => {
         if(marke !== ladeMarke) return;
         if(neueBestellung(nutz.new)){
-          hinweisZeigen(nutz.new);
-          meldenGebuendelt();
+          /* Markiert (Flut, unbekanntes Gericht): aufnehmen, aber nicht
+             klingeln — eine Flut soll das Team nicht vom Pass holen. */
+          if(!nutz.new.pruefen){ hinweisZeigen(nutz.new); meldenGebuendelt(); }
           neuZeichnen();
         }
       })
@@ -7475,12 +7513,13 @@ async function nachholen(id){
 
     let frisch = 0;
     data.slice().reverse().forEach(z => {
-      if(neueBestellung(z)){ frisch++; hinweisZeigen(z); }
+      if(neueBestellung(z) && !z.pruefen){ frisch++; hinweisZeigen(z); }
     });
     data.forEach(z => {
       if(inArbeit.has(z.id)) return;      /* eigene Änderung ist die neuere */
       const i = bestellungen.findIndex(x => x.id === z.id);
       if(i > -1 && (bestellungen[i].status !== z.status ||
+                    bestellungen[i].pruefen !== z.pruefen ||
                     bestellungen[i].wartezeit_min !== z.wartezeit_min)) bestellungen[i] = z;
     });
 
@@ -7694,10 +7733,12 @@ function zeichneBoard(){
   const alle = gefiltert();
   const liste = alle.slice(0, KARTEN_MAX);
   const versteckt = alle.length - liste.length;
-  const offen = bestellungen.filter(b => b.status === "neu").length;
+  const offen = bestellungen.filter(b => b.status === "neu" && !b.pruefen).length;
+  const zuPruefen = bestellungen.filter(b => b.pruefen && b.status === "neu").length;
   $("#filterInfo").textContent = liste.length === 0 ? "" :
     `${liste.length} ${liste.length===1?"Bestellung":"Bestellungen"}` +
-    (offen ? ` · ${offen} noch offen` : "");
+    (offen ? ` · ${offen} noch offen` : "") +
+    (zuPruefen ? ` · ${zuPruefen} zu prüfen` : "");
 
   const ziel = $("#karten");
 
@@ -7771,7 +7812,20 @@ function zeichneBoard(){
        Minuten-Knöpfe – ein Tipp erledigt Status und Zusage zugleich.
        Danach zeigt dieselbe Stelle, was zugesagt wurde. */
     const warteWerte = b.quelle === "service" ? [2, 5] : [10, 15, 20, 30];
-    const zusage = b.status === "fertig" ? "" : (
+    /* Vom Server markiert (migration-missbrauch.sql): Die Küche sieht
+       sie erst nach „Freigeben“. Statt Zusage und Schritten steht hier
+       nur die Entscheidung — nichts, was man aus Versehen annimmt. */
+    const pruefband = b.pruefen
+      ? `<div class="pruefband" role="group" aria-label="Bestellung prüfen">
+           <b>Zu prüfen</b>
+           <span>${sicher(b.pruef_grund || "Vom Server markiert")}. Die Küche sieht sie erst nach der Freigabe.</span>
+           <div class="pruefknoepfe">
+             <button class="knopf" data-freigeben="${sicher(b.id)}">Freigeben</button>
+             <button class="knopf leise" data-verwerfen="${sicher(b.id)}">Verwerfen</button>
+           </div>
+         </div>`
+      : "";
+    const zusage = (b.status === "fertig" || b.pruefen) ? "" : (
       b.wartezeit_min
         ? `<div class="zusage an">
              <span class="zt">Zugesagt</span>
@@ -7809,7 +7863,7 @@ function zeichneBoard(){
       : `<div class="wartet${spaet ? " spaet" : ""}">${
           min < 1 ? "gerade eben" : "seit " + min + " Min"}</div>`;
 
-    return `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
+    return `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
       <div class="bkopf">
         <div class="herkunft">
           <div class="hmarke">${welle}${QUELLE_TEXT[b.quelle]}</div>
@@ -7826,9 +7880,9 @@ function zeichneBoard(){
             : ""}
         </div>
       </div>
-      ${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
+      ${pruefband}${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
       ${b.summe > 0 ? rabattZeile(b) : ""}
-      <div class="schritte">
+      <div class="schritte"${b.pruefen ? " hidden" : ""}>
         ${["neu","arbeit","fertig"].map(s =>
           `<button class="schritt" data-id="${b.id}" data-status="${s}"
             aria-pressed="${b.status===s}">${
