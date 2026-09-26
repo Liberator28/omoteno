@@ -1253,6 +1253,7 @@ Dazu je nach Änderung:
 | **Kopfband-Schmuck (Guss/Laternen), neue Markenblatt-Varianten am Kopf** | `pruefungen/pruef-kopfband.js` (braucht `dist/`) — welches Band sichtbar ist je Haus, reduzierte Bewegung |
 | **Zierrat (Bambus/Tuschekleckse/Pfingstrose), neue Markenblatt-Stile** | `pruefungen/pruef-zierrat.js` (braucht `dist/`) — nur beim gewählten Haus sichtbar, kein Leck in andere Häuser, kein horizontales Überlaufen bei mehreren Breiten, Tag/Abend |
 | **Thema (feste Neueinfärbung eines einzelnen Hauses, z. B. "kaiserlich")** | `pruefungen/pruef-thema.js` (braucht `dist/`) — Schalter gesetzt, Rahmen/Knopf-Stil und Kopf-Schrift wirklich da, kein Leck in andere Häuser |
+| **Helle Fassung von Board und Küche, gewählte Zustände** | `pruefungen/pruef-hell.js` — jedes Bedienelement (auch in versteckten Blättern) ohne schwarze, unbunte Fläche im Hellen; gewählte Zustände Schrift ≥ 4,5:1 und vom Nachbarn unterscheidbar; Gegenfall dunkel. Voraussetzung wird selbst geprüft (gewählte Stufe unter einer Bestellung, Spur und Einstellungen der Küche über die echten Griffe) |
 | **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
 | Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
 | Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
