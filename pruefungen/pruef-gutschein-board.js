@@ -37,7 +37,11 @@ const path = require("path");
 const OBEN  = path.resolve(__dirname, "..");
 const ADMIN = path.join(OBEN, "seiten", "admin.html");
 const HUBQ  = path.join(OBEN, "vorlagen", "hub.vorlage.html");
-const MIG   = path.join(OBEN, "datenbank", "migration-gutscheine-masse.sql");
+/* Seit 26.09. gilt die Schranke aus migration-texte-laenger.sql
+   (Titel 80, Text 240) — sie ersetzt die aus migration-gutscheine-
+   masse.sql unter demselben Namen. Gelesen wird die JÜNGSTE Fassung;
+   die alte Datei ist Geschichte. */
+const MIG   = path.join(OBEN, "datenbank", "migration-texte-laenger.sql");
 const STAND = path.join(OBEN, "datenbank", "stand-gast-melden.sql");
 
 let n = 0, f = 0;

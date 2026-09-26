@@ -1210,6 +1210,7 @@ Dazu je nach Änderung:
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
 | **Irgendein Text, den ein Gast liest** | `pruefungen/pruef-uebersetzung.js` (braucht `dist/`) — zweite Quelle, jede Sprache am gemalten Bild, Anrede, und der Weg aus dem Board |
 | Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |
+| **Textgrenzen (Banner, Kacheln, Slogan, Gruß, Aktionsname, Gutschein)** | `pruefungen/pruef-textplatz.js` (braucht `dist/`) — Grenzen aus dem Board gelesen (zweite Quelle, keine Zahl in der Prüfung), Texte an der Höchstgrenze mit echten Wörtern in beiden Häusern bei 360/390/430 px: nichts läuft seitlich über, Slogan ≤ 3 Zeilen, Bannerkarte bleibt 4:3 und ihr Text in der Karte, Kacheltext ≤ 2 + 3 Zeilen (aus den echten Zeilenhöhen gerechnet), Aktionsname ≤ 2 Zeilen, Gruß passt auf den Willkommensschirm. Die DB-Hälfte: `datenbank/migration-texte-laenger.sql` (gleiche Namen, nur gelockert) |
 | **Allergene/Zusatzstoffe, Kennziffern-Zuordnung** | `pruefungen/pruef-stoffe.js` (braucht `dist/`) — Rundlauf admin.html ↔ hub.vorlage.html Ziffer für Ziffer, dazu die Überlauf-Prüfung (scrollWidth/scrollHeight) am längsten echten Zusatzstoff-Text |
 | Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) |
 | **Kopfband-Schmuck (Guss/Laternen), neue Markenblatt-Varianten am Kopf** | `pruefungen/pruef-kopfband.js` (braucht `dist/`) — welches Band sichtbar ist je Haus, reduzierte Bewegung |
