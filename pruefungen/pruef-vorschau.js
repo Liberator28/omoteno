@@ -136,6 +136,68 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
     pruef(warn2 === "", "kurzer Titel: kein Hinweis", warn2 || "leer");
   }
 
+  /* ── Umbruch: ausgewogen, eigene Zeilen, Ausrichtung ──
+     VORFALL 26.09. (Bildschirmfoto): „Probier gerne unsere / neuen
+     Hits“ — die zweite Zeile halb leer. Gemessen wird die Breite
+     JEDER gezeichneten Zeile (Range.getClientRects), nicht die
+     CSS-Angabe: text-wrap:balance, das der Browser nicht kann, sähe
+     im Quelltext genauso aus. */
+  const zeilenBreiten = `
+    const r = document.createRange(); r.selectNodeContents(ziel);
+    const zeilen = {};
+    [...r.getClientRects()].forEach(q => { const y = Math.round(q.top); zeilen[y] = (zeilen[y] || 0) + q.width; });
+    return Object.values(zeilen).map(Math.round);`;
+  const bnFeld2 = await p.$('#bnListe .bnzeile:last-child [data-bn-titel]');
+  if(bnFeld2){
+    await bnFeld2.fill("Probier gerne unsere neuen Hits");
+    await (await p.$('#bnListe .bnzeile:last-child [data-bn-text]')).fill("");
+    await p.waitForTimeout(700);
+    const hubZ = await imRahmen("startseite", `
+      const b = [...document.querySelectorAll(".bnkarte .bntxt b")].pop(); if(!b) return null;
+      const ziel = b; ${zeilenBreiten}`);
+    const boardZ = await p.evaluate(code => {
+      const el = document.querySelector("#bnListe .bnzeile:last-child .kbschau .kbstxt b");
+      return el ? new Function("ziel", code)(el) : null;
+    }, zeilenBreiten);
+    const ausgewogen = z => !!z && z.length >= 2 && Math.min(...z) / Math.max(...z) >= 0.6;
+    /* Voraussetzung: Es müssen ZWEI Zeilen sein — bei einer gibt es
+       nichts auszugleichen, und die Probe wäre blind (§8.1g). */
+    pruef(!!boardZ && boardZ.length >= 2, "Board-Minivorschau: der Anlass-Titel bricht um (Voraussetzung)", JSON.stringify(boardZ));
+    pruef(ausgewogen(boardZ), "Board-Minivorschau: ausgewogen (kürzere Zeile ≥ 60 % der längeren)", JSON.stringify(boardZ));
+    await bnFeld2.fill("Probier gerne unsere neuen Hits mit frischer Schokolade");
+    await p.waitForTimeout(700);
+    const hubZ2 = await imRahmen("startseite", `
+      const b = [...document.querySelectorAll(".bnkarte .bntxt b")].pop(); if(!b) return null;
+      const ziel = b; ${zeilenBreiten}`);
+    pruef(!!hubZ2 && hubZ2.length >= 2, "Hub: der längere Titel bricht um (Voraussetzung)", JSON.stringify(hubZ2));
+    pruef(ausgewogen(hubZ2), "Hub: ausgewogen (kürzere Zeile ≥ 60 % der längeren)", JSON.stringify(hubZ2));
+
+    /* Eigene Zeile per Enter: genau dort bricht es. */
+    await bnFeld2.fill("Neu bei uns\nHausgemachte Waffeln");
+    await p.waitForTimeout(700);
+    const enter = await imRahmen("startseite", `
+      const b = [...document.querySelectorAll(".bnkarte .bntxt b")].pop(); if(!b) return null;
+      const ziel = b; const z = (() => { ${zeilenBreiten} })();
+      return { zeilen: z.length, text: b.textContent };`);
+    pruef(enter && enter.zeilen === 2 && /Neu bei uns\nHausgemachte Waffeln/.test(enter.text),
+      "Enter im Titel: der Hub bricht genau dort um", JSON.stringify(enter));
+    await bnFeld2.fill("eins\n\n\nzwei\ndrei\nvier");
+    await p.waitForTimeout(300);
+    const bereinigt = await bnFeld2.inputValue();
+    pruef(bereinigt === "eins\nzwei\ndrei", "keine Leerzeilen, höchstens drei Zeilen", JSON.stringify(bereinigt));
+
+    /* Ausrichtung mittig. */
+    await p.click('#bnListe .bnzeile:last-child [data-bn-ausricht="mitte"]');
+    await p.waitForTimeout(700);
+    const mitte = await imRahmen("startseite", `
+      const k = [...document.querySelectorAll(".bnkarte")].pop();
+      return k ? getComputedStyle(k.querySelector(".bntxt")).textAlign : null;`);
+    const gewaehlt = await p.getAttribute('#bnListe .bnzeile:last-child [data-bn-ausricht="mitte"]', "aria-checked");
+    pruef(mitte === "center" && gewaehlt === "true", "„Mittig“ zentriert den Text im Hub", mitte + " / " + gewaehlt);
+    const gespeichert = await p.evaluate(() => bnRoh().slice(-1)[0].ausrichtung);
+    pruef(gespeichert === "mitte", "die Ausrichtung geht mit „Übernehmen“ mit", gespeichert);
+  }
+
   const kbFeld = await p.$('#kbListe .kbzeile [data-kb-titel]');
   pruef(!!kbFeld, "ein Kacheltitel-Feld steht da (Voraussetzung)");
   if(kbFeld){

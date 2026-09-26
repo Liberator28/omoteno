@@ -1865,6 +1865,24 @@ textarea{resize:vertical;min-height:66px}
 .kbschau .kbstxt b{display:block;font-size:14.5px;font-weight:600}
 .kbschau .kbstxt i{display:block;font-style:normal;font-size:12px;
   color:var(--gedaempft);line-height:1.35}
+/* VORFALL 26.09. (Bildschirmfoto): „Probier gerne unsere / neuen Hits“
+   — die Minivorschau brach gierig um, die zweite Zeile blieb halb
+   leer. Ausgewogen wie im Hub, und eigene Zeilen wie getippt. */
+.kbschau .kbstxt b,.kbschau .kbstxt i{text-wrap:balance;white-space:pre-line}
+.kbschau.mitte .kbstxt{text-align:center}
+/* Ohne Bild braucht der Text keinen Platz für das Bild rechts. */
+.kbschau:not(:has(.kbsbild)) .kbstxt{max-width:none;flex:1}
+.kbfelder textarea{
+  width:100%;padding:10px 11px;border-radius:9px;resize:vertical;min-height:48px;
+  border:1px solid var(--linie);background:var(--flaeche-2);
+  color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font:inherit;font-size:16px;line-height:1.35;-webkit-appearance:none;
+}
+.bnausricht{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.bnausricht span{font-size:11.5px;color:var(--gedaempft);letter-spacing:.04em;margin-right:4px}
+.bnausricht button{min-height:44px;padding:0 16px;border-radius:9px;border:1px solid var(--linie);
+  background:var(--flaeche-2);color:var(--kreide);font-size:13.5px;font-weight:600}
+.bnausricht button[aria-checked="true"]{border-color:var(--messing);color:var(--messing)}
 
 .kbbildreihe{display:flex;flex-wrap:wrap;gap:8px}
 .kbbildreihe button{
@@ -10456,6 +10474,7 @@ function bnAusZeile(roh){
       titel: typeof e.titel === "string" ? e.titel : "",
       text: typeof e.text === "string" ? e.text : "",
       farbe: BANNER_FARBEN.some(f => f.s === e.farbe) ? e.farbe : "",
+      ausrichtung: e.ausrichtung === "mitte" ? "mitte" : "links",
       zielTyp: ["produkt","seite","url","aktion"].indexOf(e.zielTyp) >= 0 ? e.zielTyp : "seite",
       zielWert: typeof e.zielWert === "string" ? e.zielWert : "",
       reihenfolge: i
@@ -10542,14 +10561,26 @@ function bnZeile(b, i){
       '<input type="checkbox" class="kipp" data-bn-an ' + (b.an ? "checked" : "") +
         ' aria-label="Banner ' + (i + 1) + ' anzeigen">' +
     '</div>' +
-    '<div class="kbschau">' +
+    '<div class="kbschau' + (b.ausrichtung === "mitte" ? " mitte" : "") + '">' +
       (b.bild ? '<span class="kbsbild"><img src="' + sicher(b.bild) + '" alt=""></span>' : "") +
       '<span class="kbstxt"><b>' + sicher(b.titel || "(ohne Titel)") + '</b>' +
         (b.text ? '<i>' + sicher(b.text) + '</i>' : "") + '</span>' +
     '</div>' +
     '<div class="kbfelder">' +
-      '<label><span>Titel</span><input data-bn-titel maxlength="80" value="' + sicher(b.titel) + '"></label>' +
-      '<label><span>Unterzeile</span><input data-bn-text maxlength="160" value="' + sicher(b.text) + '"></label>' +
+      /* Textfeld statt Eingabezeile: Enter setzt eine eigene Zeile
+         (Wunsch 26.09.: „das soll angepasst werden können“). Ohne
+         Enter bricht der Hub ausgewogen um. */
+      '<label><span>Titel</span><textarea data-bn-titel maxlength="80" rows="2" enterkeyhint="enter">' +
+        sicher(b.titel) + '</textarea></label>' +
+      '<label><span>Unterzeile</span><textarea data-bn-text maxlength="160" rows="3" enterkeyhint="enter">' +
+        sicher(b.text) + '</textarea></label>' +
+      '<small class="feldhilfe">Enter beginnt eine neue Zeile. Ohne Enter verteilt der Hub die Wörter ' +
+        'gleichmäßig auf die Zeilen.</small>' +
+      '<div class="bnausricht" role="radiogroup" aria-label="Ausrichtung des Textes">' +
+        '<span>Ausrichtung</span>' +
+        ['links', 'mitte'].map(a => '<button type="button" role="radio" data-bn-ausricht="' + a + '" aria-checked="' +
+          (b.ausrichtung === a) + '">' + (a === "links" ? "Links" : "Mittig") + '</button>').join("") +
+      '</div>' +
       '<small class="hvwarn" data-hvwarn="bn:' + sicher(b.id) + '"></small>' +
     '</div>' +
     '<div class="kbbildreihe">' +
@@ -10665,12 +10696,21 @@ document.addEventListener("input", e => {
   const b = bnFinden(zeile.dataset.bn); if(!b) return;
   /* Beim Tippen NICHT neu zeichnen — sonst verliert das Feld den
      Blinker nach jedem Buchstaben (dasselbe Muster wie bei kb*). */
+  /* Höchstens drei Zeilen, keine Leerzeile — mehr zeigt der Hub
+     nicht (line-clamp 3), und eine leere Zeile sähe aus wie ein Fehler. */
+  if(e.target.matches("[data-bn-titel],[data-bn-text]")){
+    const sauber = e.target.value.replace(/\r/g, "").replace(/\n{2,}/g, "\n").split("\n").slice(0, 3).join("\n");
+    if(sauber !== e.target.value){
+      const pos = Math.min(e.target.selectionStart, sauber.length);
+      e.target.value = sauber; e.target.setSelectionRange(pos, pos);
+    }
+  }
   if(e.target.matches("[data-bn-titel]")) b.titel = e.target.value;
   if(e.target.matches("[data-bn-text]"))  b.text  = e.target.value;
   if(e.target.matches("[data-bn-zielwert]") && e.target.matches('input[type="url"]')) b.zielWert = e.target.value;
   const schau = zeile.querySelector(".kbschau");
   if(schau) schau.outerHTML =
-    '<div class="kbschau">' +
+    '<div class="kbschau' + (b.ausrichtung === "mitte" ? " mitte" : "") + '">' +
       (b.bild ? '<span class="kbsbild"><img src="' + sicher(b.bild) + '" alt=""></span>' : "") +
       '<span class="kbstxt"><b>' + sicher(b.titel || "(ohne Titel)") + '</b>' +
         (b.text ? '<i>' + sicher(b.text) + '</i>' : "") + '</span>' +
@@ -10679,6 +10719,14 @@ document.addEventListener("input", e => {
 });
 
 $("#bnNeuKnopf").onclick = bnNeu;
+
+/* Ausrichtung je Banner. */
+document.addEventListener("click", e => {
+  const k = e.target.closest && e.target.closest("[data-bn-ausricht]");
+  if(!k) return;
+  const zeile = k.closest("[data-bn]"); if(!zeile) return;
+  bnAendern(zeile.dataset.bn, "ausrichtung", k.dataset.bnAusricht === "mitte" ? "mitte" : "links");
+});
 
 /* ── Der Zuschnitt (dupliziert von kb*, siehe Kommentar bei #bnBlatt) ── */
 function bnZuschnittOeffnen(id, datei){
