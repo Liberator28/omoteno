@@ -3740,7 +3740,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   <div class="blattinhalt">
     <div class="griff"></div>
     <h2 class="blatttitel">Bild zuschneiden</h2>
-    <p class="ehilfe" id="kbBlattFuer">Ziehen Sie das Bild zurecht.</p>
+    <p class="ehilfe" id="kbBlattFuer">Mit einem Finger verschieben, mit zwei Fingern zoomen.</p>
 
     <div class="kbrahmen" id="kbRahmen">
       <img id="kbBild" alt="">
@@ -3772,7 +3772,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   <div class="blattinhalt">
     <div class="griff"></div>
     <h2 class="blatttitel">Banner-Bild zuschneiden</h2>
-    <p class="ehilfe">Ziehen Sie das Bild zurecht.</p>
+    <p class="ehilfe">Mit einem Finger verschieben, mit zwei Fingern zoomen.</p>
 
     <div class="kbrahmen" id="bnRahmen">
       <img id="bnBild" alt="">
@@ -10617,7 +10617,7 @@ function kbZuschnittOeffnen(sch, datei){
                       zoom: 1, dx: 0, dy: 0 };
       $("#kbZoom").value = 100;
       $("#kbBlattFuer").textContent =
-        "Für „" + (p.titel || sch) + "“. Ziehen Sie das Bild zurecht.";
+        "Für „" + (p.titel || sch) + "“. Mit einem Finger verschieben, mit zwei Fingern zoomen.";
       $("#kbBlattStand").textContent = "";
 
       /* ERST aufdecken, DANN messen. Ein verstecktes Blatt hat keine
@@ -10672,23 +10672,82 @@ function kbSetzen(){
     "translate(" + kbZuschnitt.dx + "px," + kbZuschnitt.dy + "px) scale(" + m + ")";
 }
 
-(function(){
-  const rahmen = () => $("#kbRahmen");
-  let zieht = null;
+/* ── Gesten im Zuschnitt: ein Finger schiebt, zwei zoomen ──────────
+   Wunsch des Betreibers: Bilder „mit den Fingern ausschneiden und
+   raus- und reinzoomen“. Vorher gab es nur EINEN Zeiger und den
+   Regler. Ein gemeinsamer Helfer für Kachel- und Banner-Zuschnitt,
+   damit beide sich gleich anfühlen:
+     · ein Finger/Maus: verschieben
+     · zwei Finger: zoomen um die Mitte zwischen ihnen — der Punkt
+       unter den Fingern bleibt unter den Fingern
+     · Mausrad/Trackpad: zoomen um den Zeiger
+   Zoom 1…3 wie der Regler, der mitläuft; die Grenzen (nie ein Rand)
+   hält das jeweilige Setzen (kbGrenzen/bnGrenzen). */
+function zuschnittGesten(o){
+  const zeiger = new Map();
+  let start = null;
+  const rahmen = () => $(o.rahmen);
+  const drin = e => !!(o.zustand() && e.target.closest && e.target.closest(o.rahmen));
+  const zoomUm = (z, px, py, basis) => {
+    const st = o.zustand(), r = rahmen().getBoundingClientRect(), g = o.grund();
+    const neu = Math.max(1, Math.min(3, z));
+    const m0 = g * basis.zoom, m1 = g * neu;
+    const ix = (px - r.left - basis.dx) / m0, iy = (py - r.top - basis.dy) / m0;
+    st.zoom = neu;
+    st.dx = (px - r.left) - ix * m1;
+    st.dy = (py - r.top) - iy * m1;
+    o.setzen();
+    const regler = $(o.regler); if(regler) regler.value = Math.round(st.zoom * 100);
+  };
+  const neuBeginnen = () => {
+    const st = o.zustand(), p = [...zeiger.values()];
+    if(!st || !p.length){ start = null; return; }
+    start = { zoom:st.zoom, dx:st.dx, dy:st.dy, p:p.map(z => ({ x:z.x, y:z.y })) };
+    if(p.length >= 2){
+      start.abstand = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y) || 1;
+      start.mitte = { x:(p[0].x + p[1].x) / 2, y:(p[0].y + p[1].y) / 2 };
+    }
+  };
   document.addEventListener("pointerdown", e => {
-    if(!kbZuschnitt || !e.target.closest || !e.target.closest("#kbRahmen")) return;
-    zieht = { x:e.clientX, y:e.clientY, dx:kbZuschnitt.dx, dy:kbZuschnitt.dy };
-    rahmen().setPointerCapture(e.pointerId);
+    if(!drin(e)) return;
+    zeiger.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    try{ rahmen().setPointerCapture(e.pointerId); }catch(err){}
+    neuBeginnen();
   });
   document.addEventListener("pointermove", e => {
-    if(!zieht || !kbZuschnitt) return;
-    kbZuschnitt.dx = zieht.dx + (e.clientX - zieht.x);
-    kbZuschnitt.dy = zieht.dy + (e.clientY - zieht.y);
-    kbSetzen();
+    if(!zeiger.has(e.pointerId) || !start || !o.zustand()) return;
+    zeiger.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    const p = [...zeiger.values()], st = o.zustand();
+    if(p.length >= 2 && start.abstand){
+      const abstand = Math.hypot(p[0].x - p[1].x, p[0].y - p[1].y);
+      const mitte = { x:(p[0].x + p[1].x) / 2, y:(p[0].y + p[1].y) / 2 };
+      /* Zoomen um die Startmitte, dann um die Bewegung der Mitte schieben. */
+      zoomUm(start.zoom * abstand / start.abstand, start.mitte.x, start.mitte.y, start);
+      st.dx += mitte.x - start.mitte.x; st.dy += mitte.y - start.mitte.y;
+      o.setzen();
+    }else if(p.length === 1){
+      st.dx = start.dx + (p[0].x - start.p[0].x);
+      st.dy = start.dy + (p[0].y - start.p[0].y);
+      o.setzen();
+    }
   });
-  document.addEventListener("pointerup", () => { zieht = null; });
-  document.addEventListener("pointercancel", () => { zieht = null; });
-})();
+  const los = e => {
+    if(!zeiger.has(e.pointerId)) return;
+    zeiger.delete(e.pointerId);
+    /* Ein Finger bleibt liegen: von hier aus weiterschieben, ohne Sprung. */
+    neuBeginnen();
+  };
+  document.addEventListener("pointerup", los);
+  document.addEventListener("pointercancel", los);
+  document.addEventListener("wheel", e => {
+    if(!drin(e)) return;
+    e.preventDefault();
+    const st = o.zustand();
+    zoomUm(st.zoom * Math.exp(-e.deltaY * 0.0015), e.clientX, e.clientY, { zoom:st.zoom, dx:st.dx, dy:st.dy });
+  }, { passive:false });
+}
+zuschnittGesten({ rahmen:"#kbRahmen", regler:"#kbZoom", zustand:() => kbZuschnitt,
+                  grund:() => kbGrundmass(), setzen:() => kbSetzen() });
 
 /* ── Aus dem Rahmen wird eine Datei ────────────────────────────── */
 function kbAusschnitt(){
@@ -11497,23 +11556,8 @@ function bnSetzen(){
     "translate(" + bnZuschnitt.dx + "px," + bnZuschnitt.dy + "px) scale(" + m + ")";
 }
 
-(function(){
-  const rahmen = () => $("#bnRahmen");
-  let zieht = null;
-  document.addEventListener("pointerdown", e => {
-    if(!bnZuschnitt || !e.target.closest || !e.target.closest("#bnRahmen")) return;
-    zieht = { x:e.clientX, y:e.clientY, dx:bnZuschnitt.dx, dy:bnZuschnitt.dy };
-    rahmen().setPointerCapture(e.pointerId);
-  });
-  document.addEventListener("pointermove", e => {
-    if(!zieht || !bnZuschnitt) return;
-    bnZuschnitt.dx = zieht.dx + (e.clientX - zieht.x);
-    bnZuschnitt.dy = zieht.dy + (e.clientY - zieht.y);
-    bnSetzen();
-  });
-  document.addEventListener("pointerup", () => { zieht = null; });
-  document.addEventListener("pointercancel", () => { zieht = null; });
-})();
+zuschnittGesten({ rahmen:"#bnRahmen", regler:"#bnZoom", zustand:() => bnZuschnitt,
+                  grund:() => bnGrundmass(), setzen:() => bnSetzen() });
 
 function bnAusschnitt(){
   const r = $("#bnRahmen").getBoundingClientRect();
@@ -11567,7 +11611,8 @@ $("#bnBlattWeg").onclick = bnSchliessen;
 $("#bnBlatt").onclick = e => { if(e.target === $("#bnBlatt")) bnSchliessen(); };
 $("#bnZoom").oninput = e => {
   if(!bnZuschnitt) return;
-  bnZuschnitt.zoom = Number(e.target.value) / 100;
+  /* Math.max wie beim Kachel-Regler: unter 1 entstünden Ränder. */
+  bnZuschnitt.zoom = Math.max(1, Number(e.target.value) / 100);
   bnSetzen();
 };
 

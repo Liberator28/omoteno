@@ -380,6 +380,85 @@ const MESSEN = () => {
     await ctx.close();
   }
 
+  /* ── 8 · Zuschnitt mit zwei Fingern ─────────────────────────────
+     Wunsch: „mit den Fingern ausschneiden und raus- und reinzoomen“.
+     Echte Finger über CDP (zwei Kontaktpunkte), nicht die Maus — eine
+     Maus hat nur einen Zeiger und hätte das Zoomen nie gesehen. */
+  console.log("\n══ Zuschnitt: Finger und Mausrad (Kachel und Banner) ══");
+  for(const art of ["kb", "bn"]){
+    const ctx = await br.newContext({ viewport:{ width:390, height:844 }, hasTouch:true });
+    const p = await ctx.newPage();
+    const fehler = [];
+    p.on("pageerror", e => fehler.push(String(e).slice(0, 160)));
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.addInitScript(() => { Element.prototype.requestFullscreen = () => Promise.resolve(); });
+    await p.goto("file://" + path.join(OBEN, "seiten", "admin.html"));
+    await p.waitForTimeout(800);
+    await p.evaluate(async art => {
+      document.getElementById("tor").hidden = true; demoStarten(); zeichneAlles();
+      const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("startseite");
+      /* Ein Bild mit Muster, 1200×900, als echte Datei. */
+      const c = document.createElement("canvas"); c.width = 1200; c.height = 900;
+      const g = c.getContext("2d");
+      for(let x = 0; x < 12; x++) for(let y = 0; y < 9; y++){ g.fillStyle = (x + y) % 2 ? "#2a9d8f" : "#e9c46a"; g.fillRect(x * 100, y * 100, 100, 100); }
+      const blob = await new Promise(r => c.toBlob(r, "image/png"));
+      const datei = new File([blob], "probe.png", { type:"image/png" });
+      if(art === "kb"){ kbAusZeile([]); kbZeichnen(); kbZuschnittOeffnen("tischruf", datei); }
+      else { bnAusZeile([]); bnNeu(); bnZuschnittOeffnen(BANNERSTAND[0].id, datei); }
+    }, art);
+    await p.waitForTimeout(900);
+    const R = "#" + art + "Rahmen", Z = art === "kb" ? "kbZuschnitt" : "bnZuschnitt", G = art === "kb" ? "kbGrundmass" : "bnGrundmass";
+    const lage = () => p.evaluate(([R, Z, G]) => { const r = document.querySelector(R).getBoundingClientRect(), st = window.eval(Z);
+      return st ? { zoom:st.zoom, dx:st.dx, dy:st.dy, m:window.eval(G)() * st.zoom, x:r.left, y:r.top, w:r.width, h:r.height,
+                    regler:+document.getElementById(R.slice(1, 3) + "Zoom").value } : null; }, [R, Z, G]);
+    const vor = await lage();
+    pruef(!!vor && vor.w > 100 && vor.zoom === 1, art + ": Voraussetzung: Zuschnitt offen, Zoom 1", vor && JSON.stringify({ w:Math.round(vor.w), h:Math.round(vor.h) }));
+    if(!vor){ await ctx.close(); continue; }
+    const cdp = await ctx.newCDPSession(p);
+    const tp = (type, pts) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: pts.map((q, i) => ({ x:q[0], y:q[1], id:i + 1 })) });
+    /* Abseits der Mitte: In der Mitte bliebe der Punkt auch bei einem
+       naiven Zoom um die Rahmenmitte liegen (§8.1g — eine Probe, die
+       den Fehler nicht zeigen kann). */
+    const mx = vor.x + vor.w * 0.3, my = vor.y + vor.h * 0.35;
+    /* Bildpunkt unter der Mitte, vorher */
+    const bildX0 = (mx - vor.x - vor.dx) / vor.m, bildY0 = (my - vor.y - vor.dy) / vor.m;
+    await tp("touchStart", [[mx - 20, my], [mx + 20, my]]);
+    for(let i = 1; i <= 10; i++){ const d = 20 + 4 * i; await tp("touchMove", [[mx - d, my], [mx + d, my]]); await p.waitForTimeout(16); }
+    await tp("touchEnd", []);
+    await p.waitForTimeout(150);
+    const auf = await lage();
+    const bildX1 = (mx - auf.x - auf.dx) / auf.m, bildY1 = (my - auf.y - auf.dy) / auf.m;
+    pruef(auf.zoom >= 2.8 && auf.zoom <= 3, art + ": zwei Finger auseinander → hineingezoomt (höchstens 3×)", auf.zoom.toFixed(2));
+    pruef(Math.abs(auf.regler - Math.round(auf.zoom * 100)) <= 1, art + ": der Regler läuft mit", auf.regler);
+    pruef(Math.abs(bildX1 - bildX0) < 2 && Math.abs(bildY1 - bildY0) < 2, art + ": der Punkt unter den Fingern bleibt unter den Fingern",
+      bildX0.toFixed(1) + "," + bildY0.toFixed(1) + " → " + bildX1.toFixed(1) + "," + bildY1.toFixed(1));
+    /* Ein Finger schiebt. */
+    await tp("touchStart", [[mx, my]]);
+    for(let i = 1; i <= 6; i++){ await tp("touchMove", [[mx - 5 * i, my - 3 * i]]); await p.waitForTimeout(16); }
+    await tp("touchEnd", []);
+    await p.waitForTimeout(100);
+    const gesch = await lage();
+    pruef(Math.abs(gesch.dx - auf.dx + 30) < 1.5 && Math.abs(gesch.dy - auf.dy + 18) < 1.5, art + ": ein Finger verschiebt das Bild",
+      (gesch.dx - auf.dx).toFixed(1) + "," + (gesch.dy - auf.dy).toFixed(1));
+    /* Zusammenkneifen: nie kleiner als der Rahmen (kein Rand). */
+    await tp("touchStart", [[mx - 120, my], [mx + 120, my]]);
+    for(let i = 1; i <= 10; i++){ const d = 120 - 11 * i; await tp("touchMove", [[mx - d, my], [mx + d, my]]); await p.waitForTimeout(16); }
+    await tp("touchEnd", []);
+    await p.waitForTimeout(100);
+    const zu = await lage();
+    const bw = zu.m * (await p.evaluate(Z => window.eval(Z).bild.naturalWidth, Z)), bh = zu.m * (await p.evaluate(Z => window.eval(Z).bild.naturalHeight, Z));
+    pruef(zu.zoom === 1 && zu.dx <= 0.5 && zu.dy <= 0.5 && zu.dx + bw >= zu.w - 0.5 && zu.dy + bh >= zu.h - 0.5,
+      art + ": zusammengekniffen bleibt der Rahmen voll bedeckt (Zoom 1, kein Rand)", zu.zoom.toFixed(2));
+    /* Mausrad */
+    await p.mouse.move(mx, my);
+    await p.mouse.wheel(0, -300);
+    await p.waitForTimeout(150);
+    const rad = await lage();
+    pruef(rad.zoom > 1.3, art + ": Mausrad zoomt", rad.zoom.toFixed(2));
+    pruef(!fehler.length, art + ": keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
   await br.close();
   console.log("\n" + (f ? f + " von " + n + " Fehler." : n + " von " + n + " ok\nAlles sauber."));
   process.exit(f ? 1 : 0);
