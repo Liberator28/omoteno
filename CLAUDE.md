@@ -1051,6 +1051,19 @@ Ein grüner Gegenbeweis heißt eine von zwei Sachen: Die Prüfung ist
 blind, oder die sabotierte Zeile trägt nichts. Beides muss man
 herausfinden, nicht wegerklären.
 
+> **Vorfall F, zweimal hintereinander.** „Höchstens ein Vorschlag je
+> Gruppe“ im Warenkorb. Gegenbeweis: die Gruppenregel entfernt —
+> grün. In der Beispielkarte hat jede Gruppe ihr eigenes Emoji, und
+> die Regel „kein Emoji doppelt“ tat dasselbe. Probe mit Fotos an
+> jedem Gericht (dann gibt es kein Emoji) — wieder grün: Die Plätze
+> kamen aus verschiedenen Stufen (Getränk, Süßes, Herzhaftes), die
+> verteilten sie schon. Erst ein Korb, in dem alle vier Plätze aus
+> EINER Stufe kommen, machte die Regel tragend — und die Probe rot.
+
+Zwei Regeln, die in den Probedaten dasselbe bewirken, verdecken
+einander. Die Probe muss die Daten so bauen, dass nur noch die eine
+Regel zwischen „richtig“ und „falsch“ steht.
+
 ### 8.1j Eine Prüfung, die an der Uhr hängt, prüft die Uhr
 
 > **Vorfall.** `pruef-liefern.js` war um 10:24 UTC rot: „0 Felder“,
@@ -1267,7 +1280,7 @@ Dazu je nach Änderung:
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand, und gleicht jedes Filter-Kästchen gegen die Stellen ab, die den Wert wirklich schreiben |
 | **Klapp-Felder, Segmente, animierte Auswahl im Board** | `pruefungen/pruef-auswahlfeld.js` — Tapflächen ≥ 44px, echtes Feld bleibt Quelle der Wahrheit, Endzustand ohne Bewegung |
 | **Auswertung, Umsatzziele, Export, Einstellungs-Übersicht, Figuren-Rad, Rundung (`--ecke`)** | `pruefungen/pruef-auswertung.js` — Rechnung mit gestellten Zeilen (Liefergebühr, Rabatt, storniert UND abgelehnt, Serviceruf), gleich langer Vorzeitraum, „nie bestellt“ gegen die Karte, Schwelle mit Gegenfall, Handeln trifft das richtige Gericht, Ziel „2.800“, CSV, Überlauf/Kachelhöhe/Tapflächen bei 360–1280 px, Schrift auf Glas über dem Schleier, jede Tafel scrollbar, Rad ohne Transition. Dazu `datenbank/migration-auswertung-ziele.sql` (Schranke mit EXECUTE, §2.7) |
-| **Warenkorb, „Passt dazu“, Liebling-Karte mit Menge** | `pruefungen/pruef-korb-vorschlag.js` (braucht `dist/`) und `pruefungen/pruef-sofort.js` — nichts Doppeltes, nichts ohne Preis, Getränk zuerst, „+“ legt wirklich hinein, getippte Tischnummer bleibt, Englisch; auf der Liebling-Karte liegt kein Text unter dem Knopf (Zeilen-Rechtecke gemessen) |
+| **Warenkorb, „Passt dazu“, Liebling-Karte mit Menge** | `pruefungen/pruef-korb-vorschlag.js` (braucht `dist/`) und `pruefungen/pruef-sofort.js` — nichts Doppeltes, nichts ohne Preis, Getränk zuerst, aber nicht nur Getränke, „+“ legt wirklich hinein, getippte Tischnummer bleibt, Englisch; **Vielfalt**: höchstens eine je Gruppe (auch mit Fotos, ohne Emoji), kein Grund öfter als zweimal, derselbe Korb dieselbe Reihe, andere Körbe andere, „Im Angebot“/„Neu für Sie“ je mit Gegenfall, Satz passt zum Korb; **Details**: Korbzeile und Vorschlagskarte öffnen das Blatt der Karte (Allergene), Herausnehmen im Blatt stimmt nach dem Schließen in der Auswahl; auf der Liebling-Karte liegt kein Text unter dem Knopf (Zeilen-Rechtecke gemessen) |
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
 | **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
