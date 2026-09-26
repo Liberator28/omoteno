@@ -3421,6 +3421,23 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </form>
     </div>
 
+    <!-- Wunsch des Betreibers (26.09.): wählen, ob der Gast die Restzeit
+         sieht oder nur den Stand. Liegt in betriebe.hub_stil.restzeit
+         (zusammengeführt, keine neue Spalte). Die Zeit setzt das Team
+         weiter — sie steuert Küche und Mahnung, nur der Gast sieht sie
+         dann nicht. -->
+    <div class="egruppe">
+      <h2 class="etitel">Bestellstand beim Gast</h2>
+      <p class="ehilfe">Was Ihr Gast nach dem Bestellen auf seinem Telefon sieht,
+        sobald Sie eine Zeit zugesagt haben.</p>
+      <div class="aw-segment seg-zwei" id="rzWahl" role="radiogroup" aria-label="Bestellstand beim Gast">
+        <button type="button" class="aw-seg" role="radio" data-rz="an" aria-checked="true">Mit Restzeit</button>
+        <button type="button" class="aw-seg" role="radio" data-rz="aus" aria-checked="false">Nur Stand</button>
+      </div>
+      <p class="ehilfe" id="rzHilfe">Der Gast sieht „noch ca. 12 Minuten“ — die Zeit, die Sie
+        zugesagt haben, zählt herunter.</p>
+    </div>
+
     <div class="egruppe">
       <h2 class="etitel">Figur des Hauses</h2>
       <p class="ehilfe">Welche Figur den Gast im Hub begleitet, welche
@@ -6048,6 +6065,45 @@ async function stilUmschalten(){
 }
 $("#stilAn").onclick = stilUmschalten;
 
+/* ══ Bestellstand beim Gast (betriebe.hub_stil.restzeit) ═══════════
+   Dieselbe Regel wie im Hub (restzeitZeigen): strikt boolean, sonst
+   an. Zusammenführen, nie ersetzen — hub_stil trägt auch emoji und
+   schrift. */
+let rzZeigen = true;
+function rzAus(bb){
+  const st = bb && bb.hub_stil;
+  return (st && typeof st === "object" && typeof st.restzeit === "boolean") ? st.restzeit : true;
+}
+function rzZeichnen(){
+  $$("#rzWahl [data-rz]").forEach(k => k.setAttribute("aria-checked", String((k.dataset.rz === "an") === rzZeigen)));
+  const h = $("#rzHilfe");
+  if(h) h.textContent = rzZeigen
+    ? "Der Gast sieht „noch ca. 12 Minuten“ — die Zeit, die Sie zugesagt haben, zählt herunter."
+    : "Der Gast sieht nur „Angenommen“ und „Wird zubereitet“, ohne Minuten. Ihre zugesagte Zeit gilt weiter für Küche und Mahnung.";
+}
+async function rzSetzen(an){
+  if(an === rzZeigen) return;
+  const vorher = rzZeigen;
+  rzZeigen = an;
+  rzZeichnen();
+  const text = an ? "Gäste sehen wieder die Restzeit." : "Gäste sehen jetzt nur den Stand, ohne Minuten.";
+  if(demo || !db){ melde(text); return; }
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  const neu = Object.assign({}, (bb && bb.hub_stil && typeof bb.hub_stil === "object") ? bb.hub_stil : {},
+                            { restzeit: an });
+  const {error} = await db.from("betriebe").update({ hub_stil: neu }).eq("id", betriebId);
+  if(error){
+    rzZeigen = vorher; rzZeichnen();
+    melde(/hub_stil/.test(error.message || "")
+      ? "Diese Wahl braucht noch migration-hub-stil.sql in der Datenbank."
+      : "Nicht gespeichert, bitte Verbindung prüfen", true);
+    return;
+  }
+  if(bb) bb.hub_stil = neu;
+  melde(text);
+}
+$("#rzWahl").onclick = e => { const k = e.target.closest("[data-rz]"); if(k) rzSetzen(k.dataset.rz === "an"); };
+
 async function nlVorratLaden(id){
   const el = $("#nlVorratStand"); if(!el) return;
   if(demo){ el.textContent = "Im Vorführmodus nicht verfügbar."; return; }
@@ -6700,6 +6756,7 @@ const EU_SYMBOL = {
   figur:  '<circle cx="12" cy="9" r="4"/><path d="M5 20c1.5-4 4-5 7-5s5.5 1 7 5"/>',
   schirm: '<rect x="3" y="4" width="18" height="12" rx="2"/><path d="M9 20h6M12 16v4"/>',
   uhr:    '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
+  sanduhr:'<path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/>',
   haus:   '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>',
   geraet: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>'
 };
@@ -6750,6 +6807,13 @@ const EU_BEREICHE = [
     bild:() => { const n = $$("#gsListe .gs-zeile").length;
       return '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
         (n ? '<circle class="eu-punkt" cx="42" cy="9" r="8"/><text class="eu-zahl" x="42" y="12.5" text-anchor="middle">' + n + '</text>' : ""); } },
+  { titel:"Bestellstand beim Gast", sym:"sanduhr", ton:"var(--telefon)",
+    satz:"Ob der Gast die Restzeit sieht oder nur den Stand",
+    stand:() => rzZeigen ? "Mit Restzeit" : "Nur Stand",
+    bild:() => '<rect class="eu-rahmen" x="14" y="2" width="20" height="44" rx="5"/>' +
+      '<rect class="eu-fuell" x="17" y="8" width="14" height="5" rx="2"/>' +
+      (rzZeigen ? '<text class="eu-zahl dunkel" x="24" y="31" text-anchor="middle">12′</text>'
+                : '<path class="eu-linie" d="M18 24h12M18 30h8"/>') },
   { titel:"Figur des Hauses", sym:"figur", ton:"var(--messing)",
     satz:"Wer den Gast begleitet, mit welcher Laune, was er hält",
     stand:() => AVATARSTAND ? ((AV_FIGUREN.find(f => f.s === AVATARSTAND.figur) || {}).name || AVATARSTAND.figur) +
@@ -7604,6 +7668,8 @@ async function betriebOeffnen(id){
   newsletterAktiv = !!(bb && bb.newsletter_aktiv);
   stilEmoji = stilEmojiAus(bb);
   stilZeichnen();
+  rzZeigen = rzAus(bb);
+  rzZeichnen();
   newsletterZeichnen();
   nlVorratLaden(id);
 

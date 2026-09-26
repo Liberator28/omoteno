@@ -1276,7 +1276,7 @@ Dazu je nach Änderung:
 | Konto, Anfrageformular, **Google-Knopf** | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links, Anbieterliste |
 | **Alessia, der Telefonweg** | `pruefungen/pruef-alessia.js` — liest die Nutzlast, ohne Netz |
 | **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
-| **Zugesagte Zeit, Countdown in Küche und Hub** | `pruefungen/pruef-zusage.js` (braucht `dist/`) — beide Seiten, und der Fall „Migration fehlt noch" |
+| **Zugesagte Zeit, Countdown in Küche und Hub** | `pruefungen/pruef-zusage.js` (braucht `dist/`) — beide Seiten, und der Fall „Migration fehlt noch"; dazu die Wahl **„Bestellstand beim Gast“** (`hub_stil.restzeit`): „Nur Stand“ zeigt weder im Streifen noch im Kasten Minuten, die Stufen bleiben; strikt boolean (Zeichenkette "false" = an); der Streifen aus dem Gerätespeicher wird nach dem Laden der Wahl neu gezeichnet; Board führt `hub_stil` zusammen (emoji, schrift bleiben) |
 | **Kacheln, Symbole, Banner, Baukasten im Board** | `pruefungen/pruef-baukasten.js` (braucht `dist/`) — zweite Quelle, Zuschnitt, Schrift nie auf dem Bild |
 | **Besuchsbild, Sterne, Foto** | `pruefungen/pruef-besuchsbild.js` (braucht `dist/`) — Sterne auf der Leinwand, Bild aus der Karte |
 | **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung; dazu mit echtem Finger (CDP-Touch): kein zweiter Scrollbereich im Kategorie-Blatt, Wische rollen bis „Sichern", gescrollt schließt ein Wisch nach unten NICHT, oben schließt er auch auf einem Knopf, Antippen wählt weiterhin, Schleier rollt das Board nicht, im Hub zählt ein Wisch nicht zusätzlich als „Zurück" |

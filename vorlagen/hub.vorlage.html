@@ -4612,6 +4612,15 @@ function bewegteZeichenAn(){
   if(typeof MARKENBLATT.bewegteZeichen === "boolean") return MARKENBLATT.bewegteZeichen;
   return true;
 }
+/* Sieht der Gast, wie lange es noch dauert — oder nur, dass gerade
+   gearbeitet wird? Wahl des Betriebs im Board (hub_stil.restzeit).
+   Strikt boolean, sonst an: So war es vorher, und ein kaputter Wert
+   soll nicht still eine Angabe verschwinden lassen. Eine Anzeigewahl,
+   kein Geheimnis: bestellung_restzeit bleibt abrufbar. */
+function restzeitZeigen(){
+  if(HUBSTIL && typeof HUBSTIL.restzeit === "boolean") return HUBSTIL.restzeit;
+  return true;
+}
 
 /* Eigene Zeichen, wo Unicode kein passendes kennt: Für einen Crêpe gibt
    es kein Emoji (🥞 ist ein Pfannkuchenstapel, 🌯 ein Burrito). Der Film
@@ -11644,6 +11653,7 @@ function vorgangStreifenZeichnen(){
   const rest = restMinuten(v);
   const warte = (v.status === "fertig")
     ? '<span class="vwarte">✓</span>'
+    : !restzeitZeigen() ? ""
     : (rest != null
         ? '<span class="vwarte">' +
           (rest > 0 ? t("noch {a} Min", {a: rest}) : t("Jeden Moment")) + '</span>'
@@ -11843,7 +11853,7 @@ function bestellStatusSteuern(pfad){
        einen Vorwurf, den der Gast vor sich hat, während er wartet. */
     const restV = vorgaenge.find(x => String(x.nummer) === String(b.nummer));
     const rest  = restMinuten(restV);
-    const kopf  = (status === "fertig") ? null
+    const kopf  = (status === "fertig" || !restzeitZeigen()) ? null
                 : (rest != null
                     ? (rest > 0 ? t("noch ca. {a} Minuten", {a: rest}) : t("Jeden Moment"))
                     : (minuten ? t("ca. {a} Minuten", {a: minuten}) : null));
@@ -13999,9 +14009,14 @@ async function karteHolen(erstesMal){
        boolean. Ändert es den Stand, wird neu gezeichnet. */
     const stil = b[0].hub_stil;
     if(stil && typeof stil === "object" && !Array.isArray(stil)){
-      const vorher = bewegteZeichenAn();
+      const vorher = bewegteZeichenAn(), restVorher = restzeitZeigen();
       HUBSTIL = stil;
       if(bewegteZeichenAn() !== vorher) zeichne();
+      /* Der Streifen steht schon aus dem Speicher des Geräts da, bevor
+         diese Antwort kommt — und wird sonst nur neu gezeichnet, wenn
+         sich die Restzeit ändert. Ohne diese Zeile zeigte er bei „Nur
+         Stand“ weiter „ca. 20 Min“ (gefunden von pruef-zusage.js). */
+      if(restzeitZeigen() !== restVorher) vorgangStreifenZeichnen();
     }
     /* Schrift nur beim ERSTEN Laden: Ein Wechsel mitten im Lesen würde
        jede Zeile neu umbrechen (dieselbe Regel wie markeGrundlegen).
