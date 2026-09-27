@@ -390,6 +390,42 @@ Wer nach Herkunft bremst, liest `cf-connecting-ip` (Rückfall
 `x-real-ip`) — nie das erste Element von `x-forwarded-for`, sonst
 wählt der Angreifer seine Adresse für jede Anfrage neu.
 
+### 2.3f Ein haltender Wächter beweist nicht, dass die Tür zu ist
+
+> **Vorfall.** Beim Bau von `rabattcode_team_anlegen` (Rabattcode mit
+> Ziel-Gericht) fiel auf: `authenticated` hatte auf `rabattcodes`
+> volles `INSERT`/`UPDATE`/`DELETE`/`TRUNCATE`/`TRIGGER`/`REFERENCES`
+> — obwohl der eigene Kommentar der Tabelle (migration-rechnung-
+> rabatt.sql) sagt „authenticated darf NUR lesen … Schreiben läuft
+> ausschließlich über die beiden Funktionen". Gemessen (CLAUDE.md
+> §2.3b, mit Zeilenzahl statt Ausnahme): ein direkter `INSERT` und
+> `UPDATE` als echtes Mitglied, auf den EIGENEN Betrieb, traf **0
+> Zeilen** — RLS kennt für `rabattcodes` nur eine einzige
+> `SELECT`-Regel, und Postgres verweigert ohne passende Regel per
+> Vorgabe auch Schreiben. Der Wächter hielt also heute. Dieselbe
+> offene Tür stand zufällig auf mindestens 18 weiteren Tabellen
+> (`bestellungen`, `betrieb_mitglieder`, `gerichte`, `rechnungen` u. a.)
+> — dort **nicht** nachgezogen, weil admin.html an mehreren echten
+> Stellen direkt auf diese Tabellen schreibt und ein blindes `revoke`
+> ohne Prüfung jedes einzelnen Schreibwegs das Risiko gewesen wäre,
+> etwas Funktionierendes zu zerstören (CLAUDE.md §7 — Reihenfolge
+> zählt).
+
+Ein GRANT, das weiter reicht als die RLS-Regeln, die es tatsächlich
+nutzen, ist eine offene Tür neben einem Wächter, der heute zufällig
+hält. Er hält so lange, bis jemand eine `ALL`- oder `FOR ALL TO
+authenticated`-Regel hinzufügt, ohne zu wissen, dass das GRANT längst
+weiter reicht als gedacht — dann öffnet sich die Tür rückwirkend für
+jede Zeile. Bei jeder neuen `security definer`-Funktion, die „die
+einzige Schreibweise" für eine Tabelle sein soll: das GRANT selbst
+nachsehen (`has_table_privilege('authenticated', ...)`), nicht nur die
+RLS-Regel — und wenn kein Schreibweg außerhalb der Funktion existiert,
+das GRANT auf genau das kürzen, was gebraucht wird. Ein Fund auf
+mehreren Tabellen gleichzeitig wird nicht im selben Zug mitgezogen,
+wenn die Zeit fehlt, jeden einzelnen Schreibweg dieser Tabellen zu
+prüfen — er wird stattdessen ausdrücklich benannt und als eigenes
+Vorhaben gemeldet (CLAUDE.md §9).
+
 ### 2.4 Rollenwechsel allein simuliert PostgREST nicht
 
 `set role anon` reicht nicht. Der einzige verlässliche Weg:
@@ -1409,6 +1445,7 @@ Dazu je nach Änderung:
 | **Startkacheln, Bereiche, Markenblatt, iconAus-Schalter** | `pruefungen/pruef-kacheln.js` — Kreuzvergleich: kein Hub trägt fremden Text; iconAus schaltet nur das Symbol ab (strikt `=== true`, keine Zeichenkette) |
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
+| **Willkommensschirm, Vorfenster (Speisekarte direkt oder Hub)** | `pruefungen/pruef-vorfenster.js` (braucht `dist/`) — „Speisekarte ansehen“ springt ohne Umweg und schließt den Schirm mit, „Zur Übersicht“ und ein Tipp daneben bleiben beim Hub, tiefe Links (`#/speisekarte`) überspringen den Schirm ganz, beide Knopftexte wirklich übersetzt (nicht deutsch stehengeblieben) |
 | **Storno, Restzeit, jede Bestell-Funktion** | `pruefungen/pruef-naht.js` — hält den Wert, den der Hub schickt, gegen die Spalte, über die die SQL sucht |
 | **Top-Runner-Streifen, Empfehlung des Hauses, "Sofort bestellen"** | `pruefungen/pruef-sofort.js` (braucht `dist/`) — Klick auf den Streifen öffnet die Vorschau, der Sofort-Knopf bestellt zum AKTIONSPREIS statt zum Kartenpreis, stiller Rückfall ohne anklickbaren Knopf, wenn das Gericht nicht mehr in der Karte steht |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand, und gleicht jedes Filter-Kästchen gegen die Stellen ab, die den Wert wirklich schreiben |
@@ -1444,6 +1481,7 @@ Dazu je nach Änderung:
 | **Glas-Flächen (backdrop-filter), neue durchscheinende Bedienoberfläche** | `pruefungen/pruef-glas.js` — backdrop-filter an jeder Glas-Fläche (admin/kueche/Hub), `prefers-reduced-transparency` fällt wirklich auf die feste Fläche zurück (nicht nur eine spätere, gleich spezifische Regel im selben Blatt), Kontrast der Schrift auf Glas gegen Schwarz UND Weiß dahinter gerechnet, je Haus im Hub |
 | **Aktions-Banner-Rad (hub_banner), Board-Bedienung oder Gast-Karussell** | `pruefungen/pruef-banner-rad.js` — BANNER_SEITEN als zweite Quelle zwischen admin.html und hub.vorlage.html gegeneinander gehalten, bnAusZeile()-Rundlauf für alle vier Zieltypen + unbekannten Wert + unsicheres Bild, Anlegen/Umsortieren/Löschen im Board, im Hub: alle vier Zieltypen lösen ihr Ziel richtig auf (ungültiges Ziel bleibt sichtbar, aber nicht klickbar), ein aktion-Banner zeigt nachweislich den LIVE-Stand aus `aktionen` statt des gespeicherten, Kontrast der Bannerschrift gegen den ungünstigsten Fall (fast weißes Foto) gerechnet; Breite: Karte so breit und bündig wie die Kachelreihe, Nachbarkarte lugt ≥ 8 px herein, kein Überlaufen bei 360–1280 px; **Neuöffnen**: `betriebeHolen` liest `hub_banner`, das Rad zeigt den gespeicherten Stand, eine frische Abfrage zieht den Stand eines zweiten Geräts nach (ohne getippte Eingabe zu überschreiben), und ohne gelesenen Stand schreibt „Übernehmen“ nichts (§8.1m) |
 | **Rabattcode-Einlösung, Gäste-Newsletter im Board** | `pruefungen/pruef-rabatt-board.js` — Eingabefeld auf/zu, ehrliche Meldung im Vorführmodus; die eigentliche RPC-Logik (unbekannt/abgelaufen/bereits eingelöst/kein Zugriff) steht in `datenbank/pruef-rechte.sql` Teil 3 |
+| **Eigene Rabattcodes anlegen (Prozent/Betrag, ganze Rechnung/Gericht)** | `pruefungen/pruef-rabattcode-ziel.js` — Segmente Art/Ziel, Code-Bereinigung, Gerichtauswahl aus der echten Speisekarte, Anlegen/Beenden im Vorführmodus, Validierung (Prozent >100, doppelter Code); die zielbewusste, gedeckelte `rechnung_rabattieren()`, `rabattcode_team_anlegen`, `rabattcode_beenden` und der GRANT-Fund (§2.3f) stehen in `datenbank/pruef-rechte.sql` TEIL 3b |
 | **Gutscheine für Stammgäste im Board, „Mein Tisch" beim Gast** | `pruefungen/pruef-gutschein-board.js` — Grenzen gegen die CHECK-Schranke in `datenbank/migration-gutscheine-masse.sql`, Anlegen/doppelter Code/Beenden, kein rohes JSON, Datumsfeld in der Karte, und die Naht Board → `gast_melden` → Hub gegen `datenbank/stand-gast-melden.sql` (bytegleiche Kopie der Live-Funktion); dazu `pruef-gastkonto.js` für den Kontrast der Karten je Haus, Tag und Abend |
 | **Bildvorschau im Board (Tiefeneffekt, Zuschnitt-Vorschau)** | `pruefungen/pruef-bildschau.js` — Vignette und Schatten an `.bildschau` und `#bildCropContainer`, dabei bleibt das Zuschnitt-Rechteck selbst unverändert |
 | **Aufklappbare Gerichte-Zeilen in der Speisekarte** | `pruefungen/pruef-speisekarte-klapp.js` — Ruhelage nur Name/Preis, Aufklappen zeigt Beschreibung, „Bearbeiten" öffnet weiterhin das echte Blatt (eigene Geste), Zustand übersteht ein Neuzeichnen (Suche), Tapflächen ≥44px, `prefers-reduced-motion` |
