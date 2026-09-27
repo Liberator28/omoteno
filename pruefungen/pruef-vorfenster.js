@@ -18,6 +18,16 @@
    jetzt weg: der Schirm schließt sich nur noch durch einen eigenen
    Tipp, nie von allein.
 
+   DRITTE ANWEISUNG, selber Tag: "eine Animation ... wie bei allen
+   großen Apps". Die Fortschrittsleiste ist NICHT durch eine neue Uhr
+   ersetzt — die zweite Anweisung stünde sonst wieder infrage.
+   Stattdessen eine Eröffnungs-Choreografie mit einem Fokuspunkt: die
+   Figur schwingt wie ein App-Icon kurz über ihre Größe hinaus und
+   zurück (cubic-bezier(.34,1.56,.64,1)), alles andere folgt ruhig
+   mit Blur-Einblendung (bewegung-Skill: nur transform/opacity/filter,
+   nie width/height/margin). Geprüft wird, wo sie am ENDE steht, nicht
+   wie sie unterwegs aussieht — die Wahl bleibt unbegrenzt möglich.
+
    Geprüft:
    1 · Knopf „Speisekarte ansehen" setzt den Hash auf #/speisekarte
        UND schließt den Schirm — beides, nicht nur eins von beidem.
@@ -32,6 +42,10 @@
        keine zusätzliche Frage.
    6 · Beide Knöpfe tragen echten, übersetzten Text in jeder Sprache
        (nicht das Deutsche stehengeblieben).
+   7 · Nach der vollen Choreografie steht jedes Stück sauber am Ende
+       (Opazität 1, kein Blur, kein Transform) — nichts hängt fest.
+   8 · Bei „reduzierter Bewegung" steht alles sofort, ohne auf eine
+       Verzögerung zu warten.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const fs   = require("fs");
@@ -165,6 +179,53 @@ function pruef(b, t, d) {
     }, "tr");
     pruef(texte.sk === "Menüyü görüntüle" && texte.hub === "Genel bakışa",
       "auf Türkisch stehen beide Knöpfe wirklich übersetzt da, nicht deutsch", JSON.stringify(texte));
+    await ctx.close();
+  }
+
+  console.log("\n══ Eröffnungs-Choreografie: Endzustand, nicht nur angesehen ══");
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const p = await ctx.newPage();
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto("file://" + DIST);
+    // Deutlich länger als die längste Verzögerung + Dauer (Hinweistext
+    // bei .78s + .5s ≈ 1,28s) — danach MUSS alles am Endzustand stehen,
+    // kein Blur, kein Transform, keine Transparenz hängengeblieben.
+    await p.waitForTimeout(1600);
+    const zustand = await p.evaluate(() => {
+      const lies = sel => {
+        const el = document.querySelector(sel);
+        if(!el) return null;
+        const s = getComputedStyle(el);
+        return { opacity: s.opacity, filter: s.filter, transform: s.transform };
+      };
+      return {
+        figur: lies(".willkommen .figur"), haus: lies(".willkommen .haus"),
+        btn1: lies("#wkSpeisekarte"), btn2: lies("#wkHub"),
+        hinweis: lies(".willkommen .wk-hinweis"),
+      };
+    });
+    const sauber = z => z && z.opacity === "1" && z.filter === "blur(0px)" &&
+      (z.transform === "none" || z.transform === "matrix(1, 0, 0, 1, 0, 0)");
+    pruef(Object.values(zustand).every(sauber),
+      "nach der vollen Choreografie ist jedes Stück am Endzustand", JSON.stringify(zustand));
+    await ctx.close();
+  }
+
+  console.log("\n══ Reduzierte Bewegung: sofort korrekt, kein Warten nötig ══");
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, reducedMotion: "reduce" });
+    const p = await ctx.newPage();
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto("file://" + DIST);
+    await p.waitForTimeout(150);
+    const zustand = await p.evaluate(() => {
+      const s = getComputedStyle(document.querySelector(".willkommen .figur"));
+      const s2 = getComputedStyle(document.getElementById("wkSpeisekarte"));
+      return { figurOpazitaet: s.opacity, figurBlur: s.filter, knopfOpazitaet: s2.opacity };
+    });
+    pruef(zustand.figurOpazitaet === "1" && zustand.figurBlur === "none" && zustand.knopfOpazitaet === "1",
+      "bei reduzierter Bewegung steht alles sofort, ohne Verzögerung", JSON.stringify(zustand));
     await ctx.close();
   }
 
