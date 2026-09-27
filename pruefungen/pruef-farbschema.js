@@ -92,6 +92,24 @@ function dunkel(farbe){
   return (.2126*kanal(p[0]) + .7152*kanal(p[1]) + .0722*kanal(p[2])) < 0.179;
 }
 
+/* NACHTRAG 27.09. (verblasste Farben auf Samsung): Samsung Internet
+   faerbt eine Seite noch um, selbst wenn sie "light" oder "dark"
+   ansagt — nur "only" verbietet das ausdruecklich. Jede Seite soll
+   das jetzt tragen. ABER: Chromium meldet den CSS-Wert (nicht das
+   Meta) ueber getComputedStyle NICHT wortgetreu zurueck — "only dark"
+   im Stylesheet kommt als "dark only" heraus, "only light dark" als
+   "light dark only". Gemessen, nicht angenommen (CLAUDE.md §0):
+     :root{color-scheme:only dark}       -> computed "dark only"
+     :root{color-scheme:only light dark} -> computed "light dark only"
+   Ein reiner String-Vergleich (Meta-Text gegen computed-Text) waere
+   deshalb blind fuer die Reihenfolge. Verglichen wird als sortierte
+   Wortmenge, nicht als Zeichenkette. */
+function schemaWoerter(s){
+  return String(s || "").trim().split(/\s+/).filter(Boolean).sort();
+}
+function hatOnly(s){ return schemaWoerter(s).includes("only"); }
+function schemaOhneOnly(s){ return schemaWoerter(s).filter(w => w !== "only"); }
+
 async function verdrahten(seite){
   await seite.addInitScript(() => {
     try{ sessionStorage.setItem("omoteno-willkommen","1"); }catch(e){}
@@ -147,14 +165,20 @@ const MESSUNG = `(() => {
 
     /* 1 · Überhaupt eine Ansage. „normal" heißt: keine — und genau
        dann färbt der Browser im Dunkelmodus selbst um. */
-    pruef(angesagt !== "normal" && angesagt !== "",
-      name.padEnd(16) + "sagt ein Farbschema an", angesagt);
+    const hatAnsage = angesagt !== "normal" && angesagt !== "";
+    pruef(hatAnsage, name.padEnd(16) + "sagt ein Farbschema an", angesagt);
 
-    /* 2 · Und die Ansage stimmt. „light dark" heißt „ich kann beides"
-       und ist für eine Seite richtig, die dem System folgt — die wird
-       unten getrennt geprüft. */
-    if(angesagt !== "normal" && angesagt !== "" && !angesagt.includes(" ")){
-      const passt = (angesagt === "dark") === istDunkel;
+    /* 1b · "only" muss dabei sein — sonst faerbt Samsung Internet
+       trotzdem noch um (Vorfall 27.09., verblasste Farben). */
+    if(hatAnsage)
+      pruef(hatOnly(angesagt), name.padEnd(16) + "verbietet mit „only“ das Umfärben", angesagt);
+
+    /* 2 · Und die Ansage stimmt. „light dark" (mit oder ohne "only")
+       heißt „ich kann beides" und ist für eine Seite richtig, die dem
+       System folgt — die wird unten getrennt geprüft. */
+    const ohneOnly = schemaOhneOnly(angesagt);
+    if(hatAnsage && ohneOnly.length === 1){
+      const passt = (ohneOnly[0] === "dark") === istDunkel;
       pruef(passt, name.padEnd(16) + "die Ansage passt zum Grund",
         angesagt + " bei Grund " + m.grund);
     }
@@ -179,7 +203,17 @@ const MESSUNG = `(() => {
       await ctx.close();
     }
     if(!werte.light || !werte.dark) continue;
-    const sagtBeides = String(werte.light.schema || "").includes(" ");
+    /* Zwei ehrliche Wege, "ich folge dem System" zu sagen — admin.html
+       geht den zweiten, seit ihr eigener Code (nicht dieser Umbau)
+       beim Laden per JS auf GENAU den passenden Wert einengt:
+         a) die Ansage bleibt in beiden Kontexten "light dark" (roh
+            ausgerechnet: mehr als ein Schema-Wort ausser "only"),
+         b) die Ansage selbst wechselt zwischen den Kontexten (admin:
+            "light only" im hellen, "dark only" im dunklen Kontext).
+       Nur "sagt immer dasselbe EINE Schema, obwohl der Grund wechselt"
+       waere die Luege, die diese Probe fangen soll. */
+    const sagtBeides = schemaOhneOnly(werte.light.schema).length > 1 ||
+      schemaWoerter(werte.light.schema).join(" ") !== schemaWoerter(werte.dark.schema).join(" ");
     const folgt = werte.light.grund !== werte.dark.grund;
     if(sagtBeides || folgt)
       pruef(sagtBeides === folgt, name.padEnd(16) +
@@ -217,9 +251,29 @@ const MESSUNG = `(() => {
       .match(/<meta name="color-scheme" content="([^"]*)">/);
     pruef(!!m, name.padEnd(16) + "hat ein color-scheme-Meta im Kopf",
       m ? m[1] : "keins");
-    if(m) pruef(m[1] === angesagtProSeite[name],
-      name.padEnd(16) + "das Meta passt zur CSS-Angabe der Seite",
-      m[1] + " vs. " + angesagtProSeite[name]);
+    /* Nicht auf Gleichheit, auf TEILMENGE prüfen. Chromium meldet den
+       CSS-Wert ausserdem mit "only" am Ende zurück ("dark only"), das
+       Meta steht wortgetreu, wie im Kopf geschrieben ("only dark") —
+       schemaWoerter() gleicht das durch Sortieren aus.
+       Der echte Grund für "Teilmenge" statt "gleich": admin.html sagt
+       im Meta ausdrücklich BEIDES an ("light dark", damit der erste
+       Anstrich vor jedem Skript zum Gerät passt) und engt das per
+       eigenem Code (nicht Teil dieses Umbaus) sofort auf GENAU den
+       richtigen der beiden ein — "light only" oder "dark only". Das
+       ist kein Widerspruch, sondern die Pointe: die Laufzeit-Ansage
+       darf nur SCHÄRFER sein als das Meta, nie etwas behaupten, das
+       dort nicht stand. */
+    if(m){
+      const metaSchema = schemaOhneOnly(m[1]);
+      const rechnerSchema = schemaOhneOnly(angesagtProSeite[name]);
+      const engtEin = rechnerSchema.length > 0 &&
+        rechnerSchema.every(w => metaSchema.includes(w));
+      pruef(engtEin, name.padEnd(16) + "das Meta passt zur CSS-Angabe der Seite",
+        m[1] + " vs. " + angesagtProSeite[name]);
+      pruef(hatOnly(m[1]) === hatOnly(angesagtProSeite[name]),
+        name.padEnd(16) + "„only“ steht an beiden Stellen gleich",
+        m[1] + " vs. " + angesagtProSeite[name]);
+    }
   }
 
   /* 3c · Der ERSTE Anstrich der erzeugten Hubs. Beim Gegenbeweis blieb
@@ -243,9 +297,13 @@ const MESSUNG = `(() => {
       .match(/<meta name="color-scheme" content="([^"]*)">/);
     pruef(!!m, name.padEnd(16) + "hat ein color-scheme-Meta im Kopf",
       m ? m[1] : "keins");
-    if(m) pruef(m[1] === soll,
-      name.padEnd(16) + "das Meta passt zur Tagpalette des Hauses",
-      m[1] + " bei grund " + mb.farben.grund + ", erwartet " + soll);
+    if(m){
+      pruef(schemaOhneOnly(m[1]).join(" ") === soll,
+        name.padEnd(16) + "das Meta passt zur Tagpalette des Hauses",
+        m[1] + " bei grund " + mb.farben.grund + ", erwartet " + soll);
+      pruef(hatOnly(m[1]),
+        name.padEnd(16) + "das Meta verbietet mit „only“ das Umfärben", m[1]);
+    }
   }
 
   /* 4 · Der Hub schaltet selbst. Dann muss die Ansage MITgehen —
@@ -274,9 +332,12 @@ const MESSUNG = `(() => {
          des Schalters und meldete das als Fehler: genau der Denkfehler
          aus §5.2b, eine Ebene höher. */
       const soll = dunkel(v.grund) ? "dark" : "light";
-      pruef(v.schema === soll,
+      pruef(schemaOhneOnly(v.schema).join(" ") === soll,
         name.padEnd(16) + "auf \u201e" + wahl + "\u201c passt die Ansage zum Grund",
         v.schema + " bei Grund " + v.grund);
+      pruef(hatOnly(v.schema),
+        name.padEnd(16) + "auf \u201e" + wahl + "\u201c verbietet mit \u201eonly\u201c das Umf\u00e4rben",
+        v.schema);
     }
     await ctx.close();
   }

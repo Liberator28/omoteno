@@ -276,8 +276,23 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
     await p.fill("#runnerTitel", "Happy Hour am Nachmittag");
     await p.evaluate(() => runnerVorschau());
     pruef(await bereit("aktion"), "die Vorschau der Aktion lädt");
+    /* VORFALL (Bildschirmfoto, 27.09.): Die Elternseite sprang beim
+       Tippen immer wieder zur Vorschau. Ursache: vorschauZeige() im
+       Hub rief `el.scrollIntoView()` im srcdoc-iframe auf — ein
+       gleich aufgebautes Test-iframe (.hvfenster hat overflow:hidden)
+       gab das nachweislich an die ELTERNSEITE weiter, wenn die Ziel-
+       Requisite (hier: das Aktionsband, weit unten im Hub) im
+       eigenen Rahmen erst noch gescrollt werden musste. Gemessen wird
+       hier OHNE jede Nutzergeste (nur runnerVorschau() per evaluate)
+       — bewegt sich die Elternseite trotzdem, kommt das nur aus
+       genau diesem Aufruf, nicht aus einer legitimen Fokus-Korrektur
+       des Browsers. */
+    const vorherY = await p.evaluate(() => window.scrollY);
     await p.evaluate(() => runnerVorschau());
     await p.waitForTimeout(700);
+    pruef(await p.evaluate(() => window.scrollY) === vorherY,
+      "die Elternseite bleibt stehen, während die Aktions-Vorschau im Rahmen scrollt",
+      vorherY + " -> " + await p.evaluate(() => window.scrollY));
     const band = await imRahmen("aktion", `const k = document.querySelector(".aktion .kennz");
       return k ? k.textContent : null;`);
     pruef(band && /Happy Hour am Nachmittag/i.test(band), "der Aktionsname steht im Band der Vorschau", String(band));

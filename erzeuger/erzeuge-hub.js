@@ -649,11 +649,28 @@ function erzeuge(slug, nurPruefen){
      keins: Der Browser richtet Bedienelemente und Rollbalken danach.
      0,179 ist der Punkt aus der sRGB-Rechnung, an dem Schwarz und
      Weiß gleich gut auf einem Grund stehen. */
-  const schema = helligkeit(mb.farben.grund) < 0.179 ? "dark" : "light";
+  /* "only" davor: Samsung Internet und Chrome auf Android haben ein
+     eigenes "dunkles Design fuer Webseiten", das eine blosse "light"/
+     "dark"-Ansage als Vorschlag liest und trotzdem selbst umfaerbt —
+     verblasste, ausgewaschene Farben, gemeldet vom Betreiber. "only"
+     ist die ausdrueckliche Absage daran (CSS Color Adjustment,
+     `color-scheme: only light`). Gilt fuers Meta UND fuer den CSS-
+     Ruckfall in :root — beide muessen denselben Wert tragen, sonst
+     widerspricht die Ansage sich selbst. */
+  const schema = helligkeit(mb.farben.grund) < 0.179 ? "only dark" : "only light";
   if(!/<meta name="color-scheme" content="[^"]*">/.test(aus))
     throw new Error('Die Vorlage hat kein <meta name="color-scheme"> im Kopf');
   aus = aus.replace(/(<meta name="color-scheme" content=")[^"]*(")/,
     "$1" + schema + "$2");
+  /* NICHT einfach /color-scheme:.../ — das faengt auch das "color-
+     scheme:" IN "prefers-color-scheme:" der theme-color-Metas zwei
+     Zeilen darueber. Erster Versuch tat genau das und riss beim
+     Ersetzen bis zum naechsten Semikolon alles dazwischen heraus,
+     samt dem echten <meta name="color-scheme">. Das negative
+     Lookbehind schliesst "prefers-" davor aus. */
+  if(!/(?<!prefers-)color-scheme:[^;]*;/.test(aus))
+    throw new Error('Die Vorlage hat keinen CSS-Ruckfall :root{color-scheme:...} mehr');
+  aus = aus.replace(/(?<!prefers-)color-scheme:[^;]*;/, "color-scheme:" + schema + ";");
 
   /* Der Vorführblock fliegt raus, wenn ihn niemand bestellt hat.
 

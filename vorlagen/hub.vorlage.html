@@ -47,7 +47,7 @@
      Figuren auf einem Samsung mit eingeschaltetem Dunkelmodus aus.
      Der Erzeuger schreibt hier den Wert hin, der zur TAGpalette des
      Hauses passt; nachtSchalten() zieht ihn beim Umschalten nach. -->
-<meta name="color-scheme" content="light">
+<meta name="color-scheme" content="only light">
 <title>Choco L'AMouR · Kirchhain</title>
 
 <!--
@@ -129,6 +129,13 @@
    setzen, sonst käme das Markenblatt nie durch.
    ════════════════════════════════════════════════════════════════ */
 :root{
+  /* Rückfall für denselben ersten Anstrich wie das Meta im Kopf —
+     Vorfall Samsung Internet: reine "light"/"dark"-Werte hält der
+     Browser für einen Vorschlag, den er trotzdem noch umfärben darf.
+     "only" ist die ausdrückliche Absage daran (CLAUDE.md §5.2c-
+     Nachtrag). nachtSchalten() zieht denselben Wert zur Laufzeit
+     als Inline-Angabe nach, die gewinnt dann gegen diese Regel. */
+  color-scheme:only light;
   --grund:#FBF6F2;         /* Papier */
   --flaeche:#FFFFFF;       /* Karte */
   --flaeche-2:#F4EBE3;     /* eingesenkte Fläche, Felder */
@@ -11708,7 +11715,7 @@ function nachtSchalten(){
      aus derselben Messung wie data-grund — nicht aus `abend`, denn ein
      Haus wie Blend ist auch am Tag dunkel. */
   document.documentElement.style.colorScheme =
-    grundMarkieren(document.documentElement) === "dunkel" ? "dark" : "light";
+    grundMarkieren(document.documentElement) === "dunkel" ? "only dark" : "only light";
   document.body.classList.toggle("nacht", abend);   /* Altbestand */
   lichtKnopfZeichnen();
 }
@@ -14232,8 +14239,28 @@ function vorschauZeige(ziel){
                   aktion: () => document.querySelector(".aktion") }[ziel];
   requestAnimationFrame(() => {
     const el = finde ? finde() : null;
-    if(el) el.scrollIntoView({ block: ziel === "kopf" ? "start" : "center" });
-    else window.scrollTo(0, 0);
+    /* VORFALL (gemeldet vom Betreiber, Bildschirmfoto): Im Admin-Board
+       sprang die Seite bei jedem Tastendruck in "Ihre Worte"/"Startseite"
+       zur Vorschau. Ursache: dieser Hub läuft dort als srcdoc-iframe im
+       Vorschaufenster (VORSCHAU=true), und `el.scrollIntoView()` bleibt
+       NICHT im eigenen Dokument — Chrome klettert die Kette der
+       Scrollboxen bis zur ELTERNSEITE hoch und scrollt die (weil das
+       Vorschaufenster klein und abgeschnitten ist) gleich mit, jedes
+       Mal, wenn hvSenden() das hier erneut aufruft. Gemessen: ein
+       gleich aufgebautes Test-iframe mit `overflow:hidden` gab genau
+       das weiter, `window.scrollTo`/`el.scrollTop` auf dem EIGENEN
+       Dokument dagegen blieb sauber im Rahmen. Deshalb hier von Hand
+       gerechnet statt scrollIntoView — betrifft NUR die Vorschau, denn
+       das Übrige der Funktion läuft ohnehin nur, wenn VORSCHAU true ist. */
+    const box = document.scrollingElement || document.documentElement;
+    if(el){
+      const oben = el.getBoundingClientRect().top + box.scrollTop;
+      const y = ziel === "kopf" ? oben
+                                 : oben - Math.max(0, (box.clientHeight - el.offsetHeight) / 2);
+      box.scrollTo({ top: Math.max(0, y), behavior: "auto" });
+    }else{
+      box.scrollTo({ top: 0, behavior: "auto" });
+    }
   });
 }
 
