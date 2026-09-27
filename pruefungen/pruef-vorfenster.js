@@ -10,16 +10,27 @@
    springt OHNE Umweg dorthin, „Zur Übersicht" (oder ein Tipp daneben,
    wie bisher) bleibt beim Hub.
 
+   ZWEITE ANWEISUNG, selber Tag: Der Schirm schloss sich zusätzlich von
+   SELBST nach 3s (eine Fortschrittsleiste zählte sichtbar herunter) —
+   Rest der alten "Gruß, dann automatisch weiter"-Logik von VOR den
+   zwei Knöpfen. Mit einer echten Wahl blieben dafür nur ein paar
+   Sekunden zum Lesen UND Entscheiden. Der Timer und die Leiste sind
+   jetzt weg: der Schirm schließt sich nur noch durch einen eigenen
+   Tipp, nie von allein.
+
    Geprüft:
    1 · Knopf „Speisekarte ansehen" setzt den Hash auf #/speisekarte
        UND schließt den Schirm — beides, nicht nur eins von beidem.
    2 · Knopf „Zur Übersicht" bleibt auf der Startseite.
-   3 · Ein Tipp NEBEN den Knöpfen (der bisherige Weg) tut dasselbe wie
+   3 · Der Schirm schließt sich NICHT von selbst — auch nach deutlich
+       mehr als den früheren 3s steht er noch offen, und lässt sich
+       danach ganz normal bedienen.
+   4 · Ein Tipp NEBEN den Knöpfen (der bisherige Weg) tut dasselbe wie
        „Zur Übersicht" — nichts Neues bricht den alten Pfad.
-   4 · Ein tiefer Link (#/speisekarte in der Adresse) zeigt das
+   5 · Ein tiefer Link (#/speisekarte in der Adresse) zeigt das
        Vorfenster GAR NICHT — wer schon weiß, wohin er will, bekommt
        keine zusätzliche Frage.
-   5 · Beide Knöpfe tragen echten, übersetzten Text in jeder Sprache
+   6 · Beide Knöpfe tragen echten, übersetzten Text in jeder Sprache
        (nicht das Deutsche stehengeblieben).
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
@@ -78,6 +89,32 @@ function pruef(b, t, d) {
     const nach = await p.evaluate(() => ({ hash: location.hash, seite: seiteJetzt }));
     pruef(nach.seite === "start" && !nach.hash,
       "„Zur Übersicht“ bleibt auf der Startseite", JSON.stringify(nach));
+    await ctx.close();
+  }
+
+  console.log("\n══ Keine zeitliche Begrenzung (Vorfall 27.09., zweite Anweisung) ══");
+  {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    const p = await ctx.newPage();
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto("file://" + DIST);
+    await p.waitForTimeout(500);
+    // Der alte Schirm schloss sich nach 3s von selbst — bewusst länger
+    // warten als das, ohne zu tippen: der Schirm darf NICHT von allein
+    // verschwinden, die Wahl braucht unbegrenzt Zeit.
+    await p.waitForTimeout(4200);
+    const stehtNoch = await p.evaluate(() => {
+      const w = document.getElementById("willkommen");
+      return !!w && !w.hidden && !w.classList.contains("weg");
+    });
+    pruef(stehtNoch, "der Schirm steht auch nach über 4s noch offen, ohne Klick");
+    // Und danach lässt er sich immer noch normal bedienen — kein
+    // hängengebliebener Zustand durch das lange Warten.
+    await p.click("#wkSpeisekarte");
+    await p.waitForTimeout(700);
+    const nach = await p.evaluate(() => ({ hash: location.hash, seite: seiteJetzt }));
+    pruef(nach.hash === "#/speisekarte" && nach.seite === "speisekarte",
+      "und lässt sich danach noch ganz normal bedienen", JSON.stringify(nach));
     await ctx.close();
   }
 
