@@ -1329,6 +1329,32 @@ umbaut, muss jede Prüfung, die dessen alte CSS-Klassen im Namen trägt,
 mitziehen — sonst prüft sie ab sofort eine Struktur, die es nicht mehr
 gibt, und meldet trotzdem grün.
 
+### 8.1p Ein verzögerter Schreibvorgang kann etwas wiederbeleben, das gerade gelöscht wurde
+
+> **Vorfall, im eigenen Test gefunden, bevor er live ging.** Der
+> Entwurf-Zwischenspeicher fürs Gericht-Blatt (`entwurfSchreiben()`,
+> 500 ms entprellt, klick- UND tippgetrieben) und das echte Speichern
+> (`sichern()`, löscht den Entwurf nach dem Server-Aufruf) laufen
+> nebeneinander her, ausgelöst vom selben Klick auf „Speichern“: Der
+> Klick selbst zählt schon als Tipp-Ereignis und plant einen neuen
+> Entwurf-Schreibvorgang, während `sichern()` parallel zum Server
+> unterwegs ist. Kommt die Serverantwort schneller als die 500 ms
+> zurück, feuert der geplante Schreibvorgang NACH dem Löschen — und
+> legt den gerade gelöschten Entwurf wieder an. Der erste Test (ohne
+> künstliche Verzögerung) sah das nicht: Auf localhost war der
+> „echte“ Speichervorgang (Vorführmodus, kein Netz) schneller fertig
+> als die 500 ms, und die Probe wäre grün gewesen, obwohl die Lücke
+> längst da war (§8.1g: eine Probe muss den Fehler auch treffen
+> können, nicht nur zufällig daran vorbeilaufen).
+
+Die Abhilfe: Der Schreibvorgang prüft seine Voraussetzung ZWEIMAL —
+einmal beim Planen (ist das Blatt offen?) und **erneut beim Auslösen**,
+nicht nur beim Planen. Dazwischen kann geschlossen oder gelöscht worden
+sein, und nur die zweite Prüfung sieht das noch. Jeder entprellte
+Schreibvorgang, der neben einem expliziten Löschen herläuft, braucht
+diese zweite Prüfung — sonst gewinnt manchmal der ältere, verspätete
+Schreibvorgang gegen die neuere, eigentlich maßgebliche Löschung.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1360,6 +1386,9 @@ Dazu je nach Änderung:
 | Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
 | Figur des Hauses, Requisiten, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
 | **Figur/Stimmung/Requisiten wählbar im Admin-Board, ausklappbare Zeilen** | `pruefungen/pruef-figur-board.js` (braucht `dist/`) — Zweite Quelle gegen AVATAR_FIGUREN/AVATAR_ZUEGE/E_REQUISITEN und ZUGNAMEN, drei zugeklappte Zeilen (Figur/Stimmung/Hände mit drei Unterzeilen je Phase), jede beginnt zu, echter Tipp auf den Kopf öffnet sie wirklich, Rad im Board erst nach dem Öffnen bedient, Vorrang hub_avatar vor Markenblatt, stiller Rückfall bei unbekanntem Wert — im Board UND im Hub selbst |
+| **Vegetarisch/Vegan als Merkmal, eigenes Zeichen** | `pruefungen/pruef-gericht-merkmale.js` (braucht `dist/`) — Board: Vegan schaltet Vegetarisch automatisch mit ein, Vegetarisch ausschalten nimmt Vegan mit; Hub: veganes Gericht zeigt NUR das Vegan-Zeichen (schließt Vegetarisch ein), nur-vegetarisches nur sein eigenes, keins ohne gesetztes Merkmal |
+| **Entwurf-Zwischenspeicher im Gericht-Blatt** | `pruefungen/pruef-gericht-entwurf.js` — Entwurf übersteht Abbrechen UND Tafelwechsel, Hinweis sichtbar, „Verwerfen“ setzt zurück, kein Geisterentwurf nach echtem Speichern trotz des 500-ms-Wettlaufs (§8.1p) |
+| **Foodroulette (die umbenannte Entscheidungshilfe), hub_stil-Sichtbarkeit** | `pruefungen/pruef-foodroulette.js` (braucht `dist/`) — Board-Schalter führt hub_stil zusammen statt zu ersetzen (Nachbarn wie emoji/restzeit bleiben), Hub: Standard an, „aus“ blendet die CTA aus UND leitet einen direkten Aufruf von `#/entdecken` fail-open zur Speisekarte um, strikt boolean (Zeichenkette „false“ bleibt an) |
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
 | **Irgendein Text, den ein Gast liest** | `pruefungen/pruef-uebersetzung.js` (braucht `dist/`) — zweite Quelle, jede Sprache am gemalten Bild, Anrede, und der Weg aus dem Board |
 | Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |

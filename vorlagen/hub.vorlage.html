@@ -1425,6 +1425,7 @@ a.kachel.khalb.ohneico .txt strong{font-size:14.5px}
   border-radius:4px;padding:2px 5px;margin-left:6px;vertical-align:1.5px
 }
 .tag.veg{background:var(--pistazie-flaeche);color:var(--pistazie)}
+.tag.vegan{background:var(--pistazie-flaeche);color:var(--pistazie);border:1px solid var(--pistazie)}
 .tag.scharf{background:var(--rot-flaeche);color:var(--rot)}
 .tag.top{background:var(--gold-flaeche);color:var(--gold)}
 
@@ -4786,6 +4787,14 @@ function restzeitZeigen(){
   if(HUBSTIL && typeof HUBSTIL.restzeit === "boolean") return HUBSTIL.restzeit;
   return true;
 }
+/* Foodroulette (der Wisch-Einstieg auf der Speisekarte) ein- oder
+   ausblenden — Wahl des Betriebs im Board (hub_stil.foodroulette).
+   Strikt boolean, sonst an: Der Einstieg lief bisher immer, ein
+   kaputter Wert soll ihn nicht versehentlich verschwinden lassen. */
+function foodrouletteAn(){
+  if(HUBSTIL && typeof HUBSTIL.foodroulette === "boolean") return HUBSTIL.foodroulette;
+  return true;
+}
 
 /* Eigene Zeichen, wo Unicode kein passendes kennt: Für einen Crêpe gibt
    es kein Emoji (🥞 ist ein Pfannkuchenstapel, 🌯 ein Burrito). Der Film
@@ -7220,7 +7229,7 @@ let SPEISEKARTE = [
   { gruppe:"Obstsalat", eintraege:[
     { n:"Obstsalat Oriental", b:"Frisches Obst mit arabischer Sahne und Oriental Eis", p:"10,90" , opt:["sahne","suess","sauce"]},
     { n:"Obstsalat Lotus", b:"Frisches Obst mit Karamellkeks-Creme", p:"9,90" , bild:"lotus-obstsalat.jpg", frei:1, opt:["sahne","suess","sauce"]},
-    { n:"Obstsalat vegan", b:"Frisches Obst, rein pflanzlich verfeinert", p:"8,90", veg:true , bild:"vegan-obstsalat.jpg", frei:1, opt:["sahne","suess","sauce"]},
+    { n:"Obstsalat vegan", b:"Frisches Obst, rein pflanzlich verfeinert", p:"8,90", veg:true, vegan:true, bild:"vegan-obstsalat.jpg", frei:1, opt:["sahne","suess","sauce"]},
     { n:"Obstsalat Nutella", b:"Frisches Obst mit Nutella", p:"8,90" , opt:["sahne","suess","sauce"]},
     { n:"Obstsalat Bueno", b:"Frisches Obst mit Haselnusscreme", p:"8,90" , bild:"bueno-obstsalat.jpg", frei:1, opt:["sahne","suess","sauce"]},
     { n:"Obstsalat Kitkat", b:"Frisches Obst mit Waffelstücken", p:"8,90" , bild:"kitkat-obstsalat.jpg", frei:1, opt:["sahne","suess","sauce"]},
@@ -8212,6 +8221,7 @@ const TEXTE = {
 /* --- Kartenseiten --- */
 "Alle":{en:"All",tr:"Tümü",ru:"Все",fr:"Tout",es:"Todo",it:"Tutti",pl:"Wszystko",ar:"الكل",uk:"Усі",nl:"Alles",ro:"Toate"},
 "VEGETARISCH":{en:"VEGETARIAN",tr:"VEJETARYEN",ru:"ВЕГЕТАРИАНСКОЕ",fr:"VÉGÉTARIEN",es:"VEGETARIANO",it:"VEGETARIANO",pl:"WEGETARIAŃSKIE",ar:"نباتي",uk:"ВЕГЕТАРІАНСЬКЕ",nl:"VEGETARISCH",ro:"VEGETARIAN"},
+"VEGAN":{en:"VEGAN",tr:"VEGAN",ru:"ВЕГАНСКОЕ",fr:"VÉGANE",es:"VEGANO",it:"VEGANO",pl:"WEGAŃSKIE",ar:"نباتي صرف",uk:"ВЕГАНСЬКЕ",nl:"VEGANISTISCH",ro:"VEGAN"},
 "SCHARF":{en:"SPICY",tr:"ACILI",ru:"ОСТРОЕ",fr:"ÉPICÉ",es:"PICANTE",it:"PICCANTE",pl:"OSTRE",ar:"حار",uk:"ГОСТРЕ",nl:"PITTIG",ro:"PICANT"},
 "Alles, was heute aus unserer Küche kommt.":{en:"Everything coming out of our kitchen today.",tr:"Bugün mutfağımızdan çıkan her şey.",ru:"Всё, что сегодня выходит с нашей кухни.",fr:"Tout ce qui sort de notre cuisine aujourd'hui.",es:"Todo lo que hoy sale de nuestra cocina.",it:"Tutto ciò che oggi esce dalla nostra cucina.",pl:"Wszystko, co dziś wychodzi z naszej kuchni.",ar:"كل ما يخرج اليوم من مطبخنا.",uk:"Усе, що сьогодні виходить з нашої кухні.",nl:"Alles wat vandaag uit onze keuken komt.",ro:"Tot ce iese astăzi din bucătăria noastră."},
 "Heiß, kalt, prickelnd – ganz wie Sie mögen.":{en:"Hot, cold, sparkling – however you like it.",tr:"Sıcak, soğuk, köpüklü – nasıl isterseniz.",ru:"Горячее, холодное, игристое — как вам больше нравится.",fr:"Chaud, froid, pétillant – comme il vous plaît.",es:"Caliente, frío, con burbujas: como más le guste.",it:"Caldo, freddo, frizzante – come preferite.",pl:"Gorące, zimne, musujące – jak lubisz.",ar:"ساخن، بارد، فوّار – كما تحبون.",uk:"Гаряче, холодне, ігристе — як вам смакує.",nl:"Warm, koud, bruisend – net wat u wilt.",ro:"Cald, rece, spumant – exact cum vă place."},
@@ -8520,11 +8530,11 @@ const TEXTE = {
 "Wir helfen beim Aussuchen – und zeigen Ihnen Neues zum Probieren.":{en:"We'll help you choose – and show you something new to try.",tr:"Seçmenize yardımcı oluyoruz – ve denemeniz için yeni şeyler gösteriyoruz.",ru:"Мы поможем выбрать – и покажем что-то новое, что стоит попробовать.",fr:"Nous vous aidons à choisir – et vous montrons des nouveautés à goûter.",es:"Le ayudamos a elegir – y le mostramos algo nuevo para probar.",it:"La aiutiamo a scegliere – e Le mostriamo qualcosa di nuovo da provare.",pl:"Pomożemy wybrać – i pokażemy coś nowego do spróbowania.",ar:"نساعدك في الاختيار – ونعرض عليك أشياء جديدة لتجربتها.",uk:"Ми допоможемо обрати – і покажемо щось нове, що варто скуштувати.",nl:"Wij helpen u kiezen – en laten u iets nieuws zien om te proberen.",ro:"Vă ajutăm să alegeți – și vă arătăm ceva nou de încercat."},
 "Für mich entscheiden":{en:"Decide for me",tr:"Benim yerime seçin",ru:"Выберите за меня",fr:"Choisissez pour moi",es:"Elija por mí",it:"Scelga la casa",pl:"Proszę wybrać za mnie",ar:"اختر لي",uk:"Оберіть за мене",nl:"Kies voor mij",ro:"Alegeți pentru mine"},
 "Karten wischen":{en:"Swipe cards",tr:"Kartları kaydır",ru:"Листать карточки",fr:"Faire défiler les cartes",es:"Deslizar tarjetas",it:"Sfogliare le carte",pl:"Przesuwanie kart",ar:"تصفح البطاقات",uk:"Гортати картки",nl:"Kaarten swipen",ro:"Glisați cardurile"},
-"Entscheidungshilfe":{en:"Help me choose",tr:"Seçim yardımı",ru:"Помощь в выборе",fr:"Aide au choix",es:"Ayuda para elegir",it:"Aiuto nella scelta",pl:"Pomoc w wyborze",ar:"مساعدة في الاختيار",uk:"Допомога у виборі",nl:"Keuzehulp",ro:"Ajutor la alegere"},
 "Worauf haben Sie Lust?":{en:"What are you in the mood for?",tr:"Canınız ne istiyor?",ru:"Чего бы вам хотелось?",fr:"De quoi avez-vous envie ?",es:"¿Qué le apetece?",it:"Di cosa ha voglia?",pl:"Na co mają Państwo ochotę?",ar:"ماذا تشتهي؟",uk:"Чого б вам хотілося?",nl:"Waar heeft u zin in?",ro:"Ce poftă aveți?"},
 "Neu für Sie":{en:"New for you",tr:"Sizin için yeni",ru:"Новое для вас",fr:"Nouveau pour vous",es:"Nuevo para usted",it:"Nuovo per Lei",pl:"Nowość dla Państwa",ar:"جديد لك",uk:"Нове для вас",nl:"Nieuw voor u",ro:"Nou pentru dumneavoastră"},
 "Beliebt im Haus":{en:"House favourite",tr:"Evin favorisi",ru:"Любимое у гостей",fr:"Favori de la maison",es:"Favorito de la casa",it:"Il preferito della casa",pl:"Ulubione gości",ar:"مفضّل لدى الضيوف",uk:"Улюблене гостями",nl:"Favoriet van het huis",ro:"Preferatul casei"},
 "Vegetarisch":{en:"Vegetarian",tr:"Vejetaryen",ru:"Вегетарианское",fr:"Végétarien",es:"Vegetariano",it:"Vegetariano",pl:"Wegetariańskie",ar:"نباتي",uk:"Вегетаріанське",nl:"Vegetarisch",ro:"Vegetarian"},
+"Vegan":{en:"Vegan",tr:"Vegan",ru:"Веганское",fr:"Végane",es:"Vegano",it:"Vegano",pl:"Wegańskie",ar:"نباتي صرف",uk:"Веганське",nl:"Veganistisch",ro:"Vegan"},
 "Enthält: {x}":{en:"Contains: {x}",tr:"İçerir: {x}",ru:"Содержит: {x}",fr:"Contient : {x}",es:"Contiene: {x}",it:"Contiene: {x}",pl:"Zawiera: {x}",ar:"يحتوي على: {x}",uk:"Містить: {x}",nl:"Bevat: {x}",ro:"Conține: {x}"},
 "Toppings nach Wahl":{en:"Toppings of your choice",tr:"İsteğe bağlı soslar ve süslemeler",ru:"Топпинги на выбор",fr:"Garnitures au choix",es:"Toppings a elegir",it:"Topping a scelta",pl:"Dodatki do wyboru",ar:"إضافات حسب اختيارك",uk:"Топінги на вибір",nl:"Toppings naar keuze",ro:"Toppinguri la alegere"},
 "Details":{en:"Details",tr:"Ayrıntılar",ru:"Подробнее",fr:"Détails",es:"Detalles",it:"Dettagli",pl:"Szczegóły",ar:"التفاصيل",uk:"Докладніше",nl:"Details",ro:"Detalii"},
@@ -9366,7 +9376,8 @@ function preisText(v){ return v.toFixed(2).replace(".", ",") + " €"; }
 
 function gerichtHTML(g){
   const tags = (g.top ? '<span class="tag top">' + t("BELIEBT") + '</span>' : "")
-             + (g.veg ? '<span class="tag veg">' + t("VEGETARISCH") + '</span>' : "")
+             + (g.vegan ? '<span class="tag vegan">' + t("VEGAN") + '</span>'
+                        : (g.veg ? '<span class="tag veg">' + t("VEGETARISCH") + '</span>' : ""))
              + (g.scharf ? '<span class="tag scharf">' + t("SCHARF") + '</span>' : "");
   const hatInfo = !!INHALTSSTOFFE[g.n];
 
@@ -9558,7 +9569,7 @@ function karteSeite(id, daten, titel, unter, fuss){
     t("Löschen") + '">×</button></div>';
 
   return '<div class="seite"><h2>' + t(titel) + '</h2><p class="unter">' + t(unter) + '</p>' +
-         (id === "speisekarte" ? entscheidungCTA() : "") + aktionBandHTML() +
+         (id === "speisekarte" && foodrouletteAn() ? entscheidungCTA() : "") + aktionBandHTML() +
          suche + '<div class="chips">' + chips + '</div>' + liste +
          '<div class="hinweis">' + fuss + '</div></div>';
 }
@@ -9639,7 +9650,8 @@ function ehMarkenHTML(g){
   const m = [];
   if(probiert.length && !probiert.includes(g.n)) m.push('<span class="eh-marke eh-neu">' + t("Neu für Sie") + '</span>');
   if(g.top) m.push('<span class="eh-marke">' + t("Beliebt im Haus") + '</span>');
-  if(g.veg) m.push('<span class="eh-marke">' + t("Vegetarisch") + '</span>');
+  if(g.vegan) m.push('<span class="eh-marke">' + t("Vegan") + '</span>');
+  else if(g.veg) m.push('<span class="eh-marke">' + t("Vegetarisch") + '</span>');
   return m.length ? '<div class="eh-marken">' + m.join("") + '</div>' : "";
 }
 function ehInfoHTML(g){
@@ -10104,8 +10116,14 @@ const SEITEN = {};
 
 /* ---------- Meine Auswahl (Merkliste) ---------- */
 SEITEN.entdecken = () => {
+  /* Abgeschaltet (hub_stil.foodroulette=false): der direkte Weg über
+     die Adresse führt fail-open zur Speisekarte zurück, statt eine
+     Seite zu zeigen, die der Betrieb gerade verborgen halten wollte. */
+  if(!foodrouletteAn()){ location.hash = "#/speisekarte"; return ""; }
   if(!edStapel.length || edPos >= edStapel.length) entdeckenMischen();
-  return '<div class="seite ed-seite"><h2>' + t("Entscheidungshilfe") + '</h2>' +
+  /* "Foodroulette" ist ein geprägter Name wie „Omoteno" selbst — bleibt
+     in jeder Sprache gleich, deshalb bewusst kein t(). */
+  return '<div class="seite ed-seite"><h2>Foodroulette</h2>' +
     '<p class="unter">' + t("Wischen Sie nach rechts, was Ihnen schmeckt – nach links, was heute nicht passt.") + '</p>' +
     ehLustHTML() +
     (edStapel.length
@@ -12303,7 +12321,8 @@ function optText(gericht){
 function warenkarteHTML(g){
   const info = INHALTSSTOFFE[g.n] || null;
   const tags = (g.top ? '<span class="tag top">' + t("BELIEBT") + '</span>' : "")
-             + (g.veg ? '<span class="tag veg">' + t("VEGETARISCH") + '</span>' : "")
+             + (g.vegan ? '<span class="tag vegan">' + t("VEGAN") + '</span>'
+                        : (g.veg ? '<span class="tag veg">' + t("VEGETARISCH") + '</span>' : ""))
              + (g.scharf ? '<span class="tag scharf">' + t("SCHARF") + '</span>' : "");
 
   let stoffe;
@@ -14374,7 +14393,8 @@ async function karteHolen(erstesMal){
                ? Number(z.preis).toFixed(2).replace(".", ",")
                : "–"
         };
-        if(z.veg)  e.veg  = true;
+        if(z.veg)   e.veg   = true;
+        if(z.vegan) e.vegan = true;
         if(z.bild) e.bild = z.bild;
         /* frei nur bei eigenen Dateien: Ein aus dem Board hochgeladenes
            Foto hat einen Hintergrund und darf nicht schweben. */

@@ -2402,6 +2402,13 @@ textarea{resize:vertical;min-height:66px}
 .bk-freizeile{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--gedaempft)}
 .bk-freizeile[hidden]{display:none}
 .bk-freizeile span{flex:1;min-width:0}
+.entwurf-hinweis{
+  display:flex;align-items:center;gap:10px;
+  background:var(--flaeche);border:1px solid var(--linie);border-left:3px solid var(--messing);
+  border-radius:var(--r);padding:10px 12px;margin:0 0 14px;font-size:13px;color:var(--gedaempft);
+}
+.entwurf-hinweis[hidden]{display:none}
+.entwurf-hinweis span{flex:1;min-width:0;line-height:1.4}
 .bk-mini{flex:0 0 44px;width:44px;height:44px;border-radius:10px;border:1px solid var(--linie);overflow:hidden}
 .bk-mini img{width:100%;height:100%;object-fit:contain;display:block}
 .bk-weg{width:auto;padding:9px 12px;font-size:13px;min-height:44px}
@@ -3545,6 +3552,18 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     </div>
 
     <div class="egruppe">
+      <h2 class="etitel">Foodroulette</h2>
+      <p class="ehilfe">Die Entscheidungshilfe auf der Speisekarte: Der Gast wischt
+        durch Gerichte oder lässt sich eines auslosen. Aus = die Speisekarte zeigt
+        nur die normale Liste, ohne diesen Einstieg.</p>
+      <div class="schalter">
+        <div><div class="schaltertext">Für Gäste anzeigen</div>
+        <div class="schalterhilfe">Aus = auf der Speisekarte unsichtbar, der Weg „#/entdecken“ führt zurück dorthin</div></div>
+        <button class="wippe" id="frAn" aria-pressed="true" aria-label="Foodroulette"></button>
+      </div>
+    </div>
+
+    <div class="egruppe">
       <h2 class="etitel">Figur des Hauses</h2>
       <p class="ehilfe">Welche Figur den Gast im Hub begleitet, welche
         Stimmung sie hat und was sie je Bestellphase in der Hand hält —
@@ -3915,6 +3934,16 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="griff"></div>
     <h2 class="blatttitel" id="blattTitel">Gericht</h2>
 
+    <!-- Wunsch des Betreibers (27.09.): ein Gericht in Arbeit soll wie ein
+         offenes Projekt weiterbearbeitet werden können, auch wenn man
+         zwischendurch etwas anderes nachsieht. entwurfSchreiben()/
+         entwurfLesen() unten sichern das Formular in localStorage,
+         unabhängig vom Schließen dieses Blatts. -->
+    <div class="entwurf-hinweis" id="entwurfHinweis" hidden>
+      <span id="entwurfHinweisText"></span>
+      <button type="button" class="knopf leise schmal" id="entwurfVerwerfen">Verwerfen</button>
+    </div>
+
     <label><span class="lname">Name</span>
       <input type="text" id="fName" placeholder="Negroni Sbagliato"></label>
 
@@ -4074,6 +4103,12 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div><div class="schaltertext">Vegetarisch</div>
       <div class="schalterhilfe">Zeigt im Gast-Hub das grüne Blatt</div></div>
       <button class="wippe" id="fVeg" aria-pressed="false" aria-label="Vegetarisch"></button>
+    </div>
+
+    <div class="schalter">
+      <div><div class="schaltertext">Vegan</div>
+      <div class="schalterhilfe">Rein pflanzlich — schaltet „Vegetarisch“ automatisch mit ein</div></div>
+      <button class="wippe" id="fVegan" aria-pressed="false" aria-label="Vegan"></button>
     </div>
 
     <div class="schalter">
@@ -6171,6 +6206,42 @@ async function stilUmschalten(){
 }
 $("#stilAn").onclick = stilUmschalten;
 
+/* ══ Foodroulette (betriebe.hub_stil.foodroulette) ═════════════════
+   Dieselbe Regel wie im Hub (foodrouletteAn): strikt boolean, sonst
+   an — der Wisch-Einstieg lief bisher immer, ein kaputter Wert soll
+   ihn nicht versehentlich abschalten. Zusammenführen, nie ersetzen:
+   hub_stil trägt auch emoji, restzeit und schrift. */
+let frZeigen = true;
+function frAus(bb){
+  const st = bb && bb.hub_stil;
+  return (st && typeof st === "object" && typeof st.foodroulette === "boolean") ? st.foodroulette : true;
+}
+function frZeichnen(){
+  const k = $("#frAn"); if(k) k.setAttribute("aria-pressed", String(frZeigen));
+}
+async function frUmschalten(){
+  const vorher = frZeigen;
+  frZeigen = !frZeigen;
+  frZeichnen();
+  const text = frZeigen ? "Foodroulette an — Gäste sehen den Einstieg wieder auf der Speisekarte."
+                        : "Foodroulette aus — die Speisekarte zeigt nur die normale Liste.";
+  if(demo || !db){ melde(text); return; }
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  const neu = Object.assign({}, (bb && bb.hub_stil && typeof bb.hub_stil === "object") ? bb.hub_stil : {},
+                            { foodroulette: frZeigen });
+  const {error} = await db.from("betriebe").update({ hub_stil: neu }).eq("id", betriebId);
+  if(error){
+    frZeigen = vorher; frZeichnen();
+    melde(/hub_stil/.test(error.message || "")
+      ? "Dieser Schalter braucht noch migration-hub-stil.sql in der Datenbank."
+      : "Nicht gespeichert, bitte Verbindung prüfen", true);
+    return;
+  }
+  if(bb) bb.hub_stil = neu;
+  melde(text);
+}
+$("#frAn").onclick = frUmschalten;
+
 /* ══ Bestellstand beim Gast (betriebe.hub_stil.restzeit) ═══════════
    Dieselbe Regel wie im Hub (restzeitZeigen): strikt boolean, sonst
    an. Zusammenführen, nie ersetzen — hub_stil trägt auch emoji und
@@ -7786,6 +7857,8 @@ async function betriebOeffnen(id){
   stilZeichnen();
   rzZeigen = rzAus(bb);
   rzZeichnen();
+  frZeigen = frAus(bb);
+  frZeichnen();
   newsletterZeichnen();
   nlVorratLaden(id);
 
@@ -13019,6 +13092,83 @@ function uebOeffnen(){
 function uebSchliessen(){ blattFortAnimieren($("#uebBlatt"), function(){
   $("#uebBlatt").hidden = true; uebEntwurf = null; }); }
 
+/* ═══ Entwurf-Zwischenspeicher fürs Gericht-Blatt ═══════════════════
+   Wunsch des Betreibers (27.09.): ein Gericht in Arbeit soll sich wie
+   ein offenes Projekt anfühlen — wer zwischendurch etwas anderes im
+   Board nachsieht (oder die Seite neu lädt), soll seinen unfertigen
+   Stand wiederfinden, nicht neu anfangen müssen. localStorage statt
+   eines Servergesprächs: Ein Entwurf ist noch kein Gericht und soll
+   auch bei fehlender Verbindung nicht verloren gehen.
+
+   Ein Schlüssel je Gericht (oder "neu" für ein gerade entstehendes),
+   damit das Anlegen EINES neuen Gerichts nicht den Entwurf EINES
+   anderen, bereits vorhandenen Gerichts überschreibt. */
+function entwurfSchluessel(g){
+  return "omoteno-entwurf-gericht-" + betriebId + "-" + (g && g.id ? g.id : "neu");
+}
+const ENTWURF_HOECHSTALTER = 7 * 24 * 60 * 60 * 1000; /* 7 Tage — älter ist eher Leiche als Absicht */
+function entwurfFormLesen(){
+  return {
+    name: $("#fName").value, beschreibung: $("#fBeschr").value,
+    preis: $("#fPreis").value, kategorie: $("#fKat").value,
+    allergene: stoffeLesen("#fAllergene"), zusatzstoffe: stoffeLesen("#fZusatz"),
+    stoff_hinweis: $("#fStoffHinweis").value, bild: $("#fBild").value,
+    karte: $("#fKarte").value, spur: spurLesen(),
+    veg: $("#fVeg").getAttribute("aria-pressed") === "true",
+    vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
+    verfuegbar: $("#fVerf").getAttribute("aria-pressed") === "true",
+  };
+}
+function entwurfFormAnwenden(w){
+  $("#fName").value = w.name || ""; $("#fBeschr").value = w.beschreibung || "";
+  $("#fPreis").value = w.preis || ""; $("#fKat").value = w.kategorie || "";
+  katWertAktualisieren(); katPanelSchliessen(false);
+  stoffeSetzen("#fAllergene", w.allergene); stoffeSetzen("#fZusatz", w.zusatzstoffe);
+  $("#fStoffHinweis").value = w.stoff_hinweis || "";
+  $("#fBild").value = w.bild || ""; bildSchauSetzen(w.bild || "");
+  $("#fKarte").value = w.karte || welcheKarte; karteSegmentAktualisieren();
+  spurSetzen(w.spur);
+  $("#fVeg").setAttribute("aria-pressed", !!w.veg);
+  $("#fVegan").setAttribute("aria-pressed", !!w.vegan);
+  $("#fVerf").setAttribute("aria-pressed", !!w.verfuegbar);
+}
+function entwurfLesen(g){
+  let roh; try{ roh = localStorage.getItem(entwurfSchluessel(g)); }catch(e){ return null; }
+  if(!roh) return null;
+  let stand; try{ stand = JSON.parse(roh); }catch(e){ return null; }
+  if(!stand || typeof stand !== "object" || !stand.werte) return null;
+  if(!(Date.now() - (stand.zeit || 0) < ENTWURF_HOECHSTALTER)){
+    entwurfLoeschen(g); return null;
+  }
+  return stand;
+}
+function entwurfLoeschen(g){ try{ localStorage.removeItem(entwurfSchluessel(g)); }catch(e){} }
+let entwurfTimer = null;
+function entwurfSchreiben(){
+  if($("#blatt").hidden) return;
+  const fuer = bearbeite;
+  clearTimeout(entwurfTimer);
+  entwurfTimer = setTimeout(() => {
+    /* Erneut prüfen, nicht nur beim Planen: Zwischen dem Klick und
+       diesen 500 ms kann "Speichern"/"Abbrechen"/"Löschen" das Blatt
+       schon geschlossen haben (blattSchliessen versteckt es nach
+       höchstens 210 ms) — sonst schriebe dieser Timer einen Entwurf
+       neu hin, den sichern() gerade erst gelöscht hat. */
+    if($("#blatt").hidden) return;
+    try{
+      localStorage.setItem(entwurfSchluessel(fuer),
+        JSON.stringify({ zeit: Date.now(), werte: entwurfFormLesen() }));
+    }catch(e){ /* voller Speicher o.ä. — der Entwurf ist eine Annehmlichkeit, kein Muss */ }
+  }, 500);
+}
+/* "click" zusätzlich zu input/change: Die Wippen (Vegetarisch, Vegan,
+   Verfügbar), das Kartensegment und die Stoffgitter sind Knöpfe, keine
+   Formularfelder — sie feuern kein input/change, nur click. */
+$("#blatt").addEventListener("input", entwurfSchreiben);
+$("#blatt").addEventListener("change", entwurfSchreiben);
+$("#blatt").addEventListener("click", entwurfSchreiben);
+$("#entwurfVerwerfen").onclick = () => { entwurfLoeschen(bearbeite); blattOeffnen(bearbeite); };
+
 function blattOeffnen(g){
   bearbeite = g;
   $("#blattTitel").textContent = g ? "Gericht bearbeiten" : "Neues Gericht";
@@ -13045,10 +13195,27 @@ function blattOeffnen(g){
   $("#fKarte").value = g?.karte || welcheKarte;
   karteSegmentAktualisieren();
   $("#fVeg").setAttribute("aria-pressed", g ? !!g.veg : false);
+  $("#fVegan").setAttribute("aria-pressed", g ? !!g.vegan : false);
   $("#fVerf").setAttribute("aria-pressed", g ? !!g.verfuegbar : true);
   $("#loeschen").hidden  = !g;
   $("#kopie").hidden     = !g;
   $("#blatt").hidden     = false;
+
+  /* Erst jetzt, nachdem alle Felder aus g gefüllt sind: ein liegen
+     gebliebener Entwurf überschreibt sie — er ist neuer als der
+     gespeicherte Stand. */
+  const entwurf = entwurfLesen(g);
+  const hinweis = $("#entwurfHinweis");
+  if(entwurf){
+    entwurfFormAnwenden(entwurf.werte);
+    const uhr = new Date(entwurf.zeit);
+    $("#entwurfHinweisText").textContent = "Nicht gespeicherter Entwurf vom " +
+      uhr.toLocaleDateString("de-DE") + ", " + uhr.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}) +
+      " wiederhergestellt.";
+    hinweis.hidden = false;
+  } else {
+    hinweis.hidden = true;
+  }
   setTimeout(()=> $("#fName").focus(), 120);
 }
 function blattSchliessen(){ blattFortAnimieren($("#blatt"), function(){
@@ -13056,10 +13223,16 @@ function blattSchliessen(){ blattFortAnimieren($("#blatt"), function(){
 
 $("#abbrechen").onclick = blattSchliessen;
 $("#blatt").onclick = e => { if(e.target === $("#blatt")) blattSchliessen(); };
-[["#fVerf"],["#fVeg"]].forEach(([w]) => {
+[["#fVerf"],["#fVeg"],["#fVegan"]].forEach(([w]) => {
   $(w).onclick = e => {
     const a = e.currentTarget;
-    a.setAttribute("aria-pressed", a.getAttribute("aria-pressed") !== "true");
+    const an = a.getAttribute("aria-pressed") !== "true";
+    a.setAttribute("aria-pressed", an);
+    /* Vegan ist immer auch vegetarisch — wer Vegan einschaltet, bekommt
+       Vegetarisch automatisch dazu; wer Vegetarisch ausschaltet, kann
+       nicht gleichzeitig vegan geblieben sein. */
+    if(w === "#fVegan" && an) $("#fVeg").setAttribute("aria-pressed", "true");
+    if(w === "#fVeg" && !an) $("#fVegan").setAttribute("aria-pressed", "false");
   };
 });
 
@@ -13496,6 +13669,10 @@ $("#bkFreiWeg").onclick = () => {
 };
 
 async function sichern(alsKopie){
+  /* Für den Entwurf-Schlüssel: bearbeite kann sich unten (Object.assign,
+     neu anlegen) ändern — der Schlüssel muss der bleiben, unter dem
+     das Blatt WIRKLICH geöffnet wurde. */
+  const entwurfWar = bearbeite;
   const name = $("#fName").value.trim();
   const kat  = $("#fKat").value.trim();
 
@@ -13524,6 +13701,7 @@ async function sichern(alsKopie){
     verfuegbar: $("#fVerf").getAttribute("aria-pressed") === "true",
     karte: $("#fKarte").value,
     veg:   $("#fVeg").getAttribute("aria-pressed") === "true",
+    vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
   };
 
   /* Die Kategorie kann sich beim Speichern ändern – dann muss das
@@ -13563,6 +13741,7 @@ async function sichern(alsKopie){
     }
   }
 
+  entwurfLoeschen(entwurfWar);
   blattSchliessen(); zeichneKarte();
   melde(alsKopie ? "Kopie angelegt" : (neuAnlegen ? "Gericht hinzugefügt" : "Gespeichert"));
 
@@ -13634,6 +13813,7 @@ $("#loeschen").onclick = async () => {
     if(error) return melde("Konnte nicht gelöscht werden", true);
   }
   gerichte = gerichte.filter(g => g.id !== bearbeite.id);
+  entwurfLoeschen(bearbeite);
   blattSchliessen(); zeichneKarte(); melde("Gelöscht");
 };
 
