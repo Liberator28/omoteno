@@ -226,7 +226,12 @@ async function seite(br, datei, licht){
     }, datei);
     pruef(r.felder.length >= (datei === "admin.html" ? 4 : 2), datei + ": Voraussetzung: alle Anmeldefelder stehen da", r.felder.length);
     if(datei === "admin.html"){
-      pruef(r.colorScheme === "light", datei + ": color-scheme folgt der hellen Wahl, nicht dem Gerät", r.colorScheme);
+      /* "light" als eigenes Wort, nicht als exakte Zeichenkette: seit
+         dem "only"-Nachtrag gegen Samsung Internet steht dort
+         "light only" (Chromium haengt "only" beim computed style ans
+         Ende, unabhaengig von der Reihenfolge im Stylesheet). */
+      pruef(r.colorScheme.split(/\s+/).includes("light") && !r.colorScheme.split(/\s+/).includes("dark"),
+        datei + ": color-scheme folgt der hellen Wahl, nicht dem Gerät", r.colorScheme);
       const schwach = r.felder.filter(x => x.k < 4.5);
       pruef(!schwach.length, datei + ": jedes Anmeldefeld ≥ 4,5:1 (Schrift auf Fläche)",
         schwach.map(x => x.id + " " + x.k.toFixed(2) + " (" + x.bg + "/" + x.farbe + ")").join(" | ") || "kleinster Wert " + Math.min(...r.felder.map(x => x.k)).toFixed(2));
