@@ -264,6 +264,91 @@ begin
 end $$;
 reset role;
 
+-- ═══ TEIL 3b · rabattcode_team_anlegen / rabattcode_beenden / GRANT-Fund ═══
+-- Braucht migration-rabattcode-ziel.sql. Deckt permanent ab, was beim
+-- Bau der Migration ad hoc gemessen wurde (Kommentar 1b dort): authenticated
+-- hatte INSERT/UPDATE/DELETE/TRUNCATE/TRIGGER/REFERENCES auf rabattcodes,
+-- RLS hielt (nur eine SELECT-Regel) — hier als Zeilenzahl gemessen, nicht
+-- nur als Ausnahme (CLAUDE.md §2.3b).
+do $$ begin
+  if not exists (select 1 from information_schema.columns
+    where table_schema='public' and table_name='rabattcodes' and column_name='ziel_gericht_name')
+  then
+    insert into probe values (65,'—','TEIL 3b uebersprungen','migration-rabattcode-ziel.sql noch nicht eingespielt');
+  end if;
+end $$;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub','00000000-0000-4000-8000-000000000001',
+                    'role','authenticated')::text, true);
+set local role authenticated;
+do $$
+declare r jsonb; n int;
+begin
+  if not exists (select 1 from information_schema.columns
+    where table_schema='public' and table_name='rabattcodes' and column_name='ziel_gericht_name') then return; end if;
+
+  r := rabattcode_team_anlegen((select id from betriebe limit 1), 'PROBE-FREMD-2', 5, null, null, null);
+  insert into probe values (66,'Fremder','rabattcode_team_anlegen fuer fremden Betrieb',
+    case when (r->>'ok')::boolean is true then 'LECK !!! ' || r::text else 'abgewiesen: '||(r->>'grund') end);
+
+  r := rabattcode_beenden((select id from rabattcodes limit 1));
+  insert into probe values (67,'Fremder','rabattcode_beenden auf fremden Code',
+    case when (r->>'ok')::boolean is true then 'LECK !!! ' || r::text else 'abgewiesen: '||(r->>'grund') end);
+
+  begin insert into rabattcodes (betrieb_id, code, betrag) values ((select id from betriebe limit 1), 'PROBE-DIREKT-FREMD', 1);
+    get diagnostics n = row_count;
+    insert into probe values (68,'Fremder','rabattcodes direkt beschreiben (GRANT-Fund)',
+      case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  exception when others then insert into probe values (68,'Fremder','rabattcodes direkt beschreiben','abgewiesen'); end;
+end $$;
+reset role;
+
+-- Ein echtes Mitglied: darf ueber die Funktionen anlegen/beenden, aber
+-- NICHT mehr direkt auf der Tabelle schreiben — Zeilenzahl gemessen,
+-- nicht nur die Ausnahme (CLAUDE.md §2.3b).
+select set_config('request.jwt.claims',
+  json_build_object('sub',(select nutzer_id from betrieb_mitglieder order by nutzer_id limit 1)::text,'role','authenticated')::text, true);
+set local role authenticated;
+do $$
+declare v uuid; v_gericht uuid; r jsonb; n int; v_id uuid;
+begin
+  if not exists (select 1 from information_schema.columns
+    where table_schema='public' and table_name='rabattcodes' and column_name='ziel_gericht_name') then return; end if;
+  select betrieb_id into v from betrieb_mitglieder where nutzer_id = auth.uid() limit 1;
+  select id into v_gericht from gerichte where betrieb_id = v limit 1;
+
+  r := rabattcode_team_anlegen(v, 'PROBE-MITGLIED-OK', null, 15, v_gericht, null);
+  insert into probe values (69,'Mitglied','rabattcode_team_anlegen fuer eigenen Betrieb, mit Ziel-Gericht',
+    case when (r->>'ok')::boolean is true then 'ok' else 'KAPUTT: '||(r->>'grund') end);
+
+  begin insert into rabattcodes (betrieb_id, code, betrag) values (v, 'PROBE-MITGLIED-DIREKT', 1);
+    get diagnostics n = row_count;
+    insert into probe values (76,'Mitglied','rabattcodes direkt beschreiben trotz eigenem Betrieb (GRANT-Fund)',
+      case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  exception when others then insert into probe values (76,'Mitglied','rabattcodes direkt beschreiben trotz eigenem Betrieb','abgewiesen'); end;
+
+  begin update rabattcodes set eingeloest = true where betrieb_id = v; get diagnostics n = row_count;
+    insert into probe values (77,'Mitglied','rabattcodes direkt aendern trotz eigenem Betrieb (GRANT-Fund)',
+      case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  exception when others then insert into probe values (77,'Mitglied','rabattcodes direkt aendern trotz eigenem Betrieb','abgewiesen'); end;
+
+  -- Ziel-Gericht, das in KEINER Bestellung steht: darf die ganze
+  -- Rechnung nicht heimlich rabattieren — der eigentliche Anlass der
+  -- Migration (CLAUDE.md-Muster: erst gegen die echten Daten pruefen).
+  select id into v_id from bestellungen where betrieb_id = v limit 1;
+  if v_id is not null and v_gericht is not null then
+    r := rechnung_rabattieren(v_id, 'PROBE-MITGLIED-OK');
+    insert into probe values (78,'Mitglied','rechnung_rabattieren mit Ziel-Gericht, das nicht bestellt wurde',
+      case when (r->>'grund') = 'produkt_nicht_bestellt' then 'abgewiesen: produkt_nicht_bestellt'
+           when (r->>'ok')::boolean is true then 'LECK !!! rabattiert ohne bestelltes Ziel: '||r::text
+           else 'unklar: '||r::text end);
+  else
+    insert into probe values (78,'—','Ziel-Gericht-Probe uebersprungen','kein Gericht oder keine Bestellung vorhanden');
+  end if;
+end $$;
+reset role;
+
 -- ═══ TEIL 4 · Aktionspreise und Gast-Rabattcode in bestellung_aufgeben ═══
 -- migration-aktionspreis-pruefen.sql: bestellung_aufgeben rechnet jetzt
 -- aktionen mit und kennt einen optionalen p_rabattcode. Angriffe: der

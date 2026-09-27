@@ -3490,6 +3490,69 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="nlPruefung"></div>
     </div>
 
+    <!-- Wunsch des Betreibers (27.09.): ein Rabattcode, den das Team
+         selbst anlegt — Prozent ODER fester Betrag, und ein Ziel: die
+         ganze Rechnung oder ein vorher gewähltes Gericht. Eingelöst
+         wird genau da, wo Rabattcodes es schon können: auf der
+         Bestellkarte, „Rabattcode einlösen" (rechnung_rabattieren,
+         jetzt zielbewusst — datenbank/migration-rabattcode-ziel.sql).
+         Eigene Gruppe statt in „Rabattcode-Vorrat" gemischt: der
+         Klaviyo-Vorrat zählt eigene, automatisch vergebene Codes —
+         gemischt mit von Hand angelegten wäre die Zahl dort irreführend. -->
+    <div class="egruppe" id="rcGruppe">
+      <h2 class="etitel">Eigene Rabattcodes</h2>
+      <p class="ehilfe">Legen Sie selbst einen Code an — mit Prozent oder festem
+        Betrag, für die ganze Rechnung oder für ein bestimmtes Gericht. Ihr Team
+        löst ihn später auf der Bestellkarte ein.</p>
+
+      <form id="rcForm">
+        <label class="feld">
+          <span>Code</span>
+          <input type="text" id="rcCode" maxlength="24" autocomplete="off"
+                 autocapitalize="characters" spellcheck="false">
+          <small class="feldhilfe">Wird am Tisch vorgelesen — nur A–Z, 0–9 und Bindestrich.</small>
+        </label>
+
+        <div class="auswahlfeld" id="rcArtFeld">
+          <span class="lname">Art des Rabatts</span>
+          <div class="segment" id="rcArtSegment" role="radiogroup" aria-label="Art des Rabatts">
+            <button type="button" data-rc-art="prozent" role="radio">Prozent</button>
+            <button type="button" data-rc-art="betrag" role="radio">Fester Betrag</button>
+            <i class="segmentschieber" aria-hidden="true"></i>
+          </div>
+        </div>
+        <label class="feld">
+          <span id="rcWertLabel">Prozent</span>
+          <input type="number" id="rcWert" step="0.01" min="0.01" inputmode="decimal" placeholder="10">
+        </label>
+
+        <div class="auswahlfeld" id="rcZielFeld">
+          <span class="lname">Gilt für</span>
+          <div class="segment" id="rcZielSegment" role="radiogroup" aria-label="Gilt für">
+            <button type="button" data-rc-ziel="rechnung" role="radio">Ganze Rechnung</button>
+            <button type="button" data-rc-ziel="gericht" role="radio">Ein Gericht</button>
+            <i class="segmentschieber" aria-hidden="true"></i>
+          </div>
+        </div>
+        <label class="feld" id="rcGerichtFeld" hidden>
+          <span>Welches Gericht</span>
+          <select id="rcGericht"></select>
+          <small class="feldhilfe">Der Rabatt gilt nur, wenn dieses Gericht auch wirklich in der Bestellung steht.</small>
+        </label>
+
+        <label class="feld">
+          <span>Gültig bis (freiwillig)</span>
+          <input type="date" id="rcBis">
+        </label>
+
+        <div class="eknoepfe">
+          <button type="submit" class="knopf schmal" id="rcAnlegen">Rabattcode anlegen</button>
+        </div>
+      </form>
+
+      <div class="gs-liste" id="rcListe" aria-live="polite"></div>
+    </div>
+
     <!-- Gutscheine: ein eigenes System neben dem Newsletter. Der
          Newsletter-Rabattcode wird online eingelöst und kommt von
          Klaviyo; ein Gutschein hier steht beim Gast unter „Mein Tisch"
@@ -6284,9 +6347,12 @@ $("#rzWahl").onclick = e => { const k = e.target.closest("[data-rz]"); if(k) rzS
 async function nlVorratLaden(id){
   const el = $("#nlVorratStand"); if(!el) return;
   if(demo){ el.textContent = "Im Vorführmodus nicht verfügbar."; return; }
+  /* Nur die Klaviyo-Codes — von Hand angelegte („team", #rcGruppe)
+     zählen hier nicht mit, sonst läse der Wirt aus dieser Zahl eine
+     Newsletter-Kapazität heraus, die es so nicht gibt. */
   const {count, error} = await db.from("rabattcodes")
     .select("id", {count: "exact", head: true})
-    .eq("betrieb_id", id).eq("eingeloest", false);
+    .eq("betrieb_id", id).eq("eingeloest", false).eq("quelle", "klaviyo");
   if(error){
     /* Fehlt die Tabelle noch (Migration nicht eingespielt), ist das
        kein Absturz — nur ein ehrlicher Hinweis statt einer Zahl. */
@@ -8155,6 +8221,7 @@ function gefiltert(){
 function rabattZeile(b){
   if((+b.rabatt_betrag || 0) > 0){
     return `<div class="rabattzeile aktiv">Rabatt −${euro(+b.rabatt_betrag)}
+      ${b.rabatt_ziel ? "auf „" + sicher(b.rabatt_ziel) + "“ " : ""}
       ${b.rabatt_code ? "(" + sicher(b.rabatt_code) + ")" : ""}</div>`;
   }
   return `<div class="rabattzeile">
@@ -9389,7 +9456,7 @@ function tafelZeigen(ziel){
   mehrZu();
 
   if(ziel === "speisekarte")     aktionenLaden();
-  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); gsLaden(); }
+  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); gsLaden(); rcLaden(); }
   /* aktionenLaden() zusätzlich hier: Der "Aktion"-Ziel-Wähler im
      Banner-Rad braucht das aktionen-Array, das sonst erst beim
      Öffnen des Speisekarte-Reiters gefüllt wird — ein Wirt, der
@@ -12146,6 +12213,202 @@ if($("#runnerAuf")){
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   EIGENE RABATTCODES
+
+   Prozent ODER fester Betrag, Ziel: ganze Rechnung ODER ein Gericht
+   (datenbank/migration-rabattcode-ziel.sql). Anders als bei
+   Gutscheinen schreibt das Board NICHT direkt in die Tabelle —
+   authenticated hat dort bewusst nur SELECT, jedes Schreiben läuft
+   über rabattcode_team_anlegen()/rabattcode_beenden() (CLAUDE.md
+   §2.3a: geprüft, nicht angenommen — ein Rollentest zeigte, dass die
+   Tabelle vorher sogar INSERT/UPDATE/DELETE für authenticated trug;
+   RLS hielt, weil keine passende Regel existierte, der GRANT wurde
+   trotzdem auf SELECT verengt). Eingelöst wird weiter auf der
+   Bestellkarte, „Rabattcode einlösen" — dieselbe Stelle wie bisher. */
+let rcArt = "prozent";
+let rcZielModus = "rechnung";
+let rabattcodeTeam = [];
+const RC_CODE_OK = /^[A-Z0-9-]{3,24}$/;
+const RC_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+function rcVorschlag(){
+  const z = new Uint32Array(4);
+  crypto.getRandomValues(z);
+  return "AKTION-" + Array.from(z, x => RC_ZEICHEN[x % RC_ZEICHEN.length]).join("");
+}
+function rcCodeSauber(v){
+  return String(v || "").toUpperCase()
+    .replace(/Ä/g, "AE").replace(/Ö/g, "OE").replace(/Ü/g, "UE").replace(/ß/g, "SS")
+    .replace(/\s+/g, "-").replace(/[^A-Z0-9-]/g, "").slice(0, 24);
+}
+
+function rcArtZeichnen(){
+  const seg = $("#rcArtSegment"); if(!seg) return;
+  seg.querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-checked", b.dataset.rcArt === rcArt));
+  const i = rcArt === "prozent" ? 0 : 1;
+  seg.querySelector(".segmentschieber").style.transform = `translateX(${i * 100}%)`;
+  $("#rcWertLabel").textContent = rcArt === "prozent" ? "Prozent" : "Betrag in Euro";
+  $("#rcWert").placeholder = rcArt === "prozent" ? "10" : "2,00";
+}
+$("#rcArtSegment")?.addEventListener("click", e => {
+  const b = e.target.closest("[data-rc-art]"); if(!b) return;
+  rcArt = b.dataset.rcArt; rcArtZeichnen();
+});
+
+function rcZielZeichnen(){
+  const seg = $("#rcZielSegment"); if(!seg) return;
+  seg.querySelectorAll("button").forEach(b =>
+    b.setAttribute("aria-checked", b.dataset.rcZiel === rcZielModus));
+  const i = rcZielModus === "rechnung" ? 0 : 1;
+  seg.querySelector(".segmentschieber").style.transform = `translateX(${i * 100}%)`;
+  $("#rcGerichtFeld").hidden = rcZielModus !== "gericht";
+}
+$("#rcZielSegment")?.addEventListener("click", e => {
+  const b = e.target.closest("[data-rc-ziel]"); if(!b) return;
+  rcZielModus = b.dataset.rcZiel; rcZielZeichnen();
+});
+
+/* Dieselbe Liste wie die Speisekarte im Board — nichts Eigenes nachladen. */
+function rcGerichtFuellen(){
+  const sel = $("#rcGericht"); if(!sel) return;
+  const vorher = sel.value;
+  const nachKarte = gerichte.filter(g => Number(g.preis) > 0)
+    .sort((a, b) => (a.kategorie || "").localeCompare(b.kategorie || "", "de") || a.name.localeCompare(b.name, "de"));
+  sel.innerHTML = nachKarte.map(g =>
+    '<option value="' + sicher(g.id) + '">' + sicher(g.name) +
+    (g.kategorie ? " — " + sicher(g.kategorie) : "") + '</option>').join("");
+  if(nachKarte.some(g => g.id === vorher)) sel.value = vorher;
+}
+
+function rcTypText(g){
+  return g.prozent != null ? (+g.prozent).toLocaleString("de-DE") + " % Rabatt"
+                            : euro(+g.betrag) + " Rabatt";
+}
+
+async function rcLaden(){
+  rcArtZeichnen(); rcZielZeichnen(); rcGerichtFuellen();
+  const code = $("#rcCode");
+  if(code && !code.value) code.value = rcVorschlag();
+  if(demo || !db || !betriebId){ rcZeichnen(); return; }
+  try{
+    const jetzt = new Date().toISOString();
+    const {data, error} = await db.from("rabattcodes")
+      .select("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am")
+      .eq("betrieb_id", betriebId).eq("quelle", "team").eq("eingeloest", false)
+      .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
+      .order("angelegt_am", {ascending:false}).order("id");
+    if(error) throw error;
+    rabattcodeTeam = data || [];
+  }catch(e){ rabattcodeTeam = []; }
+  rcZeichnen();
+}
+
+function rcZeichnen(){
+  const ziel = $("#rcListe"); if(!ziel) return;
+  if(!rabattcodeTeam.length){
+    ziel.innerHTML = '<p class="ehilfe">Gerade liegt kein eigener Rabattcode bereit.</p>';
+    return;
+  }
+  ziel.innerHTML = rabattcodeTeam.map(g =>
+    '<div class="gs-zeile" data-rc="' + sicher(g.id) + '">' +
+      '<span class="gs-was"><b>' + sicher(rcTypText(g)) + '</b>' +
+        '<i>' + (g.ziel_gericht_name ? sicher(g.ziel_gericht_name) : "Ganze Rechnung") + '</i></span>' +
+      '<span class="gs-code">' + sicher(g.code) + '</span>' +
+      '<span class="gs-frist">' +
+        (g.gueltig_bis ? "bis " + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist") + '</span>' +
+      '<button type="button" class="knopf leise schmal" data-rc-ende="' + sicher(g.id) + '">Beenden</button>' +
+    '</div>').join("");
+}
+
+function rcFehlerText(grund){
+  return {
+    kein_zugriff: "Dafür fehlt diesem Zugang die Berechtigung.",
+    betrag_oder_prozent: "Bitte entweder Prozent oder Betrag, nicht beides und nicht keins.",
+    code_form: "Der Code braucht 3 bis 24 Zeichen: A–Z, 0–9, Bindestrich.",
+    code_vergeben: "Diesen Code gab es bei Ihnen schon — bitte einen anderen nehmen.",
+    gericht_unbekannt: "Dieses Gericht wurde nicht gefunden.",
+    werte_ungueltig: "Prozent oder Betrag passen nicht (Prozent bis 100, Betrag über 0).",
+  }[grund] || "Nicht angelegt — bitte Verbindung prüfen.";
+}
+
+if($("#rcForm")){
+  $("#rcCode").addEventListener("input", e => {
+    const el = e.target, sauber = rcCodeSauber(el.value);
+    if(sauber !== el.value) el.value = sauber;
+  });
+
+  $("#rcForm").onsubmit = async e => {
+    e.preventDefault();
+    const code = rcCodeSauber($("#rcCode").value);
+    const wert = parseFloat(String($("#rcWert").value).replace(",", "."));
+    if(!RC_CODE_OK.test(code)){ melde(rcFehlerText("code_form"), true); $("#rcCode").focus(); return; }
+    if(!(wert > 0)){ melde("Bitte einen Wert größer als 0 eintragen.", true); $("#rcWert").focus(); return; }
+    if(rcArt === "prozent" && wert > 100){ melde(rcFehlerText("werte_ungueltig"), true); $("#rcWert").focus(); return; }
+    let zielId = null;
+    if(rcZielModus === "gericht"){
+      zielId = $("#rcGericht").value;
+      if(!zielId){ melde("Bitte ein Gericht wählen.", true); return; }
+    }
+    const bis = $("#rcBis").value;
+    const ende = bis ? new Date(bis + "T23:59:59").toISOString() : null;
+    if(ende && new Date(ende) <= new Date()){ melde("Dieses Datum liegt schon hinter uns.", true); return; }
+
+    const knopf = $("#rcAnlegen");
+    knopf.disabled = true; knopf.textContent = "Wird angelegt …";
+    try{
+      if(demo || !db){
+        if(rabattcodeTeam.some(g => g.code === code)){ melde(rcFehlerText("code_vergeben"), true); return; }
+        const gericht = zielId ? gerichte.find(g => g.id === zielId) : null;
+        rabattcodeTeam.unshift({
+          id: "demo-" + Date.now(), code,
+          betrag: rcArt === "betrag" ? wert : null,
+          prozent: rcArt === "prozent" ? wert : null,
+          ziel_gericht_name: gericht ? gericht.name : null,
+          gueltig_bis: ende, angelegt_am: new Date().toISOString(),
+        });
+        rcZeichnen();
+      }else{
+        const {data, error} = await db.rpc("rabattcode_team_anlegen", {
+          p_betrieb_id: betriebId, p_code: code,
+          p_betrag: rcArt === "betrag" ? wert : null,
+          p_prozent: rcArt === "prozent" ? wert : null,
+          p_ziel_gericht_id: zielId, p_gueltig_bis: ende,
+        });
+        if(error) throw error;
+        if(!data || !data.ok){ melde(rcFehlerText(data?.grund), true); return; }
+        await rcLaden();
+      }
+      $("#rcCode").value = rcVorschlag(); $("#rcWert").value = ""; $("#rcBis").value = "";
+      melde("Rabattcode liegt bereit.");
+    }catch(err){
+      melde("Nicht gespeichert — bitte Verbindung prüfen.", true);
+    }
+    knopf.disabled = false; knopf.textContent = "Rabattcode anlegen";
+  };
+
+  $("#rcListe").onclick = async e => {
+    const k = e.target.closest("[data-rc-ende]"); if(!k) return;
+    const id = k.dataset.rcEnde;
+    const g = rabattcodeTeam.find(x => String(x.id) === id);
+    if(!confirm("„" + (g ? g.code : "Rabattcode") + "“ beenden? Er lässt sich danach nicht mehr einlösen.")) return;
+    k.disabled = true;
+    if(demo || !db){
+      rabattcodeTeam = rabattcodeTeam.filter(x => String(x.id) !== id);
+      rcZeichnen(); melde("Rabattcode beendet");
+      return;
+    }
+    try{
+      const {data, error} = await db.rpc("rabattcode_beenden", {p_rabattcode_id: id});
+      if(error) throw error;
+      if(!data || !data.ok){ k.disabled = false; melde(rcFehlerText(data?.grund), true); return; }
+      await rcLaden();
+      melde("Rabattcode beendet");
+    }catch(err){ k.disabled = false; melde("Nicht gespeichert — bitte Verbindung prüfen.", true); }
+  };
+}
+
+/* ══════════════════════════════════════════════════════════════════
    GUTSCHEINE FÜR STAMMGÄSTE
 
    Schreibt direkt in `gutscheine` — kein eigener Server-Weg nötig:
@@ -12362,13 +12625,15 @@ $("#karten").onclick = async e => {
           unbekannt: "Diesen Code gibt es hier nicht.",
           bereits_eingeloest: "Dieser Code ist schon eingelöst.",
           abgelaufen: "Dieser Code ist abgelaufen.",
+          produkt_nicht_bestellt: "Dieser Code gilt nur für ein Gericht, das hier nicht bestellt wurde.",
         };
         melde(GRUND[data?.grund] || "Nicht eingelöst.", true);
         return;
       }
       const b = bestellungen.find(x => x.id === id);
-      if(b){ b.rabatt_betrag = data.rabatt_betrag; b.rabatt_code = code; }
-      melde("Rabatt eingelöst — neuer Betrag " + euro(data.endbetrag));
+      if(b){ b.rabatt_betrag = data.rabatt_betrag; b.rabatt_code = code; b.rabatt_ziel = data.ziel; }
+      melde("Rabatt eingelöst" + (data.ziel ? " auf „" + data.ziel + "“" : "") +
+        " — neuer Betrag " + euro(data.endbetrag));
       neuZeichnen();
     }catch(fehler){
       melde("Nicht eingelöst — Verbindung prüfen", true);

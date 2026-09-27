@@ -3075,6 +3075,10 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .26s both;
 }
 .willkommen .figur{animation:wkFigur .9s cubic-bezier(.16,1,.3,1) both}
+.willkommen .wk-wahl{
+  display:flex;flex-direction:column;width:100%;max-width:320px;
+  animation:wkAuf .7s cubic-bezier(.16,1,.3,1) .5s both;
+}
 .willkommen .bahn{
   width:min(160px,44vw);height:2px;border-radius:2px;
   background:var(--linie);overflow:hidden;margin-top:6px;
@@ -3615,6 +3619,15 @@ function markeAnwenden(abend){
   <div id="wkFigur"></div>
   <h2 class="haus" id="wkHaus"></h2>
   <p class="wort" id="wkWort"></p>
+  <!-- Wunsch des Betreibers (27.09.): Wer nur die Karte sehen will,
+       soll das ohne Umweg über den Hub können — genau hier, am
+       einzigen Schirm, den jeder Gast einmal sieht. Ein Tipp auf die
+       Fläche daneben (oder Nichtstun) bleibt der leiseste Weg zum Hub,
+       wie bisher. -->
+  <div class="wk-wahl" id="wkWahl">
+    <button type="button" class="knopf" data-wk-ziel="speisekarte" id="wkSpeisekarte"></button>
+    <button type="button" class="knopf zweit" data-wk-ziel="hub" id="wkHub"></button>
+  </div>
   <div class="bahn" aria-hidden="true"><i></i></div>
   <p class="wk-hinweis" id="wkTipp"></p>
 </div>
@@ -8506,6 +8519,9 @@ const TEXTE = {
 "Ab dem nächsten Mal sammeln sich hier Ihre Lieblingsspeisen.":{en:"From next time on, your favourites will collect here.",tr:"Bir dahaki sefere favorileriniz burada birikmeye başlar.",ru:"Со следующего раза здесь будут собираться ваши любимые блюда.",fr:"Dès la prochaine fois, vos plats préférés s'afficheront ici.",es:"A partir de la próxima vez, sus platos favoritos se reunirán aquí.",it:"Dalla prossima volta, qui si raccolgono i suoi piatti preferiti.",pl:"Od następnego razu zbierają się tu Państwa ulubione dania.",ar:"ابتداءً من المرة القادمة، ستتجمع هنا أطباقك المفضلة.",uk:"З наступного разу тут збиратимуться ваші улюблені страви.",nl:"Vanaf de volgende keer verzamelen uw favorieten zich hier.",ro:"De data viitoare, preferatele dumneavoastră se adună aici."},
 "Adresse hinterlegen":{en:"Save address",tr:"Adresi kaydet",ru:"Сохранить адрес",fr:"Enregistrer l'adresse",es:"Guardar dirección",it:"Salva indirizzo",pl:"Zapisz adres",ar:"حفظ العنوان",uk:"Зберегти адресу",nl:"Adres opslaan",ro:"Salvați adresa"},
 "Antippen zum Überspringen":{en:"Tap to skip",tr:"Atlamak için dokunun",ru:"Нажмите, чтобы пропустить",fr:"Toucher pour passer",es:"Toque para saltar",it:"Toccare per saltare",pl:"Dotknij, aby pominąć",ar:"انقر للتخطي",uk:"Торкніться, щоб пропустити",nl:"Tik om over te slaan",ro:"Atingeți pentru a sări"},
+"Wechsel ist jederzeit möglich":{en:"You can switch anytime",tr:"Her zaman değiştirilebilir",ru:"Переключиться можно в любой момент",fr:"Vous pouvez changer à tout moment",es:"Puede cambiar en cualquier momento",it:"È possibile cambiare in ogni momento",pl:"Zmiana jest możliwa w każdej chwili",ar:"يمكن التبديل في أي وقت",uk:"Переключитися можна в будь-який момент",nl:"U kunt altijd wisselen",ro:"Puteți schimba oricând"},
+"Speisekarte ansehen":{en:"View menu",tr:"Menüyü görüntüle",ru:"Посмотреть меню",fr:"Voir la carte",es:"Ver la carta",it:"Vedi il menù",pl:"Zobacz menu",ar:"عرض قائمة الطعام",uk:"Переглянути меню",nl:"Menukaart bekijken",ro:"Vezi meniul"},
+"Zur Übersicht":{en:"To the overview",tr:"Genel bakışa",ru:"К обзору",fr:"Vers l'aperçu",es:"Al inicio",it:"Alla panoramica",pl:"Do przeglądu",ar:"إلى النظرة العامة",uk:"До огляду",nl:"Naar het overzicht",ro:"La prezentare"},
 "Besuch zusammenfassen":{en:"Sum up the visit",tr:"Ziyareti özetle",ru:"Собрать визит в картинку",fr:"Résumer la visite",es:"Resumir la visita",it:"Riassumi la visita",pl:"Podsumuj wizytę",ar:"لخّص الزيارة",uk:"Підсумувати візит",nl:"Bezoek samenvatten",ro:"Rezumați vizita"},
 "Bitte tragen Sie noch Ihre Adresse ein.":{en:"Please enter your address first.",tr:"Lütfen önce adresinizi girin.",ru:"Пожалуйста, укажите свой адрес.",fr:"Veuillez d'abord saisir votre adresse.",es:"Introduzca antes su dirección.",it:"Inserisca prima il suo indirizzo.",pl:"Najpierw wpisz swój adres.",ar:"يرجى إدخال عنوانك أولاً.",uk:"Спершу вкажіть свою адресу.",nl:"Vul eerst uw adres in.",ro:"Introduceți mai întâi adresa."},
 "DAS GAB ES":{en:"WHAT WE HAD",tr:"NELER YEDİK",ru:"ЧТО БЫЛО",fr:"AU MENU",es:"LO QUE HUBO",it:"COSA C'ERA",pl:"CO BYŁO",ar:"ما تناولناه",uk:"ЩО БУЛО",nl:"DIT WAS ER",ro:"CE A FOST"},
@@ -13903,7 +13919,9 @@ zeichne();
   $("wkFigur").innerHTML = avatarSVG(120);
   $("wkHaus").textContent = BETRIEB.name;
   $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
-  $("wkTipp").textContent = t("Antippen zum Überspringen");
+  $("wkSpeisekarte").textContent = t("Speisekarte ansehen");
+  $("wkHub").textContent = t("Zur Übersicht");
+  $("wkTipp").textContent = t("Wechsel ist jederzeit möglich");
   schirm.hidden = false;
 
   const still = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -13916,7 +13934,16 @@ zeichne();
        die Karte einen Bildaufbau lang. */
     setTimeout(() => { schirm.hidden = true; }, still ? 0 : 520);
   }
-  schirm.addEventListener("click", schliessen);
+  /* Wunsch des Betreibers (27.09.): "so einfach wie möglich ... sofort
+     alle Speisen zu sehen" — der Knopf „Speisekarte ansehen" springt
+     direkt dorthin, bevor irgendetwas vom Hub geladen werden muss.
+     Ein Tipp AUSSERHALB der Knöpfe (die Fläche, der Hinweistext) bleibt
+     der leiseste Weg — wie bisher: einfach weiter zur Übersicht. */
+  schirm.addEventListener("click", e => {
+    const ziel = e.target.closest("[data-wk-ziel]");
+    if(ziel && ziel.dataset.wkZiel === "speisekarte") location.hash = "#/speisekarte";
+    schliessen();
+  });
   setTimeout(schliessen, still ? 1200 : 3000);
 })();
 
@@ -14169,7 +14196,9 @@ function vorschauZeige(ziel){
     if(!$("wkFigur").innerHTML) $("wkFigur").innerHTML = avatarSVG(120);
     $("wkHaus").textContent = BETRIEB.name;
     $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
-    $("wkTipp").textContent = t("Antippen zum Überspringen");
+    $("wkSpeisekarte").textContent = t("Speisekarte ansehen");
+    $("wkHub").textContent = t("Zur Übersicht");
+    $("wkTipp").textContent = t("Wechsel ist jederzeit möglich");
     wk.classList.remove("weg");
     wk.hidden = false;
     return;
