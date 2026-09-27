@@ -143,6 +143,101 @@ async function seite(br, datei, licht){
       dm.gewaehlt.length + " Stück");
     await d.ctx.close();
   }
+  /* ── Anmeldung: #lMail/#lPass (admin.html), .tor input (kueche.html) ──
+     VORFALL 26.09. (Bildschirmfoto): #lMail/#lPass hatten KEINE eigene
+     Klasse und standen in KEINER CSS-Regel — email/password fehlten in
+     der Feld-Liste. Ohne color/-webkit-text-fill-color nimmt Safari
+     seine Systemfarbe (§3.5): Im Hellen ein schwarzes Feld, schwarze
+     Schrift. Der bisherige seite()-Helfer prüft das nie — er ruft
+     demoStarten() und blendet #tor damit aus. Hier bleibt #tor offen. */
+  console.log("\n══ Anmeldung (#tor), hell, GERÄT auf Dunkel ══");
+  /* colorScheme:"dark" am Kontext — sonst reproduziert kein Chromium
+     den gemeldeten Fehler: Ohne echtes "Gerät steht auf Dunkel" bleibt
+     ein ungestyltes Feld auch in Chromium hell (nicht "schwarz auf
+     schwarz"), und der Gegenbeweis (Regel entfernt) bliebe grün, ohne
+     dass die Probe blind wäre — sie hätte nur nie den Fall gemessen,
+     der den Fehler zeigt (§8.1g). */
+  for(const datei of ["admin.html", "kueche.html"]){
+    const ctx = await br.newContext({ viewport:{ width:390, height:844 }, colorScheme:"dark" });
+    const p = await ctx.newPage();
+    const fehler = [];
+    p.on("pageerror", e => fehler.push(String(e).slice(0, 160)));
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    if(datei === "admin.html"){
+      /* Ohne echten Netzzugriff (auch abgefangen) zeigt admin.html sonst
+         die "Gerade nicht erreichbar"-Ersatzseite und #tor verliert
+         genau die Felder, die hier gemessen werden. Ein gestelltes
+         window.supabase reicht — dieselbe Technik wie in
+         pruef-sperre-ueberall.js, hier auf das Nötigste verkürzt. */
+      await p.addInitScript(() => {
+        window.supabase = { createClient: () => ({
+          auth: { onAuthStateChange:() => ({ data:{ subscription:{ unsubscribe(){} } } }),
+                  getSession: async () => ({ data:{ session:null } }),
+                  signInWithPassword: async () => ({ data:{}, error:null }),
+                  resetPasswordForEmail: async () => ({ error:null }),
+                  signOut: async () => ({}) },
+          from: () => ({ select(){ return this; }, eq(){ return this; },
+                         then(res){ res({ data:[], error:null }); } }),
+          rpc: async () => ({ data:null, error:null }),
+          channel: () => ({ on(){ return this; }, subscribe(){ return this; }, unsubscribe(){} }),
+          removeChannel(){}, removeAllChannels(){},
+          functions: { invoke: async () => ({ data:null, error:null }) },
+          storage: { from: () => ({ getPublicUrl: () => ({ data:{ publicUrl:"" } }), upload: async () => ({}) }) }
+        }) };
+      });
+    }
+    await p.goto("file://" + path.join(OBEN, "seiten", datei));
+    await p.waitForTimeout(800);
+    /* kueche.html: EINST ist Modul-privat (IIFE) und die Anmeldung
+       läuft dort NIE durch lichtAnwenden() — vor dem Einloggen zeigt
+       sie immer die dunkle Vorgabe (kein gemeldeter Fehler, also keine
+       hell-Umschaltung hier). Strukturell wird trotzdem geprüft, dass
+       -webkit-text-fill-color gesetzt ist (§3.5), unabhängig davon. */
+    const r = await p.evaluate(datei => {
+      if(datei === "admin.html"){
+        EINST.licht = "hell"; lichtAnwenden();
+        document.getElementById("lNeuTeil").hidden = false;
+      }
+      const farbe = c => {
+        let m = c.match(/^rgba?\(([^)]+)\)/);
+        if(m){ const t = m[1].split(/[ ,\/]+/).filter(Boolean).map(Number);
+          return { r:t[0] / 255, g:t[1] / 255, b:t[2] / 255, a:t.length > 3 ? t[3] : 1 }; }
+        m = c.match(/^color\(srgb ([^)]+)\)/);
+        if(m){ const t = m[1].split(/[ \/]+/).filter(Boolean).map(Number);
+          return { r:t[0], g:t[1], b:t[2], a:t.length > 3 ? t[3] : 1 }; }
+        return null;
+      };
+      const lum = f => { const k = x => x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4);
+        return .2126 * k(f.r) + .7152 * k(f.g) + .0722 * k(f.b); };
+      const kontrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+      const felder = [...document.querySelectorAll(
+        datei === "admin.html" ? "#lMail,#lPass,#lNeu1,#lNeu2" : "#mail,#wort")]
+        .filter(el => el.getClientRects().length > 0);
+      return {
+        colorScheme: getComputedStyle(document.documentElement).colorScheme,
+        felder: felder.map(el => {
+          const cs = getComputedStyle(el);
+          const bg = farbe(cs.backgroundColor), tx = farbe(cs.color);
+          return { id: el.id, bg: cs.backgroundColor, farbe: cs.color,
+                   webkitFill: cs.webkitTextFillColor,
+                   k: (bg && tx) ? kontrast(bg, tx) : 0 };
+        })
+      };
+    }, datei);
+    pruef(r.felder.length >= (datei === "admin.html" ? 4 : 2), datei + ": Voraussetzung: alle Anmeldefelder stehen da", r.felder.length);
+    if(datei === "admin.html"){
+      pruef(r.colorScheme === "light", datei + ": color-scheme folgt der hellen Wahl, nicht dem Gerät", r.colorScheme);
+      const schwach = r.felder.filter(x => x.k < 4.5);
+      pruef(!schwach.length, datei + ": jedes Anmeldefeld ≥ 4,5:1 (Schrift auf Fläche)",
+        schwach.map(x => x.id + " " + x.k.toFixed(2) + " (" + x.bg + "/" + x.farbe + ")").join(" | ") || "kleinster Wert " + Math.min(...r.felder.map(x => x.k)).toFixed(2));
+    }
+    const ohneFill = r.felder.filter(x => !x.webkitFill || x.webkitFill === "rgb(0, 0, 0)" && x.farbe !== "rgb(0, 0, 0)");
+    pruef(r.felder.every(x => x.webkitFill && x.webkitFill !== "rgba(0, 0, 0, 0)"), datei + ": -webkit-text-fill-color ausdrücklich gesetzt",
+      r.felder.map(x => x.id + "=" + x.webkitFill).join(" | "));
+    pruef(!fehler.length, datei + ": keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
   await br.close();
   console.log("\n" + (f ? f + " von " + n + " Fehler." : n + " von " + n + " ok\nAlles sauber."));
   process.exit(f ? 1 : 0);

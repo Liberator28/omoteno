@@ -145,12 +145,17 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
       falsch.map(r => r.s + ": " + r.name + " ≠ " + requisitenQuelle[r.s].name).join(", ") || "alle gleich");
   }
 
-  /* ── Bedienung im Board: das Rad ──────────────────────────────────
-     Kein Akkordeon mehr (CLAUDE.md-Vorfall/Anfrage "wie ein Zahnrad
-     rollbar, Charakter-Editor") — alle Räder stehen gleichzeitig
-     offen, Scroll-Snap zentriert die Wahl, ein IntersectionObserver
-     je Rad meldet, welches Stück in der Mitte steht. */
-  console.log("\n══ Bedienung: Räder, Zentrieren, Auswahl, Vorschau ══");
+  /* ── Bedienung im Board: übersichtlich und ausklappbar ────────────
+     Wunsch des Betreibers (26.09.): "wie ein Zahnrad rollbar" blieb
+     unbedienbar (leeres #avListe, §8.1g Vorfall C). Jetzt eine
+     zugeklappte Zeile je Wahl (Figur, Stimmung, Hände mit drei
+     Unterzeilen je Phase) — dasselbe kbklapp/kbkopfknopf-Baumuster
+     wie der Kachel-Baukasten (pruef-baukasten.js/pruef-kachelraster.js
+     klicken denselben Weg: erst [data-*-auf] öffnen, dann bedienen).
+     Innerhalb jeder offenen Zeile bleibt das Rad (.avspur/.avstueck)
+     unverändert — Scroll-Snap zentriert die Wahl, ein Rad zeigt genau
+     ein aktives Stück. */
+  console.log("\n══ Bedienung: ausklappbare Zeilen, Räder darin, Auswahl, Vorschau ══");
   const browser = await chromium.launch();
   const ctx = await browser.newContext({ viewport: { width: 420, height: 900 } });
   const seite = await ctx.newPage();
@@ -170,8 +175,12 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
   await seite.evaluate(() => document.querySelector('[data-tafel="einstellungen"]').click());
   await seite.waitForTimeout(400);
 
-  const gruppen = await seite.evaluate(() => document.querySelectorAll("#avListe .avgruppe").length);
-  pruef(gruppen === 3, "drei Gruppen stehen im Board (Figur, Stimmung, Hände)", gruppen + "");
+  const zeilen = await seite.evaluate(() => document.querySelectorAll("#avListe > .kbzeile").length);
+  pruef(zeilen === 3, "drei Zeilen stehen im Board (Figur, Stimmung, Hände)", zeilen + "");
+
+  const unterzeilen = await seite.evaluate(() =>
+    document.querySelectorAll('#avListe [data-av="haende"] .avunter').length);
+  pruef(unterzeilen === 3, "die Hände-Zeile hat drei Unterzeilen, eine je Bestellphase", unterzeilen + "");
 
   const raeder = await seite.evaluate(() => document.querySelectorAll("#avListe .avspur").length);
   pruef(raeder === 5, "fünf Räder (Figur, Stimmung, drei Phasen der Hände)", raeder + "");
@@ -179,7 +188,22 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
   const jeEinsAktiv = await seite.evaluate(() =>
     [...document.querySelectorAll("#avListe .avspur")].every(s =>
       s.querySelectorAll(".avstueck.aktiv").length === 1));
-  pruef(jeEinsAktiv, "jedes Rad startet mit genau einem zentrierten Stück");
+  pruef(jeEinsAktiv, "jedes Rad startet mit genau einem zentrierten Stück (auch zugeklappt)");
+
+  const alleZuStart = await seite.evaluate(() =>
+    [...document.querySelectorAll("#avListe [data-av-auf]")].every(k => k.getAttribute("aria-expanded") === "false")
+    && [...document.querySelectorAll("#avListe .kbklapp")].every(k => !k.classList.contains("offen")));
+  pruef(alleZuStart, "jede Zeile beginnt zugeklappt");
+
+  /* Erst öffnen (echter Tipp auf den Kopf, wie im Kachel-Baukasten),
+     dann bedienen — zugeklappt hat das Rad keine Höhe und ist mit dem
+     Finger nicht erreichbar. */
+  await seite.click('[data-av-auf="figur"]');
+  await seite.waitForTimeout(400);
+  const figurOffen = await seite.evaluate(() =>
+    document.querySelector('[data-av-auf="figur"]').getAttribute("aria-expanded") === "true"
+    && document.getElementById("avklapp-figur").classList.contains("offen"));
+  pruef(figurOffen, "Tipp auf den Kopf öffnet die Figur-Zeile wirklich");
 
   const figurKnoepfe = await seite.evaluate(() => document.querySelectorAll('[data-av-wahl="figur"]').length);
   pruef(figurKnoepfe === 9, "neun Figuren stehen zur Wahl", figurKnoepfe + "");
@@ -187,7 +211,7 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
     const b = document.querySelector('[data-av-wahl="figur"]');
     return b ? b.getBoundingClientRect().height : 0;
   });
-  pruef(tapHoehe >= 44, "Tapfläche ist mindestens 44px hoch", tapHoehe + "px");
+  pruef(tapHoehe >= 44, "Tapfläche ist mindestens 44px hoch (offen gemessen)", tapHoehe + "px");
 
   await seite.click('[data-av-wahl="figur"][data-av-wert="sushi"]');
   await seite.waitForTimeout(600); /* Smooth-Scroll + Observer brauchen etwas Zeit */
@@ -206,7 +230,10 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
   pruef(/Sushi/.test(vorschau), "die Vorschau oben zeigt die neue Wahl sofort", vorschau.trim());
 
   /* Tastatur: ArrowRight bewegt das Rad, ohne dass irgendwo Text
-     verschwindet oder sich das Zeichen selbst verdoppelt. */
+     verschwindet oder sich das Zeichen selbst verdoppelt. Erst die
+     Stimmungs-Zeile öffnen — zugeklappt hat #avspur-zug keine Höhe. */
+  await seite.click('[data-av-auf="zug"]');
+  await seite.waitForTimeout(400);
   await seite.focus("#avspur-zug");
   const vorZug = await seite.evaluate(() => AVATARSTAND.art);
   await seite.keyboard.press("ArrowRight");
@@ -238,6 +265,8 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
   if (scharfR && await seiteR.isVisible("#scharf")) { await scharfR.click(); await seiteR.waitForTimeout(200); }
   await seiteR.evaluate(() => document.querySelector('[data-tafel="einstellungen"]').click());
   await seiteR.waitForTimeout(400);
+  await seiteR.click('[data-av-auf="figur"]');
+  await seiteR.waitForTimeout(200);
   await seiteR.click('[data-av-wahl="figur"][data-av-wert="burger"]');
   await seiteR.waitForTimeout(300); /* kein "smooth", darf sofort stehen */
   const sofortAktiv = await seiteR.evaluate(() =>

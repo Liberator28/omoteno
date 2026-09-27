@@ -1549,10 +1549,25 @@ label{display:block;margin-bottom:14px}
   letter-spacing:.1em;text-transform:uppercase;
   color:var(--gedaempft);margin-bottom:6px;
 }
-input[type=text],input[type=number],textarea,select{
+/* VORFALL 26.09. (Bildschirmfoto): #lMail/#lPass (Anmeldung) und
+   #lNeu1/#lNeu2 (neues Passwort) haben keine eigene Klasse und
+   standen bislang in KEINER dieser Regeln — email/password/date
+   fehlten in der Liste. Ohne eigene background/color-Angabe nimmt
+   Safari seine Systemfarbe (CLAUDE.md §3.5): Im Hellen zeigte sich
+   ein schwarzes Feld mit schwarzer Schrift, sobald das Gerät selbst
+   auf Dunkel steht — :root{color-scheme:light dark} lässt das für
+   UNGESTYLTE native Felder ausdrücklich zu. Jetzt jedes Textfeld mit
+   ausdrücklicher Farbe, unabhängig vom color-scheme des Geräts. */
+input[type=text],input[type=number],input[type=email],input[type=password],
+input[type=date],input[type=tel],textarea,select{
   width:100%;padding:12px 13px;
   background:var(--nacht);border:1px solid var(--linie);
-  border-radius:9px;
+  border-radius:9px;color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font-size:16px;
+}
+input[type=email]::placeholder,input[type=password]::placeholder,
+input[type=text]::placeholder,input[type=tel]::placeholder{
+  color:var(--gedaempft);-webkit-text-fill-color:var(--gedaempft);opacity:1;
 }
 textarea{resize:vertical;min-height:66px}
 .zweispalt{display:grid;grid-template-columns:1fr 1fr;gap:12px}
@@ -1741,9 +1756,11 @@ textarea{resize:vertical;min-height:66px}
    .stufe) — wiederverwendet, nicht neu erfunden. `padding-inline`
    lässt auch das erste/letzte Stück bis zur Mitte rollen (sonst
    könnte man den Rand nie zentrieren). */
-.avgruppe{margin-top:20px}
-.avgruppe:first-child{margin-top:2px}
-.avgtitel{font-size:13.5px;font-weight:600;color:var(--kreide);margin:0 0 4px}
+/* Untergeordnete Zeile je Bestellphase, innerhalb der Karte "Was sie
+   in der Hand hält" — leichter als .kbzeile (kein eigener Rahmen),
+   durch eine Linie von der Nachbarin getrennt. */
+.avunter{border-top:1px solid var(--linie);padding-top:10px;margin-top:10px}
+.avunter:first-child{border-top:0;padding-top:0;margin-top:0}
 .avrad{position:relative;margin-top:8px}
 .avspur{
   display:flex;gap:10px;overflow-x:auto;overflow-y:hidden;
@@ -1801,9 +1818,6 @@ textarea{resize:vertical;min-height:66px}
 .avvorschau b{color:var(--messing)}
 .avvorschau svg{width:20px;height:20px;fill:none;stroke:currentColor;
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
-.hfeld{display:flex;flex-direction:column;gap:8px;margin-top:14px}
-.hfeld:first-child{margin-top:2px}
-.hbez{font-size:12.5px;color:var(--gedaempft);letter-spacing:.02em}
 
 /* ═══ Aktions-Banner-Rad (Bedienung im Board) ═══════════════════════
    Bewusst KEIN Formular in einer wischbaren Karte — ein volles
@@ -6719,6 +6733,13 @@ function lichtAnwenden(){
   const hell = EINST.licht === "hell" ||
                (EINST.licht === "auto" && !dunkelAmGeraet);
   document.body.classList.toggle("hell", hell);
+  /* CLAUDE.md §5.2c: :root sagt bisher "light dark" — dem Browser
+     ist es damit selbst überlassen, native Bedienelemente (u. a. ein
+     Feld ohne eigene Farbe) nach dem GERÄTE-Schema zu malen, nicht
+     nach der Wahl hier. Stimmen Gerät und Wahl nicht überein, zeigte
+     sich das am Anmeldefeld als schwarz auf schwarz (26.09.). Die
+     Ansage folgt jetzt der WIRKLICH gemalten Fläche. */
+  document.documentElement.style.colorScheme = hell ? "light" : "dark";
   const m = document.querySelector('meta[name="theme-color"]');
   if(m) m.setAttribute("content", hell ? "#FBF9F1" : "#102621");
 }
@@ -10972,7 +10993,12 @@ const AV_ICONS = Object.assign({
   glocke:ICONS.glocke, glas:ICONS.glas, eis:ICONS.eis, platte:ICONS.platte
 });
 
-let AVATARSTAND = null;
+/* Nie null: Ein leerer Zustand hier bedeutete zuvor „—" in der
+   Übersicht und ein LEERES #avListe, bis avStandLaden() lief (nur
+   beim Öffnen des Einstellungen-Reiters). Ein Vorgabewert schließt
+   diese Lücke — avAusZeile() ersetzt ihn ohnehin beim ersten Laden. */
+let AVATARSTAND = { figur: AV_FIGUREN[0].s, art: "freundlich", haende: {} };
+AV_PHASEN.forEach(p => { AVATARSTAND.haende[p.s] = p.vorgabe; });
 
 /* Aus der Datenbank in den Stand — mit dem MARKENBLATT als Grundlage,
    nicht mit einer blind geratenen Vorgabe: Ohne eigene Live-Spalte
@@ -11044,22 +11070,75 @@ function avVorschauZeichnen(){
   euBald();
 }
 
+/* Wunsch des Betreibers (26.09.): „übersichtlich und ausklappbar,
+   was für Gesten oder Gegenstände sie wann halten". Jede Wahl ist
+   jetzt eine zugeklappte Zeile — Baustein wie .kbklapp/.kbkopfknopf
+   (Kachel-Baukasten, admin.html), dasselbe Bedienprinzip, nicht neu
+   erfunden (schon einmal für die Gerichte-Zeile wiederverwendet). */
+const AV_OFFEN = new Set();
+function avAufKlappKopf(kennung, icoSvg, titel, stand){
+  const offen = AV_OFFEN.has(kennung);
+  return '<div class="kbkopf"><button type="button" class="kbkopfknopf" data-av-auf="' + kennung + '"' +
+    ' aria-expanded="' + offen + '" aria-controls="avklapp-' + kennung + '">' +
+    '<span class="kbmini">' + (icoSvg || "") + '</span>' +
+    '<span class="kbkopftext"><b>' + sicher(titel) + '</b><i>' + sicher(stand) + '</i></span>' +
+    '<svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">' +
+    '<path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+    '</button></div>';
+}
+function avKlappHuelle(kennung, innenHTML){
+  const offen = AV_OFFEN.has(kennung);
+  return '<div class="kbklapp' + (offen ? " offen" : "") + '" id="avklapp-' + kennung + '"><div><div class="kbinnen">' +
+    innenHTML + '</div></div></div>';
+}
+/* Zieht bei jeder Radbewegung nach, ohne alles neu zu zeichnen
+   (CLAUDE.md §4.2/§4.3): nur Icon und Name IN DER ZUGEKLAPPTEN ZEILE,
+   damit „Was gerade gewählt ist" stimmt, auch während die Zeile auf
+   bleibt. avVorschauZeichnen() aktualisiert daneben die Gesamtschau. */
+function avKopfStandAktualisieren(gruppe, wert){
+  const kopf = document.querySelector('[data-av-auf="' + gruppe + '"]'); if(!kopf) return;
+  const liste = gruppe === "figur" ? AV_FIGUREN : gruppe === "zug" ? AV_ZUEGE : AV_REQUISITEN;
+  const name = (liste.find(x => x.s === wert) || {}).name || wert;
+  const mini = kopf.querySelector(".kbmini"), i = kopf.querySelector(".kbkopftext i");
+  if(mini) mini.innerHTML = AV_ICONS[wert] || "";
+  if(i) i.textContent = name;
+}
+
 function avZeichnen(){
   const feld = $("#avListe"); if(!feld || !AVATARSTAND) return;
+  const figurName = (AV_FIGUREN.find(f => f.s === AVATARSTAND.figur) || {}).name || AVATARSTAND.figur;
+  const zugName   = (AV_ZUEGE.find(z => z.s === AVATARSTAND.art) || {}).name || AVATARSTAND.art;
+  const haendeStand = AV_PHASEN.map(p =>
+    (AV_REQUISITEN.find(r => r.s === AVATARSTAND.haende[p.s]) || {}).name || "").join(" · ");
 
   feld.innerHTML =
     '<div class="avvorschau" id="avVorschau"></div>' +
-    '<div class="avgruppe"><h3 class="avgtitel">Wer begleitet</h3>' +
-      avRad("figur", AV_FIGUREN, "Figur wählen") + '</div>' +
-    '<div class="avgruppe"><h3 class="avgtitel">Wie sie auftritt</h3>' +
-      '<p class="ehilfe" style="margin:0 0 2px">Ändert Augen, Mund und einen Zug — dieselbe Figur, andere Laune</p>' +
-      avRad("zug", AV_ZUEGE, "Stimmung wählen") + '</div>' +
-    '<div class="avgruppe"><h3 class="avgtitel">Was sie in der Hand hält</h3>' +
-      '<p class="ehilfe" style="margin:0 0 2px">Je Bestellphase eigen — ein Café zeigt die Tasse, ein Imbiss die Pfanne</p>' +
-      AV_PHASEN.map(p =>
-        '<div class="hfeld"><span class="hbez">' + sicher(p.name) + '</span>' +
-        avRad("hand-" + p.s, AV_REQUISITEN, p.name + " — Requisite wählen") + '</div>'
-      ).join("") + '</div>';
+
+    '<article class="kbzeile" data-av="figur">' +
+      avAufKlappKopf("figur", AV_ICONS[AVATARSTAND.figur], "Wer begleitet", figurName) +
+      avKlappHuelle("figur", avRad("figur", AV_FIGUREN, "Figur wählen")) +
+    '</article>' +
+
+    '<article class="kbzeile" data-av="zug">' +
+      avAufKlappKopf("zug", AV_ICONS[AVATARSTAND.art], "Wie sie auftritt", zugName) +
+      avKlappHuelle("zug",
+        '<p class="ehilfe" style="margin:0 0 8px">Ändert Augen, Mund und einen Zug — dieselbe Figur, andere Laune</p>' +
+        avRad("zug", AV_ZUEGE, "Stimmung wählen")) +
+    '</article>' +
+
+    '<article class="kbzeile" data-av="haende">' +
+      avAufKlappKopf("haende", ICONS.hand, "Was sie in der Hand hält", haendeStand) +
+      avKlappHuelle("haende",
+        '<p class="ehilfe" style="margin:0 0 8px">Je Bestellphase eigen — ein Café zeigt die Tasse, ein Imbiss die Pfanne</p>' +
+        AV_PHASEN.map(p => {
+          const kennung = "hand-" + p.s;
+          const dingName = (AV_REQUISITEN.find(r => r.s === AVATARSTAND.haende[p.s]) || {}).name || "";
+          return '<div class="avunter" data-av="' + kennung + '">' +
+            avAufKlappKopf(kennung, AV_ICONS[AVATARSTAND.haende[p.s]], p.name, dingName) +
+            avKlappHuelle(kennung, avRad(kennung, AV_REQUISITEN, p.name + " — Requisite wählen")) +
+          '</div>';
+        }).join("")) +
+    '</article>';
 
   avVorschauZeichnen();
   $$(".avspur").forEach(avRadVerdrahten);
@@ -11094,6 +11173,7 @@ function avRadVerdrahten(spur){
       else if(gruppe === "zug") AVATARSTAND.art = wert;
       else if(gruppe.indexOf("hand-") === 0) AVATARSTAND.haende[gruppe.slice(5)] = wert;
       avVorschauZeichnen();
+      avKopfStandAktualisieren(gruppe, wert);
     }
   }
 
@@ -11150,6 +11230,16 @@ function avRadVerdrahten(spur){
 }
 
 document.addEventListener("click", e => {
+  const kopf = e.target.closest && e.target.closest("[data-av-auf]");
+  if(kopf){
+    const kennung = kopf.dataset.avAuf;
+    const nun = !AV_OFFEN.has(kennung);
+    if(nun) AV_OFFEN.add(kennung); else AV_OFFEN.delete(kennung);
+    kopf.setAttribute("aria-expanded", String(nun));
+    const klapp = document.getElementById(kopf.getAttribute("aria-controls"));
+    if(klapp) klapp.classList.toggle("offen", nun);
+    return;
+  }
   const stueck = e.target.closest && e.target.closest(".avstueck");
   if(stueck){
     const reduziert = matchMedia("(prefers-reduced-motion: reduce)").matches;

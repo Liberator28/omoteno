@@ -516,6 +516,38 @@ color:var(--kreide); -webkit-text-fill-color:var(--kreide);
 font-size:16px; -webkit-appearance:none; scroll-margin-top:96px;
 ```
 
+> **Vorfall, gemeldet vom Nutzer mit Bildschirmfoto.** Im hellen Modus
+> von admin.html waren Anmeldefeld-Fläche und eingetippter Text
+> **beide schwarz** — nichts vom Geschriebenen war zu lesen. Die
+> Basisregel für Eingabefelder griff nur bei
+> `input[type=text],input[type=number],textarea,select`; `type=email`,
+> `type=password`, `type=date` und `type=tel` fielen auf Chromes
+> eigene Feldfarbe zurück, und die folgt dem **Gerät**, nicht der
+> Wahl auf der Seite — bei dunklem System blieb die Fläche dunkel,
+> obwohl `body.hell` gesetzt war.
+>
+> Zwei Schichten wurden nötig, und der Gegenbeweis zeigte: **beide
+> unabhängig ausreichend**, keine davon totes Gewicht. Erst mit BEIDEN
+> zurückgenommen (in einem `git worktree`, §8.1k) sprang der Kontrast
+> auf 1,63 — einzeln zurückgenommen blieb er grün, weil die jeweils
+> andere Schicht in Chromium schon reichte:
+>
+> 1. Die Basisregel um `input[type=email],[type=password],[type=date],
+>    [type=tel]` erweitert, mit derselben `color`/
+>    `-webkit-text-fill-color`/`font-size:16px`-Reihe.
+> 2. `document.documentElement.style.colorScheme` bei jedem Umschalten
+>    (`lichtAnwenden()`/`einstAnwenden()`) auf `"light"`/`"dark"`
+>    nachgezogen — das ist die eigentliche Ursache: Ohne diese
+>    Laufzeit-Angabe bleibt `color-scheme` beim ersten, statisch
+>    gesetzten Wert stehen (§5.2c), und der Browser richtet seine
+>    NATIVEN Formularfarben danach, nicht nach `body.hell`.
+>
+> **Ehrliche Grenze:** Safaris eigentliche Eigenart — `color` wird
+> ignoriert, nur `-webkit-text-fill-color` zählt — lässt sich in
+> diesem (Chromium-basierten) Testumfeld nicht auslösen. Die Probe
+> beweist, dass beide Schichten stehen und zusammen den gemeldeten
+> Fall schließen, nicht, dass jede einzeln in jedem Browser trägt.
+
 ### 3.6 Beschriftung über die Bedienung, nicht daneben
 
 > **Vorfall.** Beschriftung, Regler und Wert standen in einer
@@ -1260,6 +1292,43 @@ Browserrahmen, den er verstecken könnte. Er prüft die
 Fullscreen-API und das Verhalten der Seite, nicht Chrome am Tresen.
 Der Escape-Fall bleibt ungeprüft — deshalb hängt nichts daran.
 
+### 8.1o Ein leerer Anfangszustand vor dem ersten Laden sieht aus wie ein Fehler
+
+> **Vorfall, gemeldet vom Nutzer mit Bildschirmfoto.** „Figur des
+> Hauses" im Board zeigte nichts — leer. `AVATARSTAND` stand als
+> `let AVATARSTAND = null;` bis zum ersten `avStandLaden()`, und
+> `avZeichnen()` bricht mit `if(!AVATARSTAND) return;` sofort ab.
+> Isoliert nachgestellt lief der Weg fehlerfrei durch — der genaue
+> Auslöser (Race, alter Zwischenspeicher, ein Aufruf, der ausblieb)
+> ließ sich nicht abschließend fassen. Behoben wurde die **Wirkung**:
+> ein nie-`null`-Vorgabewert (`{ figur: AV_FIGUREN[0].s, art:
+> "freundlich", haende:{…} }`), den `avAusZeile()` beim ersten
+> richtigen Laden ohnehin ersetzt.
+>
+> Zugleich der zweite Wunsch aus derselben Meldung: „übersichtlich und
+> ausklappbar, was für Gesten oder Gegenstände sie wann halten".
+> `avZeichnen()` wurde von einer flachen Liste (`.avgruppe`) auf drei
+> zugeklappte Zeilen umgebaut (`.kbzeile`/`avAufKlappKopf`/
+> `avKlappHuelle` — dasselbe Baumuster wie der Kachel-Baukasten, nicht
+> neu erfunden), die Hände-Zeile mit drei `.avunter`-Unterzeilen, eine
+> je Bestellphase. Das Rad darin (`.avspur`/`.avstueck`) blieb
+> unverändert. `pruefungen/pruef-figur-board.js` erwartete noch die
+> alte flache Struktur (`#avListe .avgruppe`) — Gegenbeweis in einem
+> `git worktree` (§8.1k) mit dem alten Assertion-Code hätte grün
+> gemeldet, obwohl das Board unbedienbar wäre: genau der Fehlschluss
+> aus §8.1a, nur diesmal in der Prüfung selbst. Die Prüfung wurde auf
+> die neue Struktur umgeschrieben — inklusive eines echten Tipps auf
+> `[data-av-auf]`, wie es der Kachel-Baukasten schon vormacht, denn
+> zugeklappt hat ein Rad keine Höhe und ist mit dem Finger nicht
+> erreichbar (Tapflächen-Messung also erst NACH dem Öffnen).
+
+Ein Vorgabewert schließt die Symptom-Lücke sofort — er entbindet
+nicht davon, die eigentliche Ursache zu suchen, wenn sie sich fassen
+lässt. Und: Wer die Zeichenfunktion eines geteilten Board-Bausteins
+umbaut, muss jede Prüfung, die dessen alte CSS-Klassen im Namen trägt,
+mitziehen — sonst prüft sie ab sofort eine Struktur, die es nicht mehr
+gibt, und meldet trotzdem grün.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1290,7 +1359,7 @@ Dazu je nach Änderung:
 | **"Marke gestalten" im Board, Entwurfslink-Bridge** | `pruefungen/pruef-marke.js` — Rundlauf und die echte Naht: die im Board erzeugte Adresse wirklich im echten `marken-studio.html` geöffnet |
 | Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
 | Figur des Hauses, Requisiten, Bestellpass | `pruefungen/pruef-figur.js` (braucht `dist/`) |
-| **Figur/Stimmung/Requisiten wählbar im Admin-Board** | `pruefungen/pruef-figur-board.js` (braucht `dist/`) — Zweite Quelle gegen AVATAR_FIGUREN/AVATAR_ZUEGE/E_REQUISITEN und ZUGNAMEN, Bedienung im Board, Vorrang hub_avatar vor Markenblatt, stiller Rückfall bei unbekanntem Wert — im Board UND im Hub selbst |
+| **Figur/Stimmung/Requisiten wählbar im Admin-Board, ausklappbare Zeilen** | `pruefungen/pruef-figur-board.js` (braucht `dist/`) — Zweite Quelle gegen AVATAR_FIGUREN/AVATAR_ZUEGE/E_REQUISITEN und ZUGNAMEN, drei zugeklappte Zeilen (Figur/Stimmung/Hände mit drei Unterzeilen je Phase), jede beginnt zu, echter Tipp auf den Kopf öffnet sie wirklich, Rad im Board erst nach dem Öffnen bedient, Vorrang hub_avatar vor Markenblatt, stiller Rückfall bei unbekanntem Wert — im Board UND im Hub selbst |
 | Texte im Hub, Sprachen | `pruefungen/pruef-sprache.js` |
 | **Irgendein Text, den ein Gast liest** | `pruefungen/pruef-uebersetzung.js` (braucht `dist/`) — zweite Quelle, jede Sprache am gemalten Bild, Anrede, und der Weg aus dem Board |
 | Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |
@@ -1302,7 +1371,7 @@ Dazu je nach Änderung:
 | **Kopfband-Schmuck (Guss/Laternen), neue Markenblatt-Varianten am Kopf** | `pruefungen/pruef-kopfband.js` (braucht `dist/`) — welches Band sichtbar ist je Haus, reduzierte Bewegung |
 | **Zierrat (Bambus/Tuschekleckse/Pfingstrose), neue Markenblatt-Stile** | `pruefungen/pruef-zierrat.js` (braucht `dist/`) — nur beim gewählten Haus sichtbar, kein Leck in andere Häuser, kein horizontales Überlaufen bei mehreren Breiten, Tag/Abend |
 | **Thema (feste Neueinfärbung eines einzelnen Hauses, z. B. "kaiserlich")** | `pruefungen/pruef-thema.js` (braucht `dist/`) — Schalter gesetzt, Rahmen/Knopf-Stil und Kopf-Schrift wirklich da, kein Leck in andere Häuser |
-| **Helle Fassung von Board und Küche, gewählte Zustände** | `pruefungen/pruef-hell.js` — jedes Bedienelement (auch in versteckten Blättern) ohne schwarze, unbunte Fläche im Hellen; gewählte Zustände Schrift ≥ 4,5:1 und vom Nachbarn unterscheidbar; Gegenfall dunkel. Voraussetzung wird selbst geprüft (gewählte Stufe unter einer Bestellung, Spur und Einstellungen der Küche über die echten Griffe) |
+| **Helle Fassung von Board und Küche, gewählte Zustände, Anmeldung im Hellen** | `pruefungen/pruef-hell.js` — jedes Bedienelement (auch in versteckten Blättern) ohne schwarze, unbunte Fläche im Hellen; gewählte Zustände Schrift ≥ 4,5:1 und vom Nachbarn unterscheidbar; Gegenfall dunkel. Voraussetzung wird selbst geprüft (gewählte Stufe unter einer Bestellung, Spur und Einstellungen der Küche über die echten Griffe); dazu `#tor` (Anmeldung) bei HELLER Wahl UND dunklem Gerät (`colorScheme:"dark"` im Kontext) — Kontrast jedes Feldes, `color-scheme` folgt der Wahl statt dem Gerät, `-webkit-text-fill-color` ausdrücklich gesetzt |
 | **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
 | Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
 | Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
