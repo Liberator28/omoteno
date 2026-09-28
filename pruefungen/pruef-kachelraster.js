@@ -347,6 +347,84 @@ const MESSEN = () => {
     pruef(t.breite === "" && t.roh === undefined, breite + " px: mit dem FINGER zurück auf ganz → wieder Vorgabe, nichts extra gespeichert", JSON.stringify(t));
     pruef(t.gerollt <= 2, breite + " px: beim Ziehen rollt die Seite nicht mit", t.gerollt + " px");
 
+    /* ── Umsortieren per langem Druck auf den Namen, innerhalb der
+       eigenen Gruppe ────────────────────────────────────────────── */
+    const ziehReihenfolge = async (sch, zielSch, finger) => {
+      /* scrollIntoView UND das Maß in ZWEI Aufrufen, mit Warten
+         dazwischen — html hat scroll-behavior:smooth (Zeile 433), ein
+         Maß im selben Durchgang träfe die Kachel noch mitten im
+         Rollen (Bewegungs-Skill §9). */
+      await p.evaluate(s => document.querySelector('#kbAnordnung [data-kbr="' + s + '"] [data-kbr-auf]').scrollIntoView({ block:"center" }), sch);
+      await p.waitForTimeout(150);
+      const start = await p.evaluate(s => {
+        const el = document.querySelector('#kbAnordnung [data-kbr="' + s + '"] [data-kbr-auf]');
+        const r = el.getBoundingClientRect(); return { x:r.left + r.width / 2, y:r.top + r.height / 2 };
+      }, sch);
+      const ziel = await p.evaluate(s => {
+        const r = document.querySelector('#kbAnordnung [data-kbr="' + s + '"]').getBoundingClientRect();
+        return { x:r.left + r.width / 2, y:r.top + r.height / 2 };
+      }, zielSch);
+      if(finger){
+        const cdp = await ctx.newCDPSession(p);
+        const tt = (type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y, id:1 }] });
+        await tt("touchStart", start.x, start.y);
+        await p.waitForTimeout(230); /* über die 180-ms-Schwelle, OHNE Bewegung — sonst gilt es als Wisch */
+        for(let i = 1; i <= 8; i++){ await tt("touchMove", start.x + (ziel.x - start.x) * i / 8, start.y + (ziel.y - start.y) * i / 8); await p.waitForTimeout(16); }
+        await tt("touchEnd", ziel.x, ziel.y);
+      }else{
+        await p.mouse.move(start.x, start.y);
+        await p.mouse.down();
+        await p.waitForTimeout(230);
+        await p.mouse.move(ziel.x, ziel.y, { steps:8 });
+        await p.waitForTimeout(80);
+        await p.mouse.up();
+      }
+      await p.waitForTimeout(250);
+      return p.evaluate(() => KACHELSTAND.map(k => k.schluessel));
+    };
+    const reihenfolgeVorher = await p.evaluate(() => KACHELSTAND.map(k => k.schluessel));
+    const reihenfolgeNachher = await ziehReihenfolge("getraenke", "cocktails", breite === 390);
+    pruef(reihenfolgeVorher.indexOf("getraenke") < reihenfolgeVorher.indexOf("cocktails") &&
+      reihenfolgeNachher.indexOf("getraenke") > reihenfolgeNachher.indexOf("cocktails"),
+      breite + " px: langer Druck (" + (breite === 390 ? "Finger" : "Maus") + ") zieht „Getränke“ hinter „Cocktails“",
+      reihenfolgeVorher.slice(0, 3).join(",") + " → " + reihenfolgeNachher.slice(0, 3).join(","));
+    const offenNachZug = await p.evaluate(() => document.querySelector('[data-kb="getraenke"] [data-kb-auf]').getAttribute("aria-expanded"));
+    pruef(offenNachZug === "false", breite + " px: nach einem echten Zug öffnen sich NICHT zusätzlich die Einstellungen", offenNachZug);
+
+    /* Über die eigene Gruppe hinaus gezogen: bleibt drin. „Cocktails“
+       (jetzt letzte Kachel der Gruppe „Die Karte“) weit in Richtung
+       der nächsten Gruppe gezogen — sie darf „Die Karte“ nie verlassen,
+       weil jede Gruppe ihr eigenes .kbr-gitter ist. */
+    const weitGezogen = await ziehReihenfolge("cocktails", "tischruf", false);
+    const dieKarte = ["speisekarte", "getraenke", "cocktails"];
+    pruef(weitGezogen.slice(0, 3).slice().sort().join(",") === dieKarte.slice().sort().join(",") &&
+      weitGezogen.indexOf("cocktails") < 3,
+      breite + " px: Ziehen über die Gruppengrenze hinaus bleibt in der eigenen Gruppe (kein Sprung zu „Jetzt am Tisch“)",
+      weitGezogen.slice(0, 5).join(","));
+
+    /* ── Zugänglicher Zweitweg: Pfeil-Knöpfe, an den Gruppengrenzen
+       deaktiviert — „Danke sagen“ hat nur eine Kachel (trinkgeld):
+       oben UND unten deaktiviert, unabhängig davon, was sonst gezogen
+       wurde. „Kontakt“ ist die letzte der unberührten Gruppe „Für
+       Ihren nächsten Besuch“. ────────────────────────────────────── */
+    const grenzen = await p.evaluate(() => ({
+      trinkgeldHoch:   document.querySelector('[data-kb="trinkgeld"] [data-kb-hoch]').disabled,
+      trinkgeldRunter: document.querySelector('[data-kb="trinkgeld"] [data-kb-runter]').disabled,
+      kontaktRunter:   document.querySelector('[data-kb="kontakt"] [data-kb-runter]').disabled,
+      kontaktHoch:     document.querySelector('[data-kb="kontakt"] [data-kb-hoch]').disabled
+    }));
+    pruef(grenzen.trinkgeldHoch && grenzen.trinkgeldRunter,
+      breite + " px: einzige Kachel ihrer Gruppe – beide Pfeile deaktiviert", JSON.stringify(grenzen));
+    pruef(grenzen.kontaktRunter && !grenzen.kontaktHoch,
+      breite + " px: letzte Kachel der Gruppe – „nach unten“ deaktiviert, „nach oben“ nicht", JSON.stringify(grenzen));
+    const vorPfeil = await p.evaluate(() => KACHELSTAND.map(k => k.schluessel));
+    await p.click('[data-kb="kontakt"] [data-kb-hoch]');
+    await p.waitForTimeout(150);
+    const nachPfeil = await p.evaluate(() => KACHELSTAND.map(k => k.schluessel));
+    pruef(nachPfeil.indexOf("kontakt") === vorPfeil.indexOf("kontakt") - 1,
+      breite + " px: „nach oben“ tauscht mit dem Nachbarn in der eigenen Gruppe",
+      vorPfeil.join(",") + " → " + nachPfeil.join(","));
+
     /* Pfeiltasten am Griff. */
     await p.focus('#kbAnordnung [data-kbr="kontakt"] [data-kbr-griff]');
     await p.keyboard.press("ArrowRight");
@@ -377,6 +455,52 @@ const MESSEN = () => {
     pruef(w.offen === "true", breite + " px: die Zeile bleibt beim Neuzeichnen offen");
     pruef(w.verh === 1 && w.verhFl === 3.6, breite + " px: Zuschnitt folgt der Bildform (rund 1:1, füllend ganz 3,6:1)", w.verh + " / " + w.verhFl);
     pruef(!fehler.length, breite + " px: keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
+  /* ── 7b · Umsortieren mit prefers-reduced-motion ─────────────────
+     Kein Zwischenschritt beim Nachrücken, aber die Endposition muss
+     trotzdem stimmen — und am Ende darf kein inline-transform hängen
+     bleiben (§8.1: kein Zustand, der nicht zurückgesetzt wurde). */
+  console.log("\n══ Kacheln: Umsortieren mit prefers-reduced-motion ══");
+  {
+    const ctx = await br.newContext({ viewport:{ width:390, height:900 } });
+    const p = await ctx.newPage();
+    const fehler = [];
+    p.on("pageerror", e => fehler.push(String(e).slice(0, 160)));
+    await p.emulateMedia({ reducedMotion:"reduce" });
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.addInitScript(() => { Element.prototype.requestFullscreen = () => Promise.resolve(); });
+    await p.goto("file://" + path.join(OBEN, "seiten", "admin.html"));
+    await p.waitForTimeout(800);
+    await p.evaluate(() => { document.getElementById("tor").hidden = true; demoStarten(); zeichneAlles();
+      const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("startseite");
+      kbAusZeile([]); kbZeichnen(); });
+    await p.waitForTimeout(400);
+    /* scrollIntoView und das Maß in zwei Aufrufen mit Warten dazwischen
+       (Bewegungs-Skill §9, wie oben bei ziehReihenfolge) — sonst zeigt
+       das Maß eine Stelle, an der die Kachel (noch) nicht steht. */
+    await p.evaluate(() => document.querySelector('#kbAnordnung [data-kbr="getraenke"] [data-kbr-auf]').scrollIntoView({ block:"center" }));
+    await p.waitForTimeout(150);
+    const start = await p.evaluate(() => { const el = document.querySelector('#kbAnordnung [data-kbr="getraenke"] [data-kbr-auf]');
+      const r = el.getBoundingClientRect(); return { x:r.left + r.width / 2, y:r.top + r.height / 2 }; });
+    const ziel = await p.evaluate(() => { const r = document.querySelector('#kbAnordnung [data-kbr="cocktails"]').getBoundingClientRect();
+      return { x:r.left + r.width / 2, y:r.top + r.height / 2 }; });
+    await p.mouse.move(start.x, start.y);
+    await p.mouse.down();
+    await p.waitForTimeout(230);
+    await p.mouse.move(ziel.x, ziel.y, { steps:8 });
+    await p.waitForTimeout(80);
+    await p.mouse.up();
+    await p.waitForTimeout(250);
+    const nach = await p.evaluate(() => ({
+      reihe: KACHELSTAND.map(k => k.schluessel),
+      transform: [...document.querySelectorAll("#kbAnordnung [data-kbr]")].every(el => !el.style.transform && !el.style.transition)
+    }));
+    pruef(nach.reihe.indexOf("getraenke") > nach.reihe.indexOf("cocktails"),
+      "prefers-reduced-motion: Endposition stimmt trotzdem (kein Zwischenschritt nötig)", nach.reihe.slice(0, 3).join(","));
+    pruef(nach.transform, "prefers-reduced-motion: kein liegen gebliebenes transform/transition an den Nachbarn");
+    pruef(!fehler.length, "prefers-reduced-motion: keine Laufzeitfehler", fehler[0] || "still");
     await ctx.close();
   }
 
