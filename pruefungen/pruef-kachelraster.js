@@ -583,6 +583,61 @@ const MESSEN = () => {
     await ctx.close();
   }
 
+  /* ── Symbol-Anordnung: eigener Schalter, unabhängig von der Breite ──
+     VORFALL (Bildschirmfoto): "Uns bewerten" und "WLAN verbinden"
+     landeten nur durch die Rest-Zeilen-Streckung/gewählte Breite im
+     Säulen-Layout (Symbol über dem Text) — ein Zufall, keine Wahl.
+     symbolLage macht es zu einem eigenen Feld: "neben" erzwingt die
+     Reihen-Klasse auch bei einer Kachel, die rechnerisch eine Säule
+     wäre; "oben" erzwingt die Säule auch bei einer, die rechnerisch
+     breit würde. Getestet gegen den ECHTEN erzeugten Hub, nicht nur
+     gegen die isolierte kachelReihen()-Rechnung von oben. */
+  console.log("\n══ Symbol-Anordnung: eigener Schalter (Vorfall aus dem Bildschirmfoto) ══");
+  {
+    /* Drei "drittel"-Kacheln derselben Gruppe füllen eine Reihe exakt
+       (2+2+2=6) — ohne Rest-Streckung bleibt jede rechnerisch eine
+       Säule (spalten=2). Eine davon bekommt symbolLage:"neben". */
+    const { p, ctx, fehler } = await hubAuf(br, "chocolamour", 390, liste([
+      { schluessel:"speisekarte", breite:"drittel" },
+      { schluessel:"getraenke",   breite:"drittel", symbolLage:"neben" },
+      { schluessel:"cocktails",   breite:"drittel" }
+    ]));
+    const karten = await p.evaluate(() => [...document.querySelectorAll("a.kachel")].map(a => ({
+      s: a.dataset.kachel, spalten: +a.dataset.spalten, klassen: a.className
+    })));
+    const speisekarte = karten.find(k => k.s === "speisekarte");
+    const getraenke   = karten.find(k => k.s === "getraenke");
+    const cocktails   = karten.find(k => k.s === "cocktails");
+    pruef(!!speisekarte && speisekarte.spalten === 2 && /\bsaeule\b/.test(speisekarte.klassen),
+      "Voraussetzung: ohne eigene Wahl bleibt eine 'drittel'-Kachel rechnerisch eine Säule",
+      speisekarte && JSON.stringify({ spalten:speisekarte.spalten, klassen:speisekarte.klassen }));
+    pruef(!!getraenke && getraenke.spalten === 2 && !/\bsaeule\b/.test(getraenke.klassen) && /\bkhalb\b/.test(getraenke.klassen),
+      "symbolLage:'neben' erzwingt die Reihen-Klasse, OBWOHL die Breite (2 Spalten) rechnerisch eine Säule wäre",
+      getraenke && JSON.stringify({ spalten:getraenke.spalten, klassen:getraenke.klassen }));
+    pruef(!!cocktails && cocktails.spalten === 2 && /\bsaeule\b/.test(cocktails.klassen),
+      "…die dritte, unveränderte Kachel bleibt bei der alten (Säulen-)Anordnung — nur die gewählte weicht ab",
+      cocktails && JSON.stringify({ spalten:cocktails.spalten, klassen:cocktails.klassen }));
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+  {
+    /* Umgekehrt: eine Kachel allein in ihrer Gruppe wird rechnerisch
+       "voll" (6 Spalten, Reihen-Layout mit Unterzeile) — symbolLage:
+       "oben" erzwingt trotzdem die Säule. */
+    const { p, ctx, fehler } = await hubAuf(br, "chocolamour", 390, liste([
+      { schluessel:"wlan", symbolLage:"oben" }
+    ]));
+    const karte = await p.evaluate(() => {
+      const a = document.querySelector('a.kachel[data-kachel="wlan"]');
+      return a ? { spalten:+a.dataset.spalten, klassen:a.className } : null;
+    });
+    pruef(!!karte && karte.spalten === 6 && /\bsaeule\b/.test(karte.klassen),
+      "symbolLage:'oben' erzwingt die Säule, OBWOHL die Kachel allein rechnerisch ganz breit (6 Spalten) würde",
+      karte && JSON.stringify(karte));
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
   await br.close();
   console.log("\n" + (f ? f + " von " + n + " Fehler." : n + " von " + n + " ok\nAlles sauber."));
   process.exit(f ? 1 : 0);

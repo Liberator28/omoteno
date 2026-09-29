@@ -10422,7 +10422,12 @@ function kbAusZeile(roh){
          Hub; was nicht darauf steht, ist die Vorgabe. */
       breite:   ["drittel","halb","voll"].includes(e.breite) ? e.breite : "",
       bildform: ["seite","flaeche","rund"].includes(e.bildform) ? e.bildform : "",
-      grund:    /^#[0-9a-f]{6}$/i.test(String(e.grund || "")) ? String(e.grund).toUpperCase() : ""
+      grund:    /^#[0-9a-f]{6}$/i.test(String(e.grund || "")) ? String(e.grund).toUpperCase() : "",
+      /* Ob das Symbol über oder neben dem Text steht — bisher ein
+         Zufall der berechneten Breite (zwei Kacheln landeten nur
+         durch die Rest-Zeilen-Streckung im Säulen-Layout, ohne dass
+         es je gewollt war). "" = Vorgabe (unverändertes Verhalten). */
+      symbolLage: ["oben","neben"].includes(e.symbolLage) ? e.symbolLage : ""
     };
   });
 }
@@ -10433,6 +10438,11 @@ function kbBreiteVorgabe(p){ return p.form === "saeule" ? "drittel" : p.form ===
 function kbBreite(k){ return k.breite || kbBreiteVorgabe(kbPlan(k.schluessel) || {}); }
 const KB_BREITENNAME = { drittel:"Drittel", halb:"Hälfte", voll:"Ganz" };
 const KB_BILDFORMNAME = { seite:"Neben dem Text", flaeche:"Füllend", rund:"Rund" };
+/* Ob das Symbol über oder neben dem Titel steht — bisher ein Zufall
+   der berechneten Breite, jetzt eine eigene Wahl je Kachel
+   (Plan-Text Block E). "auto" = unverändertes, breiten-abgeleitetes
+   Verhalten, wie es jeder Bestandskunde heute schon sieht. */
+const KB_SYMBOLLAGENAME = { auto:"Automatisch", oben:"Über dem Titel", neben:"Neben dem Titel" };
 /* Farben zur Wahl: zuerst die des Hauses (Markenblatt), dann ein paar
    ruhige Vorschläge. Die Schrift darauf rechnet der Hub (kachelTinte). */
 const KB_FARBEN = ["#A83A2E", "#2F5D50", "#C9A227", "#1E3A8A", "#F2E8D5", "#1B1B1B"];
@@ -10539,6 +10549,7 @@ function kbZusammenfassung(k){
   if(k.banner) teile.push("Bild " + KB_BILDFORMNAME[k.bildform || "seite"].toLowerCase());
   if(k.grund) teile.push("eigene Farbe");
   if(k.iconAus) teile.push("ohne Symbol");
+  if(k.symbolLage) teile.push("Symbol " + KB_SYMBOLLAGENAME[k.symbolLage].toLowerCase());
   return teile.join(" · ");
 }
 function kbSegment(name, werte, jetzt, fuer, namen){
@@ -10598,6 +10609,9 @@ function kbZeichnen(){
       '<div class="kbwahlblock"><span class="kbwahlname">Breite</span>' +
         kbSegment("Breite", ["drittel","halb","voll"], kbBreite(k), "kb-breite", KB_BREITENNAME) +
         '<small class="kbhinweis">Steht eine Kachel allein in ihrer Reihe, zieht sie sich von selbst breit.</small></div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Symbol</span>' +
+        kbSegment("Symbol", ["auto","oben","neben"], k.symbolLage || "auto", "kb-symbollage", KB_SYMBOLLAGENAME) +
+        '<small class="kbhinweis">Automatisch richtet sich nach der Breite. „Über"/„Neben dem Titel" gilt unabhängig davon.</small></div>' +
       '<div class="kbwahlblock"><span class="kbwahlname">Farbe</span><div class="kbfarben">' +
         '<button type="button" class="kbfarbe keine" data-kb-grund="" aria-pressed="' + !k.grund + '">Keine</button>' +
         farben.map(c => '<button type="button" class="kbfarbe" data-kb-grund="' + c + '" aria-pressed="' + (k.grund === c) + '"' +
@@ -10680,6 +10694,8 @@ document.addEventListener("click", e => {
   if(br){ kbAendern(sch, "breite", br.dataset.kbBreite === kbBreiteVorgabe(kbPlan(sch) || {}) ? "" : br.dataset.kbBreite); return; }
   const bf = e.target.closest("[data-kb-bildform]");
   if(bf){ kbAendern(sch, "bildform", bf.dataset.kbBildform === "seite" ? "" : bf.dataset.kbBildform); return; }
+  const sl = e.target.closest("[data-kb-symbollage]");
+  if(sl){ kbAendern(sch, "symbolLage", sl.dataset.kbSymbollage === "auto" ? "" : sl.dataset.kbSymbollage); return; }
   const gr = e.target.closest("[data-kb-grund]");
   if(gr){ kbAendern(sch, "grund", gr.dataset.kbGrund); return; }
 
@@ -11168,6 +11184,7 @@ function kbRoh(){
     if(k.breite && k.breite !== kbBreiteVorgabe(v)) e.breite = k.breite;
     if(k.bildform && k.bildform !== "seite")        e.bildform = k.bildform;
     if(k.grund)                     e.grund  = k.grund;
+    if(k.symbolLage)                e.symbolLage = k.symbolLage;
     return e;
   });
 }

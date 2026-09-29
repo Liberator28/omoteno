@@ -4690,7 +4690,7 @@ const KACHELFOLGE = ["speisekarte","getraenke","cocktails",
    andere aus dem Markenblatt wird ignoriert, nicht übernommen. */
 const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
                         "farbe","von","bis","neu","cyan","banner","iconAus",
-                        "breite","bildform","grund"];
+                        "breite","bildform","grund","symbolLage"];
 
 /* Was aus hub_kacheln kommt, geht UNGEPRÜFT an kachelBauen — eine
    Live-Spalte, die das Team schreibt. raster, stil und farbe landeten
@@ -4698,11 +4698,12 @@ const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
    darin hätte ein eigenes Attribut aufgemacht). Jetzt je Feld eine
    feste Liste; was nicht darauf steht, fällt still auf die Vorgabe. */
 const KACHEL_WERTE = {
-  raster:   ["saeulen", "zwei"],
-  stil:     ["saeule"],
-  farbe:    ["rot", "gold", "pistazie"],
-  breite:   ["drittel", "halb", "voll"],
-  bildform: ["seite", "flaeche", "rund"]
+  raster:     ["saeulen", "zwei"],
+  stil:       ["saeule"],
+  farbe:      ["rot", "gold", "pistazie"],
+  breite:     ["drittel", "halb", "voll"],
+  bildform:   ["seite", "flaeche", "rund"],
+  symbolLage: ["oben", "neben"]
 };
 
 function kachelBauen(schluessel, wunsch){
@@ -4731,7 +4732,7 @@ function kachelBauen(schluessel, wunsch){
   });
   Object.keys(KACHEL_WERTE).forEach(f => {
     if(k[f] !== undefined && k[f] !== "" && !KACHEL_WERTE[f].includes(k[f]))
-      k[f] = f === "breite" || f === "bildform" ? "" : (art[f] || "");
+      k[f] = f === "breite" || f === "bildform" || f === "symbolLage" ? "" : (art[f] || "");
   });
   /* Eigene Farbe der Kachel: nur #RRGGBB. */
   k.grund = /^#[0-9a-f]{6}$/i.test(String(k.grund || "")) ? String(k.grund) : "";
@@ -9419,6 +9420,18 @@ function start(){
            t("Schauen Sie später noch einmal vorbei.") + '</div>';
   }
 
+  /* Ob das Symbol ÜBER dem Text steht (Säule) oder DANEBEN (Reihe)
+     folgte bisher rein der berechneten Breite — ein Zufall, kein
+     Schalter (CLAUDE.md-Vorfall: zwei Kacheln ohne Foto landeten nur
+     durch die Rest-Zeilen-Streckung auf zwei Spalten und damit im
+     Säulen-Layout, ohne dass das je gewollt war). `symbolLage` macht
+     es zu einer eigenen, unabhängigen Wahl je Kachel — "auto" ist die
+     Vorgabe und verhält sich BYTEGLEICH wie vorher, damit kein
+     Bestandskunde ungefragt eine andere Anordnung bekommt. */
+  const symbolOben = x => x.k.symbolLage === "oben" ? true
+    : x.k.symbolLage === "neben" ? false
+    : x.form === "saeule";
+
   const kachelHTML = x => {
     const k = x.k;
     /* EINMAL auflösen, nicht dreimal: Ein Ziel darf eine Funktion
@@ -9428,10 +9441,23 @@ function start(){
        ein Feld, das der WIRT füllt — dort darf kein javascript:
        und kein data: hinein (dieselbe Sorgfalt wie bei hs()). */
     const banner = /^https:\/\//i.test(String(k.banner || "")) ? k.banner : "";
-    const form = x.form, bildform = banner ? (k.bildform || "seite") : "";
+    const oben = symbolOben(x);
+    const bildform = banner ? (k.bildform || "seite") : "";
     /* Rund: Das Foto nimmt den Platz des Symbols ein. */
     const ohneIco = k.iconAus === true || bildform === "rund";
-    return '<a class="kachel' + (form === "saeule" ? " saeule" : form === "halb" ? " khalb" : "") +
+    /* Bei erzwungener Säule bleibt die Größenklasse "saeule" (kompakt,
+       ohne Unterzeile). Bei erzwungener Reihe wird IMMER die
+       kompakte "khalb"-Stilklasse genommen, nie die große
+       "voll"-Reihe mit sichtbarer Unterzeile — sonst würde eine
+       eigentlich schmale Kachel (z. B. zwei Spalten) plötzlich mit
+       großer Schrift und Unterzeile in einen viel zu engen Platz
+       gepresst. Nur im unveränderten "auto"-Fall bestimmt weiter die
+       echte Breite (x.form), ob "khalb" oder gar keine Zusatzklasse
+       (voll) zutrifft. */
+    const klasse = oben ? "saeule"
+      : k.symbolLage === "neben" ? "khalb"
+      : x.form === "halb" ? "khalb" : "";
+    return '<a class="kachel' + (klasse ? " " + klasse : "") +
       (k.cyan ? " cyan" : "") + (banner ? " hatbanner bild-" + bildform : "") +
       (k.grund ? " hatgrund" : "") + (ohneIco && !banner ? " ohneico" : "") + '"' +
       ' data-kachel="' + hs(k.schluessel || "") + '"' +
@@ -9488,7 +9514,7 @@ function start(){
   bereiche.forEach(b => {
     const reihen = kachelReihen(b.kacheln), alle = [].concat(...reihen);
     html += '<div class="bereich">' + hs(t(b.gruppe).toUpperCase()) + '</div>' +
-            '<div class="gitter kraster' + (alle.some(x => x.form === "saeule") ? " mitsaeulen" : "") + '">' +
+            '<div class="gitter kraster' + (alle.some(symbolOben) ? " mitsaeulen" : "") + '">' +
             alle.map(kachelHTML).join("") + '</div>';
   });
   return html;
