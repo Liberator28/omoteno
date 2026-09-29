@@ -5322,8 +5322,21 @@ function bannerZiel(b){
   if(b.zielTyp === "seite" && BANNER_SEITEN.indexOf(b.zielWert) >= 0){
     return { attr:"", href:"#/" + b.zielWert };
   }
-  if(b.zielTyp === "url" && /^https:\/\//i.test(String(b.zielWert || ""))){
-    return { attr:' target="_blank" rel="noopener"', href:b.zielWert };
+  if(b.zielTyp === "url"){
+    /* Wer eine Adresse eintippt, tippt kein Protokoll dazu — "beispiel.de"
+       ist der Normalfall, nicht die Ausnahme, und im Board erzwang nichts
+       das https://. Fehlt es GANZ, wird es ergänzt; trägt der Wert ein
+       ANDERES Protokoll (javascript:, http:, data:), bleibt die bisherige
+       strikte Prüfung bestehen — das war die bewusste Absicherung. Ohne
+       das hier speicherte das Board klaglos, und die Kachel wurde im Hub
+       lautlos zu einem unklickbaren <div> (§8.1h: ein Fehler, der stumm
+       bleibt, wird nicht gemeldet). */
+    const roh = String(b.zielWert || "").trim();
+    if(roh){
+      const wert = /^[a-z][a-z0-9+.-]*:/i.test(roh) ? roh : "https://" + roh;
+      if(/^https:\/\//i.test(wert)) return { attr:' target="_blank" rel="noopener"', href:wert };
+    }
+    return null;
   }
   if(b.zielTyp === "aktion" && b.zielWert){
     const a = aktionen.find(x => x.id === b.zielWert);
@@ -5347,6 +5360,10 @@ function bannerRadHTML(){
     }
     return "<" + tag + ' class="bnkarte" data-bn="' + i + '"' +
       ' data-bnid="' + hs(String(b.id || "")) + '"' +
+      /* Ohne Ziel bleibt die Karte ein <div> — für die Live-Vorschau im
+         Board (vorschauMessen) sonst nicht von einer echten Karte zu
+         unterscheiden (§8.1h: .bnkarte sieht als div/a optisch gleich aus). */
+      (!ziel ? ' data-bn-kaputt="1"' : "") +
       /* Nur zwei erlaubte Werte — die Spalte ist live und ungeprüft. */
       (b.ausrichtung === "mitte" ? ' data-ausrichtung="mitte"' : "") +
       (tag === "button" ? ' type="button"' : "") +
@@ -14371,7 +14388,8 @@ function vorschauMessen(){
     claim: ab($("claim")),
     banner: [...document.querySelectorAll(".bnkarte")].map(k => ({
       id: k.getAttribute("data-bnid") || "",
-      titel: ab(k.querySelector(".bntxt b")), text: ab(k.querySelector(".bntxt span")) })),
+      titel: ab(k.querySelector(".bntxt b")), text: ab(k.querySelector(".bntxt span")),
+      kaputt: k.hasAttribute("data-bn-kaputt") })),
     kacheln: [...document.querySelectorAll("a.kachel")].map(k => {
       const sp = k.querySelector(".txt > span");
       return { s: k.getAttribute("data-kachel") || "",

@@ -103,9 +103,15 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
   pruef(vorschau && vorschau.vorschauFlag, "der Hub weiß, dass er Vorschau ist");
   pruef(vorschau && vorschau.klick === "none", "die kleine Seite ist nicht bedienbar", vorschau && vorschau.klick);
 
-  /* Ein Banner mit Bild anlegen — ohne https-Bild zeigt der Hub keins. */
+  /* Ein Banner mit Bild anlegen — ohne https-Bild zeigt der Hub keins.
+     Ziel gleich mitgeben: Ein Banner OHNE Ziel ist jetzt selbst schon
+     ein eigener Warnfall (unten geprüft) — der träfe hier sonst IMMER
+     zu (bnNeu() startet mit zielTyp:"seite", zielWert:"") und würde
+     die Kürzungswarnung nicht ersetzen (beide stehen jetzt gemeinsam),
+     aber /gekürzt/ soll hier isoliert gemessen werden. */
   await p.evaluate(() => { bnNeu(); const b = BANNERSTAND[BANNERSTAND.length - 1];
-    bnAendern(b.id, "bild", "https://bild.test/banner.svg"); });
+    bnAendern(b.id, "bild", "https://bild.test/banner.svg");
+    bnAendern(b.id, "zielWert", "speisekarte"); });
   await p.waitForTimeout(200);
   const bnFeld = await p.$('#bnListe .bnzeile:last-child [data-bn-titel]');
   pruef(!!bnFeld, "das Titelfeld des neuen Banners steht da (Voraussetzung)");
@@ -135,6 +141,44 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
     const warn2 = await p.evaluate(() => document.querySelector('#bnListe .bnzeile:last-child .hvwarn').textContent);
     pruef(warn2 === "", "kurzer Titel: kein Hinweis", warn2 || "leer");
   }
+
+  /* ── Ziel ohne Protokoll: darf NICHT als „kein gültiges Ziel“
+     gemeldet werden (das war der eigentliche Fehlerbericht — ein
+     Gast konnte auf ein Banner ohne https:// nicht tippen, und der
+     Betreiber sah beim Testen im Board nichts davon, weil .bnkarte
+     als <div> optisch gleich aussieht wie als <a>, CLAUDE.md §8.1h).
+     bnAendern setzt zielTyp/zielWert genauso wie ein echter Klick auf
+     die Segmente — kein Umweg über das <select>, das der Bedienung
+     bereits pruef-board.js prüft. */
+  await p.evaluate(() => {
+    const b = BANNERSTAND[BANNERSTAND.length - 1];
+    bnAendern(b.id, "zielTyp", "url");
+    bnAendern(b.id, "zielWert", "beispiel.de");
+  });
+  await p.waitForTimeout(700);
+  const warnOhneProtokoll = await p.evaluate(() =>
+    document.querySelector('#bnListe .bnzeile:last-child .hvwarn').textContent);
+  pruef(warnOhneProtokoll === "", "Adresse ohne Protokoll (der Normalfall): kein Warnhinweis", warnOhneProtokoll || "leer");
+  const hrefOhneProtokoll = await imRahmen("startseite",
+    `const k = [...document.querySelectorAll(".bnkarte")].pop(); return k ? { tag:k.tagName, href:k.getAttribute("href") } : null;`);
+  pruef(hrefOhneProtokoll && hrefOhneProtokoll.tag === "A" && hrefOhneProtokoll.href === "https://beispiel.de",
+    "…und die Karte im Rahmen ist wirklich ein klickbarer Link", JSON.stringify(hrefOhneProtokoll));
+
+  /* Gegenfall: ein Ziel, das sich wirklich nicht auflöst (leer),
+     MUSS die neue Warnung zeigen — sonst wäre der obige grüne Fall
+     nur Zufall, weil die Prüfung gar nichts hätte finden können
+     (§8.1g). */
+  await p.evaluate(() => {
+    const b = BANNERSTAND[BANNERSTAND.length - 1];
+    bnAendern(b.id, "zielWert", "");
+  });
+  await p.waitForTimeout(700);
+  const warnLeeresZiel = await p.evaluate(() =>
+    document.querySelector('#bnListe .bnzeile:last-child .hvwarn').textContent);
+  pruef(/kein gültiges Ziel/.test(warnLeeresZiel), "leeres Ziel: die neue Warnung steht unter dem Feld", warnLeeresZiel || "leer");
+  const hrefLeeresZiel = await imRahmen("startseite",
+    `const k = [...document.querySelectorAll(".bnkarte")].pop(); return k ? k.tagName : null;`);
+  pruef(hrefLeeresZiel === "DIV", "…und die Karte im Rahmen ist wirklich nicht antippbar", hrefLeeresZiel);
 
   /* ── Umbruch: ausgewogen, eigene Zeilen, Ausrichtung ──
      VORFALL 26.09. (Bildschirmfoto): „Probier gerne unsere / neuen

@@ -120,6 +120,33 @@ async function boardPruefen() {
   pruef(rundlauf[4].zielTyp === "seite", "unbekannter zielTyp fällt still auf 'seite' zurück (kein Absturz)", rundlauf[4].zielTyp);
   pruef(rundlauf[5].bild === "", "javascript:-Bild wird verworfen (nur https:// erlaubt)", JSON.stringify(rundlauf[5].bild));
 
+  /* VORFALL: Ein Betreiber tippt "beispiel.de" ins Adressfeld (der
+     Normalfall — niemand tippt von sich aus "https://"), das Board
+     speicherte das klaglos, und die Kachel wurde im Hub lautlos zu
+     einem unklickbaren <div> (CLAUDE.md §8.1h). bnRoh() normalisiert
+     seitdem beim Speichern selbst, damit das GESPEICHERTE schon
+     sauber ist — nicht nur die Anzeige im Hub (bannerZiel()). */
+  const normalisiert = await seite.evaluate(() => {
+    bnAusZeile([
+      { id:"u1", an:true, bild:"https://x/a.jpg", zielTyp:"url", zielWert:"beispiel.de" },
+      { id:"u2", an:true, bild:"https://x/b.jpg", zielTyp:"url", zielWert:"  www.beispiel.de  " },
+      { id:"u3", an:true, bild:"https://x/c.jpg", zielTyp:"url", zielWert:"https://schon-gut.de" },
+      { id:"u4", an:true, bild:"https://x/d.jpg", zielTyp:"url", zielWert:"javascript:alert(1)" },
+      { id:"u5", an:true, bild:"https://x/e.jpg", zielTyp:"url", zielWert:"http://unverschluesselt.de" },
+      { id:"u6", an:true, bild:"https://x/f.jpg", zielTyp:"url", zielWert:"" },
+      { id:"u7", an:true, bild:"https://x/g.jpg", zielTyp:"seite", zielWert:"speisekarte" },
+    ]);
+    return bnRoh().map(b => ({ id:b.id, zielWert:b.zielWert }));
+  });
+  const vonId = id => (normalisiert.find(b => b.id === id) || {}).zielWert;
+  pruef(vonId("u1") === "https://beispiel.de", "bnRoh() ergänzt https:// bei fehlendem Protokoll", vonId("u1"));
+  pruef(vonId("u2") === "https://www.beispiel.de", "…auch getrimmt und mit www.", vonId("u2"));
+  pruef(vonId("u3") === "https://schon-gut.de", "ein bereits vollständiger https-Wert bleibt unverändert", vonId("u3"));
+  pruef(vonId("u4") === "javascript:alert(1)", "ein ANDERES Protokoll (javascript:) wird NICHT umgeschrieben — bleibt ein „kein Ziel“-Fall", vonId("u4"));
+  pruef(vonId("u5") === "http://unverschluesselt.de", "explizites http:// wird ebenfalls nicht angefasst — bleibt abgelehnt", vonId("u5"));
+  pruef(vonId("u6") === "", "ein leerer Wert bleibt leer (kein \"https://\" aus dem Nichts)", JSON.stringify(vonId("u6")));
+  pruef(vonId("u7") === "speisekarte", "die Normalisierung fasst nur zielTyp=url an, nicht 'seite'", vonId("u7"));
+
   /* Anlegen, Umsortieren, Löschen. */
   const bedienung = await seite.evaluate(() => {
     bnAusZeile([]);
@@ -337,6 +364,44 @@ async function hubPruefen() {
 
   pruef(konsole.length === 0, "keine Ausnahme auf dem ganzen Weg", konsole.join(" | ") || "still");
   await browser.close();
+
+  /* ── VORFALL: url-Ziel ohne Protokoll blieb unklickbar ──────────
+     bannerZiel() akzeptierte bisher NUR einen Wert, der exakt mit
+     "https://" begann. Ein Betreiber tippt aber "beispiel.de" — der
+     Normalfall, niemand tippt von sich aus das Protokoll — und die
+     Karte wurde lautlos zu einem <div> ohne href (§8.1h). Gegen den
+     echten erzeugten Hub, nicht nur gegen bannerZiel() isoliert. */
+  console.log("\n══ Gast-Hub · url-Ziel: mit/ohne Protokoll ══");
+  const URL_BANNER = [
+    { id:"p1", an:true, bild:"https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800",
+      titel:"ohne Protokoll", text:"", farbe:"", zielTyp:"url", zielWert:"beispiel.de", reihenfolge:0 },
+    { id:"p2", an:true, bild:"https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800",
+      titel:"www ohne Protokoll", text:"", farbe:"", zielTyp:"url", zielWert:"www.beispiel.de", reihenfolge:1 },
+    { id:"p3", an:true, bild:"https://images.unsplash.com/photo-1504674900247-0877df9cc836?w=800",
+      titel:"schon https", text:"", farbe:"", zielTyp:"url", zielWert:"https://schon-gut.de", reihenfolge:2 },
+    { id:"p4", an:true, bild:"https://images.unsplash.com/photo-1551024601-bec78aea704b?w=800",
+      titel:"javascript bleibt abgelehnt", text:"", farbe:"", zielTyp:"url", zielWert:"javascript:alert(1)", reihenfolge:3 },
+    { id:"p5", an:true, bild:"https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=800",
+      titel:"leeres Ziel", text:"", farbe:"", zielTyp:"url", zielWert:"", reihenfolge:4 },
+  ];
+  const { browser: b3, seite: s3, konsole: k3 } = await geoeffnet(URL_BANNER, []);
+  const urlKarten = await s3.evaluate(() => [...document.querySelectorAll("#bnSpur .bnkarte")].map(k => ({
+    tag: k.tagName, href: k.getAttribute("href"), kaputt: k.hasAttribute("data-bn-kaputt") })));
+  pruef(urlKarten.length === 5, "alle fünf url-Banner erscheinen im Rad", urlKarten.length);
+  if (urlKarten.length === 5) {
+    pruef(urlKarten[0].tag === "A" && urlKarten[0].href === "https://beispiel.de" && !urlKarten[0].kaputt,
+      "ohne Protokoll: https:// ergänzt, klickbar", JSON.stringify(urlKarten[0]));
+    pruef(urlKarten[1].tag === "A" && urlKarten[1].href === "https://www.beispiel.de" && !urlKarten[1].kaputt,
+      "www ohne Protokoll: ebenso klickbar", JSON.stringify(urlKarten[1]));
+    pruef(urlKarten[2].tag === "A" && urlKarten[2].href === "https://schon-gut.de",
+      "schon vollständig: unverändert klickbar", JSON.stringify(urlKarten[2]));
+    pruef(urlKarten[3].tag === "DIV" && urlKarten[3].kaputt,
+      "javascript:… bleibt abgelehnt — sichtbar, aber NICHT klickbar", JSON.stringify(urlKarten[3]));
+    pruef(urlKarten[4].tag === "DIV" && urlKarten[4].kaputt,
+      "leeres Ziel bleibt ebenso unklickbar", JSON.stringify(urlKarten[4]));
+  }
+  pruef(k3.length === 0, "keine Ausnahme auf dem ganzen Weg", k3.join(" | ") || "still");
+  await b3.close();
 
   /* Breite (Auftrag: „Der Banner kann ruhig breiter sein, die Seiten
      sollen voll aussehen"). Vorher 87 % der Innenbreite — bei 360 px

@@ -9907,10 +9907,17 @@ function hvWarnungen(schl, m){
       const id = el.getAttribute("data-hvwarn").slice(3);
       const b = (m.banner || []).find(x => x.id === id);
       const t = b && b.titel, u = b && b.text;
-      el.textContent =
-        t && u ? "Beim Gast werden Titel und Unterzeile nach drei Zeilen mit „…“ gekürzt." :
-        t      ? "Beim Gast wird der Titel nach drei Zeilen mit „…“ gekürzt." :
-        u      ? "Beim Gast wird die Unterzeile nach drei Zeilen mit „…“ gekürzt." : "";
+      /* Zwei unabhängige Warnungen, die beide zutreffen können — ein
+         zu langer Titel UND ein totes Ziel sind zwei verschiedene
+         Fehler, keiner ersetzt den anderen (CLAUDE.md §8.1h: ein
+         Fehler, der von einem anderen verdeckt wird, bleibt genauso
+         stumm wie einer, der nie gemeldet wird). */
+      const saetze = [];
+      if(b && b.kaputt) saetze.push("Dieses Banner hat noch kein gültiges Ziel — Gäste können nicht darauf tippen.");
+      if(t && u) saetze.push("Beim Gast werden Titel und Unterzeile nach drei Zeilen mit „…“ gekürzt.");
+      else if(t) saetze.push("Beim Gast wird der Titel nach drei Zeilen mit „…“ gekürzt.");
+      else if(u) saetze.push("Beim Gast wird die Unterzeile nach drei Zeilen mit „…“ gekürzt.");
+      el.textContent = saetze.join(" ");
     });
     $$('[data-hvwarn^="kb:"]').forEach(el => {
       const s = el.getAttribute("data-hvwarn").slice(3);
@@ -11758,8 +11765,12 @@ function bnZielFeldHTML(b){
       '</select></label>';
   }
   if(b.zielTyp === "url"){
-    return '<label><span>Adresse (https://…)</span>' +
-      '<input type="url" data-bn-zielwert placeholder="https://…" value="' + sicher(b.zielWert) + '"></label>';
+    /* type="text" statt type="url": Ein Wert ohne Protokoll (der
+       Normalfall — niemand tippt "https://" von sich aus) ist jetzt
+       ausdrücklich erlaubt (bnUrlNormalisiert, bnRoh) und soll nicht an
+       der eingebauten URL-Validierung des Browsers hängenbleiben. */
+    return '<label><span>Adresse</span>' +
+      '<input type="text" data-bn-zielwert placeholder="beispiel.de" value="' + sicher(b.zielWert) + '"></label>';
   }
   if(b.zielTyp === "aktion"){
     const laufend = aktionen.filter(a => a.aktiv);
@@ -11935,7 +11946,7 @@ document.addEventListener("input", e => {
   bnGeaendert = true;
   if(e.target.matches("[data-bn-titel]")) b.titel = e.target.value;
   if(e.target.matches("[data-bn-text]"))  b.text  = e.target.value;
-  if(e.target.matches("[data-bn-zielwert]") && e.target.matches('input[type="url"]')) b.zielWert = e.target.value;
+  if(e.target.matches("[data-bn-zielwert]") && e.target.matches("input")) b.zielWert = e.target.value;
   const schau = zeile.querySelector(".kbschau");
   if(schau) schau.outerHTML =
     '<div class="kbschau' + (b.ausrichtung === "mitte" ? " mitte" : "") + '">' +
@@ -12069,9 +12080,21 @@ $("#bnZoom").oninput = e => {
 };
 
 /* ── Sichern ───────────────────────────────────────────────────── */
-/* Was in hub_banner geht — für „Übernehmen“ und die Live-Vorschau. */
+/* Dieselbe Normalisierung wie bannerZiel() in hub.vorlage.html: fehlt
+   bei einer URL jedes Protokoll, wird https:// ergänzt — damit ist
+   schon das GESPEICHERTE sauber, nicht nur die Anzeige (CLAUDE.md
+   §8.1h, Block A). Ein anderes Protokoll (javascript:, http:, data:)
+   bleibt unverändert stehen und damit weiterhin ein „kein Ziel"-Fall. */
+function bnUrlNormalisiert(wert){
+  const roh = String(wert || "").trim();
+  if(!roh) return roh;
+  return /^[a-z][a-z0-9+.-]*:/i.test(roh) ? roh : "https://" + roh;
+}
+
+/* Was in hub_banner geht — für „Übernehmen" und die Live-Vorschau. */
 function bnRoh(){
-  return BANNERSTAND.map((b, i) => Object.assign({}, b, { reihenfolge:i }));
+  return BANNERSTAND.map((b, i) => Object.assign({}, b, { reihenfolge:i },
+    b.zielTyp === "url" ? { zielWert: bnUrlNormalisiert(b.zielWert) } : {}));
 }
 
 async function bnSichern(){
