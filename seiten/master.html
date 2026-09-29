@@ -474,6 +474,28 @@ button{
 .stand.s-gewonnen{background:rgba(127,207,166,.24); color:#B7E9CF; border:1px solid rgba(127,207,166,.5);}
 .stand.s-abgesagt{background:rgba(255,255,255,.04); color:var(--text-faint); border:1px solid var(--stroke);}
 
+/* ---------- Zugänge ----------
+   Wer im System angemeldet ist, für welchen Betrieb, mit welcher
+   Rolle und welchem Sperrstand — automatisch aus master_zugaenge()
+   (migration-pin.sql), nicht von Hand gepflegt. Dieselbe .stand-
+   Badgesprache wie bei den Anfragen, drei weitere Zustände. */
+.zugang{
+  padding:16px 20px; margin-bottom:10px;
+  display:flex; align-items:center; gap:14px; flex-wrap:wrap;
+  animation:rise .45s var(--ease) backwards;
+}
+.z-main{flex:1; min-width:160px;}
+.z-betrieb{
+  font-family:var(--font-display); font-weight:700; font-size:15px;
+  letter-spacing:-.01em; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+}
+.z-mail{font-size:12.5px; color:var(--text-dim); margin-top:2px; overflow-wrap:anywhere;}
+.z-meta{font-size:11px; color:var(--text-faint); margin-top:5px; font-family:var(--font-mono);}
+.stand.s-aktiv{background:rgba(127,207,166,.12); color:var(--sage); border:1px solid rgba(127,207,166,.30);}
+.stand.s-master{background:rgba(240,168,104,.16); color:var(--amber-hot); border:1px solid rgba(240,168,104,.40);}
+.stand.s-gesperrt{background:rgba(255,106,94,.16); color:var(--alert); border:1px solid rgba(255,106,94,.40);}
+.stand.s-unbestaetigt{background:rgba(255,255,255,.05); color:var(--text-faint); border:1px solid var(--stroke);}
+
 /* Umschalter „erledigte zeigen" in der Abschnittszeile */
 .section-label button.mini{
   background:transparent; border:1px solid var(--stroke); border-radius:999px;
@@ -752,6 +774,9 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
 
   <p class="section-label">Betriebe<span class="rechts" id="aktivNote">—</span></p>
   <div id="betriebeListe"></div>
+
+  <p class="section-label">Zugänge<span class="rechts" id="zugaengeNote">—</span></p>
+  <div id="zugaengeListe"></div>
 
   <div id="diagBox" class="card hidden"></div>
 
@@ -1300,7 +1325,7 @@ function pinSchirm(rufen, s){
      RAW hält 30 Tage Rohdaten. Alle Ansichten werden daraus
      berechnet, ohne neue Abfrage.
      ============================================================ */
-  var RAW = { betriebe:[], bestellungen:[], rufe:[], umsaetze:[], anfragen:[] };
+  var RAW = { betriebe:[], bestellungen:[], rufe:[], umsaetze:[], anfragen:[], zugaenge:[] };
   var STATE = { range:'heute', betriebe:[], ersterLauf:true, zeigeErledigte:false };
 
   function pruefeAuthFehler(msg){
@@ -1324,16 +1349,19 @@ function pinSchirm(rufen, s){
       ladeBestellungen(seit),
       ladeServicerufe(),
       ladeUmsaetze(tagKey(seit)),
-      ladeAnfragen()
+      ladeAnfragen(),
+      ladeZugaenge()
     ]).then(function(res){
       RAW.betriebe     = res[0];
       RAW.bestellungen = res[1];
       RAW.rufe         = res[2];
       RAW.umsaetze     = res[3];
       RAW.anfragen     = res[4];
+      RAW.zugaenge     = res[5];
       console.log(LOG,'Rohdaten:',{
         betriebe:RAW.betriebe.length, bestellungen:RAW.bestellungen.length,
-        rufe:RAW.rufe.length, umsaetze:RAW.umsaetze.length, anfragen:RAW.anfragen.length
+        rufe:RAW.rufe.length, umsaetze:RAW.umsaetze.length, anfragen:RAW.anfragen.length,
+        zugaenge:RAW.zugaenge.length
       });
       STATE.ersterLauf = false;
       berechneUndZeichne();
@@ -1505,6 +1533,34 @@ function pinSchirm(rufen, s){
       });
   }
 
+  /* Wer im System angemeldet ist: Betrieb, Rolle, letzter Login,
+     PIN-/Login-Sperre, Master-Status — komplett aus master_zugaenge()
+     (migration-pin.sql). Die Funktion prüft ist_master() selbst und
+     liefert einer Nicht-Master-Sitzung eine leere Tabelle zurück, kein
+     Fehler — hier gibt es also nichts zusätzlich abzusichern, nur
+     ehrlich anzuzeigen, wenn die Migration noch fehlt. */
+  function ladeZugaenge(){
+    return sb.rpc('master_zugaenge').then(function(res){
+      if(res.error){
+        console.log(LOG,'FEHLER master_zugaenge:',res.error.message);
+        /* 42883 = Funktion existiert nicht. Kein Absturz — heißt, dass
+           migration-pin.sql auf diesem Projekt noch nicht lief. */
+        DIAG.zugaenge = (res.error.code === '42883' || /does not exist/i.test(res.error.message))
+          ? 'Funktion fehlt — migration-pin.sql noch nicht ausgeführt'
+          : 'FEHLER: ' + res.error.message;
+        pruefeAuthFehler(res.error.message);
+        return [];
+      }
+      var rows = res.data || [];
+      DIAG.zugaenge = rows.length + ' Zeilen';
+      return rows;
+    }).catch(function(e){
+      console.log(LOG,'FEHLER ladeZugaenge:',e);
+      DIAG.zugaenge = 'FEHLER: ' + (e && e.message ? e.message : 'unbekannt');
+      return [];
+    });
+  }
+
   /* ============================================================
      6.6 BERECHNUNG + RENDERING
      ============================================================ */
@@ -1564,6 +1620,7 @@ function pinSchirm(rufen, s){
     renderChart();
     renderAnfragen();
     renderListe();
+    renderZugaenge();
     $('standNote').textContent = 'Stand ' + uhr.format(new Date()) + ' Uhr';
   }
 
@@ -1681,6 +1738,63 @@ function pinSchirm(rufen, s){
           '</div>' +
           '<div class="b-foot">' + zeitText(b.letzteAktion) + '<span class="' + pillK + '">' + pillT + '</span></div>' +
         '</div>';
+      box.appendChild(el);
+    });
+  }
+
+  /* ============================================================
+     6.5b ZUGÄNGE — wer angemeldet ist, für wen, mit welcher Rolle
+     Nutzerwunsch 29.09.: „ich möchte sehen, sobald jemand im System
+     registriert ist … Betrieb, E-Mail … automatisch im Master Hub".
+     Ganz aus master_zugaenge() (migration-pin.sql) — die Funktion war
+     schon fertig und serverseitig abgesichert, nur von keiner Seite
+     aufgerufen.
+     ============================================================ */
+  function zugStatus(z){
+    if(z.login_gesperrt) return { txt:'Gesperrt', cls:'s-gesperrt' };
+    if(z.pin_gesperrt)   return { txt:'PIN gesperrt', cls:'s-gesperrt' };
+    if(!z.bestaetigt)    return { txt:'Nicht bestätigt', cls:'s-unbestaetigt' };
+    if(z.ist_master)     return { txt:'Master', cls:'s-master' };
+    return { txt:'Aktiv', cls:'s-aktiv' };
+  }
+
+  function renderZugaenge(){
+    var box = $('zugaengeListe'); if(!box) return;
+    var alle = RAW.zugaenge || [];
+    $('zugaengeNote').textContent = alle.length ? (alle.length + (alle.length === 1 ? ' Konto' : ' Konten')) : '—';
+
+    if(!alle.length){
+      box.innerHTML = '<div class="card empty">' +
+        (DIAG.zugaenge && String(DIAG.zugaenge).indexOf('Funktion fehlt') === 0
+          ? 'Die Zugänge-Übersicht gibt es noch nicht.<br>Führ <b>migration-pin.sql</b> im SQL-Editor aus.'
+          : 'Noch kein angemeldetes Konto.') +
+        '</div>';
+      return;
+    }
+
+    /* Gesperrte zuerst — genau die Zeilen, die ein Eingreifen brauchen
+       könnten, nicht unten in der alphabetischen Liste versteckt. */
+    var sortiert = alle.slice().sort(function(a,b){
+      if(!!a.login_gesperrt !== !!b.login_gesperrt) return a.login_gesperrt ? -1 : 1;
+      if(!!a.pin_gesperrt !== !!b.pin_gesperrt) return a.pin_gesperrt ? -1 : 1;
+      return (a.betrieb_name||'').localeCompare(b.betrieb_name||'','de') ||
+             (a.email||'').localeCompare(b.email||'','de');
+    });
+
+    box.innerHTML = '';
+    sortiert.forEach(function(z,i){
+      var st = zugStatus(z);
+      var rolle = z.rolle ? z.rolle.charAt(0).toUpperCase() + z.rolle.slice(1) : '—';
+      var el = document.createElement('div');
+      el.className = 'card zugang';
+      el.style.animationDelay = (i*40) + 'ms';
+      el.innerHTML =
+        '<div class="z-main">' +
+          '<h2 class="z-betrieb">' + esc(z.betrieb_name || '— ohne Betrieb —') + '</h2>' +
+          '<div class="z-mail">' + esc(z.email || '—') + '</div>' +
+          '<div class="z-meta">' + esc(rolle) + ' &middot; ' + esc(zeitText(z.zuletzt)) + '</div>' +
+        '</div>' +
+        '<span class="stand ' + st.cls + '">' + esc(st.txt) + '</span>';
       box.appendChild(el);
     });
   }
@@ -1956,6 +2070,7 @@ function pinSchirm(rufen, s){
 
   function skeleton(){
     $('betriebeListe').innerHTML = '<div class="card skeleton"></div><div class="card skeleton"></div>';
+    $('zugaengeListe').innerHTML = '<div class="card skeleton"></div>';
   }
 
   /* ============================================================
