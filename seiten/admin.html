@@ -2251,7 +2251,6 @@ textarea{resize:vertical;min-height:66px}
 .eu-bild .eu-rahmen{fill:var(--flaeche);stroke:var(--linie);stroke-width:1.5}
 .eu-bild .eu-fuell{fill:currentColor;opacity:.8}
 .eu-bild .eu-linie{stroke:var(--gedaempft);stroke-width:2;stroke-linecap:round}
-.eu-bild .eu-farbe{fill:var(--linie);stroke:var(--flaeche);stroke-width:2}
 .eu-bild .eu-punkt{fill:currentColor}
 .eu-bild .eu-punkt.gut{fill:var(--gut)}
 .eu-bild .eu-punkt.warn{fill:var(--warn)}
@@ -3380,37 +3379,6 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <button class="knopf leise" id="hubTexteZurueck">Auf Vorgabe zurück</button>
       </div>
       <div class="epruefung" id="hubTextePruefung"></div>
-    </div>
-
-    <!-- ══ MARKE GESTALTEN ══
-         Bisher ging das nur über konto.html: Marken-Studio öffnen,
-         "Entwurf verschicken" tippen, den Link von Hand ins Konto
-         einsetzen. Zwei Handgriffe, eine andere Seite, ein Login
-         mehr. Hier derselbe Weg direkt im Board — der Knopf oeffnet
-         das Studio mit dem GESPEICHERTEN Stand vorausgefuellt (falls
-         vorhanden), und derselbe Einsetzen-Weg wie im Konto speichert
-         zurueck in betriebe.markenblatt. Das Marken-Studio selbst
-         bleibt unveraendert: ein eigenstaendiges, anmeldefreies
-         Werkzeug, das seinen ganzen Stand in der Adresse traegt
-         (siehe dessen eigene entwurfsAdresse()/entwurfLesen()) — hier
-         wird nur derselbe Weg wiederverwendet, den konto.html schon
-         hat, nicht neu erfunden. -->
-    <div class="egruppe">
-      <h2 class="etitel">Marke gestalten</h2>
-      <div class="ezeile senkrecht">
-        <span><b>Farben, Schrift, Figur</b><i>Öffnet das Marken-Studio mit dem
-          zuletzt gespeicherten Stand, in einem neuen Fenster</i></span>
-        <div class="eknoepfe">
-          <button type="button" class="knopf leise" id="markeOeffnen">Im Marken-Studio öffnen</button>
-        </div>
-      </div>
-      <label><span class="lname">Entwurfslink aus dem Marken-Studio</span>
-        <input type="text" id="markeLink" placeholder="https://omoteno.de/marken-studio.html#m=…"
-               spellcheck="false" autocapitalize="off"></label>
-      <div class="eknoepfe">
-        <button class="knopf" id="markeSpeichern">Markenblatt übernehmen</button>
-      </div>
-      <div class="epruefung" id="markeMeldung"></div>
     </div>
 
     <div class="egruppe">
@@ -7030,7 +6998,6 @@ $("#t-einstellungen").addEventListener("change", e => {
 const EU_SYMBOL = {
   glocke: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   blase:  '<path d="M4 6h16v10H9l-5 4z"/><path d="M8 10h8M8 13h5"/>',
-  pinsel: '<path d="M14 4l6 6-8 8-6-6z"/><path d="M6 12l-2 8 8-2"/>',
   roller: '<circle cx="6.5" cy="17" r="2.5"/><circle cx="17.5" cy="17" r="2.5"/><path d="M9 17h6l3-7h-4M6.5 14.5L9 9h4"/>',
   brief:  '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 8l9 6 9-6"/>',
   karte:  '<path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M13 7v10" stroke-dasharray="2 2"/>',
@@ -7062,15 +7029,6 @@ const EU_BEREICHE = [
     stand:() => (HUBTEXTE.claim || "").trim() ? "„" + (HUBTEXTE.claim.trim().length > 26 ? HUBTEXTE.claim.trim().slice(0, 25) + "…" : HUBTEXTE.claim.trim()) + "“" : "Vorgaben des Hauses",
     bild:() => '<rect class="eu-rahmen" x="14" y="2" width="28" height="44" rx="5"/><rect class="eu-fuell" x="17" y="6" width="22" height="9" rx="2"/>' +
       '<path class="eu-linie" d="M19 20h18M19 25h13M19 30h16"/>' },
-  { titel:"Marke gestalten", sym:"pinsel", ton:"var(--reservierung)",
-    satz:"Farben, Schrift und Figur im Marken-Studio",
-    stand:() => { const b = meineBetriebe.find(x => x.id === betriebId); return b && b.markenblatt ? "Eigene Marke hinterlegt" : "Noch kein Markenblatt"; },
-    bild:() => {
-      const b = meineBetriebe.find(x => x.id === betriebId);
-      const f = (b && b.markenblatt && b.markenblatt.farben) || {};
-      const farben = [f.akzent, f.akzent2, f.band].map(c => /^#[0-9a-f]{3,8}$/i.test(c || "") ? c : null);
-      return [0,1,2].map(i => '<circle cx="' + (12 + i * 14) + '" cy="24" r="9" class="eu-farbe"' +
-        (farben[i] ? ' style="fill:' + farben[i] + '"' : '') + '/>').join(""); } },
   { titel:"Lieferung", sym:"roller", ton:"var(--lieferung)",
     satz:"Ob, wohin, wann und zu welchen Kosten Sie liefern",
     stand:() => { const plz = ($("#lfPlz") ? $("#lfPlz").value : "").split(/[,\s]+/).filter(x => /^\d{5}$/.test(x)).length;
@@ -12223,130 +12181,6 @@ if($("#hubTexteSichern")){
     hubSchauZeichnen();
     $("#hubTextePruefung").textContent =
       "Felder geleert. Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
-  };
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   MARKE GESTALTEN — derselbe Weg wie konto.html, nur ohne Seitenwechsel
-
-   Das Marken-Studio traegt seinen ganzen Stand in der Adresse
-   (#m=…, base64) — kein Login, keine Datenbank auf seiner Seite. Der
-   Rueckweg (Entwurfslink einsetzen → betriebe.markenblatt speichern)
-   ist wortgleich aus konto.html uebernommen, NICHT neu erfunden —
-   §1.1: ein zweiter, abweichender Entschluesseler waere ein zweiter
-   Ort, an dem derselbe Fehler getrennt entstehen kann.
-   ═══════════════════════════════════════════════════════════════ */
-function markeAusBase64(kurz){
-  let t = String(kurz).replace(/-/g,"+").replace(/_/g,"/");
-  while(t.length % 4) t += "=";
-  const roh = atob(t), bytes = new Uint8Array(roh.length);
-  for(let i=0;i<roh.length;i++) bytes[i] = roh.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
-}
-function markeNachBase64(text){
-  const bytes = new TextEncoder().encode(text);
-  let roh = "";
-  bytes.forEach(b => { roh += String.fromCharCode(b); });
-  return btoa(roh).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-}
-const MARKE_BEREICH_FOLGE = ["speisekarte","getraenke","cocktails","reservierung",
-                             "tischruf","musikwunsch","quiz","trinkgeld"];
-function markeAusEntwurf(link){
-  const t = String(link).match(/[#&]m=([^&\s]+)/);
-  if(!t) return null;
-  const k = JSON.parse(markeAusBase64(t[1]));
-  if(!k.f || !k.o) return null;
-
-  const bereiche = {};
-  const reihe = (Array.isArray(k.r) && k.r.length ? k.r : MARKE_BEREICH_FOLGE)
-    .filter(x => MARKE_BEREICH_FOLGE.indexOf(x) >= 0);
-  MARKE_BEREICH_FOLGE.forEach(x => { if(reihe.indexOf(x) < 0) reihe.push(x); });
-  reihe.forEach((x,i) => { bereiche[x] = !!(k.e && k.e[i]); });
-
-  return {
-    version: 1,
-    betrieb: { name:(k.b&&k.b[0])||"", claim:(k.b&&k.b[1])||"",
-               begruessung:(k.b&&k.b[2])||"" },
-    farben: k.f,
-    abend:  k.a || {an:false},
-    form:   k.o,
-    schrift:k.s || {kopf:"system", text:"system", groesse:1},
-    logo:   { art:"text", text:(k.b&&k.b[0])||"", bild:"", hoehe:30 },
-    bereiche: bereiche,
-    reihe: reihe
-  };
-}
-/* Die Gegenrichtung — vom gespeicherten Markenblatt zurueck in dieselbe
-   #m=-Form, damit das Studio mit dem aktuellen Stand aufgeht, statt
-   mit seinen eigenen Vorgaben. Figur/Kacheln/eigene Saetze (v/k/d/x)
-   fehlen hier bewusst: Der Weg ueber konto.html hat sie nie
-   gespeichert (siehe ausEntwurf() dort), es gibt also nichts
-   Vorhandenes, das verloren gehen koennte — das Studio faellt dafuer
-   auf seine eigenen Vorgaben zurueck, wie bei jedem aelteren Link. */
-function markeEntwurfsAdresse(mb){
-  const reihe = Array.isArray(mb.reihe) ? mb.reihe : MARKE_BEREICH_FOLGE;
-  const knapp = {
-    b: [(mb.betrieb && mb.betrieb.name) || "",
-        (mb.betrieb && mb.betrieb.claim) || "",
-        (mb.betrieb && mb.betrieb.begruessung) || ""],
-    f: mb.farben, a: mb.abend, o: mb.form, s: mb.schrift,
-    r: reihe, e: reihe.map(k => (mb.bereiche && mb.bereiche[k]) ? 1 : 0)
-  };
-  return location.origin + "/marken-studio.html#m=" + markeNachBase64(JSON.stringify(knapp));
-}
-
-if($("#markeOeffnen")){
-  $("#markeOeffnen").onclick = () => {
-    const b = meineBetriebe.find(x => x.id === betriebId);
-    const mb = b && b.markenblatt;
-    const ziel = mb
-      ? markeEntwurfsAdresse(mb)
-      : location.origin + "/marken-studio.html";
-    window.open(ziel, "_blank", "noopener");
-  };
-
-  $("#markeSpeichern").onclick = async () => {
-    const raus = $("#markeMeldung");
-    const roh = $("#markeLink").value.trim();
-    raus.textContent = "";
-    if(!roh){ raus.textContent = "Bitte den Entwurfslink einsetzen."; return; }
-
-    let mb;
-    try{
-      mb = markeAusEntwurf(roh);
-      if(!mb) throw new Error("unvollständig");
-    }catch(e){
-      raus.textContent = "Das war kein gültiger Entwurfslink. Im Marken-Studio auf " +
-        "„Entwurf verschicken\" tippen und den ganzen Link einsetzen.";
-      return;
-    }
-
-    /* Name gehoert dem Betrieb, nicht dem Entwurf — sonst koennte ein
-       eingesetzter fremder Link den eigenen Betrieb umbenennen. */
-    const b = meineBetriebe.find(x => x.id === betriebId);
-    mb.version = 1;
-    mb.betrieb = Object.assign({}, mb.betrieb, { name: b ? b.name : mb.betrieb.name });
-
-    const knopf = $("#markeSpeichern");
-    knopf.disabled = true; knopf.textContent = "Wird übernommen …";
-    if(demo || !db){
-      raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
-      knopf.disabled = false; knopf.textContent = "Markenblatt übernehmen";
-      return;
-    }
-    try{
-      const {error} = await db.from("betriebe")
-        .update({markenblatt: mb}).eq("id", betriebId);
-      if(error) throw error;
-      if(b) b.markenblatt = mb;
-      $("#markeLink").value = "";
-      raus.textContent = "Übernommen. Der Hub wird damit neu erzeugt — das dauert in der Regel weniger als einen Tag.";
-    }catch(e){
-      raus.textContent = /markenblatt/i.test(String(e && e.message))
-        ? "Die Spalte „markenblatt“ fehlt noch in der Datenbank."
-        : "Nicht gespeichert, bitte Verbindung prüfen.";
-    }
-    knopf.disabled = false; knopf.textContent = "Markenblatt übernehmen";
   };
 }
 
