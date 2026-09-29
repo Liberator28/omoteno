@@ -638,6 +638,92 @@ const MESSEN = () => {
     await ctx.close();
   }
 
+  /* ── Höhe (gestuft) und Textgröße: eine reine Mindesthöhe/-größe ──
+     "hoch"/"kompakt" skalieren die vorhandene Mindesthöhe (132/64/60px
+     je Klasse), "kein Wert" bleibt bytegleich beim alten Verhalten.
+     Textgröße ist eine geklammerte Zahl (0,8–1,4), keine feste Liste. */
+  console.log("\n══ Kachel-Höhe (gestuft) und Textgröße ══");
+  {
+    const { p, ctx, fehler } = await hubAuf(br, "chocolamour", 390, liste([
+      { schluessel:"wlan",       hoehe:"hoch",    textgroesse:1.3 },
+      { schluessel:"bewertung",  hoehe:"kompakt", textgroesse:0.85 },
+      { schluessel:"speisekarte" }
+    ]));
+    const messen = s => p.evaluate(sel => {
+      const a = document.querySelector('a.kachel[data-kachel="' + sel + '"]');
+      const st = a.querySelector(".txt strong");
+      return { minHoehe: parseFloat(getComputedStyle(a).minHeight), schrift: parseFloat(getComputedStyle(st).fontSize) };
+    }, s);
+    const wlan = await messen("wlan"), bewertung = await messen("bewertung"), speisekarte = await messen("speisekarte");
+    /* Alle drei Kacheln stehen hier ohne eigene Breite, landen also
+       alle auf "voll" (Basis-Mindesthöhe 64px, Basisschrift 14,5px). */
+    pruef(Math.abs(wlan.minHoehe - 64 * 1.35) < 1, "hoehe:'hoch' skaliert die Mindesthöhe um ×1,35", wlan.minHoehe);
+    pruef(Math.abs(wlan.schrift - 14.5 * 1.3) < .1, "textgroesse:1.3 skaliert die Schrift um ×1,3", wlan.schrift);
+    pruef(Math.abs(bewertung.minHoehe - 64 * .8) < 1, "hoehe:'kompakt' skaliert die Mindesthöhe um ×0,8", bewertung.minHoehe);
+    pruef(Math.abs(bewertung.schrift - 14.5 * .85) < .1, "textgroesse:0.85 skaliert die Schrift um ×0,85", bewertung.schrift);
+    pruef(speisekarte.minHoehe === 64 && speisekarte.schrift === 14.5,
+      "ohne eigene Wahl: bytegleich die alte Mindesthöhe/-schrift (kein Bestandskunde sieht eine Änderung)",
+      JSON.stringify(speisekarte));
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+  {
+    /* Ein zu großer/zu kleiner Wert aus der Live-Spalte wird
+       geklammert, nicht verworfen — ein Regler, der knapp daneben
+       liegt, fällt nicht gleich ganz auf die Vorgabe zurück. */
+    const { p, ctx, fehler } = await hubAuf(br, "chocolamour", 390, liste([
+      { schluessel:"wlan", textgroesse:9.9 }
+    ]));
+    const schrift = await p.evaluate(() => parseFloat(getComputedStyle(
+      document.querySelector('a.kachel[data-kachel="wlan"] .txt strong')).fontSize));
+    pruef(Math.abs(schrift - 14.5 * 1.4) < .1, "ein zu großer Wert wird auf 1,4 geklammert, nicht ignoriert", schrift);
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
+  /* ── Board: die neuen Bedienelemente sind wirklich da und schreiben
+     in denselben Stand, den kbRoh() sichert. ── */
+  console.log("\n══ Board: Höhen-Segment und Textgrößen-Regler ══");
+  {
+    const ctx = await br.newContext({ viewport:{ width:390, height:844 } });
+    const p = await ctx.newPage();
+    const fehler = [];
+    p.on("pageerror", e => fehler.push(String(e).slice(0, 200)));
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto("file://" + path.join(OBEN, "seiten", "admin.html"));
+    await p.waitForTimeout(700);
+    await p.evaluate(() => {
+      document.getElementById("tor").hidden = true;
+      demoStarten(); zeichneAlles();
+      const sc = document.getElementById("scharf"); if(sc) sc.hidden = true;
+      tafelZeigen("startseite");
+      kbAusZeile([]); kbZeichnen();
+      kbZeileOeffnen("speisekarte");
+    });
+    await p.waitForTimeout(400);
+    await p.click('[data-kb="speisekarte"] [data-kb-hoehe="hoch"]');
+    await p.evaluate(() => {
+      const inp = document.querySelector('[data-kb="speisekarte"] [data-kb-textgroesse]');
+      inp.value = 130; inp.dispatchEvent(new Event("input", { bubbles:true }));
+    });
+    await p.waitForTimeout(150);
+    const stand = await p.evaluate(() => ({
+      k: (() => { const x = KACHELSTAND.find(x => x.schluessel === "speisekarte");
+        return { hoehe:x.hoehe, textgroesse:x.textgroesse }; })(),
+      roh: kbRoh().find(e => e.schluessel === "speisekarte"),
+      hinweis: document.querySelector('[data-kb="speisekarte"] [data-kb-textgroesse-wert]').textContent,
+      aktiv: document.querySelector('[data-kb="speisekarte"] [data-kb-hoehe="hoch"]').getAttribute("aria-checked")
+    }));
+    pruef(stand.k.hoehe === "hoch", "Tipp auf „Hoch“ setzt hoehe im Stand", stand.k.hoehe);
+    pruef(stand.aktiv === "true", "…und der Segmentknopf zeigt sich als gewählt", stand.aktiv);
+    pruef(stand.k.textgroesse === 1.3, "der Regler setzt textgroesse als Bruchzahl (130 % → 1,3)", stand.k.textgroesse);
+    pruef(stand.hinweis === "130 %", "…und der Hinweis daneben zeigt den Prozentwert live mit", stand.hinweis);
+    pruef(!!stand.roh && stand.roh.hoehe === "hoch" && stand.roh.textgroesse === 1.3,
+      "beide Felder gehen mit kbRoh() (Speichern/Vorschau) mit", JSON.stringify(stand.roh));
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
   await br.close();
   console.log("\n" + (f ? f + " von " + n + " Fehler." : n + " von " + n + " ok\nAlles sauber."));
   process.exit(f ? 1 : 0);

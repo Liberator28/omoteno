@@ -10427,7 +10427,15 @@ function kbAusZeile(roh){
          Zufall der berechneten Breite (zwei Kacheln landeten nur
          durch die Rest-Zeilen-Streckung im Säulen-Layout, ohne dass
          es je gewollt war). "" = Vorgabe (unverändertes Verhalten). */
-      symbolLage: ["oben","neben"].includes(e.symbolLage) ? e.symbolLage : ""
+      symbolLage: ["oben","neben"].includes(e.symbolLage) ? e.symbolLage : "",
+      /* Höhen-Stufe, dieselben zwei Werte wie im Hub — "" = Normal. */
+      hoehe: ["kompakt","hoch"].includes(e.hoehe) ? e.hoehe : "",
+      /* Textgröße: eine Zahl aus einer Live-Spalte, geklammert statt
+         verworfen (dieselbe Grenze wie im Hub, kachelBauen). */
+      textgroesse: (() => {
+        const tg = Number(e.textgroesse);
+        return Number.isFinite(tg) && tg !== 1 ? Math.min(1.4, Math.max(.8, tg)) : "";
+      })()
     };
   });
 }
@@ -10443,6 +10451,9 @@ const KB_BILDFORMNAME = { seite:"Neben dem Text", flaeche:"Füllend", rund:"Rund
    (Plan-Text Block E). "auto" = unverändertes, breiten-abgeleitetes
    Verhalten, wie es jeder Bestandskunde heute schon sieht. */
 const KB_SYMBOLLAGENAME = { auto:"Automatisch", oben:"Über dem Titel", neben:"Neben dem Titel" };
+/* Mindesthöhe je Kachel — dieselben zwei Stufen wie KACHEL_HOEHE_SKALA
+   im Hub (§ Plan-Text Block F). */
+const KB_HOEHENAME = { kompakt:"Kompakt", normal:"Normal", hoch:"Hoch" };
 /* Farben zur Wahl: zuerst die des Hauses (Markenblatt), dann ein paar
    ruhige Vorschläge. Die Schrift darauf rechnet der Hub (kachelTinte). */
 const KB_FARBEN = ["#A83A2E", "#2F5D50", "#C9A227", "#1E3A8A", "#F2E8D5", "#1B1B1B"];
@@ -10550,6 +10561,8 @@ function kbZusammenfassung(k){
   if(k.grund) teile.push("eigene Farbe");
   if(k.iconAus) teile.push("ohne Symbol");
   if(k.symbolLage) teile.push("Symbol " + KB_SYMBOLLAGENAME[k.symbolLage].toLowerCase());
+  if(k.hoehe) teile.push(KB_HOEHENAME[k.hoehe]);
+  if(k.textgroesse) teile.push(Math.round(k.textgroesse * 100) + " % Text");
   return teile.join(" · ");
 }
 function kbSegment(name, werte, jetzt, fuer, namen){
@@ -10612,6 +10625,14 @@ function kbZeichnen(){
       '<div class="kbwahlblock"><span class="kbwahlname">Symbol</span>' +
         kbSegment("Symbol", ["auto","oben","neben"], k.symbolLage || "auto", "kb-symbollage", KB_SYMBOLLAGENAME) +
         '<small class="kbhinweis">Automatisch richtet sich nach der Breite. „Über"/„Neben dem Titel" gilt unabhängig davon.</small></div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Höhe</span>' +
+        kbSegment("Höhe", ["kompakt","normal","hoch"], k.hoehe || "normal", "kb-hoehe", KB_HOEHENAME) +
+        '<small class="kbhinweis">Wirkt nur als Mindesthöhe — ein längerer Text bleibt, so groß er ist.</small></div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Textgröße</span>' +
+        '<input type="range" class="regler" data-kb-textgroesse min="80" max="140" step="5"' +
+          ' value="' + Math.round((k.textgroesse || 1) * 100) + '"' +
+          ' aria-label="Textgröße von ' + sicher(k.titel || p.titel || sch) + '">' +
+        '<small class="kbhinweis" data-kb-textgroesse-wert>' + Math.round((k.textgroesse || 1) * 100) + ' %</small></div>' +
       '<div class="kbwahlblock"><span class="kbwahlname">Farbe</span><div class="kbfarben">' +
         '<button type="button" class="kbfarbe keine" data-kb-grund="" aria-pressed="' + !k.grund + '">Keine</button>' +
         farben.map(c => '<button type="button" class="kbfarbe" data-kb-grund="' + c + '" aria-pressed="' + (k.grund === c) + '"' +
@@ -10696,6 +10717,8 @@ document.addEventListener("click", e => {
   if(bf){ kbAendern(sch, "bildform", bf.dataset.kbBildform === "seite" ? "" : bf.dataset.kbBildform); return; }
   const sl = e.target.closest("[data-kb-symbollage]");
   if(sl){ kbAendern(sch, "symbolLage", sl.dataset.kbSymbollage === "auto" ? "" : sl.dataset.kbSymbollage); return; }
+  const ho = e.target.closest("[data-kb-hoehe]");
+  if(ho){ kbAendern(sch, "hoehe", ho.dataset.kbHoehe === "normal" ? "" : ho.dataset.kbHoehe); return; }
   const gr = e.target.closest("[data-kb-grund]");
   if(gr){ kbAendern(sch, "grund", gr.dataset.kbGrund); return; }
 
@@ -10744,6 +10767,12 @@ document.addEventListener("input", e => {
      die Vorschau daneben von Hand. */
   if(e.target.matches("[data-kb-titel]")) k.titel = e.target.value;
   if(e.target.matches("[data-kb-unter]")) k.unter = e.target.value;
+  if(e.target.matches("[data-kb-textgroesse]")){
+    const wert = +e.target.value / 100;
+    k.textgroesse = wert === 1 ? "" : wert;
+    const hinweis = zeile.querySelector("[data-kb-textgroesse-wert]");
+    if(hinweis) hinweis.textContent = e.target.value + " %";
+  }
   const schau = zeile.querySelector(".kbschau");
   if(schau) schau.outerHTML = kbSchau(k);
   const kopf = zeile.querySelector(".kbkopftext b");
@@ -11185,6 +11214,8 @@ function kbRoh(){
     if(k.bildform && k.bildform !== "seite")        e.bildform = k.bildform;
     if(k.grund)                     e.grund  = k.grund;
     if(k.symbolLage)                e.symbolLage = k.symbolLage;
+    if(k.hoehe)                     e.hoehe  = k.hoehe;
+    if(k.textgroesse)               e.textgroesse = k.textgroesse;
     return e;
   });
 }
