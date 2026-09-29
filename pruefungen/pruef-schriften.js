@@ -144,6 +144,51 @@ function schriftDatei(u){
     await ctx.close();
   }
 
+  console.log("\n══ Hub: vier eigene Rollen — der Regressionstest für den gemeldeten Fehler ══");
+  /* Anlass: „wenn man die Schriftart für 'Guten Tag' ändert, ändert
+     sich auch die für das runde Feld [Tischquiz-Runde]“ — beide
+     hingen an EINER Variable (--schrift-kopf). Vier unabhängige
+     Rollen (titel/abschnitt/gericht/kachel) lösen das ab; die vier
+     erben nur, wenn niemand sie einzeln anfasst. */
+  {
+    const { ctx, p, fehler } = await hubOeffnen({ abschnitt:"caveat" });
+    await p.evaluate(() => { location.hash = "#/quiz"; });
+    await p.waitForTimeout(500);
+    const m = await p.evaluate(() => ({
+      h1: getComputedStyle(document.querySelector("#titel")).fontFamily,
+      h2: getComputedStyle(document.querySelector("h2")).fontFamily }));
+    pruef(/omo-caveat/.test(m.h2), "Rolle „Quiz/Abschnitte“ geändert: die Tischquiz-Überschrift zeigt sie", m.h2.slice(0, 40));
+    pruef(!/omo-caveat/.test(m.h1), "die Begrüßung (h1) bleibt UNVERÄNDERT — genau der gemeldete Fehler", m.h1.slice(0, 40));
+    pruef(fehler.length === 0, "kein Fehler im Hub", fehler[0] || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, p } = await hubOeffnen({ titel:"bebas" });
+    await p.evaluate(() => { location.hash = "#/quiz"; });
+    await p.waitForTimeout(500);
+    const m = await p.evaluate(() => ({
+      h1: getComputedStyle(document.querySelector("#titel")).fontFamily,
+      h2: getComputedStyle(document.querySelector("h2")).fontFamily }));
+    pruef(/omo-bebas/.test(m.h1), "umgekehrt: Rolle „Begrüßung/Titel“ geändert, h1 zeigt sie", m.h1.slice(0, 40));
+    pruef(!/omo-bebas/.test(m.h2), "die Tischquiz-Überschrift (h2) bleibt unverändert", m.h2.slice(0, 40));
+    await ctx.close();
+  }
+  {
+    /* Ohne jede einzelne Wahl: alle vier neuen Rollen erben weiterhin
+       von "kopf" — kein Kunde von vor diesem Umbau sieht eine
+       Änderung (CLAUDE.md §2.5). */
+    const { ctx, p } = await hubOeffnen({ kopf:"pacifico" });
+    await p.evaluate(() => { location.hash = "#/quiz"; });
+    await p.waitForTimeout(500);
+    const m = await p.evaluate(() => ({
+      h1: getComputedStyle(document.querySelector("#titel")).fontFamily,
+      h2: getComputedStyle(document.querySelector("h2")).fontFamily }));
+    pruef(/omo-pacifico/.test(m.h1) && /omo-pacifico/.test(m.h2),
+      "ohne einzelne Wahl erben beide weiterhin von „kopf“ (Rückwärtskompatibilität)",
+      m.h1.slice(0, 30) + " / " + m.h2.slice(0, 30));
+    await ctx.close();
+  }
+
   console.log("\n══ Hub: fremde und präparierte Adressen ══");
   const markeKopf = await (async () => {
     const { ctx, p } = await hubOeffnen({});
@@ -167,8 +212,12 @@ function schriftDatei(u){
     /* Route liefert für diese Adresse die Lora-Datei aus dem Ordner. */
     const { ctx, p, anfragen } = await hubOeffnen({ kopf:"eigen", kopf_datei:echt });
     const m = await p.evaluate(() => getComputedStyle(document.querySelector("h1")).fontFamily);
-    pruef(/omo-e-kopf-/.test(m) && anfragen.includes(echt),
-      "eigene Schrift aus dem Eimer „schriften“ wird angewendet", m.slice(0, 40));
+    /* h1 steht seit dem Vier-Rollen-Umbau unter --schrift-titel, nicht
+       mehr direkt unter --schrift-kopf — geerbt von "kopf", solange
+       "titel" selbst nichts Eigenes trägt. Der Familienname folgt der
+       ROLLE, die wirklich zeichnet ("titel"), nicht der Quelle ("kopf"). */
+    pruef(/omo-e-titel-/.test(m) && anfragen.includes(echt),
+      "eigene Schrift aus dem Eimer „schriften“ wird angewendet (geerbt an die Rolle „titel“)", m.slice(0, 40));
     await ctx.close();
   }
 
@@ -206,9 +255,32 @@ function schriftDatei(u){
   const zahl = await p.evaluate(() => ({
     kopf: document.querySelectorAll('[data-sw-rolle="kopf"] [data-sw]').length,
     text: document.querySelectorAll('[data-sw-rolle="text"] [data-sw]').length,
+    titel: document.querySelectorAll('[data-sw-rolle="titel"] [data-sw]').length,
+    abschnitt: document.querySelectorAll('[data-sw-rolle="abschnitt"] [data-sw]').length,
+    gericht: document.querySelectorAll('[data-sw-rolle="gericht"] [data-sw]').length,
+    kachel: document.querySelectorAll('[data-sw-rolle="kachel"] [data-sw]').length,
     schreibImText: !!document.querySelector('[data-sw-rolle="text"] [data-sw="pacifico"]') }));
   pruef(zahl.kopf >= 12 && zahl.text >= 7, "Auswahl gezeichnet (Überschrift / Text)", zahl.kopf + " / " + zahl.text);
+  pruef([zahl.titel, zahl.abschnitt, zahl.gericht, zahl.kachel].every(n => n === zahl.kopf),
+    "die vier neuen Rollen bieten dieselbe Auswahl wie „Alle Überschriften“",
+    zahl.titel + " / " + zahl.abschnitt + " / " + zahl.gericht + " / " + zahl.kachel + " (kopf: " + zahl.kopf + ")");
   pruef(!zahl.schreibImText, "Schreibschrift wird für Fließtext nicht angeboten");
+
+  /* Eine der vier neuen Rollen wählen: erscheint sie unabhängig in der
+     Vorschau, ohne die anderen anzufassen? Gemessen an der Variable
+     selbst statt an einem bestimmten h2 — die Vorschau lädt als
+     srcdoc-Iframe ohne den „Willkommensschirm übersprungen“-Vermerk
+     im sessionStorage, darum steht dort VOR jedem Tischquiz-h2 noch
+     das (unsichtbare) h2.haus des Willkommensschirms; document.
+     querySelector("h2") träfe also den falschen. */
+  await p.click('[data-sw-rolle="abschnitt"] [data-sw="caveat"]');
+  await p.waitForTimeout(900);
+  const rollenProbe = await inVorschau(`return {
+    abschnitt: getComputedStyle(document.documentElement).getPropertyValue("--schrift-abschnitt"),
+    h1: getComputedStyle(document.querySelector("#titel")).fontFamily
+  };`);
+  pruef(/omo-caveat/.test(rollenProbe.abschnitt), "Board: Rolle „Quiz/Abschnitte“ gewählt — die Vorschau setzt --schrift-abschnitt sofort", rollenProbe.abschnitt.slice(0, 50));
+  pruef(!/omo-caveat/.test(rollenProbe.h1), "Board: die Begrüßung (h1) bleibt in der Vorschau unverändert", rollenProbe.h1.slice(0, 40));
 
   await p.click('[data-sw-rolle="kopf"] [data-sw="playfair"]');
   await p.waitForTimeout(900);

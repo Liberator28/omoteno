@@ -643,6 +643,36 @@ Zahl (`grep -n 'z-index:39' datei.html`) und prüft **auf jedem Reiter**,
 was ein Finger trifft (`elementFromPoint`) — nicht nur auf dem, auf dem
 man gerade baut.
 
+### 3.10 Eine Variable für mehrere Textrollen ist ein Versprechen, das nicht gehalten wird
+
+> **Vorfall, gemeldet vom Nutzer.** „Wenn man die Schriftart für den
+> Titel 'Guten Tag' ändert, ändert sich auch die für das runde Feld
+> [Tischquiz-Runde/Punktzahl]." Befund: `h1,h2,.tipp .name,.gericht .n,
+> .gericht .p,.wkopf .wn,.wkopf .wp,.frage,.punkte,.summe .b,.gross,
+> .bnummer,.kachel.saeule strong,.tipp .preis{font-family:var(--schrift-
+> kopf)}` — **dreizehn** optisch und inhaltlich unabhängige Textrollen
+> (Begrüßungstitel, Tischquiz-Überschrift und -Punktzahl, Gerichtname,
+> Kachel-Beschriftung, Kontostand …) hingen an EINER CSS-Variable, die
+> einmal global gesetzt wurde. Jede Änderung an einer Stelle änderte
+> zwangsläufig alle anderen mit — nicht, weil es gewollt war, sondern
+> weil nie jemand eine zweite Variable angelegt hatte, als die zweite
+> Rolle dazukam.
+
+Ein Name wie `--schrift-kopf` beschreibt eine HERKUNFT („kommt aus dem
+Kopf-Feld des Markenblatts"), keine WIRKUNG. Sobald eine Variable an
+mehr als einer optisch unabhängigen Stelle verwendet wird, ist das
+kein Wiederverwenden, sondern ein Versprechen an jede künftige Stelle,
+die dieselbe Variable ebenfalls benutzt: „was hier steht, ändert sich
+nie unabhängig von dort". Dieses Versprechen hält niemand ein, sobald
+zwei Kunden(-wünsche) unterschiedliche Antworten für die beiden
+Stellen brauchen. Vor der Wiederverwendung einer bestehenden
+Schrift-/Farb-/Maß-Variable an einer NEUEN Stelle: **Muss diese Stelle
+jemals unabhängig von den anderen änderbar sein?** Im Zweifel eine
+eigene Variable mit eigenem, lebendigem `var(--x, var(--kopf))`-
+Rückfall anlegen (CLAUDE.md §2.5 additiv, bestehende Kunden sehen ohne
+eigenes Zutun keine Änderung) — das kostet eine Zeile CSS und eine
+Zeile in der Stelle, die sie setzt, und erspart genau diesen Vorfall.
+
 ## 4 · Animation und Neuzeichnen
 
 ### 4.1 Eine Einflug-Animation gehört nur an neue Elemente

@@ -161,6 +161,16 @@
      Blatt stand — damit der Umbau keinen Buchstaben verschiebt. */
   --schrift-text:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
   --schrift-kopf:"Iowan Old Style","Palatino Linotype",Palatino,Charter,Georgia,"Times New Roman",serif;
+  /* Vier eigene Rollen statt einer geteilten (VORFALL: Begrüßung und
+     Tischquiz-Runde hingen an derselben Variable). Der Rückfall auf
+     --schrift-kopf ist lebendig — ändert sich --schrift-kopf, ändern
+     sich alle vier automatisch mit, SOLANGE niemand eine Rolle einzeln
+     setzt (§3.2: die Angabe am Element schlägt die Regel im Blatt —
+     hier übernimmt schriftenAnwenden()/markeGrundlegen() diese Rolle). */
+  --schrift-titel:var(--schrift-kopf);
+  --schrift-abschnitt:var(--schrift-kopf);
+  --schrift-gericht:var(--schrift-kopf);
+  --schrift-kachel:var(--schrift-kopf);
   --schrift-mass:1;
 }
 
@@ -257,12 +267,18 @@ body{
 }
 
 /* Anzeigeschrift: liegt auf iPhone, iPad, Mac und Windows vor.
-   Nichts wird nachgeladen — kein Google, kein Abmahnrisiko. */
-h1,h2,.tipp .name,.gericht .n,.gericht .p,.wkopf .wn,.wkopf .wp,
-.frage,.punkte,.summe .b,.gross,.bnummer,.kachel.saeule strong,
-.tipp .preis{
-  font-family:var(--schrift-kopf),serif;
+   Nichts wird nachgeladen — kein Google, kein Abmahnrisiko.
+
+   VORFALL — alle dreizehn Rollen hingen früher an EINER Variable
+   (--schrift-kopf): Wer im Board die Begrüßung (h1) umstellte, sah
+   dieselbe Änderung ungewollt an der Tischquiz-Runde (h2/.punkte).
+   Vier unabhängige Rollen lösen das ab. */
+h1{ font-family:var(--schrift-titel),serif; }
+h2,.frage,.punkte{ font-family:var(--schrift-abschnitt),serif; }
+.tipp .name,.tipp .preis,.gericht .n,.gericht .p,.wkopf .wn,.wkopf .wp{
+  font-family:var(--schrift-gericht),serif;
 }
+.summe .b,.gross,.bnummer,.kachel.saeule strong{ font-family:var(--schrift-kachel),serif; }
 /* Zweifarbig: heller Innenring + Markenrot außen. Einfarbig Rot verschwand
    auf .knopf (Hintergrund ebenfalls Rot) und auf dem Schokoband komplett. */
 :focus{outline:none}
@@ -1480,7 +1496,7 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 
 .gruppe{
   position:sticky;top:0;z-index:3;
-  font-family:var(--schrift-kopf);
+  font-family:var(--schrift-abschnitt);
   font-size:17px;letter-spacing:-.2px;color:var(--tinte);font-weight:600;
   margin:20px calc(-1 * var(--rand)) 2px;padding:10px var(--rand) 8px;
   background:linear-gradient(180deg,var(--grund) 74%,transparent)
@@ -1688,7 +1704,7 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 .ed-stempel.nein{left:18px;color:var(--rot);border-color:var(--rot);transform:rotate(-10deg)}
 .ed-text{flex:none;padding:16px 18px 18px}
 .ed-gruppe{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;color:var(--tinte-leise);margin-bottom:4px}
-.ed-text h3{margin:0 0 4px;font-family:var(--schrift-kopf);font-size:22px;line-height:1.2}
+.ed-text h3{margin:0 0 4px;font-family:var(--schrift-gericht);font-size:22px;line-height:1.2}
 .ed-text p{margin:0;font-size:13.5px;color:var(--tinte-leise);line-height:1.45;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ed-preis{margin-top:8px;font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
@@ -1714,7 +1730,7 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 #edFlaeche{position:relative}
 .ed-ende{text-align:center;padding:26px 6px 6px}
 .ed-ende-emo{display:block;font-size:110px;line-height:1;color:var(--tinte);margin-bottom:8px}
-.ed-ende h3{font-family:var(--schrift-kopf);font-size:24px;margin:0 0 4px}
+.ed-ende h3{font-family:var(--schrift-gericht);font-size:24px;margin:0 0 4px}
 .ed-ende p{color:var(--tinte-leise);margin:0 0 18px}
 /* ═══ Entscheidungshilfe ════════════════════════════════════════════
    Ganz oben in der Speisekarte, vor Aktion, Suche und Kategorien:
@@ -3097,7 +3113,7 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 }
 .gastpost-kopf .label{margin:1px 0 5px}
 .gastpost-kopf b{
-  display:block;font-family:var(--schrift-kopf);font-size:18px;line-height:1.25;
+  display:block;font-family:var(--schrift-abschnitt);font-size:18px;line-height:1.25;
   font-weight:600;color:var(--tinte);text-wrap:balance;
 }
 /* Auf dunklem Grund liegen --flaeche-2 und die Karte fast gleich —
@@ -3157,7 +3173,7 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
    der Fläche selbst (bewegung-Skill §1) — bei reduzierter Bewegung
    verschwindet er ganz (Media Query unten), Endzustand bleibt korrekt. */
 .willkommen .haus{
-  font-family:var(--schrift-kopf);font-size:clamp(26px,7vw,38px);
+  font-family:var(--schrift-titel);font-size:clamp(26px,7vw,38px);
   line-height:1.1;letter-spacing:-.01em;margin:0;
   animation:wkAuf .6s var(--weich) .32s both;
 }
@@ -3691,6 +3707,13 @@ function markeAnwenden(abend){
      :root bleibt bewusst als Rückfall stehen: ohne Skript trägt es. */
   if(mb.schrift.zahl && SCHRIFTEN[mb.schrift.zahl])
     s.setProperty("--schrift-zahl", SCHRIFTEN[mb.schrift.zahl]);
+  /* Vier neue, unabhängige Rollen (§ oben). Fehlt eine im Markenblatt,
+     bleibt sie beim :root-Rückfall var(--schrift-kopf) — ein
+     Markenblatt von gestern sieht damit aus wie gestern (§2.5). */
+  ["titel", "abschnitt", "gericht", "kachel"].forEach(rolle => {
+    if(mb.schrift[rolle] && SCHRIFTEN[mb.schrift[rolle]])
+      s.setProperty("--schrift-" + rolle, SCHRIFTEN[mb.schrift[rolle]]);
+  });
   s.setProperty("--schrift-mass",  mb.schrift.groesse || 1);
 
   /* Erste Farbgebung, bevor irgendetwas gezeichnet wird. Die Stunde
@@ -5613,7 +5636,7 @@ async function storyZeichnen(posten){
      (§5.1) — bei Blend ist Gold ein anderes als bei Choco. */
   const gold    = farbe("--gold", "#C9A227");
   const linie   = farbe("--linie-stark", "#DCCBBE");
-  const kopfSchrift = farbe("--schrift-kopf", "serif");
+  const titelSchrift = farbe("--schrift-titel", "serif");
   const textSchrift = farbe("--schrift-text", "sans-serif");
 
   x.fillStyle = grund;
@@ -5626,7 +5649,7 @@ async function storyZeichnen(posten){
   x.textAlign = "center";
   x.font = "600 40px " + textSchrift;
   x.fillText(t("Ich war hier"), STORY_B/2, 120);
-  x.font = "700 76px " + kopfSchrift;
+  x.font = "700 76px " + titelSchrift;
   storyZeilen(x, BETRIEB.name, STORY_B - 140, 2)
     .forEach((z, i) => x.fillText(z, STORY_B/2, 200 + i*80));
 
@@ -14197,8 +14220,13 @@ const OMOTENO_DB = {
 let karteFingerabdruck = "";
 
 /* ═══ Schriften anwenden (hub_stil.schrift) ═══════════════════════
-   { kopf:"playfair"|"eigen"|"", text:…, kopf_datei:"https://…", text_datei:… }
-   Leer oder unbekannt heißt: die Schrift aus dem Marken-Studio.
+   { kopf:"playfair"|"eigen"|"", text:…, titel:…, abschnitt:…,
+     gericht:…, kachel:…, kopf_datei:"https://…", text_datei:…,
+     titel_datei:…, … }
+   Leer oder unbekannt heißt: die Schrift aus dem Marken-Studio. Die
+   vier neuen Rollen fallen zusätzlich auf "kopf" zurück (siehe
+   SCHRIFT_ERBT_VON_KOPF unten) — additiv, kein Kunde von vor diesem
+   Umbau sieht ohne eigenes Zutun eine Änderung.
 
    Eine EIGENE Schrift kommt nur aus dem Eimer „schriften“ dieses
    Projekts (migration-schriften.sql), mit festem Namensmuster. Das
@@ -14240,6 +14268,13 @@ function schriftKennung(u){
 }
 
 let schriftStand = null;
+/* Vier neue Rollen (titel/abschnitt/gericht/kachel) erben von "kopf",
+   solange weder das Markenblatt noch eine Live-Wahl im Board sie
+   einzeln setzt — ein Kunde, der "kopf" schon einmal live umgestellt
+   hat, sieht ohne eigenes Zutun weiterhin dieselbe Schrift an allen
+   vier Stellen (CLAUDE.md §2.5/§3.2, wie beim Umbau selbst). */
+const SCHRIFT_ROLLEN = ["kopf", "text", "titel", "abschnitt", "gericht", "kachel"];
+const SCHRIFT_ERBT_VON_KOPF = { titel:1, abschnitt:1, gericht:1, kachel:1 };
 function schriftenAnwenden(stil){
   const sch = (stil && typeof stil === "object" && stil.schrift && typeof stil.schrift === "object" &&
                !Array.isArray(stil.schrift)) ? stil.schrift : {};
@@ -14247,12 +14282,15 @@ function schriftenAnwenden(stil){
   if(fp === schriftStand) return false;
   schriftStand = fp;
   const s = document.documentElement.style, mb = MARKENBLATT;
-  ["kopf", "text"].forEach(rolle => {
-    const marke = SCHRIFTEN[mb.schrift && mb.schrift[rolle]] || SCHRIFTEN.system;
-    const wahl = String(sch[rolle] || "");
+  SCHRIFT_ROLLEN.forEach(rolle => {
+    const erbrolle = SCHRIFT_ERBT_VON_KOPF[rolle] ? "kopf" : rolle;
+    const mbWert = (mb.schrift && mb.schrift[rolle]) || (erbrolle !== rolle ? (mb.schrift && mb.schrift.kopf) : "");
+    const marke = SCHRIFTEN[mbWert] || SCHRIFTEN.system;
+    const wahl = String(sch[rolle] || (erbrolle !== rolle ? sch[erbrolle] : "") || "");
     let familie = "", rueck = marke;
     if(wahl === "eigen"){
-      const u = schriftUrlOk(sch[rolle + "_datei"]);
+      const feld = (sch[rolle + "_datei"] ? rolle : erbrolle) + "_datei";
+      const u = schriftUrlOk(sch[feld]);
       if(u){
         familie = "omo-e-" + rolle + "-" + schriftKennung(u);
         schriftLaden(familie, [{ url:u, staerke:"100 900" }]);

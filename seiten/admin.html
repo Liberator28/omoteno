@@ -3204,18 +3204,40 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 
     <div class="egruppe" id="swGruppe">
       <h2 class="etitel">Schrift</h2>
-      <p class="ehilfe">Für Überschriften und Text Ihrer Seite — aus unserer Auswahl
-        oder Ihre eigene Schriftdatei. Die Vorschau oben zeigt sie sofort; Gäste
-        sehen sie, sobald Sie übernehmen.</p>
+      <p class="ehilfe">Für jeden Textbereich Ihrer Seite einzeln — aus unserer
+        Auswahl oder Ihre eigene Schriftdatei. „Alle Überschriften“ ist die
+        Vorgabe für die vier Bereiche darunter, solange Sie dort nichts
+        Eigenes wählen. Die Vorschau oben zeigt es sofort; Gäste sehen es,
+        sobald Sie übernehmen.</p>
       <div class="swrolle" data-sw-rolle="kopf">
-        <b class="swtitel">Überschriften</b>
-        <div class="swliste" role="radiogroup" aria-label="Schrift der Überschriften"></div>
+        <b class="swtitel">Alle Überschriften (Vorgabe)</b>
+        <div class="swliste" role="radiogroup" aria-label="Schrift für alle Überschriften"></div>
         <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="kopf">
       </div>
       <div class="swrolle" data-sw-rolle="text">
         <b class="swtitel">Text</b>
         <div class="swliste" role="radiogroup" aria-label="Schrift des Textes"></div>
         <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="text">
+      </div>
+      <div class="swrolle" data-sw-rolle="titel">
+        <b class="swtitel">Begrüßung / Titel</b>
+        <div class="swliste" role="radiogroup" aria-label="Schrift der Begrüßung"></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="titel">
+      </div>
+      <div class="swrolle" data-sw-rolle="abschnitt">
+        <b class="swtitel">Quiz und Abschnitte</b>
+        <div class="swliste" role="radiogroup" aria-label="Schrift für Quiz und Abschnitte"></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="abschnitt">
+      </div>
+      <div class="swrolle" data-sw-rolle="gericht">
+        <b class="swtitel">Gerichtname</b>
+        <div class="swliste" role="radiogroup" aria-label="Schrift der Gerichtnamen"></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="gericht">
+      </div>
+      <div class="swrolle" data-sw-rolle="kachel">
+        <b class="swtitel">Kachel-Beschriftung</b>
+        <div class="swliste" role="radiogroup" aria-label="Schrift der Kachel-Beschriftung"></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="kachel">
       </div>
       <p class="feldhilfe">Eigene Schrift: woff2, woff, ttf oder otf, höchstens 1,5 MB.
         Bitte nur Schriften, die Sie im Web verwenden dürfen — viele gekaufte
@@ -9913,7 +9935,22 @@ const SCHRIFT_WAHL = [
   { s:"dmsans",     familie:"DM Sans",            datei:"dm-sans",            art:"Grotesk, modern",     rollen:["kopf","text"] }
 ];
 const SW_MAX = 1572864;   /* = file_size_limit des Eimers */
-let SW = { kopf:"", text:"", kopf_datei:"", text_datei:"", neu:{ kopf:null, text:null } };
+/* Vier neue Rollen statt der einen geteilten "kopf" (CLAUDE.md-Vorfall:
+   Begrüßung und Tischquiz-Runde hingen an derselben Variable). "kopf"
+   bleibt als gemeinsame Vorgabe bestehen — SW_ERBT_VON_KOPF sagt, wer
+   sie erbt, solange niemand die eigene Rolle anfasst (siehe
+   schriftenAnwenden() im Hub, derselbe Erb-Gedanke). Schriften mit
+   der Rolle "kopf" sind für alle vier ebenso gültig — dieselbe Auswahl
+   wie vor dem Umbau, nur jetzt einzeln wählbar. */
+const SW_ROLLEN = ["kopf", "text", "titel", "abschnitt", "gericht", "kachel"];
+const SW_ERBT_VON_KOPF = { titel:1, abschnitt:1, gericht:1, kachel:1 };
+const SW_ROLLENTITEL = {
+  kopf:"Alle Überschriften (Vorgabe)", text:"Text",
+  titel:"Begrüßung / Titel", abschnitt:"Quiz und Abschnitte",
+  gericht:"Gerichtname", kachel:"Kachel-Beschriftung"
+};
+let SW = Object.fromEntries(SW_ROLLEN.flatMap(r => [[r, ""], [r + "_datei", ""]]));
+SW.neu = Object.fromEntries(SW_ROLLEN.map(r => [r, null]));
 
 function swBasis(){
   if(window.OMOTENO_SCHRIFT_BASIS) return window.OMOTENO_SCHRIFT_BASIS;
@@ -9943,20 +9980,30 @@ function swEigenProbe(rolle){
   return familie;
 }
 
+/* Rolle, gegen die eine Schrift-Auswahl geprüft wird: die vier neuen
+   Rollen sind so kopf-artig wie "kopf" selbst — dieselbe Auswahl wie
+   vor dem Umbau, nur jetzt einzeln wählbar. */
+const swAuswahlrolle = rolle => SW_ERBT_VON_KOPF[rolle] ? "kopf" : rolle;
+
 function swLaden(){
   const bb = meineBetriebe.find(x => x.id === betriebId);
   const st = bb && bb.hub_stil && typeof bb.hub_stil === "object" ? bb.hub_stil : {};
   const sch = st.schrift && typeof st.schrift === "object" && !Array.isArray(st.schrift) ? st.schrift : {};
-  const gueltig = (rolle, w) => w === "eigen" || SCHRIFT_WAHL.some(x => x.s === w && x.rollen.indexOf(rolle) >= 0) ? w : "";
-  SW = { kopf:gueltig("kopf", String(sch.kopf || "")), text:gueltig("text", String(sch.text || "")),
-         kopf_datei:String(sch.kopf_datei || ""), text_datei:String(sch.text_datei || ""),
-         neu:{ kopf:null, text:null } };
+  const gueltig = (rolle, w) => (w === "eigen" ||
+    SCHRIFT_WAHL.some(x => x.s === w && x.rollen.indexOf(swAuswahlrolle(rolle)) >= 0)) ? w : "";
+  const neu = { neu:{} };
+  SW_ROLLEN.forEach(rolle => {
+    neu[rolle] = gueltig(rolle, String(sch[rolle] || ""));
+    neu[rolle + "_datei"] = String(sch[rolle + "_datei"] || "");
+    neu.neu[rolle] = null;
+  });
+  SW = neu;
   swProbenLaden();
   swZeichnen();
 }
 
 function swZeichnen(){
-  ["kopf", "text"].forEach(rolle => {
+  SW_ROLLEN.forEach(rolle => {
     const liste = document.querySelector('[data-sw-rolle="' + rolle + '"] .swliste');
     if(!liste) return;
     const knopf = (wert, name, art, familie) =>
@@ -9967,9 +10014,10 @@ function swZeichnen(){
     const eigen = SW.neu[rolle] ? SW.neu[rolle].datei.name :
                   SW[rolle + "_datei"] ? "hochgeladen" : "Datei wählen …";
     const ef = swEigenProbe(rolle);
+    const vorgabe = SW_ERBT_VON_KOPF[rolle] ? "Wie „" + SW_ROLLENTITEL.kopf + "“" : "Wie im Marken-Studio";
     liste.innerHTML =
-      knopf("", "Wie im Marken-Studio", "Vorgabe", "") +
-      SCHRIFT_WAHL.filter(w => w.rollen.indexOf(rolle) >= 0)
+      knopf("", vorgabe, "Vorgabe", "") +
+      SCHRIFT_WAHL.filter(w => w.rollen.indexOf(swAuswahlrolle(rolle)) >= 0)
         .map(w => knopf(w.s, w.familie, w.art, '"omo-sw-' + w.s + '",serif')).join("") +
       knopf("eigen", "Eigene Schrift", eigen, ef ? '"' + ef + '",serif' : "");
   });
@@ -9980,8 +10028,9 @@ function swZeichnen(){
    der Vorschau darf das die noch nicht hochgeladene Datei sein
    (blob:) — der Hub nimmt blob: nur in der Vorschau an. */
 function swFuerHub(vorschau){
-  const raus = { kopf:SW.kopf, text:SW.text };
-  ["kopf", "text"].forEach(rolle => {
+  const raus = {};
+  SW_ROLLEN.forEach(rolle => { raus[rolle] = SW[rolle]; });
+  SW_ROLLEN.forEach(rolle => {
     if(SW[rolle] !== "eigen") return;
     const n = SW.neu[rolle];
     raus[rolle + "_datei"] = vorschau && n ? n.blob : SW[rolle + "_datei"];
@@ -10019,7 +10068,7 @@ async function swSichern(){
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
   try{
     const probe = !!(demo || !db);
-    for(const rolle of ["kopf", "text"]){
+    for(const rolle of SW_ROLLEN){
       if(SW[rolle] !== "eigen") continue;
       const n = SW.neu[rolle];
       if(n && !probe){
