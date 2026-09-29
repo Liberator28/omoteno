@@ -144,6 +144,57 @@ function schriftDatei(u){
     await ctx.close();
   }
 
+  console.log("\n══ Hub: acht neue Schriften — jede lädt und zeichnet wirklich ══");
+  {
+    const NEU = ["bricolage", "instrserif", "instrsans", "jetbrains", "spacegrotesk", "shantell", "spectral", "abril"];
+    const { ctx, p, anfragen, fehler } = await hubOeffnen({ titel:NEU[0], abschnitt:NEU[1], gericht:NEU[2],
+      kachel:NEU[3], kopf:NEU[4], text:NEU[6] });
+    /* shantell und abril (nur „kopf") tauchen über die geerbte Rolle
+       "titel" nicht auf, wenn kopf schon vergeben ist — eigens gegen
+       #titel bzw. eine Kachel-Klasse geprüft, nicht nur über die
+       schon belegten vier Rollen oben. */
+    const m = await p.evaluate(n => {
+      const stil = getComputedStyle(document.documentElement);
+      return {
+        vars: {
+          titel: stil.getPropertyValue("--schrift-titel"),
+          abschnitt: stil.getPropertyValue("--schrift-abschnitt"),
+          gericht: stil.getPropertyValue("--schrift-gericht"),
+          kachel: stil.getPropertyValue("--schrift-kachel"),
+          kopf: stil.getPropertyValue("--schrift-kopf"),
+          text: stil.getPropertyValue("--schrift-text")
+        },
+        geladen: n.map(s => document.fonts.check('16px "omo-' + s + '"'))
+      };
+    }, NEU);
+    pruef(/omo-bricolage/.test(m.vars.titel), "Bricolage Grotesque an der Rolle „titel“", m.vars.titel.slice(0, 30));
+    pruef(/omo-instrserif/.test(m.vars.abschnitt), "Instrument Serif an der Rolle „abschnitt“", m.vars.abschnitt.slice(0, 30));
+    pruef(/omo-instrsans/.test(m.vars.gericht), "Instrument Sans an der Rolle „gericht“", m.vars.gericht.slice(0, 30));
+    pruef(/omo-jetbrains/.test(m.vars.kachel), "JetBrains Mono an der Rolle „kachel“", m.vars.kachel.slice(0, 30));
+    pruef(/omo-spacegrotesk/.test(m.vars.kopf), "Space Grotesk an der Rolle „kopf“", m.vars.kopf.slice(0, 30));
+    pruef(/omo-spectral/.test(m.vars.text), "Spectral am Fließtext", m.vars.text.slice(0, 30));
+    pruef(m.geladen.every(Boolean), "alle acht sind wirklich geladen (document.fonts.check)", m.geladen.join(","));
+    pruef(anfragen.every(u => u.startsWith(BASIS)), "auch die neuen acht kommen nur von der eigenen Adresse", anfragen.length + " Anfrage(n)");
+    pruef(fehler.length === 0, "kein Fehler im Hub", fehler[0] || "still");
+    await ctx.close();
+  }
+  {
+    /* shantell und abril bieten sich nur für "kopf" an (rollen:["kopf"]
+       in SCHRIFT_WAHL) — hier als "kachel"/"gericht" gewählt, wo sie
+       laut Board-Liste eigentlich stehen dürfen (kopf-artige Rollen,
+       swAuswahlrolle). */
+    const { ctx, p, fehler } = await hubOeffnen({ kachel:"shantell", gericht:"abril" });
+    const ok = await p.evaluate(() => ({
+      kachel: getComputedStyle(document.documentElement).getPropertyValue("--schrift-kachel"),
+      gericht: getComputedStyle(document.documentElement).getPropertyValue("--schrift-gericht"),
+      geladen: document.fonts.check('16px "omo-shantell"') && document.fonts.check('16px "omo-abril"') }));
+    pruef(/omo-shantell/.test(ok.kachel) && /omo-abril/.test(ok.gericht) && ok.geladen,
+      "Shantell Sans und Abril Fatface (nur „kopf“-Rollen) an anderen kopf-artigen Rollen ebenso wählbar",
+      JSON.stringify(ok).slice(0, 100));
+    pruef(fehler.length === 0, "kein Fehler im Hub", fehler[0] || "still");
+    await ctx.close();
+  }
+
   console.log("\n══ Hub: vier eigene Rollen — der Regressionstest für den gemeldeten Fehler ══");
   /* Anlass: „wenn man die Schriftart für 'Guten Tag' ändert, ändert
      sich auch die für das runde Feld [Tischquiz-Runde]“ — beide
