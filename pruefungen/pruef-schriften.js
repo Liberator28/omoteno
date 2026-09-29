@@ -266,6 +266,35 @@ function schriftDatei(u){
     zahl.titel + " / " + zahl.abschnitt + " / " + zahl.gericht + " / " + zahl.kachel + " (kopf: " + zahl.kopf + ")");
   pruef(!zahl.schreibImText, "Schreibschrift wird für Fließtext nicht angeboten");
 
+  console.log("\n══ Board: Schriftauswahl komprimiert (ein Bauteil, fünfmal) ══");
+  const kompaktZustand = rolle => p.evaluate(r => {
+    const w = document.querySelector('[data-sw-rolle="' + r + '"]');
+    const auf = w.querySelector("[data-sw-auf]"), klapp = w.querySelector(".swklapp");
+    return {
+      expanded: auf.getAttribute("aria-expanded"),
+      offen: klapp.classList.contains("offen"),
+      hoehe: klapp.getBoundingClientRect().height,
+      zusammenfassung: w.querySelector("[data-sw-zusammenfassung]").textContent
+    };
+  }, rolle);
+  const geschlossenVorher = await kompaktZustand("gericht");
+  pruef(geschlossenVorher.expanded === "false" && !geschlossenVorher.offen && geschlossenVorher.hoehe === 0,
+    "jede Rolle startet zu (keine Höhe, aria-expanded=false)", JSON.stringify(geschlossenVorher));
+  pruef(/Wie „Alle Überschriften/.test(geschlossenVorher.zusammenfassung),
+    "der Kopfknopf zeigt schon geschlossen die aktuelle Wahl (hier: die Vorgabe)", geschlossenVorher.zusammenfassung);
+  await p.click('[data-sw-rolle="gericht"] [data-sw-auf]');
+  await p.waitForTimeout(400);
+  const offenNachher = await kompaktZustand("gericht");
+  pruef(offenNachher.expanded === "true" && offenNachher.offen && offenNachher.hoehe > 100,
+    "„Ändern“ tippen klappt genau diese Rolle auf, keine andere", JSON.stringify(offenNachher));
+  const andereRolleBleibtZu = await kompaktZustand("kachel");
+  pruef(!andereRolleBleibtZu.offen, "eine fremde Rolle bleibt dabei zu", JSON.stringify(andereRolleBleibtZu));
+  await p.click('[data-sw-rolle="gericht"] [data-sw="lora"]');
+  await p.waitForTimeout(400);
+  const nachWahl = await kompaktZustand("gericht");
+  pruef(!nachWahl.offen && nachWahl.hoehe === 0 && /Lora/.test(nachWahl.zusammenfassung),
+    "eine echte Wahl klappt die Liste automatisch wieder zu und zeigt die neue Wahl", JSON.stringify(nachWahl));
+
   /* Eine der vier neuen Rollen wählen: erscheint sie unabhängig in der
      Vorschau, ohne die anderen anzufassen? Gemessen an der Variable
      selbst statt an einem bestimmten h2 — die Vorschau lädt als
@@ -273,6 +302,8 @@ function schriftDatei(u){
      im sessionStorage, darum steht dort VOR jedem Tischquiz-h2 noch
      das (unsichtbare) h2.haus des Willkommensschirms; document.
      querySelector("h2") träfe also den falschen. */
+  await p.click('[data-sw-rolle="abschnitt"] [data-sw-auf]');
+  await p.waitForTimeout(300);
   await p.click('[data-sw-rolle="abschnitt"] [data-sw="caveat"]');
   await p.waitForTimeout(900);
   const rollenProbe = await inVorschau(`return {
@@ -282,6 +313,8 @@ function schriftDatei(u){
   pruef(/omo-caveat/.test(rollenProbe.abschnitt), "Board: Rolle „Quiz/Abschnitte“ gewählt — die Vorschau setzt --schrift-abschnitt sofort", rollenProbe.abschnitt.slice(0, 50));
   pruef(!/omo-caveat/.test(rollenProbe.h1), "Board: die Begrüßung (h1) bleibt in der Vorschau unverändert", rollenProbe.h1.slice(0, 40));
 
+  await p.click('[data-sw-rolle="kopf"] [data-sw-auf]');
+  await p.waitForTimeout(300);
   await p.click('[data-sw-rolle="kopf"] [data-sw="playfair"]');
   await p.waitForTimeout(900);
   const h1 = await inVorschau(`return getComputedStyle(document.querySelector("h1")).fontFamily;`);
