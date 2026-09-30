@@ -175,6 +175,18 @@ const MESSUNG = `
   }
 
   const browser = await chromium.launch();
+  /* Der Willkommensschirm liegt über dem ganzen Hub und fängt jeden Tipp
+     ab — sein Merker steht in sessionStorage, nicht in localStorage
+     (CLAUDE.md §3.8). Ohne ihn brach diese Prüfung beim ersten Klick mit
+     einer Zeitüberschreitung ab (gemessen am 30.09., auch auf main), und
+     keine der Proben dahinter lief. Jeder Kontext bekommt ihn deshalb
+     vor dem ersten Laden. */
+  const kontextRoh = browser.newContext.bind(browser);
+  browser.newContext = async o => {
+    const c = await kontextRoh(o);
+    await c.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch (e) {} });
+    return c;
+  };
 
   /* Die Durchspielung braucht ein Haus mit Karte und eingeschalteter
      Bestellung — ein Markenblatt ohne Gerichte kann sie nicht prüfen.
