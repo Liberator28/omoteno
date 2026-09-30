@@ -69,7 +69,10 @@ async function haus(br, slug, name){
                            positionen:[{name:"Waffel",menge:1,preis:9}] }) }));
 
   await p.addInitScript(() => {
-    localStorage.setItem("omoteno-willkommen","1");
+    /* Der Willkommensschirm steht in sessionStorage, nicht in
+       localStorage (CLAUDE.md §3.8) — mit dem falschen Schlüssel
+       blieb der Schirm offen und fing jeden Klick auf #vstreifen ab. */
+    sessionStorage.setItem("omoteno-willkommen","1");
     localStorage.setItem("omoteno-vorgaenge", JSON.stringify([{
       nummer:"tief1", art:"bestellung", status:"neu", warte:null, summe:12.5,
       zeit:Date.now(), tagesnummer:5,

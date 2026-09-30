@@ -1323,7 +1323,7 @@ body.hell .schritt[aria-pressed=true]{
 .kat{margin-bottom:26px}
 .katkopf{
   display:flex;align-items:baseline;gap:10px;
-  padding-bottom:8px;margin-bottom:4px;
+  padding-bottom:8px;margin-bottom:12px;
   border-bottom:1px solid var(--linie);
 }
 .katname{
@@ -1391,7 +1391,7 @@ body.hell .schritt[aria-pressed=true]{
    dem Schirm, und ein Wisch nach unten rollte das Raster statt das
    Blatt zu schließen. Ein Blatt, ein Scrollbereich. */
 .kted-wahl{margin:0 -4px 18px;padding:0 4px}
-.kted-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:6px}
+.kted-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:11px}
 .kted-zeichen{
   display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   min-height:68px;padding:6px 4px;border-radius:var(--ecke);cursor:pointer;
@@ -1681,11 +1681,21 @@ textarea{resize:vertical;min-height:66px}
 .segment button:active{transform:scale(.96)}
 .segment button:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
 .segment button[aria-checked=true]{color:var(--sockel)}
+/* --sockel ist in body.hell NICHT neu festgelegt (bleibt #0A1714), das
+   Messing dort aber dunkel (#7A5A10): dunkel auf dunkel, gemessen 2,88:1
+   an „Prozent“/„Ganze Rechnung“. Im Hellen trägt Messing helle Schrift —
+   --flaeche auf --messing = 6,04:1 (Wert aus der Palette oben). */
+body.hell .segment button[aria-checked=true],
+body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
 .segmentschieber{
   position:absolute;top:3px;bottom:3px;left:3px;
   width:calc((100% - 6px) / 3);border-radius:8px;background:var(--messing);
   transition:transform var(--t-klein) var(--ease-out);will-change:transform;
 }
+/* Zwei Knöpfe, halber Schieber. Fest ⅓ ließ bei den Rabatt-Segmenten
+   („Prozent“/„Ganze Rechnung“) die gewählte, dunkle Schrift halb neben
+   dem Schieber auf dunklem Grund stehen — gemessen 1,07:1. */
+.segment:has(> button:nth-of-type(2):last-of-type) .segmentschieber{width:calc((100% - 8px) / 2)}
 
 @media (prefers-reduced-motion:reduce){
   .auswahlpanel,.chevron,.segmentschieber,.segment button{transition:none}
@@ -1883,6 +1893,16 @@ textarea{resize:vertical;min-height:66px}
   background:none;border:0;padding:0 4px;margin:0;font:inherit;color:inherit;text-align:left;cursor:pointer}
 .kbkopfknopf .chevron{flex:none;color:var(--gedaempft);transition:transform var(--t-druck) var(--ease-out)}
 .kbkopfknopf[aria-expanded=true] .chevron{transform:rotate(180deg)}
+/* Zugänglicher Zweitweg zum Ziehen oben in der Anordnung — zwei
+   nebeneinander liegende Knöpfe statt gestapelt, damit jeder für sich
+   auf die volle Zeilenhöhe kommt (≥44px), ohne die Reihe darüber oder
+   darunter mit einer unsichtbaren Tapfläche zu überlappen. */
+.kbreihenfolge{display:flex;gap:2px;flex:none}
+.kbpfeil{width:32px;min-height:44px;display:flex;align-items:center;justify-content:center;
+  background:none;border:0;border-radius:8px;color:var(--gedaempft);cursor:pointer}
+.kbpfeil:hover:not(:disabled){background:var(--flaeche-2);color:var(--kreide)}
+.kbpfeil:disabled{opacity:.3;cursor:default}
+.kbpfeil:focus-visible{outline:2px solid var(--messing);outline-offset:-2px}
 .kbkopftext{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
 .kbkopftext b{font-size:15px;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .kbkopftext i{font-style:normal;font-size:12.5px;color:var(--gedaempft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
@@ -1920,7 +1940,17 @@ textarea{resize:vertical;min-height:66px}
 .kbr-kachel[data-spalten="4"]{grid-column:span 4}
 .kbr-kachel.kbr-saeule{min-height:64px}
 .kbr-kachel.hatgrund{background:var(--k-grund);color:var(--k-tinte);border-color:transparent}
+/* touch-action:none fest, nicht erst beim Start des Zugs per JS
+   gesetzt: Chromium wertet touch-action beim allerersten touchstart
+   aus und hält sich nicht an eine spätere Änderung mitten in einer
+   laufenden Berührung — ein Finger-Zug brach sonst nach ein bis zwei
+   Bewegungen als vermeintliche Rollgeste ab (touchcancel, gemessen
+   mit CDP), still und ohne Fehler. Derselbe Grund, aus dem
+   .kbr-griff das schon trägt (§ dort). Kurzer Tipp bleibt ein Tipp,
+   nur echtes Rollen mit dem Finger startet ab jetzt nicht mehr genau
+   auf dem Namen einer Kachel — die Fläche darunter/-über bleibt frei. */
 .kbr-name{flex:1;min-width:0;display:flex;align-items:center;gap:6px;padding:6px 4px 6px 8px;background:none;border:0;
+  touch-action:none;
   font:inherit;font-size:12.5px;font-weight:600;color:inherit;text-align:left;cursor:pointer}
 .kbr-saeule .kbr-name{flex-direction:column;align-items:flex-start;justify-content:space-between}
 .kbr-ico{display:inline-flex;flex:none}
@@ -1939,8 +1969,16 @@ textarea{resize:vertical;min-height:66px}
 .kbr-kachel.zieht{box-shadow:0 0 0 2px var(--messing);z-index:1}
 .kbr-kachel.zieht::after{content:attr(data-marke);position:absolute;right:26px;top:-11px;padding:2px 7px;border-radius:8px;
   background:var(--messing);color:var(--nacht);font-size:11px;font-weight:700}
+/* Umsortieren per langem Druck auf .kbr-name: die gezogene Kachel hebt
+   sich sichtbar ab (nur transform/opacity, Bewegungs-Skill), die
+   Nachbarn rücken per FLIP nach (Werte kommen aus JS, nicht von hier). */
+.kbr-kachel.ziehtreihe{box-shadow:0 6px 16px rgba(0,0,0,.28);z-index:2;
+  transition:transform .15s var(--ease-out);transform:scale(1.03)}
 .kbr-leer{font-size:13px;color:var(--gedaempft);margin:0}
-@media (prefers-reduced-motion:reduce){ .kbkopfknopf .chevron{transition:none} }
+@media (prefers-reduced-motion:reduce){
+  .kbkopfknopf .chevron{transition:none}
+  .kbr-kachel.ziehtreihe{transition:none;transform:none}
+}
 
 /* Vorschau in der Zeile: eigene Farbe und Bildform wie im Hub. */
 .kbschau.hatgrund{background:var(--k-grund);color:var(--k-tinte);border-color:transparent}
@@ -2000,9 +2038,29 @@ textarea{resize:vertical;min-height:66px}
   background:var(--flaeche-2);color:var(--kreide);font-size:13.5px;font-weight:600}
 .bnausricht button[aria-checked="true"]{border-color:var(--messing);color:var(--messing)}
 
-/* ── Schriftwahl (Präfix sw, vorher gesucht §1.1) ── */
+/* ── Schriftwahl (Präfix sw, vorher gesucht §1.1) ──
+   Komprimiert: geschlossen zeigt der Kopfknopf nur die aktuelle Wahl,
+   „Ändern" (Chevron) klappt das Kartenraster auf — Muster von
+   .kbkopfknopf/.kbklapp (Kacheln) gespiegelt, eigene Klassen (sw statt
+   kb), damit eine künftige Änderung an der einen die andere nicht
+   ungewollt mitzieht (CLAUDE.md §1.1). */
 .swrolle{margin:0 0 18px}
-.swtitel{display:block;font-size:13px;font-weight:600;color:var(--kreide);margin:0 0 8px}
+.swkopfknopf{width:100%;display:flex;align-items:center;gap:11px;min-height:48px;
+  padding:10px 12px;border:1px solid var(--linie);border-radius:12px;background:var(--flaeche-2);
+  color:inherit;font:inherit;text-align:left;cursor:pointer}
+.swkopftext{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.swkopftext b{font-size:13px;font-weight:600;color:var(--kreide)}
+.swkopftext i{font-size:11.5px;color:var(--gedaempft);font-style:normal;
+  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block}
+.swkopfknopf .chevron{flex:none;color:var(--gedaempft);transition:transform var(--t-druck) var(--ease-out)}
+.swkopfknopf[aria-expanded="true"] .chevron{transform:rotate(180deg)}
+.swklapp{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--t-blatt) var(--ease-blatt)}
+.swklapp.offen{grid-template-rows:1fr}
+.swklapp>div{overflow:hidden;min-height:0}
+.swklapp .swliste{margin-top:8px}
+@media (prefers-reduced-motion:reduce){
+  .swklapp{transition:none} .swkopfknopf .chevron{transition:none}
+}
 .swliste{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));grid-auto-rows:1fr;gap:8px}
 .swwahl{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;
   min-height:64px;padding:10px 12px;border-radius:12px;border:1.5px solid var(--linie);
@@ -2223,7 +2281,6 @@ textarea{resize:vertical;min-height:66px}
 .eu-bild .eu-rahmen{fill:var(--flaeche);stroke:var(--linie);stroke-width:1.5}
 .eu-bild .eu-fuell{fill:currentColor;opacity:.8}
 .eu-bild .eu-linie{stroke:var(--gedaempft);stroke-width:2;stroke-linecap:round}
-.eu-bild .eu-farbe{fill:var(--linie);stroke:var(--flaeche);stroke-width:2}
 .eu-bild .eu-punkt{fill:currentColor}
 .eu-bild .eu-punkt.gut{fill:var(--gut)}
 .eu-bild .eu-punkt.warn{fill:var(--warn)}
@@ -3177,18 +3234,58 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 
     <div class="egruppe" id="swGruppe">
       <h2 class="etitel">Schrift</h2>
-      <p class="ehilfe">Für Überschriften und Text Ihrer Seite — aus unserer Auswahl
-        oder Ihre eigene Schriftdatei. Die Vorschau oben zeigt sie sofort; Gäste
-        sehen sie, sobald Sie übernehmen.</p>
+      <p class="ehilfe">Für jeden Textbereich Ihrer Seite einzeln — aus unserer
+        Auswahl oder Ihre eigene Schriftdatei. „Alle Überschriften“ ist die
+        Vorgabe für die vier Bereiche darunter, solange Sie dort nichts
+        Eigenes wählen. Die Vorschau oben zeigt es sofort; Gäste sehen es,
+        sobald Sie übernehmen.</p>
       <div class="swrolle" data-sw-rolle="kopf">
-        <b class="swtitel">Überschriften</b>
-        <div class="swliste" role="radiogroup" aria-label="Schrift der Überschriften"></div>
+        <button type="button" class="swkopfknopf" data-sw-auf aria-expanded="false" aria-controls="swinhalt-kopf">
+          <span class="swkopftext"><b>Alle Überschriften (Vorgabe)</b><i data-sw-zusammenfassung></i></span>
+          <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="swklapp" id="swinhalt-kopf"><div><div class="swliste" role="radiogroup" aria-label="Schrift für alle Überschriften"></div></div></div>
         <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="kopf">
       </div>
       <div class="swrolle" data-sw-rolle="text">
-        <b class="swtitel">Text</b>
-        <div class="swliste" role="radiogroup" aria-label="Schrift des Textes"></div>
+        <button type="button" class="swkopfknopf" data-sw-auf aria-expanded="false" aria-controls="swinhalt-text">
+          <span class="swkopftext"><b>Text</b><i data-sw-zusammenfassung></i></span>
+          <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="swklapp" id="swinhalt-text"><div><div class="swliste" role="radiogroup" aria-label="Schrift des Textes"></div></div></div>
         <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="text">
+      </div>
+      <div class="swrolle" data-sw-rolle="titel">
+        <button type="button" class="swkopfknopf" data-sw-auf aria-expanded="false" aria-controls="swinhalt-titel">
+          <span class="swkopftext"><b>Begrüßung / Titel</b><i data-sw-zusammenfassung></i></span>
+          <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="swklapp" id="swinhalt-titel"><div><div class="swliste" role="radiogroup" aria-label="Schrift der Begrüßung"></div></div></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="titel">
+      </div>
+      <div class="swrolle" data-sw-rolle="abschnitt">
+        <button type="button" class="swkopfknopf" data-sw-auf aria-expanded="false" aria-controls="swinhalt-abschnitt">
+          <span class="swkopftext"><b>Quiz und Abschnitte</b><i data-sw-zusammenfassung></i></span>
+          <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="swklapp" id="swinhalt-abschnitt"><div><div class="swliste" role="radiogroup" aria-label="Schrift für Quiz und Abschnitte"></div></div></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="abschnitt">
+      </div>
+      <div class="swrolle" data-sw-rolle="gericht">
+        <button type="button" class="swkopfknopf" data-sw-auf aria-expanded="false" aria-controls="swinhalt-gericht">
+          <span class="swkopftext"><b>Gerichtname</b><i data-sw-zusammenfassung></i></span>
+          <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="swklapp" id="swinhalt-gericht"><div><div class="swliste" role="radiogroup" aria-label="Schrift der Gerichtnamen"></div></div></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="gericht">
+      </div>
+      <div class="swrolle" data-sw-rolle="kachel">
+        <button type="button" class="swkopfknopf" data-sw-auf aria-expanded="false" aria-controls="swinhalt-kachel">
+          <span class="swkopftext"><b>Kachel-Beschriftung</b><i data-sw-zusammenfassung></i></span>
+          <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <div class="swklapp" id="swinhalt-kachel"><div><div class="swliste" role="radiogroup" aria-label="Schrift der Kachel-Beschriftung"></div></div></div>
+        <input type="file" accept=".woff2,.woff,.ttf,.otf" hidden data-sw-datei="kachel">
       </div>
       <p class="feldhilfe">Eigene Schrift: woff2, woff, ttf oder otf, höchstens 1,5 MB.
         Bitte nur Schriften, die Sie im Web verwenden dürfen — viele gekaufte
@@ -3352,37 +3449,6 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <button class="knopf leise" id="hubTexteZurueck">Auf Vorgabe zurück</button>
       </div>
       <div class="epruefung" id="hubTextePruefung"></div>
-    </div>
-
-    <!-- ══ MARKE GESTALTEN ══
-         Bisher ging das nur über konto.html: Marken-Studio öffnen,
-         "Entwurf verschicken" tippen, den Link von Hand ins Konto
-         einsetzen. Zwei Handgriffe, eine andere Seite, ein Login
-         mehr. Hier derselbe Weg direkt im Board — der Knopf oeffnet
-         das Studio mit dem GESPEICHERTEN Stand vorausgefuellt (falls
-         vorhanden), und derselbe Einsetzen-Weg wie im Konto speichert
-         zurueck in betriebe.markenblatt. Das Marken-Studio selbst
-         bleibt unveraendert: ein eigenstaendiges, anmeldefreies
-         Werkzeug, das seinen ganzen Stand in der Adresse traegt
-         (siehe dessen eigene entwurfsAdresse()/entwurfLesen()) — hier
-         wird nur derselbe Weg wiederverwendet, den konto.html schon
-         hat, nicht neu erfunden. -->
-    <div class="egruppe">
-      <h2 class="etitel">Marke gestalten</h2>
-      <div class="ezeile senkrecht">
-        <span><b>Farben, Schrift, Figur</b><i>Öffnet das Marken-Studio mit dem
-          zuletzt gespeicherten Stand, in einem neuen Fenster</i></span>
-        <div class="eknoepfe">
-          <button type="button" class="knopf leise" id="markeOeffnen">Im Marken-Studio öffnen</button>
-        </div>
-      </div>
-      <label><span class="lname">Entwurfslink aus dem Marken-Studio</span>
-        <input type="text" id="markeLink" placeholder="https://omoteno.de/marken-studio.html#m=…"
-               spellcheck="false" autocapitalize="off"></label>
-      <div class="eknoepfe">
-        <button class="knopf" id="markeSpeichern">Markenblatt übernehmen</button>
-      </div>
-      <div class="epruefung" id="markeMeldung"></div>
     </div>
 
     <div class="egruppe">
@@ -7002,7 +7068,6 @@ $("#t-einstellungen").addEventListener("change", e => {
 const EU_SYMBOL = {
   glocke: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>',
   blase:  '<path d="M4 6h16v10H9l-5 4z"/><path d="M8 10h8M8 13h5"/>',
-  pinsel: '<path d="M14 4l6 6-8 8-6-6z"/><path d="M6 12l-2 8 8-2"/>',
   roller: '<circle cx="6.5" cy="17" r="2.5"/><circle cx="17.5" cy="17" r="2.5"/><path d="M9 17h6l3-7h-4M6.5 14.5L9 9h4"/>',
   brief:  '<rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 8l9 6 9-6"/>',
   karte:  '<path d="M4 7h16v3a2 2 0 0 0 0 4v3H4v-3a2 2 0 0 0 0-4z"/><path d="M13 7v10" stroke-dasharray="2 2"/>',
@@ -7034,15 +7099,6 @@ const EU_BEREICHE = [
     stand:() => (HUBTEXTE.claim || "").trim() ? "„" + (HUBTEXTE.claim.trim().length > 26 ? HUBTEXTE.claim.trim().slice(0, 25) + "…" : HUBTEXTE.claim.trim()) + "“" : "Vorgaben des Hauses",
     bild:() => '<rect class="eu-rahmen" x="14" y="2" width="28" height="44" rx="5"/><rect class="eu-fuell" x="17" y="6" width="22" height="9" rx="2"/>' +
       '<path class="eu-linie" d="M19 20h18M19 25h13M19 30h16"/>' },
-  { titel:"Marke gestalten", sym:"pinsel", ton:"var(--reservierung)",
-    satz:"Farben, Schrift und Figur im Marken-Studio",
-    stand:() => { const b = meineBetriebe.find(x => x.id === betriebId); return b && b.markenblatt ? "Eigene Marke hinterlegt" : "Noch kein Markenblatt"; },
-    bild:() => {
-      const b = meineBetriebe.find(x => x.id === betriebId);
-      const f = (b && b.markenblatt && b.markenblatt.farben) || {};
-      const farben = [f.akzent, f.akzent2, f.band].map(c => /^#[0-9a-f]{3,8}$/i.test(c || "") ? c : null);
-      return [0,1,2].map(i => '<circle cx="' + (12 + i * 14) + '" cy="24" r="9" class="eu-farbe"' +
-        (farben[i] ? ' style="fill:' + farben[i] + '"' : '') + '/>').join(""); } },
   { titel:"Lieferung", sym:"roller", ton:"var(--lieferung)",
     satz:"Ob, wohin, wann und zu welchen Kosten Sie liefern",
     stand:() => { const plz = ($("#lfPlz") ? $("#lfPlz").value : "").split(/[,\s]+/).filter(x => /^\d{5}$/.test(x)).length;
@@ -8639,23 +8695,23 @@ async function katSchieben(name, richtung){
 const BZ_KATEGORIE = [
   [/crêpe|crepe/,                              "crepe"],
   [/waffel|waffle/,                            "1f36a"],
-  [/pancake|pfannkuchen/,                      "1f95e"],
+  [/pancake|pfannkuchen/,                      "pfannkuchen"],
   [/\breis\b|rice/,                            "1f368"],
   [/fettuccine|pasta|nudel|spaghetti|penne|tagliatelle/, "1f35d"],
   [/obst|frucht|früchte|fruit/,                "1f96d"],
   [/runde|teilen|sharing|platte/,              "1f973"],
-  [/manakish|pizza|flammkuchen|herzhaft/,      "1f355"],
+  [/manakish|pizza|flammkuchen|herzhaft/,      "pizzakaese"],
   [/gepresst|saft|juice/,                      "1f34a"],
   [/limo|softdrink|soda|cola|brause/,          "soda"],
   [/kaiser|flasche|sekt|champagner|prosecco/,  "1f37e"],
   [/bubble|boba/,                              "1f9cb"],
-  [/cocktail|mocktail|longdrink|drink/,        "1f379"],
+  [/cocktail|mocktail|longdrink|drink/,        "cocktailglas"],
   [/\beis|gelato|sorbet|ice ?cream/,           "1f366"],
-  [/kaffee|coffee|espresso|cappuccino|latte/,  "2615"],
+  [/kaffee|coffee|espresso|cappuccino|latte/,  "espresso"],
   [/\btee\b|\btea\b|matcha/,                   "1f375"],
   [/bier|beer/,                                "1f37b"],
   [/wein|wine/,                                "1f377"],
-  [/burger/,                                   "1f354"],
+  [/burger/,                                   "burgerstapel"],
   [/suppe|ramen|soup/,                         "1f35c"],
   [/frühstück|breakfast|omelett/,              "1f373"],
   [/salat|salad|bowl/,                         "1f957"],
@@ -8684,22 +8740,25 @@ const BZ_KATEGORIE = [
 ];
 const BZ_KARTE = { speisekarte:"1f37d", getraenke:"1f9c3", cocktails:"1f379" };
 const KAT_ZEICHEN = [
-  ["Essen", [["1f37d","Teller"],["1f355","Pizza"],["1f354","Burger"],["1f32d","Hotdog"],["1f32e","Taco"],["1f32f","Burrito"],
+  ["Essen", [["1f37d","Teller"],["1f355","Pizza"],["pizzakaese","Pizza (Käsezug)"],["1f354","Burger"],["burgerstapel","Burger (Flamme)"],
+    ["1f32d","Hotdog"],["1f32e","Taco"],["1f32f","Burrito"],
     ["1f35d","Pasta"],["1f35c","Suppe"],["1f957","Salat"],["1f373","Frühstück"],["1f357","Hähnchen"],["1f953","Speck"],
     ["1f362","Spieß"],["1f41f","Fisch"],["1f99e","Hummer"],["1f35e","Brot"],["1f968","Brezel"],["1f9c0","Käse"],
-    ["1f95e","Pancakes"],["crepe","Crêpe"],["1f37f","Popcorn"],["1f954","Kartoffel"],["1f9c2","Salz"]]],
+    ["1f95e","Pancakes"],["pfannkuchen","Pancakes (Streifen, Schoko)"],["crepe","Crêpe"],["1f37f","Popcorn"],["1f954","Kartoffel"],["1f9c2","Salz"]]],
   ["Obst & Gemüse", [["1f951","Avocado"],["1f345","Tomate"],["1f952","Gurke"],["1f966","Brokkoli"],["1f955","Karotte"],
     ["1f33d","Mais"],["1f344","Pilz"],["1fad1","Paprika"],["1f9c4","Knoblauch"],["1f9c5","Zwiebel"],["1f96c","Blattgrün"],
     ["1f34e","Apfel"],["1f34a","Orange"],["1f34b","Zitrone"],["1f347","Trauben"],["1f348","Melone"],["1f349","Wassermelone"],
     ["1f34d","Ananas"],["1f95d","Kiwi"],["1f96d","Mango"],["1f353","Erdbeere"],["1f352","Kirschen"],["1fad0","Blaubeeren"]]],
   ["Süßes", [["1f382","Torte"],["1f967","Kuchen"],["1f369","Donut"],["1f36a","Keks"],["1f366","Softeis"],["1f368","Eisbecher"]]],
-  ["Getränke", [["soda","Soda-Flasche"],["1f9c3","Saft"],["2615","Kaffee"],["1f375","Tee"],["1fad6","Teekanne"],["1f9c9","Mate"],
-    ["1f9cb","Bubble Tea"],["1f379","Cocktail"],["1f377","Wein"],["1f942","Anstoßen"],["1f37e","Sekt"],["1f37b","Bier"],
+  ["Getränke", [["soda","Soda-Flasche"],["1f9c3","Saft"],["2615","Kaffee"],["espresso","Espresso (Dampf)"],["1f375","Tee"],
+    ["1fad6","Teekanne"],["1f9c9","Mate"],
+    ["1f9cb","Bubble Tea"],["1f379","Cocktail"],["cocktailglas","Cocktail (Deko)"],["1f377","Wein"],["1f942","Anstoßen"],["1f37e","Sekt"],["1f37b","Bier"],
     ["1fad7","Einschenken"]]],
   ["Besonders", [["1f525","Beliebt"],["2728","Funkeln"],["1f31f","Stern"],["1f973","Party"]]]
 ];
 /* Eigene Zeichen haben keinen Codepunkt — auf dem Gerät steht das hier. */
-const KAT_ZEICHEN_EIGEN = { crepe:"1f95e", soda:"1f37e" };
+const KAT_ZEICHEN_EIGEN = { crepe:"1f95e", soda:"1f37e",
+  pfannkuchen:"1f95e", pizzakaese:"1f355", espresso:"2615", cocktailglas:"1f379", burgerstapel:"1f354" };
 const KAT_ZEICHEN_ALLE = KAT_ZEICHEN.flatMap(g => g[1].map(x => x[0]));
 
 function katZeichenGlyph(code){
@@ -9879,10 +9938,17 @@ function hvWarnungen(schl, m){
       const id = el.getAttribute("data-hvwarn").slice(3);
       const b = (m.banner || []).find(x => x.id === id);
       const t = b && b.titel, u = b && b.text;
-      el.textContent =
-        t && u ? "Beim Gast werden Titel und Unterzeile nach drei Zeilen mit „…“ gekürzt." :
-        t      ? "Beim Gast wird der Titel nach drei Zeilen mit „…“ gekürzt." :
-        u      ? "Beim Gast wird die Unterzeile nach drei Zeilen mit „…“ gekürzt." : "";
+      /* Zwei unabhängige Warnungen, die beide zutreffen können — ein
+         zu langer Titel UND ein totes Ziel sind zwei verschiedene
+         Fehler, keiner ersetzt den anderen (CLAUDE.md §8.1h: ein
+         Fehler, der von einem anderen verdeckt wird, bleibt genauso
+         stumm wie einer, der nie gemeldet wird). */
+      const saetze = [];
+      if(b && b.kaputt) saetze.push("Dieses Banner hat noch kein gültiges Ziel — Gäste können nicht darauf tippen.");
+      if(t && u) saetze.push("Beim Gast werden Titel und Unterzeile nach drei Zeilen mit „…“ gekürzt.");
+      else if(t) saetze.push("Beim Gast wird der Titel nach drei Zeilen mit „…“ gekürzt.");
+      else if(u) saetze.push("Beim Gast wird die Unterzeile nach drei Zeilen mit „…“ gekürzt.");
+      el.textContent = saetze.join(" ");
     });
     $$('[data-hvwarn^="kb:"]').forEach(el => {
       const s = el.getAttribute("data-hvwarn").slice(3);
@@ -9917,10 +9983,38 @@ const SCHRIFT_WAHL = [
   { s:"nunito",     familie:"Nunito",             datei:"nunito",             art:"Rund, freundlich",    rollen:["kopf","text"] },
   { s:"worksans",   familie:"Work Sans",          datei:"work-sans",          art:"Grotesk, klar",       rollen:["kopf","text"] },
   { s:"sourcesans", familie:"Source Sans 3",      datei:"source-sans-3",      art:"Grotesk, ruhig",      rollen:["kopf","text"] },
-  { s:"dmsans",     familie:"DM Sans",            datei:"dm-sans",            art:"Grotesk, modern",     rollen:["kopf","text"] }
+  { s:"dmsans",     familie:"DM Sans",            datei:"dm-sans",            art:"Grotesk, modern",     rollen:["kopf","text"] },
+  { s:"bricolage",    familie:"Bricolage Grotesque", datei:"bricolage-grotesque", art:"Grotesk, kräftig",     rollen:["kopf"] },
+  { s:"instrserif",   familie:"Instrument Serif",    datei:"instrument-serif",    art:"Serif, elegant",       rollen:["kopf"] },
+  { s:"instrsans",    familie:"Instrument Sans",     datei:"instrument-sans",     art:"Grotesk, klar",        rollen:["kopf","text"] },
+  { s:"jetbrains",    familie:"JetBrains Mono",      datei:"jetbrains-mono",      art:"Mono, technisch",      rollen:["kopf"] },
+  { s:"spacegrotesk", familie:"Space Grotesk",       datei:"space-grotesk",       art:"Grotesk, schmal",      rollen:["kopf","text"] },
+  { s:"shantell",     familie:"Shantell Sans",       datei:"shantell-sans",       art:"Handschrift, verspielt", rollen:["kopf"] },
+  { s:"spectral",     familie:"Spectral",            datei:"spectral",            art:"Serif, warm",          rollen:["kopf","text"] },
+  { s:"abril",        familie:"Abril Fatface",       datei:"abril-fatface",       art:"Serif, dramatisch",    rollen:["kopf"] }
 ];
 const SW_MAX = 1572864;   /* = file_size_limit des Eimers */
-let SW = { kopf:"", text:"", kopf_datei:"", text_datei:"", neu:{ kopf:null, text:null } };
+/* Vier neue Rollen statt der einen geteilten "kopf" (CLAUDE.md-Vorfall:
+   Begrüßung und Tischquiz-Runde hingen an derselben Variable). "kopf"
+   bleibt als gemeinsame Vorgabe bestehen — SW_ERBT_VON_KOPF sagt, wer
+   sie erbt, solange niemand die eigene Rolle anfasst (siehe
+   schriftenAnwenden() im Hub, derselbe Erb-Gedanke). Schriften mit
+   der Rolle "kopf" sind für alle vier ebenso gültig — dieselbe Auswahl
+   wie vor dem Umbau, nur jetzt einzeln wählbar. */
+const SW_ROLLEN = ["kopf", "text", "titel", "abschnitt", "gericht", "kachel"];
+const SW_ERBT_VON_KOPF = { titel:1, abschnitt:1, gericht:1, kachel:1 };
+const SW_ROLLENTITEL = {
+  kopf:"Alle Überschriften (Vorgabe)", text:"Text",
+  titel:"Begrüßung / Titel", abschnitt:"Quiz und Abschnitte",
+  gericht:"Gerichtname", kachel:"Kachel-Beschriftung"
+};
+let SW = Object.fromEntries(SW_ROLLEN.flatMap(r => [[r, ""], [r + "_datei", ""]]));
+SW.neu = Object.fromEntries(SW_ROLLEN.map(r => [r, null]));
+/* Komprimiert: jede Rolle startet zu, "Ändern" klappt sie auf. Eigener
+   Stand statt eines DOM-Attributs, weil swZeichnen() das Markup bei
+   jeder Wahl neu aufbaut (§4.3 — sonst vergäße jedes Neuzeichnen den
+   offenen Zustand). */
+let SW_OFFEN = Object.fromEntries(SW_ROLLEN.map(r => [r, false]));
 
 function swBasis(){
   if(window.OMOTENO_SCHRIFT_BASIS) return window.OMOTENO_SCHRIFT_BASIS;
@@ -9950,22 +10044,43 @@ function swEigenProbe(rolle){
   return familie;
 }
 
+/* Rolle, gegen die eine Schrift-Auswahl geprüft wird: die vier neuen
+   Rollen sind so kopf-artig wie "kopf" selbst — dieselbe Auswahl wie
+   vor dem Umbau, nur jetzt einzeln wählbar. */
+const swAuswahlrolle = rolle => SW_ERBT_VON_KOPF[rolle] ? "kopf" : rolle;
+
 function swLaden(){
   const bb = meineBetriebe.find(x => x.id === betriebId);
   const st = bb && bb.hub_stil && typeof bb.hub_stil === "object" ? bb.hub_stil : {};
   const sch = st.schrift && typeof st.schrift === "object" && !Array.isArray(st.schrift) ? st.schrift : {};
-  const gueltig = (rolle, w) => w === "eigen" || SCHRIFT_WAHL.some(x => x.s === w && x.rollen.indexOf(rolle) >= 0) ? w : "";
-  SW = { kopf:gueltig("kopf", String(sch.kopf || "")), text:gueltig("text", String(sch.text || "")),
-         kopf_datei:String(sch.kopf_datei || ""), text_datei:String(sch.text_datei || ""),
-         neu:{ kopf:null, text:null } };
+  const gueltig = (rolle, w) => (w === "eigen" ||
+    SCHRIFT_WAHL.some(x => x.s === w && x.rollen.indexOf(swAuswahlrolle(rolle)) >= 0)) ? w : "";
+  const neu = { neu:{} };
+  SW_ROLLEN.forEach(rolle => {
+    neu[rolle] = gueltig(rolle, String(sch[rolle] || ""));
+    neu[rolle + "_datei"] = String(sch[rolle + "_datei"] || "");
+    neu.neu[rolle] = null;
+  });
+  SW = neu;
+  SW_OFFEN = Object.fromEntries(SW_ROLLEN.map(r => [r, false]));
   swProbenLaden();
   swZeichnen();
 }
 
+/* Kurzer Satz für den geschlossenen Kopfknopf: was gilt gerade. */
+function swZusammenfassung(rolle){
+  const wert = SW[rolle];
+  if(wert === "eigen")
+    return "Eigene Schrift · " + (SW.neu[rolle] || SW[rolle + "_datei"] ? "hochgeladen" : "noch keine Datei");
+  const f = SCHRIFT_WAHL.find(x => x.s === wert);
+  if(f) return f.familie;
+  return SW_ERBT_VON_KOPF[rolle] ? "Wie „" + SW_ROLLENTITEL.kopf + "“" : "Wie im Marken-Studio";
+}
+
 function swZeichnen(){
-  ["kopf", "text"].forEach(rolle => {
-    const liste = document.querySelector('[data-sw-rolle="' + rolle + '"] .swliste');
-    if(!liste) return;
+  SW_ROLLEN.forEach(rolle => {
+    const wurzel = document.querySelector('[data-sw-rolle="' + rolle + '"]');
+    if(!wurzel) return;
     const knopf = (wert, name, art, familie) =>
       '<button type="button" role="radio" class="swwahl" data-sw="' + wert + '" aria-checked="' +
         (SW[rolle] === wert) + '">' +
@@ -9974,11 +10089,20 @@ function swZeichnen(){
     const eigen = SW.neu[rolle] ? SW.neu[rolle].datei.name :
                   SW[rolle + "_datei"] ? "hochgeladen" : "Datei wählen …";
     const ef = swEigenProbe(rolle);
-    liste.innerHTML =
-      knopf("", "Wie im Marken-Studio", "Vorgabe", "") +
-      SCHRIFT_WAHL.filter(w => w.rollen.indexOf(rolle) >= 0)
+    const vorgabe = SW_ERBT_VON_KOPF[rolle] ? "Wie „" + SW_ROLLENTITEL.kopf + "“" : "Wie im Marken-Studio";
+    const liste = wurzel.querySelector(".swliste");
+    if(liste) liste.innerHTML =
+      knopf("", vorgabe, "Vorgabe", "") +
+      SCHRIFT_WAHL.filter(w => w.rollen.indexOf(swAuswahlrolle(rolle)) >= 0)
         .map(w => knopf(w.s, w.familie, w.art, '"omo-sw-' + w.s + '",serif')).join("") +
       knopf("eigen", "Eigene Schrift", eigen, ef ? '"' + ef + '",serif' : "");
+
+    const zsf = wurzel.querySelector("[data-sw-zusammenfassung]");
+    if(zsf) zsf.textContent = swZusammenfassung(rolle);
+    const offen = !!SW_OFFEN[rolle];
+    const knopfAuf = wurzel.querySelector("[data-sw-auf]"), klapp = wurzel.querySelector(".swklapp");
+    if(knopfAuf) knopfAuf.setAttribute("aria-expanded", String(offen));
+    if(klapp) klapp.classList.toggle("offen", offen);
   });
   hvStartseite("kopf");
 }
@@ -9987,8 +10111,9 @@ function swZeichnen(){
    der Vorschau darf das die noch nicht hochgeladene Datei sein
    (blob:) — der Hub nimmt blob: nur in der Vorschau an. */
 function swFuerHub(vorschau){
-  const raus = { kopf:SW.kopf, text:SW.text };
-  ["kopf", "text"].forEach(rolle => {
+  const raus = {};
+  SW_ROLLEN.forEach(rolle => { raus[rolle] = SW[rolle]; });
+  SW_ROLLEN.forEach(rolle => {
     if(SW[rolle] !== "eigen") return;
     const n = SW.neu[rolle];
     raus[rolle + "_datei"] = vorschau && n ? n.blob : SW[rolle + "_datei"];
@@ -10026,7 +10151,7 @@ async function swSichern(){
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
   try{
     const probe = !!(demo || !db);
-    for(const rolle of ["kopf", "text"]){
+    for(const rolle of SW_ROLLEN){
       if(SW[rolle] !== "eigen") continue;
       const n = SW.neu[rolle];
       if(n && !probe){
@@ -10069,6 +10194,13 @@ async function swSichern(){
 }
 
 document.addEventListener("click", e => {
+  const auf = e.target.closest && e.target.closest("[data-sw-auf]");
+  if(auf){
+    const rolle = auf.closest("[data-sw-rolle]").dataset.swRolle;
+    SW_OFFEN[rolle] = !SW_OFFEN[rolle];
+    swZeichnen();
+    return;
+  }
   const k = e.target.closest && e.target.closest("[data-sw]");
   if(!k) return;
   const rolle = k.closest("[data-sw-rolle]").dataset.swRolle;
@@ -10081,6 +10213,10 @@ document.addEventListener("click", e => {
     if(!(SW.neu[rolle] || SW[rolle + "_datei"])) return;
   }
   SW[rolle] = wert;
+  /* Eine echte Wahl (nicht der Weg zum Datei-Dialog) klappt die Liste
+     wieder zu — komprimiert bleibt komprimiert, auch nach dem ersten
+     Gebrauch. */
+  SW_OFFEN[rolle] = false;
   swZeichnen();
 });
 document.addEventListener("change", e => {
@@ -10391,13 +10527,28 @@ let KACHELSTAND = [];      /* was gerade eingestellt ist */
 let kbZuschnitt = null;    /* {schluessel, bild, rahmen, zoom, dx, dy} */
 
 /* Aus der Datenbank in den Stand. Fehlt die Spalte oder ist sie leer,
-   gilt die Vorgabe: alles an, Namen und Symbole wie im Gerüst. */
+   gilt die Vorgabe: alles an, Namen und Symbole wie im Gerüst.
+
+   Reihenfolge: erst wie gespeichert (nur bekannte Schlüssel, keine
+   Dopplung — ein Kunde könnte theoretisch eine fremde Art in der
+   Zeile stehen haben), danach jede KACHELPLAN-Art, die dort noch
+   fehlt, in deren eigener Reihenfolge. So bleibt ein Kunde ohne je
+   gespeicherte Reihenfolge unverändert (Vorgabe = KACHELPLAN), und
+   eine neue Kachel-Art (künftig zu KACHELPLAN hinzugefügt) taucht am
+   Ende auf, statt mitten in eine fremde Reihenfolge zu rutschen. */
 function kbAusZeile(roh){
   const nach = {};
-  (Array.isArray(roh) ? roh : []).forEach(e => {
-    if(e && e.schluessel) nach[e.schluessel] = e;
+  const liste = Array.isArray(roh) ? roh : [];
+  liste.forEach(e => { if(e && e.schluessel) nach[e.schluessel] = e; });
+  const gesehen = new Set();
+  const geordnet = [];
+  liste.forEach(e => {
+    if(!e || !e.schluessel || gesehen.has(e.schluessel)) return;
+    const plan = KACHELPLAN.find(x => x.s === e.schluessel);
+    if(plan){ geordnet.push(plan); gesehen.add(e.schluessel); }
   });
-  KACHELSTAND = KACHELPLAN.map(k => {
+  KACHELPLAN.forEach(k => { if(!gesehen.has(k.s)){ geordnet.push(k); gesehen.add(k.s); } });
+  KACHELSTAND = geordnet.map(k => {
     const e = nach[k.s] || {};
     return {
       schluessel: k.s,
@@ -10414,7 +10565,20 @@ function kbAusZeile(roh){
          Hub; was nicht darauf steht, ist die Vorgabe. */
       breite:   ["drittel","halb","voll"].includes(e.breite) ? e.breite : "",
       bildform: ["seite","flaeche","rund"].includes(e.bildform) ? e.bildform : "",
-      grund:    /^#[0-9a-f]{6}$/i.test(String(e.grund || "")) ? String(e.grund).toUpperCase() : ""
+      grund:    /^#[0-9a-f]{6}$/i.test(String(e.grund || "")) ? String(e.grund).toUpperCase() : "",
+      /* Ob das Symbol über oder neben dem Text steht — bisher ein
+         Zufall der berechneten Breite (zwei Kacheln landeten nur
+         durch die Rest-Zeilen-Streckung im Säulen-Layout, ohne dass
+         es je gewollt war). "" = Vorgabe (unverändertes Verhalten). */
+      symbolLage: ["oben","neben"].includes(e.symbolLage) ? e.symbolLage : "",
+      /* Höhen-Stufe, dieselben zwei Werte wie im Hub — "" = Normal. */
+      hoehe: ["kompakt","hoch"].includes(e.hoehe) ? e.hoehe : "",
+      /* Textgröße: eine Zahl aus einer Live-Spalte, geklammert statt
+         verworfen (dieselbe Grenze wie im Hub, kachelBauen). */
+      textgroesse: (() => {
+        const tg = Number(e.textgroesse);
+        return Number.isFinite(tg) && tg !== 1 ? Math.min(1.4, Math.max(.8, tg)) : "";
+      })()
     };
   });
 }
@@ -10425,6 +10589,14 @@ function kbBreiteVorgabe(p){ return p.form === "saeule" ? "drittel" : p.form ===
 function kbBreite(k){ return k.breite || kbBreiteVorgabe(kbPlan(k.schluessel) || {}); }
 const KB_BREITENNAME = { drittel:"Drittel", halb:"Hälfte", voll:"Ganz" };
 const KB_BILDFORMNAME = { seite:"Neben dem Text", flaeche:"Füllend", rund:"Rund" };
+/* Ob das Symbol über oder neben dem Titel steht — bisher ein Zufall
+   der berechneten Breite, jetzt eine eigene Wahl je Kachel
+   (Plan-Text Block E). "auto" = unverändertes, breiten-abgeleitetes
+   Verhalten, wie es jeder Bestandskunde heute schon sieht. */
+const KB_SYMBOLLAGENAME = { auto:"Automatisch", oben:"Über dem Titel", neben:"Neben dem Titel" };
+/* Mindesthöhe je Kachel — dieselben zwei Stufen wie KACHEL_HOEHE_SKALA
+   im Hub (§ Plan-Text Block F). */
+const KB_HOEHENAME = { kompakt:"Kompakt", normal:"Normal", hoch:"Hoch" };
 /* Farben zur Wahl: zuerst die des Hauses (Markenblatt), dann ein paar
    ruhige Vorschläge. Die Schrift darauf rechnet der Hub (kachelTinte). */
 const KB_FARBEN = ["#A83A2E", "#2F5D50", "#C9A227", "#1E3A8A", "#F2E8D5", "#1B1B1B"];
@@ -10454,6 +10626,24 @@ function kbStandLaden(){
 
 function kbFinden(sch){ return KACHELSTAND.find(k => k.schluessel === sch); }
 function kbPlan(sch){   return KACHELPLAN.find(k => k.s === sch); }
+function kbGruppeVon(sch){ return (kbPlan(sch) || {}).gruppe || ""; }
+
+/* Innerhalb der eigenen Gruppe verschieben — dasselbe Muster wie
+   bnVerschieben() beim Banner-Rad, nur an der Gruppengrenze gestoppt.
+   KACHELSTAND hält AUCH ausgeschaltete Kacheln, und jede Gruppe steht
+   darin am Stück (KACHELPLAN ist schon danach sortiert, und jede
+   Umordnung hier wie beim Ziehen bleibt innerhalb einer Gruppe) —
+   ein einfacher Tausch mit dem Nachbarn reicht deshalb, ein Sprung
+   über eine fremde Gruppe kann so nie entstehen. */
+function kbVerschieben(sch, richtung){
+  const i = KACHELSTAND.findIndex(k => k.schluessel === sch);
+  const j = i + richtung;
+  if(i < 0 || j < 0 || j >= KACHELSTAND.length) return;
+  if(kbGruppeVon(KACHELSTAND[j].schluessel) !== kbGruppeVon(sch)) return;
+  const [k] = KACHELSTAND.splice(i, 1);
+  KACHELSTAND.splice(j, 0, k);
+  kbZeichnen();
+}
 
 /* ── Zeichnen ──────────────────────────────────────────────────── */
 function kbSchau(k){
@@ -10513,6 +10703,9 @@ function kbZusammenfassung(k){
   if(k.banner) teile.push("Bild " + KB_BILDFORMNAME[k.bildform || "seite"].toLowerCase());
   if(k.grund) teile.push("eigene Farbe");
   if(k.iconAus) teile.push("ohne Symbol");
+  if(k.symbolLage) teile.push("Symbol " + KB_SYMBOLLAGENAME[k.symbolLage].toLowerCase());
+  if(k.hoehe) teile.push(KB_HOEHENAME[k.hoehe]);
+  if(k.textgroesse) teile.push(Math.round(k.textgroesse * 100) + " % Text");
   return teile.join(" · ");
 }
 function kbSegment(name, werte, jetzt, fuer, namen){
@@ -10526,13 +10719,27 @@ function kbZeichnen(){
   const feld = $("#kbListe"); if(!feld) return;
   const anordnung = $("#kbAnordnung");
   if(anordnung) anordnung.innerHTML = kbAnordnungHTML();
-  feld.innerHTML = KACHELSTAND.map(k => {
+  feld.innerHTML = KACHELSTAND.map((k, i) => {
     const p = kbPlan(k.schluessel) || {};
     const offen = kbOffen.has(k.schluessel);
     const sch = sicher(k.schluessel);
     const farben = kbFarbenListe();
+    /* Zugänglicher Zweitweg zum Ziehen in der Anordnung oben: an den
+       Gruppengrenzen deaktiviert, genau wie „nach oben/unten" beim
+       Banner-Rad an den Listenenden. */
+    const gruppe = kbGruppeVon(k.schluessel);
+    const ersteInGruppe = i === 0 || kbGruppeVon(KACHELSTAND[i - 1].schluessel) !== gruppe;
+    const letzteInGruppe = i === KACHELSTAND.length - 1 || kbGruppeVon(KACHELSTAND[i + 1].schluessel) !== gruppe;
     return '<article class="kbzeile' + (k.an ? "" : " aus") + (offen ? " offen" : "") + '" data-kb="' + sch + '">' +
       '<div class="kbkopf">' +
+        '<div class="kbreihenfolge">' +
+          '<button type="button" class="kbpfeil" data-kb-hoch' + (ersteInGruppe ? " disabled" : "") +
+            ' aria-label="' + sicher(k.titel || p.titel || sch) + ' nach oben">' +
+            '<svg width="10" height="6" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 5l4-4 4 4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+          '<button type="button" class="kbpfeil" data-kb-runter' + (letzteInGruppe ? " disabled" : "") +
+            ' aria-label="' + sicher(k.titel || p.titel || sch) + ' nach unten">' +
+            '<svg width="10" height="6" viewBox="0 0 10 6" aria-hidden="true"><path d="M1 1l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' +
+        '</div>' +
         '<button type="button" class="kbkopfknopf" data-kb-auf aria-expanded="' + offen + '" aria-controls="kbinhalt-' + sch + '">' +
           '<span class="kbmini' + (k.grund ? " hatgrund" : "") + '"' +
             (k.grund ? ' style="--k-grund:' + k.grund + ';--k-tinte:' + kachelTinte(k.grund) + '"' : "") + '>' +
@@ -10558,6 +10765,17 @@ function kbZeichnen(){
       '<div class="kbwahlblock"><span class="kbwahlname">Breite</span>' +
         kbSegment("Breite", ["drittel","halb","voll"], kbBreite(k), "kb-breite", KB_BREITENNAME) +
         '<small class="kbhinweis">Steht eine Kachel allein in ihrer Reihe, zieht sie sich von selbst breit.</small></div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Symbol</span>' +
+        kbSegment("Symbol", ["auto","oben","neben"], k.symbolLage || "auto", "kb-symbollage", KB_SYMBOLLAGENAME) +
+        '<small class="kbhinweis">Automatisch richtet sich nach der Breite. „Über"/„Neben dem Titel" gilt unabhängig davon.</small></div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Höhe</span>' +
+        kbSegment("Höhe", ["kompakt","normal","hoch"], k.hoehe || "normal", "kb-hoehe", KB_HOEHENAME) +
+        '<small class="kbhinweis">Wirkt nur als Mindesthöhe — ein längerer Text bleibt, so groß er ist.</small></div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Textgröße</span>' +
+        '<input type="range" class="regler" data-kb-textgroesse min="80" max="140" step="5"' +
+          ' value="' + Math.round((k.textgroesse || 1) * 100) + '"' +
+          ' aria-label="Textgröße von ' + sicher(k.titel || p.titel || sch) + '">' +
+        '<small class="kbhinweis" data-kb-textgroesse-wert>' + Math.round((k.textgroesse || 1) * 100) + ' %</small></div>' +
       '<div class="kbwahlblock"><span class="kbwahlname">Farbe</span><div class="kbfarben">' +
         '<button type="button" class="kbfarbe keine" data-kb-grund="" aria-pressed="' + !k.grund + '">Keine</button>' +
         farben.map(c => '<button type="button" class="kbfarbe" data-kb-grund="' + c + '" aria-pressed="' + (k.grund === c) + '"' +
@@ -10620,6 +10838,11 @@ document.addEventListener("click", e => {
   const sym = e.target.closest("[data-kb-icon]");
   if(sym){ kbAendern(sch, "icon", sym.dataset.kbIcon); return; }
 
+  const hoch = e.target.closest("[data-kb-hoch]");
+  if(hoch){ if(!hoch.disabled) kbVerschieben(sch, -1); return; }
+  const runter = e.target.closest("[data-kb-runter]");
+  if(runter){ if(!runter.disabled) kbVerschieben(sch, 1); return; }
+
   /* Auf/zu der ganzen Zeile: ohne Neuzeichnen (§4.3), nur Zustand. */
   const auf = e.target.closest("[data-kb-auf]");
   if(auf){
@@ -10635,6 +10858,10 @@ document.addEventListener("click", e => {
   if(br){ kbAendern(sch, "breite", br.dataset.kbBreite === kbBreiteVorgabe(kbPlan(sch) || {}) ? "" : br.dataset.kbBreite); return; }
   const bf = e.target.closest("[data-kb-bildform]");
   if(bf){ kbAendern(sch, "bildform", bf.dataset.kbBildform === "seite" ? "" : bf.dataset.kbBildform); return; }
+  const sl = e.target.closest("[data-kb-symbollage]");
+  if(sl){ kbAendern(sch, "symbolLage", sl.dataset.kbSymbollage === "auto" ? "" : sl.dataset.kbSymbollage); return; }
+  const ho = e.target.closest("[data-kb-hoehe]");
+  if(ho){ kbAendern(sch, "hoehe", ho.dataset.kbHoehe === "normal" ? "" : ho.dataset.kbHoehe); return; }
   const gr = e.target.closest("[data-kb-grund]");
   if(gr){ kbAendern(sch, "grund", gr.dataset.kbGrund); return; }
 
@@ -10683,6 +10910,12 @@ document.addEventListener("input", e => {
      die Vorschau daneben von Hand. */
   if(e.target.matches("[data-kb-titel]")) k.titel = e.target.value;
   if(e.target.matches("[data-kb-unter]")) k.unter = e.target.value;
+  if(e.target.matches("[data-kb-textgroesse]")){
+    const wert = +e.target.value / 100;
+    k.textgroesse = wert === 1 ? "" : wert;
+    const hinweis = zeile.querySelector("[data-kb-textgroesse-wert]");
+    if(hinweis) hinweis.textContent = e.target.value + " %";
+  }
   const schau = zeile.querySelector(".kbschau");
   if(schau) schau.outerHTML = kbSchau(k);
   const kopf = zeile.querySelector(".kbkopftext b");
@@ -10766,6 +10999,142 @@ document.addEventListener("keydown", e => {
   };
   document.addEventListener("pointerup", ende);
   document.addEventListener("pointercancel", ende);
+})();
+
+/* ── Umsortieren per langem Druck ──────────────────────────────────
+   .kbr-name öffnet bei einem kurzen Tipp die Einstellungen (siehe
+   data-kbr-auf-Klick oben) — deshalb kein eigener Griff, sondern ein
+   Schwellenwert: erst nach ~180ms Halten OHNE nennenswerte Bewegung
+   beginnt das Ziehen, ein normaler Tipp bleibt ein Tipp, ein Wisch
+   zum Rollen bricht den Timer sofort ab (kein preventDefault, bevor
+   das Ziehen wirklich beginnt — sonst rollt die Seite nicht mehr).
+
+   Bounded auf die eigene Gruppe: jede .kbr-gitter enthält bereits nur
+   die Kacheln EINER Gruppe (kbAnordnungHTML baut pro Bereich ein
+   eigenes Gitter) — die Geschwister-Liste dort ist also automatisch
+   die Grenze, kein zusätzlicher Gruppenvergleich beim Ziehen nötig.
+
+   Während des Zugs bewegt sich dasselbe DOM-Element (§4.3), Nachbarn
+   rücken per FLIP nach (erst messen, dann per transform vortäuschen,
+   dann laufen lassen — nur transform, Bewegungs-Skill). Erst beim
+   Loslassen wird die neue Reihenfolge in KACHELSTAND geschrieben und
+   EINMAL kbZeichnen() aufgerufen (§4.2). */
+(function(){
+  const SCHWELLE_MS = 180, SCHWELLE_PX = 6;
+  let warte = null, zug = null, letzterZug = 0;
+
+  function wartenAbbrechen(){ if(warte){ clearTimeout(warte.timer); warte = null; } }
+
+  document.addEventListener("pointerdown", e => {
+    if(e.button > 0) return;
+    if(e.target.closest("[data-kbr-griff]")) return; /* der Breiten-Griff bleibt eigenständig */
+    const name = e.target.closest("[data-kbr-auf]");
+    if(!name) return;
+    const kachel = name.closest("[data-kbr]"); if(!kachel) return;
+    warte = { x:e.clientX, y:e.clientY, id:e.pointerId,
+      timer: setTimeout(() => zugStarten(kachel, e.pointerId), SCHWELLE_MS) };
+  });
+
+  document.addEventListener("pointermove", e => {
+    if(warte && warte.id === e.pointerId){
+      if(Math.hypot(e.clientX - warte.x, e.clientY - warte.y) > SCHWELLE_PX) wartenAbbrechen();
+      return;
+    }
+    if(!zug || e.pointerId !== zug.id) return;
+    e.preventDefault();
+    zugBewegen(e.clientX, e.clientY);
+  }, { passive:false });
+
+  const zugEnde = e => {
+    if(warte && (!e || e.pointerId === warte.id)) wartenAbbrechen();
+    if(!zug || (e && e.pointerId !== zug.id)) return;
+    zugLoslassen();
+  };
+  document.addEventListener("pointerup", zugEnde);
+  document.addEventListener("pointercancel", zugEnde);
+
+  /* Ein Klick, der einem echten Zug folgt, würde sonst zusätzlich die
+     Einstellungen öffnen (pointerup kommt vor click) — im
+     Erfassungsdurchlauf einmalig unterdrückt. */
+  document.addEventListener("click", e => {
+    if(Date.now() - letzterZug < 300 && e.target.closest("[data-kbr-auf]")){
+      e.stopPropagation(); e.preventDefault();
+    }
+  }, true);
+
+  function zugStarten(kachel, id){
+    warte = null;
+    const gitter = kachel.parentElement;
+    const reihen = [...gitter.children].filter(el => el.hasAttribute("data-kbr"));
+    /* Die Rasterplätze werden EINMAL zu Beginn gemessen, nicht bei
+       jeder Bewegung neu. Wer stattdessen live gegen die aktuellen
+       (schon umsortierten) Geschwister misst, misst gegen einen
+       Maßstab, der sich mit jedem Tausch selbst verschiebt — der Zug
+       pendelte dann zwischen zwei Plätzen hin und her, sobald der
+       Finger noch nicht ganz am Ziel war (gemessen: acht Bewegungen,
+       vier Tausche hin und zurück, am Ende wieder der Ausgangsstand;
+       nicht von Auge gesehen, weil es genau innerhalb eines einzelnen
+       Bildes passierte). Feste Plätze machen aus der Bewegung eine
+       reine Funktion der Fingerposition, unabhängig vom Zwischenstand. */
+    const plaetze = reihen.map(el => { const r = el.getBoundingClientRect();
+      return { x:r.left + r.width / 2, y:r.top + r.height / 2 }; });
+    zug = { sch:kachel.dataset.kbr, id, gitter, reihen, plaetze,
+            reihenfolge: reihen.map(el => el.dataset.kbr),
+            reduziert: matchMedia("(prefers-reduced-motion: reduce)").matches };
+    try{ kachel.setPointerCapture(id); }catch(err){}
+    kachel.classList.add("ziehtreihe");
+  }
+
+  function naechsterPlatz(x, y){
+    let beste = 0, bester = Infinity;
+    zug.plaetze.forEach((p, i) => {
+      const d = Math.hypot(x - p.x, y - p.y);
+      if(d < bester){ bester = d; beste = i; }
+    });
+    return beste;
+  }
+
+  function zugBewegen(x, y){
+    const ziel = naechsterPlatz(x, y);
+    const jetzt = zug.reihenfolge.indexOf(zug.sch);
+    if(ziel === jetzt) return;
+    const vorher = zug.reduziert ? null : new Map(zug.reihen.map(el => [el, el.getBoundingClientRect()]));
+    zug.reihenfolge.splice(jetzt, 1);
+    zug.reihenfolge.splice(ziel, 0, zug.sch);
+    zug.reihenfolge.forEach(sch => zug.gitter.appendChild(zug.reihen.find(el => el.dataset.kbr === sch)));
+    if(vorher){
+      zug.reihen.forEach(e2 => {
+        if(e2.dataset.kbr === zug.sch) return; /* die gezogene Kachel selbst springt direkt ins neue Feld, nur ihre Nachbarn rücken sichtbar nach */
+        const vor = vorher.get(e2); if(!vor) return;
+        const nach = e2.getBoundingClientRect();
+        const dx = vor.left - nach.left, dy = vor.top - nach.top;
+        if(!dx && !dy) return;
+        e2.style.transition = "none";
+        e2.style.transform = "translate(" + dx + "px," + dy + "px)";
+        requestAnimationFrame(() => {
+          e2.style.transition = "transform .2s var(--ease-out)";
+          e2.style.transform = "";
+        });
+      });
+    }
+  }
+
+  function zugLoslassen(){
+    const z = zug; zug = null; letzterZug = Date.now();
+    const kachel = document.querySelector('[data-kbr="' + CSS.escape(z.sch) + '"]');
+    if(kachel) kachel.classList.remove("ziehtreihe");
+    z.reihen.forEach(el => { el.style.transition = ""; el.style.transform = ""; });
+    /* Neue Reihenfolge nur unter den AKTIVEN Kacheln dieser Gruppe
+       schreiben — ausgeschaltete Geschwister stehen gar nicht im
+       Gitter und bleiben an ihrer Stelle in KACHELSTAND unberührt. */
+    const gruppe = kbGruppeVon(z.sch);
+    const aktivIndizes = [];
+    KACHELSTAND.forEach((k, i) => { if(kbGruppeVon(k.schluessel) === gruppe && k.an) aktivIndizes.push(i); });
+    const neu = z.reihenfolge.map(sch => kbFinden(sch)).filter(Boolean);
+    if(neu.length === aktivIndizes.length)
+      aktivIndizes.forEach((idx, i) => { KACHELSTAND[idx] = neu[i]; });
+    kbZeichnen();
+  }
 })();
 
 /* ── Der Zuschnitt ─────────────────────────────────────────────── */
@@ -10987,6 +11356,9 @@ function kbRoh(){
     if(k.breite && k.breite !== kbBreiteVorgabe(v)) e.breite = k.breite;
     if(k.bildform && k.bildform !== "seite")        e.bildform = k.bildform;
     if(k.grund)                     e.grund  = k.grund;
+    if(k.symbolLage)                e.symbolLage = k.symbolLage;
+    if(k.hoehe)                     e.hoehe  = k.hoehe;
+    if(k.textgroesse)               e.textgroesse = k.textgroesse;
     return e;
   });
 }
@@ -11542,8 +11914,12 @@ function bnZielFeldHTML(b){
       '</select></label>';
   }
   if(b.zielTyp === "url"){
-    return '<label><span>Adresse (https://…)</span>' +
-      '<input type="url" data-bn-zielwert placeholder="https://…" value="' + sicher(b.zielWert) + '"></label>';
+    /* type="text" statt type="url": Ein Wert ohne Protokoll (der
+       Normalfall — niemand tippt "https://" von sich aus) ist jetzt
+       ausdrücklich erlaubt (bnUrlNormalisiert, bnRoh) und soll nicht an
+       der eingebauten URL-Validierung des Browsers hängenbleiben. */
+    return '<label><span>Adresse</span>' +
+      '<input type="text" data-bn-zielwert placeholder="beispiel.de" value="' + sicher(b.zielWert) + '"></label>';
   }
   if(b.zielTyp === "aktion"){
     const laufend = aktionen.filter(a => a.aktiv);
@@ -11719,7 +12095,7 @@ document.addEventListener("input", e => {
   bnGeaendert = true;
   if(e.target.matches("[data-bn-titel]")) b.titel = e.target.value;
   if(e.target.matches("[data-bn-text]"))  b.text  = e.target.value;
-  if(e.target.matches("[data-bn-zielwert]") && e.target.matches('input[type="url"]')) b.zielWert = e.target.value;
+  if(e.target.matches("[data-bn-zielwert]") && e.target.matches("input")) b.zielWert = e.target.value;
   const schau = zeile.querySelector(".kbschau");
   if(schau) schau.outerHTML =
     '<div class="kbschau' + (b.ausrichtung === "mitte" ? " mitte" : "") + '">' +
@@ -11853,9 +12229,21 @@ $("#bnZoom").oninput = e => {
 };
 
 /* ── Sichern ───────────────────────────────────────────────────── */
-/* Was in hub_banner geht — für „Übernehmen“ und die Live-Vorschau. */
+/* Dieselbe Normalisierung wie bannerZiel() in hub.vorlage.html: fehlt
+   bei einer URL jedes Protokoll, wird https:// ergänzt — damit ist
+   schon das GESPEICHERTE sauber, nicht nur die Anzeige (CLAUDE.md
+   §8.1h, Block A). Ein anderes Protokoll (javascript:, http:, data:)
+   bleibt unverändert stehen und damit weiterhin ein „kein Ziel"-Fall. */
+function bnUrlNormalisiert(wert){
+  const roh = String(wert || "").trim();
+  if(!roh) return roh;
+  return /^[a-z][a-z0-9+.-]*:/i.test(roh) ? roh : "https://" + roh;
+}
+
+/* Was in hub_banner geht — für „Übernehmen" und die Live-Vorschau. */
 function bnRoh(){
-  return BANNERSTAND.map((b, i) => Object.assign({}, b, { reihenfolge:i }));
+  return BANNERSTAND.map((b, i) => Object.assign({}, b, { reihenfolge:i },
+    b.zielTyp === "url" ? { zielWert: bnUrlNormalisiert(b.zielWert) } : {}));
 }
 
 async function bnSichern(){
@@ -11984,130 +12372,6 @@ if($("#hubTexteSichern")){
     hubSchauZeichnen();
     $("#hubTextePruefung").textContent =
       "Felder geleert. Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
-  };
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   MARKE GESTALTEN — derselbe Weg wie konto.html, nur ohne Seitenwechsel
-
-   Das Marken-Studio traegt seinen ganzen Stand in der Adresse
-   (#m=…, base64) — kein Login, keine Datenbank auf seiner Seite. Der
-   Rueckweg (Entwurfslink einsetzen → betriebe.markenblatt speichern)
-   ist wortgleich aus konto.html uebernommen, NICHT neu erfunden —
-   §1.1: ein zweiter, abweichender Entschluesseler waere ein zweiter
-   Ort, an dem derselbe Fehler getrennt entstehen kann.
-   ═══════════════════════════════════════════════════════════════ */
-function markeAusBase64(kurz){
-  let t = String(kurz).replace(/-/g,"+").replace(/_/g,"/");
-  while(t.length % 4) t += "=";
-  const roh = atob(t), bytes = new Uint8Array(roh.length);
-  for(let i=0;i<roh.length;i++) bytes[i] = roh.charCodeAt(i);
-  return new TextDecoder().decode(bytes);
-}
-function markeNachBase64(text){
-  const bytes = new TextEncoder().encode(text);
-  let roh = "";
-  bytes.forEach(b => { roh += String.fromCharCode(b); });
-  return btoa(roh).replace(/\+/g,"-").replace(/\//g,"_").replace(/=+$/,"");
-}
-const MARKE_BEREICH_FOLGE = ["speisekarte","getraenke","cocktails","reservierung",
-                             "tischruf","musikwunsch","quiz","trinkgeld"];
-function markeAusEntwurf(link){
-  const t = String(link).match(/[#&]m=([^&\s]+)/);
-  if(!t) return null;
-  const k = JSON.parse(markeAusBase64(t[1]));
-  if(!k.f || !k.o) return null;
-
-  const bereiche = {};
-  const reihe = (Array.isArray(k.r) && k.r.length ? k.r : MARKE_BEREICH_FOLGE)
-    .filter(x => MARKE_BEREICH_FOLGE.indexOf(x) >= 0);
-  MARKE_BEREICH_FOLGE.forEach(x => { if(reihe.indexOf(x) < 0) reihe.push(x); });
-  reihe.forEach((x,i) => { bereiche[x] = !!(k.e && k.e[i]); });
-
-  return {
-    version: 1,
-    betrieb: { name:(k.b&&k.b[0])||"", claim:(k.b&&k.b[1])||"",
-               begruessung:(k.b&&k.b[2])||"" },
-    farben: k.f,
-    abend:  k.a || {an:false},
-    form:   k.o,
-    schrift:k.s || {kopf:"system", text:"system", groesse:1},
-    logo:   { art:"text", text:(k.b&&k.b[0])||"", bild:"", hoehe:30 },
-    bereiche: bereiche,
-    reihe: reihe
-  };
-}
-/* Die Gegenrichtung — vom gespeicherten Markenblatt zurueck in dieselbe
-   #m=-Form, damit das Studio mit dem aktuellen Stand aufgeht, statt
-   mit seinen eigenen Vorgaben. Figur/Kacheln/eigene Saetze (v/k/d/x)
-   fehlen hier bewusst: Der Weg ueber konto.html hat sie nie
-   gespeichert (siehe ausEntwurf() dort), es gibt also nichts
-   Vorhandenes, das verloren gehen koennte — das Studio faellt dafuer
-   auf seine eigenen Vorgaben zurueck, wie bei jedem aelteren Link. */
-function markeEntwurfsAdresse(mb){
-  const reihe = Array.isArray(mb.reihe) ? mb.reihe : MARKE_BEREICH_FOLGE;
-  const knapp = {
-    b: [(mb.betrieb && mb.betrieb.name) || "",
-        (mb.betrieb && mb.betrieb.claim) || "",
-        (mb.betrieb && mb.betrieb.begruessung) || ""],
-    f: mb.farben, a: mb.abend, o: mb.form, s: mb.schrift,
-    r: reihe, e: reihe.map(k => (mb.bereiche && mb.bereiche[k]) ? 1 : 0)
-  };
-  return location.origin + "/marken-studio.html#m=" + markeNachBase64(JSON.stringify(knapp));
-}
-
-if($("#markeOeffnen")){
-  $("#markeOeffnen").onclick = () => {
-    const b = meineBetriebe.find(x => x.id === betriebId);
-    const mb = b && b.markenblatt;
-    const ziel = mb
-      ? markeEntwurfsAdresse(mb)
-      : location.origin + "/marken-studio.html";
-    window.open(ziel, "_blank", "noopener");
-  };
-
-  $("#markeSpeichern").onclick = async () => {
-    const raus = $("#markeMeldung");
-    const roh = $("#markeLink").value.trim();
-    raus.textContent = "";
-    if(!roh){ raus.textContent = "Bitte den Entwurfslink einsetzen."; return; }
-
-    let mb;
-    try{
-      mb = markeAusEntwurf(roh);
-      if(!mb) throw new Error("unvollständig");
-    }catch(e){
-      raus.textContent = "Das war kein gültiger Entwurfslink. Im Marken-Studio auf " +
-        "„Entwurf verschicken\" tippen und den ganzen Link einsetzen.";
-      return;
-    }
-
-    /* Name gehoert dem Betrieb, nicht dem Entwurf — sonst koennte ein
-       eingesetzter fremder Link den eigenen Betrieb umbenennen. */
-    const b = meineBetriebe.find(x => x.id === betriebId);
-    mb.version = 1;
-    mb.betrieb = Object.assign({}, mb.betrieb, { name: b ? b.name : mb.betrieb.name });
-
-    const knopf = $("#markeSpeichern");
-    knopf.disabled = true; knopf.textContent = "Wird übernommen …";
-    if(demo || !db){
-      raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
-      knopf.disabled = false; knopf.textContent = "Markenblatt übernehmen";
-      return;
-    }
-    try{
-      const {error} = await db.from("betriebe")
-        .update({markenblatt: mb}).eq("id", betriebId);
-      if(error) throw error;
-      if(b) b.markenblatt = mb;
-      $("#markeLink").value = "";
-      raus.textContent = "Übernommen. Der Hub wird damit neu erzeugt — das dauert in der Regel weniger als einen Tag.";
-    }catch(e){
-      raus.textContent = /markenblatt/i.test(String(e && e.message))
-        ? "Die Spalte „markenblatt“ fehlt noch in der Datenbank."
-        : "Nicht gespeichert, bitte Verbindung prüfen.";
-    }
-    knopf.disabled = false; knopf.textContent = "Markenblatt übernehmen";
   };
 }
 

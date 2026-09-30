@@ -348,6 +348,7 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
           hub_avatar:{ figur:"pizzaecke", art:"witzig",
             haende:{ neu:"glas", arbeit:"pancakes", fertig:"eis" } } }]) }));
     await p.addInitScript(() => localStorage.setItem("omoteno-willkommen","1"));
+    await p.addInitScript(() => sessionStorage.setItem("omoteno-willkommen","1"));
     await p.goto("file://" + DIST);
     await p.waitForTimeout(1900);
 
@@ -375,6 +376,7 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
           hub_texte:{}, hub_kacheln:null, hub_woerter:{}, liefer:null,
           hub_avatar:{ figur:"nicht-echt", art:"grantig", haende:{ neu:"unbekannt" } } }]) }));
     await p2.addInitScript(() => localStorage.setItem("omoteno-willkommen","1"));
+    await p2.addInitScript(() => sessionStorage.setItem("omoteno-willkommen","1"));
     await p2.goto("file://" + DIST);
     await p2.waitForTimeout(1900);
     const rueckfall = await p2.evaluate(() => ({

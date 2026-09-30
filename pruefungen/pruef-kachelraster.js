@@ -347,6 +347,84 @@ const MESSEN = () => {
     pruef(t.breite === "" && t.roh === undefined, breite + " px: mit dem FINGER zurück auf ganz → wieder Vorgabe, nichts extra gespeichert", JSON.stringify(t));
     pruef(t.gerollt <= 2, breite + " px: beim Ziehen rollt die Seite nicht mit", t.gerollt + " px");
 
+    /* ── Umsortieren per langem Druck auf den Namen, innerhalb der
+       eigenen Gruppe ────────────────────────────────────────────── */
+    const ziehReihenfolge = async (sch, zielSch, finger) => {
+      /* scrollIntoView UND das Maß in ZWEI Aufrufen, mit Warten
+         dazwischen — html hat scroll-behavior:smooth (Zeile 433), ein
+         Maß im selben Durchgang träfe die Kachel noch mitten im
+         Rollen (Bewegungs-Skill §9). */
+      await p.evaluate(s => document.querySelector('#kbAnordnung [data-kbr="' + s + '"] [data-kbr-auf]').scrollIntoView({ block:"center" }), sch);
+      await p.waitForTimeout(150);
+      const start = await p.evaluate(s => {
+        const el = document.querySelector('#kbAnordnung [data-kbr="' + s + '"] [data-kbr-auf]');
+        const r = el.getBoundingClientRect(); return { x:r.left + r.width / 2, y:r.top + r.height / 2 };
+      }, sch);
+      const ziel = await p.evaluate(s => {
+        const r = document.querySelector('#kbAnordnung [data-kbr="' + s + '"]').getBoundingClientRect();
+        return { x:r.left + r.width / 2, y:r.top + r.height / 2 };
+      }, zielSch);
+      if(finger){
+        const cdp = await ctx.newCDPSession(p);
+        const tt = (type, x, y) => cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y, id:1 }] });
+        await tt("touchStart", start.x, start.y);
+        await p.waitForTimeout(230); /* über die 180-ms-Schwelle, OHNE Bewegung — sonst gilt es als Wisch */
+        for(let i = 1; i <= 8; i++){ await tt("touchMove", start.x + (ziel.x - start.x) * i / 8, start.y + (ziel.y - start.y) * i / 8); await p.waitForTimeout(16); }
+        await tt("touchEnd", ziel.x, ziel.y);
+      }else{
+        await p.mouse.move(start.x, start.y);
+        await p.mouse.down();
+        await p.waitForTimeout(230);
+        await p.mouse.move(ziel.x, ziel.y, { steps:8 });
+        await p.waitForTimeout(80);
+        await p.mouse.up();
+      }
+      await p.waitForTimeout(250);
+      return p.evaluate(() => KACHELSTAND.map(k => k.schluessel));
+    };
+    const reihenfolgeVorher = await p.evaluate(() => KACHELSTAND.map(k => k.schluessel));
+    const reihenfolgeNachher = await ziehReihenfolge("getraenke", "cocktails", breite === 390);
+    pruef(reihenfolgeVorher.indexOf("getraenke") < reihenfolgeVorher.indexOf("cocktails") &&
+      reihenfolgeNachher.indexOf("getraenke") > reihenfolgeNachher.indexOf("cocktails"),
+      breite + " px: langer Druck (" + (breite === 390 ? "Finger" : "Maus") + ") zieht „Getränke“ hinter „Cocktails“",
+      reihenfolgeVorher.slice(0, 3).join(",") + " → " + reihenfolgeNachher.slice(0, 3).join(","));
+    const offenNachZug = await p.evaluate(() => document.querySelector('[data-kb="getraenke"] [data-kb-auf]').getAttribute("aria-expanded"));
+    pruef(offenNachZug === "false", breite + " px: nach einem echten Zug öffnen sich NICHT zusätzlich die Einstellungen", offenNachZug);
+
+    /* Über die eigene Gruppe hinaus gezogen: bleibt drin. „Cocktails“
+       (jetzt letzte Kachel der Gruppe „Die Karte“) weit in Richtung
+       der nächsten Gruppe gezogen — sie darf „Die Karte“ nie verlassen,
+       weil jede Gruppe ihr eigenes .kbr-gitter ist. */
+    const weitGezogen = await ziehReihenfolge("cocktails", "tischruf", false);
+    const dieKarte = ["speisekarte", "getraenke", "cocktails"];
+    pruef(weitGezogen.slice(0, 3).slice().sort().join(",") === dieKarte.slice().sort().join(",") &&
+      weitGezogen.indexOf("cocktails") < 3,
+      breite + " px: Ziehen über die Gruppengrenze hinaus bleibt in der eigenen Gruppe (kein Sprung zu „Jetzt am Tisch“)",
+      weitGezogen.slice(0, 5).join(","));
+
+    /* ── Zugänglicher Zweitweg: Pfeil-Knöpfe, an den Gruppengrenzen
+       deaktiviert — „Danke sagen“ hat nur eine Kachel (trinkgeld):
+       oben UND unten deaktiviert, unabhängig davon, was sonst gezogen
+       wurde. „Kontakt“ ist die letzte der unberührten Gruppe „Für
+       Ihren nächsten Besuch“. ────────────────────────────────────── */
+    const grenzen = await p.evaluate(() => ({
+      trinkgeldHoch:   document.querySelector('[data-kb="trinkgeld"] [data-kb-hoch]').disabled,
+      trinkgeldRunter: document.querySelector('[data-kb="trinkgeld"] [data-kb-runter]').disabled,
+      kontaktRunter:   document.querySelector('[data-kb="kontakt"] [data-kb-runter]').disabled,
+      kontaktHoch:     document.querySelector('[data-kb="kontakt"] [data-kb-hoch]').disabled
+    }));
+    pruef(grenzen.trinkgeldHoch && grenzen.trinkgeldRunter,
+      breite + " px: einzige Kachel ihrer Gruppe – beide Pfeile deaktiviert", JSON.stringify(grenzen));
+    pruef(grenzen.kontaktRunter && !grenzen.kontaktHoch,
+      breite + " px: letzte Kachel der Gruppe – „nach unten“ deaktiviert, „nach oben“ nicht", JSON.stringify(grenzen));
+    const vorPfeil = await p.evaluate(() => KACHELSTAND.map(k => k.schluessel));
+    await p.click('[data-kb="kontakt"] [data-kb-hoch]');
+    await p.waitForTimeout(150);
+    const nachPfeil = await p.evaluate(() => KACHELSTAND.map(k => k.schluessel));
+    pruef(nachPfeil.indexOf("kontakt") === vorPfeil.indexOf("kontakt") - 1,
+      breite + " px: „nach oben“ tauscht mit dem Nachbarn in der eigenen Gruppe",
+      vorPfeil.join(",") + " → " + nachPfeil.join(","));
+
     /* Pfeiltasten am Griff. */
     await p.focus('#kbAnordnung [data-kbr="kontakt"] [data-kbr-griff]');
     await p.keyboard.press("ArrowRight");
@@ -377,6 +455,52 @@ const MESSEN = () => {
     pruef(w.offen === "true", breite + " px: die Zeile bleibt beim Neuzeichnen offen");
     pruef(w.verh === 1 && w.verhFl === 3.6, breite + " px: Zuschnitt folgt der Bildform (rund 1:1, füllend ganz 3,6:1)", w.verh + " / " + w.verhFl);
     pruef(!fehler.length, breite + " px: keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
+  /* ── 7b · Umsortieren mit prefers-reduced-motion ─────────────────
+     Kein Zwischenschritt beim Nachrücken, aber die Endposition muss
+     trotzdem stimmen — und am Ende darf kein inline-transform hängen
+     bleiben (§8.1: kein Zustand, der nicht zurückgesetzt wurde). */
+  console.log("\n══ Kacheln: Umsortieren mit prefers-reduced-motion ══");
+  {
+    const ctx = await br.newContext({ viewport:{ width:390, height:900 } });
+    const p = await ctx.newPage();
+    const fehler = [];
+    p.on("pageerror", e => fehler.push(String(e).slice(0, 160)));
+    await p.emulateMedia({ reducedMotion:"reduce" });
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.addInitScript(() => { Element.prototype.requestFullscreen = () => Promise.resolve(); });
+    await p.goto("file://" + path.join(OBEN, "seiten", "admin.html"));
+    await p.waitForTimeout(800);
+    await p.evaluate(() => { document.getElementById("tor").hidden = true; demoStarten(); zeichneAlles();
+      const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("startseite");
+      kbAusZeile([]); kbZeichnen(); });
+    await p.waitForTimeout(400);
+    /* scrollIntoView und das Maß in zwei Aufrufen mit Warten dazwischen
+       (Bewegungs-Skill §9, wie oben bei ziehReihenfolge) — sonst zeigt
+       das Maß eine Stelle, an der die Kachel (noch) nicht steht. */
+    await p.evaluate(() => document.querySelector('#kbAnordnung [data-kbr="getraenke"] [data-kbr-auf]').scrollIntoView({ block:"center" }));
+    await p.waitForTimeout(150);
+    const start = await p.evaluate(() => { const el = document.querySelector('#kbAnordnung [data-kbr="getraenke"] [data-kbr-auf]');
+      const r = el.getBoundingClientRect(); return { x:r.left + r.width / 2, y:r.top + r.height / 2 }; });
+    const ziel = await p.evaluate(() => { const r = document.querySelector('#kbAnordnung [data-kbr="cocktails"]').getBoundingClientRect();
+      return { x:r.left + r.width / 2, y:r.top + r.height / 2 }; });
+    await p.mouse.move(start.x, start.y);
+    await p.mouse.down();
+    await p.waitForTimeout(230);
+    await p.mouse.move(ziel.x, ziel.y, { steps:8 });
+    await p.waitForTimeout(80);
+    await p.mouse.up();
+    await p.waitForTimeout(250);
+    const nach = await p.evaluate(() => ({
+      reihe: KACHELSTAND.map(k => k.schluessel),
+      transform: [...document.querySelectorAll("#kbAnordnung [data-kbr]")].every(el => !el.style.transform && !el.style.transition)
+    }));
+    pruef(nach.reihe.indexOf("getraenke") > nach.reihe.indexOf("cocktails"),
+      "prefers-reduced-motion: Endposition stimmt trotzdem (kein Zwischenschritt nötig)", nach.reihe.slice(0, 3).join(","));
+    pruef(nach.transform, "prefers-reduced-motion: kein liegen gebliebenes transform/transition an den Nachbarn");
+    pruef(!fehler.length, "prefers-reduced-motion: keine Laufzeitfehler", fehler[0] || "still");
     await ctx.close();
   }
 
@@ -456,6 +580,147 @@ const MESSEN = () => {
     const rad = await lage();
     pruef(rad.zoom > 1.3, art + ": Mausrad zoomt", rad.zoom.toFixed(2));
     pruef(!fehler.length, art + ": keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
+  /* ── Symbol-Anordnung: eigener Schalter, unabhängig von der Breite ──
+     VORFALL (Bildschirmfoto): "Uns bewerten" und "WLAN verbinden"
+     landeten nur durch die Rest-Zeilen-Streckung/gewählte Breite im
+     Säulen-Layout (Symbol über dem Text) — ein Zufall, keine Wahl.
+     symbolLage macht es zu einem eigenen Feld: "neben" erzwingt die
+     Reihen-Klasse auch bei einer Kachel, die rechnerisch eine Säule
+     wäre; "oben" erzwingt die Säule auch bei einer, die rechnerisch
+     breit würde. Getestet gegen den ECHTEN erzeugten Hub, nicht nur
+     gegen die isolierte kachelReihen()-Rechnung von oben. */
+  console.log("\n══ Symbol-Anordnung: eigener Schalter (Vorfall aus dem Bildschirmfoto) ══");
+  {
+    /* Drei "drittel"-Kacheln derselben Gruppe füllen eine Reihe exakt
+       (2+2+2=6) — ohne Rest-Streckung bleibt jede rechnerisch eine
+       Säule (spalten=2). Eine davon bekommt symbolLage:"neben". */
+    const { p, ctx, fehler } = await hubAuf(br, "chocolamour", 390, liste([
+      { schluessel:"speisekarte", breite:"drittel" },
+      { schluessel:"getraenke",   breite:"drittel", symbolLage:"neben" },
+      { schluessel:"cocktails",   breite:"drittel" }
+    ]));
+    const karten = await p.evaluate(() => [...document.querySelectorAll("a.kachel")].map(a => ({
+      s: a.dataset.kachel, spalten: +a.dataset.spalten, klassen: a.className
+    })));
+    const speisekarte = karten.find(k => k.s === "speisekarte");
+    const getraenke   = karten.find(k => k.s === "getraenke");
+    const cocktails   = karten.find(k => k.s === "cocktails");
+    pruef(!!speisekarte && speisekarte.spalten === 2 && /\bsaeule\b/.test(speisekarte.klassen),
+      "Voraussetzung: ohne eigene Wahl bleibt eine 'drittel'-Kachel rechnerisch eine Säule",
+      speisekarte && JSON.stringify({ spalten:speisekarte.spalten, klassen:speisekarte.klassen }));
+    pruef(!!getraenke && getraenke.spalten === 2 && !/\bsaeule\b/.test(getraenke.klassen) && /\bkhalb\b/.test(getraenke.klassen),
+      "symbolLage:'neben' erzwingt die Reihen-Klasse, OBWOHL die Breite (2 Spalten) rechnerisch eine Säule wäre",
+      getraenke && JSON.stringify({ spalten:getraenke.spalten, klassen:getraenke.klassen }));
+    pruef(!!cocktails && cocktails.spalten === 2 && /\bsaeule\b/.test(cocktails.klassen),
+      "…die dritte, unveränderte Kachel bleibt bei der alten (Säulen-)Anordnung — nur die gewählte weicht ab",
+      cocktails && JSON.stringify({ spalten:cocktails.spalten, klassen:cocktails.klassen }));
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+  {
+    /* Umgekehrt: eine Kachel allein in ihrer Gruppe wird rechnerisch
+       "voll" (6 Spalten, Reihen-Layout mit Unterzeile) — symbolLage:
+       "oben" erzwingt trotzdem die Säule. */
+    const { p, ctx, fehler } = await hubAuf(br, "chocolamour", 390, liste([
+      { schluessel:"wlan", symbolLage:"oben" }
+    ]));
+    const karte = await p.evaluate(() => {
+      const a = document.querySelector('a.kachel[data-kachel="wlan"]');
+      return a ? { spalten:+a.dataset.spalten, klassen:a.className } : null;
+    });
+    pruef(!!karte && karte.spalten === 6 && /\bsaeule\b/.test(karte.klassen),
+      "symbolLage:'oben' erzwingt die Säule, OBWOHL die Kachel allein rechnerisch ganz breit (6 Spalten) würde",
+      karte && JSON.stringify(karte));
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
+  /* ── Höhe (gestuft) und Textgröße: eine reine Mindesthöhe/-größe ──
+     "hoch"/"kompakt" skalieren die vorhandene Mindesthöhe (132/64/60px
+     je Klasse), "kein Wert" bleibt bytegleich beim alten Verhalten.
+     Textgröße ist eine geklammerte Zahl (0,8–1,4), keine feste Liste. */
+  console.log("\n══ Kachel-Höhe (gestuft) und Textgröße ══");
+  {
+    const { p, ctx, fehler } = await hubAuf(br, "chocolamour", 390, liste([
+      { schluessel:"wlan",       hoehe:"hoch",    textgroesse:1.3 },
+      { schluessel:"bewertung",  hoehe:"kompakt", textgroesse:0.85 },
+      { schluessel:"speisekarte" }
+    ]));
+    const messen = s => p.evaluate(sel => {
+      const a = document.querySelector('a.kachel[data-kachel="' + sel + '"]');
+      const st = a.querySelector(".txt strong");
+      return { minHoehe: parseFloat(getComputedStyle(a).minHeight), schrift: parseFloat(getComputedStyle(st).fontSize) };
+    }, s);
+    const wlan = await messen("wlan"), bewertung = await messen("bewertung"), speisekarte = await messen("speisekarte");
+    /* Alle drei Kacheln stehen hier ohne eigene Breite, landen also
+       alle auf "voll" (Basis-Mindesthöhe 64px, Basisschrift 14,5px). */
+    pruef(Math.abs(wlan.minHoehe - 64 * 1.35) < 1, "hoehe:'hoch' skaliert die Mindesthöhe um ×1,35", wlan.minHoehe);
+    pruef(Math.abs(wlan.schrift - 14.5 * 1.3) < .1, "textgroesse:1.3 skaliert die Schrift um ×1,3", wlan.schrift);
+    pruef(Math.abs(bewertung.minHoehe - 64 * .8) < 1, "hoehe:'kompakt' skaliert die Mindesthöhe um ×0,8", bewertung.minHoehe);
+    pruef(Math.abs(bewertung.schrift - 14.5 * .85) < .1, "textgroesse:0.85 skaliert die Schrift um ×0,85", bewertung.schrift);
+    pruef(speisekarte.minHoehe === 64 && speisekarte.schrift === 14.5,
+      "ohne eigene Wahl: bytegleich die alte Mindesthöhe/-schrift (kein Bestandskunde sieht eine Änderung)",
+      JSON.stringify(speisekarte));
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+  {
+    /* Ein zu großer/zu kleiner Wert aus der Live-Spalte wird
+       geklammert, nicht verworfen — ein Regler, der knapp daneben
+       liegt, fällt nicht gleich ganz auf die Vorgabe zurück. */
+    const { p, ctx, fehler } = await hubAuf(br, "chocolamour", 390, liste([
+      { schluessel:"wlan", textgroesse:9.9 }
+    ]));
+    const schrift = await p.evaluate(() => parseFloat(getComputedStyle(
+      document.querySelector('a.kachel[data-kachel="wlan"] .txt strong')).fontSize));
+    pruef(Math.abs(schrift - 14.5 * 1.4) < .1, "ein zu großer Wert wird auf 1,4 geklammert, nicht ignoriert", schrift);
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+    await ctx.close();
+  }
+
+  /* ── Board: die neuen Bedienelemente sind wirklich da und schreiben
+     in denselben Stand, den kbRoh() sichert. ── */
+  console.log("\n══ Board: Höhen-Segment und Textgrößen-Regler ══");
+  {
+    const ctx = await br.newContext({ viewport:{ width:390, height:844 } });
+    const p = await ctx.newPage();
+    const fehler = [];
+    p.on("pageerror", e => fehler.push(String(e).slice(0, 200)));
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto("file://" + path.join(OBEN, "seiten", "admin.html"));
+    await p.waitForTimeout(700);
+    await p.evaluate(() => {
+      document.getElementById("tor").hidden = true;
+      demoStarten(); zeichneAlles();
+      const sc = document.getElementById("scharf"); if(sc) sc.hidden = true;
+      tafelZeigen("startseite");
+      kbAusZeile([]); kbZeichnen();
+      kbZeileOeffnen("speisekarte");
+    });
+    await p.waitForTimeout(400);
+    await p.click('[data-kb="speisekarte"] [data-kb-hoehe="hoch"]');
+    await p.evaluate(() => {
+      const inp = document.querySelector('[data-kb="speisekarte"] [data-kb-textgroesse]');
+      inp.value = 130; inp.dispatchEvent(new Event("input", { bubbles:true }));
+    });
+    await p.waitForTimeout(150);
+    const stand = await p.evaluate(() => ({
+      k: (() => { const x = KACHELSTAND.find(x => x.schluessel === "speisekarte");
+        return { hoehe:x.hoehe, textgroesse:x.textgroesse }; })(),
+      roh: kbRoh().find(e => e.schluessel === "speisekarte"),
+      hinweis: document.querySelector('[data-kb="speisekarte"] [data-kb-textgroesse-wert]').textContent,
+      aktiv: document.querySelector('[data-kb="speisekarte"] [data-kb-hoehe="hoch"]').getAttribute("aria-checked")
+    }));
+    pruef(stand.k.hoehe === "hoch", "Tipp auf „Hoch“ setzt hoehe im Stand", stand.k.hoehe);
+    pruef(stand.aktiv === "true", "…und der Segmentknopf zeigt sich als gewählt", stand.aktiv);
+    pruef(stand.k.textgroesse === 1.3, "der Regler setzt textgroesse als Bruchzahl (130 % → 1,3)", stand.k.textgroesse);
+    pruef(stand.hinweis === "130 %", "…und der Hinweis daneben zeigt den Prozentwert live mit", stand.hinweis);
+    pruef(!!stand.roh && stand.roh.hoehe === "hoch" && stand.roh.textgroesse === 1.3,
+      "beide Felder gehen mit kbRoh() (Speichern/Vorschau) mit", JSON.stringify(stand.roh));
+    pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
     await ctx.close();
   }
 

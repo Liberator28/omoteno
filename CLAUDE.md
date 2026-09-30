@@ -643,6 +643,36 @@ Zahl (`grep -n 'z-index:39' datei.html`) und prüft **auf jedem Reiter**,
 was ein Finger trifft (`elementFromPoint`) — nicht nur auf dem, auf dem
 man gerade baut.
 
+### 3.10 Eine Variable für mehrere Textrollen ist ein Versprechen, das nicht gehalten wird
+
+> **Vorfall, gemeldet vom Nutzer.** „Wenn man die Schriftart für den
+> Titel 'Guten Tag' ändert, ändert sich auch die für das runde Feld
+> [Tischquiz-Runde/Punktzahl]." Befund: `h1,h2,.tipp .name,.gericht .n,
+> .gericht .p,.wkopf .wn,.wkopf .wp,.frage,.punkte,.summe .b,.gross,
+> .bnummer,.kachel.saeule strong,.tipp .preis{font-family:var(--schrift-
+> kopf)}` — **dreizehn** optisch und inhaltlich unabhängige Textrollen
+> (Begrüßungstitel, Tischquiz-Überschrift und -Punktzahl, Gerichtname,
+> Kachel-Beschriftung, Kontostand …) hingen an EINER CSS-Variable, die
+> einmal global gesetzt wurde. Jede Änderung an einer Stelle änderte
+> zwangsläufig alle anderen mit — nicht, weil es gewollt war, sondern
+> weil nie jemand eine zweite Variable angelegt hatte, als die zweite
+> Rolle dazukam.
+
+Ein Name wie `--schrift-kopf` beschreibt eine HERKUNFT („kommt aus dem
+Kopf-Feld des Markenblatts"), keine WIRKUNG. Sobald eine Variable an
+mehr als einer optisch unabhängigen Stelle verwendet wird, ist das
+kein Wiederverwenden, sondern ein Versprechen an jede künftige Stelle,
+die dieselbe Variable ebenfalls benutzt: „was hier steht, ändert sich
+nie unabhängig von dort". Dieses Versprechen hält niemand ein, sobald
+zwei Kunden(-wünsche) unterschiedliche Antworten für die beiden
+Stellen brauchen. Vor der Wiederverwendung einer bestehenden
+Schrift-/Farb-/Maß-Variable an einer NEUEN Stelle: **Muss diese Stelle
+jemals unabhängig von den anderen änderbar sein?** Im Zweifel eine
+eigene Variable mit eigenem, lebendigem `var(--x, var(--kopf))`-
+Rückfall anlegen (CLAUDE.md §2.5 additiv, bestehende Kunden sehen ohne
+eigenes Zutun keine Änderung) — das kostet eine Zeile CSS und eine
+Zeile in der Stelle, die sie setzt, und erspart genau diesen Vorfall.
+
 ## 4 · Animation und Neuzeichnen
 
 ### 4.1 Eine Einflug-Animation gehört nur an neue Elemente
@@ -749,6 +779,22 @@ Zwei Lehren, beide gemessen:
   Links und Knöpfe jetzt unabhängig von der Schriftgröße. Wer einen
   Grenzwert einbaut, muss sich fragen, was er damit ungesehen
   durchlässt.
+
+> **Vorfall, zwei Fehler hinter einer Zahl.** `pruef-lesbarkeit.js`
+> meldete die Rabatt-Segmente im Board wochenlang mit 1,07:1 — und
+> sie wurden als „vorbestehend“ weitergereicht. Nachgemessen: Die
+> Prüfung stieg nur die **Eltern** hinauf, der Schieber unter der
+> Schrift ist aber ein **Geschwister**. Die Zahl war falsch — der
+> Fehler darunter echt, sogar zwei: Der Schieber war fest ⅓ breit
+> bei zwei Knöpfen („Ganze Rechnung“ stand zu einem Viertel daneben),
+> und im Hellen stand die feste dunkle `--sockel`-Schrift auf dem
+> dunklen Hell-Messing (2,88:1).
+
+Ein Befund, den man nicht versteht, wird nicht weitergereicht,
+sondern nachgemessen — ein Fehlalarm und ein echter Fehler sehen in
+der Liste gleich aus. Und Schrift auf einer Fläche, die in einer
+Fassung die Helligkeit wechselt, wird in **jeder** Fassung neu
+festgelegt (§3.2).
 
 ### 5.2b Hell und dunkel entscheidet der Grund, nicht die Uhr
 
@@ -1461,7 +1507,7 @@ Dazu je nach Änderung:
 | **Alessia, der Telefonweg** | `pruefungen/pruef-alessia.js` — liest die Nutzlast, ohne Netz |
 | **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
 | **Zugesagte Zeit, Countdown in Küche und Hub** | `pruefungen/pruef-zusage.js` (braucht `dist/`) — beide Seiten, und der Fall „Migration fehlt noch"; dazu die Wahl **„Bestellstand beim Gast“** (`hub_stil.restzeit`): „Nur Stand“ zeigt weder im Streifen noch im Kasten Minuten, die Stufen bleiben; strikt boolean (Zeichenkette "false" = an); der Streifen aus dem Gerätespeicher wird nach dem Laden der Wahl neu gezeichnet; Board führt `hub_stil` zusammen (emoji, schrift bleiben) |
-| **Kachel-Raster im Hub: Breite, Selbst-Füllen, Farbe, Bildform, ohne Symbol** | `pruefungen/pruef-kachelraster.js` (braucht `dist/`) — Packen als Rechnung (allein → ganz, zwei → halb/halb, Reihen gehen immer auf), Standard wie vorher (drei Säulen), „nur Speisekarte“ zieht sich breit, Positivliste für raster/stil/farbe/breite/bildform (Anführungszeichen MIT Bild), Schrift ≥ 4,5:1 auf jeder Farbe inkl. Mittelgrau, „flaeche“ über rein weißem Foto ≥ 4,5:1, „rund“ ist ein Kreis statt Symbol, ohne Symbol: Strich, größere Schrift, Säule unten bündig (Säule mit Nachbarn, sonst keine Säule), 360–1280 px, zwei Häuser, Uhr fest auf 14 Uhr; **Board**: geteilter Block KACHELRASTER Zeichen für Zeichen gleich (Anordnung rechnet wie der Hub), Zeilen starten zugeklappt und kompakt, Tipp auf den Namen in der Anordnung öffnet genau diese Zeile, Griff mit Maus UND Finger (CDP-Touch, Seite rollt nicht mit), Pfeiltasten, „allein in der Reihe“ wird gesagt, Farbe/eigene Farbe/Bildform/Breite gehen in `kbRoh`, Zuschnitt folgt der Bildform, Zeile bleibt nach einer Wahl offen — geöffnet über den ECHTEN Tipp (über `kbOffen` direkt war der Gegenbeweis grün); **Zuschnitt** (Kachel UND Banner) mit zwei echten Fingern (CDP, zwei Kontaktpunkte): hineinzoomen bis 3×, Regler läuft mit, der Bildpunkt unter den Fingern bleibt dort — ABSEITS der Mitte gemessen (in der Mitte bliebe er auch bei naivem Zoom liegen), ein Finger schiebt, Zusammenkneifen lässt keinen Rand, Mausrad zoomt |
+| **Kachel-Raster im Hub: Breite, Selbst-Füllen, Farbe, Bildform, ohne Symbol** | `pruefungen/pruef-kachelraster.js` (braucht `dist/`) — Packen als Rechnung (allein → ganz, zwei → halb/halb, Reihen gehen immer auf), Standard wie vorher (drei Säulen), „nur Speisekarte“ zieht sich breit, Positivliste für raster/stil/farbe/breite/bildform (Anführungszeichen MIT Bild), Schrift ≥ 4,5:1 auf jeder Farbe inkl. Mittelgrau, „flaeche“ über rein weißem Foto ≥ 4,5:1, „rund“ ist ein Kreis statt Symbol, ohne Symbol: Strich, größere Schrift, Säule unten bündig (Säule mit Nachbarn, sonst keine Säule), 360–1280 px, zwei Häuser, Uhr fest auf 14 Uhr; **Board**: geteilter Block KACHELRASTER Zeichen für Zeichen gleich (Anordnung rechnet wie der Hub), Zeilen starten zugeklappt und kompakt, Tipp auf den Namen in der Anordnung öffnet genau diese Zeile, Griff mit Maus UND Finger (CDP-Touch, Seite rollt nicht mit), Pfeiltasten, „allein in der Reihe“ wird gesagt, Farbe/eigene Farbe/Bildform/Breite gehen in `kbRoh`, Zuschnitt folgt der Bildform, Zeile bleibt nach einer Wahl offen — geöffnet über den ECHTEN Tipp (über `kbOffen` direkt war der Gegenbeweis grün); **Umsortieren**: langer Druck auf den Namen (Maus UND Finger) tauscht innerhalb der eigenen Gruppe, bleibt an der Gruppengrenze stehen (kein Sprung in eine fremde Gruppe — jede Gruppe ihr eigenes `.kbr-gitter`), ein kurzer Tipp öffnet weiterhin nur die Einstellungen (kein Doppel-Klick nach echtem Zug), Pfeil-Knöpfe als Zweitweg tauschen mit dem Nachbarn und sind an den Gruppengrenzen deaktiviert, `prefers-reduced-motion` überspringt das Nachrücken, Endposition stimmt trotzdem; **Zuschnitt** (Kachel UND Banner) mit zwei echten Fingern (CDP, zwei Kontaktpunkte): hineinzoomen bis 3×, Regler läuft mit, der Bildpunkt unter den Fingern bleibt dort — ABSEITS der Mitte gemessen (in der Mitte bliebe er auch bei naivem Zoom liegen), ein Finger schiebt, Zusammenkneifen lässt keinen Rand, Mausrad zoomt |
 | **Kacheln, Symbole, Banner, Baukasten im Board** | `pruefungen/pruef-baukasten.js` (braucht `dist/`) — zweite Quelle, Zuschnitt, Schrift nie auf dem Bild |
 | **Besuchsbild, Sterne, Foto** | `pruefungen/pruef-besuchsbild.js` (braucht `dist/`) — Sterne auf der Leinwand, Bild aus der Karte |
 | **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung; dazu mit echtem Finger (CDP-Touch): kein zweiter Scrollbereich im Kategorie-Blatt, Wische rollen bis „Sichern", gescrollt schließt ein Wisch nach unten NICHT, oben schließt er auch auf einem Knopf, Antippen wählt weiterhin, Schleier rollt das Board nicht, im Hub zählt ein Wisch nicht zusätzlich als „Zurück" |
@@ -1470,7 +1516,9 @@ Dazu je nach Änderung:
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
 | **Anmeldung an Küche, Konto, Master; Rolle im Master; „Neues Passwort“ nach dem Reset-Link** | `pruefungen/pruef-sperre-ueberall.js` — jede Tür fragt die Sperre VOR dem Login (gesperrt/falsch → kein Login-Versuch, fehlt → niemand ausgesperrt), Master wirft Nicht-Master hinaus (auch bei gemerkter Sitzung), der Reset-Link zeigt in Board, Konto UND Master das Passwort-Formular — Adresse und Ereignis EINZELN geprüft; Master: „Passwort vergessen?“ auf der Seite selbst (Rücksprung auf diese Adresse, kein Versand ohne Adresse, „not authorized“ als Satz), nach dem Link nie das Dashboard vor dem neuen Passwort, keine echte Adresse als Platzhalter auf irgendeiner Seite (§8.1n) |
-| **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der Kontrast des Bandes (Glasfläche mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen), die Glas-Pille (mittig auf 1 px, ≥ 44 px, Weichzeichner, deckend bei „Transparenz reduzieren“, Fahrrad als bewegtes Zeichen, still bei abgeschalteten Zeichen) |
+| **Master-Board: Zugänge-Übersicht (`master_zugaenge`)** | `pruefungen/pruef-master-zugaenge.js` — echte Zugangs-Zeilen (Betrieb, E-Mail, Rolle, letzter Login, Status) erscheinen als Karten, Login- UND PIN-Sperre je eigens benannt aber gleich dringlich einsortiert, unbestätigt/Master/ohne-Betrieb einzeln erkennbar, leere Antwort zeigt einen Satz statt „0 Konten“ oder Absturz, fehlende Migration (`42883`) zeigt, welche fehlt, statt der rohen Postgres-Meldung |
+| **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der **Liefer-Schalter im Kopf** (echter Tipp schaltet liefermodus UND das Adressformular im Warenkorb, Name blitzt auf und verschwindet, Tipp auf das Gewählte ändert nichts, Pfeiltasten, Name passt in jeder Sprache, am Tisch/ohne Lieferung kein Schalter, außerhalb der Zeit nennt er die Uhrzeiten), die Bewegung (nur transform/opacity, Symbolkopie im Daumen MITTEN im Gleiten deckungsgleich, schnelle Tipps: der letzte gewinnt, reduzierte Bewegung sofort am Ziel), Kontrast von Symbol und Name je Haus, Tag und Abend (Spur mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen) |
+| **Kopfzeile, Sprachknopf, Knopfzeile im Kopf** | `pruefungen/pruef-kopf.js` (braucht `dist/`) — alle Häuser, 320–1280 px und RTL: Knopfzeile mittig auf 1 px, Sprachknopf ein Kreis 44–48 px ohne Text, Lichtknopf auch bei 320 px, Liste im Bild und aktive Sprache sichtbar markiert, aria-label folgt dem Wechsel |
 | **Annahme-Leiste für neue Bestellungen im Board** | `pruefungen/pruef-annahme.js` — auffälligere Rahmung nur bei status="neu", In-Arbeit-ohne-Zusage bleibt bei der stillen Zeile, Tapflächen ≥44px, Kontrast Tag/Abend |
 | **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint`; dazu „Mehr“ auf Karte, Bestellungen und Reservierungen: jede Zeile mit dem Finger erreichbar (§3.9) |
 | **Ball-Übergang der Reiterleiste (`.leiste-pille`)** | `pruefungen/pruef-leistenpille.js` — Ruhelage, Stauchung in der Mitte, Landung, Unterbrechbarkeit, Überlauf-Rückfall auf „Mehr", `prefers-reduced-motion`, Größenwechsel ohne veralteten Sprung |

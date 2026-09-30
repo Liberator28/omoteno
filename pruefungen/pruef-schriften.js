@@ -144,6 +144,102 @@ function schriftDatei(u){
     await ctx.close();
   }
 
+  console.log("\n══ Hub: acht neue Schriften — jede lädt und zeichnet wirklich ══");
+  {
+    const NEU = ["bricolage", "instrserif", "instrsans", "jetbrains", "spacegrotesk", "shantell", "spectral", "abril"];
+    const { ctx, p, anfragen, fehler } = await hubOeffnen({ titel:NEU[0], abschnitt:NEU[1], gericht:NEU[2],
+      kachel:NEU[3], kopf:NEU[4], text:NEU[6] });
+    /* shantell und abril (nur „kopf") tauchen über die geerbte Rolle
+       "titel" nicht auf, wenn kopf schon vergeben ist — eigens gegen
+       #titel bzw. eine Kachel-Klasse geprüft, nicht nur über die
+       schon belegten vier Rollen oben. */
+    const m = await p.evaluate(n => {
+      const stil = getComputedStyle(document.documentElement);
+      return {
+        vars: {
+          titel: stil.getPropertyValue("--schrift-titel"),
+          abschnitt: stil.getPropertyValue("--schrift-abschnitt"),
+          gericht: stil.getPropertyValue("--schrift-gericht"),
+          kachel: stil.getPropertyValue("--schrift-kachel"),
+          kopf: stil.getPropertyValue("--schrift-kopf"),
+          text: stil.getPropertyValue("--schrift-text")
+        },
+        geladen: n.map(s => document.fonts.check('16px "omo-' + s + '"'))
+      };
+    }, NEU);
+    pruef(/omo-bricolage/.test(m.vars.titel), "Bricolage Grotesque an der Rolle „titel“", m.vars.titel.slice(0, 30));
+    pruef(/omo-instrserif/.test(m.vars.abschnitt), "Instrument Serif an der Rolle „abschnitt“", m.vars.abschnitt.slice(0, 30));
+    pruef(/omo-instrsans/.test(m.vars.gericht), "Instrument Sans an der Rolle „gericht“", m.vars.gericht.slice(0, 30));
+    pruef(/omo-jetbrains/.test(m.vars.kachel), "JetBrains Mono an der Rolle „kachel“", m.vars.kachel.slice(0, 30));
+    pruef(/omo-spacegrotesk/.test(m.vars.kopf), "Space Grotesk an der Rolle „kopf“", m.vars.kopf.slice(0, 30));
+    pruef(/omo-spectral/.test(m.vars.text), "Spectral am Fließtext", m.vars.text.slice(0, 30));
+    pruef(m.geladen.every(Boolean), "alle acht sind wirklich geladen (document.fonts.check)", m.geladen.join(","));
+    pruef(anfragen.every(u => u.startsWith(BASIS)), "auch die neuen acht kommen nur von der eigenen Adresse", anfragen.length + " Anfrage(n)");
+    pruef(fehler.length === 0, "kein Fehler im Hub", fehler[0] || "still");
+    await ctx.close();
+  }
+  {
+    /* shantell und abril bieten sich nur für "kopf" an (rollen:["kopf"]
+       in SCHRIFT_WAHL) — hier als "kachel"/"gericht" gewählt, wo sie
+       laut Board-Liste eigentlich stehen dürfen (kopf-artige Rollen,
+       swAuswahlrolle). */
+    const { ctx, p, fehler } = await hubOeffnen({ kachel:"shantell", gericht:"abril" });
+    const ok = await p.evaluate(() => ({
+      kachel: getComputedStyle(document.documentElement).getPropertyValue("--schrift-kachel"),
+      gericht: getComputedStyle(document.documentElement).getPropertyValue("--schrift-gericht"),
+      geladen: document.fonts.check('16px "omo-shantell"') && document.fonts.check('16px "omo-abril"') }));
+    pruef(/omo-shantell/.test(ok.kachel) && /omo-abril/.test(ok.gericht) && ok.geladen,
+      "Shantell Sans und Abril Fatface (nur „kopf“-Rollen) an anderen kopf-artigen Rollen ebenso wählbar",
+      JSON.stringify(ok).slice(0, 100));
+    pruef(fehler.length === 0, "kein Fehler im Hub", fehler[0] || "still");
+    await ctx.close();
+  }
+
+  console.log("\n══ Hub: vier eigene Rollen — der Regressionstest für den gemeldeten Fehler ══");
+  /* Anlass: „wenn man die Schriftart für 'Guten Tag' ändert, ändert
+     sich auch die für das runde Feld [Tischquiz-Runde]“ — beide
+     hingen an EINER Variable (--schrift-kopf). Vier unabhängige
+     Rollen (titel/abschnitt/gericht/kachel) lösen das ab; die vier
+     erben nur, wenn niemand sie einzeln anfasst. */
+  {
+    const { ctx, p, fehler } = await hubOeffnen({ abschnitt:"caveat" });
+    await p.evaluate(() => { location.hash = "#/quiz"; });
+    await p.waitForTimeout(500);
+    const m = await p.evaluate(() => ({
+      h1: getComputedStyle(document.querySelector("#titel")).fontFamily,
+      h2: getComputedStyle(document.querySelector("h2")).fontFamily }));
+    pruef(/omo-caveat/.test(m.h2), "Rolle „Quiz/Abschnitte“ geändert: die Tischquiz-Überschrift zeigt sie", m.h2.slice(0, 40));
+    pruef(!/omo-caveat/.test(m.h1), "die Begrüßung (h1) bleibt UNVERÄNDERT — genau der gemeldete Fehler", m.h1.slice(0, 40));
+    pruef(fehler.length === 0, "kein Fehler im Hub", fehler[0] || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, p } = await hubOeffnen({ titel:"bebas" });
+    await p.evaluate(() => { location.hash = "#/quiz"; });
+    await p.waitForTimeout(500);
+    const m = await p.evaluate(() => ({
+      h1: getComputedStyle(document.querySelector("#titel")).fontFamily,
+      h2: getComputedStyle(document.querySelector("h2")).fontFamily }));
+    pruef(/omo-bebas/.test(m.h1), "umgekehrt: Rolle „Begrüßung/Titel“ geändert, h1 zeigt sie", m.h1.slice(0, 40));
+    pruef(!/omo-bebas/.test(m.h2), "die Tischquiz-Überschrift (h2) bleibt unverändert", m.h2.slice(0, 40));
+    await ctx.close();
+  }
+  {
+    /* Ohne jede einzelne Wahl: alle vier neuen Rollen erben weiterhin
+       von "kopf" — kein Kunde von vor diesem Umbau sieht eine
+       Änderung (CLAUDE.md §2.5). */
+    const { ctx, p } = await hubOeffnen({ kopf:"pacifico" });
+    await p.evaluate(() => { location.hash = "#/quiz"; });
+    await p.waitForTimeout(500);
+    const m = await p.evaluate(() => ({
+      h1: getComputedStyle(document.querySelector("#titel")).fontFamily,
+      h2: getComputedStyle(document.querySelector("h2")).fontFamily }));
+    pruef(/omo-pacifico/.test(m.h1) && /omo-pacifico/.test(m.h2),
+      "ohne einzelne Wahl erben beide weiterhin von „kopf“ (Rückwärtskompatibilität)",
+      m.h1.slice(0, 30) + " / " + m.h2.slice(0, 30));
+    await ctx.close();
+  }
+
   console.log("\n══ Hub: fremde und präparierte Adressen ══");
   const markeKopf = await (async () => {
     const { ctx, p } = await hubOeffnen({});
@@ -167,8 +263,12 @@ function schriftDatei(u){
     /* Route liefert für diese Adresse die Lora-Datei aus dem Ordner. */
     const { ctx, p, anfragen } = await hubOeffnen({ kopf:"eigen", kopf_datei:echt });
     const m = await p.evaluate(() => getComputedStyle(document.querySelector("h1")).fontFamily);
-    pruef(/omo-e-kopf-/.test(m) && anfragen.includes(echt),
-      "eigene Schrift aus dem Eimer „schriften“ wird angewendet", m.slice(0, 40));
+    /* h1 steht seit dem Vier-Rollen-Umbau unter --schrift-titel, nicht
+       mehr direkt unter --schrift-kopf — geerbt von "kopf", solange
+       "titel" selbst nichts Eigenes trägt. Der Familienname folgt der
+       ROLLE, die wirklich zeichnet ("titel"), nicht der Quelle ("kopf"). */
+    pruef(/omo-e-titel-/.test(m) && anfragen.includes(echt),
+      "eigene Schrift aus dem Eimer „schriften“ wird angewendet (geerbt an die Rolle „titel“)", m.slice(0, 40));
     await ctx.close();
   }
 
@@ -206,10 +306,66 @@ function schriftDatei(u){
   const zahl = await p.evaluate(() => ({
     kopf: document.querySelectorAll('[data-sw-rolle="kopf"] [data-sw]').length,
     text: document.querySelectorAll('[data-sw-rolle="text"] [data-sw]').length,
+    titel: document.querySelectorAll('[data-sw-rolle="titel"] [data-sw]').length,
+    abschnitt: document.querySelectorAll('[data-sw-rolle="abschnitt"] [data-sw]').length,
+    gericht: document.querySelectorAll('[data-sw-rolle="gericht"] [data-sw]').length,
+    kachel: document.querySelectorAll('[data-sw-rolle="kachel"] [data-sw]').length,
     schreibImText: !!document.querySelector('[data-sw-rolle="text"] [data-sw="pacifico"]') }));
   pruef(zahl.kopf >= 12 && zahl.text >= 7, "Auswahl gezeichnet (Überschrift / Text)", zahl.kopf + " / " + zahl.text);
+  pruef([zahl.titel, zahl.abschnitt, zahl.gericht, zahl.kachel].every(n => n === zahl.kopf),
+    "die vier neuen Rollen bieten dieselbe Auswahl wie „Alle Überschriften“",
+    zahl.titel + " / " + zahl.abschnitt + " / " + zahl.gericht + " / " + zahl.kachel + " (kopf: " + zahl.kopf + ")");
   pruef(!zahl.schreibImText, "Schreibschrift wird für Fließtext nicht angeboten");
 
+  console.log("\n══ Board: Schriftauswahl komprimiert (ein Bauteil, fünfmal) ══");
+  const kompaktZustand = rolle => p.evaluate(r => {
+    const w = document.querySelector('[data-sw-rolle="' + r + '"]');
+    const auf = w.querySelector("[data-sw-auf]"), klapp = w.querySelector(".swklapp");
+    return {
+      expanded: auf.getAttribute("aria-expanded"),
+      offen: klapp.classList.contains("offen"),
+      hoehe: klapp.getBoundingClientRect().height,
+      zusammenfassung: w.querySelector("[data-sw-zusammenfassung]").textContent
+    };
+  }, rolle);
+  const geschlossenVorher = await kompaktZustand("gericht");
+  pruef(geschlossenVorher.expanded === "false" && !geschlossenVorher.offen && geschlossenVorher.hoehe === 0,
+    "jede Rolle startet zu (keine Höhe, aria-expanded=false)", JSON.stringify(geschlossenVorher));
+  pruef(/Wie „Alle Überschriften/.test(geschlossenVorher.zusammenfassung),
+    "der Kopfknopf zeigt schon geschlossen die aktuelle Wahl (hier: die Vorgabe)", geschlossenVorher.zusammenfassung);
+  await p.click('[data-sw-rolle="gericht"] [data-sw-auf]');
+  await p.waitForTimeout(400);
+  const offenNachher = await kompaktZustand("gericht");
+  pruef(offenNachher.expanded === "true" && offenNachher.offen && offenNachher.hoehe > 100,
+    "„Ändern“ tippen klappt genau diese Rolle auf, keine andere", JSON.stringify(offenNachher));
+  const andereRolleBleibtZu = await kompaktZustand("kachel");
+  pruef(!andereRolleBleibtZu.offen, "eine fremde Rolle bleibt dabei zu", JSON.stringify(andereRolleBleibtZu));
+  await p.click('[data-sw-rolle="gericht"] [data-sw="lora"]');
+  await p.waitForTimeout(400);
+  const nachWahl = await kompaktZustand("gericht");
+  pruef(!nachWahl.offen && nachWahl.hoehe === 0 && /Lora/.test(nachWahl.zusammenfassung),
+    "eine echte Wahl klappt die Liste automatisch wieder zu und zeigt die neue Wahl", JSON.stringify(nachWahl));
+
+  /* Eine der vier neuen Rollen wählen: erscheint sie unabhängig in der
+     Vorschau, ohne die anderen anzufassen? Gemessen an der Variable
+     selbst statt an einem bestimmten h2 — die Vorschau lädt als
+     srcdoc-Iframe ohne den „Willkommensschirm übersprungen“-Vermerk
+     im sessionStorage, darum steht dort VOR jedem Tischquiz-h2 noch
+     das (unsichtbare) h2.haus des Willkommensschirms; document.
+     querySelector("h2") träfe also den falschen. */
+  await p.click('[data-sw-rolle="abschnitt"] [data-sw-auf]');
+  await p.waitForTimeout(300);
+  await p.click('[data-sw-rolle="abschnitt"] [data-sw="caveat"]');
+  await p.waitForTimeout(900);
+  const rollenProbe = await inVorschau(`return {
+    abschnitt: getComputedStyle(document.documentElement).getPropertyValue("--schrift-abschnitt"),
+    h1: getComputedStyle(document.querySelector("#titel")).fontFamily
+  };`);
+  pruef(/omo-caveat/.test(rollenProbe.abschnitt), "Board: Rolle „Quiz/Abschnitte“ gewählt — die Vorschau setzt --schrift-abschnitt sofort", rollenProbe.abschnitt.slice(0, 50));
+  pruef(!/omo-caveat/.test(rollenProbe.h1), "Board: die Begrüßung (h1) bleibt in der Vorschau unverändert", rollenProbe.h1.slice(0, 40));
+
+  await p.click('[data-sw-rolle="kopf"] [data-sw-auf]');
+  await p.waitForTimeout(300);
   await p.click('[data-sw-rolle="kopf"] [data-sw="playfair"]');
   await p.waitForTimeout(900);
   const h1 = await inVorschau(`return getComputedStyle(document.querySelector("h1")).fontFamily;`);

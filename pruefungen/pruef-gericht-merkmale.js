@@ -115,6 +115,7 @@ function pruef(b, t, d) {
       await seite.route("**/rest/v1/gerichte**", r =>
         r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(gerichte) }));
       await seite.addInitScript(() => localStorage.setItem("omoteno-willkommen", "1"));
+      await seite.addInitScript(() => sessionStorage.setItem("omoteno-willkommen", "1"));
       await seite.goto("file://" + DIST);
       await seite.waitForTimeout(1500);
       await seite.evaluate(() => { location.hash = "#/speisekarte"; zeichne(); });

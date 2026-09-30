@@ -66,6 +66,7 @@ async function gast(br){
   });
   await p.addInitScript(() => {
     localStorage.setItem("omoteno-willkommen","1");
+    sessionStorage.setItem("omoteno-willkommen","1");
     localStorage.setItem("omoteno-vorgaenge", JSON.stringify([{
       nummer:"k1", art:"bestellung", status:"neu", warte:null,
       summe:12.5, zeit:Date.now(), tagesnummer:5,

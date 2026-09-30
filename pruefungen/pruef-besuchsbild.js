@@ -70,6 +70,7 @@ async function lauf(br, datei, haus){
     contentType:"image/svg+xml",
     headers:{ "Access-Control-Allow-Origin":"*" }, body:WEISS }));
   await p.addInitScript(() => localStorage.setItem("omoteno-willkommen","1"));
+  await p.addInitScript(() => sessionStorage.setItem("omoteno-willkommen","1"));
   await p.goto(datei);
   await p.waitForTimeout(1200);
 
