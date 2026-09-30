@@ -780,6 +780,22 @@ Zwei Lehren, beide gemessen:
   Grenzwert einbaut, muss sich fragen, was er damit ungesehen
   durchlässt.
 
+> **Vorfall, zwei Fehler hinter einer Zahl.** `pruef-lesbarkeit.js`
+> meldete die Rabatt-Segmente im Board wochenlang mit 1,07:1 — und
+> sie wurden als „vorbestehend“ weitergereicht. Nachgemessen: Die
+> Prüfung stieg nur die **Eltern** hinauf, der Schieber unter der
+> Schrift ist aber ein **Geschwister**. Die Zahl war falsch — der
+> Fehler darunter echt, sogar zwei: Der Schieber war fest ⅓ breit
+> bei zwei Knöpfen („Ganze Rechnung“ stand zu einem Viertel daneben),
+> und im Hellen stand die feste dunkle `--sockel`-Schrift auf dem
+> dunklen Hell-Messing (2,88:1).
+
+Ein Befund, den man nicht versteht, wird nicht weitergereicht,
+sondern nachgemessen — ein Fehlalarm und ein echter Fehler sehen in
+der Liste gleich aus. Und Schrift auf einer Fläche, die in einer
+Fassung die Helligkeit wechselt, wird in **jeder** Fassung neu
+festgelegt (§3.2).
+
 ### 5.2b Hell und dunkel entscheidet der Grund, nicht die Uhr
 
 > **Vorfall.** Die hellen Gliedmaßen der Figur hingen an
@@ -1501,7 +1517,8 @@ Dazu je nach Änderung:
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
 | **Anmeldung an Küche, Konto, Master; Rolle im Master; „Neues Passwort“ nach dem Reset-Link** | `pruefungen/pruef-sperre-ueberall.js` — jede Tür fragt die Sperre VOR dem Login (gesperrt/falsch → kein Login-Versuch, fehlt → niemand ausgesperrt), Master wirft Nicht-Master hinaus (auch bei gemerkter Sitzung), der Reset-Link zeigt in Board, Konto UND Master das Passwort-Formular — Adresse und Ereignis EINZELN geprüft; Master: „Passwort vergessen?“ auf der Seite selbst (Rücksprung auf diese Adresse, kein Versand ohne Adresse, „not authorized“ als Satz), nach dem Link nie das Dashboard vor dem neuen Passwort, keine echte Adresse als Platzhalter auf irgendeiner Seite (§8.1n) |
 | **Master-Board: Zugänge-Übersicht (`master_zugaenge`)** | `pruefungen/pruef-master-zugaenge.js` — echte Zugangs-Zeilen (Betrieb, E-Mail, Rolle, letzter Login, Status) erscheinen als Karten, Login- UND PIN-Sperre je eigens benannt aber gleich dringlich einsortiert, unbestätigt/Master/ohne-Betrieb einzeln erkennbar, leere Antwort zeigt einen Satz statt „0 Konten“ oder Absturz, fehlende Migration (`42883`) zeigt, welche fehlt, statt der rohen Postgres-Meldung |
-| **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der Kontrast des Bandes (Glasfläche mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen), die Glas-Pille (mittig auf 1 px, ≥ 44 px, Weichzeichner, deckend bei „Transparenz reduzieren“, Fahrrad als bewegtes Zeichen, still bei abgeschalteten Zeichen) |
+| **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der **Liefer-Schalter im Kopf** (echter Tipp schaltet liefermodus UND das Adressformular im Warenkorb, Name blitzt auf und verschwindet, Tipp auf das Gewählte ändert nichts, Pfeiltasten, Name passt in jeder Sprache, am Tisch/ohne Lieferung kein Schalter, außerhalb der Zeit nennt er die Uhrzeiten), die Bewegung (nur transform/opacity, Symbolkopie im Daumen MITTEN im Gleiten deckungsgleich, schnelle Tipps: der letzte gewinnt, reduzierte Bewegung sofort am Ziel), Kontrast von Symbol und Name je Haus, Tag und Abend (Spur mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen) |
+| **Kopfzeile, Sprachknopf, Knopfzeile im Kopf** | `pruefungen/pruef-kopf.js` (braucht `dist/`) — alle Häuser, 320–1280 px und RTL: Knopfzeile mittig auf 1 px, Sprachknopf ein Kreis 44–48 px ohne Text, Lichtknopf auch bei 320 px, Liste im Bild und aktive Sprache sichtbar markiert, aria-label folgt dem Wechsel |
 | **Annahme-Leiste für neue Bestellungen im Board** | `pruefungen/pruef-annahme.js` — auffälligere Rahmung nur bei status="neu", In-Arbeit-ohne-Zusage bleibt bei der stillen Zeile, Tapflächen ≥44px, Kontrast Tag/Abend |
 | **Leisten im Board, Filter, Reiterleiste** | `pruefungen/pruef-leisten.js` — Geometrie auf Telefon und Tresen, gemessen mit `elementFromPoint`; dazu „Mehr“ auf Karte, Bestellungen und Reservierungen: jede Zeile mit dem Finger erreichbar (§3.9) |
 | **Ball-Übergang der Reiterleiste (`.leiste-pille`)** | `pruefungen/pruef-leistenpille.js` — Ruhelage, Stauchung in der Mitte, Landung, Unterbrechbarkeit, Überlauf-Rückfall auf „Mehr", `prefers-reduced-motion`, Größenwechsel ohne veralteten Sprung |

@@ -73,7 +73,40 @@ const SWEEP = `
     if(!t || !t.length) return null;
     return t.map(zahl).filter(v => v.length >= 3 && (v.length < 4 || v[3] > 0));
   }
+  /* Ein gleitender Schieber (.segmentschieber im Board) ist kein
+     Elternteil, sondern ein GESCHWISTER unter der Schrift: absolut
+     gesetzt, eigene deckende Fläche, niedrigere Ebene. Wer nur die
+     Eltern hinaufsteigt, rechnet dunkle Schrift gegen den dunklen
+     Grund daneben — so meldete diese Prüfung „Prozent“ mit 1,07:1.
+
+     Die Hälfte davon war echt: Der Schieber war fest ⅓ breit, die
+     Rabatt-Segmente haben zwei Knöpfe, und „Ganze Rechnung“ stand zu
+     einem Viertel neben ihm (gemessen: Text 61–172 px, Schieber
+     39–143 px). Deshalb zählt ein Geschwister NUR, wenn es die ganze
+     Textfläche deckt — ein zu schmaler Schieber bleibt rot. */
+  function unterlage(el){
+    const par = el.parentElement;
+    if(!par) return null;
+    const rg = document.createRange(); rg.selectNodeContents(el);
+    const t = rg.getBoundingClientRect();
+    if(t.width < 1) return null;
+    const ebene = parseInt(getComputedStyle(el).zIndex, 10) || 0;
+    for(const g of par.children){
+      if(g === el || g.contains(el)) continue;
+      const st = getComputedStyle(g);
+      if(st.position !== "absolute" || st.display === "none" || st.visibility === "hidden") continue;
+      if((parseInt(st.zIndex, 10) || 0) >= ebene) continue;
+      const b = zahl(st.backgroundColor);
+      if(!(b.length === 3 || (b.length === 4 && b[3] === 1))) continue;
+      const r = g.getBoundingClientRect();
+      if(r.left <= t.left + .5 && r.right >= t.right - .5 &&
+         r.top <= t.top + .5 && r.bottom >= t.bottom - .5) return b;
+    }
+    return null;
+  }
   function grundStapel(el){
+    const u = unterlage(el);
+    if(u) return [[u]];
     const stapel = []; let k = el;
     while(k){
       const st = getComputedStyle(k);
