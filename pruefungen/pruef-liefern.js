@@ -22,6 +22,16 @@
        außerhalb des Gebiets, außerhalb der Lieferzeit. Eine Absage
        nach dem Ausfüllen ist eine Absage zu spät.
 
+   2b · DER SCHALTER. Seit 30.09. schaltet der Gast nicht mehr über
+       ein Band auf der Startseite, sondern über zwei Symbole im Kopf
+       (Besteck / Roller). Gemessen: der echte Tipp und seine Folge
+       im Warenkorb, der aufblitzende Name, Bewegung und Kontrast.
+       Gegenbeweis gefahren (worktree): lieferWahlZeichnen() nicht
+       gerufen → „steht im Kopf“ rot; Gegenlauf der Symbolkopie
+       entfernt → „deckungsgleich“ und „Endlage“ rot; tischNr aus der
+       Bedingung → „am Tisch kein Schalter“ rot; opacity:1 am Namen
+       entfernt → „zeigt kurz den Namen“ rot.
+
    3 · DIE NAHT. Was das Board speichert und was der Hub liest, muss
        dasselbe Feld sein. Gemessen wird am Auszeichnungstext der
        einen Datei gegen den der anderen — nicht gegen meine Annahme.
@@ -261,6 +271,7 @@ async function hubAuf(br, haus, liefer, adresszusatz){
      festschreibt, prueft ab dem zweiten Haus nichts mehr. */
   await p.addInitScript(slug => {
     localStorage.setItem("omoteno-willkommen", "1");
+    sessionStorage.setItem("omoteno-willkommen", "1");
     localStorage.setItem("omoteno-merk-" + slug, JSON.stringify({
       "Waffel": { n:"Waffel", m:2, p:"9,00" }
     }));
@@ -374,94 +385,161 @@ async function hubImGebiet(br){
 }
 
 async function hubUmschalter(br){
-  console.log("\n══ Der sichtbare Umschalter ══");
+  console.log("\n══ Der Liefer-Schalter im Kopf ══");
 
-  /* 1 · Haus liefert, Gast nicht am Tisch → Band da, fuehrt HINEIN.
-         Seit "#/liefern" eine echte Hash-Route ist (statt eines vollen
-         Seiten-Neuaufbaus über "?modus=liefern"), wird hier wirklich
-         GEKLICKT und der neue Zustand gemessen — ein bloßer Blick auf
-         href haette den Fall verpasst, in dem der Klick zwar navigiert,
-         aber liefermodus() nie wirklich wahr wird (CLAUDE.md §8.1g:
-         eine Probe, die den echten Fehler nicht treffen kann, ist
-         keine Probe). */
+  /* Seit 30.09. kein Band mehr auf der Startseite, sondern zwei
+     Symbole im Kopf (Wunsch: „wie ein Switch … man sieht normal nur
+     die Icons, beim Umschalten kurz den Namen"). Gemessen wird der
+     echte Tipp und seine Folge — liefermodus, das Adressformular im
+     Warenkorb, der aufblitzende Name —, nicht nur die Attribute
+     (§8.1g: eine Probe, die den Fehler nicht treffen kann, ist keine). */
   const a = await hubOhneModus(br, "chocolamour", LIEFER_AN);
-  const s1vorher = await a.p.evaluate(() => {
-    const b = document.querySelector(".lieferband");
-    return b ? { da:true, ziel:b.getAttribute("href"),
-                 text:b.textContent.replace(/\s+/g," ").trim(),
-                 an:b.classList.contains("an"),
-                 hoch:Math.round(b.getBoundingClientRect().height) }
-             : { da:false };
+  const lesen = () => a.p.evaluate(() => {
+    const w = document.getElementById("lieferwahl");
+    const k = s => w.querySelector('[data-lieferwahl="' + s + '"]');
+    const r = el => el.getBoundingClientRect();
+    const n = w.querySelector(".lw-name");
+    return {
+      sichtbar: !w.hidden && getComputedStyle(w).display !== "none",
+      imKopf: !!w.closest("header .kopfwahl"),
+      wahl: w.dataset.wahl, modus: liefermodus,
+      haus: k("haus").getAttribute("aria-checked"), liefern: k("liefern").getAttribute("aria-checked"),
+      tab: [k("haus").tabIndex, k("liefern").tabIndex],
+      masse: [r(k("haus")).width, r(k("haus")).height, r(k("liefern")).width, r(k("liefern")).height],
+      nameDeckt: +getComputedStyle(n).opacity, nameText: n.textContent.trim(),
+      zeigt: w.classList.contains("zeigt"),
+      hash: location.hash, suche: location.search,
+      label: k("liefern").getAttribute("aria-label") || "",
+    };
   });
-  ok(s1vorher.da, "ohne Liefermodus steht das Band auf der Startseite");
-  ok(s1vorher.ziel === "#/liefern",
-     "und sein Ziel ist die echte Hash-Route", s1vorher.ziel || "kein Ziel");
-  ok(!s1vorher.an, "es sieht dabei nicht aus wie der eingeschaltete Zustand");
-  ok(s1vorher.hoch >= 44, "und man kann es antippen", s1vorher.hoch + " px hoch");
+  const s0 = await lesen();
+  ok(s0.sichtbar && s0.imKopf, "der Schalter steht im Kopf, wo das Haus liefert");
+  ok(s0.haus === "true" && s0.liefern === "false" && s0.wahl === "haus",
+     "Ausgangslage: im Haus gewählt", s0.wahl);
+  ok(s0.tab[0] === 0 && s0.tab[1] === -1, "nur der gewählte Knopf liegt in der Tab-Reihenfolge", s0.tab.join("/"));
+  ok(s0.masse.every(m => m >= 44), "beide Knöpfe ≥ 44 × 44 px", s0.masse.map(Math.round).join(" "));
+  ok(s0.nameDeckt === 0, "in Ruhe nur Symbole, kein Name", "opacity " + s0.nameDeckt);
+  ok(!(await a.p.evaluate(() => !!document.querySelector(".lieferband"))), "das alte Band ist weg");
+  /* Ohne sichtbaren Schalter tippt keine Folgeprobe irgendwohin — sie
+     würden mit einer Zeitüberschreitung abbrechen, statt zu sagen,
+     woran es liegt (§8.1g, Vorfall C). */
+  if(!s0.sichtbar){
+    ok(false, "Folgeproben des Schalters übersprungen", "kein sichtbarer Schalter");
+    await a.ctx.close();
+    return;
+  }
 
-  await a.p.click(".lieferband");
-  await a.p.waitForTimeout(500);
-  const s1nachher = await a.p.evaluate(() => ({
-    modus: liefermodus, hash: location.hash, suche: location.search,
-    an: (document.querySelector(".lieferband") || {}).classList
-          ? document.querySelector(".lieferband").classList.contains("an") : false
-  }));
-  ok(s1nachher.modus === true, "der Klick schaltet liefermodus wirklich ein",
-     "modus=" + s1nachher.modus);
-  ok(s1nachher.an, "und das Band zeigt danach den eingeschalteten Zustand");
-  ok(!s1nachher.hash && !s1nachher.suche,
-     "die Adresse räumt sich danach auf (kein #/liefern, kein ?modus hängen)",
-     JSON.stringify({hash:s1nachher.hash, suche:s1nachher.suche}));
+  await a.p.click('[data-lieferwahl="liefern"]');
+  await a.p.waitForTimeout(950);
+  const s1 = await lesen();
+  ok(s1.modus === true && s1.wahl === "liefern" && s1.liefern === "true" && s1.haus === "false",
+     "ein Tipp auf den Roller schaltet liefermodus wirklich ein", "modus=" + s1.modus);
+  ok(s1.zeigt && s1.nameDeckt === 1 && s1.nameText === "Lieferung",
+     "und zeigt kurz den Namen", JSON.stringify([s1.nameDeckt, s1.nameText]));
+  ok(!s1.hash.includes("liefern") && !s1.suche, "keine Adresse bleibt hängen",
+     JSON.stringify([s1.hash, s1.suche]));
+  await a.p.waitForTimeout(2000);
+  const s1b = await lesen();
+  ok(!s1b.zeigt && s1b.nameDeckt === 0 && s1b.modus === true,
+     "danach wieder nur Symbole, der Zustand bleibt", "opacity " + s1b.nameDeckt);
+
+  /* Die Folge im Warenkorb — dort entscheidet sich, ob der Schalter
+     etwas tut. */
+  await a.p.evaluate(() => { location.hash = "#/auswahl"; });
+  await a.p.waitForTimeout(700);
+  ok(await a.p.evaluate(() => !!document.getElementById("lStrasse")),
+     "im Warenkorb steht jetzt das Adressformular");
+  const bleibt = await lesen();
+  ok(bleibt.sichtbar && bleibt.wahl === "liefern", "der Schalter steht auch auf anderen Seiten", bleibt.wahl);
+
+  await a.p.click('[data-lieferwahl="haus"]');
+  await a.p.waitForTimeout(950);
+  const s2 = await lesen();
+  ok(s2.modus === false && s2.wahl === "haus", "Besteck schaltet zurück ins Haus", "modus=" + s2.modus);
+  ok(s2.nameText === "Im Haus", "Name beim Zurückschalten", s2.nameText);
+  ok(await a.p.evaluate(() => !document.getElementById("lStrasse")),
+     "und das Adressformular ist wieder fort");
+
+  /* Tipp auf das schon gewählte Symbol: nichts ändert sich, aber der
+     Name erklärt es. */
+  await a.p.waitForTimeout(2000);
+  await a.p.click('[data-lieferwahl="haus"]');
+  await a.p.waitForTimeout(950);
+  const s3 = await lesen();
+  ok(s3.modus === false && s3.zeigt && s3.nameText === "Im Haus",
+     "Tipp auf das gewählte Symbol zeigt nur den Namen", JSON.stringify([s3.modus, s3.nameText]));
+
+  /* Tastatur wie in jeder Radiogruppe. */
+  await a.p.focus('[data-lieferwahl="haus"]');
+  await a.p.keyboard.press("ArrowRight");
+  await a.p.waitForTimeout(200);
+  const s4 = await a.p.evaluate(() => ({ modus: liefermodus,
+    fokus: document.activeElement && document.activeElement.dataset.lieferwahl }));
+  ok(s4.modus === true && s4.fokus === "liefern", "Pfeiltaste wechselt und nimmt den Fokus mit", JSON.stringify(s4));
   ok(a.echt().length === 0, "kein Fehler beim Umschalten", a.echt()[0] || "still");
   await a.ctx.close();
 
-  /* 2 · Im Liefermodus fuehrt dasselbe Band ZURUECK — jetzt ein
-         <button>, kein <a href> mehr (siehe lieferBandHTML): zwei
-         Wege für denselben Klick (JS-Abschalten UND native
-         Hash-Navigation) waeren sonst nie ganz dasselbe Ziel gewesen. */
-  const b2 = await hubAuf(br, "chocolamour", LIEFER_AN);
-  await b2.p.evaluate(() => { location.hash = "#/"; });
-  await b2.p.waitForTimeout(700);
-  const s2vorher = await b2.p.evaluate(() => {
-    const b = document.querySelector(".lieferband");
-    return b ? { da:true, istKnopf: b.tagName === "BUTTON",
-                 hatHref: b.hasAttribute("href"),
-                 an:b.classList.contains("an") } : { da:false };
-  });
-  ok(s2vorher.da && s2vorher.an, "im Liefermodus traegt das Band den eingeschalteten Zustand");
-  ok(s2vorher.istKnopf && !s2vorher.hatHref,
-     "es ist ein Knopf ohne eigenes Sprungziel, nicht mehr ein Link");
+  /* Englisch: der Name kommt aus dem Wörterbuch, nicht deutsch stehen
+     geblieben. */
+  const en = await hubOhneModus(br, "chocolamour", LIEFER_AN);
+  await en.p.evaluate(() => { spracheSetzen("en"); zeichne(); });
+  await en.p.waitForTimeout(300);
+  await en.p.click('[data-lieferwahl="liefern"]');
+  await en.p.waitForTimeout(900);
+  const sEn = await en.p.evaluate(() => ({
+    name: document.querySelector(".lw-name").textContent.trim(),
+    gruppe: document.getElementById("lieferwahl").getAttribute("aria-label"),
+    haus: document.querySelector('[data-lieferwahl="haus"]').getAttribute("aria-label") }));
+  ok(sEn.name === "Delivery" && sEn.gruppe === "Order type" && /restaurant/i.test(sEn.haus),
+     "Englisch: Name und Beschriftungen übersetzt", JSON.stringify(sEn));
 
-  await b2.p.click(".lieferband.an");
-  await b2.p.waitForTimeout(500);
-  const s2nachher = await b2.p.evaluate(() => ({
-    modus: liefermodus, hash: location.hash,
-    an: !!document.querySelector(".lieferband.an")
-  }));
-  ok(s2nachher.modus === false, "der Klick schaltet liefermodus wirklich aus",
-     "modus=" + s2nachher.modus);
-  ok(s2nachher.hash === "#/", "und führt zurück auf die Startseite", s2nachher.hash);
-  ok(!s2nachher.an, "das Band zeigt danach wieder den ausgeschalteten Zustand");
-  ok(b2.echt().length === 0, "kein Fehler beim Zurückschalten", b2.echt()[0] || "still");
+  /* Jede Sprache: passt der Name in die Pille? Nicht angenommen,
+     an der gemalten Breite gemessen (white-space:nowrap, overflow
+     hidden — ein zu langer Name würde still abgeschnitten). */
+  const zuLang = await en.p.evaluate(() => {
+    const n = document.querySelector(".lw-name"), sp = n.querySelector("span");
+    const aus = [];
+    for(const s of SPRACHEN){
+      spracheSetzen(s.code); zeichne();
+      for(const w of ["haus", "liefern"]){
+        sp.textContent = lwNameText(w);
+        if(sp.scrollWidth > n.clientWidth - 12) aus.push(s.code + ":" + sp.textContent + " " + sp.scrollWidth + "/" + (n.clientWidth - 12));
+      }
+    }
+    for(const x of ["18:00–01:00", t("Gerade zu")]){
+      sp.textContent = x;
+      if(sp.scrollWidth > n.clientWidth - 12) aus.push(x);
+    }
+    spracheSetzen("de"); zeichne();
+    return aus;
+  });
+  ok(zuLang.length === 0, "der Name passt in jeder Sprache in die Pille", zuLang.join(" | ") || "alle 12");
+  await en.ctx.close();
+
+  /* Tiefer Link #/liefern bzw. ?modus=liefern: der Schalter zeigt es. */
+  const b2 = await hubAuf(br, "chocolamour", LIEFER_AN);
+  const s5 = await b2.p.evaluate(() => ({ modus: liefermodus, wahl: document.getElementById("lieferwahl").dataset.wahl }));
+  ok(s5.modus && s5.wahl === "liefern", "mit dem Lieferlink steht der Schalter auf Lieferung", s5.wahl);
   await b2.ctx.close();
 
-  /* 3 · Am Tisch KEIN Band. Wer am Untersetzer sitzt, soll sich
-         nicht zu sich nach Hause liefern lassen. */
+  /* Am Tisch KEIN Schalter. Wer am Untersetzer sitzt, soll sich nicht
+     zu sich nach Hause liefern lassen. */
   const c = await hubOhneModus(br, "chocolamour", LIEFER_AN, "?t=7");
-  ok(!(await c.p.evaluate(() => !!document.querySelector(".lieferband"))),
-     "am Tisch steht kein Lieferband");
+  ok(await c.p.evaluate(() => document.getElementById("lieferwahl").hidden),
+     "am Tisch steht kein Liefer-Schalter");
   await c.ctx.close();
 
-  /* 4 · Haus liefert nicht → kein Band. Der haeufigste Fall von
-         allen: Die meisten Haeuser liefern nicht. */
+  /* Haus liefert nicht → kein Schalter. Der häufigste Fall. */
   const d = await hubOhneModus(br, "chocolamour", undefined);
-  ok(!(await d.p.evaluate(() => !!document.querySelector(".lieferband"))),
-     "ohne Liefereinstellung steht auch kein Band da");
+  const dd = await d.p.evaluate(() => {
+    const w = document.getElementById("lieferwahl");
+    return { hidden: w.hidden, display: getComputedStyle(w).display };
+  });
+  ok(dd.hidden && dd.display === "none", "ohne Liefereinstellung steht auch kein Schalter da", JSON.stringify(dd));
   await d.ctx.close();
 
-  /* 5 · Ausserhalb der Lieferzeit steht das Band TROTZDEM — mit den
-         Uhrzeiten. Ein Band, das verschwindet, laesst den Gast
-         raetseln, ob es je eines gab. */
+  /* Außerhalb der Lieferzeit steht der Schalter TROTZDEM — und sagt
+     die Uhrzeiten, im Namen und in der Beschriftung. */
   const jetzt = new Date();
   const hh = d2 => String(d2.getHours()).padStart(2,"0") + ":" +
                    String(d2.getMinutes()).padStart(2,"0");
@@ -469,102 +547,92 @@ async function hubUmschalter(br){
     von: hh(new Date(jetzt.getTime() + 2*3600*1000)),
     bis: hh(new Date(jetzt.getTime() + 4*3600*1000)), tage: [] } });
   const e = await hubOhneModus(br, "chocolamour", zu);
-  const s5 = await e.p.evaluate(() => {
-    const b = document.querySelector(".lieferband");
-    return { da: !!b, text: b ? b.textContent : "", jetzt: liefertGerade() };
-  });
-  ok(!s5.jetzt, "Voraussetzung: das Fenster ist gerade zu");
-  ok(s5.da, "das Band steht auch ausserhalb der Lieferzeit da");
-  ok(new RegExp(zu.zeiten.von).test(s5.text),
-     "und nennt die Uhrzeiten statt einzuladen",
-     s5.text.replace(/\s+/g," ").trim().slice(0, 54));
+  const s6 = await e.p.evaluate(() => ({
+    jetzt: liefertGerade(), sichtbar: !document.getElementById("lieferwahl").hidden,
+    label: document.querySelector('[data-lieferwahl="liefern"]').getAttribute("aria-label") }));
+  ok(!s6.jetzt, "Voraussetzung: das Fenster ist gerade zu");
+  ok(s6.sichtbar, "der Schalter steht auch außerhalb der Lieferzeit da");
+  ok(s6.label.includes(zu.zeiten.von) && s6.label.includes(zu.zeiten.bis),
+     "die Beschriftung nennt die Uhrzeiten", s6.label);
+  await e.p.click('[data-lieferwahl="liefern"]');
+  await e.p.waitForTimeout(900);
+  const s6n = await e.p.evaluate(() => document.querySelector(".lw-name").textContent.trim());
+  ok(s6n.includes(zu.zeiten.von) && s6n.includes(zu.zeiten.bis), "der aufblitzende Name nennt sie auch", s6n);
   await e.ctx.close();
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   DIE PILLE · Glas, leise, mittig, mit Fahrrad
+   DIE BEWEGUNG · Daumen, Kopie, Name
 
-   Wunsch: „etwas unscheinbarer, mit Emoji und passender Animation,
-   mit passendem Glass Button". Gemessen wird, was das heißt:
-   schmaler als die Seite, mittig (links = rechts auf 1 px), Glas mit
-   Weichzeichner, ohne Glas bei „Transparenz reduzieren" eine deckende
-   Fläche, im Knopf das Fahrrad als bewegtes Zeichen, das beim
-   Antippen wieder abspielt. Und mit abgeschalteten bewegten Zeichen
-   ein stilles Fahrrad, kein leerer Kreis.
+   Nur transform/opacity (Bewegungs-Skill §1). Die Symbolkopie im
+   Daumen läuft gegenläufig mit derselben Kurve — gemessen MITTEN in
+   der Bewegung, dass Daumen + Kopie = 0 bleibt (sonst stünden die
+   Symbole während des Gleitens doppelt). Unterbrechbar, und bei
+   reduzierter Bewegung sofort am Ziel, der Name trotzdem lesbar.
    ══════════════════════════════════════════════════════════════════ */
 async function hubPille(br){
-  console.log("\n══ Die Pille · Glas und Fahrrad ══");
-  for(const modus of ["aus", "an"]){
-    const h = modus === "an" ? await hubAuf(br, "chocolamour", LIEFER_AN)
-                             : await hubOhneModus(br, "chocolamour", LIEFER_AN);
-    await h.p.evaluate(() => { location.hash = "#/"; });
-    await h.p.waitForTimeout(600);
-    const m = await h.p.evaluate(() => {
-      const b = document.querySelector(".lieferband");
-      if(!b) return null;
-      const r = b.getBoundingClientRect(), st = getComputedStyle(b);
-      const z = b.querySelector(".lbz .bz");
-      return { breite: r.width, seite: document.documentElement.clientWidth,
-               links: r.left, rechts: document.documentElement.clientWidth - r.right,
-               hoch: r.height, filter: st.backdropFilter || st.webkitBackdropFilter || "",
-               grund: st.backgroundColor, rund: parseFloat(st.borderTopLeftRadius),
-               zeichen: z ? z.dataset.bz : null, tipp: b.classList.contains("bz-tipp") };
-    });
-    const wo = "Modus " + modus + " · ";
-    if(!m){ ok(false, wo + "Band gefunden"); await h.ctx.close(); continue; }
-    ok(m.breite < m.seite * 0.8, wo + "schmaler als die Seite (leiser als eine volle Karte)",
-       Math.round(m.breite) + " von " + m.seite + " px");
-    ok(Math.abs(m.links - m.rechts) <= 1, wo + "mittig: links = rechts auf 1 px",
-       m.links.toFixed(1) + " / " + m.rechts.toFixed(1));
-    ok(m.hoch >= 44, wo + "antippbar (≥ 44 px)", Math.round(m.hoch) + " px");
-    ok(m.rund >= m.hoch / 2 - 0.5, wo + "eine Pille: Rundung ≥ halbe Höhe", m.rund + " px");
-    ok(/blur\(/.test(m.filter), wo + "Glas: backdrop-filter mit Weichzeichner", m.filter || "(leer)");
-    ok(/\/\s*0?\.\d|rgba\(.*,\s*0?\.\d+\)/.test(m.grund), wo + "Glas: die Fläche lässt durchscheinen", m.grund);
-    ok(m.zeichen === "1f6b2", wo + "im Knopf steht das Fahrrad als bewegtes Zeichen", m.zeichen || "kein .bz");
-    ok(m.tipp, wo + "Antippen spielt es erneut ab (.bz-tipp)");
-    await h.ctx.close();
-  }
+  console.log("\n══ Die Bewegung des Schalters ══");
+  const h = await hubOhneModus(br, "chocolamour", LIEFER_AN);
+  const x = sel => `(new DOMMatrix(getComputedStyle(document.querySelector("${sel}")).transform)).m41`;
+  const eig = await h.p.evaluate(() => [".lw-daumen", ".lw-innen", ".lw-name"].map(s =>
+    getComputedStyle(document.querySelector(s)).transitionProperty));
+  ok(eig.every(e => e.split(",").every(p => /^\s*(transform|opacity)\s*$/.test(p))),
+     "Übergänge nur auf transform und opacity", eig.join(" | "));
+  await h.p.click('[data-lieferwahl="liefern"]');
+  await h.p.waitForTimeout(110);
+  const mitte = await h.p.evaluate(x => {
+    const d = eval(x[0]), i = eval(x[1]);
+    const laeuft = document.querySelector(".lw-daumen").getAnimations().some(a => a instanceof CSSTransition);
+    const quetscht = document.querySelector(".lw-koerper").getAnimations().some(a => a instanceof CSSAnimation);
+    return { d, i, laeuft, quetscht };
+  }, [x(".lw-daumen"), x(".lw-innen")]);
+  ok(mitte.laeuft && mitte.d > 0 && mitte.d < 60, "der Daumen gleitet (laufende Transition, unterwegs)", mitte.d.toFixed(1) + " px");
+  ok(Math.abs(mitte.d + mitte.i) <= 0.5, "die Symbolkopie bleibt deckungsgleich (Daumen + Kopie = 0)",
+     mitte.d.toFixed(2) + " + " + mitte.i.toFixed(2));
+  ok(mitte.quetscht, "der Daumen staucht sich beim Losfahren");
+  const origin = await h.p.evaluate(() => getComputedStyle(document.querySelector(".lw-name")).transformOrigin);
+  ok(parseFloat(origin) > 40, "der Name wächst von der gewählten Seite aus (rechts)", origin);
+  await h.p.waitForTimeout(700);
+  const ende = await h.p.evaluate(x => ({ d: eval(x[0]), i: eval(x[1]) }), [x(".lw-daumen"), x(".lw-innen")]);
+  ok(Math.abs(ende.d - 44) < 0.5 && Math.abs(ende.i + 44) < 0.5, "Endlage: Daumen auf dem Roller", ende.d + " / " + ende.i);
 
-  /* Transparenz reduzieren: dieselbe Pille, deckend, ohne Filter. */
+  /* Unterbrechen: sofort zurück — der letzte Tipp gewinnt, eine Uhr. */
+  await h.p.click('[data-lieferwahl="haus"]');
+  await h.p.waitForTimeout(60);
+  await h.p.click('[data-lieferwahl="liefern"]');
+  await h.p.waitForTimeout(60);
+  await h.p.click('[data-lieferwahl="haus"]');
+  await h.p.waitForTimeout(2500);
+  const nach = await h.p.evaluate(x => ({ d: eval(x[0]), modus: liefermodus,
+    zeigt: document.getElementById("lieferwahl").classList.contains("zeigt"),
+    deckt: +getComputedStyle(document.querySelector(".lw-name")).opacity }), [x(".lw-daumen")]);
+  ok(!nach.modus && Math.abs(nach.d) < 0.5 && !nach.zeigt && nach.deckt === 0,
+     "drei schnelle Tipps: der letzte gewinnt, danach Ruhe", JSON.stringify(nach));
+  ok(h.echt().length === 0, "kein Fehler in der Bewegung", h.echt()[0] || "still");
+  await h.ctx.close();
+
+  /* Reduzierte Bewegung: kein Gleiten, keine Stauchung, Name sofort. */
   const r = await hubOhneModus(br, "chocolamour", LIEFER_AN);
-  /* Playwright kennt reducedTransparency nicht; über CDP wie in
-     pruef-glas.js. */
-  const cdp = await r.ctx.newCDPSession(r.p);
-  await cdp.send("Emulation.setEmulatedMedia", {
-    features: [{ name:"prefers-reduced-transparency", value:"reduce" }] });
-  const fest = await r.p.evaluate(() => {
-    const b = document.querySelector(".lieferband");
-    const st = getComputedStyle(b);
-    return { mq: matchMedia("(prefers-reduced-transparency: reduce)").matches,
-             filter: st.backdropFilter || "none", grund: st.backgroundColor,
-             flaeche: getComputedStyle(document.documentElement).getPropertyValue("--flaeche").trim() };
-  });
-  /* Voraussetzung zuerst (§8.1g, Vorfall C): Greift die Emulation gar
-     nicht, misst der Rest nichts. */
-  ok(fest.mq, "Voraussetzung: „Transparenz reduzieren“ ist wirklich eingeschaltet");
-  if(fest.mq){
-    ok(fest.filter === "none", "ohne Transparenz: kein Weichzeichner mehr", fest.filter);
-    ok(!/\/\s*0?\.\d|rgba\(/.test(fest.grund), "ohne Transparenz: die Fläche deckt", fest.grund);
+  await r.p.emulateMedia({ reducedMotion: "reduce" });
+  await r.p.click('[data-lieferwahl="liefern"]');
+  await r.p.waitForTimeout(40);
+  const still = await r.p.evaluate(x => ({
+    mq: matchMedia("(prefers-reduced-motion: reduce)").matches,
+    d: eval(x[0]), deckt: +getComputedStyle(document.querySelector(".lw-name")).opacity,
+    anim: document.querySelector(".lw-koerper").getAnimations().length +
+          document.querySelector(".lw-daumen").getAnimations().length }), [x(".lw-daumen")]);
+  ok(still.mq, "Voraussetzung: reduzierte Bewegung ist wirklich an");
+  if(still.mq){
+    ok(Math.abs(still.d - 44) < 0.5 && still.anim === 0, "reduzierte Bewegung: sofort am Ziel, nichts läuft",
+       JSON.stringify(still));
+    ok(still.deckt === 1, "und der Name ist trotzdem zu lesen", "opacity " + still.deckt);
   }
   await r.ctx.close();
-
-  /* Bewegte Zeichen im Board abgeschaltet: stilles Fahrrad statt Film. */
-  const s = await hubOhneModus(br, "chocolamour", LIEFER_AN);
-  const still = await s.p.evaluate(() => {
-    HUBSTIL = { emoji:false };
-    zeichne();
-    return new Promise(ok => setTimeout(() => {
-      const z = document.querySelector(".lieferband .lbz");
-      ok({ bz: !!(z && z.querySelector(".bz")), text: z ? z.textContent.trim() : "" });
-    }, 500));
-  });
-  ok(!still.bz && /\u{1F6B2}/u.test(still.text),
-     "bewegte Zeichen aus: ein stilles Fahrrad, kein Film", JSON.stringify(still));
-  await s.ctx.close();
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   KONTRAST DES BANDES · beide Häuser, beide Phasen, beide Zustände
+   KONTRAST DES SCHALTERS · beide Häuser, beide Phasen
+   (früher: des Bandes — der Vorfall darunter gilt weiter)
 
    VORFALL, und er war meiner. Das Band trug im eingeschalteten
    Zustand „color:var(--gold)" auf „background:var(--gold-flaeche)" —
@@ -615,52 +683,49 @@ const kontrast = (a, b) => {
 };
 
 async function bandKontrast(br){
-  console.log("\n══ Kontrast des Bandes ══");
+  console.log("\n══ Kontrast des Schalters ══");
   for(const haus of ["chocolamour", "blend"]){
     for(const phase of ["tag", "abend"]){
-      for(const modus of ["aus", "an"]){
-        const h = modus === "an"
-          ? await hubAuf(br, haus, LIEFER_AN)
-          : await hubOhneModus(br, haus, LIEFER_AN);
-        /* VORFALL in dieser Prüfung selbst: Hier stand
-           „paletteAnwenden(ph)" — eine Funktion, die es im Hub nicht
-           gibt. Die Abend-Hälfte maß also viermal den Tag und war grün
-           (§8.1g). Umgeschaltet wird jetzt über den echten Schalter des
-           Gastes, und die Voraussetzung wird gemessen. */
-        const phaseDa = await h.p.evaluate(ph => {
-          lichtSetzen(ph === "abend" ? "dunkel" : "hell");
-          location.hash = "#/";
-          return document.body.dataset.phase;
-        }, phase);
-        await h.p.waitForTimeout(600);
-        ok(phaseDa === phase, "Voraussetzung: " + haus + " steht wirklich auf " + phase, phaseDa);
-        const m = await h.p.evaluate(() => {
-          const b = document.querySelector(".lieferband");
-          if(!b) return null;
-          const g = el => getComputedStyle(el);
-          /* Der wirklich GEMALTE Grund: alle Flächen vom Band bis
-             hinauf zu <html>, von oben nach unten. Wer am Element
-             misst, bekommt bei Glas eine halb durchsichtige Farbe
-             und rechnet, als läge nichts darunter — dieselbe Lehre
-             wie §5.2b. Gemischt wird in Node (gemalt()). */
-          const schichten = [];
-          for(let n = b; n; n = n.parentElement){
-            const c = g(n).backgroundColor;
-            if(c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c)) schichten.push(c);
-          }
-          return { band: schichten, roh: g(b).backgroundColor,
-                   titel: g(b.querySelector(".lbt b")).color,
-                   unter: g(b.querySelector(".lbt span")).color };
-        });
-        await h.ctx.close();
-        const wo = haus + " · " + phase + " · Modus " + modus;
-        if(!m){ ok(false, wo, "kein Band gefunden"); continue; }
-        const grund = gemalt(m.band);
-        const kt = kontrast(m.titel, grund), ku = kontrast(m.unter, grund);
-        ok(kt >= 4.5 && ku >= 4.5, wo,
-           "Titel " + kt.toFixed(2) + ":1, Unterzeile " + ku.toFixed(2) + ":1" +
-           " (Fläche " + m.roh + ")");
-      }
+      const h = await hubOhneModus(br, haus, LIEFER_AN);
+      /* VORFALL in dieser Prüfung selbst (Band-Zeit): Hier stand einmal
+         eine Funktion, die es im Hub nicht gibt, und die Abend-Hälfte
+         maß viermal den Tag (§8.1g). Umgeschaltet wird über den echten
+         Schalter des Gastes, und die Voraussetzung wird gemessen. */
+      const phaseDa = await h.p.evaluate(ph => {
+        lichtSetzen(ph === "abend" ? "dunkel" : "hell");
+        return document.body.dataset.phase;
+      }, phase);
+      await h.p.waitForTimeout(500);
+      ok(phaseDa === phase, "Voraussetzung: " + haus + " steht wirklich auf " + phase, phaseDa);
+      await h.p.evaluate(() => {
+        const w = document.getElementById("lieferwahl");
+        w.querySelector(".lw-name span").textContent = "Lieferung";
+        w.classList.add("zeigt");
+      });
+      await h.p.waitForTimeout(900);
+      const m = await h.p.evaluate(() => {
+        const g = el => getComputedStyle(el);
+        const w = document.getElementById("lieferwahl");
+        const schichten = [];
+        for(let n = w; n; n = n.parentElement){
+          const c = g(n).backgroundColor;
+          if(c && !/rgba\(0, 0, 0, 0\)|transparent/.test(c)) schichten.push(c);
+        }
+        const k = w.querySelector(".lw-koerper"), n = w.querySelector(".lw-name");
+        return { spur: schichten, symbol: g(w.querySelector('[data-lieferwahl="liefern"]')).color,
+                 daumen: g(k).backgroundColor, daumenSymbol: g(k).color,
+                 name: g(n).backgroundColor, nameSchrift: g(n).color };
+      });
+      await h.ctx.close();
+      const wo = haus + " · " + phase + " · ";
+      const spur = gemalt(m.spur);
+      const k1 = kontrast(m.symbol, spur), k2 = kontrast(m.daumenSymbol, m.daumen), k3 = kontrast(m.nameSchrift, m.name);
+      /* Symbole sind Bedienelemente ohne Text: 3:1 (WCAG 1.4.11) auf der
+         Spur. Symbol im Daumen und der Name sind dasselbe Paar wie
+         Schrift auf Band: 4,5:1. */
+      ok(k1 >= 3, wo + "Symbol auf der Spur ≥ 3:1", k1.toFixed(2) + ":1");
+      ok(k2 >= 4.5, wo + "Symbol im Daumen ≥ 4,5:1", k2.toFixed(2) + ":1");
+      ok(k3 >= 4.5, wo + "Name in der Pille ≥ 4,5:1", k3.toFixed(2) + ":1");
     }
   }
 }
