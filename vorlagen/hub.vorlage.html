@@ -305,9 +305,8 @@ header{
   padding:calc(var(--rand-oben) + 6px) var(--rand) 18px;
   background:var(--band);color:var(--band-text);
   display:grid;grid-template-columns:1fr;
-  /* Eine Spalte, alles mittig — nur die Wahl (Sprache + Hell/Dunkel)
-     bricht mit justify-self:end unten rechts aus, dort bleibt sie mit
-     dem Daumen leicht erreichbar, ohne den Kopf oben zu überladen.
+  /* Eine Spalte, alles mittig — auch die Wahl (Licht, Liefern,
+     Sprache) in der letzten Zeile, seit 30.09. als kompakte Kreise.
      overflow:visible bleibt Pflicht: .bambus-kopf ragt bei top:-8px
      über den Rand hinaus (Zeile 313), ein overflow:hidden hier würde
      genau das abschneiden — die Herzen darunter clippen sich selbst
@@ -754,46 +753,46 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
   100% { opacity:.30; }
 }
 
-/* Sprachwahl · sitzt unten rechts im Band, mit dem Daumen leicht zu
-   erreichen. Eigene Zeile im Raster (grid-area:kopfwahl), aber als
-   einzige mit justify-self:end aus der Mitte nach rechts gerückt —
-   [dir="rtl"] spiegelt das auf start (Zeile ~742). */
+/* Sprachwahl · eigene Zeile im Raster (grid-area:kopfwahl), mittig. */
 /* Der Lichtknopf sitzt links neben der Sprachwahl und trägt dieselbe
    Gestalt — beides beantwortet „wie will ich das sehen". */
+/* Wunsch 30.09.: „alles eher mittig", Platz sparen — die Zeile steht
+   jetzt in der Mitte, beide Knöpfe als gleich große Kreise, dazwischen
+   (wo der Betrieb liefert) der Liefer-Schalter. */
 .kopfwahl{
-  grid-area:kopfwahl;justify-self:end;align-self:center;
-  display:flex;align-items:center;gap:8px;
+  grid-area:kopfwahl;justify-self:center;align-self:center;
+  display:flex;align-items:center;gap:10px;
 }
 .lichtknopf{
   flex:none;
-  width:38px;height:38px;padding:0;border-radius:999px;
+  width:44px;height:44px;padding:0;border-radius:999px;
   display:inline-flex;align-items:center;justify-content:center;
   background:rgba(251,246,242,.10);border:1px solid rgba(251,246,242,.22);
   color:var(--band-text);cursor:pointer;
   transition:background var(--kurz) var(--feder), border-color var(--kurz);
 }
-.lichtknopf svg{width:19px;height:19px;fill:none;stroke:currentColor;
+.lichtknopf svg{width:20px;height:20px;fill:none;stroke:currentColor;
   stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 /* Fest gewählt heißt sichtbar fest gewählt — sonst weiß der Gast nach
    dem nächsten Besuch nicht, warum es tagsüber dunkel ist. */
 .lichtknopf.fest{background:rgba(251,246,242,.20);border-color:rgba(251,246,242,.45)}
 .lichtknopf:active{transform:scale(.94)}
-@media (max-width:360px){ .lichtknopf{display:none} }
+/* Früher ab 360 px ausgeblendet (die Sprachpille brauchte den Platz).
+   Seit der Sprachknopf nur noch ein Kreis ist, passen Licht, Liefer-
+   Schalter und Sprache auch bei 320 px nebeneinander. */
 
 .sprachwahl{position:relative}
 .sprachknopf{
-  display:inline-flex;align-items:center;gap:6px;
-  background:rgba(251,246,242,.10);border:1px solid rgba(251,246,242,.16);
-  color:var(--band-text);border-radius:999px;padding:9px 12px;
-  font-size:12px;font-family:inherit;font-weight:600;cursor:pointer;
-  letter-spacing:.2px;transition:transform var(--kurz) var(--feder), background var(--kurz)
+  width:44px;height:44px;padding:0;
+  display:inline-flex;align-items:center;justify-content:center;
+  background:rgba(251,246,242,.10);border:1px solid rgba(251,246,242,.22);
+  color:var(--band-text);border-radius:999px;cursor:pointer;
+  transition:transform var(--kurz) var(--feder), background var(--kurz)
 }
 .sprachknopf:active{transform:scale(.94)}
-.sprachknopf svg{width:14px;height:14px;fill:none;stroke:currentColor;
-  stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;opacity:.8}
-.sprachknopf .chev{opacity:.6;font-size:9px;transition:transform var(--mittel) var(--weich)}
-.sprachwahl.offen .sprachknopf{background:rgba(251,246,242,.20)}
-.sprachwahl.offen .chev{transform:rotate(180deg)}
+.sprachknopf svg{width:20px;height:20px;fill:none;stroke:currentColor;
+  stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sprachwahl.offen .sprachknopf{background:rgba(251,246,242,.24);border-color:rgba(251,246,242,.45)}
 
 .sprachliste{
   position:absolute;top:calc(100% + 8px);right:0;left:auto;
@@ -818,16 +817,15 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 .sprachliste button .kurz{font-size:10px;font-weight:700;color:var(--tinte-leise);letter-spacing:.9px}
 .sprachliste button[aria-checked="true"]{color:var(--rot);font-weight:600}
 .sprachliste button[aria-checked="true"] .kurz{color:var(--rot)}
+/* Der Knopf nennt die Sprache nicht mehr — die Liste zeigt sie deshalb
+   unübersehbar: Haken vor dem Kürzel. */
+.sprachliste button[aria-checked="true"] .kurz::before{content:"✓\00a0";font-size:12px}
 
 /* Rechts-nach-links */
 [dir="rtl"] body{direction:rtl}
 /* Die Reihenfolge der Zeilen bleibt gleich (logo/titel/claim/status/
-   kopfwahl). justify-self:end an .kopfwahl (Zeile 692) ist eine
-   LOGISCHE Eigenschaft und spiegelt sich mit direction:rtl (oben)
-   von selbst auf die linke Seite — eine zusätzliche Regel hier hätte
-   das Gegenteil bewirkt (gemessen: mit „justify-self:start" blieb
-   die Wahl bei 18px vom RECHTEN statt vom linken Rand stehen, „end"
-   ohne Override landet richtig bei 18px links). */
+   kopfwahl); .kopfwahl steht mittig und braucht keine Spiegelung —
+   nur die Knöpfe darin tauschen mit direction:rtl von selbst die Seite. */
 [dir="rtl"] .sprachliste{right:auto;left:0;transform-origin:0 0}
 [dir="rtl"] .gericht,[dir="rtl"] .zeile,[dir="rtl"] .kachel{flex-direction:row-reverse}
 [dir="rtl"] .pfeil{transform:scaleX(-1)}
@@ -3901,10 +3899,11 @@ function markeAnwenden(abend){
   <div class="kopfwahl">
   <button class="lichtknopf" id="lichtknopf" type="button"></button>
   <div class="sprachwahl" id="sprachwahl">
-    <button class="sprachknopf" id="sprachknopf" aria-haspopup="menu" aria-expanded="false">
-      <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M3.2 9h17.6M3.2 15h17.6"/>
+    <!-- Nur der Globus: welche Sprache gilt, sagt die offene Liste
+         (Haken) und für Vorleseprogramme das aria-label. -->
+    <button class="sprachknopf" id="sprachknopf" type="button" aria-haspopup="menu" aria-expanded="false" aria-label="Sprache: Deutsch">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3.2 9h17.6M3.2 15h17.6"/>
         <path d="M12 3a15 15 0 0 1 0 18a15 15 0 0 1 0-18"/></svg>
-      <span id="sprachname">Deutsch</span><span class="chev">▾</span>
     </button>
     <div class="sprachliste" id="sprachliste" role="menu" aria-label="Sprache wählen"></div>
   </div>
@@ -12034,7 +12033,8 @@ function zeichne(){
   $("claim").textContent = istStart ? t(BETRIEB.claim) : BETRIEB.strasse + " · " + BETRIEB.ort;
   $("zurueck").textContent = t("‹ Zurück zur Übersicht");
   const aktiv = SPRACHEN.find(sp => sp.code === sprache) || SPRACHEN[0];
-  $("sprachname").textContent = aktiv.name;
+  $("sprachknopf").setAttribute("aria-label", t("Sprache") + ": " + aktiv.name);
+  $("sprachknopf").title = aktiv.name;
   $("sprachliste").innerHTML = SPRACHEN.map(sp =>
     '<button type="button" role="menuitemradio" data-sprache="' + sp.code + '" aria-checked="' +
     (sp.code === sprache) + '"><span>' + sp.name + '</span>' +
