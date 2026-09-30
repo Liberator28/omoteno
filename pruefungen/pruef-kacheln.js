@@ -335,6 +335,7 @@ function eigeneTexte(blatt){
     await p.route("https://bild.test/**", r =>
       r.fulfill({ status:200, contentType:"image/svg+xml", body:BILD }));
     await p.addInitScript(() => localStorage.setItem("omoteno-willkommen","1"));
+    await p.addInitScript(() => sessionStorage.setItem("omoteno-willkommen","1"));
     await p.goto("file://" + h[0].hub);
     await p.waitForTimeout(1300);
 
