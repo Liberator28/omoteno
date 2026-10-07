@@ -39,7 +39,7 @@ const GERICHTE = [
   { id: "d", name: "Falle", kategorie: "Böse", preis: 1, karte: "speisekarte", karten: ["kontakt"], verfuegbar: true },
 ];
 
-async function hub(browser, haus, karten) {
+async function hub(browser, haus, karten, kacheln) {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
   await ctx.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch (e) {} });
   const seite = await ctx.newPage();
@@ -48,7 +48,8 @@ async function hub(browser, haus, karten) {
   await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue()
     : r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
   await seite.route("**/rest/v1/betriebe**", r => r.fulfill({ status: 200, contentType: "application/json",
-    body: JSON.stringify([{ id: BID, bestell_pause: false, hub_texte: {}, karten }]) }));
+    body: JSON.stringify([Object.assign({ id: BID, bestell_pause: false, hub_texte: {}, karten },
+      kacheln ? { hub_kacheln: kacheln } : {})]) }));
   await seite.route("**/rest/v1/gerichte**", r => r.fulfill({ status: 200, contentType: "application/json",
     body: JSON.stringify(GERICHTE) }));
   await seite.goto("file://" + path.join(DIST, haus, "index.html"));
@@ -133,6 +134,57 @@ async function lies(seite, ziel) {
     pruef(ohne && u2.h2 === "Hauptkarte" && u2.unter === "Alles frisch", haus + ": ohne Kachelnamen gilt der Kartenname",
       u2.h2 + " / " + u2.unter);
     await r.ctx.close();
+  }
+
+  /* ══ L3 · HUB: eigene Kacheln, Karte je Kachel, Zeitplan ═══════════
+     - Eine eigene Karten-Kachel führt auf ihre Karte, eine Link-Kachel
+       nach draußen (neues Fenster).
+     - Positivliste: ein Link mit Anführungszeichen (Attribut-Ausbruch)
+       oder javascript: erzeugt KEINE Kachel; kein onclick im Dokument.
+     - Die feste Speisekarten-Kachel mit Zeitplan zeigt in der Zeit die
+       Abendkarte — die Zeitrechnung mit fester Uhr geprüft (§8.1j),
+       auch über Mitternacht. */
+  for (const haus of haeuser) {
+    const KACHELN_PROBE = [
+      { schluessel: "speisekarte", plan: [{ von: "00:00", bis: "23:59", karte: "k-abend" }] },
+      { schluessel: "e-mittag1", art: "karte", karte: "k-mittag", titel: "Mittagstisch" },
+      { schluessel: "e-link001", art: "link", link: "https://example.org/shop", titel: "Unser Shop" },
+      { schluessel: "e-boese01", art: "link", link: 'https://x.de" onclick="alert(1)', titel: "Böse 1" },
+      { schluessel: "e-boese02", art: "link", link: "javascript:alert(1)", titel: "Böse 2" },
+      { schluessel: "e-BOESE", art: "karte", karte: "k-mittag", titel: "Böse 3" },
+    ];
+    const { ctx, seite, fehler } = await hub(browser, haus, [
+      { id: "k-mittag", name: "Mittagskarte" }, { id: "k-abend", name: "Abendkarte", unter: "Ab 17 Uhr" }], KACHELN_PROBE);
+    await seite.evaluate(() => { location.hash = "#/"; });
+    await seite.waitForTimeout(600);
+    const k = await seite.evaluate(() => {
+      const a = sch => document.querySelector('#inhalt a.kachel[data-kachel="' + sch + '"]');
+      const href = sch => a(sch) ? a(sch).getAttribute("href") : null;
+      return { mittag: href("e-mittag1"), link: href("e-link001"),
+               linkZiel: a("e-link001") ? a("e-link001").getAttribute("target") : null,
+               boese: ["e-boese01", "e-boese02", "e-BOESE"].map(href),
+               onclick: document.querySelectorAll("[onclick]").length,
+               speise: href("speisekarte") };
+    });
+    pruef(k.mittag === "#/k-mittag", haus + ": eigene Karten-Kachel führt auf ihre Karte", k.mittag);
+    pruef(k.link === "https://example.org/shop" && k.linkZiel === "_blank", haus + ": Link-Kachel öffnet draußen", k.link + " " + k.linkZiel);
+    pruef(k.boese.every(x => x === null) && k.onclick === 0, haus + ": Positivliste — kein Ausbruch, kein javascript:, kein falscher Schlüssel",
+      JSON.stringify(k.boese) + " onclick:" + k.onclick);
+    pruef(k.speise === "#/k-abend", haus + ": feste Kachel mit Zeitplan zeigt in der Zeit die andere Karte", k.speise);
+    const m = await lies(seite, "#/k-mittag");
+    pruef(m.h2 === "Mittagstisch", haus + ": Seite trägt den Namen der eigenen Kachel", m.h2);
+    const ab = await lies(seite, "#/k-abend");
+    pruef(ab.h2 === "Abendkarte" && ab.unter === "Ab 17 Uhr", haus + ": über den Zeitplan erreichte Karte heißt wie im Verzeichnis", ab.h2 + " / " + ab.unter);
+    const uhr = await seite.evaluate(() => {
+      const k = { schluessel: "speisekarte", karte: "speisekarte",
+                  plan: [{ von: "11:00", bis: "15:00", karte: "k-mittag" }, { von: "22:00", bis: "02:00", karte: "k-abend" }] };
+      const um = (h, m) => kachelKarte(k, new Date(2026, 9, 7, h, m));
+      return [um(10, 59), um(11, 0), um(14, 59), um(15, 0), um(23, 30), um(1, 30), um(2, 0)].join(",");
+    });
+    pruef(uhr === "speisekarte,k-mittag,k-mittag,speisekarte,k-abend,k-abend,speisekarte",
+      haus + ": Zeitplan mit fester Uhr: Grenzen und über Mitternacht", uhr);
+    pruef(fehler.length === 0, haus + ": keine Ausnahme (L3)", fehler.join(" | ") || "still");
+    await ctx.close();
   }
 
   /* ══ BOARD (Vorführmodus, eigene Probedaten) ══════════════════════
@@ -242,6 +294,48 @@ async function lies(seite, ziel) {
       return gesperrt;
     });
     pruef(zwanzig, "Board: bei 20 Karten ist „Neue Karte“ gesperrt");
+
+    /* L3 · Kacheln anlegen, Karte zuweisen, Zeitplan, Link, löschen */
+    const kb = await p.evaluate(() => {
+      kbAusZeile([]);
+      KARTENSTAND = [{ id: "speisekarte", name: "Speisekarte", unter: "", kategorien: [] },
+                     { id: "k-mittag", name: "Mittagskarte", unter: "", kategorien: [] }];
+      tafelZeigen("startseite"); kbZeichnen();
+      document.getElementById("kbNeuKarte").click();
+      const neu = KACHELSTAND.find(k => /^e-/.test(k.schluessel) && k.art === "karte");
+      const zeile = document.querySelector('[data-kb="' + neu.schluessel + '"]');
+      const sel = zeile.querySelector("[data-kb-karte]");
+      sel.value = "k-mittag"; sel.dispatchEvent(new Event("change", { bubbles: true }));
+      document.querySelector('[data-kb="speisekarte"] [data-kb-auf]').click();
+      document.querySelector('[data-kb="speisekarte"] [data-kb-plan-neu]').click();
+      document.getElementById("kbNeuLink").click();
+      const link = KACHELSTAND.find(k => k.art === "link");
+      const feld = document.querySelector('[data-kb="' + link.schluessel + '"] [data-kb-link]');
+      feld.value = 'https://x.de" onclick="1'; feld.dispatchEvent(new Event("input", { bubbles: true }));
+      const boeseGespeichert = link.link;
+      feld.value = "https://example.org/shop"; feld.dispatchEvent(new Event("input", { bubbles: true }));
+      const roh = kbRoh();
+      const rundlauf = (kbAusZeile(JSON.parse(JSON.stringify(roh))), KACHELSTAND.map(k => k.schluessel + ":" + (k.karte || "") + ":" + (k.plan || []).length + ":" + (k.link || "")).join("|"));
+      const gruppeMittag = kbGruppeVon(neu.schluessel);
+      const festLoeschbar = !!document.querySelector('[data-kb="speisekarte"] [data-kb-loeschen]');
+      kbZeichnen();
+      document.querySelector('[data-kb="' + link.schluessel + '"] [data-kb-auf]') && null;
+      kbOffen.add(link.schluessel); kbZeichnen();
+      document.querySelector('[data-kb="' + link.schluessel + '"] [data-kb-loeschen]').click();
+      return { roh: roh.filter(e => /^e-|speisekarte/.test(e.schluessel)), boeseGespeichert, rundlauf, gruppeMittag, festLoeschbar,
+               nachLoeschen: KACHELSTAND.some(k => k.schluessel === link.schluessel) };
+    });
+    const eKarte = kb.roh.find(e => e.art === "karte"), eLink = kb.roh.find(e => e.art === "link"), eSpeise = kb.roh.find(e => e.schluessel === "speisekarte");
+    pruef(eKarte && eKarte.karte === "k-mittag" && eKarte.titel, "Board: neue Karten-Kachel schreibt Art, Karte und Titel", JSON.stringify(eKarte));
+    pruef(kb.gruppeMittag === "Die Karte", "Board: sie steht in der Gruppe „Die Karte“", kb.gruppeMittag);
+    pruef(eSpeise && Array.isArray(eSpeise.plan) && eSpeise.plan.length === 1 && eSpeise.plan[0].karte === "k-mittag",
+      "Board: Zeitplan an der festen Kachel geht in hub_kacheln", JSON.stringify(eSpeise && eSpeise.plan));
+    pruef(kb.boeseGespeichert === "" && eLink && eLink.link === "https://example.org/shop",
+      "Board: Link nur als saubere https-Adresse", JSON.stringify([kb.boeseGespeichert, eLink && eLink.link]));
+    pruef(/e-[a-z0-9]+:k-mittag:0:/.test(kb.rundlauf) && /speisekarte:speisekarte:1:/.test(kb.rundlauf),
+      "Board: Rundlauf kbRoh → kbAusZeile behält eigene Kacheln und Zeitplan", kb.rundlauf.slice(0, 160));
+    pruef(!kb.festLoeschbar && !kb.nachLoeschen, "Board: eigene Kachel lässt sich löschen, feste nicht (nur ausblenden)",
+      JSON.stringify({ fest: kb.festLoeschbar, nochDa: kb.nachLoeschen }));
     pruef(fehler.length === 0, "Board: keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
   }

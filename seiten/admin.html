@@ -1433,6 +1433,21 @@ body.hell .schritt[aria-pressed=true]{
 .kv-knoepfe .kv-weg{color:var(--warn)}
 /* Mehrfachwahl „Gehört zu“ im Gericht-Blatt */
 .kartenchips{display:flex;flex-wrap:wrap;gap:8px}
+/* Eigene Kacheln, Karte je Kachel, Zeitplan */
+.kbneu{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:12px 0 4px}
+.kbneu .kted-neu{margin:0}
+.kbkarte,.kblink,.kbplan input,.kbplan select{
+  min-height:44px;padding:8px 12px;border-radius:var(--ecke);border:1px solid var(--linie);
+  background:var(--nacht);color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font:inherit;font-size:16px;-webkit-appearance:none;appearance:none;scroll-margin-top:96px;min-width:0}
+.kbkarte,.kblink{width:100%}
+.kbplan{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px 8px;align-items:center;margin:0 0 8px}
+.kbplan select{grid-column:1 / 3}
+.kbplan-weg{min-width:44px;min-height:44px;border-radius:var(--ecke);border:1px solid var(--linie);
+  background:transparent;color:var(--warn);font:inherit;cursor:pointer}
+.kbplan-neu{min-height:44px;padding:0 14px;border-radius:999px;border:1px dashed var(--linie);
+  background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+.kbloeschen{width:100%;margin-top:6px}
 .kartenchips button{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--linie);
   background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
 .kartenchips button[aria-pressed=true]{background:var(--messing);border-color:var(--messing);
@@ -3344,6 +3359,12 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         Namen antippen, um sie einzustellen.</p>
 
       <div class="kbliste" id="kbListe"></div>
+      <!-- Eigene Kacheln anlegen (Wunsch 07.10.): eine weitere Karte
+           (Mittags-, Abendkarte …) oder ein Link. Löschen in der Zeile. -->
+      <div class="kbneu">
+        <button type="button" class="kted-neu" id="kbNeuKarte"><span aria-hidden="true">＋</span> Karten-Kachel</button>
+        <button type="button" class="kted-neu" id="kbNeuLink"><span aria-hidden="true">＋</span> Link-Kachel</button>
+      </div>
 
       <div class="ezeile senkrecht">
         <span><b>Übernehmen</b><i>Gäste sehen es beim nächsten Öffnen</i></span>
@@ -10755,9 +10776,21 @@ function kbAusZeile(roh){
   liste.forEach(e => {
     if(!e || !e.schluessel || gesehen.has(e.schluessel)) return;
     const plan = KACHELPLAN.find(x => x.s === e.schluessel);
-    if(plan){ geordnet.push(plan); gesehen.add(e.schluessel); }
+    if(plan){ geordnet.push(plan); gesehen.add(e.schluessel); return; }
+    /* Eigene Kachel: nur mit gültigem Schlüssel und bekannter Art. */
+    if(KB_EIGEN_MUSTER.test(e.schluessel) && (e.art === "karte" || e.art === "link") &&
+       geordnet.filter(x => x.eigen).length < KB_EIGEN_HOECHST){
+      geordnet.push(e.art === "karte"
+        ? { s:e.schluessel, gruppe:"Die Karte", titel:"Karte", unter:"", icon:"speise", form:"zwei", eigen:true, art:"karte" }
+        : { s:e.schluessel, gruppe:"Für Ihren nächsten Besuch", titel:"Link", unter:"", icon:"stern", form:"zwei", eigen:true, art:"link" });
+      gesehen.add(e.schluessel);
+    }
   });
   KACHELPLAN.forEach(k => { if(!gesehen.has(k.s)){ geordnet.push(k); gesehen.add(k.s); } });
+  /* Jede Gruppe am Stück halten (Ziehen/Pfeile bleiben in der Gruppe):
+     stabil nach der Reihenfolge der Gruppen in KACHELPLAN sortieren. */
+  const gruppenFolge = [...new Set(KACHELPLAN.map(k => k.gruppe))];
+  geordnet.sort((a, b) => gruppenFolge.indexOf(a.gruppe) - gruppenFolge.indexOf(b.gruppe));
   KACHELSTAND = geordnet.map(k => {
     const e = nach[k.s] || {};
     return {
@@ -10788,7 +10821,13 @@ function kbAusZeile(roh){
       textgroesse: (() => {
         const tg = Number(e.textgroesse);
         return Number.isFinite(tg) && tg !== 1 ? Math.min(1.4, Math.max(.8, tg)) : "";
-      })()
+      })(),
+      /* Art, Karte, Zeitplan, Link (Wunsch 07.10.) — dieselben Muster
+         wie im Hub (kachelBauen). */
+      art:   k.eigen ? k.art : (KB_KARTEN_FEST.includes(k.s) ? "karte" : ""),
+      karte: KB_KARTE_MUSTER.test(String(e.karte || "")) ? e.karte : (KB_KARTEN_FEST.includes(k.s) ? k.s : ""),
+      plan:  kbZeitplanSauber(e.plan),
+      link:  k.eigen && k.art === "link" ? kbLinkSauber(e.link) : ""
     };
   });
 }
@@ -10835,7 +10874,38 @@ function kbStandLaden(){
 }
 
 function kbFinden(sch){ return KACHELSTAND.find(k => k.schluessel === sch); }
-function kbPlan(sch){   return KACHELPLAN.find(k => k.s === sch); }
+function kbPlan(sch){   return KACHELPLAN.find(k => k.s === sch) || kbEigenPlan(sch); }
+/* Eigene Kacheln (Wunsch 07.10.: anlegen und löschen) haben keinen
+   Eintrag in KACHELPLAN. Ihr „Plan“ wird aus der Art gebaut — dieselben
+   Vorgaben wie im Hub (kachelBauen): Karte → „Die Karte“, Link → „Für
+   Ihren nächsten Besuch“, beide halbe Breite. */
+const KB_EIGEN_MUSTER = /^e-[a-z0-9]{3,12}$/;
+const KB_EIGEN_HOECHST = 12;
+function kbEigenPlan(sch){
+  const k = KACHELSTAND.find(x => x.schluessel === sch);
+  if(!k || !KB_EIGEN_MUSTER.test(sch) || (k.art !== "karte" && k.art !== "link")) return undefined;
+  return k.art === "karte"
+    ? { s:sch, gruppe:"Die Karte", titel:"Karte", unter:"", icon:"speise", form:"zwei", eigen:true }
+    : { s:sch, gruppe:"Für Ihren nächsten Besuch", titel:"Link", unter:"", icon:"stern", form:"zwei", eigen:true };
+}
+const KB_KARTEN_FEST = ["speisekarte", "getraenke", "cocktails"];
+const KB_KARTE_MUSTER = /^(speisekarte|getraenke|cocktails|k-[a-z0-9-]{1,22})$/;
+function kbLinkSauber(w){
+  const t = String(w || "").trim();
+  return /^https:\/\/[^\s"'<>\\`]{3,300}$/i.test(t) ? t : "";
+}
+function kbZeitplanSauber(p){
+  return (Array.isArray(p) ? p : []).filter(x => x &&
+      /^\d{1,2}:\d{2}$/.test(x.von || "") && /^\d{1,2}:\d{2}$/.test(x.bis || "") &&
+      KB_KARTE_MUSTER.test(x.karte || ""))
+    .slice(0, 6).map(x => ({ von:x.von, bis:x.bis, karte:x.karte }));
+}
+function kbIstKarte(k){ return k.art === "karte"; }
+function kbNeueId(){
+  const da = new Set(KACHELSTAND.map(k => k.schluessel));
+  let id; do { id = "e-" + Math.random().toString(36).slice(2, 9); } while(da.has(id));
+  return id;
+}
 function kbGruppeVon(sch){ return (kbPlan(sch) || {}).gruppe || ""; }
 
 /* Innerhalb der eigenen Gruppe verschieben — dasselbe Muster wie
@@ -10972,6 +11042,7 @@ function kbZeichnen(){
           '<input data-kb-unter maxlength="90" value="' + sicher(k.unter) + '"></label>') +
         '<small class="hvwarn" data-hvwarn="kb:' + sch + '"></small>' +
       '</div>' +
+      kbZielHTML(k, p) +
       '<div class="kbwahlblock"><span class="kbwahlname">Breite</span>' +
         kbSegment("Breite", ["drittel","halb","voll"], kbBreite(k), "kb-breite", KB_BREITENNAME) +
         '<small class="kbhinweis">Steht eine Kachel allein in ihrer Reihe, zieht sie sich von selbst breit.</small></div>' +
@@ -11029,6 +11100,64 @@ function kbZeichnen(){
   hvStartseite("kacheln");
 }
 
+/* Karte, Zeitplan, Link, Löschen — nur, wo es passt. */
+function kbZielHTML(k, p){
+  const sch = sicher(k.schluessel);
+  let html = "";
+  if(kbIstKarte(k)){
+    const opt = wahl => kartenListe().map(x => '<option value="' + sicher(x.id) + '"' +
+      (x.id === wahl ? " selected" : "") + '>' + sicher(x.name) + '</option>').join("");
+    html += '<div class="kbwahlblock"><span class="kbwahlname">Zeigt Karte</span>' +
+      '<select class="kbkarte" data-kb-karte aria-label="Karte dieser Kachel">' + opt(k.karte || k.schluessel) + '</select>' +
+      '<small class="kbhinweis">Karten legst du in „Karte“ über „✎ Karten“ an — bis zu 20.</small></div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Zeitplan</span>' +
+      (k.plan || []).map((z, i) =>
+        '<div class="kbplan" data-kb-plan="' + i + '">' +
+          '<input type="time" data-kb-plan-von value="' + sicher(z.von) + '" aria-label="Von">' +
+          '<span aria-hidden="true">–</span>' +
+          '<input type="time" data-kb-plan-bis value="' + sicher(z.bis) + '" aria-label="Bis">' +
+          '<select data-kb-plan-karte aria-label="Karte in dieser Zeit">' + opt(z.karte) + '</select>' +
+          '<button type="button" class="kbplan-weg" data-kb-plan-weg aria-label="Zeit entfernen">✕</button>' +
+        '</div>').join("") +
+      ((k.plan || []).length < 6 ? '<button type="button" class="kbplan-neu" data-kb-plan-neu>＋ Zeit hinzufügen</button>' : "") +
+      '<small class="kbhinweis">' + ((k.plan || []).length
+        ? "In diesen Zeiten zeigt die Kachel die gewählte Karte, sonst die oben. Es zählt die Uhr des Gastes."
+        : "Z.&nbsp;B. 11:00–15:00 Mittagskarte — danach wechselt die Kachel von selbst.") + '</small></div>';
+  }
+  if(k.art === "link"){
+    html += '<div class="kbwahlblock"><span class="kbwahlname">Adresse</span>' +
+      '<input type="url" class="kblink" data-kb-link inputmode="url" placeholder="https://…" value="' + sicher(k.link || "") + '" aria-label="Adresse des Links">' +
+      '<small class="kbhinweis" data-kb-link-hinweis>' + (k.link ? "Öffnet in einem neuen Fenster." : "Nur https-Adressen.") + '</small></div>';
+  }
+  if(p.eigen){
+    html += '<button type="button" class="knopf gefahr kbloeschen" data-kb-loeschen>Kachel löschen</button>';
+  }
+  return html;
+}
+
+/* Neue Kachel anlegen — am Ende ihrer Gruppe, offen zum Einstellen. */
+function kbNeu(art){
+  if(KACHELSTAND.filter(k => KB_EIGEN_MUSTER.test(k.schluessel)).length >= KB_EIGEN_HOECHST)
+    return melde("Höchstens " + KB_EIGEN_HOECHST + " eigene Kacheln", true);
+  const sch = kbNeueId();
+  const ersteKarte = (kartenListe()[0] || {}).id || "speisekarte";
+  const neu = { schluessel:sch, an:true, art,
+    titel: art === "karte" ? karteName(ersteKarte) : "Neuer Link", unter:"",
+    icon: art === "karte" ? "speise" : "stern", banner:"", iconAus:false, breite:"", bildform:"",
+    grund:"", symbolLage:"", hoehe:"", textgroesse:"",
+    karte: art === "karte" ? ersteKarte : "", plan:[], link:"" };
+  const gruppe = art === "karte" ? "Die Karte" : "Für Ihren nächsten Besuch";
+  KACHELSTAND.push(neu);
+  let letzte = -1;
+  KACHELSTAND.forEach((k, i) => { if(k !== neu && kbGruppeVon(k.schluessel) === gruppe) letzte = i; });
+  if(letzte > -1){ KACHELSTAND.pop(); KACHELSTAND.splice(letzte + 1, 0, neu); }
+  kbOffen.add(sch);
+  kbZeichnen();
+  const zeile = document.querySelector('[data-kb="' + sch + '"]');
+  if(zeile) zeile.scrollIntoView({ block:"center" });
+  melde(art === "karte" ? "Karten-Kachel angelegt — Karte wählen, dann „Übernehmen“" : "Link-Kachel angelegt — Adresse eintragen, dann „Übernehmen“");
+}
+
 /* Eine Zeile allein neu zeichnen wäre schöner, ist aber trügerisch:
    Symbol, Titel und Bild hängen zusammen, und ein halb gezeichneter
    Stand hat schon einmal gezeigt, was gar nicht eingestellt war.
@@ -11047,6 +11176,32 @@ document.addEventListener("click", e => {
 
   const sym = e.target.closest("[data-kb-icon]");
   if(sym){ kbAendern(sch, "icon", sym.dataset.kbIcon); return; }
+
+  if(e.target.closest("[data-kb-loeschen]")){
+    const k = kbFinden(sch);
+    if(!k || !KB_EIGEN_MUSTER.test(sch)) return;
+    if(!confirm("Kachel „" + (k.titel || "ohne Namen") + "“ löschen? Gäste sehen sie nach „Übernehmen“ nicht mehr.")) return;
+    KACHELSTAND = KACHELSTAND.filter(x => x !== k);
+    kbOffen.delete(sch);
+    kbZeichnen();
+    melde("Kachel gelöscht — mit „Übernehmen“ für Gäste wirksam");
+    return;
+  }
+  if(e.target.closest("[data-kb-plan-neu]")){
+    const k = kbFinden(sch); if(!k) return;
+    const andere = kartenListe().find(x => x.id !== (k.karte || sch)) || kartenListe()[0];
+    k.plan = (k.plan || []).concat([{ von:"11:00", bis:"15:00", karte: andere ? andere.id : (k.karte || sch) }]).slice(0, 6);
+    kbZeichnen();
+    return;
+  }
+  const planWeg = e.target.closest("[data-kb-plan-weg]");
+  if(planWeg){
+    const k = kbFinden(sch); if(!k) return;
+    const i = +planWeg.closest("[data-kb-plan]").dataset.kbPlan;
+    k.plan = (k.plan || []).filter((_, j) => j !== i);
+    kbZeichnen();
+    return;
+  }
 
   const hoch = e.target.closest("[data-kb-hoch]");
   if(hoch){ if(!hoch.disabled) kbVerschieben(sch, -1); return; }
@@ -11099,6 +11254,17 @@ document.addEventListener("change", e => {
   if(!zeile) return;
   const sch = zeile.dataset.kb;
   if(e.target.matches("[data-kb-an]")) kbAendern(sch, "an", e.target.checked);
+  if(e.target.matches("[data-kb-karte]") && KB_KARTE_MUSTER.test(e.target.value)) kbAendern(sch, "karte", e.target.value);
+  const planZeile = e.target.closest("[data-kb-plan]");
+  if(planZeile){
+    const k = kbFinden(sch), i = +planZeile.dataset.kbPlan;
+    if(k && k.plan && k.plan[i]){
+      if(e.target.matches("[data-kb-plan-von]") && /^\d{1,2}:\d{2}$/.test(e.target.value)) k.plan[i].von = e.target.value;
+      if(e.target.matches("[data-kb-plan-bis]") && /^\d{1,2}:\d{2}$/.test(e.target.value)) k.plan[i].bis = e.target.value;
+      if(e.target.matches("[data-kb-plan-karte]") && KB_KARTE_MUSTER.test(e.target.value)) k.plan[i].karte = e.target.value;
+      hvStartseite("kacheln");
+    }
+  }
   /* Das Feld heißt iconAus, der Schalter fragt "Symbol zeigen" —
      deshalb hier umgekehrt: angehakt (zeigen) heißt iconAus:false. */
   if(e.target.matches("[data-kb-iconaus]")) kbAendern(sch, "iconAus", !e.target.checked);
@@ -11120,6 +11286,11 @@ document.addEventListener("input", e => {
      die Vorschau daneben von Hand. */
   if(e.target.matches("[data-kb-titel]")) k.titel = e.target.value;
   if(e.target.matches("[data-kb-unter]")) k.unter = e.target.value;
+  if(e.target.matches("[data-kb-link]")){
+    k.link = kbLinkSauber(e.target.value);
+    const h = zeile.querySelector("[data-kb-link-hinweis]");
+    if(h) h.textContent = k.link ? "Öffnet in einem neuen Fenster." : (e.target.value.trim() ? "Bitte eine vollständige https-Adresse." : "Nur https-Adressen.");
+  }
   if(e.target.matches("[data-kb-textgroesse]")){
     const wert = +e.target.value / 100;
     k.textgroesse = wert === 1 ? "" : wert;
@@ -11569,6 +11740,10 @@ function kbRoh(){
     if(k.symbolLage)                e.symbolLage = k.symbolLage;
     if(k.hoehe)                     e.hoehe  = k.hoehe;
     if(k.textgroesse)               e.textgroesse = k.textgroesse;
+    if(v.eigen){ e.art = k.art; e.titel = k.titel || v.titel; }
+    if(kbIstKarte(k) && k.karte && k.karte !== k.schluessel) e.karte = k.karte;
+    if(kbIstKarte(k) && k.plan && k.plan.length) e.plan = k.plan.map(x => ({ ...x }));
+    if(k.art === "link" && k.link) e.link = k.link;
     return e;
   });
 }
@@ -14084,6 +14259,8 @@ $("#kvNeu").onclick = () => {
   const f = $$("#kvListe [data-kv-name]").pop(); if(f) f.focus();
 };
 $("#kvAbbrechen").onclick = () => kvZu();
+$("#kbNeuKarte").onclick = () => kbNeu("karte");
+$("#kbNeuLink").onclick = () => kbNeu("link");
 $("#kvBlatt").addEventListener("click", e => { if(e.target === $("#kvBlatt")) kvZu(); });
 $("#kvSichern").onclick = async () => {
   const bleiben = kvEntwurf.filter(k => !k._weg);

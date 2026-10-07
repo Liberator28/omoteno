@@ -4793,6 +4793,40 @@ const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
                         "farbe","von","bis","neu","cyan","banner","iconAus",
                         "breite","bildform","grund","symbolLage","hoehe","textgroesse"];
 
+/* ── Eigene Kacheln, Karte je Kachel, Zeitplan (Wunsch 07.10.) ──────
+   Der Wirt legt Kacheln an und löscht sie: „Karte“ (zeigt eine seiner
+   bis zu 20 Karten) und „Link“ (eine https-Adresse). Schlüssel „e-…“,
+   damit sie nie mit einer festen Kachel zusammenfallen. Jede Karten-
+   Kachel — auch die drei festen — darf eine andere Karte zeigen und
+   nach Uhrzeit wechseln (Mittagskarte 11–15 Uhr, sonst Abendkarte).
+   Alles aus der Live-Spalte geht durch eine feste Form (§2.3a):
+   Karten-Schlüssel nach Muster, Zeiten als HH:MM, Link nur https ohne
+   Anführungszeichen, Leerzeichen oder spitze Klammern. */
+const KACHEL_KARTEN_FEST = ["speisekarte", "getraenke", "cocktails"];
+const KACHEL_EIGEN_MUSTER = /^e-[a-z0-9]{3,12}$/;
+const KACHEL_KARTE_MUSTER = /^(speisekarte|getraenke|cocktails|k-[a-z0-9-]{1,22})$/;
+function kachelLinkSauber(w){
+  const t = String(w || "").trim();
+  return /^https:\/\/[^\s"'<>\\`]{3,300}$/i.test(t) ? t : "";
+}
+function kachelPlanSauber(p){
+  return (Array.isArray(p) ? p : []).filter(x => x &&
+      /^\d{1,2}:\d{2}$/.test(x.von || "") && /^\d{1,2}:\d{2}$/.test(x.bis || "") &&
+      KACHEL_KARTE_MUSTER.test(x.karte || ""))
+    .slice(0, 6).map(x => ({ von:x.von, bis:x.bis, karte:x.karte }));
+}
+/* Welche Karte zeigt die Kachel JETZT? Zeitplan vor Grundkarte; ein
+   Fenster darf über Mitternacht gehen (18:00–02:00). Uhr des Gastes. */
+function kachelKarte(k, jetzt){
+  const d = jetzt || new Date(), m = d.getHours() * 60 + d.getMinutes();
+  const hm = s => { const [a, b] = s.split(":"); return (+a) * 60 + (+b); };
+  for(const p of (k.plan || [])){
+    const a = hm(p.von), b = hm(p.bis);
+    if(a <= b ? (m >= a && m < b) : (m >= a || m < b)) return p.karte;
+  }
+  return k.karte || (KACHEL_KARTEN_FEST.includes(k.schluessel) ? k.schluessel : "");
+}
+
 /* Was aus hub_kacheln kommt, geht UNGEPRÜFT an kachelBauen — eine
    Live-Spalte, die das Team schreibt. raster, stil und farbe landeten
    bis zum 26.09. roh in class= und data-farbe= (ein Anführungszeichen
@@ -4813,7 +4847,12 @@ const KACHEL_WERTE = {
 const KACHEL_HOEHE_SKALA = { kompakt:.8, hoch:1.35 };
 
 function kachelBauen(schluessel, wunsch){
-  const art = KACHELARTEN[schluessel];
+  let art = KACHELARTEN[schluessel];
+  const eigen = !art && KACHEL_EIGEN_MUSTER.test(String(schluessel || "")) && wunsch &&
+                (wunsch.art === "karte" || wunsch.art === "link");
+  if(eigen) art = wunsch.art === "karte"
+    ? { titel:"Karte", unter:"", icon:"speise", gruppe:"Die Karte", raster:"zwei" }
+    : { titel:"Link", unter:"", icon:"stern", gruppe:"Für Ihren nächsten Besuch", raster:"zwei" };
   if(!art) return null;
   const k = {
     schluessel: schluessel,
@@ -4842,6 +4881,15 @@ function kachelBauen(schluessel, wunsch){
   });
   /* Eigene Farbe der Kachel: nur #RRGGBB. */
   k.grund = /^#[0-9a-f]{6}$/i.test(String(k.grund || "")) ? String(k.grund) : "";
+  /* Art, Karte, Zeitplan, Link — siehe Kopf von KACHEL_KARTEN_FEST. */
+  k.art = eigen ? wunsch.art : (KACHEL_KARTEN_FEST.includes(schluessel) ? "karte" : "fest");
+  k.karte = wunsch && KACHEL_KARTE_MUSTER.test(String(wunsch.karte || "")) ? wunsch.karte
+          : (KACHEL_KARTEN_FEST.includes(schluessel) ? schluessel : "");
+  k.plan = kachelPlanSauber(wunsch && wunsch.plan);
+  if(k.art === "karte" && (eigen || k.karte !== schluessel || k.plan.length)){
+    k.ziel = () => { const id = kachelKarte(k); return id ? "#/" + id : ""; };
+  }
+  if(k.art === "link") k.ziel = kachelLinkSauber(wunsch.link);
   /* Textgröße: eine Zahl aus einer Live-Spalte, kein Wert aus einer
      festen Liste — geklammert statt verworfen, damit ein Regler, der
      knapp daneben liegt, nicht gleich ganz zurückfällt. Ungültiges
@@ -9641,7 +9689,7 @@ function start(){
       ' data-spalten="' + x.spalten + '"' +
       (k.farbe ? ' data-farbe="' + hs(k.farbe) + '"' : "") +
       (eigenschaften.length ? ' style="' + eigenschaften.join(";") + '"' : "") +
-      ' href="' + ziel + '"' +
+      ' href="' + hs(ziel) + '"' +
       (ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
         /* Das Bild steht VOR Symbol und Text im Auszeichnungstext:
            In der Säule liegt es dadurch oben, ohne dass die Reihen-
@@ -9895,10 +9943,14 @@ function karteKopf(id, titel, unter){
   const v = karteVerzEintrag(id);
   if(v && v.name && v.name !== KARTE_GRUNDNAME[id]){ titel = v.name; unter = v.unter || ""; }
   else if(v && v.unter) unter = v.unter;
-  const k = KACHELN.find(x => x.schluessel === id), art = KACHELARTEN[id];
-  if(!k || !art) return { titel, unter };
+  /* Zuerst die Kachel, die GERADE auf diese Karte zeigt (auch eine
+     eigene oder eine mit Zeitplan), sonst die gleichnamige feste. */
+  const k = KACHELN.find(x => x.art === "karte" && kachelKarte(x) === id) ||
+            KACHELN.find(x => x.schluessel === id);
+  if(!k) return { titel, unter };
+  const grund = (KACHELARTEN[k.schluessel] || {}).titel || (k.art === "karte" ? "Karte" : "");
   const eigenTitel = String(k.titel || "").trim(), eigenUnter = String(k.unter || "").trim();
-  if(eigenTitel && eigenTitel !== art.titel) return { titel:eigenTitel, unter:eigenUnter };
+  if(eigenTitel && eigenTitel !== grund) return { titel:eigenTitel, unter:eigenUnter };
   return { titel, unter: eigenUnter || unter };
 }
 
