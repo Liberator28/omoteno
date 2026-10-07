@@ -332,7 +332,7 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 /* Zahlen laufen nicht, wenn sie sich ändern */
-.zahl,input[type=number],.preis,.uhr,.tischnr{font-variant-numeric:tabular-nums}
+.zahl,input[type=number],#fPreis,.preis,.uhr,.tischnr{font-variant-numeric:tabular-nums}
 
 button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;border:none;background:none}
@@ -1434,6 +1434,21 @@ body.hell .schritt[aria-pressed=true]{
 /* Mehrfachwahl „Gehört zu“ im Gericht-Blatt */
 .kartenchips{display:flex;flex-wrap:wrap;gap:8px}
 /* Eigene Kacheln, Karte je Kachel, Zeitplan */
+/* Gericht-Blatt: Vorschläge und „Mehr Angaben“ */
+.gvorschlag{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:-4px 0 16px}
+.gvorschlag-satz{flex:1 1 100%;font-size:12.5px;color:var(--gedaempft)}
+.gvorschlag button{min-height:44px;padding:0 12px;border-radius:999px;border:1px dashed var(--messing);
+  background:transparent;color:var(--kreide);font:inherit;font-size:13.5px;cursor:pointer}
+.mehrangaben{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+  min-height:56px;padding:10px 14px;margin:4px 0 12px;border-radius:var(--r);
+  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);
+  font:inherit;text-align:left;cursor:pointer}
+.mehrtext{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mehrtext b{font-size:15px;font-weight:600}
+.mehrtext small{font-size:12.5px;color:var(--gedaempft);line-height:1.4;overflow-wrap:anywhere}
+.mehrangaben .chevron{flex:none;transition:transform var(--t-klein) var(--ease-out)}
+.mehrangaben[aria-expanded=true] .chevron{transform:rotate(180deg)}
+.mehrinnen{padding-top:4px}
 .kbneu{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:12px 0 4px}
 .kbneu .kted-neu{margin:0}
 .kbkarte,.kblink,.kbplan input,.kbplan select{
@@ -4149,26 +4164,9 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <label><span class="lname">Name</span>
       <input type="text" id="fName" placeholder="Negroni Sbagliato"></label>
 
-    <label><span class="lname">Beschreibung</span>
-      <textarea id="fBeschr" placeholder="Campari, roter Wermut, Prosecco"></textarea></label>
-
-    <!-- Hier standen zwei Handfelder, EN und TR. Elf Sprachen von Hand
-         zu tippen tut kein Wirt — und zwei von zwoelf sind schlimmer
-         als keine, weil der Gast dann NUR auf Englisch und Tuerkisch
-         etwas findet und in neun Sprachen Deutsch liest. Uebersetzt
-         wird jetzt beim Speichern, in alle elf. -->
-    <div class="uebblock" id="uebBlock">
-      <span class="lname">Sprachen <span class="lzusatz">elf, beim Speichern automatisch</span></span>
-      <p class="uebstand" id="uebStand">Wird beim Speichern übersetzt.</p>
-      <div class="uebreihe">
-        <button type="button" class="knopf leise" id="uebJetzt">Jetzt übersetzen</button>
-        <button type="button" class="knopf leise" id="uebZeigen">Ansehen und ändern</button>
-      </div>
-    </div>
-
     <div class="zweispalt">
       <label><span class="lname">Preis</span>
-        <input type="number" id="fPreis" step="0.10" min="0" inputmode="decimal" placeholder="9.50"></label>
+        <input type="text" id="fPreis" inputmode="decimal" autocomplete="off" placeholder="9,50"></label>
 
       <!-- Auswahlfeld statt Feld+datalist: das native datalist-Dropdown
            sieht auf jedem Geraet anders aus und laesst sich nicht
@@ -4195,23 +4193,9 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
     </div>
 
-    <div class="stoffblock">
-      <span class="lname">Allergene <span class="lzusatz">nach LMIV · Mehrfachauswahl</span></span>
-      <div class="stoffgitter" id="fAllergene" role="group" aria-label="Allergene"></div>
-    </div>
-
-    <div class="stoffblock">
-      <span class="lname">Zusatzstoffe <span class="lzusatz">nach LMZDV · nur wenn zutreffend</span></span>
-      <div class="stoffgitter" id="fZusatz" role="group" aria-label="Zusatzstoffe"></div>
-    </div>
-
-    <label><span class="lname">Genauer Hinweis <span class="lzusatz">(optional, aber oft hilfreich)</span></span>
-      <input type="text" id="fStoffHinweis" maxlength="300"
-             placeholder="Schalenfrüchte: Pistazien, Haselnüsse"></label>
-    <p class="stoffhilfe">Die Gruppen oben sind Pflicht. Der genaue Hinweis hilft dort, wo
-      die Gruppe zu grob ist — wer Pistazien nicht verträgt, kann mit „Schalenfrüchte“
-      allein wenig anfangen. Alles erscheint beim Gast unter „Inhalt &amp; Allergene“.
-      Für die inhaltliche Richtigkeit ist der Betrieb verantwortlich.</p>
+    <!-- Vorschläge aus Name und Kategorie (Allergene, Altersfreigabe):
+         antippen setzt, nichts wird von selbst gesetzt. -->
+    <div class="gvorschlag" id="gVorschlag" hidden></div>
 
     <div class="bildfeld">
       <span class="lname">Foto <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional)</span></span>
@@ -4269,6 +4253,51 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
     </div>
 
+    <!-- Wunsch 07.10.: „viel einfacher anlegen“. Oben steht nur, was
+         jedes Gericht braucht; alles Weitere liegt hier, zugeklappt, mit
+         einem Satz, was davon gesetzt ist. Öffnet sich von selbst, sobald
+         ein Feld darin den Fokus bekommt (Tastatur, Vorleseprogramm). -->
+    <button type="button" class="mehrangaben" id="mehrAuf" aria-expanded="false" aria-controls="mehrKlapp">
+      <span class="mehrtext"><b>Mehr Angaben</b><small id="mehrStand">Beschreibung, Allergene, Karten, Küche oder Theke</small></span>
+      <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="kbklapp mehrklapp" id="mehrKlapp"><div><div class="mehrinnen">
+    <label><span class="lname">Beschreibung</span>
+      <textarea id="fBeschr" placeholder="Campari, roter Wermut, Prosecco"></textarea></label>
+    <!-- Hier standen zwei Handfelder, EN und TR. Elf Sprachen von Hand
+         zu tippen tut kein Wirt — und zwei von zwoelf sind schlimmer
+         als keine, weil der Gast dann NUR auf Englisch und Tuerkisch
+         etwas findet und in neun Sprachen Deutsch liest. Uebersetzt
+         wird jetzt beim Speichern, in alle elf. -->
+    <div class="uebblock" id="uebBlock">
+      <span class="lname">Sprachen <span class="lzusatz">elf, beim Speichern automatisch</span></span>
+      <p class="uebstand" id="uebStand">Wird beim Speichern übersetzt.</p>
+      <div class="uebreihe">
+        <button type="button" class="knopf leise" id="uebJetzt">Jetzt übersetzen</button>
+        <button type="button" class="knopf leise" id="uebZeigen">Ansehen und ändern</button>
+      </div>
+    </div>
+
+
+
+    <div class="stoffblock">
+      <span class="lname">Allergene <span class="lzusatz">nach LMIV · Mehrfachauswahl</span></span>
+      <div class="stoffgitter" id="fAllergene" role="group" aria-label="Allergene"></div>
+    </div>
+
+    <div class="stoffblock">
+      <span class="lname">Zusatzstoffe <span class="lzusatz">nach LMZDV · nur wenn zutreffend</span></span>
+      <div class="stoffgitter" id="fZusatz" role="group" aria-label="Zusatzstoffe"></div>
+    </div>
+
+    <label><span class="lname">Genauer Hinweis <span class="lzusatz">(optional, aber oft hilfreich)</span></span>
+      <input type="text" id="fStoffHinweis" maxlength="300"
+             placeholder="Schalenfrüchte: Pistazien, Haselnüsse"></label>
+    <p class="stoffhilfe">Die Gruppen oben sind Pflicht. Der genaue Hinweis hilft dort, wo
+      die Gruppe zu grob ist — wer Pistazien nicht verträgt, kann mit „Schalenfrüchte“
+      allein wenig anfangen. Alles erscheint beim Gast unter „Inhalt &amp; Allergene“.
+      Für die inhaltliche Richtigkeit ist der Betrieb verantwortlich.</p>
+
     <!-- Gehört zu: Mehrfachwahl aller Karten (seit 07.10. bis zu 20, ein
          Gericht darf in mehreren stehen). #fKarte bleibt das echte Feld
          für die ERSTE Karte (gerichte.karte, Küche, Auswertung) — jeder
@@ -4311,8 +4340,11 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <button class="wippe" id="fVerf" aria-pressed="true" aria-label="Verfügbarkeit"></button>
     </div>
 
+    </div></div></div>
+
     <div class="blattfuss">
       <button class="knopf" id="speichern">Speichern</button>
+      <button class="knopf leise" id="speichernWeiter" hidden>Speichern &amp; nächstes</button>
       <button class="knopf leise" id="kopie" hidden>Als Kopie anlegen</button>
       <button class="knopf leise" id="abbrechen">Abbrechen</button>
       <button class="knopf gefahr" id="loeschen" hidden>Gericht löschen</button>
@@ -13594,6 +13626,96 @@ function stoffeLesen(wahl){
 stoffeBauen("#fAllergene", ALLERGENE);
 stoffeBauen("#fZusatz",    ZUSATZSTOFFE);
 
+/* ═══ GERICHT SCHNELL ANLEGEN (Wunsch 07.10.) ═══════════════════════
+   Oben nur Name, Preis, Kategorie, Foto. Alles Weitere unter „Mehr
+   Angaben“, zugeklappt, mit einem Satz, was davon gesetzt ist.
+
+   Vorschläge statt Automatik: Aus Name, Kategorie und Beschreibung
+   erkannte Allergene erscheinen als antippbare Chips. Nichts wird von
+   selbst gesetzt — die Angabe verantwortet der Betrieb, ein falsches
+   Kreuz wäre schlimmer als eine Lücke, die er bemerkt. Die Liste ist
+   bewusst kurz und eindeutig; was mehrdeutig ist („Sahne“ bei
+   pflanzlicher Sahne), wird vorgeschlagen, nie gesetzt. */
+const ALLERGEN_HINWEISE = [
+  [/\b(käse|kaese|mozzarella|parmesan|feta|halloumi|ricotta|mascarpone|burrata|sahne|milch|butter|joghurt|quark|latte|cappuccino|milchshake|eis\b|eiscreme|crème|creme|schoko|nutella|tiramisu|cheesecake|frischkäse)/i, "G"],
+  [/\b(brot|brötchen|baguette|toast|nudel|pasta|spaghetti|penne|lasagne|pizza|teig|mehl|crêpe|crepe|pfannkuchen|pancake|waffel|kuchen|torte|burger|bun|croissant|keks|weizen|dinkel|gerste|roggen|couscous|bulgur|panade|paniert|schnitzel|bier|wrap|tortilla|dürüm|börek|pita)/i, "A"],
+  [/\b(ei\b|eier|eigelb|omelett|rührei|spiegelei|mayo|mayonnaise|aioli|carbonara|tiramisu|crêpe|crepe|pfannkuchen|pancake|waffel|baiser|eierlikör)/i, "C"],
+  [/\b(nuss|nüsse|haselnuss|walnuss|mandel|pistazie|cashew|pekan|macadamia|nutella|marzipan|praline|krokant)/i, "H"],
+  [/\b(erdnuss|peanut|erdnussbutter|satay)/i, "E"],
+  [/\b(lachs|thunfisch|fisch|forelle|kabeljau|sardelle|anchovis|dorade|zander)/i, "D"],
+  [/\b(garnele|shrimp|scampi|krabbe|hummer|languste|krebs)/i, "B"],
+  [/\b(muschel|tintenfisch|calamari|oktopus|auster|schnecke)/i, "R"],
+  [/\b(soja|tofu|edamame|sojasoße|sojasauce|miso)/i, "F"],
+  [/\b(sesam|tahin|tahini|hummus|halva|halwa)/i, "N"],
+  [/\b(senf|dijon)/i, "M"],
+  [/\b(sellerie)/i, "L"],
+  [/\b(wein|sekt|prosecco|aperol|spritz|champagner|trockenobst)/i, "O"]
+];
+function gerichtText(){
+  return [$("#fName").value, $("#fKat").value, $("#fBeschr").value].join(" ").toLowerCase();
+}
+function allergenVorschlaege(){
+  const text = gerichtText();
+  const gesetzt = stoffeLesen("#fAllergene").split(",").filter(Boolean);
+  const raus = [];
+  ALLERGEN_HINWEISE.forEach(([muster, buchstabe]) => {
+    if(muster.test(text) && !gesetzt.includes(buchstabe) && !raus.includes(buchstabe)) raus.push(buchstabe);
+  });
+  return raus;
+}
+let gVorschlagUhr = null;
+function gVorschlaegeZeichnen(){
+  const feld = $("#gVorschlag"); if(!feld) return;
+  const alg = allergenVorschlaege();
+  const extra = typeof gExtraVorschlaege === "function" ? gExtraVorschlaege() : [];
+  if(!alg.length && !extra.length){ feld.hidden = true; feld.innerHTML = ""; return; }
+  feld.hidden = false;
+  feld.innerHTML = '<span class="gvorschlag-satz">Passt vielleicht — antippen setzt:</span>' +
+    alg.map(b => '<button type="button" data-vorschlag-allergen="' + b + '">＋ ' +
+      sicher((ALLERGENE.find(a => a[0] === b) || [, b])[1]) + ' (' + b + ')</button>').join("") +
+    extra.map(x => '<button type="button" data-vorschlag-extra="' + sicher(x.wert) + '">＋ ' + sicher(x.text) + '</button>').join("");
+}
+["#fName", "#fKat", "#fBeschr"].forEach(id => $(id).addEventListener("input", () => {
+  clearTimeout(gVorschlagUhr); gVorschlagUhr = setTimeout(gVorschlaegeZeichnen, 250);
+}));
+$("#gVorschlag").addEventListener("click", e => {
+  const a = e.target.closest("[data-vorschlag-allergen]");
+  if(a){
+    const k = $("#fAllergene").querySelector('[data-stoff="' + a.dataset.vorschlagAllergen + '"]');
+    if(k) k.setAttribute("aria-pressed", "true");
+    gVorschlaegeZeichnen(); mehrStandSetzen(); entwurfSchreiben();
+    return;
+  }
+  const x = e.target.closest("[data-vorschlag-extra]");
+  if(x && typeof gExtraAnnehmen === "function"){ gExtraAnnehmen(x.dataset.vorschlagExtra); gVorschlaegeZeichnen(); mehrStandSetzen(); }
+});
+
+/* „Mehr Angaben“: was davon gesetzt ist, in einem Satz. */
+function mehrStandSetzen(){
+  const teile = [];
+  if($("#fBeschr").value.trim()) teile.push("Beschreibung");
+  const alg = stoffeLesen("#fAllergene").split(",").filter(Boolean).length;
+  if(alg) teile.push(alg === 1 ? "1 Allergen" : alg + " Allergene");
+  const zus = stoffeLesen("#fZusatz").split(",").filter(Boolean).length;
+  if(zus) teile.push(zus === 1 ? "1 Zusatzstoff" : zus + " Zusatzstoffe");
+  if(typeof fKartenWahl !== "undefined" && fKartenWahl.length) teile.push(fKartenWahl.map(karteName).join(" + "));
+  teile.push(spurLesen() === "theke" ? "Theke" : "Küche");
+  if($("#fVegan").getAttribute("aria-pressed") === "true") teile.push("vegan");
+  else if($("#fVeg").getAttribute("aria-pressed") === "true") teile.push("vegetarisch");
+  if($("#fVerf").getAttribute("aria-pressed") !== "true") teile.push("heute aus");
+  if(typeof gExtraStand === "function"){ const z = gExtraStand(); if(z) teile.push(z); }
+  $("#mehrStand").textContent = teile.join(" · ");
+}
+function mehrAufZu(offen){
+  $("#mehrAuf").setAttribute("aria-expanded", String(offen));
+  $("#mehrKlapp").classList.toggle("offen", offen);
+}
+$("#mehrAuf").onclick = () => mehrAufZu($("#mehrAuf").getAttribute("aria-expanded") !== "true");
+/* Ein Feld darin bekommt den Fokus (Tab, Vorleseprogramm): aufklappen. */
+$("#mehrKlapp").addEventListener("focusin", () => mehrAufZu(true));
+$("#blatt").addEventListener("click", e => { if(e.target.closest("#mehrKlapp")) setTimeout(mehrStandSetzen, 0); });
+$("#blatt").addEventListener("input", e => { if(e.target.closest("#mehrKlapp")) mehrStandSetzen(); });
+
 /* ─── Zuständigkeit ───────────────────────────────────────────────
    Ist am Gericht nichts gesetzt, wird wie früher aus der Karte
    hergeleitet. So verhalten sich Altbestände unverändert, statt
@@ -13694,6 +13816,8 @@ $("#katPanel").addEventListener("keydown", e => {
 
 /* ── Gehört zu (Mehrfachwahl der Karten) ──────────────────────── */
 let fKartenWahl = [];
+/* Zuletzt benutzte Kategorie je Karte (nur in dieser Sitzung). */
+const letzteKat = {};
 /* #fKarte ist die ERSTE Karte. Steht dort von außen eine Karte, die
    nicht gewählt ist (ein älterer Weg setzt das Feld direkt), gilt sie
    als Umzug: nur diese. Sonst kommt sie an die erste Stelle. */
@@ -14103,7 +14227,7 @@ function blattOeffnen(g){
   $("#fName").value      = g?.name || "";
   $("#fBeschr").value    = g?.beschreibung || "";
   uebStandSetzen(g);
-  $("#fPreis").value     = g?.preis ?? "";
+  $("#fPreis").value     = g && g.preis != null ? Number(g.preis).toFixed(2).replace(".", ",") : "";
   $("#fKat").value       = g?.kategorie || "";
   katWertAktualisieren();
   katPanelSchliessen(false);
@@ -14128,6 +14252,16 @@ function blattOeffnen(g){
   $("#fVerf").setAttribute("aria-pressed", g ? !!g.verfuegbar : true);
   $("#loeschen").hidden  = !g;
   $("#kopie").hidden     = !g;
+  $("#speichernWeiter").hidden = !!g;
+  /* Kluge Vorgabe: ein neues Gericht landet in der Kategorie, in die
+     zuletzt in dieser Karte eines gespeichert wurde — sofern es sie noch
+     gibt. Sichtbar im Auswahlknopf, mit einem Tipp geändert. */
+  if(!g && letzteKat[welcheKarte] && katNamen(welcheKarte).includes(letzteKat[welcheKarte])){
+    $("#fKat").value = letzteKat[welcheKarte]; katWertAktualisieren();
+  }
+  mehrAufZu(false);
+  mehrStandSetzen();
+  gVorschlaegeZeichnen();
   $("#blatt").hidden     = false;
 
   /* Erst jetzt, nachdem alle Felder aus g gefüllt sind: ein liegen
@@ -14142,6 +14276,7 @@ function blattOeffnen(g){
       uhr.toLocaleDateString("de-DE") + ", " + uhr.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}) +
       " wiederhergestellt.";
     hinweis.hidden = false;
+    mehrStandSetzen(); gVorschlaegeZeichnen();
   } else {
     hinweis.hidden = true;
   }
@@ -14303,6 +14438,7 @@ $("#kvSichern").onclick = async () => {
 document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#kvBlatt").hidden) kvZu(); });
 
 $("#speichern").onclick = () => sichern(false);
+$("#speichernWeiter").onclick = () => sichern(false, true);
 $("#kopie").onclick     = () => sichern(true);
 
 /* ═══════════════════════════════════════════════════════════════
@@ -14726,7 +14862,12 @@ $("#bkFreiWeg").onclick = () => {
   bildStand("Freisteller entfernt. Mit „Sichern“ übernehmen.");
 };
 
-async function sichern(alsKopie){
+/* „9,50“ und „9.50“ gelten beide; „9,50 €“ auch. */
+function preisAusFeld(w){
+  const z = parseFloat(String(w || "").replace(/[^\d,.-]/g, "").replace(",", "."));
+  return Number.isFinite(z) && z > 0 ? Math.round(z * 100) / 100 : 0;
+}
+async function sichern(alsKopie, weiter){
   /* Für den Entwurf-Schlüssel: bearbeite kann sich unten (Object.assign,
      neu anlegen) ändern — der Schlüssel muss der bleiben, unter dem
      das Blatt WIRKLICH geöffnet wurde. */
@@ -14736,6 +14877,8 @@ async function sichern(alsKopie){
 
   if(!name){ melde("Das Gericht braucht einen Namen", true); $("#fName").focus(); return; }
   if(!kat){  melde("Wähle eine Kategorie, z.B. „Küche“", true); $("#fKat").focus(); return; }
+  if($("#fPreis").value.trim() && !preisAusFeld($("#fPreis").value)){
+    melde("Den Preis bitte als Zahl, z. B. 9,50", true); $("#fPreis").focus(); return; }
 
   const satz = {
     name: alsKopie ? name + " (Kopie)" : name,
@@ -14749,7 +14892,7 @@ async function sichern(alsKopie){
       ? (bearbeite.uebersetzungen || null) : null,
     name_uebersetzungen: (!alsKopie && bearbeite && bearbeite.name === name)
       ? (bearbeite.name_uebersetzungen || null) : null,
-    preis: parseFloat($("#fPreis").value) || 0,
+    preis: preisAusFeld($("#fPreis").value),
     allergene:    stoffeLesen("#fAllergene"),
     zusatzstoffe: stoffeLesen("#fZusatz"),
     stoff_hinweis: $("#fStoffHinweis").value.trim(),
@@ -14802,8 +14945,22 @@ async function sichern(alsKopie){
   }
 
   entwurfLoeschen(entwurfWar);
-  blattSchliessen(); zeichneKarte();
-  melde(alsKopie ? "Kopie angelegt" : (neuAnlegen ? "Gericht hinzugefügt" : "Gespeichert"));
+  letzteKat[satz.karte] = kat;
+  if(weiter && neuAnlegen && !alsKopie){
+    /* „Speichern & nächstes“: Blatt bleibt offen, Karte(n) und Kategorie
+       bleiben, der Rest ist leer — Serienanlage ohne Schließen. */
+    const karten = (satz.karten || [satz.karte]).slice(), kat = satz.kategorie, spur = satz.spur;
+    zeichneKarte();
+    blattOeffnen(null);
+    fKartenWahl = karten; $("#fKarte").value = karten[0]; karteSegmentAktualisieren();
+    $("#fKat").value = kat; katWertAktualisieren();
+    spurSetzen(spur); mehrStandSetzen();
+    setTimeout(() => $("#fName").focus(), 60);
+    melde("„" + satz.name + "“ hinzugefügt — weiter mit dem nächsten");
+  }else{
+    blattSchliessen(); zeichneKarte();
+    melde(alsKopie ? "Kopie angelegt" : (neuAnlegen ? "Gericht hinzugefügt" : "Gespeichert"));
+  }
 
   /* Erst jetzt uebersetzen. Die Reihenfolge ist der ganze Punkt: Das
      Gericht ist gespeichert und die Karte gezeichnet, bevor irgendein

@@ -42,6 +42,9 @@ async function board(seite) {
   await seite.waitForTimeout(200);
   await seite.evaluate(() => { blattOeffnen(null); });
   await seite.waitForTimeout(250);
+  /* „Gehört zu“ liegt seit 07.10. unter „Mehr Angaben“. */
+  await seite.click("#mehrAuf");
+  await seite.waitForTimeout(400);
 }
 
 (async () => {

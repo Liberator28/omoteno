@@ -58,6 +58,10 @@ function pruef(b, t, d) {
   await p.waitForTimeout(300);
   await p.evaluate(() => blattOeffnen(null));
   await p.waitForTimeout(200);
+  /* Seit 07.10. liegen Vegetarisch/Vegan unter „Mehr Angaben“ — der
+     echte Weg: erst aufklappen, dann tippen. */
+  await p.click("#mehrAuf");
+  await p.waitForTimeout(400);
 
   await p.click("#fVegan");
   const anGeschaltet = await p.evaluate(() => ({
