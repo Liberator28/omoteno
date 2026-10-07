@@ -796,7 +796,7 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 
 /* ═══ Liefer-Schalter im Kopf ═══════════════════════════════════
    Wunsch 30.09.: „nur zwei Symbole … wie ein Switch, beim Umschalten
-   kurz der Name — so ähnlich wie bei Lieferando, nur mit einer
+   kurz der Name — wie bei bekannten Liefer-Apps, nur mit einer
    coolen Animation." Bringt seine eigenen Maße mit (§3.3): Spur
    94 × 44 px, je Knopf 44 × 44 px Tapfläche (über den Rand der
    Spur hinweg, margin:-1px).
@@ -945,13 +945,31 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:rgba(224,178,78,.55);back
 #inhalt.rein > .seite > *:nth-child(n+5){animation-delay:.12s}
 @keyframes rein{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
 
+/* Zurück: ein runder Knopf mit Pfeil statt der Textzeile „‹ Zurück zur
+   Übersicht“ (Wunsch 07.10.: „kein Text, ein Button, der eindeutig
+   zurückspringt“). Er klebt oben, sobald der Kopf aus dem Bild rollt —
+   auf einer langen Karte muss man sonst erst ganz hinauf. Glas wie die
+   übrigen schwebenden Flächen, bei „Transparenz reduzieren“ deckend.
+   Ebene 42: über der Karte, unter Blättern (60+) und dem Kopf (50). */
 .zurueck{
-  display:none;align-items:center;gap:5px;background:none;border:0;
-  color:var(--tinte-leise);font-size:13.5px;padding:4px 2px;margin:-6px 0 14px;
-  cursor:pointer;font-family:inherit;transition:color var(--kurz)
+  display:none;align-items:center;justify-content:center;
+  position:sticky;top:12px;top:calc(12px + env(safe-area-inset-top));z-index:42;
+  width:44px;height:44px;padding:0;margin:-8px 0 12px;border-radius:999px;
+  background:color-mix(in srgb, var(--flaeche) 86%, transparent);
+  -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
+  border:1px solid var(--linie-stark);color:var(--tinte);
+  box-shadow:0 1px 2px rgba(0,0,0,.06), 0 6px 16px -6px rgba(0,0,0,.22);
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:transform .14s var(--weich)
 }
 .zurueck.an{display:inline-flex}
-.zurueck:active{color:var(--rot)}
+.zurueck:active{transform:scale(.92)}
+.zurueck svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;
+  stroke-linecap:round;stroke-linejoin:round}
+[dir="rtl"] .zurueck svg{transform:scaleX(-1)}
+@media (prefers-reduced-transparency:reduce){
+  .zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
 
 /* ═══ Empfehlung des Hauses ═════════════════════════════════════ */
 /* Der Sofort-Knopf steht AUSSERHALB von <a> (ein <button> darin wäre
@@ -4067,7 +4085,7 @@ function markeAnwenden(abend){
   </svg>
 </header>
 
-<button class="zurueck" id="zurueck"></button>
+<button class="zurueck" id="zurueck" type="button" aria-label="Zurück zur Übersicht"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
 
 <main id="inhalt"></main>
 
@@ -5046,7 +5064,7 @@ function bzKategorie(name, karte){
   if(name === "Beliebt") return "1f525";
   /* Vom Betrieb gewählt (gerichte.kat_emoji) schlägt die Automatik —
      aber nur, was in BZ_WAHL steht. */
-  const liste = { speisekarte:SPEISEKARTE, getraenke:GETRAENKE, cocktails:COCKTAILS }[karte];
+  const liste = karteDaten(karte);
   const gr = liste && liste.find(x => x && x.gruppe === name);
   if(gr && typeof gr.zeichen === "string" && BZ_WAHL.includes(gr.zeichen)) return gr.zeichen;
   const n = String(name || "").toLowerCase();
@@ -6105,7 +6123,7 @@ function storyWahlZeichnen(){
 function storyGerichteZeichnen(){
   const feld = $("storyGerichte"); if(!feld) return;
   const mit = [];
-  [SPEISEKARTE, GETRAENKE, COCKTAILS].forEach(karte => {
+  alleKarten().map(x => x[1]).forEach(karte => {
     (Array.isArray(karte) ? karte : []).forEach(gr =>
       (gr.eintraege || []).forEach(g => { if(g && g.bild) mit.push(g); }));
   });
@@ -7552,6 +7570,36 @@ let COCKTAILS = [
   ]}
 ];
 
+/* ═══ KARTEN — mehr als die drei festen ═════════════════════════════
+   Wunsch 07.10.: bis zu 20 Karten (Mittagskarte, Abendkarte …), jede
+   einer Kachel zuweisbar, ein Gericht darf in mehreren stehen.
+   SPEISEKARTE/GETRAENKE/COCKTAILS bleiben, wie sie sind (Markenblatt,
+   Vorführkarte, alte Links). Weitere Karten liegen in KARTEN_EXTRA,
+   Schlüssel „k-…“ — der Vorsatz hält sie von jeder festen Seite fern
+   (eine Karte namens „kontakt“ überschriebe sonst die Kontaktseite).
+   KARTEN_VERZ ist betriebe.karten, durch eine Positivliste gefiltert. */
+const KARTEN_FEST = ["speisekarte", "getraenke", "cocktails"];
+let KARTEN_EXTRA = {};
+let KARTEN_VERZ = [];
+const KARTE_ID_MUSTER = /^k-[a-z0-9-]{1,22}$/;
+function karteDaten(id){
+  if(id === "speisekarte") return SPEISEKARTE;
+  if(id === "getraenke")   return GETRAENKE;
+  if(id === "cocktails")   return COCKTAILS;
+  return KARTEN_EXTRA[id] || [];
+}
+/* [[id, daten], …] — erst die festen, dann die eigenen. Jede Stelle, die
+   „alle Karten“ durchgeht, nimmt diese Liste; vorher standen die drei
+   an elf Stellen einzeln da. */
+function alleKarten(){
+  return KARTEN_FEST.map(id => [id, karteDaten(id)])
+    .concat(Object.keys(KARTEN_EXTRA).map(id => [id, KARTEN_EXTRA[id]]));
+}
+/* Was zählt als Getränk? Die beiden festen Getränke-Karten. Eigene
+   Karten zählen als Essen — eine Mittagskarte ist das Übliche. */
+function karteIstGetraenk(id){ return id === "getraenke" || id === "cocktails"; }
+function karteVerzEintrag(id){ return KARTEN_VERZ.find(k => k.id === id) || null; }
+
 /*  TISCHQUIZ
     f = Frage · a = Antworten · r = Nummer der richtigen Antwort (0 = erste)
     i = Erklärung, die nach dem Tippen erscheint
@@ -8202,6 +8250,7 @@ const TEXTE = {
 "Gestrichen.":{en:"Removed.",tr:"Çıkarıldı.",ru:"Убрано.",fr:"Retiré.",es:"Quitado.",it:"Tolto.",pl:"Usunięte.",ar:"تمت الإزالة.",uk:"Прибрано.",nl:"Verwijderd.",ro:"Eliminat."},
 "vom Team bestätigt":{en:"confirmed by the team",tr:"ekip tarafından onaylandı",ru:"подтверждено командой",fr:"confirmé par l'équipe",es:"confirmado por el equipo",it:"confermato dal team",pl:"potwierdzone przez zespół",ar:"مؤكد من الفريق",uk:"підтверджено командою",nl:"bevestigd door het team",ro:"confirmat de echipă"},
 "Schließen":{en:"Close",tr:"Kapat",ru:"Закрыть",fr:"Fermer",es:"Cerrar",it:"Chiudi",pl:"Zamknij",ar:"إغلاق",uk:"Закрити",nl:"Sluiten",ro:"Închide"},
+"Karte":{en:"Menu",tr:"Menü",ru:"Меню",fr:"Carte",es:"Carta",it:"Menù",pl:"Karta",ar:"القائمة",uk:"Меню",nl:"Kaart",ro:"Meniu"},
 "Zurück zur Übersicht":{en:"Back to overview",tr:"Genel bakışa dön",ru:"К обзору",fr:"Retour à l'aperçu",es:"Volver al inicio",it:"Torna alla panoramica",pl:"Powrót do przeglądu",ar:"العودة إلى النظرة العامة",uk:"Назад до огляду",nl:"Terug naar overzicht",ro:"Înapoi la prezentare"},
 "Hier hakt gerade etwas.":{en:"Something is stuck here right now.",tr:"Burada bir şeyler takıldı.",ru:"Здесь что-то пошло не так.",fr:"Quelque chose coince ici.",es:"Aquí algo se ha atascado.",it:"Qui qualcosa si è bloccato.",pl:"Tutaj coś się zacięło.",ar:"حدث خلل هنا.",uk:"Тут щось не спрацювало.",nl:"Hier loopt iets vast.",ro:"Aici s-a blocat ceva."},
 "Bitte einmal zurück zur Übersicht, unser Team hilft Ihnen sonst gerne persönlich weiter.":{en:"Please head back to the overview, otherwise our team is happy to help you in person.",tr:"Lütfen genel bakışa dönün, aksi halde ekibimiz size memnuniyetle şahsen yardımcı olur.",ru:"Вернитесь, пожалуйста, к обзору, иначе наша команда с радостью поможет лично.",fr:"Revenez à l'aperçu, sinon notre équipe vous aide volontiers en personne.",es:"Vuelva al inicio; si no, nuestro equipo le ayuda con gusto en persona.",it:"Torni alla panoramica, altrimenti il nostro team la aiuta volentieri di persona.",pl:"Wróć do przeglądu, w innym razie nasz zespół chętnie pomoże osobiście.",ar:"يرجى العودة إلى النظرة العامة، وإلا فسيسعد فريقنا بمساعدتكم شخصياً.",uk:"Поверніться, будь ласка, до огляду, інакше наша команда радо допоможе особисто.",nl:"Ga even terug naar het overzicht, anders helpt ons team u graag persoonlijk.",ro:"Reveniți la prezentare, altfel echipa noastră vă ajută cu plăcere personal."},
@@ -9783,7 +9832,7 @@ function korbZahlHuepfen(){
 }
 
 function gerichtOrt(name){
-  for(const [karte, daten] of [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE], ["cocktails", COCKTAILS]])
+  for(const [karte, daten] of alleKarten())
     for(const gr of daten) if(gr.eintraege.some(e => e.n === name)) return { karte, gruppe:gr.gruppe };
   return null;
 }
@@ -9831,7 +9880,32 @@ function inDenKorbFliegen(quelle, name){
   lauf.oncancel = () => f.remove();
 }
 
+/* Titel und Unterzeile einer Kartenseite folgen der Kachel, die dorthin
+   führt. Vorfall 07.10.: Choco hatte die Cocktail-Kachel „Kaiser und
+   Säfte“ genannt, die Seite dahinter hieß weiter fest „Cocktails &
+   Spirituosen“. Hat der Wirt den Kachelnamen geändert, gilt sein Name
+   — und die alte Vorgabe-Unterzeile („Hinter der Bar wird …“) passt
+   dann nicht mehr; sie kommt nur noch aus seiner Kachel. Unverändert
+   bleibt alles wie vorher. */
+/* Die Namen, unter denen das Board die drei festen Karten führt. Steht
+   im Verzeichnis genau dieser Name, bleibt die Seite wie sie war
+   („Getränkekarte“ mit ihrer Unterzeile); erst ein anderer Name gilt. */
+const KARTE_GRUNDNAME = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+function karteKopf(id, titel, unter){
+  const v = karteVerzEintrag(id);
+  if(v && v.name && v.name !== KARTE_GRUNDNAME[id]){ titel = v.name; unter = v.unter || ""; }
+  else if(v && v.unter) unter = v.unter;
+  const k = KACHELN.find(x => x.schluessel === id), art = KACHELARTEN[id];
+  if(!k || !art) return { titel, unter };
+  const eigenTitel = String(k.titel || "").trim(), eigenUnter = String(k.unter || "").trim();
+  if(eigenTitel && eigenTitel !== art.titel) return { titel:eigenTitel, unter:eigenUnter };
+  return { titel, unter: eigenUnter || unter };
+}
+
 function karteSeite(id, daten, titel, unter, fuss){
+  ({ titel, unter } = karteKopf(id, titel, unter));
+  if(!(id in filter))   filter[id] = "Alle";
+  if(!(id in suchtext)) suchtext[id] = "";
   /* top:true = Hausklassiker. Ohne Rangfolge sehen 60 Gerichte alle
      gleich wichtig aus und der Gast nimmt das Erstbeste. */
   const hatTop  = daten.some(x => x.eintraege.some(e => e.top));
@@ -9870,7 +9944,7 @@ function karteSeite(id, daten, titel, unter, fuss){
     '<button class="clear' + (suchtext[id] ? " an" : "") + '" data-clear="' + id + '" aria-label="' +
     t("Löschen") + '">×</button></div>';
 
-  return '<div class="seite"><h2>' + t(titel) + '</h2><p class="unter">' + t(unter) + '</p>' +
+  return '<div class="seite"><h2>' + hs(t(titel)) + '</h2>' + (unter ? '<p class="unter">' + hs(t(unter)) + '</p>' : "") +
          (id === "speisekarte" && foodrouletteAn() ? entscheidungCTA() : "") + aktionBandHTML() +
          suche + '<div class="chips">' + chips + '</div>' + liste +
          '<div class="hinweis">' + fuss + '</div></div>';
@@ -9909,7 +9983,7 @@ function probiertMerken(namen){
 /* Alle Kandidaten zur gewählten Lust, ohne Obergrenze. */
 function edKandidaten(){
   const aus = [];
-  [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE], ["cocktails", COCKTAILS]].forEach(([k, d]) =>
+  alleKarten().forEach(([k, d]) =>
     d.forEach(gr => {
       if(edLust && edLust !== k + "|" + gr.gruppe) return;
       gr.eintraege.forEach(e => { if(e.p !== "–" && !merk[e.n]) aus.push(e); });
@@ -9933,7 +10007,7 @@ function entdeckenMischen(){
 /* Die Kategorien, zu denen es gerade etwas gibt — als Lust-Chips. */
 function ehLustHTML(){
   const chips = [["", t("Alle"), "2728"]];
-  [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE], ["cocktails", COCKTAILS]].forEach(([k, d]) =>
+  alleKarten().forEach(([k, d]) =>
     d.forEach(gr => {
       if(gr.eintraege.some(e => e.p !== "–")) chips.push([k + "|" + gr.gruppe, t(gr.gruppe), bzKategorie(gr.gruppe, k)]);
     }));
@@ -10041,7 +10115,7 @@ function edNeuZeichnen(){
 /* Eingang: ganz oben in der Speisekarte. Nur, wenn es wirklich etwas
    zu entscheiden gibt (mindestens drei bestellbare Gerichte). */
 function entscheidungCTA(){
-  const n = [SPEISEKARTE, GETRAENKE, COCKTAILS].reduce((s, d) =>
+  const n = alleKarten().map(x => x[1]).reduce((s, d) =>
     s + d.reduce((a, gr) => a + gr.eintraege.filter(e => e.p !== "–").length, 0), 0);
   if(n < 3) return "";
   const z = (cp, schl) => bewegteZeichenAn() ? bzHTML(cp, schl) : bzZeichen(cp);
@@ -10459,10 +10533,10 @@ function dazuSamen(namen){
 function dazuLage(){
   const imKorb = Object.keys(merk);
   const orte = imKorb.map(gerichtOrt).filter(Boolean);
-  const essen = orte.filter(o => o.karte === "speisekarte");
+  const essen = orte.filter(o => !karteIstGetraenk(o.karte));
   return {
     imKorb, orte,
-    hatGetraenk: orte.some(o => o.karte !== "speisekarte"),
+    hatGetraenk: orte.some(o => karteIstGetraenk(o.karte)),
     hatEssen: essen.length > 0,
     hatSuess: essen.some(o => DAZU_SUESS.test(o.gruppe || "")),
     hatHerzhaft: essen.some(o => !DAZU_SUESS.test(o.gruppe || ""))
@@ -10473,7 +10547,7 @@ function dazuVorschlaege(){
   if(!L.imKorb.length) return [];
   const gruppenImKorb = new Set(L.orte.map(o => o.karte + "|" + o.gruppe));
   const korbEssen = L.imKorb.map(n => ({ n, o:gerichtOrt(n), g:findeGericht(n) }))
-    .filter(x => x.o && x.g && x.o.karte === "speisekarte");
+    .filter(x => x.o && x.g && !karteIstGetraenk(x.o.karte));
   const allesVeg = korbEssen.length > 0 && korbEssen.every(x => x.g.veg);
   const preise = L.imKorb.map(n => preisNum((merk[n] || {}).p)).filter(v => v > 0);
   const schnitt = preise.length ? preise.reduce((a, b) => a + b, 0) / preise.length : 0;
@@ -10483,20 +10557,20 @@ function dazuVorschlaege(){
 
   const alle = [];
   let rang = 0;
-  [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE], ["cocktails", COCKTAILS]].forEach(([karte, daten]) =>
+  alleKarten().forEach(([karte, daten]) =>
     daten.forEach(gr => gr.eintraege.forEach(e => {
       rang++;
       /* merk[e.n] ist Vorsorge: Gruppen im Korb sind ohnehin aus. */
       if(e.p === "–" || merk[e.n] || gruppenImKorb.has(karte + "|" + gr.gruppe)) return;
-      const suess = karte === "speisekarte" && DAZU_SUESS.test(gr.gruppe || "");
-      const trinken = karte !== "speisekarte";
+      const suess = !karteIstGetraenk(karte) && DAZU_SUESS.test(gr.gruppe || "");
+      const trinken = karteIstGetraenk(karte);
       /* Wonach geordnet wird: was fehlt, zuerst — ein Getränk, wenn
          keins im Korb liegt; dann Süßes; dann ein Angebot; dann
          Herzhaftes zu lauter Süßem; dann der Rest. */
       const stufe = (!L.hatGetraenk && trinken) ? 0
                   : (!L.hatSuess && L.hatEssen && suess) ? 1
                   : angebot(e.n) ? 2
-                  : (!L.hatHerzhaft && karte === "speisekarte" && !suess) ? 3
+                  : (!L.hatHerzhaft && !karteIstGetraenk(karte) && !suess) ? 3
                   : 4;
       /* Was draufsteht: der genaueste Grund zuerst. */
       const gruende = [];
@@ -10504,8 +10578,8 @@ function dazuVorschlaege(){
       if(probiert.length && !probiert.includes(e.n)) gruende.push("Neu für Sie");
       if(!L.hatGetraenk && trinken) gruende.push("Dazu trinken");
       if(!L.hatSuess && suess) gruende.push("Zum Nachtisch");
-      if(!L.hatHerzhaft && karte === "speisekarte" && !suess) gruende.push("Etwas Herzhaftes");
-      if(allesVeg && karte === "speisekarte" && e.veg) gruende.push("Auch vegetarisch");
+      if(!L.hatHerzhaft && !karteIstGetraenk(karte) && !suess) gruende.push("Etwas Herzhaftes");
+      if(allesVeg && !karteIstGetraenk(karte) && e.veg) gruende.push("Auch vegetarisch");
       if(e.top) gruende.push("Beliebt bei Gästen");
       if(schnitt > 0 && preisNum(e.p) > 0 && preisNum(e.p) <= schnitt / 2) gruende.push("Kleine Ergänzung");
       gruende.push("Mal etwas anderes");
@@ -11763,8 +11837,7 @@ SEITEN.reservieren = () =>
    Sprung braucht es aber die Seite, sonst landet der Gast in der
    Speisekarte, während sein Liebling unter Getränken steht. */
 function gastSeiteFuer(name){
-  const wo = [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE],
-              ["cocktails", COCKTAILS]];
+  const wo = alleKarten();
   for(const [seite, quelle] of wo)
     for(const gr of quelle)
       for(const e of gr.eintraege)
@@ -12104,7 +12177,8 @@ function zeichne(){
   $("zurueck").classList.toggle("an", !istStart);
   $("titel").textContent = istStart ? begruessung() : BETRIEB.name;
   $("claim").textContent = istStart ? t(BETRIEB.claim) : BETRIEB.strasse + " · " + BETRIEB.ort;
-  $("zurueck").textContent = t("‹ Zurück zur Übersicht");
+  $("zurueck").setAttribute("aria-label", t("Zurück zur Übersicht"));
+  $("zurueck").title = t("Zurück zur Übersicht");
   const aktiv = SPRACHEN.find(sp => sp.code === sprache) || SPRACHEN[0];
   $("sprachknopf").setAttribute("aria-label", t("Sprache") + ": " + aktiv.name);
   $("sprachknopf").title = aktiv.name;
@@ -13454,7 +13528,7 @@ function anServer(art, daten){
 }
 
 function findeGericht(name){
-  for(const quelle of [SPEISEKARTE, GETRAENKE, COCKTAILS])
+  for(const [, quelle] of alleKarten())
     for(const gr of quelle)
       for(const e of gr.eintraege)
         if(e.n === name) return e;
@@ -14593,7 +14667,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil,karten");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -14732,6 +14806,17 @@ async function karteHolen(erstesMal){
        kat_sort gibt jeder Kategorie eine feste Position. Das ".id"
        am Ende ist der letzte Notnagel: Damit gibt es keinen einzigen
        Gleichstand mehr, egal was in den Daten steht. */
+    /* Das Kartenverzeichnis des Betriebs (betriebe.karten), durch eine
+       Positivliste: nur „k-…“-Schlüssel für eigene Karten, die drei
+       festen dürfen umbenannt werden, Namen gekürzt, Kategorien nur
+       als Namen. Was nicht passt, fällt still weg (§2.3a). */
+    KARTEN_VERZ = (Array.isArray(b[0].karten) ? b[0].karten : [])
+      .filter(k => k && typeof k.id === "string" &&
+        (KARTEN_FEST.includes(k.id) || KARTE_ID_MUSTER.test(k.id)))
+      .slice(0, 20)
+      .map(k => ({ id:k.id, name:String(k.name || "").trim().slice(0, 40),
+                   unter:String(k.unter || "").trim().slice(0, 90) }));
+
     const zeilen = await hol("/rest/v1/gerichte?betrieb_id=eq."+b[0].id+
       "&verfuegbar=eq.true&select=*&order=karte.asc,kat_sort.asc,reihenfolge.asc,id.asc");
 
@@ -14739,7 +14824,10 @@ async function karteHolen(erstesMal){
     // [{ gruppe:"…", eintraege:[{n,b,p,veg,bild}] }]
     const bau = welche => {
       const topf = [];
-      zeilen.filter(z => (z.karte || "speisekarte") === welche).forEach(z => {
+      /* Ein Gericht darf in mehreren Karten stehen (gerichte.karten);
+         ohne die Spalte gilt wie bisher die eine Karte. */
+      zeilen.filter(z => (Array.isArray(z.karten) && z.karten.length ? z.karten
+                          : [z.karte || "speisekarte"]).includes(welche)).forEach(z => {
         /* Übersetzungen aus der DB-Spalte "uebersetzungen" (jsonb) ins
            Wörterbuch mischen – z.B. {"en":"…","tr":"…"}. So bleibt die
            Karte auch nach Änderungen im Admin-Panel mehrsprachig. */
@@ -14795,6 +14883,14 @@ async function karteHolen(erstesMal){
     // Jede Karte einzeln prüfen. Wären z.B. nur Cocktails gepflegt,
     // bleiben Speisen und Getränke aus dem Quelltext erhalten.
     const neu = { speisekarte:bau("speisekarte"), getraenke:bau("getraenke"), cocktails:bau("cocktails") };
+    /* Eigene Karten: alle aus dem Verzeichnis und alle, die an einem
+       Gericht stehen — eine Karte ohne Gericht bleibt leer, aber da. */
+    const eigene = new Set(KARTEN_VERZ.map(k => k.id).filter(id => KARTE_ID_MUSTER.test(id)));
+    zeilen.forEach(z => (Array.isArray(z.karten) ? z.karten : [])
+      .forEach(id => { if(KARTE_ID_MUSTER.test(id)) eigene.add(id); }));
+    const extra = {};
+    eigene.forEach(id => { extra[id] = bau(id); });
+    neu.extra = extra;
 
     /* Hat sich gegenüber dem letzten Abruf überhaupt etwas geändert?
        Wenn nicht, tun wir gar nichts – kein Flackern für den Gast. */
@@ -14805,15 +14901,23 @@ async function karteHolen(erstesMal){
     if(neu.speisekarte.length) SPEISEKARTE = neu.speisekarte;
     if(neu.getraenke.length)   GETRAENKE   = neu.getraenke;
     if(neu.cocktails.length)   COCKTAILS   = neu.cocktails;
+    KARTEN_EXTRA = extra;
+    /* Jede eigene Karte ist eine Seite unter ihrem Schlüssel („#/k-mittag“).
+       Titel und Unterzeile: die Kachel, die dorthin zeigt (karteKopf),
+       sonst der Name aus dem Verzeichnis. */
+    Object.keys(extra).forEach(id => {
+      SEITEN[id] = () => { const v = karteVerzEintrag(id) || {};
+        return karteSeite(id, karteDaten(id), v.name || t("Karte"), v.unter || "", ""); };
+    });
     /* Eine kaputte Zeile aus dem Admin darf dem Gast nicht die Karte zerschießen. */
     konfigPruefen("Datenbank");
 
-    if(neu.speisekarte.length || neu.getraenke.length || neu.cocktails.length){
+    if(neu.speisekarte.length || neu.getraenke.length || neu.cocktails.length || Object.keys(extra).length){
       /* Schutznetz: Texte aus der Datenbank, die nicht im Wörterbuch stehen,
          bleiben für Gäste deutsch. Hier einmal sauber melden, damit man beim
          Pflegen der Karte sofort sieht, welche Übersetzungen fehlen. */
       const ohneEintrag = [];
-      [neu.speisekarte, neu.getraenke, neu.cocktails].forEach(karte =>
+      [neu.speisekarte, neu.getraenke, neu.cocktails].concat(Object.values(extra)).forEach(karte =>
         karte.forEach(gr => {
           if(!TEXTE[gr.gruppe]) ohneEintrag.push("Gruppe: " + gr.gruppe);
           gr.eintraege.forEach(e => { if(e.b && !TEXTE[e.b]) ohneEintrag.push("Beschreibung: " + e.b); });
@@ -14825,7 +14929,7 @@ async function karteHolen(erstesMal){
       /* Neu zeichnen nur, wenn der Gast gerade eine Kartenseite ansieht.
          Steht er im Warenkorb oder auf der Bestätigung, lassen wir ihn in
          Ruhe – die neuen Daten greifen dann beim nächsten Seitenwechsel. */
-      const aufKarte = ["speisekarte","getraenke","cocktails","start"].indexOf(seiteJetzt) > -1;
+      const aufKarte = seiteJetzt === "start" || KARTEN_FEST.includes(seiteJetzt) || seiteJetzt in KARTEN_EXTRA;
       if(erstesMal || aufKarte){
         const inh = $("inhalt");
         if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches){

@@ -148,6 +148,78 @@ async function oeffnen(browser, haus, breite, sprache) {
     await ctx.close();
   }
 
+  /* ── Kachelname auf der Unterseite (Vorfall 07.10.) ─────────────
+     Die Kachel „cocktails“ heißt im Board „Kaiser und Säfte“; die
+     Seite dahinter muss genauso heißen — und darf die Vorgabe-
+     Unterzeile („Hinter der Bar …“) nicht mehr tragen. Gegenfall: eine
+     Kachel ohne eigenen Namen behält Titel und Unterzeile wie vorher.
+     Zwei Häuser (§8.1a), dazu Englisch (Rahmen übersetzt, Name nicht). */
+  for (const haus of HAEUSER.slice(0, 2)) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch (e) {} });
+    const seite = await ctx.newPage();
+    const fehler = [];
+    seite.on("pageerror", e => fehler.push(String(e)));
+    await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue()
+      : r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+    await seite.route("**/rest/v1/betriebe**", r => r.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify([{ id: "11111111-2222-3333-4444-555555555555", bestell_pause: false, hub_texte: {},
+        hub_kacheln: [{ schluessel: "speisekarte" },
+                      { schluessel: "cocktails", titel: "Kaiser und Säfte" },
+                      { schluessel: "getraenke", unter: "Frisch & kalt" }] }]) }));
+    await seite.goto("file://" + path.join(DIST, haus, "index.html"));
+    await seite.waitForTimeout(1500);
+    const lies = async ziel => {
+      await seite.evaluate(z => { location.hash = z; }, ziel);
+      await seite.waitForTimeout(500);
+      return seite.evaluate(() => ({
+        h2: (document.querySelector("#inhalt .seite h2") || {}).textContent || "",
+        unter: (document.querySelector("#inhalt .seite > p.unter") || {}).textContent || "",
+        kachel: Array.from(document.querySelectorAll("#inhalt .kachel")).map(k => k.textContent).join("|"),
+      }));
+    };
+    const vor = await seite.evaluate(() => KACHELN.map(k => k.schluessel + ":" + k.titel).join(","));
+    pruef(/cocktails:Kaiser und Säfte/.test(vor), haus + ": Voraussetzung — die Kachel trägt den eigenen Namen", vor);
+    const c = await lies("#/cocktails");
+    pruef(c.h2 === "Kaiser und Säfte", haus + ": Unterseite heißt wie die Kachel", c.h2);
+    pruef(!/Hinter der Bar/.test(c.unter), haus + ": keine fremde Vorgabe-Unterzeile mehr", c.unter || "(keine)");
+    const s2 = await lies("#/speisekarte");
+    pruef(s2.h2 === "Speisekarte" && /Küche/.test(s2.unter), haus + ": unveränderte Kachel behält Titel und Unterzeile", s2.h2 + " / " + s2.unter);
+    const g = await lies("#/getraenke");
+    pruef(g.h2 === "Getränkekarte" && g.unter === "Frisch & kalt", haus + ": eigene Unterzeile allein wird übernommen", g.h2 + " / " + g.unter);
+    await seite.evaluate(() => { spracheSetzen("en"); });
+    const e = await lies("#/cocktails");
+    pruef(e.h2 === "Kaiser und Säfte", haus + ": Englisch — eigener Name bleibt", e.h2);
+
+    /* Zurück-Knopf: rund, kein Text, ≥ 44 px, klebt beim Rollen, führt heim. */
+    await seite.evaluate(() => { spracheSetzen("de"); location.hash = "#/speisekarte"; });
+    await seite.waitForTimeout(500);
+    const z = await seite.evaluate(() => {
+      const b = document.getElementById("zurueck"), r = b.getBoundingClientRect();
+      return { an: b.classList.contains("an"), w: r.width, h: r.height, text: b.textContent.trim(),
+               label: b.getAttribute("aria-label"), oben: document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === b
+                 || b.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)) };
+    });
+    pruef(z.an && z.w >= 44 && z.h >= 44 && z.text === "", haus + ": Zurück ist ein runder Knopf ohne Text, ≥ 44 px",
+      z.w.toFixed(0) + "×" + z.h.toFixed(0) + " " + JSON.stringify(z.text));
+    pruef(z.label === "Zurück zur Übersicht" && z.oben, haus + ": beschriftet und obenauf (nichts deckt ihn)", z.label + " " + z.oben);
+    await seite.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, 1500); });
+    await seite.waitForTimeout(300);
+    const kl = await seite.evaluate(() => {
+      const b = document.getElementById("zurueck"), r = b.getBoundingClientRect();
+      const mitte = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { top: r.top, scroll: scrollY, oben: mitte === b || b.contains(mitte) };
+    });
+    pruef(kl.scroll > 500 && kl.top >= 0 && kl.top < 80 && kl.oben, haus + ": beim Rollen klebt er oben und bleibt antippbar",
+      "scroll " + kl.scroll + " top " + kl.top.toFixed(0));
+    await seite.click("#zurueck");
+    await seite.waitForTimeout(500);
+    const heim = await seite.evaluate(() => ({ hash: location.hash, start: seiteJetzt }));
+    pruef(heim.start === "start", haus + ": Tipp führt zur Übersicht", JSON.stringify(heim));
+    pruef(fehler.length === 0, haus + ": keine Ausnahme", fehler.join(" | ") || "still");
+    await ctx.close();
+  }
+
   await browser.close();
   console.log("\n" + (n - f) + " von " + n + " ok");
   if (f) { console.log(f + " FEHL"); process.exit(1); }

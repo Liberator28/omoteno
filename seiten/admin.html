@@ -1413,6 +1413,37 @@ body.hell .schritt[aria-pressed=true]{
 .kted-weg p{font-size:13.5px;color:var(--gedaempft);line-height:1.55;margin:4px 0 12px}
 .kted-weg .knopf{width:100%;margin-bottom:10px}
 
+/* Karten-Blatt: je Karte eine Zeile — Name groß, Unterzeile klein,
+   Zahl der Gerichte, ordnen, entfernen. Ein Scrollbereich (§3.8). */
+.kv-liste{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.kv-zeile{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:start;
+  padding:12px;border-radius:var(--r);background:var(--flaeche-2);border:1px solid var(--linie)}
+.kv-zeile.kv-entfernt{opacity:.62}
+.kv-felder{display:flex;flex-direction:column;gap:6px;min-width:0}
+.kv-felder input,.kv-felder select{
+  width:100%;min-height:44px;padding:8px 12px;border-radius:var(--ecke);
+  border:1px solid var(--linie);background:var(--nacht);
+  color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font:inherit;font-size:16px;-webkit-appearance:none;appearance:none;scroll-margin-top:96px}
+.kv-felder small{font-size:12.5px;color:var(--gedaempft);line-height:1.45}
+.kv-knoepfe{display:flex;flex-direction:column;gap:6px}
+.kv-knoepfe button{min-width:44px;min-height:44px;border-radius:var(--ecke);border:1px solid var(--linie);
+  background:var(--flaeche);color:var(--kreide);font:inherit;font-size:15px;cursor:pointer}
+.kv-knoepfe button:disabled{opacity:.35;cursor:default}
+.kv-knoepfe .kv-weg{color:var(--warn)}
+/* Mehrfachwahl „Gehört zu“ im Gericht-Blatt */
+.kartenchips{display:flex;flex-wrap:wrap;gap:8px}
+.kartenchips button{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--linie);
+  background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+.kartenchips button[aria-pressed=true]{background:var(--messing);border-color:var(--messing);
+  color:var(--sockel);font-weight:600}
+body.hell .kartenchips button[aria-pressed=true]{color:var(--flaeche)}
+.kat.leer-kat .katkopf{opacity:.92}
+.leerkat-zeile{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 2px 4px;font-size:13.5px;color:var(--gedaempft)}
+.leerkat-zeile button{min-height:44px;padding:0 14px;border-radius:999px;border:1px dashed var(--linie);
+  background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+
 /* Aufklappbare Gerichte-Zeile, Baustein wie .kbklapp/.kbsymknopf
    (admin.html, Kachel-Baukasten) — dasselbe Bedienprinzip, nicht neu
    erfunden. Zugeklappt zeigt sie nur Name + Preis (spart die Zeile,
@@ -3065,6 +3096,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </form>
     </div>
 
+    <!-- Karten-Chips: aus dem Verzeichnis gezeichnet (kartenWahlZeichnen),
+         dahinter „＋ Karte“ und „Bearbeiten“. Vorher standen hier fest drei. -->
     <div class="filterzeile" id="kartenWahl" style="margin-bottom:16px">
       <button class="chip" data-karte="speisekarte" aria-pressed="true">Speisekarte</button>
       <button class="chip" data-karte="getraenke"   aria-pressed="false">Getränke</button>
@@ -3870,6 +3903,22 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   </div>
 </div>
 
+<!-- ══ Karten: anlegen, benennen, ordnen, entfernen (bis 20) ══ -->
+<div class="blatt" id="kvBlatt" hidden role="dialog" aria-modal="true" aria-labelledby="kvTitel">
+  <div class="blattinhalt kted-blatt">
+    <div class="griff"></div>
+    <h2 class="blatttitel" id="kvTitel">Karten</h2>
+    <p class="kted-hilfe">Bis zu 20 Karten, z.&nbsp;B. Mittags- und Abendkarte. Ein Gericht darf in
+      mehreren stehen. Welche Karte eine Kachel zeigt, stellst du unter „Startseite“ ein.</p>
+    <div id="kvListe" class="kv-liste"></div>
+    <button type="button" class="kted-neu" id="kvNeu"><span aria-hidden="true">＋</span> Neue Karte</button>
+    <div class="kted-knoepfe" style="margin-top:16px">
+      <button type="button" class="knopf" id="kvSichern">Sichern</button>
+      <button type="button" class="knopf leise" id="kvAbbrechen">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <div class="blatt" id="awBlatt" hidden role="dialog" aria-modal="true" aria-label="Auswertung">
   <div class="blattinhalt aw-blatt">
     <div class="griff"></div>
@@ -4199,24 +4248,16 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
     </div>
 
-    <!-- Segment statt natives <select>: drei feste Werte, keine
-         Texteingabe noetig. #fKarte bleibt das echte Feld (jeder
-         Aufruf wie $("#fKarte").value oder .onchange greift weiter),
-         nur visuell verborgen — die Segmente setzen seinen Wert und
-         loesen ein echtes "change" aus, mehr aendert sich nicht. -->
+    <!-- Gehört zu: Mehrfachwahl aller Karten (seit 07.10. bis zu 20, ein
+         Gericht darf in mehreren stehen). #fKarte bleibt das echte Feld
+         für die ERSTE Karte (gerichte.karte, Küche, Auswertung) — jeder
+         vorhandene Zugriff auf $("#fKarte") greift weiter. -->
     <div class="auswahlfeld">
-      <span class="lname">Gehört zur Karte</span>
-      <select id="fKarte" class="sr-nur">
+      <span class="lname">Gehört zu <span class="lzusatz">eine oder mehrere Karten</span></span>
+      <select id="fKarte" class="sr-nur" tabindex="-1" aria-hidden="true">
         <option value="speisekarte">Speisekarte</option>
-        <option value="getraenke">Getränke</option>
-        <option value="cocktails">Cocktails</option>
       </select>
-      <div class="segment" id="karteSegment" role="radiogroup" aria-label="Gehört zur Karte">
-        <button type="button" data-wert="speisekarte" role="radio">Speisekarte</button>
-        <button type="button" data-wert="getraenke" role="radio">Getränke</button>
-        <button type="button" data-wert="cocktails" role="radio">Cocktails</button>
-        <i class="segmentschieber" aria-hidden="true"></i>
-      </div>
+      <div class="kartenchips" id="fKarten" role="group" aria-label="Gehört zu den Karten"></div>
     </div>
 
     <div class="stoffblock">
@@ -7962,6 +8003,9 @@ async function betriebOeffnen(id){
 
   gerichte     = (g.data || []).filter(x => x.betrieb_id === id);
   bestellungen = (o.data || []).filter(x => x.betrieb_id === id);
+  /* Kartenverzeichnis getrennt lesen: fehlt die Spalte, bleibt der Rest
+     des Boards unberührt (die Abfrage oben kennt sie nicht). */
+  kartenLaden(id).then(() => { if(marke === ladeMarke) zeichneKarte(); });
   bestellungen.forEach(x => bekannt.add(x.id));
 
   $("#punkt").className = "punkt live";
@@ -8499,7 +8543,7 @@ function zeichneBoard(){
 function katSortVon(name, karte){
   const k = karte || welcheKarte;
   const treffer = gerichte.find(g =>
-    (g.karte || "speisekarte") === k && g.kategorie === name);
+    inKarte(g, k) && g.kategorie === name);
   return treffer ? (treffer.kat_sort ?? 0) : 0;
 }
 
@@ -8507,15 +8551,37 @@ function katSortVon(name, karte){
    Kategorie. Sie hängt sich hinten an, statt sich dazwischenzudrängen. */
 function katSortNeu(karte){
   const werte = gerichte
-    .filter(g => (g.karte || "speisekarte") === karte)
+    .filter(g => inKarte(g, karte))
     .map(g => g.kat_sort ?? 0);
   return werte.length ? Math.max(...werte) + 1 : 1;
 }
 
 function zeichneKarte(){
   const ziel = $("#karteListe");
+  kartenWahlZeichnen();
+  const leereKats = karteLeereKategorien(welcheKarte);
+  /* Kategorien ohne Gericht (im Verzeichnis angelegt): Kopf mit
+     Zeichen und „＋ Gericht“, damit man sie füllen kann. */
+  const leerHTML = leereKats.map(x => `<div class="kat leer-kat">
+      <div class="katkopf">
+        <button type="button" class="kted-knopf" data-kted="${sicher(x.name)}" aria-label="Kategorie ${sicher(x.name)} bearbeiten">
+          <span class="kted-emo" aria-hidden="true">${katZeichenGlyph(x.zeichen || katZeichenAuto(x.name, welcheKarte))}</span>
+          <span class="katname">${sicher(x.name)}</span>
+          <svg class="kted-stift" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.5 2.5l2 2L6 12l-3 1 1-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="katzahl">leer</span>
+      </div>
+      <div class="leerkat-zeile"><span>Noch kein Gericht — für Gäste unsichtbar, bis eines darin steht.</span>
+        <button type="button" data-leerkat-gericht="${sicher(x.name)}">＋ Gericht</button></div>
+    </div>`).join("");
 
-  if(gerichte.filter(g => (g.karte||"speisekarte") === welcheKarte).length === 0){
+  if(gerichte.filter(g => inKarte(g, welcheKarte)).length === 0 && leereKats.length){
+    $("#katListe").innerHTML = leereKats.map(x => `<option value="${sicher(x.name)}">`).join("");
+    ziel.innerHTML = leerHTML + `<button type="button" class="kted-neu" data-kted-neu>
+      <span aria-hidden="true">＋</span> Neue Kategorie</button>`;
+    return;
+  }
+  if(gerichte.filter(g => inKarte(g, welcheKarte)).length === 0){
     ziel.innerHTML = `<div class="leer">
       <div class="gross">Diese Karte ist noch leer</div>
       <p>Leg das erste Gericht an — es erscheint sofort<br>
@@ -8523,7 +8589,7 @@ function zeichneKarte(){
     return;
   }
 
-  const dieser = gerichte.filter(g => (g.karte || "speisekarte") === welcheKarte);
+  const dieser = gerichte.filter(g => inKarte(g, welcheKarte));
   /* Kategorien nach kat_sort, nicht mehr nach Fundreihenfolge.
      Die Fundreihenfolge hing an der Sortierung der Datenbank, und die
      war bei gleichem "reihenfolge"-Wert nicht festgelegt – deshalb
@@ -8532,7 +8598,7 @@ function zeichneKarte(){
     .map(k => ({ name: k, sort: katSortVon(k) }))
     .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, "de"));
   const kats = katListe.map(x => x.name);
-  $("#katListe").innerHTML = kats.map(k => `<option value="${sicher(k)}">`).join("");
+  $("#katListe").innerHTML = kats.concat(leereKats.map(x => x.name)).map(k => `<option value="${sicher(k)}">`).join("");
 
   const suchen = suchtext.toLowerCase();
   const passt = g => !suchen ||
@@ -8601,7 +8667,7 @@ function zeichneKarte(){
   }).join("");
 
   ziel.innerHTML = stuecke ?
-    stuecke + (suchen ? "" : `<button type="button" class="kted-neu" data-kted-neu>
+    stuecke + (suchen ? "" : leerHTML) + (suchen ? "" : `<button type="button" class="kted-neu" data-kted-neu>
       <span aria-hidden="true">＋</span> Neue Kategorie</button>`) :
     `<div class="leer"><div class="gross">Nichts gefunden</div>
      <p>Kein Gericht enthält „${sicher(suchtext)}“.</p></div>`;
@@ -8610,8 +8676,7 @@ function zeichneKarte(){
 /* ─── Reihenfolge ändern ──────────────────────────────────── */
 async function schieben(id, richtung){
   const g = gerichte.find(x => x.id === id); if(!g) return;
-  const reihe = gerichte.filter(x => x.kategorie === g.kategorie &&
-                                    (x.karte||"speisekarte") === (g.karte||"speisekarte"))
+  const reihe = gerichte.filter(x => x.kategorie === g.kategorie && inKarte(x, welcheKarte))
                         .sort((a,b) => (a.reihenfolge||0) - (b.reihenfolge||0));
   const i = reihe.indexOf(g), j = i + richtung;
   if(j < 0 || j >= reihe.length) return;
@@ -8637,7 +8702,7 @@ async function schieben(id, richtung){
    statt eines upserts. */
 async function katSchieben(name, richtung){
   const karte = welcheKarte;
-  const dieser = gerichte.filter(g => (g.karte || "speisekarte") === karte);
+  const dieser = gerichte.filter(g => inKarte(g, karte));
 
   const reihe = [...new Set(dieser.map(g => g.kategorie))]
     .map(k => ({ name: k, sort: katSortVon(k, karte) }))
@@ -8659,7 +8724,7 @@ async function katSchieben(name, richtung){
   neueFolge.forEach((x, n) => { zuweisung[x.name] = n + 1; });
 
   gerichte.forEach(g => {
-    if((g.karte || "speisekarte") !== karte) return;
+    if(!inKarte(g, karte)) return;
     if(zuweisung[g.kategorie] != null) g.kat_sort = zuweisung[g.kategorie];
   });
   zeichneKarte();
@@ -8776,38 +8841,134 @@ function katZeichenAuto(name, karte){
 }
 /* Was steht gespeichert? Das erste Gericht mit Wert — alle tragen denselben. */
 function katZeichenVon(name, karte){
-  const g = gerichte.find(x => (x.karte || "speisekarte") === karte && x.kategorie === name &&
+  const g = gerichte.find(x => inKarte(x, karte) && x.kategorie === name &&
     typeof x.kat_emoji === "string" && KAT_ZEICHEN_ALLE.includes(x.kat_emoji));
   return g ? g.kat_emoji : null;
+}
+/* Leere Kategorie: das Zeichen steht im Verzeichnis. */
+function katZeichenVerz(name, karte){
+  const x = ((karteEintrag(karte) || {}).kategorien || []).find(k => k.name === name);
+  return x && x.zeichen && KAT_ZEICHEN_ALLE.includes(x.zeichen) ? x.zeichen : null;
 }
 /* Was sieht der Gast? Gewähltes Zeichen oder die Automatik. */
 function katZeichenWirksam(name, karte){
   return katZeichenVon(name, karte) || katZeichenAuto(name, karte);
 }
 function katNamen(karte){
-  return [...new Set(gerichte.filter(g => (g.karte || "speisekarte") === karte).map(g => g.kategorie))]
+  const ausVerz = ((karteEintrag(karte) || {}).kategorien || []).map(x => x.name);
+  return [...new Set(gerichte.filter(g => inKarte(g, karte)).map(g => g.kategorie).concat(ausVerz))]
     .map(k => ({ name:k, sort:katSortVon(k, karte) }))
     .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, "de")).map(x => x.name);
 }
-const KARTE_NAME = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+/* ═══ KARTEN — Verzeichnis des Betriebs (betriebe.karten) ═══════════
+   Wunsch 07.10.: bis zu 20 Karten anlegen, benennen, jederzeit
+   bearbeiten; ein Gericht in mehreren Karten; Kategorien ohne Gericht.
+   Solange betriebe.karten leer ist, gelten die drei festen Karten — so
+   sieht kein Betrieb ohne eigenes Zutun eine Änderung (§2.5).
+
+   KARTENSTAND ist undefined, bis die Spalte WIRKLICH gelesen ist
+   (§8.1m): Ein Schreiben vorher überschriebe ein Verzeichnis, das ein
+   zweites Gerät angelegt hat, mit der Vorgabe. */
+const KARTEN_GRUND = [
+  { id:"speisekarte", name:"Speisekarte" },
+  { id:"getraenke",   name:"Getränke" },
+  { id:"cocktails",   name:"Cocktails" }];
+const KARTEN_HOECHST = 20;
+const KARTE_ID_MUSTER = /^(speisekarte|getraenke|cocktails|k-[a-z0-9-]{1,22})$/;
+let KARTENSTAND;
+function gerichtKarten(g){
+  return Array.isArray(g.karten) && g.karten.length ? g.karten : [g.karte || "speisekarte"];
+}
+function inKarte(g, id){ return gerichtKarten(g).includes(id); }
+/* Positivliste für jeden Eintrag, der aus der Spalte kommt (§2.3a). */
+function karteSauber(k){
+  if(!k || typeof k.id !== "string" || !KARTE_ID_MUSTER.test(k.id)) return null;
+  const kategorien = (Array.isArray(k.kategorien) ? k.kategorien : [])
+    .filter(x => x && typeof x.name === "string" && x.name.trim())
+    .map(x => ({ name:x.name.trim().slice(0, 40),
+                 zeichen: typeof x.zeichen === "string" && /^[a-z0-9]{1,12}$/.test(x.zeichen) ? x.zeichen : null }))
+    .slice(0, 60);
+  return { id:k.id, name:String(k.name || "").trim().slice(0, 40) || "Karte",
+           unter:String(k.unter || "").trim().slice(0, 90), kategorien };
+}
+/* Alle Karten, die das Board zeigt: das Verzeichnis (oder die drei
+   festen) und dahinter jede Karte, die an einem Gericht steht, aber im
+   Verzeichnis fehlt — sonst wären deren Gerichte unauffindbar. */
+function kartenListe(){
+  const basis = (Array.isArray(KARTENSTAND) && KARTENSTAND.length ? KARTENSTAND
+                 : KARTEN_GRUND.map(k => ({ ...k, unter:"", kategorien:[] })));
+  const ids = new Set(basis.map(k => k.id));
+  const dazu = [];
+  gerichte.forEach(g => gerichtKarten(g).forEach(id => {
+    if(!ids.has(id) && KARTE_ID_MUSTER.test(id)){ ids.add(id); dazu.push({ id, name:karteGrundName(id), unter:"", kategorien:[] }); }
+  }));
+  return basis.concat(dazu);
+}
+function karteGrundName(id){ const k = KARTEN_GRUND.find(x => x.id === id); return k ? k.name : "Karte"; }
+function karteName(id){ const k = kartenListe().find(x => x.id === id); return k ? k.name : karteGrundName(id); }
+function karteEintrag(id){ return kartenListe().find(x => x.id === id) || null; }
+/* Neuer Schlüssel: „k-“ + Name in Kleinbuchstaben, eindeutig gemacht. */
+function karteNeueId(name){
+  const basis = "k-" + (String(name || "karte").toLowerCase()
+    .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 16) || "karte");
+  const da = new Set(kartenListe().map(k => k.id));
+  let id = basis, i = 2;
+  while(da.has(id)) id = basis.slice(0, 19) + "-" + (i++);
+  return id;
+}
+async function kartenLaden(id){
+  KARTENSTAND = undefined;
+  if(demo || !db){ KARTENSTAND = KARTENSTAND || []; return; }
+  try{
+    const {data, error} = await db.from("betriebe").select("karten").eq("id", id).maybeSingle();
+    if(error) throw error;
+    if(id !== betriebId) return;
+    KARTENSTAND = (Array.isArray(data && data.karten) ? data.karten : []).map(karteSauber).filter(Boolean);
+  }catch(e){
+    /* Spalte fehlt oder Netz weg: unbekannt, nicht leer — Schreiben bleibt gesperrt. */
+    KARTENSTAND = undefined;
+  }
+}
+/* Schreibt das ganze Verzeichnis. Vorher gelesen? Sonst nicht. */
+async function kartenSichern(liste){
+  if(KARTENSTAND === undefined && !demo && db){
+    melde("Die Karten sind noch nicht geladen — gleich noch einmal versuchen.", true);
+    return false;
+  }
+  const sauber = liste.map(karteSauber).filter(Boolean).slice(0, KARTEN_HOECHST);
+  if(demo || !db){ KARTENSTAND = sauber; return true; }
+  const {error} = await db.from("betriebe").update({ karten:sauber }).eq("id", betriebId);
+  if(error){ melde("Karten nicht gespeichert — Verbindung prüfen", true); return false; }
+  KARTENSTAND = sauber;
+  return true;
+}
+/* Das Verzeichnis, wie es geschrieben würde: die gezeigte Liste. */
+function kartenKopie(){ return kartenListe().map(k => ({ ...k, kategorien:(k.kategorien || []).map(x => ({ ...x })) })); }
+/* Leere Kategorien einer Karte (im Verzeichnis, ohne Gericht). */
+function karteLeereKategorien(id){
+  const k = karteEintrag(id); if(!k) return [];
+  const mit = new Set(gerichte.filter(g => inKarte(g, id)).map(g => g.kategorie));
+  return (k.kategorien || []).filter(x => !mit.has(x.name));
+}
 
 let kted = null;          /* { karte, alt|null, zeichen, zeichenAlt } */
 let katNeuWunsch = null;  /* neue Kategorie wartet auf ihr erstes Gericht */
 
 function ktedOeffnen(name){
   const karte = welcheKarte;
-  const zeichen = name ? katZeichenVon(name, karte) : null;
+  const zeichen = name ? (katZeichenVon(name, karte) || katZeichenVerz(name, karte)) : null;
   kted = { karte, alt:name || null, zeichen, zeichenAlt:zeichen };
-  const n = name ? gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === name).length : 0;
+  const n = name ? gerichte.filter(g => inKarte(g, karte) && g.kategorie === name).length : 0;
   $("#ktedTitel").textContent = name ? "Kategorie bearbeiten" : "Neue Kategorie";
   $("#ktedHilfe").textContent = name
     ? (n === 1 ? "Name und Zeichen gelten für das Gericht darin." : "Name und Zeichen gelten für alle " + n + " Gerichte darin.") +
       " Der Gast sieht die Änderung sofort."
-    : "Eine Kategorie erscheint beim Gast, sobald ein Gericht darin steht. " +
-      "Nach „Weiter“ legst du gleich das erste an.";
+    : "Die Kategorie wird sofort angelegt — auch ohne Gericht. " +
+      "Beim Gast erscheint sie, sobald ein Gericht darin steht.";
   $("#ktedName").value = name || "";
-  $("#ktedNameHilfe").textContent = "Bis 40 Zeichen. Auf " + KARTE_NAME[karte] + ".";
-  $("#ktedSichern").textContent = name ? "Sichern" : "Weiter zum ersten Gericht";
+  $("#ktedNameHilfe").textContent = "Bis 40 Zeichen. Auf " + karteName(karte) + ".";
+  $("#ktedSichern").textContent = name ? "Sichern" : "Kategorie anlegen";
   $("#ktedWeg").hidden = !name;
   $("#ktedWeg").open = false;
   ktedWahlZeichnen();
@@ -8873,7 +9034,12 @@ function ktedSchau(){
 
 function ktedWegZeichnen(){
   if(!kted.alt){ $("#ktedWegInhalt").innerHTML = ""; return; }
-  const n = gerichte.filter(g => (g.karte || "speisekarte") === kted.karte && g.kategorie === kted.alt).length;
+  const n = gerichte.filter(g => inKarte(g, kted.karte) && g.kategorie === kted.alt).length;
+  if(!n){
+    $("#ktedWegInhalt").innerHTML = '<p>Die Kategorie ist noch leer. Löschen nimmt nur den Namen weg.</p>' +
+      '<button type="button" class="knopf gefahr" id="ktedLoeschen">Kategorie löschen</button>';
+    return;
+  }
   const andere = katNamen(kted.karte).filter(k => k !== kted.alt);
   $("#ktedWegInhalt").innerHTML =
     (andere.length ?
@@ -8903,10 +9069,10 @@ async function katNeuLaden(){
 /* Alle Gerichte der Kategorie `alt` bekommen `felder`. Bei einer
    Zusammenführung hängen sie HINTER die Gerichte des Ziels. */
 async function katAendern(karte, alt, felder, anhaengenAn){
-  const betroffen = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === alt);
+  const betroffen = gerichte.filter(g => inKarte(g, karte) && g.kategorie === alt);
   const sortPaare = [];
   if(anhaengenAn){
-    const start = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === anhaengenAn)
+    const start = gerichte.filter(g => inKarte(g, karte) && g.kategorie === anhaengenAn)
       .reduce((m, g) => Math.max(m, (g.reihenfolge ?? 0) + 1), 0);
     betroffen.sort((a, b) => (a.reihenfolge || 0) - (b.reihenfolge || 0))
       .forEach((g, i) => sortPaare.push({ id:g.id, reihenfolge:start + i }));
@@ -8915,8 +9081,11 @@ async function katAendern(karte, alt, felder, anhaengenAn){
   sortPaare.forEach(x => { const g = gerichte.find(y => y.id === x.id); if(g) g.reihenfolge = x.reihenfolge; });
   zeichneKarte();
   if(demo || !db) return true;
-  const {error} = await db.from("gerichte").update(felder)
-    .eq("betrieb_id", betriebId).eq("karte", karte).eq("kategorie", alt);
+  /* Über die ids der betroffenen Gerichte, nicht über „karte“: Ein
+     Gericht in zwei Karten trägt in karte nur die erste. */
+  const ids = betroffen.map(g => g.id);
+  const {error} = ids.length ? await db.from("gerichte").update(felder)
+    .eq("betrieb_id", betriebId).in("id", ids) : { error:null };
   if(error){ melde("Nicht gespeichert — Verbindung prüfen", true); await katNeuLaden(); return false; }
   if(sortPaare.length){
     const r = await db.from("gerichte").upsert(sortPaare);
@@ -8962,6 +9131,17 @@ async function katUebersetzen(name, leise){
   }
 }
 
+/* Ändert die Kategorie-Liste einer Karte im Verzeichnis. */
+async function verzKategorien(karte, aendern){
+  const kopie = kartenKopie();
+  const k = kopie.find(x => x.id === karte);
+  if(!k) return false;
+  k.kategorien = aendern(k.kategorien || []);
+  const ok = await kartenSichern(kopie);
+  if(ok) zeichneKarte();
+  return ok;
+}
+
 async function ktedSichern(){
   const name = $("#ktedName").value.trim().replace(/\s+/g, " ");
   if(!name){ melde("Die Kategorie braucht einen Namen", true); $("#ktedName").focus(); return; }
@@ -8971,12 +9151,23 @@ async function ktedSichern(){
 
   if(!alt){
     if(gibtEs){ melde("„" + name + "“ gibt es auf dieser Karte schon", true); return; }
-    katNeuWunsch = { karte, name, zeichen:kted.zeichen };
+    /* Wunsch 07.10.: Kategorie anlegen, ohne gleich ein Gericht zu
+       brauchen — sie steht im Kartenverzeichnis, bis eines dazukommt. */
+    if(!(await verzKategorien(karte, l => l.concat([{ name, zeichen:kted.zeichen }])))) return;
     ktedZu();
-    blattOeffnen(null);
-    $("#fKat").value = name; katWertAktualisieren();
-    $("#fKarte").value = karte; karteSegmentAktualisieren();
-    melde("Jetzt das erste Gericht für „" + name + "“");
+    melde("„" + name + "“ angelegt — mit „＋ Gericht“ füllen");
+    katUebersetzen(name);
+    return;
+  }
+
+  /* Eine LEERE Kategorie lebt nur im Verzeichnis. */
+  const hatGerichte = gerichte.some(g => inKarte(g, karte) && g.kategorie === alt);
+  if(!hatGerichte){
+    if(name !== alt && gibtEs){ melde("„" + name + "“ gibt es auf dieser Karte schon", true); return; }
+    if(!(await verzKategorien(karte, l => l.map(x => x.name === alt ? { name, zeichen:kted.zeichen } : x)))) return;
+    ktedZu();
+    melde(name !== alt ? "Umbenannt in „" + name + "“" : "Zeichen gesichert");
+    if(name !== alt) katUebersetzen(name);
     return;
   }
 
@@ -8985,7 +9176,7 @@ async function ktedSichern(){
   if(!umbenannt && !zeichenGeaendert){ ktedZu(); return; }
 
   if(umbenannt && gibtEs){
-    const n = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === alt).length;
+    const n = gerichte.filter(g => inKarte(g, karte) && g.kategorie === alt).length;
     if(!confirm("„" + name + "“ gibt es schon. Die " + n + " Gerichte aus „" + alt +
                 "“ dort anhängen und die beiden Kategorien zusammenlegen?")) return;
     const felder = { kategorie:name, kat_sort:katSortVon(name, karte),
@@ -8998,6 +9189,8 @@ async function ktedSichern(){
   const felder = { kat_emoji:kted.zeichen };
   if(umbenannt) felder.kategorie = name;
   ktedZu();
+  if(umbenannt && KARTENSTAND !== undefined && ((karteEintrag(karte) || {}).kategorien || []).some(x => x.name === alt))
+    verzKategorien(karte, l => l.map(x => x.name === alt ? { name, zeichen:kted.zeichen } : x));
   if(await katAendern(karte, alt, felder, null)){
     melde(umbenannt ? "Umbenannt in „" + name + "“" : "Zeichen gesichert");
     if(umbenannt) katUebersetzen(name);
@@ -9008,7 +9201,7 @@ async function ktedVerschieben(){
   const ziel = $("#ktedZiel") && $("#ktedZiel").value;
   if(!ziel) return;
   const { karte, alt } = kted;
-  const n = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === alt).length;
+  const n = gerichte.filter(g => inKarte(g, karte) && g.kategorie === alt).length;
   if(!confirm("Die " + n + " Gerichte aus „" + alt + "“ nach „" + ziel + "“ verschieben? „" + alt + "“ verschwindet danach.")) return;
   ktedZu();
   if(await katAendern(karte, alt, { kategorie:ziel, kat_sort:katSortVon(ziel, karte), kat_emoji:katZeichenVon(ziel, karte) }, ziel))
@@ -9017,16 +9210,33 @@ async function ktedVerschieben(){
 
 async function ktedLoeschen(){
   const { karte, alt } = kted;
-  const weg = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === alt);
+  const weg = gerichte.filter(g => inKarte(g, karte) && g.kategorie === alt);
+  if(!weg.length){
+    ktedZu();
+    if(await verzKategorien(karte, l => l.filter(x => x.name !== alt))) melde("„" + alt + "“ gelöscht");
+    return;
+  }
   if(!confirm("„" + alt + "“ mit allen " + weg.length + " Gerichten dauerhaft löschen?\n\n" +
               "Das lässt sich nicht rückgängig machen.")) return;
   ktedZu();
-  gerichte = gerichte.filter(g => !weg.includes(g));
+  /* Ein Gericht, das auch in einer anderen Karte steht, bleibt dort —
+     es verliert nur diese Karte. Gelöscht wird nur, was nirgends sonst steht. */
+  const nurHier = weg.filter(g => gerichtKarten(g).length <= 1);
+  const auchSonst = weg.filter(g => gerichtKarten(g).length > 1);
+  gerichte = gerichte.filter(g => !nurHier.includes(g));
+  auchSonst.forEach(g => { g.karten = gerichtKarten(g).filter(id => id !== karte); g.karte = g.karten[0]; });
   zeichneKarte();
+  if(KARTENSTAND !== undefined) verzKategorien(karte, l => l.filter(x => x.name !== alt));
   if(demo || !db){ melde("„" + alt + "“ gelöscht"); return; }
-  const {error} = await db.from("gerichte").delete()
-    .eq("betrieb_id", betriebId).eq("karte", karte).eq("kategorie", alt);
-  if(error){ melde("Nicht gelöscht — Verbindung prüfen", true); await katNeuLaden(); return; }
+  const r1 = nurHier.length ? await db.from("gerichte").delete()
+    .eq("betrieb_id", betriebId).in("id", nurHier.map(g => g.id)) : { error:null };
+  let fehler = r1.error;
+  for(const g of auchSonst){
+    if(fehler) break;
+    const r = await db.from("gerichte").update({ karten:g.karten, karte:g.karte }).eq("id", g.id);
+    fehler = r.error;
+  }
+  if(fehler){ melde("Nicht gelöscht — Verbindung prüfen", true); await katNeuLaden(); return; }
   melde("„" + alt + "“ gelöscht");
 }
 
@@ -9225,7 +9435,7 @@ function impVorschau(){
     .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
     .replace(/[^a-z0-9]/g,"");
   const vorhanden = new Set(
-    gerichte.filter(g => (g.karte || "speisekarte") === ziel)
+    gerichte.filter(g => inKarte(g, ziel))
             .map(g => schluessel(g.name)));
 
   const gesehen = new Set();
@@ -11883,16 +12093,17 @@ function bnVorschauZeichnen(){
 function bnGerichteOptionen(gewaehlt){
   const liste = gerichte.filter(g => Number(g.preis) >= 0);
   const karten = [...new Set(liste.map(g => g.karte || "speisekarte"))];
-  const KARTENNAMEN = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+  /* Nach der ERSTEN Karte gruppiert (gerichte.karte): Ein Gericht in zwei
+     Karten stünde sonst doppelt in der Auswahl. */
   const gruppen = karten.flatMap(k =>
-    [...new Set(liste.filter(g => (g.karte||"speisekarte") === k).map(g => g.kategorie))]
+    [...new Set(liste.filter(g => (g.karte || "speisekarte") === k).map(g => g.kategorie))]
       .map(kat => ({ karte:k, kategorie:kat, sort:katSortVon(kat, k) }))
   ).sort((a, c) => a.karte.localeCompare(c.karte) || a.sort - c.sort ||
                     (a.kategorie||"").localeCompare(c.kategorie||"", "de"));
   return gruppen.map(({karte:k, kategorie:kat}) => {
-    const drin = liste.filter(g => (g.karte||"speisekarte") === k && g.kategorie === kat)
+    const drin = liste.filter(g => (g.karte || "speisekarte") === k && g.kategorie === kat)
       .sort((a, c) => (a.name||"").localeCompare(c.name||"", "de"));
-    const label = (karten.length > 1 ? (KARTENNAMEN[k]||k) + " — " : "") + (kat || "Ohne Kategorie");
+    const label = (karten.length > 1 ? karteName(k) + " — " : "") + (kat || "Ohne Kategorie");
     return '<optgroup label="' + sicher(label) + '">' + drin.map(g =>
       '<option value="' + sicher(g.name) + '"' + (gewaehlt === g.name ? " selected" : "") + '>' +
       sicher(g.name) + '</option>').join("") + '</optgroup>';
@@ -12297,21 +12508,17 @@ function runnerGerichteFuellen(){
   const liste = gerichte.filter(g => Number(g.preis) > 0);
   const karten = [...new Set(liste.map(g => g.karte || "speisekarte"))];
   const gruppen = karten.flatMap(k =>
-    [...new Set(liste.filter(g => (g.karte||"speisekarte") === k).map(g => g.kategorie))]
+    [...new Set(liste.filter(g => (g.karte || "speisekarte") === k).map(g => g.kategorie))]
       .map(kat => ({ karte: k, kategorie: kat, sort: katSortVon(kat, k) }))
   ).sort((a, b) => a.karte.localeCompare(b.karte) || a.sort - b.sort ||
                     (a.kategorie||"").localeCompare(b.kategorie||"", "de"));
 
-  /* Dieselben drei Namen wie bei den Karte-Chips/-Auswahlfeldern
-     anderswo im Blatt (admin.html:2156-2158, 2725-2727) — nicht neu
-     benannt. Es gibt genau diese drei, nachgesehen statt angenommen:
-     ein früherer Entwurf kannte nur "speisekarte"/"getraenke" und
-     hätte "cocktails" fälschlich als "Speisekarte" beschriftet. */
-  const KARTENNAMEN = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+  /* Die Namen kommen aus dem Kartenverzeichnis (karteName) — seit
+     07.10. gibt es mehr als die drei festen Karten. */
   w.innerHTML = gruppen.map(({karte: k, kategorie: kat}) => {
-    const drin = liste.filter(g => (g.karte||"speisekarte") === k && g.kategorie === kat)
+    const drin = liste.filter(g => (g.karte || "speisekarte") === k && g.kategorie === kat)
       .sort((a,b) => (a.name||"").localeCompare(b.name||"", "de") || String(a.id).localeCompare(String(b.id)));
-    const label = (karten.length > 1 ? (KARTENNAMEN[k] || k) + " — " : "") +
+    const label = (karten.length > 1 ? karteName(k) + " — " : "") +
       (kat || "Ohne Kategorie");
     return '<optgroup label="' + sicher(label) + '">' + drin.map(g =>
       '<option value="' + g.id + '" data-preis="' + g.preis + '">' +
@@ -13056,6 +13263,12 @@ async function bestaetigen(b, minuten){
 
 // Gericht öffnen
 $("#karteListe").onclick = e => {
+  const leerKat = e.target.closest("[data-leerkat-gericht]");
+  if(leerKat){
+    blattOeffnen(null);
+    $("#fKat").value = leerKat.dataset.leerkatGericht; katWertAktualisieren();
+    return;
+  }
   const katKopf = e.target.closest("[data-kted]");
   if(katKopf) return ktedOeffnen(katKopf.dataset.kted);
   if(e.target.closest("[data-kted-neu]")) return ktedOeffnen(null);
@@ -13304,30 +13517,37 @@ $("#katPanel").addEventListener("keydown", e => {
   if(e.key === "Escape"){ e.stopPropagation(); katPanelSchliessen(true); }
 });
 
-/* ── Gehört zur Karte (Segment mit gleitendem Schieber) ──────────── */
-const KARTE_WERTE = ["speisekarte","getraenke","cocktails"];
-function karteSegmentAktualisieren(){
-  const wert = $("#fKarte").value || "speisekarte";
-  const i = Math.max(0, KARTE_WERTE.indexOf(wert));
-  $("#karteSegment").querySelectorAll("button").forEach(b => {
-    b.setAttribute("aria-checked", b.dataset.wert === wert);
-  });
-  /* transform statt left/width — siehe .claude/skills/bewegung §1:
-     nur transform und opacity, nie Layout-Eigenschaften animieren. */
-  $("#karteSegment .segmentschieber").style.transform =
-    `translateX(${i * 100}%)`;
+/* ── Gehört zu (Mehrfachwahl der Karten) ──────────────────────── */
+let fKartenWahl = [];
+/* #fKarte ist die ERSTE Karte. Steht dort von außen eine Karte, die
+   nicht gewählt ist (ein älterer Weg setzt das Feld direkt), gilt sie
+   als Umzug: nur diese. Sonst kommt sie an die erste Stelle. */
+function kartenFuerSatz(){
+  const erste = $("#fKarte").value || fKartenWahl[0] || welcheKarte;
+  if(!fKartenWahl.includes(erste)) return [erste];
+  return [erste].concat(fKartenWahl.filter(x => x !== erste));
 }
-$("#karteSegment").onclick = e => {
-  const b = e.target.closest("button[data-wert]"); if(!b) return;
-  $("#fKarte").value = b.dataset.wert;
+function karteSegmentAktualisieren(){
+  const da = kartenListe().map(k => k.id);
+  fKartenWahl = fKartenWahl.filter(id => da.includes(id));
+  if(!fKartenWahl.length) fKartenWahl = [da.includes($("#fKarte").value) ? $("#fKarte").value : welcheKarte];
+  karteAuswahlenFuellen();
+  $("#fKarte").value = fKartenWahl[0];
+  $("#fKarten").innerHTML = kartenListe().map(k =>
+    '<button type="button" data-karte-wahl="' + sicher(k.id) + '" aria-pressed="' + fKartenWahl.includes(k.id) + '">' +
+    sicher(k.name) + '</button>').join("");
+}
+$("#fKarten").onclick = e => {
+  const b = e.target.closest("[data-karte-wahl]"); if(!b) return;
+  const id = b.dataset.karteWahl;
+  if(fKartenWahl.includes(id)){
+    if(fKartenWahl.length === 1) return melde("Mindestens eine Karte bleibt gewählt", true);
+    fKartenWahl = fKartenWahl.filter(x => x !== id);
+  } else fKartenWahl = fKartenWahl.concat([id]);
+  $("#fKarte").value = fKartenWahl[0];
   $("#fKarte").dispatchEvent(new Event("change", {bubbles:true}));
   karteSegmentAktualisieren();
 };
-/* Ohne Bewegung ist der Schieber sofort da — kein Nachziehen, das bei
-   reduzierter Bewegung wie ein Ruckeln wirken wuerde. */
-if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
-  $("#karteSegment .segmentschieber").style.transition = "none";
-}
 
 /* ═══════════════════════════════════════════════════════════════
    SPRACHEN AM GERICHT
@@ -13645,7 +13865,7 @@ function entwurfFormLesen(){
     preis: $("#fPreis").value, kategorie: $("#fKat").value,
     allergene: stoffeLesen("#fAllergene"), zusatzstoffe: stoffeLesen("#fZusatz"),
     stoff_hinweis: $("#fStoffHinweis").value, bild: $("#fBild").value,
-    karte: $("#fKarte").value, spur: spurLesen(),
+    karte: $("#fKarte").value, karten: fKartenWahl.slice(), spur: spurLesen(),
     veg: $("#fVeg").getAttribute("aria-pressed") === "true",
     vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
     verfuegbar: $("#fVerf").getAttribute("aria-pressed") === "true",
@@ -13658,7 +13878,8 @@ function entwurfFormAnwenden(w){
   stoffeSetzen("#fAllergene", w.allergene); stoffeSetzen("#fZusatz", w.zusatzstoffe);
   $("#fStoffHinweis").value = w.stoff_hinweis || "";
   $("#fBild").value = w.bild || ""; bildSchauSetzen(w.bild || "");
-  $("#fKarte").value = w.karte || welcheKarte; karteSegmentAktualisieren();
+  fKartenWahl = Array.isArray(w.karten) && w.karten.length ? w.karten.slice() : [w.karte || welcheKarte];
+  $("#fKarte").value = fKartenWahl[0]; karteSegmentAktualisieren();
   spurSetzen(w.spur);
   $("#fVeg").setAttribute("aria-pressed", !!w.veg);
   $("#fVegan").setAttribute("aria-pressed", !!w.vegan);
@@ -13724,7 +13945,8 @@ function blattOeffnen(g){
   $("#fBildFrei").value = g?.bild_frei || "";
   bkWahlZu();
   bkZeichnen();
-  $("#fKarte").value = g?.karte || welcheKarte;
+  fKartenWahl = g ? gerichtKarten(g).slice() : [welcheKarte];
+  $("#fKarte").value = fKartenWahl[0];
   karteSegmentAktualisieren();
   $("#fVeg").setAttribute("aria-pressed", g ? !!g.veg : false);
   $("#fVegan").setAttribute("aria-pressed", g ? !!g.vegan : false);
@@ -13768,13 +13990,140 @@ $("#blatt").onclick = e => { if(e.target === $("#blatt")) blattSchliessen(); };
   };
 });
 
-// Kartenumschalter
+// Kartenumschalter — aus dem Verzeichnis gezeichnet
+function kartenWahlZeichnen(){
+  const liste = kartenListe();
+  if(!liste.some(k => k.id === welcheKarte)) welcheKarte = liste[0] ? liste[0].id : "speisekarte";
+  $("#kartenWahl").innerHTML = liste.map(k =>
+    '<button class="chip" data-karte="' + sicher(k.id) + '" aria-pressed="' + (k.id === welcheKarte) + '">' +
+    sicher(k.name) + '</button>').join("") +
+    (liste.length < KARTEN_HOECHST
+      ? '<button class="chip" data-karte-neu aria-label="Neue Karte anlegen">＋ Karte</button>' : "") +
+    '<button class="chip" data-karten-bearbeiten aria-label="Karten bearbeiten">✎ Karten</button>';
+  karteAuswahlenFuellen();
+}
 $("#kartenWahl").onclick = e => {
-  const c = e.target.closest(".chip"); if(!c) return;
+  if(e.target.closest("[data-karte-neu]")) return kvOeffnen(true);
+  if(e.target.closest("[data-karten-bearbeiten]")) return kvOeffnen(false);
+  const c = e.target.closest(".chip[data-karte]"); if(!c) return;
   welcheKarte = c.dataset.karte;
-  $$("#kartenWahl .chip").forEach(x => x.setAttribute("aria-pressed", x === c));
+  $$("#kartenWahl .chip[data-karte]").forEach(x => x.setAttribute("aria-pressed", x === c));
   zeichneKarte();
 };
+/* Alle Auswahlfelder, die Karten anbieten (Karte einlesen, Gericht),
+   folgen dem Verzeichnis — vorher standen dort fest drei Optionen. */
+function karteAuswahlenFuellen(){
+  const opt = kartenListe().map(k => '<option value="' + sicher(k.id) + '">' + sicher(k.name) + '</option>').join("");
+  ["#impKarte", "#fKarte"].forEach(sel => {
+    const el = $(sel); if(!el) return;
+    const vorher = el.value; el.innerHTML = opt;
+    el.value = kartenListe().some(k => k.id === vorher) ? vorher : welcheKarte;
+  });
+}
+
+/* ── Karten-Blatt ──────────────────────────────────────────────── */
+let kvEntwurf = null;
+function kvGerichteIn(id){ return gerichte.filter(g => inKarte(g, id)); }
+function kvOeffnen(gleichNeu){
+  kvEntwurf = kartenKopie();
+  if(gleichNeu && kvEntwurf.length < KARTEN_HOECHST)
+    kvEntwurf.push({ id:null, name:"", unter:"", kategorien:[], _neu:true });
+  kvZeichnen();
+  $("#kvBlatt").hidden = false;
+  if(gleichNeu) setTimeout(() => { const f = $$("#kvListe [data-kv-name]").pop(); if(f) f.focus(); }, 120);
+}
+function kvZu(){ blattFortAnimieren($("#kvBlatt"), () => { $("#kvBlatt").hidden = true; kvEntwurf = null; }); }
+function kvZeichnen(){
+  const bleiben = kvEntwurf.filter(k => !k._weg);
+  $("#kvListe").innerHTML = kvEntwurf.map((k, i) => {
+    const n = k.id ? kvGerichteIn(k.id).length : 0;
+    const andere = bleiben.filter(x => x !== k && x.id);
+    const zielWahl = k._weg && n ? '<label><small>Gerichte, die nur hier stehen, ziehen um nach</small>' +
+      '<select data-kv-ziel="' + i + '">' + andere.map(x => '<option value="' + sicher(x.id) + '"' +
+      (k._ziel === x.id ? " selected" : "") + '>' + sicher(x.name || "Neue Karte") + '</option>').join("") + '</select></label>' : "";
+    return '<div class="kv-zeile' + (k._weg ? " kv-entfernt" : "") + '">' +
+      '<div class="kv-felder">' +
+        '<input data-kv-name="' + i + '" maxlength="40" placeholder="Name, z. B. Mittagskarte" value="' + sicher(k.name) + '"' + (k._weg ? " disabled" : "") + ' aria-label="Name der Karte">' +
+        '<input data-kv-unter="' + i + '" maxlength="90" placeholder="Unterzeile (optional)" value="' + sicher(k.unter || "") + '"' + (k._weg ? " disabled" : "") + ' aria-label="Unterzeile der Karte">' +
+        '<small>' + (k._weg ? "Wird beim Sichern entfernt." : (n === 1 ? "1 Gericht" : n + " Gerichte") +
+          ((k.kategorien || []).length ? " · " + k.kategorien.length + " Kategorien" : "")) + '</small>' + zielWahl +
+      '</div><div class="kv-knoepfe">' +
+        '<button type="button" data-kv-hoch="' + i + '" aria-label="Nach oben"' + (i === 0 || k._weg ? " disabled" : "") + '>▲</button>' +
+        '<button type="button" data-kv-runter="' + i + '" aria-label="Nach unten"' + (i === kvEntwurf.length - 1 || k._weg ? " disabled" : "") + '>▼</button>' +
+        '<button type="button" class="kv-weg" data-kv-weg="' + i + '" aria-label="' + (k._weg ? "Doch behalten" : "Karte entfernen") + '"' +
+          (!k._weg && bleiben.length <= 1 ? " disabled" : "") + '>' + (k._weg ? "↺" : "✕") + '</button>' +
+      '</div></div>';
+  }).join("");
+  $("#kvNeu").disabled = bleiben.length >= KARTEN_HOECHST;
+}
+$("#kvListe").addEventListener("input", e => {
+  const n = e.target.dataset.kvName, u = e.target.dataset.kvUnter;
+  if(n !== undefined) kvEntwurf[+n].name = e.target.value;
+  if(u !== undefined) kvEntwurf[+u].unter = e.target.value;
+});
+$("#kvListe").addEventListener("change", e => {
+  const z = e.target.dataset.kvZiel; if(z !== undefined) kvEntwurf[+z]._ziel = e.target.value;
+});
+$("#kvListe").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  const tausch = (i, j) => { [kvEntwurf[i], kvEntwurf[j]] = [kvEntwurf[j], kvEntwurf[i]]; kvZeichnen(); };
+  if(b.dataset.kvHoch !== undefined) return tausch(+b.dataset.kvHoch, +b.dataset.kvHoch - 1);
+  if(b.dataset.kvRunter !== undefined) return tausch(+b.dataset.kvRunter, +b.dataset.kvRunter + 1);
+  if(b.dataset.kvWeg !== undefined){
+    const k = kvEntwurf[+b.dataset.kvWeg];
+    if(k._neu && !k._weg){ kvEntwurf.splice(+b.dataset.kvWeg, 1); return kvZeichnen(); }
+    k._weg = !k._weg;
+    if(k._weg){ const ersatz = kvEntwurf.find(x => x !== k && !x._weg && x.id); k._ziel = ersatz ? ersatz.id : null; }
+    kvZeichnen();
+  }
+});
+$("#kvNeu").onclick = () => {
+  if(kvEntwurf.filter(k => !k._weg).length >= KARTEN_HOECHST) return;
+  kvEntwurf.push({ id:null, name:"", unter:"", kategorien:[], _neu:true });
+  kvZeichnen();
+  const f = $$("#kvListe [data-kv-name]").pop(); if(f) f.focus();
+};
+$("#kvAbbrechen").onclick = () => kvZu();
+$("#kvBlatt").addEventListener("click", e => { if(e.target === $("#kvBlatt")) kvZu(); });
+$("#kvSichern").onclick = async () => {
+  const bleiben = kvEntwurf.filter(k => !k._weg);
+  if(!bleiben.length) return melde("Mindestens eine Karte muss bleiben", true);
+  const leer = bleiben.find(k => !String(k.name || "").trim());
+  if(leer) return melde("Jede Karte braucht einen Namen", true);
+  const namen = bleiben.map(k => k.name.trim().toLowerCase());
+  if(new Set(namen).size !== namen.length) return melde("Zwei Karten heißen gleich", true);
+  bleiben.forEach(k => { k.name = k.name.trim(); if(!k.id) k.id = karteNeueId(k.name); });
+  /* Gerichte entfernter Karten: die Karte aus ihrer Liste nehmen; wer
+     danach keine mehr hat, zieht in die gewählte um. Kein Gericht geht
+     dabei verloren. */
+  const aenderungen = [];
+  kvEntwurf.filter(k => k._weg && k.id).forEach(k => {
+    const ziel = bleiben.some(x => x.id === k._ziel) ? k._ziel : bleiben[0].id;
+    kvGerichteIn(k.id).forEach(g => {
+      let neu = gerichtKarten(g).filter(id => id !== k.id);
+      if(!neu.length) neu = [ziel];
+      aenderungen.push({ g, karten:neu });
+    });
+  });
+  const knopf = $("#kvSichern"); knopf.disabled = true;
+  try{
+    for(const a of aenderungen){
+      if(!demo && db){
+        const {error} = await db.from("gerichte").update({ karten:a.karten, karte:a.karten[0] }).eq("id", a.g.id);
+        if(error) throw error;
+      }
+      a.g.karten = a.karten; a.g.karte = a.karten[0];
+    }
+    if(!(await kartenSichern(bleiben))) return;
+    kvZu();
+    kartenWahlZeichnen(); zeichneKarte();
+    melde("Karten gesichert");
+  }catch(e){
+    melde("Nicht gespeichert — Verbindung prüfen", true);
+    await katNeuLaden();
+  }finally{ knopf.disabled = false; }
+};
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#kvBlatt").hidden) kvZu(); });
 
 $("#speichern").onclick = () => sichern(false);
 $("#kopie").onclick     = () => sichern(true);
@@ -14231,7 +14580,8 @@ async function sichern(alsKopie){
     bild: $("#fBild").value.trim(),
     bild_frei: $("#fBildFrei").value.trim() || null,
     verfuegbar: $("#fVerf").getAttribute("aria-pressed") === "true",
-    karte: $("#fKarte").value,
+    karte: $("#fKarte").value || fKartenWahl[0],
+    karten: kartenFuerSatz(),
     veg:   $("#fVeg").getAttribute("aria-pressed") === "true",
     vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
   };
@@ -14241,7 +14591,7 @@ async function sichern(alsKopie){
      stünde es allein zwischen zwei fremden Blöcken. Ist die Kategorie
      noch nirgends vergeben, hängt sie sich hinten an. */
   const vorhanden = gerichte.find(g =>
-    (g.karte || "speisekarte") === satz.karte && g.kategorie === kat &&
+    inKarte(g, satz.karte) && g.kategorie === kat &&
     (!bearbeite || g.id !== bearbeite.id));
   satz.kat_sort = vorhanden ? (vorhanden.kat_sort ?? 0) : katSortNeu(satz.karte);
   /* Das Zeichen gehört zur Kategorie: in einer vorhandenen erbt das
@@ -14249,7 +14599,8 @@ async function sichern(alsKopie){
      Ausdrücklich auch null — sonst trüge ein umgezogenes Gericht das
      Zeichen seiner ALTEN Kategorie mit, und der Hub nähme es. */
   satz.kat_emoji = vorhanden ? katZeichenVon(kat, satz.karte)
-    : (katNeuWunsch && katNeuWunsch.name === kat && katNeuWunsch.karte === satz.karte ? katNeuWunsch.zeichen : null);
+    : (katZeichenVerz(kat, satz.karte) ||
+       (katNeuWunsch && katNeuWunsch.name === kat && katNeuWunsch.karte === satz.karte ? katNeuWunsch.zeichen : null));
   const neueKategorie = !vorhanden;
 
   const neuAnlegen = alsKopie || !bearbeite;
@@ -14266,7 +14617,7 @@ async function sichern(alsKopie){
       if(error) return melde("Nicht gespeichert — Verbindung prüfen", true);
       Object.assign(bearbeite, satz);
     }else{
-      satz.reihenfolge = gerichte.filter(g => g.kategorie === kat && (g.karte||"speisekarte") === satz.karte).length;
+      satz.reihenfolge = gerichte.filter(g => g.kategorie === kat && inKarte(g, satz.karte)).length;
       const {data, error} = await db.from("gerichte").insert(satz).select().single();
       if(error) return melde("Nicht gespeichert — Verbindung prüfen", true);
       gerichte.push(data);
