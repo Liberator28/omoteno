@@ -1576,7 +1576,14 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 }
 .tag.veg{background:var(--pistazie-flaeche);color:var(--pistazie)}
 .tag.vegan{background:var(--pistazie-flaeche);color:var(--pistazie);border:1px solid var(--pistazie)}
-.tag.scharf{background:var(--rot-flaeche);color:var(--rot)}
+.tag.scharf,.tag.rabatt{background:var(--rot-flaeche);color:var(--rot)}
+/* Rabatt in der Karte: neuer Preis in Rot vorn, der alte leise
+   gestrichen daneben, die Plakette wie die anderen Merkmale. */
+.gericht .p.pneu{color:var(--rot)}
+.gericht .palt{font-size:12.5px;color:var(--tinte-leise);margin-left:7px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gpz .tag.rabatt{margin-left:7px;vertical-align:1px}
+.wkopf .wp.pneu{color:var(--rot)}
+.wkopf .wp .palt{display:block;font-size:13px;font-weight:400;color:var(--tinte-leise);text-align:right;font-family:var(--schrift-text, inherit)}
 .tag.top{background:var(--gold-flaeche);color:var(--gold)}
 
 .ginfo{
@@ -5378,6 +5385,7 @@ function aktionenLaden(){
         aktionen = Array.isArray(liste) ? liste : [];
         /* Vorschau: Die Beispiel-Aktion des Boards bleibt stehen. */
         if(VORSCHAU && vorschauAktion()) return;
+        merkPreiseAbgleichen();
         if(aktionen.map(a => a.id).join(",") !== vorher) aktionAnzeigen();
       })
       .catch(() => {});
@@ -5386,11 +5394,18 @@ function aktionenLaden(){
 
 /* Preis mit dem Komma des Hauses. preisText() gibt es schon — es
    noch einmal zu schreiben hieße, es an zwei Stellen zu pflegen. */
+/* Ein Dauer-Rabatt (länger als 30 Tage, „bis ich es beende“ im Board)
+   gehört in die Karte, nicht in den Streifen ganz oben — dort stünde er
+   sonst monatelang als „noch 8760 Stunden“. */
+const AKTION_STREIFEN_MIN = 30 * 24 * 60;
 function aktionBandHTML(){
-  if(!aktionen.length) return "";
-  return aktionen.map(a => {
+  const kurz = aktionen.filter(a => (new Date(a.bis) - Date.now()) / 60000 <= AKTION_STREIFEN_MIN);
+  if(!kurz.length) return "";
+  return kurz.map(a => {
     const restMin = Math.max(0, Math.round((new Date(a.bis) - Date.now()) / 60000));
-    const rest = restMin >= 60
+    const rest = restMin >= 48 * 60
+      ? t("noch {n} Tage", {n: Math.floor(restMin / 1440)})
+      : restMin >= 60
       ? t("noch {n} Stunden", {n: Math.floor(restMin / 60)})
       : t("nur noch {n} Minuten", {n: restMin});
     /* Nur anklickbar/bestellbar, wenn das Gericht wirklich in DIESER
@@ -8912,6 +8927,7 @@ const TEXTE = {
 "Wenn Sie mögen, hinterlassen Sie uns ein paar Worte auf Google. Wir freuen uns über jede ehrliche Rückmeldung.":{en:"If you like, leave us a few words on Google. We're glad of every honest word.",tr:"İsterseniz Google'da bize birkaç satır bırakın. Her dürüst geri bildirime seviniriz.",ru:"Если хотите, оставьте нам пару слов в Google. Мы рады каждому честному отзыву.",fr:"Si vous le souhaitez, laissez-nous quelques mots sur Google. Chaque retour sincère nous fait plaisir.",es:"Si le apetece, déjenos unas palabras en Google. Agradecemos cada comentario sincero.",it:"Se le va, ci lasci due parole su Google. Ogni riscontro sincero ci fa piacere.",pl:"Jeśli masz ochotę, zostaw nam kilka słów w Google. Cieszy nas każda szczera opinia.",ar:"إن أحببت، اترك لنا بضع كلمات على جوجل. يسعدنا كل رأي صادق.",uk:"Якщо бажаєте, залиште нам кілька слів у Google. Ми раді кожному щирому відгуку.",nl:"Als u wilt, laat ons een paar woorden achter op Google. We zijn blij met elke eerlijke reactie.",ro:"Dacă doriți, lăsați-ne câteva cuvinte pe Google. Ne bucură orice părere sinceră."},
 "Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – sonst nichts. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.":{en:"What for: the odd voucher or invitation from us – nothing else. We only write once you've confirmed the address by email, and you can opt out at any time.",tr:"Ne için: ara sıra bir kupon ya da davet – başka bir şey değil. Yalnızca adresi onay e-postasıyla doğruladıktan sonra yazarız ve dilediğiniz an vazgeçebilirsiniz.",ru:"Зачем: изредка купон или приглашение от нас — и ничего больше. Мы пишем только после подтверждения адреса по почте, и вы в любой момент можете отказаться.",fr:"À quoi cela sert : un bon ou une invitation de temps à autre – rien d'autre. Nous n'écrivons qu'après confirmation de l'adresse par e-mail, et vous pouvez vous désinscrire à tout moment.",es:"Para qué: algún vale o invitación nuestra, nada más. Solo escribimos cuando haya confirmado la dirección por correo, y puede darse de baja cuando quiera.",it:"A cosa serve: ogni tanto un buono o un invito da parte nostra, nient'altro. Le scriviamo solo dopo la conferma dell'indirizzo via e-mail e può revocare in qualsiasi momento.",pl:"Po co: od czasu do czasu kupon lub zaproszenie od nas – nic więcej. Piszemy dopiero po potwierdzeniu adresu w e-mailu, a z zapisu można w każdej chwili zrezygnować.",ar:"لماذا: قسيمة أو دعوة منا من حين لآخر — لا أكثر. لن نراسلك إلا بعد تأكيد العنوان عبر بريد التأكيد، ويمكنك الاعتراض في أي وقت.",uk:"Навіщо: час від часу купон або запрошення від нас — і нічого більше. Пишемо лише після підтвердження адреси листом, і ви будь-коли можете відмовитися.",nl:"Waarvoor: af en toe een bon of uitnodiging van ons – meer niet. We schrijven pas zodra u het adres per e-mail hebt bevestigd, en u kunt zich altijd afmelden.",ro:"Pentru ce: din când în când un voucher sau o invitație de la noi – nimic altceva. Vă scriem doar după ce confirmați adresa prin e-mail și puteți renunța oricând."},
 "gültig bis {d}":{en:"valid until {d}",tr:"{d} tarihine kadar geçerli",ru:"действует до {d}",fr:"valable jusqu'au {d}",es:"válido hasta el {d}",it:"valido fino al {d}",pl:"ważne do {d}",ar:"صالح حتى {d}",uk:"дійсний до {d}",nl:"geldig tot {d}",ro:"valabil până la {d}"},
+"noch {n} Tage":{en:"{n} days left",tr:"{n} gün kaldı",ru:"ещё {n} дн.",fr:"encore {n} jours",es:"quedan {n} días",it:"ancora {n} giorni",pl:"jeszcze {n} dni",ar:"بقي {n} أيام",uk:"ще {n} дн.",nl:"nog {n} dagen",ro:"încă {n} zile"},
 "noch {n} Stunden":{en:"{n} hours left",tr:"{n} saat kaldı",ru:"ещё {n} ч.",fr:"encore {n} heures",es:"quedan {n} horas",it:"ancora {n} ore",pl:"jeszcze {n} godz.",ar:"بقي {n} ساعات",uk:"ще {n} год",nl:"nog {n} uur",ro:"încă {n} ore"},
 "nur noch {n} Minuten":{en:"only {n} minutes left",tr:"sadece {n} dakika kaldı",ru:"осталось {n} мин.",fr:"plus que {n} minutes",es:"solo quedan {n} minutos",it:"solo {n} minuti",pl:"tylko {n} min",ar:"بقي {n} دقائق فقط",uk:"лише {n} хв",nl:"nog maar {n} minuten",ro:"doar {n} minute"},
 "und {n} weitere":{en:"and {n} more",tr:"ve {n} tane daha",ru:"и ещё {n}",fr:"et {n} de plus",es:"y {n} más",it:"e altri {n}",pl:"i jeszcze {n}",ar:"و{n} أخرى",uk:"і ще {n}",nl:"en nog {n}",ro:"și încă {n}"},
@@ -9781,6 +9797,50 @@ function merkSumme(){
 }
 function preisText(v){ return v.toFixed(2).replace(".", ",") + " €"; }
 
+/* ── Rabatt direkt am Gericht (Wunsch 07.10.) ─────────────────────
+   Eine laufende Aktion zeigt sich jetzt auch in der Karte selbst:
+   alter Preis gestrichen, neuer Preis, „−20 %“. Kein zweites
+   Rabattsystem — es ist dieselbe Tabelle aktionen, die der Server beim
+   Bestellen ohnehin nachrechnet (least() aus Karte und Aktion). Der
+   gestrichene Preis ist der AKTUELLE Kartenpreis, nicht preis_alt: Hat
+   der Wirt den Preis seither geändert, stimmte sonst die Rechnung auf
+   dem Schirm nicht. Liegt der Aktionspreis nicht darunter, gibt es
+   nichts zu zeigen. */
+function aktionVon(name){
+  const g = findeGericht(name); if(!g || g.p === "–") return null;
+  const karte = preisNum(g.p);
+  const a = aktionen.find(x => x && x.gericht_name === name && new Date(x.bis) > Date.now() &&
+    Number(x.preis_neu) >= 0 && Number(x.preis_neu) < karte);
+  if(!a) return null;
+  const neu = Number(a.preis_neu);
+  return { a, alt: karte, neu, prozent: Math.max(1, Math.round((1 - neu / karte) * 100)) };
+}
+/* Der Preis, der in den Korb geht — im Format der Karte („7,90“). */
+function korbPreis(g){
+  const r = aktionVon(g.n);
+  return r ? r.neu.toFixed(2).replace(".", ",") : g.p;
+}
+/* Fängt eine Aktion an oder endet sie, während etwas im Korb liegt,
+   zieht der Korb nach — sonst zeigte er einen Preis, den der Server
+   nicht berechnet. */
+function merkPreiseAbgleichen(){
+  let anders = false;
+  Object.keys(merk).forEach(name => {
+    const g = findeGericht(name); if(!g) return;
+    const p = korbPreis(g);
+    if(preisNum(merk[name].p) !== preisNum(p)){ merk[name].p = p; anders = true; }
+  });
+  if(anders){ merkSpeichern(); if(typeof balkenAktualisieren === "function") balkenAktualisieren(); }
+}
+function gerichtPreisHTML(g){
+  if(g.p === "–") return '<span class="p">–</span>';
+  const r = aktionVon(g.n);
+  if(!r) return '<span class="p">' + g.p + ' €</span>';
+  return '<span class="p pneu">' + preisText(r.neu) + '</span>' +
+    '<s class="palt">' + preisText(r.alt) + '</s>' +
+    '<span class="tag rabatt">−' + r.prozent + ' %</span>';
+}
+
 function gerichtHTML(g){
   const tags = (g.top ? '<span class="tag top">' + t("BELIEBT") + '</span>' : "")
              + (g.vegan ? '<span class="tag vegan">' + t("VEGAN") + '</span>'
@@ -9818,7 +9878,7 @@ function gerichtHTML(g){
          '<div class="n">' + t(g.n) + tags + (hatInfo ? '<span class="infopunkt"></span>' : "") + '</div>' +
          urnameHTML(g.n) +
          (g.b ? '<div class="b">' + t(g.b) + '</div>' : "") +
-         '<span class="gpz"><span class="p">' + g.p + (g.p === "–" ? "" : " €") + '</span></span>' +
+         '<span class="gpz">' + gerichtPreisHTML(g) + '</span>' +
          '</span>' +
          vorschau +
          '</button>' +
@@ -10247,7 +10307,7 @@ function edWaehlen(ja, ausX, tempo){
   const name = decodeURIComponent(karte.dataset.ed);
   if(ja){
     const g = findeGericht(name);
-    if(g && !merk[name]){ merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 }; merkSpeichern(); }
+    if(g && !merk[name]){ merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 }; merkSpeichern(); }
     balkenAktualisieren();
     const quelle = karte.querySelector(".ed-bildflaeche.mitpop .ed-pop") ||
                    karte.querySelector(".ed-bildflaeche.mitfoto .ed-foto") || karte.querySelector(".ed-emo");
@@ -12810,7 +12870,7 @@ function warenkarteHTML(g){
     encodeURIComponent(g.n) + '" style="margin-top:20px;margin-bottom:0">' +
     t(drin ? "Aus meiner Auswahl entfernen" : "Zur Auswahl hinzufügen") +
     (g.p !== "–" && !drin
-      ? '<span class="kpreis">' + preisText(preisNum(g.p) + optAufpreis(g.n)) + '</span>'
+      ? '<span class="kpreis">' + preisText(preisNum(korbPreis(g)) + optAufpreis(g.n)) + '</span>'
       : "") + '</button>';
 
   /* Bild nur zeigen, wenn eines hinterlegt ist. Lädt es nicht, blendet
@@ -12847,7 +12907,9 @@ function warenkarteHTML(g){
     '<div class="wkopf' + (hatVorschau(g) ? '' : ' frei') + '">' +
     '<div><div class="wn" id="wname">' + t(g.n) + tags + '</div>' +
       urnameHTML(g.n) + '</div>' +
-    '<div class="wp">' + g.p + (g.p === "–" ? "" : " €") + '</div></div>' +
+    (aktionVon(g.n)
+      ? '<div class="wp pneu">' + preisText(aktionVon(g.n).neu) + '<s class="palt">' + preisText(aktionVon(g.n).alt) + '</s></div></div>'
+      : '<div class="wp">' + g.p + (g.p === "–" ? "" : " €") + '</div></div>') +
     (g.b ? '<div class="wbeschr">' + t(g.b) + '</div>' : "") +
     (gruppen ? '<div class="wtrenn"></div>' + gruppen : "") +
     '<div class="wtrenn"></div>' +
@@ -13645,7 +13707,7 @@ $("warenkarte").addEventListener("click", e => {
   const name = decodeURIComponent(b.dataset.wmerk);
   const g = findeGericht(name);
   if(merk[name]) delete merk[name];
-  else if(g) merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 };
+  else if(g) merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 };
   merkSpeichern();
   balkenAktualisieren();
   /* Herz in der Liste dahinter mitziehen, ohne die Seite neu zu bauen
@@ -13698,7 +13760,7 @@ $("inhalt").addEventListener("click", e => {
   const nehm = e.target.closest("[data-eh-nehm]");
   if(nehm){
     const name = decodeURIComponent(nehm.dataset.ehNehm), g = findeGericht(name);
-    if(g && !merk[name]){ merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 }; merkSpeichern(); }
+    if(g && !merk[name]){ merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 }; merkSpeichern(); }
     balkenAktualisieren();
     inDenKorbFliegen(document.querySelector("#edFlaeche .eh-wahl .ed-bildflaeche.mitpop .ed-pop") ||
                      document.querySelector("#edFlaeche .eh-wahl .ed-emo"), name);
@@ -13733,7 +13795,7 @@ $("inhalt").addEventListener("click", e => {
     const name = decodeURIComponent(plus.dataset.merk);
     const g = findeGericht(name);
     if(!g) return;
-    merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 };
+    merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 };
     merkSpeichern();
     const zeile = plus.closest(".gericht");
     const bild = zeile && zeile.querySelector(".gbild img.geladen");
@@ -13763,7 +13825,7 @@ $("inhalt").addEventListener("click", e => {
     const name = decodeURIComponent(herz.dataset.merk);
     const g = findeGericht(name);
     if(merk[name]) delete merk[name];
-    else if(g) merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 };
+    else if(g) merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 };
     merkSpeichern();
     herz.classList.toggle("an", !!merk[name]);
     balkenAktualisieren();
@@ -13801,7 +13863,7 @@ $("inhalt").addEventListener("click", e => {
     const name = decodeURIComponent(dazu.dataset.dazu);
     const g = findeGericht(name);
     if(!g || merk[name]) return;
-    merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 };
+    merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 };
     merkSpeichern();
     balkenAktualisieren();
     korbZahlHuepfen();

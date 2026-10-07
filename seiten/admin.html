@@ -1435,6 +1435,12 @@ body.hell .schritt[aria-pressed=true]{
 .kartenchips{display:flex;flex-wrap:wrap;gap:8px}
 /* Eigene Kacheln, Karte je Kachel, Zeitplan */
 /* Gericht-Blatt: Vorschläge und „Mehr Angaben“ */
+.rabattblock{margin:18px 0 6px;padding-top:14px;border-top:1px solid var(--linie)}
+.rabattblock .segment{margin:8px 0 10px}
+.rb-wert{display:block;margin:4px 0 10px}
+.rb-laeuft{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px}
+.rb-stand{flex:1 1 200px;margin:0;font-size:14px;color:var(--kreide)}
+#rbStarten{width:100%}
 .gvorschlag{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:-4px 0 16px}
 .gvorschlag-satz{flex:1 1 100%;font-size:12.5px;color:var(--gedaempft)}
 .gvorschlag button{min-height:44px;padding:0 12px;border-radius:999px;border:1px dashed var(--messing);
@@ -1500,6 +1506,9 @@ body.hell .kartenchips button[aria-pressed=true]{color:var(--flaeche)}
 .gpreis{font-family:var(--mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;flex-shrink:0}
 .aus .gname,.aus .gpreis{text-decoration:line-through;opacity:.45}
 .aus .gallhinweis{opacity:.45}
+.rbmarke{
+  font-size:11px;font-weight:700;color:var(--messing);border:1px solid var(--messing);
+  padding:2px 6px;border-radius:4px;flex-shrink:0;font-variant-numeric:tabular-nums}
 .ausmarke{
   font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   color:var(--warn);border:1px solid var(--warn);
@@ -4351,6 +4360,35 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div><div class="schaltertext">Heute verfügbar</div>
       <div class="schalterhilfe">Aus = im Gast-Hub durchgestrichen</div></div>
       <button class="wippe" id="fVerf" aria-pressed="true" aria-label="Verfügbarkeit"></button>
+    </div>
+
+    <!-- Rabatt direkt am Gericht (Wunsch 07.10.): schreibt eine Zeile in
+         aktionen — dieselbe Tabelle wie „Aktion starten“, kein zweites
+         System. Der Gast sieht in der Karte alten und neuen Preis. -->
+    <div class="rabattblock" id="rbBlock">
+      <span class="lname">Rabatt <span class="lzusatz">in der Karte mit altem und neuem Preis</span></span>
+      <p class="feldhilfe" id="rbErst" hidden>Erst speichern — dann lässt sich das Gericht hier rabattieren.</p>
+      <div class="rb-laeuft" id="rbLaeuft" hidden>
+        <p class="rb-stand" id="rbStand"></p>
+        <button type="button" class="knopf leise" id="rbEnde">Rabatt beenden</button>
+      </div>
+      <div class="rb-neu" id="rbNeu" hidden>
+        <div class="segment" id="rbArt" role="radiogroup" aria-label="Art des Rabatts">
+          <button type="button" data-rb-art="prozent" role="radio" aria-checked="true">Prozent</button>
+          <button type="button" data-rb-art="preis" role="radio" aria-checked="false">Neuer Preis</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+        <label class="rb-wert"><span class="lname" id="rbWertName">Prozent</span>
+          <input type="text" id="rbWert" inputmode="decimal" autocomplete="off" placeholder="20"></label>
+        <div class="segment" id="rbDauer" role="radiogroup" aria-label="Wie lange">
+          <button type="button" data-rb-dauer="heute" role="radio" aria-checked="true">Heute</button>
+          <button type="button" data-rb-dauer="woche" role="radio" aria-checked="false">7 Tage</button>
+          <button type="button" data-rb-dauer="offen" role="radio" aria-checked="false">Bis ich es beende</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+        <p class="feldhilfe" id="rbVorschau"></p>
+        <button type="button" class="knopf" id="rbStarten">Rabatt starten</button>
+      </div>
     </div>
 
     </div></div></div>
@@ -8709,6 +8747,7 @@ function zeichneKarte(){
                 ${kuerzel.length ? `<div class="gallhinweis">${kuerzel.map(sicher).join(" · ")}</div>` : ""}
               </div>
               ${g.verfuegbar ? "" : `<span class="ausmarke">aus</span>`}
+              ${(() => { const r = rbLaufend(g); return r ? `<span class="rbmarke" title="Rabatt läuft">−${Math.round((1 - r.preis_neu / r.preis_alt) * 100)} %</span>` : ""; })()}
               <span class="gpreis">${euro(g.preis)}</span>
               <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">
                 <path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -9925,7 +9964,7 @@ async function aktionenLaden(){
   if(demo || !db || !betriebId){ aktionenZeichnen(); return; }
   try{
     const {data, error} = await db.from("aktionen")
-      .select("id,gericht_name,preis_alt,preis_neu,von,bis,aktiv")
+      .select("id,gericht_id,gericht_name,preis_alt,preis_neu,von,bis,aktiv")
       .eq("betrieb_id", betriebId)
       .gte("bis", new Date().toISOString())
       /* Am Ende ein eindeutiges Feld — bei gleichem Ende wäre die
@@ -13703,6 +13742,100 @@ $("#gVorschlag").addEventListener("click", e => {
   if(x && typeof gExtraAnnehmen === "function"){ gExtraAnnehmen(x.dataset.vorschlagExtra); gVorschlaegeZeichnen(); mehrStandSetzen(); }
 });
 
+/* ── Rabatt am Gericht ────────────────────────────────────────────
+   Schreibt sofort (nicht erst mit „Speichern“): Ein Rabatt ist eine
+   eigene Zeile in aktionen, kein Feld des Gerichts — und „beenden“
+   muss beenden, auch wenn das Blatt danach verworfen wird.
+   „Bis ich es beende“ = 365 Tage (bis > von ist Pflicht der Tabelle). */
+let rbArtWert = "prozent", rbDauerWert = "heute";
+function rbLaufend(g){
+  if(!g) return null;
+  return aktionen.find(a => a.aktiv !== false && new Date(a.bis) > Date.now() &&
+    (a.gericht_id ? a.gericht_id === g.id : a.gericht_name === g.name)) || null;
+}
+function rbPreisAlt(){ return bearbeite ? Number(bearbeite.preis) || 0 : 0; }
+function rbNeuerPreis(){
+  const alt = rbPreisAlt(), w = preisAusFeld($("#rbWert").value);
+  if(!(alt > 0) || !(w > 0)) return 0;
+  /* Ab 100 % wird der Preis 0 oder kleiner — rbStarten verlangt neu > 0,
+     eine eigene Grenze hier trüge nichts (Gegenbeweis: blieb grün). */
+  if(rbArtWert === "prozent") return Math.round(alt * (1 - w / 100) * 100) / 100;
+  return w;
+}
+function rbBis(){
+  const jetzt = new Date();
+  if(rbDauerWert === "heute"){ const e = new Date(jetzt); e.setHours(23, 59, 0, 0); return e; }
+  return new Date(jetzt.getTime() + (rbDauerWert === "woche" ? 7 : 365) * 864e5);
+}
+function rbSegment(id, attr, wert){
+  const seg = $(id), knoepfe = [...seg.querySelectorAll("button")];
+  knoepfe.forEach(b => b.setAttribute("aria-checked", String(b.dataset[attr] === wert)));
+  const i = Math.max(0, knoepfe.findIndex(b => b.dataset[attr] === wert));
+  seg.querySelector(".segmentschieber").style.transform = "translateX(" + (i * 100) + "%)";
+}
+function rbZeichnen(){
+  const g = bearbeite, lauf = rbLaufend(g);
+  $("#rbErst").hidden = !!g;
+  $("#rbLaeuft").hidden = !lauf;
+  $("#rbNeu").hidden = !g || !!lauf;
+  if(lauf){
+    const prozent = Math.round((1 - lauf.preis_neu / lauf.preis_alt) * 100);
+    const offen = new Date(lauf.bis) - Date.now() > 30 * 864e5;
+    $("#rbStand").textContent = "Läuft: " + euro(lauf.preis_neu) + " statt " + euro(lauf.preis_alt) +
+      " (−" + prozent + " %) · " + (offen ? "bis Sie es beenden" : "bis " +
+      new Date(lauf.bis).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"}) + ", " + uhrzeit(lauf.bis));
+  }
+  rbSegment("#rbArt", "rbArt", rbArtWert);
+  rbSegment("#rbDauer", "rbDauer", rbDauerWert);
+  $("#rbWertName").textContent = rbArtWert === "prozent" ? "Prozent" : "Neuer Preis in Euro";
+  $("#rbWert").placeholder = rbArtWert === "prozent" ? "20" : (rbPreisAlt() ? (rbPreisAlt() * .8).toFixed(2).replace(".", ",") : "7,50");
+  const neu = rbNeuerPreis(), alt = rbPreisAlt();
+  $("#rbVorschau").textContent = !$("#rbWert").value.trim() ? "" :
+    (neu > 0 && neu < alt ? "Gäste sehen " + euro(neu) + " statt " + euro(alt) + " (−" + Math.round((1 - neu / alt) * 100) + " %)."
+                          : "Der neue Preis muss unter " + euro(alt) + " liegen.");
+  $("#rbStarten").disabled = !(neu > 0 && neu < alt);
+}
+$("#rbArt").addEventListener("click", e => { const b = e.target.closest("[data-rb-art]"); if(!b) return; rbArtWert = b.dataset.rbArt; $("#rbWert").value = ""; rbZeichnen(); });
+$("#rbDauer").addEventListener("click", e => { const b = e.target.closest("[data-rb-dauer]"); if(!b) return; rbDauerWert = b.dataset.rbDauer; rbZeichnen(); });
+$("#rbWert").addEventListener("input", rbZeichnen);
+$("#rbStarten").onclick = async () => {
+  const g = bearbeite, alt = rbPreisAlt(), neu = rbNeuerPreis();
+  if(!g || !(neu > 0 && neu < alt)) return;
+  const zeile = { gericht_id: g.id, gericht_name: g.name,
+    titel: (HUBTEXTE.runner_titel || "").trim().slice(0, 40) || "Top-Runner",
+    preis_alt: alt, preis_neu: neu, von: new Date().toISOString(), bis: rbBis().toISOString() };
+  const knopf = $("#rbStarten"); knopf.disabled = true;
+  try{
+    if(demo || !db) aktionen.push({ id: "demo-" + Date.now(), aktiv: true, ...zeile });
+    else{
+      const {error} = await db.from("aktionen").insert({ betrieb_id: betriebId, ...zeile });
+      if(error) throw error;
+      await aktionenLaden();
+    }
+    $("#rbWert").value = "";
+    aktionenZeichnen(); rbZeichnen(); mehrStandSetzen(); zeichneKarte();
+    melde("Rabatt läuft — die Karte zeigt " + euro(neu) + " statt " + euro(alt));
+  }catch(err){
+    melde("Der Rabatt konnte nicht angelegt werden.", true);
+  }
+  knopf.disabled = false; rbZeichnen();
+};
+$("#rbEnde").onclick = async () => {
+  const lauf = rbLaufend(bearbeite); if(!lauf) return;
+  const knopf = $("#rbEnde"); knopf.disabled = true;
+  try{
+    if(demo || !db) aktionen = aktionen.filter(a => a.id !== lauf.id);
+    else{
+      const {error} = await db.from("aktionen").update({aktiv:false}).eq("id", lauf.id);
+      if(error) throw error;
+      await aktionenLaden();
+    }
+    aktionenZeichnen(); rbZeichnen(); mehrStandSetzen(); zeichneKarte();
+    melde("Rabatt beendet");
+  }catch(err){ melde("Konnte nicht beendet werden.", true); }
+  knopf.disabled = false;
+};
+
 /* „Mehr Angaben“: was davon gesetzt ist, in einem Satz. */
 function mehrStandSetzen(){
   const teile = [];
@@ -13716,6 +13849,8 @@ function mehrStandSetzen(){
   if($("#fVegan").getAttribute("aria-pressed") === "true") teile.push("vegan");
   else if($("#fVeg").getAttribute("aria-pressed") === "true") teile.push("vegetarisch");
   if($("#fVerf").getAttribute("aria-pressed") !== "true") teile.push("heute aus");
+  const rbl = rbLaufend(bearbeite);
+  if(rbl) teile.push("Rabatt −" + Math.round((1 - rbl.preis_neu / rbl.preis_alt) * 100) + " %");
   if(typeof gExtraStand === "function"){ const z = gExtraStand(); if(z) teile.push(z); }
   $("#mehrStand").textContent = teile.join(" · ");
 }
@@ -14267,6 +14402,7 @@ function blattOeffnen(g){
   $("#loeschen").hidden  = !g;
   $("#kopie").hidden     = !g;
   $("#speichernWeiter").hidden = !!g;
+  rbArtWert = "prozent"; rbDauerWert = "heute"; $("#rbWert").value = ""; rbZeichnen();
   /* Kluge Vorgabe: ein neues Gericht landet in der Kategorie, in die
      zuletzt in dieser Karte eines gespeichert wurde — sofern es sie noch
      gibt. Sichtbar im Auswahlknopf, mit einem Tipp geändert. */
