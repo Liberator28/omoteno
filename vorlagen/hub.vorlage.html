@@ -1973,8 +1973,16 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
    Schmutz. */
 .wbild.schwebt::after{display:none}
 /* Auch das Rechteckbild bleibt maßvoll: gleiche Höhe wie ein
-   Freisteller, damit die Karten nicht unterschiedlich hoch starten. */
-.wbild:not(.schwebt){max-height:min(34vh,230px)}
+   Freisteller, damit die Karten nicht unterschiedlich hoch starten.
+   Feste Höhe statt aspect-ratio + max-height: Gemessen verkürzte die
+   Kappung die BREITE, und der Kasten klebte links (1 px links, 21 px
+   rechts) — das Foto stand schief in der Karte. */
+.wbild:not(.schwebt){height:min(34vh,230px)}
+/* Quadratisch zugeschnitten: volle Breite der Karte, feste Höhe,
+   cover und mittig — der Ausschnitt ist gewählt, nicht zufällig, und
+   oben wie unten fällt gleich viel weg. */
+.wbild.fuellt{height:min(42vh,320px);max-height:none}
+.wbild.fuellt img{object-fit:cover;object-position:50% 50%}
 
 /* Beim Öffnen kommt das Gericht dem Gast leicht entgegen. Das ist der
    Moment, in dem er entscheidet – die Bewegung führt den Blick genau
@@ -12816,9 +12824,14 @@ function warenkarteHTML(g){
      Liste die Pop-Ansicht, hier das ganze Foto. */
   const detailFrei = !g.bild && !!g.bf;
   const detailSchwebt = detailFrei || schwebt(g);
+  /* Ein im Board quadratisch zugeschnittenes Foto füllt sein Feld
+     (cover, mittig) — der Wirt hat den Ausschnitt selbst gewählt. Alte,
+     beliebig geformte Fotos bleiben bei contain: dort hat niemand
+     entschieden, was wegfallen darf. */
+  const detailQuadrat = !detailSchwebt && bildQuadrat(g.bild);
   const bild = hatVorschau(g)
-    ? '<div class="wbild' + (detailSchwebt ? ' schwebt' : '') + '" style="aspect-ratio:' +
-      (detailSchwebt ? '1 / 1' : '16 / 10') + '">' +
+    ? '<div class="wbild' + (detailSchwebt ? ' schwebt' : '') + (detailQuadrat ? ' fuellt' : '') + '" style="aspect-ratio:' +
+      (detailSchwebt ? '1 / 1' : 'auto') + '">' +
       '<img src="' + hs(detailFrei ? g.bf : bildFuer(g, false)) + '" alt="' + t(g.n) +
       '" loading="lazy" decoding="async" ' +
       'onload="this.classList.add(&quot;geladen&quot;)" ' +
@@ -13229,9 +13242,16 @@ function bildPfad(datei){
 function istAdresse(x){ return /^https?:\/\//i.test(String(x || "")); }
 
 /* Liefert die passende Bildadresse für Liste oder Detailansicht. */
+/* Im Board zugeschnittene Fotos liegen in zwei Größen: „-q1080“ und
+   „-q320“. Die Liste nimmt die kleine (96-px-Kasten, auch auf 3×-
+   Schirmen scharf), das Detailblatt die große. Das Board vergibt die
+   Marke nur, wenn die kleine wirklich hochgeladen ist.
+   Funktionen statt einer Konstante: Der erste Aufbau kann vor dieser
+   Zeile laufen (§8.1l). */
+function bildQuadrat(adresse){ return istAdresse(adresse) && /-q1080\.(webp|jpg)$/.test(adresse); }
 function bildFuer(g, klein){
   if(!g.bild) return "";
-  if(istAdresse(g.bild)) return g.bild;
+  if(istAdresse(g.bild)) return klein && bildQuadrat(g.bild) ? g.bild.replace(/-q1080\.(webp|jpg)$/, "-q320.$1") : g.bild;
   if(g.frei){
     const webp = g.bild.replace(/\.jpg$/i, ".webp");
     return bildPfad(klein ? "frei/klein/" + webp : "frei/" + webp);

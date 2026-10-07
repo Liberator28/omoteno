@@ -265,7 +265,9 @@ const PROFI   = ORDNER + "1-profi.jpg";
       if (m && fs.existsSync(path.join(EMO, m[1]))) return r.fulfill({ status: 200, headers: { "access-control-allow-origin": "*" },
         contentType: m[1].endsWith(".js") ? "application/javascript" : "application/json", body: fs.readFileSync(path.join(EMO, m[1])) });
       if (/\/rest\/v1\/betriebe/.test(u)) return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify([{ id: BETRIEB, bestell_pause: false }]) });
-      if (/\/rest\/v1\/gerichte/.test(u)) return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(zeilen) });
+      if (/-q(320|1080)\.webp$|\/alt-foto\.jpg$/.test(u)) { (opt.geladen || []).push(u.split("/").pop());
+        return r.fulfill({ status: 200, contentType: "image/png", body: PNG }); }
+      if (/\/rest\/v1\/gerichte/.test(u)) return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(opt.zeilen || zeilen) });
       return r.fulfill({ status: 200, contentType: "application/json", body: "[]" });
     });
     await s.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch (e) {} });
@@ -355,6 +357,48 @@ const PROFI   = ORDNER + "1-profi.jpg";
         (ruhig ? "Bewegung reduzieren: kein Herausspringen, Bild steht" : "Aufdecken: der Freisteller springt heraus (ehPopRein)"), JSON.stringify(r));
       await ctx.close();
     }
+  }
+
+  {
+    /* L5: Im Board quadratisch zugeschnittene Fotos (Marke „-q1080“).
+       Die Liste lädt die kleine Fassung, das Detailblatt die große und
+       füllt das Feld (cover, mittig). Ein altes Foto ohne Marke bleibt,
+       wie es war: eine Adresse für beides, contain. */
+    console.log("\n══ Hub: Foto in zwei Größen, Detail füllt ══");
+    const geladen = [];
+    const quadrat = ORDNER + "17-teller-q1080.webp";
+    const { ctx, s, fehler } = await hubAuf({ geladen, zeilen: [
+      { id: "q1", karte: "speisekarte", kategorie: "Teller", name: "Quadrat Teller", beschreibung: "Probe", preis: 9, verfuegbar: true, bild: quadrat, bild_frei: null, kat_sort: 0, reihenfolge: 0 },
+      { id: "q2", karte: "speisekarte", kategorie: "Teller", name: "Alter Teller", beschreibung: "Probe", preis: 7, verfuegbar: true, bild: ORDNER + "alt-foto.jpg", bild_frei: null, kat_sort: 0, reihenfolge: 1 } ] });
+    const liste = await s.evaluate(() => {
+      const src = name => { const z = [...document.querySelectorAll(".gericht")].find(x => x.textContent.includes(name));
+        const i = z && z.querySelector(".gbild img"); return i ? i.getAttribute("src").split("/").pop() : ""; };
+      return { q: src("Quadrat Teller"), a: src("Alter Teller") };
+    });
+    pruef(liste.q === "17-teller-q320.webp", "Liste: zugeschnittenes Foto in der kleinen Fassung", liste.q);
+    pruef(liste.a === "alt-foto.jpg", "Liste: altes Foto ohne Marke unverändert", liste.a);
+    pruef(geladen.includes("17-teller-q320.webp") && !geladen.includes("17-teller-q1080.webp"), "die Liste lädt die große Fassung nicht", geladen.join(", "));
+    const det = await s.evaluate(async () => {
+      const lies = async name => { detailOeffnen(name); await new Promise(r => setTimeout(r, 450));
+        const w = document.querySelector("#warenkarte .wbild"), i = w && w.querySelector("img");
+        if (!w) return null; const rw = w.getBoundingClientRect(), ri = i.getBoundingClientRect();
+        return { src: i.getAttribute("src").split("/").pop(), fuellt: w.classList.contains("fuellt"), fit: getComputedStyle(i).objectFit,
+          pos: getComputedStyle(i).objectPosition, w: rw.width, h: rw.height,
+          links: rw.left - w.parentElement.getBoundingClientRect().left, rechts: w.parentElement.getBoundingClientRect().right - rw.right,
+          deckt: Math.abs(ri.width - rw.width) < 1 && Math.abs(ri.height - rw.height) < 1 }; };
+      const q = await lies("Quadrat Teller");
+      await new Promise(r => setTimeout(r, 300));
+      const a = await lies("Alter Teller");
+      return { q, a };
+    }).catch(e => ({ fehler: String(e) }));
+    pruef(det.q && det.q.src === "17-teller-q1080.webp" && det.q.fuellt && det.q.fit === "cover" && det.q.pos === "50% 50%" && det.q.deckt,
+      "Detail: große Fassung füllt das Feld, mittig", JSON.stringify(det.q || det));
+    pruef(det.q && det.q.h >= 200, "Detail: das quadratische Foto bekommt Höhe", det.q && (det.q.w.toFixed(0) + "×" + det.q.h.toFixed(0)));
+    pruef(det.q && det.a && Math.abs(det.q.links - det.q.rechts) < 1 && Math.abs(det.a.links - det.a.rechts) < 1 && Math.abs(det.q.w - det.a.w) < 1,
+      "Detail: beide Fotoarten symmetrisch und gleich breit", det.q && det.a && ("neu " + det.q.links.toFixed(1) + "/" + det.q.rechts.toFixed(1) + ", alt " + det.a.links.toFixed(1) + "/" + det.a.rechts.toFixed(1) + ", " + det.q.w.toFixed(0) + " vs " + det.a.w.toFixed(0)));
+    pruef(det.a && !det.a.fuellt && det.a.fit === "contain" && det.a.src === "alt-foto.jpg", "Detail: altes Foto bleibt bei contain", JSON.stringify(det.a || det));
+    pruef(!fehler.length, "keine Ausnahme im Hub", fehler.join(" | ") || "still");
+    await ctx.close();
   }
 
   await browser.close();

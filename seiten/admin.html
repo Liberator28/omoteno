@@ -2491,6 +2491,11 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
     transparent 58%,rgba(20,12,8,.16) 100%);
 }
 .bildknoepfe{display:flex;flex-direction:column;gap:8px;flex:1}
+.gbzuschnitt{margin:4px 0 12px}
+.gbrahmen{width:100%;max-width:360px;aspect-ratio:1 / 1;margin:6px auto 0;border-radius:14px;
+  box-shadow:0 3px 8px rgba(42,26,20,.18),0 1px 3px rgba(42,26,20,.12)}
+.gbknoepfe{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.gbknoepfe .knopf{flex:1 1 140px}
 .bildknoepfe .knopf{padding:11px 14px;font-size:14px;text-align:center;cursor:pointer}
 .bildstand{font-size:12.5px;color:var(--gedaempft);line-height:1.5;margin-bottom:8px}
 .bildstand.laeuft{color:var(--messing)}
@@ -4202,25 +4207,33 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 
       <div class="bildzeile">
         <div class="bildschau" id="bildSchau" aria-hidden="true"></div>
-        <div id="bildCropContainer" hidden style="position:relative;
-          width:100%;max-width:600px;background:#f5f5f5;margin:12px 0;
-          border:1px solid #ccc;border-radius:12px;overflow:hidden;
-          box-shadow:0 3px 8px rgba(42,26,20,.18),0 1px 3px rgba(42,26,20,.12);
-          aspect-ratio:4/3">
-          <canvas id="bildCropCanvas" style="display:block;width:100%;height:100%"></canvas>
-          <div id="bildCropOverlay" style="position:absolute;border:2px dashed rgba(224,178,78,.7);
-            background:rgba(224,178,78,.08);cursor:move;touch-action:none"></div>
-          <div style="position:absolute;bottom:8px;left:8px;right:8px;display:flex;gap:8px">
-            <button type="button" class="knopf" id="bildCropBestaetigen">Zuschnitt übernehmen</button>
-            <button type="button" class="knopf leise" id="bildCropAbbrechen">Abbrechen</button>
-          </div>
-        </div>
         <div class="bildknoepfe">
           <!-- accept="image/*" öffnet auf dem iPhone direkt Kamera,
                Fotomediathek und Dateien zur Auswahl. -->
           <label class="knopf leise" for="fDatei">Foto wählen</label>
           <input type="file" id="fDatei" accept="image/*" hidden>
           <button type="button" class="knopf leise" id="bildWeg" hidden>Entfernen</button>
+        </div>
+      </div>
+
+      <!-- Zuschnitt (Wunsch 07.10.): festes Quadrat, genau die Form, in
+           der der Gast das Foto in der Karte sieht. Ein Finger schiebt,
+           zwei zoomen; kleiner als „füllt das Quadrat“ geht nicht — einen
+           Rand kann es also nicht geben. -->
+      <div class="gbzuschnitt" id="gbZuschnitt" hidden>
+        <p class="ehilfe">So sieht der Gast das Foto. Mit einem Finger verschieben, mit zwei Fingern zoomen.</p>
+        <div class="kbrahmen gbrahmen" id="gbRahmen">
+          <img id="gbBild" alt="">
+          <div class="kbraster"></div>
+        </div>
+        <label class="kbzoom">
+          <span>Größe</span>
+          <input type="range" id="gbZoom" min="100" max="300" step="1" value="100"
+                 class="regler" aria-label="Foto vergrößern">
+        </label>
+        <div class="gbknoepfe">
+          <button type="button" class="knopf" id="gbOk">Zuschnitt übernehmen</button>
+          <button type="button" class="knopf leise" id="gbWeg">Abbrechen</button>
         </div>
       </div>
 
@@ -14241,6 +14254,7 @@ function blattOeffnen(g){
      sonst zeigt das Blatt beim nächsten Gericht noch das alte Foto. */
   bildSchauSetzen(g?.bild || "");
   bildStand("");
+  if(gbZuschnitt) gbZu();
   $("#fBildFrei").value = g?.bild_frei || "";
   bkWahlZu();
   bkZeichnen();
@@ -14448,20 +14462,20 @@ $("#kopie").onclick     = () => sichern(true);
    Dinge passieren dabei im Hintergrund, damit das auch im Café-WLAN
    funktioniert und nicht die Datenbank sprengt:
 
-     1. Verkleinern im Browser. Ein iPhone-Foto hat 12 Megapixel und
-        3 bis 5 MB. Für die Karte reichen 1000 px Kantenlänge, das sind
-        rund 150 KB. Ohne diesen Schritt lädt das Personal minutenlang
+     1. Zuschneiden und verkleinern im Browser, als Quadrat in zwei
+        Größen (1080 und 320 px). Ein iPhone-Foto hat 12 Megapixel und
+        3 bis 5 MB; die große Fassung hat rund 150 KB, die kleine ein
+        Zehntel davon. Ohne diesen Schritt lädt das Personal minutenlang
         und der Gast später genauso.
 
-     2. Umwandeln nach JPEG. iPhones liefern HEIC, das viele Browser
-        nicht anzeigen. Der Umweg über die Zeichenfläche macht daraus
-        ein Format, das überall läuft.
+     2. Umwandeln nach WebP oder JPEG. iPhones liefern HEIC, das viele
+        Browser nicht anzeigen. Der Umweg über die Zeichenfläche macht
+        daraus ein Format, das überall läuft.
 
-     3. Ablegen unter <betrieb_id>/<zeit>-<name>.jpg. Der Ordnername
+     3. Ablegen unter <betrieb_id>/<zeit>-<name>-q1080.webp. Der Ordnername
         entscheidet über die Zugehörigkeit, deshalb kann niemand in den
         Ordner eines fremden Betriebs schreiben.
    ═══════════════════════════════════════════════════════════════ */
-const BILD_KANTE = 1000;
 const BILD_GUETE = 0.82;
 
 function bildStand(text, art){
@@ -14476,274 +14490,147 @@ function bildSchauSetzen(adresse){
   const weg = $("#bildWeg"); if(weg) weg.hidden = !adresse;
 }
 
-/* Zeigt Crop-Canvas und Overlay-Rechteck zum Zuschneiden */
-let bildCropState = null;
-function bildCropZeigen(dateiObj){
+/* ═══ ZUSCHNITT DES GERICHTFOTOS (Wunsch 07.10.) ════════════════════
+   Vorher: ein freier, gestrichelter Rahmen in beliebigem Verhältnis.
+   Der Hub zeigt das Foto aber als Quadrat (object-fit:cover) — was
+   der Wirt auswählte, war also nie das, was der Gast sah, und das
+   Motiv saß schief. Jetzt: dasselbe Quadrat, dieselben Gesten wie beim
+   Kachel-Zuschnitt (zuschnittGesten), nie ein Rand.
+
+   Ausgabe in zwei Größen: 1080 px für das Detailblatt, 320 px für die
+   Liste (96 px Kasten, auch auf 3×-Schirmen scharf) — die Liste lädt
+   damit rund ein Zehntel. Die kleine Fassung trägt „-q320“ im Namen,
+   die große „-q1080“; der Hub leitet die kleine aus der großen her.
+   Die Marke bekommt die große NUR, wenn die kleine wirklich oben liegt
+   — sonst zeigte die Liste ein Loch. */
+const GB_GROSS = 1080, GB_KLEIN = 320;
+let gbZuschnitt = null;
+function gbGrundmass(){
+  const r = $("#gbRahmen").getBoundingClientRect(), b = gbZuschnitt.bild;
+  return Math.max(r.width / b.naturalWidth, r.height / b.naturalHeight);
+}
+function gbSetzen(){
+  if(!gbZuschnitt) return;
+  const r = $("#gbRahmen").getBoundingClientRect();
+  const m = gbGrundmass() * gbZuschnitt.zoom;
+  const bw = gbZuschnitt.bild.naturalWidth * m, bh = gbZuschnitt.bild.naturalHeight * m;
+  gbZuschnitt.dx = Math.min(0, Math.max(r.width  - bw, gbZuschnitt.dx));
+  gbZuschnitt.dy = Math.min(0, Math.max(r.height - bh, gbZuschnitt.dy));
+  $("#gbBild").style.transform =
+    "translate(" + gbZuschnitt.dx + "px," + gbZuschnitt.dy + "px) scale(" + m + ")";
+}
+function gbMitte(){
+  const r = $("#gbRahmen").getBoundingClientRect();
+  const m = gbGrundmass() * gbZuschnitt.zoom;
+  gbZuschnitt.dx = (r.width  - gbZuschnitt.bild.naturalWidth  * m) / 2;
+  gbZuschnitt.dy = (r.height - gbZuschnitt.bild.naturalHeight * m) / 2;
+  gbSetzen();
+}
+function gbOeffnen(datei){
   const leser = new FileReader();
   leser.onerror = () => bildStand("Datei nicht lesbar", "schief");
   leser.onload = () => {
     const bild = new Image();
-    bild.onerror = () => bildStand("Bildformat nicht unterstützt", "schief");
+    bild.onerror = () => bildStand("Dieses Bildformat kann der Browser nicht öffnen. " +
+      "Bitte im Fotoalbum über „Teilen“ als JPEG sichern.", "schief");
     bild.onload = () => {
-      const container = $("#bildCropContainer");
-      const canvas = $("#bildCropCanvas");
-      const overlay = $("#bildCropOverlay");
-
-      /* Canvas auf Bild-Größe setzen */
-      const {width: bw, height: bh} = bild;
-      const aspectRatio = bw / bh;
-
-      /* Container-Größe berechnen (600px breit oder weniger) */
-      const containerW = Math.min(600, bw);
-      const containerH = containerW / aspectRatio;
-      container.style.maxWidth = containerW + "px";
-      container.style.aspectRatio = aspectRatio;
-
-      /* Canvas-Kontext zeichnen */
-      canvas.width = bw;
-      canvas.height = bh;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(bild, 0, 0);
-
-      /* Overlay initial auf 80% der Bildgröße setzen */
-      const ow = Math.round(bw * 0.8);
-      const oh = Math.round(bh * 0.8);
-      const ox = Math.round((bw - ow) / 2);
-      const oy = Math.round((bh - oh) / 2);
-
-      /* Speichere State für Crop-Bestätigung */
-      bildCropState = {
-        dateiObj,
-        bild,
-        canvas,
-        overlay,
-        oxAktuell: ox,
-        oyAktuell: oy,
-        owAktuell: ow,
-        ohAktuell: oh,
-        containerW,
-        containerH
-      };
-
-      /* Overlay positionieren (CSS) */
-      overlay.style.left = (ox * containerW / bw) + "px";
-      overlay.style.top = (oy * containerH / bh) + "px";
-      overlay.style.width = (ow * containerW / bw) + "px";
-      overlay.style.height = (oh * containerH / bh) + "px";
-
-      container.hidden = false;
-      bildStand("Zuschnitt ziehen oder die Ecke zum Resizen greifen");
-
-      /* Draggable/Resizable Overlay */
-      bildCropInitDrag(overlay);
+      $("#gbBild").src = bild.src;
+      gbZuschnitt = { name: datei.name || "foto", bild: bild, zoom: 1, dx: 0, dy: 0 };
+      $("#gbZoom").value = 100;
+      /* Erst aufdecken, dann messen — ein verstecktes Feld hat keine Breite. */
+      $("#gbZuschnitt").hidden = false;
+      gbMitte();
+      bildStand("Ausschnitt wählen, dann „Zuschnitt übernehmen“.");
     };
     bild.src = leser.result;
   };
-  leser.readAsDataURL(dateiObj);
+  leser.readAsDataURL(datei);
 }
-
-/* Macht Overlay draggbar und resizable */
-function bildCropInitDrag(overlay){
-  let isDragging = false;
-  let isResizing = false;
-  let dragStartX, dragStartY, dragStartLeft, dragStartTop;
-
-  overlay.onmousedown = (e) => {
-    const rect = overlay.getBoundingClientRect();
-    const nearRight = Math.abs(e.clientX - (rect.right)) < 12;
-    const nearBottom = Math.abs(e.clientY - (rect.bottom)) < 12;
-
-    if(nearRight && nearBottom){
-      isResizing = true;
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-      dragStartLeft = parseFloat(overlay.style.width);
-      dragStartTop = parseFloat(overlay.style.height);
-      overlay.style.cursor = "nwse-resize";
-    } else {
-      isDragging = true;
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-      dragStartLeft = parseFloat(overlay.style.left);
-      dragStartTop = parseFloat(overlay.style.top);
-      overlay.style.cursor = "grabbing";
-    }
-    e.preventDefault();
-  };
-
-  const container = overlay.parentElement;
-  document.addEventListener("mousemove", (e) => {
-    if(!isDragging && !isResizing) return;
-
-    if(isDragging){
-      const dx = e.clientX - dragStartX;
-      const dy = e.clientY - dragStartY;
-      const newLeft = Math.max(0, Math.min(dragStartLeft + dx,
-        container.clientWidth - parseFloat(overlay.style.width)));
-      const newTop = Math.max(0, Math.min(dragStartTop + dy,
-        container.clientHeight - parseFloat(overlay.style.height)));
-      overlay.style.left = newLeft + "px";
-      overlay.style.top = newTop + "px";
-
-      /* Berechne echte Pixel im Bild */
-      const bw = bildCropState.bw || bildCropState.canvas.width;
-      const bh = bildCropState.bh || bildCropState.canvas.height;
-      bildCropState.oxAktuell = Math.round(newLeft * bw / container.clientWidth);
-      bildCropState.oyAktuell = Math.round(newTop * bh / container.clientHeight);
-    }
-
-    if(isResizing){
-      const dx = e.clientX - dragStartX;
-      const dy = e.clientY - dragStartY;
-      const newW = Math.max(100, dragStartLeft + dx);
-      const newH = Math.max(100, dragStartTop + dy);
-      overlay.style.width = newW + "px";
-      overlay.style.height = newH + "px";
-
-      const bw = bildCropState.bw || bildCropState.canvas.width;
-      const bh = bildCropState.bh || bildCropState.canvas.height;
-      bildCropState.owAktuell = Math.round(newW * bw / container.clientWidth);
-      bildCropState.ohAktuell = Math.round(newH * bh / container.clientHeight);
-    }
-  });
-
-  document.addEventListener("mouseup", () => {
-    isDragging = false;
-    isResizing = false;
-    overlay.style.cursor = isDragging ? "grab" : "move";
-  });
+zuschnittGesten({ rahmen:"#gbRahmen", regler:"#gbZoom", zustand:() => gbZuschnitt,
+                  grund:() => gbGrundmass(), setzen:() => gbSetzen() });
+/* Der Regler zoomt um die Mitte des Quadrats, nicht um die Ecke. */
+$("#gbZoom").oninput = e => {
+  if(!gbZuschnitt) return;
+  const r = $("#gbRahmen").getBoundingClientRect(), g = gbGrundmass();
+  const alt = gbZuschnitt.zoom, neu = Math.max(1, Math.min(3, Number(e.target.value) / 100));
+  const cx = r.width / 2, cy = r.height / 2;
+  gbZuschnitt.dx = cx - (cx - gbZuschnitt.dx) * neu / alt;
+  gbZuschnitt.dy = cy - (cy - gbZuschnitt.dy) * neu / alt;
+  gbZuschnitt.zoom = neu;
+  gbSetzen();
+};
+function gbZu(){
+  $("#gbZuschnitt").hidden = true;
+  gbZuschnitt = null;
 }
-
-/* Crop bestätigen und bildHochladenMitBlob aufrufen */
-function bildCropBestaetigen(){
-  if(!bildCropState) return;
-
-  const {canvas, oxAktuell, oyAktuell, owAktuell, ohAktuell, dateiObj} = bildCropState;
-  const ctx = canvas.getContext("2d");
-
-  /* Cropped ImageData extrahieren */
-  const imageData = ctx.getImageData(oxAktuell, oyAktuell, owAktuell, ohAktuell);
-
-  /* Neues Canvas für gecroppes Bild */
-  const croppedCanvas = document.createElement("canvas");
-  croppedCanvas.width = owAktuell;
-  croppedCanvas.height = ohAktuell;
-  croppedCanvas.getContext("2d").putImageData(imageData, 0, 0);
-
-  /* Canvas zu Blob und dann zu bildHochladenMitBlob */
-  croppedCanvas.toBlob(async blob => {
-    if(!blob){
-      bildStand("Zuschnitt fehlgeschlagen", "schief");
-      return;
-    }
-
-    /* Verstecke Crop-UI */
-    $("#bildCropContainer").hidden = true;
-    bildCropState = null;
-
-    /* Rufe bildHochladenMitBlob auf (neuer Weg ohne FileReader) */
-    bildHochladenMitBlob(blob, dateiObj.name);
-  }, "image/jpeg", BILD_GUETE);
+/* Ein Quadrat der Kante k aus dem sichtbaren Ausschnitt. */
+function gbFlaeche(k){
+  const r = $("#gbRahmen").getBoundingClientRect();
+  const m = gbGrundmass() * gbZuschnitt.zoom;
+  const flaeche = document.createElement("canvas");
+  flaeche.width = k; flaeche.height = k;
+  const stift = flaeche.getContext("2d");
+  /* Weißer Grund: Durchsichtige PNG würden sonst schwarz. */
+  stift.fillStyle = "#FFFFFF";
+  stift.fillRect(0, 0, k, k);
+  stift.imageSmoothingQuality = "high";
+  stift.drawImage(gbZuschnitt.bild,
+    -gbZuschnitt.dx / m, -gbZuschnitt.dy / m, r.width / m, r.height / m, 0, 0, k, k);
+  return flaeche;
 }
-
-function bildCropAbbrechen(){
-  $("#bildCropContainer").hidden = true;
-  bildCropState = null;
-  bildStand("");
-  $("#fDatei").value = "";
-}
-
-/* Verkleinert und wandelt um. Gibt einen Blob zurück. */
-function bildVerkleinern(datei){
+/* WebP, wo der Browser es schreiben kann (Safari kann es nicht und
+   liefert stattdessen PNG) — sonst JPEG. Der Eimer nimmt beides. */
+function gbDatei(flaeche){
   return new Promise((fertig, schief) => {
-    const leser = new FileReader();
-    leser.onerror = () => schief(new Error("Datei nicht lesbar"));
-    leser.onload = () => {
-      const bild = new Image();
-      bild.onerror = () => schief(new Error(
-        "Dieses Bildformat kann der Browser nicht öffnen. " +
-        "Bitte im Fotoalbum über „Teilen“ als JPEG sichern."));
-      bild.onload = () => {
-        let {width: b, height: h} = bild;
-        const gr = Math.max(b, h);
-        if(gr > BILD_KANTE){ b = Math.round(b * BILD_KANTE / gr); h = Math.round(h * BILD_KANTE / gr); }
-        const flaeche = document.createElement("canvas");
-        flaeche.width = b; flaeche.height = h;
-        const stift = flaeche.getContext("2d");
-        /* Weißer Grund: Bei durchsichtigen PNG wäre der Rest sonst
-           schwarz, sobald wir nach JPEG wandeln. */
-        stift.fillStyle = "#FFFFFF";
-        stift.fillRect(0, 0, b, h);
-        stift.drawImage(bild, 0, 0, b, h);
-        flaeche.toBlob(blob => {
-          if(blob) fertig(blob);
-          else schief(new Error("Umwandeln fehlgeschlagen"));
-        }, "image/jpeg", BILD_GUETE);
-      };
-      bild.src = leser.result;
-    };
-    leser.readAsDataURL(datei);
+    flaeche.toBlob(b => {
+      if(b && b.type === "image/webp") return fertig(b);
+      flaeche.toBlob(j => j ? fertig(j) : schief(new Error("Umwandeln fehlgeschlagen")), "image/jpeg", BILD_GUETE);
+    }, "image/webp", BILD_GUETE);
   });
 }
-
-/* Nach dem Zuschneiden: Blob direkt verarbeiten (ohne FileReader) */
-async function bildHochladenMitBlob(blob, dateiName){
-  if(!betriebId){ bildStand("Kein Betrieb gewählt", "schief"); return; }
+async function gbAusschnitte(){
+  return { gross: await gbDatei(gbFlaeche(GB_GROSS)), klein: await gbDatei(gbFlaeche(GB_KLEIN)) };
+}
+async function gbFertig(){
+  if(!gbZuschnitt) return;
   if(demo){ bildStand("Im Vorführmodus wird nichts hochgeladen", "schief"); return; }
-
+  if(!betriebId){ bildStand("Kein Betrieb gewählt", "schief"); return; }
+  const knopf = $("#gbOk"); knopf.disabled = true;
   try{
-    bildStand("Wird verkleinert …", "laeuft");
-    /* Blob ist schon Image, einfach resizen */
-    const bild = new Image();
-    bild.onerror = () => { bildStand("Bild verarbeitung fehlgeschlagen", "schief"); };
-    bild.onload = async () => {
-      let {width: b, height: h} = bild;
-      const gr = Math.max(b, h);
-      if(gr > BILD_KANTE){ b = Math.round(b * BILD_KANTE / gr); h = Math.round(h * BILD_KANTE / gr); }
-      const flaeche = document.createElement("canvas");
-      flaeche.width = b; flaeche.height = h;
-      const stift = flaeche.getContext("2d");
-      stift.fillStyle = "#FFFFFF";
-      stift.fillRect(0, 0, b, h);
-      stift.drawImage(bild, 0, 0, b, h);
-      flaeche.toBlob(async resizedBlob => {
-        if(!resizedBlob){ bildStand("Umwandeln fehlgeschlagen", "schief"); return; }
-
-        const sauber = (dateiName || "foto")
-          .toLowerCase()
-          .replace(/\.[a-z0-9]+$/, "")
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "")
-          .slice(0, 40) || "foto";
-        const pfad = betriebId + "/" + Date.now() + "-" + sauber + ".jpg";
-
-        bildStand("Wird hochgeladen … (" + Math.round(resizedBlob.size/1024) + " KB)", "laeuft");
-        const {error} = await db.storage.from("gerichte")
-          .upload(pfad, resizedBlob, {contentType: "image/jpeg", upsert: false});
-        if(error) throw error;
-
-        const {data} = db.storage.from("gerichte").getPublicUrl(pfad);
-        const adresse = data.publicUrl;
-        $("#fBild").value = adresse;
-        bildSchauSetzen(adresse);
-        bkWahlZu(); bkZeichnen();
-        bildStand("Foto liegt bereit. Es wird mit „Sichern“ übernommen.");
-      }, "image/jpeg", BILD_GUETE);
-    };
-    bild.src = URL.createObjectURL(blob);
+    bildStand("Wird zugeschnitten …", "laeuft");
+    const { gross, klein } = await gbAusschnitte();
+    const endung = gross.type === "image/webp" ? "webp" : "jpg";
+    const sauber = String(gbZuschnitt.name).toLowerCase()
+      .replace(/\.[a-z0-9]+$/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "foto";
+    const stamm = betriebId + "/" + Date.now() + "-" + sauber;
+    bildStand("Wird hochgeladen … (" + Math.round((gross.size + klein.size) / 1024) + " KB)", "laeuft");
+    const kleinWeg = await db.storage.from("gerichte")
+      .upload(stamm + "-q320." + (klein.type === "image/webp" ? "webp" : "jpg"), klein,
+              { contentType: klein.type, upsert: false });
+    const pfad = stamm + (kleinWeg.error ? "" : "-q1080") + "." + endung;
+    const { error } = await db.storage.from("gerichte")
+      .upload(pfad, gross, { contentType: gross.type, upsert: false });
+    if(error) throw error;
+    const { data } = db.storage.from("gerichte").getPublicUrl(pfad);
+    $("#fBild").value = data.publicUrl;
+    bildSchauSetzen(data.publicUrl);
+    gbZu();
+    bkWahlZu(); bkZeichnen();
+    bildStand("Foto liegt bereit. Es wird mit „Sichern“ übernommen.");
   }catch(e){
     console.error(e);
     bildStand(e.message || "Hochladen fehlgeschlagen", "schief");
   }
+  knopf.disabled = false;
 }
+$("#gbOk").onclick  = gbFertig;
+$("#gbWeg").onclick = () => { gbZu(); bildStand(""); };
 
 async function bildHochladen(datei){
   if(!datei) return;
-  if(!betriebId){ bildStand("Kein Betrieb gewählt", "schief"); return; }
-  if(demo){ bildStand("Im Vorführmodus wird nichts hochgeladen", "schief"); return; }
-
-  /* Zeige Crop-UI statt direkt zu verkleinern */
-  bildCropZeigen(datei);
+  /* Zuschneiden geht auch im Vorführmodus — erst das Hochladen nicht. */
+  gbOeffnen(datei);
 }
 
 $("#fDatei").onchange = e => {
@@ -14752,9 +14639,6 @@ $("#fDatei").onchange = e => {
   e.target.value = "";     /* damit dieselbe Datei erneut wählbar bleibt */
 };
 
-/* Crop UI Buttons */
-$("#bildCropBestaetigen").onclick = bildCropBestaetigen;
-$("#bildCropAbbrechen").onclick = bildCropAbbrechen;
 
 $("#bildWeg").onclick = () => {
   $("#fBild").value = "";
