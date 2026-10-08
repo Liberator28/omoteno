@@ -388,6 +388,32 @@ a{color:var(--kuli)}
 .leerhinweis{font-family:var(--mono);font-size:12px;color:var(--tinte-still);
   padding:18px 0;text-align:center}
 
+/* Dein Team */
+.tm-form{margin-top:22px;padding-top:18px;border-top:1px solid var(--linie)}
+.tm-titel{font-size:15px;font-weight:600;margin:0 0 12px}
+.tm-link{margin-top:14px}
+.tm-link .hilfe,.tm-mehr .hilfe{font-size:13px;line-height:1.5;color:var(--tinte-leise);margin:0 0 8px}
+.tm-zeile{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px 14px;align-items:center;
+  padding:14px;border-bottom:1px solid var(--linie);background:var(--blatt)}
+.tm-zeile:last-child{border-bottom:none}
+.tm-wer b{display:block;font-size:15px;font-weight:600;overflow-wrap:anywhere}
+.tm-wer i{display:block;font-style:normal;font-size:13px;color:var(--tinte-leise);overflow-wrap:anywhere}
+.tm-wer small{display:block;font-family:var(--mono);font-size:11px;color:var(--tinte-still);margin-top:3px}
+.tm-zeile select{min-height:44px;font-size:16px;color:var(--tinte);-webkit-text-fill-color:var(--tinte);
+  background:var(--blatt);border:1px solid var(--linie);border-radius:var(--r-klein);padding:0 10px}
+.tm-zeile .knopf{min-height:44px}
+.tm-mehr{grid-column:1 / -1;display:flex;flex-wrap:wrap;gap:10px 16px;align-items:center}
+.tm-mehr label.tm-haken{display:flex;align-items:center;gap:8px;min-height:44px;font-size:14px;cursor:pointer}
+.tm-mehr label.tm-haken input{width:20px;height:20px;accent-color:var(--kuli)}
+.tm-grenzen{grid-column:1 / -1;display:grid;grid-template-columns:repeat(3,minmax(0,1fr)) auto;gap:10px;align-items:end}
+.tm-grenzen .feld{margin:0}
+.tm-grenzen[hidden]{display:none}
+@media (max-width:520px){
+  .tm-zeile{grid-template-columns:minmax(0,1fr)}
+  .tm-grenzen{grid-template-columns:repeat(3,minmax(0,1fr))}
+  .tm-grenzen .knopf{grid-column:1 / -1}
+}
+
 /* Markenvorschau */
 /* Anleitung: nummeriert, weil die Schritte aufeinander folgen —
    und nicht als Kachelreihe, in der die Reihenfolge verlorengeht. */
@@ -615,10 +641,47 @@ a{color:var(--kuli)}
        und die Tischschlüssel. Vorher stand davon nichts im Konto — es
        kam per Nachricht, und wer es verlor, fragte nach. -->
   <section data-blatt-inhalt="zugaenge" hidden>
+    <!-- ══ DEIN TEAM ══ (migration-team.sql, Edge Function team-zugang)
+         Jede Person bekommt einen eigenen Zugang. Vorher stand hier
+         „dieselben Zugangsdaten wie hier“ — dann war jede Änderung im
+         Hub „vom Besitzer“, egal wer tippte. -->
+    <div class="tafel" id="teamTafel">
+      <h2>Dein Team</h2>
+      <p class="unter">Jede Person bekommt einen eigenen Zugang. Das Team führt den
+      Betrieb — Bestellungen, Reservierungen, „Ausverkauft“, Bestellpause. Was Gäste
+      im Hub sehen (Karte, Preise, Texte, Aktionen), ändert nur ein Besitzer.</p>
+      <div class="meldung" id="teamMeldung" hidden></div>
+      <div id="teamListe"><p class="leerhinweis">Wird geladen …</p></div>
+
+      <form id="teamForm" class="tm-form" novalidate>
+        <h3 class="tm-titel">Jemanden einladen</h3>
+        <div class="zweispaltig">
+          <div class="feld"><label for="tmMail">E-Mail</label>
+            <input type="email" id="tmMail" autocomplete="off" spellcheck="false" autocapitalize="off" maxlength="200"></div>
+          <div class="feld"><label for="tmName">Name (für dich)</label>
+            <input type="text" id="tmName" maxlength="60" autocomplete="off"></div>
+        </div>
+        <div class="feld"><label for="tmRolle">Rolle</label>
+          <select id="tmRolle">
+            <option value="team">Team — führt den Betrieb</option>
+            <option value="kueche">Küche — sieht nur die Bons</option>
+            <option value="inhaber">Besitzer — darf alles</option>
+          </select></div>
+        <button class="knopf" id="tmEinladen" type="submit">Einladen</button>
+        <div id="tmLink" class="tm-link" hidden>
+          <p class="hilfe">Es ging keine Mail hinaus — für Einladungen an fremde Adressen
+          braucht Omoteno einen eigenen Mailversand. Gib diesen Link <b>einmal</b> selbst
+          weiter (er gilt einmal und läuft ab):</p>
+          <div class="adresse"><code id="tmLinkText"></code>
+            <button class="knopf leise schmal" type="button" id="tmLinkKopieren">Kopieren</button></div>
+        </div>
+      </form>
+    </div>
+
     <div class="tafel">
       <h2>Für dein Personal</h2>
-      <p class="unter">Zwei Adressen, ein Konto. Beide mit denselben
-      Zugangsdaten wie hier — jeder im Team, den du anlegst, kommt damit rein.</p>
+      <p class="unter">Zwei Adressen. Jede Person meldet sich mit ihrem eigenen Zugang
+      an — den lädst du oben unter „Dein Team“ ein.</p>
 
       <div class="adresse">
         <code>omoteno.de/admin</code>
@@ -1409,6 +1472,166 @@ document.addEventListener("click", async e => {
   k.disabled = false; k.textContent = alt;
 });
 
+/* ─── Dein Team ──────────────────────────────────────────────────
+   Lesen über team_liste() (nur Inhaber, sonst leer), Schreiben über
+   die Edge Function team-zugang — die fragt zuerst mit DEINEM Token,
+   ob du Inhaber bist, und erst dann fasst sie den Dienstschlüssel an.
+   Die Seite blendet nur aus; entscheiden tut die Datenbank. */
+let kontoRolle = null;
+const TEAM_ROLLEN = { inhaber:"Besitzer", team:"Team", kueche:"Küche" };
+const TEAM_GRUND = {
+  kein_inhaber: "Das Team verwaltet nur ein Besitzer.",
+  zugriff: "Bitte neu anmelden — die Sitzung ist abgelaufen.",
+  grenze: "Heute sind schon 20 Einladungen hinausgegangen. Morgen geht es weiter.",
+  email: "Diese E-Mail-Adresse sieht nicht vollständig aus.",
+  rolle: "Bitte eine Rolle wählen.",
+  selbst: "Das geht nicht bei deinem eigenen Zugang.",
+  letzter_inhaber: "Der Betrieb braucht mindestens einen Besitzer. Lege erst einen zweiten an.",
+  kein_mitglied: "Diese Person gehört nicht mehr zum Betrieb. Die Liste wird neu geladen.",
+  grenze_betrag: "Höchstwert: bitte 0 bis 500 €.",
+  grenze_prozent: "Höchstens 0 bis 100 %.",
+  grenze_tag: "Je Tag: bitte eine ganze Zahl von 0 bis 100.",
+  einrichtung: "Der Dienst ist noch nicht eingerichtet. Bitte bei Omoteno melden.",
+  auth: "Die Einladung ging nicht durch.",
+  mitglied: "Die Zuordnung zum Betrieb ging nicht durch."
+};
+function teamGrundSatz(r){
+  const s = TEAM_GRUND[r && r.grund] || "Das ging gerade nicht. Bitte noch einmal versuchen.";
+  return r && r.grund === "auth" && r.text ? s + " (" + String(r.text).slice(0, 120) + ")" : s;
+}
+async function teamRufen(koerper){
+  try{
+    const {data, error} = await db.functions.invoke("team-zugang", { body: Object.assign({ betrieb_id: betrieb.id }, koerper) });
+    if(error) return { ok:false, grund: /401|JWT/i.test(String(error.message)) ? "zugriff" : "netz" };
+    return data || { ok:false };
+  }catch(e){ return { ok:false, grund:"netz" }; }
+}
+function teamZeitSatz(iso){
+  if(!iso) return "noch nie angemeldet";
+  return "zuletzt " + new Date(iso).toLocaleDateString("de-DE", { day:"numeric", month:"short" });
+}
+async function teamZeichnen(){
+  const ziel = $("teamListe"), form = $("teamForm");
+  if(!ziel || !betrieb) return;
+  if(kontoRolle && kontoRolle !== "inhaber"){
+    ziel.innerHTML = '<p class="leerhinweis">Das Team verwaltet nur ein Besitzer.</p>';
+    form.hidden = true;
+    return;
+  }
+  form.hidden = false;
+  ziel.innerHTML = '<p class="leerhinweis">Wird geladen …</p>';
+  const {data, error} = await db.rpc("team_liste", { p_betrieb: betrieb.id });
+  if(error){
+    ziel.innerHTML = '<p class="leerhinweis">' + (error.code === "42883"
+      ? "Die Team-Verwaltung ist noch nicht eingerichtet (migration-team.sql)."
+      : "Das Team konnte nicht geladen werden.") + '</p>';
+    return;
+  }
+  if(!data || !data.length){
+    ziel.innerHTML = '<p class="leerhinweis">Das Team verwaltet nur ein Besitzer.</p>';
+    form.hidden = true;
+    return;
+  }
+  ziel.innerHTML = '<div class="rliste">' + data.map(m => {
+    const id = h(m.nutzer_id);
+    const wahl = Object.entries(TEAM_ROLLEN).map(([w, n]) =>
+      '<option value="' + w + '"' + (m.rolle === w ? " selected" : "") + '>' + n + '</option>').join("");
+    return '<div class="tm-zeile" data-tm="' + id + '">' +
+      '<span class="tm-wer"><b>' + h(m.anzeigename || m.email) + (m.ich ? " · du" : "") + '</b>' +
+        (m.anzeigename ? '<i>' + h(m.email) + '</i>' : "") +
+        '<small>' + h(teamZeitSatz(m.zuletzt)) + (m.bestaetigt ? "" : " · Einladung offen") +
+          (m.hat_pin ? " · PIN gesetzt" : "") + (m.pin_gesperrt ? " · PIN gesperrt" : "") + '</small></span>' +
+      (m.ich ? '<span class="rmarke bezahlt">' + h(TEAM_ROLLEN[m.rolle] || m.rolle) + '</span>'
+             : '<select data-tm-rolle aria-label="Rolle von ' + h(m.anzeigename || m.email) + '">' + wahl + '</select>') +
+      '<div class="tm-mehr">' +
+        (m.rolle === "inhaber" ? '<span class="hilfe">Besitzer dürfen Gutscheine immer ausstellen.</span>'
+          : '<label class="tm-haken"><input type="checkbox" data-tm-gutschein' + (m.darf_gutscheine ? " checked" : "") +
+            '> Darf Gutscheine ausstellen</label>') +
+        (m.ich ? "" : '<button type="button" class="knopf leise schmal" data-tm-raus>Entfernen</button>') +
+      '</div>' +
+      (m.rolle !== "inhaber" ?
+        '<div class="tm-grenzen"' + (m.darf_gutscheine ? "" : " hidden") + '>' +
+          '<div class="feld"><label>Höchstens €</label><input type="text" inputmode="decimal" data-max="500" data-tm-betrag maxlength="6" value="' + h(m.gutschein_max_betrag) + '"></div>' +
+          '<div class="feld"><label>Höchstens %</label><input type="text" inputmode="numeric" data-max="100" data-tm-prozent maxlength="3" value="' + h(m.gutschein_max_prozent) + '"></div>' +
+          '<div class="feld"><label>Je Tag</label><input type="text" inputmode="numeric" data-max="100" data-tm-tag maxlength="3" value="' + h(m.gutschein_tag_max) + '"></div>' +
+          '<button type="button" class="knopf leise schmal" data-tm-grenzen>Sichern</button>' +
+        '</div>' : "") +
+    '</div>';
+  }).join("") + '</div>';
+}
+document.addEventListener("change", async e => {
+  const zeile = e.target.closest("[data-tm]"); if(!zeile) return;
+  const nutzer = zeile.dataset.tm;
+  if(e.target.matches("[data-tm-rolle]")){
+    const r = await teamRufen({ aktion:"aendern", nutzer_id:nutzer, rolle:e.target.value });
+    melde("teamMeldung", r.ok ? "Rolle geändert." : teamGrundSatz(r), r.ok ? "gut" : "fehler");
+    teamZeichnen();
+  }
+  if(e.target.matches("[data-tm-gutschein]")){
+    const an = e.target.checked;
+    const r = await teamRufen({ aktion:"aendern", nutzer_id:nutzer, darf_gutscheine:an });
+    melde("teamMeldung", r.ok ? (an ? "Darf jetzt Gutscheine ausstellen — mit eigener PIN, in den Grenzen unten." : "Darf keine Gutscheine mehr ausstellen.")
+      : teamGrundSatz(r), r.ok ? "gut" : "fehler");
+    if(!r.ok) e.target.checked = !an;
+    const g = zeile.querySelector(".tm-grenzen"); if(g) g.hidden = !e.target.checked;
+  }
+});
+document.addEventListener("click", async e => {
+  const zeile = e.target.closest("[data-tm]"); if(!zeile) return;
+  const nutzer = zeile.dataset.tm;
+  if(e.target.closest("[data-tm-grenzen]")){
+    /* Text statt type=number: Ein deutsches Telefon tippt „7,5“, und ein
+       Zahlenfeld gibt dann „“ zurück — beim Server wäre das 0 €, still.
+       Leer oder unlesbar wird hier abgewiesen, nicht als 0 geschickt. */
+    const wert = s => {
+      const el = zeile.querySelector(s), v = el.value.trim().replace(",", ".");
+      const n = /^\d+(\.\d{1,2})?$/.test(v) ? Number(v) : NaN;
+      return n <= Number(el.dataset.max) ? n : NaN;
+    };
+    const w = { gutschein_max_betrag: wert("[data-tm-betrag]"), gutschein_max_prozent: wert("[data-tm-prozent]"),
+                gutschein_tag_max: wert("[data-tm-tag]") };
+    if(!Number.isInteger(w.gutschein_tag_max)) w.gutschein_tag_max = NaN;
+    const falsch = Object.entries(w).find(([, v]) => Number.isNaN(v));
+    if(falsch){
+      melde("teamMeldung", { gutschein_max_betrag: TEAM_GRUND.grenze_betrag, gutschein_max_prozent: TEAM_GRUND.grenze_prozent,
+        gutschein_tag_max: TEAM_GRUND.grenze_tag }[falsch[0]], "fehler");
+      return;
+    }
+    const r = await teamRufen(Object.assign({ aktion:"aendern", nutzer_id:nutzer }, w));
+    melde("teamMeldung", r.ok ? "Grenzen gesichert." : teamGrundSatz(r), r.ok ? "gut" : "fehler");
+  }
+  if(e.target.closest("[data-tm-raus]")){
+    const k = e.target.closest("[data-tm-raus]");
+    /* Zwei Tipps statt eines Fensters: Der erste fragt, der zweite tut es. */
+    if(k.dataset.sicher !== "1"){ k.dataset.sicher = "1"; k.textContent = "Wirklich entfernen?"; return; }
+    const r = await teamRufen({ aktion:"entfernen", nutzer_id:nutzer });
+    melde("teamMeldung", r.ok ? "Aus dem Betrieb entfernt. Das Konto selbst bleibt bestehen." : teamGrundSatz(r), r.ok ? "gut" : "fehler");
+    teamZeichnen();
+  }
+});
+async function teamEinladen(e){
+  e.preventDefault();
+  const mail = $("tmMail").value.trim(), knopf = $("tmEinladen");
+  $("tmLink").hidden = true;
+  if(!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(mail)){ melde("teamMeldung", TEAM_GRUND.email, "fehler"); return; }
+  knopf.disabled = true; knopf.textContent = "Wird eingeladen …";
+  const r = await teamRufen({ aktion:"einladen", email:mail, rolle:$("tmRolle").value, anzeigename:$("tmName").value.trim() || null });
+  knopf.disabled = false; knopf.textContent = "Einladen";
+  if(!r.ok){ melde("teamMeldung", teamGrundSatz(r), "fehler"); return; }
+  if(r.vorhanden) melde("teamMeldung", mail + " hat schon ein Konto — der Betrieb erscheint beim nächsten Anmelden.", "gut");
+  else if(r.versandt) melde("teamMeldung", "Einladung an " + mail + " ist unterwegs. Darin legt die Person ihr eigenes Passwort fest.", "gut");
+  else melde("teamMeldung", "Angelegt — aber ohne Mail. Den Link unten einmal weitergeben.", "info");
+  if(r.link){ $("tmLinkText").textContent = r.link; $("tmLink").hidden = false; }
+  $("tmMail").value = ""; $("tmName").value = "";
+  teamZeichnen();
+}
+$("teamForm").addEventListener("submit", teamEinladen);
+$("tmLinkKopieren").addEventListener("click", () => {
+  const t = $("tmLinkText").textContent;
+  try{ navigator.clipboard.writeText(t); melde("teamMeldung", "Link kopiert.", "gut"); }
+  catch(e){ melde("teamMeldung", "Bitte den Link markieren und kopieren.", "info"); }
+});
+
 /* ─── Tische ─────────────────────────────────────────────────────
    Der Schlüssel steht im Klartext im Konto — hier sitzt der Inhaber,
    und ohne ihn kann er weder einen Untersetzer nachdrucken noch
@@ -1491,7 +1714,7 @@ $("reiter").onclick = e => {
     x.setAttribute("aria-pressed", x.dataset.blatt === b));
   document.querySelectorAll("[data-blatt-inhalt]").forEach(x =>
     x.hidden = (x.dataset.blattInhalt !== b));
-  if(b === "zugaenge") tischeZeichnen();
+  if(b === "zugaenge"){ teamZeichnen(); tischeZeichnen(); }
   window.scrollTo(0,0);
 };
 
@@ -1525,6 +1748,7 @@ async function starten(){
   if(error || !b){ zeige("ohneBetrieb"); return; }
 
   betrieb = b;
+  kontoRolle = mit[0].rolle || null;
   zeige("konto");
   kontoZeichnen();
 }
