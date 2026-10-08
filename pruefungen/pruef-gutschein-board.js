@@ -18,6 +18,12 @@
    Der Schreibweg selbst läuft mit einem gestellten `db`, der jeden
    Aufruf mitschreibt — gemessen wird, WAS das Board schickt.
 
+   Seit migration-gutschein-sicher.sql: Ausstellen über
+   gutschein_ausstellen() mit PIN, Beenden über gutschein_beenden(),
+   den Code vergibt der Server (nur eine Vorsilbe ist wählbar). Die
+   dritte zweite Quelle ist DIESE Migration: Parameter der Funktion und
+   die Spalten, in die sie schreibt.
+
    EHRLICHE GRENZE: RLS und die CHECK-Schranke sind hier nicht
    geprüft, sondern live in einer zurückgedrehten Transaktion
    (Protokoll am Ende von migration-gutscheine-masse.sql).
@@ -43,6 +49,19 @@ const HUBQ  = path.join(OBEN, "vorlagen", "hub.vorlage.html");
    die alte Datei ist Geschichte. */
 const MIG   = path.join(OBEN, "datenbank", "migration-texte-laenger.sql");
 const STAND = path.join(OBEN, "datenbank", "stand-gast-melden.sql");
+const SICHER = path.join(OBEN, "datenbank", "migration-gutschein-sicher.sql");
+
+/* ── Zweite Quelle 3: gutschein_ausstellen in der Migration ──────── */
+function ausstellenLesen() {
+  const sql = fs.readFileSync(SICHER, "utf8");
+  const kopf = sql.match(/function public\.gutschein_ausstellen\(([\s\S]*?)\)\s*returns/);
+  const params = kopf ? [...kopf[1].matchAll(/\b(p_\w+)\s/g)].map(m => m[1]) : [];
+  const ins = sql.match(/insert into public\.gutscheine \(([^)]*)\)/);
+  const spalten = ins ? ins[1].split(",").map(x => x.trim()) : [];
+  const praefix = sql.match(/v_praefix !~ '\^\[A-Z0-9\]\{0,(\d+)\}\$'/);
+  const zeichen = sql.match(/for i in 0\.\.(\d+) loop/);
+  return { params, spalten, praefixMax: praefix ? +praefix[1] : null, codeLaenge: zeichen ? +zeichen[1] + 1 : null };
+}
 
 let n = 0, f = 0;
 function pruef(b, t, d) {
@@ -110,32 +129,35 @@ async function meldung(seite) { return seite.$eval("#meldung", m => m.textConten
   const s = schrankeLesen();
   pruef(s.titelMax && s.textMax && s.codeMax, "Schranke aus der Migration gelesen", JSON.stringify(s));
 
+  const a = ausstellenLesen();
+  pruef(a.params.length >= 5 && a.spalten.length >= 5 && a.praefixMax && a.codeLaenge,
+    "gutschein_ausstellen aus migration-gutschein-sicher.sql gelesen", JSON.stringify(a));
+  pruef(a.praefixMax + 1 + a.codeLaenge <= s.codeMax,
+    "längster Server-Code (Vorsilbe + „-“ + Zufall) passt in die Code-Schranke",
+    (a.praefixMax + 1 + a.codeLaenge) + " ≤ " + s.codeMax);
+
   const { ctx, seite } = await boardOeffnen(browser, 390);
   const board = await seite.evaluate(() => ({
     titel: TEXTMASS.gsTitel && TEXTMASS.gsTitel.hart,
     text:  TEXTMASS.gsText && TEXTMASS.gsText.hart,
-    code:  GS_CODE_OK.source,
     maxT:  document.getElementById("gsTitel").maxLength,
-    maxC:  document.getElementById("gsCode").maxLength
+    maxP:  document.getElementById("gsPraefix").maxLength
   }));
   pruef(board.titel === s.titelMax, "Titelgrenze im Board = Datenbank", board.titel + " / " + s.titelMax);
   pruef(board.text === s.textMax, "Textgrenze im Board = Datenbank", board.text + " / " + s.textMax);
-  pruef(board.code === "^[A-Z0-9-]{" + s.codeMin + "," + s.codeMax + "}$", "Code-Regel im Board = Datenbank", board.code);
-  pruef(board.maxT === s.titelMax && board.maxC === s.codeMax, "Felder nehmen nicht mehr an als die Datenbank",
-    "Titel " + board.maxT + ", Code " + board.maxC);
+  pruef(board.maxT === s.titelMax && board.maxP === a.praefixMax, "Felder nehmen nicht mehr an als die Datenbank",
+    "Titel " + board.maxT + ", Vorsilbe " + board.maxP + " / " + a.praefixMax);
 
   console.log("\n══ Formular ══");
   pruef(await seite.isVisible("#gsGruppe"), "Gutschein-Gruppe steht im Reiter Einstellungen");
-  const vorschlag = await seite.inputValue("#gsCode");
-  pruef(new RegExp(board.code).test(vorschlag), "Code ist vorgeschlagen und gültig", vorschlag);
-  pruef(!/[01OI]/.test(vorschlag.slice(6)), "Vorschlag ohne 0/O und 1/I (wird vorgelesen)", vorschlag);
+  pruef(!(await seite.$("#gsCode")), "kein Feld für einen selbst gewählten Code mehr");
 
-  await seite.fill("#gsCode", "");
-  await seite.type("#gsCode", "kaffee für 2");
-  const sauber = await seite.inputValue("#gsCode");
-  pruef(sauber === "KAFFEE-FUER-2", "Code wird beim Tippen bereinigt", sauber);
+  await seite.fill("#gsPraefix", "");
+  await seite.type("#gsPraefix", "kaffee für 2");
+  const sauber = await seite.inputValue("#gsPraefix");
+  pruef(sauber === "KAFFEEFU", "Vorsilbe wird beim Tippen bereinigt und auf 8 gekürzt", sauber);
 
-  const hoehen = await seite.evaluate(() => ["#gsTitel", "#gsText", "#gsCode", "#gsBis", "#gsAnlegen"]
+  const hoehen = await seite.evaluate(() => ["#gsTitel", "#gsText", "#gsPraefix", "#gsBis", "#gsAnlegen"]
     .map(id => Math.round(document.querySelector(id).getBoundingClientRect().height)));
   pruef(hoehen.every(h => h >= 44), "Tapflächen ≥ 44px", hoehen.join(", "));
   /* Vorfall beim ersten Bildschirmfoto: Das Datumsfeld ragte bei 390px
@@ -144,44 +166,41 @@ async function meldung(seite) { return seite.$eval("#meldung", m => m.textConten
     const karte = document.getElementById("gsGruppe").getBoundingClientRect();
     const rand = parseFloat(getComputedStyle(document.getElementById("gsGruppe")).paddingRight);
     const d = document.getElementById("gsBis").getBoundingClientRect();
-    const c = document.getElementById("gsCode").getBoundingClientRect();
+    const c = document.getElementById("gsPraefix").getBoundingClientRect();
     return { ueber: Math.round(d.right - (karte.right - rand)), dh: Math.round(d.height), ch: Math.round(c.height),
              dy: Math.round(d.top - c.top) };
   });
   pruef(lage.ueber <= 0, "Datumsfeld bleibt in der Karte", lage.ueber + "px über dem Rand");
-  pruef(Math.abs(lage.dh - lage.ch) <= 4 && Math.abs(lage.dy) <= 2, "Datums- und Code-Feld gleich hoch, auf einer Linie",
+  pruef(Math.abs(lage.dh - lage.ch) <= 4 && Math.abs(lage.dy) <= 2, "Datums- und Vorsilbe-Feld gleich hoch, auf einer Linie",
     "Höhe " + lage.dh + "/" + lage.ch + ", Versatz " + lage.dy + "px");
-  const schrift = await seite.evaluate(() => ["#gsTitel", "#gsCode"]
+  const schrift = await seite.evaluate(() => ["#gsTitel", "#gsPraefix"]
     .map(id => parseFloat(getComputedStyle(document.querySelector(id)).fontSize)));
   pruef(schrift.every(x => x >= 16), "Eingabefelder 16px (kein Zoom auf iOS)", schrift.join(", "));
 
-  console.log("\n══ Anlegen, doppelter Code, Beenden (Vorführmodus) ══");
+  console.log("\n══ Anlegen mit PIN, Beenden (Vorführmodus) ══");
   const vorher = await anzahlZeilen(seite);
   await seite.fill("#gsTitel", "Ein Heißgetränk aufs Haus");
   await seite.fill("#gsText", "Weil Sie öfter bei uns sind.");
-  await seite.fill("#gsCode", "DANKE-TEST");
+  await seite.fill("#gsPraefix", "DANKE");
   await seite.click("#gsAnlegen");
-  await seite.waitForTimeout(250);
+  await seite.waitForSelector("#apBlatt:not([hidden])", { timeout: 2000 }).catch(() => {});
+  pruef(await seite.isVisible("#apBlatt") && await anzahlZeilen(seite) === vorher,
+    "erst das PIN-Blatt, noch nichts angelegt");
+  await seite.fill("#apPin", "12345678");
+  await seite.click("#apOk");
+  await seite.waitForTimeout(400);
   pruef(await anzahlZeilen(seite) === vorher + 1, "neuer Gutschein steht in der Liste");
-  pruef(/DANKE-TEST/.test(await seite.textContent("#gsListe")), "mit seinem Code");
+  pruef(/DANKE-[A-HJ-NP-Z2-9]{10}/.test(await seite.textContent("#gsListe")), "mit Vorsilbe und 10 Zeichen Zufall");
+  pruef(/ausgestellt von/.test(await seite.textContent("#gsListe")), "die Liste nennt, wer ausgestellt hat");
   pruef(/Mein Tisch/.test(await meldung(seite)), "Meldung sagt, wo der Gast ihn sieht", await meldung(seite));
   pruef(await seite.inputValue("#gsTitel") === "", "Formular danach leer");
 
-  await seite.fill("#gsTitel", "Nochmal");
-  await seite.fill("#gsCode", "DANKE-TEST");
-  await seite.click("#gsAnlegen");
-  await seite.waitForTimeout(250);
-  pruef(await anzahlZeilen(seite) === vorher + 1, "doppelter Code legt nichts an");
-  pruef(/gab es bei Ihnen schon/.test(await meldung(seite)), "doppelter Code in Klartext gemeldet", await meldung(seite));
-
   await seite.fill("#gsTitel", "");
-  await seite.fill("#gsCode", "LEER-1");
   await seite.click("#gsAnlegen");
   await seite.waitForTimeout(200);
   pruef(await anzahlZeilen(seite) === vorher + 1, "leerer Titel legt nichts an");
 
   await seite.fill("#gsTitel", "Gestern");
-  await seite.fill("#gsCode", "GESTERN-1");
   await seite.fill("#gsBis", "2020-01-01");
   await seite.click("#gsAnlegen");
   await seite.waitForTimeout(200);
@@ -216,6 +235,13 @@ async function meldung(seite) { return seite.$eval("#meldung", m => m.textConten
   console.log("\n══ Echter Schreibweg (gestellter db) ══");
   const aufrufe = await seite.evaluate(async () => {
     const log = [];
+    const rpc = (name, args) => {
+      log.push(["rpc", name, JSON.parse(JSON.stringify(args || {}))]);
+      if(name === "gutschein_recht") return Promise.resolve({ data: { ok:true, inhaber:true, pin:true }, error: null });
+      if(name === "gutschein_ausstellen") return Promise.resolve({ data: { ok:true, code:"KUCHEN-ABCDEFGHJK", id:"x" }, error: null });
+      if(name === "gutschein_beenden") return Promise.resolve({ data: { ok:true }, error: null });
+      return Promise.resolve({ data: null, error: null });
+    };
     const kette = (tabelle) => {
       const k = {
         select: () => k, eq: (a, b) => (log.push(["eq", tabelle, a, b]), k),
@@ -228,25 +254,38 @@ async function meldung(seite) { return seite.$eval("#meldung", m => m.textConten
       return k;
     };
     demo = false;
-    db = { from: kette };
+    db = { from: kette, rpc };
     betriebId = "af095b14-d9ef-41f4-9b97-c4422b0de63f";
+    grRecht = null; grFuer = null;
     document.getElementById("gsTitel").value = "Kuchen aufs Haus";
     document.getElementById("gsText").value = "";
-    document.getElementById("gsCode").value = "KUCHEN-7";
+    document.getElementById("gsPraefix").value = "KUCHEN";
     document.getElementById("gsBis").value = "2030-01-15";
     document.getElementById("gsForm").requestSubmit();
     await new Promise(r => setTimeout(r, 300));
+    document.getElementById("apPin").value = "40918273";
+    document.getElementById("apOk").click();
+    await new Promise(r => setTimeout(r, 400));
     return log;
   });
-  const ins = aufrufe.find(a => a[0] === "insert");
-  pruef(!!ins && ins[1] === "gutscheine", "insert geht an gutscheine");
-  if (ins) {
-    const zeile = ins[2];
-    const fremd = Object.keys(zeile).filter(k => !SPALTEN.includes(k));
-    pruef(!fremd.length, "jede geschriebene Spalte gibt es", fremd.join(",") || Object.keys(zeile).join(","));
-    pruef(zeile.betrieb_id === "af095b14-d9ef-41f4-9b97-c4422b0de63f", "betrieb_id ist das eigene Haus");
-    pruef(!("gast_id" in zeile) && !("eingeloest_am" in zeile), "setzt weder gast_id noch eingeloest_am");
-    const bis = new Date(zeile.gueltig_bis);
+  pruef(!aufrufe.some(a => a[0] === "insert" || (a[0] === "update" && a[1] === "gutscheine")),
+    "kein direktes Schreiben in gutscheine mehr");
+  const ruf = aufrufe.find(a => a[0] === "rpc" && a[1] === "gutschein_ausstellen");
+  pruef(!!ruf, "Ausstellen geht über gutschein_ausstellen");
+  if (ruf) {
+    const args = ruf[2];
+    const fremd = Object.keys(args).filter(k => !a.params.includes(k));
+    pruef(!fremd.length, "jeder gesendete Parameter steht in der Funktion", fremd.join(",") || Object.keys(args).join(","));
+    pruef(args.p_betrieb === "af095b14-d9ef-41f4-9b97-c4422b0de63f", "p_betrieb ist das eigene Haus");
+    pruef(args.p_pin === "40918273" && args.p_praefix === "KUCHEN" && args.p_titel === "Kuchen aufs Haus",
+      "PIN, Vorsilbe und Titel in der Nutzlast", JSON.stringify(args));
+    pruef(!("p_code" in args) && !("p_gast_id" in args), "kein selbst gewählter Code, kein Gast");
+    /* Die Naht läuft jetzt über die Spalten, in die die FUNKTION schreibt. */
+    const zeile = {};
+    for (const sp of a.spalten) zeile[sp] = true;
+    const fremdSp = a.spalten.filter(k => !SPALTEN.includes(k) && !["angelegt_von", "angelegt_name"].includes(k));
+    pruef(!fremdSp.length, "jede Spalte, die die Funktion schreibt, gibt es", fremdSp.join(",") || a.spalten.join(","));
+    const bis = new Date(args.p_gueltig_bis);
     pruef(bis.getFullYear() === 2030 && bis.getMonth() === 0 && bis.getDate() === 15 && bis.getHours() === 23,
       "gültig bis = Ende des gewählten Tages (Ortszeit)", zeile.gueltig_bis);
 

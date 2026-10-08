@@ -2,7 +2,8 @@
 -- STAND · security-definer-Funktionen, die anon ausführen darf
 --
 -- Gelesen am 08.10., nachgelesen am zweiten Tag nach dem Einspielen
--- von admin_anmelden und tisch_sitzung_start, mit:
+-- von admin_anmelden und tisch_sitzung_start, erneut nach
+-- rabattcode_pruefen (migration-gutschein-sicher.sql, Teil 2b), mit:
 --
 --   select p.proname, pg_get_function_identity_arguments(p.oid),
 --          case when pg_get_functiondef(p.oid) ~ 'schutz_bremsen|schutz_zaehlen'
@@ -37,6 +38,7 @@ gast_mail_merken        | koerper
 gast_melden             | koerper
 ist_master              | -
 meine_betriebe          | -
+rabattcode_pruefen      | koerper
 reservierung_anfragen   | trigger
 reservierung_stand      | koerper
 slug_frei               | koerper

@@ -668,8 +668,13 @@ do $$ declare n int; h uuid; begin
   insert into probe values (133,'Inhaber','Hub-Text aendern', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
   update gerichte set preis = preis + 1 where betrieb_id = h and name = 'Probe-Rolle'; get diagnostics n = row_count;
   insert into probe values (134,'Inhaber','Preis aendern', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
-  update gutscheine set titel = 'geaendert' where betrieb_id = h and code = 'PROBE-ROLLE-1'; get diagnostics n = row_count;
-  insert into probe values (135,'Inhaber','Gutschein aendern', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  -- Nach Teil 3 von migration-gutschein-sicher.sql schreibt auch der
+  -- Inhaber nicht mehr direkt (nur über gutschein_ausstellen/_beenden).
+  -- Ohne den Fang bräche hier die ganze Datei ab.
+  begin update gutscheine set titel = 'geaendert' where betrieb_id = h and code = 'PROBE-ROLLE-1'; get diagnostics n = row_count;
+    insert into probe values (135,'Inhaber','Gutschein aendern (direkt)', case when n = 1 then 'ok (Teil 3 noch nicht eingespielt)' else 'KAPUTT: '||n end);
+  exception when insufficient_privilege then
+    insert into probe values (135,'Inhaber','Gutschein aendern (direkt)','nur noch ueber die Funktionen (Teil 3 eingespielt)'); end;
   delete from gerichte where betrieb_id = h and name = 'Probe-Rolle'; get diagnostics n = row_count;
   insert into probe values (136,'Inhaber','Gericht loeschen', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
   update betriebe set hub_texte = hub_texte where id::text = current_setting('probe.r_fremd'); get diagnostics n = row_count;
@@ -685,6 +690,89 @@ do $$ begin
     case when count(*) = 2 then 'ok' else 'KAPUTT: '||count(*) end
     from pg_trigger where tgname in ('betrieb_rolle_wache','gericht_rolle_wache') and tgenabled <> 'D';
 end $$;
+
+-- ═══ TEIL 9 · Gutscheine und Codes (migration-gutschein-sicher.sql) ═══
+-- Läuft nach TEIL 8 und benutzt dessen Probe-Team (r_team ist dort
+-- Mitglied 'team' von r_haus). Recht, Grenzen und PIN setzt postgres —
+-- alles dreht sich am Ende mit zurück. Die PIN des Probe-Kontos wird
+-- hier gesetzt (auch wenn es schon eine hat: zurückgedreht).
+select set_config('probe.gs', (select (count(*) > 0)::text from pg_proc
+   where proname = 'rabattcode_ausstellen' and pronamespace = 'public'::regnamespace), true);
+do $$ begin
+  if current_setting('probe.gs') <> 'true' then
+    insert into probe values (140,'—','TEIL 9 uebersprungen','migration-gutschein-sicher.sql noch nicht eingespielt'); return;
+  end if;
+  if current_setting('probe.rollen') <> 'true' or current_setting('probe.r_haus') = '' or current_setting('probe.r_team') = '' then
+    insert into probe values (140,'—','TEIL 9 nicht messbar','TEIL 8 hat kein Probe-Team'); return;
+  end if;
+  update betrieb_mitglieder set darf_gutscheine = true, gutschein_max_betrag = 10, gutschein_max_prozent = 20,
+         gutschein_tag_max = 2, anzeigename = 'Probe-Team'
+   where betrieb_id = current_setting('probe.r_haus')::uuid and nutzer_id = current_setting('probe.r_team')::uuid;
+  insert into konto_pin(nutzer_id, pin_hash, fehlversuche, gesperrt, gesetzt_am, gesetzt_von)
+    values (current_setting('probe.r_team')::uuid, extensions.crypt('40918273', extensions.gen_salt('bf', 8)), 0, false, now(), null)
+    on conflict (nutzer_id) do update set pin_hash = excluded.pin_hash, fehlversuche = 0, gesperrt = false;
+end $$;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', current_setting('probe.r_team'),'role','authenticated')::text, true);
+set local role authenticated;
+do $$ declare h uuid; r jsonb; n int; begin
+  if current_setting('probe.gs') <> 'true' or current_setting('probe.r_team') = '' or current_setting('probe.r_haus') = '' then return; end if;
+  h := current_setting('probe.r_haus')::uuid;
+  r := public.gutschein_recht(h);
+  insert into probe values (141,'Team','Voraussetzung: Recht freigeschaltet, Rahmen 10 €/20 %/2', case when (r->>'ok')::boolean and (r->>'tag_max')::int = 2 then 'ok' else 'KAPUTT: '||r::text end);
+  if not (r->>'ok')::boolean then return; end if;
+  r := public.rabattcode_ausstellen(h, 15, null, null, null, null, '40918273');
+  insert into probe values (142,'Team','15 € bei Grenze 10', case when r->>'grund' = 'ueber_grenze' then 'abgewiesen' else 'OFFEN !!! '||r::text end);
+  r := public.rabattcode_ausstellen(h, null, 25, null, null, null, '40918273');
+  insert into probe values (143,'Team','25 % bei Grenze 20', case when r->>'grund' = 'ueber_grenze' then 'abgewiesen' else 'OFFEN !!! '||r::text end);
+  r := public.rabattcode_ausstellen(h, 5, null, null, null, 'PROBE', '00000000');
+  insert into probe values (144,'Team','falsche PIN', case when r->>'grund' = 'pin_falsch' then 'abgewiesen' else 'OFFEN !!! '||r::text end);
+  r := public.rabattcode_ausstellen(h, 5, null, null, null, 'PROBE', '40918273');
+  insert into probe values (145,'Team','richtige PIN: Code vom Server', case when (r->>'ok')::boolean and r->>'code' ~ '^PROBE-[A-HJ-NP-Z2-9]{10}$' then 'ok' else 'KAPUTT: '||r::text end);
+  insert into probe select 146,'Team','Name und Frist am Code (nicht vom Aufrufer)',
+    case when angelegt_name = 'Probe-Team' and angelegt_von::text = current_setting('probe.r_team') and gueltig_bis between now() + interval '29 days' and now() + interval '31 days'
+         then 'ok' else 'KAPUTT: '||coalesce(angelegt_name,'-') end
+    from rabattcodes where code = r->>'code';
+  r := public.gutschein_ausstellen(h, 'Probe-Kaffee', null, null, null, '40918273');
+  insert into probe values (147,'Team','Gutschein (zweite Ausstellung heute)', case when (r->>'ok')::boolean then 'ok' else 'KAPUTT: '||r::text end);
+  r := public.gutschein_ausstellen(h, 'Probe-Kuchen', null, null, null, '40918273');
+  insert into probe values (148,'Team','dritte Ausstellung bei Tageslimit 2', case when r->>'grund' = 'tageslimit' then 'abgewiesen' else 'OFFEN !!! '||r::text end);
+  begin insert into gutscheine(betrieb_id, titel, code) values (h, 'Probe', 'PROBE-DIREKT-9');
+    insert into probe values (149,'Team','Gutschein direkt in die Tabelle','OFFEN !!!');
+  exception when insufficient_privilege then insert into probe values (149,'Team','Gutschein direkt in die Tabelle','abgewiesen'); end;
+end $$;
+reset role;
+do $$ begin
+  if current_setting('probe.gs') <> 'true' then return; end if;
+  insert into probe select 150,'authenticated','alter Weg rabattcode_team_anlegen (ohne PIN)',
+    case when has_function_privilege('authenticated','public.rabattcode_team_anlegen(uuid,text,numeric,numeric,uuid,timestamptz)','EXECUTE')
+         then 'noch offen — Teil 3 (SCHARF) beim Merge einspielen' else 'zu' end;
+  insert into probe select 151,'—','Helfer nicht als /rpc/ rufbar',
+    case when bool_or(has_function_privilege('authenticated', p.oid, 'EXECUTE') or has_function_privilege('anon', p.oid, 'EXECUTE'))
+         then 'OFFEN !!!' else 'abgewiesen' end
+    from pg_proc p where p.pronamespace = 'public'::regnamespace
+     and p.proname in ('pin_ausstellung_pruefen','code_erzeugen','ausstell_name','rabatt_basis');
+end $$;
+
+-- Gast: Raten wird gezählt, auch das falsche — und nie mit Ausnahme.
+-- Herkunft gestellt über cf-connecting-ip (§2.3e).
+select set_config('request.headers', '{"cf-connecting-ip":"203.0.113.99"}', true);
+set local role anon;
+do $$ declare h uuid; r jsonb; i int; begin
+  if current_setting('probe.gs') <> 'true' or current_setting('probe.r_haus') = '' then return; end if;
+  h := current_setting('probe.r_haus')::uuid;
+  r := public.rabattcode_pruefen(h, 'GIBTSNICHT', 'probegeraet99', null);
+  insert into probe values (152,'anon','unbekannter Code', case when r->>'grund' = 'ungueltig' then 'ok (ungueltig, keine Ausnahme)' else 'KAPUTT: '||r::text end);
+  for i in 1..21 loop r := public.rabattcode_pruefen(h, 'RATE' || i, 'geraet' || lpad(i::text, 4, '0'), null); end loop;
+  insert into probe values (153,'anon','21 Rateversuche aus einem Netz', case when r->>'grund' = 'zu_viele' then 'gebremst' else 'OFFEN !!! '||r::text end);
+  begin insert into rabattcodes(betrieb_id, code, betrag, quelle) values (h, 'PROBE-ANON', 5, 'team');
+    insert into probe values (154,'anon','Code direkt anlegen','OFFEN !!!');
+  exception when insufficient_privilege then insert into probe values (154,'anon','Code direkt anlegen','abgewiesen'); end;
+end $$;
+reset role;
+select set_config('request.headers', '', true);
+select set_config('request.jwt.claims', '', true);
 
 -- ═══ TEIL 7 · Zweiter Faktor: PIN (migration-pin.sql) ═══
 -- Voraussetzungen VOR dem Rollenwechsel (§2.3b): Unter authenticated

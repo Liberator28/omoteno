@@ -632,7 +632,7 @@ html{font-size:calc(16px * var(--skala,1))}
 }
 .gs-form input:focus{outline:none;border-color:var(--messing)}
 .gs-form input::placeholder{color:var(--gedaempft);-webkit-text-fill-color:var(--gedaempft);opacity:1}
-#gsCode{font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
+#gsPraefix,#rcPraefix{font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
 
 /* ═══ Befehlsleiste unten ═══════════════════════════════════════
    Die Reiterleiste oben bleibt, wo Platz ist. Auf dem Telefon
@@ -3681,18 +3681,21 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          Eigene Gruppe statt in „Rabattcode-Vorrat" gemischt: der
          Klaviyo-Vorrat zählt eigene, automatisch vergebene Codes —
          gemischt mit von Hand angelegten wäre die Zahl dort irreführend. -->
-    <div class="egruppe" data-nur-inhaber id="rcGruppe">
+    <div class="egruppe" data-nur-inhaber data-gutschein-recht id="rcGruppe">
       <h2 class="etitel">Eigene Rabattcodes</h2>
       <p class="ehilfe">Legen Sie selbst einen Code an — mit Prozent oder festem
         Betrag, für die ganze Rechnung oder für ein bestimmtes Gericht. Ihr Team
-        löst ihn später auf der Bestellkarte ein.</p>
+        löst ihn später auf der Bestellkarte ein. Jeder Code wird mit der PIN
+        bestätigt — so steht fest, wer ihn ausgestellt hat.</p>
+      <p class="ehilfe" id="rcRahmen" hidden></p>
 
       <form id="rcForm">
         <label class="feld">
-          <span>Code</span>
-          <input type="text" id="rcCode" maxlength="24" autocomplete="off"
-                 autocapitalize="characters" spellcheck="false">
-          <small class="feldhilfe">Wird am Tisch vorgelesen — nur A–Z, 0–9 und Bindestrich.</small>
+          <span>Vorsilbe (freiwillig)</span>
+          <input type="text" id="rcPraefix" maxlength="8" autocomplete="off"
+                 autocapitalize="characters" spellcheck="false" placeholder="SOMMER">
+          <small class="feldhilfe">Bis zu 8 Zeichen, A–Z und 0–9. Den Rest würfelt der Server —
+            zehn Zeichen, die niemand erraten kann.</small>
         </label>
 
         <div class="auswahlfeld" id="rcArtFeld">
@@ -3740,11 +3743,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          Klaviyo; ein Gutschein hier steht beim Gast unter „Mein Tisch"
          und wird am Tisch gezeigt. Kein Betrag — die Tabelle kennt
          keinen, das Team entscheidet am Tisch. -->
-    <div class="egruppe" data-nur-inhaber id="gsGruppe">
+    <div class="egruppe" data-nur-inhaber data-gutschein-recht id="gsGruppe">
       <h2 class="etitel">Gutscheine für Stammgäste</h2>
       <p class="ehilfe">Was Sie hier anlegen, sehen Ihre Gäste sofort im Hub
         unter „Mein Tisch" — ohne Konto, ohne Passwort. Eingelöst wird am
-        Tisch: Der Gast zeigt den Code, Ihr Team entscheidet.</p>
+        Tisch: Der Gast zeigt den Code, Ihr Team entscheidet. Jeder Gutschein
+        wird mit der PIN bestätigt.</p>
+      <p class="ehilfe" id="gsRahmen" hidden></p>
 
       <div class="gs-liste" id="gsListe" aria-live="polite"></div>
 
@@ -3763,10 +3768,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </label>
         <div class="runner-zwei">
           <label class="feld">
-            <span>Code</span>
-            <input type="text" id="gsCode" maxlength="24" autocomplete="off"
-                   autocapitalize="characters" spellcheck="false">
-            <small class="feldhilfe">Wird am Tisch vorgelesen — nur A–Z, 0–9 und Bindestrich.</small>
+            <span>Vorsilbe (freiwillig)</span>
+            <input type="text" id="gsPraefix" maxlength="8" autocomplete="off"
+                   autocapitalize="characters" spellcheck="false" placeholder="DANKE">
+            <small class="feldhilfe">Bis zu 8 Zeichen. Den Code vergibt der Server.</small>
           </label>
           <label class="feld">
             <span>Gültig bis (freiwillig)</span>
@@ -4120,6 +4125,26 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
      an den Gast geht: schreiben — und dann GENAU den Text bestätigen,
      den der Gast lesen wird. Gesendet wird serverseitig nur, was diese
      zweite Stufe gezeigt hat (notiz_senden, migration-notizen.sql). -->
+<!-- Ausstellen mit PIN (migration-gutschein-sicher.sql). Eigenes Blatt,
+     NICHT der geteilte PIN-Block der Anmeldung (der ist in drei Dateien
+     Zeichen für Zeichen gleich, pruef-pin.js). -->
+<div class="blatt" id="apBlatt" hidden role="dialog" aria-modal="true" aria-labelledby="apTitel">
+  <div class="blattinhalt">
+    <div class="griff"></div>
+    <h2 class="blatttitel" id="apTitel">Mit PIN bestätigen</h2>
+    <p class="ehilfe" id="apHilfe"></p>
+    <label><span class="lname">PIN (8 Ziffern)</span>
+      <input type="password" id="apPin" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <label id="apZweit" hidden><span class="lname">Noch einmal</span>
+      <input type="password" id="apPin2" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <p class="nzmeldung" id="apMeldung" role="status"></p>
+    <div class="blattfuss">
+      <button type="button" class="knopf" id="apOk">Bestätigen</button>
+      <button type="button" class="knopf leise" id="apWeg">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <div class="blatt" id="nzBlatt" hidden>
   <div class="blattinhalt">
     <div class="griff"></div>
@@ -6696,8 +6721,12 @@ $("#nlVorratAuffuellen").onclick = async () => {
     const {data, error} = await db.functions.invoke("newsletter-vorrat-auffuellen",
       {body: {betrieb_id: betriebId, anzahl: 20}});
     if(error || !data || !data.ok){
-      melde("Vorrat nicht aufgefüllt — " +
-        (data && data.fehler ? data.fehler : "Verbindung prüfen"), true);
+      /* Gründe der Edge Function als Satz, nie roh (§8.1h). */
+      const satz = { kein_zugriff: "Den Vorrat füllt nur der Besitzer auf.",
+        grenze: "Für heute ist genug nachgefüllt — morgen wieder.",
+        kein_klaviyo_schluessel: "Codes angelegt, aber Klaviyo ist noch nicht verbunden.",
+        supabase_schreibfehler: "Die Codes ließen sich nicht speichern." }[data && data.fehler];
+      melde("Vorrat nicht aufgefüllt — " + (satz || "bitte Verbindung prüfen."), true);
       return;
     }
     melde(data.angelegt + " neue Codes angelegt" +
@@ -9897,7 +9926,8 @@ function tabelle(){
    ["#uebBlatt",  function(){ uebSchliessen(); }],
    ["#awBlatt",   function(){ awBlattZu(); }],
    ["#ktedBlatt", function(){ ktedZu(); }],
-   ["#nzBlatt",   function(){ nzSchliessen(); }]].forEach(function(paar){
+   ["#nzBlatt",   function(){ nzSchliessen(); }],
+   ["#apBlatt",   function(){ apZu(null); }]].forEach(function(paar){
     var schirm = document.querySelector(paar[0]); if(!schirm) return;
     var inhalt = schirm.querySelector(".blattinhalt"); if(!inhalt) return;
     wischZu({ blatt: inhalt, zu: paar[1], griff: ".griff, .blattgriff" });
@@ -13091,27 +13121,169 @@ if($("#runnerAuf")){
    (datenbank/migration-rabattcode-ziel.sql). Anders als bei
    Gutscheinen schreibt das Board NICHT direkt in die Tabelle —
    authenticated hat dort bewusst nur SELECT, jedes Schreiben läuft
-   über rabattcode_team_anlegen()/rabattcode_beenden() (CLAUDE.md
-   §2.3a: geprüft, nicht angenommen — ein Rollentest zeigte, dass die
-   Tabelle vorher sogar INSERT/UPDATE/DELETE für authenticated trug;
-   RLS hielt, weil keine passende Regel existierte, der GRANT wurde
-   trotzdem auf SELECT verengt). Eingelöst wird weiter auf der
+   über rabattcode_ausstellen()/rabattcode_beenden()
+   (migration-gutschein-sicher.sql): Recht des Mitglieds, Grenzen,
+   Tageslimit, PIN je Ausstellung, und den CODE VERGIBT DER SERVER —
+   zehn Zeichen aus 32, nicht zu erraten. Von Hand gewählte Codes
+   („GRATIS“) gibt es nicht mehr. Eingelöst wird weiter auf der
    Bestellkarte, „Rabattcode einlösen" — dieselbe Stelle wie bisher. */
 let rcArt = "prozent";
 let rcZielModus = "rechnung";
 let rabattcodeTeam = [];
-const RC_CODE_OK = /^[A-Z0-9-]{3,24}$/;
 const RC_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-function rcVorschlag(){
-  const z = new Uint32Array(4);
-  crypto.getRandomValues(z);
-  return "AKTION-" + Array.from(z, x => RC_ZEICHEN[x % RC_ZEICHEN.length]).join("");
-}
-function rcCodeSauber(v){
+/* Vorsilbe: was die Datenbank annimmt (^[A-Z0-9]{0,8}$), schon beim Tippen. */
+function praefixSauber(v){
   return String(v || "").toUpperCase()
     .replace(/Ä/g, "AE").replace(/Ö/g, "OE").replace(/Ü/g, "UE").replace(/ß/g, "SS")
-    .replace(/\s+/g, "-").replace(/[^A-Z0-9-]/g, "").slice(0, 24);
+    .replace(/[^A-Z0-9]/g, "").slice(0, 8);
+}
+/* Nur im Vorführmodus: dort gibt es keinen Server, der würfelt. */
+function demoCode(praefix){
+  const z = new Uint32Array(10);
+  crypto.getRandomValues(z);
+  const s = Array.from(z, x => RC_ZEICHEN[x % 32]).join("");
+  return praefix ? praefix + "-" + s : s;
+}
+
+/* ═══ Ausstellen: Recht, PIN, Gründe ═══════════════════════════════
+   gutschein_recht() sagt, ob DIESES Konto hier ausstellen darf und in
+   welchen Grenzen — der Server, nicht das Board, entscheidet. Für das
+   Team öffnet es genau die beiden Gruppen, die der Besitzer ihm
+   freigeschaltet hat. Fehlt die Antwort (Netz, Migration fehlt),
+   bleibt die Sperre, wie rolleAnwenden() sie gesetzt hat. */
+let grRecht = null, grFuer = null;
+async function grLaden(){
+  if(demo || !db || !betriebId){ grRecht = { ok:true, inhaber:true, pin:true }; grAnwenden(); return grRecht; }
+  /* Erneut anwenden: rolleAnwenden() sperrt bei jedem Öffnen neu. */
+  if(grFuer === betriebId && grRecht){ grAnwenden(); return grRecht; }
+  const fuer = betriebId;
+  try{
+    const {data, error} = await db.rpc("gutschein_recht", { p_betrieb: fuer });
+    if(error) throw error;
+    grRecht = (data && typeof data === "object" && !Array.isArray(data)) ? data : { ok:false };
+  }catch(e){ grRecht = { ok:false, grund:"netz" }; }
+  if(fuer !== betriebId) return grRecht;            /* inzwischen gewechselt */
+  grFuer = fuer;
+  grAnwenden();
+  return grRecht;
+}
+function grAnwenden(){
+  const r = grRecht || {};
+  const team = !istInhaberRolle();
+  $$("[data-gutschein-recht]").forEach(g => {
+    if(!team || !r.ok) return;                       /* Inhaber: nie gesperrt; Team ohne Recht: bleibt */
+    const satz = g.querySelector(":scope > .nur-inhaber-satz"); if(satz) satz.remove();
+    [...g.children].forEach(k => { k.inert = false; });
+  });
+  const rahmen = (team && r.ok)
+    ? "Ihr Rahmen: höchstens " + euro(r.max_betrag) + " oder " + (+r.max_prozent).toLocaleString("de-DE") +
+      " %, " + r.tag_max + " je Tag (heute " + (r.heute || 0) + "). Ihre Codes laufen nach höchstens 90 Tagen ab."
+    : "";
+  ["#rcRahmen", "#gsRahmen"].forEach(id => { const el = $(id); if(el){ el.textContent = rahmen; el.hidden = !rahmen; } });
+}
+
+const AUSSTELL_GRUND = {
+  kein_zugriff: "Dafür fehlt diesem Zugang die Berechtigung.",
+  kein_recht: "Gutscheine und Codes stellt nur aus, wen der Besitzer dafür freigeschaltet hat.",
+  betrag_oder_prozent: "Bitte entweder Prozent oder Betrag, nicht beides und nicht keins.",
+  werte_ungueltig: "Prozent bis 100, Betrag über 0 und höchstens 500 €.",
+  praefix: "Die Vorsilbe darf bis zu 8 Zeichen haben: A–Z und 0–9.",
+  ueber_grenze: "Das liegt über Ihrer Grenze ({grenze}).",
+  tageslimit: "Für heute ist Ihr Rahmen ausgeschöpft ({grenze} je Tag).",
+  frist: "Dieses Datum liegt schon hinter uns.",
+  gericht_unbekannt: "Dieses Gericht wurde nicht gefunden.",
+  titel: "Bitte eintragen, was es gibt — höchstens 80 Zeichen.",
+  text: "Der Satz darf höchstens 240 Zeichen haben.",
+  pin_gesperrt: "Ihre PIN ist nach fünf Fehlversuchen gesperrt. Entsperren kann sie die Zentrale.",
+  pin_form: "Die PIN hat genau acht Ziffern.",
+  keine_pin: "Für dieses Konto ist noch keine PIN festgelegt.",
+  code_vergeben: "Gerade ging kein freier Code — bitte noch einmal tippen.",
+  unbekannt: "Diesen Eintrag gibt es nicht mehr."
+};
+function ausstellSatz(data, einheit){
+  const g = data && data.grund;
+  const satz = AUSSTELL_GRUND[g] || "Nicht angelegt — bitte Verbindung prüfen.";
+  return satz.replace("{grenze}", data && data.grenze != null
+    ? (+data.grenze).toLocaleString("de-DE") + (einheit || "") : "");
+}
+
+/* PIN je Ausstellung. Eigenes Blatt; liefert die PIN oder null.
+   „festlegen“: Das Konto hat noch keine — erst pin_erstmals_setzen,
+   dann gilt sie (auch für diese Ausstellung). */
+let apAuf = null;
+const AP_SETZ_GRUND = {
+  vorhanden: "Für dieses Konto gibt es schon eine PIN.",
+  form: "Die PIN hat genau acht Ziffern.",
+  zu_einfach: "Zu einfach — bitte keine gleichen Ziffern und keine Reihe wie 12345678.",
+  nicht_angemeldet: "Bitte neu anmelden."
+};
+function apFragen(modus, satz){
+  if(apAuf) apAuf.res(null);
+  return new Promise(res => {
+    apAuf = { res, modus };
+    const neu = modus === "festlegen";
+    $("#apTitel").textContent = neu ? "PIN festlegen" : "Mit PIN bestätigen";
+    $("#apHilfe").textContent = satz || (neu
+      ? "Ihr Konto hat noch keine PIN. Legen Sie jetzt acht Ziffern fest — sie bestätigt künftig jeden Gutschein und Code. Ändern kann sie danach nur die Zentrale."
+      : "Jeder Gutschein und jeder Code wird mit Ihrer PIN bestätigt — so steht fest, wer ihn ausgestellt hat.");
+    $("#apZweit").hidden = !neu;
+    $("#apPin").value = ""; $("#apPin2").value = ""; $("#apMeldung").textContent = "";
+    $("#apOk").textContent = neu ? "PIN festlegen" : "Bestätigen";
+    $("#apOk").disabled = false;
+    $("#apBlatt").classList.remove("geht");
+    $("#apBlatt").hidden = false;
+    setTimeout(() => $("#apPin").focus(), 60);
+  });
+}
+function apZu(wert){
+  const a = apAuf; apAuf = null;
+  /* Erst beim Auslösen prüfen, nicht beim Planen (§8.1p): Bei falscher
+     PIN öffnet mitPin() das Blatt sofort wieder — der 210 ms spätere
+     Rückruf hätte es danach versteckt (in der Prüfung gefunden). */
+  blattFortAnimieren($("#apBlatt"), () => { if(!apAuf) $("#apBlatt").hidden = true; });
+  if(a) a.res(wert);
+}
+$("#apWeg").onclick = () => apZu(null);
+$("#apBlatt").addEventListener("click", e => { if(e.target === $("#apBlatt")) apZu(null); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#apBlatt").hidden) apZu(null); });
+["#apPin", "#apPin2"].forEach(id => $(id).addEventListener("keydown", e => { if(e.key === "Enter") $("#apOk").click(); }));
+$("#apOk").onclick = async () => {
+  if(!apAuf) return;
+  const pin = $("#apPin").value.trim();
+  if(!/^\d{8}$/.test(pin)){ $("#apMeldung").textContent = AUSSTELL_GRUND.pin_form; $("#apPin").focus(); return; }
+  if(apAuf.modus === "festlegen"){
+    if($("#apPin2").value.trim() !== pin){ $("#apMeldung").textContent = "Die beiden Eingaben sind nicht gleich."; $("#apPin2").focus(); return; }
+    if(!(demo || !db)){
+      $("#apOk").disabled = true;
+      try{
+        const {data, error} = await db.rpc("pin_erstmals_setzen", { p_pin: pin });
+        if(error) throw error;
+        if(!data || !data.ok){
+          $("#apMeldung").textContent = AP_SETZ_GRUND[data && data.grund] || "Nicht gespeichert — bitte Verbindung prüfen.";
+          $("#apOk").disabled = false; return;
+        }
+      }catch(e){ $("#apMeldung").textContent = "Nicht gespeichert — bitte Verbindung prüfen."; $("#apOk").disabled = false; return; }
+      if(grRecht) grRecht.pin = true;
+    }
+  }
+  apZu(pin);
+};
+
+/* Ruft rufe(pin) so lange, bis der Server mehr sagt als „PIN“: falsche
+   PIN fragt neu, fehlende lässt sie erstmals festlegen. null = abgebrochen. */
+async function mitPin(rufe){
+  const r = grRecht || {};
+  let pin = await apFragen(r.pin === false ? "festlegen" : "eingeben");
+  for(let runde = 0; runde < 5 && pin; runde++){
+    const {data, error} = await rufe(pin);
+    if(error) throw error;
+    const g = data && data.grund;
+    if(g === "keine_pin"){ pin = await apFragen("festlegen"); continue; }
+    if(g === "pin_falsch"){ pin = await apFragen("eingeben", "Die PIN stimmt nicht. Nach fünf Fehlversuchen ist sie gesperrt."); continue; }
+    return data || { ok:false };
+  }
+  return null;
 }
 
 function rcArtZeichnen(){
@@ -13160,16 +13332,23 @@ function rcTypText(g){
 
 async function rcLaden(){
   rcArtZeichnen(); rcZielZeichnen(); rcGerichtFuellen();
-  const code = $("#rcCode");
-  if(code && !code.value) code.value = rcVorschlag();
+  grLaden();
   if(demo || !db || !betriebId){ rcZeichnen(); return; }
   try{
     const jetzt = new Date().toISOString();
-    const {data, error} = await db.from("rabattcodes")
-      .select("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am")
+    let {data, error} = await db.from("rabattcodes")
+      .select("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am,angelegt_name")
       .eq("betrieb_id", betriebId).eq("quelle", "team").eq("eingeloest", false)
       .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
       .order("angelegt_am", {ascending:false}).order("id");
+    /* Ohne Teil 1 der Migration gibt es angelegt_name nicht — dann
+       ohne Namen weiter, nicht leer (§8.1m). */
+    if(error && /angelegt_name|column/i.test(error.message || ""))
+      ({data, error} = await db.from("rabattcodes")
+        .select("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am")
+        .eq("betrieb_id", betriebId).eq("quelle", "team").eq("eingeloest", false)
+        .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
+        .order("angelegt_am", {ascending:false}).order("id"));
     if(error) throw error;
     rabattcodeTeam = data || [];
   }catch(e){ rabattcodeTeam = []; }
@@ -13185,7 +13364,8 @@ function rcZeichnen(){
   ziel.innerHTML = rabattcodeTeam.map(g =>
     '<div class="gs-zeile" data-rc="' + sicher(g.id) + '">' +
       '<span class="gs-was"><b>' + sicher(rcTypText(g)) + '</b>' +
-        '<i>' + (g.ziel_gericht_name ? sicher(g.ziel_gericht_name) : "Ganze Rechnung") + '</i></span>' +
+        '<i>' + (g.ziel_gericht_name ? sicher(g.ziel_gericht_name) : "Ganze Rechnung") + '</i>' +
+        (g.angelegt_name ? '<i>ausgestellt von ' + sicher(g.angelegt_name) + '</i>' : '') + '</span>' +
       '<span class="gs-code">' + sicher(g.code) + '</span>' +
       '<span class="gs-frist">' +
         (g.gueltig_bis ? "bis " + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist") + '</span>' +
@@ -13193,30 +13373,19 @@ function rcZeichnen(){
     '</div>').join("");
 }
 
-function rcFehlerText(grund){
-  return {
-    kein_zugriff: "Dafür fehlt diesem Zugang die Berechtigung.",
-    betrag_oder_prozent: "Bitte entweder Prozent oder Betrag, nicht beides und nicht keins.",
-    code_form: "Der Code braucht 3 bis 24 Zeichen: A–Z, 0–9, Bindestrich.",
-    code_vergeben: "Diesen Code gab es bei Ihnen schon — bitte einen anderen nehmen.",
-    gericht_unbekannt: "Dieses Gericht wurde nicht gefunden.",
-    werte_ungueltig: "Prozent oder Betrag passen nicht (Prozent bis 100, Betrag über 0).",
-  }[grund] || "Nicht angelegt — bitte Verbindung prüfen.";
-}
-
 if($("#rcForm")){
-  $("#rcCode").addEventListener("input", e => {
-    const el = e.target, sauber = rcCodeSauber(el.value);
+  $("#rcPraefix").addEventListener("input", e => {
+    const el = e.target, sauber = praefixSauber(el.value);
     if(sauber !== el.value) el.value = sauber;
   });
 
   $("#rcForm").onsubmit = async e => {
     e.preventDefault();
-    const code = rcCodeSauber($("#rcCode").value);
+    const praefix = praefixSauber($("#rcPraefix").value);
     const wert = parseFloat(String($("#rcWert").value).replace(",", "."));
-    if(!RC_CODE_OK.test(code)){ melde(rcFehlerText("code_form"), true); $("#rcCode").focus(); return; }
     if(!(wert > 0)){ melde("Bitte einen Wert größer als 0 eintragen.", true); $("#rcWert").focus(); return; }
-    if(rcArt === "prozent" && wert > 100){ melde(rcFehlerText("werte_ungueltig"), true); $("#rcWert").focus(); return; }
+    if((rcArt === "prozent" && wert > 100) || (rcArt === "betrag" && wert > 500)){
+      melde(AUSSTELL_GRUND.werte_ungueltig, true); $("#rcWert").focus(); return; }
     let zielId = null;
     if(rcZielModus === "gericht"){
       zielId = $("#rcGericht").value;
@@ -13229,30 +13398,37 @@ if($("#rcForm")){
     const knopf = $("#rcAnlegen");
     knopf.disabled = true; knopf.textContent = "Wird angelegt …";
     try{
+      await grLaden();
+      let code = null;
       if(demo || !db){
-        if(rabattcodeTeam.some(g => g.code === code)){ melde(rcFehlerText("code_vergeben"), true); return; }
-        const gericht = zielId ? gerichte.find(g => g.id === zielId) : null;
-        rabattcodeTeam.unshift({
-          id: "demo-" + Date.now(), code,
-          betrag: rcArt === "betrag" ? wert : null,
-          prozent: rcArt === "prozent" ? wert : null,
-          ziel_gericht_name: gericht ? gericht.name : null,
-          gueltig_bis: ende, angelegt_am: new Date().toISOString(),
-        });
-        rcZeichnen();
+        const pin = await apFragen("eingeben");
+        if(pin){
+          const gericht = zielId ? gerichte.find(g => g.id === zielId) : null;
+          code = demoCode(praefix);
+          rabattcodeTeam.unshift({
+            id: "demo-" + Date.now(), code,
+            betrag: rcArt === "betrag" ? wert : null,
+            prozent: rcArt === "prozent" ? wert : null,
+            ziel_gericht_name: gericht ? gericht.name : null,
+            gueltig_bis: ende, angelegt_am: new Date().toISOString(), angelegt_name: "Vorführung",
+          });
+          rcZeichnen();
+        }
       }else{
-        const {data, error} = await db.rpc("rabattcode_team_anlegen", {
-          p_betrieb_id: betriebId, p_code: code,
+        const data = await mitPin(pin => db.rpc("rabattcode_ausstellen", {
+          p_betrieb: betriebId,
           p_betrag: rcArt === "betrag" ? wert : null,
           p_prozent: rcArt === "prozent" ? wert : null,
           p_ziel_gericht_id: zielId, p_gueltig_bis: ende,
-        });
-        if(error) throw error;
-        if(!data || !data.ok){ melde(rcFehlerText(data?.grund), true); return; }
-        await rcLaden();
+          p_praefix: praefix || null, p_pin: pin,
+        }));
+        if(data && !data.ok){ melde(ausstellSatz(data, rcArt === "prozent" ? " %" : " €"), true); }
+        if(data && data.ok){ code = data.code; grFuer = null; await rcLaden(); }
       }
-      $("#rcCode").value = rcVorschlag(); $("#rcWert").value = ""; $("#rcBis").value = "";
-      melde("Rabattcode liegt bereit.");
+      if(code){
+        $("#rcWert").value = ""; $("#rcBis").value = "";
+        melde("Rabattcode " + code + " liegt bereit.");
+      }
     }catch(err){
       melde("Nicht gespeichert — bitte Verbindung prüfen.", true);
     }
@@ -13273,7 +13449,7 @@ if($("#rcForm")){
     try{
       const {data, error} = await db.rpc("rabattcode_beenden", {p_rabattcode_id: id});
       if(error) throw error;
-      if(!data || !data.ok){ k.disabled = false; melde(rcFehlerText(data?.grund), true); return; }
+      if(!data || !data.ok){ k.disabled = false; melde(ausstellSatz(data), true); return; }
       await rcLaden();
       melde("Rabattcode beendet");
     }catch(err){ k.disabled = false; melde("Nicht gespeichert — bitte Verbindung prüfen.", true); }
@@ -13283,34 +13459,17 @@ if($("#rcForm")){
 /* ══════════════════════════════════════════════════════════════════
    GUTSCHEINE FÜR STAMMGÄSTE
 
-   Schreibt direkt in `gutscheine` — kein eigener Server-Weg nötig:
-   authenticated darf schreiben, die RLS-Regel „gutscheine team
-   pflegt" lässt nur das eigene Haus zu (live geprobt, siehe
-   datenbank/migration-gutscheine-masse.sql). Der Gast liest über
-   gast_melden(), das nur offene, nicht abgelaufene zeigt.
+   Ausstellen über gutschein_ausstellen() mit PIN, Beenden über
+   gutschein_beenden() (migration-gutschein-sicher.sql) — nicht mehr
+   direkt in die Tabelle: Dort stand nirgends, WER ausgestellt hat,
+   und jedes Mitglied durfte. Den Code vergibt der Server. Der Gast
+   liest über gast_melden(), das nur offene, nicht abgelaufene zeigt.
 
    Beenden heißt beenden, nicht löschen: gueltig_bis = jetzt. Der
    Code bleibt belegt (UNIQUE je Haus) — ein beendeter Gutschein
    kann nicht unter demselben Code wieder auftauchen.
    ══════════════════════════════════════════════════════════════════ */
 let gutscheine = [];
-/* Ohne 0/O und 1/I: Der Code wird am Tisch vorgelesen. */
-const GS_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const GS_CODE_OK = /^[A-Z0-9-]{3,24}$/;
-
-function gsVorschlag(){
-  const z = new Uint32Array(4);
-  crypto.getRandomValues(z);
-  return "DANKE-" + Array.from(z, x => GS_ZEICHEN[x % GS_ZEICHEN.length]).join("");
-}
-
-/* Was die Datenbank annimmt, schon beim Tippen: groß, Umlaute
-   ausgeschrieben, Leerzeichen zu Bindestrich, alles andere raus. */
-function gsCodeSauber(v){
-  return String(v || "").toUpperCase()
-    .replace(/Ä/g, "AE").replace(/Ö/g, "OE").replace(/Ü/g, "UE").replace(/ß/g, "SS")
-    .replace(/\s+/g, "-").replace(/[^A-Z0-9-]/g, "").slice(0, 24);
-}
 
 /* Datenbankfehler in Klartext — nie das rohe JSON (CLAUDE.md §8.1h). */
 function gsFehlerText(err){
@@ -13413,18 +13572,19 @@ $("#aeMehr").addEventListener("click", () => { aeSeite++; aeLaden(false); });
 
 async function gsLaden(){
   massVerdrahten();
-  const code = $("#gsCode");
-  if(code && !code.value) code.value = gsVorschlag();
+  grLaden();
   if(demo || !db || !betriebId){ gsZeichnen(); return; }
   try{
     const jetzt = new Date().toISOString();
-    const {data, error} = await db.from("gutscheine")
-      .select("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt")
+    const frage = spalten => db.from("gutscheine").select(spalten)
       .eq("betrieb_id", betriebId)
       .is("eingeloest_am", null)
       .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
       /* Eindeutiges Feld am Ende (CLAUDE.md §2.6). */
       .order("angelegt", {ascending:false}).order("id");
+    let {data, error} = await frage("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt,angelegt_name");
+    if(error && /angelegt_name|column/i.test(error.message || ""))
+      ({data, error} = await frage("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt"));
     if(error) throw error;
     gutscheine = data || [];
   }catch(e){ gutscheine = []; }
@@ -13440,7 +13600,8 @@ function gsZeichnen(){
   ziel.innerHTML = gutscheine.map(g =>
     '<div class="gs-zeile" data-gs="' + sicher(g.id) + '">' +
       '<span class="gs-was"><b>' + sicher(g.titel) + '</b>' +
-        (g.beschreibung ? '<i>' + sicher(g.beschreibung) + '</i>' : '') + '</span>' +
+        (g.beschreibung ? '<i>' + sicher(g.beschreibung) + '</i>' : '') +
+        (g.angelegt_name ? '<i>ausgestellt von ' + sicher(g.angelegt_name) + '</i>' : '') + '</span>' +
       '<span class="gs-code">' + sicher(g.code) + '</span>' +
       '<span class="gs-frist">' +
         (g.gueltig_bis ? "bis " + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist") +
@@ -13451,8 +13612,8 @@ function gsZeichnen(){
 }
 
 if($("#gsForm")){
-  $("#gsCode").addEventListener("input", e => {
-    const el = e.target, sauber = gsCodeSauber(el.value);
+  $("#gsPraefix").addEventListener("input", e => {
+    const el = e.target, sauber = praefixSauber(el.value);
     if(sauber !== el.value) el.value = sauber;
   });
 
@@ -13460,10 +13621,9 @@ if($("#gsForm")){
     e.preventDefault();
     const titel = $("#gsTitel").value.trim();
     const text  = $("#gsText").value.trim();
-    const code  = gsCodeSauber($("#gsCode").value);
+    const praefix = praefixSauber($("#gsPraefix").value);
     const bis   = $("#gsBis").value;
     if(!titel){ melde("Bitte zuerst eintragen, was es gibt.", true); $("#gsTitel").focus(); return; }
-    if(!GS_CODE_OK.test(code)){ melde("Der Code braucht 3 bis 24 Zeichen: A–Z, 0–9, Bindestrich.", true); $("#gsCode").focus(); return; }
     /* Das Datumsfeld liefert einen Kalendertag — gültig bis zu
        dessen Ende, in der Zeit des Hauses, nicht bis Mitternacht UTC. */
     const ende = bis ? new Date(bis + "T23:59:59").toISOString() : null;
@@ -13472,22 +13632,29 @@ if($("#gsForm")){
     const knopf = $("#gsAnlegen");
     knopf.disabled = true; knopf.textContent = "Wird angelegt …";
     try{
+      await grLaden();
+      let code = null;
       if(demo || !db){
-        if(gutscheine.some(g => g.code === code)) throw {code:"23505"};
-        gutscheine.unshift({id:"demo-" + Date.now(), titel, beschreibung:text, code,
-          gueltig_bis:ende, gast_id:null, angelegt:new Date().toISOString()});
-        gsZeichnen();
+        const pin = await apFragen("eingeben");
+        if(pin){
+          code = demoCode(praefix);
+          gutscheine.unshift({id:"demo-" + Date.now(), titel, beschreibung:text, code,
+            gueltig_bis:ende, gast_id:null, angelegt:new Date().toISOString(), angelegt_name:"Vorführung"});
+          gsZeichnen();
+        }
       }else{
-        const {error} = await db.from("gutscheine").insert({
-          betrieb_id: betriebId, titel, beschreibung: text, code, gueltig_bis: ende
-        });
-        if(error) throw error;
-        await gsLaden();
+        const data = await mitPin(pin => db.rpc("gutschein_ausstellen", {
+          p_betrieb: betriebId, p_titel: titel, p_beschreibung: text || null,
+          p_gueltig_bis: ende, p_praefix: praefix || null, p_pin: pin
+        }));
+        if(data && !data.ok) melde(ausstellSatz(data), true);
+        if(data && data.ok){ code = data.code; grFuer = null; await gsLaden(); }
       }
-      $("#gsTitel").value = ""; $("#gsText").value = ""; $("#gsBis").value = "";
-      $("#gsCode").value = gsVorschlag();
-      massZeigen("gsTitel"); massZeigen("gsText");
-      melde("Gutschein liegt bereit — Ihre Gäste sehen ihn unter „Mein Tisch“.");
+      if(code){
+        $("#gsTitel").value = ""; $("#gsText").value = ""; $("#gsBis").value = "";
+        massZeigen("gsTitel"); massZeigen("gsText");
+        melde("Gutschein " + code + " liegt bereit — Ihre Gäste sehen ihn unter „Mein Tisch“.");
+      }
     }catch(err){
       melde(gsFehlerText(err), true);
     }
@@ -13506,9 +13673,9 @@ if($("#gsForm")){
       return;
     }
     try{
-      const {error} = await db.from("gutscheine")
-        .update({gueltig_bis: new Date().toISOString()}).eq("id", id);
+      const {data, error} = await db.rpc("gutschein_beenden", { p_id: id });
       if(error) throw error;
+      if(!data || !data.ok){ k.disabled = false; melde(ausstellSatz(data), true); return; }
       await gsLaden();
       melde("Gutschein beendet");
     }catch(err){ k.disabled = false; melde(gsFehlerText(err), true); }
