@@ -209,6 +209,19 @@ for(const n of ["_headers", "_redirects"]){
   }
 }
 
+/* ─── 5a · Bibliotheken ─────────────────────────────────────────
+   supabase-js und eruda, fest und selbst ausgeliefert (08.10.,
+   Sicherheit) statt schwimmend vom CDN. Fehlen sie, läuft das Board
+   nicht — deshalb bricht der Bau dann ab. */
+{
+  const von = path.join(WURZEL, "auslieferung", "lib");
+  if(!fs.existsSync(von)){ console.error("\n   lib/ fehlt — Board, Konto und Master brauchen supabase-js."); process.exit(1); }
+  ordner(path.join(ZIEL, "lib"));
+  let n = 0;
+  for(const f of fs.readdirSync(von)){ fs.copyFileSync(path.join(von, f), path.join(ZIEL, "lib", f)); n++; }
+  console.log("\n   lib/ übernommen (" + n + " Dateien)");
+}
+
 /* ─── 5b · Bewegte Zeichen ──────────────────────────────────────
    Lottie-Emojis und ihr Abspieler, nach /emoji/. Der Hub lädt sie von
    https://omoteno.de/emoji/ — FEST von der Hauptadresse, nicht

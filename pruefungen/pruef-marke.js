@@ -88,10 +88,15 @@ async function kontoSeite(browser, betriebZeile){
   const p = await ctx.newPage();
   const konsole = [];
   p.on("pageerror", e => konsole.push(String(e).slice(0, 200)));
+  /* supabase-js kommt seit 08.10. aus /lib/ mit integrity — eine an
+     dieser Adresse untergeschobene Datei weist der Browser ab. Der
+     Nachbau kommt deshalb VOR dem Laden, die echte Datei wird
+     abgewiesen. */
+  await p.addInitScript(bibliothek(betriebZeile));
   await p.route("**/*", r => {
     const u = r.request().url();
+    if (/supabase-js/.test(u)) return r.abort();
     if (u.startsWith("file://")) return r.continue();
-    if (/supabase-js/.test(u)) return r.fulfill({ contentType:"application/javascript", body: bibliothek(betriebZeile) });
     return r.abort();
   });
   await p.goto("file://" + path.join(HIER, "konto.html"));

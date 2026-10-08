@@ -15,7 +15,24 @@
   # baut jemand eine Seite, die aussieht wie seine, und darin liegt
   # unser Board — samt Anmeldung.
   X-Frame-Options: DENY
-  Content-Security-Policy: frame-ancestors 'none'
+  # Content-Security-Policy (08.10., Sicherheitssystem): Was eine
+  # Seite laden und wohin sie senden darf. Wirkt vor allem gegen das,
+  # was nach einer eingeschleusten Zeile kommt: Kein Skript von einem
+  # fremden Server, keine Daten an einen fremden Server (connect-src),
+  # kein Formular an fremde Adressen, kein <base>-Umbiegen, keine
+  # Plugins, kein fremder Rahmen um uns.
+  # 'unsafe-inline' für Skripte ist ehrlich benannt: Die Seiten sind
+  # Einzeldateien mit eingebettetem Skript — das ist die Bauart, nicht
+  # ein Versehen. Fotos dürfen von jeder https-Adresse kommen, weil
+  # der Wirt eigene Bildadressen eintragen darf.
+  # Gemessen: pruef-sicherheit.js lädt jede Seite mit genau dieser
+  # Kopfzeile und hört auf securitypolicyviolation.
+  Content-Security-Policy: default-src 'self'; script-src 'self' 'unsafe-inline' https://omoteno.de; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data: https://omoteno.de; connect-src 'self' https://*.supabase.co wss://*.supabase.co https://omoteno.de https://openplzapi.org; media-src 'self' data: blob: https:; worker-src 'self' blob:; frame-src 'self' blob: data:; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+
+  # Nur noch https, auch für jede Kundenadresse unter omoteno.de, ein
+  # Jahr lang. Ein Angreifer im Café-WLAN kann den Gast dann nicht auf
+  # eine unverschlüsselte Fassung umlenken.
+  Strict-Transport-Security: max-age=31536000; includeSubDomains
 
   # Kein Erraten des Dateityps. Ohne das kann eine hochgeladene
   # Datei je nach Inhalt als Skript ausgeführt werden.
@@ -76,5 +93,10 @@
 # der Browser ihn fest, liefe nach einer Änderung tagelang die alte
 # Fassung weiter — und ein Service Worker, den man nicht mehr
 # austauschen kann, ist der unangenehmste Fehler dieser Bauart.
+# Selbst ausgelieferte Bibliotheken: Die Version steht im Dateinamen,
+# der Inhalt ändert sich also nie. Ein Jahr.
+/lib/*
+  Cache-Control: public, max-age=31536000, immutable
+
 /sw.js
   Cache-Control: public, max-age=0, must-revalidate

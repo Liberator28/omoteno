@@ -12422,6 +12422,7 @@ function zeichne(){
    Läuft nur auf der Bestellt-Seite, nur mit Server, und beendet sich
    selbst, sobald der Gast weiternavigiert oder die Rechte fehlen. */
 let statusWecker = null;
+let statusHolenJetzt = null;   /* holen() des laufenden Bestellstands, für das Nachholen */
 /* ══════════════════════════════════════════════════════════════════
    STREIFEN ZEICHNEN UND NACHFRAGEN
 
@@ -12620,7 +12621,11 @@ function vorgaengeAbfragen(){
 function vorgangWeckerStellen(){
   if(vorgangWecker){ clearInterval(vorgangWecker); vorgangWecker = null; }
   if(!offeneVorgaenge().some(v => v.status !== "fertig")) return;
-  vorgangWecker = setInterval(vorgaengeAbfragen, 15000);
+  /* Im Hintergrund nicht fragen (S3, 08.10.): Ein offener Tab in der
+     Tasche fragte sonst alle 15 s weiter — vervielfacht über viele
+     Gäste ist das Last ohne Nutzen. Beim Zurückkommen holt der
+     visibilitychange-Horcher unten sofort nach. */
+  vorgangWecker = setInterval(() => { if(!document.hidden) vorgaengeAbfragen(); }, 15000);
   vorgaengeAbfragen();
 }
 
@@ -12804,8 +12809,14 @@ function bestellStatusSteuern(pfad){
     });
   };
   holen();
-  statusWecker = setInterval(holen, 15000);
+  statusHolenJetzt = holen;
+  statusWecker = setInterval(() => { if(!document.hidden) holen(); }, 15000);
 }
+/* Zurück aus dem Hintergrund: den Stand sofort holen, nicht erst im
+   nächsten Takt — im Hintergrund wurde ja nicht gefragt. */
+document.addEventListener("visibilitychange", () => {
+  if(!document.hidden && statusWecker && statusHolenJetzt) statusHolenJetzt();
+});
 
 /* Klicks im Inhalt zentral behandeln */
 /* ---------- Warenkarte: Infokarte zu einem Gericht ---------- */
@@ -14549,7 +14560,7 @@ if($("lichtknopf")){
 lichtKnopfZeichnen();
 
 aktionenLaden();
-setInterval(aktionenLaden, 120000);
+setInterval(() => { if(!document.hidden) aktionenLaden(); }, 120000);
 
 /* Einmal beim Öffnen melden: Das zählt den Besuch und holt Lieblinge
    und Gutscheine. Kein Takt dahinter — was sich hier ändert, ändert
@@ -15198,7 +15209,7 @@ function karteAuffrischen(){
    Der Rückweg darunter macht die Verlängerung ungefährlich: Wer die
    Seite wieder hervorholt, bekommt frisch. Genau dann sieht auch
    jemand hin. */
-setInterval(karteAuffrischen, 300000);
+setInterval(() => { if(!document.hidden) karteAuffrischen(); }, 300000);
 
 document.addEventListener("visibilitychange", () => {
   /* Kommt der Gast nach längerer Pause zurück, gleich frisch laden.

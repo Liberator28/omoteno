@@ -77,7 +77,10 @@
 ═══════════════════════════════════════════════════════════════════
 -->
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- supabase-js fest und selbst ausgeliefert (08.10., Sicherheit): vorher
+     schwimmend von cdn.jsdelivr.net (@2) — ein kompromittiertes Paket
+     liefe hier mit den Anmeldedaten des Teams. integrity prüft die Datei. -->
+<script src="/lib/supabase-js-2.117.3.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R"></script>
 
 <style>
 /* FARBSCHEMA — kein Schmuck, sondern die Ansage an den Browser.
@@ -7888,9 +7891,16 @@ async function anmelden(){
 
   let pruefung = null, schutzErreichbar = true;
   try{
-    const {data, error} = await db.rpc("admin_anmelden", {p_email: mail, p_passwort: pass});
-    if(error) throw error;
-    pruefung = data;
+    const {data, error, status} = await db.rpc("admin_anmelden", {p_email: mail, p_passwort: pass});
+    /* Netz-Bremse (migration-schutz-2.sql, HTTP 429): Das ist KEIN
+       Ausfall der Prüfung — weiter zum Login hieße, die Bremse zu
+       umgehen. Deshalb ein Satz statt „fail-open“. */
+    if(status === 429 || (error && (error.code === "PT429" || /zu_viele_anfragen/.test(error.message || "")))){
+      pruefung = { erlaubt:false, gesperrt:false, nachricht:"Zu viele Anmeldeversuche aus diesem Netz. Bitte in zehn Minuten erneut." };
+    }else{
+      if(error) throw error;
+      pruefung = data;
+    }
   }catch(e){
     schutzErreichbar = false;
   }
@@ -14165,6 +14175,10 @@ const UEB_GRUND = {
   keine_antwort:   "Der Übersetzer hat geantwortet, aber nichts geliefert. " +
     "Bitte noch einmal versuchen.",
   kein_json:       "Der Übersetzer hat die Anfrage nicht verstanden.",
+  /* Tageskontingent (migration-ki-kontingent.sql): Schutz vor einer
+     Rechnung, die ein Skript in einer Nacht erzeugt. */
+  kontingent:      "Das Übersetzungs-Kontingent für heute ist aufgebraucht. " +
+    "Morgen geht es weiter — das Gericht ist gespeichert.",
   abgelehnt:       "Das Sprachmodell hat diesen Text abgelehnt. " +
     "Bitte die Formulierung ändern.",
   /* „Failed to send a request“ kommt auch, wenn der Browser nach dem

@@ -1137,7 +1137,11 @@ function sperrePruefen(mail, wort){
     method:"POST",
     headers:{apikey:DB.schluessel, Authorization:"Bearer "+DB.schluessel, "Content-Type":"application/json"},
     body: JSON.stringify({p_email:mail, p_passwort:wort})
-  }).then(function(a){ return a.ok ? a.json() : null; })
+  }).then(function(a){
+      /* Netz-Bremse (HTTP 429, migration-schutz-2.sql): Satz statt still weiter. */
+      if(a.status === 429) return { erlaubt:false, gesperrt:false, nachricht:"Zu viele Anmeldeversuche aus diesem Netz. Bitte in zehn Minuten erneut." };
+      return a.ok ? a.json() : null;
+    })
     .catch(function(){ return null; });
 }
 function sperreText(p){

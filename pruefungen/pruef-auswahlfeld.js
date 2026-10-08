@@ -146,7 +146,7 @@ async function board(seite) {
   pruef(parseFloat(opReduziert) === 1, "das Panel ist sofort da, kein Warten auf eine Animation, die nicht laufen soll", opReduziert);
 
   /* Die eigene Netzblockade oben erzeugt selbst Konsolenfehler
-     (ERR_FAILED für die jsdelivr-Bibliothek) — die zaehlen nicht als
+     (ERR_FAILED für /lib/supabase-js, die es unter file:// nicht gibt) — die zaehlen nicht als
      Befund dieser Pruefung, siehe pruef-board.js für dasselbe Muster. */
   const echteFehler = konsole.filter(k => !/ERR_FAILED|net::/.test(k));
   pruef(echteFehler.length === 0, "keine echten Fehler in der Konsole", echteFehler.slice(0, 3).join(" | ") || "still");

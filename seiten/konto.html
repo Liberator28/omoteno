@@ -20,7 +20,10 @@
       onload="this.onload=null;this.rel='stylesheet'">
 <noscript><link rel="stylesheet" href="/schriften/seiten.css"></noscript>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- supabase-js fest und selbst ausgeliefert (08.10., Sicherheit): vorher
+     schwimmend von cdn.jsdelivr.net (@2) — ein kompromittiertes Paket
+     liefe hier mit den Anmeldedaten des Teams. integrity prüft die Datei. -->
+<script src="/lib/supabase-js-2.117.3.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R"></script>
 
 <style>
 /* ═══════════════════════════════════════════════════════════════
@@ -1028,7 +1031,10 @@ $("torKnopf").onclick = async () => {
       let sperre = null;
       try{
         const r = await db.rpc("admin_anmelden", {p_email: mail, p_passwort: pass});
-        if(!r.error) sperre = r.data;
+        /* Netz-Bremse (HTTP 429): Satz statt still weiter (migration-schutz-2.sql). */
+        if(r.status === 429 || (r.error && (r.error.code === "PT429" || /zu_viele_anfragen/.test(r.error.message || ""))))
+          sperre = { erlaubt:false, gesperrt:false, nachricht:"Zu viele Anmeldeversuche aus diesem Netz. Bitte in zehn Minuten erneut." };
+        else if(!r.error) sperre = r.data;
       }catch(e){}
       if(sperre && sperre.erlaubt !== true){
         let t = sperre.nachricht || "E-Mail oder Passwort stimmen nicht.";

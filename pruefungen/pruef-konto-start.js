@@ -10,7 +10,7 @@
    herauszoomen, um den Rest des Formulars zu sehen (CLAUDE.md §3.5).
 
    Gefahren wird OHNE Netz nach außen. Für konto.html ist das der
-   entscheidende Fall: Die Seite lädt supabase-js von jsdelivr, und
+   entscheidende Fall: Die Seite lädt supabase-js aus /lib/ (selbst ausgeliefert), und
    wenn das ausbleibt, darf sie NICHT weiß werden, sondern muss
    sagen, was los ist.
 
@@ -95,11 +95,17 @@ async function googleSeite(b, anbieter, w, h){
   p.on("pageerror", e => kons.push("JS: " + String(e).slice(0,150)));
   p.on("console", m => { if(m.type()==="error") kons.push(m.text().slice(0,150)); });
 
+  /* Seit 08.10. liefert omoteno supabase-js selbst aus (/lib/…), mit
+     integrity. Eine untergeschobene Datei an dieser Adresse weist der
+     Browser ab — genau das soll er (pruef-sicherheit.js prüft es). Der
+     Ersatz kommt deshalb VOR dem Laden, die echte Datei wird
+     abgewiesen wie früher der Weg zu jsdelivr. */
+  await p.addInitScript(BIBLIOTHEK);
   await p.route("**/*", r => {
     const u = r.request().url();
     gerufen.push(u);
+    if(/supabase-js/.test(u))            return r.abort();
     if(u.startsWith("file://"))          return r.continue();
-    if(/supabase-js/.test(u))            return r.fulfill({ contentType:"application/javascript", body:BIBLIOTHEK });
     if(/\/auth\/v1\/settings/.test(u)){
       if(anbieter === "fehler")          return r.abort();
       return r.fulfill({ contentType:"application/json",
@@ -150,7 +156,7 @@ async function seite(b, datei, w, h){
     const { ctx, p, kons } = await seite(b, "konto.html", w, h);
     console.log("\n══ konto.html · " + n);
 
-    /* Die Bibliothek kommt von jsdelivr und ist hier gesperrt. Genau
+    /* Die Bibliothek (/lib/…) gibt es unter file:// nicht. Genau
        dieser Fall soll eine ERKLAERUNG zeigen, keinen weissen Schirm. */
     const txt = (await p.textContent("body")) || "";
     ok(txt.replace(/\s+/g," ").trim().length > 120,

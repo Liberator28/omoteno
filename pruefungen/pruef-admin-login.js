@@ -10,9 +10,9 @@
    zeigt es den richtigen Schirm, und lässt es niemanden aus, wenn
    die Prüfung selbst mal nicht erreichbar ist?
 
-   Die echte @supabase/supabase-js-Bibliothek kommt aus einem Netz,
-   das dieser kopflose Browser nicht erreicht (cdn.jsdelivr.net ist
-   hier gesperrt). Ersetzt durch einen dünnen Ersatz, der GENAU die
+   Die echte @supabase/supabase-js-Bibliothek liegt seit 08.10. unter
+   /lib/ und ist unter file:// nicht erreichbar (und mit integrity
+   geschützt — untergeschoben würde sie abgewiesen). Ersetzt durch einen dünnen Ersatz, der GENAU die
    Methoden trägt, die admin.html tatsächlich ruft — nicht mehr, nicht
    weniger. Wer diesen Ersatz erweitert, prüft ihn zuerst gegen
    `grep -oE 'db\.(auth\.[a-zA-Z]+|from|rpc|functions\.[a-zA-Z]+)'
