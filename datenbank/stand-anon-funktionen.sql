@@ -1,7 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════════
 -- STAND · security-definer-Funktionen, die anon ausführen darf
 --
--- Gelesen am 08.10. (nicht geändert) mit:
+-- Gelesen am 08.10., nachgelesen am zweiten Tag nach dem Einspielen
+-- von admin_anmelden und tisch_sitzung_start, mit:
 --
 --   select p.proname, pg_get_function_identity_arguments(p.oid),
 --          case when pg_get_functiondef(p.oid) ~ 'schutz_bremsen|schutz_zaehlen'
@@ -16,13 +17,18 @@
 -- ungeprüft offen (CLAUDE.md §2.3a, §8.1b).
 --
 -- Spalten: name | bremse (koerper = schutz_bremsen/schutz_zaehlen im
--- Körper, trigger = Bremse per Trigger auf der Zieltabelle, - = keine)
+-- Körper, trigger = Bremse per Trigger auf der Zieltabelle, aufgeben =
+-- läuft über bestellung_aufgeben, das je Herkunft zählt und markiert —
+-- der Trigger bestellung_bremse lässt quelle 'lieferung' NICHT durch
+-- seine Zählung, das stand hier für bestellung_liefern vorher falsch
+-- als „trigger“; - = keine)
 -- ═══════════════════════════════════════════════════════════════════
-admin_anmelden          | -
+admin_anmelden          | koerper
 anfrage_anhang_ok       | koerper
 bestellung_aufgeben     | koerper
 bestellung_gefunden     | koerper
-bestellung_liefern      | trigger
+bestellung_abholen      | aufgeben
+bestellung_liefern      | aufgeben
 bestellung_nachrichten  | koerper
 bestellung_restzeit     | koerper
 bestellung_status       | koerper
@@ -34,4 +40,4 @@ meine_betriebe          | -
 reservierung_anfragen   | trigger
 reservierung_stand      | koerper
 slug_frei               | koerper
-tisch_sitzung_start     | -
+tisch_sitzung_start     | koerper

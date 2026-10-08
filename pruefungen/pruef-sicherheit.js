@@ -50,10 +50,9 @@ const AUSGENOMMEN = {
   meine_betriebe: "steckt in RLS-Regeln und läuft dort je ZEILE; liefert anon nichts",
   ist_master: "steckt in RLS-Regeln und läuft dort je ZEILE; liefert anon false",
 };
-const AUSSTEHEND = {
-  admin_anmelden: "migration-schutz-2.sql im SQL-Editor einspielen",
-  tisch_sitzung_start: "migration-schutz-2.sql im SQL-Editor einspielen",
-};
+/* Leer seit alle Bremsen live sind. Wer hier etwas einträgt, nennt,
+   was noch eingespielt werden muss — die Datei muss es dann schließen. */
+const AUSSTEHEND = {};
 
 /* ── _headers lesen und wie Netlify anwenden ─────────────────────── */
 function regelnLesen() {
@@ -276,7 +275,7 @@ async function seiteAuf(browser, basis, pfad, opt = {}) {
     const migr = fs.readFileSync(path.join(OBEN, "datenbank", "migration-schutz-2.sql"), "utf8");
     pruef(stand.length >= 15, "zweite Quelle gelesen", stand.length + " Funktionen");
     for (const [name, bremse] of stand) {
-      if (bremse === "koerper" || bremse === "trigger") { pruef(true, name + ": gebremst (" + bremse + ")"); continue; }
+      if (bremse === "koerper" || bremse === "trigger" || bremse === "aufgeben") { pruef(true, name + ": gebremst (" + bremse + ")"); continue; }
       if (AUSGENOMMEN[name]) { pruef(true, name + ": ausgenommen — " + AUSGENOMMEN[name]); continue; }
       if (AUSSTEHEND[name]) {
         const block = (migr.split(/create or replace function public\./).find(b => b.startsWith(name + "(")) || "");

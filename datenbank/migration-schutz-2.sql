@@ -8,14 +8,23 @@
 --     (§2.1), vorher in zurückgedrehter Transaktion geprüft (120 frei,
 --     der 121. gebremst, andere Herkunft frei, ohne Herkunft nie
 --     gebremst).
---   NOCH EINZUSPIELEN: admin_anmelden, tisch_sitzung_start. Beim
---     Einspielen über das Werkzeug dieser Sitzung kam viermal nach 60 s
---     keine Antwort — auch mit statement_timeout 20 s. Die Anfrage
---     erreichte die Datenbank also gar nicht; etwas auf dem
---     Übertragungsweg hielt genau diese beiden Texte an.
---     → Diese GANZE Datei im SQL-Editor von Supabase ausführen. Sie ist
---     wiederholbar: Die schon angewendeten Teile werden unverändert
---     erneut gesetzt.
+--   NACHGEZOGEN (zweiter Tag): admin_anmelden, tisch_sitzung_start.
+--     Der volle Funktionstext kam über das Werkzeug nie an (fünfmal
+--     60 s ohne Antwort, keine offene Sitzung, keine Sperre — der
+--     Übertragungsweg hielt genau diese beiden Texte an). Eingespielt
+--     über einen DO-Block, der die Live-Fassung liest und nur die
+--     Bremszeile einsetzt; danach je genau eine Fassung, Körper bis auf
+--     diese Zeile gleich. Zurückgedrehte Probe: 20 Anmeldungen frei,
+--     die 21. PT429, gefälschtes x-forwarded-for hilft nicht, andere
+--     Herkunft frei; echter Tischcode liefert die Sitzung, Aufruf 201
+--     PT429.
+--   BEFUND dabei: tisch_sitzung_start WARF bei falschem Code eine
+--     Ausnahme — und eine Ausnahme dreht auch den Zähler der Bremse
+--     zurück. Gezählt wurden nur GÜLTIGE Codes, die Flut falscher nie
+--     (gemessen: Aufruf 201 noch P0001 statt PT429). Jetzt: falscher
+--     Code → leere Antwort (der Hub liest leer und Fehler gleich, er
+--     tut dann still nichts).
+--     Die Datei bleibt wiederholbar (z. B. im SQL-Editor).
 --
 --  Wunsch (08.10.): „ein Sicherheitssystem, das Angriffe blockt“ —
 --  Anfragefluten über den öffentlichen anon-Schlüssel, Raten von
@@ -160,7 +169,7 @@ declare
 begin
   perform schutz_bremsen('tisch', 200);
   if p_schluessel is null or length(p_schluessel) < 8 or length(p_schluessel) > 200 then
-    raise exception 'Dieser Tischcode gilt hier nicht.' using errcode='P0001';
+    return;   -- leer statt Ausnahme: sonst dreht sie den Zähler zurück
   end if;
 
   select ti.id, ti.betrieb_id, ti.nummer, ti.aktiv
@@ -170,7 +179,7 @@ begin
    limit 1;
 
   if not found or not t.aktiv then
-    raise exception 'Dieser Tischcode gilt hier nicht.' using errcode='P0001';
+    return;
   end if;
 
   delete from tisch_sitzungen s
