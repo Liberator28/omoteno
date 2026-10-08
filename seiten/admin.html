@@ -1435,6 +1435,8 @@ body.hell .schritt[aria-pressed=true]{
 .kartenchips{display:flex;flex-wrap:wrap;gap:8px}
 /* Eigene Kacheln, Karte je Kachel, Zeitplan */
 /* Gericht-Blatt: Vorschläge und „Mehr Angaben“ */
+.alterblock{margin:16px 0 4px}
+.alterblock .segment{margin:8px 0 6px}
 .rabattblock{margin:18px 0 6px;padding-top:14px;border-top:1px solid var(--linie)}
 .rabattblock .segment{margin:8px 0 10px}
 .rb-wert{display:block;margin:4px 0 10px}
@@ -4360,6 +4362,21 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div><div class="schaltertext">Heute verfügbar</div>
       <div class="schalterhilfe">Aus = im Gast-Hub durchgestrichen</div></div>
       <button class="wippe" id="fVerf" aria-pressed="true" aria-label="Verfügbarkeit"></button>
+    </div>
+
+    <!-- Altersfreigabe (Wunsch 07.10.): gerichte.ab_alter, nur 16 oder 18
+         (CHECK gerichte_ab_alter_form). Der Hub kennzeichnet und fragt
+         einmal je Sitzung nach; die Küche sieht „Ausweis“ am Bon. -->
+    <div class="alterblock">
+      <span class="lname">Altersfreigabe <span class="lzusatz">wird beim Gast gekennzeichnet</span></span>
+      <div class="segment" id="fAlter" role="radiogroup" aria-label="Altersfreigabe">
+        <button type="button" data-ab-alter="" role="radio" aria-checked="true">Keine</button>
+        <button type="button" data-ab-alter="16" role="radio" aria-checked="false">16+</button>
+        <button type="button" data-ab-alter="18" role="radio" aria-checked="false">18+</button>
+        <i class="segmentschieber" aria-hidden="true"></i>
+      </div>
+      <p class="feldhilfe">16+ für Bier, Wein, Sekt · 18+ für Spirituosen und Getränke damit.
+        Der Gast bestätigt einmal; den Ausweis prüft das Personal.</p>
     </div>
 
     <!-- Rabatt direkt am Gericht (Wunsch 07.10.): schreibt eine Zeile in
@@ -13742,6 +13759,53 @@ $("#gVorschlag").addEventListener("click", e => {
   if(x && typeof gExtraAnnehmen === "function"){ gExtraAnnehmen(x.dataset.vorschlagExtra); gVorschlaegeZeichnen(); mehrStandSetzen(); }
 });
 
+/* ── Altersfreigabe ───────────────────────────────────────────────
+   Vorschlag statt Automatik, wie bei den Allergenen: Aus dem Namen
+   erkannte Spirituosen schlagen 18+ vor, Bier/Wein/Sekt 16+. Gesetzt
+   wird nur auf Tipp — „Gin Tonic alkoholfrei“ gibt es auch. */
+let fAlterWert = null;
+/* Wort für Wort statt eines Musters: „\bgin“ träfe „Ginger Ale“, „\brum“
+   das „Rumpsteak“, und „Rotwein“ oder „Weizenbier“ fielen durch. Stämme
+   zählen auch in Zusammensetzungen, kurze Wörter nur ganz; was nach
+   Küche klingt (Weinessig, Bierteig, Weintrauben), zählt nicht. */
+const ALKOHOL_18 = ["wodka","vodka","whisky","whiskey","bourbon","likör","likoer","tequila","mezcal","schnaps",
+  "brandy","cognac","grappa","ouzo","raki","absinth","jägermeister","negroni","martini","mojito","caipirinha",
+  "margarita","daiquiri","longdrink","spirituose"];
+/* „Cocktail“ steht bewusst NICHT darin: Gegen die echten Daten laufen
+   lassen (§6.1) — Chocos „Cocktails“ sind Milch- und Fruchtgetränke. */
+const ALKOHOL_18_GANZ = ["gin","rum","korn","shot"];
+const ALKOHOL_16 = ["bier","pils","wein","sekt","prosecco","champagner","cidre","aperol","spritz","radler","lillet"];
+const ALKOHOL_KUECHE = ["essig","teig","traube","schinken","sauerkraut","soße","sosse","sauce","jus"];
+function alkoholStufe(text){
+  const woerter = String(text).toLowerCase().split(/[^a-zäöüß0-9]+/).filter(Boolean);
+  if(/alkoholfrei|ohne alkohol|virgin|0,0 ?%|0\.0 ?%/.test(String(text).toLowerCase())) return 0;
+  let stufe = 0;
+  woerter.forEach((w, i) => {
+    if(ALKOHOL_KUECHE.some(k => w.includes(k))) return;
+    /* „Shot“ nur, wenn kein Espresso davorsteht. */
+    if(ALKOHOL_18_GANZ.includes(w) && !(w === "shot" && /espresso|kaffee/.test(woerter[i - 1] || ""))) stufe = 18;
+    else if(ALKOHOL_18.some(k => w.includes(k))) stufe = 18;
+    else if(!stufe && ALKOHOL_16.some(k => w.includes(k))) stufe = 16;
+  });
+  return stufe;
+}
+function alterSetzen(w){
+  fAlterWert = w === 16 || w === 18 ? w : null;
+  rbSegment("#fAlter", "abAlter", fAlterWert ? String(fAlterWert) : "");
+}
+$("#fAlter").addEventListener("click", e => {
+  const b = e.target.closest("[data-ab-alter]"); if(!b) return;
+  alterSetzen(b.dataset.abAlter ? +b.dataset.abAlter : null);
+  mehrStandSetzen(); gVorschlaegeZeichnen(); entwurfSchreiben();
+});
+function gExtraVorschlaege(){
+  if(fAlterWert) return [];
+  const stufe = alkoholStufe(gerichtText());
+  return stufe ? [{ wert: String(stufe), text: "Ab " + stufe + " Jahren" }] : [];
+}
+function gExtraAnnehmen(w){ alterSetzen(+w); entwurfSchreiben(); }
+function gExtraStand(){ return fAlterWert ? "ab " + fAlterWert : ""; }
+
 /* ── Rabatt am Gericht ────────────────────────────────────────────
    Schreibt sofort (nicht erst mit „Speichern“): Ein Rabatt ist eine
    eigene Zeile in aktionen, kein Feld des Gerichts — und „beenden“
@@ -14316,6 +14380,7 @@ function entwurfFormLesen(){
     veg: $("#fVeg").getAttribute("aria-pressed") === "true",
     vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
     verfuegbar: $("#fVerf").getAttribute("aria-pressed") === "true",
+    ab_alter: fAlterWert,
   };
 }
 function entwurfFormAnwenden(w){
@@ -14331,6 +14396,7 @@ function entwurfFormAnwenden(w){
   $("#fVeg").setAttribute("aria-pressed", !!w.veg);
   $("#fVegan").setAttribute("aria-pressed", !!w.vegan);
   $("#fVerf").setAttribute("aria-pressed", !!w.verfuegbar);
+  alterSetzen(w.ab_alter);
 }
 function entwurfLesen(g){
   let roh; try{ roh = localStorage.getItem(entwurfSchluessel(g)); }catch(e){ return null; }
@@ -14402,6 +14468,7 @@ function blattOeffnen(g){
   $("#loeschen").hidden  = !g;
   $("#kopie").hidden     = !g;
   $("#speichernWeiter").hidden = !!g;
+  alterSetzen(g ? g.ab_alter : null);
   rbArtWert = "prozent"; rbDauerWert = "heute"; $("#rbWert").value = ""; rbZeichnen();
   /* Kluge Vorgabe: ein neues Gericht landet in der Kategorie, in die
      zuletzt in dieser Karte eines gespeichert wurde — sofern es sie noch
@@ -14916,6 +14983,7 @@ async function sichern(alsKopie, weiter){
     allergene:    stoffeLesen("#fAllergene"),
     zusatzstoffe: stoffeLesen("#fZusatz"),
     stoff_hinweis: $("#fStoffHinweis").value.trim(),
+    ab_alter: fAlterWert,
     spur: spurLesen(),
     bild: $("#fBild").value.trim(),
     bild_frei: $("#fBildFrei").value.trim() || null,
