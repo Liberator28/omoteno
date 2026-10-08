@@ -945,31 +945,139 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:rgba(224,178,78,.55);back
 #inhalt.rein > .seite > *:nth-child(n+5){animation-delay:.12s}
 @keyframes rein{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
 
-/* Zurück: ein runder Knopf mit Pfeil statt der Textzeile „‹ Zurück zur
-   Übersicht“ (Wunsch 07.10.: „kein Text, ein Button, der eindeutig
-   zurückspringt“). Er klebt oben, sobald der Kopf aus dem Bild rollt —
-   auf einer langen Karte muss man sonst erst ganz hinauf. Glas wie die
-   übrigen schwebenden Flächen, bei „Transparenz reduzieren“ deckend.
-   Ebene 42: über der Karte, unter Blättern (60+) und dem Kopf (50). */
+/* Zurück: eine Glas-Pille „‹ Zurück“ (Wunsch 08.10. — vorher ein
+   runder Knopf nur mit Pfeil, davor die Zeile „‹ Zurück zur Übersicht“).
+   Das kurze Wort steht sichtbar und übersetzt, die volle Ansage bleibt
+   im aria-label. Er klebt oben, sobald der Kopf aus dem Bild rollt.
+   Ebene 42: über der Karte, unter Blättern (60+) und dem Kopf (50).
+
+   Der Rand trägt ein feines Licht, das langsam umläuft: eine
+   übergroße, quadratische Ebene mit conic-gradient dreht sich hinter
+   einer Maske, die nur den 1,5-px-Ring durchlässt. Gedreht wird
+   ausschließlich per transform (Compositor), die Maske steht still.
+   Endlos drehend ist der einzige Ort, an dem linear richtig ist
+   (Skill bewegung §2). Die Farbe kommt aus dem Haus (--gold), die
+   Schrift bleibt --tinte und wird von pruef-glas.js gegen Schwarz UND
+   Weiß dahinter gerechnet. */
 .zurueck{
-  display:none;align-items:center;justify-content:center;
+  display:none;align-items:center;justify-content:center;gap:5px;
   position:sticky;top:12px;top:calc(12px + env(safe-area-inset-top));z-index:42;
-  width:44px;height:44px;padding:0;margin:-8px 0 12px;border-radius:999px;
-  background:color-mix(in srgb, var(--flaeche) 86%, transparent);
-  -webkit-backdrop-filter:blur(14px) saturate(160%);backdrop-filter:blur(14px) saturate(160%);
-  border:1px solid var(--linie-stark);color:var(--tinte);
-  box-shadow:0 1px 2px rgba(0,0,0,.06), 0 6px 16px -6px rgba(0,0,0,.22);
+  height:44px;min-width:44px;padding:0;padding-inline:10px 17px;margin:-8px 0 12px;border-radius:999px;
+  background:color-mix(in srgb, var(--flaeche) 78%, transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
+  border:1px solid color-mix(in srgb, var(--linie-stark) 80%, transparent);color:var(--tinte);
+  font:600 15px/1 var(--schrift-text);letter-spacing:.01em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.06), 0 8px 22px -8px rgba(0,0,0,.30);
+  overflow:hidden;isolation:isolate;
   cursor:pointer;-webkit-tap-highlight-color:transparent;
   transition:transform .14s var(--weich)
 }
 .zurueck.an{display:inline-flex}
-.zurueck:active{transform:scale(.92)}
-.zurueck svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;
+.zurueck:active{transform:scale(.95)}
+.zurueck svg{position:relative;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;
   stroke-linecap:round;stroke-linejoin:round}
+.zurueck .zr-text{position:relative;white-space:nowrap}
 [dir="rtl"] .zurueck svg{transform:scaleX(-1)}
+.zr-rand{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:-1;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+.zr-licht{position:absolute;left:50%;top:50%;width:300%;aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);
+  background:conic-gradient(from 0deg, transparent 0 58%,
+    color-mix(in srgb, var(--gold) 35%, transparent) 70%, var(--gold) 80%,
+    color-mix(in srgb, var(--gold) 35%, transparent) 88%, transparent 96%);
+  animation:zrLauf 7s linear infinite}
+@keyframes zrLauf{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  /* Stehendes Licht: oben links ein ruhiger Glanz, keine Drehung. */
+  .zr-licht{animation:none;transform:translate(-50%,-50%) rotate(-50deg)}
+}
 @media (prefers-reduced-transparency:reduce){
   .zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
+
+/* ═══ Reise · Übergang Kachel → Unterseite (Wunsch 08.10.) ═══════
+   „Eine wirklich hochwertige Speisekarte, immersiv, mit LED-Rand“:
+   Die angetippte Kachel löst sich als Karte (FLIP, gemessen am echten
+   Rechteck), wächst in die Mitte, ein Lichtband läuft einmal um den
+   Rand, das Symbol der Kachel schwebt groß nach vorn — und man
+   schwebt hinein: Karte und Symbol wachsen weiter und lösen sich auf,
+   darunter steht schon die echte Seite und baut sich gestaffelt auf
+   (#inhalt.rein). Die ganze Szene ist EINE Ebene, die am Ende
+   entfernt wird, nicht versteckt (§8.1). Nur transform und opacity.
+   pointer-events:none: Ein Tipp geht nie in eine Fläche, die gleich
+   verschwindet — überspringen läuft über einen eigenen Horcher.
+   Ebene 75: über Kopf (50) und Blättern (60+), unter der Altersfrage. */
+.reise{position:fixed;inset:0;z-index:75;pointer-events:none;overflow:hidden}
+.reise-grund{position:absolute;inset:0;opacity:0;
+  background:radial-gradient(120% 78% at 50% 46%,
+    color-mix(in srgb, var(--reise-licht) 20%, var(--grund)) 0%, var(--grund) 64%)}
+.reise-buehne{position:absolute;left:50%;top:50%;will-change:transform,opacity}
+.reise-schein{position:absolute;inset:0;border-radius:28px;opacity:0;
+  box-shadow:0 0 46px 4px color-mix(in srgb, var(--reise-licht) 55%, transparent),
+             0 0 120px 18px color-mix(in srgb, var(--reise-licht) 22%, transparent)}
+.reise-karte{position:absolute;inset:0;border-radius:28px;overflow:hidden;
+  background:linear-gradient(165deg, color-mix(in srgb, var(--reise-licht) 9%, var(--flaeche)) 0%, var(--flaeche) 58%);
+  box-shadow:0 34px 80px -28px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.18)}
+/* Die feine zweite Linie innen: der Rahmen einer gedruckten Karte. */
+.reise-linie{position:absolute;inset:12px;border-radius:18px;
+  border:1px solid color-mix(in srgb, var(--reise-licht) 38%, transparent)}
+.reise-led{position:absolute;inset:0;border-radius:inherit;padding:3px;opacity:0;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+.reise-lauf{position:absolute;left:50%;top:50%;width:240%;aspect-ratio:1;margin:-120% 0 0 -120%;
+  /* Zwei Lichter, einander gegenüber: So steht auf jeder Seite der
+     Karte einmal Licht, auch wenn die Karte schmal und hoch ist. */
+  background:conic-gradient(from 0deg,
+    transparent 0 8%, color-mix(in srgb, var(--reise-licht) 45%, transparent) 20%,
+    var(--reise-licht) 29%, #fff 31%, var(--reise-licht) 33%,
+    color-mix(in srgb, var(--reise-licht) 45%, transparent) 40%, transparent 50% 58%,
+    color-mix(in srgb, var(--reise-licht) 45%, transparent) 70%,
+    var(--reise-licht) 79%, #fff 81%, var(--reise-licht) 83%,
+    color-mix(in srgb, var(--reise-licht) 45%, transparent) 90%, transparent 100%)}
+.reise-figur{position:absolute;left:50%;top:50%;width:0;height:0;will-change:transform,opacity}
+.reise-ico{position:absolute;left:-52px;top:-74px;width:104px;height:104px;border-radius:30px;
+  display:grid;place-items:center;overflow:hidden;font-size:58px;line-height:1;color:var(--reise-licht);
+  background:color-mix(in srgb, var(--reise-licht) 13%, var(--flaeche));
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--reise-licht) 32%, transparent),
+             0 18px 44px -14px color-mix(in srgb, var(--reise-licht) 70%, transparent)}
+.reise-ico svg{width:50px;height:50px;fill:none;stroke:currentColor;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+.reise-ico .reise-film{display:block;width:76px;height:76px}
+.reise-ico .reise-film svg{width:100%;height:100%}
+.reise-ico img{width:100%;height:100%;object-fit:cover}
+.reise-titel{position:absolute;left:-140px;width:280px;top:46px;text-align:center;opacity:0;
+  text-wrap:balance;overflow-wrap:anywhere}
+.reise-titel b{display:block;font:600 23px/1.2 var(--schrift-titel, var(--schrift-kopf));color:var(--tinte)}
+/* Zwischen Titel und Unterzeile ein kurzer Strich im Licht des Hauses —
+   wie die Zierlinie unter dem Namen einer gedruckten Karte. */
+.reise-titel i{display:block;width:34px;height:2px;margin:10px auto 9px;border-radius:2px;
+  background:var(--reise-licht);opacity:.7}
+.reise-titel small{display:block;font:500 14px/1.35 var(--schrift-text);color:var(--tinte-leise)}
+
+/* ═══ Wie letztes Mal / Nochmal wie letztes Mal (08.10.) ════════
+   Beides setzt erst auf einen Tipp etwas — ein Vorschlag, keine
+   Vorauswahl. Schrift durchweg --tinte: Der Chip trägt einen Hauch
+   der Hausfarbe, darauf hielte --tinte-leise nicht überall 4,5:1. */
+.wieletzt{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-height:44px;
+  margin:0 0 14px;padding:11px 14px;border-radius:var(--rundung);text-align:start;cursor:pointer;
+  background:color-mix(in srgb, var(--gold) 10%, var(--flaeche));color:var(--tinte);
+  border:1px solid color-mix(in srgb, var(--gold) 42%, transparent);font:inherit;
+  -webkit-tap-highlight-color:transparent;transition:transform .12s var(--weich)}
+.wieletzt:active{transform:scale(.98)}
+.wl-titel{font-weight:650;font-size:14px}
+.wl-was{font-size:13.5px;line-height:1.35}
+.nmkarte{margin:0 0 16px;padding:16px;border-radius:var(--rundung);background:var(--flaeche);
+  border:1px solid var(--linie);box-shadow:var(--schatten)}
+.nm-kopf strong{display:block;font:600 17px/1.25 var(--schrift-abschnitt, var(--schrift-kopf));color:var(--tinte)}
+.nm-kopf span{display:block;margin-top:3px;font-size:13.5px;color:var(--tinte-leise)}
+.nm-liste{list-style:none;margin:12px 0;padding:0;display:grid;gap:8px}
+.nm-liste li{display:flex;gap:10px;align-items:baseline;color:var(--tinte);font-size:15px}
+.nm-m{font-weight:650;font-variant-numeric:tabular-nums;min-width:2.2em}
+.nm-n{min-width:0;overflow-wrap:anywhere}
+.nm-n small{display:block;margin-top:2px;font-size:13px;color:var(--tinte-leise)}
+.nm-fehlt{margin:0 0 10px;font-size:13px;color:var(--tinte-leise)}
+.nmkarte .nm-knopf{width:100%;margin:2px 0 0}
 
 /* ═══ Empfehlung des Hauses ═════════════════════════════════════ */
 /* Der Sofort-Knopf steht AUSSERHALB von <a> (ein <button> darin wäre
@@ -4118,7 +4226,7 @@ function markeAnwenden(abend){
   </svg>
 </header>
 
-<button class="zurueck" id="zurueck" type="button" aria-label="Zurück zur Übersicht"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+<button class="zurueck" id="zurueck" type="button" aria-label="Zurück zur Übersicht"><span class="zr-rand" aria-hidden="true"><span class="zr-licht"></span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span class="zr-text" aria-hidden="true">Zurück</span></button>
 
 <main id="inhalt"></main>
 
@@ -8340,6 +8448,13 @@ const TEXTE = {
 "vom Team bestätigt":{en:"confirmed by the team",tr:"ekip tarafından onaylandı",ru:"подтверждено командой",fr:"confirmé par l'équipe",es:"confirmado por el equipo",it:"confermato dal team",pl:"potwierdzone przez zespół",ar:"مؤكد من الفريق",uk:"підтверджено командою",nl:"bevestigd door het team",ro:"confirmat de echipă"},
 "Schließen":{en:"Close",tr:"Kapat",ru:"Закрыть",fr:"Fermer",es:"Cerrar",it:"Chiudi",pl:"Zamknij",ar:"إغلاق",uk:"Закрити",nl:"Sluiten",ro:"Închide"},
 "Karte":{en:"Menu",tr:"Menü",ru:"Меню",fr:"Carte",es:"Carta",it:"Menù",pl:"Karta",ar:"القائمة",uk:"Меню",nl:"Kaart",ro:"Meniu"},
+"Wie letztes Mal":{en:"Same as last time",tr:"Geçen seferki gibi",ru:"Как в прошлый раз",fr:"Comme la dernière fois",es:"Como la última vez",it:"Come l'ultima volta",pl:"Jak ostatnio",ar:"كالمرة السابقة",uk:"Як минулого разу",nl:"Zoals de vorige keer",ro:"Ca data trecută"},
+"Nochmal wie letztes Mal":{en:"Again, like last time",tr:"Geçen seferki gibi tekrar",ru:"Снова как в прошлый раз",fr:"Comme la dernière fois",es:"Otra vez como la última vez",it:"Di nuovo come l'ultima volta",pl:"Jeszcze raz jak ostatnio",ar:"مرة أخرى كالمرة السابقة",uk:"Знову як минулого разу",nl:"Nog eens zoals de vorige keer",ro:"Din nou ca data trecută"},
+"Mit allen Extras, zum heutigen Preis.":{en:"With all extras, at today's price.",tr:"Tüm ekstralarla, bugünkü fiyata.",ru:"Со всеми добавками, по сегодняшней цене.",fr:"Avec tous les suppléments, au prix du jour.",es:"Con todos los extras, al precio de hoy.",it:"Con tutti gli extra, al prezzo di oggi.",pl:"Ze wszystkimi dodatkami, w dzisiejszej cenie.",ar:"مع جميع الإضافات، بسعر اليوم.",uk:"З усіма добавками, за сьогоднішньою ціною.",nl:"Met alle extra's, tegen de prijs van vandaag.",ro:"Cu toate extra-opțiunile, la prețul de azi."},
+"In meine Auswahl":{en:"Add to my selection",tr:"Seçimime ekle",ru:"В мой выбор",fr:"Dans ma sélection",es:"A mi selección",it:"Nella mia selezione",pl:"Do mojego wyboru",ar:"إلى اختياري",uk:"До мого вибору",nl:"In mijn selectie",ro:"În selecția mea"},
+"Gerade nicht auf der Karte: {x}":{en:"Not on the menu right now: {x}",tr:"Şu an menüde yok: {x}",ru:"Сейчас нет в меню: {x}",fr:"Pas à la carte en ce moment : {x}",es:"Ahora no está en la carta: {x}",it:"Al momento non in menu: {x}",pl:"Obecnie nie ma w karcie: {x}",ar:"غير متوفر في القائمة حالياً: {x}",uk:"Зараз немає в меню: {x}",nl:"Nu niet op de kaart: {x}",ro:"Momentan nu e în meniu: {x}"},
+"Nicht mehr dabei: {x}":{en:"No longer available: {x}",tr:"Artık yok: {x}",ru:"Больше нет: {x}",fr:"Plus disponible : {x}",es:"Ya no disponible: {x}",it:"Non più disponibile: {x}",pl:"Już niedostępne: {x}",ar:"لم يعد متوفراً: {x}",uk:"Більше немає: {x}",nl:"Niet meer beschikbaar: {x}",ro:"Nu mai este disponibil: {x}"},
+"Zurück":{en:"Back",tr:"Geri",ru:"Назад",fr:"Retour",es:"Volver",it:"Indietro",pl:"Wstecz",ar:"رجوع",uk:"Назад",nl:"Terug",ro:"Înapoi"},
 "Zurück zur Übersicht":{en:"Back to overview",tr:"Genel bakışa dön",ru:"К обзору",fr:"Retour à l'aperçu",es:"Volver al inicio",it:"Torna alla panoramica",pl:"Powrót do przeglądu",ar:"العودة إلى النظرة العامة",uk:"Назад до огляду",nl:"Terug naar overzicht",ro:"Înapoi la prezentare"},
 "Hier hakt gerade etwas.":{en:"Something is stuck here right now.",tr:"Burada bir şeyler takıldı.",ru:"Здесь что-то пошло не так.",fr:"Quelque chose coince ici.",es:"Aquí algo se ha atascado.",it:"Qui qualcosa si è bloccato.",pl:"Tutaj coś się zacięło.",ar:"حدث خلل هنا.",uk:"Тут щось не спрацювало.",nl:"Hier loopt iets vast.",ro:"Aici s-a blocat ceva."},
 "Bitte einmal zurück zur Übersicht, unser Team hilft Ihnen sonst gerne persönlich weiter.":{en:"Please head back to the overview, otherwise our team is happy to help you in person.",tr:"Lütfen genel bakışa dönün, aksi halde ekibimiz size memnuniyetle şahsen yardımcı olur.",ru:"Вернитесь, пожалуйста, к обзору, иначе наша команда с радостью поможет лично.",fr:"Revenez à l'aperçu, sinon notre équipe vous aide volontiers en personne.",es:"Vuelva al inicio; si no, nuestro equipo le ayuda con gusto en persona.",it:"Torni alla panoramica, altrimenti il nostro team la aiuta volentieri di persona.",pl:"Wróć do przeglądu, w innym razie nasz zespół chętnie pomoże osobiście.",ar:"يرجى العودة إلى النظرة العامة، وإلا فسيسعد فريقنا بمساعدتكم شخصياً.",uk:"Поверніться, будь ласка, до огляду, інакше наша команда радо допоможе особисто.",nl:"Ga even terug naar het overzicht, anders helpt ons team u graag persoonlijk.",ro:"Reveniți la prezentare, altfel echipa noastră vă ajută cu plăcere personal."},
@@ -9773,7 +9888,7 @@ function start(){
   };
 
   let html = aktionBandHTML() + bannerRadHTML() +
-             begleiterHTML("start") + empfehlungHTML();
+             begleiterHTML("start") + nochmalHTML() + empfehlungHTML();
   /* Aufeinanderfolgende Kacheln derselben Gruppe bilden einen Bereich;
      jeder Bereich packt seine Reihen selbst (kachelReihen). */
   const bereiche = [];
@@ -9802,7 +9917,7 @@ const TISCH_SCHLUESSEL = hSchluessel("tisch");
 try { merk = JSON.parse(localStorage.getItem(MERK_SCHLUESSEL) || "{}"); } catch(e){ merk = {}; }
 /* Ältere gespeicherte Einträge (ohne Menge) bekommen Menge 1 */
 Object.values(merk).forEach(g => { if(!g.m || g.m < 1) g.m = 1; });
-function merkSpeichern(){ try { localStorage.setItem(MERK_SCHLUESSEL, JSON.stringify(merk)); } catch(e){} alterPruefen(); }
+function merkSpeichern(){ try { localStorage.setItem(MERK_SCHLUESSEL, JSON.stringify(merk)); } catch(e){} optSpeichern(); alterPruefen(); }
 
 /* ── Altersfreigabe (Wunsch 07.10.) ──────────────────────────────
    Liegt ein Gericht ab 16 oder 18 im Korb und ist diese Stufe in der
@@ -10874,6 +10989,7 @@ SEITEN.auswahl = () => {
     return '<div class="seite"><h2>' + t("Ihre Auswahl") + '</h2>' +
       '<p class="unter">' + t("Noch nichts gemerkt.") + '</p>' +
       '<div class="leer">' + t("Tippen Sie in der Karte auf das Herz, um Gerichte hier zu sammeln.") + '</div>' +
+      nochmalHTML() +
       '<a class="knopf zweit" href="#/speisekarte">' + t("Zur Karte") + '</a></div>';
   }
   const zeilen = namen.map(n => {
@@ -11444,8 +11560,8 @@ function zeigenOeffnen(daten){
      und in die Kasse tippen können. Die übersetzte Fassung steht klein
      darunter, damit auch der Gast prüfen kann, ob es stimmt. */
   $("zeigenListe").innerHTML = posten.map(p => {
-    const zusatz = optText(p.n) || "";
-    const einzel = preisNum(p.p) + optAufpreis(p.n);
+    const zusatz = (p.o != null ? String(p.o) : optText(p.n)) || "";
+    const einzel = preisNum(p.p) + (p.a != null ? +p.a || 0 : optAufpreis(p.n));
     const uebersetzt = t(p.n);
     const zweit = (sprache !== "de" && uebersetzt !== p.n) ? uebersetzt : "";
     return '<div class="zeigenzeile">' +
@@ -12374,6 +12490,7 @@ function zeichne(){
   $("claim").textContent = istStart ? t(BETRIEB.claim) : BETRIEB.strasse + " · " + BETRIEB.ort;
   $("zurueck").setAttribute("aria-label", t("Zurück zur Übersicht"));
   $("zurueck").title = t("Zurück zur Übersicht");
+  $("zurueck").querySelector(".zr-text").textContent = t("Zurück");
   const aktiv = SPRACHEN.find(sp => sp.code === sprache) || SPRACHEN[0];
   $("sprachknopf").setAttribute("aria-label", t("Sprache") + ": " + aktiv.name);
   $("sprachknopf").title = aktiv.name;
@@ -12849,7 +12966,141 @@ function stoffGruppe(kennung, titel, codes, namen, klasse){
    übergeben. Sie liegt bewusst NICHT in merk[], damit die bestehende
    Warenkorb-Logik unangetastet bleibt.
    ══════════════════════════════════════════════════════════════════ */
+/* Gespeichert im Gerät (Wunsch 08.10., und ein Fehler davor): merk[]
+   lag längst im localStorage, optWahl nur im Speicher. Nach einem
+   Neuladen standen die Gerichte noch im Korb, ihre Extras waren weg —
+   Preis und Bon stimmten dann nicht mehr. Gespeichert wird nur, was zu
+   einem Gericht im Korb gehört; gelesen wird durch die Karte der
+   Optionen (OPTIONEN): Eine Zeile, die es nicht mehr gibt, fällt still
+   weg, statt als Text auf dem Bon zu landen. */
+const OPT_SCHLUESSEL = hSchluessel("opt");
+function optBereinigt(wahl, g){
+  const aus = {};
+  if(!wahl || typeof wahl !== "object") return aus;
+  Object.keys(wahl).forEach(gruppe => {
+    const grp = OPTIONEN[gruppe], liste = wahl[gruppe];
+    if(!grp || !Array.isArray(liste)) return;
+    if(g && (g.opt || []).indexOf(gruppe) < 0) return;   /* Gruppe hängt nicht mehr am Gericht */
+    const namen = grp.zeilen.map(z => z.n);
+    let gut = liste.filter((n, i) => typeof n === "string" && namen.indexOf(n) > -1 && liste.indexOf(n) === i);
+    if(grp.art === "eine") gut = gut.slice(0, 1);
+    /* Leere Pflichtwahl hieße „nichts gewählt“ — lieber weglassen,
+       dann gilt die erste Zeile wie bei jedem frischen Gericht. */
+    if(!gut.length && grp.pflicht) return;
+    aus[gruppe] = gut;
+  });
+  return aus;
+}
 let optWahl = {};          /* { Gerichtname: { gruppe: [Zeilennamen] } } */
+try{
+  const roh = JSON.parse(localStorage.getItem(OPT_SCHLUESSEL) || "{}") || {};
+  Object.keys(roh).forEach(name => { if(merk[name]) optWahl[name] = optBereinigt(roh[name]); });
+}catch(e){ optWahl = {}; }
+function optSpeichern(){
+  try{
+    const aus = {};
+    Object.keys(merk).forEach(name => { if(optWahl[name]) aus[name] = optWahl[name]; });
+    localStorage.setItem(OPT_SCHLUESSEL, JSON.stringify(aus));
+  }catch(e){}
+}
+
+/* ── Wie letztes Mal (Wunsch 08.10.) ───────────────────────────────
+   „Der Browser soll die Zutatenauswahl speichern und vorschlagen, so
+   dass ein Knopf genügt.“ Entschieden: NUR auf dem Gerät — nichts
+   davon geht an den Server, es gibt kein Konto dafür.
+
+   Zwei Dinge werden gemerkt, beim Abschicken einer Bestellung:
+   - je Gericht die zuletzt gewählten Extras (höchstens 30 Gerichte,
+     die ältesten fallen heraus) → Chip „Wie letztes Mal“ im Blatt;
+   - die ganze letzte Bestellung → Karte „Nochmal wie letztes Mal“.
+   Beides setzt NIE von selbst etwas — erst ein Tipp. Gelesen wird
+   durch die heutige Karte: Preis von heute (Aktion eingeschlossen),
+   was es nicht mehr gibt, wird genannt und weggelassen. */
+const ZULETZT_SCHLUESSEL = hSchluessel("zuletzt");
+const ZULETZT_MAX = 30;
+function zuletztLesen(){
+  try{
+    const z = JSON.parse(localStorage.getItem(ZULETZT_SCHLUESSEL) || "null");
+    if(z && typeof z === "object") return {
+      g: z.g && typeof z.g === "object" && !Array.isArray(z.g) ? z.g : {},
+      b: z.b && Array.isArray(z.b.posten) ? z.b : null
+    };
+  }catch(e){}
+  return { g:{}, b:null };
+}
+function zuletztMerken(posten){
+  const z = zuletztLesen(), jetzt = Date.now();
+  posten.forEach(x => { if(x.w && Object.keys(x.w).length) z.g[x.n] = { w:x.w, t:jetzt }; });
+  Object.keys(z.g).sort((a, b) => (z.g[b].t || 0) - (z.g[a].t || 0))
+    .slice(ZULETZT_MAX).forEach(n => { delete z.g[n]; });
+  z.b = { t:jetzt, posten: posten.slice(0, 40).map(x => ({
+    n:String(x.n), m:Math.max(1, Math.min(99, parseInt(x.m, 10) || 1)), w:x.w || {} })) };
+  try{ localStorage.setItem(ZULETZT_SCHLUESSEL, JSON.stringify(z)); }catch(e){}
+}
+/* Wie optText, aber für den Gast: übersetzt. Auf den Bon geht optText. */
+function optAnzeige(gericht, wahl){
+  const g = findeGericht(gericht), w = wahl || {}, teile = [];
+  ((g && g.opt) || []).forEach(kennung => {
+    const grp = OPTIONEN[kennung]; if(!grp) return;
+    const gewaehlt = w[kennung] || (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
+    if(gewaehlt.length) teile.push(gewaehlt.map(n => t(n)).join(", "));
+  });
+  return teile.join(" · ");
+}
+function wieLetztHTML(g){
+  if(!(g.opt || []).length) return "";
+  const e = zuletztLesen().g[g.n]; if(!e) return "";
+  const w = optBereinigt(e.w, g);
+  /* Nur anbieten, wenn es etwas ändert. */
+  if(!Object.keys(w).length || optText(g.n, w) === optText(g.n)) return "";
+  return '<button type="button" class="wieletzt" data-wieletzt="' + encodeURIComponent(g.n) + '">' +
+    '<span class="wl-titel">' + t("Wie letztes Mal") + '</span>' +
+    '<span class="wl-was">' + hs(optAnzeige(g.n, w)) + '</span></button>';
+}
+function nochmalHTML(){
+  if(Object.keys(merk).length || VORSCHAU) return "";
+  const b = zuletztLesen().b;
+  if(!b || !b.posten.length || Date.now() - (b.t || 0) > 180 * 864e5) return "";
+  const da = b.posten.map(x => ({ x, g:findeGericht(x.n) })).filter(o => o.g && o.g.p !== "–");
+  if(!da.length) return "";
+  let summe = 0;
+  const zeilen = da.map(({ x, g }) => {
+    const w = optBereinigt(x.w, g);
+    summe += (preisNum(korbPreis(g)) + optAufpreis(g.n, w)) * x.m;
+    const extra = optAnzeige(g.n, w);
+    return '<li><span class="nm-m">' + x.m + '×</span><span class="nm-n">' + hs(t(g.n)) +
+      (extra ? '<small>' + hs(extra) + '</small>' : "") + '</span></li>';
+  }).join("");
+  const weg = b.posten.filter(x => !da.some(o => o.x === x)).map(x => t(x.n));
+  return '<section class="nmkarte" aria-label="' + hs(t("Nochmal wie letztes Mal")) + '">' +
+    '<div class="nm-kopf"><strong>' + t("Nochmal wie letztes Mal") + '</strong>' +
+      '<span>' + t("Mit allen Extras, zum heutigen Preis.") + '</span></div>' +
+    '<ul class="nm-liste">' + zeilen + '</ul>' +
+    (weg.length ? '<p class="nm-fehlt">' + hs(t("Gerade nicht auf der Karte: {x}", { x:weg.join(", ") })) + '</p>' : "") +
+    '<button type="button" class="knopf nm-knopf" data-nochmal="1">' + t("In meine Auswahl") +
+      '<span class="kpreis">' + preisText(summe) + '</span></button></section>';
+}
+function nochmalUebernehmen(){
+  const b = zuletztLesen().b; if(!b) return;
+  const weg = [], extraWeg = [];
+  b.posten.forEach(x => {
+    const g = findeGericht(x.n);
+    if(!g || g.p === "–"){ weg.push(t(x.n)); return; }
+    const w = optBereinigt(x.w, g);
+    Object.keys(x.w || {}).forEach(gr => (Array.isArray(x.w[gr]) ? x.w[gr] : []).forEach(n => {
+      if(!(w[gr] || []).includes(n)) extraWeg.push(t(n));
+    }));
+    merk[g.n] = { n:g.n, p:korbPreis(g), b:g.b || "", m:x.m };
+    optWahl[g.n] = w;
+  });
+  merkSpeichern();
+  balkenAktualisieren();
+  location.hash = "#/auswahl";
+  const teile = [];
+  if(weg.length) teile.push(t("Gerade nicht auf der Karte: {x}", { x:weg.join(", ") }));
+  if(extraWeg.length) teile.push(t("Nicht mehr dabei: {x}", { x:extraWeg.join(", ") }));
+  if(teile.length) setTimeout(() => melden(teile.join(" · "), true), 60);
+}
 
 function optGewaehlt(gericht, gruppe, zeile, i, grp){
   const w = (optWahl[gericht] || {})[gruppe];
@@ -12874,15 +13125,17 @@ function optSetzen(gericht, gruppe, zeile){
       ? jetzt.filter(x => x !== zeile)
       : jetzt.concat([zeile]);
   }
+  optSpeichern();
 }
 
 /* Aufpreis aller gewählten Zeilen eines Gerichts. */
-function optAufpreis(gericht){
+function optAufpreis(gericht, wahl){
   const g = findeGericht(gericht);
+  const w = wahl || optWahl[gericht] || {};
   let summe = 0;
   ((g && g.opt) || []).forEach(kennung => {
     const grp = OPTIONEN[kennung]; if(!grp) return;
-    const gewaehlt = (optWahl[gericht] || {})[kennung] ||
+    const gewaehlt = w[kennung] ||
       (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
     grp.zeilen.forEach(z => { if(gewaehlt.indexOf(z.n) > -1) summe += z.auf; });
   });
@@ -12890,12 +13143,13 @@ function optAufpreis(gericht){
 }
 
 /* Lesbare Zusammenfassung für Bestellung und Board. */
-function optText(gericht){
+function optText(gericht, wahl){
   const g = findeGericht(gericht);
+  const w = wahl || optWahl[gericht] || {};
   const teile = [];
   ((g && g.opt) || []).forEach(kennung => {
     const grp = OPTIONEN[kennung]; if(!grp) return;
-    const gewaehlt = (optWahl[gericht] || {})[kennung] ||
+    const gewaehlt = w[kennung] ||
       (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
     if(gewaehlt.length) teile.push(gewaehlt.join(", "));
   });
@@ -12998,7 +13252,7 @@ function warenkarteHTML(g){
       ? '<div class="wp pneu">' + preisText(aktionVon(g.n).neu) + '<s class="palt">' + preisText(aktionVon(g.n).alt) + '</s></div></div>'
       : '<div class="wp">' + g.p + (g.p === "–" ? "" : " €") + '</div></div>') +
     (g.b ? '<div class="wbeschr">' + t(g.b) + '</div>' : "") +
-    (gruppen ? '<div class="wtrenn"></div>' + gruppen : "") +
+    (gruppen ? '<div class="wtrenn"></div>' + wieLetztHTML(g) + gruppen : "") +
     '<div class="wtrenn"></div>' +
     '<div class="wtitel">' + t("Inhalt & Allergene") + '</div>' +
     stoffe +
@@ -13648,8 +13902,8 @@ function anServer(art, daten){
         p_notiz:        (daten.inhalt && daten.inhalt.notiz) || null,
         p_rabattcode:   daten.rabattcode || null,
         p_positionen:   posten.map(p => {
-          const auf = optAufpreis(p.n);
-          const zusatz = optText(p.n);
+          const auf = p.a != null ? +p.a || 0 : optAufpreis(p.n);
+          const zusatz = p.o != null ? String(p.o) : optText(p.n);
           return {
             name:  p.n + (zusatz ? " (" + zusatz + ")" : ""),
             menge: p.m || 1,
@@ -13683,8 +13937,10 @@ function anServer(art, daten){
         p_notiz:      (daten.inhalt && daten.inhalt.notiz) || null,
         p_rabattcode: daten.rabattcode || null,
         p_positionen: posten.map(p => {
-          const auf = optAufpreis(p.n);
-          const zusatz = optText(p.n);
+          /* Ältere Einträge der Warteschlange (vor dem 08.10.) tragen
+             o/a noch nicht — dann wie bisher aus der laufenden Wahl. */
+          const auf = p.a != null ? +p.a || 0 : optAufpreis(p.n);
+          const zusatz = p.o != null ? String(p.o) : optText(p.n);
           return {
             name:  p.n + (zusatz ? " (" + zusatz + ")" : ""),
             menge: p.m || 1,
@@ -13777,6 +14033,20 @@ $("warenkarte").addEventListener("click", e => {
 
   /* Topping angetippt: Nur die Karte neu zeichnen, nicht die Seite.
      Der Gast soll den Preis auf dem Knopf sofort mitwandern sehen. */
+  /* „Wie letztes Mal“: genau die gemerkte Wahl, bereinigt durch die
+     heutige Karte, dann wie bei jedem Topping-Tipp neu zeichnen. */
+  const wl = e.target.closest("[data-wieletzt]");
+  if(wl && detailName){
+    const gg = findeGericht(detailName), alt = zuletztLesen().g[detailName];
+    if(gg && alt){
+      optWahl[detailName] = optBereinigt(alt.w, gg);
+      optSpeichern();
+      const stand = $("warenkarte").scrollTop;
+      $("warenkarte").innerHTML = warenkarteHTML(gg);
+      $("warenkarte").scrollTop = stand;
+    }
+    return;
+  }
   const oz = e.target.closest("[data-ozeile]");
   if(oz && detailName){
     optSetzen(detailName, oz.dataset.ogrp, decodeURIComponent(oz.dataset.ozeile));
@@ -13822,11 +14092,160 @@ $("inhalt").addEventListener("input", e => {
   neuKarte(id, true);
 });
 
+/* ══ REISE · Übergang Kachel → Unterseite (Wunsch 08.10.) ══════════
+   Ablauf und Gestalt stehen beim CSS (.reise). Hier der Takt:
+
+   - Erstes Öffnen je Sitzung: die volle Szene, 1,15 s. Danach kurz,
+     0,48 s — wer zum fünften Mal in die Karte geht, will hinein und
+     keine Vorführung (Skill bewegung §3). Gemerkt in sessionStorage.
+   - Ein Tipp, eine Taste oder ein Wischen während der Szene springt
+     ans Ende. War die Seite darunter noch nicht gewechselt, wird der
+     folgende Klick geschluckt — er galt dem Überspringen, nicht der
+     alten Startseite, die er sonst träfe.
+   - Reduzierte Bewegung, die Vorschau im Board, ein Link nach außen,
+     Strg/⌘-Klick: keine Szene, der Browser macht, was er immer macht.
+   - Gewechselt wird unter der Szene, solange sie deckt (60 % bzw.
+     45 %). Danach löst sie sich auf, und #inhalt.rein baut die neue
+     Seite gestaffelt darunter auf. */
+let reise = null;
+function reiseSymbol(a){
+  const ico = a.querySelector(".ico");
+  if(ico){
+    const bz = ico.querySelector(".bz");
+    if(bz){
+      /* Der laufende Film als Standbild — sein Rahmen ist eigener
+         Bestand (Lottie aus auslieferung/emoji), kein Text des Wirts. */
+      const film = bz.classList.contains("bz-bereit") ? bz.querySelector(".bz-film svg") : null;
+      if(film) return '<span class="reise-film">' + film.outerHTML + '</span>';
+      const still = bz.querySelector(".bz-still");
+      return '<span>' + hs(still ? still.textContent : "") + '</span>';
+    }
+    if(ico.classList.contains("zeichen")) return '<span>' + hs(ico.textContent) + '</span>';
+    return ico.innerHTML;          /* SVG aus ICONS */
+  }
+  const bild = a.querySelector(".kbanner img");
+  const quelle = bild ? bild.getAttribute("src") || "" : "";
+  return /^https:\/\//i.test(quelle) ? '<img src="' + hs(quelle) + '" alt="">' : "";
+}
+function reiseMoeglich(a, e){
+  if(!a || VORSCHAU || ruhigeBewegung()) return "";
+  if(e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return "";
+  const ziel = a.getAttribute("href") || "";
+  if(!/^#\/[^?#]/.test(ziel) || ziel === location.hash || a.target) return "";
+  return ziel;
+}
+function reiseEnde(){
+  const r = reise; if(!r) return;
+  reise = null;
+  clearTimeout(r.uhr);
+  if(!r.gewechselt){ r.gewechselt = true; location.hash = r.ziel; }
+  r.anis.forEach(x => { try{ x.cancel(); }catch(err){} });
+  r.el.remove();
+  document.removeEventListener("pointerdown", r.weg, true);
+  document.removeEventListener("keydown", r.weg, true);
+  document.removeEventListener("wheel", r.weg, true);
+}
+function reiseStarten(a, ziel){
+  if(reise) reiseEnde();
+  let lang = true;
+  try{ lang = !sessionStorage.getItem(hSchluessel("reise")); sessionStorage.setItem(hSchluessel("reise"), "1"); }catch(err){}
+  const D = lang ? 1150 : 480;
+  const vw = innerWidth, vh = innerHeight;
+  const W = Math.min(vw - 56, 340), H = Math.min(Math.round(vh * .6), 440);
+  const r = a.getBoundingClientRect();
+  const icoEl = a.querySelector(".ico") || a;
+  const ir = icoEl.getBoundingClientRect();
+  const strong = a.querySelector(".txt strong");
+  const titel = strong && strong.firstChild ? strong.firstChild.textContent : "";
+  const unterEl = a.querySelector(".txt > span");
+  const unter = unterEl ? unterEl.textContent : "";
+  const farbe = { rot:"var(--rot)", pistazie:"var(--pistazie)", gold:"var(--gold)" }[a.dataset.farbe] || "var(--gold)";
+
+  const el = document.createElement("div");
+  el.className = "reise";
+  el.setAttribute("aria-hidden", "true");
+  el.style.setProperty("--reise-licht", farbe);
+  el.innerHTML =
+    '<div class="reise-grund"></div>' +
+    '<div class="reise-buehne" style="width:' + W + 'px;height:' + H + 'px;margin:' + (-H / 2) + 'px 0 0 ' + (-W / 2) + 'px">' +
+      '<div class="reise-schein"></div>' +
+      '<div class="reise-karte"><div class="reise-linie"></div>' +
+        '<div class="reise-led"><div class="reise-lauf"></div></div></div>' +
+    '</div>' +
+    '<div class="reise-figur"><div class="reise-ico">' + reiseSymbol(a) + '</div>' +
+      '<div class="reise-titel"><b>' + hs(titel) + '</b>' +
+        (unter ? '<i></i><small>' + hs(unter) + '</small>' : "") + '</div></div>';
+  document.body.appendChild(el);
+  const $r = k => el.querySelector(".reise-" + k);
+
+  /* Start = das echte Rechteck der Kachel, Ziel = die Mitte. */
+  const kStart = "translate(" + (r.left + r.width / 2 - vw / 2) + "px," + (r.top + r.height / 2 - vh / 2) + "px) " +
+                 "scale(" + (r.width / W) + "," + (r.height / H) + ")";
+  const fStart = "translate(" + (ir.left + ir.width / 2 - vw / 2) + "px," + (ir.top + ir.height / 2 - (vh / 2 - 22)) + "px) " +
+                 "scale(" + Math.max(.2, ir.width / 104) + ")";
+  const WEICH = "cubic-bezier(.16,1,.3,1)", REIN = "cubic-bezier(.5,0,.75,0)", RUND = "cubic-bezier(.45,0,.25,1)";
+  const anis = [];
+  const los = (k, frames) => {
+    const x = $r(k).animate(frames, { duration:D, fill:"both" });
+    anis.push(x); return x;
+  };
+  if(lang){
+    los("grund",  [{opacity:0, easing:WEICH}, {opacity:1, offset:.3}, {opacity:1, offset:.7, easing:REIN}, {opacity:0}]);
+    los("buehne", [{transform:kStart, opacity:.5, easing:WEICH}, {transform:"none", opacity:1, offset:.36},
+                   {transform:"none", opacity:1, offset:.68, easing:REIN}, {transform:"scale(1.16)", opacity:0}]);
+    los("schein", [{opacity:0}, {opacity:0, offset:.26}, {opacity:1, offset:.46}, {opacity:.55, offset:.68}, {opacity:0, offset:.9}, {opacity:0}]);
+    los("led",    [{opacity:0}, {opacity:0, offset:.18}, {opacity:1, offset:.32}, {opacity:1, offset:.7}, {opacity:0, offset:.88}, {opacity:0}]);
+    los("lauf",   [{transform:"rotate(0deg)", easing:RUND}, {transform:"rotate(360deg)"}]);
+    los("figur",  [{transform:fStart, opacity:1, easing:"cubic-bezier(.77,0,.175,1)"}, {transform:"translateY(0) scale(1)", opacity:1, offset:.42},
+                   {transform:"translateY(-6px) scale(1.04)", offset:.64, easing:REIN, opacity:1},
+                   {transform:"translateY(0) scale(1.9)", opacity:0}]);
+    los("titel",  [{opacity:0, transform:"translateY(10px)"}, {opacity:0, transform:"translateY(10px)", offset:.3, easing:WEICH},
+                   {opacity:1, transform:"none", offset:.46}, {opacity:1, transform:"none", offset:.64}, {opacity:0, transform:"none", offset:.8}, {opacity:0}]);
+  }else{
+    los("grund",  [{opacity:0, easing:WEICH}, {opacity:.9, offset:.35}, {opacity:.9, offset:.55, easing:REIN}, {opacity:0}]);
+    los("buehne", [{transform:kStart, opacity:.6, easing:WEICH}, {transform:"none", opacity:1, offset:.45, easing:REIN}, {transform:"scale(1.1)", opacity:0}]);
+    los("led",    [{opacity:0}, {opacity:.85, offset:.4}, {opacity:0, offset:.85}, {opacity:0}]);
+    los("lauf",   [{transform:"rotate(0deg)", easing:WEICH}, {transform:"rotate(160deg)"}]);
+    los("figur",  [{transform:fStart, opacity:1, easing:WEICH}, {transform:"scale(1)", offset:.45, easing:REIN, opacity:1}, {transform:"scale(1.7)", opacity:0}]);
+  }
+  const zustand = { el, anis, ziel, gewechselt:false, uhr:0, weg:null, lang };
+  /* Überspringen. Kam der Druck vor dem Wechsel, gehört der Klick
+     danach dem Überspringen und wird geschluckt. */
+  zustand.weg = ev => {
+    if(reise !== zustand) return;
+    if(!zustand.gewechselt && ev.type === "pointerdown"){
+      const schlucken = k => { k.preventDefault(); k.stopPropagation(); };
+      document.addEventListener("click", schlucken, { capture:true, once:true });
+      setTimeout(() => document.removeEventListener("click", schlucken, true), 700);
+    }
+    reiseEnde();
+  };
+  document.addEventListener("pointerdown", zustand.weg, true);
+  document.addEventListener("keydown", zustand.weg, true);
+  document.addEventListener("wheel", zustand.weg, { capture:true, passive:true });
+  zustand.uhr = setTimeout(() => {
+    if(reise !== zustand || zustand.gewechselt) return;
+    zustand.gewechselt = true;
+    location.hash = ziel;
+  }, D * (lang ? .6 : .45));
+  anis[0].onfinish = () => { if(reise === zustand) reiseEnde(); };
+  reise = zustand;
+}
+/* Fängt den Tipp VOR jedem anderen Griff in #inhalt ab (capture). */
+$("inhalt").addEventListener("click", e => {
+  const a = e.target.closest && e.target.closest("a.kachel");
+  const ziel = reiseMoeglich(a, e);
+  if(!ziel) return;
+  e.preventDefault();
+  reiseStarten(a, ziel);
+}, true);
+
 $("inhalt").addEventListener("click", e => {
   if(e.target.closest("[data-heim]")){
     nachHause();
     return;
   }
+  if(e.target.closest("[data-nochmal]")){ nochmalUebernehmen(); return; }
 
   /* Entscheidungshilfe — VOR dem allgemeinen .chip-Griff, denn die
      Lust-Chips tragen dieselbe Klasse. */
@@ -14147,8 +14566,14 @@ $("inhalt").addEventListener("click", e => {
         if(!nr){ melden(t("Bitte tragen Sie noch Ihre Tischnummer ein."), true); return; }
       }
 
+      /* Extras EINGEFROREN (o = Text, a = Aufpreis): Die Bestellung
+         wartet im Gerät, bis sie durch ist. Bisher las der Sender die
+         Extras erst beim Senden aus optWahl — nach einem Neuladen
+         dazwischen oder einer Wahl an einem anderen Gericht ging sie
+         ohne bzw. mit fremden Extras an die Küche. */
       const posten = Object.keys(merk).map(k => ({
-        n: merk[k].n, m: merk[k].m || 1, p: merk[k].p
+        n: merk[k].n, m: merk[k].m || 1, p: merk[k].p,
+        o: optText(k), a: optAufpreis(k)
       }));
       if(!posten.length){ melden(t("Ihre Auswahl ist noch leer."), true); return; }
 
@@ -14190,6 +14615,8 @@ $("inhalt").addEventListener("click", e => {
 
       bestellSperre = Date.now() + (BESTELLUNG.wartezeit * 1000);
       probiertMerken(posten.map(x => x.n));
+      zuletztMerken(posten.map(x => ({ n:x.n, m:x.m,
+        w: optWahl[x.n] ? JSON.parse(JSON.stringify(optWahl[x.n])) : {} })));
       merk = {};                       /* Korb leeren, sie ist ja raus */
       merkSpeichern();
       balkenAktualisieren();
@@ -14205,8 +14632,14 @@ $("inhalt").addEventListener("click", e => {
       /* Öffnet die Vorzeige-Karte statt eine Nachricht. Der Name des
          Auslösers ist geblieben, damit ältere Verweise weiter greifen. */
       const nr = tischHolen("bTisch");
+      /* Extras EINGEFROREN (o = Text, a = Aufpreis): Die Bestellung
+         wartet im Gerät, bis sie durch ist. Bisher las der Sender die
+         Extras erst beim Senden aus optWahl — nach einem Neuladen
+         dazwischen oder einer Wahl an einem anderen Gericht ging sie
+         ohne bzw. mit fremden Extras an die Küche. */
       const posten = Object.keys(merk).map(k => ({
-        n: merk[k].n, m: merk[k].m || 1, p: merk[k].p
+        n: merk[k].n, m: merk[k].m || 1, p: merk[k].p,
+        o: optText(k), a: optAufpreis(k)
       }));
       if(!posten.length){ melden(t("Ihre Auswahl ist noch leer."), true); return; }
       zeigenOeffnen({ tisch: nr, summe: merkSumme(),

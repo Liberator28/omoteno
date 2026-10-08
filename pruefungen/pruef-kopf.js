@@ -191,16 +191,18 @@ async function oeffnen(browser, haus, breite, sprache) {
     const e = await lies("#/cocktails");
     pruef(e.h2 === "Kaiser und Säfte", haus + ": Englisch — eigener Name bleibt", e.h2);
 
-    /* Zurück-Knopf: rund, kein Text, ≥ 44 px, klebt beim Rollen, führt heim. */
+    /* Zurück-Knopf: Glas-Pille „‹ Zurück“ (08.10., vorher rund ohne
+       Text), ≥ 44 px, klebt beim Rollen, führt heim. Übersetzung und
+       das umlaufende Licht prüft pruef-reise.js. */
     await seite.evaluate(() => { spracheSetzen("de"); location.hash = "#/speisekarte"; });
     await seite.waitForTimeout(500);
     const z = await seite.evaluate(() => {
       const b = document.getElementById("zurueck"), r = b.getBoundingClientRect();
-      return { an: b.classList.contains("an"), w: r.width, h: r.height, text: b.textContent.trim(),
+      return { an: b.classList.contains("an"), w: r.width, h: r.height, text: b.querySelector(".zr-text").textContent.trim(),
                label: b.getAttribute("aria-label"), oben: document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === b
                  || b.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)) };
     });
-    pruef(z.an && z.w >= 44 && z.h >= 44 && z.text === "", haus + ": Zurück ist ein runder Knopf ohne Text, ≥ 44 px",
+    pruef(z.an && z.w >= 44 && z.h >= 44 && z.text === "Zurück", haus + ": Zurück ist eine Pille „Zurück“, ≥ 44 px",
       z.w.toFixed(0) + "×" + z.h.toFixed(0) + " " + JSON.stringify(z.text));
     pruef(z.label === "Zurück zur Übersicht" && z.oben, haus + ": beschriftet und obenauf (nichts deckt ihn)", z.label + " " + z.oben);
     await seite.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, 1500); });

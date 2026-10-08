@@ -426,6 +426,23 @@ wenn die Zeit fehlt, jeden einzelnen Schreibweg dieser Tabellen zu
 prüfen — er wird stattdessen ausdrücklich benannt und als eigenes
 Vorhaben gemeldet (CLAUDE.md §9).
 
+### 2.3g Eine Bremse vor einer Ausnahme zählt nicht
+
+> **Vorfall, in der zurückgedrehten Probe gefunden.** `tisch_sitzung_start`
+> bekam als erste Zeile `perform schutz_bremsen('tisch', 200)` und warf
+> danach bei falschem Code eine Ausnahme. Die Ausnahme dreht die ganze
+> Transaktion zurück — samt dem Eintrag im Zähler. PostgREST fährt
+> jede Anfrage als eigene Transaktion. Gezählt wurden also nur
+> **gültige** Codes; Aufruf 201 mit falschem Code bekam noch immer
+> „Dieser Tischcode gilt hier nicht“ statt 429. Die Bremse stand da
+> und bremste genau die Flut nicht, gegen die sie gebaut war.
+
+Wer zählt, darf danach nicht werfen — der abgewiesene Fall wird als
+Antwort zurückgegeben (leer, `false`, ein Grund im JSON), nicht als
+Ausnahme. Und die Probe dazu ruft die Funktion mit **ungültigen**
+Werten über die Grenze, nicht mit gültigen: Bei gültigen sieht jede
+Bremse richtig aus.
+
 ### 2.4 Rollenwechsel allein simuliert PostgREST nicht
 
 `set role anon` reicht nicht. Der einzige verlässliche Weg:
@@ -1437,6 +1454,25 @@ Schreibvorgang, der neben einem expliziten Löschen herläuft, braucht
 diese zweite Prüfung — sonst gewinnt manchmal der ältere, verspätete
 Schreibvorgang gegen die neuere, eigentlich maßgebliche Löschung.
 
+### 8.1q Was später gesendet wird, wird beim Einreihen eingefroren
+
+> **Vorfall, beim Lesen vor dem Bau gefunden.** Die Bestellung des
+> Gastes wartet zuerst im Gerät (Warteschlange) und geht dann an den
+> Server — Name, Menge, Preis. Die Extras (Toppings, Aufpreis) las der
+> Sender erst **beim Senden** aus einer Variablen, die nur im Speicher
+> lag. Lud der Gast die Seite neu, bevor die Bestellung durch war,
+> ging sie ohne Extras und ohne Aufpreis an die Küche; stellte er
+> vorher an einem anderen Teller etwas um, bekam die wartende
+> Bestellung dessen Wahl. Jede Prüfung war grün, weil keine zwischen
+> Abschicken und Ankommen neu lud.
+
+Was eine Warteschlange, ein Entwurf oder ein Wiederholungsversuch
+später abschickt, trägt **alles** in sich, was beim Abschicken galt —
+nicht einen Verweis auf einen Zustand, der sich bis dahin ändern
+kann. Die Prüfung dazu geht genau den Zwischenweg: abschicken, Server
+stumm, neu laden, etwas anderes wählen, zweiter Versuch — und liest
+die Nutzlast, die wirklich hinausgeht.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1492,6 +1528,12 @@ Dazu je nach Änderung:
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
 | **Willkommensschirm, Vorfenster (Speisekarte direkt oder Hub)** | `pruefungen/pruef-vorfenster.js` (braucht `dist/`) — „Speisekarte ansehen“ springt ohne Umweg und schließt den Schirm mit, „Zur Übersicht“ und ein Tipp daneben bleiben beim Hub, tiefe Links (`#/speisekarte`) überspringen den Schirm ganz, beide Knopftexte wirklich übersetzt (nicht deutsch stehengeblieben) |
+| **Gericht anlegen im Board (Blatt, „Mehr Angaben“, Speichern & nächstes)** | `pruefungen/pruef-gericht-schnell.js` — Ruhelage zugeklappt, Preis mit Komma, erkannte Allergene nur als Vorschlag (nichts von selbst gesetzt, Gegenfall ohne Treffer), Serienanlage behält Karte/Kategorie und leert den Rest, unlesbarer Preis speichert nicht und sagt warum |
+| **Rabatt am Gericht, Aktionspreis in der Karte** | `pruefungen/pruef-rabatt-gericht.js` (braucht `dist/`) — Board schreibt in `aktionen` innerhalb jeder Schranke (zweite Quelle `datenbank/stand-aktionen-schranken.sql`), Hub zeigt neuen und alten Preis samt „−20 %“, „+“ legt zum Aktionspreis in den Korb und zieht nach Ende nach, Dauer-Rabatt nicht im Streifen, Plakette lesbar je Haus Tag/Abend |
+| **Altersfreigabe 16+/18+ (Board, Hub, Küche)** | `pruefungen/pruef-altersfreigabe.js` (braucht `dist/`) — Alkohol aus dem Namen nur VORGESCHLAGEN, gegen die echten Getränkenamen (§6.1), Frage einmal je Stufe und Sitzung auch über zweiten Weg, „Wieder herausnehmen“ nimmt nur Betroffenes, Schirm entfernt statt versteckt, Küche „Ausweis 18+“ an der Position |
+| **Sicherheit: Kopfzeilen, CSP, selbst ausgelieferte Bibliotheken, 429 an den Türen, Polling, offene anon-Funktionen** | `pruefungen/pruef-sicherheit.js` — lokaler Server mit den echten `_headers` (wie Netlify zusammengeführt): CSP/HSTS/DENY, `/lib/` immutable, keine Seite lädt fremdes Skript; elf Seiten ohne `securitypolicyviolation`; manipulierte `/lib/`-Datei wird nicht ausgeführt (integrity); HTTP 429 an Board, Konto, Küche, Master gibt einen Satz und KEINEN Login-Versuch (Gegenfall: erlaubt → Versuch); versteckter Tab fragt zehn Minuten nichts, zurück holt sofort; jede anon-Funktion aus `datenbank/stand-anon-funktionen.sql` gebremst oder namentlich begründet, und jede Funktion in `migration-schutz-2.sql` trägt ihre Bremse |
+| **Übergang Kachel → Unterseite, Glas-Knopf „Zurück“** | `pruefungen/pruef-reise.js` (braucht `dist/`) — JEDE Kachel der echten Startseite startet die Szene, Ebene am Ende ENTFERNT, Adresse stimmt, `elementFromPoint` trifft die Seite; erstes Öffnen lang, danach kurz; nur transform/opacity (aus `getAnimations`); Licht = Farbe der Kachel aus dem Haus; Tipp überspringt und trifft NICHT die Kachel darunter; reduzierte Bewegung ohne Szene; Zurück-Pille je Sprache übersetzt (über das echte Menü), ≥ 44 px, Licht läuft (nur transform) und steht bei reduzierter Bewegung. Kontrast der Pille: `pruef-glas.js` |
+| **Gemerkte Auswahl, Extras im Korb, „Wie letztes Mal“** | `pruefungen/pruef-merken.js` (braucht `dist/`) — Neuladen behält Extras und Aufpreis, ungültige Zeile fällt still weg, **Abschicken → Server stumm → Neuladen → zweiter Versuch trägt die Extras von damals** (nicht die neue Wahl), Karte „Nochmal“ mit Summe zum heutigen Preis (Aktion), ein Tipp füllt Korb samt Extras, Chip setzt nichts von selbst, Entfallenes genannt und weggelassen, Englisch, nichts davon im Netz, Uhr UND Öffnungszeiten selbst gesetzt (§8.1j) |
 | **Storno, Restzeit, jede Bestell-Funktion** | `pruefungen/pruef-naht.js` — hält den Wert, den der Hub schickt, gegen die Spalte, über die die SQL sucht |
 | **Top-Runner-Streifen, Empfehlung des Hauses, "Sofort bestellen"** | `pruefungen/pruef-sofort.js` (braucht `dist/`) — Klick auf den Streifen öffnet die Vorschau, der Sofort-Knopf bestellt zum AKTIONSPREIS statt zum Kartenpreis, stiller Rückfall ohne anklickbaren Knopf, wenn das Gericht nicht mehr in der Karte steht |
 | **Irgendetwas am Board** | `pruefungen/pruef-board.js` — bedient das Board von Hand, und gleicht jedes Filter-Kästchen gegen die Stellen ab, die den Wert wirklich schreiben |

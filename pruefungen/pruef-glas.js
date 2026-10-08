@@ -239,6 +239,19 @@ async function pruefeHub(browser) {
       const wert = schlechtesterFall(textRgb, glasRgba);
       pruef(wert >= 4.5, slug + " · " + lage + " · .summe-Schrift ≥ 4.5:1 gegen Schwarz UND Weiß dahinter",
         wert.toFixed(2) + ":1");
+
+      /* Die Glas-Pille „‹ Zurück“ (08.10.) klebt beim Rollen über
+         beliebigem Inhalt — dieselbe Rechnung wie bei .summe. */
+      const zk = await seite.evaluate(() => {
+        const z = document.getElementById("zurueck"), t = z && z.querySelector(".zr-text");
+        if (!z || !t || !z.classList.contains("an")) return null;
+        return { farbe: getComputedStyle(t).color, grund: getComputedStyle(z).backgroundColor,
+                 bf: getComputedStyle(z).backdropFilter };
+      });
+      if (!zk) { pruef(false, slug + " · " + lage + " · Zurück-Pille sichtbar (Voraussetzung)"); continue; }
+      pruef(/blur\(/.test(zk.bf), slug + " · " + lage + " · Zurück-Pille trägt backdrop-filter:blur(...)", zk.bf || "(leer)");
+      const wz = schlechtesterFall(parseFarbe(zk.farbe), parseFarbe(zk.grund));
+      pruef(wz >= 4.5, slug + " · " + lage + " · Zurück-Schrift ≥ 4.5:1 gegen Schwarz UND Weiß dahinter", wz.toFixed(2) + ":1");
     }
     await ctx.close();
   }

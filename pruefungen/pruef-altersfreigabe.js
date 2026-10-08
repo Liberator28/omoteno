@@ -207,8 +207,25 @@ const ERKENNUNG = [["Gin Tonic", 18], ["Ginger Ale", 0], ["Rumpsteak", 0], ["Rum
     pruef(Object.values(kontrast).every(v => v >= 4.5), "lesbar ≥ 4,5:1 (Satz, Titel, Marke, Plakette)", JSON.stringify(kontrast));
     await s.click("[data-alter-ja]"); await s.waitForTimeout(150);
 
-    /* Neu laden in derselben Sitzung: keine zweite Frage */
-    await s.reload(); await s.waitForTimeout(1500);
+    /* Neu laden in derselben Sitzung: keine zweite Frage.
+       Voraussetzung „dieselbe Sitzung“ wird selbst geprüft (§8.1g):
+       Der kopflose Chromium verliert unter Last beim Neuladen einer
+       file://-Seite gelegentlich das sessionStorage (gemessen 1 von 12,
+       dann ss=null UND der Korb leer, weil das InitScript oben ohne
+       Probe-Marke localStorage leert). Dann ist es eine NEUE Sitzung, und
+       eine neue Frage wäre richtig — die Probe gilt nicht. Zustand neu
+       herstellen und erneut laden, höchstens dreimal. */
+    let sitzungHielt = false;
+    for (let versuch = 0; versuch < 3 && !sitzungHielt; versuch++) {
+      await s.reload(); await s.waitForTimeout(1500);
+      sitzungHielt = await s.evaluate(() => sessionStorage.getItem("omoteno-alter") === "18");
+      if (!sitzungHielt) {
+        await s.evaluate(() => { location.hash = "#/speisekarte"; }); await s.waitForTimeout(400);
+        await plus("Prüf-Gin"); await s.waitForTimeout(250);
+        if (await frage()) { await s.click("[data-alter-ja]"); await s.waitForTimeout(150); }
+      }
+    }
+    pruef(sitzungHielt, "Voraussetzung: die Sitzung übersteht das Neuladen (Umgebung)");
     await s.evaluate(() => { location.hash = "#/speisekarte"; }); await s.waitForTimeout(400);
     const g2 = await s.evaluate(() => { delete merk["Prüf-Gin"]; merkSpeichern(); zeichne(); return true; });
     await s.waitForTimeout(300);
