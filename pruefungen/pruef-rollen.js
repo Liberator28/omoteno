@@ -27,7 +27,8 @@ const ADMIN = path.join(__dirname, "..", "seiten", "admin.html");
 
 const NUR_INHABER = ["Ihre Seite", "Schrift", "Kacheln", "Aktions-Banner-Rad",
   "Ihre Worte im Gast-Hub", "Lieferung", "Gäste-Newsletter", "Eigene Rabattcodes",
-  "Gutscheine für Stammgäste", "Bestellstand beim Gast", "Foodroulette", "Figur des Hauses"];
+  "Gutscheine für Stammgäste", "Bestellstand beim Gast", "Foodroulette", "Figur des Hauses",
+  "Wer hat was geändert"];
 const AUCH_TEAM = ["Auf einen Blick", "Melden", "Bildschirm", "Nichts übersehen", "Betrieb", "Dieses Gerät"];
 const SATZ = "Nur der Besitzer kann das ändern.";
 

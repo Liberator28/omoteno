@@ -107,6 +107,22 @@ Deno.serve(async (req: Request) => {
   const nutzer = String(a.nutzer_id ?? "");
   const anzeigename = a.anzeigename == null ? null : String(a.anzeigename).trim().slice(0, GRENZEN.name) || null;
 
+  /* Ins Protokoll (migration-protokoll.sql). Mit Dienstschlüssel ist
+     auth.uid() leer, also schreibt kein Trigger — die Funktion trägt
+     selbst ein, wer es war: der geprüfte Aufrufer, nie ein Feld der
+     Anfrage. Scheitert der Eintrag, bleibt die Änderung trotzdem
+     bestehen (§7) — das Protokoll ist Nachweis, keine Schranke. */
+  async function merke(art: string, wen: string, felder: string[], nachher: Record<string, unknown> | null) {
+    let ziel = wen;
+    if (UUID.test(wen)) {
+      const { data } = await admin.auth.admin.getUserById(wen);
+      ziel = data?.user?.email ?? wen;
+    }
+    await admin.from("protokoll").insert({
+      betrieb_id: betrieb, nutzer_id: ich, tabelle: "team", art, ziel: ziel.slice(0, 120), felder, nachher,
+    });
+  }
+
   /* Wie viele Inhaber hätte der Betrieb nach dieser Änderung? */
   async function inhaberOhne(id: string): Promise<number> {
     const { count } = await admin.from("betrieb_mitglieder")
@@ -155,6 +171,7 @@ Deno.serve(async (req: Request) => {
         { onConflict: "betrieb_id,nutzer_id" },
       );
       if (mitFehler) return fehler("mitglied", { text: mitFehler.message });
+      await merke("neu", email, ["rolle"], { rolle });
       return antwort({ ok: true, nutzer_id: id, vorhanden, versandt, link });
     }
 
@@ -186,7 +203,9 @@ Deno.serve(async (req: Request) => {
       const { error, count } = await admin.from("betrieb_mitglieder")
         .update(satz, { count: "exact" }).eq("betrieb_id", betrieb).eq("nutzer_id", nutzer);
       if (error) return fehler("mitglied", { text: error.message });
-      return count ? antwort({ ok: true }) : fehler("kein_mitglied");
+      if (!count) return fehler("kein_mitglied");
+      await merke("geaendert", nutzer, Object.keys(satz), satz);
+      return antwort({ ok: true });
     }
 
     if (aktion === "entfernen") {
@@ -195,7 +214,9 @@ Deno.serve(async (req: Request) => {
       const { error, count } = await admin.from("betrieb_mitglieder")
         .delete({ count: "exact" }).eq("betrieb_id", betrieb).eq("nutzer_id", nutzer);
       if (error) return fehler("mitglied", { text: error.message });
-      return count ? antwort({ ok: true }) : fehler("kein_mitglied");
+      if (!count) return fehler("kein_mitglied");
+      await merke("geloescht", nutzer, [], null);
+      return antwort({ ok: true });
     }
 
     return fehler("aktion");
