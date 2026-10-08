@@ -574,6 +574,118 @@ do $$ declare n int; begin
 end $$;
 reset role;
 
+-- ═══ TEIL 8 · Rollen: Besitzer, Team (migration-rollen.sql) ═══
+-- VOR Teil 7: Teil 7 schaltet die PIN-Pflicht ein, danach sähe das
+-- Probe-Team ohne PIN gar nichts — jede Probe hieße „0 Zeilen“, und das
+-- sähe aus wie „hält“ (§8.1g C). Deshalb auch die Voraussetzungen zuerst.
+-- Voraussetzungen VOR dem Rollenwechsel bestimmen (§2.3b): ein Betrieb
+-- mit Inhaber und ohne PIN-Pflicht, dessen Inhaber, ein echtes Konto,
+-- das dort NICHT Mitglied ist (wird testweise 'team'), ein fremder
+-- Betrieb. Probegericht und Probegutschein legt postgres an — so hängt
+-- nichts am Bestand.
+select set_config('probe.rollen', (select (count(*) > 0)::text from pg_proc
+   where proname = 'ist_inhaber' and pronamespace = 'public'::regnamespace), true);
+select set_config('probe.r_haus', coalesce((select b.id::text from betriebe b
+   join betrieb_mitglieder m on m.betrieb_id = b.id and m.rolle = 'inhaber'
+   where b.pin_pflicht is not true order by b.id limit 1), ''), true);
+select set_config('probe.r_inhaber', coalesce((select m.nutzer_id::text from betrieb_mitglieder m
+   where m.betrieb_id::text = current_setting('probe.r_haus') and m.rolle = 'inhaber' order by m.nutzer_id limit 1), ''), true);
+select set_config('probe.r_team', coalesce((select u.id::text from auth.users u
+   where u.id not in (select nutzer_id from betrieb_mitglieder where betrieb_id::text = current_setting('probe.r_haus'))
+     and u.id not in (select benutzer_id from master_konten)
+   order by u.id limit 1), ''), true);
+select set_config('probe.r_fremd', coalesce((select id::text from betriebe
+   where id::text <> current_setting('probe.r_haus') order by id limit 1), ''), true);
+do $$ begin
+  if current_setting('probe.rollen') <> 'true' then
+    insert into probe values (120,'—','TEIL 8 uebersprungen','migration-rollen.sql noch nicht eingespielt');
+  elsif current_setting('probe.r_haus') = '' or current_setting('probe.r_team') = '' then
+    insert into probe values (120,'—','TEIL 8 nicht messbar','kein Betrieb ohne PIN-Pflicht oder kein freies Konto');
+  else
+    insert into betrieb_mitglieder(betrieb_id, nutzer_id, rolle)
+      values (current_setting('probe.r_haus')::uuid, current_setting('probe.r_team')::uuid, 'team');
+    insert into gerichte(betrieb_id, name, preis, karte, kategorie)
+      values (current_setting('probe.r_haus')::uuid, 'Probe-Rolle', 5, 'speisekarte', 'Probe');
+    insert into gutscheine(betrieb_id, titel, code)
+      values (current_setting('probe.r_haus')::uuid, 'Probe', 'PROBE-ROLLE-1');
+  end if;
+end $$;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', current_setting('probe.r_team'),'role','authenticated')::text, true);
+set local role authenticated;
+do $$ declare n int; h uuid; ok boolean; begin
+  if current_setting('probe.rollen') <> 'true' or current_setting('probe.r_team') = '' or current_setting('probe.r_haus') = '' then return; end if;
+  h := current_setting('probe.r_haus')::uuid;
+  -- Voraussetzung: das Team SIEHT Betrieb, Gericht und Gutschein. Ohne
+  -- das hieße jedes „0 Zeilen“ unten nur „nichts gefunden“.
+  ok := public.meine_rolle(h) = 'team'
+    and exists (select 1 from gerichte where betrieb_id = h and name = 'Probe-Rolle')
+    and exists (select 1 from gutscheine where betrieb_id = h and code = 'PROBE-ROLLE-1');
+  insert into probe values (121,'Team','Voraussetzung: Rolle team, sieht Gericht und Gutschein', case when ok then 'ok' else 'KAPUTT (Folgeproben ohne Aussage)' end);
+  if not ok then return; end if;
+  begin update betriebe set hub_texte = coalesce(hub_texte,'{}') || '{"slogan":"Probe"}' where id = h; get diagnostics n = row_count;
+    insert into probe values (122,'Team','Hub-Text aendern', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  exception when insufficient_privilege then insert into probe values (122,'Team','Hub-Text aendern','abgewiesen (Wache)'); end;
+  begin update betriebe set bestell_pause_text = 'Probe' where id = h; get diagnostics n = row_count;
+    insert into probe values (123,'Team','Pausentext (andere Spalte derselben Zeile, §2.7)', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  exception when others then insert into probe values (123,'Team','Pausentext (andere Spalte derselben Zeile, §2.7)','KAPUTT: '||sqlerrm); end;
+  begin update gerichte set preis = preis + 1 where betrieb_id = h and name = 'Probe-Rolle'; get diagnostics n = row_count;
+    insert into probe values (124,'Team','Preis aendern', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  exception when insufficient_privilege then insert into probe values (124,'Team','Preis aendern','abgewiesen (Wache)'); end;
+  begin update gerichte set verfuegbar = false where betrieb_id = h and name = 'Probe-Rolle'; get diagnostics n = row_count;
+    insert into probe values (125,'Team','Ausverkauft setzen', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  exception when others then insert into probe values (125,'Team','Ausverkauft setzen','KAPUTT: '||sqlerrm); end;
+  begin insert into gerichte(betrieb_id, name, preis, karte, kategorie) values (h, 'Probe-Team', 1, 'speisekarte', 'Probe');
+    insert into probe values (126,'Team','Gericht anlegen','OFFEN !!!');
+  exception when insufficient_privilege then insert into probe values (126,'Team','Gericht anlegen','abgewiesen'); end;
+  delete from gerichte where betrieb_id = h and name = 'Probe-Rolle'; get diagnostics n = row_count;
+  insert into probe values (127,'Team','Gericht loeschen', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  begin insert into aktionen(betrieb_id, gericht_name, preis_alt, preis_neu, von, bis) values (h, 'Probe-Rolle', 5, 4, now(), now() + interval '1 hour');
+    insert into probe values (128,'Team','Aktion anlegen','OFFEN !!!');
+  exception when insufficient_privilege then insert into probe values (128,'Team','Aktion anlegen','abgewiesen'); end;
+  begin insert into gutscheine(betrieb_id, titel, code) values (h, 'Probe', 'PROBE-ROLLE-2');
+    insert into probe values (129,'Team','Gutschein direkt anlegen','OFFEN !!!');
+  exception when insufficient_privilege then insert into probe values (129,'Team','Gutschein direkt anlegen','abgewiesen'); end;
+  update gutscheine set titel = 'geaendert' where betrieb_id = h and code = 'PROBE-ROLLE-1'; get diagnostics n = row_count;
+  insert into probe values (130,'Team','vorhandenen Gutschein aendern', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+  begin insert into storage.objects(bucket_id, name) values ('gerichte', h::text||'/probe-team.webp');
+    insert into probe values (131,'Team','Bild hochladen','OFFEN !!!');
+  exception when insufficient_privilege then insert into probe values (131,'Team','Bild hochladen','abgewiesen'); end;
+  begin insert into bild_auftraege(betrieb_id, gericht_name) values (h, 'Probe');
+    insert into probe values (132,'Team','Profi-Foto-Auftrag (kostet)','OFFEN !!!');
+  exception when insufficient_privilege then insert into probe values (132,'Team','Profi-Foto-Auftrag (kostet)','abgewiesen'); end;
+end $$;
+reset role;
+
+select set_config('request.jwt.claims',
+  json_build_object('sub', current_setting('probe.r_inhaber'),'role','authenticated')::text, true);
+set local role authenticated;
+do $$ declare n int; h uuid; begin
+  if current_setting('probe.rollen') <> 'true' or current_setting('probe.r_inhaber') = '' then return; end if;
+  h := current_setting('probe.r_haus')::uuid;
+  update betriebe set hub_texte = coalesce(hub_texte,'{}') || '{"slogan":"Probe"}' where id = h; get diagnostics n = row_count;
+  insert into probe values (133,'Inhaber','Hub-Text aendern', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  update gerichte set preis = preis + 1 where betrieb_id = h and name = 'Probe-Rolle'; get diagnostics n = row_count;
+  insert into probe values (134,'Inhaber','Preis aendern', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  update gutscheine set titel = 'geaendert' where betrieb_id = h and code = 'PROBE-ROLLE-1'; get diagnostics n = row_count;
+  insert into probe values (135,'Inhaber','Gutschein aendern', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  delete from gerichte where betrieb_id = h and name = 'Probe-Rolle'; get diagnostics n = row_count;
+  insert into probe values (136,'Inhaber','Gericht loeschen', case when n = 1 then 'ok' else 'KAPUTT: '||n end);
+  update betriebe set hub_texte = hub_texte where id::text = current_setting('probe.r_fremd'); get diagnostics n = row_count;
+  insert into probe values (137,'Inhaber','FREMDEN Betrieb aendern', case when n = 0 then 'abgewiesen (0 Zeilen)' else 'OFFEN !!! '||n end);
+end $$;
+reset role;
+do $$ begin
+  if current_setting('probe.rollen') <> 'true' then return; end if;
+  insert into probe select 138, 'authenticated', 'Wachen als /rpc/ rufbar',
+    case when bool_or(has_function_privilege('authenticated', p.oid, 'EXECUTE')) then 'OFFEN !!!' else 'abgewiesen' end
+    from pg_proc p where p.proname in ('betrieb_rolle_wache','gericht_rolle_wache') and p.pronamespace = 'public'::regnamespace;
+  insert into probe select 139, '—', 'beide Wachen haengen an der Tabelle',
+    case when count(*) = 2 then 'ok' else 'KAPUTT: '||count(*) end
+    from pg_trigger where tgname in ('betrieb_rolle_wache','gericht_rolle_wache') and tgenabled <> 'D';
+end $$;
+
 -- ═══ TEIL 7 · Zweiter Faktor: PIN (migration-pin.sql) ═══
 -- Voraussetzungen VOR dem Rollenwechsel (§2.3b): Unter authenticated
 -- sieht der Master von betrieb_mitglieder nur sich selbst.

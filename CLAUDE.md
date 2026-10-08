@@ -494,6 +494,26 @@ Datenbank läuft das im lokalen Postgres (`/usr/lib/postgresql/16`),
 Datenverzeichnis im Heim des Postgres-Nutzers, nicht im Scratch-
 Ordner (dessen Rechte werden zurückgesetzt, der Server stürzt ab).
 
+### 2.8 Ein Werkzeug, das wartet, sieht aus wie eine Datenbank, die hängt
+
+> **Vorfall.** `create trigger` lief über das Supabase-Werkzeug fünfmal
+> 60 s in den Abbruch. Meine Theorie war eine Sperre auf der Tabelle —
+> `pg_locks` leer, `pg_stat_activity` leer, die Theorie trotzdem
+> weitergetragen. Erst die Halbierung fand den Grund: Die Anfrage kam
+> **nie an**. Das Werkzeug hält eine Zeile, die mit `drop` oder `delete`
+> beginnt, für destruktiv und wartet auf eine Bestätigung, die in einer
+> Sitzung ohne Gegenüber nie kommt. Der Probelauf mit `delete` hing aus
+> demselben Grund.
+
+- Hängt eine Anfrage und die Datenbank zeigt nichts (keine Sperre,
+  keine laufende Anfrage), wird **halbiert**, nicht weiter vermutet.
+- Die Schranke ist Absicht und wird **nicht umgangen** — nicht durch
+  Umformatieren, nicht durch zusammengesetzten Text. Was wirklich
+  löscht, steht in der Datei und läuft im SQL-Editor; Proben, die
+  `delete` messen müssen, ebenso.
+- Oft ist die Form ohne Löschen ohnehin besser: `alter policy` statt
+  `drop` + `create` lässt die Tabelle keinen Augenblick ohne Regel.
+
 ---
 
 ## 3 · CSS
@@ -1542,7 +1562,7 @@ Dazu je nach Änderung:
 | **Warenkorb, „Passt dazu“, Liebling-Karte mit Menge** | `pruefungen/pruef-korb-vorschlag.js` (braucht `dist/`) und `pruefungen/pruef-sofort.js` — nichts Doppeltes, nichts ohne Preis, Getränk zuerst, aber nicht nur Getränke, „+“ legt wirklich hinein, getippte Tischnummer bleibt, Englisch; **Vielfalt**: höchstens eine je Gruppe (auch mit Fotos, ohne Emoji), kein Grund öfter als zweimal, derselbe Korb dieselbe Reihe, andere Körbe andere, „Im Angebot“/„Neu für Sie“ je mit Gegenfall, Satz passt zum Korb; **Details**: Korbzeile und Vorschlagskarte öffnen das Blatt der Karte (Allergene), Herausnehmen im Blatt stimmt nach dem Schließen in der Auswahl; auf der Liebling-Karte liegt kein Text unter dem Knopf (Zeilen-Rechtecke gemessen) |
 | **Board oder Küche, Vollbild, Fern-Ansicht** | `pruefungen/pruef-vollbild.js` — beide Boards, drei Schirmgrößen, geteilter Block |
 | Meldungen, Service Worker | `pruefungen/pruef-push.js` — sw.js wird ausgeliefert und meldet |
-| **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück |
+| **Rechte, Regeln, Funktionen in der Datenbank** | `datenbank/pruef-rechte.sql` — im SQL-Editor, dreht sich selbst zurück; TEIL 8 **Besitzer/Team** (läuft VOR Teil 7, sonst sieht das Probe-Team ohne PIN nichts): Team ändert Hub-Text/Preis nicht, Pause/Pausentext/Ausverkauft schon (§2.7), legt kein Gericht/keine Aktion/keinen Gutschein/kein Bild/keinen Profi-Foto-Auftrag an, löscht nichts — jeweils erst nachdem die Voraussetzung „Team SIEHT die Zeile“ gemessen ist; Inhaber darf alles, fremder Betrieb 0 Zeilen |
 | **Bestellwege des Gastes, Bremsen, Quarantäne (`pruefen`)** | `pruefungen/pruef-schutz.js` — Hub zeigt bei Bremse einen lesbaren Satz statt JSON, Küche holt `pruefen` und zeigt Markiertes NICHT als Bon (Kopfzeile „wartet auf Freigabe“), Board gibt über genau diese Spalten frei oder verwirft, Auswertung zählt Markiertes nicht. Die DB-Hälfte: `datenbank/pruef-missbrauch.sql` — zurückgedreht, gestellte Herkunft über `cf-connecting-ip` mit gefälschtem `x-forwarded-for` (§2.3e): Preis aus der Karte statt vom Gast, erfundenes Gericht markiert, Gerät/Netz/Tisch markiert vor abgewiesen, Anfragen/Ereignisse/Reservierungen/Gastzeilen/Adressen je Netz gebremst, und keine IP-Adresse im Zähler |
 | **Zweiter Faktor (PIN), PIN-Schirm in Board/Küche/Master** | `pruefungen/pruef-pin.js` — geteilter Block in drei Dateien Zeichen für Zeichen gleich, Felder und Gründe gegen `migration-pin.sql` gehalten, Schirm nach Passwort UND bei gemerkter Sitzung, vor der PIN wird nichts geladen, Master prüft die Rolle erst danach, gesperrt/keine PIN ohne Eingabefeld, Server stumm → kein Schirm; Kontrast, 16 px, Tapflächen, 360 px. Die Erzwingung selbst: `datenbank/pruef-rechte.sql` TEIL 7 (ohne PIN 0 Zeilen, andere Anmeldung 0 Zeilen, §2.7 andere Spalte) |
 | Konto, Anfrageformular, **Google-Knopf** | `pruefungen/pruef-konto-start.js` — ohne Netz, 16px, tote Links, Anbieterliste |
