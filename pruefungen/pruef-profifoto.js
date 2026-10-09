@@ -307,27 +307,26 @@ const PROFI   = ORDNER + "1-profi.jpg";
     pruef(d.b && d.b.schwebt && d.b.src === "1-frei.png", "Detailblatt ohne Foto: der Freisteller schwebt");
     await s.keyboard.press("Escape"); await s.waitForTimeout(300);
 
+    /* Foodroulette (Glücksrad): Während der Drehung zeigt die Karte oben
+       nur Zeichen und Namen — ein Bild verriete nichts Neues, aber es
+       flackerte bei jedem Feldwechsel. Gelandet: Freisteller groß, das
+       Emoji tritt zurück. */
     await s.evaluate(() => { location.hash = "#/entdecken"; }); await s.waitForTimeout(700);
-    await s.evaluate(() => { edLust = ""; edStapel = ["Zucker Zimt", "Nur Foto", "Nutella Crêpe"]; edPos = 0; edNeuZeichnen(); });
-    await s.waitForTimeout(600);
-    const e = await s.evaluate(() => { const k = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]');
-      const p = k.querySelector(".ed-pop"), f = k.querySelector(".ed-bildflaeche"), emo = k.querySelector(".ed-emo");
-      return { pop: !!p, mitpop: f.classList.contains("mitpop"), deckend: p ? getComputedStyle(p).opacity : "",
-        abzeichen: emo ? getComputedStyle(emo).position : "" }; });
-    pruef(e.pop && e.mitpop && e.deckend === "1" && e.abzeichen === "absolute", "Entscheidungshilfe: Freisteller schwebt groß, Emoji wird Abzeichen", JSON.stringify(e));
-
+    await s.evaluate(() => { edLust = ""; frFelder = ["Zucker Zimt", "Nur Foto", "Nutella Crêpe"]; frErgebnis = ""; frNeuZeichnen(); });
     const w = await s.evaluate(async () => {
       ehZiehen = () => findeGericht("Zucker Zimt");
-      edEntscheiden();
-      await new Promise(r => setTimeout(r, 120));
-      const waehrend = (() => { const p = document.querySelector(".eh-wahl .ed-pop"); return p ? getComputedStyle(p).opacity : "keins"; })();
-      await new Promise(r => setTimeout(r, 1500));
-      const p = document.querySelector(".eh-wahl .ed-pop");
-      const anim = p ? p.getAnimations().map(a => a.animationName || a.constructor.name) : [];
-      return { waehrend, danach: p ? getComputedStyle(p).opacity : "keins", anim };
+      frDrehen();
+      await new Promise(r => setTimeout(r, 400));
+      const waehrend = (() => { const p = document.querySelector("#frErgebnis .ed-pop"); return p ? getComputedStyle(p).opacity : "keins"; })();
+      const dreht = frDreht;
+      await new Promise(r => setTimeout(r, 3800));
+      const k = document.getElementById("frErgebnis");
+      const p = k.querySelector(".ed-pop"), f = k.querySelector(".ed-bildflaeche"), emo = k.querySelector(".ed-emo");
+      return { dreht, waehrend, pop: !!p, mitpop: f.classList.contains("mitpop"), danach: p ? getComputedStyle(p).opacity : "keins",
+        emoji: emo ? getComputedStyle(emo).display : "" };
     });
-    pruef(w.waehrend === "0", "beim Mischen ist das Bild verdeckt (es verriete die Wahl)", w.waehrend);
-    pruef(w.danach === "1", "nach dem Aufdecken steht der Freisteller da", w.danach);
+    pruef(w.dreht && w.waehrend === "keins", "während der Drehung kein Bild in der Karte oben", JSON.stringify(w));
+    pruef(w.pop && w.mitpop && w.danach === "1" && w.emoji === "none", "gelandet: der Freisteller steht groß da, das Emoji tritt zurück", JSON.stringify(w));
     const flug = s.waitForSelector(".korbflug.kf-frei", { timeout: 1500 }).then(() => true).catch(() => false);
     await s.evaluate(() => document.querySelector("[data-eh-nehm]").click());
     pruef(await flug, "„Nehm ich!“: der Freisteller fliegt rahmenlos in den Korb");
@@ -342,11 +341,12 @@ const PROFI   = ORDNER + "1-profi.jpg";
       const { ctx, s } = await hubAuf({ ruhig });
       await s.evaluate(() => { location.hash = "#/entdecken"; }); await s.waitForTimeout(700);
       const r = await s.evaluate(async () => {
+        frFelder = ["Zucker Zimt", "Nur Foto", "Nutella Crêpe"]; frErgebnis = ""; frNeuZeichnen();
         ehZiehen = () => findeGericht("Zucker Zimt");
-        edEntscheiden();
+        frDrehen();
         const t0 = performance.now(); let gesehen = false, sichtbar = "";
-        while (performance.now() - t0 < 2200) {
-          const p = document.querySelector(".eh-wahl .ed-bildflaeche.mitpop .ed-pop");
+        while (performance.now() - t0 < 4200) {
+          const p = document.querySelector("#frErgebnis .ed-bildflaeche.mitpop .ed-pop");
           if (p && p.getAnimations().some(a => a.animationName === "ehPopRein")) gesehen = true;
           if (p) sichtbar = getComputedStyle(p).opacity;
           await new Promise(res => requestAnimationFrame(res));
