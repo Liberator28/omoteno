@@ -4,7 +4,6 @@
 
    Ausrollen:
      supabase functions deploy klaviyo-profil-melden --no-verify-jwt
-     supabase secrets set OMOTENO_TRIGGER_SECRET=<derselbe Wert wie im SQL-Trigger>
      supabase secrets set KLAVIYO_API_KEY=pk_...
      supabase secrets set SUPABASE_URL=... (steht meist schon)
      supabase secrets set SUPABASE_SERVICE_ROLE_KEY=...
@@ -39,6 +38,20 @@
    davon merkt (CLAUDE.md §7: die Kosten eines stillen Ausfalls hier
    sind klein, ein kaputter Speichervorgang waere teuer).
 
+   NEU (migration-klaviyo-besuch.sql): Der Trigger schickt NUR noch
+   {gast_id, art} — art 'neu' (Adresse hinterlegt) oder 'besuch' (neuer
+   Besuch, besuche stieg). Den Inhalt holt diese Funktion selbst über
+   klaviyo_gast_stand() (CLAUDE.md §2.3d: eine gefälschte Anfrage kann
+   so höchstens einen echten Gast neu melden, keinen Text einschleusen).
+   Gesetzt werden Profil-Eigenschaften je Betrieb im gemeinsamen Konto:
+     omoteno_<slug>_letzter_besuch  (ISO-Datum — daran hängt der
+                                     Rückhol-Flow „20 Tage danach“)
+     omoteno_<slug>_besuche, omoteno_<slug>_bestellungen,
+     omoteno_<slug>_liebling        (für persönliche Mails)
+   Upsert über /api/profile-import/ (Form gegen das Schema des
+   Klaviyo-Werkzeugs create_or_update_profile gehalten) statt
+   /api/profiles/ + 409-Behandlung. In die Liste nur bei art 'neu'.
+
    NICHT GEGEN DIE ECHTE KLAVIYO-API GETESTET. Die Arbeitsumgebung hat
    keinen Klaviyo-Schluessel fuer Ausfuehrungen in dieser Funktion
    (nur die MCP-Werkzeuge dieser Sitzung, die etwas anderes sind als
@@ -49,15 +62,25 @@
 
 const SUPABASE_URL   = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const TRIGGER_SECRET = Deno.env.get("OMOTENO_TRIGGER_SECRET") ?? "";
 const KLAVIYO_KEY    = Deno.env.get("KLAVIYO_API_KEY") ?? "";
 const KLAVIYO_REV    = "2024-10-15";
+const UUID           = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function gleichLang(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let d = 0;
-  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return d === 0;
+/* Echt ist ein Aufruf, dessen Kopf das Geheimnis aus dem Vault trägt.
+   VORFALL (migration-klaviyo-besuch.sql): Das Geheimnis stand zweimal —
+   als Edge-Secret OMOTENO_TRIGGER_SECRET und im Trigger — und die beiden
+   Kopien waren verschieden: Der Probeaufruf aus der Datenbank bekam 401,
+   und kein Fehler erschien irgendwo. Jetzt gibt es EINE Quelle; gefragt
+   wird über klaviyo_geheimnis_ok() (nur service_role, gibt nur ja/nein). */
+async function echt(wert: string): Promise<boolean> {
+  if (wert.length < 32) return false;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/klaviyo_geheimnis_ok`, {
+    method: "POST",
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_wert: wert }),
+  }).catch(() => null);
+  if (!r || !r.ok) return false;
+  return (await r.json().catch(() => false)) === true;
 }
 
 const antwort = (koerper: unknown, status = 200) =>
@@ -66,111 +89,92 @@ const antwort = (koerper: unknown, status = 200) =>
     headers: { "Content-Type": "application/json" },
   });
 
-async function betriebLaden(betriebId: string) {
-  const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/betriebe?id=eq.${betriebId}&select=id,slug,name,klaviyo_liste_id`,
-    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } },
-  );
-  if (!r.ok) return null;
-  const zeilen = await r.json();
-  return Array.isArray(zeilen) && zeilen[0] ? zeilen[0] : null;
-}
+type GastStand = {
+  email: string; slug: string; name: string; liste: string | null;
+  besuche: number | null; letzter_besuch: string | null; bestellungen: number | null;
+  liebling: string | null;
+};
 
-async function klaviyoProfilAnlegen(email: string, betrieb: { slug: string; name: string }) {
-  const r = await fetch("https://a.klaviyo.com/api/profiles/", {
+/* Über die Funktion der Datenbank, nicht über die Tabellen: Sie entscheidet
+   auch, ob überhaupt gemeldet wird (Newsletter an, Adresse da). */
+async function gastLaden(gastId: string): Promise<GastStand | null> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/klaviyo_gast_stand`, {
     method: "POST",
-    headers: {
-      Authorization: `Klaviyo-API-Key ${KLAVIYO_KEY}`,
-      revision: KLAVIYO_REV,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      data: {
-        type: "profile",
-        attributes: {
-          email,
-          properties: { betrieb_slug: betrieb.slug, betrieb_name: betrieb.name },
-        },
-      },
-    }),
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_gast: gastId }),
   });
-  const roh = await r.json().catch(() => ({}));
-  /* Klaviyo antwortet mit 409 + der vorhandenen ID, wenn das Profil
-     schon existiert — das ist kein Fehler, sondern der Normalfall bei
-     einem wiederkehrenden Gast. */
-  if (r.status === 409) {
-    const vorhandeneId = roh?.errors?.[0]?.meta?.duplicate_profile_id;
-    return vorhandeneId ?? null;
-  }
   if (!r.ok) return null;
-  return roh?.data?.id ?? null;
+  const roh = await r.json().catch(() => null);
+  return roh && typeof roh === "object" && roh.email ? roh as GastStand : null;
 }
 
-async function klaviyoListeEintragen(email: string, listeId: string) {
-  const r = await fetch("https://a.klaviyo.com/api/profile-subscription-bulk-create-jobs/", {
+/* Eigenschaften je Betrieb — ein Konto für alle Häuser, also mit Slug im Namen. */
+function eigenschaften(g: GastStand): Record<string, unknown> {
+  const p = `omoteno_${g.slug}_`;
+  const e: Record<string, unknown> = { betrieb_slug: g.slug, betrieb_name: g.name };
+  if (g.letzter_besuch) e[p + "letzter_besuch"] = new Date(g.letzter_besuch).toISOString();
+  if (g.besuche != null) e[p + "besuche"] = g.besuche;
+  if (g.bestellungen != null) e[p + "bestellungen"] = g.bestellungen;
+  if (g.liebling) e[p + "liebling"] = String(g.liebling).slice(0, 80);
+  return e;
+}
+
+async function klaviyo(pfad: string, koerper: unknown) {
+  return await fetch(`https://a.klaviyo.com/api/${pfad}/`, {
     method: "POST",
     headers: {
       Authorization: `Klaviyo-API-Key ${KLAVIYO_KEY}`,
       revision: KLAVIYO_REV,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({
+    body: JSON.stringify(koerper),
+  });
+}
+
+Deno.serve(async (anfrage) => {
+  if (anfrage.method !== "POST") return antwort({ fehler: "nur POST" }, 405);
+
+  const mitgeschickt = anfrage.headers.get("x-omoteno-trigger-secret") ?? "";
+  if (!(await echt(mitgeschickt))) return antwort({ fehler: "nicht erlaubt" }, 401);
+
+  let roh: any;
+  try { roh = await anfrage.json(); }
+  catch { return antwort({ fehler: "kein_json" }, 400); }
+
+  const gastId = String(roh?.gast_id || "");
+  const art = roh?.art === "besuch" ? "besuch" : roh?.art === "neu" ? "neu" : "";
+  if (!UUID.test(gastId) || !art) return antwort({ fehler: "gast_id oder art fehlt" }, 400);
+
+  /* Fail-open wie bei uebersetzen: Kein Schluessel heisst "noch nicht
+     eingerichtet", nicht "kaputt". */
+  if (!KLAVIYO_KEY) return antwort({ fehler: "kein_schluessel" }, 200);
+
+  const gast = await gastLaden(gastId);
+  if (!gast) return antwort({ ok: true, gemeldet: false }, 200);
+
+  try {
+    const profil = await klaviyo("profile-import", {
+      data: { type: "profile", attributes: { email: gast.email, properties: eigenschaften(gast) } },
+    });
+    if (art === "besuch") return antwort({ ok: profil.ok });
+    if (!gast.liste) return antwort({ ok: profil.ok, fehler: "keine_liste" }, 200);
+    /* In die Liste nur beim ersten Hinterlegen — löst Klaviyos eigenes
+       Double-Opt-in aus, falls die Liste es verlangt. */
+    const liste = await klaviyo("profile-subscription-bulk-create-jobs", {
       data: {
         type: "profile-subscription-bulk-create-job",
         attributes: {
           profiles: {
             data: [{
               type: "profile",
-              attributes: {
-                email,
-                subscriptions: { email: { marketing: { consent: "SUBSCRIBED" } } },
-              },
+              attributes: { email: gast.email, subscriptions: { email: { marketing: { consent: "SUBSCRIBED" } } } },
             }],
           },
         },
-        relationships: { list: { data: { type: "list", id: listeId } } },
+        relationships: { list: { data: { type: "list", id: gast.liste } } },
       },
-    }),
-  });
-  return r.ok || r.status === 202;
-}
-
-Deno.serve(async (anfrage) => {
-  if (anfrage.method !== "POST") return antwort({ fehler: "nur POST" }, 405);
-
-  if (!TRIGGER_SECRET) {
-    console.error("OMOTENO_TRIGGER_SECRET ist nicht gesetzt — es wird nichts angenommen.");
-    return antwort({ fehler: "nicht eingerichtet" }, 503);
-  }
-  const mitgeschickt = anfrage.headers.get("x-omoteno-trigger-secret") ?? "";
-  if (!gleichLang(mitgeschickt, TRIGGER_SECRET)) {
-    return antwort({ fehler: "nicht erlaubt" }, 401);
-  }
-
-  let roh: any;
-  try { roh = await anfrage.json(); }
-  catch { return antwort({ fehler: "kein_json" }, 400); }
-
-  const betriebId = String(roh?.betrieb_id || "");
-  const email = String(roh?.email || "").trim();
-  if (!betriebId || !email) return antwort({ fehler: "betrieb_id oder email fehlt" }, 400);
-
-  if (!KLAVIYO_KEY) {
-    /* Fail-open wie bei uebersetzen: Kein Schluessel heisst "noch
-       nicht eingerichtet", nicht "kaputt". */
-    return antwort({ fehler: "kein_schluessel" }, 200);
-  }
-
-  const betrieb = await betriebLaden(betriebId);
-  if (!betrieb) return antwort({ fehler: "betrieb_unbekannt" }, 200);
-
-  try {
-    await klaviyoProfilAnlegen(email, betrieb);
-    if (!betrieb.klaviyo_liste_id) {
-      return antwort({ ok: true, fehler: "keine_liste" }, 200);
-    }
-    const eingetragen = await klaviyoListeEintragen(email, betrieb.klaviyo_liste_id);
-    return antwort({ ok: eingetragen });
+    });
+    return antwort({ ok: profil.ok && (liste.ok || liste.status === 202) });
   } catch (e) {
     console.error(e);
     return antwort({ fehler: String((e as Error)?.message ?? e) }, 200);

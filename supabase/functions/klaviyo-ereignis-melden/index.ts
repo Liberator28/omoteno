@@ -4,7 +4,6 @@
 
    Ausrollen:
      supabase functions deploy klaviyo-ereignis-melden --no-verify-jwt
-     supabase secrets set OMOTENO_TRIGGER_SECRET=<derselbe Wert wie im SQL-Trigger>
      supabase secrets set KLAVIYO_API_KEY=pk_...
 
    Aufgerufen von bestellung_klaviyo_melden() (siehe
@@ -21,6 +20,16 @@
    Betrieb im Namen wuerde eine Bestellung bei Chocolamour auch das
    Segment von Minhkeey ausloesen.
 
+   NEU (migration-klaviyo-besuch.sql): Der Trigger schickt NUR die
+   bestellung_id; den Inhalt holt diese Funktion über
+   klaviyo_bestellung_stand() — und die meldet nichts, was markiert
+   (pruefen), storniert oder ein Serviceruf ist. Das Ereignis trägt
+   Summe (value, EUR) und die Gerichte (für persönliche Mails), und
+   unique_id = bestellung_id: Ein wiederholter Aufruf zählt nicht
+   doppelt. Am Profil wird omoteno_<slug>_letzter_besuch mitgesetzt —
+   eine Bestellung ist ein Besuch, der Rückhol-Flow rückt nach hinten.
+   Form gegen das Schema des Klaviyo-Werkzeugs create_event gehalten.
+
    NICHT GEGEN DIE ECHTE KLAVIYO-API GETESTET (dieselbe ehrliche
    Grenze wie bei klaviyo-profil-melden) — Form folgt Klaviyos
    dokumentierter Events-API (Revision 2024-10-15). Faellt komplett
@@ -29,17 +38,27 @@
    laeuft asynchron NACH dem eigentlichen Insert (CLAUDE.md §7).
    ═══════════════════════════════════════════════════════════════════ */
 
-const TRIGGER_SECRET = Deno.env.get("OMOTENO_TRIGGER_SECRET") ?? "";
 const KLAVIYO_KEY    = Deno.env.get("KLAVIYO_API_KEY") ?? "";
 const KLAVIYO_REV    = "2024-10-15";
 const SUPABASE_URL   = Deno.env.get("SUPABASE_URL")!;
 const SERVICE_KEY    = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const UUID           = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function gleichLang(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let d = 0;
-  for (let i = 0; i < a.length; i++) d |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return d === 0;
+/* Echt ist ein Aufruf, dessen Kopf das Geheimnis aus dem Vault trägt.
+   VORFALL (migration-klaviyo-besuch.sql): Das Geheimnis stand zweimal —
+   als Edge-Secret OMOTENO_TRIGGER_SECRET und im Trigger — und die beiden
+   Kopien waren verschieden: Der Probeaufruf aus der Datenbank bekam 401,
+   und kein Fehler erschien irgendwo. Jetzt gibt es EINE Quelle; gefragt
+   wird über klaviyo_geheimnis_ok() (nur service_role, gibt nur ja/nein). */
+async function echt(wert: string): Promise<boolean> {
+  if (wert.length < 32) return false;
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/klaviyo_geheimnis_ok`, {
+    method: "POST",
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_wert: wert }),
+  }).catch(() => null);
+  if (!r || !r.ok) return false;
+  return (await r.json().catch(() => false)) === true;
 }
 
 const antwort = (koerper: unknown, status = 200) =>
@@ -48,42 +67,40 @@ const antwort = (koerper: unknown, status = 200) =>
     headers: { "Content-Type": "application/json" },
   });
 
-async function betriebNameLaden(betriebId: string) {
-  const r = await fetch(
-    `${SUPABASE_URL}/rest/v1/betriebe?id=eq.${betriebId}&select=slug,name`,
-    { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } },
-  );
+type BestellStand = {
+  email: string; slug: string; name: string; zeitpunkt: string; quelle: string;
+  summe: number; rabatt_code: string | null; gerichte: string[];
+};
+
+async function bestellungLaden(id: string): Promise<BestellStand | null> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/klaviyo_bestellung_stand`, {
+    method: "POST",
+    headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ p_bestellung: id }),
+  });
   if (!r.ok) return null;
-  const zeilen = await r.json();
-  return Array.isArray(zeilen) && zeilen[0] ? zeilen[0] : null;
+  const roh = await r.json().catch(() => null);
+  return roh && typeof roh === "object" && roh.email ? roh as BestellStand : null;
 }
 
 Deno.serve(async (anfrage) => {
   if (anfrage.method !== "POST") return antwort({ fehler: "nur POST" }, 405);
 
-  if (!TRIGGER_SECRET) {
-    console.error("OMOTENO_TRIGGER_SECRET ist nicht gesetzt — es wird nichts angenommen.");
-    return antwort({ fehler: "nicht eingerichtet" }, 503);
-  }
   const mitgeschickt = anfrage.headers.get("x-omoteno-trigger-secret") ?? "";
-  if (!gleichLang(mitgeschickt, TRIGGER_SECRET)) {
-    return antwort({ fehler: "nicht erlaubt" }, 401);
-  }
+  if (!(await echt(mitgeschickt))) return antwort({ fehler: "nicht erlaubt" }, 401);
 
   let roh: any;
   try { roh = await anfrage.json(); }
   catch { return antwort({ fehler: "kein_json" }, 400); }
 
-  const betriebId = String(roh?.betrieb_id || "");
-  const email = String(roh?.email || "").trim();
-  const zeitpunkt = roh?.zeitpunkt ? String(roh.zeitpunkt) : new Date().toISOString();
-  if (!betriebId || !email) return antwort({ fehler: "betrieb_id oder email fehlt" }, 400);
-
+  const bestellungId = String(roh?.bestellung_id || "");
+  if (!UUID.test(bestellungId)) return antwort({ fehler: "bestellung_id fehlt" }, 400);
   if (!KLAVIYO_KEY) return antwort({ fehler: "kein_schluessel" }, 200);
 
-  const betrieb = await betriebNameLaden(betriebId);
-  if (!betrieb) return antwort({ fehler: "betrieb_unbekannt" }, 200);
+  const b = await bestellungLaden(bestellungId);
+  if (!b) return antwort({ ok: true, gemeldet: false }, 200);
 
+  const zeit = new Date(b.zeitpunkt).toISOString();
   try {
     const r = await fetch("https://a.klaviyo.com/api/events/", {
       method: "POST",
@@ -96,15 +113,24 @@ Deno.serve(async (anfrage) => {
         data: {
           type: "event",
           attributes: {
-            time: zeitpunkt,
-            properties: { betrieb_slug: betrieb.slug },
-            metric: {
+            time: zeit,
+            unique_id: bestellungId,
+            value: Number(b.summe) || 0,
+            value_currency: "EUR",
+            properties: {
+              betrieb_slug: b.slug,
+              quelle: b.quelle,
+              gerichte: (b.gerichte || []).slice(0, 20),
+              anzahl_gerichte: (b.gerichte || []).length,
+              mit_code: !!b.rabatt_code,
+            },
+            metric: { data: { type: "metric", attributes: { name: `Bestellung aufgegeben – ${b.name}` } } },
+            profile: {
               data: {
-                type: "metric",
-                attributes: { name: `Bestellung aufgegeben – ${betrieb.name}` },
+                type: "profile",
+                attributes: { email: b.email, properties: { [`omoteno_${b.slug}_letzter_besuch`]: zeit } },
               },
             },
-            profile: { data: { type: "profile", attributes: { email } } },
           },
         },
       }),
