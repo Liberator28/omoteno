@@ -10,7 +10,15 @@
        Am Ende ist die Ebene ENTFERNT (nicht versteckt, §8.1), die
        Adresse ist die der Kachel, und elementFromPoint trifft die neue
        Seite — sonst läge eine unsichtbare Fläche über allem.
-   2 · Erstes Öffnen lang (~1,15 s), danach kurz (~0,48 s).
+   2 · Erstes Öffnen lang (~0,92 s), danach kurz (~0,44 s) — seit 09.10.
+       kürzer („kompakt und schnell“).
+   2a · Seit 09.10.: KEIN Wort in der Szene (Textknoten mit Buchstaben
+       außerhalb des Symbols gezählt), die zwei Deckel der Klappkarte
+       drehen wirklich auf (rotateY ±172° in den eigenen Keyframes, und
+       mitten im Aufklappen steht der berechnete transform schräg), und
+       der Sog deckt beim Seitenwechsel den ganzen Schirm (Rechteck der
+       Scheibe ⊇ Schirm, Deckkraft ≥ 0,95) — sonst sähe man die alte
+       Seite springen.
    3 · Nur transform und opacity — abgelesen an den laufenden
        Animationen selbst (getAnimations), nicht am Quelltext.
    4 · Das Licht kommt aus dem Haus: --reise-licht ist die Farbe der
@@ -115,11 +123,51 @@ async function hubAuf(browser, haus, opt = {}) {
         return { props: [...props], zahl, licht };
       });
       pruef(eig.zahl >= 6, "die Szene läuft (Animationen der Ebene)", eig.zahl);
+      const bau = await p.evaluate(() => {
+        const r = document.querySelector(".reise");
+        const W = document.createTreeWalker(r, NodeFilter.SHOW_TEXT);
+        const worte = [];
+        for (let k = W.nextNode(); k; k = W.nextNode())
+          if (!k.parentElement.closest(".reise-ico") && /\p{L}{2,}/u.test(k.textContent)) worte.push(k.textContent.trim());
+        const tueren = [...r.querySelectorAll(".reise-tuer")].map(t => {
+          const a = t.getAnimations()[0];
+          const ziel = a ? a.effect.getKeyframes().map(k => k.transform || "").join(" ") : "";
+          let schraeg = 0;
+          if (a) {
+            const vorher = a.currentTime;
+            a.pause(); a.currentTime = a.effect.getComputedTiming().duration * .42;
+            const m = new DOMMatrix(getComputedStyle(t).transform);
+            schraeg = Math.round(Math.acos(Math.max(-1, Math.min(1, m.m11))) * 180 / Math.PI);
+            a.currentTime = vorher; a.play();
+          }
+          return { ziel, schraeg };
+        });
+        /* Der Sog im Augenblick des Wechsels: alle Animationen auf 0,78. */
+        const anis = r.getAnimations({ subtree: true });
+        const halte = anis.map(a => a.currentTime);
+        anis.forEach(a => { a.pause(); a.currentTime = a.effect.getComputedTiming().duration * .78; });
+        const po = r.querySelector(".reise-portal");
+        const pr = po ? po.getBoundingClientRect() : { left: 1, top: 1, right: 0, bottom: 0 };
+        /* Ein Kreis: jede Ecke des Schirms muss im Radius liegen — das
+           umschließende Rechteck allein ließe die Ecken frei. */
+        const mx = (pr.left + pr.right) / 2, my = (pr.top + pr.bottom) / 2, rad = (pr.right - pr.left) / 2;
+        const ecken = [[0, 0], [innerWidth, 0], [0, innerHeight], [innerWidth, innerHeight]];
+        const deckt = { op: po ? +getComputedStyle(po).opacity : 0,
+          ganz: rad > 0 && ecken.every(([x, y]) => Math.hypot(x - mx, y - my) <= rad) };
+        anis.forEach((a, i) => { a.currentTime = halte[i]; a.play(); });
+        return { worte, tueren, deckt };
+      });
+      pruef(bau.worte.length === 0, "kein Text in der Szene, nur das Symbol", bau.worte.join(" | ") || "kein Wort");
+      pruef(bau.tueren.length === 2 && /rotateY\(-172deg\)/.test(bau.tueren[0].ziel) && /rotateY\(172deg\)/.test(bau.tueren[1].ziel)
+        && bau.tueren.every(t => t.schraeg >= 30), "die Karte klappt auf: zwei Deckel drehen auseinander",
+        bau.tueren.map(t => t.schraeg + "°").join(", ") + " mitten im Aufklappen");
+      pruef(bau.deckt.ganz && bau.deckt.op >= .95, "der Sog deckt beim Wechsel den ganzen Schirm",
+        JSON.stringify(bau.deckt));
       pruef(eig.props.length > 0 && eig.props.every(s => s === "transform" || s === "opacity"),
         "nur transform und opacity werden bewegt", eig.props.join(", "));
       await p.waitForTimeout(1500);
       const lang = await p.evaluate(() => window.__reise.weg - window.__reise.an);
-      pruef(lang > 1000 && lang < 1500, "erstes Öffnen: die volle Szene (~1,15 s)", Math.round(lang) + " ms");
+      pruef(lang > 800 && lang < 1150, "erstes Öffnen: die volle Szene (~0,92 s)", Math.round(lang) + " ms");
 
       /* Farbe: die der angetippten Kachel, aus dem Haus gelesen. */
       await p.evaluate(() => { location.hash = "#/"; });
@@ -142,7 +190,7 @@ async function hubAuf(browser, haus, opt = {}) {
         "das Licht ist die Farbe des Hauses (" + farbProbe.name + ")", farbProbe.ist);
       await p.waitForTimeout(900);
       const kurz = await p.evaluate(() => window.__reise.weg - window.__reise.an);
-      pruef(kurz > 300 && kurz < 700, "zweites Öffnen: kurz (~0,48 s)", Math.round(kurz) + " ms");
+      pruef(kurz > 300 && kurz < 650, "zweites Öffnen: kurz (~0,44 s)", Math.round(kurz) + " ms");
       pruef(fehler.length === 0, "keine Skriptfehler", fehler[0] || "still");
       await ctx.close();
     }

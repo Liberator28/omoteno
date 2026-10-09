@@ -81,6 +81,14 @@ async function oeffnen(browser, haus, breite, sprache) {
         };
       });
       const k = haus + " @" + breite;
+      const stand = await seite.evaluate(() => {
+        const st = document.getElementById("status");
+        return { inZeile: !!st && st.parentElement === document.querySelector(".kopfwahl"), text: st ? st.textContent.trim() : "" };
+      });
+      /* Nur der Ort, nicht die Länge: Die hinge an der Uhr (offen kurz,
+         geschlossen mit Wochentag länger) — §8.1j. */
+      pruef(stand.inZeile && stand.text.length > 0, k + ": Öffnungsstand steht in der Knopfzeile (eine Zeile Kopf weniger)",
+        JSON.stringify(stand.text));
       pruef(Math.abs(m.zeileMitte - m.kopfMitte) <= 1, k + ": Knopfzeile mittig (± 1 px)",
         "Zeile " + m.zeileMitte.toFixed(1) + " / Kopf " + m.kopfMitte.toFixed(1));
       pruef(m.sk.w <= 48 && m.sk.w >= 44 && m.sk.h >= 44, k + ": Sprachknopf ist ein Kreis 44–48 px",
@@ -205,6 +213,23 @@ async function oeffnen(browser, haus, breite, sprache) {
     pruef(z.an && z.w >= 44 && z.h >= 44 && z.text === "Zurück", haus + ": Zurück ist eine Pille „Zurück“, ≥ 44 px",
       z.w.toFixed(0) + "×" + z.h.toFixed(0) + " " + JSON.stringify(z.text));
     pruef(z.label === "Zurück zur Übersicht" && z.oben, haus + ": beschriftet und obenauf (nichts deckt ihn)", z.label + " " + z.oben);
+    /* 09.10. „Spare Text im Header — kompakt wie Lieferando“: Auf der
+       Unterseite ist der Kopf EINE Leiste — Siegel, Name und Knöpfe auf
+       einer Höhe, ohne Adresse, Slogan und Öffnungsstand. Vorher ~270 px. */
+    const leiste = await seite.evaluate(() => {
+      const r = el => el.getBoundingClientRect();
+      const mitte = el => { const b = r(el); return b.top + b.height / 2; };
+      const sichtbar = el => !!el && getComputedStyle(el).display !== "none" && r(el).height > 0;
+      const kopf = document.querySelector("header");
+      const teile = [document.getElementById("logo"), document.getElementById("titel"), document.querySelector(".kopfwahl")];
+      const m = teile.map(mitte);
+      return { hoehe: Math.round(r(kopf).height), versatz: Math.round(Math.max(...m) - Math.min(...m)),
+               claim: sichtbar(document.getElementById("claim")), status: sichtbar(document.getElementById("status")),
+               titel: document.getElementById("titel").textContent };
+    });
+    pruef(leiste.hoehe <= 120 && leiste.versatz <= 12 && !leiste.claim && !leiste.status && leiste.titel.length > 0,
+      haus + ": Unterseite — Kopf ist eine flache Leiste (Siegel, Name, Knöpfe in einer Reihe, ohne Adresse/Slogan/Stand)",
+      leiste.hoehe + " px hoch, Versatz " + leiste.versatz + " px, Slogan " + leiste.claim + ", Stand " + leiste.status);
     await seite.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, 1500); });
     await seite.waitForTimeout(300);
     const kl = await seite.evaluate(() => {

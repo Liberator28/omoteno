@@ -311,7 +311,7 @@ header{
      über den Rand hinaus (Zeile 313), ein overflow:hidden hier würde
      genau das abschneiden — die Herzen darunter clippen sich selbst
      in ihrer eigenen Ebene (.herzenfeld). */
-  grid-template-areas:"logo" "titel" "claim" "status" "kopfwahl";
+  grid-template-areas:"logo" "titel" "claim" "kopfwahl";
   row-gap:6px;justify-items:center;align-items:center;
   transition:background-color .9s ease;
 }
@@ -420,7 +420,25 @@ h1{
      und die Vorschau im Board zeigt genau das. */
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
-#status{grid-area:status;padding:4px 0 0}
+#status{display:flex;flex:none}
+/* ═══ Unterseiten: eine Leiste statt eines Kopfes (09.10.) ════════
+   „Spare Text im Header — kompakt und schnell wie bei Lieferando.“
+   Auf jeder Unterseite: kleines Siegel, Name, Knöpfe in EINER Zeile;
+   Adresse, Slogan und Öffnungsstand fallen weg (den Stand zeigt die
+   Startseite, die Unterseite hat ihren eigenen Titel darunter).
+   Vorher ~270 px Kopf vor der Karte, jetzt ~70 px. Die Rasterflächen
+   folgen der Schreibrichtung — in RTL steht das Siegel rechts. */
+body[data-ansicht="unter"] header{
+  grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"logo titel kopfwahl";
+  column-gap:12px;justify-items:start;padding-bottom:12px;padding-top:calc(var(--rand-oben) + 2px);
+}
+body[data-ansicht="unter"] .logo,
+body[data-ansicht="unter"] .logo svg{width:40px;height:40px}
+body[data-ansicht="unter"] h1{font-size:18px;text-align:start;justify-self:stretch;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-ansicht="unter"] .claim,
+body[data-ansicht="unter"] #status{display:none}
+body[data-ansicht="unter"] .kopfwahl{justify-self:end;gap:8px}
 /* Dieselbe Rasterfläche wie h1 (Zeile 395) — beide überlappen sich in
    DERSELBEN Zelle, glanzflug liegt im Auszeichnungstext danach und
    malt deshalb über den Titel, ohne eine eigene Zeile im Raster zu
@@ -761,7 +779,8 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
    (wo der Betrieb liefert) der Liefer-Schalter. */
 .kopfwahl{
   grid-area:kopfwahl;justify-self:center;align-self:center;
-  display:flex;align-items:center;gap:10px;
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;
+  padding-top:4px;
 }
 .lichtknopf{
   flex:none;
@@ -996,64 +1015,81 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:rgba(224,178,78,.55);back
   .zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 
-/* ═══ Reise · Übergang Kachel → Unterseite (Wunsch 08.10.) ═══════
-   „Eine wirklich hochwertige Speisekarte, immersiv, mit LED-Rand“:
-   Die angetippte Kachel löst sich als Karte (FLIP, gemessen am echten
-   Rechteck), wächst in die Mitte, ein Lichtband läuft einmal um den
-   Rand, das Symbol der Kachel schwebt groß nach vorn — und man
-   schwebt hinein: Karte und Symbol wachsen weiter und lösen sich auf,
-   darunter steht schon die echte Seite und baut sich gestaffelt auf
-   (#inhalt.rein). Die ganze Szene ist EINE Ebene, die am Ende
-   entfernt wird, nicht versteckt (§8.1). Nur transform und opacity.
-   pointer-events:none: Ein Tipp geht nie in eine Fläche, die gleich
-   verschwindet — überspringen läuft über einen eigenen Horcher.
+/* ═══ Reise · Übergang Kachel → Unterseite (Wunsch 08.10., neu 09.10.) ═══
+   09.10.: „Ohne Text — nur ein Aufblättern der Karte, eine Speisekarte,
+   die sich öffnet, und das Symbol, in das man hineingezogen wird und
+   auf der anderen Seite landet.“ Deshalb jetzt:
+     1. Die angetippte Kachel löst sich als geschlossene Klappkarte
+        (FLIP, gemessen am echten Rechteck) und fliegt in die Mitte.
+     2. Zwei Deckel klappen in 3D auf (rotateY um die Außenkanten,
+        perspective() im transform selbst — kein preserve-3d nötig),
+        dahinter leuchtet die Innenseite mit Zeilen ohne Text.
+     3. Das Symbol steht darüber, wächst nach vorn, und eine Scheibe im
+        Licht des Hauses öffnet sich aus ihm über den ganzen Schirm —
+        das ist der Sog. Unter der Scheibe wechselt die Seite, dann
+        löst sie sich auf, und #inhalt.rein baut die neue Seite auf.
+   Kein Wort in der ganzen Szene (pruef-reise.js zählt Textknoten).
+   Die ganze Szene ist EINE Ebene, die am Ende entfernt wird, nicht
+   versteckt (§8.1). Nur transform und opacity. pointer-events:none:
+   Ein Tipp geht nie in eine Fläche, die gleich verschwindet —
+   überspringen läuft über einen eigenen Horcher.
    Ebene 75: über Kopf (50) und Blättern (60+), unter der Altersfrage. */
 .reise{position:fixed;inset:0;z-index:75;pointer-events:none;overflow:hidden}
 .reise-grund{position:absolute;inset:0;opacity:0;
   background:radial-gradient(120% 78% at 50% 46%,
-    color-mix(in srgb, var(--reise-licht) 20%, var(--grund)) 0%, var(--grund) 64%)}
+    color-mix(in srgb, var(--reise-licht) 22%, var(--grund)) 0%, var(--grund) 66%)}
 .reise-buehne{position:absolute;left:50%;top:50%;will-change:transform,opacity}
-.reise-schein{position:absolute;inset:0;border-radius:28px;opacity:0;
+.reise-schein{position:absolute;inset:0;border-radius:26px;opacity:0;
   box-shadow:0 0 46px 4px color-mix(in srgb, var(--reise-licht) 55%, transparent),
              0 0 120px 18px color-mix(in srgb, var(--reise-licht) 22%, transparent)}
-.reise-karte{position:absolute;inset:0;border-radius:28px;overflow:hidden;
-  background:linear-gradient(165deg, color-mix(in srgb, var(--reise-licht) 9%, var(--flaeche)) 0%, var(--flaeche) 58%);
-  box-shadow:0 34px 80px -28px rgba(0,0,0,.6), inset 0 1px 0 rgba(255,255,255,.18)}
-/* Die feine zweite Linie innen: der Rahmen einer gedruckten Karte. */
-.reise-linie{position:absolute;inset:12px;border-radius:18px;
-  border:1px solid color-mix(in srgb, var(--reise-licht) 38%, transparent)}
-.reise-led{position:absolute;inset:0;border-radius:inherit;padding:3px;opacity:0;
-  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-  -webkit-mask-composite:xor;mask-composite:exclude}
-.reise-lauf{position:absolute;left:50%;top:50%;width:240%;aspect-ratio:1;margin:-120% 0 0 -120%;
-  /* Zwei Lichter, einander gegenüber: So steht auf jeder Seite der
-     Karte einmal Licht, auch wenn die Karte schmal und hoch ist. */
-  background:conic-gradient(from 0deg,
-    transparent 0 8%, color-mix(in srgb, var(--reise-licht) 45%, transparent) 20%,
-    var(--reise-licht) 29%, #fff 31%, var(--reise-licht) 33%,
-    color-mix(in srgb, var(--reise-licht) 45%, transparent) 40%, transparent 50% 58%,
-    color-mix(in srgb, var(--reise-licht) 45%, transparent) 70%,
-    var(--reise-licht) 79%, #fff 81%, var(--reise-licht) 83%,
-    color-mix(in srgb, var(--reise-licht) 45%, transparent) 90%, transparent 100%)}
+/* Die Innenseite der Karte: Flächen statt Wörter — Zeilen im Licht des
+   Hauses, wie eine Karte, die man aus Armlänge sieht. */
+.reise-seite{position:absolute;inset:0;border-radius:26px;overflow:hidden;opacity:0;
+  background:linear-gradient(170deg, color-mix(in srgb, var(--reise-licht) 14%, var(--flaeche)) 0%, var(--flaeche) 62%);
+  box-shadow:0 34px 80px -28px rgba(0,0,0,.6), inset 0 0 0 1px color-mix(in srgb, var(--reise-licht) 30%, transparent)}
+.reise-seite i{position:absolute;left:18%;right:18%;height:5px;border-radius:5px;
+  background:color-mix(in srgb, var(--reise-licht) 26%, transparent)}
+.reise-seite i:nth-child(1){top:62%}
+.reise-seite i:nth-child(2){top:69%;right:30%}
+.reise-seite i:nth-child(3){top:76%}
+.reise-seite i:nth-child(4){top:83%;right:38%}
+/* Zwei Deckel, je eine Hälfte. backface-visibility: Über 90° hinaus
+   verschwindet der Deckel, statt seine Rückseite spiegelverkehrt zu
+   zeigen. Die Kante innen trägt ein feines Licht — der Falz. */
+.reise-tuer{position:absolute;top:0;bottom:0;width:50%;overflow:hidden;
+  -webkit-backface-visibility:hidden;backface-visibility:hidden;
+  background:linear-gradient(155deg,
+    color-mix(in srgb, var(--reise-licht) 34%, var(--flaeche)) 0%,
+    color-mix(in srgb, var(--reise-licht) 16%, var(--flaeche)) 70%);
+  will-change:transform}
+.reise-tuer.links{left:0;border-radius:26px 6px 6px 26px;transform-origin:0 50%;
+  box-shadow:inset -1px 0 0 color-mix(in srgb, var(--reise-licht) 60%, transparent)}
+.reise-tuer.rechts{right:0;border-radius:6px 26px 26px 6px;transform-origin:100% 50%;
+  box-shadow:inset 1px 0 0 color-mix(in srgb, var(--reise-licht) 60%, transparent)}
+/* Glanz auf dem Deckel: ein schräger Lichtstreif, fest — er bewegt sich
+   mit dem Deckel und liest sich dadurch als Prägung. */
+.reise-tuer::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(115deg, rgba(255,255,255,.22) 0%, transparent 34%, transparent 70%, rgba(255,255,255,.08) 100%)}
 .reise-figur{position:absolute;left:50%;top:50%;width:0;height:0;will-change:transform,opacity}
-.reise-ico{position:absolute;left:-52px;top:-74px;width:104px;height:104px;border-radius:30px;
+.reise-ico{position:absolute;left:-52px;top:-52px;width:104px;height:104px;border-radius:50%;
   display:grid;place-items:center;overflow:hidden;font-size:58px;line-height:1;color:var(--reise-licht);
-  background:color-mix(in srgb, var(--reise-licht) 13%, var(--flaeche));
-  box-shadow:0 0 0 1px color-mix(in srgb, var(--reise-licht) 32%, transparent),
-             0 18px 44px -14px color-mix(in srgb, var(--reise-licht) 70%, transparent)}
+  background:radial-gradient(closest-side, color-mix(in srgb, var(--reise-licht) 18%, var(--flaeche)) 70%,
+    color-mix(in srgb, var(--reise-licht) 32%, var(--flaeche)) 100%);
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--reise-licht) 40%, transparent),
+             0 0 34px 2px color-mix(in srgb, var(--reise-licht) 45%, transparent),
+             0 18px 44px -14px rgba(0,0,0,.5)}
 .reise-ico svg{width:50px;height:50px;fill:none;stroke:currentColor;stroke-width:1.6;
   stroke-linecap:round;stroke-linejoin:round}
 .reise-ico .reise-film{display:block;width:76px;height:76px}
 .reise-ico .reise-film svg{width:100%;height:100%}
 .reise-ico img{width:100%;height:100%;object-fit:cover}
-.reise-titel{position:absolute;left:-140px;width:280px;top:46px;text-align:center;opacity:0;
-  text-wrap:balance;overflow-wrap:anywhere}
-.reise-titel b{display:block;font:600 23px/1.2 var(--schrift-titel, var(--schrift-kopf));color:var(--tinte)}
-/* Zwischen Titel und Unterzeile ein kurzer Strich im Licht des Hauses —
-   wie die Zierlinie unter dem Namen einer gedruckten Karte. */
-.reise-titel i{display:block;width:34px;height:2px;margin:10px auto 9px;border-radius:2px;
-  background:var(--reise-licht);opacity:.7}
-.reise-titel small{display:block;font:500 14px/1.35 var(--schrift-text);color:var(--tinte-leise)}
+/* Der Sog: eine Scheibe aus dem Symbol, so groß, dass sie bei scale(1)
+   den ganzen Schirm deckt (Maß setzt das Skript). */
+.reise-portal{position:absolute;left:50%;top:50%;border-radius:50%;opacity:0;will-change:transform,opacity;
+  background:radial-gradient(closest-side,
+    var(--grund) 0%, var(--grund) 52%,
+    color-mix(in srgb, var(--reise-licht) 30%, var(--grund)) 82%,
+    color-mix(in srgb, var(--reise-licht) 70%, var(--grund)) 100%)}
 
 /* ═══ Wie letztes Mal / Nochmal wie letztes Mal (08.10.) ════════
    Beides setzt erst auf einen Tipp etwas — ein Vorschlag, keine
@@ -4085,13 +4121,15 @@ function markeAnwenden(abend){
        §5.1/§5.2 — Kontrast messen, nicht ansehen). -->
   <span class="glanzflug" aria-hidden="true"></span>
   <p class="claim" id="claim"></p>
-  <div id="status"></div>
   <!-- Hell oder dunkel steht NEBEN der Sprachwahl, weil beides
        dasselbe beantwortet: wie der Gast den Hub sehen will. Beide
        liegen in einer gemeinsamen Zeile — zwei Elemente auf derselben
        Rasterfläche hätten sich überlagert. -->
   <div class="kopfwahl">
   <button class="lichtknopf" id="lichtknopf" type="button"></button>
+  <!-- Öffnungsstand in derselben Zeile wie Licht und Sprache (09.10.:
+       „kompakt wie Lieferando“) — eine Zeile Kopf weniger. -->
+  <div id="status"></div>
   <!-- Liefer-Schalter (ersetzt seit 30.09. das Lieferband der
        Startseite). Nur wo der Betrieb liefert und niemand am Tisch
        sitzt — lieferWahlZeichnen() nimmt hidden weg. In Ruhe zwei
@@ -8480,7 +8518,7 @@ const TEXTE = {
 "Sprache":{en:"Language",tr:"Dil",ru:"Язык",fr:"Langue",es:"Idioma",it:"Lingua",pl:"Język",ar:"اللغة",uk:"Мова",nl:"Taal",ro:"Limbă"},
 
 /* --- Öffnungsstatus --- */
-"Jetzt geöffnet · bis {x} Uhr":{en:"Open now · until {x}",tr:"Şu an açık · {x}'e kadar",ru:"Сейчас открыто · до {x}",fr:"Ouvert · jusqu'à {x}",es:"Abierto · hasta las {x}",it:"Aperto · fino alle {x}",pl:"Otwarte · do {x}",ar:"مفتوح الآن · حتى {x}",uk:"Зараз відкрито · до {x}",nl:"Nu open · tot {x}",ro:"Deschis acum · până la {x}"},
+"Offen bis {x}":{en:"Open until {x}",tr:"{x}'e kadar açık",ru:"Открыто до {x}",fr:"Ouvert jusqu'à {x}",es:"Abierto hasta las {x}",it:"Aperto fino alle {x}",pl:"Otwarte do {x}",ar:"مفتوح حتى {x}",uk:"Відчинено до {x}",nl:"Open tot {x}",ro:"Deschis până la {x}"},
 "Gerade geschlossen · {w} ab {x} Uhr":{en:"Closed · {w} from {x}",tr:"Şu an kapalı · {w} {x}'den itibaren",ru:"Закрыто · {w} с {x}",fr:"Fermé · {w} à partir de {x}",es:"Cerrado · {w} desde las {x}",it:"Chiuso · {w} dalle {x}",pl:"Zamknięte · {w} od {x}",ar:"مغلق · {w} من {x}",uk:"Зачинено · {w} з {x}",nl:"Gesloten · {w} vanaf {x}",ro:"Închis · {w} de la {x}"},
 "Gerade geschlossen":{en:"Currently closed",tr:"Şu an kapalı",ru:"Закрыто",fr:"Actuellement fermé",es:"Cerrado ahora",it:"Ora chiuso",pl:"Obecnie zamknięte",ar:"مغلق حالياً",uk:"Зараз зачинено",nl:"Momenteel gesloten",ro:"Închis momentan"},
 "heute":{en:"today",tr:"bugün",ru:"сегодня",fr:"aujourd'hui",es:"hoy",it:"oggi",pl:"dziś",ar:"اليوم",uk:"сьогодні",nl:"vandaag",ro:"astăzi"},
@@ -9547,11 +9585,11 @@ function jetztOffen(){
 
   const heute = fenster(tag);
   if(heute && jetzt >= heute.auf && jetzt < heute.zu)
-    return { offen:true, text:t("Jetzt geöffnet · bis {x} Uhr", {x:heute.bis}) };
+    return { offen:true, text:t("Offen bis {x}", {x:heute.bis}) };
 
   const gestern = fenster((tag + 6) % 7);         // Nachtschicht von gestern
   if(gestern && jetzt + 24 < gestern.zu)
-    return { offen:true, text:t("Jetzt geöffnet · bis {x} Uhr", {x:gestern.bis}) };
+    return { offen:true, text:t("Offen bis {x}", {x:gestern.bis}) };
 
   const namen = TAGE;
   for(let i = 0; i < 7; i++){
@@ -12490,6 +12528,7 @@ function zeichne(){
       '</div><button class="knopf" data-heim="1">' + t("Zurück zur Übersicht") + '</button>';
   }
   $("zurueck").classList.toggle("an", !istStart);
+  document.body.dataset.ansicht = istStart ? "start" : "unter";
   $("titel").textContent = istStart ? begruessung() : BETRIEB.name;
   $("claim").textContent = istStart ? t(BETRIEB.claim) : BETRIEB.strasse + " · " + BETRIEB.ort;
   $("zurueck").setAttribute("aria-label", t("Zurück zur Übersicht"));
@@ -14118,8 +14157,8 @@ $("inhalt").addEventListener("input", e => {
 /* ══ REISE · Übergang Kachel → Unterseite (Wunsch 08.10.) ══════════
    Ablauf und Gestalt stehen beim CSS (.reise). Hier der Takt:
 
-   - Erstes Öffnen je Sitzung: die volle Szene, 1,15 s. Danach kurz,
-     0,48 s — wer zum fünften Mal in die Karte geht, will hinein und
+   - Erstes Öffnen je Sitzung: die volle Szene, 0,92 s. Danach kurz,
+     0,44 s — wer zum fünften Mal in die Karte geht, will hinein und
      keine Vorführung (Skill bewegung §3). Gemerkt in sessionStorage.
    - Ein Tipp, eine Taste oder ein Wischen während der Szene springt
      ans Ende. War die Seite darunter noch nicht gewechselt, wird der
@@ -14127,8 +14166,8 @@ $("inhalt").addEventListener("input", e => {
      alten Startseite, die er sonst träfe.
    - Reduzierte Bewegung, die Vorschau im Board, ein Link nach außen,
      Strg/⌘-Klick: keine Szene, der Browser macht, was er immer macht.
-   - Gewechselt wird unter der Szene, solange sie deckt (60 % bzw.
-     45 %). Danach löst sie sich auf, und #inhalt.rein baut die neue
+   - Gewechselt wird unter der Scheibe, wenn sie deckt (76 % bzw.
+     70 %). Danach löst sie sich auf, und #inhalt.rein baut die neue
      Seite gestaffelt darunter auf. */
 let reise = null;
 function reiseSymbol(a){
@@ -14172,65 +14211,73 @@ function reiseStarten(a, ziel){
   if(reise) reiseEnde();
   let lang = true;
   try{ lang = !sessionStorage.getItem(hSchluessel("reise")); sessionStorage.setItem(hSchluessel("reise"), "1"); }catch(err){}
-  const D = lang ? 1150 : 480;
+  /* 09.10.: kürzer als vorher (1,15 s / 0,48 s) — „kompakt und
+     schnell“. Die volle Szene nur beim ersten Öffnen je Sitzung. */
+  const D = lang ? 920 : 440;
   const vw = innerWidth, vh = innerHeight;
-  const W = Math.min(vw - 56, 340), H = Math.min(Math.round(vh * .6), 440);
+  const W = Math.min(vw - 64, 300), H = Math.min(Math.round(vh * .54), 400);
   const r = a.getBoundingClientRect();
   const icoEl = a.querySelector(".ico") || a;
   const ir = icoEl.getBoundingClientRect();
-  const strong = a.querySelector(".txt strong");
-  const titel = strong && strong.firstChild ? strong.firstChild.textContent : "";
-  const unterEl = a.querySelector(".txt > span");
-  const unter = unterEl ? unterEl.textContent : "";
   const farbe = { rot:"var(--rot)", pistazie:"var(--pistazie)", gold:"var(--gold)" }[a.dataset.farbe] || "var(--gold)";
+  /* Das Symbol sitzt im oberen Drittel der Karte, wie ein Wappen. */
+  const fy = -Math.round(H * .16);
+  /* Die Scheibe sitzt auf dem Symbol, also um fy versetzt. Bei scale(1)
+     muss sie die ENTFERNTESTE Ecke decken — die Diagonale des Schirms
+     reicht dafür nicht (gemessen: unten blieb ein Streifen frei). */
+  const P = 2 * Math.ceil(Math.hypot(vw / 2, vh / 2 - fy)) + 8;
 
   const el = document.createElement("div");
   el.className = "reise";
   el.setAttribute("aria-hidden", "true");
   el.style.setProperty("--reise-licht", farbe);
+  /* Kein Text: Titel und Unterzeile der Kachel stehen gleich auf der
+     Seite selbst. Hier nur Karte, Deckel, Symbol, Sog. */
   el.innerHTML =
     '<div class="reise-grund"></div>' +
     '<div class="reise-buehne" style="width:' + W + 'px;height:' + H + 'px;margin:' + (-H / 2) + 'px 0 0 ' + (-W / 2) + 'px">' +
       '<div class="reise-schein"></div>' +
-      '<div class="reise-karte"><div class="reise-linie"></div>' +
-        '<div class="reise-led"><div class="reise-lauf"></div></div></div>' +
+      '<div class="reise-seite"><i></i><i></i><i></i><i></i></div>' +
+      '<div class="reise-tuer links"></div><div class="reise-tuer rechts"></div>' +
     '</div>' +
-    '<div class="reise-figur"><div class="reise-ico">' + reiseSymbol(a) + '</div>' +
-      '<div class="reise-titel"><b>' + hs(titel) + '</b>' +
-        (unter ? '<i></i><small>' + hs(unter) + '</small>' : "") + '</div></div>';
+    '<div class="reise-figur"><div class="reise-ico">' + reiseSymbol(a) + '</div></div>' +
+    '<div class="reise-portal" style="width:' + P + 'px;height:' + P + 'px;margin:' + (-P / 2) + 'px 0 0 ' + (-P / 2) + 'px"></div>';
   document.body.appendChild(el);
   const $r = k => el.querySelector(".reise-" + k);
 
   /* Start = das echte Rechteck der Kachel, Ziel = die Mitte. */
   const kStart = "translate(" + (r.left + r.width / 2 - vw / 2) + "px," + (r.top + r.height / 2 - vh / 2) + "px) " +
                  "scale(" + (r.width / W) + "," + (r.height / H) + ")";
-  const fStart = "translate(" + (ir.left + ir.width / 2 - vw / 2) + "px," + (ir.top + ir.height / 2 - (vh / 2 - 22)) + "px) " +
+  const fStart = "translate(" + (ir.left + ir.width / 2 - vw / 2) + "px," + (ir.top + ir.height / 2 - vh / 2) + "px) " +
                  "scale(" + Math.max(.2, ir.width / 104) + ")";
-  const WEICH = "cubic-bezier(.16,1,.3,1)", REIN = "cubic-bezier(.5,0,.75,0)", RUND = "cubic-bezier(.45,0,.25,1)";
+  const fMitte = "translate(0px," + fy + "px) scale(1)";
+  const pKlein = "translate(0px," + fy + "px) scale(" + (104 / P).toFixed(4) + ")";
+  const pGross = "translate(0px," + fy + "px) scale(1)";
+  const WEICH = "cubic-bezier(.16,1,.3,1)", REIN = "cubic-bezier(.5,0,.75,0)", RUND = "cubic-bezier(.65,0,.35,1)";
+  const PL = "perspective(900px) rotateY(0deg)";
   const anis = [];
-  const los = (k, frames) => {
-    const x = $r(k).animate(frames, { duration:D, fill:"both" });
+  const los = (k, frames, wahl) => {
+    const x = (wahl ? el.querySelector(wahl) : $r(k)).animate(frames, { duration:D, fill:"both" });
     anis.push(x); return x;
   };
-  if(lang){
-    los("grund",  [{opacity:0, easing:WEICH}, {opacity:1, offset:.3}, {opacity:1, offset:.7, easing:REIN}, {opacity:0}]);
-    los("buehne", [{transform:kStart, opacity:.5, easing:WEICH}, {transform:"none", opacity:1, offset:.36},
-                   {transform:"none", opacity:1, offset:.68, easing:REIN}, {transform:"scale(1.16)", opacity:0}]);
-    los("schein", [{opacity:0}, {opacity:0, offset:.26}, {opacity:1, offset:.46}, {opacity:.55, offset:.68}, {opacity:0, offset:.9}, {opacity:0}]);
-    los("led",    [{opacity:0}, {opacity:0, offset:.18}, {opacity:1, offset:.32}, {opacity:1, offset:.7}, {opacity:0, offset:.88}, {opacity:0}]);
-    los("lauf",   [{transform:"rotate(0deg)", easing:RUND}, {transform:"rotate(360deg)"}]);
-    los("figur",  [{transform:fStart, opacity:1, easing:"cubic-bezier(.77,0,.175,1)"}, {transform:"translateY(0) scale(1)", opacity:1, offset:.42},
-                   {transform:"translateY(-6px) scale(1.04)", offset:.64, easing:REIN, opacity:1},
-                   {transform:"translateY(0) scale(1.9)", opacity:0}]);
-    los("titel",  [{opacity:0, transform:"translateY(10px)"}, {opacity:0, transform:"translateY(10px)", offset:.3, easing:WEICH},
-                   {opacity:1, transform:"none", offset:.46}, {opacity:1, transform:"none", offset:.64}, {opacity:0, transform:"none", offset:.8}, {opacity:0}]);
-  }else{
-    los("grund",  [{opacity:0, easing:WEICH}, {opacity:.9, offset:.35}, {opacity:.9, offset:.55, easing:REIN}, {opacity:0}]);
-    los("buehne", [{transform:kStart, opacity:.6, easing:WEICH}, {transform:"none", opacity:1, offset:.45, easing:REIN}, {transform:"scale(1.1)", opacity:0}]);
-    los("led",    [{opacity:0}, {opacity:.85, offset:.4}, {opacity:0, offset:.85}, {opacity:0}]);
-    los("lauf",   [{transform:"rotate(0deg)", easing:WEICH}, {transform:"rotate(160deg)"}]);
-    los("figur",  [{transform:fStart, opacity:1, easing:WEICH}, {transform:"scale(1)", offset:.45, easing:REIN, opacity:1}, {transform:"scale(1.7)", opacity:0}]);
-  }
+  /* Ein Satz Takte für beide Längen — die kurze Fassung ist dieselbe
+     Geschichte, nur gedrängt (Skill bewegung §3). */
+  const T = lang ? { da:.30, auf:.28, offen:.56, sog:.58, deckt:.78 }
+                 : { da:.30, auf:.22, offen:.48, sog:.46, deckt:.72 };
+  los("grund",  [{opacity:0, easing:WEICH}, {opacity:1, offset:T.da}, {opacity:1, offset:T.deckt}, {opacity:0}]);
+  los("buehne", [{transform:kStart, opacity:.6, easing:WEICH}, {transform:"none", opacity:1, offset:T.da},
+                 {transform:"none", opacity:1, offset:T.sog, easing:REIN}, {transform:"scale(1.3)", opacity:0, offset:T.deckt}, {transform:"scale(1.3)", opacity:0}]);
+  los("seite",  [{opacity:0}, {opacity:0, offset:T.auf}, {opacity:1, offset:T.offen}, {opacity:1}]);
+  los("schein", [{opacity:0}, {opacity:0, offset:T.auf}, {opacity:1, offset:T.offen}, {opacity:0, offset:T.deckt}, {opacity:0}]);
+  los("tuer", [{transform:PL}, {transform:PL, offset:T.auf, easing:RUND}, {transform:"perspective(900px) rotateY(-172deg)", offset:T.offen},
+               {transform:"perspective(900px) rotateY(-172deg)"}], ".reise-tuer.links");
+  los("tuer", [{transform:PL}, {transform:PL, offset:T.auf, easing:RUND}, {transform:"perspective(900px) rotateY(172deg)", offset:T.offen},
+               {transform:"perspective(900px) rotateY(172deg)"}], ".reise-tuer.rechts");
+  los("figur",  [{transform:fStart, opacity:1, easing:WEICH}, {transform:fMitte, opacity:1, offset:T.da},
+                 {transform:"translate(0px," + fy + "px) scale(1.08)", opacity:1, offset:T.sog, easing:REIN},
+                 {transform:"translate(0px," + fy + "px) scale(5.5)", opacity:0, offset:T.deckt}, {transform:"translate(0px," + fy + "px) scale(5.5)", opacity:0}]);
+  los("portal", [{transform:pKlein, opacity:0}, {transform:pKlein, opacity:0, offset:T.sog, easing:REIN},
+                 {transform:pGross, opacity:1, offset:T.deckt, easing:WEICH}, {transform:"translate(0px," + fy + "px) scale(1.06)", opacity:0}]);
   const zustand = { el, anis, ziel, gewechselt:false, uhr:0, weg:null, lang };
   /* Überspringen. Kam der Druck vor dem Wechsel, gehört der Klick
      danach dem Überspringen und wird geschluckt. */
@@ -14250,7 +14297,7 @@ function reiseStarten(a, ziel){
     if(reise !== zustand || zustand.gewechselt) return;
     zustand.gewechselt = true;
     location.hash = ziel;
-  }, D * (lang ? .6 : .45));
+  }, D * (lang ? .76 : .7));
   anis[0].onfinish = () => { if(reise === zustand) reiseEnde(); };
   reise = zustand;
 }
