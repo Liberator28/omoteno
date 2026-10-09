@@ -2303,6 +2303,24 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
 .ezeile b{font-size:15px;font-weight:600;color:var(--kreide)}
 .ezeile i{font-size:12.5px;font-style:normal;color:var(--gedaempft);line-height:1.45}
 .ezeile[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+/* Gäste & Newsletter (Besitzer-Übersicht). Die Kennzahl-Kacheln der
+   Auswertung, hier mit eigener Fläche — ohne sie stünden sie auf der
+   Gruppenfläche ohne Rand (.aw-kpi hat außerhalb der Auswertung keinen
+   Grund, vgl. .aw-blatt .aw-kpi). Immer zwei Spalten: die Gruppe ist
+   schmal, auch am Tresen. */
+.nlu .aw-kpis{grid-template-columns:repeat(2,minmax(0,1fr));margin:0}
+.nlu .aw-kpi{background:var(--flaeche-2);border:1px solid var(--linie);border-radius:14px}
+.nlu .aw-kpi .aw-wert{font-size:20px}
+.nlu-ablaeufe{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.nlu-ablaeufe:empty{display:none}
+.nlu-ablauf{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding:6px 12px;border:1px solid var(--linie);border-radius:12px}
+.nlu-name{flex:1 1 160px;min-width:0;font-size:14px;color:var(--kreide)}
+.nlu-stand{font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid currentColor;color:var(--gedaempft)}
+.nlu-stand.live{color:var(--gut)}
+.nlu-stand.unklar{color:var(--messing)}
+.nlu-link{font-size:13px;color:var(--messing);min-height:44px;display:inline-flex;align-items:center}
+.nlu-satz{font-size:13px;line-height:1.6;color:var(--gedaempft);margin:0}
+.nlu-satz.warn{color:var(--messing)}
 
 /* Schalter: eigener Bau statt Systemhäkchen, damit er auf dem
    dunklen Board nicht als weißer Klotz heraussticht.
@@ -3651,10 +3669,11 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Gäste-Newsletter</h2>
       <p class="ehilfe">Gäste, die im Hub unter „Mein Tisch" ihre E-Mail
-        hinterlegen, bekommen wöchentlich einen kleinen Gutschein und —
-        wenn 20 Tage lang keine neue Bestellung kam — eine Erinnerung
-        mit Gutschein. Die E-Mail bestätigt sich selbst, bevor
-        irgendetwas verschickt wird.</p>
+        hinterlegen und bestätigen, bekommen einmal einen
+        Willkommensgutschein — und wenn sie 20 Tage nicht da waren,
+        die Erinnerung „Wir vermissen Sie“ mit Gutschein. Jeder Besuch
+        und jede Bestellung zählt die 20 Tage neu. Verschickt wird erst,
+        wenn die Abläufe in Klaviyo auf „Live“ stehen.</p>
 
       <div class="schalter">
         <div><div class="schaltertext">Newsletter aktiv</div>
@@ -3663,11 +3682,22 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
 
       <div class="ezeile senkrecht">
-        <span><b>Rabattcode-Vorrat</b><i>Für den Wochen-Flow — ohne Vorrat kann Klaviyo niemandem einen Code zuteilen</i></span>
+        <span><b>Rabattcode-Vorrat</b><i>Für beide Abläufe — ohne Vorrat kann Klaviyo niemandem einen Code zuteilen</i></span>
         <p class="epruefung" id="nlVorratStand">Vorrat wird geladen …</p>
         <div class="eknoepfe">
           <button class="knopf leise" id="nlVorratAuffuellen">20 neue Codes anlegen</button>
         </div>
+      </div>
+
+      <!-- Übersicht für den Besitzer (migration-gaeste-uebersicht.sql +
+           Edge Function newsletter-uebersicht). Zahlen aus der eigenen
+           Datenbank, Stand der Abläufe aus Klaviyo. Eigene Klassen statt
+           b/i: .ezeile b/.ezeile i greifen auf JEDES b/i darin (§1.1). -->
+      <div class="ezeile senkrecht nlu" id="nlUebersicht">
+        <span><b>Gäste &amp; Newsletter</b><i>Ihre Zahlen und was Klaviyo gerade tut</i></span>
+        <div class="aw-kpis" id="nluKacheln"></div>
+        <ul class="nlu-ablaeufe" id="nluAblaeufe"></ul>
+        <p class="nlu-satz" id="nluSatz">Übersicht wird geladen …</p>
       </div>
       <div class="epruefung" id="nlPruefung"></div>
     </div>
@@ -6711,6 +6741,113 @@ async function nlVorratLaden(id){
   el.textContent = (count || 0) + (count === 1 ? " Code übrig" : " Codes übrig");
 }
 
+/* ══ Gäste & Newsletter · Übersicht für den Besitzer ═══════════════
+   Eine Anfrage an die Edge Function newsletter-uebersicht: Sie fragt
+   gaeste_uebersicht() mit dem Token des Besitzers und Klaviyo mit dem
+   Schlüssel, der nur auf dem Server liegt. Jeder Ausfall wird ein Satz
+   (§8.1i) — ein leerer Block sähe aus wie „keine Gäste“. Alles über
+   textContent: Flow-Namen kommen aus Klaviyo, nicht von uns. */
+const NLU_ART = { willkommen: "Willkommensgutschein", rueckholung: "Erinnerung nach 20 Tagen" };
+const NLU_STAND = { live: "Live", draft: "Entwurf", manual: "Manuell", archiviert: "Archiviert" };
+const NLU_GRUND = {
+  kein_schluessel: "Klaviyo ist noch nicht verbunden: In Supabase fehlt der Schlüssel KLAVIYO_API_KEY. Bis dahin erreicht keine Adresse, kein Besuch und keine Bestellung Klaviyo — es geht keine Mail hinaus.",
+  keine_antwort: "Klaviyo hat gerade nicht geantwortet. Die Zahlen oben stammen aus Ihrer Datenbank.",
+  kein_zugriff: "Diese Übersicht sieht nur der Besitzer.",
+  fehlt: "Die Übersicht braucht noch migration-gaeste-uebersicht.sql in der Datenbank.",
+};
+function nluEl(tag, klasse, text){
+  const e = document.createElement(tag);
+  if(klasse) e.className = klasse;
+  if(text != null) e.textContent = text;
+  return e;
+}
+function nluKachel(titel, wert, klein){
+  const k = nluEl("div", "aw-kpi");
+  k.append(nluEl("div", "aw-titel", titel), nluEl("div", "aw-wert", wert));
+  if(klein) k.append(nluEl("div", "aw-klein", klein));
+  return k;
+}
+function nluZeichnen(antw){
+  const kacheln = $("#nluKacheln"), liste = $("#nluAblaeufe"), satz = $("#nluSatz");
+  if(!kacheln || !liste || !satz) return;
+  kacheln.replaceChildren(); liste.replaceChildren();
+  satz.classList.remove("warn");
+  if(!antw || antw.ok !== true){
+    satz.textContent = NLU_GRUND[antw && antw.grund] || "Übersicht nicht geladen — bitte Verbindung prüfen.";
+    satz.classList.add("warn");
+    return;
+  }
+  const z = antw.zahlen || {};
+  const n = v => Number(v) || 0;
+  kacheln.append(
+    nluKachel("Gäste mit E-Mail", String(n(z.mit_mail)), "von " + n(z.gaeste) + " Gästen"),
+    nluKachel("Da in 20 Tagen", String(n(z.aktiv_20)), "mindestens ein Besuch"),
+    nluKachel("Vermisst", String(n(z.vermisst)), "mit E-Mail, über 20 Tage nicht da"),
+    nluKachel("Mit Code bestellt", String(n(z.eingeloest_30)), euro(z.umsatz_code_30) + " in 30 Tagen"));
+
+  const kv = antw.klaviyo || {};
+  const stand = {};
+  (kv.flows || []).forEach(f => { if(f && f.id) stand[f.id] = f; });
+  (z.flows || []).forEach(f => {
+    if(!f || !/^[A-Za-z0-9]{4,32}$/.test(String(f.flow_id || ""))) return;
+    const st = kv.ok ? (stand[f.flow_id] || {}).status : null;
+    const li = nluEl("li", "nlu-ablauf");
+    li.append(nluEl("span", "nlu-name", NLU_ART[f.art] || "Ablauf"));
+    if(st){
+      const pille = nluEl("span", "nlu-stand" + (st === "live" ? " live" : NLU_STAND[st] ? "" : " unklar"),
+        NLU_STAND[st] || "Unbekannt");
+      li.append(pille);
+    }
+    const a = nluEl("a", "nlu-link", "In Klaviyo öffnen");
+    a.href = "https://www.klaviyo.com/flow/" + f.flow_id + "/edit";
+    a.target = "_blank"; a.rel = "noopener";
+    li.append(a);
+    liste.append(li);
+  });
+
+  const saetze = [];
+  let warn = false;
+  if(!z.liste){ saetze.push("Für diesen Betrieb ist noch keine Klaviyo-Liste hinterlegt."); warn = true; }
+  if(!(z.flows || []).length){ saetze.push("In Klaviyo ist für diesen Betrieb noch kein Ablauf angelegt."); warn = true; }
+  if(!kv.ok){
+    saetze.push(NLU_GRUND[kv.grund] || NLU_GRUND.keine_antwort); warn = true;
+  }else{
+    const frei = kv.codes_frei;
+    if(frei == null){
+      saetze.push("Wie viele Codes Klaviyo noch hat, ließ sich nicht lesen.");
+    }else{
+      const kl = frei + (kv.codes_mehr ? "+" : "");
+      saetze.push(n(z.vorrat) + " freie Codes in omoteno, " + kl + " bei Klaviyo zum Verschicken.");
+      /* Der Befund vom 09.10.: 20 Codes in Supabase, 0 bei Klaviyo — die
+         Mails wären mangels Code nie verschickt worden, und niemand
+         hätte es gemerkt. */
+      if(frei === 0){ saetze.push("Ohne Codes bei Klaviyo bleibt jede Gutschein-Mail liegen — bitte „20 neue Codes anlegen“."); warn = true; }
+    }
+    if(!(kv.flows || []).some(f => f && f.status === "live") && (z.flows || []).length){
+      saetze.push("Alle Abläufe sind noch Entwürfe — es geht keine Mail hinaus, bis Sie sie in Klaviyo auf „Live“ stellen.");
+    }
+  }
+  if(!z.newsletter_aktiv){ saetze.push("Der Newsletter ist aus: Neue Adressen gehen nicht an Klaviyo."); }
+  satz.textContent = saetze.join(" ");
+  if(warn) satz.classList.add("warn");
+}
+async function nlUebersichtLaden(id){
+  const satz = $("#nluSatz"); if(!satz) return;
+  if(demo || !db){ $("#nluKacheln").replaceChildren(); $("#nluAblaeufe").replaceChildren();
+    satz.textContent = "Im Vorführmodus nicht verfügbar."; return; }
+  if(!istInhaberRolle()){ nluZeichnen({ ok:false, grund:"kein_zugriff" }); return; }
+  satz.textContent = "Übersicht wird geladen …";
+  let antw = null;
+  try{
+    const {data, error} = await db.functions.invoke("newsletter-uebersicht", {body: {betrieb_id: id}});
+    antw = error ? null : data;
+  }catch(e){ antw = null; }
+  /* Inzwischen ein anderer Betrieb gewählt? Dann gehört die Antwort
+     nicht mehr auf diesen Schirm. */
+  if(id !== betriebId) return;
+  nluZeichnen(antw);
+}
+
 $("#nlVorratAuffuellen").onclick = async () => {
   const knopf = $("#nlVorratAuffuellen");
   if(demo){ melde("Im Vorführmodus nicht verfügbar", true); return; }
@@ -6724,7 +6861,7 @@ $("#nlVorratAuffuellen").onclick = async () => {
       /* Gründe der Edge Function als Satz, nie roh (§8.1h). */
       const satz = { kein_zugriff: "Den Vorrat füllt nur der Besitzer auf.",
         grenze: "Für heute ist genug nachgefüllt — morgen wieder.",
-        kein_klaviyo_schluessel: "Codes angelegt, aber Klaviyo ist noch nicht verbunden.",
+        kein_klaviyo_schluessel: "Klaviyo ist noch nicht verbunden (Schlüssel fehlt in Supabase), es wurde nichts angelegt.",
         supabase_schreibfehler: "Die Codes ließen sich nicht speichern." }[data && data.fehler];
       melde("Vorrat nicht aufgefüllt — " + (satz || "bitte Verbindung prüfen."), true);
       return;
@@ -6732,6 +6869,7 @@ $("#nlVorratAuffuellen").onclick = async () => {
     melde(data.angelegt + " neue Codes angelegt" +
       (data.klaviyo === false ? " (Klaviyo-Upload fehlgeschlagen, bitte später erneut versuchen)" : ""));
     nlVorratLaden(betriebId);
+    nlUebersichtLaden(betriebId);
   }catch(e){
     melde("Vorrat nicht aufgefüllt — Verbindung prüfen", true);
   }finally{
@@ -7390,7 +7528,7 @@ const EU_BEREICHE = [
     bild:() => '<g class="' + (euWippe("lfAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.roller.replace(/<(path|circle)/g, '<$1 transform="translate(8 8) scale(1.4)"') + '</g>' },
   { titel:"Gäste-Newsletter", sym:"brief", ton:"var(--gut)",
-    satz:"Wöchentlicher Gutschein und Erinnerung per E-Mail",
+    satz:"Willkommensgutschein und Erinnerung nach 20 Tagen per E-Mail",
     stand:() => euWippe("nlAn") ? "An" : "Aus",
     bild:() => '<g class="' + (euWippe("nlAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.brief.replace(/<(path|rect)/g, '<$1 transform="translate(6 4) scale(1.5)"') + '</g>' },
@@ -8302,6 +8440,7 @@ async function betriebOeffnen(id){
   frZeichnen();
   newsletterZeichnen();
   nlVorratLaden(id);
+  nlUebersichtLaden(id);
 
   live_anmelden(id, marke);
   reservierungenLaden(id);

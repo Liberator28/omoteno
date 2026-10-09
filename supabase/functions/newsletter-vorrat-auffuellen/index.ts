@@ -136,6 +136,13 @@ Deno.serve(async (anfrage) => {
   const { data: recht } = await alsNutzer.rpc("gutschein_recht", { p_betrieb: betriebId });
   if (!recht || !recht.ok || !recht.inhaber) return antwort({ ok: false, fehler: "kein_zugriff" });
 
+  /* Ohne Klaviyo-Schlüssel wird NICHTS angelegt. Befund 09.10.: 20
+     Codes standen in Supabase, 0 bei Klaviyo — die Funktion hatte ohne
+     Schlüssel geschrieben und „ok“ gemeldet, das Board sagte „20 neue
+     Codes angelegt“. Diese Codes erreichen Klaviyo nie (kein
+     Nachladen), und jede Gutschein-Mail wäre still liegen geblieben. */
+  if (!KLAVIYO_KEY) return antwort({ ok: false, fehler: "kein_klaviyo_schluessel" });
+
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
   /* Tagesdeckel je Betrieb. Gezählt wird VOR dem Schreiben und nie
@@ -164,8 +171,6 @@ Deno.serve(async (anfrage) => {
       return antwort({ fehler: "supabase_schreibfehler", details: error.message }, 200);
     }
   }
-
-  if (!KLAVIYO_KEY) return antwort({ ok: true, angelegt: codes.length, fehler: "kein_klaviyo_schluessel" });
 
   try {
     const hochgeladen = await klaviyoCodesHochladen(`${betrieb.slug}_newsletter`, codes, bis);
