@@ -1,123 +1,68 @@
-# Klaviyo-Flows von Hand einrichten
+# Klaviyo · Was steht, und was du noch tun musst
 
-## Warum von Hand, nicht per Skript
+Stand 09.10. Alles unten ist **angelegt und zurückgelesen** — und zwar
+ausschließlich als **Entwurf**. Bis du in Klaviyo selbst auf „Live“
+stellst, geht keine einzige Mail hinaus.
 
-Die Klaviyo-Flow-API kennt keinen eigenen Aktionstyp für einen
-Gutschein-Code in einer E-Mail — der "Coupon Code"-Baustein wird
-ausschließlich im Klaviyo-E-Mail-Editor per Ziehen in die Vorlage
-gesetzt und dort mit einem Coupon verknüpft (siehe
-`erzeuger/erzeuge-newsletter-vorlage.js`, Kommentar zu
-`{{ event.discount_code }}`). Alles andere in einem Flow
-(Trigger, Wartezeit, Segment-Bedingung) ließe sich zwar über die API
-zusammensetzen, aber blind, ohne visuelle Prüfung, in einem echten
-Marketing-Account — genau die Art Behauptung, die CLAUDE.md §0
-untersagt ("ungeprüft ist eine Behauptung, kein Ergebnis"). Deshalb
-hier eine Anleitung mit den bereits angelegten, echten IDs statt
-eines Skripts, das niemand nachsehen kann, bevor es scharf ist.
+## Was im Konto steht
 
-## Was schon steht (diese Sitzung angelegt)
+| Betrieb | Liste | Willkommen (Flow · Vorlage) | Rückholung 20 Tage (Flow · Vorlage) | Gutschein-Vorrat |
+|---|---|---|---|---|
+| Chocolamour | `UvPrnH` | `Vw3752` · `RjSG5g` | `X7LHLy` · `X8LYv4` | `chocolamour_newsletter` |
+| Blend | `RvXGPR` | `Xrtf6j` · `RGZXDH` | `VY9CZL` · `XLr2Qq` | `blend_newsletter` |
+| Minhkeey | `V2cdvr` | `Wyyrrw` · `Xy4a6Z` | `TFWdqV` · `T4NqNQ` | `minhkeey_newsletter` |
 
-| Betrieb | Liste | Coupon (external_id) | E-Mail-Vorlage |
-|---|---|---|---|
-| Chocolamour | `Chocolamour – Gäste-Newsletter` (`UvPrnH`) | `chocolamour_newsletter` | „Chocolamour – Woechentlicher Gutschein" (`RjSG5g`) |
-| Blend | `Blend – Gäste-Newsletter` (`RvXGPR`) | `blend_newsletter` | „Blend – Woechentlicher Gutschein" (`RGZXDH`) |
-| Minhkeey | `Minhkeey – Gäste-Newsletter` (`V2cdvr`) | `minhkeey_newsletter` | „Minhkeey – Woechentlicher Gutschein" (`Xy4a6Z`) |
+Dieselben IDs stehen in der Tabelle `klaviyo_flows`
+(`datenbank/daten-klaviyo-flows.sql`), damit das Board sie zeigen kann.
 
-Alle drei Listen mit `double_opt_in` — löst das im Hub schon
-gegebene Versprechen ein ("Sie hören erst von uns, wenn Sie die
-Adresse bestätigt haben"), ohne dass Omoteno selbst eine
-Bestätigungsmail bauen muss.
+**Willkommen:** Gast trägt sich im Hub ein → bestätigt die
+Double-Opt-in-Mail → landet in der Liste → bekommt sofort die Mail
+„Ein kleiner Gutschein für Sie“ mit einem Code aus dem Vorrat.
 
-**Noch offen, weil es echten Datenbank-Zugang braucht** (diese
-Sitzung hatte keinen, HTTP 403 auf mcp.supabase.com): Der
-Coupon-Code-**Vorrat**. Ein Coupon ohne Codes kann niemandem einen
-Code zuteilen. Reihenfolge, sobald Zugang da ist:
+**Rückholung:** Bei jedem Besuch und jeder Bestellung setzt die
+Datenbank am Klaviyo-Profil `omoteno_<slug>_letzter_besuch`
+(`migration-klaviyo-besuch.sql`). Der Flow hängt an diesem Datum,
+wartet 20 Tage und schickt dann „Wir vermissen Sie“ — mit dem
+Lieblingsgericht, falls bekannt, und einem Code. An **jedem** Schritt
+gilt ein Filter: in der Liste **und** letzter Besuch mindestens 20 Tage
+her. Wer zwischendurch wiederkommt, bekommt also nichts.
 
-1. `migration-rechnung-rabatt.sql` und `migration-newsletter-klaviyo.sql`
-   in Supabase einspielen (siehe Dateiköpfe für die genaue Reihenfolge
-   und Vorprüfungen).
-2. Pro Betrieb z. B. 50 Codes über `rabattcode_anlegen` erzeugen
-   (Beispiel: `select rabattcode_anlegen('<betrieb_id>', 'CHOCO-' || substr(gen_random_uuid()::text,1,8), 2.00, null, now() + interval '90 days')`,
-   50-mal wiederholt oder in einer Schleife).
-3. Dieselben Code-Strings per `bulk_create_coupon_codes` zum
-   passenden Coupon hochladen (`chocolamour_newsletter` usw.) — DANACH
-   sind es in Supabase UND in Klaviyo dieselben, gültigen Codes.
+## Wie der Code in die Mail kommt
 
-Ohne Schritt 2+3 lässt sich Flow 1 unten anlegen und testen, aber der
-Versand würde leerlaufen (kein Code im Vorrat).
+In den Vorlagen steht `{% coupon_code '<slug>_newsletter' %}`. Das zieht
+beim Versand einen freien Code aus dem Vorrat des Betriebs. Ein
+Editor-Baustein von Hand ist dafür nicht nötig (die frühere Fassung
+dieser Datei hat das behauptet).
 
----
+Gemessen mit Klaviyos Render-Werkzeug: Lieblingsgericht erscheint mit
+Wert und fällt ohne Wert ganz weg; der Abmeldelink wird gesetzt. Das
+Coupon-Tag verlangt beim Rendern ein echtes Profil — einen echten Code
+siehst du deshalb erst in der Vorschau mit einem Testprofil.
 
-## Flow 1 · Wöchentlicher Gutschein
+## Bevor du live schaltest — in dieser Reihenfolge
 
-Für jeden der drei Betriebe einmal anlegen (Klaviyo → Flows → Create
-Flow → "Build your own").
+1. **`KLAVIYO_API_KEY` in Supabase setzen** (Edge Functions → Secrets).
+   Gemessen am 09.10.: fehlt. Ohne ihn erreicht Klaviyo kein Besuch,
+   keine Bestellung, keine Adresse.
+2. **Vorrat füllen:** im Board als Inhaber „Vorrat auffüllen“ (je
+   Betrieb, bis 50 Codes je Druck). Heute liegen **0 Codes** in allen
+   drei Vorräten. Ist der Vorrat leer, verschickt Klaviyo die Mail
+   nicht.
+3. **Absender prüfen:** Die Flows nehmen die Vorgabe des Kontos
+   („Omoteno“, `hallo@omoteno.de`). Wenn der Gast den Namen des Hauses
+   sehen soll: im Flow je Mail „Sender name“ ändern; die Domain muss in
+   Klaviyo bestätigt sein (Settings → Domains).
+4. **Testprofil:** dich selbst in die Liste eines Betriebs eintragen
+   (über den Hub, nicht von Hand — dann läuft der ganze Weg),
+   Bestätigungslink klicken, im Flow unter „Preview“ die Mail mit
+   deinem Profil ansehen — dort muss ein echter Code stehen.
+5. **Live:** im Flow oben rechts „Draft“ → „Live“, und die Mail-Aktion
+   ebenfalls auf „Live“.
 
-1. **Trigger**: "Someone is added to a list" → die passende Liste aus
-   der Tabelle oben wählen.
-2. **Time Delay**: 7 Tage.
-3. **Send Email**:
-   - Als Vorlage die passende hochgeladene Vorlage aus der Tabelle
-     oben wählen ("Use existing template").
-   - Im E-Mail-Editor an der Stelle, wo `{{ event.discount_code }}`
-     im HTML steht: das vorhandene Textfeld anklicken, den
-     "Coupon Code"-Baustein aus der linken Leiste dorthin ziehen
-     (ersetzt die Zeile), im Baustein-Menü den Coupon dieses Betriebs
-     auswählen (z. B. `chocolamour_newsletter`).
-   - **Prüfen**: rechts oben "Preview" → zeigt einen echten Code aus
-     dem Vorrat (erst möglich, nachdem Schritt 2+3 oben gelaufen
-     sind).
-4. Zurück zu **Time Delay** verzweigen (Schritt 3 mit der Maus an den
-   Ausgang von "Time Delay" ziehen, nicht ans Ende — das ist die
-   wöchentliche Wiederholung). Falls Klaviyos Editor das in der
-   aktuellen Version nicht als Rückwärts-Kante erlaubt: stattdessen
-   eine zweite, dritte, vierte "Time Delay (7 Tage) → Send Email"-Kette
-   hintereinanderhängen (z. B. für die ersten 8 Wochen) — weniger
-   elegant, aber ohne Frage funktionsfähig, und in der Klaviyo-UI mit
-   drei Klicks kopierbar.
-5. Flow-Status von "Draft" auf "Live" stellen — **erst nachdem** die
-   Vorschau einen echten Code zeigt.
+## Was nicht beweisbar war
 
-## Flow 2 · 20-Tage-Retargeting
-
-**Erst das Segment anlegen** (Klaviyo → Lists & Segments → Create
-Segment), pro Betrieb:
-
-- Bedingung 1: "Is in list" → die passende Liste des Betriebs.
-- UND Bedingung 2: "Has NOT" → "Bestellung aufgegeben – <Betrieb>"
-  (Metrikname, kommt automatisch, sobald die erste echte Bestellung
-  mit hinterlegter E-Mail durchgelaufen ist — vorher steht die Metrik
-  in der Liste noch nicht zur Auswahl. Falls sie fehlt: einmal
-  `bestellung_klaviyo_melden` testweise auslösen, siehe Verifikation
-  unten) → "in the last 20 days".
-
-Dann der Flow:
-
-1. **Trigger**: "Someone enters a segment" → das eben angelegte
-   Segment.
-2. **Send Email**: dieselbe Vorlage wie in Flow 1 (oder eine eigene
-   "Wir vermissen Sie"-Variante — optional, die bestehende Vorlage
-   funktioniert auch hier), Coupon-Code-Baustein genauso verknüpfen.
-3. Status auf "Live".
-
-**Wichtig zur Segment-Neuberechnung**: Klaviyo wertet ein dynamisches
-Segment in kurzen Abständen neu aus (kein Cron nötig) — ein Gast, der
-die 20-Tage-Schwelle überschreitet, rutscht von selbst hinein und löst
-den Flow aus.
-
----
-
-## Verifikation (von Hand, in Klaviyo)
-
-1. Ein Test-Profil mit eigener E-Mail manuell zur Liste eines
-   Betriebs hinzufügen (Lists → Liste öffnen → "Add profiles").
-   Double-Opt-in-Mail muss ankommen.
-2. Bestätigungslink klicken → Flow 1 muss in "Flow" → "Overview"
-   einen Eintrag in der Trigger-Historie zeigen (auch wenn die
-   Wartezeit die Zustellung erst in 7 Tagen freigibt — das ist
-   erwartet, nicht zum Testen der E-Mail selbst geeignet; dafür in
-   Klaviyo mit einer testweise auf "0 Tage" gesetzten Kopie des Flows
-   arbeiten und danach wieder auf 7 zurückstellen).
-3. `datenbank/migration-newsletter-klaviyo.sql`s PROBE-Abschnitt
-   liefert den Beweis, dass der Trigger überhaupt feuert (siehe
-   Datei) — das ist die Naht zwischen Supabase und hier.
+Ein echter Versand, der Datumsauslöser in Aktion und die Zustellung
+selbst lassen sich ohne Live-Schaltung nicht prüfen. Die Naht
+Datenbank → Edge Function ist gemessen (200 mit dem echten Geheimnis,
+401 ohne), die Naht Edge Function → Klaviyo erst, sobald der Schlüssel
+gesetzt ist.
