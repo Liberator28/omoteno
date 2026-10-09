@@ -265,18 +265,31 @@ async function mehr(br, haus, erstes){
       const kanal = c => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); };
       const L = p => .2126 * kanal(p[0]) + .7152 * kanal(p[1]) + .0722 * kanal(p[2]);
       const misch = (o, u) => { const a = o.length > 3 ? o[3] : 1; return [0, 1, 2].map(i => o[i] * a + u[i] * (1 - a)); };
-      const grund = el => { const st = []; let k = el;
-        while(k){ const b = zahl(getComputedStyle(k).backgroundColor);
-          if(b.length >= 3 && (b.length < 4 || b[3] > 0)) st.push(b);
+      /* Ein Verlauf steht in backgroundImage, nicht in backgroundColor
+         (Gegenbeweis 09.10.: die Rad-Karte mit Verlauf blieb ungemessen,
+         die Probe stieg an ihr vorbei auf den Seitengrund). Gerechnet
+         wird gegen JEDE Kante des Verlaufs, gemeldet die schlechteste. */
+      const kanten = st => (String(st.backgroundImage).match(/color\(srgb[^)]*\)|rgba?\([^)]*\)/g) || []).map(zahl).filter(v => v.length >= 3);
+      const gruende = el => { const st = []; let k = el;
+        while(k){ const cs = getComputedStyle(k), b = zahl(cs.backgroundColor), v = kanten(cs);
+          if(v.length){ st.push(v); if(v.every(x => x.length === 3 || x[3] === 1)) break; }
+          if(b.length >= 3 && (b.length < 4 || b[3] > 0)) st.push([b]);
           if(b.length === 3 || b[3] === 1) break; k = k.parentElement; }
-        let u = st.length ? st.pop() : [255, 255, 255]; if(u.length > 3) u = misch(u, [255, 255, 255]);
-        while(st.length) u = misch(st.pop(), u); return u; };
+        if(!st.length) return [[255, 255, 255]];
+        const n = Math.max(...st.map(l => l.length)), aus = [];
+        for(let i = 0; i < n; i++){
+          const spur = st.map(l => l[Math.min(i, l.length - 1)]);
+          let u = spur.pop(); if(u.length > 3) u = misch(u, [255, 255, 255]);
+          while(spur.length) u = misch(spur.pop(), u);
+          aus.push(u);
+        }
+        return aus; };
       const aus = [];
       document.querySelectorAll(".dazu-satz, .dazu-pille, .dazu-name, .dazu-preis, .dazu-menge, .dazu-ziel-text, .dazu-rad .dazu-grund, .dazu-rad .dazu-name, .dazu-beide, .dazu-komplett-text .dazu-grund, .dazu-komplett-text b").forEach(el => {
         if(!el.textContent.trim()) return;
-        const c = zahl(getComputedStyle(el).color), g = grund(el);
-        const a = L(misch(c, g)), b = L(g);
-        aus.push([el.className, +((Math.max(a, b) + .05) / (Math.min(a, b) + .05)).toFixed(2)]);
+        const c = zahl(getComputedStyle(el).color);
+        const werte = gruende(el).map(g => { const a = L(misch(c, g)), b = L(g); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); });
+        aus.push([el.className, +Math.min(...werte).toFixed(2)]);
       });
       return aus;
     };
