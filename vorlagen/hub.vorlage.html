@@ -1932,6 +1932,143 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 .fr-knopf .bz{font-size:24px}
 .fr-knopf:active{transform:scale(.96)}
 @media (prefers-reduced-motion:reduce){ .fr-knopf,.fr-mitte{transition:none} }
+
+/* ═══ Rad oder Karten — der Umschalter ════════════════════════════
+   Wunsch (09.10.): beides behalten, umschalten „wie beim
+   Lieferservice“. Dieselbe Mechanik wie .lieferwahl im Kopf (Daumen
+   gleitet, Stauchung, Name blitzt auf), aber auf dem Grund der Seite
+   statt auf dem Band — also --tinte/--grund statt --band-text/--band.
+   Eigene Klassen (fw-): .lw-* hängt am Kopf und an pruef-liefern. */
+.fr-wahlzeile{display:flex;justify-content:center;margin:-2px 0 14px}
+.frwahl{
+  position:relative;display:inline-flex;align-items:center;height:44px;padding:0 2px;border-radius:999px;
+  direction:ltr;isolation:isolate;-webkit-tap-highlight-color:transparent;
+  background:var(--flaeche);border:1px solid var(--linie-stark);box-shadow:var(--schatten)
+}
+.fw-knopf{
+  position:relative;z-index:1;flex:none;width:56px;height:44px;padding:0;margin:-1px 0;
+  display:inline-flex;align-items:center;justify-content:center;background:none;border:0;border-radius:999px;
+  cursor:pointer;color:var(--tinte);font:inherit;-webkit-appearance:none;appearance:none
+}
+.fw-knopf:active .fw-zeichen{transform:scale(.9)}
+.fw-zeichen{display:inline-flex;width:56px;height:36px;align-items:center;justify-content:center;
+  transition:transform .12s var(--weich)}
+.fw-zeichen svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.fw-daumen{position:absolute;z-index:2;top:3px;left:2px;width:56px;height:36px;pointer-events:none;
+  transform:translateX(0);transition:transform .44s cubic-bezier(.34,1.28,.55,1)}
+.fw-koerper{display:block;width:100%;height:100%;border-radius:999px;overflow:hidden;
+  background:var(--tinte);color:var(--grund);box-shadow:0 1px 2px rgba(0,0,0,.18), 0 4px 10px -3px rgba(0,0,0,.35)}
+.fw-innen{display:flex;width:112px;height:100%;transform:translateX(0);transition:transform .44s cubic-bezier(.34,1.28,.55,1)}
+.frwahl[data-wahl="karten"] .fw-daumen{transform:translateX(56px)}
+.frwahl[data-wahl="karten"] .fw-innen{transform:translateX(-56px)}
+.frwahl.zieht .fw-koerper{animation:lw-quetsch .46s cubic-bezier(.3,.7,.4,1)}
+.frwahl.zieht[data-wahl="rad"] .fw-rad svg{animation:fw-drehen .6s cubic-bezier(.3,.7,.4,1)}
+.frwahl.zieht[data-wahl="karten"] .fw-karten svg{animation:fw-wischen .5s cubic-bezier(.3,.7,.4,1)}
+@keyframes fw-drehen{from{transform:rotate(-120deg)}to{transform:rotate(0)}}
+@keyframes fw-wischen{0%{transform:translateX(0) rotate(0)} 35%{transform:translateX(4px) rotate(8deg)} 100%{transform:translateX(0) rotate(0)}}
+/* Der Name wächst aus der Mitte über den Schalter und geht wieder. */
+.fw-name{
+  position:absolute;z-index:3;top:3px;bottom:3px;left:50%;pointer-events:none;
+  display:flex;align-items:center;padding:0 14px;border-radius:999px;white-space:nowrap;
+  background:var(--tinte);color:var(--grund);font-size:12.5px;font-weight:650;line-height:1;
+  opacity:0;transform:translateX(-50%) scaleX(.5);
+  transition:transform .22s cubic-bezier(.5,0,.75,0) .06s, opacity .01s linear .28s
+}
+.fw-name span{opacity:0;transition:opacity .08s linear}
+.frwahl.zeigt .fw-name{opacity:1;transform:translateX(-50%) scaleX(1);
+  transition:transform .36s cubic-bezier(.34,1.35,.6,1) .3s, opacity .01s linear .3s}
+.frwahl.zeigt .fw-name span{opacity:1;transition:opacity .16s linear .5s}
+@media (prefers-reduced-motion:reduce){
+  .fw-daumen,.fw-innen,.fw-name,.fw-name span,.fw-zeichen{transition:none}
+  .frwahl.zieht .fw-koerper,.frwahl.zieht .fw-zeichen svg{animation:none}
+  .frwahl.zeigt .fw-name,.frwahl.zeigt .fw-name span{transition:none}
+}
+/* ═══ Karten wischen ════════════════════════════════════════════════
+   Zurück seit 09.10. (Wunsch: Rad UND Karten, umschaltbar). */
+/* Unten 34 px Luft: Die hinteren Karten stehen je 12 px tiefer und
+   hätten sonst die Zählzeile darunter verdeckt (so im ersten Foto). */
+.ed-stapel{position:relative;height:min(500px, 64vh);height:min(500px, 64dvh);margin:6px 0 34px}
+.ed-karte{
+  position:absolute;inset:0;display:flex;flex-direction:column;
+  background:var(--flaeche);border:1px solid var(--linie);border-radius:22px;
+  box-shadow:0 14px 34px rgba(0,0,0,.14), var(--schatten);overflow:hidden;
+  transform:translateY(calc(var(--tiefe, 0) * 12px)) scale(calc(1 - var(--tiefe, 0) * .045));
+  transform-origin:50% 100%;
+  touch-action:pan-y;user-select:none;-webkit-user-select:none;cursor:grab;
+  transition:transform var(--mittel) var(--weich), opacity var(--mittel) var(--weich)
+}
+/* Ausgewählt wird über data-tiefe, NIE über den style-Text: Sobald
+   der Finger zieht, schreibt der Browser das style-Attribut als
+   „--tiefe: 0; transform: …" neu, und ein Selektor auf „--tiefe:0"
+   fände die gezogene Karte nicht mehr (so beim ersten Test passiert). */
+.ed-karte[data-tiefe="0"]{z-index:3}
+.ed-karte[data-tiefe="1"]{z-index:2}
+.ed-karte[data-tiefe="2"]{z-index:1}
+/* Die Karte, die gerade hinausfliegt: über allem, fängt nichts mehr ab. */
+.ed-karte[data-tiefe="weg"]{z-index:4;pointer-events:none}
+/* Die neue hinterste Karte blendet ein, statt zu erscheinen. */
+.ed-karte.ed-neu{opacity:0}
+/* Auf der Wischkarte füllt die Bildfläche, das Zeichen ist groß, der
+   Freisteller schwebt — die Grundregeln stehen beim Ergebnis des Rads. */
+.ed-karte .ed-bildflaeche{flex:1 1 auto;min-height:0}
+.ed-karte .ed-emo{font-size:clamp(120px, 40vw, 184px)}
+.ed-karte .ed-pop{left:8%;top:9%;width:84%;height:84%;
+  filter:drop-shadow(0 18px 22px rgba(42,26,20,.28)) drop-shadow(0 3px 6px rgba(42,26,20,.16))}
+/* Nur unter no-preference: Eine Gegenregel unter reduce verlor gegen
+   die spezifischere Regel (gemessen: animationName blieb edSchweben). */
+@media (prefers-reduced-motion:no-preference){
+  .ed-karte[data-tiefe="0"] .ed-bildflaeche:not(.mitfoto):not(.mitpop) .ed-emo{
+    animation:edSchweben 2.8s ease-in-out infinite alternate}
+}
+@keyframes edSchweben{from{transform:translateY(4px)}to{transform:translateY(-6px)}}
+/* Mit Foto oder Freisteller wird das Emoji zum Abzeichen oben links. */
+.ed-karte .ed-bildflaeche.mitpop .ed-emo,
+.ed-karte .ed-bildflaeche.mitfoto .ed-emo{
+  position:absolute;left:14px;top:14px;font-size:44px;
+  background:var(--flaeche);border-radius:50%;padding:8px;box-shadow:var(--schatten)
+}
+.ed-stempel{
+  position:absolute;top:22px;padding:6px 14px;border-radius:10px;border:3px solid;
+  font-weight:800;font-size:20px;letter-spacing:.5px;text-transform:uppercase;
+  background:var(--flaeche);opacity:0;pointer-events:none
+}
+.ed-stempel.ja{right:18px;color:var(--pistazie);border-color:var(--pistazie);transform:rotate(10deg)}
+.ed-stempel.nein{left:18px;color:var(--rot);border-color:var(--rot);transform:rotate(-10deg)}
+.ed-text{flex:none;padding:16px 18px 18px}
+.ed-text h3{margin:0 0 4px;font-family:var(--schrift-gericht);font-size:22px;line-height:1.2}
+.ed-text p{margin:0;font-size:13.5px;color:var(--tinte-leise);line-height:1.45;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ed-preis{margin-top:8px;font-weight:700;font-size:17px;font-variant-numeric:tabular-nums}
+.ed-zaehler{text-align:center;font-size:12.5px;color:var(--tinte-leise);font-variant-numeric:tabular-nums;margin-bottom:10px}
+.ed-knoepfe{display:flex;gap:14px;justify-content:center}
+.ed-knopf{
+  flex:1;max-width:190px;display:inline-flex;align-items:center;justify-content:center;gap:9px;
+  min-height:58px;border-radius:999px;border:1px solid var(--linie-stark);background:var(--flaeche);
+  color:var(--tinte);font-family:inherit;font-weight:700;font-size:15.5px;cursor:pointer;
+  box-shadow:var(--schatten);transition:transform var(--kurz) var(--weich)
+}
+.ed-knopf .bz{font-size:30px}
+.ed-knopf.ja{background:var(--rot);border-color:var(--rot);color:var(--auf-rot)}
+.ed-knopf:active{transform:scale(.94)}
+.ed-lob{
+  position:absolute;left:50%;top:38%;transform:translate(-50%,-50%);z-index:10;
+  display:flex;align-items:center;gap:10px;padding:12px 20px;border-radius:999px;
+  background:var(--tinte);color:var(--grund);font-size:17px;box-shadow:0 12px 30px rgba(0,0,0,.25);
+  animation:edLob var(--mittel) var(--feder) both
+}
+.ed-lob .bz{font-size:34px}
+@keyframes edLob{from{transform:translate(-50%,-50%) scale(.92);opacity:0}to{transform:translate(-50%,-50%) scale(1);opacity:1}}
+#edFlaeche{position:relative}
+.ed-ende{text-align:center;padding:26px 6px 6px}
+.ed-ende-emo{display:block;font-size:110px;line-height:1;color:var(--tinte);margin-bottom:8px}
+.ed-ende h3{font-family:var(--schrift-gericht);font-size:24px;margin:0 0 4px}
+.ed-ende p{color:var(--tinte-leise);margin:0 0 18px}
+.ed-gruppe{font-size:11px;letter-spacing:1.4px;text-transform:uppercase;font-weight:700;color:var(--tinte-leise);margin-bottom:4px}
+@media (prefers-reduced-motion:reduce){
+  .ed-karte,.ed-knopf{transition:none}
+  .ed-karte.ed-neu{opacity:1}
+  .ed-lob{animation:none}
+}
 /* Bild der Ergebniskarte: Freisteller › Foto › Emoji — dieselben
    Bausteine wie vorher auf den Wischkarten (ehPopHTML). */
 .ed-bildflaeche{
@@ -9053,6 +9190,15 @@ const TEXTE = {
 "Unsere Wahl für Sie":{en:"Our pick for you",tr:"Sizin için seçimimiz",ru:"Наш выбор для вас",fr:"Notre choix pour vous",es:"Nuestra elección para usted",it:"La nostra scelta per Lei",pl:"Nasz wybór dla Państwa",ar:"اختيارنا لك",uk:"Наш вибір для вас",nl:"Onze keuze voor u",ro:"Alegerea noastră pentru dumneavoastră"},
 "Das klingt lecker!":{en:"That sounds delicious!",tr:"Kulağa çok lezzetli geliyor!",ru:"Звучит аппетитно!",fr:"Ça a l'air délicieux !",es:"¡Suena delicioso!",it:"Sembra delizioso!",pl:"Brzmi pysznie!",ar:"يبدو لذيذًا!",uk:"Звучить смачно!",nl:"Dat klinkt heerlijk!",ro:"Sună delicios!"},
 "Nehm ich!":{en:"I'll take it!",tr:"Bunu alıyorum!",ru:"Беру!",fr:"Je prends !",es:"¡Me lo quedo!",it:"Lo prendo!",pl:"Biorę!",ar:"سآخذه!",uk:"Беру!",nl:"Neem ik!",ro:"Îl iau!"},
+"Karten wischen":{en:"Swipe cards",tr:"Kartları kaydır",ru:"Листать карточки",fr:"Faire défiler les cartes",es:"Deslizar tarjetas",it:"Sfogliare le carte",pl:"Przesuwanie kart",ar:"تصفح البطاقات",uk:"Гортати картки",nl:"Kaarten swipen",ro:"Glisați cardurile"},
+"Weiter":{en:"Next",tr:"Geç",ru:"Дальше",fr:"Suivant",es:"Siguiente",it:"Avanti",pl:"Dalej",ar:"التالي",uk:"Далі",nl:"Volgende",ro:"Mai departe"},
+"Gute Wahl!":{en:"Great choice!",tr:"Harika seçim!",ru:"Отличный выбор!",fr:"Excellent choix !",es:"¡Buena elección!",it:"Ottima scelta!",pl:"Świetny wybór!",ar:"اختيار رائع!",uk:"Чудовий вибір!",nl:"Goede keuze!",ro:"Alegere bună!"},
+"Alles gesehen!":{en:"You've seen it all!",tr:"Hepsini gördünüz!",ru:"Вы всё посмотрели!",fr:"Vous avez tout vu !",es:"¡Lo ha visto todo!",it:"Ha visto tutto!",pl:"Wszystko obejrzane!",ar:"لقد رأيت كل شيء!",uk:"Ви все переглянули!",nl:"Alles gezien!",ro:"Ați văzut tot!"},
+"Nochmal mischen":{en:"Shuffle again",tr:"Yeniden karıştır",ru:"Перемешать снова",fr:"Mélanger à nouveau",es:"Barajar de nuevo",it:"Rimescola",pl:"Potasuj ponownie",ar:"اخلط من جديد",uk:"Перемішати знову",nl:"Opnieuw schudden",ro:"Amestecă din nou"},
+"Toppings nach Wahl":{en:"Toppings of your choice",tr:"İsteğe bağlı soslar ve süslemeler",ru:"Топпинги на выбор",fr:"Garnitures au choix",es:"Toppings a elegir",it:"Topping a scelta",pl:"Dodatki do wyboru",ar:"إضافات حسب اختيارك",uk:"Топінги на вибір",nl:"Toppings naar keuze",ro:"Toppinguri la alegere"},
+"Wischen Sie nach rechts, was Ihnen schmeckt – nach links, was heute nicht passt.":{en:"Swipe right on what you fancy – left on what doesn't suit you today.",tr:"Beğendiğinizi sağa, bugün size uymayanı sola kaydırın.",ru:"Смахните вправо то, что вам по вкусу, — влево то, что сегодня не подходит.",fr:"Glissez à droite ce qui vous plaît – à gauche ce qui ne vous tente pas aujourd'hui.",es:"Deslice a la derecha lo que le apetece y a la izquierda lo que hoy no le convence.",it:"Scorra a destra ciò che le piace, a sinistra ciò che oggi non fa per lei.",pl:"Przesuń w prawo to, co Państwu smakuje – w lewo to, co dziś nie pasuje.",ar:"اسحب لليمين ما يعجبك، ولليسار ما لا يناسبك اليوم.",uk:"Проведіть праворуч те, що вам до смаку, — ліворуч те, що сьогодні не пасує.",nl:"Veeg naar rechts wat u lekker vindt – naar links wat vandaag niet past.",ro:"Glisați la dreapta ce vă place – la stânga ce nu vi se potrivește azi."},
+"Glücksrad":{en:"Lucky wheel",tr:"Şans çarkı",ru:"Колесо удачи",fr:"Roue de la chance",es:"Ruleta",it:"Ruota della fortuna",pl:"Koło fortuny",ar:"عجلة الحظ",uk:"Колесо удачі",nl:"Rad van fortuin",ro:"Roata norocului"},
+"Rad oder Karten":{en:"Wheel or cards",tr:"Çark veya kartlar",ru:"Колесо или карточки",fr:"Roue ou cartes",es:"Ruleta o tarjetas",it:"Ruota o carte",pl:"Koło lub karty",ar:"العجلة أو البطاقات",uk:"Колесо або картки",nl:"Rad of kaarten",ro:"Roată sau cărți"},
 "Drehen":{en:"Spin",tr:"Çevir",ru:"Крутить",fr:"Tourner",es:"Girar",it:"Gira",pl:"Kręć",ar:"أدِر",uk:"Крутити",nl:"Draaien",ro:"Învârte"},
 "Nochmal drehen":{en:"Spin again",tr:"Tekrar çevir",ru:"Крутить ещё раз",fr:"Tourner encore",es:"Girar otra vez",it:"Gira ancora",pl:"Zakręć jeszcze raz",ar:"أدِر مرة أخرى",uk:"Крутити ще раз",nl:"Nog eens draaien",ro:"Învârte din nou"},
 "Drehen Sie am Rad":{en:"Spin the wheel",tr:"Çarkı çevirin",ru:"Крутите колесо",fr:"Faites tourner la roue",es:"Gire la rueda",it:"Giri la ruota",pl:"Proszę zakręcić kołem",ar:"أدِر العجلة",uk:"Крутніть колесо",nl:"Draai aan het rad",ro:"Învârtiți roata"},
@@ -10584,6 +10730,292 @@ function frDrehen(){
   dreh.onfinish = fertig;
 }
 
+
+/* ═══ KARTEN WISCHEN — neben dem Rad, umschaltbar ═══════════════════
+   Rechts = in die Auswahl, links = weiter. Jede dritte Wahl gibt eine
+   kleine Belohnung. Nur die Kartenfläche wird neu gezeichnet, nie die
+   Seite (CLAUDE.md §4.2), und während eines Zugs gar nichts.
+   Bewegung: nur transform/opacity; der Finger führt die Karte 1:1,
+   beim Loslassen fliegt sie hinaus oder federt zurück. Bei „Bewegung
+   reduzieren“: kein Neigen, kein Flug. Stand 08.10. (vor dem Rad),
+   ohne die Wahl-Überlagerung — „Für mich entscheiden“ ist das Rad. */
+let edStapel = [], edPos = 0, edJa = 0, edZug = null;
+
+/* Was schon in der Auswahl liegt, kommt im Stapel nicht noch einmal. */
+function edStapelKandidaten(){ return edKandidaten().filter(e => !merk[e.n]); }
+
+function entdeckenMischen(){
+  const probiert = probiertLaden();
+  /* Neues zuerst (nur, wenn der Gast schon etwas bestellt hat), dann
+     Hausklassiker, dann gemischt. Höchstens 30: ein Spiel, kein Katalog. */
+  const alle = edStapelKandidaten().map(e => ({ n:e.n,
+    neu: probiert.length && !probiert.includes(e.n) ? 1 : 0, top:e.top ? 1 : 0, z:Math.random() }));
+  alle.sort((a, b) => (b.neu - a.neu) || (b.top - a.top) || (a.z - b.z));
+  edStapel = alle.slice(0, 30).map(x => x.n);
+  edPos = 0; edJa = 0;
+}
+
+function ehInfoHTML(g){
+  const teile = [];
+  const st = INHALTSSTOFFE[g.n];
+  if(st && st.a && st.a.length){
+    const namen = st.a.map(k => ALLERGEN_NAMEN[k]).filter(Boolean).map(x => t(x));
+    if(namen.length) teile.push(t("Enthält: {x}", {x:namen.join(", ")}));
+  }
+  if(g.opt && g.opt.length) teile.push(t("Toppings nach Wahl"));
+  return teile.length ? '<div class="eh-info">' + hs(teile.join(" · ")) + '</div>' : "";
+}
+
+function edKarteHTML(name, tiefe){
+  const g = findeGericht(name);
+  if(!g) return "";
+  const ort = gerichtOrt(name) || { karte:"speisekarte", gruppe:"" };
+  const cp = bzKategorie(ort.gruppe, ort.karte);
+  /* Freisteller zuerst: Er schwebt über dem Verlauf in den Hausfarben
+     — die Pop-Ansicht. Ohne ihn das Foto randlos, ohne beides das Emoji. */
+  const foto = g.bf ? ehPopHTML(g) : g.bild
+    ? '<img class="ed-foto" alt="" src="' + bildFuer(g, false) + '" decoding="async" ' +
+      'onload="this.closest(&quot;.ed-bildflaeche&quot;).classList.add(&quot;mitfoto&quot;)" ' +
+      'onerror="this.remove()">'
+    : "";
+  return '<div class="ed-karte" data-ed="' + encodeURIComponent(name) + '" data-tiefe="' + tiefe +
+    '" style="--tiefe:' + tiefe + '"' +
+    (tiefe ? ' aria-hidden="true"' : '') + '>' +
+    '<div class="ed-bildflaeche">' + foto +
+      '<span class="ed-emo">' + (bewegteZeichenAn() && !tiefe ? bzHTML(cp, "ed:" + name) : bzZeichen(cp)) + '</span>' +
+      '<span class="ed-stempel ja">' + t("Nehm ich!") + '</span>' +
+      '<span class="ed-stempel nein">' + t("Weiter") + '</span>' +
+    '</div>' +
+    '<div class="ed-text">' +
+      (ehMarkenHTML(g) ? '<div class="eh-marken">' + ehMarkenHTML(g) + '</div>' : '') +
+      (ort.gruppe ? '<div class="ed-gruppe">' + hs(t(ort.gruppe)) + '</div>' : '') +
+      '<h3>' + hs(t(g.n)) + '</h3>' +
+      (g.b ? '<p>' + hs(t(g.b)) + '</p>' : '') +
+      ehInfoHTML(g) +
+      '<div class="ed-fuss"><div class="ed-preis">' + hs(g.p) + ' €</div>' +
+        '<button type="button" class="eh-details" data-detail="' + encodeURIComponent(g.n) + '"' +
+        (tiefe ? ' tabindex="-1"' : '') + '>' + t("Details") + '</button></div>' +
+    '</div></div>';
+}
+
+function edFlaecheHTML(){
+  if(edPos >= edStapel.length){
+    return '<div class="ed-ende">' +
+      '<span class="ed-ende-emo">' + (bewegteZeichenAn() ? bzHTML("1f973", "ed:ende") : bzZeichen("1f973")) + '</span>' +
+      '<h3>' + t("Alles gesehen!") + '</h3>' +
+      '<p>' + t("{n} Artikel", {n:merkAnzahl()}) + '</p>' +
+      '<a class="knopf" href="#/auswahl">' + t("Auswahl ansehen") + '</a>' +
+      '<button type="button" class="knopf zweit" data-ed-neu="1">' + t("Nochmal mischen") + '</button>' +
+      '</div>';
+  }
+  /* Die oberste Karte zuletzt — sie liegt dann auch im Stapel oben. */
+  let html = "";
+  for(let i = Math.min(edPos + 2, edStapel.length - 1); i >= edPos; i--) html += edKarteHTML(edStapel[i], i - edPos);
+  return '<div class="ed-stapel" id="edStapel">' + html + '</div>' +
+    '<div class="ed-zaehler">' + t("{n} von {m}", {n:edPos + 1, m:edStapel.length}) + '</div>' +
+    '<div class="ed-knoepfe">' +
+      '<button type="button" class="ed-knopf nein" data-ed-wahl="nein" aria-label="' + t("Weiter") + '">' +
+        (bewegteZeichenAn() ? bzHTML("1f44e", "ed:nein") : bzZeichen("1f44e")) + '<span>' + t("Weiter") + '</span></button>' +
+      '<button type="button" class="ed-knopf ja" data-ed-wahl="ja" aria-label="' + t("Nehm ich!") + '">' +
+        (bewegteZeichenAn() ? bzHTML("1f60d", "ed:ja") : bzZeichen("1f60d")) + '<span>' + t("Nehm ich!") + '</span></button>' +
+    '</div>';
+}
+
+function edNeuZeichnen(){
+  const f = $("edFlaeche");
+  if(!f) return;
+  f.innerHTML = edFlaecheHTML();
+  bzVerdrahten();
+}
+
+
+/* Nachrücken: Die Karten bleiben DIESELBEN Elemente — nur ihre Tiefe
+   zählt herab, und die CSS-Transition schiebt sie sichtbar nach vorn.
+   Vorher wurde der Stapel per innerHTML neu gebaut; dann ist jede
+   Karte ein neues Element, und die zweite SPRANG auf Platz eins
+   (CLAUDE.md §4.1). Nur die neue hinterste Karte ist wirklich neu,
+   und nur sie blendet ein. */
+function edTiefe(karte, tiefe){
+  karte.dataset.tiefe = tiefe;
+  karte.style.setProperty("--tiefe", tiefe);
+  if(tiefe === 0) karte.removeAttribute("aria-hidden");
+}
+
+function edNachruecken(){
+  const st = $("edStapel");
+  if(!st || edPos >= edStapel.length){ edNeuZeichnen(); return; }
+  st.querySelectorAll(".ed-karte:not([data-tiefe=\"weg\"])").forEach(k => {
+    const alt = +k.dataset.tiefe;
+    edTiefe(k, alt - 1);
+    /* Wer nach vorn kommt, bekommt sein bewegtes Zeichen — hinten
+       steht nur die Glyphe (spart Filme, die niemand sieht). */
+    if(alt === 1 && bewegteZeichenAn()){
+      const emo = k.querySelector(".ed-emo");
+      const name = decodeURIComponent(k.dataset.ed);
+      const ort = gerichtOrt(name) || { karte:"speisekarte", gruppe:"" };
+      if(emo && !emo.querySelector(".bz")) emo.innerHTML = bzHTML(bzKategorie(ort.gruppe, ort.karte), "ed:" + name);
+    }
+  });
+  const hinten = edPos + 2;
+  if(hinten < edStapel.length){
+    const tmp = document.createElement("div");
+    tmp.innerHTML = edKarteHTML(edStapel[hinten], 2);
+    const k = tmp.firstElementChild;
+    if(k){
+      k.classList.add("ed-neu");
+      st.insertBefore(k, st.firstChild);
+      /* Erst nach dem ersten Anstrich die Klasse nehmen, sonst gibt es
+         keinen Ausgangszustand, von dem die Transition laufen könnte. */
+      requestAnimationFrame(() => requestAnimationFrame(() => k.classList.remove("ed-neu")));
+    }
+  }
+  const z = document.querySelector("#edFlaeche .ed-zaehler");
+  if(z) z.textContent = t("{n} von {m}", {n:edPos + 1, m:edStapel.length});
+  bzVerdrahten();
+}
+
+/* Eine Wahl treffen — per Knopf, Taste oder Wisch. ausX: wo die Karte
+   beim Loslassen steht (px), tempo: wie schnell der Finger war (px/ms).
+   Die Karte fliegt mit dem Fingertempo weiter, statt beim Loslassen
+   auf eine feste Dauer umzuspringen. Die Karte dahinter rückt SOFORT
+   nach — der nächste Griff muss nicht auf das Ende des Flugs warten. */
+function edWaehlen(ja, ausX, tempo){
+  const karte = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]');
+  if(!karte) return;
+  const name = decodeURIComponent(karte.dataset.ed);
+  if(ja){
+    const g = findeGericht(name);
+    if(g && !merk[name]){ merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 }; merkSpeichern(); }
+    balkenAktualisieren();
+    const quelle = karte.querySelector(".ed-bildflaeche.mitpop .ed-pop") ||
+                   karte.querySelector(".ed-bildflaeche.mitfoto .ed-foto") || karte.querySelector(".ed-emo");
+    inDenKorbFliegen(quelle, name);
+    edJa++;
+  }
+  karte.dataset.tiefe = "weg";
+  karte.setAttribute("aria-hidden", "true");
+  edPos++;
+  edZug = null;
+  const lob = ja && edJa % 3 === 0;
+  /* Die letzte Karte: Erst fliegen lassen, dann den Schluss zeigen —
+     sonst würde der Neuaufbau die fliegende Karte mitten im Flug löschen. */
+  const letzte = edPos >= edStapel.length;
+  const danach = () => { if(letzte) edNeuZeichnen(); else edNachruecken(); if(lob) edLoben(); };
+  if(ruhigeBewegung() || !karte.animate){
+    karte.remove();
+    danach();
+    return;
+  }
+  const von = ausX || 0, nach = (ja ? 1 : -1) * window.innerWidth * 1.1;
+  const strecke = Math.abs(nach - von);
+  let dauer = 260, kurve = "cubic-bezier(.4,0,1,1)";          /* aus der Ruhe: ease-in */
+  if(tempo > .2){
+    /* Anfangssteigung der Kurve = Fingertempo: y1/x1 = v·dauer/strecke */
+    dauer = Math.max(180, Math.min(320, strecke / tempo * 1.6));
+    const y1 = Math.min(1, .25 * tempo * dauer / strecke);
+    kurve = "cubic-bezier(.25," + y1.toFixed(3) + ",.6,1)";
+  }
+  const rest = karte.style.transform || "translateX(" + von + "px) rotate(" + (von / 18) + "deg)";
+  /* Transition AUS, bevor transform geleert wird: Eine CSS-Transition
+     steht in der Kaskade ÜBER einer Web-Animation und würde den Flug
+     sonst mit ihrer eigenen Bewegung überdecken. */
+  karte.style.transition = "none";
+  karte.style.transform = "";
+  karte.getAnimations().forEach(a => a.cancel());
+  const flug = karte.animate([
+    { transform:rest, opacity:1 },
+    { transform:"translateX(" + nach + "px) rotate(" + (nach / 18) + "deg)", opacity:.5 }
+  ], { duration:dauer, easing:kurve, fill:"forwards" });
+  /* Sofort starten statt auf das nächste Bild zu warten: Eine neue
+     Web-Animation ist erst „pending“ und stünde ein Bild lang still —
+     genau in dem Moment, in dem der Finger loslässt. */
+  try{ flug.startTime = document.timeline.currentTime; }catch(e){}
+  flug.onfinish = () => { karte.remove(); if(letzte) danach(); };
+  if(!letzte) danach();
+}
+
+function edLoben(){
+  const f = $("edFlaeche");
+  if(!f) return;
+  const lob = document.createElement("div");
+  lob.className = "ed-lob";
+  lob.setAttribute("role", "status");
+  lob.innerHTML = '<span class="ed-lob-emo">' + (bewegteZeichenAn() ? bzHTML("1f929", "ed:lob:" + edJa) : bzZeichen("1f929")) + '</span>' +
+                  '<b>' + t("Gute Wahl!") + '</b>';
+  f.appendChild(lob);
+  bzVerdrahten();
+  const r = f.getBoundingClientRect();
+  konfetti(r.left + r.width / 2, r.top + Math.min(r.height, 360) / 2, 20);
+  setTimeout(() => {
+    if(lob.animate && !ruhigeBewegung()) lob.animate([{opacity:1}, {opacity:0}], {duration:220, fill:"forwards"}).onfinish = () => lob.remove();
+    else lob.remove();
+  }, 1500);
+}
+
+
+/* ═══ Rad oder Karten ══════════════════════════════════════════════
+   Die Art merkt sich das Gerät (je Haus). „Für mich entscheiden“ aus
+   der Speisekarte führt immer zum Rad — der Knopf verspricht genau das. */
+const FR_MODUS_SCHLUESSEL = hSchluessel("fr-modus");
+let frModus = (() => { try{ return localStorage.getItem(FR_MODUS_SCHLUESSEL) === "karten" ? "karten" : "rad"; }catch(e){ return "rad"; } })();
+let fwUhr = 0;
+const FW_RAD = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.6"/><path d="M12 3.4v17.2M3.4 12h17.2M5.9 5.9l12.2 12.2M18.1 5.9 5.9 18.1"/><circle cx="12" cy="12" r="2.2"/></svg>';
+const FW_KARTEN = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4.2" y="5.6" width="10.6" height="14.4" rx="2.2" transform="rotate(-9 9.5 12.8)"/><rect x="9.2" y="3.8" width="10.6" height="14.4" rx="2.2"/><path d="M12.6 11.6l1.7 1.7 3.1-3.4"/></svg>';
+function frWahlName(art){ return art === "karten" ? t("Karten wischen") : t("Glücksrad"); }
+function frWahlHTML(){
+  const knopf = art => '<button type="button" role="radio" class="fw-knopf" data-frwahl="' + art + '" aria-checked="' +
+    (art === frModus) + '"' + (art === frModus ? '' : ' tabindex="-1"') + ' aria-label="' + frWahlName(art) + '" title="' + frWahlName(art) + '">' +
+    '<span class="fw-zeichen fw-' + art + '">' + (art === "rad" ? FW_RAD : FW_KARTEN) + '</span></button>';
+  return '<div class="fr-wahlzeile"><div class="frwahl" id="frWahl" role="radiogroup" aria-label="' + t("Rad oder Karten") + '" data-wahl="' + frModus + '">' +
+    knopf("rad") + knopf("karten") +
+    '<span class="fw-daumen" aria-hidden="true"><span class="fw-koerper"><span class="fw-innen">' +
+      '<span class="fw-zeichen fw-rad">' + FW_RAD + '</span><span class="fw-zeichen fw-karten">' + FW_KARTEN + '</span>' +
+    '</span></span></span>' +
+    '<span class="fw-name" aria-hidden="true"><span></span></span></div></div>';
+}
+/* Der Teil unter dem Umschalter — je nach Art. */
+function frBereichHTML(){
+  if(frModus === "karten"){
+    if(!edStapel.length || edPos >= edStapel.length) entdeckenMischen();
+    return '<p class="unter">' + t("Wischen Sie nach rechts, was Ihnen schmeckt – nach links, was heute nicht passt.") + '</p>' +
+      ehLustHTML() +
+      (edStapel.length
+        ? '<div id="edFlaeche">' + edFlaecheHTML() + '</div>'
+        : '<div class="leer">' + t("Gerade ist nichts freigeschaltet.") + '</div>');
+  }
+  if(!frFelder.length || frFelder.some(nm => !findeGericht(nm))) frFuellen();
+  return frVielfalt() >= 2
+    ? '<section class="fr-ergebnis" id="frErgebnis" aria-live="polite">' + frErgebnisHTML(frErgebnis, !!frErgebnis) + '</section>' +
+      '<div id="frFlaeche">' + frRadHTML() + frKnoepfeHTML() + '</div>' + ehLustHTML()
+    : '<div class="leer">' + t("Gerade ist nichts freigeschaltet.") + '</div>';
+}
+/* Umschalten: DERSELBE Schalter bleibt stehen (der Daumen gleitet,
+   §4.3), nur der Bereich darunter wird neu gebaut. Eine laufende
+   Drehung endet. Ein Tipp auf das Gewählte zeigt nur den Namen. */
+function frModusSetzen(ziel, still){
+  const w = $("frWahl");
+  const wechsel = ziel !== frModus;
+  if(wechsel){
+    frModus = ziel;
+    try{ localStorage.setItem(FR_MODUS_SCHLUESSEL, ziel); }catch(e){}
+    frLauf++; frDreht = false; edZug = null;
+    const b = $("frBereich");
+    if(b){ b.innerHTML = frBereichHTML(); bzVerdrahten(); frNameEinpassen(); }
+  }
+  if(!w) return;
+  w.dataset.wahl = frModus;
+  w.querySelectorAll("[data-frwahl]").forEach(k => {
+    const an = k.dataset.frwahl === frModus;
+    k.setAttribute("aria-checked", an ? "true" : "false");
+    k.tabIndex = an ? 0 : -1;
+  });
+  if(still) return;
+  if(wechsel){ w.classList.remove("zieht"); void w.offsetWidth; w.classList.add("zieht"); }
+  w.querySelector(".fw-name span").textContent = frWahlName(ziel);
+  w.classList.add("zeigt");
+  clearTimeout(fwUhr);
+  fwUhr = setTimeout(() => w.classList.remove("zeigt", "zieht"), wechsel ? 1900 : 1500);
+}
 /* Eingang: ganz oben in der Speisekarte. Nur, wenn es wirklich etwas
    zu entscheiden gibt (mindestens drei bestellbare Gerichte). */
 function entscheidungCTA(){
@@ -10628,6 +11060,88 @@ function konfetti(x, y, menge){
   }
 }
 
+/* Wischen: der Finger führt die oberste Karte, die zweite rückt mit
+   dem Zug schon ein Stück nach vorn. Das Tempo beim Loslassen wird aus
+   den letzten ~80 ms gemessen, nicht über die ganze Geste gemittelt —
+   wer langsam zieht und dann schnippt, meint das Schnippen. */
+document.addEventListener("pointerdown", e => {
+  const karte = e.target.closest && e.target.closest('#edStapel .ed-karte[data-tiefe="0"]');
+  if(!karte) return;
+  karte.getAnimations().forEach(a => a.cancel());
+  const zweite = document.querySelector('#edStapel .ed-karte[data-tiefe="1"]');
+  const start = { x:e.clientX, y:e.clientY, id:e.pointerId };
+  const spur = [{ x:e.clientX, t:performance.now() }];
+  let dx = 0, lenkt = false;
+  const stempelJa = karte.querySelector(".ed-stempel.ja"), stempelNein = karte.querySelector(".ed-stempel.nein");
+  const zieh = ev => {
+    if(ev.pointerId !== start.id) return;
+    dx = ev.clientX - start.x;
+    const dy = ev.clientY - start.y;
+    /* Erst entscheiden, ob der Gast wischt oder die Seite rollt. */
+    if(!lenkt){
+      if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if(Math.abs(dy) > Math.abs(dx)){ los(); return; }
+      lenkt = true; edZug = "zieht";
+      karte.style.transition = "none";
+      try{ karte.setPointerCapture(start.id); }catch(x){}
+    }
+    const jetzt = performance.now();
+    spur.push({ x:ev.clientX, t:jetzt });
+    while(spur.length > 2 && jetzt - spur[0].t > 80) spur.shift();
+    const neig = ruhigeBewegung() ? 0 : dx / 18;
+    karte.style.transform = "translateX(" + dx + "px) rotate(" + neig + "deg)";
+    const anteil = Math.min(1, Math.abs(dx) / 90);
+    stempelJa.style.opacity = dx > 0 ? anteil : 0;
+    stempelNein.style.opacity = dx < 0 ? anteil : 0;
+    if(zweite && !ruhigeBewegung()) zweite.style.setProperty("--tiefe", (1 - .45 * Math.min(1, Math.abs(dx) / 160)).toFixed(3));
+  };
+  const los = ev => {
+    document.removeEventListener("pointermove", zieh);
+    document.removeEventListener("pointerup", los);
+    document.removeEventListener("pointercancel", los);
+    if(!lenkt){ karte.style.transition = ""; return; }
+    edZug = null;
+    const a = spur[0], b = spur[spur.length - 1];
+    const v = (b.x - a.x) / Math.max(16, b.t - a.t);               /* px/ms, mit Vorzeichen */
+    const richtung = Math.abs(dx) > 90 ? Math.sign(dx) : (Math.abs(v) > .55 && Math.abs(dx) > 30 && Math.sign(v) === Math.sign(dx) ? Math.sign(dx) : 0);
+    if(richtung){
+      edWaehlen(richtung > 0, dx, Math.abs(v));
+      return;
+    }
+    stempelJa.style.opacity = 0; stempelNein.style.opacity = 0;
+    if(zweite) zweite.style.setProperty("--tiefe", 1);
+    const bisher = karte.style.transform;
+    if(karte.animate && !ruhigeBewegung()){
+      karte.style.transition = "none";            /* siehe edWaehlen */
+      karte.style.transform = "";
+      const zurueck = karte.animate([{ transform:bisher }, { transform:"translateX(0) rotate(0deg)" }],
+                                    { duration:480, easing:FEDER });
+      try{ zurueck.startTime = document.timeline.currentTime; }catch(e){}
+      zurueck.onfinish = zurueck.oncancel = () => { karte.style.transition = ""; };
+    } else karte.style.transform = "";
+  };
+  document.addEventListener("pointermove", zieh, { passive:true });
+  document.addEventListener("pointerup", los);
+  document.addEventListener("pointercancel", los);
+});
+
+document.addEventListener("keydown", e => {
+  const w = e.target.closest && e.target.closest("#frWahl");
+  if(!w || ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].indexOf(e.key) < 0) return;
+  e.preventDefault();
+  const ziel = frModus === "rad" ? "karten" : "rad";
+  frModusSetzen(ziel);
+  const k = w.querySelector('[data-frwahl="' + ziel + '"]');
+  if(k) k.focus({ preventScroll:true });
+});
+document.addEventListener("keydown", e => {
+  if(seiteJetzt !== "entdecken" || frModus !== "karten" || !$("edStapel")) return;
+  /* Pfeile auf dem Umschalter wechseln die Art, nicht die Karte. */
+  if(e.target.closest && e.target.closest("#frWahl")) return;
+  if(e.key === "ArrowRight"){ e.preventDefault(); edWaehlen(true); }
+  if(e.key === "ArrowLeft"){ e.preventDefault(); edWaehlen(false); }
+});
+
 /* ═══ Bestellung feiern ════════════════════════════════════════════
    Einmal, direkt nach dem Abschicken: Konfetti und ein großes 🎉.
    Bewusst „Das klingt lecker!" und NICHT „Bestellt!": In diesem
@@ -10669,17 +11183,11 @@ SEITEN.entdecken = () => {
      die Adresse führt fail-open zur Speisekarte zurück, statt eine
      Seite zu zeigen, die der Betrieb gerade verborgen halten wollte. */
   if(!foodrouletteAn()){ location.hash = "#/speisekarte"; return ""; }
-  /* Neu füllen, wenn leer oder ein Feld nicht mehr auf der Karte steht. */
-  if(!frFelder.length || frFelder.some(nm => !findeGericht(nm))) frFuellen();
   frDreht = false; frLauf++;
   /* "Foodroulette" ist ein geprägter Name wie „Omoteno" selbst — bleibt
      in jeder Sprache gleich, deshalb bewusst kein t(). */
-  return '<div class="seite ed-seite fr-seite"><h2>Foodroulette</h2>' +
-    (frVielfalt() >= 2
-      ? '<section class="fr-ergebnis" id="frErgebnis" aria-live="polite">' + frErgebnisHTML(frErgebnis, !!frErgebnis) + '</section>' +
-        '<div id="frFlaeche">' + frRadHTML() + frKnoepfeHTML() + '</div>' + ehLustHTML()
-      : '<div class="leer">' + t("Gerade ist nichts freigeschaltet.") + '</div>') +
-    '</div>';
+  return '<div class="seite ed-seite fr-seite"><h2>Foodroulette</h2>' + frWahlHTML() +
+    '<div id="frBereich">' + frBereichHTML() + '</div></div>';
 };
 
 /* ══ „Passt dazu“ im Warenkorb ══════════════════════════════════════
@@ -14146,12 +14654,17 @@ $("inhalt").addEventListener("click", e => {
   if(lust){
     edLust = decodeURIComponent(lust.dataset.ehLust);
     document.querySelectorAll("[data-eh-lust]").forEach(c => c.classList.toggle("an", c === lust));
-    frFuellen(); frNeuZeichnen();
+    /* Beide Arten folgen der Lust; gezeichnet wird nur die sichtbare. */
+    frFuellen(); entdeckenMischen();
+    if(frModus === "karten") edNeuZeichnen(); else frNeuZeichnen();
     return;
   }
+  const fw = e.target.closest("[data-frwahl]");
+  if(fw){ frModusSetzen(fw.dataset.frwahl); return; }
   if(e.target.closest("[data-eh-los]")){
-    if(seiteJetzt === "entdecken") frDrehen();
-    else { ehSofort = true; location.hash = "#/entdecken"; }
+    /* „Für mich entscheiden“ heißt: das Rad — auch aus der Kartenansicht. */
+    if(seiteJetzt === "entdecken"){ if(frModus !== "rad") frModusSetzen("rad"); frDrehen(); }
+    else { ehSofort = true; frModus = "rad"; try{ localStorage.setItem(FR_MODUS_SCHLUESSEL, "rad"); }catch(err){} location.hash = "#/entdecken"; }
     return;
   }
   const nehm = e.target.closest("[data-eh-nehm]");
@@ -14165,6 +14678,10 @@ $("inhalt").addEventListener("click", e => {
     frKnoepfeZeichnen();
     return;
   }
+
+  const edWahl = e.target.closest("[data-ed-wahl]");
+  if(edWahl){ edWaehlen(edWahl.dataset.edWahl === "ja"); return; }
+  if(e.target.closest("[data-ed-neu]")){ entdeckenMischen(); edNeuZeichnen(); return; }
 
   const chip = e.target.closest(".chip");
   if(chip){

@@ -76,8 +76,98 @@ const OBEN_FELD = () => {
   const browser = await chromium.launch();
   const quelle = fs.readFileSync(path.join(OBEN, "vorlagen", "hub.vorlage.html"), "utf8");
 
-  console.log("\n══ Kein Wischstapel mehr ══");
-  pruef(!/ed-stapel|edStapel|Karten wischen/.test(quelle), "Vorlage ohne Stapel und ohne „Karten wischen“");
+  console.log("\n══ Umschalter: Rad oder Karten (wie der Liefer-Schalter) ══");
+  /* Wunsch (09.10., zweite Nachricht): „Nicht nur das Rad, sondern
+     beides mit einem Switch Button wie beim Lieferservice“. */
+  for (const slug of HAEUSER) {
+    const { ctx, s, fehler } = await oeffnen(browser, slug, "#/entdecken");
+    const vor = await s.evaluate(() => {
+      const w = document.getElementById("frWahl"); if (!w) return null;
+      w.dataset.probe = "1";
+      const k = [...w.querySelectorAll('[role="radio"]')];
+      return { wahl: w.dataset.wahl, n: k.length, an: k.filter(x => x.getAttribute("aria-checked") === "true").map(x => x.dataset.frwahl),
+               rad: !!document.getElementById("frRad"), stapel: !!document.getElementById("edStapel"),
+               hoehe: Math.round(w.getBoundingClientRect().height), ziele: k.map(x => Math.round(x.getBoundingClientRect().width)) };
+    });
+    pruef(!!vor && vor.n === 2 && vor.wahl === "rad" && vor.an.join() === "rad" && vor.rad && !vor.stapel,
+      slug + ": Umschalter mit zwei Wegen, ohne gemerkte Wahl steht das Rad", JSON.stringify(vor));
+    pruef(!!vor && vor.hoehe >= 44 && vor.ziele.every(b => b >= 44), slug + ": jeder Weg ≥ 44 px", vor && (vor.hoehe + " hoch, " + vor.ziele.join("/") + " breit"));
+    await s.click('[data-frwahl="karten"]');
+    await s.waitForTimeout(80);
+    const mitten = await s.evaluate(() => {
+      const w = document.getElementById("frWahl"), d = w.querySelector(".fw-daumen");
+      return { gleich: w.dataset.probe === "1", wahl: w.dataset.wahl, modus: frModus,
+               gleitet: d.getAnimations().some(a => a.constructor.name === "CSSTransition" && a.transitionProperty === "transform"),
+               zeigt: w.classList.contains("zeigt"), name: w.querySelector(".fw-name span").textContent,
+               stapel: !!document.querySelector('#edStapel .ed-karte[data-tiefe="0"]'), rad: !!document.getElementById("frRad") };
+    });
+    pruef(mitten.gleich && mitten.wahl === "karten" && mitten.modus === "karten", slug + ": ein Tipp schaltet um — DERSELBE Schalter bleibt stehen", JSON.stringify(mitten));
+    pruef(mitten.gleitet, slug + ": der Daumen gleitet (laufende Transition auf transform), statt zu springen");
+    pruef(mitten.stapel && !mitten.rad, slug + ": darunter liegt jetzt der Kartenstapel, kein Rad");
+    pruef(mitten.zeigt && mitten.name === "Karten wischen", slug + ": der Name blitzt auf", mitten.name);
+    await s.waitForTimeout(2200);
+    pruef(await s.evaluate(() => !document.getElementById("frWahl").classList.contains("zeigt")), slug + ": … und verschwindet wieder");
+    /* Gemerkt: nach dem Neuladen dieselbe Art */
+    await s.reload(); await s.waitForTimeout(1400);
+    const nachLaden = await s.evaluate(() => ({ modus: frModus, stapel: !!document.getElementById("edStapel") }));
+    pruef(nachLaden.modus === "karten" && nachLaden.stapel, slug + ": nach dem Neuladen bleibt die gewählte Art", JSON.stringify(nachLaden));
+    /* Pfeiltaste auf dem Schalter: wechselt und nimmt den Fokus mit — und wischt NICHT die Karte */
+    const vorKarte = await s.evaluate(() => edPos);
+    await s.focus('[data-frwahl="karten"]'); await s.keyboard.press("ArrowLeft"); await s.waitForTimeout(150);
+    const taste = await s.evaluate(v => ({ modus: frModus, fokus: document.activeElement && document.activeElement.dataset.frwahl, edPos, vorher: v }), vorKarte);
+    pruef(taste.modus === "rad" && taste.fokus === "rad" && taste.edPos === taste.vorher, slug + ": Pfeiltaste wechselt die Art, Fokus geht mit, keine Karte gewischt", JSON.stringify(taste));
+    /* Mitten in der Drehung umschalten: die Drehung endet, nichts bleibt hängen */
+    await s.click(".fr-mitte"); await s.waitForTimeout(300);
+    await s.click('[data-frwahl="karten"]'); await s.waitForTimeout(200);
+    await s.click('[data-frwahl="rad"]'); await s.waitForTimeout(200);
+    const ab = await s.evaluate(() => ({ dreht: frDreht, anim: document.getElementById("frScheibe").getAnimations().length,
+      knopf: !document.querySelector('#frKnoepfe [aria-disabled="true"]') }));
+    pruef(!ab.dreht && ab.anim === 0 && ab.knopf, slug + ": Umschalten mitten in der Drehung beendet sie sauber", JSON.stringify(ab));
+    await s.waitForTimeout(3500);
+    pruef(!fehler.length, slug + ": keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    /* Aus der Kartenansicht: „Für mich entscheiden“ in der Speisekarte führt zum Rad und dreht */
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/speisekarte");
+    await s.evaluate(() => localStorage.setItem("omoteno-fr-modus-chocolamour", "karten"));
+    await s.reload(); await s.waitForTimeout(1400);
+    pruef(await s.evaluate(() => frModus === "karten"), "Voraussetzung: gemerkte Art ist „Karten“");
+    await s.click(".eh-cta [data-eh-los]"); await s.waitForTimeout(250);
+    const r = await s.evaluate(() => ({ modus: frModus, laeuft: !!document.getElementById("frScheibe") &&
+      document.getElementById("frScheibe").getAnimations().some(a => a.playState === "running") }));
+    pruef(r.modus === "rad" && r.laeuft, "„Für mich entscheiden“ aus der Kartenansicht: Rad, und es dreht", JSON.stringify(r));
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    /* Bewegung reduzieren: der Daumen springt, die Art wechselt trotzdem */
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { ruhig:true });
+    await s.click('[data-frwahl="karten"]'); await s.waitForTimeout(60);
+    const r = await s.evaluate(() => ({ modus: frModus, anim: document.querySelector("#frWahl .fw-daumen").getAnimations().length,
+      x: new DOMMatrixReadOnly(getComputedStyle(document.querySelector("#frWahl .fw-daumen")).transform).m41 }));
+    pruef(r.modus === "karten" && r.anim === 0 && r.x === 56, "Bewegung reduzieren: Daumen sofort am Ziel, kein Gleiten", JSON.stringify(r));
+    await ctx.close();
+  }
+  {
+    /* Der Name passt in jeder Sprache ins Bild (360 px) */
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { breite:360 });
+    const r = await s.evaluate(async () => {
+      const aus = [];
+      for (const sp of SPRACHEN.map(x => x.code)) {
+        spracheSetzen(sp); await new Promise(res => setTimeout(res, 120));
+        for (const art of ["karten", "rad"]) {
+          frModusSetzen(art); await new Promise(res => setTimeout(res, 800));
+          const n = document.querySelector("#frWahl .fw-name").getBoundingClientRect();
+          if (n.left < 0 || n.right > innerWidth) aus.push(sp + "/" + art + " " + Math.round(n.left) + "…" + Math.round(n.right));
+        }
+      }
+      spracheSetzen("de");
+      return aus;
+    });
+    pruef(!r.length, "360 px: der aufblitzende Name bleibt in jeder Sprache im Bild", r.join(", ") || "alle");
+    await ctx.close();
+  }
 
   for (const slug of HAEUSER) {
     console.log("\n══ " + slug + " · Rad sofort, Drehen ohne zweiten Tipp ══");

@@ -589,6 +589,186 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     await ctx.close();
   }
 
+
+  console.log("\n══ Karten wischen — die zweite Art neben dem Rad (Umschalter) ══");
+  /* Seit 09.10. wieder da (Wunsch: Rad UND Karten, umschaltbar). Die
+     Proben sind die vom 08.10., geöffnet mit gemerkter Art „karten“ —
+     dieselbe Voraussetzung, die ein Gast nach dem Umschalten hat. */
+  const KARTEN = () => { try{ ["chocolamour","blend","minhkeey"].forEach(h => localStorage.setItem("omoteno-fr-modus-" + h, "karten")); }catch(e){} };
+  {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken", { vorher:KARTEN });
+    const oben = () => s.$('#edStapel .ed-karte[data-tiefe="0"]');
+    const wisch = async richtung => {
+      const b = await (await oben()).boundingBox();
+      const x = b.x + b.width / 2, y = b.y + b.height / 2;
+      await s.mouse.move(x, y); await s.mouse.down();
+      for (let i = 1; i <= 14; i++) await s.mouse.move(x + richtung * i * 10, y + i);
+      await s.mouse.up(); await s.waitForTimeout(500);
+    };
+    pruef(!!(await oben()), "der Stapel liegt, oberste Karte greifbar");
+    const name0 = await s.evaluate(() => decodeURIComponent(document.querySelector('#edStapel .ed-karte[data-tiefe="0"]').dataset.ed));
+    await wisch(1);
+    pruef(await s.evaluate(n => !!merk[n], name0), "nach rechts gewischt → in der Auswahl", name0);
+    const name1 = await s.evaluate(() => decodeURIComponent(document.querySelector('#edStapel .ed-karte[data-tiefe="0"]').dataset.ed));
+    await wisch(-1);
+    pruef(await s.evaluate(n => !merk[n] && edPos === 2, name1), "nach links gewischt → weiter, nicht in der Auswahl", name1);
+    await s.keyboard.press("ArrowRight"); await s.waitForTimeout(450);
+    await s.click('[data-ed-wahl="ja"]'); await s.waitForTimeout(350);
+    const lob = await s.evaluate(() => ({ lob: !!document.querySelector(".ed-lob"), ja: edJa }));
+    pruef(lob.ja === 3 && lob.lob, "Taste → und Knopf zählen, die dritte Wahl gibt Lob", JSON.stringify(lob));
+    await s.evaluate(() => { edPos = edStapel.length - 1; edNeuZeichnen(); });
+    await s.click('[data-ed-wahl="nein"]'); await s.waitForTimeout(450);
+    pruef(await s.evaluate(() => !!document.querySelector(".ed-ende")), "am Ende: Abschluss statt leerer Fläche");
+    await s.click("[data-ed-neu]"); await s.waitForTimeout(300);
+    pruef(await s.evaluate(() => edPos === 0 && !!document.querySelector("#edStapel")), "„Nochmal mischen“ beginnt von vorn");
+    pruef(await s.evaluate(() => edStapel.every(n => !merk[n])), "was schon in der Auswahl liegt, kommt nicht erneut");
+    const ueber = await s.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    pruef(ueber <= 1, "kein seitliches Schieben", ueber + "px");
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { ruhig:true, vorher:KARTEN });
+    const b = await (await s.$('#edStapel .ed-karte[data-tiefe="0"]')).boundingBox();
+    await s.mouse.move(b.x + 100, b.y + 100); await s.mouse.down();
+    for (let i = 1; i <= 5; i++) await s.mouse.move(b.x + 100 + i * 10, b.y + 100);
+    const tf = await s.evaluate(() => document.querySelector('#edStapel .ed-karte[data-tiefe="0"]').style.transform);
+    await s.mouse.up();
+    pruef(/rotate\(0deg\)/.test(tf), "Bewegung reduzieren: die Karte folgt, neigt sich aber nicht", tf);
+    await ctx.close();
+  }
+  {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken", { vorher:KARTEN });
+    const SEL = '#edStapel .ed-karte[data-tiefe="0"] .ed-emo .bz';
+    const spur = await verlauf(s, SEL, 9000);
+    const da = spur.filter(Boolean).length;
+    pruef(da > spur.length * .9, "Karten wischen: der Film der obersten Karte ist da", da + " von " + spur.length + " Proben");
+    if (da) {
+      const n = anlaeufe(spur);
+      pruef(n >= 2, "Karten wischen: nach dem ersten Durchlauf spielt der Film WIEDER (≥ 2 neue Anläufe in 9 s)",
+        n + " Anläufe · " + spur.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" ").slice(0, 160));
+      const laeuft = spur.filter(x => x && !x.p).length / da;
+      pruef(laeuft >= .5, "Karten wischen: der Film läuft die meiste Zeit (Pausen kurz)", Math.round(laeuft * 100) + " % der Proben spielend");
+    }
+    const schwebt = await s.evaluate(sel => {
+      const e = document.querySelector(sel); if (!e) return null;
+      const emo = e.closest(".ed-emo");
+      return getComputedStyle(emo).animationName;
+    }, SEL);
+    pruef(schwebt === "edSchweben", "Karten wischen: das Zeichen der obersten Karte schwebt", schwebt);
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { ruhig:true, vorher:KARTEN });
+    const SEL = '#edStapel .ed-karte[data-tiefe="0"] .ed-emo .bz';
+    const spur = await verlauf(s, SEL, 4000);
+    const da = spur.filter(Boolean).length;
+    pruef(!da || spur.every(x => !x || x.p), "Bewegung reduzieren: kein Film läuft", da ? spur.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" ") : "kein Film geladen");
+    const schwebt = await s.evaluate(() => { const e = document.querySelector('#edStapel .ed-karte[data-tiefe="0"] .ed-emo'); return e ? getComputedStyle(e).animationName : null; });
+    pruef(schwebt === "none", "Bewegung reduzieren: das Zeichen schwebt nicht", schwebt);
+    await ctx.close();
+  }
+  for (const breite of [360, 430]) {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/speisekarte", { breite });
+    await s.evaluate(() => { location.hash = "#/entdecken"; }); await s.waitForTimeout(600); await s.evaluate(() => frModusSetzen("karten", true)); await s.waitForTimeout(500);
+    const ed = await s.evaluate(() => {
+      const st = document.getElementById("edStapel"), k = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]');
+      const kn = [...document.querySelectorAll(".ed-knopf")].map(b => b.getBoundingClientRect());
+      if (!st || !k || kn.length !== 2) return null;
+      const r = st.getBoundingClientRect(), kr = k.getBoundingClientRect();
+      const ja = getComputedStyle(k.querySelector(".ed-stempel.ja")), nein = getComputedStyle(k.querySelector(".ed-stempel.nein"));
+      const winkel = cs => Math.round(Math.atan2(new DOMMatrixReadOnly(cs.transform).b, new DOMMatrixReadOnly(cs.transform).a) * 180 / Math.PI);
+      return { links:+r.left.toFixed(1), rechts:+(innerWidth - r.right).toFixed(1),
+               knopfA:+kn[0].width.toFixed(1), knopfB:+kn[1].width.toFixed(1),
+               knopfL:+(kn[0].left - r.left).toFixed(1), knopfR:+(r.right - kn[1].right).toFixed(1),
+               stJa:ja.right, stNein:nein.left, stTop:[ja.top, nein.top], wJa:winkel(ja), wNein:winkel(nein) };
+    });
+    pruef(!!ed, breite + "px: Entdecken-Stapel und beide Knöpfe da");
+    if (ed) {
+      pruef(Math.abs(ed.links - ed.rechts) <= 1, breite + "px: Stapel mit gleichem Rand links und rechts", ed.links + " / " + ed.rechts);
+      pruef(ed.knopfA === ed.knopfB && Math.abs(ed.knopfL - ed.knopfR) <= 1,
+        breite + "px: „Weiter“ und „Nehm ich!“ gleich breit, gleich weit vom Rand", ed.knopfA + "/" + ed.knopfB + ", " + ed.knopfL + "/" + ed.knopfR);
+      pruef(ed.stJa === ed.stNein && ed.stTop[0] === ed.stTop[1] && ed.wJa === -ed.wNein,
+        breite + "px: Stempel spiegelbildlich", ed.stJa + "/" + ed.stNein + ", " + ed.wJa + "°/" + ed.wNein + "°");
+    }
+    pruef(!fehler.length, breite + "px: keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken", { vorher:KARTEN });
+    /* Nachrücken: dasselbe Element rückt vor, und es LÄUFT dabei eine
+       Transition — ein neu gebautes Element hätte keine. */
+    const nach = await s.evaluate(async () => {
+      const zweite = document.querySelector('#edStapel .ed-karte[data-tiefe="1"]');
+      if (!zweite) return null;
+      edWaehlen(false);
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const oben = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]');
+      const weg = document.querySelector('#edStapel .ed-karte[data-tiefe="weg"]');
+      return { gleich: oben === zweite,
+               transition: zweite.getAnimations().some(a => a.constructor.name === "CSSTransition"),
+               wegOhneTransition: weg ? !weg.getAnimations().some(a => a.constructor.name === "CSSTransition") : null,
+               karten: document.querySelectorAll('#edStapel .ed-karte:not([data-tiefe="weg"])').length };
+    });
+    pruef(!!nach, "eine zweite Karte liegt bereit");
+    if (nach) {
+      pruef(nach.gleich, "nach der Wahl ist die zweite Karte DASSELBE Element, jetzt oben");
+      pruef(nach.transition, "sie rückt mit einer laufenden Transition nach, statt zu springen");
+      pruef(nach.wegOhneTransition === true, "die fliegende Karte trägt keine Transition, die ihren Flug überdecken würde", nach.wegOhneTransition);
+      pruef(nach.karten === 3, "hinten ist eine neue dritte Karte nachgelegt", nach.karten);
+    }
+    await s.waitForTimeout(500);
+    /* Wurf mit Fingertempo: Nach dem Loslassen darf die Karte nicht
+       langsamer werden als der Finger war. */
+    const wurf = await s.evaluate(async () => {
+      const k = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]');
+      const b = k.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2;
+      const ev = (typ, px) => k.dispatchEvent(new PointerEvent(typ, { clientX:px, clientY:y, pointerId:7, bubbles:true, isPrimary:true }));
+      ev("pointerdown", x);
+      const zeiten = [];
+      for (let i = 1; i <= 8; i++){ await new Promise(r => setTimeout(r, 16)); zeiten.push(performance.now()); document.dispatchEvent(new PointerEvent("pointermove", { clientX:x + i * 16, clientY:y, pointerId:7, bubbles:true })); }
+      /* Das echte Fingertempo der letzten Züge, nicht das beabsichtigte */
+      const fingerTempo = +(16 * 4 / (zeiten[7] - zeiten[3])).toFixed(2);
+      const vor = k.getBoundingClientRect().left;
+      document.dispatchEvent(new PointerEvent("pointerup", { clientX:x + 128, clientY:y, pointerId:7, bubbles:true }));
+      /* Über die ersten drei Bilder nach dem Loslassen gemessen: Ein
+         Bild Stillstand (eine noch wartende Animation) fiele hier auf. */
+      const t0 = performance.now();
+      for (let i = 0; i < 3; i++) await new Promise(r => requestAnimationFrame(r));
+      const t1 = performance.now(), nachher = k.getBoundingClientRect().left;
+      return { finger:fingerTempo, karte:+((nachher - vor) / (t1 - t0)).toFixed(2) };
+    });
+    await s.waitForTimeout(500);
+    /* 1:1 am Finger: Nach einem Zug steht die Karte im NÄCHSTEN Bild
+       dort, wo der Finger ist — nicht auf dem Weg dorthin. Eine
+       CSS-Transition auf transform (0,28 s) ließe sie nachhinken. */
+    const folgt = await s.evaluate(async () => {
+      const k = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]');
+      const b = k.getBoundingClientRect(), x = b.left + b.width / 2, y = b.top + b.height / 2;
+      k.dispatchEvent(new PointerEvent("pointerdown", { clientX:x, clientY:y, pointerId:9, bubbles:true, isPrimary:true }));
+      document.dispatchEvent(new PointerEvent("pointermove", { clientX:x + 20, clientY:y, pointerId:9, bubbles:true }));
+      document.dispatchEvent(new PointerEvent("pointermove", { clientX:x + 60, clientY:y, pointerId:9, bubbles:true }));
+      await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+      const m = new DOMMatrixReadOnly(getComputedStyle(k).transform);
+      document.dispatchEvent(new PointerEvent("pointerup", { clientX:x + 60, clientY:y, pointerId:9, bubbles:true }));
+      return { soll:60, ist:+m.m41.toFixed(1) };
+    });
+    pruef(Math.abs(folgt.ist - folgt.soll) <= 1, "die Karte folgt dem Finger ohne Verzug", "Finger +" + folgt.soll + " px, Karte +" + folgt.ist + " px");
+    pruef(wurf.karte >= wurf.finger * .8, "die Karte fliegt mit mindestens dem Fingertempo weiter",
+      "Finger " + wurf.finger + " px/ms, Karte " + wurf.karte + " px/ms");
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { vorher:KARTEN });
+    const tun = () => { edWaehlen(true); };
+    const m = await s.evaluate(`(async () => { const mess = (${FLUSS.toString()})(700); (${tun.toString()})(); return await mess; })()`);
+    pruef(m.luecke <= 50, "Wurf und Nachrücken: keine Lücke über 50 ms zwischen zwei Bildern",
+      m.fps + " Bilder/s, größte Lücke " + m.luecke + " ms");
+    await ctx.close();
+  }
+
   console.log("\n══ Entscheidungshilfe über der Speisekarte ══");
   {
     const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/speisekarte");
@@ -606,7 +786,7 @@ async function oeffnen(browser, slug, hash, opt = {}) {
       "der Knopf steht ganz oben in der Speisekarte, vor der Suche", JSON.stringify(ort));
     const kn = await s.evaluate(() => document.querySelectorAll(".eh-cta .eh-knopf").length);
     pruef(kn === 1 && !(await s.evaluate(() => /Karten wischen|Swipe cards/.test(document.body.innerText))),
-      "nur noch EIN Weg: „Für mich entscheiden“, kein „Karten wischen“", kn);
+      "in der Speisekarte EIN Knopf: „Für mich entscheiden“ (Karten wischen über den Umschalter)", kn);
     const start = await s.evaluate(() => { location.hash = "#/"; return new Promise(r => setTimeout(() => r(!!document.querySelector(".eh-cta, .ed-cta")), 500)); });
     pruef(!start, "auf der Startseite steht er nicht mehr doppelt");
     await s.evaluate(() => { location.hash = "#/speisekarte"; }); await s.waitForTimeout(500);
