@@ -3569,6 +3569,16 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
 
       <div class="ezeile senkrecht">
+        <span><b>Laufschrift beim Top-Runner</b><i>Läuft im farbigen Band über der Aktion — leer: Name, Gericht, Rabatt und Restzeit</i></span>
+        <label class="feld">
+          <span>Laufschrift <em class="mass" id="hubLaufschriftMass"></em></span>
+          <input id="hubLaufschrift" autocomplete="off" placeholder="Nur heute · solange der Vorrat reicht">
+          <small class="feldhilfe" id="hubLaufschriftHilfe">Der Rabatt in Prozent kommt von selbst
+            dazu. Kurz und laut wirkt am besten.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
         <span><b>So sieht es der Gast</b><i>Kopf des Hubs in Telefonbreite, mit Ihren Worten</i></span>
         <div class="hvrahmen" data-hv="worte"></div>
         <!-- Rückfall, wenn der echte Hub nicht zu laden ist (offline). -->
@@ -10346,7 +10356,12 @@ const TEXTMASS = {
   gsText:      { gut:88, hart:240,
     warnung:"Ab 88 Zeichen wird der Satz auf schmalen Telefonen dreizeilig." },
   hubRunner:   { gut:20, hart:40,
-    warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." }
+    warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." },
+  /* Die Laufschrift bricht nie um, sie läuft. „gut“ ist Lesezeit:
+     Ab 60 Zeichen ist ein Durchlauf länger als ein Blick. „hart“ =
+     hub_texte_laufschrift in der Datenbank. */
+  hubLaufschrift: { gut:60, hart:80,
+    warnung:"Ab 60 Zeichen dauert ein Durchlauf länger, als ein Gast hinsieht. Kürzer liest sich besser." }
 };
 
 /* Zeigt Verbrauch und Grund am Feld. Gibt zurück, ob der Wert im
@@ -10384,12 +10399,12 @@ function massVerdrahten(){
       el.dataset.verdrahtet = "1";
       el.addEventListener("input", () => {
         massZeigen(id);
-        if(id.indexOf("hub") === 0){ hubSchauZeichnen(); hvWorte(id === "hubGruss" ? "gruss" : id === "hubRunner" ? "aktion" : "kopf"); }
+        if(id.indexOf("hub") === 0){ hubSchauZeichnen(); hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : "kopf"); }
       });
       /* Wer ins Gruß-Feld tippt, will den Willkommensschirm sehen,
          nicht den Kopf der Startseite. */
       if(id.indexOf("hub") === 0) el.addEventListener("focus", () =>
-        hvWorte(id === "hubGruss" ? "gruss" : id === "hubRunner" ? "aktion" : "kopf"));
+        hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : "kopf"));
     }
     massZeigen(id);
   });
@@ -10857,7 +10872,7 @@ function hvStartseite(ziel){
 function hvWorte(ziel){
   const wert = id => ($("#" + id) || {}).value || "";
   hvSenden("worte", { hub_texte:{ claim:wert("hubClaim"), gruss:wert("hubGruss"),
-                                  runner_titel:wert("hubRunner") },
+                                  runner_titel:wert("hubRunner"), laufschrift:wert("hubLaufschrift") },
                       /* Ohne laufende Aktion wäre der Aktionsname nirgends zu sehen. */
                       aktion: ziel === "aktion" && gerichte[0]
                         ? { titel:"", gericht_name:gerichte[0].name,
@@ -10882,6 +10897,7 @@ function hubTexteFuellen(){
   setz("hubClaim",  HUBTEXTE.claim);
   setz("hubGruss",  HUBTEXTE.gruss);
   setz("hubRunner", HUBTEXTE.runner_titel);
+  setz("hubLaufschrift", HUBTEXTE.laufschrift);
   massVerdrahten();
   hubSchauZeichnen();
   hvWorte("kopf");
@@ -10985,9 +11001,11 @@ async function hubTexteSichern(){
   const claim  = $("#hubClaim").value.trim();
   const gruss  = $("#hubGruss").value.trim();
   const runner = $("#hubRunner").value.trim();
+  const lauf   = ($("#hubLaufschrift") || {value:""}).value.trim();
   if(claim)  neu.claim = claim;
   if(gruss)  neu.gruss = gruss;
   if(runner) neu.runner_titel = runner;
+  if(lauf)   neu.laufschrift = lauf;
 
   const knopf = $("#hubTexteSichern");
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
@@ -13139,7 +13157,7 @@ function runnerTitelWert(){
 if($("#hubTexteSichern")){
   $("#hubTexteSichern").onclick = hubTexteSichern;
   $("#hubTexteZurueck").onclick = () => {
-    ["hubClaim","hubGruss","hubRunner"].forEach(id => {
+    ["hubClaim","hubGruss","hubRunner","hubLaufschrift"].forEach(id => {
       const el = $("#" + id); if(el) el.value = "";
       massZeigen(id);
     });
