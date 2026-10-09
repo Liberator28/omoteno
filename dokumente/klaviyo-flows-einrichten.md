@@ -44,10 +44,17 @@ siehst du deshalb erst in der Vorschau mit einem Testprofil.
 1. **`KLAVIYO_API_KEY` in Supabase setzen** (Edge Functions → Secrets).
    Gemessen am 09.10.: fehlt. Ohne ihn erreicht Klaviyo kein Besuch,
    keine Bestellung, keine Adresse.
-2. **Vorrat füllen:** im Board als Inhaber „Vorrat auffüllen“ (je
-   Betrieb, bis 50 Codes je Druck). Heute liegen **0 Codes** in allen
-   drei Vorräten. Ist der Vorrat leer, verschickt Klaviyo die Mail
-   nicht.
+2. **Vorrat füllen:** im Board als Inhaber „20 neue Codes anlegen“
+   (Einstellungen → Gäste-Newsletter; bis zu 4× am Tag je Betrieb).
+   Heute liegen **0 Codes** bei Klaviyo, in allen drei Vorräten. Ist
+   der Vorrat leer, verschickt Klaviyo die Mail nicht. Erst NACH
+   Schritt 1 drücken — ohne Schlüssel legt die Funktion jetzt
+   absichtlich nichts an.
+   *Befund dazu:* Bei Chocolamour stehen 20 Codes in Supabase, die
+   Klaviyo nie erreicht haben (angelegt ohne Schlüssel, damals als
+   Erfolg gemeldet). Sie verschickt niemand; sie laufen am 28.12. ab.
+   Die Übersicht zeigt deshalb bis dahin „20 in omoteno, 0 bei
+   Klaviyo“ — nach dem Auffüllen 40 zu 20.
 3. **Absender prüfen:** Die Flows nehmen die Vorgabe des Kontos
    („Omoteno“, `hallo@omoteno.de`). Wenn der Gast den Namen des Hauses
    sehen soll: im Flow je Mail „Sender name“ ändern; die Domain muss in
@@ -58,6 +65,16 @@ siehst du deshalb erst in der Vorschau mit einem Testprofil.
    deinem Profil ansehen — dort muss ein echter Code stehen.
 5. **Live:** im Flow oben rechts „Draft“ → „Live“, und die Mail-Aktion
    ebenfalls auf „Live“.
+
+## Wo du (und jeder Besitzer) den Stand siehst
+
+Board → Einstellungen → **Gäste-Newsletter** → „Gäste & Newsletter“,
+nur für den Besitzer: Gäste mit Adresse, wer in 20 Tagen da war, wer
+„vermisst“ wird, Bestellungen mit Code in 30 Tagen; darunter je Ablauf
+der Stand aus Klaviyo (Entwurf / Live) mit Link in Klaviyo, und wie
+viele Codes Klaviyo noch zum Verschicken hat. Fehlt der Schlüssel,
+steht dort genau das. Versand- und Öffnungszahlen zeigt Klaviyo selbst
+(der Link führt hin).
 
 ## Was nicht beweisbar war
 
