@@ -45,7 +45,23 @@
 --  TEIL 2b ANGEWENDET (rabattcode_pruefen, rabatt_basis ohne LIKE),
 --  in stand-anon-funktionen.sql nachgetragen.
 --
---  TEIL 3 NOCH NICHT ANGEWENDET — zurückgedreht samt Teil 2b an Choco
+--  TEIL 3 ANGEWENDET 09.10. beim Merge nach main (8b75526). Vorher
+--  gemessen: Live-bestellung_aufgeben wich von dieser Datei NUR um
+--  (a)/(b)/(c) ab (Zeilen-Hash-Vergleich, keine neuere Änderung ging
+--  verloren); alle neun Funktionen, die in rabattcodes/gutscheine
+--  schreiben, laufen als security definer; Board und Hub schreiben dort
+--  nicht mehr direkt. Danach live: genau EINE Fassung von
+--  bestellung_aufgeben; rabattcode_team_anlegen für anon/authenticated
+--  nicht ausführbar; authenticated darf rabattcodes/gutscheine nur
+--  lesen; anon bestellt weiter. Zurückgedrehte Probe als anon (Herkunft
+--  über cf-connecting-ip): Bestellung OHNE Code → angelegt; Code ohne
+--  Freigabe → „Dieser Rabattcode gilt hier nicht …“; rabattcode_pruefen
+--  (klein, mit Leerzeichen) → ok; danach mit Freigabe → Rabatt 1,00 und
+--  Code eingelöst; Wiederholung mit derselben Quittungsnummer → dieselbe
+--  Bestellung; nach dem Zurückdrehen 0 Probezeilen. bestellung_liefern
+--  ruft bestellung_aufgeben und erbt die Freigabe-Pflicht.
+--
+--  VORHER (bis 09.10.) zurückgedreht samt Teil 2b an Choco
 --  gemessen (anon, Herkunft über cf-connecting-ip, §2.3e): unbekannt und
 --  eingelöst → beide 'ungueltig'; Ziel-Code ohne das Gericht →
 --  gericht_fehlt; klein geschrieben mit Leerzeichen und „(Sahne)“ → ok;
