@@ -493,6 +493,10 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
   font-variant-numeric:tabular-nums;
 }
 .posten .name{font-size:calc(17px * var(--skala)); font-weight:600; line-height:1.3}
+/* Altersfreigabe am Bon: wer serviert, prüft den Ausweis. */
+.posten .ausweis{display:inline-block;margin-left:8px;padding:1px 7px;border-radius:var(--ecke-pille);
+  border:1px solid var(--warn);color:var(--warn);font-size:calc(11px * var(--skala));font-weight:800;
+  letter-spacing:.04em;vertical-align:2px;white-space:nowrap}
 .posten .zusatz{display:block;font-size:calc(13px * var(--skala));color:var(--gedaempft);font-weight:400}
 
 /* ─── Der Telefonbon ────────────────────────────────────────────
@@ -865,7 +869,7 @@ var EINST = {
 };
 
 var sitzung = null, betrieb = null, betriebe = [];
-var bons = [], spurNachName = {}, gesehen = {}, ersterLauf = true;
+var bons = [], spurNachName = {}, alterNachName = {}, gesehen = {}, ersterLauf = true;
 /* Welche Bons das freie Minutenfeld gerade offen haben — reiner
    UI-Zustand, steht nicht in wartezeit_min und darf ein Neuzeichnen
    (bonSignatur ändert sich bei jedem Tippen NICHT) trotzdem
@@ -1133,7 +1137,11 @@ function sperrePruefen(mail, wort){
     method:"POST",
     headers:{apikey:DB.schluessel, Authorization:"Bearer "+DB.schluessel, "Content-Type":"application/json"},
     body: JSON.stringify({p_email:mail, p_passwort:wort})
-  }).then(function(a){ return a.ok ? a.json() : null; })
+  }).then(function(a){
+      /* Netz-Bremse (HTTP 429, migration-schutz-2.sql): Satz statt still weiter. */
+      if(a.status === 429) return { erlaubt:false, gesperrt:false, nachricht:"Zu viele Anmeldeversuche aus diesem Netz. Bitte in zehn Minuten erneut." };
+      return a.ok ? a.json() : null;
+    })
     .catch(function(){ return null; });
 }
 function sperreText(p){
@@ -1202,12 +1210,17 @@ function ladeBetriebe(){
 /* Die Karte sagt uns, was Speise und was Getränk ist. In den Positionen
    einer Bestellung steht nur der Name — die Zuordnung kommt von hier. */
 function ladeKarte(){
-  return ruf("/rest/v1/gerichte?select=name,karte,spur&betrieb_id=eq."+betrieb.id)
-    .then(function(a){ return a.ok ? a.json() : []; })
+  /* ab_alter (migration-altersfreigabe.sql) nur mitfragen — fehlt die
+     Spalte noch, scheitert die ganze Abfrage. Dann ohne sie nochmal:
+     Die Spuren sind wichtiger als die Ausweis-Marke (§7). */
+  var kartenPfad = "/rest/v1/gerichte?betrieb_id=eq." + betrieb.id + "&select=name,karte,spur";
+  return ruf(kartenPfad + ",ab_alter")
+    .then(function(a){ return a.ok ? a.json() : ruf(kartenPfad).then(function(b){ return b.ok ? b.json() : []; }); })
     .then(function(liste){
-      spurNachName = {};
+      spurNachName = {}; alterNachName = {};
       (liste||[]).forEach(function(g){
         if(!g.name) return;
+        if(g.ab_alter === 16 || g.ab_alter === 18) alterNachName[g.name.trim().toLowerCase()] = g.ab_alter;
         /* Steht am Gericht eine Zuständigkeit, gilt die. Sonst wie
            früher aus der Karte hergeleitet — damit ein Betrieb, der
            noch nichts gesetzt hat, unverändert weiterläuft. */
@@ -1304,6 +1317,11 @@ function setzeBon(id, felder){
    Ein Bon kann Speisen und Getränke enthalten. Jede Spur sieht nur
    ihren Teil — sonst steht der Koch vor einer Liste Cocktails.
    ═══════════════════════════════════════════════════════════════ */
+/* Mindestalter einer Position — derselbe Namensweg wie bei der Spur. */
+function alterVon(posten){
+  var roh = String(posten.name||"").trim().toLowerCase();
+  return alterNachName[roh] || alterNachName[roh.split(" (")[0].trim()] || 0;
+}
 function spurVon(posten){
   /* Der Name kommt so, wie er beim Bestellen stand — inklusive
      Zusätzen in Klammern: „Dubai Crêpe (extra Pistazie)". Deshalb
@@ -1591,8 +1609,10 @@ function zeichne(){
         var klammer = name.indexOf(" (");
         var haupt = klammer > 0 ? name.slice(0, klammer) : name;
         var zusatz = klammer > 0 ? name.slice(klammer + 2, -1) : "";
+        var ab = alterVon(p);
         zeilen += '<li><span class="menge">' + (p.menge || 1) + '×</span>' +
                   '<span class="name">' + h(haupt) +
+                  (ab ? '<span class="ausweis">Ausweis ' + ab + '+</span>' : '') +
                   (zusatz ? '<span class="zusatz">' + h(zusatz) + '</span>' : '') +
                   '</span></li>';
       });

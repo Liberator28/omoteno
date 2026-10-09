@@ -77,7 +77,10 @@
 ═══════════════════════════════════════════════════════════════════
 -->
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- supabase-js fest und selbst ausgeliefert (08.10., Sicherheit): vorher
+     schwimmend von cdn.jsdelivr.net (@2) — ein kompromittiertes Paket
+     liefe hier mit den Anmeldedaten des Teams. integrity prüft die Datei. -->
+<script src="/lib/supabase-js-2.117.3.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R"></script>
 
 <style>
 /* FARBSCHEMA — kein Schmuck, sondern die Ansage an den Browser.
@@ -332,7 +335,7 @@ body{
   -webkit-font-smoothing:antialiased;
 }
 /* Zahlen laufen nicht, wenn sie sich ändern */
-.zahl,input[type=number],.preis,.uhr,.tischnr{font-variant-numeric:tabular-nums}
+.zahl,input[type=number],#fPreis,.preis,.uhr,.tischnr{font-variant-numeric:tabular-nums}
 
 button,input,select,textarea{font-family:inherit;font-size:inherit;color:inherit}
 button{cursor:pointer;border:none;background:none}
@@ -629,7 +632,7 @@ html{font-size:calc(16px * var(--skala,1))}
 }
 .gs-form input:focus{outline:none;border-color:var(--messing)}
 .gs-form input::placeholder{color:var(--gedaempft);-webkit-text-fill-color:var(--gedaempft);opacity:1}
-#gsCode{font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
+#gsPraefix,#rcPraefix{font-family:var(--mono);letter-spacing:.08em;text-transform:uppercase}
 
 /* ═══ Befehlsleiste unten ═══════════════════════════════════════
    Die Reiterleiste oben bleibt, wo Platz ist. Auf dem Telefon
@@ -1413,6 +1416,75 @@ body.hell .schritt[aria-pressed=true]{
 .kted-weg p{font-size:13.5px;color:var(--gedaempft);line-height:1.55;margin:4px 0 12px}
 .kted-weg .knopf{width:100%;margin-bottom:10px}
 
+/* Karten-Blatt: je Karte eine Zeile — Name groß, Unterzeile klein,
+   Zahl der Gerichte, ordnen, entfernen. Ein Scrollbereich (§3.8). */
+.kv-liste{display:flex;flex-direction:column;gap:10px;margin-bottom:12px}
+.kv-zeile{display:grid;grid-template-columns:1fr auto;gap:8px 10px;align-items:start;
+  padding:12px;border-radius:var(--r);background:var(--flaeche-2);border:1px solid var(--linie)}
+.kv-zeile.kv-entfernt{opacity:.62}
+.kv-felder{display:flex;flex-direction:column;gap:6px;min-width:0}
+.kv-felder input,.kv-felder select{
+  width:100%;min-height:44px;padding:8px 12px;border-radius:var(--ecke);
+  border:1px solid var(--linie);background:var(--nacht);
+  color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font:inherit;font-size:16px;-webkit-appearance:none;appearance:none;scroll-margin-top:96px}
+.kv-felder small{font-size:12.5px;color:var(--gedaempft);line-height:1.45}
+.kv-knoepfe{display:flex;flex-direction:column;gap:6px}
+.kv-knoepfe button{min-width:44px;min-height:44px;border-radius:var(--ecke);border:1px solid var(--linie);
+  background:var(--flaeche);color:var(--kreide);font:inherit;font-size:15px;cursor:pointer}
+.kv-knoepfe button:disabled{opacity:.35;cursor:default}
+.kv-knoepfe .kv-weg{color:var(--warn)}
+/* Mehrfachwahl „Gehört zu“ im Gericht-Blatt */
+.kartenchips{display:flex;flex-wrap:wrap;gap:8px}
+/* Eigene Kacheln, Karte je Kachel, Zeitplan */
+/* Gericht-Blatt: Vorschläge und „Mehr Angaben“ */
+.alterblock{margin:16px 0 4px}
+.alterblock .segment{margin:8px 0 6px}
+.rabattblock{margin:18px 0 6px;padding-top:14px;border-top:1px solid var(--linie)}
+.rabattblock .segment{margin:8px 0 10px}
+.rb-wert{display:block;margin:4px 0 10px}
+.rb-laeuft{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin-top:8px}
+.rb-stand{flex:1 1 200px;margin:0;font-size:14px;color:var(--kreide)}
+#rbStarten{width:100%}
+.gvorschlag{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:-4px 0 16px}
+.gvorschlag-satz{flex:1 1 100%;font-size:12.5px;color:var(--gedaempft)}
+.gvorschlag button{min-height:44px;padding:0 12px;border-radius:999px;border:1px dashed var(--messing);
+  background:transparent;color:var(--kreide);font:inherit;font-size:13.5px;cursor:pointer}
+.mehrangaben{display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
+  min-height:56px;padding:10px 14px;margin:4px 0 12px;border-radius:var(--r);
+  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);
+  font:inherit;text-align:left;cursor:pointer}
+.mehrtext{display:flex;flex-direction:column;gap:2px;min-width:0}
+.mehrtext b{font-size:15px;font-weight:600}
+.mehrtext small{font-size:12.5px;color:var(--gedaempft);line-height:1.4;overflow-wrap:anywhere}
+.mehrangaben .chevron{flex:none;transition:transform var(--t-klein) var(--ease-out)}
+.mehrangaben[aria-expanded=true] .chevron{transform:rotate(180deg)}
+.mehrinnen{padding-top:4px}
+.kbneu{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin:12px 0 4px}
+.kbneu .kted-neu{margin:0}
+.kbkarte,.kblink,.kbplan input,.kbplan select{
+  min-height:44px;padding:8px 12px;border-radius:var(--ecke);border:1px solid var(--linie);
+  background:var(--nacht);color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font:inherit;font-size:16px;-webkit-appearance:none;appearance:none;scroll-margin-top:96px;min-width:0}
+.kbkarte,.kblink{width:100%}
+.kbplan{display:grid;grid-template-columns:minmax(0,1fr) auto minmax(0,1fr);gap:6px 8px;align-items:center;margin:0 0 8px}
+.kbplan select{grid-column:1 / 3}
+.kbplan-weg{min-width:44px;min-height:44px;border-radius:var(--ecke);border:1px solid var(--linie);
+  background:transparent;color:var(--warn);font:inherit;cursor:pointer}
+.kbplan-neu{min-height:44px;padding:0 14px;border-radius:999px;border:1px dashed var(--linie);
+  background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+.kbloeschen{width:100%;margin-top:6px}
+.kartenchips button{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--linie);
+  background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+.kartenchips button[aria-pressed=true]{background:var(--messing);border-color:var(--messing);
+  color:var(--sockel);font-weight:600}
+body.hell .kartenchips button[aria-pressed=true]{color:var(--flaeche)}
+.kat.leer-kat .katkopf{opacity:.92}
+.leerkat-zeile{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:10px 2px 4px;font-size:13.5px;color:var(--gedaempft)}
+.leerkat-zeile button{min-height:44px;padding:0 14px;border-radius:999px;border:1px dashed var(--linie);
+  background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+
 /* Aufklappbare Gerichte-Zeile, Baustein wie .kbklapp/.kbsymknopf
    (admin.html, Kachel-Baukasten) — dasselbe Bedienprinzip, nicht neu
    erfunden. Zugeklappt zeigt sie nur Name + Preis (spart die Zeile,
@@ -1439,6 +1511,9 @@ body.hell .schritt[aria-pressed=true]{
 .gpreis{font-family:var(--mono);font-size:15px;font-weight:700;font-variant-numeric:tabular-nums;flex-shrink:0}
 .aus .gname,.aus .gpreis{text-decoration:line-through;opacity:.45}
 .aus .gallhinweis{opacity:.45}
+.rbmarke{
+  font-size:11px;font-weight:700;color:var(--messing);border:1px solid var(--messing);
+  padding:2px 6px;border-radius:4px;flex-shrink:0;font-variant-numeric:tabular-nums}
 .ausmarke{
   font-size:10px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;
   color:var(--warn);border:1px solid var(--warn);
@@ -2195,6 +2270,30 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
   color:var(--messing);font-weight:700;margin:16px 0 6px;
 }
 .ehilfe{font-size:13px;color:var(--gedaempft);line-height:1.55;margin:0 0 8px}
+.ae-liste{display:flex;flex-direction:column}
+.ae-zeile{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 12px;padding:12px 0;border-top:1px solid var(--linie)}
+.ae-zeile:first-child{border-top:none}
+.ae-wer{font-weight:700;font-size:14px;color:var(--kreide);overflow-wrap:anywhere}
+.ae-wann{font-size:12.5px;color:var(--gedaempft);font-variant-numeric:tabular-nums;white-space:nowrap}
+.ae-was{grid-column:1 / -1;font-size:14px;line-height:1.45;color:var(--kreide);overflow-wrap:anywhere}
+/* Rolle (migration-rollen.sql): Was nur der Besitzer ändert, sieht das
+   Team, kann es aber nicht bedienen — und liest VORHER, warum. Die
+   Datenbank hält ohnehin; das hier erspart das Tippen ins Leere. */
+.nur-inhaber-satz{display:flex;align-items:center;gap:8px;margin:2px 0 10px;
+  font-size:14px;line-height:1.45;color:var(--kreide);font-weight:600}
+.nur-inhaber-satz svg{flex:none;width:16px;height:16px;fill:none;stroke:var(--messing);
+  stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+body[data-rolle="team"] [data-nur-inhaber] > [inert]{opacity:.5}
+body[data-rolle="team"] .kartenknoepfe,
+body[data-rolle="team"] #runner,
+body[data-rolle="team"] [data-bearbeiten],
+body[data-rolle="team"] [data-schieb],
+body[data-rolle="team"] [data-katschieb],
+body[data-rolle="team"] [data-kted-neu],
+body[data-rolle="team"] [data-karte-neu],
+body[data-rolle="team"] [data-karten-bearbeiten],
+body[data-rolle="team"] [data-leerkat-gericht],
+body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
 .ezeile{
   display:flex;align-items:center;gap:16px;
   padding:14px 0;border-top:1px solid var(--linie);cursor:pointer;
@@ -2204,6 +2303,24 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
 .ezeile b{font-size:15px;font-weight:600;color:var(--kreide)}
 .ezeile i{font-size:12.5px;font-style:normal;color:var(--gedaempft);line-height:1.45}
 .ezeile[aria-disabled="true"]{opacity:.45;cursor:not-allowed}
+/* Gäste & Newsletter (Besitzer-Übersicht). Die Kennzahl-Kacheln der
+   Auswertung, hier mit eigener Fläche — ohne sie stünden sie auf der
+   Gruppenfläche ohne Rand (.aw-kpi hat außerhalb der Auswertung keinen
+   Grund, vgl. .aw-blatt .aw-kpi). Immer zwei Spalten: die Gruppe ist
+   schmal, auch am Tresen. */
+.nlu .aw-kpis{grid-template-columns:repeat(2,minmax(0,1fr));margin:0}
+.nlu .aw-kpi{background:var(--flaeche-2);border:1px solid var(--linie);border-radius:14px}
+.nlu .aw-kpi .aw-wert{font-size:20px}
+.nlu-ablaeufe{list-style:none;margin:0;padding:0;display:grid;gap:8px}
+.nlu-ablaeufe:empty{display:none}
+.nlu-ablauf{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding:6px 12px;border:1px solid var(--linie);border-radius:12px}
+.nlu-name{flex:1 1 160px;min-width:0;font-size:14px;color:var(--kreide)}
+.nlu-stand{font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;border:1px solid currentColor;color:var(--gedaempft)}
+.nlu-stand.live{color:var(--gut)}
+.nlu-stand.unklar{color:var(--messing)}
+.nlu-link{font-size:13px;color:var(--messing);min-height:44px;display:inline-flex;align-items:center}
+.nlu-satz{font-size:13px;line-height:1.6;color:var(--gedaempft);margin:0}
+.nlu-satz.warn{color:var(--messing)}
 
 /* Schalter: eigener Bau statt Systemhäkchen, damit er auf dem
    dunklen Board nicht als weißer Klotz heraussticht.
@@ -2430,6 +2547,11 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
     transparent 58%,rgba(20,12,8,.16) 100%);
 }
 .bildknoepfe{display:flex;flex-direction:column;gap:8px;flex:1}
+.gbzuschnitt{margin:4px 0 12px}
+.gbrahmen{width:100%;max-width:360px;aspect-ratio:1 / 1;margin:6px auto 0;border-radius:14px;
+  box-shadow:0 3px 8px rgba(42,26,20,.18),0 1px 3px rgba(42,26,20,.12)}
+.gbknoepfe{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}
+.gbknoepfe .knopf{flex:1 1 140px}
 .bildknoepfe .knopf{padding:11px 14px;font-size:14px;text-align:center;cursor:pointer}
 .bildstand{font-size:12.5px;color:var(--gedaempft);line-height:1.5;margin-bottom:8px}
 .bildstand.laeuft{color:var(--messing)}
@@ -3065,11 +3187,14 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </form>
     </div>
 
+    <!-- Karten-Chips: aus dem Verzeichnis gezeichnet (kartenWahlZeichnen),
+         dahinter „＋ Karte“ und „Bearbeiten“. Vorher standen hier fest drei. -->
     <div class="filterzeile" id="kartenWahl" style="margin-bottom:16px">
       <button class="chip" data-karte="speisekarte" aria-pressed="true">Speisekarte</button>
       <button class="chip" data-karte="getraenke"   aria-pressed="false">Getränke</button>
       <button class="chip" data-karte="cocktails"   aria-pressed="false">Cocktails</button>
     </div>
+    <p class="nur-inhaber-satz" id="karteTeamSatz" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Die Karte ändert nur der Besitzer. Ausverkauftes stellen Sie unter „Verfügbar“ ab.</span></p>
     <input type="text" class="suche" id="karteSuche" placeholder="Gericht suchen" autocomplete="off">
     <div id="karteListe"></div>
     <div class="kartenknoepfe">
@@ -3213,7 +3338,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          alten Kachel-Überschrift) und nirgends für das neue Banner-Rad.
          Bewusst ohne neue Mechanik (Nutzer-Entscheidung): reine Rahmung,
          keine Umsortierung, kein freies Hinzufügen bei den Kacheln. -->
-    <div class="egruppe">
+    <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Ihre Seite</h2>
       <p class="ehilfe">Alles, was Ihr Gast als Erstes sieht, wenn er das
         Handy auf den Untersetzer legt — in der Reihenfolge, in der es
@@ -3232,7 +3357,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="hvrahmen" data-hv="startseite"></div>
     </div>
 
-    <div class="egruppe" id="swGruppe">
+    <div class="egruppe" data-nur-inhaber id="swGruppe">
       <h2 class="etitel">Schrift</h2>
       <p class="ehilfe">Für jeden Textbereich Ihrer Seite einzeln — aus unserer
         Auswahl oder Ihre eigene Schriftdatei. „Alle Überschriften“ ist die
@@ -3299,7 +3424,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="swPruefung" aria-live="polite"></div>
     </div>
 
-    <div class="egruppe">
+    <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Kacheln</h2>
       <p class="ehilfe">Die Knöpfe auf Ihrer Seite — welche erscheinen, wie
         sie heißen und welches Bild darauf liegt.</p>
@@ -3311,6 +3436,12 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         Namen antippen, um sie einzustellen.</p>
 
       <div class="kbliste" id="kbListe"></div>
+      <!-- Eigene Kacheln anlegen (Wunsch 07.10.): eine weitere Karte
+           (Mittags-, Abendkarte …) oder ein Link. Löschen in der Zeile. -->
+      <div class="kbneu">
+        <button type="button" class="kted-neu" id="kbNeuKarte"><span aria-hidden="true">＋</span> Karten-Kachel</button>
+        <button type="button" class="kted-neu" id="kbNeuLink"><span aria-hidden="true">＋</span> Link-Kachel</button>
+      </div>
 
       <div class="ezeile senkrecht">
         <span><b>Übernehmen</b><i>Gäste sehen es beim nächsten Öffnen</i></span>
@@ -3333,7 +3464,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          wird darunter in einer normalen Liste — ein volles
          Bearbeitungsformular (Bild, Titel, Ziel-Wahl) passt nicht
          bequem in eine wischbare Karte hinein. -->
-    <div class="egruppe">
+    <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Aktions-Banner-Rad</h2>
       <p class="ehilfe">Ein wischbares Bilderkarussell ganz oben auf der
         Startseite — für ein Angebot, eine Neuigkeit oder eine laufende
@@ -3399,7 +3530,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="tonPruefung"></div>
     </div>
 
-    <div class="egruppe">
+    <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Ihre Worte im Gast-Hub</h2>
       <p class="ehilfe">Farben, Schriften und Aufbau kommen aus dem Marken-Studio —
         das bleibt so, damit der Hub zusammenhält. Hier stehen die Sätze, die Sie
@@ -3451,7 +3582,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="hubTextePruefung"></div>
     </div>
 
-    <div class="egruppe">
+    <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Lieferung</h2>
       <p class="ehilfe">Ist sie an, kann ein Gast sich von zu Hause beliefern lassen —
         dieselbe Karte, derselbe Korb, nur mit Adresse statt Tischnummer.
@@ -3535,13 +3666,14 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="lfPruefung"></div>
     </div>
 
-    <div class="egruppe">
+    <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Gäste-Newsletter</h2>
       <p class="ehilfe">Gäste, die im Hub unter „Mein Tisch" ihre E-Mail
-        hinterlegen, bekommen wöchentlich einen kleinen Gutschein und —
-        wenn 20 Tage lang keine neue Bestellung kam — eine Erinnerung
-        mit Gutschein. Die E-Mail bestätigt sich selbst, bevor
-        irgendetwas verschickt wird.</p>
+        hinterlegen und bestätigen, bekommen einmal einen
+        Willkommensgutschein — und wenn sie 20 Tage nicht da waren,
+        die Erinnerung „Wir vermissen Sie“ mit Gutschein. Jeder Besuch
+        und jede Bestellung zählt die 20 Tage neu. Verschickt wird erst,
+        wenn die Abläufe in Klaviyo auf „Live“ stehen.</p>
 
       <div class="schalter">
         <div><div class="schaltertext">Newsletter aktiv</div>
@@ -3550,11 +3682,22 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
 
       <div class="ezeile senkrecht">
-        <span><b>Rabattcode-Vorrat</b><i>Für den Wochen-Flow — ohne Vorrat kann Klaviyo niemandem einen Code zuteilen</i></span>
+        <span><b>Rabattcode-Vorrat</b><i>Für beide Abläufe — ohne Vorrat kann Klaviyo niemandem einen Code zuteilen</i></span>
         <p class="epruefung" id="nlVorratStand">Vorrat wird geladen …</p>
         <div class="eknoepfe">
           <button class="knopf leise" id="nlVorratAuffuellen">20 neue Codes anlegen</button>
         </div>
+      </div>
+
+      <!-- Übersicht für den Besitzer (migration-gaeste-uebersicht.sql +
+           Edge Function newsletter-uebersicht). Zahlen aus der eigenen
+           Datenbank, Stand der Abläufe aus Klaviyo. Eigene Klassen statt
+           b/i: .ezeile b/.ezeile i greifen auf JEDES b/i darin (§1.1). -->
+      <div class="ezeile senkrecht nlu" id="nlUebersicht">
+        <span><b>Gäste &amp; Newsletter</b><i>Ihre Zahlen und was Klaviyo gerade tut</i></span>
+        <div class="aw-kpis" id="nluKacheln"></div>
+        <ul class="nlu-ablaeufe" id="nluAblaeufe"></ul>
+        <p class="nlu-satz" id="nluSatz">Übersicht wird geladen …</p>
       </div>
       <div class="epruefung" id="nlPruefung"></div>
     </div>
@@ -3568,18 +3711,21 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          Eigene Gruppe statt in „Rabattcode-Vorrat" gemischt: der
          Klaviyo-Vorrat zählt eigene, automatisch vergebene Codes —
          gemischt mit von Hand angelegten wäre die Zahl dort irreführend. -->
-    <div class="egruppe" id="rcGruppe">
+    <div class="egruppe" data-nur-inhaber data-gutschein-recht id="rcGruppe">
       <h2 class="etitel">Eigene Rabattcodes</h2>
       <p class="ehilfe">Legen Sie selbst einen Code an — mit Prozent oder festem
         Betrag, für die ganze Rechnung oder für ein bestimmtes Gericht. Ihr Team
-        löst ihn später auf der Bestellkarte ein.</p>
+        löst ihn später auf der Bestellkarte ein. Jeder Code wird mit der PIN
+        bestätigt — so steht fest, wer ihn ausgestellt hat.</p>
+      <p class="ehilfe" id="rcRahmen" hidden></p>
 
       <form id="rcForm">
         <label class="feld">
-          <span>Code</span>
-          <input type="text" id="rcCode" maxlength="24" autocomplete="off"
-                 autocapitalize="characters" spellcheck="false">
-          <small class="feldhilfe">Wird am Tisch vorgelesen — nur A–Z, 0–9 und Bindestrich.</small>
+          <span>Vorsilbe (freiwillig)</span>
+          <input type="text" id="rcPraefix" maxlength="8" autocomplete="off"
+                 autocapitalize="characters" spellcheck="false" placeholder="SOMMER">
+          <small class="feldhilfe">Bis zu 8 Zeichen, A–Z und 0–9. Den Rest würfelt der Server —
+            zehn Zeichen, die niemand erraten kann.</small>
         </label>
 
         <div class="auswahlfeld" id="rcArtFeld">
@@ -3627,11 +3773,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          Klaviyo; ein Gutschein hier steht beim Gast unter „Mein Tisch"
          und wird am Tisch gezeigt. Kein Betrag — die Tabelle kennt
          keinen, das Team entscheidet am Tisch. -->
-    <div class="egruppe" id="gsGruppe">
+    <div class="egruppe" data-nur-inhaber data-gutschein-recht id="gsGruppe">
       <h2 class="etitel">Gutscheine für Stammgäste</h2>
       <p class="ehilfe">Was Sie hier anlegen, sehen Ihre Gäste sofort im Hub
         unter „Mein Tisch" — ohne Konto, ohne Passwort. Eingelöst wird am
-        Tisch: Der Gast zeigt den Code, Ihr Team entscheidet.</p>
+        Tisch: Der Gast zeigt den Code, Ihr Team entscheidet. Jeder Gutschein
+        wird mit der PIN bestätigt.</p>
+      <p class="ehilfe" id="gsRahmen" hidden></p>
 
       <div class="gs-liste" id="gsListe" aria-live="polite"></div>
 
@@ -3650,10 +3798,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </label>
         <div class="runner-zwei">
           <label class="feld">
-            <span>Code</span>
-            <input type="text" id="gsCode" maxlength="24" autocomplete="off"
-                   autocapitalize="characters" spellcheck="false">
-            <small class="feldhilfe">Wird am Tisch vorgelesen — nur A–Z, 0–9 und Bindestrich.</small>
+            <span>Vorsilbe (freiwillig)</span>
+            <input type="text" id="gsPraefix" maxlength="8" autocomplete="off"
+                   autocapitalize="characters" spellcheck="false" placeholder="DANKE">
+            <small class="feldhilfe">Bis zu 8 Zeichen. Den Code vergibt der Server.</small>
           </label>
           <label class="feld">
             <span>Gültig bis (freiwillig)</span>
@@ -3671,7 +3819,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          (zusammengeführt, keine neue Spalte). Die Zeit setzt das Team
          weiter — sie steuert Küche und Mahnung, nur der Gast sieht sie
          dann nicht. -->
-    <div class="egruppe">
+    <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Bestellstand beim Gast</h2>
       <p class="ehilfe">Was Ihr Gast nach dem Bestellen auf seinem Telefon sieht,
         sobald Sie eine Zeit zugesagt haben.</p>
@@ -3683,7 +3831,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         zugesagt haben, zählt herunter.</p>
     </div>
 
-    <div class="egruppe">
+    <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Foodroulette</h2>
       <p class="ehilfe">Die Entscheidungshilfe auf der Speisekarte: Der Gast wischt
         durch Gerichte oder lässt sich eines auslosen. Aus = die Speisekarte zeigt
@@ -3695,7 +3843,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
     </div>
 
-    <div class="egruppe">
+    <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Figur des Hauses</h2>
       <p class="ehilfe">Welche Figur den Gast im Hub begleitet, welche
         Stimmung sie hat und was sie je Bestellphase in der Hand hält —
@@ -3742,6 +3890,17 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <span><b>Mahnen nach</b><i id="mahnWert">10 Minuten</i></span>
         <input type="range" min="0" max="30" step="5" id="mahnRegler" class="regler">
       </div>
+    </div>
+
+    <!-- Wer hat was geändert (migration-protokoll.sql). Geschrieben nur
+         von Triggern, gelesen nur vom Inhaber — für das Team bleibt die
+         Liste leer, und die Gruppe sagt warum. -->
+    <div class="egruppe" data-nur-inhaber>
+      <h2 class="etitel">Wer hat was geändert</h2>
+      <p class="ehilfe">Jede Änderung an Karte, Startseite, Aktionen und Gutscheinen —
+      mit Namen und Uhrzeit. Bestellungen stehen hier nicht.</p>
+      <div id="aeListe" class="ae-liste" aria-live="polite"><p class="ehilfe">Wird geladen …</p></div>
+      <div class="eknoepfe"><button class="knopf leise" id="aeMehr" hidden>Ältere zeigen</button></div>
     </div>
 
     <div class="egruppe">
@@ -3870,6 +4029,22 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   </div>
 </div>
 
+<!-- ══ Karten: anlegen, benennen, ordnen, entfernen (bis 20) ══ -->
+<div class="blatt" id="kvBlatt" hidden role="dialog" aria-modal="true" aria-labelledby="kvTitel">
+  <div class="blattinhalt kted-blatt">
+    <div class="griff"></div>
+    <h2 class="blatttitel" id="kvTitel">Karten</h2>
+    <p class="kted-hilfe">Bis zu 20 Karten, z.&nbsp;B. Mittags- und Abendkarte. Ein Gericht darf in
+      mehreren stehen. Welche Karte eine Kachel zeigt, stellst du unter „Startseite“ ein.</p>
+    <div id="kvListe" class="kv-liste"></div>
+    <button type="button" class="kted-neu" id="kvNeu"><span aria-hidden="true">＋</span> Neue Karte</button>
+    <div class="kted-knoepfe" style="margin-top:16px">
+      <button type="button" class="knopf" id="kvSichern">Sichern</button>
+      <button type="button" class="knopf leise" id="kvAbbrechen">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <div class="blatt" id="awBlatt" hidden role="dialog" aria-modal="true" aria-label="Auswertung">
   <div class="blattinhalt aw-blatt">
     <div class="griff"></div>
@@ -3980,6 +4155,26 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
      an den Gast geht: schreiben — und dann GENAU den Text bestätigen,
      den der Gast lesen wird. Gesendet wird serverseitig nur, was diese
      zweite Stufe gezeigt hat (notiz_senden, migration-notizen.sql). -->
+<!-- Ausstellen mit PIN (migration-gutschein-sicher.sql). Eigenes Blatt,
+     NICHT der geteilte PIN-Block der Anmeldung (der ist in drei Dateien
+     Zeichen für Zeichen gleich, pruef-pin.js). -->
+<div class="blatt" id="apBlatt" hidden role="dialog" aria-modal="true" aria-labelledby="apTitel">
+  <div class="blattinhalt">
+    <div class="griff"></div>
+    <h2 class="blatttitel" id="apTitel">Mit PIN bestätigen</h2>
+    <p class="ehilfe" id="apHilfe"></p>
+    <label><span class="lname">PIN (8 Ziffern)</span>
+      <input type="password" id="apPin" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <label id="apZweit" hidden><span class="lname">Noch einmal</span>
+      <input type="password" id="apPin2" inputmode="numeric" maxlength="8" autocomplete="off"></label>
+    <p class="nzmeldung" id="apMeldung" role="status"></p>
+    <div class="blattfuss">
+      <button type="button" class="knopf" id="apOk">Bestätigen</button>
+      <button type="button" class="knopf leise" id="apWeg">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
 <div class="blatt" id="nzBlatt" hidden>
   <div class="blattinhalt">
     <div class="griff"></div>
@@ -4079,26 +4274,9 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <label><span class="lname">Name</span>
       <input type="text" id="fName" placeholder="Negroni Sbagliato"></label>
 
-    <label><span class="lname">Beschreibung</span>
-      <textarea id="fBeschr" placeholder="Campari, roter Wermut, Prosecco"></textarea></label>
-
-    <!-- Hier standen zwei Handfelder, EN und TR. Elf Sprachen von Hand
-         zu tippen tut kein Wirt — und zwei von zwoelf sind schlimmer
-         als keine, weil der Gast dann NUR auf Englisch und Tuerkisch
-         etwas findet und in neun Sprachen Deutsch liest. Uebersetzt
-         wird jetzt beim Speichern, in alle elf. -->
-    <div class="uebblock" id="uebBlock">
-      <span class="lname">Sprachen <span class="lzusatz">elf, beim Speichern automatisch</span></span>
-      <p class="uebstand" id="uebStand">Wird beim Speichern übersetzt.</p>
-      <div class="uebreihe">
-        <button type="button" class="knopf leise" id="uebJetzt">Jetzt übersetzen</button>
-        <button type="button" class="knopf leise" id="uebZeigen">Ansehen und ändern</button>
-      </div>
-    </div>
-
     <div class="zweispalt">
       <label><span class="lname">Preis</span>
-        <input type="number" id="fPreis" step="0.10" min="0" inputmode="decimal" placeholder="9.50"></label>
+        <input type="text" id="fPreis" inputmode="decimal" autocomplete="off" placeholder="9,50"></label>
 
       <!-- Auswahlfeld statt Feld+datalist: das native datalist-Dropdown
            sieht auf jedem Geraet anders aus und laesst sich nicht
@@ -4125,48 +4303,42 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
     </div>
 
-    <div class="stoffblock">
-      <span class="lname">Allergene <span class="lzusatz">nach LMIV · Mehrfachauswahl</span></span>
-      <div class="stoffgitter" id="fAllergene" role="group" aria-label="Allergene"></div>
-    </div>
-
-    <div class="stoffblock">
-      <span class="lname">Zusatzstoffe <span class="lzusatz">nach LMZDV · nur wenn zutreffend</span></span>
-      <div class="stoffgitter" id="fZusatz" role="group" aria-label="Zusatzstoffe"></div>
-    </div>
-
-    <label><span class="lname">Genauer Hinweis <span class="lzusatz">(optional, aber oft hilfreich)</span></span>
-      <input type="text" id="fStoffHinweis" maxlength="300"
-             placeholder="Schalenfrüchte: Pistazien, Haselnüsse"></label>
-    <p class="stoffhilfe">Die Gruppen oben sind Pflicht. Der genaue Hinweis hilft dort, wo
-      die Gruppe zu grob ist — wer Pistazien nicht verträgt, kann mit „Schalenfrüchte“
-      allein wenig anfangen. Alles erscheint beim Gast unter „Inhalt &amp; Allergene“.
-      Für die inhaltliche Richtigkeit ist der Betrieb verantwortlich.</p>
+    <!-- Vorschläge aus Name und Kategorie (Allergene, Altersfreigabe):
+         antippen setzt, nichts wird von selbst gesetzt. -->
+    <div class="gvorschlag" id="gVorschlag" hidden></div>
 
     <div class="bildfeld">
       <span class="lname">Foto <span style="text-transform:none;letter-spacing:0;font-weight:400">(optional)</span></span>
 
       <div class="bildzeile">
         <div class="bildschau" id="bildSchau" aria-hidden="true"></div>
-        <div id="bildCropContainer" hidden style="position:relative;
-          width:100%;max-width:600px;background:#f5f5f5;margin:12px 0;
-          border:1px solid #ccc;border-radius:12px;overflow:hidden;
-          box-shadow:0 3px 8px rgba(42,26,20,.18),0 1px 3px rgba(42,26,20,.12);
-          aspect-ratio:4/3">
-          <canvas id="bildCropCanvas" style="display:block;width:100%;height:100%"></canvas>
-          <div id="bildCropOverlay" style="position:absolute;border:2px dashed rgba(224,178,78,.7);
-            background:rgba(224,178,78,.08);cursor:move;touch-action:none"></div>
-          <div style="position:absolute;bottom:8px;left:8px;right:8px;display:flex;gap:8px">
-            <button type="button" class="knopf" id="bildCropBestaetigen">Zuschnitt übernehmen</button>
-            <button type="button" class="knopf leise" id="bildCropAbbrechen">Abbrechen</button>
-          </div>
-        </div>
         <div class="bildknoepfe">
           <!-- accept="image/*" öffnet auf dem iPhone direkt Kamera,
                Fotomediathek und Dateien zur Auswahl. -->
           <label class="knopf leise" for="fDatei">Foto wählen</label>
           <input type="file" id="fDatei" accept="image/*" hidden>
           <button type="button" class="knopf leise" id="bildWeg" hidden>Entfernen</button>
+        </div>
+      </div>
+
+      <!-- Zuschnitt (Wunsch 07.10.): festes Quadrat, genau die Form, in
+           der der Gast das Foto in der Karte sieht. Ein Finger schiebt,
+           zwei zoomen; kleiner als „füllt das Quadrat“ geht nicht — einen
+           Rand kann es also nicht geben. -->
+      <div class="gbzuschnitt" id="gbZuschnitt" hidden>
+        <p class="ehilfe">So sieht der Gast das Foto. Mit einem Finger verschieben, mit zwei Fingern zoomen.</p>
+        <div class="kbrahmen gbrahmen" id="gbRahmen">
+          <img id="gbBild" alt="">
+          <div class="kbraster"></div>
+        </div>
+        <label class="kbzoom">
+          <span>Größe</span>
+          <input type="range" id="gbZoom" min="100" max="300" step="1" value="100"
+                 class="regler" aria-label="Foto vergrößern">
+        </label>
+        <div class="gbknoepfe">
+          <button type="button" class="knopf" id="gbOk">Zuschnitt übernehmen</button>
+          <button type="button" class="knopf leise" id="gbWeg">Abbrechen</button>
         </div>
       </div>
 
@@ -4199,24 +4371,61 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
     </div>
 
-    <!-- Segment statt natives <select>: drei feste Werte, keine
-         Texteingabe noetig. #fKarte bleibt das echte Feld (jeder
-         Aufruf wie $("#fKarte").value oder .onchange greift weiter),
-         nur visuell verborgen — die Segmente setzen seinen Wert und
-         loesen ein echtes "change" aus, mehr aendert sich nicht. -->
-    <div class="auswahlfeld">
-      <span class="lname">Gehört zur Karte</span>
-      <select id="fKarte" class="sr-nur">
-        <option value="speisekarte">Speisekarte</option>
-        <option value="getraenke">Getränke</option>
-        <option value="cocktails">Cocktails</option>
-      </select>
-      <div class="segment" id="karteSegment" role="radiogroup" aria-label="Gehört zur Karte">
-        <button type="button" data-wert="speisekarte" role="radio">Speisekarte</button>
-        <button type="button" data-wert="getraenke" role="radio">Getränke</button>
-        <button type="button" data-wert="cocktails" role="radio">Cocktails</button>
-        <i class="segmentschieber" aria-hidden="true"></i>
+    <!-- Wunsch 07.10.: „viel einfacher anlegen“. Oben steht nur, was
+         jedes Gericht braucht; alles Weitere liegt hier, zugeklappt, mit
+         einem Satz, was davon gesetzt ist. Öffnet sich von selbst, sobald
+         ein Feld darin den Fokus bekommt (Tastatur, Vorleseprogramm). -->
+    <button type="button" class="mehrangaben" id="mehrAuf" aria-expanded="false" aria-controls="mehrKlapp">
+      <span class="mehrtext"><b>Mehr Angaben</b><small id="mehrStand">Beschreibung, Allergene, Karten, Küche oder Theke</small></span>
+      <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div class="kbklapp mehrklapp" id="mehrKlapp"><div><div class="mehrinnen">
+    <label><span class="lname">Beschreibung</span>
+      <textarea id="fBeschr" placeholder="Campari, roter Wermut, Prosecco"></textarea></label>
+    <!-- Hier standen zwei Handfelder, EN und TR. Elf Sprachen von Hand
+         zu tippen tut kein Wirt — und zwei von zwoelf sind schlimmer
+         als keine, weil der Gast dann NUR auf Englisch und Tuerkisch
+         etwas findet und in neun Sprachen Deutsch liest. Uebersetzt
+         wird jetzt beim Speichern, in alle elf. -->
+    <div class="uebblock" id="uebBlock">
+      <span class="lname">Sprachen <span class="lzusatz">elf, beim Speichern automatisch</span></span>
+      <p class="uebstand" id="uebStand">Wird beim Speichern übersetzt.</p>
+      <div class="uebreihe">
+        <button type="button" class="knopf leise" id="uebJetzt">Jetzt übersetzen</button>
+        <button type="button" class="knopf leise" id="uebZeigen">Ansehen und ändern</button>
       </div>
+    </div>
+
+
+
+    <div class="stoffblock">
+      <span class="lname">Allergene <span class="lzusatz">nach LMIV · Mehrfachauswahl</span></span>
+      <div class="stoffgitter" id="fAllergene" role="group" aria-label="Allergene"></div>
+    </div>
+
+    <div class="stoffblock">
+      <span class="lname">Zusatzstoffe <span class="lzusatz">nach LMZDV · nur wenn zutreffend</span></span>
+      <div class="stoffgitter" id="fZusatz" role="group" aria-label="Zusatzstoffe"></div>
+    </div>
+
+    <label><span class="lname">Genauer Hinweis <span class="lzusatz">(optional, aber oft hilfreich)</span></span>
+      <input type="text" id="fStoffHinweis" maxlength="300"
+             placeholder="Schalenfrüchte: Pistazien, Haselnüsse"></label>
+    <p class="stoffhilfe">Die Gruppen oben sind Pflicht. Der genaue Hinweis hilft dort, wo
+      die Gruppe zu grob ist — wer Pistazien nicht verträgt, kann mit „Schalenfrüchte“
+      allein wenig anfangen. Alles erscheint beim Gast unter „Inhalt &amp; Allergene“.
+      Für die inhaltliche Richtigkeit ist der Betrieb verantwortlich.</p>
+
+    <!-- Gehört zu: Mehrfachwahl aller Karten (seit 07.10. bis zu 20, ein
+         Gericht darf in mehreren stehen). #fKarte bleibt das echte Feld
+         für die ERSTE Karte (gerichte.karte, Küche, Auswertung) — jeder
+         vorhandene Zugriff auf $("#fKarte") greift weiter. -->
+    <div class="auswahlfeld">
+      <span class="lname">Gehört zu <span class="lzusatz">eine oder mehrere Karten</span></span>
+      <select id="fKarte" class="sr-nur" tabindex="-1" aria-hidden="true">
+        <option value="speisekarte">Speisekarte</option>
+      </select>
+      <div class="kartenchips" id="fKarten" role="group" aria-label="Gehört zu den Karten"></div>
     </div>
 
     <div class="stoffblock">
@@ -4249,8 +4458,55 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <button class="wippe" id="fVerf" aria-pressed="true" aria-label="Verfügbarkeit"></button>
     </div>
 
+    <!-- Altersfreigabe (Wunsch 07.10.): gerichte.ab_alter, nur 16 oder 18
+         (CHECK gerichte_ab_alter_form). Der Hub kennzeichnet und fragt
+         einmal je Sitzung nach; die Küche sieht „Ausweis“ am Bon. -->
+    <div class="alterblock">
+      <span class="lname">Altersfreigabe <span class="lzusatz">wird beim Gast gekennzeichnet</span></span>
+      <div class="segment" id="fAlter" role="radiogroup" aria-label="Altersfreigabe">
+        <button type="button" data-ab-alter="" role="radio" aria-checked="true">Keine</button>
+        <button type="button" data-ab-alter="16" role="radio" aria-checked="false">16+</button>
+        <button type="button" data-ab-alter="18" role="radio" aria-checked="false">18+</button>
+        <i class="segmentschieber" aria-hidden="true"></i>
+      </div>
+      <p class="feldhilfe">16+ für Bier, Wein, Sekt · 18+ für Spirituosen und Getränke damit.
+        Der Gast bestätigt einmal; den Ausweis prüft das Personal.</p>
+    </div>
+
+    <!-- Rabatt direkt am Gericht (Wunsch 07.10.): schreibt eine Zeile in
+         aktionen — dieselbe Tabelle wie „Aktion starten“, kein zweites
+         System. Der Gast sieht in der Karte alten und neuen Preis. -->
+    <div class="rabattblock" id="rbBlock">
+      <span class="lname">Rabatt <span class="lzusatz">in der Karte mit altem und neuem Preis</span></span>
+      <p class="feldhilfe" id="rbErst" hidden>Erst speichern — dann lässt sich das Gericht hier rabattieren.</p>
+      <div class="rb-laeuft" id="rbLaeuft" hidden>
+        <p class="rb-stand" id="rbStand"></p>
+        <button type="button" class="knopf leise" id="rbEnde">Rabatt beenden</button>
+      </div>
+      <div class="rb-neu" id="rbNeu" hidden>
+        <div class="segment" id="rbArt" role="radiogroup" aria-label="Art des Rabatts">
+          <button type="button" data-rb-art="prozent" role="radio" aria-checked="true">Prozent</button>
+          <button type="button" data-rb-art="preis" role="radio" aria-checked="false">Neuer Preis</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+        <label class="rb-wert"><span class="lname" id="rbWertName">Prozent</span>
+          <input type="text" id="rbWert" inputmode="decimal" autocomplete="off" placeholder="20"></label>
+        <div class="segment" id="rbDauer" role="radiogroup" aria-label="Wie lange">
+          <button type="button" data-rb-dauer="heute" role="radio" aria-checked="true">Heute</button>
+          <button type="button" data-rb-dauer="woche" role="radio" aria-checked="false">7 Tage</button>
+          <button type="button" data-rb-dauer="offen" role="radio" aria-checked="false">Bis ich es beende</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+        <p class="feldhilfe" id="rbVorschau"></p>
+        <button type="button" class="knopf" id="rbStarten">Rabatt starten</button>
+      </div>
+    </div>
+
+    </div></div></div>
+
     <div class="blattfuss">
       <button class="knopf" id="speichern">Speichern</button>
+      <button class="knopf leise" id="speichernWeiter" hidden>Speichern &amp; nächstes</button>
       <button class="knopf leise" id="kopie" hidden>Als Kopie anlegen</button>
       <button class="knopf leise" id="abbrechen">Abbrechen</button>
       <button class="knopf gefahr" id="loeschen" hidden>Gericht löschen</button>
@@ -4308,7 +4564,13 @@ const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 let db = null, betriebId = null, demo = false;
 /* Kommt die Seite aus dem Link „Passwort zurücksetzen“? Das steht nur
    jetzt in der Adresse — supabase-js räumt sie beim Start ab. */
-const WIEDERHERSTELLEN = /type=recovery/.test(location.hash + location.search);
+/* recovery = „Passwort vergessen“, invite = Einladung ins Team
+   (Edge Function team-zugang). Beide kommen mit einer Sitzung, aber das
+   eingeladene Konto hat noch GAR KEIN Passwort — ohne dieses Formular
+   käme es nach dem Abmelden nie wieder herein. Vor createClient lesen,
+   danach steht es nicht mehr in der Adresse (§8.1n). */
+const EINLADUNG = /type=invite/.test(location.hash + location.search);
+const WIEDERHERSTELLEN = EINLADUNG || /type=recovery/.test(location.hash + location.search);
 
 /* ─── Mehrere Betriebe ──────────────────────────────────────────
    meineBetriebe  alle Betriebe, zu denen das Konto gehört
@@ -4445,6 +4707,13 @@ const $$ = s => [...document.querySelectorAll(s)];
 /* ─── Meldungen ───────────────────────────────────────────── */
 let meldungsUhr;
 function melde(text, fehler){
+  /* Die Wache antwortet „nur_inhaber“, eine Regel „row-level security“ —
+     beides ist für das Team derselbe Satz, nie rohes Postgres. Beim
+     Inhaber bleibt eine RLS-Meldung, wie sie ist: dort hat sie einen
+     anderen Grund, und ein falscher Satz versteckte ihn. */
+  if(fehler && (/nur_inhaber/.test(String(text)) ||
+     (typeof istInhaberRolle === "function" && !istInhaberRolle() && /row-level security|42501/i.test(String(text)))))
+    text = "Nur der Besitzer kann das ändern.";
   const m = $("#meldung");
   m.textContent = text;
   m.classList.toggle("fehler", !!fehler);
@@ -4452,6 +4721,47 @@ function melde(text, fehler){
   clearTimeout(meldungsUhr);
   meldungsUhr = setTimeout(()=> m.hidden = true, fehler ? 5200 : 2400);
 }
+
+/* ═══ ROLLE · Besitzer oder Team (migration-rollen.sql) ═══
+   Die Datenbank entscheidet (Wachen auf betriebe/gerichte, Regeln auf
+   Gerichten, Aktionen, Gutscheinen, Bildern). Das hier sagt es nur
+   VORHER. Unbekannte Rolle zählt als Inhaber: Die Anzeige sperrt
+   niemanden aus, der Server hält trotzdem (§7). */
+let ROLLE = "inhaber";
+const NUR_INHABER_SATZ = "Nur der Besitzer kann das ändern.";
+const NUR_INHABER_SCHLOSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>';
+/* Wege, die Karte, Preise oder Aktionen ändern — gezeichnet an vielen
+   Stellen, deshalb EIN Wächter für alle (§4.5), nicht je Zeichenstelle. */
+const NUR_INHABER_KLICK = '[data-bearbeiten],[data-kted],[data-kted-neu],[data-karte-neu],' +
+  '[data-karten-bearbeiten],[data-aw-tun="bearbeiten"],[data-schieb],[data-katschieb],' +
+  '[data-leerkat-gericht],#neuesGericht,#karteImport,#runnerAuf';
+function istInhaberRolle(){ return ROLLE !== "team" && ROLLE !== "kueche"; }
+function rolleAnwenden(rolle){
+  ROLLE = (rolle === "team" || rolle === "kueche") ? rolle : "inhaber";
+  const team = !istInhaberRolle();
+  document.body.dataset.rolle = team ? "team" : "inhaber";
+  $$("[data-nur-inhaber]").forEach(g => {
+    let satz = g.querySelector(":scope > .nur-inhaber-satz");
+    if(team && !satz){
+      satz = document.createElement("p");
+      satz.className = "nur-inhaber-satz";
+      satz.innerHTML = NUR_INHABER_SCHLOSS + "<span>" + NUR_INHABER_SATZ + "</span>";
+      const titel = g.querySelector(":scope > .etitel");
+      if(titel) titel.after(satz); else g.prepend(satz);
+    }
+    if(!team && satz){ satz.remove(); satz = null; }
+    [...g.children].forEach(k => {
+      if(k === satz || k.classList.contains("etitel")) return;
+      k.inert = team;
+    });
+  });
+  const kt = $("#karteTeamSatz"); if(kt) kt.hidden = !team;
+}
+document.addEventListener("click", e => {
+  if(istInhaberRolle() || !e.target.closest(NUR_INHABER_KLICK)) return;
+  e.preventDefault(); e.stopImmediatePropagation();
+  melde(NUR_INHABER_SATZ, true);
+}, true);
 
 function euro(n){
   return Number(n||0).toLocaleString("de-DE",{minimumFractionDigits:2, maximumFractionDigits:2}) + " €";
@@ -6431,6 +6741,113 @@ async function nlVorratLaden(id){
   el.textContent = (count || 0) + (count === 1 ? " Code übrig" : " Codes übrig");
 }
 
+/* ══ Gäste & Newsletter · Übersicht für den Besitzer ═══════════════
+   Eine Anfrage an die Edge Function newsletter-uebersicht: Sie fragt
+   gaeste_uebersicht() mit dem Token des Besitzers und Klaviyo mit dem
+   Schlüssel, der nur auf dem Server liegt. Jeder Ausfall wird ein Satz
+   (§8.1i) — ein leerer Block sähe aus wie „keine Gäste“. Alles über
+   textContent: Flow-Namen kommen aus Klaviyo, nicht von uns. */
+const NLU_ART = { willkommen: "Willkommensgutschein", rueckholung: "Erinnerung nach 20 Tagen" };
+const NLU_STAND = { live: "Live", draft: "Entwurf", manual: "Manuell", archiviert: "Archiviert" };
+const NLU_GRUND = {
+  kein_schluessel: "Klaviyo ist noch nicht verbunden: In Supabase fehlt der Schlüssel KLAVIYO_API_KEY. Bis dahin erreicht keine Adresse, kein Besuch und keine Bestellung Klaviyo — es geht keine Mail hinaus.",
+  keine_antwort: "Klaviyo hat gerade nicht geantwortet. Die Zahlen oben stammen aus Ihrer Datenbank.",
+  kein_zugriff: "Diese Übersicht sieht nur der Besitzer.",
+  fehlt: "Die Übersicht braucht noch migration-gaeste-uebersicht.sql in der Datenbank.",
+};
+function nluEl(tag, klasse, text){
+  const e = document.createElement(tag);
+  if(klasse) e.className = klasse;
+  if(text != null) e.textContent = text;
+  return e;
+}
+function nluKachel(titel, wert, klein){
+  const k = nluEl("div", "aw-kpi");
+  k.append(nluEl("div", "aw-titel", titel), nluEl("div", "aw-wert", wert));
+  if(klein) k.append(nluEl("div", "aw-klein", klein));
+  return k;
+}
+function nluZeichnen(antw){
+  const kacheln = $("#nluKacheln"), liste = $("#nluAblaeufe"), satz = $("#nluSatz");
+  if(!kacheln || !liste || !satz) return;
+  kacheln.replaceChildren(); liste.replaceChildren();
+  satz.classList.remove("warn");
+  if(!antw || antw.ok !== true){
+    satz.textContent = NLU_GRUND[antw && antw.grund] || "Übersicht nicht geladen — bitte Verbindung prüfen.";
+    satz.classList.add("warn");
+    return;
+  }
+  const z = antw.zahlen || {};
+  const n = v => Number(v) || 0;
+  kacheln.append(
+    nluKachel("Gäste mit E-Mail", String(n(z.mit_mail)), "von " + n(z.gaeste) + " Gästen"),
+    nluKachel("Da in 20 Tagen", String(n(z.aktiv_20)), "mindestens ein Besuch"),
+    nluKachel("Vermisst", String(n(z.vermisst)), "mit E-Mail, über 20 Tage nicht da"),
+    nluKachel("Mit Code bestellt", String(n(z.eingeloest_30)), euro(z.umsatz_code_30) + " in 30 Tagen"));
+
+  const kv = antw.klaviyo || {};
+  const stand = {};
+  (kv.flows || []).forEach(f => { if(f && f.id) stand[f.id] = f; });
+  (z.flows || []).forEach(f => {
+    if(!f || !/^[A-Za-z0-9]{4,32}$/.test(String(f.flow_id || ""))) return;
+    const st = kv.ok ? (stand[f.flow_id] || {}).status : null;
+    const li = nluEl("li", "nlu-ablauf");
+    li.append(nluEl("span", "nlu-name", NLU_ART[f.art] || "Ablauf"));
+    if(st){
+      const pille = nluEl("span", "nlu-stand" + (st === "live" ? " live" : NLU_STAND[st] ? "" : " unklar"),
+        NLU_STAND[st] || "Unbekannt");
+      li.append(pille);
+    }
+    const a = nluEl("a", "nlu-link", "In Klaviyo öffnen");
+    a.href = "https://www.klaviyo.com/flow/" + f.flow_id + "/edit";
+    a.target = "_blank"; a.rel = "noopener";
+    li.append(a);
+    liste.append(li);
+  });
+
+  const saetze = [];
+  let warn = false;
+  if(!z.liste){ saetze.push("Für diesen Betrieb ist noch keine Klaviyo-Liste hinterlegt."); warn = true; }
+  if(!(z.flows || []).length){ saetze.push("In Klaviyo ist für diesen Betrieb noch kein Ablauf angelegt."); warn = true; }
+  if(!kv.ok){
+    saetze.push(NLU_GRUND[kv.grund] || NLU_GRUND.keine_antwort); warn = true;
+  }else{
+    const frei = kv.codes_frei;
+    if(frei == null){
+      saetze.push("Wie viele Codes Klaviyo noch hat, ließ sich nicht lesen.");
+    }else{
+      const kl = frei + (kv.codes_mehr ? "+" : "");
+      saetze.push(n(z.vorrat) + " freie Codes in omoteno, " + kl + " bei Klaviyo zum Verschicken.");
+      /* Der Befund vom 09.10.: 20 Codes in Supabase, 0 bei Klaviyo — die
+         Mails wären mangels Code nie verschickt worden, und niemand
+         hätte es gemerkt. */
+      if(frei === 0){ saetze.push("Ohne Codes bei Klaviyo bleibt jede Gutschein-Mail liegen — bitte „20 neue Codes anlegen“."); warn = true; }
+    }
+    if(!(kv.flows || []).some(f => f && f.status === "live") && (z.flows || []).length){
+      saetze.push("Alle Abläufe sind noch Entwürfe — es geht keine Mail hinaus, bis Sie sie in Klaviyo auf „Live“ stellen.");
+    }
+  }
+  if(!z.newsletter_aktiv){ saetze.push("Der Newsletter ist aus: Neue Adressen gehen nicht an Klaviyo."); }
+  satz.textContent = saetze.join(" ");
+  if(warn) satz.classList.add("warn");
+}
+async function nlUebersichtLaden(id){
+  const satz = $("#nluSatz"); if(!satz) return;
+  if(demo || !db){ $("#nluKacheln").replaceChildren(); $("#nluAblaeufe").replaceChildren();
+    satz.textContent = "Im Vorführmodus nicht verfügbar."; return; }
+  if(!istInhaberRolle()){ nluZeichnen({ ok:false, grund:"kein_zugriff" }); return; }
+  satz.textContent = "Übersicht wird geladen …";
+  let antw = null;
+  try{
+    const {data, error} = await db.functions.invoke("newsletter-uebersicht", {body: {betrieb_id: id}});
+    antw = error ? null : data;
+  }catch(e){ antw = null; }
+  /* Inzwischen ein anderer Betrieb gewählt? Dann gehört die Antwort
+     nicht mehr auf diesen Schirm. */
+  if(id !== betriebId) return;
+  nluZeichnen(antw);
+}
+
 $("#nlVorratAuffuellen").onclick = async () => {
   const knopf = $("#nlVorratAuffuellen");
   if(demo){ melde("Im Vorführmodus nicht verfügbar", true); return; }
@@ -6441,13 +6858,18 @@ $("#nlVorratAuffuellen").onclick = async () => {
     const {data, error} = await db.functions.invoke("newsletter-vorrat-auffuellen",
       {body: {betrieb_id: betriebId, anzahl: 20}});
     if(error || !data || !data.ok){
-      melde("Vorrat nicht aufgefüllt — " +
-        (data && data.fehler ? data.fehler : "Verbindung prüfen"), true);
+      /* Gründe der Edge Function als Satz, nie roh (§8.1h). */
+      const satz = { kein_zugriff: "Den Vorrat füllt nur der Besitzer auf.",
+        grenze: "Für heute ist genug nachgefüllt — morgen wieder.",
+        kein_klaviyo_schluessel: "Klaviyo ist noch nicht verbunden (Schlüssel fehlt in Supabase), es wurde nichts angelegt.",
+        supabase_schreibfehler: "Die Codes ließen sich nicht speichern." }[data && data.fehler];
+      melde("Vorrat nicht aufgefüllt — " + (satz || "bitte Verbindung prüfen."), true);
       return;
     }
     melde(data.angelegt + " neue Codes angelegt" +
       (data.klaviyo === false ? " (Klaviyo-Upload fehlgeschlagen, bitte später erneut versuchen)" : ""));
     nlVorratLaden(betriebId);
+    nlUebersichtLaden(betriebId);
   }catch(e){
     melde("Vorrat nicht aufgefüllt — Verbindung prüfen", true);
   }finally{
@@ -7106,7 +7528,7 @@ const EU_BEREICHE = [
     bild:() => '<g class="' + (euWippe("lfAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.roller.replace(/<(path|circle)/g, '<$1 transform="translate(8 8) scale(1.4)"') + '</g>' },
   { titel:"Gäste-Newsletter", sym:"brief", ton:"var(--gut)",
-    satz:"Wöchentlicher Gutschein und Erinnerung per E-Mail",
+    satz:"Willkommensgutschein und Erinnerung nach 20 Tagen per E-Mail",
     stand:() => euWippe("nlAn") ? "An" : "Aus",
     bild:() => '<g class="' + (euWippe("nlAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.brief.replace(/<(path|rect)/g, '<$1 transform="translate(6 4) scale(1.5)"') + '</g>' },
@@ -7116,6 +7538,19 @@ const EU_BEREICHE = [
     bild:() => { const n = $$("#gsListe .gs-zeile").length;
       return '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
         (n ? '<circle class="eu-punkt" cx="42" cy="9" r="8"/><text class="eu-zahl" x="42" y="12.5" text-anchor="middle">' + n + '</text>' : ""); } },
+  { titel:"Eigene Rabattcodes", sym:"karte", ton:"var(--messing)",
+    satz:"Codes mit Prozent oder Betrag, die Ihr Team an der Kasse einlöst",
+    stand:() => { const n = (typeof rabattcodeTeam !== "undefined" && rabattcodeTeam) ? rabattcodeTeam.length : 0;
+      return n ? n + (n === 1 ? " Code aktiv" : " Codes aktiv") : "Keiner aktiv"; },
+    bild:() => '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
+      '<text class="eu-zahl dunkel" x="24" y="30" text-anchor="middle">%</text>' },
+  { titel:"Foodroulette", sym:"figur", ton:"var(--glut)",
+    satz:"Die Entscheidungshilfe auf der Speisekarte",
+    stand:() => frZeigen ? "An" : "Aus",
+    bild:() => '<g class="' + (frZeigen ? "eu-strich" : "eu-strich eu-blass") + '">' +
+      '<rect class="eu-rahmen" x="12" y="14" width="22" height="28" rx="4" transform="rotate(-10 23 28)"/>' +
+      '<rect class="eu-rahmen" x="14" y="10" width="22" height="28" rx="4"/>' +
+      '<rect class="eu-fuell" x="18" y="15" width="14" height="10" rx="2"/></g>' },
   { titel:"Bestellstand beim Gast", sym:"sanduhr", ton:"var(--telefon)",
     satz:"Ob der Gast die Restzeit sieht oder nur den Stand",
     stand:() => rzZeigen ? "Mit Restzeit" : "Nur Stand",
@@ -7142,6 +7577,10 @@ const EU_BEREICHE = [
       return '<circle class="eu-bahn" cx="24" cy="24" r="' + r + '"/>' +
         '<circle class="eu-bogen" cx="24" cy="24" r="' + r + '" stroke-dasharray="' + (u * a).toFixed(1) + ' ' + u.toFixed(1) + '" transform="rotate(-90 24 24)"/>' +
         '<text class="eu-zahl dunkel" x="24" y="28" text-anchor="middle">' + (EINST.mahnungAb || "–") + '</text>'; } },
+  { titel:"Wer hat was geändert", sym:"uhr", ton:"var(--messing)",
+    satz:"Jede Änderung an Karte und Startseite, mit Namen",
+    stand:() => { const n = aeHeute(); return n ? n + (n === 1 ? " Änderung heute" : " Änderungen heute") : "Heute nichts geändert"; },
+    bild:() => '<path class="eu-linie" d="M10 12h28M10 22h22M10 32h26"/><circle class="eu-punkt" cx="40" cy="10" r="6"/>' },
   { titel:"Betrieb", sym:"haus", ton:"var(--gut)",
     satz:"Mit welchem Konto und für welches Haus Sie arbeiten",
     stand:() => ($("#eBetrieb") ? $("#eBetrieb").textContent.trim() : "") || "—",
@@ -7559,6 +7998,10 @@ const pinRufen = (name, args) => db.rpc(name, args);
 
 /* ─── Anmeldung ───────────────────────────────────────────── */
 function neuesPasswortZeigen(){
+  if(EINLADUNG){
+    $("#lNeuTeil .tortitel").textContent = "Willkommen im Team";
+    $("#lNeuTeil .torhilfe").textContent = "Legen Sie Ihr eigenes Passwort fest — mindestens acht Zeichen. Damit melden Sie sich ab jetzt an.";
+  }
   $("#tor").hidden = false;
   $("#statusText").textContent = "neues Passwort";
   $("#lAnmeldeteil").hidden = true;
@@ -7726,9 +8169,16 @@ async function anmelden(){
 
   let pruefung = null, schutzErreichbar = true;
   try{
-    const {data, error} = await db.rpc("admin_anmelden", {p_email: mail, p_passwort: pass});
-    if(error) throw error;
-    pruefung = data;
+    const {data, error, status} = await db.rpc("admin_anmelden", {p_email: mail, p_passwort: pass});
+    /* Netz-Bremse (migration-schutz-2.sql, HTTP 429): Das ist KEIN
+       Ausfall der Prüfung — weiter zum Login hieße, die Bremse zu
+       umgehen. Deshalb ein Satz statt „fail-open“. */
+    if(status === 429 || (error && (error.code === "PT429" || /zu_viele_anfragen/.test(error.message || "")))){
+      pruefung = { erlaubt:false, gesperrt:false, nachricht:"Zu viele Anmeldeversuche aus diesem Netz. Bitte in zehn Minuten erneut." };
+    }else{
+      if(error) throw error;
+      pruefung = data;
+    }
   }catch(e){
     schutzErreichbar = false;
   }
@@ -7941,6 +8391,7 @@ async function betriebOeffnen(id){
 
   const b = meineBetriebe.find(x => x.id === id);
   HUBTEXTE = (b && b.hub_texte) || {};
+  rolleAnwenden(b && b.rolle);
   $("#betriebName").textContent = b ? b.name : "…";
   $("#betriebWahl").hidden = true;
   $("#wechseln").hidden = meineBetriebe.length < 2;
@@ -7962,6 +8413,9 @@ async function betriebOeffnen(id){
 
   gerichte     = (g.data || []).filter(x => x.betrieb_id === id);
   bestellungen = (o.data || []).filter(x => x.betrieb_id === id);
+  /* Kartenverzeichnis getrennt lesen: fehlt die Spalte, bleibt der Rest
+     des Boards unberührt (die Abfrage oben kennt sie nicht). */
+  kartenLaden(id).then(() => { if(marke === ladeMarke) zeichneKarte(); });
   bestellungen.forEach(x => bekannt.add(x.id));
 
   $("#punkt").className = "punkt live";
@@ -7986,6 +8440,7 @@ async function betriebOeffnen(id){
   frZeichnen();
   newsletterZeichnen();
   nlVorratLaden(id);
+  nlUebersichtLaden(id);
 
   live_anmelden(id, marke);
   reservierungenLaden(id);
@@ -8499,7 +8954,7 @@ function zeichneBoard(){
 function katSortVon(name, karte){
   const k = karte || welcheKarte;
   const treffer = gerichte.find(g =>
-    (g.karte || "speisekarte") === k && g.kategorie === name);
+    inKarte(g, k) && g.kategorie === name);
   return treffer ? (treffer.kat_sort ?? 0) : 0;
 }
 
@@ -8507,15 +8962,37 @@ function katSortVon(name, karte){
    Kategorie. Sie hängt sich hinten an, statt sich dazwischenzudrängen. */
 function katSortNeu(karte){
   const werte = gerichte
-    .filter(g => (g.karte || "speisekarte") === karte)
+    .filter(g => inKarte(g, karte))
     .map(g => g.kat_sort ?? 0);
   return werte.length ? Math.max(...werte) + 1 : 1;
 }
 
 function zeichneKarte(){
   const ziel = $("#karteListe");
+  kartenWahlZeichnen();
+  const leereKats = karteLeereKategorien(welcheKarte);
+  /* Kategorien ohne Gericht (im Verzeichnis angelegt): Kopf mit
+     Zeichen und „＋ Gericht“, damit man sie füllen kann. */
+  const leerHTML = leereKats.map(x => `<div class="kat leer-kat">
+      <div class="katkopf">
+        <button type="button" class="kted-knopf" data-kted="${sicher(x.name)}" aria-label="Kategorie ${sicher(x.name)} bearbeiten">
+          <span class="kted-emo" aria-hidden="true">${katZeichenGlyph(x.zeichen || katZeichenAuto(x.name, welcheKarte))}</span>
+          <span class="katname">${sicher(x.name)}</span>
+          <svg class="kted-stift" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.5 2.5l2 2L6 12l-3 1 1-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="katzahl">leer</span>
+      </div>
+      <div class="leerkat-zeile"><span>Noch kein Gericht — für Gäste unsichtbar, bis eines darin steht.</span>
+        <button type="button" data-leerkat-gericht="${sicher(x.name)}">＋ Gericht</button></div>
+    </div>`).join("");
 
-  if(gerichte.filter(g => (g.karte||"speisekarte") === welcheKarte).length === 0){
+  if(gerichte.filter(g => inKarte(g, welcheKarte)).length === 0 && leereKats.length){
+    $("#katListe").innerHTML = leereKats.map(x => `<option value="${sicher(x.name)}">`).join("");
+    ziel.innerHTML = leerHTML + `<button type="button" class="kted-neu" data-kted-neu>
+      <span aria-hidden="true">＋</span> Neue Kategorie</button>`;
+    return;
+  }
+  if(gerichte.filter(g => inKarte(g, welcheKarte)).length === 0){
     ziel.innerHTML = `<div class="leer">
       <div class="gross">Diese Karte ist noch leer</div>
       <p>Leg das erste Gericht an — es erscheint sofort<br>
@@ -8523,7 +9000,7 @@ function zeichneKarte(){
     return;
   }
 
-  const dieser = gerichte.filter(g => (g.karte || "speisekarte") === welcheKarte);
+  const dieser = gerichte.filter(g => inKarte(g, welcheKarte));
   /* Kategorien nach kat_sort, nicht mehr nach Fundreihenfolge.
      Die Fundreihenfolge hing an der Sortierung der Datenbank, und die
      war bei gleichem "reihenfolge"-Wert nicht festgelegt – deshalb
@@ -8532,7 +9009,7 @@ function zeichneKarte(){
     .map(k => ({ name: k, sort: katSortVon(k) }))
     .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, "de"));
   const kats = katListe.map(x => x.name);
-  $("#katListe").innerHTML = kats.map(k => `<option value="${sicher(k)}">`).join("");
+  $("#katListe").innerHTML = kats.concat(leereKats.map(x => x.name)).map(k => `<option value="${sicher(k)}">`).join("");
 
   const suchen = suchtext.toLowerCase();
   const passt = g => !suchen ||
@@ -8577,6 +9054,7 @@ function zeichneKarte(){
                 ${kuerzel.length ? `<div class="gallhinweis">${kuerzel.map(sicher).join(" · ")}</div>` : ""}
               </div>
               ${g.verfuegbar ? "" : `<span class="ausmarke">aus</span>`}
+              ${(() => { const r = rbLaufend(g); return r ? `<span class="rbmarke" title="Rabatt läuft">−${Math.round((1 - r.preis_neu / r.preis_alt) * 100)} %</span>` : ""; })()}
               <span class="gpreis">${euro(g.preis)}</span>
               <svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true">
                 <path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
@@ -8601,7 +9079,7 @@ function zeichneKarte(){
   }).join("");
 
   ziel.innerHTML = stuecke ?
-    stuecke + (suchen ? "" : `<button type="button" class="kted-neu" data-kted-neu>
+    stuecke + (suchen ? "" : leerHTML) + (suchen ? "" : `<button type="button" class="kted-neu" data-kted-neu>
       <span aria-hidden="true">＋</span> Neue Kategorie</button>`) :
     `<div class="leer"><div class="gross">Nichts gefunden</div>
      <p>Kein Gericht enthält „${sicher(suchtext)}“.</p></div>`;
@@ -8610,8 +9088,7 @@ function zeichneKarte(){
 /* ─── Reihenfolge ändern ──────────────────────────────────── */
 async function schieben(id, richtung){
   const g = gerichte.find(x => x.id === id); if(!g) return;
-  const reihe = gerichte.filter(x => x.kategorie === g.kategorie &&
-                                    (x.karte||"speisekarte") === (g.karte||"speisekarte"))
+  const reihe = gerichte.filter(x => x.kategorie === g.kategorie && inKarte(x, welcheKarte))
                         .sort((a,b) => (a.reihenfolge||0) - (b.reihenfolge||0));
   const i = reihe.indexOf(g), j = i + richtung;
   if(j < 0 || j >= reihe.length) return;
@@ -8637,7 +9114,7 @@ async function schieben(id, richtung){
    statt eines upserts. */
 async function katSchieben(name, richtung){
   const karte = welcheKarte;
-  const dieser = gerichte.filter(g => (g.karte || "speisekarte") === karte);
+  const dieser = gerichte.filter(g => inKarte(g, karte));
 
   const reihe = [...new Set(dieser.map(g => g.kategorie))]
     .map(k => ({ name: k, sort: katSortVon(k, karte) }))
@@ -8659,7 +9136,7 @@ async function katSchieben(name, richtung){
   neueFolge.forEach((x, n) => { zuweisung[x.name] = n + 1; });
 
   gerichte.forEach(g => {
-    if((g.karte || "speisekarte") !== karte) return;
+    if(!inKarte(g, karte)) return;
     if(zuweisung[g.kategorie] != null) g.kat_sort = zuweisung[g.kategorie];
   });
   zeichneKarte();
@@ -8776,38 +9253,134 @@ function katZeichenAuto(name, karte){
 }
 /* Was steht gespeichert? Das erste Gericht mit Wert — alle tragen denselben. */
 function katZeichenVon(name, karte){
-  const g = gerichte.find(x => (x.karte || "speisekarte") === karte && x.kategorie === name &&
+  const g = gerichte.find(x => inKarte(x, karte) && x.kategorie === name &&
     typeof x.kat_emoji === "string" && KAT_ZEICHEN_ALLE.includes(x.kat_emoji));
   return g ? g.kat_emoji : null;
+}
+/* Leere Kategorie: das Zeichen steht im Verzeichnis. */
+function katZeichenVerz(name, karte){
+  const x = ((karteEintrag(karte) || {}).kategorien || []).find(k => k.name === name);
+  return x && x.zeichen && KAT_ZEICHEN_ALLE.includes(x.zeichen) ? x.zeichen : null;
 }
 /* Was sieht der Gast? Gewähltes Zeichen oder die Automatik. */
 function katZeichenWirksam(name, karte){
   return katZeichenVon(name, karte) || katZeichenAuto(name, karte);
 }
 function katNamen(karte){
-  return [...new Set(gerichte.filter(g => (g.karte || "speisekarte") === karte).map(g => g.kategorie))]
+  const ausVerz = ((karteEintrag(karte) || {}).kategorien || []).map(x => x.name);
+  return [...new Set(gerichte.filter(g => inKarte(g, karte)).map(g => g.kategorie).concat(ausVerz))]
     .map(k => ({ name:k, sort:katSortVon(k, karte) }))
     .sort((a, b) => a.sort - b.sort || a.name.localeCompare(b.name, "de")).map(x => x.name);
 }
-const KARTE_NAME = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+/* ═══ KARTEN — Verzeichnis des Betriebs (betriebe.karten) ═══════════
+   Wunsch 07.10.: bis zu 20 Karten anlegen, benennen, jederzeit
+   bearbeiten; ein Gericht in mehreren Karten; Kategorien ohne Gericht.
+   Solange betriebe.karten leer ist, gelten die drei festen Karten — so
+   sieht kein Betrieb ohne eigenes Zutun eine Änderung (§2.5).
+
+   KARTENSTAND ist undefined, bis die Spalte WIRKLICH gelesen ist
+   (§8.1m): Ein Schreiben vorher überschriebe ein Verzeichnis, das ein
+   zweites Gerät angelegt hat, mit der Vorgabe. */
+const KARTEN_GRUND = [
+  { id:"speisekarte", name:"Speisekarte" },
+  { id:"getraenke",   name:"Getränke" },
+  { id:"cocktails",   name:"Cocktails" }];
+const KARTEN_HOECHST = 20;
+const KARTE_ID_MUSTER = /^(speisekarte|getraenke|cocktails|k-[a-z0-9-]{1,22})$/;
+let KARTENSTAND;
+function gerichtKarten(g){
+  return Array.isArray(g.karten) && g.karten.length ? g.karten : [g.karte || "speisekarte"];
+}
+function inKarte(g, id){ return gerichtKarten(g).includes(id); }
+/* Positivliste für jeden Eintrag, der aus der Spalte kommt (§2.3a). */
+function karteSauber(k){
+  if(!k || typeof k.id !== "string" || !KARTE_ID_MUSTER.test(k.id)) return null;
+  const kategorien = (Array.isArray(k.kategorien) ? k.kategorien : [])
+    .filter(x => x && typeof x.name === "string" && x.name.trim())
+    .map(x => ({ name:x.name.trim().slice(0, 40),
+                 zeichen: typeof x.zeichen === "string" && /^[a-z0-9]{1,12}$/.test(x.zeichen) ? x.zeichen : null }))
+    .slice(0, 60);
+  return { id:k.id, name:String(k.name || "").trim().slice(0, 40) || "Karte",
+           unter:String(k.unter || "").trim().slice(0, 90), kategorien };
+}
+/* Alle Karten, die das Board zeigt: das Verzeichnis (oder die drei
+   festen) und dahinter jede Karte, die an einem Gericht steht, aber im
+   Verzeichnis fehlt — sonst wären deren Gerichte unauffindbar. */
+function kartenListe(){
+  const basis = (Array.isArray(KARTENSTAND) && KARTENSTAND.length ? KARTENSTAND
+                 : KARTEN_GRUND.map(k => ({ ...k, unter:"", kategorien:[] })));
+  const ids = new Set(basis.map(k => k.id));
+  const dazu = [];
+  gerichte.forEach(g => gerichtKarten(g).forEach(id => {
+    if(!ids.has(id) && KARTE_ID_MUSTER.test(id)){ ids.add(id); dazu.push({ id, name:karteGrundName(id), unter:"", kategorien:[] }); }
+  }));
+  return basis.concat(dazu);
+}
+function karteGrundName(id){ const k = KARTEN_GRUND.find(x => x.id === id); return k ? k.name : "Karte"; }
+function karteName(id){ const k = kartenListe().find(x => x.id === id); return k ? k.name : karteGrundName(id); }
+function karteEintrag(id){ return kartenListe().find(x => x.id === id) || null; }
+/* Neuer Schlüssel: „k-“ + Name in Kleinbuchstaben, eindeutig gemacht. */
+function karteNeueId(name){
+  const basis = "k-" + (String(name || "karte").toLowerCase()
+    .replace(/ä/g,"ae").replace(/ö/g,"oe").replace(/ü/g,"ue").replace(/ß/g,"ss")
+    .replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 16) || "karte");
+  const da = new Set(kartenListe().map(k => k.id));
+  let id = basis, i = 2;
+  while(da.has(id)) id = basis.slice(0, 19) + "-" + (i++);
+  return id;
+}
+async function kartenLaden(id){
+  KARTENSTAND = undefined;
+  if(demo || !db){ KARTENSTAND = KARTENSTAND || []; return; }
+  try{
+    const {data, error} = await db.from("betriebe").select("karten").eq("id", id).maybeSingle();
+    if(error) throw error;
+    if(id !== betriebId) return;
+    KARTENSTAND = (Array.isArray(data && data.karten) ? data.karten : []).map(karteSauber).filter(Boolean);
+  }catch(e){
+    /* Spalte fehlt oder Netz weg: unbekannt, nicht leer — Schreiben bleibt gesperrt. */
+    KARTENSTAND = undefined;
+  }
+}
+/* Schreibt das ganze Verzeichnis. Vorher gelesen? Sonst nicht. */
+async function kartenSichern(liste){
+  if(KARTENSTAND === undefined && !demo && db){
+    melde("Die Karten sind noch nicht geladen — gleich noch einmal versuchen.", true);
+    return false;
+  }
+  const sauber = liste.map(karteSauber).filter(Boolean).slice(0, KARTEN_HOECHST);
+  if(demo || !db){ KARTENSTAND = sauber; return true; }
+  const {error} = await db.from("betriebe").update({ karten:sauber }).eq("id", betriebId);
+  if(error){ melde("Karten nicht gespeichert — Verbindung prüfen", true); return false; }
+  KARTENSTAND = sauber;
+  return true;
+}
+/* Das Verzeichnis, wie es geschrieben würde: die gezeigte Liste. */
+function kartenKopie(){ return kartenListe().map(k => ({ ...k, kategorien:(k.kategorien || []).map(x => ({ ...x })) })); }
+/* Leere Kategorien einer Karte (im Verzeichnis, ohne Gericht). */
+function karteLeereKategorien(id){
+  const k = karteEintrag(id); if(!k) return [];
+  const mit = new Set(gerichte.filter(g => inKarte(g, id)).map(g => g.kategorie));
+  return (k.kategorien || []).filter(x => !mit.has(x.name));
+}
 
 let kted = null;          /* { karte, alt|null, zeichen, zeichenAlt } */
 let katNeuWunsch = null;  /* neue Kategorie wartet auf ihr erstes Gericht */
 
 function ktedOeffnen(name){
   const karte = welcheKarte;
-  const zeichen = name ? katZeichenVon(name, karte) : null;
+  const zeichen = name ? (katZeichenVon(name, karte) || katZeichenVerz(name, karte)) : null;
   kted = { karte, alt:name || null, zeichen, zeichenAlt:zeichen };
-  const n = name ? gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === name).length : 0;
+  const n = name ? gerichte.filter(g => inKarte(g, karte) && g.kategorie === name).length : 0;
   $("#ktedTitel").textContent = name ? "Kategorie bearbeiten" : "Neue Kategorie";
   $("#ktedHilfe").textContent = name
     ? (n === 1 ? "Name und Zeichen gelten für das Gericht darin." : "Name und Zeichen gelten für alle " + n + " Gerichte darin.") +
       " Der Gast sieht die Änderung sofort."
-    : "Eine Kategorie erscheint beim Gast, sobald ein Gericht darin steht. " +
-      "Nach „Weiter“ legst du gleich das erste an.";
+    : "Die Kategorie wird sofort angelegt — auch ohne Gericht. " +
+      "Beim Gast erscheint sie, sobald ein Gericht darin steht.";
   $("#ktedName").value = name || "";
-  $("#ktedNameHilfe").textContent = "Bis 40 Zeichen. Auf " + KARTE_NAME[karte] + ".";
-  $("#ktedSichern").textContent = name ? "Sichern" : "Weiter zum ersten Gericht";
+  $("#ktedNameHilfe").textContent = "Bis 40 Zeichen. Auf " + karteName(karte) + ".";
+  $("#ktedSichern").textContent = name ? "Sichern" : "Kategorie anlegen";
   $("#ktedWeg").hidden = !name;
   $("#ktedWeg").open = false;
   ktedWahlZeichnen();
@@ -8873,7 +9446,12 @@ function ktedSchau(){
 
 function ktedWegZeichnen(){
   if(!kted.alt){ $("#ktedWegInhalt").innerHTML = ""; return; }
-  const n = gerichte.filter(g => (g.karte || "speisekarte") === kted.karte && g.kategorie === kted.alt).length;
+  const n = gerichte.filter(g => inKarte(g, kted.karte) && g.kategorie === kted.alt).length;
+  if(!n){
+    $("#ktedWegInhalt").innerHTML = '<p>Die Kategorie ist noch leer. Löschen nimmt nur den Namen weg.</p>' +
+      '<button type="button" class="knopf gefahr" id="ktedLoeschen">Kategorie löschen</button>';
+    return;
+  }
   const andere = katNamen(kted.karte).filter(k => k !== kted.alt);
   $("#ktedWegInhalt").innerHTML =
     (andere.length ?
@@ -8903,10 +9481,10 @@ async function katNeuLaden(){
 /* Alle Gerichte der Kategorie `alt` bekommen `felder`. Bei einer
    Zusammenführung hängen sie HINTER die Gerichte des Ziels. */
 async function katAendern(karte, alt, felder, anhaengenAn){
-  const betroffen = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === alt);
+  const betroffen = gerichte.filter(g => inKarte(g, karte) && g.kategorie === alt);
   const sortPaare = [];
   if(anhaengenAn){
-    const start = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === anhaengenAn)
+    const start = gerichte.filter(g => inKarte(g, karte) && g.kategorie === anhaengenAn)
       .reduce((m, g) => Math.max(m, (g.reihenfolge ?? 0) + 1), 0);
     betroffen.sort((a, b) => (a.reihenfolge || 0) - (b.reihenfolge || 0))
       .forEach((g, i) => sortPaare.push({ id:g.id, reihenfolge:start + i }));
@@ -8915,8 +9493,11 @@ async function katAendern(karte, alt, felder, anhaengenAn){
   sortPaare.forEach(x => { const g = gerichte.find(y => y.id === x.id); if(g) g.reihenfolge = x.reihenfolge; });
   zeichneKarte();
   if(demo || !db) return true;
-  const {error} = await db.from("gerichte").update(felder)
-    .eq("betrieb_id", betriebId).eq("karte", karte).eq("kategorie", alt);
+  /* Über die ids der betroffenen Gerichte, nicht über „karte“: Ein
+     Gericht in zwei Karten trägt in karte nur die erste. */
+  const ids = betroffen.map(g => g.id);
+  const {error} = ids.length ? await db.from("gerichte").update(felder)
+    .eq("betrieb_id", betriebId).in("id", ids) : { error:null };
   if(error){ melde("Nicht gespeichert — Verbindung prüfen", true); await katNeuLaden(); return false; }
   if(sortPaare.length){
     const r = await db.from("gerichte").upsert(sortPaare);
@@ -8962,6 +9543,17 @@ async function katUebersetzen(name, leise){
   }
 }
 
+/* Ändert die Kategorie-Liste einer Karte im Verzeichnis. */
+async function verzKategorien(karte, aendern){
+  const kopie = kartenKopie();
+  const k = kopie.find(x => x.id === karte);
+  if(!k) return false;
+  k.kategorien = aendern(k.kategorien || []);
+  const ok = await kartenSichern(kopie);
+  if(ok) zeichneKarte();
+  return ok;
+}
+
 async function ktedSichern(){
   const name = $("#ktedName").value.trim().replace(/\s+/g, " ");
   if(!name){ melde("Die Kategorie braucht einen Namen", true); $("#ktedName").focus(); return; }
@@ -8971,12 +9563,23 @@ async function ktedSichern(){
 
   if(!alt){
     if(gibtEs){ melde("„" + name + "“ gibt es auf dieser Karte schon", true); return; }
-    katNeuWunsch = { karte, name, zeichen:kted.zeichen };
+    /* Wunsch 07.10.: Kategorie anlegen, ohne gleich ein Gericht zu
+       brauchen — sie steht im Kartenverzeichnis, bis eines dazukommt. */
+    if(!(await verzKategorien(karte, l => l.concat([{ name, zeichen:kted.zeichen }])))) return;
     ktedZu();
-    blattOeffnen(null);
-    $("#fKat").value = name; katWertAktualisieren();
-    $("#fKarte").value = karte; karteSegmentAktualisieren();
-    melde("Jetzt das erste Gericht für „" + name + "“");
+    melde("„" + name + "“ angelegt — mit „＋ Gericht“ füllen");
+    katUebersetzen(name);
+    return;
+  }
+
+  /* Eine LEERE Kategorie lebt nur im Verzeichnis. */
+  const hatGerichte = gerichte.some(g => inKarte(g, karte) && g.kategorie === alt);
+  if(!hatGerichte){
+    if(name !== alt && gibtEs){ melde("„" + name + "“ gibt es auf dieser Karte schon", true); return; }
+    if(!(await verzKategorien(karte, l => l.map(x => x.name === alt ? { name, zeichen:kted.zeichen } : x)))) return;
+    ktedZu();
+    melde(name !== alt ? "Umbenannt in „" + name + "“" : "Zeichen gesichert");
+    if(name !== alt) katUebersetzen(name);
     return;
   }
 
@@ -8985,7 +9588,7 @@ async function ktedSichern(){
   if(!umbenannt && !zeichenGeaendert){ ktedZu(); return; }
 
   if(umbenannt && gibtEs){
-    const n = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === alt).length;
+    const n = gerichte.filter(g => inKarte(g, karte) && g.kategorie === alt).length;
     if(!confirm("„" + name + "“ gibt es schon. Die " + n + " Gerichte aus „" + alt +
                 "“ dort anhängen und die beiden Kategorien zusammenlegen?")) return;
     const felder = { kategorie:name, kat_sort:katSortVon(name, karte),
@@ -8998,6 +9601,8 @@ async function ktedSichern(){
   const felder = { kat_emoji:kted.zeichen };
   if(umbenannt) felder.kategorie = name;
   ktedZu();
+  if(umbenannt && KARTENSTAND !== undefined && ((karteEintrag(karte) || {}).kategorien || []).some(x => x.name === alt))
+    verzKategorien(karte, l => l.map(x => x.name === alt ? { name, zeichen:kted.zeichen } : x));
   if(await katAendern(karte, alt, felder, null)){
     melde(umbenannt ? "Umbenannt in „" + name + "“" : "Zeichen gesichert");
     if(umbenannt) katUebersetzen(name);
@@ -9008,7 +9613,7 @@ async function ktedVerschieben(){
   const ziel = $("#ktedZiel") && $("#ktedZiel").value;
   if(!ziel) return;
   const { karte, alt } = kted;
-  const n = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === alt).length;
+  const n = gerichte.filter(g => inKarte(g, karte) && g.kategorie === alt).length;
   if(!confirm("Die " + n + " Gerichte aus „" + alt + "“ nach „" + ziel + "“ verschieben? „" + alt + "“ verschwindet danach.")) return;
   ktedZu();
   if(await katAendern(karte, alt, { kategorie:ziel, kat_sort:katSortVon(ziel, karte), kat_emoji:katZeichenVon(ziel, karte) }, ziel))
@@ -9017,16 +9622,33 @@ async function ktedVerschieben(){
 
 async function ktedLoeschen(){
   const { karte, alt } = kted;
-  const weg = gerichte.filter(g => (g.karte || "speisekarte") === karte && g.kategorie === alt);
+  const weg = gerichte.filter(g => inKarte(g, karte) && g.kategorie === alt);
+  if(!weg.length){
+    ktedZu();
+    if(await verzKategorien(karte, l => l.filter(x => x.name !== alt))) melde("„" + alt + "“ gelöscht");
+    return;
+  }
   if(!confirm("„" + alt + "“ mit allen " + weg.length + " Gerichten dauerhaft löschen?\n\n" +
               "Das lässt sich nicht rückgängig machen.")) return;
   ktedZu();
-  gerichte = gerichte.filter(g => !weg.includes(g));
+  /* Ein Gericht, das auch in einer anderen Karte steht, bleibt dort —
+     es verliert nur diese Karte. Gelöscht wird nur, was nirgends sonst steht. */
+  const nurHier = weg.filter(g => gerichtKarten(g).length <= 1);
+  const auchSonst = weg.filter(g => gerichtKarten(g).length > 1);
+  gerichte = gerichte.filter(g => !nurHier.includes(g));
+  auchSonst.forEach(g => { g.karten = gerichtKarten(g).filter(id => id !== karte); g.karte = g.karten[0]; });
   zeichneKarte();
+  if(KARTENSTAND !== undefined) verzKategorien(karte, l => l.filter(x => x.name !== alt));
   if(demo || !db){ melde("„" + alt + "“ gelöscht"); return; }
-  const {error} = await db.from("gerichte").delete()
-    .eq("betrieb_id", betriebId).eq("karte", karte).eq("kategorie", alt);
-  if(error){ melde("Nicht gelöscht — Verbindung prüfen", true); await katNeuLaden(); return; }
+  const r1 = nurHier.length ? await db.from("gerichte").delete()
+    .eq("betrieb_id", betriebId).in("id", nurHier.map(g => g.id)) : { error:null };
+  let fehler = r1.error;
+  for(const g of auchSonst){
+    if(fehler) break;
+    const r = await db.from("gerichte").update({ karten:g.karten, karte:g.karte }).eq("id", g.id);
+    fehler = r.error;
+  }
+  if(fehler){ melde("Nicht gelöscht — Verbindung prüfen", true); await katNeuLaden(); return; }
   melde("„" + alt + "“ gelöscht");
 }
 
@@ -9225,7 +9847,7 @@ function impVorschau(){
     .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
     .replace(/[^a-z0-9]/g,"");
   const vorhanden = new Set(
-    gerichte.filter(g => (g.karte || "speisekarte") === ziel)
+    gerichte.filter(g => inKarte(g, ziel))
             .map(g => schluessel(g.name)));
 
   const gesehen = new Set();
@@ -9443,7 +10065,8 @@ function tabelle(){
    ["#uebBlatt",  function(){ uebSchliessen(); }],
    ["#awBlatt",   function(){ awBlattZu(); }],
    ["#ktedBlatt", function(){ ktedZu(); }],
-   ["#nzBlatt",   function(){ nzSchliessen(); }]].forEach(function(paar){
+   ["#nzBlatt",   function(){ nzSchliessen(); }],
+   ["#apBlatt",   function(){ apZu(null); }]].forEach(function(paar){
     var schirm = document.querySelector(paar[0]); if(!schirm) return;
     var inhalt = schirm.querySelector(".blattinhalt"); if(!inhalt) return;
     wischZu({ blatt: inhalt, zu: paar[1], griff: ".griff, .blattgriff" });
@@ -9518,7 +10141,7 @@ function tafelZeigen(ziel){
   mehrZu();
 
   if(ziel === "speisekarte")     aktionenLaden();
-  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); gsLaden(); rcLaden(); }
+  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); gsLaden(); rcLaden(); aeLaden(true); }
   /* aktionenLaden() zusätzlich hier: Der "Aktion"-Ziel-Wähler im
      Banner-Rad braucht das aktionen-Array, das sonst erst beim
      Öffnen des Speisekarte-Reiters gefüllt wird — ein Wirt, der
@@ -9649,7 +10272,7 @@ async function aktionenLaden(){
   if(demo || !db || !betriebId){ aktionenZeichnen(); return; }
   try{
     const {data, error} = await db.from("aktionen")
-      .select("id,gericht_name,preis_alt,preis_neu,von,bis,aktiv")
+      .select("id,gericht_id,gericht_name,preis_alt,preis_neu,von,bis,aktiv")
       .eq("betrieb_id", betriebId)
       .gte("bis", new Date().toISOString())
       /* Am Ende ein eindeutiges Feld — bei gleichem Ende wäre die
@@ -10545,9 +11168,21 @@ function kbAusZeile(roh){
   liste.forEach(e => {
     if(!e || !e.schluessel || gesehen.has(e.schluessel)) return;
     const plan = KACHELPLAN.find(x => x.s === e.schluessel);
-    if(plan){ geordnet.push(plan); gesehen.add(e.schluessel); }
+    if(plan){ geordnet.push(plan); gesehen.add(e.schluessel); return; }
+    /* Eigene Kachel: nur mit gültigem Schlüssel und bekannter Art. */
+    if(KB_EIGEN_MUSTER.test(e.schluessel) && (e.art === "karte" || e.art === "link") &&
+       geordnet.filter(x => x.eigen).length < KB_EIGEN_HOECHST){
+      geordnet.push(e.art === "karte"
+        ? { s:e.schluessel, gruppe:"Die Karte", titel:"Karte", unter:"", icon:"speise", form:"zwei", eigen:true, art:"karte" }
+        : { s:e.schluessel, gruppe:"Für Ihren nächsten Besuch", titel:"Link", unter:"", icon:"stern", form:"zwei", eigen:true, art:"link" });
+      gesehen.add(e.schluessel);
+    }
   });
   KACHELPLAN.forEach(k => { if(!gesehen.has(k.s)){ geordnet.push(k); gesehen.add(k.s); } });
+  /* Jede Gruppe am Stück halten (Ziehen/Pfeile bleiben in der Gruppe):
+     stabil nach der Reihenfolge der Gruppen in KACHELPLAN sortieren. */
+  const gruppenFolge = [...new Set(KACHELPLAN.map(k => k.gruppe))];
+  geordnet.sort((a, b) => gruppenFolge.indexOf(a.gruppe) - gruppenFolge.indexOf(b.gruppe));
   KACHELSTAND = geordnet.map(k => {
     const e = nach[k.s] || {};
     return {
@@ -10578,7 +11213,13 @@ function kbAusZeile(roh){
       textgroesse: (() => {
         const tg = Number(e.textgroesse);
         return Number.isFinite(tg) && tg !== 1 ? Math.min(1.4, Math.max(.8, tg)) : "";
-      })()
+      })(),
+      /* Art, Karte, Zeitplan, Link (Wunsch 07.10.) — dieselben Muster
+         wie im Hub (kachelBauen). */
+      art:   k.eigen ? k.art : (KB_KARTEN_FEST.includes(k.s) ? "karte" : ""),
+      karte: KB_KARTE_MUSTER.test(String(e.karte || "")) ? e.karte : (KB_KARTEN_FEST.includes(k.s) ? k.s : ""),
+      plan:  kbZeitplanSauber(e.plan),
+      link:  k.eigen && k.art === "link" ? kbLinkSauber(e.link) : ""
     };
   });
 }
@@ -10625,7 +11266,38 @@ function kbStandLaden(){
 }
 
 function kbFinden(sch){ return KACHELSTAND.find(k => k.schluessel === sch); }
-function kbPlan(sch){   return KACHELPLAN.find(k => k.s === sch); }
+function kbPlan(sch){   return KACHELPLAN.find(k => k.s === sch) || kbEigenPlan(sch); }
+/* Eigene Kacheln (Wunsch 07.10.: anlegen und löschen) haben keinen
+   Eintrag in KACHELPLAN. Ihr „Plan“ wird aus der Art gebaut — dieselben
+   Vorgaben wie im Hub (kachelBauen): Karte → „Die Karte“, Link → „Für
+   Ihren nächsten Besuch“, beide halbe Breite. */
+const KB_EIGEN_MUSTER = /^e-[a-z0-9]{3,12}$/;
+const KB_EIGEN_HOECHST = 12;
+function kbEigenPlan(sch){
+  const k = KACHELSTAND.find(x => x.schluessel === sch);
+  if(!k || !KB_EIGEN_MUSTER.test(sch) || (k.art !== "karte" && k.art !== "link")) return undefined;
+  return k.art === "karte"
+    ? { s:sch, gruppe:"Die Karte", titel:"Karte", unter:"", icon:"speise", form:"zwei", eigen:true }
+    : { s:sch, gruppe:"Für Ihren nächsten Besuch", titel:"Link", unter:"", icon:"stern", form:"zwei", eigen:true };
+}
+const KB_KARTEN_FEST = ["speisekarte", "getraenke", "cocktails"];
+const KB_KARTE_MUSTER = /^(speisekarte|getraenke|cocktails|k-[a-z0-9-]{1,22})$/;
+function kbLinkSauber(w){
+  const t = String(w || "").trim();
+  return /^https:\/\/[^\s"'<>\\`]{3,300}$/i.test(t) ? t : "";
+}
+function kbZeitplanSauber(p){
+  return (Array.isArray(p) ? p : []).filter(x => x &&
+      /^\d{1,2}:\d{2}$/.test(x.von || "") && /^\d{1,2}:\d{2}$/.test(x.bis || "") &&
+      KB_KARTE_MUSTER.test(x.karte || ""))
+    .slice(0, 6).map(x => ({ von:x.von, bis:x.bis, karte:x.karte }));
+}
+function kbIstKarte(k){ return k.art === "karte"; }
+function kbNeueId(){
+  const da = new Set(KACHELSTAND.map(k => k.schluessel));
+  let id; do { id = "e-" + Math.random().toString(36).slice(2, 9); } while(da.has(id));
+  return id;
+}
 function kbGruppeVon(sch){ return (kbPlan(sch) || {}).gruppe || ""; }
 
 /* Innerhalb der eigenen Gruppe verschieben — dasselbe Muster wie
@@ -10762,6 +11434,7 @@ function kbZeichnen(){
           '<input data-kb-unter maxlength="90" value="' + sicher(k.unter) + '"></label>') +
         '<small class="hvwarn" data-hvwarn="kb:' + sch + '"></small>' +
       '</div>' +
+      kbZielHTML(k, p) +
       '<div class="kbwahlblock"><span class="kbwahlname">Breite</span>' +
         kbSegment("Breite", ["drittel","halb","voll"], kbBreite(k), "kb-breite", KB_BREITENNAME) +
         '<small class="kbhinweis">Steht eine Kachel allein in ihrer Reihe, zieht sie sich von selbst breit.</small></div>' +
@@ -10819,6 +11492,64 @@ function kbZeichnen(){
   hvStartseite("kacheln");
 }
 
+/* Karte, Zeitplan, Link, Löschen — nur, wo es passt. */
+function kbZielHTML(k, p){
+  const sch = sicher(k.schluessel);
+  let html = "";
+  if(kbIstKarte(k)){
+    const opt = wahl => kartenListe().map(x => '<option value="' + sicher(x.id) + '"' +
+      (x.id === wahl ? " selected" : "") + '>' + sicher(x.name) + '</option>').join("");
+    html += '<div class="kbwahlblock"><span class="kbwahlname">Zeigt Karte</span>' +
+      '<select class="kbkarte" data-kb-karte aria-label="Karte dieser Kachel">' + opt(k.karte || k.schluessel) + '</select>' +
+      '<small class="kbhinweis">Karten legst du in „Karte“ über „✎ Karten“ an — bis zu 20.</small></div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Zeitplan</span>' +
+      (k.plan || []).map((z, i) =>
+        '<div class="kbplan" data-kb-plan="' + i + '">' +
+          '<input type="time" data-kb-plan-von value="' + sicher(z.von) + '" aria-label="Von">' +
+          '<span aria-hidden="true">–</span>' +
+          '<input type="time" data-kb-plan-bis value="' + sicher(z.bis) + '" aria-label="Bis">' +
+          '<select data-kb-plan-karte aria-label="Karte in dieser Zeit">' + opt(z.karte) + '</select>' +
+          '<button type="button" class="kbplan-weg" data-kb-plan-weg aria-label="Zeit entfernen">✕</button>' +
+        '</div>').join("") +
+      ((k.plan || []).length < 6 ? '<button type="button" class="kbplan-neu" data-kb-plan-neu>＋ Zeit hinzufügen</button>' : "") +
+      '<small class="kbhinweis">' + ((k.plan || []).length
+        ? "In diesen Zeiten zeigt die Kachel die gewählte Karte, sonst die oben. Es zählt die Uhr des Gastes."
+        : "Z.&nbsp;B. 11:00–15:00 Mittagskarte — danach wechselt die Kachel von selbst.") + '</small></div>';
+  }
+  if(k.art === "link"){
+    html += '<div class="kbwahlblock"><span class="kbwahlname">Adresse</span>' +
+      '<input type="url" class="kblink" data-kb-link inputmode="url" placeholder="https://…" value="' + sicher(k.link || "") + '" aria-label="Adresse des Links">' +
+      '<small class="kbhinweis" data-kb-link-hinweis>' + (k.link ? "Öffnet in einem neuen Fenster." : "Nur https-Adressen.") + '</small></div>';
+  }
+  if(p.eigen){
+    html += '<button type="button" class="knopf gefahr kbloeschen" data-kb-loeschen>Kachel löschen</button>';
+  }
+  return html;
+}
+
+/* Neue Kachel anlegen — am Ende ihrer Gruppe, offen zum Einstellen. */
+function kbNeu(art){
+  if(KACHELSTAND.filter(k => KB_EIGEN_MUSTER.test(k.schluessel)).length >= KB_EIGEN_HOECHST)
+    return melde("Höchstens " + KB_EIGEN_HOECHST + " eigene Kacheln", true);
+  const sch = kbNeueId();
+  const ersteKarte = (kartenListe()[0] || {}).id || "speisekarte";
+  const neu = { schluessel:sch, an:true, art,
+    titel: art === "karte" ? karteName(ersteKarte) : "Neuer Link", unter:"",
+    icon: art === "karte" ? "speise" : "stern", banner:"", iconAus:false, breite:"", bildform:"",
+    grund:"", symbolLage:"", hoehe:"", textgroesse:"",
+    karte: art === "karte" ? ersteKarte : "", plan:[], link:"" };
+  const gruppe = art === "karte" ? "Die Karte" : "Für Ihren nächsten Besuch";
+  KACHELSTAND.push(neu);
+  let letzte = -1;
+  KACHELSTAND.forEach((k, i) => { if(k !== neu && kbGruppeVon(k.schluessel) === gruppe) letzte = i; });
+  if(letzte > -1){ KACHELSTAND.pop(); KACHELSTAND.splice(letzte + 1, 0, neu); }
+  kbOffen.add(sch);
+  kbZeichnen();
+  const zeile = document.querySelector('[data-kb="' + sch + '"]');
+  if(zeile) zeile.scrollIntoView({ block:"center" });
+  melde(art === "karte" ? "Karten-Kachel angelegt — Karte wählen, dann „Übernehmen“" : "Link-Kachel angelegt — Adresse eintragen, dann „Übernehmen“");
+}
+
 /* Eine Zeile allein neu zeichnen wäre schöner, ist aber trügerisch:
    Symbol, Titel und Bild hängen zusammen, und ein halb gezeichneter
    Stand hat schon einmal gezeigt, was gar nicht eingestellt war.
@@ -10837,6 +11568,32 @@ document.addEventListener("click", e => {
 
   const sym = e.target.closest("[data-kb-icon]");
   if(sym){ kbAendern(sch, "icon", sym.dataset.kbIcon); return; }
+
+  if(e.target.closest("[data-kb-loeschen]")){
+    const k = kbFinden(sch);
+    if(!k || !KB_EIGEN_MUSTER.test(sch)) return;
+    if(!confirm("Kachel „" + (k.titel || "ohne Namen") + "“ löschen? Gäste sehen sie nach „Übernehmen“ nicht mehr.")) return;
+    KACHELSTAND = KACHELSTAND.filter(x => x !== k);
+    kbOffen.delete(sch);
+    kbZeichnen();
+    melde("Kachel gelöscht — mit „Übernehmen“ für Gäste wirksam");
+    return;
+  }
+  if(e.target.closest("[data-kb-plan-neu]")){
+    const k = kbFinden(sch); if(!k) return;
+    const andere = kartenListe().find(x => x.id !== (k.karte || sch)) || kartenListe()[0];
+    k.plan = (k.plan || []).concat([{ von:"11:00", bis:"15:00", karte: andere ? andere.id : (k.karte || sch) }]).slice(0, 6);
+    kbZeichnen();
+    return;
+  }
+  const planWeg = e.target.closest("[data-kb-plan-weg]");
+  if(planWeg){
+    const k = kbFinden(sch); if(!k) return;
+    const i = +planWeg.closest("[data-kb-plan]").dataset.kbPlan;
+    k.plan = (k.plan || []).filter((_, j) => j !== i);
+    kbZeichnen();
+    return;
+  }
 
   const hoch = e.target.closest("[data-kb-hoch]");
   if(hoch){ if(!hoch.disabled) kbVerschieben(sch, -1); return; }
@@ -10889,6 +11646,17 @@ document.addEventListener("change", e => {
   if(!zeile) return;
   const sch = zeile.dataset.kb;
   if(e.target.matches("[data-kb-an]")) kbAendern(sch, "an", e.target.checked);
+  if(e.target.matches("[data-kb-karte]") && KB_KARTE_MUSTER.test(e.target.value)) kbAendern(sch, "karte", e.target.value);
+  const planZeile = e.target.closest("[data-kb-plan]");
+  if(planZeile){
+    const k = kbFinden(sch), i = +planZeile.dataset.kbPlan;
+    if(k && k.plan && k.plan[i]){
+      if(e.target.matches("[data-kb-plan-von]") && /^\d{1,2}:\d{2}$/.test(e.target.value)) k.plan[i].von = e.target.value;
+      if(e.target.matches("[data-kb-plan-bis]") && /^\d{1,2}:\d{2}$/.test(e.target.value)) k.plan[i].bis = e.target.value;
+      if(e.target.matches("[data-kb-plan-karte]") && KB_KARTE_MUSTER.test(e.target.value)) k.plan[i].karte = e.target.value;
+      hvStartseite("kacheln");
+    }
+  }
   /* Das Feld heißt iconAus, der Schalter fragt "Symbol zeigen" —
      deshalb hier umgekehrt: angehakt (zeigen) heißt iconAus:false. */
   if(e.target.matches("[data-kb-iconaus]")) kbAendern(sch, "iconAus", !e.target.checked);
@@ -10910,6 +11678,11 @@ document.addEventListener("input", e => {
      die Vorschau daneben von Hand. */
   if(e.target.matches("[data-kb-titel]")) k.titel = e.target.value;
   if(e.target.matches("[data-kb-unter]")) k.unter = e.target.value;
+  if(e.target.matches("[data-kb-link]")){
+    k.link = kbLinkSauber(e.target.value);
+    const h = zeile.querySelector("[data-kb-link-hinweis]");
+    if(h) h.textContent = k.link ? "Öffnet in einem neuen Fenster." : (e.target.value.trim() ? "Bitte eine vollständige https-Adresse." : "Nur https-Adressen.");
+  }
   if(e.target.matches("[data-kb-textgroesse]")){
     const wert = +e.target.value / 100;
     k.textgroesse = wert === 1 ? "" : wert;
@@ -11359,6 +12132,10 @@ function kbRoh(){
     if(k.symbolLage)                e.symbolLage = k.symbolLage;
     if(k.hoehe)                     e.hoehe  = k.hoehe;
     if(k.textgroesse)               e.textgroesse = k.textgroesse;
+    if(v.eigen){ e.art = k.art; e.titel = k.titel || v.titel; }
+    if(kbIstKarte(k) && k.karte && k.karte !== k.schluessel) e.karte = k.karte;
+    if(kbIstKarte(k) && k.plan && k.plan.length) e.plan = k.plan.map(x => ({ ...x }));
+    if(k.art === "link" && k.link) e.link = k.link;
     return e;
   });
 }
@@ -11883,16 +12660,17 @@ function bnVorschauZeichnen(){
 function bnGerichteOptionen(gewaehlt){
   const liste = gerichte.filter(g => Number(g.preis) >= 0);
   const karten = [...new Set(liste.map(g => g.karte || "speisekarte"))];
-  const KARTENNAMEN = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+  /* Nach der ERSTEN Karte gruppiert (gerichte.karte): Ein Gericht in zwei
+     Karten stünde sonst doppelt in der Auswahl. */
   const gruppen = karten.flatMap(k =>
-    [...new Set(liste.filter(g => (g.karte||"speisekarte") === k).map(g => g.kategorie))]
+    [...new Set(liste.filter(g => (g.karte || "speisekarte") === k).map(g => g.kategorie))]
       .map(kat => ({ karte:k, kategorie:kat, sort:katSortVon(kat, k) }))
   ).sort((a, c) => a.karte.localeCompare(c.karte) || a.sort - c.sort ||
                     (a.kategorie||"").localeCompare(c.kategorie||"", "de"));
   return gruppen.map(({karte:k, kategorie:kat}) => {
-    const drin = liste.filter(g => (g.karte||"speisekarte") === k && g.kategorie === kat)
+    const drin = liste.filter(g => (g.karte || "speisekarte") === k && g.kategorie === kat)
       .sort((a, c) => (a.name||"").localeCompare(c.name||"", "de"));
-    const label = (karten.length > 1 ? (KARTENNAMEN[k]||k) + " — " : "") + (kat || "Ohne Kategorie");
+    const label = (karten.length > 1 ? karteName(k) + " — " : "") + (kat || "Ohne Kategorie");
     return '<optgroup label="' + sicher(label) + '">' + drin.map(g =>
       '<option value="' + sicher(g.name) + '"' + (gewaehlt === g.name ? " selected" : "") + '>' +
       sicher(g.name) + '</option>').join("") + '</optgroup>';
@@ -12297,21 +13075,17 @@ function runnerGerichteFuellen(){
   const liste = gerichte.filter(g => Number(g.preis) > 0);
   const karten = [...new Set(liste.map(g => g.karte || "speisekarte"))];
   const gruppen = karten.flatMap(k =>
-    [...new Set(liste.filter(g => (g.karte||"speisekarte") === k).map(g => g.kategorie))]
+    [...new Set(liste.filter(g => (g.karte || "speisekarte") === k).map(g => g.kategorie))]
       .map(kat => ({ karte: k, kategorie: kat, sort: katSortVon(kat, k) }))
   ).sort((a, b) => a.karte.localeCompare(b.karte) || a.sort - b.sort ||
                     (a.kategorie||"").localeCompare(b.kategorie||"", "de"));
 
-  /* Dieselben drei Namen wie bei den Karte-Chips/-Auswahlfeldern
-     anderswo im Blatt (admin.html:2156-2158, 2725-2727) — nicht neu
-     benannt. Es gibt genau diese drei, nachgesehen statt angenommen:
-     ein früherer Entwurf kannte nur "speisekarte"/"getraenke" und
-     hätte "cocktails" fälschlich als "Speisekarte" beschriftet. */
-  const KARTENNAMEN = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+  /* Die Namen kommen aus dem Kartenverzeichnis (karteName) — seit
+     07.10. gibt es mehr als die drei festen Karten. */
   w.innerHTML = gruppen.map(({karte: k, kategorie: kat}) => {
-    const drin = liste.filter(g => (g.karte||"speisekarte") === k && g.kategorie === kat)
+    const drin = liste.filter(g => (g.karte || "speisekarte") === k && g.kategorie === kat)
       .sort((a,b) => (a.name||"").localeCompare(b.name||"", "de") || String(a.id).localeCompare(String(b.id)));
-    const label = (karten.length > 1 ? (KARTENNAMEN[k] || k) + " — " : "") +
+    const label = (karten.length > 1 ? karteName(k) + " — " : "") +
       (kat || "Ohne Kategorie");
     return '<optgroup label="' + sicher(label) + '">' + drin.map(g =>
       '<option value="' + g.id + '" data-preis="' + g.preis + '">' +
@@ -12486,27 +13260,169 @@ if($("#runnerAuf")){
    (datenbank/migration-rabattcode-ziel.sql). Anders als bei
    Gutscheinen schreibt das Board NICHT direkt in die Tabelle —
    authenticated hat dort bewusst nur SELECT, jedes Schreiben läuft
-   über rabattcode_team_anlegen()/rabattcode_beenden() (CLAUDE.md
-   §2.3a: geprüft, nicht angenommen — ein Rollentest zeigte, dass die
-   Tabelle vorher sogar INSERT/UPDATE/DELETE für authenticated trug;
-   RLS hielt, weil keine passende Regel existierte, der GRANT wurde
-   trotzdem auf SELECT verengt). Eingelöst wird weiter auf der
+   über rabattcode_ausstellen()/rabattcode_beenden()
+   (migration-gutschein-sicher.sql): Recht des Mitglieds, Grenzen,
+   Tageslimit, PIN je Ausstellung, und den CODE VERGIBT DER SERVER —
+   zehn Zeichen aus 32, nicht zu erraten. Von Hand gewählte Codes
+   („GRATIS“) gibt es nicht mehr. Eingelöst wird weiter auf der
    Bestellkarte, „Rabattcode einlösen" — dieselbe Stelle wie bisher. */
 let rcArt = "prozent";
 let rcZielModus = "rechnung";
 let rabattcodeTeam = [];
-const RC_CODE_OK = /^[A-Z0-9-]{3,24}$/;
 const RC_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 
-function rcVorschlag(){
-  const z = new Uint32Array(4);
-  crypto.getRandomValues(z);
-  return "AKTION-" + Array.from(z, x => RC_ZEICHEN[x % RC_ZEICHEN.length]).join("");
-}
-function rcCodeSauber(v){
+/* Vorsilbe: was die Datenbank annimmt (^[A-Z0-9]{0,8}$), schon beim Tippen. */
+function praefixSauber(v){
   return String(v || "").toUpperCase()
     .replace(/Ä/g, "AE").replace(/Ö/g, "OE").replace(/Ü/g, "UE").replace(/ß/g, "SS")
-    .replace(/\s+/g, "-").replace(/[^A-Z0-9-]/g, "").slice(0, 24);
+    .replace(/[^A-Z0-9]/g, "").slice(0, 8);
+}
+/* Nur im Vorführmodus: dort gibt es keinen Server, der würfelt. */
+function demoCode(praefix){
+  const z = new Uint32Array(10);
+  crypto.getRandomValues(z);
+  const s = Array.from(z, x => RC_ZEICHEN[x % 32]).join("");
+  return praefix ? praefix + "-" + s : s;
+}
+
+/* ═══ Ausstellen: Recht, PIN, Gründe ═══════════════════════════════
+   gutschein_recht() sagt, ob DIESES Konto hier ausstellen darf und in
+   welchen Grenzen — der Server, nicht das Board, entscheidet. Für das
+   Team öffnet es genau die beiden Gruppen, die der Besitzer ihm
+   freigeschaltet hat. Fehlt die Antwort (Netz, Migration fehlt),
+   bleibt die Sperre, wie rolleAnwenden() sie gesetzt hat. */
+let grRecht = null, grFuer = null;
+async function grLaden(){
+  if(demo || !db || !betriebId){ grRecht = { ok:true, inhaber:true, pin:true }; grAnwenden(); return grRecht; }
+  /* Erneut anwenden: rolleAnwenden() sperrt bei jedem Öffnen neu. */
+  if(grFuer === betriebId && grRecht){ grAnwenden(); return grRecht; }
+  const fuer = betriebId;
+  try{
+    const {data, error} = await db.rpc("gutschein_recht", { p_betrieb: fuer });
+    if(error) throw error;
+    grRecht = (data && typeof data === "object" && !Array.isArray(data)) ? data : { ok:false };
+  }catch(e){ grRecht = { ok:false, grund:"netz" }; }
+  if(fuer !== betriebId) return grRecht;            /* inzwischen gewechselt */
+  grFuer = fuer;
+  grAnwenden();
+  return grRecht;
+}
+function grAnwenden(){
+  const r = grRecht || {};
+  const team = !istInhaberRolle();
+  $$("[data-gutschein-recht]").forEach(g => {
+    if(!team || !r.ok) return;                       /* Inhaber: nie gesperrt; Team ohne Recht: bleibt */
+    const satz = g.querySelector(":scope > .nur-inhaber-satz"); if(satz) satz.remove();
+    [...g.children].forEach(k => { k.inert = false; });
+  });
+  const rahmen = (team && r.ok)
+    ? "Ihr Rahmen: höchstens " + euro(r.max_betrag) + " oder " + (+r.max_prozent).toLocaleString("de-DE") +
+      " %, " + r.tag_max + " je Tag (heute " + (r.heute || 0) + "). Ihre Codes laufen nach höchstens 90 Tagen ab."
+    : "";
+  ["#rcRahmen", "#gsRahmen"].forEach(id => { const el = $(id); if(el){ el.textContent = rahmen; el.hidden = !rahmen; } });
+}
+
+const AUSSTELL_GRUND = {
+  kein_zugriff: "Dafür fehlt diesem Zugang die Berechtigung.",
+  kein_recht: "Gutscheine und Codes stellt nur aus, wen der Besitzer dafür freigeschaltet hat.",
+  betrag_oder_prozent: "Bitte entweder Prozent oder Betrag, nicht beides und nicht keins.",
+  werte_ungueltig: "Prozent bis 100, Betrag über 0 und höchstens 500 €.",
+  praefix: "Die Vorsilbe darf bis zu 8 Zeichen haben: A–Z und 0–9.",
+  ueber_grenze: "Das liegt über Ihrer Grenze ({grenze}).",
+  tageslimit: "Für heute ist Ihr Rahmen ausgeschöpft ({grenze} je Tag).",
+  frist: "Dieses Datum liegt schon hinter uns.",
+  gericht_unbekannt: "Dieses Gericht wurde nicht gefunden.",
+  titel: "Bitte eintragen, was es gibt — höchstens 80 Zeichen.",
+  text: "Der Satz darf höchstens 240 Zeichen haben.",
+  pin_gesperrt: "Ihre PIN ist nach fünf Fehlversuchen gesperrt. Entsperren kann sie die Zentrale.",
+  pin_form: "Die PIN hat genau acht Ziffern.",
+  keine_pin: "Für dieses Konto ist noch keine PIN festgelegt.",
+  code_vergeben: "Gerade ging kein freier Code — bitte noch einmal tippen.",
+  unbekannt: "Diesen Eintrag gibt es nicht mehr."
+};
+function ausstellSatz(data, einheit){
+  const g = data && data.grund;
+  const satz = AUSSTELL_GRUND[g] || "Nicht angelegt — bitte Verbindung prüfen.";
+  return satz.replace("{grenze}", data && data.grenze != null
+    ? (+data.grenze).toLocaleString("de-DE") + (einheit || "") : "");
+}
+
+/* PIN je Ausstellung. Eigenes Blatt; liefert die PIN oder null.
+   „festlegen“: Das Konto hat noch keine — erst pin_erstmals_setzen,
+   dann gilt sie (auch für diese Ausstellung). */
+let apAuf = null;
+const AP_SETZ_GRUND = {
+  vorhanden: "Für dieses Konto gibt es schon eine PIN.",
+  form: "Die PIN hat genau acht Ziffern.",
+  zu_einfach: "Zu einfach — bitte keine gleichen Ziffern und keine Reihe wie 12345678.",
+  nicht_angemeldet: "Bitte neu anmelden."
+};
+function apFragen(modus, satz){
+  if(apAuf) apAuf.res(null);
+  return new Promise(res => {
+    apAuf = { res, modus };
+    const neu = modus === "festlegen";
+    $("#apTitel").textContent = neu ? "PIN festlegen" : "Mit PIN bestätigen";
+    $("#apHilfe").textContent = satz || (neu
+      ? "Ihr Konto hat noch keine PIN. Legen Sie jetzt acht Ziffern fest — sie bestätigt künftig jeden Gutschein und Code. Ändern kann sie danach nur die Zentrale."
+      : "Jeder Gutschein und jeder Code wird mit Ihrer PIN bestätigt — so steht fest, wer ihn ausgestellt hat.");
+    $("#apZweit").hidden = !neu;
+    $("#apPin").value = ""; $("#apPin2").value = ""; $("#apMeldung").textContent = "";
+    $("#apOk").textContent = neu ? "PIN festlegen" : "Bestätigen";
+    $("#apOk").disabled = false;
+    $("#apBlatt").classList.remove("geht");
+    $("#apBlatt").hidden = false;
+    setTimeout(() => $("#apPin").focus(), 60);
+  });
+}
+function apZu(wert){
+  const a = apAuf; apAuf = null;
+  /* Erst beim Auslösen prüfen, nicht beim Planen (§8.1p): Bei falscher
+     PIN öffnet mitPin() das Blatt sofort wieder — der 210 ms spätere
+     Rückruf hätte es danach versteckt (in der Prüfung gefunden). */
+  blattFortAnimieren($("#apBlatt"), () => { if(!apAuf) $("#apBlatt").hidden = true; });
+  if(a) a.res(wert);
+}
+$("#apWeg").onclick = () => apZu(null);
+$("#apBlatt").addEventListener("click", e => { if(e.target === $("#apBlatt")) apZu(null); });
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#apBlatt").hidden) apZu(null); });
+["#apPin", "#apPin2"].forEach(id => $(id).addEventListener("keydown", e => { if(e.key === "Enter") $("#apOk").click(); }));
+$("#apOk").onclick = async () => {
+  if(!apAuf) return;
+  const pin = $("#apPin").value.trim();
+  if(!/^\d{8}$/.test(pin)){ $("#apMeldung").textContent = AUSSTELL_GRUND.pin_form; $("#apPin").focus(); return; }
+  if(apAuf.modus === "festlegen"){
+    if($("#apPin2").value.trim() !== pin){ $("#apMeldung").textContent = "Die beiden Eingaben sind nicht gleich."; $("#apPin2").focus(); return; }
+    if(!(demo || !db)){
+      $("#apOk").disabled = true;
+      try{
+        const {data, error} = await db.rpc("pin_erstmals_setzen", { p_pin: pin });
+        if(error) throw error;
+        if(!data || !data.ok){
+          $("#apMeldung").textContent = AP_SETZ_GRUND[data && data.grund] || "Nicht gespeichert — bitte Verbindung prüfen.";
+          $("#apOk").disabled = false; return;
+        }
+      }catch(e){ $("#apMeldung").textContent = "Nicht gespeichert — bitte Verbindung prüfen."; $("#apOk").disabled = false; return; }
+      if(grRecht) grRecht.pin = true;
+    }
+  }
+  apZu(pin);
+};
+
+/* Ruft rufe(pin) so lange, bis der Server mehr sagt als „PIN“: falsche
+   PIN fragt neu, fehlende lässt sie erstmals festlegen. null = abgebrochen. */
+async function mitPin(rufe){
+  const r = grRecht || {};
+  let pin = await apFragen(r.pin === false ? "festlegen" : "eingeben");
+  for(let runde = 0; runde < 5 && pin; runde++){
+    const {data, error} = await rufe(pin);
+    if(error) throw error;
+    const g = data && data.grund;
+    if(g === "keine_pin"){ pin = await apFragen("festlegen"); continue; }
+    if(g === "pin_falsch"){ pin = await apFragen("eingeben", "Die PIN stimmt nicht. Nach fünf Fehlversuchen ist sie gesperrt."); continue; }
+    return data || { ok:false };
+  }
+  return null;
 }
 
 function rcArtZeichnen(){
@@ -12555,16 +13471,23 @@ function rcTypText(g){
 
 async function rcLaden(){
   rcArtZeichnen(); rcZielZeichnen(); rcGerichtFuellen();
-  const code = $("#rcCode");
-  if(code && !code.value) code.value = rcVorschlag();
+  grLaden();
   if(demo || !db || !betriebId){ rcZeichnen(); return; }
   try{
     const jetzt = new Date().toISOString();
-    const {data, error} = await db.from("rabattcodes")
-      .select("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am")
+    let {data, error} = await db.from("rabattcodes")
+      .select("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am,angelegt_name")
       .eq("betrieb_id", betriebId).eq("quelle", "team").eq("eingeloest", false)
       .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
       .order("angelegt_am", {ascending:false}).order("id");
+    /* Ohne Teil 1 der Migration gibt es angelegt_name nicht — dann
+       ohne Namen weiter, nicht leer (§8.1m). */
+    if(error && /angelegt_name|column/i.test(error.message || ""))
+      ({data, error} = await db.from("rabattcodes")
+        .select("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am")
+        .eq("betrieb_id", betriebId).eq("quelle", "team").eq("eingeloest", false)
+        .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
+        .order("angelegt_am", {ascending:false}).order("id"));
     if(error) throw error;
     rabattcodeTeam = data || [];
   }catch(e){ rabattcodeTeam = []; }
@@ -12580,7 +13503,8 @@ function rcZeichnen(){
   ziel.innerHTML = rabattcodeTeam.map(g =>
     '<div class="gs-zeile" data-rc="' + sicher(g.id) + '">' +
       '<span class="gs-was"><b>' + sicher(rcTypText(g)) + '</b>' +
-        '<i>' + (g.ziel_gericht_name ? sicher(g.ziel_gericht_name) : "Ganze Rechnung") + '</i></span>' +
+        '<i>' + (g.ziel_gericht_name ? sicher(g.ziel_gericht_name) : "Ganze Rechnung") + '</i>' +
+        (g.angelegt_name ? '<i>ausgestellt von ' + sicher(g.angelegt_name) + '</i>' : '') + '</span>' +
       '<span class="gs-code">' + sicher(g.code) + '</span>' +
       '<span class="gs-frist">' +
         (g.gueltig_bis ? "bis " + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist") + '</span>' +
@@ -12588,30 +13512,19 @@ function rcZeichnen(){
     '</div>').join("");
 }
 
-function rcFehlerText(grund){
-  return {
-    kein_zugriff: "Dafür fehlt diesem Zugang die Berechtigung.",
-    betrag_oder_prozent: "Bitte entweder Prozent oder Betrag, nicht beides und nicht keins.",
-    code_form: "Der Code braucht 3 bis 24 Zeichen: A–Z, 0–9, Bindestrich.",
-    code_vergeben: "Diesen Code gab es bei Ihnen schon — bitte einen anderen nehmen.",
-    gericht_unbekannt: "Dieses Gericht wurde nicht gefunden.",
-    werte_ungueltig: "Prozent oder Betrag passen nicht (Prozent bis 100, Betrag über 0).",
-  }[grund] || "Nicht angelegt — bitte Verbindung prüfen.";
-}
-
 if($("#rcForm")){
-  $("#rcCode").addEventListener("input", e => {
-    const el = e.target, sauber = rcCodeSauber(el.value);
+  $("#rcPraefix").addEventListener("input", e => {
+    const el = e.target, sauber = praefixSauber(el.value);
     if(sauber !== el.value) el.value = sauber;
   });
 
   $("#rcForm").onsubmit = async e => {
     e.preventDefault();
-    const code = rcCodeSauber($("#rcCode").value);
+    const praefix = praefixSauber($("#rcPraefix").value);
     const wert = parseFloat(String($("#rcWert").value).replace(",", "."));
-    if(!RC_CODE_OK.test(code)){ melde(rcFehlerText("code_form"), true); $("#rcCode").focus(); return; }
     if(!(wert > 0)){ melde("Bitte einen Wert größer als 0 eintragen.", true); $("#rcWert").focus(); return; }
-    if(rcArt === "prozent" && wert > 100){ melde(rcFehlerText("werte_ungueltig"), true); $("#rcWert").focus(); return; }
+    if((rcArt === "prozent" && wert > 100) || (rcArt === "betrag" && wert > 500)){
+      melde(AUSSTELL_GRUND.werte_ungueltig, true); $("#rcWert").focus(); return; }
     let zielId = null;
     if(rcZielModus === "gericht"){
       zielId = $("#rcGericht").value;
@@ -12624,30 +13537,37 @@ if($("#rcForm")){
     const knopf = $("#rcAnlegen");
     knopf.disabled = true; knopf.textContent = "Wird angelegt …";
     try{
+      await grLaden();
+      let code = null;
       if(demo || !db){
-        if(rabattcodeTeam.some(g => g.code === code)){ melde(rcFehlerText("code_vergeben"), true); return; }
-        const gericht = zielId ? gerichte.find(g => g.id === zielId) : null;
-        rabattcodeTeam.unshift({
-          id: "demo-" + Date.now(), code,
-          betrag: rcArt === "betrag" ? wert : null,
-          prozent: rcArt === "prozent" ? wert : null,
-          ziel_gericht_name: gericht ? gericht.name : null,
-          gueltig_bis: ende, angelegt_am: new Date().toISOString(),
-        });
-        rcZeichnen();
+        const pin = await apFragen("eingeben");
+        if(pin){
+          const gericht = zielId ? gerichte.find(g => g.id === zielId) : null;
+          code = demoCode(praefix);
+          rabattcodeTeam.unshift({
+            id: "demo-" + Date.now(), code,
+            betrag: rcArt === "betrag" ? wert : null,
+            prozent: rcArt === "prozent" ? wert : null,
+            ziel_gericht_name: gericht ? gericht.name : null,
+            gueltig_bis: ende, angelegt_am: new Date().toISOString(), angelegt_name: "Vorführung",
+          });
+          rcZeichnen();
+        }
       }else{
-        const {data, error} = await db.rpc("rabattcode_team_anlegen", {
-          p_betrieb_id: betriebId, p_code: code,
+        const data = await mitPin(pin => db.rpc("rabattcode_ausstellen", {
+          p_betrieb: betriebId,
           p_betrag: rcArt === "betrag" ? wert : null,
           p_prozent: rcArt === "prozent" ? wert : null,
           p_ziel_gericht_id: zielId, p_gueltig_bis: ende,
-        });
-        if(error) throw error;
-        if(!data || !data.ok){ melde(rcFehlerText(data?.grund), true); return; }
-        await rcLaden();
+          p_praefix: praefix || null, p_pin: pin,
+        }));
+        if(data && !data.ok){ melde(ausstellSatz(data, rcArt === "prozent" ? " %" : " €"), true); }
+        if(data && data.ok){ code = data.code; grFuer = null; await rcLaden(); }
       }
-      $("#rcCode").value = rcVorschlag(); $("#rcWert").value = ""; $("#rcBis").value = "";
-      melde("Rabattcode liegt bereit.");
+      if(code){
+        $("#rcWert").value = ""; $("#rcBis").value = "";
+        melde("Rabattcode " + code + " liegt bereit.");
+      }
     }catch(err){
       melde("Nicht gespeichert — bitte Verbindung prüfen.", true);
     }
@@ -12668,7 +13588,7 @@ if($("#rcForm")){
     try{
       const {data, error} = await db.rpc("rabattcode_beenden", {p_rabattcode_id: id});
       if(error) throw error;
-      if(!data || !data.ok){ k.disabled = false; melde(rcFehlerText(data?.grund), true); return; }
+      if(!data || !data.ok){ k.disabled = false; melde(ausstellSatz(data), true); return; }
       await rcLaden();
       melde("Rabattcode beendet");
     }catch(err){ k.disabled = false; melde("Nicht gespeichert — bitte Verbindung prüfen.", true); }
@@ -12678,34 +13598,17 @@ if($("#rcForm")){
 /* ══════════════════════════════════════════════════════════════════
    GUTSCHEINE FÜR STAMMGÄSTE
 
-   Schreibt direkt in `gutscheine` — kein eigener Server-Weg nötig:
-   authenticated darf schreiben, die RLS-Regel „gutscheine team
-   pflegt" lässt nur das eigene Haus zu (live geprobt, siehe
-   datenbank/migration-gutscheine-masse.sql). Der Gast liest über
-   gast_melden(), das nur offene, nicht abgelaufene zeigt.
+   Ausstellen über gutschein_ausstellen() mit PIN, Beenden über
+   gutschein_beenden() (migration-gutschein-sicher.sql) — nicht mehr
+   direkt in die Tabelle: Dort stand nirgends, WER ausgestellt hat,
+   und jedes Mitglied durfte. Den Code vergibt der Server. Der Gast
+   liest über gast_melden(), das nur offene, nicht abgelaufene zeigt.
 
    Beenden heißt beenden, nicht löschen: gueltig_bis = jetzt. Der
    Code bleibt belegt (UNIQUE je Haus) — ein beendeter Gutschein
    kann nicht unter demselben Code wieder auftauchen.
    ══════════════════════════════════════════════════════════════════ */
 let gutscheine = [];
-/* Ohne 0/O und 1/I: Der Code wird am Tisch vorgelesen. */
-const GS_ZEICHEN = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-const GS_CODE_OK = /^[A-Z0-9-]{3,24}$/;
-
-function gsVorschlag(){
-  const z = new Uint32Array(4);
-  crypto.getRandomValues(z);
-  return "DANKE-" + Array.from(z, x => GS_ZEICHEN[x % GS_ZEICHEN.length]).join("");
-}
-
-/* Was die Datenbank annimmt, schon beim Tippen: groß, Umlaute
-   ausgeschrieben, Leerzeichen zu Bindestrich, alles andere raus. */
-function gsCodeSauber(v){
-  return String(v || "").toUpperCase()
-    .replace(/Ä/g, "AE").replace(/Ö/g, "OE").replace(/Ü/g, "UE").replace(/ß/g, "SS")
-    .replace(/\s+/g, "-").replace(/[^A-Z0-9-]/g, "").slice(0, 24);
-}
 
 /* Datenbankfehler in Klartext — nie das rohe JSON (CLAUDE.md §8.1h). */
 function gsFehlerText(err){
@@ -12719,20 +13622,108 @@ function gsFehlerText(err){
   return "Nicht gespeichert — bitte Verbindung prüfen.";
 }
 
+/* ═══ Wer hat was geändert (migration-protokoll.sql) ═══
+   Die Zeilen schreibt die Datenbank, nie das Board; lesen darf nur der
+   Inhaber (RLS). Jeder Wert aus der Zeile geht als TEXT in die Seite —
+   ein Name oder Gerichtname kann alles enthalten (§2.3a). */
+const AE_FELD = {
+  preis:"Preis", name:"Name", beschreibung:"Beschreibung", kategorie:"Kategorie", allergene:"Allergene",
+  zusatzstoffe:"Zusatzstoffe", stoff_hinweis:"Hinweis zu den Stoffen", bild:"Foto", bild_frei:"Profi-Foto",
+  veg:"vegetarisch", vegan:"vegan", karte:"Karte", karten:"Karten", ab_alter:"Altersfreigabe", spur:"Spur",
+  opt:"Extras", kat_emoji:"Zeichen der Kategorie", frei:"Freitext", verfuegbar:"verfügbar",
+  hub_texte:"Texte im Hub", hub_kacheln:"Kacheln", hub_banner:"Banner-Rad", hub_stil:"Gestaltung",
+  hub_avatar:"Figur", liefer:"Lieferung", bestell_pause:"Bestellpause", bestell_pause_text:"Text der Bestellpause",
+  newsletter_aktiv:"Newsletter", klaviyo_liste_id:"Newsletter-Liste", markenblatt:"Markenblatt", ziele:"Umsatzziele",
+  pin_pflicht:"PIN-Pflicht", kontakt_telefon:"Telefon", tisch_pflicht:"Tischpflicht", slug:"Adresse",
+  rechnung_an:"Rechnungsadresse", plan:"Tarif", preis_monat:"Monatspreis", zustand:"Vertragszustand",
+  test_bis:"Testphase", vertrag_ab:"Vertragsbeginn", gekuendigt_zum:"Kündigung",
+  gericht_id:"Gericht", gericht_name:"Gericht", titel:"Titel", preis_alt:"alter Preis", preis_neu:"Aktionspreis",
+  von:"Beginn", bis:"Ende", aktiv:"aktiv", angelegt_von:"angelegt von",
+  gast_id:"Gast", code:"Code", gueltig_bis:"gültig bis", eingeloest_am:"eingelöst",
+  betrag:"Betrag", prozent:"Prozent", eingeloest:"eingelöst", eingeloest_bestellung_id:"eingelöst an Bestellung",
+  quelle:"Herkunft", angelegt_am:"angelegt am", ziel_gericht_id:"Ziel-Gericht", ziel_gericht_name:"Ziel-Gericht",
+  rolle:"Rolle", anzeigename:"Name", darf_gutscheine:"Gutschein-Recht", gutschein_max_betrag:"Höchstwert",
+  gutschein_max_prozent:"Höchstprozent", gutschein_tag_max:"Gutscheine je Tag"
+};
+const AE_DING = { gerichte:"das Gericht", aktionen:"die Aktion", gutscheine:"den Gutschein", rabattcodes:"den Rabattcode" };
+let aeZeilen = [], aeSeite = 0;
+function aeEuro(v){ const n = Number(v); return Number.isFinite(n) ? n.toLocaleString("de-DE", {minimumFractionDigits:2, maximumFractionDigits:2}) + " €" : String(v); }
+function aeSatz(z){
+  const ziel = z.ziel ? "„" + z.ziel + "“" : "";
+  const f = z.felder || [];
+  if(z.tabelle === "team"){
+    if(z.art === "neu") return "lud " + ziel + " ins Team ein";
+    if(z.art === "geloescht") return "nahm " + ziel + " aus dem Team";
+    return "änderte bei " + ziel + ": " + f.map(k => AE_FELD[k] || k).join(", ");
+  }
+  if(z.art === "neu") return z.tabelle === "betriebe" ? "legte den Betrieb an" : "legte " + (AE_DING[z.tabelle] || "einen Eintrag") + " " + ziel + " an";
+  if(z.art === "geloescht") return "löschte " + (AE_DING[z.tabelle] || "einen Eintrag") + " " + ziel;
+  const vor = z.vorher || {}, nach = z.nachher || {};
+  if(f.length === 1 && f[0] === "verfuegbar") return ziel + (nach.verfuegbar === false ? " auf ausverkauft gesetzt" : " wieder angeboten");
+  if(f.length === 1 && f[0] === "bestell_pause") return nach.bestell_pause ? "pausierte die Bestellungen" : "nahm wieder Bestellungen an";
+  if(f.length === 1 && (f[0] === "preis" || f[0] === "preis_neu"))
+    return (AE_FELD[f[0]]) + (ziel ? " von " + ziel : "") + ": " + aeEuro(vor[f[0]]) + " → " + aeEuro(nach[f[0]]);
+  const was = f.map(k => AE_FELD[k] || k).join(", ");
+  return z.tabelle === "betriebe" ? "änderte " + was : "änderte " + was + (ziel ? " bei " + ziel : "");
+}
+function aeWann(iso){
+  const d = new Date(iso), heute = new Date();
+  const uhr = d.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"});
+  return d.toDateString() === heute.toDateString() ? "heute " + uhr
+    : d.toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"}) + " " + uhr;
+}
+function aeHeute(){ const h = new Date().toDateString(); return aeZeilen.filter(z => new Date(z.zeit).toDateString() === h).length; }
+function aeZeichnen(){
+  const ziel = $("#aeListe"); if(!ziel) return;
+  ziel.textContent = "";
+  if(!aeZeilen.length){
+    const p = document.createElement("p"); p.className = "ehilfe";
+    p.textContent = istInhaberRolle() ? "Noch keine Änderung festgehalten. Ab jetzt steht hier jede." : "Das sieht nur ein Besitzer.";
+    ziel.appendChild(p); return;
+  }
+  aeZeilen.forEach(z => {
+    const r = document.createElement("div"); r.className = "ae-zeile";
+    const wer = document.createElement("span"); wer.className = "ae-wer"; wer.textContent = z.name || "Unbekannt";
+    const wann = document.createElement("span"); wann.className = "ae-wann"; wann.textContent = aeWann(z.zeit);
+    const was = document.createElement("span"); was.className = "ae-was"; was.textContent = aeSatz(z);
+    r.append(wer, wann, was); ziel.appendChild(r);
+  });
+}
+async function aeLaden(neu){
+  if(!db || demo || !betriebId) return;
+  if(neu){ aeZeilen = []; aeSeite = 0; }
+  const {data, error} = await db.from("protokoll")
+    .select("id,zeit,name,tabelle,art,ziel,felder,vorher,nachher")
+    .eq("betrieb_id", betriebId)
+    .order("zeit", {ascending:false}).order("id", {ascending:false})
+    .range(aeSeite * 50, aeSeite * 50 + 49);
+  if(error){
+    const z = $("#aeListe"); if(z){ z.textContent = ""; const p = document.createElement("p"); p.className = "ehilfe";
+      p.textContent = error.code === "42P01" ? "Das Protokoll ist noch nicht eingerichtet (migration-protokoll.sql)."
+        : "Die Änderungen konnten nicht geladen werden."; z.appendChild(p); }
+    return;
+  }
+  aeZeilen = aeZeilen.concat(data || []);
+  $("#aeMehr").hidden = !data || data.length < 50;
+  aeZeichnen();
+}
+$("#aeMehr").addEventListener("click", () => { aeSeite++; aeLaden(false); });
+
 async function gsLaden(){
   massVerdrahten();
-  const code = $("#gsCode");
-  if(code && !code.value) code.value = gsVorschlag();
+  grLaden();
   if(demo || !db || !betriebId){ gsZeichnen(); return; }
   try{
     const jetzt = new Date().toISOString();
-    const {data, error} = await db.from("gutscheine")
-      .select("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt")
+    const frage = spalten => db.from("gutscheine").select(spalten)
       .eq("betrieb_id", betriebId)
       .is("eingeloest_am", null)
       .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
       /* Eindeutiges Feld am Ende (CLAUDE.md §2.6). */
       .order("angelegt", {ascending:false}).order("id");
+    let {data, error} = await frage("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt,angelegt_name");
+    if(error && /angelegt_name|column/i.test(error.message || ""))
+      ({data, error} = await frage("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt"));
     if(error) throw error;
     gutscheine = data || [];
   }catch(e){ gutscheine = []; }
@@ -12748,7 +13739,8 @@ function gsZeichnen(){
   ziel.innerHTML = gutscheine.map(g =>
     '<div class="gs-zeile" data-gs="' + sicher(g.id) + '">' +
       '<span class="gs-was"><b>' + sicher(g.titel) + '</b>' +
-        (g.beschreibung ? '<i>' + sicher(g.beschreibung) + '</i>' : '') + '</span>' +
+        (g.beschreibung ? '<i>' + sicher(g.beschreibung) + '</i>' : '') +
+        (g.angelegt_name ? '<i>ausgestellt von ' + sicher(g.angelegt_name) + '</i>' : '') + '</span>' +
       '<span class="gs-code">' + sicher(g.code) + '</span>' +
       '<span class="gs-frist">' +
         (g.gueltig_bis ? "bis " + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist") +
@@ -12759,8 +13751,8 @@ function gsZeichnen(){
 }
 
 if($("#gsForm")){
-  $("#gsCode").addEventListener("input", e => {
-    const el = e.target, sauber = gsCodeSauber(el.value);
+  $("#gsPraefix").addEventListener("input", e => {
+    const el = e.target, sauber = praefixSauber(el.value);
     if(sauber !== el.value) el.value = sauber;
   });
 
@@ -12768,10 +13760,9 @@ if($("#gsForm")){
     e.preventDefault();
     const titel = $("#gsTitel").value.trim();
     const text  = $("#gsText").value.trim();
-    const code  = gsCodeSauber($("#gsCode").value);
+    const praefix = praefixSauber($("#gsPraefix").value);
     const bis   = $("#gsBis").value;
     if(!titel){ melde("Bitte zuerst eintragen, was es gibt.", true); $("#gsTitel").focus(); return; }
-    if(!GS_CODE_OK.test(code)){ melde("Der Code braucht 3 bis 24 Zeichen: A–Z, 0–9, Bindestrich.", true); $("#gsCode").focus(); return; }
     /* Das Datumsfeld liefert einen Kalendertag — gültig bis zu
        dessen Ende, in der Zeit des Hauses, nicht bis Mitternacht UTC. */
     const ende = bis ? new Date(bis + "T23:59:59").toISOString() : null;
@@ -12780,22 +13771,29 @@ if($("#gsForm")){
     const knopf = $("#gsAnlegen");
     knopf.disabled = true; knopf.textContent = "Wird angelegt …";
     try{
+      await grLaden();
+      let code = null;
       if(demo || !db){
-        if(gutscheine.some(g => g.code === code)) throw {code:"23505"};
-        gutscheine.unshift({id:"demo-" + Date.now(), titel, beschreibung:text, code,
-          gueltig_bis:ende, gast_id:null, angelegt:new Date().toISOString()});
-        gsZeichnen();
+        const pin = await apFragen("eingeben");
+        if(pin){
+          code = demoCode(praefix);
+          gutscheine.unshift({id:"demo-" + Date.now(), titel, beschreibung:text, code,
+            gueltig_bis:ende, gast_id:null, angelegt:new Date().toISOString(), angelegt_name:"Vorführung"});
+          gsZeichnen();
+        }
       }else{
-        const {error} = await db.from("gutscheine").insert({
-          betrieb_id: betriebId, titel, beschreibung: text, code, gueltig_bis: ende
-        });
-        if(error) throw error;
-        await gsLaden();
+        const data = await mitPin(pin => db.rpc("gutschein_ausstellen", {
+          p_betrieb: betriebId, p_titel: titel, p_beschreibung: text || null,
+          p_gueltig_bis: ende, p_praefix: praefix || null, p_pin: pin
+        }));
+        if(data && !data.ok) melde(ausstellSatz(data), true);
+        if(data && data.ok){ code = data.code; grFuer = null; await gsLaden(); }
       }
-      $("#gsTitel").value = ""; $("#gsText").value = ""; $("#gsBis").value = "";
-      $("#gsCode").value = gsVorschlag();
-      massZeigen("gsTitel"); massZeigen("gsText");
-      melde("Gutschein liegt bereit — Ihre Gäste sehen ihn unter „Mein Tisch“.");
+      if(code){
+        $("#gsTitel").value = ""; $("#gsText").value = ""; $("#gsBis").value = "";
+        massZeigen("gsTitel"); massZeigen("gsText");
+        melde("Gutschein " + code + " liegt bereit — Ihre Gäste sehen ihn unter „Mein Tisch“.");
+      }
     }catch(err){
       melde(gsFehlerText(err), true);
     }
@@ -12814,9 +13812,9 @@ if($("#gsForm")){
       return;
     }
     try{
-      const {error} = await db.from("gutscheine")
-        .update({gueltig_bis: new Date().toISOString()}).eq("id", id);
+      const {data, error} = await db.rpc("gutschein_beenden", { p_id: id });
       if(error) throw error;
+      if(!data || !data.ok){ k.disabled = false; melde(ausstellSatz(data), true); return; }
       await gsLaden();
       melde("Gutschein beendet");
     }catch(err){ k.disabled = false; melde(gsFehlerText(err), true); }
@@ -13056,6 +14054,12 @@ async function bestaetigen(b, minuten){
 
 // Gericht öffnen
 $("#karteListe").onclick = e => {
+  const leerKat = e.target.closest("[data-leerkat-gericht]");
+  if(leerKat){
+    blattOeffnen(null);
+    $("#fKat").value = leerKat.dataset.leerkatGericht; katWertAktualisieren();
+    return;
+  }
   const katKopf = e.target.closest("[data-kted]");
   if(katKopf) return ktedOeffnen(katKopf.dataset.kted);
   if(e.target.closest("[data-kted-neu]")) return ktedOeffnen(null);
@@ -13206,6 +14210,239 @@ function stoffeLesen(wahl){
 stoffeBauen("#fAllergene", ALLERGENE);
 stoffeBauen("#fZusatz",    ZUSATZSTOFFE);
 
+/* ═══ GERICHT SCHNELL ANLEGEN (Wunsch 07.10.) ═══════════════════════
+   Oben nur Name, Preis, Kategorie, Foto. Alles Weitere unter „Mehr
+   Angaben“, zugeklappt, mit einem Satz, was davon gesetzt ist.
+
+   Vorschläge statt Automatik: Aus Name, Kategorie und Beschreibung
+   erkannte Allergene erscheinen als antippbare Chips. Nichts wird von
+   selbst gesetzt — die Angabe verantwortet der Betrieb, ein falsches
+   Kreuz wäre schlimmer als eine Lücke, die er bemerkt. Die Liste ist
+   bewusst kurz und eindeutig; was mehrdeutig ist („Sahne“ bei
+   pflanzlicher Sahne), wird vorgeschlagen, nie gesetzt. */
+const ALLERGEN_HINWEISE = [
+  [/\b(käse|kaese|mozzarella|parmesan|feta|halloumi|ricotta|mascarpone|burrata|sahne|milch|butter|joghurt|quark|latte|cappuccino|milchshake|eis\b|eiscreme|crème|creme|schoko|nutella|tiramisu|cheesecake|frischkäse)/i, "G"],
+  [/\b(brot|brötchen|baguette|toast|nudel|pasta|spaghetti|penne|lasagne|pizza|teig|mehl|crêpe|crepe|pfannkuchen|pancake|waffel|kuchen|torte|burger|bun|croissant|keks|weizen|dinkel|gerste|roggen|couscous|bulgur|panade|paniert|schnitzel|bier|wrap|tortilla|dürüm|börek|pita)/i, "A"],
+  [/\b(ei\b|eier|eigelb|omelett|rührei|spiegelei|mayo|mayonnaise|aioli|carbonara|tiramisu|crêpe|crepe|pfannkuchen|pancake|waffel|baiser|eierlikör)/i, "C"],
+  [/\b(nuss|nüsse|haselnuss|walnuss|mandel|pistazie|cashew|pekan|macadamia|nutella|marzipan|praline|krokant)/i, "H"],
+  [/\b(erdnuss|peanut|erdnussbutter|satay)/i, "E"],
+  [/\b(lachs|thunfisch|fisch|forelle|kabeljau|sardelle|anchovis|dorade|zander)/i, "D"],
+  [/\b(garnele|shrimp|scampi|krabbe|hummer|languste|krebs)/i, "B"],
+  [/\b(muschel|tintenfisch|calamari|oktopus|auster|schnecke)/i, "R"],
+  [/\b(soja|tofu|edamame|sojasoße|sojasauce|miso)/i, "F"],
+  [/\b(sesam|tahin|tahini|hummus|halva|halwa)/i, "N"],
+  [/\b(senf|dijon)/i, "M"],
+  [/\b(sellerie)/i, "L"],
+  [/\b(wein|sekt|prosecco|aperol|spritz|champagner|trockenobst)/i, "O"]
+];
+function gerichtText(){
+  return [$("#fName").value, $("#fKat").value, $("#fBeschr").value].join(" ").toLowerCase();
+}
+function allergenVorschlaege(){
+  const text = gerichtText();
+  const gesetzt = stoffeLesen("#fAllergene").split(",").filter(Boolean);
+  const raus = [];
+  ALLERGEN_HINWEISE.forEach(([muster, buchstabe]) => {
+    if(muster.test(text) && !gesetzt.includes(buchstabe) && !raus.includes(buchstabe)) raus.push(buchstabe);
+  });
+  return raus;
+}
+let gVorschlagUhr = null;
+function gVorschlaegeZeichnen(){
+  const feld = $("#gVorschlag"); if(!feld) return;
+  const alg = allergenVorschlaege();
+  const extra = typeof gExtraVorschlaege === "function" ? gExtraVorschlaege() : [];
+  if(!alg.length && !extra.length){ feld.hidden = true; feld.innerHTML = ""; return; }
+  feld.hidden = false;
+  feld.innerHTML = '<span class="gvorschlag-satz">Passt vielleicht — antippen setzt:</span>' +
+    alg.map(b => '<button type="button" data-vorschlag-allergen="' + b + '">＋ ' +
+      sicher((ALLERGENE.find(a => a[0] === b) || [, b])[1]) + ' (' + b + ')</button>').join("") +
+    extra.map(x => '<button type="button" data-vorschlag-extra="' + sicher(x.wert) + '">＋ ' + sicher(x.text) + '</button>').join("");
+}
+["#fName", "#fKat", "#fBeschr"].forEach(id => $(id).addEventListener("input", () => {
+  clearTimeout(gVorschlagUhr); gVorschlagUhr = setTimeout(gVorschlaegeZeichnen, 250);
+}));
+$("#gVorschlag").addEventListener("click", e => {
+  const a = e.target.closest("[data-vorschlag-allergen]");
+  if(a){
+    const k = $("#fAllergene").querySelector('[data-stoff="' + a.dataset.vorschlagAllergen + '"]');
+    if(k) k.setAttribute("aria-pressed", "true");
+    gVorschlaegeZeichnen(); mehrStandSetzen(); entwurfSchreiben();
+    return;
+  }
+  const x = e.target.closest("[data-vorschlag-extra]");
+  if(x && typeof gExtraAnnehmen === "function"){ gExtraAnnehmen(x.dataset.vorschlagExtra); gVorschlaegeZeichnen(); mehrStandSetzen(); }
+});
+
+/* ── Altersfreigabe ───────────────────────────────────────────────
+   Vorschlag statt Automatik, wie bei den Allergenen: Aus dem Namen
+   erkannte Spirituosen schlagen 18+ vor, Bier/Wein/Sekt 16+. Gesetzt
+   wird nur auf Tipp — „Gin Tonic alkoholfrei“ gibt es auch. */
+let fAlterWert = null;
+/* Wort für Wort statt eines Musters: „\bgin“ träfe „Ginger Ale“, „\brum“
+   das „Rumpsteak“, und „Rotwein“ oder „Weizenbier“ fielen durch. Stämme
+   zählen auch in Zusammensetzungen, kurze Wörter nur ganz; was nach
+   Küche klingt (Weinessig, Bierteig, Weintrauben), zählt nicht. */
+const ALKOHOL_18 = ["wodka","vodka","whisky","whiskey","bourbon","likör","likoer","tequila","mezcal","schnaps",
+  "brandy","cognac","grappa","ouzo","raki","absinth","jägermeister","negroni","martini","mojito","caipirinha",
+  "margarita","daiquiri","longdrink","spirituose"];
+/* „Cocktail“ steht bewusst NICHT darin: Gegen die echten Daten laufen
+   lassen (§6.1) — Chocos „Cocktails“ sind Milch- und Fruchtgetränke. */
+const ALKOHOL_18_GANZ = ["gin","rum","korn","shot"];
+const ALKOHOL_16 = ["bier","pils","wein","sekt","prosecco","champagner","cidre","aperol","spritz","radler","lillet"];
+const ALKOHOL_KUECHE = ["essig","teig","traube","schinken","sauerkraut","soße","sosse","sauce","jus"];
+function alkoholStufe(text){
+  const woerter = String(text).toLowerCase().split(/[^a-zäöüß0-9]+/).filter(Boolean);
+  if(/alkoholfrei|ohne alkohol|virgin|0,0 ?%|0\.0 ?%/.test(String(text).toLowerCase())) return 0;
+  let stufe = 0;
+  woerter.forEach((w, i) => {
+    if(ALKOHOL_KUECHE.some(k => w.includes(k))) return;
+    /* „Shot“ nur, wenn kein Espresso davorsteht. */
+    if(ALKOHOL_18_GANZ.includes(w) && !(w === "shot" && /espresso|kaffee/.test(woerter[i - 1] || ""))) stufe = 18;
+    else if(ALKOHOL_18.some(k => w.includes(k))) stufe = 18;
+    else if(!stufe && ALKOHOL_16.some(k => w.includes(k))) stufe = 16;
+  });
+  return stufe;
+}
+function alterSetzen(w){
+  fAlterWert = w === 16 || w === 18 ? w : null;
+  rbSegment("#fAlter", "abAlter", fAlterWert ? String(fAlterWert) : "");
+}
+$("#fAlter").addEventListener("click", e => {
+  const b = e.target.closest("[data-ab-alter]"); if(!b) return;
+  alterSetzen(b.dataset.abAlter ? +b.dataset.abAlter : null);
+  mehrStandSetzen(); gVorschlaegeZeichnen(); entwurfSchreiben();
+});
+function gExtraVorschlaege(){
+  if(fAlterWert) return [];
+  const stufe = alkoholStufe(gerichtText());
+  return stufe ? [{ wert: String(stufe), text: "Ab " + stufe + " Jahren" }] : [];
+}
+function gExtraAnnehmen(w){ alterSetzen(+w); entwurfSchreiben(); }
+function gExtraStand(){ return fAlterWert ? "ab " + fAlterWert : ""; }
+
+/* ── Rabatt am Gericht ────────────────────────────────────────────
+   Schreibt sofort (nicht erst mit „Speichern“): Ein Rabatt ist eine
+   eigene Zeile in aktionen, kein Feld des Gerichts — und „beenden“
+   muss beenden, auch wenn das Blatt danach verworfen wird.
+   „Bis ich es beende“ = 365 Tage (bis > von ist Pflicht der Tabelle). */
+let rbArtWert = "prozent", rbDauerWert = "heute";
+function rbLaufend(g){
+  if(!g) return null;
+  return aktionen.find(a => a.aktiv !== false && new Date(a.bis) > Date.now() &&
+    (a.gericht_id ? a.gericht_id === g.id : a.gericht_name === g.name)) || null;
+}
+function rbPreisAlt(){ return bearbeite ? Number(bearbeite.preis) || 0 : 0; }
+function rbNeuerPreis(){
+  const alt = rbPreisAlt(), w = preisAusFeld($("#rbWert").value);
+  if(!(alt > 0) || !(w > 0)) return 0;
+  /* Ab 100 % wird der Preis 0 oder kleiner — rbStarten verlangt neu > 0,
+     eine eigene Grenze hier trüge nichts (Gegenbeweis: blieb grün). */
+  if(rbArtWert === "prozent") return Math.round(alt * (1 - w / 100) * 100) / 100;
+  return w;
+}
+function rbBis(){
+  const jetzt = new Date();
+  if(rbDauerWert === "heute"){ const e = new Date(jetzt); e.setHours(23, 59, 0, 0); return e; }
+  return new Date(jetzt.getTime() + (rbDauerWert === "woche" ? 7 : 365) * 864e5);
+}
+function rbSegment(id, attr, wert){
+  const seg = $(id), knoepfe = [...seg.querySelectorAll("button")];
+  knoepfe.forEach(b => b.setAttribute("aria-checked", String(b.dataset[attr] === wert)));
+  const i = Math.max(0, knoepfe.findIndex(b => b.dataset[attr] === wert));
+  seg.querySelector(".segmentschieber").style.transform = "translateX(" + (i * 100) + "%)";
+}
+function rbZeichnen(){
+  const g = bearbeite, lauf = rbLaufend(g);
+  $("#rbErst").hidden = !!g;
+  $("#rbLaeuft").hidden = !lauf;
+  $("#rbNeu").hidden = !g || !!lauf;
+  if(lauf){
+    const prozent = Math.round((1 - lauf.preis_neu / lauf.preis_alt) * 100);
+    const offen = new Date(lauf.bis) - Date.now() > 30 * 864e5;
+    $("#rbStand").textContent = "Läuft: " + euro(lauf.preis_neu) + " statt " + euro(lauf.preis_alt) +
+      " (−" + prozent + " %) · " + (offen ? "bis Sie es beenden" : "bis " +
+      new Date(lauf.bis).toLocaleDateString("de-DE", {day:"2-digit", month:"2-digit"}) + ", " + uhrzeit(lauf.bis));
+  }
+  rbSegment("#rbArt", "rbArt", rbArtWert);
+  rbSegment("#rbDauer", "rbDauer", rbDauerWert);
+  $("#rbWertName").textContent = rbArtWert === "prozent" ? "Prozent" : "Neuer Preis in Euro";
+  $("#rbWert").placeholder = rbArtWert === "prozent" ? "20" : (rbPreisAlt() ? (rbPreisAlt() * .8).toFixed(2).replace(".", ",") : "7,50");
+  const neu = rbNeuerPreis(), alt = rbPreisAlt();
+  $("#rbVorschau").textContent = !$("#rbWert").value.trim() ? "" :
+    (neu > 0 && neu < alt ? "Gäste sehen " + euro(neu) + " statt " + euro(alt) + " (−" + Math.round((1 - neu / alt) * 100) + " %)."
+                          : "Der neue Preis muss unter " + euro(alt) + " liegen.");
+  $("#rbStarten").disabled = !(neu > 0 && neu < alt);
+}
+$("#rbArt").addEventListener("click", e => { const b = e.target.closest("[data-rb-art]"); if(!b) return; rbArtWert = b.dataset.rbArt; $("#rbWert").value = ""; rbZeichnen(); });
+$("#rbDauer").addEventListener("click", e => { const b = e.target.closest("[data-rb-dauer]"); if(!b) return; rbDauerWert = b.dataset.rbDauer; rbZeichnen(); });
+$("#rbWert").addEventListener("input", rbZeichnen);
+$("#rbStarten").onclick = async () => {
+  const g = bearbeite, alt = rbPreisAlt(), neu = rbNeuerPreis();
+  if(!g || !(neu > 0 && neu < alt)) return;
+  const zeile = { gericht_id: g.id, gericht_name: g.name,
+    titel: (HUBTEXTE.runner_titel || "").trim().slice(0, 40) || "Top-Runner",
+    preis_alt: alt, preis_neu: neu, von: new Date().toISOString(), bis: rbBis().toISOString() };
+  const knopf = $("#rbStarten"); knopf.disabled = true;
+  try{
+    if(demo || !db) aktionen.push({ id: "demo-" + Date.now(), aktiv: true, ...zeile });
+    else{
+      const {error} = await db.from("aktionen").insert({ betrieb_id: betriebId, ...zeile });
+      if(error) throw error;
+      await aktionenLaden();
+    }
+    $("#rbWert").value = "";
+    aktionenZeichnen(); rbZeichnen(); mehrStandSetzen(); zeichneKarte();
+    melde("Rabatt läuft — die Karte zeigt " + euro(neu) + " statt " + euro(alt));
+  }catch(err){
+    melde("Der Rabatt konnte nicht angelegt werden.", true);
+  }
+  knopf.disabled = false; rbZeichnen();
+};
+$("#rbEnde").onclick = async () => {
+  const lauf = rbLaufend(bearbeite); if(!lauf) return;
+  const knopf = $("#rbEnde"); knopf.disabled = true;
+  try{
+    if(demo || !db) aktionen = aktionen.filter(a => a.id !== lauf.id);
+    else{
+      const {error} = await db.from("aktionen").update({aktiv:false}).eq("id", lauf.id);
+      if(error) throw error;
+      await aktionenLaden();
+    }
+    aktionenZeichnen(); rbZeichnen(); mehrStandSetzen(); zeichneKarte();
+    melde("Rabatt beendet");
+  }catch(err){ melde("Konnte nicht beendet werden.", true); }
+  knopf.disabled = false;
+};
+
+/* „Mehr Angaben“: was davon gesetzt ist, in einem Satz. */
+function mehrStandSetzen(){
+  const teile = [];
+  if($("#fBeschr").value.trim()) teile.push("Beschreibung");
+  const alg = stoffeLesen("#fAllergene").split(",").filter(Boolean).length;
+  if(alg) teile.push(alg === 1 ? "1 Allergen" : alg + " Allergene");
+  const zus = stoffeLesen("#fZusatz").split(",").filter(Boolean).length;
+  if(zus) teile.push(zus === 1 ? "1 Zusatzstoff" : zus + " Zusatzstoffe");
+  if(typeof fKartenWahl !== "undefined" && fKartenWahl.length) teile.push(fKartenWahl.map(karteName).join(" + "));
+  teile.push(spurLesen() === "theke" ? "Theke" : "Küche");
+  if($("#fVegan").getAttribute("aria-pressed") === "true") teile.push("vegan");
+  else if($("#fVeg").getAttribute("aria-pressed") === "true") teile.push("vegetarisch");
+  if($("#fVerf").getAttribute("aria-pressed") !== "true") teile.push("heute aus");
+  const rbl = rbLaufend(bearbeite);
+  if(rbl) teile.push("Rabatt −" + Math.round((1 - rbl.preis_neu / rbl.preis_alt) * 100) + " %");
+  if(typeof gExtraStand === "function"){ const z = gExtraStand(); if(z) teile.push(z); }
+  $("#mehrStand").textContent = teile.join(" · ");
+}
+function mehrAufZu(offen){
+  $("#mehrAuf").setAttribute("aria-expanded", String(offen));
+  $("#mehrKlapp").classList.toggle("offen", offen);
+}
+$("#mehrAuf").onclick = () => mehrAufZu($("#mehrAuf").getAttribute("aria-expanded") !== "true");
+/* Ein Feld darin bekommt den Fokus (Tab, Vorleseprogramm): aufklappen. */
+$("#mehrKlapp").addEventListener("focusin", () => mehrAufZu(true));
+$("#blatt").addEventListener("click", e => { if(e.target.closest("#mehrKlapp")) setTimeout(mehrStandSetzen, 0); });
+$("#blatt").addEventListener("input", e => { if(e.target.closest("#mehrKlapp")) mehrStandSetzen(); });
+
 /* ─── Zuständigkeit ───────────────────────────────────────────────
    Ist am Gericht nichts gesetzt, wird wie früher aus der Karte
    hergeleitet. So verhalten sich Altbestände unverändert, statt
@@ -13304,30 +14541,39 @@ $("#katPanel").addEventListener("keydown", e => {
   if(e.key === "Escape"){ e.stopPropagation(); katPanelSchliessen(true); }
 });
 
-/* ── Gehört zur Karte (Segment mit gleitendem Schieber) ──────────── */
-const KARTE_WERTE = ["speisekarte","getraenke","cocktails"];
-function karteSegmentAktualisieren(){
-  const wert = $("#fKarte").value || "speisekarte";
-  const i = Math.max(0, KARTE_WERTE.indexOf(wert));
-  $("#karteSegment").querySelectorAll("button").forEach(b => {
-    b.setAttribute("aria-checked", b.dataset.wert === wert);
-  });
-  /* transform statt left/width — siehe .claude/skills/bewegung §1:
-     nur transform und opacity, nie Layout-Eigenschaften animieren. */
-  $("#karteSegment .segmentschieber").style.transform =
-    `translateX(${i * 100}%)`;
+/* ── Gehört zu (Mehrfachwahl der Karten) ──────────────────────── */
+let fKartenWahl = [];
+/* Zuletzt benutzte Kategorie je Karte (nur in dieser Sitzung). */
+const letzteKat = {};
+/* #fKarte ist die ERSTE Karte. Steht dort von außen eine Karte, die
+   nicht gewählt ist (ein älterer Weg setzt das Feld direkt), gilt sie
+   als Umzug: nur diese. Sonst kommt sie an die erste Stelle. */
+function kartenFuerSatz(){
+  const erste = $("#fKarte").value || fKartenWahl[0] || welcheKarte;
+  if(!fKartenWahl.includes(erste)) return [erste];
+  return [erste].concat(fKartenWahl.filter(x => x !== erste));
 }
-$("#karteSegment").onclick = e => {
-  const b = e.target.closest("button[data-wert]"); if(!b) return;
-  $("#fKarte").value = b.dataset.wert;
+function karteSegmentAktualisieren(){
+  const da = kartenListe().map(k => k.id);
+  fKartenWahl = fKartenWahl.filter(id => da.includes(id));
+  if(!fKartenWahl.length) fKartenWahl = [da.includes($("#fKarte").value) ? $("#fKarte").value : welcheKarte];
+  karteAuswahlenFuellen();
+  $("#fKarte").value = fKartenWahl[0];
+  $("#fKarten").innerHTML = kartenListe().map(k =>
+    '<button type="button" data-karte-wahl="' + sicher(k.id) + '" aria-pressed="' + fKartenWahl.includes(k.id) + '">' +
+    sicher(k.name) + '</button>').join("");
+}
+$("#fKarten").onclick = e => {
+  const b = e.target.closest("[data-karte-wahl]"); if(!b) return;
+  const id = b.dataset.karteWahl;
+  if(fKartenWahl.includes(id)){
+    if(fKartenWahl.length === 1) return melde("Mindestens eine Karte bleibt gewählt", true);
+    fKartenWahl = fKartenWahl.filter(x => x !== id);
+  } else fKartenWahl = fKartenWahl.concat([id]);
+  $("#fKarte").value = fKartenWahl[0];
   $("#fKarte").dispatchEvent(new Event("change", {bubbles:true}));
   karteSegmentAktualisieren();
 };
-/* Ohne Bewegung ist der Schieber sofort da — kein Nachziehen, das bei
-   reduzierter Bewegung wie ein Ruckeln wirken wuerde. */
-if(window.matchMedia("(prefers-reduced-motion: reduce)").matches){
-  $("#karteSegment .segmentschieber").style.transition = "none";
-}
 
 /* ═══════════════════════════════════════════════════════════════
    SPRACHEN AM GERICHT
@@ -13434,6 +14680,10 @@ const UEB_GRUND = {
   keine_antwort:   "Der Übersetzer hat geantwortet, aber nichts geliefert. " +
     "Bitte noch einmal versuchen.",
   kein_json:       "Der Übersetzer hat die Anfrage nicht verstanden.",
+  /* Tageskontingent (migration-ki-kontingent.sql): Schutz vor einer
+     Rechnung, die ein Skript in einer Nacht erzeugt. */
+  kontingent:      "Das Übersetzungs-Kontingent für heute ist aufgebraucht. " +
+    "Morgen geht es weiter — das Gericht ist gespeichert.",
   abgelehnt:       "Das Sprachmodell hat diesen Text abgelehnt. " +
     "Bitte die Formulierung ändern.",
   /* „Failed to send a request“ kommt auch, wenn der Browser nach dem
@@ -13645,10 +14895,11 @@ function entwurfFormLesen(){
     preis: $("#fPreis").value, kategorie: $("#fKat").value,
     allergene: stoffeLesen("#fAllergene"), zusatzstoffe: stoffeLesen("#fZusatz"),
     stoff_hinweis: $("#fStoffHinweis").value, bild: $("#fBild").value,
-    karte: $("#fKarte").value, spur: spurLesen(),
+    karte: $("#fKarte").value, karten: fKartenWahl.slice(), spur: spurLesen(),
     veg: $("#fVeg").getAttribute("aria-pressed") === "true",
     vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
     verfuegbar: $("#fVerf").getAttribute("aria-pressed") === "true",
+    ab_alter: fAlterWert,
   };
 }
 function entwurfFormAnwenden(w){
@@ -13658,11 +14909,13 @@ function entwurfFormAnwenden(w){
   stoffeSetzen("#fAllergene", w.allergene); stoffeSetzen("#fZusatz", w.zusatzstoffe);
   $("#fStoffHinweis").value = w.stoff_hinweis || "";
   $("#fBild").value = w.bild || ""; bildSchauSetzen(w.bild || "");
-  $("#fKarte").value = w.karte || welcheKarte; karteSegmentAktualisieren();
+  fKartenWahl = Array.isArray(w.karten) && w.karten.length ? w.karten.slice() : [w.karte || welcheKarte];
+  $("#fKarte").value = fKartenWahl[0]; karteSegmentAktualisieren();
   spurSetzen(w.spur);
   $("#fVeg").setAttribute("aria-pressed", !!w.veg);
   $("#fVegan").setAttribute("aria-pressed", !!w.vegan);
   $("#fVerf").setAttribute("aria-pressed", !!w.verfuegbar);
+  alterSetzen(w.ab_alter);
 }
 function entwurfLesen(g){
   let roh; try{ roh = localStorage.getItem(entwurfSchluessel(g)); }catch(e){ return null; }
@@ -13707,7 +14960,7 @@ function blattOeffnen(g){
   $("#fName").value      = g?.name || "";
   $("#fBeschr").value    = g?.beschreibung || "";
   uebStandSetzen(g);
-  $("#fPreis").value     = g?.preis ?? "";
+  $("#fPreis").value     = g && g.preis != null ? Number(g.preis).toFixed(2).replace(".", ",") : "";
   $("#fKat").value       = g?.kategorie || "";
   katWertAktualisieren();
   katPanelSchliessen(false);
@@ -13721,16 +14974,30 @@ function blattOeffnen(g){
      sonst zeigt das Blatt beim nächsten Gericht noch das alte Foto. */
   bildSchauSetzen(g?.bild || "");
   bildStand("");
+  if(gbZuschnitt) gbZu();
   $("#fBildFrei").value = g?.bild_frei || "";
   bkWahlZu();
   bkZeichnen();
-  $("#fKarte").value = g?.karte || welcheKarte;
+  fKartenWahl = g ? gerichtKarten(g).slice() : [welcheKarte];
+  $("#fKarte").value = fKartenWahl[0];
   karteSegmentAktualisieren();
   $("#fVeg").setAttribute("aria-pressed", g ? !!g.veg : false);
   $("#fVegan").setAttribute("aria-pressed", g ? !!g.vegan : false);
   $("#fVerf").setAttribute("aria-pressed", g ? !!g.verfuegbar : true);
   $("#loeschen").hidden  = !g;
   $("#kopie").hidden     = !g;
+  $("#speichernWeiter").hidden = !!g;
+  alterSetzen(g ? g.ab_alter : null);
+  rbArtWert = "prozent"; rbDauerWert = "heute"; $("#rbWert").value = ""; rbZeichnen();
+  /* Kluge Vorgabe: ein neues Gericht landet in der Kategorie, in die
+     zuletzt in dieser Karte eines gespeichert wurde — sofern es sie noch
+     gibt. Sichtbar im Auswahlknopf, mit einem Tipp geändert. */
+  if(!g && letzteKat[welcheKarte] && katNamen(welcheKarte).includes(letzteKat[welcheKarte])){
+    $("#fKat").value = letzteKat[welcheKarte]; katWertAktualisieren();
+  }
+  mehrAufZu(false);
+  mehrStandSetzen();
+  gVorschlaegeZeichnen();
   $("#blatt").hidden     = false;
 
   /* Erst jetzt, nachdem alle Felder aus g gefüllt sind: ein liegen
@@ -13745,6 +15012,7 @@ function blattOeffnen(g){
       uhr.toLocaleDateString("de-DE") + ", " + uhr.toLocaleTimeString("de-DE", {hour:"2-digit", minute:"2-digit"}) +
       " wiederhergestellt.";
     hinweis.hidden = false;
+    mehrStandSetzen(); gVorschlaegeZeichnen();
   } else {
     hinweis.hidden = true;
   }
@@ -13768,15 +15036,145 @@ $("#blatt").onclick = e => { if(e.target === $("#blatt")) blattSchliessen(); };
   };
 });
 
-// Kartenumschalter
+// Kartenumschalter — aus dem Verzeichnis gezeichnet
+function kartenWahlZeichnen(){
+  const liste = kartenListe();
+  if(!liste.some(k => k.id === welcheKarte)) welcheKarte = liste[0] ? liste[0].id : "speisekarte";
+  $("#kartenWahl").innerHTML = liste.map(k =>
+    '<button class="chip" data-karte="' + sicher(k.id) + '" aria-pressed="' + (k.id === welcheKarte) + '">' +
+    sicher(k.name) + '</button>').join("") +
+    (liste.length < KARTEN_HOECHST
+      ? '<button class="chip" data-karte-neu aria-label="Neue Karte anlegen">＋ Karte</button>' : "") +
+    '<button class="chip" data-karten-bearbeiten aria-label="Karten bearbeiten">✎ Karten</button>';
+  karteAuswahlenFuellen();
+}
 $("#kartenWahl").onclick = e => {
-  const c = e.target.closest(".chip"); if(!c) return;
+  if(e.target.closest("[data-karte-neu]")) return kvOeffnen(true);
+  if(e.target.closest("[data-karten-bearbeiten]")) return kvOeffnen(false);
+  const c = e.target.closest(".chip[data-karte]"); if(!c) return;
   welcheKarte = c.dataset.karte;
-  $$("#kartenWahl .chip").forEach(x => x.setAttribute("aria-pressed", x === c));
+  $$("#kartenWahl .chip[data-karte]").forEach(x => x.setAttribute("aria-pressed", x === c));
   zeichneKarte();
 };
+/* Alle Auswahlfelder, die Karten anbieten (Karte einlesen, Gericht),
+   folgen dem Verzeichnis — vorher standen dort fest drei Optionen. */
+function karteAuswahlenFuellen(){
+  const opt = kartenListe().map(k => '<option value="' + sicher(k.id) + '">' + sicher(k.name) + '</option>').join("");
+  ["#impKarte", "#fKarte"].forEach(sel => {
+    const el = $(sel); if(!el) return;
+    const vorher = el.value; el.innerHTML = opt;
+    el.value = kartenListe().some(k => k.id === vorher) ? vorher : welcheKarte;
+  });
+}
+
+/* ── Karten-Blatt ──────────────────────────────────────────────── */
+let kvEntwurf = null;
+function kvGerichteIn(id){ return gerichte.filter(g => inKarte(g, id)); }
+function kvOeffnen(gleichNeu){
+  kvEntwurf = kartenKopie();
+  if(gleichNeu && kvEntwurf.length < KARTEN_HOECHST)
+    kvEntwurf.push({ id:null, name:"", unter:"", kategorien:[], _neu:true });
+  kvZeichnen();
+  $("#kvBlatt").hidden = false;
+  if(gleichNeu) setTimeout(() => { const f = $$("#kvListe [data-kv-name]").pop(); if(f) f.focus(); }, 120);
+}
+function kvZu(){ blattFortAnimieren($("#kvBlatt"), () => { $("#kvBlatt").hidden = true; kvEntwurf = null; }); }
+function kvZeichnen(){
+  const bleiben = kvEntwurf.filter(k => !k._weg);
+  $("#kvListe").innerHTML = kvEntwurf.map((k, i) => {
+    const n = k.id ? kvGerichteIn(k.id).length : 0;
+    const andere = bleiben.filter(x => x !== k && x.id);
+    const zielWahl = k._weg && n ? '<label><small>Gerichte, die nur hier stehen, ziehen um nach</small>' +
+      '<select data-kv-ziel="' + i + '">' + andere.map(x => '<option value="' + sicher(x.id) + '"' +
+      (k._ziel === x.id ? " selected" : "") + '>' + sicher(x.name || "Neue Karte") + '</option>').join("") + '</select></label>' : "";
+    return '<div class="kv-zeile' + (k._weg ? " kv-entfernt" : "") + '">' +
+      '<div class="kv-felder">' +
+        '<input data-kv-name="' + i + '" maxlength="40" placeholder="Name, z. B. Mittagskarte" value="' + sicher(k.name) + '"' + (k._weg ? " disabled" : "") + ' aria-label="Name der Karte">' +
+        '<input data-kv-unter="' + i + '" maxlength="90" placeholder="Unterzeile (optional)" value="' + sicher(k.unter || "") + '"' + (k._weg ? " disabled" : "") + ' aria-label="Unterzeile der Karte">' +
+        '<small>' + (k._weg ? "Wird beim Sichern entfernt." : (n === 1 ? "1 Gericht" : n + " Gerichte") +
+          ((k.kategorien || []).length ? " · " + k.kategorien.length + " Kategorien" : "")) + '</small>' + zielWahl +
+      '</div><div class="kv-knoepfe">' +
+        '<button type="button" data-kv-hoch="' + i + '" aria-label="Nach oben"' + (i === 0 || k._weg ? " disabled" : "") + '>▲</button>' +
+        '<button type="button" data-kv-runter="' + i + '" aria-label="Nach unten"' + (i === kvEntwurf.length - 1 || k._weg ? " disabled" : "") + '>▼</button>' +
+        '<button type="button" class="kv-weg" data-kv-weg="' + i + '" aria-label="' + (k._weg ? "Doch behalten" : "Karte entfernen") + '"' +
+          (!k._weg && bleiben.length <= 1 ? " disabled" : "") + '>' + (k._weg ? "↺" : "✕") + '</button>' +
+      '</div></div>';
+  }).join("");
+  $("#kvNeu").disabled = bleiben.length >= KARTEN_HOECHST;
+}
+$("#kvListe").addEventListener("input", e => {
+  const n = e.target.dataset.kvName, u = e.target.dataset.kvUnter;
+  if(n !== undefined) kvEntwurf[+n].name = e.target.value;
+  if(u !== undefined) kvEntwurf[+u].unter = e.target.value;
+});
+$("#kvListe").addEventListener("change", e => {
+  const z = e.target.dataset.kvZiel; if(z !== undefined) kvEntwurf[+z]._ziel = e.target.value;
+});
+$("#kvListe").addEventListener("click", e => {
+  const b = e.target.closest("button"); if(!b) return;
+  const tausch = (i, j) => { [kvEntwurf[i], kvEntwurf[j]] = [kvEntwurf[j], kvEntwurf[i]]; kvZeichnen(); };
+  if(b.dataset.kvHoch !== undefined) return tausch(+b.dataset.kvHoch, +b.dataset.kvHoch - 1);
+  if(b.dataset.kvRunter !== undefined) return tausch(+b.dataset.kvRunter, +b.dataset.kvRunter + 1);
+  if(b.dataset.kvWeg !== undefined){
+    const k = kvEntwurf[+b.dataset.kvWeg];
+    if(k._neu && !k._weg){ kvEntwurf.splice(+b.dataset.kvWeg, 1); return kvZeichnen(); }
+    k._weg = !k._weg;
+    if(k._weg){ const ersatz = kvEntwurf.find(x => x !== k && !x._weg && x.id); k._ziel = ersatz ? ersatz.id : null; }
+    kvZeichnen();
+  }
+});
+$("#kvNeu").onclick = () => {
+  if(kvEntwurf.filter(k => !k._weg).length >= KARTEN_HOECHST) return;
+  kvEntwurf.push({ id:null, name:"", unter:"", kategorien:[], _neu:true });
+  kvZeichnen();
+  const f = $$("#kvListe [data-kv-name]").pop(); if(f) f.focus();
+};
+$("#kvAbbrechen").onclick = () => kvZu();
+$("#kbNeuKarte").onclick = () => kbNeu("karte");
+$("#kbNeuLink").onclick = () => kbNeu("link");
+$("#kvBlatt").addEventListener("click", e => { if(e.target === $("#kvBlatt")) kvZu(); });
+$("#kvSichern").onclick = async () => {
+  const bleiben = kvEntwurf.filter(k => !k._weg);
+  if(!bleiben.length) return melde("Mindestens eine Karte muss bleiben", true);
+  const leer = bleiben.find(k => !String(k.name || "").trim());
+  if(leer) return melde("Jede Karte braucht einen Namen", true);
+  const namen = bleiben.map(k => k.name.trim().toLowerCase());
+  if(new Set(namen).size !== namen.length) return melde("Zwei Karten heißen gleich", true);
+  bleiben.forEach(k => { k.name = k.name.trim(); if(!k.id) k.id = karteNeueId(k.name); });
+  /* Gerichte entfernter Karten: die Karte aus ihrer Liste nehmen; wer
+     danach keine mehr hat, zieht in die gewählte um. Kein Gericht geht
+     dabei verloren. */
+  const aenderungen = [];
+  kvEntwurf.filter(k => k._weg && k.id).forEach(k => {
+    const ziel = bleiben.some(x => x.id === k._ziel) ? k._ziel : bleiben[0].id;
+    kvGerichteIn(k.id).forEach(g => {
+      let neu = gerichtKarten(g).filter(id => id !== k.id);
+      if(!neu.length) neu = [ziel];
+      aenderungen.push({ g, karten:neu });
+    });
+  });
+  const knopf = $("#kvSichern"); knopf.disabled = true;
+  try{
+    for(const a of aenderungen){
+      if(!demo && db){
+        const {error} = await db.from("gerichte").update({ karten:a.karten, karte:a.karten[0] }).eq("id", a.g.id);
+        if(error) throw error;
+      }
+      a.g.karten = a.karten; a.g.karte = a.karten[0];
+    }
+    if(!(await kartenSichern(bleiben))) return;
+    kvZu();
+    kartenWahlZeichnen(); zeichneKarte();
+    melde("Karten gesichert");
+  }catch(e){
+    melde("Nicht gespeichert — Verbindung prüfen", true);
+    await katNeuLaden();
+  }finally{ knopf.disabled = false; }
+};
+document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#kvBlatt").hidden) kvZu(); });
 
 $("#speichern").onclick = () => sichern(false);
+$("#speichernWeiter").onclick = () => sichern(false, true);
 $("#kopie").onclick     = () => sichern(true);
 
 /* ═══════════════════════════════════════════════════════════════
@@ -13786,20 +15184,20 @@ $("#kopie").onclick     = () => sichern(true);
    Dinge passieren dabei im Hintergrund, damit das auch im Café-WLAN
    funktioniert und nicht die Datenbank sprengt:
 
-     1. Verkleinern im Browser. Ein iPhone-Foto hat 12 Megapixel und
-        3 bis 5 MB. Für die Karte reichen 1000 px Kantenlänge, das sind
-        rund 150 KB. Ohne diesen Schritt lädt das Personal minutenlang
+     1. Zuschneiden und verkleinern im Browser, als Quadrat in zwei
+        Größen (1080 und 320 px). Ein iPhone-Foto hat 12 Megapixel und
+        3 bis 5 MB; die große Fassung hat rund 150 KB, die kleine ein
+        Zehntel davon. Ohne diesen Schritt lädt das Personal minutenlang
         und der Gast später genauso.
 
-     2. Umwandeln nach JPEG. iPhones liefern HEIC, das viele Browser
-        nicht anzeigen. Der Umweg über die Zeichenfläche macht daraus
-        ein Format, das überall läuft.
+     2. Umwandeln nach WebP oder JPEG. iPhones liefern HEIC, das viele
+        Browser nicht anzeigen. Der Umweg über die Zeichenfläche macht
+        daraus ein Format, das überall läuft.
 
-     3. Ablegen unter <betrieb_id>/<zeit>-<name>.jpg. Der Ordnername
+     3. Ablegen unter <betrieb_id>/<zeit>-<name>-q1080.webp. Der Ordnername
         entscheidet über die Zugehörigkeit, deshalb kann niemand in den
         Ordner eines fremden Betriebs schreiben.
    ═══════════════════════════════════════════════════════════════ */
-const BILD_KANTE = 1000;
 const BILD_GUETE = 0.82;
 
 function bildStand(text, art){
@@ -13814,274 +15212,147 @@ function bildSchauSetzen(adresse){
   const weg = $("#bildWeg"); if(weg) weg.hidden = !adresse;
 }
 
-/* Zeigt Crop-Canvas und Overlay-Rechteck zum Zuschneiden */
-let bildCropState = null;
-function bildCropZeigen(dateiObj){
+/* ═══ ZUSCHNITT DES GERICHTFOTOS (Wunsch 07.10.) ════════════════════
+   Vorher: ein freier, gestrichelter Rahmen in beliebigem Verhältnis.
+   Der Hub zeigt das Foto aber als Quadrat (object-fit:cover) — was
+   der Wirt auswählte, war also nie das, was der Gast sah, und das
+   Motiv saß schief. Jetzt: dasselbe Quadrat, dieselben Gesten wie beim
+   Kachel-Zuschnitt (zuschnittGesten), nie ein Rand.
+
+   Ausgabe in zwei Größen: 1080 px für das Detailblatt, 320 px für die
+   Liste (96 px Kasten, auch auf 3×-Schirmen scharf) — die Liste lädt
+   damit rund ein Zehntel. Die kleine Fassung trägt „-q320“ im Namen,
+   die große „-q1080“; der Hub leitet die kleine aus der großen her.
+   Die Marke bekommt die große NUR, wenn die kleine wirklich oben liegt
+   — sonst zeigte die Liste ein Loch. */
+const GB_GROSS = 1080, GB_KLEIN = 320;
+let gbZuschnitt = null;
+function gbGrundmass(){
+  const r = $("#gbRahmen").getBoundingClientRect(), b = gbZuschnitt.bild;
+  return Math.max(r.width / b.naturalWidth, r.height / b.naturalHeight);
+}
+function gbSetzen(){
+  if(!gbZuschnitt) return;
+  const r = $("#gbRahmen").getBoundingClientRect();
+  const m = gbGrundmass() * gbZuschnitt.zoom;
+  const bw = gbZuschnitt.bild.naturalWidth * m, bh = gbZuschnitt.bild.naturalHeight * m;
+  gbZuschnitt.dx = Math.min(0, Math.max(r.width  - bw, gbZuschnitt.dx));
+  gbZuschnitt.dy = Math.min(0, Math.max(r.height - bh, gbZuschnitt.dy));
+  $("#gbBild").style.transform =
+    "translate(" + gbZuschnitt.dx + "px," + gbZuschnitt.dy + "px) scale(" + m + ")";
+}
+function gbMitte(){
+  const r = $("#gbRahmen").getBoundingClientRect();
+  const m = gbGrundmass() * gbZuschnitt.zoom;
+  gbZuschnitt.dx = (r.width  - gbZuschnitt.bild.naturalWidth  * m) / 2;
+  gbZuschnitt.dy = (r.height - gbZuschnitt.bild.naturalHeight * m) / 2;
+  gbSetzen();
+}
+function gbOeffnen(datei){
   const leser = new FileReader();
   leser.onerror = () => bildStand("Datei nicht lesbar", "schief");
   leser.onload = () => {
     const bild = new Image();
-    bild.onerror = () => bildStand("Bildformat nicht unterstützt", "schief");
+    bild.onerror = () => bildStand("Dieses Bildformat kann der Browser nicht öffnen. " +
+      "Bitte im Fotoalbum über „Teilen“ als JPEG sichern.", "schief");
     bild.onload = () => {
-      const container = $("#bildCropContainer");
-      const canvas = $("#bildCropCanvas");
-      const overlay = $("#bildCropOverlay");
-
-      /* Canvas auf Bild-Größe setzen */
-      const {width: bw, height: bh} = bild;
-      const aspectRatio = bw / bh;
-
-      /* Container-Größe berechnen (600px breit oder weniger) */
-      const containerW = Math.min(600, bw);
-      const containerH = containerW / aspectRatio;
-      container.style.maxWidth = containerW + "px";
-      container.style.aspectRatio = aspectRatio;
-
-      /* Canvas-Kontext zeichnen */
-      canvas.width = bw;
-      canvas.height = bh;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(bild, 0, 0);
-
-      /* Overlay initial auf 80% der Bildgröße setzen */
-      const ow = Math.round(bw * 0.8);
-      const oh = Math.round(bh * 0.8);
-      const ox = Math.round((bw - ow) / 2);
-      const oy = Math.round((bh - oh) / 2);
-
-      /* Speichere State für Crop-Bestätigung */
-      bildCropState = {
-        dateiObj,
-        bild,
-        canvas,
-        overlay,
-        oxAktuell: ox,
-        oyAktuell: oy,
-        owAktuell: ow,
-        ohAktuell: oh,
-        containerW,
-        containerH
-      };
-
-      /* Overlay positionieren (CSS) */
-      overlay.style.left = (ox * containerW / bw) + "px";
-      overlay.style.top = (oy * containerH / bh) + "px";
-      overlay.style.width = (ow * containerW / bw) + "px";
-      overlay.style.height = (oh * containerH / bh) + "px";
-
-      container.hidden = false;
-      bildStand("Zuschnitt ziehen oder die Ecke zum Resizen greifen");
-
-      /* Draggable/Resizable Overlay */
-      bildCropInitDrag(overlay);
+      $("#gbBild").src = bild.src;
+      gbZuschnitt = { name: datei.name || "foto", bild: bild, zoom: 1, dx: 0, dy: 0 };
+      $("#gbZoom").value = 100;
+      /* Erst aufdecken, dann messen — ein verstecktes Feld hat keine Breite. */
+      $("#gbZuschnitt").hidden = false;
+      gbMitte();
+      bildStand("Ausschnitt wählen, dann „Zuschnitt übernehmen“.");
     };
     bild.src = leser.result;
   };
-  leser.readAsDataURL(dateiObj);
+  leser.readAsDataURL(datei);
 }
-
-/* Macht Overlay draggbar und resizable */
-function bildCropInitDrag(overlay){
-  let isDragging = false;
-  let isResizing = false;
-  let dragStartX, dragStartY, dragStartLeft, dragStartTop;
-
-  overlay.onmousedown = (e) => {
-    const rect = overlay.getBoundingClientRect();
-    const nearRight = Math.abs(e.clientX - (rect.right)) < 12;
-    const nearBottom = Math.abs(e.clientY - (rect.bottom)) < 12;
-
-    if(nearRight && nearBottom){
-      isResizing = true;
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-      dragStartLeft = parseFloat(overlay.style.width);
-      dragStartTop = parseFloat(overlay.style.height);
-      overlay.style.cursor = "nwse-resize";
-    } else {
-      isDragging = true;
-      dragStartX = e.clientX;
-      dragStartY = e.clientY;
-      dragStartLeft = parseFloat(overlay.style.left);
-      dragStartTop = parseFloat(overlay.style.top);
-      overlay.style.cursor = "grabbing";
-    }
-    e.preventDefault();
-  };
-
-  const container = overlay.parentElement;
-  document.addEventListener("mousemove", (e) => {
-    if(!isDragging && !isResizing) return;
-
-    if(isDragging){
-      const dx = e.clientX - dragStartX;
-      const dy = e.clientY - dragStartY;
-      const newLeft = Math.max(0, Math.min(dragStartLeft + dx,
-        container.clientWidth - parseFloat(overlay.style.width)));
-      const newTop = Math.max(0, Math.min(dragStartTop + dy,
-        container.clientHeight - parseFloat(overlay.style.height)));
-      overlay.style.left = newLeft + "px";
-      overlay.style.top = newTop + "px";
-
-      /* Berechne echte Pixel im Bild */
-      const bw = bildCropState.bw || bildCropState.canvas.width;
-      const bh = bildCropState.bh || bildCropState.canvas.height;
-      bildCropState.oxAktuell = Math.round(newLeft * bw / container.clientWidth);
-      bildCropState.oyAktuell = Math.round(newTop * bh / container.clientHeight);
-    }
-
-    if(isResizing){
-      const dx = e.clientX - dragStartX;
-      const dy = e.clientY - dragStartY;
-      const newW = Math.max(100, dragStartLeft + dx);
-      const newH = Math.max(100, dragStartTop + dy);
-      overlay.style.width = newW + "px";
-      overlay.style.height = newH + "px";
-
-      const bw = bildCropState.bw || bildCropState.canvas.width;
-      const bh = bildCropState.bh || bildCropState.canvas.height;
-      bildCropState.owAktuell = Math.round(newW * bw / container.clientWidth);
-      bildCropState.ohAktuell = Math.round(newH * bh / container.clientHeight);
-    }
-  });
-
-  document.addEventListener("mouseup", () => {
-    isDragging = false;
-    isResizing = false;
-    overlay.style.cursor = isDragging ? "grab" : "move";
-  });
+zuschnittGesten({ rahmen:"#gbRahmen", regler:"#gbZoom", zustand:() => gbZuschnitt,
+                  grund:() => gbGrundmass(), setzen:() => gbSetzen() });
+/* Der Regler zoomt um die Mitte des Quadrats, nicht um die Ecke. */
+$("#gbZoom").oninput = e => {
+  if(!gbZuschnitt) return;
+  const r = $("#gbRahmen").getBoundingClientRect(), g = gbGrundmass();
+  const alt = gbZuschnitt.zoom, neu = Math.max(1, Math.min(3, Number(e.target.value) / 100));
+  const cx = r.width / 2, cy = r.height / 2;
+  gbZuschnitt.dx = cx - (cx - gbZuschnitt.dx) * neu / alt;
+  gbZuschnitt.dy = cy - (cy - gbZuschnitt.dy) * neu / alt;
+  gbZuschnitt.zoom = neu;
+  gbSetzen();
+};
+function gbZu(){
+  $("#gbZuschnitt").hidden = true;
+  gbZuschnitt = null;
 }
-
-/* Crop bestätigen und bildHochladenMitBlob aufrufen */
-function bildCropBestaetigen(){
-  if(!bildCropState) return;
-
-  const {canvas, oxAktuell, oyAktuell, owAktuell, ohAktuell, dateiObj} = bildCropState;
-  const ctx = canvas.getContext("2d");
-
-  /* Cropped ImageData extrahieren */
-  const imageData = ctx.getImageData(oxAktuell, oyAktuell, owAktuell, ohAktuell);
-
-  /* Neues Canvas für gecroppes Bild */
-  const croppedCanvas = document.createElement("canvas");
-  croppedCanvas.width = owAktuell;
-  croppedCanvas.height = ohAktuell;
-  croppedCanvas.getContext("2d").putImageData(imageData, 0, 0);
-
-  /* Canvas zu Blob und dann zu bildHochladenMitBlob */
-  croppedCanvas.toBlob(async blob => {
-    if(!blob){
-      bildStand("Zuschnitt fehlgeschlagen", "schief");
-      return;
-    }
-
-    /* Verstecke Crop-UI */
-    $("#bildCropContainer").hidden = true;
-    bildCropState = null;
-
-    /* Rufe bildHochladenMitBlob auf (neuer Weg ohne FileReader) */
-    bildHochladenMitBlob(blob, dateiObj.name);
-  }, "image/jpeg", BILD_GUETE);
+/* Ein Quadrat der Kante k aus dem sichtbaren Ausschnitt. */
+function gbFlaeche(k){
+  const r = $("#gbRahmen").getBoundingClientRect();
+  const m = gbGrundmass() * gbZuschnitt.zoom;
+  const flaeche = document.createElement("canvas");
+  flaeche.width = k; flaeche.height = k;
+  const stift = flaeche.getContext("2d");
+  /* Weißer Grund: Durchsichtige PNG würden sonst schwarz. */
+  stift.fillStyle = "#FFFFFF";
+  stift.fillRect(0, 0, k, k);
+  stift.imageSmoothingQuality = "high";
+  stift.drawImage(gbZuschnitt.bild,
+    -gbZuschnitt.dx / m, -gbZuschnitt.dy / m, r.width / m, r.height / m, 0, 0, k, k);
+  return flaeche;
 }
-
-function bildCropAbbrechen(){
-  $("#bildCropContainer").hidden = true;
-  bildCropState = null;
-  bildStand("");
-  $("#fDatei").value = "";
-}
-
-/* Verkleinert und wandelt um. Gibt einen Blob zurück. */
-function bildVerkleinern(datei){
+/* WebP, wo der Browser es schreiben kann (Safari kann es nicht und
+   liefert stattdessen PNG) — sonst JPEG. Der Eimer nimmt beides. */
+function gbDatei(flaeche){
   return new Promise((fertig, schief) => {
-    const leser = new FileReader();
-    leser.onerror = () => schief(new Error("Datei nicht lesbar"));
-    leser.onload = () => {
-      const bild = new Image();
-      bild.onerror = () => schief(new Error(
-        "Dieses Bildformat kann der Browser nicht öffnen. " +
-        "Bitte im Fotoalbum über „Teilen“ als JPEG sichern."));
-      bild.onload = () => {
-        let {width: b, height: h} = bild;
-        const gr = Math.max(b, h);
-        if(gr > BILD_KANTE){ b = Math.round(b * BILD_KANTE / gr); h = Math.round(h * BILD_KANTE / gr); }
-        const flaeche = document.createElement("canvas");
-        flaeche.width = b; flaeche.height = h;
-        const stift = flaeche.getContext("2d");
-        /* Weißer Grund: Bei durchsichtigen PNG wäre der Rest sonst
-           schwarz, sobald wir nach JPEG wandeln. */
-        stift.fillStyle = "#FFFFFF";
-        stift.fillRect(0, 0, b, h);
-        stift.drawImage(bild, 0, 0, b, h);
-        flaeche.toBlob(blob => {
-          if(blob) fertig(blob);
-          else schief(new Error("Umwandeln fehlgeschlagen"));
-        }, "image/jpeg", BILD_GUETE);
-      };
-      bild.src = leser.result;
-    };
-    leser.readAsDataURL(datei);
+    flaeche.toBlob(b => {
+      if(b && b.type === "image/webp") return fertig(b);
+      flaeche.toBlob(j => j ? fertig(j) : schief(new Error("Umwandeln fehlgeschlagen")), "image/jpeg", BILD_GUETE);
+    }, "image/webp", BILD_GUETE);
   });
 }
-
-/* Nach dem Zuschneiden: Blob direkt verarbeiten (ohne FileReader) */
-async function bildHochladenMitBlob(blob, dateiName){
-  if(!betriebId){ bildStand("Kein Betrieb gewählt", "schief"); return; }
+async function gbAusschnitte(){
+  return { gross: await gbDatei(gbFlaeche(GB_GROSS)), klein: await gbDatei(gbFlaeche(GB_KLEIN)) };
+}
+async function gbFertig(){
+  if(!gbZuschnitt) return;
   if(demo){ bildStand("Im Vorführmodus wird nichts hochgeladen", "schief"); return; }
-
+  if(!betriebId){ bildStand("Kein Betrieb gewählt", "schief"); return; }
+  const knopf = $("#gbOk"); knopf.disabled = true;
   try{
-    bildStand("Wird verkleinert …", "laeuft");
-    /* Blob ist schon Image, einfach resizen */
-    const bild = new Image();
-    bild.onerror = () => { bildStand("Bild verarbeitung fehlgeschlagen", "schief"); };
-    bild.onload = async () => {
-      let {width: b, height: h} = bild;
-      const gr = Math.max(b, h);
-      if(gr > BILD_KANTE){ b = Math.round(b * BILD_KANTE / gr); h = Math.round(h * BILD_KANTE / gr); }
-      const flaeche = document.createElement("canvas");
-      flaeche.width = b; flaeche.height = h;
-      const stift = flaeche.getContext("2d");
-      stift.fillStyle = "#FFFFFF";
-      stift.fillRect(0, 0, b, h);
-      stift.drawImage(bild, 0, 0, b, h);
-      flaeche.toBlob(async resizedBlob => {
-        if(!resizedBlob){ bildStand("Umwandeln fehlgeschlagen", "schief"); return; }
-
-        const sauber = (dateiName || "foto")
-          .toLowerCase()
-          .replace(/\.[a-z0-9]+$/, "")
-          .replace(/[^a-z0-9]+/g, "-")
-          .replace(/^-+|-+$/g, "")
-          .slice(0, 40) || "foto";
-        const pfad = betriebId + "/" + Date.now() + "-" + sauber + ".jpg";
-
-        bildStand("Wird hochgeladen … (" + Math.round(resizedBlob.size/1024) + " KB)", "laeuft");
-        const {error} = await db.storage.from("gerichte")
-          .upload(pfad, resizedBlob, {contentType: "image/jpeg", upsert: false});
-        if(error) throw error;
-
-        const {data} = db.storage.from("gerichte").getPublicUrl(pfad);
-        const adresse = data.publicUrl;
-        $("#fBild").value = adresse;
-        bildSchauSetzen(adresse);
-        bkWahlZu(); bkZeichnen();
-        bildStand("Foto liegt bereit. Es wird mit „Sichern“ übernommen.");
-      }, "image/jpeg", BILD_GUETE);
-    };
-    bild.src = URL.createObjectURL(blob);
+    bildStand("Wird zugeschnitten …", "laeuft");
+    const { gross, klein } = await gbAusschnitte();
+    const endung = gross.type === "image/webp" ? "webp" : "jpg";
+    const sauber = String(gbZuschnitt.name).toLowerCase()
+      .replace(/\.[a-z0-9]+$/, "").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+      .slice(0, 40) || "foto";
+    const stamm = betriebId + "/" + Date.now() + "-" + sauber;
+    bildStand("Wird hochgeladen … (" + Math.round((gross.size + klein.size) / 1024) + " KB)", "laeuft");
+    const kleinWeg = await db.storage.from("gerichte")
+      .upload(stamm + "-q320." + (klein.type === "image/webp" ? "webp" : "jpg"), klein,
+              { contentType: klein.type, upsert: false });
+    const pfad = stamm + (kleinWeg.error ? "" : "-q1080") + "." + endung;
+    const { error } = await db.storage.from("gerichte")
+      .upload(pfad, gross, { contentType: gross.type, upsert: false });
+    if(error) throw error;
+    const { data } = db.storage.from("gerichte").getPublicUrl(pfad);
+    $("#fBild").value = data.publicUrl;
+    bildSchauSetzen(data.publicUrl);
+    gbZu();
+    bkWahlZu(); bkZeichnen();
+    bildStand("Foto liegt bereit. Es wird mit „Sichern“ übernommen.");
   }catch(e){
     console.error(e);
     bildStand(e.message || "Hochladen fehlgeschlagen", "schief");
   }
+  knopf.disabled = false;
 }
+$("#gbOk").onclick  = gbFertig;
+$("#gbWeg").onclick = () => { gbZu(); bildStand(""); };
 
 async function bildHochladen(datei){
   if(!datei) return;
-  if(!betriebId){ bildStand("Kein Betrieb gewählt", "schief"); return; }
-  if(demo){ bildStand("Im Vorführmodus wird nichts hochgeladen", "schief"); return; }
-
-  /* Zeige Crop-UI statt direkt zu verkleinern */
-  bildCropZeigen(datei);
+  /* Zuschneiden geht auch im Vorführmodus — erst das Hochladen nicht. */
+  gbOeffnen(datei);
 }
 
 $("#fDatei").onchange = e => {
@@ -14090,9 +15361,6 @@ $("#fDatei").onchange = e => {
   e.target.value = "";     /* damit dieselbe Datei erneut wählbar bleibt */
 };
 
-/* Crop UI Buttons */
-$("#bildCropBestaetigen").onclick = bildCropBestaetigen;
-$("#bildCropAbbrechen").onclick = bildCropAbbrechen;
 
 $("#bildWeg").onclick = () => {
   $("#fBild").value = "";
@@ -14200,7 +15468,12 @@ $("#bkFreiWeg").onclick = () => {
   bildStand("Freisteller entfernt. Mit „Sichern“ übernehmen.");
 };
 
-async function sichern(alsKopie){
+/* „9,50“ und „9.50“ gelten beide; „9,50 €“ auch. */
+function preisAusFeld(w){
+  const z = parseFloat(String(w || "").replace(/[^\d,.-]/g, "").replace(",", "."));
+  return Number.isFinite(z) && z > 0 ? Math.round(z * 100) / 100 : 0;
+}
+async function sichern(alsKopie, weiter){
   /* Für den Entwurf-Schlüssel: bearbeite kann sich unten (Object.assign,
      neu anlegen) ändern — der Schlüssel muss der bleiben, unter dem
      das Blatt WIRKLICH geöffnet wurde. */
@@ -14210,6 +15483,8 @@ async function sichern(alsKopie){
 
   if(!name){ melde("Das Gericht braucht einen Namen", true); $("#fName").focus(); return; }
   if(!kat){  melde("Wähle eine Kategorie, z.B. „Küche“", true); $("#fKat").focus(); return; }
+  if($("#fPreis").value.trim() && !preisAusFeld($("#fPreis").value)){
+    melde("Den Preis bitte als Zahl, z. B. 9,50", true); $("#fPreis").focus(); return; }
 
   const satz = {
     name: alsKopie ? name + " (Kopie)" : name,
@@ -14223,15 +15498,17 @@ async function sichern(alsKopie){
       ? (bearbeite.uebersetzungen || null) : null,
     name_uebersetzungen: (!alsKopie && bearbeite && bearbeite.name === name)
       ? (bearbeite.name_uebersetzungen || null) : null,
-    preis: parseFloat($("#fPreis").value) || 0,
+    preis: preisAusFeld($("#fPreis").value),
     allergene:    stoffeLesen("#fAllergene"),
     zusatzstoffe: stoffeLesen("#fZusatz"),
     stoff_hinweis: $("#fStoffHinweis").value.trim(),
+    ab_alter: fAlterWert,
     spur: spurLesen(),
     bild: $("#fBild").value.trim(),
     bild_frei: $("#fBildFrei").value.trim() || null,
     verfuegbar: $("#fVerf").getAttribute("aria-pressed") === "true",
-    karte: $("#fKarte").value,
+    karte: $("#fKarte").value || fKartenWahl[0],
+    karten: kartenFuerSatz(),
     veg:   $("#fVeg").getAttribute("aria-pressed") === "true",
     vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
   };
@@ -14241,7 +15518,7 @@ async function sichern(alsKopie){
      stünde es allein zwischen zwei fremden Blöcken. Ist die Kategorie
      noch nirgends vergeben, hängt sie sich hinten an. */
   const vorhanden = gerichte.find(g =>
-    (g.karte || "speisekarte") === satz.karte && g.kategorie === kat &&
+    inKarte(g, satz.karte) && g.kategorie === kat &&
     (!bearbeite || g.id !== bearbeite.id));
   satz.kat_sort = vorhanden ? (vorhanden.kat_sort ?? 0) : katSortNeu(satz.karte);
   /* Das Zeichen gehört zur Kategorie: in einer vorhandenen erbt das
@@ -14249,7 +15526,8 @@ async function sichern(alsKopie){
      Ausdrücklich auch null — sonst trüge ein umgezogenes Gericht das
      Zeichen seiner ALTEN Kategorie mit, und der Hub nähme es. */
   satz.kat_emoji = vorhanden ? katZeichenVon(kat, satz.karte)
-    : (katNeuWunsch && katNeuWunsch.name === kat && katNeuWunsch.karte === satz.karte ? katNeuWunsch.zeichen : null);
+    : (katZeichenVerz(kat, satz.karte) ||
+       (katNeuWunsch && katNeuWunsch.name === kat && katNeuWunsch.karte === satz.karte ? katNeuWunsch.zeichen : null));
   const neueKategorie = !vorhanden;
 
   const neuAnlegen = alsKopie || !bearbeite;
@@ -14266,7 +15544,7 @@ async function sichern(alsKopie){
       if(error) return melde("Nicht gespeichert — Verbindung prüfen", true);
       Object.assign(bearbeite, satz);
     }else{
-      satz.reihenfolge = gerichte.filter(g => g.kategorie === kat && (g.karte||"speisekarte") === satz.karte).length;
+      satz.reihenfolge = gerichte.filter(g => g.kategorie === kat && inKarte(g, satz.karte)).length;
       const {data, error} = await db.from("gerichte").insert(satz).select().single();
       if(error) return melde("Nicht gespeichert — Verbindung prüfen", true);
       gerichte.push(data);
@@ -14274,8 +15552,22 @@ async function sichern(alsKopie){
   }
 
   entwurfLoeschen(entwurfWar);
-  blattSchliessen(); zeichneKarte();
-  melde(alsKopie ? "Kopie angelegt" : (neuAnlegen ? "Gericht hinzugefügt" : "Gespeichert"));
+  letzteKat[satz.karte] = kat;
+  if(weiter && neuAnlegen && !alsKopie){
+    /* „Speichern & nächstes“: Blatt bleibt offen, Karte(n) und Kategorie
+       bleiben, der Rest ist leer — Serienanlage ohne Schließen. */
+    const karten = (satz.karten || [satz.karte]).slice(), kat = satz.kategorie, spur = satz.spur;
+    zeichneKarte();
+    blattOeffnen(null);
+    fKartenWahl = karten; $("#fKarte").value = karten[0]; karteSegmentAktualisieren();
+    $("#fKat").value = kat; katWertAktualisieren();
+    spurSetzen(spur); mehrStandSetzen();
+    setTimeout(() => $("#fName").focus(), 60);
+    melde("„" + satz.name + "“ hinzugefügt — weiter mit dem nächsten");
+  }else{
+    blattSchliessen(); zeichneKarte();
+    melde(alsKopie ? "Kopie angelegt" : (neuAnlegen ? "Gericht hinzugefügt" : "Gespeichert"));
+  }
 
   /* Erst jetzt uebersetzen. Die Reihenfolge ist der ganze Punkt: Das
      Gericht ist gespeichert und die Karte gezeichnet, bevor irgendein

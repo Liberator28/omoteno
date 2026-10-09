@@ -176,8 +176,19 @@ const pruef = (gut, text, mehr) => { n++; if(!gut) f++;
   await p.click('#ktedWahl [data-zeichen="1f32e"]');
   await p.click("#ktedSichern");
   await p.waitForTimeout(400);
+  /* Seit 07.10. entsteht die Kategorie OHNE Gericht (Wunsch des
+     Betreibers): Sie steht leer in der Liste, im Kartenverzeichnis
+     gespeichert, und „＋ Gericht“ öffnet das Blatt mit ihr vorbelegt. */
+  const leer = await p.evaluate(() => ({
+    blatt: !document.getElementById("blatt").hidden,
+    kopf: !!document.querySelector('.leer-kat [data-kted="Tacos"]'),
+    verz: ((karteEintrag(welcheKarte) || {}).kategorien || []).map(x => x.name + ":" + x.zeichen).join(",") }));
+  pruef(!leer.blatt && leer.kopf && /Tacos:1f32e/.test(leer.verz),
+    "Neue Kategorie entsteht leer — ohne Gericht, im Verzeichnis mit Zeichen", JSON.stringify(leer));
+  await p.click('[data-leerkat-gericht="Tacos"]');
+  await p.waitForTimeout(300);
   const neuBlatt = await p.evaluate(() => ({ gericht: !document.getElementById("blatt").hidden, kat: document.getElementById("fKat").value }));
-  pruef(neuBlatt.gericht && neuBlatt.kat === "Tacos", "Neue Kategorie öffnet das erste Gericht, Kategorie vorbelegt", JSON.stringify(neuBlatt));
+  pruef(neuBlatt.gericht && neuBlatt.kat === "Tacos", "„＋ Gericht“ öffnet das erste Gericht, Kategorie vorbelegt", JSON.stringify(neuBlatt));
   await p.fill("#fName", "Taco al Pastor");
   await p.fill("#fPreis", "7.5");
   await p.evaluate(() => sichern(false));
@@ -186,7 +197,8 @@ const pruef = (gut, text, mehr) => { n++; if(!gut) f++;
     const kopf = document.querySelector('[data-kted="Tacos"] .kted-emo');
     return { zeichen: g && g.kat_emoji, glyph: kopf ? kopf.textContent : "", wunsch: katNeuWunsch }; });
   pruef(taco.zeichen === "1f32e" && taco.glyph.startsWith("🌮"), "das erste Gericht trägt das gewählte Zeichen", JSON.stringify(taco));
-  pruef(taco.wunsch === null, "der Wunsch ist danach verbraucht (kein Zeichen für spätere Fremde)");
+  const nachher = await p.evaluate(() => !!document.querySelector('.leer-kat [data-kted="Tacos"]'));
+  pruef(!nachher, "mit dem ersten Gericht ist die Kategorie nicht mehr „leer“");
 
   /* Umziehen: ein Gericht aus „Limo & Soda“ nach „Tacos“ — nimmt 🌮, nicht 🥤 */
   const um = await p.evaluate(async () => {

@@ -272,6 +272,20 @@ Deno.serve(async (anfrage: Request) => {
     .slice(0, HOECHSTENS);
   if (!texte.length) return antwort({ uebersetzt: {} }, 200);
 
+  /* Tageskontingent je Betrieb (migration-ki-kontingent.sql), gezählt
+     VOR dem Aufruf — wie bei gericht-bild. Vorher konnte jeder, der
+     sich über konto.html registriert und einen Betrieb anlegt, in
+     Schleife übersetzen lassen: auf Rechnung des Betreibers. Fehlt die
+     Funktion noch (42883 bzw. PGRST202), läuft es wie bisher ohne Deckel
+     weiter. */
+  const { data: rest, error: kontoFehler } = await alsNutzer.rpc("ki_kontingent_nehmen", { p_anzahl: texte.length });
+  if (kontoFehler && kontoFehler.code !== "42883" && kontoFehler.code !== "PGRST202") {
+    return antwort({ fehler: "kein_zugriff", uebersetzt: {} }, 200);
+  }
+  if (!kontoFehler && typeof rest === "number" && rest < 0) {
+    return antwort({ fehler: "kontingent", uebersetzt: {} }, 200);
+  }
+
   /* Das Werkzeug wird auf die GEFRAGTEN Sprachen zugeschnitten. Beim
      zweiten Anlauf sind das nur noch die fehlenden — ein Schema, das
      dann weiter alle elf verlangt, wuerde das Modell zwingen, die

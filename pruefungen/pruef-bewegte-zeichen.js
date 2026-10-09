@@ -679,9 +679,14 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     const ort = await s.evaluate(() => {
       const cta = document.querySelector(".eh-cta"), such = document.querySelector(".suche");
       return { da: !!cta, vorSuche: !!cta && !!such && !!(cta.compareDocumentPosition(such) & Node.DOCUMENT_POSITION_FOLLOWING),
-               davor: cta && cta.previousElementSibling && cta.previousElementSibling.className };
+               davor: cta && cta.previousElementSibling &&
+                 (cta.previousElementSibling.className || cta.previousElementSibling.tagName.toLowerCase()) };
     });
-    pruef(ort.da && ort.vorSuche && ort.davor === "unter", "der Knopf steht ganz oben in der Speisekarte, vor der Suche", JSON.stringify(ort));
+    /* Direkt nach dem Kopf der Seite: der Unterzeile — oder, seit eine
+       umbenannte Kachel keine fremde Vorgabe-Unterzeile mehr trägt
+       (07.10.), direkt nach dem Titel. */
+    pruef(ort.da && ort.vorSuche && (ort.davor === "unter" || ort.davor === "h2"),
+      "der Knopf steht ganz oben in der Speisekarte, vor der Suche", JSON.stringify(ort));
     const kn = await s.evaluate(() => [...document.querySelectorAll(".eh-cta .eh-knopf")].map(k => +k.getBoundingClientRect().width.toFixed(1)));
     pruef(kn.length === 2 && kn[0] === kn[1], "beide Wege gleich breit", kn.join(" / "));
     const start = await s.evaluate(() => { location.hash = "#/"; return new Promise(r => setTimeout(() => r(!!document.querySelector(".eh-cta, .ed-cta")), 500)); });

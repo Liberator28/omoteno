@@ -311,7 +311,7 @@ header{
      über den Rand hinaus (Zeile 313), ein overflow:hidden hier würde
      genau das abschneiden — die Herzen darunter clippen sich selbst
      in ihrer eigenen Ebene (.herzenfeld). */
-  grid-template-areas:"logo" "titel" "claim" "status" "kopfwahl";
+  grid-template-areas:"logo" "titel" "claim" "kopfwahl";
   row-gap:6px;justify-items:center;align-items:center;
   transition:background-color .9s ease;
 }
@@ -420,7 +420,25 @@ h1{
      und die Vorschau im Board zeigt genau das. */
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
-#status{grid-area:status;padding:4px 0 0}
+#status{display:flex;flex:none}
+/* ═══ Unterseiten: eine Leiste statt eines Kopfes (09.10.) ════════
+   „Spare Text im Header — kompakt und schnell wie bei Lieferando.“
+   Auf jeder Unterseite: kleines Siegel, Name, Knöpfe in EINER Zeile;
+   Adresse, Slogan und Öffnungsstand fallen weg (den Stand zeigt die
+   Startseite, die Unterseite hat ihren eigenen Titel darunter).
+   Vorher ~270 px Kopf vor der Karte, jetzt ~70 px. Die Rasterflächen
+   folgen der Schreibrichtung — in RTL steht das Siegel rechts. */
+body[data-ansicht="unter"] header{
+  grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"logo titel kopfwahl";
+  column-gap:12px;justify-items:start;padding-bottom:12px;padding-top:calc(var(--rand-oben) + 2px);
+}
+body[data-ansicht="unter"] .logo,
+body[data-ansicht="unter"] .logo svg{width:40px;height:40px}
+body[data-ansicht="unter"] h1{font-size:18px;text-align:start;justify-self:stretch;min-width:0;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+body[data-ansicht="unter"] .claim,
+body[data-ansicht="unter"] #status{display:none}
+body[data-ansicht="unter"] .kopfwahl{justify-self:end;gap:8px}
 /* Dieselbe Rasterfläche wie h1 (Zeile 395) — beide überlappen sich in
    DERSELBEN Zelle, glanzflug liegt im Auszeichnungstext danach und
    malt deshalb über den Titel, ohne eine eigene Zeile im Raster zu
@@ -761,7 +779,8 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
    (wo der Betrieb liefert) der Liefer-Schalter. */
 .kopfwahl{
   grid-area:kopfwahl;justify-self:center;align-self:center;
-  display:flex;align-items:center;gap:10px;
+  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;
+  padding-top:4px;
 }
 .lichtknopf{
   flex:none;
@@ -796,7 +815,7 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 
 /* ═══ Liefer-Schalter im Kopf ═══════════════════════════════════
    Wunsch 30.09.: „nur zwei Symbole … wie ein Switch, beim Umschalten
-   kurz der Name — so ähnlich wie bei Lieferando, nur mit einer
+   kurz der Name — wie bei bekannten Liefer-Apps, nur mit einer
    coolen Animation." Bringt seine eigenen Maße mit (§3.3): Spur
    94 × 44 px, je Knopf 44 × 44 px Tapfläche (über den Rand der
    Spur hinweg, margin:-1px).
@@ -945,13 +964,156 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:rgba(224,178,78,.55);back
 #inhalt.rein > .seite > *:nth-child(n+5){animation-delay:.12s}
 @keyframes rein{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
 
+/* Zurück: eine Glas-Pille „‹ Zurück“ (Wunsch 08.10. — vorher ein
+   runder Knopf nur mit Pfeil, davor die Zeile „‹ Zurück zur Übersicht“).
+   Das kurze Wort steht sichtbar und übersetzt, die volle Ansage bleibt
+   im aria-label. Er klebt oben, sobald der Kopf aus dem Bild rollt.
+   Ebene 42: über der Karte, unter Blättern (60+) und dem Kopf (50).
+
+   Der Rand trägt ein feines Licht, das langsam umläuft: eine
+   übergroße, quadratische Ebene mit conic-gradient dreht sich hinter
+   einer Maske, die nur den 1,5-px-Ring durchlässt. Gedreht wird
+   ausschließlich per transform (Compositor), die Maske steht still.
+   Endlos drehend ist der einzige Ort, an dem linear richtig ist
+   (Skill bewegung §2). Die Farbe kommt aus dem Haus (--gold), die
+   Schrift bleibt --tinte und wird von pruef-glas.js gegen Schwarz UND
+   Weiß dahinter gerechnet. */
 .zurueck{
-  display:none;align-items:center;gap:5px;background:none;border:0;
-  color:var(--tinte-leise);font-size:13.5px;padding:4px 2px;margin:-6px 0 14px;
-  cursor:pointer;font-family:inherit;transition:color var(--kurz)
+  display:none;align-items:center;justify-content:center;gap:5px;
+  position:sticky;top:12px;top:calc(12px + env(safe-area-inset-top));z-index:42;
+  height:44px;min-width:44px;padding:0;padding-inline:10px 17px;margin:-8px 0 12px;border-radius:999px;
+  background:color-mix(in srgb, var(--flaeche) 78%, transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
+  border:1px solid color-mix(in srgb, var(--linie-stark) 80%, transparent);color:var(--tinte);
+  font:600 15px/1 var(--schrift-text);letter-spacing:.01em;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.06), 0 8px 22px -8px rgba(0,0,0,.30);
+  overflow:hidden;isolation:isolate;
+  cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:transform .14s var(--weich)
 }
 .zurueck.an{display:inline-flex}
-.zurueck:active{color:var(--rot)}
+.zurueck:active{transform:scale(.95)}
+.zurueck svg{position:relative;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;
+  stroke-linecap:round;stroke-linejoin:round}
+.zurueck .zr-text{position:relative;white-space:nowrap}
+[dir="rtl"] .zurueck svg{transform:scaleX(-1)}
+.zr-rand{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:-1;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+.zr-licht{position:absolute;left:50%;top:50%;width:300%;aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);
+  background:conic-gradient(from 0deg, transparent 0 58%,
+    color-mix(in srgb, var(--gold) 35%, transparent) 70%, var(--gold) 80%,
+    color-mix(in srgb, var(--gold) 35%, transparent) 88%, transparent 96%);
+  animation:zrLauf 7s linear infinite}
+@keyframes zrLauf{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  /* Stehendes Licht: oben links ein ruhiger Glanz, keine Drehung. */
+  .zr-licht{animation:none;transform:translate(-50%,-50%) rotate(-50deg)}
+}
+@media (prefers-reduced-transparency:reduce){
+  .zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+
+/* ═══ Reise · Übergang Kachel → Unterseite (Wunsch 08.10., neu 09.10.) ═══
+   09.10.: „Ohne Text — nur ein Aufblättern der Karte, eine Speisekarte,
+   die sich öffnet, und das Symbol, in das man hineingezogen wird und
+   auf der anderen Seite landet.“ Deshalb jetzt:
+     1. Die angetippte Kachel löst sich als geschlossene Klappkarte
+        (FLIP, gemessen am echten Rechteck) und fliegt in die Mitte.
+     2. Zwei Deckel klappen in 3D auf (rotateY um die Außenkanten,
+        perspective() im transform selbst — kein preserve-3d nötig),
+        dahinter leuchtet die Innenseite mit Zeilen ohne Text.
+     3. Das Symbol steht darüber, wächst nach vorn, und eine Scheibe im
+        Licht des Hauses öffnet sich aus ihm über den ganzen Schirm —
+        das ist der Sog. Unter der Scheibe wechselt die Seite, dann
+        löst sie sich auf, und #inhalt.rein baut die neue Seite auf.
+   Kein Wort in der ganzen Szene (pruef-reise.js zählt Textknoten).
+   Die ganze Szene ist EINE Ebene, die am Ende entfernt wird, nicht
+   versteckt (§8.1). Nur transform und opacity. pointer-events:none:
+   Ein Tipp geht nie in eine Fläche, die gleich verschwindet —
+   überspringen läuft über einen eigenen Horcher.
+   Ebene 75: über Kopf (50) und Blättern (60+), unter der Altersfrage. */
+.reise{position:fixed;inset:0;z-index:75;pointer-events:none;overflow:hidden}
+.reise-grund{position:absolute;inset:0;opacity:0;
+  background:radial-gradient(120% 78% at 50% 46%,
+    color-mix(in srgb, var(--reise-licht) 22%, var(--grund)) 0%, var(--grund) 66%)}
+.reise-buehne{position:absolute;left:50%;top:50%;will-change:transform,opacity}
+.reise-schein{position:absolute;inset:0;border-radius:26px;opacity:0;
+  box-shadow:0 0 46px 4px color-mix(in srgb, var(--reise-licht) 55%, transparent),
+             0 0 120px 18px color-mix(in srgb, var(--reise-licht) 22%, transparent)}
+/* Die Innenseite der Karte: Flächen statt Wörter — Zeilen im Licht des
+   Hauses, wie eine Karte, die man aus Armlänge sieht. */
+.reise-seite{position:absolute;inset:0;border-radius:26px;overflow:hidden;opacity:0;
+  background:linear-gradient(170deg, color-mix(in srgb, var(--reise-licht) 14%, var(--flaeche)) 0%, var(--flaeche) 62%);
+  box-shadow:0 34px 80px -28px rgba(0,0,0,.6), inset 0 0 0 1px color-mix(in srgb, var(--reise-licht) 30%, transparent)}
+.reise-seite i{position:absolute;left:18%;right:18%;height:5px;border-radius:5px;
+  background:color-mix(in srgb, var(--reise-licht) 26%, transparent)}
+.reise-seite i:nth-child(1){top:62%}
+.reise-seite i:nth-child(2){top:69%;right:30%}
+.reise-seite i:nth-child(3){top:76%}
+.reise-seite i:nth-child(4){top:83%;right:38%}
+/* Zwei Deckel, je eine Hälfte. backface-visibility: Über 90° hinaus
+   verschwindet der Deckel, statt seine Rückseite spiegelverkehrt zu
+   zeigen. Die Kante innen trägt ein feines Licht — der Falz. */
+.reise-tuer{position:absolute;top:0;bottom:0;width:50%;overflow:hidden;
+  -webkit-backface-visibility:hidden;backface-visibility:hidden;
+  background:linear-gradient(155deg,
+    color-mix(in srgb, var(--reise-licht) 34%, var(--flaeche)) 0%,
+    color-mix(in srgb, var(--reise-licht) 16%, var(--flaeche)) 70%);
+  will-change:transform}
+.reise-tuer.links{left:0;border-radius:26px 6px 6px 26px;transform-origin:0 50%;
+  box-shadow:inset -1px 0 0 color-mix(in srgb, var(--reise-licht) 60%, transparent)}
+.reise-tuer.rechts{right:0;border-radius:6px 26px 26px 6px;transform-origin:100% 50%;
+  box-shadow:inset 1px 0 0 color-mix(in srgb, var(--reise-licht) 60%, transparent)}
+/* Glanz auf dem Deckel: ein schräger Lichtstreif, fest — er bewegt sich
+   mit dem Deckel und liest sich dadurch als Prägung. */
+.reise-tuer::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(115deg, rgba(255,255,255,.22) 0%, transparent 34%, transparent 70%, rgba(255,255,255,.08) 100%)}
+.reise-figur{position:absolute;left:50%;top:50%;width:0;height:0;will-change:transform,opacity}
+.reise-ico{position:absolute;left:-52px;top:-52px;width:104px;height:104px;border-radius:50%;
+  display:grid;place-items:center;overflow:hidden;font-size:58px;line-height:1;color:var(--reise-licht);
+  background:radial-gradient(closest-side, color-mix(in srgb, var(--reise-licht) 18%, var(--flaeche)) 70%,
+    color-mix(in srgb, var(--reise-licht) 32%, var(--flaeche)) 100%);
+  box-shadow:0 0 0 1px color-mix(in srgb, var(--reise-licht) 40%, transparent),
+             0 0 34px 2px color-mix(in srgb, var(--reise-licht) 45%, transparent),
+             0 18px 44px -14px rgba(0,0,0,.5)}
+.reise-ico svg{width:50px;height:50px;fill:none;stroke:currentColor;stroke-width:1.6;
+  stroke-linecap:round;stroke-linejoin:round}
+.reise-ico .reise-film{display:block;width:76px;height:76px}
+.reise-ico .reise-film svg{width:100%;height:100%}
+.reise-ico img{width:100%;height:100%;object-fit:cover}
+/* Der Sog: eine Scheibe aus dem Symbol, so groß, dass sie bei scale(1)
+   den ganzen Schirm deckt (Maß setzt das Skript). */
+.reise-portal{position:absolute;left:50%;top:50%;border-radius:50%;opacity:0;will-change:transform,opacity;
+  background:radial-gradient(closest-side,
+    var(--grund) 0%, var(--grund) 52%,
+    color-mix(in srgb, var(--reise-licht) 30%, var(--grund)) 82%,
+    color-mix(in srgb, var(--reise-licht) 70%, var(--grund)) 100%)}
+
+/* ═══ Wie letztes Mal / Nochmal wie letztes Mal (08.10.) ════════
+   Beides setzt erst auf einen Tipp etwas — ein Vorschlag, keine
+   Vorauswahl. Schrift durchweg --tinte: Der Chip trägt einen Hauch
+   der Hausfarbe, darauf hielte --tinte-leise nicht überall 4,5:1. */
+.wieletzt{display:flex;flex-direction:column;align-items:flex-start;gap:3px;width:100%;min-height:44px;
+  margin:0 0 14px;padding:11px 14px;border-radius:var(--rundung);text-align:start;cursor:pointer;
+  background:color-mix(in srgb, var(--gold) 10%, var(--flaeche));color:var(--tinte);
+  border:1px solid color-mix(in srgb, var(--gold) 42%, transparent);font:inherit;
+  -webkit-tap-highlight-color:transparent;transition:transform .12s var(--weich)}
+.wieletzt:active{transform:scale(.98)}
+.wl-titel{font-weight:650;font-size:14px}
+.wl-was{font-size:13.5px;line-height:1.35}
+.nmkarte{margin:0 0 16px;padding:16px;border-radius:var(--rundung);background:var(--flaeche);
+  border:1px solid var(--linie);box-shadow:var(--schatten)}
+.nm-kopf strong{display:block;font:600 17px/1.25 var(--schrift-abschnitt, var(--schrift-kopf));color:var(--tinte)}
+.nm-kopf span{display:block;margin-top:3px;font-size:13.5px;color:var(--tinte-leise)}
+.nm-liste{list-style:none;margin:12px 0;padding:0;display:grid;gap:8px}
+.nm-liste li{display:flex;gap:10px;align-items:baseline;color:var(--tinte);font-size:15px}
+.nm-m{font-weight:650;font-variant-numeric:tabular-nums;min-width:2.2em}
+.nm-n{min-width:0;overflow-wrap:anywhere}
+.nm-n small{display:block;margin-top:2px;font-size:13px;color:var(--tinte-leise)}
+.nm-fehlt{margin:0 0 10px;font-size:13px;color:var(--tinte-leise)}
+.nmkarte .nm-knopf{width:100%;margin:2px 0 0}
 
 /* ═══ Empfehlung des Hauses ═════════════════════════════════════ */
 /* Der Sofort-Knopf steht AUSSERHALB von <a> (ein <button> darin wäre
@@ -1558,7 +1720,32 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 }
 .tag.veg{background:var(--pistazie-flaeche);color:var(--pistazie)}
 .tag.vegan{background:var(--pistazie-flaeche);color:var(--pistazie);border:1px solid var(--pistazie)}
-.tag.scharf{background:var(--rot-flaeche);color:var(--rot)}
+.tag.scharf,.tag.rabatt,.tag.abalter{background:var(--rot-flaeche);color:var(--rot)}
+.tag.abalter{font-variant-numeric:tabular-nums;letter-spacing:.3px}
+/* Altersfrage: eine Karte über einem Schleier, entfernt statt versteckt
+   (§8.1). Eigene Ebene 92 — 90 und 95 sind belegt. */
+.alterfrage{position:fixed;inset:0;z-index:92;display:flex;align-items:flex-end;justify-content:center;
+  padding:16px 16px calc(16px + env(safe-area-inset-bottom));background:rgba(26,16,12,.55);
+  animation:alterSchleier .2s var(--weich) both}
+.alterkarte{width:100%;max-width:420px;background:var(--flaeche);color:var(--tinte);border:1px solid var(--linie);
+  border-radius:22px;padding:22px 20px 18px;text-align:center;display:flex;flex-direction:column;gap:10px;
+  animation:alterRein .28s var(--weich) both}
+.alterkarte h2{margin:2px 0 0;font-size:21px}
+.alterkarte p{margin:0 0 6px;color:var(--tinte-leise);font-size:15px;line-height:1.45}
+.alterkarte .knopf{width:100%;min-height:48px}
+.altermarke{align-self:center;display:inline-flex;align-items:center;justify-content:center;
+  min-width:56px;height:56px;padding:0 10px;border-radius:50%;border:2px solid var(--rot);color:var(--rot);
+  font-weight:800;font-size:19px;font-variant-numeric:tabular-nums}
+@keyframes alterSchleier{from{opacity:0}to{opacity:1}}
+@keyframes alterRein{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.alterfrage,.alterkarte{animation:none}}
+/* Rabatt in der Karte: neuer Preis in Rot vorn, der alte leise
+   gestrichen daneben, die Plakette wie die anderen Merkmale. */
+.gericht .p.pneu{color:var(--rot)}
+.gericht .palt{font-size:12.5px;color:var(--tinte-leise);margin-left:7px;white-space:nowrap;font-variant-numeric:tabular-nums}
+.gpz .tag.rabatt{margin-left:7px;vertical-align:1px}
+.wkopf .wp.pneu{color:var(--rot)}
+.wkopf .wp .palt{display:block;font-size:13px;font-weight:400;color:var(--tinte-leise);text-align:right;font-family:var(--schrift-text, inherit)}
 .tag.top{background:var(--gold-flaeche);color:var(--gold)}
 
 .ginfo{
@@ -1955,8 +2142,16 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
    Schmutz. */
 .wbild.schwebt::after{display:none}
 /* Auch das Rechteckbild bleibt maßvoll: gleiche Höhe wie ein
-   Freisteller, damit die Karten nicht unterschiedlich hoch starten. */
-.wbild:not(.schwebt){max-height:min(34vh,230px)}
+   Freisteller, damit die Karten nicht unterschiedlich hoch starten.
+   Feste Höhe statt aspect-ratio + max-height: Gemessen verkürzte die
+   Kappung die BREITE, und der Kasten klebte links (1 px links, 21 px
+   rechts) — das Foto stand schief in der Karte. */
+.wbild:not(.schwebt){height:min(34vh,230px)}
+/* Quadratisch zugeschnitten: volle Breite der Karte, feste Höhe,
+   cover und mittig — der Ausschnitt ist gewählt, nicht zufällig, und
+   oben wie unten fällt gleich viel weg. */
+.wbild.fuellt{height:min(42vh,320px);max-height:none}
+.wbild.fuellt img{object-fit:cover;object-position:50% 50%}
 
 /* Beim Öffnen kommt das Gericht dem Gast leicht entgegen. Das ist der
    Moment, in dem er entscheidet – die Bewegung führt den Blick genau
@@ -3926,13 +4121,15 @@ function markeAnwenden(abend){
        §5.1/§5.2 — Kontrast messen, nicht ansehen). -->
   <span class="glanzflug" aria-hidden="true"></span>
   <p class="claim" id="claim"></p>
-  <div id="status"></div>
   <!-- Hell oder dunkel steht NEBEN der Sprachwahl, weil beides
        dasselbe beantwortet: wie der Gast den Hub sehen will. Beide
        liegen in einer gemeinsamen Zeile — zwei Elemente auf derselben
        Rasterfläche hätten sich überlagert. -->
   <div class="kopfwahl">
   <button class="lichtknopf" id="lichtknopf" type="button"></button>
+  <!-- Öffnungsstand in derselben Zeile wie Licht und Sprache (09.10.:
+       „kompakt wie Lieferando“) — eine Zeile Kopf weniger. -->
+  <div id="status"></div>
   <!-- Liefer-Schalter (ersetzt seit 30.09. das Lieferband der
        Startseite). Nur wo der Betrieb liefert und niemand am Tisch
        sitzt — lieferWahlZeichnen() nimmt hidden weg. In Ruhe zwei
@@ -4067,7 +4264,7 @@ function markeAnwenden(abend){
   </svg>
 </header>
 
-<button class="zurueck" id="zurueck"></button>
+<button class="zurueck" id="zurueck" type="button" aria-label="Zurück zur Übersicht"><span class="zr-rand" aria-hidden="true"><span class="zr-licht"></span></span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span class="zr-text" aria-hidden="true">Zurück</span></button>
 
 <main id="inhalt"></main>
 
@@ -4775,6 +4972,40 @@ const KACHEL_ERLAUBT = ["titel","unter","icon","emoji","gruppe","raster","stil",
                         "farbe","von","bis","neu","cyan","banner","iconAus",
                         "breite","bildform","grund","symbolLage","hoehe","textgroesse"];
 
+/* ── Eigene Kacheln, Karte je Kachel, Zeitplan (Wunsch 07.10.) ──────
+   Der Wirt legt Kacheln an und löscht sie: „Karte“ (zeigt eine seiner
+   bis zu 20 Karten) und „Link“ (eine https-Adresse). Schlüssel „e-…“,
+   damit sie nie mit einer festen Kachel zusammenfallen. Jede Karten-
+   Kachel — auch die drei festen — darf eine andere Karte zeigen und
+   nach Uhrzeit wechseln (Mittagskarte 11–15 Uhr, sonst Abendkarte).
+   Alles aus der Live-Spalte geht durch eine feste Form (§2.3a):
+   Karten-Schlüssel nach Muster, Zeiten als HH:MM, Link nur https ohne
+   Anführungszeichen, Leerzeichen oder spitze Klammern. */
+const KACHEL_KARTEN_FEST = ["speisekarte", "getraenke", "cocktails"];
+const KACHEL_EIGEN_MUSTER = /^e-[a-z0-9]{3,12}$/;
+const KACHEL_KARTE_MUSTER = /^(speisekarte|getraenke|cocktails|k-[a-z0-9-]{1,22})$/;
+function kachelLinkSauber(w){
+  const t = String(w || "").trim();
+  return /^https:\/\/[^\s"'<>\\`]{3,300}$/i.test(t) ? t : "";
+}
+function kachelPlanSauber(p){
+  return (Array.isArray(p) ? p : []).filter(x => x &&
+      /^\d{1,2}:\d{2}$/.test(x.von || "") && /^\d{1,2}:\d{2}$/.test(x.bis || "") &&
+      KACHEL_KARTE_MUSTER.test(x.karte || ""))
+    .slice(0, 6).map(x => ({ von:x.von, bis:x.bis, karte:x.karte }));
+}
+/* Welche Karte zeigt die Kachel JETZT? Zeitplan vor Grundkarte; ein
+   Fenster darf über Mitternacht gehen (18:00–02:00). Uhr des Gastes. */
+function kachelKarte(k, jetzt){
+  const d = jetzt || new Date(), m = d.getHours() * 60 + d.getMinutes();
+  const hm = s => { const [a, b] = s.split(":"); return (+a) * 60 + (+b); };
+  for(const p of (k.plan || [])){
+    const a = hm(p.von), b = hm(p.bis);
+    if(a <= b ? (m >= a && m < b) : (m >= a || m < b)) return p.karte;
+  }
+  return k.karte || (KACHEL_KARTEN_FEST.includes(k.schluessel) ? k.schluessel : "");
+}
+
 /* Was aus hub_kacheln kommt, geht UNGEPRÜFT an kachelBauen — eine
    Live-Spalte, die das Team schreibt. raster, stil und farbe landeten
    bis zum 26.09. roh in class= und data-farbe= (ein Anführungszeichen
@@ -4795,7 +5026,12 @@ const KACHEL_WERTE = {
 const KACHEL_HOEHE_SKALA = { kompakt:.8, hoch:1.35 };
 
 function kachelBauen(schluessel, wunsch){
-  const art = KACHELARTEN[schluessel];
+  let art = KACHELARTEN[schluessel];
+  const eigen = !art && KACHEL_EIGEN_MUSTER.test(String(schluessel || "")) && wunsch &&
+                (wunsch.art === "karte" || wunsch.art === "link");
+  if(eigen) art = wunsch.art === "karte"
+    ? { titel:"Karte", unter:"", icon:"speise", gruppe:"Die Karte", raster:"zwei" }
+    : { titel:"Link", unter:"", icon:"stern", gruppe:"Für Ihren nächsten Besuch", raster:"zwei" };
   if(!art) return null;
   const k = {
     schluessel: schluessel,
@@ -4824,6 +5060,15 @@ function kachelBauen(schluessel, wunsch){
   });
   /* Eigene Farbe der Kachel: nur #RRGGBB. */
   k.grund = /^#[0-9a-f]{6}$/i.test(String(k.grund || "")) ? String(k.grund) : "";
+  /* Art, Karte, Zeitplan, Link — siehe Kopf von KACHEL_KARTEN_FEST. */
+  k.art = eigen ? wunsch.art : (KACHEL_KARTEN_FEST.includes(schluessel) ? "karte" : "fest");
+  k.karte = wunsch && KACHEL_KARTE_MUSTER.test(String(wunsch.karte || "")) ? wunsch.karte
+          : (KACHEL_KARTEN_FEST.includes(schluessel) ? schluessel : "");
+  k.plan = kachelPlanSauber(wunsch && wunsch.plan);
+  if(k.art === "karte" && (eigen || k.karte !== schluessel || k.plan.length)){
+    k.ziel = () => { const id = kachelKarte(k); return id ? "#/" + id : ""; };
+  }
+  if(k.art === "link") k.ziel = kachelLinkSauber(wunsch.link);
   /* Textgröße: eine Zahl aus einer Live-Spalte, kein Wert aus einer
      festen Liste — geklammert statt verworfen, damit ein Regler, der
      knapp daneben liegt, nicht gleich ganz zurückfällt. Ungültiges
@@ -5046,7 +5291,7 @@ function bzKategorie(name, karte){
   if(name === "Beliebt") return "1f525";
   /* Vom Betrieb gewählt (gerichte.kat_emoji) schlägt die Automatik —
      aber nur, was in BZ_WAHL steht. */
-  const liste = { speisekarte:SPEISEKARTE, getraenke:GETRAENKE, cocktails:COCKTAILS }[karte];
+  const liste = karteDaten(karte);
   const gr = liste && liste.find(x => x && x.gruppe === name);
   if(gr && typeof gr.zeichen === "string" && BZ_WAHL.includes(gr.zeichen)) return gr.zeichen;
   const n = String(name || "").toLowerCase();
@@ -5304,6 +5549,7 @@ function aktionenLaden(){
         aktionen = Array.isArray(liste) ? liste : [];
         /* Vorschau: Die Beispiel-Aktion des Boards bleibt stehen. */
         if(VORSCHAU && vorschauAktion()) return;
+        merkPreiseAbgleichen();
         if(aktionen.map(a => a.id).join(",") !== vorher) aktionAnzeigen();
       })
       .catch(() => {});
@@ -5312,11 +5558,18 @@ function aktionenLaden(){
 
 /* Preis mit dem Komma des Hauses. preisText() gibt es schon — es
    noch einmal zu schreiben hieße, es an zwei Stellen zu pflegen. */
+/* Ein Dauer-Rabatt (länger als 30 Tage, „bis ich es beende“ im Board)
+   gehört in die Karte, nicht in den Streifen ganz oben — dort stünde er
+   sonst monatelang als „noch 8760 Stunden“. */
+const AKTION_STREIFEN_MIN = 30 * 24 * 60;
 function aktionBandHTML(){
-  if(!aktionen.length) return "";
-  return aktionen.map(a => {
+  const kurz = aktionen.filter(a => (new Date(a.bis) - Date.now()) / 60000 <= AKTION_STREIFEN_MIN);
+  if(!kurz.length) return "";
+  return kurz.map(a => {
     const restMin = Math.max(0, Math.round((new Date(a.bis) - Date.now()) / 60000));
-    const rest = restMin >= 60
+    const rest = restMin >= 48 * 60
+      ? t("noch {n} Tage", {n: Math.floor(restMin / 1440)})
+      : restMin >= 60
       ? t("noch {n} Stunden", {n: Math.floor(restMin / 60)})
       : t("nur noch {n} Minuten", {n: restMin});
     /* Nur anklickbar/bestellbar, wenn das Gericht wirklich in DIESER
@@ -6105,7 +6358,7 @@ function storyWahlZeichnen(){
 function storyGerichteZeichnen(){
   const feld = $("storyGerichte"); if(!feld) return;
   const mit = [];
-  [SPEISEKARTE, GETRAENKE, COCKTAILS].forEach(karte => {
+  alleKarten().map(x => x[1]).forEach(karte => {
     (Array.isArray(karte) ? karte : []).forEach(gr =>
       (gr.eintraege || []).forEach(g => { if(g && g.bild) mit.push(g); }));
   });
@@ -7552,6 +7805,36 @@ let COCKTAILS = [
   ]}
 ];
 
+/* ═══ KARTEN — mehr als die drei festen ═════════════════════════════
+   Wunsch 07.10.: bis zu 20 Karten (Mittagskarte, Abendkarte …), jede
+   einer Kachel zuweisbar, ein Gericht darf in mehreren stehen.
+   SPEISEKARTE/GETRAENKE/COCKTAILS bleiben, wie sie sind (Markenblatt,
+   Vorführkarte, alte Links). Weitere Karten liegen in KARTEN_EXTRA,
+   Schlüssel „k-…“ — der Vorsatz hält sie von jeder festen Seite fern
+   (eine Karte namens „kontakt“ überschriebe sonst die Kontaktseite).
+   KARTEN_VERZ ist betriebe.karten, durch eine Positivliste gefiltert. */
+const KARTEN_FEST = ["speisekarte", "getraenke", "cocktails"];
+let KARTEN_EXTRA = {};
+let KARTEN_VERZ = [];
+const KARTE_ID_MUSTER = /^k-[a-z0-9-]{1,22}$/;
+function karteDaten(id){
+  if(id === "speisekarte") return SPEISEKARTE;
+  if(id === "getraenke")   return GETRAENKE;
+  if(id === "cocktails")   return COCKTAILS;
+  return KARTEN_EXTRA[id] || [];
+}
+/* [[id, daten], …] — erst die festen, dann die eigenen. Jede Stelle, die
+   „alle Karten“ durchgeht, nimmt diese Liste; vorher standen die drei
+   an elf Stellen einzeln da. */
+function alleKarten(){
+  return KARTEN_FEST.map(id => [id, karteDaten(id)])
+    .concat(Object.keys(KARTEN_EXTRA).map(id => [id, KARTEN_EXTRA[id]]));
+}
+/* Was zählt als Getränk? Die beiden festen Getränke-Karten. Eigene
+   Karten zählen als Essen — eine Mittagskarte ist das Übliche. */
+function karteIstGetraenk(id){ return id === "getraenke" || id === "cocktails"; }
+function karteVerzEintrag(id){ return KARTEN_VERZ.find(k => k.id === id) || null; }
+
 /*  TISCHQUIZ
     f = Frage · a = Antworten · r = Nummer der richtigen Antwort (0 = erste)
     i = Erklärung, die nach dem Tippen erscheint
@@ -8202,6 +8485,14 @@ const TEXTE = {
 "Gestrichen.":{en:"Removed.",tr:"Çıkarıldı.",ru:"Убрано.",fr:"Retiré.",es:"Quitado.",it:"Tolto.",pl:"Usunięte.",ar:"تمت الإزالة.",uk:"Прибрано.",nl:"Verwijderd.",ro:"Eliminat."},
 "vom Team bestätigt":{en:"confirmed by the team",tr:"ekip tarafından onaylandı",ru:"подтверждено командой",fr:"confirmé par l'équipe",es:"confirmado por el equipo",it:"confermato dal team",pl:"potwierdzone przez zespół",ar:"مؤكد من الفريق",uk:"підтверджено командою",nl:"bevestigd door het team",ro:"confirmat de echipă"},
 "Schließen":{en:"Close",tr:"Kapat",ru:"Закрыть",fr:"Fermer",es:"Cerrar",it:"Chiudi",pl:"Zamknij",ar:"إغلاق",uk:"Закрити",nl:"Sluiten",ro:"Închide"},
+"Karte":{en:"Menu",tr:"Menü",ru:"Меню",fr:"Carte",es:"Carta",it:"Menù",pl:"Karta",ar:"القائمة",uk:"Меню",nl:"Kaart",ro:"Meniu"},
+"Wie letztes Mal":{en:"Same as last time",tr:"Geçen seferki gibi",ru:"Как в прошлый раз",fr:"Comme la dernière fois",es:"Como la última vez",it:"Come l'ultima volta",pl:"Jak ostatnio",ar:"كالمرة السابقة",uk:"Як минулого разу",nl:"Zoals de vorige keer",ro:"Ca data trecută"},
+"Nochmal wie letztes Mal":{en:"Again, like last time",tr:"Geçen seferki gibi tekrar",ru:"Снова как в прошлый раз",fr:"Comme la dernière fois",es:"Otra vez como la última vez",it:"Di nuovo come l'ultima volta",pl:"Jeszcze raz jak ostatnio",ar:"مرة أخرى كالمرة السابقة",uk:"Знову як минулого разу",nl:"Nog eens zoals de vorige keer",ro:"Din nou ca data trecută"},
+"Mit allen Extras, zum heutigen Preis.":{en:"With all extras, at today's price.",tr:"Tüm ekstralarla, bugünkü fiyata.",ru:"Со всеми добавками, по сегодняшней цене.",fr:"Avec tous les suppléments, au prix du jour.",es:"Con todos los extras, al precio de hoy.",it:"Con tutti gli extra, al prezzo di oggi.",pl:"Ze wszystkimi dodatkami, w dzisiejszej cenie.",ar:"مع جميع الإضافات، بسعر اليوم.",uk:"З усіма добавками, за сьогоднішньою ціною.",nl:"Met alle extra's, tegen de prijs van vandaag.",ro:"Cu toate extra-opțiunile, la prețul de azi."},
+"In meine Auswahl":{en:"Add to my selection",tr:"Seçimime ekle",ru:"В мой выбор",fr:"Dans ma sélection",es:"A mi selección",it:"Nella mia selezione",pl:"Do mojego wyboru",ar:"إلى اختياري",uk:"До мого вибору",nl:"In mijn selectie",ro:"În selecția mea"},
+"Gerade nicht auf der Karte: {x}":{en:"Not on the menu right now: {x}",tr:"Şu an menüde yok: {x}",ru:"Сейчас нет в меню: {x}",fr:"Pas à la carte en ce moment : {x}",es:"Ahora no está en la carta: {x}",it:"Al momento non in menu: {x}",pl:"Obecnie nie ma w karcie: {x}",ar:"غير متوفر في القائمة حالياً: {x}",uk:"Зараз немає в меню: {x}",nl:"Nu niet op de kaart: {x}",ro:"Momentan nu e în meniu: {x}"},
+"Nicht mehr dabei: {x}":{en:"No longer available: {x}",tr:"Artık yok: {x}",ru:"Больше нет: {x}",fr:"Plus disponible : {x}",es:"Ya no disponible: {x}",it:"Non più disponibile: {x}",pl:"Już niedostępne: {x}",ar:"لم يعد متوفراً: {x}",uk:"Більше немає: {x}",nl:"Niet meer beschikbaar: {x}",ro:"Nu mai este disponibil: {x}"},
+"Zurück":{en:"Back",tr:"Geri",ru:"Назад",fr:"Retour",es:"Volver",it:"Indietro",pl:"Wstecz",ar:"رجوع",uk:"Назад",nl:"Terug",ro:"Înapoi"},
 "Zurück zur Übersicht":{en:"Back to overview",tr:"Genel bakışa dön",ru:"К обзору",fr:"Retour à l'aperçu",es:"Volver al inicio",it:"Torna alla panoramica",pl:"Powrót do przeglądu",ar:"العودة إلى النظرة العامة",uk:"Назад до огляду",nl:"Terug naar overzicht",ro:"Înapoi la prezentare"},
 "Hier hakt gerade etwas.":{en:"Something is stuck here right now.",tr:"Burada bir şeyler takıldı.",ru:"Здесь что-то пошло не так.",fr:"Quelque chose coince ici.",es:"Aquí algo se ha atascado.",it:"Qui qualcosa si è bloccato.",pl:"Tutaj coś się zacięło.",ar:"حدث خلل هنا.",uk:"Тут щось не спрацювало.",nl:"Hier loopt iets vast.",ro:"Aici s-a blocat ceva."},
 "Bitte einmal zurück zur Übersicht, unser Team hilft Ihnen sonst gerne persönlich weiter.":{en:"Please head back to the overview, otherwise our team is happy to help you in person.",tr:"Lütfen genel bakışa dönün, aksi halde ekibimiz size memnuniyetle şahsen yardımcı olur.",ru:"Вернитесь, пожалуйста, к обзору, иначе наша команда с радостью поможет лично.",fr:"Revenez à l'aperçu, sinon notre équipe vous aide volontiers en personne.",es:"Vuelva al inicio; si no, nuestro equipo le ayuda con gusto en persona.",it:"Torni alla panoramica, altrimenti il nostro team la aiuta volentieri di persona.",pl:"Wróć do przeglądu, w innym razie nasz zespół chętnie pomoże osobiście.",ar:"يرجى العودة إلى النظرة العامة، وإلا فسيسعد فريقنا بمساعدتكم شخصياً.",uk:"Поверніться, будь ласка, до огляду, інакше наша команда радо допоможе особисто.",nl:"Ga even terug naar het overzicht, anders helpt ons team u graag persoonlijk.",ro:"Reveniți la prezentare, altfel echipa noastră vă ajută cu plăcere personal."},
@@ -8227,7 +8518,7 @@ const TEXTE = {
 "Sprache":{en:"Language",tr:"Dil",ru:"Язык",fr:"Langue",es:"Idioma",it:"Lingua",pl:"Język",ar:"اللغة",uk:"Мова",nl:"Taal",ro:"Limbă"},
 
 /* --- Öffnungsstatus --- */
-"Jetzt geöffnet · bis {x} Uhr":{en:"Open now · until {x}",tr:"Şu an açık · {x}'e kadar",ru:"Сейчас открыто · до {x}",fr:"Ouvert · jusqu'à {x}",es:"Abierto · hasta las {x}",it:"Aperto · fino alle {x}",pl:"Otwarte · do {x}",ar:"مفتوح الآن · حتى {x}",uk:"Зараз відкрито · до {x}",nl:"Nu open · tot {x}",ro:"Deschis acum · până la {x}"},
+"Offen bis {x}":{en:"Open until {x}",tr:"{x}'e kadar açık",ru:"Открыто до {x}",fr:"Ouvert jusqu'à {x}",es:"Abierto hasta las {x}",it:"Aperto fino alle {x}",pl:"Otwarte do {x}",ar:"مفتوح حتى {x}",uk:"Відчинено до {x}",nl:"Open tot {x}",ro:"Deschis până la {x}"},
 "Gerade geschlossen · {w} ab {x} Uhr":{en:"Closed · {w} from {x}",tr:"Şu an kapalı · {w} {x}'den itibaren",ru:"Закрыто · {w} с {x}",fr:"Fermé · {w} à partir de {x}",es:"Cerrado · {w} desde las {x}",it:"Chiuso · {w} dalle {x}",pl:"Zamknięte · {w} od {x}",ar:"مغلق · {w} من {x}",uk:"Зачинено · {w} з {x}",nl:"Gesloten · {w} vanaf {x}",ro:"Închis · {w} de la {x}"},
 "Gerade geschlossen":{en:"Currently closed",tr:"Şu an kapalı",ru:"Закрыто",fr:"Actuellement fermé",es:"Cerrado ahora",it:"Ora chiuso",pl:"Obecnie zamknięte",ar:"مغلق حالياً",uk:"Зараз зачинено",nl:"Momenteel gesloten",ro:"Închis momentan"},
 "heute":{en:"today",tr:"bugün",ru:"сегодня",fr:"aujourd'hui",es:"hoy",it:"oggi",pl:"dziś",ar:"اليوم",uk:"сьогодні",nl:"vandaag",ro:"astăzi"},
@@ -8621,6 +8912,10 @@ const TEXTE = {
 "Wird gesendet …":{en:"Sending …",tr:"Gönderiliyor …",ru:"Отправляем …",fr:"Envoi …",es:"Enviando …",it:"Invio …",pl:"Wysyłanie …",ar:"جارٍ الإرسال …",uk:"Надсилаємо …",nl:"Versturen …",ro:"Se trimite …"},
 "ANMERKUNG (OPTIONAL)":{en:"NOTE (OPTIONAL)",tr:"NOT (İSTEĞE BAĞLI)",ru:"ПРИМЕЧАНИЕ (НЕОБЯЗАТЕЛЬНО)",fr:"REMARQUE (FACULTATIF)",es:"NOTA (OPCIONAL)",it:"NOTA (FACOLTATIVO)",pl:"UWAGA (OPCJONALNIE)",ar:"ملاحظة (اختياري)",uk:"ПРИМІТКА (НЕОБОВ'ЯЗКОВО)",nl:"OPMERKING (OPTIONEEL)",ro:"OBSERVAȚIE (OPȚIONAL)"},
 "z. B. ohne Zwiebeln":{en:"e.g. no onions",tr:"örn. soğansız",ru:"например, без лука",fr:"p. ex. sans oignons",es:"p. ej. sin cebolla",it:"es. senza cipolla",pl:"np. bez cebuli",ar:"مثلاً بدون بصل",uk:"наприклад, без цибулі",nl:"bijv. zonder ui",ro:"de ex. fără ceapă"},
+"Dieser Code gilt hier nicht.":{en:"This code isn't valid here.",tr:"Bu kod burada geçerli değil.",ru:"Этот код здесь не действует.",fr:"Ce code n'est pas valable ici.",es:"Este código no es válido aquí.",it:"Questo codice non è valido qui.",pl:"Ten kod nie obowiązuje tutaj.",ar:"هذا الرمز غير صالح هنا.",uk:"Цей код тут не діє.",nl:"Deze code is hier niet geldig.",ro:"Acest cod nu este valabil aici."},
+"Dieser Code gilt nur für „{g}“ – das ist nicht in Ihrer Auswahl.":{en:"This code only applies to “{g}” – that isn't in your selection.",tr:"Bu kod yalnızca “{g}” için geçerli – seçiminizde yok.",ru:"Этот код действует только для «{g}» – этого нет в вашем выборе.",fr:"Ce code ne vaut que pour « {g} » – ce n'est pas dans votre sélection.",es:"Este código solo vale para «{g}»: no está en su selección.",it:"Questo codice vale solo per «{g}» – non è nella sua selezione.",pl:"Ten kod dotyczy tylko „{g}” – tego nie ma w Twoim wyborze.",ar:"هذا الرمز صالح فقط لـ «{g}» – وهو ليس ضمن اختيارك.",uk:"Цей код діє лише для «{g}» – цього немає у вашому виборі.",nl:"Deze code geldt alleen voor ‘{g}’ – dat zit niet in uw keuze.",ro:"Acest cod este valabil doar pentru „{g}” – nu se află în selecția dvs."},
+"Zu viele Versuche. Bitte in einigen Minuten noch einmal – oder ohne Code bestellen.":{en:"Too many attempts. Please try again in a few minutes – or order without a code.",tr:"Çok fazla deneme. Lütfen birkaç dakika sonra tekrar deneyin – ya da kodsuz sipariş verin.",ru:"Слишком много попыток. Попробуйте через несколько минут – или закажите без кода.",fr:"Trop de tentatives. Réessayez dans quelques minutes – ou commandez sans code.",es:"Demasiados intentos. Vuelva a intentarlo en unos minutos o pida sin código.",it:"Troppi tentativi. Riprovi tra qualche minuto – oppure ordini senza codice.",pl:"Zbyt wiele prób. Spróbuj ponownie za kilka minut – albo zamów bez kodu.",ar:"محاولات كثيرة جدًا. يرجى المحاولة بعد بضع دقائق – أو الطلب بدون رمز.",uk:"Забагато спроб. Спробуйте за кілька хвилин – або замовте без коду.",nl:"Te veel pogingen. Probeer het over een paar minuten opnieuw – of bestel zonder code.",ro:"Prea multe încercări. Încercați din nou peste câteva minute – sau comandați fără cod."},
+"Der Code ließ sich gerade nicht prüfen. Bitte noch einmal tippen – oder das Feld leeren und ohne Code bestellen.":{en:"The code couldn't be checked just now. Please tap again – or clear the field and order without a code.",tr:"Kod şu anda kontrol edilemedi. Lütfen tekrar dokunun – ya da alanı boşaltıp kodsuz sipariş verin.",ru:"Сейчас не удалось проверить код. Нажмите ещё раз – или очистите поле и закажите без кода.",fr:"Le code n'a pas pu être vérifié. Touchez à nouveau – ou videz le champ et commandez sans code.",es:"No se ha podido comprobar el código. Toque de nuevo o vacíe el campo y pida sin código.",it:"Non è stato possibile verificare il codice. Tocchi di nuovo – oppure svuoti il campo e ordini senza codice.",pl:"Nie udało się teraz sprawdzić kodu. Dotknij ponownie – albo wyczyść pole i zamów bez kodu.",ar:"تعذّر التحقق من الرمز الآن. يرجى النقر مرة أخرى – أو إفراغ الحقل والطلب بدون رمز.",uk:"Зараз не вдалося перевірити код. Натисніть ще раз – або очистьте поле й замовте без коду.",nl:"De code kon nu niet worden gecontroleerd. Tik opnieuw – of maak het veld leeg en bestel zonder code.",ro:"Codul nu a putut fi verificat acum. Atingeți din nou – sau goliți câmpul și comandați fără cod."},
 "RABATTCODE (OPTIONAL)":{en:"DISCOUNT CODE (OPTIONAL)",tr:"İNDİRİM KODU (İSTEĞE BAĞLI)",ru:"ПРОМОКОД (НЕОБЯЗАТЕЛЬНО)",fr:"CODE DE RÉDUCTION (FACULTATIF)",es:"CÓDIGO DE DESCUENTO (OPCIONAL)",it:"CODICE SCONTO (FACOLTATIVO)",pl:"KOD RABATOWY (OPCJONALNIE)",ar:"رمز الخصم (اختياري)",uk:"ПРОМОКОД (НЕОБОВ'ЯЗКОВО)",nl:"KORTINGSCODE (OPTIONEEL)",ro:"COD DE REDUCERE (OPȚIONAL)"},
 "z. B. WILLKOMMEN10":{en:"e.g. WELCOME10",tr:"örn. HOSGELDIN10",ru:"например, WELCOME10",fr:"p. ex. BIENVENUE10",es:"p. ej. BIENVENIDO10",it:"es. BENVENUTO10",pl:"np. WITAMY10",ar:"مثلاً WELCOME10",uk:"наприклад, WELCOME10",nl:"bijv. WELKOM10",ro:"de ex. BINEVENIT10"},
 "Wichtig:":{en:"Important:",tr:"Önemli:",ru:"Важно:",fr:"Important :",es:"Importante:",it:"Importante:",pl:"Ważne:",ar:"مهم:",uk:"Важливо:",nl:"Belangrijk:",ro:"Important:"},
@@ -8805,8 +9100,13 @@ const TEXTE = {
 "Text ist offen — das Bild bitte über „Bild sichern“ dazulegen.":{en:"The message is open — please add the image via \\u201ESave image\\u201C.",tr:"Mesaj açık — görseli lütfen „Görseli kaydet\\u201C ile ekleyin.",ru:"Сообщение открыто — изображение добавьте через «Сохранить изображение».",fr:"Le message est ouvert — ajoutez l'image via « Enregistrer l'image ».",es:"El mensaje está abierto: añada la imagen con «Guardar imagen».",it:"Il messaggio è aperto: aggiunga l'immagine con «Salva immagine».",pl:"Wiadomość jest otwarta — obraz dodaj przez „Zapisz obraz”.",ar:"الرسالة مفتوحة — أضف الصورة عبر «حفظ الصورة».",uk:"Повідомлення відкрито — зображення додайте через «Зберегти зображення».",nl:"Het bericht staat open — voeg de afbeelding toe via „Afbeelding bewaren”.",ro:"Mesajul este deschis — adăugați imaginea prin „Salvați imaginea”."},
 "War gerade bei {haus}.":{en:"Just been to {haus}.",tr:"Az önce {haus} mekanındaydım.",ru:"Только что был в {haus}.",fr:"Je sors de {haus}.",es:"Acabo de estar en {haus}.",it:"Sono appena stato da {haus}.",pl:"Właśnie byłem w {haus}.",ar:"كنت للتو في {haus}.",uk:"Щойно був у {haus}.",nl:"Net bij {haus} geweest.",ro:"Tocmai am fost la {haus}."},
 "Wenn Sie mögen, hinterlassen Sie uns ein paar Worte auf Google. Wir freuen uns über jede ehrliche Rückmeldung.":{en:"If you like, leave us a few words on Google. We're glad of every honest word.",tr:"İsterseniz Google'da bize birkaç satır bırakın. Her dürüst geri bildirime seviniriz.",ru:"Если хотите, оставьте нам пару слов в Google. Мы рады каждому честному отзыву.",fr:"Si vous le souhaitez, laissez-nous quelques mots sur Google. Chaque retour sincère nous fait plaisir.",es:"Si le apetece, déjenos unas palabras en Google. Agradecemos cada comentario sincero.",it:"Se le va, ci lasci due parole su Google. Ogni riscontro sincero ci fa piacere.",pl:"Jeśli masz ochotę, zostaw nam kilka słów w Google. Cieszy nas każda szczera opinia.",ar:"إن أحببت، اترك لنا بضع كلمات على جوجل. يسعدنا كل رأي صادق.",uk:"Якщо бажаєте, залиште нам кілька слів у Google. Ми раді кожному щирому відгуку.",nl:"Als u wilt, laat ons een paar woorden achter op Google. We zijn blij met elke eerlijke reactie.",ro:"Dacă doriți, lăsați-ne câteva cuvinte pe Google. Ne bucură orice părere sinceră."},
-"Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – sonst nichts. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.":{en:"What for: the odd voucher or invitation from us – nothing else. We only write once you've confirmed the address by email, and you can opt out at any time.",tr:"Ne için: ara sıra bir kupon ya da davet – başka bir şey değil. Yalnızca adresi onay e-postasıyla doğruladıktan sonra yazarız ve dilediğiniz an vazgeçebilirsiniz.",ru:"Зачем: изредка купон или приглашение от нас — и ничего больше. Мы пишем только после подтверждения адреса по почте, и вы в любой момент можете отказаться.",fr:"À quoi cela sert : un bon ou une invitation de temps à autre – rien d'autre. Nous n'écrivons qu'après confirmation de l'adresse par e-mail, et vous pouvez vous désinscrire à tout moment.",es:"Para qué: algún vale o invitación nuestra, nada más. Solo escribimos cuando haya confirmado la dirección por correo, y puede darse de baja cuando quiera.",it:"A cosa serve: ogni tanto un buono o un invito da parte nostra, nient'altro. Le scriviamo solo dopo la conferma dell'indirizzo via e-mail e può revocare in qualsiasi momento.",pl:"Po co: od czasu do czasu kupon lub zaproszenie od nas – nic więcej. Piszemy dopiero po potwierdzeniu adresu w e-mailu, a z zapisu można w każdej chwili zrezygnować.",ar:"لماذا: قسيمة أو دعوة منا من حين لآخر — لا أكثر. لن نراسلك إلا بعد تأكيد العنوان عبر بريد التأكيد، ويمكنك الاعتراض في أي وقت.",uk:"Навіщо: час від часу купон або запрошення від нас — і нічого більше. Пишемо лише після підтвердження адреси листом, і ви будь-коли можете відмовитися.",nl:"Waarvoor: af en toe een bon of uitnodiging van ons – meer niet. We schrijven pas zodra u het adres per e-mail hebt bevestigd, en u kunt zich altijd afmelden.",ro:"Pentru ce: din când în când un voucher sau o invitație de la noi – nimic altceva. Vă scriem doar după ce confirmați adresa prin e-mail și puteți renunța oricând."},
+"Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – und eine Erinnerung, wenn Sie länger nicht da waren. Dafür merken wir uns, wann Sie zuletzt bei uns waren und was Sie gern bestellen; verschickt wird über Klaviyo. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.":{en:"What for: the odd voucher or invitation from us – and a reminder if you haven't visited for a while. For this we note when you last visited and what you like to order; emails are sent via Klaviyo. We only write once you've confirmed the address by email, and you can opt out at any time.",tr:"Ne için: ara sıra bir kupon ya da davet – ve bir süredir gelmediyseniz bir hatırlatma. Bunun için en son ne zaman geldiğinizi ve neyi sipariş etmeyi sevdiğinizi not ederiz; e-postalar Klaviyo üzerinden gönderilir. Yalnızca adresi onay e-postasıyla doğruladıktan sonra yazarız ve dilediğiniz an vazgeçebilirsiniz.",ru:"Зачем: изредка купон или приглашение от нас — и напоминание, если вы давно не заходили. Для этого мы запоминаем, когда вы были у нас в последний раз и что любите заказывать; письма отправляются через Klaviyo. Мы пишем только после подтверждения адреса по почте, и вы в любой момент можете отказаться.",fr:"À quoi cela sert : un bon ou une invitation de temps à autre – et un rappel si vous n'êtes pas venu depuis un moment. Pour cela, nous retenons la date de votre dernière visite et ce que vous aimez commander ; les e-mails partent via Klaviyo. Nous n'écrivons qu'après confirmation de l'adresse par e-mail, et vous pouvez vous désinscrire à tout moment.",es:"Para qué: algún vale o invitación nuestra, y un recordatorio si hace tiempo que no viene. Para ello guardamos cuándo nos visitó por última vez y qué suele pedir; los correos se envían a través de Klaviyo. Solo escribimos cuando haya confirmado la dirección por correo, y puede darse de baja cuando quiera.",it:"A cosa serve: ogni tanto un buono o un invito da parte nostra, e un promemoria se non passa da un po'. Per questo ricordiamo quando è venuto l'ultima volta e cosa ordina volentieri; le e-mail partono tramite Klaviyo. Le scriviamo solo dopo la conferma dell'indirizzo via e-mail e può revocare in qualsiasi momento.",pl:"Po co: od czasu do czasu kupon lub zaproszenie od nas – i przypomnienie, jeśli dawno nas Państwo nie odwiedzili. W tym celu zapamiętujemy datę ostatniej wizyty i ulubione zamówienia; wiadomości wysyłamy przez Klaviyo. Piszemy dopiero po potwierdzeniu adresu w e-mailu, a z zapisu można w każdej chwili zrezygnować.",ar:"لماذا: قسيمة أو دعوة منا من حين لآخر — وتذكير إذا غبت عنا فترة. لذلك نحتفظ بتاريخ آخر زيارة لك وبما تحب أن تطلبه، وتُرسل الرسائل عبر Klaviyo. لن نراسلك إلا بعد تأكيد العنوان عبر بريد التأكيد، ويمكنك الاعتراض في أي وقت.",uk:"Навіщо: час від часу купон або запрошення від нас — і нагадування, якщо ви давно не заходили. Для цього ми запам'ятовуємо, коли ви були в нас востаннє і що любите замовляти; листи надсилаються через Klaviyo. Пишемо лише після підтвердження адреси листом, і ви будь-коли можете відмовитися.",nl:"Waarvoor: af en toe een bon of uitnodiging van ons – en een herinnering als u een tijd niet bent geweest. Daarvoor onthouden we wanneer u voor het laatst kwam en wat u graag bestelt; mails gaan via Klaviyo. We schrijven pas zodra u het adres per e-mail hebt bevestigd, en u kunt zich altijd afmelden.",ro:"Pentru ce: din când în când un voucher sau o invitație de la noi – și o reamintire dacă nu ați mai trecut de ceva vreme. Pentru asta reținem când ați fost ultima dată și ce comandați cu plăcere; e-mailurile se trimit prin Klaviyo. Vă scriem doar după ce confirmați adresa prin e-mail și puteți renunța oricând."},
 "gültig bis {d}":{en:"valid until {d}",tr:"{d} tarihine kadar geçerli",ru:"действует до {d}",fr:"valable jusqu'au {d}",es:"válido hasta el {d}",it:"valido fino al {d}",pl:"ważne do {d}",ar:"صالح حتى {d}",uk:"дійсний до {d}",nl:"geldig tot {d}",ro:"valabil până la {d}"},
+"Ab {n} Jahren":{en:"Ages {n} and up",tr:"{n} yaş ve üzeri",ru:"С {n} лет",fr:"Dès {n} ans",es:"A partir de {n} años",it:"Dai {n} anni",pl:"Od {n} lat",ar:"من عمر {n} عامًا",uk:"З {n} років",nl:"Vanaf {n} jaar",ro:"De la {n} ani"},
+"Das Personal prüft beim Servieren den Ausweis.":{en:"Our staff will check your ID when serving.",tr:"Personel servis sırasında kimliğinizi kontrol eder.",ru:"При подаче персонал проверит удостоверение личности.",fr:"Le personnel vérifie la pièce d’identité au service.",es:"El personal comprobará el documento de identidad al servir.",it:"Il personale controlla il documento al momento del servizio.",pl:"Obsługa sprawdzi dowód tożsamości przy podaniu.",ar:"سيتحقق الموظفون من الهوية عند التقديم.",uk:"Під час подачі персонал перевірить посвідчення.",nl:"Het personeel controleert bij het serveren uw legitimatie.",ro:"Personalul verifică actul de identitate la servire."},
+"Ich bin {n} oder älter":{en:"I am {n} or older",tr:"{n} yaşında veya daha büyüğüm",ru:"Мне {n} или больше",fr:"J’ai {n} ans ou plus",es:"Tengo {n} años o más",it:"Ho {n} anni o più",pl:"Mam {n} lat lub więcej",ar:"عمري {n} عامًا أو أكثر",uk:"Мені {n} або більше",nl:"Ik ben {n} of ouder",ro:"Am {n} ani sau mai mult"},
+"Wieder herausnehmen":{en:"Remove again",tr:"Geri çıkar",ru:"Убрать",fr:"Retirer",es:"Quitar de nuevo",it:"Togli di nuovo",pl:"Usuń z powrotem",ar:"إزالة مرة أخرى",uk:"Прибрати",nl:"Weer verwijderen",ro:"Scoate din nou"},
+"noch {n} Tage":{en:"{n} days left",tr:"{n} gün kaldı",ru:"ещё {n} дн.",fr:"encore {n} jours",es:"quedan {n} días",it:"ancora {n} giorni",pl:"jeszcze {n} dni",ar:"بقي {n} أيام",uk:"ще {n} дн.",nl:"nog {n} dagen",ro:"încă {n} zile"},
 "noch {n} Stunden":{en:"{n} hours left",tr:"{n} saat kaldı",ru:"ещё {n} ч.",fr:"encore {n} heures",es:"quedan {n} horas",it:"ancora {n} ore",pl:"jeszcze {n} godz.",ar:"بقي {n} ساعات",uk:"ще {n} год",nl:"nog {n} uur",ro:"încă {n} ore"},
 "nur noch {n} Minuten":{en:"only {n} minutes left",tr:"sadece {n} dakika kaldı",ru:"осталось {n} мин.",fr:"plus que {n} minutes",es:"solo quedan {n} minutos",it:"solo {n} minuti",pl:"tylko {n} min",ar:"بقي {n} دقائق فقط",uk:"лише {n} хв",nl:"nog maar {n} minuten",ro:"doar {n} minute"},
 "und {n} weitere":{en:"and {n} more",tr:"ve {n} tane daha",ru:"и ещё {n}",fr:"et {n} de plus",es:"y {n} más",it:"e altri {n}",pl:"i jeszcze {n}",ar:"و{n} أخرى",uk:"і ще {n}",nl:"en nog {n}",ro:"și încă {n}"},
@@ -9285,11 +9585,11 @@ function jetztOffen(){
 
   const heute = fenster(tag);
   if(heute && jetzt >= heute.auf && jetzt < heute.zu)
-    return { offen:true, text:t("Jetzt geöffnet · bis {x} Uhr", {x:heute.bis}) };
+    return { offen:true, text:t("Offen bis {x}", {x:heute.bis}) };
 
   const gestern = fenster((tag + 6) % 7);         // Nachtschicht von gestern
   if(gestern && jetzt + 24 < gestern.zu)
-    return { offen:true, text:t("Jetzt geöffnet · bis {x} Uhr", {x:gestern.bis}) };
+    return { offen:true, text:t("Offen bis {x}", {x:gestern.bis}) };
 
   const namen = TAGE;
   for(let i = 0; i < 7; i++){
@@ -9592,7 +9892,7 @@ function start(){
       ' data-spalten="' + x.spalten + '"' +
       (k.farbe ? ' data-farbe="' + hs(k.farbe) + '"' : "") +
       (eigenschaften.length ? ' style="' + eigenschaften.join(";") + '"' : "") +
-      ' href="' + ziel + '"' +
+      ' href="' + hs(ziel) + '"' +
       (ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' +
         /* Das Bild steht VOR Symbol und Text im Auszeichnungstext:
            In der Säule liegt es dadurch oben, ohne dass die Reihen-
@@ -9630,7 +9930,7 @@ function start(){
   };
 
   let html = aktionBandHTML() + bannerRadHTML() +
-             begleiterHTML("start") + empfehlungHTML();
+             begleiterHTML("start") + nochmalHTML() + empfehlungHTML();
   /* Aufeinanderfolgende Kacheln derselben Gruppe bilden einen Bereich;
      jeder Bereich packt seine Reihen selbst (kachelReihen). */
   const bereiche = [];
@@ -9659,7 +9959,59 @@ const TISCH_SCHLUESSEL = hSchluessel("tisch");
 try { merk = JSON.parse(localStorage.getItem(MERK_SCHLUESSEL) || "{}"); } catch(e){ merk = {}; }
 /* Ältere gespeicherte Einträge (ohne Menge) bekommen Menge 1 */
 Object.values(merk).forEach(g => { if(!g.m || g.m < 1) g.m = 1; });
-function merkSpeichern(){ try { localStorage.setItem(MERK_SCHLUESSEL, JSON.stringify(merk)); } catch(e){} }
+function merkSpeichern(){ try { localStorage.setItem(MERK_SCHLUESSEL, JSON.stringify(merk)); } catch(e){} optSpeichern(); alterPruefen(); }
+
+/* ── Altersfreigabe (Wunsch 07.10.) ──────────────────────────────
+   Liegt ein Gericht ab 16 oder 18 im Korb und ist diese Stufe in der
+   Sitzung noch nicht bestätigt, fragt der Hub EINMAL nach. Die Frage
+   hängt an merkSpeichern(), weil jeder Weg in den Korb dort vorbeikommt
+   — „+“, Herz, Detailblatt, Sofort-Knopf, „Passt dazu“, Wischen in der
+   Entscheidungshilfe. Ein Tor an jedem Knopf vergäße den nächsten.
+   Ehrlich: Ein Tipp im Browser ist kein Altersnachweis. Der Satz sagt
+   deshalb, dass das Personal den Ausweis prüft, und die Küche sieht
+   die Marke am Bon. */
+let alterOk = 0;
+try{ alterOk = +sessionStorage.getItem("omoteno-alter") || 0; }catch(e){}
+function alterOffen(){
+  let n = 0;
+  Object.keys(merk).forEach(name => { const g = findeGericht(name); if(g && g.alter > alterOk) n = Math.max(n, g.alter); });
+  return n;
+}
+function alterPruefen(){
+  const n = alterOffen();
+  if(!n || VORSCHAU || document.getElementById("alterfrage")) return;
+  const el = document.createElement("div");
+  el.className = "alterfrage"; el.id = "alterfrage";
+  el.setAttribute("role", "alertdialog"); el.setAttribute("aria-modal", "true");
+  el.setAttribute("aria-labelledby", "alterTitel"); el.setAttribute("aria-describedby", "alterSatz");
+  el.innerHTML = '<div class="alterkarte"><span class="altermarke" aria-hidden="true">' + n + '+</span>' +
+    '<h2 id="alterTitel">' + t("Ab {n} Jahren", {n}) + '</h2>' +
+    '<p id="alterSatz">' + t("Das Personal prüft beim Servieren den Ausweis.") + '</p>' +
+    '<button type="button" class="knopf" data-alter-ja="' + n + '">' + t("Ich bin {n} oder älter", {n}) + '</button>' +
+    '<button type="button" class="knopf zweit" data-alter-nein>' + t("Wieder herausnehmen") + '</button></div>';
+  document.body.appendChild(el);
+  setTimeout(() => { const k = el.querySelector("[data-alter-ja]"); if(k) k.focus(); }, 30);
+}
+function alterSchliessen(){ const el = document.getElementById("alterfrage"); if(el) el.remove(); }
+document.addEventListener("click", e => {
+  const ja = e.target.closest("[data-alter-ja]");
+  if(ja){
+    alterOk = Math.max(alterOk, +ja.dataset.alterJa || 0);
+    try{ sessionStorage.setItem("omoteno-alter", String(alterOk)); }catch(err){}
+    alterSchliessen(); return;
+  }
+  if(e.target.closest("[data-alter-nein]")){
+    /* Nur herausnehmen, was die Stufe braucht — nicht den ganzen Korb. */
+    const raus = Object.keys(merk).filter(name => { const g = findeGericht(name); return g && g.alter > alterOk; });
+    raus.forEach(name => delete merk[name]);
+    alterSchliessen();
+    try{ localStorage.setItem(MERK_SCHLUESSEL, JSON.stringify(merk)); }catch(err){}
+    raus.forEach(name => { korbSteuerungNeu(name, false);
+      document.querySelectorAll('[data-merk="' + encodeURIComponent(name) + '"]').forEach(h => h.classList.remove("an")); });
+    balkenAktualisieren();
+    if(/auswahl/.test(location.hash)) zeichne();
+  }
+}, true);
 function preisNum(p){
   const m = String(p).replace(",", ".").match(/[0-9]+(\.[0-9]+)?/);
   return m ? parseFloat(m[0]) : 0;
@@ -9676,11 +10028,56 @@ function merkSumme(){
 }
 function preisText(v){ return v.toFixed(2).replace(".", ",") + " €"; }
 
+/* ── Rabatt direkt am Gericht (Wunsch 07.10.) ─────────────────────
+   Eine laufende Aktion zeigt sich jetzt auch in der Karte selbst:
+   alter Preis gestrichen, neuer Preis, „−20 %“. Kein zweites
+   Rabattsystem — es ist dieselbe Tabelle aktionen, die der Server beim
+   Bestellen ohnehin nachrechnet (least() aus Karte und Aktion). Der
+   gestrichene Preis ist der AKTUELLE Kartenpreis, nicht preis_alt: Hat
+   der Wirt den Preis seither geändert, stimmte sonst die Rechnung auf
+   dem Schirm nicht. Liegt der Aktionspreis nicht darunter, gibt es
+   nichts zu zeigen. */
+function aktionVon(name){
+  const g = findeGericht(name); if(!g || g.p === "–") return null;
+  const karte = preisNum(g.p);
+  const a = aktionen.find(x => x && x.gericht_name === name && new Date(x.bis) > Date.now() &&
+    Number(x.preis_neu) >= 0 && Number(x.preis_neu) < karte);
+  if(!a) return null;
+  const neu = Number(a.preis_neu);
+  return { a, alt: karte, neu, prozent: Math.max(1, Math.round((1 - neu / karte) * 100)) };
+}
+/* Der Preis, der in den Korb geht — im Format der Karte („7,90“). */
+function korbPreis(g){
+  const r = aktionVon(g.n);
+  return r ? r.neu.toFixed(2).replace(".", ",") : g.p;
+}
+/* Fängt eine Aktion an oder endet sie, während etwas im Korb liegt,
+   zieht der Korb nach — sonst zeigte er einen Preis, den der Server
+   nicht berechnet. */
+function merkPreiseAbgleichen(){
+  let anders = false;
+  Object.keys(merk).forEach(name => {
+    const g = findeGericht(name); if(!g) return;
+    const p = korbPreis(g);
+    if(preisNum(merk[name].p) !== preisNum(p)){ merk[name].p = p; anders = true; }
+  });
+  if(anders){ merkSpeichern(); if(typeof balkenAktualisieren === "function") balkenAktualisieren(); }
+}
+function gerichtPreisHTML(g){
+  if(g.p === "–") return '<span class="p">–</span>';
+  const r = aktionVon(g.n);
+  if(!r) return '<span class="p">' + g.p + ' €</span>';
+  return '<span class="p pneu">' + preisText(r.neu) + '</span>' +
+    '<s class="palt">' + preisText(r.alt) + '</s>' +
+    '<span class="tag rabatt">−' + r.prozent + ' %</span>';
+}
+
 function gerichtHTML(g){
   const tags = (g.top ? '<span class="tag top">' + t("BELIEBT") + '</span>' : "")
              + (g.vegan ? '<span class="tag vegan">' + t("VEGAN") + '</span>'
                         : (g.veg ? '<span class="tag veg">' + t("VEGETARISCH") + '</span>' : ""))
-             + (g.scharf ? '<span class="tag scharf">' + t("SCHARF") + '</span>' : "");
+             + (g.scharf ? '<span class="tag scharf">' + t("SCHARF") + '</span>' : "")
+             + (g.alter ? '<span class="tag abalter">' + g.alter + '+</span>' : "");
   const hatInfo = !!INHALTSSTOFFE[g.n];
 
   /* Vorschaubild neben dem Titel. Bewusst klein und quadratisch: In
@@ -9713,7 +10110,7 @@ function gerichtHTML(g){
          '<div class="n">' + t(g.n) + tags + (hatInfo ? '<span class="infopunkt"></span>' : "") + '</div>' +
          urnameHTML(g.n) +
          (g.b ? '<div class="b">' + t(g.b) + '</div>' : "") +
-         '<span class="gpz"><span class="p">' + g.p + (g.p === "–" ? "" : " €") + '</span></span>' +
+         '<span class="gpz">' + gerichtPreisHTML(g) + '</span>' +
          '</span>' +
          vorschau +
          '</button>' +
@@ -9783,7 +10180,7 @@ function korbZahlHuepfen(){
 }
 
 function gerichtOrt(name){
-  for(const [karte, daten] of [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE], ["cocktails", COCKTAILS]])
+  for(const [karte, daten] of alleKarten())
     for(const gr of daten) if(gr.eintraege.some(e => e.n === name)) return { karte, gruppe:gr.gruppe };
   return null;
 }
@@ -9831,7 +10228,36 @@ function inDenKorbFliegen(quelle, name){
   lauf.oncancel = () => f.remove();
 }
 
+/* Titel und Unterzeile einer Kartenseite folgen der Kachel, die dorthin
+   führt. Vorfall 07.10.: Choco hatte die Cocktail-Kachel „Kaiser und
+   Säfte“ genannt, die Seite dahinter hieß weiter fest „Cocktails &
+   Spirituosen“. Hat der Wirt den Kachelnamen geändert, gilt sein Name
+   — und die alte Vorgabe-Unterzeile („Hinter der Bar wird …“) passt
+   dann nicht mehr; sie kommt nur noch aus seiner Kachel. Unverändert
+   bleibt alles wie vorher. */
+/* Die Namen, unter denen das Board die drei festen Karten führt. Steht
+   im Verzeichnis genau dieser Name, bleibt die Seite wie sie war
+   („Getränkekarte“ mit ihrer Unterzeile); erst ein anderer Name gilt. */
+const KARTE_GRUNDNAME = { speisekarte:"Speisekarte", getraenke:"Getränke", cocktails:"Cocktails" };
+function karteKopf(id, titel, unter){
+  const v = karteVerzEintrag(id);
+  if(v && v.name && v.name !== KARTE_GRUNDNAME[id]){ titel = v.name; unter = v.unter || ""; }
+  else if(v && v.unter) unter = v.unter;
+  /* Zuerst die Kachel, die GERADE auf diese Karte zeigt (auch eine
+     eigene oder eine mit Zeitplan), sonst die gleichnamige feste. */
+  const k = KACHELN.find(x => x.art === "karte" && kachelKarte(x) === id) ||
+            KACHELN.find(x => x.schluessel === id);
+  if(!k) return { titel, unter };
+  const grund = (KACHELARTEN[k.schluessel] || {}).titel || (k.art === "karte" ? "Karte" : "");
+  const eigenTitel = String(k.titel || "").trim(), eigenUnter = String(k.unter || "").trim();
+  if(eigenTitel && eigenTitel !== grund) return { titel:eigenTitel, unter:eigenUnter };
+  return { titel, unter: eigenUnter || unter };
+}
+
 function karteSeite(id, daten, titel, unter, fuss){
+  ({ titel, unter } = karteKopf(id, titel, unter));
+  if(!(id in filter))   filter[id] = "Alle";
+  if(!(id in suchtext)) suchtext[id] = "";
   /* top:true = Hausklassiker. Ohne Rangfolge sehen 60 Gerichte alle
      gleich wichtig aus und der Gast nimmt das Erstbeste. */
   const hatTop  = daten.some(x => x.eintraege.some(e => e.top));
@@ -9870,7 +10296,7 @@ function karteSeite(id, daten, titel, unter, fuss){
     '<button class="clear' + (suchtext[id] ? " an" : "") + '" data-clear="' + id + '" aria-label="' +
     t("Löschen") + '">×</button></div>';
 
-  return '<div class="seite"><h2>' + t(titel) + '</h2><p class="unter">' + t(unter) + '</p>' +
+  return '<div class="seite"><h2>' + hs(t(titel)) + '</h2>' + (unter ? '<p class="unter">' + hs(t(unter)) + '</p>' : "") +
          (id === "speisekarte" && foodrouletteAn() ? entscheidungCTA() : "") + aktionBandHTML() +
          suche + '<div class="chips">' + chips + '</div>' + liste +
          '<div class="hinweis">' + fuss + '</div></div>';
@@ -9909,7 +10335,7 @@ function probiertMerken(namen){
 /* Alle Kandidaten zur gewählten Lust, ohne Obergrenze. */
 function edKandidaten(){
   const aus = [];
-  [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE], ["cocktails", COCKTAILS]].forEach(([k, d]) =>
+  alleKarten().forEach(([k, d]) =>
     d.forEach(gr => {
       if(edLust && edLust !== k + "|" + gr.gruppe) return;
       gr.eintraege.forEach(e => { if(e.p !== "–" && !merk[e.n]) aus.push(e); });
@@ -9933,7 +10359,7 @@ function entdeckenMischen(){
 /* Die Kategorien, zu denen es gerade etwas gibt — als Lust-Chips. */
 function ehLustHTML(){
   const chips = [["", t("Alle"), "2728"]];
-  [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE], ["cocktails", COCKTAILS]].forEach(([k, d]) =>
+  alleKarten().forEach(([k, d]) =>
     d.forEach(gr => {
       if(gr.eintraege.some(e => e.p !== "–")) chips.push([k + "|" + gr.gruppe, t(gr.gruppe), bzKategorie(gr.gruppe, k)]);
     }));
@@ -10041,7 +10467,7 @@ function edNeuZeichnen(){
 /* Eingang: ganz oben in der Speisekarte. Nur, wenn es wirklich etwas
    zu entscheiden gibt (mindestens drei bestellbare Gerichte). */
 function entscheidungCTA(){
-  const n = [SPEISEKARTE, GETRAENKE, COCKTAILS].reduce((s, d) =>
+  const n = alleKarten().map(x => x[1]).reduce((s, d) =>
     s + d.reduce((a, gr) => a + gr.eintraege.filter(e => e.p !== "–").length, 0), 0);
   if(n < 3) return "";
   const z = (cp, schl) => bewegteZeichenAn() ? bzHTML(cp, schl) : bzZeichen(cp);
@@ -10113,7 +10539,7 @@ function edWaehlen(ja, ausX, tempo){
   const name = decodeURIComponent(karte.dataset.ed);
   if(ja){
     const g = findeGericht(name);
-    if(g && !merk[name]){ merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 }; merkSpeichern(); }
+    if(g && !merk[name]){ merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 }; merkSpeichern(); }
     balkenAktualisieren();
     const quelle = karte.querySelector(".ed-bildflaeche.mitpop .ed-pop") ||
                    karte.querySelector(".ed-bildflaeche.mitfoto .ed-foto") || karte.querySelector(".ed-emo");
@@ -10459,10 +10885,10 @@ function dazuSamen(namen){
 function dazuLage(){
   const imKorb = Object.keys(merk);
   const orte = imKorb.map(gerichtOrt).filter(Boolean);
-  const essen = orte.filter(o => o.karte === "speisekarte");
+  const essen = orte.filter(o => !karteIstGetraenk(o.karte));
   return {
     imKorb, orte,
-    hatGetraenk: orte.some(o => o.karte !== "speisekarte"),
+    hatGetraenk: orte.some(o => karteIstGetraenk(o.karte)),
     hatEssen: essen.length > 0,
     hatSuess: essen.some(o => DAZU_SUESS.test(o.gruppe || "")),
     hatHerzhaft: essen.some(o => !DAZU_SUESS.test(o.gruppe || ""))
@@ -10473,7 +10899,7 @@ function dazuVorschlaege(){
   if(!L.imKorb.length) return [];
   const gruppenImKorb = new Set(L.orte.map(o => o.karte + "|" + o.gruppe));
   const korbEssen = L.imKorb.map(n => ({ n, o:gerichtOrt(n), g:findeGericht(n) }))
-    .filter(x => x.o && x.g && x.o.karte === "speisekarte");
+    .filter(x => x.o && x.g && !karteIstGetraenk(x.o.karte));
   const allesVeg = korbEssen.length > 0 && korbEssen.every(x => x.g.veg);
   const preise = L.imKorb.map(n => preisNum((merk[n] || {}).p)).filter(v => v > 0);
   const schnitt = preise.length ? preise.reduce((a, b) => a + b, 0) / preise.length : 0;
@@ -10483,20 +10909,20 @@ function dazuVorschlaege(){
 
   const alle = [];
   let rang = 0;
-  [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE], ["cocktails", COCKTAILS]].forEach(([karte, daten]) =>
+  alleKarten().forEach(([karte, daten]) =>
     daten.forEach(gr => gr.eintraege.forEach(e => {
       rang++;
       /* merk[e.n] ist Vorsorge: Gruppen im Korb sind ohnehin aus. */
       if(e.p === "–" || merk[e.n] || gruppenImKorb.has(karte + "|" + gr.gruppe)) return;
-      const suess = karte === "speisekarte" && DAZU_SUESS.test(gr.gruppe || "");
-      const trinken = karte !== "speisekarte";
+      const suess = !karteIstGetraenk(karte) && DAZU_SUESS.test(gr.gruppe || "");
+      const trinken = karteIstGetraenk(karte);
       /* Wonach geordnet wird: was fehlt, zuerst — ein Getränk, wenn
          keins im Korb liegt; dann Süßes; dann ein Angebot; dann
          Herzhaftes zu lauter Süßem; dann der Rest. */
       const stufe = (!L.hatGetraenk && trinken) ? 0
                   : (!L.hatSuess && L.hatEssen && suess) ? 1
                   : angebot(e.n) ? 2
-                  : (!L.hatHerzhaft && karte === "speisekarte" && !suess) ? 3
+                  : (!L.hatHerzhaft && !karteIstGetraenk(karte) && !suess) ? 3
                   : 4;
       /* Was draufsteht: der genaueste Grund zuerst. */
       const gruende = [];
@@ -10504,8 +10930,8 @@ function dazuVorschlaege(){
       if(probiert.length && !probiert.includes(e.n)) gruende.push("Neu für Sie");
       if(!L.hatGetraenk && trinken) gruende.push("Dazu trinken");
       if(!L.hatSuess && suess) gruende.push("Zum Nachtisch");
-      if(!L.hatHerzhaft && karte === "speisekarte" && !suess) gruende.push("Etwas Herzhaftes");
-      if(allesVeg && karte === "speisekarte" && e.veg) gruende.push("Auch vegetarisch");
+      if(!L.hatHerzhaft && !karteIstGetraenk(karte) && !suess) gruende.push("Etwas Herzhaftes");
+      if(allesVeg && !karteIstGetraenk(karte) && e.veg) gruende.push("Auch vegetarisch");
       if(e.top) gruende.push("Beliebt bei Gästen");
       if(schnitt > 0 && preisNum(e.p) > 0 && preisNum(e.p) <= schnitt / 2) gruende.push("Kleine Ergänzung");
       gruende.push("Mal etwas anderes");
@@ -10605,6 +11031,7 @@ SEITEN.auswahl = () => {
     return '<div class="seite"><h2>' + t("Ihre Auswahl") + '</h2>' +
       '<p class="unter">' + t("Noch nichts gemerkt.") + '</p>' +
       '<div class="leer">' + t("Tippen Sie in der Karte auf das Herz, um Gerichte hier zu sammeln.") + '</div>' +
+      nochmalHTML() +
       '<a class="knopf zweit" href="#/speisekarte">' + t("Zur Karte") + '</a></div>';
   }
   const zeilen = namen.map(n => {
@@ -11175,8 +11602,8 @@ function zeigenOeffnen(daten){
      und in die Kasse tippen können. Die übersetzte Fassung steht klein
      darunter, damit auch der Gast prüfen kann, ob es stimmt. */
   $("zeigenListe").innerHTML = posten.map(p => {
-    const zusatz = optText(p.n) || "";
-    const einzel = preisNum(p.p) + optAufpreis(p.n);
+    const zusatz = (p.o != null ? String(p.o) : optText(p.n)) || "";
+    const einzel = preisNum(p.p) + (p.a != null ? +p.a || 0 : optAufpreis(p.n));
     const uebersetzt = t(p.n);
     const zweit = (sprache !== "de" && uebersetzt !== p.n) ? uebersetzt : "";
     return '<div class="zeigenzeile">' +
@@ -11763,8 +12190,7 @@ SEITEN.reservieren = () =>
    Sprung braucht es aber die Seite, sonst landet der Gast in der
    Speisekarte, während sein Liebling unter Getränken steht. */
 function gastSeiteFuer(name){
-  const wo = [["speisekarte", SPEISEKARTE], ["getraenke", GETRAENKE],
-              ["cocktails", COCKTAILS]];
+  const wo = alleKarten();
   for(const [seite, quelle] of wo)
     for(const gr of quelle)
       for(const e of gr.eintraege)
@@ -11860,7 +12286,7 @@ SEITEN.meintisch = () => {
     '</div>' +
     '<div class="kopiert" id="melde"></div>' +
     '<div class="hinweis">' +
-    t("Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – sonst nichts. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.") +
+    t("Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – und eine Erinnerung, wenn Sie länger nicht da waren. Dafür merken wir uns, wann Sie zuletzt bei uns waren und was Sie gern bestellen; verschickt wird über Klaviyo. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.") +
     '</div></section>';
 
   return html + '</div>';
@@ -12102,9 +12528,12 @@ function zeichne(){
       '</div><button class="knopf" data-heim="1">' + t("Zurück zur Übersicht") + '</button>';
   }
   $("zurueck").classList.toggle("an", !istStart);
+  document.body.dataset.ansicht = istStart ? "start" : "unter";
   $("titel").textContent = istStart ? begruessung() : BETRIEB.name;
   $("claim").textContent = istStart ? t(BETRIEB.claim) : BETRIEB.strasse + " · " + BETRIEB.ort;
-  $("zurueck").textContent = t("‹ Zurück zur Übersicht");
+  $("zurueck").setAttribute("aria-label", t("Zurück zur Übersicht"));
+  $("zurueck").title = t("Zurück zur Übersicht");
+  $("zurueck").querySelector(".zr-text").textContent = t("Zurück");
   const aktiv = SPRACHEN.find(sp => sp.code === sprache) || SPRACHEN[0];
   $("sprachknopf").setAttribute("aria-label", t("Sprache") + ": " + aktiv.name);
   $("sprachknopf").title = aktiv.name;
@@ -12153,6 +12582,7 @@ function zeichne(){
    Läuft nur auf der Bestellt-Seite, nur mit Server, und beendet sich
    selbst, sobald der Gast weiternavigiert oder die Rechte fehlen. */
 let statusWecker = null;
+let statusHolenJetzt = null;   /* holen() des laufenden Bestellstands, für das Nachholen */
 /* ══════════════════════════════════════════════════════════════════
    STREIFEN ZEICHNEN UND NACHFRAGEN
 
@@ -12351,7 +12781,11 @@ function vorgaengeAbfragen(){
 function vorgangWeckerStellen(){
   if(vorgangWecker){ clearInterval(vorgangWecker); vorgangWecker = null; }
   if(!offeneVorgaenge().some(v => v.status !== "fertig")) return;
-  vorgangWecker = setInterval(vorgaengeAbfragen, 15000);
+  /* Im Hintergrund nicht fragen (S3, 08.10.): Ein offener Tab in der
+     Tasche fragte sonst alle 15 s weiter — vervielfacht über viele
+     Gäste ist das Last ohne Nutzen. Beim Zurückkommen holt der
+     visibilitychange-Horcher unten sofort nach. */
+  vorgangWecker = setInterval(() => { if(!document.hidden) vorgaengeAbfragen(); }, 15000);
   vorgaengeAbfragen();
 }
 
@@ -12535,8 +12969,14 @@ function bestellStatusSteuern(pfad){
     });
   };
   holen();
-  statusWecker = setInterval(holen, 15000);
+  statusHolenJetzt = holen;
+  statusWecker = setInterval(() => { if(!document.hidden) holen(); }, 15000);
 }
+/* Zurück aus dem Hintergrund: den Stand sofort holen, nicht erst im
+   nächsten Takt — im Hintergrund wurde ja nicht gefragt. */
+document.addEventListener("visibilitychange", () => {
+  if(!document.hidden && statusWecker && statusHolenJetzt) statusHolenJetzt();
+});
 
 /* Klicks im Inhalt zentral behandeln */
 /* ---------- Warenkarte: Infokarte zu einem Gericht ---------- */
@@ -12569,7 +13009,141 @@ function stoffGruppe(kennung, titel, codes, namen, klasse){
    übergeben. Sie liegt bewusst NICHT in merk[], damit die bestehende
    Warenkorb-Logik unangetastet bleibt.
    ══════════════════════════════════════════════════════════════════ */
+/* Gespeichert im Gerät (Wunsch 08.10., und ein Fehler davor): merk[]
+   lag längst im localStorage, optWahl nur im Speicher. Nach einem
+   Neuladen standen die Gerichte noch im Korb, ihre Extras waren weg —
+   Preis und Bon stimmten dann nicht mehr. Gespeichert wird nur, was zu
+   einem Gericht im Korb gehört; gelesen wird durch die Karte der
+   Optionen (OPTIONEN): Eine Zeile, die es nicht mehr gibt, fällt still
+   weg, statt als Text auf dem Bon zu landen. */
+const OPT_SCHLUESSEL = hSchluessel("opt");
+function optBereinigt(wahl, g){
+  const aus = {};
+  if(!wahl || typeof wahl !== "object") return aus;
+  Object.keys(wahl).forEach(gruppe => {
+    const grp = OPTIONEN[gruppe], liste = wahl[gruppe];
+    if(!grp || !Array.isArray(liste)) return;
+    if(g && (g.opt || []).indexOf(gruppe) < 0) return;   /* Gruppe hängt nicht mehr am Gericht */
+    const namen = grp.zeilen.map(z => z.n);
+    let gut = liste.filter((n, i) => typeof n === "string" && namen.indexOf(n) > -1 && liste.indexOf(n) === i);
+    if(grp.art === "eine") gut = gut.slice(0, 1);
+    /* Leere Pflichtwahl hieße „nichts gewählt“ — lieber weglassen,
+       dann gilt die erste Zeile wie bei jedem frischen Gericht. */
+    if(!gut.length && grp.pflicht) return;
+    aus[gruppe] = gut;
+  });
+  return aus;
+}
 let optWahl = {};          /* { Gerichtname: { gruppe: [Zeilennamen] } } */
+try{
+  const roh = JSON.parse(localStorage.getItem(OPT_SCHLUESSEL) || "{}") || {};
+  Object.keys(roh).forEach(name => { if(merk[name]) optWahl[name] = optBereinigt(roh[name]); });
+}catch(e){ optWahl = {}; }
+function optSpeichern(){
+  try{
+    const aus = {};
+    Object.keys(merk).forEach(name => { if(optWahl[name]) aus[name] = optWahl[name]; });
+    localStorage.setItem(OPT_SCHLUESSEL, JSON.stringify(aus));
+  }catch(e){}
+}
+
+/* ── Wie letztes Mal (Wunsch 08.10.) ───────────────────────────────
+   „Der Browser soll die Zutatenauswahl speichern und vorschlagen, so
+   dass ein Knopf genügt.“ Entschieden: NUR auf dem Gerät — nichts
+   davon geht an den Server, es gibt kein Konto dafür.
+
+   Zwei Dinge werden gemerkt, beim Abschicken einer Bestellung:
+   - je Gericht die zuletzt gewählten Extras (höchstens 30 Gerichte,
+     die ältesten fallen heraus) → Chip „Wie letztes Mal“ im Blatt;
+   - die ganze letzte Bestellung → Karte „Nochmal wie letztes Mal“.
+   Beides setzt NIE von selbst etwas — erst ein Tipp. Gelesen wird
+   durch die heutige Karte: Preis von heute (Aktion eingeschlossen),
+   was es nicht mehr gibt, wird genannt und weggelassen. */
+const ZULETZT_SCHLUESSEL = hSchluessel("zuletzt");
+const ZULETZT_MAX = 30;
+function zuletztLesen(){
+  try{
+    const z = JSON.parse(localStorage.getItem(ZULETZT_SCHLUESSEL) || "null");
+    if(z && typeof z === "object") return {
+      g: z.g && typeof z.g === "object" && !Array.isArray(z.g) ? z.g : {},
+      b: z.b && Array.isArray(z.b.posten) ? z.b : null
+    };
+  }catch(e){}
+  return { g:{}, b:null };
+}
+function zuletztMerken(posten){
+  const z = zuletztLesen(), jetzt = Date.now();
+  posten.forEach(x => { if(x.w && Object.keys(x.w).length) z.g[x.n] = { w:x.w, t:jetzt }; });
+  Object.keys(z.g).sort((a, b) => (z.g[b].t || 0) - (z.g[a].t || 0))
+    .slice(ZULETZT_MAX).forEach(n => { delete z.g[n]; });
+  z.b = { t:jetzt, posten: posten.slice(0, 40).map(x => ({
+    n:String(x.n), m:Math.max(1, Math.min(99, parseInt(x.m, 10) || 1)), w:x.w || {} })) };
+  try{ localStorage.setItem(ZULETZT_SCHLUESSEL, JSON.stringify(z)); }catch(e){}
+}
+/* Wie optText, aber für den Gast: übersetzt. Auf den Bon geht optText. */
+function optAnzeige(gericht, wahl){
+  const g = findeGericht(gericht), w = wahl || {}, teile = [];
+  ((g && g.opt) || []).forEach(kennung => {
+    const grp = OPTIONEN[kennung]; if(!grp) return;
+    const gewaehlt = w[kennung] || (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
+    if(gewaehlt.length) teile.push(gewaehlt.map(n => t(n)).join(", "));
+  });
+  return teile.join(" · ");
+}
+function wieLetztHTML(g){
+  if(!(g.opt || []).length) return "";
+  const e = zuletztLesen().g[g.n]; if(!e) return "";
+  const w = optBereinigt(e.w, g);
+  /* Nur anbieten, wenn es etwas ändert. */
+  if(!Object.keys(w).length || optText(g.n, w) === optText(g.n)) return "";
+  return '<button type="button" class="wieletzt" data-wieletzt="' + encodeURIComponent(g.n) + '">' +
+    '<span class="wl-titel">' + t("Wie letztes Mal") + '</span>' +
+    '<span class="wl-was">' + hs(optAnzeige(g.n, w)) + '</span></button>';
+}
+function nochmalHTML(){
+  if(Object.keys(merk).length || VORSCHAU) return "";
+  const b = zuletztLesen().b;
+  if(!b || !b.posten.length || Date.now() - (b.t || 0) > 180 * 864e5) return "";
+  const da = b.posten.map(x => ({ x, g:findeGericht(x.n) })).filter(o => o.g && o.g.p !== "–");
+  if(!da.length) return "";
+  let summe = 0;
+  const zeilen = da.map(({ x, g }) => {
+    const w = optBereinigt(x.w, g);
+    summe += (preisNum(korbPreis(g)) + optAufpreis(g.n, w)) * x.m;
+    const extra = optAnzeige(g.n, w);
+    return '<li><span class="nm-m">' + x.m + '×</span><span class="nm-n">' + hs(t(g.n)) +
+      (extra ? '<small>' + hs(extra) + '</small>' : "") + '</span></li>';
+  }).join("");
+  const weg = b.posten.filter(x => !da.some(o => o.x === x)).map(x => t(x.n));
+  return '<section class="nmkarte" aria-label="' + hs(t("Nochmal wie letztes Mal")) + '">' +
+    '<div class="nm-kopf"><strong>' + t("Nochmal wie letztes Mal") + '</strong>' +
+      '<span>' + t("Mit allen Extras, zum heutigen Preis.") + '</span></div>' +
+    '<ul class="nm-liste">' + zeilen + '</ul>' +
+    (weg.length ? '<p class="nm-fehlt">' + hs(t("Gerade nicht auf der Karte: {x}", { x:weg.join(", ") })) + '</p>' : "") +
+    '<button type="button" class="knopf nm-knopf" data-nochmal="1">' + t("In meine Auswahl") +
+      '<span class="kpreis">' + preisText(summe) + '</span></button></section>';
+}
+function nochmalUebernehmen(){
+  const b = zuletztLesen().b; if(!b) return;
+  const weg = [], extraWeg = [];
+  b.posten.forEach(x => {
+    const g = findeGericht(x.n);
+    if(!g || g.p === "–"){ weg.push(t(x.n)); return; }
+    const w = optBereinigt(x.w, g);
+    Object.keys(x.w || {}).forEach(gr => (Array.isArray(x.w[gr]) ? x.w[gr] : []).forEach(n => {
+      if(!(w[gr] || []).includes(n)) extraWeg.push(t(n));
+    }));
+    merk[g.n] = { n:g.n, p:korbPreis(g), b:g.b || "", m:x.m };
+    optWahl[g.n] = w;
+  });
+  merkSpeichern();
+  balkenAktualisieren();
+  location.hash = "#/auswahl";
+  const teile = [];
+  if(weg.length) teile.push(t("Gerade nicht auf der Karte: {x}", { x:weg.join(", ") }));
+  if(extraWeg.length) teile.push(t("Nicht mehr dabei: {x}", { x:extraWeg.join(", ") }));
+  if(teile.length) setTimeout(() => melden(teile.join(" · "), true), 60);
+}
 
 function optGewaehlt(gericht, gruppe, zeile, i, grp){
   const w = (optWahl[gericht] || {})[gruppe];
@@ -12594,15 +13168,17 @@ function optSetzen(gericht, gruppe, zeile){
       ? jetzt.filter(x => x !== zeile)
       : jetzt.concat([zeile]);
   }
+  optSpeichern();
 }
 
 /* Aufpreis aller gewählten Zeilen eines Gerichts. */
-function optAufpreis(gericht){
+function optAufpreis(gericht, wahl){
   const g = findeGericht(gericht);
+  const w = wahl || optWahl[gericht] || {};
   let summe = 0;
   ((g && g.opt) || []).forEach(kennung => {
     const grp = OPTIONEN[kennung]; if(!grp) return;
-    const gewaehlt = (optWahl[gericht] || {})[kennung] ||
+    const gewaehlt = w[kennung] ||
       (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
     grp.zeilen.forEach(z => { if(gewaehlt.indexOf(z.n) > -1) summe += z.auf; });
   });
@@ -12610,12 +13186,13 @@ function optAufpreis(gericht){
 }
 
 /* Lesbare Zusammenfassung für Bestellung und Board. */
-function optText(gericht){
+function optText(gericht, wahl){
   const g = findeGericht(gericht);
+  const w = wahl || optWahl[gericht] || {};
   const teile = [];
   ((g && g.opt) || []).forEach(kennung => {
     const grp = OPTIONEN[kennung]; if(!grp) return;
-    const gewaehlt = (optWahl[gericht] || {})[kennung] ||
+    const gewaehlt = w[kennung] ||
       (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
     if(gewaehlt.length) teile.push(gewaehlt.join(", "));
   });
@@ -12627,7 +13204,8 @@ function warenkarteHTML(g){
   const tags = (g.top ? '<span class="tag top">' + t("BELIEBT") + '</span>' : "")
              + (g.vegan ? '<span class="tag vegan">' + t("VEGAN") + '</span>'
                         : (g.veg ? '<span class="tag veg">' + t("VEGETARISCH") + '</span>' : ""))
-             + (g.scharf ? '<span class="tag scharf">' + t("SCHARF") + '</span>' : "");
+             + (g.scharf ? '<span class="tag scharf">' + t("SCHARF") + '</span>' : "")
+             + (g.alter ? '<span class="tag abalter">' + g.alter + '+</span>' : "");
 
   let stoffe;
   if(info && ((info.a && info.a.length) || (info.z && info.z.length) || info.hinweis)){
@@ -12676,7 +13254,7 @@ function warenkarteHTML(g){
     encodeURIComponent(g.n) + '" style="margin-top:20px;margin-bottom:0">' +
     t(drin ? "Aus meiner Auswahl entfernen" : "Zur Auswahl hinzufügen") +
     (g.p !== "–" && !drin
-      ? '<span class="kpreis">' + preisText(preisNum(g.p) + optAufpreis(g.n)) + '</span>'
+      ? '<span class="kpreis">' + preisText(preisNum(korbPreis(g)) + optAufpreis(g.n)) + '</span>'
       : "") + '</button>';
 
   /* Bild nur zeigen, wenn eines hinterlegt ist. Lädt es nicht, blendet
@@ -12690,9 +13268,14 @@ function warenkarteHTML(g){
      Liste die Pop-Ansicht, hier das ganze Foto. */
   const detailFrei = !g.bild && !!g.bf;
   const detailSchwebt = detailFrei || schwebt(g);
+  /* Ein im Board quadratisch zugeschnittenes Foto füllt sein Feld
+     (cover, mittig) — der Wirt hat den Ausschnitt selbst gewählt. Alte,
+     beliebig geformte Fotos bleiben bei contain: dort hat niemand
+     entschieden, was wegfallen darf. */
+  const detailQuadrat = !detailSchwebt && bildQuadrat(g.bild);
   const bild = hatVorschau(g)
-    ? '<div class="wbild' + (detailSchwebt ? ' schwebt' : '') + '" style="aspect-ratio:' +
-      (detailSchwebt ? '1 / 1' : '16 / 10') + '">' +
+    ? '<div class="wbild' + (detailSchwebt ? ' schwebt' : '') + (detailQuadrat ? ' fuellt' : '') + '" style="aspect-ratio:' +
+      (detailSchwebt ? '1 / 1' : 'auto') + '">' +
       '<img src="' + hs(detailFrei ? g.bf : bildFuer(g, false)) + '" alt="' + t(g.n) +
       '" loading="lazy" decoding="async" ' +
       'onload="this.classList.add(&quot;geladen&quot;)" ' +
@@ -12708,9 +13291,11 @@ function warenkarteHTML(g){
     '<div class="wkopf' + (hatVorschau(g) ? '' : ' frei') + '">' +
     '<div><div class="wn" id="wname">' + t(g.n) + tags + '</div>' +
       urnameHTML(g.n) + '</div>' +
-    '<div class="wp">' + g.p + (g.p === "–" ? "" : " €") + '</div></div>' +
+    (aktionVon(g.n)
+      ? '<div class="wp pneu">' + preisText(aktionVon(g.n).neu) + '<s class="palt">' + preisText(aktionVon(g.n).alt) + '</s></div></div>'
+      : '<div class="wp">' + g.p + (g.p === "–" ? "" : " €") + '</div></div>') +
     (g.b ? '<div class="wbeschr">' + t(g.b) + '</div>' : "") +
-    (gruppen ? '<div class="wtrenn"></div>' + gruppen : "") +
+    (gruppen ? '<div class="wtrenn"></div>' + wieLetztHTML(g) + gruppen : "") +
     '<div class="wtrenn"></div>' +
     '<div class="wtitel">' + t("Inhalt & Allergene") + '</div>' +
     stoffe +
@@ -13103,9 +13688,16 @@ function bildPfad(datei){
 function istAdresse(x){ return /^https?:\/\//i.test(String(x || "")); }
 
 /* Liefert die passende Bildadresse für Liste oder Detailansicht. */
+/* Im Board zugeschnittene Fotos liegen in zwei Größen: „-q1080“ und
+   „-q320“. Die Liste nimmt die kleine (96-px-Kasten, auch auf 3×-
+   Schirmen scharf), das Detailblatt die große. Das Board vergibt die
+   Marke nur, wenn die kleine wirklich hochgeladen ist.
+   Funktionen statt einer Konstante: Der erste Aufbau kann vor dieser
+   Zeile laufen (§8.1l). */
+function bildQuadrat(adresse){ return istAdresse(adresse) && /-q1080\.(webp|jpg)$/.test(adresse); }
 function bildFuer(g, klein){
   if(!g.bild) return "";
-  if(istAdresse(g.bild)) return g.bild;
+  if(istAdresse(g.bild)) return klein && bildQuadrat(g.bild) ? g.bild.replace(/-q1080\.(webp|jpg)$/, "-q320.$1") : g.bild;
   if(g.frei){
     const webp = g.bild.replace(/\.jpg$/i, ".webp");
     return bildPfad(klein ? "frei/klein/" + webp : "frei/" + webp);
@@ -13146,6 +13738,25 @@ function vorschauFehler(img, huelle, rahmen, klasse){
    über WhatsApp an – der Gast steht nie ohne Möglichkeit da. */
 function serverBereit(){
   return !!(SERVER.an && SERVER.adresse && SERVER.schluessel);
+}
+
+/* Fragt rabattcode_pruefen. Gibt die Antwort ({ok, grund, …}) oder
+   null, wenn keine kam — nie eine Ausnahme. */
+async function rabattcodePruefen(code, namen){
+  try{
+    const bid = await betriebIdHolen();
+    if(!bid) return null;
+    const a = await sicherFetch(SERVER.adresse.replace(/\/+$/, "") + "/rest/v1/rpc/rabattcode_pruefen", {
+      method:"POST",
+      headers:{ apikey:SERVER.schluessel, Authorization:"Bearer " + SERVER.schluessel,
+                "Content-Type":"application/json" },
+      body: JSON.stringify({ p_betrieb: bid, p_code: code, p_geraet: geraetKennung(),
+                             p_namen: (namen || []).slice(0, 40) })
+    });
+    if(!a.ok) return null;
+    const r = await a.json();
+    return (r && typeof r === "object" && "ok" in r) ? r : null;
+  }catch(e){ return null; }
 }
 
 /* Betriebs-ID (uuid) – wird beim Kartenladen gesetzt und für
@@ -13353,8 +13964,8 @@ function anServer(art, daten){
         p_notiz:        (daten.inhalt && daten.inhalt.notiz) || null,
         p_rabattcode:   daten.rabattcode || null,
         p_positionen:   posten.map(p => {
-          const auf = optAufpreis(p.n);
-          const zusatz = optText(p.n);
+          const auf = p.a != null ? +p.a || 0 : optAufpreis(p.n);
+          const zusatz = p.o != null ? String(p.o) : optText(p.n);
           return {
             name:  p.n + (zusatz ? " (" + zusatz + ")" : ""),
             menge: p.m || 1,
@@ -13388,8 +13999,10 @@ function anServer(art, daten){
         p_notiz:      (daten.inhalt && daten.inhalt.notiz) || null,
         p_rabattcode: daten.rabattcode || null,
         p_positionen: posten.map(p => {
-          const auf = optAufpreis(p.n);
-          const zusatz = optText(p.n);
+          /* Ältere Einträge der Warteschlange (vor dem 08.10.) tragen
+             o/a noch nicht — dann wie bisher aus der laufenden Wahl. */
+          const auf = p.a != null ? +p.a || 0 : optAufpreis(p.n);
+          const zusatz = p.o != null ? String(p.o) : optText(p.n);
           return {
             name:  p.n + (zusatz ? " (" + zusatz + ")" : ""),
             menge: p.m || 1,
@@ -13454,7 +14067,7 @@ function anServer(art, daten){
 }
 
 function findeGericht(name){
-  for(const quelle of [SPEISEKARTE, GETRAENKE, COCKTAILS])
+  for(const [, quelle] of alleKarten())
     for(const gr of quelle)
       for(const e of gr.eintraege)
         if(e.n === name) return e;
@@ -13482,6 +14095,20 @@ $("warenkarte").addEventListener("click", e => {
 
   /* Topping angetippt: Nur die Karte neu zeichnen, nicht die Seite.
      Der Gast soll den Preis auf dem Knopf sofort mitwandern sehen. */
+  /* „Wie letztes Mal“: genau die gemerkte Wahl, bereinigt durch die
+     heutige Karte, dann wie bei jedem Topping-Tipp neu zeichnen. */
+  const wl = e.target.closest("[data-wieletzt]");
+  if(wl && detailName){
+    const gg = findeGericht(detailName), alt = zuletztLesen().g[detailName];
+    if(gg && alt){
+      optWahl[detailName] = optBereinigt(alt.w, gg);
+      optSpeichern();
+      const stand = $("warenkarte").scrollTop;
+      $("warenkarte").innerHTML = warenkarteHTML(gg);
+      $("warenkarte").scrollTop = stand;
+    }
+    return;
+  }
   const oz = e.target.closest("[data-ozeile]");
   if(oz && detailName){
     optSetzen(detailName, oz.dataset.ogrp, decodeURIComponent(oz.dataset.ozeile));
@@ -13499,7 +14126,7 @@ $("warenkarte").addEventListener("click", e => {
   const name = decodeURIComponent(b.dataset.wmerk);
   const g = findeGericht(name);
   if(merk[name]) delete merk[name];
-  else if(g) merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 };
+  else if(g) merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 };
   merkSpeichern();
   balkenAktualisieren();
   /* Herz in der Liste dahinter mitziehen, ohne die Seite neu zu bauen
@@ -13527,11 +14154,168 @@ $("inhalt").addEventListener("input", e => {
   neuKarte(id, true);
 });
 
+/* ══ REISE · Übergang Kachel → Unterseite (Wunsch 08.10.) ══════════
+   Ablauf und Gestalt stehen beim CSS (.reise). Hier der Takt:
+
+   - Erstes Öffnen je Sitzung: die volle Szene, 0,92 s. Danach kurz,
+     0,44 s — wer zum fünften Mal in die Karte geht, will hinein und
+     keine Vorführung (Skill bewegung §3). Gemerkt in sessionStorage.
+   - Ein Tipp, eine Taste oder ein Wischen während der Szene springt
+     ans Ende. War die Seite darunter noch nicht gewechselt, wird der
+     folgende Klick geschluckt — er galt dem Überspringen, nicht der
+     alten Startseite, die er sonst träfe.
+   - Reduzierte Bewegung, die Vorschau im Board, ein Link nach außen,
+     Strg/⌘-Klick: keine Szene, der Browser macht, was er immer macht.
+   - Gewechselt wird unter der Scheibe, wenn sie deckt (76 % bzw.
+     70 %). Danach löst sie sich auf, und #inhalt.rein baut die neue
+     Seite gestaffelt darunter auf. */
+let reise = null;
+function reiseSymbol(a){
+  const ico = a.querySelector(".ico");
+  if(ico){
+    const bz = ico.querySelector(".bz");
+    if(bz){
+      /* Der laufende Film als Standbild — sein Rahmen ist eigener
+         Bestand (Lottie aus auslieferung/emoji), kein Text des Wirts. */
+      const film = bz.classList.contains("bz-bereit") ? bz.querySelector(".bz-film svg") : null;
+      if(film) return '<span class="reise-film">' + film.outerHTML + '</span>';
+      const still = bz.querySelector(".bz-still");
+      return '<span>' + hs(still ? still.textContent : "") + '</span>';
+    }
+    if(ico.classList.contains("zeichen")) return '<span>' + hs(ico.textContent) + '</span>';
+    return ico.innerHTML;          /* SVG aus ICONS */
+  }
+  const bild = a.querySelector(".kbanner img");
+  const quelle = bild ? bild.getAttribute("src") || "" : "";
+  return /^https:\/\//i.test(quelle) ? '<img src="' + hs(quelle) + '" alt="">' : "";
+}
+function reiseMoeglich(a, e){
+  if(!a || VORSCHAU || ruhigeBewegung()) return "";
+  if(e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return "";
+  const ziel = a.getAttribute("href") || "";
+  if(!/^#\/[^?#]/.test(ziel) || ziel === location.hash || a.target) return "";
+  return ziel;
+}
+function reiseEnde(){
+  const r = reise; if(!r) return;
+  reise = null;
+  clearTimeout(r.uhr);
+  if(!r.gewechselt){ r.gewechselt = true; location.hash = r.ziel; }
+  r.anis.forEach(x => { try{ x.cancel(); }catch(err){} });
+  r.el.remove();
+  document.removeEventListener("pointerdown", r.weg, true);
+  document.removeEventListener("keydown", r.weg, true);
+  document.removeEventListener("wheel", r.weg, true);
+}
+function reiseStarten(a, ziel){
+  if(reise) reiseEnde();
+  let lang = true;
+  try{ lang = !sessionStorage.getItem(hSchluessel("reise")); sessionStorage.setItem(hSchluessel("reise"), "1"); }catch(err){}
+  /* 09.10.: kürzer als vorher (1,15 s / 0,48 s) — „kompakt und
+     schnell“. Die volle Szene nur beim ersten Öffnen je Sitzung. */
+  const D = lang ? 920 : 440;
+  const vw = innerWidth, vh = innerHeight;
+  const W = Math.min(vw - 64, 300), H = Math.min(Math.round(vh * .54), 400);
+  const r = a.getBoundingClientRect();
+  const icoEl = a.querySelector(".ico") || a;
+  const ir = icoEl.getBoundingClientRect();
+  const farbe = { rot:"var(--rot)", pistazie:"var(--pistazie)", gold:"var(--gold)" }[a.dataset.farbe] || "var(--gold)";
+  /* Das Symbol sitzt im oberen Drittel der Karte, wie ein Wappen. */
+  const fy = -Math.round(H * .16);
+  /* Die Scheibe sitzt auf dem Symbol, also um fy versetzt. Bei scale(1)
+     muss sie die ENTFERNTESTE Ecke decken — die Diagonale des Schirms
+     reicht dafür nicht (gemessen: unten blieb ein Streifen frei). */
+  const P = 2 * Math.ceil(Math.hypot(vw / 2, vh / 2 - fy)) + 8;
+
+  const el = document.createElement("div");
+  el.className = "reise";
+  el.setAttribute("aria-hidden", "true");
+  el.style.setProperty("--reise-licht", farbe);
+  /* Kein Text: Titel und Unterzeile der Kachel stehen gleich auf der
+     Seite selbst. Hier nur Karte, Deckel, Symbol, Sog. */
+  el.innerHTML =
+    '<div class="reise-grund"></div>' +
+    '<div class="reise-buehne" style="width:' + W + 'px;height:' + H + 'px;margin:' + (-H / 2) + 'px 0 0 ' + (-W / 2) + 'px">' +
+      '<div class="reise-schein"></div>' +
+      '<div class="reise-seite"><i></i><i></i><i></i><i></i></div>' +
+      '<div class="reise-tuer links"></div><div class="reise-tuer rechts"></div>' +
+    '</div>' +
+    '<div class="reise-figur"><div class="reise-ico">' + reiseSymbol(a) + '</div></div>' +
+    '<div class="reise-portal" style="width:' + P + 'px;height:' + P + 'px;margin:' + (-P / 2) + 'px 0 0 ' + (-P / 2) + 'px"></div>';
+  document.body.appendChild(el);
+  const $r = k => el.querySelector(".reise-" + k);
+
+  /* Start = das echte Rechteck der Kachel, Ziel = die Mitte. */
+  const kStart = "translate(" + (r.left + r.width / 2 - vw / 2) + "px," + (r.top + r.height / 2 - vh / 2) + "px) " +
+                 "scale(" + (r.width / W) + "," + (r.height / H) + ")";
+  const fStart = "translate(" + (ir.left + ir.width / 2 - vw / 2) + "px," + (ir.top + ir.height / 2 - vh / 2) + "px) " +
+                 "scale(" + Math.max(.2, ir.width / 104) + ")";
+  const fMitte = "translate(0px," + fy + "px) scale(1)";
+  const pKlein = "translate(0px," + fy + "px) scale(" + (104 / P).toFixed(4) + ")";
+  const pGross = "translate(0px," + fy + "px) scale(1)";
+  const WEICH = "cubic-bezier(.16,1,.3,1)", REIN = "cubic-bezier(.5,0,.75,0)", RUND = "cubic-bezier(.65,0,.35,1)";
+  const PL = "perspective(900px) rotateY(0deg)";
+  const anis = [];
+  const los = (k, frames, wahl) => {
+    const x = (wahl ? el.querySelector(wahl) : $r(k)).animate(frames, { duration:D, fill:"both" });
+    anis.push(x); return x;
+  };
+  /* Ein Satz Takte für beide Längen — die kurze Fassung ist dieselbe
+     Geschichte, nur gedrängt (Skill bewegung §3). */
+  const T = lang ? { da:.30, auf:.28, offen:.56, sog:.58, deckt:.78 }
+                 : { da:.30, auf:.22, offen:.48, sog:.46, deckt:.72 };
+  los("grund",  [{opacity:0, easing:WEICH}, {opacity:1, offset:T.da}, {opacity:1, offset:T.deckt}, {opacity:0}]);
+  los("buehne", [{transform:kStart, opacity:.6, easing:WEICH}, {transform:"none", opacity:1, offset:T.da},
+                 {transform:"none", opacity:1, offset:T.sog, easing:REIN}, {transform:"scale(1.3)", opacity:0, offset:T.deckt}, {transform:"scale(1.3)", opacity:0}]);
+  los("seite",  [{opacity:0}, {opacity:0, offset:T.auf}, {opacity:1, offset:T.offen}, {opacity:1}]);
+  los("schein", [{opacity:0}, {opacity:0, offset:T.auf}, {opacity:1, offset:T.offen}, {opacity:0, offset:T.deckt}, {opacity:0}]);
+  los("tuer", [{transform:PL}, {transform:PL, offset:T.auf, easing:RUND}, {transform:"perspective(900px) rotateY(-172deg)", offset:T.offen},
+               {transform:"perspective(900px) rotateY(-172deg)"}], ".reise-tuer.links");
+  los("tuer", [{transform:PL}, {transform:PL, offset:T.auf, easing:RUND}, {transform:"perspective(900px) rotateY(172deg)", offset:T.offen},
+               {transform:"perspective(900px) rotateY(172deg)"}], ".reise-tuer.rechts");
+  los("figur",  [{transform:fStart, opacity:1, easing:WEICH}, {transform:fMitte, opacity:1, offset:T.da},
+                 {transform:"translate(0px," + fy + "px) scale(1.08)", opacity:1, offset:T.sog, easing:REIN},
+                 {transform:"translate(0px," + fy + "px) scale(5.5)", opacity:0, offset:T.deckt}, {transform:"translate(0px," + fy + "px) scale(5.5)", opacity:0}]);
+  los("portal", [{transform:pKlein, opacity:0}, {transform:pKlein, opacity:0, offset:T.sog, easing:REIN},
+                 {transform:pGross, opacity:1, offset:T.deckt, easing:WEICH}, {transform:"translate(0px," + fy + "px) scale(1.06)", opacity:0}]);
+  const zustand = { el, anis, ziel, gewechselt:false, uhr:0, weg:null, lang };
+  /* Überspringen. Kam der Druck vor dem Wechsel, gehört der Klick
+     danach dem Überspringen und wird geschluckt. */
+  zustand.weg = ev => {
+    if(reise !== zustand) return;
+    if(!zustand.gewechselt && ev.type === "pointerdown"){
+      const schlucken = k => { k.preventDefault(); k.stopPropagation(); };
+      document.addEventListener("click", schlucken, { capture:true, once:true });
+      setTimeout(() => document.removeEventListener("click", schlucken, true), 700);
+    }
+    reiseEnde();
+  };
+  document.addEventListener("pointerdown", zustand.weg, true);
+  document.addEventListener("keydown", zustand.weg, true);
+  document.addEventListener("wheel", zustand.weg, { capture:true, passive:true });
+  zustand.uhr = setTimeout(() => {
+    if(reise !== zustand || zustand.gewechselt) return;
+    zustand.gewechselt = true;
+    location.hash = ziel;
+  }, D * (lang ? .76 : .7));
+  anis[0].onfinish = () => { if(reise === zustand) reiseEnde(); };
+  reise = zustand;
+}
+/* Fängt den Tipp VOR jedem anderen Griff in #inhalt ab (capture). */
+$("inhalt").addEventListener("click", e => {
+  const a = e.target.closest && e.target.closest("a.kachel");
+  const ziel = reiseMoeglich(a, e);
+  if(!ziel) return;
+  e.preventDefault();
+  reiseStarten(a, ziel);
+}, true);
+
 $("inhalt").addEventListener("click", e => {
   if(e.target.closest("[data-heim]")){
     nachHause();
     return;
   }
+  if(e.target.closest("[data-nochmal]")){ nochmalUebernehmen(); return; }
 
   /* Entscheidungshilfe — VOR dem allgemeinen .chip-Griff, denn die
      Lust-Chips tragen dieselbe Klasse. */
@@ -13552,7 +14336,7 @@ $("inhalt").addEventListener("click", e => {
   const nehm = e.target.closest("[data-eh-nehm]");
   if(nehm){
     const name = decodeURIComponent(nehm.dataset.ehNehm), g = findeGericht(name);
-    if(g && !merk[name]){ merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 }; merkSpeichern(); }
+    if(g && !merk[name]){ merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 }; merkSpeichern(); }
     balkenAktualisieren();
     inDenKorbFliegen(document.querySelector("#edFlaeche .eh-wahl .ed-bildflaeche.mitpop .ed-pop") ||
                      document.querySelector("#edFlaeche .eh-wahl .ed-emo"), name);
@@ -13587,7 +14371,7 @@ $("inhalt").addEventListener("click", e => {
     const name = decodeURIComponent(plus.dataset.merk);
     const g = findeGericht(name);
     if(!g) return;
-    merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 };
+    merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 };
     merkSpeichern();
     const zeile = plus.closest(".gericht");
     const bild = zeile && zeile.querySelector(".gbild img.geladen");
@@ -13617,7 +14401,7 @@ $("inhalt").addEventListener("click", e => {
     const name = decodeURIComponent(herz.dataset.merk);
     const g = findeGericht(name);
     if(merk[name]) delete merk[name];
-    else if(g) merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 };
+    else if(g) merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 };
     merkSpeichern();
     herz.classList.toggle("an", !!merk[name]);
     balkenAktualisieren();
@@ -13655,7 +14439,7 @@ $("inhalt").addEventListener("click", e => {
     const name = decodeURIComponent(dazu.dataset.dazu);
     const g = findeGericht(name);
     if(!g || merk[name]) return;
-    merk[name] = { n:g.n, p:g.p, b:g.b || "", m:1 };
+    merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 };
     merkSpeichern();
     balkenAktualisieren();
     korbZahlHuepfen();
@@ -13852,23 +14636,58 @@ $("inhalt").addEventListener("click", e => {
         if(!nr){ melden(t("Bitte tragen Sie noch Ihre Tischnummer ein."), true); return; }
       }
 
+      /* Extras EINGEFROREN (o = Text, a = Aufpreis): Die Bestellung
+         wartet im Gerät, bis sie durch ist. Bisher las der Sender die
+         Extras erst beim Senden aus optWahl — nach einem Neuladen
+         dazwischen oder einer Wahl an einem anderen Gericht ging sie
+         ohne bzw. mit fremden Extras an die Küche. */
       const posten = Object.keys(merk).map(k => ({
-        n: merk[k].n, m: merk[k].m || 1, p: merk[k].p
+        n: merk[k].n, m: merk[k].m || 1, p: merk[k].p,
+        o: optText(k), a: optAufpreis(k)
       }));
       if(!posten.length){ melden(t("Ihre Auswahl ist noch leer."), true); return; }
 
       const summe = merkSumme();
       const notiz = wert("bNotiz").slice(0, 200);
-      /* Unverändert übernommen, nicht groß-/kleingeschrieben: rabattcodes.code
-         hat keine eigene Normalisierung (weder in der Tabelle noch in
-         rabattcode_anlegen), der Server vergleicht exakt. Ein Umschreiben
-         hier würde bei einem klein angelegten Code raten statt prüfen
-         (CLAUDE.md §0). */
-      const rabattcode = wert("bRabattcode").trim().slice(0, 40) || null;
+      /* Groß geschrieben: Die Schranke rabattcodes_code_form lässt nur
+         ^[A-Z0-9-]{3,24}$ zu (im Katalog nachgesehen, §2.3c) — einen
+         klein angelegten Code kann es nicht geben. Der Server schreibt
+         ebenfalls groß; hier nur, damit der Gast sieht, was gilt. */
+      const rabattcode = wert("bRabattcode").replace(/\s+/g, "").toUpperCase().slice(0, 24) || null;
 
       if(liefern && LIEFER.mindest > 0 && summe < LIEFER.mindest){
         melden(t("Wir liefern ab {b}. Fehlt noch etwas Kleines?",
                  {b: preisText(LIEFER.mindest)}), true);
+        return;
+      }
+
+      /* ─── Code VOR dem Senden prüfen ──────────────────────────
+         Die Bestellung wartet danach in der Warteschlange; lehnt der
+         Server dort einen Code ab, versucht sie es zehn Minuten still
+         weiter und scheitert — der Gast erführe nie, warum. Deshalb
+         hier, solange er noch vor dem Korb steht. rabattcode_pruefen
+         zählt jeden Versuch und gibt dem Gerät eine Freigabe, ohne die
+         bestellung_aufgeben den Code nicht annimmt (migration-
+         gutschein-sicher.sql). Kommt die Prüfung nicht durch, wird
+         NICHT ohne Code bestellt — der Gast entscheidet (§7). */
+      if(rabattcode && serverBereit() && aktion.dataset.codeOk !== rabattcode){
+        knopf.disabled = true;
+        rabattcodePruefen(rabattcode, posten.map(x => x.n)).then(erg => {
+          knopf.disabled = false;
+          if(!erg){ melden(t("Der Code ließ sich gerade nicht prüfen. Bitte noch einmal tippen – oder das Feld leeren und ohne Code bestellen."), true); return; }
+          if(!erg.ok){
+            melden(erg.grund === "gericht_fehlt"
+              ? t("Dieser Code gilt nur für „{g}“ – das ist nicht in Ihrer Auswahl.", {g: erg.ziel || ""})
+              : erg.grund === "zu_viele"
+                ? t("Zu viele Versuche. Bitte in einigen Minuten noch einmal – oder ohne Code bestellen.")
+                : t("Dieser Code gilt hier nicht."), true);
+            return;
+          }
+          /* Einmal geprüft gilt für genau diesen Code: zweiter Klick
+             auf denselben Knopf schickt ab, ohne erneut zu zählen. */
+          aktion.dataset.codeOk = rabattcode;
+          if(aktion.isConnected) aktion.click();
+        });
         return;
       }
 
@@ -13895,6 +14714,8 @@ $("inhalt").addEventListener("click", e => {
 
       bestellSperre = Date.now() + (BESTELLUNG.wartezeit * 1000);
       probiertMerken(posten.map(x => x.n));
+      zuletztMerken(posten.map(x => ({ n:x.n, m:x.m,
+        w: optWahl[x.n] ? JSON.parse(JSON.stringify(optWahl[x.n])) : {} })));
       merk = {};                       /* Korb leeren, sie ist ja raus */
       merkSpeichern();
       balkenAktualisieren();
@@ -13910,8 +14731,14 @@ $("inhalt").addEventListener("click", e => {
       /* Öffnet die Vorzeige-Karte statt eine Nachricht. Der Name des
          Auslösers ist geblieben, damit ältere Verweise weiter greifen. */
       const nr = tischHolen("bTisch");
+      /* Extras EINGEFROREN (o = Text, a = Aufpreis): Die Bestellung
+         wartet im Gerät, bis sie durch ist. Bisher las der Sender die
+         Extras erst beim Senden aus optWahl — nach einem Neuladen
+         dazwischen oder einer Wahl an einem anderen Gericht ging sie
+         ohne bzw. mit fremden Extras an die Küche. */
       const posten = Object.keys(merk).map(k => ({
-        n: merk[k].n, m: merk[k].m || 1, p: merk[k].p
+        n: merk[k].n, m: merk[k].m || 1, p: merk[k].p,
+        o: optText(k), a: optAufpreis(k)
       }));
       if(!posten.length){ melden(t("Ihre Auswahl ist noch leer."), true); return; }
       zeigenOeffnen({ tisch: nr, summe: merkSumme(),
@@ -14265,7 +15092,7 @@ if($("lichtknopf")){
 lichtKnopfZeichnen();
 
 aktionenLaden();
-setInterval(aktionenLaden, 120000);
+setInterval(() => { if(!document.hidden) aktionenLaden(); }, 120000);
 
 /* Einmal beim Öffnen melden: Das zählt den Besuch und holt Lieblinge
    und Gutscheine. Kein Takt dahinter — was sich hier ändert, ändert
@@ -14593,7 +15420,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil,karten");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -14732,6 +15559,17 @@ async function karteHolen(erstesMal){
        kat_sort gibt jeder Kategorie eine feste Position. Das ".id"
        am Ende ist der letzte Notnagel: Damit gibt es keinen einzigen
        Gleichstand mehr, egal was in den Daten steht. */
+    /* Das Kartenverzeichnis des Betriebs (betriebe.karten), durch eine
+       Positivliste: nur „k-…“-Schlüssel für eigene Karten, die drei
+       festen dürfen umbenannt werden, Namen gekürzt, Kategorien nur
+       als Namen. Was nicht passt, fällt still weg (§2.3a). */
+    KARTEN_VERZ = (Array.isArray(b[0].karten) ? b[0].karten : [])
+      .filter(k => k && typeof k.id === "string" &&
+        (KARTEN_FEST.includes(k.id) || KARTE_ID_MUSTER.test(k.id)))
+      .slice(0, 20)
+      .map(k => ({ id:k.id, name:String(k.name || "").trim().slice(0, 40),
+                   unter:String(k.unter || "").trim().slice(0, 90) }));
+
     const zeilen = await hol("/rest/v1/gerichte?betrieb_id=eq."+b[0].id+
       "&verfuegbar=eq.true&select=*&order=karte.asc,kat_sort.asc,reihenfolge.asc,id.asc");
 
@@ -14739,7 +15577,10 @@ async function karteHolen(erstesMal){
     // [{ gruppe:"…", eintraege:[{n,b,p,veg,bild}] }]
     const bau = welche => {
       const topf = [];
-      zeilen.filter(z => (z.karte || "speisekarte") === welche).forEach(z => {
+      /* Ein Gericht darf in mehreren Karten stehen (gerichte.karten);
+         ohne die Spalte gilt wie bisher die eine Karte. */
+      zeilen.filter(z => (Array.isArray(z.karten) && z.karten.length ? z.karten
+                          : [z.karte || "speisekarte"]).includes(welche)).forEach(z => {
         /* Übersetzungen aus der DB-Spalte "uebersetzungen" (jsonb) ins
            Wörterbuch mischen – z.B. {"en":"…","tr":"…"}. So bleibt die
            Karte auch nach Änderungen im Admin-Panel mehrsprachig. */
@@ -14767,6 +15608,9 @@ async function karteHolen(erstesMal){
         };
         if(z.veg)   e.veg   = true;
         if(z.vegan) e.vegan = true;
+        /* Altersfreigabe: nur 16 oder 18 (dieselbe Liste steht als CHECK
+           auf gerichte.ab_alter). Alles andere fällt still weg. */
+        if(z.ab_alter === 16 || z.ab_alter === 18) e.alter = z.ab_alter;
         if(z.bild) e.bild = z.bild;
         /* frei nur bei eigenen Dateien: Ein aus dem Board hochgeladenes
            Foto hat einen Hintergrund und darf nicht schweben. */
@@ -14795,6 +15639,14 @@ async function karteHolen(erstesMal){
     // Jede Karte einzeln prüfen. Wären z.B. nur Cocktails gepflegt,
     // bleiben Speisen und Getränke aus dem Quelltext erhalten.
     const neu = { speisekarte:bau("speisekarte"), getraenke:bau("getraenke"), cocktails:bau("cocktails") };
+    /* Eigene Karten: alle aus dem Verzeichnis und alle, die an einem
+       Gericht stehen — eine Karte ohne Gericht bleibt leer, aber da. */
+    const eigene = new Set(KARTEN_VERZ.map(k => k.id).filter(id => KARTE_ID_MUSTER.test(id)));
+    zeilen.forEach(z => (Array.isArray(z.karten) ? z.karten : [])
+      .forEach(id => { if(KARTE_ID_MUSTER.test(id)) eigene.add(id); }));
+    const extra = {};
+    eigene.forEach(id => { extra[id] = bau(id); });
+    neu.extra = extra;
 
     /* Hat sich gegenüber dem letzten Abruf überhaupt etwas geändert?
        Wenn nicht, tun wir gar nichts – kein Flackern für den Gast. */
@@ -14805,15 +15657,23 @@ async function karteHolen(erstesMal){
     if(neu.speisekarte.length) SPEISEKARTE = neu.speisekarte;
     if(neu.getraenke.length)   GETRAENKE   = neu.getraenke;
     if(neu.cocktails.length)   COCKTAILS   = neu.cocktails;
+    KARTEN_EXTRA = extra;
+    /* Jede eigene Karte ist eine Seite unter ihrem Schlüssel („#/k-mittag“).
+       Titel und Unterzeile: die Kachel, die dorthin zeigt (karteKopf),
+       sonst der Name aus dem Verzeichnis. */
+    Object.keys(extra).forEach(id => {
+      SEITEN[id] = () => { const v = karteVerzEintrag(id) || {};
+        return karteSeite(id, karteDaten(id), v.name || t("Karte"), v.unter || "", ""); };
+    });
     /* Eine kaputte Zeile aus dem Admin darf dem Gast nicht die Karte zerschießen. */
     konfigPruefen("Datenbank");
 
-    if(neu.speisekarte.length || neu.getraenke.length || neu.cocktails.length){
+    if(neu.speisekarte.length || neu.getraenke.length || neu.cocktails.length || Object.keys(extra).length){
       /* Schutznetz: Texte aus der Datenbank, die nicht im Wörterbuch stehen,
          bleiben für Gäste deutsch. Hier einmal sauber melden, damit man beim
          Pflegen der Karte sofort sieht, welche Übersetzungen fehlen. */
       const ohneEintrag = [];
-      [neu.speisekarte, neu.getraenke, neu.cocktails].forEach(karte =>
+      [neu.speisekarte, neu.getraenke, neu.cocktails].concat(Object.values(extra)).forEach(karte =>
         karte.forEach(gr => {
           if(!TEXTE[gr.gruppe]) ohneEintrag.push("Gruppe: " + gr.gruppe);
           gr.eintraege.forEach(e => { if(e.b && !TEXTE[e.b]) ohneEintrag.push("Beschreibung: " + e.b); });
@@ -14825,7 +15685,7 @@ async function karteHolen(erstesMal){
       /* Neu zeichnen nur, wenn der Gast gerade eine Kartenseite ansieht.
          Steht er im Warenkorb oder auf der Bestätigung, lassen wir ihn in
          Ruhe – die neuen Daten greifen dann beim nächsten Seitenwechsel. */
-      const aufKarte = ["speisekarte","getraenke","cocktails","start"].indexOf(seiteJetzt) > -1;
+      const aufKarte = seiteJetzt === "start" || KARTEN_FEST.includes(seiteJetzt) || seiteJetzt in KARTEN_EXTRA;
       if(erstesMal || aufKarte){
         const inh = $("inhalt");
         if(window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches){
@@ -14881,7 +15741,7 @@ function karteAuffrischen(){
    Der Rückweg darunter macht die Verlängerung ungefährlich: Wer die
    Seite wieder hervorholt, bekommt frisch. Genau dann sieht auch
    jemand hin. */
-setInterval(karteAuffrischen, 300000);
+setInterval(() => { if(!document.hidden) karteAuffrischen(); }, 300000);
 
 document.addEventListener("visibilitychange", () => {
   /* Kommt der Gast nach längerer Pause zurück, gleich frisch laden.

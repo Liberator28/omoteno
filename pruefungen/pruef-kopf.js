@@ -81,6 +81,14 @@ async function oeffnen(browser, haus, breite, sprache) {
         };
       });
       const k = haus + " @" + breite;
+      const stand = await seite.evaluate(() => {
+        const st = document.getElementById("status");
+        return { inZeile: !!st && st.parentElement === document.querySelector(".kopfwahl"), text: st ? st.textContent.trim() : "" };
+      });
+      /* Nur der Ort, nicht die Länge: Die hinge an der Uhr (offen kurz,
+         geschlossen mit Wochentag länger) — §8.1j. */
+      pruef(stand.inZeile && stand.text.length > 0, k + ": Öffnungsstand steht in der Knopfzeile (eine Zeile Kopf weniger)",
+        JSON.stringify(stand.text));
       pruef(Math.abs(m.zeileMitte - m.kopfMitte) <= 1, k + ": Knopfzeile mittig (± 1 px)",
         "Zeile " + m.zeileMitte.toFixed(1) + " / Kopf " + m.kopfMitte.toFixed(1));
       pruef(m.sk.w <= 48 && m.sk.w >= 44 && m.sk.h >= 44, k + ": Sprachknopf ist ein Kreis 44–48 px",
@@ -145,6 +153,97 @@ async function oeffnen(browser, haus, breite, sprache) {
     const rl = await seite.evaluate(() => { const r = document.getElementById("sprachliste").getBoundingClientRect(); return [r.left, r.right, innerWidth]; });
     pruef(rl[0] >= 0 && rl[1] <= rl[2], haus + " RTL: offene Liste ganz im Bild", rl.map(x => x.toFixed(1)).join(" "));
     pruef(fehler.length === 0, haus + " RTL: keine Ausnahme", fehler.join(" | ") || "still");
+    await ctx.close();
+  }
+
+  /* ── Kachelname auf der Unterseite (Vorfall 07.10.) ─────────────
+     Die Kachel „cocktails“ heißt im Board „Kaiser und Säfte“; die
+     Seite dahinter muss genauso heißen — und darf die Vorgabe-
+     Unterzeile („Hinter der Bar …“) nicht mehr tragen. Gegenfall: eine
+     Kachel ohne eigenen Namen behält Titel und Unterzeile wie vorher.
+     Zwei Häuser (§8.1a), dazu Englisch (Rahmen übersetzt, Name nicht). */
+  for (const haus of HAEUSER.slice(0, 2)) {
+    const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
+    await ctx.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch (e) {} });
+    const seite = await ctx.newPage();
+    const fehler = [];
+    seite.on("pageerror", e => fehler.push(String(e)));
+    await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue()
+      : r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+    await seite.route("**/rest/v1/betriebe**", r => r.fulfill({ status: 200, contentType: "application/json",
+      body: JSON.stringify([{ id: "11111111-2222-3333-4444-555555555555", bestell_pause: false, hub_texte: {},
+        hub_kacheln: [{ schluessel: "speisekarte" },
+                      { schluessel: "cocktails", titel: "Kaiser und Säfte" },
+                      { schluessel: "getraenke", unter: "Frisch & kalt" }] }]) }));
+    await seite.goto("file://" + path.join(DIST, haus, "index.html"));
+    await seite.waitForTimeout(1500);
+    const lies = async ziel => {
+      await seite.evaluate(z => { location.hash = z; }, ziel);
+      await seite.waitForTimeout(500);
+      return seite.evaluate(() => ({
+        h2: (document.querySelector("#inhalt .seite h2") || {}).textContent || "",
+        unter: (document.querySelector("#inhalt .seite > p.unter") || {}).textContent || "",
+        kachel: Array.from(document.querySelectorAll("#inhalt .kachel")).map(k => k.textContent).join("|"),
+      }));
+    };
+    const vor = await seite.evaluate(() => KACHELN.map(k => k.schluessel + ":" + k.titel).join(","));
+    pruef(/cocktails:Kaiser und Säfte/.test(vor), haus + ": Voraussetzung — die Kachel trägt den eigenen Namen", vor);
+    const c = await lies("#/cocktails");
+    pruef(c.h2 === "Kaiser und Säfte", haus + ": Unterseite heißt wie die Kachel", c.h2);
+    pruef(!/Hinter der Bar/.test(c.unter), haus + ": keine fremde Vorgabe-Unterzeile mehr", c.unter || "(keine)");
+    const s2 = await lies("#/speisekarte");
+    pruef(s2.h2 === "Speisekarte" && /Küche/.test(s2.unter), haus + ": unveränderte Kachel behält Titel und Unterzeile", s2.h2 + " / " + s2.unter);
+    const g = await lies("#/getraenke");
+    pruef(g.h2 === "Getränkekarte" && g.unter === "Frisch & kalt", haus + ": eigene Unterzeile allein wird übernommen", g.h2 + " / " + g.unter);
+    await seite.evaluate(() => { spracheSetzen("en"); });
+    const e = await lies("#/cocktails");
+    pruef(e.h2 === "Kaiser und Säfte", haus + ": Englisch — eigener Name bleibt", e.h2);
+
+    /* Zurück-Knopf: Glas-Pille „‹ Zurück“ (08.10., vorher rund ohne
+       Text), ≥ 44 px, klebt beim Rollen, führt heim. Übersetzung und
+       das umlaufende Licht prüft pruef-reise.js. */
+    await seite.evaluate(() => { spracheSetzen("de"); location.hash = "#/speisekarte"; });
+    await seite.waitForTimeout(500);
+    const z = await seite.evaluate(() => {
+      const b = document.getElementById("zurueck"), r = b.getBoundingClientRect();
+      return { an: b.classList.contains("an"), w: r.width, h: r.height, text: b.querySelector(".zr-text").textContent.trim(),
+               label: b.getAttribute("aria-label"), oben: document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) === b
+                 || b.contains(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2)) };
+    });
+    pruef(z.an && z.w >= 44 && z.h >= 44 && z.text === "Zurück", haus + ": Zurück ist eine Pille „Zurück“, ≥ 44 px",
+      z.w.toFixed(0) + "×" + z.h.toFixed(0) + " " + JSON.stringify(z.text));
+    pruef(z.label === "Zurück zur Übersicht" && z.oben, haus + ": beschriftet und obenauf (nichts deckt ihn)", z.label + " " + z.oben);
+    /* 09.10. „Spare Text im Header — kompakt wie Lieferando“: Auf der
+       Unterseite ist der Kopf EINE Leiste — Siegel, Name und Knöpfe auf
+       einer Höhe, ohne Adresse, Slogan und Öffnungsstand. Vorher ~270 px. */
+    const leiste = await seite.evaluate(() => {
+      const r = el => el.getBoundingClientRect();
+      const mitte = el => { const b = r(el); return b.top + b.height / 2; };
+      const sichtbar = el => !!el && getComputedStyle(el).display !== "none" && r(el).height > 0;
+      const kopf = document.querySelector("header");
+      const teile = [document.getElementById("logo"), document.getElementById("titel"), document.querySelector(".kopfwahl")];
+      const m = teile.map(mitte);
+      return { hoehe: Math.round(r(kopf).height), versatz: Math.round(Math.max(...m) - Math.min(...m)),
+               claim: sichtbar(document.getElementById("claim")), status: sichtbar(document.getElementById("status")),
+               titel: document.getElementById("titel").textContent };
+    });
+    pruef(leiste.hoehe <= 120 && leiste.versatz <= 12 && !leiste.claim && !leiste.status && leiste.titel.length > 0,
+      haus + ": Unterseite — Kopf ist eine flache Leiste (Siegel, Name, Knöpfe in einer Reihe, ohne Adresse/Slogan/Stand)",
+      leiste.hoehe + " px hoch, Versatz " + leiste.versatz + " px, Slogan " + leiste.claim + ", Stand " + leiste.status);
+    await seite.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, 1500); });
+    await seite.waitForTimeout(300);
+    const kl = await seite.evaluate(() => {
+      const b = document.getElementById("zurueck"), r = b.getBoundingClientRect();
+      const mitte = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      return { top: r.top, scroll: scrollY, oben: mitte === b || b.contains(mitte) };
+    });
+    pruef(kl.scroll > 500 && kl.top >= 0 && kl.top < 80 && kl.oben, haus + ": beim Rollen klebt er oben und bleibt antippbar",
+      "scroll " + kl.scroll + " top " + kl.top.toFixed(0));
+    await seite.click("#zurueck");
+    await seite.waitForTimeout(500);
+    const heim = await seite.evaluate(() => ({ hash: location.hash, start: seiteJetzt }));
+    pruef(heim.start === "start", haus + ": Tipp führt zur Übersicht", JSON.stringify(heim));
+    pruef(fehler.length === 0, haus + ": keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
   }
 

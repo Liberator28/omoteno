@@ -15,9 +15,8 @@
    "Vorrat auffüllen"-Knopf im Board läuft aber mit dem
    authenticated-Schlüssel. Diese Funktion ist die einzige Brücke:
    Sie prüft das Nutzertoken (verify_jwt, kein --no-verify-jwt), prüft
-   ZUSÄTZLICH per betrieb_mitglieder, dass der Nutzer wirklich zu
-   diesem Betrieb gehört, und schreibt erst DANN mit dem
-   service_role-Schlüssel.
+   ZUSÄTZLICH, dass der Nutzer Inhaber dieses Betriebs ist, und
+   schreibt erst DANN mit dem service_role-Schlüssel.
 
    WAS SIE TUT
    1. Erzeugt <anzahl> zufällige Codes.
@@ -28,6 +27,23 @@
       wurden). Schritt 2 zuerst, dann 3 — ein Code ist in Supabase
       immer gültig, BEVOR Klaviyo ihn je verschicken könnte, nie
       umgekehrt.
+
+   ÜBERARBEITET (migration-gutschein-sicher.sql, Wunsch „keine
+   Gutscheine ausnutzbar“). Befund vorher:
+     · jedes Mitglied durfte auffüllen, beliebig oft, je 100 Codes;
+     · Codes aus Math.random, nur 6 Zeichen (32^6 ≈ 10^9) — nicht
+       kryptografisch, und für einen Rabatt zu kurz;
+     · Klaviyo-Endpunkt coupon-bulk-create-jobs mit attributes.codes —
+       weder Pfad noch Körper stimmten mit der Schnittstelle überein
+       (zweite Quelle: Schema des Klaviyo-Werkzeugs
+       bulk_create_coupon_codes: /coupon-code-bulk-create-jobs/,
+       attributes["coupon-codes"].data[] mit type "coupon-code" und
+       relationships.coupon). Der Upload ist vermutlich nie gelungen.
+     · Abweisungen kamen als 403 — supabase-js meldet das als
+       allgemeinen Fehler, das Board sagte „Verbindung prüfen“.
+   Jetzt: nur der Inhaber (gutschein_recht().inhaber, also mit PIN-
+   Pflicht), höchstens 50 je Aufruf und 4 Aufrufe je Tag und Betrieb,
+   10 Zeichen aus crypto.getRandomValues, Abweisung als 200 mit Grund.
 
    NICHT GEGEN DIE ECHTE KLAVIYO-API GETESTET (dieselbe ehrliche
    Grenze wie bei den beiden anderen Klaviyo-Funktionen).
@@ -55,15 +71,18 @@ const antwort = (koerper: unknown, status = 200) =>
     },
   });
 
+/* 10 Zeichen aus 32 (ohne I/1/O/0) = 2^50. 256 ist durch 32 teilbar:
+   jedes Zeichen gleich wahrscheinlich. Vorsilbe höchstens 8 Zeichen →
+   höchstens 19, die Schranke rabattcodes_code_form erlaubt 24. */
 function codeErzeugen(slug: string): string {
-  const zeichen = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // ohne verwechselbare I/1/O/0
-  let zufall = "";
-  for (let i = 0; i < 6; i++) zufall += zeichen[Math.floor(Math.random() * zeichen.length)];
-  return slug.toUpperCase().slice(0, 8) + "-" + zufall;
+  const zeichen = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const zufall = Array.from(crypto.getRandomValues(new Uint8Array(10)), (b) => zeichen[b % 32]).join("");
+  const vor = slug.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+  return vor ? vor + "-" + zufall : zufall;
 }
 
-async function klaviyoCodesHochladen(externalId: string, codes: string[]) {
-  const r = await fetch("https://a.klaviyo.com/api/coupon-bulk-create-jobs/", {
+async function klaviyoCodesHochladen(externalId: string, codes: string[], bis: string) {
+  const r = await fetch("https://a.klaviyo.com/api/coupon-code-bulk-create-jobs/", {
     method: "POST",
     headers: {
       Authorization: `Klaviyo-API-Key ${KLAVIYO_KEY}`,
@@ -74,9 +93,14 @@ async function klaviyoCodesHochladen(externalId: string, codes: string[]) {
       data: {
         type: "coupon-code-bulk-create-job",
         attributes: {
-          codes: codes.map((code) => ({ id: code, attributes: { unique_code: code } })),
+          "coupon-codes": {
+            data: codes.map((code) => ({
+              type: "coupon-code",
+              attributes: { unique_code: code, expires_at: bis },
+              relationships: { coupon: { data: { type: "coupon", id: externalId } } },
+            })),
+          },
         },
-        relationships: { coupon: { data: { type: "coupon", id: externalId } } },
       },
     }),
   });
@@ -102,21 +126,29 @@ Deno.serve(async (anfrage) => {
   catch { return antwort({ fehler: "kein_json" }, 400); }
 
   const betriebId = String(roh?.betrieb_id || "");
-  const anzahl = Math.min(Math.max(Number(roh?.anzahl) || 20, 1), 100);
+  const anzahl = Math.min(Math.max(Number(roh?.anzahl) || 20, 1), 50);
   if (!betriebId) return antwort({ fehler: "betrieb_id fehlt" }, 400);
 
-  /* Über die Betriebszeile, nicht über betrieb_mitglieder: Deren Regel
-     („mitglied liest sich selbst") kennt die PIN nicht — die Zeile
-     käme auch ohne zweiten Faktor. betriebe hängt an meine_betriebe()
-     und damit an pin_ok() (migration-pin.sql). */
-  const { data: mitglied } = await alsNutzer
-    .from("betriebe")
-    .select("id")
-    .eq("id", betriebId)
-    .maybeSingle();
-  if (!mitglied) return antwort({ fehler: "kein_zugriff" }, 403);
+  /* Nur der Inhaber — gefragt MIT dem Token des Aufrufers über
+     gutschein_recht() (hängt an meine_betriebe(), also an der PIN-
+     Pflicht, und an ist_inhaber()). Ein Mitglied mit Gutschein-Recht
+     stellt einzelne Codes im Board aus, keine Hunderte. */
+  const { data: recht } = await alsNutzer.rpc("gutschein_recht", { p_betrieb: betriebId });
+  if (!recht || !recht.ok || !recht.inhaber) return antwort({ ok: false, fehler: "kein_zugriff" });
+
+  /* Ohne Klaviyo-Schlüssel wird NICHTS angelegt. Befund 09.10.: 20
+     Codes standen in Supabase, 0 bei Klaviyo — die Funktion hatte ohne
+     Schlüssel geschrieben und „ok“ gemeldet, das Board sagte „20 neue
+     Codes angelegt“. Diese Codes erreichen Klaviyo nie (kein
+     Nachladen), und jede Gutschein-Mail wäre still liegen geblieben. */
+  if (!KLAVIYO_KEY) return antwort({ ok: false, fehler: "kein_klaviyo_schluessel" });
 
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+  /* Tagesdeckel je Betrieb. Gezählt wird VOR dem Schreiben und nie
+     danach geworfen (§2.3g) — die Antwort sagt den Grund. */
+  const { data: aufrufe } = await admin.rpc("schutz_zaehlen", { p_schluessel: "vorrat:" + betriebId, p_min: 1440 });
+  if (typeof aufrufe === "number" && aufrufe > 4) return antwort({ ok: false, fehler: "grenze" });
   const { data: betrieb } = await admin
     .from("betriebe").select("slug").eq("id", betriebId).maybeSingle();
   if (!betrieb) return antwort({ fehler: "betrieb_unbekannt" }, 404);
@@ -125,13 +157,14 @@ Deno.serve(async (anfrage) => {
   for (let i = 0; i < anzahl; i++) codes.push(codeErzeugen(betrieb.slug));
 
   /* Erst in Supabase — jeder Code ist gültig, bevor Klaviyo ihn kennt. */
+  const bis = new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString();
   for (const code of codes) {
     const { error } = await admin.rpc("rabattcode_anlegen", {
       p_betrieb_id: betriebId,
       p_code: code,
       p_betrag: 2.00,
       p_prozent: null,
-      p_gueltig_bis: new Date(Date.now() + 90 * 24 * 3600 * 1000).toISOString(),
+      p_gueltig_bis: bis,
     });
     if (error) {
       console.error("rabattcode_anlegen fehlgeschlagen:", error.message);
@@ -139,10 +172,8 @@ Deno.serve(async (anfrage) => {
     }
   }
 
-  if (!KLAVIYO_KEY) return antwort({ ok: true, angelegt: codes.length, fehler: "kein_klaviyo_schluessel" });
-
   try {
-    const hochgeladen = await klaviyoCodesHochladen(`${betrieb.slug}_newsletter`, codes);
+    const hochgeladen = await klaviyoCodesHochladen(`${betrieb.slug}_newsletter`, codes, bis);
     return antwort({ ok: true, angelegt: codes.length, klaviyo: hochgeladen });
   } catch (e) {
     console.error(e);

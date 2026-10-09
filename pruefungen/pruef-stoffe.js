@@ -121,6 +121,9 @@ function vergleiche(bezeichnung, quelle, ziel, quelleName, zielName) {
   for (const breite of [375, 768]) {
     console.log(`\n── Breite ${breite}px ──`);
     const seite = await (await browser.newContext({ viewport: { width: breite, height: 900 } })).newPage();
+    /* Willkommensschirm überspringen wie in jeder Hub-Prüfung — sonst fängt er
+       jeden Klick ab (seit er sich nicht mehr selbst schließt). */
+    await seite.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch (e) {} });
     const konsole = [];
     seite.on("pageerror", e => konsole.push(String(e)));
     await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
@@ -211,6 +214,9 @@ function vergleiche(bezeichnung, quelle, ziel, quelleName, zielName) {
   console.log("\n── Bedienung: unabhängiges Auf/Zu, reduzierte Bewegung ──");
   {
     const seite = await (await browser.newContext({ viewport: { width: 375, height: 900 } })).newPage();
+    /* Willkommensschirm überspringen wie in jeder Hub-Prüfung — sonst fängt er
+       jeden Klick ab (seit er sich nicht mehr selbst schließt). */
+    await seite.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch (e) {} });
     await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
     await seite.goto("file://" + DIST);
     await seite.waitForTimeout(500);
@@ -251,6 +257,9 @@ function vergleiche(bezeichnung, quelle, ziel, quelleName, zielName) {
 
     /* Reduzierte Bewegung: Panel muss sofort im Endzustand stehen. */
     const seiteReduziert = await (await browser.newContext({ viewport: { width: 375, height: 900 }, reducedMotion: "reduce" })).newPage();
+    /* Willkommensschirm überspringen wie in jeder Hub-Prüfung — sonst fängt er
+       jeden Klick ab (seit er sich nicht mehr selbst schließt). */
+    await seiteReduziert.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch (e) {} });
     await seiteReduziert.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
     await seiteReduziert.goto("file://" + DIST);
     await seiteReduziert.waitForTimeout(500);

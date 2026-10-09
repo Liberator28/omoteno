@@ -42,6 +42,9 @@ async function board(seite) {
   await seite.waitForTimeout(200);
   await seite.evaluate(() => { blattOeffnen(null); });
   await seite.waitForTimeout(250);
+  /* „Gehört zu“ liegt seit 07.10. unter „Mehr Angaben“. */
+  await seite.click("#mehrAuf");
+  await seite.waitForTimeout(400);
 }
 
 (async () => {
@@ -109,24 +112,31 @@ async function board(seite) {
   await seite.waitForTimeout(200);
   pruef((await seite.getAttribute("#katKnopf", "aria-expanded")) === "false", "Escape schließt das Panel");
 
-  console.log("\n══ Karte-Segment ══");
+  console.log("\n══ Gehört zu (Karten, Mehrfachwahl) ══");
+  /* Seit 07.10.: statt drei fester Segmente je Karte ein Chip, ein
+     Gericht darf in mehreren Karten stehen. #fKarte bleibt das echte
+     Feld für die ERSTE Karte — daraus leitet sich die Zuständigkeit ab. */
   pruef((await seite.inputValue("#fKarte")) === "speisekarte", "Karte startet auf speisekarte");
   const startSpur = await seite.evaluate(() => $("#fSpur").querySelector('[aria-pressed="true"]').dataset.spur);
   pruef(startSpur === "kueche", "Zuständigkeit startet auf Küche (aus der Karte hergeleitet)");
 
-  const segHoehen = await seite.$$eval("#karteSegment button", els => els.map(e => e.getBoundingClientRect().height));
-  pruef(segHoehen.every(h => h >= 44), "jedes Segment ist mindestens 44px hoch (§8.1d)", segHoehen.join(", "));
+  const kartenChipHoehen = await seite.$$eval("#fKarten button", els => els.map(e => e.getBoundingClientRect().height));
+  pruef(kartenChipHoehen.length >= 3 && kartenChipHoehen.every(h => h >= 44), "jeder Karten-Chip ist mindestens 44px hoch (§8.1d)", kartenChipHoehen.join(", "));
 
-  await seite.click('#karteSegment button[data-wert="getraenke"]');
-  await seite.waitForTimeout(250);
-  pruef((await seite.inputValue("#fKarte")) === "getraenke", "Segment 'Getränke' setzt #fKarte (das echte Feld)");
+  await seite.click('#fKarten button[data-karte-wahl="getraenke"]');
+  await seite.waitForTimeout(150);
+  const beide = await seite.$$eval('#fKarten button[aria-pressed="true"]', els => els.map(e => e.dataset.karteWahl));
+  pruef(beide.join() === "speisekarte,getraenke", "Tipp auf „Getränke“ nimmt die Karte DAZU", beide.join());
+  pruef((await seite.inputValue("#fKarte")) === "speisekarte", "die erste Karte bleibt im echten Feld");
+  await seite.click('#fKarten button[data-karte-wahl="speisekarte"]');
+  await seite.waitForTimeout(150);
+  pruef((await seite.inputValue("#fKarte")) === "getraenke", "Speisekarte abgewählt → Getränke ist die erste Karte");
   const neueSpur = await seite.evaluate(() => $("#fSpur").querySelector('[aria-pressed="true"]').dataset.spur);
   pruef(neueSpur === "theke", "die abgeleitete Zuständigkeit zieht mit — alte Logik unverändert erreichbar");
-  pruef((await seite.getAttribute('#karteSegment button[data-wert="getraenke"]', "aria-checked")) === "true",
-    "das Segment selbst zeigt sich als gewählt");
-  const schieberTransform = await seite.evaluate(() =>
-    getComputedStyle($("#karteSegment .segmentschieber")).transform);
-  pruef(schieberTransform !== "none", "der Schieber ist per transform verschoben, nicht über left", schieberTransform);
+  await seite.click('#fKarten button[data-karte-wahl="getraenke"]');
+  await seite.waitForTimeout(150);
+  const bleibt = await seite.$$eval('#fKarten button[aria-pressed="true"]', els => els.map(e => e.dataset.karteWahl));
+  pruef(bleibt.join() === "getraenke", "die letzte Karte lässt sich nicht abwählen", bleibt.join());
 
   console.log("\n══ Ohne Bewegung ══");
   await seite.emulateMedia({ reducedMotion: "reduce" });
@@ -136,7 +146,7 @@ async function board(seite) {
   pruef(parseFloat(opReduziert) === 1, "das Panel ist sofort da, kein Warten auf eine Animation, die nicht laufen soll", opReduziert);
 
   /* Die eigene Netzblockade oben erzeugt selbst Konsolenfehler
-     (ERR_FAILED für die jsdelivr-Bibliothek) — die zaehlen nicht als
+     (ERR_FAILED für /lib/supabase-js, die es unter file:// nicht gibt) — die zaehlen nicht als
      Befund dieser Pruefung, siehe pruef-board.js für dasselbe Muster. */
   const echteFehler = konsole.filter(k => !/ERR_FAILED|net::/.test(k));
   pruef(echteFehler.length === 0, "keine echten Fehler in der Konsole", echteFehler.slice(0, 3).join(" | ") || "still");

@@ -35,9 +35,11 @@
   window.OMO_KONSOLE = function(){
     if(window.eruda){ try{ eruda.show(); }catch(e){} return; }
     var s = document.createElement('script');
-    s.src = 'https://cdn.jsdelivr.net/npm/eruda';
+    /* Fest und selbst ausgeliefert (08.10.), nicht mehr vom CDN. */
+    s.src = '/lib/eruda-3.4.3.js';
+    s.integrity = 'sha384-weDBY9jeIj4NqaiZF9f6PMAMMY4lIu+0CAI+TjBIE73RctCQOxDoEHltYnstRszI';
     s.onload = function(){ try{ eruda.init(); eruda.show(); console.log('[MASTER] Eruda gestartet'); }catch(e){} };
-    s.onerror = function(){ alert('Konsole konnte nicht geladen werden — keine Verbindung zu jsdelivr.'); };
+    s.onerror = function(){ alert('Konsole konnte nicht geladen werden.'); };
     document.head.appendChild(s);
   };
   if(location.hash === '#debug') window.addEventListener('DOMContentLoaded', window.OMO_KONSOLE);
@@ -46,7 +48,10 @@
 <!-- ================================================================
      BLOCK 2 — SUPABASE SDK
 ================================================================= -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<!-- supabase-js fest und selbst ausgeliefert (08.10., Sicherheit): vorher
+     schwimmend von cdn.jsdelivr.net (@2) — ein kompromittiertes Paket
+     liefe hier mit den Anmeldedaten des Teams. integrity prüft die Datei. -->
+<script src="/lib/supabase-js-2.117.3.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R"></script>
 
 <!-- Schrift vom eigenen Server (schriften/seiten.css), nicht mehr von
      Google: Das schickte bei jedem Aufruf die IP-Adresse dorthin. -->
@@ -1172,7 +1177,12 @@ function pinSchirm(rufen, s){
        dann gesperrt bis zum neuen Passwort. Nicht erreichbar → wie im
        Board normal weiter (§7), die Rolle wird danach ohnehin geprüft. */
     sb.rpc('admin_anmelden', { p_email: mail, p_passwort: pw })
-      .then(function(r){ return r && !r.error ? r.data : null; }, function(){ return null; })
+      .then(function(r){
+        /* Netz-Bremse (HTTP 429, migration-schutz-2.sql): Satz statt still weiter. */
+        if(r && (r.status === 429 || (r.error && (r.error.code === 'PT429' || /zu_viele_anfragen/.test(r.error.message || '')))))
+          return { erlaubt:false, gesperrt:false, nachricht:"Zu viele Anmeldeversuche aus diesem Netz. Bitte in zehn Minuten erneut." };
+        return r && !r.error ? r.data : null;
+      }, function(){ return null; })
       .then(function(p){
         if(p && p.erlaubt !== true){
           var t = (p.nachricht || 'E-Mail oder Passwort stimmt nicht.')
