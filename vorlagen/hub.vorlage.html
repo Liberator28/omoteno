@@ -1875,7 +1875,15 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 }
 .fr-meta{margin-top:4px;font-size:14px;font-weight:700;color:var(--tinte);font-variant-numeric:tabular-nums;min-height:1.2em;
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fr-details{flex:none}
+/* „Details“ als runder Knopf mit Zeichen: Als Wort nahm er dem Namen
+   so viel Breite, dass „Frisch gepresster Orangensaft“ abbrach
+   (Bildschirmfoto Blend, gelandet). Das Wort bleibt für Vorleser da. */
+/* Langer Name: erst kleiner, dann zweizeilig — gemessen, nicht nach
+   Zeichenzahl (Schriften der Häuser laufen verschieden breit). */
+.fr-name.fr-eng{font-size:16px}
+.fr-details{flex:none;width:44px;padding:0;display:grid;place-items:center;position:relative}
+.fr-details svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
+.fr-still{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 /* Das Rad: Ring in der Bandfarbe des Hauses mit Lichtpunkten, darin
    die Scheibe. Breite aus der Seite, nie breiter als 340 px — bei
    390×844 steht es samt Karte darüber ohne Rollen im Bild. */
@@ -10401,7 +10409,9 @@ function frErgebnisHTML(name, fertig){
     '<div class="fr-wort"><div class="fr-etikett">' + (fertig ? t("Unsere Wahl für Sie") + ehMarkenHTML(g) : "Foodroulette") + '</div>' +
       '<h3 class="fr-name">' + hs(t(g.n)) + '</h3>' +
       '<div class="fr-meta">' + (fertig ? hs(g.p) + ' €' + (ort.gruppe ? ' · ' + hs(t(ort.gruppe)) : '') : '') + '</div></div>' +
-    (fertig ? '<button type="button" class="eh-details fr-details" data-detail="' + encodeURIComponent(g.n) + '">' + t("Details") + '</button>' : '');
+    (fertig ? '<button type="button" class="eh-details fr-details" data-detail="' + encodeURIComponent(g.n) + '">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg>' +
+      '<span class="fr-still">' + t("Details") + '</span></button>' : '');
 }
 
 function frRadHTML(){
@@ -10475,6 +10485,15 @@ function frFeldUnterZeiger(w){
   return Math.min(n - 1, Math.floor(lokal / s));
 }
 
+/* Passt der Name nicht in zwei Zeilen, eine Stufe kleiner. Nur beim
+   Wechsel des Namens gelesen, nicht in jedem Bild. */
+function frNameEinpassen(){
+  const e = document.querySelector("#frErgebnis .fr-name");
+  if(!e) return;
+  e.classList.remove("fr-eng");
+  if(e.scrollHeight > e.clientHeight + 1) e.classList.add("fr-eng");
+}
+
 function frLiveSetzen(name){
   const e = $("frErgebnis");
   if(!e) return;
@@ -10482,10 +10501,12 @@ function frLiveSetzen(name){
   if(!e.classList.contains("dreht") || !n || !emo){
     e.classList.add("dreht");
     e.innerHTML = frErgebnisHTML(name, false);
+    frNameEinpassen();
     return;
   }
   const ort = frOrt(name);
   n.textContent = t(name);
+  frNameEinpassen();
   emo.textContent = bzZeichen(bzKategorie(ort.gruppe, ort.karte));
 }
 
@@ -10496,6 +10517,7 @@ function frLanden(name){
     e.classList.remove("dreht");
     e.removeAttribute("aria-busy");
     e.innerHTML = frErgebnisHTML(name, true);
+    frNameEinpassen();
     if(e.animate && !ruhigeBewegung()){
       e.animate([{ transform:"scale(.97)" }, { transform:"scale(1)" }], { duration:420, easing:FEDER });
       const r = e.getBoundingClientRect();
@@ -12360,6 +12382,7 @@ function zeichne(){
   bnRadVerdrahten();
   bzVerdrahten();
   if(seiteJetzt === "bestellt" && bestellFeier){ bestellFeier = false; feiern(); }
+  if(seiteJetzt === "entdecken") frNameEinpassen();
   if(seiteJetzt === "entdecken" && ehSofort){ ehSofort = false; frDrehen(); }
   window.scrollTo(0,0);
 

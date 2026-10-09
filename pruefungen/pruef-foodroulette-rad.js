@@ -293,6 +293,24 @@ const OBEN_FELD = () => {
     await ctx.close();
   }
 
+  console.log("\n══ Name ganz lesbar (jedes Gericht der Karte, 360 px) ══");
+  /* Vorfall (eigenes Bildschirmfoto, Blend): gelandet stand
+     „Frisch gepresster…“ — das Wort „Details“ nahm dem Namen die
+     Breite. Zweite Quelle: JEDES Gericht der Karte, nicht nur, was
+     zufällig gelandet ist. */
+  for (const slug of HAEUSER) {
+    const { ctx, s, fehler } = await oeffnen(browser, slug, "#/entdecken", { breite:360, ruhig:true });
+    const r = await s.evaluate(() => {
+      const namen = edKandidaten().map(e => e.n), ab = [];
+      namen.forEach(nm => { frLanden(nm); const e = document.querySelector("#frErgebnis .fr-name");
+        if (e.scrollHeight > e.clientHeight + 1) ab.push(nm); });
+      return { n: namen.length, ab };
+    });
+    pruef(r.n > 10 && !r.ab.length, slug + ": kein Gerichtname wird oben abgeschnitten", r.n + " Namen" + (r.ab.length ? ", abgeschnitten: " + r.ab.join(" · ") : ""));
+    pruef(!fehler.length, slug + ": keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+
   await browser.close();
   console.log("\n" + (n - f) + " von " + n + " ok");
   console.log(f ? f + " FEHLER" : "Alles sauber.");
