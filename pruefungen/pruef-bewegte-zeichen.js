@@ -384,47 +384,31 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     await ctx.close();
   }
 
-  console.log("\n══ Entdecken ══");
+  console.log("\n══ Foodroulette: Zeichen im Rad und oben in der Karte ══");
   {
+    /* Seit 09.10. ein Glücksrad statt des Wischstapels. Hier nur, was
+       die bewegten Zeichen angeht — Drehung, Landung und Bedienung
+       prüft pruef-foodroulette-rad.js. Zweite Quelle für die Zeichen:
+       bzKategorie über gerichtOrt, wie in der Speisekarte. */
     const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken");
-    const oben = () => s.$('#edStapel .ed-karte[data-tiefe="0"]');
-    const wisch = async richtung => {
-      const b = await (await oben()).boundingBox();
-      const x = b.x + b.width / 2, y = b.y + b.height / 2;
-      await s.mouse.move(x, y); await s.mouse.down();
-      for (let i = 1; i <= 14; i++) await s.mouse.move(x + richtung * i * 10, y + i);
-      await s.mouse.up(); await s.waitForTimeout(500);
-    };
-    pruef(!!(await oben()), "der Stapel liegt, oberste Karte greifbar");
-    const name0 = await s.evaluate(() => decodeURIComponent(document.querySelector('#edStapel .ed-karte[data-tiefe="0"]').dataset.ed));
-    await wisch(1);
-    pruef(await s.evaluate(n => !!merk[n], name0), "nach rechts gewischt → in der Auswahl", name0);
-    const name1 = await s.evaluate(() => decodeURIComponent(document.querySelector('#edStapel .ed-karte[data-tiefe="0"]').dataset.ed));
-    await wisch(-1);
-    pruef(await s.evaluate(n => !merk[n] && edPos === 2, name1), "nach links gewischt → weiter, nicht in der Auswahl", name1);
-    await s.keyboard.press("ArrowRight"); await s.waitForTimeout(450);
-    await s.click('[data-ed-wahl="ja"]'); await s.waitForTimeout(350);
-    const lob = await s.evaluate(() => ({ lob: !!document.querySelector(".ed-lob"), ja: edJa }));
-    pruef(lob.ja === 3 && lob.lob, "Taste → und Knopf zählen, die dritte Wahl gibt Lob", JSON.stringify(lob));
-    await s.evaluate(() => { edPos = edStapel.length - 1; edNeuZeichnen(); });
-    await s.click('[data-ed-wahl="nein"]'); await s.waitForTimeout(450);
-    pruef(await s.evaluate(() => !!document.querySelector(".ed-ende")), "am Ende: Abschluss statt leerer Fläche");
-    await s.click("[data-ed-neu]"); await s.waitForTimeout(300);
-    pruef(await s.evaluate(() => edPos === 0 && !!document.querySelector("#edStapel")), "„Nochmal mischen“ beginnt von vorn");
-    pruef(await s.evaluate(() => edStapel.every(n => !merk[n])), "was schon in der Auswahl liegt, kommt nicht erneut");
+    const rad = await s.evaluate(() => {
+      const felder = [...document.querySelectorAll("#frScheibe .fr-feld")];
+      return { n: felder.length, falsch: felder.filter(f => {
+        const name = frFelder[+f.dataset.frFeld], o = gerichtOrt(name);
+        return !o || f.textContent !== bzZeichen(bzKategorie(o.gruppe, o.karte));
+      }).map(f => frFelder[+f.dataset.frFeld]) };
+    });
+    pruef(rad.n >= 3 && !rad.falsch.length, "jedes Feld des Rads trägt das Zeichen seiner Kategorie", rad.n + " Felder" + (rad.falsch.length ? ", falsch: " + rad.falsch.join(", ") : ""));
+    await s.evaluate(() => frDrehen());
+    await s.waitForTimeout(3800);
+    const oben = await s.evaluate(() => {
+      const e = document.getElementById("frErgebnis"), o = gerichtOrt(frErgebnis), bz = e && e.querySelector(".ed-emo .bz");
+      return { name: frErgebnis, film: !!bz, cp: bz ? bz.dataset.bz : "", soll: o ? bzKategorie(o.gruppe, o.karte) : "" };
+    });
+    pruef(!!oben.name && oben.film && oben.cp === oben.soll, "gelandet: oben bewegt sich das Zeichen der Kategorie", JSON.stringify(oben));
     const ueber = await s.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     pruef(ueber <= 1, "kein seitliches Schieben", ueber + "px");
     pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
-    await ctx.close();
-  }
-  {
-    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { ruhig:true });
-    const b = await (await s.$('#edStapel .ed-karte[data-tiefe="0"]')).boundingBox();
-    await s.mouse.move(b.x + 100, b.y + 100); await s.mouse.down();
-    for (let i = 1; i <= 5; i++) await s.mouse.move(b.x + 100 + i * 10, b.y + 100);
-    const tf = await s.evaluate(() => document.querySelector('#edStapel .ed-karte[data-tiefe="0"]').style.transform);
-    await s.mouse.up();
-    pruef(/rotate\(0deg\)/.test(tf), "Bewegung reduzieren: die Karte folgt, neigt sich aber nicht", tf);
     await ctx.close();
   }
 
@@ -447,23 +431,17 @@ async function oeffnen(browser, slug, hash, opt = {}) {
   const anlaeufe = spur => spur.reduce((n, x, i) => n + (i && x && !x.p && spur[i - 1] && spur[i - 1].p ? 1 : 0), 0);
   {
     const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken");
-    const SEL = '#edStapel .ed-karte[data-tiefe="0"] .ed-emo .bz';
+    const SEL = '#frKnoepfe .fr-knopf.haupt .bz';
     const spur = await verlauf(s, SEL, 9000);
     const da = spur.filter(Boolean).length;
-    pruef(da > spur.length * .9, "Entscheidungshilfe: der Film der obersten Karte ist da", da + " von " + spur.length + " Proben");
+    pruef(da > spur.length * .9, "Foodroulette: der Film im Knopf „Für mich entscheiden“ ist da", da + " von " + spur.length + " Proben");
     if (da) {
       const n = anlaeufe(spur);
-      pruef(n >= 2, "Entscheidungshilfe: nach dem ersten Durchlauf spielt der Film WIEDER (≥ 2 neue Anläufe in 9 s)",
+      pruef(n >= 2, "Foodroulette: nach dem ersten Durchlauf spielt der Film WIEDER (≥ 2 neue Anläufe in 9 s)",
         n + " Anläufe · " + spur.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" ").slice(0, 160));
       const laeuft = spur.filter(x => x && !x.p).length / da;
-      pruef(laeuft >= .5, "Entscheidungshilfe: der Film läuft die meiste Zeit (Pausen kurz)", Math.round(laeuft * 100) + " % der Proben spielend");
+      pruef(laeuft >= .5, "Foodroulette: der Film läuft die meiste Zeit (Pausen kurz)", Math.round(laeuft * 100) + " % der Proben spielend");
     }
-    const schwebt = await s.evaluate(sel => {
-      const e = document.querySelector(sel); if (!e) return null;
-      const emo = e.closest(".ed-emo");
-      return getComputedStyle(emo).animationName;
-    }, SEL);
-    pruef(schwebt === "edSchweben", "Entscheidungshilfe: das Zeichen der obersten Karte schwebt", schwebt);
     pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
     await ctx.close();
   }
@@ -501,12 +479,10 @@ async function oeffnen(browser, slug, hash, opt = {}) {
   }
   {
     const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { ruhig:true });
-    const SEL = '#edStapel .ed-karte[data-tiefe="0"] .ed-emo .bz';
+    const SEL = '#frKnoepfe .fr-knopf.haupt .bz';
     const spur = await verlauf(s, SEL, 4000);
     const da = spur.filter(Boolean).length;
     pruef(!da || spur.every(x => !x || x.p), "Bewegung reduzieren: kein Film läuft", da ? spur.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" ") : "kein Film geladen");
-    const schwebt = await s.evaluate(() => { const e = document.querySelector('#edStapel .ed-karte[data-tiefe="0"] .ed-emo'); return e ? getComputedStyle(e).animationName : null; });
-    pruef(schwebt === "none", "Bewegung reduzieren: das Zeichen schwebt nicht", schwebt);
     await ctx.close();
   }
 
@@ -550,26 +526,32 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     });
     pruef(chip !== null && Math.abs(chip) <= 1.5, breite + "px: Chip-Emoji und Wort auf einer Mittellinie", chip);
     await s.goto(HUB("chocolamour") + "#/entdecken"); await s.waitForTimeout(1200);
-    const ed = await s.evaluate(() => {
-      const st = document.getElementById("edStapel"), k = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]');
-      const kn = [...document.querySelectorAll(".ed-knopf")].map(b => b.getBoundingClientRect());
-      if (!st || !k || kn.length !== 2) return null;
-      const r = st.getBoundingClientRect(), kr = k.getBoundingClientRect();
-      const ja = getComputedStyle(k.querySelector(".ed-stempel.ja")), nein = getComputedStyle(k.querySelector(".ed-stempel.nein"));
-      const winkel = cs => Math.round(Math.atan2(new DOMMatrixReadOnly(cs.transform).b, new DOMMatrixReadOnly(cs.transform).a) * 180 / Math.PI);
-      return { links:+r.left.toFixed(1), rechts:+(innerWidth - r.right).toFixed(1),
-               knopfA:+kn[0].width.toFixed(1), knopfB:+kn[1].width.toFixed(1),
-               knopfL:+(kn[0].left - r.left).toFixed(1), knopfR:+(r.right - kn[1].right).toFixed(1),
-               stJa:ja.right, stNein:nein.left, stTop:[ja.top, nein.top], wJa:winkel(ja), wNein:winkel(nein) };
+    const rad = await s.evaluate(() => {
+      const r = document.getElementById("frRad"), z = document.getElementById("frZeiger"), m = document.querySelector(".fr-mitte");
+      const seite = document.querySelector(".fr-seite");
+      if (!r || !z || !m || !seite) return null;
+      const a = r.getBoundingClientRect(), b = seite.getBoundingClientRect(), c = z.getBoundingClientRect(), d = m.getBoundingClientRect();
+      return { links:+(a.left - b.left).toFixed(1), rechts:+(b.right - a.right).toFixed(1),
+               zeiger:+((c.left + c.width / 2) - (a.left + a.width / 2)).toFixed(1),
+               knopf:+((d.left + d.width / 2) - (a.left + a.width / 2)).toFixed(1),
+               knopfH:+((d.top + d.height / 2) - (a.top + a.height / 2)).toFixed(1) };
     });
-    pruef(!!ed, breite + "px: Entdecken-Stapel und beide Knöpfe da");
-    if (ed) {
-      pruef(Math.abs(ed.links - ed.rechts) <= 1, breite + "px: Stapel mit gleichem Rand links und rechts", ed.links + " / " + ed.rechts);
-      pruef(ed.knopfA === ed.knopfB && Math.abs(ed.knopfL - ed.knopfR) <= 1,
-        breite + "px: „Weiter“ und „Nehm ich!“ gleich breit, gleich weit vom Rand", ed.knopfA + "/" + ed.knopfB + ", " + ed.knopfL + "/" + ed.knopfR);
-      pruef(ed.stJa === ed.stNein && ed.stTop[0] === ed.stTop[1] && ed.wJa === -ed.wNein,
-        breite + "px: Stempel spiegelbildlich", ed.stJa + "/" + ed.stNein + ", " + ed.wJa + "°/" + ed.wNein + "°");
+    pruef(!!rad, breite + "px: Rad, Zeiger und Mittelknopf da");
+    if (rad) {
+      pruef(Math.abs(rad.links - rad.rechts) <= 1, breite + "px: Rad mit gleichem Rand links und rechts", rad.links + " / " + rad.rechts);
+      pruef(Math.abs(rad.zeiger) <= 1 && Math.abs(rad.knopf) <= 1 && Math.abs(rad.knopfH) <= 1,
+        breite + "px: Zeiger und „Drehen“ genau auf der Mitte des Rads", "Zeiger " + rad.zeiger + ", Knopf " + rad.knopf + "/" + rad.knopfH);
     }
+    await s.evaluate(() => frDrehen());
+    await s.waitForTimeout(3800);
+    const kn = await s.evaluate(() => {
+      const f = document.getElementById("frFlaeche"), k = [...document.querySelectorAll("#frKnoepfe .fr-knopf")].map(x => x.getBoundingClientRect());
+      if (!f || k.length !== 2) return null;
+      const r = f.getBoundingClientRect();
+      return { a:+k[0].width.toFixed(1), b:+k[1].width.toFixed(1), l:+(k[0].left - r.left).toFixed(1), r:+(r.right - k[1].right).toFixed(1) };
+    });
+    pruef(!!kn && kn.a === kn.b && Math.abs(kn.l - kn.r) <= 1,
+      breite + "px: „Nochmal drehen“ und „Nehm ich!“ gleich breit, gleich weit vom Rand", JSON.stringify(kn));
     await s.evaluate(() => feiern()); await s.waitForTimeout(450);
     const fe = await s.evaluate(() => {
       const f = document.querySelector(".feier"); if (!f) return null;
@@ -596,9 +578,125 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     await ctx.close();
   }
 
-  console.log("\n══ Fluss: Nachrücken, Wurf, Bilder pro Sekunde ══");
+  console.log("\n══ Fluss: Bilder pro Sekunde ══");
+  for (const [was, hash, tun] of [
+      ["Drehen des Rads", "#/entdecken", () => { frDrehen(); }],
+      ["Flug in den Korb", "#/speisekarte", () => { document.querySelector(".gplus").click(); }]]) {
+    const { ctx, s } = await oeffnen(browser, "chocolamour", hash);
+    const m = await s.evaluate(`(async () => { const mess = (${FLUSS.toString()})(700); (${tun.toString()})(); return await mess; })()`);
+    pruef(m.luecke <= 50, was + ": keine Lücke über 50 ms zwischen zwei Bildern",
+      m.fps + " Bilder/s, größte Lücke " + m.luecke + " ms");
+    await ctx.close();
+  }
+
+
+  console.log("\n══ Karten wischen — die zweite Art neben dem Rad (Umschalter) ══");
+  /* Seit 09.10. wieder da (Wunsch: Rad UND Karten, umschaltbar). Die
+     Proben sind die vom 08.10., geöffnet mit gemerkter Art „karten“ —
+     dieselbe Voraussetzung, die ein Gast nach dem Umschalten hat. */
+  const KARTEN = () => { try{ ["chocolamour","blend","minhkeey"].forEach(h => localStorage.setItem("omoteno-fr-modus-" + h, "karten")); }catch(e){} };
   {
-    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken");
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken", { vorher:KARTEN });
+    const oben = () => s.$('#edStapel .ed-karte[data-tiefe="0"]');
+    const wisch = async richtung => {
+      const b = await (await oben()).boundingBox();
+      const x = b.x + b.width / 2, y = b.y + b.height / 2;
+      await s.mouse.move(x, y); await s.mouse.down();
+      for (let i = 1; i <= 14; i++) await s.mouse.move(x + richtung * i * 10, y + i);
+      await s.mouse.up(); await s.waitForTimeout(500);
+    };
+    pruef(!!(await oben()), "der Stapel liegt, oberste Karte greifbar");
+    const name0 = await s.evaluate(() => decodeURIComponent(document.querySelector('#edStapel .ed-karte[data-tiefe="0"]').dataset.ed));
+    await wisch(1);
+    pruef(await s.evaluate(n => !!merk[n], name0), "nach rechts gewischt → in der Auswahl", name0);
+    const name1 = await s.evaluate(() => decodeURIComponent(document.querySelector('#edStapel .ed-karte[data-tiefe="0"]').dataset.ed));
+    await wisch(-1);
+    pruef(await s.evaluate(n => !merk[n] && edPos === 2, name1), "nach links gewischt → weiter, nicht in der Auswahl", name1);
+    await s.keyboard.press("ArrowRight"); await s.waitForTimeout(450);
+    await s.click('[data-ed-wahl="ja"]'); await s.waitForTimeout(350);
+    const lob = await s.evaluate(() => ({ lob: !!document.querySelector(".ed-lob"), ja: edJa }));
+    pruef(lob.ja === 3 && lob.lob, "Taste → und Knopf zählen, die dritte Wahl gibt Lob", JSON.stringify(lob));
+    await s.evaluate(() => { edPos = edStapel.length - 1; edNeuZeichnen(); });
+    await s.click('[data-ed-wahl="nein"]'); await s.waitForTimeout(450);
+    pruef(await s.evaluate(() => !!document.querySelector(".ed-ende")), "am Ende: Abschluss statt leerer Fläche");
+    await s.click("[data-ed-neu]"); await s.waitForTimeout(300);
+    pruef(await s.evaluate(() => edPos === 0 && !!document.querySelector("#edStapel")), "„Nochmal mischen“ beginnt von vorn");
+    pruef(await s.evaluate(() => edStapel.every(n => !merk[n])), "was schon in der Auswahl liegt, kommt nicht erneut");
+    const ueber = await s.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+    pruef(ueber <= 1, "kein seitliches Schieben", ueber + "px");
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { ruhig:true, vorher:KARTEN });
+    const b = await (await s.$('#edStapel .ed-karte[data-tiefe="0"]')).boundingBox();
+    await s.mouse.move(b.x + 100, b.y + 100); await s.mouse.down();
+    for (let i = 1; i <= 5; i++) await s.mouse.move(b.x + 100 + i * 10, b.y + 100);
+    const tf = await s.evaluate(() => document.querySelector('#edStapel .ed-karte[data-tiefe="0"]').style.transform);
+    await s.mouse.up();
+    pruef(/rotate\(0deg\)/.test(tf), "Bewegung reduzieren: die Karte folgt, neigt sich aber nicht", tf);
+    await ctx.close();
+  }
+  {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken", { vorher:KARTEN });
+    const SEL = '#edStapel .ed-karte[data-tiefe="0"] .ed-emo .bz';
+    const spur = await verlauf(s, SEL, 9000);
+    const da = spur.filter(Boolean).length;
+    pruef(da > spur.length * .9, "Karten wischen: der Film der obersten Karte ist da", da + " von " + spur.length + " Proben");
+    if (da) {
+      const n = anlaeufe(spur);
+      pruef(n >= 2, "Karten wischen: nach dem ersten Durchlauf spielt der Film WIEDER (≥ 2 neue Anläufe in 9 s)",
+        n + " Anläufe · " + spur.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" ").slice(0, 160));
+      const laeuft = spur.filter(x => x && !x.p).length / da;
+      pruef(laeuft >= .5, "Karten wischen: der Film läuft die meiste Zeit (Pausen kurz)", Math.round(laeuft * 100) + " % der Proben spielend");
+    }
+    const schwebt = await s.evaluate(sel => {
+      const e = document.querySelector(sel); if (!e) return null;
+      const emo = e.closest(".ed-emo");
+      return getComputedStyle(emo).animationName;
+    }, SEL);
+    pruef(schwebt === "edSchweben", "Karten wischen: das Zeichen der obersten Karte schwebt", schwebt);
+    pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { ruhig:true, vorher:KARTEN });
+    const SEL = '#edStapel .ed-karte[data-tiefe="0"] .ed-emo .bz';
+    const spur = await verlauf(s, SEL, 4000);
+    const da = spur.filter(Boolean).length;
+    pruef(!da || spur.every(x => !x || x.p), "Bewegung reduzieren: kein Film läuft", da ? spur.map(x => x ? (x.p ? "p" : "") + x.f : "-").join(" ") : "kein Film geladen");
+    const schwebt = await s.evaluate(() => { const e = document.querySelector('#edStapel .ed-karte[data-tiefe="0"] .ed-emo'); return e ? getComputedStyle(e).animationName : null; });
+    pruef(schwebt === "none", "Bewegung reduzieren: das Zeichen schwebt nicht", schwebt);
+    await ctx.close();
+  }
+  for (const breite of [360, 430]) {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/speisekarte", { breite });
+    await s.evaluate(() => { location.hash = "#/entdecken"; }); await s.waitForTimeout(600); await s.evaluate(() => frModusSetzen("karten", true)); await s.waitForTimeout(500);
+    const ed = await s.evaluate(() => {
+      const st = document.getElementById("edStapel"), k = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]');
+      const kn = [...document.querySelectorAll(".ed-knopf")].map(b => b.getBoundingClientRect());
+      if (!st || !k || kn.length !== 2) return null;
+      const r = st.getBoundingClientRect(), kr = k.getBoundingClientRect();
+      const ja = getComputedStyle(k.querySelector(".ed-stempel.ja")), nein = getComputedStyle(k.querySelector(".ed-stempel.nein"));
+      const winkel = cs => Math.round(Math.atan2(new DOMMatrixReadOnly(cs.transform).b, new DOMMatrixReadOnly(cs.transform).a) * 180 / Math.PI);
+      return { links:+r.left.toFixed(1), rechts:+(innerWidth - r.right).toFixed(1),
+               knopfA:+kn[0].width.toFixed(1), knopfB:+kn[1].width.toFixed(1),
+               knopfL:+(kn[0].left - r.left).toFixed(1), knopfR:+(r.right - kn[1].right).toFixed(1),
+               stJa:ja.right, stNein:nein.left, stTop:[ja.top, nein.top], wJa:winkel(ja), wNein:winkel(nein) };
+    });
+    pruef(!!ed, breite + "px: Entdecken-Stapel und beide Knöpfe da");
+    if (ed) {
+      pruef(Math.abs(ed.links - ed.rechts) <= 1, breite + "px: Stapel mit gleichem Rand links und rechts", ed.links + " / " + ed.rechts);
+      pruef(ed.knopfA === ed.knopfB && Math.abs(ed.knopfL - ed.knopfR) <= 1,
+        breite + "px: „Weiter“ und „Nehm ich!“ gleich breit, gleich weit vom Rand", ed.knopfA + "/" + ed.knopfB + ", " + ed.knopfL + "/" + ed.knopfR);
+      pruef(ed.stJa === ed.stNein && ed.stTop[0] === ed.stTop[1] && ed.wJa === -ed.wNein,
+        breite + "px: Stempel spiegelbildlich", ed.stJa + "/" + ed.stNein + ", " + ed.wJa + "°/" + ed.wNein + "°");
+    }
+    pruef(!fehler.length, breite + "px: keine Ausnahme", fehler.join("|") || "still");
+    await ctx.close();
+  }
+  {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken", { vorher:KARTEN });
     /* Nachrücken: dasselbe Element rückt vor, und es LÄUFT dabei eine
        Transition — ein neu gebautes Element hätte keine. */
     const nach = await s.evaluate(async () => {
@@ -662,12 +760,11 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
     await ctx.close();
   }
-  for (const [was, hash, tun] of [
-      ["Wurf und Nachrücken", "#/entdecken", () => { edWaehlen(true); }],
-      ["Flug in den Korb", "#/speisekarte", () => { document.querySelector(".gplus").click(); }]]) {
-    const { ctx, s } = await oeffnen(browser, "chocolamour", hash);
+  {
+    const { ctx, s } = await oeffnen(browser, "chocolamour", "#/entdecken", { vorher:KARTEN });
+    const tun = () => { edWaehlen(true); };
     const m = await s.evaluate(`(async () => { const mess = (${FLUSS.toString()})(700); (${tun.toString()})(); return await mess; })()`);
-    pruef(m.luecke <= 50, was + ": keine Lücke über 50 ms zwischen zwei Bildern",
+    pruef(m.luecke <= 50, "Wurf und Nachrücken: keine Lücke über 50 ms zwischen zwei Bildern",
       m.fps + " Bilder/s, größte Lücke " + m.luecke + " ms");
     await ctx.close();
   }
@@ -687,43 +784,46 @@ async function oeffnen(browser, slug, hash, opt = {}) {
        (07.10.), direkt nach dem Titel. */
     pruef(ort.da && ort.vorSuche && (ort.davor === "unter" || ort.davor === "h2"),
       "der Knopf steht ganz oben in der Speisekarte, vor der Suche", JSON.stringify(ort));
-    const kn = await s.evaluate(() => [...document.querySelectorAll(".eh-cta .eh-knopf")].map(k => +k.getBoundingClientRect().width.toFixed(1)));
-    pruef(kn.length === 2 && kn[0] === kn[1], "beide Wege gleich breit", kn.join(" / "));
+    const kn = await s.evaluate(() => document.querySelectorAll(".eh-cta .eh-knopf").length);
+    pruef(kn === 1 && !(await s.evaluate(() => /Karten wischen|Swipe cards/.test(document.body.innerText))),
+      "in der Speisekarte EIN Knopf: „Für mich entscheiden“ (Karten wischen über den Umschalter)", kn);
     const start = await s.evaluate(() => { location.hash = "#/"; return new Promise(r => setTimeout(() => r(!!document.querySelector(".eh-cta, .ed-cta")), 500)); });
     pruef(!start, "auf der Startseite steht er nicht mehr doppelt");
     await s.evaluate(() => { location.hash = "#/speisekarte"; }); await s.waitForTimeout(500);
 
-    /* Für mich entscheiden: Seite wechselt, gemischt wird, dann liegt EIN
-       bestellbares Gericht offen. Zweite Quelle: die Karte selbst. */
+    /* Für mich entscheiden: Seite wechselt, das Rad dreht OHNE weiteren
+       Tipp, danach liegt EIN bestellbares Gericht oben. Zweite Quelle:
+       die Karte selbst. */
     await s.evaluate(() => localStorage.setItem(PROBIERT_SCHLUESSEL, JSON.stringify(["Family Love"])));
     await s.click("[data-eh-los]");
-    await s.waitForTimeout(250);
-    const mitten = await s.evaluate(() => ({ seite: seiteJetzt, rollt: !!document.querySelector(".eh-wahl.eh-rollt") }));
-    pruef(mitten.seite === "entdecken" && mitten.rollt, "„Für mich entscheiden“ öffnet die Hilfe und mischt sichtbar", JSON.stringify(mitten));
-    await s.waitForTimeout(1500);
+    await s.waitForTimeout(300);
+    const mitten = await s.evaluate(() => ({ seite: seiteJetzt, dreht: frDreht,
+      laeuft: document.getElementById("frScheibe").getAnimations().some(a => a.playState === "running") }));
+    pruef(mitten.seite === "entdecken" && mitten.dreht && mitten.laeuft, "„Für mich entscheiden“ öffnet das Rad und es dreht sich sofort", JSON.stringify(mitten));
+    await s.waitForTimeout(3700);
     const wahl = await s.evaluate(() => {
-      const w = document.querySelector(".eh-wahl"); if (!w) return null;
-      const name = decodeURIComponent(w.querySelector("[data-eh-nehm]").dataset.ehNehm);
-      const g = findeGericht(name);
-      return { name, rollt: w.classList.contains("eh-rollt"), bestellbar: !!g && g.p !== "–",
-               gezeigt: w.querySelector(".eh-name").textContent === t(name), neu: !!w.querySelector(".eh-neu"),
+      const w = document.getElementById("frErgebnis"), k = document.querySelector("#frKnoepfe [data-eh-nehm]");
+      if (!w || !k) return null;
+      const name = decodeURIComponent(k.dataset.ehNehm), g = findeGericht(name);
+      return { name, dreht: frDreht, bestellbar: !!g && g.p !== "–",
+               gezeigt: w.querySelector(".fr-name").textContent === t(name), neu: !!w.querySelector(".eh-neu"),
                probiert: name === "Family Love" };
     });
-    pruef(!!wahl && !wahl.rollt && wahl.bestellbar && wahl.gezeigt, "danach liegt EIN bestellbares Gericht offen, Name stimmt", wahl && wahl.name);
+    pruef(!!wahl && !wahl.dreht && wahl.bestellbar && wahl.gezeigt, "danach steht EIN bestellbares Gericht oben, Name stimmt", wahl && wahl.name);
     pruef(!!wahl && wahl.neu !== wahl.probiert, "„Neu für Sie“ genau dann, wenn es nicht schon bestellt wurde", JSON.stringify(wahl));
     /* Details öffnet das echte Blatt des Gerichts */
-    await s.click(".eh-wahl .eh-details"); await s.waitForTimeout(500);
+    await s.click("#frErgebnis .eh-details"); await s.waitForTimeout(500);
     const blatt = await s.evaluate(() => ({ offen: document.body.classList.contains("fest"), name: detailName }));
-    pruef(blatt.offen && blatt.name === wahl.name, "„Details“ öffnet das Blatt genau dieses Gerichts", JSON.stringify(blatt));
+    pruef(blatt.offen && blatt.name === wahl.name, "„Details“ öffnet das Blatt genau dieses Gerichts (dort die Allergene)", JSON.stringify(blatt));
     await s.keyboard.press("Escape"); await s.waitForTimeout(400);
     await s.evaluate(() => { if (document.body.classList.contains("fest")) { const z = document.querySelector("[data-zu], .warenkarte-zu"); if (z) z.click(); } });
     await s.waitForTimeout(300);
-    /* Nehm ich! legt in den Korb und schließt */
+    /* Nehm ich! legt in den Korb; der Knopf wird zu „Auswahl ansehen“ */
     await s.evaluate(() => document.querySelector("[data-eh-nehm]").click());
     await s.waitForTimeout(600);
-    const genommen = await s.evaluate(n => ({ imKorb: !!merk[n], offen: !!document.querySelector(".eh-wahl"),
-      imStapel: edStapel.slice(edPos).includes(n) }), wahl.name);
-    pruef(genommen.imKorb && !genommen.offen && !genommen.imStapel, "„Nehm ich!“ legt es in den Korb, schließt, und es kommt im Stapel nicht noch einmal", JSON.stringify(genommen));
+    const genommen = await s.evaluate(n => ({ imKorb: !!merk[n], nehm: !!document.querySelector("#frKnoepfe [data-eh-nehm]"),
+      ansehen: !!document.querySelector('#frKnoepfe a[href="#/auswahl"]') }), wahl.name);
+    pruef(genommen.imKorb && !genommen.nehm && genommen.ansehen, "„Nehm ich!“ legt es in den Korb, danach „Auswahl ansehen“", JSON.stringify(genommen));
 
     /* Lust: nur noch Gerichte dieser Kategorie — gegen gerichtOrt gehalten */
     const lust = await s.evaluate(async () => {
@@ -731,48 +831,37 @@ async function oeffnen(browser, slug, hash, opt = {}) {
       if (!c) return null;
       const w = decodeURIComponent(c.dataset.ehLust);
       c.click(); await new Promise(r => setTimeout(r, 300));
-      const falsch = edStapel.filter(n => { const o = gerichtOrt(n); return !o || o.karte + "|" + o.gruppe !== w; });
-      return { w, n: edStapel.length, falsch, an: c.classList.contains("an") };
+      const falsch = frFelder.filter(n => { const o = gerichtOrt(n); return !o || o.karte + "|" + o.gruppe !== w; });
+      return { w, n: frFelder.length, felder: document.querySelectorAll("#frScheibe .fr-feld").length, falsch,
+               an: document.querySelector('[data-eh-lust="' + c.dataset.ehLust + '"]').classList.contains("an") };
     });
-    pruef(!!lust && lust.n > 0 && !lust.falsch.length && lust.an, "Lust-Chip: nur noch Gerichte dieser Kategorie", lust && (lust.w + ", " + lust.n + " Karten"));
-    /* Neues zuerst: Bereits bestellte Gerichte stehen hinter allen neuen */
-    /* Alles bis auf drei gilt als schon bestellt — dann MUSS der Stapel
-       mit genau diesen drei beginnen (Probe kann den Fehler treffen:
-       ohne die Regel landen sie irgendwo unter 30). */
+    pruef(!!lust && lust.n > 0 && lust.felder === lust.n && !lust.falsch.length && lust.an, "Lust-Chip: das Rad trägt nur noch Gerichte dieser Kategorie", lust && (lust.w + ", " + lust.n + " Felder"));
+    /* Neues zuerst: Alles bis auf drei gilt als schon bestellt — dann
+       MÜSSEN genau diese drei auf dem Rad stehen (ohne die Regel landen
+       sie zufällig unter 30+ Kandidaten). */
     const reihe = await s.evaluate(() => {
       edLust = ""; const alle = edKandidaten().map(e => e.n);
       const neu = alle.slice(0, 3);
       localStorage.setItem(PROBIERT_SCHLUESSEL, JSON.stringify(alle.slice(3)));
-      entdeckenMischen();
-      return { vorn: edStapel.slice(0, 3).sort().join(" | "), soll: neu.sort().join(" | "), kandidaten: alle.length };
+      frFuellen();
+      return { fehlt: neu.filter(n => !frFelder.includes(n)), soll: neu.join(" | "), kandidaten: alle.length };
     });
-    pruef(reihe.kandidaten > 30 && reihe.vorn === reihe.soll, "Neues kommt zuerst, schon Bestelltes danach",
-      reihe.vorn + " (von " + reihe.kandidaten + ")");
+    pruef(reihe.kandidaten > 30 && !reihe.fehlt.length, "Neues kommt aufs Rad, vor schon Bestelltem",
+      reihe.soll + " (von " + reihe.kandidaten + ")");
     /* Ohne Bestellhistorie ist nichts „neu“ — sonst sagte die Marke nichts */
-    const leer = await s.evaluate(() => { localStorage.removeItem(PROBIERT_SCHLUESSEL); entdeckenMischen(); edNeuZeichnen();
-      return document.querySelectorAll("#edStapel .eh-neu").length; });
+    const leer = await s.evaluate(() => { localStorage.removeItem(PROBIERT_SCHLUESSEL); frFuellen();
+      return frFelder.filter(n => ehMarkenHTML(findeGericht(n)).includes("eh-neu")).length; });
     pruef(leer === 0, "ohne Bestellung vorher steht nirgends „Neu für Sie“", leer);
-    /* Allergene auf der Karte: zweite Quelle INHALTSSTOFFE */
-    const alg = await s.evaluate(() => {
-      /* Ein Gericht MIT Allergenen nach oben legen — sonst prüft die Probe nichts */
-      const mit = edKandidaten().find(e => INHALTSSTOFFE[e.n] && INHALTSSTOFFE[e.n].a && INHALTSSTOFFE[e.n].a.length);
-      if (!mit) return { ok:false, n:"kein Gericht mit Allergenen gefunden", ist:"" };
-      edStapel = [mit.n].concat(edStapel.filter(x => x !== mit.n)); edPos = 0; edNeuZeichnen();
-      const k = document.querySelector('#edStapel .ed-karte[data-tiefe="0"]'), n = decodeURIComponent(k.dataset.ed);
-      const st = INHALTSSTOFFE[n], info = k.querySelector(".eh-info");
-      const soll = st && st.a ? st.a.map(x => ALLERGEN_NAMEN[x]).filter(Boolean).map(x => t(x)) : [];
-      return { n, soll, ist: info ? info.textContent : "", ok: soll.length > 0 && soll.every(x => info && info.textContent.includes(x)) };
-    });
-    pruef(alg.ok, "Allergene auf der Karte stimmen mit der Karte des Hauses überein", alg.n + ": " + (alg.ist || "keine"));
     pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
     await ctx.close();
   }
   {
-    /* Bewegung reduzieren: Die Wahl steht sofort, kein Mischen */
+    /* Bewegung reduzieren: Die Wahl steht sofort, keine Drehung */
     const { ctx, s } = await oeffnen(browser, "chocolamour", "#/speisekarte", { ruhig:true });
     await s.click("[data-eh-los]"); await s.waitForTimeout(300);
-    const r = await s.evaluate(() => ({ da: !!document.querySelector(".eh-wahl"), rollt: !!document.querySelector(".eh-wahl.eh-rollt") }));
-    pruef(r.da && !r.rollt, "Bewegung reduzieren: die Wahl steht sofort da", JSON.stringify(r));
+    const r = await s.evaluate(() => ({ wahl: frErgebnis, dreht: frDreht,
+      anim: document.getElementById("frScheibe").getAnimations().length }));
+    pruef(!!r.wahl && !r.dreht && r.anim === 0, "Bewegung reduzieren: die Wahl steht sofort da, ohne Drehung", JSON.stringify(r));
     await ctx.close();
   }
   {

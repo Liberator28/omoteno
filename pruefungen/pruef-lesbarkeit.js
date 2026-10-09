@@ -294,7 +294,7 @@ const FLAECHEN = [
   { hub:true, name:"Gäste-Hub",
     lagen:[["dunkel", p => p.evaluate(() => { lichtSetzen("dunkel"); })],
            ["hell",   p => p.evaluate(() => { lichtSetzen("hell");   })]],
-    seiten:["", "speisekarte", "meintisch", "kontakt", "service"],
+    seiten:["", "speisekarte", "entdecken", "meintisch", "kontakt", "service"],
     blaettern: (p, ziel) => p.evaluate(z => { location.hash = "#/" + z; }, ziel) }
 ];
 

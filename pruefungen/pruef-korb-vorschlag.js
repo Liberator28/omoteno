@@ -193,6 +193,124 @@ async function details(br, haus, erstes){
   await ctx.close(); await q.ctx.close();
 }
 
+
+/* ── Mach es komplett, Schwelle, Rad am Ende, Kontrast ─────────────── */
+async function mehr(br, haus, erstes){
+  console.log("  ── Mach es komplett, Weg zur Schwelle, Rad");
+  const { p, ctx, fehler } = await hubAuf(br, haus, 390, { [erstes.n]: { n:erstes.n, p:erstes.p, b:"", m:1 } });
+  const k = await p.evaluate(() => {
+    const b = document.querySelector("[data-dazu-beide]");
+    if(!b) return null;
+    const namen = b.dataset.dazuBeide.split("|").map(decodeURIComponent);
+    return { namen, welten: namen.map(n => karteIstGetraenk((gerichtOrt(n) || {}).karte)),
+             preis: (b.querySelector(".dazu-beide-preis") || {}).textContent,
+             soll: preisText(namen.reduce((s, n) => s + preisNum(korbPreis(findeGericht(n))), 0)),
+             vorne: dazuVorschlaege()[0].e.n };
+  });
+  pruef(!!k && k.namen.length === 2 && k.welten[0] !== k.welten[1], "„Mach es komplett“: zwei Dinge, ein Getränk und etwas zu essen", k && k.namen.join(" + "));
+  pruef(!!k && k.namen[0] === k.vorne, "… das erste ist der dringendste Vorschlag", k && k.vorne);
+  pruef(!!k && k.preis === k.soll, "… mit der Summe der beiden (Aktionspreis zählt)", k && (k.preis + " = " + k.soll));
+  if(k){
+    await p.click("[data-dazu-beide]"); await p.waitForTimeout(500);
+    const r = await p.evaluate(namen => ({ drin: namen.map(n => !!merk[n]),
+      karten: namen.map(n => { const x = document.querySelector('.dazu-karte[data-name="' + encodeURIComponent(n) + '"]'); return !!x && x.classList.contains("drin"); }),
+      weg: !document.querySelector("[data-dazu-beide]"), satz: document.querySelector(".dazu-satz").textContent }), k.namen);
+    pruef(r.drin.every(Boolean) && r.karten.every(Boolean), "„Beides dazu“ legt beide in den Korb, beide Karten „Im Korb“", JSON.stringify(r));
+    pruef(r.weg && r.satz === "Gute Wahl! Noch etwas dazu?", "danach kein zweites Angebot, der Satz lobt", r.satz);
+  }
+  /* Schwelle: Lieferung mit „frei ab 30 €“ — und Gegenfall ohne Schwelle */
+  const z = await p.evaluate(() => {
+    const lese = () => { const e = document.querySelector(".dazu-ziel"); if(!e) return null;
+      const i = e.querySelector(".dazu-ziel-spur i");
+      return { text: e.querySelector(".dazu-ziel-text").textContent, x: +new DOMMatrixReadOnly(getComputedStyle(i).transform).a.toFixed(2) }; };
+    const alt = { an:LIEFER.an, g:LIEFER.gratis_ab, m:LIEFER.mindest, lm:liefermodus };
+    LIEFER.an = true; LIEFER.mindest = 0; LIEFER.gratis_ab = 30; liefermodus = true;
+    const summe = merkSumme();
+    auswahlNeuMitFeldern(); const mit = lese();
+    LIEFER.gratis_ab = 0; auswahlNeuMitFeldern(); const ohne = lese();
+    LIEFER.gratis_ab = Math.max(1, Math.floor(summe) - 1); auswahlNeuMitFeldern(); const erreicht = lese();
+    LIEFER.an = alt.an; LIEFER.gratis_ab = alt.g; LIEFER.mindest = alt.m; liefermodus = alt.lm; auswahlNeuMitFeldern();
+    return { summe, mit, ohne, erreicht, soll: t("Noch {b} bis zur kostenlosen Lieferung", {b: preisText(30 - summe)}), anteil: +(summe / 30).toFixed(2) };
+  });
+  pruef(!!z.mit && z.mit.text === z.soll && Math.abs(z.mit.x - z.anteil) <= .02, "Lieferung frei ab 30 €: Satz mit dem Rest und Balken im richtigen Anteil", JSON.stringify(z.mit) + " soll " + z.anteil);
+  pruef(!z.ohne && !z.erreicht, "ohne Schwelle oder schon darüber: kein Balken", JSON.stringify([z.ohne, z.erreicht]));
+  /* Rad am Ende der Reihe: führt ins Foodroulette und dreht */
+  const rad = await p.$(".dazu-reihe .dazu-rad");
+  pruef(!!rad, "am Ende der Reihe: „Das Rad entscheiden lassen“");
+  if(rad){
+    const letzte = await p.evaluate(() => { const r = [...document.querySelectorAll(".dazu-reihe > *")]; return r[r.length - 1].classList.contains("dazu-rad"); });
+    pruef(letzte, "… als letzte Karte");
+    await p.evaluate(() => { const r = document.querySelector(".dazu-reihe"); r.scrollLeft = r.scrollWidth; });
+    await rad.click(); await p.waitForTimeout(300);
+    const r = await p.evaluate(() => ({ seite: seiteJetzt, modus: frModus,
+      laeuft: !!document.getElementById("frScheibe") && document.getElementById("frScheibe").getAnimations().some(a => a.playState === "running") }));
+    pruef(r.seite === "entdecken" && r.modus === "rad" && r.laeuft, "… ein Tipp: Foodroulette öffnet und das Rad dreht", JSON.stringify(r));
+  }
+  pruef(!fehler.length, "keine Laufzeitfehler", fehler[0] || "still");
+  await ctx.close();
+
+  /* Kontrast: jede Schrift in der Reihe, hell und dunkel, mit einer Karte „Im Korb“ */
+  for(const licht of ["hell", "dunkel"]){
+    const q = await hubAuf(br, haus, 390, { [erstes.n]: { n:erstes.n, p:erstes.p, b:"", m:1 } });
+    await q.p.evaluate(l => lichtSetzen(l), licht);
+    /* Hell/Dunkel blendet über (Farbübergang) — erst danach messen. */
+    await q.p.waitForTimeout(900);
+    await q.p.evaluate(() => { LIEFER.an = true; LIEFER.gratis_ab = 99; liefermodus = true; auswahlNeuMitFeldern(); });
+    /* Zweimal gemessen: vorher steht „Mach es komplett“, nachher eine Karte „Im Korb“. */
+    const KONTRAST = () => {
+      const zahl = t => { const s = String(t);
+        const m = s.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/);
+        if(m) return [m[1] * 255, m[2] * 255, m[3] * 255].concat(m[4] !== undefined ? [+m[4]] : []);
+        return (s.match(/[\d.]+/g) || []).map(Number); };
+      const kanal = c => { c /= 255; return c <= .03928 ? c / 12.92 : Math.pow((c + .055) / 1.055, 2.4); };
+      const L = p => .2126 * kanal(p[0]) + .7152 * kanal(p[1]) + .0722 * kanal(p[2]);
+      const misch = (o, u) => { const a = o.length > 3 ? o[3] : 1; return [0, 1, 2].map(i => o[i] * a + u[i] * (1 - a)); };
+      /* Ein Verlauf steht in backgroundImage, nicht in backgroundColor
+         (Gegenbeweis 09.10.: die Rad-Karte mit Verlauf blieb ungemessen,
+         die Probe stieg an ihr vorbei auf den Seitengrund). Gerechnet
+         wird gegen JEDE Kante des Verlaufs, gemeldet die schlechteste. */
+      const kanten = st => (String(st.backgroundImage).match(/color\(srgb[^)]*\)|rgba?\([^)]*\)/g) || []).map(zahl).filter(v => v.length >= 3);
+      const gruende = el => { const st = []; let k = el;
+        while(k){ const cs = getComputedStyle(k), b = zahl(cs.backgroundColor), v = kanten(cs);
+          if(v.length){ st.push(v); if(v.every(x => x.length === 3 || x[3] === 1)) break; }
+          if(b.length >= 3 && (b.length < 4 || b[3] > 0)) st.push([b]);
+          if(b.length === 3 || b[3] === 1) break; k = k.parentElement; }
+        if(!st.length) return [[255, 255, 255]];
+        const n = Math.max(...st.map(l => l.length)), aus = [];
+        for(let i = 0; i < n; i++){
+          const spur = st.map(l => l[Math.min(i, l.length - 1)]);
+          let u = spur.pop(); if(u.length > 3) u = misch(u, [255, 255, 255]);
+          while(spur.length) u = misch(spur.pop(), u);
+          aus.push(u);
+        }
+        return aus; };
+      const aus = [];
+      document.querySelectorAll(".dazu-satz, .dazu-pille, .dazu-name, .dazu-preis, .dazu-menge, .dazu-ziel-text, .dazu-rad .dazu-grund, .dazu-rad .dazu-name, .dazu-beide, .dazu-komplett-text .dazu-grund, .dazu-komplett-text b").forEach(el => {
+        if(!el.textContent.trim()) return;
+        const c = zahl(getComputedStyle(el).color);
+        const werte = gruende(el).map(g => { const a = L(misch(c, g)), b = L(g); return (Math.max(a, b) + .05) / (Math.min(a, b) + .05); });
+        aus.push([el.className, +Math.min(...werte).toFixed(2)]);
+      });
+      return aus;
+    };
+    const vorher = await q.p.evaluate(KONTRAST);
+    pruef(vorher.some(x => /dazu-grund/.test(x[0])) && await q.p.evaluate(() => !!document.querySelector(".dazu-komplett")), "Voraussetzung: „Mach es komplett“ steht beim Messen da");
+    await q.p.click(".dazu-reihe [data-dazu]"); await q.p.waitForTimeout(400);
+    const r = vorher.concat(await q.p.evaluate(KONTRAST));
+    const schlecht = r.filter(x => x[1] < 4.5);
+    pruef(r.length >= 8 && !schlecht.length, licht + ": jede Schrift in „Passt dazu“ ≥ 4,5:1",
+      schlecht.length ? schlecht.map(x => x.join(" ")).join(", ") : r.length + " Stellen, kleinste " + Math.min(...r.map(x => x[1])));
+    for(const breite of [360, 430]){
+      await q.p.setViewportSize({ width:breite, height:844 }); await q.p.waitForTimeout(150);
+      const m = await q.p.evaluate(() => ({ ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        klein: [...document.querySelectorAll(".dazu-plus, .dazu-menge button, .dazu-beide, .dazu-rad")].filter(b => { const r = b.getBoundingClientRect(); return r.width < 44 || r.height < 44; }).length }));
+      pruef(m.ueber <= 0 && !m.klein, licht + " · " + breite + " px: kein Überlauf, jede Tapfläche ≥ 44 px", JSON.stringify(m));
+    }
+    pruef(!q.fehler.length, licht + ": keine Laufzeitfehler", q.fehler[0] || "still");
+    await q.ctx.close();
+  }
+}
+
 (async () => {
   const br = await chromium.launch();
   for(const haus of ["chocolamour", "blend"]){
@@ -214,7 +332,7 @@ async function details(br, haus, erstes){
 
     const { p, ctx, fehler } = await hubAuf(br, haus, 390, { [erstes.n]: { n:erstes.n, p:erstes.p, b:"", m:1 } });
     const lage = await p.evaluate(name => {
-      const karten = [...document.querySelectorAll(".dazu-karte")];
+      const karten = [...document.querySelectorAll(".dazu-karte:not(.dazu-rad)")];
       const namen = karten.map(k => decodeURIComponent(k.querySelector("[data-dazu]").dataset.dazu));
       const ohnePreis = namen.filter(x => { const g = findeGericht(x); return !g || g.p === "–"; });
       const orte = namen.map(x => (gerichtOrt(x) || {}).karte);
@@ -222,7 +340,7 @@ async function details(br, haus, erstes){
         getraenkeDa: GETRAENKE.some(gr => gr.eintraege.some(e => e.p !== "–")) || COCKTAILS.some(gr => gr.eintraege.some(e => e.p !== "–")),
         kopf:(document.querySelector(".dazu-kopf") || {}).textContent || "" };
     }, erstes.n);
-    pruef(lage.anzahl >= 1 && lage.anzahl <= 4, "ein bis vier Vorschläge stehen da", lage.anzahl + ": " + lage.namen.join(", "));
+    pruef(lage.anzahl >= 1 && lage.anzahl <= 6, "ein bis sechs Vorschläge stehen da", lage.anzahl + ": " + lage.namen.join(", "));
     pruef(!lage.doppelt, "nichts, was schon im Korb liegt");
     pruef(!lage.ohnePreis.length, "nichts ohne Preis", lage.ohnePreis.join(", ") || "keins");
     if(lage.getraenkeDa)
@@ -251,7 +369,30 @@ async function details(br, haus, erstes){
       artikel: (document.getElementById("artikelzahl") || {}).textContent }), erster);
     pruef(nach.imKorb, "„+“ legt es in den Korb", erster);
     pruef(nach.zeile, "die Zeile erscheint in der Auswahl");
-    pruef(!nach.nochVorgeschlagen, "und steht nicht mehr bei den Vorschlägen");
+    /* Seit 09.10.: Die Karte BLEIBT stehen („Im Korb“, −/+), und die
+       Reihe ordnet sich nicht um — sonst verlor der Gast, was er gerade
+       angetippt hatte (vorher: Karte weg, ganze Reihe neu). */
+    const karte = await p.evaluate(name => {
+      const k = document.querySelector('.dazu-karte[data-name="' + encodeURIComponent(name) + '"]');
+      const reihe = [...document.querySelectorAll(".dazu-karte:not(.dazu-rad)")].map(x => decodeURIComponent(x.dataset.name));
+      const knoepfe = k ? [...k.querySelectorAll("[data-dazu-m]")].map(b => b.getBoundingClientRect()) : [];
+      return { da: !!k, drin: !!k && k.classList.contains("drin"), zahl: k && (k.querySelector(".dazu-mz") || {}).textContent,
+               pille: k && (k.querySelector(".dazu-pille") || {}).textContent, plus: !!(k && k.querySelector("[data-dazu]")),
+               reihe, ziele: knoepfe.map(r => Math.round(Math.min(r.width, r.height))) };
+    }, erster);
+    pruef(karte.da && karte.drin && karte.zahl === "1" && !karte.plus, "die Karte bleibt stehen, „Im Korb“ mit −/+", JSON.stringify(karte));
+    pruef(karte.reihe.join("|") === lage.namen.join("|"), "die Reihe ordnet sich nach „+“ nicht um", karte.reihe.join(", "));
+    pruef(karte.ziele.length === 2 && karte.ziele.every(x => x >= 44), "−/+ auf der Karte je ≥ 44 px", karte.ziele.join("/"));
+    await p.click('.dazu-karte[data-name="' + encodeURIComponent(erster) + '"] [data-dazu-m="1"]');
+    await p.waitForTimeout(400);
+    const zwei = await p.evaluate(name => ({ m: (merk[name] || {}).m, mz: (document.querySelector('.dazu-karte[data-name="' + encodeURIComponent(name) + '"] .dazu-mz') || {}).textContent,
+      zeile: (document.querySelector('.merkzeile[data-zeile="' + encodeURIComponent(name) + '"] .mz') || {}).textContent }), erster);
+    pruef(zwei.m === 2 && zwei.mz === "2" && zwei.zeile === "2", "„+“ auf der Karte zählt hoch — in Karte UND Korbzeile", JSON.stringify(zwei));
+    await p.click('.dazu-karte[data-name="' + encodeURIComponent(erster) + '"] [data-dazu-m="-1"]'); await p.waitForTimeout(300);
+    await p.click('.dazu-karte[data-name="' + encodeURIComponent(erster) + '"] [data-dazu-m="-1"]'); await p.waitForTimeout(400);
+    const raus = await p.evaluate(name => ({ imKorb: !!merk[name],
+      plus: !!document.querySelector('.dazu-karte[data-name="' + encodeURIComponent(name) + '"] [data-dazu]') }), erster);
+    pruef(!raus.imKorb && raus.plus, "zweimal „−“ nimmt es heraus, die Karte zeigt wieder „+“", JSON.stringify(raus));
     if(tisch) pruef(nach.tisch === "12", "eine getippte Tischnummer bleibt stehen", nach.tisch);
 
     /* Kein Überlauf auf dem schmalsten Telefon. */
@@ -270,6 +411,7 @@ async function details(br, haus, erstes){
     await ctx.close();
 
     await vielfalt(br, haus, erstes);
+    await mehr(br, haus, erstes);
     await details(br, haus, erstes);
   }
   await br.close();
