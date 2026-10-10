@@ -1728,7 +1728,15 @@ textarea{resize:vertical;min-height:66px}
 .auswahlfeld:not(.offen) .auswahlpanel{transition-duration:var(--t-druck)}
 .auswahlpanel input[type=text]{margin-bottom:10px}
 
-.chipgitter{display:flex;flex-wrap:wrap;gap:8px;max-height:190px;overflow-y:auto}
+/* Kein eigener Scrollbereich (§3.8): Auf dem Telefon lag das Panel halb
+   breit über der rechten Spalte, „Für die Runde“ war abgeschnitten und
+   ein Wisch rollte die Liste statt des Blatts (Foto 10.10.). Das Panel
+   spannt jetzt über die ganze Zeile (Anker: .zweispalt), die Chips
+   fließen mit. */
+.chipgitter{display:flex;flex-wrap:wrap;gap:8px}
+.zweispalt:has(#katFeld){position:relative}
+#katFeld{position:static}
+#katFeld .auswahlpanel{left:0;right:0;top:100%}
 .katchip{
   min-height:44px;padding:0 14px;border-radius:999px;
   border:1px solid var(--linie);background:transparent;color:var(--kreide);
@@ -2590,7 +2598,13 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
   border-radius:var(--r);padding:10px 12px;margin:0 0 14px;font-size:13px;color:var(--gedaempft);
 }
 .entwurf-hinweis[hidden]{display:none}
-.entwurf-hinweis span{flex:1;min-width:0;line-height:1.4}
+/* 10.10., Bildschirmfoto vom iPad: „Verwerfen“ erbte width:100% von
+   .knopf (die Klasse „schmal“ gab es nie) und drückte den Satz in eine
+   Spalte von drei Buchstaben, darüber lag der Knopf. Jetzt: Satz nimmt
+   den Platz, Knopf so breit wie sein Wort, bei Enge darunter. */
+.entwurf-hinweis{flex-wrap:wrap}
+.entwurf-hinweis span{flex:1 1 220px;min-width:0;line-height:1.4}
+.entwurf-hinweis .knopf{flex:0 0 auto;width:auto;margin:0;padding:10px 18px;min-height:44px}
 .bk-mini{flex:0 0 44px;width:44px;height:44px;border-radius:10px;border:1px solid var(--linie);overflow:hidden}
 .bk-mini img{width:100%;height:100%;object-fit:contain;display:block}
 .bk-weg{width:auto;padding:9px 12px;font-size:13px;min-height:44px}
@@ -14951,7 +14965,10 @@ function entwurfFormLesen(){
 }
 function entwurfFormAnwenden(w){
   $("#fName").value = w.name || ""; $("#fBeschr").value = w.beschreibung || "";
-  $("#fPreis").value = w.preis || ""; $("#fKat").value = w.kategorie || "";
+  /* Wie beim Öffnen eines Gerichts: Komma und zwei Stellen. Ein alter
+     Entwurf trug den Rohwert („10.9“, Foto 10.10.). */
+  const wp = preisAusFeld(String(w.preis || ""));
+  $("#fPreis").value = wp ? wp.toFixed(2).replace(".", ",") : (w.preis || ""); $("#fKat").value = w.kategorie || "";
   katWertAktualisieren(); katPanelSchliessen(false);
   stoffeSetzen("#fAllergene", w.allergene); stoffeSetzen("#fZusatz", w.zusatzstoffe);
   $("#fStoffHinweis").value = w.stoff_hinweis || "";
