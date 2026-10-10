@@ -1635,7 +1635,10 @@ function zeichne(){
     }
 
     var knopfText = alleAbgehakt ? "Wieder öffnen"
-      : (b.status === "neu" ? "Starten" : "Fertig");
+      /* „Abholbereit“ statt „Fertig“ (Wunsch 10.10.): Der Haken sagt
+         dem Service im Board Bescheid — mit eigenem Ton und Platz unter
+         „Zum Abholen“, bis dort jemand „Gebracht“ tippt. */
+      : (b.status === "neu" ? "Starten" : "Abholbereit");
     var knopfArt  = alleAbgehakt ? "zurueck" : "haupt";
     var aktion    = alleAbgehakt ? "oeffnen" : (b.status === "neu" ? "starten" : "fertig");
 
@@ -1792,7 +1795,10 @@ function ausfuehren(b, tun, zusatz){
   Object.keys(felder).forEach(function(f){ b[f] = felder[f]; });
   zeichne();
 
-  setzeBon(b.id, felder).catch(function(e){
+  setzeBon(b.id, felder).then(function(){
+    if(tun === "fertig") toast((b.tisch ? "Tisch " + b.tisch : "#" + (b.tagesnummer != null ? b.tagesnummer : "?")) +
+                          " abholbereit – der Service bekommt Bescheid.", "ok");
+  }, function(e){
     toast("„" + (b.tisch||"?") + "“ nicht gespeichert.", "err", {
       text:"Erneut", tun: function(){ ausfuehren(b, tun, zusatz); }
     });

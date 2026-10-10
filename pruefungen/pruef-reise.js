@@ -13,8 +13,10 @@
    2 · KEINE Verzögerung: Die Adresse ist im selben Takt wie der Tipp
        die neue, und die neue Seite ist gezeichnet (seiteJetzt), bevor
        die Ebene halb durch ist. Das ist der Anlassfall.
-   3 · Kurz: 180–320 ms, beim ERSTEN Öffnen genauso wie danach (keine
-       lange Fassung mehr).
+   3 · Seit 10.10. (Wunsch: „lediglich die Kachel soll sich einmal
+       expanden, smooth ankommen“): Die Fläche zieht DECKEND in der
+       Farbe der Kachel auf und blendet dann aus, ≈ 420 ms, beim ersten
+       Öffnen genauso wie danach; die Seite kommt als EIN Stück an.
    4 · Die Ebene wächst aus der Kachel: Im ersten Bild deckt die Fläche
        das Rechteck der angetippten Kachel (± 2 px), im letzten den
        Schirm. Nur transform und opacity (getAnimations), kein Text.
@@ -106,6 +108,7 @@ async function hubAuf(browser, haus, opt = {}) {
         await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
         const kr = a.getBoundingClientRect();
         const name = { rot: "--rot", pistazie: "--pistazie" }[a.dataset.farbe] || "--gold";
+        const kachelGrund = getComputedStyle(a).backgroundColor;
         const t0 = performance.now();
         a.click();
         const hashSofort = location.hash;
@@ -125,6 +128,11 @@ async function hubAuf(browser, haus, opt = {}) {
           const rund = q => ({ l: Math.round(q.left), t: Math.round(q.top), r: Math.round(q.right), b: Math.round(q.bottom) });
           anis.forEach(x => { x.pause(); x.currentTime = 0; });
           aus.start = rund(fl.getBoundingClientRect());
+          /* Deckend, solange sie aufzieht (seit 10.10.: vorher halb
+             durchsichtig — man sah beide Seiten zugleich). */
+          aus.deckend = [0, .5, .98].map(q => { anis.forEach(x => { x.currentTime = REISE_AUF * q; });
+            return +getComputedStyle(fl).opacity; });
+          aus.grund = { flaeche: getComputedStyle(fl).backgroundColor, kachel: kachelGrund };
           anis.forEach(x => { x.currentTime = x.effect.getComputedTiming().duration - 1; });
           aus.ende = rund(fl.getBoundingClientRect());
           anis.forEach((x, i) => { x.currentTime = halte[i]; x.play(); });
@@ -144,6 +152,11 @@ async function hubAuf(browser, haus, opt = {}) {
           await new Promise(r => setTimeout(r, 5));
         }
         aus.gezeichnet = gezeichnet;
+        /* Ankunft als EIN Stück: die Seite gleitet herein, ihre Teile
+           nicht einzeln (vorher gestaffelt). */
+        const seite = document.querySelector("#inhalt > .seite");
+        aus.ankunft = seite ? { ganz: seite.getAnimations().map(x => x.animationName).join(","),
+          teile: [...seite.children].reduce((n, c) => n + c.getAnimations().filter(x => x.animationName === "rein").length, 0) } : null;
         await new Promise(r => setTimeout(r, 600));
         aus.dauer = window.__reise.weg - window.__reise.an;
         aus.rest = document.querySelectorAll(".reise").length;
@@ -155,8 +168,15 @@ async function hubAuf(browser, haus, opt = {}) {
       pruef(erst.hashSofort === ziele[0], "keine Verzögerung: Adresse wechselt im selben Takt wie der Tipp", erst.hashSofort);
       pruef(erst.gezeichnet >= 0 && erst.gezeichnet < 130, "keine Verzögerung: neue Seite gezeichnet, bevor die Ebene halb durch ist",
         Math.round(erst.gezeichnet) + " ms (vorher 1154 ms)");
-      pruef(erst.dauer >= 180 && erst.dauer <= 340 && erst.rest === 0, "erstes Öffnen: kurz (180–320 ms) und danach entfernt",
+      pruef(erst.dauer >= 340 && erst.dauer <= 500 && erst.rest === 0, "erstes Öffnen: aufziehen + ausblenden (≈ 420 ms) und danach entfernt",
         Math.round(erst.dauer) + " ms");
+      pruef(!!erst.deckend && erst.deckend.every(o => o === 1), "die Fläche ist deckend, solange sie aufzieht (keine zwei Seiten zugleich)",
+        JSON.stringify(erst.deckend));
+      const durchsichtig = /rgba\([^)]*,\s*0\)|transparent/.test((erst.grund || {}).kachel || "");
+      pruef(!!erst.grund && (durchsichtig || erst.grund.flaeche === erst.grund.kachel),
+        "die Fläche hat die Farbe, die die Kachel zeigt", JSON.stringify(erst.grund));
+      pruef(!!erst.ankunft && /rein/.test(erst.ankunft.ganz) && erst.ankunft.teile === 0,
+        "die Seite kommt als EIN Stück an (nicht gestaffelt)", JSON.stringify(erst.ankunft));
       const k = erst.kachel, st = erst.start, en = erst.ende;
       const nah = (x, y) => Math.abs(x - y) <= 2;
       pruef(!!st && nah(st.l, k.l) && nah(st.t, k.t) && nah(st.r, k.r) && nah(st.b, k.b),
@@ -171,7 +191,7 @@ async function hubAuf(browser, haus, opt = {}) {
       await p.waitForTimeout(300);
       const zweit = await messe(ziele[1] || ziele[0]);
       pruef(Math.abs(zweit.dauer - erst.dauer) < 40 && zweit.gezeichnet >= 0 && zweit.gezeichnet < 130,
-        "zweites Öffnen: genauso kurz und genauso sofort (keine lange Fassung mehr)",
+        "zweites Öffnen: genauso lang und genauso sofort (keine lange Fassung mehr)",
         Math.round(erst.dauer) + " / " + Math.round(zweit.dauer) + " ms");
       pruef(fehler.length === 0, "keine Skriptfehler", fehler[0] || "still");
       await ctx.close();

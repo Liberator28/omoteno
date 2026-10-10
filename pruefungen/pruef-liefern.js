@@ -589,10 +589,18 @@ async function hubPille(br){
   ok(mitte.laeuft && mitte.d > 0 && mitte.d < 60, "der Daumen gleitet (laufende Transition, unterwegs)", mitte.d.toFixed(1) + " px");
   ok(Math.abs(mitte.d + mitte.i) <= 0.5, "die Symbolkopie bleibt deckungsgleich (Daumen + Kopie = 0)",
      mitte.d.toFixed(2) + " + " + mitte.i.toFixed(2));
-  ok(mitte.quetscht, "der Daumen staucht sich beim Losfahren");
+  /* Seit 10.10. („das Springen … flüssiger und smoother“): keine
+     Stauchung, kein Ruck der Symbole. */
+  ok(!mitte.quetscht && !(await h.p.evaluate(() => [...document.querySelectorAll(".lw-zeichen svg")]
+     .some(s => s.getAnimations().length))), "keine Stauchung, kein Ruckeln der Symbole");
   const origin = await h.p.evaluate(() => getComputedStyle(document.querySelector(".lw-name")).transformOrigin);
   ok(parseFloat(origin) > 40, "der Name wächst von der gewählten Seite aus (rechts)", origin);
-  await h.p.waitForTimeout(700);
+  /* Kein Überschwingen: die Lage steigt nur und geht nie über das Ziel. */
+  const bahn = await h.p.evaluate(x => new Promise(ok => { const z = []; const t0 = performance.now();
+    (function f(){ z.push(eval(x)); if (performance.now() - t0 < 520) requestAnimationFrame(f); else ok(z); })(); }), x(".lw-daumen"));
+  ok(Math.max(...bahn) <= 44.5 && bahn.every((v, i) => !i || v >= bahn[i - 1] - 0.3),
+     "der Daumen rollt aus, ohne überzuschwingen (nur steigend, nie über 44 px)", "max " + Math.max(...bahn).toFixed(1) + " · " + bahn.length + " Bilder");
+  await h.p.waitForTimeout(300);
   const ende = await h.p.evaluate(x => ({ d: eval(x[0]), i: eval(x[1]) }), [x(".lw-daumen"), x(".lw-innen")]);
   ok(Math.abs(ende.d - 44) < 0.5 && Math.abs(ende.i + 44) < 0.5, "Endlage: Daumen auf dem Roller", ende.d + " / " + ende.i);
 

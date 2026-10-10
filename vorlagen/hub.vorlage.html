@@ -414,7 +414,18 @@ h1{
      und die Vorschau im Board zeigt genau das. */
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
-#status{display:flex;flex:none}
+/* Öffnungsstand oben rechts (Wunsch 10.10.), nicht mehr in der
+   Knopfzeile. Neben dem Siegel, auf dessen Mitte; nie breiter als der
+   Platz bis zum Siegel (bei 320 px ≈ 109 px, dann zweizeilig). */
+#status{
+  position:absolute;z-index:3;top:calc(var(--rand-oben) + 14px);inset-inline-end:var(--rand);
+  display:flex;max-width:calc(50% - 29px - var(--rand) - 14px);
+}
+/* Wenig Text im Kopf: auf der Startseite nur Siegel und Slogan — der
+   Gruß steht weiter im h1 (Vorleseprogramme, Seitentitel), aber nicht
+   im Bild. */
+body[data-ansicht="start"] h1{position:absolute;width:1px;height:1px;margin:-1px;padding:0;
+  overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;min-height:0}
 /* ═══ Unterseiten: eine Leiste statt eines Kopfes (09.10.) ════════
    „Spare Text im Header — kompakt und schnell.“
    Auf jeder Unterseite: kleines Siegel, Name, Knöpfe in EINER Zeile;
@@ -432,34 +443,9 @@ body[data-ansicht="unter"] h1{font-size:18px;text-align:start;justify-self:stret
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body[data-ansicht="unter"] .claim,
 body[data-ansicht="unter"] #status{display:none}
-body[data-ansicht="unter"] .kopfwahl{justify-self:end;gap:8px}
-/* Dieselbe Rasterfläche wie h1 (Zeile 395) — beide überlappen sich in
-   DERSELBEN Zelle, glanzflug liegt im Auszeichnungstext danach und
-   malt deshalb über den Titel, ohne eine eigene Zeile im Raster zu
-   öffnen. h1 selbst behält seine Farbe unverändert (siehe Kommentar
-   am Auszeichnungstext) — glanzflug ist nur ein heller, schmaler
-   Streifen, der einmal alle paar Sekunden diagonal durchläuft. */
-.glanzflug{
-  grid-area:titel;justify-self:stretch;align-self:stretch;
-  pointer-events:none;overflow:hidden;position:relative;
-  mix-blend-mode:overlay;
-}
-/* Nur transform bewegt sich (Bewegungs-Skill §1) — der Streifen ist
-   40% breit und schiebt sich per translateX komplett durch, statt
-   background-position zu animieren (das kostet Neuanstrich, nicht
-   nur die Grafikkarte). */
-.glanzflug::before{
-  content:"";position:absolute;top:0;bottom:0;left:0;width:40%;
-  background:linear-gradient(100deg,
-    transparent 0%, rgba(255,255,255,.5) 50%, transparent 100%);
-  transform:translateX(-140%);
-  animation:herzGlanz 6s ease-in-out 1.2s infinite;
-}
-@keyframes herzGlanz{
-  0%,55%{transform:translateX(-140%)}
-  85%,100%{transform:translateX(340%)}
-}
-@media (prefers-reduced-motion:reduce){ .glanzflug::before{animation:none;opacity:0} }
+body[data-ansicht="unter"] .kopfwahl{justify-self:end}
+/* Der Glanzstreifen über dem Titel ist seit 10.10. weg („dieser Flash
+   hinter ‚Guten Abend‘ soll weg“). */
 
 /* Aufsteigende, transparente Herzen — reine Deko, Farbe aus
    --band-text (nie hartkodiert, passt sich jedem Haus an). Eigene
@@ -505,7 +491,6 @@ header.kopf-ruht, header.kopf-ruht *, header.kopf-ruht *::before, header.kopf-ru
    Kopf beim Laden – genau das misst CLS. */
 h1{min-height:24px}
 .claim{min-height:18px}
-#status{min-height:44px}
 main{min-height:60vh}
 /* Die Laternen sind ein echtes Bild mit eigenem Seitenverhältnis und
    wachsen mit der Kartenbreite mit (bis ~87px bei den vollen 540px
@@ -515,6 +500,12 @@ main{min-height:60vh}
    die Quaste in die erste Karte hineingehangen. Nur für dieses Haus –
    html.hat-laternen wird ausschließlich von kopfbandSetzen() gesetzt. */
 html.hat-laternen main{margin-top:96px}
+/* Auf Unterseiten steht der Zurück-Knopf zwischen Kopf und Inhalt —
+   also genau unter den Laternen (Foto 10.10.: Quasten über „Zurück“,
+   darunter ein leerer Streifen von 96 px). Der Freiraum wandert dann
+   vor den Knopf, der Inhalt folgt ohne zweiten Abstand. */
+html.hat-laternen body[data-ansicht="unter"] .zurueck{margin-top:84px}
+html.hat-laternen body[data-ansicht="unter"] main{margin-top:0}
 
 /* ═══ Hintergrund · Farbwolken ═════════════════════════════════════
    Acht weiche Kreise in drei Tiefenebenen. Sie stehen fest und wandern
@@ -592,19 +583,45 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 .klecks.k3{width:50vw;height:50vw;top: 74%;left:-10%;background:var(--tusche-gold)}
 .klecks.k4{width:32vw;height:32vw;top:  6%;left: 52%;background:var(--tusche-blatt)}
 
-/* Öffnungsanzeige */
+/* ═══ Öffnungsanzeige (Wunsch 10.10.) ═══════════════════════════
+   Eine kleine Glas-Box oben rechts.
+   Geschlossen: eine digitale Sanduhr — ein Raster aus LED-Punkten füllt
+   sich von unten mit buntem Sand, je näher die Öffnung rückt (Anteil
+   der Zeit seit dem letzten Schließen); ein Korn fällt nach.
+   Offen: „Geöffnet bis …“ in Regenbogen-LED — jeder Buchstabe eine
+   Farbe, zu 40 % in die Bandschrift gemischt (bei 50 % kam Minhkeeys rotes Band auf 4,16:1), damit er auf JEDEM
+   Band lesbar bleibt (§5.1, gemessen je Buchstabe); darunter eine
+   laufende LED-Leiste. Kein background-clip:text (§5.2: das machte
+   die Farbe für jede Messung unsichtbar). Bewegt wird nur transform. */
 .status{
-  display:inline-flex;align-items:center;gap:8px;font-size:12.5px;
-  letter-spacing:.1px;border-radius:999px;padding:6px 13px 6px 11px;
-  background:rgba(251,246,242,.09);color:rgba(251,246,242,.72);
-  border:1px solid rgba(251,246,242,.12);
+  position:relative;display:inline-flex;align-items:center;gap:7px;overflow:hidden;isolation:isolate;
+  padding:6px 10px 8px;border-radius:12px;font-size:11.5px;line-height:1.2;font-weight:650;letter-spacing:.1px;
+  color:var(--band-text);
+  background:color-mix(in srgb, var(--band-text) 9%, transparent);
+  border:1px solid color-mix(in srgb, var(--band-text) 22%, transparent);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 18%, transparent), 0 6px 16px -10px rgba(0,0,0,.6);
+  -webkit-backdrop-filter:blur(10px) saturate(150%);backdrop-filter:blur(10px) saturate(150%);
 }
-.status i{width:6px;height:6px;border-radius:50%;background:currentColor;display:block;flex:none}
-.status.offen{color:#B7D48F;border-color:rgba(183,212,143,.28);background:rgba(183,212,143,.10)}
-/* Die einzige Dauerbewegung im ganzen Hub. Sie sagt „wir haben
-   offen" — das darf sie, alles andere pulsiert nicht mehr. */
-.status.offen i{animation:atmen 3.4s ease-in-out infinite}
-@keyframes atmen{0%,100%{opacity:1}50%{opacity:.35}}
+.st-text{min-width:0}
+.st-text span{color:color-mix(in srgb, hsl(var(--h, 0) 100% 60%) 40%, var(--band-text))}
+/* Die laufende LED-Leiste unten in der Box: ein doppelt so breiter
+   Regenbogen gleitet durch (transform), eine Punktmaske macht LEDs daraus. */
+.st-led{position:absolute;left:8px;right:8px;bottom:2px;height:2px;overflow:hidden;pointer-events:none;
+  -webkit-mask:radial-gradient(circle, #000 .8px, transparent 1.05px) 0 50%/4px 2px repeat-x;
+          mask:radial-gradient(circle, #000 .8px, transparent 1.05px) 0 50%/4px 2px repeat-x}
+.st-led::before{content:"";position:absolute;top:0;bottom:0;left:0;width:200%;
+  background:linear-gradient(90deg,#ff5f6d,#ffc371,#f9f871,#7cff9b,#5fd3ff,#9b8cff,#ff7ad9,#ff5f6d,#ffc371,#f9f871,#7cff9b,#5fd3ff,#9b8cff,#ff7ad9,#ff5f6d);
+  animation:stLed 4.5s linear infinite}
+@keyframes stLed{to{transform:translateX(-50%)}}
+/* Die Sanduhr: 9 × 5 LED-Punkte in einem Glasfenster. */
+.st-sand{flex:none;width:30px;height:18px;border-radius:5px;display:block;
+  background:rgba(0,0,0,.2);border:1px solid color-mix(in srgb, var(--band-text) 20%, transparent)}
+.st-sand svg{display:block;width:100%;height:100%}
+.st-sand .aus{fill:var(--band-text);opacity:.14}
+.st-korn{animation:stKorn 1.8s cubic-bezier(.5,0,.75,0) infinite}
+@keyframes stKorn{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(var(--fall, 9px));opacity:0}}
+@media (prefers-reduced-motion:reduce){ .st-led::before,.st-korn{animation:none} .st-korn{display:none}
+  .fr-rad.dreht .fr-lichter i::before{animation:none} }
 
 /* ═══ Der Guss ═══════════════════════════════════════════════════
    Vorher: eine Fläche, die von scaleY(.12) auf 1 wächst. Das liest
@@ -777,11 +794,24 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 /* Wunsch 30.09.: „alles eher mittig", Platz sparen — die Zeile steht
    jetzt in der Mitte, beide Knöpfe als gleich große Kreise, dazwischen
    (wo der Betrieb liefert) der Liefer-Schalter. */
+/* Seit 10.10. eine verbundene Kommandozentrale: Licht, Bestellart und
+   Sprache in EINER Glasleiste, durch feine Striche getrennt — statt
+   drei loser Kreise. Jeder Griff bleibt ≥ 44 px. */
 .kopfwahl{
   grid-area:kopfwahl;justify-self:center;align-self:center;
-  display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:10px;
-  padding-top:4px;
+  display:flex;align-items:center;justify-content:center;gap:0;
+  margin-top:4px;padding:2px;border-radius:999px;
+  background:color-mix(in srgb, var(--band-text) 9%, transparent);
+  border:1px solid color-mix(in srgb, var(--band-text) 22%, transparent);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 16%, transparent), 0 10px 24px -14px rgba(0,0,0,.55);
+  -webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);
 }
+.kopfwahl > .lieferwahl,.kopfwahl > .sprachwahl{position:relative;margin-inline-start:9px}
+.kopfwahl > .lieferwahl::before,.kopfwahl > .sprachwahl::before{
+  content:"";position:absolute;top:11px;bottom:11px;inset-inline-start:-5px;width:1px;pointer-events:none;
+  background:color-mix(in srgb, var(--band-text) 24%, transparent)}
+.kopfwahl .lichtknopf,.kopfwahl .sprachknopf,.kopfwahl .lieferwahl{background:transparent;border-color:transparent}
+.kopfwahl .lichtknopf.fest,.kopfwahl .sprachwahl.offen .sprachknopf{border-color:transparent}
 .lichtknopf{
   flex:none;
   width:44px;height:44px;padding:0;border-radius:999px;
@@ -826,13 +856,11 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
    vertauscht. Keine feste Farbe.
 
    Bewegt wird nur transform/opacity (Bewegungs-Skill §1):
-   - .lw-daumen gleitet mit Feder hinüber (Überschwingen), die
-     Symbolkopie darin (.lw-innen) läuft mit derselben Kurve
-     gegenläufig — sie bleibt so deckungsgleich mit den Symbolen
-     darunter, und der Farbwechsel sitzt genau an der Daumenkante.
-   - .lw-koerper staucht sich beim Losfahren und federt nach
-     (Squash & Stretch), getrennt von der Verschiebung, weil eine
-     Animation auf transform jede Transition darauf übertönt.
+   - .lw-daumen gleitet hinüber und rollt aus (ease-out, ohne
+     Überschwingen — seit 10.10.), die Symbolkopie darin (.lw-innen)
+     läuft mit derselben Kurve gegenläufig — sie bleibt so deckungsgleich
+     mit den Symbolen darunter, und der Farbwechsel sitzt genau an der
+     Daumenkante.
    - .lw-name wächst aus dem Daumen (scaleX ab Daumenbreite, Ursprung
      auf der gewählten Seite), zeigt den Namen, schrumpft zurück in
      den Daumen und blendet dort unsichtbar aus — gleiche Fläche,
@@ -859,7 +887,7 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
   stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .lw-daumen{
   position:absolute;z-index:2;top:3px;left:2px;width:44px;height:36px;pointer-events:none;
-  transform:translateX(0);transition:transform .44s cubic-bezier(.34,1.28,.55,1);
+  transform:translateX(0);transition:transform .36s cubic-bezier(.22,1,.36,1);
 }
 .lw-koerper{
   display:block;width:100%;height:100%;border-radius:999px;overflow:hidden;
@@ -867,46 +895,33 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
   box-shadow:0 1px 2px rgba(0,0,0,.18), 0 4px 10px -3px rgba(0,0,0,.35);
 }
 .lw-innen{display:flex;width:88px;height:100%;transform:translateX(0);
-  transition:transform .44s cubic-bezier(.34,1.28,.55,1)}
+  transition:transform .36s cubic-bezier(.22,1,.36,1)}
 .lieferwahl[data-wahl="liefern"] .lw-daumen{transform:translateX(44px)}
 .lieferwahl[data-wahl="liefern"] .lw-innen{transform:translateX(-44px)}
-.lieferwahl.zieht .lw-koerper{animation:lw-quetsch .46s cubic-bezier(.3,.7,.4,1)}
-@keyframes lw-quetsch{
-  0%{transform:scale(1,1)} 30%{transform:scale(1.3,.8)}
-  62%{transform:scale(.93,1.06)} 100%{transform:scale(1,1)}
-}
-/* Das Ziel antwortet: der Roller fährt an (Ruck nach hinten, dann nach
-   vorn), das Besteck hüpft einmal — beide Kopien gleich, damit sie
-   deckungsgleich bleiben. */
-.lieferwahl.zieht[data-wahl="liefern"] .lw-roller svg{animation:lw-fahren .56s cubic-bezier(.3,.7,.4,1)}
-.lieferwahl.zieht[data-wahl="haus"] .lw-besteck svg{animation:lw-hopp .5s cubic-bezier(.3,.7,.4,1)}
-@keyframes lw-fahren{
-  0%{transform:translateX(0) rotate(0)} 25%{transform:translateX(-3px) rotate(-8deg)}
-  60%{transform:translateX(3px) rotate(3deg)} 100%{transform:translateX(0) rotate(0)}
-}
-@keyframes lw-hopp{
-  0%{transform:translateY(0) scale(1)} 30%{transform:translateY(-4px) scale(1.08)}
-  60%{transform:translateY(1px) scale(.97)} 100%{transform:translateY(0) scale(1)}
-}
+/* Seit 10.10. ohne Feder: Wunsch „das Springen … flüssiger und
+   smoother“. Vorher liefen vier Bewegungen gleichzeitig — Überschwingen
+   des Daumens (1,28), Stauchung des Körpers (1,3 × 0,8), Ruck der
+   Symbole und ein nachfedernder Name (1,35). Jetzt EINE Bewegung: der
+   Daumen gleitet und rollt aus (ease-out, 360 ms), der Name wächst
+   danach ruhig aus ihm heraus. */
 .lw-name{
   position:absolute;z-index:3;top:3px;bottom:3px;left:2px;right:2px;pointer-events:none;
   display:flex;align-items:center;justify-content:center;padding:0 6px;border-radius:999px;
   background:var(--band-text);color:var(--band);
   font-size:12px;font-weight:650;line-height:1;letter-spacing:.2px;white-space:nowrap;overflow:hidden;
   opacity:0;transform:scaleX(.5);transform-origin:left center;
-  transition:transform .22s cubic-bezier(.5,0,.75,0) .06s, opacity .01s linear .28s;
+  transition:transform .2s cubic-bezier(.5,0,.75,0) .06s, opacity .01s linear .26s;
 }
 .lieferwahl[data-wahl="liefern"] .lw-name{transform-origin:right center}
 .lw-name span{opacity:0;transition:opacity .08s linear}
 .lieferwahl.zeigt .lw-name{
   opacity:1;transform:scaleX(1);
-  transition:transform .36s cubic-bezier(.34,1.35,.6,1) .3s, opacity .01s linear .3s;
+  transition:transform .3s cubic-bezier(.22,1,.36,1) .24s, opacity .01s linear .24s;
 }
-.lieferwahl.zeigt .lw-name span{opacity:1;transition:opacity .16s linear .5s}
-body[data-thema="kaiserlich"] .lieferwahl{border-color:rgba(224,178,78,.55);background:rgba(0,0,0,.18)}
+.lieferwahl.zeigt .lw-name span{opacity:1;transition:opacity .18s linear .4s}
+body[data-thema="kaiserlich"] .lieferwahl{border-color:transparent;background:transparent}
 @media (prefers-reduced-motion:reduce){
   .lw-daumen,.lw-innen,.lw-name,.lw-name span{transition:none}
-  .lieferwahl.zieht .lw-koerper,.lieferwahl.zieht .lw-zeichen svg{animation:none}
   .lieferwahl.zeigt .lw-name,.lieferwahl.zeigt .lw-name span{transition:none}
 }
 
@@ -989,7 +1004,7 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:rgba(224,178,78,.55);back
   box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.06), 0 8px 22px -8px rgba(0,0,0,.30);
   overflow:hidden;isolation:isolate;
   cursor:pointer;-webkit-tap-highlight-color:transparent;
-  transition:transform .14s var(--weich)
+  transition:transform .14s var(--weich), opacity .16s var(--weich)
 }
 .zurueck.an{display:inline-flex}
 .zurueck:active{transform:scale(.95)}
@@ -1029,7 +1044,12 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:rgba(224,178,78,.55);back
 .reise{position:fixed;inset:0;z-index:75;pointer-events:none;overflow:hidden}
 .reise-flaeche{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform,opacity;
   border-radius:var(--rundung);
-  background:color-mix(in srgb, var(--reise-licht) 26%, var(--flaeche))}
+  background:var(--reise-grund, color-mix(in srgb, var(--reise-licht) 26%, var(--flaeche)))}
+/* Ankunft nach der Kachel: die Seite als EIN Stück, nicht gestaffelt,
+   erst wenn die Fläche verblasst (Verzögerung = Aufziehen). Höhere
+   Spezifität als die gestaffelten nth-child-Regeln oben. */
+body.reise-an #inhalt.rein > .seite{animation:rein .3s var(--weich) .22s both}
+body.reise-an #inhalt.rein > .seite > *{animation:none}
 
 /* ═══ Wie letztes Mal / Nochmal wie letztes Mal (08.10.) ════════
    Beides setzt erst auf einen Tipp etwas — ein Vorschlag, keine
@@ -1167,15 +1187,17 @@ body[data-thema="kaiserlich"] a.kachel:active,
 body[data-thema="kaiserlich"] a.tipp:active{
   box-shadow:0 0 0 1px var(--rot-flaeche) inset;
 }
-/* Kopfband-Knöpfe (Sprache/Licht) sitzen auf --band (hier Lackrot) —
-   ein Goldring statt des mattweißen Rands aus der Grundausstattung. */
-body[data-thema="kaiserlich"] .sprachknopf,
-body[data-thema="kaiserlich"] .lichtknopf{
+/* Kopfband-Knöpfe sitzen auf --band (hier Lackrot) — ein Goldring
+   statt des mattweißen Rands. Seit 10.10. trägt ihn die verbundene
+   Leiste (.kopfwahl), die Knöpfe darin sind randlos. */
+body[data-thema="kaiserlich"] .kopfwahl{
   border-color:rgba(224,178,78,.55);background:rgba(0,0,0,.18);
 }
+body[data-thema="kaiserlich"] .kopfwahl > .lieferwahl::before,
+body[data-thema="kaiserlich"] .kopfwahl > .sprachwahl::before{background:rgba(224,178,78,.45)}
 body[data-thema="kaiserlich"] .lichtknopf.fest,
 body[data-thema="kaiserlich"] .sprachwahl.offen .sprachknopf{
-  border-color:rgba(224,178,78,.85);background:rgba(224,178,78,.22);
+  border-color:transparent;background:rgba(224,178,78,.22);
 }
 /* Icon-Medaillon: ein geprägter Goldrand statt der flachen Fläche aus
    der Grundausstattung — heller Rand oben, dunkler Schatten unten
@@ -1631,6 +1653,23 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
   .chips{background:var(--grund);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 .chips::-webkit-scrollbar{display:none}
+/* Klebt die Leiste oben, steht sie neben „Zurück“ (katSpion setzt die
+   Klasse und misst die Pille) — eine Zeile, nichts verdeckt. */
+.chip-zurueck{
+  display:none;flex:0 0 auto;align-items:center;gap:4px;height:44px;padding:0 15px 0 9px;
+  position:sticky;inset-inline-start:0;z-index:1;margin-inline-end:2px;
+  border-radius:999px;border:1px solid var(--linie-stark);background:var(--flaeche);color:var(--tinte);
+  font:600 14px/1 var(--schrift-text);cursor:pointer;-webkit-tap-highlight-color:transparent;
+  /* Links ein harter Schatten in der Grundfarbe: Er deckt den Innenrand
+     der Leiste, durch den die Chips sonst links an „Zurück“ vorbeiglitten. */
+  box-shadow:calc(-1 * var(--rand)) 0 0 6px var(--grund), 6px 0 10px -4px color-mix(in srgb, var(--grund) 90%, transparent)
+}
+.chip-zurueck svg{width:18px;height:18px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+[dir="rtl"] .chip-zurueck svg{transform:scaleX(-1)}
+.chip-zurueck:active{transform:scale(.95)}
+.chips.chips-neben .chip-zurueck{display:inline-flex}
+/* Die schwebende Pille tritt zurück, solange der Weg in der Leiste steht. */
+body.kat-klebt .zurueck.an{opacity:0;pointer-events:none}
 .chip{
   flex:0 0 auto;background:var(--flaeche);border:1px solid var(--linie);
   color:var(--tinte-leise);border-radius:999px;padding:10px 15px;font-size:13.5px;
@@ -1815,8 +1854,10 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 .fr-bild .ed-bildflaeche.mitfoto .ed-emo{display:none}
 .fr-bild .ed-pop{left:6%;top:6%;width:88%;height:88%}
 .fr-wort{flex:1;min-width:0}
+/* Die Marken („Neu für Sie“, „Beliebt im Haus“) brechen in eine eigene
+   Zeile um, statt abgeschnitten zu werden — vorher stand „Ne“ (Foto 10.10.). */
 .fr-etikett{
-  display:flex;flex-wrap:nowrap;align-items:center;gap:6px;margin-bottom:4px;white-space:nowrap;overflow:hidden;
+  display:flex;flex-wrap:wrap;align-items:center;gap:4px 6px;margin-bottom:4px;white-space:nowrap;
   font-size:11px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;color:var(--tinte-leise)
 }
 .fr-etikett .eh-marke{letter-spacing:0;text-transform:none}
@@ -1838,35 +1879,74 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 /* Das Rad: Ring in der Bandfarbe des Hauses mit Lichtpunkten, darin
    die Scheibe. Breite aus der Seite, nie breiter als 340 px — bei
    390×844 steht es samt Karte darüber ohne Rollen im Bild. */
+/* Seit 10.10. („nicht so billig — modern, smooth, high definition“):
+   ein metallischer Ring mit Fase statt der flachen Bandfläche, die
+   Felder satter und durch feine Lichtkanten getrennt, darüber ein
+   FESTSTEHENDER Glasglanz (.fr-glas — er dreht nicht mit, so wirkt die
+   Scheibe wie unter Glas), ein Lichtkegel auf dem Gewinnerfeld
+   (.fr-treffer), eine Kristallnabe und ein Edelstein-Zeiger. Die LEDs
+   laufen während der Drehung als Lauflicht. Bewegt wird nur
+   transform/opacity. */
 .fr-rad{position:relative;width:min(100% - 24px, 330px);aspect-ratio:1;margin:12px auto 22px}
 .fr-rad::before{
-  content:"";position:absolute;inset:-12px;border-radius:50%;background:var(--band);
-  box-shadow:0 26px 50px -22px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.14)
+  content:"";position:absolute;inset:-14px;border-radius:50%;
+  background:
+    radial-gradient(circle, transparent calc(50% - 6px), rgba(0,0,0,.35) calc(50% - 5px), transparent calc(50% - 2px)),
+    conic-gradient(from 200deg,
+      color-mix(in srgb, var(--band) 55%, #fff), var(--band) 18%, color-mix(in srgb, var(--band) 70%, #000) 36%,
+      var(--band) 52%, color-mix(in srgb, var(--band) 60%, #fff) 66%, var(--band) 82%, color-mix(in srgb, var(--band) 55%, #fff));
+  box-shadow:0 30px 60px -26px rgba(0,0,0,.65), 0 2px 0 rgba(255,255,255,.12) inset, 0 -3px 8px rgba(0,0,0,.35) inset
 }
 .fr-scheibe{
   position:absolute;inset:0;border-radius:50%;overflow:hidden;will-change:transform;
-  box-shadow:inset 0 0 0 2px color-mix(in srgb, var(--tinte) 16%, transparent),
-             inset 0 18px 40px rgba(255,255,255,.16), inset 0 -18px 40px rgba(0,0,0,.08)
+  box-shadow:inset 0 0 0 2px rgba(255,255,255,.35), inset 0 0 0 4px color-mix(in srgb, var(--tinte) 22%, transparent)
 }
-.fr-linie{position:absolute;left:50%;top:0;width:1px;height:50%;margin-left:-.5px;transform-origin:50% 100%;
-  background:color-mix(in srgb, var(--tinte) 16%, transparent)}
+/* Tiefe der Felder: zur Mitte heller, zum Rand dunkler — dreht mit. */
+.fr-scheibe::after{content:"";position:absolute;inset:0;border-radius:50%;pointer-events:none;
+  background:radial-gradient(circle, rgba(255,255,255,.22) 0 22%, transparent 48%, rgba(0,0,0,.14) 100%)}
+.fr-linie{position:absolute;left:50%;top:0;width:2px;height:50%;margin-left:-1px;transform-origin:50% 100%;
+  background:linear-gradient(90deg, rgba(0,0,0,.14), rgba(255,255,255,.75) 50%, rgba(0,0,0,.14))}
+/* Glas über der Scheibe: steht still, die Felder laufen darunter. */
+.fr-glas{position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:1;
+  background:
+    linear-gradient(155deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,.08) 34%, transparent 46%),
+    radial-gradient(120% 70% at 50% 110%, rgba(0,0,0,.18), transparent 60%)}
+/* Der Lichtkegel auf dem Gewinnerfeld — ein Keil unter dem Zeiger. */
+.fr-treffer{position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:1;opacity:0;
+  background:conic-gradient(from calc(var(--fr-s, 45deg) / -2), rgba(255,255,255,.55) 0 var(--fr-s, 45deg), transparent var(--fr-s, 45deg) 360deg);
+  -webkit-mask:radial-gradient(circle, transparent 15%, #000 16%);mask:radial-gradient(circle, transparent 15%, #000 16%);
+  transition:opacity .25s var(--weich)}
+.fr-rad.gelandet .fr-treffer{opacity:1;transition:opacity .45s var(--weich) .05s}
 .fr-feld{position:absolute;left:50%;top:0;width:0;height:50%;transform-origin:50% 100%}
 .fr-feld-emo{position:absolute;left:0;top:12%;width:1.2em;margin-left:-.6em;text-align:center;
   font-size:clamp(26px, 9vw, 36px);line-height:1;color:var(--tinte)}
 .fr-lichter{position:absolute;inset:-12px;pointer-events:none}
 .fr-lichter i{position:absolute;left:50%;top:0;width:6px;height:50%;margin-left:-3px;transform-origin:50% 100%}
 .fr-lichter i::before{content:"";position:absolute;left:0;top:3px;width:6px;height:6px;border-radius:50%;
-  background:var(--gold);box-shadow:0 0 8px var(--gold)}
-.fr-lichter i:nth-child(2n)::before{opacity:.4}
+  background:radial-gradient(circle at 35% 35%, #fff 0 18%, var(--gold) 45%);box-shadow:0 0 8px var(--gold), 0 0 2px #fff}
+.fr-lichter i:nth-child(2n)::before{opacity:.45}
+/* Lauflicht während der Drehung: jede LED leuchtet kurz nach ihrer
+   Vorgängerin auf (nur opacity). */
+.fr-rad.dreht .fr-lichter i::before{animation:frLauflicht .72s linear infinite;animation-delay:calc(var(--i, 0) * -.03s)}
+@keyframes frLauflicht{0%,100%{opacity:.3}12%{opacity:1}}
 .fr-zeiger{position:absolute;left:50%;top:-22px;width:36px;height:44px;margin-left:-18px;z-index:3;
-  transform-origin:50% 36%;filter:drop-shadow(0 4px 6px rgba(0,0,0,.35))}
+  transform-origin:50% 36%;filter:drop-shadow(0 5px 7px rgba(0,0,0,.4))}
 .fr-zeiger path{fill:var(--rot)}
+.fr-zeiger .fr-zeiger-glanz{fill:#fff;opacity:.38}
 .fr-zeiger circle{fill:var(--auf-rot)}
+/* Kristallnabe: Fläche --tinte (Schrift --grund bleibt das geprüfte
+   Paar), darüber ein Glanz, außen ein heller Ring. */
 .fr-mitte{
   position:absolute;left:50%;top:50%;z-index:2;width:28%;aspect-ratio:1;transform:translate(-50%,-50%);
-  border-radius:50%;border:4px solid var(--flaeche);background:var(--tinte);color:var(--grund);
+  border-radius:50%;border:4px solid var(--flaeche);color:var(--grund);
+  /* Grundfarbe ausdrücklich: Unter der Schrift (Mitte) liegt genau
+     --tinte, und jede Kontrastmessung liest background-color — ein
+     Verlauf allein ließe sie leer (die Prüfung maß 1:1). */
+  background-color:var(--tinte);
+  background-image:radial-gradient(circle at 34% 26%, color-mix(in srgb, var(--tinte) 70%, #fff) 0, var(--tinte) 42%, color-mix(in srgb, var(--tinte) 80%, #000) 100%);
   font-family:inherit;font-weight:800;font-size:15px;letter-spacing:.3px;cursor:pointer;
-  box-shadow:0 10px 24px -8px rgba(0,0,0,.55);transition:transform var(--kurz) var(--weich)
+  box-shadow:0 0 0 1px rgba(0,0,0,.18), 0 12px 26px -8px rgba(0,0,0,.6), inset 0 2px 0 rgba(255,255,255,.25);
+  transition:transform var(--kurz) var(--weich)
 }
 .fr-mitte:active{transform:translate(-50%,-50%) scale(.94)}
 .fr-knoepfe{display:grid;gap:10px;margin:0 0 20px}
@@ -1913,6 +1993,12 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 .frwahl[data-wahl="karten"] .fw-daumen{transform:translateX(56px)}
 .frwahl[data-wahl="karten"] .fw-innen{transform:translateX(-56px)}
 .frwahl.zieht .fw-koerper{animation:lw-quetsch .46s cubic-bezier(.3,.7,.4,1)}
+/* Die Stauchung trägt seit 10.10. nur noch dieser Umschalter (der
+   Liefer-Schalter gleitet ohne Feder) — die Keyframes stehen deshalb hier. */
+@keyframes lw-quetsch{
+  0%{transform:scale(1,1)} 30%{transform:scale(1.3,.8)}
+  62%{transform:scale(.93,1.06)} 100%{transform:scale(1,1)}
+}
 .frwahl.zieht[data-wahl="rad"] .fw-rad svg{animation:fw-drehen .6s cubic-bezier(.3,.7,.4,1)}
 .frwahl.zieht[data-wahl="karten"] .fw-karten svg{animation:fw-wischen .5s cubic-bezier(.3,.7,.4,1)}
 @keyframes fw-drehen{from{transform:rotate(-120deg)}to{transform:rotate(0)}}
@@ -2046,17 +2132,12 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
    Wer nicht weiß, was er nehmen soll, soll das als ERSTES finden, nicht
    nach dem Rollen. Seit 09.10. EIN Weg: „Für mich entscheiden“ öffnet
    das Rad, und es dreht sich sofort. */
-.eh-cta{
-  margin:0 0 16px;padding:14px;border-radius:var(--rundung);
-  border:1px solid color-mix(in srgb, var(--rot) 28%, var(--linie));
-  background:linear-gradient(135deg, var(--rot-flaeche), var(--flaeche) 72%);
-  box-shadow:var(--schatten)
-}
-.eh-kopf{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-.eh-emo{font-size:40px;line-height:1;color:var(--tinte);flex:none}
-.eh-kopf b{display:block;font-size:16px}
-.eh-satz{display:block;font-size:13px;color:var(--tinte-leise);line-height:1.4}
-.eh-knoepfe{display:grid;grid-template-columns:1fr;gap:10px}
+/* Seit 10.10. eine Pille über dem Titel: kein Kasten, eine Zeile. */
+.eh-cta{margin:0 0 10px;display:flex}
+.eh-cta .eh-knopf{min-height:44px;padding:0 14px 0 10px;gap:6px;font-size:14px;box-shadow:var(--schatten)}
+.eh-cta .eh-knopf .bz{font-size:22px}
+.eh-pfeil{font-size:18px;line-height:1;margin-inline-start:2px;opacity:.85}
+[dir="rtl"] .eh-pfeil{transform:scaleX(-1)}
 .eh-knopf{
   display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:48px;padding:0 14px;
   border-radius:999px;border:1px solid var(--linie-stark);background:var(--flaeche);color:var(--tinte);
@@ -3261,7 +3342,6 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   .logo .led,
   body[data-phase="abend"] .logo .led{animation:none;opacity:0}
   body[data-phase="abend"] .logo::before{animation:none;opacity:.85}
-  .status.offen i{animation:none}
   /* Inhalte erscheinen, ohne zu gleiten */
   #inhalt.rein > *,#inhalt.rein > .seite > *{
     animation:reinLeise 160ms linear both;animation-delay:0ms !important
@@ -4287,24 +4367,17 @@ function markeAnwenden(abend){
     <!--{{/LOGO}}-->
   </button>
   <h1 id="titel"></h1>
-  <!-- Rein dekorativer Lichtstreifen über dem Titel. Der Text selbst
-       (h1, oben) behält seine geprüfte Farbe var(--band-text) — hier
-       liegt nur ein zusätzlicher, halbtransparenter Streifen drüber.
-       KEIN background-clip:text auf dem h1 selbst: das würde color
-       auf "transparent" setzen und jede Kontrastprüfung, die
-       getComputedStyle(...).color liest, blind machen (CLAUDE.md
-       §5.1/§5.2 — Kontrast messen, nicht ansehen). -->
-  <span class="glanzflug" aria-hidden="true"></span>
   <p class="claim" id="claim"></p>
+  <!-- Öffnungsstand: seit 10.10. oben rechts als kleine Glas-Box
+       (geschlossen: LED-Sand füllt sich bis zur Öffnung; offen:
+       „Geöffnet bis …“ in Regenbogen-LED). statusHTML() zeichnet. -->
+  <div id="status" aria-live="polite"></div>
   <!-- Hell oder dunkel steht NEBEN der Sprachwahl, weil beides
        dasselbe beantwortet: wie der Gast den Hub sehen will. Beide
        liegen in einer gemeinsamen Zeile — zwei Elemente auf derselben
        Rasterfläche hätten sich überlagert. -->
   <div class="kopfwahl">
   <button class="lichtknopf" id="lichtknopf" type="button"></button>
-  <!-- Öffnungsstand in derselben Zeile wie Licht und Sprache (09.10.:
-       „kompakt“) — eine Zeile Kopf weniger. -->
-  <div id="status"></div>
   <!-- Liefer-Schalter (ersetzt seit 30.09. das Lieferband der
        Startseite). Nur wo der Betrieb liefert und niemand am Tisch
        sitzt — lieferWahlZeichnen() nimmt hidden weg. In Ruhe zwei
@@ -8794,6 +8867,8 @@ const TEXTE = {
 "Sprache":{en:"Language",tr:"Dil",ru:"Язык",fr:"Langue",es:"Idioma",it:"Lingua",pl:"Język",ar:"اللغة",uk:"Мова",nl:"Taal",ro:"Limbă"},
 
 /* --- Öffnungsstatus --- */
+"Geöffnet bis {x}":{en:"Open until {x}",tr:"{x} saatine kadar açık",ru:"Открыто до {x}",fr:"Ouvert jusqu’à {x}",es:"Abierto hasta las {x}",it:"Aperto fino alle {x}",pl:"Otwarte do {x}",ar:"مفتوح حتى {x}",uk:"Відчинено до {x}",nl:"Open tot {x}",ro:"Deschis până la {x}"},
+"Öffnet {w} {x}":{en:"Opens {w} {x}",tr:"{w} {x} açılıyor",ru:"Откроется {w} в {x}",fr:"Ouvre {w} à {x}",es:"Abre {w} a las {x}",it:"Apre {w} alle {x}",pl:"Otwarcie {w} o {x}",ar:"يفتح {w} الساعة {x}",uk:"Відчиниться {w} о {x}",nl:"Opent {w} om {x}",ro:"Se deschide {w} la {x}"},
 "Offen bis {x}":{en:"Open until {x}",tr:"{x}'e kadar açık",ru:"Открыто до {x}",fr:"Ouvert jusqu'à {x}",es:"Abierto hasta las {x}",it:"Aperto fino alle {x}",pl:"Otwarte do {x}",ar:"مفتوح حتى {x}",uk:"Відчинено до {x}",nl:"Open tot {x}",ro:"Deschis până la {x}"},
 "Gerade geschlossen · {w} ab {x} Uhr":{en:"Closed · {w} from {x}",tr:"Şu an kapalı · {w} {x}'den itibaren",ru:"Закрыто · {w} с {x}",fr:"Fermé · {w} à partir de {x}",es:"Cerrado · {w} desde las {x}",it:"Chiuso · {w} dalle {x}",pl:"Zamknięte · {w} od {x}",ar:"مغلق · {w} من {x}",uk:"Зачинено · {w} з {x}",nl:"Gesloten · {w} vanaf {x}",ro:"Închis · {w} de la {x}"},
 "Gerade geschlossen":{en:"Currently closed",tr:"Şu an kapalı",ru:"Закрыто",fr:"Actuellement fermé",es:"Cerrado ahora",it:"Ora chiuso",pl:"Obecnie zamknięte",ar:"مغلق حالياً",uk:"Зараз зачинено",nl:"Momenteel gesloten",ro:"Închis momentan"},
@@ -9220,6 +9295,7 @@ const TEXTE = {
 "Ihre Auswahl ist noch leer.":{en:"Your selection is still empty.",tr:"Seçiminiz henüz boş.",ru:"Ваш выбор пока пуст.",fr:"Votre sélection est encore vide.",es:"Su selección está vacía.",it:"La vostra selezione è ancora vuota.",pl:"Państwa wybór jest jeszcze pusty.",ar:"اختياركم فارغ حتى الآن.",uk:"Ваш вибір поки порожній.",nl:"Uw selectie is nog leeg.",ro:"Selecția dvs. este încă goală."},
 "Einen Moment noch – bitte warten Sie {s} Sekunden.":{en:"Just a moment – please wait {s} seconds.",tr:"Bir dakika – lütfen {s} saniye bekleyin.",ru:"Секундочку — подождите {s} секунд.",fr:"Un instant – merci de patienter {s} secondes.",es:"Un momento: espere {s} segundos.",it:"Un attimo – attendete {s} secondi.",pl:"Chwileczkę – poczekaj {s} sekund.",ar:"لحظة من فضلكم – انتظروا {s} ثانية.",uk:"Хвилинку — зачекайте {s} секунд.",nl:"Een moment – wacht {s} seconden.",ro:"O clipă – așteptați {s} secunde."},
 "Bestellungen ab {b}. Darunter nehmen wir Ihre Wünsche gerne persönlich auf.":{en:"Orders from {b}. Below that we're happy to take your wishes in person.",tr:"{b} üzeri siparişler. Altında dileklerinizi memnuniyetle bizzat alırız.",ru:"Заказы от {b}. Меньше — с радостью примем лично.",fr:"Commandes à partir de {b}. En dessous, nous prenons volontiers votre demande en personne.",es:"Pedidos desde {b}. Por debajo, con gusto le atendemos en persona.",it:"Ordini da {b}. Sotto tale importo prendiamo volentieri l'ordine di persona.",pl:"Zamówienia od {b}. Poniżej chętnie przyjmiemy życzenia osobiście.",ar:"الطلبات ابتداءً من {b}. دون ذلك يسعدنا أخذ طلبكم شخصياً.",uk:"Замовлення від {b}. Менше — залюбки приймемо особисто.",nl:"Bestellingen vanaf {b}. Daaronder nemen we uw wens graag persoonlijk op.",ro:"Comenzi de la {b}. Sub această sumă preluăm dorințele personal."},
+"Das Team weiß schon Bescheid. Ein neuer Ruf geht in {n} Min. wieder.":{en:"The team already knows. You can call again in {n} min.",tr:"Ekip zaten haberdar. {n} dk sonra tekrar çağırabilirsiniz.",ru:"Команда уже в курсе. Снова позвать можно через {n} мин.",fr:"L’équipe est déjà prévenue. Nouvel appel possible dans {n} min.",es:"El equipo ya está avisado. Podrá volver a llamar en {n} min.",it:"Lo staff è già avvisato. Potrà chiamare di nuovo tra {n} min.",pl:"Zespół już wie. Ponownie można wezwać za {n} min.",ar:"الفريق على علم بالفعل. يمكنك النداء مجددًا بعد {n} دقيقة.",uk:"Команда вже знає. Знову покликати можна через {n} хв.",nl:"Het team weet het al. Over {n} min kunt u opnieuw roepen.",ro:"Echipa știe deja. Puteți chema din nou peste {n} min."},
 "Angekommen! Wir sind gleich bei Ihnen.":{en:"Received! We'll be with you shortly.",tr:"Ulaştı! Birazdan yanınızdayız.",ru:"Получено! Сейчас подойдём.",fr:"Bien reçu ! Nous arrivons.",es:"¡Recibido! Enseguida estamos con usted.",it:"Ricevuto! Arriviamo subito.",pl:"Odebrane! Zaraz będziemy.",ar:"وصلنا! سنكون عندكم حالاً.",uk:"Отримано! Зараз підійдемо.",nl:"Ontvangen! We komen zo.",ro:"Am primit! Venim imediat."},
 "Danke! Ihre Nachricht ist bei uns angekommen.":{en:"Thank you! Your message has reached us.",tr:"Teşekkürler! Mesajınız bize ulaştı.",ru:"Спасибо! Ваше сообщение получено.",fr:"Merci ! Votre message nous est parvenu.",es:"¡Gracias! Su mensaje nos ha llegado.",it:"Grazie! Il vostro messaggio ci è arrivato.",pl:"Dziękujemy! Państwa wiadomość do nas dotarła.",ar:"شكراً! وصلتنا رسالتكم.",uk:"Дякуємо! Ваше повідомлення отримано.",nl:"Dank u! Uw bericht is aangekomen.",ro:"Mulțumim! Mesajul a ajuns la noi."},
 "Allergene und Unverträglichkeiten:":{en:"Allergens and intolerances:",tr:"Alerjenler ve intoleranslar:",ru:"Аллергены и непереносимость:",fr:"Allergènes et intolérances :",es:"Alérgenos e intolerancias:",it:"Allergeni e intolleranze:",pl:"Alergeny i nietolerancje:",ar:"مسببات الحساسية:",uk:"Алергени та непереносимість:",nl:"Allergenen en intoleranties:",ro:"Alergeni și intoleranțe:"},
@@ -9866,12 +9942,19 @@ function jetztOffen(){
 
   const heute = fenster(tag);
   if(heute && jetzt >= heute.auf && jetzt < heute.zu)
-    return { offen:true, text:t("Offen bis {x}", {x:heute.bis}) };
+    return { offen:true, bis:heute.bis, text:t("Offen bis {x}", {x:heute.bis}) };
 
   const gestern = fenster((tag + 6) % 7);         // Nachtschicht von gestern
   if(gestern && jetzt + 24 < gestern.zu)
-    return { offen:true, text:t("Offen bis {x}", {x:gestern.bis}) };
+    return { offen:true, bis:gestern.bis, text:t("Offen bis {x}", {x:gestern.bis}) };
 
+  /* Für die Sanduhr: wann zuletzt geschlossen wurde (Stunden ab heute
+     0 Uhr, auch negativ), damit der Sand den Anteil der Wartezeit zeigt. */
+  let zuletzt = null;
+  for(let d = -7; d <= 0; d++){
+    const f = fenster((tag + d + 7) % 7);
+    if(f && d * 24 + f.zu <= jetzt) zuletzt = Math.max(zuletzt == null ? -Infinity : zuletzt, d * 24 + f.zu);
+  }
   const namen = TAGE;
   for(let i = 0; i < 7; i++){
     const tg = (tag + i) % 7, f = fenster(tg);
@@ -9879,11 +9962,53 @@ function jetztOffen(){
       const wann = i === 0 ? t("heute") : i === 1 ? t("morgen") : t("am {t}", {t:t(namen[tg])});
       const uhr = String(Math.floor(f.auf)).padStart(2,"0") + ":" +
                   String(Math.round((f.auf % 1) * 60)).padStart(2,"0");
-      return { offen:false, text:t("Gerade geschlossen · {w} ab {x} Uhr", {w:wann, x:uhr}) };
+      const auf = i * 24 + f.auf;
+      const anteil = zuletzt == null ? 0 : Math.max(0, Math.min(1, (jetzt - zuletzt) / Math.max(1e-6, auf - zuletzt)));
+      return { offen:false, ab:uhr, wann:wann, anteil:anteil,
+               text:t("Gerade geschlossen · {w} ab {x} Uhr", {w:wann, x:uhr}) };
     }
   }
-  return { offen:false, text:t("Gerade geschlossen") };
+  return { offen:false, anteil:0, text:t("Gerade geschlossen") };
 }
+
+/* Die Öffnungsanzeige oben rechts (siehe CSS .status). */
+const ST_SPALTEN = 9, ST_ZEILEN = 5;
+function statusHTML(st){
+  if(st.offen && st.bis){
+    const satz = t("Geöffnet bis {x}", {x: st.bis});
+    /* Je Buchstabe eine Regenbogenfarbe — nicht in Schriften, die ihre
+       Buchstaben verbinden (Arabisch): getrennte Spans brächen sie. */
+    const bunt = RTL.indexOf(sprache) >= 0 ? hs(satz)
+      : [...satz].map((z, i) => z === " " ? " " : '<span style="--h:' + Math.round(i * 360 / Math.max(1, satz.length)) + '">' + hs(z) + '</span>').join("");
+    return '<span class="status offen" title="' + hs(satz) + '"><span class="st-text">' + bunt + '</span>' +
+           '<span class="st-led" aria-hidden="true"></span></span>';
+  }
+  const satz = st.ab ? t("Öffnet {w} {x}", {w: st.wann, x: st.ab}) : st.text;
+  const n = ST_SPALTEN * ST_ZEILEN, voll = Math.round((st.anteil || 0) * n);
+  let punkte = "";
+  for(let i = 0; i < n; i++){
+    const zeile = ST_ZEILEN - 1 - Math.floor(i / ST_SPALTEN), spalte = i % ST_SPALTEN;
+    const an = i < voll;
+    punkte += '<circle cx="' + (1.5 + spalte * 3) + '" cy="' + (1.5 + zeile * 3) + '" r="1.05"' +
+      (an ? ' fill="hsl(' + ((i * 47) % 360) + ' 95% 62%)"' : ' class="aus"') + '/>';
+  }
+  /* Ein Korn fällt auf die oberste Sandschicht — solange nicht voll. */
+  const ziel = voll >= n ? 0 : ST_ZEILEN - 1 - Math.floor(voll / ST_SPALTEN);
+  const korn = voll < n && ziel > 0
+    ? '<circle class="st-korn" cx="' + (1.5 + (voll % ST_SPALTEN) * 3) + '" cy="1.5" r="1.05" style="--fall:' + (ziel * 3) +
+      'px" fill="hsl(' + ((voll * 47) % 360) + ' 95% 62%)"/>' : "";
+  return '<span class="status zu" title="' + hs(st.text) + '">' +
+         '<span class="st-sand" aria-hidden="true" data-anteil="' + (st.anteil || 0).toFixed(3) + '">' +
+         '<svg viewBox="0 0 27 15">' + punkte + korn + '</svg></span>' +
+         '<span class="st-text">' + hs(satz) + '</span></span>';
+}
+function statusZeichnen(){
+  const el = $("status"); if(!el) return;
+  const html = statusHTML(jetztOffen());
+  if(el.innerHTML !== html) el.innerHTML = html;
+}
+/* Der Sand rieselt weiter: einmal je Minute neu (nur sichtbar). */
+setInterval(() => { if(!document.hidden && document.body.dataset.ansicht === "start") statusZeichnen(); }, 60000);
 
 /* ---------- Startseite ---------- */
 function begruessung(){
@@ -10055,7 +10180,7 @@ function lieferWahlZeichnen(){
   if(!w) return;
   if(!LIEFER.an || tischNr){
     w.hidden = true;
-    w.classList.remove("zeigt", "zieht");
+    w.classList.remove("zeigt");
     return;
   }
   w.hidden = false;
@@ -10089,15 +10214,12 @@ function lieferWahl(ziel){
   if(wechsel){
     liefermodus = ziel === "liefern";
     liefernAngefragt = false;
-    w.classList.remove("zieht");
-    void w.offsetWidth;          // Stauchung neu starten
-    w.classList.add("zieht");
     zeichne();                   // Kacheln „Jetzt am Tisch“, Warenkorb
   }
   w.querySelector(".lw-name span").textContent = lwNameText(ziel);
   w.classList.add("zeigt");
   clearTimeout(lwUhr);
-  lwUhr = setTimeout(() => w.classList.remove("zeigt", "zieht"), wechsel ? 1900 : 1500);
+  lwUhr = setTimeout(() => w.classList.remove("zeigt"), wechsel ? 1900 : 1500);
 }
 
 function start(){
@@ -10565,7 +10687,7 @@ function karteSeite(id, daten, titel, unter, fuss){
     ? sichtbar.map(x =>
         /* Kein Versalsatz mehr: die Überschriften stehen jetzt in der
            Anzeigeschrift, da wirkt Großschrift wie Geschrei. */
-        '<div class="gruppe">' + t(x.gruppe) + '</div>' +
+        '<div class="gruppe" data-gruppe="' + hs(x.gruppe) + '">' + t(x.gruppe) + '</div>' +
         x.eintraege.map(gerichtHTML).join("")).join("")
     : '<div class="leer">' + t("Nichts gefunden. Versuchen Sie einen anderen Begriff.") + '</div>';
 
@@ -10577,9 +10699,15 @@ function karteSeite(id, daten, titel, unter, fuss){
     '<button class="clear' + (suchtext[id] ? " an" : "") + '" data-clear="' + id + '" aria-label="' +
     t("Löschen") + '">×</button></div>';
 
-  return '<div class="seite"><h2>' + hs(t(titel)) + '</h2>' + (unter ? '<p class="unter">' + hs(t(unter)) + '</p>' : "") +
-         (id === "speisekarte" && foodrouletteAn() ? entscheidungCTA() : "") + aktionBandHTML() +
-         suche + '<div class="chips">' + chips + '</div>' + liste +
+  return '<div class="seite">' + (id === "speisekarte" && foodrouletteAn() ? entscheidungCTA() : "") +
+         '<h2>' + hs(t(titel)) + '</h2>' + (unter ? '<p class="unter">' + hs(t(unter)) + '</p>' : "") +
+         aktionBandHTML() +
+         suche + '<div class="chips">' +
+           /* Klebt die Leiste oben, ist DAS der Weg zurück (die schwebende
+              Pille tritt dann zurück) — vorher lag die Pille über den Chips. */
+           '<button type="button" class="chip-zurueck" data-zurueck="1" aria-label="' + hs(t("Zurück zur Übersicht")) + '">' +
+             '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>' + hs(t("Zurück")) + '</span></button>' +
+           chips + '</div>' + liste +
          '<div class="hinweis">' + fuss + '</div></div>';
 }
 
@@ -10733,18 +10861,20 @@ function frRadHTML(){
      Feld den mittleren, damit nie zwei gleiche nebeneinander stehen. */
   const ton = i => FR_TOENE[(i === n - 1 && n % 3 === 1) ? 1 : i % 3];
   const stuecke = frFelder.map((_, i) =>
-    "color-mix(in srgb, " + ton(i) + " " + (i % 2 ? 30 : 20) + "%, var(--flaeche)) " + (i * s).toFixed(3) + "deg " + ((i + 1) * s).toFixed(3) + "deg").join(", ");
+    "color-mix(in srgb, " + ton(i) + " " + (i % 2 ? 38 : 26) + "%, var(--flaeche)) " + (i * s).toFixed(3) + "deg " + ((i + 1) * s).toFixed(3) + "deg").join(", ");
   const felder = frFelder.map((name, i) => {
     const ort = frOrt(name);
     return '<span class="fr-linie" style="transform:rotate(' + (i * s).toFixed(3) + 'deg)"></span>' +
       '<span class="fr-feld" data-fr-feld="' + i + '" style="transform:rotate(' + ((i + .5) * s).toFixed(3) + 'deg)">' +
       '<span class="fr-feld-emo">' + bzZeichen(bzKategorie(ort.gruppe, ort.karte)) + '</span></span>';
   }).join("");
-  const lichter = Array.from({ length:24 }, (_, i) => '<i style="transform:rotate(' + i * 15 + 'deg)"></i>').join("");
-  return '<div class="fr-rad" id="frRad">' +
+  const lichter = Array.from({ length:24 }, (_, i) => '<i style="transform:rotate(' + i * 15 + 'deg);--i:' + i + '"></i>').join("");
+  return '<div class="fr-rad" id="frRad" style="--fr-s:' + s.toFixed(3) + 'deg">' +
     '<div class="fr-lichter" aria-hidden="true">' + lichter + '</div>' +
     '<div class="fr-scheibe" id="frScheibe" aria-hidden="true" style="background:conic-gradient(' + stuecke + ');transform:rotate(' + frWinkel + 'deg)">' + felder + '</div>' +
-    '<svg class="fr-zeiger" id="frZeiger" viewBox="0 0 40 48" aria-hidden="true"><path d="M20 46C12 32 4 26 4 16a16 16 0 0 1 32 0c0 10-8 16-16 30z"/><circle cx="20" cy="16" r="6"/></svg>' +
+    '<span class="fr-treffer" aria-hidden="true"></span><span class="fr-glas" aria-hidden="true"></span>' +
+    '<svg class="fr-zeiger" id="frZeiger" viewBox="0 0 40 48" aria-hidden="true"><path d="M20 46C12 32 4 26 4 16a16 16 0 0 1 32 0c0 10-8 16-16 30z"/>' +
+      '<path class="fr-zeiger-glanz" d="M10 14a10 10 0 0 1 9-8.5c-4 2-6 5-6.5 9.5z"/><circle cx="20" cy="16" r="6"/></svg>' +
     '<button type="button" class="fr-mitte" data-eh-los="1">' + t("Drehen") + '</button>' +
   '</div>';
 }
@@ -10867,17 +10997,26 @@ function frDrehen(){
   const e = $("frErgebnis");
   if(e) e.setAttribute("aria-busy", "true");
   frKnoepfeZeichnen();
+  const rad = $("frRad");
+  if(rad){ rad.classList.remove("gelandet"); rad.classList.add("dreht"); }
   const fertig = () => {
     if(lauf !== frLauf) return;
     frDreht = false;
+    if(rad){ rad.classList.remove("dreht"); rad.classList.add("gelandet"); }
     frWinkel = ((ziel % 360) + 360) % 360;
     sch.style.transform = "rotate(" + frWinkel + "deg)";
     sch.getAnimations().forEach(a => a.cancel());
     frLanden(g.n);
   };
   if(ruhigeBewegung() || !sch.animate){ frLiveSetzen(g.n); fertig(); return; }
-  const dreh = sch.animate([{ transform:"rotate(" + frWinkel + "deg)" }, { transform:"rotate(" + ziel + "deg)" }],
-                           { duration:lang ? 3200 : 2400, easing:"cubic-bezier(.12,.72,.16,1)", fill:"forwards" });
+  /* Kurz ausholen (8° zurück), dann anlaufen und lang ausrollen — wie
+     ein Rad, das jemand anschiebt. Kurve je Abschnitt. */
+  const dauer = lang ? 3200 : 2400;
+  const dreh = sch.animate([
+    { transform:"rotate(" + frWinkel + "deg)", easing:"cubic-bezier(.3,0,.5,1)" },
+    { transform:"rotate(" + (frWinkel - 8) + "deg)", offset:220 / dauer, easing:"cubic-bezier(.2,.62,.14,1)" },
+    { transform:"rotate(" + ziel + "deg)" }
+  ], { duration:dauer, fill:"forwards" });
   try{ dreh.startTime = document.timeline.currentTime; }catch(err){}
   const zeiger = $("frZeiger");
   let zuletzt = -1;
@@ -11190,14 +11329,13 @@ function entscheidungCTA(){
     s + d.reduce((a, gr) => a + gr.eintraege.filter(e => e.p !== "–" && !FR_KEIN_GERICHT.test(e.n)).length, 0), 0);
   if(n < 3) return "";
   const z = (cp, schl) => bewegteZeichenAn() ? bzHTML(cp, schl) : bzZeichen(cp);
+  /* Seit 10.10. eine schmale Pille ÜBER dem Titel statt einer Karte
+     („eindeutig erreichbar, ohne viel Platz wegzunehmen“): eine Zeile,
+     44 px hoch, in der Hausfarbe. */
   return '<div class="eh-cta">' +
-    '<div class="eh-kopf"><span class="eh-emo">' + z("1f60b", "eh:cta") + '</span>' +
-      '<span><b>' + t("Unentschlossen?") + '</b>' +
-      '<span class="eh-satz">' + t("Wir helfen beim Aussuchen – und zeigen Ihnen Neues zum Probieren.") + '</span></span></div>' +
-    '<div class="eh-knoepfe">' +
       '<button type="button" class="eh-knopf eh-haupt bz-tipp" data-eh-los="1">' + z("2728", "eh:los") +
-        '<span>' + t("Für mich entscheiden") + '</span></button>' +
-    '</div></div>';
+        '<span>' + t("Für mich entscheiden") + '</span><span class="eh-pfeil" aria-hidden="true">›</span></button>' +
+    '</div>';
 }
 
 /* Konfetti: kleine Rechtecke in den Hausfarben, ein Stoß von (x,y) aus.
@@ -13165,8 +13303,7 @@ function zeichne(){
   void feld.offsetWidth;
   feld.classList.add("rein");
   balkenAktualisieren();
-  const st = jetztOffen();
-  $("status").innerHTML = '<span class="status ' + (st.offen ? "offen" : "") + '"><i></i>' + st.text + '</span>';
+  statusZeichnen();
   bestellStatusSteuern(seiteJetzt);
   resStandSteuern(seiteJetzt);
   vorgangStreifenZeichnen();
@@ -13181,6 +13318,7 @@ function zeichne(){
   if(seiteJetzt !== "auswahl") dazuFrisch = [];
   if(seiteJetzt === "entdecken" && ehSofort){ ehSofort = false; frDrehen(); }
   window.scrollTo(0,0);
+  katZiel = null; katZielBis = 0; document.body.classList.remove("kat-klebt"); katSpionPlanen();
 
   /* Erst zeichnen, dann das Gericht öffnen. Andersherum würde
      detailSchliessen() am Anfang von zeichne() die Karte gleich wieder
@@ -14527,6 +14665,34 @@ function resStandSteuern(pfad){
   resStandWecker = setInterval(() => { if(!document.hidden) resStandHolen(); }, 30000);
 }
 
+/* ─── Höchstens 4 Rufe je Gast in 10 Minuten (Wunsch 10.10.) ──────
+   Die Grenze hält der Server (bestellung_aufgeben, je Gerät). Hier
+   nur die Vorprüfung im Gerät: Der Gast bekommt den Satz sofort, ohne
+   dass ein Ruf über die Leitung geht, der ohnehin abgewiesen würde. */
+const RUF_GRENZE = 4, RUF_FENSTER = 600000;
+function rufSchluessel(){ return "omoteno-rufe-" + (SERVER.betrieb || "haus"); }
+function rufListe(){
+  let l = [];
+  try{ l = JSON.parse(localStorage.getItem(rufSchluessel()) || "[]"); }catch(e){ l = []; }
+  const jetzt = Date.now();
+  return (Array.isArray(l) ? l : [])
+    .filter(z => typeof z === "number" && z > jetzt - RUF_FENSTER && z <= jetzt + 60000)
+    .sort((a, b) => a - b);
+}
+/* 0 = frei, sonst: in so vielen Minuten geht der nächste Ruf. */
+function rufWarteMin(){
+  const l = rufListe();
+  if(l.length < RUF_GRENZE) return 0;
+  return Math.max(1, Math.ceil((l[l.length - RUF_GRENZE] + RUF_FENSTER - Date.now()) / 60000));
+}
+function rufMerken(){
+  const l = rufListe(); l.push(Date.now());
+  try{ localStorage.setItem(rufSchluessel(), JSON.stringify(l.slice(-10))); }catch(e){}
+}
+function rufBremseSatz(min){
+  return t("Das Team weiß schon Bescheid. Ein neuer Ruf geht in {n} Min. wieder.", {n: min});
+}
+
 function anServer(art, daten){
   if(!serverBereit()) return Promise.resolve({ ok:false, grund:"aus" });
 
@@ -14559,7 +14725,12 @@ function anServer(art, daten){
         p_positionen: [],
         /* Auch der Serviceruf geht mit Sitzung: Dann weiß das Personal
            sicher, an welchen Tisch es gehen muss. */
-        p_sitzung:    tischToken || null
+        p_sitzung:    tischToken || null,
+        /* Seit 10.10. auch hier die Gerätekennung: Der Server lässt je
+           Gast höchstens 4 Rufe in 10 Minuten zu und zählt dafür nach
+           Gerät (ohne Gerät nur nach Tisch — dann teilen sich alle
+           Gäste eines Tisches die 4). */
+        p_geraet:     geraetKennung()
       };
     } else if(istBestellung && daten.adresse){
       /* ─── Lieferung ──────────────────────────────────────────
@@ -14658,7 +14829,15 @@ function anServer(art, daten){
       signal: abbruch ? abbruch.signal : undefined
     }).then(antwort => {
       if(wecker) clearTimeout(wecker);
-      if(!antwort.ok) return { ok:false, grund:"abgelehnt", code:antwort.status };
+      /* Die Bremse für Servicerufe meldet sich mit HINT „bremse:<Min>“
+         (migration-anfragen-bremse.sql). Daraus wird ein eigener Satz —
+         „kam nicht durch, bitte winken“ wäre hier falsch: Der Ruf IST
+         angekommen, nur eben schon viermal. */
+      if(!antwort.ok) return antwort.json().then(f => {
+        const m = /^bremse:(\d{1,3})$/.exec(String((f && f.hint) || ""));
+        return m ? { ok:false, grund:"bremse", minuten:+m[1] }
+                 : { ok:false, grund:"abgelehnt", code:antwort.status };
+      }, () => ({ ok:false, grund:"abgelehnt", code:antwort.status }));
       if(!aufsBoard) return { ok:true, zeile:null };
       /* Zwei Rückgabeformen, weil es zwei Funktionen sind:
          bestellung_aufgeben gibt eine nackte uuid zurück, aus
@@ -14757,6 +14936,82 @@ $("warenkarte").addEventListener("click", e => {
 $("blende").addEventListener("click", detailSchliessen);
 /* Escape läuft jetzt über fokusFangen – der alte globale Listener entfällt. */
 
+/* ─── Die Kategorie-Leiste geht mit (Wunsch 10.10.) ────────────────
+   „Beim Runterscrollen soll die aktuelle Kategorie oben mitgehen und
+   ausgewählt angezeigt werden.“ Gemessen wird am ersten Gericht unter
+   jeder Überschrift — die Überschrift selbst klebt (sticky) und meldete
+   sonst immer „oben“. Eine Markierung, nicht zwei: In „Alle“ trägt der
+   Chip der aktuellen Kategorie .an, ganz oben wieder „Alle“. */
+let katZiel = null, katZielBis = 0, katGeplant = false;
+function katAbstand(){
+  const l = document.querySelector("#inhalt .chips");
+  return l ? Math.max(0, l.getBoundingClientRect().bottom) : 0;
+}
+function katJetzt(){
+  const ab = katAbstand();
+  let jetzt = null;
+  document.querySelectorAll("#inhalt .gruppe[data-gruppe]").forEach(gr => {
+    const erstes = gr.nextElementSibling;
+    if(!erstes) return;
+    if(erstes.getBoundingClientRect().top - gr.offsetHeight <= ab + 8) jetzt = gr.dataset.gruppe;
+  });
+  return jetzt;
+}
+function katSpion(){
+  katGeplant = false;
+  const l = document.querySelector("#inhalt .chips");
+  if(!l) return;
+  /* Klebt die Leiste oben, wird „Zurück“ ihr erstes Element (selbst
+     klebend, die Chips gleiten darunter durch), und die schwebende Pille
+     tritt zurück — vorher lag sie über dem ersten Chip. */
+  const klebt = !!document.querySelector(".zurueck.an") && l.getBoundingClientRect().top <= 1;
+  l.classList.toggle("chips-neben", klebt);
+  document.body.classList.toggle("kat-klebt", klebt);
+  const alle = l.querySelector('.chip[data-g="Alle"]');
+  /* Nur in „Alle“: Unter „Beliebt“ oder einem Filter steht ohnehin
+     nur das Gewählte da. */
+  if(!alle || filter[alle.dataset.seite] !== "Alle") return;
+  const g = Date.now() < katZielBis && katZiel ? katZiel : katJetzt();
+  let ziel = alle;
+  l.querySelectorAll(".chip[data-g]").forEach(c => { if(g && c.dataset.g === g) ziel = c; });
+  if(ziel.classList.contains("an")) return;
+  l.querySelectorAll(".chip.an").forEach(c => { c.classList.remove("an"); c.removeAttribute("aria-current"); });
+  ziel.classList.add("an");
+  ziel.setAttribute("aria-current", "true");
+  /* Den Chip ins Bild holen, mittig — die Leiste rollt mit. */
+  const links = ziel.offsetLeft - (l.clientWidth - ziel.offsetWidth) / 2;
+  if(ziel.offsetLeft < l.scrollLeft + 8 || ziel.offsetLeft + ziel.offsetWidth > l.scrollLeft + l.clientWidth - 8){
+    l.scrollTo({ left: Math.max(0, links), behavior: ruhigeBewegung() ? "auto" : "smooth" });
+  }
+}
+function katSpionPlanen(){
+  if(katGeplant) return;
+  katGeplant = true;
+  requestAnimationFrame(katSpion);
+}
+addEventListener("scroll", katSpionPlanen, { passive:true });
+/* Springt zur Kategorie g (null = ganz nach oben). false, wenn sie
+   gerade nicht auf der Seite steht. */
+function katSpringen(g){
+  let y = 0;
+  if(g){
+    const gr = [...document.querySelectorAll("#inhalt .gruppe[data-gruppe]")].find(x => x.dataset.gruppe === g);
+    if(!gr || !gr.nextElementSibling) return false;
+    const l = document.querySelector("#inhalt .chips");
+    y = scrollY + gr.nextElementSibling.getBoundingClientRect().top - gr.offsetHeight - (l ? l.offsetHeight : 0) - 2;
+  }else{
+    const l = document.querySelector("#inhalt .chips");
+    y = l ? Math.max(0, scrollY + l.getBoundingClientRect().top - 4) : 0;
+    if(y > scrollY) y = scrollY;
+  }
+  /* Während die Seite gleitet, zeigt die Leiste schon das Ziel — sonst
+     liefe die Markierung durch jede Kategorie dazwischen. */
+  katZiel = g; katZielBis = Date.now() + (ruhigeBewegung() ? 0 : 900);
+  window.scrollTo({ top: Math.max(0, y), behavior: ruhigeBewegung() ? "auto" : "smooth" });
+  katSpionPlanen();
+  return true;
+}
+
 function neuKarte(id, fokus){
   $("inhalt").innerHTML = SEITEN[id]();
   if(fokus){
@@ -14787,7 +15042,14 @@ $("inhalt").addEventListener("input", e => {
      derselben Stelle steht.
    - Reduzierte Bewegung, Vorschau im Board, Link nach außen,
      Strg/⌘-Klick: keine Ebene, der Browser macht, was er immer macht. */
-const REISE_MS = 260;
+/* Seit 10.10. (Wunsch: „die Animation raus, zu kompliziert fürs Auge —
+   lediglich die Kachel soll sich einmal expanden, und man kommt mit
+   einem smoothen Übergang auf der Seite an“): Die Fläche ist DECKEND
+   in der Farbe der Kachel — vorher halb durchsichtig, man sah die
+   alte und die neue Seite zugleich durch sie hindurch. Erst zieht sie
+   auf (260 ms, rollt aus), dann blendet sie aus (160 ms), und darunter
+   kommt die Seite als EIN Stück an, nicht mehr gestaffelt. */
+const REISE_AUF = 260, REISE_AUS = 160, REISE_MS = REISE_AUF + REISE_AUS;
 let reise = null;
 function reiseMoeglich(a, e){
   if(!a || VORSCHAU || ruhigeBewegung()) return "";
@@ -14814,6 +15076,10 @@ function reiseStarten(a, ziel){
   el.className = "reise";
   el.setAttribute("aria-hidden", "true");
   el.style.setProperty("--reise-licht", farbe);
+  /* Die Fläche hat die Farbe, die die Kachel WIRKLICH zeigt (eigene
+     Farbe, Säule, Bild-Kachel …); ist sie durchsichtig, die Hausmischung. */
+  const grund = getComputedStyle(a).backgroundColor;
+  if(grund && !/rgba\([^)]*,\s*0\)|transparent/.test(grund)) el.style.setProperty("--reise-grund", grund);
   const fl = document.createElement("div");
   fl.className = "reise-flaeche";
   /* Maß = Schirm, Start = Rechteck der Kachel als scale (FLIP). */
@@ -14828,10 +15094,16 @@ function reiseStarten(a, ziel){
      — man sah nichts (gemessen). Erst wachsen (ease-out, sichtbar),
      dann ausblenden (ease-in, Skill bewegung §2). */
   const ani = fl.animate([
-    { transform:"translate(" + r.left + "px," + r.top + "px) scale(" + sx + "," + sy + ")", opacity:.95, easing:"cubic-bezier(.16,1,.3,1)" },
-    { transform:"translate(0px,0px) scale(1,1)", opacity:.6, offset:.6, easing:"cubic-bezier(.5,0,.75,0)" },
+    { transform:"translate(" + r.left + "px," + r.top + "px) scale(" + sx + "," + sy + ")", opacity:1, easing:"cubic-bezier(.22,1,.36,1)" },
+    { transform:"translate(0px,0px) scale(1,1)", opacity:1, offset:REISE_AUF / REISE_MS, easing:"cubic-bezier(.4,0,1,1)" },
     { transform:"translate(0px,0px) scale(1,1)", opacity:0 }
   ], { duration:REISE_MS, fill:"both" });
+  /* Die neue Seite kommt unter der Fläche als ein Stück an, sobald die
+     Fläche zu verblassen beginnt. Die Klasse bleibt, bis das vorbei ist
+     (vorher entfernt, sprängen laufende Animationen). */
+  document.body.classList.add("reise-an");
+  clearTimeout(reiseStarten.uhr);
+  reiseStarten.uhr = setTimeout(() => document.body.classList.remove("reise-an"), REISE_MS + 500);
   const zustand = { el, ani, ziel, weg:null };
   zustand.weg = ev => {
     if(reise !== zustand) return;
@@ -14899,10 +15171,23 @@ $("inhalt").addEventListener("click", e => {
   if(edWahl){ edWaehlen(edWahl.dataset.edWahl === "ja"); return; }
   if(e.target.closest("[data-ed-neu]")){ entdeckenMischen(); edNeuZeichnen(); return; }
 
+  if(e.target.closest("[data-zurueck]")){ nachHause(); return; }
+
   const chip = e.target.closest(".chip");
   if(chip){
-    filter[chip.dataset.seite] = chip.dataset.g;
-    neuKarte(chip.dataset.seite);
+    /* Seit 10.10.: Eine Kategorie ist ein Sprungziel, kein Filter —
+       die ganze Karte bleibt, die Seite gleitet hin, und beim Weiter-
+       rollen geht die Markierung mit (katSpion). „Alle“ und „Beliebt“
+       bleiben, was sie waren. Steht die Kategorie gerade nicht da
+       (Suche), filtert der Tipp wie früher. */
+    const id = chip.dataset.seite, g = chip.dataset.g;
+    if(g === "Alle" || g === "Beliebt"){
+      filter[id] = g; neuKarte(id);
+      if(g === "Alle") katSpringen(null);
+      return;
+    }
+    if(filter[id] !== "Alle"){ filter[id] = "Alle"; neuKarte(id); }
+    if(!katSpringen(g)){ filter[id] = g; neuKarte(id); }
     return;
   }
 
@@ -15332,6 +15617,8 @@ $("inhalt").addEventListener("click", e => {
       const text = t("Tisch {n}", {n:nr}) + ": " + t(r ? r.text : "Bitte einmal an den Tisch");
 
       if(serverBereit()){
+        const warten = rufWarteMin();
+        if(warten){ melden(rufBremseSatz(warten), true); return; }
         const knopf = aktion;
         knopf.disabled = true;
         const alterText = knopf.textContent;
@@ -15343,6 +15630,7 @@ $("inhalt").addEventListener("click", e => {
           knopf.disabled = false;
           knopf.textContent = alterText;
           if(erg.ok){
+            rufMerken();
             /* Auch ein Serviceruf ist ein Versprechen. Der Gast soll
                sehen, dass er angekommen ist - und wie lange es dauert,
                sobald das Team eine Zeit zusagt. */
@@ -15356,6 +15644,8 @@ $("inhalt").addEventListener("click", e => {
               vorgangWeckerStellen();
             }
             melden(t("Angekommen! Wir sind gleich bei Ihnen."));
+          } else if(erg.grund === "bremse"){
+            melden(rufBremseSatz(erg.minuten || 10), true);
           } else {
             /* Ein Serviceruf, der nicht durchkommt, braucht keinen
                Chat - der Gast will jemanden am Tisch. Also der Weg,

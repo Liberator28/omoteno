@@ -810,6 +810,31 @@ html{font-size:calc(16px * var(--skala,1))}
 
 /* ─── Bestellkarte ─────────────────────────────────────────── */
 .karten{display:flex;flex-direction:column;gap:12px}
+/* Überschriften nach Stand in der Bestellliste (Wunsch 10.10.: „übersichtlicher“). */
+.kgruppe{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;margin:10px 2px -2px;
+  font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gedaempft)}
+.kgruppe:first-child{margin-top:0}
+.kgruppe span{font-variant-numeric:tabular-nums;letter-spacing:0}
+.kgruppe.pruef{color:var(--warn)}
+/* Zum Abholen: eigene Fläche über allem, grün wie „fertig“. */
+.abholen{margin-bottom:16px;padding:12px 14px 14px;border-radius:var(--r);
+  background:color-mix(in srgb,var(--gut) 9%,var(--karte));
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--gut) 55%,transparent)}
+.abkopf{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:15px;color:var(--kreide)}
+.abzahl{min-width:24px;padding:1px 8px;border-radius:999px;background:var(--gut);color:var(--nacht);
+  font-size:13px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+.abliste{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.abkarte{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"wer knopf" "spur knopf" "was was";
+  gap:4px 12px;align-items:center;padding:12px;border-radius:12px;background:var(--karte);border:1px solid var(--linie)}
+.abkarte.frisch{animation:abRein .32s var(--ease-out)}
+@keyframes abRein{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+.abwer{grid-area:wer;font-size:22px;font-weight:700;line-height:1.1;color:var(--kreide);font-variant-numeric:tabular-nums}
+.abspur{grid-area:spur;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px;color:var(--gedaempft)}
+.abspur span{padding:1px 8px;border-radius:999px;font-weight:700;color:var(--kreide);
+  background:color-mix(in srgb,var(--gut) 22%,transparent)}
+.abspur i{font-style:normal}
+.abwas{grid-area:was;font-size:13px;color:var(--gedaempft);overflow-wrap:anywhere}
+.abkarte .abgebracht{grid-area:knopf;width:auto;min-height:44px;padding:10px 16px}
 
 .bestellung{
   position:relative;
@@ -856,6 +881,11 @@ html{font-size:calc(16px * var(--skala,1))}
   font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
 }
 .tischnr{font-size:25px;font-weight:700;line-height:1.1;letter-spacing:-.02em}
+/* Gebündelte Servicerufe (rufeBuendeln): Zahl am Kopf, Mal-Zeichen am Grund. */
+.rufzahl{display:inline-block;margin-inline-start:8px;padding:1px 8px;border-radius:999px;
+  background:color-mix(in srgb,var(--messing) 22%,transparent);color:inherit;font-size:12px;font-weight:700;
+  letter-spacing:0;text-transform:none}
+.rufmal{font-variant-numeric:tabular-nums}
 /* Zurückhaltend gehalten: Das ist ein Hinweis, kein Alarm. Rot wäre
    hier falsch — die allermeisten dieser Bestellungen sind völlig in
    Ordnung, der Gast hat nur den Untersetzer nicht angetippt. */
@@ -1728,7 +1758,15 @@ textarea{resize:vertical;min-height:66px}
 .auswahlfeld:not(.offen) .auswahlpanel{transition-duration:var(--t-druck)}
 .auswahlpanel input[type=text]{margin-bottom:10px}
 
-.chipgitter{display:flex;flex-wrap:wrap;gap:8px;max-height:190px;overflow-y:auto}
+/* Kein eigener Scrollbereich (§3.8): Auf dem Telefon lag das Panel halb
+   breit über der rechten Spalte, „Für die Runde“ war abgeschnitten und
+   ein Wisch rollte die Liste statt des Blatts (Foto 10.10.). Das Panel
+   spannt jetzt über die ganze Zeile (Anker: .zweispalt), die Chips
+   fließen mit. */
+.chipgitter{display:flex;flex-wrap:wrap;gap:8px}
+.zweispalt:has(#katFeld){position:relative}
+#katFeld{position:static}
+#katFeld .auswahlpanel{left:0;right:0;top:100%}
 .katchip{
   min-height:44px;padding:0 14px;border-radius:999px;
   border:1px solid var(--linie);background:transparent;color:var(--kreide);
@@ -2590,7 +2628,13 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
   border-radius:var(--r);padding:10px 12px;margin:0 0 14px;font-size:13px;color:var(--gedaempft);
 }
 .entwurf-hinweis[hidden]{display:none}
-.entwurf-hinweis span{flex:1;min-width:0;line-height:1.4}
+/* 10.10., Bildschirmfoto vom iPad: „Verwerfen“ erbte width:100% von
+   .knopf (die Klasse „schmal“ gab es nie) und drückte den Satz in eine
+   Spalte von drei Buchstaben, darüber lag der Knopf. Jetzt: Satz nimmt
+   den Platz, Knopf so breit wie sein Wort, bei Enge darunter. */
+.entwurf-hinweis{flex-wrap:wrap}
+.entwurf-hinweis span{flex:1 1 220px;min-width:0;line-height:1.4}
+.entwurf-hinweis .knopf{flex:0 0 auto;width:auto;margin:0;padding:10px 18px;min-height:44px}
 .bk-mini{flex:0 0 44px;width:44px;height:44px;border-radius:10px;border:1px solid var(--linie);overflow:hidden}
 .bk-mini img{width:100%;height:100%;object-fit:contain;display:block}
 .bk-weg{width:auto;padding:9px 12px;font-size:13px;min-height:44px}
@@ -3096,6 +3140,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
       <button class="pausenknopf" id="pauseKnopf">Pausieren</button>
     </div>
+    <!-- Zum Abholen (Wunsch 10.10.): Die Küche hakt ab („Abholbereit“),
+         hier steht es für den Service — mit eigenem Ton —, bis jemand
+         „Gebracht“ tippt. Ganz oben, weil warmes Essen nicht wartet. -->
+    <section class="abholen" id="abholen" aria-label="Zum Abholen" hidden>
+      <div class="abkopf"><b>Zum Abholen</b><span class="abzahl" id="abholZahl"></span></div>
+      <div class="abliste" id="abholListe" aria-live="polite"></div>
+    </section>
     <!-- Alle · Lieferungen: früher ein eigener Reiter unter „Mehr“, der
          nur diesen Filter setzte. Jetzt ein Umschalter an der Stelle, wo
          die Karten stehen; die Zahl zeigt offene Lieferungen auch unter
@@ -4693,7 +4744,7 @@ function mahnungPruefen(){
   }
   /* Die Minutenangabe auf den Karten läuft weiter - einmal je Minute
      neu zeichnen reicht, öfter wäre Verschwendung. */
-  if(bestellungen.some(b => b.status !== "fertig")) neuZeichnen();
+  if(bestellungen.some(b => b.status !== "fertig" || istAbholbereit(b))) neuZeichnen();
 }
 setInterval(mahnungPruefen, 60000);
 let gerichte = [], bestellungen = [];
@@ -5630,6 +5681,139 @@ function klingel(){
      nichts. Auf Android hilft es im lauten Betrieb spürbar. */
   if(EINST.vibration && navigator.vibrate){
     try{ navigator.vibrate([40, 60, 40]); }catch(e){}
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ZUM ABHOLEN (Wunsch 10.10.)
+
+   „Der Koch kann direkt sagen, sobald ein Gericht fertig ist … dann
+   bekommt der Service mit einem speziellen Ton Bescheid.“ Die Küche
+   schreibt dafür nichts Neues — ihr Abhaken setzt längst
+   kueche_fertig_um / theke_fertig_um. Neu ist nur gebracht_um
+   (migration-abholbereit.sql): Bis der Service „Gebracht“ tippt, steht
+   die Bestellung oben. Wird später die zweite Spur fertig (erst die
+   Getränke, dann das Essen), ist sie jünger als gebracht_um und
+   erscheint wieder.
+   ═══════════════════════════════════════════════════════════════ */
+const ABHOL_FENSTER = 4 * 3600000;   /* älter als 4 h: niemand wartet mehr am Pass */
+function spurZeit(b){
+  return Math.max(b && b.kueche_fertig_um ? Date.parse(b.kueche_fertig_um) || 0 : 0,
+                  b && b.theke_fertig_um  ? Date.parse(b.theke_fertig_um)  || 0 : 0);
+}
+function istAbholbereit(b){
+  if(!b || b.quelle === "service" || b.pruefen) return false;
+  if(b.status === "storniert" || b.status === "abgelehnt") return false;
+  const t = spurZeit(b);
+  if(!t || Date.now() - t > ABHOL_FENSTER) return false;
+  return !b.gebracht_um || (Date.parse(b.gebracht_um) || 0) < t;
+}
+function abholSpuren(b){
+  const g = b.gebracht_um ? Date.parse(b.gebracht_um) || 0 : 0, s = [];
+  if(b.kueche_fertig_um && Date.parse(b.kueche_fertig_um) > g) s.push("Küche");
+  if(b.theke_fertig_um  && Date.parse(b.theke_fertig_um)  > g) s.push("Theke");
+  return s;
+}
+function abholWer(b){
+  const nr = b.tagesnummer != null ? " #" + b.tagesnummer : "";
+  if(b.quelle === "lieferung") return "Lieferung" + nr;
+  if(b.quelle === "telefon") return (b.abholung === false ? "Lieferung" : "Abholung") + nr;
+  return b.tisch ? "Tisch " + b.tisch : "Bestellung" + nr;
+}
+
+/* Der Abholton: zwei helle Doppelschläge (Dreieck statt Sinus) —
+   klar anders als der Dreiklang für neue Bestellungen, damit man am
+   Pass am Klang hört, WAS los ist. Gleiche Schalter wie klingel(). */
+const ABHOL_NOTEN = [[1567.98, 0], [2093.0, 0.13], [1567.98, 0.42], [2093.0, 0.55]];
+function abholTonSpielen(){
+  try{
+    if(!tonWerk || tonWerk.state !== "running") return false;
+    const laut = 0.16 * (EINST.lautstaerke / 100) + 0.0001;
+    ABHOL_NOTEN.forEach(([hz, versatz]) => {
+      const o = tonWerk.createOscillator(), g = tonWerk.createGain();
+      o.type = "triangle"; o.frequency.value = hz;
+      const t = tonWerk.currentTime + versatz;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(laut, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+      o.connect(g); g.connect(tonWerk.destination);
+      o.start(t); o.stop(t + 0.4);
+    });
+    return true;
+  }catch(e){ return false; }
+}
+function abholTon(){
+  window.__abholTon = (window.__abholTon || 0) + 1;   /* für die Prüfung zählbar */
+  if(!EINST.ton) return;
+  if(tonWerk && tonWerk.state === "suspended"){
+    tonWerk.resume().then(() => { if(!abholTonSpielen()) dateiSpielen(); }).catch(() => { dateiSpielen(); });
+  }else if(!abholTonSpielen()) dateiSpielen();
+  if(EINST.vibration && navigator.vibrate){
+    try{ navigator.vibrate([90, 60, 90, 60, 90]); }catch(e){}
+  }
+}
+
+/* Meldet genau EINMAL je neu fertiger Spur: nur beim Übergang, den das
+   Board selbst sieht (alt → neu), nie beim Laden — sonst klingelte
+   jedes Neuladen alles noch einmal, was schon am Pass steht. */
+function abholPruefen(alt, neu){
+  if(!alt || !istAbholbereit(neu)) return;
+  /* Nur wenn eine Spur JÜNGER fertig ist als im bekannten Stand —
+     dieselbe Nachricht zweimal (Live-Leitung und nachholen()) klingelt
+     damit nicht doppelt. */
+  if(spurZeit(neu) <= spurZeit(alt)) return;
+  abholFrisch.add(neu.id);
+  abholTon();
+  melde(abholWer(neu) + " · abholbereit");
+}
+const abholFrisch = new Set();
+
+function zeichneAbholen(){
+  const feld = $("#abholen"), ziel = $("#abholListe");
+  if(!feld || !ziel) return;
+  const liste = bestellungen.filter(istAbholbereit).sort((a, b) => spurZeit(a) - spurZeit(b));
+  feld.hidden = liste.length === 0;
+  $("#abholZahl").textContent = liste.length;
+  ziel.innerHTML = liste.map(b => {
+    const min = Math.max(0, Math.floor((Date.now() - spurZeit(b)) / 60000));
+    const pos = b.positionen || [];
+    const was = pos.slice(0, 4).map(p => (p.menge || 1) + "× " + sicher(p.name)).join(" · ") + (pos.length > 4 ? " …" : "");
+    return `<article class="abkarte" data-abid="${sicher(b.id)}">
+      <div class="abwer">${sicher(abholWer(b))}</div>
+      <div class="abspur">${abholSpuren(b).map(x => `<span>${x}</span>`).join("")}<i>${min < 1 ? "gerade eben" : "seit " + min + " Min"}</i></div>
+      ${was ? `<div class="abwas">${was}</div>` : ""}
+      <button type="button" class="knopf abgebracht" data-gebracht="${sicher(b.id)}">Gebracht</button>
+    </article>`;
+  }).join("");
+  /* Einflug nur für das wirklich Neue (§4.1). */
+  ziel.querySelectorAll(".abkarte").forEach(el => {
+    if(abholFrisch.has(el.dataset.abid)){ abholFrisch.delete(el.dataset.abid); el.classList.add("frisch"); }
+  });
+}
+
+async function abholGebracht(id){
+  const b = bestellungen.find(x => x.id === id);
+  if(!b || inArbeit.has(id)) return;
+  const vorher = b.gebracht_um;
+  b.gebracht_um = new Date().toISOString();
+  inArbeit.add(id);
+  zeichneAbholen();
+  if(demo){ inArbeit.delete(id); melde("Gebracht · " + abholWer(b)); return; }
+  try{
+    const {error} = await db.from("bestellungen").update({ gebracht_um: b.gebracht_um })
+      .eq("id", id).eq("betrieb_id", betriebId);
+    if(error){
+      b.gebracht_um = vorher;
+      melde(/gebracht_um/.test(error.message || "")
+        ? "Die Datenbank kennt „gebracht_um“ noch nicht (migration-abholbereit.sql)."
+        : "Nicht gespeichert, bitte Verbindung prüfen", true);
+    }else melde("Gebracht · " + abholWer(b));
+  }catch(e){
+    b.gebracht_um = vorher;
+    melde("Nicht gespeichert, bitte Verbindung prüfen", true);
+  }finally{
+    inArbeit.delete(id);
+    neuZeichnen();
   }
 }
 
@@ -7326,18 +7510,23 @@ async function pruefEntscheiden(id, freigeben){
   const b = bestellungen.find(x => x.id === id); if(!b || inArbeit.has(id)) return;
   const felder = freigeben ? { pruefen:false, pruef_grund:null } : { status:"abgelehnt", pruefen:false };
   if(!freigeben && !confirm("Diese Bestellung verwerfen? Sie erscheint dann nirgends mehr als offen.")) return;
-  inArbeit.add(id);
-  const vorher = { pruefen:b.pruefen, pruef_grund:b.pruef_grund, status:b.status };
-  Object.assign(b, felder);
+  /* Gebündelte Rufe (rufeBuendeln): die Entscheidung gilt für alle. */
+  const alle = mitGebuendelt(b).filter(x => x === b || !inArbeit.has(x.id));
+  const ids = alle.map(x => x.id);
+  ids.forEach(i => inArbeit.add(i));
+  const vorher = alle.map(x => ({ x, pruefen:x.pruefen, pruef_grund:x.pruef_grund, status:x.status }));
+  alle.forEach(x => Object.assign(x, felder));
   neuZeichnen();
   if(!demo){
-    const {error} = await db.from("bestellungen").update(felder).eq("id", id).eq("betrieb_id", betriebId);
+    const anfrage = db.from("bestellungen").update(felder);
+    const {error} = await (ids.length > 1 ? anfrage.in("id", ids) : anfrage.eq("id", id)).eq("betrieb_id", betriebId);
     if(error){
-      Object.assign(b, vorher); inArbeit.delete(id); neuZeichnen();
+      vorher.forEach(v => { const {x, ...alt} = v; Object.assign(x, alt); });
+      ids.forEach(i => inArbeit.delete(i)); neuZeichnen();
       melde("Nicht gespeichert, bitte Verbindung prüfen", true); return;
     }
   }
-  inArbeit.delete(id);
+  ids.forEach(i => inArbeit.delete(i));
   melde(freigeben ? "Freigegeben — die Küche sieht sie jetzt" : "Verworfen");
 }
 $("#karten").addEventListener("click", e => {
@@ -7347,6 +7536,10 @@ $("#karten").addEventListener("click", e => {
   if(v){ e.stopPropagation(); return pruefEntscheiden(v.dataset.verwerfen, false); }
 }, true);
 $("#resListe").addEventListener("click", nzKlick, true);
+$("#abholen").addEventListener("click", e => {
+  const k = e.target.closest("[data-gebracht]");
+  if(k) abholGebracht(k.dataset.gebracht);
+});
 $("#nzAn").onclick = e => { const k = e.target.closest("[data-an]"); if(k && nzZustand) nzAnSetzen(k.dataset.an); };
 $("#nzWeiter").onclick = nzSpeichern;
 $("#nzWeg").onclick = () => nzSchliessen();
@@ -8517,7 +8710,7 @@ function live_anmelden(id, marke){
            Fassung die neuere. Fremde Antworten würden sie zurückdrehen. */
         if(inArbeit.has(nutz.new.id)) return;
         const i = bestellungen.findIndex(x => x.id === nutz.new.id);
-        if(i > -1) bestellungen[i] = nutz.new;
+        if(i > -1){ abholPruefen(bestellungen[i], nutz.new); bestellungen[i] = nutz.new; }
         neuZeichnen();
       })
     .on("postgres_changes",
@@ -8580,7 +8773,13 @@ async function nachholen(id){
       const i = bestellungen.findIndex(x => x.id === z.id);
       if(i > -1 && (bestellungen[i].status !== z.status ||
                     bestellungen[i].pruefen !== z.pruefen ||
-                    bestellungen[i].wartezeit_min !== z.wartezeit_min)) bestellungen[i] = z;
+                    bestellungen[i].wartezeit_min !== z.wartezeit_min ||
+                    bestellungen[i].kueche_fertig_um !== z.kueche_fertig_um ||
+                    bestellungen[i].theke_fertig_um !== z.theke_fertig_um ||
+                    bestellungen[i].gebracht_um !== z.gebracht_um)){
+        abholPruefen(bestellungen[i], z);
+        bestellungen[i] = z;
+      }
     });
 
     if(frisch){
@@ -8724,7 +8923,7 @@ function neuZeichnen(){
    freigegeben – sonst käme der Aufbau dem Klick zuvor. */
 ["pointerdown","touchstart"].forEach(art =>
   document.addEventListener(art, e => {
-    if(e.target.closest && e.target.closest("#karten, #resListe")) fingerUnten = true;
+    if(e.target.closest && e.target.closest("#karten, #resListe, #abholen")) fingerUnten = true;
   }, {passive:true, capture:true}));
 
 ["pointerup","pointercancel","touchend","touchcancel"].forEach(art =>
@@ -8749,8 +8948,37 @@ function zeichneAlles(){ zeichneBoard(); zeichneKarte(); zeichneAusgabe(); aktio
    ist, sucht man über die Tagesliste, nicht durch Scrollen. */
 const KARTEN_MAX = 80;
 
+const STAND_GRUPPE = ["Zu prüfen", "Neu", "In Arbeit", "Fertig", "Sonstiges"];
+function standGruppe(b){
+  if(b.pruefen && b.status === "neu") return 0;
+  return ({ neu:1, arbeit:2, fertig:3 })[b.status] ?? 4;
+}
 function gefiltert(){
   return bestellungen.filter(b => zeigeQuelle[b.quelle] && zeigeStatus[b.status]);
+}
+
+/* Servicerufe desselben Tisches als EINE Karte (Wunsch 10.10., Foto:
+   zehn Karten „Bitte einmal an den Tisch“ von Tisch 12). Der neueste
+   Ruf trägt die Karte, die übrigen hängen als _weitere daran; jede
+   Handlung auf der Karte gilt für alle. Getrennt bleiben, was
+   verschieden zu behandeln ist: anderer Stand, markiert/unmarkiert.
+   _weitere wird bei JEDEM Aufbau neu gesetzt — ein Rest vom letzten
+   Mal würde sonst einen schon erledigten Ruf mitziehen. */
+function rufeBuendeln(liste){
+  const kopf = new Map(), aus = [];
+  liste.forEach(b => {
+    b._weitere = null;
+    if(b.quelle !== "service" || !b.tisch || b.status === "fertig"){ aus.push(b); return; }
+    const k = String(b.tisch).trim().toLowerCase() + "|" + b.status + "|" + (b.pruefen ? 1 : 0);
+    const erster = kopf.get(k);
+    if(erster){ erster._weitere.push(b); return; }
+    b._weitere = []; kopf.set(k, b); aus.push(b);
+  });
+  return aus;
+}
+/* Alle Zeilen, für die eine Handlung auf dieser Karte gilt. */
+function mitGebuendelt(b){
+  return [b].concat((b && b._weitere) || []);
 }
 
 /* Rabattcode-Einlösung auf der Bestellkarte. Bewusst KEIN eigener
@@ -8775,6 +9003,7 @@ function rabattZeile(b){
 }
 
 function zeichneBoard(){
+  zeichneAbholen();
   ["tisch","telefon","lieferung"].forEach(q => {
     const n = bestellungen.filter(b => b.quelle === q && zeigeStatus[b.status]).length;
     const el = document.querySelector(`[data-z="${q}"]`);
@@ -8791,8 +9020,15 @@ function zeichneBoard(){
     z.textContent = lieferOffen;
   });
 
-  const alle = gefiltert();
+  /* Gebündelt nur auf dem Board — die Ausfuhr (tabelle()) zeigt jede Zeile. */
+  const alle = rufeBuendeln(gefiltert());
+  /* Nach Stand geordnet (Wunsch 10.10.: „übersichtlicher“): Zu prüfen ·
+     Neu · In Arbeit · Fertig, je mit Überschrift. sort ist stabil —
+     innerhalb einer Gruppe bleibt die Zeitfolge wie bisher. */
+  alle.sort((a, b) => standGruppe(a) - standGruppe(b));
   const liste = alle.slice(0, KARTEN_MAX);
+  const jeGruppe = {};
+  liste.forEach(b => { const g = standGruppe(b); jeGruppe[g] = (jeGruppe[g] || 0) + 1; });
   const versteckt = alle.length - liste.length;
   const offen = bestellungen.filter(b => b.status === "neu" && !b.pruefen).length;
   const zuPruefen = bestellungen.filter(b => b.pruefen && b.status === "neu").length;
@@ -8811,7 +9047,10 @@ function zeichneBoard(){
     return;
   }
 
-  ziel.innerHTML = liste.map(b => {
+  ziel.innerHTML = liste.map((b, nr) => {
+    const gruppe_ = standGruppe(b);
+    const gkopf = (nr === 0 || standGruppe(liste[nr - 1]) !== gruppe_)
+      ? `<h3 class="kgruppe${gruppe_ === 0 ? " pruef" : ""}">${STAND_GRUPPE[gruppe_]} <span>${jeGruppe[gruppe_]}</span></h3>` : "";
     /* Servicerufe kommen ebenfalls vom Tisch und haben eine Nummer.
        Vorher fielen sie in den unteren Zweig und zeigten „Ohne Namen",
        obwohl die wichtigste Angabe - der Tisch - vorlag. */
@@ -8863,7 +9102,17 @@ function zeichneBoard(){
            <span class="pname">${sicher(p.name)}</span>
            <span class="ppreis">${euro(p.preis * p.menge)}</span></div>`).join("")}</div>` : "";
 
-    const notiz = b.notiz ? `<div class="notiz">${sicher(b.notiz)}</div>` : "";
+    const gruppe = mitGebuendelt(b);
+    let notiz = b.notiz ? `<div class="notiz">${sicher(b.notiz)}</div>` : "";
+    if(gruppe.length > 1){
+      /* Gleiche Gründe zusammen: „Rechnung bitte ×2“ statt zweimal. */
+      const gruende = new Map();
+      gruppe.forEach(x => { const n = String(x.notiz || "Serviceruf"); gruende.set(n, (gruende.get(n) || 0) + 1); });
+      notiz = `<div class="notiz">${[...gruende].map(([n, z]) =>
+        sicher(n) + (z > 1 ? ` <b class="rufmal">×${z}</b>` : "")).join("<br>")}</div>`;
+    }
+    const rufzahl = gruppe.length > 1
+      ? `<span class="rufzahl">${gruppe.length} Rufe</span>` : "";
 
     const trans = b.transkript
       ? `<details class="transkript"><summary>Gespräch nachlesen</summary>
@@ -8924,10 +9173,10 @@ function zeichneBoard(){
       : `<div class="wartet${spaet ? " spaet" : ""}">${
           min < 1 ? "gerade eben" : "seit " + min + " Min"}</div>`;
 
-    return `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
+    return gkopf + `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
       <div class="bkopf">
         <div class="herkunft">
-          <div class="hmarke">${welle}${QUELLE_TEXT[b.quelle]}</div>
+          <div class="hmarke">${welle}${QUELLE_TEXT[b.quelle]}${rufzahl}</div>
           ${kopf}
         </div>
         <div class="rechts">
@@ -13977,33 +14226,38 @@ $("#karten").onclick = async e => {
      letzte Antwort gewinnt – nicht unbedingt die zuletzt gewollte. */
   if(inArbeit.has(id)) return;
 
-  const vorher = b.status, vorherZeit = b.wartezeit_min;
-  b.status = status;              // Anzeige sofort, ohne aufs Netz zu warten
-  inArbeit.add(id);
+  /* Gebündelte Rufe (rufeBuendeln): ein Tipp gilt für alle. */
+  const alle = mitGebuendelt(b).filter(x => x === b || !inArbeit.has(x.id));
+  const ids = alle.map(x => x.id);
+  const vorher = alle.map(x => ({ x, status:x.status, zeit:x.wartezeit_min }));
+  const zurueck = () => vorher.forEach(v => { v.x.status = v.status; v.x.wartezeit_min = v.zeit; });
+  alle.forEach(x => { x.status = status; });   // Anzeige sofort, ohne aufs Netz zu warten
+  ids.forEach(i => inArbeit.add(i));
   zeichneBoard(); zeichneAusgabe();
 
-  if(demo){ inArbeit.delete(id); return; }
+  if(demo){ ids.forEach(i => inArbeit.delete(i)); return; }
 
   const satz = {status};
   /* Beim Zurücksetzen auf „Neu" fällt auch die Zusage weg, sonst stünde
      beim Gast eine Wartezeit, die niemand mehr zugesagt hat. */
-  if(status === "neu"){ satz.wartezeit_min = null; satz.bestaetigt_um = null; b.wartezeit_min = null; }
+  if(status === "neu"){ satz.wartezeit_min = null; satz.bestaetigt_um = null; alle.forEach(x => { x.wartezeit_min = null; }); }
 
   try{
-    const {error} = await db.from("bestellungen").update(satz)
-      .eq("id", id).eq("betrieb_id", betriebId);   /* Gürtel und Hosenträger */
+    const anfrage = db.from("bestellungen").update(satz);
+    const {error} = await (ids.length > 1 ? anfrage.in("id", ids) : anfrage.eq("id", id))
+      .eq("betrieb_id", betriebId);   /* Gürtel und Hosenträger */
     if(error){
-      b.status = vorher; b.wartezeit_min = vorherZeit;
+      zurueck();
       melde("Konnte nicht gespeichert werden, bitte Verbindung prüfen", true);
     }
   }catch(fehler){
-    b.status = vorher; b.wartezeit_min = vorherZeit;
+    zurueck();
     melde("Konnte nicht gespeichert werden, bitte Verbindung prüfen", true);
   }finally{
     /* MUSS in finally stehen. Stünde die Freigabe nur im Erfolgsfall,
        bliebe die Bestellung nach einem Netzfehler für immer gesperrt
        und ließe sich nie wieder antippen. */
-    inArbeit.delete(id);
+    ids.forEach(i => inArbeit.delete(i));
     neuZeichnen();
   }
 };
@@ -14076,22 +14330,25 @@ $("#zeitBlatt").onclick = e => { if(e.target === $("#zeitBlatt")) zeitBlattSchli
 
 async function bestaetigen(b, minuten){
   if(inArbeit.has(b.id)) return;
-  inArbeit.add(b.id);
-  const vorher = {status:b.status, zeit:b.wartezeit_min};
-  b.status = "arbeit";
-  b.wartezeit_min = minuten;
-  b.bestaetigt_um = new Date().toISOString();
+  /* Gebündelte Rufe (rufeBuendeln): eine Zusage für alle. */
+  const alle = mitGebuendelt(b).filter(x => x === b || !inArbeit.has(x.id));
+  const ids = alle.map(x => x.id);
+  ids.forEach(i => inArbeit.add(i));
+  const vorher = alle.map(x => ({ x, status:x.status, zeit:x.wartezeit_min }));
+  const um = new Date().toISOString();
+  alle.forEach(x => { x.status = "arbeit"; x.wartezeit_min = minuten; x.bestaetigt_um = um; });
   zeichneBoard(); zeichneAusgabe();
 
-  if(demo){ inArbeit.delete(b.id); melde("Bestätigt · ca. " + minuten + " Min"); return; }
+  if(demo){ ids.forEach(i => inArbeit.delete(i)); melde("Bestätigt · ca. " + minuten + " Min"); return; }
 
-  const {error} = await db.from("bestellungen")
-    .update({status:"arbeit", wartezeit_min:minuten, bestaetigt_um:b.bestaetigt_um})
-    .eq("id", b.id).eq("betrieb_id", betriebId);
+  const anfrage = db.from("bestellungen")
+    .update({status:"arbeit", wartezeit_min:minuten, bestaetigt_um:um});
+  const {error} = await (ids.length > 1 ? anfrage.in("id", ids) : anfrage.eq("id", b.id))
+    .eq("betrieb_id", betriebId);
 
-  inArbeit.delete(b.id);
+  ids.forEach(i => inArbeit.delete(i));
   if(error){
-    b.status = vorher.status; b.wartezeit_min = vorher.zeit;
+    vorher.forEach(v => { v.x.status = v.status; v.x.wartezeit_min = v.zeit; });
     neuZeichnen();
     melde("Zusage nicht gespeichert, bitte Verbindung prüfen", true);
     return;
@@ -14951,7 +15208,10 @@ function entwurfFormLesen(){
 }
 function entwurfFormAnwenden(w){
   $("#fName").value = w.name || ""; $("#fBeschr").value = w.beschreibung || "";
-  $("#fPreis").value = w.preis || ""; $("#fKat").value = w.kategorie || "";
+  /* Wie beim Öffnen eines Gerichts: Komma und zwei Stellen. Ein alter
+     Entwurf trug den Rohwert („10.9“, Foto 10.10.). */
+  const wp = preisAusFeld(String(w.preis || ""));
+  $("#fPreis").value = wp ? wp.toFixed(2).replace(".", ",") : (w.preis || ""); $("#fKat").value = w.kategorie || "";
   katWertAktualisieren(); katPanelSchliessen(false);
   stoffeSetzen("#fAllergene", w.allergene); stoffeSetzen("#fZusatz", w.zusatzstoffe);
   $("#fStoffHinweis").value = w.stoff_hinweis || "";

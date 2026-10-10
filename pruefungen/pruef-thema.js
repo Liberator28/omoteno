@@ -22,7 +22,7 @@
      - die vorhandenen tusche-Variablen (Bambus, Kleckse, Knospe)
        umgefärbt, nicht neu gebaut — Wiederverwendung, s. hub.vorlage
      - a.kachel/a.tipp/.begleiter bekommen eine goldene Innenlinie,
-       .sprachknopf/.lichtknopf einen Goldring statt des mattweißen
+       die Kopf-Leiste (.kopfwahl, seit 10.10.) einen Goldring statt des mattweißen
        Rands aus der Grundausstattung
 
    Erweitert nach einer zweiten Nutzerprobe (weiteres Bildschirmfoto,
@@ -74,14 +74,16 @@ function pruef(b, t, d) {
 
     const info = await seite.evaluate(() => {
       const kachel = document.querySelector("a.kachel");
-      const licht = document.querySelector(".lichtknopf");
+      /* Seit 10.10. trägt die verbundene Leiste (.kopfwahl) den Goldring,
+         die Knöpfe darin sind randlos. */
+      const licht = document.querySelector(".kopfwahl");
       const h1 = document.querySelector("h1");
       const ico = document.querySelector("a.kachel .ico");
       const eckeVorher = kachel ? getComputedStyle(kachel, "::before") : null;
       return {
         thema: document.body.dataset.thema,
         kachelSchatten: kachel ? getComputedStyle(kachel).boxShadow : "kein a.kachel",
-        lichtRand: licht ? getComputedStyle(licht).borderColor : "kein .lichtknopf",
+        lichtRand: licht ? getComputedStyle(licht).borderTopColor : "keine .kopfwahl",
         kopfSchrift: h1 ? getComputedStyle(h1).fontFamily : "kein h1",
         icoSchatten: ico ? getComputedStyle(ico).boxShadow : "kein .ico",
         eckeBreite: eckeVorher ? eckeVorher.borderTopWidth : "kein ::before",
@@ -91,7 +93,7 @@ function pruef(b, t, d) {
     pruef(/rgba?\(0,\s*0,\s*0/.test(info.kachelSchatten) === false && info.kachelSchatten.includes("inset"),
       "minhkeey: a.kachel trägt die goldene Innenlinie (inset)", info.kachelSchatten);
     pruef(info.lichtRand.includes("224") || /rgba?\(224/.test(info.lichtRand),
-      "minhkeey: .lichtknopf trägt den Goldring statt des mattweißen Rands", info.lichtRand);
+      "minhkeey: die Kopf-Leiste trägt den Goldring statt des mattweißen Rands", info.lichtRand);
     pruef(/Iowan|Palatino|Charter/.test(info.kopfSchrift),
       "minhkeey: Kopf-Schrift ist die Serife aus dem Markenblatt", info.kopfSchrift);
     pruef(info.icoSchatten.includes("inset"),

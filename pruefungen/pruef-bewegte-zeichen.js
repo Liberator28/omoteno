@@ -772,18 +772,16 @@ async function oeffnen(browser, slug, hash, opt = {}) {
   console.log("\n══ Entscheidungshilfe über der Speisekarte ══");
   {
     const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/speisekarte");
-    /* Ganz oben: direkt nach Titel und Untertitel, vor Aktion, Suche, Chips. */
+    /* Ganz oben: seit 10.10. ÜBER dem Titel („über dem Text ‚Unsere
+       Speisekarte‘“) — erstes Element der Seite, danach der Titel. */
     const ort = await s.evaluate(() => {
       const cta = document.querySelector(".eh-cta"), such = document.querySelector(".suche");
       return { da: !!cta, vorSuche: !!cta && !!such && !!(cta.compareDocumentPosition(such) & Node.DOCUMENT_POSITION_FOLLOWING),
-               davor: cta && cta.previousElementSibling &&
-                 (cta.previousElementSibling.className || cta.previousElementSibling.tagName.toLowerCase()) };
+               erstes: !!cta && cta.parentElement.firstElementChild === cta,
+               danach: cta && cta.nextElementSibling && cta.nextElementSibling.tagName.toLowerCase() };
     });
-    /* Direkt nach dem Kopf der Seite: der Unterzeile — oder, seit eine
-       umbenannte Kachel keine fremde Vorgabe-Unterzeile mehr trägt
-       (07.10.), direkt nach dem Titel. */
-    pruef(ort.da && ort.vorSuche && (ort.davor === "unter" || ort.davor === "h2"),
-      "der Knopf steht ganz oben in der Speisekarte, vor der Suche", JSON.stringify(ort));
+    pruef(ort.da && ort.vorSuche && ort.erstes && ort.danach === "h2",
+      "der Knopf steht ganz oben in der Speisekarte, über dem Titel", JSON.stringify(ort));
     const kn = await s.evaluate(() => document.querySelectorAll(".eh-cta .eh-knopf").length);
     pruef(kn === 1 && !(await s.evaluate(() => /Karten wischen|Swipe cards/.test(document.body.innerText))),
       "in der Speisekarte EIN Knopf: „Für mich entscheiden“ (Karten wischen über den Umschalter)", kn);
