@@ -18,6 +18,11 @@
        (§4.3), ein zweiter Tipp nach dem Ende hüpft wieder.
    4 · Jede neue Figur steht als Begleiter da, im 48-px-Feld.
    5 · Reduzierte Bewegung: nichts läuft, kein Hüpfer.
+
+   Gegenbeweis (worktree, §8.1k): Gruß-Merker entfernt → „grüßt nicht
+   noch einmal“ rot; Entfernen von b-hops nach dem Hüpfer gestrichen →
+   „Klasse wieder weg“ rot; Regel für reduzierte Bewegung gestrichen →
+   beide Proben dort rot.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const path = require("path");
@@ -109,7 +114,7 @@ const lauf = s => s.evaluate(() => {
         zeichne();
         const svg = document.querySelector(".begleiter .figur"); if (!svg) return null;
         const r = svg.getBoundingClientRect(), bb = svg.getBBox();
-        return { klasse: svg.getAttribute("class"), w: r.width, h: r.height, innen: bb.x >= -1 && bb.y >= -1 && bb.x + bb.width <= 125 && bb.y + bb.height <= 129 };
+        return { klasse: svg.getAttribute("class"), w: +svg.getAttribute("width"), /* gesetzt, nicht gemalt: sie atmet */ h: r.height, innen: bb.x >= -1 && bb.y >= -1 && bb.x + bb.width <= 125 && bb.y + bb.height <= 129 };
       }, fk);
       pruef(!!g && g.klasse.includes("f-" + fk) && Math.abs(g.w - 48) < 1 && g.innen, haus + ": „" + fk + "“ steht als Begleiter im 48-px-Feld, nichts ragt heraus", g && JSON.stringify(g));
     }
