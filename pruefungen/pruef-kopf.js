@@ -233,7 +233,10 @@ async function oeffnen(browser, haus, breite, sprache) {
     await seite.evaluate(() => { document.documentElement.style.scrollBehavior = "auto"; window.scrollTo(0, 1500); });
     await seite.waitForTimeout(300);
     const kl = await seite.evaluate(() => {
-      const b = document.getElementById("zurueck"), r = b.getBoundingClientRect();
+      /* Klebt die Kategorie-Leiste, steht der Weg zurück IN ihr (seit
+         10.10.; die schwebende Pille tritt dann zurück) — dann gilt dieser. */
+      const b = document.body.classList.contains("kat-klebt") ? document.querySelector("#inhalt .chip-zurueck")
+                                                              : document.getElementById("zurueck"), r = b.getBoundingClientRect();
       const mitte = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       return { top: r.top, scroll: scrollY, oben: mitte === b || b.contains(mitte) };
     });

@@ -162,13 +162,15 @@ async function hub(browser, slug, hash, opt = {}) {
       const lat = document.querySelector(".laternen");
       if (!lat || !lat.getBoundingClientRect().height) return null;
       const lr = lat.getBoundingClientRect(), z = document.getElementById("zurueck").getBoundingClientRect();
-      const h2 = document.querySelector("#inhalt h2");
+      /* Seit 10.10. steht über dem Titel die Pille „Für mich entscheiden“ —
+         gemessen wird bis zum ERSTEN Inhalt der Seite, nicht bis zum h2. */
+      const erstes = document.querySelector("#inhalt .seite > :first-child");
       return { latUnten: Math.round(lr.bottom), zOben: Math.round(z.top), zUnten: Math.round(z.bottom),
-               luecke: h2 ? Math.round(h2.getBoundingClientRect().top - z.bottom) : null };
+               luecke: erstes ? Math.round(erstes.getBoundingClientRect().top - z.bottom) : null };
     });
     pruef(!!m, "Voraussetzung: Minhkeey trägt Laternen");
     pruef(!!m && m.zOben >= m.latUnten - 4, "Zurück liegt unter den Laternen (keine Quaste darüber)", m && JSON.stringify(m));
-    pruef(!!m && m.luecke !== null && m.luecke <= 60, "kein leerer Streifen zwischen Zurück und Titel", m && m.luecke + " px");
+    pruef(!!m && m.luecke !== null && m.luecke <= 60, "kein leerer Streifen zwischen Zurück und dem Inhalt darunter", m && m.luecke + " px");
     pruef(!fehler.length, "keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
   }
