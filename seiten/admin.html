@@ -810,6 +810,31 @@ html{font-size:calc(16px * var(--skala,1))}
 
 /* ─── Bestellkarte ─────────────────────────────────────────── */
 .karten{display:flex;flex-direction:column;gap:12px}
+/* Überschriften nach Stand in der Bestellliste (Wunsch 10.10.: „übersichtlicher“). */
+.kgruppe{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;margin:10px 2px -2px;
+  font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gedaempft)}
+.kgruppe:first-child{margin-top:0}
+.kgruppe span{font-variant-numeric:tabular-nums;letter-spacing:0}
+.kgruppe.pruef{color:var(--warn)}
+/* Zum Abholen: eigene Fläche über allem, grün wie „fertig“. */
+.abholen{margin-bottom:16px;padding:12px 14px 14px;border-radius:var(--r);
+  background:color-mix(in srgb,var(--gut) 9%,var(--karte));
+  box-shadow:inset 0 0 0 1.5px color-mix(in srgb,var(--gut) 55%,transparent)}
+.abkopf{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-size:15px;color:var(--kreide)}
+.abzahl{min-width:24px;padding:1px 8px;border-radius:999px;background:var(--gut);color:var(--nacht);
+  font-size:13px;font-weight:700;text-align:center;font-variant-numeric:tabular-nums}
+.abliste{display:grid;gap:10px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.abkarte{display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-areas:"wer knopf" "spur knopf" "was was";
+  gap:4px 12px;align-items:center;padding:12px;border-radius:12px;background:var(--karte);border:1px solid var(--linie)}
+.abkarte.frisch{animation:abRein .32s var(--ease-out)}
+@keyframes abRein{from{opacity:0;transform:translateY(-6px) scale(.98)}to{opacity:1;transform:none}}
+.abwer{grid-area:wer;font-size:22px;font-weight:700;line-height:1.1;color:var(--kreide);font-variant-numeric:tabular-nums}
+.abspur{grid-area:spur;display:flex;flex-wrap:wrap;align-items:center;gap:6px;font-size:12.5px;color:var(--gedaempft)}
+.abspur span{padding:1px 8px;border-radius:999px;font-weight:700;color:var(--kreide);
+  background:color-mix(in srgb,var(--gut) 22%,transparent)}
+.abspur i{font-style:normal}
+.abwas{grid-area:was;font-size:13px;color:var(--gedaempft);overflow-wrap:anywhere}
+.abkarte .abgebracht{grid-area:knopf;width:auto;min-height:44px;padding:10px 16px}
 
 .bestellung{
   position:relative;
@@ -3115,6 +3140,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
       <button class="pausenknopf" id="pauseKnopf">Pausieren</button>
     </div>
+    <!-- Zum Abholen (Wunsch 10.10.): Die Küche hakt ab („Abholbereit“),
+         hier steht es für den Service — mit eigenem Ton —, bis jemand
+         „Gebracht“ tippt. Ganz oben, weil warmes Essen nicht wartet. -->
+    <section class="abholen" id="abholen" aria-label="Zum Abholen" hidden>
+      <div class="abkopf"><b>Zum Abholen</b><span class="abzahl" id="abholZahl"></span></div>
+      <div class="abliste" id="abholListe" aria-live="polite"></div>
+    </section>
     <!-- Alle · Lieferungen: früher ein eigener Reiter unter „Mehr“, der
          nur diesen Filter setzte. Jetzt ein Umschalter an der Stelle, wo
          die Karten stehen; die Zahl zeigt offene Lieferungen auch unter
@@ -4712,7 +4744,7 @@ function mahnungPruefen(){
   }
   /* Die Minutenangabe auf den Karten läuft weiter - einmal je Minute
      neu zeichnen reicht, öfter wäre Verschwendung. */
-  if(bestellungen.some(b => b.status !== "fertig")) neuZeichnen();
+  if(bestellungen.some(b => b.status !== "fertig" || istAbholbereit(b))) neuZeichnen();
 }
 setInterval(mahnungPruefen, 60000);
 let gerichte = [], bestellungen = [];
@@ -5649,6 +5681,140 @@ function klingel(){
      nichts. Auf Android hilft es im lauten Betrieb spürbar. */
   if(EINST.vibration && navigator.vibrate){
     try{ navigator.vibrate([40, 60, 40]); }catch(e){}
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   ZUM ABHOLEN (Wunsch 10.10.)
+
+   „Der Koch kann direkt sagen, sobald ein Gericht fertig ist … dann
+   bekommt der Service mit einem speziellen Ton Bescheid.“ Die Küche
+   schreibt dafür nichts Neues — ihr Abhaken setzt längst
+   kueche_fertig_um / theke_fertig_um. Neu ist nur gebracht_um
+   (migration-abholbereit.sql): Bis der Service „Gebracht“ tippt, steht
+   die Bestellung oben. Wird später die zweite Spur fertig (erst die
+   Getränke, dann das Essen), ist sie jünger als gebracht_um und
+   erscheint wieder.
+   ═══════════════════════════════════════════════════════════════ */
+const ABHOL_FENSTER = 4 * 3600000;   /* älter als 4 h: niemand wartet mehr am Pass */
+function spurZeit(b){
+  return Math.max(b && b.kueche_fertig_um ? Date.parse(b.kueche_fertig_um) || 0 : 0,
+                  b && b.theke_fertig_um  ? Date.parse(b.theke_fertig_um)  || 0 : 0);
+}
+function istAbholbereit(b){
+  if(!b || b.quelle === "service" || b.pruefen) return false;
+  if(b.status === "storniert" || b.status === "abgelehnt") return false;
+  const t = spurZeit(b);
+  if(!t || Date.now() - t > ABHOL_FENSTER) return false;
+  return !b.gebracht_um || (Date.parse(b.gebracht_um) || 0) < t;
+}
+function abholSpuren(b){
+  const g = b.gebracht_um ? Date.parse(b.gebracht_um) || 0 : 0, s = [];
+  if(b.kueche_fertig_um && Date.parse(b.kueche_fertig_um) > g) s.push("Küche");
+  if(b.theke_fertig_um  && Date.parse(b.theke_fertig_um)  > g) s.push("Theke");
+  return s;
+}
+function abholWer(b){
+  const nr = b.tagesnummer != null ? " #" + b.tagesnummer : "";
+  if(b.quelle === "lieferung") return "Lieferung" + nr;
+  if(b.quelle === "telefon") return (b.abholung === false ? "Lieferung" : "Abholung") + nr;
+  return b.tisch ? "Tisch " + b.tisch : "Bestellung" + nr;
+}
+
+/* Der Abholton: zwei helle Doppelschläge (Dreieck statt Sinus) —
+   klar anders als der Dreiklang für neue Bestellungen, damit man am
+   Pass am Klang hört, WAS los ist. Gleiche Schalter wie klingel(). */
+const ABHOL_NOTEN = [[1567.98, 0], [2093.0, 0.13], [1567.98, 0.42], [2093.0, 0.55]];
+function abholTonSpielen(){
+  try{
+    if(!tonWerk || tonWerk.state !== "running") return false;
+    const laut = 0.16 * (EINST.lautstaerke / 100) + 0.0001;
+    ABHOL_NOTEN.forEach(([hz, versatz]) => {
+      const o = tonWerk.createOscillator(), g = tonWerk.createGain();
+      o.type = "triangle"; o.frequency.value = hz;
+      const t = tonWerk.currentTime + versatz;
+      g.gain.setValueAtTime(0.0001, t);
+      g.gain.exponentialRampToValueAtTime(laut, t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.0001, t + 0.34);
+      o.connect(g); g.connect(tonWerk.destination);
+      o.start(t); o.stop(t + 0.4);
+    });
+    return true;
+  }catch(e){ return false; }
+}
+function abholTon(){
+  window.__abholTon = (window.__abholTon || 0) + 1;   /* für die Prüfung zählbar */
+  if(!EINST.ton) return;
+  if(tonWerk && tonWerk.state === "suspended"){
+    tonWerk.resume().then(() => { if(!abholTonSpielen()) dateiSpielen(); }).catch(() => { dateiSpielen(); });
+  }else if(!abholTonSpielen()) dateiSpielen();
+  if(EINST.vibration && navigator.vibrate){
+    try{ navigator.vibrate([90, 60, 90, 60, 90]); }catch(e){}
+  }
+}
+
+/* Meldet genau EINMAL je neu fertiger Spur: nur beim Übergang, den das
+   Board selbst sieht (alt → neu), nie beim Laden — sonst klingelte
+   jedes Neuladen alles noch einmal, was schon am Pass steht. */
+const abholGemeldet = new Set();
+function abholPruefen(alt, neu){
+  if(!alt || !istAbholbereit(neu)) return;
+  if(spurZeit(neu) <= spurZeit(alt)) return;
+  const schl = neu.id + "|" + spurZeit(neu);
+  if(abholGemeldet.has(schl)) return;
+  abholGemeldet.add(schl);
+  abholFrisch.add(neu.id);
+  abholTon();
+  melde(abholWer(neu) + " · abholbereit");
+}
+const abholFrisch = new Set();
+
+function zeichneAbholen(){
+  const feld = $("#abholen"), ziel = $("#abholListe");
+  if(!feld || !ziel) return;
+  const liste = bestellungen.filter(istAbholbereit).sort((a, b) => spurZeit(a) - spurZeit(b));
+  feld.hidden = liste.length === 0;
+  $("#abholZahl").textContent = liste.length;
+  ziel.innerHTML = liste.map(b => {
+    const min = Math.max(0, Math.floor((Date.now() - spurZeit(b)) / 60000));
+    const pos = b.positionen || [];
+    const was = pos.slice(0, 4).map(p => (p.menge || 1) + "× " + sicher(p.name)).join(" · ") + (pos.length > 4 ? " …" : "");
+    return `<article class="abkarte" data-abid="${sicher(b.id)}">
+      <div class="abwer">${sicher(abholWer(b))}</div>
+      <div class="abspur">${abholSpuren(b).map(x => `<span>${x}</span>`).join("")}<i>${min < 1 ? "gerade eben" : "seit " + min + " Min"}</i></div>
+      ${was ? `<div class="abwas">${was}</div>` : ""}
+      <button type="button" class="knopf abgebracht" data-gebracht="${sicher(b.id)}">Gebracht</button>
+    </article>`;
+  }).join("");
+  /* Einflug nur für das wirklich Neue (§4.1). */
+  ziel.querySelectorAll(".abkarte").forEach(el => {
+    if(abholFrisch.has(el.dataset.abid)){ abholFrisch.delete(el.dataset.abid); el.classList.add("frisch"); }
+  });
+}
+
+async function abholGebracht(id){
+  const b = bestellungen.find(x => x.id === id);
+  if(!b || inArbeit.has(id)) return;
+  const vorher = b.gebracht_um;
+  b.gebracht_um = new Date().toISOString();
+  inArbeit.add(id);
+  zeichneAbholen();
+  if(demo){ inArbeit.delete(id); melde("Gebracht · " + abholWer(b)); return; }
+  try{
+    const {error} = await db.from("bestellungen").update({ gebracht_um: b.gebracht_um })
+      .eq("id", id).eq("betrieb_id", betriebId);
+    if(error){
+      b.gebracht_um = vorher;
+      melde(/gebracht_um/.test(error.message || "")
+        ? "Die Datenbank kennt „gebracht_um“ noch nicht (migration-abholbereit.sql)."
+        : "Nicht gespeichert, bitte Verbindung prüfen", true);
+    }else melde("Gebracht · " + abholWer(b));
+  }catch(e){
+    b.gebracht_um = vorher;
+    melde("Nicht gespeichert, bitte Verbindung prüfen", true);
+  }finally{
+    inArbeit.delete(id);
+    neuZeichnen();
   }
 }
 
@@ -7371,6 +7537,10 @@ $("#karten").addEventListener("click", e => {
   if(v){ e.stopPropagation(); return pruefEntscheiden(v.dataset.verwerfen, false); }
 }, true);
 $("#resListe").addEventListener("click", nzKlick, true);
+$("#abholen").addEventListener("click", e => {
+  const k = e.target.closest("[data-gebracht]");
+  if(k) abholGebracht(k.dataset.gebracht);
+});
 $("#nzAn").onclick = e => { const k = e.target.closest("[data-an]"); if(k && nzZustand) nzAnSetzen(k.dataset.an); };
 $("#nzWeiter").onclick = nzSpeichern;
 $("#nzWeg").onclick = () => nzSchliessen();
@@ -8541,7 +8711,7 @@ function live_anmelden(id, marke){
            Fassung die neuere. Fremde Antworten würden sie zurückdrehen. */
         if(inArbeit.has(nutz.new.id)) return;
         const i = bestellungen.findIndex(x => x.id === nutz.new.id);
-        if(i > -1) bestellungen[i] = nutz.new;
+        if(i > -1){ abholPruefen(bestellungen[i], nutz.new); bestellungen[i] = nutz.new; }
         neuZeichnen();
       })
     .on("postgres_changes",
@@ -8604,7 +8774,13 @@ async function nachholen(id){
       const i = bestellungen.findIndex(x => x.id === z.id);
       if(i > -1 && (bestellungen[i].status !== z.status ||
                     bestellungen[i].pruefen !== z.pruefen ||
-                    bestellungen[i].wartezeit_min !== z.wartezeit_min)) bestellungen[i] = z;
+                    bestellungen[i].wartezeit_min !== z.wartezeit_min ||
+                    bestellungen[i].kueche_fertig_um !== z.kueche_fertig_um ||
+                    bestellungen[i].theke_fertig_um !== z.theke_fertig_um ||
+                    bestellungen[i].gebracht_um !== z.gebracht_um)){
+        abholPruefen(bestellungen[i], z);
+        bestellungen[i] = z;
+      }
     });
 
     if(frisch){
@@ -8748,7 +8924,7 @@ function neuZeichnen(){
    freigegeben – sonst käme der Aufbau dem Klick zuvor. */
 ["pointerdown","touchstart"].forEach(art =>
   document.addEventListener(art, e => {
-    if(e.target.closest && e.target.closest("#karten, #resListe")) fingerUnten = true;
+    if(e.target.closest && e.target.closest("#karten, #resListe, #abholen")) fingerUnten = true;
   }, {passive:true, capture:true}));
 
 ["pointerup","pointercancel","touchend","touchcancel"].forEach(art =>
@@ -8773,6 +8949,11 @@ function zeichneAlles(){ zeichneBoard(); zeichneKarte(); zeichneAusgabe(); aktio
    ist, sucht man über die Tagesliste, nicht durch Scrollen. */
 const KARTEN_MAX = 80;
 
+const STAND_GRUPPE = ["Zu prüfen", "Neu", "In Arbeit", "Fertig", "Sonstiges"];
+function standGruppe(b){
+  if(b.pruefen && b.status === "neu") return 0;
+  return ({ neu:1, arbeit:2, fertig:3 })[b.status] ?? 4;
+}
 function gefiltert(){
   return bestellungen.filter(b => zeigeQuelle[b.quelle] && zeigeStatus[b.status]);
 }
@@ -8823,6 +9004,7 @@ function rabattZeile(b){
 }
 
 function zeichneBoard(){
+  zeichneAbholen();
   ["tisch","telefon","lieferung"].forEach(q => {
     const n = bestellungen.filter(b => b.quelle === q && zeigeStatus[b.status]).length;
     const el = document.querySelector(`[data-z="${q}"]`);
@@ -8841,7 +9023,13 @@ function zeichneBoard(){
 
   /* Gebündelt nur auf dem Board — die Ausfuhr (tabelle()) zeigt jede Zeile. */
   const alle = rufeBuendeln(gefiltert());
+  /* Nach Stand geordnet (Wunsch 10.10.: „übersichtlicher“): Zu prüfen ·
+     Neu · In Arbeit · Fertig, je mit Überschrift. sort ist stabil —
+     innerhalb einer Gruppe bleibt die Zeitfolge wie bisher. */
+  alle.sort((a, b) => standGruppe(a) - standGruppe(b));
   const liste = alle.slice(0, KARTEN_MAX);
+  const jeGruppe = {};
+  liste.forEach(b => { const g = standGruppe(b); jeGruppe[g] = (jeGruppe[g] || 0) + 1; });
   const versteckt = alle.length - liste.length;
   const offen = bestellungen.filter(b => b.status === "neu" && !b.pruefen).length;
   const zuPruefen = bestellungen.filter(b => b.pruefen && b.status === "neu").length;
@@ -8860,7 +9048,10 @@ function zeichneBoard(){
     return;
   }
 
-  ziel.innerHTML = liste.map(b => {
+  ziel.innerHTML = liste.map((b, nr) => {
+    const gruppe_ = standGruppe(b);
+    const gkopf = (nr === 0 || standGruppe(liste[nr - 1]) !== gruppe_)
+      ? `<h3 class="kgruppe${gruppe_ === 0 ? " pruef" : ""}">${STAND_GRUPPE[gruppe_]} <span>${jeGruppe[gruppe_]}</span></h3>` : "";
     /* Servicerufe kommen ebenfalls vom Tisch und haben eine Nummer.
        Vorher fielen sie in den unteren Zweig und zeigten „Ohne Namen",
        obwohl die wichtigste Angabe - der Tisch - vorlag. */
@@ -8983,7 +9174,7 @@ function zeichneBoard(){
       : `<div class="wartet${spaet ? " spaet" : ""}">${
           min < 1 ? "gerade eben" : "seit " + min + " Min"}</div>`;
 
-    return `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
+    return gkopf + `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
       <div class="bkopf">
         <div class="herkunft">
           <div class="hmarke">${welle}${QUELLE_TEXT[b.quelle]}${rufzahl}</div>
