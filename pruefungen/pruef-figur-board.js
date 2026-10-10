@@ -206,7 +206,11 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
   pruef(figurOffen, "Tipp auf den Kopf öffnet die Figur-Zeile wirklich");
 
   const figurKnoepfe = await seite.evaluate(() => document.querySelectorAll('[data-av-wahl="figur"]').length);
-  pruef(figurKnoepfe === 9, "neun Figuren stehen zur Wahl", figurKnoepfe + "");
+  /* Zweite Quelle statt fester Zahl: so viele Knöpfe, wie der Hub
+     wählbare Figuren kennt (seit 10.10. dreizehn — die feste 9 wäre bei
+     jeder neuen Figur rot geworden, ohne dass etwas kaputt ist). */
+  const wählbarZahl = figurenQuelle ? Object.keys(figurenQuelle).filter(k => !figurenQuelle[k].verborgen).length : -1;
+  pruef(figurKnoepfe === wählbarZahl && figurKnoepfe >= 13, "jede wählbare Figur des Hubs steht zur Wahl", figurKnoepfe + " von " + wählbarZahl);
   const tapHoehe = await seite.evaluate(() => {
     const b = document.querySelector('[data-av-wahl="figur"]');
     return b ? b.getBoundingClientRect().height : 0;

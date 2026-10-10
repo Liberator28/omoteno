@@ -585,14 +585,11 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 
 /* ═══ Öffnungsanzeige (Wunsch 10.10.) ═══════════════════════════
    Eine kleine Glas-Box oben rechts.
-   Geschlossen: eine digitale Sanduhr — ein Raster aus LED-Punkten füllt
-   sich von unten mit buntem Sand, je näher die Öffnung rückt (Anteil
-   der Zeit seit dem letzten Schließen); ein Korn fällt nach.
-   Offen: „Geöffnet bis …“ in Regenbogen-LED — jeder Buchstabe eine
-   Farbe, zu 40 % in die Bandschrift gemischt (bei 50 % kam Minhkeeys rotes Band auf 4,16:1), damit er auf JEDEM
-   Band lesbar bleibt (§5.1, gemessen je Buchstabe); darunter eine
-   laufende LED-Leiste. Kein background-clip:text (§5.2: das machte
-   die Farbe für jede Messung unsichtbar). Bewegt wird nur transform. */
+   Geschlossen: ein hohler Ring, „Öffnet heute 10:30“ und eine feine
+   Linie, die sich bis zur Öffnung füllt (Anteil der Zeit seit dem
+   letzten Schließen).
+   Offen: „Geöffnet bis …“ neben einem ruhigen Punkt (siehe unten).
+   Alles in der Bandschrift — eine Farbe, gemessen ≥ 4,5:1. */
 .status{
   position:relative;display:inline-flex;align-items:center;gap:7px;overflow:hidden;isolation:isolate;
   padding:6px 10px 8px;border-radius:12px;font-size:11.5px;line-height:1.2;font-weight:650;letter-spacing:.1px;
@@ -603,24 +600,23 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
   -webkit-backdrop-filter:blur(10px) saturate(150%);backdrop-filter:blur(10px) saturate(150%);
 }
 .st-text{min-width:0}
-.st-text span{color:color-mix(in srgb, hsl(var(--h, 0) 100% 60%) 40%, var(--band-text))}
-/* Die laufende LED-Leiste unten in der Box: ein doppelt so breiter
-   Regenbogen gleitet durch (transform), eine Punktmaske macht LEDs daraus. */
-.st-led{position:absolute;left:8px;right:8px;bottom:2px;height:2px;overflow:hidden;pointer-events:none;
-  -webkit-mask:radial-gradient(circle, #000 .8px, transparent 1.05px) 0 50%/4px 2px repeat-x;
-          mask:radial-gradient(circle, #000 .8px, transparent 1.05px) 0 50%/4px 2px repeat-x}
-.st-led::before{content:"";position:absolute;top:0;bottom:0;left:0;width:200%;
-  background:linear-gradient(90deg,#ff5f6d,#ffc371,#f9f871,#7cff9b,#5fd3ff,#9b8cff,#ff7ad9,#ff5f6d,#ffc371,#f9f871,#7cff9b,#5fd3ff,#9b8cff,#ff7ad9,#ff5f6d);
-  animation:stLed 4.5s linear infinite}
-@keyframes stLed{to{transform:translateX(-50%)}}
-/* Die Sanduhr: 9 × 5 LED-Punkte in einem Glasfenster. */
-.st-sand{flex:none;width:30px;height:18px;border-radius:5px;display:block;
-  background:rgba(0,0,0,.2);border:1px solid color-mix(in srgb, var(--band-text) 20%, transparent)}
-.st-sand svg{display:block;width:100%;height:100%}
-.st-sand .aus{fill:var(--band-text);opacity:.14}
-.st-korn{animation:stKorn 1.8s cubic-bezier(.5,0,.75,0) infinite}
-@keyframes stKorn{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(var(--fall, 9px));opacity:0}}
-@media (prefers-reduced-motion:reduce){ .st-led::before,.st-korn{animation:none} .st-korn{display:none}
+/* Seit 10.10. (dritte Nachricht): „klassisch schlicht und modern ohne
+   RGB“. Eine Farbe — die Bandschrift —, ein Punkt, ein Satz. Offen ein
+   voller Punkt mit leisem Atem (nur opacity/transform am Ring), zu ein
+   hohler Ring und darunter eine feine Linie, die sich bis zur Öffnung
+   füllt (scaleX = Anteil, ohne Dauerlauf). Kein Regenbogen, kein Sand. */
+.st-punkt{flex:none;position:relative;width:7px;height:7px;border-radius:50%;
+  background:var(--band-text)}
+.status.zu .st-punkt{background:transparent;border:1.5px solid var(--band-text);width:8px;height:8px;opacity:.75}
+.status.offen .st-punkt::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:var(--band-text);opacity:0;animation:stAtem 2.8s cubic-bezier(.16,1,.3,1) infinite}
+@keyframes stAtem{0%{transform:scale(1);opacity:.5}70%,100%{transform:scale(2.6);opacity:0}}
+.st-linie{position:absolute;left:10px;right:10px;bottom:3px;height:2px;border-radius:2px;overflow:hidden;pointer-events:none;
+  background:color-mix(in srgb, var(--band-text) 18%, transparent)}
+.st-linie i{position:absolute;inset:0;border-radius:2px;background:var(--band-text);opacity:.7;
+  transform-origin:0 50%;transform:scaleX(var(--anteil, 0))}
+[dir="rtl"] .st-linie i{transform-origin:100% 50%}
+@media (prefers-reduced-motion:reduce){ .status.offen .st-punkt::after{animation:none}
   .fr-rad.dreht .fr-lichter i::before{animation:none} }
 
 /* ═══ Der Guss ═══════════════════════════════════════════════════
@@ -797,7 +793,14 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 /* Seit 10.10. eine verbundene Kommandozentrale: Licht, Bestellart und
    Sprache in EINER Glasleiste, durch feine Striche getrennt — statt
    drei loser Kreise. Jeder Griff bleibt ≥ 44 px. */
+/* position + z-index (Foto 10.10.): Der backdrop-filter unten macht
+   die Leiste zu einem eigenen Stapelkontext. Ohne eigene Stufe malte
+   sie unter den SPÄTEREN Geschwistern .guss/.laternen (absolut, top
+   100 %) — und die offene Sprachliste darin mit, „Deutsch ✓“ lag unter
+   dem Schokoguss. z-index 4: über Guss/Laternen (auto), unter nichts,
+   was im Kopf noch darüber gehört. pruef-ueberdeckt.js misst das. */
 .kopfwahl{
+  position:relative;z-index:4;
   grid-area:kopfwahl;justify-self:center;align-self:center;
   display:flex;align-items:center;justify-content:center;gap:0;
   margin-top:4px;padding:2px;border-radius:999px;
@@ -1125,6 +1128,40 @@ a.tipp.mitmenge{padding-bottom:62px}
 }
 .bereich::after{content:"";flex:1;height:1px;background:var(--linie)}
 .bereich:first-child{margin-top:0}
+/* Startseite: jede Gruppe ein aufklappbarer Bereich. Der Kopf ist ein
+   Knopf mit der Gestalt der alten Überschrift (gleiche Schrift, gleiche
+   Linie, Zierrat davor bleibt) — dazu Anzahl und Pfeil, ≥ 44 px hoch. */
+.sbereich{margin:18px 0 0}
+.sbereich > .bereich{margin:0;width:100%;min-height:44px;padding:0 2px;background:none;border:0;
+  font-family:inherit;text-align:start;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.sb-kopf::after{order:1}
+.sb-name{order:0}
+.sb-zahl{order:2;min-width:22px;height:20px;padding:0 6px;border-radius:10px;display:inline-flex;align-items:center;justify-content:center;
+  font-size:11px;letter-spacing:0;font-weight:700;color:var(--tinte-leise);background:var(--flaeche);border:1px solid var(--linie);
+  font-variant-numeric:tabular-nums}
+.sb-pfeil{order:3;flex:none;width:18px;height:18px;fill:none;stroke:var(--tinte-leise);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;
+  transition:transform .26s var(--weich)}
+.sbereich:not(.offen) .sb-pfeil{transform:rotate(-90deg)}
+[dir="rtl"] .sbereich:not(.offen) .sb-pfeil{transform:rotate(90deg)}
+.sbereich > .gitter{margin-top:6px}
+.sb-ein{animation:sbEin .26s var(--weich) both}
+@keyframes sbEin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* Schnellzeile: bis zu vier Wege als Felder mit Zeichen und Wort. */
+.schnellzeile{display:grid;grid-template-columns:repeat(var(--sz-n, 4),minmax(0,1fr));gap:8px;margin:0 0 16px}
+.sz{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
+  min-height:66px;padding:10px 4px 9px;border-radius:16px;
+  background:var(--flaeche);border:1px solid var(--linie);color:var(--tinte);text-decoration:none;
+  font-family:inherit;font-size:11.5px;font-weight:600;line-height:1.2;text-align:center;cursor:pointer;
+  box-shadow:0 8px 18px -14px rgba(0,0,0,.5);transition:transform .14s var(--weich);-webkit-tap-highlight-color:transparent}
+.sz:active{transform:scale(.96)}
+.sz.sz-jetzt{border-color:color-mix(in srgb, var(--rot) 60%, var(--linie))}
+.sz-ico{width:24px;height:24px;color:var(--rot);display:block}
+.sz-ico svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sz-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;overflow-wrap:anywhere}
+.sz-zahl{position:absolute;top:6px;inset-inline-end:7px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;
+  background:var(--rot);color:var(--auf-rot);font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:reduce){ .sb-ein{animation:none} .sb-pfeil,.sz{transition:none} }
 /* Zierrat "tusche": eine kleine Pfingstrosen-Knospe vor jeder
    Abschnittsüberschrift — derselbe Trenner auf jeder Seite, die
    .bereich benutzt (Startseite, Speisekarte, …), ohne dass irgendeine
@@ -3946,6 +3983,69 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 .f-eiswaffel .auge{fill:var(--kontur);stroke:#FFFDF7;stroke-width:2.8;paint-order:stroke}
 .f-eiswaffel .braue{stroke:var(--kontur);stroke-width:2.2;fill:none;stroke-linecap:round}
 .f-eiswaffel .funke{fill:#F7D774;stroke:var(--kontur);stroke-width:.8}
+/* ── Croissant ───────────────────────────────────────────────────*/
+.f-croissant{--kontur:#6A3A12;--glied:#6A3A12}
+[data-grund="dunkel"] .f-croissant{--glied:#F4DCC0}
+.f-croissant .leib{fill:#E3A24E;stroke:var(--kontur);stroke-width:3}
+.f-croissant .horn{fill:#D18B3A;stroke:var(--kontur);stroke-width:2.8;stroke-linejoin:round}
+.f-croissant .rippe{stroke:var(--kontur);stroke-width:2;fill:none;opacity:.45;stroke-linecap:round}
+.f-croissant .glanz{fill:#FFFFFF;opacity:.28}
+.f-croissant .wange{fill:#E98C5E;opacity:.5}
+.f-croissant .zug{stroke:var(--kontur)}
+.f-croissant .auge{fill:var(--kontur);stroke:#FFFDF7;stroke-width:2.8;paint-order:stroke}
+.f-croissant .braue{stroke:var(--kontur);stroke-width:2.2;fill:none;stroke-linecap:round}
+.f-croissant .funke{fill:#F7D774;stroke:var(--kontur);stroke-width:.8}
+
+/* ── Donut ───────────────────────────────────────────────────────*/
+.f-donut{--kontur:#5E3418;--glied:#5E3418}
+[data-grund="dunkel"] .f-donut{--glied:#F2DCC6}
+.f-donut .ring{fill:#D79A5C;stroke:var(--kontur);stroke-width:3}
+.f-donut .zuckerguss{fill:#F2A2BE;stroke:var(--kontur);stroke-width:2.6;stroke-linejoin:round}
+.f-donut .loch{fill:#7A4A28;stroke:var(--kontur);stroke-width:2.2}
+.f-donut .streusel{stroke:none}
+.f-donut .s-a{fill:#FFFDF7}
+.f-donut .s-b{fill:#6FB7E0}
+.f-donut .s-c{fill:#F7D774}
+.f-donut .glanz{fill:#FFFFFF;opacity:.35}
+.f-donut .wange{fill:#E77FA0;opacity:.5}
+.f-donut .zug{stroke:var(--kontur)}
+.f-donut .auge{fill:var(--kontur);stroke:#FFFDF7;stroke-width:2.8;paint-order:stroke}
+.f-donut .braue{stroke:var(--kontur);stroke-width:2.2;fill:none;stroke-linecap:round}
+.f-donut .funke{fill:#F7D774;stroke:var(--kontur);stroke-width:.8}
+
+/* ── Taco ────────────────────────────────────────────────────────*/
+.f-taco{--kontur:#6B4012;--glied:#6B4012}
+[data-grund="dunkel"] .f-taco{--glied:#F4E0C2}
+.f-taco .huelle{fill:#F0C352;stroke:var(--kontur);stroke-width:3;stroke-linejoin:round}
+.f-taco .fuellung{fill:#8FB566;stroke:var(--kontur);stroke-width:2.2;stroke-linejoin:round}
+.f-taco .fleisch{fill:#8A4E2A;stroke:var(--kontur);stroke-width:2.2}
+.f-taco .tomate{fill:#D9534A;stroke:var(--kontur);stroke-width:1.6}
+.f-taco .rippe{stroke:var(--kontur);stroke-width:2;fill:none;opacity:.35;stroke-linecap:round}
+.f-taco .glanz{fill:#FFFFFF;opacity:.3}
+.f-taco .wange{fill:#E39A55;opacity:.5}
+.f-taco .zug{stroke:var(--kontur)}
+.f-taco .auge{fill:var(--kontur);stroke:#FFFDF7;stroke-width:2.8;paint-order:stroke}
+.f-taco .braue{stroke:var(--kontur);stroke-width:2.2;fill:none;stroke-linecap:round}
+.f-taco .funke{fill:#FFFDF7;stroke:var(--kontur);stroke-width:.8}
+
+/* ── Ramen ───────────────────────────────────────────────────────
+   Dunkelrote Schale — Miene und Brauen hell, wie bei Bohne und Platte. */
+.f-ramen{--kontur:#3E1712;--glied:#3E1712}
+[data-grund="dunkel"] .f-ramen{--glied:#F0DCD4}
+.f-ramen .schale{fill:#B23A32;stroke:var(--kontur);stroke-width:3;stroke-linejoin:round}
+.f-ramen .krempe{stroke:#F6E7D4;stroke-width:2.4;fill:none;opacity:.55;stroke-linecap:round}
+.f-ramen .bruehe{fill:#E7B56C;stroke:var(--kontur);stroke-width:2.4}
+.f-ramen .nudel{stroke:#F7E4A8;stroke-width:3.4;fill:none;stroke-linecap:round}
+.f-ramen .eiweiss{fill:#FFFDF7;stroke:var(--kontur);stroke-width:2}
+.f-ramen .dotter{fill:#F2A93B}
+.f-ramen .nori{fill:#2C3A34;stroke:var(--kontur);stroke-width:1.6}
+.f-ramen .staebchen{stroke:#9A6638;stroke-width:3.6;fill:none;stroke-linecap:round}
+.f-ramen .glanz{fill:#FFFFFF;opacity:.18}
+.f-ramen .wange{fill:#E07A6E;opacity:.55}
+.f-ramen .zug{stroke:#FBEDE6}
+.f-ramen .auge{fill:var(--kontur);stroke:#FFFDF7;stroke-width:2.8;paint-order:stroke}
+.f-ramen .braue{stroke:#FBEDE6;stroke-width:2.2;fill:none;stroke-linecap:round}
+.f-ramen .funke{fill:#F7D774;stroke:var(--kontur);stroke-width:.8}
 /* ╚═══ FIGUR · GETEILTER BLOCK (CSS) · ENDE ═══════════════════════╝ */
 
 /* Der Begleiter im Seitenfluss: eine Zeile, kein Kasten. Er soll
@@ -3959,6 +4059,34 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 .begleiter .figur{flex:none}
 .begleiter p{margin:0;font-size:14px;line-height:1.45;color:var(--tinte-leise)}
 .begleiter p b{color:var(--tinte);font-weight:600}
+/* Die Figur lebt (Wunsch 10.10.: „mehr Figuren und Animationen“).
+   Nur transform, nichts am Layout: Sie atmet (von den Füßen aus),
+   blinzelt alle paar Sekunden und grüßt EINMAL je Sitzung und Anlass
+   mit einem kleinen Hüpfer — b-hallo trägt nur das erste Zeichnen
+   (§4.1: Einflug nur an Neues; zeichne() baut den Begleiter bei jedem
+   Seitenwechsel neu). Ein Tipp auf die Figur lässt sie hüpfen. */
+.begleiter .figur{transform-origin:50% 100%;animation:bgAtem 4.2s ease-in-out infinite;cursor:pointer;
+  -webkit-tap-highlight-color:transparent}
+@keyframes bgAtem{0%,100%{transform:scale(1,1)}50%{transform:scale(1.02,1.035)}}
+.begleiter .figur .auge{transform-box:fill-box;transform-origin:50% 50%;animation:bgBlinzeln 5.6s linear infinite}
+@keyframes bgBlinzeln{0%,92%,97%,100%{transform:scaleY(1)}94.5%{transform:scaleY(.12)}}
+.begleiter.b-hallo .figur{animation:bgHallo .9s cubic-bezier(.34,1.56,.64,1) both, bgAtem 4.2s ease-in-out .9s infinite}
+@keyframes bgHallo{
+  0%{transform:translateY(8px) scale(.94)}
+  35%{transform:translateY(-8px) rotate(-7deg) scale(.97,1.05)}
+  60%{transform:translateY(0) rotate(5deg) scale(1.04,.96)}
+  80%{transform:rotate(-2deg)}
+  100%{transform:none}}
+.begleiter .figur.b-hops{animation:bgHops .62s cubic-bezier(.34,1.56,.64,1)}
+@keyframes bgHops{
+  0%{transform:none}
+  18%{transform:scale(1.08,.9)}
+  50%{transform:translateY(-12px) scale(.95,1.06)}
+  78%{transform:scale(1.04,.96)}
+  100%{transform:none}}
+@media (prefers-reduced-motion:reduce){
+  .begleiter .figur,.begleiter .figur .auge,.begleiter.b-hallo .figur,.begleiter .figur.b-hops{animation:none}
+}
 
 @media (prefers-reduced-motion:reduce){
   .willkommen .haus,.willkommen .wort,.willkommen .figur,
@@ -4368,9 +4496,9 @@ function markeAnwenden(abend){
   </button>
   <h1 id="titel"></h1>
   <p class="claim" id="claim"></p>
-  <!-- Öffnungsstand: seit 10.10. oben rechts als kleine Glas-Box
-       (geschlossen: LED-Sand füllt sich bis zur Öffnung; offen:
-       „Geöffnet bis …“ in Regenbogen-LED). statusHTML() zeichnet. -->
+  <!-- Öffnungsstand oben rechts als kleine Glas-Box: Punkt + Satz,
+       geschlossen dazu eine feine Linie bis zur Öffnung. Eine Farbe.
+       statusHTML() zeichnet. -->
   <div id="status" aria-live="polite"></div>
   <!-- Hell oder dunkel steht NEBEN der Sprachwahl, weil beides
        dasselbe beantwortet: wie der Gast den Hub sehen will. Beide
@@ -7525,6 +7653,143 @@ const AVATAR_FIGUREN = {
         '<rect class="tasche" x="55" y="95" width="14" height="10" rx="5"/>' +
         p.vorn;
     }
+  },
+
+  /* ── Croissant · Bäckerei, Café, Frühstück ──────────────────────
+     Ein Hörnchen von vorn: der dicke Mittelteil trägt das Gesicht, die
+     beiden Spitzen biegen nach unten. Die Rippen laufen nur ÜBER und
+     UNTER der Miene — quer durch die Augen wären sie Narben. */
+  croissant: {
+    name: "Croissant", passt: ["Café & Frühstück"],
+    breite: 124, hoehe: 128, posen: E_HALTUNGEN, mono: { x: 62, y: 99.5 },
+    gesicht: "translate(62 62) scale(1.22) translate(-50 -48)",
+    rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
+            '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
+    koerper: (pose, ding) => {
+      const p = ePose(pose, ding);
+      return '<ellipse class="schatten" cx="62" cy="123" rx="30" ry="4.2"/>' +
+        '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
+        '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
+        '<ellipse class="fuss" cx="74" cy="119" rx="7.5" ry="3.8"/>' +
+        p.hinten +
+        '<path class="horn" d="M36 48C20 46 6 58 6 78C6 88 12 92 18 86C20 74 26 66 38 62Z"/>' +
+        '<path class="horn" d="M88 48C104 46 118 58 118 78C118 88 112 92 106 86C104 74 98 66 86 62Z"/>' +
+        '<path class="rippe" d="M20 56C22 62 22 70 18 78M104 56C102 62 102 70 106 78"/>' +
+        '<path class="leib" d="M32 66C32 42 45 28 62 28C79 28 92 42 92 66C92 90 79 104 62 104C45 104 32 90 32 66Z"/>' +
+        '<path class="rippe" d="M42 36C50 31 74 31 82 36M38 46C42 42 46 40 50 39M86 46C82 42 78 40 74 39M36 92C46 99 78 99 88 92"/>' +
+        '<path class="rippe" d="M38 54C35 66 35 80 40 90M86 54C89 66 89 80 84 90"/>' +
+        '<path class="glanz" d="M40 44C45 37 53 33 61 33C52 37 46 43 43 50Z"/>' +
+        '<path class="bauch" d="M32 78C36 92 46 100 62 100C78 100 88 92 92 78C90 96 78 106 62 106C46 106 34 96 32 78Z"/>' +
+        '<ellipse class="wange" cx="40" cy="74" rx="6.4" ry="4.2"/>' +
+        '<ellipse class="wange" cx="84" cy="74" rx="6.4" ry="4.2"/>' +
+        '<path class="schuerze" d="M42 88C50 92 74 92 82 88L83 100C83 105 74 109 62 109C50 109 41 105 41 100Z"/>' +
+        '<path class="kragen" d="M44.5 89.8C51 92.9 73 92.9 79.5 89.8"/>' +
+        '<rect class="tasche" x="53" y="92" width="18" height="12" rx="6.5"/>' +
+        p.vorn;
+    }
+  },
+
+  /* ── Donut · Café, Süßes, Schnell & Unterwegs ───────────────────
+     Leicht von oben gesehen: das Loch sitzt OBEN, die Miene unten auf
+     dem Zuckerguss. Mittig wäre das Loch zwischen den Augen. Die
+     Streusel sind fest bunt — Streusel in der Hausfarbe sind keine. */
+  donut: {
+    name: "Donut", passt: ["Café & Frühstück", "Schnell & Unterwegs"],
+    breite: 124, hoehe: 128, posen: E_HALTUNGEN, mono: { x: 62, y: 99.5 },
+    gesicht: "translate(62 66) scale(1.2) translate(-50 -48)",
+    rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
+            '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
+    koerper: (pose, ding) => {
+      const p = ePose(pose, ding);
+      const streusel = [[34,52,-30,"a"],[48,40,20,"b"],[78,40,-15,"c"],[92,54,35,"a"],[28,70,60,"b"],[96,72,-50,"c"],[60,32,80,"b"]]
+        .map(([x, y, w, f]) => '<rect class="streusel s-' + f + '" x="' + (x - 3.5) + '" y="' + (y - 1.3) +
+             '" width="7" height="2.6" rx="1.3" transform="rotate(' + w + ' ' + x + ' ' + y + ')"/>').join("");
+      return '<ellipse class="schatten" cx="62" cy="123" rx="30" ry="4.2"/>' +
+        '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
+        '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
+        '<ellipse class="fuss" cx="74" cy="119" rx="7.5" ry="3.8"/>' +
+        p.hinten +
+        '<ellipse class="ring" cx="62" cy="68" rx="44" ry="38"/>' +
+        '<path class="zuckerguss" d="M22 62C22 42 40 28 62 28C84 28 102 42 102 62C102 70 98 74 94 72C92 80 86 84 82 80C78 88 70 90 66 84C60 90 52 88 50 82C44 86 36 84 34 76C28 78 22 72 22 62Z"/>' +
+        '<ellipse class="loch" cx="62" cy="44" rx="11" ry="5.5"/>' +
+        streusel +
+        '<path class="glanz" d="M34 48C38 40 46 35 54 33C46 38 40 44 38 52Z"/>' +
+        '<path class="bauch" d="M22 76C28 94 42 104 62 104C82 104 96 94 102 76C100 98 84 108 62 108C40 108 24 98 22 76Z"/>' +
+        '<ellipse class="wange" cx="38" cy="80" rx="6.4" ry="4.2"/>' +
+        '<ellipse class="wange" cx="86" cy="80" rx="6.4" ry="4.2"/>' +
+        '<path class="schuerze" d="M42 88C50 92 74 92 82 88L83 100C83 105 74 109 62 109C50 109 41 105 41 100Z"/>' +
+        '<path class="kragen" d="M44.5 89.8C51 92.9 73 92.9 79.5 89.8"/>' +
+        '<rect class="tasche" x="53" y="92" width="18" height="12" rx="6.5"/>' +
+        p.vorn;
+    }
+  },
+
+  /* ── Taco · Imbiss, Mexikanisch, Foodtruck ──────────────────────
+     Die Schale als Halbmond, die Füllung schaut OBEN heraus — Salat,
+     Tomate, Fleisch. Die Miene sitzt auf der Schale, unter der
+     Füllung; auf dem Salat ginge sie im Grün unter. */
+  taco: {
+    name: "Taco", passt: ["Schnell & Unterwegs", "Restaurant"],
+    breite: 124, hoehe: 128, posen: E_HALTUNGEN, mono: { x: 62, y: 99.5 },
+    gesicht: "translate(62 68) scale(1.2) translate(-50 -48)",
+    rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
+            '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
+    koerper: (pose, ding) => {
+      const p = ePose(pose, ding);
+      return '<ellipse class="schatten" cx="62" cy="123" rx="32" ry="4.2"/>' +
+        '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
+        '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
+        '<ellipse class="fuss" cx="74" cy="119" rx="7.5" ry="3.8"/>' +
+        p.hinten +
+        '<path class="fleisch" d="M24 54C30 40 44 34 62 34C80 34 94 40 100 54Z"/>' +
+        '<path class="fuellung" d="M18 56C20 46 28 40 34 42C36 34 46 32 50 36C54 28 66 28 70 34C76 30 86 32 88 40C96 38 104 46 106 56C92 50 76 48 62 48C46 48 30 50 18 56Z"/>' +
+        '<circle class="tomate" cx="40" cy="44" r="4.6"/><circle class="tomate" cx="66" cy="38" r="4.6"/><circle class="tomate" cx="88" cy="46" r="4.2"/>' +
+        '<path class="huelle" d="M16 92C16 66 36 50 62 50C88 50 108 66 108 92C108 100 100 104 92 104H32C24 104 16 100 16 92Z"/>' +
+        '<path class="rippe" d="M30 60C34 70 34 84 30 96M94 60C90 70 90 84 94 96"/>' +
+        '<path class="glanz" d="M30 66C36 58 46 54 56 53C46 58 38 64 34 72Z"/>' +
+        '<path class="bauch" d="M18 86C24 98 40 104 62 104C84 104 100 98 106 86C104 102 88 108 62 108C36 108 20 102 18 86Z"/>' +
+        '<ellipse class="wange" cx="38" cy="82" rx="6.4" ry="4.2"/>' +
+        '<ellipse class="wange" cx="86" cy="82" rx="6.4" ry="4.2"/>' +
+        '<path class="schuerze" d="M42 88C50 92 74 92 82 88L83 100C83 105 74 109 62 109C50 109 41 105 41 100Z"/>' +
+        '<path class="kragen" d="M44.5 89.8C51 92.9 73 92.9 79.5 89.8"/>' +
+        '<rect class="tasche" x="53" y="92" width="18" height="12" rx="6.5"/>' +
+        p.vorn;
+    }
+  },
+
+  /* ── Ramen · Nudelbar, Asiatisch ────────────────────────────────
+     Eine Schale, aus der Nudeln, Ei und Stäbchen ragen. Die Miene
+     sitzt auf der Schale; die Schale ist dunkelrot, deshalb sind Mund
+     und Brauen hell (wie bei Bohne und Platte). */
+  ramen: {
+    name: "Ramen", passt: ["Restaurant", "Schnell & Unterwegs"],
+    breite: 124, hoehe: 128, posen: E_HALTUNGEN, mono: { x: 62, y: 99.5 },
+    gesicht: "translate(62 74) scale(1.18) translate(-50 -48)",
+    rahmen: '<path class="braue" d="M35.5 38.5q5-3.4 9.6-.6"/>' +
+            '<path class="braue" d="M54.9 37.9q4.6-2.8 9.6.6"/>',
+    koerper: (pose, ding) => {
+      const p = ePose(pose, ding);
+      return '<ellipse class="schatten" cx="62" cy="123" rx="32" ry="4.2"/>' +
+        '<path class="bein" d="M53 104V116"/><path class="bein" d="M71 104V116"/>' +
+        '<ellipse class="fuss" cx="50" cy="119" rx="7.5" ry="3.8"/>' +
+        '<ellipse class="fuss" cx="74" cy="119" rx="7.5" ry="3.8"/>' +
+        p.hinten +
+        '<path class="staebchen" d="M70 52 98 14M78 54 106 18"/>' +
+        '<ellipse class="bruehe" cx="62" cy="56" rx="44" ry="10"/>' +
+        '<path class="nudel" d="M30 56C32 44 38 44 40 54M42 56C44 40 52 40 54 54M56 54C58 36 66 36 68 52"/>' +
+        '<ellipse class="eiweiss" cx="84" cy="50" rx="11" ry="8"/><ellipse class="dotter" cx="84" cy="50" rx="5.4" ry="4.2"/>' +
+        '<rect class="nori" x="36" y="38" width="12" height="16" rx="1.5" transform="rotate(-10 42 46)"/>' +
+        '<path class="schale" d="M16 56H108C108 84 90 104 62 104C34 104 16 84 16 56Z"/>' +
+        '<path class="krempe" d="M18 62H106"/>' +
+        '<path class="glanz" d="M26 66C30 78 38 88 48 92C38 90 30 82 26 72Z"/>' +
+        '<path class="bauch" d="M22 80C28 94 42 102 62 102C82 102 96 94 102 80C98 98 82 108 62 108C42 108 26 98 22 80Z"/>' +
+        '<ellipse class="wange" cx="38" cy="86" rx="6.4" ry="4.2"/>' +
+        '<ellipse class="wange" cx="86" cy="86" rx="6.4" ry="4.2"/>' +
+        '<path class="schuerze" d="M42 90C50 94 74 94 82 90L83 101C83 106 74 109 62 109C50 109 41 106 41 101Z"/>' +
+        '<path class="kragen" d="M44.5 91.8C51 94.9 73 94.9 79.5 91.8"/>' +
+        '<rect class="tasche" x="53" y="94" width="18" height="11" rx="6"/>' +
+        p.vorn;
+    }
   }
 };
 
@@ -7734,12 +7999,17 @@ function phasenBild(status, ersatz, groesse){
 }
 
 
+const BEGLEITER_GEGRUESST = new Set();
 function begleiterHTML(anlass){
   const eigen = hausText(MARKENBLATT.texte, "figur", anlass);
   const satz = eigen || (AVATAR_TEXTE[anlass] || {})[avatarArt()];
   if(!satz) return "";
   /* Wie beim Bestellpass: nur die Vorgabe geht durchs Wörterbuch. */
-  return '<div class="begleiter">' + avatarSVG(48) + '<p>' +
+  /* Gegrüßt wird einmal je Anlass und Sitzung — nicht bei jedem
+     Neuzeichnen derselben Seite (§4.1). */
+  const neu = !BEGLEITER_GEGRUESST.has(anlass);
+  BEGLEITER_GEGRUESST.add(anlass);
+  return '<div class="begleiter' + (neu ? " b-hallo" : "") + '">' + avatarSVG(48) + '<p>' +
          (eigen || t(satz)) + '</p></div>';
 }
 
@@ -8847,6 +9117,7 @@ const TEXTE = {
 "Bitte einmal zurück zur Übersicht, unser Team hilft Ihnen sonst gerne persönlich weiter.":{en:"Please head back to the overview, otherwise our team is happy to help you in person.",tr:"Lütfen genel bakışa dönün, aksi halde ekibimiz size memnuniyetle şahsen yardımcı olur.",ru:"Вернитесь, пожалуйста, к обзору, иначе наша команда с радостью поможет лично.",fr:"Revenez à l'aperçu, sinon notre équipe vous aide volontiers en personne.",es:"Vuelva al inicio; si no, nuestro equipo le ayuda con gusto en persona.",it:"Torni alla panoramica, altrimenti il nostro team la aiuta volentieri di persona.",pl:"Wróć do przeglądu, w innym razie nasz zespół chętnie pomoże osobiście.",ar:"يرجى العودة إلى النظرة العامة، وإلا فسيسعد فريقنا بمساعدتكم شخصياً.",uk:"Поверніться, будь ласка, до огляду, інакше наша команда радо допоможе особисто.",nl:"Ga even terug naar het overzicht, anders helpt ons team u graag persoonlijk.",ro:"Reveniți la prezentare, altfel echipa noastră vă ajută cu plăcere personal."},
 "Nichts gefunden. Versuchen Sie einen anderen Begriff.":{en:"Nothing found. Try another term.",tr:"Bir şey bulunamadı. Başka bir sözcük deneyin.",ru:"Ничего не найдено. Попробуйте другой запрос.",fr:"Aucun résultat. Essayez un autre mot.",es:"Sin resultados. Pruebe otra palabra.",it:"Nessun risultato. Prova un altro termine.",pl:"Brak wyników. Spróbuj inaczej.",ar:"لا نتائج. جرّب كلمة أخرى.",uk:"Нічого не знайдено. Спробуйте інакше.",nl:"Niets gevonden. Probeer een ander woord.",ro:"Niciun rezultat. Încercați alt termen."},
 "Ihre Auswahl":{en:"Your selection",tr:"Seçiminiz",ru:"Ваш выбор",fr:"Votre sélection",es:"Su selección",it:"La vostra selezione",pl:"Państwa wybór",ar:"اختياركم",uk:"Ваш вибір",nl:"Uw selectie",ro:"Selecția dvs."},
+"Schnellzugriff":{en:"Quick access",tr:"Hızlı erişim",ru:"Быстрый доступ",fr:"Accès rapide",es:"Acceso rápido",it:"Accesso rapido",pl:"Szybki dostęp",ar:"وصول سريع",uk:"Швидкий доступ",nl:"Snelle toegang",ro:"Acces rapid"},
 "Auswahl ansehen":{en:"View selection",tr:"Seçimi görüntüle",ru:"Посмотреть выбор",fr:"Voir la sélection",es:"Ver selección",it:"Vedi selezione",pl:"Zobacz wybór",ar:"عرض الاختيار",uk:"Переглянути вибір",nl:"Selectie bekijken",ro:"Vezi selecția"},
 "{n} Artikel":{en:"{n} items",tr:"{n} ürün",ru:"Позиций: {n}",fr:"{n} articles",es:"{n} artículos",it:"{n} articoli",pl:"Pozycje: {n}",ar:"{n} عنصر",uk:"Позицій: {n}",nl:"{n} items",ro:"{n} articole"},
 "Zwischensumme":{en:"Subtotal",tr:"Ara toplam",ru:"Промежуточный итог",fr:"Sous-total",es:"Subtotal",it:"Subtotale",pl:"Suma częściowa",ar:"المجموع الفرعي",uk:"Проміжна сума",nl:"Subtotaal",ro:"Subtotal"},
@@ -9948,7 +10219,7 @@ function jetztOffen(){
   if(gestern && jetzt + 24 < gestern.zu)
     return { offen:true, bis:gestern.bis, text:t("Offen bis {x}", {x:gestern.bis}) };
 
-  /* Für die Sanduhr: wann zuletzt geschlossen wurde (Stunden ab heute
+  /* Für die Linie bis zur Öffnung: wann zuletzt geschlossen wurde (Stunden ab heute
      0 Uhr, auch negativ), damit der Sand den Anteil der Wartezeit zeigt. */
   let zuletzt = null;
   for(let d = -7; d <= 0; d++){
@@ -9971,43 +10242,28 @@ function jetztOffen(){
   return { offen:false, anteil:0, text:t("Gerade geschlossen") };
 }
 
-/* Die Öffnungsanzeige oben rechts (siehe CSS .status). */
-const ST_SPALTEN = 9, ST_ZEILEN = 5;
+/* Die Öffnungsanzeige oben rechts (siehe CSS .status). Eine Farbe,
+   ein Punkt, ein Satz — geschlossen dazu die feine Linie bis zur
+   Öffnung (Anteil aus jetztOffen()). */
 function statusHTML(st){
   if(st.offen && st.bis){
     const satz = t("Geöffnet bis {x}", {x: st.bis});
-    /* Je Buchstabe eine Regenbogenfarbe — nicht in Schriften, die ihre
-       Buchstaben verbinden (Arabisch): getrennte Spans brächen sie. */
-    const bunt = RTL.indexOf(sprache) >= 0 ? hs(satz)
-      : [...satz].map((z, i) => z === " " ? " " : '<span style="--h:' + Math.round(i * 360 / Math.max(1, satz.length)) + '">' + hs(z) + '</span>').join("");
-    return '<span class="status offen" title="' + hs(satz) + '"><span class="st-text">' + bunt + '</span>' +
-           '<span class="st-led" aria-hidden="true"></span></span>';
+    return '<span class="status offen" title="' + hs(satz) + '"><span class="st-punkt" aria-hidden="true"></span>' +
+           '<span class="st-text">' + hs(satz) + '</span></span>';
   }
   const satz = st.ab ? t("Öffnet {w} {x}", {w: st.wann, x: st.ab}) : st.text;
-  const n = ST_SPALTEN * ST_ZEILEN, voll = Math.round((st.anteil || 0) * n);
-  let punkte = "";
-  for(let i = 0; i < n; i++){
-    const zeile = ST_ZEILEN - 1 - Math.floor(i / ST_SPALTEN), spalte = i % ST_SPALTEN;
-    const an = i < voll;
-    punkte += '<circle cx="' + (1.5 + spalte * 3) + '" cy="' + (1.5 + zeile * 3) + '" r="1.05"' +
-      (an ? ' fill="hsl(' + ((i * 47) % 360) + ' 95% 62%)"' : ' class="aus"') + '/>';
-  }
-  /* Ein Korn fällt auf die oberste Sandschicht — solange nicht voll. */
-  const ziel = voll >= n ? 0 : ST_ZEILEN - 1 - Math.floor(voll / ST_SPALTEN);
-  const korn = voll < n && ziel > 0
-    ? '<circle class="st-korn" cx="' + (1.5 + (voll % ST_SPALTEN) * 3) + '" cy="1.5" r="1.05" style="--fall:' + (ziel * 3) +
-      'px" fill="hsl(' + ((voll * 47) % 360) + ' 95% 62%)"/>' : "";
-  return '<span class="status zu" title="' + hs(st.text) + '">' +
-         '<span class="st-sand" aria-hidden="true" data-anteil="' + (st.anteil || 0).toFixed(3) + '">' +
-         '<svg viewBox="0 0 27 15">' + punkte + korn + '</svg></span>' +
-         '<span class="st-text">' + hs(satz) + '</span></span>';
+  const anteil = Math.max(0, Math.min(1, st.anteil || 0));
+  return '<span class="status zu" title="' + hs(st.text) + '"><span class="st-punkt" aria-hidden="true"></span>' +
+         '<span class="st-text">' + hs(satz) + '</span>' +
+         (st.ab ? '<span class="st-linie" aria-hidden="true" data-anteil="' + anteil.toFixed(3) + '">' +
+                  '<i style="--anteil:' + anteil.toFixed(3) + '"></i></span>' : "") + '</span>';
 }
 function statusZeichnen(){
   const el = $("status"); if(!el) return;
   const html = statusHTML(jetztOffen());
   if(el.innerHTML !== html) el.innerHTML = html;
 }
-/* Der Sand rieselt weiter: einmal je Minute neu (nur sichtbar). */
+/* Die Linie wächst weiter: einmal je Minute neu (nur sichtbar). */
 setInterval(() => { if(!document.hidden && document.body.dataset.ansicht === "start") statusZeichnen(); }, 60000);
 
 /* ---------- Startseite ---------- */
@@ -10332,8 +10588,15 @@ function start(){
         '<div class="pfeil">›</div></a>';
   };
 
-  let html = aktionBandHTML() + bannerRadHTML() +
-             begleiterHTML("start") + nochmalHTML() + empfehlungHTML();
+  /* Wunsch 10.10. (dritte Nachricht): „ordentlicher, aufklappbar,
+     smart und schnell erreichbar“. Oben die Schnellzeile, dann der
+     Begleiter; die Gruppen sind Bereiche zum Auf- und Zuklappen. Läuft
+     gerade eine Bestellung, rückt Werbung (Aktion, Banner, „Nochmal“,
+     Empfehlung) hinter den ersten Bereich — der Gast will dann zu
+     seiner Bestellung, nicht zum Angebot. */
+  const werbung = aktionBandHTML() + bannerRadHTML() + nochmalHTML() + empfehlungHTML();
+  const laeuft = !VORSCHAU && offeneVorgaenge().length > 0;
+  let html = schnellzeileHTML(sichtbar) + begleiterHTML("start") + (laeuft ? "" : werbung);
   /* Aufeinanderfolgende Kacheln derselben Gruppe bilden einen Bereich;
      jeder Bereich packt seine Reihen selbst (kachelReihen). */
   const bereiche = [];
@@ -10342,14 +10605,91 @@ function start(){
       bereiche.push({ gruppe:k.gruppe, kacheln:[] });
     bereiche[bereiche.length - 1].kacheln.push(k);
   });
-  bereiche.forEach(b => {
+  bereiche.forEach((b, i) => {
     const reihen = kachelReihen(b.kacheln), alle = [].concat(...reihen);
-    html += '<div class="bereich">' + hs(t(b.gruppe).toUpperCase()) + '</div>' +
-            '<div class="gitter kraster' + (alle.some(symbolOben) ? " mitsaeulen" : "") + '">' +
-            alle.map(kachelHTML).join("") + '</div>';
+    const offen = bereichOffen(b.gruppe, i), id = "sb-" + i;
+    html += '<section class="sbereich' + (offen ? " offen" : "") + '">' +
+            '<button type="button" class="bereich sb-kopf" aria-expanded="' + offen + '" aria-controls="' + id + '"' +
+            ' data-sb-auf="' + hs(b.gruppe) + '">' +
+              '<span class="sb-name">' + hs(t(b.gruppe).toUpperCase()) + '</span>' +
+              '<span class="sb-zahl" aria-hidden="true">' + alle.length + '</span>' +
+              '<svg class="sb-pfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg>' +
+            '</button>' +
+            '<div class="gitter kraster' + (alle.some(symbolOben) ? " mitsaeulen" : "") + '" id="' + id + '"' +
+            (offen ? "" : " hidden") + '>' +
+            alle.map(kachelHTML).join("") + '</div></section>';
+    if(i === 0 && laeuft) html += werbung;
   });
+  if(!bereiche.length && laeuft) html += werbung;
   return html;
 }
+
+/* ── Bereiche auf- und zuklappen ──────────────────────────────────
+   Vorgabe: die ersten zwei Gruppen offen (in der Regel „Die Karte“ und
+   „Jetzt am Tisch“ — im Liefermodus fällt Letztere weg, dann rückt die
+   nächste nach), der Rest zu. Was der Gast selbst auf- oder zuklappt,
+   gilt für die Sitzung. In der Vorschau des Boards ist alles offen:
+   Der Wirt soll jede Kachel sehen, die er gerade einstellt. */
+const BEREICH_SCHLUESSEL = "omoteno-bereiche";
+function bereicheGemerkt(){
+  try { const m = JSON.parse(sessionStorage.getItem(BEREICH_SCHLUESSEL) || "{}"); return m && typeof m === "object" ? m : {}; }
+  catch(e){ return {}; }
+}
+function bereichOffen(gruppe, i){
+  if(VORSCHAU) return true;
+  const m = bereicheGemerkt();
+  return typeof m[gruppe] === "boolean" ? m[gruppe] : i < 2;
+}
+document.addEventListener("click", e => {
+  const kopf = e.target.closest && e.target.closest("[data-sb-auf]");
+  if(!kopf) return;
+  const inhalt = document.getElementById(kopf.getAttribute("aria-controls"));
+  if(!inhalt) return;
+  const auf = kopf.getAttribute("aria-expanded") !== "true";
+  kopf.setAttribute("aria-expanded", String(auf));
+  kopf.parentElement.classList.toggle("offen", auf);
+  inhalt.hidden = !auf;
+  /* Einblenden nur beim Öffnen und nur am selben Element (§4.1/§4.3). */
+  if(auf && !ruhigeBewegung()){
+    inhalt.classList.remove("sb-ein"); void inhalt.offsetWidth; inhalt.classList.add("sb-ein");
+  }
+  const m = bereicheGemerkt(); m[kopf.dataset.sbAuf] = auf;
+  try { sessionStorage.setItem(BEREICH_SCHLUESSEL, JSON.stringify(m)); } catch(e2){}
+});
+
+/* ── Schnellzeile ─────────────────────────────────────────────────
+   Bis zu vier Wege, je nach Lage: eine laufende Bestellung zuerst,
+   dann die erste Karte, der Serviceruf (nur am Tisch — im Liefermodus
+   ist die Gruppe gar nicht sichtbar), die eigene Auswahl (nur, wenn
+   etwas darin liegt) und die Foodroulette (nur, wenn das Haus sie
+   zeigt). Jeder Weg ist ein vorhandener; die Zeile erfindet nichts. */
+function schnellzeileHTML(sichtbar){
+  const wege = [];
+  if(!VORSCHAU && offeneVorgaenge().length)
+    wege.push({ knopf:true, icon:ICONS.glocke, text:t("Ihre Bestellung"), jetzt:true });
+  const karte = sichtbar.find(k => k.art === "karte");
+  if(karte) wege.push({ href:kachelZiel(karte), icon:ICONS[karte.icon] || ICONS.speise, text:t(karte.titel) });
+  const ruf = sichtbar.find(k => k.schluessel === "tischruf");
+  if(ruf) wege.push({ href:kachelZiel(ruf), icon:ICONS.hand, text:t(ruf.titel) });
+  const n = merkAnzahl();
+  if(n) wege.push({ href:"#/auswahl", icon:ICONS.herz, text:t("Ihre Auswahl"), zahl:n });
+  if(foodrouletteAn()) wege.push({ href:"#/entdecken", icon:ICONS.wuerfel, text:"Foodroulette" /* Name, nicht übersetzt (wie im Rad) */ });
+  const zeile = wege.slice(0, 4);
+  if(zeile.length < 2) return "";
+  return '<div class="schnellzeile" role="group" aria-label="' + hs(t("Schnellzugriff")) + '" style="--sz-n:' + zeile.length + '">' +
+    zeile.map(w => (w.knopf ? '<button type="button" class="sz sz-jetzt" data-sz-vorgang>'
+                            : '<a class="sz" href="' + hs(w.href) + '">') +
+      '<span class="sz-ico" aria-hidden="true">' + (w.icon || "") + '</span>' +
+      '<span class="sz-text">' + hs(w.text) + '</span>' +
+      (w.zahl ? '<span class="sz-zahl">' + w.zahl + '</span>' : "") +
+      (w.knopf ? '</button>' : '</a>')).join("") + '</div>';
+}
+/* Die laufende Bestellung: derselbe Weg wie der Streifen unten. */
+document.addEventListener("click", e => {
+  if(!e.target.closest || !e.target.closest("[data-sz-vorgang]")) return;
+  const st = $("vstreifen");
+  if(st) st.click(); else location.hash = "#/bestellt";
+});
 
 /* ---------- Karten-Seiten ---------- */
 const filter = { speisekarte:"Alle", getraenke:"Alle", cocktails:"Alle" };
@@ -13556,6 +13896,23 @@ document.addEventListener("visibilitychange", () => {
 
 /* Ein Tipp auf den Streifen führt zur vollen Ansicht. */
 /* Bestellung zeigen statt verschicken. */
+/* Ein Tipp auf die Figur: sie hüpft. Dasselbe Element bleibt, die
+   Klasse wird für den nächsten Tipp neu gesetzt (Neustart über einen
+   erzwungenen Stil, nicht über neues Markup — §4.3). */
+document.addEventListener("click", e => {
+  const fig = e.target.closest && e.target.closest(".begleiter .figur");
+  if(!fig || ruhigeBewegung()) return;
+  fig.classList.remove("b-hops");
+  void fig.getBoundingClientRect();
+  fig.classList.add("b-hops");
+});
+document.addEventListener("animationend", e => {
+  if(e.animationName === "bgHops") e.target.classList.remove("b-hops");
+  /* Gruß vorbei: Klasse weg, sonst begänne er nach jedem Hüpfer neu
+     (die Animationsliste wechselt zurück und startet von vorn). */
+  if(e.animationName === "bgHallo"){ const b = e.target.closest(".begleiter"); if(b) b.classList.remove("b-hallo"); }
+});
+
 document.addEventListener("click", e => {
   if(!e.target.closest || !e.target.closest("[data-ws-zeigen]")) return;
   const hin = warteschlange.filter(x => x.zustand === "gescheitert");

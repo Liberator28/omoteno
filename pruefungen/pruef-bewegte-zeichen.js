@@ -204,6 +204,9 @@ async function oeffnen(browser, slug, hash, opt = {}) {
   console.log("\n══ Startseite, Servicerufe: laden und stehen ══");
   for (const slug of ["chocolamour", "blend", "minhkeey"]) {
     const { ctx, s, fehler } = await oeffnen(browser, slug, "");
+    /* Seit 10.10. sind Bereiche ab dem dritten zugeklappt — gezählt wird
+       JEDE Kachel, also erst jeden Bereich über seinen Kopf öffnen. */
+    await s.$$eval('.sb-kopf[aria-expanded="false"]', ks => ks.forEach(k => k.click())).catch(() => {});
     /* Die Filme laden erst, wenn sie in Sicht kommen (IntersectionObserver).
        Erst die Zahl OHNE Rollen festhalten — unter dem Rand darf noch
        nichts geladen sein —, dann jede Kachel einmal in Sicht rollen. */
@@ -249,6 +252,8 @@ async function oeffnen(browser, slug, hash, opt = {}) {
   console.log("\n══ Ohne Netz: stilles Emoji, nie ein Loch ══");
   {
     const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "", { ohneEmoji:true });
+    /* Breite wird gemessen — zugeklappte Bereiche (seit 10.10.) erst öffnen. */
+    await s.$$eval('.sb-kopf[aria-expanded="false"]', ks => ks.forEach(k => k.click())).catch(() => {});
     const st = await s.evaluate(() => {
       const els = [...document.querySelectorAll("a.kachel .bz")];
       return { n: els.length, bereit: els.filter(e => e.classList.contains("bz-bereit")).length,

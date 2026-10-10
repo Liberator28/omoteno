@@ -32,6 +32,12 @@ const { chromium } = require("playwright");
 const fs   = require("fs");
 const path = require("path");
 
+/* Seit 10.10. sind die Bereiche der Startseite aufklappbar und ab dem
+   dritten zu (pruef-startseite.js prüft das). Diese Prüfung misst
+   Kacheln — also erst jeden Bereich über seinen eigenen Kopf öffnen
+   (derselbe Klick-Weg wie beim Gast), dann messen. */
+const alleBereicheAuf = p => p.$$eval('.sb-kopf[aria-expanded="false"]', ks => ks.forEach(k => k.click())).catch(() => {});
+
 const OBEN     = path.resolve(__dirname, "..");
 const BLAETTER = path.join(OBEN, "markenblaetter");
 const DIST     = path.join(OBEN, "dist");
@@ -87,6 +93,7 @@ function eigeneTexte(blatt){
       ? r.continue() : r.abort());
     await p.goto("file://" + x.hub);
     await p.waitForTimeout(1300);
+    await alleBereicheAuf(p);
     gezeigt[x.slug] = await p.$$eval(".kachel", e => e.map(el => {
       /* Ein bewegtes Zeichen (.bz) ist genauso ein Symbol wie ein
          Strich — gemessen wird, dass ÜBERHAUPT etwas mit Breite dasteht. */
@@ -338,6 +345,7 @@ function eigeneTexte(blatt){
     await p.addInitScript(() => sessionStorage.setItem("omoteno-willkommen","1"));
     await p.goto("file://" + h[0].hub);
     await p.waitForTimeout(1300);
+    await alleBereicheAuf(p);
 
     const info = await p.evaluate(() => {
       const holen = titel => {

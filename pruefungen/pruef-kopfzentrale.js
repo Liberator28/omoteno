@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════════════════════
    pruef-kopfzentrale.js — Kopf als Kommandozentrale, Öffnungsanzeige
-   oben rechts (LED-Sanduhr / Regenbogen), kein Glanz, wenig Text
+   oben rechts (schlicht, eine Farbe), kein Glanz, wenig Text
 
      NODE_PATH=$(npm root -g) node pruefungen/pruef-kopfzentrale.js
 
@@ -19,13 +19,17 @@
        Slogan schon; Öffnungsstand NICHT in der Knopfzeile.
    3 · Oben rechts: rechter Rand der Box = Kopf − Rand (± 2), auf Höhe
        des Siegels, kein Überlappen mit dem Siegel; RTL oben links.
-   4 · Geschlossen: Sanduhr da, Anteil = (jetzt − letzter Schluss) /
-       (Öffnung − letzter Schluss) aus ZEITEN nachgerechnet, so viele
-       bunte Punkte wie der Anteil sagt; 30 Min. später mehr Sand.
+   4 · Geschlossen: hohler Ring, feine Linie, Anteil = (jetzt − letzter
+       Schluss) / (Öffnung − letzter Schluss) aus ZEITEN nachgerechnet
+       UND am gemalten scaleX abgelesen; zwei Stunden später länger.
        Text „Öffnet heute 10:30“ ≥ 4,5:1 auf dem Band.
-   5 · Offen: „Geöffnet bis …“, JEDER Buchstabe ≥ 4,5:1 auf dem Band,
-       verschiedene Farben (Regenbogen), LED-Leiste läuft (nur transform);
-       Arabisch ohne Einzelbuchstaben (Verbindung bliebe sonst kaputt).
+   5 · Offen: „Geöffnet bis …“ ≥ 4,5:1, voller Punkt, Atem nur
+       transform/opacity.
+   5b · EINE Farbe (Wunsch 10.10., dritte Nachricht: „ohne rgb colors“):
+       jede gemalte Farbe in der Box — Schrift, Grund, Rand, auch an
+       ::before/::after — hat den Farbton der Bandschrift (nur die
+       Deckkraft darf abweichen); kein Verlauf. Gegenbeweis: eine
+       hsl()-Farbe an einem Buchstaben → rot.
    6 · Reduzierte Bewegung: in der Box läuft nichts.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
@@ -65,6 +69,30 @@ async function oeffnen(browser, haus, breite, uhr, opt = {}) {
 const bandUnter = s => s.evaluate(() => {
   /* Der Grund unter der Box: das Band, darüber die Glasfläche gemischt. */
   return getComputedStyle(document.querySelector("header")).backgroundColor;
+});
+
+/* Jede gemalte Farbe in der Box gegen die Bandschrift: gleicher
+   Farbton (RGB ± 3), nur die Deckkraft darf anders sein. Schatten
+   (schwarz, unter der Box) zählen nicht — sie sind kein Farbton. */
+const einfarbig = s => s.evaluate(() => {
+  const box = document.querySelector("#status .status");
+  const lies = t => { const z = (t.match(/[\d.]+/g) || []).map(Number); if (/color\(/.test(t)) { return { c: z.slice(0, 3).map(v => v * 255), a: z.length > 3 ? z[3] : 1 }; } return { c: z.slice(0, 3), a: z.length > 3 ? z[3] : 1 }; };
+  const ref = lies(getComputedStyle(box).color).c;
+  const fremd = []; let n = 0;
+  const els = [box, ...box.querySelectorAll("*")];
+  for (const el of els) for (const pseudo of [null, "::before", "::after"]) {
+    const cs = getComputedStyle(el, pseudo);
+    if (pseudo && (cs.content === "none" || cs.content === "normal")) continue;
+    if (cs.backgroundImage !== "none") fremd.push(el.className + (pseudo || "") + " Verlauf/Bild");
+    /* fill nur an SVG — an HTML steht dort immer Schwarz, gemalt wird es nie. */
+    for (const eig of el instanceof SVGElement ? ["color", "fill"] : ["color", "backgroundColor", "borderTopColor"]) {
+      const w = cs[eig]; if (!w || w === "none" || w === "transparent") continue;
+      const f = lies(w); if (f.a < 0.02) continue;
+      n++;
+      if (f.c.some((v, i) => Math.abs(v - ref[i]) > 3)) fremd.push((el.getAttribute("class") || el.tagName) + (pseudo || "") + " " + eig + " " + w);
+    }
+  }
+  return { fremd, n };
 });
 
 (async () => {
@@ -113,26 +141,31 @@ const bandUnter = s => s.evaluate(() => {
       pruef(m.ueber <= 0, k + ": kein seitliches Überlaufen", m.ueber);
 
       if (breite === 390) {
-        /* 4 · Geschlossen: Sanduhr gegen die Rechnung */
+        /* 4 · Geschlossen: Linie gegen die Rechnung — und gegen das Bild */
         const zu = await s.evaluate(() => {
-          const sand = document.querySelector("#status .st-sand"), txt = document.querySelector("#status .st-text");
-          return sand && { anteil: +sand.dataset.anteil, bunt: sand.querySelectorAll("circle:not(.aus):not(.st-korn)").length,
-            alle: sand.querySelectorAll("circle:not(.st-korn)").length, text: txt.textContent.trim(),
-            farbe: getComputedStyle(txt).color };
+          const linie = document.querySelector("#status .st-linie"), txt = document.querySelector("#status .st-text");
+          const punkt = document.querySelector("#status .status.zu .st-punkt");
+          const tf = linie && getComputedStyle(linie.firstElementChild).transform;
+          return linie && { anteil: +linie.dataset.anteil, gemalt: tf && tf !== "none" ? +tf.match(/matrix\(([^,]+)/)[1] : 1,
+            hohl: !!punkt && /rgba\([^)]*,\s*0\)|transparent/.test(getComputedStyle(punkt).backgroundColor) && parseFloat(getComputedStyle(punkt).borderTopWidth) >= 1,
+            text: txt.textContent.trim(), farbe: getComputedStyle(txt).color };
         });
-        pruef(!!zu, haus + ": geschlossen → Sanduhr steht da");
+        pruef(!!zu, haus + ": geschlossen → Linie bis zur Öffnung steht da");
         if (zu) {
           /* 00:30 geschlossen, 10:30 offen, jetzt 07:30 → 7/10 */
           pruef(Math.abs(zu.anteil - 0.7) < 0.01, haus + ": Anteil aus den Zeiten nachgerechnet (07:30 zwischen 00:30 und 10:30 = 0,7)", zu.anteil);
-          pruef(zu.bunt === Math.round(0.7 * zu.alle), haus + ": so viel bunter Sand wie der Anteil", zu.bunt + " von " + zu.alle);
+          pruef(Math.abs(zu.gemalt - 0.7) < 0.01, haus + ": die Linie ist zu 70 % gefüllt (gemalt, scaleX)", zu.gemalt);
+          pruef(zu.hohl, haus + ": geschlossen = hohler Ring");
           pruef(/10:30/.test(zu.text) && /heute/.test(zu.text), haus + ": Text nennt die Öffnung", zu.text);
           const band = rgb(await bandUnter(s));
           pruef(kontrast(rgb(zu.farbe), band) >= 4.5, haus + ": Schrift der Box ≥ 4,5:1", kontrast(rgb(zu.farbe), band).toFixed(2));
+          const ein = await einfarbig(s);
+          pruef(ein.fremd.length === 0 && ein.n >= 4, haus + ": geschlossen — EINE Farbe in der Box (" + ein.n + " Farbangaben)", ein.fremd.slice(0, 3).join(" | "));
         }
         await s.clock.setFixedTime(new Date("2026-10-10T09:30:00"));
         await s.evaluate(() => { stunde = new Date().getHours(); statusZeichnen(); });
-        const mehr = await s.evaluate(() => +document.querySelector("#status .st-sand").dataset.anteil);
-        pruef(mehr > 0.7 && Math.abs(mehr - 0.9) < 0.01, haus + ": zwei Stunden später mehr Sand (0,9)", mehr);
+        const mehr = await s.evaluate(() => +document.querySelector("#status .st-linie").dataset.anteil);
+        pruef(mehr > 0.7 && Math.abs(mehr - 0.9) < 0.01, haus + ": zwei Stunden später länger (0,9)", mehr);
       }
       pruef(!fehler.length, k + ": keine Ausnahme", fehler.join(" | ") || "still");
       await ctx.close();
@@ -144,19 +177,20 @@ const bandUnter = s => s.evaluate(() => {
       const o = await s.evaluate(() => {
         const txt = document.querySelector("#status .status.offen .st-text");
         if (!txt) return null;
-        const led = document.querySelector("#status .st-led");
-        const anis = led ? led.getAnimations({ subtree: true }) : [];
+        const box = document.querySelector("#status .status");
+        const anis = box.getAnimations({ subtree: true });
         const props = new Set(); anis.forEach(a => a.effect.getKeyframes().forEach(k => Object.keys(k).forEach(x => { if (!["offset","computedOffset","easing","composite"].includes(x)) props.add(x); })));
-        return { text: txt.textContent, farben: [...txt.querySelectorAll("span")].map(s => getComputedStyle(s).color),
-          laeuft: anis.some(a => a.playState === "running"), props: [...props] };
+        return { text: txt.textContent, farbe: getComputedStyle(txt).color, spans: txt.querySelectorAll("span").length,
+          punkt: !!box.querySelector(".st-punkt"), laeuft: anis.some(a => a.playState === "running"), props: [...props] };
       });
       pruef(!!o && /Geöffnet bis 00:30/.test(o.text), haus + " " + phase + ": offen → „Geöffnet bis 00:30“", o && o.text);
       if (o) {
         const band = rgb(await bandUnter(s));
-        const k = o.farben.map(c => kontrast(rgb(c), band));
-        pruef(o.farben.length >= 10 && Math.min(...k) >= 4.5, haus + " " + phase + ": jeder Buchstabe ≥ 4,5:1", "min " + Math.min(...k).toFixed(2) + " bei " + o.farben.length);
-        pruef(new Set(o.farben).size >= 6, haus + " " + phase + ": Regenbogen (≥ 6 verschiedene Farben)", new Set(o.farben).size);
-        pruef(o.laeuft && o.props.every(p => p === "transform" || p === "opacity"), haus + " " + phase + ": LED-Leiste läuft, nur transform", o.props.join(","));
+        pruef(kontrast(rgb(o.farbe), band) >= 4.5, haus + " " + phase + ": Schrift ≥ 4,5:1", kontrast(rgb(o.farbe), band).toFixed(2));
+        pruef(o.spans === 0, haus + " " + phase + ": ein Satz, keine Einzelbuchstaben", o.spans);
+        pruef(o.punkt && o.laeuft && o.props.every(p => p === "transform" || p === "opacity"), haus + " " + phase + ": Punkt atmet, nur transform/opacity", o.props.join(","));
+        const ein = await einfarbig(s);
+        pruef(ein.fremd.length === 0 && ein.n >= 4, haus + " " + phase + ": offen — EINE Farbe in der Box (" + ein.n + " Farbangaben)", ein.fremd.slice(0, 3).join(" | "));
       }
       pruef(!fehler.length, haus + " " + phase + ": keine Ausnahme", fehler.join(" | ") || "still");
       await ctx.close();
