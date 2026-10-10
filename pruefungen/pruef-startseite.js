@@ -28,6 +28,12 @@
    7 · Kontrast (Schrift der Wege, Anzahl, Zahlplakette) ≥ 4,5:1 Tag
        und Abend; kein Überlauf 360–1280 px; Arabisch übersetzt;
        reduzierte Bewegung: Öffnen ohne Animation.
+
+   Gegenbeweis (worktree, §8.1k), je rot: Vorgabe „alles offen“ →
+   Ruhelage; Merken gestrichen → Neuladen; Werbung bleibt vorn →
+   „rückt hinter den ersten Bereich“; Vorschau-Ausnahme gestrichen →
+   Vorschau; Serviceruf-Weg gestrichen → „am Tisch steht der
+   Serviceruf“.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const path = require("path");

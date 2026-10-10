@@ -1517,6 +1517,24 @@ kann. Die Prüfung dazu geht genau den Zwischenweg: abschicken, Server
 stumm, neu laden, etwas anderes wählen, zweiter Versuch — und liest
 die Nutzlast, die wirklich hinausgeht.
 
+### 8.1r Ein Wackler unter Last ist ein Befund — bis die Voraussetzung gemessen ist
+
+> **Vorfall.** Die Probe „Wahl der Bereiche übersteht ein Neuladen“
+> war in Gegenbeweis-Läufen gelegentlich rot, auch bei Sabotagen, die
+> damit nichts zu tun hatten. Erste Vermutung („Chromium schreibt
+> sessionStorage verzögert, 350 ms reichen nicht“) — mit 1,5 s Abstand
+> widerlegt. Zweite („Seitenprozess stürzt ab, /dev/shm“) — kein
+> `crash`-Ereignis, 16 GB frei. Erst eine fremde Probe-Marke im selben
+> sessionStorage zeigte es: Nach dem Neuladen war der GANZE Speicher
+> leer, nicht nur unser Schlüssel. Kopfloses Chromium unter Last mit
+> `file://` verliert gelegentlich die Sitzung — der Hub löscht nirgends.
+
+Ein roter Lauf unter Last wird nicht wegerklärt und nicht durch Warten
+geglättet, sondern **halbiert**, bis eine zweite Quelle (hier die
+Marke) zwischen „Hub“ und „Umgebung“ trennt. Danach prüft die Probe
+ihre Voraussetzung selbst und nennt den Umgebungsfall als Hinweis —
+sie wird dadurch nicht blind: Ohne Schreibweg bleibt sie rot.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1618,6 +1636,7 @@ Dazu je nach Änderung:
 | **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der **Liefer-Schalter im Kopf** (echter Tipp schaltet liefermodus UND das Adressformular im Warenkorb, Name blitzt auf und verschwindet, Tipp auf das Gewählte ändert nichts, Pfeiltasten, Name passt in jeder Sprache, am Tisch/ohne Lieferung kein Schalter, außerhalb der Zeit nennt er die Uhrzeiten), die Bewegung (nur transform/opacity, Symbolkopie im Daumen MITTEN im Gleiten deckungsgleich, schnelle Tipps: der letzte gewinnt, reduzierte Bewegung sofort am Ziel), Kontrast von Symbol und Name je Haus, Tag und Abend (Spur mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen) |
 | **Kopf als Kommandozentrale, Öffnungsanzeige oben rechts (schlicht, EINE Farbe), kein Glanz, wenig Text** | `pruefungen/pruef-kopfzentrale.js` (braucht `dist/`) — alle Häuser 320–1280 px, Uhr UND Zeiten fest (§8.1j): Licht/Bestellart/Sprache in EINER Leiste mit eigenem Rand und Glas, Knöpfe darin randlos ≥ 44 px, mittig; kein `.glanzflug`; Gruß nicht im Bild (h1 bleibt für Vorleser), Slogan sichtbar; Box oben rechts bündig, auf Höhe des Siegels, überdeckt es nicht; geschlossen: hohler Ring, Anteil der Linie aus ZEITEN nachgerechnet (07:30 zwischen 00:30 und 10:30 = 0,7, zwei Stunden später 0,9) UND am gemalten `scaleX` abgelesen; offen: Punkt atmet (nur transform/opacity), ein Satz ohne Einzelbuchstaben; **EINE Farbe** (Wunsch 10.10.: „ohne rgb colors“): jede gemalte Farbe der Box — Schrift, Grund, Rand, auch `::before/::after` — hat den Farbton der Bandschrift, kein Verlauf (Gegenbeweis: grüner Punkt → rot); Schrift ≥ 4,5:1; Arabisch oben links; reduzierte Bewegung: nichts läuft |
 | **Aufklappende Flächen (Sprachliste, Detailblatt, Foodroulette-Ergebnis), Kopf, Guss/Laternen, neue z-index-Ebenen** | `pruefungen/pruef-ueberdeckt.js` (braucht `dist/`) — alle Häuser 360–1280 px, Tag/Abend, Arabisch: jede sichtbare Textzeile der Fläche wird an ihrer Mitte gegen die MALREIHENFOLGE gemessen (`pointer-events:auto` für die Messung, sonst übersieht `elementFromPoint` den Guss), weggerollte Zeilen ausgenommen; jede Fläche über den echten Griff geöffnet und „ist offen“ selbst geprüft |
+| **Startseite: aufklappbare Bereiche, Schnellzeile, Reihenfolge bei laufender Bestellung** | `pruefungen/pruef-startseite.js` (braucht `dist/`) — alle Häuser, Uhr und Zeiten fest: jeder Gruppenkopf ein Knopf ≥ 44 px mit `aria-expanded`, Anzahl = Kacheln; Ruhelage erste zwei offen, Rest zu (gemessene Höhe 0); echter Tipp öffnet/schließt, Wahl übersteht Neuladen in der Sitzung (Voraussetzung „Sitzung überlebt“ selbst geprüft); Liefermodus ohne „Jetzt am Tisch“, nächste Gruppe offen; Schnellzeile ≥ 2 Wege ≥ 44 px, Karten-Weg = Ziel der ersten Kartenkachel (echter Tipp), Serviceruf nur am Tisch, „Ihre Auswahl“ erst mit Inhalt und richtiger Zahl, Foodroulette genau bei `foodrouletteAn()`; laufende Bestellung vorn, Empfehlung hinter dem ersten Bereich; Board-Vorschau alles offen; Kontrast ≥ 4,5:1 Tag/Abend, kein Überlauf 360–1280 px, Arabisch übersetzt, reduzierte Bewegung ohne Animation. **Wer Kacheln misst, öffnet zuerst die Bereiche** (`.sb-kopf[aria-expanded="false"]`) — sonst haben sie keine Höhe |
 | **Kopfzeile, Sprachknopf, Knopfzeile im Kopf** | `pruefungen/pruef-kopf.js` (braucht `dist/`) — Öffnungsstand in der Knopfzeile (Ort, nicht Länge — die hinge an der Uhr), Unterseite als flache Leiste (≤ 120 px, Siegel/Name/Knöpfe auf einer Höhe, ohne Adresse/Slogan/Stand); alle Häuser, 320–1280 px und RTL: Knopfzeile mittig auf 1 px, Sprachknopf ein Kreis 44–48 px ohne Text, Lichtknopf auch bei 320 px, Liste im Bild und aktive Sprache sichtbar markiert, aria-label folgt dem Wechsel |
 | **„Abholbereit“ in der Küche, „Zum Abholen“ im Board, Abholton, Bestellliste nach Stand** | `pruefungen/pruef-abholbereit.js` — Küche: Hauptknopf „Abholbereit“ schreibt `kueche_fertig_um` (PATCH gemessen); Board über den ECHTEN Weg (`live_anmelden` mit gestelltem Kanal UND `nachholen()` mit gestellter Antwort, nur die Spur ändert sich): neu fertige Spur → Leiste + Abholton genau einmal, Geladenes klingelt nicht, zweite Spur klingelt erneut, „Gebracht“ schreibt NUR `gebracht_um` dieser Zeile, später fertige Spur holt sie zurück, Serviceruf/Storniertes nie; Ton über gestelltes `tonWerk` gezählt (vier Dreieckstöne, nicht der Dreiklang; „Ton aus“ = nichts), Noten in keinem Bestellklang; Überschriften Zu prüfen · Neu · In Arbeit; Kontrast dunkel UND hell (kopflos startet das Board hell — die dunkle Fassung wird ausdrücklich gesetzt), 44 px, 390 px. DB: `migration-abholbereit.sql` |
 | **Annahme-Leiste für neue Bestellungen im Board** | `pruefungen/pruef-annahme.js` — auffälligere Rahmung nur bei status="neu", In-Arbeit-ohne-Zusage bleibt bei der stillen Zeile, Tapflächen ≥44px, Kontrast Tag/Abend |
