@@ -19,6 +19,16 @@
 -- eine Spur fertig ist und gebracht_um fehlt oder ÄLTER ist als die
 -- jüngste fertige Spur (Getränke schon gebracht, Essen kommt später →
 -- erscheint wieder).
+--
+-- ANGEWENDET 10.10. (apply_migration abholbereit). Zurückgedrehte Probe
+-- mit Probezeile in blend, Rolle über request.jwt.claims (§2.4),
+-- Zeilenzahl statt Ausnahme (§2.3b):
+--   Mitglied von blend: gebracht_um → 1 Zeile, status → 1 Zeile (gleich)
+--   Mitglied eines anderen Betriebs: gebracht_um → 0 Zeilen
+--   anon: kein UPDATE-Recht auf die Spalte
+-- Messfalle dabei: ein „update betriebe set …“ OHNE where in der Probe
+-- hing 60 s — das Werkzeug hält es für destruktiv (§2.8). Nicht nötig
+-- gewesen: pin_pflicht stand ohnehin überall auf false.
 -- ═══════════════════════════════════════════════════════════════════
 
 alter table public.bestellungen add column if not exists gebracht_um timestamptz;
