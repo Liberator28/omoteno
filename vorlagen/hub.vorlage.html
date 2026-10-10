@@ -382,7 +382,7 @@ body[data-phase="abend"] .logo{
   position:absolute;inset:-3px;border-radius:50%;z-index:0;
   pointer-events:none;opacity:0;transition:opacity .9s ease;
   padding:1.5px;
-  background:conic-gradient(from var(--led-winkel,0deg),
+  background:conic-gradient(
     transparent 0deg, rgba(242,180,65,.05) 40deg,
     rgba(242,180,65,.95) 78deg, rgba(255,236,190,1) 90deg,
     rgba(242,180,65,.95) 102deg, rgba(242,180,65,.05) 140deg,
@@ -392,21 +392,14 @@ body[data-phase="abend"] .logo{
           mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
           mask-composite:exclude;
 }
-body[data-phase="abend"] .logo .led{opacity:1;animation:ledLauf 9s linear infinite}
-@property --led-winkel{syntax:"<angle>";initial-value:0deg;inherits:false}
-@keyframes ledLauf{to{--led-winkel:360deg}}
-
-/* Browser ohne @property (ältere Firefox-Stände) können den Winkel nicht
-   animieren. Dort dreht sich stattdessen das Element selbst – gleiches
-   Ergebnis, ein Frame teurer, aber nur auf wenigen Geräten. */
-@supports not (background:conic-gradient(from var(--led-winkel,0deg),#000,#fff)){
-  body[data-phase="abend"] .logo .led{
-    background:conic-gradient(transparent 0deg, rgba(242,180,65,.9) 85deg,
-               transparent 175deg, transparent 360deg);
-    animation:ledDrehen 9s linear infinite;
-  }
-  @keyframes ledDrehen{to{transform:rotate(360deg)}}
-}
+/* 10.10.: Es dreht sich das Element, nicht der Winkel im Verlauf.
+   Vorher lief `--led-winkel` über @property — das zwingt den Browser,
+   den Verlauf JEDES Bild neu zu malen (am Abend dauerhaft, gemessen in
+   scratchpad/anims.js: einzige laufende Animation ohne transform/opacity).
+   Ein Ring dreht sich in sich selbst, die Maske bleibt gleich: dasselbe
+   Bild, aber auf dem Compositor (Skill bewegung §1). */
+body[data-phase="abend"] .logo .led{opacity:1;animation:ledDrehen 9s linear infinite}
+@keyframes ledDrehen{to{transform:rotate(360deg)}}
 h1{
   grid-area:titel;font-size:23px;line-height:1.18;margin:0;
   font-weight:650;letter-spacing:-.3px;text-align:center;
@@ -484,6 +477,12 @@ body[data-ansicht="unter"] .kopfwahl{justify-self:end;gap:8px}
 .herz:nth-child(6){left:71%;width:16px;animation-delay:3.2s;animation-duration:10s}
 .herz:nth-child(7){left:83%;width:12px;animation-delay:.9s; animation-duration:9.2s}
 .herz:nth-child(8){left:93%;width:9px; animation-delay:6.6s;animation-duration:11.4s}
+/* 10.10.: Ist der Kopf aus dem Bild gerollt, halten seine
+   Dauer-Animationen an (Herzen, Schein, LED, Guss, Laternen) — sie
+   kosteten auch unsichtbar jedes Bild. Die Klasse setzt ein
+   IntersectionObserver (kopfRuhe), zurück im Bild läuft alles weiter. */
+header.kopf-ruht, header.kopf-ruht *, header.kopf-ruht *::before, header.kopf-ruht *::after{
+  animation-play-state:paused !important}
 @keyframes herzSteigen{
   0%{transform:translateY(0) scale(.85);opacity:0}
   12%{opacity:.22}
@@ -1016,81 +1015,21 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:rgba(224,178,78,.55);back
   .zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 
-/* ═══ Reise · Übergang Kachel → Unterseite (Wunsch 08.10., neu 09.10.) ═══
-   09.10.: „Ohne Text — nur ein Aufblättern der Karte, eine Speisekarte,
-   die sich öffnet, und das Symbol, in das man hineingezogen wird und
-   auf der anderen Seite landet.“ Deshalb jetzt:
-     1. Die angetippte Kachel löst sich als geschlossene Klappkarte
-        (FLIP, gemessen am echten Rechteck) und fliegt in die Mitte.
-     2. Zwei Deckel klappen in 3D auf (rotateY um die Außenkanten,
-        perspective() im transform selbst — kein preserve-3d nötig),
-        dahinter leuchtet die Innenseite mit Zeilen ohne Text.
-     3. Das Symbol steht darüber, wächst nach vorn, und eine Scheibe im
-        Licht des Hauses öffnet sich aus ihm über den ganzen Schirm —
-        das ist der Sog. Unter der Scheibe wechselt die Seite, dann
-        löst sie sich auf, und #inhalt.rein baut die neue Seite auf.
-   Kein Wort in der ganzen Szene (pruef-reise.js zählt Textknoten).
-   Die ganze Szene ist EINE Ebene, die am Ende entfernt wird, nicht
-   versteckt (§8.1). Nur transform und opacity. pointer-events:none:
-   Ein Tipp geht nie in eine Fläche, die gleich verschwindet —
-   überspringen läuft über einen eigenen Horcher.
-   Ebene 75: über Kopf (50) und Blättern (60+), unter der Altersfrage. */
+/* ═══ Reise · Übergang Kachel → Unterseite (neu 10.10.) ═══════════
+   Wunsch 10.10.: „Man sieht die Animation nicht, das war die
+   Verzögerung — ganz flüssig und simpel, smooth in die Karten.“
+   Gemessen vorher: 1154 ms vom Tipp bis zur Karte (die Klappkarte
+   wechselte die Seite erst bei 76 % der Szene). Jetzt wechselt die
+   Seite im SELBEN Takt wie der Tipp; darüber wächst nur noch die
+   Fläche der Kachel zum Schirm und löst sich dabei auf (FLIP, 260 ms,
+   ease-out), während #inhalt.rein die neue Seite gestaffelt aufbaut.
+   Eine Ebene, am Ende ENTFERNT (§8.1), nur transform/opacity, kein
+   Text (pruef-reise.js zählt Textknoten). Ebene 75: über Kopf und
+   Blättern, unter der Altersfrage. */
 .reise{position:fixed;inset:0;z-index:75;pointer-events:none;overflow:hidden}
-.reise-grund{position:absolute;inset:0;opacity:0;
-  background:radial-gradient(120% 78% at 50% 46%,
-    color-mix(in srgb, var(--reise-licht) 22%, var(--grund)) 0%, var(--grund) 66%)}
-.reise-buehne{position:absolute;left:50%;top:50%;will-change:transform,opacity}
-.reise-schein{position:absolute;inset:0;border-radius:26px;opacity:0;
-  box-shadow:0 0 46px 4px color-mix(in srgb, var(--reise-licht) 55%, transparent),
-             0 0 120px 18px color-mix(in srgb, var(--reise-licht) 22%, transparent)}
-/* Die Innenseite der Karte: Flächen statt Wörter — Zeilen im Licht des
-   Hauses, wie eine Karte, die man aus Armlänge sieht. */
-.reise-seite{position:absolute;inset:0;border-radius:26px;overflow:hidden;opacity:0;
-  background:linear-gradient(170deg, color-mix(in srgb, var(--reise-licht) 14%, var(--flaeche)) 0%, var(--flaeche) 62%);
-  box-shadow:0 34px 80px -28px rgba(0,0,0,.6), inset 0 0 0 1px color-mix(in srgb, var(--reise-licht) 30%, transparent)}
-.reise-seite i{position:absolute;left:18%;right:18%;height:5px;border-radius:5px;
-  background:color-mix(in srgb, var(--reise-licht) 26%, transparent)}
-.reise-seite i:nth-child(1){top:62%}
-.reise-seite i:nth-child(2){top:69%;right:30%}
-.reise-seite i:nth-child(3){top:76%}
-.reise-seite i:nth-child(4){top:83%;right:38%}
-/* Zwei Deckel, je eine Hälfte. backface-visibility: Über 90° hinaus
-   verschwindet der Deckel, statt seine Rückseite spiegelverkehrt zu
-   zeigen. Die Kante innen trägt ein feines Licht — der Falz. */
-.reise-tuer{position:absolute;top:0;bottom:0;width:50%;overflow:hidden;
-  -webkit-backface-visibility:hidden;backface-visibility:hidden;
-  background:linear-gradient(155deg,
-    color-mix(in srgb, var(--reise-licht) 34%, var(--flaeche)) 0%,
-    color-mix(in srgb, var(--reise-licht) 16%, var(--flaeche)) 70%);
-  will-change:transform}
-.reise-tuer.links{left:0;border-radius:26px 6px 6px 26px;transform-origin:0 50%;
-  box-shadow:inset -1px 0 0 color-mix(in srgb, var(--reise-licht) 60%, transparent)}
-.reise-tuer.rechts{right:0;border-radius:6px 26px 26px 6px;transform-origin:100% 50%;
-  box-shadow:inset 1px 0 0 color-mix(in srgb, var(--reise-licht) 60%, transparent)}
-/* Glanz auf dem Deckel: ein schräger Lichtstreif, fest — er bewegt sich
-   mit dem Deckel und liest sich dadurch als Prägung. */
-.reise-tuer::after{content:"";position:absolute;inset:0;
-  background:linear-gradient(115deg, rgba(255,255,255,.22) 0%, transparent 34%, transparent 70%, rgba(255,255,255,.08) 100%)}
-.reise-figur{position:absolute;left:50%;top:50%;width:0;height:0;will-change:transform,opacity}
-.reise-ico{position:absolute;left:-52px;top:-52px;width:104px;height:104px;border-radius:50%;
-  display:grid;place-items:center;overflow:hidden;font-size:58px;line-height:1;color:var(--reise-licht);
-  background:radial-gradient(closest-side, color-mix(in srgb, var(--reise-licht) 18%, var(--flaeche)) 70%,
-    color-mix(in srgb, var(--reise-licht) 32%, var(--flaeche)) 100%);
-  box-shadow:0 0 0 1px color-mix(in srgb, var(--reise-licht) 40%, transparent),
-             0 0 34px 2px color-mix(in srgb, var(--reise-licht) 45%, transparent),
-             0 18px 44px -14px rgba(0,0,0,.5)}
-.reise-ico svg{width:50px;height:50px;fill:none;stroke:currentColor;stroke-width:1.6;
-  stroke-linecap:round;stroke-linejoin:round}
-.reise-ico .reise-film{display:block;width:76px;height:76px}
-.reise-ico .reise-film svg{width:100%;height:100%}
-.reise-ico img{width:100%;height:100%;object-fit:cover}
-/* Der Sog: eine Scheibe aus dem Symbol, so groß, dass sie bei scale(1)
-   den ganzen Schirm deckt (Maß setzt das Skript). */
-.reise-portal{position:absolute;left:50%;top:50%;border-radius:50%;opacity:0;will-change:transform,opacity;
-  background:radial-gradient(closest-side,
-    var(--grund) 0%, var(--grund) 52%,
-    color-mix(in srgb, var(--reise-licht) 30%, var(--grund)) 82%,
-    color-mix(in srgb, var(--reise-licht) 70%, var(--grund)) 100%)}
+.reise-flaeche{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform,opacity;
+  border-radius:var(--rundung);
+  background:color-mix(in srgb, var(--reise-licht) 26%, var(--flaeche))}
 
 /* ═══ Wie letztes Mal / Nochmal wie letztes Mal (08.10.) ════════
    Beides setzt erst auf einen Tipp etwas — ein Vorschlag, keine
@@ -1639,6 +1578,17 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
   background:var(--flaeche);border:1px solid var(--linie-stark);
   color:var(--tinte);box-shadow:none;font-weight:600
 }
+/* WLAN (10.10.): Netzname, darunter genau zwei Knöpfe, auf Wunsch der
+   QR-Code — immer schwarz auf weiß, egal welches Haus. */
+.wlan-netz{display:flex;align-items:center;gap:10px;margin:4px 0 18px;font-size:19px;color:var(--tinte);word-break:break-word}
+.wlan-ico{flex:0 0 auto;width:30px;height:30px;color:var(--gold)}
+.wlan-ico svg{width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.wlan-knoepfe{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.wlan-knoepfe .knopf{margin:0;min-height:52px;padding:12px 10px;text-align:center}
+.wlan-qr{margin:16px auto 0;max-width:280px;padding:14px;border-radius:18px;background:#fff;text-align:center;
+  box-shadow:0 10px 30px -12px rgba(0,0,0,.45)}
+.wlan-qr svg{display:block;width:100%;height:auto}
+.wlan-qr p{margin:8px 0 0;font-size:15px;color:#1a1a1a;word-break:break-word}
 .knopf.gross-cta{flex-direction:column;gap:6px;padding:19px 16px;font-size:16.5px;border-radius:16px}
 .knopf.gross-cta .sterne{font-size:16px;letter-spacing:4px;line-height:1;color:#FFD98A}
 .odertrenner{
@@ -2163,10 +2113,13 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
 /* ═══ Detailkarte zum Gericht ═══════════════════════════════════ */
 .blende{
   position:fixed;inset:0;z-index:60;background:rgba(26,16,12,.55);
-  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px);
   opacity:0;pointer-events:none;transition:opacity .24s var(--blatt)
 }
-.blende.an{opacity:1;pointer-events:auto;transition-duration:.4s}
+/* Unschärfe nur, solange die Blende wirklich da ist (10.10.): Ein
+   backdrop-filter auf einer unsichtbaren Fläche über dem ganzen Schirm
+   kostet trotzdem bei jedem Bild — vorher stand er immer an. */
+.blende.an{opacity:1;pointer-events:auto;transition-duration:.4s;
+  -webkit-backdrop-filter:blur(4px);backdrop-filter:blur(4px)}
 /* overflow:hidden allein reicht auf iOS NICHT – der Hintergrund scrollt
    trotzdem. position:fixed hält ihn wirklich still, die Scrollhöhe merkt
    sich detailOeffnen() und gibt sie beim Schließen zurück. */
@@ -4782,6 +4735,24 @@ const WLAN = {
   netz:     "",
   passwort: ""
 };
+/* Seit 10.10. auch live aus dem Board (hub_texte.wlan_netz /
+   wlan_passwort) — das schlägt das Markenblatt. Ein Platzhalter aus
+   einem Markenblatt („BITTE-EINTRAGEN") gilt als leer: Den hatte
+   Choco bis heute als Passwort auf dem Schirm stehen. */
+let WLAN_LIVE = { netz:"", passwort:"" };
+function wlanDaten(){
+  const echt = w => { w = String(w || "").trim(); return /^bitte[- ]?eintragen$/i.test(w) ? "" : w; };
+  return { netz: echt(WLAN_LIVE.netz) || echt(WLAN.netz),
+           passwort: echt(WLAN_LIVE.passwort) || echt(WLAN.passwort) };
+}
+/* Der Inhalt des QR-Codes nach dem gängigen WIFI:-Format (Android,
+   iOS-Kamera). \ ; , : " werden maskiert, sonst bräche ein Passwort
+   mit Semikolon das Format an genau dieser Stelle ab. */
+function wlanQrText(w){
+  const m = x => String(x).replace(/([\\;,:"])/g, "\\$1");
+  return "WIFI:T:" + (w.passwort ? "WPA" : "nopass") + ";S:" + m(w.netz) + ";" +
+         (w.passwort ? "P:" + m(w.passwort) + ";" : "") + ";";
+}
 
 /*  MUSIKWUNSCH
     Der Wunsch wird als fertige Nachricht an die Bar geschickt.
@@ -5553,11 +5524,39 @@ function bzText(cp){
   return bzTexte.get(cp);
 }
 
+/* Die Warteschlange (10.10., „Seiten laden langsam“). Gemessen bei
+   4× gebremster CPU: Elf Filme starteten zugleich mit dem Laden, gut
+   0,5 s lange Aufgaben am Stück, in denen kein Tipp ankam. Jetzt:
+   erst nach `load`, dann EIN Film je Leerlauf-Takt, und der nächste
+   erst, wenn der vorige eingelesen ist. Bis dahin steht das ruhige
+   Zeichen (.bz-still) — dasselbe Bild, das ohne Netz auch steht.
+   Die Dateien werden schon beim Einreihen geholt: Netz kostet keine
+   Rechenzeit, das Einlesen schon. */
+const bzSchlange = [];
+let bzPumpe = false, bzGeladen = document.readyState === "complete";
+if(!bzGeladen) addEventListener("load", () => { bzGeladen = true; bzPumpen(); }, { once:true });
+const bzLeerlauf = f => window.requestIdleCallback ? requestIdleCallback(f, { timeout:500 }) : setTimeout(f, 50);
 function bzStarten(el){
   if(el.dataset.bzLos) return;
   el.dataset.bzLos = "1";
+  bzText(el.dataset.bz).catch(() => {});
+  bzSchlange.push(el);
+  bzPumpen();
+}
+function bzPumpen(){
+  if(bzPumpe || !bzGeladen || !bzSchlange.length) return;
+  bzPumpe = true;
+  bzLeerlauf(() => {
+    let el = bzSchlange.shift();
+    while(el && !el.isConnected) el = bzSchlange.shift();
+    const weiter = () => { bzPumpe = false; bzPumpen(); };
+    if(!el) return weiter();
+    bzStartenJetzt(el).then(weiter, weiter);
+  });
+}
+function bzStartenJetzt(el){
   const cp = el.dataset.bz;
-  Promise.all([bzAbspielerLaden(), bzText(cp)]).then(([lottie, text]) => {
+  return Promise.all([bzAbspielerLaden(), bzText(cp)]).then(([lottie, text]) => {
     if(!el.isConnected) return;
     const film = document.createElement("span");
     film.className = "bz-film";
@@ -5587,6 +5586,7 @@ function bzStarten(el){
          gleichzeitig von vorn, sondern mit der Pause in den Takt. */
       if(bzGespielt.has(schl)){ anim.goToAndStop(ruhe, true); bzNochmal(el); return; }
       bzGespielt.add(schl);
+      if(!el.closest(".ed-seite") && bzLaufend() >= BZ_ZUGLEICH){ anim.goToAndStop(ruhe, true); bzNochmal(el); return; }
       anim.goToAndPlay(0, true);
     });
   }).catch(() => { el.dataset.bzFehler = "1"; });
@@ -5630,8 +5630,23 @@ if("MutationObserver" in window) new MutationObserver(liste => {
   requestAnimationFrame(() => { bzGeplant = false; bzVerdrahten(); });
 }).observe(document.documentElement, { childList:true, subtree:true });
 
-function bzSpielen(el){
+/* Höchstens BZ_ZUGLEICH Filme spielen zur selben Zeit (10.10.).
+   Gemessen bei 4× gebremster CPU: Zehn Filme auf der Startseite, je
+   ~4 s mit 60 Bildern und nur 2,5–6 s Pause, liefen fast immer alle —
+   Lottie allein ~0,9 s Rechenzeit in 4 s, die Seite wurde zäh. Wer
+   über der Grenze an der Reihe wäre, wartet einfach die nächste Pause
+   ab. Ausgenommen: die Foodroulette (.ed-seite, dort IST das Zeichen
+   der Inhalt) und jeder Tipp des Gastes (erzwungen). */
+const BZ_ZUGLEICH = 3;
+function bzLaufend(){
+  let n = 0;
+  bzFilme.forEach(a => { const el = a.wrapper && a.wrapper.parentElement;
+    if(!a.isPaused && el && el._bzSicht && !el.closest(".ed-seite")) n++; });
+  return n;
+}
+function bzSpielen(el, erzwungen){
   if(!el || !el._bz || bzRuhig()) return;
+  if(!erzwungen && !el.closest(".ed-seite") && bzLaufend() >= BZ_ZUGLEICH){ bzNochmal(el); return; }
   clearTimeout(el._bzUhr); el._bzUhr = 0; el._bzWartet = false;
   el._bz.goToAndPlay(0, true);
 }
@@ -5675,12 +5690,19 @@ document.addEventListener("visibilitychange", () => {
   });
 });
 
+/* Kopf außer Sicht: seine Dauer-Animationen ruhen (CSS header.kopf-ruht). */
+(function kopfRuhe(){
+  const kopf = document.querySelector("header");
+  if(!kopf || !("IntersectionObserver" in window)) return;
+  new IntersectionObserver(e => kopf.classList.toggle("kopf-ruht", !e[0].isIntersecting)).observe(kopf);
+})();
+
 /* Antippen weckt das Zeichen im angetippten Element. pointerdown statt
    click: Die Reaktion soll unter dem Finger beginnen, nicht erst beim
    Loslassen. */
 document.addEventListener("pointerdown", e => {
   const ziel = e.target.closest && e.target.closest(".kachel,.rufknopf,.chip,.bz-tipp");
-  if(ziel) bzSpielen(ziel.querySelector(".bz.bz-bereit"));
+  if(ziel) bzSpielen(ziel.querySelector(".bz.bz-bereit"), true);
 }, { passive:true });
 
 /* Früher erwachte alle 6,5 s EIN zufälliges sichtbares Zeichen —
@@ -9210,14 +9232,14 @@ const TEXTE = {
 "Route starten":{en:"Start directions",tr:"Yol tarifini başlat",ru:"Построить маршрут",fr:"Lancer l'itinéraire",es:"Cómo llegar",it:"Avvia il percorso",pl:"Wyznacz trasę",ar:"بدء الطريق",uk:"Прокласти маршрут",nl:"Route starten",ro:"Pornește ruta"},
 
 /* --- WLAN --- */
-"Kopieren, einfügen, fertig – ganz ohne Abtippen.":{en:"Copy, paste, done – no typing needed.",tr:"Kopyala, yapıştır, bitti – yazmaya gerek yok.",ru:"Скопируйте, вставьте, готово — без набора.",fr:"Copier, coller, c'est tout – sans rien taper.",es:"Copiar, pegar y listo, sin teclear.",it:"Copia, incolla, fatto – senza digitare.",pl:"Kopiuj, wklej, gotowe – bez wpisywania.",ar:"انسخ والصق وانتهى – دون كتابة.",uk:"Копіюйте, вставте, готово — без набору.",nl:"Kopiëren, plakken, klaar – zonder typen.",ro:"Copiați, lipiți, gata – fără să tastați."},
-"NETZWERK":{en:"NETWORK",tr:"AĞ",ru:"СЕТЬ",fr:"RÉSEAU",es:"RED",it:"RETE",pl:"SIEĆ",ar:"الشبكة",uk:"МЕРЕЖА",nl:"NETWERK",ro:"REȚEA"},
-"PASSWORT":{en:"PASSWORD",tr:"ŞİFRE",ru:"ПАРОЛЬ",fr:"MOT DE PASSE",es:"CONTRASEÑA",it:"PASSWORD",pl:"HASŁO",ar:"كلمة المرور",uk:"ПАРОЛЬ",nl:"WACHTWOORD",ro:"PAROLĂ"},
+"QR-Code zeigen":{en:"Show QR code",tr:"QR kodu göster",ru:"Показать QR-код",fr:"Afficher le QR code",es:"Mostrar código QR",it:"Mostra codice QR",pl:"Pokaż kod QR",ar:"عرض رمز QR",uk:"Показати QR-код",nl:"QR-code tonen",ro:"Arată codul QR"},
+"QR-Code ausblenden":{en:"Hide QR code",tr:"QR kodu gizle",ru:"Скрыть QR-код",fr:"Masquer le QR code",es:"Ocultar código QR",it:"Nascondi codice QR",pl:"Ukryj kod QR",ar:"إخفاء رمز QR",uk:"Сховати QR-код",nl:"QR-code verbergen",ro:"Ascunde codul QR"},
+"QR-Code für das WLAN":{en:"QR code for the Wi-Fi",tr:"Wi-Fi için QR kodu",ru:"QR-код для Wi-Fi",fr:"QR code pour le Wi-Fi",es:"Código QR del Wi-Fi",it:"Codice QR per il Wi-Fi",pl:"Kod QR do Wi-Fi",ar:"رمز QR للواي فاي",uk:"QR-код для Wi-Fi",nl:"QR-code voor de wifi",ro:"Cod QR pentru Wi-Fi"},
+"Der QR-Code lädt gerade nicht. Kopieren geht trotzdem.":{en:"The QR code is not loading right now. Copying still works.",tr:"QR kodu şu anda yüklenmiyor. Kopyalama yine de çalışır.",ru:"QR-код сейчас не загружается. Копирование всё равно работает.",fr:"Le QR code ne se charge pas pour le moment. La copie fonctionne quand même.",es:"El código QR no carga ahora mismo. Copiar sigue funcionando.",it:"Il codice QR al momento non si carica. Copiare funziona comunque.",pl:"Kod QR się teraz nie ładuje. Kopiowanie nadal działa.",ar:"رمز QR لا يتم تحميله الآن. النسخ يعمل رغم ذلك.",uk:"QR-код зараз не завантажується. Копіювання все одно працює.",nl:"De QR-code laadt nu niet. Kopiëren werkt wel.",ro:"Codul QR nu se încarcă acum. Copierea funcționează totuși."},
+"Das Passwort bekommen Sie gern von unserem Team.":{en:"Our team will gladly give you the password.",tr:"Şifreyi ekibimizden memnuniyetle alabilirsiniz.",ru:"Пароль с удовольствием подскажет наш персонал.",fr:"Notre équipe vous donnera volontiers le mot de passe.",es:"Nuestro equipo le dará la contraseña con gusto.",it:"Il nostro personale vi darà volentieri la password.",pl:"Hasło chętnie poda nasza obsługa.",ar:"يسعد فريقنا بإعطائكم كلمة المرور.",uk:"Пароль охоче підкаже наш персонал.",nl:"Ons team geeft u graag het wachtwoord.",ro:"Echipa noastră vă dă cu plăcere parola."},
 "Passwort kopieren":{en:"Copy password",tr:"Şifreyi kopyala",ru:"Скопировать пароль",fr:"Copier le mot de passe",es:"Copiar contraseña",it:"Copia la password",pl:"Kopiuj hasło",ar:"نسخ كلمة المرور",uk:"Скопіювати пароль",nl:"Wachtwoord kopiëren",ro:"Copiază parola"},
 "Kopiert – jetzt in den WLAN-Einstellungen einfügen.":{en:"Copied – now paste it in your Wi-Fi settings.",tr:"Kopyalandı – şimdi Wi-Fi ayarlarına yapıştırın.",ru:"Скопировано — вставьте в настройках Wi-Fi.",fr:"Copié – collez-le dans vos réglages Wi-Fi.",es:"Copiado: péguelo en los ajustes de Wi-Fi.",it:"Copiato – incollalo nelle impostazioni Wi-Fi.",pl:"Skopiowano – wklej w ustawieniach Wi-Fi.",ar:"تم النسخ – الصقها في إعدادات الواي فاي.",uk:"Скопійовано — вставте в налаштуваннях Wi-Fi.",nl:"Gekopieerd – plak het in uw wifi-instellingen.",ro:"Copiat – lipiți în setările Wi-Fi."},
 "Bitte das Passwort von Hand abtippen.":{en:"Please type the password manually.",tr:"Lütfen şifreyi elle yazın.",ru:"Пожалуйста, введите пароль вручную.",fr:"Veuillez saisir le mot de passe à la main.",es:"Escriba la contraseña a mano, por favor.",it:"Digita la password manualmente.",pl:"Wpisz hasło ręcznie.",ar:"يرجى كتابة كلمة المرور يدوياً.",uk:"Введіть пароль вручну.",nl:"Typ het wachtwoord met de hand.",ro:"Introduceți parola manual."},
-"So geht es:":{en:"How it works:",tr:"Nasıl yapılır:",ru:"Как это работает:",fr:"Comment faire :",es:"Cómo funciona:",it:"Come fare:",pl:"Jak to zrobić:",ar:"الطريقة:",uk:"Як це зробити:",nl:"Zo werkt het:",ro:"Cum se face:"},
-"Passwort kopieren, dann in den Einstellungen Ihres Handys das Netz „{n}“ auswählen und das Passwort einfügen. Klappt etwas nicht? Unser Team hilft gerne weiter.":{en:"Copy the password, then select the network “{n}” in your phone settings and paste it. Something not working? Our team is happy to help.",tr:"Şifreyi kopyalayın, telefon ayarlarınızdan “{n}” ağını seçin ve yapıştırın. Bir sorun mu var? Ekibimiz yardımcı olur.",ru:"Скопируйте пароль, выберите сеть «{n}» в настройках телефона и вставьте его. Что-то не так? Наша команда поможет.",fr:"Copiez le mot de passe, choisissez le réseau « {n} » dans les réglages de votre téléphone et collez-le. Un souci ? Notre équipe vous aide volontiers.",es:"Copie la contraseña, seleccione la red «{n}» en los ajustes de su móvil y péguela. ¿Algún problema? Nuestro equipo le ayuda.",it:"Copia la password, seleziona la rete «{n}» nelle impostazioni del telefono e incollala. Qualcosa non va? Il nostro team è qui.",pl:"Skopiuj hasło, wybierz sieć „{n}” w ustawieniach telefonu i wklej je. Coś nie działa? Nasza obsługa pomoże.",ar:"انسخ كلمة المرور، ثم اختر شبكة «{n}» في إعدادات هاتفك والصقها. هل من مشكلة؟ فريقنا مستعد للمساعدة.",uk:"Скопіюйте пароль, оберіть мережу «{n}» в налаштуваннях телефона і вставте його. Щось не працює? Наша команда допоможе.",nl:"Kopieer het wachtwoord, kies het netwerk „{n}” in uw telefooninstellingen en plak het. Lukt het niet? Ons team helpt graag.",ro:"Copiați parola, alegeți rețeaua „{n}” în setările telefonului și lipiți-o. Nu merge? Echipa noastră vă ajută."},
 
 /* --- Musikwunsch --- */
 "Ihr Lied geht direkt an die Bar. Ob es läuft, entscheidet unser Team – aber wir hören zu.":{en:"Your song goes straight to the bar. Whether it plays is up to our team – but we are listening.",tr:"Şarkınız doğrudan bara iletilir. Çalınıp çalınmayacağına ekibimiz karar verir – ama sizi dinliyoruz.",ru:"Ваша песня уходит прямо в бар. Прозвучит ли она, решает команда — но мы вас слышим.",fr:"Votre chanson arrive directement au bar. C'est notre équipe qui décide, mais nous vous écoutons.",es:"Su canción llega directa a la barra. Decide nuestro equipo, pero le escuchamos.",it:"La sua canzone arriva subito al bar. Decide il nostro team, ma ascoltiamo.",pl:"Państwa piosenka trafia prosto do baru. Decyduje nasza obsługa, ale słuchamy.",ar:"أغنيتكم تصل مباشرة إلى البار. القرار لفريقنا، لكننا نستمع إليكم.",uk:"Ваша пісня йде прямо в бар. Рішення за командою, але ми слухаємо.",nl:"Uw nummer gaat rechtstreeks naar de bar. Ons team beslist, maar we luisteren.",ro:"Melodia dvs. ajunge direct la bar. Echipa decide, dar vă ascultăm."},
@@ -12585,16 +12607,69 @@ SEITEN.quiz = () => {
 
 
 /* ---------- WLAN ---------- */
-SEITEN.wlan = () =>
-  '<div class="seite"><h2>' + t("WLAN verbinden") + '</h2>' +
-  '<p class="unter">' + t("Kopieren, einfügen, fertig – ganz ohne Abtippen.") + '</p>' +
-  '<div class="block"><h3>' + t("NETZWERK") + '</h3><p class="gross">' + WLAN.netz + '</p></div>' +
-  '<div class="block"><h3>' + t("PASSWORT") + '</h3><p class="gross">' + WLAN.passwort + '</p></div>' +
-  '<button class="knopf" data-aktion="kopieren">' + t("Passwort kopieren") + '</button>' +
-  '<div class="kopiert" id="melde"></div>' +
-  '<div class="hinweis"><b>' + t("So geht es:") + '</b> ' +
-  t("Passwort kopieren, dann in den Einstellungen Ihres Handys das Netz „{n}“ auswählen und das Passwort einfügen. Klappt etwas nicht? Unser Team hilft gerne weiter.", {n:WLAN.netz}) +
-  '</div></div>';
+SEITEN.wlan = () => {
+  /* Wunsch 10.10.: Das Passwort steht nicht auf dem Schirm. Zwei
+     Knöpfe, keine Anleitung: kopieren oder den QR-Code mit der Kamera
+     eines anderen Telefons / im WLAN-Menü scannen. */
+  const w = wlanDaten();
+  let h = '<div class="seite"><h2>' + t("WLAN verbinden") + '</h2>';
+  if(w.netz) h += '<p class="wlan-netz"><span class="wlan-ico" aria-hidden="true">' + ICONS.wlan + '</span><b>' + hs(w.netz) + '</b></p>';
+  if(w.passwort){
+    h += '<div class="wlan-knoepfe">' +
+           '<button class="knopf" data-aktion="kopieren">' + t("Passwort kopieren") + '</button>' +
+           (w.netz ? '<button class="knopf zweit" data-aktion="wlanqr" aria-expanded="false" aria-controls="wlanQr">' + t("QR-Code zeigen") + '</button>' : '') +
+         '</div>' +
+         '<div class="kopiert" id="melde"></div>' +
+         '<div class="wlan-qr" id="wlanQr" hidden></div>';
+  } else {
+    h += '<p class="unter">' + t("Das Passwort bekommen Sie gern von unserem Team.") + '</p>';
+  }
+  return h + '</div>';
+};
+
+/* qrcode-generator 2.0.4 (MIT), selbst ausgeliefert unter /lib/ und
+   erst beim ersten Tipp geholt — 56 KB, die sonst jeder Gast lüde. */
+const QR_LIB = "https://omoteno.de/lib/qrcode-generator-2.0.4.js";
+const QR_LIB_SRI = "sha384-e9EFD6BGC90bkW9aDV5xbbBfzwN7G8YImHao2lfLVKV/hPB0E0go+H3I64h7oHtA";
+let qrLaden = null;
+function qrBibliothek(){
+  if(!qrLaden) qrLaden = new Promise((ok, nein) => {
+    if(window.qrcode) return ok(window.qrcode);
+    const sc = document.createElement("script");
+    sc.src = QR_LIB; sc.integrity = QR_LIB_SRI; sc.crossOrigin = "anonymous"; sc.async = true;
+    sc.onload = () => window.qrcode ? ok(window.qrcode) : nein(new Error("kein qrcode"));
+    sc.onerror = () => { qrLaden = null; nein(new Error("QR nicht erreichbar")); };
+    document.head.appendChild(sc);
+  });
+  return qrLaden;
+}
+function wlanQrUmschalten(knopf){
+  const feld = $("wlanQr");
+  if(!feld) return;
+  const auf = feld.hidden;
+  feld.hidden = !auf;
+  knopf.setAttribute("aria-expanded", auf ? "true" : "false");
+  knopf.textContent = t(auf ? "QR-Code ausblenden" : "QR-Code zeigen");
+  if(!auf || feld.dataset.fertig) return;
+  qrBibliothek().then(qrcode => {
+    const w = wlanDaten();
+    qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
+    const q = qrcode(0, "M");
+    q.addData(wlanQrText(w), "Byte");
+    q.make();
+    /* Weißer Rand (4 Module) und schwarze Punkte, unabhängig vom Haus:
+       Kameras lesen dunkel auf hell am sichersten. */
+    const n = q.getModuleCount(), r = 4, g = n + 2 * r;
+    let pfad = "";
+    for(let y = 0; y < n; y++) for(let x = 0; x < n; x++) if(q.isDark(y, x)) pfad += "M" + (x + r) + " " + (y + r) + "h1v1h-1z";
+    feld.innerHTML = '<svg viewBox="0 0 ' + g + ' ' + g + '" role="img" aria-label="' + hs(t("QR-Code für das WLAN")) + '" shape-rendering="crispEdges">' +
+      '<rect width="' + g + '" height="' + g + '" fill="#fff"/><path d="' + pfad + '" fill="#000"/></svg>' +
+      '<p>' + hs(w.netz) + '</p>';
+    feld.dataset.fertig = "1";
+  }).catch(() => {
+    feld.innerHTML = '<p>' + hs(t("Der QR-Code lädt gerade nicht. Kopieren geht trotzdem.")) + '</p>';
+  });
+}
 
 /* ---------- Musikwunsch ---------- */
 let musikStil = "";
@@ -14698,41 +14773,22 @@ $("inhalt").addEventListener("input", e => {
   neuKarte(id, true);
 });
 
-/* ══ REISE · Übergang Kachel → Unterseite (Wunsch 08.10.) ══════════
-   Ablauf und Gestalt stehen beim CSS (.reise). Hier der Takt:
-
-   - Erstes Öffnen je Sitzung: die volle Szene, 0,92 s. Danach kurz,
-     0,44 s — wer zum fünften Mal in die Karte geht, will hinein und
-     keine Vorführung (Skill bewegung §3). Gemerkt in sessionStorage.
-   - Ein Tipp, eine Taste oder ein Wischen während der Szene springt
-     ans Ende. War die Seite darunter noch nicht gewechselt, wird der
-     folgende Klick geschluckt — er galt dem Überspringen, nicht der
-     alten Startseite, die er sonst träfe.
-   - Reduzierte Bewegung, die Vorschau im Board, ein Link nach außen,
-     Strg/⌘-Klick: keine Szene, der Browser macht, was er immer macht.
-   - Gewechselt wird unter der Scheibe, wenn sie deckt (76 % bzw.
-     70 %). Danach löst sie sich auf, und #inhalt.rein baut die neue
-     Seite gestaffelt darunter auf. */
+/* ══ REISE · Übergang Kachel → Unterseite (neu 10.10.) ═════════════
+   Gestalt beim CSS (.reise). Der Takt:
+   - Die Seite wechselt SOFORT (location.hash im Tipp selbst) — die
+     Bewegung ist Beiwerk, kein Warten. Keine längere Fassung beim
+     ersten Öffnen mehr.
+   - Die Fläche der Kachel wächst in 260 ms (Skill bewegung §3:
+     Karte/Blatt 180–320 ms) vom echten Rechteck zum Schirm und blendet
+     dabei aus; danach wird die Ebene entfernt.
+   - Ein Druck, eine Taste oder ein Rad währenddessen beendet sie. Der
+     Klick zu einem Druck in diesem Fenster wird geschluckt: Er galt
+     der Kachel (Doppeltipp), nicht dem, was auf der neuen Seite an
+     derselben Stelle steht.
+   - Reduzierte Bewegung, Vorschau im Board, Link nach außen,
+     Strg/⌘-Klick: keine Ebene, der Browser macht, was er immer macht. */
+const REISE_MS = 260;
 let reise = null;
-function reiseSymbol(a){
-  const ico = a.querySelector(".ico");
-  if(ico){
-    const bz = ico.querySelector(".bz");
-    if(bz){
-      /* Der laufende Film als Standbild — sein Rahmen ist eigener
-         Bestand (Lottie aus auslieferung/emoji), kein Text des Wirts. */
-      const film = bz.classList.contains("bz-bereit") ? bz.querySelector(".bz-film svg") : null;
-      if(film) return '<span class="reise-film">' + film.outerHTML + '</span>';
-      const still = bz.querySelector(".bz-still");
-      return '<span>' + hs(still ? still.textContent : "") + '</span>';
-    }
-    if(ico.classList.contains("zeichen")) return '<span>' + hs(ico.textContent) + '</span>';
-    return ico.innerHTML;          /* SVG aus ICONS */
-  }
-  const bild = a.querySelector(".kbanner img");
-  const quelle = bild ? bild.getAttribute("src") || "" : "";
-  return /^https:\/\//i.test(quelle) ? '<img src="' + hs(quelle) + '" alt="">' : "";
-}
 function reiseMoeglich(a, e){
   if(!a || VORSCHAU || ruhigeBewegung()) return "";
   if(e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return "";
@@ -14743,9 +14799,7 @@ function reiseMoeglich(a, e){
 function reiseEnde(){
   const r = reise; if(!r) return;
   reise = null;
-  clearTimeout(r.uhr);
-  if(!r.gewechselt){ r.gewechselt = true; location.hash = r.ziel; }
-  r.anis.forEach(x => { try{ x.cancel(); }catch(err){} });
+  try{ r.ani.cancel(); }catch(err){}
   r.el.remove();
   document.removeEventListener("pointerdown", r.weg, true);
   document.removeEventListener("keydown", r.weg, true);
@@ -14753,96 +14807,45 @@ function reiseEnde(){
 }
 function reiseStarten(a, ziel){
   if(reise) reiseEnde();
-  let lang = true;
-  try{ lang = !sessionStorage.getItem(hSchluessel("reise")); sessionStorage.setItem(hSchluessel("reise"), "1"); }catch(err){}
-  /* 09.10.: kürzer als vorher (1,15 s / 0,48 s) — „kompakt und
-     schnell“. Die volle Szene nur beim ersten Öffnen je Sitzung. */
-  const D = lang ? 920 : 440;
   const vw = innerWidth, vh = innerHeight;
-  const W = Math.min(vw - 64, 300), H = Math.min(Math.round(vh * .54), 400);
   const r = a.getBoundingClientRect();
-  const icoEl = a.querySelector(".ico") || a;
-  const ir = icoEl.getBoundingClientRect();
   const farbe = { rot:"var(--rot)", pistazie:"var(--pistazie)", gold:"var(--gold)" }[a.dataset.farbe] || "var(--gold)";
-  /* Das Symbol sitzt im oberen Drittel der Karte, wie ein Wappen. */
-  const fy = -Math.round(H * .16);
-  /* Die Scheibe sitzt auf dem Symbol, also um fy versetzt. Bei scale(1)
-     muss sie die ENTFERNTESTE Ecke decken — die Diagonale des Schirms
-     reicht dafür nicht (gemessen: unten blieb ein Streifen frei). */
-  const P = 2 * Math.ceil(Math.hypot(vw / 2, vh / 2 - fy)) + 8;
-
   const el = document.createElement("div");
   el.className = "reise";
   el.setAttribute("aria-hidden", "true");
   el.style.setProperty("--reise-licht", farbe);
-  /* Kein Text: Titel und Unterzeile der Kachel stehen gleich auf der
-     Seite selbst. Hier nur Karte, Deckel, Symbol, Sog. */
-  el.innerHTML =
-    '<div class="reise-grund"></div>' +
-    '<div class="reise-buehne" style="width:' + W + 'px;height:' + H + 'px;margin:' + (-H / 2) + 'px 0 0 ' + (-W / 2) + 'px">' +
-      '<div class="reise-schein"></div>' +
-      '<div class="reise-seite"><i></i><i></i><i></i><i></i></div>' +
-      '<div class="reise-tuer links"></div><div class="reise-tuer rechts"></div>' +
-    '</div>' +
-    '<div class="reise-figur"><div class="reise-ico">' + reiseSymbol(a) + '</div></div>' +
-    '<div class="reise-portal" style="width:' + P + 'px;height:' + P + 'px;margin:' + (-P / 2) + 'px 0 0 ' + (-P / 2) + 'px"></div>';
+  const fl = document.createElement("div");
+  fl.className = "reise-flaeche";
+  /* Maß = Schirm, Start = Rechteck der Kachel als scale (FLIP). */
+  fl.style.width = vw + "px"; fl.style.height = vh + "px";
+  el.appendChild(fl);
   document.body.appendChild(el);
-  const $r = k => el.querySelector(".reise-" + k);
-
-  /* Start = das echte Rechteck der Kachel, Ziel = die Mitte. */
-  const kStart = "translate(" + (r.left + r.width / 2 - vw / 2) + "px," + (r.top + r.height / 2 - vh / 2) + "px) " +
-                 "scale(" + (r.width / W) + "," + (r.height / H) + ")";
-  const fStart = "translate(" + (ir.left + ir.width / 2 - vw / 2) + "px," + (ir.top + ir.height / 2 - vh / 2) + "px) " +
-                 "scale(" + Math.max(.2, ir.width / 104) + ")";
-  const fMitte = "translate(0px," + fy + "px) scale(1)";
-  const pKlein = "translate(0px," + fy + "px) scale(" + (104 / P).toFixed(4) + ")";
-  const pGross = "translate(0px," + fy + "px) scale(1)";
-  const WEICH = "cubic-bezier(.16,1,.3,1)", REIN = "cubic-bezier(.5,0,.75,0)", RUND = "cubic-bezier(.65,0,.35,1)";
-  const PL = "perspective(900px) rotateY(0deg)";
-  const anis = [];
-  const los = (k, frames, wahl) => {
-    const x = (wahl ? el.querySelector(wahl) : $r(k)).animate(frames, { duration:D, fill:"both" });
-    anis.push(x); return x;
-  };
-  /* Ein Satz Takte für beide Längen — die kurze Fassung ist dieselbe
-     Geschichte, nur gedrängt (Skill bewegung §3). */
-  const T = lang ? { da:.30, auf:.28, offen:.56, sog:.58, deckt:.78 }
-                 : { da:.30, auf:.22, offen:.48, sog:.46, deckt:.72 };
-  los("grund",  [{opacity:0, easing:WEICH}, {opacity:1, offset:T.da}, {opacity:1, offset:T.deckt}, {opacity:0}]);
-  los("buehne", [{transform:kStart, opacity:.6, easing:WEICH}, {transform:"none", opacity:1, offset:T.da},
-                 {transform:"none", opacity:1, offset:T.sog, easing:REIN}, {transform:"scale(1.3)", opacity:0, offset:T.deckt}, {transform:"scale(1.3)", opacity:0}]);
-  los("seite",  [{opacity:0}, {opacity:0, offset:T.auf}, {opacity:1, offset:T.offen}, {opacity:1}]);
-  los("schein", [{opacity:0}, {opacity:0, offset:T.auf}, {opacity:1, offset:T.offen}, {opacity:0, offset:T.deckt}, {opacity:0}]);
-  los("tuer", [{transform:PL}, {transform:PL, offset:T.auf, easing:RUND}, {transform:"perspective(900px) rotateY(-172deg)", offset:T.offen},
-               {transform:"perspective(900px) rotateY(-172deg)"}], ".reise-tuer.links");
-  los("tuer", [{transform:PL}, {transform:PL, offset:T.auf, easing:RUND}, {transform:"perspective(900px) rotateY(172deg)", offset:T.offen},
-               {transform:"perspective(900px) rotateY(172deg)"}], ".reise-tuer.rechts");
-  los("figur",  [{transform:fStart, opacity:1, easing:WEICH}, {transform:fMitte, opacity:1, offset:T.da},
-                 {transform:"translate(0px," + fy + "px) scale(1.08)", opacity:1, offset:T.sog, easing:REIN},
-                 {transform:"translate(0px," + fy + "px) scale(5.5)", opacity:0, offset:T.deckt}, {transform:"translate(0px," + fy + "px) scale(5.5)", opacity:0}]);
-  los("portal", [{transform:pKlein, opacity:0}, {transform:pKlein, opacity:0, offset:T.sog, easing:REIN},
-                 {transform:pGross, opacity:1, offset:T.deckt, easing:WEICH}, {transform:"translate(0px," + fy + "px) scale(1.06)", opacity:0}]);
-  const zustand = { el, anis, ziel, gewechselt:false, uhr:0, weg:null, lang };
-  /* Überspringen. Kam der Druck vor dem Wechsel, gehört der Klick
-     danach dem Überspringen und wird geschluckt. */
+  /* Seite wechseln, bevor das erste Bild der Ebene gemalt ist. */
+  location.hash = ziel;
+  const sx = Math.max(.01, r.width / vw), sy = Math.max(.01, r.height / vh);
+  /* Kurve je Abschnitt, nicht auf dem Ganzen: Mit ease-out über alles
+     stand die Fläche schon nach 70 ms bildfüllend und fast durchsichtig
+     — man sah nichts (gemessen). Erst wachsen (ease-out, sichtbar),
+     dann ausblenden (ease-in, Skill bewegung §2). */
+  const ani = fl.animate([
+    { transform:"translate(" + r.left + "px," + r.top + "px) scale(" + sx + "," + sy + ")", opacity:.95, easing:"cubic-bezier(.16,1,.3,1)" },
+    { transform:"translate(0px,0px) scale(1,1)", opacity:.6, offset:.6, easing:"cubic-bezier(.5,0,.75,0)" },
+    { transform:"translate(0px,0px) scale(1,1)", opacity:0 }
+  ], { duration:REISE_MS, fill:"both" });
+  const zustand = { el, ani, ziel, weg:null };
   zustand.weg = ev => {
     if(reise !== zustand) return;
-    if(!zustand.gewechselt && ev.type === "pointerdown"){
+    if(ev.type === "pointerdown"){
       const schlucken = k => { k.preventDefault(); k.stopPropagation(); };
       document.addEventListener("click", schlucken, { capture:true, once:true });
-      setTimeout(() => document.removeEventListener("click", schlucken, true), 700);
+      setTimeout(() => document.removeEventListener("click", schlucken, true), 500);
     }
     reiseEnde();
   };
   document.addEventListener("pointerdown", zustand.weg, true);
   document.addEventListener("keydown", zustand.weg, true);
   document.addEventListener("wheel", zustand.weg, { capture:true, passive:true });
-  zustand.uhr = setTimeout(() => {
-    if(reise !== zustand || zustand.gewechselt) return;
-    zustand.gewechselt = true;
-    location.hash = ziel;
-  }, D * (lang ? .76 : .7));
-  anis[0].onfinish = () => { if(reise === zustand) reiseEnde(); };
+  ani.onfinish = () => { if(reise === zustand) reiseEnde(); };
   reise = zustand;
 }
 /* Fängt den Tipp VOR jedem anderen Griff in #inhalt ab (capture). */
@@ -15108,7 +15111,8 @@ $("inhalt").addEventListener("click", e => {
   if(aktion){
     const was = aktion.dataset.aktion;
 
-    if(was === "kopieren"){ kopieren(WLAN.passwort); }
+    if(was === "kopieren"){ kopieren(wlanDaten().passwort); }
+    if(was === "wlanqr"){ wlanQrUmschalten(aktion); }
 
     if(was === "story"){
       const b = letzteBestellung;
@@ -15489,6 +15493,20 @@ function menuAuf(zustand){
   $("sprachknopf").setAttribute("aria-expanded", zustand ? "true" : "false");
 
   if(zustand){
+    /* Die Liste hängt an der Kante des Globus. Seit die Knopfzeile mittig
+       steht, ragte sie bei 360 px 4 px links aus dem Bild (pruef-kopf.js).
+       Sie wird um genau den Überstand ins Bild geschoben — gemessen am
+       Knopf und an der Breite (offsetWidth, ohne den Einflug-transform). */
+    const liste = $("sprachliste");
+    liste.style.left = liste.style.right = "";
+    const wr = wahl.getBoundingClientRect(), lb = liste.offsetWidth, rand = 8;
+    if(document.documentElement.dir === "rtl"){
+      const ueber = wr.left + lb - (innerWidth - rand);
+      if(ueber > 0) liste.style.left = (-ueber) + "px";
+    } else {
+      const ueber = rand - (wr.right - lb);
+      if(ueber > 0) liste.style.right = (-ueber) + "px";
+    }
     document.addEventListener("pointerdown", menuAussen, true);
     document.addEventListener("keydown", menuTaste, true);
     const aktiv = $("sprachliste").querySelector('[aria-checked="true"]')
@@ -15839,6 +15857,11 @@ function betriebsTeileAnwenden(z, immer){
     /* Dieselbe Zahl wie hub_texte_laufschrift (migration-laufschrift.sql).
        Nur als Text in die Seite (sicherText), nie in ein Attribut. */
     RUNNER_LAUFSCHRIFT  = typeof hubTexte.laufschrift === "string" ? kurz(hubTexte.laufschrift, 80) : "";
+    /* Dieselben Zahlen wie hub_texte_wlan (migration-wlan.sql): 32 = SSID,
+       63 = längstes WPA-Passwort. Nur als Text verwendet (hs, QR). */
+    WLAN_LIVE = { netz: typeof hubTexte.wlan_netz === "string" ? kurz(hubTexte.wlan_netz, 32) : "",
+                  passwort: typeof hubTexte.wlan_passwort === "string" ? kurz(hubTexte.wlan_passwort, 63) : "" };
+    if(seiteJetzt === "wlan") neu = true;
     /* Der Kopf steht schon auf dem Schirm. Neu zeichnen nur, wenn sich
        etwas Sichtbares geändert hat — sonst blitzt er bei jedem
        Abgleich einmal auf, ohne dass etwas anders wäre. */

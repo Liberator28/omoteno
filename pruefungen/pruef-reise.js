@@ -1,34 +1,29 @@
 /* ═══════════════════════════════════════════════════════════════════
    pruef-reise.js — Übergang Kachel → Unterseite, Glas-Knopf „Zurück“
-   (Wunsch 08.10.)
 
+   Seit 10.10. ein schlichter Übergang („ganz flüssig und simpel, ohne
+   große Animation“). Vorher gemessen: 1154 ms vom Tipp bis zur Karte,
+   weil die Klappkarte die Seite erst bei 76 % der Szene wechselte.
    Was hier gemessen wird, und warum so:
 
-   1 · JEDE Kachel mit Unterseite startet die Szene — gezählt wird über
-       alle a.kachel[href^="#/"] der echten Startseite, nicht über eine
-       Liste in der Prüfung (zweite Quelle: das, was der Gast sieht).
-       Am Ende ist die Ebene ENTFERNT (nicht versteckt, §8.1), die
-       Adresse ist die der Kachel, und elementFromPoint trifft die neue
-       Seite — sonst läge eine unsichtbare Fläche über allem.
-   2 · Erstes Öffnen lang (~0,92 s), danach kurz (~0,44 s) — seit 09.10.
-       kürzer („kompakt und schnell“).
-   2a · Seit 09.10.: KEIN Wort in der Szene (Textknoten mit Buchstaben
-       außerhalb des Symbols gezählt), die zwei Deckel der Klappkarte
-       drehen wirklich auf (rotateY ±172° in den eigenen Keyframes, und
-       mitten im Aufklappen steht der berechnete transform schräg), und
-       der Sog deckt beim Seitenwechsel den ganzen Schirm (Rechteck der
-       Scheibe ⊇ Schirm, Deckkraft ≥ 0,95) — sonst sähe man die alte
-       Seite springen.
-   3 · Nur transform und opacity — abgelesen an den laufenden
-       Animationen selbst (getAnimations), nicht am Quelltext.
-   4 · Das Licht kommt aus dem Haus: --reise-licht ist die Farbe der
-       Kachel (rot/gold/pistazie), in zwei Häusern.
-   5 · Ein Tipp mitten in der Szene springt ans Ende — und trifft NICHT
-       die alte Startseite darunter (sonst landete der Gast auf einer
-       anderen Kachel). Gegenfall: ohne Tipp läuft sie bis zum Ende.
-   6 · Reduzierte Bewegung: keine Szene, sofort die Seite.
-   7 · Zurück ohne Szene; Link nach außen ohne Szene.
-   8 · Der Glas-Knopf: Wort „Zurück“ je Sprache (de/en/ar), volle
+   1 · JEDE Kachel mit Unterseite (über alle a.kachel[href^="#/"] der
+       echten Startseite, zweite Quelle: was der Gast sieht) startet die
+       Ebene; am Ende ist sie ENTFERNT (§8.1), die Adresse stimmt, und
+       elementFromPoint trifft die neue Seite.
+   2 · KEINE Verzögerung: Die Adresse ist im selben Takt wie der Tipp
+       die neue, und die neue Seite ist gezeichnet (seiteJetzt), bevor
+       die Ebene halb durch ist. Das ist der Anlassfall.
+   3 · Kurz: 180–320 ms, beim ERSTEN Öffnen genauso wie danach (keine
+       lange Fassung mehr).
+   4 · Die Ebene wächst aus der Kachel: Im ersten Bild deckt die Fläche
+       das Rechteck der angetippten Kachel (± 2 px), im letzten den
+       Schirm. Nur transform und opacity (getAnimations), kein Text.
+   5 · Das Licht ist die Farbe der Kachel (rot/gold/pistazie) im Haus.
+   6 · Ein Tipp während der Ebene beendet sie sofort — und sein Klick
+       trifft nichts auf der neuen Seite (Doppeltipp auf die Kachel).
+   7 · Reduzierte Bewegung: keine Ebene, sofort die Seite.
+   8 · Zurück ohne Ebene; Link nach außen ohne Ebene.
+   9 · Der Glas-Knopf: Wort „Zurück“ je Sprache (de/en/ar), volle
        Ansage im aria-label, ≥ 44 px, das Licht läuft (CSS-Animation
        zrLauf, nur transform) — bei reduzierter Bewegung steht es.
    ═══════════════════════════════════════════════════════════════════ */
@@ -86,7 +81,7 @@ async function hubAuf(browser, haus, opt = {}) {
         await a.scrollIntoViewIfNeeded();
         await a.click();
         const kam = await p.evaluate(() => !!document.querySelector(".reise"));
-        await p.waitForTimeout(1500);
+        await p.waitForTimeout(600);
         const m = await p.evaluate(() => {
           const mitte = document.elementFromPoint(innerWidth / 2, innerHeight / 2);
           return { hash: location.hash, zahl: window.__reise.zahl, rest: document.querySelectorAll(".reise").length,
@@ -95,143 +90,125 @@ async function hubAuf(browser, haus, opt = {}) {
         if (kam && m.zahl === vor + 1 && m.rest === 0 && m.hash === ziel && m.trifft) ok++;
         else schlecht.push(ziel + " " + JSON.stringify({ kam, ...m }));
       }
-      pruef(ok === ziele.length, "jede Kachel: Szene startet, endet ENTFERNT, Adresse stimmt, Seite antippbar",
+      pruef(ok === ziele.length, "jede Kachel: Ebene startet, endet ENTFERNT, Adresse stimmt, Seite antippbar",
         ok + "/" + ziele.length + (schlecht.length ? " — " + schlecht.join(" | ") : ""));
       pruef(fehler.length === 0, "keine Skriptfehler", fehler[0] || "still");
       await ctx.close();
     }
 
-    /* ── 2–4 · Dauer, Eigenschaften, Licht ─────────────────────── */
-    {
-      const { ctx, p, fehler } = await hubAuf(browser, haus);
-      const ziel = await p.evaluate(() => document.querySelector('#inhalt a.kachel[href^="#/"]').getAttribute("href"));
-      await p.click('#inhalt a.kachel[href="' + ziel + '"]');
-      const eig = await p.evaluate(() => {
-        const r = document.querySelector(".reise");
-        const props = new Set();
-        let zahl = 0;
-        document.getAnimations().forEach(x => {
-          const t = x.effect && x.effect.target;
-          if (!t || !t.closest || !t.closest(".reise")) return;
-          zahl++;
-          x.effect.getKeyframes().forEach(k => Object.keys(k).forEach(s => {
-            if (!["offset", "computedOffset", "easing", "composite"].includes(s)) props.add(s);
-          }));
-        });
-        const licht = getComputedStyle(r).getPropertyValue("--reise-licht").trim();
-        const a = document.querySelector('#inhalt a.kachel[href="' + location.hash + '"]') || null;
-        return { props: [...props], zahl, licht };
-      });
-      pruef(eig.zahl >= 6, "die Szene läuft (Animationen der Ebene)", eig.zahl);
-      const bau = await p.evaluate(() => {
-        const r = document.querySelector(".reise");
-        const W = document.createTreeWalker(r, NodeFilter.SHOW_TEXT);
-        const worte = [];
-        for (let k = W.nextNode(); k; k = W.nextNode())
-          if (!k.parentElement.closest(".reise-ico") && /\p{L}{2,}/u.test(k.textContent)) worte.push(k.textContent.trim());
-        const tueren = [...r.querySelectorAll(".reise-tuer")].map(t => {
-          const a = t.getAnimations()[0];
-          const ziel = a ? a.effect.getKeyframes().map(k => k.transform || "").join(" ") : "";
-          let schraeg = 0;
-          if (a) {
-            const vorher = a.currentTime;
-            a.pause(); a.currentTime = a.effect.getComputedTiming().duration * .42;
-            const m = new DOMMatrix(getComputedStyle(t).transform);
-            schraeg = Math.round(Math.acos(Math.max(-1, Math.min(1, m.m11))) * 180 / Math.PI);
-            a.currentTime = vorher; a.play();
-          }
-          return { ziel, schraeg };
-        });
-        /* Der Sog im Augenblick des Wechsels: alle Animationen auf 0,78. */
-        const anis = r.getAnimations({ subtree: true });
-        const halte = anis.map(a => a.currentTime);
-        anis.forEach(a => { a.pause(); a.currentTime = a.effect.getComputedTiming().duration * .78; });
-        const po = r.querySelector(".reise-portal");
-        const pr = po ? po.getBoundingClientRect() : { left: 1, top: 1, right: 0, bottom: 0 };
-        /* Ein Kreis: jede Ecke des Schirms muss im Radius liegen — das
-           umschließende Rechteck allein ließe die Ecken frei. */
-        const mx = (pr.left + pr.right) / 2, my = (pr.top + pr.bottom) / 2, rad = (pr.right - pr.left) / 2;
-        const ecken = [[0, 0], [innerWidth, 0], [0, innerHeight], [innerWidth, innerHeight]];
-        const deckt = { op: po ? +getComputedStyle(po).opacity : 0,
-          ganz: rad > 0 && ecken.every(([x, y]) => Math.hypot(x - mx, y - my) <= rad) };
-        anis.forEach((a, i) => { a.currentTime = halte[i]; a.play(); });
-        return { worte, tueren, deckt };
-      });
-      pruef(bau.worte.length === 0, "kein Text in der Szene, nur das Symbol", bau.worte.join(" | ") || "kein Wort");
-      pruef(bau.tueren.length === 2 && /rotateY\(-172deg\)/.test(bau.tueren[0].ziel) && /rotateY\(172deg\)/.test(bau.tueren[1].ziel)
-        && bau.tueren.every(t => t.schraeg >= 30), "die Karte klappt auf: zwei Deckel drehen auseinander",
-        bau.tueren.map(t => t.schraeg + "°").join(", ") + " mitten im Aufklappen");
-      pruef(bau.deckt.ganz && bau.deckt.op >= .95, "der Sog deckt beim Wechsel den ganzen Schirm",
-        JSON.stringify(bau.deckt));
-      pruef(eig.props.length > 0 && eig.props.every(s => s === "transform" || s === "opacity"),
-        "nur transform und opacity werden bewegt", eig.props.join(", "));
-      await p.waitForTimeout(1500);
-      const lang = await p.evaluate(() => window.__reise.weg - window.__reise.an);
-      pruef(lang > 800 && lang < 1150, "erstes Öffnen: die volle Szene (~0,92 s)", Math.round(lang) + " ms");
-
-      /* Farbe: die der angetippten Kachel, aus dem Haus gelesen. */
-      await p.evaluate(() => { location.hash = "#/"; });
-      await p.waitForTimeout(300);
-      const farbProbe = await p.evaluate(() => {
-        const a = document.querySelector('#inhalt a.kachel[href^="#/"]');
-        a.click();
-        const r = document.querySelector(".reise");
-        const name = { rot: "--rot", pistazie: "--pistazie" }[a.dataset.farbe] || "--gold";
-        /* Beide Seiten durch dieselbe Probe rechnen: eine Fläche, die
-           einmal mit der Ebene und einmal mit der Hausvariable färbt. */
-        const probe = document.createElement("i");
-        probe.style.color = "var(--reise-licht)"; r.appendChild(probe);
-        const ist = getComputedStyle(probe).color;
-        probe.style.color = "var(" + name + ")";
-        const soll = getComputedStyle(probe).color;
-        return { ist, soll, name };
-      });
-      pruef(farbProbe.ist === farbProbe.soll && farbProbe.ist !== "rgba(0, 0, 0, 0)",
-        "das Licht ist die Farbe des Hauses (" + farbProbe.name + ")", farbProbe.ist);
-      await p.waitForTimeout(900);
-      const kurz = await p.evaluate(() => window.__reise.weg - window.__reise.an);
-      pruef(kurz > 300 && kurz < 650, "zweites Öffnen: kurz (~0,44 s)", Math.round(kurz) + " ms");
-      pruef(fehler.length === 0, "keine Skriptfehler", fehler[0] || "still");
-      await ctx.close();
-    }
-
-    /* ── 5 · Tipp überspringt — und trifft nicht die alte Seite ─── */
+    /* ── 2–5 · ohne Verzögerung, kurz, aus der Kachel, Licht ──── */
     {
       const { ctx, p, fehler } = await hubAuf(browser, haus);
       const ziele = await p.evaluate(() => [...document.querySelectorAll('#inhalt a.kachel[href^="#/"]')].map(a => a.getAttribute("href")));
-      const ziel = ziele[0];
-      await p.click('#inhalt a.kachel[href="' + ziel + '"]');
-      await p.waitForTimeout(150);
-      /* Getippt wird genau dorthin, wo auf der ALTEN Startseite eine
-         andere Kachel lag — der schlimmste Fall. */
-      const anderePos = await p.evaluate(z => {
-        const a = [...document.querySelectorAll('#inhalt a.kachel[href^="#/"]')].find(x => x.getAttribute("href") !== z);
-        if (!a) return null;
-        const r = a.getBoundingClientRect();
-        return { x: r.left + r.width / 2, y: r.top + r.height / 2, ziel: a.getAttribute("href") };
+      const messe = async ziel => p.evaluate(async ziel => {
+        const a = document.querySelector('#inhalt a.kachel[href="' + ziel + '"]');
+        a.scrollIntoView({ block: "center" });
+        await new Promise(r => requestAnimationFrame(() => requestAnimationFrame(r)));
+        const kr = a.getBoundingClientRect();
+        const name = { rot: "--rot", pistazie: "--pistazie" }[a.dataset.farbe] || "--gold";
+        const t0 = performance.now();
+        a.click();
+        const hashSofort = location.hash;
+        const r = document.querySelector(".reise");
+        const fl = r && r.querySelector(".reise-flaeche");
+        const aus = { hashSofort, da: !!r, props: [], worte: [], start: null, ende: null, kachel: null, farbe: null };
+        if (fl) {
+          const anis = r.getAnimations({ subtree: true });
+          const props = new Set();
+          anis.forEach(x => x.effect.getKeyframes().forEach(k => Object.keys(k).forEach(s => {
+            if (!["offset", "computedOffset", "easing", "composite"].includes(s)) props.add(s);
+          })));
+          aus.props = [...props];
+          const W = document.createTreeWalker(r, NodeFilter.SHOW_TEXT);
+          for (let k = W.nextNode(); k; k = W.nextNode()) if (/\p{L}{2,}/u.test(k.textContent)) aus.worte.push(k.textContent.trim());
+          const halte = anis.map(x => x.currentTime);
+          const rund = q => ({ l: Math.round(q.left), t: Math.round(q.top), r: Math.round(q.right), b: Math.round(q.bottom) });
+          anis.forEach(x => { x.pause(); x.currentTime = 0; });
+          aus.start = rund(fl.getBoundingClientRect());
+          anis.forEach(x => { x.currentTime = x.effect.getComputedTiming().duration - 1; });
+          aus.ende = rund(fl.getBoundingClientRect());
+          anis.forEach((x, i) => { x.currentTime = halte[i]; x.play(); });
+          aus.kachel = rund(kr);
+          const probe = document.createElement("i");
+          probe.style.color = "var(--reise-licht)"; r.appendChild(probe);
+          const ist = getComputedStyle(probe).color;
+          probe.style.color = "var(" + name + ")";
+          aus.farbe = { ist, soll: getComputedStyle(probe).color, name };
+          probe.remove();
+        }
+        /* Bis die neue Seite wirklich gezeichnet ist. */
+        const soll = ziel.slice(2).split(/[/?]/)[0];
+        let gezeichnet = -1;
+        for (let i = 0; i < 60; i++) {
+          if (typeof seiteJetzt !== "undefined" && seiteJetzt !== "start") { gezeichnet = performance.now() - t0; break; }
+          await new Promise(r => setTimeout(r, 5));
+        }
+        aus.gezeichnet = gezeichnet;
+        await new Promise(r => setTimeout(r, 600));
+        aus.dauer = window.__reise.weg - window.__reise.an;
+        aus.rest = document.querySelectorAll(".reise").length;
+        aus.soll = soll;
+        return aus;
       }, ziel);
-      pruef(!!anderePos, "Voraussetzung: eine zweite Kachel liegt unter der Szene", anderePos && anderePos.ziel);
-      const t0 = await p.evaluate(() => performance.now());
-      await p.mouse.click(anderePos.x, anderePos.y);
-      await p.waitForTimeout(120);
-      const m = await p.evaluate(t0 => ({ rest: document.querySelectorAll(".reise").length, hash: location.hash,
-        dauer: window.__reise.weg - t0 }), t0);
-      pruef(m.rest === 0 && m.dauer < 100, "ein Tipp springt sofort ans Ende", Math.round(m.dauer) + " ms");
-      await p.waitForTimeout(600);
-      const h = await p.evaluate(() => location.hash);
-      pruef(h === ziel, "der Tipp traf NICHT die Kachel darunter", h + " (soll " + ziel + ", nicht " + anderePos.ziel + ")");
+      const erst = await messe(ziele[0]);
+      pruef(erst.da, "Voraussetzung: die Ebene erscheint beim Tipp", erst.da);
+      pruef(erst.hashSofort === ziele[0], "keine Verzögerung: Adresse wechselt im selben Takt wie der Tipp", erst.hashSofort);
+      pruef(erst.gezeichnet >= 0 && erst.gezeichnet < 130, "keine Verzögerung: neue Seite gezeichnet, bevor die Ebene halb durch ist",
+        Math.round(erst.gezeichnet) + " ms (vorher 1154 ms)");
+      pruef(erst.dauer >= 180 && erst.dauer <= 340 && erst.rest === 0, "erstes Öffnen: kurz (180–320 ms) und danach entfernt",
+        Math.round(erst.dauer) + " ms");
+      const k = erst.kachel, st = erst.start, en = erst.ende;
+      const nah = (x, y) => Math.abs(x - y) <= 2;
+      pruef(!!st && nah(st.l, k.l) && nah(st.t, k.t) && nah(st.r, k.r) && nah(st.b, k.b),
+        "die Fläche beginnt genau auf der angetippten Kachel", JSON.stringify({ kachel: k, start: st }));
+      pruef(!!en && en.l <= 1 && en.t <= 1 && en.r >= 389 && en.b >= 843, "… und endet über dem ganzen Schirm", JSON.stringify(en));
+      pruef(erst.props.length > 0 && erst.props.every(s => s === "transform" || s === "opacity"),
+        "nur transform und opacity werden bewegt", erst.props.join(", "));
+      pruef(erst.worte.length === 0, "kein Text in der Ebene", erst.worte.join(" | ") || "kein Wort");
+      pruef(erst.farbe && erst.farbe.ist === erst.farbe.soll && erst.farbe.ist !== "rgba(0, 0, 0, 0)",
+        "das Licht ist die Farbe der Kachel (" + (erst.farbe && erst.farbe.name) + ")", erst.farbe && erst.farbe.ist);
+      await p.evaluate(() => { location.hash = "#/"; });
+      await p.waitForTimeout(300);
+      const zweit = await messe(ziele[1] || ziele[0]);
+      pruef(Math.abs(zweit.dauer - erst.dauer) < 40 && zweit.gezeichnet >= 0 && zweit.gezeichnet < 130,
+        "zweites Öffnen: genauso kurz und genauso sofort (keine lange Fassung mehr)",
+        Math.round(erst.dauer) + " / " + Math.round(zweit.dauer) + " ms");
       pruef(fehler.length === 0, "keine Skriptfehler", fehler[0] || "still");
       await ctx.close();
     }
 
-    /* ── 6 · reduzierte Bewegung ───────────────────────────────── */
+    /* ── 6 · Tipp beendet die Ebene — sein Klick trifft nichts ──── */
+    {
+      const { ctx, p, fehler } = await hubAuf(browser, haus);
+      const ziel = await p.evaluate(() => document.querySelector('#inhalt a.kachel[href^="#/"]').getAttribute("href"));
+      const kr = await p.evaluate(z => { const r = document.querySelector('#inhalt a.kachel[href="' + z + '"]').getBoundingClientRect();
+        return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }, ziel);
+      /* Ein Horcher zählt jeden Klick, der auf der NEUEN Seite ankommt. */
+      await p.evaluate(() => { window.__durch = 0; document.getElementById("inhalt").addEventListener("click", () => window.__durch++); });
+      await p.mouse.click(kr.x, kr.y);
+      await p.waitForTimeout(40);
+      const vorher = await p.evaluate(() => ({ da: document.querySelectorAll(".reise").length, durch: window.__durch }));
+      pruef(vorher.da === 1, "Voraussetzung: die Ebene läuft noch, als der zweite Tipp kommt", vorher.da);
+      const t0 = await p.evaluate(() => performance.now());
+      await p.mouse.click(kr.x, kr.y);
+      await p.waitForTimeout(60);
+      const m = await p.evaluate(t0 => ({ rest: document.querySelectorAll(".reise").length, hash: location.hash,
+        dauer: window.__reise.weg - t0, durch: window.__durch }), t0);
+      pruef(m.rest === 0 && m.dauer < 60, "ein zweiter Tipp beendet die Ebene sofort", Math.round(m.dauer) + " ms");
+      pruef(m.durch === vorher.durch && m.hash === ziel, "… und sein Klick trifft nichts auf der neuen Seite",
+        JSON.stringify({ klicksAufSeite: m.durch - vorher.durch, hash: m.hash }));
+      pruef(fehler.length === 0, "keine Skriptfehler", fehler[0] || "still");
+      await ctx.close();
+    }
+
+    /* ── 7 · reduzierte Bewegung ───────────────────────────────── */
     {
       const { ctx, p, fehler } = await hubAuf(browser, haus, { ruhig: true });
       const ziel = await p.evaluate(() => document.querySelector('#inhalt a.kachel[href^="#/"]').getAttribute("href"));
       await p.click('#inhalt a.kachel[href="' + ziel + '"]');
       await p.waitForTimeout(150);
       const m = await p.evaluate(() => ({ zahl: window.__reise.zahl, hash: location.hash }));
-      pruef(m.zahl === 0 && m.hash === ziel, "reduzierte Bewegung: keine Szene, sofort die Seite", JSON.stringify(m));
+      pruef(m.zahl === 0 && m.hash === ziel, "reduzierte Bewegung: keine Ebene, sofort die Seite", JSON.stringify(m));
       const licht = await p.evaluate(() => document.getAnimations().filter(x => x.effect && x.effect.target &&
         x.effect.target.classList && x.effect.target.classList.contains("zr-licht") && x.playState === "running").length);
       pruef(licht === 0, "reduzierte Bewegung: das Licht am Zurück-Knopf steht", licht + " laufend");
@@ -239,7 +216,7 @@ async function hubAuf(browser, haus, opt = {}) {
       await ctx.close();
     }
 
-    /* ── 7 · Zurück und Links nach außen ohne Szene ─────────────── */
+    /* ── 8 · Zurück und Links nach außen ohne Szene ─────────────── */
     {
       const { ctx, p, fehler } = await hubAuf(browser, haus);
       await p.evaluate(() => { location.hash = "#/speisekarte"; });
@@ -247,15 +224,15 @@ async function hubAuf(browser, haus, opt = {}) {
       await p.click("#zurueck");
       await p.waitForTimeout(300);
       const m = await p.evaluate(() => ({ zahl: window.__reise.zahl, seite: seiteJetzt }));
-      pruef(m.zahl === 0 && m.seite === "start", "Zurück führt ohne Szene heim", JSON.stringify(m));
+      pruef(m.zahl === 0 && m.seite === "start", "Zurück führt ohne Ebene heim", JSON.stringify(m));
       const aussen = await p.evaluate(() => {
         const a = document.createElement("a"); a.className = "kachel"; a.href = "https://example.org/"; a.target = "_blank";
         const ev = new MouseEvent("click", { bubbles: true, cancelable: true });
         return [reiseMoeglich(a, ev), reiseMoeglich(Object.assign(document.createElement("a"), { className: "kachel" }), ev)];
       });
-      pruef(aussen[0] === "" && aussen[1] === "", "Link nach außen / ohne Ziel: keine Szene", JSON.stringify(aussen));
+      pruef(aussen[0] === "" && aussen[1] === "", "Link nach außen / ohne Ziel: keine Ebene", JSON.stringify(aussen));
 
-      /* ── 8 · Glas-Knopf ───────────────────────────────────────── */
+      /* ── 9 · Glas-Knopf ───────────────────────────────────────── */
       await p.evaluate(() => { location.hash = "#/speisekarte"; });
       await p.waitForTimeout(500);
       for (const [sp, soll] of [["de", "Zurück"], ["en", "Back"], ["ar", "رجوع"]]) {

@@ -3541,7 +3541,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <span><b>Slogan im Kopf</b><i>Die Zeile unter Ihrem Namen, auf jeder Seite sichtbar</i></span>
         <label class="feld">
           <span>Slogan <em class="mass" id="hubClaimMass"></em></span>
-          <input id="hubClaim" autocomplete="off" placeholder="Don't get mad, get chocolate.">
+          <input type="text" id="hubClaim" autocomplete="off" placeholder="Don't get mad, get chocolate.">
           <small class="feldhilfe" id="hubClaimHilfe">Kurz wirkt am besten — eine Zeile,
             die man im Vorbeigehen liest.</small>
           <small class="hvwarn" data-hvwarn="claim"></small>
@@ -3552,7 +3552,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <span><b>Gruß beim Öffnen</b><i>Drei Sekunden auf dem Willkommensschirm, einmal je Besuch</i></span>
         <label class="feld">
           <span>Gruß <em class="mass" id="hubGrussMass"></em></span>
-          <input id="hubGruss" autocomplete="off" placeholder="Schön, dass Sie da sind.">
+          <input type="text" id="hubGruss" autocomplete="off" placeholder="Schön, dass Sie da sind.">
           <small class="feldhilfe" id="hubGrussHilfe">Ein Satz, den Ihr Team auch
             sagen würde.</small>
         </label>
@@ -3562,7 +3562,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <span><b>So heißen Ihre Aktionen</b><i>Vorgabe für den Top-Runner — je Aktion überschreibbar</i></span>
         <label class="feld">
           <span>Aktionsname <em class="mass" id="hubRunnerMass"></em></span>
-          <input id="hubRunner" autocomplete="off" placeholder="Top-Runner">
+          <input type="text" id="hubRunner" autocomplete="off" placeholder="Top-Runner">
           <small class="feldhilfe" id="hubRunnerHilfe">„Happy Hour", „Mittagsknaller",
             „Heute besonders" — Ihr Wort, nicht unseres.</small>
         </label>
@@ -3572,9 +3572,25 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <span><b>Laufschrift beim Top-Runner</b><i>Läuft im farbigen Band über der Aktion — leer: Name, Gericht, Rabatt und Restzeit</i></span>
         <label class="feld">
           <span>Laufschrift <em class="mass" id="hubLaufschriftMass"></em></span>
-          <input id="hubLaufschrift" autocomplete="off" placeholder="Nur heute · solange der Vorrat reicht">
+          <input type="text" id="hubLaufschrift" autocomplete="off" placeholder="Nur heute · solange der Vorrat reicht">
           <small class="feldhilfe" id="hubLaufschriftHilfe">Der Rabatt in Prozent kommt von selbst
             dazu. Kurz und laut wirkt am besten.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>WLAN für Gäste</b><i>Auf der Seite „WLAN verbinden“ — der Gast sieht das Passwort nicht, er kopiert es mit einem Tipp oder scannt den QR-Code</i></span>
+        <label class="feld">
+          <span>Name des Netzes <em class="mass" id="hubWlanNetzMass"></em></span>
+          <input type="text" id="hubWlanNetz" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Name wie im WLAN-Menü des Handys">
+          <small class="feldhilfe" id="hubWlanNetzHilfe">Genau so geschrieben, wie er im WLAN-Menü steht —
+            sonst findet der QR-Code das Netz nicht.</small>
+        </label>
+        <label class="feld">
+          <span>Passwort <em class="mass" id="hubWlanPasswortMass"></em></span>
+          <input type="text" id="hubWlanPasswort" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Passwort des Gäste-WLANs">
+          <small class="feldhilfe" id="hubWlanPasswortHilfe">Nur das Gäste-Netz, nie das Netz Ihrer Kasse:
+            Jeder, der die Seite öffnet, kann es kopieren.</small>
         </label>
       </div>
 
@@ -10361,7 +10377,11 @@ const TEXTMASS = {
      Ab 60 Zeichen ist ein Durchlauf länger als ein Blick. „hart“ =
      hub_texte_laufschrift in der Datenbank. */
   hubLaufschrift: { gut:60, hart:80,
-    warnung:"Ab 60 Zeichen dauert ein Durchlauf länger, als ein Gast hinsieht. Kürzer liest sich besser." }
+    warnung:"Ab 60 Zeichen dauert ein Durchlauf länger, als ein Gast hinsieht. Kürzer liest sich besser." },
+  /* Keine Stilfrage, sondern Technik: 32 = längster WLAN-Name, 63 =
+     längstes WPA-Passwort. Dieselben Zahlen wie hub_texte_wlan. */
+  hubWlanNetz:     { gut:32, hart:32, warnung:"Länger als 32 Zeichen kann ein WLAN-Name nicht sein." },
+  hubWlanPasswort: { gut:63, hart:63, warnung:"Länger als 63 Zeichen kann ein WLAN-Passwort nicht sein." }
 };
 
 /* Zeigt Verbrauch und Grund am Feld. Gibt zurück, ob der Wert im
@@ -10872,7 +10892,8 @@ function hvStartseite(ziel){
 function hvWorte(ziel){
   const wert = id => ($("#" + id) || {}).value || "";
   hvSenden("worte", { hub_texte:{ claim:wert("hubClaim"), gruss:wert("hubGruss"),
-                                  runner_titel:wert("hubRunner"), laufschrift:wert("hubLaufschrift") },
+                                  runner_titel:wert("hubRunner"), laufschrift:wert("hubLaufschrift"),
+                                  wlan_netz:wert("hubWlanNetz"), wlan_passwort:wert("hubWlanPasswort") },
                       /* Ohne laufende Aktion wäre der Aktionsname nirgends zu sehen. */
                       aktion: ziel === "aktion" && gerichte[0]
                         ? { titel:"", gericht_name:gerichte[0].name,
@@ -10898,6 +10919,8 @@ function hubTexteFuellen(){
   setz("hubGruss",  HUBTEXTE.gruss);
   setz("hubRunner", HUBTEXTE.runner_titel);
   setz("hubLaufschrift", HUBTEXTE.laufschrift);
+  setz("hubWlanNetz", HUBTEXTE.wlan_netz);
+  setz("hubWlanPasswort", HUBTEXTE.wlan_passwort);
   massVerdrahten();
   hubSchauZeichnen();
   hvWorte("kopf");
@@ -11006,6 +11029,12 @@ async function hubTexteSichern(){
   if(gruss)  neu.gruss = gruss;
   if(runner) neu.runner_titel = runner;
   if(lauf)   neu.laufschrift = lauf;
+  /* Das WLAN liegt im selben Feld (hub_texte) — ohne diese Zeilen
+     löschte jedes „Übernehmen“ der Worte das Passwort mit. */
+  const wNetz = ($("#hubWlanNetz") || {value:""}).value.trim();
+  const wPass = ($("#hubWlanPasswort") || {value:""}).value.trim();
+  if(wNetz) neu.wlan_netz = wNetz;
+  if(wPass) neu.wlan_passwort = wPass;
 
   const knopf = $("#hubTexteSichern");
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
@@ -11027,7 +11056,7 @@ async function hubTexteSichern(){
     /* Die Datenbank hat dieselben Grenzen als Schranke. Wenn sie
        zuschlägt, ist das kein Serverfehler, sondern ein zu langer
        Text — und das gehört genau so gesagt. */
-    raus.textContent = /hub_texte_masse|check/i.test(String(err && err.message))
+    raus.textContent = /hub_texte_(masse|wlan|laufschrift)|check/i.test(String(err && err.message))
       ? "Ein Text ist zu lang. Bitte die Hinweise an den Feldern beachten."
       : "Nicht gespeichert, bitte Verbindung prüfen.";
   }
@@ -13163,7 +13192,7 @@ if($("#hubTexteSichern")){
     });
     hubSchauZeichnen();
     $("#hubTextePruefung").textContent =
-      "Felder geleert. Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
+      "Felder geleert (das WLAN bleibt). Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
   };
 }
 
@@ -13652,7 +13681,7 @@ const AE_FELD = {
   hub_texte:"Texte im Hub", hub_kacheln:"Kacheln", hub_banner:"Banner-Rad", hub_stil:"Gestaltung",
   hub_avatar:"Figur", liefer:"Lieferung", bestell_pause:"Bestellpause", bestell_pause_text:"Text der Bestellpause",
   newsletter_aktiv:"Newsletter", klaviyo_liste_id:"Newsletter-Liste", markenblatt:"Markenblatt", ziele:"Umsatzziele",
-  pin_pflicht:"PIN-Pflicht", kontakt_telefon:"Telefon", tisch_pflicht:"Tischpflicht", slug:"Adresse",
+  pin_pflicht:"PIN-Pflicht", kontakt_telefon:"Telefon", telefon_nummer:"Alessia-Rufnummer", alessia:"Alessia-Einstellungen", tisch_pflicht:"Tischpflicht", slug:"Adresse",
   rechnung_an:"Rechnungsadresse", plan:"Tarif", preis_monat:"Monatspreis", zustand:"Vertragszustand",
   test_bis:"Testphase", vertrag_ab:"Vertragsbeginn", gekuendigt_zum:"Kündigung",
   gericht_id:"Gericht", gericht_name:"Gericht", titel:"Titel", preis_alt:"alter Preis", preis_neu:"Aktionspreis",
