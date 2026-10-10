@@ -9228,6 +9228,7 @@ const TEXTE = {
 "Ihre Auswahl ist noch leer.":{en:"Your selection is still empty.",tr:"Seçiminiz henüz boş.",ru:"Ваш выбор пока пуст.",fr:"Votre sélection est encore vide.",es:"Su selección está vacía.",it:"La vostra selezione è ancora vuota.",pl:"Państwa wybór jest jeszcze pusty.",ar:"اختياركم فارغ حتى الآن.",uk:"Ваш вибір поки порожній.",nl:"Uw selectie is nog leeg.",ro:"Selecția dvs. este încă goală."},
 "Einen Moment noch – bitte warten Sie {s} Sekunden.":{en:"Just a moment – please wait {s} seconds.",tr:"Bir dakika – lütfen {s} saniye bekleyin.",ru:"Секундочку — подождите {s} секунд.",fr:"Un instant – merci de patienter {s} secondes.",es:"Un momento: espere {s} segundos.",it:"Un attimo – attendete {s} secondi.",pl:"Chwileczkę – poczekaj {s} sekund.",ar:"لحظة من فضلكم – انتظروا {s} ثانية.",uk:"Хвилинку — зачекайте {s} секунд.",nl:"Een moment – wacht {s} seconden.",ro:"O clipă – așteptați {s} secunde."},
 "Bestellungen ab {b}. Darunter nehmen wir Ihre Wünsche gerne persönlich auf.":{en:"Orders from {b}. Below that we're happy to take your wishes in person.",tr:"{b} üzeri siparişler. Altında dileklerinizi memnuniyetle bizzat alırız.",ru:"Заказы от {b}. Меньше — с радостью примем лично.",fr:"Commandes à partir de {b}. En dessous, nous prenons volontiers votre demande en personne.",es:"Pedidos desde {b}. Por debajo, con gusto le atendemos en persona.",it:"Ordini da {b}. Sotto tale importo prendiamo volentieri l'ordine di persona.",pl:"Zamówienia od {b}. Poniżej chętnie przyjmiemy życzenia osobiście.",ar:"الطلبات ابتداءً من {b}. دون ذلك يسعدنا أخذ طلبكم شخصياً.",uk:"Замовлення від {b}. Менше — залюбки приймемо особисто.",nl:"Bestellingen vanaf {b}. Daaronder nemen we uw wens graag persoonlijk op.",ro:"Comenzi de la {b}. Sub această sumă preluăm dorințele personal."},
+"Das Team weiß schon Bescheid. Ein neuer Ruf geht in {n} Min. wieder.":{en:"The team already knows. You can call again in {n} min.",tr:"Ekip zaten haberdar. {n} dk sonra tekrar çağırabilirsiniz.",ru:"Команда уже в курсе. Снова позвать можно через {n} мин.",fr:"L’équipe est déjà prévenue. Nouvel appel possible dans {n} min.",es:"El equipo ya está avisado. Podrá volver a llamar en {n} min.",it:"Lo staff è già avvisato. Potrà chiamare di nuovo tra {n} min.",pl:"Zespół już wie. Ponownie można wezwać za {n} min.",ar:"الفريق على علم بالفعل. يمكنك النداء مجددًا بعد {n} دقيقة.",uk:"Команда вже знає. Знову покликати можна через {n} хв.",nl:"Het team weet het al. Over {n} min kunt u opnieuw roepen.",ro:"Echipa știe deja. Puteți chema din nou peste {n} min."},
 "Angekommen! Wir sind gleich bei Ihnen.":{en:"Received! We'll be with you shortly.",tr:"Ulaştı! Birazdan yanınızdayız.",ru:"Получено! Сейчас подойдём.",fr:"Bien reçu ! Nous arrivons.",es:"¡Recibido! Enseguida estamos con usted.",it:"Ricevuto! Arriviamo subito.",pl:"Odebrane! Zaraz będziemy.",ar:"وصلنا! سنكون عندكم حالاً.",uk:"Отримано! Зараз підійдемо.",nl:"Ontvangen! We komen zo.",ro:"Am primit! Venim imediat."},
 "Danke! Ihre Nachricht ist bei uns angekommen.":{en:"Thank you! Your message has reached us.",tr:"Teşekkürler! Mesajınız bize ulaştı.",ru:"Спасибо! Ваше сообщение получено.",fr:"Merci ! Votre message nous est parvenu.",es:"¡Gracias! Su mensaje nos ha llegado.",it:"Grazie! Il vostro messaggio ci è arrivato.",pl:"Dziękujemy! Państwa wiadomość do nas dotarła.",ar:"شكراً! وصلتنا رسالتكم.",uk:"Дякуємо! Ваше повідомлення отримано.",nl:"Dank u! Uw bericht is aangekomen.",ro:"Mulțumim! Mesajul a ajuns la noi."},
 "Allergene und Unverträglichkeiten:":{en:"Allergens and intolerances:",tr:"Alerjenler ve intoleranslar:",ru:"Аллергены и непереносимость:",fr:"Allergènes et intolérances :",es:"Alérgenos e intolerancias:",it:"Allergeni e intolleranze:",pl:"Alergeny i nietolerancje:",ar:"مسببات الحساسية:",uk:"Алергени та непереносимість:",nl:"Allergenen en intoleranties:",ro:"Alergeni și intoleranțe:"},
@@ -14535,6 +14536,34 @@ function resStandSteuern(pfad){
   resStandWecker = setInterval(() => { if(!document.hidden) resStandHolen(); }, 30000);
 }
 
+/* ─── Höchstens 4 Rufe je Gast in 10 Minuten (Wunsch 10.10.) ──────
+   Die Grenze hält der Server (bestellung_aufgeben, je Gerät). Hier
+   nur die Vorprüfung im Gerät: Der Gast bekommt den Satz sofort, ohne
+   dass ein Ruf über die Leitung geht, der ohnehin abgewiesen würde. */
+const RUF_GRENZE = 4, RUF_FENSTER = 600000;
+function rufSchluessel(){ return "omoteno-rufe-" + (SERVER.betrieb || "haus"); }
+function rufListe(){
+  let l = [];
+  try{ l = JSON.parse(localStorage.getItem(rufSchluessel()) || "[]"); }catch(e){ l = []; }
+  const jetzt = Date.now();
+  return (Array.isArray(l) ? l : [])
+    .filter(z => typeof z === "number" && z > jetzt - RUF_FENSTER && z <= jetzt + 60000)
+    .sort((a, b) => a - b);
+}
+/* 0 = frei, sonst: in so vielen Minuten geht der nächste Ruf. */
+function rufWarteMin(){
+  const l = rufListe();
+  if(l.length < RUF_GRENZE) return 0;
+  return Math.max(1, Math.ceil((l[l.length - RUF_GRENZE] + RUF_FENSTER - Date.now()) / 60000));
+}
+function rufMerken(){
+  const l = rufListe(); l.push(Date.now());
+  try{ localStorage.setItem(rufSchluessel(), JSON.stringify(l.slice(-10))); }catch(e){}
+}
+function rufBremseSatz(min){
+  return t("Das Team weiß schon Bescheid. Ein neuer Ruf geht in {n} Min. wieder.", {n: min});
+}
+
 function anServer(art, daten){
   if(!serverBereit()) return Promise.resolve({ ok:false, grund:"aus" });
 
@@ -14567,7 +14596,12 @@ function anServer(art, daten){
         p_positionen: [],
         /* Auch der Serviceruf geht mit Sitzung: Dann weiß das Personal
            sicher, an welchen Tisch es gehen muss. */
-        p_sitzung:    tischToken || null
+        p_sitzung:    tischToken || null,
+        /* Seit 10.10. auch hier die Gerätekennung: Der Server lässt je
+           Gast höchstens 4 Rufe in 10 Minuten zu und zählt dafür nach
+           Gerät (ohne Gerät nur nach Tisch — dann teilen sich alle
+           Gäste eines Tisches die 4). */
+        p_geraet:     geraetKennung()
       };
     } else if(istBestellung && daten.adresse){
       /* ─── Lieferung ──────────────────────────────────────────
@@ -14666,7 +14700,15 @@ function anServer(art, daten){
       signal: abbruch ? abbruch.signal : undefined
     }).then(antwort => {
       if(wecker) clearTimeout(wecker);
-      if(!antwort.ok) return { ok:false, grund:"abgelehnt", code:antwort.status };
+      /* Die Bremse für Servicerufe meldet sich mit HINT „bremse:<Min>“
+         (migration-anfragen-bremse.sql). Daraus wird ein eigener Satz —
+         „kam nicht durch, bitte winken“ wäre hier falsch: Der Ruf IST
+         angekommen, nur eben schon viermal. */
+      if(!antwort.ok) return antwort.json().then(f => {
+        const m = /^bremse:(\d{1,3})$/.exec(String((f && f.hint) || ""));
+        return m ? { ok:false, grund:"bremse", minuten:+m[1] }
+                 : { ok:false, grund:"abgelehnt", code:antwort.status };
+      }, () => ({ ok:false, grund:"abgelehnt", code:antwort.status }));
       if(!aufsBoard) return { ok:true, zeile:null };
       /* Zwei Rückgabeformen, weil es zwei Funktionen sind:
          bestellung_aufgeben gibt eine nackte uuid zurück, aus
@@ -15340,6 +15382,8 @@ $("inhalt").addEventListener("click", e => {
       const text = t("Tisch {n}", {n:nr}) + ": " + t(r ? r.text : "Bitte einmal an den Tisch");
 
       if(serverBereit()){
+        const warten = rufWarteMin();
+        if(warten){ melden(rufBremseSatz(warten), true); return; }
         const knopf = aktion;
         knopf.disabled = true;
         const alterText = knopf.textContent;
@@ -15351,6 +15395,7 @@ $("inhalt").addEventListener("click", e => {
           knopf.disabled = false;
           knopf.textContent = alterText;
           if(erg.ok){
+            rufMerken();
             /* Auch ein Serviceruf ist ein Versprechen. Der Gast soll
                sehen, dass er angekommen ist - und wie lange es dauert,
                sobald das Team eine Zeit zusagt. */
@@ -15364,6 +15409,8 @@ $("inhalt").addEventListener("click", e => {
               vorgangWeckerStellen();
             }
             melden(t("Angekommen! Wir sind gleich bei Ihnen."));
+          } else if(erg.grund === "bremse"){
+            melden(rufBremseSatz(erg.minuten || 10), true);
           } else {
             /* Ein Serviceruf, der nicht durchkommt, braucht keinen
                Chat - der Gast will jemanden am Tisch. Also der Weg,

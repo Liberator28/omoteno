@@ -856,6 +856,11 @@ html{font-size:calc(16px * var(--skala,1))}
   font-variant-numeric:tabular-nums;font-feature-settings:"tnum";
 }
 .tischnr{font-size:25px;font-weight:700;line-height:1.1;letter-spacing:-.02em}
+/* Gebündelte Servicerufe (rufeBuendeln): Zahl am Kopf, Mal-Zeichen am Grund. */
+.rufzahl{display:inline-block;margin-inline-start:8px;padding:1px 8px;border-radius:999px;
+  background:color-mix(in srgb,var(--messing) 22%,transparent);color:inherit;font-size:12px;font-weight:700;
+  letter-spacing:0;text-transform:none}
+.rufmal{font-variant-numeric:tabular-nums}
 /* Zurückhaltend gehalten: Das ist ein Hinweis, kein Alarm. Rot wäre
    hier falsch — die allermeisten dieser Bestellungen sind völlig in
    Ordnung, der Gast hat nur den Untersetzer nicht angetippt. */
@@ -7340,18 +7345,23 @@ async function pruefEntscheiden(id, freigeben){
   const b = bestellungen.find(x => x.id === id); if(!b || inArbeit.has(id)) return;
   const felder = freigeben ? { pruefen:false, pruef_grund:null } : { status:"abgelehnt", pruefen:false };
   if(!freigeben && !confirm("Diese Bestellung verwerfen? Sie erscheint dann nirgends mehr als offen.")) return;
-  inArbeit.add(id);
-  const vorher = { pruefen:b.pruefen, pruef_grund:b.pruef_grund, status:b.status };
-  Object.assign(b, felder);
+  /* Gebündelte Rufe (rufeBuendeln): die Entscheidung gilt für alle. */
+  const alle = mitGebuendelt(b).filter(x => x === b || !inArbeit.has(x.id));
+  const ids = alle.map(x => x.id);
+  ids.forEach(i => inArbeit.add(i));
+  const vorher = alle.map(x => ({ x, pruefen:x.pruefen, pruef_grund:x.pruef_grund, status:x.status }));
+  alle.forEach(x => Object.assign(x, felder));
   neuZeichnen();
   if(!demo){
-    const {error} = await db.from("bestellungen").update(felder).eq("id", id).eq("betrieb_id", betriebId);
+    const anfrage = db.from("bestellungen").update(felder);
+    const {error} = await (ids.length > 1 ? anfrage.in("id", ids) : anfrage.eq("id", id)).eq("betrieb_id", betriebId);
     if(error){
-      Object.assign(b, vorher); inArbeit.delete(id); neuZeichnen();
+      vorher.forEach(v => { const {x, ...alt} = v; Object.assign(x, alt); });
+      ids.forEach(i => inArbeit.delete(i)); neuZeichnen();
       melde("Nicht gespeichert, bitte Verbindung prüfen", true); return;
     }
   }
-  inArbeit.delete(id);
+  ids.forEach(i => inArbeit.delete(i));
   melde(freigeben ? "Freigegeben — die Küche sieht sie jetzt" : "Verworfen");
 }
 $("#karten").addEventListener("click", e => {
@@ -8767,6 +8777,30 @@ function gefiltert(){
   return bestellungen.filter(b => zeigeQuelle[b.quelle] && zeigeStatus[b.status]);
 }
 
+/* Servicerufe desselben Tisches als EINE Karte (Wunsch 10.10., Foto:
+   zehn Karten „Bitte einmal an den Tisch“ von Tisch 12). Der neueste
+   Ruf trägt die Karte, die übrigen hängen als _weitere daran; jede
+   Handlung auf der Karte gilt für alle. Getrennt bleiben, was
+   verschieden zu behandeln ist: anderer Stand, markiert/unmarkiert.
+   _weitere wird bei JEDEM Aufbau neu gesetzt — ein Rest vom letzten
+   Mal würde sonst einen schon erledigten Ruf mitziehen. */
+function rufeBuendeln(liste){
+  const kopf = new Map(), aus = [];
+  liste.forEach(b => {
+    b._weitere = null;
+    if(b.quelle !== "service" || !b.tisch || b.status === "fertig"){ aus.push(b); return; }
+    const k = String(b.tisch).trim().toLowerCase() + "|" + b.status + "|" + (b.pruefen ? 1 : 0);
+    const erster = kopf.get(k);
+    if(erster){ erster._weitere.push(b); return; }
+    b._weitere = []; kopf.set(k, b); aus.push(b);
+  });
+  return aus;
+}
+/* Alle Zeilen, für die eine Handlung auf dieser Karte gilt. */
+function mitGebuendelt(b){
+  return [b].concat((b && b._weitere) || []);
+}
+
 /* Rabattcode-Einlösung auf der Bestellkarte. Bewusst KEIN eigener
    Reiter "Rechnungen" — den Namen trägt in diesem Projekt schon
    Omotenos eigene SaaS-Abrechnung an den Betrieb (seiten/konto.html).
@@ -8805,7 +8839,8 @@ function zeichneBoard(){
     z.textContent = lieferOffen;
   });
 
-  const alle = gefiltert();
+  /* Gebündelt nur auf dem Board — die Ausfuhr (tabelle()) zeigt jede Zeile. */
+  const alle = rufeBuendeln(gefiltert());
   const liste = alle.slice(0, KARTEN_MAX);
   const versteckt = alle.length - liste.length;
   const offen = bestellungen.filter(b => b.status === "neu" && !b.pruefen).length;
@@ -8877,7 +8912,17 @@ function zeichneBoard(){
            <span class="pname">${sicher(p.name)}</span>
            <span class="ppreis">${euro(p.preis * p.menge)}</span></div>`).join("")}</div>` : "";
 
-    const notiz = b.notiz ? `<div class="notiz">${sicher(b.notiz)}</div>` : "";
+    const gruppe = mitGebuendelt(b);
+    let notiz = b.notiz ? `<div class="notiz">${sicher(b.notiz)}</div>` : "";
+    if(gruppe.length > 1){
+      /* Gleiche Gründe zusammen: „Rechnung bitte ×2“ statt zweimal. */
+      const gruende = new Map();
+      gruppe.forEach(x => { const n = String(x.notiz || "Serviceruf"); gruende.set(n, (gruende.get(n) || 0) + 1); });
+      notiz = `<div class="notiz">${[...gruende].map(([n, z]) =>
+        sicher(n) + (z > 1 ? ` <b class="rufmal">×${z}</b>` : "")).join("<br>")}</div>`;
+    }
+    const rufzahl = gruppe.length > 1
+      ? `<span class="rufzahl">${gruppe.length} Rufe</span>` : "";
 
     const trans = b.transkript
       ? `<details class="transkript"><summary>Gespräch nachlesen</summary>
@@ -8941,7 +8986,7 @@ function zeichneBoard(){
     return `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
       <div class="bkopf">
         <div class="herkunft">
-          <div class="hmarke">${welle}${QUELLE_TEXT[b.quelle]}</div>
+          <div class="hmarke">${welle}${QUELLE_TEXT[b.quelle]}${rufzahl}</div>
           ${kopf}
         </div>
         <div class="rechts">
@@ -13991,33 +14036,38 @@ $("#karten").onclick = async e => {
      letzte Antwort gewinnt – nicht unbedingt die zuletzt gewollte. */
   if(inArbeit.has(id)) return;
 
-  const vorher = b.status, vorherZeit = b.wartezeit_min;
-  b.status = status;              // Anzeige sofort, ohne aufs Netz zu warten
-  inArbeit.add(id);
+  /* Gebündelte Rufe (rufeBuendeln): ein Tipp gilt für alle. */
+  const alle = mitGebuendelt(b).filter(x => x === b || !inArbeit.has(x.id));
+  const ids = alle.map(x => x.id);
+  const vorher = alle.map(x => ({ x, status:x.status, zeit:x.wartezeit_min }));
+  const zurueck = () => vorher.forEach(v => { v.x.status = v.status; v.x.wartezeit_min = v.zeit; });
+  alle.forEach(x => { x.status = status; });   // Anzeige sofort, ohne aufs Netz zu warten
+  ids.forEach(i => inArbeit.add(i));
   zeichneBoard(); zeichneAusgabe();
 
-  if(demo){ inArbeit.delete(id); return; }
+  if(demo){ ids.forEach(i => inArbeit.delete(i)); return; }
 
   const satz = {status};
   /* Beim Zurücksetzen auf „Neu" fällt auch die Zusage weg, sonst stünde
      beim Gast eine Wartezeit, die niemand mehr zugesagt hat. */
-  if(status === "neu"){ satz.wartezeit_min = null; satz.bestaetigt_um = null; b.wartezeit_min = null; }
+  if(status === "neu"){ satz.wartezeit_min = null; satz.bestaetigt_um = null; alle.forEach(x => { x.wartezeit_min = null; }); }
 
   try{
-    const {error} = await db.from("bestellungen").update(satz)
-      .eq("id", id).eq("betrieb_id", betriebId);   /* Gürtel und Hosenträger */
+    const anfrage = db.from("bestellungen").update(satz);
+    const {error} = await (ids.length > 1 ? anfrage.in("id", ids) : anfrage.eq("id", id))
+      .eq("betrieb_id", betriebId);   /* Gürtel und Hosenträger */
     if(error){
-      b.status = vorher; b.wartezeit_min = vorherZeit;
+      zurueck();
       melde("Konnte nicht gespeichert werden, bitte Verbindung prüfen", true);
     }
   }catch(fehler){
-    b.status = vorher; b.wartezeit_min = vorherZeit;
+    zurueck();
     melde("Konnte nicht gespeichert werden, bitte Verbindung prüfen", true);
   }finally{
     /* MUSS in finally stehen. Stünde die Freigabe nur im Erfolgsfall,
        bliebe die Bestellung nach einem Netzfehler für immer gesperrt
        und ließe sich nie wieder antippen. */
-    inArbeit.delete(id);
+    ids.forEach(i => inArbeit.delete(i));
     neuZeichnen();
   }
 };
@@ -14090,22 +14140,25 @@ $("#zeitBlatt").onclick = e => { if(e.target === $("#zeitBlatt")) zeitBlattSchli
 
 async function bestaetigen(b, minuten){
   if(inArbeit.has(b.id)) return;
-  inArbeit.add(b.id);
-  const vorher = {status:b.status, zeit:b.wartezeit_min};
-  b.status = "arbeit";
-  b.wartezeit_min = minuten;
-  b.bestaetigt_um = new Date().toISOString();
+  /* Gebündelte Rufe (rufeBuendeln): eine Zusage für alle. */
+  const alle = mitGebuendelt(b).filter(x => x === b || !inArbeit.has(x.id));
+  const ids = alle.map(x => x.id);
+  ids.forEach(i => inArbeit.add(i));
+  const vorher = alle.map(x => ({ x, status:x.status, zeit:x.wartezeit_min }));
+  const um = new Date().toISOString();
+  alle.forEach(x => { x.status = "arbeit"; x.wartezeit_min = minuten; x.bestaetigt_um = um; });
   zeichneBoard(); zeichneAusgabe();
 
-  if(demo){ inArbeit.delete(b.id); melde("Bestätigt · ca. " + minuten + " Min"); return; }
+  if(demo){ ids.forEach(i => inArbeit.delete(i)); melde("Bestätigt · ca. " + minuten + " Min"); return; }
 
-  const {error} = await db.from("bestellungen")
-    .update({status:"arbeit", wartezeit_min:minuten, bestaetigt_um:b.bestaetigt_um})
-    .eq("id", b.id).eq("betrieb_id", betriebId);
+  const anfrage = db.from("bestellungen")
+    .update({status:"arbeit", wartezeit_min:minuten, bestaetigt_um:um});
+  const {error} = await (ids.length > 1 ? anfrage.in("id", ids) : anfrage.eq("id", b.id))
+    .eq("betrieb_id", betriebId);
 
-  inArbeit.delete(b.id);
+  ids.forEach(i => inArbeit.delete(i));
   if(error){
-    b.status = vorher.status; b.wartezeit_min = vorher.zeit;
+    vorher.forEach(v => { v.x.status = v.status; v.x.wartezeit_min = v.zeit; });
     neuZeichnen();
     melde("Zusage nicht gespeichert, bitte Verbindung prüfen", true);
     return;
