@@ -1,0 +1,214 @@
+/* ═══════════════════════════════════════════════════════════════════
+   PRÜFUNG · Startseite: aufklappbare Bereiche, Schnellzeile, Sortierung
+
+     node erzeuger/erzeuge-hub.js --alle
+     NODE_PATH=$(npm root -g) node pruefungen/pruef-startseite.js
+
+   Wunsch 10.10. (dritte Nachricht): „Überarbeite am Ende die Navigation
+   und Sortierung der Funktionen und Einstellungen im Hub … ordentlicher,
+   aufklappbar, smart und schnell erreichbar, mit modernem Look.“
+
+   Alle Häuser, Uhr UND Öffnungszeiten fest (§8.1j):
+   1 · Bereiche: jede Gruppe ein Kopf (Knopf, ≥ 44 px, aria-expanded,
+       Anzahl stimmt mit den Kacheln überein). Ruhelage: die ersten
+       zwei offen, der Rest zu (zu = hidden, keine Höhe).
+   2 · Ein ECHTER Tipp öffnet und schließt; der Zustand übersteht ein
+       Neuladen in der Sitzung — beides an der gemessenen Höhe, nicht
+       nur am Attribut.
+   3 · Liefermodus: „Jetzt am Tisch“ fehlt, die nächste Gruppe rückt
+       als zweite offen nach.
+   4 · Schnellzeile: ≥ 2 Wege, je ≥ 44 px; die Karte führt dorthin, wo
+       die Kachel hinführt (echter Tipp, Adresse gemessen); Serviceruf
+       nur am Tisch; „Ihre Auswahl“ erst mit Inhalt, Zahl = Korb;
+       Foodroulette genau dann, wenn das Haus sie zeigt.
+   5 · Laufende Bestellung: „Ihre Bestellung“ steht vorn und ist
+       hervorgehoben; Werbung (Empfehlung) rückt hinter den ersten
+       Bereich. Ohne Bestellung steht sie davor.
+   6 · Vorschau im Board (OMOTENO_VORSCHAU): alle Bereiche offen.
+   7 · Kontrast (Schrift der Wege, Anzahl, Zahlplakette) ≥ 4,5:1 Tag
+       und Abend; kein Überlauf 360–1280 px; Arabisch übersetzt;
+       reduzierte Bewegung: Öffnen ohne Animation.
+   ═══════════════════════════════════════════════════════════════════ */
+const { chromium } = require("playwright");
+const path = require("path");
+const fs = require("fs");
+
+const DIST = process.env.DIST || path.join(__dirname, "..", "dist");
+let n = 0, f = 0;
+function pruef(b, t, d) {
+  n++; if (!b) f++;
+  console.log((b ? "  ok  " : "  FEHL") + " " + t + (d !== undefined ? "  → " + d : ""));
+}
+const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d, "index.html")));
+
+function hellig(rgb) {
+  const l = rgb.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * l[0] + 0.7152 * l[1] + 0.0722 * l[2];
+}
+const kontrast = (a, b) => { const x = hellig(a), y = hellig(b); return (Math.max(x, y) + 0.05) / (Math.min(x, y) + 0.05); };
+
+async function oeffnen(browser, haus, opt = {}) {
+  const ctx = opt.ctx || await browser.newContext({ viewport: { width: opt.breite || 390, height: 900 },
+    reducedMotion: opt.ruhig ? "reduce" : "no-preference" });
+  if (!opt.ctx) await ctx.addInitScript(sp => { try { sessionStorage.setItem("omoteno-willkommen", "1"); if (sp) localStorage.setItem("tapto-sprache", sp); } catch (e) {} }, opt.sprache || null);
+  if (opt.vorschau) await ctx.addInitScript(() => { window.OMOTENO_VORSCHAU = true; });
+  const s = await ctx.newPage();
+  const fehler = [];
+  s.on("pageerror", e => fehler.push(String(e).slice(0, 160)));
+  await s.clock.setFixedTime(new Date(opt.uhr || "2026-10-10T14:00:00"));
+  await s.route("**/*", r => r.request().url().startsWith("file://") ? r.continue()
+    : r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
+  await s.goto("file://" + path.join(DIST, haus, "index.html") + "#/");
+  await s.waitForTimeout(600);
+  await s.evaluate(() => { ZEITEN.length = 0; for (let i = 0; i < 7; i++) ZEITEN.push("10:30 – 00:30"); stunde = new Date().getHours(); zeichne(); });
+  await s.waitForTimeout(250);
+  return { ctx, s, fehler };
+}
+
+const bereiche = s => s.evaluate(() => [...document.querySelectorAll(".sbereich")].map(sec => {
+  const k = sec.querySelector(".sb-kopf"), g = sec.querySelector(".gitter");
+  return { name: k.dataset.sbAuf, auf: k.getAttribute("aria-expanded") === "true", hoch: k.getBoundingClientRect().height,
+    zahl: +k.querySelector(".sb-zahl").textContent, kacheln: g.querySelectorAll("a.kachel").length,
+    gitterHoehe: g.getBoundingClientRect().height, hidden: g.hidden, knopf: k.tagName };
+}));
+
+const wege = s => s.evaluate(() => [...document.querySelectorAll(".schnellzeile .sz")].map(a => {
+  const r = a.getBoundingClientRect();
+  return { text: a.querySelector(".sz-text").textContent, href: a.getAttribute("href"), jetzt: a.classList.contains("sz-jetzt"),
+    zahl: a.querySelector(".sz-zahl") ? +a.querySelector(".sz-zahl").textContent : 0, w: r.width, h: r.height };
+}));
+
+async function tippen(s, sel) {
+  const el = await s.$(sel);
+  await el.evaluate(e => e.scrollIntoView({ block: "center" }));
+  const b = await el.boundingBox();
+  await s.mouse.click(b.x + b.width / 2, b.y + b.height / 2);
+  await s.waitForTimeout(350);
+}
+
+(async () => {
+  const browser = await chromium.launch();
+  pruef(HAEUSER.length >= 2, "mindestens zwei Häuser erzeugt (§8.1a)", HAEUSER.join(", "));
+
+  for (const haus of HAEUSER) {
+    /* 1 · Ruhelage */
+    let { ctx, s, fehler } = await oeffnen(browser, haus);
+    let b = await bereiche(s);
+    pruef(b.length >= 3, haus + ": mindestens drei Bereiche (Voraussetzung)", b.map(x => x.name).join(" | "));
+    pruef(b.every(x => x.knopf === "BUTTON" && x.hoch >= 44), haus + ": jeder Kopf ein Knopf ≥ 44 px", b.map(x => x.hoch.toFixed(0)).join(","));
+    pruef(b.every(x => x.zahl === x.kacheln && x.kacheln > 0), haus + ": Anzahl im Kopf = Kacheln im Bereich", b.map(x => x.zahl + "/" + x.kacheln).join(","));
+    pruef(b.every((x, i) => i < 2 ? (x.auf && x.gitterHoehe > 40) : (!x.auf && x.hidden && x.gitterHoehe === 0)),
+      haus + ": Ruhelage — die ersten zwei offen, der Rest zu", b.map(x => (x.auf ? "auf" : "zu") + ":" + x.gitterHoehe.toFixed(0)).join(","));
+
+    /* 2 · echter Tipp öffnet/schließt, Neuladen behält */
+    await tippen(s, ".sbereich:nth-of-type(3) .sb-kopf");
+    b = await bereiche(s);
+    pruef(b[2].auf && !b[2].hidden && b[2].gitterHoehe > 40, haus + ": Tipp öffnet den dritten Bereich (Höhe gemessen)", b[2].gitterHoehe.toFixed(0));
+    await tippen(s, ".sbereich:nth-of-type(1) .sb-kopf");
+    b = await bereiche(s);
+    pruef(!b[0].auf && b[0].gitterHoehe === 0, haus + ": Tipp schließt den ersten Bereich", b[0].gitterHoehe.toFixed(0));
+    await s.reload(); await s.waitForTimeout(600);
+    await s.evaluate(() => { ZEITEN.length = 0; for (let i = 0; i < 7; i++) ZEITEN.push("10:30 – 00:30"); stunde = new Date().getHours(); zeichne(); });
+    b = await bereiche(s);
+    pruef(!b[0].auf && b[2].auf && b[2].gitterHoehe > 40, haus + ": nach Neuladen in der Sitzung bleibt die Wahl", b.map(x => x.auf ? "auf" : "zu").join(","));
+    await s.evaluate(() => sessionStorage.removeItem("omoteno-bereiche"));
+
+    /* 4 · Schnellzeile am Tisch */
+    await s.evaluate(() => zeichne());
+    let w = await wege(s);
+    const kachelKarte = await s.evaluate(() => { const k = document.querySelector('.sbereich a.kachel[href^="#/"]'); return k && k.getAttribute("href"); });
+    pruef(w.length >= 2 && w.every(x => x.w >= 44 && x.h >= 44), haus + ": Schnellzeile mit ≥ 2 Wegen, je ≥ 44 px", w.map(x => x.text + " " + x.w.toFixed(0) + "×" + x.h.toFixed(0)).join(" | "));
+    const fr = await s.evaluate(() => foodrouletteAn());
+    pruef(w.some(x => x.href === "#/entdecken") === fr, haus + ": Foodroulette genau dann, wenn das Haus sie zeigt", "an=" + fr);
+    const ruf = await s.evaluate(() => KACHELN.some(k => k.schluessel === "tischruf"));
+    pruef(!ruf || w.some(x => x.href === "#/service"), haus + ": am Tisch steht der Serviceruf in der Zeile", w.map(x => x.href).join(","));
+    pruef(!w.some(x => x.href === "#/auswahl"), haus + ": leerer Korb → kein Weg „Ihre Auswahl“");
+    const erste = w.find(x => x.href && x.href !== "#/service" && x.href !== "#/entdecken" && x.href !== "#/auswahl");
+    pruef(!!erste && erste.href === kachelKarte, haus + ": der Karten-Weg zeigt dorthin, wo die erste Kartenkachel hinführt", erste && erste.href + " / " + kachelKarte);
+    await tippen(s, '.schnellzeile a.sz[href="' + erste.href + '"]');
+    pruef(await s.evaluate(() => location.hash) === erste.href, haus + ": echter Tipp auf den Karten-Weg öffnet die Karte", await s.evaluate(() => location.hash));
+
+    /* Korb füllen → Weg mit Zahl */
+    await s.evaluate(() => { const g = SPEISEKARTE[0].eintraege[0]; merk[g.n] = { n: g.n, p: g.p, m: 3 }; merkSpeichern(); location.hash = "#/"; });
+    await s.waitForTimeout(400);
+    w = await wege(s);
+    const aw = w.find(x => x.href === "#/auswahl");
+    pruef(!!aw && aw.zahl === 3, haus + ": mit Inhalt im Korb erscheint „Ihre Auswahl“ mit der Zahl", aw && aw.zahl);
+    pruef(w.length <= 4, haus + ": höchstens vier Wege", w.length);
+
+    /* 5 · laufende Bestellung: vorn, hervorgehoben; Werbung hinter den ersten Bereich */
+    const vorher = await s.evaluate(() => { const t = document.querySelector("main .tipp"), sec = document.querySelector(".sbereich");
+      return t && sec ? !!(t.compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_FOLLOWING) : null; });
+    pruef(vorher !== false, haus + ": ohne Bestellung steht die Empfehlung VOR den Bereichen", vorher);
+    await s.evaluate(() => { vorgangMerken({ art: "bestellung", nummer: "probe-1", tisch: "4", summe: 9, bestellung: { nummer: "probe-1", tisch: "4", posten: [], summe: 9 } }); zeichne(); });
+    await s.waitForTimeout(300);
+    w = await wege(s);
+    pruef(w[0] && w[0].jetzt && !w[0].href, haus + ": laufende Bestellung steht vorn und ist hervorgehoben", w.map(x => x.text).join(" | "));
+    const nachher = await s.evaluate(() => { const t = document.querySelector("main .tipp"), sec = document.querySelector(".sbereich");
+      return t && sec ? !!(t.compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_PRECEDING) : null; });
+    pruef(nachher !== false, haus + ": mit Bestellung rückt die Empfehlung hinter den ersten Bereich", nachher);
+    await tippen(s, "[data-sz-vorgang]");
+    pruef(/bestellt|auswahl/.test(await s.evaluate(() => location.hash)), haus + ": Tipp auf „Ihre Bestellung“ führt zur Bestellung", await s.evaluate(() => location.hash));
+
+    /* 3 · Liefermodus */
+    await s.evaluate(() => { vorgaenge.length = 0; vorgaengeSichern(); LIEFER.an = true; liefermodus = true; location.hash = "#/"; zeichne(); });
+    await s.waitForTimeout(300);
+    b = await bereiche(s);
+    w = await wege(s);
+    pruef(!b.some(x => x.name === "Jetzt am Tisch") && b[0].auf && b[1] && b[1].auf, haus + ": Liefermodus — „Jetzt am Tisch“ fehlt, die nächste Gruppe ist offen", b.map(x => x.name + ":" + (x.auf ? "auf" : "zu")).join(" | "));
+    pruef(!w.some(x => x.href === "#/service"), haus + ": Liefermodus — kein Serviceruf in der Schnellzeile");
+    pruef(!fehler.length, haus + ": keine Seitenfehler", fehler[0]);
+    await ctx.close();
+
+    /* 7 · Kontrast Tag und Abend, Überlauf je Breite */
+    for (const [uhr, phase] of [["2026-10-10T14:00:00", "Tag"], ["2026-10-10T21:30:00", "Abend"]]) {
+      for (const breite of [360, 430, 1280]) {
+        ({ ctx, s, fehler } = await oeffnen(browser, haus, { uhr, breite }));
+        await s.evaluate(() => { const g = SPEISEKARTE[0].eintraege[0]; merk[g.n] = { n: g.n, p: g.p, m: 2 }; merkSpeichern(); zeichne(); });
+        const k = await s.evaluate(() => {
+          const lies = t => (t.match(/[\d.]+/g) || []).slice(0, 3).map(Number).map((v, i, a) => /color\(/.test(t) ? v * 255 : v);
+          const grundVon = el => { for (let e = el; e; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; const m = c.match(/[\d.]+/g); if (m && (m.length < 4 || +m[3] > .9)) return c; } return getComputedStyle(document.documentElement).backgroundColor; };
+          const paare = [];
+          document.querySelectorAll(".sz-text, .sb-zahl, .sz-zahl, .sb-name").forEach(el => paare.push({ was: el.className, s: getComputedStyle(el).color, g: grundVon(el) }));
+          return { paare, ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+        });
+        const rgb = t => { const z = (t.match(/[\d.]+/g) || []).slice(0, 3).map(Number); return /color\(/.test(t) ? z.map(v => v * 255) : z; };
+        const werte = k.paare.map(p => ({ was: p.was, k: kontrast(rgb(p.s), rgb(p.g)) }));
+        const min = werte.reduce((a, x) => x.k < a.k ? x : a, { k: 99 });
+        pruef(werte.length >= 5 && min.k >= 4.5, haus + " " + phase + " " + breite + "px: Schrift in Schnellzeile und Köpfen ≥ 4,5:1", "min " + min.k.toFixed(2) + " (" + min.was + ")");
+        pruef(k.ueber <= 0, haus + " " + phase + " " + breite + "px: kein seitlicher Überlauf", k.ueber);
+        await ctx.close();
+      }
+    }
+
+    /* 6 · Vorschau: alles offen */
+    ({ ctx, s } = await oeffnen(browser, haus, { vorschau: true }));
+    b = await bereiche(s);
+    pruef(b.length >= 3 && b.every(x => x.auf && x.gitterHoehe > 0), haus + ": Vorschau im Board — jeder Bereich offen", b.map(x => x.auf ? "auf" : "zu").join(","));
+    await ctx.close();
+  }
+
+  /* Arabisch und reduzierte Bewegung */
+  {
+    const { ctx, s, fehler } = await oeffnen(browser, HAEUSER[0], { sprache: "ar" });
+    await s.evaluate(() => { const g = SPEISEKARTE[0].eintraege[0]; merk[g.n] = { n: g.n, p: g.p, m: 1 }; merkSpeichern(); zeichne(); });
+    const w = await wege(s);
+    const aria = await s.evaluate(() => document.querySelector(".schnellzeile").getAttribute("aria-label"));
+    pruef(w.some(x => x.text === "اختياركم") && aria === "وصول سريع", "Arabisch: Wege und Bezeichnung übersetzt", w.map(x => x.text).join(" | ") + " / " + aria);
+    pruef(!fehler.length, "Arabisch: keine Seitenfehler", fehler[0]);
+    await ctx.close();
+  }
+  {
+    const { ctx, s } = await oeffnen(browser, HAEUSER[0], { ruhig: true });
+    await tippen(s, ".sbereich:nth-of-type(3) .sb-kopf");
+    const lauf = await s.evaluate(() => document.querySelector(".sbereich:nth-of-type(3) .gitter").getAnimations().filter(a => a.playState === "running").length);
+    const hoch = await s.evaluate(() => document.querySelector(".sbereich:nth-of-type(3) .gitter").getBoundingClientRect().height);
+    pruef(lauf === 0 && hoch > 40, "reduzierte Bewegung: der Bereich öffnet sofort, ohne Animation", lauf + " / " + hoch.toFixed(0));
+    await ctx.close();
+  }
+
+  await browser.close();
+  console.log("\n" + (n - f) + " von " + n + " ok");
+  if (f) { console.log(f + " FEHLER"); process.exit(1); }
+  console.log("Alles sauber.");
+})();

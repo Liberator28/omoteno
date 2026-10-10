@@ -30,6 +30,12 @@ const { chromium } = require("playwright");
 const fs = require("fs");
 const path = require("path");
 
+/* Seit 10.10. sind die Bereiche der Startseite aufklappbar und ab dem
+   dritten zu (pruef-startseite.js prüft das). Diese Prüfung misst
+   Kacheln — also erst jeden Bereich über seinen eigenen Kopf öffnen
+   (derselbe Klick-Weg wie beim Gast), dann messen. */
+const alleBereicheAuf = p => p.$$eval('.sb-kopf[aria-expanded="false"]', ks => ks.forEach(k => k.click())).catch(() => {});
+
 const OBEN   = path.join(__dirname, "..");
 const ADMIN  = path.join(OBEN, "seiten", "admin.html");
 const GERUEST= path.join(OBEN, "vorlagen", "hub.vorlage.html");
@@ -335,6 +341,7 @@ async function hub(br, datei, hausName){
   await p.addInitScript(() => sessionStorage.setItem("omoteno-willkommen","1"));
   await p.goto(datei);
   await p.waitForTimeout(1900);
+  await alleBereicheAuf(p);
 
   const d = await p.evaluate(() => {
     const alle = [...document.querySelectorAll("a.kachel")];
