@@ -82,13 +82,15 @@ async function oeffnen(browser, haus, breite, sprache) {
       });
       const k = haus + " @" + breite;
       const stand = await seite.evaluate(() => {
-        const st = document.getElementById("status");
-        return { inZeile: !!st && st.parentElement === document.querySelector(".kopfwahl"), text: st ? st.textContent.trim() : "" };
+        const st = document.getElementById("status"), kopf = document.querySelector("header");
+        const b = st && st.firstElementChild ? st.firstElementChild.getBoundingClientRect() : null;
+        return { inZeile: !!st && st.parentElement === document.querySelector(".kopfwahl"), text: st ? st.textContent.trim() : "",
+                 rechts: b ? Math.abs(b.right - (kopf.getBoundingClientRect().right - parseFloat(getComputedStyle(kopf).paddingRight))) : null };
       });
-      /* Nur der Ort, nicht die Länge: Die hinge an der Uhr (offen kurz,
-         geschlossen mit Wochentag länger) — §8.1j. */
-      pruef(stand.inZeile && stand.text.length > 0, k + ": Öffnungsstand steht in der Knopfzeile (eine Zeile Kopf weniger)",
-        JSON.stringify(stand.text));
+      /* Seit 10.10. oben rechts als Glas-Box (pruef-kopfzentrale.js misst
+         Sanduhr und Regenbogen). Nur der Ort, nicht die Länge (§8.1j). */
+      pruef(!stand.inZeile && stand.text.length > 0 && stand.rechts !== null && stand.rechts <= 2,
+        k + ": Öffnungsstand oben rechts, nicht mehr in der Knopfzeile", JSON.stringify(stand));
       pruef(Math.abs(m.zeileMitte - m.kopfMitte) <= 1, k + ": Knopfzeile mittig (± 1 px)",
         "Zeile " + m.zeileMitte.toFixed(1) + " / Kopf " + m.kopfMitte.toFixed(1));
       pruef(m.sk.w <= 48 && m.sk.w >= 44 && m.sk.h >= 44, k + ": Sprachknopf ist ein Kreis 44–48 px",

@@ -320,6 +320,49 @@ const OBEN_FELD = () => {
     await ctx.close();
   }
 
+  console.log("\n══ Hochwertiges Rad (10.10.): Ausholen, Lauflicht, Glas, Lichtkegel ══");
+  /* Wunsch: „nicht so billig — modern, smooth, high definition“. Was
+     davon messbar ist: das Glas steht still, während die Scheibe dreht;
+     die LEDs laufen NUR während der Drehung (nur opacity); das Rad holt
+     zuerst aus (Winkel kurz kleiner als am Start); nach der Landung
+     leuchtet der Keil unter dem Zeiger, in der nächsten Drehung nicht. */
+  {
+    const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", "#/entdecken");
+    const vor = await s.evaluate(() => ({ glas: !!document.querySelector("#frRad .fr-glas"), treffer: !!document.querySelector("#frRad .fr-treffer"),
+      licht: document.querySelector("#frRad .fr-lichter i").getAnimations({ subtree:true }).filter(a => a.playState === "running").length,
+      w: (() => { const m = new DOMMatrix(getComputedStyle(document.getElementById("frScheibe")).transform); return Math.atan2(m.b, m.a) * 180 / Math.PI; })() }));
+    pruef(vor.glas && vor.treffer, "Voraussetzung: Glas und Lichtkegel stehen im Rad");
+    pruef(vor.licht === 0, "in Ruhe läuft kein Lauflicht", vor.licht);
+    await s.evaluate(() => frDrehen());
+    await s.waitForTimeout(110);
+    const anfang = await s.evaluate(() => { const m = new DOMMatrix(getComputedStyle(document.getElementById("frScheibe")).transform); return Math.atan2(m.b, m.a) * 180 / Math.PI; });
+    const d = ((anfang - vor.w + 540) % 360) - 180;
+    pruef(d < -0.5 && d > -9, "das Rad holt zuerst aus (dreht kurz zurück)", d.toFixed(2) + "°");
+    await s.waitForTimeout(500);
+    const mitten = await s.evaluate(() => {
+      const props = new Set(), lichter = document.querySelectorAll("#frRad .fr-lichter i");
+      let laufend = 0;
+      lichter.forEach(i => i.getAnimations({ pseudoElement: "::before" }).concat(i.getAnimations({ subtree:true })).forEach(a => {
+        if (a.playState === "running"){ laufend++; a.effect.getKeyframes().forEach(k => Object.keys(k).forEach(x => { if (!["offset","computedOffset","easing","composite"].includes(x)) props.add(x); })); } }));
+      const glas = document.querySelector("#frRad .fr-glas");
+      /* Ein eigenes transform „none“ genügt nicht: Läge das Glas IN der
+         Scheibe, drehte es mit ihr (§8.1g — die Probe muss den Fehler
+         treffen können). */
+      return { laufend, props:[...props], glas: getComputedStyle(glas).transform + (glas.closest("#frScheibe") ? " (in der Scheibe!)" : ""),
+        treffer: +getComputedStyle(document.querySelector("#frRad .fr-treffer")).opacity, dreht: frDreht };
+    });
+    pruef(mitten.dreht && mitten.laufend >= 12 && mitten.props.every(x => x === "opacity"), "während der Drehung: Lauflicht über die LEDs, nur opacity",
+      mitten.laufend + " · " + mitten.props.join(","));
+    pruef(mitten.glas === "none", "das Glas dreht nicht mit (steht still über der Scheibe)", mitten.glas);
+    pruef(mitten.treffer < 0.05, "während der Drehung kein Lichtkegel", mitten.treffer);
+    await s.waitForTimeout(3600);
+    const nach = await s.evaluate(() => ({ dreht: frDreht, treffer: +getComputedStyle(document.querySelector("#frRad .fr-treffer")).opacity,
+      licht: [...document.querySelectorAll("#frRad .fr-lichter i")].reduce((n, i) => n + i.getAnimations({ subtree:true }).filter(a => a.playState === "running").length, 0) }));
+    pruef(!nach.dreht && nach.treffer > 0.95 && nach.licht === 0, "gelandet: Keil unter dem Zeiger leuchtet, Lauflicht steht", JSON.stringify(nach));
+    pruef(!fehler.length, "keine Ausnahme", fehler.join(" | ") || "still");
+    await ctx.close();
+  }
+
   console.log("\n══ Bewegung reduzieren ══");
   for (const slug of HAEUSER) {
     const { ctx, s, fehler } = await oeffnen(browser, slug, "#/speisekarte", { ruhig:true });
