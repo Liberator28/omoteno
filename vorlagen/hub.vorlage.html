@@ -262,10 +262,7 @@ body{
      er wird nie umgeschaltet, damit nichts nachträglich umbricht. */
   font-size:calc(16px * var(--schrift-mass, 1));line-height:1.5;
   -webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;
-  /* --unten: Höhe der festen Leisten unten (Auswahl, Ruf-Streifen),
-     gemessen von untenPlatz(). Ohne sie verschwanden die letzten
-     Gerichte samt „+“ dahinter (Foto 10.10.). */
-  padding:var(--rand-oben) var(--rand) calc(40px + var(--unten, 0px) + env(safe-area-inset-bottom));
+  padding:var(--rand-oben) var(--rand) calc(40px + env(safe-area-inset-bottom));
   max-width:540px;margin-inline:auto;min-height:100vh;
   transition:background-color .9s ease, color .9s ease;
 }
@@ -5706,36 +5703,6 @@ document.addEventListener("visibilitychange", () => {
   const kopf = document.querySelector("header");
   if(!kopf || !("IntersectionObserver" in window)) return;
   new IntersectionObserver(e => kopf.classList.toggle("kopf-ruht", !e[0].isIntersecting)).observe(kopf);
-})();
-
-/* ── Platz unten für die festen Leisten ──
-   EINE Stelle misst, wie hoch die sichtbaren Leisten unten reichen,
-   und gibt dem Inhalt genau so viel Luft (§4.5: nicht an jede Stelle
-   hängen, die sie zeigt oder versteckt — ein Beobachter sieht jede). */
-function untenPlatz(){
-  let oben = innerHeight;
-  ["auswahlbalken", "vstreifen", "wsstreifen"].forEach(id => {
-    const el = document.getElementById(id);
-    if(!el || el.hidden || getComputedStyle(el).display === "none") return;
-    if(id === "auswahlbalken" && !el.classList.contains("an")) return;
-    const r = el.getBoundingClientRect();
-    /* Der Balken fährt per transform ein — für die Höhe zählt die Ruhelage. */
-    const unten = parseFloat(getComputedStyle(el).bottom) || 0;
-    oben = Math.min(oben, innerHeight - unten - r.height);
-  });
-  const platz = Math.max(0, Math.round(innerHeight - oben));
-  document.body.style.setProperty("--unten", platz + "px");
-}
-(function(){
-  let geplant = false;
-  const bitte = () => { if(geplant) return; geplant = true; requestAnimationFrame(() => { geplant = false; untenPlatz(); }); };
-  if("MutationObserver" in window){
-    const mo = new MutationObserver(bitte);
-    ["auswahlbalken", "vstreifen", "wsstreifen"].forEach(id => { const el = document.getElementById(id);
-      if(el) mo.observe(el, { attributes:true, attributeFilter:["hidden", "class"], childList:true, subtree:true, characterData:true }); });
-  }
-  addEventListener("resize", bitte);
-  bitte();
 })();
 
 /* Antippen weckt das Zeichen im angetippten Element. pointerdown statt

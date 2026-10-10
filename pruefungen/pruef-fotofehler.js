@@ -10,7 +10,12 @@
        Zeile, jeder Chip im Panel sichtbar, KEIN eigener Scrollbereich
        (§3.8 — vorher halb breit, „Für die Runde“ abgeschnitten).
    4 · Hub, Ruf-Streifen + Auswahl-Leiste: ganz unten gerollt liegt
-       das letzte Gericht samt „+“ ÜBER beiden Leisten.
+       das letzte Gericht samt „+“ — und das unterste Antippbare der
+       Seite überhaupt — ÜBER beiden Leisten. Eine Wache: Gemessen
+       reichte die Fußzeile schon, ein eigener Platz-Rechner war
+       wirkungslos (Gegenbeweis grün) und wurde wieder entfernt. Im
+       Foto lagen die Leisten beim Scrollen über einem Gericht in der
+       Mitte — das ist feste Leiste, kein verdeckter Inhalt.
    5 · Hub Minhkeey, Unterseite: der Zurück-Knopf liegt unter den
        Laternen, nicht hinter ihren Quasten.
    6 · Hub, Foodroulette: die Marke „Neu für Sie“ wird nicht
@@ -132,11 +137,20 @@ async function hub(browser, slug, hash, opt = {}) {
       const g = [...document.querySelectorAll(".gericht")].pop();
       const k = g.querySelector(".gplus") || g;
       const gr = g.getBoundingClientRect(), kr = k.getBoundingClientRect();
-      return { leisten: leisten.length, oben: Math.round(oben), gerichtUnten: Math.round(gr.bottom), knopfUnten: Math.round(kr.bottom) };
+      /* Das unterste Antippbare der ganzen Seite (auch die Links der
+         Fußzeile) — sonst schöbe die Fußzeile das letzte Gericht immer
+         über die Leisten, und die Probe könnte nichts finden (§8.1g). */
+      const alle = [...document.querySelectorAll("main a, main button, footer a, footer button")]
+        .filter(x => !x.closest("#auswahlbalken, #vstreifen, #wsstreifen") && x.getBoundingClientRect().height > 0);
+      const tiefst = Math.max(...alle.map(x => x.getBoundingClientRect().bottom));
+      return { leisten: leisten.length, oben: Math.round(oben), gerichtUnten: Math.round(gr.bottom), knopfUnten: Math.round(kr.bottom),
+               tiefst: Math.round(tiefst) };
     });
     pruef(m.leisten === 2, "Voraussetzung: beide Leisten stehen unten", m.leisten);
     pruef(m.knopfUnten <= m.oben - 4 && m.gerichtUnten <= m.oben, "ganz unten: letztes Gericht samt Knopf über den Leisten",
       "Knopf " + m.knopfUnten + " / Gericht " + m.gerichtUnten + " / Leisten ab " + m.oben);
+    pruef(m.tiefst <= m.oben - 4, "ganz unten: auch das unterste Antippbare der Seite liegt über den Leisten",
+      "unterstes " + m.tiefst + " / Leisten ab " + m.oben);
     pruef(!fehler.length, "keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
   }
