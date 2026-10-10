@@ -42,7 +42,7 @@ function pruef(b, t, d) {
 
 /* Die echten Kategorien und was sie zeigen SOLLEN. */
 const ERWARTET = {
-  speisekarte: { "Crêpe":"crepe", "Waffel":"1f36a", "Mini-Pancakes":"pfannkuchen", "Creamy Rice":"1f368",
+  speisekarte: { "Crêpe":"crepe", "Waffel":"1f36a", "Mini-Pancakes":"pancaketurm", "Creamy Rice":"1f368",
                  "Fettuccine":"1f35d", "Obstsalat":"1f96d", "Für die Runde":"1f973",
                  "Herzhaft · Manakish":"pizzakaese", "Alle":"2728", "Beliebt":"1f525" },
   getraenke:   { "Frisch gepresst":"1f34a", "Softdrinks":"soda" },   // Wunsch: Flasche, die aufspritzt
