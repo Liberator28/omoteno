@@ -710,6 +710,30 @@ Rückfall anlegen (CLAUDE.md §2.5 additiv, bestehende Kunden sehen ohne
 eigenes Zutun keine Änderung) — das kostet eine Zeile CSS und eine
 Zeile in der Stelle, die sie setzt, und erspart genau diesen Vorfall.
 
+### 3.11 Was `backdrop-filter` trägt, ist ein eigener Stapel — und `elementFromPoint` sieht keinen Guss
+
+> **Vorfall, gemeldet vom Nutzer mit iPhone-Bildschirmfoto.** Die offene
+> Sprachliste im Hub-Kopf lag mit „Deutsch ✓“ unter dem Schokoguss.
+> Die Liste hatte `z-index:30` — aber ihre Leiste `.kopfwahl` trägt
+> `backdrop-filter` und ist damit ein eigener Stapelkontext ohne eigene
+> Stufe. Darüber entschied die Reihenfolge im Dokument, und `.guss`
+> (absolut, `top:100%`) kam später. Die z-index-Zahl in der Liste
+> wirkte nur INNERHALB der Leiste.
+
+Zwei Lehren:
+
+- `backdrop-filter`, `filter`, `transform`, `opacity < 1`,
+  `isolation` und `will-change` machen einen Stapelkontext. Ein
+  aufklappendes Kind darin steigt nie über die Geschwister der Leiste —
+  die Leiste selbst braucht `position` + `z-index`.
+- **Gemessen wird die Malreihenfolge, nicht das Antippbare.** Der Guss
+  hat `pointer-events:none`; `elementFromPoint` geht durch ihn hindurch
+  und hätte „frei“ gemeldet. `pruef-ueberdeckt.js` setzt für die Messung
+  `pointer-events:auto` überall und nimmt das erste Element, das
+  wirklich malt. Und: weggerollte Zeilen eines Rollbereichs sind nicht
+  verdeckt — ohne diese Unterscheidung schlug die erste Fassung Alarm
+  an Kacheln, die gar nicht darüber lagen.
+
 ## 4 · Animation und Neuzeichnen
 
 ### 4.1 Eine Einflug-Animation gehört nur an neue Elemente
@@ -1592,6 +1616,7 @@ Dazu je nach Änderung:
 | **Master-Board: Zugänge-Übersicht (`master_zugaenge`)** | `pruefungen/pruef-master-zugaenge.js` — echte Zugangs-Zeilen (Betrieb, E-Mail, Rolle, letzter Login, Status) erscheinen als Karten, Login- UND PIN-Sperre je eigens benannt aber gleich dringlich einsortiert, unbestätigt/Master/ohne-Betrieb einzeln erkennbar, leere Antwort zeigt einen Satz statt „0 Konten“ oder Absturz, fehlende Migration (`42883`) zeigt, welche fehlt, statt der rohen Postgres-Meldung |
 | **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der **Liefer-Schalter im Kopf** (echter Tipp schaltet liefermodus UND das Adressformular im Warenkorb, Name blitzt auf und verschwindet, Tipp auf das Gewählte ändert nichts, Pfeiltasten, Name passt in jeder Sprache, am Tisch/ohne Lieferung kein Schalter, außerhalb der Zeit nennt er die Uhrzeiten), die Bewegung (nur transform/opacity, Symbolkopie im Daumen MITTEN im Gleiten deckungsgleich, schnelle Tipps: der letzte gewinnt, reduzierte Bewegung sofort am Ziel), Kontrast von Symbol und Name je Haus, Tag und Abend (Spur mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen) |
 | **Kopf als Kommandozentrale, Öffnungsanzeige (LED-Sanduhr / Regenbogen) oben rechts, kein Glanz, wenig Text** | `pruefungen/pruef-kopfzentrale.js` (braucht `dist/`) — alle Häuser 320–1280 px, Uhr UND Zeiten fest (§8.1j): Licht/Bestellart/Sprache in EINER Leiste mit eigenem Rand und Glas, Knöpfe darin randlos ≥ 44 px, mittig; kein `.glanzflug`; Gruß nicht im Bild (h1 bleibt für Vorleser), Slogan sichtbar; Box oben rechts bündig, auf Höhe des Siegels, überdeckt es nicht; geschlossen: Anteil Sand aus ZEITEN nachgerechnet (07:30 zwischen 00:30 und 10:30 = 0,7, zwei Stunden später 0,9), so viele bunte Punkte, Schrift ≥ 4,5:1; offen: JEDER Regenbogenbuchstabe ≥ 4,5:1 auf dem Band (Tag/Abend — bei 50 % Farbanteil fiel Minhkeey auf 4,16:1, deshalb 40 %), ≥ 6 Farben, LED-Leiste nur transform; Arabisch oben links ohne Einzelbuchstaben; reduzierte Bewegung: nichts läuft |
+| **Aufklappende Flächen (Sprachliste, Detailblatt, Foodroulette-Ergebnis), Kopf, Guss/Laternen, neue z-index-Ebenen** | `pruefungen/pruef-ueberdeckt.js` (braucht `dist/`) — alle Häuser 360–1280 px, Tag/Abend, Arabisch: jede sichtbare Textzeile der Fläche wird an ihrer Mitte gegen die MALREIHENFOLGE gemessen (`pointer-events:auto` für die Messung, sonst übersieht `elementFromPoint` den Guss), weggerollte Zeilen ausgenommen; jede Fläche über den echten Griff geöffnet und „ist offen“ selbst geprüft |
 | **Kopfzeile, Sprachknopf, Knopfzeile im Kopf** | `pruefungen/pruef-kopf.js` (braucht `dist/`) — Öffnungsstand in der Knopfzeile (Ort, nicht Länge — die hinge an der Uhr), Unterseite als flache Leiste (≤ 120 px, Siegel/Name/Knöpfe auf einer Höhe, ohne Adresse/Slogan/Stand); alle Häuser, 320–1280 px und RTL: Knopfzeile mittig auf 1 px, Sprachknopf ein Kreis 44–48 px ohne Text, Lichtknopf auch bei 320 px, Liste im Bild und aktive Sprache sichtbar markiert, aria-label folgt dem Wechsel |
 | **„Abholbereit“ in der Küche, „Zum Abholen“ im Board, Abholton, Bestellliste nach Stand** | `pruefungen/pruef-abholbereit.js` — Küche: Hauptknopf „Abholbereit“ schreibt `kueche_fertig_um` (PATCH gemessen); Board über den ECHTEN Weg (`live_anmelden` mit gestelltem Kanal UND `nachholen()` mit gestellter Antwort, nur die Spur ändert sich): neu fertige Spur → Leiste + Abholton genau einmal, Geladenes klingelt nicht, zweite Spur klingelt erneut, „Gebracht“ schreibt NUR `gebracht_um` dieser Zeile, später fertige Spur holt sie zurück, Serviceruf/Storniertes nie; Ton über gestelltes `tonWerk` gezählt (vier Dreieckstöne, nicht der Dreiklang; „Ton aus“ = nichts), Noten in keinem Bestellklang; Überschriften Zu prüfen · Neu · In Arbeit; Kontrast dunkel UND hell (kopflos startet das Board hell — die dunkle Fassung wird ausdrücklich gesetzt), 44 px, 390 px. DB: `migration-abholbereit.sql` |
 | **Annahme-Leiste für neue Bestellungen im Board** | `pruefungen/pruef-annahme.js` — auffälligere Rahmung nur bei status="neu", In-Arbeit-ohne-Zusage bleibt bei der stillen Zeile, Tapflächen ≥44px, Kontrast Tag/Abend |
