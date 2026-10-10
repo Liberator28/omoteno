@@ -39,6 +39,12 @@ async function oeffnen(browser, slug, opt = {}) {
   await s.route("**/*", r => {
     const u = r.request().url();
     if (u.startsWith("file://")) return r.continue();
+    /* Eine langsame Seite nachstellen: Dieses Bild hält „load“ 1,5 s
+       auf — wie ein großes Foto im Café-WLAN. Lokal käme load sonst so
+       früh, dass kein Film es je überholen KÖNNTE (Gegenbeweis 10.10.:
+       „Start sofort“ blieb grün). */
+    if (u.includes("langsam.test")) return new Promise(ok => setTimeout(ok, 1500)).then(() =>
+      r.fulfill({ status: 200, contentType: "image/gif", body: Buffer.from("R0lGODlhAQABAAAAACw=", "base64") }));
     const m = u.match(/^https:\/\/omoteno\.de\/emoji\/([^?]+)/);
     if (m) { try { return r.fulfill({ status: 200, headers: { "access-control-allow-origin": "*" },
       body: fs.readFileSync(path.join(OBEN, "auslieferung", "emoji", m[1])),
@@ -47,11 +53,16 @@ async function oeffnen(browser, slug, opt = {}) {
   });
   await s.addInitScript(() => {
     try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch (e) {}
-    window.__beimLaden = -1;
-    document.addEventListener("DOMContentLoaded", () => {
-      window.__beimLaden = document.querySelectorAll(".bz-film").length; });
+    window.__beimLaden = -1; window.__ersterFilm = 0;
+    document.addEventListener("DOMContentLoaded", () => { const i = new Image(); i.src = "https://langsam.test/foto.gif";
+      i.style.cssText = "position:absolute;width:1px;height:1px;opacity:0"; document.body.appendChild(i); });
+    addEventListener("load", () => { window.__beimLaden = document.querySelectorAll(".bz-film").length;
+      window.__geladenUm = performance.now(); });
+    new MutationObserver(ms => { if (!window.__ersterFilm && document.querySelector(".bz-film")) window.__ersterFilm = performance.now(); })
+      .observe(document, { childList: true, subtree: true });
   });
   await s.goto(HUB(slug) + "#/");
+  await s.waitForTimeout(1600);
   return { ctx, s, fehler };
 }
 
@@ -69,6 +80,16 @@ async function oeffnen(browser, slug, opt = {}) {
          die sind einmalig. Gemessen werden die DAUER-Animationen. */
       return new Promise(ok => setTimeout(() => {
         const schlecht = [], laufend = [];
+        /* getKeyframes() lässt animierte CSS-Variablen in Chromium weg —
+           der alte ledLauf (@property --led-winkel) war damit unsichtbar
+           (Gegenbeweis 10.10.: grün trotz Sabotage). Deshalb zusätzlich
+           die @keyframes-Regeln selbst lesen. */
+        const regel = {};
+        for (const sh of document.styleSheets) { let rs; try { rs = sh.cssRules; } catch (e) { continue; }
+          (function lies(liste){ for (const r of liste) {
+            if (r.type === CSSRule.KEYFRAMES_RULE) { const p = regel[r.name] = regel[r.name] || new Set();
+              for (const k of r.cssRules) for (let i = 0; i < k.style.length; i++) p.add(k.style[i]); }
+            else if (r.cssRules) lies(r.cssRules); } })(rs); }
         document.getAnimations().forEach(a => {
           if (a.playState !== "running" || !a.effect) return;
           if (typeof CSSTransition !== "undefined" && a instanceof CSSTransition) return;
@@ -77,6 +98,7 @@ async function oeffnen(browser, slug, opt = {}) {
             if (!["offset", "computedOffset", "easing", "composite"].includes(x)) props.add(x); }));
           const name = a.animationName || (a.effect.target && a.effect.target.className && String(a.effect.target.className.baseVal ?? a.effect.target.className)) || "?";
           laufend.push(name);
+          if (a.animationName && regel[a.animationName]) regel[a.animationName].forEach(x => props.add(x));
           if ([...props].some(x => x !== "transform" && x !== "opacity")) schlecht.push(name + ":" + [...props].join("+"));
         });
         ok({ schlecht, laufend: laufend.length, led: laufend.includes("ledDrehen") });
@@ -97,8 +119,9 @@ async function oeffnen(browser, slug, opt = {}) {
     pruef(!!bl && bl.ruhe === "none" && /blur/.test(bl.an), "Blende: in Ruhe kein backdrop-filter, offen die Unschärfe", JSON.stringify(bl));
 
     /* 3 · Filme: nicht beim Laden, danach höchstens BZ_ZUGLEICH */
-    const beimLaden = await s.evaluate(() => window.__beimLaden);
-    pruef(beimLaden === 0, "beim DOMContentLoaded läuft noch kein Film (das Ruhebild steht)", beimLaden);
+    const beimLaden = await s.evaluate(() => ({ n: window.__beimLaden, film: Math.round(window.__ersterFilm), load: Math.round(window.__geladenUm || 0) }));
+    pruef(beimLaden.n === 0 && beimLaden.film > 0 && beimLaden.film >= beimLaden.load,
+      "der erste Film entsteht erst NACH load (bis dahin steht das Ruhebild)", JSON.stringify(beimLaden));
     await s.evaluate(() => { document.body.dataset.phase = "tag"; });
     const takt = await s.evaluate(() => new Promise(ok => {
       let max = 0, proben = 0, bereit = 0;
