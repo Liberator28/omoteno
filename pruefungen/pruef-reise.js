@@ -60,6 +60,11 @@ async function hubAuf(browser, haus, opt = {}) {
   await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
   await p.goto("file://" + path.join(DIST, haus, "index.html"));
   await p.waitForTimeout(1400);
+  /* Seit 10.10. sind die Bereiche der Startseite aufklappbar, ab dem
+     dritten zu (pruef-startseite.js). Hier zählt JEDE Kachel — also
+     jeden Bereich über seinen Kopf öffnen; die Wahl gilt für die
+     Sitzung und übersteht deshalb jedes Zurück auf die Startseite. */
+  await p.$$eval('.sb-kopf[aria-expanded="false"]', ks => ks.forEach(k => k.click())).catch(() => {});
   return { ctx, p, fehler };
 }
 

@@ -55,6 +55,7 @@ async function oeffnen(browser, haus, opt = {}) {
   const s = await ctx.newPage();
   const fehler = [];
   s.on("pageerror", e => fehler.push(String(e).slice(0, 160)));
+  s.on("crash", () => console.log("  !!   Seitenprozess abgestürzt (" + haus + ")"));
   await s.clock.setFixedTime(new Date(opt.uhr || "2026-10-10T14:00:00"));
   await s.route("**/*", r => r.request().url().startsWith("file://") ? r.continue()
     : r.fulfill({ status: 200, contentType: "application/json", body: "[]" }));
@@ -107,10 +108,28 @@ async function tippen(s, sel) {
     await tippen(s, ".sbereich:nth-of-type(1) .sb-kopf");
     b = await bereiche(s);
     pruef(!b[0].auf && b[0].gitterHoehe === 0, haus + ": Tipp schließt den ersten Bereich", b[0].gitterHoehe.toFixed(0));
-    await s.reload(); await s.waitForTimeout(600);
+    /* Voraussetzung selbst prüfen (§8.1g C): Überlebt die SITZUNG das
+       Neuladen? Gemessen, 5 Läufe parallel: Einmal war danach der
+       GANZE sessionStorage leer — auch eine fremde Probe-Marke —, ohne
+       Absturz des Seitenprozesses. Das ist kopfloses Chromium unter
+       Last mit file://, nicht der Hub (der löscht nirgends). Dann wird
+       das benannt und das Neuladen einmal wiederholt, statt die Probe
+       als Hub-Fehler rot zu melden. */
+    const gemerkt = await s.evaluate(() => { sessionStorage.setItem("probe-marke", "1"); return sessionStorage.getItem("omoteno-bereiche"); });
+    const neuLaden = async () => {
+      await s.reload(); await s.waitForSelector(".sb-kopf"); await s.waitForTimeout(600);
+      return s.evaluate(() => sessionStorage.getItem("probe-marke") === "1");
+    };
+    let sitzung = await neuLaden();
+    if (!sitzung) {
+      console.log("  hinw " + haus + ": Umgebung hat die Sitzung beim Neuladen verloren — Stand zurückgelegt, zweiter Versuch");
+      await s.evaluate(g => { sessionStorage.setItem("probe-marke", "1"); sessionStorage.setItem("omoteno-bereiche", g); }, gemerkt);
+      sitzung = await neuLaden();
+    }
+    pruef(sitzung, haus + ": die Sitzung überlebt das Neuladen (Voraussetzung)");
     await s.evaluate(() => { ZEITEN.length = 0; for (let i = 0; i < 7; i++) ZEITEN.push("10:30 – 00:30"); stunde = new Date().getHours(); zeichne(); });
     b = await bereiche(s);
-    pruef(!b[0].auf && b[2].auf && b[2].gitterHoehe > 40, haus + ": nach Neuladen in der Sitzung bleibt die Wahl", b.map(x => x.auf ? "auf" : "zu").join(","));
+    pruef(!b[0].auf && b[2].auf && b[2].gitterHoehe > 40, haus + ": nach Neuladen in der Sitzung bleibt die Wahl", b.map(x => x.auf ? "auf" : "zu").join(",") + " · gemerkt " + gemerkt);
     await s.evaluate(() => sessionStorage.removeItem("omoteno-bereiche"));
 
     /* 4 · Schnellzeile am Tisch */
