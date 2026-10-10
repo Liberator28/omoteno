@@ -233,7 +233,10 @@ async function board(browser, breite) {
   /* Das Sicherheitsnetz: Riss die Live-Leitung, holt nachholen() alle
      25 s nach — auch dort muss ein neu fertiger Bon klingeln. */
   await s.evaluate(() => { EINST.ton = true; window.__osc = []; });
-  const o5 = Object.assign(await zeile("o5"), { status: "fertig", kueche_fertig_um: new Date(Date.now() + 12000).toISOString() });
+  /* NUR die Spur ändert sich, der Status bleibt (zweispuriger Bon: die
+     Küche hakt ab, die Theke noch nicht). Mit geändertem Status zöge
+     nachholen() schon über den Status nach — der Gegenbeweis war grün. */
+  const o5 = Object.assign(await zeile("o5"), { kueche_fertig_um: new Date(Date.now() + 12000).toISOString() });
   const vorNetz = (await leiste()).ton;
   await s.evaluate(z => { window.__daten = [z]; return nachholen(betriebId); }, o5);
   await s.waitForTimeout(250);
@@ -253,10 +256,10 @@ async function board(browser, breite) {
     zeichneBoard();
   });
   const gruppen = await s.evaluate(() => [...document.querySelectorAll("#karten .kgruppe")].map(h => h.textContent.replace(/\s+/g, " ").trim()));
-  pruef(JSON.stringify(gruppen) === '["Zu prüfen 1","Neu 1","In Arbeit 1"]',
+  pruef(JSON.stringify(gruppen) === '["Zu prüfen 1","Neu 2","In Arbeit 1"]',
     "Überschriften nach Stand: Zu prüfen · Neu · In Arbeit, je mit Anzahl", JSON.stringify(gruppen));
   const reihe = await s.evaluate(() => [...document.querySelectorAll("#karten > *")].map(e => e.classList.contains("kgruppe") ? "H" : e.dataset.id).join(","));
-  pruef(reihe === "H,o6,H,g2,H,g1", "Reihenfolge: Kopf, markierte, Kopf, neue, Kopf, in Arbeit — obwohl die Arbeit älter eingetragen ist", reihe);
+  pruef(reihe === "H,o6,H,o5,g2,H,g1", "Reihenfolge: Kopf, markierte, Kopf, neue, Kopf, in Arbeit — obwohl die Arbeit älter eingetragen ist", reihe);
   pruef(!fehler.length, "keine Ausnahme im Board", fehler.join(" | ") || "still");
   await ctx.close();
 }

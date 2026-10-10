@@ -5756,13 +5756,12 @@ function abholTon(){
 /* Meldet genau EINMAL je neu fertiger Spur: nur beim Übergang, den das
    Board selbst sieht (alt → neu), nie beim Laden — sonst klingelte
    jedes Neuladen alles noch einmal, was schon am Pass steht. */
-const abholGemeldet = new Set();
 function abholPruefen(alt, neu){
   if(!alt || !istAbholbereit(neu)) return;
+  /* Nur wenn eine Spur JÜNGER fertig ist als im bekannten Stand —
+     dieselbe Nachricht zweimal (Live-Leitung und nachholen()) klingelt
+     damit nicht doppelt. */
   if(spurZeit(neu) <= spurZeit(alt)) return;
-  const schl = neu.id + "|" + spurZeit(neu);
-  if(abholGemeldet.has(schl)) return;
-  abholGemeldet.add(schl);
   abholFrisch.add(neu.id);
   abholTon();
   melde(abholWer(neu) + " · abholbereit");
