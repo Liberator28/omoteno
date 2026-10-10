@@ -33,6 +33,19 @@
 -- nachgezogen — eine Abschrift hier könnte älter sein als live). Jeder
 -- Block prüft, dass sein Anker genau einmal vorkommt.
 -- Keine Zeile beginnt mit drop/delete (§2.8).
+--
+-- ANGEWENDET 10.10. (apply_migration anfragen_bremse, danach
+-- anfragen_bremse_reservierung_zurueck). Je Funktion EINE Fassung (§2.1).
+-- Zurückgedrehte Probe als anon über request.jwt.claims, Herkunft über
+-- cf-connecting-ip (§2.4, §2.3e), Betrieb blend:
+--   Gerät A, Tisch P9: Ruf 1–4 ok, Ruf 5 → „Sie haben gerade schon
+--     mehrmals gerufen …“ | HINT bremse:10
+--   Gerät B1–B5 am selben Tisch (Tisch-Ruf 5–9): 5–8 ok, 9 → „Von diesem
+--     Tisch …“ | bremse:10 (Tischdeckel 8)
+--   ohne Gerät, Tisch Q7: 1–4 ok, 5 → abgewiesen (je Tisch)
+--   Reservierung gleiche Nummer aus 5 Netzen: 1–3 ok, ab 4 hält schon
+--     reservierung_bremse (3 je Telefon/Name in 1 h) — (e) daher zurück.
+--   Nach rollback: 0 Probezeilen in bestellungen/reservierungen.
 -- ═══════════════════════════════════════════════════════════════════
 
 -- ── (d) bestellung_aufgeben ───────────────────────────────────────
