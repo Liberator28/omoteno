@@ -501,6 +501,16 @@ button{
 .stand.s-gesperrt{background:rgba(255,106,94,.16); color:var(--alert); border:1px solid rgba(255,106,94,.40);}
 .stand.s-unbestaetigt{background:rgba(255,255,255,.05); color:var(--text-faint); border:1px solid var(--stroke);}
 
+/* ---------- Alessia je Betrieb (10.10.) ----------
+   Welcher Telefon-Assistent gehört zu welchem Haus, wie spricht er,
+   läuft er — aus master_alessia() (migration-telefonbestellung.sql).
+   Tipp auf eine Karte öffnet das Einrichten. */
+.alessia-karte{cursor:pointer; text-align:left; width:100%; font:inherit; color:inherit; border:1px solid var(--stroke);}
+.alessia-karte .z-meta{white-space:normal}
+.stand.s-aus{background:rgba(255,255,255,.05); color:var(--text-faint); border:1px solid var(--stroke);}
+.al-check{display:flex; align-items:center; gap:10px; margin:14px 0 4px; min-height:44px; font-size:14px}
+.al-check input{width:22px; height:22px}
+
 /* Umschalter „erledigte zeigen" in der Abschnittszeile */
 .section-label button.mini{
   background:transparent; border:1px solid var(--stroke); border-radius:999px;
@@ -782,6 +792,9 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
 
   <p class="section-label">Zugänge<span class="rechts" id="zugaengeNote">—</span></p>
   <div id="zugaengeListe"></div>
+
+  <p class="section-label">Alessia am Telefon<span class="rechts" id="alessiaNote">—</span></p>
+  <div id="alessiaListe"></div>
 
   <div id="diagBox" class="card hidden"></div>
 
@@ -1335,7 +1348,7 @@ function pinSchirm(rufen, s){
      RAW hält 30 Tage Rohdaten. Alle Ansichten werden daraus
      berechnet, ohne neue Abfrage.
      ============================================================ */
-  var RAW = { betriebe:[], bestellungen:[], rufe:[], umsaetze:[], anfragen:[], zugaenge:[] };
+  var RAW = { betriebe:[], bestellungen:[], rufe:[], umsaetze:[], anfragen:[], zugaenge:[], alessia:[] };
   var STATE = { range:'heute', betriebe:[], ersterLauf:true, zeigeErledigte:false };
 
   function pruefeAuthFehler(msg){
@@ -1360,7 +1373,8 @@ function pinSchirm(rufen, s){
       ladeServicerufe(),
       ladeUmsaetze(tagKey(seit)),
       ladeAnfragen(),
-      ladeZugaenge()
+      ladeZugaenge(),
+      ladeAlessia()
     ]).then(function(res){
       RAW.betriebe     = res[0];
       RAW.bestellungen = res[1];
@@ -1368,6 +1382,7 @@ function pinSchirm(rufen, s){
       RAW.umsaetze     = res[3];
       RAW.anfragen     = res[4];
       RAW.zugaenge     = res[5];
+      RAW.alessia      = res[6];
       console.log(LOG,'Rohdaten:',{
         betriebe:RAW.betriebe.length, bestellungen:RAW.bestellungen.length,
         rufe:RAW.rufe.length, umsaetze:RAW.umsaetze.length, anfragen:RAW.anfragen.length,
@@ -1571,6 +1586,27 @@ function pinSchirm(rufen, s){
     });
   }
 
+  /* Alessia je Betrieb: Nummer, Assistent, Stimme, aktiv, letzte
+     Telefonbestellung. master_alessia() prüft ist_master() selbst. */
+  function ladeAlessia(){
+    return sb.rpc('master_alessia').then(function(res){
+      if(res.error){
+        console.log(LOG,'FEHLER master_alessia:',res.error.message);
+        DIAG.alessia = (res.error.code === '42883' || /does not exist/i.test(res.error.message))
+          ? 'Funktion fehlt — migration-telefonbestellung.sql noch nicht ausgeführt'
+          : 'FEHLER: ' + res.error.message;
+        pruefeAuthFehler(res.error.message);
+        return [];
+      }
+      var rows = res.data || [];
+      DIAG.alessia = rows.length + ' Zeilen';
+      return rows;
+    }).catch(function(e){
+      DIAG.alessia = 'FEHLER: ' + (e && e.message ? e.message : 'unbekannt');
+      return [];
+    });
+  }
+
   /* ============================================================
      6.6 BERECHNUNG + RENDERING
      ============================================================ */
@@ -1631,6 +1667,7 @@ function pinSchirm(rufen, s){
     renderAnfragen();
     renderListe();
     renderZugaenge();
+    renderAlessia();
     $('standNote').textContent = 'Stand ' + uhr.format(new Date()) + ' Uhr';
   }
 
@@ -1808,6 +1845,105 @@ function pinSchirm(rufen, s){
       box.appendChild(el);
     });
   }
+
+  /* ============================================================
+     6.5c ALESSIA — welcher Telefon-Assistent gehört zu welchem Haus
+     Wunsch 10.10.: „Ich sehe, der KI-Telefonagent ist für den Betrieb,
+     der redet so, der hat diesen Datensatz — alles getrennt.“ Der
+     Datensatz ist immer die Karte DIESES Betriebs (alessia_wissen);
+     hier steht, welche Nummer und welcher Vapi-Assistent dazugehören.
+     ============================================================ */
+  function alStatus(a){
+    var c = a.alessia || {};
+    if(!a.telefon_nummer && !c.nummer_id) return { txt:'Keine Nummer', cls:'s-aus' };
+    if(c.aktiv !== true) return { txt:'Aus', cls:'s-aus' };
+    return { txt:'Nimmt an', cls:'s-aktiv' };
+  }
+  function renderAlessia(){
+    var box = $('alessiaListe'); if(!box) return;
+    var alle = RAW.alessia || [];
+    var an = alle.filter(function(a){ return alStatus(a).cls === 's-aktiv'; }).length;
+    $('alessiaNote').textContent = alle.length ? (an + ' von ' + alle.length + ' nehmen an') : '—';
+    if(!alle.length){
+      box.innerHTML = '<div class="card empty">' +
+        (DIAG.alessia && String(DIAG.alessia).indexOf('Funktion fehlt') === 0
+          ? 'Die Alessia-Übersicht gibt es noch nicht.<br>Führ <b>migration-telefonbestellung.sql</b> im SQL-Editor aus.'
+          : 'Noch kein Betrieb.') + '</div>';
+      return;
+    }
+    box.innerHTML = '';
+    alle.forEach(function(a, i){
+      var c = a.alessia || {}, st = alStatus(a);
+      var el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'card zugang alessia-karte';
+      el.setAttribute('data-alessia', a.betrieb_id);
+      el.style.animationDelay = (i*40) + 'ms';
+      el.innerHTML =
+        '<div class="z-main">' +
+          '<h2 class="z-betrieb">' + esc(a.name || a.slug) + '</h2>' +
+          '<div class="z-mail">' + esc(a.telefon_nummer || 'keine Rufnummer') +
+            (c.assistent_id ? ' &middot; Assistent ' + esc(c.assistent_id) : '') + '</div>' +
+          '<div class="z-meta">' + (c.stimme ? esc(c.stimme) + ' &middot; ' : '') +
+            esc(a.letzte_bestellung ? 'Bestellung ' + zeitText(a.letzte_bestellung).replace(/^Zuletzt /, '') : 'noch keine Telefonbestellung') +
+            ' &middot; ' + esc(String(a.bestellungen_7_tage || 0)) + ' in 7 Tagen</div>' +
+        '</div>' +
+        '<span class="stand ' + st.cls + '">' + esc(st.txt) + '</span>';
+      box.appendChild(el);
+    });
+  }
+  var AL_GRUND = {
+    nur_master: 'Nur ein Master-Konto darf Alessia einrichten.',
+    nummer_form: 'Die Nummer bitte international schreiben, z. B. +49301234567.',
+    nummer_vergeben: 'Diese Nummer gehört schon einem anderen Betrieb.',
+    form: 'Die Angaben sind zu lang.',
+    unbekannt: 'Den Betrieb gibt es nicht mehr.'
+  };
+  function oeffneAlessiaSheet(id){
+    var a = (RAW.alessia || []).filter(function(x){ return x.betrieb_id === id; })[0];
+    if(!a) return;
+    var c = a.alessia || {};
+    var ov = baueSheet(
+      '<h3>Alessia · ' + esc(a.name || a.slug) + '</h3>' +
+      '<p class="sub">Alessia beantwortet Fragen nur aus der Karte dieses Betriebs und legt Bestellungen direkt in sein Board und seine Küche.</p>' +
+      '<label for="alNummer">Rufnummer (wie in Vapi)</label>' +
+      '<input id="alNummer" type="tel" autocomplete="off" placeholder="+49301234567" value="' + esc(a.telefon_nummer || '') + '">' +
+      '<label for="alNummerId">Vapi-Nummer-ID (optional)</label>' +
+      '<input id="alNummerId" type="text" autocomplete="off" value="' + esc(c.nummer_id || '') + '">' +
+      '<label for="alAssistent">Vapi-Assistent-ID</label>' +
+      '<input id="alAssistent" type="text" autocomplete="off" value="' + esc(c.assistent_id || '') + '">' +
+      '<label for="alStimme">So spricht sie (Notiz für dich)</label>' +
+      '<input id="alStimme" type="text" autocomplete="off" maxlength="300" placeholder="warm, per Sie, kurz" value="' + esc(c.stimme || '') + '">' +
+      '<label for="alGruss">Begrüßung</label>' +
+      '<input id="alGruss" type="text" autocomplete="off" maxlength="200" placeholder="Restaurant Beispiel, hier ist Alessia." value="' + esc(c.begruessung || '') + '">' +
+      '<label class="al-check"><input id="alAktiv" type="checkbox"' + (c.aktiv === true ? ' checked' : '') + '> Nimmt Anrufe und Bestellungen an</label>' +
+      '<p class="sub" id="alMeldung" aria-live="polite"></p>' +
+      '<button id="alSave" class="btn-primary">Speichern</button>' +
+      '<button id="alClose" class="btn-ghost">Abbrechen</button>'
+    );
+    if(!ov) return;
+    function schliesse(){ if(ov.parentNode) ov.remove(); }
+    ov.querySelector('#alClose').addEventListener('click', schliesse);
+    ov.querySelector('#alSave').addEventListener('click', function(){
+      var knopf = ov.querySelector('#alSave'), wert = function(x){ return ov.querySelector(x).value.trim(); };
+      knopf.disabled = true;
+      sb.rpc('master_alessia_setzen', { p_betrieb: id, p_nummer: wert('#alNummer') || null, p_alessia: {
+        aktiv: ov.querySelector('#alAktiv').checked, assistent_id: wert('#alAssistent'), nummer_id: wert('#alNummerId'),
+        stimme: wert('#alStimme'), begruessung: wert('#alGruss') } }).then(function(res){
+        knopf.disabled = false;
+        var d = res && res.data;
+        if(res.error || !d || !d.ok){
+          ov.querySelector('#alMeldung').textContent = (d && AL_GRUND[d.grund]) || 'Nicht gespeichert, bitte Verbindung prüfen.';
+          return;
+        }
+        toast('Alessia gespeichert','ok'); schliesse(); ladeAlles();
+      }, function(){ knopf.disabled = false; ov.querySelector('#alMeldung').textContent = 'Nicht gespeichert, bitte Verbindung prüfen.'; });
+    });
+  }
+  document.addEventListener('click', function(e){
+    var k = e.target.closest && e.target.closest('[data-alessia]');
+    if(k) oeffneAlessiaSheet(k.getAttribute('data-alessia'));
+  });
 
   /* ============================================================
      6.6b ANFRAGEN — Liste, Detail, Anhänge

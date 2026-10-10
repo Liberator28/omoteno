@@ -1,36 +1,38 @@
 /* ═══════════════════════════════════════════════════════════════════
-   ALESSIA · Der Webhook, den Vapi ruft
+   ALESSIA · Der Webhook, den Vapi für JEDEN Betrieb ruft (neu 10.10.)
    ═══════════════════════════════════════════════════════════════════
 
-   Ausrollen:
+   Ausrollen (einmal, gilt für alle Betriebe):
      supabase functions deploy alessia-bestellung --no-verify-jwt
      supabase secrets set VAPI_SECRET=<derselbe Wert wie in Vapi>
 
-   --no-verify-jwt ist Absicht: Vapi schickt kein Supabase-Token.
-   Die Echtheit haengt stattdessen am gemeinsamen Geheimnis im Kopf
-   X-Vapi-Secret. Ohne diese Pruefung koennte JEDER Bestellungen in
-   fremde Kuechen legen — deshalb steht sie ganz vorn und bricht ab,
-   bevor irgendetwas gelesen wird.
+   --no-verify-jwt ist Absicht: Vapi schickt kein Supabase-Token. Die
+   Echtheit hängt am gemeinsamen Geheimnis im Kopf X-Vapi-Secret — es
+   steht ganz vorn und bricht ab, bevor irgendetwas gelesen wird.
 
-   WAS DIESE FUNKTION NICHT TUT: Sie glaubt Alessia keinen Preis. Der
-   wird in bestellung_telefon() aus der Karte NACHGERECHNET. Ein
-   Sprachmodell am Telefon kann sich verhoeren, und ein Anrufer kann
-   alles behaupten. Massgeblich ist die Karte (CLAUDE.md 2.3a).
+   Zwei Werkzeuge, beide hier:
+     karte_lesen  → alessia_wissen()    was der Hub jedem Gast zeigt
+     bestellen    → bestellung_telefon() Preis aus der Karte NACHGERECHNET
 
-   NICHT GEGEN VAPI GETESTET. Die Arbeitsumgebung erreicht weder
-   Supabase noch Vapi. Die Form der Nutzlast unten folgt Vapis
-   dokumentiertem tool-call-Format; weicht deine Fassung ab, ist
-   „nutzlastLesen" die einzige Stelle, die angepasst werden muss.
+   TRENNUNG DER BETRIEBE: Welches Haus gemeint ist, steht NUR in der
+   Anrufinfo von Vapi (angerufene Nummer bzw. Vapi-Nummer-ID). Nie in
+   den Argumenten, die das Sprachmodell füllt — sonst könnte ein
+   Anrufer („bestell das bei Blend“) oder ein verhörtes Wort die
+   Bestellung in eine fremde Küche legen. Die Datenbank prüft danach
+   jedes Gericht gegen genau diese eine Karte.
+
+   Ehrliche Grenze: Gegen einen echten Vapi-Anruf ist das hier nicht
+   getestet (keine Vapi-Verbindung aus der Arbeitsumgebung). Die Form
+   folgt Vapis tool-calls-Nachricht; weicht sie ab, ist
+   „nutzlastLesen“ die einzige Stelle, die angepasst werden muss.
    ═══════════════════════════════════════════════════════════════════ */
 
-const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
-const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SERVICE_KEY  = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 const VAPI_SECRET  = Deno.env.get("VAPI_SECRET") ?? "";
 
-/* Zeitgleicher Vergleich. Ein gewoehnliches === verraet ueber die
-   Laufzeit, wie viele Zeichen stimmen — bei einem Geheimnis, das
-   beliebig oft geraten werden darf, ist das der Unterschied zwischen
-   „nicht zu erraten" und „in ein paar tausend Versuchen". */
+/* Zeitgleicher Vergleich: Ein gewöhnliches === verrät über die
+   Laufzeit, wie viele Zeichen stimmen. */
 function gleichLang(a: string, b: string): boolean {
   if (a.length !== b.length) return false;
   let d = 0;
@@ -39,107 +41,124 @@ function gleichLang(a: string, b: string): boolean {
 }
 
 const antwort = (koerper: unknown, status = 200) =>
-  new Response(JSON.stringify(koerper), {
-    status,
-    headers: { "Content-Type": "application/json" },
+  new Response(JSON.stringify(koerper), { status, headers: { "Content-Type": "application/json" } });
+
+type Aufruf = { id: string | null; name: string; argumente: Record<string, unknown> };
+type Nutzlast = {
+  aufrufe: Aufruf[];
+  gerufen: string | null;
+  nummerId: string | null;
+  anrufer: string | null;
+  rufId: string | null;
+  transkript: string | null;
+};
+
+/* Vapi verpackt Werkzeugaufrufe verschachtelt und nicht immer gleich;
+   beides wird gelesen. Was fehlt, wird null — kein Absturz. */
+function nutzlastLesen(roh: any): Nutzlast {
+  const nachricht = roh?.message ?? roh ?? {};
+  const liste: any[] = Array.isArray(nachricht?.toolCallList) ? nachricht.toolCallList
+    : Array.isArray(nachricht?.toolCalls) ? nachricht.toolCalls
+    : nachricht?.functionCall ? [nachricht.functionCall] : [];
+  const aufrufe: Aufruf[] = liste.map((w: any) => {
+    let arg = w?.function?.arguments ?? w?.arguments ?? w?.parameters ?? {};
+    if (typeof arg === "string") { try { arg = JSON.parse(arg); } catch { arg = {}; } }
+    if (!arg || typeof arg !== "object" || Array.isArray(arg)) arg = {};
+    return { id: w?.id ?? w?.toolCallId ?? null, name: String(w?.function?.name ?? w?.name ?? ""), argumente: arg };
   });
-
-/* Vapi verpackt einen Werkzeugaufruf verschachtelt und nicht immer
-   gleich. Hier wird beides gelesen, statt sich auf eine Form zu
-   verlassen — und was fehlt, faellt auf undefined statt auf einen
-   Absturz. */
-function nutzlastLesen(roh: any) {
-  const nachricht = roh?.message ?? roh;
-  const werkzeug =
-    nachricht?.toolCalls?.[0] ??
-    nachricht?.toolCallList?.[0] ??
-    nachricht?.functionCall ??
-    null;
-
-  let argumente = werkzeug?.function?.arguments ?? werkzeug?.parameters ?? {};
-  if (typeof argumente === "string") {
-    try { argumente = JSON.parse(argumente); } catch { argumente = {}; }
-  }
-
   const anruf = nachricht?.call ?? roh?.call ?? {};
+  const text = (x: unknown) => (typeof x === "string" && x.trim() ? x.trim() : null);
   return {
-    werkzeugId: werkzeug?.id ?? werkzeug?.toolCallId ?? null,
-    /* Die ANGERUFENE Nummer entscheidet, in welches Haus die
-       Bestellung geht. Niemals die des Anrufers — die kann jeder
-       faelschen, und sie sagt ohnehin nichts ueber das Restaurant. */
-    gerufen:  anruf?.phoneNumber?.number ?? anruf?.phoneNumberId ?? argumente?.gerufene_nummer ?? null,
-    anrufer:  anruf?.customer?.number ?? argumente?.anrufer ?? null,
-    name:     argumente?.name ?? anruf?.customer?.name ?? null,
-    positionen: Array.isArray(argumente?.positionen) ? argumente.positionen : [],
-    notiz:      argumente?.notiz ?? null,
-    abholung:   argumente?.abholung ?? true,
-    wunschzeit: argumente?.wunschzeit ?? null,
-    transkript: nachricht?.transcript ?? nachricht?.artifact?.transcript ?? null,
-    rufId:      anruf?.id ?? null,
+    aufrufe,
+    /* Nur aus der Anrufinfo — NIE aus den Argumenten (siehe oben). */
+    gerufen:  text(nachricht?.phoneNumber?.number) ?? text(anruf?.phoneNumber?.number),
+    nummerId: text(anruf?.phoneNumberId) ?? text(nachricht?.phoneNumber?.id),
+    anrufer:  text(anruf?.customer?.number) ?? text(nachricht?.customer?.number),
+    rufId:    text(anruf?.id),
+    transkript: text(nachricht?.artifact?.transcript) ?? text(nachricht?.transcript),
   };
 }
 
-Deno.serve(async (anfrage) => {
-  if (anfrage.method !== "POST") return antwort({ error: "nur POST" }, 405);
+/* Welche Funktion ein Werkzeug ruft, und mit welchen Feldern. Die
+   Feldnamen sind dieselben wie die Parameter in
+   datenbank/migration-telefonbestellung.sql (pruef-alessia.js hält
+   beide gegeneinander). */
+function rpcFuer(a: Aufruf, d: Nutzlast): { fn: string; koerper: Record<string, unknown> } | null {
+  if (a.name === "karte_lesen") {
+    return { fn: "alessia_wissen", koerper: { p_gerufene_nummer: d.gerufen, p_nummer_id: d.nummerId } };
+  }
+  if (a.name === "bestellen") {
+    const arg = a.argumente;
+    const pos = Array.isArray(arg.positionen) ? arg.positionen.slice(0, 40)
+      .filter((p: any) => p && typeof p === "object")
+      .map((p: any) => ({ name: String(p.name ?? "").slice(0, 160), menge: Number.isFinite(+p.menge) ? Math.trunc(+p.menge) : 1 })) : [];
+    const zeit = typeof arg.wunschzeit === "string" && !isNaN(Date.parse(arg.wunschzeit)) ? arg.wunschzeit : null;
+    return { fn: "bestellung_telefon", koerper: {
+      p_gerufene_nummer: d.gerufen,
+      p_nummer_id:       d.nummerId,
+      p_anrufer:         d.anrufer,
+      p_name:            typeof arg.name === "string" ? arg.name.slice(0, 80) : null,
+      p_positionen:      pos,
+      p_notiz:           typeof arg.notiz === "string" ? arg.notiz.slice(0, 500) : null,
+      p_wunschzeit:      zeit,
+      p_transkript:      d.transkript ? d.transkript.slice(0, 8000) : null,
+      p_ruf_id:          d.rufId,
+    } };
+  }
+  return null;
+}
 
-  /* ── Echtheit zuerst, vor allem anderen ── */
+/* Was Alessia vorliest — nie ein Fehlercode, nie ein Stück Technik. */
+function ergebnisText(fn: string, erg: any): string {
+  if (fn === "alessia_wissen") {
+    if (!erg?.ok) return "Ich kann die Karte gerade nicht abrufen. Bitte rufen Sie das Restaurant direkt an.";
+    return JSON.stringify({ betrieb: erg.betrieb, nimmt_an: erg.nimmt_an, pause_satz: erg.pause_satz ?? null,
+                            abholung: erg.abholung, lieferung_im_hub: erg.lieferung_im_hub, karte: erg.karte });
+  }
+  return typeof erg?.sagen === "string" ? erg.sagen : (erg?.ok ? "Notiert." : "Das hat gerade nicht geklappt.");
+}
+
+async function rpc(fn: string, koerper: Record<string, unknown>): Promise<any> {
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/rpc/${fn}`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` },
+    body: JSON.stringify(koerper),
+  });
+  if (!r.ok) { console.error(fn + " abgelehnt:", r.status, (await r.text()).slice(0, 300)); return null; }
+  return await r.json();
+}
+
+async function bearbeiten(anfrage: Request): Promise<Response> {
+  if (anfrage.method !== "POST") return antwort({ error: "nur POST" }, 405);
   if (!VAPI_SECRET) {
     console.error("VAPI_SECRET ist nicht gesetzt — es wird nichts angenommen.");
     return antwort({ error: "nicht eingerichtet" }, 503);
   }
-  const mitgeschickt = anfrage.headers.get("x-vapi-secret") ?? "";
-  if (!gleichLang(mitgeschickt, VAPI_SECRET)) {
-    return antwort({ error: "nicht erlaubt" }, 401);
-  }
+  if (!gleichLang(anfrage.headers.get("x-vapi-secret") ?? "", VAPI_SECRET)) return antwort({ error: "nicht erlaubt" }, 401);
 
   let roh: any;
-  try { roh = await anfrage.json(); }
-  catch { return antwort({ error: "kein JSON" }, 400); }
-
+  try { roh = await anfrage.json(); } catch { return antwort({ error: "kein JSON" }, 400); }
   const d = nutzlastLesen(roh);
-  if (!d.gerufen) {
-    return antwort({ error: "keine gerufene Nummer in der Nutzlast" }, 400);
+  /* Andere Vapi-Nachrichten (Statusmeldungen, Gesprächsende) haben
+     keinen Werkzeugaufruf — still quittieren. */
+  if (!d.aufrufe.length) return antwort({ ok: true });
+
+  const results = [];
+  for (const a of d.aufrufe) {
+    let result = "Das kann ich hier nicht.";
+    if (!d.gerufen && !d.nummerId) {
+      result = "Ich kann gerade nicht zuordnen, welches Restaurant Sie angerufen haben. Bitte rufen Sie direkt an.";
+    } else {
+      const auftrag = rpcFuer(a, d);
+      if (auftrag) {
+        const erg = await rpc(auftrag.fn, auftrag.koerper);
+        result = erg === null ? "Das hat gerade nicht geklappt. Bitte versuchen Sie es in einem Moment noch einmal."
+                              : ergebnisText(auftrag.fn, erg);
+      }
+    }
+    results.push({ toolCallId: a.id, result });
   }
+  return antwort({ results });
+}
 
-  /* ── In die Datenbank, ueber die gepruefte Funktion ── */
-  const ruf = await fetch(`${SUPABASE_URL}/rest/v1/rpc/bestellung_telefon`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      apikey: SERVICE_KEY,
-      Authorization: `Bearer ${SERVICE_KEY}`,
-    },
-    body: JSON.stringify({
-      p_gerufene_nummer: String(d.gerufen),
-      p_anrufer:    d.anrufer ? String(d.anrufer) : null,
-      p_name:       d.name ? String(d.name) : null,
-      p_positionen: d.positionen,
-      p_notiz:      d.notiz,
-      p_abholung:   d.abholung !== false,
-      p_wunschzeit: d.wunschzeit,
-      p_transkript: d.transkript,
-      p_ruf_id:     d.rufId,
-    }),
-  });
-
-  if (!ruf.ok) {
-    const text = await ruf.text();
-    console.error("bestellung_telefon abgelehnt:", ruf.status, text.slice(0, 400));
-    /* Alessia bekommt einen Satz, den sie vorlesen kann — keinen
-       Fehlercode. Der Anrufer soll nicht in der Leitung raten. */
-    return antwort({
-      results: [{
-        toolCallId: d.werkzeugId,
-        result: "Das hat gerade nicht geklappt. Bitte versuchen Sie es in einem Moment noch einmal.",
-      }],
-    });
-  }
-
-  const erg = await ruf.json();
-  return antwort({
-    results: [{
-      toolCallId: d.werkzeugId,
-      result: erg?.sagen ?? (erg?.ok ? "Notiert." : "Das hat nicht geklappt."),
-    }],
-  });
-});
+Deno.serve(bearbeiten);
