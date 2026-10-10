@@ -585,14 +585,11 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 
 /* ═══ Öffnungsanzeige (Wunsch 10.10.) ═══════════════════════════
    Eine kleine Glas-Box oben rechts.
-   Geschlossen: eine digitale Sanduhr — ein Raster aus LED-Punkten füllt
-   sich von unten mit buntem Sand, je näher die Öffnung rückt (Anteil
-   der Zeit seit dem letzten Schließen); ein Korn fällt nach.
-   Offen: „Geöffnet bis …“ in Regenbogen-LED — jeder Buchstabe eine
-   Farbe, zu 40 % in die Bandschrift gemischt (bei 50 % kam Minhkeeys rotes Band auf 4,16:1), damit er auf JEDEM
-   Band lesbar bleibt (§5.1, gemessen je Buchstabe); darunter eine
-   laufende LED-Leiste. Kein background-clip:text (§5.2: das machte
-   die Farbe für jede Messung unsichtbar). Bewegt wird nur transform. */
+   Geschlossen: ein hohler Ring, „Öffnet heute 10:30“ und eine feine
+   Linie, die sich bis zur Öffnung füllt (Anteil der Zeit seit dem
+   letzten Schließen).
+   Offen: „Geöffnet bis …“ neben einem ruhigen Punkt (siehe unten).
+   Alles in der Bandschrift — eine Farbe, gemessen ≥ 4,5:1. */
 .status{
   position:relative;display:inline-flex;align-items:center;gap:7px;overflow:hidden;isolation:isolate;
   padding:6px 10px 8px;border-radius:12px;font-size:11.5px;line-height:1.2;font-weight:650;letter-spacing:.1px;
@@ -603,24 +600,23 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
   -webkit-backdrop-filter:blur(10px) saturate(150%);backdrop-filter:blur(10px) saturate(150%);
 }
 .st-text{min-width:0}
-.st-text span{color:color-mix(in srgb, hsl(var(--h, 0) 100% 60%) 40%, var(--band-text))}
-/* Die laufende LED-Leiste unten in der Box: ein doppelt so breiter
-   Regenbogen gleitet durch (transform), eine Punktmaske macht LEDs daraus. */
-.st-led{position:absolute;left:8px;right:8px;bottom:2px;height:2px;overflow:hidden;pointer-events:none;
-  -webkit-mask:radial-gradient(circle, #000 .8px, transparent 1.05px) 0 50%/4px 2px repeat-x;
-          mask:radial-gradient(circle, #000 .8px, transparent 1.05px) 0 50%/4px 2px repeat-x}
-.st-led::before{content:"";position:absolute;top:0;bottom:0;left:0;width:200%;
-  background:linear-gradient(90deg,#ff5f6d,#ffc371,#f9f871,#7cff9b,#5fd3ff,#9b8cff,#ff7ad9,#ff5f6d,#ffc371,#f9f871,#7cff9b,#5fd3ff,#9b8cff,#ff7ad9,#ff5f6d);
-  animation:stLed 4.5s linear infinite}
-@keyframes stLed{to{transform:translateX(-50%)}}
-/* Die Sanduhr: 9 × 5 LED-Punkte in einem Glasfenster. */
-.st-sand{flex:none;width:30px;height:18px;border-radius:5px;display:block;
-  background:rgba(0,0,0,.2);border:1px solid color-mix(in srgb, var(--band-text) 20%, transparent)}
-.st-sand svg{display:block;width:100%;height:100%}
-.st-sand .aus{fill:var(--band-text);opacity:.14}
-.st-korn{animation:stKorn 1.8s cubic-bezier(.5,0,.75,0) infinite}
-@keyframes stKorn{0%{transform:translateY(0);opacity:0}15%{opacity:1}100%{transform:translateY(var(--fall, 9px));opacity:0}}
-@media (prefers-reduced-motion:reduce){ .st-led::before,.st-korn{animation:none} .st-korn{display:none}
+/* Seit 10.10. (dritte Nachricht): „klassisch schlicht und modern ohne
+   RGB“. Eine Farbe — die Bandschrift —, ein Punkt, ein Satz. Offen ein
+   voller Punkt mit leisem Atem (nur opacity/transform am Ring), zu ein
+   hohler Ring und darunter eine feine Linie, die sich bis zur Öffnung
+   füllt (scaleX = Anteil, ohne Dauerlauf). Kein Regenbogen, kein Sand. */
+.st-punkt{flex:none;position:relative;width:7px;height:7px;border-radius:50%;
+  background:var(--band-text)}
+.status.zu .st-punkt{background:transparent;border:1.5px solid var(--band-text);width:8px;height:8px;opacity:.75}
+.status.offen .st-punkt::after{content:"";position:absolute;inset:0;border-radius:50%;
+  background:var(--band-text);opacity:0;animation:stAtem 2.8s cubic-bezier(.16,1,.3,1) infinite}
+@keyframes stAtem{0%{transform:scale(1);opacity:.5}70%,100%{transform:scale(2.6);opacity:0}}
+.st-linie{position:absolute;left:10px;right:10px;bottom:3px;height:2px;border-radius:2px;overflow:hidden;pointer-events:none;
+  background:color-mix(in srgb, var(--band-text) 18%, transparent)}
+.st-linie i{position:absolute;inset:0;border-radius:2px;background:var(--band-text);opacity:.7;
+  transform-origin:0 50%;transform:scaleX(var(--anteil, 0))}
+[dir="rtl"] .st-linie i{transform-origin:100% 50%}
+@media (prefers-reduced-motion:reduce){ .status.offen .st-punkt::after{animation:none}
   .fr-rad.dreht .fr-lichter i::before{animation:none} }
 
 /* ═══ Der Guss ═══════════════════════════════════════════════════
@@ -4375,9 +4371,9 @@ function markeAnwenden(abend){
   </button>
   <h1 id="titel"></h1>
   <p class="claim" id="claim"></p>
-  <!-- Öffnungsstand: seit 10.10. oben rechts als kleine Glas-Box
-       (geschlossen: LED-Sand füllt sich bis zur Öffnung; offen:
-       „Geöffnet bis …“ in Regenbogen-LED). statusHTML() zeichnet. -->
+  <!-- Öffnungsstand oben rechts als kleine Glas-Box: Punkt + Satz,
+       geschlossen dazu eine feine Linie bis zur Öffnung. Eine Farbe.
+       statusHTML() zeichnet. -->
   <div id="status" aria-live="polite"></div>
   <!-- Hell oder dunkel steht NEBEN der Sprachwahl, weil beides
        dasselbe beantwortet: wie der Gast den Hub sehen will. Beide
@@ -9955,7 +9951,7 @@ function jetztOffen(){
   if(gestern && jetzt + 24 < gestern.zu)
     return { offen:true, bis:gestern.bis, text:t("Offen bis {x}", {x:gestern.bis}) };
 
-  /* Für die Sanduhr: wann zuletzt geschlossen wurde (Stunden ab heute
+  /* Für die Linie bis zur Öffnung: wann zuletzt geschlossen wurde (Stunden ab heute
      0 Uhr, auch negativ), damit der Sand den Anteil der Wartezeit zeigt. */
   let zuletzt = null;
   for(let d = -7; d <= 0; d++){
@@ -9978,43 +9974,28 @@ function jetztOffen(){
   return { offen:false, anteil:0, text:t("Gerade geschlossen") };
 }
 
-/* Die Öffnungsanzeige oben rechts (siehe CSS .status). */
-const ST_SPALTEN = 9, ST_ZEILEN = 5;
+/* Die Öffnungsanzeige oben rechts (siehe CSS .status). Eine Farbe,
+   ein Punkt, ein Satz — geschlossen dazu die feine Linie bis zur
+   Öffnung (Anteil aus jetztOffen()). */
 function statusHTML(st){
   if(st.offen && st.bis){
     const satz = t("Geöffnet bis {x}", {x: st.bis});
-    /* Je Buchstabe eine Regenbogenfarbe — nicht in Schriften, die ihre
-       Buchstaben verbinden (Arabisch): getrennte Spans brächen sie. */
-    const bunt = RTL.indexOf(sprache) >= 0 ? hs(satz)
-      : [...satz].map((z, i) => z === " " ? " " : '<span style="--h:' + Math.round(i * 360 / Math.max(1, satz.length)) + '">' + hs(z) + '</span>').join("");
-    return '<span class="status offen" title="' + hs(satz) + '"><span class="st-text">' + bunt + '</span>' +
-           '<span class="st-led" aria-hidden="true"></span></span>';
+    return '<span class="status offen" title="' + hs(satz) + '"><span class="st-punkt" aria-hidden="true"></span>' +
+           '<span class="st-text">' + hs(satz) + '</span></span>';
   }
   const satz = st.ab ? t("Öffnet {w} {x}", {w: st.wann, x: st.ab}) : st.text;
-  const n = ST_SPALTEN * ST_ZEILEN, voll = Math.round((st.anteil || 0) * n);
-  let punkte = "";
-  for(let i = 0; i < n; i++){
-    const zeile = ST_ZEILEN - 1 - Math.floor(i / ST_SPALTEN), spalte = i % ST_SPALTEN;
-    const an = i < voll;
-    punkte += '<circle cx="' + (1.5 + spalte * 3) + '" cy="' + (1.5 + zeile * 3) + '" r="1.05"' +
-      (an ? ' fill="hsl(' + ((i * 47) % 360) + ' 95% 62%)"' : ' class="aus"') + '/>';
-  }
-  /* Ein Korn fällt auf die oberste Sandschicht — solange nicht voll. */
-  const ziel = voll >= n ? 0 : ST_ZEILEN - 1 - Math.floor(voll / ST_SPALTEN);
-  const korn = voll < n && ziel > 0
-    ? '<circle class="st-korn" cx="' + (1.5 + (voll % ST_SPALTEN) * 3) + '" cy="1.5" r="1.05" style="--fall:' + (ziel * 3) +
-      'px" fill="hsl(' + ((voll * 47) % 360) + ' 95% 62%)"/>' : "";
-  return '<span class="status zu" title="' + hs(st.text) + '">' +
-         '<span class="st-sand" aria-hidden="true" data-anteil="' + (st.anteil || 0).toFixed(3) + '">' +
-         '<svg viewBox="0 0 27 15">' + punkte + korn + '</svg></span>' +
-         '<span class="st-text">' + hs(satz) + '</span></span>';
+  const anteil = Math.max(0, Math.min(1, st.anteil || 0));
+  return '<span class="status zu" title="' + hs(st.text) + '"><span class="st-punkt" aria-hidden="true"></span>' +
+         '<span class="st-text">' + hs(satz) + '</span>' +
+         (st.ab ? '<span class="st-linie" aria-hidden="true" data-anteil="' + anteil.toFixed(3) + '">' +
+                  '<i style="--anteil:' + anteil.toFixed(3) + '"></i></span>' : "") + '</span>';
 }
 function statusZeichnen(){
   const el = $("status"); if(!el) return;
   const html = statusHTML(jetztOffen());
   if(el.innerHTML !== html) el.innerHTML = html;
 }
-/* Der Sand rieselt weiter: einmal je Minute neu (nur sichtbar). */
+/* Die Linie wächst weiter: einmal je Minute neu (nur sichtbar). */
 setInterval(() => { if(!document.hidden && document.body.dataset.ansicht === "start") statusZeichnen(); }, 60000);
 
 /* ---------- Startseite ---------- */
