@@ -33,11 +33,29 @@
 --  Additiv (§2.5). Kein drop, kein delete (§2.8).
 --
 --  NICHT LIVE GEPRÜFT: Der Supabase-Zugang war am 11.10. getrennt
---  (ERR_PROXY_TUNNEL). Im lokalen Postgres 16 gegen das Modell
---  datenbank/modell-lokal-pin.sql gefahren (Probe unten, Ergebnis im
---  Kopf von pruefungen/pruef-bestellkarten.js). Im SQL-Editor einspielen,
---  danach die Probe am Ende; vorher die Spalten von betrieb_mitglieder
---  nachsehen (§1.1a) — gibt es „nummer“ schon, NICHT einspielen.
+--  (ERR_PROXY_TUNNEL). Im SQL-Editor einspielen, danach die Probe am
+--  Ende; vorher die Spalten von betrieb_mitglieder und bestellungen
+--  nachsehen (§1.1a) — gibt es „nummer“ oder „zugewiesen“ schon mit
+--  anderer Bedeutung, NICHT einspielen. Die Probe fügt Bestellungen mit
+--  wenigen Spalten ein; verlangt die Live-Tabelle mehr (NOT NULL),
+--  die Probe anpassen, nicht die Migration.
+--
+--  LOKAL GEPRÜFT (Postgres 16.13, Modell modell-lokal-pin.sql um die
+--  berührten Spalten ergänzt, Migration zweimal hintereinander, also
+--  wiederholbar):
+--   Nummern Choco inhaber=1 team=2 team=3 · Blend inhaber=1
+--   Modus aus → null · fair 6 auf 3 → 1:2 2:2 3:2 · Nr. 3 frei → 3
+--   Gleichstand → 1 · zufall [2,3] in 40 → nur 2,3 · hand → null
+--   Dienst ohne echte Nummer [7,"x"] → null · art „chef“ → abgewiesen
+--   neues Mitglied → 4 · team_nummern als Team: alle vier, „ich“
+--   markiert · fremder Betrieb 0 · Nummer setzen als Team → kein_inhaber
+--   · Team weist zu 1 Zeile, fremder Betrieb 0 · Inhaber 3→9 ok,
+--   9→1 vergeben, 9→0 bereich · andere Spalte (name) 1 Zeile (§2.7)
+--   · anon: team_nummern, Trigger-Funktion, team_modus lesen →
+--   abgewiesen · je Funktion eine Fassung.
+--  Gegenbeweise (lokal): Reihenfolge ohne count → „Nr. 3 frei“ ergab 1
+--  (rot); Ausnahmeblock weg + Zahlenumwandlung → die Bestellung selbst
+--  scheiterte („invalid input syntax“) — genau das fängt der Block ab.
 -- ═══════════════════════════════════════════════════════════════════
 
 -- ── 1 · Nummer je Mitglied ─────────────────────────────────────────
