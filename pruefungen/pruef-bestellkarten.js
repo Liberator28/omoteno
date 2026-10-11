@@ -287,13 +287,30 @@ async function teil4(browser, ruhig) {
   const n2 = l.filter(x => x.id === "n2");
   pruef(n2.length === 1 && n2[0].f.status === "arbeit" && !("wartezeit_min" in n2[0].f), "Wisch über einem Minuten-Knopf: Status, aber KEINE Zusage", JSON.stringify(n2));
 
+  /* Dasselbe mit der Maus (Board am Tresen): Zug ab einem Minuten-Knopf */
+  if (!ruhig) {
+    await s.evaluate(() => { const b = bestellungen.find(x => x.id === "n2"); b.status = "neu"; b.wartezeit_min = null; zeichneBoard(); });
+    const mz = await s.evaluate(() => { const z = document.querySelector('.bestellung[data-id="n2"] .zmin'); z.scrollIntoView({ block: "center" });
+      const q = z.getBoundingClientRect(); return { x: q.left + q.width / 2, y: q.top + q.height / 2 }; });
+    const vorMaus = (await log()).length;
+    await s.mouse.move(mz.x, mz.y); await s.mouse.down();
+    for (let i = 1; i <= 14; i++) { await s.mouse.move(mz.x - 220 * i / 14, mz.y); await s.waitForTimeout(16); }
+    await s.mouse.up(); await s.waitForTimeout(500);
+    const lm = (await log()).slice(vorMaus);
+    pruef(lm.length === 1 && lm[0].f.status === "arbeit" && !("wartezeit_min" in lm[0].f), "Maus-Zug ab einem Minuten-Knopf: Status, KEINE Zusage", JSON.stringify(lm));
+  }
+
   /* Zu prüfen ist nicht wischbar */
   await wisch(s, cdp, '.bestellung[data-id="p1"]', 0.6);
   await s.waitForTimeout(400);
   pruef(!(await log()).some(x => x.id === "p1"), "„Zu prüfen“ lässt sich nicht wegwischen");
 
   /* Knopf bleibt Zweitweg */
-  await s.evaluate(() => { document.getElementById("rueckleiste").hidden = true; zeichneBoard(); });
+  /* Die Vorführung schiebt nach 9 s eine Telefonbestellung ein — dann
+     wären es fünf offene und „In Arbeit“ stünde zu (gewollt). */
+  await s.evaluate(() => { document.getElementById("rueckleiste").hidden = true;
+    const i = bestellungen.findIndex(b => b.id === "demo-neu"); if (i >= 0) bestellungen.splice(i, 1); zeichneBoard();
+    document.querySelector('.bestellung[data-id="a9"] .schritt[data-status="fertig"]').scrollIntoView({ block: "center" }); });
   await s.click('.bestellung[data-id="a9"] .schritt[data-status="fertig"]');
   await s.waitForTimeout(300);
   l = await log();
