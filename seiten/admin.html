@@ -310,6 +310,40 @@ body.hell{
   --schleier-b:rgba(58,99,41,.10);
 }
 
+/* ── Ganz weiß und ganz schwarz (Wunsch 11.10.) ──────────────────
+   Zwei Fassungen ÜBER hell bzw. dunkel: Sie tragen deren
+   Bedeutungsfarben (Messing, Warnung, Gut …) weiter und ersetzen nur
+   Flächen und Schrift — auf reinem Weiß und reinem Schwarz steigt
+   jeder Kontrast gegenüber Papier bzw. Flaschengrün, keiner fällt
+   (pruef-hell.js rechnet es nach). Wie bei body.hell: Was aus einer
+   anderen Variable abgeleitet ist (--glas), steht hier neu (§3.2).
+   Dieselben Werte stehen in kueche.html — zwei Boards nebeneinander
+   sehen gleich aus. */
+body.weiss{
+  --nacht:#FFFFFF; --tresen:#FFFFFF; --karte:#FFFFFF; --linie:#D4D4D4;
+  --kreide:#000000; --gedaempft:#4D4D4D;
+  --flaeche:#FFFFFF; --flaeche-2:#F0F0F0; --grau:#4D4D4D;
+  --tresen-glas:rgba(255,255,255,.9); --leiste-glas:rgba(255,255,255,.9);
+  --schleier:rgba(250,250,250,.97);
+  --glas:color-mix(in srgb, var(--flaeche) 84%, transparent);
+  --glas-rand:rgba(0,0,0,.12);
+  --glas-licht:rgba(255,255,255,.8);
+  --glas-schatten:0 1px 0 var(--glas-licht) inset, 0 12px 30px -18px rgba(0,0,0,.28);
+  --schleier-a:rgba(0,0,0,.04); --schleier-b:rgba(0,0,0,.025);
+}
+body.schwarz{
+  --nacht:#000000; --tresen:#000000; --karte:#0B0B0B; --linie:rgba(255,255,255,.16);
+  --kreide:#FFFFFF; --gedaempft:#A8A8A8;
+  --flaeche:#0B0B0B; --flaeche-2:#161616; --grau:#A8A8A8;
+  --tresen-glas:rgba(0,0,0,.86); --leiste-glas:rgba(0,0,0,.86);
+  --schleier:rgba(0,0,0,.96);
+  --glas:color-mix(in srgb, var(--flaeche) 82%, transparent);
+  --glas-rand:rgba(255,255,255,.12);
+  --glas-licht:rgba(255,255,255,.05);
+  --glas-schatten:0 1px 0 var(--glas-licht) inset, 0 14px 34px -18px rgba(0,0,0,.8);
+  --schleier-a:rgba(255,255,255,.035); --schleier-b:rgba(255,255,255,.02);
+}
+
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 /* hidden muss hidden bleiben. .zahl setzt display:inline-block und
    schlägt damit die UA-Regel für [hidden] — der Zähler an den
@@ -2469,6 +2503,12 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
 .klangwahl:has(> .klang:nth-child(2)[aria-checked="true"]){--wahl:1}
 .klangwahl:has(> .klang:nth-child(3)[aria-checked="true"]){--wahl:2}
 .klangwahl:not(:has(> .klang[aria-checked="true"]))::before{opacity:0}
+/* Fünf Ansichten in zwei Reihen (3 + 2): Eine Reihe aus fünf ließe auf
+   dem Telefon keine Unterzeile lesbar (§3.6). Der gleitende Daumen
+   steht nur in der Reihe, deren Wahl gilt — die andere zeigt keinen. */
+.lichtreihen{display:grid;gap:8px}
+.klangwahl.kw-zwei{grid-template-columns:repeat(2,1fr)}
+.klangwahl.kw-zwei::before{width:calc((100% - 6px) / 2)}
 .klang{
   position:relative;z-index:1;min-width:0;min-height:48px;padding:9px 6px;border-radius:11px;
   border:0;background:transparent;
@@ -3936,13 +3976,21 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <h2 class="etitel">Bildschirm</h2>
       <div class="ezeile senkrecht">
         <span><b>Hell oder dunkel</b><i>Am Fenster spiegelt Dunkel, im Abendbetrieb blendet Hell</i></span>
-        <div class="klangwahl" id="lichtWahl" role="radiogroup" aria-label="Ansicht wählen">
-          <button class="klang" data-licht="auto"   role="radio" aria-checked="true">
-            <b>Automatisch</b><i>Folgt dem Gerät</i></button>
-          <button class="klang" data-licht="hell"   role="radio" aria-checked="false">
-            <b>Hell</b><i>Für Tageslicht</i></button>
-          <button class="klang" data-licht="dunkel" role="radio" aria-checked="false">
-            <b>Dunkel</b><i>Für den Abend</i></button>
+        <div class="lichtreihen" id="lichtWahl" role="radiogroup" aria-label="Ansicht wählen">
+          <div class="klangwahl" role="presentation">
+            <button class="klang" data-licht="auto"   role="radio" aria-checked="true">
+              <b>Automatisch</b><i>Folgt dem Gerät</i></button>
+            <button class="klang" data-licht="hell"   role="radio" aria-checked="false">
+              <b>Hell</b><i>Für Tageslicht</i></button>
+            <button class="klang" data-licht="dunkel" role="radio" aria-checked="false">
+              <b>Dunkel</b><i>Für den Abend</i></button>
+          </div>
+          <div class="klangwahl kw-zwei" role="presentation">
+            <button class="klang" data-licht="schwarz" role="radio" aria-checked="false">
+              <b>Ganz schwarz</b><i>Für dunkle Räume, OLED</i></button>
+            <button class="klang" data-licht="weiss"   role="radio" aria-checked="false">
+              <b>Ganz weiß</b><i>Maximal hell</i></button>
+          </div>
         </div>
       </div>
       <div class="ezeile senkrecht" id="skalaZeile">
@@ -7577,9 +7625,14 @@ setInterval(() => {
 function lichtAnwenden(){
   const dunkelAmGeraet = !window.matchMedia ||
     !window.matchMedia("(prefers-color-scheme: light)").matches;
-  const hell = EINST.licht === "hell" ||
+  const weiss = EINST.licht === "weiss", schwarz = EINST.licht === "schwarz";
+  const hell = weiss || EINST.licht === "hell" ||
                (EINST.licht === "auto" && !dunkelAmGeraet);
   document.body.classList.toggle("hell", hell);
+  /* Ganz weiß liegt ÜBER hell, ganz schwarz über dunkel — die
+     Bedeutungsfarben kommen aus der Grundfassung (siehe CSS). */
+  document.body.classList.toggle("weiss", weiss);
+  document.body.classList.toggle("schwarz", schwarz);
   /* CLAUDE.md §5.2c: :root sagt bisher "light dark" — dem Browser
      ist es damit selbst überlassen, native Bedienelemente (u. a. ein
      Feld ohne eigene Farbe) nach dem GERÄTE-Schema zu malen, nicht
@@ -7588,7 +7641,7 @@ function lichtAnwenden(){
      Ansage folgt jetzt der WIRKLICH gemalten Fläche. */
   document.documentElement.style.colorScheme = hell ? "only light" : "only dark";
   const m = document.querySelector('meta[name="theme-color"]');
-  if(m) m.setAttribute("content", hell ? "#FBF9F1" : "#102621");
+  if(m) m.setAttribute("content", weiss ? "#FFFFFF" : schwarz ? "#000000" : hell ? "#FBF9F1" : "#102621");
 }
 
 function einstZeichnen(){
@@ -7785,10 +7838,10 @@ const EU_BEREICHE = [
       ? '<g class="eu-strich" transform="translate(4 0) scale(1.7)">' + AV_ICONS[AVATARSTAND.figur].replace(/^<svg[^>]*>|<\/svg>$/g, "") + '</g>' : "" },
   { titel:"Bildschirm", sym:"schirm", ton:"var(--telefon)",
     satz:"Hell oder dunkel, Schriftgröße, wach halten",
-    stand:() => ({auto:"Automatisch", hell:"Hell", dunkel:"Dunkel"}[EINST.licht] || EINST.licht) + " · " + Math.round(EINST.skala * 100) + " %",
+    stand:() => ({auto:"Automatisch", hell:"Hell", dunkel:"Dunkel", schwarz:"Ganz schwarz", weiss:"Ganz weiß"}[EINST.licht] || EINST.licht) + " · " + Math.round(EINST.skala * 100) + " %",
     bild:() => '<rect class="eu-rahmen" x="4" y="8" width="40" height="28" rx="4"/>' +
       '<path class="eu-hell" d="M5 9h19v26H9a4 4 0 0 1-4-4z"/><path class="eu-dunkel" d="M24 9h16a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H24z"/>' +
-      (EINST.licht === "hell" ? '<path class="eu-wahl" d="M8 40h13"/>' : EINST.licht === "dunkel" ? '<path class="eu-wahl" d="M27 40h13"/>' : '<path class="eu-wahl" d="M8 40h32"/>') },
+      (EINST.licht === "hell" || EINST.licht === "weiss" ? '<path class="eu-wahl" d="M8 40h13"/>' : EINST.licht === "dunkel" || EINST.licht === "schwarz" ? '<path class="eu-wahl" d="M27 40h13"/>' : '<path class="eu-wahl" d="M8 40h32"/>') },
   { titel:"Nichts übersehen", sym:"uhr", ton:"var(--warn)",
     satz:"Mahnt, wenn eine Bestellung zu lange auf „Neu“ steht",
     stand:() => EINST.mahnungAb ? "Mahnt nach " + EINST.mahnungAb + " Minuten" : "Aus",
