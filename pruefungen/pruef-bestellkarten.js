@@ -467,6 +467,19 @@ async function teil6(browser) {
   const nachLaden = await s.evaluate(() => TM.geraet);
   pruef(nachLaden === 3, "„Dieses Gerät ist Nr. 3“ übersteht ein Neuladen (vor der Konto-Vorgabe)", nachLaden);
 
+  /* Längster erlaubter Name (60 Zeichen, betrieb_mitglieder_grenzen) bei 360 px */
+  await s.setViewportSize({ width: 360, height: 780 });
+  const lang = await s.evaluate(() => {
+    TM.nummern = [{ nummer: 1, name: "M".repeat(30) + " " + "H".repeat(29), ich: true }, { nummer: 2, name: "Ali" }];
+    TM.modus = { an: true, art: "fair", dienst: [1, 2] }; TM.geraet = 1;
+    bestellungen.forEach(b => { if (b.status !== "fertig") b.zugewiesen = 1; }); tmZeichnen(); zeichneBoard();
+    const k = document.getElementById("teamKnopf").getBoundingClientRect();
+    const sel = [...document.querySelectorAll("[data-tmzuw]")].map(x => x.getBoundingClientRect().right);
+    return { knopf: Math.round(k.right), wahl: Math.round(Math.max(0, ...sel)), ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+  });
+  pruef(lang.knopf <= 360 && lang.wahl <= 360 && lang.ueber <= 0, "Name mit 60 Zeichen bei 360 px: Knopf und Wahl bleiben im Bild", JSON.stringify(lang));
+  await s.setViewportSize({ width: 390, height: 844 });
+
   /* Migration fehlt: Satz statt Fehler, keine Plakette */
   await setzen(s, [["a1", "arbeit", "4", 5, { zugewiesen: 2 }]]);
   await s.evaluate(DB_STELLEN, { modus: null, nummern: null, fehlt: true });
