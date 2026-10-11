@@ -871,7 +871,40 @@ html{font-size:calc(16px * var(--skala,1))}
 .filterinfo{font-size:12px;color:var(--gedaempft);margin-top:4px}
 
 /* ─── Bestellkarte ─────────────────────────────────────────── */
-.karten{display:flex;flex-direction:column;gap:12px}
+.karten{display:flex;flex-direction:column;gap:12px;position:relative}
+/* Team-Modus: Knopf über den Filtern, Plakette auf der Karte. */
+.tmzeile{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+.tmknopf{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;border-radius:var(--ecke-pille);
+  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.tmknopf .tmstand{font-weight:600;color:var(--gedaempft)}
+.tmknopf[aria-pressed=true]{border-color:var(--messing);background:color-mix(in srgb, var(--messing) 18%, var(--karte))}
+.tmknopf[aria-pressed=true] .tmstand{color:var(--kreide)}
+.tmdienst{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px}
+.tmchip{min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);border:1px solid var(--linie);
+  background:var(--flaeche-2);color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+.tmchip[aria-pressed=true]{border-color:var(--messing);background:var(--messing);color:var(--sockel);font-weight:650}
+body.hell .tmchip[aria-pressed=true]{color:var(--flaeche)}
+.tmzuw{min-height:44px;max-width:100%;padding:0 12px;margin:8px 0 0;border-radius:var(--ecke-pille);
+  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font:inherit;font-size:16px;font-weight:650;-webkit-appearance:none;appearance:none;cursor:pointer}
+.tmzuw.meins{border-color:var(--messing);box-shadow:inset 0 0 0 1px var(--messing)}
+.tmzuw.niemand{color:var(--gedaempft);-webkit-text-fill-color:var(--gedaempft)}
+/* Wischen: die Karte gleitet, darunter steht die nächste Stufe. */
+.bestellung{touch-action:pan-y}
+.bestellung.bwisch{z-index:1;will-change:transform;user-select:none;-webkit-user-select:none}
+.wischziel{position:absolute;z-index:0;display:flex;align-items:center;justify-content:flex-end;
+  padding:0 22px;border-radius:var(--r);font-weight:750;font-size:16px;pointer-events:none;
+  background:color-mix(in srgb, var(--messing) 22%, var(--karte));color:var(--kreide)}
+.wischziel[data-stufe="fertig"]{background:color-mix(in srgb, var(--gut) 24%, var(--karte))}
+.wischziel span{opacity:.55;transform:scale(.94);transition:opacity .15s,transform .15s var(--ease-out)}
+.wischziel.bereit span{opacity:1;transform:none}
+.rueckleiste{position:fixed;left:50%;bottom:calc(var(--leiste-h, 64px) + 14px);transform:translateX(-50%);z-index:81;
+  display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;
+  border-radius:var(--ecke-pille);background:var(--kreide);color:var(--nacht);font-size:14px;font-weight:600;
+  box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.rueckleiste span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rueckleiste button{flex:0 0 auto;min-height:44px;padding:0 16px;border-radius:var(--ecke-pille);border:0;
+  background:var(--nacht);color:var(--kreide);font:inherit;font-weight:700;cursor:pointer}
 /* Überschriften nach Stand in der Bestellliste (Wunsch 10.10.: „übersichtlicher“). */
 .kgruppe{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;margin:10px 2px -2px;
   font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gedaempft)}
@@ -1349,6 +1382,30 @@ html{font-size:calc(16px * var(--skala,1))}
 }
 .zusage.an{color:var(--gut)}
 .zusage.an b{font-size:14.5px;color:var(--gut)}
+/* Zugeklappte Karte (viele offene Bestellungen): Kopf und eine Zeile. */
+.bestellung.bzu > :not(.bkopf):not(.bklapp):not(.tmzuw){display:none}
+.bestellung.bzu .bkopf{cursor:pointer}
+.bklapp{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;margin:6px 0 4px;padding:8px 12px;
+  border-radius:10px;border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);
+  font:inherit;font-size:14px;text-align:start;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.bklapp .bkurz{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bklapp svg{flex:0 0 auto;transition:transform .2s var(--ease-out)}
+.bklapp[aria-expanded="true"]{margin-top:2px;border-style:dashed;background:transparent;color:var(--gedaempft);font-size:13px}
+.bklapp[aria-expanded="true"] svg{transform:rotate(180deg)}
+.zrestkurz{flex:0 0 auto;font-size:15px;font-weight:750;font-variant-numeric:tabular-nums;color:var(--gut)}
+.zrestkurz.zknapp{color:var(--glut)}
+.zrestkurz.zueber{color:var(--warn)}
+@media (prefers-reduced-motion:reduce){.bklapp svg{transition:none}}
+/* Restzeit: die Zahl ist das Wichtigste auf der Karte nach dem Tisch. */
+.zusage.zrest{position:relative;padding-bottom:17px}
+.zusage.zrest .zrestzahl{font-size:20px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.zusage.zrest .zvon{font-size:12.5px;color:var(--gedaempft)}
+.zbalken{position:absolute;left:0;right:0;bottom:6px;height:4px;border-radius:2px;overflow:hidden;
+  background:color-mix(in srgb, var(--kreide) 12%, transparent)}
+.zbalken i{display:block;height:100%;background:currentColor;transform-origin:left center;
+  transition:transform .6s var(--ease-out)}
+.zusage.zrest.zknapp,.zusage.zrest.zknapp b{color:var(--glut)}
+.zusage.zrest.zueber,.zusage.zrest.zueber b{color:var(--warn)}
 .zusage .zurueck{
   margin-left:auto;border:0;background:transparent;color:var(--gedaempft);
   font-family:inherit;font-size:12px;text-decoration:underline;
@@ -3322,6 +3379,14 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <button class="chip" data-quelle="telefon"      aria-pressed="true"><span class="kasten"></span>Alessia <span class="anzahl" data-z="telefon">0</span></button>
         <button class="chip" data-quelle="lieferung"    aria-pressed="true"><span class="kasten"></span>Lieferung <span class="anzahl" data-z="lieferung">0</span></button>
       </div>
+      <!-- Team-Modus (Wunsch 11.10.): Bestellungen werden Nummern
+           zugewiesen. Der Knopf trägt seine Stellung (aria-pressed). -->
+      <div class="tmzeile">
+        <button type="button" class="tmknopf" id="teamKnopf" aria-pressed="false">
+          <span class="tmtitel">Team-Modus</span><span class="tmstand" id="teamStandKurz">aus</span>
+        </button>
+        <button type="button" class="chip" id="nurMeine" aria-pressed="false" hidden><span class="kasten"></span>Nur meine</button>
+      </div>
       <div class="filterzeile" id="statusFilter">
         <button class="chip" data-status="neu"    aria-pressed="true"><span class="kasten"></span>Neu</button>
         <button class="chip" data-status="arbeit" aria-pressed="true"><span class="kasten"></span>In Arbeit</button>
@@ -4464,6 +4529,42 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   </div>
 </div>
 
+<div class="blatt" id="teamBlatt" hidden>
+  <div class="blattinhalt">
+    <div class="blattgriff"></div>
+    <h2 class="ztitel">Team-Modus</h2>
+    <p class="zhilfe">Jede neue Bestellung bekommt eine Nummer aus dem Team. Auf jeder Karte steht, wer sie hat.</p>
+    <div class="epruefung" id="teamFehlt" hidden></div>
+    <div class="tmbesitzer" id="teamBesitzer">
+      <div class="schalter">
+        <div><div class="schaltertext">Team-Modus an</div>
+        <div class="schalterhilfe">Aus = niemand wird zugewiesen, alles wie bisher.</div></div>
+        <button class="wippe" id="teamAn" aria-pressed="false" aria-label="Team-Modus an"></button>
+      </div>
+      <div class="auswahlfeld">
+        <span class="lname">Wie verteilen?</span>
+        <div class="segment" id="teamArt" role="radiogroup" aria-label="Wie verteilen">
+          <button type="button" data-tm-art="fair" role="radio" aria-checked="true">Gerecht</button>
+          <button type="button" data-tm-art="zufall" role="radio" aria-checked="false">Zufällig</button>
+          <button type="button" data-tm-art="hand" role="radio" aria-checked="false">Von Hand</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+        <p class="zhilfe" id="teamArtHilfe"></p>
+      </div>
+      <span class="lname" id="teamDienstName">Wer ist im Dienst?</span>
+      <div class="tmdienst" id="teamDienst" role="group" aria-labelledby="teamDienstName"></div>
+    </div>
+    <p class="epruefung" id="teamNurBesitzer" hidden>Nur der Besitzer kann den Team-Modus ändern. „Dieses Gerät“ stellst du selbst ein.</p>
+    <label class="auswahlfeld"><span class="lname">Dieses Gerät ist</span>
+      <select id="teamGeraet"></select></label>
+    <div class="epruefung" id="teamStand"></div>
+    <div class="blattfuss">
+      <button class="knopf" id="teamSichern">Übernehmen</button>
+      <button class="knopf leise" id="teamZu">Schließen</button>
+    </div>
+  </div>
+</div>
+
 <div class="blatt" id="zeitBlatt" hidden>
   <div class="blattinhalt zeitinhalt">
     <div class="blattgriff"></div>
@@ -4955,6 +5056,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 </div>
 
 <div class="meldung" id="meldung" hidden></div>
+<div class="rueckleiste" id="rueckleiste" role="status" hidden><span></span><button type="button">Rückgängig</button></div>
 
 <script>
 /*  DOMAINSPERRE
@@ -5080,6 +5182,28 @@ const gemahnt = new Set();
 function offenSeit(b){
   return Math.max(0, Math.floor((Date.now() - new Date(b.zeitpunkt).getTime()) / 60000));
 }
+
+/* ═══ RESTZEIT · GETEILTER BLOCK ═══════════════════════════════════
+   Steht Zeichen für Zeichen gleich in kueche.html und admin.html
+   (pruef-bestellkarten.js vergleicht). Wie viel von der Zusage ist
+   noch übrig? Minuten aus dem Board UND Zeitpunkt der Bestätigung;
+   fehlt eines, gibt es keine Zusage (null). Das letzte Fünftel ist
+   die Vorwarnung — gewählt, nicht gemessen: bei 20 Minuten die
+   letzten vier, bei 60 die letzten zwölf. */
+function restLage(b, jetzt){
+  var zusage = (Number(b.wartezeit_min) > 0 && b.bestaetigt_um) ? Number(b.wartezeit_min) : 0;
+  if(!zusage) return null;
+  var seit = Math.floor(((jetzt || Date.now()) - new Date(b.bestaetigt_um).getTime()) / 60000);
+  var rest = zusage - seit;
+  var vorwarnung = Math.max(1, Math.round(zusage / 5));
+  return {
+    zusage: zusage, seit: seit, rest: rest,
+    anteil: Math.min(100, Math.max(0, Math.round((seit / zusage) * 100))),
+    spaet: rest >= 0 && rest <= vorwarnung,
+    sehrSpaet: rest < 0
+  };
+}
+/* ═══ ENDE RESTZEIT ═══════════════════════════════════════════════ */
 
 function istUeberfaellig(b){
   if(!EINST.mahnungAb) return false;
@@ -9037,6 +9161,7 @@ async function betriebOeffnen(id){
   nlVorratLaden(id);
   nlUebersichtLaden(id);
 
+  teamLaden(id);
   live_anmelden(id, marke);
   reservierungenLaden(id);
   notizenLaden(id);
@@ -9323,6 +9448,52 @@ function zeichneAlles(){ zeichneBoard(); zeichneKarte(); zeichneAusgabe(); aktio
    80 reicht: Mehr passt ohnehin auf keinen Bildschirm, und was älter
    ist, sucht man über die Tagesliste, nicht durch Scrollen. */
 const KARTEN_MAX = 80;
+/* Ab wie vielen offenen Bestellungen die Karten „In Arbeit“ zuklappen. */
+const B_KLAPP_AB = 4;
+const bAuf = new Map();
+/* Restzeit der Zusage (Wunsch 11.10.: „Koch und Service sollen sehen,
+   wie viel Zeit von der Zusage noch übrig ist“). Gezeichnet mit der
+   Karte, danach zieht restNachziehen() Zahl, Farbe und Balken am
+   BESTEHENDEN Element nach (§4.2). Ein eigener Takt, weil das
+   Neuzeichnen je Minute in mahnungPruefen() nur läuft, wenn die
+   Mahnung eingeschaltet ist — ohne sie stünde die Zahl still. */
+function restTeile(b){
+  const r = restLage(b);
+  return { r, stufe: r.sehrSpaet ? " zueber" : r.spaet ? " zknapp" : "",
+    wort: r.sehrSpaet ? "Überzogen" : "Noch", zahl: (r.sehrSpaet ? "+" + (-r.rest) : r.rest) + " Min",
+    kurz: r.sehrSpaet ? "+" + (-r.rest) + " Min" : "noch " + r.rest + " Min" };
+}
+function restHTML(b){
+  const t = restTeile(b);
+  return `<div class="zusage an zrest${t.stufe}" data-rest="${sicher(b.id)}">
+       <span class="zt">${t.wort}</span>
+       <b class="zrestzahl">${t.zahl}</b>
+       <span class="zvon">von ${t.r.zusage} Min</span>
+       <button class="zurueck" data-warte="0" data-id="${sicher(b.id)}">ändern</button>
+       <span class="zbalken" aria-hidden="true"><i style="transform:scaleX(${t.r.anteil / 100})"></i></span>
+     </div>`;
+}
+function restKurzHTML(b){
+  const t = restTeile(b);
+  return `<b class="zrestkurz${t.stufe}" data-restkurz="${sicher(b.id)}">${t.kurz}</b>`;
+}
+function restNachziehen(){
+  document.querySelectorAll("#karten [data-rest], #karten [data-restkurz]").forEach(el => {
+    const id = el.dataset.rest || el.dataset.restkurz;
+    const b = bestellungen.find(x => String(x.id) === id);
+    if(!b || !restLage(b)) return;
+    const t = restTeile(b);
+    el.classList.toggle("zueber", t.stufe === " zueber");
+    el.classList.toggle("zknapp", t.stufe === " zknapp");
+    if(el.dataset.restkurz){ if(el.textContent !== t.kurz) el.textContent = t.kurz; return; }
+    const zt = el.querySelector(".zt"), z = el.querySelector(".zrestzahl"), i = el.querySelector(".zbalken i");
+    if(zt && zt.textContent !== t.wort) zt.textContent = t.wort;
+    if(z && z.textContent !== t.zahl) z.textContent = t.zahl;
+    if(i) i.style.transform = "scaleX(" + (t.r.anteil / 100) + ")";
+  });
+}
+setInterval(restNachziehen, 20000);
+
 
 const STAND_GRUPPE = ["Zu prüfen", "Neu", "In Arbeit", "Fertig", "Sonstiges"];
 function standGruppe(b){
@@ -9330,7 +9501,9 @@ function standGruppe(b){
   return ({ neu:1, arbeit:2, fertig:3 })[b.status] ?? 4;
 }
 function gefiltert(){
-  return bestellungen.filter(b => zeigeQuelle[b.quelle] && zeigeStatus[b.status]);
+  const nur = tmNurMeineAktiv();
+  return bestellungen.filter(b => zeigeQuelle[b.quelle] && zeigeStatus[b.status] &&
+    (!nur || Number(b.zugewiesen) === TM.geraet));
 }
 
 /* Servicerufe desselben Tisches als EINE Karte (Wunsch 10.10., Foto:
@@ -9379,6 +9552,10 @@ function rabattZeile(b){
 }
 
 function zeichneBoard(){
+  /* Während ein Finger eine Karte zieht, wird nicht neu gezeichnet —
+     sonst rutscht die Karte unter dem Finger weg (§4.2). Nach der
+     Geste zeichnet statusSetzen() ohnehin neu. */
+  if(bWischAktiv){ bWischNachholen = true; return; }
   zeichneAbholen();
   ["tisch","telefon","lieferung"].forEach(q => {
     const n = bestellungen.filter(b => b.quelle === q && zeigeStatus[b.status]).length;
@@ -9401,17 +9578,26 @@ function zeichneBoard(){
   /* Nach Stand geordnet (Wunsch 10.10.: „übersichtlicher“): Zu prüfen ·
      Neu · In Arbeit · Fertig, je mit Überschrift. sort ist stabil —
      innerhalb einer Gruppe bleibt die Zeitfolge wie bisher. */
-  alle.sort((a, b) => standGruppe(a) - standGruppe(b));
+  /* In Arbeit: die knappste Zusage zuerst (Wunsch 11.10.); ohne Zusage
+     dahinter in der alten Zeitfolge — sort ist stabil. */
+  const restKey = b => { if(b.status !== "arbeit") return 0; const r = restLage(b); return r ? r.rest : 1e6; };
+  alle.sort((a, b) => standGruppe(a) - standGruppe(b) || restKey(a) - restKey(b));
   const liste = alle.slice(0, KARTEN_MAX);
   const jeGruppe = {};
   liste.forEach(b => { const g = standGruppe(b); jeGruppe[g] = (jeGruppe[g] || 0) + 1; });
   const versteckt = alle.length - liste.length;
   const offen = bestellungen.filter(b => b.status === "neu" && !b.pruefen).length;
   const zuPruefen = bestellungen.filter(b => b.pruefen && b.status === "neu").length;
+  const ueberzogen = bestellungen.filter(b => b.status === "arbeit" && (restLage(b) || {}).sehrSpaet).length;
+  /* Viele offene Bestellungen: Karten „In Arbeit“ und „Fertig“ stehen
+     zugeklappt, „Neu“ und „Zu prüfen“ nie (die Annahme muss auffallen).
+     Ein Tipp merkt sich die Wahl je Karte (bAuf) über jedes Neuzeichnen. */
+  const vieleOffen = bestellungen.filter(b => b.status === "neu" || b.status === "arbeit").length > B_KLAPP_AB;
   $("#filterInfo").textContent = liste.length === 0 ? "" :
     `${liste.length} ${liste.length===1?"Bestellung":"Bestellungen"}` +
     (offen ? ` · ${offen} noch offen` : "") +
-    (zuPruefen ? ` · ${zuPruefen} zu prüfen` : "");
+    (zuPruefen ? ` · ${zuPruefen} zu prüfen` : "") +
+    (ueberzogen ? ` · ${ueberzogen} überzogen` : "");
 
   const ziel = $("#karten");
 
@@ -9513,11 +9699,13 @@ function zeichneBoard(){
       : "";
     const zusage = (b.status === "fertig" || b.pruefen) ? "" : (
       b.wartezeit_min
-        ? `<div class="zusage an">
+        ? (restLage(b)
+          ? restHTML(b)
+          : `<div class="zusage an">
              <span class="zt">Zugesagt</span>
              <b>ca. ${b.wartezeit_min} Min</b>
              <button class="zurueck" data-warte="0" data-id="${sicher(b.id)}">ändern</button>
-           </div>`
+           </div>`)
         : (b.status === "neu"
           /* Noch niemand hat sich der Bestellung angenommen — anders als
              bei "arbeit" ohne Zusage (schon in Arbeit, Zeit fehlt nur
@@ -9549,7 +9737,19 @@ function zeichneBoard(){
       : `<div class="wartet${spaet ? " spaet" : ""}">${
           min < 1 ? "gerade eben" : "seit " + min + " Min"}</div>`;
 
-    return gkopf + `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
+    const klappbar = b.quelle !== "service" && !b.pruefen && b.status !== "neu";
+    const zu = klappbar && (bAuf.has(b.id) ? !bAuf.get(b.id) : vieleOffen);
+    const posZahl = (b.positionen || []).reduce((s2, p) => s2 + (Number(p.menge) || 0), 0);
+    const kurz = klappbar
+      ? `<button type="button" class="bklapp" data-bklapp="${sicher(b.id)}" aria-expanded="${!zu}">
+           <span class="bkurz">${zu
+             ? (posZahl ? posZahl + (posZahl === 1 ? " Gericht" : " Gerichte") + " · " : "") +
+               sicher((b.positionen || []).map(p => p.name).slice(0, 2).join(", ")) + ((b.positionen || []).length > 2 ? " …" : "")
+             : "Zuklappen"}</span>
+           ${zu && restLage(b) ? restKurzHTML(b) : ""}
+           <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+         </button>` : "";
+    return gkopf + `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}${zu?" bzu":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
       <div class="bkopf">
         <div class="herkunft">
           <div class="hmarke">${welle}${QUELLE_TEXT[b.quelle]}${rufzahl}</div>
@@ -9566,6 +9766,8 @@ function zeichneBoard(){
             : ""}
         </div>
       </div>
+      ${kurz}
+      ${tmZuwHTML(b)}
       ${pruefband}${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
       ${b.summe > 0 ? rabattZeile(b) : ""}
       <div class="schritte"${b.pruefen ? " hidden" : ""}>
@@ -15857,6 +16059,21 @@ $("#statusFilter").onclick = e => {
 
 // Status einer Bestellung ändern
 $("#karten").onclick = async e => {
+  /* Karte auf- oder zuklappen: der Knopf, oder bei einer zugeklappten
+     Karte auch ihr Kopf (größere Fläche). Die Wahl gilt je Karte über
+     jedes Neuzeichnen (bAuf). */
+  const klapp = e.target.closest("[data-bklapp]") ||
+    (e.target.closest(".bestellung.bzu .bkopf") && !e.target.closest("a,button") ? e.target.closest(".bestellung") : null);
+  if(klapp){
+    const id = klapp.dataset.bklapp || klapp.dataset.id;
+    const karte = klapp.closest(".bestellung");
+    bAuf.set(id, karte.classList.contains("bzu"));
+    zeichneBoard();
+    const neu = document.querySelector(`.bestellung[data-id="${CSS.escape(id)}"] [data-bklapp]`);
+    if(neu && e.target.closest("[data-bklapp]")) neu.focus({ preventScroll:true });
+    return;
+  }
+
   /* Rabattcode-Eingabe auf-/zuklappen */
   const rOeffnen = e.target.closest("[data-rabattoeffnen]");
   if(rOeffnen){
@@ -15920,7 +16137,12 @@ $("#karten").onclick = async e => {
   }
 
   const k = e.target.closest(".schritt"); if(!k) return;
-  const {id, status} = k.dataset;
+  await statusSetzen(k.dataset.id, k.dataset.status);
+};
+
+/* Ein Statuswechsel, egal woher: Knopf oder Wischgeste (Wunsch 11.10.).
+   EINE Schreibstelle — die Geste ruft genau das, was der Knopf ruft. */
+async function statusSetzen(id, status){
   const b = bestellungen.find(x => x.id === id); if(!b) return;
 
   /* Doppeltippen ignorieren, solange die erste Änderung läuft.
@@ -15962,7 +16184,283 @@ $("#karten").onclick = async e => {
     ids.forEach(i => inArbeit.delete(i));
     neuZeichnen();
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TEAM-MODUS (Wunsch 11.10.)
+
+   „… in den Team-Modus schalten, dann werden Bestellungen den Team-
+   Mitgliedern zugewiesen und gerecht aufgeteilt. Entweder zufällig
+   oder man kann zuweisen. … Nutzer-Nummern, damit man weiß, welche
+   Bestellung zu wem kommt.“
+
+   Verteilt wird in der DATENBANK beim Einfügen (migration-teammodus.sql),
+   damit zwei Geräte nie verschieden verteilen. Das Board zeigt die
+   Nummer, lässt umhängen (direkt, wie der Status) und filtert „Nur
+   meine“. Die Nummer DIESES Geräts liegt im Gerät — so geht es mit
+   eigenem Zugang je Person und mit einem geteilten Tablet. Vorgabe ist
+   die Nummer des angemeldeten Kontos.
+   Fehlt die Migration, sagt das Blatt es; sonst bleibt alles wie vorher.
+   ═══════════════════════════════════════════════════════════════ */
+const TM = { modus: null, nummern: [], geraet: null, fehlt: false, geladen: false, nurMeine: false, entwurf: null };
+const TM_ART_HILFE = {
+  fair: "Wer im Dienst gerade die wenigsten offenen Bestellungen hat, bekommt die nächste.",
+  zufall: "Jede neue Bestellung geht an jemanden aus dem Dienst, zufällig.",
+  hand: "Niemand wird automatisch zugewiesen — ihr tippt auf der Karte, wer sie nimmt."
 };
+const tmSchluessel = () => "omoteno-geraet-nr-" + (betriebId || "demo");
+function tmAn(){ return !!(TM.modus && TM.modus.an === true); }
+function tmNurMeineAktiv(){ return tmAn() && TM.nurMeine && TM.geraet != null; }
+function tmName(nr){
+  const m = TM.nummern.find(x => Number(x.nummer) === Number(nr));
+  return m ? m.nummer + " · " + m.name : "Nr. " + nr;
+}
+function tmModusAus(roh){
+  if(!roh || typeof roh !== "object" || Array.isArray(roh)) return null;
+  const art = ["fair", "zufall", "hand"].includes(roh.art) ? roh.art : "fair";
+  const dienst = Array.isArray(roh.dienst) ? roh.dienst.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 99) : [];
+  return { an: roh.an === true, art, dienst: [...new Set(dienst)].sort((a, b) => a - b) };
+}
+async function teamLaden(id){
+  TM.geladen = false; TM.fehlt = false; TM.modus = null; TM.nummern = [];
+  try{ const g = localStorage.getItem(tmSchluessel()); TM.geraet = g ? Number(g) : null; }catch(_){ TM.geraet = null; }
+  if(demo || !db){
+    TM.nummern = [{ nummer:1, name:"Inhaber", rolle:"inhaber", ich:true }, { nummer:2, name:"Ali", rolle:"team", ich:false },
+                  { nummer:3, name:"Mia", rolle:"team", ich:false }];
+    TM.modus = TM.modus || { an:false, art:"fair", dienst:[1, 2, 3] };
+  }else{
+    const [m, n] = await Promise.all([
+      db.from("betriebe").select("team_modus").eq("id", id).maybeSingle(),
+      db.rpc("team_nummern", { p_betrieb: id })
+    ]);
+    if(id !== betriebId) return;
+    if(m.error || n.error){ TM.fehlt = true; }
+    else{
+      TM.modus = tmModusAus(m.data && m.data.team_modus);
+      TM.nummern = (n.data || []).filter(x => Number.isInteger(Number(x.nummer)));
+    }
+  }
+  if(TM.geraet == null){ const ich = TM.nummern.find(x => x.ich); if(ich) TM.geraet = Number(ich.nummer); }
+  TM.geladen = true;
+  tmZeichnen();
+  zeichneBoard();
+}
+function tmZeichnen(){
+  const k = $("#teamKnopf"); if(!k) return;
+  k.setAttribute("aria-pressed", String(tmAn()));
+  $("#teamStandKurz").textContent = TM.fehlt ? "nicht eingerichtet"
+    : !tmAn() ? "aus"
+    : ({ fair:"gerecht", zufall:"zufällig", hand:"von Hand" })[TM.modus.art] +
+      (TM.geraet != null ? " · ich: " + tmName(TM.geraet) : "");
+  const nm = $("#nurMeine");
+  nm.hidden = !tmAn() || TM.geraet == null;
+  nm.setAttribute("aria-pressed", String(TM.nurMeine));
+}
+function tmZuwHTML(b){
+  if(!tmAn() || b.status === "fertig" || b.pruefen) return "";
+  const nr = b.zugewiesen == null ? null : Number(b.zugewiesen);
+  const wahl = TM.nummern.filter(x => TM.modus.dienst.includes(Number(x.nummer)) || Number(x.nummer) === nr);
+  return `<select class="tmzuw${nr == null ? " niemand" : ""}${nr != null && nr === TM.geraet ? " meins" : ""}" data-tmzuw="${sicher(b.id)}" aria-label="Wer hat diese Bestellung?">
+      <option value=""${nr == null ? " selected" : ""}>Niemand zugewiesen</option>
+      ${wahl.map(x => `<option value="${Number(x.nummer)}"${Number(x.nummer) === nr ? " selected" : ""}>→ ${sicher(tmName(x.nummer))}${Number(x.nummer) === TM.geraet ? " (ich)" : ""}</option>`).join("")}
+    </select>`;
+}
+$("#karten").addEventListener("change", async e => {
+  const sel = e.target.closest("[data-tmzuw]"); if(!sel) return;
+  const b = bestellungen.find(x => String(x.id) === sel.dataset.tmzuw); if(!b) return;
+  const vorher = b.zugewiesen ?? null;
+  const neu = sel.value === "" ? null : Number(sel.value);
+  b.zugewiesen = neu;
+  zeichneBoard();
+  if(demo || !db) return;
+  try{
+    const {error} = await db.from("bestellungen").update({ zugewiesen: neu }).eq("id", b.id).eq("betrieb_id", betriebId);
+    if(error) throw error;
+  }catch(f){
+    b.zugewiesen = vorher; zeichneBoard();
+    melde("Nicht zugewiesen — bitte Verbindung prüfen", true);
+  }
+});
+function tmBlattZeichnen(){
+  const e = TM.entwurf;
+  const inhaber = istInhaberRolle();
+  $("#teamFehlt").hidden = !TM.fehlt;
+  $("#teamFehlt").textContent = TM.fehlt ? "Der Team-Modus braucht noch die Datenbank-Erweiterung (migration-teammodus.sql). Bis dahin bleibt alles wie bisher." : "";
+  $("#teamBesitzer").hidden = TM.fehlt;
+  $("#teamNurBesitzer").hidden = inhaber || TM.fehlt;
+  $$("#teamBesitzer button").forEach(x => { x.disabled = !inhaber; });
+  $("#teamAn").setAttribute("aria-pressed", String(e.an));
+  $$("#teamArt [data-tm-art]").forEach(x => x.setAttribute("aria-checked", String(x.dataset.tmArt === e.art)));
+  $("#teamArtHilfe").textContent = TM_ART_HILFE[e.art];
+  $("#teamDienst").innerHTML = TM.nummern.map(x =>
+    `<button type="button" class="tmchip" data-tm-dienst="${Number(x.nummer)}" aria-pressed="${e.dienst.includes(Number(x.nummer))}"${inhaber ? "" : " disabled"}>${sicher(tmName(x.nummer))}</button>`).join("");
+  $("#teamGeraet").innerHTML = `<option value="">Niemand bestimmtes</option>` + TM.nummern.map(x =>
+    `<option value="${Number(x.nummer)}"${Number(x.nummer) === TM.geraet ? " selected" : ""}>${sicher(tmName(x.nummer))}${x.ich ? " (mein Konto)" : ""}</option>`).join("");
+  $("#teamSichern").hidden = !inhaber || TM.fehlt;
+  $("#teamStand").textContent = "";
+}
+$("#teamKnopf").addEventListener("click", () => {
+  TM.entwurf = Object.assign({ an:false, art:"fair", dienst: TM.nummern.map(x => Number(x.nummer)) }, TM.modus || {});
+  TM.entwurf.dienst = [...TM.entwurf.dienst];
+  tmBlattZeichnen();
+  $("#teamBlatt").hidden = false;
+});
+$("#teamZu").addEventListener("click", () => blattFortAnimieren($("#teamBlatt"), () => { $("#teamBlatt").hidden = true; }));
+$("#teamAn").addEventListener("click", () => { if(!istInhaberRolle()) return; TM.entwurf.an = !TM.entwurf.an; tmBlattZeichnen(); });
+$("#teamArt").addEventListener("click", e => {
+  const x = e.target.closest("[data-tm-art]"); if(!x || !istInhaberRolle()) return;
+  TM.entwurf.art = x.dataset.tmArt; tmBlattZeichnen();
+});
+$("#teamDienst").addEventListener("click", e => {
+  const x = e.target.closest("[data-tm-dienst]"); if(!x || !istInhaberRolle()) return;
+  const nr = Number(x.dataset.tmDienst), d = TM.entwurf.dienst;
+  TM.entwurf.dienst = d.includes(nr) ? d.filter(y => y !== nr) : d.concat(nr).sort((a, b) => a - b);
+  tmBlattZeichnen();
+});
+$("#teamGeraet").addEventListener("change", e => {
+  TM.geraet = e.target.value === "" ? null : Number(e.target.value);
+  try{ if(TM.geraet == null) localStorage.removeItem(tmSchluessel()); else localStorage.setItem(tmSchluessel(), String(TM.geraet)); }catch(_){}
+  if(TM.geraet == null) TM.nurMeine = false;
+  tmZeichnen(); zeichneBoard();
+});
+$("#teamSichern").addEventListener("click", async () => {
+  if(!istInhaberRolle() || TM.fehlt) return;
+  const e = TM.entwurf;
+  if(e.an && e.art !== "hand" && !e.dienst.length){
+    $("#teamStand").textContent = "Wähle mindestens eine Person im Dienst — sonst kann niemand etwas bekommen."; return;
+  }
+  const neu = { an: e.an, art: e.art, dienst: e.dienst };
+  if(!demo && db){
+    const {error} = await db.from("betriebe").update({ team_modus: neu }).eq("id", betriebId);
+    if(error){ $("#teamStand").textContent = /nur_inhaber|42501/.test(String(error.message || error.code)) ? "Nur der Besitzer kann das ändern." : "Nicht gespeichert — bitte Verbindung prüfen."; return; }
+  }
+  TM.modus = neu;
+  tmZeichnen(); zeichneBoard();
+  melde(neu.an ? "Team-Modus an" : "Team-Modus aus");
+  blattFortAnimieren($("#teamBlatt"), () => { $("#teamBlatt").hidden = true; });
+});
+$("#nurMeine").addEventListener("click", () => { TM.nurMeine = !TM.nurMeine; tmZeichnen(); zeichneBoard(); });
+
+/* ═══════════════════════════════════════════════════════════════
+   WISCHEN AUF DER BESTELLKARTE (Wunsch 11.10.)
+
+   „Ein Swipe nach links und es wird bearbeitet, noch ein Swipe und es
+   ist fertig.“ Die Karte folgt dem Finger 1:1, dahinter erscheint die
+   nächste Stufe. Ab B_WISCH_ANTEIL der Breite oder mit Schwung gilt der
+   Wisch; darunter federt die Karte zurück und schreibt NICHTS.
+   Senkrecht rollt die Seite wie immer (touch-action:pan-y, und die
+   Geste beginnt erst, wenn der Zug klar waagerecht ist). Geschrieben
+   wird über statusSetzen() — dieselbe Stelle wie die Knöpfe. Danach
+   steht 6 s „Rückgängig“ unten. Während der Geste wird nicht neu
+   gezeichnet (§4.2): bWischAktiv hält zeichneBoard() an.
+   ═══════════════════════════════════════════════════════════════ */
+const B_WISCH_ANTEIL = 0.35;
+const B_WISCH_NAECHST = { neu:"arbeit", arbeit:"fertig" };
+const B_WISCH_WORT = { arbeit:"In Arbeit", fertig:"Fertig" };
+let bWischAktiv = null;
+let bWischNachholen = false;
+let bWischNachKlick = 0;
+function bWischBereit(karte){
+  const b = bestellungen.find(x => String(x.id) === karte.dataset.id);
+  if(!b || b.pruefen || inArbeit.has(b.id) || !B_WISCH_NAECHST[b.status]) return null;
+  return b;
+}
+$("#karten").addEventListener("pointerdown", e => {
+  if(e.button !== 0 || bWischAktiv) return;
+  if(e.target.closest("input,textarea,select,a,[contenteditable]")) return;
+  const karte = e.target.closest(".bestellung"); if(!karte) return;
+  const b = bWischBereit(karte); if(!b) return;
+  const start = { x:e.clientX, y:e.clientY, t:performance.now() };
+  let los = false, dx = 0, letzt = { x:e.clientX, t:start.t }, tempo = 0, ziel = null;
+  const weg = () => {
+    window.removeEventListener("pointermove", zug);
+    window.removeEventListener("pointerup", ende);
+    window.removeEventListener("pointercancel", abbruch);
+  };
+  const zug = ev => {
+    if(ev.pointerId !== e.pointerId) return;
+    const mx = ev.clientX - start.x, my = ev.clientY - start.y;
+    if(!los){
+      if(Math.abs(my) > 10 && Math.abs(my) >= Math.abs(mx)){ weg(); return; }
+      if(mx > -10 || Math.abs(mx) < Math.abs(my) * 1.2) return;
+      los = true;
+      bWischAktiv = b.id;
+      try{ karte.setPointerCapture(ev.pointerId); }catch(_){}
+      const huelle = $("#karten");
+      ziel = document.createElement("div");
+      ziel.className = "wischziel";
+      ziel.dataset.stufe = B_WISCH_NAECHST[b.status];
+      ziel.innerHTML = `<span>${B_WISCH_WORT[B_WISCH_NAECHST[b.status]]}</span>`;
+      ziel.style.cssText = `top:${karte.offsetTop}px;left:${karte.offsetLeft}px;width:${karte.offsetWidth}px;height:${karte.offsetHeight}px`;
+      huelle.insertBefore(ziel, karte);
+      karte.classList.add("bwisch");
+    }
+    const jetzt = performance.now();
+    if(jetzt > letzt.t) tempo = (ev.clientX - letzt.x) / (jetzt - letzt.t);
+    letzt = { x:ev.clientX, t:jetzt };
+    dx = mx < 0 ? mx : mx * 0.2;
+    karte.style.transform = `translateX(${dx}px)`;
+    if(ziel) ziel.classList.toggle("bereit", -dx >= karte.offsetWidth * B_WISCH_ANTEIL);
+  };
+  const aufraeumen = () => {
+    if(ziel) ziel.remove(); karte.classList.remove("bwisch"); bWischAktiv = null;
+    if(bWischNachholen){ bWischNachholen = false; zeichneBoard(); }
+  };
+  const ende = ev => {
+    if(ev.pointerId !== e.pointerId) return;
+    weg();
+    if(!los) return;
+    bWischNachKlick = performance.now();
+    const breite = karte.offsetWidth;
+    const gilt = -dx >= breite * B_WISCH_ANTEIL || (tempo < -0.6 && -dx > 40);
+    const ruhig = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if(!gilt){
+      if(ruhig){ karte.style.transform = ""; aufraeumen(); return; }
+      const a = karte.animate([{ transform:`translateX(${dx}px)` }, { transform:"translateX(0)" }],
+        { duration:220, easing:"cubic-bezier(.16,1,.3,1)" });
+      karte.style.transform = "";
+      a.onfinish = a.oncancel = aufraeumen;
+      return;
+    }
+    const neu = B_WISCH_NAECHST[b.status], alt = b.status;
+    const fertig = () => {
+      aufraeumen();
+      statusSetzen(b.id, neu);
+      bWischRueckgaengig(b, alt, neu);
+    };
+    if(ruhig){ fertig(); return; }
+    const a = karte.animate([{ transform:`translateX(${dx}px)`, opacity:1 }, { transform:`translateX(${-breite}px)`, opacity:0 }],
+      { duration:160, easing:"cubic-bezier(.4,0,1,1)", fill:"forwards" });
+    a.onfinish = fertig;
+  };
+  const abbruch = ev => {
+    if(ev.pointerId !== e.pointerId) return;
+    weg();
+    if(los){ karte.style.transform = ""; aufraeumen(); }
+  };
+  window.addEventListener("pointermove", zug);
+  window.addEventListener("pointerup", ende);
+  window.addEventListener("pointercancel", abbruch);
+});
+/* Ein Wisch, der über einem Knopf endet, ist kein Tipp auf den Knopf. */
+$("#karten").addEventListener("click", e => {
+  if(performance.now() - bWischNachKlick < 350){ e.stopImmediatePropagation(); e.preventDefault(); }
+}, true);
+
+let bRueckUhr = null;
+function bWischRueckgaengig(b, alt, neu){
+  const leiste = $("#rueckleiste"); if(!leiste) return;
+  const name = b.tisch ? "Tisch " + b.tisch : (b.gast_name || "Bestellung");
+  leiste.querySelector("span").textContent = name + " · " + B_WISCH_WORT[neu];
+  const knopf = leiste.querySelector("button");
+  knopf.onclick = () => {
+    clearTimeout(bRueckUhr); leiste.hidden = true;
+    statusSetzen(b.id, alt);
+  };
+  leiste.hidden = false;
+  clearTimeout(bRueckUhr);
+  bRueckUhr = setTimeout(() => { leiste.hidden = true; }, 6000);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    BESTÄTIGEN MIT WARTEZEIT

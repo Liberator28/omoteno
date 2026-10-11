@@ -494,6 +494,7 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
 .marke.kueche{background:rgba(201,162,39,.18);color:var(--messing)}
 .marke.theke{background:rgba(79,165,168,.18);color:var(--telefon)}
 .marke.arbeit{background:rgba(111,174,106,.16);color:var(--gut)}
+.marke.team{background:color-mix(in srgb, var(--kreide) 12%, transparent);color:var(--kreide)}
 
 .posten{list-style:none;padding:calc(6px * var(--skala)) 0;flex:1}
 .posten li{
@@ -1280,11 +1281,19 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
                    /* Markiert vom Server (migration-missbrauch.sql):
                       Flut oder Gericht, das es nicht gibt. Der Bon
                       erscheint erst, wenn das Board ihn freigibt. */
-                   "pruefen";
-/* Fehlt die Spalte noch (Migration nicht eingespielt), antwortet der
-   Server 400 — dann ohne sie, genau wie vorher. */
-var BON_SPALTEN_ALT = BON_SPALTEN.replace(",pruefen", "");
-var ohnePruefSpalte = false;
+                   "pruefen," +
+                   /* Team-Modus (migration-teammodus.sql): Nummer des
+                      Zuständigen — steht als Marke am Bon. */
+                   "zugewiesen";
+/* Fehlt eine Spalte noch (Migration nicht eingespielt), antwortet der
+   Server 400 — dann Stufe für Stufe ohne die jüngsten, genau wie vorher.
+   Stufe 1: ohne zugewiesen; Stufe 2: auch ohne pruefen. */
+var BON_SPALTEN_STUFEN = [BON_SPALTEN, BON_SPALTEN.replace(",zugewiesen", ""),
+                          BON_SPALTEN.replace(",zugewiesen", "").replace(",pruefen", "")];
+var spaltenStufe = 0;
+/* Namen zu den Nummern des Teams (team_nummern). Fehlt die Funktion,
+   steht nur die Nummer. */
+var TEAM_NUMMERN = {};
 var zuPruefen = 0;
 
 /* Servicerufe bleiben draußen, Telefonbestellungen kommen herein.
@@ -1305,7 +1314,7 @@ var zuPruefen = 0;
    Zähler oben können sich nicht mehr an ihnen verrechnen. */
 function ladeBons(){
   var seit = new Date(Date.now() - RUECKBLICK_STD*3600*1000).toISOString();
-  return ruf("/rest/v1/bestellungen?select="+(ohnePruefSpalte ? BON_SPALTEN_ALT : BON_SPALTEN)+"&betrieb_id=eq."+betrieb.id+
+  return ruf("/rest/v1/bestellungen?select="+BON_SPALTEN_STUFEN[spaltenStufe]+"&betrieb_id=eq."+betrieb.id+
              /* „lieferung" MUSS hier stehen. Ohne diesen einen Wert
                 landet eine Lieferbestellung im Board, die Küche sieht
                 sie nie — ein Bon, den niemand kocht, und niemand
@@ -1313,7 +1322,7 @@ function ladeBons(){
              "&quelle=in.(tisch,telefon,lieferung)"+
              "&zeitpunkt=gte."+seit+"&order=zeitpunkt.asc")
     .then(function(a){
-      if(a.status === 400 && !ohnePruefSpalte){ ohnePruefSpalte = true; return ladeBons(); }
+      if(a.status === 400 && spaltenStufe < BON_SPALTEN_STUFEN.length - 1){ spaltenStufe++; return ladeBons(); }
       if(!a.ok) throw new Error("Bons nicht lesbar ("+a.status+")");
       return a.json();
     });
@@ -1423,22 +1432,40 @@ function bonLage(b){
     };
   }
 
-  var seitZusage = minutenSeit(b.bestaetigt_um);
-  var rest = zusage - seitZusage;
-  /* Das letzte Fünftel ist die Vorwarnung. Ein gewählter Wert, keine
-     Messung: Bei 20 Minuten sind das die letzten vier, bei 60 die
-     letzten zwölf — mitwachsend, weil eine feste Minutenzahl bei
-     langen Zusagen zu früh und bei kurzen zu spät käme. */
-  var vorwarnung = Math.max(1, Math.round(zusage / 5));
+  /* Rechnung und Vorwarnung stehen im geteilten Block RESTZEIT —
+     das Board zeigt dieselbe Zahl (Wunsch 11.10.). */
+  var r = restLage(b);
   return {
     zusage:   true,
-    marke:    rest >= 0 ? "noch" : "zu spät",
-    text:     rest >= 0 ? zeitText(rest) : "+" + zeitText(-rest),
-    anteil:   Math.min(100, Math.round((seitZusage / zusage) * 100)),
-    spaet:     rest >= 0 && rest <= vorwarnung,
+    marke:    r.rest >= 0 ? "noch" : "zu spät",
+    text:     r.rest >= 0 ? zeitText(r.rest) : "+" + zeitText(-r.rest),
+    anteil:   r.anteil,
+    spaet:     r.spaet,
+    sehrSpaet: r.sehrSpaet
+  };
+}
+
+/* ═══ RESTZEIT · GETEILTER BLOCK ═══════════════════════════════════
+   Steht Zeichen für Zeichen gleich in kueche.html und admin.html
+   (pruef-bestellkarten.js vergleicht). Wie viel von der Zusage ist
+   noch übrig? Minuten aus dem Board UND Zeitpunkt der Bestätigung;
+   fehlt eines, gibt es keine Zusage (null). Das letzte Fünftel ist
+   die Vorwarnung — gewählt, nicht gemessen: bei 20 Minuten die
+   letzten vier, bei 60 die letzten zwölf. */
+function restLage(b, jetzt){
+  var zusage = (Number(b.wartezeit_min) > 0 && b.bestaetigt_um) ? Number(b.wartezeit_min) : 0;
+  if(!zusage) return null;
+  var seit = Math.floor(((jetzt || Date.now()) - new Date(b.bestaetigt_um).getTime()) / 60000);
+  var rest = zusage - seit;
+  var vorwarnung = Math.max(1, Math.round(zusage / 5));
+  return {
+    zusage: zusage, seit: seit, rest: rest,
+    anteil: Math.min(100, Math.max(0, Math.round((seit / zusage) * 100))),
+    spaet: rest >= 0 && rest <= vorwarnung,
     sehrSpaet: rest < 0
   };
 }
+/* ═══ ENDE RESTZEIT ═══════════════════════════════════════════════ */
 
 function sichtbareBons(){
   var spur = EINST.spur;
@@ -1614,6 +1641,7 @@ function zeichne(){
              (spurFertig(b, s) ? " ✓" : "") + '</span>';
     }).join("");
     if(b.status === "arbeit" && !alleAbgehakt) marken += '<span class="marke arbeit">läuft</span>';
+    if(b.zugewiesen != null) marken += '<span class="marke team">→ ' + h(TEAM_NUMMERN[b.zugewiesen] ? b.zugewiesen + " · " + TEAM_NUMMERN[b.zugewiesen] : "Nr. " + b.zugewiesen) + '</span>';
 
     /* Posten aller Spuren, die diese Ansicht betreffen */
     var zeilen = "";
@@ -2078,7 +2106,18 @@ $('feld').addEventListener('click', function(ev){
 /* ═══════════════════════════════════════════════════════════════
    8 · TAKT
    ═══════════════════════════════════════════════════════════════ */
+/* Namen zu den Team-Nummern einmal je Betrieb. Fehler = nur Nummern. */
+var teamNamenFuer = null;
+function teamNamenLaden(){
+  if(!betrieb || teamNamenFuer === betrieb.id) return;
+  teamNamenFuer = betrieb.id;
+  ruf("/rest/v1/rpc/team_nummern", { method:"POST", body: JSON.stringify({ p_betrieb: betrieb.id }) })
+    .then(function(a){ return a.ok ? a.json() : []; })
+    .then(function(z){ TEAM_NUMMERN = {}; (z || []).forEach(function(x){ if(x && x.nummer != null) TEAM_NUMMERN[x.nummer] = String(x.name || ""); }); })
+    .catch(function(){});
+}
 function aktualisieren(){
+  teamNamenLaden();
   return ladeBons().then(function(alle){
     /* Markierte Bestellungen (pruefen) sind KEIN Bon: nicht auf dem
        Schirm, kein Ton. Die Zahl steht in der Kopfzeile, damit niemand
