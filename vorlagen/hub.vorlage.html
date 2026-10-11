@@ -953,7 +953,7 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:transparent;background:tr
 @media (prefers-reduced-motion:reduce){ .lichtwahl.offen .lichtliste{animation:none} }
 [dir="rtl"] .lichtliste{left:auto;right:0;transform-origin:100% 0}
 .lichtliste .lprobe{flex:none;width:18px;height:18px;border-radius:50%;
-  border:1px solid var(--linie-stark);background:var(--lp-g);box-shadow:inset -5px -5px 0 var(--lp-t)}
+  border:1px solid var(--linie-stark);background:var(--lp-g, transparent);box-shadow:inset -5px -5px 0 var(--lp-t, transparent)}
 .lichtwahl.offen .lichtknopf{background:rgba(251,246,242,.24)}
 .lichtliste button[aria-checked="true"] .lwort::after{content:"\00a0✓"}
 .sprachliste button{
@@ -984,20 +984,30 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:transparent;background:tr
 [dir="rtl"] .seite .unter,[dir="rtl"] .label,[dir="rtl"] .gruppe{text-align:right}
 
 /* ═══ Seitenwechsel ═════════════════════════════════════════════ */
-/* Ein Vokabular: Inhalt kommt von unten herein, gestaffelt.
-   Keine Skalierung, kein Blur, keine zweite Kurve. */
-#inhalt.rein > .seite > *,
-#inhalt.rein > .bereich,
-#inhalt.rein > .gitter,
-#inhalt.rein > a.tipp{animation:rein var(--mittel) var(--weich) both}
-#inhalt.rein > *:nth-child(2){animation-delay:.04s}
-#inhalt.rein > *:nth-child(3){animation-delay:.07s}
-#inhalt.rein > *:nth-child(4){animation-delay:.10s}
-#inhalt.rein > *:nth-child(n+5){animation-delay:.12s}
-#inhalt.rein > .seite > *:nth-child(2){animation-delay:.04s}
-#inhalt.rein > .seite > *:nth-child(3){animation-delay:.07s}
-#inhalt.rein > .seite > *:nth-child(4){animation-delay:.10s}
-#inhalt.rein > .seite > *:nth-child(n+5){animation-delay:.12s}
+/* Seit 11.10. (Wunsch: „die Übergangsanimationen raus … sorgt nur
+   dafür, dass es so aussieht, als ob die Seite länger braucht“): Die
+   neue Seite steht ab dem ERSTEN Bild deckend da — kein Ausblenden,
+   keine Staffel (vorher bis 0,12 s Verzögerung + 0,28 s Einblenden je
+   Zeile). Sie gleitet nur 8 px nach oben ein, 200 ms, ease-out: genug,
+   dass das Auge den Wechsel merkt, zu wenig, um zu warten. */
+#inhalt.rein > *{animation:reinGleiten .2s cubic-bezier(.22,1,.36,1) both}
+@keyframes reinGleiten{from{transform:translateY(8px)}to{transform:none}}
+/* Wischen zwischen den Unterseiten (Wunsch 11.10.: „durch nach links
+   Wischen auf die nächste Kachel … schnell switchen“). #inhalt folgt
+   dem Finger 1:1 (nur transform); am Rand zeigt eine Pille, wohin es
+   geht. pan-y: senkrecht rollt weiter der Browser, waagerecht gehört
+   die Geste uns — Leisten, die selbst seitlich rollen, sind eigene
+   Rollbereiche und behalten ihre Geste. */
+body[data-ansicht="unter"] #inhalt{touch-action:pan-y}
+#inhalt.wischt{will-change:transform}
+.wischziel{position:fixed;top:50%;z-index:41;pointer-events:none;
+  display:flex;align-items:center;gap:8px;max-width:min(70vw, 260px);padding:10px 16px;border-radius:999px;
+  background:var(--flaeche);color:var(--tinte);border:1px solid var(--linie-stark);box-shadow:var(--schatten-hoch);
+  font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  opacity:0;transform:translateY(-50%) scale(.92)}
+.wischziel.wz-rechts{right:14px}
+.wischziel.wz-links{left:14px}
+.wischziel span{overflow:hidden;text-overflow:ellipsis}
 @keyframes rein{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
 
 /* Zurück: eine Glas-Pille „‹ Zurück“ (Wunsch 08.10. — vorher ein
@@ -1051,26 +1061,10 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:transparent;background:tr
   .zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 
-/* ═══ Reise · Übergang Kachel → Unterseite (neu 10.10.) ═══════════
-   Wunsch 10.10.: „Man sieht die Animation nicht, das war die
-   Verzögerung — ganz flüssig und simpel, smooth in die Karten.“
-   Gemessen vorher: 1154 ms vom Tipp bis zur Karte (die Klappkarte
-   wechselte die Seite erst bei 76 % der Szene). Jetzt wechselt die
-   Seite im SELBEN Takt wie der Tipp; darüber wächst nur noch die
-   Fläche der Kachel zum Schirm und löst sich dabei auf (FLIP, 260 ms,
-   ease-out), während #inhalt.rein die neue Seite gestaffelt aufbaut.
-   Eine Ebene, am Ende ENTFERNT (§8.1), nur transform/opacity, kein
-   Text (pruef-reise.js zählt Textknoten). Ebene 75: über Kopf und
-   Blättern, unter der Altersfrage. */
-.reise{position:fixed;inset:0;z-index:75;pointer-events:none;overflow:hidden}
-.reise-flaeche{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform,opacity;
-  border-radius:var(--rundung);
-  background:var(--reise-grund, color-mix(in srgb, var(--reise-licht) 26%, var(--flaeche)))}
-/* Ankunft nach der Kachel: die Seite als EIN Stück, nicht gestaffelt,
-   erst wenn die Fläche verblasst (Verzögerung = Aufziehen). Höhere
-   Spezifität als die gestaffelten nth-child-Regeln oben. */
-body.reise-an #inhalt.rein > .seite{animation:rein .3s var(--weich) .22s both}
-body.reise-an #inhalt.rein > .seite > *{animation:none}
+/* Die Reise-Ebene (Kachel zieht zum Schirm auf) ist seit 11.10. weg:
+   Wunsch „man sieht sie sowieso nicht, und sie sorgt nur dafür, dass
+   es so aussieht, als ob die Seite länger braucht“. Ein Tipp auf eine
+   Kachel ist ein gewöhnlicher Link; die Seite steht im selben Takt. */
 
 /* ═══ Wie letztes Mal / Nochmal wie letztes Mal (08.10.) ════════
    Beides setzt erst auf einen Tipp etwas — ein Vorschlag, keine
@@ -3404,10 +3398,8 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   .logo .led,
   body[data-phase="abend"] .logo .led{animation:none;opacity:0}
   body[data-phase="abend"] .logo::before{animation:none;opacity:.85}
-  /* Inhalte erscheinen, ohne zu gleiten */
-  #inhalt.rein > *,#inhalt.rein > .seite > *{
-    animation:reinLeise 160ms linear both;animation-delay:0ms !important
-  }
+  /* Inhalte stehen sofort da — kein Gleiten, kein Einblenden */
+  #inhalt.rein > *,#inhalt.rein > .seite > *{animation:none !important}
   @keyframes reinLeise{from{opacity:0}to{opacity:1}}
   /* Druckfeedback und Herzschlag: kein Skalieren */
   .knopf:active,.antwort:active,a.tipp:active,.logo:active,
@@ -10753,6 +10745,20 @@ function lieferWahl(ziel){
   lwUhr = setTimeout(() => w.classList.remove("zeigt"), wechsel ? 1900 : 1500);
 }
 
+/* Welche Kacheln die Startseite gerade zeigt, in ihrer Reihenfolge.
+   EINE Stelle: Die Wischgeste zwischen den Unterseiten (seitenWischen)
+   blättert genau in dieser Folge — sonst führte ein Wisch zu einer
+   Kachel, die der Gast gar nicht sieht. */
+function sichtbareKacheln(){
+  return KACHELN.filter(k =>
+    stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
+    !(liefermodus && LIEFER.an && k.gruppe === "Jetzt am Tisch") &&
+    (typeof k.wenn !== "function" || k.wenn()) &&
+    /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
+       neu. Lieber gar keine Kachel als eine, die im Kreis führt. */
+    kachelZiel(k) !== "");
+}
+
 function start(){
   /* wenn: optionale Bedingung an der Kachel. Ist sie da und ergibt
      false, erscheint die Kachel nicht – siehe Trinkgeld. */
@@ -10764,13 +10770,7 @@ function start(){
      morgen eine sechste Kachel dorthin stellt, muss nicht daran
      denken. Eine Regel, die man vergessen kann, ist eine Regel, die
      man vergessen wird. */
-  const sichtbar = KACHELN.filter(k =>
-    stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
-    !(liefermodus && LIEFER.an && k.gruppe === "Jetzt am Tisch") &&
-    (typeof k.wenn !== "function" || k.wenn()) &&
-    /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
-       neu. Lieber gar keine Kachel als eine, die im Kreis führt. */
-    kachelZiel(k) !== "");
+  const sichtbar = sichtbareKacheln();
   if(!sichtbar.length){
     return '<div class="leer">' + t("Gerade ist nichts freigeschaltet.") + '<br>' +
            t("Schauen Sie später noch einmal vorbei.") + '</div>';
@@ -15685,106 +15685,6 @@ $("inhalt").addEventListener("input", e => {
   neuKarte(id, true);
 });
 
-/* ══ REISE · Übergang Kachel → Unterseite (neu 10.10.) ═════════════
-   Gestalt beim CSS (.reise). Der Takt:
-   - Die Seite wechselt SOFORT (location.hash im Tipp selbst) — die
-     Bewegung ist Beiwerk, kein Warten. Keine längere Fassung beim
-     ersten Öffnen mehr.
-   - Die Fläche der Kachel wächst in 260 ms (Skill bewegung §3:
-     Karte/Blatt 180–320 ms) vom echten Rechteck zum Schirm und blendet
-     dabei aus; danach wird die Ebene entfernt.
-   - Ein Druck, eine Taste oder ein Rad währenddessen beendet sie. Der
-     Klick zu einem Druck in diesem Fenster wird geschluckt: Er galt
-     der Kachel (Doppeltipp), nicht dem, was auf der neuen Seite an
-     derselben Stelle steht.
-   - Reduzierte Bewegung, Vorschau im Board, Link nach außen,
-     Strg/⌘-Klick: keine Ebene, der Browser macht, was er immer macht. */
-/* Seit 10.10. (Wunsch: „die Animation raus, zu kompliziert fürs Auge —
-   lediglich die Kachel soll sich einmal expanden, und man kommt mit
-   einem smoothen Übergang auf der Seite an“): Die Fläche ist DECKEND
-   in der Farbe der Kachel — vorher halb durchsichtig, man sah die
-   alte und die neue Seite zugleich durch sie hindurch. Erst zieht sie
-   auf (260 ms, rollt aus), dann blendet sie aus (160 ms), und darunter
-   kommt die Seite als EIN Stück an, nicht mehr gestaffelt. */
-const REISE_AUF = 260, REISE_AUS = 160, REISE_MS = REISE_AUF + REISE_AUS;
-let reise = null;
-function reiseMoeglich(a, e){
-  if(!a || VORSCHAU || ruhigeBewegung()) return "";
-  if(e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return "";
-  const ziel = a.getAttribute("href") || "";
-  if(!/^#\/[^?#]/.test(ziel) || ziel === location.hash || a.target) return "";
-  return ziel;
-}
-function reiseEnde(){
-  const r = reise; if(!r) return;
-  reise = null;
-  try{ r.ani.cancel(); }catch(err){}
-  r.el.remove();
-  document.removeEventListener("pointerdown", r.weg, true);
-  document.removeEventListener("keydown", r.weg, true);
-  document.removeEventListener("wheel", r.weg, true);
-}
-function reiseStarten(a, ziel){
-  if(reise) reiseEnde();
-  const vw = innerWidth, vh = innerHeight;
-  const r = a.getBoundingClientRect();
-  const farbe = { rot:"var(--rot)", pistazie:"var(--pistazie)", gold:"var(--gold)" }[a.dataset.farbe] || "var(--gold)";
-  const el = document.createElement("div");
-  el.className = "reise";
-  el.setAttribute("aria-hidden", "true");
-  el.style.setProperty("--reise-licht", farbe);
-  /* Die Fläche hat die Farbe, die die Kachel WIRKLICH zeigt (eigene
-     Farbe, Säule, Bild-Kachel …); ist sie durchsichtig, die Hausmischung. */
-  const grund = getComputedStyle(a).backgroundColor;
-  if(grund && !/rgba\([^)]*,\s*0\)|transparent/.test(grund)) el.style.setProperty("--reise-grund", grund);
-  const fl = document.createElement("div");
-  fl.className = "reise-flaeche";
-  /* Maß = Schirm, Start = Rechteck der Kachel als scale (FLIP). */
-  fl.style.width = vw + "px"; fl.style.height = vh + "px";
-  el.appendChild(fl);
-  document.body.appendChild(el);
-  /* Seite wechseln, bevor das erste Bild der Ebene gemalt ist. */
-  location.hash = ziel;
-  const sx = Math.max(.01, r.width / vw), sy = Math.max(.01, r.height / vh);
-  /* Kurve je Abschnitt, nicht auf dem Ganzen: Mit ease-out über alles
-     stand die Fläche schon nach 70 ms bildfüllend und fast durchsichtig
-     — man sah nichts (gemessen). Erst wachsen (ease-out, sichtbar),
-     dann ausblenden (ease-in, Skill bewegung §2). */
-  const ani = fl.animate([
-    { transform:"translate(" + r.left + "px," + r.top + "px) scale(" + sx + "," + sy + ")", opacity:1, easing:"cubic-bezier(.22,1,.36,1)" },
-    { transform:"translate(0px,0px) scale(1,1)", opacity:1, offset:REISE_AUF / REISE_MS, easing:"cubic-bezier(.4,0,1,1)" },
-    { transform:"translate(0px,0px) scale(1,1)", opacity:0 }
-  ], { duration:REISE_MS, fill:"both" });
-  /* Die neue Seite kommt unter der Fläche als ein Stück an, sobald die
-     Fläche zu verblassen beginnt. Die Klasse bleibt, bis das vorbei ist
-     (vorher entfernt, sprängen laufende Animationen). */
-  document.body.classList.add("reise-an");
-  clearTimeout(reiseStarten.uhr);
-  reiseStarten.uhr = setTimeout(() => document.body.classList.remove("reise-an"), REISE_MS + 500);
-  const zustand = { el, ani, ziel, weg:null };
-  zustand.weg = ev => {
-    if(reise !== zustand) return;
-    if(ev.type === "pointerdown"){
-      const schlucken = k => { k.preventDefault(); k.stopPropagation(); };
-      document.addEventListener("click", schlucken, { capture:true, once:true });
-      setTimeout(() => document.removeEventListener("click", schlucken, true), 500);
-    }
-    reiseEnde();
-  };
-  document.addEventListener("pointerdown", zustand.weg, true);
-  document.addEventListener("keydown", zustand.weg, true);
-  document.addEventListener("wheel", zustand.weg, { capture:true, passive:true });
-  ani.onfinish = () => { if(reise === zustand) reiseEnde(); };
-  reise = zustand;
-}
-/* Fängt den Tipp VOR jedem anderen Griff in #inhalt ab (capture). */
-$("inhalt").addEventListener("click", e => {
-  const a = e.target.closest && e.target.closest("a.kachel");
-  const ziel = reiseMoeglich(a, e);
-  if(!ziel) return;
-  e.preventDefault();
-  reiseStarten(a, ziel);
-}, true);
 
 $("inhalt").addEventListener("click", e => {
   if(e.target.closest("[data-heim]")){
@@ -16523,6 +16423,129 @@ $("auswahlbalken").addEventListener("click", () => { location.hash = "#/auswahl"
 $("zurueck").addEventListener("click", nachHause);
 $("logo").addEventListener("click",    nachHause);
 window.addEventListener("hashchange", zeichne);
+
+/* ══ WISCHEN ZWISCHEN DEN UNTERSEITEN (11.10.) ══════════════════════
+   Nach links wischen = nächste Kachel der Startseite, nach rechts =
+   vorige (in Rechts-nach-links-Sprachen gespiegelt). Die Seite folgt
+   dem Finger; losgelassen über ein Drittel der Breite oder mit Schwung
+   gleitet sie hinaus und die nächste kommt von der anderen Seite
+   herein (je ≈ 200 ms, nur transform). Sonst federt sie zurück.
+
+   Nicht gewischt wird, wenn der Finger in etwas beginnt, das selbst
+   seitlich arbeitet: ein seitlich rollender Bereich (Kategorie-Leiste,
+   Chips), ein Feld, ein Regler, das Glücksrad, der Kartenstapel der
+   Foodroulette. Und nur auf Seiten, die eine Kachel der Startseite
+   sind — sonst gibt es kein „nächstes“. */
+function wischFolge(){
+  const folge = [];
+  sichtbareKacheln().forEach(k => {
+    const z = kachelZiel(k);
+    if(/^#\/[a-z0-9-]/i.test(z) && !folge.some(f => f.ziel === z))
+      folge.push({ ziel:z, titel:t(k.titel) });
+  });
+  return folge;
+}
+function wischOrt(folge){
+  const jetzt = location.hash;
+  let i = folge.findIndex(f => f.ziel === jetzt);
+  if(i < 0) i = folge.findIndex(f => f.ziel.split("?")[0] === jetzt.split("?")[0]);
+  return i;
+}
+/* Ehrliche Grenze (gemessen 11.10.): In Chromium übernimmt eine seitlich
+   rollende Leiste die Geste selbst und bricht unseren Zug ab
+   (pointercancel) — auch am Ende der Leiste. Die overflow-Prüfung unten
+   ist dort Vorsorge für Browser, die das anders halten; ein Gegenbeweis
+   ohne sie blieb grün. Sie hier zu messen, kann kopfloses Chromium nicht. */
+function wischSperre(el){
+  for(let x = el; x && x !== document.body; x = x.parentElement){
+    if(x.matches && x.matches('input,textarea,select,[contenteditable="true"],.fr-rad,.ed-stapel,.ed-karte,.bnrad,.wisch-aus')) return true;
+    if(x.scrollWidth > x.clientWidth + 2){
+      const ox = getComputedStyle(x).overflowX;
+      if(ox === "auto" || ox === "scroll") return true;
+    }
+  }
+  return false;
+}
+(function seitenWischen(){
+  const feld = $("inhalt");
+  let w = null;
+  const breite = () => Math.max(1, document.documentElement.clientWidth);
+  const rtl = () => document.documentElement.dir === "rtl";
+  const pille = (seite, titel) => {
+    let el = document.querySelector(".wischziel");
+    if(!el){ el = document.createElement("div"); el.className = "wischziel"; el.setAttribute("aria-hidden", "true"); document.body.appendChild(el); }
+    el.className = "wischziel wz-" + seite;
+    el.innerHTML = (seite === "links" ? "‹ " : "") + "<span>" + hs(titel) + "</span>" + (seite === "rechts" ? " ›" : "");
+    return el;
+  };
+  const pilleWeg = () => { const el = document.querySelector(".wischziel"); if(el) el.remove(); };
+  feld.addEventListener("pointerdown", e => {
+    if(e.pointerType !== "touch" || w || document.body.dataset.ansicht !== "unter") return;
+    if(wischSperre(e.target)) return;
+    const folge = wischFolge(), i = wischOrt(folge);
+    if(i < 0 || folge.length < 2) return;
+    w = { id:e.pointerId, x0:e.clientX, y0:e.clientY, t0:performance.now(), dx:0, an:false, folge, i, spur:[] };
+  }, { passive:true });
+  feld.addEventListener("pointermove", e => {
+    if(!w || e.pointerId !== w.id) return;
+    const dx = e.clientX - w.x0, dy = e.clientY - w.y0;
+    if(!w.an){
+      if(Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      if(Math.abs(dx) < Math.abs(dy) * 1.3){ w = null; return; }   /* senkrecht: rollen */
+      w.an = true;
+      feld.classList.add("wischt");
+      feld.getAnimations().forEach(a => a.cancel());
+    }
+    /* Richtung → Ziel (gespiegelt in RTL); ohne Ziel federt es zäh. */
+    const vor = rtl() ? dx > 0 : dx < 0;
+    const ziel = w.folge[w.i + (vor ? 1 : -1)];
+    w.ziel = ziel || null;
+    w.dx = ziel ? dx : dx * .25;
+    w.spur.push([performance.now(), e.clientX]); if(w.spur.length > 6) w.spur.shift();
+    feld.style.transform = "translateX(" + w.dx + "px)";
+    if(ziel){
+      const p = pille(dx < 0 ? "rechts" : "links", ziel.titel);
+      const anteil = Math.min(1, Math.abs(dx) / (breite() * .33));
+      p.style.opacity = String(anteil);
+      p.style.transform = "translateY(-50%) scale(" + (.92 + .08 * anteil) + ")";
+    } else pilleWeg();
+  }, { passive:true });
+  const los = e => {
+    if(!w || e.pointerId !== w.id) return;
+    const z = w; w = null;
+    if(!z.an) return;
+    const b = breite();
+    let tempo = 0;
+    if(z.spur.length >= 2){ const a = z.spur[0], o = z.spur[z.spur.length - 1]; tempo = (o[1] - a[1]) / Math.max(1, o[0] - a[0]); }
+    const weit = Math.abs(z.dx) > b * .33 || (Math.abs(tempo) > .5 && Math.sign(tempo) === Math.sign(z.dx));
+    pilleWeg();
+    const ende = () => { feld.style.transform = ""; feld.classList.remove("wischt"); };
+    if(!z.ziel || !weit || e.type === "pointercancel"){
+      if(ruhigeBewegung() || !feld.animate){ ende(); return; }
+      const a = feld.animate([{ transform:"translateX(" + z.dx + "px)" }, { transform:"translateX(0)" }],
+                             { duration:220, easing:"cubic-bezier(.22,1,.36,1)" });
+      feld.style.transform = "";
+      a.onfinish = a.oncancel = ende;
+      return;
+    }
+    const raus = z.dx < 0 ? -1 : 1;
+    const weiter = () => {
+      feld.style.transform = "";
+      location.hash = z.ziel.ziel;
+      if(ruhigeBewegung() || !feld.animate){ ende(); return; }
+      /* Die neue Seite kommt von der anderen Seite herein. */
+      const a = feld.animate([{ transform:"translateX(" + (-raus * b * .35) + "px)" }, { transform:"translateX(0)" }],
+                             { duration:220, easing:"cubic-bezier(.22,1,.36,1)" });
+      a.onfinish = a.oncancel = ende;
+    };
+    if(ruhigeBewegung() || !feld.animate){ weiter(); return; }
+    const a = feld.animate([{ transform:"translateX(" + z.dx + "px)" }, { transform:"translateX(" + (raus * b) + "px)" }],
+                           { duration:Math.max(90, 180 * (1 - Math.abs(z.dx) / b)), easing:"cubic-bezier(.4,0,1,1)", fill:"forwards" });
+    a.onfinish = () => { a.cancel(); weiter(); };
+  };
+  feld.addEventListener("pointerup", los);
+  feld.addEventListener("pointercancel", los);
+})();
 
 /* ---------- Vorführmodus ---------- */
 document.querySelectorAll("#demo button").forEach(b =>
