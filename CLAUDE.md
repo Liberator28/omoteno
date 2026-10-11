@@ -1535,6 +1535,39 @@ Marke) zwischen „Hub“ und „Umgebung“ trennt. Danach prüft die Probe
 ihre Voraussetzung selbst und nennt den Umgebungsfall als Hinweis —
 sie wird dadurch nicht blind: Ohne Schreibweg bleibt sie rot.
 
+### 8.1s Wer die Datenbank immer leer beantwortet, sieht den zweiten Anstrich nie
+
+> **Vorfall.** Der Begleiter auf der Startseite galt als „gegrüßt“,
+> sobald er GEZEICHNET war. Bei einem echten Haus kommen die Live-Daten
+> ein paar hundert Millisekunden nach dem Laden, die Startseite wird
+> neu gezeichnet — das neue Element trug keinen Gruß mehr, er brach
+> mitten im Winken ab. Keine Prüfung hatte es gesehen: Alle
+> beantworteten die Datenbank mit `[]`, und ohne Daten wird nie neu
+> gezeichnet. Aufgefallen ist es erst am Vorführhaus, das seine Daten
+> sofort selbst liefert.
+
+Was nach dem Laden etwas Einmaliges tut (Gruß, Einflug, Hinweis), wird
+mindestens einmal mit **echten** Daten geprüft, die einen zweiten
+Anstrich auslösen. Und „einmal geschehen“ zählt erst, wenn es zu Ende
+gelaufen ist (`animationend`), nicht wenn es angefangen hat.
+
+### 8.1t Ein srcdoc-Rahmen mit `<base href>` macht jeden Raute-Link zur Navigation
+
+> **Vorfall.** Die Landingpage zeigt den echten Hub als `srcdoc`
+> (Einbetten ist per `X-Frame-Options: DENY` verboten), mit `<base
+> href="/h/nordstern/">` für Bilder und Schriften. Ein Tipp auf eine
+> Kachel `href="#/speisekarte"` wurde gegen die BASIS aufgelöst — eine
+> echte Navigation nach `/h/nordstern/#/speisekarte`, die der Rahmen
+> wegen DENY gar nicht laden darf: leere Fläche. Die Board-Vorschau
+> benutzt denselben Weg seit Wochen und hat es nie gezeigt, weil man
+> sie nicht bedienen kann.
+
+Wer eine Seite per `srcdoc` mit `<base>` einbettet und sie bedienbar
+lässt, fängt unberührte Raute-Links ab und setzt nur `location.hash`.
+Dasselbe gilt für alles, was den Rahmen verlassen würde (WhatsApp,
+PayPal, Mail): neuer Tab. Geprüft wird mit einem **echten Tipp im
+Rahmen**, nicht mit `location.hash = …` von außen.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1588,7 +1621,9 @@ Dazu je nach Änderung:
 | **WLAN-Seite im Hub, WLAN-Felder im Board, QR-Code** | `pruefungen/pruef-wlan.js` (braucht `dist/`) — Passwort steht nirgends auf der Seite (Text UND Auszeichnung), genau zwei Knöpfe ≥ 44 px ≥ 4,5:1, keine Anleitung, „Kopieren“ legt GENAU das Passwort ab, der gezeichnete QR wird mit jsQR (`pruefungen/werkzeug/`) ZURÜCKGELESEN = WIFI:-Zeile mit ; , : " \\ und Umlaut, Bibliothek erst beim Tipp und mit integrity (veränderte Datei läuft NICHT, Satz statt QR), Platzhalter „BITTE-EINTRAGEN“ = leer, live schlägt Markenblatt, Grenzen aus `migration-wlan.sql`; Board: Felder in „Ihre Worte“ mit 16 px, Übernehmen behält die anderen Worte und umgekehrt, „Auf Vorgabe zurück“ lässt das WLAN |
 | **Ladezeit, Dauer-Animationen, bewegte Zeichen beim Laden** | `pruefungen/pruef-leistung.js` (braucht `dist/`) — abends keine Dauer-Animation außer transform/opacity, gelesen auch aus den `@keyframes`-Regeln selbst (Chromiums `getKeyframes()` verschweigt animierte CSS-Variablen — der alte `ledLauf` war so unsichtbar) (Voraussetzung: Goldring läuft), `.blende` ohne backdrop-filter in Ruhe, auf einer nachgestellt LANGSAMEN Seite (ein Bild hält `load` 1,5 s auf) entsteht der erste Film erst nach `load` (lokal käme `load` sonst so früh, dass kein Film es überholen könnte), danach höchstens `BZ_ZUGLEICH` zugleich (8 s gezählt), Tipp spielt sofort, Kopf außer Sicht hält an und läuft zurück im Bild weiter |
 | **Gericht-Blatt (Entwurf-Hinweis, Kategorie-Panel, Preis), Leisten unten im Hub, Laternen über Zurück, Marken im Foodroulette** | `pruefungen/pruef-fotofehler.js` (braucht `dist/`) — die Fehler aus den Fotos vom 10.10., je am gezeichneten Bild: Satz und „Verwerfen“ überlappen nicht, wiederhergestellter Preis „10,90“, Kategorie-Panel so breit wie die Zeile mit 13 echten Kategorien ohne eigenen Scrollbereich, ganz unten liegt jedes Antippbare über Ruf-Streifen + Auswahl-Leiste (Wache), Zurück unter den Laternen ohne Leerstreifen, keine Marke abgeschnitten |
-| Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster |
+| Landingpage | `pruefungen/pruef-web.js` — Ladezeit, Zeitbalken, beide Fenster (das Hub-Fenster ohne Netz: ein Satz statt leerer Fläche) |
+| **Landingpage: Funktions-Showcase, echter Demo-Hub im Telefon und im Fenster** | `pruefungen/pruef-web-showcase.js` (braucht `dist/`) — eigener kleiner Server (Landingpage + erzeugte Datei des Vorführhauses, gleiche Herkunft wie live): Karten = `omotenoDemo.schritte` (zweite Quelle, jeder genau einmal); vor dem Abschnitt nichts geholt (gemessen: der erste Beobachter-Rückruf und die Anfangsstellung luden den Hub sonst sofort); Telefon zeigt die ausgelieferte Datei ohne Willkommensschirm; jede Karte → richtige Route im Telefon, Zähler; Pfeil, Pfeiltaste, Rollen der Bahn → Telefon folgt; ein schnell übersprungener Schritt plant nichts nach; nur transform/opacity ≤ 450 ms, reduzierte Bewegung ohne; **echter Tipp auf eine Kachel IM Rahmen bleibt im Rahmen** (§8.1t); „Hinter dem Tresen“ öffnet das Board-Fenster; das Fenster „Demo-Hub“ zeigt denselben Hub ohne zweites Holen; nichts Schreibendes, nichts an die Datenbank, kein Hub-Schlüssel im Speicher der Landingpage; 360/390/768/1280 px kein Überlauf, Knöpfe ≥ 44 px auch in den zurückgesetzten Karten, aktive Karte ≥ 4,5:1, Telefon ganz im Fenster |
+| **Vorführhaus (Café Nordstern, `markenblaetter/nordstern.json` mit `demo`), Vorführmodus `OMOTENO_DEMO`** | `pruefungen/pruef-demo.js` (braucht `dist/`) — jedes Haus mit Schalter: nichts Schreibendes UND keine Anfrage an die Datenbank (auch kein GET), echte Wahl des Geräts unsichtbar und danach unverändert, um 3 Uhr offen, jeder Vorführschritt an seinem Ziel, Bestellpass über den echten Knopf bis „fertig“; ohne Schalter: echter Speicher; das Vorführhaus direkt aufgerufen immer vorgeführt, eigene Karte/Lieferung/Aktion/16+-18+ aus `demo`, Englisch aus den Übersetzungen der eigenen Zeilen, kein Wort aus Chocos Gerüst-Karte. Das Vorführhaus merkt sich absichtlich nichts über ein Neuladen hinaus — Neulade-Proben in `pruef-lichtliste`/`pruef-startseite` nehmen es namentlich aus. Erzeuger: `demo` nur mit vollständigen Übersetzungen in allen elf Sprachen und allen drei Karten (sonst bliebe die Gerüst-Karte stehen); `pruef-uebersetzung` hält die Zeilen-Übersetzungen als zweite Quelle; `pruef-lieferung` verlangt `/demo` → `/h/<slug>/` (301, über den nachgestellten Netlify-Weg) |
 | Impressum, Datenschutz | `pruefungen/pruef-recht.js` — Ladezeit, Lesbarkeit, Marke |
 | Marken-Studio (Bedienung) | `pruefungen/pruef-studio-hand.js` — Rückgängig, Sprung, Schicken, aufklappbare Abteilungen (eine offen, Kopf ≥ 44 px mit Satz), kein Markenblatt-Code ohne `?fachleute=1` (gemessen bei OFFENEM „Fertig?“), Mausklick auf Reiter im schmalen Fenster, Griff zieht trotzdem |
 | Auslieferung, Umleitungen | `erzeuger/bauen.js` und dann `pruefungen/pruef-lieferung.js` |
