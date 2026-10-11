@@ -2294,6 +2294,20 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
       rgba(255,255,255,.16) 66.3%, rgba(255,255,255,.16) 66.5%, transparent 66.6%),
     linear-gradient(to bottom, transparent 49.7%, rgba(255,255,255,.16) 49.8%,
       rgba(255,255,255,.16) 50.2%, transparent 50.3%)}
+/* Kopf & Logo im Board */
+.kfreihe{display:flex;align-items:center;gap:14px;margin:0 0 12px}
+.kfschau{flex:none;overflow:hidden;background:var(--flaeche-2);border:1px solid var(--linie);
+  display:grid;place-items:center;color:var(--gedaempft);font-size:12px;text-align:center}
+.kfschau img{display:block;width:100%;height:100%;object-fit:cover}
+.kfschau-bild{width:128px;aspect-ratio:16 / 9;border-radius:10px}
+.kfschau-logo{width:72px;height:72px;border-radius:50%}
+#kfGruppe[data-form="eckig"] .kfschau-logo{border-radius:22%}
+.kfknoepfe{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.kfknoepfe .knopf{min-height:44px}
+/* Maske im Zuschnitt: zeigt, was beim Logo wirklich zu sehen ist. */
+.kfmaske{position:absolute;inset:0;pointer-events:none;display:none}
+#kfBlatt[data-art="logo"] .kfmaske{display:block;border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.55)}
+#kfBlatt[data-art="logo"][data-form="eckig"] .kfmaske{border-radius:22%}
 .kbzoom{display:flex;flex-direction:column;gap:6px;margin-top:12px}
 .kbzoom span{font-size:11.5px;color:var(--gedaempft)}
 
@@ -3518,6 +3532,45 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="hvrahmen" data-hv="startseite"></div>
     </div>
 
+    <!-- Kopf & Logo (Wunsch 11.10.): Bild ganz oben auf der Startseite,
+         das Logo mittig auf seiner Unterkante, rund oder eckig. Ein
+         Tipp aufs Logo zeigt dem Gast die Haus-Seite. Gespeichert in
+         hub_stil.kopf — der Hub nimmt nur Dateien aus dem eigenen
+         Ordner im Eimer „gerichte“ (kopfBildOk). -->
+    <div class="egruppe" data-nur-inhaber id="kfGruppe">
+      <h2 class="etitel">Kopf &amp; Logo</h2>
+      <p class="ehilfe">Ein Bild ganz oben auf Ihrer Startseite, darauf mittig
+        Ihr Logo — rund oder eckig. Tippt ein Gast aufs Logo, sieht er alles
+        Wichtige über Ihr Haus: Zeiten, Weg, Kontakt und „Über uns“.</p>
+      <div class="kfreihe">
+        <div class="kfschau kfschau-bild" id="kfBildSchau"></div>
+        <div class="kfknoepfe">
+          <button type="button" class="knopf leise schmal" id="kfBildWahl">Kopfbild wählen</button>
+          <button type="button" class="knopf leise schmal" id="kfBildWeg" hidden>Entfernen</button>
+        </div>
+      </div>
+      <div class="kfreihe">
+        <div class="kfschau kfschau-logo" id="kfLogoSchau"></div>
+        <div class="kfknoepfe">
+          <button type="button" class="knopf leise schmal" id="kfLogoWahl">Logo wählen</button>
+          <button type="button" class="knopf leise schmal" id="kfLogoWeg" hidden>Entfernen</button>
+        </div>
+      </div>
+      <div class="auswahlfeld">
+        <span class="lname">Form des Logos</span>
+        <div class="segment" id="kfForm" role="radiogroup" aria-label="Form des Logos">
+          <button type="button" data-kf-form="rund" role="radio" aria-checked="true">Rund</button>
+          <button type="button" data-kf-form="eckig" role="radio" aria-checked="false">Eckig</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+      </div>
+      <input type="file" accept="image/*" id="kfDatei" hidden>
+      <div class="epruefung" id="kfStand"></div>
+      <div class="eknoepfe">
+        <button class="knopf" id="kfSichern" disabled>Übernehmen</button>
+      </div>
+    </div>
+
     <div class="egruppe" data-nur-inhaber id="swGruppe">
       <h2 class="etitel">Schrift</h2>
       <p class="ehilfe">Für jeden Textbereich Ihrer Seite einzeln — aus unserer
@@ -3829,6 +3882,16 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
           <input type="text" id="hubWlanPasswort" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Passwort des Gäste-WLANs">
           <small class="feldhilfe" id="hubWlanPasswortHilfe">Nur das Gäste-Netz, nie das Netz Ihrer Kasse:
             Jeder, der die Seite öffnet, kann es kopieren.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Über uns</b><i>Auf der Seite hinter Ihrem Logo — ein paar Sätze, wer Sie sind</i></span>
+        <label class="feld">
+          <span>Über uns <em class="mass" id="hubUeberMass"></em></span>
+          <textarea id="hubUeber" rows="4" placeholder="Seit 2019 backen wir jeden Morgen selbst …"></textarea>
+          <small class="feldhilfe" id="hubUeberHilfe">Erscheint, wenn ein Gast auf Ihr Logo tippt.
+            Zeilenumbrüche bleiben stehen.</small>
         </label>
       </div>
 
@@ -4402,6 +4465,31 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="blattfuss">
       <button class="knopf" id="bnBlattOk">Übernehmen</button>
       <button class="knopf leise" id="bnBlattWeg">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Zuschnitt für Kopfbild (16:9) und Logo (1:1, rund oder eckig
+     maskiert) — dieselben Gesten wie Kachel und Banner (zuschnittGesten). -->
+<div class="blatt" id="kfBlatt" hidden>
+  <div class="blattinhalt">
+    <div class="griff"></div>
+    <h2 class="blatttitel" id="kfBlattTitel">Kopfbild zuschneiden</h2>
+    <p class="ehilfe">Mit einem Finger verschieben, mit zwei Fingern zoomen.</p>
+    <div class="kbrahmen" id="kfRahmen">
+      <img id="kfBild" alt="">
+      <div class="kbraster"></div>
+      <div class="kfmaske" aria-hidden="true"></div>
+    </div>
+    <label class="kbzoom">
+      <span>Größe</span>
+      <input type="range" id="kfZoom" min="100" max="300" step="1" value="100"
+             class="regler" aria-label="Bild vergrößern">
+    </label>
+    <div class="epruefung" id="kfBlattStand"></div>
+    <div class="blattfuss">
+      <button class="knopf" id="kfBlattOk">Übernehmen</button>
+      <button class="knopf leise" id="kfBlattWeg">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -11026,6 +11114,7 @@ function tabelle(){
    ["#kbBlatt",   function(){ kbSchliessen(); }],
    ["#zeitBlatt", function(){ zeitBlattSchliessen(); }],
    ["#impBlatt",  function(){ impSchliessen(); }],
+   ["#kfBlatt",   function(){ kfBlattZu(); }],
    ["#uebBlatt",  function(){ uebSchliessen(); }],
    ["#awBlatt",   function(){ awBlattZu(); }],
    ["#ktedBlatt", function(){ ktedZu(); }],
@@ -11111,7 +11200,7 @@ function tafelZeigen(ziel){
      Öffnen des Speisekarte-Reiters gefüllt wird — ein Wirt, der
      direkt auf "Startseite" geht, sähe sonst fälschlich "keine
      laufende Aktion", obwohl welche liefen. */
-  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); fbLaden(); aktionenLaden(); }
+  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); fbLaden(); kfLaden(); aktionenLaden(); }
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
   if(ziel === "auswertung")      awLaden();
@@ -11309,6 +11398,9 @@ const TEXTMASS = {
     warnung:"Ab 36 Zeichen braucht der Titel beim Gast eine zweite Zeile. Das geht — kürzer liest sich schneller." },
   gsText:      { gut:88, hart:240,
     warnung:"Ab 88 Zeichen wird der Satz auf schmalen Telefonen dreizeilig." },
+  /* Dieselbe Zahl wie hub_texte_ueber (migration-haus.sql). */
+  hubUeber:    { gut:240, hart:400,
+    warnung:"Ab 240 Zeichen wird der Text auf dem Telefon lang — kurz liest sich schneller." },
   hubRunner:   { gut:20, hart:40,
     warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." },
   /* Die Laufschrift bricht nie um, sie läuft. „gut“ ist Lesezeit:
@@ -11357,12 +11449,12 @@ function massVerdrahten(){
       el.dataset.verdrahtet = "1";
       el.addEventListener("input", () => {
         massZeigen(id);
-        if(id.indexOf("hub") === 0){ hubSchauZeichnen(); hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : "kopf"); }
+        if(id.indexOf("hub") === 0){ hubSchauZeichnen(); hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : id === "hubUeber" ? "haus" : "kopf"); }
       });
       /* Wer ins Gruß-Feld tippt, will den Willkommensschirm sehen,
          nicht den Kopf der Startseite. */
       if(id.indexOf("hub") === 0) el.addEventListener("focus", () =>
-        hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : "kopf"));
+        hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : id === "hubUeber" ? "haus" : "kopf"));
     }
     massZeigen(id);
   });
@@ -12192,14 +12284,18 @@ $("#swSichern").onclick = swSichern;
 /* Die drei Anschlüsse. */
 function hvStartseite(ziel){
   if($("#t-startseite") && $("#t-startseite").hidden) return;
-  hvSenden("startseite", { hub_kacheln: kbRoh(), hub_banner: bnRoh(),
-                           hub_stil: { schrift: swFuerHub(true) } }, ziel || "");
+  /* hub_stil geht als Ganzes: Ein Entwurf nur mit „schrift“ nähme
+     dem Rahmen das Kopfbild, einer nur mit „kopf“ die Schrift. */
+  const stil = { schrift: swFuerHub(true) };
+  if(KF) stil.kopf = kfRoh();
+  hvSenden("startseite", { hub_kacheln: kbRoh(), hub_banner: bnRoh(), hub_stil: stil }, ziel || "");
 }
 function hvWorte(ziel){
   const wert = id => ($("#" + id) || {}).value || "";
   hvSenden("worte", { hub_texte:{ claim:wert("hubClaim"), gruss:wert("hubGruss"),
                                   runner_titel:wert("hubRunner"), laufschrift:wert("hubLaufschrift"),
-                                  wlan_netz:wert("hubWlanNetz"), wlan_passwort:wert("hubWlanPasswort") },
+                                  wlan_netz:wert("hubWlanNetz"), wlan_passwort:wert("hubWlanPasswort"),
+                                  ueber:wert("hubUeber") },
                       /* Ohne laufende Aktion wäre der Aktionsname nirgends zu sehen. */
                       aktion: ziel === "aktion" && gerichte[0]
                         ? { titel:"", gericht_name:gerichte[0].name,
@@ -12227,6 +12323,7 @@ function hubTexteFuellen(){
   setz("hubLaufschrift", HUBTEXTE.laufschrift);
   setz("hubWlanNetz", HUBTEXTE.wlan_netz);
   setz("hubWlanPasswort", HUBTEXTE.wlan_passwort);
+  setz("hubUeber", HUBTEXTE.ueber);
   massVerdrahten();
   hubSchauZeichnen();
   hvWorte("kopf");
@@ -12326,7 +12423,11 @@ async function lfSichern(){
 
 async function hubTexteSichern(){
   const raus = $("#hubTextePruefung");
-  const neu = {};
+  /* Alles, was dieses Formular NICHT kennt (etwa die eigenen Texte aus
+     „Texte & Schrift“), bleibt stehen — vorher baute jedes Übernehmen
+     hub_texte frisch aus den Feldern und hätte es gelöscht. */
+  const neu = Object.assign({}, HUBTEXTE || {});
+  ["claim","gruss","runner_titel","laufschrift","wlan_netz","wlan_passwort","ueber"].forEach(k => { delete neu[k]; });
   const claim  = $("#hubClaim").value.trim();
   const gruss  = $("#hubGruss").value.trim();
   const runner = $("#hubRunner").value.trim();
@@ -12341,6 +12442,8 @@ async function hubTexteSichern(){
   const wPass = ($("#hubWlanPasswort") || {value:""}).value.trim();
   if(wNetz) neu.wlan_netz = wNetz;
   if(wPass) neu.wlan_passwort = wPass;
+  const ueber = ($("#hubUeber") || {value:""}).value.trim();
+  if(ueber) neu.ueber = ueber;
 
   const knopf = $("#hubTexteSichern");
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
@@ -12362,7 +12465,7 @@ async function hubTexteSichern(){
     /* Die Datenbank hat dieselben Grenzen als Schranke. Wenn sie
        zuschlägt, ist das kein Serverfehler, sondern ein zu langer
        Text — und das gehört genau so gesagt. */
-    raus.textContent = /hub_texte_(masse|wlan|laufschrift)|check/i.test(String(err && err.message))
+    raus.textContent = /hub_texte_(masse|wlan|laufschrift|ueber)|check/i.test(String(err && err.message))
       ? "Ein Text ist zu lang. Bitte die Hinweise an den Feldern beachten."
       : "Nicht gespeichert, bitte Verbindung prüfen.";
   }
@@ -14367,6 +14470,196 @@ $("#bnZoom").oninput = e => {
   bnSetzen();
 };
 
+/* ══ KOPF & LOGO (betriebe.hub_stil.kopf, Wunsch 11.10.) ═══════════
+   Kopfbild 16:9 (1600 px breit), Logo 1:1 (512 px), Form rund/eckig.
+   Hochgeladen in <Betrieb>/kopf/ im Eimer „gerichte“ — genau das
+   Muster, das kopfBildOk() im Hub annimmt (pruef-kopfbild.js hält
+   beide gegeneinander). Gespeichert wird erst nach gelesenem Stand
+   (§8.1m): KF ist null, bis kfLaden() die Zeile kennt. */
+const KF_ART = { bild: { format: 16 / 9, breite: 1600, titel: "Kopfbild zuschneiden" },
+                 logo: { format: 1,      breite: 512,  titel: "Logo zuschneiden" } };
+let KF = null, KF_GERUEHRT = false, kfZuschnitt = null, kfWahlArt = "bild";
+function kfAusStil(st){
+  const k = st && typeof st === "object" && st.kopf && typeof st.kopf === "object" ? st.kopf : {};
+  const url = u => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) ? u : "";
+  return { bild: url(k.bild), logo: url(k.logo), form: k.form === "eckig" ? "eckig" : "rund" };
+}
+function kfLaden(){
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  KF = bb ? kfAusStil(bb.hub_stil) : (demo ? { bild:"", logo:"", form:"rund" } : null);
+  KF_GERUEHRT = false;
+  $("#kfStand").textContent = KF ? "" : "Der gespeicherte Stand ist noch nicht gelesen.";
+  kfZeichnen();
+}
+function kfRoh(){
+  if(!KF) return null;
+  const o = {};
+  if(KF.bild) o.bild = KF.bild;
+  if(KF.logo){ o.logo = KF.logo; o.form = KF.form; }
+  return o;
+}
+function kfZeichnen(){
+  const k = KF || { bild:"", logo:"", form:"rund" };
+  $("#kfBildSchau").innerHTML = k.bild ? '<img src="' + sicher(k.bild) + '" alt="">' : "Kein Bild";
+  $("#kfLogoSchau").innerHTML = k.logo ? '<img src="' + sicher(k.logo) + '" alt="">' : "Siegel";
+  $("#kfBildWeg").hidden = !k.bild;
+  $("#kfLogoWeg").hidden = !k.logo;
+  $("#kfGruppe").dataset.form = k.form;
+  $$("#kfForm [data-kf-form]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.kfForm === k.form)));
+  $("#kfForm .segmentschieber").style.transform = "translateX(" + (k.form === "eckig" ? 100 : 0) + "%)";
+  $("#kfSichern").disabled = !KF || !KF_GERUEHRT;
+}
+function kfGeaendert(ziel){
+  KF_GERUEHRT = true; kfZeichnen();
+  hvStartseite(ziel || "kopf");
+}
+
+$("#kfBildWahl").onclick = () => { if(!KF) return; kfWahlArt = "bild"; $("#kfDatei").value = ""; $("#kfDatei").click(); };
+$("#kfLogoWahl").onclick = () => { if(!KF) return; kfWahlArt = "logo"; $("#kfDatei").value = ""; $("#kfDatei").click(); };
+$("#kfBildWeg").onclick = () => { if(!KF) return; KF.bild = ""; kfGeaendert("kopf"); };
+$("#kfLogoWeg").onclick = () => { if(!KF) return; KF.logo = ""; kfGeaendert("kopf"); };
+$("#kfForm").onclick = e => {
+  const b = e.target.closest("[data-kf-form]"); if(!b || !KF) return;
+  KF.form = b.dataset.kfForm === "eckig" ? "eckig" : "rund";
+  kfGeaendert("kopf");
+};
+$("#kfDatei").onchange = e => {
+  const d = e.target.files && e.target.files[0]; if(!d) return;
+  if(!/^image\//.test(d.type)){ $("#kfStand").textContent = "Das ist kein Bild. Bitte ein Foto oder eine Grafik wählen."; return; }
+  kfZuschnittOeffnen(kfWahlArt, d);
+};
+
+function kfZuschnittOeffnen(art, datei){
+  const leser = new FileReader();
+  leser.onerror = () => melde("Datei nicht lesbar");
+  leser.onload = () => {
+    const bild = new Image();
+    bild.onerror = () => melde("Das ist kein Bild, das der Browser öffnen kann");
+    bild.onload = () => {
+      $("#kfBild").src = bild.src;
+      kfZuschnitt = { art, bild, zoom:1, dx:0, dy:0 };
+      $("#kfZoom").value = 100;
+      $("#kfBlattStand").textContent = "";
+      $("#kfBlattTitel").textContent = KF_ART[art].titel;
+      $("#kfBlatt").dataset.art = art;
+      $("#kfBlatt").dataset.form = (KF && KF.form) || "rund";
+      $("#kfBlatt").hidden = false;
+      const rahmen = $("#kfRahmen");
+      const breite = Math.max(160, Math.min(rahmen.parentElement.clientWidth - 4, art === "logo" ? 320 : 520));
+      rahmen.style.width  = breite + "px";
+      rahmen.style.height = Math.round(breite / KF_ART[art].format) + "px";
+      kfMitte();
+    };
+    bild.src = leser.result;
+  };
+  leser.readAsDataURL(datei);
+}
+function kfGrundmass(){
+  const r = $("#kfRahmen").getBoundingClientRect(), b = kfZuschnitt.bild;
+  return Math.max(r.width / b.naturalWidth, r.height / b.naturalHeight);
+}
+function kfMitte(){
+  const r = $("#kfRahmen").getBoundingClientRect();
+  const m = kfGrundmass() * kfZuschnitt.zoom;
+  kfZuschnitt.dx = (r.width  - kfZuschnitt.bild.naturalWidth  * m) / 2;
+  kfZuschnitt.dy = (r.height - kfZuschnitt.bild.naturalHeight * m) / 2;
+  kfSetzen();
+}
+function kfSetzen(){
+  if(!kfZuschnitt) return;
+  const r = $("#kfRahmen").getBoundingClientRect();
+  const m = kfGrundmass() * kfZuschnitt.zoom;
+  const bw = kfZuschnitt.bild.naturalWidth * m, bh = kfZuschnitt.bild.naturalHeight * m;
+  kfZuschnitt.dx = Math.min(0, Math.max(r.width  - bw, kfZuschnitt.dx));
+  kfZuschnitt.dy = Math.min(0, Math.max(r.height - bh, kfZuschnitt.dy));
+  $("#kfBild").style.transform = "translate(" + kfZuschnitt.dx + "px," + kfZuschnitt.dy + "px) scale(" + m + ")";
+}
+zuschnittGesten({ rahmen:"#kfRahmen", regler:"#kfZoom", zustand:() => kfZuschnitt,
+                  grund:() => kfGrundmass(), setzen:() => kfSetzen() });
+$("#kfZoom").oninput = e => {
+  if(!kfZuschnitt) return;
+  kfZuschnitt.zoom = Math.max(1, Number(e.target.value) / 100);
+  kfSetzen();
+};
+function kfFlaeche(){
+  const r = $("#kfRahmen").getBoundingClientRect();
+  const m = kfGrundmass() * kfZuschnitt.zoom;
+  const a = KF_ART[kfZuschnitt.art];
+  const B = a.breite, H = Math.round(a.breite / a.format);
+  const flaeche = document.createElement("canvas");
+  flaeche.width = B; flaeche.height = H;
+  const stift = flaeche.getContext("2d");
+  stift.fillStyle = "#FFFFFF"; stift.fillRect(0, 0, B, H);
+  stift.imageSmoothingQuality = "high";
+  stift.drawImage(kfZuschnitt.bild, -kfZuschnitt.dx / m, -kfZuschnitt.dy / m, r.width / m, r.height / m, 0, 0, B, H);
+  return flaeche;
+}
+async function kfZuschnittFertig(){
+  if(!kfZuschnitt || !KF) return;
+  const knopf = $("#kfBlattOk");
+  const stand = t => { $("#kfBlattStand").textContent = t; };
+  if(!betriebId){ stand("Kein Betrieb gewählt."); return; }
+  knopf.disabled = true;
+  try{
+    stand("Wird zugeschnitten …");
+    const flaeche = kfFlaeche();
+    const blob = await gbDatei(flaeche);
+    const art = kfZuschnitt.art;
+    if(demo || !db){
+      /* Vorführmodus: nichts hochladen, aber im Rahmen zeigen. */
+      KF[art] = flaeche.toDataURL("image/jpeg", 0.8);
+    }else{
+      stand("Wird hochgeladen … (" + Math.round(blob.size / 1024) + " KB)");
+      const endung = blob.type === "image/webp" ? "webp" : "jpg";
+      const pfad = betriebId + "/kopf/" + art + "-" + Date.now() + "." + endung;
+      const {error} = await db.storage.from("gerichte").upload(pfad, blob, { contentType: blob.type, upsert:false });
+      if(error) throw error;
+      KF[art] = db.storage.from("gerichte").getPublicUrl(pfad).data.publicUrl;
+    }
+    kfBlattZu();
+    kfGeaendert(art === "logo" ? "haus" : "kopf");
+    melde(art === "logo" ? "Logo übernommen — mit „Übernehmen“ wird es sichtbar" : "Kopfbild übernommen — mit „Übernehmen“ wird es sichtbar");
+  }catch(e){
+    console.error(e);
+    stand(e.message || "Hochladen fehlgeschlagen");
+  }
+  knopf.disabled = false;
+}
+function kfBlattZu(){ blattFortAnimieren($("#kfBlatt"), function(){ $("#kfBlatt").hidden = true; kfZuschnitt = null; }); }
+$("#kfBlattOk").onclick  = kfZuschnittFertig;
+$("#kfBlattWeg").onclick = kfBlattZu;
+$("#kfBlatt").onclick = e => { if(e.target === $("#kfBlatt")) kfBlattZu(); };
+
+$("#kfSichern").onclick = async () => {
+  if(!KF) return;
+  const raus = $("#kfStand"), k = $("#kfSichern");
+  if(demo || !db){ raus.textContent = "Im Vorführmodus wird nichts gespeichert."; return; }
+  /* Im Vorführmodus stehen data:-Bilder im Entwurf — die gehen nie in
+     die Datenbank (der Hub nähme sie ohnehin nicht). */
+  if([KF.bild, KF.logo].some(u => u && !/^https:\/\//.test(u))){ raus.textContent = "Ein Bild ist noch nicht hochgeladen."; return; }
+  k.disabled = true; k.textContent = "Wird übernommen …";
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  const neu = Object.assign({}, (bb && bb.hub_stil && typeof bb.hub_stil === "object") ? bb.hub_stil : {});
+  const roh = kfRoh();
+  if(roh && (roh.bild || roh.logo)) neu.kopf = roh; else delete neu.kopf;
+  const {error} = await db.from("betriebe").update({ hub_stil: neu }).eq("id", betriebId);
+  k.textContent = "Übernehmen";
+  if(error){
+    const t = String(error.message || "");
+    raus.textContent =
+      /hub_stil_form|check/i.test(t) ? "Die Gestaltung ist zu groß für die Datenbank geworden." :
+      /row-level|policy|permission|besitzer|inhaber/i.test(t) ? "Nur der Besitzer kann das ändern." :
+      "Nicht gespeichert, bitte Verbindung prüfen.";
+    kfZeichnen();
+    return;
+  }
+  if(bb) bb.hub_stil = neu;
+  KF_GERUEHRT = false;
+  raus.textContent = "Übernommen. Gäste sehen es beim nächsten Öffnen.";
+  melde("Kopf & Logo übernommen");
+  kfZeichnen();
+};
+
 /* ── Sichern ───────────────────────────────────────────────────── */
 /* Dieselbe Normalisierung wie bannerZiel() in hub.vorlage.html: fehlt
    bei einer URL jedes Protokoll, wird https:// ergänzt — damit ist
@@ -14506,7 +14799,7 @@ if($("#hubTexteSichern")){
     });
     hubSchauZeichnen();
     $("#hubTextePruefung").textContent =
-      "Felder geleert (das WLAN bleibt). Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
+      "Felder geleert (WLAN und „Über uns“ bleiben). Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
   };
 }
 

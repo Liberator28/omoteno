@@ -1,0 +1,47 @@
+-- ═══════════════════════════════════════════════════════════════════
+--  migration-haus.sql · hub_texte.ueber („Über uns“ auf der Haus-Seite)
+--
+--  Wunsch (11.10.): Ein Tipp aufs Logo zeigt dem Gast eine kleine
+--  Landingpage des Hauses. Den Text „Über uns“ trägt der Betrieb im
+--  Board unter „Ihre Worte“ ein; er liegt bei den übrigen Worten in
+--  betriebe.hub_texte — keine neue Spalte, der Hub liest ihn live.
+--
+--  Kopfbild und Logo liegen in betriebe.hub_stil.kopf (zwei Adressen
+--  und ein Wort, gemessen < 400 Bytes) — die bestehende Schranke
+--  betriebe_hub_stil_form (< 2500 Bytes) trägt das ohne Änderung. Der
+--  Hub nimmt nur Dateien aus <Betrieb>/kopf/ im Eimer „gerichte“; die
+--  Upload-Regeln des Eimers gelten unverändert (nur Inhaber, eigener
+--  Ordner — migration-rollen.sql).
+--
+--  Ohne diese Migration läuft alles: hub_texte hat keine Gesamtgrenze,
+--  „ueber“ wird angenommen; Board (TEXTMASS.hubUeber) und Hub
+--  (kurz(…, 400)) kürzen schon. Die Schranke ist die dritte Linie für
+--  jeden anderen Weg in die Tabelle (§2.3a). Additiv (§2.8).
+--
+--  NICHT LIVE GEPRÜFT: Der Supabase-Zugang war am 11.10. getrennt
+--  (ERR_PROXY_TUNNEL). Im SQL-Editor einspielen, danach die Probe unten.
+-- ═══════════════════════════════════════════════════════════════════
+alter table public.betriebe add constraint hub_texte_ueber check (
+  coalesce(length(hub_texte ->> 'ueber'), 0) <= 400
+);
+
+-- ── PROBE (im SQL-Editor, dreht sich selbst zurück; Zeilenzahl statt
+--    Ausnahme §2.3b; andere Spalte derselben Zeile §2.7) ──
+-- begin;
+-- create temp table probe(schritt text, ergebnis text);
+-- do $$
+-- declare n int; b uuid := (select id from public.betriebe order by id limit 1);
+-- begin
+--   update public.betriebe set hub_texte = coalesce(hub_texte,'{}'::jsonb) || jsonb_build_object('ueber', repeat('x', 400)) where id = b;
+--   get diagnostics n = row_count; insert into probe values ('ueber 400 Zeichen', n::text);
+--   begin
+--     update public.betriebe set hub_texte = coalesce(hub_texte,'{}'::jsonb) || jsonb_build_object('ueber', repeat('x', 401)) where id = b;
+--     insert into probe values ('ueber 401 Zeichen', 'NICHT abgewiesen');
+--   exception when check_violation then insert into probe values ('ueber 401 Zeichen', 'abgewiesen');
+--   end;
+--   update public.betriebe set name = name where id = b;
+--   get diagnostics n = row_count; insert into probe values ('andere Spalte', n::text);
+-- end $$;
+-- select * from probe;
+-- rollback;
+--   Erwartet: 1 · abgewiesen · 1
