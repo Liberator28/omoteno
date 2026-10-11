@@ -775,7 +775,9 @@ html{font-size:calc(16px * var(--skala,1))}
        (Bildschirmfoto): Beide standen auf 39, bei Gleichstand gewinnt
        das spätere Element — auf dem Karte-Reiter lagen „Gericht
        hinzufügen“ und „Karte einlesen“ über „Startseite“ und
-       „Einstellungen“, die Menüpunkte waren nicht zu erreichen. */
+       „Einstellungen“, die Menüpunkte waren nicht zu erreichen.
+       Seit 11.10. stehen die Karte-Knöpfe oben im Fluss; die 41 bleibt
+       über der Befehlsleiste. */
     position:fixed;left:10px;right:10px;z-index:41;
     /* Schob sich bisher direkt ueber die Reiterleiste. Dort liegen
        jetzt die Filter, also eine Etage hoeher. Gerechnet aus
@@ -3023,30 +3025,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
    Textfeld. Deshalb bekommt sie eine eigene Fläche und feste Spalten:
    Preis rechtsbündig mit Ziffern gleicher Breite, damit man beim
    Überfliegen sofort sieht, wenn einer aus der Reihe fällt. */
-.kartenknoepfe{display:flex;flex-direction:column;gap:9px}
-/* Schwebend am unteren Rand, statt mit der Liste mitzuscrollen —
-   dasselbe Muster wie .befehlsleiste/.filterblock weiter oben in
-   dieser Datei: fixiert, ueber der globalen Reiterleiste (var(--leiste-h)),
-   mit Sicherheitsabstand fuers iPhone. Nur unter 760px: darueber hat
-   das Board eine andere Aufteilung, dort bleibt die alte Fliess-Lage. */
-@media (max-width:760px){
-  /* 132px = zwei .knopf (je ~46px) + 9px Zwischenraum + 10px Polster
-     oben/unten der Leiste selbst — von Hand gemessen, keine JS-Messung
-     noetig (die Leiste hat immer genau diese zwei Zeilen). */
-  #t-speisekarte{padding-bottom:132px}
-  .kartenknoepfe{
-    position:fixed;left:0;right:0;z-index:39;
-    bottom:var(--leiste-h);
-    margin:0;padding:10px 16px;
-    background:var(--leiste-glas);
-    -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
-    border-top:1px solid var(--linie);
-    animation:kartenknoepfeauf .22s var(--ease-out) both;
-  }
-  @keyframes kartenknoepfeauf{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+.kartenknoepfe{
+  display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 16px;
 }
-@media (max-width:760px) and (prefers-reduced-motion:reduce){
-  .kartenknoepfe{animation:none}
+.kartenknoepfe #neuesGericht{grid-column:1 / -1}
+@media (min-width:600px){
+  .kartenknoepfe{grid-template-columns:1.4fr 1fr 1fr}
+  .kartenknoepfe #neuesGericht{grid-column:auto}
 }
 /* Wer Transparenz reduziert haben will, bekommt dieselbe feste Fläche
    wie ein Browser ohne backdrop-filter (@supports-Rückfall folgt an
@@ -3064,7 +3049,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
    spätere Regel) war wirklich betroffen. Jetzt steht dieser Block
    nach beiden mobilen Blöcken, damit er wirklich zuletzt gilt. */
 @media (prefers-reduced-transparency:reduce){
-  header,#t-bestellungen .filterblock,.befehlsleiste,.kartenknoepfe,.egruppe,
+  header,#t-bestellungen .filterblock,.befehlsleiste,.egruppe,
   .aw-glas,.aw-segment{
     background:var(--karte);
     -webkit-backdrop-filter:none;backdrop-filter:none;
@@ -3080,35 +3065,78 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 .impstand b{color:var(--kreide);font-weight:600}
 .impstand.leer{border-left-color:var(--linie)}
 .impliste{
-  max-height:44vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  /* Kein eigener Scrollbereich mehr (§3.8): Die Liste fließt im Blatt
+     mit. Vorher max-height:44vh mit overflow — der Finger lag fast
+     immer auf der Liste, und das Blatt rollte nicht bis „anlegen“. */
   border:1px solid var(--linie);border-radius:11px;
   background:var(--flaeche-2);margin-bottom:16px;
 }
 .impliste:empty{display:none}
-.impkat{
-  font-family:var(--mono);
-  font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--messing);padding:11px 13px 6px;
+.impgruppe{padding:10px 13px 4px}
+.impliste input.impkatfeld{
+  font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--messing);-webkit-text-fill-color:var(--messing);
+  background:transparent;border:0;border-bottom:1px dashed var(--linie);border-radius:0;
+  padding:8px 0;min-height:44px;
 }
 .impzeile{
-  display:flex;align-items:baseline;gap:10px;
-  padding:8px 13px;border-top:1px solid rgba(56,50,38,.5);
+  display:flex;align-items:flex-start;gap:8px;
+  padding:8px 13px 10px 6px;border-top:1px solid var(--linie);
 }
-.impzeile .in{flex:1;min-width:0;font-size:14px;line-height:1.3}
-.impzeile .ib{
-  display:block;font-size:11.5px;color:var(--gedaempft);
-  line-height:1.4;margin-top:2px;
+.impzeile .in{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.impliste input.impname{
+  background:transparent;border:0;border-bottom:1px dashed transparent;border-radius:0;
+  padding:10px 0 4px;min-height:44px;line-height:1.3;
 }
-.impzeile .ip{
-  font-family:var(--mono);
-  font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;
-  white-space:nowrap;color:var(--messing);
+.impliste input.impname:focus{border-bottom-color:var(--messing);outline:none}
+.impzeile .ib{display:block;font-size:12px;color:var(--gedaempft);line-height:1.4}
+.impzeile .ip{flex:none}
+.impliste input.imppreis{
+  width:96px;min-height:44px;text-align:right;
+  font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;
+  color:var(--messing);-webkit-text-fill-color:var(--messing);
+  background:var(--karte);padding:10px;
 }
-.impzeile.ohnepreis .ip{color:var(--warn);font-weight:500}
-.impzeile.doppelt{opacity:.5}
-.impzeile.doppelt .in::after{
-  content:" · schon vorhanden";font-size:11px;color:var(--gedaempft);font-weight:400;
+.impzeile.ohnepreis input.imppreis{border-color:var(--warn)}
+.impliste input.imppreis::placeholder{color:var(--warn);-webkit-text-fill-color:var(--warn);font-weight:500;font-size:13px}
+.impan{
+  flex:none;width:44px;height:44px;display:grid;place-items:center;
+  background:none;border:0;padding:0;cursor:pointer;
 }
+.impan::before{
+  content:"";width:22px;height:22px;border-radius:7px;
+  border:1.5px solid var(--gedaempft);background:transparent;
+}
+.impan[aria-pressed="true"]::before{
+  background:var(--messing);border-color:var(--messing);
+  box-shadow:inset 0 0 0 4px var(--karte);
+}
+.impan:disabled{cursor:default;opacity:.4}
+.impchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.impchip{
+  min-width:44px;min-height:44px;padding:0 12px;border-radius:22px;
+  font-family:var(--mono);font-size:13px;font-weight:600;
+  color:var(--kreide);background:var(--karte);border:1px solid var(--linie);cursor:pointer;
+}
+.impchip[aria-pressed="false"]{color:var(--gedaempft);text-decoration:line-through}
+.impchip.vorschlag{font-family:inherit;font-weight:500;border-style:dashed}
+.impchip.vorschlag[aria-pressed="false"]{text-decoration:none}
+.impchip.vorschlag[aria-pressed="true"]{border-style:solid;border-color:var(--messing)}
+.impnotiz{font-size:12px;color:var(--gedaempft)}
+.impnotiz:empty{display:none}
+.impzeile.ohnepreis .impnotiz:empty{display:block}
+.impzeile.ohnepreis .impnotiz:empty::before{content:"Preis fehlt — ohne Preis wird nichts angelegt";color:var(--warn)}
+.impzeile.doppelt{opacity:.55}
+.impschema{
+  font-size:14px;line-height:1.5;color:var(--kreide);
+  padding:11px 13px;margin:0 0 12px;
+  background:var(--flaeche-2);border:1px solid var(--linie);border-left:2px solid var(--warn);border-radius:0 10px 10px 0;
+}
+.impschema p{margin:0 0 8px}
+.impschema p:last-child{margin:0}
+.impschema-wahl{display:flex;flex-wrap:wrap;gap:8px}
+.impschema-wahl .knopf{min-height:44px}
+.impschema-wahl .knopf[aria-pressed="true"]{border-color:var(--messing);color:var(--messing)}
 
 @media (min-width:700px){
   .karten{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
@@ -3320,13 +3348,20 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <button class="chip" data-karte="getraenke"   aria-pressed="false">Getränke</button>
       <button class="chip" data-karte="cocktails"   aria-pressed="false">Cocktails</button>
     </div>
+    <!-- Wunsch 11.10.: „Kategorien hinzufügen und Karte einlesen direkt
+         oben sehen“. Vorher schwebten zwei Knöpfe unten über der
+         Reiterleiste, „＋ Neue Kategorie“ stand erst am Ende der Liste —
+         bei 13 Kategorien zwölf Bildschirme tiefer. Jetzt alle drei
+         Wege oben unter den Karten; „＋ Neue Kategorie“ am Listenende
+         bleibt als zweiter Weg. -->
+    <div class="kartenknoepfe" role="group" aria-label="Zur Karte hinzufügen">
+      <button class="knopf" id="neuesGericht">Gericht hinzufügen</button>
+      <button class="knopf leise" id="neueKategorie">＋ Kategorie</button>
+      <button class="knopf leise" id="karteImport">Karte einlesen</button>
+    </div>
     <p class="nur-inhaber-satz" id="karteTeamSatz" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Die Karte ändert nur der Besitzer. Ausverkauftes stellen Sie unter „Verfügbar“ ab.</span></p>
     <input type="text" class="suche" id="karteSuche" placeholder="Gericht suchen" autocomplete="off">
     <div id="karteListe"></div>
-    <div class="kartenknoepfe">
-      <button class="knopf" id="neuesGericht">Gericht hinzufügen</button>
-      <button class="knopf leise" id="karteImport">Karte einlesen</button>
-    </div>
   </section>
 
   <!-- ══ AUSGABE ══ -->
@@ -4465,7 +4500,9 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="hinweisfeld">
       Speisekarte hineinkopieren — aus einer Datei, einer Webseite oder aus
       der Texterkennung deines Telefons. Eine Zeile je Gericht, Kategorien
-      als eigene Zeile ohne Preis.
+      als eigene Zeile ohne Preis. Größen („0,3 l 2,80 / 0,5 l 3,90“) werden
+      je ein Gericht, Kürzel wie „(A,C,G)“ zu Allergenen. Alles ist unten
+      noch änderbar — und ohne Preis wird nichts angelegt.
     </div>
 
     <label><span class="lname">Karte</span>
@@ -4484,6 +4521,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     </div>
 
     <div class="impstand" id="impStand"></div>
+    <div class="impschema" id="impSchema" hidden></div>
     <div class="impliste" id="impListe"></div>
 
     <div class="eknoepfe">
@@ -4971,7 +5009,7 @@ const NUR_INHABER_SCHLOSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x
    Stellen, deshalb EIN Wächter für alle (§4.5), nicht je Zeichenstelle. */
 const NUR_INHABER_KLICK = '[data-bearbeiten],[data-kted],[data-kted-neu],[data-karte-neu],' +
   '[data-karten-bearbeiten],[data-aw-tun="bearbeiten"],[data-schieb],[data-katschieb],' +
-  '[data-leerkat-gericht],#neuesGericht,#karteImport,#runnerAuf';
+  '[data-leerkat-gericht],#neuesGericht,#neueKategorie,#karteImport,#runnerAuf';
 function istInhaberRolle(){ return ROLLE !== "team" && ROLLE !== "kueche"; }
 function rolleAnwenden(rolle){
   ROLLE = (rolle === "team" || rolle === "kueche") ? rolle : "inhaber";
@@ -10138,24 +10176,84 @@ document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#ktedBl
       Gerichte haben.
    ═══════════════════════════════════════════════════════════════ */
 
-/* Zeile ohne Preis am Ende = Überschrift. Zusätzlich raus: reine
-   Zierzeilen und Zeilen, die nur aus Großbuchstaben und Strichen
-   bestehen, wie sie beim Abfotografieren entstehen. */
-function impPreisAmEnde(zeile){
-  /* Vom Ende her: Zahl mit Komma oder Punkt, davor optional €.
-     Die Klammer am Anfang verhindert, dass „12,50" aus der Mitte
-     eines Textes gegriffen wird. */
-  const m = zeile.match(/(?:€\s*)?(\d{1,3})(?:[.,](\d{1,2}))?\s*(?:€|EUR|Euro)?\s*$/i);
-  if(!m) return null;
-  /* Eine nackte Zahl ohne Nachkommastellen und ohne Währungszeichen
-     ist meistens keine Preisangabe, sondern eine Menge: „Pommes 200 g“.
-     Nur mit Komma oder mit € gilt sie als Preis. */
-  const hatKomma = m[2] !== undefined;
-  const hatZeichen = /€|EUR|Euro/i.test(m[0]);
-  if(!hatKomma && !hatZeichen) return null;
-  const wert = Number(m[1]) + (m[2] ? Number(m[2].padEnd(2,"0")) / 100 : 0);
-  if(!(wert > 0) || wert > 999) return null;
-  return { preis: wert, rest: zeile.slice(0, m.index).trim() };
+/* Wie Speisekarten Preise schreiben — gesammelt aus echten Karten
+   (Wunsch 11.10.: „prüfe, ob die Karte-einlesen-Funktion wirklich gut
+   ist“). Die alte Fassung kannte nur „12,50“ und „12,50 €“ am
+   Zeilenende. Draußen stehen dazu: „€ 12,50“, „EUR 12,50“, „12,-“,
+   „1.250,00“, „ab 9,90“ und — aus der Texterkennung des Telefons —
+   „12,5O“ mit einem großen O statt der Null.
+
+   Gelesen wird weiter vom ENDE her: „Pasta 4 Jahreszeiten 12,50“ —
+   vorne steht eine Zahl, die kein Preis ist. */
+const IMP_PREIS_ENDE = /(^|[\s\/|])(ab\s+)?((?:€|EUR|\$)\s*)?(\d{1,3}(?:\.\d{3})+|\d{1,4})(?:([.,])(\d{1,2}|[-–]))?(\s*(?:€|EUR|Euro|\$))?\s*$/i;
+
+/* Größen, die vor einem Preis stehen: „0,3 l 2,80 / 0,5 l 3,90“,
+   „Ø 26 cm 9,50“, „Glas 5,50 Flasche 24,00“. Eine nackte Kommazahl
+   unter 1 („0,3“) gilt NUR dann als Größe, wenn direkt ein Preis
+   folgt — „Extra Sauce 0,50“ ist ein Preis. */
+const IMP_GROESSE_ENDE = /(?:^|\s)(\d+(?:[.,]\d+)?\s*(?:l|cl|ml|ltr\.?|liter|g|gr\.?|kg|stk\.?|stück|cm|pers\.?)\.?|ø\s*\d+\s*(?:cm)?|0[.,]\d{1,2}|klein|mittel|groß|gross|normal|maxi|xl|halbe?|ganze?|glas|flasche|karaffe|portion)\s*$/i;
+
+/* OCR: Texterkennung liest die Null gern als O. Nur in Gebilden, die
+   ohnehin wie ein Preis aussehen (Ziffern, Komma, höchstens ein €). */
+function impOcr(zeile){
+  return zeile.split(" ").map(w => {
+    if(!/^(€|EUR)?[\dOo]+[.,][\dOo]{1,2}(€)?$/i.test(w) || !/\d/.test(w)) return w;
+    return w.replace(/[Oo]/g, "0");
+  }).join(" ");
+}
+
+/* Alle Preise am Zeilenende, von hinten nach vorn, je mit der Größe,
+   die direkt davor steht. nackt = in dieser Karte steht kein einziger
+   Kommapreis, ganze Zahlen sind dort die Preise (aus der Umgebung
+   entschieden, impZerlegen). */
+function impPreiseAmEnde(zeile, nackt){
+  let rest = impOcr(zeile);
+  const preise = [];
+  let ab = false;
+  for(let runde = 0; runde < 4; runde++){
+    const m = rest.match(IMP_PREIS_ENDE);
+    if(!m) break;
+    const nachkomma = m[6];
+    const hatKomma = nachkomma !== undefined;
+    const hatZeichen = !!(m[3] || m[7]);
+    /* Eine nackte Zahl ohne Nachkommastellen und ohne Währungszeichen
+       ist meistens eine Menge: „Pommes 200 g“. Nur mit Komma, mit €
+       oder in einer Karte ohne jeden Kommapreis gilt sie als Preis. */
+    if(!hatKomma && !hatZeichen && !nackt) break;
+    /* „0,3“ mit EINER Nachkommastelle ist fast immer eine Füllmenge
+       (Liter), kein Preis — 50 Cent schreibt man „0,50“. */
+    if(m[4] === "0" && nachkomma && /^\d$/.test(nachkomma) && !hatZeichen) break;
+    const ganz = Number(m[4].replace(/\./g, ""));
+    const cent = hatKomma && /\d/.test(nachkomma) ? Number(nachkomma.padEnd(2, "0")) : 0;
+    const wert = ganz + cent / 100;
+    if(!(wert > 0) || wert > 9999) break;
+    /* Ein zweiter Preis davor zählt nur, wenn der erste eine Größe
+       trug oder er selbst wie ein Preis geschrieben ist — sonst ist es
+       die „4“ in „Pizza 4 Jahreszeiten“. */
+    if(preise.length && !hatKomma && !hatZeichen) break;
+    let vorher = rest.slice(0, m.index + m[1].length).replace(/[\s\/|]+$/, "");
+    let groesse = "";
+    const g = vorher.match(IMP_GROESSE_ENDE);
+    if(g){
+      groesse = g[1].trim().replace(/^(0[.,]\d{1,2})$/, "$1 l");
+      vorher = vorher.slice(0, g.index).replace(/[\s\/|]+$/, "");
+    }
+    if(m[2]) ab = true;
+    preise.unshift({ preis: Math.round(wert * 100) / 100, groesse });
+    rest = vorher;
+    if(!rest) break;
+  }
+  if(!preise.length) return null;
+  return { preise, rest: rest.trim(), ab };
+}
+
+/* Altes Einzelstück — die Prüfungen und die alte Lesart „ein Preis am
+   Ende“ bleiben darüber erreichbar. */
+function impPreisAmEnde(zeile, nackt){
+  const p = impPreiseAmEnde(zeile, nackt);
+  if(!p) return null;
+  const letzter = p.preise[p.preise.length - 1];
+  return { preis: letzter.preis, rest: p.rest };
 }
 
 /* Name und Beschreibung trennen. Übliche Trenner in Speisekarten,
@@ -10180,7 +10278,8 @@ function impNameTeilen(text){
 
 function impPutzen(zeile){
   return zeile
-    .replace(/\u00A0/g, " ")            /* geschütztes Leerzeichen */
+    .replace(/ /g, " ")            /* geschütztes Leerzeichen */
+    .replace(/\t/g, " ")
     .replace(/\.{2,}/g, " ")            /* Führungspunkte aus Druckkarten */
     .replace(/\s{2,}/g, " ")
     .trim();
@@ -10191,10 +10290,92 @@ function impPutzen(zeile){
    landete sonst mit in der Beschreibung. */
 function impRandPutzen(text){
   return String(text || "")
-    .replace(/[\s—–·|:\-]+$/, "")
-    .replace(/^[\s—–·|:\-]+/, "")
+    .replace(/[\s—–·|:\-\/]+$/, "")
+    .replace(/^[\s—–·|:\-\/]+/, "")
     .trim();
 }
+
+/* ─── Kennzeichnungen aus der Karte ─────────────────────────────
+   Viele Karten tragen die Pflichtangaben schon: „Currywurst (2,3,A)“,
+   „Schnitzel¹˒³“, „Pizza A, C, G“. Das ist die Angabe des Betriebs
+   selbst, keine Vermutung — sie wird übernommen und in der Vorschau
+   gezeigt, wo man sie mit einem Tipp wieder abwählt.
+
+   Zwei Buchstabenschlüssel sind in Deutschland verbreitet: der des
+   Boards (A–R ohne I, J, K, Q: L Sellerie, M Senf, N Sesam, O Sulfite,
+   P Lupinen, R Weichtiere) und der fortlaufende a–n (i Sellerie,
+   j Senf, k Sesam, l Sulfite, m Lupinen, n Weichtiere). A bis H sind
+   in beiden gleich. Gefunden am eigenen Vorführhaus: dort stand
+   „K“ für Sesam — den Buchstaben kennt der Hub nicht, der Gast sah
+   nichts. Welcher Schlüssel gemeint ist, entscheidet die GANZE Karte
+   (impZerlegen): I, J oder K → a–n, O, P oder R → Board-Schlüssel,
+   nur L, M, N → unklar, dann fragt die Vorschau. */
+function impKuerzelGueltig(tok){
+  const t = String(tok).trim().toUpperCase();
+  if(/^[A-PR]$/.test(t)) return { art:"a", wert:t };
+  if(/^\d{1,2}$/.test(t)) return ZUSATZSTOFFE.some(z => z[0] === String(Number(t))) ? { art:"z", wert:String(Number(t)) } : null;
+  return null;
+}
+function impKuerzelGruppe(text){
+  const toks = String(text).split(/\s*[,;.\/]\s*|\s+/).filter(Boolean);
+  if(!toks.length) return null;
+  const erg = toks.map(impKuerzelGueltig);
+  return erg.every(Boolean) ? erg : null;
+}
+const IMP_HOCH = { "⁰":"0","¹":"1","²":"2","³":"3","⁴":"4","⁵":"5","⁶":"6","⁷":"7","⁸":"8","⁹":"9" };
+function impKuerzelHeraus(text, nurEnde){
+  const a = new Set(), z = new Set();
+  const nimm = liste => liste.forEach(k => (k.art === "a" ? a : z).add(k.wert));
+  let t = String(text || "");
+  if(!nurEnde){
+  /* (2,3,A) — überall in der Zeile */
+  t = t.replace(/\(\s*([A-Za-z0-9][A-Za-z0-9\s,;.\/]{0,40}?)\s*\)/g, (ganz, innen) => {
+    const g = impKuerzelGruppe(innen);
+    if(!g) return ganz;
+    nimm(g); return " ";
+  });
+  /* Hochgestellte Ziffern: Schnitzel¹˒³ */
+  t = t.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+(?:\s*[,˒‚·]\s*[⁰¹²³⁴⁵⁶⁷⁸⁹]+)*/g, ganz => {
+    const g = impKuerzelGruppe(ganz.replace(/[⁰-⁹¹²³]/g, c => IMP_HOCH[c] || c).replace(/[˒‚·]/g, ","));
+    if(!g) return ganz;
+    nimm(g); return " ";
+  });
+  }
+  /* „Pizza A, C, G“ ohne Klammer — nur am Ende, mit Komma und
+     mindestens einem Buchstaben; „Menü 1,2“ bleibt Text. */
+  const ende = t.match(/\s((?:[A-Ra-r]|1[0-6]|[1-9])(?:\s*,\s*(?:[A-Ra-r]|1[0-6]|[1-9]))+)\s*$/);
+  if(ende && /[A-Za-z]/.test(ende[1])){
+    const g = impKuerzelGruppe(ende[1]);
+    if(g){ nimm(g); t = t.slice(0, ende.index); }
+  }
+  const ordZ = ZUSATZSTOFFE.map(x => x[0]).filter(k => z.has(k));
+  return { text: t.replace(/\s{2,}/g, " ").trim(), allergene: [...a], zusatz: ordZ };
+}
+
+/* Merkmale aus Wörtern — nur VORSCHLAG (L4): „vegan“ im Text heißt
+   oft „mit veganer Mayo“, nicht „das Gericht ist vegan“. */
+function impMerkmale(text){
+  const t = String(text || "").toLowerCase();
+  return {
+    vegan: /\bvegan\b|\(vg\)/.test(t),
+    veg: /\bvegan\b|\bvegetarisch\b|\bveggie\b|\(v\)|\(vg\)/.test(t)
+  };
+}
+function impMarkerWeg(text){
+  return String(text || "").replace(/\((?:v|vg|vegan|vegetarisch)\)/gi, " ").replace(/\s{2,}/g, " ").trim();
+}
+
+/* Eine Legende („A = Gluten, C = Eier“) ist kein Gericht. */
+function impIstLegende(zeile){
+  const n = (zeile.match(/(?:^|[\s,;(])(?:[A-Ra-r]|\d{1,2})\)?\s*[=:]\s*[A-Za-zÄÖÜäöü]/g) || []).length;
+  if(impPreiseAmEnde(zeile, false)) return false;
+  return n >= 2 || /^(allergene|zusatzstoffe|kennzeichnung|legende)\b/i.test(zeile);
+}
+
+/* Wörter, die in fast jeder Karte eine Abteilung benennen. Steht so
+   eine Zeile ohne Preis da, ist sie Überschrift — auch ohne Leerzeile
+   davor. „Gulaschsuppe“ steht nicht darin, „Suppen“ schon. */
+const IMP_KATEGORIEWORT = /^(?:(?:warme|kalte|heiße|heisse|alkoholfreie|offene|unsere|hausgemachte|kleine|große|grosse|frische|süße|süsse|weitere|leckere|beliebte)\s+)*(?:vorspeisen?|starters?|suppen?|salate?|hauptgerichte?|hauptspeisen?|mains?|desserts?|nachspeisen?|nachtische?|süßes|süsses|getränke|drinks|heißgetränke|heissgetränke|kaffee|kaffeespezialitäten|tees?|biere?|bier vom fass|weine?|weißweine?|weissweine?|rotweine?|roséweine?|schaumweine?|sekt|spirituosen|longdrinks|cocktails|mocktails|softdrinks|limonaden|säfte|schorlen|wasser|aperitifs?|aperitivo|digestifs?|pizzen|pizza|pasta|nudeln|burger|bowls|snacks|kleinigkeiten|beilagen|extras|toppings|frühstück|brunch|kinder(?:karte|gerichte|teller)?|spezialitäten|klassiker|fisch|fleisch|vegetarisch|vegan|grill|steaks?|tapas|antipasti|kuchen|torten|gebäck|eis|eisbecher|crêpes?|crepes?|waffeln|sandwiches|wraps|sushi|mittagstisch|tagesgerichte?|wochenkarte|abendkarte|specials?)(?:\s*(?:&|und|\+)\s*[A-Za-zÄÖÜäöüß]+)?$/i;
 
 /* Ist diese Zeile eine Überschrift oder ein Gericht, dessen Preis
    vergessen wurde?
@@ -10202,142 +10383,465 @@ function impRandPutzen(text){
    Das lässt sich nicht am Text allein entscheiden — „Gulaschsuppe“
    kann beides sein. Was es entscheidet, ist die UMGEBUNG: In echten
    Karten steht vor einer Überschrift eine Leerzeile, oder sie ist
-   durchgehend groß geschrieben. Ein vergessener Preis dagegen sitzt
-   mitten zwischen zwei Gerichten.
+   durchgehend groß geschrieben, endet mit Doppelpunkt oder ist ein
+   Wort, das Karten für Abteilungen benutzen. Ein vergessener Preis
+   dagegen sitzt mitten zwischen zwei Gerichten.
 
    Zusätzlich: Wo eine Ziffer drinsteht, ist es fast nie eine
    Kategorie. „Pommes 200 g“ ist eine Beilage ohne Preis, keine
    Abteilung der Karte. */
-function impIstUeberschrift(text, leerDavor, ersteZeile){
+function impIstUeberschrift(text, leerDavor, ersteZeile, doppelpunkt){
   if(/\d/.test(text)) return false;
   if(text.length > 40 || text.split(" ").length > 5) return false;
-  if(leerDavor || ersteZeile) return true;
+  if(leerDavor || ersteZeile || doppelpunkt) return true;
+  if(IMP_KATEGORIEWORT.test(text)) return true;
   const buchstaben = text.replace(/[^A-Za-zÄÖÜäöüß]/g, "");
   return buchstaben.length > 1 && buchstaben === buchstaben.toUpperCase();
 }
 
-function impZerlegen(roh, vorgabeKat){
-  const zeilen = String(roh || "").split(/\r?\n/);
+/* Sieht die Zeile wie die Fortsetzung des Gerichts darüber aus?
+   „Wiener Schnitzel 18,90“ und darunter „vom Kalb, mit Kartoffelsalat“. */
+function impIstFortsetzung(text){
+  return /^[a-zäöüß(]/.test(text) || /^(mit|dazu|serviert|auf|an|in|vom|von|aus|nach|ohne|wahlweise)\s/i.test(text) ||
+         text.includes(",") || text.split(" ").length >= 6;
+}
+
+/* Spalten: „Espresso 2,40      Cappuccino 3,60“ — zwei Gerichte in
+   einer Zeile, getrennt durch einen weiten Abstand. Nur wenn JEDER
+   Teil auf einen Preis endet; „Tiramisu   7,50“ bleibt eine Zeile. */
+function impSpalten(roh, nackt){
+  const teile = roh.replace(/ /g, " ").split(/\s{3,}|\t+/).map(x => x.trim()).filter(Boolean);
+  if(teile.length < 2) return [roh];
+  const alle = teile.every(t => {
+    const p = impPreiseAmEnde(impPutzen(t), nackt);
+    return p && p.rest && /[A-Za-zÄÖÜäöüß]{2}/.test(p.rest);
+  });
+  return alle ? teile : [roh];
+}
+
+/* Nummerierung vorne weg: „12. Pizza“, „12) Pizza“, „Nr. 12 Pizza“.
+   Die nackte Form „12 Pizza“ nur, wenn die Karte durchgehend so
+   nummeriert ist — sonst verlöre „4 Käse Pizza“ ihre Vier. */
+function impNummerWeg(zeile, nackteNummern){
+  let z = zeile.replace(/^(?:nr\.?\s*)?\d{1,3}[a-z]?\s*[.):]\s+(?=\S)/i, "")
+               .replace(/^nr\.?\s*\d{1,3}[a-z]?\s+/i, "");
+  if(nackteNummern) z = z.replace(/^\d{1,3}[a-z]?\s+(?=[A-ZÄÖÜa-zäöü])/, "");
+  return z;
+}
+
+const IMP_SCHEMA_AN = { I:"L", J:"M", K:"N", L:"O", M:"P", N:"R" };
+
+function impZerlegen(roh, vorgabeKat, schemaWahl){
+  const rohZeilen = String(roh || "").split(/\r?\n/);
+
+  /* Umgebung zuerst: Wie schreibt DIESE Karte ihre Preise, und ist sie
+     durchnummeriert? Beides lässt sich an einer Zeile nicht sehen. */
+  const geputzt = rohZeilen.map(impPutzen).filter(Boolean);
+  const kommaPreise = geputzt.filter(z => { const p = impPreiseAmEnde(z, false); return p && p.rest; }).length;
+  const ganzePreise = geputzt.filter(z => /[A-Za-zÄÖÜäöüß]\s+\d{1,3}\s*$/.test(z) && !/\d\s*(g|kg|ml|cl|l|stk|stück|cm)\s*$/i.test(z)).length;
+  const nackt = kommaPreise === 0 && ganzePreise >= 3;
+  const nackteNummern = geputzt.filter(z => /^\d{1,3}\s+[A-ZÄÖÜ]/.test(z)).length >= 3;
+
+  const zeilen = [];
+  rohZeilen.forEach(z => impSpalten(z, nackt).forEach(t => zeilen.push(t)));
+
   const treffer = [];
   let kat = (vorgabeKat || "").trim() || "Sonstiges";
-  let ohnePreis = 0, uebersprungen = 0;
+  let spalten = null;           /* Größen aus einer Kopfzeile „0,3 l  0,5 l“ */
+  let ohnePreis = 0, uebersprungen = 0, legende = 0;
   let leerDavor = true, nochNichts = true;
+  let letzter = null;           /* das Gericht direkt darüber, ohne Leerzeile */
+
+  const neu = (name, beschr, preis, groesse, kz, extra, roh) => {
+    const merk = impMerkmale(roh || (name + " " + beschr));
+    const t = Object.assign({
+      kat: kat,
+      name: impRandPutzen(impMarkerWeg(name) + (groesse ? " " + groesse : "")).slice(0, 80),
+      beschr: impRandPutzen(impMarkerWeg(beschr)).slice(0, 300),
+      preis: preis,
+      ohnePreis: !(preis > 0),
+      allergene: kz.allergene.slice(),
+      zusatz: kz.zusatz.slice(),
+      vorschlagVeg: merk.veg, vorschlagVegan: merk.vegan,
+      ab: false, mehrerePreise: false
+    }, extra || {});
+    treffer.push(t);
+    return t;
+  };
 
   zeilen.forEach(z => {
-    const zeile = impPutzen(z);
+    let zeile = impPutzen(z);
 
-    /* Leerzeilen tragen Bedeutung: Sie kündigen eine Überschrift an. */
-    /* Der Bereich \u2500-\u257F sind die Rahmenzeichen. Genau die
-         benutzen Textkarten für Trennlinien — „═══════" wurde sonst
-         als Gericht ohne Preis gelesen. */
-    if(!zeile || zeile.length < 2 || /^[-\u2013\u2014=_~+#·•*.\u2500-\u257F\s]+$/.test(zeile)){
-      leerDavor = true;
+    /* Leerzeilen tragen Bedeutung: Sie kündigen eine Überschrift an.
+       Der Bereich ─-╿ sind die Rahmenzeichen. Genau die
+       benutzen Textkarten für Trennlinien — „═══════" wurde sonst
+       als Gericht ohne Preis gelesen. */
+    if(!zeile || zeile.length < 2 || /^[-–—=_~+#·•*.─-╿\s]+$/.test(zeile)){
+      leerDavor = true; letzter = null;
       return;
     }
+    if(impIstLegende(zeile)){ legende++; leerDavor = false; letzter = null; return; }
 
-    const p = impPreisAmEnde(zeile);
+    zeile = impNummerWeg(zeile, nackteNummern);
+    const doppelpunkt = /:\s*$/.test(zeile);
+    const kz = impKuerzelHeraus(zeile);
+    zeile = kz.text;
+
+    const p = impPreiseAmEnde(zeile, nackt);
 
     if(!p){
-      const sauber = impRandPutzen(zeile);
+      let sauber = impRandPutzen(zeile);
       if(!sauber){ uebersprungen++; leerDavor = false; return; }
 
-      if(impIstUeberschrift(sauber, leerDavor, nochNichts)){
-        kat = sauber;
+      /* Kopfzeile mit Größen: „Softdrinks 0,3 l 0,5 l“ */
+      const gr = [];
+      let r = sauber;
+      for(let i = 0; i < 4; i++){
+        const g = r.match(IMP_GROESSE_ENDE);
+        if(!g) break;
+        gr.unshift(g[1].trim().replace(/^(0[.,]\d{1,2})$/, "$1 l"));
+        r = impRandPutzen(r.slice(0, g.index));
+      }
+      if(gr.length >= 2){
+        spalten = gr;
+        if(r) kat = r;
+        leerDavor = false; nochNichts = false; letzter = null;
+        return;
+      }
+
+      /* Fortsetzung des Gerichts darüber (Beschreibung in der nächsten
+         Zeile) — aber nie, wenn die Zeile selbst wie eine Überschrift
+         aussieht. */
+      const istKopf = impIstUeberschrift(sauber, leerDavor, nochNichts, doppelpunkt);
+      if(letzter && !leerDavor && !doppelpunkt && !IMP_KATEGORIEWORT.test(sauber) && impIstFortsetzung(sauber)){
+        letzter.beschr = impRandPutzen((letzter.beschr ? letzter.beschr + ", " : "") + impMarkerWeg(sauber)).slice(0, 300);
+        kz.allergene.forEach(k => { if(!letzter.allergene.includes(k)) letzter.allergene.push(k); });
+        kz.zusatz.forEach(k => { if(!letzter.zusatz.includes(k)) letzter.zusatz.push(k); });
+        const m = impMerkmale(sauber);
+        letzter.vorschlagVeg = letzter.vorschlagVeg || m.veg;
+        letzter.vorschlagVegan = letzter.vorschlagVegan || m.vegan;
+        leerDavor = false;
+        return;
+      }
+
+      if(istKopf){
+        kat = sauber; spalten = null; letzter = null;
       } else {
         /* Gericht, dem der Preis fehlt. Es wird angezeigt und
-           mitgezählt, aber nicht stillschweigend mit 0,00 angelegt —
-           ein Gericht für null Euro wäre schlimmer als eines, das
-           fehlt. */
-        treffer.push({ kat: kat, name: sauber.slice(0,80), beschr: "", preis: 0, ohnePreis: true });
+           mitgezählt, aber NIE mit 0,00 angelegt — ein Gericht für
+           null Euro wäre schlimmer als eines, das fehlt. Erst ein
+           getippter Preis in der Vorschau macht es übernehmbar. */
+        const nt = impNameTeilen(impMarkerWeg(sauber));
+        letzter = neu(nt.name, nt.beschr, 0, "", kz, null, sauber);
         ohnePreis++;
       }
       leerDavor = false; nochNichts = false;
       return;
     }
 
-    const rest = impRandPutzen(p.rest);
-    if(!rest){ uebersprungen++; leerDavor = false; return; }
-    const nt = impNameTeilen(rest);
+    /* Kürzel zwischen Name und Preis: „Currywurst A, C 4,50“ */
+    const kzEnde = impKuerzelHeraus(p.rest, true);
+    kzEnde.allergene.forEach(k => { if(!kz.allergene.includes(k)) kz.allergene.push(k); });
+    kzEnde.zusatz.forEach(k => { if(!kz.zusatz.includes(k)) kz.zusatz.push(k); });
+    const rest = impRandPutzen(kzEnde.text);
+
+    /* Nur ein Preis in der Zeile: gehört er dem Gericht darüber, dem
+       der Preis noch fehlte? („Brot & Öl“ / „6,50“) */
+    if(!rest || !/[A-Za-zÄÖÜäöüß]{2}/.test(rest)){
+      if(letzter && letzter.ohnePreis && !leerDavor && p.preise.length === 1){
+        letzter.preis = p.preise[0].preis; letzter.ohnePreis = false; letzter.ab = p.ab;
+        ohnePreis--;
+      } else uebersprungen++;
+      leerDavor = false;
+      return;
+    }
+
+    /* Beschreibung mit Preis unter einem Namen ohne Preis:
+       „Brot & Öl“ / „mit Sauerteig und Olivenöl 6,50“. */
+    if(letzter && letzter.ohnePreis && !leerDavor && p.preise.length === 1 && /^[a-zäöüß]/.test(rest)){
+      letzter.beschr = impRandPutzen(impMarkerWeg(rest)).slice(0, 300);
+      letzter.preis = p.preise[0].preis; letzter.ohnePreis = false; letzter.ab = p.ab;
+      kz.allergene.forEach(k => { if(!letzter.allergene.includes(k)) letzter.allergene.push(k); });
+      kz.zusatz.forEach(k => { if(!letzter.zusatz.includes(k)) letzter.zusatz.push(k); });
+      ohnePreis--;
+      leerDavor = false;
+      return;
+    }
+
+    /* „(v)“ und „(vegan)“ sind Merkmale, keine Beschreibung in
+       Klammern — vor dem Teilen heraus, aber für den Vorschlag gemerkt. */
+    const nt = impNameTeilen(impMarkerWeg(rest));
     if(!nt.name){ uebersprungen++; leerDavor = false; return; }
 
-    treffer.push({
-      kat:    kat,
-      name:   impRandPutzen(nt.name).slice(0, 80),
-      beschr: impRandPutzen(nt.beschr).slice(0, 300),
-      preis:  p.preis,
-      ohnePreis: false
-    });
+    const preise = p.preise.slice();
+    /* Größen aus der Kopfzeile, wenn die Zeile selbst keine trägt und
+       genau so viele Preise hat. */
+    if(spalten && preise.length === spalten.length && preise.every(x => !x.groesse)){
+      preise.forEach((x, i) => { x.groesse = spalten[i]; });
+    }
+
+    if(preise.length >= 2 && preise.every(x => x.groesse)){
+      /* Je Größe ein eigenes Gericht: „Cola 0,3 l“, „Cola 0,5 l“ —
+         der Gast bestellt eine Größe, nicht zwei Preise. */
+      preise.forEach(x => { letzter = neu(nt.name, nt.beschr, x.preis, x.groesse, kz, { ab: p.ab }, rest); });
+    } else if(preise.length >= 2){
+      /* Zwei Preise ohne erkennbare Größe: nicht raten. Der erste wird
+         vorgeschlagen, die Zeile ist markiert. */
+      letzter = neu(nt.name, nt.beschr, preise[0].preis, "", kz, { ab: p.ab, mehrerePreise: true }, rest);
+    } else {
+      letzter = neu(nt.name, nt.beschr, preise[0].preis, preise[0].groesse, kz, { ab: p.ab }, rest);
+    }
     leerDavor = false; nochNichts = false;
   });
 
-  return { treffer: treffer, ohnePreis: ohnePreis, uebersprungen: uebersprungen };
+  /* Welcher Buchstabenschlüssel? Aus der ganzen Karte entschieden. */
+  const roh2 = new Set();
+  treffer.forEach(t => t.allergene.forEach(k => roh2.add(k)));
+  const hat = z => [...roh2].some(k => z.includes(k));
+  let schema = schemaWahl === "an" || schemaWahl === "board" ? schemaWahl
+    : hat("IJK") && !hat("OPR") ? "an"
+    : hat("OPR") && !hat("IJK") ? "board"
+    : hat("IJKLMN") ? "unklar" : "gleich";
+  treffer.forEach(t => {
+    const fest = [], unklar = [];
+    t.allergene.forEach(k => {
+      let w = k;
+      if(schema === "an") w = IMP_SCHEMA_AN[k] || k;
+      else if(schema === "unklar" && "IJKLMN".includes(k)){ if(!unklar.includes(k)) unklar.push(k); return; }
+      if(ALLERGENE.some(r => r[0] === w) && !fest.includes(w)) fest.push(w);
+    });
+    t.allergene = fest; t.allergeneUnklar = unklar;
+  });
+
+  /* Kürzel in der Reihenfolge der Tabellen — „A,C,G“ liest sich sonst
+     mal so und mal so (wie stoffeLesen im Gericht-Blatt). */
+  const ord = (liste, tab) => liste.sort((x, y) => tab.findIndex(r => r[0] === x) - tab.findIndex(r => r[0] === y));
+  treffer.forEach(t => { ord(t.allergene, ALLERGENE); ord(t.zusatz, ZUSATZSTOFFE); });
+  return { treffer, ohnePreis, uebersprungen, legende, schema };
 }
 
-/* ─── Vorschau ────────────────────────────────────────────────── */
-let impStand = { treffer: [], neu: 0 };
+/* ─── Vorschau ────────────────────────────────────────────────────
+   Bearbeitbar (Wunsch 11.10.): Häkchen, Name, Preis je Zeile, die
+   Kategorie im Gruppenkopf, Kennzeichnungen als Chips. Die Vorschau
+   wird bei jeder Änderung am TEXT neu zerlegt; was man in der Liste
+   schon geändert hat, bleibt über impAenderungen erhalten (Schlüssel:
+   Kategorie und Name, wie zerlegt). Getippt wird an Ort und Stelle,
+   ohne die Liste neu zu bauen — sonst springt der Fokus (§4.2). */
+let impStand = { treffer: [], ziel: null };
+let impSchemaWahl = null;
+let impAenderungen = {};
+let impKatNamen = {};
+
+function impSchluessel(n){
+  return String(n || "").toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+function impZeilenSchl(t){ return t.katRoh + "|" + t.nameRoh; }
+function impPreisLesen(w){
+  const s = String(w || "").trim().replace(/€|eur/gi, "").replace(/\s/g, "");
+  if(!/^\d{1,4}(?:[.,]\d{1,2})?$|^\d{1,4}[.,]-$/.test(s)) return 0;
+  const z = Number(s.replace(/[.,]-$/, "").replace(",", "."));
+  return Number.isFinite(z) && z > 0 ? Math.round(z * 100) / 100 : 0;
+}
+function impPreisText(n){ return n > 0 ? n.toFixed(2).replace(".", ",") : ""; }
+
+/* Wird die Zeile übernommen? Nur mit Häkchen, nur wenn neu, nur mit
+   Preis über null. */
+function impZaehlt(t){ return t.an && !t.doppelt && t.preis > 0 && !!t.name.trim(); }
 
 function impVorschau(){
   const roh  = $("#impText").value;
   const ziel = $("#impKarte").value;
-  const erg  = impZerlegen(roh, $("#impKat").value);
+  const erg  = impZerlegen(roh, $("#impKat").value, impSchemaWahl);
 
-  /* Was gibt es schon? Vergleich ohne Rücksicht auf Groß- und
-     Kleinschreibung und auf Leerzeichen — „Cafe Latte" und
-     „Café  Latte" sind dasselbe Gericht. */
-  const schluessel = n => n.toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/[^a-z0-9]/g,"");
+  /* Buchstabenschlüssel: bei a–n sagen, dass umgerechnet wurde; wenn
+     unklar, fragen statt raten — L ist Sellerie ODER Schwefel. */
+  const sch = $("#impSchema");
+  const unklar = [...new Set(erg.treffer.flatMap(t => t.allergeneUnklar || []))];
+  if(erg.schema === "unklar" || impSchemaWahl){
+    const zeigen = erg.schema === "unklar" ? unklar : [];
+    sch.hidden = false;
+    sch.innerHTML = (erg.schema === "unklar"
+      ? `<p>Deine Karte nutzt die Kürzel <b>${sicher(zeigen.join(", "))}</b>. Die bedeuten nicht überall dasselbe — welcher Schlüssel steht auf deiner Karte?</p>`
+      : `<p>Kürzel nach deiner Wahl umgerechnet.</p>`) +
+      `<div class="impschema-wahl">` +
+      `<button type="button" class="knopf leise schmal" data-imp-schema="board" aria-pressed="${impSchemaWahl === "board"}">L = Sellerie, N = Sesam</button>` +
+      `<button type="button" class="knopf leise schmal" data-imp-schema="an" aria-pressed="${impSchemaWahl === "an"}">L = Schwefel, K = Sesam (a–n)</button></div>`;
+  } else if(erg.schema === "an"){
+    sch.hidden = false;
+    sch.innerHTML = `<p>Deine Karte nutzt den Schlüssel a–n (i Sellerie, k Sesam, l Schwefel …). Die Kürzel sind in die Buchstaben des Boards umgerechnet — so sieht der Gast sie richtig.</p>`;
+  } else { sch.hidden = true; sch.innerHTML = ""; }
+
+  /* Was gibt es schon? In DERSELBEN Kategorie dieser Karte — „Cola“
+     darf in „Softdrinks“ und in „Kinder“ stehen. Vergleich ohne
+     Groß-/Kleinschreibung und Akzente: „Cafe Latte“ = „Café  Latte“. */
   const vorhanden = new Set(
     gerichte.filter(g => inKarte(g, ziel))
-            .map(g => schluessel(g.name)));
+            .map(g => impSchluessel(g.kategorie) + "|" + impSchluessel(g.name)));
 
   const gesehen = new Set();
   erg.treffer.forEach(t => {
-    const k = schluessel(t.name);
+    t.katRoh = t.kat; t.nameRoh = t.name;
+    const alt = impAenderungen[impZeilenSchl(t)];
+    if(impKatNamen[t.katRoh]) t.kat = impKatNamen[t.katRoh];
+    if(alt){
+      if(alt.name != null) t.name = alt.name;
+      if(alt.preis != null){ t.preis = alt.preis; t.ohnePreis = !(alt.preis > 0); }
+      if(alt.allergene) t.allergene = alt.allergene.slice();
+      if(alt.zusatz) t.zusatz = alt.zusatz.slice();
+      if(alt.veg != null) t.veg = alt.veg;
+      if(alt.vegan != null) t.vegan = alt.vegan;
+    }
+    if(t.veg == null) t.veg = false;
+    if(t.vegan == null) t.vegan = false;
+    const k = impSchluessel(t.kat) + "|" + impSchluessel(t.name);
     t.doppelt = vorhanden.has(k) || gesehen.has(k);
     gesehen.add(k);
+    /* Ohne Preis: abgewählt, bis einer getippt ist. */
+    t.an = alt && alt.an != null ? alt.an : !t.ohnePreis;
   });
 
-  const neu = erg.treffer.filter(t => !t.doppelt);
-  impStand = { treffer: neu, ziel: ziel };
+  impStand = { treffer: erg.treffer, ziel: ziel, erg: erg };
 
-  /* Standmeldung */
+  /* Liste, nach Kategorie gruppiert */
+  const liste = $("#impListe");
+  let html = "", letzte = null;
+  erg.treffer.forEach((t, i) => {
+    if(t.katRoh !== letzte){
+      html += `<div class="impgruppe"><input type="text" class="impkatfeld" data-imp-kat="${sicher(t.katRoh)}" value="${sicher(t.kat)}" maxlength="40" aria-label="Kategorie"></div>`;
+      letzte = t.katRoh;
+    }
+    const kz = t.allergene.map(k => `<button type="button" class="impchip" data-imp-kz="a:${k}" aria-pressed="true" title="${sicher((ALLERGENE.find(a => a[0] === k) || [k, k])[1])}">${k}</button>`)
+      .concat(t.zusatz.map(k => `<button type="button" class="impchip" data-imp-kz="z:${k}" aria-pressed="true" title="${sicher((ZUSATZSTOFFE.find(a => a[0] === k) || [k, k])[1])}">${k}</button>`));
+    if(t.vorschlagVegan) kz.push(`<button type="button" class="impchip vorschlag" data-imp-merk="vegan" aria-pressed="${!!t.vegan}">vegan?</button>`);
+    else if(t.vorschlagVeg) kz.push(`<button type="button" class="impchip vorschlag" data-imp-merk="veg" aria-pressed="${!!t.veg}">vegetarisch?</button>`);
+    const notiz = t.doppelt ? "schon in der Karte"
+      : (t.allergeneUnklar || []).length ? "Kürzel " + t.allergeneUnklar.join(", ") + ": Bedeutung oben wählen"
+      : t.mehrerePreise ? "mehrere Preise — bitte prüfen"
+      : t.ab ? "Preis „ab“ — kleinster Preis übernommen" : "";
+    html += `<div class="impzeile${t.ohnePreis ? " ohnepreis" : ""}${t.doppelt ? " doppelt" : ""}" data-imp-i="${i}">` +
+      `<button type="button" class="impan" data-imp-an aria-pressed="${impZaehlt(t)}" aria-label="Übernehmen"${t.doppelt ? " disabled" : ""}></button>` +
+      `<span class="in"><input type="text" class="impname" data-imp-name value="${sicher(t.name)}" maxlength="80" aria-label="Name">` +
+      (t.beschr ? `<span class="ib">${sicher(t.beschr)}</span>` : "") +
+      (kz.length ? `<span class="impchips">${kz.join("")}</span>` : "") +
+      `<span class="impnotiz">${sicher(notiz)}</span></span>` +
+      `<span class="ip"><input type="text" class="imppreis" data-imp-preis inputmode="decimal" value="${impPreisText(t.preis)}" placeholder="Preis fehlt" aria-label="Preis"></span></div>`;
+  });
+  liste.innerHTML = html;
+  impZaehlen();
+}
+
+/* Standmeldung und Knopf — ohne die Liste anzufassen. */
+function impZaehlen(){
+  const roh = $("#impText").value;
+  const erg = impStand.erg || { treffer: [], uebersprungen: 0, legende: 0 };
+  const alle = impStand.treffer;
+  const rein = alle.filter(impZaehlt).length;
+  const dop = alle.filter(t => t.doppelt).length;
+  const fehlt = alle.filter(t => !t.doppelt && !(t.preis > 0)).length;
   const st = $("#impStand");
   if(!roh.trim()){
     st.className = "impstand leer";
     st.textContent = "Noch nichts eingefügt.";
   } else {
-    const teile = [`<b>${neu.length}</b> ${neu.length === 1 ? "Gericht" : "Gerichte"} erkannt`];
-    const dop = erg.treffer.length - neu.length;
-    if(dop)            teile.push(`${dop} schon vorhanden, ${dop === 1 ? "wird" : "werden"} übersprungen`);
-    if(erg.ohnePreis)  teile.push(`${erg.ohnePreis} ohne Preis — bitte nachtragen`);
-    if(erg.uebersprungen) teile.push(`${erg.uebersprungen} Zeilen unbrauchbar`);
+    const teile = [`<b>${rein}</b> ${rein === 1 ? "Gericht wird" : "Gerichte werden"} angelegt`];
+    if(dop)   teile.push(`${dop} schon vorhanden`);
+    if(fehlt) teile.push(`${fehlt} ohne Preis — Preis eintippen, sonst bleibt ${fehlt === 1 ? "es" : "sie"} draußen`);
+    if(erg.uebersprungen) teile.push(`${erg.uebersprungen} ${erg.uebersprungen === 1 ? "Zeile" : "Zeilen"} unbrauchbar`);
+    if(erg.legende) teile.push("Legende erkannt und ausgelassen");
     st.className = "impstand";
     st.innerHTML = teile.join(" · ");
   }
-
-  /* Liste, nach Kategorie gruppiert */
-  const liste = $("#impListe");
-  let html = "", letzte = null;
-  erg.treffer.forEach(t => {
-    if(t.kat !== letzte){ html += `<div class="impkat">${sicher(t.kat)}</div>`; letzte = t.kat; }
-    html += `<div class="impzeile${t.ohnePreis ? " ohnepreis" : ""}${t.doppelt ? " doppelt" : ""}">` +
-      `<span class="in">${sicher(t.name)}` +
-      (t.beschr ? `<span class="ib">${sicher(t.beschr)}</span>` : "") +
-      `</span><span class="ip">` +
-      (t.ohnePreis ? "kein Preis" : euro(t.preis)) + `</span></div>`;
-  });
-  liste.innerHTML = html;
-
-  $("#impUebernehmen").disabled = neu.length === 0;
-  $("#impUebernehmen").textContent = neu.length
-    ? `${neu.length} ${neu.length === 1 ? "Gericht" : "Gerichte"} anlegen`
+  $("#impUebernehmen").disabled = rein === 0;
+  $("#impUebernehmen").textContent = rein
+    ? `${rein} ${rein === 1 ? "Gericht" : "Gerichte"} anlegen`
     : "Gerichte anlegen";
 }
 
+function impMerken(t, feld, wert){
+  const s = impZeilenSchl(t);
+  impAenderungen[s] = Object.assign(impAenderungen[s] || {}, { [feld]: wert });
+}
+
+$("#impSchema").addEventListener("click", e => {
+  const b = e.target.closest("[data-imp-schema]"); if(!b) return;
+  impSchemaWahl = b.dataset.impSchema;
+  /* Neue Bedeutung der Buchstaben: abgewählte Chips der alten gelten
+     nicht mehr. */
+  Object.values(impAenderungen).forEach(a => { delete a.allergene; });
+  impVorschau();
+});
+$("#impListe").addEventListener("input", e => {
+  const kf = e.target.closest("[data-imp-kat]");
+  if(kf){
+    const roh = kf.dataset.impKat, neuName = kf.value.trim().slice(0, 40) || roh;
+    impKatNamen[roh] = neuName;
+    impStand.treffer.forEach(t => { if(t.katRoh === roh) t.kat = neuName; });
+    return;
+  }
+  const z = e.target.closest("[data-imp-i]"); if(!z) return;
+  const t = impStand.treffer[Number(z.dataset.impI)]; if(!t) return;
+  if(e.target.matches("[data-imp-name]")){
+    t.name = e.target.value.slice(0, 80); impMerken(t, "name", t.name);
+  } else if(e.target.matches("[data-imp-preis]")){
+    const vorher = t.preis > 0;
+    t.preis = impPreisLesen(e.target.value);
+    t.ohnePreis = !(t.preis > 0);
+    impMerken(t, "preis", t.preis);
+    /* Wer einen Preis eintippt, will das Gericht haben. */
+    if(!vorher && t.preis > 0 && !t.doppelt){ t.an = true; impMerken(t, "an", true); }
+    z.classList.toggle("ohnepreis", t.ohnePreis);
+  }
+  const an = z.querySelector("[data-imp-an]");
+  if(an) an.setAttribute("aria-pressed", impZaehlt(t));
+  impZaehlen();
+});
+$("#impListe").addEventListener("click", e => {
+  const z = e.target.closest("[data-imp-i]"); if(!z) return;
+  const t = impStand.treffer[Number(z.dataset.impI)]; if(!t) return;
+  const an = e.target.closest("[data-imp-an]");
+  if(an){
+    if(t.doppelt) return;
+    if(!(t.preis > 0)){
+      /* Ohne Preis kein Häkchen — sagen, wo es hakt. */
+      const pf = z.querySelector("[data-imp-preis]"); if(pf) pf.focus();
+      melde("Erst den Preis eintippen", true);
+      return;
+    }
+    t.an = !t.an; impMerken(t, "an", t.an);
+    an.setAttribute("aria-pressed", impZaehlt(t));
+    impZaehlen();
+    return;
+  }
+  const chip = e.target.closest("[data-imp-kz]");
+  if(chip){
+    const [art, wert] = chip.dataset.impKz.split(":");
+    const liste = art === "a" ? t.allergene : t.zusatz;
+    const drin = chip.getAttribute("aria-pressed") === "true";
+    if(drin) liste.splice(liste.indexOf(wert), 1);
+    else if(!liste.includes(wert)){
+      liste.push(wert);
+      const tab = art === "a" ? ALLERGENE : ZUSATZSTOFFE;
+      liste.sort((x, y) => tab.findIndex(r => r[0] === x) - tab.findIndex(r => r[0] === y));
+    }
+    chip.setAttribute("aria-pressed", !drin);
+    impMerken(t, art === "a" ? "allergene" : "zusatz", liste.slice());
+    return;
+  }
+  const merk = e.target.closest("[data-imp-merk]");
+  if(merk){
+    const f = merk.dataset.impMerk;
+    t[f] = !t[f];
+    if(f === "vegan") t.veg = t.vegan || t.veg;
+    merk.setAttribute("aria-pressed", t[f]);
+    impMerken(t, f, t[f]); if(f === "vegan") impMerken(t, "veg", t.veg);
+  }
+});
+
 /* ─── Übernehmen ──────────────────────────────────────────────── */
 async function impUebernehmen(){
-  const neu = impStand.treffer;
+  const neu = impStand.treffer.filter(impZaehlt);
   if(!neu.length) return;
   const ziel = impStand.ziel;
 
@@ -10347,36 +10851,54 @@ async function impUebernehmen(){
 
   /* Kategorien in der Reihenfolge ihres Auftretens hinten anhängen.
      Wer eine Karte einliest, will sie so sortiert haben, wie er sie
-     hineingegeben hat — nicht alphabetisch. */
+     hineingegeben hat — nicht alphabetisch. Eine Kategorie, die es auf
+     dieser Karte schon gibt, behält ihren Platz. */
   const katSort = {};
   let naechste = katSortNeu(ziel);
-  neu.forEach(t => { if(katSort[t.kat] == null) katSort[t.kat] = naechste++; });
+  neu.forEach(t => {
+    if(katSort[t.kat] != null) return;
+    const da = gerichte.find(g => inKarte(g, ziel) && g.kategorie === t.kat);
+    katSort[t.kat] = da ? (da.kat_sort ?? 0) : naechste++;
+  });
 
-  /* Position innerhalb der Kategorie, ebenfalls fortlaufend. */
+  /* Position innerhalb der Kategorie, hinter dem, was schon da ist. */
   const proKat = {};
   const saetze = neu.map(t => {
-    proKat[t.kat] = (proKat[t.kat] || 0) + 1;
+    if(proKat[t.kat] == null){
+      const da = gerichte.filter(g => inKarte(g, ziel) && g.kategorie === t.kat).map(g => g.reihenfolge ?? 0);
+      proKat[t.kat] = da.length ? Math.max(...da) : 0;
+    }
+    proKat[t.kat] += 1;
     return {
       betrieb_id: betriebId,
-      name:       t.name,
+      name:       t.name.trim().slice(0, 80),
       beschreibung: t.beschr || null,
       preis:      t.preis,
       kategorie:  t.kat,
       karte:      ziel,
+      karten:     [ziel],
       spur:       spurAusKarte(ziel),
       kat_sort:   katSort[t.kat],
       reihenfolge: proKat[t.kat],
       verfuegbar: true,
-      allergene:  "",
-      zusatzstoffe: "",
-      veg:        false
+      allergene:  t.allergene.join(","),
+      zusatzstoffe: t.zusatz.join(","),
+      veg:        !!(t.veg || t.vegan),
+      vegan:      !!t.vegan
     };
   });
+
+  /* Letzte Wache vor der Datenbank: kein Gericht für null Euro. */
+  if(saetze.some(s => !(s.preis > 0))){
+    knopf.disabled = false; impZaehlen();
+    melde("Ein Gericht hat keinen Preis — bitte nachtragen", true);
+    return;
+  }
 
   if(demo){
     saetze.forEach((s, i) => gerichte.push({...s, id:"g" + Date.now() + i}));
     impSchliessen(); zeichneKarte();
-    melde(`${saetze.length} Gerichte angelegt`);
+    melde(`${saetze.length} ${saetze.length === 1 ? "Gericht" : "Gerichte"} angelegt`);
     return;
   }
 
@@ -10389,12 +10911,13 @@ async function impUebernehmen(){
     melde(`${saetze.length} ${saetze.length === 1 ? "Gericht" : "Gerichte"} angelegt`);
   }catch(e){
     knopf.disabled = false;
-    knopf.textContent = `${neu.length} Gerichte anlegen`;
+    impZaehlen();
     melde("Nicht angelegt — Verbindung prüfen", true);
   }
 }
 
 function impOeffnen(){
+  impAenderungen = {}; impKatNamen = {}; impSchemaWahl = null;
   $("#impText").value = "";
   $("#impKat").value  = "";
   $("#impKarte").value = welcheKarte;
@@ -14960,6 +15483,7 @@ $("#abmelden").onclick = async () => {
   location.reload();
 };
 $("#neuesGericht").onclick = () => blattOeffnen(null);
+$("#neueKategorie").onclick = () => ktedOeffnen(null);
 
 /* ─── Allergene und Zusatzstoffe ──────────────────────────────────
    Die 14 Gruppen stammen aus Anhang II der LMIV. Diese Liste ist

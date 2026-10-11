@@ -109,7 +109,9 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
          „Gericht hinzufügen“ und „Karte einlesen“ (.kartenknoepfe,
          z-index 39) über dem Menü (.mehrfach, ebenfalls 39) — bei
          Gleichstand gewinnt das spätere Element. Gemessen wird jede
-         Zeile mit dem Finger, nicht der Kasten. */
+         Zeile mit dem Finger, nicht der Kasten. (Seit 11.10. stehen
+         die Karte-Knöpfe oben im Fluss — die Probe bleibt, sie fängt
+         jede künftige schwebende Leiste.) */
       for(const tafel of ["speisekarte", "bestellungen", "reservierungen"]){
         await p.evaluate(t => { window.scrollTo(0, 0); tafelZeigen(t); }, tafel);
         await p.waitForTimeout(300);

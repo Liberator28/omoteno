@@ -12,7 +12,8 @@
    der sieben betroffenen Flächen einzeln:
 
      admin.html   header, #t-bestellungen .filterblock,
-                  .befehlsleiste, .kartenknoepfe
+                  .befehlsleiste (.kartenknoepfe seit 11.10. nicht mehr:
+                  die Knöpfe stehen oben im Fluss, ohne Glas)
      kueche.html  .kopf
      Gast-Hub     .chips, .summe — je Haus (Choco/Blend/Minhkeey),
                   weil color-mix() aus der jeweils eigenen
@@ -123,7 +124,7 @@ async function pruefeAdminUndKueche(browser) {
     await seite.evaluate(() => document.querySelector('[data-tafel="speisekarte"]').click());
     await seite.waitForTimeout(300);
 
-    for (const sel of ["header", "#t-bestellungen .filterblock", ".befehlsleiste", ".kartenknoepfe"]) {
+    for (const sel of ["header", "#t-bestellungen .filterblock", ".befehlsleiste"]) {
       const v = await pruefeGlasflaeche(seite, sel);
       pruef(!!v, sel + " ist im Baum", v ? "gefunden" : "fehlt");
       if (!v) continue;
@@ -135,7 +136,7 @@ async function pruefeAdminUndKueche(browser) {
 
     await reduzierteTransparenz(seite, true);
     await seite.waitForTimeout(150);
-    for (const sel of ["header", "#t-bestellungen .filterblock", ".befehlsleiste", ".kartenknoepfe"]) {
+    for (const sel of ["header", "#t-bestellungen .filterblock", ".befehlsleiste"]) {
       const v = await pruefeGlasflaeche(seite, sel);
       if (!v) continue;
       pruef(!/blur\(/.test(v.backdropFilter), sel + " · prefers-reduced-transparency: kein blur mehr", v.backdropFilter || "(leer/none)");
