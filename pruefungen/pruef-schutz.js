@@ -39,7 +39,8 @@ function naht() {
         /add column if not exists pruef_grund text/.test(sql), "SQL legt pruefen/pruef_grund an");
   pruef(/insert into bestellungen[\s\S]{0,300}pruefen, pruef_grund\)/.test(sql), "bestellung_aufgeben schreibt beide Spalten");
   const admin = fs.readFileSync(ADMIN, "utf8"), kueche = fs.readFileSync(KUECHE, "utf8");
-  pruef(/"pruefen";/.test(kueche) && /b\.pruefen !== true/.test(kueche), "Küche holt pruefen und zeigt Markiertes nicht als Bon");
+  /* "pruefen"; oder "pruefen," + — seit dem Team-Modus folgt „zugewiesen“ in derselben Liste. */
+  pruef(/"pruefen(?:";|," \+)/.test(kueche) && /b\.pruefen !== true/.test(kueche), "Küche holt pruefen und zeigt Markiertes nicht als Bon");
   pruef(/b\.pruef_grund/.test(admin) && /pruefen:false, pruef_grund:null/.test(admin), "Board liest pruef_grund und gibt über genau diese Spalten frei");
   pruef(/"id, betrieb_id, quelle, status, tisch, positionen, summe, notiz, zeitpunkt, pruefen"/.test(MELDEN) &&
         /zeile\.pruefen === true\) return/.test(MELDEN), "melden liest pruefen und pusht Markiertes nicht");
