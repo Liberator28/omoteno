@@ -200,6 +200,7 @@ async function wisch(s, cdp, sel, anteil, opt) {
   for (let i = 1; i <= schritte; i++) {
     await cdp.send("Input.dispatchTouchEvent", { type: "touchMove", touchPoints: [{ x: x0 + dx * i / schritte, y: y0 + dy * i / schritte }] });
     await s.waitForTimeout(o.langsam ? 40 : 16);
+    if (i === Math.floor(schritte / 2) && o.neuzeichnen) await s.evaluate(() => zeichneBoard());
     if (i === Math.floor(schritte / 2) && o.mitte) mitte = await s.evaluate(q => {
       const el = document.querySelector(q); const z = document.querySelector(".wischziel");
       return { tf: el ? el.style.transform : "", ziel: z ? z.textContent : null };
@@ -297,6 +298,16 @@ async function teil4(browser, ruhig) {
   await s.waitForTimeout(300);
   l = await log();
   pruef(l[l.length - 1].id === "a9" && l[l.length - 1].f.status === "fertig", "Knopf „Fertig“ schreibt wie bisher");
+
+  /* Live-Daten kommen mitten im Zug an (zeichneBoard): der Wisch gilt
+     trotzdem, und die Karte unter dem Finger wird nicht ersetzt. */
+  await s.evaluate(() => { document.getElementById("rueckleiste").hidden = true; zeichneBoard(); });
+  const vorLive = (await log()).length;
+  await wisch(s, cdp, '.bestellung[data-id="n2"]', 0.6, { neuzeichnen: true, neuId: "n2" });
+  await s.waitForTimeout(500);
+  l = await log();
+  pruef(l.length === vorLive + 1 && l[l.length - 1].id === "n2" && l[l.length - 1].f.status === "fertig",
+    "Live-Neuzeichnen mitten im Zug: der Wisch gilt trotzdem (n2 → fertig)", JSON.stringify(l.slice(vorLive)));
 
   const anims = await s.evaluate(() => window.__anims);
   if (ruhig) pruef(anims.length === 0, "reduzierte Bewegung: keine Animation, Wirkung gleich", JSON.stringify(anims));
