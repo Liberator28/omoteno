@@ -152,17 +152,25 @@ const echt = k => k.filter(z => !/net::ERR|Failed to (load|fetch)|ERR_FAILED|sup
     const knopf = await p.$("#lichtknopf");
     ok(!!knopf, "der Lichtschalter steht im Kopf");
     if(knopf){
+      /* Seit 11.10. öffnet der Knopf eine Liste mit fünf Stufen; jede
+         wird über den echten Tipp gewählt. Gemessen am Wurzelelement —
+         dort liegt der Grund (§5.2b). */
       const staende = [];
-      for(let i = 0; i < 4; i++){
+      for(const w of ["hell", "dunkel", "weiss", "schwarz"]){
+        await knopf.click(); await p.waitForTimeout(300);
+        const offen = await p.evaluate(() => document.getElementById("lichtwahl").classList.contains("offen"));
+        ok(offen, "der Knopf öffnet die Liste (" + w + ")");
+        await p.click('#lichtliste [data-licht="' + w + '"]'); await p.waitForTimeout(400);
         staende.push(await p.evaluate(() => ({
           phase: document.body.dataset.phase || "—",
-          grund: getComputedStyle(document.body).backgroundColor,
-          schrift: getComputedStyle(document.body).color })));
-        await knopf.click(); await p.waitForTimeout(400);
+          grund: getComputedStyle(document.documentElement).backgroundColor,
+          zu: !document.getElementById("lichtwahl").classList.contains("offen") })));
       }
       const versch = new Set(staende.map(s => s.phase + s.grund));
-      ok(versch.size >= 2, "er schaltet wirklich um",
-        staende.map(s => s.phase).join(" → "));
+      ok(versch.size === 4 && staende.every(s => s.zu), "jede Stufe ist eine andere, die Liste schließt nach der Wahl",
+        staende.map(s => s.phase + " " + s.grund).join(" → "));
+      ok(staende[2].grund === "rgb(255, 255, 255)" && staende[3].grund === "rgb(0, 0, 0)",
+        "ganz weiß ist #FFF, ganz schwarz #000", staende[2].grund + " / " + staende[3].grund);
       /* Und die Wahl muss ein Neuladen ueberleben — genau hier lag
          der Fehler mit der const in der zeitlichen Totzone. */
       const vor = await p.evaluate(() => document.body.dataset.phase);

@@ -159,6 +159,36 @@ function pruefeMarkenblatt(mb){
     F("betrieb.slug darf nur Kleinbuchstaben, Ziffern und Bindestriche enthalten: " + b.slug);
   if(!b.claim) W("betrieb.claim ist leer — im Kopfband steht dann nichts unter dem Namen");
 
+  /* Das Vorführhaus der Landingpage (11.10.). Ein Markenblatt mit
+     „demo“ wird ein Hub, der IMMER im Vorführmodus läuft — auch wenn
+     ihn jemand direkt unter /h/<slug>/ öffnet. Seine Daten (Betrieb,
+     Gerichte, Aktion) stehen hier, nicht in der Datenbank; der Hub
+     beantwortet jede Anfrage selbst. Jedes Gericht bringt seine
+     Übersetzungen mit — wie eine echte Zeile aus gerichte. */
+  if(mb.demo !== undefined){
+    const d = mb.demo;
+    if(!d || typeof d !== "object" || Array.isArray(d)) F("demo muss ein Objekt sein");
+    else {
+      if(!d.betrieb || typeof d.betrieb.id !== "string") F("demo.betrieb.id fehlt");
+      const sprachen = ["en","tr","ru","fr","es","it","pl","ar","uk","nl","ro"];
+      const g = Array.isArray(d.gerichte) ? d.gerichte : [];
+      if(!g.length) F("demo.gerichte ist leer — der Hub zeigte sonst die Karte aus dem Gerüst");
+      ["speisekarte","getraenke","cocktails"].forEach(k => {
+        if(!g.some(z => z.karte === k))
+          F("demo.gerichte hat nichts in „" + k + "“ — dort bliebe die Karte aus dem Gerüst stehen");
+      });
+      g.forEach((z, i) => {
+        const wo = "demo.gerichte[" + i + "] " + (z.name || "");
+        if(!z.name || !z.kategorie || !(Number(z.preis) > 0)) F(wo + ": name, kategorie und preis sind Pflicht");
+        [["name_uebersetzungen", z.name], ["uebersetzungen", z.beschreibung]].forEach(([feld, text]) => {
+          if(!text) return;
+          const fehlt = sprachen.filter(s => !z[feld] || !String(z[feld][s] || "").trim());
+          if(fehlt.length) F(wo + ": " + feld + " fehlt für " + fehlt.join(","));
+        });
+      });
+    }
+  }
+
   /* Farben */
   const f = mb.farben || {};
   FARBEN_PFLICHT.forEach(k => {
@@ -477,7 +507,8 @@ function alsQuelltext(mb){
     mb.trinkgeld ? liste("trinkgeld", mb.trinkgeld)       : null,
     liste("kacheln",    mb.kacheln),
     liste("empfehlung", mb.empfehlung),
-    liste("quiz",       mb.quiz)
+    liste("quiz",       mb.quiz),
+    mb.demo ? liste("demo", mb.demo) : null
   ].filter(Boolean);
   teile[teile.length-1] = teile[teile.length-1].replace(/,$/,"");
 
@@ -687,6 +718,13 @@ function erzeuge(slug, nurPruefen){
   } else {
     aus = aus.replace(VORF, "");
   }
+
+  /* Das Vorführhaus läuft immer vorgeführt (siehe Prüfung oben). Der
+     Schalter steht VOR dem Abfangen im ersten Skriptblock; jedes andere
+     Haus bekommt an dieser Stelle nichts. */
+  if(!aus.includes("/*{{DEMO_SCHALTER}}*/"))
+    throw new Error("Die Vorlage hat keinen Platzhalter /*{{DEMO_SCHALTER}}*/");
+  aus = aus.replace("/*{{DEMO_SCHALTER}}*/", mb.demo ? "window.OMOTENO_DEMO = true;" : "");
 
   /* Das Siegel. Der Bereich zwischen den Marken wird ersetzt — nicht
      das SVG gesucht, denn davon gibt es im Hub dutzende. */

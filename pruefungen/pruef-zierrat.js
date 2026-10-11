@@ -149,13 +149,14 @@ function pruef(b, t, d) {
        wieder auf "automatisch" → "abend", nicht auf "hell". Robust ist
        nur: klicken, bis data-phase wirklich die gesuchte Phase zeigt —
        höchstens dreimal, mehr Zustände hat der Zyklus nicht. */
+    /* Seit 11.10. öffnet der Knopf eine Liste — gewählt wird die
+       Stufe, die die Phase festlegt (Hell → Tag, Dunkel → Abend), über
+       den echten Tipp. Unabhängig von der Uhr der Sandbox. */
     async function phaseErzwingen(gesucht){
-      for(let i = 0; i < 3; i++){
-        const jetzt = await seite.evaluate(() => document.body.dataset.phase);
-        if(jetzt === gesucht) return jetzt;
-        await seite.click("#lichtknopf");
-        await seite.waitForTimeout(500);
-      }
+      await seite.click("#lichtknopf");
+      await seite.waitForTimeout(300);
+      await seite.click('#lichtliste [data-licht="' + (gesucht === "abend" ? "dunkel" : "hell") + '"]');
+      await seite.waitForTimeout(500);
       return seite.evaluate(() => document.body.dataset.phase);
     }
     const abendPhase = await phaseErzwingen("abend");

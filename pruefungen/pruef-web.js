@@ -226,13 +226,20 @@ async function ohneNetz(seite){
         "  die Seite dahinter steht still");
 
       /* Bedienen: irgendein Knopf im Fenster muss etwas tun, ohne
-         die Konsole zu füllen. */
+         die Konsole zu füllen. Das Hub-Fenster zeigt seit dem 11.10.
+         den ECHTEN Hub im Rahmen — ohne Netz (wie hier) steht dort ein
+         Satz statt einer leeren Fläche. Geladen und bedient wird er in
+         pruef-web-showcase.js über einen Server. */
       const getan = await seite.evaluate(r => {
+        if(r === "#hubfenster"){
+          const st = document.getElementById("hubStand");
+          return st && !st.hidden && st.textContent.trim().length > 10 ? "getippt" : "Rahmen leer, ohne Satz";
+        }
         const k = document.querySelector(r + " button:not([disabled]):not(.hub-zu)");
         if(!k) return "kein Knopf";
         k.click(); return "getippt";
       }, ruhig);
-      pruef(getan === "getippt", "  und lässt sich bedienen", getan);
+      pruef(getan === "getippt", wie === "Hub" ? "  und sagt ohne Netz, wo der echte Hub steht" : "  und lässt sich bedienen", getan);
 
       await seite.keyboard.press("Escape");
       await seite.waitForTimeout(500);

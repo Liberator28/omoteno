@@ -152,6 +152,19 @@ const verdeckt = (s, wurzel) => s.evaluate(sel => {
       pruef(m.zeilen >= 6 && !m.funde.length, tag + ": Sprachliste — jede Zeile lesbar (" + m.zeilen + ")", m.funde.slice(0, 3).join(" | "));
     }
     await s.keyboard.press("Escape").catch(() => {});
+
+    /* 2b · Lichtliste (seit 11.10. fünf Stufen) — dieselbe Leiste, die
+       andere Ecke; über den echten Knopf. */
+    await s.click("#lichtknopf");
+    await s.waitForTimeout(250);
+    const lOffen = await s.evaluate(() => { const l = document.getElementById("lichtliste"); return !!l && l.getBoundingClientRect().height > 40 &&
+      document.getElementById("lichtwahl").classList.contains("offen"); });
+    pruef(lOffen, tag + ": Lichtliste ist offen (Voraussetzung)");
+    if (lOffen) {
+      m = await verdeckt(s, "#lichtliste");
+      pruef(m.zeilen >= 5 && !m.funde.length, tag + ": Lichtliste — jede Zeile lesbar (" + m.zeilen + ")", m.funde.slice(0, 3).join(" | "));
+    }
+    await s.keyboard.press("Escape").catch(() => {});
     pruef(!fehler.length, tag + ": keine Seitenfehler (Start)", fehler[0]);
     await ctx.close();
 

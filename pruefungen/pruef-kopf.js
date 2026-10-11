@@ -39,6 +39,13 @@ function pruef(b, t, d) {
 }
 
 const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d, "index.html")));
+/* Das Vorführhaus (Markenblatt mit „demo“) teilt den Gerätespeicher
+   absichtlich nicht und merkt sich nichts über ein Neuladen hinaus —
+   pruef-demo.js prüft genau das. Proben, die eine Wahl über den
+   Speicher setzen oder ein Neuladen überstehen lassen, nehmen es
+   ausdrücklich aus bzw. gehen dort den Weg über die Bedienung. */
+const VORFUEHRHAUS = h => { try { return !!JSON.parse(require("fs").readFileSync(require("path").join(__dirname, "..", "markenblaetter", h + ".json"), "utf8")).demo; } catch (e) { return false; } };
+
 
 async function oeffnen(browser, haus, breite, sprache) {
   const ctx = await browser.newContext({ viewport: { width: breite, height: 800 } });
@@ -55,6 +62,7 @@ async function oeffnen(browser, haus, breite, sprache) {
   await seite.goto("file://" + path.join(DIST, haus, "index.html"));
   await seite.waitForTimeout(500);
   if (await seite.$("#willkommen")) { await seite.click("#willkommen").catch(() => {}); await seite.waitForTimeout(600); }
+  if (sprache && VORFUEHRHAUS(haus)) { await seite.evaluate(sp => { spracheSetzen(sp); zeichne(); }, sprache); await seite.waitForTimeout(300); }
   return { seite, ctx, fehler };
 }
 

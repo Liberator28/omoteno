@@ -46,6 +46,12 @@ function pruef(b, t, d) {
   console.log((b ? "  ok  " : "  FEHL") + " " + t + (d !== undefined ? "  → " + d : ""));
 }
 const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d, "index.html")));
+/* Das Vorführhaus (Markenblatt mit „demo“) teilt den Gerätespeicher
+   absichtlich nicht und merkt sich nichts über ein Neuladen hinaus —
+   pruef-demo.js prüft genau das. Proben, die eine Wahl über den
+   Speicher setzen oder ein Neuladen überstehen lassen, nehmen es
+   ausdrücklich aus bzw. gehen dort den Weg über die Bedienung. */
+const VORFUEHRHAUS = h => { try { return !!JSON.parse(require("fs").readFileSync(require("path").join(__dirname, "..", "markenblaetter", h + ".json"), "utf8")).demo; } catch (e) { return false; } };
 
 function hellig(rgb) {
   const l = rgb.map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
@@ -121,6 +127,8 @@ async function tippen(s, sel) {
        Last mit file://, nicht der Hub (der löscht nirgends). Dann wird
        das benannt und das Neuladen einmal wiederholt, statt die Probe
        als Hub-Fehler rot zu melden. */
+    if (VORFUEHRHAUS(haus)) console.log("  hinw " + haus + ": Vorführhaus — Sitzung lebt nur im Rahmen, kein Neulade-Probe (pruef-demo.js)");
+    else {
     const gemerkt = await s.evaluate(() => { sessionStorage.setItem("probe-marke", "1"); return sessionStorage.getItem("omoteno-bereiche"); });
     const neuLaden = async () => {
       await s.reload(); await s.waitForSelector(".sb-kopf"); await s.waitForTimeout(600);
@@ -136,6 +144,7 @@ async function tippen(s, sel) {
     await s.evaluate(() => { ZEITEN.length = 0; for (let i = 0; i < 7; i++) ZEITEN.push("10:30 – 00:30"); stunde = new Date().getHours(); zeichne(); });
     b = await bereiche(s);
     pruef(!b[0].auf && b[2].auf && b[2].gitterHoehe > 40, haus + ": nach Neuladen in der Sitzung bleibt die Wahl", b.map(x => x.auf ? "auf" : "zu").join(",") + " · gemerkt " + gemerkt);
+    }
     await s.evaluate(() => sessionStorage.removeItem("omoteno-bereiche"));
 
     /* 4 · Schnellzeile am Tisch */

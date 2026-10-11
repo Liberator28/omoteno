@@ -937,7 +937,30 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:transparent;background:tr
   transform-origin:100% 0;
   transition:opacity var(--kurz) var(--weich), transform var(--kurz) var(--weich)
 }
-.sprachwahl.offen .sprachliste{opacity:1;pointer-events:auto;transform:none}
+.sprachwahl.offen .sprachliste,.lichtwahl.offen .lichtliste{opacity:1;pointer-events:auto;transform:none}
+/* Die Lichtliste hängt am ERSTEN Knopf der Leiste — sie öffnet nach
+   innen (links verankert), sonst läge sie bei 320 px halb neben dem
+   Schirm. Dieselbe Optik wie die Sprachliste, eigene Ecke. */
+.lichtwahl{position:relative;flex:none}
+.lichtliste{right:auto;left:0;transform-origin:0 0}
+.lichtliste button{min-height:44px}
+/* Geschlossen GAR NICHT da: Auf Unterseiten steht der Lichtknopf weiter
+   rechts, und die unsichtbare Liste schob die Seite 82 px seitlich auf
+   (pruef-hub-hand.js). Geöffnet gleitet sie über einen Keyframe herein. */
+.lichtwahl:not(.offen) .lichtliste{display:none}
+.lichtwahl.offen .lichtliste{animation:lichtAuf var(--kurz) var(--weich) both}
+@keyframes lichtAuf{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){ .lichtwahl.offen .lichtliste{animation:none} }
+/* Doppelte Klasse mit Absicht: Die Liste trägt auch .sprachliste, und
+   [dir="rtl"] .sprachliste{left:0} steht weiter unten mit GLEICHER
+   Spezifität — sie gewann, die Liste hing auf Arabisch an der falschen
+   Kante und ragte bei 320 px mit Lieferschalter 102 px aus dem Bild
+   (gemessen am Vorführhaus; bei Choco passte es zufällig). */
+[dir="rtl"] .sprachliste.lichtliste{left:auto;right:0;transform-origin:100% 0}
+.lichtliste .lprobe{flex:none;width:18px;height:18px;border-radius:50%;
+  border:1px solid var(--linie-stark);background:var(--lp-g, transparent);box-shadow:inset -5px -5px 0 var(--lp-t, transparent)}
+.lichtwahl.offen .lichtknopf{background:rgba(251,246,242,.24)}
+.lichtliste button[aria-checked="true"] .lwort::after{content:"\00a0✓"}
 .sprachliste button{
   display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
   background:none;border:0;color:var(--tinte);font-family:inherit;font-size:14.5px;
@@ -966,20 +989,30 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:transparent;background:tr
 [dir="rtl"] .seite .unter,[dir="rtl"] .label,[dir="rtl"] .gruppe{text-align:right}
 
 /* ═══ Seitenwechsel ═════════════════════════════════════════════ */
-/* Ein Vokabular: Inhalt kommt von unten herein, gestaffelt.
-   Keine Skalierung, kein Blur, keine zweite Kurve. */
-#inhalt.rein > .seite > *,
-#inhalt.rein > .bereich,
-#inhalt.rein > .gitter,
-#inhalt.rein > a.tipp{animation:rein var(--mittel) var(--weich) both}
-#inhalt.rein > *:nth-child(2){animation-delay:.04s}
-#inhalt.rein > *:nth-child(3){animation-delay:.07s}
-#inhalt.rein > *:nth-child(4){animation-delay:.10s}
-#inhalt.rein > *:nth-child(n+5){animation-delay:.12s}
-#inhalt.rein > .seite > *:nth-child(2){animation-delay:.04s}
-#inhalt.rein > .seite > *:nth-child(3){animation-delay:.07s}
-#inhalt.rein > .seite > *:nth-child(4){animation-delay:.10s}
-#inhalt.rein > .seite > *:nth-child(n+5){animation-delay:.12s}
+/* Seit 11.10. (Wunsch: „die Übergangsanimationen raus … sorgt nur
+   dafür, dass es so aussieht, als ob die Seite länger braucht“): Die
+   neue Seite steht ab dem ERSTEN Bild deckend da — kein Ausblenden,
+   keine Staffel (vorher bis 0,12 s Verzögerung + 0,28 s Einblenden je
+   Zeile). Sie gleitet nur 8 px nach oben ein, 200 ms, ease-out: genug,
+   dass das Auge den Wechsel merkt, zu wenig, um zu warten. */
+#inhalt.rein > *{animation:reinGleiten .2s cubic-bezier(.22,1,.36,1) both}
+@keyframes reinGleiten{from{transform:translateY(8px)}to{transform:none}}
+/* Wischen zwischen den Unterseiten (Wunsch 11.10.: „durch nach links
+   Wischen auf die nächste Kachel … schnell switchen“). #inhalt folgt
+   dem Finger 1:1 (nur transform); am Rand zeigt eine Pille, wohin es
+   geht. pan-y: senkrecht rollt weiter der Browser, waagerecht gehört
+   die Geste uns — Leisten, die selbst seitlich rollen, sind eigene
+   Rollbereiche und behalten ihre Geste. */
+body[data-ansicht="unter"] #inhalt{touch-action:pan-y}
+#inhalt.wischt{will-change:transform}
+.wischziel{position:fixed;top:50%;z-index:41;pointer-events:none;
+  display:flex;align-items:center;gap:8px;max-width:min(70vw, 260px);padding:10px 16px;border-radius:999px;
+  background:var(--flaeche);color:var(--tinte);border:1px solid var(--linie-stark);box-shadow:var(--schatten-hoch);
+  font-size:14px;font-weight:650;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+  opacity:0;transform:translateY(-50%) scale(.92)}
+.wischziel.wz-rechts{right:14px}
+.wischziel.wz-links{left:14px}
+.wischziel span{overflow:hidden;text-overflow:ellipsis}
 @keyframes rein{from{opacity:0;transform:translateY(9px)}to{opacity:1;transform:none}}
 
 /* Zurück: eine Glas-Pille „‹ Zurück“ (Wunsch 08.10. — vorher ein
@@ -1033,26 +1066,10 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:transparent;background:tr
   .zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 
-/* ═══ Reise · Übergang Kachel → Unterseite (neu 10.10.) ═══════════
-   Wunsch 10.10.: „Man sieht die Animation nicht, das war die
-   Verzögerung — ganz flüssig und simpel, smooth in die Karten.“
-   Gemessen vorher: 1154 ms vom Tipp bis zur Karte (die Klappkarte
-   wechselte die Seite erst bei 76 % der Szene). Jetzt wechselt die
-   Seite im SELBEN Takt wie der Tipp; darüber wächst nur noch die
-   Fläche der Kachel zum Schirm und löst sich dabei auf (FLIP, 260 ms,
-   ease-out), während #inhalt.rein die neue Seite gestaffelt aufbaut.
-   Eine Ebene, am Ende ENTFERNT (§8.1), nur transform/opacity, kein
-   Text (pruef-reise.js zählt Textknoten). Ebene 75: über Kopf und
-   Blättern, unter der Altersfrage. */
-.reise{position:fixed;inset:0;z-index:75;pointer-events:none;overflow:hidden}
-.reise-flaeche{position:absolute;left:0;top:0;transform-origin:0 0;will-change:transform,opacity;
-  border-radius:var(--rundung);
-  background:var(--reise-grund, color-mix(in srgb, var(--reise-licht) 26%, var(--flaeche)))}
-/* Ankunft nach der Kachel: die Seite als EIN Stück, nicht gestaffelt,
-   erst wenn die Fläche verblasst (Verzögerung = Aufziehen). Höhere
-   Spezifität als die gestaffelten nth-child-Regeln oben. */
-body.reise-an #inhalt.rein > .seite{animation:rein .3s var(--weich) .22s both}
-body.reise-an #inhalt.rein > .seite > *{animation:none}
+/* Die Reise-Ebene (Kachel zieht zum Schirm auf) ist seit 11.10. weg:
+   Wunsch „man sieht sie sowieso nicht, und sie sorgt nur dafür, dass
+   es so aussieht, als ob die Seite länger braucht“. Ein Tipp auf eine
+   Kachel ist ein gewöhnlicher Link; die Seite steht im selben Takt. */
 
 /* ═══ Wie letztes Mal / Nochmal wie letztes Mal (08.10.) ════════
    Beides setzt erst auf einen Tipp etwas — ein Vorschlag, keine
@@ -1910,7 +1927,10 @@ body.kat-klebt .zurueck.an{opacity:0;pointer-events:none}
 /* Langer Name: erst kleiner, dann zweizeilig — gemessen, nicht nach
    Zeichenzahl (Schriften der Häuser laufen verschieden breit). */
 .fr-name.fr-eng{font-size:16px}
-.fr-details{flex:none;width:44px;padding:0;display:grid;place-items:center;position:relative}
+/* Doppelte Klasse: .eh-details steht weiter unten und setzte padding
+   0 16px — vom 44-px-Kreis blieben 12 px Innenbreite, das 20-px-Zeichen
+   rutschte aus der Mitte (Bildschirmfoto 11.10.). */
+.eh-details.fr-details{flex:none;width:44px;height:44px;min-width:44px;padding:0;display:grid;place-items:center;position:relative}
 .fr-details svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .fr-still{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 /* Das Rad: Ring in der Bandfarbe des Hauses mit Lichtpunkten, darin
@@ -1948,9 +1968,13 @@ body.kat-klebt .zurueck.an{opacity:0;pointer-events:none}
   background:
     linear-gradient(155deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,.08) 34%, transparent 46%),
     radial-gradient(120% 70% at 50% 110%, rgba(0,0,0,.18), transparent 60%)}
-/* Der Lichtkegel auf dem Gewinnerfeld — ein Keil unter dem Zeiger. */
+/* Der Lichtkegel auf dem Gewinnerfeld — GENAU über dessen Grenzen.
+   Vorher ein fester Keil mittig unter dem Zeiger; die Landung streut
+   aber bewusst um ±30 % der Feldbreite, und der Keil lag halb auf dem
+   Nachbarfeld: Die Felder sahen gespalten aus (Bildschirmfoto 11.10.).
+   --fr-von setzt frDrehen: Drehwinkel + Feldnummer × Feldbreite. */
 .fr-treffer{position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:1;opacity:0;
-  background:conic-gradient(from calc(var(--fr-s, 45deg) / -2), rgba(255,255,255,.55) 0 var(--fr-s, 45deg), transparent var(--fr-s, 45deg) 360deg);
+  background:conic-gradient(from var(--fr-von, calc(var(--fr-s, 45deg) / -2)), rgba(255,255,255,.55) 0 var(--fr-s, 45deg), transparent var(--fr-s, 45deg) 360deg);
   -webkit-mask:radial-gradient(circle, transparent 15%, #000 16%);mask:radial-gradient(circle, transparent 15%, #000 16%);
   transition:opacity .25s var(--weich)}
 .fr-rad.gelandet .fr-treffer{opacity:1;transition:opacity .45s var(--weich) .05s}
@@ -3379,10 +3403,8 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   .logo .led,
   body[data-phase="abend"] .logo .led{animation:none;opacity:0}
   body[data-phase="abend"] .logo::before{animation:none;opacity:.85}
-  /* Inhalte erscheinen, ohne zu gleiten */
-  #inhalt.rein > *,#inhalt.rein > .seite > *{
-    animation:reinLeise 160ms linear both;animation-delay:0ms !important
-  }
+  /* Inhalte stehen sofort da — kein Gleiten, kein Einblenden */
+  #inhalt.rein > *,#inhalt.rein > .seite > *{animation:none !important}
   @keyframes reinLeise{from{opacity:0}to{opacity:1}}
   /* Druckfeedback und Herzschlag: kein Skalieren */
   .knopf:active,.antwort:active,a.tipp:active,.logo:active,
@@ -4105,6 +4127,116 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 </style>
 
 <script>
+/* ═══ DEMO · der echte Hub als Vorführung (Landingpage, 11.10.) ═════
+   Wunsch: „einen Demo-Hub, der sich vom neuesten nicht unterscheidet —
+   man soll wirklich wissen, was man bekommt.“ Die Landingpage lädt
+   deshalb DIESE Datei (den ausgelieferten Hub eines Hauses) als srcdoc
+   und setzt davor window.OMOTENO_DEMO = true. Alles ist echt und
+   bedienbar; nur zwei Dinge sind anders:
+
+   1 · Speicher nur im Rahmen. localStorage/sessionStorage sind hier
+       eine Map im Arbeitsspeicher — die Vorführung berührt nie den Korb
+       oder die Wahl eines echten Gastes auf demselben Gerät (die echten
+       Hubs liegen auf derselben Domain), und jedes Öffnen beginnt frisch.
+       Die Sitzung (sessionStorage) startet mit einer ABSCHRIFT dessen,
+       was der Tab schon weiß — gelesen, nie zurückgeschrieben —, damit
+       „schon begrüßt“ in einer Sitzung gilt wie bei jedem Hub. Der
+       gemerkte Gast (localStorage: Korb, Lichtwahl …) bleibt draußen.
+   2 · Nichts verlässt den Rahmen. Jede Anfrage an die Datenbank wird
+       hier beantwortet — auch die lesenden: betriebe/gerichte/aktionen
+       aus MARKENBLATT.demo (dem Vorführhaus der Landingpage, das
+       keine Zeile in der Datenbank hat), alles andere leer. So läuft
+       der ECHTE Live-Weg (karteHolen, Lieferung, Aktionen) mit
+       Vorführdaten, und kein echter Betrieb bekommt eine Anfrage.
+       Jede Anfrage, die etwas ändern würde — Bestellung,
+       Serviceruf, Reservierung, Besuch, E-Mail —, wird nachgespielt. Die Antworten haben dieselbe Form wie die der Funktionen,
+       der Bestellpass läuft sichtbar durch (neu → in Arbeit → fertig).
+       Kein Betrieb bekommt je einen Demo-Bon.
+   Steht vor allem anderen, damit kein Skript den echten Speicher oder
+   das echte fetch zu fassen bekommt.
+   Das Vorführhaus selbst (Markenblatt mit „demo“) setzt den Schalter
+   schon beim Erzeugen hier ein — so ist es auch direkt aufgerufen nie
+   ein echter Hub. */
+/*{{DEMO_SCHALTER}}*/
+(function(){
+  if(window.OMOTENO_DEMO !== true) return;
+  const speicher = (abschrift) => {
+    const m = new Map();
+    if(abschrift) try{
+      for(let i = 0; i < abschrift.length; i++){ const k = abschrift.key(i); m.set(k, abschrift.getItem(k)); }
+    }catch(e){}
+    return { getItem:k => m.has(String(k)) ? m.get(String(k)) : null,
+             setItem:(k, v) => { m.set(String(k), String(v)); },
+             removeItem:k => { m.delete(String(k)); }, clear:() => m.clear(),
+             key:i => Array.from(m.keys())[i] || null, get length(){ return m.size; } };
+  };
+  try{ Object.defineProperty(window, "localStorage", { value:speicher(), configurable:true }); }catch(e){}
+  let sitzung = null;
+  try{ sitzung = window.sessionStorage; }catch(e){}
+  try{ Object.defineProperty(window, "sessionStorage", { value:speicher(sitzung), configurable:true }); }catch(e){}
+
+  const echt = window.fetch.bind(window);
+  const offen = new Map();
+  let nr = 40;
+  const neueId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+    : "demo-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const antwort = (wert, status) => Promise.resolve(new Response(wert === undefined ? null : JSON.stringify(wert),
+    { status: status || 200, headers:{ "Content-Type":"application/json" } }));
+  /* Der Ablauf einer Vorführ-Bestellung, in Sekunden: kurz genug, dass
+     man ihn auf der Landingpage miterlebt. */
+  const stand = b => { const s = (Date.now() - b.t0) / 1000; return s < 5 ? "neu" : s < 14 ? "arbeit" : "fertig"; };
+  /* Unter BEIDEN Schlüsseln: Die Warteschlange fragt mit der
+     Quittungsnummer (bestellung_gefunden), der Bestellpass mit der
+     zurückgegebenen id (bestellung_status, nummer = zeile.id). */
+  const merken = (kennung) => { const id = neueId(), b = { id, t0:Date.now(), nr:++nr };
+    offen.set(id, b); if(kennung) offen.set(kennung, b); return id; };
+  window.OMOTENO_DEMO_ANFRAGEN = [];
+  /* MARKENBLATT steht im nächsten Skriptblock — gelesen wird erst beim
+     Abruf, dann gibt es den Namen. */
+  const vorrat = () => { try{ return (typeof MARKENBLATT !== "undefined" && MARKENBLATT.demo) || {}; }catch(e){ return {}; } };
+  /* Eine Aktion läuft immer noch knapp drei Stunden — der Streifen
+     zeigt eine echte Restzeit, egal wann die Vorführung geöffnet wird. */
+  const aktionenJetzt = () => (vorrat().aktionen || []).map((a, i) =>
+    Object.assign({}, a, { bis:new Date(Date.now() + (170 + i * 40) * 60000).toISOString() }));
+  window.fetch = function(ziel, opt){
+    const url = String((ziel && ziel.url) || ziel);
+    const art = String((opt && opt.method) || (ziel && ziel.method) || "GET").toUpperCase();
+    const datenbank = /\/(rest|functions|auth|storage|realtime)\/v1\//.test(url);
+    if(art === "GET" || art === "HEAD"){
+      if(!datenbank) return echt(ziel, opt);
+      window.OMOTENO_DEMO_ANFRAGEN.push("GET " + url.replace(/^.*\/v1\//, "").split("?")[0]);
+      const v = vorrat();
+      if(/\/rest\/v1\/betriebe\?/.test(url)) return antwort(v.betrieb ? [v.betrieb] : []);
+      if(/\/rest\/v1\/gerichte\?/.test(url)) return antwort(v.gerichte || []);
+      if(/\/rest\/v1\/aktionen\?/.test(url)) return antwort(aktionenJetzt());
+      return antwort([]);
+    }
+    let k = {};
+    try{ k = JSON.parse((opt && opt.body) || "{}") || {}; }catch(e){}
+    const rpc = (/\/rpc\/([a-z_]+)/.exec(url) || [])[1] || "";
+    window.OMOTENO_DEMO_ANFRAGEN.push(rpc || url.replace(/^.*\/rest\/v1\//, ""));
+    const b = offen.get(k.nummer || k.kennung);
+    switch(rpc){
+      case "bestellung_aufgeben":    return antwort(merken(k.p_gast_kennung));
+      case "bestellung_liefern":     return antwort({ ok:true, id:merken(k.p_gast_kennung) });
+      case "bestellung_status":      return antwort(b ? [{ status:stand(b), wartezeit_min:12, tagesnummer:b.nr }] : []);
+      case "bestellung_restzeit":    return antwort(b ? Math.max(0, Math.round(14 - (Date.now() - b.t0) / 1000)) : null);
+      case "bestellung_nachrichten": return antwort([]);
+      case "bestellung_gefunden":    return antwort(b ? [{ id:b.id, status:stand(b) }] : []);
+      case "bestellung_stornieren":  return antwort({ ok:true, alles:k.posten == null, positionen:[] });
+      case "reservierung_anfragen":  return antwort({ ok:true, id:neueId() });
+      case "reservierung_stand":     return antwort({ ok:true, status:"bestaetigt", nachrichten:[] });
+      case "gast_melden":            return antwort({ ok:true, besuche:1, lieblinge:[], gutscheine:[] });
+      case "gast_mail_merken":       return antwort({ ok:true });
+      case "rabattcode_pruefen":     return antwort({ ok:false, grund:"unbekannt" });
+      case "tisch_sitzung_start":    return antwort([{ token:"demo", tisch:"7" }]);
+    }
+    /* Alles andere (Musikwunsch, Ereignisse …): angenommen, nichts gespeichert. */
+    return antwort(undefined, 201);
+  };
+})();
+</script>
+<script>
 /*{{MARKENBLATT}}*/
 /* ▲▲▲ AB HIER NICHTS ÄNDERN ▲▲▲ */
 
@@ -4228,6 +4360,182 @@ const SCHATTEN = {
   ohne:  "none"
 };
 
+/* ╔═══ FARBEN · GETEILTER BLOCK · ANFANG ══════════════════════════╗
+   Wortgleich in vorlagen/hub.vorlage.html und seiten/admin.html —
+   pruef-farben.js vergleicht beide Zeichen für Zeichen. Das Board
+   rechnet damit die Vorschau und sperrt Unlesbares, der Hub rechnet
+   damit, was er malt. Zwei Rechnungen hießen: Das Board erlaubt, was
+   der Hub dann anders zeigt (§8.1i).
+
+   Der Betrieb wählt sechs Farben je Fassung (Tag, Abend): Hintergrund,
+   Karten, Kopfband, Schrift, Haupt- und Zweitfarbe. Alles andere —
+   leise Schrift, Linien, eingelassene Flächen, Schrift auf dem Band —
+   wird hier gerechnet, nie eingestellt (§5.1). */
+const FARB_ROLLEN = ["grund", "flaeche", "band", "tinte", "akzent", "akzent2"];
+const FARB_HEX = /^#[0-9a-f]{6}$/i;
+
+function farbRgb(h){
+  return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+}
+function farbHexAus(r, g, b){
+  return "#" + [r, g, b].map(x => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+/* t = 0 → a, t = 1 → b */
+function farbMisch(a, b, t){
+  const x = farbRgb(a), y = farbRgb(b);
+  return farbHexAus(x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t);
+}
+function farbLum(h){
+  const v = farbRgb(h).map(x => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); });
+  return .2126 * v[0] + .7152 * v[1] + .0722 * v[2];
+}
+function farbKontrast(a, b){
+  const x = farbLum(a), y = farbLum(b);
+  return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
+}
+/* Dieselbe Regel wie markeSchriftAuf im Hub: Weiß oder fast Schwarz,
+   je nachdem, was auf dieser Fläche mehr Kontrast hat. */
+function farbSchriftAuf(h){
+  const l = farbLum(h);
+  return (1.05 / (l + .05)) >= ((l + .05) / .05579) ? "#FFFFFF" : "#111111";
+}
+/* Leise Schrift: so weit zur Fläche gemischt, wie es geht, ohne auf
+   IRGENDEINER der Flächen unter `ziel` zu fallen. Ist schon die volle
+   Schrift zu schwach, bleibt sie, wie sie ist — farbLesbar meldet das. */
+function farbLeise(tinte, flaechen, ziel){
+  const gut = c => flaechen.every(f => farbKontrast(c, f) >= ziel);
+  if(!gut(tinte)) return tinte;
+  let lo = 0, hi = 1;
+  for(let i = 0; i < 18; i++){
+    const m = (lo + hi) / 2;
+    if(gut(farbMisch(tinte, flaechen[0], m))) lo = m; else hi = m;
+  }
+  return farbMisch(tinte, flaechen[0], lo);
+}
+/* Eine Farbe so wenig wie möglich heller oder dunkler ziehen, bis sie
+   auf `flaeche` `ziel` erreicht. Der Farbton bleibt. */
+function farbNachziehen(c, flaeche, ziel){
+  if(farbKontrast(c, flaeche) >= ziel) return c;
+  const nach = farbLum(flaeche) > .18 ? "#000000" : "#FFFFFF";
+  let lo = 0, hi = 1;
+  for(let i = 0; i < 18; i++){
+    const m = (lo + hi) / 2;
+    if(farbKontrast(farbMisch(c, nach, m), flaeche) >= ziel) hi = m; else lo = m;
+  }
+  return farbMisch(c, nach, hi);
+}
+/* Dasselbe für Schrift auf ihrer EIGENEN zarten Fläche (Preis in Gold
+   auf Goldschimmer, „Vegan“ in Grün auf Grünschimmer) — über Karte UND
+   Hintergrund, denn beides kommt darunter vor. Die Fläche wandert mit
+   der Farbe, deshalb so oft nachgerechnet, bis es hält. */
+function farbAufTon(c, flaechen, anteil, ziel){
+  const fl = [].concat(flaechen);
+  const gut = x => fl.every(f => farbKontrast(x, farbMisch(f, x, anteil)) >= ziel);
+  /* Mit kleinem Puffer: Die Fläche wandert mit, und 4,499 ist nicht 4,5. */
+  for(let i = 0; i < 8 && !gut(c); i++)
+    fl.forEach(f => { c = farbNachziehen(c, farbMisch(f, c, anteil), ziel + .06); });
+  return c;
+}
+function farbTon(h){
+  const [r, g, b] = farbRgb(h).map(x => x / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if(!d) return 30;
+  const t = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (t * 60 + 360) % 360;
+}
+function farbHsl(ton, s, l){
+  s /= 100; l /= 100;
+  const k = n => (n + ton / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return farbHexAus(f(0) * 255, f(8) * 255, f(4) * 255);
+}
+
+/* Die Helligkeitsleiter. Getönt im Farbton des Kopfbands, damit eine
+   Stufe zum Haus passt statt nach Vorlage auszusehen; Weiß und
+   Schwarz sind rein. */
+const FARB_STUFEN = [
+  { s:"weiss",     name:"Weiß",      dunkel:false },
+  { s:"creme",     name:"Creme",     dunkel:false },
+  { s:"warm",      name:"Warm",      dunkel:false },
+  { s:"gedaempft", name:"Gedämpft",  dunkel:true  },
+  { s:"dunkel",    name:"Dunkel",    dunkel:true  },
+  { s:"schwarz",   name:"Schwarz",   dunkel:true  }
+];
+function farbStufe(stufe, band){
+  const h = farbTon(FARB_HEX.test(band || "") ? band : "#806040");
+  switch(stufe){
+    case "weiss":     return { grund:"#FFFFFF", flaeche:"#FFFFFF", tinte:"#111111" };
+    case "creme":     return { grund:farbHsl(h, 45, 96), flaeche:"#FFFFFF", tinte:farbHsl(h, 35, 12) };
+    case "warm":      return { grund:farbHsl(h, 38, 89), flaeche:farbHsl(h, 45, 96), tinte:farbHsl(h, 40, 12) };
+    case "gedaempft": return { grund:farbHsl(h, 12, 21), flaeche:farbHsl(h, 12, 26), tinte:farbHsl(h, 20, 94) };
+    case "dunkel":    return { grund:farbHsl(h, 25, 8),  flaeche:farbHsl(h, 22, 12), tinte:farbHsl(h, 25, 95) };
+    case "schwarz":   return { grund:"#000000", flaeche:"#0E0E0E", tinte:"#FFFFFF" };
+  }
+  return null;
+}
+/* Eine Stufe auf sechs Farben legen: Grund, Karte und Schrift aus der
+   Leiter, Band bleibt, Haupt- und Zweitfarbe werden nur so weit
+   nachgezogen, wie es auf der neuen Karte zum Lesen braucht. */
+function farbStufeAuf(e, stufe){
+  const st = farbStufe(stufe, e.band); if(!st) return e;
+  return { grund:st.grund, flaeche:st.flaeche, band:e.band, tinte:st.tinte,
+           akzent:farbAufTon(e.akzent, [st.flaeche, st.grund], .14, 4.5),
+           akzent2:farbAufTon(e.akzent2, [st.flaeche, st.grund], .2, 4.5) };
+}
+
+/* Die vollen Rollen, wie markeAnwenden sie liest. */
+function farbHerleiten(e){
+  const linieBasis = e.flaeche;
+  return {
+    grund:e.grund, flaeche:e.flaeche, band:e.band, tinte:e.tinte,
+    akzent:e.akzent, akzent2:e.akzent2,
+    flaeche2:farbMisch(e.flaeche, e.tinte, .06),
+    bandText:farbSchriftAuf(e.band),
+    tinteLeise:farbLeise(e.tinte, [e.flaeche, e.grund], 5.5),
+    tinteStill:farbLeise(e.tinte, [e.flaeche, e.grund], 4.5),
+    linie:farbMisch(linieBasis, e.tinte, .12),
+    linieStark:farbMisch(linieBasis, e.tinte, .2)
+  };
+}
+
+/* Was nicht lesbar wäre. Leer heißt: darf so übernommen werden. */
+function farbLesbar(e){
+  const p = farbHerleiten(e), raus = [];
+  const paar = (was, a, b, min) => { const k = farbKontrast(a, b); if(k < min) raus.push({ was, k, min }); };
+  paar("Schrift auf Hintergrund", p.tinte, p.grund, 4.5);
+  paar("Schrift auf Karten", p.tinte, p.flaeche, 4.5);
+  paar("Schrift auf eingelassenen Flächen", p.tinte, p.flaeche2, 4.5);
+  paar("Schrift auf dem Kopfband", p.bandText, p.band, 4.5);
+  /* Beide Hausfarben stehen auch als kleine Schrift da (Preise,
+     „Beliebt“) — auf der Karte und auf ihrem eigenen Schimmer. */
+  [["Karten", p.flaeche], ["Hintergrund", p.grund]].forEach(([wo, f]) => {
+    paar("Hauptfarbe auf " + wo, p.akzent, farbMisch(f, p.akzent, .14), 4.5);
+    paar("Zweitfarbe auf " + wo, p.akzent2, farbMisch(f, p.akzent2, .2), 4.5);
+  });
+  return raus;
+}
+
+/* Aus einer Live-Spalte: nur genau sechs Hexwerte je Fassung, sonst
+   gilt diese Fassung nicht (§2.3a — der Wert landet in Stilangaben).
+   Unlesbares gilt auch nicht. Der Rest des Objekts wird ignoriert. */
+function farbPruefen(roh){
+  const seite = x => {
+    if(!x || typeof x !== "object" || Array.isArray(x)) return null;
+    const e = {};
+    for(const r of FARB_ROLLEN){
+      if(typeof x[r] !== "string" || !FARB_HEX.test(x[r])) return null;
+      e[r] = x[r].toUpperCase();
+    }
+    return farbLesbar(e).length ? null : e;
+  };
+  if(!roh || typeof roh !== "object" || Array.isArray(roh)) return null;
+  const tag = seite(roh.tag), abend = seite(roh.abend);
+  const abendAn = roh.abend && typeof roh.abend === "object" && typeof roh.abend.an === "boolean" ? roh.abend.an : null;
+  if(!tag && !abend && abendAn === null) return null;
+  return { tag, abend, abendAn };
+}
+/* ╚═══ FARBEN · GETEILTER BLOCK · ENDE ════════════════════════════╝ */
+
 function markeAlpha(hex, alpha){
   const h = String(hex || "").replace("#","");
   if(h.length !== 6) return "transparent";
@@ -4255,11 +4563,26 @@ function markeSchriftAuf(flaeche){
   return (1.05 / (l + .05)) >= ((l + .05) / .05579) ? "#FFFFFF" : "#111111";
 }
 
-function markeAnwenden(abend){
+/* Eine Stufe der Leiter auf eine fertige Palette legen (Gast wählt
+   „Ganz weiß“/„Ganz schwarz“). Sechs Grundfarben → Stufe → alle
+   Rollen neu; Flächen, die zu einer alten Hausfarbe gemischt waren,
+   fallen weg; Grün wird nachgezogen wie bei den Board-Farben. */
+function lichtStufeFarben(f, stufe){
+  const e = {};
+  for(const r of FARB_ROLLEN){ if(typeof f[r] !== "string" || !FARB_HEX.test(f[r])) return f; e[r] = f[r].toUpperCase(); }
+  const n = Object.assign({}, f, farbHerleiten(farbStufeAuf(e, stufe)));
+  if(n.akzent !== f.akzent) delete n.akzentFlaeche;
+  if(n.akzent2 !== f.akzent2) delete n.akzent2Flaeche;
+  if(typeof n.gut === "string" && FARB_HEX.test(n.gut)) n.gut = farbAufTon(n.gut, [n.flaeche, n.grund], .14, 4.5);
+  return n;
+}
+
+function markeAnwenden(abend, stufe){
   const mb = MARKENBLATT;
-  const f  = (abend && mb.abend && mb.abend.an)
+  let f  = (abend && mb.abend && mb.abend.an)
     ? Object.assign({}, mb.farben, mb.abend)
     : mb.farben;
+  if(stufe) f = lichtStufeFarben(Object.assign({ bandText: mb.farben.bandText }, f), stufe);
 
   const s = document.documentElement.style;
   s.setProperty("--grund",       f.grund);
@@ -4309,6 +4632,46 @@ function markeAnwenden(abend){
   s.setProperty("--schatten", SCHATTEN[mb.form.schatten] || SCHATTEN.weich);
 }
 
+/* ── Farben aus dem Board (hub_stil.farben) ─────────────────────────
+   Das Markenblatt bleibt die Vorgabe und wird hier einmal festgehalten;
+   die Farben aus dem Board legen sich darüber und lassen sich jederzeit
+   wieder abnehmen („Auf Markenblatt zurück“ im Board). Was farbPruefen
+   nicht durchlässt, gilt nicht — dann bleibt das Markenblatt. */
+const FARB_MARKE = { farben: Object.assign({}, MARKENBLATT.farben),
+                     abend: Object.assign({}, MARKENBLATT.abend || {}) };
+function farbenAnwenden(roh){
+  const fb = farbPruefen(roh);
+  const vorher = JSON.stringify([MARKENBLATT.farben, MARKENBLATT.abend]);
+  const auf = (grund, e) => {
+    const f = Object.assign({}, grund);
+    if(!e) return f;
+    Object.assign(f, farbHerleiten(e));
+    /* Grün kommt nicht aus dem Board, steht aber als Schrift
+       („Vegan“) auf der neuen Karte — so weit nachgezogen, wie nötig. */
+    if(typeof f.gut === "string" && FARB_HEX.test(f.gut)) f.gut = farbAufTon(f.gut, [f.flaeche, f.grund], .14, 4.5);
+    /* Eigens gemischte Flächen des Markenblatts gehören zu SEINER
+       Haupt-/Zweitfarbe — mit einer neuen Farbe würden sie lügen. */
+    if(e.akzent !== grund.akzent) delete f.akzentFlaeche;
+    if(e.akzent2 !== grund.akzent2) delete f.akzent2Flaeche;
+    return f;
+  };
+  MARKENBLATT.farben = auf(FARB_MARKE.farben, fb && fb.tag);
+  MARKENBLATT.abend  = auf(FARB_MARKE.abend,  fb && fb.abend);
+  if(fb && fb.abendAn !== null) MARKENBLATT.abend.an = fb.abendAn;
+  if(!(MARKENBLATT.abend.ab >= 0 && MARKENBLATT.abend.ab <= 23)) MARKENBLATT.abend.ab = 18;
+  return JSON.stringify([MARKENBLATT.farben, MARKENBLATT.abend]) !== vorher;
+}
+const FARB_MERK = "omoteno-farben-" + HAUS;
+/* Für das Board: eine const steht nicht am window, eine Funktion schon. */
+function farbMarke(){ return FARB_MARKE; }
+/* Nur das Geprüfte wird gemerkt — nie der rohe Wert aus der Spalte. */
+function farbMerkwert(fb){
+  if(!fb) return null;
+  const abend = fb.abend ? Object.assign({}, fb.abend) : {};
+  if(fb.abendAn !== null) abend.an = fb.abendAn;
+  return { tag: fb.tag, abend: Object.keys(abend).length ? abend : null };
+}
+
 /* Einmalig: Maße und Schrift. Die ändern sich im laufenden Betrieb
    nie — ein Umschalten würde Zeilen umbrechen lassen, während der
    Gast liest. */
@@ -4334,6 +4697,14 @@ function markeAnwenden(abend){
       s.setProperty("--schrift-" + rolle, SCHRIFTEN[mb.schrift[rolle]]);
   });
   s.setProperty("--schrift-mass",  mb.schrift.groesse || 1);
+
+  /* Die Farben vom letzten Besuch vor dem ersten Anstrich — der
+     Abgleich mit der Datenbank dauert, und dazwischen stünde das
+     Markenblatt da und spränge dann um. Nicht in der Vorschau: dort
+     gilt, was das Board schickt. */
+  if(window.OMOTENO_VORSCHAU !== true){
+    try{ const g = JSON.parse(localStorage.getItem(FARB_MERK) || "null"); if(g) farbenAnwenden(g); }catch(e){}
+  }
 
   /* Erste Farbgebung, bevor irgendetwas gezeichnet wird. Die Stunde
      wird hier eigenständig ermittelt; unten übernimmt nachtSchalten()
@@ -4505,7 +4876,14 @@ function markeAnwenden(abend){
        liegen in einer gemeinsamen Zeile — zwei Elemente auf derselben
        Rasterfläche hätten sich überlagert. -->
   <div class="kopfwahl">
-  <button class="lichtknopf" id="lichtknopf" type="button"></button>
+  <!-- Seit 11.10. fünf Stufen statt drei im Ring: Der Knopf öffnet
+       eine Liste wie die Sprachwahl (Automatisch, Hell, Ganz weiß,
+       Dunkel, Ganz schwarz). Fünf Zustände im Ring hießen viermal
+       tippen, um zurückzukommen. -->
+  <div class="lichtwahl" id="lichtwahl">
+    <button class="lichtknopf" id="lichtknopf" type="button" aria-haspopup="menu" aria-expanded="false"></button>
+    <div class="sprachliste lichtliste" id="lichtliste" role="menu" aria-label="Ansicht wählen"></div>
+  </div>
   <!-- Liefer-Schalter (ersetzt seit 30.09. das Lieferband der
        Startseite). Nur wo der Betrieb liefert und niemand am Tisch
        sitzt — lieferWahlZeichnen() nimmt hidden weg. In Ruhe zwei
@@ -5971,6 +6349,11 @@ const SOFORT_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v1
    schon der Start (gastLaden, Warteschlange) danach fragt — weiter
    unten hätte die „temporal dead zone“ den Hub leer gelassen (§8.1l). */
 const VORSCHAU = window.OMOTENO_VORSCHAU === true;
+/* Vorführung auf der Landingpage (siehe DEMO-Block ganz oben): Die
+   Häuser sind dort rund um die Uhr geöffnet — sonst zeigte die
+   Vorführung abends „geschlossen“ und ließe nicht bestellen. Die
+   Landingpage sagt das dazu. */
+const DEMO = window.OMOTENO_DEMO === true;
 let vorschauEntwurf = null;
 let aktionen = [];          /* was gerade läuft */
 /* Wie die Aktionen dieses Hauses überschrieben heißen. Die einzelne
@@ -8007,10 +8390,17 @@ function begleiterHTML(anlass){
   if(!satz) return "";
   /* Wie beim Bestellpass: nur die Vorgabe geht durchs Wörterbuch. */
   /* Gegrüßt wird einmal je Anlass und Sitzung — nicht bei jedem
-     Neuzeichnen derselben Seite (§4.1). */
+     Neuzeichnen derselben Seite (§4.1).
+     Als gegrüßt zählt erst der ZU ENDE gespielte Gruß (animationend
+     unten), nicht der gezeichnete. Vorher hieß „gezeichnet = gegrüßt“:
+     Kamen die Live-Daten des Hauses ein paar hundert Millisekunden
+     nach dem Laden und die Startseite wurde neu gezeichnet, stand ein
+     neues Element ohne Gruß da — der Gruß brach mitten im Winken ab.
+     Gefunden am Vorführhaus, dessen Daten sofort da sind; jede andere
+     Prüfung beantwortet die Datenbank mit [] und zeichnet nie neu. */
   const neu = !BEGLEITER_GEGRUESST.has(anlass);
-  BEGLEITER_GEGRUESST.add(anlass);
-  return '<div class="begleiter' + (neu ? " b-hallo" : "") + '">' + avatarSVG(48) + '<p>' +
+  if(neu && ruhigeBewegung()) BEGLEITER_GEGRUESST.add(anlass);
+  return '<div class="begleiter' + (neu ? " b-hallo" : "") + '" data-anlass="' + hs(anlass) + '">' + avatarSVG(48) + '<p>' +
          (eigen || t(satz)) + '</p></div>';
 }
 
@@ -8054,6 +8444,9 @@ function begleiterHTML(anlass){
     ZEITEN.length = 0;
     mb.zeiten.forEach(z => ZEITEN.push(z));
   }
+  /* Vorführung: rund um die Uhr (siehe const DEMO). NACH dem Markenblatt,
+     sonst überschriebe es die Zeile. */
+  if(DEMO) for(let i = 0; i < 7; i++) ZEITEN[i] = "00:00 – 23:59";
 
   if(mb.links)     Object.keys(mb.links).forEach(k => { if(da(mb.links[k])) LINKS[k] = mb.links[k]; });
   if(mb.wlan)      Object.keys(mb.wlan).forEach(k  => { if(da(mb.wlan[k]))  WLAN[k]  = mb.wlan[k];  });
@@ -9391,6 +9784,11 @@ const TEXTE = {
 "Pizza":{en:"Pizza",tr:"Pizza",ru:"Пицца",fr:"Pizzas",es:"Pizzas",it:"Pizze",pl:"Pizza",ar:"البيتزا",uk:"Піца",nl:"Pizza",ro:"Pizza"},
 "Nudeln":{en:"Pasta",tr:"Makarna",ru:"Паста",fr:"Pâtes",es:"Pasta",it:"Pasta",pl:"Makarony",ar:"المعكرونة",uk:"Паста",nl:"Pasta",ro:"Paste"},
 "Desserts":{en:"Desserts",tr:"Tatlılar",ru:"Десерты",fr:"Desserts",es:"Postres",it:"Dolci",pl:"Desery",ar:"الحلويات",uk:"Десерти",nl:"Desserts",ro:"Deserturi"},
+"Frühstück":{en:"Breakfast",tr:"Kahvaltı",ru:"Завтрак",fr:"Petit-déjeuner",es:"Desayuno",it:"Colazione",pl:"Śniadanie",ar:"الفطور",uk:"Сніданок",nl:"Ontbijt",ro:"Mic dejun"},
+"Bowls":{en:"Bowls",tr:"Kaseler",ru:"Боулы",fr:"Bowls",es:"Bowls",it:"Bowl",pl:"Bowle",ar:"أطباق البول",uk:"Боули",nl:"Bowls",ro:"Boluri"},
+"Süßes":{en:"Something sweet",tr:"Tatlılar",ru:"Сладкое",fr:"Douceurs",es:"Dulces",it:"Dolci",pl:"Słodkości",ar:"حلويات",uk:"Солодке",nl:"Zoetigheden",ro:"Dulciuri"},
+"Kalt":{en:"Cold drinks",tr:"Soğuk içecekler",ru:"Холодные напитки",fr:"Boissons fraîches",es:"Bebidas frías",it:"Bevande fredde",pl:"Napoje zimne",ar:"مشروبات باردة",uk:"Холодні напої",nl:"Koude dranken",ro:"Băuturi reci"},
+"Spritz":{en:"Spritz",tr:"Spritz",ru:"Шприц",fr:"Spritz",es:"Spritz",it:"Spritz",pl:"Spritz",ar:"سبريتز",uk:"Шприц",nl:"Spritz",ro:"Spritz"},
 "Kaffee":{en:"Coffee",tr:"Kahve",ru:"Кофе",fr:"Cafés",es:"Cafés",it:"Caffè",pl:"Kawa",ar:"القهوة",uk:"Кава",nl:"Koffie",ro:"Cafea"},
 "Heiß & Süß":{en:"Hot & sweet",tr:"Sıcak ve tatlı",ru:"Горячее и сладкое",fr:"Chaud & sucré",es:"Caliente y dulce",it:"Caldo e dolce",pl:"Na ciepło i słodko",ar:"ساخن وحلو",uk:"Гаряче та солодке",nl:"Warm & zoet",ro:"Cald și dulce"},
 "Alkoholfrei":{en:"Soft drinks",tr:"Alkolsüz",ru:"Безалкогольное",fr:"Sans alcool",es:"Sin alcohol",it:"Analcolici",pl:"Bezalkoholowe",ar:"بدون كحول",uk:"Безалкогольне",nl:"Alcoholvrij",ro:"Fără alcool"},
@@ -9657,6 +10055,9 @@ const TEXTE = {
 
 "Hell":{en:"Light",tr:"Açık",ru:"Светлый",fr:"Clair",es:"Claro",it:"Chiaro",pl:"Jasny",ar:"فاتح",uk:"Світла",nl:"Licht",ro:"Luminos"},
 "Dunkel":{en:"Dark",tr:"Koyu",ru:"Тёмный",fr:"Sombre",es:"Oscuro",it:"Scuro",pl:"Ciemny",ar:"داكن",uk:"Темна",nl:"Donker",ro:"Întunecat"},
+"Ganz weiß":{en:"All white",tr:"Tamamen beyaz",ru:"Полностью белый",fr:"Tout blanc",es:"Todo blanco",it:"Tutto bianco",pl:"Całkiem biały",ar:"أبيض بالكامل",uk:"Повністю білий",nl:"Helemaal wit",ro:"Complet alb"},
+"Ganz schwarz":{en:"All black",tr:"Tamamen siyah",ru:"Полностью чёрный",fr:"Tout noir",es:"Todo negro",it:"Tutto nero",pl:"Całkiem czarny",ar:"أسود بالكامل",uk:"Повністю чорний",nl:"Helemaal zwart",ro:"Complet negru"},
+"Ansicht wählen":{en:"Choose view",tr:"Görünüm seçin",ru:"Выбрать вид",fr:"Choisir l’affichage",es:"Elegir vista",it:"Scelga la vista",pl:"Wybierz widok",ar:"اختر العرض",uk:"Вибрати вигляд",nl:"Weergave kiezen",ro:"Alege afișarea"},
 "Automatisch":{en:"Automatic",tr:"Otomatik",ru:"Автоматически",fr:"Automatique",es:"Automático",it:"Automatico",pl:"Automatycznie",ar:"تلقائي",uk:"Автоматично",nl:"Automatisch",ro:"Automat"},
 "Ansicht: {w}":{en:"View: {w}",tr:"Görünüm: {w}",ru:"Вид: {w}",fr:"Affichage : {w}",es:"Vista: {w}",it:"Vista: {w}",pl:"Widok: {w}",ar:"العرض: {w}",uk:"Вигляд: {w}",nl:"Weergave: {w}",ro:"Afișare: {w}"},
 /* --- Oberflaechentexte aus den spaeteren Bloecken -----------------
@@ -10479,6 +10880,20 @@ function lieferWahl(ziel){
   lwUhr = setTimeout(() => w.classList.remove("zeigt"), wechsel ? 1900 : 1500);
 }
 
+/* Welche Kacheln die Startseite gerade zeigt, in ihrer Reihenfolge.
+   EINE Stelle: Die Wischgeste zwischen den Unterseiten (seitenWischen)
+   blättert genau in dieser Folge — sonst führte ein Wisch zu einer
+   Kachel, die der Gast gar nicht sieht. */
+function sichtbareKacheln(){
+  return KACHELN.filter(k =>
+    stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
+    !(liefermodus && LIEFER.an && k.gruppe === "Jetzt am Tisch") &&
+    (typeof k.wenn !== "function" || k.wenn()) &&
+    /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
+       neu. Lieber gar keine Kachel als eine, die im Kreis führt. */
+    kachelZiel(k) !== "");
+}
+
 function start(){
   /* wenn: optionale Bedingung an der Kachel. Ist sie da und ergibt
      false, erscheint die Kachel nicht – siehe Trinkgeld. */
@@ -10490,13 +10905,7 @@ function start(){
      morgen eine sechste Kachel dorthin stellt, muss nicht daran
      denken. Eine Regel, die man vergessen kann, ist eine Regel, die
      man vergessen wird. */
-  const sichtbar = KACHELN.filter(k =>
-    stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
-    !(liefermodus && LIEFER.an && k.gruppe === "Jetzt am Tisch") &&
-    (typeof k.wenn !== "function" || k.wenn()) &&
-    /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
-       neu. Lieber gar keine Kachel als eine, die im Kreis führt. */
-    kachelZiel(k) !== "");
+  const sichtbar = sichtbareKacheln();
   if(!sichtbar.length){
     return '<div class="leer">' + t("Gerade ist nichts freigeschaltet.") + '<br>' +
            t("Schauen Sie später noch einmal vorbei.") + '</div>';
@@ -11346,6 +11755,7 @@ function frDrehen(){
     if(rad){ rad.classList.remove("dreht"); rad.classList.add("gelandet"); }
     frWinkel = ((ziel % 360) + 360) % 360;
     sch.style.transform = "rotate(" + frWinkel + "deg)";
+    if(rad) rad.style.setProperty("--fr-von", (frWinkel + k * s).toFixed(3) + "deg");
     sch.getAnimations().forEach(a => a.cancel());
     frLanden(g.n);
   };
@@ -13423,7 +13833,13 @@ function wert(id){
   return el ? el.value.trim() : "";
 }
 
-function oeffne(url){ window.location.href = url; }
+/* In der Vorführung liegt der Hub in einem Rahmen der Landingpage —
+   WhatsApp, PayPal und Co. ließen sich dort nicht einbetten und der
+   Rahmen bliebe leer. Dann in einem neuen Tab. */
+function oeffne(url){
+  if(DEMO && window.top !== window){ window.open(url, "_blank", "noopener"); return; }
+  window.location.href = url;
+}
 
 /* ---------- Router ---------- */
 /* Welche Seite gerade sichtbar ist. Wird NUR in zeichne() gesetzt.
@@ -13487,11 +13903,14 @@ function nachtSchalten(){
      und dieses Haus, nicht darüber hinaus. */
   const nachUhr = !!(mb.abend && mb.abend.an) &&
                   (stunde >= mb.abend.ab || stunde < 5);
-  const abend = licht === "dunkel" ? true
-              : licht === "hell"   ? false
+  const abend = (licht === "dunkel" || licht === "schwarz") ? true
+              : (licht === "hell" || licht === "weiss") ? false
               : nachUhr;
 
-  markeAnwenden(abend);
+  /* Ganz weiß / ganz schwarz: dieselbe Rechnung wie die Stufen im
+     Board (farbStufeAuf) — Schrift, Linien und Hausfarben werden für
+     den neuen Grund nachgezogen, nicht nur der Grund getauscht. */
+  markeAnwenden(abend, licht === "weiss" || licht === "schwarz" ? licht : "");
   document.body.dataset.phase = abend ? "abend" : "tag";
   /* Am documentElement, NICHT am body. Gemessen: Abends trägt <html>
      rgb(26,16,12), <body> aber weiter rgb(251,246,242) — der Grund
@@ -13514,12 +13933,14 @@ function nachtSchalten(){
    jedem seine eigene Wahl — die Häuser sehen ohnehin verschieden
    aus, und eine Einstellung, die überall gilt, wäre hier falsch. */
 const LICHT_SCHLUESSEL = "omoteno-licht-" + (SERVER.betrieb || "haus");
+/* Reihenfolge = Reihenfolge in der Liste. Unbekanntes fällt auf auto. */
+const LICHT_STUFEN = ["auto", "hell", "weiss", "dunkel", "schwarz"];
 let licht = "auto";
 
 function lichtLaden(){
   try{
     const w = localStorage.getItem(LICHT_SCHLUESSEL);
-    if(w === "hell" || w === "dunkel") licht = w;
+    if(LICHT_STUFEN.indexOf(w) > 0) licht = w;
   }catch(e){}
 }
 
@@ -13535,7 +13956,7 @@ function lichtLaden(){
 lichtLaden();
 
 function lichtSetzen(wahl){
-  licht = (wahl === "hell" || wahl === "dunkel") ? wahl : "auto";
+  licht = LICHT_STUFEN.indexOf(wahl) > 0 ? wahl : "auto";
   try{
     if(licht === "auto") localStorage.removeItem(LICHT_SCHLUESSEL);
     else localStorage.setItem(LICHT_SCHLUESSEL, licht);
@@ -13544,16 +13965,35 @@ function lichtSetzen(wahl){
   lichtKnopfZeichnen();
 }
 
-/* Ein Knopf, drei Zustände im Ring: automatisch → hell → dunkel.
-   Ein Menü für drei Werte wäre mehr Bedienung als Nutzen. */
+/* Ein Knopf, eine Liste mit fünf Stufen (seit 11.10.; vorher drei im
+   Ring). Die Liste zeigt je Stufe eine kleine Probe: Grund und Schrift,
+   wie sie IN DIESEM HAUS aussähen — aus derselben Rechnung. */
+function lichtName(w){
+  return t({ hell:"Hell", weiss:"Ganz weiß", dunkel:"Dunkel", schwarz:"Ganz schwarz" }[w] || "Automatisch");
+}
+function lichtListeZeichnen(){
+  const l = $("lichtliste"); if(!l) return;
+  const mb = MARKENBLATT;
+  const tag = mb.farben, nacht = (mb.abend && mb.abend.an) ? Object.assign({}, mb.farben, mb.abend) : mb.farben;
+  const probe = w => {
+    const f = w === "weiss" ? lichtStufeFarben(tag, "weiss") : w === "schwarz" ? lichtStufeFarben(nacht, "schwarz")
+            : w === "dunkel" ? nacht : tag;
+    return /^#[0-9a-f]{6}$/i.test(f.grund) && /^#[0-9a-f]{6}$/i.test(f.tinte)
+      ? '<span class="lprobe" aria-hidden="true" style="--lp-g:' + f.grund + ';--lp-t:' + f.tinte + '"></span>' : "";
+  };
+  l.innerHTML = LICHT_STUFEN.map(w =>
+    '<button type="button" role="menuitemradio" data-licht="' + w + '" aria-checked="' + (w === licht) + '">' +
+    '<span class="lwort">' + hs(lichtName(w)) + '</span>' + (w === "auto" ? "" : probe(w)) + '</button>').join("");
+}
 function lichtKnopfZeichnen(){
   const k = $("lichtknopf"); if(!k) return;
   const abend = document.body.dataset.phase === "abend";
-  const name = licht === "hell" ? t("Hell")
-             : licht === "dunkel" ? t("Dunkel") : t("Automatisch");
+  const name = lichtName(licht);
   k.setAttribute("aria-label", t("Ansicht: {w}", {w:name}));
   k.setAttribute("title", t("Ansicht: {w}", {w:name}));
   k.classList.toggle("fest", licht !== "auto");
+  lichtListeZeichnen();
+  const l = $("lichtliste"); if(l) l.setAttribute("aria-label", t("Ansicht wählen"));
   /* Sonne, wenn es gerade hell ist; Mond, wenn dunkel. Das Zeichen
      sagt den ZUSTAND, nicht die nächste Wahl — sonst rät der Gast. */
   k.innerHTML = abend
@@ -13911,7 +14351,8 @@ document.addEventListener("animationend", e => {
   if(e.animationName === "bgHops") e.target.classList.remove("b-hops");
   /* Gruß vorbei: Klasse weg, sonst begänne er nach jedem Hüpfer neu
      (die Animationsliste wechselt zurück und startet von vorn). */
-  if(e.animationName === "bgHallo"){ const b = e.target.closest(".begleiter"); if(b) b.classList.remove("b-hallo"); }
+  if(e.animationName === "bgHallo"){ const b = e.target.closest(".begleiter");
+    if(b){ b.classList.remove("b-hallo"); if(b.dataset.anlass) BEGLEITER_GEGRUESST.add(b.dataset.anlass); } }
 });
 
 document.addEventListener("click", e => {
@@ -15386,106 +15827,6 @@ $("inhalt").addEventListener("input", e => {
   neuKarte(id, true);
 });
 
-/* ══ REISE · Übergang Kachel → Unterseite (neu 10.10.) ═════════════
-   Gestalt beim CSS (.reise). Der Takt:
-   - Die Seite wechselt SOFORT (location.hash im Tipp selbst) — die
-     Bewegung ist Beiwerk, kein Warten. Keine längere Fassung beim
-     ersten Öffnen mehr.
-   - Die Fläche der Kachel wächst in 260 ms (Skill bewegung §3:
-     Karte/Blatt 180–320 ms) vom echten Rechteck zum Schirm und blendet
-     dabei aus; danach wird die Ebene entfernt.
-   - Ein Druck, eine Taste oder ein Rad währenddessen beendet sie. Der
-     Klick zu einem Druck in diesem Fenster wird geschluckt: Er galt
-     der Kachel (Doppeltipp), nicht dem, was auf der neuen Seite an
-     derselben Stelle steht.
-   - Reduzierte Bewegung, Vorschau im Board, Link nach außen,
-     Strg/⌘-Klick: keine Ebene, der Browser macht, was er immer macht. */
-/* Seit 10.10. (Wunsch: „die Animation raus, zu kompliziert fürs Auge —
-   lediglich die Kachel soll sich einmal expanden, und man kommt mit
-   einem smoothen Übergang auf der Seite an“): Die Fläche ist DECKEND
-   in der Farbe der Kachel — vorher halb durchsichtig, man sah die
-   alte und die neue Seite zugleich durch sie hindurch. Erst zieht sie
-   auf (260 ms, rollt aus), dann blendet sie aus (160 ms), und darunter
-   kommt die Seite als EIN Stück an, nicht mehr gestaffelt. */
-const REISE_AUF = 260, REISE_AUS = 160, REISE_MS = REISE_AUF + REISE_AUS;
-let reise = null;
-function reiseMoeglich(a, e){
-  if(!a || VORSCHAU || ruhigeBewegung()) return "";
-  if(e.defaultPrevented || e.button > 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return "";
-  const ziel = a.getAttribute("href") || "";
-  if(!/^#\/[^?#]/.test(ziel) || ziel === location.hash || a.target) return "";
-  return ziel;
-}
-function reiseEnde(){
-  const r = reise; if(!r) return;
-  reise = null;
-  try{ r.ani.cancel(); }catch(err){}
-  r.el.remove();
-  document.removeEventListener("pointerdown", r.weg, true);
-  document.removeEventListener("keydown", r.weg, true);
-  document.removeEventListener("wheel", r.weg, true);
-}
-function reiseStarten(a, ziel){
-  if(reise) reiseEnde();
-  const vw = innerWidth, vh = innerHeight;
-  const r = a.getBoundingClientRect();
-  const farbe = { rot:"var(--rot)", pistazie:"var(--pistazie)", gold:"var(--gold)" }[a.dataset.farbe] || "var(--gold)";
-  const el = document.createElement("div");
-  el.className = "reise";
-  el.setAttribute("aria-hidden", "true");
-  el.style.setProperty("--reise-licht", farbe);
-  /* Die Fläche hat die Farbe, die die Kachel WIRKLICH zeigt (eigene
-     Farbe, Säule, Bild-Kachel …); ist sie durchsichtig, die Hausmischung. */
-  const grund = getComputedStyle(a).backgroundColor;
-  if(grund && !/rgba\([^)]*,\s*0\)|transparent/.test(grund)) el.style.setProperty("--reise-grund", grund);
-  const fl = document.createElement("div");
-  fl.className = "reise-flaeche";
-  /* Maß = Schirm, Start = Rechteck der Kachel als scale (FLIP). */
-  fl.style.width = vw + "px"; fl.style.height = vh + "px";
-  el.appendChild(fl);
-  document.body.appendChild(el);
-  /* Seite wechseln, bevor das erste Bild der Ebene gemalt ist. */
-  location.hash = ziel;
-  const sx = Math.max(.01, r.width / vw), sy = Math.max(.01, r.height / vh);
-  /* Kurve je Abschnitt, nicht auf dem Ganzen: Mit ease-out über alles
-     stand die Fläche schon nach 70 ms bildfüllend und fast durchsichtig
-     — man sah nichts (gemessen). Erst wachsen (ease-out, sichtbar),
-     dann ausblenden (ease-in, Skill bewegung §2). */
-  const ani = fl.animate([
-    { transform:"translate(" + r.left + "px," + r.top + "px) scale(" + sx + "," + sy + ")", opacity:1, easing:"cubic-bezier(.22,1,.36,1)" },
-    { transform:"translate(0px,0px) scale(1,1)", opacity:1, offset:REISE_AUF / REISE_MS, easing:"cubic-bezier(.4,0,1,1)" },
-    { transform:"translate(0px,0px) scale(1,1)", opacity:0 }
-  ], { duration:REISE_MS, fill:"both" });
-  /* Die neue Seite kommt unter der Fläche als ein Stück an, sobald die
-     Fläche zu verblassen beginnt. Die Klasse bleibt, bis das vorbei ist
-     (vorher entfernt, sprängen laufende Animationen). */
-  document.body.classList.add("reise-an");
-  clearTimeout(reiseStarten.uhr);
-  reiseStarten.uhr = setTimeout(() => document.body.classList.remove("reise-an"), REISE_MS + 500);
-  const zustand = { el, ani, ziel, weg:null };
-  zustand.weg = ev => {
-    if(reise !== zustand) return;
-    if(ev.type === "pointerdown"){
-      const schlucken = k => { k.preventDefault(); k.stopPropagation(); };
-      document.addEventListener("click", schlucken, { capture:true, once:true });
-      setTimeout(() => document.removeEventListener("click", schlucken, true), 500);
-    }
-    reiseEnde();
-  };
-  document.addEventListener("pointerdown", zustand.weg, true);
-  document.addEventListener("keydown", zustand.weg, true);
-  document.addEventListener("wheel", zustand.weg, { capture:true, passive:true });
-  ani.onfinish = () => { if(reise === zustand) reiseEnde(); };
-  reise = zustand;
-}
-/* Fängt den Tipp VOR jedem anderen Griff in #inhalt ab (capture). */
-$("inhalt").addEventListener("click", e => {
-  const a = e.target.closest && e.target.closest("a.kachel");
-  const ziel = reiseMoeglich(a, e);
-  if(!ziel) return;
-  e.preventDefault();
-  reiseStarten(a, ziel);
-}, true);
 
 $("inhalt").addEventListener("click", e => {
   if(e.target.closest("[data-heim]")){
@@ -16137,6 +16478,7 @@ function menuAuf(zustand){
   const wahl = $("sprachwahl");
   if(wahl.classList.contains("offen") === zustand) return;
 
+  if(zustand && typeof lichtMenuAuf === "function") lichtMenuAuf(false);
   wahl.classList.toggle("offen", zustand);
   $("sprachknopf").setAttribute("aria-expanded", zustand ? "true" : "false");
 
@@ -16224,6 +16566,218 @@ $("zurueck").addEventListener("click", nachHause);
 $("logo").addEventListener("click",    nachHause);
 window.addEventListener("hashchange", zeichne);
 
+/* ══ WISCHEN ZWISCHEN DEN UNTERSEITEN (11.10.) ══════════════════════
+   Nach links wischen = nächste Kachel der Startseite, nach rechts =
+   vorige (in Rechts-nach-links-Sprachen gespiegelt). Die Seite folgt
+   dem Finger; losgelassen über ein Drittel der Breite oder mit Schwung
+   gleitet sie hinaus und die nächste kommt von der anderen Seite
+   herein (je ≈ 200 ms, nur transform). Sonst federt sie zurück.
+
+   Nicht gewischt wird, wenn der Finger in etwas beginnt, das selbst
+   seitlich arbeitet: ein seitlich rollender Bereich (Kategorie-Leiste,
+   Chips), ein Feld, ein Regler, das Glücksrad, der Kartenstapel der
+   Foodroulette. Und nur auf Seiten, die eine Kachel der Startseite
+   sind — sonst gibt es kein „nächstes“. */
+function wischFolge(){
+  const folge = [];
+  sichtbareKacheln().forEach(k => {
+    const z = kachelZiel(k);
+    if(/^#\/[a-z0-9-]/i.test(z) && !folge.some(f => f.ziel === z))
+      folge.push({ ziel:z, titel:t(k.titel) });
+  });
+  return folge;
+}
+function wischOrt(folge){
+  const jetzt = location.hash;
+  let i = folge.findIndex(f => f.ziel === jetzt);
+  if(i < 0) i = folge.findIndex(f => f.ziel.split("?")[0] === jetzt.split("?")[0]);
+  return i;
+}
+/* Ehrliche Grenze (gemessen 11.10.): In Chromium übernimmt eine seitlich
+   rollende Leiste die Geste selbst und bricht unseren Zug ab
+   (pointercancel) — auch am Ende der Leiste. Die overflow-Prüfung unten
+   ist dort Vorsorge für Browser, die das anders halten; ein Gegenbeweis
+   ohne sie blieb grün. Sie hier zu messen, kann kopfloses Chromium nicht. */
+function wischSperre(el){
+  for(let x = el; x && x !== document.body; x = x.parentElement){
+    if(x.matches && x.matches('input,textarea,select,[contenteditable="true"],.fr-rad,.ed-stapel,.ed-karte,.bnrad,.wisch-aus')) return true;
+    if(x.scrollWidth > x.clientWidth + 2){
+      const ox = getComputedStyle(x).overflowX;
+      if(ox === "auto" || ox === "scroll") return true;
+    }
+  }
+  return false;
+}
+(function seitenWischen(){
+  const feld = $("inhalt");
+  let w = null;
+  const breite = () => Math.max(1, document.documentElement.clientWidth);
+  const rtl = () => document.documentElement.dir === "rtl";
+  const pille = (seite, titel) => {
+    let el = document.querySelector(".wischziel");
+    if(!el){ el = document.createElement("div"); el.className = "wischziel"; el.setAttribute("aria-hidden", "true"); document.body.appendChild(el); }
+    el.className = "wischziel wz-" + seite;
+    el.innerHTML = (seite === "links" ? "‹ " : "") + "<span>" + hs(titel) + "</span>" + (seite === "rechts" ? " ›" : "");
+    return el;
+  };
+  const pilleWeg = () => { const el = document.querySelector(".wischziel"); if(el) el.remove(); };
+  feld.addEventListener("pointerdown", e => {
+    if(e.pointerType !== "touch" || w || document.body.dataset.ansicht !== "unter") return;
+    if(wischSperre(e.target)) return;
+    const folge = wischFolge(), i = wischOrt(folge);
+    if(i < 0 || folge.length < 2) return;
+    w = { id:e.pointerId, x0:e.clientX, y0:e.clientY, t0:performance.now(), dx:0, an:false, folge, i, spur:[] };
+  }, { passive:true });
+  feld.addEventListener("pointermove", e => {
+    if(!w || e.pointerId !== w.id) return;
+    const dx = e.clientX - w.x0, dy = e.clientY - w.y0;
+    if(!w.an){
+      if(Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
+      if(Math.abs(dx) < Math.abs(dy) * 1.3){ w = null; return; }   /* senkrecht: rollen */
+      w.an = true;
+      feld.classList.add("wischt");
+      feld.getAnimations().forEach(a => a.cancel());
+    }
+    /* Richtung → Ziel (gespiegelt in RTL); ohne Ziel federt es zäh. */
+    const vor = rtl() ? dx > 0 : dx < 0;
+    const ziel = w.folge[w.i + (vor ? 1 : -1)];
+    w.ziel = ziel || null;
+    w.dx = ziel ? dx : dx * .25;
+    w.spur.push([performance.now(), e.clientX]); if(w.spur.length > 6) w.spur.shift();
+    feld.style.transform = "translateX(" + w.dx + "px)";
+    if(ziel){
+      const p = pille(dx < 0 ? "rechts" : "links", ziel.titel);
+      const anteil = Math.min(1, Math.abs(dx) / (breite() * .33));
+      p.style.opacity = String(anteil);
+      p.style.transform = "translateY(-50%) scale(" + (.92 + .08 * anteil) + ")";
+    } else pilleWeg();
+  }, { passive:true });
+  const los = e => {
+    if(!w || e.pointerId !== w.id) return;
+    const z = w; w = null;
+    if(!z.an) return;
+    const b = breite();
+    let tempo = 0;
+    if(z.spur.length >= 2){ const a = z.spur[0], o = z.spur[z.spur.length - 1]; tempo = (o[1] - a[1]) / Math.max(1, o[0] - a[0]); }
+    const weit = Math.abs(z.dx) > b * .33 || (Math.abs(tempo) > .5 && Math.sign(tempo) === Math.sign(z.dx));
+    pilleWeg();
+    const ende = () => { feld.style.transform = ""; feld.classList.remove("wischt"); };
+    if(!z.ziel || !weit || e.type === "pointercancel"){
+      if(ruhigeBewegung() || !feld.animate){ ende(); return; }
+      const a = feld.animate([{ transform:"translateX(" + z.dx + "px)" }, { transform:"translateX(0)" }],
+                             { duration:220, easing:"cubic-bezier(.22,1,.36,1)" });
+      feld.style.transform = "";
+      a.onfinish = a.oncancel = ende;
+      return;
+    }
+    const raus = z.dx < 0 ? -1 : 1;
+    const weiter = () => {
+      feld.style.transform = "";
+      location.hash = z.ziel.ziel;
+      if(ruhigeBewegung() || !feld.animate){ ende(); return; }
+      /* Die neue Seite kommt von der anderen Seite herein. */
+      const a = feld.animate([{ transform:"translateX(" + (-raus * b * .35) + "px)" }, { transform:"translateX(0)" }],
+                             { duration:220, easing:"cubic-bezier(.22,1,.36,1)" });
+      a.onfinish = a.oncancel = ende;
+    };
+    if(ruhigeBewegung() || !feld.animate){ weiter(); return; }
+    const a = feld.animate([{ transform:"translateX(" + z.dx + "px)" }, { transform:"translateX(" + (raus * b) + "px)" }],
+                           { duration:Math.max(90, 180 * (1 - Math.abs(z.dx) / b)), easing:"cubic-bezier(.4,0,1,1)", fill:"forwards" });
+    a.onfinish = () => { a.cancel(); weiter(); };
+  };
+  feld.addEventListener("pointerup", los);
+  feld.addEventListener("pointercancel", los);
+  /* Für die Vorführung (Landingpage): derselbe Wisch, von selbst. */
+  if(DEMO) window.omotenoWischZeigen = () => {
+    const folge = wischFolge(), i = wischOrt(folge), ziel = folge[i + 1];
+    if(!ziel) return false;
+    const b = breite(), p = pille("rechts", ziel.titel);
+    p.style.opacity = "1"; p.style.transform = "translateY(-50%) scale(1)";
+    const weiter = () => { pilleWeg(); feld.style.transform = ""; location.hash = ziel.ziel;
+      if(!ruhigeBewegung() && feld.animate) feld.animate([{ transform:"translateX(" + (b * .35) + "px)" }, { transform:"translateX(0)" }],
+        { duration:220, easing:"cubic-bezier(.22,1,.36,1)" }); };
+    if(ruhigeBewegung() || !feld.animate){ weiter(); return true; }
+    const a = feld.animate([{ transform:"translateX(0)" }, { transform:"translateX(" + (-b * .38) + "px)", offset:.6 }, { transform:"translateX(" + (-b) + "px)" }],
+      { duration:620, easing:"cubic-bezier(.45,0,.55,1)", fill:"forwards" });
+    a.onfinish = () => { a.cancel(); weiter(); };
+    return true;
+  };
+})();
+
+/* ══ VORFÜHRUNG · Schritte für die Landingpage (nur im DEMO) ═════════
+   Die Landingpage zeigt neben jedem Satz den echten Hub an der Stelle,
+   von der der Satz spricht. Jeder Schritt geht über die Wege, die auch
+   der Gast nimmt: Adresse, Korb, der echte Knopf „Bestellen“. Vorher
+   setzt jeder Schritt Sprache und Licht zurück — sonst erbte „Karte“
+   das Englisch des vorigen Schritts. */
+/* Im srcdoc-Rahmen der Landingpage (Adresse about:srcdoc) steht ein
+   <base href> auf /h/<haus>/. Ein Link „#/speisekarte“ löst der
+   Browser dagegen auf — ein Tipp auf eine Kachel wäre eine ECHTE
+   Navigation zur Hub-Adresse, und die verweigert X-Frame-Options:
+   DENY. Der Rahmen bliebe leer. Deshalb hier, ganz am Ende des
+   Klicks (nach allen anderen Horchern): unberührte Raute-Links
+   wechseln nur den Hash, wie in jedem anderen Hub auch. */
+if(DEMO && location.protocol === "about:") window.addEventListener("click", e => {
+  if(e.defaultPrevented || e.button !== 0) return;
+  const a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+  if(!a || a.target) return;
+  e.preventDefault();
+  const ziel = a.getAttribute("href");
+  if(location.hash === ziel) zeichne(); else location.hash = ziel;
+});
+
+/* Was ein Schritt für später plant (der Knopf „Bestellen“ nach 260 ms,
+   der Wisch nach 700 ms), bricht der nächste Schritt ab. Sonst wischte
+   ein schnell übersprungenes „wischen“ noch hinter der Startseite her —
+   gefunden mit pruef-web-showcase.js. */
+const DEMO_UHREN = [];
+if(DEMO) window.omotenoDemo = {
+  schritte: ["start", "karte", "rad", "korb", "pass", "service", "sprache", "licht", "liefern", "wischen", "reservieren", "meintisch"],
+  zeige(schritt){
+    const gerichte = n => {
+      const raus = [];
+      for(const [id, quelle] of alleKarten()){
+        if(karteIstGetraenk(id) && raus.length) continue;
+        for(const gr of quelle) for(const e of gr.eintraege){
+          if(raus.length < n && e && e.n && preisNum(e.p) > 0 && !e.alter && !raus.some(x => x.n === e.n)) raus.push(e);
+        }
+      }
+      return raus;
+    };
+    const korb = n => { merk = {}; gerichte(n).forEach(e => { merk[e.n] = { n:e.n, p:e.p, m:1 }; }); merkSpeichern(); balkenAktualisieren(); };
+    if(schritt !== "sprache" && sprache !== "de"){ spracheSetzen("de"); }
+    if(schritt !== "licht" && licht !== "auto") lichtSetzen("auto");
+    if(schritt !== "liefern" && liefermodus && typeof lieferWahl === "function") lieferWahl("haus");
+    DEMO_UHREN.splice(0).forEach(clearTimeout);
+    /* Ein noch laufender Vorführ-Wisch: abbrechen (cancel ruft kein
+       onfinish, er navigiert also nicht mehr), Pille weg. */
+    const feld = $("inhalt");
+    if(feld && feld.getAnimations){ feld.getAnimations().forEach(x => x.cancel()); feld.style.transform = ""; }
+    document.querySelectorAll(".wischziel").forEach(x => x.remove());
+    window.scrollTo(0, 0);
+    /* Ein offener Willkommensschirm läge über jedem Schritt. */
+    const gruss = document.getElementById("willkommen");
+    if(gruss) gruss.remove();
+    const geh = z => { if(location.hash === z) zeichne(); else location.hash = z; };
+    switch(schritt){
+      case "karte":       geh("#/speisekarte"); break;
+      case "rad":         frModus = "rad"; ehSofort = true; geh("#/entdecken"); break;
+      case "korb":        korb(2); geh("#/auswahl"); break;
+      case "pass":        korb(2); tischNr = tischNr || "7"; geh("#/auswahl");
+                          DEMO_UHREN.push(setTimeout(() => { const k = document.querySelector('[data-aktion="bestellen"]'); if(k) k.click(); }, 260)); break;
+      case "service":     geh("#/service"); break;
+      case "sprache":     spracheSetzen("en"); geh("#/"); zeichne(); break;
+      case "licht":       lichtSetzen("schwarz"); geh("#/"); break;
+      case "liefern":     if(LIEFER.an && typeof lieferWahl === "function") lieferWahl("liefern"); geh("#/"); break;
+      case "wischen":     geh("#/speisekarte"); DEMO_UHREN.push(setTimeout(() => window.omotenoWischZeigen && window.omotenoWischZeigen(), 700)); break;
+      case "reservieren": geh("#/reservieren"); break;
+      case "meintisch":   geh("#/meintisch"); break;
+      default:            geh("#/");
+    }
+    return true;
+  }
+};
+
 /* ---------- Vorführmodus ---------- */
 document.querySelectorAll("#demo button").forEach(b =>
   b.addEventListener("click", () => {
@@ -16265,6 +16819,10 @@ zeichne();
      „gruss“ braucht ihn), erscheint aber nicht von selbst — und die
      Sitzung des Boards wird nicht als „schon begrüßt“ markiert. */
   if(VORSCHAU){ schirm.hidden = true; return; }
+  /* Das Telefon im Showcase der Landingpage zeigt Schritt für Schritt
+     die Seiten — dort steht kein Gruß davor (der Dialog „Demo-Hub“
+     zeigt ihn, wie ein Gast ihn sieht). */
+  if(DEMO && window.OMOTENO_DEMO_OHNE_GRUSS === true){ schirm.remove(); return; }
 
   const SCHLUESSEL = "omoteno-willkommen";
   let schon = false;
@@ -16324,10 +16882,52 @@ zeichne();
 /* Läuft gerade eine Aktion? Einmal beim Öffnen und dann alle zwei
    Minuten. Öfter bringt nichts: Eine Aktion, die eine Minute später
    auftaucht, ist immer noch eine Neuigkeit. */
-/* Der Lichtknopf: automatisch → hell → dunkel → automatisch. */
+/* Der Lichtknopf öffnet die Liste der fünf Stufen — gebaut wie das
+   Sprachmenü: außerhalb tippen und Escape schließen, Pfeiltasten
+   wandern, die Horcher hängen nur, solange sie offen ist. */
+function lichtMenuAuf(zustand){
+  const wahl = $("lichtwahl");
+  if(!wahl || wahl.classList.contains("offen") === zustand) return;
+  if(zustand) menuAuf(false);
+  wahl.classList.toggle("offen", zustand);
+  $("lichtknopf").setAttribute("aria-expanded", zustand ? "true" : "false");
+  if(zustand){
+    const liste = $("lichtliste");
+    liste.style.left = liste.style.right = "";
+    const wr = wahl.getBoundingClientRect(), lb = liste.offsetWidth, rand = 8;
+    if(document.documentElement.dir === "rtl"){
+      const ueber = rand - (wr.right - lb);
+      if(ueber > 0) liste.style.right = (-ueber) + "px";
+    } else {
+      const ueber = wr.left + lb - (innerWidth - rand);
+      if(ueber > 0) liste.style.left = (-ueber) + "px";
+    }
+    document.addEventListener("pointerdown", lichtMenuAussen, true);
+    document.addEventListener("keydown", lichtMenuTaste, true);
+    const aktiv = liste.querySelector('[aria-checked="true"]') || liste.querySelector("button");
+    if(aktiv) requestAnimationFrame(() => aktiv.focus({preventScroll:true}));
+  } else {
+    document.removeEventListener("pointerdown", lichtMenuAussen, true);
+    document.removeEventListener("keydown", lichtMenuTaste, true);
+  }
+}
+function lichtMenuAussen(e){ if(!$("lichtwahl").contains(e.target)) lichtMenuAuf(false); }
+function lichtMenuTaste(e){
+  const knoepfe = Array.prototype.slice.call($("lichtliste").querySelectorAll("button"));
+  const i = knoepfe.indexOf(document.activeElement);
+  if(e.key === "Escape"){ e.preventDefault(); lichtMenuAuf(false); $("lichtknopf").focus({preventScroll:true}); return; }
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    knoepfe[e.key === "ArrowDown" ? (i + 1) % knoepfe.length : (i <= 0 ? knoepfe.length - 1 : i - 1)].focus({preventScroll:true});
+  }
+}
 if($("lichtknopf")){
-  $("lichtknopf").addEventListener("click", () => {
-    lichtSetzen(licht === "auto" ? "hell" : licht === "hell" ? "dunkel" : "auto");
+  $("lichtknopf").addEventListener("click", () => lichtMenuAuf(!$("lichtwahl").classList.contains("offen")));
+  $("lichtliste").addEventListener("click", e => {
+    const b = e.target.closest("[data-licht]"); if(!b) return;
+    lichtSetzen(b.dataset.licht);
+    lichtMenuAuf(false);
+    $("lichtknopf").focus({preventScroll:true});
   });
 }
 lichtKnopfZeichnen();
@@ -16539,6 +17139,11 @@ function betriebsTeileAnwenden(z, immer){
      karteHolen) — in der Vorschau sofort, dafür ist sie da. */
   if("hub_stil" in z && immer){
     if(schriftenAnwenden(z.hub_stil)) neu = true;
+    /* Farben nur, wenn der Entwurf sie trägt — die Vorschau der
+       Startseite schickt hub_stil nur mit der Schrift und soll die
+       Farben dabei nicht abnehmen. */
+    if(z.hub_stil && typeof z.hub_stil === "object" && "farben" in z.hub_stil &&
+       farbenAnwenden(z.hub_stil.farben)) neu = true;
   }
 
   /* Das Aktions-Banner-Rad: eine echte freie Liste, bannerAusZeile()
@@ -16568,6 +17173,8 @@ function betriebsTeileAnwenden(z, immer){
 function vorschauSetzen(teil){
   if(!VORSCHAU || !teil || typeof teil !== "object") return;
   vorschauEntwurf = Object.assign({}, vorschauEntwurf || {}, teil);
+  /* Das Board zeigt die Fassung, an der der Wirt gerade färbt. */
+  if(teil.vorschauLicht === "hell" || teil.vorschauLicht === "dunkel") licht = teil.vorschauLicht;
   /* Kein Aktions-Entwurf mehr: wieder die echten Aktionen. */
   if("aktion" in teil && !vorschauAktion()){ aktionen = []; aktionenLaden(); }
   betriebsTeileAnwenden(teil, true);
@@ -16780,6 +17387,21 @@ async function karteHolen(erstesMal){
     /* Schrift nur beim ERSTEN Laden: Ein Wechsel mitten im Lesen würde
        jede Zeile neu umbrechen (dieselbe Regel wie markeGrundlegen).
        Gemerkt für den nächsten Besuch, damit sie dann gleich steht. */
+    /* Farben aus dem Board. Anders als die Schrift auch später: eine
+       neue Farbe bricht keine Zeile um. Fehlt hub_stil ganz (alte
+       Abfrage ohne die Spalte), bleibt alles, wie es ist. Gemerkt für
+       den nächsten ersten Anstrich (markeGrundlegen). */
+    const entwurfFarben = VORSCHAU && vorschauEntwurf && vorschauEntwurf.hub_stil &&
+      typeof vorschauEntwurf.hub_stil === "object" && "farben" in vorschauEntwurf.hub_stil;
+    if("hub_stil" in b[0] && !entwurfFarben){
+      const fr = (stil && typeof stil === "object" && !Array.isArray(stil)) ? stil.farben : null;
+      if(farbenAnwenden(fr)) nachtSchalten();
+      if(!VORSCHAU){
+        try{ const mw = farbMerkwert(farbPruefen(fr));
+             if(mw) localStorage.setItem(FARB_MERK, JSON.stringify(mw));
+             else localStorage.removeItem(FARB_MERK); }catch(e){}
+      }
+    }
     if(erstesMal){
       schriftenAnwenden(stil);
       try{ localStorage.setItem("omoteno-schrift-" + HAUS,

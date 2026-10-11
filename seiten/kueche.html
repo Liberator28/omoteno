@@ -192,6 +192,19 @@ body.hell{
   --glut:#A8410F;
   --tresen-glas:rgba(251,249,241,.86);
 }
+/* Ganz weiß und ganz schwarz (Wunsch 11.10.) — dieselben Werte wie
+   body.weiss/body.schwarz in admin.html. Sie liegen über hell bzw.
+   dunkel und übernehmen von dort die Bedeutungsfarben. */
+body.weiss{
+  --nacht:#FFFFFF; --tresen:#FFFFFF; --karte:#FFFFFF; --linie:#D4D4D4;
+  --kreide:#000000; --gedaempft:#4D4D4D;
+  --tresen-glas:rgba(255,255,255,.9);
+}
+body.schwarz{
+  --nacht:#000000; --tresen:#000000; --karte:#0B0B0B; --linie:rgba(255,255,255,.16);
+  --kreide:#FFFFFF; --gedaempft:#A8A8A8;
+  --tresen-glas:rgba(0,0,0,.86);
+}
 *{margin:0;padding:0;box-sizing:border-box}
 body{
   background:var(--nacht); color:var(--kreide);
@@ -858,7 +871,8 @@ var EINST = {
   rotAb:     18,
   fertigZeigen: 3,       /* Minuten, die ein erledigter Bon noch stehen bleibt */
   ton:       true,
-  hell:      false,
+  hell:      false,      /* Altbestand: wird beim Laden zu ansicht */
+  ansicht:   'dunkel',   /* dunkel | hell | schwarz | weiss */
   wach:      true,
   /* Muss hier stehen, auch wenn die Vorgabe false ist: Das Zurücklesen
      unten siebt mit „if(s in EINST)" — ein Schlüssel, den die Vorgabe
@@ -2179,11 +2193,19 @@ function wachHalten(){
 function einstAnwenden(){
   document.documentElement.style.setProperty('--skala', EINST.skala);
   document.body.dataset.spalten = EINST.spalten;
-  document.body.classList.toggle('hell', !!EINST.hell);
+  /* Vier Ansichten. Ganz weiß liegt über hell, ganz schwarz über
+     dunkel (siehe CSS). EINST.hell bleibt mitgeführt, damit ein
+     älterer Stand dieser Seite nach einem Zurückrollen nicht kippt. */
+  var an = ({hell:1, dunkel:1, schwarz:1, weiss:1})[EINST.ansicht] ? EINST.ansicht : 'dunkel';
+  var hellGrund = an === 'hell' || an === 'weiss';
+  EINST.hell = hellGrund;
+  document.body.classList.toggle('hell', hellGrund);
+  document.body.classList.toggle('weiss', an === 'weiss');
+  document.body.classList.toggle('schwarz', an === 'schwarz');
   /* Wie admin.html, derselbe Vorfall (CLAUDE.md §5.2c): ohne diese
      Zeile male der Browser ungestylte Bedienelemente nach dem
      Geräte-Schema statt nach der Wahl hier. */
-  document.documentElement.style.colorScheme = EINST.hell ? 'only light' : 'only dark';
+  document.documentElement.style.colorScheme = hellGrund ? 'only light' : 'only dark';
   var kn = document.querySelectorAll('#spuren [data-spur]');
   for(var i=0;i<kn.length;i++) kn[i].classList.toggle('an', kn[i].dataset.spur === EINST.spur);
   merken(SPEICHER_EINST, EINST);
@@ -2230,8 +2252,11 @@ function einstOeffnen(ausloeser){
 
     '<div class="schalter"><div><b>Ton bei neuem Bon</b><span>Kurzer Ton, dazu Vibration</span></div>' +
       '<button class="kippe ' + (EINST.ton?'an':'') + '" id="eTon" aria-label="Ton"></button></div>' +
-    '<div class="schalter"><div><b>Helle Ansicht</b><span>Für Küchen mit Tageslicht</span></div>' +
-      '<button class="kippe ' + (EINST.hell?'an':'') + '" id="eHell" aria-label="Hell"></button></div>' +
+    '<div class="satz"><label>Ansicht</label><div class="reihe" id="eAnsicht">' +
+      [['dunkel','Dunkel'],['hell','Hell'],['schwarz','Ganz schwarz'],['weiss','Ganz weiß']].map(function(v){
+        return '<button data-w="'+v[0]+'" class="'+(EINST.ansicht===v[0]?'an':'')+'">'+v[1]+'</button>';
+      }).join('') + '</div>' +
+      '<p class="dazu">Hell für Küchen mit Tageslicht, ganz schwarz für dunkle Räume.</p></div>' +
     '<div class="schalter"><div><b>Bildschirm anlassen</b><span>Tablet schläft nicht ein</span></div>' +
       '<button class="kippe ' + (EINST.wach?'an':'') + '" id="eWach" aria-label="Wach"></button></div>' +
     '<div class="schalter"><div><b>Abmelden</b><span>' + h(betrieb ? betrieb.name : '') + '</span></div>' +
@@ -2293,7 +2318,7 @@ function einstOeffnen(ausloeser){
     });
   }
   kippe('#eTon','ton', function(){ if(EINST.ton) piep(); });
-  kippe('#eHell','hell');
+  reihe('#eAnsicht','ansicht');
   kippe('#eWach','wach', function(){
     if(EINST.wach) wachHalten();
     else if(wachSchloss){ wachSchloss.release(); wachSchloss = null; }
@@ -2725,6 +2750,9 @@ setInterval(uhrStellen, 15000);
 
 var gespeichert = holen(SPEICHER_EINST);
 if(gespeichert) for(var s in gespeichert) if(s in EINST) EINST[s] = gespeichert[s];
+/* Ein Gerät von vorher kennt nur hell:true/false — daraus die Ansicht,
+   damit niemand nach dem Update plötzlich im Dunkeln steht (§2.5). */
+if(!gespeichert || !gespeichert.ansicht) EINST.ansicht = EINST.hell ? 'hell' : 'dunkel';
 
 /* NACH dem Zurücklesen, nicht davor: Sonst bekäme vollbildAufWunsch
    die Vorgabe false zu sehen und der gemerkte Wunsch bliebe wirkungslos.

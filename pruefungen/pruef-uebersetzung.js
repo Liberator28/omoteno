@@ -123,7 +123,8 @@ const EIGENNAMEN = new Set([
   "Don't get mad, get chocolate.",     /* Claim, englisch mit Absicht */
   "Cocktail & Gastro Lab",             /* Claim, englisch mit Absicht */
   "ChocoLamour-Gast",                  /* WLAN-Name */
-  "erdbeere", "platte"                 /* Figurenkennung, nie sichtbar */
+  "erdbeere", "platte", "croissant",   /* Figurenkennung, nie sichtbar */
+  "Café Nordstern", "Nordstern-Gast"   /* Vorführhaus der Landingpage, WLAN-Name */
 ]);
 const KEIN_WORT  = /^[\s\p{P}\p{S}\d]*$/u;
 
@@ -162,15 +163,36 @@ function ausMarkenblatt(o, wo){
          an mich selbst (z. B. _hinweis, _zeiten_hinweis) — nie im Hub
          gerendert, deshalb keine Übersetzung nötig. */
       if(k.startsWith("_")) return;
+      if(k === "demo" && /^markenblatt\/[^.]+$/.test(wo)) return demoPruefen(o[k], wo + ".demo");
       if(!MB_TECH.has(k)) ausMarkenblatt(o[k], wo + "." + k);
     });
   if(typeof o === "string") merke(wo, o);
+}
+/* Das Vorführhaus (demo) bringt seine Gerichte wie echte Zeilen aus
+   gerichte mit: Name und Beschreibung tragen ihre Übersetzungen
+   SELBST (name_uebersetzungen / uebersetzungen), genau wie live — das
+   ist die zweite Quelle für diese Texte, nicht das Wörterbuch. Die
+   Kategorie dagegen geht live wie hier durch t(), braucht also einen
+   Eintrag. Technische Felder (karte, allergene, id …) sind kein Text. */
+const DEMO_SPRACHEN = ["en","tr","ru","fr","es","it","pl","ar","uk","nl","ro"];
+const demoLuecken = [];
+function demoPruefen(d, wo){
+  (d && Array.isArray(d.gerichte) ? d.gerichte : []).forEach((z, i) => {
+    merke(wo + ".gerichte.kategorie", z.kategorie);
+    [["name", "name_uebersetzungen"], ["beschreibung", "uebersetzungen"]].forEach(([feld, ue]) => {
+      if(!z[feld]) return;
+      const fehlt = DEMO_SPRACHEN.filter(s => !(z[ue] && String(z[ue][s] || "").trim()));
+      if(fehlt.length) demoLuecken.push(wo + ".gerichte[" + i + "]." + feld + " (" + z[feld] + "): " + fehlt.join(","));
+    });
+  });
 }
 for(const f of fs.readdirSync(path.join(HIER, "markenblaetter")).filter(f => f.endsWith(".json")))
   ausMarkenblatt(JSON.parse(fs.readFileSync(path.join(HIER, "markenblaetter", f), "utf8")),
                  "markenblatt/" + f.replace(".json",""));
 
 console.log("\n══ Was aus Daten kommt ══");
+pruef(demoLuecken.length === 0, "Gerichte des Vorführhauses tragen jede Sprache in der eigenen Zeile",
+  demoLuecken.slice(0, 3).join(" | ") || "vollständig");
 const ohneEintrag = [];
 for(const [t, wo] of ausDaten){
   if(KEIN_WORT.test(t)) continue;
