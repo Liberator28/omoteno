@@ -1848,6 +1848,41 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
   .auswahlpanel,.chevron,.segmentschieber,.segment button{transition:none}
 }
 
+/* Farben des Hubs. Die Stufen als Chips mit kleiner Probe (Grund +
+   Schrift der Stufe), die Felder als Zeile: Beschriftung, Muster,
+   Hexwert. Auf dem Telefon steht die Beschriftung oben (§3.6). */
+.fbstufen{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:8px 0 14px}
+.fbstufe{
+  min-height:44px;display:flex;align-items:center;gap:8px;padding:0 10px;
+  border-radius:11px;border:1px solid var(--linie);background:var(--flaeche-2);
+  color:var(--kreide);font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;
+  transition:transform var(--t-druck) var(--ease-out);
+}
+.fbstufe:active{transform:scale(.96)}
+.fbstufe[aria-checked=true]{border-color:var(--messing);box-shadow:inset 0 0 0 1px var(--messing)}
+.fbstufe:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
+.fbprobe{flex:none;width:20px;height:20px;border-radius:50%;border:1px solid var(--linie);
+  background:var(--fb-g, #fff);box-shadow:inset -6px -6px 0 var(--fb-t, #000)}
+.fbfelder{display:grid;gap:10px}
+.fbzeile{display:grid;grid-template-columns:1fr 48px 104px;align-items:center;gap:10px}
+.fbzeile label{display:flex;flex-direction:column;min-width:0;margin:0}
+.fbzeile label b{font-weight:600}
+.fbzeile label i{font-style:normal;font-size:12.5px;color:var(--gedaempft)}
+.fbmuster{position:relative;width:48px;height:44px;border-radius:10px;overflow:hidden;
+  border:1px solid var(--linie)}
+.fbmuster input{position:absolute;inset:-8px;width:calc(100% + 16px);height:calc(100% + 16px);
+  border:0;padding:0;background:none;cursor:pointer}
+.fbzeile input[type=text]{font-family:ui-monospace,Menlo,Consolas,monospace;text-transform:uppercase;padding:11px 10px}
+.fbwarn{margin:12px 0 0;font-size:14px;font-weight:600;color:var(--kreide)}
+.fbwarn:empty{display:none}
+@media (max-width:420px){
+  .fbstufen{grid-template-columns:repeat(2,1fr)}
+  .fbzeile{grid-template-columns:1fr 48px;grid-template-areas:"name muster" "hex hex"}
+  .fbzeile label{grid-area:name}
+  .fbzeile .fbmuster{grid-area:muster}
+  .fbzeile input[type=text]{grid-area:hex}
+}
+
 /* ═══ Kachel-Baukasten ══════════════════════════════════════════
    Eine Zeile je Knopf des Hubs. Bewusst untereinander statt in einem
    Raster: Der Wirt bedient das am Telefon zwischen zwei Gästen, und
@@ -3513,6 +3548,83 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </div>
       </div>
       <div class="epruefung" id="swPruefung" aria-live="polite"></div>
+    </div>
+
+    <!-- Wunsch 11.10.: „dass man die Farbe für den Choco Hub auch im
+         Admin Board bearbeiten kann“. Sechs Farben je Fassung, der Rest
+         wird gerechnet (FARBEN · GETEILTER BLOCK) — gleich gerechnet wie
+         im Hub, damit die Vorschau nicht lügt. -->
+    <div class="egruppe" data-nur-inhaber id="fbGruppe">
+      <h2 class="etitel">Farben des Hubs</h2>
+      <p class="ehilfe">Hintergrund, Karten, Kopfband, Schrift und Ihre zwei
+        Hausfarben — für den Tag und für den Abend. Leise Schrift, Linien und
+        die Schrift auf dem Kopfband rechnet das Board selbst. Was Gäste nicht
+        lesen könnten, lässt es nicht zu.</p>
+      <div class="auswahlfeld">
+        <span class="lname">Fassung</span>
+        <div class="segment" id="fbFassung" role="radiogroup" aria-label="Fassung">
+          <button type="button" data-fb-fassung="tag" role="radio" aria-checked="true">Tag</button>
+          <button type="button" data-fb-fassung="abend" role="radio" aria-checked="false">Abend</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+      </div>
+      <div class="schalter" id="fbAbendZeile" hidden>
+        <div><div class="schaltertext">Abendfassung</div>
+        <div class="schalterhilfe" id="fbAbendHilfe">Ab dem Abend zeigt der Hub diese Farben. Aus = den ganzen Tag die Tagfarben.</div></div>
+        <button class="wippe" id="fbAbendAn" aria-pressed="true" aria-label="Abendfassung"></button>
+      </div>
+      <span class="lname" id="fbStufenName">Helligkeit</span>
+      <div class="fbstufen" role="radiogroup" aria-labelledby="fbStufenName">
+        <button type="button" class="fbstufe" role="radio" aria-checked="false" data-fb-stufe="weiss"><span class="fbprobe" aria-hidden="true"></span>Weiß</button>
+        <button type="button" class="fbstufe" role="radio" aria-checked="false" data-fb-stufe="creme"><span class="fbprobe" aria-hidden="true"></span>Creme</button>
+        <button type="button" class="fbstufe" role="radio" aria-checked="false" data-fb-stufe="warm"><span class="fbprobe" aria-hidden="true"></span>Warm</button>
+        <button type="button" class="fbstufe" role="radio" aria-checked="false" data-fb-stufe="gedaempft"><span class="fbprobe" aria-hidden="true"></span>Gedämpft</button>
+        <button type="button" class="fbstufe" role="radio" aria-checked="false" data-fb-stufe="dunkel"><span class="fbprobe" aria-hidden="true"></span>Dunkel</button>
+        <button type="button" class="fbstufe" role="radio" aria-checked="false" data-fb-stufe="schwarz"><span class="fbprobe" aria-hidden="true"></span>Schwarz</button>
+      </div>
+      <div class="fbfelder">
+        <div class="fbzeile">
+          <label for="fbx-grund"><b>Hintergrund</b><i>Die Fläche hinter allem</i></label>
+          <span class="fbmuster"><input type="color" id="fb-grund" data-fb-rolle="grund" aria-label="Hintergrund wählen"></span>
+          <input type="text" id="fbx-grund" data-fb-hex="grund" maxlength="7" spellcheck="false" autocomplete="off" inputmode="text">
+        </div>
+        <div class="fbzeile">
+          <label for="fbx-flaeche"><b>Karten</b><i>Kacheln, Speisekarte, Blätter</i></label>
+          <span class="fbmuster"><input type="color" id="fb-flaeche" data-fb-rolle="flaeche" aria-label="Karten wählen"></span>
+          <input type="text" id="fbx-flaeche" data-fb-hex="flaeche" maxlength="7" spellcheck="false" autocomplete="off" inputmode="text">
+        </div>
+        <div class="fbzeile">
+          <label for="fbx-band"><b>Kopfband</b><i>Oben im Kopf; die Schrift darauf rechnet das Board</i></label>
+          <span class="fbmuster"><input type="color" id="fb-band" data-fb-rolle="band" aria-label="Kopfband wählen"></span>
+          <input type="text" id="fbx-band" data-fb-hex="band" maxlength="7" spellcheck="false" autocomplete="off" inputmode="text">
+        </div>
+        <div class="fbzeile">
+          <label for="fbx-tinte"><b>Schrift</b><i>Für alles, was Gäste lesen</i></label>
+          <span class="fbmuster"><input type="color" id="fb-tinte" data-fb-rolle="tinte" aria-label="Schrift wählen"></span>
+          <input type="text" id="fbx-tinte" data-fb-hex="tinte" maxlength="7" spellcheck="false" autocomplete="off" inputmode="text">
+        </div>
+        <div class="fbzeile">
+          <label for="fbx-akzent"><b>Hauptfarbe</b><i>Knöpfe, Preise, Hervorhebungen</i></label>
+          <span class="fbmuster"><input type="color" id="fb-akzent" data-fb-rolle="akzent" aria-label="Hauptfarbe wählen"></span>
+          <input type="text" id="fbx-akzent" data-fb-hex="akzent" maxlength="7" spellcheck="false" autocomplete="off" inputmode="text">
+        </div>
+        <div class="fbzeile">
+          <label for="fbx-akzent2"><b>Zweitfarbe</b><i>Sterne, kleine Akzente</i></label>
+          <span class="fbmuster"><input type="color" id="fb-akzent2" data-fb-rolle="akzent2" aria-label="Zweitfarbe wählen"></span>
+          <input type="text" id="fbx-akzent2" data-fb-hex="akzent2" maxlength="7" spellcheck="false" autocomplete="off" inputmode="text">
+        </div>
+      </div>
+      <p class="fbwarn" id="fbWarn" aria-live="polite"></p>
+      <button type="button" class="knopf leise" id="fbLesbar" hidden>Lesbar machen</button>
+      <div class="hvrahmen" data-hv="farben"></div>
+      <div class="ezeile senkrecht">
+        <span><b>Übernehmen</b><i>Gäste sehen es beim nächsten Abgleich, spätestens nach fünf Minuten</i></span>
+        <div class="kbknoepfe">
+          <button class="knopf" id="fbSichern">Übernehmen</button>
+          <button class="knopf leise" id="fbZurueck">Auf Markenblatt zurück</button>
+        </div>
+      </div>
+      <div class="epruefung" id="fbPruefung" aria-live="polite"></div>
     </div>
 
     <div class="egruppe" data-nur-inhaber>
@@ -10476,7 +10588,7 @@ function tafelZeigen(ziel){
      Öffnen des Speisekarte-Reiters gefüllt wird — ein Wirt, der
      direkt auf "Startseite" geht, sähe sonst fälschlich "keine
      laufende Aktion", obwohl welche liefen. */
-  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); aktionenLaden(); }
+  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); fbLaden(); aktionenLaden(); }
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
   if(ziel === "auswertung")      awLaden();
@@ -10841,6 +10953,9 @@ function hvStart(schl){
         h.bereit = true;
         hvStand(h, "Live — ändert sich beim Tippen. Übernommen ist erst nach „Übernehmen“.");
         hvAnwenden(schl);
+        /* Farben: Ohne gespeicherten Stand gilt das Markenblatt des
+           HUBS — erst die geladene Vorschau kennt es genau. */
+        if(schl === "farben" && FB && !FB.eigen && !FB_BERUEHRT) fbLaden();
         /* Der Hub gleicht nach dem Laden mit der Datenbank ab und
            zeichnet dabei neu — danach noch einmal messen. */
         setTimeout(() => hvAnwenden(schl), 1600);
@@ -10921,6 +11036,371 @@ function hvWarnungen(schl, m){
     });
   }
 }
+
+/* ╔═══ FARBEN · GETEILTER BLOCK · ANFANG ══════════════════════════╗
+   Wortgleich in vorlagen/hub.vorlage.html und seiten/admin.html —
+   pruef-farben.js vergleicht beide Zeichen für Zeichen. Das Board
+   rechnet damit die Vorschau und sperrt Unlesbares, der Hub rechnet
+   damit, was er malt. Zwei Rechnungen hießen: Das Board erlaubt, was
+   der Hub dann anders zeigt (§8.1i).
+
+   Der Betrieb wählt sechs Farben je Fassung (Tag, Abend): Hintergrund,
+   Karten, Kopfband, Schrift, Haupt- und Zweitfarbe. Alles andere —
+   leise Schrift, Linien, eingelassene Flächen, Schrift auf dem Band —
+   wird hier gerechnet, nie eingestellt (§5.1). */
+const FARB_ROLLEN = ["grund", "flaeche", "band", "tinte", "akzent", "akzent2"];
+const FARB_HEX = /^#[0-9a-f]{6}$/i;
+
+function farbRgb(h){
+  return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+}
+function farbHexAus(r, g, b){
+  return "#" + [r, g, b].map(x => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+/* t = 0 → a, t = 1 → b */
+function farbMisch(a, b, t){
+  const x = farbRgb(a), y = farbRgb(b);
+  return farbHexAus(x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t);
+}
+function farbLum(h){
+  const v = farbRgb(h).map(x => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); });
+  return .2126 * v[0] + .7152 * v[1] + .0722 * v[2];
+}
+function farbKontrast(a, b){
+  const x = farbLum(a), y = farbLum(b);
+  return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
+}
+/* Dieselbe Regel wie markeSchriftAuf im Hub: Weiß oder fast Schwarz,
+   je nachdem, was auf dieser Fläche mehr Kontrast hat. */
+function farbSchriftAuf(h){
+  const l = farbLum(h);
+  return (1.05 / (l + .05)) >= ((l + .05) / .05579) ? "#FFFFFF" : "#111111";
+}
+/* Leise Schrift: so weit zur Fläche gemischt, wie es geht, ohne auf
+   IRGENDEINER der Flächen unter `ziel` zu fallen. Ist schon die volle
+   Schrift zu schwach, bleibt sie, wie sie ist — farbLesbar meldet das. */
+function farbLeise(tinte, flaechen, ziel){
+  const gut = c => flaechen.every(f => farbKontrast(c, f) >= ziel);
+  if(!gut(tinte)) return tinte;
+  let lo = 0, hi = 1;
+  for(let i = 0; i < 18; i++){
+    const m = (lo + hi) / 2;
+    if(gut(farbMisch(tinte, flaechen[0], m))) lo = m; else hi = m;
+  }
+  return farbMisch(tinte, flaechen[0], lo);
+}
+/* Eine Farbe so wenig wie möglich heller oder dunkler ziehen, bis sie
+   auf `flaeche` `ziel` erreicht. Der Farbton bleibt. */
+function farbNachziehen(c, flaeche, ziel){
+  if(farbKontrast(c, flaeche) >= ziel) return c;
+  const nach = farbLum(flaeche) > .18 ? "#000000" : "#FFFFFF";
+  let lo = 0, hi = 1;
+  for(let i = 0; i < 18; i++){
+    const m = (lo + hi) / 2;
+    if(farbKontrast(farbMisch(c, nach, m), flaeche) >= ziel) hi = m; else lo = m;
+  }
+  return farbMisch(c, nach, hi);
+}
+/* Dasselbe für Schrift auf ihrer EIGENEN zarten Fläche (Preis in Gold
+   auf Goldschimmer, „Vegan“ in Grün auf Grünschimmer) — über Karte UND
+   Hintergrund, denn beides kommt darunter vor. Die Fläche wandert mit
+   der Farbe, deshalb so oft nachgerechnet, bis es hält. */
+function farbAufTon(c, flaechen, anteil, ziel){
+  const fl = [].concat(flaechen);
+  const gut = x => fl.every(f => farbKontrast(x, farbMisch(f, x, anteil)) >= ziel);
+  /* Mit kleinem Puffer: Die Fläche wandert mit, und 4,499 ist nicht 4,5. */
+  for(let i = 0; i < 8 && !gut(c); i++)
+    fl.forEach(f => { c = farbNachziehen(c, farbMisch(f, c, anteil), ziel + .06); });
+  return c;
+}
+function farbTon(h){
+  const [r, g, b] = farbRgb(h).map(x => x / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if(!d) return 30;
+  const t = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (t * 60 + 360) % 360;
+}
+function farbHsl(ton, s, l){
+  s /= 100; l /= 100;
+  const k = n => (n + ton / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return farbHexAus(f(0) * 255, f(8) * 255, f(4) * 255);
+}
+
+/* Die Helligkeitsleiter. Getönt im Farbton des Kopfbands, damit eine
+   Stufe zum Haus passt statt nach Vorlage auszusehen; Weiß und
+   Schwarz sind rein. */
+const FARB_STUFEN = [
+  { s:"weiss",     name:"Weiß",      dunkel:false },
+  { s:"creme",     name:"Creme",     dunkel:false },
+  { s:"warm",      name:"Warm",      dunkel:false },
+  { s:"gedaempft", name:"Gedämpft",  dunkel:true  },
+  { s:"dunkel",    name:"Dunkel",    dunkel:true  },
+  { s:"schwarz",   name:"Schwarz",   dunkel:true  }
+];
+function farbStufe(stufe, band){
+  const h = farbTon(FARB_HEX.test(band || "") ? band : "#806040");
+  switch(stufe){
+    case "weiss":     return { grund:"#FFFFFF", flaeche:"#FFFFFF", tinte:"#111111" };
+    case "creme":     return { grund:farbHsl(h, 45, 96), flaeche:"#FFFFFF", tinte:farbHsl(h, 35, 12) };
+    case "warm":      return { grund:farbHsl(h, 38, 89), flaeche:farbHsl(h, 45, 96), tinte:farbHsl(h, 40, 12) };
+    case "gedaempft": return { grund:farbHsl(h, 12, 21), flaeche:farbHsl(h, 12, 26), tinte:farbHsl(h, 20, 94) };
+    case "dunkel":    return { grund:farbHsl(h, 25, 8),  flaeche:farbHsl(h, 22, 12), tinte:farbHsl(h, 25, 95) };
+    case "schwarz":   return { grund:"#000000", flaeche:"#0E0E0E", tinte:"#FFFFFF" };
+  }
+  return null;
+}
+/* Eine Stufe auf sechs Farben legen: Grund, Karte und Schrift aus der
+   Leiter, Band bleibt, Haupt- und Zweitfarbe werden nur so weit
+   nachgezogen, wie es auf der neuen Karte zum Lesen braucht. */
+function farbStufeAuf(e, stufe){
+  const st = farbStufe(stufe, e.band); if(!st) return e;
+  return { grund:st.grund, flaeche:st.flaeche, band:e.band, tinte:st.tinte,
+           akzent:farbAufTon(e.akzent, [st.flaeche, st.grund], .14, 4.5),
+           akzent2:farbAufTon(e.akzent2, [st.flaeche, st.grund], .2, 4.5) };
+}
+
+/* Die vollen Rollen, wie markeAnwenden sie liest. */
+function farbHerleiten(e){
+  const linieBasis = e.flaeche;
+  return {
+    grund:e.grund, flaeche:e.flaeche, band:e.band, tinte:e.tinte,
+    akzent:e.akzent, akzent2:e.akzent2,
+    flaeche2:farbMisch(e.flaeche, e.tinte, .06),
+    bandText:farbSchriftAuf(e.band),
+    tinteLeise:farbLeise(e.tinte, [e.flaeche, e.grund], 5.5),
+    tinteStill:farbLeise(e.tinte, [e.flaeche, e.grund], 4.5),
+    linie:farbMisch(linieBasis, e.tinte, .12),
+    linieStark:farbMisch(linieBasis, e.tinte, .2)
+  };
+}
+
+/* Was nicht lesbar wäre. Leer heißt: darf so übernommen werden. */
+function farbLesbar(e){
+  const p = farbHerleiten(e), raus = [];
+  const paar = (was, a, b, min) => { const k = farbKontrast(a, b); if(k < min) raus.push({ was, k, min }); };
+  paar("Schrift auf Hintergrund", p.tinte, p.grund, 4.5);
+  paar("Schrift auf Karten", p.tinte, p.flaeche, 4.5);
+  paar("Schrift auf eingelassenen Flächen", p.tinte, p.flaeche2, 4.5);
+  paar("Schrift auf dem Kopfband", p.bandText, p.band, 4.5);
+  /* Beide Hausfarben stehen auch als kleine Schrift da (Preise,
+     „Beliebt“) — auf der Karte und auf ihrem eigenen Schimmer. */
+  [["Karten", p.flaeche], ["Hintergrund", p.grund]].forEach(([wo, f]) => {
+    paar("Hauptfarbe auf " + wo, p.akzent, farbMisch(f, p.akzent, .14), 4.5);
+    paar("Zweitfarbe auf " + wo, p.akzent2, farbMisch(f, p.akzent2, .2), 4.5);
+  });
+  return raus;
+}
+
+/* Aus einer Live-Spalte: nur genau sechs Hexwerte je Fassung, sonst
+   gilt diese Fassung nicht (§2.3a — der Wert landet in Stilangaben).
+   Unlesbares gilt auch nicht. Der Rest des Objekts wird ignoriert. */
+function farbPruefen(roh){
+  const seite = x => {
+    if(!x || typeof x !== "object" || Array.isArray(x)) return null;
+    const e = {};
+    for(const r of FARB_ROLLEN){
+      if(typeof x[r] !== "string" || !FARB_HEX.test(x[r])) return null;
+      e[r] = x[r].toUpperCase();
+    }
+    return farbLesbar(e).length ? null : e;
+  };
+  if(!roh || typeof roh !== "object" || Array.isArray(roh)) return null;
+  const tag = seite(roh.tag), abend = seite(roh.abend);
+  const abendAn = roh.abend && typeof roh.abend === "object" && typeof roh.abend.an === "boolean" ? roh.abend.an : null;
+  if(!tag && !abend && abendAn === null) return null;
+  return { tag, abend, abendAn };
+}
+/* ╚═══ FARBEN · GETEILTER BLOCK · ENDE ════════════════════════════╝ */
+
+/* ══ FARBEN DES HUBS (betriebe.hub_stil.farben) ════════════════════
+   FB bleibt null, bis der Stand gelesen ist — vorher schreibt
+   „Übernehmen“ nichts (§8.1m: nicht gelesen ist „unbekannt“, nicht
+   „Markenblatt“). Zusammenführen, nie ersetzen: hub_stil trägt auch
+   emoji, schrift, restzeit und foodroulette. */
+let FB = null, FB_FASSUNG = "tag", FB_BERUEHRT = false;
+const FB_VORGABE = {
+  tag:   { grund:"#FBF6F2", flaeche:"#FFFFFF", band:"#2A1A14", tinte:"#2A1A14", akzent:"#C8202E", akzent2:"#B07A11" },
+  abend: { grund:"#1A100C", flaeche:"#241812", band:"#3A2418", tinte:"#FBF6F2", akzent:"#F0616D", akzent2:"#F2B441" }
+};
+/* Sechs Farben aus einem Markenblatt-Objekt — oder null. */
+function fbSechs(q){
+  if(!q || typeof q !== "object") return null;
+  const e = {};
+  for(const r of FARB_ROLLEN){ if(typeof q[r] !== "string" || !FARB_HEX.test(q[r])) return null; e[r] = q[r].toUpperCase(); }
+  return e;
+}
+/* Die Vorgabe, auf die „Auf Markenblatt zurück“ führt: das Markenblatt
+   des HUBS, wie die Vorschau es gelesen hat (FARB_MARKE), sonst das
+   Markenblatt aus der Datenbank, sonst eine feste Vorgabe. */
+function fbMarke(){
+  const h = hvAlle().farben;
+  let mf = null, ma = null, an = true;
+  try{ const w = h && h.bereit && h.frame.contentWindow;
+       const fm = w && typeof w.farbMarke === "function" ? w.farbMarke() : null;
+       if(fm){ mf = fm.farben; ma = Object.assign({}, mf, fm.abend); an = !!fm.abend.an; } }catch(e){}
+  if(!mf){
+    const bb = meineBetriebe.find(x => x.id === betriebId);
+    const mb = bb && bb.markenblatt && typeof bb.markenblatt === "object" ? bb.markenblatt : null;
+    if(mb && mb.farben){ mf = mb.farben; ma = Object.assign({}, mb.farben, mb.abend || {}); an = !!(mb.abend && mb.abend.an); }
+  }
+  const tag = fbSechs(mf) || Object.assign({}, FB_VORGABE.tag);
+  const abend = (fbSechs(ma) && fbSechs(ma).grund !== tag.grund) ? fbSechs(ma) : Object.assign({}, FB_VORGABE.abend);
+  return { tag: Object.assign(tag, { stufe:"" }), abend: Object.assign(abend, { stufe:"", an }) };
+}
+function fbLaden(){
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  const st = bb && bb.hub_stil && typeof bb.hub_stil === "object" ? bb.hub_stil : {};
+  const roh = st.farben && typeof st.farben === "object" ? st.farben : null;
+  const marke = fbMarke();
+  const seite = (x, m) => { const e = x && fbSechs(x);
+    return e ? Object.assign(e, { stufe: FARB_STUFEN.some(z => z.s === x.stufe) ? x.stufe : "" }) : m; };
+  FB = { tag: seite(roh && roh.tag, marke.tag), abend: seite(roh && roh.abend, marke.abend), eigen: !!farbPruefen(roh) };
+  FB.abend.an = roh && roh.abend && typeof roh.abend.an === "boolean" ? roh.abend.an : marke.abend.an;
+  FB_BERUEHRT = false;
+  fbZeichnen();
+}
+/* Was gespeichert und an die Vorschau geschickt wird. */
+function fbRoh(){
+  const seite = (e, mehr) => Object.assign(Object.fromEntries(FARB_ROLLEN.map(r => [r, e[r]])),
+                                           e.stufe ? { stufe:e.stufe } : {}, mehr || {});
+  return { tag: seite(FB.tag), abend: seite(FB.abend, { an: !!FB.abend.an }) };
+}
+function fbProbleme(){
+  if(!FB) return [];
+  const raus = farbLesbar(FB.tag).map(p => Object.assign({ fassung:"Tag" }, p));
+  if(FB.abend.an) raus.push(...farbLesbar(FB.abend).map(p => Object.assign({ fassung:"Abend" }, p)));
+  return raus;
+}
+function fbZeichnen(){
+  const g = $("#fbGruppe"); if(!g) return;
+  const seg = $("#fbFassung");
+  seg.querySelectorAll("button").forEach(b => b.setAttribute("aria-checked", String(b.dataset.fbFassung === FB_FASSUNG)));
+  seg.querySelector(".segmentschieber").style.transform = "translateX(" + (FB_FASSUNG === "abend" ? 100 : 0) + "%)";
+  $("#fbAbendZeile").hidden = FB_FASSUNG !== "abend";
+  if(!FB){
+    $("#fbSichern").disabled = true;
+    $("#fbWarn").textContent = "Der gespeicherte Stand wird gelesen …";
+    return;
+  }
+  const e = FB[FB_FASSUNG];
+  $("#fbAbendAn").setAttribute("aria-pressed", String(!!FB.abend.an));
+  $$("[data-fb-stufe]").forEach(b => {
+    b.setAttribute("aria-checked", String(e.stufe === b.dataset.fbStufe));
+    const st = farbStufe(b.dataset.fbStufe, e.band);
+    b.querySelector(".fbprobe").style.setProperty("--fb-g", st.grund);
+    b.querySelector(".fbprobe").style.setProperty("--fb-t", st.tinte);
+  });
+  FARB_ROLLEN.forEach(r => {
+    const c = $("#fb-" + r), x = $("#fbx-" + r);
+    if(c.value.toUpperCase() !== e[r]) c.value = e[r].toLowerCase();
+    if(document.activeElement !== x) x.value = e[r];
+  });
+  const pr = fbProbleme();
+  $("#fbWarn").textContent = pr.length
+    ? "So nicht lesbar: " + pr.map(p => p.fassung + " · " + p.was + " " + p.k.toFixed(1).replace(".", ",") +
+        ":1 (mindestens " + String(p.min).replace(".", ",") + ":1)").join("; ") + ". Bitte eine der Farben ändern."
+    : (FB_FASSUNG === "abend" && !FB.abend.an ? "Die Abendfassung ist aus — Gäste sehen den ganzen Tag die Tagfarben." : "");
+  $("#fbSichern").disabled = pr.length > 0;
+  $("#fbLesbar").hidden = !pr.length;
+  hvFarben();
+}
+function hvFarben(){
+  if(!FB) return;
+  if($("#t-startseite") && $("#t-startseite").hidden) return;
+  let schrift = null;
+  try{ schrift = swFuerHub(true); }catch(e){}
+  hvSenden("farben", { hub_stil: Object.assign({ farben: fbRoh() }, schrift ? { schrift } : {}),
+                       vorschauLicht: FB_FASSUNG === "abend" ? "dunkel" : "hell" }, "kopf");
+}
+document.addEventListener("click", e => {
+  const f = e.target.closest && e.target.closest("[data-fb-fassung]");
+  if(f){ FB_FASSUNG = f.dataset.fbFassung === "abend" ? "abend" : "tag"; fbZeichnen(); return; }
+  const st = e.target.closest && e.target.closest("[data-fb-stufe]");
+  if(st && FB){
+    const alt = FB[FB_FASSUNG];
+    FB[FB_FASSUNG] = Object.assign(farbStufeAuf(alt, st.dataset.fbStufe), { stufe: st.dataset.fbStufe },
+                                   FB_FASSUNG === "abend" ? { an: alt.an } : {});
+    FB_BERUEHRT = true;
+    fbZeichnen();
+  }
+});
+document.addEventListener("input", e => {
+  if(!FB || !e.target.closest) return;
+  const c = e.target.closest("[data-fb-rolle]"), x = e.target.closest("[data-fb-hex]");
+  const rolle = c ? c.dataset.fbRolle : x ? x.dataset.fbHex : "";
+  if(!rolle) return;
+  let w = String(e.target.value || "").trim();
+  if(x && /^[0-9a-f]{6}$/i.test(w)) w = "#" + w;
+  if(!FARB_HEX.test(w)) return;          /* halb getippt: abwarten */
+  FB[FB_FASSUNG][rolle] = w.toUpperCase();
+  FB[FB_FASSUNG].stufe = "";
+  FB_BERUEHRT = true;
+  fbZeichnen();
+});
+/* Ein Tipp statt Rätselraten: Schrift, Haupt- und Zweitfarbe so wenig
+   wie möglich heller oder dunkler, bis jede Fassung lesbar ist; ein
+   Kopfband, auf dem keine Schrift hält, wird so weit verschoben, dass
+   die gerechnete Schrift darauf hält. Der Farbton bleibt. */
+function fbLesbarMachen(){
+  if(!FB) return;
+  ["tag", "abend"].forEach(k => {
+    const e = FB[k];
+    if(!farbLesbar(e).length) return;
+    const fl = [e.flaeche, e.grund];
+    fl.forEach(f => { e.tinte = farbNachziehen(e.tinte, f, 4.8); });
+    e.akzent = farbAufTon(e.akzent, fl, .14, 4.5);
+    e.akzent2 = farbAufTon(e.akzent2, fl, .2, 4.5);
+    if(farbKontrast(farbSchriftAuf(e.band), e.band) < 4.5) e.band = farbNachziehen(e.band, farbSchriftAuf(e.band), 4.6);
+    e.stufe = "";
+  });
+  FB_BERUEHRT = true;
+  fbZeichnen();
+}
+$("#fbLesbar") && ($("#fbLesbar").onclick = fbLesbarMachen);
+$("#fbAbendAn") && ($("#fbAbendAn").onclick = () => {
+  if(!FB) return;
+  FB.abend.an = !FB.abend.an; FB_BERUEHRT = true; fbZeichnen();
+});
+async function fbSpeichern(farben){
+  const raus = $("#fbPruefung");
+  if(!FB){ raus.textContent = "Der gespeicherte Stand ist noch nicht gelesen."; return false; }
+  if(demo || !db){ raus.textContent = "Im Vorführmodus wird nichts gespeichert."; return false; }
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  const neu = Object.assign({}, (bb && bb.hub_stil && typeof bb.hub_stil === "object") ? bb.hub_stil : {});
+  if(farben) neu.farben = farben; else delete neu.farben;
+  const {error} = await db.from("betriebe").update({ hub_stil: neu }).eq("id", betriebId);
+  if(error){
+    const t = String(error.message || "");
+    raus.textContent =
+      /hub_stil_form|check/i.test(t) ? "Die Gestaltung ist zu groß für die Datenbank geworden. Bitte migration-schriftrollen.sql einspielen." :
+      /hub_stil/.test(t) ? "Die Spalte hub_stil fehlt noch. Bitte migration-hub-stil.sql einspielen." :
+      /row-level|policy|permission|besitzer|inhaber/i.test(t) ? "Nur der Besitzer kann das ändern." :
+      "Nicht gespeichert, bitte Verbindung prüfen.";
+    return false;
+  }
+  if(bb) bb.hub_stil = neu;
+  return true;
+}
+$("#fbSichern") && ($("#fbSichern").onclick = async () => {
+  if(!FB || fbProbleme().length) return;
+  const k = $("#fbSichern"); k.disabled = true; k.textContent = "Wird übernommen …";
+  if(await fbSpeichern(fbRoh())){
+    FB.eigen = true; FB_BERUEHRT = false;
+    $("#fbPruefung").textContent = "Übernommen. Gäste sehen die Farben beim nächsten Abgleich.";
+    melde("Farben übernommen");
+  }
+  k.textContent = "Übernehmen"; fbZeichnen();
+});
+$("#fbZurueck") && ($("#fbZurueck").onclick = async () => {
+  if(!FB) return;
+  if(await fbSpeichern(null) || demo || !db){
+    const m = fbMarke(); FB = { tag: m.tag, abend: m.abend, eigen: false }; FB.abend.an = m.abend.an;
+    FB_BERUEHRT = false;
+    if(!(demo || !db)) $("#fbPruefung").textContent = "Zurück auf das Markenblatt. Gäste sehen es beim nächsten Abgleich.";
+    fbZeichnen();
+  }
+});
 
 /* ══ SCHRIFT: Auswahl oder eigene Datei (betriebe.hub_stil.schrift) ══
    Wunsch 26.09.: „Schriften ändern im Admin Hub, von voreingestellten

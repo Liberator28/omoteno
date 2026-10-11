@@ -69,7 +69,12 @@ const SWEEP = `
      Genommen wird die UNGUENSTIGSTE Kante des Verlaufs: Text muss
      ueber der ganzen Flaeche lesbar sein, nicht nur oben. */
   function verlaufStopps(st){
-    const t = String(st.backgroundImage || "").match(/rgba?\([^)]*\)/g);
+    /* color(srgb …) auch: color-mix() in einem Verlauf kommt so heraus.
+       (Doppelter Rückstrich: Das hier steht in einer Vorlagenzeichenkette,
+       ein einfacher fiele dort weg und die Klammer wäre keine mehr.)
+       Vorher stieg die Prüfung an einem solchen Verlauf (Foodroulette-
+       Rad) vorbei und rechnete gegen einen fremden Grund (1,11:1). */
+    const t = String(st.backgroundImage || "").match(/rgba?\([^)]*\)|color\\(srgb [^)]*\\)/g);
     if(!t || !t.length) return null;
     return t.map(zahl).filter(v => v.length >= 3 && (v.length < 4 || v[3] > 0));
   }
@@ -298,6 +303,36 @@ const FLAECHEN = [
     blaettern: (p, ziel) => p.evaluate(z => { location.hash = "#/" + z; }, ziel) }
 ];
 
+/* Die Helligkeitsleiter aus dem Board (hub_stil.farben, Wunsch 11.10.)
+   in JEDEM Haus: farbLesbar prüft nur die Kernpaare — Hausfarben im
+   Blatt (Guss, Wolken, Bedeutungsfarben) sieht erst diese Messung.
+   Die Stufe wird über farbenAnwenden gesetzt wie aus der Spalte, die
+   Voraussetzung (Grund wirklich der der Stufe) selbst geprüft. */
+const STUFEN = ["weiss", "creme", "warm", "gedaempft", "dunkel", "schwarz"];
+{
+  const o = path.join(HIER, "dist");
+  const slugs = fs.existsSync(o) ? fs.readdirSync(o).filter(x => fs.existsSync(path.join(o, x, "index.html"))) : [];
+  for(const slug of slugs) FLAECHEN.push({ hub:true, slug, name:"Gäste-Hub " + slug + " · Stufe",
+    lagen: STUFEN.map(st => [st, p => p.evaluate(st => {
+      const sechs = q => Object.fromEntries(FARB_ROLLEN.map(r => [r, q[r]]));
+      const m = farbMarke();
+      const tag = farbStufeAuf(sechs(m.farben), st);
+      const abend = Object.assign(farbStufeAuf(sechs(Object.assign({}, m.farben, m.abend)), st), { an:true });
+      farbenAnwenden({ tag, abend });
+      lichtSetzen(FARB_STUFEN.find(x => x.s === st).dunkel ? "dunkel" : "hell");
+    }, st)]),
+    nachher: async (p, st) => {
+      const r = await p.evaluate(st => ({ ist:document.documentElement.style.getPropertyValue("--grund").trim().toUpperCase(),
+        /* Dunkle Stufen laufen in der Abendfassung — deren Band gibt den Ton. */
+        soll:(() => { const m = farbMarke(), dunkel = FARB_STUFEN.find(x => x.s === st).dunkel;
+          const band = dunkel ? Object.assign({}, m.farben, m.abend).band : m.farben.band;
+          const z = farbStufe(st, band); return z ? z.grund : "?"; })() }), st);
+      if(r.ist !== r.soll) throw new Error(slug + " · " + st + ": Stufe nicht angekommen (" + r.ist + " statt " + r.soll + ")");
+    },
+    seiten:["", "speisekarte", "entdecken", "meintisch", "kontakt", "service"],
+    blaettern: (p, ziel) => p.evaluate(z => { location.hash = "#/" + z; }, ziel) });
+}
+
 (async () => {
   const browser = await chromium.launch();
 
@@ -305,8 +340,8 @@ const FLAECHEN = [
     let ziel;
     if(f.hub){
       const o = path.join(HIER, "dist");
-      const slug = fs.existsSync(o)
-        ? fs.readdirSync(o).find(x => fs.existsSync(path.join(o, x, "index.html"))) : null;
+      const slug = f.slug || (fs.existsSync(o)
+        ? fs.readdirSync(o).find(x => fs.existsSync(path.join(o, x, "index.html"))) : null);
       if(!slug){ console.log("\n" + f.name + ": kein erzeugter Hub, übersprungen"); continue; }
       ziel = "file://" + path.join(o, slug, "index.html");
     } else {

@@ -4228,6 +4228,182 @@ const SCHATTEN = {
   ohne:  "none"
 };
 
+/* ╔═══ FARBEN · GETEILTER BLOCK · ANFANG ══════════════════════════╗
+   Wortgleich in vorlagen/hub.vorlage.html und seiten/admin.html —
+   pruef-farben.js vergleicht beide Zeichen für Zeichen. Das Board
+   rechnet damit die Vorschau und sperrt Unlesbares, der Hub rechnet
+   damit, was er malt. Zwei Rechnungen hießen: Das Board erlaubt, was
+   der Hub dann anders zeigt (§8.1i).
+
+   Der Betrieb wählt sechs Farben je Fassung (Tag, Abend): Hintergrund,
+   Karten, Kopfband, Schrift, Haupt- und Zweitfarbe. Alles andere —
+   leise Schrift, Linien, eingelassene Flächen, Schrift auf dem Band —
+   wird hier gerechnet, nie eingestellt (§5.1). */
+const FARB_ROLLEN = ["grund", "flaeche", "band", "tinte", "akzent", "akzent2"];
+const FARB_HEX = /^#[0-9a-f]{6}$/i;
+
+function farbRgb(h){
+  return [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16));
+}
+function farbHexAus(r, g, b){
+  return "#" + [r, g, b].map(x => Math.round(Math.max(0, Math.min(255, x))).toString(16).padStart(2, "0")).join("").toUpperCase();
+}
+/* t = 0 → a, t = 1 → b */
+function farbMisch(a, b, t){
+  const x = farbRgb(a), y = farbRgb(b);
+  return farbHexAus(x[0] + (y[0] - x[0]) * t, x[1] + (y[1] - x[1]) * t, x[2] + (y[2] - x[2]) * t);
+}
+function farbLum(h){
+  const v = farbRgb(h).map(x => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); });
+  return .2126 * v[0] + .7152 * v[1] + .0722 * v[2];
+}
+function farbKontrast(a, b){
+  const x = farbLum(a), y = farbLum(b);
+  return (Math.max(x, y) + .05) / (Math.min(x, y) + .05);
+}
+/* Dieselbe Regel wie markeSchriftAuf im Hub: Weiß oder fast Schwarz,
+   je nachdem, was auf dieser Fläche mehr Kontrast hat. */
+function farbSchriftAuf(h){
+  const l = farbLum(h);
+  return (1.05 / (l + .05)) >= ((l + .05) / .05579) ? "#FFFFFF" : "#111111";
+}
+/* Leise Schrift: so weit zur Fläche gemischt, wie es geht, ohne auf
+   IRGENDEINER der Flächen unter `ziel` zu fallen. Ist schon die volle
+   Schrift zu schwach, bleibt sie, wie sie ist — farbLesbar meldet das. */
+function farbLeise(tinte, flaechen, ziel){
+  const gut = c => flaechen.every(f => farbKontrast(c, f) >= ziel);
+  if(!gut(tinte)) return tinte;
+  let lo = 0, hi = 1;
+  for(let i = 0; i < 18; i++){
+    const m = (lo + hi) / 2;
+    if(gut(farbMisch(tinte, flaechen[0], m))) lo = m; else hi = m;
+  }
+  return farbMisch(tinte, flaechen[0], lo);
+}
+/* Eine Farbe so wenig wie möglich heller oder dunkler ziehen, bis sie
+   auf `flaeche` `ziel` erreicht. Der Farbton bleibt. */
+function farbNachziehen(c, flaeche, ziel){
+  if(farbKontrast(c, flaeche) >= ziel) return c;
+  const nach = farbLum(flaeche) > .18 ? "#000000" : "#FFFFFF";
+  let lo = 0, hi = 1;
+  for(let i = 0; i < 18; i++){
+    const m = (lo + hi) / 2;
+    if(farbKontrast(farbMisch(c, nach, m), flaeche) >= ziel) hi = m; else lo = m;
+  }
+  return farbMisch(c, nach, hi);
+}
+/* Dasselbe für Schrift auf ihrer EIGENEN zarten Fläche (Preis in Gold
+   auf Goldschimmer, „Vegan“ in Grün auf Grünschimmer) — über Karte UND
+   Hintergrund, denn beides kommt darunter vor. Die Fläche wandert mit
+   der Farbe, deshalb so oft nachgerechnet, bis es hält. */
+function farbAufTon(c, flaechen, anteil, ziel){
+  const fl = [].concat(flaechen);
+  const gut = x => fl.every(f => farbKontrast(x, farbMisch(f, x, anteil)) >= ziel);
+  /* Mit kleinem Puffer: Die Fläche wandert mit, und 4,499 ist nicht 4,5. */
+  for(let i = 0; i < 8 && !gut(c); i++)
+    fl.forEach(f => { c = farbNachziehen(c, farbMisch(f, c, anteil), ziel + .06); });
+  return c;
+}
+function farbTon(h){
+  const [r, g, b] = farbRgb(h).map(x => x / 255);
+  const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn;
+  if(!d) return 30;
+  const t = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+  return (t * 60 + 360) % 360;
+}
+function farbHsl(ton, s, l){
+  s /= 100; l /= 100;
+  const k = n => (n + ton / 30) % 12, a = s * Math.min(l, 1 - l);
+  const f = n => l - a * Math.max(-1, Math.min(k(n) - 3, Math.min(9 - k(n), 1)));
+  return farbHexAus(f(0) * 255, f(8) * 255, f(4) * 255);
+}
+
+/* Die Helligkeitsleiter. Getönt im Farbton des Kopfbands, damit eine
+   Stufe zum Haus passt statt nach Vorlage auszusehen; Weiß und
+   Schwarz sind rein. */
+const FARB_STUFEN = [
+  { s:"weiss",     name:"Weiß",      dunkel:false },
+  { s:"creme",     name:"Creme",     dunkel:false },
+  { s:"warm",      name:"Warm",      dunkel:false },
+  { s:"gedaempft", name:"Gedämpft",  dunkel:true  },
+  { s:"dunkel",    name:"Dunkel",    dunkel:true  },
+  { s:"schwarz",   name:"Schwarz",   dunkel:true  }
+];
+function farbStufe(stufe, band){
+  const h = farbTon(FARB_HEX.test(band || "") ? band : "#806040");
+  switch(stufe){
+    case "weiss":     return { grund:"#FFFFFF", flaeche:"#FFFFFF", tinte:"#111111" };
+    case "creme":     return { grund:farbHsl(h, 45, 96), flaeche:"#FFFFFF", tinte:farbHsl(h, 35, 12) };
+    case "warm":      return { grund:farbHsl(h, 38, 89), flaeche:farbHsl(h, 45, 96), tinte:farbHsl(h, 40, 12) };
+    case "gedaempft": return { grund:farbHsl(h, 12, 21), flaeche:farbHsl(h, 12, 26), tinte:farbHsl(h, 20, 94) };
+    case "dunkel":    return { grund:farbHsl(h, 25, 8),  flaeche:farbHsl(h, 22, 12), tinte:farbHsl(h, 25, 95) };
+    case "schwarz":   return { grund:"#000000", flaeche:"#0E0E0E", tinte:"#FFFFFF" };
+  }
+  return null;
+}
+/* Eine Stufe auf sechs Farben legen: Grund, Karte und Schrift aus der
+   Leiter, Band bleibt, Haupt- und Zweitfarbe werden nur so weit
+   nachgezogen, wie es auf der neuen Karte zum Lesen braucht. */
+function farbStufeAuf(e, stufe){
+  const st = farbStufe(stufe, e.band); if(!st) return e;
+  return { grund:st.grund, flaeche:st.flaeche, band:e.band, tinte:st.tinte,
+           akzent:farbAufTon(e.akzent, [st.flaeche, st.grund], .14, 4.5),
+           akzent2:farbAufTon(e.akzent2, [st.flaeche, st.grund], .2, 4.5) };
+}
+
+/* Die vollen Rollen, wie markeAnwenden sie liest. */
+function farbHerleiten(e){
+  const linieBasis = e.flaeche;
+  return {
+    grund:e.grund, flaeche:e.flaeche, band:e.band, tinte:e.tinte,
+    akzent:e.akzent, akzent2:e.akzent2,
+    flaeche2:farbMisch(e.flaeche, e.tinte, .06),
+    bandText:farbSchriftAuf(e.band),
+    tinteLeise:farbLeise(e.tinte, [e.flaeche, e.grund], 5.5),
+    tinteStill:farbLeise(e.tinte, [e.flaeche, e.grund], 4.5),
+    linie:farbMisch(linieBasis, e.tinte, .12),
+    linieStark:farbMisch(linieBasis, e.tinte, .2)
+  };
+}
+
+/* Was nicht lesbar wäre. Leer heißt: darf so übernommen werden. */
+function farbLesbar(e){
+  const p = farbHerleiten(e), raus = [];
+  const paar = (was, a, b, min) => { const k = farbKontrast(a, b); if(k < min) raus.push({ was, k, min }); };
+  paar("Schrift auf Hintergrund", p.tinte, p.grund, 4.5);
+  paar("Schrift auf Karten", p.tinte, p.flaeche, 4.5);
+  paar("Schrift auf eingelassenen Flächen", p.tinte, p.flaeche2, 4.5);
+  paar("Schrift auf dem Kopfband", p.bandText, p.band, 4.5);
+  /* Beide Hausfarben stehen auch als kleine Schrift da (Preise,
+     „Beliebt“) — auf der Karte und auf ihrem eigenen Schimmer. */
+  [["Karten", p.flaeche], ["Hintergrund", p.grund]].forEach(([wo, f]) => {
+    paar("Hauptfarbe auf " + wo, p.akzent, farbMisch(f, p.akzent, .14), 4.5);
+    paar("Zweitfarbe auf " + wo, p.akzent2, farbMisch(f, p.akzent2, .2), 4.5);
+  });
+  return raus;
+}
+
+/* Aus einer Live-Spalte: nur genau sechs Hexwerte je Fassung, sonst
+   gilt diese Fassung nicht (§2.3a — der Wert landet in Stilangaben).
+   Unlesbares gilt auch nicht. Der Rest des Objekts wird ignoriert. */
+function farbPruefen(roh){
+  const seite = x => {
+    if(!x || typeof x !== "object" || Array.isArray(x)) return null;
+    const e = {};
+    for(const r of FARB_ROLLEN){
+      if(typeof x[r] !== "string" || !FARB_HEX.test(x[r])) return null;
+      e[r] = x[r].toUpperCase();
+    }
+    return farbLesbar(e).length ? null : e;
+  };
+  if(!roh || typeof roh !== "object" || Array.isArray(roh)) return null;
+  const tag = seite(roh.tag), abend = seite(roh.abend);
+  const abendAn = roh.abend && typeof roh.abend === "object" && typeof roh.abend.an === "boolean" ? roh.abend.an : null;
+  if(!tag && !abend && abendAn === null) return null;
+  return { tag, abend, abendAn };
+}
+/* ╚═══ FARBEN · GETEILTER BLOCK · ENDE ════════════════════════════╝ */
+
 function markeAlpha(hex, alpha){
   const h = String(hex || "").replace("#","");
   if(h.length !== 6) return "transparent";
@@ -4309,6 +4485,46 @@ function markeAnwenden(abend){
   s.setProperty("--schatten", SCHATTEN[mb.form.schatten] || SCHATTEN.weich);
 }
 
+/* ── Farben aus dem Board (hub_stil.farben) ─────────────────────────
+   Das Markenblatt bleibt die Vorgabe und wird hier einmal festgehalten;
+   die Farben aus dem Board legen sich darüber und lassen sich jederzeit
+   wieder abnehmen („Auf Markenblatt zurück“ im Board). Was farbPruefen
+   nicht durchlässt, gilt nicht — dann bleibt das Markenblatt. */
+const FARB_MARKE = { farben: Object.assign({}, MARKENBLATT.farben),
+                     abend: Object.assign({}, MARKENBLATT.abend || {}) };
+function farbenAnwenden(roh){
+  const fb = farbPruefen(roh);
+  const vorher = JSON.stringify([MARKENBLATT.farben, MARKENBLATT.abend]);
+  const auf = (grund, e) => {
+    const f = Object.assign({}, grund);
+    if(!e) return f;
+    Object.assign(f, farbHerleiten(e));
+    /* Grün kommt nicht aus dem Board, steht aber als Schrift
+       („Vegan“) auf der neuen Karte — so weit nachgezogen, wie nötig. */
+    if(typeof f.gut === "string" && FARB_HEX.test(f.gut)) f.gut = farbAufTon(f.gut, [f.flaeche, f.grund], .14, 4.5);
+    /* Eigens gemischte Flächen des Markenblatts gehören zu SEINER
+       Haupt-/Zweitfarbe — mit einer neuen Farbe würden sie lügen. */
+    if(e.akzent !== grund.akzent) delete f.akzentFlaeche;
+    if(e.akzent2 !== grund.akzent2) delete f.akzent2Flaeche;
+    return f;
+  };
+  MARKENBLATT.farben = auf(FARB_MARKE.farben, fb && fb.tag);
+  MARKENBLATT.abend  = auf(FARB_MARKE.abend,  fb && fb.abend);
+  if(fb && fb.abendAn !== null) MARKENBLATT.abend.an = fb.abendAn;
+  if(!(MARKENBLATT.abend.ab >= 0 && MARKENBLATT.abend.ab <= 23)) MARKENBLATT.abend.ab = 18;
+  return JSON.stringify([MARKENBLATT.farben, MARKENBLATT.abend]) !== vorher;
+}
+const FARB_MERK = "omoteno-farben-" + HAUS;
+/* Für das Board: eine const steht nicht am window, eine Funktion schon. */
+function farbMarke(){ return FARB_MARKE; }
+/* Nur das Geprüfte wird gemerkt — nie der rohe Wert aus der Spalte. */
+function farbMerkwert(fb){
+  if(!fb) return null;
+  const abend = fb.abend ? Object.assign({}, fb.abend) : {};
+  if(fb.abendAn !== null) abend.an = fb.abendAn;
+  return { tag: fb.tag, abend: Object.keys(abend).length ? abend : null };
+}
+
 /* Einmalig: Maße und Schrift. Die ändern sich im laufenden Betrieb
    nie — ein Umschalten würde Zeilen umbrechen lassen, während der
    Gast liest. */
@@ -4334,6 +4550,14 @@ function markeAnwenden(abend){
       s.setProperty("--schrift-" + rolle, SCHRIFTEN[mb.schrift[rolle]]);
   });
   s.setProperty("--schrift-mass",  mb.schrift.groesse || 1);
+
+  /* Die Farben vom letzten Besuch vor dem ersten Anstrich — der
+     Abgleich mit der Datenbank dauert, und dazwischen stünde das
+     Markenblatt da und spränge dann um. Nicht in der Vorschau: dort
+     gilt, was das Board schickt. */
+  if(window.OMOTENO_VORSCHAU !== true){
+    try{ const g = JSON.parse(localStorage.getItem(FARB_MERK) || "null"); if(g) farbenAnwenden(g); }catch(e){}
+  }
 
   /* Erste Farbgebung, bevor irgendetwas gezeichnet wird. Die Stunde
      wird hier eigenständig ermittelt; unten übernimmt nachtSchalten()
@@ -16539,6 +16763,11 @@ function betriebsTeileAnwenden(z, immer){
      karteHolen) — in der Vorschau sofort, dafür ist sie da. */
   if("hub_stil" in z && immer){
     if(schriftenAnwenden(z.hub_stil)) neu = true;
+    /* Farben nur, wenn der Entwurf sie trägt — die Vorschau der
+       Startseite schickt hub_stil nur mit der Schrift und soll die
+       Farben dabei nicht abnehmen. */
+    if(z.hub_stil && typeof z.hub_stil === "object" && "farben" in z.hub_stil &&
+       farbenAnwenden(z.hub_stil.farben)) neu = true;
   }
 
   /* Das Aktions-Banner-Rad: eine echte freie Liste, bannerAusZeile()
@@ -16568,6 +16797,8 @@ function betriebsTeileAnwenden(z, immer){
 function vorschauSetzen(teil){
   if(!VORSCHAU || !teil || typeof teil !== "object") return;
   vorschauEntwurf = Object.assign({}, vorschauEntwurf || {}, teil);
+  /* Das Board zeigt die Fassung, an der der Wirt gerade färbt. */
+  if(teil.vorschauLicht === "hell" || teil.vorschauLicht === "dunkel") licht = teil.vorschauLicht;
   /* Kein Aktions-Entwurf mehr: wieder die echten Aktionen. */
   if("aktion" in teil && !vorschauAktion()){ aktionen = []; aktionenLaden(); }
   betriebsTeileAnwenden(teil, true);
@@ -16780,6 +17011,21 @@ async function karteHolen(erstesMal){
     /* Schrift nur beim ERSTEN Laden: Ein Wechsel mitten im Lesen würde
        jede Zeile neu umbrechen (dieselbe Regel wie markeGrundlegen).
        Gemerkt für den nächsten Besuch, damit sie dann gleich steht. */
+    /* Farben aus dem Board. Anders als die Schrift auch später: eine
+       neue Farbe bricht keine Zeile um. Fehlt hub_stil ganz (alte
+       Abfrage ohne die Spalte), bleibt alles, wie es ist. Gemerkt für
+       den nächsten ersten Anstrich (markeGrundlegen). */
+    const entwurfFarben = VORSCHAU && vorschauEntwurf && vorschauEntwurf.hub_stil &&
+      typeof vorschauEntwurf.hub_stil === "object" && "farben" in vorschauEntwurf.hub_stil;
+    if("hub_stil" in b[0] && !entwurfFarben){
+      const fr = (stil && typeof stil === "object" && !Array.isArray(stil)) ? stil.farben : null;
+      if(farbenAnwenden(fr)) nachtSchalten();
+      if(!VORSCHAU){
+        try{ const mw = farbMerkwert(farbPruefen(fr));
+             if(mw) localStorage.setItem(FARB_MERK, JSON.stringify(mw));
+             else localStorage.removeItem(FARB_MERK); }catch(e){}
+      }
+    }
     if(erstesMal){
       schriftenAnwenden(stil);
       try{ localStorage.setItem("omoteno-schrift-" + HAUS,
