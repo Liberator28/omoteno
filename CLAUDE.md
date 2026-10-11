@@ -1593,7 +1593,7 @@ Dazu je nach Änderung:
 | Geändert | Zusätzlich laufen lassen |
 |---|---|
 | Farben, Paletten, Vorlagen | `pruefungen/pruef-kontrast.js` |
-| Karten-Zerleger | `pruefungen/pruef-import.js` |
+| **Karten-Zerleger, „Karte einlesen“, Knöpfe oben im Karte-Reiter** | `pruefungen/pruef-import.js` — 28 Kartenformate mit Erwartung je Gericht (Preisformen, Größen je ein Gericht, Kopfzeilen-Größen, Nummern, Kürzel in Klammern/hochgestellt/am Ende, Legende, Folgezeilen, Überschrift ohne Leerzeile, Spalten, Karten ohne Kommapreise), dazu Chocos Gerüstkarte und die Karte des Vorführhauses als echte Daten (§6.1); Kürzel gegen ALLERGENE/ZUSATZSTOFFE (zweite Quelle), Schlüssel a–n umgerechnet, nur L/M/N → Frage statt Raten; Board: ohne Preis abgewählt, Häkchen ohne Preis geht nicht, Bearbeitungen überstehen neues Zerlegen, nie `preis:0` in der Nutzlast, kein eigener Scrollbereich. Lage der Knöpfe: `pruefungen/pruef-kartenknoepfe.js` |
 | Marken-Studio, Entwurfslink | `pruefungen/pruef-studio.js` |
 | **"Marke gestalten" im Board, Entwurfslink-Bridge** | `pruefungen/pruef-marke.js` — Rundlauf und die echte Naht: die im Board erzeugte Adresse wirklich im echten `marken-studio.html` geöffnet |
 | Gastkonto, „Mein Tisch" im Hub | `pruefungen/pruef-gastkonto.js` (braucht `dist/`) |
