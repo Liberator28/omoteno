@@ -18,8 +18,10 @@
 --  (kurz(…, 400)) kürzen schon. Die Schranke ist die dritte Linie für
 --  jeden anderen Weg in die Tabelle (§2.3a). Additiv (§2.8).
 --
---  NICHT LIVE GEPRÜFT: Der Supabase-Zugang war am 11.10. getrennt
---  (ERR_PROXY_TUNNEL). Im SQL-Editor einspielen, danach die Probe unten.
+--  ANGEWENDET 11.10. (Supabase-MCP, Migration „haus_ueber_und_textgroesse“).
+--  Vorab: längstes „ueber“ 0 Zeichen, größtes hub_texte 2 Bytes.
+--  Probe danach (zurückgedreht): 400 Zeichen → 1 Zeile · 401 →
+--  abgewiesen · 600 KB → abgewiesen · andere Spalte → 1 Zeile.
 -- ═══════════════════════════════════════════════════════════════════
 alter table public.betriebe add constraint hub_texte_ueber check (
   coalesce(length(hub_texte ->> 'ueber'), 0) <= 400

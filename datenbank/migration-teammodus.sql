@@ -32,7 +32,19 @@
 --
 --  Additiv (§2.5). Kein drop, kein delete (§2.8).
 --
---  NICHT LIVE GEPRÜFT: Der Supabase-Zugang war am 11.10. getrennt
+--  ANGEWENDET 11.10. (Supabase-MCP, Migration „teammodus“). Vorab
+--  gelesen: keine Spalte nummer/zugewiesen/team_modus, kein Trigger auf
+--  betrieb_mitglieder, Pflichtspalten von bestellungen haben Vorgaben.
+--  Live-Probe danach (zurückgedreht): vorhandene Mitglieder je Betrieb
+--  Nr. 1 (alle Inhaber) · neues Mitglied → 2 · fair 4 auf 2 → 1:2 2:2
+--  · hand → null · andere Spalte von betriebe 1 Zeile · team_nummern
+--  als Team: beide, „ich“ markiert · Nummer setzen als Team →
+--  kein_inhaber · Team weist zu 1 Zeile · Team ändert team_modus →
+--  42501 (Wache betrieb_rolle_wache) · anon: team_nummern abgewiesen,
+--  team_modus/zugewiesen nicht lesbar, Trigger-Funktion nicht
+--  ausführbar · je Funktion eine Fassung.
+--
+--  (Vorher:) NICHT LIVE GEPRÜFT: Der Supabase-Zugang war am 11.10. getrennt
 --  (ERR_PROXY_TUNNEL). Im SQL-Editor einspielen, danach die Probe am
 --  Ende; vorher die Spalten von betrieb_mitglieder und bestellungen
 --  nachsehen (§1.1a) — gibt es „nummer“ oder „zugewiesen“ schon mit
