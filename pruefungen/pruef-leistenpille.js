@@ -121,7 +121,14 @@ async function board(ctx, reduziert) {
   console.log("\n══ Überlauf-Reiter aktiv → Pille auf \"Mehr\" ══");
   const s3 = await board(await browser.newContext({ viewport: { width: 390, height: 844 } }));
   await s3.evaluate(() => document.querySelector('.mehrfach [data-tafel="startseite"]').click());
-  await s3.waitForTimeout(500);
+  /* Endzustand messen, nicht eine geratene Zeit: Der Reiter „Gast-Hub“
+     baut beim Öffnen die Live-Vorschau auf und hält den Hauptfaden
+     ~150–300 ms fest; die Pille startet danach und federt bis ~600 ms.
+     Mit fest 500 ms las die Probe mitten im Nachschwingen (seit dem
+     Merge d2c93b7 rot, auch auf main). */
+  await s3.waitForTimeout(150);
+  await s3.waitForFunction(() => !document.getElementById("leistePille").getAnimations().some(a => a.playState === "running"), null, { timeout: 3000 }).catch(() => {});
+  await s3.waitForTimeout(50);
   const ueberlauf = await s3.evaluate(() => {
     const p = document.getElementById("leistePille");
     const mehr = document.getElementById("mehrKnopf");
