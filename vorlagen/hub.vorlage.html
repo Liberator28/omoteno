@@ -1673,6 +1673,10 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
   color:var(--gold);background:var(--gold-flaeche);border-radius:999px;padding:6px 13px
 }
 
+/* Textwahl in der Vorschau des Boards: Texte sind antippbar. */
+html.textwahl body *{cursor:pointer}
+html.textwahl body :is(h1,h2,h3,p,span,b,i,strong,a,button,label):hover{outline:2px dashed var(--akzent);outline-offset:2px}
+
 /* ═══ Haus-Seite (#/haus, Wunsch 11.10.) ═════════════════════════
    Eine kleine Landingpage hinter dem Logo: Bild, Logo auf der
    Bildkante (wie im Kopf), Name, Slogan, Stand. Ohne Kopfbild steht
@@ -10475,10 +10479,164 @@ const TEXTE = {
 const TAGE = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
 let sprache = "de";
 
-/* Text nachschlagen. Fehlt eine Übersetzung, bleibt der deutsche Text stehen. */
+/* ═══ Eigene Texte des Hauses (hub_texte.eigen, Wunsch 11.10.) ═══
+   „Jeden Text, der auf den Seiten begegnet, ganz einfach ändern —
+   sowohl den Text als auch die Schrift.“ Schlüssel ist der deutsche
+   Satz des Wörterbuchs (dieselbe Stelle, die t() nachschlägt), Wert
+   { de, en, …, schrift }. Was nicht im Wörterbuch steht, wird nicht
+   angenommen — eine Live-Spalte bestimmt keine neuen Schlüssel.
+
+   Die Texte landen an vielen Stellen roh in innerHTML und in
+   Attributen (wie die Wörterbuchtexte selbst). Deshalb wird jeder
+   Wert entschärft, BEVOR t() ihn liefert: keine spitzen Klammern,
+   kein gerades Anführungszeichen (§2.3a — auch wenn nur das Team
+   schreibt). */
+let TEXTE_EIGEN = {};
+const EIGEN_SPRACHEN = ["de","en","tr","ru","fr","es","it","pl","ar","uk","nl","ro"];
+function eigenWert(w){
+  if(typeof w !== "string") return "";
+  return w.replace(/[<>]/g, "").replace(/"/g, "\u201D").replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, 160);
+}
+function eigenSauber(roh){
+  const aus = {};
+  if(!roh || typeof roh !== "object" || Array.isArray(roh)) return aus;
+  Object.keys(roh).slice(0, 400).forEach(k => {
+    if(!Object.prototype.hasOwnProperty.call(TEXTE, k)) return;
+    const e = roh[k]; if(!e || typeof e !== "object" || Array.isArray(e)) return;
+    const o = {};
+    EIGEN_SPRACHEN.forEach(sp => { const v = eigenWert(e[sp]); if(v) o[sp] = v; });
+    if(typeof e.schrift === "string" && Object.prototype.hasOwnProperty.call(SCHRIFT_WEB, e.schrift)) o.schrift = e.schrift;
+    if(Object.keys(o).length) aus[k] = o;
+  });
+  return aus;
+}
+/* Für die Vorschau im Board: welche Schlüssel auf welcher Seite
+   wirklich gezeichnet wurden (nur im Vorschaumodus gemerkt). */
+const TEXTE_GESEHEN = {};
+/* Erster Anstrich wie beim letzten Besuch (sonst blitzt der alte
+   Text auf, bis die Datenbank antwortet). Gemerkt wird nur Geprüftes. */
+const EIGEN_MERK = "omoteno-texte-" + HAUS;
+try{ if(!VORSCHAU) TEXTE_EIGEN = eigenSauber(JSON.parse(localStorage.getItem(EIGEN_MERK) || "null")); }catch(e){}
+
+/* Was ein eigener Text gerade anzeigt — wie t(), aber ohne Werte und
+   ohne die Seite zu merken. */
+function eigenAnzeige(k){
+  const e = TEXTE_EIGEN[k];
+  if(sprache === "de") return (e && e.de) || k;
+  return (e && e[sprache]) || (TEXTE[k] && TEXTE[k][sprache]) || (e && e.de) || k;
+}
+
+/* ── Schrift je Text ───────────────────────────────────────────────
+   Ein Element, dessen GANZER Text genau ein Text mit eigener Schrift
+   ist, bekommt diese Schrift. Ein Absatz, in dem der Satz nur vorkommt,
+   bleibt unberührt. EIN MutationObserver sieht jedes Neuzeichnen,
+   einmal je Bild gebündelt (§4.5) — und arbeitet nur, wenn überhaupt
+   eine eigene Schrift gesetzt ist. */
+let eigenSchriftUhr = 0;
+function eigenSchriftPlanen(){
+  if(eigenSchriftUhr || typeof requestAnimationFrame !== "function") return;
+  eigenSchriftUhr = requestAnimationFrame(() => { eigenSchriftUhr = 0; eigenSchriftAnwenden(); });
+}
+function eigenSchriftAnwenden(){
+  const karte = new Map();
+  Object.keys(TEXTE_EIGEN).forEach(k => {
+    const e = TEXTE_EIGEN[k]; if(!e.schrift || k.indexOf("{") >= 0) return;
+    const w = SCHRIFT_WEB[e.schrift]; if(!w) return;
+    const familie = "omo-" + e.schrift;
+    const quellen = [];
+    w.staerken.forEach(st => ["latin", "latin-ext"].forEach(teil => quellen.push({
+      url: SCHRIFT_BASIS + w.datei + "-" + teil + "-" + st + ".woff2", staerke: String(st), bereich: SCHRIFT_BEREICH[teil] })));
+    schriftLaden(familie, quellen);
+    karte.set(eigenAnzeige(k).trim(), '"' + familie + '",' + (SCHRIFTEN[w.rueck] || SCHRIFTEN.system));
+  });
+  document.querySelectorAll("[data-eigen-schrift]").forEach(el => {
+    if(karte.get(el.textContent.trim()) !== el.style.fontFamily){ el.style.fontFamily = ""; el.removeAttribute("data-eigen-schrift"); }
+  });
+  if(!karte.size || !document.body) return;
+  const gang = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n;
+  while((n = gang.nextNode())){
+    const v = n.nodeValue.trim();
+    if(!v || !karte.has(v)) continue;
+    const el = n.parentElement;
+    if(!el || el.closest("script,style,svg") || el.textContent.trim() !== v) continue;
+    el.style.fontFamily = karte.get(v);
+    el.setAttribute("data-eigen-schrift", "");
+  }
+}
+if(typeof MutationObserver === "function"){
+  new MutationObserver(() => { if(Object.keys(TEXTE_EIGEN).some(k => TEXTE_EIGEN[k].schrift)) eigenSchriftPlanen(); })
+    .observe(document.documentElement, { childList:true, subtree:true, characterData:true });
+}
+eigenSchriftPlanen();
+
+/* ── Antippen in der Vorschau des Boards ───────────────────────────
+   Im Textmodus wählt ein Tipp den Text unter dem Finger, statt den Hub
+   zu bedienen: Das Board öffnet genau dieses Feld. Gesucht wird das
+   Element, dessen ganzer Text ein Wörterbuchtext ist — erst exakt,
+   dann über die Vorlage (Texte mit {x}). */
+let vorschauTextModus = false;
+function vorschauTextTippen(an){
+  vorschauTextModus = !!an && VORSCHAU;
+  document.documentElement.classList.toggle("textwahl", vorschauTextModus);
+}
+function textSchluesselBei(x, y){
+  const genau = new Map(), vorlagen = [];
+  Object.keys(TEXTE).forEach(k => {
+    const a = eigenAnzeige(k).trim();
+    if(k.indexOf("{") < 0){ if(!genau.has(a)) genau.set(a, k); }
+    else vorlagen.push([new RegExp("^" + a.replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/\\?\{[^}]+\\?\}/g, ".+?") + "$"), k]);
+  });
+  for(let el = document.elementFromPoint(x, y), i = 0; el && i < 6; el = el.parentElement, i++){
+    const v = (el.textContent || "").trim();
+    if(!v || v.length > 200) continue;
+    if(genau.has(v)) return genau.get(v);
+    const treffer = vorlagen.find(([re]) => re.test(v));
+    if(treffer) return treffer[1];
+  }
+  return null;
+}
+document.addEventListener("click", e => {
+  if(!VORSCHAU || !vorschauTextModus) return;
+  e.preventDefault(); e.stopPropagation();
+  const k = textSchluesselBei(e.clientX, e.clientY);
+  let seite = "start"; try{ seite = seiteJetzt; }catch(x){}
+  try{ if(window.parent && window.parent !== window && typeof window.parent.vorschauTextGewaehlt === "function")
+         window.parent.vorschauTextGewaehlt(k, seite); }catch(x){}
+}, true);
+
+/* Alle Texte, die der Gast sehen kann, nach Seite — für die Liste im
+   Board. Jede Seite wird einmal als Text gebaut (nicht gezeigt), dabei
+   merkt t() die Schlüssel; danach steht die Vorschau wieder, wie sie war. */
+function vorschauTexte(){
+  if(!VORSCHAU) return null;
+  let alt = "start"; try{ alt = seiteJetzt; }catch(x){}
+  ["start"].concat(Object.keys(SEITEN)).forEach(sz => {
+    try{ seiteJetzt = sz; if(sz === "start") start(); else SEITEN[sz](); }catch(x){}
+  });
+  seiteJetzt = alt;
+  try{ zeichne(); }catch(x){}
+  const aus = {};
+  Object.keys(TEXTE_GESEHEN).forEach(sz => { aus[sz] = [...TEXTE_GESEHEN[sz]]; });
+  return aus;
+}
+
+/* Text nachschlagen. Fehlt eine Übersetzung, bleibt der deutsche Text stehen.
+   Reihenfolge: eigener Text des Hauses in der Sprache → Wörterbuch →
+   eigener deutscher Text → der Schlüssel selbst. */
 function t(text, werte){
   let s = text;
-  if(sprache !== "de" && TEXTE[text] && TEXTE[text][sprache]) s = TEXTE[text][sprache];
+  const e = TEXTE_EIGEN[text];
+  if(sprache === "de"){ if(e && e.de) s = e.de; }
+  else if(e && e[sprache]) s = e[sprache];
+  else if(TEXTE[text] && TEXTE[text][sprache]) s = TEXTE[text][sprache];
+  else if(e && e.de) s = e.de;
+  if(VORSCHAU && Object.prototype.hasOwnProperty.call(TEXTE, text)){
+    /* seiteJetzt steht weiter unten (let) — vor seiner Zeile wäre
+       schon das Lesen ein Fehler (§8.1l), daher try. */
+    let sz = "start"; try{ sz = seiteJetzt; }catch(e){}
+    (TEXTE_GESEHEN[sz] || (TEXTE_GESEHEN[sz] = new Set())).add(text);
+  }
   if(werte) Object.keys(werte).forEach(k => { s = s.split("{" + k + "}").join(werte[k]); });
   return s;
 }
@@ -17313,6 +17471,15 @@ function betriebsTeileAnwenden(z, immer){
     if(seiteJetzt === "wlan") neu = true;
     /* „Über uns“ auf der Haus-Seite: Text des Hauses, nur als Text
        (hs). Dieselbe Zahl wie hub_texte_ueber (migration-haus.sql). */
+    /* Eigene Texte des Hauses: Fingerabdruck vorher/nachher, sonst
+       zeichnet jeder Abgleich neu. */
+    const eigenVorher = JSON.stringify(TEXTE_EIGEN);
+    TEXTE_EIGEN = eigenSauber(hubTexte.eigen);
+    if(immer || JSON.stringify(TEXTE_EIGEN) !== eigenVorher){ neu = true; eigenSchriftPlanen(); }
+    if(!VORSCHAU){
+      try{ if(Object.keys(TEXTE_EIGEN).length) localStorage.setItem(EIGEN_MERK, JSON.stringify(TEXTE_EIGEN));
+           else localStorage.removeItem(EIGEN_MERK); }catch(e){}
+    }
     const ueberVorher = HAUS_UEBER;
     HAUS_UEBER = typeof hubTexte.ueber === "string" ? kurz(hubTexte.ueber, 400) : "";
     if(seiteJetzt === "haus" && (immer || HAUS_UEBER !== ueberVorher)) neu = true;
@@ -17419,6 +17586,11 @@ function vorschauZeige(ziel){
   if(wk) wk.hidden = true;
   /* Die Haus-Seite hinter dem Logo („Über uns“, Logo-Form). */
   if(ziel === "haus"){ if(seiteJetzt !== "haus") location.hash = "#/haus"; else zeichne(); return; }
+  /* Texte & Schrift: zur Seite, auf der der Text steht. */
+  if(ziel !== "start" && Object.prototype.hasOwnProperty.call(SEITEN, ziel)){
+    if(seiteJetzt !== ziel) location.hash = "#/" + ziel; else zeichne();
+    return;
+  }
   if(seiteJetzt !== "start"){ location.hash = "#/"; }
   const finde = { kopf:   () => $("claim"),
                   banner: () => document.querySelector(".bnrad"),

@@ -193,7 +193,7 @@ const KONTRAST = () => {
       if (typeof demoStarten === "function") { demoStarten(); zeichneAlles(); } });
     await p.waitForTimeout(400);
     /* Wie der Besitzer: Einstellungen öffnen — erst dann füllt das Board die Felder. */
-    await p.evaluate(() => { const r = document.querySelector('[data-tafel="einstellungen"]'); if (r) r.click(); });
+    await p.evaluate(() => { const r = document.querySelector('[data-tafel="startseite"]'); if (r) r.click(); });
     await p.waitForTimeout(400);
     const feld = await p.evaluate(() => { const el = document.getElementById("hubLaufschrift");
       return el ? { max: +el.getAttribute("maxlength") } : null; });

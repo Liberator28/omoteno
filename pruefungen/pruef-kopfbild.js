@@ -362,7 +362,7 @@ const kopfMessen = p => p.evaluate(m => {
     pruef(stil && JSON.stringify(stil).length < 600, "hub_stil bleibt klein", stil && JSON.stringify(stil).length + " Bytes");
 
     /* „Über uns“ in „Ihre Worte“ */
-    await p.evaluate(() => tafelZeigen("einstellungen"));
+    await p.evaluate(() => tafelZeigen("startseite"));
     await p.waitForTimeout(400);
     await p.evaluate(() => { const f = document.getElementById("hubUeber"); f.value = "Seit 2019 hier."; f.dispatchEvent(new Event("input", { bubbles:true })); });
     await p.evaluate(() => hubTexteSichern());

@@ -590,6 +590,32 @@ html{font-size:calc(16px * var(--skala,1))}
    Der Hub rechnet mit 390 px Breite; hier wird er verkleinert gezeigt.
    Nicht bedienbar (pointer-events:none): Ein Tipp in die kleine Seite
    soll nichts bestellen, sondern der Wirt tippt in SEINE Felder. */
+/* ═══ Gast-Hub gestalten (11.10.): ein Ort, eine Vorschau ═══════
+   Die Vorschau klebt unter dem Kopf des Boards und bleibt beim Rollen
+   stehen — man sieht beim Tippen in „Über uns“ dasselbe wie beim
+   Wählen einer Farbe. Auf dem Telefon kleiner und einklappbar, damit
+   unter ihr Platz zum Bearbeiten bleibt. */
+.gh-kopf{margin:0 0 6px}
+.gh-titel{font-size:20px;font-weight:650;margin:0 0 4px;color:var(--kreide)}
+.gh-sprung{display:flex;gap:8px;overflow-x:auto;padding:4px 0 6px;margin:8px -16px 0;padding-inline:16px;scrollbar-width:none}
+.gh-sprung::-webkit-scrollbar{display:none}
+.gh-sprung a{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);
+  border:1px solid var(--linie);color:var(--kreide);text-decoration:none;font-size:14px;font-weight:600;background:var(--flaeche)}
+.gh-vorschau{position:sticky;top:var(--board-kopf, 64px);z-index:6;margin:10px -16px 14px;padding:8px 16px 10px;
+  background:var(--nacht);border-bottom:1px solid var(--linie);--hv-mass:.5;--hv-hoehe:210px}
+.gh-vorschau.gross{--hv-mass:.72;--hv-hoehe:520px}
+.gh-vorschau.zu .hvfenster,.gh-vorschau.zu .hvstand{display:none}
+.gh-vorschau .hvkopf{margin-bottom:6px}
+.gh-vorschau .hvstand{margin-top:4px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hvknoepfe{display:flex;gap:8px}
+@media (min-width:700px){ .gh-vorschau{--hv-mass:.6;--hv-hoehe:340px} }
+/* Klebende Vorschau oben, Leiste unten: Was in den Blick gerollt wird
+   (Fokus, Sprung, Tab), landet zwischen beiden — nicht darunter (§3.5).
+   Die Höhe der Vorschau misst das Skript (--gh-vorschau-h). */
+#t-startseite :is(button,input,textarea,select,a,.egruppe){
+  scroll-margin-top:calc(var(--board-kopf, 64px) + var(--gh-vorschau-h, 300px) + 12px);
+  scroll-margin-bottom:calc(var(--leiste-h, 64px) + 16px);
+}
 .hvrahmen{--hv-mass:.6;--hv-hoehe:400px;margin:14px 0 4px}
 .hvrahmen.gross{--hv-mass:.82;--hv-hoehe:620px}
 .hvrahmen:empty{display:none}
@@ -2294,6 +2320,24 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
       rgba(255,255,255,.16) 66.3%, rgba(255,255,255,.16) 66.5%, transparent 66.6%),
     linear-gradient(to bottom, transparent 49.7%, rgba(255,255,255,.16) 49.8%,
       rgba(255,255,255,.16) 50.2%, transparent 50.3%)}
+/* Texte & Schrift */
+#txTippen{min-height:44px;margin:0 0 10px}
+#txTippen[aria-pressed="true"]{border-color:var(--messing);color:var(--messing)}
+.gh-vorschau.tippen .hvfenster iframe{pointer-events:auto}
+.gh-vorschau.tippen .hvfenster{outline:2px solid var(--messing);outline-offset:2px}
+.txliste{display:flex;flex-direction:column;gap:2px;margin:10px 0 12px}
+.txliste:empty{display:none}
+.txseite{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--messing);padding:12px 2px 4px}
+.txzeile{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;
+  padding:8px 12px;text-align:left;border:1px solid var(--linie);border-radius:10px;background:var(--flaeche-2);
+  color:var(--kreide);font:inherit;font-size:15px;cursor:pointer}
+.txzeile[aria-expanded="true"]{border-color:var(--messing)}
+.txzeile .txneu{flex:none;font-size:11px;font-weight:700;color:var(--messing)}
+.txeditor{padding:10px 2px 14px;display:flex;flex-direction:column;gap:10px}
+.txeditor textarea{min-height:66px}
+.txeditor .txknoepfe{display:flex;gap:8px;flex-wrap:wrap}
+.txeditor .txknoepfe .knopf{min-height:44px}
 /* Kopf & Logo im Board */
 .kfreihe{display:flex;align-items:center;gap:14px;margin:0 0 12px}
 .kfschau{flex:none;overflow:hidden;background:var(--flaeche-2);border:1px solid var(--linie);
@@ -3221,7 +3265,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <button role="tab" aria-selected="false" data-tafel="ausgabe">Ausgabe</button>
     <button role="tab" aria-selected="false" data-tafel="verfuegbar">Verfügbar</button>
     <button role="tab" aria-selected="false" data-tafel="auswertung">Auswertung</button>
-    <button role="tab" aria-selected="false" data-tafel="startseite">Startseite</button>
+    <button role="tab" aria-selected="false" data-tafel="startseite">Gast-Hub</button>
     <button role="tab" aria-selected="false" data-tafel="einstellungen">Einstellungen</button>
   </nav>
   </div>
@@ -3240,7 +3284,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 <div class="mehrfach" id="mehrfach" hidden>
   <button type="button" data-tafel="ausgabe" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4z"/><path d="M4 11h16M9 7V4h6v3"/></svg><span>Ausgabe</span></button>
   <button type="button" data-tafel="verfuegbar" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17l9-10"/></svg><span>Verfügbar</span></button>
-  <button type="button" data-tafel="startseite" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="7" rx="2"/><rect x="3.5" y="14" width="7.5" height="5.5" rx="2"/><rect x="13" y="14" width="7.5" height="5.5" rx="2"/></svg><span>Startseite</span></button>
+  <button type="button" data-tafel="startseite" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="7" rx="2"/><rect x="3.5" y="14" width="7.5" height="5.5" rx="2"/><rect x="13" y="14" width="7.5" height="5.5" rx="2"/></svg><span>Gast-Hub</span></button>
     <button type="button" data-tafel="einstellungen" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2 5.6 5.6"/></svg><span>Einstellungen</span></button>
 </div>
 
@@ -3506,31 +3550,32 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
        Wirts. Was er hier einstellt, sieht der Gast beim nächsten
        Öffnen — ohne dass der Hub neu erzeugt werden muss. -->
   <section class="tafel" id="t-startseite" hidden>
-
-    <!-- Gemeinsame Rahmung für Kacheln + Banner-Rad: EIN Bereich,
-         "Ihre Seite" — der Gedanke, dass beide Bausteine zusammen die
-         Startseite des Hubs bilden, stand vorher nur einmal (in der
-         alten Kachel-Überschrift) und nirgends für das neue Banner-Rad.
-         Bewusst ohne neue Mechanik (Nutzer-Entscheidung): reine Rahmung,
-         keine Umsortierung, kein freies Hinzufügen bei den Kacheln. -->
-    <div class="egruppe" data-nur-inhaber>
-      <h2 class="etitel">Ihre Seite</h2>
-      <p class="ehilfe">Alles, was Ihr Gast als Erstes sieht, wenn er das
-        Handy auf den Untersetzer legt — in der Reihenfolge, in der es
-        erscheint: zuerst eine laufende Aktion oder Ihr Banner-Rad, danach
-        die Kacheln. Beides stellen Sie hier ein, beides gilt sofort, ohne
-        dass irgendetwas neu erzeugt werden muss.</p>
-
-      <div class="schalter">
-        <div><div class="schaltertext">Bewegte Emojis</div>
-        <div class="schalterhilfe">Kacheln, Servicerufe und Kategorien bekommen lebendige Emojis, die beim Antippen reagieren. Aus = die ruhigen, gezeichneten Symbole — passend zu einem edlen Auftritt.</div></div>
-        <button class="wippe" id="stilAn" aria-pressed="true" aria-label="Bewegte Emojis"></button>
+    <!-- ══ GAST-HUB GESTALTEN (Wunsch 11.10.) ══
+         „Alles soll auf einem Platz machbar sein und nicht in
+         verschiedene Rubriken aufgeteilt werden.“ Kopf, Texte, Schrift,
+         Farben, Kacheln, Banner, Figur und Foodroulette stehen hier
+         untereinander, darüber EINE Vorschau des echten Hubs, die beim
+         Rollen stehen bleibt. Betriebliches (Lieferung, Team, PIN …)
+         bleibt unter „Einstellungen“. Die Gruppen behalten ihre ids —
+         Lese- und Schreibwege sind dieselben wie vorher. -->
+    <div class="gh-kopf">
+      <h2 class="gh-titel">Gast-Hub gestalten</h2>
+      <p class="ehilfe">Alles, was Ihre Gäste sehen, an einem Ort. Die Vorschau
+        zeigt jede Änderung sofort; Gäste sehen sie, sobald Sie im Bereich
+        „Übernehmen“ tippen.</p>
+      <div class="gh-sprung" role="navigation" aria-label="Bereiche des Gast-Hubs">
+        <a href="#kfGruppe" data-gh-sprung="kfGruppe">Kopf &amp; Logo</a>
+        <a href="#gh-worte" data-gh-sprung="gh-worte">Ihre Worte</a>
+        <a href="#txGruppe" data-gh-sprung="txGruppe">Alle Texte</a>
+        <a href="#swGruppe" data-gh-sprung="swGruppe">Schrift</a>
+        <a href="#fbGruppe" data-gh-sprung="fbGruppe">Farben</a>
+        <a href="#gh-kacheln" data-gh-sprung="gh-kacheln">Kacheln</a>
+        <a href="#gh-banner" data-gh-sprung="gh-banner">Banner</a>
+        <a href="#gh-figur" data-gh-sprung="gh-figur">Figur</a>
+        <a href="#gh-roulette" data-gh-sprung="gh-roulette">Foodroulette</a>
       </div>
-
-      <!-- Der echte Hub, klein: jede Änderung an Kacheln und Banner
-           erscheint hier, bevor sie übernommen wird. -->
-      <div class="hvrahmen" data-hv="startseite"></div>
     </div>
+    <div class="hvrahmen gh-vorschau" data-hv="gestalten"></div>
 
     <!-- Kopf & Logo (Wunsch 11.10.): Bild ganz oben auf der Startseite,
          das Logo mittig auf seiner Unterkante, rund oder eckig. Ein
@@ -3568,6 +3613,110 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="kfStand"></div>
       <div class="eknoepfe">
         <button class="knopf" id="kfSichern" disabled>Übernehmen</button>
+      </div>
+    </div>
+
+    <div class="egruppe" data-nur-inhaber id="gh-worte">
+      <h2 class="etitel">Ihre Worte im Gast-Hub</h2>
+      <p class="ehilfe">Ihr Slogan, der Gruß beim Öffnen, der Name Ihrer Aktionen,
+        das WLAN und „Über uns“. Die Vorschau oben zeigt jede Zeile beim Tippen;
+        Gäste sehen sie nach „Übernehmen“, ohne dass etwas neu gebaut wird.</p>
+
+      <div class="ezeile senkrecht">
+        <span><b>Slogan im Kopf</b><i>Die Zeile unter Ihrem Namen, auf jeder Seite sichtbar</i></span>
+        <label class="feld">
+          <span>Slogan <em class="mass" id="hubClaimMass"></em></span>
+          <input type="text" id="hubClaim" autocomplete="off" placeholder="Don't get mad, get chocolate.">
+          <small class="feldhilfe" id="hubClaimHilfe">Kurz wirkt am besten — eine Zeile,
+            die man im Vorbeigehen liest.</small>
+          <small class="hvwarn" data-hvwarn="claim"></small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Gruß beim Öffnen</b><i>Drei Sekunden auf dem Willkommensschirm, einmal je Besuch</i></span>
+        <label class="feld">
+          <span>Gruß <em class="mass" id="hubGrussMass"></em></span>
+          <input type="text" id="hubGruss" autocomplete="off" placeholder="Schön, dass Sie da sind.">
+          <small class="feldhilfe" id="hubGrussHilfe">Ein Satz, den Ihr Team auch
+            sagen würde.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>So heißen Ihre Aktionen</b><i>Vorgabe für den Top-Runner — je Aktion überschreibbar</i></span>
+        <label class="feld">
+          <span>Aktionsname <em class="mass" id="hubRunnerMass"></em></span>
+          <input type="text" id="hubRunner" autocomplete="off" placeholder="Top-Runner">
+          <small class="feldhilfe" id="hubRunnerHilfe">„Happy Hour", „Mittagsknaller",
+            „Heute besonders" — Ihr Wort, nicht unseres.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Laufschrift beim Top-Runner</b><i>Läuft im farbigen Band über der Aktion — leer: Name, Gericht, Rabatt und Restzeit</i></span>
+        <label class="feld">
+          <span>Laufschrift <em class="mass" id="hubLaufschriftMass"></em></span>
+          <input type="text" id="hubLaufschrift" autocomplete="off" placeholder="Nur heute · solange der Vorrat reicht">
+          <small class="feldhilfe" id="hubLaufschriftHilfe">Der Rabatt in Prozent kommt von selbst
+            dazu. Kurz und laut wirkt am besten.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>WLAN für Gäste</b><i>Auf der Seite „WLAN verbinden“ — der Gast sieht das Passwort nicht, er kopiert es mit einem Tipp oder scannt den QR-Code</i></span>
+        <label class="feld">
+          <span>Name des Netzes <em class="mass" id="hubWlanNetzMass"></em></span>
+          <input type="text" id="hubWlanNetz" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Name wie im WLAN-Menü des Handys">
+          <small class="feldhilfe" id="hubWlanNetzHilfe">Genau so geschrieben, wie er im WLAN-Menü steht —
+            sonst findet der QR-Code das Netz nicht.</small>
+        </label>
+        <label class="feld">
+          <span>Passwort <em class="mass" id="hubWlanPasswortMass"></em></span>
+          <input type="text" id="hubWlanPasswort" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Passwort des Gäste-WLANs">
+          <small class="feldhilfe" id="hubWlanPasswortHilfe">Nur das Gäste-Netz, nie das Netz Ihrer Kasse:
+            Jeder, der die Seite öffnet, kann es kopieren.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Über uns</b><i>Auf der Seite hinter Ihrem Logo — ein paar Sätze, wer Sie sind</i></span>
+        <label class="feld">
+          <span>Über uns <em class="mass" id="hubUeberMass"></em></span>
+          <textarea id="hubUeber" rows="4" placeholder="Seit 2019 backen wir jeden Morgen selbst …"></textarea>
+          <small class="feldhilfe" id="hubUeberHilfe">Erscheint, wenn ein Gast auf Ihr Logo tippt.
+            Zeilenumbrüche bleiben stehen.</small>
+        </label>
+      </div>
+
+      <!-- Rückfall, wenn der echte Hub oben nicht zu laden ist (offline). -->
+      <div class="hubschau" id="hubSchau" aria-live="polite" hidden></div>
+
+      <div class="eknoepfe">
+        <button class="knopf" id="hubTexteSichern">Übernehmen</button>
+        <button class="knopf leise" id="hubTexteZurueck">Auf Vorgabe zurück</button>
+      </div>
+      <div class="epruefung" id="hubTextePruefung"></div>
+    </div>
+
+    <!-- ══ TEXTE & SCHRIFT (Wunsch 11.10.) ══
+         „Jeden Text, der auf den Seiten begegnet, ganz einfach ändern —
+         sowohl den Text als auch die Schrift von einzelnen Texten.“
+         Gespeichert in hub_texte.eigen, Schlüssel = deutscher Satz des
+         Wörterbuchs im Hub. Die Liste kommt aus dem Hub selbst
+         (vorschauTexte) — keine zweite, abgeschriebene Liste hier. -->
+    <div class="egruppe" data-nur-inhaber id="txGruppe">
+      <h2 class="etitel">Texte &amp; Schrift</h2>
+      <p class="ehilfe">Jeder Satz, den Ihre Gäste lesen — Knöpfe, Überschriften,
+        Hinweise. Tippen Sie ihn oben in der Vorschau an oder suchen Sie ihn hier,
+        ändern Sie Wortlaut und Schrift. Beim Übernehmen wird Ihre Änderung in alle
+        elf Sprachen übersetzt. Gerichte ändern Sie in der Karte.</p>
+      <button type="button" class="knopf leise schmal" id="txTippen" aria-pressed="false">Text in der Vorschau antippen</button>
+      <input type="text" class="suche" id="txSuche" placeholder="Text suchen" autocomplete="off" aria-label="Text suchen">
+      <div class="txliste" id="txListe" aria-live="polite"></div>
+      <div class="epruefung" id="txStand"></div>
+      <div class="eknoepfe">
+        <button class="knopf" id="txSichern" disabled>Übernehmen</button>
       </div>
     </div>
 
@@ -3704,7 +3853,6 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
       <p class="fbwarn" id="fbWarn" aria-live="polite"></p>
       <button type="button" class="knopf leise" id="fbLesbar" hidden>Lesbar machen</button>
-      <div class="hvrahmen" data-hv="farben"></div>
       <div class="ezeile senkrecht">
         <span><b>Übernehmen</b><i>Gäste sehen es beim nächsten Abgleich, spätestens nach fünf Minuten</i></span>
         <div class="kbknoepfe">
@@ -3715,7 +3863,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="fbPruefung" aria-live="polite"></div>
     </div>
 
-    <div class="egruppe" data-nur-inhaber>
+    <div class="egruppe" data-nur-inhaber id="gh-kacheln">
       <h2 class="etitel">Kacheln</h2>
       <p class="ehilfe">Die Knöpfe auf Ihrer Seite — welche erscheinen, wie
         sie heißen und welches Bild darauf liegt.</p>
@@ -3755,7 +3903,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          wird darunter in einer normalen Liste — ein volles
          Bearbeitungsformular (Bild, Titel, Ziel-Wahl) passt nicht
          bequem in eine wischbare Karte hinein. -->
-    <div class="egruppe" data-nur-inhaber>
+    <div class="egruppe" data-nur-inhaber id="gh-banner">
       <h2 class="etitel">Aktions-Banner-Rad</h2>
       <p class="ehilfe">Ein wischbares Bilderkarussell ganz oben auf der
         Startseite — für ein Angebot, eine Neuigkeit oder eine laufende
@@ -3772,6 +3920,44 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </div>
       </div>
       <div class="epruefung" id="bnPruefung"></div>
+    </div>
+
+    <div class="egruppe" data-nur-inhaber id="gh-figur">
+      <h2 class="etitel">Figur des Hauses</h2>
+      <p class="ehilfe">Welche Figur den Gast im Hub begleitet, welche
+        Stimmung sie hat und was sie je Bestellphase in der Hand hält —
+        gilt sofort, ohne dass der Hub neu erzeugt werden muss.</p>
+      <div id="avListe"></div>
+      <div class="eknoepfe">
+        <button class="knopf" id="avSichern">Übernehmen</button>
+      </div>
+      <div class="epruefung" id="avPruefung"></div>
+    </div>
+
+    <div class="egruppe" data-nur-inhaber id="gh-roulette">
+      <h2 class="etitel">Foodroulette</h2>
+      <p class="ehilfe">Die Entscheidungshilfe auf der Speisekarte: Der Gast wischt
+        durch Gerichte oder lässt sich eines auslosen. Aus = die Speisekarte zeigt
+        nur die normale Liste, ohne diesen Einstieg.</p>
+      <div class="schalter">
+        <div><div class="schaltertext">Für Gäste anzeigen</div>
+        <div class="schalterhilfe">Aus = auf der Speisekarte unsichtbar, der Weg „#/entdecken“ führt zurück dorthin</div></div>
+        <button class="wippe" id="frAn" aria-pressed="true" aria-label="Foodroulette"></button>
+      </div>
+    </div>
+
+    <!-- Früher „Ihre Seite“ mit eigener Vorschau; seit 11.10. steht die
+         Vorschau oben für den ganzen Reiter, hier bleibt der Schalter. -->
+    <div class="egruppe" data-nur-inhaber id="gh-emojis">
+      <h2 class="etitel">Bewegte Emojis</h2>
+      <p class="ehilfe">Lebendige Zeichen auf Kacheln, Servicerufen und
+        Kategorien — oder ruhige, gezeichnete Symbole für einen edlen Auftritt.</p>
+
+      <div class="schalter">
+        <div><div class="schaltertext">Bewegte Emojis</div>
+        <div class="schalterhilfe">Kacheln, Servicerufe und Kategorien bekommen lebendige Emojis, die beim Antippen reagieren. Aus = die ruhigen, gezeichneten Symbole — passend zu einem edlen Auftritt.</div></div>
+        <button class="wippe" id="stilAn" aria-pressed="true" aria-label="Bewegte Emojis"></button>
+      </div>
     </div>
   </section>
 
@@ -3821,93 +4007,6 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="tonPruefung"></div>
     </div>
 
-    <div class="egruppe" data-nur-inhaber>
-      <h2 class="etitel">Ihre Worte im Gast-Hub</h2>
-      <p class="ehilfe">Farben, Schriften und Aufbau kommen aus dem Marken-Studio —
-        das bleibt so, damit der Hub zusammenhält. Hier stehen die Sätze, die Sie
-        jederzeit selbst ändern dürfen. Sie sind sofort beim Gast, ohne dass etwas
-        neu gebaut werden muss.</p>
-
-      <div class="ezeile senkrecht">
-        <span><b>Slogan im Kopf</b><i>Die Zeile unter Ihrem Namen, auf jeder Seite sichtbar</i></span>
-        <label class="feld">
-          <span>Slogan <em class="mass" id="hubClaimMass"></em></span>
-          <input type="text" id="hubClaim" autocomplete="off" placeholder="Don't get mad, get chocolate.">
-          <small class="feldhilfe" id="hubClaimHilfe">Kurz wirkt am besten — eine Zeile,
-            die man im Vorbeigehen liest.</small>
-          <small class="hvwarn" data-hvwarn="claim"></small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>Gruß beim Öffnen</b><i>Drei Sekunden auf dem Willkommensschirm, einmal je Besuch</i></span>
-        <label class="feld">
-          <span>Gruß <em class="mass" id="hubGrussMass"></em></span>
-          <input type="text" id="hubGruss" autocomplete="off" placeholder="Schön, dass Sie da sind.">
-          <small class="feldhilfe" id="hubGrussHilfe">Ein Satz, den Ihr Team auch
-            sagen würde.</small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>So heißen Ihre Aktionen</b><i>Vorgabe für den Top-Runner — je Aktion überschreibbar</i></span>
-        <label class="feld">
-          <span>Aktionsname <em class="mass" id="hubRunnerMass"></em></span>
-          <input type="text" id="hubRunner" autocomplete="off" placeholder="Top-Runner">
-          <small class="feldhilfe" id="hubRunnerHilfe">„Happy Hour", „Mittagsknaller",
-            „Heute besonders" — Ihr Wort, nicht unseres.</small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>Laufschrift beim Top-Runner</b><i>Läuft im farbigen Band über der Aktion — leer: Name, Gericht, Rabatt und Restzeit</i></span>
-        <label class="feld">
-          <span>Laufschrift <em class="mass" id="hubLaufschriftMass"></em></span>
-          <input type="text" id="hubLaufschrift" autocomplete="off" placeholder="Nur heute · solange der Vorrat reicht">
-          <small class="feldhilfe" id="hubLaufschriftHilfe">Der Rabatt in Prozent kommt von selbst
-            dazu. Kurz und laut wirkt am besten.</small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>WLAN für Gäste</b><i>Auf der Seite „WLAN verbinden“ — der Gast sieht das Passwort nicht, er kopiert es mit einem Tipp oder scannt den QR-Code</i></span>
-        <label class="feld">
-          <span>Name des Netzes <em class="mass" id="hubWlanNetzMass"></em></span>
-          <input type="text" id="hubWlanNetz" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Name wie im WLAN-Menü des Handys">
-          <small class="feldhilfe" id="hubWlanNetzHilfe">Genau so geschrieben, wie er im WLAN-Menü steht —
-            sonst findet der QR-Code das Netz nicht.</small>
-        </label>
-        <label class="feld">
-          <span>Passwort <em class="mass" id="hubWlanPasswortMass"></em></span>
-          <input type="text" id="hubWlanPasswort" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Passwort des Gäste-WLANs">
-          <small class="feldhilfe" id="hubWlanPasswortHilfe">Nur das Gäste-Netz, nie das Netz Ihrer Kasse:
-            Jeder, der die Seite öffnet, kann es kopieren.</small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>Über uns</b><i>Auf der Seite hinter Ihrem Logo — ein paar Sätze, wer Sie sind</i></span>
-        <label class="feld">
-          <span>Über uns <em class="mass" id="hubUeberMass"></em></span>
-          <textarea id="hubUeber" rows="4" placeholder="Seit 2019 backen wir jeden Morgen selbst …"></textarea>
-          <small class="feldhilfe" id="hubUeberHilfe">Erscheint, wenn ein Gast auf Ihr Logo tippt.
-            Zeilenumbrüche bleiben stehen.</small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>So sieht es der Gast</b><i>Kopf des Hubs in Telefonbreite, mit Ihren Worten</i></span>
-        <div class="hvrahmen" data-hv="worte"></div>
-        <!-- Rückfall, wenn der echte Hub nicht zu laden ist (offline). -->
-        <div class="hubschau" id="hubSchau" aria-live="polite" hidden></div>
-      </div>
-
-      <div class="eknoepfe">
-        <button class="knopf" id="hubTexteSichern">Übernehmen</button>
-        <button class="knopf leise" id="hubTexteZurueck">Auf Vorgabe zurück</button>
-      </div>
-      <div class="epruefung" id="hubTextePruefung"></div>
-    </div>
 
     <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Lieferung</h2>
@@ -4158,29 +4257,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         zugesagt haben, zählt herunter.</p>
     </div>
 
-    <div class="egruppe" data-nur-inhaber>
-      <h2 class="etitel">Foodroulette</h2>
-      <p class="ehilfe">Die Entscheidungshilfe auf der Speisekarte: Der Gast wischt
-        durch Gerichte oder lässt sich eines auslosen. Aus = die Speisekarte zeigt
-        nur die normale Liste, ohne diesen Einstieg.</p>
-      <div class="schalter">
-        <div><div class="schaltertext">Für Gäste anzeigen</div>
-        <div class="schalterhilfe">Aus = auf der Speisekarte unsichtbar, der Weg „#/entdecken“ führt zurück dorthin</div></div>
-        <button class="wippe" id="frAn" aria-pressed="true" aria-label="Foodroulette"></button>
-      </div>
-    </div>
 
-    <div class="egruppe" data-nur-inhaber>
-      <h2 class="etitel">Figur des Hauses</h2>
-      <p class="ehilfe">Welche Figur den Gast im Hub begleitet, welche
-        Stimmung sie hat und was sie je Bestellphase in der Hand hält —
-        gilt sofort, ohne dass der Hub neu erzeugt werden muss.</p>
-      <div id="avListe"></div>
-      <div class="eknoepfe">
-        <button class="knopf" id="avSichern">Übernehmen</button>
-      </div>
-      <div class="epruefung" id="avPruefung"></div>
-    </div>
 
     <div class="egruppe">
       <h2 class="etitel">Bildschirm</h2>
@@ -4370,7 +4447,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="griff"></div>
     <h2 class="blatttitel" id="kvTitel">Karten</h2>
     <p class="kted-hilfe">Bis zu 20 Karten, z.&nbsp;B. Mittags- und Abendkarte. Ein Gericht darf in
-      mehreren stehen. Welche Karte eine Kachel zeigt, stellst du unter „Startseite“ ein.</p>
+      mehreren stehen. Welche Karte eine Kachel zeigt, stellst du unter „Gast-Hub“ bei den Kacheln ein.</p>
     <div id="kvListe" class="kv-liste"></div>
     <button type="button" class="kted-neu" id="kvNeu"><span aria-hidden="true">＋</span> Neue Karte</button>
     <div class="kted-knoepfe" style="margin-top:16px">
@@ -8135,7 +8212,13 @@ function euEinrichten(){
   nav.setAttribute("role", "navigation");
   nav.className = "egruppe eu-uebersicht"; nav.id = "euUebersicht";
   nav.setAttribute("aria-label", "Alle Einstellungen auf einen Blick");
-  nav.innerHTML = '<h2 class="etitel">Auf einen Blick</h2>' + liste.map(({b, ziel}) =>
+  /* Seit 11.10. liegt alles, was Gäste sehen, im Reiter „Gast-Hub“ —
+     die Übersicht verweist dorthin, statt die Bereiche doppelt zu führen. */
+  nav.innerHTML = '<h2 class="etitel">Auf einen Blick</h2>' +
+    '<a class="eu-reihe" href="#" data-eu-tafel="startseite" style="--ton:var(--telefon)">' +
+      '<span class="eu-symbol" aria-hidden="true">' + euIcon("blase") + '</span>' +
+      '<span class="eu-text"><b>Gast-Hub gestalten</b><i>Kopf und Logo, Texte, Schrift, Farben, Kacheln, Banner, Figur</i></span>' +
+      '<span class="eu-wert"></span><span class="eu-pfeil" aria-hidden="true">›</span></a>' + liste.map(({b, ziel}) =>
     '<a class="eu-reihe" href="#' + ziel + '" data-eu-ziel="' + ziel + '" style="--ton:' + b.ton + '">' +
       '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
       '<span class="eu-text"><b>' + sicher(b.titel) + '</b><i>' + sicher(b.satz) + '</i></span>' +
@@ -8143,6 +8226,8 @@ function euEinrichten(){
       '<span class="eu-pfeil" aria-hidden="true">›</span></a>').join("");
   tafel.insertBefore(nav, tafel.firstElementChild);
   nav.addEventListener("click", e => {
+    const t = e.target.closest("[data-eu-tafel]");
+    if(t){ e.preventDefault(); tafelZeigen(t.dataset.euTafel); window.scrollTo(0, 0); return; }
     const a = e.target.closest("[data-eu-ziel]"); if(!a) return;
     e.preventDefault();
     const ziel = document.getElementById(a.dataset.euZiel); if(!ziel) return;
@@ -11194,13 +11279,17 @@ function tafelZeigen(ziel){
   mehrZu();
 
   if(ziel === "speisekarte")     aktionenLaden();
-  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); gsLaden(); rcLaden(); aeLaden(true); }
+  if(ziel === "einstellungen"){ einstZeichnen(); lfFuellen(); gsLaden(); rcLaden(); aeLaden(true); }
   /* aktionenLaden() zusätzlich hier: Der "Aktion"-Ziel-Wähler im
      Banner-Rad braucht das aktionen-Array, das sonst erst beim
      Öffnen des Speisekarte-Reiters gefüllt wird — ein Wirt, der
      direkt auf "Startseite" geht, sähe sonst fälschlich "keine
      laufende Aktion", obwohl welche liefen. */
-  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); fbLaden(); kfLaden(); aktionenLaden(); }
+  /* „Gast-Hub“ (früher „Startseite“): seit 11.10. stehen hier auch
+     „Ihre Worte“, Figur und Foodroulette — sie werden mit gefüllt. */
+  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); fbLaden(); kfLaden(); aktionenLaden();
+                             hubTexteFuellen(); avStandLaden(); reglerFuellen(); avRaederAusrichten();
+                             txLaden(); setTimeout(txListeLaden, 0); }
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
   if(ziel === "auswertung")      awLaden();
@@ -11538,26 +11627,34 @@ function hvStand(h, text){
 
 /* Lädt die Vorschau eines Bereichs einmal — erst, wenn er gebraucht
    wird. Wechselt der Betrieb, wird neu geladen. */
+/* Seit 11.10. teilen sich Startseite, Farben und Worte EINE Vorschau
+   oben im Reiter „Gast-Hub“ (data-hv="gestalten"). Die alten Namen
+   bleiben als Verweis auf denselben Rahmen — jede Stelle, die
+   hvSenden("farben", …) ruft, trifft ihn weiter. */
+const HV_ALIAS = { startseite:"gestalten", farben:"gestalten", worte:"gestalten" };
 function hvStart(schl){
-  const rahmen = document.querySelector('[data-hv="' + schl + '"]');
+  const echt = HV_ALIAS[schl] || schl;
+  const rahmen = document.querySelector('[data-hv="' + echt + '"]');
   if(!rahmen) return null;
   const alle = hvAlle(), quelle = hvQuelle();
-  let h = alle[schl];
-  if(h && h.quelle === quelle) return h;
+  const verweise = h => { alle[echt] = h; Object.keys(HV_ALIAS).forEach(k => { if(HV_ALIAS[k] === echt) alle[k] = h; }); return h; };
+  let h = alle[echt];
+  if(h && h.quelle === quelle) return verweise(h);
   if(!quelle || quelle === "lokal"){
     rahmen.innerHTML = '<p class="hvstand">' + (quelle === "lokal"
       ? "Die Vorschau gibt es im ausgelieferten Board unter omoteno.de/admin."
       : "Die Vorschau erscheint, sobald ein Betrieb gewählt ist.") + '</p>';
-    if(schl === "worte"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
+    if(echt === "gestalten"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
     return null;
   }
   rahmen.innerHTML =
-    '<div class="hvkopf"><b>So sieht es der Gast</b>' +
-      '<button type="button" class="hvgroesse" data-hv-gross aria-pressed="false">Größer</button></div>' +
+    '<div class="hvkopf"><b>So sieht es der Gast</b><span class="hvknoepfe">' +
+      (echt === "gestalten" ? '<button type="button" class="hvgroesse" data-hv-zu aria-pressed="false">Einklappen</button>' : "") +
+      '<button type="button" class="hvgroesse" data-hv-gross aria-pressed="false">Größer</button></span></div>' +
     '<div class="hvfenster"><iframe title="Vorschau des Gast-Hubs" tabindex="-1"></iframe></div>' +
     '<p class="hvstand" aria-live="polite">Vorschau lädt …</p>';
-  h = alle[schl] = { quelle, rahmen, frame: rahmen.querySelector("iframe"),
-                     bereit:false, entwurf:{}, ziel:"", uhr:0 };
+  h = verweise({ quelle, rahmen, frame: rahmen.querySelector("iframe"),
+                 bereit:false, entwurf:{}, ziel:"", uhr:0 });
   fetch(quelle, { cache:"no-cache" })
     .then(a => { if(!a.ok) throw new Error("HTTP " + a.status); return a.text(); })
     .then(html => {
@@ -11570,7 +11667,11 @@ function hvStart(schl){
         hvAnwenden(schl);
         /* Farben: Ohne gespeicherten Stand gilt das Markenblatt des
            HUBS — erst die geladene Vorschau kennt es genau. */
-        if(schl === "farben" && FB && !FB.eigen && !FB_BERUEHRT) fbLaden();
+        if(echt === "gestalten" && FB && !FB.eigen && !FB_BERUEHRT) fbLaden();
+        if(echt === "gestalten"){
+          try{ if(TX_TIPPEN) h.frame.contentWindow.vorschauTextTippen(true); }catch(e){}
+          setTimeout(() => { if(typeof txListeLaden === "function") txListeLaden(); }, 1700);
+        }
         /* Der Hub gleicht nach dem Laden mit der Datenbank ab und
            zeichnet dabei neu — danach noch einmal messen. */
         setTimeout(() => hvAnwenden(schl), 1600);
@@ -11582,7 +11683,7 @@ function hvStart(schl){
       if(hvAlle()[schl] !== h) return;
       hvStand(h, "Die Vorschau ist gerade nicht zu laden. Gespeichert wird trotzdem.");
       rahmen.querySelector(".hvfenster").hidden = true;
-      if(schl === "worte"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
+      if(echt === "gestalten"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
     });
   return h;
 }
@@ -11592,7 +11693,15 @@ function hvStart(schl){
    Tippen im Hub anfühlt. */
 function hvSenden(schl, teil, ziel){
   const h = hvStart(schl); if(!h) return;
-  Object.assign(h.entwurf, teil || {});
+  /* Ein Rahmen, mehrere Absender: hub_stil und hub_texte werden eine
+     Ebene tiefer zusammengeführt — sonst nähme der Farb-Entwurf der
+     Vorschau die Schrift und das Kopfbild wieder weg. */
+  Object.keys(teil || {}).forEach(k => {
+    const v = teil[k], alt = h.entwurf[k];
+    if((k === "hub_stil" || k === "hub_texte") && v && typeof v === "object" && !Array.isArray(v) &&
+       alt && typeof alt === "object" && !Array.isArray(alt)) h.entwurf[k] = Object.assign({}, alt, v);
+    else h.entwurf[k] = v;
+  });
   if(ziel) h.ziel = ziel;
   clearTimeout(h.uhr);
   h.uhr = setTimeout(() => hvAnwenden(schl), 120);
@@ -11611,7 +11720,10 @@ function hvAnwenden(schl){
   w.requestAnimationFrame(() => w.requestAnimationFrame(() => {
     let m = null;
     try{ m = w.vorschauMessen(); }catch(e){}
-    if(m) hvWarnungen(schl, m);
+    if(m){
+      if((HV_ALIAS[schl] || schl) === "gestalten") ["worte", "startseite"].forEach(k => hvWarnungen(k, m));
+      else hvWarnungen(schl, m);
+    }
   }));
 }
 
@@ -12304,6 +12416,41 @@ function hvWorte(ziel){
             ziel || "kopf");
 }
 
+/* „Einklappen“: die klebende Vorschau im Gast-Hub-Reiter nur als
+   Kopfzeile — mehr Platz zum Bearbeiten auf dem Telefon. */
+document.addEventListener("click", e => {
+  const k = e.target.closest && e.target.closest("[data-hv-zu]");
+  if(!k) return;
+  const rahmen = k.closest(".hvrahmen");
+  const zu = !rahmen.classList.contains("zu");
+  rahmen.classList.toggle("zu", zu);
+  k.setAttribute("aria-pressed", String(zu));
+  k.textContent = zu ? "Aufklappen" : "Einklappen";
+});
+/* Sprungleiste: ein Tipp führt zum Bereich, unter die klebende Vorschau. */
+document.addEventListener("click", e => {
+  const a = e.target.closest && e.target.closest("[data-gh-sprung]");
+  if(!a) return;
+  e.preventDefault();
+  const ziel = document.getElementById(a.dataset.ghSprung); if(!ziel) return;
+  const vorschau = document.querySelector(".gh-vorschau");
+  const kopf = document.querySelector("header");
+  const ab = (kopf ? kopf.getBoundingClientRect().height : 0) + (vorschau ? vorschau.getBoundingClientRect().height : 0) + 8;
+  const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: window.scrollY + ziel.getBoundingClientRect().top - ab, behavior: ruhig ? "auto" : "smooth" });
+});
+/* Die Höhe des Board-Kopfs als Variable — dort klebt die Vorschau. */
+(function(){
+  const k = document.querySelector("header"); if(!k) return;
+  const v = document.querySelector(".gh-vorschau");
+  const setzen = () => {
+    document.documentElement.style.setProperty("--board-kopf", Math.round(k.getBoundingClientRect().height) + "px");
+    if(v && v.offsetHeight) document.documentElement.style.setProperty("--gh-vorschau-h", Math.round(v.offsetHeight) + "px");
+  };
+  setzen();
+  if(typeof ResizeObserver === "function"){ const ro = new ResizeObserver(setzen); ro.observe(k); if(v) ro.observe(v); }
+})();
+
 /* „Größer“: dieselbe Vorschau, mehr Fläche. */
 document.addEventListener("click", e => {
   const k = e.target.closest && e.target.closest("[data-hv-gross]");
@@ -12471,6 +12618,203 @@ async function hubTexteSichern(){
   }
   knopf.disabled = false; knopf.textContent = "Übernehmen";
 }
+
+/* ══ TEXTE & SCHRIFT (hub_texte.eigen, Wunsch 11.10.) ═══════════════
+   Jeder Text des Hubs ist ein Wörterbuchschlüssel (der deutsche Satz).
+   Der Wirt ändert Wortlaut und Schrift; beim Übernehmen übersetzt der
+   Übersetzer die geänderten Sätze in elf Sprachen (in Paketen zu 25,
+   wie die Edge Function sie annimmt). Fällt die Übersetzung aus, wird
+   trotzdem gespeichert — auf Deutsch, mit Satz (§7).
+   TX ist null, bis der Stand gelesen ist (§8.1m). */
+const TX_SEITEN = { start:"Startseite", haus:"Haus-Seite (Logo)", speisekarte:"Speisekarte", getraenke:"Getränke",
+  cocktails:"Cocktails", kontakt:"Öffnungszeiten & Weg", quiz:"Tischquiz", wlan:"WLAN", service:"Service rufen",
+  rueckmeldung:"Bewertung", musik:"Musikwunsch", trinkgeld:"Trinkgeld", reservieren:"Reservieren",
+  meintisch:"Mein Tisch", entdecken:"Foodroulette", auswahl:"Ihre Auswahl", bestellt:"Bestellpass" };
+const TX_SPRACHEN = ["en","tr","ru","fr","es","it","pl","ar","uk","nl","ro"];
+const TX_HOECHST = 120;
+let TX = null, TX_NEU = new Set(), TX_LISTE = [], TX_OFFEN = null, TX_TIPPEN = false;
+function txLaden(){
+  const e = HUBTEXTE && HUBTEXTE.eigen && typeof HUBTEXTE.eigen === "object" ? HUBTEXTE.eigen : {};
+  TX = JSON.parse(JSON.stringify(e));
+  TX_NEU = new Set(); TX_OFFEN = null;
+  $("#txStand").textContent = "";
+  txZeichnen();
+}
+function txFuerHub(){
+  const aus = {};
+  Object.keys(TX || {}).forEach(k => {
+    const e = TX[k]; if(!e || typeof e !== "object") return;
+    const o = {};
+    Object.keys(e).forEach(f => { if(e[f]) o[f] = e[f]; });
+    if(Object.keys(o).length) aus[k] = o;
+  });
+  return aus;
+}
+/* Die Liste kommt aus der Vorschau: Jede Seite einmal gebaut, jeder
+   Schlüssel gemerkt. Ohne Vorschau (offline) gibt es keine Liste —
+   und das wird gesagt, statt eine leere Fläche zu zeigen. */
+function txListeLaden(){
+  const h = hvAlle().gestalten;
+  let roh = null;
+  try{ roh = h && h.bereit && h.frame.contentWindow.vorschauTexte ? h.frame.contentWindow.vorschauTexte() : null; }catch(e){}
+  if(!roh){ TX_LISTE = []; txZeichnen(); return; }
+  const gesehen = new Set(), liste = [];
+  const reihe = ["start", "haus"].concat(Object.keys(roh).filter(x => x !== "start" && x !== "haus"));
+  reihe.forEach(sz => (roh[sz] || []).forEach(k => { if(gesehen.has(k)) return; gesehen.add(k); liste.push({ k, sz }); }));
+  TX_LISTE = liste;
+  txZeichnen();
+}
+function txAnzeige(k){ return (TX && TX[k] && TX[k].de) || k; }
+function txZeichnen(){
+  const feld = $("#txListe"); if(!feld) return;
+  if(!TX){ feld.innerHTML = '<p class="hvstand">Der gespeicherte Stand ist noch nicht gelesen.</p>'; $("#txSichern").disabled = true; return; }
+  if(!TX_LISTE.length){ feld.innerHTML = '<p class="hvstand">Die Liste erscheint, sobald die Vorschau oben geladen ist.</p>'; }
+  else {
+    const such = String($("#txSuche").value || "").trim().toLowerCase();
+    let html = "", letzte = null;
+    TX_LISTE.filter(x => !such || x.k.toLowerCase().includes(such) || txAnzeige(x.k).toLowerCase().includes(such)).forEach(x => {
+      if(x.sz !== letzte){ html += '<div class="txseite">' + sicher(TX_SEITEN[x.sz] || x.sz) + '</div>'; letzte = x.sz; }
+      const offen = TX_OFFEN === x.k;
+      const eigen = TX[x.k] && (TX[x.k].de || TX[x.k].schrift);
+      html += '<button type="button" class="txzeile" data-tx="' + sicher(x.k) + '" aria-expanded="' + offen + '">' +
+        '<span>' + sicher(txAnzeige(x.k)) + '</span>' + (eigen ? '<span class="txneu">geändert</span>' : "") + '</button>';
+      if(offen) html += txEditorHTML(x.k);
+    });
+    feld.innerHTML = html || '<p class="hvstand">Kein Text gefunden.</p>';
+  }
+  $("#txSichern").disabled = !TX_NEU.size && !txGeruehrt;
+}
+let txGeruehrt = false;
+function txEditorHTML(k){
+  const e = (TX && TX[k]) || {};
+  const opt = '<option value="">Wie überall</option>' + SCHRIFT_WAHL.map(w =>
+    '<option value="' + sicher(w.s) + '"' + (e.schrift === w.s ? " selected" : "") + '>' + sicher(w.familie) + '</option>').join("");
+  return '<div class="txeditor" data-tx-ed="' + sicher(k) + '">' +
+    '<label class="feld"><span>Text</span><textarea data-tx-text rows="2" maxlength="160">' + sicher(e.de || k) + '</textarea>' +
+      '<small class="feldhilfe">Vorgabe: „' + sicher(k) + '“' + (k.indexOf("{") >= 0 ? " — Teile in {…} füllt der Hub, bitte stehen lassen." : "") + '</small></label>' +
+    '<label class="feld"><span>Schrift dieses Textes</span><select data-tx-schrift>' + opt + '</select></label>' +
+    '<div class="txknoepfe"><button type="button" class="knopf leise schmal" data-tx-zurueck>Vorgabe wiederherstellen</button></div></div>';
+}
+function txVorschau(k){
+  const x = TX_LISTE.find(y => y.k === k);
+  hvSenden("worte", { hub_texte:{ eigen: txFuerHub() } }, x ? x.sz : "kopf");
+}
+function txOeffnen(k){
+  TX_OFFEN = TX_OFFEN === k ? null : k;
+  $("#txSuche").value = TX_OFFEN && !TX_LISTE.some(x => x.k === k) ? "" : $("#txSuche").value;
+  if(TX_OFFEN && !TX_LISTE.some(x => x.k === k)) TX_LISTE.unshift({ k, sz:"start" });
+  txZeichnen();
+  if(!TX_OFFEN) return;
+  const ed = document.querySelector('[data-tx-ed="' + CSS.escape(k) + '"]');
+  if(ed){
+    const vorschau = document.querySelector(".gh-vorschau"), kopf = document.querySelector("header");
+    const ab = (kopf ? kopf.getBoundingClientRect().height : 0) + (vorschau ? vorschau.getBoundingClientRect().height : 0) + 60;
+    window.scrollTo({ top: window.scrollY + ed.getBoundingClientRect().top - ab });
+    const f = ed.querySelector("[data-tx-text]"); if(f) f.focus({ preventScroll:true });
+  }
+  txVorschau(k);
+}
+/* Aus der Vorschau: der Hub ruft das, wenn im Textmodus getippt wird. */
+window.vorschauTextGewaehlt = (k, seite) => {
+  if(!k){ $("#txStand").textContent = "Dieser Text lässt sich hier nicht ändern — Gerichte ändern Sie in der Karte."; return; }
+  $("#txStand").textContent = "";
+  $("#txSuche").value = "";
+  if(!TX_LISTE.some(x => x.k === k)) TX_LISTE.unshift({ k, sz: seite || "start" });
+  TX_OFFEN = null;
+  txOeffnen(k);
+};
+$("#txListe").addEventListener("click", e => {
+  const z = e.target.closest("[data-tx]"); if(z){ txOeffnen(z.dataset.tx); return; }
+  const zur = e.target.closest("[data-tx-zurueck]");
+  if(zur && TX){
+    const k = zur.closest("[data-tx-ed]").dataset.txEd;
+    delete TX[k]; TX_NEU.delete(k); txGeruehrt = true;
+    TX_OFFEN = null; txZeichnen(); txVorschau(k);
+  }
+});
+$("#txListe").addEventListener("input", e => {
+  const ed = e.target.closest("[data-tx-ed]"); if(!ed || !TX) return;
+  const k = ed.dataset.txEd;
+  if(e.target.matches("[data-tx-text]")){
+    const v = e.target.value.replace(/[<>]/g, "").slice(0, 160);
+    if(v !== e.target.value) e.target.value = v;
+    const e2 = TX[k] || {};
+    const schrift = e2.schrift;
+    /* Neuer Wortlaut: alte Übersetzungen passen nicht mehr. */
+    TX[k] = schrift ? { schrift } : {};
+    if(v.trim() && v.trim() !== k) TX[k].de = v.trim();
+    if(!Object.keys(TX[k]).length) delete TX[k];
+    if(TX[k] && TX[k].de) TX_NEU.add(k); else TX_NEU.delete(k);
+    txGeruehrt = true;
+    $("#txSichern").disabled = false;
+    txVorschau(k);
+  }
+});
+$("#txListe").addEventListener("change", e => {
+  const ed = e.target.closest("[data-tx-ed]"); if(!ed || !TX || !e.target.matches("[data-tx-schrift]")) return;
+  const k = ed.dataset.txEd, w = e.target.value;
+  TX[k] = TX[k] || {};
+  if(w && SCHRIFT_WAHL.some(x => x.s === w)) TX[k].schrift = w; else delete TX[k].schrift;
+  if(!Object.keys(TX[k]).length) delete TX[k];
+  txGeruehrt = true; $("#txSichern").disabled = false;
+  txVorschau(k);
+});
+$("#txSuche").addEventListener("input", () => txZeichnen());
+$("#txTippen").onclick = () => {
+  TX_TIPPEN = !TX_TIPPEN;
+  $("#txTippen").setAttribute("aria-pressed", String(TX_TIPPEN));
+  $("#txTippen").textContent = TX_TIPPEN ? "Antippen beenden" : "Text in der Vorschau antippen";
+  const r = document.querySelector(".gh-vorschau");
+  if(r){ r.classList.toggle("tippen", TX_TIPPEN); r.classList.remove("zu"); }
+  const h = hvAlle().gestalten;
+  try{ if(h && h.bereit) h.frame.contentWindow.vorschauTextTippen(TX_TIPPEN); }catch(e){}
+  if(TX_TIPPEN && r) window.scrollTo({ top: window.scrollY + r.getBoundingClientRect().top - (document.querySelector("header") || {getBoundingClientRect:()=>({height:0})}).getBoundingClientRect().height - 8 });
+};
+$("#txSichern").onclick = async () => {
+  if(!TX) return;
+  const raus = $("#txStand"), k = $("#txSichern");
+  const eigen = txFuerHub();
+  if(Object.keys(eigen).length > TX_HOECHST){ raus.textContent = "Höchstens " + TX_HOECHST + " eigene Texte — bitte ein paar auf die Vorgabe zurücksetzen."; return; }
+  k.disabled = true; k.textContent = "Wird übersetzt …";
+  /* Übersetzen: nur, was neu getippt wurde, in Paketen zu 25. */
+  const offen = [...TX_NEU].filter(x => eigen[x] && eigen[x].de);
+  let uebersetzt = 0, grund = "";
+  for(let i = 0; i < offen.length; i += 25){
+    const paket = offen.slice(i, i + 25);
+    const erg = await uebersetzenLassen(paket.map(x => eigen[x].de));
+    if(uebLetzterGrund && !grund) grund = uebGrundText();
+    paket.forEach(x => {
+      const r = erg && erg[eigen[x].de];
+      if(!r || typeof r !== "object") return;
+      TX_SPRACHEN.forEach(sp => { if(typeof r[sp] === "string" && r[sp].trim()) eigen[x][sp] = r[sp].replace(/[<>]/g, "").trim().slice(0, 160); });
+      uebersetzt++;
+    });
+  }
+  k.textContent = "Wird übernommen …";
+  const neu = Object.assign({}, HUBTEXTE || {});
+  if(Object.keys(eigen).length) neu.eigen = eigen; else delete neu.eigen;
+  if(demo || !db){
+    TX = JSON.parse(JSON.stringify(eigen)); HUBTEXTE = neu;
+    raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
+    k.textContent = "Übernehmen"; TX_NEU = new Set(); txGeruehrt = false; txZeichnen(); return;
+  }
+  const {error} = await db.from("betriebe").update({ hub_texte: neu }).eq("id", betriebId);
+  k.textContent = "Übernehmen";
+  if(error){
+    raus.textContent = /row-level|policy|permission|besitzer|inhaber/i.test(String(error.message)) ? "Nur der Besitzer kann das ändern."
+      : /check|groesse/i.test(String(error.message)) ? "Zu viele oder zu lange Texte für die Datenbank."
+      : "Nicht gespeichert, bitte Verbindung prüfen.";
+    k.disabled = false; return;
+  }
+  HUBTEXTE = neu; TX = JSON.parse(JSON.stringify(eigen));
+  const b = meineBetriebe.find(x => x.id === betriebId); if(b) b.hub_texte = neu;
+  TX_NEU = new Set(); txGeruehrt = false;
+  raus.textContent = "Übernommen." + (offen.length ? (uebersetzt === offen.length
+      ? " " + uebersetzt + (uebersetzt === 1 ? " Text" : " Texte") + " in elf Sprachen übersetzt."
+      : " Nicht übersetzt — Gäste in anderen Sprachen sehen bis dahin Ihren deutschen Text. " + (grund || "")) : "");
+  melde("Texte übernommen");
+  txZeichnen();
+};
 
 /* ══════════════════════════════════════════════════════════════════
    DER KACHEL-BAUKASTEN

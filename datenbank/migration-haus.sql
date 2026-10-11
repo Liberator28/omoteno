@@ -25,6 +25,16 @@ alter table public.betriebe add constraint hub_texte_ueber check (
   coalesce(length(hub_texte ->> 'ueber'), 0) <= 400
 );
 
+-- „Texte & Schrift“ (11.10.): eigene Texte je Wörterbuchschlüssel liegen in
+-- hub_texte.eigen, je Text bis zu zwölf Sprachen à 160 Zeichen. Das Board
+-- lässt höchstens 120 eigene Texte zu (TX_HOECHST), der Hub nimmt höchstens
+-- 400 Schlüssel an und kürzt jeden Wert (eigenSauber). Die Schranke hier
+-- deckelt die Spalte als Ganzes (als Text gemessen, nicht komprimiert —
+-- pg_column_size sähe nur die gepackte Größe) — sie wird bei jedem Besuch geladen.
+alter table public.betriebe add constraint hub_texte_groesse check (
+  octet_length(coalesce(hub_texte, '{}'::jsonb)::text) < 524288
+);
+
 -- ── PROBE (im SQL-Editor, dreht sich selbst zurück; Zeilenzahl statt
 --    Ausnahme §2.3b; andere Spalte derselben Zeile §2.7) ──
 -- begin;
@@ -45,3 +55,4 @@ alter table public.betriebe add constraint hub_texte_ueber check (
 -- select * from probe;
 -- rollback;
 --   Erwartet: 1 · abgewiesen · 1
+--   Größe: update … hub_texte = jsonb_build_object('eigen', <300 KB>) → abgewiesen.

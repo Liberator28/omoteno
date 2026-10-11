@@ -94,7 +94,7 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
   await p.evaluate(() => tafelZeigen("startseite"));
   pruef(await bereit("startseite"), "die Vorschau lädt den echten Hub (srcdoc)");
   const vorschau = await p.evaluate(() => {
-    const f = document.querySelector('[data-hv="startseite"] iframe');
+    const f = document.querySelector('[data-hv="gestalten"] iframe');
     return f ? { srcdoc: !!f.srcdoc, src: f.getAttribute("src"), klick: getComputedStyle(f).pointerEvents,
                  vorschauFlag: f.contentWindow.OMOTENO_VORSCHAU === true } : null;
   });
@@ -274,7 +274,7 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
 
   /* ── 2 · Ihre Worte ──────────────────────────────────────────── */
   console.log("\n══ Ihre Worte: Slogan und Gruß ══");
-  await p.evaluate(() => tafelZeigen("einstellungen"));
+  await p.evaluate(() => tafelZeigen("startseite"));
   pruef(await bereit("worte"), "die Vorschau der Einstellungen lädt");
   await p.fill("#hubClaim", "Frisch gebacken, jeden Tag, mit Liebe gemacht");
   await p.waitForTimeout(600);

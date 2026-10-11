@@ -291,10 +291,14 @@ const kontrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1
   pruef(licht[1].gemerkt === "hell" && licht[2].gemerkt === "dunkel", "die Wahl wird gemerkt", licht.map(x => x.gemerkt).join(","));
   pruef(!lichtFehler.length, "kein Laufzeitfehler beim Umschalten", lichtFehler[0] || "still");
   const ue = await e.p.evaluate(() => {
-    const reihen = [...document.querySelectorAll(".eu-reihe")];
+    /* Die erste Zeile führt seit 11.10. in den Reiter „Gast-Hub“
+       (data-eu-tafel) — sie hat keinen Bereich hier und wird eigens
+       geprüft. */
+    const reihen = [...document.querySelectorAll(".eu-reihe[data-eu-ziel]")];
+    const tafelLink = document.querySelector('.eu-reihe[data-eu-tafel="startseite"]');
     const gruppen = [...document.querySelectorAll("#t-einstellungen > .egruppe[data-eu]")];
     const r = reihen.map(x => x.getBoundingClientRect());
-    return { reihen:reihen.length, gruppen:gruppen.length,
+    return { reihen:reihen.length, gruppen:gruppen.length, tafelLink:!!tafelLink,
       untereinander: r.every((x, i) => i === 0 || (Math.abs(x.left - r[0].left) < 1 && x.top >= r[i - 1].bottom - 1)),
       tot: reihen.filter(r => !document.getElementById(r.dataset.euZiel)).map(r => r.dataset.euZiel),
       ohneKopf: [...document.querySelectorAll("#t-einstellungen > .egruppe")].filter(g => !g.classList.contains("eu-uebersicht") && !g.querySelector(".eu-kopf")).map(g => (g.querySelector(".etitel") || {}).textContent) };
@@ -302,6 +306,15 @@ const kontrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1
   pruef(ue.reihen === ue.gruppen && ue.reihen >= 10, "jede Zeile der Übersicht hat ihren Bereich (zweite Quelle: die Bereiche)",
     ue.reihen + " Zeilen / " + ue.gruppen + " Bereiche");
   pruef(!ue.tot.length, "keine Zeile führt ins Leere", ue.tot.join(",") || "keine");
+  pruef(ue.tafelLink, "die Übersicht verweist auf „Gast-Hub gestalten“");
+  {
+    await e.p.evaluate(() => document.querySelector('.eu-reihe[data-eu-tafel="startseite"]').click());
+    await e.p.waitForTimeout(300);
+    const auf = await e.p.evaluate(() => !document.getElementById("t-startseite").hidden);
+    pruef(auf, "ein Tipp darauf öffnet den Reiter „Gast-Hub“");
+    await e.p.evaluate(() => tafelZeigen("einstellungen"));
+    await e.p.waitForTimeout(200);
+  }
   /* VORFALL: Als <nav> erbte die Übersicht die Reiterleiste und stand
      als eine Zeile nebeneinander. Gemessen wird die Lage, nicht der Tag. */
   pruef(ue.untereinander, "die Zeilen stehen untereinander, bündig");
