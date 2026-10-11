@@ -230,6 +230,99 @@ async function extrasWaehlen(p, namen) {
     const verraten = netz.alle.filter(x => /zuletzt|"w":\{/.test(x));
     pruef(verraten.length === 0, "nichts vom Gemerkten ging an den Server", verraten.length + " Anfragen");
 
+    /* ── B7 · Ab 4 Gerichten aufklappbar (Wunsch 11.10.) ──────────
+       Zweite Quelle: die Gerichte kommen aus der echten Karte des
+       Hauses; die Grenze aus NM_KLAPP/NM_SICHTBAR des Hubs. */
+    const lastSetzen = anzahl => p.evaluate(k => {
+      const namen = [];
+      for (const [, q] of alleKarten()) for (const gr of q) for (const e of gr.eintraege)
+        if (e.p !== "–" && namen.length < k && !namen.includes(e.n)) namen.push(e.n);
+      const z = JSON.parse(localStorage.getItem(hSchluessel("zuletzt")) || "{}");
+      z.b = { t: Date.now(), posten: namen.map((n, i) => ({ n, m: 1 + (i % 2), w: {} })) };
+      localStorage.setItem(hSchluessel("zuletzt"), JSON.stringify(z));
+      merk = {}; merkSpeichern(); location.hash = "#/"; zeichne();
+      return namen.length;
+    }, anzahl);
+    const klappLage = () => p.evaluate(() => {
+      const k = document.querySelector(".nmkarte"); if (!k) return null;
+      const zeilen = [...k.querySelectorAll(".nm-liste li")];
+      const kn = k.querySelector("[data-nm-klapp]");
+      return { zeilen: zeilen.length, sichtbar: zeilen.filter(li => li.getBoundingClientRect().height > 0).length,
+        knopf: kn ? { text: kn.textContent.trim(), exp: kn.getAttribute("aria-expanded"), h: kn.getBoundingClientRect().height } : null,
+        summe: (k.querySelector(".kpreis") || {}).textContent || "",
+        grenze: [NM_KLAPP, NM_SICHTBAR] };
+    });
+    pruef(await lastSetzen(3) === 3, "Voraussetzung: drei echte Gerichte als letzte Bestellung");
+    await p.waitForTimeout(300);
+    const drei = await klappLage();
+    pruef(!!drei && drei.sichtbar === 3 && !drei.knopf, "3 Gerichte: alle sichtbar, kein Klappknopf", JSON.stringify(drei));
+    pruef(await lastSetzen(7) === 7, "Voraussetzung: sieben echte Gerichte als letzte Bestellung");
+    await p.waitForTimeout(300);
+    const zu = await klappLage();
+    pruef(!!zu && zu.zeilen === 7 && zu.sichtbar === zu.grenze[1], "7 Gerichte: nur die ersten " + (zu && zu.grenze[1]) + " sichtbar", JSON.stringify(zu));
+    pruef(!!zu && !!zu.knopf && zu.knopf.exp === "false" && /4/.test(zu.knopf.text) && zu.knopf.h >= 44,
+      "Klappknopf nennt die 4 übrigen, ≥ 44 px, aria-expanded=false", zu && JSON.stringify(zu.knopf));
+    const karteVor = await p.evaluateHandle(() => document.querySelector(".nmkarte"));
+    await p.click("[data-nm-klapp]");
+    await p.waitForTimeout(450);
+    const auf = await klappLage();
+    pruef(!!auf && auf.sichtbar === 7 && auf.knopf.exp === "true", "echter Tipp: alle 7 sichtbar, aria-expanded=true", JSON.stringify(auf));
+    pruef(!!auf && auf.summe === zu.summe, "die Summe bleibt beim Aufklappen gleich", auf && auf.summe);
+    pruef(await p.evaluate(k => k === document.querySelector(".nmkarte"), karteVor),
+      "Aufklappen baut die Karte nicht neu (dasselbe Element)");
+    const laeuftNoch = await p.evaluate(() => document.querySelectorAll(".nmkarte .nm-neu").length);
+    pruef(laeuftNoch === 0, "Einblendung ist nach dem Ende wieder weg (keine Klasse übrig)", laeuftNoch);
+    await p.evaluate(() => zeichne()); await p.waitForTimeout(300);
+    const nachZeichnen = await klappLage();
+    const neuAnim = await p.evaluate(() => document.getAnimations().filter(a => a.animationName === "nmRein").length);
+    pruef(!!nachZeichnen && nachZeichnen.sichtbar === 7 && neuAnim === 0,
+      "Neuzeichnen der Startseite: bleibt offen und fliegt NICHT erneut ein", JSON.stringify({ s: nachZeichnen && nachZeichnen.sichtbar, neuAnim }));
+    /* Lesbarkeit jeder Schrift in der Karte, Tag und Abend */
+    for (const stufe of ["hell", "dunkel"]) {
+      await p.evaluate(s => { lichtSetzen(s); zeichne(); }, stufe);
+      await p.waitForTimeout(1200);
+      const kontr = await p.evaluate(() => {
+        const rgb = c => { const m = String(c).match(/[\d.]+/g) || []; const srgb = /color\(srgb/.test(c);
+          const v = m.slice(0, 3).map(Number).map(x => srgb ? x * 255 : x); return { v, a: m[3] === undefined ? 1 : +m[3] }; };
+        const lum = v => { const k = v.map(x => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); });
+          return .2126 * k[0] + .7152 * k[1] + .0722 * k[2]; };
+        const grund = el => { let mix = null; for (let e = el; e; e = e.parentElement) {
+            const b = rgb(getComputedStyle(e).backgroundColor); if (b.a > 0.01) { if (!mix) mix = b; if (b.a >= .99) return mix.a >= .99 ? mix.v : mix.v.map((x, i) => x * mix.a + b.v[i] * (1 - mix.a)); } }
+          return rgb(getComputedStyle(document.documentElement).backgroundColor).v; };
+        let schlecht = 1e9, wo = "";
+        document.querySelectorAll(".nmkarte *").forEach(el => {
+          if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) return;
+          if (el.getBoundingClientRect().height === 0) return;
+          const f = rgb(getComputedStyle(el).color).v, g = grund(el);
+          const a = lum(f), b = lum(g), r = (Math.max(a, b) + .05) / (Math.min(a, b) + .05);
+          if (r < schlecht) { schlecht = r; wo = el.className + ": " + el.textContent.trim().slice(0, 20); }
+        });
+        return { r: Math.round(schlecht * 100) / 100, wo };
+      });
+      pruef(kontr.r >= 4.5, stufe + ": jede Schrift der Karte ≥ 4,5:1", JSON.stringify(kontr));
+    }
+    await p.evaluate(() => { lichtSetzen("auto"); zeichne(); });
+    /* Arabisch und 360 px: nichts schiebt seitlich, Preis bleibt im Bild */
+    await p.setViewportSize({ width: 360, height: 780 });
+    await p.evaluate(() => { spracheSetzen("ar"); zeichne(); }); await p.waitForTimeout(400);
+    const ar = await p.evaluate(() => {
+      const k = document.querySelector(".nmkarte"), kn = k && k.querySelector("[data-nm-klapp]");
+      const preise = [...k.querySelectorAll(".nm-p")].map(x => x.getBoundingClientRect());
+      return { dir: document.documentElement.dir, ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+        imBild: preise.every(r => r.left >= 0 && r.right <= 360), knopf: kn ? kn.textContent.trim() : "" };
+    });
+    pruef(ar.dir === "rtl" && ar.ueber <= 0 && ar.imBild && !/Weniger|weitere/.test(ar.knopf),
+      "Arabisch, 360 px: kein Überlauf, Preise im Bild, Knopf übersetzt", JSON.stringify(ar));
+    await p.evaluate(() => { spracheSetzen("de"); nmAuf = false; zeichne(); }); await p.waitForTimeout(300);
+    /* Reduzierte Bewegung: klappt ohne Animation auf */
+    await p.emulateMedia({ reducedMotion: "reduce" });
+    await p.click("[data-nm-klapp]"); await p.waitForTimeout(60);
+    const ruhig = await p.evaluate(() => ({ anim: document.getAnimations().filter(a => a.animationName === "nmRein").length,
+      sichtbar: [...document.querySelectorAll(".nmkarte .nm-liste li")].filter(li => li.getBoundingClientRect().height > 0).length }));
+    pruef(ruhig.anim === 0 && ruhig.sichtbar === 7, "reduzierte Bewegung: sofort offen, keine Animation", JSON.stringify(ruhig));
+    await p.emulateMedia({ reducedMotion: "no-preference" });
+    await p.setViewportSize({ width: 390, height: 844 });
+
     /* ── B6 · Maße: Knopf ≥ 44 px, kein Überlauf bei 360 px ────── */
     await p.setViewportSize({ width: 360, height: 780 });
     await p.waitForTimeout(250);

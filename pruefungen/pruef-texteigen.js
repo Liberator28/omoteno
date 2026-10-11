@@ -251,6 +251,17 @@ const lesen = p => p.evaluate(() => {
     const e2 = Object.values(k2.w.daten.hub_texte.eigen).find(e => e.de === "Ohne Übersetzung");
     pruef(e2 && !e2.en && /Nicht übersetzt/.test(k2.satz), "Kontingent leer: auf Deutsch gespeichert, Satz sagt es", k2.satz.slice(0, 90));
 
+    /* „Ihre Worte“ übernehmen darf die eigenen Texte nicht löschen —
+       hubTexteSichern baute hub_texte früher frisch aus den Feldern. */
+    const vorWorte = await p.evaluate(() => window.__schreib.length);
+    await p.evaluate(() => { document.getElementById("hubClaim").value = "Neuer Slogan"; hubTexteSichern(); });
+    await p.waitForTimeout(600);
+    const w3 = await p.evaluate(n => window.__schreib.slice(n).filter(x => x.tab === "betriebe" && x.daten && x.daten.hub_texte).pop(), vorWorte);
+    pruef(!!w3, "Voraussetzung: „Ihre Worte“ hat geschrieben", w3 ? "ja" : "nichts");
+    const e3 = w3 && w3.daten.hub_texte.eigen;
+    pruef(w3 && w3.daten.hub_texte.claim === "Neuer Slogan" && e3 && Object.values(e3).some(e => e.de === "Neu 3"),
+      "„Ihre Worte“ übernehmen lässt die eigenen Texte stehen", e3 ? Object.keys(e3).length + " eigene" : "eigen fehlt");
+
     /* Neu öffnen: Stand aus HUBTEXTE */
     await p.evaluate(() => { tafelZeigen("einstellungen"); tafelZeigen("startseite"); });
     await p.waitForTimeout(400);
