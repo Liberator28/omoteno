@@ -1910,7 +1910,10 @@ body.kat-klebt .zurueck.an{opacity:0;pointer-events:none}
 /* Langer Name: erst kleiner, dann zweizeilig — gemessen, nicht nach
    Zeichenzahl (Schriften der Häuser laufen verschieden breit). */
 .fr-name.fr-eng{font-size:16px}
-.fr-details{flex:none;width:44px;padding:0;display:grid;place-items:center;position:relative}
+/* Doppelte Klasse: .eh-details steht weiter unten und setzte padding
+   0 16px — vom 44-px-Kreis blieben 12 px Innenbreite, das 20-px-Zeichen
+   rutschte aus der Mitte (Bildschirmfoto 11.10.). */
+.eh-details.fr-details{flex:none;width:44px;height:44px;min-width:44px;padding:0;display:grid;place-items:center;position:relative}
 .fr-details svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round}
 .fr-still{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap}
 /* Das Rad: Ring in der Bandfarbe des Hauses mit Lichtpunkten, darin
@@ -1948,9 +1951,13 @@ body.kat-klebt .zurueck.an{opacity:0;pointer-events:none}
   background:
     linear-gradient(155deg, rgba(255,255,255,.42) 0%, rgba(255,255,255,.08) 34%, transparent 46%),
     radial-gradient(120% 70% at 50% 110%, rgba(0,0,0,.18), transparent 60%)}
-/* Der Lichtkegel auf dem Gewinnerfeld — ein Keil unter dem Zeiger. */
+/* Der Lichtkegel auf dem Gewinnerfeld — GENAU über dessen Grenzen.
+   Vorher ein fester Keil mittig unter dem Zeiger; die Landung streut
+   aber bewusst um ±30 % der Feldbreite, und der Keil lag halb auf dem
+   Nachbarfeld: Die Felder sahen gespalten aus (Bildschirmfoto 11.10.).
+   --fr-von setzt frDrehen: Drehwinkel + Feldnummer × Feldbreite. */
 .fr-treffer{position:absolute;inset:0;border-radius:50%;pointer-events:none;z-index:1;opacity:0;
-  background:conic-gradient(from calc(var(--fr-s, 45deg) / -2), rgba(255,255,255,.55) 0 var(--fr-s, 45deg), transparent var(--fr-s, 45deg) 360deg);
+  background:conic-gradient(from var(--fr-von, calc(var(--fr-s, 45deg) / -2)), rgba(255,255,255,.55) 0 var(--fr-s, 45deg), transparent var(--fr-s, 45deg) 360deg);
   -webkit-mask:radial-gradient(circle, transparent 15%, #000 16%);mask:radial-gradient(circle, transparent 15%, #000 16%);
   transition:opacity .25s var(--weich)}
 .fr-rad.gelandet .fr-treffer{opacity:1;transition:opacity .45s var(--weich) .05s}
@@ -11570,6 +11577,7 @@ function frDrehen(){
     if(rad){ rad.classList.remove("dreht"); rad.classList.add("gelandet"); }
     frWinkel = ((ziel % 360) + 360) % 360;
     sch.style.transform = "rotate(" + frWinkel + "deg)";
+    if(rad) rad.style.setProperty("--fr-von", (frWinkel + k * s).toFixed(3) + "deg");
     sch.getAnimations().forEach(a => a.cancel());
     frLanden(g.n);
   };

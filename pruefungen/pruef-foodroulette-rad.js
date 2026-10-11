@@ -359,6 +359,29 @@ const OBEN_FELD = () => {
     const nach = await s.evaluate(() => ({ dreht: frDreht, treffer: +getComputedStyle(document.querySelector("#frRad .fr-treffer")).opacity,
       licht: [...document.querySelectorAll("#frRad .fr-lichter i")].reduce((n, i) => n + i.getAnimations({ subtree:true }).filter(a => a.playState === "running").length, 0) }));
     pruef(!nach.dreht && nach.treffer > 0.95 && nach.licht === 0, "gelandet: Keil unter dem Zeiger leuchtet, Lauflicht steht", JSON.stringify(nach));
+    /* Bildschirmfoto 11.10.: Der Keil war fest mittig unter dem Zeiger,
+       die Landung streut um ±30 % — er lag halb auf dem Nachbarfeld,
+       „die Flächen spalten sich“. Gemessen am GEMALTEN Verlauf: Der
+       Keil beginnt auf einer Feldgrenze (Abstand zum Drehwinkel ein
+       ganzes Vielfaches der Feldbreite) und umfasst den Zeiger. Dazu
+       das Info-Zeichen: Mitte des Zeichens = Mitte des Kreises. */
+    const keil = await s.evaluate(() => {
+      const bg = getComputedStyle(document.querySelector("#frRad .fr-treffer")).backgroundImage;
+      const von = parseFloat((bg.match(/from\s+(-?[\d.]+)deg/) || [])[1]);
+      const m = new DOMMatrix(getComputedStyle(document.getElementById("frScheibe")).transform);
+      const w = Math.atan2(m.b, m.a) * 180 / Math.PI, n = frFelder.length, sw = 360 / n;
+      const k = (((von - w) / sw) % n + n) % n;
+      const start = ((von % 360) + 360) % 360;
+      const umfasst = start > 360 - sw - 0.01 || start < 0.01;   /* Zeiger bei 0° liegt in [start, start + sw] */
+      const b = document.querySelector(".fr-details"), z = b && b.querySelector("svg");
+      const rb = b && b.getBoundingClientRect(), rz = z && z.getBoundingClientRect();
+      return { von, w:+w.toFixed(2), k:+k.toFixed(3), umfasst, feld:frFeldUnterZeiger(w), name:frFelder[frFeldUnterZeiger(w)] === frErgebnis,
+        info: rb ? { dx:+((rz.left + rz.width / 2) - (rb.left + rb.width / 2)).toFixed(2), dy:+((rz.top + rz.height / 2) - (rb.top + rb.height / 2)).toFixed(2), w:Math.round(rb.width), h:Math.round(rb.height) } : null };
+    });
+    pruef(Number.isFinite(keil.von) && Math.abs(keil.k - Math.round(keil.k)) < 0.01 && keil.umfasst && keil.name,
+      "gelandet: der Lichtkegel liegt genau auf dem Feld unter dem Zeiger (Feldgrenzen, nicht mittig)", JSON.stringify(keil).slice(0, 140));
+    pruef(keil.info && Math.abs(keil.info.dx) <= 1 && Math.abs(keil.info.dy) <= 1 && keil.info.w >= 44 && keil.info.h >= 44,
+      "Info-Zeichen mittig im ≥ 44-px-Kreis", JSON.stringify(keil.info));
     pruef(!fehler.length, "keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
   }
