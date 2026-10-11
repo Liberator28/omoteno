@@ -35,6 +35,12 @@ let n = 0, f = 0;
 const pruef = (g, t, z) => { n++; if(!g) f++;
   console.log((g ? "  ok   " : "  FEHL ") + t + (z !== undefined ? "  → " + z : "")); };
 const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d, "index.html")));
+/* Das Vorführhaus (Markenblatt mit „demo“) teilt den Gerätespeicher
+   absichtlich nicht und merkt sich nichts über ein Neuladen hinaus —
+   pruef-demo.js prüft genau das. Proben, die eine Wahl über den
+   Speicher setzen oder ein Neuladen überstehen lassen, nehmen es
+   ausdrücklich aus bzw. gehen dort den Weg über die Bedienung. */
+const VORFUEHRHAUS = h => { try { return !!JSON.parse(require("fs").readFileSync(require("path").join(__dirname, "..", "markenblaetter", h + ".json"), "utf8")).demo; } catch (e) { return false; } };
 
 async function oeffnen(browser, haus, opt){
   opt = opt || {};
@@ -119,11 +125,20 @@ const SWEEP = fs.readFileSync(path.join(__dirname, "pruef-lesbarkeit.js"), "utf8
     /* Neuladen behält die Wahl */
     await p.click("#lichtknopf"); await p.waitForTimeout(250);
     await p.click('#lichtliste [data-licht="schwarz"]'); await p.waitForTimeout(300);
-    await p.reload(); await p.waitForTimeout(900);
-    pruef((await stand(p)).grund === "rgb(0, 0, 0)", "ganz schwarz übersteht das Neuladen");
+    if(VORFUEHRHAUS(haus)) console.log("  hinw " + haus + ": Vorführhaus — merkt sich die Wahl absichtlich nicht über ein Neuladen (pruef-demo.js)");
+    else {
+      await p.reload(); await p.waitForTimeout(900);
+      pruef((await stand(p)).grund === "rgb(0, 0, 0)", "ganz schwarz übersteht das Neuladen");
+    }
     /* Tipp daneben schließt; die Sprachliste schließt die Lichtliste */
     await p.click("#lichtknopf"); await p.waitForTimeout(250);
-    await p.mouse.click(195, 700); await p.waitForTimeout(250);
+    /* „Daneben“ heißt: auf etwas, das selbst nichts tut — den Slogan im
+       Kopf. Ein fester Punkt (195, 700) traf beim Vorführhaus die Karte
+       des Flash-Sale und öffnete ein Gericht; danach lag die Blende über
+       allem und jeder weitere Tipp lief ins Leere. */
+    const daneben = await p.evaluate(() => { const r = document.getElementById("claim").getBoundingClientRect();
+      return r.width ? { x:r.left + r.width / 2, y:r.top + r.height / 2 } : { x:195, y:700 }; });
+    await p.mouse.click(daneben.x, daneben.y); await p.waitForTimeout(250);
     pruef(!(await stand(p)).offen, "ein Tipp daneben schließt");
     await p.click("#lichtknopf"); await p.waitForTimeout(250);
     await p.click("#sprachknopf"); await p.waitForTimeout(250);
@@ -141,6 +156,11 @@ const SWEEP = fs.readFileSync(path.join(__dirname, "pruef-lesbarkeit.js"), "utf8
 
     /* Farben aus dem Board + ganz weiß */
     const EIGEN = { tag:{ grund:"#F0E8E0", flaeche:"#FFFFFF", band:"#123456", tinte:"#111111", akzent:"#9A1F18", akzent2:"#5E4207" } };
+    /* Gestellt wird hier die Antwort der Datenbank — das Vorführhaus
+       fragt sie nie (es beantwortet jede Anfrage selbst), die Probe
+       hätte dort nichts zu messen. */
+    if(VORFUEHRHAUS(haus)) console.log("  hinw " + haus + ": Vorführhaus — keine Board-Farben aus der Datenbank, Probe entfällt");
+    else {
     ({ ctx, p, fehler } = await oeffnen(browser, haus, { stil:{ farben:EIGEN } }));
     const vorWeiss = (await stand(p)).grund;
     await p.click("#lichtknopf"); await p.waitForTimeout(250);
@@ -148,6 +168,7 @@ const SWEEP = fs.readFileSync(path.join(__dirname, "pruef-lesbarkeit.js"), "utf8
     pruef(vorWeiss === rgb("#F0E8E0") && (await stand(p)).grund === "rgb(255, 255, 255)",
       "Board-Farben: erst deren Grund, mit „Ganz weiß“ dann #FFF", vorWeiss);
     await ctx.close();
+    }
 
     /* 320 px und Arabisch */
     ({ ctx, p, fehler } = await oeffnen(browser, haus, { breite:320, sprache:"ar" }));

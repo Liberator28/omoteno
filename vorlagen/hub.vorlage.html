@@ -951,7 +951,12 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:transparent;background:tr
 .lichtwahl.offen .lichtliste{animation:lichtAuf var(--kurz) var(--weich) both}
 @keyframes lichtAuf{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){ .lichtwahl.offen .lichtliste{animation:none} }
-[dir="rtl"] .lichtliste{left:auto;right:0;transform-origin:100% 0}
+/* Doppelte Klasse mit Absicht: Die Liste trägt auch .sprachliste, und
+   [dir="rtl"] .sprachliste{left:0} steht weiter unten mit GLEICHER
+   Spezifität — sie gewann, die Liste hing auf Arabisch an der falschen
+   Kante und ragte bei 320 px mit Lieferschalter 102 px aus dem Bild
+   (gemessen am Vorführhaus; bei Choco passte es zufällig). */
+[dir="rtl"] .sprachliste.lichtliste{left:auto;right:0;transform-origin:100% 0}
 .lichtliste .lprobe{flex:none;width:18px;height:18px;border-radius:50%;
   border:1px solid var(--linie-stark);background:var(--lp-g, transparent);box-shadow:inset -5px -5px 0 var(--lp-t, transparent)}
 .lichtwahl.offen .lichtknopf{background:rgba(251,246,242,.24)}
@@ -4122,6 +4127,116 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 </style>
 
 <script>
+/* ═══ DEMO · der echte Hub als Vorführung (Landingpage, 11.10.) ═════
+   Wunsch: „einen Demo-Hub, der sich vom neuesten nicht unterscheidet —
+   man soll wirklich wissen, was man bekommt.“ Die Landingpage lädt
+   deshalb DIESE Datei (den ausgelieferten Hub eines Hauses) als srcdoc
+   und setzt davor window.OMOTENO_DEMO = true. Alles ist echt und
+   bedienbar; nur zwei Dinge sind anders:
+
+   1 · Speicher nur im Rahmen. localStorage/sessionStorage sind hier
+       eine Map im Arbeitsspeicher — die Vorführung berührt nie den Korb
+       oder die Wahl eines echten Gastes auf demselben Gerät (die echten
+       Hubs liegen auf derselben Domain), und jedes Öffnen beginnt frisch.
+       Die Sitzung (sessionStorage) startet mit einer ABSCHRIFT dessen,
+       was der Tab schon weiß — gelesen, nie zurückgeschrieben —, damit
+       „schon begrüßt“ in einer Sitzung gilt wie bei jedem Hub. Der
+       gemerkte Gast (localStorage: Korb, Lichtwahl …) bleibt draußen.
+   2 · Nichts verlässt den Rahmen. Jede Anfrage an die Datenbank wird
+       hier beantwortet — auch die lesenden: betriebe/gerichte/aktionen
+       aus MARKENBLATT.demo (dem Vorführhaus der Landingpage, das
+       keine Zeile in der Datenbank hat), alles andere leer. So läuft
+       der ECHTE Live-Weg (karteHolen, Lieferung, Aktionen) mit
+       Vorführdaten, und kein echter Betrieb bekommt eine Anfrage.
+       Jede Anfrage, die etwas ändern würde — Bestellung,
+       Serviceruf, Reservierung, Besuch, E-Mail —, wird nachgespielt. Die Antworten haben dieselbe Form wie die der Funktionen,
+       der Bestellpass läuft sichtbar durch (neu → in Arbeit → fertig).
+       Kein Betrieb bekommt je einen Demo-Bon.
+   Steht vor allem anderen, damit kein Skript den echten Speicher oder
+   das echte fetch zu fassen bekommt.
+   Das Vorführhaus selbst (Markenblatt mit „demo“) setzt den Schalter
+   schon beim Erzeugen hier ein — so ist es auch direkt aufgerufen nie
+   ein echter Hub. */
+/*{{DEMO_SCHALTER}}*/
+(function(){
+  if(window.OMOTENO_DEMO !== true) return;
+  const speicher = (abschrift) => {
+    const m = new Map();
+    if(abschrift) try{
+      for(let i = 0; i < abschrift.length; i++){ const k = abschrift.key(i); m.set(k, abschrift.getItem(k)); }
+    }catch(e){}
+    return { getItem:k => m.has(String(k)) ? m.get(String(k)) : null,
+             setItem:(k, v) => { m.set(String(k), String(v)); },
+             removeItem:k => { m.delete(String(k)); }, clear:() => m.clear(),
+             key:i => Array.from(m.keys())[i] || null, get length(){ return m.size; } };
+  };
+  try{ Object.defineProperty(window, "localStorage", { value:speicher(), configurable:true }); }catch(e){}
+  let sitzung = null;
+  try{ sitzung = window.sessionStorage; }catch(e){}
+  try{ Object.defineProperty(window, "sessionStorage", { value:speicher(sitzung), configurable:true }); }catch(e){}
+
+  const echt = window.fetch.bind(window);
+  const offen = new Map();
+  let nr = 40;
+  const neueId = () => (window.crypto && crypto.randomUUID) ? crypto.randomUUID()
+    : "demo-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+  const antwort = (wert, status) => Promise.resolve(new Response(wert === undefined ? null : JSON.stringify(wert),
+    { status: status || 200, headers:{ "Content-Type":"application/json" } }));
+  /* Der Ablauf einer Vorführ-Bestellung, in Sekunden: kurz genug, dass
+     man ihn auf der Landingpage miterlebt. */
+  const stand = b => { const s = (Date.now() - b.t0) / 1000; return s < 5 ? "neu" : s < 14 ? "arbeit" : "fertig"; };
+  /* Unter BEIDEN Schlüsseln: Die Warteschlange fragt mit der
+     Quittungsnummer (bestellung_gefunden), der Bestellpass mit der
+     zurückgegebenen id (bestellung_status, nummer = zeile.id). */
+  const merken = (kennung) => { const id = neueId(), b = { id, t0:Date.now(), nr:++nr };
+    offen.set(id, b); if(kennung) offen.set(kennung, b); return id; };
+  window.OMOTENO_DEMO_ANFRAGEN = [];
+  /* MARKENBLATT steht im nächsten Skriptblock — gelesen wird erst beim
+     Abruf, dann gibt es den Namen. */
+  const vorrat = () => { try{ return (typeof MARKENBLATT !== "undefined" && MARKENBLATT.demo) || {}; }catch(e){ return {}; } };
+  /* Eine Aktion läuft immer noch knapp drei Stunden — der Streifen
+     zeigt eine echte Restzeit, egal wann die Vorführung geöffnet wird. */
+  const aktionenJetzt = () => (vorrat().aktionen || []).map((a, i) =>
+    Object.assign({}, a, { bis:new Date(Date.now() + (170 + i * 40) * 60000).toISOString() }));
+  window.fetch = function(ziel, opt){
+    const url = String((ziel && ziel.url) || ziel);
+    const art = String((opt && opt.method) || (ziel && ziel.method) || "GET").toUpperCase();
+    const datenbank = /\/(rest|functions|auth|storage|realtime)\/v1\//.test(url);
+    if(art === "GET" || art === "HEAD"){
+      if(!datenbank) return echt(ziel, opt);
+      window.OMOTENO_DEMO_ANFRAGEN.push("GET " + url.replace(/^.*\/v1\//, "").split("?")[0]);
+      const v = vorrat();
+      if(/\/rest\/v1\/betriebe\?/.test(url)) return antwort(v.betrieb ? [v.betrieb] : []);
+      if(/\/rest\/v1\/gerichte\?/.test(url)) return antwort(v.gerichte || []);
+      if(/\/rest\/v1\/aktionen\?/.test(url)) return antwort(aktionenJetzt());
+      return antwort([]);
+    }
+    let k = {};
+    try{ k = JSON.parse((opt && opt.body) || "{}") || {}; }catch(e){}
+    const rpc = (/\/rpc\/([a-z_]+)/.exec(url) || [])[1] || "";
+    window.OMOTENO_DEMO_ANFRAGEN.push(rpc || url.replace(/^.*\/rest\/v1\//, ""));
+    const b = offen.get(k.nummer || k.kennung);
+    switch(rpc){
+      case "bestellung_aufgeben":    return antwort(merken(k.p_gast_kennung));
+      case "bestellung_liefern":     return antwort({ ok:true, id:merken(k.p_gast_kennung) });
+      case "bestellung_status":      return antwort(b ? [{ status:stand(b), wartezeit_min:12, tagesnummer:b.nr }] : []);
+      case "bestellung_restzeit":    return antwort(b ? Math.max(0, Math.round(14 - (Date.now() - b.t0) / 1000)) : null);
+      case "bestellung_nachrichten": return antwort([]);
+      case "bestellung_gefunden":    return antwort(b ? [{ id:b.id, status:stand(b) }] : []);
+      case "bestellung_stornieren":  return antwort({ ok:true, alles:k.posten == null, positionen:[] });
+      case "reservierung_anfragen":  return antwort({ ok:true, id:neueId() });
+      case "reservierung_stand":     return antwort({ ok:true, status:"bestaetigt", nachrichten:[] });
+      case "gast_melden":            return antwort({ ok:true, besuche:1, lieblinge:[], gutscheine:[] });
+      case "gast_mail_merken":       return antwort({ ok:true });
+      case "rabattcode_pruefen":     return antwort({ ok:false, grund:"unbekannt" });
+      case "tisch_sitzung_start":    return antwort([{ token:"demo", tisch:"7" }]);
+    }
+    /* Alles andere (Musikwunsch, Ereignisse …): angenommen, nichts gespeichert. */
+    return antwort(undefined, 201);
+  };
+})();
+</script>
+<script>
 /*{{MARKENBLATT}}*/
 /* ▲▲▲ AB HIER NICHTS ÄNDERN ▲▲▲ */
 
@@ -6234,6 +6349,11 @@ const SOFORT_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v1
    schon der Start (gastLaden, Warteschlange) danach fragt — weiter
    unten hätte die „temporal dead zone“ den Hub leer gelassen (§8.1l). */
 const VORSCHAU = window.OMOTENO_VORSCHAU === true;
+/* Vorführung auf der Landingpage (siehe DEMO-Block ganz oben): Die
+   Häuser sind dort rund um die Uhr geöffnet — sonst zeigte die
+   Vorführung abends „geschlossen“ und ließe nicht bestellen. Die
+   Landingpage sagt das dazu. */
+const DEMO = window.OMOTENO_DEMO === true;
 let vorschauEntwurf = null;
 let aktionen = [];          /* was gerade läuft */
 /* Wie die Aktionen dieses Hauses überschrieben heißen. Die einzelne
@@ -8270,10 +8390,17 @@ function begleiterHTML(anlass){
   if(!satz) return "";
   /* Wie beim Bestellpass: nur die Vorgabe geht durchs Wörterbuch. */
   /* Gegrüßt wird einmal je Anlass und Sitzung — nicht bei jedem
-     Neuzeichnen derselben Seite (§4.1). */
+     Neuzeichnen derselben Seite (§4.1).
+     Als gegrüßt zählt erst der ZU ENDE gespielte Gruß (animationend
+     unten), nicht der gezeichnete. Vorher hieß „gezeichnet = gegrüßt“:
+     Kamen die Live-Daten des Hauses ein paar hundert Millisekunden
+     nach dem Laden und die Startseite wurde neu gezeichnet, stand ein
+     neues Element ohne Gruß da — der Gruß brach mitten im Winken ab.
+     Gefunden am Vorführhaus, dessen Daten sofort da sind; jede andere
+     Prüfung beantwortet die Datenbank mit [] und zeichnet nie neu. */
   const neu = !BEGLEITER_GEGRUESST.has(anlass);
-  BEGLEITER_GEGRUESST.add(anlass);
-  return '<div class="begleiter' + (neu ? " b-hallo" : "") + '">' + avatarSVG(48) + '<p>' +
+  if(neu && ruhigeBewegung()) BEGLEITER_GEGRUESST.add(anlass);
+  return '<div class="begleiter' + (neu ? " b-hallo" : "") + '" data-anlass="' + hs(anlass) + '">' + avatarSVG(48) + '<p>' +
          (eigen || t(satz)) + '</p></div>';
 }
 
@@ -8317,6 +8444,9 @@ function begleiterHTML(anlass){
     ZEITEN.length = 0;
     mb.zeiten.forEach(z => ZEITEN.push(z));
   }
+  /* Vorführung: rund um die Uhr (siehe const DEMO). NACH dem Markenblatt,
+     sonst überschriebe es die Zeile. */
+  if(DEMO) for(let i = 0; i < 7; i++) ZEITEN[i] = "00:00 – 23:59";
 
   if(mb.links)     Object.keys(mb.links).forEach(k => { if(da(mb.links[k])) LINKS[k] = mb.links[k]; });
   if(mb.wlan)      Object.keys(mb.wlan).forEach(k  => { if(da(mb.wlan[k]))  WLAN[k]  = mb.wlan[k];  });
@@ -9654,6 +9784,11 @@ const TEXTE = {
 "Pizza":{en:"Pizza",tr:"Pizza",ru:"Пицца",fr:"Pizzas",es:"Pizzas",it:"Pizze",pl:"Pizza",ar:"البيتزا",uk:"Піца",nl:"Pizza",ro:"Pizza"},
 "Nudeln":{en:"Pasta",tr:"Makarna",ru:"Паста",fr:"Pâtes",es:"Pasta",it:"Pasta",pl:"Makarony",ar:"المعكرونة",uk:"Паста",nl:"Pasta",ro:"Paste"},
 "Desserts":{en:"Desserts",tr:"Tatlılar",ru:"Десерты",fr:"Desserts",es:"Postres",it:"Dolci",pl:"Desery",ar:"الحلويات",uk:"Десерти",nl:"Desserts",ro:"Deserturi"},
+"Frühstück":{en:"Breakfast",tr:"Kahvaltı",ru:"Завтрак",fr:"Petit-déjeuner",es:"Desayuno",it:"Colazione",pl:"Śniadanie",ar:"الفطور",uk:"Сніданок",nl:"Ontbijt",ro:"Mic dejun"},
+"Bowls":{en:"Bowls",tr:"Kaseler",ru:"Боулы",fr:"Bowls",es:"Bowls",it:"Bowl",pl:"Bowle",ar:"أطباق البول",uk:"Боули",nl:"Bowls",ro:"Boluri"},
+"Süßes":{en:"Something sweet",tr:"Tatlılar",ru:"Сладкое",fr:"Douceurs",es:"Dulces",it:"Dolci",pl:"Słodkości",ar:"حلويات",uk:"Солодке",nl:"Zoetigheden",ro:"Dulciuri"},
+"Kalt":{en:"Cold drinks",tr:"Soğuk içecekler",ru:"Холодные напитки",fr:"Boissons fraîches",es:"Bebidas frías",it:"Bevande fredde",pl:"Napoje zimne",ar:"مشروبات باردة",uk:"Холодні напої",nl:"Koude dranken",ro:"Băuturi reci"},
+"Spritz":{en:"Spritz",tr:"Spritz",ru:"Шприц",fr:"Spritz",es:"Spritz",it:"Spritz",pl:"Spritz",ar:"سبريتز",uk:"Шприц",nl:"Spritz",ro:"Spritz"},
 "Kaffee":{en:"Coffee",tr:"Kahve",ru:"Кофе",fr:"Cafés",es:"Cafés",it:"Caffè",pl:"Kawa",ar:"القهوة",uk:"Кава",nl:"Koffie",ro:"Cafea"},
 "Heiß & Süß":{en:"Hot & sweet",tr:"Sıcak ve tatlı",ru:"Горячее и сладкое",fr:"Chaud & sucré",es:"Caliente y dulce",it:"Caldo e dolce",pl:"Na ciepło i słodko",ar:"ساخن وحلو",uk:"Гаряче та солодке",nl:"Warm & zoet",ro:"Cald și dulce"},
 "Alkoholfrei":{en:"Soft drinks",tr:"Alkolsüz",ru:"Безалкогольное",fr:"Sans alcool",es:"Sin alcohol",it:"Analcolici",pl:"Bezalkoholowe",ar:"بدون كحول",uk:"Безалкогольне",nl:"Alcoholvrij",ro:"Fără alcool"},
@@ -13698,7 +13833,13 @@ function wert(id){
   return el ? el.value.trim() : "";
 }
 
-function oeffne(url){ window.location.href = url; }
+/* In der Vorführung liegt der Hub in einem Rahmen der Landingpage —
+   WhatsApp, PayPal und Co. ließen sich dort nicht einbetten und der
+   Rahmen bliebe leer. Dann in einem neuen Tab. */
+function oeffne(url){
+  if(DEMO && window.top !== window){ window.open(url, "_blank", "noopener"); return; }
+  window.location.href = url;
+}
 
 /* ---------- Router ---------- */
 /* Welche Seite gerade sichtbar ist. Wird NUR in zeichne() gesetzt.
@@ -14210,7 +14351,8 @@ document.addEventListener("animationend", e => {
   if(e.animationName === "bgHops") e.target.classList.remove("b-hops");
   /* Gruß vorbei: Klasse weg, sonst begänne er nach jedem Hüpfer neu
      (die Animationsliste wechselt zurück und startet von vorn). */
-  if(e.animationName === "bgHallo"){ const b = e.target.closest(".begleiter"); if(b) b.classList.remove("b-hallo"); }
+  if(e.animationName === "bgHallo"){ const b = e.target.closest(".begleiter");
+    if(b){ b.classList.remove("b-hallo"); if(b.dataset.anlass) BEGLEITER_GEGRUESST.add(b.dataset.anlass); } }
 });
 
 document.addEventListener("click", e => {
@@ -16545,7 +16687,96 @@ function wischSperre(el){
   };
   feld.addEventListener("pointerup", los);
   feld.addEventListener("pointercancel", los);
+  /* Für die Vorführung (Landingpage): derselbe Wisch, von selbst. */
+  if(DEMO) window.omotenoWischZeigen = () => {
+    const folge = wischFolge(), i = wischOrt(folge), ziel = folge[i + 1];
+    if(!ziel) return false;
+    const b = breite(), p = pille("rechts", ziel.titel);
+    p.style.opacity = "1"; p.style.transform = "translateY(-50%) scale(1)";
+    const weiter = () => { pilleWeg(); feld.style.transform = ""; location.hash = ziel.ziel;
+      if(!ruhigeBewegung() && feld.animate) feld.animate([{ transform:"translateX(" + (b * .35) + "px)" }, { transform:"translateX(0)" }],
+        { duration:220, easing:"cubic-bezier(.22,1,.36,1)" }); };
+    if(ruhigeBewegung() || !feld.animate){ weiter(); return true; }
+    const a = feld.animate([{ transform:"translateX(0)" }, { transform:"translateX(" + (-b * .38) + "px)", offset:.6 }, { transform:"translateX(" + (-b) + "px)" }],
+      { duration:620, easing:"cubic-bezier(.45,0,.55,1)", fill:"forwards" });
+    a.onfinish = () => { a.cancel(); weiter(); };
+    return true;
+  };
 })();
+
+/* ══ VORFÜHRUNG · Schritte für die Landingpage (nur im DEMO) ═════════
+   Die Landingpage zeigt neben jedem Satz den echten Hub an der Stelle,
+   von der der Satz spricht. Jeder Schritt geht über die Wege, die auch
+   der Gast nimmt: Adresse, Korb, der echte Knopf „Bestellen“. Vorher
+   setzt jeder Schritt Sprache und Licht zurück — sonst erbte „Karte“
+   das Englisch des vorigen Schritts. */
+/* Im srcdoc-Rahmen der Landingpage (Adresse about:srcdoc) steht ein
+   <base href> auf /h/<haus>/. Ein Link „#/speisekarte“ löst der
+   Browser dagegen auf — ein Tipp auf eine Kachel wäre eine ECHTE
+   Navigation zur Hub-Adresse, und die verweigert X-Frame-Options:
+   DENY. Der Rahmen bliebe leer. Deshalb hier, ganz am Ende des
+   Klicks (nach allen anderen Horchern): unberührte Raute-Links
+   wechseln nur den Hash, wie in jedem anderen Hub auch. */
+if(DEMO && location.protocol === "about:") window.addEventListener("click", e => {
+  if(e.defaultPrevented || e.button !== 0) return;
+  const a = e.target && e.target.closest ? e.target.closest('a[href^="#"]') : null;
+  if(!a || a.target) return;
+  e.preventDefault();
+  const ziel = a.getAttribute("href");
+  if(location.hash === ziel) zeichne(); else location.hash = ziel;
+});
+
+/* Was ein Schritt für später plant (der Knopf „Bestellen“ nach 260 ms,
+   der Wisch nach 700 ms), bricht der nächste Schritt ab. Sonst wischte
+   ein schnell übersprungenes „wischen“ noch hinter der Startseite her —
+   gefunden mit pruef-web-showcase.js. */
+const DEMO_UHREN = [];
+if(DEMO) window.omotenoDemo = {
+  schritte: ["start", "karte", "rad", "korb", "pass", "service", "sprache", "licht", "liefern", "wischen", "reservieren", "meintisch"],
+  zeige(schritt){
+    const gerichte = n => {
+      const raus = [];
+      for(const [id, quelle] of alleKarten()){
+        if(karteIstGetraenk(id) && raus.length) continue;
+        for(const gr of quelle) for(const e of gr.eintraege){
+          if(raus.length < n && e && e.n && preisNum(e.p) > 0 && !e.alter && !raus.some(x => x.n === e.n)) raus.push(e);
+        }
+      }
+      return raus;
+    };
+    const korb = n => { merk = {}; gerichte(n).forEach(e => { merk[e.n] = { n:e.n, p:e.p, m:1 }; }); merkSpeichern(); balkenAktualisieren(); };
+    if(schritt !== "sprache" && sprache !== "de"){ spracheSetzen("de"); }
+    if(schritt !== "licht" && licht !== "auto") lichtSetzen("auto");
+    if(schritt !== "liefern" && liefermodus && typeof lieferWahl === "function") lieferWahl("haus");
+    DEMO_UHREN.splice(0).forEach(clearTimeout);
+    /* Ein noch laufender Vorführ-Wisch: abbrechen (cancel ruft kein
+       onfinish, er navigiert also nicht mehr), Pille weg. */
+    const feld = $("inhalt");
+    if(feld && feld.getAnimations){ feld.getAnimations().forEach(x => x.cancel()); feld.style.transform = ""; }
+    document.querySelectorAll(".wischziel").forEach(x => x.remove());
+    window.scrollTo(0, 0);
+    /* Ein offener Willkommensschirm läge über jedem Schritt. */
+    const gruss = document.getElementById("willkommen");
+    if(gruss) gruss.remove();
+    const geh = z => { if(location.hash === z) zeichne(); else location.hash = z; };
+    switch(schritt){
+      case "karte":       geh("#/speisekarte"); break;
+      case "rad":         frModus = "rad"; ehSofort = true; geh("#/entdecken"); break;
+      case "korb":        korb(2); geh("#/auswahl"); break;
+      case "pass":        korb(2); tischNr = tischNr || "7"; geh("#/auswahl");
+                          DEMO_UHREN.push(setTimeout(() => { const k = document.querySelector('[data-aktion="bestellen"]'); if(k) k.click(); }, 260)); break;
+      case "service":     geh("#/service"); break;
+      case "sprache":     spracheSetzen("en"); geh("#/"); zeichne(); break;
+      case "licht":       lichtSetzen("schwarz"); geh("#/"); break;
+      case "liefern":     if(LIEFER.an && typeof lieferWahl === "function") lieferWahl("liefern"); geh("#/"); break;
+      case "wischen":     geh("#/speisekarte"); DEMO_UHREN.push(setTimeout(() => window.omotenoWischZeigen && window.omotenoWischZeigen(), 700)); break;
+      case "reservieren": geh("#/reservieren"); break;
+      case "meintisch":   geh("#/meintisch"); break;
+      default:            geh("#/");
+    }
+    return true;
+  }
+};
 
 /* ---------- Vorführmodus ---------- */
 document.querySelectorAll("#demo button").forEach(b =>
@@ -16588,6 +16819,10 @@ zeichne();
      „gruss“ braucht ihn), erscheint aber nicht von selbst — und die
      Sitzung des Boards wird nicht als „schon begrüßt“ markiert. */
   if(VORSCHAU){ schirm.hidden = true; return; }
+  /* Das Telefon im Showcase der Landingpage zeigt Schritt für Schritt
+     die Seiten — dort steht kein Gruß davor (der Dialog „Demo-Hub“
+     zeigt ihn, wie ein Gast ihn sieht). */
+  if(DEMO && window.OMOTENO_DEMO_OHNE_GRUSS === true){ schirm.remove(); return; }
 
   const SCHLUESSEL = "omoteno-willkommen";
   let schon = false;

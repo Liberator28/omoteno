@@ -74,6 +74,10 @@ function anwenden(r, host, p){
       ? { weiter: ziel, code: Number(r.code) || 301 }
       : { pfad: ziel };
   }
+  /* Pfad-Regeln mit 301/302 sind bei Netlify eine WEITERLEITUNG, keine
+     Umschreibung. Bis zum 11.10. schrieb dieser Server sie still um
+     (200) — großzügiger als Netlify; aufgefallen an /demo. */
+  const pfadZiel = ziel => /^30[1278]$/.test(r.code) ? { weiter: ziel, code: Number(r.code) } : { pfad: ziel };
   if(r.von.endsWith("/*")){
     const kopf = r.von.slice(0,-2);
     if(!p.startsWith(kopf)) return null;
@@ -85,9 +89,9 @@ function anwenden(r, host, p){
     let passt = true; const werte = {};
     teile.forEach((t,i) => { if(t.startsWith(":")) werte[t.slice(1)] = jetzt[i];
                              else if(t !== jetzt[i]) passt = false; });
-    return passt ? { pfad: r.nach.replace(/:(\w+)/g, (_,k) => werte[k]) } : null;
+    return passt ? pfadZiel(r.nach.replace(/:(\w+)/g, (_,k) => werte[k])) : null;
   }
-  return r.von === p ? { pfad: r.nach } : null;
+  return r.von === p ? pfadZiel(r.nach) : null;
 }
 
 /* ── Netlifys Reihenfolge, und sie ist der ganze Punkt ─────────────
@@ -299,7 +303,18 @@ server.listen(8899, async () => {
     .filter(r => !r.nach.startsWith("http"))
     .map(r => (r.nach.match(/^\/h\/([^/]+)/) || [,null])[1])
     .filter(Boolean));
+  /* Das Vorführhaus der Landingpage (Markenblatt mit „demo“) hat
+     bewusst KEINE eigene Domain — seine Adresse ist omoteno.de/demo.
+     Dafür muss genau diese Pfad-Regel stehen und wirklich dorthin
+     führen (gefragt wird der nachgestellte Netlify-Weg, nicht die Zeile). */
+  const vorfuehr = slug => { try{ return !!JSON.parse(fs.readFileSync(path.join(__dirname, "..", "markenblaetter", slug + ".json"), "utf8")).demo; }catch(e){ return false; } };
   for(const slug of hubs){
+    if(vorfuehr(slug)){
+      const a = await ueberHost("omoteno.de", "/demo");
+      pruef(a.code === 301 && a.ziel.replace(/^https?:\/\/[^/]+/, "") === "/h/" + slug + "/",
+        ("/h/" + slug + "/").padEnd(26) + " (Vorführhaus) unter omoteno.de/demo erreichbar", a.code + " → " + (a.ziel || "(ohne Ziel)"));
+      continue;
+    }
     pruef(bedient.has(slug), ("/h/" + slug + "/").padEnd(26) + " hat eine eigene Adresse",
       bedient.has(slug) ? "ja" : "KEINE Zeile in _redirects zeigt hierher");
   }
