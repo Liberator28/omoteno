@@ -56,7 +56,7 @@ function pruef(b, t, d) {
   await p.waitForTimeout(500);
   const scharf = await p.$("#scharfJetzt");
   if (scharf && await p.isVisible("#scharf")) { await scharf.click(); await p.waitForTimeout(200); }
-  await p.evaluate(() => document.querySelector('[data-tafel="einstellungen"]').click());
+  await p.evaluate(() => document.querySelector('[data-tafel="startseite"]').click());
   await p.waitForTimeout(400);
 
   const start = await p.evaluate(() => $("#frAn").getAttribute("aria-pressed"));

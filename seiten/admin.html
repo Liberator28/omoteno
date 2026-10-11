@@ -590,6 +590,32 @@ html{font-size:calc(16px * var(--skala,1))}
    Der Hub rechnet mit 390 px Breite; hier wird er verkleinert gezeigt.
    Nicht bedienbar (pointer-events:none): Ein Tipp in die kleine Seite
    soll nichts bestellen, sondern der Wirt tippt in SEINE Felder. */
+/* ═══ Gast-Hub gestalten (11.10.): ein Ort, eine Vorschau ═══════
+   Die Vorschau klebt unter dem Kopf des Boards und bleibt beim Rollen
+   stehen — man sieht beim Tippen in „Über uns“ dasselbe wie beim
+   Wählen einer Farbe. Auf dem Telefon kleiner und einklappbar, damit
+   unter ihr Platz zum Bearbeiten bleibt. */
+.gh-kopf{margin:0 0 6px}
+.gh-titel{font-size:20px;font-weight:650;margin:0 0 4px;color:var(--kreide)}
+.gh-sprung{display:flex;gap:8px;overflow-x:auto;padding:4px 0 6px;margin:8px -16px 0;padding-inline:16px;scrollbar-width:none}
+.gh-sprung::-webkit-scrollbar{display:none}
+.gh-sprung a{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);
+  border:1px solid var(--linie);color:var(--kreide);text-decoration:none;font-size:14px;font-weight:600;background:var(--flaeche)}
+.gh-vorschau{position:sticky;top:var(--board-kopf, 64px);z-index:6;margin:10px -16px 14px;padding:8px 16px 10px;
+  background:var(--nacht);border-bottom:1px solid var(--linie);--hv-mass:.5;--hv-hoehe:210px}
+.gh-vorschau.gross{--hv-mass:.72;--hv-hoehe:520px}
+.gh-vorschau.zu .hvfenster,.gh-vorschau.zu .hvstand{display:none}
+.gh-vorschau .hvkopf{margin-bottom:6px}
+.gh-vorschau .hvstand{margin-top:4px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hvknoepfe{display:flex;gap:8px}
+@media (min-width:700px){ .gh-vorschau{--hv-mass:.6;--hv-hoehe:340px} }
+/* Klebende Vorschau oben, Leiste unten: Was in den Blick gerollt wird
+   (Fokus, Sprung, Tab), landet zwischen beiden — nicht darunter (§3.5).
+   Die Höhe der Vorschau misst das Skript (--gh-vorschau-h). */
+#t-startseite :is(button,input,textarea,select,a,.egruppe){
+  scroll-margin-top:calc(var(--board-kopf, 64px) + var(--gh-vorschau-h, 300px) + 12px);
+  scroll-margin-bottom:calc(var(--leiste-h, 64px) + 16px);
+}
 .hvrahmen{--hv-mass:.6;--hv-hoehe:400px;margin:14px 0 4px}
 .hvrahmen.gross{--hv-mass:.82;--hv-hoehe:620px}
 .hvrahmen:empty{display:none}
@@ -775,7 +801,9 @@ html{font-size:calc(16px * var(--skala,1))}
        (Bildschirmfoto): Beide standen auf 39, bei Gleichstand gewinnt
        das spätere Element — auf dem Karte-Reiter lagen „Gericht
        hinzufügen“ und „Karte einlesen“ über „Startseite“ und
-       „Einstellungen“, die Menüpunkte waren nicht zu erreichen. */
+       „Einstellungen“, die Menüpunkte waren nicht zu erreichen.
+       Seit 11.10. stehen die Karte-Knöpfe oben im Fluss; die 41 bleibt
+       über der Befehlsleiste. */
     position:fixed;left:10px;right:10px;z-index:41;
     /* Schob sich bisher direkt ueber die Reiterleiste. Dort liegen
        jetzt die Filter, also eine Etage hoeher. Gerechnet aus
@@ -843,7 +871,44 @@ html{font-size:calc(16px * var(--skala,1))}
 .filterinfo{font-size:12px;color:var(--gedaempft);margin-top:4px}
 
 /* ─── Bestellkarte ─────────────────────────────────────────── */
-.karten{display:flex;flex-direction:column;gap:12px}
+.karten{display:flex;flex-direction:column;gap:12px;position:relative}
+/* Team-Modus: Knopf über den Filtern, Plakette auf der Karte. */
+.tmzeile{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px}
+.tmknopf{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 16px;border-radius:var(--ecke-pille);
+  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);font:inherit;font-size:14px;font-weight:650;cursor:pointer}
+.tmknopf{max-width:100%}
+.tmknopf .tmtitel{flex:0 0 auto}
+/* Namen bis 60 Zeichen (betrieb_mitglieder_grenzen): kürzen statt
+   seitlich überlaufen. */
+.tmknopf .tmstand{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;color:var(--gedaempft)}
+.tmknopf[aria-pressed=true]{border-color:var(--messing);background:color-mix(in srgb, var(--messing) 18%, var(--karte))}
+.tmknopf[aria-pressed=true] .tmstand{color:var(--kreide)}
+.tmdienst{display:flex;flex-wrap:wrap;gap:8px;margin:6px 0 14px}
+.tmchip{min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);border:1px solid var(--linie);
+  background:var(--flaeche-2);color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+.tmchip[aria-pressed=true]{border-color:var(--messing);background:var(--messing);color:var(--sockel);font-weight:650}
+body.hell .tmchip[aria-pressed=true]{color:var(--flaeche)}
+.tmzuw{min-height:44px;max-width:100%;padding:0 12px;margin:8px 0 0;border-radius:var(--ecke-pille);
+  border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font:inherit;font-size:16px;font-weight:650;-webkit-appearance:none;appearance:none;cursor:pointer}
+.tmzuw.meins{border-color:var(--messing);box-shadow:inset 0 0 0 1px var(--messing)}
+.tmzuw.niemand{color:var(--gedaempft);-webkit-text-fill-color:var(--gedaempft)}
+/* Wischen: die Karte gleitet, darunter steht die nächste Stufe. */
+.bestellung{touch-action:pan-y}
+.bestellung.bwisch{z-index:1;will-change:transform;user-select:none;-webkit-user-select:none}
+.wischziel{position:absolute;z-index:0;display:flex;align-items:center;justify-content:flex-end;
+  padding:0 22px;border-radius:var(--r);font-weight:750;font-size:16px;pointer-events:none;
+  background:color-mix(in srgb, var(--messing) 22%, var(--karte));color:var(--kreide)}
+.wischziel[data-stufe="fertig"]{background:color-mix(in srgb, var(--gut) 24%, var(--karte))}
+.wischziel span{opacity:.55;transform:scale(.94);transition:opacity .15s,transform .15s var(--ease-out)}
+.wischziel.bereit span{opacity:1;transform:none}
+.rueckleiste{position:fixed;left:50%;bottom:calc(var(--leiste-h, 64px) + 14px);transform:translateX(-50%);z-index:81;
+  display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;
+  border-radius:var(--ecke-pille);background:var(--kreide);color:var(--nacht);font-size:14px;font-weight:600;
+  box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.rueckleiste span{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rueckleiste button{flex:0 0 auto;min-height:44px;padding:0 16px;border-radius:var(--ecke-pille);border:0;
+  background:var(--nacht);color:var(--kreide);font:inherit;font-weight:700;cursor:pointer}
 /* Überschriften nach Stand in der Bestellliste (Wunsch 10.10.: „übersichtlicher“). */
 .kgruppe{grid-column:1/-1;display:flex;align-items:baseline;gap:8px;margin:10px 2px -2px;
   font-size:12px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--gedaempft)}
@@ -1321,6 +1386,30 @@ html{font-size:calc(16px * var(--skala,1))}
 }
 .zusage.an{color:var(--gut)}
 .zusage.an b{font-size:14.5px;color:var(--gut)}
+/* Zugeklappte Karte (viele offene Bestellungen): Kopf und eine Zeile. */
+.bestellung.bzu > :not(.bkopf):not(.bklapp):not(.tmzuw){display:none}
+.bestellung.bzu .bkopf{cursor:pointer}
+.bklapp{display:flex;align-items:center;gap:10px;width:100%;min-height:44px;margin:6px 0 4px;padding:8px 12px;
+  border-radius:10px;border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);
+  font:inherit;font-size:14px;text-align:start;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.bklapp .bkurz{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bklapp svg{flex:0 0 auto;transition:transform .2s var(--ease-out)}
+.bklapp[aria-expanded="true"]{margin-top:2px;border-style:dashed;background:transparent;color:var(--gedaempft);font-size:13px}
+.bklapp[aria-expanded="true"] svg{transform:rotate(180deg)}
+.zrestkurz{flex:0 0 auto;font-size:15px;font-weight:750;font-variant-numeric:tabular-nums;color:var(--gut)}
+.zrestkurz.zknapp{color:var(--glut)}
+.zrestkurz.zueber{color:var(--warn)}
+@media (prefers-reduced-motion:reduce){.bklapp svg{transition:none}}
+/* Restzeit: die Zahl ist das Wichtigste auf der Karte nach dem Tisch. */
+.zusage.zrest{position:relative;padding-bottom:17px}
+.zusage.zrest .zrestzahl{font-size:20px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:-.2px}
+.zusage.zrest .zvon{font-size:12.5px;color:var(--gedaempft)}
+.zbalken{position:absolute;left:0;right:0;bottom:6px;height:4px;border-radius:2px;overflow:hidden;
+  background:color-mix(in srgb, var(--kreide) 12%, transparent)}
+.zbalken i{display:block;height:100%;background:currentColor;transform-origin:left center;
+  transition:transform .6s var(--ease-out)}
+.zusage.zrest.zknapp,.zusage.zrest.zknapp b{color:var(--glut)}
+.zusage.zrest.zueber,.zusage.zrest.zueber b{color:var(--warn)}
 .zusage .zurueck{
   margin-left:auto;border:0;background:transparent;color:var(--gedaempft);
   font-family:inherit;font-size:12px;text-decoration:underline;
@@ -2292,6 +2381,38 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
       rgba(255,255,255,.16) 66.3%, rgba(255,255,255,.16) 66.5%, transparent 66.6%),
     linear-gradient(to bottom, transparent 49.7%, rgba(255,255,255,.16) 49.8%,
       rgba(255,255,255,.16) 50.2%, transparent 50.3%)}
+/* Texte & Schrift */
+#txTippen{min-height:44px;margin:0 0 10px}
+#txTippen[aria-pressed="true"]{border-color:var(--messing);color:var(--messing)}
+.gh-vorschau.tippen .hvfenster iframe{pointer-events:auto}
+.gh-vorschau.tippen .hvfenster{outline:2px solid var(--messing);outline-offset:2px}
+.txliste{display:flex;flex-direction:column;gap:2px;margin:10px 0 12px}
+.txliste:empty{display:none}
+.txseite{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
+  color:var(--messing);padding:12px 2px 4px}
+.txzeile{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;
+  padding:8px 12px;text-align:left;border:1px solid var(--linie);border-radius:10px;background:var(--flaeche-2);
+  color:var(--kreide);font:inherit;font-size:15px;cursor:pointer}
+.txzeile[aria-expanded="true"]{border-color:var(--messing)}
+.txzeile .txneu{flex:none;font-size:11px;font-weight:700;color:var(--messing)}
+.txeditor{padding:10px 2px 14px;display:flex;flex-direction:column;gap:10px}
+.txeditor textarea{min-height:66px}
+.txeditor .txknoepfe{display:flex;gap:8px;flex-wrap:wrap}
+.txeditor .txknoepfe .knopf{min-height:44px}
+/* Kopf & Logo im Board */
+.kfreihe{display:flex;align-items:center;gap:14px;margin:0 0 12px}
+.kfschau{flex:none;overflow:hidden;background:var(--flaeche-2);border:1px solid var(--linie);
+  display:grid;place-items:center;color:var(--gedaempft);font-size:12px;text-align:center}
+.kfschau img{display:block;width:100%;height:100%;object-fit:cover}
+.kfschau-bild{width:128px;aspect-ratio:16 / 9;border-radius:10px}
+.kfschau-logo{width:72px;height:72px;border-radius:50%}
+#kfGruppe[data-form="eckig"] .kfschau-logo{border-radius:22%}
+.kfknoepfe{display:flex;flex-wrap:wrap;gap:8px;min-width:0}
+.kfknoepfe .knopf{min-height:44px}
+/* Maske im Zuschnitt: zeigt, was beim Logo wirklich zu sehen ist. */
+.kfmaske{position:absolute;inset:0;pointer-events:none;display:none}
+#kfBlatt[data-art="logo"] .kfmaske{display:block;border-radius:50%;box-shadow:0 0 0 999px rgba(0,0,0,.55)}
+#kfBlatt[data-art="logo"][data-form="eckig"] .kfmaske{border-radius:22%}
 .kbzoom{display:flex;flex-direction:column;gap:6px;margin-top:12px}
 .kbzoom span{font-size:11.5px;color:var(--gedaempft)}
 
@@ -3023,30 +3144,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
    Textfeld. Deshalb bekommt sie eine eigene Fläche und feste Spalten:
    Preis rechtsbündig mit Ziffern gleicher Breite, damit man beim
    Überfliegen sofort sieht, wenn einer aus der Reihe fällt. */
-.kartenknoepfe{display:flex;flex-direction:column;gap:9px}
-/* Schwebend am unteren Rand, statt mit der Liste mitzuscrollen —
-   dasselbe Muster wie .befehlsleiste/.filterblock weiter oben in
-   dieser Datei: fixiert, ueber der globalen Reiterleiste (var(--leiste-h)),
-   mit Sicherheitsabstand fuers iPhone. Nur unter 760px: darueber hat
-   das Board eine andere Aufteilung, dort bleibt die alte Fliess-Lage. */
-@media (max-width:760px){
-  /* 132px = zwei .knopf (je ~46px) + 9px Zwischenraum + 10px Polster
-     oben/unten der Leiste selbst — von Hand gemessen, keine JS-Messung
-     noetig (die Leiste hat immer genau diese zwei Zeilen). */
-  #t-speisekarte{padding-bottom:132px}
-  .kartenknoepfe{
-    position:fixed;left:0;right:0;z-index:39;
-    bottom:var(--leiste-h);
-    margin:0;padding:10px 16px;
-    background:var(--leiste-glas);
-    -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
-    border-top:1px solid var(--linie);
-    animation:kartenknoepfeauf .22s var(--ease-out) both;
-  }
-  @keyframes kartenknoepfeauf{from{opacity:0;transform:translateY(-12px)}to{opacity:1;transform:none}}
+.kartenknoepfe{
+  display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:0 0 16px;
 }
-@media (max-width:760px) and (prefers-reduced-motion:reduce){
-  .kartenknoepfe{animation:none}
+.kartenknoepfe #neuesGericht{grid-column:1 / -1}
+@media (min-width:600px){
+  .kartenknoepfe{grid-template-columns:1.4fr 1fr 1fr}
+  .kartenknoepfe #neuesGericht{grid-column:auto}
 }
 /* Wer Transparenz reduziert haben will, bekommt dieselbe feste Fläche
    wie ein Browser ohne backdrop-filter (@supports-Rückfall folgt an
@@ -3064,7 +3168,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
    spätere Regel) war wirklich betroffen. Jetzt steht dieser Block
    nach beiden mobilen Blöcken, damit er wirklich zuletzt gilt. */
 @media (prefers-reduced-transparency:reduce){
-  header,#t-bestellungen .filterblock,.befehlsleiste,.kartenknoepfe,.egruppe,
+  header,#t-bestellungen .filterblock,.befehlsleiste,.egruppe,
   .aw-glas,.aw-segment{
     background:var(--karte);
     -webkit-backdrop-filter:none;backdrop-filter:none;
@@ -3080,35 +3184,78 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 .impstand b{color:var(--kreide);font-weight:600}
 .impstand.leer{border-left-color:var(--linie)}
 .impliste{
-  max-height:44vh;overflow-y:auto;-webkit-overflow-scrolling:touch;
+  /* Kein eigener Scrollbereich mehr (§3.8): Die Liste fließt im Blatt
+     mit. Vorher max-height:44vh mit overflow — der Finger lag fast
+     immer auf der Liste, und das Blatt rollte nicht bis „anlegen“. */
   border:1px solid var(--linie);border-radius:11px;
   background:var(--flaeche-2);margin-bottom:16px;
 }
 .impliste:empty{display:none}
-.impkat{
-  font-family:var(--mono);
-  font-size:10.5px;font-weight:700;letter-spacing:.16em;text-transform:uppercase;
-  color:var(--messing);padding:11px 13px 6px;
+.impgruppe{padding:10px 13px 4px}
+.impliste input.impkatfeld{
+  font-family:var(--mono);font-size:16px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;
+  color:var(--messing);-webkit-text-fill-color:var(--messing);
+  background:transparent;border:0;border-bottom:1px dashed var(--linie);border-radius:0;
+  padding:8px 0;min-height:44px;
 }
 .impzeile{
-  display:flex;align-items:baseline;gap:10px;
-  padding:8px 13px;border-top:1px solid rgba(56,50,38,.5);
+  display:flex;align-items:flex-start;gap:8px;
+  padding:8px 13px 10px 6px;border-top:1px solid var(--linie);
 }
-.impzeile .in{flex:1;min-width:0;font-size:14px;line-height:1.3}
-.impzeile .ib{
-  display:block;font-size:11.5px;color:var(--gedaempft);
-  line-height:1.4;margin-top:2px;
+.impzeile .in{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.impliste input.impname{
+  background:transparent;border:0;border-bottom:1px dashed transparent;border-radius:0;
+  padding:10px 0 4px;min-height:44px;line-height:1.3;
 }
-.impzeile .ip{
-  font-family:var(--mono);
-  font-size:14px;font-weight:600;font-variant-numeric:tabular-nums;
-  white-space:nowrap;color:var(--messing);
+.impliste input.impname:focus{border-bottom-color:var(--messing);outline:none}
+.impzeile .ib{display:block;font-size:12px;color:var(--gedaempft);line-height:1.4}
+.impzeile .ip{flex:none}
+.impliste input.imppreis{
+  width:96px;min-height:44px;text-align:right;
+  font-family:var(--mono);font-weight:600;font-variant-numeric:tabular-nums;
+  color:var(--messing);-webkit-text-fill-color:var(--messing);
+  background:var(--karte);padding:10px;
 }
-.impzeile.ohnepreis .ip{color:var(--warn);font-weight:500}
-.impzeile.doppelt{opacity:.5}
-.impzeile.doppelt .in::after{
-  content:" · schon vorhanden";font-size:11px;color:var(--gedaempft);font-weight:400;
+.impzeile.ohnepreis input.imppreis{border-color:var(--warn)}
+.impliste input.imppreis::placeholder{color:var(--warn);-webkit-text-fill-color:var(--warn);font-weight:500;font-size:13px}
+.impan{
+  flex:none;width:44px;height:44px;display:grid;place-items:center;
+  background:none;border:0;padding:0;cursor:pointer;
 }
+.impan::before{
+  content:"";width:22px;height:22px;border-radius:7px;
+  border:1.5px solid var(--gedaempft);background:transparent;
+}
+.impan[aria-pressed="true"]::before{
+  background:var(--messing);border-color:var(--messing);
+  box-shadow:inset 0 0 0 4px var(--karte);
+}
+.impan:disabled{cursor:default;opacity:.4}
+.impchips{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.impchip{
+  min-width:44px;min-height:44px;padding:0 12px;border-radius:22px;
+  font-family:var(--mono);font-size:13px;font-weight:600;
+  color:var(--kreide);background:var(--karte);border:1px solid var(--linie);cursor:pointer;
+}
+.impchip[aria-pressed="false"]{color:var(--gedaempft);text-decoration:line-through}
+.impchip.vorschlag{font-family:inherit;font-weight:500;border-style:dashed}
+.impchip.vorschlag[aria-pressed="false"]{text-decoration:none}
+.impchip.vorschlag[aria-pressed="true"]{border-style:solid;border-color:var(--messing)}
+.impnotiz{font-size:12px;color:var(--gedaempft)}
+.impnotiz:empty{display:none}
+.impzeile.ohnepreis .impnotiz:empty{display:block}
+.impzeile.ohnepreis .impnotiz:empty::before{content:"Preis fehlt — ohne Preis wird nichts angelegt";color:var(--warn)}
+.impzeile.doppelt{opacity:.55}
+.impschema{
+  font-size:14px;line-height:1.5;color:var(--kreide);
+  padding:11px 13px;margin:0 0 12px;
+  background:var(--flaeche-2);border:1px solid var(--linie);border-left:2px solid var(--warn);border-radius:0 10px 10px 0;
+}
+.impschema p{margin:0 0 8px}
+.impschema p:last-child{margin:0}
+.impschema-wahl{display:flex;flex-wrap:wrap;gap:8px}
+.impschema-wahl .knopf{min-height:44px}
+.impschema-wahl .knopf[aria-pressed="true"]{border-color:var(--messing);color:var(--messing)}
 
 @media (min-width:700px){
   .karten{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);align-items:start}
@@ -3179,7 +3326,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <button role="tab" aria-selected="false" data-tafel="ausgabe">Ausgabe</button>
     <button role="tab" aria-selected="false" data-tafel="verfuegbar">Verfügbar</button>
     <button role="tab" aria-selected="false" data-tafel="auswertung">Auswertung</button>
-    <button role="tab" aria-selected="false" data-tafel="startseite">Startseite</button>
+    <button role="tab" aria-selected="false" data-tafel="startseite">Gast-Hub</button>
     <button role="tab" aria-selected="false" data-tafel="einstellungen">Einstellungen</button>
   </nav>
   </div>
@@ -3198,7 +3345,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 <div class="mehrfach" id="mehrfach" hidden>
   <button type="button" data-tafel="ausgabe" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16v12H4z"/><path d="M4 11h16M9 7V4h6v3"/></svg><span>Ausgabe</span></button>
   <button type="button" data-tafel="verfuegbar" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5 10 17l9-10"/></svg><span>Verfügbar</span></button>
-  <button type="button" data-tafel="startseite" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="7" rx="2"/><rect x="3.5" y="14" width="7.5" height="5.5" rx="2"/><rect x="13" y="14" width="7.5" height="5.5" rx="2"/></svg><span>Startseite</span></button>
+  <button type="button" data-tafel="startseite" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="7" rx="2"/><rect x="3.5" y="14" width="7.5" height="5.5" rx="2"/><rect x="13" y="14" width="7.5" height="5.5" rx="2"/></svg><span>Gast-Hub</span></button>
     <button type="button" data-tafel="einstellungen" aria-selected="false"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 3v2.2M12 18.8V21M21 12h-2.2M5.2 12H3M18.4 5.6l-1.6 1.6M7.2 16.8l-1.6 1.6M18.4 18.4l-1.6-1.6M7.2 7.2 5.6 5.6"/></svg><span>Einstellungen</span></button>
 </div>
 
@@ -3214,6 +3361,14 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <i id="pauseHilfe">Gäste können über den Hub bestellen</i>
       </div>
       <button class="pausenknopf" id="pauseKnopf">Pausieren</button>
+    </div>
+    <!-- Team-Modus (Wunsch 11.10.): Bestellungen werden Nummern
+         zugewiesen. Der Knopf trägt seine Stellung (aria-pressed). -->
+    <div class="tmzeile">
+      <button type="button" class="tmknopf" id="teamKnopf" aria-pressed="false">
+        <span class="tmtitel">Team-Modus</span><span class="tmstand" id="teamStandKurz">aus</span>
+      </button>
+      <button type="button" class="chip" id="nurMeine" aria-pressed="false" hidden><span class="kasten"></span>Nur meine</button>
     </div>
     <!-- Zum Abholen (Wunsch 10.10.): Die Küche hakt ab („Abholbereit“),
          hier steht es für den Service — mit eigenem Ton —, bis jemand
@@ -3320,13 +3475,20 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <button class="chip" data-karte="getraenke"   aria-pressed="false">Getränke</button>
       <button class="chip" data-karte="cocktails"   aria-pressed="false">Cocktails</button>
     </div>
+    <!-- Wunsch 11.10.: „Kategorien hinzufügen und Karte einlesen direkt
+         oben sehen“. Vorher schwebten zwei Knöpfe unten über der
+         Reiterleiste, „＋ Neue Kategorie“ stand erst am Ende der Liste —
+         bei 13 Kategorien zwölf Bildschirme tiefer. Jetzt alle drei
+         Wege oben unter den Karten; „＋ Neue Kategorie“ am Listenende
+         bleibt als zweiter Weg. -->
+    <div class="kartenknoepfe" role="group" aria-label="Zur Karte hinzufügen">
+      <button class="knopf" id="neuesGericht">Gericht hinzufügen</button>
+      <button class="knopf leise" id="neueKategorie">＋ Kategorie</button>
+      <button class="knopf leise" id="karteImport">Karte einlesen</button>
+    </div>
     <p class="nur-inhaber-satz" id="karteTeamSatz" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Die Karte ändert nur der Besitzer. Ausverkauftes stellen Sie unter „Verfügbar“ ab.</span></p>
     <input type="text" class="suche" id="karteSuche" placeholder="Gericht suchen" autocomplete="off">
     <div id="karteListe"></div>
-    <div class="kartenknoepfe">
-      <button class="knopf" id="neuesGericht">Gericht hinzufügen</button>
-      <button class="knopf leise" id="karteImport">Karte einlesen</button>
-    </div>
   </section>
 
   <!-- ══ AUSGABE ══ -->
@@ -3457,30 +3619,174 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
        Wirts. Was er hier einstellt, sieht der Gast beim nächsten
        Öffnen — ohne dass der Hub neu erzeugt werden muss. -->
   <section class="tafel" id="t-startseite" hidden>
+    <!-- ══ GAST-HUB GESTALTEN (Wunsch 11.10.) ══
+         „Alles soll auf einem Platz machbar sein und nicht in
+         verschiedene Rubriken aufgeteilt werden.“ Kopf, Texte, Schrift,
+         Farben, Kacheln, Banner, Figur und Foodroulette stehen hier
+         untereinander, darüber EINE Vorschau des echten Hubs, die beim
+         Rollen stehen bleibt. Betriebliches (Lieferung, Team, PIN …)
+         bleibt unter „Einstellungen“. Die Gruppen behalten ihre ids —
+         Lese- und Schreibwege sind dieselben wie vorher. -->
+    <div class="gh-kopf">
+      <h2 class="gh-titel">Gast-Hub gestalten</h2>
+      <p class="ehilfe">Alles, was Ihre Gäste sehen, an einem Ort. Die Vorschau
+        zeigt jede Änderung sofort; Gäste sehen sie, sobald Sie im Bereich
+        „Übernehmen“ tippen.</p>
+      <div class="gh-sprung" role="navigation" aria-label="Bereiche des Gast-Hubs">
+        <a href="#kfGruppe" data-gh-sprung="kfGruppe">Kopf &amp; Logo</a>
+        <a href="#gh-worte" data-gh-sprung="gh-worte">Ihre Worte</a>
+        <a href="#txGruppe" data-gh-sprung="txGruppe">Alle Texte</a>
+        <a href="#swGruppe" data-gh-sprung="swGruppe">Schrift</a>
+        <a href="#fbGruppe" data-gh-sprung="fbGruppe">Farben</a>
+        <a href="#gh-kacheln" data-gh-sprung="gh-kacheln">Kacheln</a>
+        <a href="#gh-banner" data-gh-sprung="gh-banner">Banner</a>
+        <a href="#gh-figur" data-gh-sprung="gh-figur">Figur</a>
+        <a href="#gh-roulette" data-gh-sprung="gh-roulette">Foodroulette</a>
+      </div>
+    </div>
+    <div class="hvrahmen gh-vorschau" data-hv="gestalten"></div>
 
-    <!-- Gemeinsame Rahmung für Kacheln + Banner-Rad: EIN Bereich,
-         "Ihre Seite" — der Gedanke, dass beide Bausteine zusammen die
-         Startseite des Hubs bilden, stand vorher nur einmal (in der
-         alten Kachel-Überschrift) und nirgends für das neue Banner-Rad.
-         Bewusst ohne neue Mechanik (Nutzer-Entscheidung): reine Rahmung,
-         keine Umsortierung, kein freies Hinzufügen bei den Kacheln. -->
-    <div class="egruppe" data-nur-inhaber>
-      <h2 class="etitel">Ihre Seite</h2>
-      <p class="ehilfe">Alles, was Ihr Gast als Erstes sieht, wenn er das
-        Handy auf den Untersetzer legt — in der Reihenfolge, in der es
-        erscheint: zuerst eine laufende Aktion oder Ihr Banner-Rad, danach
-        die Kacheln. Beides stellen Sie hier ein, beides gilt sofort, ohne
-        dass irgendetwas neu erzeugt werden muss.</p>
+    <!-- Kopf & Logo (Wunsch 11.10.): Bild ganz oben auf der Startseite,
+         das Logo mittig auf seiner Unterkante, rund oder eckig. Ein
+         Tipp aufs Logo zeigt dem Gast die Haus-Seite. Gespeichert in
+         hub_stil.kopf — der Hub nimmt nur Dateien aus dem eigenen
+         Ordner im Eimer „gerichte“ (kopfBildOk). -->
+    <div class="egruppe" data-nur-inhaber id="kfGruppe">
+      <h2 class="etitel">Kopf &amp; Logo</h2>
+      <p class="ehilfe">Ein Bild ganz oben auf Ihrer Startseite, darauf mittig
+        Ihr Logo — rund oder eckig. Tippt ein Gast aufs Logo, sieht er alles
+        Wichtige über Ihr Haus: Zeiten, Weg, Kontakt und „Über uns“.</p>
+      <div class="kfreihe">
+        <div class="kfschau kfschau-bild" id="kfBildSchau"></div>
+        <div class="kfknoepfe">
+          <button type="button" class="knopf leise schmal" id="kfBildWahl">Kopfbild wählen</button>
+          <button type="button" class="knopf leise schmal" id="kfBildWeg" hidden>Entfernen</button>
+        </div>
+      </div>
+      <div class="kfreihe">
+        <div class="kfschau kfschau-logo" id="kfLogoSchau"></div>
+        <div class="kfknoepfe">
+          <button type="button" class="knopf leise schmal" id="kfLogoWahl">Logo wählen</button>
+          <button type="button" class="knopf leise schmal" id="kfLogoWeg" hidden>Entfernen</button>
+        </div>
+      </div>
+      <div class="auswahlfeld">
+        <span class="lname">Form des Logos</span>
+        <div class="segment" id="kfForm" role="radiogroup" aria-label="Form des Logos">
+          <button type="button" data-kf-form="rund" role="radio" aria-checked="true">Rund</button>
+          <button type="button" data-kf-form="eckig" role="radio" aria-checked="false">Eckig</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+      </div>
+      <input type="file" accept="image/*" id="kfDatei" hidden>
+      <div class="epruefung" id="kfStand"></div>
+      <div class="eknoepfe">
+        <button class="knopf" id="kfSichern" disabled>Übernehmen</button>
+      </div>
+    </div>
 
-      <div class="schalter">
-        <div><div class="schaltertext">Bewegte Emojis</div>
-        <div class="schalterhilfe">Kacheln, Servicerufe und Kategorien bekommen lebendige Emojis, die beim Antippen reagieren. Aus = die ruhigen, gezeichneten Symbole — passend zu einem edlen Auftritt.</div></div>
-        <button class="wippe" id="stilAn" aria-pressed="true" aria-label="Bewegte Emojis"></button>
+    <div class="egruppe" data-nur-inhaber id="gh-worte">
+      <h2 class="etitel">Ihre Worte im Gast-Hub</h2>
+      <p class="ehilfe">Ihr Slogan, der Gruß beim Öffnen, der Name Ihrer Aktionen,
+        das WLAN und „Über uns“. Die Vorschau oben zeigt jede Zeile beim Tippen;
+        Gäste sehen sie nach „Übernehmen“, ohne dass etwas neu gebaut wird.</p>
+
+      <div class="ezeile senkrecht">
+        <span><b>Slogan im Kopf</b><i>Die Zeile unter Ihrem Namen, auf jeder Seite sichtbar</i></span>
+        <label class="feld">
+          <span>Slogan <em class="mass" id="hubClaimMass"></em></span>
+          <input type="text" id="hubClaim" autocomplete="off" placeholder="Don't get mad, get chocolate.">
+          <small class="feldhilfe" id="hubClaimHilfe">Kurz wirkt am besten — eine Zeile,
+            die man im Vorbeigehen liest.</small>
+          <small class="hvwarn" data-hvwarn="claim"></small>
+        </label>
       </div>
 
-      <!-- Der echte Hub, klein: jede Änderung an Kacheln und Banner
-           erscheint hier, bevor sie übernommen wird. -->
-      <div class="hvrahmen" data-hv="startseite"></div>
+      <div class="ezeile senkrecht">
+        <span><b>Gruß beim Öffnen</b><i>Drei Sekunden auf dem Willkommensschirm, einmal je Besuch</i></span>
+        <label class="feld">
+          <span>Gruß <em class="mass" id="hubGrussMass"></em></span>
+          <input type="text" id="hubGruss" autocomplete="off" placeholder="Schön, dass Sie da sind.">
+          <small class="feldhilfe" id="hubGrussHilfe">Ein Satz, den Ihr Team auch
+            sagen würde.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>So heißen Ihre Aktionen</b><i>Vorgabe für den Top-Runner — je Aktion überschreibbar</i></span>
+        <label class="feld">
+          <span>Aktionsname <em class="mass" id="hubRunnerMass"></em></span>
+          <input type="text" id="hubRunner" autocomplete="off" placeholder="Top-Runner">
+          <small class="feldhilfe" id="hubRunnerHilfe">„Happy Hour", „Mittagsknaller",
+            „Heute besonders" — Ihr Wort, nicht unseres.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Laufschrift beim Top-Runner</b><i>Läuft im farbigen Band über der Aktion — leer: Name, Gericht, Rabatt und Restzeit</i></span>
+        <label class="feld">
+          <span>Laufschrift <em class="mass" id="hubLaufschriftMass"></em></span>
+          <input type="text" id="hubLaufschrift" autocomplete="off" placeholder="Nur heute · solange der Vorrat reicht">
+          <small class="feldhilfe" id="hubLaufschriftHilfe">Der Rabatt in Prozent kommt von selbst
+            dazu. Kurz und laut wirkt am besten.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>WLAN für Gäste</b><i>Auf der Seite „WLAN verbinden“ — der Gast sieht das Passwort nicht, er kopiert es mit einem Tipp oder scannt den QR-Code</i></span>
+        <label class="feld">
+          <span>Name des Netzes <em class="mass" id="hubWlanNetzMass"></em></span>
+          <input type="text" id="hubWlanNetz" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Name wie im WLAN-Menü des Handys">
+          <small class="feldhilfe" id="hubWlanNetzHilfe">Genau so geschrieben, wie er im WLAN-Menü steht —
+            sonst findet der QR-Code das Netz nicht.</small>
+        </label>
+        <label class="feld">
+          <span>Passwort <em class="mass" id="hubWlanPasswortMass"></em></span>
+          <input type="text" id="hubWlanPasswort" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Passwort des Gäste-WLANs">
+          <small class="feldhilfe" id="hubWlanPasswortHilfe">Nur das Gäste-Netz, nie das Netz Ihrer Kasse:
+            Jeder, der die Seite öffnet, kann es kopieren.</small>
+        </label>
+      </div>
+
+      <div class="ezeile senkrecht">
+        <span><b>Über uns</b><i>Auf der Seite hinter Ihrem Logo — ein paar Sätze, wer Sie sind</i></span>
+        <label class="feld">
+          <span>Über uns <em class="mass" id="hubUeberMass"></em></span>
+          <textarea id="hubUeber" rows="4" placeholder="Seit 2019 backen wir jeden Morgen selbst …"></textarea>
+          <small class="feldhilfe" id="hubUeberHilfe">Erscheint, wenn ein Gast auf Ihr Logo tippt.
+            Zeilenumbrüche bleiben stehen.</small>
+        </label>
+      </div>
+
+      <!-- Rückfall, wenn der echte Hub oben nicht zu laden ist (offline). -->
+      <div class="hubschau" id="hubSchau" aria-live="polite" hidden></div>
+
+      <div class="eknoepfe">
+        <button class="knopf" id="hubTexteSichern">Übernehmen</button>
+        <button class="knopf leise" id="hubTexteZurueck">Auf Vorgabe zurück</button>
+      </div>
+      <div class="epruefung" id="hubTextePruefung"></div>
+    </div>
+
+    <!-- ══ TEXTE & SCHRIFT (Wunsch 11.10.) ══
+         „Jeden Text, der auf den Seiten begegnet, ganz einfach ändern —
+         sowohl den Text als auch die Schrift von einzelnen Texten.“
+         Gespeichert in hub_texte.eigen, Schlüssel = deutscher Satz des
+         Wörterbuchs im Hub. Die Liste kommt aus dem Hub selbst
+         (vorschauTexte) — keine zweite, abgeschriebene Liste hier. -->
+    <div class="egruppe" data-nur-inhaber id="txGruppe">
+      <h2 class="etitel">Texte &amp; Schrift</h2>
+      <p class="ehilfe">Jeder Satz, den Ihre Gäste lesen — Knöpfe, Überschriften,
+        Hinweise. Tippen Sie ihn oben in der Vorschau an oder suchen Sie ihn hier,
+        ändern Sie Wortlaut und Schrift. Beim Übernehmen wird Ihre Änderung in alle
+        elf Sprachen übersetzt. Gerichte ändern Sie in der Karte.</p>
+      <button type="button" class="knopf leise schmal" id="txTippen" aria-pressed="false">Text in der Vorschau antippen</button>
+      <input type="text" class="suche" id="txSuche" placeholder="Text suchen" autocomplete="off" aria-label="Text suchen">
+      <div class="txliste" id="txListe" aria-live="polite"></div>
+      <div class="epruefung" id="txStand"></div>
+      <div class="eknoepfe">
+        <button class="knopf" id="txSichern" disabled>Übernehmen</button>
+      </div>
     </div>
 
     <div class="egruppe" data-nur-inhaber id="swGruppe">
@@ -3616,7 +3922,6 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
       <p class="fbwarn" id="fbWarn" aria-live="polite"></p>
       <button type="button" class="knopf leise" id="fbLesbar" hidden>Lesbar machen</button>
-      <div class="hvrahmen" data-hv="farben"></div>
       <div class="ezeile senkrecht">
         <span><b>Übernehmen</b><i>Gäste sehen es beim nächsten Abgleich, spätestens nach fünf Minuten</i></span>
         <div class="kbknoepfe">
@@ -3627,7 +3932,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="fbPruefung" aria-live="polite"></div>
     </div>
 
-    <div class="egruppe" data-nur-inhaber>
+    <div class="egruppe" data-nur-inhaber id="gh-kacheln">
       <h2 class="etitel">Kacheln</h2>
       <p class="ehilfe">Die Knöpfe auf Ihrer Seite — welche erscheinen, wie
         sie heißen und welches Bild darauf liegt.</p>
@@ -3667,7 +3972,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          wird darunter in einer normalen Liste — ein volles
          Bearbeitungsformular (Bild, Titel, Ziel-Wahl) passt nicht
          bequem in eine wischbare Karte hinein. -->
-    <div class="egruppe" data-nur-inhaber>
+    <div class="egruppe" data-nur-inhaber id="gh-banner">
       <h2 class="etitel">Aktions-Banner-Rad</h2>
       <p class="ehilfe">Ein wischbares Bilderkarussell ganz oben auf der
         Startseite — für ein Angebot, eine Neuigkeit oder eine laufende
@@ -3684,6 +3989,44 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </div>
       </div>
       <div class="epruefung" id="bnPruefung"></div>
+    </div>
+
+    <div class="egruppe" data-nur-inhaber id="gh-figur">
+      <h2 class="etitel">Figur des Hauses</h2>
+      <p class="ehilfe">Welche Figur den Gast im Hub begleitet, welche
+        Stimmung sie hat und was sie je Bestellphase in der Hand hält —
+        gilt sofort, ohne dass der Hub neu erzeugt werden muss.</p>
+      <div id="avListe"></div>
+      <div class="eknoepfe">
+        <button class="knopf" id="avSichern">Übernehmen</button>
+      </div>
+      <div class="epruefung" id="avPruefung"></div>
+    </div>
+
+    <div class="egruppe" data-nur-inhaber id="gh-roulette">
+      <h2 class="etitel">Foodroulette</h2>
+      <p class="ehilfe">Die Entscheidungshilfe auf der Speisekarte: Der Gast wischt
+        durch Gerichte oder lässt sich eines auslosen. Aus = die Speisekarte zeigt
+        nur die normale Liste, ohne diesen Einstieg.</p>
+      <div class="schalter">
+        <div><div class="schaltertext">Für Gäste anzeigen</div>
+        <div class="schalterhilfe">Aus = auf der Speisekarte unsichtbar, der Weg „#/entdecken“ führt zurück dorthin</div></div>
+        <button class="wippe" id="frAn" aria-pressed="true" aria-label="Foodroulette"></button>
+      </div>
+    </div>
+
+    <!-- Früher „Ihre Seite“ mit eigener Vorschau; seit 11.10. steht die
+         Vorschau oben für den ganzen Reiter, hier bleibt der Schalter. -->
+    <div class="egruppe" data-nur-inhaber id="gh-emojis">
+      <h2 class="etitel">Bewegte Emojis</h2>
+      <p class="ehilfe">Lebendige Zeichen auf Kacheln, Servicerufen und
+        Kategorien — oder ruhige, gezeichnete Symbole für einen edlen Auftritt.</p>
+
+      <div class="schalter">
+        <div><div class="schaltertext">Bewegte Emojis</div>
+        <div class="schalterhilfe">Kacheln, Servicerufe und Kategorien bekommen lebendige Emojis, die beim Antippen reagieren. Aus = die ruhigen, gezeichneten Symbole — passend zu einem edlen Auftritt.</div></div>
+        <button class="wippe" id="stilAn" aria-pressed="true" aria-label="Bewegte Emojis"></button>
+      </div>
     </div>
   </section>
 
@@ -3733,83 +4076,6 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="epruefung" id="tonPruefung"></div>
     </div>
 
-    <div class="egruppe" data-nur-inhaber>
-      <h2 class="etitel">Ihre Worte im Gast-Hub</h2>
-      <p class="ehilfe">Farben, Schriften und Aufbau kommen aus dem Marken-Studio —
-        das bleibt so, damit der Hub zusammenhält. Hier stehen die Sätze, die Sie
-        jederzeit selbst ändern dürfen. Sie sind sofort beim Gast, ohne dass etwas
-        neu gebaut werden muss.</p>
-
-      <div class="ezeile senkrecht">
-        <span><b>Slogan im Kopf</b><i>Die Zeile unter Ihrem Namen, auf jeder Seite sichtbar</i></span>
-        <label class="feld">
-          <span>Slogan <em class="mass" id="hubClaimMass"></em></span>
-          <input type="text" id="hubClaim" autocomplete="off" placeholder="Don't get mad, get chocolate.">
-          <small class="feldhilfe" id="hubClaimHilfe">Kurz wirkt am besten — eine Zeile,
-            die man im Vorbeigehen liest.</small>
-          <small class="hvwarn" data-hvwarn="claim"></small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>Gruß beim Öffnen</b><i>Drei Sekunden auf dem Willkommensschirm, einmal je Besuch</i></span>
-        <label class="feld">
-          <span>Gruß <em class="mass" id="hubGrussMass"></em></span>
-          <input type="text" id="hubGruss" autocomplete="off" placeholder="Schön, dass Sie da sind.">
-          <small class="feldhilfe" id="hubGrussHilfe">Ein Satz, den Ihr Team auch
-            sagen würde.</small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>So heißen Ihre Aktionen</b><i>Vorgabe für den Top-Runner — je Aktion überschreibbar</i></span>
-        <label class="feld">
-          <span>Aktionsname <em class="mass" id="hubRunnerMass"></em></span>
-          <input type="text" id="hubRunner" autocomplete="off" placeholder="Top-Runner">
-          <small class="feldhilfe" id="hubRunnerHilfe">„Happy Hour", „Mittagsknaller",
-            „Heute besonders" — Ihr Wort, nicht unseres.</small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>Laufschrift beim Top-Runner</b><i>Läuft im farbigen Band über der Aktion — leer: Name, Gericht, Rabatt und Restzeit</i></span>
-        <label class="feld">
-          <span>Laufschrift <em class="mass" id="hubLaufschriftMass"></em></span>
-          <input type="text" id="hubLaufschrift" autocomplete="off" placeholder="Nur heute · solange der Vorrat reicht">
-          <small class="feldhilfe" id="hubLaufschriftHilfe">Der Rabatt in Prozent kommt von selbst
-            dazu. Kurz und laut wirkt am besten.</small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>WLAN für Gäste</b><i>Auf der Seite „WLAN verbinden“ — der Gast sieht das Passwort nicht, er kopiert es mit einem Tipp oder scannt den QR-Code</i></span>
-        <label class="feld">
-          <span>Name des Netzes <em class="mass" id="hubWlanNetzMass"></em></span>
-          <input type="text" id="hubWlanNetz" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Name wie im WLAN-Menü des Handys">
-          <small class="feldhilfe" id="hubWlanNetzHilfe">Genau so geschrieben, wie er im WLAN-Menü steht —
-            sonst findet der QR-Code das Netz nicht.</small>
-        </label>
-        <label class="feld">
-          <span>Passwort <em class="mass" id="hubWlanPasswortMass"></em></span>
-          <input type="text" id="hubWlanPasswort" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="Passwort des Gäste-WLANs">
-          <small class="feldhilfe" id="hubWlanPasswortHilfe">Nur das Gäste-Netz, nie das Netz Ihrer Kasse:
-            Jeder, der die Seite öffnet, kann es kopieren.</small>
-        </label>
-      </div>
-
-      <div class="ezeile senkrecht">
-        <span><b>So sieht es der Gast</b><i>Kopf des Hubs in Telefonbreite, mit Ihren Worten</i></span>
-        <div class="hvrahmen" data-hv="worte"></div>
-        <!-- Rückfall, wenn der echte Hub nicht zu laden ist (offline). -->
-        <div class="hubschau" id="hubSchau" aria-live="polite" hidden></div>
-      </div>
-
-      <div class="eknoepfe">
-        <button class="knopf" id="hubTexteSichern">Übernehmen</button>
-        <button class="knopf leise" id="hubTexteZurueck">Auf Vorgabe zurück</button>
-      </div>
-      <div class="epruefung" id="hubTextePruefung"></div>
-    </div>
 
     <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Lieferung</h2>
@@ -4060,29 +4326,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         zugesagt haben, zählt herunter.</p>
     </div>
 
-    <div class="egruppe" data-nur-inhaber>
-      <h2 class="etitel">Foodroulette</h2>
-      <p class="ehilfe">Die Entscheidungshilfe auf der Speisekarte: Der Gast wischt
-        durch Gerichte oder lässt sich eines auslosen. Aus = die Speisekarte zeigt
-        nur die normale Liste, ohne diesen Einstieg.</p>
-      <div class="schalter">
-        <div><div class="schaltertext">Für Gäste anzeigen</div>
-        <div class="schalterhilfe">Aus = auf der Speisekarte unsichtbar, der Weg „#/entdecken“ führt zurück dorthin</div></div>
-        <button class="wippe" id="frAn" aria-pressed="true" aria-label="Foodroulette"></button>
-      </div>
-    </div>
 
-    <div class="egruppe" data-nur-inhaber>
-      <h2 class="etitel">Figur des Hauses</h2>
-      <p class="ehilfe">Welche Figur den Gast im Hub begleitet, welche
-        Stimmung sie hat und was sie je Bestellphase in der Hand hält —
-        gilt sofort, ohne dass der Hub neu erzeugt werden muss.</p>
-      <div id="avListe"></div>
-      <div class="eknoepfe">
-        <button class="knopf" id="avSichern">Übernehmen</button>
-      </div>
-      <div class="epruefung" id="avPruefung"></div>
-    </div>
 
     <div class="egruppe">
       <h2 class="etitel">Bildschirm</h2>
@@ -4272,7 +4516,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="griff"></div>
     <h2 class="blatttitel" id="kvTitel">Karten</h2>
     <p class="kted-hilfe">Bis zu 20 Karten, z.&nbsp;B. Mittags- und Abendkarte. Ein Gericht darf in
-      mehreren stehen. Welche Karte eine Kachel zeigt, stellst du unter „Startseite“ ein.</p>
+      mehreren stehen. Welche Karte eine Kachel zeigt, stellst du unter „Gast-Hub“ bei den Kacheln ein.</p>
     <div id="kvListe" class="kv-liste"></div>
     <button type="button" class="kted-neu" id="kvNeu"><span aria-hidden="true">＋</span> Neue Karte</button>
     <div class="kted-knoepfe" style="margin-top:16px">
@@ -4286,6 +4530,42 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   <div class="blattinhalt aw-blatt">
     <div class="griff"></div>
     <div id="awBlattInhalt"></div>
+  </div>
+</div>
+
+<div class="blatt" id="teamBlatt" hidden>
+  <div class="blattinhalt">
+    <div class="blattgriff"></div>
+    <h2 class="ztitel">Team-Modus</h2>
+    <p class="zhilfe">Jede neue Bestellung bekommt eine Nummer aus dem Team. Auf jeder Karte steht, wer sie hat.</p>
+    <div class="epruefung" id="teamFehlt" hidden></div>
+    <div class="tmbesitzer" id="teamBesitzer">
+      <div class="schalter">
+        <div><div class="schaltertext">Team-Modus an</div>
+        <div class="schalterhilfe">Aus = niemand wird zugewiesen, alles wie bisher.</div></div>
+        <button class="wippe" id="teamAn" aria-pressed="false" aria-label="Team-Modus an"></button>
+      </div>
+      <div class="auswahlfeld">
+        <span class="lname">Wie verteilen?</span>
+        <div class="segment" id="teamArt" role="radiogroup" aria-label="Wie verteilen">
+          <button type="button" data-tm-art="fair" role="radio" aria-checked="true">Gerecht</button>
+          <button type="button" data-tm-art="zufall" role="radio" aria-checked="false">Zufällig</button>
+          <button type="button" data-tm-art="hand" role="radio" aria-checked="false">Von Hand</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+        <p class="zhilfe" id="teamArtHilfe"></p>
+      </div>
+      <span class="lname" id="teamDienstName">Wer ist im Dienst?</span>
+      <div class="tmdienst" id="teamDienst" role="group" aria-labelledby="teamDienstName"></div>
+    </div>
+    <p class="epruefung" id="teamNurBesitzer" hidden>Nur der Besitzer kann den Team-Modus ändern. „Dieses Gerät“ stellst du selbst ein.</p>
+    <label class="auswahlfeld"><span class="lname">Dieses Gerät ist</span>
+      <select id="teamGeraet"></select></label>
+    <div class="epruefung" id="teamStand"></div>
+    <div class="blattfuss">
+      <button class="knopf" id="teamSichern">Übernehmen</button>
+      <button class="knopf leise" id="teamZu">Schließen</button>
+    </div>
   </div>
 </div>
 
@@ -4367,6 +4647,31 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="blattfuss">
       <button class="knopf" id="bnBlattOk">Übernehmen</button>
       <button class="knopf leise" id="bnBlattWeg">Abbrechen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Zuschnitt für Kopfbild (16:9) und Logo (1:1, rund oder eckig
+     maskiert) — dieselben Gesten wie Kachel und Banner (zuschnittGesten). -->
+<div class="blatt" id="kfBlatt" hidden>
+  <div class="blattinhalt">
+    <div class="griff"></div>
+    <h2 class="blatttitel" id="kfBlattTitel">Kopfbild zuschneiden</h2>
+    <p class="ehilfe">Mit einem Finger verschieben, mit zwei Fingern zoomen.</p>
+    <div class="kbrahmen" id="kfRahmen">
+      <img id="kfBild" alt="">
+      <div class="kbraster"></div>
+      <div class="kfmaske" aria-hidden="true"></div>
+    </div>
+    <label class="kbzoom">
+      <span>Größe</span>
+      <input type="range" id="kfZoom" min="100" max="300" step="1" value="100"
+             class="regler" aria-label="Bild vergrößern">
+    </label>
+    <div class="epruefung" id="kfBlattStand"></div>
+    <div class="blattfuss">
+      <button class="knopf" id="kfBlattOk">Übernehmen</button>
+      <button class="knopf leise" id="kfBlattWeg">Abbrechen</button>
     </div>
   </div>
 </div>
@@ -4465,7 +4770,9 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="hinweisfeld">
       Speisekarte hineinkopieren — aus einer Datei, einer Webseite oder aus
       der Texterkennung deines Telefons. Eine Zeile je Gericht, Kategorien
-      als eigene Zeile ohne Preis.
+      als eigene Zeile ohne Preis. Größen („0,3 l 2,80 / 0,5 l 3,90“) werden
+      je ein Gericht, Kürzel wie „(A,C,G)“ zu Allergenen. Alles ist unten
+      noch änderbar — und ohne Preis wird nichts angelegt.
     </div>
 
     <label><span class="lname">Karte</span>
@@ -4484,6 +4791,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     </div>
 
     <div class="impstand" id="impStand"></div>
+    <div class="impschema" id="impSchema" hidden></div>
     <div class="impliste" id="impListe"></div>
 
     <div class="eknoepfe">
@@ -4752,6 +5060,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 </div>
 
 <div class="meldung" id="meldung" hidden></div>
+<div class="rueckleiste" id="rueckleiste" role="status" hidden><span></span><button type="button">Rückgängig</button></div>
 
 <script>
 /*  DOMAINSPERRE
@@ -4878,6 +5187,28 @@ function offenSeit(b){
   return Math.max(0, Math.floor((Date.now() - new Date(b.zeitpunkt).getTime()) / 60000));
 }
 
+/* ═══ RESTZEIT · GETEILTER BLOCK ═══════════════════════════════════
+   Steht Zeichen für Zeichen gleich in kueche.html und admin.html
+   (pruef-bestellkarten.js vergleicht). Wie viel von der Zusage ist
+   noch übrig? Minuten aus dem Board UND Zeitpunkt der Bestätigung;
+   fehlt eines, gibt es keine Zusage (null). Das letzte Fünftel ist
+   die Vorwarnung — gewählt, nicht gemessen: bei 20 Minuten die
+   letzten vier, bei 60 die letzten zwölf. */
+function restLage(b, jetzt){
+  var zusage = (Number(b.wartezeit_min) > 0 && b.bestaetigt_um) ? Number(b.wartezeit_min) : 0;
+  if(!zusage) return null;
+  var seit = Math.floor(((jetzt || Date.now()) - new Date(b.bestaetigt_um).getTime()) / 60000);
+  var rest = zusage - seit;
+  var vorwarnung = Math.max(1, Math.round(zusage / 5));
+  return {
+    zusage: zusage, seit: seit, rest: rest,
+    anteil: Math.min(100, Math.max(0, Math.round((seit / zusage) * 100))),
+    spaet: rest >= 0 && rest <= vorwarnung,
+    sehrSpaet: rest < 0
+  };
+}
+/* ═══ ENDE RESTZEIT ═══════════════════════════════════════════════ */
+
 function istUeberfaellig(b){
   if(!EINST.mahnungAb) return false;
   if(b.status !== "neu") return false;
@@ -4971,7 +5302,7 @@ const NUR_INHABER_SCHLOSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x
    Stellen, deshalb EIN Wächter für alle (§4.5), nicht je Zeichenstelle. */
 const NUR_INHABER_KLICK = '[data-bearbeiten],[data-kted],[data-kted-neu],[data-karte-neu],' +
   '[data-karten-bearbeiten],[data-aw-tun="bearbeiten"],[data-schieb],[data-katschieb],' +
-  '[data-leerkat-gericht],#neuesGericht,#karteImport,#runnerAuf';
+  '[data-leerkat-gericht],#neuesGericht,#neueKategorie,#karteImport,#runnerAuf';
 function istInhaberRolle(){ return ROLLE !== "team" && ROLLE !== "kueche"; }
 function rolleAnwenden(rolle){
   ROLLE = (rolle === "team" || rolle === "kueche") ? rolle : "inhaber";
@@ -8009,7 +8340,13 @@ function euEinrichten(){
   nav.setAttribute("role", "navigation");
   nav.className = "egruppe eu-uebersicht"; nav.id = "euUebersicht";
   nav.setAttribute("aria-label", "Alle Einstellungen auf einen Blick");
-  nav.innerHTML = '<h2 class="etitel">Auf einen Blick</h2>' + liste.map(({b, ziel}) =>
+  /* Seit 11.10. liegt alles, was Gäste sehen, im Reiter „Gast-Hub“ —
+     die Übersicht verweist dorthin, statt die Bereiche doppelt zu führen. */
+  nav.innerHTML = '<h2 class="etitel">Auf einen Blick</h2>' +
+    '<a class="eu-reihe" href="#" data-eu-tafel="startseite" style="--ton:var(--telefon)">' +
+      '<span class="eu-symbol" aria-hidden="true">' + euIcon("blase") + '</span>' +
+      '<span class="eu-text"><b>Gast-Hub gestalten</b><i>Kopf und Logo, Texte, Schrift, Farben, Kacheln, Banner, Figur</i></span>' +
+      '<span class="eu-wert"></span><span class="eu-pfeil" aria-hidden="true">›</span></a>' + liste.map(({b, ziel}) =>
     '<a class="eu-reihe" href="#' + ziel + '" data-eu-ziel="' + ziel + '" style="--ton:' + b.ton + '">' +
       '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
       '<span class="eu-text"><b>' + sicher(b.titel) + '</b><i>' + sicher(b.satz) + '</i></span>' +
@@ -8017,6 +8354,8 @@ function euEinrichten(){
       '<span class="eu-pfeil" aria-hidden="true">›</span></a>').join("");
   tafel.insertBefore(nav, tafel.firstElementChild);
   nav.addEventListener("click", e => {
+    const t = e.target.closest("[data-eu-tafel]");
+    if(t){ e.preventDefault(); tafelZeigen(t.dataset.euTafel); window.scrollTo(0, 0); return; }
     const a = e.target.closest("[data-eu-ziel]"); if(!a) return;
     e.preventDefault();
     const ziel = document.getElementById(a.dataset.euZiel); if(!ziel) return;
@@ -8826,6 +9165,7 @@ async function betriebOeffnen(id){
   nlVorratLaden(id);
   nlUebersichtLaden(id);
 
+  teamLaden(id);
   live_anmelden(id, marke);
   reservierungenLaden(id);
   notizenLaden(id);
@@ -9112,6 +9452,52 @@ function zeichneAlles(){ zeichneBoard(); zeichneKarte(); zeichneAusgabe(); aktio
    80 reicht: Mehr passt ohnehin auf keinen Bildschirm, und was älter
    ist, sucht man über die Tagesliste, nicht durch Scrollen. */
 const KARTEN_MAX = 80;
+/* Ab wie vielen offenen Bestellungen die Karten „In Arbeit“ zuklappen. */
+const B_KLAPP_AB = 4;
+const bAuf = new Map();
+/* Restzeit der Zusage (Wunsch 11.10.: „Koch und Service sollen sehen,
+   wie viel Zeit von der Zusage noch übrig ist“). Gezeichnet mit der
+   Karte, danach zieht restNachziehen() Zahl, Farbe und Balken am
+   BESTEHENDEN Element nach (§4.2). Ein eigener Takt, weil das
+   Neuzeichnen je Minute in mahnungPruefen() nur läuft, wenn die
+   Mahnung eingeschaltet ist — ohne sie stünde die Zahl still. */
+function restTeile(b){
+  const r = restLage(b);
+  return { r, stufe: r.sehrSpaet ? " zueber" : r.spaet ? " zknapp" : "",
+    wort: r.sehrSpaet ? "Überzogen" : "Noch", zahl: (r.sehrSpaet ? "+" + (-r.rest) : r.rest) + " Min",
+    kurz: r.sehrSpaet ? "+" + (-r.rest) + " Min" : "noch " + r.rest + " Min" };
+}
+function restHTML(b){
+  const t = restTeile(b);
+  return `<div class="zusage an zrest${t.stufe}" data-rest="${sicher(b.id)}">
+       <span class="zt">${t.wort}</span>
+       <b class="zrestzahl">${t.zahl}</b>
+       <span class="zvon">von ${t.r.zusage} Min</span>
+       <button class="zurueck" data-warte="0" data-id="${sicher(b.id)}">ändern</button>
+       <span class="zbalken" aria-hidden="true"><i style="transform:scaleX(${t.r.anteil / 100})"></i></span>
+     </div>`;
+}
+function restKurzHTML(b){
+  const t = restTeile(b);
+  return `<b class="zrestkurz${t.stufe}" data-restkurz="${sicher(b.id)}">${t.kurz}</b>`;
+}
+function restNachziehen(){
+  document.querySelectorAll("#karten [data-rest], #karten [data-restkurz]").forEach(el => {
+    const id = el.dataset.rest || el.dataset.restkurz;
+    const b = bestellungen.find(x => String(x.id) === id);
+    if(!b || !restLage(b)) return;
+    const t = restTeile(b);
+    el.classList.toggle("zueber", t.stufe === " zueber");
+    el.classList.toggle("zknapp", t.stufe === " zknapp");
+    if(el.dataset.restkurz){ if(el.textContent !== t.kurz) el.textContent = t.kurz; return; }
+    const zt = el.querySelector(".zt"), z = el.querySelector(".zrestzahl"), i = el.querySelector(".zbalken i");
+    if(zt && zt.textContent !== t.wort) zt.textContent = t.wort;
+    if(z && z.textContent !== t.zahl) z.textContent = t.zahl;
+    if(i) i.style.transform = "scaleX(" + (t.r.anteil / 100) + ")";
+  });
+}
+setInterval(restNachziehen, 20000);
+
 
 const STAND_GRUPPE = ["Zu prüfen", "Neu", "In Arbeit", "Fertig", "Sonstiges"];
 function standGruppe(b){
@@ -9119,7 +9505,9 @@ function standGruppe(b){
   return ({ neu:1, arbeit:2, fertig:3 })[b.status] ?? 4;
 }
 function gefiltert(){
-  return bestellungen.filter(b => zeigeQuelle[b.quelle] && zeigeStatus[b.status]);
+  const nur = tmNurMeineAktiv();
+  return bestellungen.filter(b => zeigeQuelle[b.quelle] && zeigeStatus[b.status] &&
+    (!nur || Number(b.zugewiesen) === TM.geraet));
 }
 
 /* Servicerufe desselben Tisches als EINE Karte (Wunsch 10.10., Foto:
@@ -9168,6 +9556,10 @@ function rabattZeile(b){
 }
 
 function zeichneBoard(){
+  /* Während ein Finger eine Karte zieht, wird nicht neu gezeichnet —
+     sonst rutscht die Karte unter dem Finger weg (§4.2). Nach der
+     Geste zeichnet statusSetzen() ohnehin neu. */
+  if(bWischAktiv){ bWischNachholen = true; return; }
   zeichneAbholen();
   ["tisch","telefon","lieferung"].forEach(q => {
     const n = bestellungen.filter(b => b.quelle === q && zeigeStatus[b.status]).length;
@@ -9190,17 +9582,26 @@ function zeichneBoard(){
   /* Nach Stand geordnet (Wunsch 10.10.: „übersichtlicher“): Zu prüfen ·
      Neu · In Arbeit · Fertig, je mit Überschrift. sort ist stabil —
      innerhalb einer Gruppe bleibt die Zeitfolge wie bisher. */
-  alle.sort((a, b) => standGruppe(a) - standGruppe(b));
+  /* In Arbeit: die knappste Zusage zuerst (Wunsch 11.10.); ohne Zusage
+     dahinter in der alten Zeitfolge — sort ist stabil. */
+  const restKey = b => { if(b.status !== "arbeit") return 0; const r = restLage(b); return r ? r.rest : 1e6; };
+  alle.sort((a, b) => standGruppe(a) - standGruppe(b) || restKey(a) - restKey(b));
   const liste = alle.slice(0, KARTEN_MAX);
   const jeGruppe = {};
   liste.forEach(b => { const g = standGruppe(b); jeGruppe[g] = (jeGruppe[g] || 0) + 1; });
   const versteckt = alle.length - liste.length;
   const offen = bestellungen.filter(b => b.status === "neu" && !b.pruefen).length;
   const zuPruefen = bestellungen.filter(b => b.pruefen && b.status === "neu").length;
+  const ueberzogen = bestellungen.filter(b => b.status === "arbeit" && (restLage(b) || {}).sehrSpaet).length;
+  /* Viele offene Bestellungen: Karten „In Arbeit“ und „Fertig“ stehen
+     zugeklappt, „Neu“ und „Zu prüfen“ nie (die Annahme muss auffallen).
+     Ein Tipp merkt sich die Wahl je Karte (bAuf) über jedes Neuzeichnen. */
+  const vieleOffen = bestellungen.filter(b => b.status === "neu" || b.status === "arbeit").length > B_KLAPP_AB;
   $("#filterInfo").textContent = liste.length === 0 ? "" :
     `${liste.length} ${liste.length===1?"Bestellung":"Bestellungen"}` +
     (offen ? ` · ${offen} noch offen` : "") +
-    (zuPruefen ? ` · ${zuPruefen} zu prüfen` : "");
+    (zuPruefen ? ` · ${zuPruefen} zu prüfen` : "") +
+    (ueberzogen ? ` · ${ueberzogen} überzogen` : "");
 
   const ziel = $("#karten");
 
@@ -9302,11 +9703,13 @@ function zeichneBoard(){
       : "";
     const zusage = (b.status === "fertig" || b.pruefen) ? "" : (
       b.wartezeit_min
-        ? `<div class="zusage an">
+        ? (restLage(b)
+          ? restHTML(b)
+          : `<div class="zusage an">
              <span class="zt">Zugesagt</span>
              <b>ca. ${b.wartezeit_min} Min</b>
              <button class="zurueck" data-warte="0" data-id="${sicher(b.id)}">ändern</button>
-           </div>`
+           </div>`)
         : (b.status === "neu"
           /* Noch niemand hat sich der Bestellung angenommen — anders als
              bei "arbeit" ohne Zusage (schon in Arbeit, Zeit fehlt nur
@@ -9338,7 +9741,19 @@ function zeichneBoard(){
       : `<div class="wartet${spaet ? " spaet" : ""}">${
           min < 1 ? "gerade eben" : "seit " + min + " Min"}</div>`;
 
-    return gkopf + `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
+    const klappbar = b.quelle !== "service" && !b.pruefen && b.status !== "neu";
+    const zu = klappbar && (bAuf.has(b.id) ? !bAuf.get(b.id) : vieleOffen);
+    const posZahl = (b.positionen || []).reduce((s2, p) => s2 + (Number(p.menge) || 0), 0);
+    const kurz = klappbar
+      ? `<button type="button" class="bklapp" data-bklapp="${sicher(b.id)}" aria-expanded="${!zu}">
+           <span class="bkurz">${zu
+             ? (posZahl ? posZahl + (posZahl === 1 ? " Gericht" : " Gerichte") + " · " : "") +
+               sicher((b.positionen || []).map(p => p.name).slice(0, 2).join(", ")) + ((b.positionen || []).length > 2 ? " …" : "")
+             : "Zuklappen"}</span>
+           ${zu && restLage(b) ? restKurzHTML(b) : ""}
+           <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+         </button>` : "";
+    return gkopf + `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}${zu?" bzu":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
       <div class="bkopf">
         <div class="herkunft">
           <div class="hmarke">${welle}${QUELLE_TEXT[b.quelle]}${rufzahl}</div>
@@ -9355,6 +9770,8 @@ function zeichneBoard(){
             : ""}
         </div>
       </div>
+      ${kurz}
+      ${tmZuwHTML(b)}
       ${pruefband}${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
       ${b.summe > 0 ? rabattZeile(b) : ""}
       <div class="schritte"${b.pruefen ? " hidden" : ""}>
@@ -10138,24 +10555,84 @@ document.addEventListener("keydown", e => { if(e.key === "Escape" && !$("#ktedBl
       Gerichte haben.
    ═══════════════════════════════════════════════════════════════ */
 
-/* Zeile ohne Preis am Ende = Überschrift. Zusätzlich raus: reine
-   Zierzeilen und Zeilen, die nur aus Großbuchstaben und Strichen
-   bestehen, wie sie beim Abfotografieren entstehen. */
-function impPreisAmEnde(zeile){
-  /* Vom Ende her: Zahl mit Komma oder Punkt, davor optional €.
-     Die Klammer am Anfang verhindert, dass „12,50" aus der Mitte
-     eines Textes gegriffen wird. */
-  const m = zeile.match(/(?:€\s*)?(\d{1,3})(?:[.,](\d{1,2}))?\s*(?:€|EUR|Euro)?\s*$/i);
-  if(!m) return null;
-  /* Eine nackte Zahl ohne Nachkommastellen und ohne Währungszeichen
-     ist meistens keine Preisangabe, sondern eine Menge: „Pommes 200 g“.
-     Nur mit Komma oder mit € gilt sie als Preis. */
-  const hatKomma = m[2] !== undefined;
-  const hatZeichen = /€|EUR|Euro/i.test(m[0]);
-  if(!hatKomma && !hatZeichen) return null;
-  const wert = Number(m[1]) + (m[2] ? Number(m[2].padEnd(2,"0")) / 100 : 0);
-  if(!(wert > 0) || wert > 999) return null;
-  return { preis: wert, rest: zeile.slice(0, m.index).trim() };
+/* Wie Speisekarten Preise schreiben — gesammelt aus echten Karten
+   (Wunsch 11.10.: „prüfe, ob die Karte-einlesen-Funktion wirklich gut
+   ist“). Die alte Fassung kannte nur „12,50“ und „12,50 €“ am
+   Zeilenende. Draußen stehen dazu: „€ 12,50“, „EUR 12,50“, „12,-“,
+   „1.250,00“, „ab 9,90“ und — aus der Texterkennung des Telefons —
+   „12,5O“ mit einem großen O statt der Null.
+
+   Gelesen wird weiter vom ENDE her: „Pasta 4 Jahreszeiten 12,50“ —
+   vorne steht eine Zahl, die kein Preis ist. */
+const IMP_PREIS_ENDE = /(^|[\s\/|])(ab\s+)?((?:€|EUR|\$)\s*)?(\d{1,3}(?:\.\d{3})+|\d{1,4})(?:([.,])(\d{1,2}|[-–]))?(\s*(?:€|EUR|Euro|\$))?\s*$/i;
+
+/* Größen, die vor einem Preis stehen: „0,3 l 2,80 / 0,5 l 3,90“,
+   „Ø 26 cm 9,50“, „Glas 5,50 Flasche 24,00“. Eine nackte Kommazahl
+   unter 1 („0,3“) gilt NUR dann als Größe, wenn direkt ein Preis
+   folgt — „Extra Sauce 0,50“ ist ein Preis. */
+const IMP_GROESSE_ENDE = /(?:^|\s)(\d+(?:[.,]\d+)?\s*(?:l|cl|ml|ltr\.?|liter|g|gr\.?|kg|stk\.?|stück|cm|pers\.?)\.?|ø\s*\d+\s*(?:cm)?|0[.,]\d{1,2}|klein|mittel|groß|gross|normal|maxi|xl|halbe?|ganze?|glas|flasche|karaffe|portion)\s*$/i;
+
+/* OCR: Texterkennung liest die Null gern als O. Nur in Gebilden, die
+   ohnehin wie ein Preis aussehen (Ziffern, Komma, höchstens ein €). */
+function impOcr(zeile){
+  return zeile.split(" ").map(w => {
+    if(!/^(€|EUR)?[\dOo]+[.,][\dOo]{1,2}(€)?$/i.test(w) || !/\d/.test(w)) return w;
+    return w.replace(/[Oo]/g, "0");
+  }).join(" ");
+}
+
+/* Alle Preise am Zeilenende, von hinten nach vorn, je mit der Größe,
+   die direkt davor steht. nackt = in dieser Karte steht kein einziger
+   Kommapreis, ganze Zahlen sind dort die Preise (aus der Umgebung
+   entschieden, impZerlegen). */
+function impPreiseAmEnde(zeile, nackt){
+  let rest = impOcr(zeile);
+  const preise = [];
+  let ab = false;
+  for(let runde = 0; runde < 4; runde++){
+    const m = rest.match(IMP_PREIS_ENDE);
+    if(!m) break;
+    const nachkomma = m[6];
+    const hatKomma = nachkomma !== undefined;
+    const hatZeichen = !!(m[3] || m[7]);
+    /* Eine nackte Zahl ohne Nachkommastellen und ohne Währungszeichen
+       ist meistens eine Menge: „Pommes 200 g“. Nur mit Komma, mit €
+       oder in einer Karte ohne jeden Kommapreis gilt sie als Preis. */
+    if(!hatKomma && !hatZeichen && !nackt) break;
+    /* „0,3“ mit EINER Nachkommastelle ist fast immer eine Füllmenge
+       (Liter), kein Preis — 50 Cent schreibt man „0,50“. */
+    if(m[4] === "0" && nachkomma && /^\d$/.test(nachkomma) && !hatZeichen) break;
+    const ganz = Number(m[4].replace(/\./g, ""));
+    const cent = hatKomma && /\d/.test(nachkomma) ? Number(nachkomma.padEnd(2, "0")) : 0;
+    const wert = ganz + cent / 100;
+    if(!(wert > 0) || wert > 9999) break;
+    /* Ein zweiter Preis davor zählt nur, wenn der erste eine Größe
+       trug oder er selbst wie ein Preis geschrieben ist — sonst ist es
+       die „4“ in „Pizza 4 Jahreszeiten“. */
+    if(preise.length && !hatKomma && !hatZeichen) break;
+    let vorher = rest.slice(0, m.index + m[1].length).replace(/[\s\/|]+$/, "");
+    let groesse = "";
+    const g = vorher.match(IMP_GROESSE_ENDE);
+    if(g){
+      groesse = g[1].trim().replace(/^(0[.,]\d{1,2})$/, "$1 l");
+      vorher = vorher.slice(0, g.index).replace(/[\s\/|]+$/, "");
+    }
+    if(m[2]) ab = true;
+    preise.unshift({ preis: Math.round(wert * 100) / 100, groesse });
+    rest = vorher;
+    if(!rest) break;
+  }
+  if(!preise.length) return null;
+  return { preise, rest: rest.trim(), ab };
+}
+
+/* Altes Einzelstück — die Prüfungen und die alte Lesart „ein Preis am
+   Ende“ bleiben darüber erreichbar. */
+function impPreisAmEnde(zeile, nackt){
+  const p = impPreiseAmEnde(zeile, nackt);
+  if(!p) return null;
+  const letzter = p.preise[p.preise.length - 1];
+  return { preis: letzter.preis, rest: p.rest };
 }
 
 /* Name und Beschreibung trennen. Übliche Trenner in Speisekarten,
@@ -10180,7 +10657,8 @@ function impNameTeilen(text){
 
 function impPutzen(zeile){
   return zeile
-    .replace(/\u00A0/g, " ")            /* geschütztes Leerzeichen */
+    .replace(/ /g, " ")            /* geschütztes Leerzeichen */
+    .replace(/\t/g, " ")
     .replace(/\.{2,}/g, " ")            /* Führungspunkte aus Druckkarten */
     .replace(/\s{2,}/g, " ")
     .trim();
@@ -10191,10 +10669,92 @@ function impPutzen(zeile){
    landete sonst mit in der Beschreibung. */
 function impRandPutzen(text){
   return String(text || "")
-    .replace(/[\s—–·|:\-]+$/, "")
-    .replace(/^[\s—–·|:\-]+/, "")
+    .replace(/[\s—–·|:\-\/]+$/, "")
+    .replace(/^[\s—–·|:\-\/]+/, "")
     .trim();
 }
+
+/* ─── Kennzeichnungen aus der Karte ─────────────────────────────
+   Viele Karten tragen die Pflichtangaben schon: „Currywurst (2,3,A)“,
+   „Schnitzel¹˒³“, „Pizza A, C, G“. Das ist die Angabe des Betriebs
+   selbst, keine Vermutung — sie wird übernommen und in der Vorschau
+   gezeigt, wo man sie mit einem Tipp wieder abwählt.
+
+   Zwei Buchstabenschlüssel sind in Deutschland verbreitet: der des
+   Boards (A–R ohne I, J, K, Q: L Sellerie, M Senf, N Sesam, O Sulfite,
+   P Lupinen, R Weichtiere) und der fortlaufende a–n (i Sellerie,
+   j Senf, k Sesam, l Sulfite, m Lupinen, n Weichtiere). A bis H sind
+   in beiden gleich. Gefunden am eigenen Vorführhaus: dort stand
+   „K“ für Sesam — den Buchstaben kennt der Hub nicht, der Gast sah
+   nichts. Welcher Schlüssel gemeint ist, entscheidet die GANZE Karte
+   (impZerlegen): I, J oder K → a–n, O, P oder R → Board-Schlüssel,
+   nur L, M, N → unklar, dann fragt die Vorschau. */
+function impKuerzelGueltig(tok){
+  const t = String(tok).trim().toUpperCase();
+  if(/^[A-PR]$/.test(t)) return { art:"a", wert:t };
+  if(/^\d{1,2}$/.test(t)) return ZUSATZSTOFFE.some(z => z[0] === String(Number(t))) ? { art:"z", wert:String(Number(t)) } : null;
+  return null;
+}
+function impKuerzelGruppe(text){
+  const toks = String(text).split(/\s*[,;.\/]\s*|\s+/).filter(Boolean);
+  if(!toks.length) return null;
+  const erg = toks.map(impKuerzelGueltig);
+  return erg.every(Boolean) ? erg : null;
+}
+const IMP_HOCH = { "⁰":"0","¹":"1","²":"2","³":"3","⁴":"4","⁵":"5","⁶":"6","⁷":"7","⁸":"8","⁹":"9" };
+function impKuerzelHeraus(text, nurEnde){
+  const a = new Set(), z = new Set();
+  const nimm = liste => liste.forEach(k => (k.art === "a" ? a : z).add(k.wert));
+  let t = String(text || "");
+  if(!nurEnde){
+  /* (2,3,A) — überall in der Zeile */
+  t = t.replace(/\(\s*([A-Za-z0-9][A-Za-z0-9\s,;.\/]{0,40}?)\s*\)/g, (ganz, innen) => {
+    const g = impKuerzelGruppe(innen);
+    if(!g) return ganz;
+    nimm(g); return " ";
+  });
+  /* Hochgestellte Ziffern: Schnitzel¹˒³ */
+  t = t.replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+(?:\s*[,˒‚·]\s*[⁰¹²³⁴⁵⁶⁷⁸⁹]+)*/g, ganz => {
+    const g = impKuerzelGruppe(ganz.replace(/[⁰-⁹¹²³]/g, c => IMP_HOCH[c] || c).replace(/[˒‚·]/g, ","));
+    if(!g) return ganz;
+    nimm(g); return " ";
+  });
+  }
+  /* „Pizza A, C, G“ ohne Klammer — nur am Ende, mit Komma und
+     mindestens einem Buchstaben; „Menü 1,2“ bleibt Text. */
+  const ende = t.match(/\s((?:[A-Ra-r]|1[0-6]|[1-9])(?:\s*,\s*(?:[A-Ra-r]|1[0-6]|[1-9]))+)\s*$/);
+  if(ende && /[A-Za-z]/.test(ende[1])){
+    const g = impKuerzelGruppe(ende[1]);
+    if(g){ nimm(g); t = t.slice(0, ende.index); }
+  }
+  const ordZ = ZUSATZSTOFFE.map(x => x[0]).filter(k => z.has(k));
+  return { text: t.replace(/\s{2,}/g, " ").trim(), allergene: [...a], zusatz: ordZ };
+}
+
+/* Merkmale aus Wörtern — nur VORSCHLAG (L4): „vegan“ im Text heißt
+   oft „mit veganer Mayo“, nicht „das Gericht ist vegan“. */
+function impMerkmale(text){
+  const t = String(text || "").toLowerCase();
+  return {
+    vegan: /\bvegan\b|\(vg\)/.test(t),
+    veg: /\bvegan\b|\bvegetarisch\b|\bveggie\b|\(v\)|\(vg\)/.test(t)
+  };
+}
+function impMarkerWeg(text){
+  return String(text || "").replace(/\((?:v|vg|vegan|vegetarisch)\)/gi, " ").replace(/\s{2,}/g, " ").trim();
+}
+
+/* Eine Legende („A = Gluten, C = Eier“) ist kein Gericht. */
+function impIstLegende(zeile){
+  const n = (zeile.match(/(?:^|[\s,;(])(?:[A-Ra-r]|\d{1,2})\)?\s*[=:]\s*[A-Za-zÄÖÜäöü]/g) || []).length;
+  if(impPreiseAmEnde(zeile, false)) return false;
+  return n >= 2 || /^(allergene|zusatzstoffe|kennzeichnung|legende)\b/i.test(zeile);
+}
+
+/* Wörter, die in fast jeder Karte eine Abteilung benennen. Steht so
+   eine Zeile ohne Preis da, ist sie Überschrift — auch ohne Leerzeile
+   davor. „Gulaschsuppe“ steht nicht darin, „Suppen“ schon. */
+const IMP_KATEGORIEWORT = /^(?:(?:warme|kalte|heiße|heisse|alkoholfreie|offene|unsere|hausgemachte|kleine|große|grosse|frische|süße|süsse|weitere|leckere|beliebte)\s+)*(?:vorspeisen?|starters?|suppen?|salate?|hauptgerichte?|hauptspeisen?|mains?|desserts?|nachspeisen?|nachtische?|süßes|süsses|getränke|drinks|heißgetränke|heissgetränke|kaffee|kaffeespezialitäten|tees?|biere?|bier vom fass|weine?|weißweine?|weissweine?|rotweine?|roséweine?|schaumweine?|sekt|spirituosen|longdrinks|cocktails|mocktails|softdrinks|limonaden|säfte|schorlen|wasser|aperitifs?|aperitivo|digestifs?|pizzen|pizza|pasta|nudeln|burger|bowls|snacks|kleinigkeiten|beilagen|extras|toppings|frühstück|brunch|kinder(?:karte|gerichte|teller)?|spezialitäten|klassiker|fisch|fleisch|vegetarisch|vegan|grill|steaks?|tapas|antipasti|kuchen|torten|gebäck|eis|eisbecher|crêpes?|crepes?|waffeln|sandwiches|wraps|sushi|mittagstisch|tagesgerichte?|wochenkarte|abendkarte|specials?)(?:\s*(?:&|und|\+)\s*[A-Za-zÄÖÜäöüß]+)?$/i;
 
 /* Ist diese Zeile eine Überschrift oder ein Gericht, dessen Preis
    vergessen wurde?
@@ -10202,142 +10762,465 @@ function impRandPutzen(text){
    Das lässt sich nicht am Text allein entscheiden — „Gulaschsuppe“
    kann beides sein. Was es entscheidet, ist die UMGEBUNG: In echten
    Karten steht vor einer Überschrift eine Leerzeile, oder sie ist
-   durchgehend groß geschrieben. Ein vergessener Preis dagegen sitzt
-   mitten zwischen zwei Gerichten.
+   durchgehend groß geschrieben, endet mit Doppelpunkt oder ist ein
+   Wort, das Karten für Abteilungen benutzen. Ein vergessener Preis
+   dagegen sitzt mitten zwischen zwei Gerichten.
 
    Zusätzlich: Wo eine Ziffer drinsteht, ist es fast nie eine
    Kategorie. „Pommes 200 g“ ist eine Beilage ohne Preis, keine
    Abteilung der Karte. */
-function impIstUeberschrift(text, leerDavor, ersteZeile){
+function impIstUeberschrift(text, leerDavor, ersteZeile, doppelpunkt){
   if(/\d/.test(text)) return false;
   if(text.length > 40 || text.split(" ").length > 5) return false;
-  if(leerDavor || ersteZeile) return true;
+  if(leerDavor || ersteZeile || doppelpunkt) return true;
+  if(IMP_KATEGORIEWORT.test(text)) return true;
   const buchstaben = text.replace(/[^A-Za-zÄÖÜäöüß]/g, "");
   return buchstaben.length > 1 && buchstaben === buchstaben.toUpperCase();
 }
 
-function impZerlegen(roh, vorgabeKat){
-  const zeilen = String(roh || "").split(/\r?\n/);
+/* Sieht die Zeile wie die Fortsetzung des Gerichts darüber aus?
+   „Wiener Schnitzel 18,90“ und darunter „vom Kalb, mit Kartoffelsalat“. */
+function impIstFortsetzung(text){
+  return /^[a-zäöüß(]/.test(text) || /^(mit|dazu|serviert|auf|an|in|vom|von|aus|nach|ohne|wahlweise)\s/i.test(text) ||
+         text.includes(",") || text.split(" ").length >= 6;
+}
+
+/* Spalten: „Espresso 2,40      Cappuccino 3,60“ — zwei Gerichte in
+   einer Zeile, getrennt durch einen weiten Abstand. Nur wenn JEDER
+   Teil auf einen Preis endet; „Tiramisu   7,50“ bleibt eine Zeile. */
+function impSpalten(roh, nackt){
+  const teile = roh.replace(/ /g, " ").split(/\s{3,}|\t+/).map(x => x.trim()).filter(Boolean);
+  if(teile.length < 2) return [roh];
+  const alle = teile.every(t => {
+    const p = impPreiseAmEnde(impPutzen(t), nackt);
+    return p && p.rest && /[A-Za-zÄÖÜäöüß]{2}/.test(p.rest);
+  });
+  return alle ? teile : [roh];
+}
+
+/* Nummerierung vorne weg: „12. Pizza“, „12) Pizza“, „Nr. 12 Pizza“.
+   Die nackte Form „12 Pizza“ nur, wenn die Karte durchgehend so
+   nummeriert ist — sonst verlöre „4 Käse Pizza“ ihre Vier. */
+function impNummerWeg(zeile, nackteNummern){
+  let z = zeile.replace(/^(?:nr\.?\s*)?\d{1,3}[a-z]?\s*[.):]\s+(?=\S)/i, "")
+               .replace(/^nr\.?\s*\d{1,3}[a-z]?\s+/i, "");
+  if(nackteNummern) z = z.replace(/^\d{1,3}[a-z]?\s+(?=[A-ZÄÖÜa-zäöü])/, "");
+  return z;
+}
+
+const IMP_SCHEMA_AN = { I:"L", J:"M", K:"N", L:"O", M:"P", N:"R" };
+
+function impZerlegen(roh, vorgabeKat, schemaWahl){
+  const rohZeilen = String(roh || "").split(/\r?\n/);
+
+  /* Umgebung zuerst: Wie schreibt DIESE Karte ihre Preise, und ist sie
+     durchnummeriert? Beides lässt sich an einer Zeile nicht sehen. */
+  const geputzt = rohZeilen.map(impPutzen).filter(Boolean);
+  const kommaPreise = geputzt.filter(z => { const p = impPreiseAmEnde(z, false); return p && p.rest; }).length;
+  const ganzePreise = geputzt.filter(z => /[A-Za-zÄÖÜäöüß]\s+\d{1,3}\s*$/.test(z) && !/\d\s*(g|kg|ml|cl|l|stk|stück|cm)\s*$/i.test(z)).length;
+  const nackt = kommaPreise === 0 && ganzePreise >= 3;
+  const nackteNummern = geputzt.filter(z => /^\d{1,3}\s+[A-ZÄÖÜ]/.test(z)).length >= 3;
+
+  const zeilen = [];
+  rohZeilen.forEach(z => impSpalten(z, nackt).forEach(t => zeilen.push(t)));
+
   const treffer = [];
   let kat = (vorgabeKat || "").trim() || "Sonstiges";
-  let ohnePreis = 0, uebersprungen = 0;
+  let spalten = null;           /* Größen aus einer Kopfzeile „0,3 l  0,5 l“ */
+  let ohnePreis = 0, uebersprungen = 0, legende = 0;
   let leerDavor = true, nochNichts = true;
+  let letzter = null;           /* das Gericht direkt darüber, ohne Leerzeile */
+
+  const neu = (name, beschr, preis, groesse, kz, extra, roh) => {
+    const merk = impMerkmale(roh || (name + " " + beschr));
+    const t = Object.assign({
+      kat: kat,
+      name: impRandPutzen(impMarkerWeg(name) + (groesse ? " " + groesse : "")).slice(0, 80),
+      beschr: impRandPutzen(impMarkerWeg(beschr)).slice(0, 300),
+      preis: preis,
+      ohnePreis: !(preis > 0),
+      allergene: kz.allergene.slice(),
+      zusatz: kz.zusatz.slice(),
+      vorschlagVeg: merk.veg, vorschlagVegan: merk.vegan,
+      ab: false, mehrerePreise: false
+    }, extra || {});
+    treffer.push(t);
+    return t;
+  };
 
   zeilen.forEach(z => {
-    const zeile = impPutzen(z);
+    let zeile = impPutzen(z);
 
-    /* Leerzeilen tragen Bedeutung: Sie kündigen eine Überschrift an. */
-    /* Der Bereich \u2500-\u257F sind die Rahmenzeichen. Genau die
-         benutzen Textkarten für Trennlinien — „═══════" wurde sonst
-         als Gericht ohne Preis gelesen. */
-    if(!zeile || zeile.length < 2 || /^[-\u2013\u2014=_~+#·•*.\u2500-\u257F\s]+$/.test(zeile)){
-      leerDavor = true;
+    /* Leerzeilen tragen Bedeutung: Sie kündigen eine Überschrift an.
+       Der Bereich ─-╿ sind die Rahmenzeichen. Genau die
+       benutzen Textkarten für Trennlinien — „═══════" wurde sonst
+       als Gericht ohne Preis gelesen. */
+    if(!zeile || zeile.length < 2 || /^[-–—=_~+#·•*.─-╿\s]+$/.test(zeile)){
+      leerDavor = true; letzter = null;
       return;
     }
+    if(impIstLegende(zeile)){ legende++; leerDavor = false; letzter = null; return; }
 
-    const p = impPreisAmEnde(zeile);
+    zeile = impNummerWeg(zeile, nackteNummern);
+    const doppelpunkt = /:\s*$/.test(zeile);
+    const kz = impKuerzelHeraus(zeile);
+    zeile = kz.text;
+
+    const p = impPreiseAmEnde(zeile, nackt);
 
     if(!p){
-      const sauber = impRandPutzen(zeile);
+      let sauber = impRandPutzen(zeile);
       if(!sauber){ uebersprungen++; leerDavor = false; return; }
 
-      if(impIstUeberschrift(sauber, leerDavor, nochNichts)){
-        kat = sauber;
+      /* Kopfzeile mit Größen: „Softdrinks 0,3 l 0,5 l“ */
+      const gr = [];
+      let r = sauber;
+      for(let i = 0; i < 4; i++){
+        const g = r.match(IMP_GROESSE_ENDE);
+        if(!g) break;
+        gr.unshift(g[1].trim().replace(/^(0[.,]\d{1,2})$/, "$1 l"));
+        r = impRandPutzen(r.slice(0, g.index));
+      }
+      if(gr.length >= 2){
+        spalten = gr;
+        if(r) kat = r;
+        leerDavor = false; nochNichts = false; letzter = null;
+        return;
+      }
+
+      /* Fortsetzung des Gerichts darüber (Beschreibung in der nächsten
+         Zeile) — aber nie, wenn die Zeile selbst wie eine Überschrift
+         aussieht. */
+      const istKopf = impIstUeberschrift(sauber, leerDavor, nochNichts, doppelpunkt);
+      if(letzter && !leerDavor && !doppelpunkt && !IMP_KATEGORIEWORT.test(sauber) && impIstFortsetzung(sauber)){
+        letzter.beschr = impRandPutzen((letzter.beschr ? letzter.beschr + ", " : "") + impMarkerWeg(sauber)).slice(0, 300);
+        kz.allergene.forEach(k => { if(!letzter.allergene.includes(k)) letzter.allergene.push(k); });
+        kz.zusatz.forEach(k => { if(!letzter.zusatz.includes(k)) letzter.zusatz.push(k); });
+        const m = impMerkmale(sauber);
+        letzter.vorschlagVeg = letzter.vorschlagVeg || m.veg;
+        letzter.vorschlagVegan = letzter.vorschlagVegan || m.vegan;
+        leerDavor = false;
+        return;
+      }
+
+      if(istKopf){
+        kat = sauber; spalten = null; letzter = null;
       } else {
         /* Gericht, dem der Preis fehlt. Es wird angezeigt und
-           mitgezählt, aber nicht stillschweigend mit 0,00 angelegt —
-           ein Gericht für null Euro wäre schlimmer als eines, das
-           fehlt. */
-        treffer.push({ kat: kat, name: sauber.slice(0,80), beschr: "", preis: 0, ohnePreis: true });
+           mitgezählt, aber NIE mit 0,00 angelegt — ein Gericht für
+           null Euro wäre schlimmer als eines, das fehlt. Erst ein
+           getippter Preis in der Vorschau macht es übernehmbar. */
+        const nt = impNameTeilen(impMarkerWeg(sauber));
+        letzter = neu(nt.name, nt.beschr, 0, "", kz, null, sauber);
         ohnePreis++;
       }
       leerDavor = false; nochNichts = false;
       return;
     }
 
-    const rest = impRandPutzen(p.rest);
-    if(!rest){ uebersprungen++; leerDavor = false; return; }
-    const nt = impNameTeilen(rest);
+    /* Kürzel zwischen Name und Preis: „Currywurst A, C 4,50“ */
+    const kzEnde = impKuerzelHeraus(p.rest, true);
+    kzEnde.allergene.forEach(k => { if(!kz.allergene.includes(k)) kz.allergene.push(k); });
+    kzEnde.zusatz.forEach(k => { if(!kz.zusatz.includes(k)) kz.zusatz.push(k); });
+    const rest = impRandPutzen(kzEnde.text);
+
+    /* Nur ein Preis in der Zeile: gehört er dem Gericht darüber, dem
+       der Preis noch fehlte? („Brot & Öl“ / „6,50“) */
+    if(!rest || !/[A-Za-zÄÖÜäöüß]{2}/.test(rest)){
+      if(letzter && letzter.ohnePreis && !leerDavor && p.preise.length === 1){
+        letzter.preis = p.preise[0].preis; letzter.ohnePreis = false; letzter.ab = p.ab;
+        ohnePreis--;
+      } else uebersprungen++;
+      leerDavor = false;
+      return;
+    }
+
+    /* Beschreibung mit Preis unter einem Namen ohne Preis:
+       „Brot & Öl“ / „mit Sauerteig und Olivenöl 6,50“. */
+    if(letzter && letzter.ohnePreis && !leerDavor && p.preise.length === 1 && /^[a-zäöüß]/.test(rest)){
+      letzter.beschr = impRandPutzen(impMarkerWeg(rest)).slice(0, 300);
+      letzter.preis = p.preise[0].preis; letzter.ohnePreis = false; letzter.ab = p.ab;
+      kz.allergene.forEach(k => { if(!letzter.allergene.includes(k)) letzter.allergene.push(k); });
+      kz.zusatz.forEach(k => { if(!letzter.zusatz.includes(k)) letzter.zusatz.push(k); });
+      ohnePreis--;
+      leerDavor = false;
+      return;
+    }
+
+    /* „(v)“ und „(vegan)“ sind Merkmale, keine Beschreibung in
+       Klammern — vor dem Teilen heraus, aber für den Vorschlag gemerkt. */
+    const nt = impNameTeilen(impMarkerWeg(rest));
     if(!nt.name){ uebersprungen++; leerDavor = false; return; }
 
-    treffer.push({
-      kat:    kat,
-      name:   impRandPutzen(nt.name).slice(0, 80),
-      beschr: impRandPutzen(nt.beschr).slice(0, 300),
-      preis:  p.preis,
-      ohnePreis: false
-    });
+    const preise = p.preise.slice();
+    /* Größen aus der Kopfzeile, wenn die Zeile selbst keine trägt und
+       genau so viele Preise hat. */
+    if(spalten && preise.length === spalten.length && preise.every(x => !x.groesse)){
+      preise.forEach((x, i) => { x.groesse = spalten[i]; });
+    }
+
+    if(preise.length >= 2 && preise.every(x => x.groesse)){
+      /* Je Größe ein eigenes Gericht: „Cola 0,3 l“, „Cola 0,5 l“ —
+         der Gast bestellt eine Größe, nicht zwei Preise. */
+      preise.forEach(x => { letzter = neu(nt.name, nt.beschr, x.preis, x.groesse, kz, { ab: p.ab }, rest); });
+    } else if(preise.length >= 2){
+      /* Zwei Preise ohne erkennbare Größe: nicht raten. Der erste wird
+         vorgeschlagen, die Zeile ist markiert. */
+      letzter = neu(nt.name, nt.beschr, preise[0].preis, "", kz, { ab: p.ab, mehrerePreise: true }, rest);
+    } else {
+      letzter = neu(nt.name, nt.beschr, preise[0].preis, preise[0].groesse, kz, { ab: p.ab }, rest);
+    }
     leerDavor = false; nochNichts = false;
   });
 
-  return { treffer: treffer, ohnePreis: ohnePreis, uebersprungen: uebersprungen };
+  /* Welcher Buchstabenschlüssel? Aus der ganzen Karte entschieden. */
+  const roh2 = new Set();
+  treffer.forEach(t => t.allergene.forEach(k => roh2.add(k)));
+  const hat = z => [...roh2].some(k => z.includes(k));
+  let schema = schemaWahl === "an" || schemaWahl === "board" ? schemaWahl
+    : hat("IJK") && !hat("OPR") ? "an"
+    : hat("OPR") && !hat("IJK") ? "board"
+    : hat("IJKLMN") ? "unklar" : "gleich";
+  treffer.forEach(t => {
+    const fest = [], unklar = [];
+    t.allergene.forEach(k => {
+      let w = k;
+      if(schema === "an") w = IMP_SCHEMA_AN[k] || k;
+      else if(schema === "unklar" && "IJKLMN".includes(k)){ if(!unklar.includes(k)) unklar.push(k); return; }
+      if(ALLERGENE.some(r => r[0] === w) && !fest.includes(w)) fest.push(w);
+    });
+    t.allergene = fest; t.allergeneUnklar = unklar;
+  });
+
+  /* Kürzel in der Reihenfolge der Tabellen — „A,C,G“ liest sich sonst
+     mal so und mal so (wie stoffeLesen im Gericht-Blatt). */
+  const ord = (liste, tab) => liste.sort((x, y) => tab.findIndex(r => r[0] === x) - tab.findIndex(r => r[0] === y));
+  treffer.forEach(t => { ord(t.allergene, ALLERGENE); ord(t.zusatz, ZUSATZSTOFFE); });
+  return { treffer, ohnePreis, uebersprungen, legende, schema };
 }
 
-/* ─── Vorschau ────────────────────────────────────────────────── */
-let impStand = { treffer: [], neu: 0 };
+/* ─── Vorschau ────────────────────────────────────────────────────
+   Bearbeitbar (Wunsch 11.10.): Häkchen, Name, Preis je Zeile, die
+   Kategorie im Gruppenkopf, Kennzeichnungen als Chips. Die Vorschau
+   wird bei jeder Änderung am TEXT neu zerlegt; was man in der Liste
+   schon geändert hat, bleibt über impAenderungen erhalten (Schlüssel:
+   Kategorie und Name, wie zerlegt). Getippt wird an Ort und Stelle,
+   ohne die Liste neu zu bauen — sonst springt der Fokus (§4.2). */
+let impStand = { treffer: [], ziel: null };
+let impSchemaWahl = null;
+let impAenderungen = {};
+let impKatNamen = {};
+
+function impSchluessel(n){
+  return String(n || "").toLowerCase()
+    .normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z0-9]/g, "");
+}
+function impZeilenSchl(t){ return t.katRoh + "|" + t.nameRoh; }
+function impPreisLesen(w){
+  const s = String(w || "").trim().replace(/€|eur/gi, "").replace(/\s/g, "");
+  if(!/^\d{1,4}(?:[.,]\d{1,2})?$|^\d{1,4}[.,]-$/.test(s)) return 0;
+  const z = Number(s.replace(/[.,]-$/, "").replace(",", "."));
+  return Number.isFinite(z) && z > 0 ? Math.round(z * 100) / 100 : 0;
+}
+function impPreisText(n){ return n > 0 ? n.toFixed(2).replace(".", ",") : ""; }
+
+/* Wird die Zeile übernommen? Nur mit Häkchen, nur wenn neu, nur mit
+   Preis über null. */
+function impZaehlt(t){ return t.an && !t.doppelt && t.preis > 0 && !!t.name.trim(); }
 
 function impVorschau(){
   const roh  = $("#impText").value;
   const ziel = $("#impKarte").value;
-  const erg  = impZerlegen(roh, $("#impKat").value);
+  const erg  = impZerlegen(roh, $("#impKat").value, impSchemaWahl);
 
-  /* Was gibt es schon? Vergleich ohne Rücksicht auf Groß- und
-     Kleinschreibung und auf Leerzeichen — „Cafe Latte" und
-     „Café  Latte" sind dasselbe Gericht. */
-  const schluessel = n => n.toLowerCase()
-    .normalize("NFD").replace(/[\u0300-\u036f]/g,"")
-    .replace(/[^a-z0-9]/g,"");
+  /* Buchstabenschlüssel: bei a–n sagen, dass umgerechnet wurde; wenn
+     unklar, fragen statt raten — L ist Sellerie ODER Schwefel. */
+  const sch = $("#impSchema");
+  const unklar = [...new Set(erg.treffer.flatMap(t => t.allergeneUnklar || []))];
+  if(erg.schema === "unklar" || impSchemaWahl){
+    const zeigen = erg.schema === "unklar" ? unklar : [];
+    sch.hidden = false;
+    sch.innerHTML = (erg.schema === "unklar"
+      ? `<p>Deine Karte nutzt die Kürzel <b>${sicher(zeigen.join(", "))}</b>. Die bedeuten nicht überall dasselbe — welcher Schlüssel steht auf deiner Karte?</p>`
+      : `<p>Kürzel nach deiner Wahl umgerechnet.</p>`) +
+      `<div class="impschema-wahl">` +
+      `<button type="button" class="knopf leise schmal" data-imp-schema="board" aria-pressed="${impSchemaWahl === "board"}">L = Sellerie, N = Sesam</button>` +
+      `<button type="button" class="knopf leise schmal" data-imp-schema="an" aria-pressed="${impSchemaWahl === "an"}">L = Schwefel, K = Sesam (a–n)</button></div>`;
+  } else if(erg.schema === "an"){
+    sch.hidden = false;
+    sch.innerHTML = `<p>Deine Karte nutzt den Schlüssel a–n (i Sellerie, k Sesam, l Schwefel …). Die Kürzel sind in die Buchstaben des Boards umgerechnet — so sieht der Gast sie richtig.</p>`;
+  } else { sch.hidden = true; sch.innerHTML = ""; }
+
+  /* Was gibt es schon? In DERSELBEN Kategorie dieser Karte — „Cola“
+     darf in „Softdrinks“ und in „Kinder“ stehen. Vergleich ohne
+     Groß-/Kleinschreibung und Akzente: „Cafe Latte“ = „Café  Latte“. */
   const vorhanden = new Set(
     gerichte.filter(g => inKarte(g, ziel))
-            .map(g => schluessel(g.name)));
+            .map(g => impSchluessel(g.kategorie) + "|" + impSchluessel(g.name)));
 
   const gesehen = new Set();
   erg.treffer.forEach(t => {
-    const k = schluessel(t.name);
+    t.katRoh = t.kat; t.nameRoh = t.name;
+    const alt = impAenderungen[impZeilenSchl(t)];
+    if(impKatNamen[t.katRoh]) t.kat = impKatNamen[t.katRoh];
+    if(alt){
+      if(alt.name != null) t.name = alt.name;
+      if(alt.preis != null){ t.preis = alt.preis; t.ohnePreis = !(alt.preis > 0); }
+      if(alt.allergene) t.allergene = alt.allergene.slice();
+      if(alt.zusatz) t.zusatz = alt.zusatz.slice();
+      if(alt.veg != null) t.veg = alt.veg;
+      if(alt.vegan != null) t.vegan = alt.vegan;
+    }
+    if(t.veg == null) t.veg = false;
+    if(t.vegan == null) t.vegan = false;
+    const k = impSchluessel(t.kat) + "|" + impSchluessel(t.name);
     t.doppelt = vorhanden.has(k) || gesehen.has(k);
     gesehen.add(k);
+    /* Ohne Preis: abgewählt, bis einer getippt ist. */
+    t.an = alt && alt.an != null ? alt.an : !t.ohnePreis;
   });
 
-  const neu = erg.treffer.filter(t => !t.doppelt);
-  impStand = { treffer: neu, ziel: ziel };
+  impStand = { treffer: erg.treffer, ziel: ziel, erg: erg };
 
-  /* Standmeldung */
+  /* Liste, nach Kategorie gruppiert */
+  const liste = $("#impListe");
+  let html = "", letzte = null;
+  erg.treffer.forEach((t, i) => {
+    if(t.katRoh !== letzte){
+      html += `<div class="impgruppe"><input type="text" class="impkatfeld" data-imp-kat="${sicher(t.katRoh)}" value="${sicher(t.kat)}" maxlength="40" aria-label="Kategorie"></div>`;
+      letzte = t.katRoh;
+    }
+    const kz = t.allergene.map(k => `<button type="button" class="impchip" data-imp-kz="a:${k}" aria-pressed="true" title="${sicher((ALLERGENE.find(a => a[0] === k) || [k, k])[1])}">${k}</button>`)
+      .concat(t.zusatz.map(k => `<button type="button" class="impchip" data-imp-kz="z:${k}" aria-pressed="true" title="${sicher((ZUSATZSTOFFE.find(a => a[0] === k) || [k, k])[1])}">${k}</button>`));
+    if(t.vorschlagVegan) kz.push(`<button type="button" class="impchip vorschlag" data-imp-merk="vegan" aria-pressed="${!!t.vegan}">vegan?</button>`);
+    else if(t.vorschlagVeg) kz.push(`<button type="button" class="impchip vorschlag" data-imp-merk="veg" aria-pressed="${!!t.veg}">vegetarisch?</button>`);
+    const notiz = t.doppelt ? "schon in der Karte"
+      : (t.allergeneUnklar || []).length ? "Kürzel " + t.allergeneUnklar.join(", ") + ": Bedeutung oben wählen"
+      : t.mehrerePreise ? "mehrere Preise — bitte prüfen"
+      : t.ab ? "Preis „ab“ — kleinster Preis übernommen" : "";
+    html += `<div class="impzeile${t.ohnePreis ? " ohnepreis" : ""}${t.doppelt ? " doppelt" : ""}" data-imp-i="${i}">` +
+      `<button type="button" class="impan" data-imp-an aria-pressed="${impZaehlt(t)}" aria-label="Übernehmen"${t.doppelt ? " disabled" : ""}></button>` +
+      `<span class="in"><input type="text" class="impname" data-imp-name value="${sicher(t.name)}" maxlength="80" aria-label="Name">` +
+      (t.beschr ? `<span class="ib">${sicher(t.beschr)}</span>` : "") +
+      (kz.length ? `<span class="impchips">${kz.join("")}</span>` : "") +
+      `<span class="impnotiz">${sicher(notiz)}</span></span>` +
+      `<span class="ip"><input type="text" class="imppreis" data-imp-preis inputmode="decimal" value="${impPreisText(t.preis)}" placeholder="Preis fehlt" aria-label="Preis"></span></div>`;
+  });
+  liste.innerHTML = html;
+  impZaehlen();
+}
+
+/* Standmeldung und Knopf — ohne die Liste anzufassen. */
+function impZaehlen(){
+  const roh = $("#impText").value;
+  const erg = impStand.erg || { treffer: [], uebersprungen: 0, legende: 0 };
+  const alle = impStand.treffer;
+  const rein = alle.filter(impZaehlt).length;
+  const dop = alle.filter(t => t.doppelt).length;
+  const fehlt = alle.filter(t => !t.doppelt && !(t.preis > 0)).length;
   const st = $("#impStand");
   if(!roh.trim()){
     st.className = "impstand leer";
     st.textContent = "Noch nichts eingefügt.";
   } else {
-    const teile = [`<b>${neu.length}</b> ${neu.length === 1 ? "Gericht" : "Gerichte"} erkannt`];
-    const dop = erg.treffer.length - neu.length;
-    if(dop)            teile.push(`${dop} schon vorhanden, ${dop === 1 ? "wird" : "werden"} übersprungen`);
-    if(erg.ohnePreis)  teile.push(`${erg.ohnePreis} ohne Preis — bitte nachtragen`);
-    if(erg.uebersprungen) teile.push(`${erg.uebersprungen} Zeilen unbrauchbar`);
+    const teile = [`<b>${rein}</b> ${rein === 1 ? "Gericht wird" : "Gerichte werden"} angelegt`];
+    if(dop)   teile.push(`${dop} schon vorhanden`);
+    if(fehlt) teile.push(`${fehlt} ohne Preis — Preis eintippen, sonst bleibt ${fehlt === 1 ? "es" : "sie"} draußen`);
+    if(erg.uebersprungen) teile.push(`${erg.uebersprungen} ${erg.uebersprungen === 1 ? "Zeile" : "Zeilen"} unbrauchbar`);
+    if(erg.legende) teile.push("Legende erkannt und ausgelassen");
     st.className = "impstand";
     st.innerHTML = teile.join(" · ");
   }
-
-  /* Liste, nach Kategorie gruppiert */
-  const liste = $("#impListe");
-  let html = "", letzte = null;
-  erg.treffer.forEach(t => {
-    if(t.kat !== letzte){ html += `<div class="impkat">${sicher(t.kat)}</div>`; letzte = t.kat; }
-    html += `<div class="impzeile${t.ohnePreis ? " ohnepreis" : ""}${t.doppelt ? " doppelt" : ""}">` +
-      `<span class="in">${sicher(t.name)}` +
-      (t.beschr ? `<span class="ib">${sicher(t.beschr)}</span>` : "") +
-      `</span><span class="ip">` +
-      (t.ohnePreis ? "kein Preis" : euro(t.preis)) + `</span></div>`;
-  });
-  liste.innerHTML = html;
-
-  $("#impUebernehmen").disabled = neu.length === 0;
-  $("#impUebernehmen").textContent = neu.length
-    ? `${neu.length} ${neu.length === 1 ? "Gericht" : "Gerichte"} anlegen`
+  $("#impUebernehmen").disabled = rein === 0;
+  $("#impUebernehmen").textContent = rein
+    ? `${rein} ${rein === 1 ? "Gericht" : "Gerichte"} anlegen`
     : "Gerichte anlegen";
 }
 
+function impMerken(t, feld, wert){
+  const s = impZeilenSchl(t);
+  impAenderungen[s] = Object.assign(impAenderungen[s] || {}, { [feld]: wert });
+}
+
+$("#impSchema").addEventListener("click", e => {
+  const b = e.target.closest("[data-imp-schema]"); if(!b) return;
+  impSchemaWahl = b.dataset.impSchema;
+  /* Neue Bedeutung der Buchstaben: abgewählte Chips der alten gelten
+     nicht mehr. */
+  Object.values(impAenderungen).forEach(a => { delete a.allergene; });
+  impVorschau();
+});
+$("#impListe").addEventListener("input", e => {
+  const kf = e.target.closest("[data-imp-kat]");
+  if(kf){
+    const roh = kf.dataset.impKat, neuName = kf.value.trim().slice(0, 40) || roh;
+    impKatNamen[roh] = neuName;
+    impStand.treffer.forEach(t => { if(t.katRoh === roh) t.kat = neuName; });
+    return;
+  }
+  const z = e.target.closest("[data-imp-i]"); if(!z) return;
+  const t = impStand.treffer[Number(z.dataset.impI)]; if(!t) return;
+  if(e.target.matches("[data-imp-name]")){
+    t.name = e.target.value.slice(0, 80); impMerken(t, "name", t.name);
+  } else if(e.target.matches("[data-imp-preis]")){
+    const vorher = t.preis > 0;
+    t.preis = impPreisLesen(e.target.value);
+    t.ohnePreis = !(t.preis > 0);
+    impMerken(t, "preis", t.preis);
+    /* Wer einen Preis eintippt, will das Gericht haben. */
+    if(!vorher && t.preis > 0 && !t.doppelt){ t.an = true; impMerken(t, "an", true); }
+    z.classList.toggle("ohnepreis", t.ohnePreis);
+  }
+  const an = z.querySelector("[data-imp-an]");
+  if(an) an.setAttribute("aria-pressed", impZaehlt(t));
+  impZaehlen();
+});
+$("#impListe").addEventListener("click", e => {
+  const z = e.target.closest("[data-imp-i]"); if(!z) return;
+  const t = impStand.treffer[Number(z.dataset.impI)]; if(!t) return;
+  const an = e.target.closest("[data-imp-an]");
+  if(an){
+    if(t.doppelt) return;
+    if(!(t.preis > 0)){
+      /* Ohne Preis kein Häkchen — sagen, wo es hakt. */
+      const pf = z.querySelector("[data-imp-preis]"); if(pf) pf.focus();
+      melde("Erst den Preis eintippen", true);
+      return;
+    }
+    t.an = !t.an; impMerken(t, "an", t.an);
+    an.setAttribute("aria-pressed", impZaehlt(t));
+    impZaehlen();
+    return;
+  }
+  const chip = e.target.closest("[data-imp-kz]");
+  if(chip){
+    const [art, wert] = chip.dataset.impKz.split(":");
+    const liste = art === "a" ? t.allergene : t.zusatz;
+    const drin = chip.getAttribute("aria-pressed") === "true";
+    if(drin) liste.splice(liste.indexOf(wert), 1);
+    else if(!liste.includes(wert)){
+      liste.push(wert);
+      const tab = art === "a" ? ALLERGENE : ZUSATZSTOFFE;
+      liste.sort((x, y) => tab.findIndex(r => r[0] === x) - tab.findIndex(r => r[0] === y));
+    }
+    chip.setAttribute("aria-pressed", !drin);
+    impMerken(t, art === "a" ? "allergene" : "zusatz", liste.slice());
+    return;
+  }
+  const merk = e.target.closest("[data-imp-merk]");
+  if(merk){
+    const f = merk.dataset.impMerk;
+    t[f] = !t[f];
+    if(f === "vegan") t.veg = t.vegan || t.veg;
+    merk.setAttribute("aria-pressed", t[f]);
+    impMerken(t, f, t[f]); if(f === "vegan") impMerken(t, "veg", t.veg);
+  }
+});
+
 /* ─── Übernehmen ──────────────────────────────────────────────── */
 async function impUebernehmen(){
-  const neu = impStand.treffer;
+  const neu = impStand.treffer.filter(impZaehlt);
   if(!neu.length) return;
   const ziel = impStand.ziel;
 
@@ -10347,36 +11230,54 @@ async function impUebernehmen(){
 
   /* Kategorien in der Reihenfolge ihres Auftretens hinten anhängen.
      Wer eine Karte einliest, will sie so sortiert haben, wie er sie
-     hineingegeben hat — nicht alphabetisch. */
+     hineingegeben hat — nicht alphabetisch. Eine Kategorie, die es auf
+     dieser Karte schon gibt, behält ihren Platz. */
   const katSort = {};
   let naechste = katSortNeu(ziel);
-  neu.forEach(t => { if(katSort[t.kat] == null) katSort[t.kat] = naechste++; });
+  neu.forEach(t => {
+    if(katSort[t.kat] != null) return;
+    const da = gerichte.find(g => inKarte(g, ziel) && g.kategorie === t.kat);
+    katSort[t.kat] = da ? (da.kat_sort ?? 0) : naechste++;
+  });
 
-  /* Position innerhalb der Kategorie, ebenfalls fortlaufend. */
+  /* Position innerhalb der Kategorie, hinter dem, was schon da ist. */
   const proKat = {};
   const saetze = neu.map(t => {
-    proKat[t.kat] = (proKat[t.kat] || 0) + 1;
+    if(proKat[t.kat] == null){
+      const da = gerichte.filter(g => inKarte(g, ziel) && g.kategorie === t.kat).map(g => g.reihenfolge ?? 0);
+      proKat[t.kat] = da.length ? Math.max(...da) : 0;
+    }
+    proKat[t.kat] += 1;
     return {
       betrieb_id: betriebId,
-      name:       t.name,
+      name:       t.name.trim().slice(0, 80),
       beschreibung: t.beschr || null,
       preis:      t.preis,
       kategorie:  t.kat,
       karte:      ziel,
+      karten:     [ziel],
       spur:       spurAusKarte(ziel),
       kat_sort:   katSort[t.kat],
       reihenfolge: proKat[t.kat],
       verfuegbar: true,
-      allergene:  "",
-      zusatzstoffe: "",
-      veg:        false
+      allergene:  t.allergene.join(","),
+      zusatzstoffe: t.zusatz.join(","),
+      veg:        !!(t.veg || t.vegan),
+      vegan:      !!t.vegan
     };
   });
+
+  /* Letzte Wache vor der Datenbank: kein Gericht für null Euro. */
+  if(saetze.some(s => !(s.preis > 0))){
+    knopf.disabled = false; impZaehlen();
+    melde("Ein Gericht hat keinen Preis — bitte nachtragen", true);
+    return;
+  }
 
   if(demo){
     saetze.forEach((s, i) => gerichte.push({...s, id:"g" + Date.now() + i}));
     impSchliessen(); zeichneKarte();
-    melde(`${saetze.length} Gerichte angelegt`);
+    melde(`${saetze.length} ${saetze.length === 1 ? "Gericht" : "Gerichte"} angelegt`);
     return;
   }
 
@@ -10389,12 +11290,13 @@ async function impUebernehmen(){
     melde(`${saetze.length} ${saetze.length === 1 ? "Gericht" : "Gerichte"} angelegt`);
   }catch(e){
     knopf.disabled = false;
-    knopf.textContent = `${neu.length} Gerichte anlegen`;
+    impZaehlen();
     melde("Nicht angelegt — Verbindung prüfen", true);
   }
 }
 
 function impOeffnen(){
+  impAenderungen = {}; impKatNamen = {}; impSchemaWahl = null;
   $("#impText").value = "";
   $("#impKat").value  = "";
   $("#impKarte").value = welcheKarte;
@@ -10503,6 +11405,7 @@ function tabelle(){
    ["#kbBlatt",   function(){ kbSchliessen(); }],
    ["#zeitBlatt", function(){ zeitBlattSchliessen(); }],
    ["#impBlatt",  function(){ impSchliessen(); }],
+   ["#kfBlatt",   function(){ kfBlattZu(); }],
    ["#uebBlatt",  function(){ uebSchliessen(); }],
    ["#awBlatt",   function(){ awBlattZu(); }],
    ["#ktedBlatt", function(){ ktedZu(); }],
@@ -10582,13 +11485,17 @@ function tafelZeigen(ziel){
   mehrZu();
 
   if(ziel === "speisekarte")     aktionenLaden();
-  if(ziel === "einstellungen"){ einstZeichnen(); hubTexteFuellen(); lfFuellen(); avStandLaden(); gsLaden(); rcLaden(); aeLaden(true); }
+  if(ziel === "einstellungen"){ einstZeichnen(); lfFuellen(); gsLaden(); rcLaden(); aeLaden(true); }
   /* aktionenLaden() zusätzlich hier: Der "Aktion"-Ziel-Wähler im
      Banner-Rad braucht das aktionen-Array, das sonst erst beim
      Öffnen des Speisekarte-Reiters gefüllt wird — ein Wirt, der
      direkt auf "Startseite" geht, sähe sonst fälschlich "keine
      laufende Aktion", obwohl welche liefen. */
-  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); fbLaden(); aktionenLaden(); }
+  /* „Gast-Hub“ (früher „Startseite“): seit 11.10. stehen hier auch
+     „Ihre Worte“, Figur und Foodroulette — sie werden mit gefüllt. */
+  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); fbLaden(); kfLaden(); aktionenLaden();
+                             hubTexteFuellen(); avStandLaden(); reglerFuellen(); avRaederAusrichten();
+                             txLaden(); setTimeout(txListeLaden, 0); }
   if(ziel === "reservierungen")  zeichneReservierungen();
   if(ziel === "verfuegbar")      verfuegbarZeichnen();
   if(ziel === "auswertung")      awLaden();
@@ -10786,6 +11693,9 @@ const TEXTMASS = {
     warnung:"Ab 36 Zeichen braucht der Titel beim Gast eine zweite Zeile. Das geht — kürzer liest sich schneller." },
   gsText:      { gut:88, hart:240,
     warnung:"Ab 88 Zeichen wird der Satz auf schmalen Telefonen dreizeilig." },
+  /* Dieselbe Zahl wie hub_texte_ueber (migration-haus.sql). */
+  hubUeber:    { gut:240, hart:400,
+    warnung:"Ab 240 Zeichen wird der Text auf dem Telefon lang — kurz liest sich schneller." },
   hubRunner:   { gut:20, hart:40,
     warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." },
   /* Die Laufschrift bricht nie um, sie läuft. „gut“ ist Lesezeit:
@@ -10834,12 +11744,12 @@ function massVerdrahten(){
       el.dataset.verdrahtet = "1";
       el.addEventListener("input", () => {
         massZeigen(id);
-        if(id.indexOf("hub") === 0){ hubSchauZeichnen(); hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : "kopf"); }
+        if(id.indexOf("hub") === 0){ hubSchauZeichnen(); hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : id === "hubUeber" ? "haus" : "kopf"); }
       });
       /* Wer ins Gruß-Feld tippt, will den Willkommensschirm sehen,
          nicht den Kopf der Startseite. */
       if(id.indexOf("hub") === 0) el.addEventListener("focus", () =>
-        hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : "kopf"));
+        hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : id === "hubUeber" ? "haus" : "kopf"));
     }
     massZeigen(id);
   });
@@ -10923,26 +11833,34 @@ function hvStand(h, text){
 
 /* Lädt die Vorschau eines Bereichs einmal — erst, wenn er gebraucht
    wird. Wechselt der Betrieb, wird neu geladen. */
+/* Seit 11.10. teilen sich Startseite, Farben und Worte EINE Vorschau
+   oben im Reiter „Gast-Hub“ (data-hv="gestalten"). Die alten Namen
+   bleiben als Verweis auf denselben Rahmen — jede Stelle, die
+   hvSenden("farben", …) ruft, trifft ihn weiter. */
+const HV_ALIAS = { startseite:"gestalten", farben:"gestalten", worte:"gestalten" };
 function hvStart(schl){
-  const rahmen = document.querySelector('[data-hv="' + schl + '"]');
+  const echt = HV_ALIAS[schl] || schl;
+  const rahmen = document.querySelector('[data-hv="' + echt + '"]');
   if(!rahmen) return null;
   const alle = hvAlle(), quelle = hvQuelle();
-  let h = alle[schl];
-  if(h && h.quelle === quelle) return h;
+  const verweise = h => { alle[echt] = h; Object.keys(HV_ALIAS).forEach(k => { if(HV_ALIAS[k] === echt) alle[k] = h; }); return h; };
+  let h = alle[echt];
+  if(h && h.quelle === quelle) return verweise(h);
   if(!quelle || quelle === "lokal"){
     rahmen.innerHTML = '<p class="hvstand">' + (quelle === "lokal"
       ? "Die Vorschau gibt es im ausgelieferten Board unter omoteno.de/admin."
       : "Die Vorschau erscheint, sobald ein Betrieb gewählt ist.") + '</p>';
-    if(schl === "worte"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
+    if(echt === "gestalten"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
     return null;
   }
   rahmen.innerHTML =
-    '<div class="hvkopf"><b>So sieht es der Gast</b>' +
-      '<button type="button" class="hvgroesse" data-hv-gross aria-pressed="false">Größer</button></div>' +
+    '<div class="hvkopf"><b>So sieht es der Gast</b><span class="hvknoepfe">' +
+      (echt === "gestalten" ? '<button type="button" class="hvgroesse" data-hv-zu aria-pressed="false">Einklappen</button>' : "") +
+      '<button type="button" class="hvgroesse" data-hv-gross aria-pressed="false">Größer</button></span></div>' +
     '<div class="hvfenster"><iframe title="Vorschau des Gast-Hubs" tabindex="-1"></iframe></div>' +
     '<p class="hvstand" aria-live="polite">Vorschau lädt …</p>';
-  h = alle[schl] = { quelle, rahmen, frame: rahmen.querySelector("iframe"),
-                     bereit:false, entwurf:{}, ziel:"", uhr:0 };
+  h = verweise({ quelle, rahmen, frame: rahmen.querySelector("iframe"),
+                 bereit:false, entwurf:{}, ziel:"", uhr:0 });
   fetch(quelle, { cache:"no-cache" })
     .then(a => { if(!a.ok) throw new Error("HTTP " + a.status); return a.text(); })
     .then(html => {
@@ -10955,7 +11873,11 @@ function hvStart(schl){
         hvAnwenden(schl);
         /* Farben: Ohne gespeicherten Stand gilt das Markenblatt des
            HUBS — erst die geladene Vorschau kennt es genau. */
-        if(schl === "farben" && FB && !FB.eigen && !FB_BERUEHRT) fbLaden();
+        if(echt === "gestalten" && FB && !FB.eigen && !FB_BERUEHRT) fbLaden();
+        if(echt === "gestalten"){
+          try{ if(TX_TIPPEN) h.frame.contentWindow.vorschauTextTippen(true); }catch(e){}
+          setTimeout(() => { if(typeof txListeLaden === "function") txListeLaden(); }, 1700);
+        }
         /* Der Hub gleicht nach dem Laden mit der Datenbank ab und
            zeichnet dabei neu — danach noch einmal messen. */
         setTimeout(() => hvAnwenden(schl), 1600);
@@ -10967,7 +11889,7 @@ function hvStart(schl){
       if(hvAlle()[schl] !== h) return;
       hvStand(h, "Die Vorschau ist gerade nicht zu laden. Gespeichert wird trotzdem.");
       rahmen.querySelector(".hvfenster").hidden = true;
-      if(schl === "worte"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
+      if(echt === "gestalten"){ const alt = $("#hubSchau"); if(alt){ alt.hidden = false; hubSchauZeichnen(); } }
     });
   return h;
 }
@@ -10977,7 +11899,15 @@ function hvStart(schl){
    Tippen im Hub anfühlt. */
 function hvSenden(schl, teil, ziel){
   const h = hvStart(schl); if(!h) return;
-  Object.assign(h.entwurf, teil || {});
+  /* Ein Rahmen, mehrere Absender: hub_stil und hub_texte werden eine
+     Ebene tiefer zusammengeführt — sonst nähme der Farb-Entwurf der
+     Vorschau die Schrift und das Kopfbild wieder weg. */
+  Object.keys(teil || {}).forEach(k => {
+    const v = teil[k], alt = h.entwurf[k];
+    if((k === "hub_stil" || k === "hub_texte") && v && typeof v === "object" && !Array.isArray(v) &&
+       alt && typeof alt === "object" && !Array.isArray(alt)) h.entwurf[k] = Object.assign({}, alt, v);
+    else h.entwurf[k] = v;
+  });
   if(ziel) h.ziel = ziel;
   clearTimeout(h.uhr);
   h.uhr = setTimeout(() => hvAnwenden(schl), 120);
@@ -10996,7 +11926,10 @@ function hvAnwenden(schl){
   w.requestAnimationFrame(() => w.requestAnimationFrame(() => {
     let m = null;
     try{ m = w.vorschauMessen(); }catch(e){}
-    if(m) hvWarnungen(schl, m);
+    if(m){
+      if((HV_ALIAS[schl] || schl) === "gestalten") ["worte", "startseite"].forEach(k => hvWarnungen(k, m));
+      else hvWarnungen(schl, m);
+    }
   }));
 }
 
@@ -11669,14 +12602,18 @@ $("#swSichern").onclick = swSichern;
 /* Die drei Anschlüsse. */
 function hvStartseite(ziel){
   if($("#t-startseite") && $("#t-startseite").hidden) return;
-  hvSenden("startseite", { hub_kacheln: kbRoh(), hub_banner: bnRoh(),
-                           hub_stil: { schrift: swFuerHub(true) } }, ziel || "");
+  /* hub_stil geht als Ganzes: Ein Entwurf nur mit „schrift“ nähme
+     dem Rahmen das Kopfbild, einer nur mit „kopf“ die Schrift. */
+  const stil = { schrift: swFuerHub(true) };
+  if(KF) stil.kopf = kfRoh();
+  hvSenden("startseite", { hub_kacheln: kbRoh(), hub_banner: bnRoh(), hub_stil: stil }, ziel || "");
 }
 function hvWorte(ziel){
   const wert = id => ($("#" + id) || {}).value || "";
   hvSenden("worte", { hub_texte:{ claim:wert("hubClaim"), gruss:wert("hubGruss"),
                                   runner_titel:wert("hubRunner"), laufschrift:wert("hubLaufschrift"),
-                                  wlan_netz:wert("hubWlanNetz"), wlan_passwort:wert("hubWlanPasswort") },
+                                  wlan_netz:wert("hubWlanNetz"), wlan_passwort:wert("hubWlanPasswort"),
+                                  ueber:wert("hubUeber") },
                       /* Ohne laufende Aktion wäre der Aktionsname nirgends zu sehen. */
                       aktion: ziel === "aktion" && gerichte[0]
                         ? { titel:"", gericht_name:gerichte[0].name,
@@ -11684,6 +12621,41 @@ function hvWorte(ziel){
                         : null },
             ziel || "kopf");
 }
+
+/* „Einklappen“: die klebende Vorschau im Gast-Hub-Reiter nur als
+   Kopfzeile — mehr Platz zum Bearbeiten auf dem Telefon. */
+document.addEventListener("click", e => {
+  const k = e.target.closest && e.target.closest("[data-hv-zu]");
+  if(!k) return;
+  const rahmen = k.closest(".hvrahmen");
+  const zu = !rahmen.classList.contains("zu");
+  rahmen.classList.toggle("zu", zu);
+  k.setAttribute("aria-pressed", String(zu));
+  k.textContent = zu ? "Aufklappen" : "Einklappen";
+});
+/* Sprungleiste: ein Tipp führt zum Bereich, unter die klebende Vorschau. */
+document.addEventListener("click", e => {
+  const a = e.target.closest && e.target.closest("[data-gh-sprung]");
+  if(!a) return;
+  e.preventDefault();
+  const ziel = document.getElementById(a.dataset.ghSprung); if(!ziel) return;
+  const vorschau = document.querySelector(".gh-vorschau");
+  const kopf = document.querySelector("header");
+  const ab = (kopf ? kopf.getBoundingClientRect().height : 0) + (vorschau ? vorschau.getBoundingClientRect().height : 0) + 8;
+  const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
+  window.scrollTo({ top: window.scrollY + ziel.getBoundingClientRect().top - ab, behavior: ruhig ? "auto" : "smooth" });
+});
+/* Die Höhe des Board-Kopfs als Variable — dort klebt die Vorschau. */
+(function(){
+  const k = document.querySelector("header"); if(!k) return;
+  const v = document.querySelector(".gh-vorschau");
+  const setzen = () => {
+    document.documentElement.style.setProperty("--board-kopf", Math.round(k.getBoundingClientRect().height) + "px");
+    if(v && v.offsetHeight) document.documentElement.style.setProperty("--gh-vorschau-h", Math.round(v.offsetHeight) + "px");
+  };
+  setzen();
+  if(typeof ResizeObserver === "function"){ const ro = new ResizeObserver(setzen); ro.observe(k); if(v) ro.observe(v); }
+})();
 
 /* „Größer“: dieselbe Vorschau, mehr Fläche. */
 document.addEventListener("click", e => {
@@ -11704,6 +12676,7 @@ function hubTexteFuellen(){
   setz("hubLaufschrift", HUBTEXTE.laufschrift);
   setz("hubWlanNetz", HUBTEXTE.wlan_netz);
   setz("hubWlanPasswort", HUBTEXTE.wlan_passwort);
+  setz("hubUeber", HUBTEXTE.ueber);
   massVerdrahten();
   hubSchauZeichnen();
   hvWorte("kopf");
@@ -11803,7 +12776,11 @@ async function lfSichern(){
 
 async function hubTexteSichern(){
   const raus = $("#hubTextePruefung");
-  const neu = {};
+  /* Alles, was dieses Formular NICHT kennt (etwa die eigenen Texte aus
+     „Texte & Schrift“), bleibt stehen — vorher baute jedes Übernehmen
+     hub_texte frisch aus den Feldern und hätte es gelöscht. */
+  const neu = Object.assign({}, HUBTEXTE || {});
+  ["claim","gruss","runner_titel","laufschrift","wlan_netz","wlan_passwort","ueber"].forEach(k => { delete neu[k]; });
   const claim  = $("#hubClaim").value.trim();
   const gruss  = $("#hubGruss").value.trim();
   const runner = $("#hubRunner").value.trim();
@@ -11818,6 +12795,8 @@ async function hubTexteSichern(){
   const wPass = ($("#hubWlanPasswort") || {value:""}).value.trim();
   if(wNetz) neu.wlan_netz = wNetz;
   if(wPass) neu.wlan_passwort = wPass;
+  const ueber = ($("#hubUeber") || {value:""}).value.trim();
+  if(ueber) neu.ueber = ueber;
 
   const knopf = $("#hubTexteSichern");
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
@@ -11839,12 +12818,209 @@ async function hubTexteSichern(){
     /* Die Datenbank hat dieselben Grenzen als Schranke. Wenn sie
        zuschlägt, ist das kein Serverfehler, sondern ein zu langer
        Text — und das gehört genau so gesagt. */
-    raus.textContent = /hub_texte_(masse|wlan|laufschrift)|check/i.test(String(err && err.message))
+    raus.textContent = /hub_texte_(masse|wlan|laufschrift|ueber)|check/i.test(String(err && err.message))
       ? "Ein Text ist zu lang. Bitte die Hinweise an den Feldern beachten."
       : "Nicht gespeichert, bitte Verbindung prüfen.";
   }
   knopf.disabled = false; knopf.textContent = "Übernehmen";
 }
+
+/* ══ TEXTE & SCHRIFT (hub_texte.eigen, Wunsch 11.10.) ═══════════════
+   Jeder Text des Hubs ist ein Wörterbuchschlüssel (der deutsche Satz).
+   Der Wirt ändert Wortlaut und Schrift; beim Übernehmen übersetzt der
+   Übersetzer die geänderten Sätze in elf Sprachen (in Paketen zu 25,
+   wie die Edge Function sie annimmt). Fällt die Übersetzung aus, wird
+   trotzdem gespeichert — auf Deutsch, mit Satz (§7).
+   TX ist null, bis der Stand gelesen ist (§8.1m). */
+const TX_SEITEN = { start:"Startseite", haus:"Haus-Seite (Logo)", speisekarte:"Speisekarte", getraenke:"Getränke",
+  cocktails:"Cocktails", kontakt:"Öffnungszeiten & Weg", quiz:"Tischquiz", wlan:"WLAN", service:"Service rufen",
+  rueckmeldung:"Bewertung", musik:"Musikwunsch", trinkgeld:"Trinkgeld", reservieren:"Reservieren",
+  meintisch:"Mein Tisch", entdecken:"Foodroulette", auswahl:"Ihre Auswahl", bestellt:"Bestellpass" };
+const TX_SPRACHEN = ["en","tr","ru","fr","es","it","pl","ar","uk","nl","ro"];
+const TX_HOECHST = 120;
+let TX = null, TX_NEU = new Set(), TX_LISTE = [], TX_OFFEN = null, TX_TIPPEN = false;
+function txLaden(){
+  const e = HUBTEXTE && HUBTEXTE.eigen && typeof HUBTEXTE.eigen === "object" ? HUBTEXTE.eigen : {};
+  TX = JSON.parse(JSON.stringify(e));
+  TX_NEU = new Set(); TX_OFFEN = null;
+  $("#txStand").textContent = "";
+  txZeichnen();
+}
+function txFuerHub(){
+  const aus = {};
+  Object.keys(TX || {}).forEach(k => {
+    const e = TX[k]; if(!e || typeof e !== "object") return;
+    const o = {};
+    Object.keys(e).forEach(f => { if(e[f]) o[f] = e[f]; });
+    if(Object.keys(o).length) aus[k] = o;
+  });
+  return aus;
+}
+/* Die Liste kommt aus der Vorschau: Jede Seite einmal gebaut, jeder
+   Schlüssel gemerkt. Ohne Vorschau (offline) gibt es keine Liste —
+   und das wird gesagt, statt eine leere Fläche zu zeigen. */
+function txListeLaden(){
+  const h = hvAlle().gestalten;
+  let roh = null;
+  try{ roh = h && h.bereit && h.frame.contentWindow.vorschauTexte ? h.frame.contentWindow.vorschauTexte() : null; }catch(e){}
+  if(!roh){ TX_LISTE = []; txZeichnen(); return; }
+  const gesehen = new Set(), liste = [];
+  const reihe = ["start", "haus"].concat(Object.keys(roh).filter(x => x !== "start" && x !== "haus"));
+  reihe.forEach(sz => (roh[sz] || []).forEach(k => { if(gesehen.has(k)) return; gesehen.add(k); liste.push({ k, sz }); }));
+  TX_LISTE = liste;
+  txZeichnen();
+}
+function txAnzeige(k){ return (TX && TX[k] && TX[k].de) || k; }
+function txZeichnen(){
+  const feld = $("#txListe"); if(!feld) return;
+  if(!TX){ feld.innerHTML = '<p class="hvstand">Der gespeicherte Stand ist noch nicht gelesen.</p>'; $("#txSichern").disabled = true; return; }
+  if(!TX_LISTE.length){ feld.innerHTML = '<p class="hvstand">Die Liste erscheint, sobald die Vorschau oben geladen ist.</p>'; }
+  else {
+    const such = String($("#txSuche").value || "").trim().toLowerCase();
+    let html = "", letzte = null;
+    TX_LISTE.filter(x => !such || x.k.toLowerCase().includes(such) || txAnzeige(x.k).toLowerCase().includes(such)).forEach(x => {
+      if(x.sz !== letzte){ html += '<div class="txseite">' + sicher(TX_SEITEN[x.sz] || x.sz) + '</div>'; letzte = x.sz; }
+      const offen = TX_OFFEN === x.k;
+      const eigen = TX[x.k] && (TX[x.k].de || TX[x.k].schrift);
+      html += '<button type="button" class="txzeile" data-tx="' + sicher(x.k) + '" aria-expanded="' + offen + '">' +
+        '<span>' + sicher(txAnzeige(x.k)) + '</span>' + (eigen ? '<span class="txneu">geändert</span>' : "") + '</button>';
+      if(offen) html += txEditorHTML(x.k);
+    });
+    feld.innerHTML = html || '<p class="hvstand">Kein Text gefunden.</p>';
+  }
+  $("#txSichern").disabled = !TX_NEU.size && !txGeruehrt;
+}
+let txGeruehrt = false;
+function txEditorHTML(k){
+  const e = (TX && TX[k]) || {};
+  const opt = '<option value="">Wie überall</option>' + SCHRIFT_WAHL.map(w =>
+    '<option value="' + sicher(w.s) + '"' + (e.schrift === w.s ? " selected" : "") + '>' + sicher(w.familie) + '</option>').join("");
+  return '<div class="txeditor" data-tx-ed="' + sicher(k) + '">' +
+    '<label class="feld"><span>Text</span><textarea data-tx-text rows="2" maxlength="160">' + sicher(e.de || k) + '</textarea>' +
+      '<small class="feldhilfe">Vorgabe: „' + sicher(k) + '“' + (k.indexOf("{") >= 0 ? " — Teile in {…} füllt der Hub, bitte stehen lassen." : "") + '</small></label>' +
+    '<label class="feld"><span>Schrift dieses Textes</span><select data-tx-schrift>' + opt + '</select></label>' +
+    '<div class="txknoepfe"><button type="button" class="knopf leise schmal" data-tx-zurueck>Vorgabe wiederherstellen</button></div></div>';
+}
+function txVorschau(k){
+  const x = TX_LISTE.find(y => y.k === k);
+  hvSenden("worte", { hub_texte:{ eigen: txFuerHub() } }, x ? x.sz : "kopf");
+}
+function txOeffnen(k){
+  TX_OFFEN = TX_OFFEN === k ? null : k;
+  $("#txSuche").value = TX_OFFEN && !TX_LISTE.some(x => x.k === k) ? "" : $("#txSuche").value;
+  if(TX_OFFEN && !TX_LISTE.some(x => x.k === k)) TX_LISTE.unshift({ k, sz:"start" });
+  txZeichnen();
+  if(!TX_OFFEN) return;
+  const ed = document.querySelector('[data-tx-ed="' + CSS.escape(k) + '"]');
+  if(ed){
+    const vorschau = document.querySelector(".gh-vorschau"), kopf = document.querySelector("header");
+    const ab = (kopf ? kopf.getBoundingClientRect().height : 0) + (vorschau ? vorschau.getBoundingClientRect().height : 0) + 60;
+    window.scrollTo({ top: window.scrollY + ed.getBoundingClientRect().top - ab });
+    const f = ed.querySelector("[data-tx-text]"); if(f) f.focus({ preventScroll:true });
+  }
+  txVorschau(k);
+}
+/* Aus der Vorschau: der Hub ruft das, wenn im Textmodus getippt wird. */
+window.vorschauTextGewaehlt = (k, seite) => {
+  if(!k){ $("#txStand").textContent = "Dieser Text lässt sich hier nicht ändern — Gerichte ändern Sie in der Karte."; return; }
+  $("#txStand").textContent = "";
+  $("#txSuche").value = "";
+  if(!TX_LISTE.some(x => x.k === k)) TX_LISTE.unshift({ k, sz: seite || "start" });
+  TX_OFFEN = null;
+  txOeffnen(k);
+};
+$("#txListe").addEventListener("click", e => {
+  const z = e.target.closest("[data-tx]"); if(z){ txOeffnen(z.dataset.tx); return; }
+  const zur = e.target.closest("[data-tx-zurueck]");
+  if(zur && TX){
+    const k = zur.closest("[data-tx-ed]").dataset.txEd;
+    delete TX[k]; TX_NEU.delete(k); txGeruehrt = true;
+    TX_OFFEN = null; txZeichnen(); txVorschau(k);
+  }
+});
+$("#txListe").addEventListener("input", e => {
+  const ed = e.target.closest("[data-tx-ed]"); if(!ed || !TX) return;
+  const k = ed.dataset.txEd;
+  if(e.target.matches("[data-tx-text]")){
+    const v = e.target.value.replace(/[<>]/g, "").slice(0, 160);
+    if(v !== e.target.value) e.target.value = v;
+    const e2 = TX[k] || {};
+    const schrift = e2.schrift;
+    /* Neuer Wortlaut: alte Übersetzungen passen nicht mehr. */
+    TX[k] = schrift ? { schrift } : {};
+    if(v.trim() && v.trim() !== k) TX[k].de = v.trim();
+    if(!Object.keys(TX[k]).length) delete TX[k];
+    if(TX[k] && TX[k].de) TX_NEU.add(k); else TX_NEU.delete(k);
+    txGeruehrt = true;
+    $("#txSichern").disabled = false;
+    txVorschau(k);
+  }
+});
+$("#txListe").addEventListener("change", e => {
+  const ed = e.target.closest("[data-tx-ed]"); if(!ed || !TX || !e.target.matches("[data-tx-schrift]")) return;
+  const k = ed.dataset.txEd, w = e.target.value;
+  TX[k] = TX[k] || {};
+  if(w && SCHRIFT_WAHL.some(x => x.s === w)) TX[k].schrift = w; else delete TX[k].schrift;
+  if(!Object.keys(TX[k]).length) delete TX[k];
+  txGeruehrt = true; $("#txSichern").disabled = false;
+  txVorschau(k);
+});
+$("#txSuche").addEventListener("input", () => txZeichnen());
+$("#txTippen").onclick = () => {
+  TX_TIPPEN = !TX_TIPPEN;
+  $("#txTippen").setAttribute("aria-pressed", String(TX_TIPPEN));
+  $("#txTippen").textContent = TX_TIPPEN ? "Antippen beenden" : "Text in der Vorschau antippen";
+  const r = document.querySelector(".gh-vorschau");
+  if(r){ r.classList.toggle("tippen", TX_TIPPEN); r.classList.remove("zu"); }
+  const h = hvAlle().gestalten;
+  try{ if(h && h.bereit) h.frame.contentWindow.vorschauTextTippen(TX_TIPPEN); }catch(e){}
+  if(TX_TIPPEN && r) window.scrollTo({ top: window.scrollY + r.getBoundingClientRect().top - (document.querySelector("header") || {getBoundingClientRect:()=>({height:0})}).getBoundingClientRect().height - 8 });
+};
+$("#txSichern").onclick = async () => {
+  if(!TX) return;
+  const raus = $("#txStand"), k = $("#txSichern");
+  const eigen = txFuerHub();
+  if(Object.keys(eigen).length > TX_HOECHST){ raus.textContent = "Höchstens " + TX_HOECHST + " eigene Texte — bitte ein paar auf die Vorgabe zurücksetzen."; return; }
+  k.disabled = true; k.textContent = "Wird übersetzt …";
+  /* Übersetzen: nur, was neu getippt wurde, in Paketen zu 25. */
+  const offen = [...TX_NEU].filter(x => eigen[x] && eigen[x].de);
+  let uebersetzt = 0, grund = "";
+  for(let i = 0; i < offen.length; i += 25){
+    const paket = offen.slice(i, i + 25);
+    const erg = await uebersetzenLassen(paket.map(x => eigen[x].de));
+    if(uebLetzterGrund && !grund) grund = uebGrundText();
+    paket.forEach(x => {
+      const r = erg && erg[eigen[x].de];
+      if(!r || typeof r !== "object") return;
+      TX_SPRACHEN.forEach(sp => { if(typeof r[sp] === "string" && r[sp].trim()) eigen[x][sp] = r[sp].replace(/[<>]/g, "").trim().slice(0, 160); });
+      uebersetzt++;
+    });
+  }
+  k.textContent = "Wird übernommen …";
+  const neu = Object.assign({}, HUBTEXTE || {});
+  if(Object.keys(eigen).length) neu.eigen = eigen; else delete neu.eigen;
+  if(demo || !db){
+    TX = JSON.parse(JSON.stringify(eigen)); HUBTEXTE = neu;
+    raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
+    k.textContent = "Übernehmen"; TX_NEU = new Set(); txGeruehrt = false; txZeichnen(); return;
+  }
+  const {error} = await db.from("betriebe").update({ hub_texte: neu }).eq("id", betriebId);
+  k.textContent = "Übernehmen";
+  if(error){
+    raus.textContent = /row-level|policy|permission|besitzer|inhaber/i.test(String(error.message)) ? "Nur der Besitzer kann das ändern."
+      : /check|groesse/i.test(String(error.message)) ? "Zu viele oder zu lange Texte für die Datenbank."
+      : "Nicht gespeichert, bitte Verbindung prüfen.";
+    k.disabled = false; return;
+  }
+  HUBTEXTE = neu; TX = JSON.parse(JSON.stringify(eigen));
+  const b = meineBetriebe.find(x => x.id === betriebId); if(b) b.hub_texte = neu;
+  TX_NEU = new Set(); txGeruehrt = false;
+  raus.textContent = "Übernommen." + (offen.length ? (uebersetzt === offen.length
+      ? " " + uebersetzt + (uebersetzt === 1 ? " Text" : " Texte") + " in elf Sprachen übersetzt."
+      : " Nicht übersetzt — Gäste in anderen Sprachen sehen bis dahin Ihren deutschen Text. " + (grund || "")) : "");
+  melde("Texte übernommen");
+  txZeichnen();
+};
 
 /* ══════════════════════════════════════════════════════════════════
    DER KACHEL-BAUKASTEN
@@ -13844,6 +15020,196 @@ $("#bnZoom").oninput = e => {
   bnSetzen();
 };
 
+/* ══ KOPF & LOGO (betriebe.hub_stil.kopf, Wunsch 11.10.) ═══════════
+   Kopfbild 16:9 (1600 px breit), Logo 1:1 (512 px), Form rund/eckig.
+   Hochgeladen in <Betrieb>/kopf/ im Eimer „gerichte“ — genau das
+   Muster, das kopfBildOk() im Hub annimmt (pruef-kopfbild.js hält
+   beide gegeneinander). Gespeichert wird erst nach gelesenem Stand
+   (§8.1m): KF ist null, bis kfLaden() die Zeile kennt. */
+const KF_ART = { bild: { format: 16 / 9, breite: 1600, titel: "Kopfbild zuschneiden" },
+                 logo: { format: 1,      breite: 512,  titel: "Logo zuschneiden" } };
+let KF = null, KF_GERUEHRT = false, kfZuschnitt = null, kfWahlArt = "bild";
+function kfAusStil(st){
+  const k = st && typeof st === "object" && st.kopf && typeof st.kopf === "object" ? st.kopf : {};
+  const url = u => typeof u === "string" && /^https:\/\/[^\s"'<>]+$/.test(u) ? u : "";
+  return { bild: url(k.bild), logo: url(k.logo), form: k.form === "eckig" ? "eckig" : "rund" };
+}
+function kfLaden(){
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  KF = bb ? kfAusStil(bb.hub_stil) : (demo ? { bild:"", logo:"", form:"rund" } : null);
+  KF_GERUEHRT = false;
+  $("#kfStand").textContent = KF ? "" : "Der gespeicherte Stand ist noch nicht gelesen.";
+  kfZeichnen();
+}
+function kfRoh(){
+  if(!KF) return null;
+  const o = {};
+  if(KF.bild) o.bild = KF.bild;
+  if(KF.logo){ o.logo = KF.logo; o.form = KF.form; }
+  return o;
+}
+function kfZeichnen(){
+  const k = KF || { bild:"", logo:"", form:"rund" };
+  $("#kfBildSchau").innerHTML = k.bild ? '<img src="' + sicher(k.bild) + '" alt="">' : "Kein Bild";
+  $("#kfLogoSchau").innerHTML = k.logo ? '<img src="' + sicher(k.logo) + '" alt="">' : "Siegel";
+  $("#kfBildWeg").hidden = !k.bild;
+  $("#kfLogoWeg").hidden = !k.logo;
+  $("#kfGruppe").dataset.form = k.form;
+  $$("#kfForm [data-kf-form]").forEach(b => b.setAttribute("aria-checked", String(b.dataset.kfForm === k.form)));
+  $("#kfForm .segmentschieber").style.transform = "translateX(" + (k.form === "eckig" ? 100 : 0) + "%)";
+  $("#kfSichern").disabled = !KF || !KF_GERUEHRT;
+}
+function kfGeaendert(ziel){
+  KF_GERUEHRT = true; kfZeichnen();
+  hvStartseite(ziel || "kopf");
+}
+
+$("#kfBildWahl").onclick = () => { if(!KF) return; kfWahlArt = "bild"; $("#kfDatei").value = ""; $("#kfDatei").click(); };
+$("#kfLogoWahl").onclick = () => { if(!KF) return; kfWahlArt = "logo"; $("#kfDatei").value = ""; $("#kfDatei").click(); };
+$("#kfBildWeg").onclick = () => { if(!KF) return; KF.bild = ""; kfGeaendert("kopf"); };
+$("#kfLogoWeg").onclick = () => { if(!KF) return; KF.logo = ""; kfGeaendert("kopf"); };
+$("#kfForm").onclick = e => {
+  const b = e.target.closest("[data-kf-form]"); if(!b || !KF) return;
+  KF.form = b.dataset.kfForm === "eckig" ? "eckig" : "rund";
+  kfGeaendert("kopf");
+};
+$("#kfDatei").onchange = e => {
+  const d = e.target.files && e.target.files[0]; if(!d) return;
+  if(!/^image\//.test(d.type)){ $("#kfStand").textContent = "Das ist kein Bild. Bitte ein Foto oder eine Grafik wählen."; return; }
+  kfZuschnittOeffnen(kfWahlArt, d);
+};
+
+function kfZuschnittOeffnen(art, datei){
+  const leser = new FileReader();
+  leser.onerror = () => melde("Datei nicht lesbar");
+  leser.onload = () => {
+    const bild = new Image();
+    bild.onerror = () => melde("Das ist kein Bild, das der Browser öffnen kann");
+    bild.onload = () => {
+      $("#kfBild").src = bild.src;
+      kfZuschnitt = { art, bild, zoom:1, dx:0, dy:0 };
+      $("#kfZoom").value = 100;
+      $("#kfBlattStand").textContent = "";
+      $("#kfBlattTitel").textContent = KF_ART[art].titel;
+      $("#kfBlatt").dataset.art = art;
+      $("#kfBlatt").dataset.form = (KF && KF.form) || "rund";
+      $("#kfBlatt").hidden = false;
+      const rahmen = $("#kfRahmen");
+      const breite = Math.max(160, Math.min(rahmen.parentElement.clientWidth - 4, art === "logo" ? 320 : 520));
+      rahmen.style.width  = breite + "px";
+      rahmen.style.height = Math.round(breite / KF_ART[art].format) + "px";
+      kfMitte();
+    };
+    bild.src = leser.result;
+  };
+  leser.readAsDataURL(datei);
+}
+function kfGrundmass(){
+  const r = $("#kfRahmen").getBoundingClientRect(), b = kfZuschnitt.bild;
+  return Math.max(r.width / b.naturalWidth, r.height / b.naturalHeight);
+}
+function kfMitte(){
+  const r = $("#kfRahmen").getBoundingClientRect();
+  const m = kfGrundmass() * kfZuschnitt.zoom;
+  kfZuschnitt.dx = (r.width  - kfZuschnitt.bild.naturalWidth  * m) / 2;
+  kfZuschnitt.dy = (r.height - kfZuschnitt.bild.naturalHeight * m) / 2;
+  kfSetzen();
+}
+function kfSetzen(){
+  if(!kfZuschnitt) return;
+  const r = $("#kfRahmen").getBoundingClientRect();
+  const m = kfGrundmass() * kfZuschnitt.zoom;
+  const bw = kfZuschnitt.bild.naturalWidth * m, bh = kfZuschnitt.bild.naturalHeight * m;
+  kfZuschnitt.dx = Math.min(0, Math.max(r.width  - bw, kfZuschnitt.dx));
+  kfZuschnitt.dy = Math.min(0, Math.max(r.height - bh, kfZuschnitt.dy));
+  $("#kfBild").style.transform = "translate(" + kfZuschnitt.dx + "px," + kfZuschnitt.dy + "px) scale(" + m + ")";
+}
+zuschnittGesten({ rahmen:"#kfRahmen", regler:"#kfZoom", zustand:() => kfZuschnitt,
+                  grund:() => kfGrundmass(), setzen:() => kfSetzen() });
+$("#kfZoom").oninput = e => {
+  if(!kfZuschnitt) return;
+  kfZuschnitt.zoom = Math.max(1, Number(e.target.value) / 100);
+  kfSetzen();
+};
+function kfFlaeche(){
+  const r = $("#kfRahmen").getBoundingClientRect();
+  const m = kfGrundmass() * kfZuschnitt.zoom;
+  const a = KF_ART[kfZuschnitt.art];
+  const B = a.breite, H = Math.round(a.breite / a.format);
+  const flaeche = document.createElement("canvas");
+  flaeche.width = B; flaeche.height = H;
+  const stift = flaeche.getContext("2d");
+  stift.fillStyle = "#FFFFFF"; stift.fillRect(0, 0, B, H);
+  stift.imageSmoothingQuality = "high";
+  stift.drawImage(kfZuschnitt.bild, -kfZuschnitt.dx / m, -kfZuschnitt.dy / m, r.width / m, r.height / m, 0, 0, B, H);
+  return flaeche;
+}
+async function kfZuschnittFertig(){
+  if(!kfZuschnitt || !KF) return;
+  const knopf = $("#kfBlattOk");
+  const stand = t => { $("#kfBlattStand").textContent = t; };
+  if(!betriebId){ stand("Kein Betrieb gewählt."); return; }
+  knopf.disabled = true;
+  try{
+    stand("Wird zugeschnitten …");
+    const flaeche = kfFlaeche();
+    const blob = await gbDatei(flaeche);
+    const art = kfZuschnitt.art;
+    if(demo || !db){
+      /* Vorführmodus: nichts hochladen, aber im Rahmen zeigen. */
+      KF[art] = flaeche.toDataURL("image/jpeg", 0.8);
+    }else{
+      stand("Wird hochgeladen … (" + Math.round(blob.size / 1024) + " KB)");
+      const endung = blob.type === "image/webp" ? "webp" : "jpg";
+      const pfad = betriebId + "/kopf/" + art + "-" + Date.now() + "." + endung;
+      const {error} = await db.storage.from("gerichte").upload(pfad, blob, { contentType: blob.type, upsert:false });
+      if(error) throw error;
+      KF[art] = db.storage.from("gerichte").getPublicUrl(pfad).data.publicUrl;
+    }
+    kfBlattZu();
+    kfGeaendert(art === "logo" ? "haus" : "kopf");
+    melde(art === "logo" ? "Logo übernommen — mit „Übernehmen“ wird es sichtbar" : "Kopfbild übernommen — mit „Übernehmen“ wird es sichtbar");
+  }catch(e){
+    console.error(e);
+    stand(e.message || "Hochladen fehlgeschlagen");
+  }
+  knopf.disabled = false;
+}
+function kfBlattZu(){ blattFortAnimieren($("#kfBlatt"), function(){ $("#kfBlatt").hidden = true; kfZuschnitt = null; }); }
+$("#kfBlattOk").onclick  = kfZuschnittFertig;
+$("#kfBlattWeg").onclick = kfBlattZu;
+$("#kfBlatt").onclick = e => { if(e.target === $("#kfBlatt")) kfBlattZu(); };
+
+$("#kfSichern").onclick = async () => {
+  if(!KF) return;
+  const raus = $("#kfStand"), k = $("#kfSichern");
+  if(demo || !db){ raus.textContent = "Im Vorführmodus wird nichts gespeichert."; return; }
+  /* Im Vorführmodus stehen data:-Bilder im Entwurf — die gehen nie in
+     die Datenbank (der Hub nähme sie ohnehin nicht). */
+  if([KF.bild, KF.logo].some(u => u && !/^https:\/\//.test(u))){ raus.textContent = "Ein Bild ist noch nicht hochgeladen."; return; }
+  k.disabled = true; k.textContent = "Wird übernommen …";
+  const bb = meineBetriebe.find(x => x.id === betriebId);
+  const neu = Object.assign({}, (bb && bb.hub_stil && typeof bb.hub_stil === "object") ? bb.hub_stil : {});
+  const roh = kfRoh();
+  if(roh && (roh.bild || roh.logo)) neu.kopf = roh; else delete neu.kopf;
+  const {error} = await db.from("betriebe").update({ hub_stil: neu }).eq("id", betriebId);
+  k.textContent = "Übernehmen";
+  if(error){
+    const t = String(error.message || "");
+    raus.textContent =
+      /hub_stil_form|check/i.test(t) ? "Die Gestaltung ist zu groß für die Datenbank geworden." :
+      /row-level|policy|permission|besitzer|inhaber/i.test(t) ? "Nur der Besitzer kann das ändern." :
+      "Nicht gespeichert, bitte Verbindung prüfen.";
+    kfZeichnen();
+    return;
+  }
+  if(bb) bb.hub_stil = neu;
+  KF_GERUEHRT = false;
+  raus.textContent = "Übernommen. Gäste sehen es beim nächsten Öffnen.";
+  melde("Kopf & Logo übernommen");
+  kfZeichnen();
+};
+
 /* ── Sichern ───────────────────────────────────────────────────── */
 /* Dieselbe Normalisierung wie bannerZiel() in hub.vorlage.html: fehlt
    bei einer URL jedes Protokoll, wird https:// ergänzt — damit ist
@@ -13983,7 +15349,7 @@ if($("#hubTexteSichern")){
     });
     hubSchauZeichnen();
     $("#hubTextePruefung").textContent =
-      "Felder geleert (das WLAN bleibt). Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
+      "Felder geleert (WLAN und „Über uns“ bleiben). Mit „Übernehmen\" gelten wieder die Vorgaben aus dem Markenblatt.";
   };
 }
 
@@ -14697,6 +16063,21 @@ $("#statusFilter").onclick = e => {
 
 // Status einer Bestellung ändern
 $("#karten").onclick = async e => {
+  /* Karte auf- oder zuklappen: der Knopf, oder bei einer zugeklappten
+     Karte auch ihr Kopf (größere Fläche). Die Wahl gilt je Karte über
+     jedes Neuzeichnen (bAuf). */
+  const klapp = e.target.closest("[data-bklapp]") ||
+    (e.target.closest(".bestellung.bzu .bkopf") && !e.target.closest("a,button") ? e.target.closest(".bestellung") : null);
+  if(klapp){
+    const id = klapp.dataset.bklapp || klapp.dataset.id;
+    const karte = klapp.closest(".bestellung");
+    bAuf.set(id, karte.classList.contains("bzu"));
+    zeichneBoard();
+    const neu = document.querySelector(`.bestellung[data-id="${CSS.escape(id)}"] [data-bklapp]`);
+    if(neu && e.target.closest("[data-bklapp]")) neu.focus({ preventScroll:true });
+    return;
+  }
+
   /* Rabattcode-Eingabe auf-/zuklappen */
   const rOeffnen = e.target.closest("[data-rabattoeffnen]");
   if(rOeffnen){
@@ -14760,7 +16141,12 @@ $("#karten").onclick = async e => {
   }
 
   const k = e.target.closest(".schritt"); if(!k) return;
-  const {id, status} = k.dataset;
+  await statusSetzen(k.dataset.id, k.dataset.status);
+};
+
+/* Ein Statuswechsel, egal woher: Knopf oder Wischgeste (Wunsch 11.10.).
+   EINE Schreibstelle — die Geste ruft genau das, was der Knopf ruft. */
+async function statusSetzen(id, status){
   const b = bestellungen.find(x => x.id === id); if(!b) return;
 
   /* Doppeltippen ignorieren, solange die erste Änderung läuft.
@@ -14802,7 +16188,287 @@ $("#karten").onclick = async e => {
     ids.forEach(i => inArbeit.delete(i));
     neuZeichnen();
   }
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   TEAM-MODUS (Wunsch 11.10.)
+
+   „… in den Team-Modus schalten, dann werden Bestellungen den Team-
+   Mitgliedern zugewiesen und gerecht aufgeteilt. Entweder zufällig
+   oder man kann zuweisen. … Nutzer-Nummern, damit man weiß, welche
+   Bestellung zu wem kommt.“
+
+   Verteilt wird in der DATENBANK beim Einfügen (migration-teammodus.sql),
+   damit zwei Geräte nie verschieden verteilen. Das Board zeigt die
+   Nummer, lässt umhängen (direkt, wie der Status) und filtert „Nur
+   meine“. Die Nummer DIESES Geräts liegt im Gerät — so geht es mit
+   eigenem Zugang je Person und mit einem geteilten Tablet. Vorgabe ist
+   die Nummer des angemeldeten Kontos.
+   Fehlt die Migration, sagt das Blatt es; sonst bleibt alles wie vorher.
+   ═══════════════════════════════════════════════════════════════ */
+const TM = { modus: null, nummern: [], geraet: null, fehlt: false, geladen: false, nurMeine: false, entwurf: null };
+const TM_ART_HILFE = {
+  fair: "Wer im Dienst gerade die wenigsten offenen Bestellungen hat, bekommt die nächste.",
+  zufall: "Jede neue Bestellung geht an jemanden aus dem Dienst, zufällig.",
+  hand: "Niemand wird automatisch zugewiesen — ihr tippt auf der Karte, wer sie nimmt."
 };
+const tmSchluessel = () => "omoteno-geraet-nr-" + (betriebId || "demo");
+function tmAn(){ return !!(TM.modus && TM.modus.an === true); }
+function tmNurMeineAktiv(){ return tmAn() && TM.nurMeine && TM.geraet != null; }
+function tmName(nr){
+  const m = TM.nummern.find(x => Number(x.nummer) === Number(nr));
+  return m ? m.nummer + " · " + m.name : "Nr. " + nr;
+}
+function tmModusAus(roh){
+  if(!roh || typeof roh !== "object" || Array.isArray(roh)) return null;
+  const art = ["fair", "zufall", "hand"].includes(roh.art) ? roh.art : "fair";
+  const dienst = Array.isArray(roh.dienst) ? roh.dienst.map(Number).filter(n => Number.isInteger(n) && n >= 1 && n <= 99) : [];
+  return { an: roh.an === true, art, dienst: [...new Set(dienst)].sort((a, b) => a - b) };
+}
+async function teamLaden(id){
+  TM.geladen = false; TM.fehlt = false; TM.modus = null; TM.nummern = [];
+  try{ const g = localStorage.getItem(tmSchluessel()); TM.geraet = g ? Number(g) : null; }catch(_){ TM.geraet = null; }
+  if(demo || !db){
+    TM.nummern = [{ nummer:1, name:"Inhaber", rolle:"inhaber", ich:true }, { nummer:2, name:"Ali", rolle:"team", ich:false },
+                  { nummer:3, name:"Mia", rolle:"team", ich:false }];
+    TM.modus = TM.modus || { an:false, art:"fair", dienst:[1, 2, 3] };
+  }else{
+    const [m, n] = await Promise.all([
+      db.from("betriebe").select("team_modus").eq("id", id).maybeSingle(),
+      db.rpc("team_nummern", { p_betrieb: id })
+    ]);
+    if(id !== betriebId) return;
+    if(m.error || n.error){ TM.fehlt = true; }
+    else{
+      TM.modus = tmModusAus(m.data && m.data.team_modus);
+      TM.nummern = (n.data || []).filter(x => Number.isInteger(Number(x.nummer)));
+    }
+  }
+  if(TM.geraet == null){ const ich = TM.nummern.find(x => x.ich); if(ich) TM.geraet = Number(ich.nummer); }
+  TM.geladen = true;
+  tmZeichnen();
+  zeichneBoard();
+}
+function tmZeichnen(){
+  const k = $("#teamKnopf"); if(!k) return;
+  k.setAttribute("aria-pressed", String(tmAn()));
+  $("#teamStandKurz").textContent = TM.fehlt ? "nicht eingerichtet"
+    : !tmAn() ? "aus"
+    : ({ fair:"gerecht", zufall:"zufällig", hand:"von Hand" })[TM.modus.art] +
+      (TM.geraet != null ? " · ich: " + tmName(TM.geraet) : "");
+  const nm = $("#nurMeine");
+  nm.hidden = !tmAn() || TM.geraet == null;
+  nm.setAttribute("aria-pressed", String(TM.nurMeine));
+}
+function tmZuwHTML(b){
+  if(!tmAn() || b.status === "fertig" || b.pruefen) return "";
+  const nr = b.zugewiesen == null ? null : Number(b.zugewiesen);
+  const wahl = TM.nummern.filter(x => TM.modus.dienst.includes(Number(x.nummer)) || Number(x.nummer) === nr);
+  return `<select class="tmzuw${nr == null ? " niemand" : ""}${nr != null && nr === TM.geraet ? " meins" : ""}" data-tmzuw="${sicher(b.id)}" aria-label="Wer hat diese Bestellung?">
+      <option value=""${nr == null ? " selected" : ""}>Niemand zugewiesen</option>
+      ${wahl.map(x => `<option value="${Number(x.nummer)}"${Number(x.nummer) === nr ? " selected" : ""}>→ ${sicher(tmName(x.nummer))}${Number(x.nummer) === TM.geraet ? " (ich)" : ""}</option>`).join("")}
+    </select>`;
+}
+$("#karten").addEventListener("change", async e => {
+  const sel = e.target.closest("[data-tmzuw]"); if(!sel) return;
+  const b = bestellungen.find(x => String(x.id) === sel.dataset.tmzuw); if(!b) return;
+  const vorher = b.zugewiesen ?? null;
+  const neu = sel.value === "" ? null : Number(sel.value);
+  b.zugewiesen = neu;
+  zeichneBoard();
+  if(demo || !db) return;
+  try{
+    const {error} = await db.from("bestellungen").update({ zugewiesen: neu }).eq("id", b.id).eq("betrieb_id", betriebId);
+    if(error) throw error;
+  }catch(f){
+    b.zugewiesen = vorher; zeichneBoard();
+    melde("Nicht zugewiesen — bitte Verbindung prüfen", true);
+  }
+});
+function tmBlattZeichnen(){
+  const e = TM.entwurf;
+  const inhaber = istInhaberRolle();
+  $("#teamFehlt").hidden = !TM.fehlt;
+  $("#teamFehlt").textContent = TM.fehlt ? "Der Team-Modus braucht noch die Datenbank-Erweiterung (migration-teammodus.sql). Bis dahin bleibt alles wie bisher." : "";
+  $("#teamBesitzer").hidden = TM.fehlt;
+  $("#teamNurBesitzer").hidden = inhaber || TM.fehlt;
+  $$("#teamBesitzer button").forEach(x => { x.disabled = !inhaber; });
+  $("#teamAn").setAttribute("aria-pressed", String(e.an));
+  $$("#teamArt [data-tm-art]").forEach(x => x.setAttribute("aria-checked", String(x.dataset.tmArt === e.art)));
+  $("#teamArtHilfe").textContent = TM_ART_HILFE[e.art];
+  $("#teamDienst").innerHTML = TM.nummern.map(x =>
+    `<button type="button" class="tmchip" data-tm-dienst="${Number(x.nummer)}" aria-pressed="${e.dienst.includes(Number(x.nummer))}"${inhaber ? "" : " disabled"}>${sicher(tmName(x.nummer))}</button>`).join("");
+  $("#teamGeraet").innerHTML = `<option value="">Niemand bestimmtes</option>` + TM.nummern.map(x =>
+    `<option value="${Number(x.nummer)}"${Number(x.nummer) === TM.geraet ? " selected" : ""}>${sicher(tmName(x.nummer))}${x.ich ? " (mein Konto)" : ""}</option>`).join("");
+  $("#teamSichern").hidden = !inhaber || TM.fehlt;
+  $("#teamStand").textContent = "";
+}
+$("#teamKnopf").addEventListener("click", () => {
+  TM.entwurf = Object.assign({ an:false, art:"fair", dienst: TM.nummern.map(x => Number(x.nummer)) }, TM.modus || {});
+  TM.entwurf.dienst = [...TM.entwurf.dienst];
+  tmBlattZeichnen();
+  $("#teamBlatt").hidden = false;
+});
+$("#teamZu").addEventListener("click", () => blattFortAnimieren($("#teamBlatt"), () => { $("#teamBlatt").hidden = true; }));
+$("#teamAn").addEventListener("click", () => { if(!istInhaberRolle()) return; TM.entwurf.an = !TM.entwurf.an; tmBlattZeichnen(); });
+$("#teamArt").addEventListener("click", e => {
+  const x = e.target.closest("[data-tm-art]"); if(!x || !istInhaberRolle()) return;
+  TM.entwurf.art = x.dataset.tmArt; tmBlattZeichnen();
+});
+$("#teamDienst").addEventListener("click", e => {
+  const x = e.target.closest("[data-tm-dienst]"); if(!x || !istInhaberRolle()) return;
+  const nr = Number(x.dataset.tmDienst), d = TM.entwurf.dienst;
+  TM.entwurf.dienst = d.includes(nr) ? d.filter(y => y !== nr) : d.concat(nr).sort((a, b) => a - b);
+  tmBlattZeichnen();
+});
+$("#teamGeraet").addEventListener("change", e => {
+  TM.geraet = e.target.value === "" ? null : Number(e.target.value);
+  try{ if(TM.geraet == null) localStorage.removeItem(tmSchluessel()); else localStorage.setItem(tmSchluessel(), String(TM.geraet)); }catch(_){}
+  if(TM.geraet == null) TM.nurMeine = false;
+  tmZeichnen(); zeichneBoard();
+});
+$("#teamSichern").addEventListener("click", async () => {
+  if(!istInhaberRolle() || TM.fehlt) return;
+  const e = TM.entwurf;
+  if(e.an && e.art !== "hand" && !e.dienst.length){
+    $("#teamStand").textContent = "Wähle mindestens eine Person im Dienst — sonst kann niemand etwas bekommen."; return;
+  }
+  const neu = { an: e.an, art: e.art, dienst: e.dienst };
+  if(!demo && db){
+    const {error} = await db.from("betriebe").update({ team_modus: neu }).eq("id", betriebId);
+    if(error){ $("#teamStand").textContent = /nur_inhaber|42501/.test(String(error.message || error.code)) ? "Nur der Besitzer kann das ändern." : "Nicht gespeichert — bitte Verbindung prüfen."; return; }
+  }
+  TM.modus = neu;
+  tmZeichnen(); zeichneBoard();
+  melde(neu.an ? "Team-Modus an" : "Team-Modus aus");
+  blattFortAnimieren($("#teamBlatt"), () => { $("#teamBlatt").hidden = true; });
+});
+$("#nurMeine").addEventListener("click", () => { TM.nurMeine = !TM.nurMeine; tmZeichnen(); zeichneBoard(); });
+
+/* ═══════════════════════════════════════════════════════════════
+   WISCHEN AUF DER BESTELLKARTE (Wunsch 11.10.)
+
+   „Ein Swipe nach links und es wird bearbeitet, noch ein Swipe und es
+   ist fertig.“ Die Karte folgt dem Finger 1:1, dahinter erscheint die
+   nächste Stufe. Ab B_WISCH_ANTEIL der Breite oder mit Schwung gilt der
+   Wisch; darunter federt die Karte zurück und schreibt NICHTS.
+   Senkrecht rollt die Seite wie immer (touch-action:pan-y, und die
+   Geste beginnt erst, wenn der Zug klar waagerecht ist). Geschrieben
+   wird über statusSetzen() — dieselbe Stelle wie die Knöpfe. Danach
+   steht 6 s „Rückgängig“ unten. Während der Geste wird nicht neu
+   gezeichnet (§4.2): bWischAktiv hält zeichneBoard() an.
+   ═══════════════════════════════════════════════════════════════ */
+const B_WISCH_ANTEIL = 0.35;
+const B_WISCH_NAECHST = { neu:"arbeit", arbeit:"fertig" };
+const B_WISCH_WORT = { arbeit:"In Arbeit", fertig:"Fertig" };
+let bWischAktiv = null;
+let bWischNachholen = false;
+let bWischNachKlick = 0;
+function bWischBereit(karte){
+  const b = bestellungen.find(x => String(x.id) === karte.dataset.id);
+  if(!b || b.pruefen || inArbeit.has(b.id) || !B_WISCH_NAECHST[b.status]) return null;
+  return b;
+}
+$("#karten").addEventListener("pointerdown", e => {
+  if(e.button !== 0 || bWischAktiv) return;
+  if(e.target.closest("input,textarea,select,a,[contenteditable]")) return;
+  const karte = e.target.closest(".bestellung"); if(!karte) return;
+  const b = bWischBereit(karte); if(!b) return;
+  const start = { x:e.clientX, y:e.clientY, t:performance.now() };
+  let los = false, dx = 0, letzt = { x:e.clientX, t:start.t }, tempo = 0, ziel = null;
+  const weg = () => {
+    window.removeEventListener("pointermove", zug);
+    window.removeEventListener("pointerup", ende);
+    window.removeEventListener("pointercancel", abbruch);
+  };
+  const zug = ev => {
+    if(ev.pointerId !== e.pointerId) return;
+    const mx = ev.clientX - start.x, my = ev.clientY - start.y;
+    if(!los){
+      if(Math.abs(my) > 10 && Math.abs(my) >= Math.abs(mx)){ weg(); return; }
+      if(mx > -10 || Math.abs(mx) < Math.abs(my) * 1.2) return;
+      los = true;
+      bWischAktiv = b.id;
+      try{ karte.setPointerCapture(ev.pointerId); }catch(_){}
+      const huelle = $("#karten");
+      ziel = document.createElement("div");
+      ziel.className = "wischziel";
+      ziel.dataset.stufe = B_WISCH_NAECHST[b.status];
+      ziel.innerHTML = `<span>${B_WISCH_WORT[B_WISCH_NAECHST[b.status]]}</span>`;
+      ziel.style.cssText = `top:${karte.offsetTop}px;left:${karte.offsetLeft}px;width:${karte.offsetWidth}px;height:${karte.offsetHeight}px`;
+      huelle.insertBefore(ziel, karte);
+      karte.classList.add("bwisch");
+    }
+    const jetzt = performance.now();
+    if(jetzt > letzt.t) tempo = (ev.clientX - letzt.x) / (jetzt - letzt.t);
+    letzt = { x:ev.clientX, t:jetzt };
+    dx = mx < 0 ? mx : mx * 0.2;
+    karte.style.transform = `translateX(${dx}px)`;
+    if(ziel) ziel.classList.toggle("bereit", -dx >= karte.offsetWidth * B_WISCH_ANTEIL);
+  };
+  const aufraeumen = () => {
+    if(ziel) ziel.remove(); karte.classList.remove("bwisch"); bWischAktiv = null;
+    if(bWischNachholen){ bWischNachholen = false; zeichneBoard(); }
+  };
+  const ende = ev => {
+    if(ev.pointerId !== e.pointerId) return;
+    weg();
+    if(!los) return;
+    bWischNachKlick = performance.now();
+    const breite = karte.offsetWidth;
+    const gilt = -dx >= breite * B_WISCH_ANTEIL || (tempo < -0.6 && -dx > 40);
+    const ruhig = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if(!gilt){
+      if(ruhig){ karte.style.transform = ""; aufraeumen(); return; }
+      const a = karte.animate([{ transform:`translateX(${dx}px)` }, { transform:"translateX(0)" }],
+        { duration:220, easing:"cubic-bezier(.16,1,.3,1)" });
+      karte.style.transform = "";
+      a.onfinish = a.oncancel = aufraeumen;
+      return;
+    }
+    const neu = B_WISCH_NAECHST[b.status], alt = b.status;
+    const fertig = () => {
+      aufraeumen();
+      statusSetzen(b.id, neu);
+      bWischRueckgaengig(b, alt, neu);
+    };
+    if(ruhig){ fertig(); return; }
+    const a = karte.animate([{ transform:`translateX(${dx}px)`, opacity:1 }, { transform:`translateX(${-breite}px)`, opacity:0 }],
+      { duration:160, easing:"cubic-bezier(.4,0,1,1)", fill:"forwards" });
+    a.onfinish = fertig;
+  };
+  const abbruch = ev => {
+    if(ev.pointerId !== e.pointerId) return;
+    weg();
+    if(los){ karte.style.transform = ""; aufraeumen(); }
+  };
+  window.addEventListener("pointermove", zug);
+  window.addEventListener("pointerup", ende);
+  window.addEventListener("pointercancel", abbruch);
+});
+/* Ein Wisch, der über einem Knopf endet, ist kein Tipp auf den Knopf.
+   Gemessen (Gegenbeweis): In Chromium kommt der Klick nach einem Zug
+   ohnehin nicht am Knopf an — mit Finger nicht, und mit der Maus nicht,
+   weil setPointerCapture ihn auf die Karte lenkt. Die Zeile ist Vorsorge
+   für Browser, die das anders halten; tragend ist sie hier nicht. */
+$("#karten").addEventListener("click", e => {
+  if(performance.now() - bWischNachKlick < 350){ e.stopImmediatePropagation(); e.preventDefault(); }
+}, true);
+
+let bRueckUhr = null;
+function bWischRueckgaengig(b, alt, neu){
+  const leiste = $("#rueckleiste"); if(!leiste) return;
+  const name = b.tisch ? "Tisch " + b.tisch : (b.gast_name || "Bestellung");
+  leiste.querySelector("span").textContent = name + " · " + B_WISCH_WORT[neu];
+  const knopf = leiste.querySelector("button");
+  knopf.onclick = () => {
+    clearTimeout(bRueckUhr); leiste.hidden = true;
+    statusSetzen(b.id, alt);
+  };
+  leiste.hidden = false;
+  clearTimeout(bRueckUhr);
+  bRueckUhr = setTimeout(() => { leiste.hidden = true; }, 6000);
+}
 
 /* ═══════════════════════════════════════════════════════════════
    BESTÄTIGEN MIT WARTEZEIT
@@ -14960,6 +16626,7 @@ $("#abmelden").onclick = async () => {
   location.reload();
 };
 $("#neuesGericht").onclick = () => blattOeffnen(null);
+$("#neueKategorie").onclick = () => ktedOeffnen(null);
 
 /* ─── Allergene und Zusatzstoffe ──────────────────────────────────
    Die 14 Gruppen stammen aus Anhang II der LMIV. Diese Liste ist

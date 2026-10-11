@@ -400,6 +400,50 @@ body[data-phase="abend"] .logo{
    Bild, aber auf dem Compositor (Skill bewegung §1). */
 body[data-phase="abend"] .logo .led{opacity:1;animation:ledDrehen 9s linear infinite}
 @keyframes ledDrehen{to{transform:rotate(360deg)}}
+/* ═══ Kopfbild und eigenes Logo (Wunsch 11.10.) ═══════════════════
+   „Ganz oben ein Hintergrundbild … unten mittig vom Bild, also der
+   Rand des Bildes, ist die Mitte vom Kreis-Logo.“ Nur auf der
+   Startseite (Unterseiten behalten die schmale Leiste). Das Bild
+   reicht bis an die Kanten: header blutet schon per negativem Rand
+   bis an den Schirm, das Bild hebt dessen Polster wieder auf. Das Logo
+   rückt um seine halbe Höhe plus den Zeilenabstand hinauf — dann liegt
+   seine Mitte genau auf der Bildkante (gemessen in pruef-kopfbild.js). */
+.kopfbild{display:none}
+body[data-ansicht="start"][data-kopfbild="an"] header{
+  grid-template-areas:"bild" "logo" "titel" "claim" "kopfwahl";
+  padding-top:0;
+}
+body[data-ansicht="start"][data-kopfbild="an"] .kopfbild{
+  display:block;grid-area:bild;justify-self:stretch;position:relative;z-index:1;
+  margin:0 calc(-1 * var(--rand));overflow:hidden;
+  aspect-ratio:16 / 9;max-height:42vh;max-height:42dvh;
+  background:color-mix(in srgb, var(--band-text) 12%, var(--band));
+}
+.kopfbild img{display:block;width:100%;height:100%;object-fit:cover}
+body[data-ansicht="start"][data-kopfbild="an"] .logo{
+  --logo-gr:96px;width:var(--logo-gr);height:var(--logo-gr);z-index:2;
+  margin-top:calc(-0.5 * var(--logo-gr) - 6px);
+}
+body[data-ansicht="start"][data-kopfbild="an"] .logo svg,
+body[data-ansicht="start"][data-kopfbild="an"] .logo img{width:var(--logo-gr);height:var(--logo-gr)}
+/* Auf dem Foto trägt die Öffnungsanzeige eine deckende Fläche aus der
+   Bandfarbe — Glas über einem hellen Foto wäre unlesbar. */
+body[data-ansicht="start"][data-kopfbild="an"] .status{
+  background:color-mix(in srgb, var(--band) 92%, transparent);
+}
+/* Eigenes Logo statt des Siegels: das Bild füllt den Knopf, das
+   gezeichnete Siegel tritt zurück. */
+.logo-eigen{display:none}
+body[data-logo="eigen"] .logo-eigen{
+  display:block;position:relative;z-index:1;width:100%;height:100%;
+  border-radius:inherit;overflow:hidden;background:var(--grund);
+}
+body[data-logo="eigen"] .logo-eigen img{display:block;width:100%;height:100%;object-fit:cover}
+body[data-logo="eigen"] .logo > :not(.led):not(.logo-eigen){display:none}
+body[data-logoform="eckig"] .logo,
+body[data-logoform="eckig"] .logo::before,
+body[data-logoform="eckig"] .logo .led{border-radius:22%}
+
 h1{
   grid-area:titel;font-size:23px;line-height:1.18;margin:0;
   font-weight:650;letter-spacing:-.3px;text-align:center;
@@ -1087,12 +1131,35 @@ body[data-ansicht="unter"] #inhalt{touch-action:pan-y}
   border:1px solid var(--linie);box-shadow:var(--schatten)}
 .nm-kopf strong{display:block;font:600 17px/1.25 var(--schrift-abschnitt, var(--schrift-kopf));color:var(--tinte)}
 .nm-kopf span{display:block;margin-top:3px;font-size:13.5px;color:var(--tinte-leise)}
-.nm-liste{list-style:none;margin:12px 0;padding:0;display:grid;gap:8px}
-.nm-liste li{display:flex;gap:10px;align-items:baseline;color:var(--tinte);font-size:15px}
-.nm-m{font-weight:650;font-variant-numeric:tabular-nums;min-width:2.2em}
-.nm-n{min-width:0;overflow-wrap:anywhere}
-.nm-n small{display:block;margin-top:2px;font-size:13px;color:var(--tinte-leise)}
-.nm-fehlt{margin:0 0 10px;font-size:13px;color:var(--tinte-leise)}
+.nm-kopf{position:relative}
+.nm-zahl{position:absolute;top:0;inset-inline-end:0;font-style:normal;font-size:12.5px;font-weight:650;
+  padding:3px 9px;border-radius:999px;color:var(--tinte);
+  background:color-mix(in srgb, var(--gold) 14%, var(--flaeche));font-variant-numeric:tabular-nums}
+.nm-kopf:has(.nm-zahl) strong,.nm-kopf:has(.nm-zahl) span{padding-inline-end:84px}
+.nm-liste{list-style:none;margin:12px 0 10px;padding:0;display:grid;gap:0}
+.nm-liste li{display:grid;grid-template-columns:40px minmax(0,1fr) auto auto;gap:4px 10px;align-items:center;
+  padding:8px 0;color:var(--tinte);font-size:15px;border-top:1px solid var(--linie)}
+.nm-liste li:first-child{border-top:0;padding-top:2px}
+.nmkarte:not(.auf) .nm-rest{display:none}
+.nm-bild{display:grid;place-items:center;width:40px;height:40px;border-radius:12px;overflow:hidden;
+  background:color-mix(in srgb, var(--gold) 10%, var(--flaeche))}
+.nm-bild img{width:100%;height:100%;object-fit:cover;display:block}
+.nm-bild .dazu-emo{font-size:22px}
+.nm-n{min-width:0;overflow-wrap:anywhere;line-height:1.3}
+.nm-n small{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  margin-top:2px;font-size:13px;color:var(--tinte-leise)}
+.nm-m{font-weight:650;font-size:13px;font-variant-numeric:tabular-nums;padding:2px 8px;border-radius:999px;
+  color:var(--tinte);background:color-mix(in srgb, var(--tinte) 7%, var(--flaeche))}
+.nm-p{font-variant-numeric:tabular-nums;font-size:14px;color:var(--tinte);white-space:nowrap;min-width:4.2em;text-align:end}
+.nm-klapp{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;min-height:44px;margin:0 0 10px;
+  padding:8px 12px;border-radius:999px;font:inherit;font-size:14px;font-weight:600;cursor:pointer;
+  color:var(--tinte);background:transparent;border:1px dashed color-mix(in srgb, var(--tinte) 28%, transparent);
+  -webkit-tap-highlight-color:transparent}
+.nm-klapp svg{transition:transform .22s var(--weich)}
+.nmkarte.auf .nm-klapp svg{transform:rotate(180deg)}
+.nm-liste li.nm-neu{animation:nmRein .24s var(--weich) both;animation-delay:calc(var(--nm-i, 0) * 35ms)}
+@keyframes nmRein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.nm-liste li.nm-neu{animation:none}.nm-klapp svg{transition:none}}
 .nmkarte .nm-knopf{width:100%;margin:2px 0 0}
 
 /* ═══ Empfehlung des Hauses ═════════════════════════════════════ */
@@ -1628,6 +1695,40 @@ a.kachel.khalb.ohneico .txt strong{font-size:calc(14.5px * var(--kachel-textgroe
   display:inline-block;margin:2px 0 14px;font-size:12.5px;font-weight:600;
   color:var(--gold);background:var(--gold-flaeche);border-radius:999px;padding:6px 13px
 }
+
+/* Textwahl in der Vorschau des Boards: Texte sind antippbar. */
+html.textwahl body *{cursor:pointer}
+html.textwahl body :is(h1,h2,h3,p,span,b,i,strong,a,button,label):hover{outline:2px dashed var(--tinte);outline-offset:2px}
+
+/* ═══ Haus-Seite (#/haus, Wunsch 11.10.) ═════════════════════════
+   Eine kleine Landingpage hinter dem Logo: Bild, Logo auf der
+   Bildkante (wie im Kopf), Name, Slogan, Stand. Ohne Kopfbild steht
+   das Logo auf einer ruhigen Fläche in der Bandfarbe. Alles mittig,
+   die Knöpfe darunter in voller Breite wie jede Unterseite. */
+.hp{text-align:center}
+.hp-held{position:relative;margin:0 0 54px}
+.hp-bild{
+  border-radius:var(--rundung);overflow:hidden;aspect-ratio:16 / 9;
+  background:var(--flaeche-2);box-shadow:var(--schatten);
+}
+.hp-bild img{display:block;width:100%;height:100%;object-fit:cover}
+.hp-held:not(.mitbild){height:64px;border-radius:var(--rundung);background:var(--band)}
+.hp-logo{
+  position:absolute;left:50%;bottom:0;width:96px;height:96px;transform:translate(-50%, 50%);
+  border-radius:50%;overflow:hidden;background:var(--grund);
+  box-shadow:0 0 0 3px var(--flaeche), 0 8px 22px rgba(0,0,0,.28);
+}
+.hp-logo.eckig{border-radius:22%}
+.hp-logo svg,.hp-logo img{display:block;width:100%;height:100%;object-fit:cover}
+.seite .hp-name{margin:0 0 4px}
+.hp-claim{margin:0 0 10px;font-size:15px;line-height:1.45;color:var(--tinte-leise)}
+.hp-stand{display:inline-flex;align-items:center;gap:8px;margin:0 0 6px;font-size:14px;font-weight:600;color:var(--tinte)}
+.hp-punkt{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--tinte-leise)}
+.hp-stand.offen .hp-punkt{background:var(--pistazie);border-color:var(--pistazie)}
+.hp-adresse{margin:0 0 20px;font-size:14px;color:var(--tinte-leise)}
+.hp-wege{margin:0 0 14px}
+.hp-ueber p{margin:0;font-size:15px;line-height:1.6;color:var(--tinte);text-align:start;white-space:pre-line}
+.hp .block{text-align:start}
 
 /* Der Umschalter zwischen Haus und Lieferung steht seit 30.09. im
    Kopf (.lieferwahl), nicht mehr als Band auf der Startseite. */
@@ -4816,8 +4917,14 @@ function farbMerkwert(fb){
       <path d="M47 14 Q30 18 20 26 Q34 14 47 14Z" opacity=".65"/>
     </g>
   </svg>
-  <button class="logo" id="logo" type="button" aria-label="Zur Übersicht">
+  <!-- Kopfbild (Wunsch 11.10.): ganz oben, nur auf der Startseite;
+       das Logo sitzt mit seiner Mitte auf der Unterkante. Leer, bis
+       kopfAnwenden() ein geprüftes Bild einsetzt — ohne Bild ist der
+       Kopf derselbe wie vorher. -->
+  <div class="kopfbild" id="kopfbild" aria-hidden="true"></div>
+  <button class="logo" id="logo" type="button" aria-label="Alles über uns">
     <span class="led" aria-hidden="true"></span>
+    <span class="logo-eigen" id="logoEigen" aria-hidden="true"></span>
     <!--{{LOGO}}
       Alles zwischen dieser Marke und {{/LOGO}} ersetzt der Erzeuger
       durch das Siegel DES HAUSES.
@@ -9500,6 +9607,8 @@ const TEXTE = {
 "Schließen":{en:"Close",tr:"Kapat",ru:"Закрыть",fr:"Fermer",es:"Cerrar",it:"Chiudi",pl:"Zamknij",ar:"إغلاق",uk:"Закрити",nl:"Sluiten",ro:"Închide"},
 "Karte":{en:"Menu",tr:"Menü",ru:"Меню",fr:"Carte",es:"Carta",it:"Menù",pl:"Karta",ar:"القائمة",uk:"Меню",nl:"Kaart",ro:"Meniu"},
 "Wie letztes Mal":{en:"Same as last time",tr:"Geçen seferki gibi",ru:"Как в прошлый раз",fr:"Comme la dernière fois",es:"Como la última vez",it:"Come l'ultima volta",pl:"Jak ostatnio",ar:"كالمرة السابقة",uk:"Як минулого разу",nl:"Zoals de vorige keer",ro:"Ca data trecută"},
+"Weniger zeigen":{en:"Show less",tr:"Daha az göster",ru:"Свернуть",fr:"Afficher moins",es:"Mostrar menos",it:"Mostra meno",pl:"Pokaż mniej",ar:"عرض أقل",uk:"Згорнути",nl:"Minder tonen",ro:"Arată mai puțin"},
+"{n} Gerichte":{en:"{n} dishes",tr:"{n} yemek",ru:"Блюд: {n}",fr:"{n} plats",es:"{n} platos",it:"{n} piatti",pl:"Dania: {n}",ar:"{n} أطباق",uk:"Страв: {n}",nl:"{n} gerechten",ro:"{n} preparate"},
 "Nochmal wie letztes Mal":{en:"Again, like last time",tr:"Geçen seferki gibi tekrar",ru:"Снова как в прошлый раз",fr:"Comme la dernière fois",es:"Otra vez como la última vez",it:"Di nuovo come l'ultima volta",pl:"Jeszcze raz jak ostatnio",ar:"مرة أخرى كالمرة السابقة",uk:"Знову як минулого разу",nl:"Nog eens zoals de vorige keer",ro:"Din nou ca data trecută"},
 "Mit allen Extras, zum heutigen Preis.":{en:"With all extras, at today's price.",tr:"Tüm ekstralarla, bugünkü fiyata.",ru:"Со всеми добавками, по сегодняшней цене.",fr:"Avec tous les suppléments, au prix du jour.",es:"Con todos los extras, al precio de hoy.",it:"Con tutti gli extra, al prezzo di oggi.",pl:"Ze wszystkimi dodatkami, w dzisiejszej cenie.",ar:"مع جميع الإضافات، بسعر اليوم.",uk:"З усіма добавками, за сьогоднішньою ціною.",nl:"Met alle extra's, tegen de prijs van vandaag.",ro:"Cu toate extra-opțiunile, la prețul de azi."},
 "In meine Auswahl":{en:"Add to my selection",tr:"Seçimime ekle",ru:"В мой выбор",fr:"Dans ma sélection",es:"A mi selección",it:"Nella mia selezione",pl:"Do mojego wyboru",ar:"إلى اختياري",uk:"До мого вибору",nl:"In mijn selectie",ro:"În selecția mea"},
@@ -10072,6 +10181,8 @@ const TEXTE = {
 "Antippen zum Überspringen":{en:"Tap to skip",tr:"Atlamak için dokunun",ru:"Нажмите, чтобы пропустить",fr:"Toucher pour passer",es:"Toque para saltar",it:"Toccare per saltare",pl:"Dotknij, aby pominąć",ar:"انقر للتخطي",uk:"Торкніться, щоб пропустити",nl:"Tik om over te slaan",ro:"Atingeți pentru a sări"},
 "Wechsel ist jederzeit möglich":{en:"You can switch anytime",tr:"Her zaman değiştirilebilir",ru:"Переключиться можно в любой момент",fr:"Vous pouvez changer à tout moment",es:"Puede cambiar en cualquier momento",it:"È possibile cambiare in ogni momento",pl:"Zmiana jest możliwa w każdej chwili",ar:"يمكن التبديل في أي وقت",uk:"Переключитися можна в будь-який момент",nl:"U kunt altijd wisselen",ro:"Puteți schimba oricând"},
 "Speisekarte ansehen":{en:"View menu",tr:"Menüyü görüntüle",ru:"Посмотреть меню",fr:"Voir la carte",es:"Ver la carta",it:"Vedi il menù",pl:"Zobacz menu",ar:"عرض قائمة الطعام",uk:"Переглянути меню",nl:"Menukaart bekijken",ro:"Vezi meniul"},
+"Alles über uns":{en:"All about us",tr:"Hakkımızda her şey",ru:"Всё о нас",fr:"Tout sur nous",es:"Todo sobre nosotros",it:"Tutto su di noi",pl:"Wszystko o nas",ar:"كل شيء عنا",uk:"Усе про нас",nl:"Alles over ons",ro:"Totul despre noi"},
+"ÜBER UNS":{en:"ABOUT US",tr:"HAKKIMIZDA",ru:"О НАС",fr:"À PROPOS",es:"SOBRE NOSOTROS",it:"CHI SIAMO",pl:"O NAS",ar:"من نحن",uk:"ПРО НАС",nl:"OVER ONS",ro:"DESPRE NOI"},
 "Zur Übersicht":{en:"To the overview",tr:"Genel bakışa",ru:"К обзору",fr:"Vers l'aperçu",es:"Al inicio",it:"Alla panoramica",pl:"Do przeglądu",ar:"إلى النظرة العامة",uk:"До огляду",nl:"Naar het overzicht",ro:"La prezentare"},
 "Besuch zusammenfassen":{en:"Sum up the visit",tr:"Ziyareti özetle",ru:"Собрать визит в картинку",fr:"Résumer la visite",es:"Resumir la visita",it:"Riassumi la visita",pl:"Podsumuj wizytę",ar:"لخّص الزيارة",uk:"Підсумувати візит",nl:"Bezoek samenvatten",ro:"Rezumați vizita"},
 "Bitte tragen Sie noch Ihre Adresse ein.":{en:"Please enter your address first.",tr:"Lütfen önce adresinizi girin.",ru:"Пожалуйста, укажите свой адрес.",fr:"Veuillez d'abord saisir votre adresse.",es:"Introduzca antes su dirección.",it:"Inserisca prima il suo indirizzo.",pl:"Najpierw wpisz swój adres.",ar:"يرجى إدخال عنوانك أولاً.",uk:"Спершу вкажіть свою адресу.",nl:"Vul eerst uw adres in.",ro:"Introduceți mai întâi adresa."},
@@ -10393,10 +10504,164 @@ const TEXTE = {
 const TAGE = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
 let sprache = "de";
 
-/* Text nachschlagen. Fehlt eine Übersetzung, bleibt der deutsche Text stehen. */
+/* ═══ Eigene Texte des Hauses (hub_texte.eigen, Wunsch 11.10.) ═══
+   „Jeden Text, der auf den Seiten begegnet, ganz einfach ändern —
+   sowohl den Text als auch die Schrift.“ Schlüssel ist der deutsche
+   Satz des Wörterbuchs (dieselbe Stelle, die t() nachschlägt), Wert
+   { de, en, …, schrift }. Was nicht im Wörterbuch steht, wird nicht
+   angenommen — eine Live-Spalte bestimmt keine neuen Schlüssel.
+
+   Die Texte landen an vielen Stellen roh in innerHTML und in
+   Attributen (wie die Wörterbuchtexte selbst). Deshalb wird jeder
+   Wert entschärft, BEVOR t() ihn liefert: keine spitzen Klammern,
+   kein gerades Anführungszeichen (§2.3a — auch wenn nur das Team
+   schreibt). */
+let TEXTE_EIGEN = {};
+const EIGEN_SPRACHEN = ["de","en","tr","ru","fr","es","it","pl","ar","uk","nl","ro"];
+function eigenWert(w){
+  if(typeof w !== "string") return "";
+  return w.replace(/[<>]/g, "").replace(/"/g, "\u201D").replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, 160);
+}
+function eigenSauber(roh){
+  const aus = {};
+  if(!roh || typeof roh !== "object" || Array.isArray(roh)) return aus;
+  Object.keys(roh).slice(0, 400).forEach(k => {
+    if(!Object.prototype.hasOwnProperty.call(TEXTE, k)) return;
+    const e = roh[k]; if(!e || typeof e !== "object" || Array.isArray(e)) return;
+    const o = {};
+    EIGEN_SPRACHEN.forEach(sp => { const v = eigenWert(e[sp]); if(v) o[sp] = v; });
+    if(typeof e.schrift === "string" && Object.prototype.hasOwnProperty.call(SCHRIFT_WEB, e.schrift)) o.schrift = e.schrift;
+    if(Object.keys(o).length) aus[k] = o;
+  });
+  return aus;
+}
+/* Für die Vorschau im Board: welche Schlüssel auf welcher Seite
+   wirklich gezeichnet wurden (nur im Vorschaumodus gemerkt). */
+const TEXTE_GESEHEN = {};
+/* Erster Anstrich wie beim letzten Besuch (sonst blitzt der alte
+   Text auf, bis die Datenbank antwortet). Gemerkt wird nur Geprüftes. */
+const EIGEN_MERK = "omoteno-texte-" + HAUS;
+try{ if(!VORSCHAU) TEXTE_EIGEN = eigenSauber(JSON.parse(localStorage.getItem(EIGEN_MERK) || "null")); }catch(e){}
+
+/* Was ein eigener Text gerade anzeigt — wie t(), aber ohne Werte und
+   ohne die Seite zu merken. */
+function eigenAnzeige(k){
+  const e = TEXTE_EIGEN[k];
+  if(sprache === "de") return (e && e.de) || k;
+  return (e && e[sprache]) || (TEXTE[k] && TEXTE[k][sprache]) || (e && e.de) || k;
+}
+
+/* ── Schrift je Text ───────────────────────────────────────────────
+   Ein Element, dessen GANZER Text genau ein Text mit eigener Schrift
+   ist, bekommt diese Schrift. Ein Absatz, in dem der Satz nur vorkommt,
+   bleibt unberührt. EIN MutationObserver sieht jedes Neuzeichnen,
+   einmal je Bild gebündelt (§4.5) — und arbeitet nur, wenn überhaupt
+   eine eigene Schrift gesetzt ist. */
+let eigenSchriftUhr = 0;
+function eigenSchriftPlanen(){
+  if(eigenSchriftUhr || typeof requestAnimationFrame !== "function") return;
+  eigenSchriftUhr = requestAnimationFrame(() => { eigenSchriftUhr = 0; eigenSchriftAnwenden(); });
+}
+function eigenSchriftAnwenden(){
+  const karte = new Map();
+  Object.keys(TEXTE_EIGEN).forEach(k => {
+    const e = TEXTE_EIGEN[k]; if(!e.schrift || k.indexOf("{") >= 0) return;
+    const w = SCHRIFT_WEB[e.schrift]; if(!w) return;
+    const familie = "omo-" + e.schrift;
+    const quellen = [];
+    w.staerken.forEach(st => ["latin", "latin-ext"].forEach(teil => quellen.push({
+      url: SCHRIFT_BASIS + w.datei + "-" + teil + "-" + st + ".woff2", staerke: String(st), bereich: SCHRIFT_BEREICH[teil] })));
+    schriftLaden(familie, quellen);
+    karte.set(eigenAnzeige(k).trim(), '"' + familie + '",' + (SCHRIFTEN[w.rueck] || SCHRIFTEN.system));
+  });
+  document.querySelectorAll("[data-eigen-schrift]").forEach(el => {
+    if(karte.get(el.textContent.trim()) !== el.style.fontFamily){ el.style.fontFamily = ""; el.removeAttribute("data-eigen-schrift"); }
+  });
+  if(!karte.size || !document.body) return;
+  const gang = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let n;
+  while((n = gang.nextNode())){
+    const v = n.nodeValue.trim();
+    if(!v || !karte.has(v)) continue;
+    const el = n.parentElement;
+    if(!el || el.closest("script,style,svg") || el.textContent.trim() !== v) continue;
+    el.style.fontFamily = karte.get(v);
+    el.setAttribute("data-eigen-schrift", "");
+  }
+}
+if(typeof MutationObserver === "function"){
+  new MutationObserver(() => { if(Object.keys(TEXTE_EIGEN).some(k => TEXTE_EIGEN[k].schrift)) eigenSchriftPlanen(); })
+    .observe(document.documentElement, { childList:true, subtree:true, characterData:true });
+}
+eigenSchriftPlanen();
+
+/* ── Antippen in der Vorschau des Boards ───────────────────────────
+   Im Textmodus wählt ein Tipp den Text unter dem Finger, statt den Hub
+   zu bedienen: Das Board öffnet genau dieses Feld. Gesucht wird das
+   Element, dessen ganzer Text ein Wörterbuchtext ist — erst exakt,
+   dann über die Vorlage (Texte mit {x}). */
+let vorschauTextModus = false;
+function vorschauTextTippen(an){
+  vorschauTextModus = !!an && VORSCHAU;
+  document.documentElement.classList.toggle("textwahl", vorschauTextModus);
+}
+function textSchluesselBei(x, y){
+  const genau = new Map(), vorlagen = [];
+  Object.keys(TEXTE).forEach(k => {
+    const a = eigenAnzeige(k).trim();
+    if(k.indexOf("{") < 0){ if(!genau.has(a)) genau.set(a, k); }
+    else vorlagen.push([new RegExp("^" + a.replace(/[.*+?^$()|[\]\\]/g, "\\$&").replace(/\\?\{[^}]+\\?\}/g, ".+?") + "$"), k]);
+  });
+  for(let el = document.elementFromPoint(x, y), i = 0; el && i < 6; el = el.parentElement, i++){
+    const v = (el.textContent || "").trim();
+    if(!v || v.length > 200) continue;
+    if(genau.has(v)) return genau.get(v);
+    const treffer = vorlagen.find(([re]) => re.test(v));
+    if(treffer) return treffer[1];
+  }
+  return null;
+}
+document.addEventListener("click", e => {
+  if(!VORSCHAU || !vorschauTextModus) return;
+  e.preventDefault(); e.stopPropagation();
+  const k = textSchluesselBei(e.clientX, e.clientY);
+  let seite = "start"; try{ seite = seiteJetzt; }catch(x){}
+  try{ if(window.parent && window.parent !== window && typeof window.parent.vorschauTextGewaehlt === "function")
+         window.parent.vorschauTextGewaehlt(k, seite); }catch(x){}
+}, true);
+
+/* Alle Texte, die der Gast sehen kann, nach Seite — für die Liste im
+   Board. Jede Seite wird einmal als Text gebaut (nicht gezeigt), dabei
+   merkt t() die Schlüssel; danach steht die Vorschau wieder, wie sie war. */
+function vorschauTexte(){
+  if(!VORSCHAU) return null;
+  let alt = "start"; try{ alt = seiteJetzt; }catch(x){}
+  ["start"].concat(Object.keys(SEITEN)).forEach(sz => {
+    try{ seiteJetzt = sz; if(sz === "start") start(); else SEITEN[sz](); }catch(x){}
+  });
+  seiteJetzt = alt;
+  try{ zeichne(); }catch(x){}
+  const aus = {};
+  Object.keys(TEXTE_GESEHEN).forEach(sz => { aus[sz] = [...TEXTE_GESEHEN[sz]]; });
+  return aus;
+}
+
+/* Text nachschlagen. Fehlt eine Übersetzung, bleibt der deutsche Text stehen.
+   Reihenfolge: eigener Text des Hauses in der Sprache → Wörterbuch →
+   eigener deutscher Text → der Schlüssel selbst. */
 function t(text, werte){
   let s = text;
-  if(sprache !== "de" && TEXTE[text] && TEXTE[text][sprache]) s = TEXTE[text][sprache];
+  const e = TEXTE_EIGEN[text];
+  if(sprache === "de"){ if(e && e.de) s = e.de; }
+  else if(e && e[sprache]) s = e[sprache];
+  else if(TEXTE[text] && TEXTE[text][sprache]) s = TEXTE[text][sprache];
+  else if(e && e.de) s = e.de;
+  if(VORSCHAU && Object.prototype.hasOwnProperty.call(TEXTE, text)){
+    /* seiteJetzt steht weiter unten (let) — vor seiner Zeile wäre
+       schon das Lesen ein Fehler (§8.1l), daher try. */
+    let sz = "start"; try{ sz = seiteJetzt; }catch(e){}
+    (TEXTE_GESEHEN[sz] || (TEXTE_GESEHEN[sz] = new Set())).add(text);
+  }
   if(werte) Object.keys(werte).forEach(k => { s = s.split("{" + k + "}").join(werte[k]); });
   return s;
 }
@@ -13282,6 +13547,65 @@ SEITEN.kontakt = () => {
     '<span class="kzeichen">' + ICONS.brief + '</span>' + BETRIEB.mail + '</a></div>';
 };
 
+/* ═══ Haus-Seite: alles über das Restaurant (Wunsch 11.10.) ═══════
+   „Sobald man auf das Logo tippt, sieht man alle wichtigen Infos zum
+   Restaurant. Wie eine kleine Landingpage.“ Kopfbild und Logo, Name,
+   Slogan, offen oder zu, die Wege, die das Haus anbietet (aus den
+   SICHTBAREN Kacheln — kein Knopf ins Leere), „Über uns“, die Woche
+   und der Weg hin. Was fehlt, fällt weg statt leer dazustehen. */
+let HAUS_UEBER = "";
+function hausLogoHTML(){
+  if(KOPF.logo) return '<img src="' + hs(KOPF.logo) + '" alt="">';
+  /* Das gezeichnete Siegel aus dem Kopf — ohne seine ids, sonst stünde
+     dieselbe id zweimal im Dokument (der Verweis auf den Verlauf trifft
+     weiter das Original im Kopf). */
+  const roh = $("logo");
+  const zeichen = roh && roh.querySelector(":scope > svg, :scope > img");
+  return zeichen ? zeichen.outerHTML.replace(/\sid="[^"]*"/g, "") : "";
+}
+SEITEN.haus = () => {
+  const st = jetztOffen();
+  const heute = new Date().getDay();
+  const reihen = ZEITEN.map((z,i) =>
+    '<div class="zeile ' + (i === heute ? "heute" : "") + '"><span class="l">' +
+    t(TAGE[i]) + '</span><span class="r">' + t(z) + '</span></div>').join("");
+  const sicht = sichtbareKacheln();
+  const finde = sch => sicht.find(k => k.schluessel === sch);
+  const knopf = (href, icon, text, zweit, extern) =>
+    '<a class="knopf' + (zweit ? " zweit" : "") + '" href="' + hs(href) + '"' +
+    (extern ? ' target="_blank" rel="noopener"' : "") + '><span class="kzeichen">' + (icon || "") + '</span>' + hs(text) + '</a>';
+  const wege = [];
+  const karte = sicht.find(k => k.art === "karte");
+  if(karte) wege.push(knopf(kachelZiel(karte), ICONS[karte.icon] || ICONS.speise, t("Speisekarte ansehen")));
+  [["reservierung", "Tisch reservieren", "kalender"], ["wlan", "WLAN verbinden", "wlan"],
+   ["bewertung", "Uns bewerten", "stern"], ["instagram", "Instagram", "kamera"]].forEach(([sch, text, ic]) => {
+    const k = finde(sch); if(!k) return;
+    const ziel = kachelZiel(k);
+    wege.push(knopf(ziel, ICONS[ic], t(text), true, /^https:/.test(ziel)));
+  });
+  const kontakt = [];
+  if(LINKS.maps) kontakt.push(knopf(LINKS.maps, ICONS.ort, t("Route starten"), true, true));
+  if(BETRIEB.telefon) kontakt.push(knopf("tel:" + BETRIEB.telefon.replace(/[^\d+]/g, ""), ICONS.telefon, BETRIEB.telefon, true));
+  if(BETRIEB.mail) kontakt.push(knopf("mailto:" + BETRIEB.mail, ICONS.brief, BETRIEB.mail, true));
+  const adresse = [BETRIEB.strasse, BETRIEB.ort].filter(Boolean).join(" · ");
+  const stand = st.offen && st.bis ? t("Geöffnet bis {x}", {x: st.bis})
+    : st.ab ? t("Öffnet {w} {x}", {w: st.wann, x: st.ab}) : st.text;
+  return '<div class="seite hp">' +
+    '<div class="hp-held' + (KOPF.bild ? " mitbild" : "") + '">' +
+      (KOPF.bild ? '<div class="hp-bild"><img src="' + hs(KOPF.bild) + '" alt=""></div>' : "") +
+      '<div class="hp-logo' + (KOPF.logo && KOPF.form === "eckig" ? " eckig" : "") + '" aria-hidden="true">' + hausLogoHTML() + '</div>' +
+    '</div>' +
+    '<h2 class="hp-name">' + hs(BETRIEB.name) + '</h2>' +
+    (BETRIEB.claim ? '<p class="hp-claim">' + hs(t(BETRIEB.claim)) + '</p>' : "") +
+    '<p class="hp-stand' + (st.offen ? " offen" : "") + '"><span class="hp-punkt" aria-hidden="true"></span>' + hs(stand) + '</p>' +
+    (adresse ? '<p class="hp-adresse">' + hs(adresse) + '</p>' : "") +
+    (wege.length ? '<div class="hp-wege">' + wege.join("") + '</div>' : "") +
+    (HAUS_UEBER ? '<div class="block hp-ueber"><h3>' + t("ÜBER UNS") + '</h3><p>' + hs(HAUS_UEBER) + '</p></div>' : "") +
+    '<div class="block"><h3>' + t("WANN WIR DA SIND") + '</h3>' + reihen + '</div>' +
+    kontakt.join("") +
+    '<button type="button" class="knopf zweit" data-heim="1">' + t("Zur Übersicht") + '</button></div>';
+};
+
 /* ---------- Tischquiz ---------- */
 let partie = [];      // alle Fragen dieser Partie
 let runde  = 1;       // aktuelle Runde
@@ -14068,6 +14392,7 @@ function zeichne(){
   $("titel").textContent = istStart ? begruessung() : BETRIEB.name;
   $("claim").textContent = istStart ? t(BETRIEB.claim) : BETRIEB.strasse + " · " + BETRIEB.ort;
   $("zurueck").setAttribute("aria-label", t("Zurück zur Übersicht"));
+  $("logo").setAttribute("aria-label", seiteJetzt === "haus" ? t("Zurück zur Übersicht") : t("Alles über uns"));
   $("zurueck").title = t("Zurück zur Übersicht");
   $("zurueck").querySelector(".zr-text").textContent = t("Zurück");
   const aktiv = SPRACHEN.find(sp => sp.code === sprache) || SPRACHEN[0];
@@ -14656,28 +14981,61 @@ function wieLetztHTML(g){
     '<span class="wl-titel">' + t("Wie letztes Mal") + '</span>' +
     '<span class="wl-was">' + hs(optAnzeige(g.n, w)) + '</span></button>';
 }
+/* Ab NM_KLAPP Zeilen (Wunsch 11.10.: „ab 4 … aufklappbar und
+   ansehnlicher“) stehen die ersten drei da, der Rest klappt auf einen
+   Tipp auf. Der Zustand liegt in nmAuf und übersteht jedes Neuzeichnen
+   der Startseite; die Einblendung läuft nur im Augenblick des Tipps
+   (nm-neu), nicht bei jedem Neuzeichnen (§4.1). */
+const NM_KLAPP = 4, NM_SICHTBAR = 3;
+let nmAuf = false;
 function nochmalHTML(){
   if(Object.keys(merk).length || VORSCHAU) return "";
   const b = zuletztLesen().b;
   if(!b || !b.posten.length || Date.now() - (b.t || 0) > 180 * 864e5) return "";
   const da = b.posten.map(x => ({ x, g:findeGericht(x.n) })).filter(o => o.g && o.g.p !== "–");
   if(!da.length) return "";
+  const klapp = da.length >= NM_KLAPP;
   let summe = 0;
-  const zeilen = da.map(({ x, g }) => {
+  const zeilen = da.map(({ x, g }, i) => {
     const w = optBereinigt(x.w, g);
-    summe += (preisNum(korbPreis(g)) + optAufpreis(g.n, w)) * x.m;
+    const preis = (preisNum(korbPreis(g)) + optAufpreis(g.n, w)) * x.m;
+    summe += preis;
     const extra = optAnzeige(g.n, w);
-    return '<li><span class="nm-m">' + x.m + '×</span><span class="nm-n">' + hs(t(g.n)) +
-      (extra ? '<small>' + hs(extra) + '</small>' : "") + '</span></li>';
+    const ort = gerichtOrt(g.n) || {};
+    return '<li' + (klapp && i >= NM_SICHTBAR ? ' class="nm-rest"' : "") + '>' +
+      '<span class="nm-bild" aria-hidden="true">' + dazuBildHTML({ e:g, gruppe:ort.gruppe, karte:ort.karte }) + '</span>' +
+      '<span class="nm-n">' + hs(t(g.n)) + (extra ? '<small>' + hs(extra) + '</small>' : "") + '</span>' +
+      '<span class="nm-m">' + x.m + '×</span>' +
+      '<span class="nm-p">' + preisText(preis) + '</span></li>';
   }).join("");
   const weg = b.posten.filter(x => !da.some(o => o.x === x)).map(x => t(x.n));
-  return '<section class="nmkarte" aria-label="' + hs(t("Nochmal wie letztes Mal")) + '">' +
+  const rest = da.length - NM_SICHTBAR;
+  return '<section class="nmkarte' + (klapp && nmAuf ? " auf" : "") + '" aria-label="' + hs(t("Nochmal wie letztes Mal")) + '">' +
     '<div class="nm-kopf"><strong>' + t("Nochmal wie letztes Mal") + '</strong>' +
-      '<span>' + t("Mit allen Extras, zum heutigen Preis.") + '</span></div>' +
-    '<ul class="nm-liste">' + zeilen + '</ul>' +
+      '<span>' + t("Mit allen Extras, zum heutigen Preis.") + '</span>' +
+      (klapp ? '<em class="nm-zahl">' + t("{n} Gerichte", { n:da.length }) + '</em>' : "") + '</div>' +
+    '<ul class="nm-liste" id="nmListe">' + zeilen + '</ul>' +
+    (klapp ? '<button type="button" class="nm-klapp" data-nm-klapp="1" aria-controls="nmListe" aria-expanded="' + nmAuf + '">' +
+      '<span>' + (nmAuf ? t("Weniger zeigen") : "+ " + t("{n} weitere", { n:rest })) + '</span>' +
+      '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 6l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>' : "") +
     (weg.length ? '<p class="nm-fehlt">' + hs(t("Gerade nicht auf der Karte: {x}", { x:weg.join(", ") })) + '</p>' : "") +
     '<button type="button" class="knopf nm-knopf" data-nochmal="1">' + t("In meine Auswahl") +
       '<span class="kpreis">' + preisText(summe) + '</span></button></section>';
+}
+/* Auf- und Zuklappen am bestehenden Element: kein Neuzeichnen der
+   Startseite, die Karte bleibt dieselbe (§4.3). */
+function nochmalKlappen(knopf){
+  const karte = knopf.closest(".nmkarte"); if(!karte) return;
+  nmAuf = !nmAuf;
+  karte.classList.toggle("auf", nmAuf);
+  knopf.setAttribute("aria-expanded", String(nmAuf));
+  const zahl = karte.querySelectorAll(".nm-rest").length;
+  knopf.querySelector("span").textContent = nmAuf ? t("Weniger zeigen") : "+ " + t("{n} weitere", { n:zahl });
+  if(nmAuf && !ruhigeBewegung()) karte.querySelectorAll(".nm-rest").forEach((li, i) => {
+    li.style.setProperty("--nm-i", i);
+    li.classList.add("nm-neu");
+    li.addEventListener("animationend", () => li.classList.remove("nm-neu"), { once:true });
+  });
 }
 function nochmalUebernehmen(){
   const b = zuletztLesen().b; if(!b) return;
@@ -15833,6 +16191,8 @@ $("inhalt").addEventListener("click", e => {
     nachHause();
     return;
   }
+  const nmKlapp = e.target.closest("[data-nm-klapp]");
+  if(nmKlapp){ nochmalKlappen(nmKlapp); return; }
   if(e.target.closest("[data-nochmal]")){ nochmalUebernehmen(); return; }
 
   /* Entscheidungshilfe — VOR dem allgemeinen .chip-Griff, denn die
@@ -16563,7 +16923,13 @@ $("sprachliste").addEventListener("click", e => {
 
 $("auswahlbalken").addEventListener("click", () => { location.hash = "#/auswahl"; });
 $("zurueck").addEventListener("click", nachHause);
-$("logo").addEventListener("click",    nachHause);
+/* Das Logo öffnet die Haus-Seite (Wunsch 11.10.); auf ihr führt es
+   zurück zur Übersicht. Den Weg zurück hat jede Unterseite ohnehin
+   im Knopf „Zurück“. */
+$("logo").addEventListener("click", () => {
+  if(seiteJetzt === "haus") nachHause();
+  else location.hash = "#/haus";
+});
 window.addEventListener("hashchange", zeichne);
 
 /* ══ WISCHEN ZWISCHEN DEN UNTERSEITEN (11.10.) ══════════════════════
@@ -17008,6 +17374,59 @@ function schriftUrlOk(u){
   return "";
 }
 
+/* ═══ Kopfbild und eigenes Logo (hub_stil.kopf, Wunsch 11.10.) ══════
+   { bild:"https://…/gerichte/<betrieb>/kopf/…", logo:"…", form:"rund"|"eckig" }
+   Beide Adressen kommen aus einer Live-Spalte und landen in src=. Also
+   dieselbe Sicherung wie bei den Schriften (§2.3a): nur Dateien aus dem
+   Eimer „gerichte“ dieses Projekts, Ordner <Betrieb>/kopf/, festes
+   Namensmuster. Ein fremder Server, ein Anführungszeichen, http: oder
+   javascript: passen nicht darauf und werden still verworfen. In der
+   Vorschau des Boards zusätzlich blob: und data:image — das Bild ist
+   dann noch nicht hochgeladen. */
+const KOPF_MERK = "omoteno-kopf-" + HAUS;
+let KOPF = { bild:"", logo:"", form:"rund" };
+let kopfStand = "";
+function kopfBildOk(u){
+  u = String(u || "");
+  const eimer = OMOTENO_DB.url.replace(/\/+$/, "") + "/storage/v1/object/public/gerichte/";
+  if(u.indexOf(eimer) === 0 &&
+     /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\/kopf\/[A-Za-z0-9_-]{1,60}\.(jpg|jpeg|webp|png)$/
+       .test(u.slice(eimer.length))) return u;
+  if(VORSCHAU && (/^blob:[A-Za-z0-9:/._-]+$/.test(u) ||
+                  /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]{20,}$/.test(u))) return u;
+  return "";
+}
+function kopfPruefen(k){
+  const o = (k && typeof k === "object" && !Array.isArray(k)) ? k : {};
+  return { bild: kopfBildOk(o.bild), logo: kopfBildOk(o.logo),
+           form: o.form === "eckig" ? "eckig" : "rund" };
+}
+/* Setzt Kopfbild und Logo. Gibt zurück, ob sich etwas geändert hat. */
+function kopfAnwenden(k){
+  const neu = kopfPruefen(k);
+  const fp = JSON.stringify(neu);
+  if(fp === kopfStand) return false;
+  kopfStand = fp;
+  KOPF = neu;
+  const b = document.body;
+  if(!b) return true;
+  const bildFeld = document.getElementById("kopfbild");
+  if(bildFeld) bildFeld.innerHTML = neu.bild ? '<img src="' + hs(neu.bild) + '" alt="" decoding="async">' : "";
+  if(neu.bild) b.dataset.kopfbild = "an"; else delete b.dataset.kopfbild;
+  const logoFeld = document.getElementById("logoEigen");
+  if(logoFeld) logoFeld.innerHTML = neu.logo ? '<img src="' + hs(neu.logo) + '" alt="" decoding="async">' : "";
+  if(neu.logo) b.dataset.logo = "eigen"; else delete b.dataset.logo;
+  if(neu.logo && neu.form === "eckig") b.dataset.logoform = "eckig"; else delete b.dataset.logoform;
+  return true;
+}
+/* Erster Anstrich wie beim letzten Besuch — sonst springt der Kopf um
+   die Höhe des Bildes, sobald die Datenbank antwortet. Gemerkt wird
+   nur, was die Prüfung bestanden hat. */
+try{
+  const gemerkt = JSON.parse(localStorage.getItem(KOPF_MERK) || "null");
+  if(gemerkt && !VORSCHAU) kopfAnwenden(gemerkt);
+}catch(e){}
+
 const schriftGeladen = {};
 function schriftLaden(familie, quellen){
   if(schriftGeladen[familie] || typeof FontFace !== "function" || !document.fonts) return;
@@ -17110,6 +17529,20 @@ function betriebsTeileAnwenden(z, immer){
     WLAN_LIVE = { netz: typeof hubTexte.wlan_netz === "string" ? kurz(hubTexte.wlan_netz, 32) : "",
                   passwort: typeof hubTexte.wlan_passwort === "string" ? kurz(hubTexte.wlan_passwort, 63) : "" };
     if(seiteJetzt === "wlan") neu = true;
+    /* „Über uns“ auf der Haus-Seite: Text des Hauses, nur als Text
+       (hs). Dieselbe Zahl wie hub_texte_ueber (migration-haus.sql). */
+    /* Eigene Texte des Hauses: Fingerabdruck vorher/nachher, sonst
+       zeichnet jeder Abgleich neu. */
+    const eigenVorher = JSON.stringify(TEXTE_EIGEN);
+    TEXTE_EIGEN = eigenSauber(hubTexte.eigen);
+    if(immer || JSON.stringify(TEXTE_EIGEN) !== eigenVorher){ neu = true; eigenSchriftPlanen(); }
+    if(!VORSCHAU){
+      try{ if(Object.keys(TEXTE_EIGEN).length) localStorage.setItem(EIGEN_MERK, JSON.stringify(TEXTE_EIGEN));
+           else localStorage.removeItem(EIGEN_MERK); }catch(e){}
+    }
+    const ueberVorher = HAUS_UEBER;
+    HAUS_UEBER = typeof hubTexte.ueber === "string" ? kurz(hubTexte.ueber, 400) : "";
+    if(seiteJetzt === "haus" && (immer || HAUS_UEBER !== ueberVorher)) neu = true;
     /* Der Kopf steht schon auf dem Schirm. Neu zeichnen nur, wenn sich
        etwas Sichtbares geändert hat — sonst blitzt er bei jedem
        Abgleich einmal auf, ohne dass etwas anders wäre. */
@@ -17144,6 +17577,9 @@ function betriebsTeileAnwenden(z, immer){
        Farben dabei nicht abnehmen. */
     if(z.hub_stil && typeof z.hub_stil === "object" && "farben" in z.hub_stil &&
        farbenAnwenden(z.hub_stil.farben)) neu = true;
+    /* Kopfbild und Logo ebenso nur, wenn der Entwurf sie trägt. */
+    if(z.hub_stil && typeof z.hub_stil === "object" && "kopf" in z.hub_stil &&
+       kopfAnwenden(z.hub_stil.kopf)) neu = true;
   }
 
   /* Das Aktions-Banner-Rad: eine echte freie Liste, bannerAusZeile()
@@ -17208,6 +17644,13 @@ function vorschauZeige(ziel){
     return;
   }
   if(wk) wk.hidden = true;
+  /* Die Haus-Seite hinter dem Logo („Über uns“, Logo-Form). */
+  if(ziel === "haus"){ if(seiteJetzt !== "haus") location.hash = "#/haus"; else zeichne(); return; }
+  /* Texte & Schrift: zur Seite, auf der der Text steht. */
+  if(ziel !== "start" && Object.prototype.hasOwnProperty.call(SEITEN, ziel)){
+    if(seiteJetzt !== ziel) location.hash = "#/" + ziel; else zeichne();
+    return;
+  }
   if(seiteJetzt !== "start"){ location.hash = "#/"; }
   const finde = { kopf:   () => $("claim"),
                   banner: () => document.querySelector(".bnrad"),
@@ -17400,6 +17843,19 @@ async function karteHolen(erstesMal){
         try{ const mw = farbMerkwert(farbPruefen(fr));
              if(mw) localStorage.setItem(FARB_MERK, JSON.stringify(mw));
              else localStorage.removeItem(FARB_MERK); }catch(e){}
+      }
+    }
+    /* Kopfbild und eigenes Logo — wie die Farben auch später, und
+       gemerkt für den nächsten ersten Anstrich. */
+    const entwurfKopf = VORSCHAU && vorschauEntwurf && vorschauEntwurf.hub_stil &&
+      typeof vorschauEntwurf.hub_stil === "object" && "kopf" in vorschauEntwurf.hub_stil;
+    if("hub_stil" in b[0] && !entwurfKopf){
+      const kf = (stil && typeof stil === "object" && !Array.isArray(stil)) ? stil.kopf : null;
+      if(kopfAnwenden(kf) && (seiteJetzt === "haus" || seiteJetzt === "start")) zeichne();
+      if(!VORSCHAU){
+        try{ const k = kopfPruefen(kf);
+             if(k.bild || k.logo) localStorage.setItem(KOPF_MERK, JSON.stringify(k));
+             else localStorage.removeItem(KOPF_MERK); }catch(e){}
       }
     }
     if(erstesMal){

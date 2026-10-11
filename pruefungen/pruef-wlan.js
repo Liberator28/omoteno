@@ -256,7 +256,7 @@ const kontrast = (a, b) => { const x = lum(a), y = lum(b); return x === null || 
       if (typeof demoStarten === "function") { demoStarten(); zeichneAlles(); } });
     await p.waitForTimeout(400);
     await p.evaluate(() => { HUBTEXTE = { claim: "Alt-Slogan", wlan_netz: "Gast-Alt", wlan_passwort: "alt123" };
-      const r = document.querySelector('[data-tafel="einstellungen"]'); if (r) r.click(); });
+      const r = document.querySelector('[data-tafel="startseite"]'); if (r) r.click(); });
     await p.waitForTimeout(400);
     const felder = await p.evaluate(() => ["hubWlanNetz", "hubWlanPasswort"].map(id => { const el = document.getElementById(id);
       return el ? { max: +el.getAttribute("maxlength"), wert: el.value, gruppe: (el.closest(".egruppe").querySelector(".etitel") || {}).textContent,

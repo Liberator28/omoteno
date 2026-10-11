@@ -221,7 +221,7 @@ const FLAECHEN = [
       await p.evaluate(() => { if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); } });
       await p.waitForTimeout(300);
     },
-    seiten:["bestellungen","speisekarte","auswertung","einstellungen"],
+    seiten:["bestellungen","speisekarte","auswertung","einstellungen","startseite"],
     blaettern: (p, ziel) => p.evaluate(z => tafelZeigen(z), ziel) },
 
   { datei:"kueche.html", name:"Küchendisplay",

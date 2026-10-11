@@ -64,6 +64,22 @@ async function oeffnen(browser, haus, opt){
 (async () => {
   const browser = await chromium.launch();
   pruef(HAEUSER.length >= 2, "mindestens zwei Häuser (§8.1a)", HAEUSER.join(", "));
+
+  /* Zweite Quelle: Jedes Allergen-Kürzel im Vorführhaus steht in
+     ALLERGEN_NAMEN des Hubs. Gefunden 11.10.: „K“ (Sesam im Schlüssel
+     a–n) stand an zwei Bowls, „L“ meinte Schwefel — der Hub kennt K
+     nicht und zeigt unter L „Sellerie“. */
+  {
+    const vorlage = fs.readFileSync(path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), "utf8");
+    const namen = Object.keys(eval("(" + (vorlage.match(/const ALLERGEN_NAMEN = (\{[\s\S]*?\});/) || [, "{}"])[1] + ")"));
+    fs.readdirSync(path.join(__dirname, "..", "markenblaetter")).filter(d => d.endsWith(".json")).forEach(d => {
+      const mb = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "markenblaetter", d), "utf8"));
+      if(!mb.demo || !Array.isArray(mb.demo.gerichte)) return;
+      const fremd = mb.demo.gerichte.flatMap(g => String(g.allergene || "").split(",").map(x => x.trim()).filter(Boolean)
+        .filter(k => !namen.includes(k)).map(k => g.name + ":" + k));
+      pruef(namen.length >= 14 && !fremd.length, d + ": jedes Allergen-Kürzel kennt der Hub", fremd.join(", ") || namen.join(""));
+    });
+  }
   const wiederholt = new Set();
   for(const haus of HAEUSER){
     console.log("\n══ " + haus + " ══");
