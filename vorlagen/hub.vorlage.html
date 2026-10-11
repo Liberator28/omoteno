@@ -937,7 +937,25 @@ body[data-thema="kaiserlich"] .lieferwahl{border-color:transparent;background:tr
   transform-origin:100% 0;
   transition:opacity var(--kurz) var(--weich), transform var(--kurz) var(--weich)
 }
-.sprachwahl.offen .sprachliste{opacity:1;pointer-events:auto;transform:none}
+.sprachwahl.offen .sprachliste,.lichtwahl.offen .lichtliste{opacity:1;pointer-events:auto;transform:none}
+/* Die Lichtliste hängt am ERSTEN Knopf der Leiste — sie öffnet nach
+   innen (links verankert), sonst läge sie bei 320 px halb neben dem
+   Schirm. Dieselbe Optik wie die Sprachliste, eigene Ecke. */
+.lichtwahl{position:relative;flex:none}
+.lichtliste{right:auto;left:0;transform-origin:0 0}
+.lichtliste button{min-height:44px}
+/* Geschlossen GAR NICHT da: Auf Unterseiten steht der Lichtknopf weiter
+   rechts, und die unsichtbare Liste schob die Seite 82 px seitlich auf
+   (pruef-hub-hand.js). Geöffnet gleitet sie über einen Keyframe herein. */
+.lichtwahl:not(.offen) .lichtliste{display:none}
+.lichtwahl.offen .lichtliste{animation:lichtAuf var(--kurz) var(--weich) both}
+@keyframes lichtAuf{from{opacity:0;transform:translateY(-8px) scale(.97)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){ .lichtwahl.offen .lichtliste{animation:none} }
+[dir="rtl"] .lichtliste{left:auto;right:0;transform-origin:100% 0}
+.lichtliste .lprobe{flex:none;width:18px;height:18px;border-radius:50%;
+  border:1px solid var(--linie-stark);background:var(--lp-g);box-shadow:inset -5px -5px 0 var(--lp-t)}
+.lichtwahl.offen .lichtknopf{background:rgba(251,246,242,.24)}
+.lichtliste button[aria-checked="true"] .lwort::after{content:"\00a0✓"}
 .sprachliste button{
   display:flex;align-items:center;justify-content:space-between;gap:12px;width:100%;
   background:none;border:0;color:var(--tinte);font-family:inherit;font-size:14.5px;
@@ -4438,11 +4456,26 @@ function markeSchriftAuf(flaeche){
   return (1.05 / (l + .05)) >= ((l + .05) / .05579) ? "#FFFFFF" : "#111111";
 }
 
-function markeAnwenden(abend){
+/* Eine Stufe der Leiter auf eine fertige Palette legen (Gast wählt
+   „Ganz weiß“/„Ganz schwarz“). Sechs Grundfarben → Stufe → alle
+   Rollen neu; Flächen, die zu einer alten Hausfarbe gemischt waren,
+   fallen weg; Grün wird nachgezogen wie bei den Board-Farben. */
+function lichtStufeFarben(f, stufe){
+  const e = {};
+  for(const r of FARB_ROLLEN){ if(typeof f[r] !== "string" || !FARB_HEX.test(f[r])) return f; e[r] = f[r].toUpperCase(); }
+  const n = Object.assign({}, f, farbHerleiten(farbStufeAuf(e, stufe)));
+  if(n.akzent !== f.akzent) delete n.akzentFlaeche;
+  if(n.akzent2 !== f.akzent2) delete n.akzent2Flaeche;
+  if(typeof n.gut === "string" && FARB_HEX.test(n.gut)) n.gut = farbAufTon(n.gut, [n.flaeche, n.grund], .14, 4.5);
+  return n;
+}
+
+function markeAnwenden(abend, stufe){
   const mb = MARKENBLATT;
-  const f  = (abend && mb.abend && mb.abend.an)
+  let f  = (abend && mb.abend && mb.abend.an)
     ? Object.assign({}, mb.farben, mb.abend)
     : mb.farben;
+  if(stufe) f = lichtStufeFarben(Object.assign({ bandText: mb.farben.bandText }, f), stufe);
 
   const s = document.documentElement.style;
   s.setProperty("--grund",       f.grund);
@@ -4736,7 +4769,14 @@ function farbMerkwert(fb){
        liegen in einer gemeinsamen Zeile — zwei Elemente auf derselben
        Rasterfläche hätten sich überlagert. -->
   <div class="kopfwahl">
-  <button class="lichtknopf" id="lichtknopf" type="button"></button>
+  <!-- Seit 11.10. fünf Stufen statt drei im Ring: Der Knopf öffnet
+       eine Liste wie die Sprachwahl (Automatisch, Hell, Ganz weiß,
+       Dunkel, Ganz schwarz). Fünf Zustände im Ring hießen viermal
+       tippen, um zurückzukommen. -->
+  <div class="lichtwahl" id="lichtwahl">
+    <button class="lichtknopf" id="lichtknopf" type="button" aria-haspopup="menu" aria-expanded="false"></button>
+    <div class="sprachliste lichtliste" id="lichtliste" role="menu" aria-label="Ansicht wählen"></div>
+  </div>
   <!-- Liefer-Schalter (ersetzt seit 30.09. das Lieferband der
        Startseite). Nur wo der Betrieb liefert und niemand am Tisch
        sitzt — lieferWahlZeichnen() nimmt hidden weg. In Ruhe zwei
@@ -9888,6 +9928,9 @@ const TEXTE = {
 
 "Hell":{en:"Light",tr:"Açık",ru:"Светлый",fr:"Clair",es:"Claro",it:"Chiaro",pl:"Jasny",ar:"فاتح",uk:"Світла",nl:"Licht",ro:"Luminos"},
 "Dunkel":{en:"Dark",tr:"Koyu",ru:"Тёмный",fr:"Sombre",es:"Oscuro",it:"Scuro",pl:"Ciemny",ar:"داكن",uk:"Темна",nl:"Donker",ro:"Întunecat"},
+"Ganz weiß":{en:"All white",tr:"Tamamen beyaz",ru:"Полностью белый",fr:"Tout blanc",es:"Todo blanco",it:"Tutto bianco",pl:"Całkiem biały",ar:"أبيض بالكامل",uk:"Повністю білий",nl:"Helemaal wit",ro:"Complet alb"},
+"Ganz schwarz":{en:"All black",tr:"Tamamen siyah",ru:"Полностью чёрный",fr:"Tout noir",es:"Todo negro",it:"Tutto nero",pl:"Całkiem czarny",ar:"أسود بالكامل",uk:"Повністю чорний",nl:"Helemaal zwart",ro:"Complet negru"},
+"Ansicht wählen":{en:"Choose view",tr:"Görünüm seçin",ru:"Выбрать вид",fr:"Choisir l’affichage",es:"Elegir vista",it:"Scelga la vista",pl:"Wybierz widok",ar:"اختر العرض",uk:"Вибрати вигляд",nl:"Weergave kiezen",ro:"Alege afișarea"},
 "Automatisch":{en:"Automatic",tr:"Otomatik",ru:"Автоматически",fr:"Automatique",es:"Automático",it:"Automatico",pl:"Automatycznie",ar:"تلقائي",uk:"Автоматично",nl:"Automatisch",ro:"Automat"},
 "Ansicht: {w}":{en:"View: {w}",tr:"Görünüm: {w}",ru:"Вид: {w}",fr:"Affichage : {w}",es:"Vista: {w}",it:"Vista: {w}",pl:"Widok: {w}",ar:"العرض: {w}",uk:"Вигляд: {w}",nl:"Weergave: {w}",ro:"Afișare: {w}"},
 /* --- Oberflaechentexte aus den spaeteren Bloecken -----------------
@@ -13719,11 +13762,14 @@ function nachtSchalten(){
      und dieses Haus, nicht darüber hinaus. */
   const nachUhr = !!(mb.abend && mb.abend.an) &&
                   (stunde >= mb.abend.ab || stunde < 5);
-  const abend = licht === "dunkel" ? true
-              : licht === "hell"   ? false
+  const abend = (licht === "dunkel" || licht === "schwarz") ? true
+              : (licht === "hell" || licht === "weiss") ? false
               : nachUhr;
 
-  markeAnwenden(abend);
+  /* Ganz weiß / ganz schwarz: dieselbe Rechnung wie die Stufen im
+     Board (farbStufeAuf) — Schrift, Linien und Hausfarben werden für
+     den neuen Grund nachgezogen, nicht nur der Grund getauscht. */
+  markeAnwenden(abend, licht === "weiss" || licht === "schwarz" ? licht : "");
   document.body.dataset.phase = abend ? "abend" : "tag";
   /* Am documentElement, NICHT am body. Gemessen: Abends trägt <html>
      rgb(26,16,12), <body> aber weiter rgb(251,246,242) — der Grund
@@ -13746,12 +13792,14 @@ function nachtSchalten(){
    jedem seine eigene Wahl — die Häuser sehen ohnehin verschieden
    aus, und eine Einstellung, die überall gilt, wäre hier falsch. */
 const LICHT_SCHLUESSEL = "omoteno-licht-" + (SERVER.betrieb || "haus");
+/* Reihenfolge = Reihenfolge in der Liste. Unbekanntes fällt auf auto. */
+const LICHT_STUFEN = ["auto", "hell", "weiss", "dunkel", "schwarz"];
 let licht = "auto";
 
 function lichtLaden(){
   try{
     const w = localStorage.getItem(LICHT_SCHLUESSEL);
-    if(w === "hell" || w === "dunkel") licht = w;
+    if(LICHT_STUFEN.indexOf(w) > 0) licht = w;
   }catch(e){}
 }
 
@@ -13767,7 +13815,7 @@ function lichtLaden(){
 lichtLaden();
 
 function lichtSetzen(wahl){
-  licht = (wahl === "hell" || wahl === "dunkel") ? wahl : "auto";
+  licht = LICHT_STUFEN.indexOf(wahl) > 0 ? wahl : "auto";
   try{
     if(licht === "auto") localStorage.removeItem(LICHT_SCHLUESSEL);
     else localStorage.setItem(LICHT_SCHLUESSEL, licht);
@@ -13776,16 +13824,35 @@ function lichtSetzen(wahl){
   lichtKnopfZeichnen();
 }
 
-/* Ein Knopf, drei Zustände im Ring: automatisch → hell → dunkel.
-   Ein Menü für drei Werte wäre mehr Bedienung als Nutzen. */
+/* Ein Knopf, eine Liste mit fünf Stufen (seit 11.10.; vorher drei im
+   Ring). Die Liste zeigt je Stufe eine kleine Probe: Grund und Schrift,
+   wie sie IN DIESEM HAUS aussähen — aus derselben Rechnung. */
+function lichtName(w){
+  return t({ hell:"Hell", weiss:"Ganz weiß", dunkel:"Dunkel", schwarz:"Ganz schwarz" }[w] || "Automatisch");
+}
+function lichtListeZeichnen(){
+  const l = $("lichtliste"); if(!l) return;
+  const mb = MARKENBLATT;
+  const tag = mb.farben, nacht = (mb.abend && mb.abend.an) ? Object.assign({}, mb.farben, mb.abend) : mb.farben;
+  const probe = w => {
+    const f = w === "weiss" ? lichtStufeFarben(tag, "weiss") : w === "schwarz" ? lichtStufeFarben(nacht, "schwarz")
+            : w === "dunkel" ? nacht : tag;
+    return /^#[0-9a-f]{6}$/i.test(f.grund) && /^#[0-9a-f]{6}$/i.test(f.tinte)
+      ? '<span class="lprobe" aria-hidden="true" style="--lp-g:' + f.grund + ';--lp-t:' + f.tinte + '"></span>' : "";
+  };
+  l.innerHTML = LICHT_STUFEN.map(w =>
+    '<button type="button" role="menuitemradio" data-licht="' + w + '" aria-checked="' + (w === licht) + '">' +
+    '<span class="lwort">' + hs(lichtName(w)) + '</span>' + (w === "auto" ? "" : probe(w)) + '</button>').join("");
+}
 function lichtKnopfZeichnen(){
   const k = $("lichtknopf"); if(!k) return;
   const abend = document.body.dataset.phase === "abend";
-  const name = licht === "hell" ? t("Hell")
-             : licht === "dunkel" ? t("Dunkel") : t("Automatisch");
+  const name = lichtName(licht);
   k.setAttribute("aria-label", t("Ansicht: {w}", {w:name}));
   k.setAttribute("title", t("Ansicht: {w}", {w:name}));
   k.classList.toggle("fest", licht !== "auto");
+  lichtListeZeichnen();
+  const l = $("lichtliste"); if(l) l.setAttribute("aria-label", t("Ansicht wählen"));
   /* Sonne, wenn es gerade hell ist; Mond, wenn dunkel. Das Zeichen
      sagt den ZUSTAND, nicht die nächste Wahl — sonst rät der Gast. */
   k.innerHTML = abend
@@ -16369,6 +16436,7 @@ function menuAuf(zustand){
   const wahl = $("sprachwahl");
   if(wahl.classList.contains("offen") === zustand) return;
 
+  if(zustand && typeof lichtMenuAuf === "function") lichtMenuAuf(false);
   wahl.classList.toggle("offen", zustand);
   $("sprachknopf").setAttribute("aria-expanded", zustand ? "true" : "false");
 
@@ -16556,10 +16624,52 @@ zeichne();
 /* Läuft gerade eine Aktion? Einmal beim Öffnen und dann alle zwei
    Minuten. Öfter bringt nichts: Eine Aktion, die eine Minute später
    auftaucht, ist immer noch eine Neuigkeit. */
-/* Der Lichtknopf: automatisch → hell → dunkel → automatisch. */
+/* Der Lichtknopf öffnet die Liste der fünf Stufen — gebaut wie das
+   Sprachmenü: außerhalb tippen und Escape schließen, Pfeiltasten
+   wandern, die Horcher hängen nur, solange sie offen ist. */
+function lichtMenuAuf(zustand){
+  const wahl = $("lichtwahl");
+  if(!wahl || wahl.classList.contains("offen") === zustand) return;
+  if(zustand) menuAuf(false);
+  wahl.classList.toggle("offen", zustand);
+  $("lichtknopf").setAttribute("aria-expanded", zustand ? "true" : "false");
+  if(zustand){
+    const liste = $("lichtliste");
+    liste.style.left = liste.style.right = "";
+    const wr = wahl.getBoundingClientRect(), lb = liste.offsetWidth, rand = 8;
+    if(document.documentElement.dir === "rtl"){
+      const ueber = rand - (wr.right - lb);
+      if(ueber > 0) liste.style.right = (-ueber) + "px";
+    } else {
+      const ueber = wr.left + lb - (innerWidth - rand);
+      if(ueber > 0) liste.style.left = (-ueber) + "px";
+    }
+    document.addEventListener("pointerdown", lichtMenuAussen, true);
+    document.addEventListener("keydown", lichtMenuTaste, true);
+    const aktiv = liste.querySelector('[aria-checked="true"]') || liste.querySelector("button");
+    if(aktiv) requestAnimationFrame(() => aktiv.focus({preventScroll:true}));
+  } else {
+    document.removeEventListener("pointerdown", lichtMenuAussen, true);
+    document.removeEventListener("keydown", lichtMenuTaste, true);
+  }
+}
+function lichtMenuAussen(e){ if(!$("lichtwahl").contains(e.target)) lichtMenuAuf(false); }
+function lichtMenuTaste(e){
+  const knoepfe = Array.prototype.slice.call($("lichtliste").querySelectorAll("button"));
+  const i = knoepfe.indexOf(document.activeElement);
+  if(e.key === "Escape"){ e.preventDefault(); lichtMenuAuf(false); $("lichtknopf").focus({preventScroll:true}); return; }
+  if(e.key === "ArrowDown" || e.key === "ArrowUp"){
+    e.preventDefault();
+    knoepfe[e.key === "ArrowDown" ? (i + 1) % knoepfe.length : (i <= 0 ? knoepfe.length - 1 : i - 1)].focus({preventScroll:true});
+  }
+}
 if($("lichtknopf")){
-  $("lichtknopf").addEventListener("click", () => {
-    lichtSetzen(licht === "auto" ? "hell" : licht === "hell" ? "dunkel" : "auto");
+  $("lichtknopf").addEventListener("click", () => lichtMenuAuf(!$("lichtwahl").classList.contains("offen")));
+  $("lichtliste").addEventListener("click", e => {
+    const b = e.target.closest("[data-licht]"); if(!b) return;
+    lichtSetzen(b.dataset.licht);
+    lichtMenuAuf(false);
+    $("lichtknopf").focus({preventScroll:true});
   });
 }
 lichtKnopfZeichnen();
