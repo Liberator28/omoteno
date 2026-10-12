@@ -27,6 +27,7 @@ const OBEN = path.join(__dirname, "..");
 const SEITE = "file://" + path.join(OBEN, "seiten", "einkauf.html");
 const SQL = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf.sql"), "utf8");
 const SQL2 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e2.sql"), "utf8");
+const SQL3 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e3.sql"), "utf8");
 const EDGE = fs.readFileSync(path.join(OBEN, "supabase", "functions", "beleg-lesen", "index.ts"), "utf8");
 const HTML = fs.readFileSync(path.join(OBEN, "seiten", "einkauf.html"), "utf8");
 
@@ -38,7 +39,7 @@ function pruef(gut, text, zusatz){
 
 /* ── 1 · Naht als Quelltext ─────────────────────────────────────── */
 console.log("\n══ 1 · Naht zur Migration ══");
-const gruendeSql = [...new Set([...(SQL + SQL2).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1]))];
+const gruendeSql = [...new Set([...(SQL + SQL2 + SQL3).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1]))];
 /* Dritte Quelle: jeder Grund, den beleg-lesen zurückgeben kann —
    nein("…") und die Rückgaben von grundAus(). */
 const gruendeEdge = [...new Set([...EDGE.matchAll(/nein\("(\w+)"/g), ...EDGE.matchAll(/return "(\w+)";/g)].map(m => m[1]))];
@@ -73,6 +74,29 @@ const datenGelesen = new Set([...SQL.matchAll(/p_daten\s*->>?\s*'(\w+)'/g)].map(
 const posGelesen = new Set([...SQL.matchAll(/\bp\s*->>?\s*'(\w+)'/g)].map(m => m[1]));
 const POS_NUR_SEITE = ["gebinde_text"];   /* namentlich: hält „0,75 l“ zum Wiederanzeigen */
 
+/* E3: rezeptur_speichern, gericht_kalkulation, wareneinsatz_theoretisch */
+function sqlParameter3(fn){
+  const m = SQL3.match(new RegExp("function public\\." + fn + "\\(([^)]*)\\)"));
+  return m ? m[1].split(",").map(s => s.trim().split(/\s+/)[0]).filter(Boolean).sort() : null;
+}
+for(const fn of ["rezeptur_speichern", "gericht_kalkulation", "wareneinsatz_theoretisch"]) SIGNATUR[fn] = sqlParameter3(fn);
+const rezPosGelesen = new Set([...SQL3.matchAll(/\bz\s*->>?\s*'(\w+)'/g)].map(m => m[1]));
+const felderSql3 = [...new Set([...SQL3.matchAll(/'feld',\s*'(\w+)'/g)].map(m => m[1]))];
+const rezFeldSeite = (() => { const b = HTML.match(/const REZ_FELD = \{([\s\S]*?)\};/); return b ? [...b[1].matchAll(/(\w+):"/g)].map(m => m[1]) : []; })();
+pruef(felderSql3.length >= 4 && felderSql3.every(f => rezFeldSeite.includes(f)), "E3: jedes 'feld' von rezeptur_speichern hat einen Satz", felderSql3.filter(f => !rezFeldSeite.includes(f)).join(", ") || felderSql3.join(","));
+/* Spalten, die die Seite aus gericht_kalkulation liest = Spalten der Funktion. */
+const kalkSpalten = (() => { const m = SQL3.match(/function public\.gericht_kalkulation[\s\S]*?returns table \(([\s\S]*?)\)\s*language/); return m ? m[1].split(",").map(x => x.trim().split(/\s+/)[0]) : []; })();
+const kalkBlock = (HTML.match(/═══ Kalkulation \(E3[\s\S]*?═══ Artikel/) || [""])[0];
+const kalkGelesen = [...new Set([...kalkBlock.matchAll(/\bz\.(\w+)/g)].map(m => m[1]))];
+const kalkFremd = kalkGelesen.filter(k => !kalkSpalten.includes(k));
+pruef(kalkSpalten.length >= 10 && !kalkFremd.length, "E3: jede gelesene Spalte liefert gericht_kalkulation", kalkFremd.join(", ") || kalkGelesen.join(","));
+const weSchluessel = [...new Set([...SQL3.matchAll(/'(\w+)',\s*(?:count|coalesce|round)/g)].map(m => m[1]))];
+const weGelesen = [...new Set([...kalkBlock.matchAll(/\bwe\.(\w+)/g)].map(m => m[1]))];
+pruef(weGelesen.length >= 3 && weGelesen.every(k => weSchluessel.includes(k)), "E3: jeder gelesene Wert liefert wareneinsatz_theoretisch", weGelesen.filter(k => !weSchluessel.includes(k)).join(", ") || weGelesen.join(","));
+const rezSpalten = new Set([...(SQL3.match(/create table if not exists public\.rezepturen \(([\s\S]*?)\n\);/) || ["", ""])[1].matchAll(/^\s*(\w+)\s/gm)].map(m => m[1]));
+const rezSelect = (HTML.match(/from\("rezepturen"\)\.select\("([^"]+)"/) || ["", ""])[1].replace(/\(.*\)/, "").split(",").map(x => x.trim()).filter(x => x && x !== "rezepturpositionen");
+pruef(rezSelect.length >= 5 && rezSelect.every(c => rezSpalten.has(c)), "E3: gelesene Spalten von rezepturen gibt es", rezSelect.filter(c => !rezSpalten.has(c)).join(", ") || rezSelect.join(","));
+
 /* ── 2 · Gestellte Datenbank ────────────────────────────────────── */
 const ORG = "org-1", BETRIEB = "af095b14-0000-4000-8000-000000000001";
 function grundDaten(rolle){
@@ -105,7 +129,30 @@ function grundDaten(rolle){
     ],
     lieferanten_artikel: [
       { id: "z-1", lieferant_id: "l-1", artikel_id: "a-wein", bezeichnung: "Wein 0,75 l", einkaufseinheit: "Flasche", gebinde_basis: 750, letzter_preis: 5.4, letzter_preis_am: "2026-10-05" }
-    ]
+    ],
+    /* E3: Tiramisu hatte einmal eine Rezeptur mit Wein (r-t-alt), heute
+       keine — es darf bei einer Weinpreis-Änderung NICHT erscheinen. */
+    rezepturen: [
+      { id: "r-2", betrieb_id: BETRIEB, gericht_id: "g-pizza", gueltig_ab: "2026-10-12T08:00:00Z", portionen: 2, mwst: 7, notiz: "mehr Mehl",
+        rezepturpositionen: [{ artikel_id: "a-mehl", menge_basis: 400, verlust_prozent: 10 }, { artikel_id: "a-wein", menge_basis: 300, verlust_prozent: 0 }] },
+      { id: "r-1", betrieb_id: BETRIEB, gericht_id: "g-pizza", gueltig_ab: "2026-10-02T08:00:00Z", portionen: 2, mwst: 7, notiz: null,
+        rezepturpositionen: [{ artikel_id: "a-mehl", menge_basis: 200, verlust_prozent: 10 }] },
+      { id: "r-s", betrieb_id: BETRIEB, gericht_id: "g-sal", gueltig_ab: "2026-10-03T08:00:00Z", portionen: 1, mwst: 7, notiz: null,
+        rezepturpositionen: [{ artikel_id: "a-wein", menge_basis: 100, verlust_prozent: 0 }] },
+      { id: "r-t-alt", betrieb_id: BETRIEB, gericht_id: "g-tira", gueltig_ab: "2026-09-01T08:00:00Z", portionen: 1, mwst: 7, notiz: null,
+        rezepturpositionen: [{ artikel_id: "a-wein", menge_basis: 50, verlust_prozent: 0 }] }
+    ],
+    antworten: {
+      gericht_kalkulation: [
+        { gericht_id: "g-pizza", name: "Pizza Margherita", kategorie: "Pizza", karte: "speisekarte", preis: 7, aktionspreis: 5.9, rezeptur_id: "r-2",
+          gueltig_ab: "2026-10-12T08:00:00Z", mwst: 7, portionen: 2, kosten: 0.414, positionen: 2, ohne_preis: 0, wareneinsatz: 0.0633, wareneinsatz_aktion: 0.0751 },
+        { gericht_id: "g-sal", name: "Salat", kategorie: "Salate", karte: "speisekarte", preis: 3.21, aktionspreis: null, rezeptur_id: "r-s",
+          gueltig_ab: "2026-10-03T08:00:00Z", mwst: 7, portionen: 1, kosten: 1.2, positionen: 1, ohne_preis: 0, wareneinsatz: 0.4, wareneinsatz_aktion: null },
+        { gericht_id: "g-tira", name: "Tiramisu", kategorie: "Dessert", karte: "speisekarte", preis: 5.5, aktionspreis: null, rezeptur_id: null,
+          gueltig_ab: null, mwst: null, portionen: null, kosten: null, positionen: 0, ohne_preis: 0, wareneinsatz: null, wareneinsatz_aktion: null }
+      ],
+      wareneinsatz_theoretisch: { positionen: 5, portionen: 6, umsatz_brutto: 30, wareneinsatz: 0.85, umsatz_mit_rezeptur: 21, ohne_rezeptur: 2, ueber_namen: 1 }
+    }
   };
 }
 
@@ -153,8 +200,9 @@ function ersatz(start){
         if(name === "pin_status") return { data: D.pinPflicht ? { pflicht:true, ok:false, hat_pin:true, gesperrt:false } : { pflicht:false, ok:true }, error:null };
         if(name === "pin_pruefen"){ window.__pinOk = args.p_pin === "12345678"; return { data: window.__pinOk ? { ok:true } : { ok:false, grund:"falsch", verbleibend:4 }, error:null }; }
         if(name === "admin_anmelden") return { data:{ erlaubt:true }, error:null };
+        if((D.rpcFehler || {})[name]) return { data:null, error: D.rpcFehler[name] };
         const a = (D.antworten || {})[name];
-        if(a) return { data:a, error:null };
+        if(a) return { data: JSON.parse(JSON.stringify(a)), error:null };
         if(name === "beleg_speichern") return { data:{ ok:true, id: args.p_beleg || "be-neu" }, error:null };
         return { data:{ ok:true }, error:null };
       },
@@ -258,6 +306,14 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
   pruef((await p.textContent("#kEntwuerfe")) === "1", "ein offener Entwurf gezählt");
   const preis = await p.textContent("#preisListe");
   pruef(/\+20 %/.test(preis) && /6,00\s€ \/ l/.test(preis) && /7,20\s€ \/ l/.test(preis), "Preisänderung +20 % mit €/l vorher → jetzt", preis.replace(/\s+/g, " ").slice(0, 90));
+  pruef(/betrifft Pizza Margherita, Salat/.test(preis) && !/Tiramisu/.test(preis), "E3: Preisänderung nennt die betroffenen Gerichte — nur gültige Fassungen (Tiramisu nicht)", preis.replace(/\s+/g, " ").slice(0, 140));
+  const we = { b: (await p.textContent("#kWe")).replace(/\s/g, " "), u: (await p.textContent("#kWeUnter")).replace(/\s/g, " ") };
+  pruef(we.b === "0,85 €" && /4 % vom Bruttoumsatz/.test(we.u) && /2 verkaufte Positionen ohne Rezeptur/.test(we.u), "E3: Wareneinsatz des Monats mit Anteil und Lücke", JSON.stringify(we));
+  const weRuf = (await rufe(p, "wareneinsatz_theoretisch"))[0];
+  pruef(weRuf && JSON.stringify(Object.keys(weRuf.args).sort()) === JSON.stringify(SIGNATUR.wareneinsatz_theoretisch) && new Date(weRuf.args.p_von).getDate() === 1,
+    "E3: wareneinsatz_theoretisch mit genau seinen Parametern, ab Monatsanfang", JSON.stringify(weRuf && weRuf.args));
+  const kRuf = (await rufe(p, "gericht_kalkulation"))[0];
+  pruef(kRuf && kRuf.args.p_betrieb === BETRIEB && Object.keys(kRuf.args).every(k => SIGNATUR.gericht_kalkulation.includes(k)), "E3: gericht_kalkulation für diesen Betrieb", JSON.stringify(kRuf && kRuf.args));
 
   /* ── 5 · Beleg erfassen über den echten Weg ────────────────────── */
   console.log("\n══ 4 · Beleg erfassen und freigeben ══");
@@ -329,15 +385,15 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
 
   /* ── 8 · Gründe vom Server als Satz ────────────────────────────── */
   console.log("\n══ 7 · Gründe als Satz ══");
-  await p.evaluate(() => { window.__D.antworten = { beleg_freigeben: { ok:false, grund:"summe", positionen:54, beleg:60 } }; });
+  await p.evaluate(() => { window.__D.antworten.beleg_freigeben = { ok:false, grund:"summe", positionen:54, beleg:60 }; });
   await p.fill("#eNetto", "60"); await p.fill(pos + ' [data-f="netto"]', "54"); await p.fill(pos + ' [data-f="menge"]', "12");
   await p.click('[data-aktion="freigeben"]'); await p.waitForTimeout(350);
   const satz = (await p.textContent("#eMeldung")).replace(/\s/g, " ");
   pruef(/54,00 €/.test(satz) && /60,00 €/.test(satz) && !/summe\b|"grund"/.test(satz), "summe → Satz mit beiden Beträgen, kein Rohtext", satz);
-  await p.evaluate(() => { window.__D.antworten = { beleg_freigeben: { ok:false, grund:"doppelt" } }; });
+  await p.evaluate(() => { window.__D.antworten.beleg_freigeben = { ok:false, grund:"doppelt" }; });
   await p.click('[data-aktion="freigeben"]'); await p.waitForTimeout(350);
   pruef(/schon freigegeben/.test(await p.textContent("#eMeldung")), "doppelt → Satz", await p.textContent("#eMeldung"));
-  await p.evaluate(() => { window.__D.antworten = {}; });
+  await p.evaluate(() => { delete window.__D.antworten.beleg_freigeben; });
 
   /* ── 9 · Freigegeben: nur ansehen, Storno beim zweiten Tipp ────── */
   console.log("\n══ 8 · Freigegebener Beleg ══");
@@ -379,7 +435,7 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
   console.log("\n══ 12 · Rechnung einlesen (E2) ══");
   {
     const d = grundDaten("inhaber");
-    d.antworten = { "fn:beleg-lesen": { ok:true, id:"be-entwurf", positionen:3, zugeordnet:1, lieferant:"Großmarkt" } };
+    d.antworten["fn:beleg-lesen"] = { ok:true, id:"be-entwurf", positionen:3, zugeordnet:1, lieferant:"Großmarkt" };
     const { ctx, p, kons } = await oeffnen(browser, d);
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
     await p.click('.reiter [data-ansicht="belege"]');
@@ -430,7 +486,7 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await p.click("#invBuchen"); await p.waitForTimeout(100);
     pruef((await rufe(p, "inventur_buchen")).length === 0 && /nicht lesbar/.test(await p.textContent("#invMeldung")), "„abc“ → nichts gebucht, Satz");
     await p.fill('[data-inv="a-mehl"]', "20,5");
-    await p.evaluate(() => { window.__D.antworten = { inventur_buchen:{ ok:true, buchungen:1, differenz_wert:-4 } }; });
+    await p.evaluate(() => { window.__D.antworten.inventur_buchen = { ok:true, buchungen:1, differenz_wert:-4 }; });
     await p.click("#invBuchen"); await p.waitForTimeout(200);
     const inv = (await rufe(p, "inventur_buchen"))[0];
     pruef(inv && JSON.stringify(Object.keys(inv.args).sort()) === JSON.stringify(SIGNATUR.inventur_buchen), "Parameter = Signatur von inventur_buchen", inv && Object.keys(inv.args).join(","));
@@ -438,12 +494,109 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
       "„20,5“ kg → 20500 g; leeres Feld (Wein) nicht als 0 gezählt", JSON.stringify(inv && inv.args.p_zaehlung));
     await p.click('[data-aktion="artikel-auf"][data-id="a-wein"]');
     await p.fill("#vMenge", "1,5"); await p.fill("#vGrund", "Bruch");
-    await p.evaluate(() => { window.__D.antworten = { verlust_buchen:{ ok:true, wert:-10.8 } }; });
+    await p.evaluate(() => { window.__D.antworten.verlust_buchen = { ok:true, wert:-10.8 }; });
     await p.click('[data-aktion="verlust"]'); await p.waitForTimeout(200);
     const vl = (await rufe(p, "verlust_buchen"))[0];
     pruef(vl && JSON.stringify(Object.keys(vl.args).sort()) === JSON.stringify(SIGNATUR.verlust_buchen) && vl.args.p_menge === 1500 && vl.args.p_notiz === "Bruch",
       "Verlust 1,5 l → 1500 ml mit Grund", JSON.stringify(vl && vl.args));
     pruef(!kons.length, "keine Ausnahme beim Einlesen, Inventur, Verlust", kons[0]);
+    await ctx.close();
+  }
+
+  /* ── E3 · Kalkulation und Rezeptur ─────────────────────────────── */
+  console.log("\n══ 14 · Kalkulation und Rezeptur (E3) ══");
+  {
+    const { ctx, p, kons } = await oeffnen(browser, grundDaten("inhaber"));
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="kalkulation"]');
+    const liste = () => p.evaluate(() => [...document.querySelectorAll("#kalkListe [data-gericht]")].map(z => z.dataset.gericht + "|" + z.querySelector(".rechts").textContent.replace(/\s/g, " ") + "|" + (z.querySelector(".pille.hoch") ? "hoch" : "")));
+    const alle = await liste();
+    pruef(alle.length === 3 && /^g-pizza\|6,3 %\|$/.test(alle[0]) && /^g-sal\|40 %\|hoch$/.test(alle[1]) && /^g-tira\|Keine Rezeptur/.test(alle[2]), "Liste: Wareneinsatz je Gericht, über 35 % markiert, ohne Rezeptur benannt", alle.join(" ; "));
+    const pizzaUnter = (await p.textContent('[data-gericht="g-pizza"] .unter')).replace(/\s/g, " ");
+    pruef(/Kosten 0,41 € je Portion/.test(pizzaUnter) && /Aktion 5,90 € \(7,5 %\)/.test(pizzaUnter), "Kosten und Aktion getrennt mit eigenem Wareneinsatz", pizzaUnter);
+    await p.click('#kFilter [data-filter="ohne"]');
+    pruef(JSON.stringify((await liste()).map(x => x.split("|")[0])) === '["g-tira"]', "Filter „Ohne Rezeptur“ zeigt nur Tiramisu");
+    await p.click('#kFilter [data-filter="hoch"]');
+    pruef(JSON.stringify((await liste()).map(x => x.split("|")[0])) === '["g-sal"]', "Filter „Über 35 %“ zeigt nur den Salat");
+    await p.click('#kFilter [data-filter="alle"]');
+    await p.fill("#kSuche", "pizza");
+    pruef((await liste()).length === 1, "Suche findet die Pizza");
+    await p.fill("#kSuche", "");
+
+    /* Editor */
+    await p.click('[data-gericht="g-pizza"]');
+    const ed = await p.evaluate(() => ({
+      zeilen: [...document.querySelectorAll("#rezPosListe [data-rpos]")].map(z => z.querySelector("select").value + ":" + z.querySelector('[data-rf="menge"]').value + ":" + z.querySelector('[data-rf="verlust"]').value),
+      text: document.getElementById("kalkEdit").textContent.replace(/\s/g, " ") }));
+    pruef(JSON.stringify(ed.zeilen) === '["a-wein:300:","a-mehl:400:10"]', "Editor zeigt die GÜLTIGE Fassung (400 g, 10 %), nach Name sortiert", JSON.stringify(ed.zeilen));
+    pruef(/Gültige Fassung seit 12\.10\.2026 · 2 Fassungen/.test(ed.text) && /Frühere Fassungen/.test(ed.text) && /02\.10\.2026/.test(ed.text), "Stand und frühere Fassung sichtbar", ed.text.slice(0, 160));
+    pruef(/1 Zutat ohne Einkaufspreis/.test(ed.text), "Mehl ohne Einkaufspreis wird gesagt, nicht als 0 gerechnet");
+    await p.fill('[data-rpos="0"] [data-rf="menge"]', "150,5");
+    const kost = (await p.textContent("#rezZahlen")).replace(/\s/g, " ");
+    pruef(/0,54 €/.test(kost) && await p.evaluate(() => document.activeElement && document.activeElement.dataset.rf === "menge"), "„150,5“ ml Wein → Vorschau 0,54 € je Portion, Fokus bleibt im Feld", kost.slice(0, 80));
+    await p.fill('[data-rpos="1"] [data-rf="verlust"]', "abc");
+    await p.evaluate(() => { window.__rufe.length = 0; });
+    await p.click('[data-aktion="rez-sichern"]'); await p.waitForTimeout(150);
+    pruef((await rufe(p, "rezeptur_speichern")).length === 0 && /Zutat 2: Verlust ist nicht lesbar/.test(await p.textContent("#rMeldung")), "Unlesbares geht nicht hinaus, Satz nennt die Zeile", await p.textContent("#rMeldung"));
+    await p.fill('[data-rpos="1"] [data-rf="verlust"]', "10");
+    await p.click('[data-aktion="rpos-neu"]');
+    await p.click('#rMwst [data-mwst="19"]');
+    await p.fill("#rNotiz", "weniger Wein");
+    await p.click('[data-aktion="rez-sichern"]'); await p.waitForTimeout(300);
+    const rs = (await rufe(p, "rezeptur_speichern"))[0];
+    pruef(rs && JSON.stringify(Object.keys(rs.args).sort()) === JSON.stringify(SIGNATUR.rezeptur_speichern), "Parameter = Signatur von rezeptur_speichern", rs && Object.keys(rs.args).join(","));
+    pruef(rs && JSON.stringify(rs.args.p_positionen) === '[{"artikel_id":"a-wein","menge_basis":150.5,"verlust_prozent":0},{"artikel_id":"a-mehl","menge_basis":400,"verlust_prozent":10}]'
+      && rs.args.p_portionen === 2 && rs.args.p_mwst === 19 && rs.args.p_notiz === "weniger Wein" && rs.args.p_gericht === "g-pizza",
+      "Nutzlast: Komma gelesen, leeres Verlust = 0, leere Zeile weggelassen, MwSt 19", JSON.stringify(rs && rs.args));
+    const fremd = rs ? Object.keys(rs.args.p_positionen[0]).filter(k => !rezPosGelesen.has(k)) : ["?"];
+    pruef(!fremd.length, "jeder Schlüssel einer Zutat wird in rezeptur_speichern gelesen", fremd.join(",") || [...rezPosGelesen].join(","));
+    const nachher = await p.evaluate(() => window.__rufe.map(r => r.name));
+    pruef(nachher.indexOf("gericht_kalkulation") > nachher.indexOf("rezeptur_speichern") && /gesichert/.test(await p.textContent("#toast")), "nach dem Sichern neu vom Server gerechnet", nachher.join(","));
+    /* Gründe vom Server, Zeile richtig zurückgerechnet */
+    await p.click('[data-aktion="rpos-neu"]');
+    const n = await p.evaluate(() => document.querySelectorAll("#rezPosListe [data-rpos]").length);
+    await p.selectOption('[data-rpos="' + (n - 1) + '"] [data-rf="artikel_id"]', "a-mehl");
+    await p.fill('[data-rpos="' + (n - 1) + '"] [data-rf="menge"]', "5");
+    await p.selectOption('[data-rpos="1"] [data-rf="artikel_id"]', "");
+    await p.fill('[data-rpos="1"] [data-rf="menge"]', ""); await p.fill('[data-rpos="1"] [data-rf="verlust"]', "");
+    await p.evaluate(() => { window.__D.antworten.rezeptur_speichern = { ok:false, grund:"position", pos:2, feld:"doppelt" }; });
+    await p.click('[data-aktion="rez-sichern"]'); await p.waitForTimeout(250);
+    pruef(new RegExp("Zutat " + n + ": Dieser Artikel steht schon").test(await p.textContent("#rMeldung")), "Server-Position 2 = Zeile " + n + " auf der Seite (leere Zeile dazwischen)", await p.textContent("#rMeldung"));
+    await p.evaluate(() => { window.__D.antworten.rezeptur_speichern = { ok:false, grund:"kein_recht" }; });
+    await p.click('[data-aktion="rez-sichern"]'); await p.waitForTimeout(250);
+    pruef(/Nur der Besitzer kann Rezepturen ändern/.test(await p.textContent("#rMeldung")), "kein_recht → Satz für Rezepturen");
+    await p.evaluate(() => { window.__D.antworten.rezeptur_speichern = { ok:false, grund:"mwst" }; });
+    await p.click('[data-aktion="rez-sichern"]'); await p.waitForTimeout(250);
+    pruef(/7 %, 19 % oder 0 %/.test(await p.textContent("#rMeldung")), "mwst → Satz");
+    /* Freigabe mit Preisänderung nennt betroffene Gerichte */
+    await p.evaluate(() => { delete window.__D.antworten.rezeptur_speichern; window.__D.antworten.beleg_freigeben = { ok:true, positionen:1, preisaenderungen:[{ artikel_id:"a-mehl", prozent:50 }] }; });
+    await p.click('.reiter [data-ansicht="belege"]');
+    await p.click('#belegListe [data-beleg="be-entwurf"]');
+    await p.click('[data-aktion="freigeben"]'); await p.waitForTimeout(350);
+    pruef(/betrifft 1 Gericht \(siehe Kalkulation\)/.test(await p.textContent("#toast")), "Freigabe mit Preisänderung: betroffene Gerichte gezählt", await p.textContent("#toast"));
+    pruef(!kons.length, "keine Ausnahme in der Kalkulation", kons[0]);
+    await ctx.close();
+  }
+  {
+    const { ctx, p } = await oeffnen(browser, grundDaten("team"));
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="kalkulation"]');
+    await p.click('[data-gericht="g-pizza"]');
+    const t = await p.evaluate(() => ({ felder: document.querySelectorAll("#kalkEdit input, #kalkEdit select").length, sichern: !!document.querySelector('[data-aktion="rez-sichern"]'),
+      text: document.getElementById("kalkEdit").textContent.replace(/\s/g, " ") }));
+    pruef(t.felder === 0 && !t.sichern && /Mehl 405/.test(t.text) && /400 g/.test(t.text), "Team: Rezeptur nur ansehen", JSON.stringify({ f:t.felder, s:t.sichern }));
+    await ctx.close();
+  }
+  {
+    /* Migration fehlt: Satz in der Kalkulation, der Rest der Seite lebt. */
+    const d = grundDaten("inhaber");
+    d.rpcFehler = { gericht_kalkulation: { code:"PGRST202", message:"Could not find the function public.gericht_kalkulation in the schema cache" } };
+    const { ctx, p, kons } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    pruef((await p.textContent("#kMonat")).replace(/\s/g, " ") === "64,80 €" && await p.isHidden("#ladefehler"), "ohne E3-Migration: Übersicht unverändert, kein Ladefehler oben");
+    await p.click('.reiter [data-ansicht="kalkulation"]');
+    pruef(/noch nicht eingerichtet \(migration-einkauf-e3\.sql\)/.test(await p.textContent("#kalkFehler")) && await p.isVisible("#kalkFehler"), "… und in der Kalkulation ein Satz statt leerer Fläche");
+    pruef(!kons.length, "keine Ausnahme ohne Migration", kons[0]);
     await ctx.close();
   }
 
@@ -468,8 +621,9 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
   for(const breite of [360, 1280]){
     const { ctx, p } = await oeffnen(browser, grundDaten("inhaber"), breite);
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
-    for(const ansicht of ["uebersicht", "belege", "artikel", "lieferanten"]){
-      await p.click('.reiter [data-ansicht="' + ansicht + '"]');
+    for(const ansicht of ["uebersicht", "belege", "artikel", "kalkulation", "kalk-edit", "lieferanten"]){
+      await p.click('.reiter [data-ansicht="' + (ansicht === "kalk-edit" ? "kalkulation" : ansicht) + '"]');
+      if(ansicht === "kalk-edit") await p.click('[data-gericht="g-pizza"]');
       if(ansicht === "belege") await p.click("#belegNeu");
       if(ansicht === "lieferanten") await p.click('[data-aktion="lief-auf"][data-id="l-1"]');
       await p.waitForTimeout(80);

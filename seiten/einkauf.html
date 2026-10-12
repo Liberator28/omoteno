@@ -226,6 +226,7 @@ button.zeile:active{background:var(--flaeche)}
       <button role="tab" type="button" aria-selected="true" data-ansicht="uebersicht">Übersicht</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="belege">Belege</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="artikel">Artikel</button>
+      <button role="tab" type="button" aria-selected="false" data-ansicht="kalkulation">Kalkulation</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="lieferanten">Lieferanten</button>
     </div>
   </header>
@@ -240,6 +241,7 @@ button.zeile:active{background:var(--flaeche)}
         <div class="kennzahl"><span id="kMonatTitel">Einkauf diesen Monat</span><b id="kMonat">—</b><span class="leise">netto, freigegeben</span></div>
         <div class="kennzahl"><span>Offene Entwürfe</span><b id="kEntwuerfe">—</b><span class="leise">noch nicht im Lager</span></div>
         <div class="kennzahl"><span>Preisänderungen</span><b id="kPreise">—</b><span class="leise">ab 5 % zum letzten Einkauf</span></div>
+        <div class="kennzahl"><span id="kWeTitel">Wareneinsatz laut Rezepturen</span><b id="kWe">—</b><span class="leise" id="kWeUnter">aus den verkauften Gerichten</span></div>
       </div>
       <h2>Preisänderungen</h2>
       <div class="liste" id="preisListe"></div>
@@ -296,6 +298,23 @@ button.zeile:active{background:var(--flaeche)}
           <button class="knopf leer" id="invAbbrechen" type="button">Abbrechen</button></div>
       </div>
       <div class="liste" id="artikelListe"></div>
+    </section>
+
+    <!-- Kalkulation (E3) -->
+    <section class="abschnitt" id="v-kalkulation" hidden>
+      <div id="kalkListeTeil" class="abschnitt">
+        <h2>Kalkulation</h2>
+        <p class="leise" style="margin:0;font-size:14px">Kosten je Portion aus Ihren Rezepturen und den letzten freigegebenen Einkaufspreisen. Wareneinsatz = Kosten ÷ Verkaufspreis ohne MwSt.</p>
+        <p class="meldung fehler" id="kalkFehler" hidden></p>
+        <input id="kSuche" type="search" placeholder="Gericht suchen" aria-label="Gericht suchen">
+        <div class="einheitwahl" role="radiogroup" aria-label="Gerichte filtern" id="kFilter">
+          <button type="button" role="radio" aria-checked="true" data-filter="alle">Alle</button>
+          <button type="button" role="radio" aria-checked="false" data-filter="ohne">Ohne Rezeptur</button>
+          <button type="button" role="radio" aria-checked="false" data-filter="hoch">Über 35 %</button>
+        </div>
+        <div class="liste" id="kalkListe"></div>
+      </div>
+      <div id="kalkEdit" class="abschnitt" hidden></div>
     </section>
 
     <!-- Lieferanten -->
@@ -582,6 +601,9 @@ const GRUENDE = {
   zaehlung:          "Bitte mindestens einen gezählten Artikel eintragen (höchstens 500).",
   menge:             "Bitte eine Menge über 0 eintragen.",
   artikel:           "Dieser Artikel gehört nicht zu Ihrem Betrieb.",
+  /* E3: Rezepturen (migration-einkauf-e3.sql) */
+  portionen:         "Bitte die Zahl der Portionen eintragen (über 0, höchstens 1000).",
+  mwst:              "Die MwSt. auf den Verkauf ist 7 %, 19 % oder 0 %.",
   /* E2: Auslesen (supabase/functions/beleg-lesen) */
   betrieb:           "Kein Betrieb gewählt. Bitte Seite neu laden.",
   datei_fehlt:       "Die Datei ist nicht angekommen. Bitte noch einmal hochladen.",
@@ -742,7 +764,7 @@ async function betriebWaehlen(id){
   const lesen = B.rolle !== "inhaber";
   document.body.classList.toggle("nurlesen", lesen);
   $("lesesatz").hidden = !lesen;
-  EDIT = null;
+  EDIT = null; REZ = null;
   await allesLaden();
 }
 
@@ -752,6 +774,7 @@ function ladefehler(t){ const f = $("ladefehler"); f.textContent = t; f.hidden =
 async function allesLaden(){
   ladefehler("");
   const org = B.organisation_id;
+  const kalk = kalkLaden();
   const [art, lief, bel, best, pr, zu] = await Promise.all([
     sb.from("artikel").select("id, name, kategorie, basiseinheit, aktiv").eq("organisation_id", org).order("name").order("id"),
     sb.from("lieferanten").select("id, name, kundennummer, kontakt, aktiv").eq("organisation_id", org).order("name").order("id"),
@@ -776,6 +799,7 @@ async function allesLaden(){
   DATEN.preise = (pr && pr.data) || [];
   const meineLief = new Set(DATEN.lieferanten.map(l => l.id));
   DATEN.zuordnung = ((zu && zu.data) || []).filter(z => meineLief.has(z.lieferant_id));
+  await kalk;
   zeichnen();
 }
 
@@ -804,11 +828,12 @@ function preisaenderungen(){
 /* ═══ Zeichnen ════════════════════════════════════════════════ */
 function zeichnen(){
   for(const k of document.querySelectorAll(".reiter [data-ansicht]")) k.setAttribute("aria-selected", String(k.dataset.ansicht === ANSICHT));
-  for(const v of ["uebersicht", "belege", "artikel", "lieferanten"]) $("v-" + v).hidden = v !== ANSICHT;
+  for(const v of ["uebersicht", "belege", "artikel", "kalkulation", "lieferanten"]) $("v-" + v).hidden = v !== ANSICHT;
   if(ANSICHT === "uebersicht") uebersichtZeichnen();
   if(ANSICHT === "belege") (EDIT ? editZeichnen() : belegListeZeichnen());
   if(ANSICHT === "artikel") artikelZeichnen();
   if(ANSICHT === "lieferanten") lieferantenZeichnen();
+  if(ANSICHT === "kalkulation") (REZ ? rezZeichnen() : kalkZeichnen());
 }
 
 const STATUS_NAME = { entwurf:"Entwurf", freigegeben:"Freigegeben", storniert:"Storniert", verworfen:"Verworfen" };
@@ -836,8 +861,10 @@ function uebersichtZeichnen(){
     const hoch = p.prozent > 0;
     return '<div class="zeile"><span class="titel">' + esc(a.name) + "</span>" +
       '<span class="pille ' + (hoch ? "hoch" : "runter") + '">' + (hoch ? "+" : "−") + esc(zahlFmt.format(Math.abs(p.prozent))) + " %</span>" +
-      '<span class="unter">' + esc(preisText(p.vorher, a.basiseinheit)) + " → " + esc(preisText(p.jetzt, a.basiseinheit)) + "</span></div>";
+      '<span class="unter">' + esc(preisText(p.vorher, a.basiseinheit)) + " → " + esc(preisText(p.jetzt, a.basiseinheit)) +
+        betroffenText(p.artikel_id) + "</span></div>";
   }).join("") : '<p class="leerzeile">Keine Preisänderung ab 5 % — oder noch zu wenige freigegebene Einkäufe.</p>';
+  weZeichnen(heute);
   const letzte = DATEN.belege.filter(b => b.status !== "verworfen").slice(0, 10);
   $("letzteListe").innerHTML = letzte.length ? letzte.map(belegZeile).join("")
     : '<p class="leerzeile">Noch kein Beleg. Unter „Belege“ erfassen Sie den ersten.</p>';
@@ -1038,7 +1065,9 @@ async function aktionFreigeben(){
     const a = r && !r.error ? r.data : null;
     if(!a || a.ok !== true){ await allesLaden(); belegOeffnen(id); eMeldung(r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a)); return; }
     const n = (a.preisaenderungen || []).length;
-    toast("Freigegeben — im Lager gebucht" + (n ? " · " + n + " Preisänderung" + (n > 1 ? "en" : "") : ""));
+    const betroffen = new Set((a.preisaenderungen || []).flatMap(x => betroffeneGerichte(x.artikel_id).map(g => g.gericht_id)));
+    toast("Freigegeben — im Lager gebucht" + (n ? " · " + n + " Preisänderung" + (n > 1 ? "en" : "") : "") +
+      (betroffen.size ? " · betrifft " + betroffen.size + " Gericht" + (betroffen.size > 1 ? "e" : "") + " (siehe Kalkulation)" : ""));
     EDIT = null; await allesLaden();
     belegOeffnen(id);
   }finally{ LAEUFT = false; }
@@ -1105,6 +1134,275 @@ function ansehenZeichnen(){
     '<p class="meldung fehler" id="aMeldungBeleg" role="alert" hidden></p>' +
     (b.status === "freigegeben" ? '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf gefahr" data-aktion="stornieren">Beleg stornieren</button>' +
       '<span class="leise" style="font-size:14px">Bucht den Bestand zurück. Danach einen neuen Beleg erfassen.</span></div>' : "");
+}
+
+/* ═══ Kalkulation (E3, datenbank/migration-einkauf-e3.sql) ═════
+   Gerechnet wird in der Datenbank (gericht_kalkulation,
+   wareneinsatz_theoretisch). Die Seite rechnet nur die VORSCHAU im
+   Editor nach, damit man beim Tippen sieht, was herauskommt — der
+   gesicherte Wert kommt danach wieder vom Server. Eine Rezeptur wird
+   nie überschrieben: rezeptur_speichern legt eine neue Fassung an. */
+let KALK = { fehler:"", zeilen:[], rezepturen:[], we:null };
+let K_FILTER = "alle";
+let REZ = null;          /* { gericht_id, portionen, mwst, notiz, pos:[{artikel_id, menge, verlust}] } — Texte bis zum Sichern */
+const WE_GRENZE = 0.35;
+const prozentFmt = new Intl.NumberFormat("de-DE", { style:"percent", maximumFractionDigits:1 });
+
+async function kalkLaden(){
+  KALK = { fehler:"", zeilen:[], rezepturen:[], we:null };
+  const jetzt = new Date(), monat = new Date(jetzt.getFullYear(), jetzt.getMonth(), 1);
+  let k, r, w;
+  try{
+    [k, r, w] = await Promise.all([
+      sb.rpc("gericht_kalkulation", { p_betrieb: B.id }),
+      sb.from("rezepturen").select("id, gericht_id, gueltig_ab, portionen, mwst, notiz, rezepturpositionen(artikel_id, menge_basis, verlust_prozent)")
+        .eq("betrieb_id", B.id).order("gueltig_ab", { ascending:false }).order("id", { ascending:false }).limit(2000),
+      sb.rpc("wareneinsatz_theoretisch", { p_betrieb: B.id, p_von: monat.toISOString(), p_bis: jetzt.toISOString() })
+    ]);
+  }catch(e){ KALK.fehler = "Die Kalkulation ließ sich nicht laden. Bitte Seite neu laden."; return; }
+  const f = [k, r, w].find(x => x && x.error);
+  if(f) KALK.fehler = /function|does not exist|schema cache|relation/i.test(f.error.message || "")
+    ? "Die Kalkulation ist in der Datenbank noch nicht eingerichtet (migration-einkauf-e3.sql)."
+    : "Die Kalkulation ließ sich nicht laden. Bitte Seite neu laden.";
+  KALK.zeilen = k && Array.isArray(k.data) ? k.data : [];
+  KALK.rezepturen = r && Array.isArray(r.data) ? r.data : [];
+  KALK.we = w && w.data && typeof w.data === "object" ? w.data : null;
+}
+
+const kalkVon = gid => KALK.zeilen.find(z => z.gericht_id === gid);
+/* Gerichte, deren GÜLTIGE Rezeptur diesen Artikel enthält. */
+function betroffeneGerichte(artikelId){
+  const aktuell = new Set(KALK.zeilen.map(z => z.rezeptur_id).filter(Boolean));
+  const ids = new Set(KALK.rezepturen.filter(r => aktuell.has(r.id) && (r.rezepturpositionen || []).some(p => p.artikel_id === artikelId)).map(r => r.gericht_id));
+  return KALK.zeilen.filter(z => ids.has(z.gericht_id));
+}
+function betroffenText(artikelId){
+  const g = betroffeneGerichte(artikelId);
+  if(!g.length) return "";
+  return " · betrifft " + esc(g.slice(0, 3).map(x => x.name).join(", ")) + (g.length > 3 ? " +" + (g.length - 3) : "");
+}
+
+function weZeichnen(heute){
+  $("kWeTitel").textContent = "Wareneinsatz im " + monatFmt.format(heute);
+  const we = KALK.we;
+  if(!we){ $("kWe").textContent = "—"; $("kWeUnter").textContent = KALK.fehler ? "noch nicht verfügbar" : "aus den verkauften Gerichten"; return; }
+  $("kWe").textContent = euro.format(Number(we.wareneinsatz || 0));
+  const umsatz = Number(we.umsatz_mit_rezeptur || 0), ohne = Number(we.ohne_rezeptur || 0);
+  $("kWeUnter").textContent = (umsatz > 0 ? prozentFmt.format(Number(we.wareneinsatz) / umsatz) + " vom Bruttoumsatz dieser Gerichte" : "noch kein Verkauf mit Rezeptur") +
+    (ohne ? " · " + ohne + " verkaufte Position" + (ohne > 1 ? "en" : "") + " ohne Rezeptur" : "");
+}
+
+function kalkZeile(z){
+  const we = z.wareneinsatz != null ? Number(z.wareneinsatz) : null;
+  const weA = z.wareneinsatz_aktion != null ? Number(z.wareneinsatz_aktion) : null;
+  let pille, unter;
+  if(!z.rezeptur_id){
+    pille = '<span class="pille">Keine Rezeptur</span>';
+    unter = esc(z.kategorie || "Ohne Kategorie") + " · Preis " + esc(euro.format(Number(z.preis || 0)));
+  }else{
+    pille = we == null ? '<span class="pille entwurf">Ohne Preis</span>'
+      : '<span class="pille ' + (we > WE_GRENZE ? "hoch" : "runter") + '">' + esc(prozentFmt.format(we)) + "</span>";
+    unter = (z.kosten != null ? "Kosten " + esc(euro.format(Number(z.kosten))) + " je Portion" : "Kein Einkaufspreis") +
+      " · Preis " + esc(euro.format(Number(z.preis || 0))) +
+      (z.aktionspreis != null ? " · Aktion " + esc(euro.format(Number(z.aktionspreis))) + (weA != null ? " (" + esc(prozentFmt.format(weA)) + ")" : "") : "") +
+      (z.ohne_preis ? " · " + z.ohne_preis + " Zutat" + (z.ohne_preis > 1 ? "en" : "") + " ohne Einkaufspreis" : "");
+  }
+  return '<button type="button" class="zeile" data-gericht="' + esc(z.gericht_id) + '"><span class="titel">' + esc(z.name) + "</span>" +
+    '<span class="rechts">' + pille + '</span><span class="unter">' + unter + "</span></button>";
+}
+
+function kalkZeichnen(){
+  $("kalkListeTeil").hidden = false; $("kalkEdit").hidden = true;
+  const f = $("kalkFehler"); f.textContent = KALK.fehler; f.hidden = !KALK.fehler;
+  const such = $("kSuche").value.trim().toLowerCase();
+  const liste = KALK.zeilen.filter(z =>
+    (!such || String(z.name).toLowerCase().includes(such) || String(z.kategorie || "").toLowerCase().includes(such)) &&
+    (K_FILTER === "alle" || (K_FILTER === "ohne" && !z.rezeptur_id) ||
+     (K_FILTER === "hoch" && z.wareneinsatz != null && Number(z.wareneinsatz) > WE_GRENZE)));
+  $("kalkListe").innerHTML = liste.length ? liste.map(kalkZeile).join("")
+    : '<p class="leerzeile">' + (!KALK.zeilen.length ? "Noch kein Gericht in der Karte." : K_FILTER === "hoch" ? "Kein Gericht über 35 % Wareneinsatz." : K_FILTER === "ohne" ? "Jedes Gericht hat eine Rezeptur." : "Kein Gericht passt.") + "</p>";
+}
+
+/* ── Rezeptur bearbeiten ─────────────────────────────────────── */
+function leereRezPos(){ return { artikel_id:"", menge:"", verlust:"" }; }
+function rezOeffnen(gid){
+  const z = kalkVon(gid); if(!z) return;
+  const r = z.rezeptur_id ? KALK.rezepturen.find(x => x.id === z.rezeptur_id) : null;
+  const name = id => (artikelVon(id) || { name:"" }).name;
+  REZ = {
+    gericht_id: gid, portionen: r ? fmtEingabe(Number(r.portionen)) : "1", mwst: r ? Number(r.mwst) : 7, notiz:"",
+    pos: r && (r.rezepturpositionen || []).length
+      ? r.rezepturpositionen.slice().sort((a, b) => name(a.artikel_id).localeCompare(name(b.artikel_id), "de") || (a.artikel_id < b.artikel_id ? -1 : 1))
+          .map(p => ({ artikel_id:p.artikel_id, menge:fmtEingabe(Number(p.menge_basis)), verlust: Number(p.verlust_prozent) ? fmtEingabe(Number(p.verlust_prozent)) : "" }))
+      : [leereRezPos()]
+  };
+  ANSICHT = "kalkulation";
+  zeichnen();
+}
+
+/* Letzter freigegebener Preis je Basiseinheit — DATEN.preise ist neu → alt sortiert. */
+function letzterPreis(aid){ const p = DATEN.preise.find(x => x.artikel_id === aid); return p ? Number(p.preis_basis) : null; }
+
+/* Vorschau: dieselbe Rechnung wie gericht_kosten_portion. */
+function rezVorschau(){
+  const port = zahl(REZ.portionen);
+  let summe = 0, ohne = 0, zeilen = 0, lesbar = true;
+  const je = REZ.pos.map(p => {
+    if(!p.artikel_id) return { text:"" };
+    const a = artikelVon(p.artikel_id), m = zahl(p.menge), v = zahl(p.verlust);
+    if(Number.isNaN(m) || Number.isNaN(v)){ lesbar = false; return { fehler:"Zahl nicht lesbar." }; }
+    if(!(m > 0)) return { text:"Menge eintragen" };
+    zeilen++;
+    const menge = m * (1 + (v || 0) / 100), preis = letzterPreis(p.artikel_id);
+    if(preis == null){ ohne++; return { text:"= " + mengeText(menge, a ? a.basiseinheit : "stk") + " · kein Einkaufspreis" }; }
+    summe += menge * preis;
+    return { text:"= " + mengeText(menge, a ? a.basiseinheit : "stk") + " · " + euro.format(menge * preis) };
+  });
+  const kosten = lesbar && port > 0 && zeilen ? summe / port : null;
+  return { je, kosten, ohne };
+}
+
+function rezZeichnen(){
+  $("kalkListeTeil").hidden = true; const box = $("kalkEdit"); box.hidden = false;
+  const z = kalkVon(REZ.gericht_id) || { name:"Gericht", preis:0 };
+  const fassungen = KALK.rezepturen.filter(r => r.gericht_id === REZ.gericht_id);
+  const aktuell = fassungen.find(r => r.id === z.rezeptur_id);
+  const kopf = '<div class="werkzeuge"><button type="button" class="knopf leer" data-aktion="kalk-liste">Zurück zur Liste</button>' +
+    '<h2 class="wachsen">' + esc(z.name) + "</h2></div>";
+  const stand = '<p class="leise" style="margin:0;font-size:14px">' + (aktuell
+    ? "Gültige Fassung seit " + esc(datumFmt.format(new Date(aktuell.gueltig_ab))) + " · " + fassungen.length + " Fassung" + (fassungen.length > 1 ? "en" : "")
+    : "Noch keine Rezeptur.") + "</p>";
+  const frueher = fassungen.filter(r => r !== aktuell);
+  const verlauf = frueher.length ? "<h3>Frühere Fassungen</h3><div class=\"liste\">" + frueher.map(r =>
+    '<div class="zeile"><span class="titel">' + esc(datumFmt.format(new Date(r.gueltig_ab))) + '</span><span class="rechts">' +
+    esc(zahlFmt.format(Number(r.portionen))) + " Port.</span>" + (r.notiz ? '<span class="unter">' + esc(r.notiz) + "</span>" : "") + "</div>").join("") + "</div>" : "";
+
+  /* Team und alles ohne Inhaber-Recht: nur ansehen, kein Feld. */
+  if(B.rolle !== "inhaber"){
+    const pos = aktuell ? (aktuell.rezepturpositionen || []) : [];
+    box.innerHTML = kopf + stand + kennzahlenRez(z, z.kosten != null ? Number(z.kosten) : null, aktuell ? Number(aktuell.mwst) : 7) +
+      (pos.length ? '<div class="tabellenrahmen"><table class="tabelle"><thead><tr><th>Zutat</th><th class="z">Menge</th><th class="z">Verlust</th></tr></thead><tbody>' +
+        pos.map(p => { const a = artikelVon(p.artikel_id);
+          return "<tr><td>" + esc(a ? a.name : "Artikel") + '</td><td class="z">' + esc(mengeText(Number(p.menge_basis), a ? a.basiseinheit : "stk")) +
+            '</td><td class="z">' + esc(zahlFmt.format(Number(p.verlust_prozent || 0))) + " %</td></tr>"; }).join("") + "</tbody></table></div>" : "") + verlauf;
+    return;
+  }
+  const v = rezVorschau();
+  const artikel = DATEN.artikel.filter(a => a.aktiv || REZ.pos.some(p => p.artikel_id === a.id));
+  box.innerHTML = kopf + stand +
+    '<div id="rezZahlen">' + kennzahlenRez(z, v.kosten, REZ.mwst, v.ohne) + "</div>" +
+    '<div class="karte"><div class="raster">' +
+      '<label class="feld"><span>Ergibt Portionen</span><input id="rPortionen" type="text" inputmode="decimal" value="' + esc(REZ.portionen) + '"></label>' +
+      '<div class="feld"><span class="leise" id="rMwstTitel">MwSt. auf den Verkauf</span><div class="einheitwahl" role="radiogroup" aria-labelledby="rMwstTitel" id="rMwst">' +
+        [7, 19, 0].map(m => '<button type="button" role="radio" aria-checked="' + (REZ.mwst === m) + '" data-mwst="' + m + '">' + m + " %</button>").join("") + "</div></div>" +
+    "</div></div>" +
+    '<h3>Zutaten je Rezeptur</h3><div id="rezPosListe" class="abschnitt" style="gap:12px">' +
+    REZ.pos.map((p, i) => {
+      const a = artikelVon(p.artikel_id), e = v.je[i] || { text:"" };
+      return '<div class="pos" data-rpos="' + i + '">' +
+        '<div class="pos-kopf"><b>Zutat ' + (i + 1) + "</b>" +
+          '<button type="button" class="knopf leer" data-aktion="rpos-weg" data-i="' + i + '" aria-label="Zutat ' + (i + 1) + ' entfernen">Entfernen</button></div>' +
+        '<div class="pos-raster">' +
+          '<label class="feld breit"><span>Artikel</span><select data-rf="artikel_id">' + optionen(artikel, p.artikel_id, "– wählen –") + "</select></label>" +
+          '<label class="feld"><span>Menge' + (a ? " (" + esc(EINHEIT_KURZ[a.basiseinheit]) + ")" : "") + '</span><input type="text" inputmode="decimal" data-rf="menge" value="' + esc(p.menge) + '" placeholder="' + (a && a.basiseinheit === "stk" ? "1" : "200") + '"></label>' +
+          '<label class="feld"><span>Verlust (%)</span><input type="text" inputmode="decimal" data-rf="verlust" value="' + esc(p.verlust) + '" placeholder="0"></label>' +
+        "</div>" +
+        '<div class="ergebnis' + (e.fehler ? " fehler" : "") + '" data-rerg="' + i + '">' + esc(e.fehler || e.text) + "</div></div>";
+    }).join("") + "</div>" +
+    '<button type="button" class="knopf" data-aktion="rpos-neu">Zutat hinzufügen</button>' +
+    '<label class="feld"><span>Was hat sich geändert? (optional)</span><input id="rNotiz" type="text" maxlength="300" value="' + esc(REZ.notiz) + '" placeholder="z. B. mehr Käse"></label>' +
+    '<p class="meldung fehler" id="rMeldung" role="alert" hidden></p>' +
+    '<div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="rez-sichern">' + (aktuell ? "Als neue Fassung sichern" : "Rezeptur sichern") + "</button></div>" +
+    '<p class="leise" style="margin:0;font-size:14px">Gesichert wird eine neue Fassung ab jetzt. Frühere Abrechnungen behalten die Fassung, die damals galt.</p>' +
+    verlauf;
+}
+
+function kennzahlenRez(z, kosten, mwst, ohne){
+  const netto = p => p > 0 ? p / (1 + mwst / 100) : null;
+  const we = (k, p) => k != null && netto(p) ? prozentFmt.format(k / netto(p)) : "—";
+  return '<div class="kennzahlen">' +
+    '<div class="kennzahl"><span>Kosten je Portion</span><b>' + esc(kosten != null ? euro.format(kosten) : "—") + "</b>" +
+      '<span class="leise">' + (ohne ? ohne + " Zutat" + (ohne > 1 ? "en" : "") + " ohne Einkaufspreis" : "letzter Einkaufspreis") + "</span></div>" +
+    '<div class="kennzahl"><span>Wareneinsatz</span><b>' + esc(we(kosten, Number(z.preis))) + '</b><span class="leise">zum Kartenpreis ' + esc(euro.format(Number(z.preis || 0))) + "</span></div>" +
+    (z.aktionspreis != null ? '<div class="kennzahl"><span>Wareneinsatz in der Aktion</span><b>' + esc(we(kosten, Number(z.aktionspreis))) + '</b><span class="leise">zum Aktionspreis ' + esc(euro.format(Number(z.aktionspreis))) + "</span></div>" : "") +
+    "</div>";
+}
+
+/* Tippen ändert REZ und die Vorschau, ohne neu zu zeichnen (Fokus bleibt). */
+function rezEingabe(e){
+  const t = e.target;
+  if(t.id === "rPortionen") REZ.portionen = t.value;
+  else if(t.id === "rNotiz"){ REZ.notiz = t.value; return; }
+  else{
+    const el = t.closest("[data-rpos]"), f = t.dataset.rf; if(!el || !f) return;
+    REZ.pos[Number(el.dataset.rpos)][f] = t.value;
+  }
+  const v = rezVorschau(), z = kalkVon(REZ.gericht_id) || {};
+  $("rezZahlen").innerHTML = kennzahlenRez(z, v.kosten, REZ.mwst, v.ohne);
+  v.je.forEach((r, i) => { const erg = document.querySelector('[data-rerg="' + i + '"]'); if(erg){ erg.textContent = r.fehler || r.text; erg.className = "ergebnis" + (r.fehler ? " fehler" : ""); } });
+}
+document.addEventListener("click", e => {
+  const m = e.target.closest("#rMwst [data-mwst]"); if(!m || !REZ) return;
+  REZ.mwst = Number(m.dataset.mwst);
+  for(const x of $("rMwst").children) x.setAttribute("aria-checked", String(x === m));
+  const v = rezVorschau(); $("rezZahlen").innerHTML = kennzahlenRez(kalkVon(REZ.gericht_id) || {}, v.kosten, REZ.mwst, v.ohne);
+});
+
+/* Nutzlast: Unlesbares hält an, Leeres zählt nicht. zeile[i] merkt die
+   Zeile auf der Seite, damit „Zutat 3“ vom Server die richtige meint. */
+function rezSammeln(){
+  const port = zahl(REZ.portionen);
+  if(port == null || Number.isNaN(port) || !(port > 0)) return { fehler:"Portionen: bitte eine Zahl über 0 eintragen." };
+  const pos = [], zeile = [];
+  for(let i = 0; i < REZ.pos.length; i++){
+    const p = REZ.pos[i], nr = "Zutat " + (i + 1) + ": ";
+    if(!p.artikel_id && !p.menge.trim() && !p.verlust.trim()) continue;
+    if(!p.artikel_id) return { fehler:nr + "Bitte einen Artikel wählen." };
+    const m = zahl(p.menge), v = zahl(p.verlust);
+    if(Number.isNaN(m)) return { fehler:nr + "Menge ist nicht lesbar." };
+    if(m == null || !(m > 0)) return { fehler:nr + "Bitte eine Menge über 0 eintragen." };
+    if(Number.isNaN(v)) return { fehler:nr + "Verlust ist nicht lesbar." };
+    pos.push({ artikel_id:p.artikel_id, menge_basis:m, verlust_prozent: v == null ? 0 : v });
+    zeile.push(i + 1);
+  }
+  if(!pos.length) return { fehler:"Bitte mindestens eine Zutat eintragen." };
+  return { zeile, args:{ p_gericht:REZ.gericht_id, p_positionen:pos, p_portionen:port, p_mwst:REZ.mwst, p_notiz:REZ.notiz.trim() || null } };
+}
+
+/* Gründe von rezeptur_speichern — kein_recht und positionen heißen
+   hier anders als beim Beleg. pruef-einkauf.js hält REZ_FELD gegen
+   jedes 'feld' in migration-einkauf-e3.sql. */
+const REZ_GRUENDE = {
+  kein_recht: "Nur der Besitzer kann Rezepturen ändern.",
+  positionen: "Zu viele Zutaten — höchstens 100 je Rezeptur.",
+  form:       "Die Notiz ist zu lang (höchstens 300 Zeichen)."
+};
+const REZ_FELD = {
+  zahl:"Eine Zahl ist nicht lesbar", menge:"braucht eine Menge über 0", verlust:"Verlust zwischen 0 und 90 %",
+  artikel:"Der Artikel gehört nicht zu Ihrem Betrieb", doppelt:"Dieser Artikel steht schon in einer anderen Zeile"
+};
+function rezGrundSatz(a, zeile){
+  if(!a) return "Keine Antwort vom Server. Bitte noch einmal.";
+  if(a.grund === "position" && a.pos) return "Zutat " + ((zeile && zeile[a.pos - 1]) || a.pos) + ": " + (REZ_FELD[a.feld] || GRUENDE.position) + ".";
+  return REZ_GRUENDE[a.grund] || GRUENDE[a.grund] || ("Das hat nicht geklappt (" + a.grund + ").");
+}
+function rMeldung(t){ const m = $("rMeldung"); if(!m) return; m.textContent = t || ""; m.hidden = !t; if(t) m.scrollIntoView({ block:"nearest" }); }
+
+let REZ_LAEUFT = false;
+async function rezSichern(knopf){
+  if(REZ_LAEUFT) return;
+  const s = rezSammeln();
+  if(s.fehler){ rMeldung(s.fehler); return; }
+  REZ_LAEUFT = true; knopf.disabled = true; rMeldung("");
+  try{
+    const r = await sb.rpc("rezeptur_speichern", s.args);
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){ rMeldung(r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : rezGrundSatz(a, s.zeile)); return; }
+    const gid = REZ.gericht_id;
+    toast("Rezeptur gesichert — gilt ab jetzt");
+    await kalkLaden();
+    rezOeffnen(gid);
+  }finally{ REZ_LAEUFT = false; if(knopf.isConnected) knopf.disabled = false; }
 }
 
 /* ═══ Artikel ════════════════════════════════════════════════ */
@@ -1338,7 +1636,9 @@ async function verlustBuchen(id){
 /* ═══ Bedienung ══════════════════════════════════════════════ */
 document.addEventListener("click", e => {
   const reiter = e.target.closest(".reiter [data-ansicht]");
-  if(reiter){ ANSICHT = reiter.dataset.ansicht; EDIT = null; zeichnen(); return; }
+  if(reiter){ ANSICHT = reiter.dataset.ansicht; EDIT = null; REZ = null; zeichnen(); return; }
+  const gericht = e.target.closest("[data-gericht]");
+  if(gericht){ rezOeffnen(gericht.dataset.gericht); return; }
   const beleg = e.target.closest("[data-beleg]");
   if(beleg){ ANSICHT = "belege"; belegOeffnen(beleg.dataset.beleg); return; }
   const k = e.target.closest("[data-aktion]"); if(!k) return;
@@ -1358,11 +1658,16 @@ document.addEventListener("click", e => {
   else if(was === "lief-aktiv") lieferantAktiv(id);
   else if(was === "datei") dateiOeffnen(id, k);
   else if(was === "verlust") verlustBuchen(id, k);
+  else if(was === "kalk-liste"){ REZ = null; zeichnen(); }
+  else if(was === "rpos-neu"){ REZ.pos.push(leereRezPos()); rezZeichnen(); const f = document.querySelectorAll("#rezPosListe [data-rpos]"); f[f.length - 1].querySelector("select").focus(); }
+  else if(was === "rpos-weg"){ REZ.pos.splice(Number(k.dataset.i), 1); if(!REZ.pos.length) REZ.pos.push(leereRezPos()); rezZeichnen(); }
+  else if(was === "rez-sichern") rezSichern(k);
 });
 
 /* Eingaben im Beleg landen in EDIT, ohne neu zu zeichnen — der Fokus
    bleibt im Feld. Nur Art und Artikel ändern die Felder selbst. */
 document.addEventListener("input", e => {
+  if(REZ && e.target.closest("#kalkEdit")){ rezEingabe(e); return; }
   if(!EDIT || EDIT.nurAnsehen) return;
   const kopf = { eLieferant:"lieferant_id", eNummer:"belegnummer", eDatum:"belegdatum", eNetto:"netto", eSteuer:"steuer", eBrutto:"brutto", eNotiz:"notiz" }[e.target.id];
   if(kopf){ EDIT.kopf[kopf] = e.target.value; if(kopf === "netto") summeZeichnen(); return; }
@@ -1376,6 +1681,7 @@ document.addEventListener("input", e => {
   if(f === "netto") summeZeichnen();
 });
 document.addEventListener("change", e => {
+  if(REZ && e.target.closest("#kalkEdit")){ if(e.target.dataset.rf === "artikel_id") rezZeichnen(); return; }
   if(!EDIT || EDIT.nurAnsehen) return;
   if(e.target.id === "eLieferant"){
     EDIT.kopf.lieferant_id = e.target.value;
@@ -1391,6 +1697,13 @@ document.addEventListener("change", e => {
 
 $("betriebWahl").addEventListener("change", e => betriebWaehlen(e.target.value));
 $("aSuche").addEventListener("input", artikelZeichnen);
+$("kSuche").addEventListener("input", kalkZeichnen);
+$("kFilter").addEventListener("click", e => {
+  const k = e.target.closest("[data-filter]"); if(!k) return;
+  K_FILTER = k.dataset.filter;
+  for(const x of $("kFilter").children) x.setAttribute("aria-checked", String(x === k));
+  kalkZeichnen();
+});
 $("aEinheit").addEventListener("click", e => {
   const k = e.target.closest("[data-einheit]"); if(!k) return;
   A_EINHEIT = k.dataset.einheit;
