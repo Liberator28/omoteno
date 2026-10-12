@@ -26,6 +26,8 @@ const path = require("path");
 const OBEN = path.join(__dirname, "..");
 const SEITE = "file://" + path.join(OBEN, "seiten", "einkauf.html");
 const SQL = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf.sql"), "utf8");
+const SQL2 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e2.sql"), "utf8");
+const EDGE = fs.readFileSync(path.join(OBEN, "supabase", "functions", "beleg-lesen", "index.ts"), "utf8");
 const HTML = fs.readFileSync(path.join(OBEN, "seiten", "einkauf.html"), "utf8");
 
 let fehler = 0;
@@ -36,7 +38,10 @@ function pruef(gut, text, zusatz){
 
 /* ── 1 · Naht als Quelltext ─────────────────────────────────────── */
 console.log("\n══ 1 · Naht zur Migration ══");
-const gruendeSql = [...new Set([...SQL.matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1]))];
+const gruendeSql = [...new Set([...(SQL + SQL2).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1]))];
+/* Dritte Quelle: jeder Grund, den beleg-lesen zurückgeben kann —
+   nein("…") und die Rückgaben von grundAus(). */
+const gruendeEdge = [...new Set([...EDGE.matchAll(/nein\("(\w+)"/g), ...EDGE.matchAll(/return "(\w+)";/g)].map(m => m[1]))];
 const gruendeSeite = (() => {
   const blk = HTML.match(/const GRUENDE = \{([\s\S]*?)\n\};/);
   return blk ? [...blk[1].matchAll(/^\s*(\w+):/gm)].map(m => m[1]) : [];
@@ -44,6 +49,9 @@ const gruendeSeite = (() => {
 pruef(gruendeSql.length >= 10, "Gründe aus der Migration gelesen", gruendeSql.length + " Gründe");
 const ohneSatz = gruendeSql.filter(g => !gruendeSeite.includes(g));
 pruef(!ohneSatz.length, "jeder Grund der Funktionen hat einen Satz auf der Seite", ohneSatz.join(", ") || "alle");
+pruef(gruendeEdge.length >= 12, "Gründe aus beleg-lesen gelesen", gruendeEdge.join(", "));
+const ohneSatzEdge = gruendeEdge.filter(g => !gruendeSeite.includes(g));
+pruef(!ohneSatzEdge.length, "jeder Grund von beleg-lesen hat einen Satz auf der Seite", ohneSatzEdge.join(", ") || "alle");
 
 function sqlParameter(fn){
   const m = SQL.match(new RegExp("function public\\." + fn + "\\(([^)]*)\\)"));
@@ -51,13 +59,22 @@ function sqlParameter(fn){
 }
 const SIGNATUR = {};
 for(const fn of ["beleg_speichern", "beleg_freigeben", "beleg_stornieren", "beleg_verwerfen"]) SIGNATUR[fn] = sqlParameter(fn);
+function sqlParameter2(fn){
+  const m = SQL2.match(new RegExp("function public\\." + fn + "\\(([^)]*)\\)"));
+  return m ? m[1].split(",").map(s => s.trim().split(/\s+/)[0]).filter(Boolean).sort() : null;
+}
+for(const fn of ["inventur_buchen", "verlust_buchen"]) SIGNATUR[fn] = sqlParameter2(fn);
+/* Der Pfad, den die Seite baut, muss durch die Prüfung der Funktion
+   (zweite Quelle: die Regel in beleg-lesen) UND durch die Speicherregel. */
+const PFAD_EDGE = (() => { const m = EDGE.match(/new RegExp\("\^" \+ betrieb \+ "\/" \+ UUID \+ "([^"]+)"\)/); return m ? JSON.parse('"' + m[1] + '"') : null; })();
+pruef(!!PFAD_EDGE, "Pfadregel aus beleg-lesen gelesen", PFAD_EDGE);
 pruef(Object.values(SIGNATUR).every(Boolean), "Signaturen aus der Migration gelesen", JSON.stringify(SIGNATUR));
 const datenGelesen = new Set([...SQL.matchAll(/p_daten\s*->>?\s*'(\w+)'/g)].map(m => m[1]));
 const posGelesen = new Set([...SQL.matchAll(/\bp\s*->>?\s*'(\w+)'/g)].map(m => m[1]));
 const POS_NUR_SEITE = ["gebinde_text"];   /* namentlich: hält „0,75 l“ zum Wiederanzeigen */
 
 /* ── 2 · Gestellte Datenbank ────────────────────────────────────── */
-const ORG = "org-1", BETRIEB = "b-1";
+const ORG = "org-1", BETRIEB = "af095b14-0000-4000-8000-000000000001";
 function grundDaten(rolle){
   return {
     rolle,
@@ -76,7 +93,7 @@ function grundDaten(rolle){
       { id: "be-entwurf", betrieb_id: BETRIEB, lieferant_id: "l-2", belegnummer: "G-5", belegdatum: new Date().toISOString().slice(0, 10),
         netto: 20, steuer: null, brutto: null, status: "entwurf", quelle: "manuell", notiz: null,
         positionen_entwurf: [{ text: "Mehl 405 25 kg", art: "ware", artikel_id: "a-mehl", menge: 1, gebinde_basis: 25000, gebinde_text: "25 kg", netto: 20, steuersatz: 7 }],
-        angelegt: new Date().toISOString() }
+        angelegt: new Date().toISOString(), datei_pfad: BETRIEB + "/11111111-2222-4333-8444-555555555555.jpg" }
     ],
     einkaufspositionen: [
       { beleg_id: "be-frei", pos: 1, text: "Wein 0,75 l", art: "ware", artikel_id: "a-wein", menge: 12, einkaufseinheit: "Flasche", gebinde_basis: 750, menge_basis: 9000, netto: 64.8, steuersatz: 19 }
@@ -141,7 +158,20 @@ function ersatz(start){
         if(name === "beleg_speichern") return { data:{ ok:true, id: args.p_beleg || "be-neu" }, error:null };
         return { data:{ ok:true }, error:null };
       },
-      from: t => abfrage(t)
+      from: t => abfrage(t),
+      storage: { from: eimer => ({
+        upload: async (pfad, blob, opt) => {
+          const b = new Uint8Array(await blob.arrayBuffer());
+          window.__hoch = { eimer, pfad, typ: opt && opt.contentType, groesse: b.length, kopf: [b[0], b[1], b[2], b[3]] };
+          return D.hochFehler ? { data:null, error:{ message:"x" } } : { data:{ path: pfad }, error:null };
+        },
+        createSignedUrl: async (pfad, sek) => { window.__signiert = { eimer, pfad, sek }; return { data:{ signedUrl:"about:blank#" + pfad }, error:null }; }
+      }) },
+      functions: { invoke: async (name, opt) => {
+        window.__rufe.push({ name: "fn:" + name, args: JSON.parse(JSON.stringify((opt && opt.body) || {})) });
+        const a = (D.antworten || {})["fn:" + name];
+        return a ? { data:a, error:null } : { data:null, error:{ message:"weg" } };
+      } }
     }) };
   ` + "})(" + JSON.stringify(start) + ");";
 }
@@ -345,6 +375,78 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
   pruef(!kons.length, "keine Ausnahme im ganzen Durchgang", kons[0]);
   await ctx.close();
 
+  /* ── E2 · Rechnung einlesen, Datei, Inventur, Verlust ──────────── */
+  console.log("\n══ 12 · Rechnung einlesen (E2) ══");
+  {
+    const d = grundDaten("inhaber");
+    d.antworten = { "fn:beleg-lesen": { ok:true, id:"be-entwurf", positionen:3, zugeordnet:1, lieferant:"Großmarkt" } };
+    const { ctx, p, kons } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]');
+    pruef(await p.isVisible("#einlesenKnopf"), "„Rechnung einlesen“ für den Inhaber da");
+    /* Ein echtes PNG (1×1) — die Seite muss daraus ein JPEG machen. */
+    const png = Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64");
+    await p.setInputFiles("#einlesenDatei", { name:"rechnung.png", mimeType:"image/png", buffer: png });
+    await p.waitForFunction(() => window.__rufe.some(r => r.name === "fn:beleg-lesen"), null, { timeout: 5000 }).catch(() => {});
+    await p.waitForTimeout(300);
+    const hoch = await p.evaluate(() => window.__hoch);
+    const ruf = (await rufe(p, "fn:beleg-lesen"))[0];
+    pruef(hoch && hoch.eimer === "belege" && hoch.typ === "image/jpeg" && hoch.kopf[0] === 0xff && hoch.kopf[1] === 0xd8, "Foto als echtes JPEG in den privaten Eimer", JSON.stringify(hoch));
+    const pfadOk = hoch && new RegExp("^" + BETRIEB + "/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}" + PFAD_EDGE).test(hoch.pfad);
+    pruef(pfadOk, "Pfad passt auf die Regel von beleg-lesen", hoch && hoch.pfad);
+    pruef(ruf && ruf.args.betrieb_id === BETRIEB && ruf.args.pfad === hoch.pfad && Object.keys(ruf.args).length === 2, "Funktion bekommt nur Betrieb und Pfad", JSON.stringify(ruf && ruf.args));
+    pruef(/Mehl 405/.test(await p.textContent("#belegEdit")) && await p.isVisible('[data-aktion="datei"]'), "danach steht der Entwurf offen, mit „Rechnung ansehen“");
+    pruef(/3 Positionen gelesen, 1 davon zugeordnet/.test(await p.textContent("#toast")), "Satz: gelesen und zugeordnet", await p.textContent("#toast"));
+    await p.evaluate(() => { window.open = () => ({ close(){}, location:{ href:"" } }); });
+    await p.click('[data-aktion="datei"]'); await p.waitForTimeout(150);
+    const sig = await p.evaluate(() => window.__signiert);
+    pruef(sig && sig.eimer === "belege" && sig.pfad === BETRIEB + "/11111111-2222-4333-8444-555555555555.jpg" && sig.sek <= 600, "Rechnung ansehen: kurzer signierter Link auf genau diese Datei", JSON.stringify(sig));
+    /* PDF bleibt PDF */
+    await p.evaluate(() => { window.__D.antworten["fn:beleg-lesen"] = { ok:false, grund:"kein_schluessel" }; window.__hoch = null; });
+    await p.click('.reiter [data-ansicht="belege"]');
+    await p.setInputFiles("#einlesenDatei", { name:"rechnung.pdf", mimeType:"application/pdf", buffer: Buffer.from("%PDF-1.4\n%probe\n") });
+    await p.waitForTimeout(500);
+    const hoch2 = await p.evaluate(() => window.__hoch);
+    pruef(hoch2 && /\.pdf$/.test(hoch2.pfad) && hoch2.typ === "application/pdf" && hoch2.kopf[0] === 0x25, "PDF geht unverändert als PDF", JSON.stringify(hoch2));
+    pruef(/noch nicht eingerichtet/.test(await p.textContent("#lesestand")), "kein Schlüssel → Satz, Weg „von Hand“ genannt", await p.textContent("#lesestand"));
+    /* Doppelt → vorhandenen Beleg öffnen */
+    await p.evaluate(() => { window.__D.antworten["fn:beleg-lesen"] = { ok:false, grund:"datei_doppelt", beleg:"be-frei" }; });
+    await p.setInputFiles("#einlesenDatei", { name:"rechnung.pdf", mimeType:"application/pdf", buffer: Buffer.from("%PDF-1.4\n%zwei\n") });
+    await p.waitForTimeout(500);
+    pruef(/R-100/.test(await p.textContent("#belegEdit")) && /schon eingelesen/.test(await p.textContent("#lesestand")), "dieselbe Rechnung nochmal → vorhandener Beleg offen, Satz");
+    /* Netz weg → Satz, nichts hängt */
+    await p.evaluate(() => { delete window.__D.antworten["fn:beleg-lesen"]; });
+    await p.click('.reiter [data-ansicht="belege"]');
+    await p.setInputFiles("#einlesenDatei", { name:"rechnung.pdf", mimeType:"application/pdf", buffer: Buffer.from("%PDF-1.4\n%drei\n") });
+    await p.waitForTimeout(500);
+    pruef(/Keine Verbindung zum Lesedienst/.test(await p.textContent("#lesestand")), "Lesedienst weg → Satz statt Hängen");
+
+    console.log("\n══ 13 · Inventur und Verlust (E2) ══");
+    await p.click('.reiter [data-ansicht="artikel"]');
+    await p.click("#inventurKnopf");
+    pruef(await p.isVisible("#inventurKarte") && (await p.getAttribute("#inventurKnopf", "aria-expanded")) === "true", "Inventur öffnet");
+    await p.fill('[data-inv="a-mehl"]', "abc");
+    await p.evaluate(() => { window.__rufe.length = 0; });
+    await p.click("#invBuchen"); await p.waitForTimeout(100);
+    pruef((await rufe(p, "inventur_buchen")).length === 0 && /nicht lesbar/.test(await p.textContent("#invMeldung")), "„abc“ → nichts gebucht, Satz");
+    await p.fill('[data-inv="a-mehl"]', "20,5");
+    await p.evaluate(() => { window.__D.antworten = { inventur_buchen:{ ok:true, buchungen:1, differenz_wert:-4 } }; });
+    await p.click("#invBuchen"); await p.waitForTimeout(200);
+    const inv = (await rufe(p, "inventur_buchen"))[0];
+    pruef(inv && JSON.stringify(Object.keys(inv.args).sort()) === JSON.stringify(SIGNATUR.inventur_buchen), "Parameter = Signatur von inventur_buchen", inv && Object.keys(inv.args).join(","));
+    pruef(inv && inv.args.p_zaehlung.length === 1 && inv.args.p_zaehlung[0].artikel_id === "a-mehl" && inv.args.p_zaehlung[0].menge === 20500,
+      "„20,5“ kg → 20500 g; leeres Feld (Wein) nicht als 0 gezählt", JSON.stringify(inv && inv.args.p_zaehlung));
+    await p.click('[data-aktion="artikel-auf"][data-id="a-wein"]');
+    await p.fill("#vMenge", "1,5"); await p.fill("#vGrund", "Bruch");
+    await p.evaluate(() => { window.__D.antworten = { verlust_buchen:{ ok:true, wert:-10.8 } }; });
+    await p.click('[data-aktion="verlust"]'); await p.waitForTimeout(200);
+    const vl = (await rufe(p, "verlust_buchen"))[0];
+    pruef(vl && JSON.stringify(Object.keys(vl.args).sort()) === JSON.stringify(SIGNATUR.verlust_buchen) && vl.args.p_menge === 1500 && vl.args.p_notiz === "Bruch",
+      "Verlust 1,5 l → 1500 ml mit Grund", JSON.stringify(vl && vl.args));
+    pruef(!kons.length, "keine Ausnahme beim Einlesen, Inventur, Verlust", kons[0]);
+    await ctx.close();
+  }
+
   /* ── 11 · Team ─────────────────────────────────────────────────── */
   console.log("\n══ 10 · Team ══");
   {
@@ -352,12 +454,12 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
     pruef(await p.isVisible("#lesesatz"), "Team: Satz statt Bedienung");
     await p.click('.reiter [data-ansicht="belege"]');
-    pruef(!(await p.isVisible("#belegNeu")), "Team: kein „Beleg erfassen“");
+    pruef(!(await p.isVisible("#belegNeu")) && !(await p.isVisible("#einlesenKnopf")), "Team: weder erfassen noch einlesen");
     await p.click('#belegListe [data-beleg="be-entwurf"]'); await p.waitForTimeout(150);
     const f = await p.evaluate(() => document.querySelectorAll("#belegEdit input, #belegEdit select").length);
     pruef(f === 0 && /Mehl 405/.test(await p.textContent("#belegEdit")), "Team: Entwurf nur ansehen", f + " Felder");
     await p.click('.reiter [data-ansicht="artikel"]');
-    pruef(!(await p.isVisible("#aAnlegen")) && !(await p.isVisible('[data-aktion="artikel-auf"]')), "Team: Artikel weder anlegen noch ändern");
+    pruef(!(await p.isVisible("#aAnlegen")) && !(await p.isVisible('[data-aktion="artikel-auf"]')) && !(await p.isVisible("#inventurKnopf")), "Team: Artikel weder anlegen noch ändern, keine Inventur");
     await ctx.close();
   }
 

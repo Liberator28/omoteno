@@ -165,6 +165,7 @@ button.zeile:active{background:var(--flaeche)}
 .summenzeile.passt{border-color:rgba(127,207,166,.55)}
 .meldung{border-radius:12px;padding:12px 14px;font-size:15px;margin:0}
 .meldung.fehler{background:rgba(255,154,139,.10);border:1px solid rgba(255,154,139,.45);color:var(--kreide)}
+.meldung:not(.fehler):not(.gut){background:var(--flaeche);border:1px solid var(--linie);color:var(--kreide)}
 .meldung.gut{background:rgba(127,207,166,.10);border:1px solid rgba(127,207,166,.45);color:var(--kreide)}
 .tabelle{width:100%;border-collapse:collapse;font-size:14.5px}
 .tabellenrahmen{overflow-x:auto;background:var(--karte);border:1px solid var(--linie);border-radius:var(--ecke)}
@@ -251,8 +252,11 @@ button.zeile:active{background:var(--flaeche)}
       <div id="belegListeTeil" class="abschnitt">
         <div class="werkzeuge">
           <h2 class="wachsen">Belege</h2>
-          <button class="knopf haupt nur-inhaber" id="belegNeu" type="button">Beleg erfassen</button>
+          <button class="knopf nur-inhaber" id="belegNeu" type="button">Von Hand erfassen</button>
+          <button class="knopf haupt nur-inhaber" id="einlesenKnopf" type="button">Rechnung einlesen</button>
+          <input id="einlesenDatei" type="file" accept="image/*,application/pdf" hidden>
         </div>
+        <p class="meldung" id="lesestand" role="status" hidden></p>
         <div class="liste" id="belegListe"></div>
       </div>
       <div id="belegEdit" class="abschnitt" hidden></div>
@@ -278,7 +282,19 @@ button.zeile:active{background:var(--flaeche)}
         <p class="meldung fehler" id="aMeldung" hidden></p>
         <button class="knopf haupt" id="aAnlegen" type="button">Artikel anlegen</button>
       </div>
-      <input id="aSuche" type="search" placeholder="Artikel suchen" aria-label="Artikel suchen">
+      <div class="werkzeuge">
+        <input class="wachsen" id="aSuche" type="search" placeholder="Artikel suchen" aria-label="Artikel suchen">
+        <button class="knopf nur-inhaber" id="inventurKnopf" type="button" aria-expanded="false">Inventur zählen</button>
+      </div>
+      <div class="karte" id="inventurKarte" hidden>
+        <h3>Inventur</h3>
+        <p class="leise" style="margin:0;font-size:14px">Tragen Sie ein, was Sie gezählt haben. Gebucht wird nur die Abweichung zum Bestand; leere Felder bleiben unberührt.</p>
+        <div id="invListe" class="abschnitt" style="gap:10px"></div>
+        <label class="feld"><span>Notiz</span><input id="invNotiz" type="text" maxlength="200" placeholder="z. B. Monatsende"></label>
+        <p class="meldung fehler" id="invMeldung" hidden></p>
+        <div class="werkzeuge"><button class="knopf haupt" id="invBuchen" type="button">Inventur buchen</button>
+          <button class="knopf leer" id="invAbbrechen" type="button">Abbrechen</button></div>
+      </div>
       <div class="liste" id="artikelListe"></div>
     </section>
 
@@ -559,7 +575,32 @@ const GRUENDE = {
   position:          "Eine Position ist nicht vollständig.",
   nicht_zugeordnet:  "Jede Ware braucht einen Artikel und die Menge je Einheit.",
   summe:             "Die Positionen ergeben nicht die Netto-Summe des Belegs.",
-  nicht_freigegeben: "Nur freigegebene Belege lassen sich stornieren."
+  nicht_freigegeben: "Nur freigegebene Belege lassen sich stornieren.",
+  /* E2: Datei, Inventur, Verlust (migration-einkauf-e2.sql) */
+  datei:             "Diese Datei gehört nicht zu Ihrem Betrieb.",
+  datei_doppelt:     "Diese Rechnung wurde schon eingelesen — der Beleg ist geöffnet.",
+  zaehlung:          "Bitte mindestens einen gezählten Artikel eintragen (höchstens 500).",
+  menge:             "Bitte eine Menge über 0 eintragen.",
+  artikel:           "Dieser Artikel gehört nicht zu Ihrem Betrieb.",
+  /* E2: Auslesen (supabase/functions/beleg-lesen) */
+  betrieb:           "Kein Betrieb gewählt. Bitte Seite neu laden.",
+  datei_fehlt:       "Die Datei ist nicht angekommen. Bitte noch einmal hochladen.",
+  zu_gross:          "Die Datei ist größer als 10 MB.",
+  typ:               "Bitte ein Foto oder ein PDF wählen.",
+  kein_schluessel:   "Das Einlesen ist noch nicht eingerichtet. Erfassen Sie den Beleg bitte von Hand.",
+  kontingent:        "Das Tageskontingent für das Einlesen ist aufgebraucht. Morgen geht es wieder — oder von Hand erfassen.",
+  abgelehnt:         "Diese Datei wurde nicht gelesen. Bitte von Hand erfassen.",
+  zu_lang:           "Die Rechnung ist zu lang zum Einlesen. Bitte in Teilen fotografieren oder von Hand erfassen.",
+  keine_antwort:     "Beim Einlesen kam keine verwertbare Antwort. Bitte noch einmal.",
+  unlesbar:          "Auf dem Bild war keine Rechnung zu lesen. Bitte schärfer und ganz fotografieren.",
+  schluessel_ungueltig: "Das Einlesen ist falsch eingerichtet (Schlüssel ungültig). Bitte beim Omoteno-Team melden.",
+  schluessel_ohne_recht: "Das Einlesen ist falsch eingerichtet (Schlüssel ohne Recht). Bitte beim Omoteno-Team melden.",
+  guthaben_leer:     "Das Guthaben für das Einlesen ist aufgebraucht. Bitte beim Omoteno-Team melden.",
+  zu_viele:          "Gerade zu viele Anfragen. Bitte in einer Minute noch einmal.",
+  ueberlastet:       "Der Lesedienst ist gerade überlastet. Bitte gleich noch einmal.",
+  fehler:            "Das hat nicht geklappt. Bitte noch einmal.",
+  kein_json:         "Das hat nicht geklappt. Bitte Seite neu laden.",
+  nur_post:          "Das hat nicht geklappt. Bitte Seite neu laden."
 };
 const POS_FELD = {
   text:"braucht einen Text (bis 200 Zeichen)", art:"hat eine unbekannte Art", menge:"braucht eine Menge über 0",
@@ -714,7 +755,7 @@ async function allesLaden(){
   const [art, lief, bel, best, pr, zu] = await Promise.all([
     sb.from("artikel").select("id, name, kategorie, basiseinheit, aktiv").eq("organisation_id", org).order("name").order("id"),
     sb.from("lieferanten").select("id, name, kundennummer, kontakt, aktiv").eq("organisation_id", org).order("name").order("id"),
-    sb.from("einkaufsbelege").select("id, lieferant_id, belegnummer, belegdatum, netto, steuer, brutto, status, quelle, notiz, positionen_entwurf, angelegt")
+    sb.from("einkaufsbelege").select("id, lieferant_id, belegnummer, belegdatum, netto, steuer, brutto, status, quelle, notiz, positionen_entwurf, angelegt, datei_pfad")
       .eq("betrieb_id", B.id).order("belegdatum", { ascending:false }).order("angelegt", { ascending:false }).order("id").limit(300),
     sb.from("lagerbestand").select("artikel_id, menge_basis, wert_netto").eq("betrieb_id", B.id),
     sb.from("artikel_preise").select("artikel_id, preis_basis, belegdatum, position_id, lieferant_id").eq("betrieb_id", B.id)
@@ -832,7 +873,7 @@ function belegOeffnen(id){
     pos: b && Array.isArray(b.positionen_entwurf) && b.positionen_entwurf.length
       ? b.positionen_entwurf.map(p => ({ text:p.text || "", art:p.art || "ware", artikel_id:p.artikel_id || "", menge:fmtEingabe(p.menge),
           einkaufseinheit:p.einkaufseinheit || "", gebinde:p.gebinde_text || fmtEingabe(p.gebinde_basis), netto:fmtEingabe(p.netto),
-          steuersatz:fmtEingabe(p.steuersatz), gelernt:false }))
+          steuersatz:fmtEingabe(p.steuersatz), gelernt:!!p.gelernt }))
       : [leerePos()]
   };
   zeichnen();
@@ -874,7 +915,8 @@ function editZeichnen(){
       '<label class="feld"><span>Steuer (€)</span><input id="eSteuer" type="text" inputmode="decimal" value="' + esc(k.steuer) + '"></label>' +
       '<label class="feld"><span>Brutto (€)</span><input id="eBrutto" type="text" inputmode="decimal" value="' + esc(k.brutto) + '"></label>' +
       '<label class="feld breit"><span>Notiz</span><input id="eNotiz" type="text" maxlength="500" value="' + esc(k.notiz) + '"></label>' +
-    "</div>" + (lieferanten.length ? "" : '<p class="leise" style="margin:0">Noch kein Lieferant — legen Sie ihn unter „Lieferanten“ an.</p>') + "</div>" +
+    "</div>" + (lieferanten.length ? "" : '<p class="leise" style="margin:0">Noch kein Lieferant — legen Sie ihn unter „Lieferanten“ an.</p>') +
+      dateiKnopf(EDIT.id) + "</div>" +
     '<h3>Positionen</h3><div id="posListe" class="abschnitt" style="gap:12px">' +
     EDIT.pos.map((p, i) => {
       const e = posErgebnis(p), a = artikelVon(p.artikel_id);
@@ -1059,7 +1101,7 @@ function ansehenZeichnen(){
           '<td class="z">' + esc(p.netto != null ? euro.format(p.netto) : "—") + "</td>" +
           '<td class="z">' + esc(a && mb ? preisText(Number(p.netto) / mb, a.basiseinheit) : "") + "</td></tr>";
       }).join("") + "</tbody></table></div>") +
-    (b.notiz ? '<p class="leise" style="margin:0">' + esc(b.notiz) + "</p>" : "") +
+    (b.notiz ? '<p class="leise" style="margin:0">' + esc(b.notiz) + "</p>" : "") + dateiKnopf(b.id) +
     '<p class="meldung fehler" id="aMeldungBeleg" role="alert" hidden></p>' +
     (b.status === "freigegeben" ? '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf gefahr" data-aktion="stornieren">Beleg stornieren</button>' +
       '<span class="leise" style="font-size:14px">Bucht den Bestand zurück. Danach einen neuen Beleg erfassen.</span></div>' : "");
@@ -1086,7 +1128,12 @@ function artikelZeichnen(){
         '<label class="feld"><span>Kategorie</span><input type="text" maxlength="60" id="aeKat" value="' + esc(a.kategorie || "") + '"></label>' +
         '<p class="meldung fehler" id="aeMeldung" hidden></p>' +
         '<div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="artikel-sichern" data-id="' + esc(a.id) + '">Sichern</button>' +
-        '<button type="button" class="knopf" data-aktion="artikel-aktiv" data-id="' + esc(a.id) + '">' + (a.aktiv ? "Nicht mehr einkaufen" : "Wieder aktiv") + "</button></div></div>" : "") +
+        '<button type="button" class="knopf" data-aktion="artikel-aktiv" data-id="' + esc(a.id) + '">' + (a.aktiv ? "Nicht mehr einkaufen" : "Wieder aktiv") + "</button></div>" +
+        "<b>Verlust buchen</b>" +
+        '<div class="raster"><label class="feld"><span>Menge (' + esc(GROSS_NAME[a.basiseinheit]) + ')</span><input type="text" inputmode="decimal" id="vMenge" placeholder="z. B. 1,5"></label>' +
+        '<label class="feld"><span>Grund</span><input type="text" maxlength="200" id="vGrund" placeholder="z. B. verdorben, Bruch"></label></div>' +
+        '<p class="meldung fehler" id="vMeldung" hidden></p>' +
+        '<div class="werkzeuge"><button type="button" class="knopf gefahr" data-aktion="verlust" data-id="' + esc(a.id) + '">Verlust buchen</button></div></div>' : "") +
     "</div>";
   }).join("") : '<p class="leerzeile">' + (DATEN.artikel.length ? "Kein Artikel passt." : "Noch kein Artikel.") + "</p>";
 }
@@ -1169,6 +1216,125 @@ async function lieferantAktiv(id){
   await allesLaden();
 }
 
+/* ═══ E2 · Rechnung einlesen ═════════════════════════════════
+   Foto → JPEG auf dem Gerät (auch HEIC vom iPhone, längste Seite
+   2400 px) → privater Eimer belege/<betrieb>/<uuid>.jpg → Funktion
+   beleg-lesen → Entwurf. Freigeben tut immer der Mensch. */
+const GROSS_NAME = { g:"kg", ml:"l", stk:"Stück" };
+const GROSS_FAKTOR = { g:1000, ml:1000, stk:1 };
+function lesestand(t, art){ const m = $("lesestand"); m.textContent = t || ""; m.className = "meldung" + (art ? " " + art : ""); m.hidden = !t; }
+function neueId(){
+  if(crypto.randomUUID) return crypto.randomUUID();
+  const b = crypto.getRandomValues(new Uint8Array(16)); b[6] = (b[6] & 15) | 64; b[8] = (b[8] & 63) | 128;
+  const h = [...b].map(x => x.toString(16).padStart(2, "0")).join("");
+  return h.slice(0, 8) + "-" + h.slice(8, 12) + "-" + h.slice(12, 16) + "-" + h.slice(16, 20) + "-" + h.slice(20);
+}
+function alsJpeg(datei){
+  return new Promise((ok, nein) => {
+    const url = URL.createObjectURL(datei), bild = new Image();
+    bild.onload = () => {
+      const f = Math.min(1, 2400 / Math.max(bild.naturalWidth, bild.naturalHeight));
+      const c = document.createElement("canvas");
+      c.width = Math.round(bild.naturalWidth * f); c.height = Math.round(bild.naturalHeight * f);
+      const g = c.getContext("2d"); g.fillStyle = "#fff"; g.fillRect(0, 0, c.width, c.height);
+      g.drawImage(bild, 0, 0, c.width, c.height); URL.revokeObjectURL(url);
+      c.toBlob(b => b ? ok(b) : nein(new Error("jpeg")), "image/jpeg", 0.85);
+    };
+    bild.onerror = () => { URL.revokeObjectURL(url); nein(new Error("bild")); };
+    bild.src = url;
+  });
+}
+let LIEST = false;
+async function einlesen(datei){
+  if(!datei || LIEST) return;
+  LIEST = true;
+  try{
+    const pdf = datei.type === "application/pdf" || /\.pdf$/i.test(datei.name || "");
+    let inhalt = datei;
+    if(!pdf){
+      lesestand("Foto wird vorbereitet …");
+      try{ inhalt = await alsJpeg(datei); }catch(e){ lesestand(GRUENDE.typ, "fehler"); return; }
+    }
+    if(inhalt.size > 10 * 1024 * 1024){ lesestand(GRUENDE.zu_gross, "fehler"); return; }
+    const pfad = B.id + "/" + neueId() + (pdf ? ".pdf" : ".jpg");
+    lesestand("Wird hochgeladen …");
+    const hoch = await sb.storage.from("belege").upload(pfad, inhalt, { contentType: pdf ? "application/pdf" : "image/jpeg", upsert:false });
+    if(hoch.error){ lesestand("Das Hochladen hat nicht geklappt. Bitte noch einmal.", "fehler"); return; }
+    lesestand("Rechnung wird gelesen — das dauert bis zu einer Minute …");
+    let a = null;
+    try{
+      const r = await sb.functions.invoke("beleg-lesen", { body:{ betrieb_id: B.id, pfad } });
+      a = r && !r.error ? r.data : null;
+    }catch(e){ a = null; }
+    if(!a){ lesestand("Keine Verbindung zum Lesedienst. Bitte noch einmal — oder von Hand erfassen.", "fehler"); return; }
+    if(a.ok !== true){
+      if(a.grund === "datei_doppelt" && a.beleg){ await allesLaden(); lesestand(GRUENDE.datei_doppelt, "fehler"); belegOeffnen(a.beleg); return; }
+      lesestand(grundSatz(a), "fehler"); return;
+    }
+    await allesLaden();
+    lesestand("");
+    belegOeffnen(a.id);
+    toast(a.positionen + " Positionen gelesen, " + a.zugeordnet + " davon zugeordnet — bitte prüfen und freigeben.");
+  }finally{
+    LIEST = false; $("einlesenDatei").value = "";
+  }
+}
+
+function dateiKnopf(id){
+  const b = DATEN.belege.find(x => x.id === id);
+  if(!b || !b.datei_pfad) return "";
+  return '<button type="button" class="knopf leer" data-aktion="datei" data-id="' + esc(b.id) + '">Rechnung ansehen</button>';
+}
+/* Ein Link, der fünf Minuten gilt — der Eimer ist privat. Das Fenster
+   wird VOR dem Warten geöffnet, sonst blockt Safari es als Popup. */
+async function dateiOeffnen(id, knopf){
+  const b = DATEN.belege.find(x => x.id === id); if(!b || !b.datei_pfad) return;
+  const fenster = window.open("", "_blank");
+  const r = await sb.storage.from("belege").createSignedUrl(b.datei_pfad, 300);
+  if(r.error || !r.data){ if(fenster) fenster.close(); knopf.textContent = "Rechnung nicht erreichbar"; return; }
+  if(fenster){ fenster.opener = null; fenster.location.href = r.data.signedUrl; } else location.href = r.data.signedUrl;
+}
+
+/* ═══ E2 · Inventur und Verlust ══════════════════════════════
+   Eingegeben wird in kg / l / Stück (wie der Bestand angezeigt wird),
+   gebucht in g / ml / Stück. Leer = nicht gezählt, nicht „0“. */
+function inventurZeichnen(){
+  const artikel = DATEN.artikel.filter(a => a.aktiv);
+  $("invListe").innerHTML = artikel.length ? artikel.map(a => {
+    const best = DATEN.bestand[a.id];
+    return '<label class="feld"><span>' + esc(a.name) + ' — Bestand ' + esc(best ? mengeText(best.menge_basis, a.basiseinheit) : "0 " + EINHEIT_KURZ[a.basiseinheit]) + '</span>' +
+      '<input type="text" inputmode="decimal" data-inv="' + esc(a.id) + '" placeholder="gezählt in ' + esc(GROSS_NAME[a.basiseinheit]) + '"></label>';
+  }).join("") : '<p class="leerzeile">Noch kein aktiver Artikel.</p>';
+}
+async function inventurBuchen(){
+  const m = $("invMeldung"); m.hidden = true;
+  const zaehlung = [];
+  for(const f of document.querySelectorAll("[data-inv]")){
+    const n = zahl(f.value);
+    if(n == null) continue;
+    const a = artikelVon(f.dataset.inv);
+    if(Number.isNaN(n) || n < 0){ m.textContent = a.name + ": Menge ist nicht lesbar."; m.hidden = false; f.focus(); return; }
+    zaehlung.push({ artikel_id: a.id, menge: Math.round(n * GROSS_FAKTOR[a.basiseinheit] * 10000) / 10000 });
+  }
+  if(!zaehlung.length){ m.textContent = GRUENDE.zaehlung; m.hidden = false; return; }
+  const r = await sb.rpc("inventur_buchen", { p_betrieb: B.id, p_zaehlung: zaehlung, p_notiz: $("invNotiz").value.trim() || null });
+  const a = r && !r.error ? r.data : null;
+  if(!a || a.ok !== true){ m.textContent = grundSatz(a); m.hidden = false; return; }
+  $("inventurKarte").hidden = true; $("inventurKnopf").setAttribute("aria-expanded", "false"); $("invNotiz").value = "";
+  toast(a.buchungen ? a.buchungen + " Abweichung" + (a.buchungen > 1 ? "en" : "") + " gebucht · " + euro.format(a.differenz_wert || 0) : "Alles stimmt — nichts zu buchen");
+  await allesLaden();
+}
+async function verlustBuchen(id){
+  const a = artikelVon(id), m = $("vMeldung"); m.hidden = true;
+  const n = zahl($("vMenge").value);
+  if(n == null || Number.isNaN(n) || n <= 0){ m.textContent = GRUENDE.menge; m.hidden = false; return; }
+  const r = await sb.rpc("verlust_buchen", { p_betrieb: B.id, p_artikel: id, p_menge: Math.round(n * GROSS_FAKTOR[a.basiseinheit] * 10000) / 10000, p_notiz: $("vGrund").value.trim() || null });
+  const e = r && !r.error ? r.data : null;
+  if(!e || e.ok !== true){ m.textContent = grundSatz(e); m.hidden = false; return; }
+  toast("Verlust gebucht" + (e.wert != null ? " · " + euro.format(e.wert) : ""));
+  A_OFFEN = null; await allesLaden();
+}
+
 /* ═══ Bedienung ══════════════════════════════════════════════ */
 document.addEventListener("click", e => {
   const reiter = e.target.closest(".reiter [data-ansicht]");
@@ -1190,6 +1356,8 @@ document.addEventListener("click", e => {
   else if(was === "lief-auf"){ L_OFFEN = L_OFFEN === id ? null : id; lieferantenZeichnen(); }
   else if(was === "lief-sichern") lieferantSichern(id);
   else if(was === "lief-aktiv") lieferantAktiv(id);
+  else if(was === "datei") dateiOeffnen(id, k);
+  else if(was === "verlust") verlustBuchen(id, k);
 });
 
 /* Eingaben im Beleg landen in EDIT, ohne neu zu zeichnen — der Fokus
@@ -1231,6 +1399,15 @@ $("aEinheit").addEventListener("click", e => {
 $("aAnlegen").addEventListener("click", artikelAnlegen);
 $("lAnlegen").addEventListener("click", lieferantAnlegen);
 $("belegNeu").addEventListener("click", () => belegOeffnen(null));
+$("einlesenKnopf").addEventListener("click", () => { if(!LIEST) $("einlesenDatei").click(); });
+$("einlesenDatei").addEventListener("change", e => einlesen(e.target.files && e.target.files[0]));
+$("inventurKnopf").addEventListener("click", () => {
+  const auf = $("inventurKarte").hidden;
+  $("inventurKarte").hidden = !auf; $("inventurKnopf").setAttribute("aria-expanded", String(auf));
+  if(auf){ inventurZeichnen(); const f = document.querySelector("[data-inv]"); if(f) f.focus(); }
+});
+$("invAbbrechen").addEventListener("click", () => { $("inventurKarte").hidden = true; $("inventurKnopf").setAttribute("aria-expanded", "false"); });
+$("invBuchen").addEventListener("click", inventurBuchen);
 $("loginBtn").addEventListener("click", anmelden);
 $("password").addEventListener("keydown", e => { if(e.key === "Enter") anmelden(); });
 $("vergessenBtn").addEventListener("click", vergessen);
