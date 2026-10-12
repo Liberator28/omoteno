@@ -17,6 +17,14 @@
      · Team sieht einen Satz statt Bedienung.
      · PIN vor den Daten; Kontrast, 44 px, kein Überlauf.
 
+   E4 (Ketten, migration-einkauf-e4.sql): Gründe, Signaturen und
+   gelesene Spalten gegen die Migration; lieferanten_artikel ohne die
+   Preisspalte, die E4 dem Team entzieht (Spaltenrecht als zweite
+   Quelle); Reiter „Standorte“ nur mit einer Kette, Zeitraum, höchster
+   Wareneinsatz markiert; Zentrale ohne eigenen Betrieb sieht NUR die
+   Zahlen und lädt keine Belege; „In anderen Standort übernehmen“ nur
+   mit Inhaber-Recht in derselben Kette, jeder Grund als Satz.
+
    EHRLICHE GRENZE: Die Datenbank ist gestellt. Ob die Funktionen live
    so antworten, belegt pruef-einkauf.sql, nicht diese Datei.
    ═══════════════════════════════════════════════════════════════════ */
@@ -28,6 +36,7 @@ const SEITE = "file://" + path.join(OBEN, "seiten", "einkauf.html");
 const SQL = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf.sql"), "utf8");
 const SQL2 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e2.sql"), "utf8");
 const SQL3 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e3.sql"), "utf8");
+const SQL4 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e4.sql"), "utf8");
 const EDGE = fs.readFileSync(path.join(OBEN, "supabase", "functions", "beleg-lesen", "index.ts"), "utf8");
 const HTML = fs.readFileSync(path.join(OBEN, "seiten", "einkauf.html"), "utf8");
 
@@ -86,7 +95,7 @@ const rezFeldSeite = (() => { const b = HTML.match(/const REZ_FELD = \{([\s\S]*?
 pruef(felderSql3.length >= 4 && felderSql3.every(f => rezFeldSeite.includes(f)), "E3: jedes 'feld' von rezeptur_speichern hat einen Satz", felderSql3.filter(f => !rezFeldSeite.includes(f)).join(", ") || felderSql3.join(","));
 /* Spalten, die die Seite aus gericht_kalkulation liest = Spalten der Funktion. */
 const kalkSpalten = (() => { const m = SQL3.match(/function public\.gericht_kalkulation[\s\S]*?returns table \(([\s\S]*?)\)\s*language/); return m ? m[1].split(",").map(x => x.trim().split(/\s+/)[0]) : []; })();
-const kalkBlock = (HTML.match(/═══ Kalkulation \(E3[\s\S]*?═══ Artikel/) || [""])[0];
+const kalkBlock = (HTML.match(/═══ Kalkulation \(E3[\s\S]*?\/\* ═══ /) || [""])[0];
 const kalkGelesen = [...new Set([...kalkBlock.matchAll(/\bz\.(\w+)/g)].map(m => m[1]))];
 const kalkFremd = kalkGelesen.filter(k => !kalkSpalten.includes(k));
 pruef(kalkSpalten.length >= 10 && !kalkFremd.length, "E3: jede gelesene Spalte liefert gericht_kalkulation", kalkFremd.join(", ") || kalkGelesen.join(","));
@@ -96,6 +105,36 @@ pruef(weGelesen.length >= 3 && weGelesen.every(k => weSchluessel.includes(k)), "
 const rezSpalten = new Set([...(SQL3.match(/create table if not exists public\.rezepturen \(([\s\S]*?)\n\);/) || ["", ""])[1].matchAll(/^\s*(\w+)\s/gm)].map(m => m[1]));
 const rezSelect = (HTML.match(/from\("rezepturen"\)\.select\("([^"]+)"/) || ["", ""])[1].replace(/\(.*\)/, "").split(",").map(x => x.trim()).filter(x => x && x !== "rezepturpositionen");
 pruef(rezSelect.length >= 5 && rezSelect.every(c => rezSpalten.has(c)), "E3: gelesene Spalten von rezepturen gibt es", rezSelect.filter(c => !rezSpalten.has(c)).join(", ") || rezSelect.join(","));
+
+/* E4: Ketten */
+function fnKoerper(sql, fn){ const i = sql.indexOf("function public." + fn + "("); if(i < 0) return ""; const j = sql.indexOf("$function$;", i); return sql.slice(i, j < 0 ? undefined : j); }
+function fnParameter(sql, fn){ const m = fnKoerper(sql, fn).match(/^function public\.\w+\(([^)]*)\)/); return m ? m[1].split(",").map(x => x.trim().split(/\s+/)[0]).filter(Boolean).sort() : null; }
+function fnSpalten(sql, fn){ const m = fnKoerper(sql, fn).match(/returns table \(([\s\S]*?)\)\s*language/); return m ? m[1].split(",").map(x => x.trim().split(/\s+/)[0]) : []; }
+const gruendeVon = (sql, fn) => [...new Set([...fnKoerper(sql, fn).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1]))];
+for(const fn of ["zentrale_vergleich", "rezeptur_uebertragen", "meine_ketten"]) SIGNATUR[fn] = fnParameter(SQL4, fn);
+pruef(SIGNATUR.zentrale_vergleich && SIGNATUR.zentrale_vergleich.join() === "p_bis,p_org,p_von" && SIGNATUR.rezeptur_uebertragen && SIGNATUR.rezeptur_uebertragen.join() === "p_gericht,p_ziel_betrieb",
+  "E4: Signaturen aus der Migration gelesen", JSON.stringify({ v:SIGNATUR.zentrale_vergleich, u:SIGNATUR.rezeptur_uebertragen }));
+const uebGruendeSql = gruendeVon(SQL4, "rezeptur_uebertragen");
+const uebGruendeSeite = (() => { const b = HTML.match(/const UEB_GRUENDE = \{([\s\S]*?)\n\};/); return b ? [...b[1].matchAll(/^\s*(\w+):/gm)].map(m => m[1]) : []; })();
+pruef(uebGruendeSql.length >= 4 && uebGruendeSql.every(g => uebGruendeSeite.includes(g)), "E4: jeder Grund von rezeptur_uebertragen hat einen Satz", uebGruendeSql.filter(g => !uebGruendeSeite.includes(g)).join(", ") || uebGruendeSql.join(","));
+/* Die übrigen E4-Funktionen der Seite (inventur_buchen, verlust_buchen
+   in neuer Fassung) — die master_* gehören nach master.html. */
+const e4SeitenGruende = ["inventur_buchen", "verlust_buchen"].flatMap(fn => gruendeVon(SQL4, fn));
+pruef(e4SeitenGruende.length >= 4 && e4SeitenGruende.every(g => gruendeSeite.includes(g)), "E4: Gründe der neuen inventur_/verlust_buchen haben einen Satz", e4SeitenGruende.filter(g => !gruendeSeite.includes(g)).join(", ") || e4SeitenGruende.join(","));
+const kettenBlock = (HTML.match(/═══ Ketten \(E4[\s\S]*?\/\* ═══ /) || [""])[0];
+const vglSpalten = fnSpalten(SQL4, "zentrale_vergleich");
+const vglGelesen = [...new Set([...(kettenBlock.match(/function standorteZeichnen[\s\S]*?\n\}/) || [""])[0].matchAll(/\bx\.(\w+)/g)].map(m => m[1]))];
+pruef(vglSpalten.length >= 12 && vglGelesen.length >= 8 && vglGelesen.every(k => vglSpalten.includes(k)), "E4: jede gelesene Spalte liefert zentrale_vergleich", vglGelesen.filter(k => !vglSpalten.includes(k)).join(", ") || vglGelesen.join(","));
+const kettenSpalten = fnSpalten(SQL4, "meine_ketten");
+const kettenGelesen = [...new Set([...(kettenBlock.match(/async function kettenLaden[\s\S]*?\n\}/) || [""])[0].matchAll(/\bk\.(\w+)/g)].map(m => m[1]))];
+pruef(kettenGelesen.length >= 2 && kettenGelesen.every(k => kettenSpalten.includes(k)), "E4: jede gelesene Spalte liefert meine_ketten", kettenGelesen.filter(k => !kettenSpalten.includes(k)).join(", ") || kettenGelesen.join(","));
+/* Zweite Quelle Spaltenrecht: E4 gibt authenticated auf lieferanten_artikel
+   nur noch diese Spalten. Liest die Seite eine andere, scheitert die GANZE
+   Abfrage live mit 42501 — die gestellte Datenbank merkt das nicht. */
+const laRecht = ((SQL4.match(/grant select \(([^)]*)\)\s*on public\.lieferanten_artikel/) || ["", ""])[1]).split(",").map(x => x.trim()).filter(Boolean);
+const laSelect = ((HTML.match(/from\("lieferanten_artikel"\)\.select\("([^"]+)"/) || ["", ""])[1]).split(",").map(x => x.trim()).filter(Boolean);
+pruef(laRecht.length >= 5 && laSelect.length >= 3 && laSelect.every(c => laRecht.includes(c)) && !laRecht.includes("letzter_preis"),
+  "E4: lieferanten_artikel nur mit erlaubten Spalten gelesen (kein letzter_preis)", laSelect.filter(c => !laRecht.includes(c)).join(", ") || laSelect.join(","));
 
 /* ── 2 · Gestellte Datenbank ────────────────────────────────────── */
 const ORG = "org-1", BETRIEB = "af095b14-0000-4000-8000-000000000001";
@@ -162,6 +201,7 @@ function ersatz(start){
     window.__rufe = [];            /* {name, args} */
     window.__schreib = [];         /* {tabelle, art, werte, filter} */
     window.__vorPin = 0; window.__pinOk = !D.pinPflicht;
+    window.__lesen = [];
     const nutzer = { id:"u-1", email:"wirt@probe.de" };
     const sitzung = D.ohneSitzung ? null : { user:nutzer, access_token:"x" };
     function abfrage(tabelle){
@@ -173,6 +213,7 @@ function ersatz(start){
           const f = (D.schreibFehler || {})[tabelle];
           return { data:null, error: f || null };
         }
+        window.__lesen.push(tabelle);
         let quelle = { betrieb_mitglieder:D.mitglieder }[tabelle] || D[tabelle] || [];
         for(const [k, v] of q.filter) quelle = quelle.filter(z => z[k] === v);
         return { data: JSON.parse(JSON.stringify(quelle)), error:null };
@@ -621,12 +662,139 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await ctx.close();
   }
 
+  /* ── E4 · Ketten ───────────────────────────────────────────────── */
+  console.log("\n══ E4 · Standorte, Zentrale, gemeinsame Rezeptur ══");
+  const KETTE_ANTWORT = [{ organisation_id: ORG, name: "Kette Probe", standorte: 3, zentrale: false }];
+  const VERGLEICH_ANTWORT = [
+    { betrieb_id: BETRIEB, name: "Café Probe", einkauf_netto: 50, belege: 2, lagerwert: 48.8, verlust_wert: -1.2, inventur_wert: 0, umsatz_brutto: 20,
+      wareneinsatz: 3, umsatz_mit_rezeptur: 10, ohne_rezeptur: 1, gerichte: 3, mit_rezeptur: 2 },
+    { betrieb_id: "b-zwei", name: "Café Zwei", einkauf_netto: 50, belege: 1, lagerwert: 0, verlust_wert: 0, inventur_wert: 2.5, umsatz_brutto: 8,
+      wareneinsatz: 4, umsatz_mit_rezeptur: 8, ohne_rezeptur: 0, gerichte: 1, mit_rezeptur: 1 },
+    { betrieb_id: "b-drei", name: "Café Drei", einkauf_netto: 0, belege: 0, lagerwert: 0, verlust_wert: 0, inventur_wert: 0, umsatz_brutto: 0,
+      wareneinsatz: 0, umsatz_mit_rezeptur: 0, ohne_rezeptur: 0, gerichte: 0, mit_rezeptur: 0 }
+  ];
+  const mitKette = (rolle) => { const d = grundDaten(rolle); d.antworten.meine_ketten = KETTE_ANTWORT; d.antworten.zentrale_vergleich = VERGLEICH_ANTWORT; return d; };
+  {
+    /* Ohne Kette kein Reiter — die Voraussetzung „meine_ketten gefragt“ selbst gemessen (§8.1g C). */
+    const { ctx, p } = await oeffnen(browser, grundDaten("inhaber"));
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    pruef((await rufe(p, "meine_ketten")).length === 1 && await p.isHidden("#reiterStandorte"), "ohne Kette: meine_ketten gefragt, kein Reiter „Standorte“");
+    pruef(!(await rufe(p, "zentrale_vergleich")).length, "ohne Kette: kein Vergleich geholt");
+    await ctx.close();
+  }
+  {
+    const { ctx, p, kons } = await oeffnen(browser, mitKette("inhaber"));
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    pruef(await p.isVisible("#reiterStandorte"), "mit Kette: Reiter „Standorte“ sichtbar");
+    pruef(!(await rufe(p, "zentrale_vergleich")).length, "… Vergleich erst beim Öffnen des Reiters geholt");
+    await p.click("#reiterStandorte"); await p.waitForTimeout(150);
+    const r1 = (await rufe(p, "zentrale_vergleich"))[0];
+    const monat = await p.evaluate(a => { const j = new Date(), v = new Date(a.p_von), b = new Date(a.p_bis);
+      return { von: v.getTime() === new Date(j.getFullYear(), j.getMonth(), 1).getTime(), bis: Math.abs(b - j) < 60000 }; }, r1 ? r1.args : {});
+    pruef(r1 && r1.args.p_org === ORG && Object.keys(r1.args).sort().join() === SIGNATUR.zentrale_vergleich.join() && monat.von && monat.bis,
+      "Vergleich: genau die Parameter der Funktion, ab dem 1. bis jetzt", JSON.stringify(r1 && r1.args));
+    const zeilen = await p.evaluate(() => [...document.querySelectorAll("#standortTabelle tr[data-standort]")].map(tr => ({ id: tr.dataset.standort, text: tr.textContent.replace(/\s+/g, " "), hoch: !!tr.querySelector(".pille.hoch") })));
+    pruef(zeilen.length === 3, "drei Standorte, drei Zeilen", zeilen.length);
+    const a = zeilen.find(z => z.id === BETRIEB) || { text:"" }, b = zeilen.find(z => z.id === "b-zwei") || {}, c = zeilen.find(z => z.id === "b-drei") || { text:"" };
+    pruef(/50,00 €/.test(a.text) && /2 Belege/.test(a.text) && /48,80 €/.test(a.text) && /−1,20 €|-1,20 €/.test(a.text) && /2 \/ 3/.test(a.text) && /30\s?%/.test(a.text),
+      "Zeile Café Probe: Einkauf, Belege, Lager, Verlust, Rezepturen, 30 %", a.text);
+    pruef(b.hoch && !a.hoch && !c.hoch && /1 Beleg(?!e)/.test(b.text), "höchster Wareneinsatz (50 %) markiert, sonst keiner; „1 Beleg“", JSON.stringify(zeilen.map(z => z.hoch)));
+    pruef(/ohne Rezeptur/.test(c.text) && !/NaN|Infinity/.test(zeilen.map(z => z.text).join()), "ohne Umsatz mit Rezeptur: „ohne Rezeptur“, kein NaN", c.text);
+    /* Name eines Standorts ist Text, nie Auszeichnung */
+    await p.evaluate(() => { window.__D.antworten.zentrale_vergleich[0].name = '<img src=x onerror="window.__boese=1">'; });
+    await p.click('#sZeitraum [data-zeitraum="vormonat"]'); await p.waitForTimeout(150);
+    const r2 = (await rufe(p, "zentrale_vergleich")).pop();
+    const vor = await p.evaluate(a => { const j = new Date(), v = new Date(a.p_von), b = new Date(a.p_bis), erster = new Date(j.getFullYear(), j.getMonth(), 1);
+      return { von: v.getTime() === new Date(j.getFullYear(), j.getMonth() - 1, 1).getTime(), bisVor: b < erster, bisTag: b.getDate() === new Date(erster - 1).getDate() && b.getMonth() === new Date(erster - 1).getMonth() }; }, r2.args);
+    pruef(vor.von && vor.bisVor && vor.bisTag, "„Letzter Monat“: vom 1. bis zum letzten Tag des Vormonats (der 1. dieses Monats zählt nicht mit)", JSON.stringify({ ...vor, args: r2.args }));
+    pruef(await p.getAttribute('#sZeitraum [data-zeitraum="vormonat"]', "aria-checked") === "true", "Zeitraum-Wahl zeigt ihre Stellung");
+    pruef(!(await p.evaluate(() => window.__boese)) && /<img/.test(await p.textContent("#standortTabelle")), "Standortname als Text, nicht als Auszeichnung");
+    pruef(!kons.length, "keine Ausnahme im Vergleich", kons[0]);
+    await ctx.close();
+  }
+  {
+    const d = mitKette("inhaber"); d.rpcFehler = { zentrale_vergleich: { code:"PGRST202", message:"Could not find the function public.zentrale_vergleich in the schema cache" } };
+    const { ctx, p, kons } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click("#reiterStandorte"); await p.waitForTimeout(150);
+    pruef(/noch nicht eingerichtet \(migration-einkauf-e4\.sql\)/.test(await p.textContent("#standortFehler")) && await p.isVisible("#standortFehler"), "E4-Migration fehlt: Satz statt leerer Fläche");
+    pruef(!kons.length, "… ohne Ausnahme", kons[0]);
+    await ctx.close();
+  }
+  {
+    /* Zentrale ohne eigenen Betrieb: nur Zahlen, keine Belege geladen. */
+    const d = mitKette("inhaber"); d.mitglieder = [];
+    const { ctx, p, kons } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 }); await p.waitForTimeout(200);
+    const z = await p.evaluate(() => ({
+      reiter: [...document.querySelectorAll(".reiter [data-ansicht]")].filter(k => !k.hidden).map(k => k.dataset.ansicht),
+      name: document.getElementById("betriebName").textContent, fehler: document.getElementById("ladefehler").hidden ? "" : document.getElementById("ladefehler").textContent,
+      zeilen: document.querySelectorAll("#standortTabelle tr[data-standort]").length, gelesen: window.__lesen.filter(t => t !== "betrieb_mitglieder") }));
+    pruef(z.reiter.join() === "standorte" && z.name === "Kette Probe" && !z.fehler && z.zeilen === 3, "Zentrale ohne Betrieb: nur „Standorte“, Name der Kette, drei Zeilen", JSON.stringify(z));
+    pruef(!z.gelesen.length, "Zentrale ohne Betrieb: keine einzige Tabelle gelesen (nur Zahlen über die Funktion)", z.gelesen.join(","));
+    pruef(!kons.length, "… ohne Ausnahme", kons[0]);
+    await ctx.close();
+  }
+  {
+    const d = grundDaten("inhaber"); d.mitglieder = [];
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 }); await p.waitForTimeout(150);
+    pruef(/kein Betrieb/.test(await p.textContent("#ladefehler")) && await p.isHidden("#reiterStandorte"), "ohne Betrieb und ohne Kette: wie bisher „kein Betrieb“");
+    await ctx.close();
+  }
+  /* Gemeinsame Rezeptur */
+  const zweiStandorte = (rolleZwei, orgZwei) => { const d = grundDaten("inhaber");
+    d.mitglieder.push({ rolle: rolleZwei, betriebe: { id: "b-zwei", name: "Café Zwei", organisation_id: orgZwei } }); return d; };
+  {
+    const { ctx, p, kons } = await oeffnen(browser, zweiStandorte("inhaber", ORG));
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="kalkulation"]'); await p.click('[data-gericht="g-pizza"]');
+    const opt = await p.evaluate(() => [...document.querySelectorAll("#rZiel option")].map(o => o.value));
+    pruef(opt.join() === "b-zwei", "Übernehmen: nur der andere eigene Standort steht zur Wahl", opt.join());
+    await p.click('[data-aktion="rez-uebertragen"]'); await p.waitForTimeout(200);
+    const u = (await rufe(p, "rezeptur_uebertragen"))[0];
+    pruef(u && u.args.p_gericht === "g-pizza" && u.args.p_ziel_betrieb === "b-zwei" && Object.keys(u.args).sort().join() === SIGNATUR.rezeptur_uebertragen.join(),
+      "Übernehmen schickt genau Gericht und Ziel", JSON.stringify(u && u.args));
+    pruef(/Übernommen nach Café Zwei/.test(await p.textContent("#rUebMeldung")), "… und sagt, wohin", await p.textContent("#rUebMeldung"));
+    for(const g of uebGruendeSql){
+      await p.evaluate(g => { window.__D.antworten.rezeptur_uebertragen = { ok:false, grund:g }; }, g);
+      await p.click('[data-aktion="rez-uebertragen"]'); await p.waitForTimeout(150);
+      const t = await p.textContent("#rUebMeldung");
+      pruef(t && !/hat nicht geklappt|\(/.test(t) && await p.getAttribute("#rUebMeldung", "class") === "meldung fehler", "Grund „" + g + "“ als Satz", t);
+    }
+    await p.click('.reiter [data-ansicht="kalkulation"]');
+    await p.click('[data-gericht="g-tira"]');
+    pruef(!(await p.$('[data-aktion="rez-uebertragen"]')), "Gericht ohne Rezeptur: nichts zu übernehmen");
+    pruef(!kons.length, "keine Ausnahme beim Übernehmen", kons[0]);
+    await ctx.close();
+  }
+  for(const [rolle, org, was] of [["team", ORG, "anderer Standort nur als Team"], ["inhaber", "org-fremd", "anderer Standort in fremder Kette"]]){
+    const { ctx, p } = await oeffnen(browser, zweiStandorte(rolle, org));
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="kalkulation"]'); await p.click('[data-gericht="g-pizza"]');
+    pruef(await p.isVisible('[data-aktion="rez-sichern"]') && !(await p.$('[data-aktion="rez-uebertragen"]')), was + ": kein „Übernehmen“ (Editor steht)");
+    await ctx.close();
+  }
+  {
+    /* Selbst nur Team im aktuellen Betrieb, Inhaber im anderen: auch kein Übernehmen. */
+    const d = grundDaten("team"); d.mitglieder.push({ rolle: "inhaber", betriebe: { id: "b-zwei", name: "Café Zwei", organisation_id: ORG } });
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(150);
+    await p.click('.reiter [data-ansicht="kalkulation"]'); await p.click('[data-gericht="g-pizza"]');
+    pruef(!(await p.$('[data-aktion="rez-uebertragen"]')) && !(await p.$('[data-aktion="rez-sichern"]')), "Team im eigenen Standort: weder sichern noch übernehmen");
+    await ctx.close();
+  }
+
   /* ── 12 · Maße, Kontrast, Überlauf ─────────────────────────────── */
   console.log("\n══ 11 · 360 und 1280 px ══");
   for(const breite of [360, 1280]){
-    const { ctx, p } = await oeffnen(browser, grundDaten("inhaber"), breite);
+    /* Zwei eigene Standorte in einer Kette: dann stehen auch „Standorte“
+       und „In anderen Standort übernehmen“ im Bild und werden mitgemessen. */
+    const d = zweiStandorte("inhaber", ORG); d.antworten.meine_ketten = KETTE_ANTWORT; d.antworten.zentrale_vergleich = VERGLEICH_ANTWORT;
+    const { ctx, p } = await oeffnen(browser, d, breite);
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
-    for(const ansicht of ["uebersicht", "belege", "artikel", "kalkulation", "kalk-edit", "lieferanten"]){
+    for(const ansicht of ["uebersicht", "belege", "artikel", "kalkulation", "kalk-edit", "lieferanten", "standorte"]){
       await p.click('.reiter [data-ansicht="' + (ansicht === "kalk-edit" ? "kalkulation" : ansicht) + '"]');
       if(ansicht === "kalk-edit") await p.click('[data-gericht="g-pizza"]');
       if(ansicht === "belege") await p.click("#belegNeu");

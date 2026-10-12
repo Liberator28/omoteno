@@ -228,6 +228,7 @@ button.zeile:active{background:var(--flaeche)}
       <button role="tab" type="button" aria-selected="false" data-ansicht="artikel">Artikel</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="kalkulation">Kalkulation</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="lieferanten">Lieferanten</button>
+      <button role="tab" type="button" aria-selected="false" data-ansicht="standorte" id="reiterStandorte" hidden>Standorte</button>
     </div>
   </header>
 
@@ -331,6 +332,19 @@ button.zeile:active{background:var(--flaeche)}
         <button class="knopf haupt" id="lAnlegen" type="button">Lieferant anlegen</button>
       </div>
       <div class="liste" id="lieferantListe"></div>
+    </section>
+    <!-- Standorte (E4) -->
+    <section class="abschnitt" id="v-standorte" hidden>
+      <h2>Standorte</h2>
+      <p class="leise" style="margin:0;font-size:14px">Zahlen je Standort Ihrer Kette. Belege, Preise und Bestände eines Standorts sieht weiterhin nur dieser Standort.</p>
+      <select id="kettenWahl" aria-label="Kette wählen" hidden></select>
+      <div class="einheitwahl" role="radiogroup" aria-label="Zeitraum" id="sZeitraum">
+        <button type="button" role="radio" aria-checked="true" data-zeitraum="monat">Dieser Monat</button>
+        <button type="button" role="radio" aria-checked="false" data-zeitraum="vormonat">Letzter Monat</button>
+      </div>
+      <p class="meldung fehler" id="standortFehler" hidden></p>
+      <div id="standortTabelle"></div>
+      <p class="leise" style="margin:0;font-size:14px">Wareneinsatz laut Rezepturen, als Anteil am Bruttoumsatz der Gerichte mit Rezeptur. Jeder Standort rechnet mit seinen eigenen Einkaufspreisen.</p>
     </section>
   </main>
 </div>
@@ -747,7 +761,11 @@ async function betriebeLaden(){
   BETRIEBE = (data || []).filter(z => z.betriebe && z.betriebe.id)
     .map(z => ({ id:z.betriebe.id, name:z.betriebe.name || "Betrieb", organisation_id:z.betriebe.organisation_id, rolle:z.rolle || "inhaber" }))
     .sort((a, b) => a.name.localeCompare(b.name, "de") || (a.id < b.id ? -1 : 1));
-  if(!BETRIEBE.length){ ladefehler("Zu diesem Konto gehört kein Betrieb."); $("betriebName").textContent = "Kein Betrieb"; return; }
+  await kettenLaden();
+  if(!BETRIEBE.length){
+    if(KETTEN.length){ zentraleModus(); return; }
+    ladefehler("Zu diesem Konto gehört kein Betrieb."); $("betriebName").textContent = "Kein Betrieb"; return;
+  }
   let gemerkt = null; try{ gemerkt = localStorage.getItem(WAHL_SCHLUESSEL); }catch(e){}
   const wahl = $("betriebWahl");
   wahl.innerHTML = BETRIEBE.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + "</option>").join("");
@@ -783,7 +801,7 @@ async function allesLaden(){
     sb.from("lagerbestand").select("artikel_id, menge_basis, wert_netto").eq("betrieb_id", B.id),
     sb.from("artikel_preise").select("artikel_id, preis_basis, belegdatum, position_id, lieferant_id").eq("betrieb_id", B.id)
       .order("belegdatum", { ascending:false }).order("position_id", { ascending:false }).limit(1000),
-    sb.from("lieferanten_artikel").select("id, lieferant_id, artikel_id, bezeichnung, einkaufseinheit, gebinde_basis, letzter_preis, letzter_preis_am").order("bezeichnung").order("id")
+    sb.from("lieferanten_artikel").select("id, lieferant_id, artikel_id, bezeichnung, einkaufseinheit, gebinde_basis").order("bezeichnung").order("id")
   ]);
   const fehler = [art, lief, bel, best, pr, zu].find(r => r && r.error);
   if(fehler){
@@ -828,12 +846,13 @@ function preisaenderungen(){
 /* ═══ Zeichnen ════════════════════════════════════════════════ */
 function zeichnen(){
   for(const k of document.querySelectorAll(".reiter [data-ansicht]")) k.setAttribute("aria-selected", String(k.dataset.ansicht === ANSICHT));
-  for(const v of ["uebersicht", "belege", "artikel", "kalkulation", "lieferanten"]) $("v-" + v).hidden = v !== ANSICHT;
+  for(const v of ["uebersicht", "belege", "artikel", "kalkulation", "lieferanten", "standorte"]) $("v-" + v).hidden = v !== ANSICHT;
   if(ANSICHT === "uebersicht") uebersichtZeichnen();
   if(ANSICHT === "belege") (EDIT ? editZeichnen() : belegListeZeichnen());
   if(ANSICHT === "artikel") artikelZeichnen();
   if(ANSICHT === "lieferanten") lieferantenZeichnen();
   if(ANSICHT === "kalkulation") (REZ ? rezZeichnen() : kalkZeichnen());
+  if(ANSICHT === "standorte") standorteZeichnen();
 }
 
 const STATUS_NAME = { entwurf:"Entwurf", freigegeben:"Freigegeben", storniert:"Storniert", verworfen:"Verworfen" };
@@ -1314,7 +1333,7 @@ function rezZeichnen(){
     '<p class="meldung fehler" id="rMeldung" role="alert" hidden></p>' +
     '<div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="rez-sichern">' + (aktuell ? "Als neue Fassung sichern" : "Rezeptur sichern") + "</button></div>" +
     '<p class="leise" style="margin:0;font-size:14px">Gesichert wird eine neue Fassung ab jetzt. Frühere Abrechnungen behalten die Fassung, die damals galt.</p>' +
-    verlauf;
+    uebertragenHTML(aktuell) + verlauf;
 }
 
 function kennzahlenRez(z, kosten, mwst, ohne){
@@ -1403,6 +1422,114 @@ async function rezSichern(knopf){
     await kalkLaden();
     rezOeffnen(gid);
   }finally{ REZ_LAEUFT = false; if(knopf.isConnected) knopf.disabled = false; }
+}
+
+/* ═══ Ketten (E4, datenbank/migration-einkauf-e4.sql) ══════════
+   Die Zentrale sieht ZAHLEN je Standort (zentrale_vergleich), keine
+   Belege. Wer keinen eigenen Betrieb hat, aber Zentrale ist, bekommt
+   nur diesen Reiter. Rechte prüft der Server; ohne Recht 0 Zeilen. */
+let KETTEN = [], KETTE = null, S_ZEITRAUM = "monat";
+let VERGLEICH = { zeilen:null, fehler:"" };
+
+async function kettenLaden(){
+  let r = null;
+  try{ r = await sb.rpc("meine_ketten"); }catch(e){}
+  KETTEN = r && !r.error && Array.isArray(r.data) ? r.data : [];
+  KETTE = KETTEN.find(k => KETTE && k.organisation_id === KETTE.organisation_id) || KETTEN[0] || null;
+  $("reiterStandorte").hidden = !KETTEN.length;
+  const w = $("kettenWahl");
+  w.innerHTML = KETTEN.map(k => '<option value="' + esc(k.organisation_id) + '">' + esc(k.name) + "</option>").join("");
+  w.hidden = KETTEN.length < 2;
+  if(KETTE) w.value = KETTE.organisation_id;
+}
+
+/* Zentrale ohne eigenen Betrieb: nur „Standorte“. */
+function zentraleModus(){
+  for(const k of document.querySelectorAll(".reiter [data-ansicht]")) k.hidden = k.dataset.ansicht !== "standorte";
+  document.body.classList.add("nurlesen");
+  $("betriebName").textContent = KETTE ? KETTE.name : "Kette";
+  ANSICHT = "standorte";
+  zeichnen();
+  vergleichLaden();
+}
+
+function zeitraum(){
+  const j = new Date();
+  /* bis = letzte Millisekunde des Vormonats: Belege zählt der Server bis
+     EINSCHLIESSLICH des Tages von p_bis — der 1. dieses Monats gehört nicht dazu. */
+  if(S_ZEITRAUM === "vormonat") return { von:new Date(j.getFullYear(), j.getMonth() - 1, 1), bis:new Date(new Date(j.getFullYear(), j.getMonth(), 1).getTime() - 1) };
+  return { von:new Date(j.getFullYear(), j.getMonth(), 1), bis:j };
+}
+
+async function vergleichLaden(){
+  if(!KETTE){ VERGLEICH = { zeilen:[], fehler:"" }; standorteZeichnen(); return; }
+  const z = zeitraum(), schluessel = KETTE.organisation_id + S_ZEITRAUM;
+  VERGLEICH = { zeilen:null, fehler:"", schluessel };
+  standorteZeichnen();
+  let r = null;
+  try{ r = await sb.rpc("zentrale_vergleich", { p_org: KETTE.organisation_id, p_von: z.von.toISOString(), p_bis: z.bis.toISOString() }); }catch(e){}
+  if(VERGLEICH.schluessel !== schluessel) return;   /* ein späterer Klick hat übernommen */
+  VERGLEICH = r && !r.error && Array.isArray(r.data) ? { zeilen:r.data, fehler:"", schluessel }
+    : { zeilen:[], schluessel, fehler: r && r.error && /function|schema cache/i.test(r.error.message || "")
+        ? "Der Standortvergleich ist in der Datenbank noch nicht eingerichtet (migration-einkauf-e4.sql)."
+        : "Der Vergleich ließ sich nicht laden. Bitte noch einmal." };
+  if(ANSICHT === "standorte") standorteZeichnen();
+}
+
+function standorteZeichnen(){
+  const f = $("standortFehler"); f.textContent = VERGLEICH.fehler; f.hidden = !VERGLEICH.fehler;
+  const box = $("standortTabelle");
+  if(VERGLEICH.zeilen == null){ box.innerHTML = '<p class="leerzeile">Wird geladen…</p>'; return; }
+  const z = VERGLEICH.zeilen;
+  if(!z.length){ box.innerHTML = VERGLEICH.fehler ? "" : '<p class="leerzeile">Für diese Kette gibt es nichts zu vergleichen.</p>'; return; }
+  const anteil = x => Number(x.umsatz_mit_rezeptur) > 0 ? Number(x.wareneinsatz) / Number(x.umsatz_mit_rezeptur) : null;
+  const hoechst = Math.max(...z.map(x => anteil(x) ?? -1));
+  box.innerHTML = '<div class="tabellenrahmen"><table class="tabelle"><thead><tr><th>Standort</th><th class="z">Einkauf netto</th><th class="z">Lagerwert</th>' +
+    '<th class="z">Wareneinsatz</th><th class="z">Verlust</th><th class="z">Inventur</th><th class="z">Rezepturen</th></tr></thead><tbody>' +
+    z.map(x => {
+      const a = anteil(x);
+      return '<tr data-standort="' + esc(x.betrieb_id) + '"><td>' + esc(x.name) + "</td>" +
+        '<td class="z">' + esc(euro.format(Number(x.einkauf_netto || 0))) + '<br><span class="leise">' + esc(String(x.belege || 0)) + " Beleg" + (x.belege === 1 ? "" : "e") + "</span></td>" +
+        '<td class="z">' + esc(euro.format(Number(x.lagerwert || 0))) + "</td>" +
+        '<td class="z">' + esc(euro.format(Number(x.wareneinsatz || 0))) + "<br>" +
+          (a == null ? '<span class="leise">ohne Rezeptur</span>' : '<span class="pille' + (z.length > 1 && a === hoechst && a > 0 ? " hoch" : "") + '">' + esc(prozentFmt.format(a)) + "</span>") + "</td>" +
+        '<td class="z">' + esc(euro.format(Number(x.verlust_wert || 0))) + "</td>" +
+        '<td class="z">' + esc(euro.format(Number(x.inventur_wert || 0))) + "</td>" +
+        '<td class="z">' + esc(String(x.mit_rezeptur || 0)) + " / " + esc(String(x.gerichte || 0)) + "</td></tr>";
+    }).join("") + "</tbody></table></div>";
+}
+
+/* ── Gemeinsame Rezeptur: in einen anderen Standort derselben Kette ── */
+const UEB_GRUENDE = {
+  kein_recht:     "Dafür brauchen Sie das Recht für beide Standorte — oder die Zentrale macht es.",
+  andere_kette:   "Dieser Standort gehört nicht zu derselben Kette.",
+  keine_rezeptur: "Dieses Gericht hat noch keine gesicherte Rezeptur.",
+  kein_gericht:   "Am anderen Standort gibt es kein Gericht mit genau diesem Namen."
+};
+function uebertragZiele(){
+  return BETRIEBE.filter(b => b.id !== B.id && b.organisation_id && b.organisation_id === B.organisation_id && b.rolle === "inhaber");
+}
+function uebertragenHTML(aktuell){
+  const ziele = uebertragZiele();
+  if(!aktuell || !ziele.length) return "";
+  return '<div class="karte"><h3>In anderen Standort übernehmen</h3>' +
+    '<p class="leise" style="margin:0;font-size:14px">Legt dort eine neue Fassung beim gleichnamigen Gericht an. Die Kosten rechnet jeder Standort mit seinen eigenen Preisen.</p>' +
+    '<label class="feld"><span>Standort</span><select id="rZiel">' + ziele.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + "</option>").join("") + "</select></label>" +
+    '<p class="meldung" id="rUebMeldung" role="status" hidden></p>' +
+    '<div class="werkzeuge"><button type="button" class="knopf" data-aktion="rez-uebertragen">Übernehmen</button></div></div>';
+}
+async function rezUebertragen(knopf){
+  const ziel = $("rZiel") && $("rZiel").value, m = $("rUebMeldung");
+  if(!ziel || !REZ) return;
+  knopf.disabled = true;
+  let r = null;
+  try{ r = await sb.rpc("rezeptur_uebertragen", { p_gericht: REZ.gericht_id, p_ziel_betrieb: ziel }); }catch(e){}
+  if(knopf.isConnected) knopf.disabled = false;
+  const a = r && !r.error ? r.data : null, b = BETRIEBE.find(x => x.id === ziel);
+  m.hidden = false;
+  if(a && a.ok){ m.className = "meldung"; m.textContent = "Übernommen nach " + (b ? b.name : "dort") + " — dort gilt sie ab jetzt als neue Fassung."; return; }
+  m.className = "meldung fehler";
+  m.textContent = !a ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : (UEB_GRUENDE[a.grund] || GRUENDE[a.grund] || "Das hat nicht geklappt (" + a.grund + ").");
 }
 
 /* ═══ Artikel ════════════════════════════════════════════════ */
@@ -1636,7 +1763,7 @@ async function verlustBuchen(id){
 /* ═══ Bedienung ══════════════════════════════════════════════ */
 document.addEventListener("click", e => {
   const reiter = e.target.closest(".reiter [data-ansicht]");
-  if(reiter){ ANSICHT = reiter.dataset.ansicht; EDIT = null; REZ = null; zeichnen(); return; }
+  if(reiter){ ANSICHT = reiter.dataset.ansicht; EDIT = null; REZ = null; zeichnen(); if(ANSICHT === "standorte") vergleichLaden(); return; }
   const gericht = e.target.closest("[data-gericht]");
   if(gericht){ rezOeffnen(gericht.dataset.gericht); return; }
   const beleg = e.target.closest("[data-beleg]");
@@ -1662,6 +1789,7 @@ document.addEventListener("click", e => {
   else if(was === "rpos-neu"){ REZ.pos.push(leereRezPos()); rezZeichnen(); const f = document.querySelectorAll("#rezPosListe [data-rpos]"); f[f.length - 1].querySelector("select").focus(); }
   else if(was === "rpos-weg"){ REZ.pos.splice(Number(k.dataset.i), 1); if(!REZ.pos.length) REZ.pos.push(leereRezPos()); rezZeichnen(); }
   else if(was === "rez-sichern") rezSichern(k);
+  else if(was === "rez-uebertragen") rezUebertragen(k);
 });
 
 /* Eingaben im Beleg landen in EDIT, ohne neu zu zeichnen — der Fokus
@@ -1698,6 +1826,13 @@ document.addEventListener("change", e => {
 $("betriebWahl").addEventListener("change", e => betriebWaehlen(e.target.value));
 $("aSuche").addEventListener("input", artikelZeichnen);
 $("kSuche").addEventListener("input", kalkZeichnen);
+$("sZeitraum").addEventListener("click", e => {
+  const k = e.target.closest("[data-zeitraum]"); if(!k) return;
+  S_ZEITRAUM = k.dataset.zeitraum;
+  for(const x of $("sZeitraum").children) x.setAttribute("aria-checked", String(x === k));
+  vergleichLaden();
+});
+$("kettenWahl").addEventListener("change", e => { KETTE = KETTEN.find(k => k.organisation_id === e.target.value) || KETTEN[0]; vergleichLaden(); });
 $("kFilter").addEventListener("click", e => {
   const k = e.target.closest("[data-filter]"); if(!k) return;
   K_FILTER = k.dataset.filter;
