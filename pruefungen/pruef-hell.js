@@ -75,6 +75,22 @@ const MESSEN = () => {
   return { dunkel, gewaehlt };
 };
 
+/* Gemessen wird der ENDZUSTAND (Skill „bewegung“ §9). Beim Wechsel der
+   Tafel setzt das Board die Auswahl der Segmente neu, die Schrift blendet
+   140 ms über. Unter Last kam die Messung nach 250 ms gelegentlich in
+   diese Überblendung: „Prozent“ 1,02:1 — eine Zwischenfarbe, die nach
+   dem Ende nie mehr dasteht (gemessen 12.10.: dieselbe Geometrie vorher
+   und nachher, Fehlschlag nur unter Last). Endlose Animationen zählen
+   nicht; gewartet wird höchstens 2 s. */
+async function ruhe(p){
+  await p.evaluate(() => Promise.race([
+    Promise.all(document.getAnimations()
+      .filter(a => a.effect && a.effect.getTiming().iterations !== Infinity && a.playState === "running")
+      .map(a => a.finished.catch(() => {}))),
+    new Promise(r => setTimeout(r, 2000))
+  ]));
+}
+
 async function seite(br, datei, licht){
   const ctx = await br.newContext({ viewport:{ width:390, height:844 } });
   const p = await ctx.newPage();
@@ -123,6 +139,7 @@ async function seite(br, datei, licht){
     for(const t of tafeln){
       if(t) await p.evaluate(t => { if(typeof tafelZeigen === "function") tafelZeigen(t); }, t);
       await p.waitForTimeout(250);
+      await ruhe(p);
       const m = await p.evaluate(MESSEN);
       m.dunkel.forEach(x => alle.dunkel.add(x));
       alle.gewaehlt.push(...m.gewaehlt);
@@ -231,6 +248,7 @@ async function seite(br, datei, licht){
       for(const t of tafeln){
         if(t) await p.evaluate(t => { if(typeof tafelZeigen === "function") tafelZeigen(t); }, t);
         await p.waitForTimeout(250);
+        await ruhe(p);
         const m = await p.evaluate(MESSEN);
         m.dunkel.forEach(x => alle.dunkel.add(x));
         alle.gewaehlt.push(...m.gewaehlt);

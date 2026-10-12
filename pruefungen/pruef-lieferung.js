@@ -155,6 +155,7 @@ server.listen(8899, async () => {
     ["/admin.html",     "Omoteno"],
     ["/kueche",         "Küche"],
     ["/konto",          "Konto"],
+    ["/einkauf",        "Einkauf"],
     ["/start",          "Omoteno"],
     ["/studio",         "Studio"],
     /* Pflichtangaben. Bis zum 30.08. fehlten beide Dateien und die

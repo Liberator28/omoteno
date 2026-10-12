@@ -509,6 +509,15 @@ button{
 .alessia-karte .z-meta{white-space:normal}
 .stand.s-aus{background:rgba(255,255,255,.05); color:var(--text-faint); border:1px solid var(--stroke);}
 .al-check{display:flex; align-items:center; gap:10px; margin:14px 0 4px; min-height:44px; font-size:14px}
+
+/* ---------- Ketten & Standorte (E4, migration-einkauf-e4.sql) ----------
+   Jede Organisation eine Karte; Tipp öffnet Zusammenlegen und die
+   Zentrale der Kette. Zusammenlegen und Entfernen erst beim zweiten Tipp. */
+.kette-karte{cursor:pointer; text-align:left; width:100%; font:inherit; color:inherit; border:1px solid var(--stroke);}
+.kette-karte .z-meta{white-space:normal}
+.kt-mail{flex:1; min-width:0; overflow-wrap:anywhere; color:var(--text); font-size:14px}
+.kt-titel{font-size:12px; letter-spacing:.08em; text-transform:uppercase; color:var(--text-dim); margin:22px 0 8px 2px}
+.kt-warn{color:var(--amber-hot)}
 .al-check input{width:22px; height:22px}
 
 /* Umschalter „erledigte zeigen" in der Abschnittszeile */
@@ -619,7 +628,9 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
 .zeile .z-meta{flex:1; min-width:0; color:var(--text-dim); font-size:12px;}
 .zeile button{
   min-width:46px; height:46px; padding:0 12px; flex:0 0 auto; border-radius:12px;
-  background:transparent; border:1px solid var(--stroke); color:var(--text-faint); font-size:14px;
+  /* --text-dim statt --text-faint: ein Knopf ist nie Zierschrift (§5.2a) —
+     faint kam auf dem Blatt auf 4,25:1 (gemessen, pruef-master-ketten). */
+  background:transparent; border:1px solid var(--stroke); color:var(--text-dim); font-size:14px;
 }
 .zeile button:active{border-color:var(--alert); color:var(--alert);}
 .zeile button.ok:active{border-color:var(--sage); color:var(--sage);}
@@ -795,6 +806,9 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
 
   <p class="section-label">Alessia am Telefon<span class="rechts" id="alessiaNote">—</span></p>
   <div id="alessiaListe"></div>
+
+  <p class="section-label">Ketten &amp; Standorte<span class="rechts" id="kettenNote">—</span></p>
+  <div id="kettenListe"></div>
 
   <div id="diagBox" class="card hidden"></div>
 
@@ -1348,7 +1362,7 @@ function pinSchirm(rufen, s){
      RAW hält 30 Tage Rohdaten. Alle Ansichten werden daraus
      berechnet, ohne neue Abfrage.
      ============================================================ */
-  var RAW = { betriebe:[], bestellungen:[], rufe:[], umsaetze:[], anfragen:[], zugaenge:[], alessia:[] };
+  var RAW = { betriebe:[], bestellungen:[], rufe:[], umsaetze:[], anfragen:[], zugaenge:[], alessia:[], ketten:[] };
   var STATE = { range:'heute', betriebe:[], ersterLauf:true, zeigeErledigte:false };
 
   function pruefeAuthFehler(msg){
@@ -1374,7 +1388,8 @@ function pinSchirm(rufen, s){
       ladeUmsaetze(tagKey(seit)),
       ladeAnfragen(),
       ladeZugaenge(),
-      ladeAlessia()
+      ladeAlessia(),
+      ladeKetten()
     ]).then(function(res){
       RAW.betriebe     = res[0];
       RAW.bestellungen = res[1];
@@ -1383,6 +1398,7 @@ function pinSchirm(rufen, s){
       RAW.anfragen     = res[4];
       RAW.zugaenge     = res[5];
       RAW.alessia      = res[6];
+      RAW.ketten       = res[7];
       console.log(LOG,'Rohdaten:',{
         betriebe:RAW.betriebe.length, bestellungen:RAW.bestellungen.length,
         rufe:RAW.rufe.length, umsaetze:RAW.umsaetze.length, anfragen:RAW.anfragen.length,
@@ -1668,6 +1684,7 @@ function pinSchirm(rufen, s){
     renderListe();
     renderZugaenge();
     renderAlessia();
+    renderKetten();
     $('standNote').textContent = 'Stand ' + uhr.format(new Date()) + ' Uhr';
   }
 
@@ -1846,6 +1863,29 @@ function pinSchirm(rufen, s){
     });
   }
 
+  /* Ketten: master_ketten() prüft ist_master() selbst und antwortet
+     ohne Recht mit {ok:false} statt einer Ausnahme. */
+  function ladeKetten(){
+    return sb.rpc('master_ketten').then(function(res){
+      if(res.error){
+        console.log(LOG,'FEHLER master_ketten:',res.error.message);
+        DIAG.ketten = (res.error.code === '42883' || res.error.code === 'PGRST202' || /does not exist|schema cache/i.test(res.error.message))
+          ? 'Funktion fehlt — migration-einkauf-e4.sql noch nicht ausgeführt'
+          : 'FEHLER: ' + res.error.message;
+        pruefeAuthFehler(res.error.message);
+        return [];
+      }
+      var d = res.data || {};
+      if(!d.ok){ DIAG.ketten = 'kein Recht'; return []; }
+      var rows = d.organisationen || [];
+      DIAG.ketten = rows.length + ' Organisationen';
+      return rows;
+    }).catch(function(e){
+      DIAG.ketten = 'FEHLER: ' + (e && e.message ? e.message : 'unbekannt');
+      return [];
+    });
+  }
+
   /* ============================================================
      6.5c ALESSIA — welcher Telefon-Assistent gehört zu welchem Haus
      Wunsch 10.10.: „Ich sehe, der KI-Telefonagent ist für den Betrieb,
@@ -1943,6 +1983,159 @@ function pinSchirm(rufen, s){
   document.addEventListener('click', function(e){
     var k = e.target.closest && e.target.closest('[data-alessia]');
     if(k) oeffneAlessiaSheet(k.getAttribute('data-alessia'));
+  });
+
+  /* ============================================================
+     6.5d KETTEN — Organisationen zusammenlegen, Zentrale der Kette
+     Plan E4: Der Master legt Organisationen zusammen. Gleichnamige
+     Artikel und Lieferanten werden dabei NICHT verschmolzen, sondern
+     bekommen den Standort als Zusatz. Die Zentrale der Kette sieht in
+     /einkauf nur Zahlen je Standort, keine Belege.
+     „Zentrale der Kette“ heißt sie hier immer ganz — „die Zentrale“
+     ist in dieser Seite das Master-Board selbst.
+     ============================================================ */
+  function ktStandorte(o){
+    return (o.betriebe || []).map(function(b){ return b.name || b.slug; }).join(', ') || 'kein Standort';
+  }
+  function renderKetten(){
+    var box = $('kettenListe'); if(!box) return;
+    var alle = RAW.ketten || [];
+    var mehr = alle.filter(function(o){ return (o.betriebe || []).length > 1; }).length;
+    $('kettenNote').textContent = alle.length ? (mehr + (mehr === 1 ? ' Kette' : ' Ketten') + ' mit mehreren Standorten') : '—';
+    if(!alle.length){
+      box.innerHTML = '<div class="card empty">' +
+        (DIAG.ketten && String(DIAG.ketten).indexOf('Funktion fehlt') === 0
+          ? 'Ketten gibt es noch nicht.<br>Führ <b>migration-einkauf-e4.sql</b> im SQL-Editor aus.'
+          : DIAG.ketten === 'kein Recht' ? 'Die Ketten sieht nur ein Master-Konto.'
+          : 'Noch keine Organisation.') + '</div>';
+      return;
+    }
+    box.innerHTML = '';
+    alle.forEach(function(o, i){
+      var n = (o.betriebe || []).length, z = o.zentrale || [];
+      var el = document.createElement('button');
+      el.type = 'button';
+      el.className = 'card zugang kette-karte';
+      el.setAttribute('data-kette', o.id);
+      el.style.animationDelay = (i*40) + 'ms';
+      el.innerHTML =
+        '<div class="z-main">' +
+          '<h2 class="z-betrieb">' + esc(o.name || 'Ohne Namen') + '</h2>' +
+          '<div class="z-mail">' + esc(ktStandorte(o)) + '</div>' +
+          '<div class="z-meta">' + esc(z.length ? 'Zentrale der Kette: ' + z.map(function(m){ return m.email; }).join(', ') : 'keine Zentrale der Kette') + '</div>' +
+        '</div>' +
+        '<span class="stand ' + (n > 1 ? 's-aktiv' : 's-aus') + '">' + esc(n + (n === 1 ? ' Standort' : ' Standorte')) + '</span>';
+      box.appendChild(el);
+    });
+  }
+  var KT_GRUND_ZUSAMMEN = {
+    kein_recht: 'Nur ein Master-Konto darf Ketten ändern.',
+    gleich: 'Bitte eine andere Organisation wählen — eine Kette lässt sich nicht mit sich selbst zusammenlegen.',
+    unbekannt: 'Eine der beiden Organisationen gibt es nicht mehr. Bitte neu laden.',
+    form: 'Der neue Name darf 1 bis 120 Zeichen lang sein.'
+  };
+  var KT_GRUND_ZENTRALE = {
+    kein_recht: 'Nur ein Master-Konto darf die Zentrale der Kette vergeben.',
+    unbekannt: 'Diese Organisation gibt es nicht mehr. Bitte neu laden.',
+    form: 'Bitte eine gültige E-Mail-Adresse eintragen.',
+    kein_konto: 'Zu dieser E-Mail gibt es noch kein Konto. Die Person registriert sich zuerst unter omoteno.de/konto.'
+  };
+  function oeffneKetteSheet(id){
+    var o = (RAW.ketten || []).filter(function(x){ return x.id === id; })[0];
+    if(!o) return;
+    var andere = (RAW.ketten || []).filter(function(x){ return x.id !== id; });
+    var z = o.zentrale || [];
+    var ov = baueSheet(
+      '<h3>Kette · ' + esc(o.name || 'Ohne Namen') + '</h3>' +
+      '<p class="sub">Standorte: ' + esc(ktStandorte(o)) + '. Artikel und Lieferanten sind in der Kette gemeinsam; Belege, Preise und Bestände bleiben je Standort.</p>' +
+      '<p class="kt-titel" id="ktZTitel">Zentrale der Kette</p>' +
+      '<div id="ktZentrale" aria-labelledby="ktZTitel">' + (z.length ? z.map(function(m){
+        return '<div class="zeile"><span class="kt-mail">' + esc(m.email) + '</span>' +
+          '<button type="button" data-kz-weg="' + esc(m.email) + '">Entfernen</button></div>';
+      }).join('') : '<p class="sub">Noch niemand. Die Zentrale sieht unter /einkauf die Zahlen je Standort — keine Belege, keine Gäste.</p>') + '</div>' +
+      '<label for="ktMail">E-Mail hinzufügen</label>' +
+      '<input id="ktMail" type="email" autocomplete="off" placeholder="name@beispiel.de">' +
+      '<p class="sub" id="ktZMeldung" aria-live="polite"></p>' +
+      '<button id="ktZAdd" type="button" class="btn-ghost">Als Zentrale der Kette hinzufügen</button>' +
+      (andere.length ?
+        '<p class="kt-titel">Mit anderer Organisation zusammenlegen</p>' +
+        '<label for="ktQuelle">Diese Organisation kommt dazu</label>' +
+        '<select id="ktQuelle">' + andere.map(function(x){
+          return '<option value="' + esc(x.id) + '">' + esc((x.name || 'Ohne Namen') + ' — ' + ktStandorte(x)) + '</option>';
+        }).join('') + '</select>' +
+        '<label for="ktName">Name der Kette (leer = bleibt)</label>' +
+        '<input id="ktName" type="text" autocomplete="off" maxlength="120" placeholder="' + esc(o.name || '') + '">' +
+        '<p class="sub" id="ktMeldung" aria-live="polite">Standorte, Artikel und Lieferanten wandern hierher. Gleichnamige bekommen den Standort als Zusatz. Das lässt sich nicht rückgängig machen.</p>' +
+        '<button id="ktZusammen" type="button" class="btn-primary">Zusammenlegen</button>'
+      : '') +
+      '<button id="ktClose" type="button" class="btn-ghost">Schließen</button>'
+    );
+    if(!ov) return;
+    function schliesse(){ if(ov.parentNode) ov.remove(); }
+    function $o(x){ return ov.querySelector(x); }
+    $o('#ktClose').addEventListener('click', schliesse);
+
+    function zentraleSetzen(email, an, knopf, meldung){
+      knopf.disabled = true;
+      sb.rpc('master_zentrale_setzen', { p_org: id, p_email: email, p_an: an }).then(function(res){
+        knopf.disabled = false;
+        var d = res && res.data;
+        if(res.error || !d || !d.ok){
+          meldung.textContent = (d && KT_GRUND_ZENTRALE[d.grund]) || 'Nicht gespeichert, bitte Verbindung prüfen.';
+          return;
+        }
+        toast(an ? 'Zentrale der Kette hinzugefügt' : 'Zentrale der Kette entfernt','ok'); schliesse(); ladeAlles();
+      }, function(){ knopf.disabled = false; meldung.textContent = 'Nicht gespeichert, bitte Verbindung prüfen.'; });
+    }
+    $o('#ktZAdd').addEventListener('click', function(){
+      var email = $o('#ktMail').value.trim();
+      if(!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)){ $o('#ktZMeldung').textContent = KT_GRUND_ZENTRALE.form; return; }
+      zentraleSetzen(email, true, $o('#ktZAdd'), $o('#ktZMeldung'));
+    });
+    /* Entfernen erst beim zweiten Tipp: der erste fragt. */
+    $o('#ktZentrale').addEventListener('click', function(e){
+      var k = e.target.closest('[data-kz-weg]'); if(!k) return;
+      if(k.getAttribute('data-sicher') !== '1'){
+        k.setAttribute('data-sicher', '1'); k.textContent = 'Wirklich?';
+        k.classList.add('kt-warn');
+        return;
+      }
+      zentraleSetzen(k.getAttribute('data-kz-weg'), false, k, $o('#ktZMeldung'));
+    });
+    if(!andere.length) return;
+    var knopf = $o('#ktZusammen'), meldung = $o('#ktMeldung'), START = meldung.textContent, sicher = false;
+    function zurueck(){ sicher = false; knopf.textContent = 'Zusammenlegen'; meldung.textContent = START; meldung.classList.remove('kt-warn'); }
+    $o('#ktQuelle').addEventListener('change', zurueck);
+    $o('#ktName').addEventListener('input', function(){ if(sicher) zurueck(); });
+    knopf.addEventListener('click', function(){
+      var quelle = $o('#ktQuelle').value, q = andere.filter(function(x){ return x.id === quelle; })[0];
+      var name = $o('#ktName').value.trim();
+      if(!sicher){
+        sicher = true;
+        knopf.textContent = 'Ja, zusammenlegen';
+        meldung.classList.add('kt-warn');
+        meldung.textContent = '„' + ((q && q.name) || 'Die gewählte Organisation') + '“ mit ' + ((q && (q.betriebe || []).length) || 0) +
+          ' Standort(en) kommt zu „' + (name || o.name || 'dieser Kette') + '“. Nicht rückgängig zu machen. Noch einmal tippen zum Bestätigen.';
+        return;
+      }
+      knopf.disabled = true;
+      sb.rpc('master_organisation_zusammenlegen', { p_ziel: id, p_quelle: quelle, p_name: name || null }).then(function(res){
+        knopf.disabled = false;
+        var d = res && res.data;
+        if(res.error || !d || !d.ok){
+          zurueck();
+          meldung.textContent = (d && KT_GRUND_ZUSAMMEN[d.grund]) || 'Nicht zusammengelegt, bitte Verbindung prüfen.';
+          return;
+        }
+        toast('Zusammengelegt: ' + d.betriebe + ' Standort(e), ' + d.artikel + ' Artikel, ' + d.lieferanten + ' Lieferanten' +
+          (d.umbenannt ? ' — ' + d.umbenannt + ' mit Standort-Zusatz' : ''), 'ok');
+        schliesse(); ladeAlles();
+      }, function(){ knopf.disabled = false; zurueck(); meldung.textContent = 'Nicht zusammengelegt, bitte Verbindung prüfen.'; });
+    });
+  }
+  document.addEventListener('click', function(e){
+    var k = e.target.closest && e.target.closest('[data-kette]');
+    if(k) oeffneKetteSheet(k.getAttribute('data-kette'));
   });
 
   /* ============================================================
