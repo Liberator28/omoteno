@@ -1,0 +1,1254 @@
+<!DOCTYPE html>
+<html lang="de" translate="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#0F1114">
+<!-- Fest dunkel wie Board und Küche. Als meta, weil der Browser vor
+     jedem Skript entscheidet (CLAUDE.md §5.2c); "only" verbietet
+     Samsung Internet das Nachfärben. -->
+<meta name="color-scheme" content="only dark">
+<meta name="robots" content="noindex">
+<title>Omoteno Einkauf</title>
+<script src="/lib/supabase-js-2.117.3.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R"></script>
+<link rel="stylesheet" href="/schriften/seiten.css">
+<style>
+/* §8.1: Die UA-Regel für [hidden] verliert gegen jede Angabe im Blatt. */
+[hidden]{display:none !important}
+:root{
+  color-scheme:only dark;
+  --nacht:#0F1114;
+  --karte:#171A1F;
+  --flaeche:#1F2329;
+  --linie:#2E343C;
+  --linie-stark:#454D57;
+  --kreide:#EEF0F2;
+  /* Auf --karte gerechnet: 8,0:1; auf --flaeche 7,1:1 (§5.2). */
+  --gedaempft:#A9B0B9;
+  --messing:#D8A63C;
+  --auf-messing:#16130C;
+  --gut:#7FCFA6;
+  --warn:#F0B860;
+  --fehler:#FF9A8B;
+  --ecke:14px;
+  --kopf:"Bricolage Grotesque",-apple-system,BlinkMacSystemFont,sans-serif;
+  --text:"Instrument Sans",-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  --aus:cubic-bezier(.16,1,.3,1);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;padding:0}
+body{
+  background:var(--nacht);color:var(--kreide);
+  font-family:var(--text);font-size:16px;line-height:1.45;
+  -webkit-font-smoothing:antialiased;
+  padding:0 16px calc(48px + env(safe-area-inset-bottom));
+}
+h1,h2,h3{font-family:var(--kopf);font-weight:650;line-height:1.2;margin:0;text-wrap:balance}
+button{font:inherit;color:inherit;cursor:pointer}
+.zahl,.betrag{font-family:var(--mono);font-variant-numeric:tabular-nums}
+.leise{color:var(--gedaempft)}
+
+/* §3.5: ausdrückliche Schrift, 16 px, sonst zoomt iOS und Safari malt
+   dunkel auf dunkel. Jede Feldart einzeln, auch date und email. */
+input[type=text],input[type=email],input[type=password],input[type=date],
+input[type=search],select,textarea{
+  width:100%;min-height:46px;padding:10px 12px;
+  background:var(--flaeche);border:1px solid var(--linie-stark);border-radius:11px;
+  color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  font:inherit;font-size:16px;-webkit-appearance:none;appearance:none;
+  scroll-margin-top:96px;
+}
+select{background-image:linear-gradient(45deg,transparent 50%,var(--gedaempft) 50%),linear-gradient(135deg,var(--gedaempft) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 20px,calc(100% - 13px) 20px;background-size:5px 5px;background-repeat:no-repeat;padding-right:32px}
+input:focus-visible,select:focus-visible,textarea:focus-visible,button:focus-visible,a:focus-visible{
+  outline:2px solid var(--messing);outline-offset:2px}
+input::placeholder,textarea::placeholder{color:#7D858F;-webkit-text-fill-color:#7D858F}
+label.feld{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--gedaempft)}
+label.feld > span{font-weight:600}
+
+.knopf{
+  min-height:46px;padding:0 18px;border-radius:12px;border:1px solid var(--linie-stark);
+  background:var(--flaeche);font-weight:600;font-size:15px;
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  transition:transform 120ms var(--aus),background-color 120ms ease-out;
+}
+.knopf:active{transform:scale(.97)}
+.knopf.haupt{background:var(--messing);color:var(--auf-messing);border-color:var(--messing)}
+.knopf.leer{background:transparent}
+.knopf.gefahr{color:var(--fehler);border-color:rgba(255,154,139,.45);background:transparent}
+.knopf.gefahr.scharf{background:var(--fehler);color:#1B0E0B;border-color:var(--fehler)}
+.knopf:disabled{opacity:.5;cursor:default}
+
+/* ── Anmeldung ─────────────────────────────────────────────── */
+#tor{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:32px 0}
+.torkarte{width:100%;max-width:400px;background:var(--karte);border:1px solid var(--linie);
+  border-radius:22px;padding:28px 22px;display:flex;flex-direction:column;gap:14px}
+.torkarte .marke{font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:var(--messing);font-weight:700}
+.torkarte h1{font-size:26px}
+.torkarte p{margin:0;color:var(--gedaempft);font-size:15px}
+.msg{font-size:14.5px;line-height:1.5;color:var(--fehler);margin:0}
+.msg.ok{color:var(--gut)}
+.textknopf{background:none;border:0;padding:10px 0;min-height:44px;color:var(--gedaempft);
+  text-decoration:underline;text-underline-offset:3px;font-size:14.5px;align-self:flex-start}
+.textknopf.betont{color:var(--warn)}
+
+/* ── Kopf und Reiter ───────────────────────────────────────── */
+.kopf{position:sticky;top:0;z-index:20;background:var(--nacht);
+  margin:0 -16px;padding:12px 16px 0;border-bottom:1px solid var(--linie)}
+.kopfzeile{display:flex;align-items:center;gap:12px;flex-wrap:wrap;min-height:48px}
+.kopfzeile .marke{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--messing);font-weight:700}
+.kopfzeile h1{font-size:20px;flex:1 1 auto;min-width:0;overflow-wrap:anywhere}
+.kopfzeile .rechts{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kopfzeile a.zurueck{color:var(--gedaempft);font-size:14px;min-height:44px;display:inline-flex;align-items:center}
+#betriebWahl{width:auto;min-width:160px}
+.reiter{display:flex;gap:4px;overflow-x:auto;scrollbar-width:none;margin-top:4px}
+.reiter::-webkit-scrollbar{display:none}
+.reiter button{flex:0 0 auto;background:none;border:0;padding:12px 12px 13px;min-height:44px;
+  font-size:14.5px;font-weight:600;color:var(--gedaempft);position:relative}
+.reiter button::after{content:"";position:absolute;left:8px;right:8px;bottom:-1px;height:2px;border-radius:2px;
+  background:var(--messing);transform:scaleX(0);transition:transform 160ms var(--aus)}
+.reiter button[aria-selected=true]{color:var(--kreide)}
+.reiter button[aria-selected=true]::after{transform:scaleX(1)}
+
+main{max-width:980px;margin:0 auto;padding-top:20px;display:flex;flex-direction:column;gap:20px}
+.abschnitt{display:flex;flex-direction:column;gap:16px}
+.abschnitt > h2{font-size:22px}
+.lesesatz{background:rgba(240,184,96,.10);border:1px solid rgba(240,184,96,.35);color:var(--kreide);
+  border-radius:var(--ecke);padding:12px 14px;font-size:15px;margin:0}
+body.nurlesen .nur-inhaber{display:none !important}
+.leerzeile{color:var(--gedaempft);padding:18px 4px;margin:0}
+
+/* Kennzahlen der Übersicht: drei, und nur weil sie die Antwort sind. */
+.kennzahlen{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px}
+.kennzahl{background:var(--karte);border:1px solid var(--linie);border-radius:var(--ecke);padding:16px}
+.kennzahl b{display:block;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:26px;font-weight:600;margin-top:4px}
+.kennzahl span{font-size:14px;color:var(--gedaempft)}
+
+.liste{display:flex;flex-direction:column;background:var(--karte);border:1px solid var(--linie);border-radius:var(--ecke);overflow:hidden}
+.zeile{display:grid;grid-template-columns:1fr auto;gap:4px 12px;align-items:center;
+  padding:12px 14px;border-top:1px solid var(--linie);min-height:56px;text-align:left;
+  background:none;border-left:0;border-right:0;border-bottom:0;width:100%}
+.zeile:first-child{border-top:0}
+button.zeile:active{background:var(--flaeche)}
+.zeile .titel{font-weight:600;overflow-wrap:anywhere}
+.zeile .unter{grid-column:1 / -1;font-size:14px;color:var(--gedaempft)}
+.zeile .rechts{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums}
+.pille{display:inline-flex;align-items:center;min-height:24px;padding:0 9px;border-radius:999px;font-size:12.5px;
+  font-weight:600;border:1px solid var(--linie-stark);color:var(--gedaempft);white-space:nowrap}
+.pille.entwurf{color:var(--warn);border-color:rgba(240,184,96,.45)}
+.pille.freigegeben{color:var(--gut);border-color:rgba(127,207,166,.45)}
+.pille.storniert,.pille.verworfen{color:var(--gedaempft)}
+.pille.hoch{color:var(--fehler);border-color:rgba(255,154,139,.45)}
+.pille.runter{color:var(--gut);border-color:rgba(127,207,166,.45)}
+
+.werkzeuge{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.werkzeuge .wachsen{flex:1 1 200px}
+.karte{background:var(--karte);border:1px solid var(--linie);border-radius:var(--ecke);padding:16px;display:flex;flex-direction:column;gap:14px}
+.raster{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.einheitwahl{display:flex;gap:6px}
+.einheitwahl button{flex:1;min-height:46px;border-radius:11px;border:1px solid var(--linie-stark);background:var(--flaeche);font-weight:600}
+.einheitwahl button[aria-checked=true]{background:var(--messing);color:var(--auf-messing);border-color:var(--messing)}
+
+/* ── Beleg bearbeiten ─────────────────────────────────────── */
+.pos{background:var(--flaeche);border:1px solid var(--linie);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+.pos-kopf{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.pos-kopf b{font-family:var(--mono);font-size:13px;color:var(--gedaempft)}
+.pos-raster{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px}
+.pos-raster .breit{grid-column:1 / -1}
+.pos .ergebnis{font-size:14px;color:var(--gedaempft);font-family:var(--mono);font-variant-numeric:tabular-nums;min-height:20px}
+.pos .ergebnis.fehler{color:var(--fehler);font-family:var(--text)}
+.gelernt{font-size:12.5px;color:var(--gut)}
+.summenzeile{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;font-size:15px;
+  padding:12px 14px;border-radius:12px;background:var(--flaeche);border:1px solid var(--linie)}
+.summenzeile.abweichung{border-color:rgba(255,154,139,.55)}
+.summenzeile.passt{border-color:rgba(127,207,166,.55)}
+.meldung{border-radius:12px;padding:12px 14px;font-size:15px;margin:0}
+.meldung.fehler{background:rgba(255,154,139,.10);border:1px solid rgba(255,154,139,.45);color:var(--kreide)}
+.meldung.gut{background:rgba(127,207,166,.10);border:1px solid rgba(127,207,166,.45);color:var(--kreide)}
+.tabelle{width:100%;border-collapse:collapse;font-size:14.5px}
+.tabellenrahmen{overflow-x:auto;background:var(--karte);border:1px solid var(--linie);border-radius:var(--ecke)}
+.tabelle th,.tabelle td{padding:10px 12px;border-top:1px solid var(--linie);text-align:left;vertical-align:top}
+.tabelle th{color:var(--gedaempft);font-weight:600;font-size:13px;border-top:0}
+.tabelle td.z{text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+
+#toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom));transform:translateX(-50%);
+  z-index:50;max-width:calc(100% - 32px);background:var(--kreide);color:var(--nacht);font-weight:600;
+  padding:12px 16px;border-radius:12px}
+#toast.rein{animation:toastrein 200ms var(--aus) both}
+#toast.fehler{background:var(--fehler);color:#1B0E0B}
+@keyframes toastrein{from{opacity:0;transform:translate(-50%,8px)}to{opacity:1;transform:translate(-50%,0)}}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.01ms !important;transition-duration:.01ms !important}
+}
+</style>
+</head>
+<body>
+
+<!-- ═══ Anmeldung ═══ -->
+<section id="tor">
+  <div class="torkarte" id="loginBox">
+    <span class="marke">Omoteno</span>
+    <h1>Einkauf &amp; Kosten</h1>
+    <p>Mit demselben Zugang wie am Bestell-Board.</p>
+    <label class="feld"><span>E-Mail</span><input id="email" type="email" autocomplete="username" inputmode="email"></label>
+    <label class="feld"><span>Passwort</span><input id="password" type="password" autocomplete="current-password"></label>
+    <p class="msg" id="loginMsg" role="alert" hidden></p>
+    <button class="knopf haupt" id="loginBtn" type="button">Anmelden</button>
+    <button class="textknopf" id="vergessenBtn" type="button">Passwort vergessen?</button>
+    <p class="msg" id="vergessenStand" role="status" hidden></p>
+  </div>
+  <div class="torkarte" id="neuBox" hidden>
+    <span class="marke">Omoteno</span>
+    <h1>Neues Passwort</h1>
+    <p>Mindestens acht Zeichen. Danach ist eine Sperre aufgehoben.</p>
+    <label class="feld"><span>Neues Passwort</span><input id="neu1" type="password" autocomplete="new-password"></label>
+    <label class="feld"><span>Noch einmal</span><input id="neu2" type="password" autocomplete="new-password"></label>
+    <p class="msg" id="neuMsg" role="alert" hidden></p>
+    <button class="knopf haupt" id="neuBtn" type="button">Passwort speichern</button>
+  </div>
+</section>
+
+<!-- ═══ Anwendung ═══ -->
+<div id="app" hidden>
+  <header class="kopf">
+    <div class="kopfzeile">
+      <span class="marke">Einkauf</span>
+      <h1 id="betriebName">—</h1>
+      <div class="rechts">
+        <select id="betriebWahl" aria-label="Betrieb wählen" hidden></select>
+        <a class="zurueck" href="/admin.html">Zum Board</a>
+        <button class="knopf leer" id="abmelden" type="button">Abmelden</button>
+      </div>
+    </div>
+    <div class="reiter" role="tablist" aria-label="Bereiche">
+      <button role="tab" type="button" aria-selected="true" data-ansicht="uebersicht">Übersicht</button>
+      <button role="tab" type="button" aria-selected="false" data-ansicht="belege">Belege</button>
+      <button role="tab" type="button" aria-selected="false" data-ansicht="artikel">Artikel</button>
+      <button role="tab" type="button" aria-selected="false" data-ansicht="lieferanten">Lieferanten</button>
+    </div>
+  </header>
+
+  <main>
+    <p class="lesesatz" id="lesesatz" hidden>Sie sehen den Einkauf dieses Betriebs. Belege erfassen, freigeben und Artikel pflegen kann nur der Besitzer.</p>
+    <p class="meldung fehler" id="ladefehler" hidden></p>
+
+    <!-- Übersicht -->
+    <section class="abschnitt" id="v-uebersicht">
+      <div class="kennzahlen">
+        <div class="kennzahl"><span id="kMonatTitel">Einkauf diesen Monat</span><b id="kMonat">—</b><span class="leise">netto, freigegeben</span></div>
+        <div class="kennzahl"><span>Offene Entwürfe</span><b id="kEntwuerfe">—</b><span class="leise">noch nicht im Lager</span></div>
+        <div class="kennzahl"><span>Preisänderungen</span><b id="kPreise">—</b><span class="leise">ab 5 % zum letzten Einkauf</span></div>
+      </div>
+      <h2>Preisänderungen</h2>
+      <div class="liste" id="preisListe"></div>
+      <h2>Letzte Belege</h2>
+      <div class="liste" id="letzteListe"></div>
+    </section>
+
+    <!-- Belege -->
+    <section class="abschnitt" id="v-belege" hidden>
+      <div id="belegListeTeil" class="abschnitt">
+        <div class="werkzeuge">
+          <h2 class="wachsen">Belege</h2>
+          <button class="knopf haupt nur-inhaber" id="belegNeu" type="button">Beleg erfassen</button>
+        </div>
+        <div class="liste" id="belegListe"></div>
+      </div>
+      <div id="belegEdit" class="abschnitt" hidden></div>
+    </section>
+
+    <!-- Artikel -->
+    <section class="abschnitt" id="v-artikel" hidden>
+      <h2>Artikel</h2>
+      <div class="karte nur-inhaber">
+        <h3>Neuer Artikel</h3>
+        <div class="raster">
+          <label class="feld"><span>Name</span><input id="aName" type="text" maxlength="120" placeholder="z. B. Hafermilch"></label>
+          <label class="feld"><span>Kategorie</span><input id="aKat" type="text" maxlength="60" placeholder="z. B. Milchprodukte"></label>
+        </div>
+        <div class="feld"><span class="leise" id="aEinheitTitel">Gezählt in</span>
+          <div class="einheitwahl" role="radiogroup" aria-labelledby="aEinheitTitel" id="aEinheit">
+            <button type="button" role="radio" aria-checked="false" data-einheit="g">Gramm</button>
+            <button type="button" role="radio" aria-checked="true" data-einheit="ml">Milliliter</button>
+            <button type="button" role="radio" aria-checked="false" data-einheit="stk">Stück</button>
+          </div>
+        </div>
+        <p class="leise" style="margin:0;font-size:14px">Die Einheit bleibt danach fest: Jede gebuchte Menge hängt an ihr.</p>
+        <p class="meldung fehler" id="aMeldung" hidden></p>
+        <button class="knopf haupt" id="aAnlegen" type="button">Artikel anlegen</button>
+      </div>
+      <input id="aSuche" type="search" placeholder="Artikel suchen" aria-label="Artikel suchen">
+      <div class="liste" id="artikelListe"></div>
+    </section>
+
+    <!-- Lieferanten -->
+    <section class="abschnitt" id="v-lieferanten" hidden>
+      <h2>Lieferanten</h2>
+      <div class="karte nur-inhaber">
+        <h3>Neuer Lieferant</h3>
+        <div class="raster">
+          <label class="feld"><span>Name</span><input id="lName" type="text" maxlength="120" placeholder="z. B. Metro Frankfurt"></label>
+          <label class="feld"><span>Kundennummer</span><input id="lKunde" type="text" maxlength="60"></label>
+          <label class="feld"><span>Kontakt</span><input id="lKontakt" type="text" maxlength="300" placeholder="Telefon oder E-Mail"></label>
+        </div>
+        <p class="meldung fehler" id="lMeldung" hidden></p>
+        <button class="knopf haupt" id="lAnlegen" type="button">Lieferant anlegen</button>
+      </div>
+      <div class="liste" id="lieferantListe"></div>
+    </section>
+  </main>
+</div>
+
+<div id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+/* ╔═══ PIN · GETEILTER BLOCK · ANFANG ═════════════════════════════╗
+   ║ Wortgleich in admin.html, kueche.html und master.html —        ║
+   ║ pruef-pin.js vergleicht die drei Kopien Zeichen für Zeichen    ║
+   ║ und misst den Schirm in jeder Datei. ES5, weil Küche und        ║
+   ║ Master ohne Übersetzer laufen. Bringt Stil und Farben selbst    ║
+   ║ mit (§8.1e): Nichts hier stützt sich auf die Seite.             ║
+   ╚════════════════════════════════════════════════════════════════╝
+   Der Schirm ist Bedienung, nicht Schutz. Geschützt wird serverseitig:
+   meine_betriebe() liefert einen Betrieb mit PIN-Pflicht erst, wenn
+   pin_pruefen() für DIESE Anmeldung stimmte (migration-pin.sql). Wer
+   den Schirm umgeht, sieht leere Listen.
+
+   rufen(name, args) → Promise<{data, error}> — die Seite reicht ihren
+   eigenen Weg zur Datenbank herein (supabase-js oder fetch).
+   pinTor(rufen) → Promise: erfüllt, sobald weitergemacht werden darf;
+   verworfen, wenn der Mensch sich abmeldet. */
+var PIN_STIL =
+  ".pin-decke{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;" +
+  "padding:24px 16px;background:rgba(8,9,11,.82);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);" +
+  "--pin-karte:#1A1D21;--pin-kante:#343A42;--pin-schrift:#EEF0F2;--pin-leise:#A5ACB5;--pin-akzent:#D8A63C;" +
+  "--pin-auf-akzent:#16130C;--pin-fehler:#FF9A8B;color-scheme:only dark;" +
+  "font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif}" +
+  ".pin-decke [hidden]{display:none !important}" +
+  ".pin-karte{width:100%;max-width:360px;background:var(--pin-karte);border:1px solid var(--pin-kante);" +
+  "border-radius:22px;padding:26px 22px 20px;color:var(--pin-schrift);text-align:center;" +
+  "box-shadow:0 24px 60px rgba(0,0,0,.5)}" +
+  ".pin-marke{font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:var(--pin-akzent);margin-bottom:10px}" +
+  ".pin-titel{font-size:21px;font-weight:650;margin:0 0 8px;line-height:1.25}" +
+  ".pin-text{font-size:14.5px;line-height:1.5;color:var(--pin-leise);margin:0 0 20px}" +
+  ".pin-eingabe{position:relative;margin:0 auto 6px;width:max-content;max-width:100%}" +
+  ".pin-punkte{display:flex;gap:10px;justify-content:center;padding:14px 4px}" +
+  ".pin-punkte i{width:16px;height:16px;border-radius:50%;border:2px solid var(--pin-leise);" +
+  "transition:background-color 120ms ease-out,border-color 120ms ease-out,transform 120ms ease-out}" +
+  ".pin-punkte i.voll{background:var(--pin-akzent);border-color:var(--pin-akzent);transform:scale(1.08)}" +
+  ".pin-feld{position:absolute;inset:0;width:100%;height:100%;opacity:0;font-size:16px;border:0;" +
+  "background:transparent;color:transparent;caret-color:transparent;cursor:pointer}" +
+  ".pin-eingabe:focus-within .pin-punkte{outline:2px solid var(--pin-akzent);outline-offset:4px;border-radius:14px}" +
+  ".pin-meldung{min-height:21px;font-size:14px;line-height:1.5;color:var(--pin-fehler);margin:6px 0 12px}" +
+  ".pin-los,.pin-aus{display:block;width:100%;min-height:48px;border-radius:14px;font:inherit;font-size:15.5px;" +
+  "font-weight:600;cursor:pointer}" +
+  ".pin-los{background:var(--pin-akzent);color:var(--pin-auf-akzent);border:0;margin-bottom:8px}" +
+  ".pin-los:disabled{opacity:.55;cursor:default}" +
+  ".pin-aus{background:transparent;color:var(--pin-leise);border:1px solid var(--pin-kante)}" +
+  ".pin-los:focus-visible,.pin-aus:focus-visible{outline:2px solid var(--pin-schrift);outline-offset:2px}" +
+  ".pin-wackeln{animation:pin-wackeln 260ms cubic-bezier(.36,.07,.19,.97)}" +
+  "@keyframes pin-wackeln{0%,100%{transform:translateX(0)}25%{transform:translateX(-7px)}75%{transform:translateX(7px)}}" +
+  "@media (prefers-reduced-motion:reduce){.pin-wackeln{animation:none}.pin-punkte i{transition:none}}";
+
+var PIN_TEXT = {
+  frage:     "Bitte geben Sie Ihre 8-stellige PIN ein. Sie haben sie vom Omoteno-Team bekommen.",
+  keine:     "Für dieses Konto ist noch keine PIN vergeben. Bitte beim Omoteno-Team melden.",
+  gesperrt:  "Zu viele falsche Eingaben. Die PIN ist gesperrt — das Omoteno-Team entsperrt sie.",
+  falsch:    "Das war nicht richtig.",
+  form:      "Bitte genau 8 Ziffern.",
+  sitzung:   "Bitte einmal ab- und wieder anmelden.",
+  netz:      "Keine Verbindung. Bitte noch einmal versuchen."
+};
+
+function pinTor(rufen){
+  return Promise.resolve().then(function(){ return rufen("pin_status", {}); })
+    .then(function(r){
+      /* Keine Antwort (Migration fehlt, Netz weg): weiter. Der Server
+         hält trotzdem zurück, was er zurückhalten soll — ein Schirm,
+         der bei jedem Aussetzer die Küche anhält, wäre die falsche
+         Abwägung (§7). */
+      if(!r || r.error || !r.data) return true;
+      var s = r.data;
+      if(!s.pflicht || s.ok) return true;
+      return pinSchirm(rufen, s);
+    }, function(){ return true; });
+}
+
+function pinSchirm(rufen, s){
+  return new Promise(function(fertig, abbruch){
+    if(!document.getElementById("pin-stil")){
+      var st = document.createElement("style");
+      st.id = "pin-stil"; st.textContent = PIN_STIL;
+      document.head.appendChild(st);
+    }
+    var alt = document.querySelector(".pin-decke");
+    if(alt) alt.remove();
+    var d = document.createElement("div");
+    d.className = "pin-decke";
+    d.setAttribute("role", "dialog");
+    d.setAttribute("aria-modal", "true");
+    d.setAttribute("aria-labelledby", "pin-titel");
+    var punkte = "";
+    for(var i = 0; i < 8; i++) punkte += "<i></i>";
+    d.innerHTML =
+      '<div class="pin-karte">' +
+        '<div class="pin-marke">Omoteno</div>' +
+        '<h2 class="pin-titel" id="pin-titel">Zweiter Schritt</h2>' +
+        '<p class="pin-text" id="pin-text"></p>' +
+        '<div class="pin-eingabe" id="pin-eingabe">' +
+          '<div class="pin-punkte" aria-hidden="true">' + punkte + '</div>' +
+          '<input class="pin-feld" id="pin-feld" type="text" inputmode="numeric" pattern="[0-9]*"' +
+          ' autocomplete="one-time-code" maxlength="8" aria-label="PIN, 8 Ziffern" aria-describedby="pin-meldung">' +
+        '</div>' +
+        '<p class="pin-meldung" id="pin-meldung" role="alert"></p>' +
+        '<button type="button" class="pin-los" id="pin-los" disabled>Bestätigen</button>' +
+        '<button type="button" class="pin-aus" id="pin-aus">Abmelden</button>' +
+      '</div>';
+    document.body.appendChild(d);
+
+    var feld = document.getElementById("pin-feld"),
+        los = document.getElementById("pin-los"),
+        meldung = document.getElementById("pin-meldung"),
+        text = document.getElementById("pin-text"),
+        eingabe = document.getElementById("pin-eingabe"),
+        laeuft = false;
+
+    function zu(){ feld.value = ""; zeichnen(); eingabe.hidden = true; los.hidden = true; }
+    function zeichnen(){
+      var n = feld.value.length, p = d.querySelectorAll(".pin-punkte i");
+      for(var j = 0; j < p.length; j++) p[j].className = j < n ? "voll" : "";
+      los.disabled = laeuft || n !== 8;
+    }
+    function wackeln(){
+      var p = d.querySelector(".pin-punkte");
+      p.classList.remove("pin-wackeln"); void p.offsetWidth; p.classList.add("pin-wackeln");
+    }
+
+    if(!s.hat_pin){ text.textContent = PIN_TEXT.keine; zu(); }
+    else if(s.gesperrt){ text.textContent = PIN_TEXT.gesperrt; zu(); }
+    else { text.textContent = PIN_TEXT.frage; setTimeout(function(){ feld.focus(); }, 60); }
+
+    function senden(){
+      if(laeuft || feld.value.length !== 8) return;
+      laeuft = true; zeichnen(); meldung.textContent = "";
+      var wert = feld.value;
+      Promise.resolve().then(function(){ return rufen("pin_pruefen", { p_pin: wert }); })
+        .then(function(r){
+          laeuft = false;
+          var a = r && r.data;
+          if(a && a.ok === true){ d.remove(); fertig(true); return; }
+          feld.value = ""; zeichnen(); wackeln();
+          if(!a){ meldung.textContent = PIN_TEXT.netz; return; }
+          if(a.grund === "gesperrt"){ text.textContent = PIN_TEXT.gesperrt; meldung.textContent = ""; zu(); return; }
+          if(a.grund === "keine_pin"){ text.textContent = PIN_TEXT.keine; zu(); return; }
+          if(a.grund === "keine_sitzung"){ meldung.textContent = PIN_TEXT.sitzung; return; }
+          if(a.grund === "form"){ meldung.textContent = PIN_TEXT.form; return; }
+          var rest = a.verbleibend;
+          meldung.textContent = PIN_TEXT.falsch + (rest === 1 ? " Noch ein Versuch, dann ist die PIN gesperrt."
+            : (typeof rest === "number" ? " Noch " + rest + " Versuche." : ""));
+          feld.focus();
+        }, function(){
+          laeuft = false; feld.value = ""; zeichnen(); meldung.textContent = PIN_TEXT.netz;
+        });
+    }
+
+    feld.addEventListener("input", function(){
+      var sauber = feld.value.replace(/[^0-9]/g, "").slice(0, 8);
+      if(sauber !== feld.value) feld.value = sauber;
+      zeichnen();
+      if(sauber.length === 8) senden();
+    });
+    feld.addEventListener("keydown", function(e){ if(e.key === "Enter") senden(); });
+    los.addEventListener("click", senden);
+    document.getElementById("pin-aus").addEventListener("click", function(){
+      d.remove(); abbruch(new Error("abgemeldet"));
+    });
+  });
+}
+/* ╚═══ PIN · GETEILTER BLOCK · ENDE ═══════════════════════════════╝ */
+</script>
+<script>
+"use strict";
+/* ═══════════════════════════════════════════════════════════════
+   EINKAUF & KOSTEN · Stufe E1 (dokumente/plan-einkauf.md)
+
+   Geschrieben wird NUR über die Funktionen aus
+   datenbank/migration-einkauf.sql (beleg_speichern, beleg_freigeben,
+   beleg_stornieren, beleg_verwerfen) und für Stammdaten über die
+   RLS-Regeln (Inhaber). Diese Seite ist Bedienung, nicht Schutz:
+   Was das Team hier nicht sieht, lehnt der Server ohnehin ab.
+   ═══════════════════════════════════════════════════════════════ */
+let WIEDERHERSTELLEN = /type=recovery/.test(location.hash + location.search);
+const KONFIG = {
+  url: "https://quxwweuvdqtjsdwgjdrh.supabase.co",
+  schluessel: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk"
+};
+const WAHL_SCHLUESSEL = "omoteno-einkauf-betrieb";
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
+const euro = new Intl.NumberFormat("de-DE", { style:"currency", currency:"EUR" });
+const zahlFmt = new Intl.NumberFormat("de-DE", { maximumFractionDigits:2 });
+const datumFmt = new Intl.DateTimeFormat("de-DE", { day:"2-digit", month:"2-digit", year:"numeric" });
+const monatFmt = new Intl.DateTimeFormat("de-DE", { month:"long" });
+
+/* ── Zahlen lesen ──────────────────────────────────────────────
+   „7,5“, „1.250,00“, „54“, „12,90 €“. Leer heißt null, Unlesbares
+   heißt NaN — und keines von beiden geht je als 0 hinaus. */
+function zahl(t){
+  if(t == null) return null;
+  let s = String(t).trim().replace(/\s|€/g, "");
+  if(!s) return null;
+  if(/^-?\d{1,3}(\.\d{3})+(,\d+)?$/.test(s)) s = s.replace(/\./g, "").replace(",", ".");
+  else if(/^-?\d+(,\d+)?$/.test(s)) s = s.replace(",", ".");
+  else if(!/^-?\d+(\.\d+)?$/.test(s)) return NaN;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+/* Gebinde in Basiseinheit: „0,75 l“ → 750 ml, „1 kg“ → 1000 g, „6“
+   → 6 in der Einheit des Artikels. Gewicht und Volumen werden nie
+   ineinander umgerechnet (Plan: kein Dichte-Raten). */
+const EINHEIT_FAKTOR = { g:["g",1], kg:["g",1000], ml:["ml",1], cl:["ml",10], l:["ml",1000], stk:["stk",1], st:["stk",1], "stück":["stk",1] };
+function gebindeLesen(text, basis){
+  const s = String(text == null ? "" : text).trim().toLowerCase();
+  if(!s) return { wert:null };
+  const m = s.match(/^(\d+(?:[.,]\d+)?)\s*(kg|g|ml|cl|l|stk|st|stück)?\.?$/);
+  if(!m) return { fehler:"Menge je Einheit nicht lesbar — z. B. „750 ml“ oder „1 kg“." };
+  const n = zahl(m[1]);
+  if(!(n > 0)) return { fehler:"Menge je Einheit muss über 0 liegen." };
+  if(!m[2]) return { wert:n };
+  const [art, faktor] = EINHEIT_FAKTOR[m[2]];
+  if(basis && art !== basis) return { fehler:"Dieser Artikel wird in " + EINHEIT_NAME[basis] + " gezählt — Gewicht und Volumen werden nicht umgerechnet." };
+  return { wert:Math.round(n * faktor * 10000) / 10000 };
+}
+const EINHEIT_NAME = { g:"Gramm", ml:"Milliliter", stk:"Stück" };
+const EINHEIT_KURZ = { g:"g", ml:"ml", stk:"Stk" };
+
+/* Bestand und Preis lesbar: Liter und Kilo ab 1000, Preis je l/kg/Stück. */
+function mengeText(menge, basis){
+  if(menge == null || !Number.isFinite(Number(menge))) return "—";
+  const n = Number(menge);
+  if(basis === "ml" && Math.abs(n) >= 1000) return zahlFmt.format(n / 1000) + " l";
+  if(basis === "g" && Math.abs(n) >= 1000) return zahlFmt.format(n / 1000) + " kg";
+  return zahlFmt.format(n) + " " + (EINHEIT_KURZ[basis] || "");
+}
+function preisText(preisBasis, basis){
+  if(preisBasis == null || !Number.isFinite(Number(preisBasis))) return "—";
+  const p = Number(preisBasis);
+  if(basis === "ml") return euro.format(p * 1000) + " / l";
+  if(basis === "g") return euro.format(p * 1000) + " / kg";
+  return euro.format(p) + " / Stück";
+}
+
+/* ── Jeder Grund aus den Funktionen hat einen Satz ──────────────
+   pruef-einkauf.js hält diese Liste gegen jedes 'grund', '…' in
+   migration-einkauf.sql (zweite Quelle). */
+const GRUENDE = {
+  kein_recht:        "Nur der Besitzer kann Einkäufe erfassen, freigeben oder stornieren.",
+  nicht_entwurf:     "Dieser Beleg ist kein Entwurf mehr und lässt sich nicht mehr ändern.",
+  lieferant:         "Dieser Lieferant gehört nicht zu Ihrem Betrieb.",
+  positionen:        "Zu viele Positionen — höchstens 200 je Beleg.",
+  form:              "Eine Angabe hat die falsche Form (Datum, Betrag oder Länge).",
+  kein_lieferant:    "Bitte zuerst den Lieferanten wählen.",
+  keine_nummer:      "Bitte die Belegnummer eintragen.",
+  keine_summe:       "Bitte die Netto-Summe des Belegs eintragen.",
+  keine_positionen:  "Der Beleg hat noch keine Position.",
+  doppelt:           "Diese Belegnummer ist bei diesem Lieferanten schon freigegeben.",
+  position:          "Eine Position ist nicht vollständig.",
+  nicht_zugeordnet:  "Jede Ware braucht einen Artikel und die Menge je Einheit.",
+  summe:             "Die Positionen ergeben nicht die Netto-Summe des Belegs.",
+  nicht_freigegeben: "Nur freigegebene Belege lassen sich stornieren."
+};
+const POS_FELD = {
+  text:"braucht einen Text (bis 200 Zeichen)", art:"hat eine unbekannte Art", menge:"braucht eine Menge über 0",
+  netto:"braucht einen Netto-Betrag", steuersatz:"Steuersatz zwischen 0 und 30 %",
+  artikel:"Der Artikel gehört nicht zu Ihrem Betrieb.", zahl:"Eine Zahl ist nicht lesbar."
+};
+function grundSatz(a){
+  if(!a) return "Keine Antwort vom Server. Bitte noch einmal.";
+  if(a.grund === "position" && a.pos) return "Position " + a.pos + ": " + (POS_FELD[a.feld] || GRUENDE.position) + ".";
+  if(a.grund === "nicht_zugeordnet" && Array.isArray(a.pos)) return "Position " + a.pos.join(", ") + ": " + GRUENDE.nicht_zugeordnet;
+  if(a.grund === "summe") return "Die Positionen ergeben " + euro.format(a.positionen) + ", der Beleg sagt " + euro.format(a.beleg) + " netto.";
+  return GRUENDE[a.grund] || ("Das hat nicht geklappt (" + a.grund + ").");
+}
+
+/* Ein festes Element; neu eingeblendet wird über einen Klassenwechsel,
+   der die Einflug-Animation neu startet (§4.1: nur das Neue fliegt). */
+function toast(text, art){
+  const t = $("toast");
+  t.className = art || ""; t.textContent = text; t.hidden = false;
+  t.classList.remove("rein"); void t.offsetWidth; t.classList.add("rein");
+  clearTimeout(toast.uhr); toast.uhr = setTimeout(() => { t.hidden = true; }, 3200);
+}
+
+/* ═══ Anmeldung ═══════════════════════════════════════════════ */
+let sb = null;
+function meldung(text, ok){ const m = $("loginMsg"); m.textContent = text; m.className = "msg" + (ok ? " ok" : ""); m.hidden = false; }
+
+function torZeigen(){ $("app").hidden = true; $("tor").hidden = false; $("neuBox").hidden = true; $("loginBox").hidden = false; $("password").value = ""; }
+
+async function anmelden(){
+  const mail = $("email").value.trim(), pw = $("password").value, knopf = $("loginBtn");
+  if(!mail || !pw){ meldung("E-Mail und Passwort eingeben."); return; }
+  knopf.disabled = true; knopf.textContent = "Melde an…"; $("loginMsg").hidden = true;
+  try{
+    /* Dieselbe Sperre wie am Board: drei Fehlversuche. Nicht erreichbar
+       → normal weiter (§7), der Server prüft danach ohnehin. */
+    let p = null;
+    try{
+      const r = await sb.rpc("admin_anmelden", { p_email: mail, p_passwort: pw });
+      if(r && (r.status === 429 || (r.error && (r.error.code === "PT429" || /zu_viele_anfragen/.test(r.error.message || "")))))
+        p = { erlaubt:false, nachricht:"Zu viele Anmeldeversuche aus diesem Netz. Bitte in zehn Minuten erneut." };
+      else if(r && !r.error) p = r.data;
+    }catch(e){ p = null; }
+    if(p && p.erlaubt !== true){
+      let t = (p.nachricht || "E-Mail oder Passwort stimmt nicht.").replace(/\s*[—-]\s*bitte über „Passwort vergessen["“] die E-Mail bestätigen\.?/, ".");
+      if(p.gesperrt){ t += " Tipp unten auf „Passwort vergessen?“ — mit dem Link aus der E-Mail setzen Sie ein neues Passwort."; $("vergessenBtn").classList.add("betont"); }
+      else if(p.verbleibend === 1) t += " Noch ein Versuch, dann ist der Zugang gesperrt.";
+      else if(typeof p.verbleibend === "number") t += " Noch " + p.verbleibend + " Versuche.";
+      meldung(t); return;
+    }
+    const res = await sb.auth.signInWithPassword({ email: mail, password: pw });
+    if(res.error){ meldung(/Invalid/i.test(res.error.message) ? "E-Mail oder Passwort stimmt nicht." : "Anmeldung fehlgeschlagen: " + res.error.message); return; }
+    await nachAnmeldung();
+  }catch(e){ meldung("Keine Verbindung. Bitte Netz prüfen."); }
+  finally{ knopf.disabled = false; knopf.textContent = "Anmelden"; }
+}
+
+function resetFehlertext(e){
+  const t = String((e && (e.message || e.error_description)) || e || "");
+  if(/rate limit|Too many|security purposes/i.test(t)) return "Gerade wurde schon ein Link verschickt. Bitte kurz warten.";
+  if(/not authorized/i.test(t)) return "Supabase darf an diese Adresse noch keine E-Mails schicken — im Projekt fehlt ein eigener Mailversand (SMTP).";
+  if(/redirect/i.test(t)) return "Diese Seite ist in Supabase noch nicht als Rücksprung-Adresse erlaubt.";
+  if(/Failed to fetch|NetworkError/i.test(t)) return "Keine Verbindung. Bitte Netz prüfen.";
+  return t || "Das hat nicht geklappt.";
+}
+async function vergessen(){
+  const mail = $("email").value.trim(), stand = $("vergessenStand"), knopf = $("vergessenBtn");
+  const zeige = (t, ok) => { stand.textContent = t; stand.className = "msg" + (ok ? " ok" : ""); stand.hidden = false; };
+  if(!mail){ zeige("Tragen Sie oben zuerst Ihre E-Mail-Adresse ein."); $("email").focus(); return; }
+  knopf.disabled = true;
+  try{
+    const r = await sb.auth.resetPasswordForEmail(mail, { redirectTo: location.origin + location.pathname });
+    if(r && r.error) throw r.error;
+    zeige("Wenn es für diese Adresse ein Konto gibt, ist ein Link unterwegs. Er gilt eine Stunde.", true);
+  }catch(e){ zeige(resetFehlertext(e)); }
+  finally{ knopf.disabled = false; }
+}
+function neuesPasswortZeigen(){ $("app").hidden = true; $("tor").hidden = false; $("loginBox").hidden = true; $("neuBox").hidden = false; setTimeout(() => $("neu1").focus(), 120); }
+async function neuesPasswortSpeichern(){
+  const a = $("neu1").value, b = $("neu2").value, box = $("neuMsg"), knopf = $("neuBtn");
+  const fehler = t => { box.textContent = t; box.className = "msg"; box.hidden = false; };
+  if(a.length < 8) return fehler("Bitte mindestens acht Zeichen.");
+  if(a !== b) return fehler("Die beiden Eingaben sind nicht gleich.");
+  knopf.disabled = true;
+  try{
+    const r = await sb.auth.updateUser({ password: a });
+    if(r && r.error) throw r.error;
+    $("neu1").value = $("neu2").value = "";
+    WIEDERHERSTELLEN = false;
+    try{ history.replaceState(null, "", location.pathname); }catch(e){}
+    $("neuBox").hidden = true; $("loginBox").hidden = false;
+    meldung("Neues Passwort gespeichert — die Sperre ist aufgehoben.", true);
+    await nachAnmeldung();
+  }catch(e){
+    const t = String((e && e.message) || e);
+    fehler(/same|different/i.test(t) ? "Bitte ein anderes Passwort als das alte wählen."
+      : /session|expired|JWT|missing/i.test(t) ? "Der Link ist abgelaufen. Bitte unter „Passwort vergessen?“ einen neuen anfordern."
+      : resetFehlertext(e));
+  }finally{ knopf.disabled = false; }
+}
+
+async function abmelden(){ try{ await sb.auth.signOut(); }catch(e){} torZeigen(); }
+
+/* Erst die PIN, dann die Daten: meine_betriebe() liefert einen Betrieb
+   mit PIN-Pflicht ohne sie gar nicht (migration-pin.sql). */
+async function nachAnmeldung(){
+  try{ await pinTor((n, a) => sb.rpc(n, a)); }
+  catch(e){ await abmelden(); meldung("Abgemeldet."); return; }
+  $("tor").hidden = true; $("app").hidden = false;
+  await betriebeLaden();
+}
+
+/* ═══ Betrieb ═════════════════════════════════════════════════ */
+let BETRIEBE = [];
+let B = null;          /* { id, name, organisation_id, rolle } */
+let DATEN = { artikel:[], lieferanten:[], belege:[], bestand:{}, preise:[], zuordnung:[] };
+let ANSICHT = "uebersicht";
+
+async function betriebeLaden(){
+  const { data, error } = await sb.from("betrieb_mitglieder").select("rolle, betriebe(id, name, organisation_id)");
+  if(error){ ladefehler("Die Betriebe ließen sich nicht laden. Bitte Seite neu laden."); return; }
+  BETRIEBE = (data || []).filter(z => z.betriebe && z.betriebe.id)
+    .map(z => ({ id:z.betriebe.id, name:z.betriebe.name || "Betrieb", organisation_id:z.betriebe.organisation_id, rolle:z.rolle || "inhaber" }))
+    .sort((a, b) => a.name.localeCompare(b.name, "de") || (a.id < b.id ? -1 : 1));
+  if(!BETRIEBE.length){ ladefehler("Zu diesem Konto gehört kein Betrieb."); $("betriebName").textContent = "Kein Betrieb"; return; }
+  let gemerkt = null; try{ gemerkt = localStorage.getItem(WAHL_SCHLUESSEL); }catch(e){}
+  const wahl = $("betriebWahl");
+  wahl.innerHTML = BETRIEBE.map(b => '<option value="' + esc(b.id) + '">' + esc(b.name) + "</option>").join("");
+  wahl.hidden = BETRIEBE.length < 2;
+  await betriebWaehlen((BETRIEBE.find(b => b.id === gemerkt) || BETRIEBE[0]).id);
+}
+
+async function betriebWaehlen(id){
+  B = BETRIEBE.find(b => b.id === id) || BETRIEBE[0];
+  try{ localStorage.setItem(WAHL_SCHLUESSEL, B.id); }catch(e){}
+  $("betriebWahl").value = B.id;
+  $("betriebName").textContent = B.name;
+  /* Fehlt die Rolle (alte Zeile), gilt Inhaber — wie im Board (§7). */
+  const lesen = B.rolle !== "inhaber";
+  document.body.classList.toggle("nurlesen", lesen);
+  $("lesesatz").hidden = !lesen;
+  EDIT = null;
+  await allesLaden();
+}
+
+function ladefehler(t){ const f = $("ladefehler"); f.textContent = t; f.hidden = !t; }
+
+/* Jede Sortierung endet mit id (§2.6). */
+async function allesLaden(){
+  ladefehler("");
+  const org = B.organisation_id;
+  const [art, lief, bel, best, pr, zu] = await Promise.all([
+    sb.from("artikel").select("id, name, kategorie, basiseinheit, aktiv").eq("organisation_id", org).order("name").order("id"),
+    sb.from("lieferanten").select("id, name, kundennummer, kontakt, aktiv").eq("organisation_id", org).order("name").order("id"),
+    sb.from("einkaufsbelege").select("id, lieferant_id, belegnummer, belegdatum, netto, steuer, brutto, status, quelle, notiz, positionen_entwurf, angelegt")
+      .eq("betrieb_id", B.id).order("belegdatum", { ascending:false }).order("angelegt", { ascending:false }).order("id").limit(300),
+    sb.from("lagerbestand").select("artikel_id, menge_basis, wert_netto").eq("betrieb_id", B.id),
+    sb.from("artikel_preise").select("artikel_id, preis_basis, belegdatum, position_id, lieferant_id").eq("betrieb_id", B.id)
+      .order("belegdatum", { ascending:false }).order("position_id", { ascending:false }).limit(1000),
+    sb.from("lieferanten_artikel").select("id, lieferant_id, artikel_id, bezeichnung, einkaufseinheit, gebinde_basis, letzter_preis, letzter_preis_am").order("bezeichnung").order("id")
+  ]);
+  const fehler = [art, lief, bel, best, pr, zu].find(r => r && r.error);
+  if(fehler){
+    ladefehler(/relation|does not exist|schema cache/i.test(fehler.error.message || "")
+      ? "Der Einkauf ist in der Datenbank noch nicht eingerichtet (migration-einkauf.sql)."
+      : "Die Einkaufsdaten ließen sich nicht laden. Bitte Seite neu laden.");
+  }
+  DATEN.artikel = (art && art.data) || [];
+  DATEN.lieferanten = (lief && lief.data) || [];
+  DATEN.belege = (bel && bel.data) || [];
+  DATEN.bestand = {};
+  ((best && best.data) || []).forEach(z => { DATEN.bestand[z.artikel_id] = z; });
+  DATEN.preise = (pr && pr.data) || [];
+  const meineLief = new Set(DATEN.lieferanten.map(l => l.id));
+  DATEN.zuordnung = ((zu && zu.data) || []).filter(z => meineLief.has(z.lieferant_id));
+  zeichnen();
+}
+
+const artikelVon = id => DATEN.artikel.find(a => a.id === id);
+const lieferantVon = id => DATEN.lieferanten.find(l => l.id === id);
+
+/* Preisänderungen: je Artikel die letzten zwei Einkäufe. */
+function preisaenderungen(){
+  const je = new Map();
+  for(const p of DATEN.preise){
+    const l = je.get(p.artikel_id) || [];
+    if(l.length < 2) l.push(p);
+    je.set(p.artikel_id, l);
+  }
+  const aus = [];
+  for(const [aid, l] of je){
+    if(l.length < 2) continue;
+    const jetzt = Number(l[0].preis_basis), vorher = Number(l[1].preis_basis);
+    if(!(vorher > 0)) continue;
+    const prozent = (jetzt - vorher) / vorher * 100;
+    if(Math.abs(prozent) >= 5) aus.push({ artikel_id:aid, jetzt, vorher, prozent, datum:l[0].belegdatum });
+  }
+  return aus.sort((a, b) => Math.abs(b.prozent) - Math.abs(a.prozent) || (a.artikel_id < b.artikel_id ? -1 : 1));
+}
+
+/* ═══ Zeichnen ════════════════════════════════════════════════ */
+function zeichnen(){
+  for(const k of document.querySelectorAll(".reiter [data-ansicht]")) k.setAttribute("aria-selected", String(k.dataset.ansicht === ANSICHT));
+  for(const v of ["uebersicht", "belege", "artikel", "lieferanten"]) $("v-" + v).hidden = v !== ANSICHT;
+  if(ANSICHT === "uebersicht") uebersichtZeichnen();
+  if(ANSICHT === "belege") (EDIT ? editZeichnen() : belegListeZeichnen());
+  if(ANSICHT === "artikel") artikelZeichnen();
+  if(ANSICHT === "lieferanten") lieferantenZeichnen();
+}
+
+const STATUS_NAME = { entwurf:"Entwurf", freigegeben:"Freigegeben", storniert:"Storniert", verworfen:"Verworfen" };
+function belegZeile(b){
+  const l = lieferantVon(b.lieferant_id);
+  const datum = b.belegdatum ? datumFmt.format(new Date(b.belegdatum + "T12:00:00")) : "";
+  return '<button type="button" class="zeile" data-beleg="' + esc(b.id) + '">' +
+    '<span class="titel">' + esc(l ? l.name : "Ohne Lieferant") + (b.belegnummer ? ' · <span class="leise">' + esc(b.belegnummer) + "</span>" : "") + "</span>" +
+    '<span class="rechts">' + (b.netto != null ? esc(euro.format(b.netto)) : "—") + "</span>" +
+    '<span class="unter">' + esc(datum) + ' &nbsp;<span class="pille ' + esc(b.status) + '">' + esc(STATUS_NAME[b.status] || b.status) + "</span></span></button>";
+}
+
+function uebersichtZeichnen(){
+  const heute = new Date();
+  const praefix = heute.getFullYear() + "-" + String(heute.getMonth() + 1).padStart(2, "0");
+  const monat = DATEN.belege.filter(b => b.status === "freigegeben" && String(b.belegdatum || "").startsWith(praefix))
+    .reduce((s, b) => s + Number(b.netto || 0), 0);
+  $("kMonatTitel").textContent = "Einkauf im " + monatFmt.format(heute);
+  $("kMonat").textContent = euro.format(monat);
+  $("kEntwuerfe").textContent = String(DATEN.belege.filter(b => b.status === "entwurf").length);
+  const pa = preisaenderungen();
+  $("kPreise").textContent = String(pa.length);
+  $("preisListe").innerHTML = pa.length ? pa.slice(0, 12).map(p => {
+    const a = artikelVon(p.artikel_id) || { name:"Artikel", basiseinheit:"stk" };
+    const hoch = p.prozent > 0;
+    return '<div class="zeile"><span class="titel">' + esc(a.name) + "</span>" +
+      '<span class="pille ' + (hoch ? "hoch" : "runter") + '">' + (hoch ? "+" : "−") + esc(zahlFmt.format(Math.abs(p.prozent))) + " %</span>" +
+      '<span class="unter">' + esc(preisText(p.vorher, a.basiseinheit)) + " → " + esc(preisText(p.jetzt, a.basiseinheit)) + "</span></div>";
+  }).join("") : '<p class="leerzeile">Keine Preisänderung ab 5 % — oder noch zu wenige freigegebene Einkäufe.</p>';
+  const letzte = DATEN.belege.filter(b => b.status !== "verworfen").slice(0, 10);
+  $("letzteListe").innerHTML = letzte.length ? letzte.map(belegZeile).join("")
+    : '<p class="leerzeile">Noch kein Beleg. Unter „Belege“ erfassen Sie den ersten.</p>';
+}
+
+function belegListeZeichnen(){
+  $("belegListeTeil").hidden = false; $("belegEdit").hidden = true;
+  const sichtbar = DATEN.belege.filter(b => b.status !== "verworfen");
+  $("belegListe").innerHTML = sichtbar.length ? sichtbar.map(belegZeile).join("")
+    : '<p class="leerzeile">Noch kein Beleg.</p>';
+}
+
+/* ═══ Beleg bearbeiten ═══════════════════════════════════════
+   EDIT = { id|null, status, kopf:{…Texte}, pos:[{…Texte}] } — die
+   Felder bleiben Text, bis gespeichert wird. So steht „7,5“ nach dem
+   Neuzeichnen weiter da, und erst sammeln() entscheidet, was lesbar ist. */
+let EDIT = null;
+const ARTEN = [["ware","Ware"],["pfand","Pfand"],["fracht","Fracht"],["rabatt","Rabatt"],["sonstiges","Sonstiges"]];
+const fmtEingabe = n => n == null || n === "" ? "" : String(n).replace(".", ",");
+
+function leerePos(){ return { text:"", art:"ware", artikel_id:"", menge:"1", einkaufseinheit:"", gebinde:"", netto:"", steuersatz:"", gelernt:false }; }
+
+function belegOeffnen(id){
+  const b = id ? DATEN.belege.find(x => x.id === id) : null;
+  /* Freigegeben/storniert/verworfen — und für das Team jeder Beleg:
+     nur ansehen. Der Server lehnte ein Speichern ohnehin ab (kein_recht). */
+  if(b && (b.status !== "entwurf" || B.rolle !== "inhaber")){ EDIT = { id:b.id, status:b.status, nurAnsehen:true }; zeichnen(); positionenLaden(b.id); return; }
+  EDIT = {
+    id: b ? b.id : null, status:"entwurf",
+    kopf: b ? { lieferant_id:b.lieferant_id || "", belegnummer:b.belegnummer || "", belegdatum:b.belegdatum || "",
+                netto:fmtEingabe(b.netto), steuer:fmtEingabe(b.steuer), brutto:fmtEingabe(b.brutto), notiz:b.notiz || "" }
+            : { lieferant_id:"", belegnummer:"", belegdatum:new Date().toISOString().slice(0, 10), netto:"", steuer:"", brutto:"", notiz:"" },
+    pos: b && Array.isArray(b.positionen_entwurf) && b.positionen_entwurf.length
+      ? b.positionen_entwurf.map(p => ({ text:p.text || "", art:p.art || "ware", artikel_id:p.artikel_id || "", menge:fmtEingabe(p.menge),
+          einkaufseinheit:p.einkaufseinheit || "", gebinde:p.gebinde_text || fmtEingabe(p.gebinde_basis), netto:fmtEingabe(p.netto),
+          steuersatz:fmtEingabe(p.steuersatz), gelernt:false }))
+      : [leerePos()]
+  };
+  zeichnen();
+}
+
+function optionen(liste, gewaehlt, leer){
+  return '<option value="">' + esc(leer) + "</option>" + liste.map(x =>
+    '<option value="' + esc(x.id) + '"' + (x.id === gewaehlt ? " selected" : "") + ">" + esc(x.name) + "</option>").join("");
+}
+
+/* Was eine Position ergibt: Menge in Basiseinheit und Preis je l/kg/Stück. */
+function posErgebnis(p){
+  if(p.art !== "ware") return { text:"" };
+  const a = artikelVon(p.artikel_id);
+  if(!a) return { text:"Artikel wählen" };
+  const menge = zahl(p.menge), g = gebindeLesen(p.gebinde, a.basiseinheit), netto = zahl(p.netto);
+  if(g.fehler) return { fehler:g.fehler };
+  if(Number.isNaN(menge)) return { fehler:"Menge nicht lesbar." };
+  if(Number.isNaN(netto)) return { fehler:"Netto nicht lesbar." };
+  if(!(menge > 0) || !(g.wert > 0)) return { text:"Menge und Menge je Einheit eintragen" };
+  const basis = menge * g.wert;
+  return { text:"= " + mengeText(basis, a.basiseinheit) + (netto != null ? " · " + preisText(netto / basis, a.basiseinheit) : "") };
+}
+
+function editZeichnen(){
+  $("belegListeTeil").hidden = true; const box = $("belegEdit"); box.hidden = false;
+  if(EDIT.nurAnsehen){ ansehenZeichnen(); return; }
+  const k = EDIT.kopf;
+  const lieferanten = DATEN.lieferanten.filter(l => l.aktiv || l.id === k.lieferant_id);
+  const artikel = DATEN.artikel.filter(a => a.aktiv);
+  box.innerHTML =
+    '<div class="werkzeuge"><button type="button" class="knopf leer" data-aktion="liste">Zurück zur Liste</button>' +
+    '<h2 class="wachsen">' + (EDIT.id ? "Entwurf bearbeiten" : "Beleg erfassen") + "</h2></div>" +
+    '<div class="karte"><div class="raster">' +
+      '<label class="feld"><span>Lieferant</span><select id="eLieferant">' + optionen(lieferanten, k.lieferant_id, "– wählen –") + "</select></label>" +
+      '<label class="feld"><span>Belegnummer</span><input id="eNummer" type="text" maxlength="60" value="' + esc(k.belegnummer) + '"></label>' +
+      '<label class="feld"><span>Belegdatum</span><input id="eDatum" type="date" value="' + esc(k.belegdatum) + '"></label>' +
+      '<label class="feld"><span>Netto gesamt (€)</span><input id="eNetto" type="text" inputmode="decimal" value="' + esc(k.netto) + '" placeholder="54,00"></label>' +
+      '<label class="feld"><span>Steuer (€)</span><input id="eSteuer" type="text" inputmode="decimal" value="' + esc(k.steuer) + '"></label>' +
+      '<label class="feld"><span>Brutto (€)</span><input id="eBrutto" type="text" inputmode="decimal" value="' + esc(k.brutto) + '"></label>' +
+      '<label class="feld breit"><span>Notiz</span><input id="eNotiz" type="text" maxlength="500" value="' + esc(k.notiz) + '"></label>' +
+    "</div>" + (lieferanten.length ? "" : '<p class="leise" style="margin:0">Noch kein Lieferant — legen Sie ihn unter „Lieferanten“ an.</p>') + "</div>" +
+    '<h3>Positionen</h3><div id="posListe" class="abschnitt" style="gap:12px">' +
+    EDIT.pos.map((p, i) => {
+      const e = posErgebnis(p), a = artikelVon(p.artikel_id);
+      return '<div class="pos" data-pos="' + i + '">' +
+        '<div class="pos-kopf"><b>Position ' + (i + 1) + "</b>" +
+          (EDIT.pos.length > 1 ? '<button type="button" class="knopf leer" data-aktion="pos-weg" data-i="' + i + '" aria-label="Position ' + (i + 1) + ' entfernen">Entfernen</button>' : "") + "</div>" +
+        '<div class="pos-raster">' +
+          '<label class="feld breit"><span>Text wie auf der Rechnung</span><input type="text" maxlength="200" data-f="text" value="' + esc(p.text) + '" placeholder="z. B. Hafermilch Barista 1 l"></label>' +
+          '<label class="feld"><span>Art</span><select data-f="art">' + ARTEN.map(([v, n]) => '<option value="' + v + '"' + (p.art === v ? " selected" : "") + ">" + n + "</option>").join("") + "</select></label>" +
+          (p.art === "ware" ? '<label class="feld"><span>Artikel</span><select data-f="artikel_id">' + optionen(artikel, p.artikel_id, "– nicht zugeordnet –") + "</select></label>" : "") +
+          '<label class="feld"><span>Menge</span><input type="text" inputmode="decimal" data-f="menge" value="' + esc(p.menge) + '"></label>' +
+          (p.art === "ware" ? '<label class="feld"><span>Einheit</span><input type="text" maxlength="30" data-f="einkaufseinheit" value="' + esc(p.einkaufseinheit) + '" placeholder="Flasche, Kiste"></label>' +
+            '<label class="feld"><span>Menge je Einheit' + (a ? " (" + esc(EINHEIT_KURZ[a.basiseinheit]) + ")" : "") + '</span><input type="text" data-f="gebinde" value="' + esc(p.gebinde) + '" placeholder="750 ml"></label>' : "") +
+          '<label class="feld"><span>Netto (€)</span><input type="text" inputmode="decimal" data-f="netto" value="' + esc(p.netto) + '"></label>' +
+          '<label class="feld"><span>MwSt. (%)</span><input type="text" inputmode="decimal" data-f="steuersatz" value="' + esc(p.steuersatz) + '" placeholder="7 oder 19"></label>' +
+        "</div>" +
+        '<div class="ergebnis' + (e.fehler ? " fehler" : "") + '" data-ergebnis="' + i + '">' + esc(e.fehler || e.text) + "</div>" +
+        (p.gelernt ? '<span class="gelernt">Zuordnung von diesem Lieferanten übernommen</span>' : "") +
+      "</div>";
+    }).join("") + "</div>" +
+    '<button type="button" class="knopf" data-aktion="pos-neu">Position hinzufügen</button>' +
+    '<div class="summenzeile" id="summenzeile"></div>' +
+    '<p class="meldung fehler" id="eMeldung" role="alert" hidden></p>' +
+    '<div class="werkzeuge">' +
+      '<button type="button" class="knopf" data-aktion="sichern">Entwurf sichern</button>' +
+      '<button type="button" class="knopf haupt" data-aktion="freigeben">Freigeben</button>' +
+      (EDIT.id ? '<button type="button" class="knopf gefahr" data-aktion="verwerfen">Entwurf verwerfen</button>' : "") +
+    "</div>" +
+    '<p class="leise" style="margin:0;font-size:14px">Freigeben bucht die Ware ins Lager und schreibt die Preise fest. Danach ist der Beleg unveränderlich — korrigiert wird mit Storno und neuem Beleg.</p>';
+  summeZeichnen();
+}
+
+function summeZeichnen(){
+  const z = $("summenzeile"); if(!z) return;
+  let summe = 0, lesbar = true;
+  for(const p of EDIT.pos){ const n = zahl(p.netto); if(Number.isNaN(n)) lesbar = false; else if(n != null) summe += n; }
+  const beleg = zahl(EDIT.kopf.netto);
+  const passt = lesbar && beleg != null && !Number.isNaN(beleg) && Math.abs(summe - beleg) <= 0.02;
+  z.className = "summenzeile" + (beleg == null || Number.isNaN(beleg) ? "" : passt ? " passt" : " abweichung");
+  z.innerHTML = "<span>Positionen: <b class=\"betrag\">" + esc(lesbar ? euro.format(summe) : "nicht lesbar") + "</b></span>" +
+    "<span>Beleg netto: <b class=\"betrag\">" + esc(beleg == null ? "—" : Number.isNaN(beleg) ? "nicht lesbar" : euro.format(beleg)) + "</b></span>";
+}
+
+/* Die gelernte Zuordnung: Was dieser Lieferant so nennt, war beim
+   letzten Mal dieser Artikel mit diesem Gebinde. Nur als Vorschlag in
+   leere Felder — nie über etwas, das jemand schon gewählt hat. */
+function zuordnungAnwenden(p){
+  const lief = EDIT.kopf.lieferant_id;
+  if(!lief || p.art !== "ware" || p.artikel_id || !p.text.trim()) return false;
+  const t = p.text.trim().toLowerCase();
+  const z = DATEN.zuordnung.find(x => x.lieferant_id === lief && String(x.bezeichnung).trim().toLowerCase() === t);
+  const a = z && artikelVon(z.artikel_id);
+  if(!a || !a.aktiv) return false;
+  p.artikel_id = a.id;
+  if(!p.gebinde) p.gebinde = fmtEingabe(Number(z.gebinde_basis)) + " " + EINHEIT_KURZ[a.basiseinheit];
+  if(!p.einkaufseinheit) p.einkaufseinheit = z.einkaufseinheit || "";
+  p.gelernt = true;
+  return true;
+}
+
+/* Aus den Textfeldern die Nutzlast bauen. Unlesbares hält an, statt
+   als 0 hinauszugehen; Leeres geht als null (§ Plan, pruef-einkauf). */
+function sammeln(){
+  const k = EDIT.kopf;
+  const netto = zahl(k.netto), steuer = zahl(k.steuer), brutto = zahl(k.brutto);
+  if(Number.isNaN(netto)) return { fehler:"Netto gesamt ist nicht lesbar." };
+  if(Number.isNaN(steuer)) return { fehler:"Steuer ist nicht lesbar." };
+  if(Number.isNaN(brutto)) return { fehler:"Brutto ist nicht lesbar." };
+  const positionen = [];
+  for(let i = 0; i < EDIT.pos.length; i++){
+    const p = EDIT.pos[i], nr = "Position " + (i + 1) + ": ";
+    const leer = !p.text.trim() && !p.netto.trim() && !p.artikel_id;
+    if(leer && EDIT.pos.length > 1) continue;
+    const menge = zahl(p.menge), pn = zahl(p.netto), satz = zahl(p.steuersatz);
+    if(Number.isNaN(menge)) return { fehler:nr + "Menge ist nicht lesbar." };
+    if(Number.isNaN(pn)) return { fehler:nr + "Netto ist nicht lesbar." };
+    if(Number.isNaN(satz)) return { fehler:nr + "MwSt. ist nicht lesbar." };
+    const aus = { text:p.text.trim(), art:p.art, menge, netto:pn, steuersatz:satz };
+    if(p.art === "ware"){
+      const a = artikelVon(p.artikel_id);
+      const g = gebindeLesen(p.gebinde, a ? a.basiseinheit : null);
+      if(g.fehler) return { fehler:nr + g.fehler };
+      aus.artikel_id = a ? a.id : null;
+      aus.gebinde_basis = g.wert;
+      aus.gebinde_text = p.gebinde.trim() || null;
+      aus.einkaufseinheit = p.einkaufseinheit.trim() || null;
+    }
+    positionen.push(aus);
+  }
+  return { daten:{
+    lieferant_id: k.lieferant_id || null, belegnummer: k.belegnummer.trim() || null,
+    belegdatum: k.belegdatum || null, netto, steuer, brutto, notiz: k.notiz.trim() || null,
+    quelle:"manuell", positionen
+  } };
+}
+
+function eMeldung(t){ const m = $("eMeldung"); if(!m) return; m.textContent = t || ""; m.hidden = !t; if(t) m.scrollIntoView({ block:"nearest" }); }
+
+let LAEUFT = false;
+async function sichern(){
+  const s = sammeln();
+  if(s.fehler){ eMeldung(s.fehler); return null; }
+  const r = await sb.rpc("beleg_speichern", { p_beleg: EDIT.id, p_betrieb: B.id, p_daten: s.daten });
+  const a = r && !r.error ? r.data : null;
+  if(!a || a.ok !== true){ eMeldung(r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a)); return null; }
+  EDIT.id = a.id;
+  return a.id;
+}
+async function aktionSichern(){
+  if(LAEUFT) return; LAEUFT = true; eMeldung("");
+  try{ const id = await sichern(); if(id){ toast("Entwurf gesichert"); await allesLaden(); belegOeffnen(id); } }
+  finally{ LAEUFT = false; }
+}
+async function aktionFreigeben(){
+  if(LAEUFT) return; LAEUFT = true; eMeldung("");
+  try{
+    const id = await sichern(); if(!id) return;
+    const r = await sb.rpc("beleg_freigeben", { p_beleg: id });
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){ await allesLaden(); belegOeffnen(id); eMeldung(r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a)); return; }
+    const n = (a.preisaenderungen || []).length;
+    toast("Freigegeben — im Lager gebucht" + (n ? " · " + n + " Preisänderung" + (n > 1 ? "en" : "") : ""));
+    EDIT = null; await allesLaden();
+    belegOeffnen(id);
+  }finally{ LAEUFT = false; }
+}
+
+/* Gefährliches erst beim zweiten Tipp: Der erste färbt den Knopf und
+   sagt, was passiert. Nach vier Sekunden ohne zweiten Tipp zurück. */
+function zweiterTipp(knopf, text){
+  if(knopf.classList.contains("scharf")) return true;
+  const alt = knopf.textContent;
+  knopf.classList.add("scharf"); knopf.textContent = text;
+  setTimeout(() => { if(knopf.isConnected){ knopf.classList.remove("scharf"); knopf.textContent = alt; } }, 4000);
+  return false;
+}
+async function aktionVerwerfen(knopf){
+  if(!zweiterTipp(knopf, "Wirklich verwerfen? Nochmal tippen")) return;
+  const r = await sb.rpc("beleg_verwerfen", { p_beleg: EDIT.id });
+  const a = r && !r.error ? r.data : null;
+  if(!a || a.ok !== true){ eMeldung(grundSatz(a)); return; }
+  toast("Entwurf verworfen"); EDIT = null; await allesLaden();
+}
+async function aktionStornieren(knopf){
+  if(!zweiterTipp(knopf, "Wirklich stornieren? Nochmal tippen")) return;
+  const r = await sb.rpc("beleg_stornieren", { p_beleg: EDIT.id });
+  const a = r && !r.error ? r.data : null;
+  if(!a || a.ok !== true){ const m = $("aMeldungBeleg"); if(m){ m.textContent = grundSatz(a); m.hidden = false; } return; }
+  toast("Storniert — Bestand zurückgebucht"); const id = EDIT.id; EDIT = null; await allesLaden(); belegOeffnen(id);
+}
+
+/* Freigegeben, storniert, verworfen: nur ansehen. Kein Feld, das etwas
+   ändern könnte — die Positionen kommen aus einkaufspositionen. */
+async function positionenLaden(id){
+  const { data, error } = await sb.from("einkaufspositionen")
+    .select("pos, text, art, artikel_id, menge, einkaufseinheit, gebinde_basis, menge_basis, netto, steuersatz").eq("beleg_id", id).order("pos").order("id");
+  if(!EDIT || EDIT.id !== id) return;
+  EDIT.positionen = error ? null : (data || []);
+  zeichnen();
+}
+function ansehenZeichnen(){
+  const b = DATEN.belege.find(x => x.id === EDIT.id) || {};
+  const l = lieferantVon(b.lieferant_id);
+  let pos = EDIT.positionen;
+  if(b.status === "verworfen" || (pos && !pos.length)) pos = (b.positionen_entwurf || []).map((p, i) => ({ pos:i + 1, text:p.text, art:p.art, artikel_id:p.artikel_id, menge:p.menge, netto:p.netto }));
+  $("belegEdit").innerHTML =
+    '<div class="werkzeuge"><button type="button" class="knopf leer" data-aktion="liste">Zurück zur Liste</button>' +
+    '<h2 class="wachsen">' + esc(l ? l.name : "Beleg") + (b.belegnummer ? " · " + esc(b.belegnummer) : "") + "</h2>" +
+    '<span class="pille ' + esc(b.status) + '">' + esc(STATUS_NAME[b.status] || "") + "</span></div>" +
+    '<div class="kennzahlen">' +
+      '<div class="kennzahl"><span>Belegdatum</span><b>' + esc(b.belegdatum ? datumFmt.format(new Date(b.belegdatum + "T12:00:00")) : "—") + "</b></div>" +
+      '<div class="kennzahl"><span>Netto</span><b>' + esc(b.netto != null ? euro.format(b.netto) : "—") + "</b></div>" +
+      '<div class="kennzahl"><span>Brutto</span><b>' + esc(b.brutto != null ? euro.format(b.brutto) : "—") + "</b></div>" +
+    "</div>" +
+    (pos == null ? '<p class="leerzeile">Positionen werden geladen…</p>' :
+    '<div class="tabellenrahmen"><table class="tabelle"><thead><tr><th>#</th><th>Text</th><th>Artikel</th><th class="z">Menge</th><th class="z">Netto</th><th class="z">Preis</th></tr></thead><tbody>' +
+      pos.map(p => {
+        const a = artikelVon(p.artikel_id);
+        const mb = p.menge_basis != null ? Number(p.menge_basis) : null;
+        return "<tr><td>" + esc(p.pos) + "</td><td>" + esc(p.text) + "</td><td>" + esc(a ? a.name : (p.art && p.art !== "ware" ? ARTEN.find(x => x[0] === p.art)[1] : "—")) + "</td>" +
+          '<td class="z">' + esc(a && mb != null ? mengeText(mb, a.basiseinheit) : zahlFmt.format(Number(p.menge || 0))) + "</td>" +
+          '<td class="z">' + esc(p.netto != null ? euro.format(p.netto) : "—") + "</td>" +
+          '<td class="z">' + esc(a && mb ? preisText(Number(p.netto) / mb, a.basiseinheit) : "") + "</td></tr>";
+      }).join("") + "</tbody></table></div>") +
+    (b.notiz ? '<p class="leise" style="margin:0">' + esc(b.notiz) + "</p>" : "") +
+    '<p class="meldung fehler" id="aMeldungBeleg" role="alert" hidden></p>' +
+    (b.status === "freigegeben" ? '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf gefahr" data-aktion="stornieren">Beleg stornieren</button>' +
+      '<span class="leise" style="font-size:14px">Bucht den Bestand zurück. Danach einen neuen Beleg erfassen.</span></div>' : "");
+}
+
+/* ═══ Artikel ════════════════════════════════════════════════ */
+let A_EINHEIT = "ml";
+let A_OFFEN = null;
+function artikelZeichnen(){
+  const such = $("aSuche").value.trim().toLowerCase();
+  const liste = DATEN.artikel.filter(a => !such || a.name.toLowerCase().includes(such) || String(a.kategorie || "").toLowerCase().includes(such));
+  const letzter = new Map();
+  for(const p of DATEN.preise) if(!letzter.has(p.artikel_id)) letzter.set(p.artikel_id, p);
+  $("artikelListe").innerHTML = liste.length ? liste.map(a => {
+    const best = DATEN.bestand[a.id], pr = letzter.get(a.id);
+    const offen = A_OFFEN === a.id;
+    return '<div class="zeile"><span class="titel">' + esc(a.name) + (a.aktiv ? "" : ' <span class="pille">inaktiv</span>') + "</span>" +
+      '<span class="rechts">' + esc(best ? mengeText(best.menge_basis, a.basiseinheit) : "0 " + EINHEIT_KURZ[a.basiseinheit]) + "</span>" +
+      '<span class="unter">' + esc(a.kategorie || "Ohne Kategorie") + " · " + esc(EINHEIT_NAME[a.basiseinheit]) +
+        (pr ? " · zuletzt " + esc(preisText(pr.preis_basis, a.basiseinheit)) : "") +
+        ' <button type="button" class="textknopf nur-inhaber" style="padding:0 0 0 8px;min-height:44px" data-aktion="artikel-auf" data-id="' + esc(a.id) + '" aria-expanded="' + offen + '">Ändern</button></span>' +
+      (offen ? '<div class="unter" style="display:flex;flex-direction:column;gap:10px;padding-top:6px">' +
+        '<label class="feld"><span>Name</span><input type="text" maxlength="120" id="aeName" value="' + esc(a.name) + '"></label>' +
+        '<label class="feld"><span>Kategorie</span><input type="text" maxlength="60" id="aeKat" value="' + esc(a.kategorie || "") + '"></label>' +
+        '<p class="meldung fehler" id="aeMeldung" hidden></p>' +
+        '<div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="artikel-sichern" data-id="' + esc(a.id) + '">Sichern</button>' +
+        '<button type="button" class="knopf" data-aktion="artikel-aktiv" data-id="' + esc(a.id) + '">' + (a.aktiv ? "Nicht mehr einkaufen" : "Wieder aktiv") + "</button></div></div>" : "") +
+    "</div>";
+  }).join("") : '<p class="leerzeile">' + (DATEN.artikel.length ? "Kein Artikel passt." : "Noch kein Artikel.") + "</p>";
+}
+function dbFehlerSatz(e){
+  if(!e) return "";
+  if(e.code === "23505") return "Diesen Namen gibt es schon.";
+  if(e.code === "42501") return GRUENDE.kein_recht;
+  if(e.code === "23514") return "Eine Angabe ist zu lang oder leer.";
+  return "Das hat nicht geklappt. Bitte noch einmal.";
+}
+async function artikelAnlegen(){
+  const name = $("aName").value.trim(), kat = $("aKat").value.trim(), m = $("aMeldung");
+  m.hidden = true;
+  if(!name){ m.textContent = "Bitte einen Namen eintragen."; m.hidden = false; return; }
+  const { error } = await sb.from("artikel").insert({ organisation_id: B.organisation_id, name, kategorie: kat || null, basiseinheit: A_EINHEIT });
+  if(error){ m.textContent = dbFehlerSatz(error); m.hidden = false; return; }
+  $("aName").value = ""; $("aKat").value = "";
+  toast("Artikel angelegt"); await allesLaden();
+}
+async function artikelSichern(id){
+  const name = $("aeName").value.trim(), kat = $("aeKat").value.trim(), m = $("aeMeldung");
+  if(!name){ m.textContent = "Bitte einen Namen eintragen."; m.hidden = false; return; }
+  const { error } = await sb.from("artikel").update({ name, kategorie: kat || null }).eq("id", id);
+  if(error){ m.textContent = dbFehlerSatz(error); m.hidden = false; return; }
+  A_OFFEN = null; toast("Gesichert"); await allesLaden();
+}
+async function artikelAktiv(id){
+  const a = artikelVon(id); if(!a) return;
+  const { error } = await sb.from("artikel").update({ aktiv: !a.aktiv }).eq("id", id);
+  if(error){ toast(dbFehlerSatz(error), "fehler"); return; }
+  await allesLaden();
+}
+
+/* ═══ Lieferanten ════════════════════════════════════════════ */
+let L_OFFEN = null;
+function lieferantenZeichnen(){
+  $("lieferantListe").innerHTML = DATEN.lieferanten.length ? DATEN.lieferanten.map(l => {
+    const gelernt = DATEN.zuordnung.filter(z => z.lieferant_id === l.id);
+    const offen = L_OFFEN === l.id;
+    return '<div class="zeile"><span class="titel">' + esc(l.name) + (l.aktiv ? "" : ' <span class="pille">inaktiv</span>') + "</span>" +
+      '<span class="rechts leise">' + gelernt.length + " Zuordn.</span>" +
+      '<span class="unter">' + esc([l.kundennummer ? "Kd.-Nr. " + l.kundennummer : "", l.kontakt || ""].filter(Boolean).join(" · ") || "Keine Angaben") +
+        ' <button type="button" class="textknopf" style="padding:0 0 0 8px;min-height:44px" data-aktion="lief-auf" data-id="' + esc(l.id) + '" aria-expanded="' + offen + '">' + (offen ? "Schließen" : "Details") + "</button></span>" +
+      (offen ? '<div class="unter" style="display:flex;flex-direction:column;gap:10px;padding-top:6px">' +
+        '<div class="nur-inhaber" style="display:flex;flex-direction:column;gap:10px">' +
+          '<label class="feld"><span>Name</span><input type="text" maxlength="120" id="leName" value="' + esc(l.name) + '"></label>' +
+          '<label class="feld"><span>Kundennummer</span><input type="text" maxlength="60" id="leKunde" value="' + esc(l.kundennummer || "") + '"></label>' +
+          '<label class="feld"><span>Kontakt</span><input type="text" maxlength="300" id="leKontakt" value="' + esc(l.kontakt || "") + '"></label>' +
+          '<p class="meldung fehler" id="leMeldung" hidden></p>' +
+          '<div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="lief-sichern" data-id="' + esc(l.id) + '">Sichern</button>' +
+          '<button type="button" class="knopf" data-aktion="lief-aktiv" data-id="' + esc(l.id) + '">' + (l.aktiv ? "Nicht mehr nutzen" : "Wieder aktiv") + "</button></div></div>" +
+        "<b>So heißt es bei diesem Lieferanten</b>" +
+        (gelernt.length ? gelernt.map(z => { const a = artikelVon(z.artikel_id);
+          return "<span>„" + esc(z.bezeichnung) + "“ → " + esc(a ? a.name : "?") + " · " + esc(a ? mengeText(z.gebinde_basis, a.basiseinheit) : "") + " je " + esc(z.einkaufseinheit) + "</span>"; }).join("")
+          : "<span>Noch nichts gelernt — das passiert beim ersten freigegebenen Beleg.</span>") +
+      "</div>" : "") +
+    "</div>";
+  }).join("") : '<p class="leerzeile">Noch kein Lieferant.</p>';
+}
+async function lieferantAnlegen(){
+  const name = $("lName").value.trim(), m = $("lMeldung"); m.hidden = true;
+  if(!name){ m.textContent = "Bitte einen Namen eintragen."; m.hidden = false; return; }
+  const { error } = await sb.from("lieferanten").insert({ organisation_id: B.organisation_id, name,
+    kundennummer: $("lKunde").value.trim() || null, kontakt: $("lKontakt").value.trim() || null });
+  if(error){ m.textContent = dbFehlerSatz(error); m.hidden = false; return; }
+  $("lName").value = $("lKunde").value = $("lKontakt").value = "";
+  toast("Lieferant angelegt"); await allesLaden();
+}
+async function lieferantSichern(id){
+  const name = $("leName").value.trim(), m = $("leMeldung");
+  if(!name){ m.textContent = "Bitte einen Namen eintragen."; m.hidden = false; return; }
+  const { error } = await sb.from("lieferanten").update({ name, kundennummer: $("leKunde").value.trim() || null, kontakt: $("leKontakt").value.trim() || null }).eq("id", id);
+  if(error){ m.textContent = dbFehlerSatz(error); m.hidden = false; return; }
+  L_OFFEN = null; toast("Gesichert"); await allesLaden();
+}
+async function lieferantAktiv(id){
+  const l = lieferantVon(id); if(!l) return;
+  const { error } = await sb.from("lieferanten").update({ aktiv: !l.aktiv }).eq("id", id);
+  if(error){ toast(dbFehlerSatz(error), "fehler"); return; }
+  await allesLaden();
+}
+
+/* ═══ Bedienung ══════════════════════════════════════════════ */
+document.addEventListener("click", e => {
+  const reiter = e.target.closest(".reiter [data-ansicht]");
+  if(reiter){ ANSICHT = reiter.dataset.ansicht; EDIT = null; zeichnen(); return; }
+  const beleg = e.target.closest("[data-beleg]");
+  if(beleg){ ANSICHT = "belege"; belegOeffnen(beleg.dataset.beleg); return; }
+  const k = e.target.closest("[data-aktion]"); if(!k) return;
+  const was = k.dataset.aktion, id = k.dataset.id;
+  if(was === "liste"){ EDIT = null; zeichnen(); }
+  else if(was === "pos-neu"){ EDIT.pos.push(leerePos()); editZeichnen(); const f = document.querySelectorAll("#posListe .pos"); f[f.length - 1].querySelector("input").focus(); }
+  else if(was === "pos-weg"){ EDIT.pos.splice(Number(k.dataset.i), 1); editZeichnen(); }
+  else if(was === "sichern") aktionSichern();
+  else if(was === "freigeben") aktionFreigeben();
+  else if(was === "verwerfen") aktionVerwerfen(k);
+  else if(was === "stornieren") aktionStornieren(k);
+  else if(was === "artikel-auf"){ A_OFFEN = A_OFFEN === id ? null : id; artikelZeichnen(); }
+  else if(was === "artikel-sichern") artikelSichern(id);
+  else if(was === "artikel-aktiv") artikelAktiv(id);
+  else if(was === "lief-auf"){ L_OFFEN = L_OFFEN === id ? null : id; lieferantenZeichnen(); }
+  else if(was === "lief-sichern") lieferantSichern(id);
+  else if(was === "lief-aktiv") lieferantAktiv(id);
+});
+
+/* Eingaben im Beleg landen in EDIT, ohne neu zu zeichnen — der Fokus
+   bleibt im Feld. Nur Art und Artikel ändern die Felder selbst. */
+document.addEventListener("input", e => {
+  if(!EDIT || EDIT.nurAnsehen) return;
+  const kopf = { eLieferant:"lieferant_id", eNummer:"belegnummer", eDatum:"belegdatum", eNetto:"netto", eSteuer:"steuer", eBrutto:"brutto", eNotiz:"notiz" }[e.target.id];
+  if(kopf){ EDIT.kopf[kopf] = e.target.value; if(kopf === "netto") summeZeichnen(); return; }
+  const posEl = e.target.closest("[data-pos]"), f = e.target.dataset.f;
+  if(!posEl || !f) return;
+  const i = Number(posEl.dataset.pos), p = EDIT.pos[i];
+  p[f] = e.target.value;
+  if(f === "artikel_id") p.gelernt = false;
+  const erg = posEl.querySelector("[data-ergebnis]"), r = posErgebnis(p);
+  erg.textContent = r.fehler || r.text; erg.className = "ergebnis" + (r.fehler ? " fehler" : "");
+  if(f === "netto") summeZeichnen();
+});
+document.addEventListener("change", e => {
+  if(!EDIT || EDIT.nurAnsehen) return;
+  if(e.target.id === "eLieferant"){
+    EDIT.kopf.lieferant_id = e.target.value;
+    if(EDIT.pos.map(zuordnungAnwenden).some(Boolean)) editZeichnen();
+    return;
+  }
+  const posEl = e.target.closest("[data-pos]"), f = e.target.dataset.f;
+  if(!posEl || !f) return;
+  const p = EDIT.pos[Number(posEl.dataset.pos)];
+  if(f === "art" || f === "artikel_id") editZeichnen();
+  else if(f === "text" && zuordnungAnwenden(p)) editZeichnen();
+});
+
+$("betriebWahl").addEventListener("change", e => betriebWaehlen(e.target.value));
+$("aSuche").addEventListener("input", artikelZeichnen);
+$("aEinheit").addEventListener("click", e => {
+  const k = e.target.closest("[data-einheit]"); if(!k) return;
+  A_EINHEIT = k.dataset.einheit;
+  for(const x of $("aEinheit").children) x.setAttribute("aria-checked", String(x === k));
+});
+$("aAnlegen").addEventListener("click", artikelAnlegen);
+$("lAnlegen").addEventListener("click", lieferantAnlegen);
+$("belegNeu").addEventListener("click", () => belegOeffnen(null));
+$("loginBtn").addEventListener("click", anmelden);
+$("password").addEventListener("keydown", e => { if(e.key === "Enter") anmelden(); });
+$("vergessenBtn").addEventListener("click", vergessen);
+$("neuBtn").addEventListener("click", neuesPasswortSpeichern);
+$("abmelden").addEventListener("click", abmelden);
+
+/* ═══ Start ══════════════════════════════════════════════════ */
+(async function(){
+  if(!window.supabase || !window.supabase.createClient){ meldung("Die Seite konnte nicht vollständig laden. Bitte neu laden."); return; }
+  sb = window.supabase.createClient(KONFIG.url, KONFIG.schluessel, { auth:{ persistSession:true, autoRefreshToken:true } });
+  sb.auth.onAuthStateChange(ev => { if(ev === "PASSWORD_RECOVERY") neuesPasswortZeigen(); });
+  try{
+    const { data } = await sb.auth.getSession();
+    const s = data && data.session;
+    if(s && s.user && WIEDERHERSTELLEN){ neuesPasswortZeigen(); return; }
+    if(s && s.user) await nachAnmeldung();
+  }catch(e){}
+})();
+</script>
+</body>
+</html>

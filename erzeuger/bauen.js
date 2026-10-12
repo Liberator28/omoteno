@@ -72,6 +72,9 @@ const SEITEN = [
      ist_master() in den RLS-Regeln, nicht daran, dass die Adresse
      schwer zu erraten ist — eine unverlinkte Seite ist kein Schutz. */
   ["seiten/master.html",        "master.html"],
+  /* Einkauf & Kosten (E1): gleiche Anmeldung, Sperre und PIN wie das
+     Board; geschrieben wird nur über die Funktionen der Datenbank. */
+  ["seiten/einkauf.html",       "einkauf.html"],
   /* Pflicht, nicht Kür. Beide sind aus dem Fuß von omoteno-web.html,
      konto.html und start.html verlinkt — sechs Links. Fehlt eine
      davon, bricht der Bau ab, statt eine Seite auszuliefern, deren
@@ -178,6 +181,7 @@ Disallow: /admin.html
 Disallow: /kueche.html
 Disallow: /konto.html
 Disallow: /master.html
+Disallow: /einkauf.html
 Disallow: /h/
 
 Sitemap: https://omoteno.de/sitemap.xml

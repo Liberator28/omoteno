@@ -19,7 +19,7 @@
        securitypolicyviolation.
    3 · Bibliothek fest und geprüft: supabase-js kommt von /lib/ mit
        integrity — eine manipulierte Datei wird NICHT ausgeführt.
-   4 · Netz-Bremse (HTTP 429) an allen vier Anmeldetüren: ein Satz statt
+   4 · Netz-Bremse (HTTP 429) an allen fünf Anmeldetüren: ein Satz statt
        still weiter, KEIN Login-Versuch danach. Gegenfall: erlaubt →
        Login-Versuch läuft.
    5 · Kein Abfragen im Hintergrund: Hub bei verstecktem Tab (gestellte
@@ -140,7 +140,7 @@ async function seiteAuf(browser, basis, pfad, opt = {}) {
 
   console.log("\n══ 2 · CSP bricht keine Seite ══");
   const LISTE = [
-    ["/index.html"], ["/start.html"], ["/konto.html"], ["/kueche.html"], ["/master.html"], ["/marken-studio.html"],
+    ["/index.html"], ["/start.html"], ["/konto.html"], ["/kueche.html"], ["/master.html"], ["/einkauf.html"], ["/marken-studio.html"],
     ["/datenschutz.html"], ["/impressum.html"], ["/admin.html", "board"],
     ["/h/chocolamour/index.html#/speisekarte", "hub"], ["/h/blend/index.html#/speisekarte", "hub"],
   ];
@@ -184,12 +184,13 @@ async function seiteAuf(browser, basis, pfad, opt = {}) {
     await ctx2.close();
   }
 
-  console.log("\n══ 4 · HTTP 429 an allen vier Anmeldetüren ══");
+  console.log("\n══ 4 · HTTP 429 an allen fünf Anmeldetüren ══");
   const TUEREN = [
     { pfad: "/admin.html", mail: "#lMail", pass: "#lPass", knopf: "#lKnopf", meldung: "#lFehler" },
     { pfad: "/konto.html", mail: "#fMail", pass: "#fPass", knopf: "#torKnopf", meldung: "#torMeldung" },
     { pfad: "/kueche.html", mail: "#mail", pass: "#wort", knopf: "#torKnopf", meldung: "#torMeldung" },
     { pfad: "/master.html", mail: "#email", pass: "#password", knopf: "#loginBtn", meldung: "#loginMsg" },
+    { pfad: "/einkauf.html", mail: "#email", pass: "#password", knopf: "#loginBtn", meldung: "#loginMsg" },
   ];
   for (const t of TUEREN) for (const fall of ["429", "erlaubt"]) {
     let tokenVersuch = 0;

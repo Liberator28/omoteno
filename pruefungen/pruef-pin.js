@@ -38,15 +38,15 @@ function pruef(gut, text, zusatz){
 console.log("══ Geteilter Block ══");
 const ANF = "/* ╔═══ PIN · GETEILTER BLOCK · ANFANG", END = "PIN · GETEILTER BLOCK · ENDE ═══";
 const bloecke = {};
-for(const d of ["admin.html", "kueche.html", "master.html"]){
+for(const d of ["admin.html", "kueche.html", "master.html", "einkauf.html"]){
   const s = fs.readFileSync(path.join(WURZEL, "seiten", d), "utf8");
   const a = s.indexOf(ANF), e = s.indexOf(END);
   bloecke[d] = a >= 0 && e > a ? s.slice(a, e) : null;
   pruef(!!bloecke[d], d + " trägt den Block");
 }
 const namen = Object.keys(bloecke).filter(k => bloecke[k]);
-pruef(namen.length === 3 && namen.every(k => bloecke[k] === bloecke[namen[0]]),
-  "alle drei Kopien sind Zeichen für Zeichen gleich",
+pruef(namen.length === 4 && namen.every(k => bloecke[k] === bloecke[namen[0]]),
+  "alle vier Kopien sind Zeichen für Zeichen gleich",
   namen.map(k => k + " " + (bloecke[k] || "").length).join(", "));
 
 /* Die Naht: Jedes Feld, das der Block liest, muss die SQL-Funktion
