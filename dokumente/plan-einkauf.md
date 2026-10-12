@@ -106,6 +106,35 @@ Betriebe einer Organisation zusammenlegen (Master), Rolle „Zentrale“,
 Standortvergleich, gemeinsame Rezepturen.
 *Abnahme:* Standort A kann B nicht lesen; die Zentrale vergleicht.
 
+*Abgenommen 12.10.* (zurückgedreht, live: `datenbank/pruef-einkauf-e4.sql`,
+Werte im Kopf von `migration-einkauf-e4.sql`):
+- **Befund vor dem Bau:** Nach dem Zusammenlegen hätte A an vier Stellen
+  B's Preise gesehen (Vergleichspreis in `beleg_freigeben`, Wert von
+  Inventur/Verlust, `lieferanten_artikel.letzter_preis`, Kosten je
+  Portion). Alle vier rechnen jetzt je Betrieb; `letzter_preis` ist für
+  `authenticated` nicht mehr lesbar.
+- A liest von B: Belege, Positionen, Preise, Bestand, Bewegungen je 0
+  Zeilen, `letzter_preis` 42501, Vergleich/Kalkulation/Wareneinsatz 0.
+- Zentrale: Vergleich A 50,00 € (2 Belege) / Lager 48,80 / Verlust −1,20,
+  B 50,00 € (1); rohe Belege 0; abgeschaltet → 0.
+- Zusammenlegen: gleichnamiger Artikel und Lieferant bekommen den
+  Standort als Zusatz („Probe-Mehl E4 · …“), nichts wird verschmolzen.
+- Seiten: `/einkauf` Reiter „Standorte“ (nur mit Kette), Zentrale ohne
+  eigenen Betrieb sieht nur die Zahlen; „In anderen Standort übernehmen“
+  im Rezeptur-Editor. Master-Board „Ketten & Standorte“: Zusammenlegen
+  und Entfernen erst beim zweiten Tipp. Prüfungen `pruef-einkauf.js`,
+  `pruef-master-ketten.js`, je mit Gegenbeweis.
+
+*Grenzen von E4:*
+- Keine Umlagerung und kein Zentraleinkauf: Kauft A für B ein, kennt B
+  den Preis nicht (er steht nur bei A).
+- Artikel und Lieferanten (auch Kundennummer und Kontakt) sind in der
+  Kette gemeinsam — eine Änderung gilt für alle Standorte.
+- Zusammenlegen lässt sich nicht rückgängig machen; es gibt keine
+  Funktion zum Trennen.
+- Der Vergleich rechnet über freigegebene Belege; ein späteres Storno
+  ändert auch Zahlen eines vergangenen Monats.
+
 Nicht in diesem Ausbau: automatische Bestellungen, Kassen-/EDI-
 Anbindung, Prognosen, Offline-Inventur, Buchhaltung/DATEV.
 

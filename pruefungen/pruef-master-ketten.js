@@ -175,8 +175,10 @@ async function blattMessen(p){
     pruef(m && m.min >= 4.5, "Blatt: jede Schrift ≥ 4,5:1", m && (m.min + " " + m.wo));
     pruef(m && !m.klein.length && m.fs16 && m.ueber <= 0, "Blatt: Ziele ≥ 44 px, Felder 16 px, kein Überlauf bei 390 px", m && JSON.stringify({ k:m.klein, f:m.fs16, u:m.ueber }));
     await p.click("#ktZusammen"); await p.waitForTimeout(150);
-    const nach1 = await p.evaluate(() => ({ rufe: window.__rufe.zusammen.length, knopf: document.getElementById("ktZusammen").textContent, satz: document.getElementById("ktMeldung").textContent }));
+    /* Robust gelesen: schickt der erste Tipp schon, ist das Blatt zu — dann soll die Probe rot sagen, was fehlt, nicht abstürzen. */
+    const nach1 = await p.evaluate(() => ({ rufe: window.__rufe.zusammen.length, knopf: (document.getElementById("ktZusammen") || {}).textContent, satz: (document.getElementById("ktMeldung") || {}).textContent || "" }));
     pruef(nach1.rufe === 0 && nach1.knopf === "Ja, zusammenlegen" && /Nicht rückgängig/.test(nach1.satz) && /Blend/.test(nach1.satz), "erster Tipp: nichts gesendet, fragt mit Namen nach", JSON.stringify(nach1));
+    if(nach1.rufe){ console.log("  (Abbruch: der erste Tipp hat schon zusammengelegt)"); await browser.close(); process.exit(1); }
     await p.selectOption("#ktQuelle", "o-minh"); await p.waitForTimeout(80);
     pruef(await p.textContent("#ktZusammen") === "Zusammenlegen", "andere Auswahl nimmt die Bestätigung zurück");
     await p.click("#ktZusammen"); await p.waitForTimeout(80);
