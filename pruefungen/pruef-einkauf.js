@@ -534,6 +534,11 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await p.fill('[data-rpos="0"] [data-rf="menge"]', "150,5");
     const kost = (await p.textContent("#rezZahlen")).replace(/\s/g, " ");
     pruef(/0,54 €/.test(kost) && await p.evaluate(() => document.activeElement && document.activeElement.dataset.rf === "menge"), "„150,5“ ml Wein → Vorschau 0,54 € je Portion, Fokus bleibt im Feld", kost.slice(0, 80));
+    /* Verlust auf einer Zutat MIT Preis — beim Mehl (ohne Preis) wäre er wirkungslos. */
+    await p.fill('[data-rpos="0"] [data-rf="verlust"]', "10");
+    const mitVerlust = (await p.textContent("#rezZahlen")).replace(/\s/g, " ");
+    pruef(/0,60 €/.test(mitVerlust), "10 % Verlust auf den Wein → 150,5 × 1,1 × 0,0072 ÷ 2 = 0,60 €", mitVerlust.slice(0, 40));
+    await p.fill('[data-rpos="0"] [data-rf="verlust"]', "");
     await p.fill('[data-rpos="1"] [data-rf="verlust"]', "abc");
     await p.evaluate(() => { window.__rufe.length = 0; });
     await p.click('[data-aktion="rez-sichern"]'); await p.waitForTimeout(150);
