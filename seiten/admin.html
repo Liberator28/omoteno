@@ -1699,6 +1699,23 @@ body.hell .schritt[aria-pressed=true]{
 .kv-knoepfe .kv-weg{color:var(--warn)}
 /* Mehrfachwahl „Gehört zu“ im Gericht-Blatt */
 .kartenchips{display:flex;flex-wrap:wrap;gap:8px}
+/* Extras & Beläge (17.10.) */
+.eo-wahl{margin:16px 0 4px}
+.eo-wahl .kartenchips{margin-top:8px}
+.eo-liste{display:grid;gap:12px;margin:6px 0 10px}
+.eo-karte{border:1px solid var(--linie);border-radius:12px;padding:12px;display:grid;gap:10px;background:var(--flaeche)}
+.eo-kopf{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
+.eo-kopf label,.eo-zeile label{display:grid;gap:4px;font-size:12.5px;color:var(--gedaempft)}
+.eo-karte input,.eo-karte select{font-size:16px;min-height:44px;color:var(--kreide);-webkit-text-fill-color:var(--kreide);
+  background:var(--flaeche-2);border:1px solid var(--linie);border-radius:10px;padding:0 10px;width:100%;-webkit-appearance:none}
+.eo-zeilen{display:grid;gap:8px}
+.eo-zeile{display:grid;grid-template-columns:minmax(0, 1fr) 96px 44px;gap:8px;align-items:end}
+.eo-weg{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--linie);background:none;color:var(--kreide);font-size:18px;cursor:pointer}
+.eo-fuss{display:flex;flex-wrap:wrap;gap:8px}
+.eo-fuss .knopf{flex:1 1 140px}
+.eo-satz{font-size:13px;line-height:1.45;margin:0 0 8px;color:var(--kreide)}
+.eo-satz.schief{color:var(--warn, #E0685A)}
+@media (max-width:420px){ .eo-zeile{grid-template-columns:minmax(0, 1fr) 84px 44px} }
 /* Eigene Kacheln, Karte je Kachel, Zeitplan */
 /* Gericht-Blatt: Vorschläge und „Mehr Angaben“ */
 .alterblock{margin:16px 0 4px}
@@ -3812,6 +3829,22 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
     </div>
 
+    <!-- Extras & Beläge (17.10., Più Gusto): betriebe.optionen. Die
+         Gerichte zeigen per „Extras & Beläge“ im Gericht-Blatt darauf;
+         der Server rechnet die Aufpreise aus derselben Spalte nach. -->
+    <div class="egruppe" data-nur-inhaber id="eoGruppe">
+      <h2 class="etitel">Extras &amp; Beläge</h2>
+      <p class="ehilfe">Gruppen, die Gäste zu einem Gericht dazuwählen — etwa Beläge für Pizza.
+        Welche Gruppen ein Gericht hat, stellen Sie im Gericht unter „Mehr Angaben“ ein.
+        Der Aufpreis wird beim Bestellen vom Server nachgerechnet.</p>
+      <div class="eo-liste" id="eoListe"></div>
+      <p class="eo-satz" id="eoSatz" aria-live="polite" hidden></p>
+      <div class="kbknoepfe">
+        <button type="button" class="knopf leise" id="eoNeu">+ Gruppe</button>
+        <button type="button" class="knopf" id="eoSichern" disabled>Übernehmen</button>
+      </div>
+    </div>
+
     <!-- Willkommen-Animation (17.10., Wunsch „Ladebildschirm verbessern …
          zwischen verschiedenen Animationen wechseln … Figur, Café,
          Restaurant mit Essen und Utensilien“). Die Szenen kommen aus dem
@@ -5206,6 +5239,14 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
       <p class="feldhilfe">16+ für Bier, Wein, Sekt · 18+ für Spirituosen und Getränke damit.
         Der Gast bestätigt einmal; den Ausweis prüft das Personal.</p>
+    </div>
+
+    <!-- Extras & Beläge des Betriebs (17.10.): nur sichtbar, wenn der
+         Betrieb eigene Gruppen hat. Gruppen aus der Vorlage (z. B.
+         Käserand) bleiben am Gericht, auch wenn sie hier nicht stehen. -->
+    <div class="eo-wahl" id="fOptBlock" hidden>
+      <span class="lname">Extras &amp; Beläge <span class="lzusatz">der Gast wählt sie im Gericht dazu</span></span>
+      <div class="kartenchips" id="fOpt" role="group" aria-label="Extras und Beläge"></div>
     </div>
 
     <!-- Rabatt direkt am Gericht (Wunsch 07.10.): schreibt eine Zeile in
@@ -7965,6 +8006,182 @@ $("#ksSichern").onclick = async () => {
   melde(text);
 };
 
+/* ══ Extras & Beläge (betriebe.optionen, 17.10.) ═════════════════════
+   Eigene Gruppen des Betriebs, z. B. Pizzabeläge in Preisstufen. Die
+   Form prüft die Schranke betriebe_optionen_form (optionen_form_ok);
+   hier dieselben Regeln vorher, damit der Wirt einen Satz bekommt statt
+   eines abgelehnten Speicherns. Gelesen wird beim Betriebswechsel —
+   ohne gelesenen Stand bleibt „Übernehmen“ zu (§8.1m), sonst ersetzte
+   ein Tipp die Gruppen des Betriebs durch eine leere Liste.
+   Preise mit Komma (preisAusFeld). Namen ohne „, · ( )“: Sie stehen
+   später im Bon als „Pizza (Extra, Extra · Extra)“ und der Server
+   zerlegt genau daran (positionen_pruefen). */
+let eoGelesen = undefined, eoEntwurf = [];
+function eoAusDb(o){
+  if(!o || typeof o !== "object" || Array.isArray(o)) return [];
+  return Object.keys(o).map(k => { const g = o[k] || {};
+    return { k, titel:String(g.titel || ""), art:g.art === "eine" ? "eine" : "mehrere", pflicht:g.pflicht === true,
+      hinweis:String(g.hinweis || ""), zeilen:(Array.isArray(g.zeilen) ? g.zeilen : []).map(z => ({ n:String(z.n || ""),
+        auf:(Number(z.auf) || 0).toFixed(2).replace(".", ",") })) }; });
+}
+function eoSchluessel(titel, belegt){
+  let grund = String(titel || "gruppe").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+    .replace(/ß/g, "ss").replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 18) || "gruppe";
+  let k = grund, i = 2;
+  while(belegt.includes(k)) k = (grund + "-" + i++).slice(0, 24);
+  return k;
+}
+/* Entwurf → Spalte. Liefert { wert } oder { fehler:"Satz" }. */
+function eoNachDb(liste){
+  if(liste.length > 12) return { fehler:"Höchstens 12 Gruppen." };
+  const aus = {}, belegt = [];
+  for(const g of liste){
+    const titel = g.titel.trim();
+    if(!titel || titel.length > 40) return { fehler:"Jede Gruppe braucht einen Titel (höchstens 40 Zeichen)." };
+    const zeilen = [];
+    for(const z of g.zeilen){
+      const n = z.n.trim();
+      if(!n && !String(z.auf).trim()) continue;
+      if(!n || n.length > 40) return { fehler:"„" + titel + "“: Jede Zeile braucht einen Namen (höchstens 40 Zeichen)." };
+      if(/[,·()]/.test(n)) return { fehler:"„" + n + "“: Komma, Punkt „·“ und Klammern gehen im Namen nicht — sie trennen auf dem Bon die Extras." };
+      if(/[<>"'&`]/.test(n) || /[<>"'&`]/.test(titel)) return { fehler:"Bitte keine Zeichen wie < > \" ' & in Titel und Namen." };
+      /* Eigener, strenger Leser: preisAusFeld macht aus Unlesbarem 0 —
+         ein Tippfehler wäre still „ohne Aufpreis“ geworden. */
+      const roh = String(z.auf).trim().replace(/\s*€$/, "");
+      const auf = roh === "" ? 0 : (/^\d{1,2}([.,]\d{1,2})?$/.test(roh) ? Number(roh.replace(",", ".")) : NaN);
+      if(isNaN(auf) || auf < 0 || auf > 50)
+        return { fehler:"„" + n + "“: Aufpreis bitte als Zahl zwischen 0 und 50, z. B. 1,50." };
+      zeilen.push({ n, auf:Math.round(auf * 100) / 100 });
+    }
+    if(!zeilen.length) return { fehler:"„" + titel + "“ hat noch keine Zeile." };
+    if(zeilen.length > 40) return { fehler:"„" + titel + "“: höchstens 40 Zeilen." };
+    const k = /^[a-z0-9-]{1,24}$/.test(g.k || "") && !belegt.includes(g.k) ? g.k : eoSchluessel(titel, belegt);
+    belegt.push(k);
+    const grp = { titel, art:g.art === "eine" ? "eine" : "mehrere", pflicht:g.art === "eine" && g.pflicht === true, zeilen };
+    const h = (g.hinweis || "").trim();
+    if(h){ if(h.length > 120 || /[<>"'&`]/.test(h)) return { fehler:"Der Hinweis zu „" + titel + "“: höchstens 120 Zeichen, ohne < > \" ' &." };
+      grp.hinweis = h; }
+    aus[k] = grp;
+  }
+  return { wert: Object.keys(aus).length ? aus : null };
+}
+function eoSatz(text, schief){ const el = $("#eoSatz"); el.hidden = !text; el.textContent = text || ""; el.classList.toggle("schief", !!schief); }
+/* Verglichen wird die GEFORMTE Fassung beider Seiten — die gelesene
+   Spalte trägt z. B. kein „pflicht“, der Entwurf schon; roh verglichen
+   war „Übernehmen“ ohne jede Änderung offen (pruef-pizza-rund E). */
+function eoGeaendert(){
+  if(eoGelesen === undefined) return false;
+  const r = eoNachDb(eoEntwurf), basis = eoNachDb(eoAusDb(eoGelesen));
+  return !!r.fehler || JSON.stringify(r.wert) !== JSON.stringify(basis.fehler ? eoGelesen || null : basis.wert);
+}
+function eoZeichnen(){
+  const liste = $("#eoListe"); if(!liste) return;
+  if(eoGelesen === undefined){ liste.innerHTML = '<p class="ehilfe">Wird geladen …</p>'; $("#eoSichern").disabled = true; return; }
+  liste.innerHTML = eoEntwurf.map((g, i) =>
+    '<div class="eo-karte" data-eo="' + i + '">' +
+      '<div class="eo-kopf"><label>Titel<input type="text" maxlength="40" data-eo-feld="titel" value="' + sicher(g.titel) + '" placeholder="z. B. Käse extra"></label>' +
+        '<label>Wahl<select data-eo-feld="art"><option value="mehrere"' + (g.art !== "eine" ? " selected" : "") + '>mehrere</option>' +
+        '<option value="eine"' + (g.art === "eine" ? " selected" : "") + '>genau eine</option></select></label></div>' +
+      '<label class="eo-hinweis">Hinweis für Gäste (freiwillig)<input type="text" maxlength="120" data-eo-feld="hinweis" value="' + sicher(g.hinweis) + '"></label>' +
+      '<div class="eo-zeilen">' + g.zeilen.map((z, j) =>
+        '<div class="eo-zeile" data-eo-z="' + j + '"><label>Name<input type="text" maxlength="40" data-eo-zfeld="n" value="' + sicher(z.n) + '"></label>' +
+        '<label>Aufpreis €<input type="text" inputmode="decimal" data-eo-zfeld="auf" value="' + sicher(z.auf) + '" placeholder="1,50"></label>' +
+        '<button type="button" class="eo-weg" data-eo-zweg="' + j + '" aria-label="Zeile ' + sicher(z.n || String(j + 1)) + ' entfernen">×</button></div>').join("") + '</div>' +
+      '<div class="eo-fuss"><button type="button" class="knopf leise" data-eo-zneu>+ Zeile</button>' +
+        '<button type="button" class="knopf leise" data-eo-weg>Gruppe entfernen</button></div>' +
+    '</div>').join("") || '<p class="ehilfe">Noch keine Gruppe.</p>';
+  $("#eoSichern").disabled = !eoGeaendert();
+}
+async function eoLaden(id){
+  eoGelesen = undefined; eoEntwurf = []; eoSatz(""); eoZeichnen(); fOptZeichnen();
+  if(demo || !db){ eoGelesen = null; eoZeichnen(); fOptZeichnen(); return; }
+  const marke = id;
+  const { data, error } = await db.from("betriebe").select("optionen").eq("id", id).maybeSingle();
+  if(marke !== betriebId) return;            /* Betrieb inzwischen gewechselt */
+  if(error){
+    eoSatz(/optionen|column/i.test(error.message || "") ? "Extras & Beläge brauchen noch die Datenbank-Erweiterung (migration-optionen.sql)."
+                                                        : "Extras & Beläge konnten nicht geladen werden — bitte später erneut öffnen.", true);
+    eoZeichnen(); return;
+  }
+  eoGelesen = (data && data.optionen && typeof data.optionen === "object") ? data.optionen : null;
+  eoEntwurf = eoAusDb(eoGelesen);
+  eoZeichnen(); fOptZeichnen();
+}
+$("#eoListe").addEventListener("input", e => {
+  const karte = e.target.closest("[data-eo]"); if(!karte) return;
+  const g = eoEntwurf[+karte.dataset.eo]; if(!g) return;
+  if(e.target.dataset.eoFeld) g[e.target.dataset.eoFeld] = e.target.value;
+  const zeile = e.target.closest("[data-eo-z]");
+  if(zeile && e.target.dataset.eoZfeld) g.zeilen[+zeile.dataset.eoZ][e.target.dataset.eoZfeld] = e.target.value;
+  eoSatz(""); $("#eoSichern").disabled = !eoGeaendert();
+});
+$("#eoListe").addEventListener("change", e => { if(e.target.dataset.eoFeld === "art"){ $("#eoSichern").disabled = !eoGeaendert(); } });
+$("#eoListe").addEventListener("click", e => {
+  const karte = e.target.closest("[data-eo]"); if(!karte || eoGelesen === undefined) return;
+  const i = +karte.dataset.eo, g = eoEntwurf[i];
+  if(e.target.closest("[data-eo-zneu]")){ g.zeilen.push({ n:"", auf:"" }); eoZeichnen();
+    const f = $("#eoListe").querySelectorAll('[data-eo="' + i + '"] [data-eo-zfeld="n"]'); if(f.length) f[f.length - 1].focus(); return; }
+  const zw = e.target.closest("[data-eo-zweg]");
+  if(zw){ g.zeilen.splice(+zw.dataset.eoZweg, 1); eoZeichnen(); return; }
+  if(e.target.closest("[data-eo-weg]")){ eoEntwurf.splice(i, 1); eoZeichnen(); }
+});
+$("#eoNeu").onclick = () => {
+  if(eoGelesen === undefined) return;
+  if(eoEntwurf.length >= 12) return eoSatz("Höchstens 12 Gruppen.", true);
+  eoEntwurf.push({ k:"", titel:"", art:"mehrere", pflicht:false, hinweis:"", zeilen:[{ n:"", auf:"" }] });
+  eoZeichnen();
+  const f = $("#eoListe").querySelectorAll('[data-eo-feld="titel"]'); if(f.length) f[f.length - 1].focus();
+};
+$("#eoSichern").onclick = async () => {
+  if(eoGelesen === undefined) return;
+  const r = eoNachDb(eoEntwurf);
+  if(r.fehler) return eoSatz(r.fehler, true);
+  if(demo || !db){ eoGelesen = r.wert; eoEntwurf = eoAusDb(r.wert); eoZeichnen(); fOptZeichnen(); return eoSatz("Im Vorführmodus nur hier gespeichert."); }
+  $("#eoSichern").disabled = true;
+  const { error } = await db.from("betriebe").update({ optionen: r.wert }).eq("id", betriebId);
+  if(error){
+    eoSatz(/nur_inhaber|42501/.test((error.code || "") + (error.message || "")) ? "Nur der Besitzer kann das ändern."
+         : /optionen_form/.test(error.message || "") ? "Der Server hat die Form abgelehnt — bitte Namen und Preise prüfen."
+         : "Nicht gespeichert, bitte Verbindung prüfen.", true);
+    $("#eoSichern").disabled = false; return;
+  }
+  eoGelesen = r.wert; eoEntwurf = eoAusDb(r.wert);
+  eoZeichnen(); fOptZeichnen();
+  eoSatz("Gespeichert. Gäste sehen die Extras beim nächsten Abgleich, spätestens nach fünf Minuten.");
+};
+
+/* Im Gericht-Blatt: welche Gruppen DES BETRIEBS hängen am Gericht?
+   Fremde Schlüssel (Gruppen aus der Vorlage, etwa „kaeserand“) bleiben
+   unangetastet in fOptFremd und werden beim Speichern wieder angehängt. */
+let fOptWahl = [], fOptFremd = [];
+function fOptSetzen(g){
+  const roh = String((g && g.opt) || "").split(",").map(x => x.trim()).filter(Boolean);
+  const eigen = Object.keys(eoGelesen || {});
+  fOptWahl = roh.filter(k => eigen.includes(k));
+  fOptFremd = roh.filter(k => !eigen.includes(k));
+  fOptZeichnen();
+}
+function fOptZeichnen(){
+  const block = $("#fOptBlock"); if(!block) return;
+  const gr = eoGelesen || {}, keys = Object.keys(gr);
+  block.hidden = !keys.length;
+  $("#fOpt").innerHTML = keys.map(k => '<button type="button" data-opt-wahl="' + sicher(k) + '" aria-pressed="' + fOptWahl.includes(k) + '">' +
+    sicher(gr[k].titel || k) + '</button>').join("");
+}
+$("#fOpt").onclick = e => {
+  const b = e.target.closest("[data-opt-wahl]"); if(!b) return;
+  const k = b.dataset.optWahl;
+  fOptWahl = fOptWahl.includes(k) ? fOptWahl.filter(x => x !== k) : fOptWahl.concat([k]);
+  b.setAttribute("aria-pressed", String(fOptWahl.includes(k)));
+};
+/* Nur Betriebe mit eigenen Gruppen schreiben opt — bei allen anderen
+   bleibt das Feld, wie es ist (Chocos Vorlagen-Extras). */
+function fOptFuerSatz(){
+  if(eoGelesen === undefined || !Object.keys(eoGelesen || {}).length) return undefined;
+  const alle = fOptWahl.concat(fOptFremd);
+  return alle.length ? alle.join(",") : null;
+}
+
 /* ══ Bestellstand beim Gast (betriebe.hub_stil.restzeit) ═══════════
    Dieselbe Regel wie im Hub (restzeitZeigen): strikt boolean, sonst
    an. Zusammenführen, nie ersetzen — hub_stil trägt auch emoji und
@@ -9748,6 +9965,7 @@ async function betriebOeffnen(id){
   wzWahlB = wzGespeichert || "figur";
   wzWahlenZeichnen();
   pjLaden();
+  eoLaden(id);
   newsletterZeichnen();
   nlVorratLaden(id);
   nlUebersichtLaden(id);
@@ -18233,6 +18451,7 @@ function blattOeffnen(g){
   $("#kopie").hidden     = !g;
   $("#speichernWeiter").hidden = !!g;
   alterSetzen(g ? g.ab_alter : null);
+  fOptSetzen(g);
   rbArtWert = "prozent"; rbDauerWert = "heute"; $("#rbWert").value = ""; rbZeichnen();
   /* Kluge Vorgabe: ein neues Gericht landet in der Kategorie, in die
      zuletzt in dieser Karte eines gespeichert wurde — sofern es sie noch
@@ -19006,6 +19225,8 @@ async function sichern(alsKopie, weiter){
     veg:   $("#fVeg").getAttribute("aria-pressed") === "true",
     vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
   };
+  const optWert = fOptFuerSatz();
+  if(optWert !== undefined) satz.opt = optWert;
 
   /* Die Kategorie kann sich beim Speichern ändern – dann muss das
      Gericht die Position seiner NEUEN Kategorie übernehmen, sonst

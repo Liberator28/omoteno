@@ -38,6 +38,12 @@
        Server: Trenner von optText = Trenner in positionen_pruefen,
        verbotene Zeichen in Schranke und Hub gleich (zweite Quelle:
        datenbank/migration-optionen.sql).
+   E · Board „Extras & Beläge“: ohne gelesenen Stand bleibt „Übernehmen“
+       zu (§8.1m); unlesbarer Aufpreis („1,5O“) und Klammern im Namen
+       → Satz, kein Schreiben; gültig → betriebe.optionen mit gültigen
+       Schlüsseln, Aufpreis als Zahl; im Gericht-Blatt Chips der eigenen
+       Gruppen, Speichern schreibt opt = gewählte + fremde (Vorlage)
+       Gruppen; ein Betrieb OHNE eigene Gruppen schreibt kein opt.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const fs = require("fs");
@@ -285,8 +291,11 @@ async function zug(p, cdp, x, y, dx, n){
 }
 const tellerStand = p => p.evaluate(() => {
   const s = document.querySelector(".tl");
+  /* Keine Bühne mehr (z. B. weil ein Wisch die Unterseite gewechselt
+     hat) ist ein Befund, kein Absturz der Prüfung (§8.1g). */
   return s ? { name:s.querySelector(".tl-n").textContent, nr:(s.querySelector(".tl-nr") || {}).textContent,
-               hash:location.hash, korb:s.querySelector(".tl-korb").dataset.gname } : null;
+               hash:location.hash, korb:s.querySelector(".tl-korb").dataset.gname }
+           : { name:null, nr:null, hash:location.hash, korb:null };
 });
 
 async function teilC(browser){
@@ -354,7 +363,7 @@ async function teilC(browser){
   const f0 = await tellerStand(p);
   await zug(p, cdp, box.x + 60, box.y, -180);
   const f1 = await tellerStand(p);
-  pruef(f1.name !== f0.name && f1.nr === "2", "Wisch nach links → nächstes Gericht", f0.name + " → " + f1.name);
+  pruef(f1.name && f1.name !== f0.name && f1.nr === "2", "Wisch nach links → nächstes Gericht", f0.name + " → " + f1.name);
   pruef(f1.hash === "#/speisekarte", "die Unterseite wechselt dabei NICHT (.wisch-aus)", f1.hash);
   await zug(p, cdp, box.x - 60, box.y, 180);
   const f2 = await tellerStand(p);
@@ -422,12 +431,121 @@ async function teilD(browser){
   await ctx.close();
 }
 
+
+/* ── E · Board: Extras & Beläge ────────────────────────────────── */
+async function boardMit(browser, optionen, verzoegert){
+  const ctx = await browser.newContext({ viewport:{ width:430, height:900 } });
+  const p = await ctx.newPage();
+  const fehler = []; p.on("pageerror", e => fehler.push(String(e).slice(0, 160)));
+  await p.route("**/*", r => { const u = r.request().url();
+    if(u.startsWith("file://")) return r.continue();
+    return r.fulfill({ status:200, contentType:"application/json", headers:{ "Access-Control-Allow-Origin":"*" }, body:"[]" }); });
+  await p.goto("file://" + ADMIN);
+  await p.waitForTimeout(600);
+  await p.evaluate(([id, optionen, verzoegert]) => {
+    window.__schreib = [];
+    function antwort(z){
+      if(z.op !== "select"){ window.__schreib.push({ tab:z.tab, op:z.op, daten:JSON.parse(JSON.stringify(z.daten || null)) }); return { data:null, error:null }; }
+      if(z.tab === "betrieb_mitglieder") return { data:[{ rolle:"inhaber", betriebe:{ id, slug:"piugusto", name:"Più Gusto", hub_stil:{}, hub_texte:{} } }], error:null };
+      if(z.tab === "betriebe" && z.einzeln) return { data:{ optionen }, error:null };
+      return { data: z.einzeln ? null : [], error:null };
+    }
+    function kette(tab){
+      const z = { tab, op:"select", daten:null, einzeln:false };
+      const p = new Proxy(function(){}, { get(_, k){
+        if(k === "then") return res => { const a = antwort(z);
+          if(verzoegert && z.tab === "betriebe" && z.einzeln) setTimeout(() => res(a), 900); else res(a); };
+        return (...a) => { if(["update","insert","upsert","delete"].includes(k)){ z.op = k; z.daten = a[0]; }
+          if(k === "maybeSingle" || k === "single") z.einzeln = true; return p; }; }, apply(){ return p; } });
+      return p;
+    }
+    db = { from:kette, rpc:() => kette("rpc"), channel:() => kette("kanal"), removeChannel:async () => {},
+      storage:{ from:() => ({ upload:async () => ({ error:null }), getPublicUrl:() => ({ data:{ publicUrl:"" } }) }) },
+      functions:{ invoke:async () => ({ data:null, error:null }) },
+      auth:{ getSession:async () => ({ data:{ session:null } }), getUser:async () => ({ data:{ user:{ id:"u1" } } }),
+             onAuthStateChange:() => ({ data:{ subscription:{ unsubscribe(){} } } }) } };
+    demo = false;
+  }, [BETRIEB, optionen, !!verzoegert]);
+  await p.evaluate(async id => { document.getElementById("tor").hidden = true;
+    try{ localStorage.setItem(merkSchluessel(), id); }catch(e){}
+    await betriebWaehlen(); }, BETRIEB);
+  return { ctx, p, fehler };
+}
+const optUpdates = p => p.evaluate(() => window.__schreib.filter(w => w.tab === "betriebe" && w.op === "update" && w.daten && "optionen" in w.daten));
+async function teilE(browser){
+  console.log("\n══ E · Board: Extras & Beläge ══");
+  const START = { "belag-kaese":{ titel:"Käse extra", art:"mehrere", zeilen:[{ n:"Burrata", auf:3.5 }, { n:"Mozzarella", auf:2 }] } };
+  let { ctx, p, fehler } = await boardMit(browser, START, true);
+  const frueh = await p.evaluate(() => ({ zu:document.getElementById("eoSichern").disabled, text:document.getElementById("eoListe").textContent }));
+  pruef(frueh.zu && /geladen/.test(frueh.text), "vor dem Lesen: „Übernehmen“ zu, „Wird geladen“ (§8.1m)", frueh.text.trim());
+  await p.waitForTimeout(1200);
+  await p.evaluate(() => { const s = document.getElementById("scharf"); if(s) s.hidden = true; tafelZeigen("startseite"); });
+  await p.waitForTimeout(300);
+  const gelesen = await p.evaluate(() => ({ karten:document.querySelectorAll("#eoListe .eo-karte").length,
+    zeilen:document.querySelectorAll("#eoListe .eo-zeile").length, zu:document.getElementById("eoSichern").disabled,
+    preis:document.querySelector('#eoListe [data-eo-zfeld="auf"]').value, inhaber:document.getElementById("eoGruppe").hasAttribute("data-nur-inhaber") }));
+  pruef(gelesen.karten === 1 && gelesen.zeilen === 2 && gelesen.preis === "3,50", "gelesener Stand steht da (Preis mit Komma)", JSON.stringify(gelesen));
+  pruef(gelesen.zu && gelesen.inhaber, "ohne Änderung „Übernehmen“ zu; Gruppe nur für den Besitzer");
+  const eingeben = (sel, wert) => p.evaluate(([sel, wert]) => { const f = document.querySelectorAll(sel); const e = f[f.length - 1];
+    e.value = wert; e.dispatchEvent(new Event("input", { bubbles:true })); }, [sel, wert]);
+  await eingeben('#eoListe [data-eo-zfeld="auf"]', "1,5O");
+  await p.click("#eoSichern"); await p.waitForTimeout(200);
+  let satz = await p.evaluate(() => document.getElementById("eoSatz").textContent);
+  pruef(/Zahl/.test(satz) && !(await optUpdates(p)).length, "„1,5O“ → Satz, nichts geschrieben (kein stilles 0 €)", satz);
+  await eingeben('#eoListe [data-eo-zfeld="auf"]', "2");
+  await p.click("#eoNeu"); await p.waitForTimeout(150);
+  await eingeben('#eoListe [data-eo-feld="titel"]', "Fleisch & Fisch extra");
+  await eingeben('#eoListe [data-eo-zfeld="n"]', "Salami (halal)");
+  await eingeben('#eoListe [data-eo-zfeld="auf"]', "1,50");
+  await p.click("#eoSichern"); await p.waitForTimeout(200);
+  satz = await p.evaluate(() => document.getElementById("eoSatz").textContent);
+  pruef(/Klammern|Zeichen/.test(satz) && !(await optUpdates(p)).length, "Klammer bzw. „&“ → Satz, nichts geschrieben", satz);
+  await eingeben('#eoListe [data-eo-feld="titel"]', "Fleisch extra");
+  await eingeben('#eoListe [data-eo-zfeld="n"]', "Salami");
+  await p.click("#eoSichern"); await p.waitForTimeout(300);
+  const up = await optUpdates(p);
+  const o = up.length ? up[up.length - 1].daten.optionen : null;
+  const keys = o ? Object.keys(o) : [];
+  pruef(o && keys.length === 2 && keys.every(k => /^[a-z0-9-]{1,24}$/.test(k)) && o["belag-kaese"].zeilen[1].auf === 2 &&
+        o[keys[1]].zeilen[0].n === "Salami" && o[keys[1]].zeilen[0].auf === 1.5,
+    "gültig → betriebe.optionen: zwei Gruppen, gültige Schlüssel, Aufpreis als Zahl", JSON.stringify(o).slice(0, 160));
+  /* Gericht-Blatt */
+  await p.evaluate(() => blattOeffnen({ id:"g1", name:"Pizza Liam", kategorie:"Pizza", preis:13, karte:"speisekarte", verfuegbar:true,
+    opt:"belag-kaese,kaeserand" }));
+  await p.waitForTimeout(300);
+  const chips = await p.evaluate(() => ({ da:!document.getElementById("fOptBlock").hidden,
+    wahl:[...document.querySelectorAll("#fOpt [data-opt-wahl]")].map(b => b.dataset.optWahl + ":" + b.getAttribute("aria-pressed")),
+    hoehe:Math.min(...[...document.querySelectorAll("#fOpt button")].map(b => b.getBoundingClientRect().height)) }));
+  pruef(chips.da && chips.wahl.length === 2 && chips.wahl[0] === "belag-kaese:true", "Gericht-Blatt: Chips der eigenen Gruppen, gesetzte gedrückt", chips.wahl.join(" "));
+  await p.evaluate(() => { const b = [...document.querySelectorAll("#fOpt [data-opt-wahl]")];
+    b[0].click(); b[1].click(); });
+  await p.evaluate(() => sichern(false)); await p.waitForTimeout(300);
+  const g = await p.evaluate(() => window.__schreib.filter(w => w.tab === "gerichte" && w.op === "update").pop());
+  const zweite = keys[1];
+  pruef(g && g.daten.opt === zweite + ",kaeserand", "Speichern schreibt opt = gewählte Gruppe + Vorlagen-Gruppe bleibt", g && g.daten.opt);
+  pruef(!fehler.length, "Board: keine Seitenfehler", fehler.join(" | ") || "–");
+  await ctx.close();
+
+  /* Betrieb ohne eigene Gruppen: kein opt im Speichern (Chocos Vorlagen-Extras bleiben unberührt) */
+  ({ ctx, p, fehler } = await boardMit(browser, null, false));
+  await p.waitForTimeout(400);
+  await p.evaluate(() => { const s = document.getElementById("scharf"); if(s) s.hidden = true;
+    blattOeffnen({ id:"g2", name:"Dubai Crêpe", kategorie:"Crêpe", preis:15.9, karte:"speisekarte", verfuegbar:true, opt:"suess,sauce" }); });
+  await p.waitForTimeout(300);
+  const ohne = await p.evaluate(() => document.getElementById("fOptBlock").hidden);
+  await p.evaluate(() => sichern(false)); await p.waitForTimeout(300);
+  const g2 = await p.evaluate(() => window.__schreib.filter(w => w.tab === "gerichte" && w.op === "update").pop());
+  pruef(ohne && g2 && !("opt" in g2.daten), "ohne eigene Gruppen: keine Chips, opt bleibt unberührt", g2 && Object.keys(g2.daten).join(","));
+  await ctx.close();
+}
+
 (async () => {
   const browser = await chromium.launch();
   await teilA(browser);
   await teilB(browser);
   await teilC(browser);
   await teilD(browser);
+  await teilE(browser);
   await browser.close();
   console.log("\n" + (f ? f + " von " + n + " Proben FEHLGESCHLAGEN" : "Alle " + n + " Proben bestanden."));
   process.exit(f ? 1 : 0);
