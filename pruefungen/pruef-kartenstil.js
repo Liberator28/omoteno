@@ -43,7 +43,10 @@ const ADMIN = path.join(OBEN, "seiten", "admin.html");
 const BASIS = "https://omoteno.test/h/";
 const STAND = "41fb6c6";   /* letzter Stand vor den Stilen (E5-C) */
 const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d, "index.html")));
-const STILE = ["liste", "buehne", "raster", "flink"];
+/* Zweite Quelle: die Liste im Gerüst selbst — ein neuer Stil (17.10.:
+   „teller“) läuft so ohne Zutun mit, statt ungeprüft zu bleiben. */
+const STILE = JSON.parse(fs.readFileSync(path.join(OBEN, "vorlagen", "hub.vorlage.html"), "utf8")
+  .match(/const KARTENSTILE = (\[[^\]]*\]);/)[1]);
 
 let n = 0, f = 0;
 const pruef = (g, t, z) => { n++; if(!g) f++;
