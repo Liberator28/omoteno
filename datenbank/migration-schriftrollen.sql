@@ -1,4 +1,11 @@
 -- ═══════════════════════════════════════════════════════════════════
+--  ANGEWENDET 17.10. (apply_migration hub_stil_2500, als EINE
+--  alter-Anweisung statt drop+add in zwei Zeilen, §2.8). Vorher live
+--  gemessen: Schranke stand noch auf < 1000 Bytes — diese Datei war nie
+--  eingespielt. Zurückgedrehte Probe: Choco + karte/lade 671 Bytes geht,
+--  ~1700 Bytes geht (unter der alten Grenze abgelehnt), 3000 Bytes
+--  check_violation, emoji als Text check_violation. Danach nachgelesen.
+-- ═══════════════════════════════════════════════════════════════════
 --  betriebe.hub_stil.schrift — vier neue Rollen statt einer geteilten
 --
 --  VORFALL: Alle Überschriften-artigen Texte im Hub (Begrüßung, Titel,
