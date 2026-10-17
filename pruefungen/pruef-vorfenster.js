@@ -200,7 +200,7 @@ function pruef(b, t, d) {
         return { opacity: s.opacity, filter: s.filter, transform: s.transform };
       };
       return {
-        figur: lies(".willkommen .figur"), haus: lies(".willkommen .haus"),
+        figur: lies("#wkFigur > .wz"), haus: lies(".willkommen .haus"),
         btn1: lies("#wkSpeisekarte"), btn2: lies("#wkHub"),
         hinweis: lies(".willkommen .wk-hinweis"),
       };
@@ -220,7 +220,7 @@ function pruef(b, t, d) {
     await p.goto("file://" + DIST);
     await p.waitForTimeout(150);
     const zustand = await p.evaluate(() => {
-      const s = getComputedStyle(document.querySelector(".willkommen .figur"));
+      const s = getComputedStyle(document.querySelector("#wkFigur > .wz"));
       const s2 = getComputedStyle(document.getElementById("wkSpeisekarte"));
       return { figurOpazitaet: s.opacity, figurBlur: s.filter, knopfOpazitaet: s2.opacity };
     });

@@ -158,7 +158,13 @@ const LAEUFT = () => {
     else pruef(l.laufend >= 2 && !l.fremd.length, art + ": ≥ 2 laufende Teile, nur transform/opacity", l.laufend + " laufend" + (l.fremd.length ? ", fremd: " + l.fremd.join(",") : ""));
     await ctx.close();
     const s = await hubSeite(browser, "chocolamour", { still:true, init:[merk, ["chocolamour", art]] });
-    await s.p.waitForTimeout(500);
+    /* Früh messen: Der Einflug der Hülle dauert 0,8 s — nach 500 ms wäre
+       er auch ohne Ausnahme fast fertig gewesen (so blieb er zuerst unentdeckt). */
+    await s.p.waitForTimeout(150);
+    const huelle = await s.p.evaluate(() => { const w = document.querySelector("#wkFigur > .wz"); if(!w) return null;
+      const cs = getComputedStyle(w); return { o: cs.opacity, f: cs.filter, t: cs.transform }; });
+    pruef(!!huelle && huelle.o === "1" && /^(none|blur\(0px\))$/.test(huelle.f) && /^(none|matrix\(1, 0, 0, 1, 0, 0\))$/.test(huelle.t),
+      art + " bei reduzierter Bewegung: die Hülle steht nach 150 ms ganz da (kein Einflug)", JSON.stringify(huelle));
     const r = await s.p.evaluate(LAEUFT), m = await s.p.evaluate(MESSEN, TRAGEND[art]);
     const sichtbar = await s.p.evaluate(sel => { const e = document.querySelector("#wkFigur .wz " + sel); return e ? +getComputedStyle(e).opacity : 0; }, TRAGEND[art][0] || "svg");
     pruef(r.laufend === 0 && m.teile >= 3 && sichtbar === 1, art + " bei reduzierter Bewegung: nichts läuft, Szene steht ganz da", r.laufend + " laufend, Deckkraft " + sichtbar);

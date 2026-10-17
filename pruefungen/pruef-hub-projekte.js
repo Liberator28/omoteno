@@ -79,7 +79,10 @@ async function board(browser, opt){
       if(z.tab === "hub_projekte"){ window.__lesen.projekte++;
         if(o.fehler) return { data:null, error:{ code:o.fehler, message:"relation \"public.hub_projekte\" does not exist" } };
         return { data:zeilen, error:null }; }
-      if(z.tab === "betrieb_mitglieder"){ window.__lesen.mitglieder++; return { data:[{ rolle:bb.rolle, betriebe:Object.assign({}, bb) }], error:null }; }
+      if(z.tab === "betrieb_mitglieder"){ window.__lesen.mitglieder++;
+        /* Nach einem Laden steht der Stand des Projekts in betriebe. */
+        const nach = window.__nachLaden && window.__rpc.some(r => r.fn === "hub_projekt_laden");
+        return { data:[{ rolle:bb.rolle, betriebe:Object.assign({}, bb, nach ? { hub_stil:window.__nachLaden } : {}) }], error:null }; }
       return { data: z.einzeln ? null : [], error:null };
     };
     const kette = tab => { const z = { tab, einzeln:false };
@@ -147,11 +150,18 @@ const klick = async (p, sel) => { await p.$eval(sel, el => el.scrollIntoView({ b
   let z = await p.evaluate(() => ({ rpc: __rpc.length, text: document.querySelector('#pjListe [data-pj-laden="p2"]').textContent }));
   pruef(z.rpc === rpcVorher && /Wirklich/.test(z.text), "erster Tipp: nichts geladen, der Knopf fragt", z.text);
   const mVorher = await p.evaluate(() => __lesen.mitglieder);
+  /* Was der Server nach dem Laden in betriebe stehen hat: ein anderer
+     Stil der Speisekarte und eine andere Willkommen-Szene. Das Board muss
+     DAS zeigen — Zählen der Abfragen allein trüge nicht (§8.1g E). */
+  const stilVorher = await p.evaluate(() => document.querySelector('#ksGruppe [aria-checked="true"]').dataset.ks);
+  await p.evaluate(() => { window.__nachLaden = { karte:"raster", lade:"kueche" }; });
   await klick(p, '#pjListe [data-pj-laden="p2"]');
   await p.waitForTimeout(500);
-  z = await p.evaluate(() => ({ r: __rpc.slice(-1)[0], m: __lesen.mitglieder }));
+  z = await p.evaluate(() => ({ r: __rpc.slice(-1)[0], m: __lesen.mitglieder,
+    ks: document.querySelector('#ksGruppe [aria-checked="true"]').dataset.ks,
+    wz: (document.querySelector('#wzWahlen [aria-checked="true"]') || {}).dataset?.wzw }));
   pruef(z.r && z.r.fn === "hub_projekt_laden" && JSON.stringify(z.r.args) === JSON.stringify({ p_id:"p2" }), "zweiter Tipp lädt genau dieses Projekt", JSON.stringify(z.r));
-  pruef(z.m > mVorher, "danach liest das Board die Spalten des Hubs neu (§8.1m)", z.m + " > " + mVorher);
+  pruef(z.m > mVorher && stilVorher !== "raster" && z.ks === "raster" && z.wz === "kueche", "danach zeigt das Board den geladenen Stand des Servers (§8.1m)", stilVorher + " → " + z.ks + ", Szene " + z.wz);
 
   console.log("══ 5 · Gründe als Satz ══");
   await p.evaluate(() => { __antwort.hub_projekt_laden = { ok:false, grund:"form" }; });
