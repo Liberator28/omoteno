@@ -228,6 +228,7 @@ button.zeile:active{background:var(--flaeche)}
       <button role="tab" type="button" aria-selected="false" data-ansicht="artikel">Artikel</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="kalkulation">Kalkulation</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="lieferanten">Lieferanten</button>
+      <button role="tab" type="button" aria-selected="false" data-ansicht="lager" id="reiterLager" hidden>Lager</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="standorte" id="reiterStandorte" hidden>Standorte</button>
     </div>
   </header>
@@ -332,6 +333,28 @@ button.zeile:active{background:var(--flaeche)}
         <button class="knopf haupt" id="lAnlegen" type="button">Lieferant anlegen</button>
       </div>
       <div class="liste" id="lieferantListe"></div>
+    </section>
+    <!-- Lager: Umlagerungen zwischen Standorten (E5-B) -->
+    <section class="abschnitt" id="v-lager" hidden>
+      <h2>Umlagerungen</h2>
+      <p class="leise" style="margin:0;font-size:14px">Ware an einen anderen Standort Ihrer Kette schicken. Der Wert wandert mit; im Lager des Empfängers steht sie erst, wenn er sie annimmt.</p>
+      <p class="meldung fehler" id="umFehler" hidden></p>
+      <h3>Unterwegs zu Ihnen</h3>
+      <div id="umEin" class="abschnitt" style="gap:12px"></div>
+      <h3>Von Ihnen unterwegs</h3>
+      <div id="umAus" class="abschnitt" style="gap:12px"></div>
+      <div class="karte nur-inhaber" id="umNeuKarte">
+        <h3>Ware schicken</h3>
+        <p class="leise" id="umAusBeleg" style="margin:0;font-size:14px" hidden></p>
+        <label class="feld"><span>An Standort</span><select id="umZiel"></select></label>
+        <div id="umZeilen" class="abschnitt" style="gap:10px"></div>
+        <button type="button" class="knopf" data-aktion="um-zeile-neu">Artikel hinzufügen</button>
+        <label class="feld"><span>Notiz</span><input id="umNotiz" type="text" maxlength="300" placeholder="z. B. Lieferung Dienstag"></label>
+        <p class="meldung" id="umMeldung" role="status" hidden></p>
+        <div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="um-schicken">Abschicken</button></div>
+      </div>
+      <h3>Zuletzt</h3>
+      <div class="liste" id="umVerlauf"></div>
     </section>
     <!-- Standorte (E4) -->
     <section class="abschnitt" id="v-standorte" hidden>
@@ -608,6 +631,12 @@ const GRUENDE = {
   /* E5-A (migration-einkauf-e5a.sql) */
   doppelt_standort:  "Diese Belegnummer ist bei diesem Lieferanten schon in einem anderen Standort freigegeben.",
   datum:             "Das Belegdatum liegt mehr als einen Tag in der Zukunft oder über 400 Tage zurück.",
+  /* E5-B: Umlagerung (migration-einkauf-e5b.sql) */
+  gleich:            "Absender und Empfänger sind derselbe Standort.",
+  andere_kette:      "Dieser Standort gehört nicht zu Ihrer Kette.",
+  nicht_unterwegs:   "Diese Umlagerung ist schon angenommen oder zurückgezogen.",
+  notiz:             "Die Notiz ist zu lang (höchstens 300 Zeichen).",
+  beleg:             "Der Beleg gehört nicht zu diesem Standort oder ist nicht freigegeben.",
   position:          "Eine Position ist nicht vollständig.",
   nicht_zugeordnet:  "Jede Ware braucht einen Artikel und die Menge je Einheit.",
   summe:             "Die Positionen ergeben nicht die Netto-Summe des Belegs.",
@@ -644,7 +673,10 @@ const GRUENDE = {
 const POS_FELD = {
   text:"braucht einen Text (bis 200 Zeichen)", art:"hat eine unbekannte Art", menge:"braucht eine Menge über 0",
   netto:"braucht einen Netto-Betrag", steuersatz:"Steuersatz zwischen 0 und 30 %",
-  artikel:"Der Artikel gehört nicht zu Ihrem Betrieb.", zahl:"Eine Zahl ist nicht lesbar."
+  artikel:"Der Artikel gehört nicht zu Ihrem Betrieb.", zahl:"Eine Zahl ist nicht lesbar.",
+  /* E5-B */
+  doppelt:"dieser Artikel steht schon in einer anderen Zeile", pos:"diese Position gibt es in der Umlagerung nicht",
+  preis:"hat an diesem Standort noch keinen Einkaufspreis — der Wert der Ware wäre unbekannt"
 };
 function grundSatz(a){
   if(!a) return "Keine Antwort vom Server. Bitte noch einmal.";
@@ -805,6 +837,7 @@ async function allesLaden(){
   const lauf = ++LADE_LAUF;
   const org = B.organisation_id;
   const kalk = kalkLaden(lauf);
+  const lager = lagerLaden(lauf);
   const [art, lief, bel, best, pr, zu] = await Promise.all([
     sb.from("artikel").select("id, name, kategorie, basiseinheit, aktiv").eq("organisation_id", org).order("name").order("id"),
     sb.from("lieferanten").select("id, name, kundennummer, kontakt, aktiv").eq("organisation_id", org).order("name").order("id"),
@@ -818,7 +851,7 @@ async function allesLaden(){
       .order("pos", { ascending:false }).order("position_id", { ascending:false }).limit(1000),
     sb.from("lieferanten_artikel").select("id, lieferant_id, artikel_id, bezeichnung, einkaufseinheit, gebinde_basis").order("bezeichnung").order("id")
   ]);
-  await kalk;
+  await kalk; await lager;
   if(lauf !== LADE_LAUF) return;
   const fehler = [art, lief, bel, best, pr, zu].find(r => r && r.error);
   if(fehler){
@@ -862,13 +895,14 @@ function preisaenderungen(){
 /* ═══ Zeichnen ════════════════════════════════════════════════ */
 function zeichnen(){
   for(const k of document.querySelectorAll(".reiter [data-ansicht]")) k.setAttribute("aria-selected", String(k.dataset.ansicht === ANSICHT));
-  for(const v of ["uebersicht", "belege", "artikel", "kalkulation", "lieferanten", "standorte"]) $("v-" + v).hidden = v !== ANSICHT;
+  for(const v of ["uebersicht", "belege", "artikel", "kalkulation", "lieferanten", "lager", "standorte"]) $("v-" + v).hidden = v !== ANSICHT;
   if(ANSICHT === "uebersicht") uebersichtZeichnen();
   if(ANSICHT === "belege") (EDIT ? editZeichnen() : belegListeZeichnen());
   if(ANSICHT === "artikel") artikelZeichnen();
   if(ANSICHT === "lieferanten") lieferantenZeichnen();
   if(ANSICHT === "kalkulation") (REZ ? rezZeichnen() : kalkZeichnen());
   if(ANSICHT === "standorte") standorteZeichnen();
+  if(ANSICHT === "lager") lagerZeichnen();
 }
 
 const STATUS_NAME = { entwurf:"Entwurf", freigegeben:"Freigegeben", storniert:"Storniert", verworfen:"Verworfen" };
@@ -1006,7 +1040,7 @@ function editZeichnen(){
       '<button type="button" class="knopf" data-aktion="sichern">Entwurf sichern</button>' +
       '<button type="button" class="knopf haupt" data-aktion="freigeben">Freigeben</button>' +
       (EDIT.id ? '<button type="button" class="knopf gefahr" data-aktion="verwerfen">Entwurf verwerfen</button>' : "") +
-    "</div>" +
+    "</div>" + verschiebenHTML() +
     '<p class="leise" style="margin:0;font-size:14px">Freigeben bucht die Ware ins Lager und schreibt die Preise fest. Danach ist der Beleg unveränderlich — korrigiert wird mit Storno und neuem Beleg.</p>';
   summeZeichnen();
 }
@@ -1186,7 +1220,9 @@ function ansehenZeichnen(){
     (b.notiz ? '<p class="leise" style="margin:0">' + esc(b.notiz) + "</p>" : "") + dateiKnopf(b.id) +
     '<p class="meldung fehler" id="aMeldungBeleg" role="alert" hidden></p>' +
     (b.status === "freigegeben" ? '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf gefahr" data-aktion="stornieren">Beleg stornieren</button>' +
-      '<span class="leise" style="font-size:14px">Bucht den Bestand zurück. Danach einen neuen Beleg erfassen.</span></div>' : "");
+      '<span class="leise" style="font-size:14px">Bucht den Bestand zurück. Danach einen neuen Beleg erfassen.</span></div>' : "") +
+    (b.status === "freigegeben" && UM.orte.length ? '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf" data-aktion="um-aus-beleg">An Standort weitergeben</button>' +
+      '<span class="leise" style="font-size:14px">Zentral eingekauft? Teile davon zum Einkaufspreis an einen anderen Standort schicken.</span></div>' : "");
 }
 
 /* ═══ Kalkulation (E3, datenbank/migration-einkauf-e3.sql) ═════
@@ -1800,6 +1836,224 @@ async function verlustBuchen(id){
   A_OFFEN = null; await allesLaden();
 }
 
+/* ═══ E5-B · Lager: Umlagerungen zwischen Standorten ══════════
+   Gebucht wird in der Datenbank (umlagerung_anlegen/_annehmen/
+   _zurueckziehen). Die Seite liest Mengen in kg / l / Stück wie bei der
+   Inventur und schickt sie in g / ml / Stück. Leer heißt beim Annehmen
+   „alles angekommen“ — nie 0. */
+let UM = { orte:[], liste:[], fehler:"", zeilen:[{ artikel_id:"", menge:"" }], ziel:"", notiz:"", beleg:null };
+async function lagerLaden(lauf){
+  const neu = { orte:[], liste:[], fehler:"" };
+  let o = null, l = null;
+  try{
+    [o, l] = await Promise.all([
+      sb.rpc("kette_standorte", { p_betrieb: B.id }),
+      sb.from("umlagerungen").select("id, von_betrieb, nach_betrieb, status, notiz, beleg_id, angelegt, angenommen_am, zurueckgezogen_am, umlagerungspositionen(pos, artikel_id, menge_basis, wert_netto, menge_angekommen)")
+        .or("von_betrieb.eq." + B.id + ",nach_betrieb.eq." + B.id).order("angelegt", { ascending:false }).order("id").limit(100)
+    ]);
+  }catch(e){ o = l = null; }
+  const fehler = !o || !l || o.error || l.error;
+  if(fehler) neu.fehler = "Umlagerungen ließen sich nicht laden — fehlt migration-einkauf-e5b.sql, oder die Verbindung ist weg.";
+  neu.orte = o && Array.isArray(o.data) ? o.data : [];
+  neu.liste = l && Array.isArray(l.data) ? l.data.filter(u => u.von_betrieb === B.id || u.nach_betrieb === B.id) : [];
+  if(lauf !== undefined && lauf !== LADE_LAUF) return;
+  UM.orte = neu.orte; UM.liste = neu.liste; UM.fehler = neu.fehler;
+  if(!UM.orte.some(x => x.id === UM.ziel)) UM.ziel = UM.orte.length ? UM.orte[0].id : "";
+  /* Der Reiter steht da, sobald es ein Ziel gibt — oder etwas für diesen
+     Standort unterwegs ist. Ein Betrieb ohne Kette sieht ihn nie. */
+  $("reiterLager").hidden = !UM.orte.length && !UM.liste.length;
+  if($("reiterLager").hidden && ANSICHT === "lager") ANSICHT = "uebersicht";
+}
+const ortName = id => id === B.id ? B.name : ((UM.orte.find(x => x.id === id) || {}).name || "anderer Standort");
+function umPosText(z){
+  const a = artikelVon(z.artikel_id);
+  return (a ? a.name : "Artikel") + " " + (a ? mengeText(Number(z.menge_basis), a.basiseinheit) : zahlFmt.format(Number(z.menge_basis)));
+}
+const umPos = u => (u.umlagerungspositionen || []).slice().sort((x, y) => x.pos - y.pos);
+const umWert = u => (u.umlagerungspositionen || []).reduce((s, z) => s + Number(z.wert_netto || 0), 0);
+function lagerZeichnen(){
+  const f = $("umFehler"); f.textContent = UM.fehler; f.hidden = !UM.fehler;
+  const ein = UM.liste.filter(u => u.status === "unterwegs" && u.nach_betrieb === B.id);
+  const aus = UM.liste.filter(u => u.status === "unterwegs" && u.von_betrieb === B.id);
+  const fertig = UM.liste.filter(u => u.status !== "unterwegs").slice(0, 20);
+  $("umEin").innerHTML = ein.length ? ein.map(u =>
+    '<div class="karte" data-um="' + esc(u.id) + '"><div class="werkzeuge"><b class="wachsen">Von ' + esc(ortName(u.von_betrieb)) + "</b>" +
+      '<span class="leise">' + esc(datumFmt.format(new Date(u.angelegt))) + " · " + esc(euro.format(umWert(u))) + "</span></div>" +
+      (u.notiz ? '<p class="leise" style="margin:0">' + esc(u.notiz) + "</p>" : "") +
+      umPos(u).map(z => { const a = artikelVon(z.artikel_id);
+        return '<label class="feld"><span>' + esc(a ? a.name : "Artikel") + " — geschickt " + esc(a ? mengeText(Number(z.menge_basis), a.basiseinheit) : zahlFmt.format(Number(z.menge_basis))) + "</span>" +
+          '<input type="text" inputmode="decimal" data-um-an="' + esc(z.pos) + '" placeholder="angekommen in ' + esc(a ? GROSS_NAME[a.basiseinheit] : "") + ' — leer heißt alles"></label>'; }).join("") +
+      '<p class="meldung fehler" data-um-meldung="' + esc(u.id) + '" hidden></p>' +
+      '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf haupt" data-aktion="um-annehmen" data-id="' + esc(u.id) + '">Annehmen</button>' +
+      '<span class="leise" style="font-size:14px">Fehlt etwas, tragen Sie die angekommene Menge ein — der Rest wird beim Absender als Verlust gebucht.</span></div></div>').join("")
+    : '<p class="leerzeile">Nichts unterwegs zu Ihnen.</p>';
+  $("umAus").innerHTML = aus.length ? aus.map(u =>
+    '<div class="karte"><div class="werkzeuge"><b class="wachsen">An ' + esc(ortName(u.nach_betrieb)) + "</b>" +
+      '<span class="leise">' + esc(datumFmt.format(new Date(u.angelegt))) + " · " + esc(euro.format(umWert(u))) + "</span></div>" +
+      '<p class="leise" style="margin:0">' + esc(umPos(u).map(umPosText).join(" · ")) + "</p>" +
+      '<p class="meldung fehler" data-um-meldung="' + esc(u.id) + '" hidden></p>' +
+      '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf gefahr" data-aktion="um-zurueck" data-id="' + esc(u.id) + '">Zurückziehen</button>' +
+      '<span class="leise" style="font-size:14px">Solange der Empfänger nicht angenommen hat. Die Ware kommt zurück in Ihren Bestand.</span></div></div>').join("")
+    : '<p class="leerzeile">Nichts von Ihnen unterwegs.</p>';
+  $("umVerlauf").innerHTML = fertig.length ? fertig.map(u => {
+    const raus = u.von_betrieb === B.id, pos = umPos(u);
+    const fehlt = u.status === "angenommen" && pos.some(z => z.menge_angekommen != null && Number(z.menge_angekommen) < Number(z.menge_basis));
+    return '<div class="zeile"><span class="titel">' + esc(raus ? "An " + ortName(u.nach_betrieb) : "Von " + ortName(u.von_betrieb)) + "</span>" +
+      '<span class="pille ' + (u.status === "angenommen" ? (fehlt ? "entwurf" : "freigegeben") : "storniert") + '">' +
+        (u.status === "angenommen" ? (fehlt ? "Angenommen, Fehlmenge" : "Angenommen") : "Zurückgezogen") + "</span>" +
+      '<span class="unter">' + esc(datumFmt.format(new Date(u.angenommen_am || u.zurueckgezogen_am || u.angelegt))) + " · " + esc(euro.format(umWert(u))) + " · " +
+      esc(pos.map(umPosText).join(" · ")) + "</span></div>";
+  }).join("") : '<p class="leerzeile">Noch keine Umlagerung.</p>';
+  $("umNeuKarte").hidden = !UM.orte.length;
+  $("umZiel").innerHTML = UM.orte.map(o => '<option value="' + esc(o.id) + '"' + (o.id === UM.ziel ? " selected" : "") + ">" + esc(o.name) + "</option>").join("");
+  const b = UM.beleg && DATEN.belege.find(x => x.id === UM.beleg);
+  $("umAusBeleg").hidden = !b;
+  $("umAusBeleg").textContent = b ? "Aus Beleg " + (b.belegnummer || "") + " — als Wert gilt der Einkaufspreis dieses Belegs." : "";
+  const artikel = DATEN.artikel.filter(a => a.aktiv);
+  $("umZeilen").innerHTML = UM.zeilen.map((z, i) => {
+    const a = artikelVon(z.artikel_id), best = a && DATEN.bestand[a.id];
+    return '<div class="pos" data-umz="' + i + '"><div class="pos-raster">' +
+      '<label class="feld"><span>Artikel</span><select data-umf="artikel_id">' + optionen(artikel, z.artikel_id, "– wählen –") + "</select></label>" +
+      '<label class="feld"><span>Menge' + (a ? " (" + esc(GROSS_NAME[a.basiseinheit]) + ")" : "") + '</span><input type="text" inputmode="decimal" data-umf="menge" value="' + esc(z.menge) + '" placeholder="z. B. 2,5"></label>' +
+      "</div>" + (a ? '<div class="ergebnis">Bestand hier ' + esc(best ? mengeText(Number(best.menge_basis), a.basiseinheit) : "0 " + EINHEIT_KURZ[a.basiseinheit]) + "</div>" : "") +
+      (UM.zeilen.length > 1 ? '<button type="button" class="knopf leer" data-aktion="um-zeile-weg" data-i="' + i + '">Zeile entfernen</button>' : "") + "</div>";
+  }).join("");
+  $("umNotiz").value = UM.notiz;
+}
+/* Eingaben ins UM übernehmen, ohne neu zu zeichnen (Fokus bleibt). */
+function umFormLesen(){
+  if(!$("umZiel")) return;
+  UM.ziel = $("umZiel").value || UM.ziel; UM.notiz = $("umNotiz").value;
+  for(const el of document.querySelectorAll("#umZeilen [data-umz]")){
+    const z = UM.zeilen[Number(el.dataset.umz)]; if(!z) continue;
+    z.artikel_id = el.querySelector('[data-umf="artikel_id"]').value; z.menge = el.querySelector('[data-umf="menge"]').value;
+  }
+}
+function umMeldung(text, art){ const m = $("umMeldung"); m.className = "meldung" + (art === "fehler" ? " fehler" : ""); m.textContent = text || ""; m.hidden = !text; }
+async function umSchicken(){
+  if(LAEUFT) return; umFormLesen(); umMeldung("");
+  const pos = [];
+  for(const [i, z] of UM.zeilen.entries()){
+    if(!z.artikel_id && !String(z.menge).trim()) continue;
+    const a = artikelVon(z.artikel_id), n = zahl(z.menge);
+    if(!a){ umMeldung("Zeile " + (i + 1) + ": bitte einen Artikel wählen.", "fehler"); return; }
+    if(n == null || Number.isNaN(n) || n <= 0){ umMeldung("Zeile " + (i + 1) + ": " + GRUENDE.menge, "fehler"); return; }
+    pos.push({ artikel_id: a.id, menge_basis: Math.round(n * GROSS_FAKTOR[a.basiseinheit] * 10000) / 10000 });
+  }
+  if(!pos.length){ umMeldung("Bitte mindestens einen Artikel mit Menge eintragen.", "fehler"); return; }
+  if(!UM.ziel){ umMeldung("Bitte den Standort wählen.", "fehler"); return; }
+  LAEUFT = true;
+  try{
+    const r = await sb.rpc("umlagerung_anlegen", { p_von: B.id, p_nach: UM.ziel, p_positionen: pos, p_notiz: UM.notiz.trim() || null, p_beleg: UM.beleg || null });
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){ umMeldung(r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a), "fehler"); return; }
+    const ziel = ortName(UM.ziel), minus = Array.isArray(a.bestand_negativ) ? a.bestand_negativ : [];
+    UM.zeilen = [{ artikel_id:"", menge:"" }]; UM.notiz = ""; UM.beleg = null;
+    toast("Unterwegs an " + ziel + " · " + euro.format(a.wert || 0));
+    await allesLaden();
+    if(minus.length) umMeldung("Abgeschickt. Ihr Bestand ist danach im Minus bei " + minus.map(id => (artikelVon(id) || {}).name || "einem Artikel").join(", ") + " — vielleicht fehlt noch ein Beleg oder eine Zählung.");
+  }finally{ LAEUFT = false; }
+}
+async function umAnnehmen(id){
+  if(LAEUFT) return;
+  const u = UM.liste.find(x => x.id === id); if(!u) return;
+  const m = document.querySelector('[data-um-meldung="' + id + '"]'); m.hidden = true;
+  const mengen = [];
+  for(const z of umPos(u)){
+    const f = document.querySelector('[data-um="' + id + '"] [data-um-an="' + z.pos + '"]'), a = artikelVon(z.artikel_id);
+    const n = zahl(f ? f.value : "");
+    if(n == null) continue;
+    if(Number.isNaN(n) || n < 0){ m.textContent = (a ? a.name : "Position " + z.pos) + ": Menge ist nicht lesbar."; m.hidden = false; f.focus(); return; }
+    const basis = Math.round(n * (a ? GROSS_FAKTOR[a.basiseinheit] : 1) * 10000) / 10000;
+    if(basis > Number(z.menge_basis)){ m.textContent = (a ? a.name : "Position " + z.pos) + ": mehr als geschickt."; m.hidden = false; f.focus(); return; }
+    mengen.push({ pos: z.pos, menge_angekommen: basis });
+  }
+  LAEUFT = true;
+  try{
+    const r = await sb.rpc("umlagerung_annehmen", { p_id: id, p_mengen: mengen.length ? mengen : null });
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){ m.textContent = r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a); m.hidden = false; return; }
+    toast("Angenommen · " + euro.format(a.wert || 0) + " im Lager" + (Number(a.fehlwert) > 0 ? " · Fehlmenge " + euro.format(a.fehlwert) + " beim Absender als Verlust" : ""));
+    await allesLaden();
+  }finally{ LAEUFT = false; }
+}
+async function umZurueck(id, knopf){
+  if(LAEUFT || !zweiterTipp(knopf, "Wirklich zurückziehen?")) return;
+  const m = document.querySelector('[data-um-meldung="' + id + '"]');
+  LAEUFT = true;
+  try{
+    const r = await sb.rpc("umlagerung_zurueckziehen", { p_id: id });
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){ m.textContent = r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a); m.hidden = false; return; }
+    toast("Zurückgezogen — wieder in Ihrem Bestand");
+    await allesLaden();
+  }finally{ LAEUFT = false; }
+}
+/* Zentraleinkauf: die Ware eines freigegebenen Belegs vorausgefüllt —
+   kein zweiter Buchungsweg, nur eine Umlagerung mit Beleg als Preisquelle. */
+function umAusBeleg(){
+  const b = DATEN.belege.find(x => x.id === (EDIT && EDIT.id)); if(!b) return;
+  const quelle = (EDIT.positionen && EDIT.positionen.length ? EDIT.positionen : (b.positionen_entwurf || []))
+    .filter(p => (p.art || "ware") === "ware" && p.artikel_id);
+  const je = new Map();
+  for(const p of quelle){
+    const basis = p.menge_basis != null ? Number(p.menge_basis) : Number(p.menge || 0) * Number(p.gebinde_basis || 0);
+    je.set(p.artikel_id, (je.get(p.artikel_id) || 0) + basis);
+  }
+  UM.zeilen = [...je].map(([aid, basis]) => { const a = artikelVon(aid);
+    return { artikel_id: aid, menge: a && basis ? fmtEingabe(Math.round(basis / GROSS_FAKTOR[a.basiseinheit] * 1000) / 1000) : "" }; });
+  if(!UM.zeilen.length) UM.zeilen = [{ artikel_id:"", menge:"" }];
+  UM.beleg = b.id; UM.notiz = "Aus Beleg " + (b.belegnummer || "");
+  EDIT = null; ANSICHT = "lager"; zeichnen();
+  umMeldung("Mengen aus dem Beleg vorausgefüllt — tragen Sie ein, was der andere Standort bekommt.");
+  const f = document.querySelector('#umZeilen [data-umf="menge"]'); if(f) f.focus();
+}
+
+/* Entwurf am falschen Standort: nur zwischen eigenen Standorten derselben
+   Kette, nur Entwürfe. Die Datei kommt als Kopie in den Ordner des Ziels
+   (die Speicherregeln kennen kein Umbenennen); erst dann zieht der
+   Entwurf um. Die alte Datei bleibt liegen. */
+function verschiebenZiele(){ return BETRIEBE.filter(b => b.id !== B.id && b.organisation_id === B.organisation_id && b.rolle === "inhaber"); }
+function verschiebenHTML(){
+  if(!EDIT || !EDIT.id) return "";
+  const ziele = verschiebenZiele(); if(!ziele.length) return "";
+  return '<div class="werkzeuge"><label class="feld wachsen"><span>Gehört zu einem anderen Standort?</span><select id="eVerschiebenZiel">' +
+    ziele.map(z => '<option value="' + esc(z.id) + '">' + esc(z.name) + "</option>").join("") + "</select></label>" +
+    '<button type="button" class="knopf" data-aktion="beleg-verschieben">Dorthin verschieben</button></div>';
+}
+async function belegVerschieben(){
+  if(LAEUFT || !EDIT || !EDIT.id) return;
+  const ziel = $("eVerschiebenZiel").value, zielName = (BETRIEBE.find(b => b.id === ziel) || {}).name || "anderer Standort";
+  LAEUFT = true;
+  let id = null;
+  try{ id = await sichern(); }finally{ LAEUFT = false; }
+  if(!id) return;
+  const b = DATEN.belege.find(x => x.id === id) || {};
+  LAEUFT = true; eMeldung("");
+  try{
+    let pfad = null;
+    if(b.datei_pfad){
+      const dl = await sb.storage.from("belege").download(b.datei_pfad);
+      if(!dl || dl.error || !dl.data){ eMeldung("Die Rechnungsdatei ließ sich nicht kopieren. Bitte noch einmal."); return; }
+      const pdf = /\.pdf$/.test(b.datei_pfad);
+      pfad = ziel + "/" + neueId() + (pdf ? ".pdf" : ".jpg");
+      const hoch = await sb.storage.from("belege").upload(pfad, dl.data, { contentType: pdf ? "application/pdf" : "image/jpeg", upsert:false });
+      if(hoch.error){ eMeldung("Die Rechnungsdatei ließ sich nicht kopieren. Bitte noch einmal."); return; }
+    }
+    const r = await sb.rpc("beleg_verschieben", { p_beleg: id, p_ziel: ziel, p_pfad: pfad });
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){
+      eMeldung(r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal."
+        : a && a.grund === "datei" ? "Die Kopie der Rechnung ist im anderen Standort nicht angekommen. Bitte noch einmal." : grundSatz(a));
+      return;
+    }
+    toast("Entwurf liegt jetzt bei " + zielName);
+    EDIT = null;
+    await betriebWaehlen(ziel);
+    ANSICHT = "belege"; belegOeffnen(id);
+  }finally{ LAEUFT = false; }
+}
+
 /* ═══ Bedienung ══════════════════════════════════════════════ */
 document.addEventListener("click", e => {
   const reiter = e.target.closest(".reiter [data-ansicht]");
@@ -1817,6 +2071,13 @@ document.addEventListener("click", e => {
   else if(was === "freigeben") aktionFreigeben();
   else if(was === "verwerfen") aktionVerwerfen(k);
   else if(was === "stornieren") aktionStornieren(k);
+  else if(was === "um-zeile-neu"){ umFormLesen(); UM.zeilen.push({ artikel_id:"", menge:"" }); lagerZeichnen(); const f = document.querySelectorAll("#umZeilen select"); f[f.length - 1].focus(); }
+  else if(was === "um-zeile-weg"){ umFormLesen(); UM.zeilen.splice(Number(k.dataset.i), 1); if(!UM.zeilen.length) UM.zeilen.push({ artikel_id:"", menge:"" }); lagerZeichnen(); }
+  else if(was === "um-schicken") umSchicken(k);
+  else if(was === "um-annehmen") umAnnehmen(id, k);
+  else if(was === "um-zurueck") umZurueck(id, k);
+  else if(was === "um-aus-beleg") umAusBeleg();
+  else if(was === "beleg-verschieben") belegVerschieben(k);
   else if(was === "artikel-auf"){ A_OFFEN = A_OFFEN === id ? null : id; artikelZeichnen(); }
   else if(was === "artikel-sichern") artikelSichern(id);
   else if(was === "artikel-aktiv") artikelAktiv(id);
@@ -1836,6 +2097,7 @@ document.addEventListener("click", e => {
    bleibt im Feld. Nur Art und Artikel ändern die Felder selbst. */
 document.addEventListener("input", e => {
   if(REZ && e.target.closest("#kalkEdit")){ rezEingabe(e); return; }
+  if(e.target.closest("#umNeuKarte")){ umFormLesen(); if(e.target.dataset.umf === "artikel_id") lagerZeichnen(); return; }
   if(!EDIT || EDIT.nurAnsehen) return;
   const kopf = { eLieferant:"lieferant_id", eNummer:"belegnummer", eDatum:"belegdatum", eNetto:"netto", eSteuer:"steuer", eBrutto:"brutto", eNotiz:"notiz" }[e.target.id];
   if(kopf){ EDIT.kopf[kopf] = e.target.value; if(kopf === "netto") summeZeichnen(); return; }

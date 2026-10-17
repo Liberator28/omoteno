@@ -38,6 +38,7 @@ const SQL2 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e2.
 const SQL3 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e3.sql"), "utf8");
 const SQL4 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e4.sql"), "utf8");
 const SQL5 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5a.sql"), "utf8");
+const SQL6 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5b.sql"), "utf8");
 const EDGE = fs.readFileSync(path.join(OBEN, "supabase", "functions", "beleg-lesen", "index.ts"), "utf8");
 const HTML = fs.readFileSync(path.join(OBEN, "seiten", "einkauf.html"), "utf8");
 
@@ -149,6 +150,28 @@ pruef(prSelect.includes("freigegeben_am") && prSelect.includes("pos") && prSelec
 const prOrdnung = [...((HTML.match(/from\("artikel_preise"\)[\s\S]*?\.limit\(/) || [""])[0]).matchAll(/\.order\("(\w+)"/g)].map(m => m[1]).join(">");
 const sqlOrdnung = [...((SQL5.match(/function public\.artikel_preis_betrieb[\s\S]*?limit 1/) || [""])[0]).matchAll(/pr\.(\w+) desc/g)].map(m => m[1]).join(">");
 pruef(prOrdnung === sqlOrdnung && /freigegeben_am/.test(sqlOrdnung), "E5-A: Seite sortiert die Preise wie artikel_preis_betrieb", prOrdnung + " / " + sqlOrdnung);
+
+/* E5-B: Umlagerung, Beleg verschieben, Standorte der Kette */
+const e5bFn = ["umlagerung_anlegen", "umlagerung_annehmen", "umlagerung_zurueckziehen", "beleg_verschieben"];
+const e5bKoerper = fn => (SQL6.match(new RegExp("create or replace function public\\." + fn + "\\([\\s\\S]*?\\nend \\$\\$;")) || [""])[0];
+const e5bGruende = [...new Set(e5bFn.flatMap(fn => [...e5bKoerper(fn).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1])))];
+pruef(e5bGruende.length >= 8 && e5bGruende.every(g => gruendeSeite.includes(g)), "E5-B: jeder Grund der Umlagerungs-Funktionen hat einen Satz",
+  e5bGruende.filter(g => !gruendeSeite.includes(g)).join(", ") || e5bGruende.join(","));
+const posFelder = [...new Set(e5bFn.flatMap(fn => [...e5bKoerper(fn).matchAll(/'feld',\s*'(\w+)'/g)].map(m => m[1])))];
+const posFeldSeite = (() => { const b = HTML.match(/const POS_FELD = \{([\s\S]*?)\n\};/); return b ? [...b[1].matchAll(/(\w+):"/g)].map(m => m[1]) : []; })();
+pruef(posFelder.length >= 5 && posFelder.every(f => posFeldSeite.includes(f)), "E5-B: jedes 'feld' einer Position hat einen Satz", posFelder.filter(f => !posFeldSeite.includes(f)).join(", ") || posFelder.join(","));
+const SIG6 = {};
+for(const fn of [...e5bFn, "kette_standorte"]){
+  const m = SQL6.match(new RegExp("function public\\." + fn + "\\(([^)]*)\\)"));
+  SIG6[fn] = m ? m[1].split(",").map(x => x.trim().split(/\s+/)[0]).filter(Boolean).sort() : null;
+}
+pruef(Object.values(SIG6).every(Boolean), "E5-B: Signaturen aus der Migration gelesen", JSON.stringify(SIG6));
+const tabSpalten = t => new Set([...((SQL6.match(new RegExp("create table if not exists public\\." + t + " \\(([\\s\\S]*?)\\n\\);")) || ["", ""])[1]).matchAll(/^\s*(\w+)\s/gm)].map(m => m[1]));
+const umSel = ((HTML.match(/from\("umlagerungen"\)\.select\("([^"]+)"/) || ["", ""])[1]);
+const umKopf = umSel.replace(/umlagerungspositionen\([^)]*\)/, "").split(",").map(x => x.trim()).filter(Boolean);
+const umPosSel = ((umSel.match(/umlagerungspositionen\(([^)]*)\)/) || ["", ""])[1]).split(",").map(x => x.trim()).filter(Boolean);
+pruef(umKopf.length >= 6 && umKopf.every(c => tabSpalten("umlagerungen").has(c)) && umPosSel.length >= 4 && umPosSel.every(c => tabSpalten("umlagerungspositionen").has(c)),
+  "E5-B: gelesene Spalten von umlagerungen und -positionen gibt es", [...umKopf, ...umPosSel].filter(c => !tabSpalten("umlagerungen").has(c) && !tabSpalten("umlagerungspositionen").has(c)).join(", ") || "alle");
 
 /* ── 2 · Gestellte Datenbank ────────────────────────────────────── */
 const ORG = "org-1", BETRIEB = "af095b14-0000-4000-8000-000000000001";
@@ -274,6 +297,7 @@ function ersatz(start){
           window.__hoch = { eimer, pfad, typ: opt && opt.contentType, groesse: b.length, kopf: [b[0], b[1], b[2], b[3]] };
           return D.hochFehler ? { data:null, error:{ message:"x" } } : { data:{ path: pfad }, error:null };
         },
+        download: async pfad => { window.__geladen = pfad; return D.dlFehler ? { data:null, error:{ message:"x" } } : { data: new Blob([new Uint8Array([0xff, 0xd8, 1, 2])]), error:null }; },
         createSignedUrl: async (pfad, sek) => { window.__signiert = { eimer, pfad, sek }; return { data:{ signedUrl:"about:blank#" + pfad }, error:null }; }
       }) },
       functions: { invoke: async (name, opt) => {
@@ -876,15 +900,137 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await ctx.close();
   }
 
+  /* ── E5-B · Ware zwischen Standorten ───────────────────────────── */
+  console.log("\n══ 16 · Umlagerung, Zentraleinkauf, Beleg verschieben (E5-B) ══");
+  const UMLAGER = () => [
+    { id:"u-ein", von_betrieb:"b-zwei", nach_betrieb:BETRIEB, status:"unterwegs", notiz:"Dienstag", beleg_id:null, angelegt:"2026-10-16T08:00:00Z",
+      umlagerungspositionen:[{ pos:1, artikel_id:"a-wein", menge_basis:3000, wert_netto:18, menge_angekommen:null }, { pos:2, artikel_id:"a-mehl", menge_basis:2000, wert_netto:4, menge_angekommen:null }] },
+    { id:"u-aus", von_betrieb:BETRIEB, nach_betrieb:"b-zwei", status:"unterwegs", notiz:null, beleg_id:null, angelegt:"2026-10-15T08:00:00Z",
+      umlagerungspositionen:[{ pos:1, artikel_id:"a-wein", menge_basis:1500, wert_netto:9, menge_angekommen:null }] },
+    { id:"u-alt", von_betrieb:BETRIEB, nach_betrieb:"b-zwei", status:"angenommen", notiz:null, beleg_id:null, angelegt:"2026-10-01T08:00:00Z", angenommen_am:"2026-10-02T08:00:00Z",
+      umlagerungspositionen:[{ pos:1, artikel_id:"a-mehl", menge_basis:1000, wert_netto:2, menge_angekommen:600 }] }
+  ];
+  const mitLager = (rolle) => { const d = zweiStandorte(rolle || "inhaber", ORG); d.antworten.kette_standorte = [{ id:"b-zwei", name:"Café Zwei" }]; d.umlagerungen = UMLAGER(); return d; };
+  {
+    const { ctx, p } = await oeffnen(browser, grundDaten("inhaber"));
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    pruef(await p.isHidden("#reiterLager"), "ohne Kette und ohne Umlagerung: kein Reiter „Lager“");
+    await ctx.close();
+  }
+  {
+    const { ctx, p, kons } = await oeffnen(browser, mitLager());
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    pruef(await p.isVisible("#reiterLager"), "mit anderem Standort in der Kette: Reiter „Lager“ da");
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    const t = await p.evaluate(() => ({ ein: document.getElementById("umEin").textContent, aus: document.getElementById("umAus").textContent, alt: document.getElementById("umVerlauf").textContent,
+      felder: document.querySelectorAll('[data-um="u-ein"] [data-um-an]').length, ziel: [...document.querySelectorAll("#umZiel option")].map(o => o.textContent) }));
+    pruef(/Von Café Zwei/.test(t.ein) && t.felder === 2 && /An Café Zwei/.test(t.aus) && /Fehlmenge/.test(t.alt) && t.ziel.join() === "Café Zwei",
+      "eingehend mit je einem Feld pro Position, ausgehend, Verlauf mit Fehlmenge, Ziel aus kette_standorte", JSON.stringify(t).slice(0, 200));
+    /* Schicken */
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(150);
+    pruef(!(await rufe(p, "umlagerung_anlegen")).length && /mindestens einen Artikel/.test(await p.textContent("#umMeldung")), "leer abschicken → Satz, kein Aufruf");
+    await p.selectOption('#umZeilen [data-umf="artikel_id"]', "a-wein");
+    await p.fill('#umZeilen [data-umf="menge"]', "viel");
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(150);
+    pruef(!(await rufe(p, "umlagerung_anlegen")).length && /Menge/.test(await p.textContent("#umMeldung")), "unlesbare Menge → Satz, kein Aufruf", await p.textContent("#umMeldung"));
+    await p.fill('#umZeilen [data-umf="menge"]', "1,5");
+    await p.evaluate(() => { window.__D.antworten.umlagerung_anlegen = { ok:true, id:"u-neu", wert:9, bestand_negativ:["a-wein"] }; });
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(300);
+    const an = (await rufe(p, "umlagerung_anlegen"))[0];
+    pruef(an && an.args.p_von === BETRIEB && an.args.p_nach === "b-zwei" && JSON.stringify(an.args.p_positionen) === JSON.stringify([{ artikel_id:"a-wein", menge_basis:1500 }])
+      && Object.keys(an.args).sort().join() === SIG6.umlagerung_anlegen.join(), "„1,5“ l Wein → 1500 ml, genau die Parameter der Funktion", JSON.stringify(an && an.args));
+    const mm = await p.evaluate(() => { const m = document.getElementById("umMeldung"); return { t: m.textContent, fehler: m.classList.contains("fehler"), sicht: !m.hidden }; });
+    pruef(mm.sicht && /Minus/.test(mm.t) && /Hauswein weiß/.test(mm.t) && !mm.fehler, "Bestand ins Minus → gesagt, als Hinweis (abgeschickt ist es trotzdem)", JSON.stringify(mm));
+    await p.evaluate(() => { window.__D.antworten.umlagerung_anlegen = { ok:false, grund:"position", pos:1, feld:"preis" }; });
+    await p.selectOption('#umZeilen [data-umf="artikel_id"]', "a-mehl"); await p.fill('#umZeilen [data-umf="menge"]', "2");
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(300);
+    pruef(/Position 1: hat an diesem Standort noch keinen Einkaufspreis/.test(await p.textContent("#umMeldung")), "Grund „preis“ → Satz", await p.textContent("#umMeldung"));
+    /* Annehmen */
+    await p.fill('[data-um="u-ein"] [data-um-an="2"]', "5");
+    await p.click('[data-aktion="um-annehmen"][data-id="u-ein"]'); await p.waitForTimeout(150);
+    pruef(!(await rufe(p, "umlagerung_annehmen")).length && /mehr als geschickt/.test(await p.textContent('[data-um-meldung="u-ein"]')), "mehr angekommen als geschickt → Satz, kein Aufruf");
+    await p.fill('[data-um="u-ein"] [data-um-an="2"]', "1,5");
+    await p.evaluate(() => { window.__D.antworten.umlagerung_annehmen = { ok:true, wert:21, fehlwert:1 }; });
+    await p.click('[data-aktion="um-annehmen"][data-id="u-ein"]'); await p.waitForTimeout(300);
+    const ann = (await rufe(p, "umlagerung_annehmen"))[0];
+    pruef(ann && ann.args.p_id === "u-ein" && JSON.stringify(ann.args.p_mengen) === JSON.stringify([{ pos:2, menge_angekommen:1500 }]) && Object.keys(ann.args).sort().join() === SIG6.umlagerung_annehmen.join(),
+      "leeres Feld = alles, „1,5“ kg Mehl → 1500 g, nur diese Position geschickt", JSON.stringify(ann && ann.args));
+    pruef(/Fehlmenge 1,00\s€/.test(await p.textContent("#toast")), "Fehlmenge im Satz genannt", await p.textContent("#toast"));
+    /* Zurückziehen erst beim zweiten Tipp */
+    await p.click('[data-aktion="um-zurueck"][data-id="u-aus"]'); await p.waitForTimeout(100);
+    pruef(!(await rufe(p, "umlagerung_zurueckziehen")).length, "Zurückziehen: erster Tipp ruft nichts");
+    await p.click('[data-aktion="um-zurueck"][data-id="u-aus"]'); await p.waitForTimeout(300);
+    const zr = (await rufe(p, "umlagerung_zurueckziehen"))[0];
+    pruef(zr && zr.args.p_id === "u-aus" && Object.keys(zr.args).join() === SIG6.umlagerung_zurueckziehen.join(), "zweiter Tipp zieht genau diese Umlagerung zurück", JSON.stringify(zr && zr.args));
+    /* Zentraleinkauf aus dem freigegebenen Beleg */
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click('#belegListe [data-beleg="be-frei"]'); await p.waitForTimeout(250);
+    await p.click('[data-aktion="um-aus-beleg"]'); await p.waitForTimeout(150);
+    const vor = await p.evaluate(() => ({ lager: !document.getElementById("v-lager").hidden, art: document.querySelector('#umZeilen [data-umf="artikel_id"]').value,
+      menge: document.querySelector('#umZeilen [data-umf="menge"]').value, hinweis: document.getElementById("umAusBeleg").textContent }));
+    pruef(vor.lager && vor.art === "a-wein" && vor.menge === "9" && /R-100/.test(vor.hinweis), "„An Standort weitergeben“: Lager offen, Wein 9 l aus dem Beleg", JSON.stringify(vor));
+    await p.fill('#umZeilen [data-umf="menge"]', "4");
+    await p.evaluate(() => { window.__D.antworten.umlagerung_anlegen = { ok:true, id:"u-z", wert:24, bestand_negativ:[] }; window.__rufe = []; });
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(300);
+    const zb = (await rufe(p, "umlagerung_anlegen"))[0];
+    pruef(zb && zb.args.p_beleg === "be-frei" && zb.args.p_positionen[0].menge_basis === 4000, "mit Beleg als Preisquelle, 4 l = 4000 ml", JSON.stringify(zb && zb.args));
+    pruef(!kons.length, "keine Seitenfehler", kons.join(" | "));
+    await ctx.close();
+  }
+  {
+    /* Entwurf an den anderen eigenen Standort, mit Kopie der Datei */
+    const { ctx, p, kons } = await oeffnen(browser, mitLager());
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click('#belegListe [data-beleg="be-entwurf"]'); await p.waitForTimeout(150);
+    const ziele = await p.evaluate(() => [...document.querySelectorAll("#eVerschiebenZiel option")].map(o => o.value));
+    pruef(ziele.join() === "b-zwei", "Verschieben: nur der andere eigene Standort", ziele.join());
+    await p.evaluate(() => { window.__D.antworten.beleg_verschieben = { ok:false, grund:"datei" }; });
+    await p.click('[data-aktion="beleg-verschieben"]'); await p.waitForTimeout(300);
+    const v1 = (await rufe(p, "beleg_verschieben"))[0], hoch = await p.evaluate(() => window.__hoch), geladen = await p.evaluate(() => window.__geladen);
+    pruef(geladen === BETRIEB + "/11111111-2222-4333-8444-555555555555.jpg" && hoch && /^b-zwei\/[0-9a-f-]{36}\.jpg$/.test(hoch.pfad) && hoch.eimer === "belege",
+      "alte Datei geladen, Kopie in den Ordner des Ziels hochgeladen", JSON.stringify({ geladen, hoch }));
+    pruef(v1 && v1.args.p_beleg === "be-entwurf" && v1.args.p_ziel === "b-zwei" && v1.args.p_pfad === hoch.pfad && Object.keys(v1.args).sort().join() === SIG6.beleg_verschieben.join(),
+      "beleg_verschieben mit Beleg, Ziel und dem Pfad der Kopie", JSON.stringify(v1 && v1.args));
+    pruef(/Kopie der Rechnung ist im anderen Standort nicht angekommen/.test(await p.textContent("#eMeldung")), "Grund „datei“ → eigener Satz", await p.textContent("#eMeldung"));
+    await p.evaluate(() => { window.__D.antworten.beleg_verschieben = { ok:true, id:"be-entwurf", betrieb:"b-zwei" }; });
+    await p.click('[data-aktion="beleg-verschieben"]'); await p.waitForTimeout(400);
+    pruef(/Café Zwei/.test(await p.textContent("#betriebName")) && /Café Zwei/.test(await p.textContent("#toast")), "danach steht der Standort des Ziels offen", await p.textContent("#toast"));
+    pruef(!kons.length, "keine Seitenfehler", kons.join(" | "));
+    await ctx.close();
+  }
+  {
+    const d = mitLager(); d.dlFehler = true;
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click('#belegListe [data-beleg="be-entwurf"]'); await p.waitForTimeout(150);
+    await p.click('[data-aktion="beleg-verschieben"]'); await p.waitForTimeout(300);
+    pruef(!(await rufe(p, "beleg_verschieben")).length && /nicht kopieren/.test(await p.textContent("#eMeldung")), "Datei nicht ladbar → Satz, NICHT verschoben (sonst Beleg ohne Datei)");
+    await ctx.close();
+  }
+  {
+    /* Team: sieht Unterwegs, kann nichts buchen */
+    const d = mitLager(); d.mitglieder[0].rolle = "team"; d.rolle = "team";
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(150);
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    const tm = await p.evaluate(() => ({ an: !!document.querySelector('[data-aktion="um-annehmen"]') && document.querySelector('[data-aktion="um-annehmen"]').offsetParent !== null,
+      form: document.getElementById("umNeuKarte").offsetParent !== null, ein: /Von Café Zwei/.test(document.getElementById("umEin").textContent) }));
+    pruef(tm.ein && !tm.an && !tm.form, "Team sieht, was unterwegs ist, kann aber weder annehmen noch schicken", JSON.stringify(tm));
+    await ctx.close();
+  }
+
   /* ── 12 · Maße, Kontrast, Überlauf ─────────────────────────────── */
   console.log("\n══ 11 · 360 und 1280 px ══");
   for(const breite of [360, 1280]){
     /* Zwei eigene Standorte in einer Kette: dann stehen auch „Standorte“
        und „In anderen Standort übernehmen“ im Bild und werden mitgemessen. */
     const d = zweiStandorte("inhaber", ORG); d.antworten.meine_ketten = KETTE_ANTWORT; d.antworten.zentrale_vergleich = VERGLEICH_ANTWORT;
+    d.antworten.kette_standorte = [{ id:"b-zwei", name:"Café Zwei mit einem recht langen Namen" }];
+    d.umlagerungen = [{ id:"u-m", von_betrieb:"b-zwei", nach_betrieb:BETRIEB, status:"unterwegs", notiz:null, angelegt:"2026-10-16T08:00:00Z",
+      umlagerungspositionen:[{ pos:1, artikel_id:"a-wein", menge_basis:3000, wert_netto:18, menge_angekommen:null }] }];
     const { ctx, p } = await oeffnen(browser, d, breite);
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
-    for(const ansicht of ["uebersicht", "belege", "artikel", "kalkulation", "kalk-edit", "lieferanten", "standorte"]){
+    for(const ansicht of ["uebersicht", "belege", "artikel", "kalkulation", "kalk-edit", "lieferanten", "lager", "standorte"]){
       await p.click('.reiter [data-ansicht="' + (ansicht === "kalk-edit" ? "kalkulation" : ansicht) + '"]');
       if(ansicht === "kalk-edit") await p.click('[data-gericht="g-pizza"]');
       if(ansicht === "belege") await p.click("#belegNeu");
