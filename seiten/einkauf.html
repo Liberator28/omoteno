@@ -605,6 +605,9 @@ const GRUENDE = {
   keine_summe:       "Bitte die Netto-Summe des Belegs eintragen.",
   keine_positionen:  "Der Beleg hat noch keine Position.",
   doppelt:           "Diese Belegnummer ist bei diesem Lieferanten schon freigegeben.",
+  /* E5-A (migration-einkauf-e5a.sql) */
+  doppelt_standort:  "Diese Belegnummer ist bei diesem Lieferanten schon in einem anderen Standort freigegeben.",
+  datum:             "Das Belegdatum liegt mehr als einen Tag in der Zukunft oder über 400 Tage zurück.",
   position:          "Eine Position ist nicht vollständig.",
   nicht_zugeordnet:  "Jede Ware braucht einen Artikel und die Menge je Einheit.",
   summe:             "Die Positionen ergeben nicht die Netto-Summe des Belegs.",
@@ -647,6 +650,7 @@ function grundSatz(a){
   if(!a) return "Keine Antwort vom Server. Bitte noch einmal.";
   if(a.grund === "position" && a.pos) return "Position " + a.pos + ": " + (POS_FELD[a.feld] || GRUENDE.position) + ".";
   if(a.grund === "nicht_zugeordnet" && Array.isArray(a.pos)) return "Position " + a.pos.join(", ") + ": " + GRUENDE.nicht_zugeordnet;
+  if(a.grund === "doppelt_standort" && a.standort) return "Diese Belegnummer ist bei diesem Lieferanten schon im Standort „" + a.standort + "“ freigegeben — wurde der Beleg am falschen Standort erfasst?";
   if(a.grund === "summe") return "Die Positionen ergeben " + euro.format(a.positionen) + ", der Beleg sagt " + euro.format(a.beleg) + " netto.";
   return GRUENDE[a.grund] || ("Das hat nicht geklappt (" + a.grund + ").");
 }
@@ -752,6 +756,13 @@ async function nachAnmeldung(){
 /* ═══ Betrieb ═════════════════════════════════════════════════ */
 let BETRIEBE = [];
 let B = null;          /* { id, name, organisation_id, rolle } */
+/* Heute als Berliner Tag (JJJJ-MM-TT) — toISOString() ist UTC, nach
+   Mitternacht stand ein neuer Beleg sonst auf gestern (E5-A). */
+const heuteBerlin = () => new Intl.DateTimeFormat("en-CA", { timeZone:"Europe/Berlin" }).format(new Date());
+/* Jedes Laden bekommt eine Nummer. Wechselt der Standort, während eine
+   Antwort noch unterwegs ist, wird die alte verworfen (E5-A) — sonst
+   zeigte B die Belege von A, wenn A langsamer antwortete. */
+let LADE_LAUF = 0;
 let DATEN = { artikel:[], lieferanten:[], belege:[], bestand:{}, preise:[], zuordnung:[] };
 let ANSICHT = "uebersicht";
 
@@ -791,18 +802,24 @@ function ladefehler(t){ const f = $("ladefehler"); f.textContent = t; f.hidden =
 /* Jede Sortierung endet mit id (§2.6). */
 async function allesLaden(){
   ladefehler("");
+  const lauf = ++LADE_LAUF;
   const org = B.organisation_id;
-  const kalk = kalkLaden();
+  const kalk = kalkLaden(lauf);
   const [art, lief, bel, best, pr, zu] = await Promise.all([
     sb.from("artikel").select("id, name, kategorie, basiseinheit, aktiv").eq("organisation_id", org).order("name").order("id"),
     sb.from("lieferanten").select("id, name, kundennummer, kontakt, aktiv").eq("organisation_id", org).order("name").order("id"),
     sb.from("einkaufsbelege").select("id, lieferant_id, belegnummer, belegdatum, netto, steuer, brutto, status, quelle, notiz, positionen_entwurf, angelegt, datei_pfad")
       .eq("betrieb_id", B.id).order("belegdatum", { ascending:false }).order("angelegt", { ascending:false }).order("id").limit(300),
     sb.from("lagerbestand").select("artikel_id, menge_basis, wert_netto").eq("betrieb_id", B.id),
-    sb.from("artikel_preise").select("artikel_id, preis_basis, belegdatum, position_id, lieferant_id").eq("betrieb_id", B.id)
-      .order("belegdatum", { ascending:false }).order("position_id", { ascending:false }).limit(1000),
+    /* Dieselbe Reihenfolge wie artikel_preis_betrieb (E5-A): bei gleichem
+       Datum gilt der zuletzt freigegebene Beleg, nicht die Zufalls-UUID. */
+    sb.from("artikel_preise").select("artikel_id, preis_basis, belegdatum, position_id, lieferant_id, freigegeben_am, pos").eq("betrieb_id", B.id)
+      .order("belegdatum", { ascending:false }).order("freigegeben_am", { ascending:false, nullsFirst:false })
+      .order("pos", { ascending:false }).order("position_id", { ascending:false }).limit(1000),
     sb.from("lieferanten_artikel").select("id, lieferant_id, artikel_id, bezeichnung, einkaufseinheit, gebinde_basis").order("bezeichnung").order("id")
   ]);
+  await kalk;
+  if(lauf !== LADE_LAUF) return;
   const fehler = [art, lief, bel, best, pr, zu].find(r => r && r.error);
   if(fehler){
     ladefehler(/relation|does not exist|schema cache/i.test(fehler.error.message || "")
@@ -817,7 +834,6 @@ async function allesLaden(){
   DATEN.preise = (pr && pr.data) || [];
   const meineLief = new Set(DATEN.lieferanten.map(l => l.id));
   DATEN.zuordnung = ((zu && zu.data) || []).filter(z => meineLief.has(z.lieferant_id));
-  await kalk;
   zeichnen();
 }
 
@@ -915,7 +931,7 @@ function belegOeffnen(id){
     id: b ? b.id : null, status:"entwurf",
     kopf: b ? { lieferant_id:b.lieferant_id || "", belegnummer:b.belegnummer || "", belegdatum:b.belegdatum || "",
                 netto:fmtEingabe(b.netto), steuer:fmtEingabe(b.steuer), brutto:fmtEingabe(b.brutto), notiz:b.notiz || "" }
-            : { lieferant_id:"", belegnummer:"", belegdatum:new Date().toISOString().slice(0, 10), netto:"", steuer:"", brutto:"", notiz:"" },
+            : { lieferant_id:"", belegnummer:"", belegdatum:heuteBerlin(), netto:"", steuer:"", brutto:"", notiz:"" },
     pos: b && Array.isArray(b.positionen_entwurf) && b.positionen_entwurf.length
       ? b.positionen_entwurf.map(p => ({ text:p.text || "", art:p.art || "ware", artikel_id:p.artikel_id || "", menge:fmtEingabe(p.menge),
           einkaufseinheit:p.einkaufseinheit || "", gebinde:p.gebinde_text || fmtEingabe(p.gebinde_basis), netto:fmtEingabe(p.netto),
@@ -1059,7 +1075,13 @@ function sammeln(){
   } };
 }
 
-function eMeldung(t){ const m = $("eMeldung"); if(!m) return; m.textContent = t || ""; m.hidden = !t; if(t) m.scrollIntoView({ block:"nearest" }); }
+/* Fehler (rot, role=alert) oder Hinweis (ruhig, role=status). */
+function eMeldung(t, art){
+  const m = $("eMeldung"); if(!m) return;
+  const hinweis = art === "hinweis";
+  m.className = "meldung" + (hinweis ? "" : " fehler"); m.setAttribute("role", hinweis ? "status" : "alert");
+  m.textContent = t || ""; m.hidden = !t; if(t) m.scrollIntoView({ block:"nearest" });
+}
 
 let LAEUFT = false;
 async function sichern(){
@@ -1089,7 +1111,19 @@ async function aktionFreigeben(){
       (betroffen.size ? " · betrifft " + betroffen.size + " Gericht" + (betroffen.size > 1 ? "e" : "") + " (siehe Kalkulation)" : ""));
     EDIT = null; await allesLaden();
     belegOeffnen(id);
+    /* Eine gelernte Zuordnung, die diese Freigabe geändert hat, gilt ab
+       jetzt für die ganze Kette — gesagt wird es, nicht still (E5-A). */
+    const zu = Array.isArray(a.zuordnungen) ? a.zuordnungen : [];
+    if(zu.length) eMeldung(zuordnungSatz(zu), "hinweis");
   }finally{ LAEUFT = false; }
+}
+
+function zuordnungSatz(zu){
+  const name = id => { const x = artikelVon(id); return x ? x.name : "einem anderen Artikel"; };
+  return "Gelernte Zuordnung geändert (gilt ab jetzt für alle Standorte): " + zu.map(z =>
+    "„" + z.bezeichnung + "“ " + (z.artikel_vorher !== z.artikel_jetzt
+      ? "war " + name(z.artikel_vorher) + ", jetzt " + name(z.artikel_jetzt)
+      : "Gebinde " + Number(z.gebinde_vorher).toLocaleString("de-DE") + " → " + Number(z.gebinde_jetzt).toLocaleString("de-DE"))).join(" · ") + ".";
 }
 
 /* Gefährliches erst beim zweiten Tipp: Der erste färbt den Knopf und
@@ -1167,8 +1201,9 @@ let REZ = null;          /* { gericht_id, portionen, mwst, notiz, pos:[{artikel_
 const WE_GRENZE = 0.35;
 const prozentFmt = new Intl.NumberFormat("de-DE", { style:"percent", maximumFractionDigits:1 });
 
-async function kalkLaden(){
-  KALK = { fehler:"", zeilen:[], rezepturen:[], we:null };
+async function kalkLaden(lauf){
+  const neu = { fehler:"", zeilen:[], rezepturen:[], we:null };
+  const fertig = () => { if(lauf === undefined || lauf === LADE_LAUF) KALK = neu; };
   const jetzt = new Date(), monat = new Date(jetzt.getFullYear(), jetzt.getMonth(), 1);
   let k, r, w;
   try{
@@ -1178,14 +1213,15 @@ async function kalkLaden(){
         .eq("betrieb_id", B.id).order("gueltig_ab", { ascending:false }).order("id", { ascending:false }).limit(2000),
       sb.rpc("wareneinsatz_theoretisch", { p_betrieb: B.id, p_von: monat.toISOString(), p_bis: jetzt.toISOString() })
     ]);
-  }catch(e){ KALK.fehler = "Die Kalkulation ließ sich nicht laden. Bitte Seite neu laden."; return; }
+  }catch(e){ neu.fehler = "Die Kalkulation ließ sich nicht laden. Bitte Seite neu laden."; fertig(); return; }
   const f = [k, r, w].find(x => x && x.error);
-  if(f) KALK.fehler = /function|does not exist|schema cache|relation/i.test(f.error.message || "")
+  if(f) neu.fehler = /function|does not exist|schema cache|relation/i.test(f.error.message || "")
     ? "Die Kalkulation ist in der Datenbank noch nicht eingerichtet (migration-einkauf-e3.sql)."
     : "Die Kalkulation ließ sich nicht laden. Bitte Seite neu laden.";
-  KALK.zeilen = k && Array.isArray(k.data) ? k.data : [];
-  KALK.rezepturen = r && Array.isArray(r.data) ? r.data : [];
-  KALK.we = w && w.data && typeof w.data === "object" ? w.data : null;
+  neu.zeilen = k && Array.isArray(k.data) ? k.data : [];
+  neu.rezepturen = r && Array.isArray(r.data) ? r.data : [];
+  neu.we = w && w.data && typeof w.data === "object" ? w.data : null;
+  fertig();
 }
 
 const kalkVon = gid => KALK.zeilen.find(z => z.gericht_id === gid);
@@ -1700,6 +1736,10 @@ async function einlesen(datei){
     lesestand("");
     belegOeffnen(a.id);
     toast(a.positionen + " Positionen gelesen, " + a.zugeordnet + " davon zugeordnet — bitte prüfen und freigeben.");
+    const hinweise = [];
+    if(a.hinweis === "datei_doppelt_standort") hinweise.push("Dieselbe Datei liegt schon im Standort „" + (a.standort || "?") + "“ — gehört die Rechnung hierher?");
+    if(a.datum_verworfen) hinweise.push("Das gelesene Datum „" + a.datum_verworfen + "“ ist unplausibel — bitte das Belegdatum prüfen.");
+    if(hinweise.length) eMeldung(hinweise.join(" "), "hinweis");
   }finally{
     LIEST = false; $("einlesenDatei").value = "";
   }

@@ -37,6 +37,7 @@ const SQL = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf.sql"
 const SQL2 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e2.sql"), "utf8");
 const SQL3 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e3.sql"), "utf8");
 const SQL4 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e4.sql"), "utf8");
+const SQL5 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5a.sql"), "utf8");
 const EDGE = fs.readFileSync(path.join(OBEN, "supabase", "functions", "beleg-lesen", "index.ts"), "utf8");
 const HTML = fs.readFileSync(path.join(OBEN, "seiten", "einkauf.html"), "utf8");
 
@@ -136,6 +137,19 @@ const laSelect = ((HTML.match(/from\("lieferanten_artikel"\)\.select\("([^"]+)"/
 pruef(laRecht.length >= 5 && laSelect.length >= 3 && laSelect.every(c => laRecht.includes(c)) && !laRecht.includes("letzter_preis"),
   "E4: lieferanten_artikel nur mit erlaubten Spalten gelesen (kein letzter_preis)", laSelect.filter(c => !laRecht.includes(c)).join(", ") || laSelect.join(","));
 
+/* E5-A: neue Gründe, feste Preisreihenfolge */
+const e5Gruende = ["beleg_speichern", "beleg_freigeben"].flatMap(fn => [...new Set([...((SQL5.match(new RegExp("create or replace function public\\." + fn + "\\([\\s\\S]*?\\nend \\$\\$;")) || [""])[0]).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1]))]);
+pruef(e5Gruende.includes("doppelt_standort") && e5Gruende.includes("datum") && e5Gruende.every(g => gruendeSeite.includes(g)),
+  "E5-A: jeder Grund von beleg_speichern/beleg_freigeben hat einen Satz", e5Gruende.filter(g => !gruendeSeite.includes(g)).join(", ") || e5Gruende.join(","));
+const viewSpalten = ((SQL5.match(/create or replace view public\.artikel_preise[\s\S]*?select([\s\S]*?)\bfrom\b/) || ["", ""])[1])
+  .split(",").map(x => x.trim().split(/\s+/).pop().replace(/^\w+\./, "")).filter(Boolean);
+const prSelect = ((HTML.match(/from\("artikel_preise"\)\.select\("([^"]+)"/) || ["", ""])[1]).split(",").map(x => x.trim());
+pruef(prSelect.includes("freigegeben_am") && prSelect.includes("pos") && prSelect.every(c => viewSpalten.includes(c)),
+  "E5-A: artikel_preise mit freigegeben_am und pos gelesen — jede Spalte gibt es in der Sicht", prSelect.filter(c => !viewSpalten.includes(c)).join(", ") || prSelect.join(","));
+const prOrdnung = [...((HTML.match(/from\("artikel_preise"\)[\s\S]*?\.limit\(/) || [""])[0]).matchAll(/\.order\("(\w+)"/g)].map(m => m[1]).join(">");
+const sqlOrdnung = [...((SQL5.match(/function public\.artikel_preis_betrieb[\s\S]*?limit 1/) || [""])[0]).matchAll(/pr\.(\w+) desc/g)].map(m => m[1]).join(">");
+pruef(prOrdnung === sqlOrdnung && /freigegeben_am/.test(sqlOrdnung), "E5-A: Seite sortiert die Preise wie artikel_preis_betrieb", prOrdnung + " / " + sqlOrdnung);
+
 /* ── 2 · Gestellte Datenbank ────────────────────────────────────── */
 const ORG = "org-1", BETRIEB = "af095b14-0000-4000-8000-000000000001";
 function grundDaten(rolle){
@@ -207,6 +221,11 @@ function ersatz(start){
     function abfrage(tabelle){
       const q = { tabelle, filter:[], art:"select", werte:null };
       const fertig = () => {
+        const langsam = D.langsam && q.filter.some(([k, v]) => k === "betrieb_id" && v === D.langsam);
+        if(langsam) return new Promise(r => setTimeout(() => r(fertigJetzt()), D.langsamMs || 700));
+        return fertigJetzt();
+      };
+      const fertigJetzt = () => {
         if(!window.__pinOk) window.__vorPin++;
         if(q.art !== "select"){
           window.__schreib.push({ tabelle, art:q.art, werte:q.werte, filter:q.filter });
@@ -238,6 +257,7 @@ function ersatz(start){
       },
       rpc: async (name, args) => {
         window.__rufe.push({ name, args: JSON.parse(JSON.stringify(args || {})) });
+        if(D.langsam && args && args.p_betrieb === D.langsam) await new Promise(r => setTimeout(r, D.langsamMs || 700));
         if(name === "pin_status") return { data: D.pinPflicht ? { pflicht:true, ok:false, hat_pin:true, gesperrt:false } : { pflicht:false, ok:true }, error:null };
         if(name === "pin_pruefen"){ window.__pinOk = args.p_pin === "12345678"; return { data: window.__pinOk ? { ok:true } : { ok:false, grund:"falsch", verbleibend:4 }, error:null }; }
         if(name === "admin_anmelden") return { data:{ erlaubt:true }, error:null };
@@ -783,6 +803,76 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(150);
     await p.click('.reiter [data-ansicht="kalkulation"]'); await p.click('[data-gericht="g-pizza"]');
     pruef(!(await p.$('[data-aktion="rez-uebertragen"]')) && !(await p.$('[data-aktion="rez-sichern"]')), "Team im eigenen Standort: weder sichern noch übernehmen");
+    await ctx.close();
+  }
+
+  /* ── E5-A · Mehrere Standorte verlässlich ──────────────────────── */
+  console.log("\n══ 15 · Mehrere Standorte verlässlich (E5-A) ══");
+  {
+    /* Veraltete Antwort: A antwortet langsam, B schnell — nach dem
+       Wechsel auf B darf A's späte Antwort nichts mehr überschreiben. */
+    const d = zweiStandorte("inhaber", ORG);
+    d.einkaufsbelege.push({ id: "be-zwei", betrieb_id: "b-zwei", lieferant_id: "l-2", belegnummer: "Z-9", belegdatum: "2026-10-10", netto: 5, steuer: null, brutto: null,
+      status: "entwurf", quelle: "manuell", notiz: null, positionen_entwurf: [], angelegt: "2026-10-10T08:00:00Z" });
+    const { ctx, p, kons } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]');
+    await p.selectOption("#betriebWahl", "b-zwei"); await p.waitForTimeout(200);
+    pruef(/Z-9/.test(await p.textContent("#belegListe")) && !/R-100/.test(await p.textContent("#belegListe")), "Voraussetzung: B zeigt nur seinen Beleg");
+    await p.evaluate(b => { window.__D.langsam = b; }, BETRIEB);
+    await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(60);
+    await p.selectOption("#betriebWahl", "b-zwei");
+    await p.waitForTimeout(1300);
+    const liste = await p.textContent("#belegListe"), name = await p.textContent("#betriebName");
+    pruef(/Café Zwei/.test(name) && /Z-9/.test(liste) && !/R-100/.test(liste), "schneller Wechsel A → B: die späte Antwort von A überschreibt B nicht", name + " · " + liste.replace(/\s+/g, " ").slice(0, 80));
+    pruef(!kons.length, "kein Seitenfehler beim Wechsel", kons.join(" | "));
+    await ctx.close();
+  }
+  {
+    /* Neuer Beleg nach Mitternacht (Berlin) trägt den Berliner Tag. */
+    const ctx = await browser.newContext({ viewport:{ width: 390, height: 844 } });
+    const p = await ctx.newPage();
+    await p.clock.setFixedTime(new Date("2026-10-17T22:30:00Z"));
+    await p.addInitScript({ content: ersatz(grundDaten("inhaber")) });
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto(SEITE);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click("#belegNeu");
+    const datum = await p.inputValue("#eDatum").catch(() => "");
+    pruef(datum === "2026-10-18", "neuer Beleg um 00:30 Berliner Zeit: Datum 18.10. (nicht der UTC-Tag 17.10.)", datum);
+    await ctx.close();
+  }
+  {
+    const d = grundDaten("inhaber");
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]');
+    await p.click('#belegListe [data-beleg="be-entwurf"]'); await p.waitForTimeout(150);
+    await p.evaluate(() => { window.__D.antworten.beleg_freigeben = { ok:false, grund:"doppelt_standort", standort:"Café Nord" }; });
+    await p.click('[data-aktion="freigeben"]'); await p.waitForTimeout(350);
+    const t1 = await p.textContent("#eMeldung");
+    pruef(/Café Nord/.test(t1) && /falschen Standort/.test(t1), "doppelt_standort → Satz mit dem Namen des anderen Standorts", t1);
+    await p.evaluate(() => { window.__D.antworten.beleg_freigeben = { ok:false, grund:"datum" }; });
+    await p.click('[data-aktion="freigeben"]'); await p.waitForTimeout(350);
+    pruef(/400 Tage/.test(await p.textContent("#eMeldung")), "datum → Satz", await p.textContent("#eMeldung"));
+    await p.evaluate(() => { window.__D.antworten.beleg_freigeben = { ok:true, positionen:1, preisaenderungen:[],
+      zuordnungen:[{ pos:1, bezeichnung:"Mehl 405 25 kg", artikel_vorher:"a-wein", artikel_jetzt:"a-mehl", gebinde_vorher:750, gebinde_jetzt:25000 }] }; });
+    await p.click('[data-aktion="freigeben"]'); await p.waitForTimeout(400);
+    const m = await p.evaluate(() => { const e = document.getElementById("eMeldung"); return { t: e.textContent, sicht: !e.hidden, fehler: e.classList.contains("fehler"), rolle: e.getAttribute("role") }; });
+    pruef(m.sicht && /Hauswein weiß/.test(m.t) && /Mehl 405/.test(m.t) && /alle Standorte/.test(m.t) && !m.fehler && m.rolle === "status",
+      "geänderte gelernte Zuordnung wird nach der Freigabe genannt (alt → neu, als Hinweis, nicht als Fehler)", JSON.stringify(m));
+    await ctx.close();
+  }
+  {
+    const d = grundDaten("inhaber");
+    d.antworten["fn:beleg-lesen"] = { ok:true, id:"be-entwurf", positionen:1, zugeordnet:1, hinweis:"datei_doppelt_standort", standort:"Café Nord", datum_verworfen:"2062-10-01" };
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]');
+    await p.setInputFiles("#einlesenDatei", { name:"rechnung.pdf", mimeType:"application/pdf", buffer: Buffer.from("%PDF-1.4\n%e5\n") });
+    await p.waitForTimeout(600);
+    const t = await p.textContent("#eMeldung").catch(() => "");
+    pruef(/Café Nord/.test(t) && /2062-10-01/.test(t), "Einlesen: gleiche Datei an anderem Standort und verworfenes Datum werden gesagt", t);
     await ctx.close();
   }
 
