@@ -39,6 +39,7 @@ const SQL3 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e3.
 const SQL4 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e4.sql"), "utf8");
 const SQL5 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5a.sql"), "utf8");
 const SQL6 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5b.sql"), "utf8");
+const SQL8 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5c.sql"), "utf8");
 const EDGE = fs.readFileSync(path.join(OBEN, "supabase", "functions", "beleg-lesen", "index.ts"), "utf8");
 const HTML = fs.readFileSync(path.join(OBEN, "seiten", "einkauf.html"), "utf8");
 
@@ -76,6 +77,13 @@ function sqlParameter2(fn){
   return m ? m[1].split(",").map(s => s.trim().split(/\s+/)[0]).filter(Boolean).sort() : null;
 }
 for(const fn of ["inventur_buchen", "verlust_buchen"]) SIGNATUR[fn] = sqlParameter2(fn);
+/* E5-C hat inventur_buchen um p_stichtag erweitert (alte Fassung im
+   archiv) — es gilt die jüngste Migration, die die Funktion anlegt. */
+{
+  const SQL7 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5c.sql"), "utf8");
+  const m = SQL7.match(/create or replace function public\.inventur_buchen\(([^)]*)\)/);
+  if(m) SIGNATUR.inventur_buchen = m[1].split(",").map(x => x.trim().split(/\s+/)[0]).filter(Boolean).sort();
+}
 /* Der Pfad, den die Seite baut, muss durch die Prüfung der Funktion
    (zweite Quelle: die Regel in beleg-lesen) UND durch die Speicherregel. */
 const PFAD_EDGE = (() => { const m = EDGE.match(/new RegExp\("\^" \+ betrieb \+ "\/" \+ UUID \+ "([^"]+)"\)/); return m ? JSON.parse('"' + m[1] + '"') : null; })();
@@ -173,6 +181,33 @@ const umPosSel = ((umSel.match(/umlagerungspositionen\(([^)]*)\)/) || ["", ""])[
 pruef(umKopf.length >= 6 && umKopf.every(c => tabSpalten("umlagerungen").has(c)) && umPosSel.length >= 4 && umPosSel.every(c => tabSpalten("umlagerungspositionen").has(c)),
   "E5-B: gelesene Spalten von umlagerungen und -positionen gibt es", [...umKopf, ...umPosSel].filter(c => !tabSpalten("umlagerungen").has(c) && !tabSpalten("umlagerungspositionen").has(c)).join(", ") || "alle");
 
+/* E5-C: Sortiment, Lieferanten je Standort, Zählung */
+const e5cFn = ["artikel_standort_setzen", "lieferant_standort_setzen", "inventur_entwurf_sichern", "inventur_buchen"];
+const e5cKoerper = fn => (SQL8.match(new RegExp("create or replace function public\\." + fn + "\\([\\s\\S]*?\\nend \\$\\$;")) || [""])[0];
+const e5cGruende = [...new Set(e5cFn.flatMap(fn => [...e5cKoerper(fn).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1])))];
+pruef(e5cGruende.includes("stichtag") && e5cGruende.every(g => gruendeSeite.includes(g)), "E5-C: jeder Grund hat einen Satz",
+  e5cGruende.filter(g => !gruendeSeite.includes(g)).join(", ") || e5cGruende.join(","));
+const SIG8 = {};
+for(const fn of e5cFn){ const m = SQL8.match(new RegExp("create or replace function public\\." + fn + "\\(([^)]*)\\)")); SIG8[fn] = m ? m[1].split(",").map(x => x.trim().split(/\s+/)[0]).filter(Boolean).sort() : null; }
+pruef(Object.values(SIG8).every(Boolean), "E5-C: Signaturen gelesen", JSON.stringify(SIG8));
+const tab8 = t => new Set([...((SQL8.match(new RegExp("create table if not exists public\\." + t + " \\(([\\s\\S]*?)\\n\\);")) || ["", ""])[1]).matchAll(/^\s*(\w+)\s/gm)].map(m => m[1]));
+const sel8 = t => ((HTML.match(new RegExp('from\\("' + t + '"\\)\\.select\\("([^"]+)"')) || ["", ""])[1]).split(",").map(x => x.trim()).filter(Boolean);
+const fremd8 = ["artikel_standort", "lieferanten_standort", "inventur_entwurf"].flatMap(t => sel8(t).filter(c => !tab8(t).has(c)).map(c => t + "." + c));
+pruef(["artikel_standort", "lieferanten_standort", "inventur_entwurf"].every(t => sel8(t).length >= 3) && !fremd8.length, "E5-C: gelesene Spalten gibt es in den Tabellen", fremd8.join(", ") || "alle");
+/* Jeder Schlüssel, den die Seite in p_daten schickt, wird in der SQL gelesen. */
+const datenSql = fn => new Set([...e5cKoerper(fn).matchAll(/p_daten\s*->>?\s*'(\w+)'/g)].map(m => m[1]));
+/* Aus dem Körper der Seiten-Funktion, die die SQL-Funktion ruft. */
+const SEITEN_FN = { artikel_standort_setzen:"sortimentSichern", lieferant_standort_setzen:"liefStandortSichern" };
+const datenSeite = fn => {
+  const koerper = (HTML.match(new RegExp("async function " + SEITEN_FN[fn] + "\\([\\s\\S]*?\\n\\}")) || [""])[0];
+  const b = (koerper.match(/const daten = \{([\s\S]*?)\};/) || ["", ""])[1];
+  return [...b.replace(/\[[^\]]*\]|\([^)]*\)/g, "").matchAll(/(\w+):/g)].map(m => m[1]);
+};
+for(const fn of ["artikel_standort_setzen", "lieferant_standort_setzen"]){
+  const ds = datenSeite(fn), dq = datenSql(fn);
+  pruef(ds.length >= 3 && ds.every(k => dq.has(k)), "E5-C: jeder Schlüssel in p_daten von " + fn + " wird gelesen", ds.filter(k => !dq.has(k)).join(", ") || ds.join(","));
+}
+
 /* ── 2 · Gestellte Datenbank ────────────────────────────────────── */
 const ORG = "org-1", BETRIEB = "af095b14-0000-4000-8000-000000000001";
 function grundDaten(rolle){
@@ -256,6 +291,7 @@ function ersatz(start){
           return { data:null, error: f || null };
         }
         window.__lesen.push(tabelle);
+        if((D.leseFehler || {})[tabelle]) return { data:null, error: D.leseFehler[tabelle] };
         let quelle = { betrieb_mitglieder:D.mitglieder }[tabelle] || D[tabelle] || [];
         for(const [k, v] of q.filter) quelle = quelle.filter(z => z[k] === v);
         return { data: JSON.parse(JSON.stringify(quelle)), error:null };
@@ -914,7 +950,10 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
   {
     const { ctx, p } = await oeffnen(browser, grundDaten("inhaber"));
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
-    pruef(await p.isHidden("#reiterLager"), "ohne Kette und ohne Umlagerung: kein Reiter „Lager“");
+    /* Seit E5-C hat jeder Standort „Lager“ (Nachbestellen) — den Teil
+       Umlagerungen aber nur mit Kette. */
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    pruef(await p.isVisible("#nachListe") && await p.isHidden("#umTeil"), "ohne Kette und ohne Umlagerung: „Lager“ ohne den Teil Umlagerungen");
     await ctx.close();
   }
   {
@@ -1019,6 +1058,102 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await ctx.close();
   }
 
+  /* ── E5-C · Sortiment, Lieferanten je Standort, Nachbestellen, Zählliste ── */
+  console.log("\n══ 17 · Sortiment und Nachbestellen je Standort (E5-C) ══");
+  const mitSortiment = () => { const d = grundDaten("inhaber");
+    /* 30,5 l mind., 18 l da → 12,5 l fehlen: KEIN Vielfaches der 0,75-l-Flasche,
+       sonst rundeten auf und ab gleich (§8.1g F). */
+    d.artikel_standort = [{ betrieb_id: BETRIEB, artikel_id:"a-wein", aktiv:true, mindestbestand:30500, lagerort:"Bar", reihenfolge:null },
+                          { betrieb_id: BETRIEB, artikel_id:"a-mehl", aktiv:true, mindestbestand:null, lagerort:"Keller", reihenfolge:null },
+                          { betrieb_id: "b-anders", artikel_id:"a-mehl", aktiv:false, mindestbestand:1, lagerort:"Fremd", reihenfolge:null }];
+    d.lieferanten_standort = [{ betrieb_id: BETRIEB, lieferant_id:"l-1", kundennummer:"K-HIER", ansprechpartner:null, liefertage:["mo","do"], mindestbestellwert:200 }];
+    d.inventur_entwurf = [{ betrieb_id: BETRIEB, daten:{ "a-mehl":"2,5" }, stichtag:"2026-10-16T18:00:00Z", geaendert:"2026-10-16T18:05:00Z" }];
+    return d; };
+  {
+    const { ctx, p, kons } = await oeffnen(browser, mitSortiment());
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.evaluate(() => { window.__kopiert = null; navigator.clipboard.writeText = async t => { window.__kopiert = t; }; });
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    const nb = await p.evaluate(() => ({ text: (document.querySelector("[data-nachtext]") || {}).textContent || "", karte: document.getElementById("nachListe").textContent,
+      wa: (document.querySelector('#nachListe a[href^="https://wa.me/"]') || {}).href || "", um: document.getElementById("umTeil").hidden }));
+    pruef(/Bestellung Café Probe — Kd\.-Nr\. K-HIER/.test(nb.text) && /• 17 × Flasche Wein 0,75 l \(je 750 ml\)/.test(nb.text),
+      "Wein: 30,5 l mind., 18 l da → 12,5 l fehlen = 17 Flaschen (aufgerundet), Bezeichnung des Lieferanten, Kd.-Nr. DIESES Standorts", nb.text);
+    pruef(!/Mehl/.test(nb.text), "Mehl ohne Mindestbestand steht nicht auf der Liste (der fremde Standort setzt ihn nicht)");
+    pruef(/ca\. 91,80\s€/.test(nb.karte) && /Mindestbestellwert von 200,00\s€/.test(nb.karte) && /Liefert Mo, Do/.test(nb.karte), "unter dem Mindestbestellwert (91,80 €) gesagt, Liefertage genannt", nb.karte.slice(0, 160));
+    pruef(nb.wa && decodeURIComponent(nb.wa.split("text=")[1]) === nb.text && nb.um, "WhatsApp-Link trägt genau den Text; ohne Kette kein Umlagerungsteil");
+    await p.click('[data-aktion="nach-kopieren"]'); await p.waitForTimeout(100);
+    pruef((await p.evaluate(() => window.__kopiert)) === nb.text && !(await rufe(p, "umlagerung_anlegen")).length, "„Text kopieren“ legt genau den Text ab, verschickt nichts");
+    /* Artikel: Standort-Angaben */
+    await p.click('.reiter [data-ansicht="artikel"]');
+    await p.click('[data-aktion="artikel-auf"][data-id="a-mehl"]');
+    await p.fill("#soMin", "abc"); await p.click('[data-aktion="sort-sichern"]'); await p.waitForTimeout(100);
+    pruef(!(await rufe(p, "artikel_standort_setzen")).length && /Mindestbestand/.test(await p.textContent("#soMeldung")), "unlesbarer Mindestbestand → Satz, kein Aufruf");
+    await p.fill("#soMin", "5"); await p.fill("#soOrt", " Keller ");
+    await p.click('[data-aktion="sort-sichern"]'); await p.waitForTimeout(250);
+    const ss = (await rufe(p, "artikel_standort_setzen"))[0];
+    pruef(ss && ss.args.p_betrieb === BETRIEB && ss.args.p_artikel === "a-mehl" && JSON.stringify(ss.args.p_daten) === JSON.stringify({ aktiv:true, mindestbestand:5000, lagerort:"Keller", reihenfolge:null })
+      && Object.keys(ss.args).sort().join() === SIG8.artikel_standort_setzen.join(), "5 kg → 5000 g, Lagerort getrimmt, genau die Parameter", JSON.stringify(ss && ss.args));
+    /* Die Zeile bleibt nach dem Sichern offen. */
+    await p.click('[data-aktion="sort-aktiv"][data-id="a-mehl"]'); await p.waitForTimeout(250);
+    const sa = (await rufe(p, "artikel_standort_setzen"))[1];
+    pruef(sa && sa.args.p_daten.aktiv === false, "„Hier nicht mehr führen“ → aktiv false nur für diesen Standort", JSON.stringify(sa && sa.args.p_daten));
+    /* Lieferant je Standort */
+    await p.click('.reiter [data-ansicht="lieferanten"]');
+    await p.click('[data-aktion="lief-auf"][data-id="l-1"]');
+    const vor = await p.evaluate(() => ({ kunde: document.getElementById("lsKunde").value, mo: document.querySelector('[data-tag="mo"]').getAttribute("aria-pressed") }));
+    pruef(vor.kunde === "K-HIER" && vor.mo === "true", "gespeicherte Angaben dieses Standorts stehen im Formular", JSON.stringify(vor));
+    await p.click('[data-tag="do"]'); await p.click('[data-tag="fr"]');
+    await p.fill("#lsMbw", "150,50");
+    await p.click('[data-aktion="lst-sichern"]'); await p.waitForTimeout(250);
+    const ls = (await rufe(p, "lieferant_standort_setzen"))[0];
+    pruef(ls && JSON.stringify(ls.args.p_daten) === JSON.stringify({ kundennummer:"K-HIER", ansprechpartner:null, liefertage:["mo","fr"], mindestbestellwert:150.5 })
+      && Object.keys(ls.args).sort().join() === SIG8.lieferant_standort_setzen.join(), "Liefertage umgeschaltet (Do aus, Fr an), 150,50 € gelesen", JSON.stringify(ls && ls.args));
+    pruef(!kons.length, "keine Seitenfehler", kons.join(" | "));
+    await ctx.close();
+  }
+  {
+    /* Zählliste: Lagerort-Reihenfolge, Zwischenstand, Stichtag */
+    const d = mitSortiment();
+    d.artikel_standort[0].aktiv = false;   /* Wein hier nicht mehr geführt, aber 18 l Bestand */
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="artikel"]');
+    pruef(/nicht hier/.test(await p.textContent("#artikelListe")), "Artikel hier abgeschaltet → „nicht hier“");
+    await p.click("#inventurKnopf");
+    const z = await p.evaluate(() => ({ reihe: [...document.querySelectorAll("#invListe h4, #invListe [data-inv]")].map(e => e.tagName === "H4" ? "#" + e.textContent : e.dataset.inv),
+      mehl: document.querySelector('[data-inv="a-mehl"]')?.value, stand: !document.getElementById("invStand").hidden, wein: document.querySelector('[data-inv="a-wein"]')?.closest("label").textContent || "(Wein fehlt in der Zählliste)",
+      stich: document.getElementById("invStichtag").value }));
+    pruef(z.reihe.join() === "#Bar,a-wein,#Keller,a-mehl", "Zählliste nach Lagerort (Bar vor Keller), mit Überschriften", z.reihe.join());
+    pruef(z.mehl === "2,5" && z.stand && /hier nicht mehr geführt/.test(z.wein), "Zwischenstand aus der Datenbank vorausgefüllt; nicht mehr geführter Wein mit Bestand bleibt zählbar", JSON.stringify(z));
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click("#belegNeu");
+    const opt = await p.evaluate(() => [...document.querySelectorAll('[data-f="artikel_id"] option')].map(o => o.value).filter(Boolean));
+    pruef(!opt.includes("a-wein") && opt.includes("a-mehl"), "im Beleg nicht mehr wählbar, was hier nicht geführt wird", opt.join());
+    await p.click('.reiter [data-ansicht="artikel"]'); await p.click("#inventurKnopf");
+    if(await p.isHidden("#inventurKarte")) await p.click("#inventurKnopf");
+    await p.fill('[data-inv="a-wein"]', "17");
+    await p.fill("#invStichtag", "2026-10-16T20:00");
+    await p.click("#invZwischen"); await p.waitForTimeout(250);
+    const zw = (await rufe(p, "inventur_entwurf_sichern"))[0];
+    pruef(zw && zw.args.p_daten["a-wein"] === "17" && zw.args.p_daten["a-mehl"] === "2,5" && zw.args.p_stichtag === new Date("2026-10-16T20:00").toISOString()
+      && Object.keys(zw.args).sort().join() === SIG8.inventur_entwurf_sichern.join(), "Zwischenstand: getippte Werte wie getippt, Stichtag als Zeitpunkt", JSON.stringify(zw && zw.args));
+    await p.evaluate(() => { window.__D.antworten.inventur_buchen = { ok:false, grund:"stichtag" }; });
+    await p.click("#invBuchen"); await p.waitForTimeout(250);
+    const ib = (await rufe(p, "inventur_buchen"))[0];
+    pruef(ib && ib.args.p_stichtag === new Date("2026-10-16T20:00").toISOString() && /62 Tage/.test(await p.textContent("#invMeldung")), "Buchen schickt den Stichtag; Grund „stichtag“ als Satz", JSON.stringify(ib && ib.args.p_stichtag));
+    await ctx.close();
+  }
+  {
+    const d = mitSortiment(); d.leseFehler = { artikel_standort: { message:"relation does not exist", code:"42P01" } };
+    const { ctx, p, kons } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    pruef(/migration-einkauf-e5c/.test(await p.textContent("#nachListe")) && /R-100/.test(await p.evaluate(() => JSON.stringify(window.__D.einkaufsbelege))) && !kons.length,
+      "ohne E5-C-Migration: Satz im Lager, Rest der Seite lädt weiter");
+    await p.click('.reiter [data-ansicht="belege"]');
+    pruef(/R-100/.test(await p.textContent("#belegListe")), "… Belege weiterhin da");
+    await ctx.close();
+  }
+
   /* ── 12 · Maße, Kontrast, Überlauf ─────────────────────────────── */
   console.log("\n══ 11 · 360 und 1280 px ══");
   for(const breite of [360, 1280]){
@@ -1026,6 +1161,8 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
        und „In anderen Standort übernehmen“ im Bild und werden mitgemessen. */
     const d = zweiStandorte("inhaber", ORG); d.antworten.meine_ketten = KETTE_ANTWORT; d.antworten.zentrale_vergleich = VERGLEICH_ANTWORT;
     d.antworten.kette_standorte = [{ id:"b-zwei", name:"Café Zwei mit einem recht langen Namen" }];
+    d.artikel_standort = [{ betrieb_id: BETRIEB, artikel_id:"a-wein", aktiv:true, mindestbestand:30000, lagerort:"Bar", reihenfolge:null }];
+    d.lieferanten_standort = [{ betrieb_id: BETRIEB, lieferant_id:"l-1", kundennummer:"K-HIER-SEHR-LANG-0001234567", ansprechpartner:null, liefertage:["mo","do"], mindestbestellwert:200 }];
     d.umlagerungen = [{ id:"u-m", von_betrieb:"b-zwei", nach_betrieb:BETRIEB, status:"unterwegs", notiz:null, angelegt:"2026-10-16T08:00:00Z",
       umlagerungspositionen:[{ pos:1, artikel_id:"a-wein", menge_basis:3000, wert_netto:18, menge_angekommen:null }] }];
     const { ctx, p } = await oeffnen(browser, d, breite);
