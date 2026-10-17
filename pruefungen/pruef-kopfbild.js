@@ -15,9 +15,8 @@
        - ohne Kopf: kein Bild, Logo 58 px, kein data-kopfbild (§2.5);
        - mit Bild: Bild geladen, reicht über die ganze Breite, LOGO-
          MITTE AUF DER BILDKANTE (±1 px) und waagerecht mittig, kein
-         Seitenüberlauf, Öffnungsanzeige ≥ 4,5:1 auf ihrer Fläche
-         (über Weiß UND Schwarz gemischt — das Foto darunter ist
-         beliebig);
+         Seitenüberlauf, Bild ≤ 28 vh, Öffnungs-Pille UNTER dem Bild
+         (seit 17.10.) und ≥ 4,5:1 auf ihrem Glas über dem Band;
        - eigenes Logo rund (Kreis) / eckig (22 %), Siegel weg;
        - Unterseite: kein Kopfbild, schmale Leiste;
        - fremder Server, http:, javascript:, Anführungszeichen,
@@ -126,9 +125,16 @@ const kopfMessen = p => p.evaluate(m => {
   const rk = document.querySelector("header").getBoundingClientRect();
   const st = document.querySelector("#status .status");
   let stK = null;
+  /* Seit 17.10. steht die Pille UNTER dem Siegel auf dem Kopfband, nicht
+     mehr auf dem Foto: gemessen gegen das Band (aus --band gelesen, nicht
+     angenommen), und dass sie das Foto wirklich nicht berührt. */
+  let stAufBild = null;
   if(st){
+    const probe = document.createElement("i"); probe.style.cssText = "position:fixed;background:var(--band)";
+    document.body.appendChild(probe); const band = M.zahl(getComputedStyle(probe).backgroundColor); probe.remove();
     const fl = M.zahl(getComputedStyle(st).backgroundColor), schrift = M.zahl(getComputedStyle(st).color);
-    stK = Math.min(M.kontrast(schrift, M.mischen(fl, [255,255,255])), M.kontrast(schrift, M.mischen(fl, [0,0,0])));
+    stK = M.kontrast(schrift, M.mischen(fl, band));
+    stAufBild = st.getBoundingClientRect().top < rb.bottom - 0.5 && getComputedStyle(bild).display !== "none";
   }
   const eigen = document.getElementById("logoEigen");
   const siegel = logo.querySelector(":scope > svg, :scope > img");
@@ -138,7 +144,7 @@ const kopfMessen = p => p.evaluate(m => {
     links: Math.round(rb.left - rk.left), rechts: Math.round(rb.right - rk.right), vw: innerWidth, kopfMitte: rk.left + rk.width / 2,
     kante: rb.bottom, logoMitteY: rl.top + rl.height / 2, logoMitteX: rl.left + rl.width / 2, logoGr: Math.round(rl.width),
     ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth,
-    stK, eigen: getComputedStyle(eigen).display !== "none" && !!eigen.querySelector("img"),
+    stK, stAufBild, bildHoehe: rb.height, vh: innerHeight, eigen: getComputedStyle(eigen).display !== "none" && !!eigen.querySelector("img"),
     siegelSicht: siegel ? getComputedStyle(siegel).display !== "none" : false,
     radius: getComputedStyle(logo).borderRadius, form: document.body.dataset.logoform || "rund"
   };
@@ -181,7 +187,10 @@ const kopfMessen = p => p.evaluate(m => {
         Math.round(m.logoMitteY) + " / " + Math.round(m.kante));
       pruef(Math.abs(m.logoMitteX - m.kopfMitte) <= 1, haus + " " + breite + ": Logo waagerecht mittig", Math.round(m.logoMitteX) + " / " + Math.round(m.kopfMitte));
       pruef(m.ueber <= 0, haus + " " + breite + ": kein Seitenüberlauf", m.ueber);
-      pruef(m.stK === null || m.stK >= 4.5, haus + " " + breite + ": Öffnungsanzeige auf dem Foto ≥ 4,5:1", m.stK && m.stK.toFixed(2));
+      pruef(m.stK !== null && m.stK >= 4.5 && m.stAufBild === false, haus + " " + breite + ": Öffnungs-Pille unter dem Bild auf dem Band ≥ 4,5:1",
+        (m.stK && m.stK.toFixed(2)) + (m.stAufBild ? " — liegt auf dem Foto" : ""));
+      pruef(m.bildHoehe <= m.vh * 0.28 + 1, haus + " " + breite + ": Kopfbild höchstens 28 % der Schirmhöhe",
+        Math.round(m.bildHoehe) + " / " + Math.round(m.vh * 0.28));
       pruef(m.eigen && !m.siegelSicht && m.radius === "50%", haus + " " + breite + ": eigenes Logo rund, Siegel weg", m.radius);
       if(breite === 390){
         await mit.p.evaluate(() => { location.hash = "#/speisekarte"; });

@@ -312,8 +312,10 @@ header{
      über den Rand hinaus (Zeile 313), ein overflow:hidden hier würde
      genau das abschneiden — die Herzen darunter clippen sich selbst
      in ihrer eigenen Ebene (.herzenfeld). */
-  grid-template-areas:"logo" "titel" "claim" "kopfwahl";
-  row-gap:6px;justify-items:center;align-items:center;
+  grid-template-areas:"logo" "titel" "status" "claim";
+  /* Eine Zahl für den Zeilenabstand: das Logo auf der Bildkante rechnet
+     mit derselben (vorher 6 px fest neben row-gap 8 → 2 px daneben). */
+  --kopf-luecke:8px;row-gap:var(--kopf-luecke);justify-items:center;align-items:center;
   transition:background-color .9s ease;
 }
 
@@ -410,27 +412,24 @@ body[data-phase="abend"] .logo .led{opacity:1;animation:ledDrehen 9s linear infi
    seine Mitte genau auf der Bildkante (gemessen in pruef-kopfbild.js). */
 .kopfbild{display:none}
 body[data-ansicht="start"][data-kopfbild="an"] header{
-  grid-template-areas:"bild" "logo" "titel" "claim" "kopfwahl";
+  grid-template-areas:"bild" "logo" "titel" "status" "claim";
   padding-top:0;
 }
 body[data-ansicht="start"][data-kopfbild="an"] .kopfbild{
   display:block;grid-area:bild;justify-self:stretch;position:relative;z-index:1;
   margin:0 calc(-1 * var(--rand));overflow:hidden;
-  aspect-ratio:16 / 9;max-height:42vh;max-height:42dvh;
+  /* 12.10. (Foto): 16:9 bis 42 % Schirmhöhe war zu lang — „kürze ihn
+     auf das Nötigste“. 5:2, höchstens 28 %: bei 390 px 156 statt 219 px. */
+  aspect-ratio:5 / 2;max-height:28vh;max-height:28dvh;
   background:color-mix(in srgb, var(--band-text) 12%, var(--band));
 }
 .kopfbild img{display:block;width:100%;height:100%;object-fit:cover}
 body[data-ansicht="start"][data-kopfbild="an"] .logo{
-  --logo-gr:96px;width:var(--logo-gr);height:var(--logo-gr);z-index:2;
-  margin-top:calc(-0.5 * var(--logo-gr) - 6px);
+  --logo-gr:80px;width:var(--logo-gr);height:var(--logo-gr);z-index:2;
+  margin-top:calc(-0.5 * var(--logo-gr) - var(--kopf-luecke));
 }
 body[data-ansicht="start"][data-kopfbild="an"] .logo svg,
 body[data-ansicht="start"][data-kopfbild="an"] .logo img{width:var(--logo-gr);height:var(--logo-gr)}
-/* Auf dem Foto trägt die Öffnungsanzeige eine deckende Fläche aus der
-   Bandfarbe — Glas über einem hellen Foto wäre unlesbar. */
-body[data-ansicht="start"][data-kopfbild="an"] .status{
-  background:color-mix(in srgb, var(--band) 92%, transparent);
-}
 /* Eigenes Logo statt des Siegels: das Bild füllt den Knopf, das
    gezeichnete Siegel tritt zurück. */
 .logo-eigen{display:none}
@@ -458,13 +457,10 @@ h1{
      und die Vorschau im Board zeigt genau das. */
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
-/* Öffnungsstand oben rechts (Wunsch 10.10.), nicht mehr in der
-   Knopfzeile. Neben dem Siegel, auf dessen Mitte; nie breiter als der
-   Platz bis zum Siegel (bei 320 px ≈ 109 px, dann zweizeilig). */
-#status{
-  position:absolute;z-index:3;top:calc(var(--rand-oben) + 14px);inset-inline-end:var(--rand);
-  display:flex;max-width:calc(50% - 29px - var(--rand) - 14px);
-}
+/* Öffnungsstand unter dem Logo (Foto 12.10.: „soll unter dem Logo
+   sein, im modernen Look wie der Zurück-Button“). Oben rechts steht
+   jetzt die Kommandozentrale. */
+#status{grid-area:status;display:flex;justify-content:center;max-width:100%;min-height:34px}
 /* Wenig Text im Kopf: auf der Startseite nur Siegel und Slogan — der
    Gruß steht weiter im h1 (Vorleseprogramme, Seitentitel), aber nicht
    im Bild. */
@@ -478,8 +474,11 @@ body[data-ansicht="start"] h1{position:absolute;width:1px;height:1px;margin:-1px
    Vorher ~270 px Kopf vor der Karte, jetzt ~70 px. Die Rasterflächen
    folgen der Schreibrichtung — in RTL steht das Siegel rechts. */
 body[data-ansicht="unter"] header{
-  grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"logo titel kopfwahl";
+  grid-template-columns:auto minmax(0,1fr);grid-template-areas:"logo titel";
   column-gap:12px;justify-items:start;padding-bottom:12px;padding-top:calc(var(--rand-oben) + 2px);
+  /* Rechts steht die schwebende Kommandozentrale: der Titel endet davor
+     (--kw-b misst kopfwahlPlatz(), Rückfall eine Leistenbreite). */
+  padding-inline-end:var(--kw-b, 216px);
 }
 body[data-ansicht="unter"] .logo,
 body[data-ansicht="unter"] .logo svg{width:40px;height:40px}
@@ -487,7 +486,6 @@ body[data-ansicht="unter"] h1{font-size:18px;text-align:start;justify-self:stret
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body[data-ansicht="unter"] .claim,
 body[data-ansicht="unter"] #status{display:none}
-body[data-ansicht="unter"] .kopfwahl{justify-self:end}
 /* Der Glanzstreifen über dem Titel ist seit 10.10. weg („dieser Flash
    hinter ‚Guten Abend‘ soll weg“). */
 
@@ -511,7 +509,9 @@ body[data-ansicht="unter"] .kopfwahl{justify-self:end}
    Dauer-Animationen an (Herzen, Schein, LED, Guss, Laternen) — sie
    kosteten auch unsichtbar jedes Bild. Die Klasse setzt ein
    IntersectionObserver (kopfRuhe), zurück im Bild läuft alles weiter. */
-header.kopf-ruht, header.kopf-ruht *, header.kopf-ruht *::before, header.kopf-ruht *::after{
+header.kopf-ruht, header.kopf-ruht > :not(.kopfwahl), header.kopf-ruht > :not(.kopfwahl) *,
+header.kopf-ruht > :not(.kopfwahl)::before, header.kopf-ruht > :not(.kopfwahl)::after,
+header.kopf-ruht > :not(.kopfwahl) *::before, header.kopf-ruht > :not(.kopfwahl) *::after{
   animation-play-state:paused !important}
 @keyframes herzSteigen{
   0%{transform:translateY(0) scale(.85);opacity:0}
@@ -634,15 +634,29 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
    letzten Schließen).
    Offen: „Geöffnet bis …“ neben einem ruhigen Punkt (siehe unten).
    Alles in der Bandschrift — eine Farbe, gemessen ≥ 4,5:1. */
+/* Seit 12.10. eine Glas-Pille unter dem Logo, gebaut wie „Zurück“:
+   rund, Glas, ein feines Licht läuft um den Rand (gedreht nur per
+   transform, Maske steht). Das Licht ist die Bandschrift selbst —
+   der Wunsch vom 10.10. („ohne RGB“) gilt weiter: eine Farbe. */
 .status{
-  position:relative;display:inline-flex;align-items:center;gap:7px;overflow:hidden;isolation:isolate;
-  padding:6px 10px 8px;border-radius:12px;font-size:11.5px;line-height:1.2;font-weight:650;letter-spacing:.1px;
-  color:var(--band-text);
-  background:color-mix(in srgb, var(--band-text) 9%, transparent);
-  border:1px solid color-mix(in srgb, var(--band-text) 22%, transparent);
-  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 18%, transparent), 0 6px 16px -10px rgba(0,0,0,.6);
-  -webkit-backdrop-filter:blur(10px) saturate(150%);backdrop-filter:blur(10px) saturate(150%);
+  position:relative;display:inline-flex;align-items:center;gap:8px;overflow:hidden;isolation:isolate;
+  min-height:34px;padding:0 15px;border-radius:999px;font-size:13px;line-height:1.2;font-weight:650;letter-spacing:.1px;
+  color:var(--band-text);white-space:nowrap;
+  background:color-mix(in srgb, var(--band-text) 10%, transparent);
+  border:1px solid color-mix(in srgb, var(--band-text) 20%, transparent);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 18%, transparent), 0 8px 20px -10px rgba(0,0,0,.6);
+  -webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);
 }
+.st-rand{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:-1;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+.st-licht{position:absolute;left:50%;top:50%;width:300%;aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);
+  background:conic-gradient(from 0deg, transparent 0 60%,
+    color-mix(in srgb, var(--band-text) 45%, transparent) 72%, var(--band-text) 80%,
+    color-mix(in srgb, var(--band-text) 45%, transparent) 88%, transparent 96%);
+  animation:zrLauf 8s linear infinite}
+@media (prefers-reduced-motion:reduce){ .st-licht{animation:none;transform:translate(-50%,-50%) rotate(-50deg)} }
 .st-text{min-width:0}
 /* Seit 10.10. (dritte Nachricht): „klassisch schlicht und modern ohne
    RGB“. Eine Farbe — die Bandschrift —, ein Punkt, ein Satz. Offen ein
@@ -655,7 +669,7 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 .status.offen .st-punkt::after{content:"";position:absolute;inset:0;border-radius:50%;
   background:var(--band-text);opacity:0;animation:stAtem 2.8s cubic-bezier(.16,1,.3,1) infinite}
 @keyframes stAtem{0%{transform:scale(1);opacity:.5}70%,100%{transform:scale(2.6);opacity:0}}
-.st-linie{position:absolute;left:10px;right:10px;bottom:3px;height:2px;border-radius:2px;overflow:hidden;pointer-events:none;
+.st-linie{position:absolute;left:16px;right:16px;bottom:4px;height:2px;border-radius:2px;overflow:hidden;pointer-events:none;
   background:color-mix(in srgb, var(--band-text) 18%, transparent)}
 .st-linie i{position:absolute;inset:0;border-radius:2px;background:var(--band-text);opacity:.7;
   transform-origin:0 50%;transform:scaleX(var(--anteil, 0))}
@@ -843,15 +857,34 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
    100 %) — und die offene Sprachliste darin mit, „Deutsch ✓“ lag unter
    dem Schokoguss. z-index 4: über Guss/Laternen (auto), unter nichts,
    was im Kopf noch darüber gehört. pruef-ueberdeckt.js misst das. */
+/* 12.10. (Foto): „Sprache, Helligkeit und so weiter sollen rechts oben
+   am Bildschirm bleiben, damit die Gäste immer darauf Zugriff haben.“
+   Fest oben rechts auf JEDER Seite, über dem Inhalt. Weil sie jetzt über
+   beliebigem Inhalt schwebt (helles Foto, helle Karte), trägt sie eine
+   fast deckende Fläche in der Bandfarbe — die Bandschrift darauf ist
+   je Haus gerechnet (§5.1). Inhalte, die oben kleben (Kategorie-Leiste,
+   Unterseiten-Leiste), lassen ihr Platz: --kw-frei/--kw-b aus
+   kopfwahlPlatz(). Liegt im header (Stapel 50) — über main (1). */
 .kopfwahl{
-  position:relative;z-index:4;
-  grid-area:kopfwahl;justify-self:center;align-self:center;
+  position:fixed;z-index:4;
+  /* An der Spalte (body max. 540 px), nicht an der Bildschirmkante —
+     auf dem Tablet/Desktop stünde sie sonst weit neben dem Hub. */
+  top:calc(env(safe-area-inset-top) + 8px);inset-inline-end:max(8px, calc((100vw - 540px) / 2 + 8px));
   display:flex;align-items:center;justify-content:center;gap:0;
-  margin-top:4px;padding:2px;border-radius:999px;
-  background:color-mix(in srgb, var(--band-text) 9%, transparent);
+  margin:0;padding:2px;border-radius:999px;
+  background:color-mix(in srgb, var(--band) 90%, transparent);
   border:1px solid color-mix(in srgb, var(--band-text) 22%, transparent);
-  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 16%, transparent), 0 10px 24px -14px rgba(0,0,0,.55);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 16%, transparent), 0 10px 26px -10px rgba(0,0,0,.6);
   -webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);
+}
+@media (prefers-reduced-transparency:reduce){
+  .kopfwahl{background:var(--band);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+/* Startseite ohne Kopfbild auf schmalem Schirm: das mittige Siegel
+   rückt unter die schwebende Leiste, statt von ihr verdeckt zu werden.
+   Mit Kopfbild liegt die Leiste über dem Foto, dort ist Platz. */
+@media (max-width:560px){
+  body[data-ansicht="start"]:not([data-kopfbild="an"]) header{padding-top:calc(var(--rand-oben) + 46px)}
 }
 .kopfwahl > .lieferwahl,.kopfwahl > .sprachwahl{position:relative;margin-inline-start:9px}
 .kopfwahl > .lieferwahl::before,.kopfwahl > .sprachwahl::before{
@@ -1793,6 +1826,11 @@ html.textwahl body :is(h1,h2,h3,p,span,b,i,strong,a,button,label):hover{outline:
 
 .chips{
   display:flex;gap:7px;overflow-x:auto;margin:0 calc(-1 * var(--rand)) 6px;
+  /* Klebt sie oben, steht rechts die Kommandozentrale: die Leiste endet
+     davor. --kw-frei ist der Rand, den die Leiste dafür braucht
+     (kopfwahlPlatz()); liegt die Zentrale neben der Spalte, gilt der
+     alte Rand (−rand, bis an die Schirmkante). */
+  margin-inline-end:max(calc(-1 * var(--rand)), var(--kw-frei, -999px));
   padding:6px var(--rand) 12px;scrollbar-width:none;
   position:sticky;top:0;z-index:6;
   /* Glas statt reinem Verlauf: die Chips selbst sind opak (siehe
@@ -6377,6 +6415,35 @@ document.addEventListener("visibilitychange", () => {
   });
 });
 
+/* Die Kommandozentrale schwebt oben rechts (12.10.). Was oben klebt,
+   lässt ihr Platz: --kw-frei für Leisten in main (0, wenn sie neben der
+   Spalte liegt — auf breiten Schirmen), --kw-b für den Kopf der
+   Unterseiten. Gemessen statt geschätzt: die Breite hängt am
+   Liefer-Schalter und an der Schreibrichtung. */
+function kopfwahlPlatz(){
+  const kw = document.querySelector("header .kopfwahl"), m = document.querySelector("main"), h = document.querySelector("header");
+  if(!kw || !m || !h) return;
+  const r = kw.getBoundingClientRect(), mr = m.getBoundingClientRect(), hr = h.getBoundingClientRect();
+  const rtl = document.documentElement.dir === "rtl";
+  /* Rand der Kategorie-Leiste: von der Kante von main bis 6 px vor die
+     Zentrale. main hat kein Polster; die Leiste blutet sonst per
+     −rand bis an den Schirm. Negativ heißt: die Zentrale liegt daneben. */
+  const frei = rtl ? r.right - mr.left + 6 : mr.right - r.left + 6;
+  const b = rtl ? r.right - hr.left + 6 : hr.right - r.left + 6;
+  const st = document.documentElement.style;
+  st.setProperty("--kw-frei", Math.round(frei) + "px");
+  st.setProperty("--kw-b", Math.max(0, Math.round(b)) + "px");
+}
+(function(){
+  const los = () => {
+    kopfwahlPlatz();
+    const kw = document.querySelector("header .kopfwahl");
+    if(kw && "ResizeObserver" in window) new ResizeObserver(kopfwahlPlatz).observe(kw);
+    addEventListener("resize", kopfwahlPlatz, { passive:true });
+    new MutationObserver(kopfwahlPlatz).observe(document.documentElement, { attributes:true, attributeFilter:["dir"] });
+  };
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", los); else los();
+})();
 /* Kopf außer Sicht: seine Dauer-Animationen ruhen (CSS header.kopf-ruht). */
 (function kopfRuhe(){
   const kopf = document.querySelector("header");
@@ -10915,12 +10982,12 @@ function jetztOffen(){
 function statusHTML(st){
   if(st.offen && st.bis){
     const satz = t("Geöffnet bis {x}", {x: st.bis});
-    return '<span class="status offen" title="' + hs(satz) + '"><span class="st-punkt" aria-hidden="true"></span>' +
+    return '<span class="status offen" title="' + hs(satz) + '"><span class="st-rand" aria-hidden="true"><span class="st-licht"></span></span><span class="st-punkt" aria-hidden="true"></span>' +
            '<span class="st-text">' + hs(satz) + '</span></span>';
   }
   const satz = st.ab ? t("Öffnet {w} {x}", {w: st.wann, x: st.ab}) : st.text;
   const anteil = Math.max(0, Math.min(1, st.anteil || 0));
-  return '<span class="status zu" title="' + hs(st.text) + '"><span class="st-punkt" aria-hidden="true"></span>' +
+  return '<span class="status zu" title="' + hs(st.text) + '"><span class="st-rand" aria-hidden="true"><span class="st-licht"></span></span><span class="st-punkt" aria-hidden="true"></span>' +
          '<span class="st-text">' + hs(satz) + '</span>' +
          (st.ab ? '<span class="st-linie" aria-hidden="true" data-anteil="' + anteil.toFixed(3) + '">' +
                   '<i style="--anteil:' + anteil.toFixed(3) + '"></i></span>' : "") + '</span>';
@@ -16131,13 +16198,24 @@ function katSpion(){
   const g = Date.now() < katZielBis && katZiel ? katZiel : katJetzt();
   let ziel = alle;
   l.querySelectorAll(".chip[data-g]").forEach(c => { if(g && c.dataset.g === g) ziel = c; });
-  if(ziel.classList.contains("an")) return;
-  l.querySelectorAll(".chip.an").forEach(c => { c.classList.remove("an"); c.removeAttribute("aria-current"); });
-  ziel.classList.add("an");
-  ziel.setAttribute("aria-current", "true");
-  /* Den Chip ins Bild holen, mittig — die Leiste rollt mit. */
-  const links = ziel.offsetLeft - (l.clientWidth - ziel.offsetWidth) / 2;
-  if(ziel.offsetLeft < l.scrollLeft + 8 || ziel.offsetLeft + ziel.offsetWidth > l.scrollLeft + l.clientWidth - 8){
+  if(!ziel.classList.contains("an")){
+    l.querySelectorAll(".chip.an").forEach(c => { c.classList.remove("an"); c.removeAttribute("aria-current"); });
+    ziel.classList.add("an");
+    ziel.setAttribute("aria-current", "true");
+  }
+  /* Den Chip ins Bild holen, mittig — die Leiste rollt mit. Auch wenn
+     er schon markiert war: Klebt die Leiste, rückt „Zurück“ vorn hinein
+     und schiebt alle Chips um seine Breite weiter (17.10., gemessen:
+     „Waffel“ stand danach bei 184–278 in einer 258 px breiten Leiste).
+     Der sichtbare Raum beginnt deshalb hinter „Zurück“. */
+  const zr = klebt ? l.querySelector(".chip-zurueck") : null, vorn = zr ? zr.offsetWidth + 4 : 0;
+  const frei = l.clientWidth - vorn;
+  /* Passt der Chip nicht in den Raum hinter „Zurück“ (schmaler Schirm,
+     langer Name), steht sein rechtes Ende im Bild — der Anfang darf
+     unter „Zurück“ gleiten, die Mitte bleibt antippbar. */
+  const links = ziel.offsetWidth > frei - 16 ? ziel.offsetLeft + ziel.offsetWidth - l.clientWidth + 8
+    : ziel.offsetLeft - vorn - (frei - ziel.offsetWidth) / 2;
+  if(ziel.offsetLeft < l.scrollLeft + vorn + 8 || ziel.offsetLeft + ziel.offsetWidth > l.scrollLeft + l.clientWidth - 8){
     l.scrollTo({ left: Math.max(0, links), behavior: ruhigeBewegung() ? "auto" : "smooth" });
   }
 }
