@@ -452,6 +452,30 @@ function pruefeMarkenblatt(mb){
     }
   }
 
+  /* Impressum im Hub (18.10., § 5 DDG, dokumente/recht/07). Fehlende
+     Angaben sind ein HINWEIS, kein Fehler: Ein Haus ohne sie soll
+     erzeugt werden können — der Hub zeigt dann sichtbar „fehlt noch“
+     statt still nichts. Nur Text, nichts anderes (§2.3a: der Hub setzt
+     es als Text, aber ein Objekt hätte dort nichts zu suchen). */
+  const RECHT_FELDER = ["firma","rechtsform","vertreten","register","ustid","wid","aufsicht","alessia"];
+  if(mb.recht !== undefined){
+    if(!mb.recht || typeof mb.recht !== "object" || Array.isArray(mb.recht)) F("recht muss ein Objekt sein");
+    else Object.keys(mb.recht).forEach(k => {
+      const w = mb.recht[k];
+      if(!RECHT_FELDER.includes(k)) F("recht." + k + " ist unbekannt — erlaubt: " + RECHT_FELDER.join(", "));
+      else if(k === "alessia" ? typeof w !== "boolean" : typeof w !== "string") F("recht." + k + " hat die falsche Art");
+      else if(typeof w === "string" && w.length > 200) F("recht." + k + " ist länger als 200 Zeichen");
+    });
+  }
+  const recht = (mb.recht && typeof mb.recht === "object") ? mb.recht : {};
+  if(!String(recht.firma || "").trim())
+    W("recht.firma fehlt — das Impressum im Hub nennt keinen Anbieter (§ 5 DDG)");
+  if(/\b(GmbH|UG|AG|KG|OHG|GbR|e\.\s?K)/.test(String(recht.rechtsform || "") + " " + String(recht.firma || ""))
+     && !String(recht.vertreten || "").trim())
+    W("recht.vertreten fehlt — bei einer Gesellschaft muss das Impressum die Vertretung nennen");
+  if(!String(b.mail || "").trim() || !String(b.strasse || "").trim())
+    W("Impressum im Hub unvollständig: Anschrift und E-Mail sind Pflicht (§ 5 DDG)");
+
   /* Kontrast, Tag und Abend */
   const pruefePaare = (farben, wann) => {
     [
@@ -540,6 +564,7 @@ function alsQuelltext(mb){
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,
     mb.trinkgeld ? liste("trinkgeld", mb.trinkgeld)       : null,
+    mb.recht     ? liste("recht",     mb.recht)           : null,
     liste("kacheln",    mb.kacheln),
     liste("empfehlung", mb.empfehlung),
     liste("quiz",       mb.quiz),
