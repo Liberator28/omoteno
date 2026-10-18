@@ -7037,21 +7037,71 @@ function bnRadVerdrahten(){
    Die Kennung ist zufällig und je Betrieb eine andere. Wer in zwei
    Häusern isst, ist zwei Gäste — das ist Absicht: Ein Betrieb soll
    nicht sehen, wo sein Gast sonst noch war.
+
+   NUR AUF WUNSCH (18.10., § 25 TDDDG, dokumente/recht/01 Befund 2).
+   Vorher legte der Hub die Kennung beim ersten Öffnen der Karte ab und
+   meldete jeden Aufruf an gast_melden — ein Besuchszähler, um den der
+   Gast nie gebeten hatte. Jetzt:
+   · Ohne Zutun wird nichts dauerhaft abgelegt und nichts gemeldet.
+   · Bestellung und Missbrauchsschutz bekommen eine Zufallsnummer, die
+     mit dem Tab stirbt (sessionStorage) — ein Sitzungsmerkmal für den
+     Dienst, den der Gast gerade nutzt.
+   · Erst der Knopf „Einschalten“ in „Mein Tisch“ legt die dauerhafte
+     Kennung an und merkt sich die Entscheidung (STAMMGAST_SCHLUESSEL).
+     Eine Kennung aus der Zeit davor wird dabei übernommen, nicht
+     vorher gelesen — so kommen Besuche und Gutscheine zurück.
    ══════════════════════════════════════════════════════════════════ */
-const GERAET_SCHLUESSEL = "omoteno-geraet-" + (SERVER.betrieb || "haus");
+const GERAET_SCHLUESSEL    = "omoteno-geraet-" + (SERVER.betrieb || "haus");
+const STAMMGAST_SCHLUESSEL = "omoteno-stammgast-" + (SERVER.betrieb || "haus");
+const TAB_GERAET_SCHLUESSEL = "omoteno-tabgeraet-" + (SERVER.betrieb || "haus");
+
+/* Die Datenbank lässt nur [A-Za-z0-9_-] und 8–64 Zeichen zu. Was
+   hier nicht hineinpasst, wird ersetzt statt mitgeschleppt. */
+function kennungGueltig(k){ return /^[A-Za-z0-9_-]{8,64}$/.test(k || ""); }
+function neueKennung(){
+  return (self.crypto && crypto.randomUUID)
+    ? crypto.randomUUID().replace(/-/g, "")
+    : "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 14);
+}
+
+function stammgastAn(){
+  try{ return !!localStorage.getItem(STAMMGAST_SCHLUESSEL); }catch(e){ return false; }
+}
 
 function geraetKennung(){
   let k = "";
-  try{ k = localStorage.getItem(GERAET_SCHLUESSEL) || ""; }catch(e){}
-  /* Die Datenbank lässt nur [A-Za-z0-9_-] und 8–64 Zeichen zu. Was
-     hier nicht hineinpasst, wird ersetzt statt mitgeschleppt. */
-  if(!/^[A-Za-z0-9_-]{8,64}$/.test(k)){
-    k = (self.crypto && crypto.randomUUID)
-      ? crypto.randomUUID().replace(/-/g, "")
-      : "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 14);
-    try{ localStorage.setItem(GERAET_SCHLUESSEL, k); }catch(e){ /* privates Fenster */ }
+  if(stammgastAn()){
+    try{ k = localStorage.getItem(GERAET_SCHLUESSEL) || ""; }catch(e){}
+    if(!kennungGueltig(k)){
+      k = neueKennung();
+      try{ localStorage.setItem(GERAET_SCHLUESSEL, k); }catch(e){ /* privates Fenster */ }
+    }
+    return k;
+  }
+  try{ k = sessionStorage.getItem(TAB_GERAET_SCHLUESSEL) || ""; }catch(e){}
+  if(!kennungGueltig(k)){
+    k = neueKennung();
+    try{ sessionStorage.setItem(TAB_GERAET_SCHLUESSEL, k); }catch(e){}
   }
   return k;
+}
+
+/* Der Knopf „Einschalten“: Entscheidung merken, die Kennung des Tabs
+   NICHT übernehmen (sie hat schon Bestellungen ohne Einwilligung
+   getragen und soll kein Profil nachträglich füllen), eine alte
+   dauerhafte Kennung dagegen schon. */
+function stammgastEinschalten(){
+  try{ localStorage.setItem(STAMMGAST_SCHLUESSEL, new Date().toISOString()); }catch(e){ return false; }
+  return stammgastAn();
+}
+
+/* Ausschalten löscht beides auf dem Gerät. Was der Betrieb schon
+   gezählt hat, bleibt dort, bis es gelöscht wird — der Satz an der
+   Stelle sagt das. */
+function stammgastAusschalten(){
+  try{ localStorage.removeItem(STAMMGAST_SCHLUESSEL); }catch(e){}
+  try{ localStorage.removeItem(GERAET_SCHLUESSEL); }catch(e){}
+  gastStand = { geladen:false, ok:false, besuche:0, lieblinge:[], gutscheine:[] };
 }
 
 /* Was der Server zurückgemeldet hat. Solange geladen false ist, zeigt
@@ -7059,7 +7109,7 @@ function geraetKennung(){
 let gastStand = { geladen:false, ok:false, besuche:0, lieblinge:[], gutscheine:[] };
 
 function gastLaden(){
-  if(!serverBereit()) return Promise.resolve();
+  if(!serverBereit() || !stammgastAn()) return Promise.resolve();
   const ziel = SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/gast_melden";
   return sicherFetch(ziel, {
       method:"POST",
@@ -10513,7 +10563,6 @@ const TEXTE = {
 "Ich war hier":{en:"I was here",tr:"Buradaydım",ru:"Я был здесь",fr:"J'étais ici",es:"Estuve aquí",it:"Sono stato qui",pl:"Byłem tutaj",ar:"كنت هنا",uk:"Я був тут",nl:"Ik was hier",ro:"Am fost aici"},
 "Ihr erster Besuch bei uns.":{en:"Your first visit with us.",tr:"Bizdeki ilk ziyaretiniz.",ru:"Ваш первый визит к нам.",fr:"Votre première visite chez nous.",es:"Su primera visita con nosotros.",it:"La sua prima visita da noi.",pl:"Państwa pierwsza wizyta u nas.",ar:"زيارتك الأولى لنا.",uk:"Ваш перший візит до нас.",nl:"Uw eerste bezoek bij ons.",ro:"Prima dumneavoastră vizită la noi."},
 "Ihr {n}. Besuch bei uns.":{en:"Your visit no. {n} with us.",tr:"Bizdeki {n}. ziyaretiniz.",ru:"Ваш {n}-й визит к нам.",fr:"Votre {n}e visite chez nous.",es:"Su visita n.º {n} con nosotros.",it:"La sua {n}ª visita da noi.",pl:"Państwa {n}. wizyta u nas.",ar:"زيارتك رقم {n} لنا.",uk:"Ваш {n}-й візит до нас.",nl:"Uw {n}e bezoek bij ons.",ro:"A {n}-a vizită la noi."},
-"Ihre Besuche merkt sich Ihr Gerät, nicht wir – dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.":{en:"Your device remembers your visits, not us – that needs a brief connection. Ordering and everything else works without it.",tr:"Ziyaretlerinizi biz değil cihazınız hatırlar – bunun için kısa bir bağlantı gerekir. Sipariş ve diğer her şey bağlantısız da çalışır.",ru:"Ваши визиты помнит ваше устройство, а не мы — для этого нужна короткая связь. Заказ и всё остальное работает и без неё.",fr:"C'est votre appareil qui retient vos visites, pas nous – il lui faut une brève connexion. Commander et tout le reste fonctionne sans.",es:"Sus visitas las recuerda su dispositivo, no nosotros: para eso hace falta conexión un momento. Pedir y todo lo demás funciona igual sin ella.",it:"Le sue visite se le ricorda il suo dispositivo, non noi: serve una breve connessione. Ordinare e tutto il resto funziona anche senza.",pl:"Państwa wizyty pamięta Państwa urządzenie, nie my – potrzebne jest do tego krótkie połączenie. Zamawianie i reszta działa też bez niego.",ar:"جهازك هو من يتذكر زياراتك، لا نحن — ويحتاج ذلك إلى اتصال قصير. الطلب وكل شيء آخر يعمل بدونه.",uk:"Ваші візити пам'ятає ваш пристрій, а не ми — для цього потрібен короткий зв'язок. Замовлення й усе інше працює й без нього.",nl:"Uw toestel onthoudt uw bezoeken, wij niet – daarvoor is even verbinding nodig. Bestellen en al het andere gaat ook zonder.",ro:"Vizitele le ține minte dispozitivul dumneavoastră, nu noi – pentru asta e nevoie de o scurtă conexiune. Comanda și restul funcționează și fără."},
 "Ihre E-Mail-Adresse":{en:"Your email address",tr:"E-posta adresiniz",ru:"Ваш адрес электронной почты",fr:"Votre adresse e-mail",es:"Su dirección de correo",it:"Il suo indirizzo e-mail",pl:"Państwa adres e-mail",ar:"بريدك الإلكتروني",uk:"Ваша електронна адреса",nl:"Uw e-mailadres",ro:"Adresa dumneavoastră de e-mail"},
 "Unentschlossen?":{en:"Can't decide?",tr:"Karar veremediniz mi?",ru:"Не можете выбрать?",fr:"Vous hésitez ?",es:"¿No sabe qué elegir?",it:"Indeciso?",pl:"Nie możesz się zdecydować?",ar:"محتار؟",uk:"Не можете обрати?",nl:"Twijfelt u?",ro:"Nu vă puteți decide?"},
 "Wir helfen beim Aussuchen – und zeigen Ihnen Neues zum Probieren.":{en:"We'll help you choose – and show you something new to try.",tr:"Seçmenize yardımcı oluyoruz – ve denemeniz için yeni şeyler gösteriyoruz.",ru:"Мы поможем выбрать – и покажем что-то новое, что стоит попробовать.",fr:"Nous vous aidons à choisir – et vous montrons des nouveautés à goûter.",es:"Le ayudamos a elegir – y le mostramos algo nuevo para probar.",it:"La aiutiamo a scegliere – e Le mostriamo qualcosa di nuovo da provare.",pl:"Pomożemy wybrać – i pokażemy coś nowego do spróbowania.",ar:"نساعدك في الاختيار – ونعرض عليك أشياء جديدة لتجربتها.",uk:"Ми допоможемо обрати – і покажемо щось нове, що варто скуштувати.",nl:"Wij helpen u kiezen – en laten u iets nieuws zien om te proberen.",ro:"Vă ajutăm să alegeți – și vă arătăm ceva nou de încercat."},
@@ -10549,9 +10598,16 @@ const TEXTE = {
 "{n} von {m}":{en:"{n} of {m}",tr:"{n} / {m}",ru:"{n} из {m}",fr:"{n} sur {m}",es:"{n} de {m}",it:"{n} di {m}",pl:"{n} z {m}",ar:"{n} من {m}",uk:"{n} з {m}",nl:"{n} van {m}",ro:"{n} din {m}"},
 "Ihre Gutscheine, direkt ins Postfach.":{en:"Your vouchers, straight to your inbox.",tr:"Kuponlarınız doğrudan e-posta kutunuza.",ru:"Ваши купоны — прямо на вашу почту.",fr:"Vos bons, directement dans votre boîte mail.",es:"Sus vales, directamente en su bandeja de entrada.",it:"I suoi buoni, direttamente nella sua casella di posta.",pl:"Państwa kupony prosto do skrzynki odbiorczej.",ar:"قسائمك مباشرة إلى بريدك الوارد.",uk:"Ваші купони — просто на вашу пошту.",nl:"Uw tegoedbonnen, direct in uw inbox.",ro:"Voucherele dumneavoastră, direct în căsuța de e-mail."},
 "Karte, bestellen und rufen — direkt am Tisch.":{en:"Menu, ordering and service — right at the table.",tr:"Menü, sipariş ve servis — doğrudan masada.",ru:"Меню, заказ и вызов — прямо за столом.",fr:"Carte, commande et service — directement à table.",es:"Carta, pedidos y servicio: directamente en la mesa.",it:"Menù, ordini e servizio — direttamente al tavolo.",pl:"Karta, zamawianie i obsługa — prosto przy stoliku.",ar:"القائمة والطلب والنداء — من الطاولة مباشرة.",uk:"Меню, замовлення та виклик — прямо за столом.",nl:"Kaart, bestellen en roepen — direct aan tafel.",ro:"Meniu, comandă și chemare — direct la masă."},
+"Auf Wunsch merken wir uns, dass Sie bei uns waren: Ihre Besuche, Ihre Lieblingsgerichte und Gutscheine, die wir für Sie hinterlegen.":{en:"If you like, we'll remember that you've been here: your visits, your favourite dishes and vouchers we set aside for you.",tr:"İsterseniz burada olduğunuzu hatırlarız: ziyaretleriniz, en sevdiğiniz yemekler ve sizin için ayırdığımız kuponlar.",ru:"По желанию мы запомним, что вы у нас были: ваши визиты, любимые блюда и купоны, которые мы для вас оставим.",fr:"Si vous le souhaitez, nous nous souvenons de vos passages : vos visites, vos plats préférés et les bons que nous vous réservons.",es:"Si lo desea, recordamos que ha estado aquí: sus visitas, sus platos favoritos y los vales que le reservamos.",it:"Se lo desidera, ci ricordiamo che è stato da noi: le sue visite, i suoi piatti preferiti e i buoni che le riserviamo.",pl:"Na życzenie zapamiętamy, że byli Państwo u nas: wizyty, ulubione dania i bony, które dla Państwa odłożymy.",ar:"إذا رغبت، نتذكر أنك زرتنا: زياراتك وأطباقك المفضلة والقسائم التي نحتفظ بها لك.",uk:"За бажанням ми запам'ятаємо, що ви в нас були: ваші візити, улюблені страви й купони, які ми для вас залишимо.",nl:"Als u wilt, onthouden we dat u bij ons was: uw bezoeken, uw favoriete gerechten en bonnen die we voor u klaarzetten.",ro:"Dacă doriți, ne amintim că ați fost la noi: vizitele, preparatele preferate și voucherele pe care vi le păstrăm."},
+"Dafür legt Ihr Gerät eine zufällige Nummer ab, und wir speichern dazu Ihre Besuche und Bestellungen – ohne Namen, ohne Konto. Ausschalten können Sie es hier jederzeit.":{en:"For this your device stores a random number, and we save your visits and orders with it – no name, no account. You can switch it off here at any time.",tr:"Bunun için cihazınız rastgele bir numara saklar, biz de ziyaretlerinizi ve siparişlerinizi bununla kaydederiz – isim yok, hesap yok. Buradan istediğiniz zaman kapatabilirsiniz.",ru:"Для этого ваше устройство хранит случайный номер, а мы сохраняем к нему ваши визиты и заказы — без имени и без аккаунта. Отключить это можно здесь в любой момент.",fr:"Pour cela, votre appareil enregistre un numéro aléatoire, et nous y associons vos visites et commandes – sans nom, sans compte. Vous pouvez le désactiver ici à tout moment.",es:"Para ello su dispositivo guarda un número aleatorio y nosotros guardamos con él sus visitas y pedidos, sin nombre ni cuenta. Puede desactivarlo aquí en cualquier momento.",it:"Per questo il suo dispositivo conserva un numero casuale e noi vi associamo visite e ordini – senza nome, senza account. Può disattivarlo qui in qualsiasi momento.",pl:"W tym celu urządzenie zapisuje losowy numer, a my zapisujemy przy nim wizyty i zamówienia – bez imienia, bez konta. Można to tu w każdej chwili wyłączyć.",ar:"لهذا يحفظ جهازك رقمًا عشوائيًا، ونحفظ معه زياراتك وطلباتك – بلا اسم ولا حساب. يمكنك إيقاف ذلك هنا في أي وقت.",uk:"Для цього ваш пристрій зберігає випадковий номер, а ми зберігаємо до нього ваші візити й замовлення — без імені та без облікового запису. Вимкнути можна тут будь-коли.",nl:"Daarvoor bewaart uw apparaat een willekeurig nummer en slaan wij daarbij uw bezoeken en bestellingen op – zonder naam, zonder account. U kunt het hier altijd weer uitzetten.",ro:"Pentru aceasta, dispozitivul păstrează un număr aleatoriu, iar noi salvăm împreună cu el vizitele și comenzile – fără nume, fără cont. Puteți dezactiva oricând aici."},
+"Einschalten":{en:"Switch on",tr:"Aç",ru:"Включить",fr:"Activer",es:"Activar",it:"Attiva",pl:"Włącz",ar:"تشغيل",uk:"Увімкнути",nl:"Inschakelen",ro:"Activează"},
+"Auf diesem Gerät ausschalten":{en:"Switch off on this device",tr:"Bu cihazda kapat",ru:"Отключить на этом устройстве",fr:"Désactiver sur cet appareil",es:"Desactivar en este dispositivo",it:"Disattiva su questo dispositivo",pl:"Wyłącz na tym urządzeniu",ar:"إيقاف على هذا الجهاز",uk:"Вимкнути на цьому пристрої",nl:"Uitschakelen op dit apparaat",ro:"Dezactivează pe acest dispozitiv"},
+"Ausgeschaltet. Sollen wir auch Ihre bisherigen Besuche löschen, sagen Sie es unserem Team.":{en:"Switched off. If you'd like us to delete your earlier visits too, just tell our team.",tr:"Kapatıldı. Önceki ziyaretlerinizi de silmemizi isterseniz ekibimize söylemeniz yeterli.",ru:"Отключено. Если хотите, чтобы мы удалили и прежние визиты, скажите нашей команде.",fr:"Désactivé. Si vous souhaitez que nous supprimions aussi vos visites précédentes, dites-le à notre équipe.",es:"Desactivado. Si quiere que borremos también sus visitas anteriores, dígaselo a nuestro equipo.",it:"Disattivato. Se desidera che cancelliamo anche le visite precedenti, lo dica al nostro team.",pl:"Wyłączone. Jeśli mamy usunąć także wcześniejsze wizyty, prosimy powiedzieć naszemu zespołowi.",ar:"تم الإيقاف. إذا أردت أن نحذف زياراتك السابقة أيضًا، أخبر فريقنا.",uk:"Вимкнено. Якщо хочете, щоб ми видалили й попередні візити, скажіть нашій команді.",nl:"Uitgeschakeld. Wilt u dat we ook uw eerdere bezoeken wissen, zeg het dan tegen ons team.",ro:"Dezactivat. Dacă doriți să ștergem și vizitele anterioare, spuneți echipei noastre."},
+"Das ging auf diesem Gerät nicht – in einem privaten Fenster kann sich der Browser nichts merken.":{en:"That didn't work on this device – in a private window the browser can't remember anything.",tr:"Bu cihazda olmadı – gizli pencerede tarayıcı hiçbir şeyi hatırlayamaz.",ru:"На этом устройстве не получилось — в приватном окне браузер ничего не запоминает.",fr:"Cela n'a pas fonctionné sur cet appareil – en navigation privée, le navigateur ne peut rien retenir.",es:"No ha funcionado en este dispositivo: en una ventana privada el navegador no puede recordar nada.",it:"Non è stato possibile su questo dispositivo – in una finestra privata il browser non può ricordare nulla.",pl:"Na tym urządzeniu się nie udało – w oknie prywatnym przeglądarka niczego nie zapamięta.",ar:"لم ينجح ذلك على هذا الجهاز – في النافذة الخاصة لا يستطيع المتصفح تذكر أي شيء.",uk:"На цьому пристрої не вдалося — у приватному вікні браузер нічого не запам'ятовує.",nl:"Dat lukte niet op dit apparaat – in een privévenster kan de browser niets onthouden.",ro:"Nu a mers pe acest dispozitiv – într-o fereastră privată browserul nu poate reține nimic."},
+"Dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.":{en:"This needs a brief connection. Ordering and everything else works without it.",tr:"Bunun için kısa bir bağlantı gerekiyor. Sipariş ve diğer her şey bağlantısız da çalışır.",ru:"Для этого нужно ненадолго подключиться к сети. Заказ и всё остальное работает и без этого.",fr:"Il faut pour cela une brève connexion. Commander et tout le reste fonctionne aussi sans.",es:"Para esto hace falta conexión un momento. Pedir y todo lo demás funciona también sin ella.",it:"Serve per un attimo la connessione. Ordinare e tutto il resto funziona anche senza.",pl:"Do tego potrzebne jest na chwilę połączenie. Zamawianie i cała reszta działa także bez niego.",ar:"يحتاج ذلك إلى اتصال قصير. الطلب وكل شيء آخر يعمل بدونه أيضًا.",uk:"Для цього потрібне коротке з'єднання. Замовлення й усе інше працює і без нього.",nl:"Daarvoor is even verbinding nodig. Bestellen en al het andere werkt ook zonder.",ro:"Pentru asta e nevoie de conexiune pentru scurt timp. Comanda și restul funcționează și fără."},
+"Ohne Konto, ohne Passwort, ohne Namen.":{en:"No account, no password, no name.",tr:"Hesap yok, şifre yok, isim yok.",ru:"Без аккаунта, без пароля, без имени.",fr:"Sans compte, sans mot de passe, sans nom.",es:"Sin cuenta, sin contraseña, sin nombre.",it:"Senza account, senza password, senza nome.",pl:"Bez konta, bez hasła, bez imienia.",ar:"بلا حساب ولا كلمة مرور ولا اسم.",uk:"Без облікового запису, без пароля, без імені.",nl:"Geen account, geen wachtwoord, geen naam.",ro:"Fără cont, fără parolă, fără nume."},
 "Mein Tisch":{en:"My table",tr:"Masam",ru:"Мой стол",fr:"Ma table",es:"Mi mesa",it:"Il mio tavolo",pl:"Mój stolik",ar:"طاولتي",uk:"Мій стіл",nl:"Mijn tafel",ro:"Masa mea"},
 "Notiert. Sie hören erst von uns, wenn Sie die Adresse bestätigt haben.":{en:"Noted. You'll only hear from us once you've confirmed the address.",tr:"Not edildi. Adresi onaylayana kadar sizden haber almayız.",ru:"Записано. Мы напишем только после того, как вы подтвердите адрес.",fr:"C'est noté. Vous n'aurez de nos nouvelles qu'après confirmation de l'adresse.",es:"Anotado. Solo tendrá noticias nuestras cuando confirme la dirección.",it:"Annotato. Le scriveremo solo dopo che avrà confermato l'indirizzo.",pl:"Zapisane. Odezwiemy się dopiero po potwierdzeniu adresu.",ar:"تم التسجيل. لن نراسلك إلا بعد تأكيد العنوان.",uk:"Записано. Ми напишемо лише після підтвердження адреси.",nl:"Genoteerd. U hoort pas van ons zodra u het adres bevestigd hebt.",ro:"Notat. Vă scriem doar după ce confirmați adresa."},
-"Ohne Konto, ohne Passwort – das merkt sich Ihr Gerät.":{en:"No account, no password – your device remembers this.",tr:"Hesap yok, şifre yok – bunu cihazınız hatırlıyor.",ru:"Без аккаунта и пароля — всё помнит ваше устройство.",fr:"Sans compte ni mot de passe – votre appareil s'en souvient.",es:"Sin cuenta ni contraseña: lo recuerda su dispositivo.",it:"Senza account né password: se ne ricorda il suo dispositivo.",pl:"Bez konta i hasła – pamięta to Państwa urządzenie.",ar:"بلا حساب وبلا كلمة مرور — جهازك هو من يتذكر.",uk:"Без облікового запису й пароля — це пам'ятає ваш пристрій.",nl:"Zonder account, zonder wachtwoord – uw toestel onthoudt dit.",ro:"Fără cont, fără parolă – dispozitivul dumneavoastră ține minte."},
 "POST VOM HAUS (FREIWILLIG)":{en:"NEWS FROM US (OPTIONAL)",tr:"BİZDEN HABERLER (İSTEĞE BAĞLI)",ru:"НОВОСТИ ОТ НАС (ПО ЖЕЛАНИЮ)",fr:"DES NOUVELLES DE NOUS (FACULTATIF)",es:"NOTICIAS NUESTRAS (OPCIONAL)",it:"NOTIZIE DA NOI (FACOLTATIVO)",pl:"WIADOMOŚCI OD NAS (OPCJONALNIE)",ar:"رسائل منا (اختياري)",uk:"НОВИНИ ВІД НАС (ЗА БАЖАННЯМ)",nl:"POST VAN ONS (VRIJWILLIG)",ro:"VEȘTI DE LA NOI (OPȚIONAL)"},
 "Schön, dass Sie wieder da sind.":{en:"Good to see you again.",tr:"Tekrar aramızda olmanız güzel.",ru:"Рады видеть вас снова.",fr:"Ravis de vous revoir.",es:"Nos alegra verle de nuevo.",it:"Che bello rivederla.",pl:"Miło znów Cię widzieć.",ar:"سعداء بعودتك.",uk:"Раді бачити вас знову.",nl:"Fijn dat u er weer bent.",ro:"Ne bucurăm să vă revedem."},
 "Text ist offen — das Bild bitte über „Bild sichern“ dazulegen.":{en:"The message is open — please add the image via \\u201ESave image\\u201C.",tr:"Mesaj açık — görseli lütfen „Görseli kaydet\\u201C ile ekleyin.",ru:"Сообщение открыто — изображение добавьте через «Сохранить изображение».",fr:"Le message est ouvert — ajoutez l'image via « Enregistrer l'image ».",es:"El mensaje está abierto: añada la imagen con «Guardar imagen».",it:"Il messaggio è aperto: aggiunga l'immagine con «Salva immagine».",pl:"Wiadomość jest otwarta — obraz dodaj przez „Zapisz obraz”.",ar:"الرسالة مفتوحة — أضف الصورة عبر «حفظ الصورة».",uk:"Повідомлення відкрито — зображення додайте через «Зберегти зображення».",nl:"Het bericht staat open — voeg de afbeelding toe via „Afbeelding bewaren”.",ro:"Mesajul este deschis — adăugați imaginea prin „Salvați imaginea”."},
@@ -14591,6 +14647,17 @@ function gastSeiteFuer(name){
 SEITEN.meintisch = () => {
   const kopf = '<div class="seite"><h2>' + t("Mein Tisch") + '</h2>';
 
+  /* Noch nicht eingeschaltet: erst fragen, nichts melden (§ 25 TDDDG,
+     siehe MEIN TISCH oben). Ohne Server gibt es nichts einzuschalten. */
+  if(!stammgastAn()){
+    return kopf +
+      '<p class="unter">' + t("Ohne Konto, ohne Passwort, ohne Namen.") + '</p>' +
+      '<p>' + t("Auf Wunsch merken wir uns, dass Sie bei uns waren: Ihre Besuche, Ihre Lieblingsgerichte und Gutscheine, die wir für Sie hinterlegen.") + '</p>' +
+      '<div class="hinweis">' + t("Dafür legt Ihr Gerät eine zufällige Nummer ab, und wir speichern dazu Ihre Besuche und Bestellungen – ohne Namen, ohne Konto. Ausschalten können Sie es hier jederzeit.") + '</div>' +
+      '<button class="knopf" data-aktion="stammgastAn">' + t("Einschalten") + '</button>' +
+      '<div class="kopiert" id="melde"></div></div>';
+  }
+
   /* Solange die Antwort unterwegs ist: Flächen im Maß dessen, was
      kommt. Ein drehender Kreis sagt nur „warte", ein Skelett sagt
      „hier stehen gleich deine Besuche und deine Lieblinge". */
@@ -14606,7 +14673,7 @@ SEITEN.meintisch = () => {
     return kopf +
       '<p class="unter">' + t("Das klappt hier gerade nicht.") + '</p>' +
       '<div class="hinweis">' +
-      t("Ihre Besuche merkt sich Ihr Gerät, nicht wir – dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.") +
+      t("Dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.") +
       '</div>' +
       '<a class="knopf zweit" href="#/speisekarte">' + t("Zur Karte") + '</a></div>';
   }
@@ -14614,7 +14681,7 @@ SEITEN.meintisch = () => {
   const n = gastStand.besuche;
   let html = kopf +
     '<p class="unter">' +
-    t("Ohne Konto, ohne Passwort – das merkt sich Ihr Gerät.") + '</p>' +
+    t("Ohne Konto, ohne Passwort, ohne Namen.") + '</p>' +
     '<div class="gastkopf"><span class="zahl">' + n + '</span>' +
     '<span class="wort">' +
       (n <= 1 ? t("Ihr erster Besuch bei uns.") : t("Ihr {n}. Besuch bei uns.", {n:n})) +
@@ -14678,6 +14745,8 @@ SEITEN.meintisch = () => {
     '<div class="hinweis">' +
     t("Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – und eine Erinnerung, wenn Sie länger nicht da waren. Dafür merken wir uns, wann Sie zuletzt bei uns waren und was Sie gern bestellen; verschickt wird über Klaviyo. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.") +
     '</div></section>';
+
+  html += '<button class="knopf zweit" data-aktion="stammgastAus">' + t("Auf diesem Gerät ausschalten") + '</button>';
 
   return html + '</div>';
 };
@@ -17074,6 +17143,21 @@ $("inhalt").addEventListener("click", e => {
     }
     if(was === "storyTeilen"){ storyTeilen(); }
 
+    if(was === "stammgastAn"){
+      if(!stammgastEinschalten()){
+        melden(t("Das ging auf diesem Gerät nicht – in einem privaten Fenster kann sich der Browser nichts merken."), true);
+        return;
+      }
+      gastStand.geladen = !serverBereit();
+      zeichne();
+      gastLaden();
+    }
+    if(was === "stammgastAus"){
+      stammgastAusschalten();
+      zeichne();
+      melden(t("Ausgeschaltet. Sollen wir auch Ihre bisherigen Besuche löschen, sagen Sie es unserem Team."));
+    }
+
     if(was === "gastMail"){
       const adresse = wert("gastMail");
       if(!adresse){ melden(t("Bitte tragen Sie noch Ihre Adresse ein."), true); return; }
@@ -18076,6 +18160,8 @@ setInterval(() => { if(!document.hidden) aktionenLaden(); }, 120000);
    und Gutscheine. Kein Takt dahinter — was sich hier ändert, ändert
    sich zwischen Besuchen und nicht während einem. */
 /* In der Vorschau des Boards: kein Besuch, keine Gastzeile. */
+/* Nur wer „Mein Tisch“ eingeschaltet hat, wird gemeldet (gastLaden fragt
+   stammgastAn selbst). */
 if(!VORSCHAU) gastLaden();
 
 /* Lief beim letzten Besuch noch etwas? Dann sofort nachfragen und
