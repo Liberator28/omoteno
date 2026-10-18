@@ -88,6 +88,7 @@ const bereiche = s => s.evaluate(() => [...document.querySelectorAll(".sbereich"
 const wege = s => s.evaluate(() => [...document.querySelectorAll(".schnellzeile .sz")].map(a => {
   const r = a.getBoundingClientRect();
   return { text: a.querySelector(".sz-text").textContent, href: a.getAttribute("href"), jetzt: a.classList.contains("sz-jetzt"),
+    unter: (a.querySelector(".sz-unter") || {}).textContent || "",
     zahl: a.querySelector(".sz-zahl") ? +a.querySelector(".sz-zahl").textContent : 0, w: r.width, h: r.height };
 }));
 
@@ -156,19 +157,50 @@ async function tippen(s, sel) {
     pruef(w.some(x => x.href === "#/entdecken") === fr, haus + ": Foodroulette genau dann, wenn das Haus sie zeigt", "an=" + fr);
     const ruf = await s.evaluate(() => KACHELN.some(k => k.schluessel === "tischruf"));
     pruef(!ruf || w.some(x => x.href === "#/service"), haus + ": am Tisch steht der Serviceruf in der Zeile", w.map(x => x.href).join(","));
-    pruef(!w.some(x => x.href === "#/auswahl"), haus + ": leerer Korb → kein Weg „Ihre Auswahl“");
+    /* Seit 18.10. steht „Ihre Auswahl“ immer da (Wunsch: vier feste
+       Schnellzugriffe) — leer ohne Zahl, mit einem Satz. */
+    const leer = w.find(x => x.href === "#/auswahl");
+    pruef(!!leer && !leer.zahl && leer.unter === await s.evaluate(() => t("Noch nichts ausgewählt")),
+      haus + ": leerer Korb → „Ihre Auswahl“ ohne Zahl, mit „Noch nichts ausgewählt“", leer && (leer.zahl + " / " + leer.unter));
+    pruef(w[0] && w[0].href === "#/auswahl", haus + ": Reihenfolge beginnt mit „Ihre Auswahl“", w.map(x => x.href).join(","));
     const erste = w.find(x => x.href && x.href !== "#/service" && x.href !== "#/entdecken" && x.href !== "#/auswahl");
     pruef(!!erste && erste.href === kachelKarte, haus + ": der Karten-Weg zeigt dorthin, wo die erste Kartenkachel hinführt", erste && erste.href + " / " + kachelKarte);
     await tippen(s, '.schnellzeile a.sz[href="' + erste.href + '"]');
     pruef(await s.evaluate(() => location.hash) === erste.href, haus + ": echter Tipp auf den Karten-Weg öffnet die Karte", await s.evaluate(() => location.hash));
 
+    /* Glas wie der Zurück-Knopf, Lichtrand nur transform, im Ruhezustand
+       kein Glanz (nur beim Tippen); echte Tipps auf Foodroulette und
+       Serviceruf landen dort, wohin die Wege zeigen. */
+    await s.evaluate(() => { location.hash = "#/"; });
+    await s.waitForTimeout(350);
+    const glas = await s.evaluate(() => [...document.querySelectorAll(".schnellzeile .sz")].map(a => ({
+      blur: /blur/.test(getComputedStyle(a).backdropFilter || getComputedStyle(a).webkitBackdropFilter || ""),
+      licht: a.querySelector(".sz-licht").getAnimations().filter(x => x.playState === "running")
+        .map(x => Object.keys(x.effect.getKeyframes()[0] || {}).filter(k => !["offset","easing","composite","computedOffset"].includes(k)).join("+")).join(","),
+      sonst: a.getAnimations({ subtree: true }).filter(x => x.playState === "running" && !x.effect.target.classList.contains("sz-licht")).length })));
+    pruef(glas.length >= 2 && glas.every(g => g.blur && g.licht === "transform" && g.sonst === 0),
+      haus + ": jedes Feld Glas, Lichtrand läuft nur per transform, sonst nichts in Bewegung", JSON.stringify(glas[0]));
+    for (const ziel of ["#/entdecken", "#/service"]) {
+      if (!w.some(x => x.href === ziel)) continue;
+      await s.evaluate(() => { location.hash = "#/"; });
+      await s.waitForTimeout(350);
+      await tippen(s, '.schnellzeile a.sz[href="' + ziel + '"]');
+      pruef(await s.evaluate(() => location.hash) === ziel, haus + ": echter Tipp auf " + ziel + " öffnet ihn", await s.evaluate(() => location.hash));
+    }
+
     /* Korb füllen → Weg mit Zahl */
-    await s.evaluate(() => { const g = SPEISEKARTE[0].eintraege[0]; merk[g.n] = { n: g.n, p: g.p, m: 3 }; merkSpeichern(); location.hash = "#/"; });
+    await s.evaluate(() => { const g = SPEISEKARTE[0].eintraege[0]; merk[g.n] = { n: g.n, p: g.p, m: 3 }; merkSpeichern(); location.hash = "#/"; zeichne(); });
     await s.waitForTimeout(400);
     w = await wege(s);
     const aw = w.find(x => x.href === "#/auswahl");
-    pruef(!!aw && aw.zahl === 3, haus + ": mit Inhalt im Korb erscheint „Ihre Auswahl“ mit der Zahl", aw && aw.zahl);
+    const summe = await s.evaluate(() => preisText(merkSumme()));
+    pruef(!!aw && aw.zahl === 3 && aw.unter === summe, haus + ": mit Inhalt im Korb trägt „Ihre Auswahl“ Zahl und Summe des Korbs", aw && (aw.zahl + " / " + aw.unter + " = " + summe));
     pruef(w.length <= 4, haus + ": höchstens vier Wege", w.length);
+    /* Ungerade Zahl → das letzte Feld über die ganze Breite, keine Lücke. */
+    const reihe = await s.evaluate(() => { const z = document.querySelector(".schnellzeile").getBoundingClientRect();
+      const f = [...document.querySelectorAll(".schnellzeile .sz")].map(a => a.getBoundingClientRect());
+      const l = f[f.length - 1]; return { n: f.length, letzte: l.width / z.width }; });
+    pruef(reihe.n % 2 === 0 ? reihe.letzte < .6 : reihe.letzte > .95, haus + ": " + reihe.n + " Felder — keine halbe Reihe leer", reihe.letzte.toFixed(2));
 
     /* 5 · laufende Bestellung: vorn, hervorgehoben; Werbung hinter den ersten Bereich */
     const vorher = await s.evaluate(() => { const t = document.querySelector("main .tipp"), sec = document.querySelector(".sbereich");
@@ -178,6 +210,7 @@ async function tippen(s, sel) {
     await s.waitForTimeout(300);
     w = await wege(s);
     pruef(w[0] && w[0].jetzt && !w[0].href, haus + ": laufende Bestellung steht vorn und ist hervorgehoben", w.map(x => x.text).join(" | "));
+    pruef(w.length >= 3 && w.slice(1).some(x => x.href === "#/auswahl"), haus + ": die Bestellung verdrängt keinen der Wege", w.map(x => x.text).join(" | "));
     const nachher = await s.evaluate(() => { const t = document.querySelector("main .tipp"), sec = document.querySelector(".sbereich");
       return t && sec ? !!(t.compareDocumentPosition(sec) & Node.DOCUMENT_POSITION_PRECEDING) : null; });
     pruef(nachher !== false, haus + ": mit Bestellung rückt die Empfehlung hinter den ersten Bereich", nachher);
@@ -203,7 +236,7 @@ async function tippen(s, sel) {
           const lies = t => (t.match(/[\d.]+/g) || []).slice(0, 3).map(Number).map((v, i, a) => /color\(/.test(t) ? v * 255 : v);
           const grundVon = el => { for (let e = el; e; e = e.parentElement) { const c = getComputedStyle(e).backgroundColor; const m = c.match(/[\d.]+/g); if (m && (m.length < 4 || +m[3] > .9)) return c; } return getComputedStyle(document.documentElement).backgroundColor; };
           const paare = [];
-          document.querySelectorAll(".sz-text, .sb-zahl, .sz-zahl, .sb-name").forEach(el => paare.push({ was: el.className, s: getComputedStyle(el).color, g: grundVon(el) }));
+          document.querySelectorAll(".sz-text, .sz-unter, .sb-zahl, .sz-zahl, .sb-name").forEach(el => paare.push({ was: el.className, s: getComputedStyle(el).color, g: grundVon(el) }));
           return { paare, ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth };
         });
         const rgb = t => { const z = (t.match(/[\d.]+/g) || []).slice(0, 3).map(Number); return /color\(/.test(t) ? z.map(v => v * 255) : z; };
@@ -238,6 +271,9 @@ async function tippen(s, sel) {
     const lauf = await s.evaluate(() => document.querySelector(".sbereich:nth-of-type(3) .gitter").getAnimations().filter(a => a.playState === "running").length);
     const hoch = await s.evaluate(() => document.querySelector(".sbereich:nth-of-type(3) .gitter").getBoundingClientRect().height);
     pruef(lauf === 0 && hoch > 40, "reduzierte Bewegung: der Bereich öffnet sofort, ohne Animation", lauf + " / " + hoch.toFixed(0));
+    const szLauf = await s.evaluate(() => [...document.querySelectorAll(".schnellzeile .sz")].reduce((n, a) =>
+      n + a.getAnimations({ subtree: true }).filter(x => x.playState === "running").length, 0));
+    pruef(szLauf === 0, "reduzierte Bewegung: im Schnellzugriff läuft nichts (kein Lichtrand)", szLauf);
     await ctx.close();
   }
 

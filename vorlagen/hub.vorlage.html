@@ -1266,21 +1266,84 @@ a.tipp.mitmenge{padding-bottom:62px}
 .sbereich > .gitter{margin-top:6px}
 .sb-ein{animation:sbEin .26s var(--weich) both}
 @keyframes sbEin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-/* Schnellzeile: bis zu vier Wege als Felder mit Zeichen und Wort. */
-.schnellzeile{display:grid;grid-template-columns:repeat(var(--sz-n, 4),minmax(0,1fr));gap:8px;margin:0 0 16px}
-.sz{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-  min-height:66px;padding:10px 4px 9px;border-radius:16px;
-  background:var(--flaeche);border:1px solid var(--linie);color:var(--tinte);text-decoration:none;
-  font-family:inherit;font-size:11.5px;font-weight:600;line-height:1.2;text-align:center;cursor:pointer;
-  box-shadow:0 8px 18px -14px rgba(0,0,0,.5);transition:transform .14s var(--weich);-webkit-tap-highlight-color:transparent}
-.sz:active{transform:scale(.96)}
-.sz.sz-jetzt{border-color:color-mix(in srgb, var(--rot) 60%, var(--linie))}
-.sz-ico{width:24px;height:24px;color:var(--rot);display:block}
-.sz-ico svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.sz-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;overflow-wrap:anywhere}
-.sz-zahl{position:absolute;top:6px;inset-inline-end:7px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
-  display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;
-  background:var(--rot);color:var(--auf-rot);font-variant-numeric:tabular-nums}
+/* Schnellzugriff (18.10., Wunsch: „Quick-Access-Knöpfe zu Meine
+   Auswahl, Speisekarte, Foodroulette und Service rufen“, Vorbild der
+   Liquid-Glass-Showroom). Zwei Spalten großer Glas-Felder: Zeichen in
+   einer getönten Kachel, Name, eine Zeile darunter, Pfeil. Glas und
+   Lichtrand wie beim Zurück-Knopf (.zurueck): dieselbe Mischung, das
+   Licht dreht nur per transform. Kein Dauerglanz (Wunsch 17.10. „kein
+   Glanz“) — der Glanzstreif läuft nur beim Tippen einmal durch.
+   Eine laufende Bestellung liegt als breite Pille obenauf; bleibt
+   eine ungerade Zahl Felder, nimmt das letzte die ganze Breite.
+   Schrift --tinte/--tinte-leise: die Paare, die pruef-glas.js für das
+   Glas des Zurück-Knopfs gegen Schwarz und Weiß dahinter rechnet. */
+.schnellzeile{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 18px}
+.sz{--sz-ton:var(--gold);position:relative;isolation:isolate;overflow:hidden;
+  display:grid;grid-template-columns:44px minmax(0,1fr) 16px;align-items:center;column-gap:10px;
+  min-height:70px;padding:12px 10px 12px 12px;border-radius:20px;text-align:start;
+  background:color-mix(in srgb, var(--flaeche) 78%, transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
+  border:1px solid color-mix(in srgb, var(--linie-stark) 80%, transparent);color:var(--tinte);text-decoration:none;
+  font-family:inherit;cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.06), 0 10px 24px -12px rgba(0,0,0,.34);
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1);-webkit-tap-highlight-color:transparent}
+.sz:active{transform:scale(.96);transition-duration:.1s}
+.sz:focus-visible{outline:2px solid var(--tinte);outline-offset:2px}
+.sz.sz-jetzt,.sz.sz-breit{grid-column:1 / -1}
+.sz.sz-jetzt{--sz-ton:var(--rot);min-height:60px;border-radius:999px;padding-inline:8px 16px}
+/* Schmal (zwei Felder je ~170 px) stehen Zeichen und Pfeil oben, Name
+   und Zeile darunter über die ganze Breite — nebeneinander blieben für
+   „Foodroulette“ 70 px, das Wort brach mitten durch (Bildschirmfoto
+   390 px). Breit, und immer bei einem Feld über die ganze Breite, liegt
+   alles in einer Reihe. */
+.sz:not(.sz-jetzt):not(.sz-breit){grid-template-rows:auto auto;row-gap:10px;align-items:start;align-content:start;padding:12px}
+.sz:not(.sz-jetzt):not(.sz-breit) .sz-mitte{grid-column:1 / -1;grid-row:2}
+.sz:not(.sz-jetzt):not(.sz-breit) .sz-pfeil{grid-column:3;grid-row:1;align-self:center}
+@media (min-width:520px){
+  .sz:not(.sz-jetzt):not(.sz-breit){grid-template-rows:none;row-gap:0;align-items:center;padding:12px 10px 12px 12px}
+  .sz:not(.sz-jetzt):not(.sz-breit) .sz-mitte{grid-column:2;grid-row:1}
+}
+.sz-ico{position:relative;width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  color:var(--rot);background:color-mix(in srgb, var(--rot) 13%, transparent);
+  border:1px solid color-mix(in srgb, var(--rot) 28%, transparent)}
+.sz-jetzt .sz-ico{border-radius:50%}
+.sz-ico svg{display:block;width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sz-mitte{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sz-text{font-size:15px;font-weight:650;line-height:1.2;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:break-word;hyphens:auto}
+.sz-unter{font-size:12.5px;line-height:1.3;color:var(--tinte-leise);font-variant-numeric:tabular-nums;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sz-pfeil{width:16px;height:16px;fill:none;stroke:var(--tinte-leise);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+[dir="rtl"] .sz-pfeil{transform:scaleX(-1)}
+.sz-zahl{position:absolute;top:-7px;inset-inline-end:-7px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:750;
+  background:var(--rot);color:var(--auf-rot);font-variant-numeric:tabular-nums;
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--flaeche) 90%, transparent)}
+.sz-rand{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:-1;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+.sz-licht{position:absolute;left:50%;top:50%;width:300%;aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);
+  background:conic-gradient(from 0deg, transparent 0 58%,
+    color-mix(in srgb, var(--sz-ton) 35%, transparent) 70%, var(--sz-ton) 80%,
+    color-mix(in srgb, var(--sz-ton) 35%, transparent) 88%, transparent 96%);
+  animation:zrLauf 9s linear infinite}
+.sz:nth-child(2n) .sz-licht{animation-delay:-3s}
+.sz:nth-child(3n) .sz-licht{animation-delay:-6s}
+.sz-jetzt .sz-licht{animation-duration:4.5s}
+/* Der Glanzstreif: nur beim Tippen, einmal, nur transform. */
+.sz-glanz{position:absolute;top:0;bottom:0;left:0;width:45%;pointer-events:none;z-index:-1;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+  transform:translateX(-120%) skewX(-22deg);opacity:0}
+.sz:active .sz-glanz{animation:szGlanz .55s var(--weich) both}
+@keyframes szGlanz{from{opacity:1;transform:translateX(-120%) skewX(-22deg)}to{opacity:1;transform:translateX(330%) skewX(-22deg)}}
+@media (prefers-reduced-transparency:reduce){
+  .sz{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .sz-licht{animation:none;transform:translate(-50%,-50%) rotate(-50deg)}
+  .sz:active .sz-glanz{animation:none}
+}
 @media (prefers-reduced-motion:reduce){ .sb-ein{animation:none} .sb-pfeil,.sz{transition:none} }
 /* Zierrat "tusche": eine kleine Pfingstrosen-Knospe vor jeder
    Abschnittsüberschrift — derselbe Trenner auf jeder Seite, die
@@ -10007,6 +10070,10 @@ const TEXTE = {
 "Hier hakt gerade etwas.":{en:"Something is stuck here right now.",tr:"Burada bir şeyler takıldı.",ru:"Здесь что-то пошло не так.",fr:"Quelque chose coince ici.",es:"Aquí algo se ha atascado.",it:"Qui qualcosa si è bloccato.",pl:"Tutaj coś się zacięło.",ar:"حدث خلل هنا.",uk:"Тут щось не спрацювало.",nl:"Hier loopt iets vast.",ro:"Aici s-a blocat ceva."},
 "Bitte einmal zurück zur Übersicht, unser Team hilft Ihnen sonst gerne persönlich weiter.":{en:"Please head back to the overview, otherwise our team is happy to help you in person.",tr:"Lütfen genel bakışa dönün, aksi halde ekibimiz size memnuniyetle şahsen yardımcı olur.",ru:"Вернитесь, пожалуйста, к обзору, иначе наша команда с радостью поможет лично.",fr:"Revenez à l'aperçu, sinon notre équipe vous aide volontiers en personne.",es:"Vuelva al inicio; si no, nuestro equipo le ayuda con gusto en persona.",it:"Torni alla panoramica, altrimenti il nostro team la aiuta volentieri di persona.",pl:"Wróć do przeglądu, w innym razie nasz zespół chętnie pomoże osobiście.",ar:"يرجى العودة إلى النظرة العامة، وإلا فسيسعد فريقنا بمساعدتكم شخصياً.",uk:"Поверніться, будь ласка, до огляду, інакше наша команда радо допоможе особисто.",nl:"Ga even terug naar het overzicht, anders helpt ons team u graag persoonlijk.",ro:"Reveniți la prezentare, altfel echipa noastră vă ajută cu plăcere personal."},
 "Nichts gefunden. Versuchen Sie einen anderen Begriff.":{en:"Nothing found. Try another term.",tr:"Bir şey bulunamadı. Başka bir sözcük deneyin.",ru:"Ничего не найдено. Попробуйте другой запрос.",fr:"Aucun résultat. Essayez un autre mot.",es:"Sin resultados. Pruebe otra palabra.",it:"Nessun risultato. Prova un altro termine.",pl:"Brak wyników. Spróbuj inaczej.",ar:"لا نتائج. جرّب كلمة أخرى.",uk:"Нічого не знайдено. Спробуйте інакше.",nl:"Niets gevonden. Probeer een ander woord.",ro:"Niciun rezultat. Încercați alt termen."},
+"Alles auf einen Blick":{en:"Everything at a glance",tr:"Hepsi bir bakışta",ru:"Всё с первого взгляда",fr:"Tout en un coup d'œil",es:"Todo de un vistazo",it:"Tutto a colpo d'occhio",pl:"Wszystko w jednym miejscu",ar:"كل شيء في لمحة",uk:"Усе з першого погляду",nl:"Alles in één oogopslag",ro:"Totul dintr-o privire"},
+"Lassen Sie sich überraschen":{en:"Let us surprise you",tr:"Kendinizi şaşırtın",ru:"Позвольте нам удивить вас",fr:"Laissez-vous surprendre",es:"Déjese sorprender",it:"Lasciatevi sorprendere",pl:"Dajcie się zaskoczyć",ar:"دعنا نفاجئكم",uk:"Дозвольте нам вас здивувати",nl:"Laat u verrassen",ro:"Lăsați-vă surprinși"},
+"Noch nichts ausgewählt":{en:"Nothing selected yet",tr:"Henüz bir şey seçilmedi",ru:"Пока ничего не выбрано",fr:"Rien de sélectionné pour l'instant",es:"Aún no ha elegido nada",it:"Ancora nulla di scelto",pl:"Jeszcze nic nie wybrano",ar:"لم يتم اختيار شيء بعد",uk:"Ще нічого не вибрано",nl:"Nog niets gekozen",ro:"Nimic ales încă"},
+"Stand ansehen":{en:"See status",tr:"Durumu gör",ru:"Посмотреть статус",fr:"Voir l'état",es:"Ver el estado",it:"Vedi lo stato",pl:"Zobacz status",ar:"عرض الحالة",uk:"Переглянути статус",nl:"Status bekijken",ro:"Vezi starea"},
 "Ihre Auswahl":{en:"Your selection",tr:"Seçiminiz",ru:"Ваш выбор",fr:"Votre sélection",es:"Su selección",it:"La vostra selezione",pl:"Państwa wybór",ar:"اختياركم",uk:"Ваш вибір",nl:"Uw selectie",ro:"Selecția dvs."},
 "Schnellzugriff":{en:"Quick access",tr:"Hızlı erişim",ru:"Быстрый доступ",fr:"Accès rapide",es:"Acceso rápido",it:"Accesso rapido",pl:"Szybki dostęp",ar:"وصول سريع",uk:"Швидкий доступ",nl:"Snelle toegang",ro:"Acces rapid"},
 "Auswahl ansehen":{en:"View selection",tr:"Seçimi görüntüle",ru:"Посмотреть выбор",fr:"Voir la sélection",es:"Ver selección",it:"Vedi selezione",pl:"Zobacz wybór",ar:"عرض الاختيار",uk:"Переглянути вибір",nl:"Selectie bekijken",ro:"Vezi selecția"},
@@ -11747,30 +11814,41 @@ document.addEventListener("click", e => {
 });
 
 /* ── Schnellzeile ─────────────────────────────────────────────────
-   Bis zu vier Wege, je nach Lage: eine laufende Bestellung zuerst,
-   dann die erste Karte, der Serviceruf (nur am Tisch — im Liefermodus
-   ist die Gruppe gar nicht sichtbar), die eigene Auswahl (nur, wenn
-   etwas darin liegt) und die Foodroulette (nur, wenn das Haus sie
-   zeigt). Jeder Weg ist ein vorhandener; die Zeile erfindet nichts. */
+   Bis zu vier Wege und obenauf eine laufende Bestellung: die eigene
+   Auswahl, die erste Karte, die Foodroulette (nur, wenn das Haus sie
+   zeigt) und der Serviceruf (nur am Tisch — im Liefermodus ist die
+   Gruppe gar nicht sichtbar). Jeder Weg ist ein vorhandener; die
+   Zeile erfindet nichts. */
 function schnellzeileHTML(sichtbar){
+  /* Reihenfolge wie gewünscht: Auswahl, Karte, Foodroulette, Serviceruf.
+     „Ihre Auswahl“ steht seit 18.10. immer da (ein Schnellzugriff, der
+     erst mit Inhalt erscheint, ist keiner) — leer mit einem Satz statt
+     einer Zahl. */
   const wege = [];
-  if(!VORSCHAU && offeneVorgaenge().length)
-    wege.push({ knopf:true, icon:ICONS.glocke, text:t("Ihre Bestellung"), jetzt:true });
-  const karte = sichtbar.find(k => k.art === "karte");
-  if(karte) wege.push({ href:kachelZiel(karte), icon:ICONS[karte.icon] || ICONS.speise, text:t(karte.titel) });
-  const ruf = sichtbar.find(k => k.schluessel === "tischruf");
-  if(ruf) wege.push({ href:kachelZiel(ruf), icon:ICONS.hand, text:t(ruf.titel) });
   const n = merkAnzahl();
-  if(n) wege.push({ href:"#/auswahl", icon:ICONS.herz, text:t("Ihre Auswahl"), zahl:n });
-  if(foodrouletteAn()) wege.push({ href:"#/entdecken", icon:ICONS.wuerfel, text:"Foodroulette" /* Name, nicht übersetzt (wie im Rad) */ });
-  const zeile = wege.slice(0, 4);
-  if(zeile.length < 2) return "";
-  return '<div class="schnellzeile" role="group" aria-label="' + hs(t("Schnellzugriff")) + '" style="--sz-n:' + zeile.length + '">' +
-    zeile.map(w => (w.knopf ? '<button type="button" class="sz sz-jetzt" data-sz-vorgang>'
-                            : '<a class="sz" href="' + hs(w.href) + '">') +
-      '<span class="sz-ico" aria-hidden="true">' + (w.icon || "") + '</span>' +
-      '<span class="sz-text">' + hs(w.text) + '</span>' +
-      (w.zahl ? '<span class="sz-zahl">' + w.zahl + '</span>' : "") +
+  wege.push({ href:"#/auswahl", icon:ICONS.herz, text:t("Ihre Auswahl"),
+              unter: n ? preisText(merkSumme()) : t("Noch nichts ausgewählt"), zahl:n });
+  const karte = sichtbar.find(k => k.art === "karte");
+  if(karte) wege.push({ href:kachelZiel(karte), icon:ICONS[karte.icon] || ICONS.speise, text:t(karte.titel),
+                        unter: karte.unter ? t(karte.unter) : t("Alles auf einen Blick") });
+  if(foodrouletteAn()) wege.push({ href:"#/entdecken", icon:ICONS.wuerfel, text:"Foodroulette" /* Name, nicht übersetzt (wie im Rad) */,
+                                   unter:t("Lassen Sie sich überraschen") });
+  const ruf = sichtbar.find(k => k.schluessel === "tischruf");
+  if(ruf) wege.push({ href:kachelZiel(ruf), icon:ICONS.hand, text:t(ruf.titel), unter: ruf.unter ? t(ruf.unter) : "" });
+  if(wege.length < 2) return "";
+  if(wege.length % 2) wege[wege.length - 1].breit = true;
+  if(!VORSCHAU && offeneVorgaenge().length)
+    wege.unshift({ knopf:true, icon:ICONS.glocke, text:t("Ihre Bestellung"), unter:t("Stand ansehen"), jetzt:true });
+  const pfeil = '<svg class="sz-pfeil" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>';
+  return '<div class="schnellzeile" role="group" aria-label="' + hs(t("Schnellzugriff")) + '">' +
+    wege.map(w => (w.knopf ? '<button type="button" class="sz sz-jetzt" data-sz-vorgang>'
+                            : '<a class="sz' + (w.breit ? ' sz-breit' : '') + '" href="' + hs(w.href) + '">') +
+      '<span class="sz-rand" aria-hidden="true"><span class="sz-licht"></span></span>' +
+      '<span class="sz-glanz" aria-hidden="true"></span>' +
+      '<span class="sz-ico" aria-hidden="true">' + (w.icon || "") +
+        (w.zahl ? '<span class="sz-zahl">' + w.zahl + '</span>' : "") + '</span>' +
+      '<span class="sz-mitte"><span class="sz-text">' + hs(w.text) + '</span>' +
+        (w.unter ? '<span class="sz-unter">' + hs(w.unter) + '</span>' : "") + '</span>' + pfeil +
       (w.knopf ? '</button>' : '</a>')).join("") + '</div>';
 }
 /* Die laufende Bestellung: derselbe Weg wie der Streifen unten. */
