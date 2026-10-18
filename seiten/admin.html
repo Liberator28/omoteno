@@ -2737,6 +2737,62 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
   .eu-pfeil{grid-column:3;grid-row:1 / span 2}
 }
 .egruppe[data-eu]{scroll-margin-top:84px}
+
+/* ── Kacheln und Unterseiten (18.10.) ───────────────────────────
+   Ohne data-eu-offen nur die Kacheln, mit ihm genau eine Gruppe.
+   Glas wie der Zurück-Knopf im Hub; das Licht im Rand läuft hinter
+   einer Maske um, gedreht wird nur per transform (Compositor), jede
+   Kachel mit eigenem Versatz, damit nicht alle im Gleichschritt
+   leuchten. Schrift in --kreide/--gedaempft auf --glas: dieselben
+   Paare wie überall im Board. */
+#t-einstellungen:not([data-eu-offen]) > .egruppe:not(.eu-uebersicht){display:none}
+#t-einstellungen[data-eu-offen] > .eu-uebersicht,
+#t-einstellungen > .einkauflink,
+#t-einstellungen[data-eu-offen] > .egruppe:not(.eu-jetzt){display:none}
+.eu-zurueck{display:none}
+#t-einstellungen[data-eu-offen] > .eu-zurueck{display:inline-flex}
+.eu-uebersicht{background:none;border:0;box-shadow:none;padding:0}
+.eu-kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:6px}
+.eu-kachel,.eu-zurueck{
+  position:relative;isolation:isolate;overflow:hidden;font:inherit;color:var(--kreide);cursor:pointer;
+  background:var(--glas);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);
+  border:1px solid var(--glas-rand);box-shadow:var(--glas-schatten);-webkit-tap-highlight-color:transparent;
+  transition:transform var(--t-druck) var(--ease-out)}
+a.eu-kachel{text-decoration:none}
+.eu-kachel{display:flex;flex-direction:column;align-items:flex-start;gap:10px;text-align:left;
+  min-height:150px;padding:16px 14px 14px;border-radius:20px}
+.eu-kachel:active,.eu-zurueck:active{transform:scale(.97)}
+.eu-kachel:focus-visible,.eu-zurueck:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
+.eu-kachel .eu-symbol{width:46px;height:46px;border-radius:14px}
+.eu-kachel .eu-symbol svg{width:26px;height:26px}
+.eu-ktext{display:flex;flex-direction:column;gap:3px;min-width:0}
+.eu-ktext b{font-size:15.5px;font-weight:650;line-height:1.25}
+.eu-ktext i{font-size:12.5px;font-style:normal;color:var(--gedaempft);line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.eu-kachel .eu-wert{margin-top:auto;text-align:left;max-width:none;color:var(--kreide);font-weight:600;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.eu-kachel .eu-wert:empty{display:none}
+.eu-zurueck{align-items:center;gap:6px;height:44px;padding:0 18px 0 12px;border-radius:999px;margin:4px 0 14px;
+  position:sticky;top:calc(var(--kopf-h, 64px) + 8px);z-index:5;font-weight:600;font-size:15px}
+.eu-zurueck svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.eu-krand{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:-1;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+.eu-klicht{position:absolute;left:50%;top:50%;width:300%;aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);
+  background:conic-gradient(from 0deg, transparent 0 60%,
+    color-mix(in srgb, var(--ton, var(--messing)) 35%, transparent) 72%, var(--ton, var(--messing)) 81%,
+    color-mix(in srgb, var(--ton, var(--messing)) 35%, transparent) 89%, transparent 96%);
+  animation:euLauf 9s linear infinite}
+.eu-kachel:nth-child(3n+2) .eu-klicht{animation-delay:-3s}
+.eu-kachel:nth-child(3n) .eu-klicht{animation-delay:-6s}
+@keyframes euLauf{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .eu-klicht{animation:none;transform:translate(-50%,-50%) rotate(-50deg)}
+}
+@media (prefers-reduced-transparency:reduce){
+  .eu-kachel,.eu-zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
 .eu-kopf{display:grid;grid-template-columns:40px minmax(0,1fr) 56px;align-items:center;gap:12px;margin:14px 0 8px}
 .eu-kopf .eu-symbol{width:40px;height:40px;border-radius:12px}
 .eu-kopf .eu-symbol svg{width:22px;height:22px}
@@ -9010,7 +9066,8 @@ const EU_SYMBOL = {
   uhr:    '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
   sanduhr:'<path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/>',
   haus:   '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>',
-  geraet: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>'
+  geraet: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+  beleg:  '<path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z"/><path d="M9 8h6M9 12h6M9 16h3"/>'
 };
 const euIcon = s => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (EU_SYMBOL[s] || "") + '</svg>';
 const euWippe = id => { const k = $("#" + id); return !!k && k.getAttribute("aria-pressed") === "true"; };
@@ -9106,29 +9163,41 @@ const EU_BEREICHE = [
         '<path class="eu-haken" d="' + (w ? "M40 6.5v4M40 13v.1" : "M37 10l2 2 4-4") + '"/>'; } }
 ];
 
-/* Einmal: Köpfe in die Bereiche, Übersicht nach oben. */
+/* Einmal: Köpfe in die Bereiche, Kacheln nach oben.
+
+   UNTERSEITEN (18.10., Wunsch: „große Kästen mit animierten Rändern
+   wie beim Zurück-Knopf, Glas, das passende Symbol — nicht alles auf
+   eine Seite gequetscht“). Vorher stand jede Gruppe untereinander und
+   die Übersicht rollte nur hin. Jetzt zeigt der Reiter zuerst nur die
+   Kacheln; ein Tipp öffnet GENAU eine Gruppe (data-eu-offen am Reiter),
+   oben steht „Alle Einstellungen“. Die Gruppen bleiben, wo sie sind —
+   ihre ids tragen Skripte und Prüfungen —, gezeigt wird über CSS.
+
+   Schlüssel ist die Stelle in EU_BEREICHE, nicht das Symbol: „karte“
+   und „uhr“ stehen je zweimal, und der Zustand des zweiten Bereichs
+   überschrieb den des ersten (gefunden beim Umbau). */
 function euEinrichten(){
   const tafel = $("#t-einstellungen"); if(!tafel || tafel.querySelector(".eu-uebersicht")) return;
   const liste = [];
   tafel.querySelectorAll(":scope > .egruppe").forEach(gruppe => {
     const h = gruppe.querySelector(":scope > h2.etitel"); if(!h) return;
-    const b = EU_BEREICHE.find(x => x.titel === h.textContent.trim()); if(!b) return;
-    const id = "eu-" + b.sym;
-    gruppe.id = gruppe.id || id;
-    gruppe.dataset.eu = b.sym;
+    const nr = EU_BEREICHE.findIndex(x => x.titel === h.textContent.trim()); if(nr < 0) return;
+    const b = EU_BEREICHE[nr];
+    gruppe.id = gruppe.id || "eu-" + nr;
+    gruppe.dataset.eu = String(nr);
     gruppe.style.setProperty("--ton", b.ton);
     const kopf = document.createElement("div");
     kopf.className = "eu-kopf";
     kopf.innerHTML = '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
       '<div class="eu-mitte"></div>' +
-      '<svg class="eu-bild" viewBox="0 0 48 48" aria-hidden="true" data-eu-bild="' + b.sym + '"></svg>';
+      '<svg class="eu-bild" viewBox="0 0 48 48" aria-hidden="true" data-eu-bild="' + nr + '"></svg>';
     gruppe.insertBefore(kopf, h);
     const mitte = kopf.querySelector(".eu-mitte");
     mitte.appendChild(h);
     const stand = document.createElement("span");
-    stand.className = "eu-stand"; stand.dataset.euStand = b.sym;
+    stand.className = "eu-stand"; stand.dataset.euStand = String(nr);
     mitte.appendChild(stand);
-    liste.push({ b, ziel: gruppe.id });
+    liste.push({ b, nr, ziel: gruppe.id });
   });
   /* Ein div mit Rolle, KEIN <nav>: nav{…} ist im Board die Reiterleiste
      (display:flex, waagerecht rollbar) — die Übersicht erbte das und
@@ -9136,31 +9205,78 @@ function euEinrichten(){
   const nav = document.createElement("div");
   nav.setAttribute("role", "navigation");
   nav.className = "egruppe eu-uebersicht"; nav.id = "euUebersicht";
-  nav.setAttribute("aria-label", "Alle Einstellungen auf einen Blick");
+  nav.setAttribute("aria-label", "Alle Einstellungen");
+  const kachel = (attr, ton, sym, titel, satz, stand) =>
+    '<button type="button" class="eu-kachel" ' + attr + ' style="--ton:' + ton + '">' +
+      '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+      '<span class="eu-symbol" aria-hidden="true">' + euIcon(sym) + '</span>' +
+      '<span class="eu-ktext"><b>' + titel + '</b><i>' + satz + '</i></span>' +
+      '<span class="eu-wert"' + stand + '></span></button>';
   /* Seit 11.10. liegt alles, was Gäste sehen, im Reiter „Gast-Hub“ —
-     die Übersicht verweist dorthin, statt die Bereiche doppelt zu führen. */
-  nav.innerHTML = '<h2 class="etitel">Auf einen Blick</h2>' +
-    '<a class="eu-reihe" href="#" data-eu-tafel="startseite" style="--ton:var(--telefon)">' +
-      '<span class="eu-symbol" aria-hidden="true">' + euIcon("blase") + '</span>' +
-      '<span class="eu-text"><b>Gast-Hub gestalten</b><i>Kopf und Logo, Texte, Schrift, Farben, Kacheln, Banner, Figur</i></span>' +
-      '<span class="eu-wert"></span><span class="eu-pfeil" aria-hidden="true">›</span></a>' + liste.map(({b, ziel}) =>
-    '<a class="eu-reihe" href="#' + ziel + '" data-eu-ziel="' + ziel + '" style="--ton:' + b.ton + '">' +
-      '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
-      '<span class="eu-text"><b>' + sicher(b.titel) + '</b><i>' + sicher(b.satz) + '</i></span>' +
-      '<span class="eu-wert" data-eu-stand="' + b.sym + '"></span>' +
-      '<span class="eu-pfeil" aria-hidden="true">›</span></a>').join("");
+     die erste Kachel führt dorthin, statt die Bereiche doppelt zu führen. */
+  nav.innerHTML = '<h2 class="etitel">Einstellungen</h2><div class="eu-kacheln">' +
+    kachel('data-eu-tafel="startseite"', "var(--telefon)", "blase", "Gast-Hub gestalten",
+           "Kopf, Texte, Schrift, Farben, Kacheln, Figur", "") +
+    liste.map(({b, nr, ziel}) => kachel('data-eu-seite="' + ziel + '"', b.ton, b.sym,
+      sicher(b.titel), sicher(b.satz), ' data-eu-stand="' + nr + '"')).join("") +
+    /* Eine eigene Seite, deshalb ein Link: die letzte Kachel. */
+    '<a class="eu-kachel" href="/einkauf.html" style="--ton:var(--gut)">' +
+      '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+      '<span class="eu-symbol" aria-hidden="true">' + euIcon("beleg") + '</span>' +
+      '<span class="eu-ktext"><b>Einkauf &amp; Kosten</b><i>Rechnungen, Artikel, Lieferanten und Bestand</i></span></a>' +
+    '</div>';
   tafel.insertBefore(nav, tafel.firstElementChild);
+
+  const zurueck = document.createElement("button");
+  zurueck.type = "button"; zurueck.className = "eu-zurueck"; zurueck.id = "euZurueck";
+  zurueck.innerHTML = '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Alle Einstellungen</span>';
+  tafel.insertBefore(zurueck, tafel.firstElementChild);
+  zurueck.addEventListener("click", () => euSchliessen());
+
   nav.addEventListener("click", e => {
     const t = e.target.closest("[data-eu-tafel]");
     if(t){ e.preventDefault(); tafelZeigen(t.dataset.euTafel); window.scrollTo(0, 0); return; }
-    const a = e.target.closest("[data-eu-ziel]"); if(!a) return;
-    e.preventDefault();
-    const ziel = document.getElementById(a.dataset.euZiel); if(!ziel) return;
-    const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    ziel.scrollIntoView({ block:"start", behavior: ruhig ? "auto" : "smooth" });
+    const k = e.target.closest("[data-eu-seite]"); if(!k) return;
+    euOeffnen(k.dataset.euSeite);
   });
   euZeichnen();
 }
+
+/* Eine Gruppe als Unterseite zeigen. Nimmt die id der Gruppe. */
+function euOeffnen(id){
+  const tafel = $("#t-einstellungen"), gruppe = id && document.getElementById(id);
+  if(!tafel || !gruppe || gruppe.parentElement !== tafel) return false;
+  tafel.querySelectorAll(":scope > .eu-jetzt").forEach(g => g.classList.remove("eu-jetzt"));
+  gruppe.classList.add("eu-jetzt");
+  tafel.dataset.euOffen = id;
+  window.scrollTo(0, 0);
+  const h = gruppe.querySelector("h2.etitel");
+  if(h){ h.tabIndex = -1; h.focus({ preventScroll:true }); }
+  euBald();
+  return true;
+}
+/* Zurück zu den Kacheln; die zuletzt offene Kachel bekommt den Fokus,
+   damit Tastatur und Vorleser dort weitermachen, wo sie waren. */
+function euSchliessen(){
+  const tafel = $("#t-einstellungen"); if(!tafel || !tafel.dataset.euOffen) return;
+  const war = tafel.dataset.euOffen;
+  delete tafel.dataset.euOffen;
+  tafel.querySelectorAll(":scope > .eu-jetzt").forEach(g => g.classList.remove("eu-jetzt"));
+  window.scrollTo(0, 0);
+  const k = tafel.querySelector('[data-eu-seite="' + war + '"]');
+  if(k) k.focus({ preventScroll:true });
+}
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  const tafel = $("#t-einstellungen");
+  if(!tafel || tafel.hidden || !tafel.dataset.euOffen) return;
+  /* Ein offenes Blatt oder Feld darüber schließt zuerst sich selbst. */
+  /* Gemessen sichtbar, nicht nur ohne hidden: #katPanel trägt
+     role=dialog und ist zu, ohne hidden zu tragen. */
+  if([...document.querySelectorAll(".blatt.offen, [role=dialog]:not([hidden])")].some(x => x.getClientRects().length)) return;
+  euSchliessen();
+});
 
 /* Zustände und Grafiken nachziehen — gebündelt auf ein Bild, und nie
    mitten in einer Radgeste (das Rad schreibt erst am Ende). */
@@ -9169,11 +9285,11 @@ function euEinrichten(){
    dead zone“ und würfe (CLAUDE.md §8.1l). */
 var euGeplant = false;
 function euZeichnen(){
-  EU_BEREICHE.forEach(b => {
+  EU_BEREICHE.forEach((b, nr) => {
     let text = "";
     try{ text = b.stand() || ""; }catch(e){ text = ""; }
-    $$('[data-eu-stand="' + b.sym + '"]').forEach(el => { if(el.textContent !== text) el.textContent = text; });
-    const bild = $('[data-eu-bild="' + b.sym + '"]');
+    $$('[data-eu-stand="' + nr + '"]').forEach(el => { if(el.textContent !== text) el.textContent = text; });
+    const bild = $('[data-eu-bild="' + nr + '"]');
     if(bild){ let inhalt = ""; try{ inhalt = b.bild() || ""; }catch(e){}
       if(bild._inhalt !== inhalt){ bild.innerHTML = inhalt; bild._inhalt = inhalt; } }
   });
@@ -12345,6 +12461,8 @@ function tafelZeigen(ziel){
   const tafelId = ziel === "lieferungen" ? "bestellungen" : ziel;
   $$("[data-tafel]").forEach(x => x.setAttribute("aria-selected", x.dataset.tafel === tafelId));
   $$(".tafel").forEach(t => t.hidden = t.id !== "t-" + tafelId);
+  /* Wer den Reiter Einstellungen (neu) betritt, beginnt bei den Kacheln. */
+  if(tafelId === "einstellungen" && typeof euSchliessen === "function") euSchliessen();
   leistePilleBewegen();
 
   /* Erst jetzt ist der Block gezeichnet — vorher war er in einem

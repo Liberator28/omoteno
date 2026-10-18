@@ -21,6 +21,24 @@
    6  Rundung: --ecke und --ecke-pille in allen sechs Dateien gleich.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+
+/* Seit 18.10. liegt jede Einstellungsgruppe hinter einer Kachel. Öffnet
+   die Unterseite, in der `sel` steht — über einen ECHTEN Tipp auf die
+   Kachel (vorher „Alle Einstellungen“, falls eine andere offen ist).
+   Gibt false, wenn es die Gruppe nicht gibt (Voraussetzung, §8.1g). */
+async function euZu(p, sel) {
+  const id = await p.evaluate(s => {
+    const el = document.querySelector(s);
+    const g = el && el.closest("#t-einstellungen > .egruppe");
+    return g && !g.classList.contains("eu-uebersicht") ? g.id : null;
+  }, sel);
+  if (!id) return false;
+  if (await p.evaluate(i => document.getElementById("t-einstellungen").dataset.euOffen === i, id)) return true;
+  if (await p.isVisible("#euZurueck")) await p.click("#euZurueck");
+  await p.click('[data-eu-seite="' + id + '"]');
+  await p.waitForTimeout(150);
+  return p.evaluate(i => document.getElementById("t-einstellungen").dataset.euOffen === i, id);
+}
 const fs = require("fs");
 const path = require("path");
 const OBEN = path.resolve(__dirname, "..");
@@ -277,6 +295,7 @@ const kontrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1
      EINST: EINST stand schon vorher richtig, das Bild nicht. */
   const lichtFehler = [];
   e.p.on("pageerror", x => lichtFehler.push(String(x).slice(0, 120)));
+  pruef(await euZu(e.p, "#lichtWahl"), "Voraussetzung: Unterseite „Bildschirm“ über ihre Kachel geöffnet");
   const licht = [];
   for(const w of ["dunkel", "hell", "dunkel"]){
     await e.p.click('#lichtWahl [data-licht="' + w + '"]');
@@ -290,43 +309,105 @@ const kontrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1
   pruef(licht[0].grund !== licht[1].grund, "die gemalte Fläche wechselt mit", licht[0].grund + " / " + licht[1].grund);
   pruef(licht[1].gemerkt === "hell" && licht[2].gemerkt === "dunkel", "die Wahl wird gemerkt", licht.map(x => x.gemerkt).join(","));
   pruef(!lichtFehler.length, "kein Laufzeitfehler beim Umschalten", lichtFehler[0] || "still");
+  /* Seit 18.10.: Kacheln statt Liste, jede Gruppe eine Unterseite.
+     Zweite Quelle sind die Gruppen im Reiter, nicht die Kacheln. */
+  await e.p.click("#euZurueck");
+  await e.p.waitForTimeout(200);
   const ue = await e.p.evaluate(() => {
-    /* Die erste Zeile führt seit 11.10. in den Reiter „Gast-Hub“
-       (data-eu-tafel) — sie hat keinen Bereich hier und wird eigens
-       geprüft. */
-    const reihen = [...document.querySelectorAll(".eu-reihe[data-eu-ziel]")];
-    const tafelLink = document.querySelector('.eu-reihe[data-eu-tafel="startseite"]');
-    const gruppen = [...document.querySelectorAll("#t-einstellungen > .egruppe[data-eu]")];
-    const r = reihen.map(x => x.getBoundingClientRect());
-    return { reihen:reihen.length, gruppen:gruppen.length, tafelLink:!!tafelLink,
-      untereinander: r.every((x, i) => i === 0 || (Math.abs(x.left - r[0].left) < 1 && x.top >= r[i - 1].bottom - 1)),
-      tot: reihen.filter(r => !document.getElementById(r.dataset.euZiel)).map(r => r.dataset.euZiel),
-      ohneKopf: [...document.querySelectorAll("#t-einstellungen > .egruppe")].filter(g => !g.classList.contains("eu-uebersicht") && !g.querySelector(".eu-kopf")).map(g => (g.querySelector(".etitel") || {}).textContent) };
+    const tafel = document.getElementById("t-einstellungen");
+    const kacheln = [...tafel.querySelectorAll(".eu-kachel[data-eu-seite]")];
+    const gruppen = [...tafel.querySelectorAll(":scope > .egruppe[data-eu]")];
+    const sichtbar = el => !!el.getClientRects().length && getComputedStyle(el).visibility !== "hidden";
+    const r = kacheln.map(x => x.getBoundingClientRect());
+    return { kacheln:kacheln.length, gruppen:gruppen.length,
+      ohneKachel: gruppen.filter(g => !kacheln.some(k => k.dataset.euSeite === g.id)).map(g => g.id),
+      tot: kacheln.filter(k => !document.getElementById(k.dataset.euSeite)).map(k => k.dataset.euSeite),
+      tafelLink: !!tafel.querySelector('.eu-kachel[data-eu-tafel="startseite"]'),
+      einkauf: !!tafel.querySelector('a.eu-kachel[href="/einkauf.html"]'),
+      gruppeSichtbar: gruppen.filter(sichtbar).map(g => g.id),
+      zurueck: sichtbar(document.getElementById("euZurueck")),
+      spalten: new Set(r.map(x => Math.round(x.left))).size,
+      klein: r.filter(x => x.height < 44 || x.width < 44).length,
+      ueberlauf: document.documentElement.scrollWidth - innerWidth,
+      licht: [...tafel.querySelectorAll(".eu-kachel .eu-klicht")].map(l => l.getAnimations().map(a => Object.keys(a.effect.getKeyframes()[0] || {}).filter(k => !["offset","easing","composite","computedOffset"].includes(k)).join("+")).join(",")),
+      ohneKopf: gruppen.filter(g => !g.querySelector(".eu-kopf")).map(g => g.id) };
   });
-  pruef(ue.reihen === ue.gruppen && ue.reihen >= 10, "jede Zeile der Übersicht hat ihren Bereich (zweite Quelle: die Bereiche)",
-    ue.reihen + " Zeilen / " + ue.gruppen + " Bereiche");
-  pruef(!ue.tot.length, "keine Zeile führt ins Leere", ue.tot.join(",") || "keine");
-  pruef(ue.tafelLink, "die Übersicht verweist auf „Gast-Hub gestalten“");
+  pruef(ue.kacheln === ue.gruppen && ue.kacheln >= 10 && !ue.ohneKachel.length,
+    "jede Gruppe hat ihre Kachel (zweite Quelle: die Gruppen)", ue.kacheln + " Kacheln / " + ue.gruppen + " Gruppen " + ue.ohneKachel.join(","));
+  pruef(!ue.tot.length, "keine Kachel führt ins Leere", ue.tot.join(",") || "keine");
+  pruef(ue.tafelLink && ue.einkauf, "Kacheln für „Gast-Hub gestalten“ und „Einkauf & Kosten“");
+  pruef(!ue.gruppeSichtbar.length && !ue.zurueck, "Ruhelage: nur Kacheln, keine Gruppe, kein Zurück", ue.gruppeSichtbar.join(",") || "ja");
+  pruef(ue.spalten >= 2, "390 px: Kacheln im Raster (mindestens zwei Spalten)", ue.spalten + " Spalten");
+  pruef(!ue.klein && ue.ueberlauf <= 0, "Kacheln ≥ 44 px, nichts läuft seitlich über", ue.klein + " zu klein, Überlauf " + ue.ueberlauf);
+  pruef(ue.licht.length === ue.kacheln + 2 && ue.licht.every(x => x === "transform"),
+    "Lichtrand läuft an jeder Kachel, nur transform", [...new Set(ue.licht)].join(" | "));
+  pruef(!ue.ohneKopf.length, "jede Unterseite hat Symbol, Zustand und Grafik", ue.ohneKopf.join(",") || "alle");
+  /* Schrift auf Glas: Titel und Satz gegen die Glasfläche über dem
+     Grund des Reiters (gemischt), beide Lichter. */
+  for(const hell of [false, true]){
+    await e.p.evaluate(h => document.body.classList.toggle("hell", h), hell);
+    await e.p.waitForTimeout(150);
+    const k = await e.p.evaluate(() => {
+      const rgba = c => { const m = c.match(/[\d.]+/g).map(Number); const f = /^color\(/.test(c) ? 255 : 1;
+        return [m[0] * f, m[1] * f, m[2] * f, m.length > 3 ? m[3] : 1]; };
+      const kach = document.querySelector(".eu-kachel[data-eu-seite]");
+      const tief = el => { for(let x = el; x; x = x.parentElement){ const c = rgba(getComputedStyle(x).backgroundColor); if(c[3] > .95) return c; } return [0,0,0,1]; };
+      const grund = tief(kach.parentElement), glas = rgba(getComputedStyle(kach).backgroundColor);
+      const fl = [0,1,2].map(i => glas[i] * glas[3] + grund[i] * (1 - glas[3]));
+      const l = c => { const v = c.map(x => { x /= 255; return x <= .03928 ? x / 12.92 : ((x + .055) / 1.055) ** 2.4; }); return .2126 * v[0] + .7152 * v[1] + .0722 * v[2]; };
+      const kon = (a, b) => { const x = l(a), y = l(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+      return Math.min(...["b", "i"].map(t => kon(rgba(getComputedStyle(kach.querySelector(".eu-ktext " + t)).color).slice(0, 3), fl)));
+    });
+    pruef(k >= 4.5, (hell ? "hell" : "dunkel") + ": Kachelschrift auf Glas ≥ 4,5:1", k.toFixed(2) + ":1");
+  }
+  await e.p.evaluate(() => document.body.classList.remove("hell"));
   {
-    await e.p.evaluate(() => document.querySelector('.eu-reihe[data-eu-tafel="startseite"]').click());
+    await e.p.click('.eu-kachel[data-eu-tafel="startseite"]');
     await e.p.waitForTimeout(300);
     const auf = await e.p.evaluate(() => !document.getElementById("t-startseite").hidden);
-    pruef(auf, "ein Tipp darauf öffnet den Reiter „Gast-Hub“");
+    pruef(auf, "ein Tipp auf „Gast-Hub gestalten“ öffnet den Reiter „Gast-Hub“");
     await e.p.evaluate(() => tafelZeigen("einstellungen"));
     await e.p.waitForTimeout(200);
   }
-  /* VORFALL: Als <nav> erbte die Übersicht die Reiterleiste und stand
-     als eine Zeile nebeneinander. Gemessen wird die Lage, nicht der Tag. */
-  pruef(ue.untereinander, "die Zeilen stehen untereinander, bündig");
-  pruef(!ue.ohneKopf.length, "jeder Bereich hat Symbol, Zustand und Grafik", ue.ohneKopf.join(",") || "alle");
-  const tonVorher = await e.p.evaluate(() => document.querySelector('.eu-reihe [data-eu-stand="glocke"]').textContent);
+  /* Echter Tipp: genau EINE Gruppe, oben „Alle Einstellungen“. */
+  const melden = await e.p.evaluate(() => document.querySelector('label.ezeile:has([data-einst="ton"])').closest(".egruppe").id);
+  await e.p.click('[data-eu-seite="' + melden + '"]');
+  await e.p.waitForTimeout(250);
+  const auf = await e.p.evaluate(() => {
+    const sichtbar = el => !!el.getClientRects().length;
+    const z = document.getElementById("euZurueck"), r = z.getBoundingClientRect();
+    return { offen: [...document.querySelectorAll("#t-einstellungen > .egruppe")].filter(sichtbar).map(g => g.id),
+      zurueck: sichtbar(z) && r.height >= 44, oben: r.top < 200, fokus: document.activeElement && document.activeElement.matches("h2.etitel") };
+  });
+  pruef(auf.offen.length === 1 && auf.offen[0] === melden, "ein Tipp auf die Kachel zeigt genau ihre Gruppe", auf.offen.join(","));
+  pruef(auf.zurueck && auf.oben, "„Alle Einstellungen“ steht oben, ≥ 44 px");
+  pruef(auf.fokus, "der Fokus springt auf die Überschrift der Unterseite");
+  const tonVorher = await e.p.evaluate(() => document.querySelector('.eu-kachel [data-eu-stand="0"]').textContent);
   await e.p.click('label.ezeile:has([data-einst="ton"])');
   await e.p.waitForTimeout(300);
-  const tonNach = await e.p.evaluate(() => ({ text:document.querySelector('.eu-reihe [data-eu-stand="glocke"]').textContent, ton:EINST.ton,
-    wellen:document.querySelectorAll('[data-eu-bild="glocke"] .eu-welle.an').length }));
+  const tonNach = await e.p.evaluate(() => ({ text:document.querySelector('.eu-kachel [data-eu-stand="0"]').textContent, ton:EINST.ton,
+    wellen:document.querySelectorAll('[data-eu-bild="0"] .eu-welle.an').length }));
   pruef(/^Ton an/.test(tonVorher) && tonNach.ton === false && tonNach.text === "Ton aus" && tonNach.wellen === 0,
-    "Schalter umgelegt → Übersicht und Grafik folgen", tonVorher + " → " + tonNach.text + ", Wellen " + tonNach.wellen);
+    "Schalter umgelegt → Kachel und Grafik folgen", tonVorher + " → " + tonNach.text + ", Wellen " + tonNach.wellen);
   await e.p.click('label.ezeile:has([data-einst="ton"])');
+  await e.p.waitForTimeout(200);
+  await e.p.click("#euZurueck");
+  await e.p.waitForTimeout(200);
+  const zu = await e.p.evaluate(m => ({ offen: [...document.querySelectorAll("#t-einstellungen > .egruppe[data-eu]")].filter(g => g.getClientRects().length).length,
+    fokus: document.activeElement && document.activeElement.dataset.euSeite === m }), melden);
+  pruef(zu.offen === 0 && zu.fokus, "„Alle Einstellungen“ führt zurück, Fokus auf der Kachel von eben", JSON.stringify(zu));
+  await e.p.click('[data-eu-seite="' + melden + '"]');
+  await e.p.waitForTimeout(150);
+  await e.p.keyboard.press("Escape");
+  await e.p.waitForTimeout(150);
+  pruef(await e.p.evaluate(() => !document.getElementById("t-einstellungen").dataset.euOffen), "Escape führt zurück zu den Kacheln");
+  await e.p.click('[data-eu-seite="' + melden + '"]');
+  await e.p.waitForTimeout(150);
+  await e.p.evaluate(() => { tafelZeigen("bestellungen"); tafelZeigen("einstellungen"); });
+  await e.p.waitForTimeout(150);
+  pruef(await e.p.evaluate(() => !document.getElementById("t-einstellungen").dataset.euOffen), "wer den Reiter neu betritt, beginnt bei den Kacheln");
+  /* Das Figuren-Rad steht in der Gruppe „Figur des Hauses“ — offen machen. */
+  await e.p.evaluate(() => { const g = document.querySelector("#avspur-figur"); const eg = g && g.closest("#t-einstellungen > .egruppe"); if(eg) euOeffnen(eg.id); });
 
   const rad = await e.p.evaluate(async () => {
     const spur = document.querySelector("#avspur-figur"); spur.scrollIntoView({ block:"center" });

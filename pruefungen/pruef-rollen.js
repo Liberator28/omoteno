@@ -29,7 +29,7 @@ const NUR_INHABER = ["Bewegte Emojis", "Projekte", "Stil der Speisekarte", "Extr
   "Ihre Worte im Gast-Hub", "Lieferung", "Gäste-Newsletter", "Eigene Rabattcodes",
   "Gutscheine für Stammgäste", "Bestellstand beim Gast", "Foodroulette", "Figur des Hauses",
   "Wer hat was geändert"];
-const AUCH_TEAM = ["Auf einen Blick", "Melden", "Bildschirm", "Nichts übersehen", "Betrieb", "Dieses Gerät"];
+const AUCH_TEAM = ["Einstellungen", "Melden", "Bildschirm", "Nichts übersehen", "Betrieb", "Dieses Gerät"];
 const SATZ = "Nur der Besitzer kann das ändern.";
 
 let n = 0, f = 0;
