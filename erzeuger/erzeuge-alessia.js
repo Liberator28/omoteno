@@ -22,6 +22,14 @@
    hier als Vorgabe aus dem Markenblatt, überschreibbar mit
    --stimme "…" und --gruss "…".
 
+   PFLICHTSATZ (18.10., KI-Verordnung Art. 50 Abs. 1, Art. 13 DSGVO,
+   dokumente/recht/01 Befund 6): Vor JEDEM Gruß — auch einem eigenen —
+   sagt Alessia, dass sie eine KI ist und dass mitgeschrieben wird.
+   Vorher hieß es „die digitale Assistentin“, und --gruss konnte den
+   Hinweis ganz ersetzen. Die Tonaufnahme steht ausdrücklich auf aus
+   (artifactPlan.recordingEnabled, § 201 StGB) — nur das Transkript
+   bleibt, und das sagt der Pflichtsatz.
+
    dist-alessia/ ist in .gitignore und wird NICHT ausgeliefert
    (bauen.js kopiert nur dist/<slug>/).
    ═══════════════════════════════════════════════════════════════════ */
@@ -58,7 +66,13 @@ const REGELN = [
   "Sagt das Werkzeug, dass etwas nicht geht (Pause, Gericht nicht auf der Karte), sagst du das freundlich und bietest eine Alternative aus der Karte an.",
   "Bei Beschwerden, Notfällen, Reservierungen für große Gruppen oder allem, was du nicht sicher weißt: höflich auf einen Rückruf durch das Restaurant oder einen Besuch vor Ort verweisen.",
   "Du sprichst Deutsch; spricht der Anrufer eine andere Sprache, antwortest du in seiner Sprache. Kurze Sätze, freundlich, per Sie.",
+  "Fragt der Anrufer, ob er mit einem Menschen spricht, sagst du immer wahrheitsgemäß, dass du eine KI bist, und bietest an, dass {NAME} zurückruft. Du gibst dich nie als Mensch aus.",
 ];
+
+/* Der feste Anfang jeder Begrüßung. Steht hier an EINER Stelle;
+   pruef-alessia.js hält ihn gegen jede erzeugte Datei. */
+const pflichtsatz = name => "Hallo, hier ist Alessia, die KI-Assistentin von " + name +
+  ". Unser Gespräch wird zur Bearbeitung Ihrer Bestellung als Text mitgeschrieben.";
 
 function zeitenText(z) {
   if (!Array.isArray(z) || z.length !== 7) return "Öffnungszeiten: bitte im Restaurant erfragen.";
@@ -71,7 +85,8 @@ function bauen(slug) {
   const mb = JSON.parse(fs.readFileSync(datei, "utf8"));
   const b = mb.betrieb || {};
   const name = String(b.name || slug).trim();
-  const gruss = wert("--gruss") || name + ", hier ist Alessia, die digitale Assistentin. Möchten Sie etwas bestellen oder haben Sie eine Frage zur Karte?";
+  const gruss = pflichtsatz(name) + " " +
+    (wert("--gruss") || "Möchten Sie etwas bestellen oder haben Sie eine Frage zur Karte?");
   const stimme = wert("--stimme") || "warm, ruhig, freundlich, per Sie, kurze Sätze";
   const adresse = [b.strasse, b.ort].filter(Boolean).join(", ");
 
@@ -116,6 +131,7 @@ function bauen(slug) {
       server: { url: server, secret: "<VAPI_SECRET>", headers: { "X-Vapi-Secret": "<VAPI_SECRET>" } } },
   ];
   return { slug, betrieb: name, firstMessage: gruss, systemprompt: prompt, tools,
+    artifactPlan: { recordingEnabled: false },
     hinweis: "Rufnummer und Assistent-ID danach im Master-Board unter „Alessia am Telefon“ eintragen und „Nimmt an“ setzen." };
 }
 
@@ -129,7 +145,9 @@ for (const slug of slugs) {
       "═══ Alessia · " + a.betrieb + " ═══\n\n— Erste Nachricht (First Message) —\n" + a.firstMessage +
       "\n\n— Systemprompt (System Prompt) —\n" + a.systemprompt +
       "\n\n— Werkzeuge (Tools) — als JSON in dist-alessia/" + slug + ".json, Feld „tools“\n" +
-      "Server-Adresse beider Werkzeuge: " + server + "\nKopfzeile: X-Vapi-Secret = <VAPI_SECRET>\n\n" + a.hinweis + "\n");
+      "Server-Adresse beider Werkzeuge: " + server + "\nKopfzeile: X-Vapi-Secret = <VAPI_SECRET>\n\n" +
+      "— Aufnahme — In Vapi die Tonaufnahme AUSSCHALTEN (Artifact Plan: recordingEnabled = false). " +
+      "Nur das Transkript bleibt; der Pflichtsatz in der Begrüßung sagt das dem Anrufer.\n\n" + a.hinweis + "\n");
     console.log("  ✓ " + slug + " → dist-alessia/" + slug + ".json / .txt");
   } catch (e) { fehler++; console.error("  ✗ " + slug + ": " + e.message); }
 }

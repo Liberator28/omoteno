@@ -37,6 +37,9 @@ const SQL = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf.sql"
 const SQL2 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e2.sql"), "utf8");
 const SQL3 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e3.sql"), "utf8");
 const SQL4 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e4.sql"), "utf8");
+const SQL5 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5a.sql"), "utf8");
+const SQL6 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5b.sql"), "utf8");
+const SQL8 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5c.sql"), "utf8");
 const EDGE = fs.readFileSync(path.join(OBEN, "supabase", "functions", "beleg-lesen", "index.ts"), "utf8");
 const HTML = fs.readFileSync(path.join(OBEN, "seiten", "einkauf.html"), "utf8");
 
@@ -74,6 +77,13 @@ function sqlParameter2(fn){
   return m ? m[1].split(",").map(s => s.trim().split(/\s+/)[0]).filter(Boolean).sort() : null;
 }
 for(const fn of ["inventur_buchen", "verlust_buchen"]) SIGNATUR[fn] = sqlParameter2(fn);
+/* E5-C hat inventur_buchen um p_stichtag erweitert (alte Fassung im
+   archiv) — es gilt die jüngste Migration, die die Funktion anlegt. */
+{
+  const SQL7 = fs.readFileSync(path.join(OBEN, "datenbank", "migration-einkauf-e5c.sql"), "utf8");
+  const m = SQL7.match(/create or replace function public\.inventur_buchen\(([^)]*)\)/);
+  if(m) SIGNATUR.inventur_buchen = m[1].split(",").map(x => x.trim().split(/\s+/)[0]).filter(Boolean).sort();
+}
 /* Der Pfad, den die Seite baut, muss durch die Prüfung der Funktion
    (zweite Quelle: die Regel in beleg-lesen) UND durch die Speicherregel. */
 const PFAD_EDGE = (() => { const m = EDGE.match(/new RegExp\("\^" \+ betrieb \+ "\/" \+ UUID \+ "([^"]+)"\)/); return m ? JSON.parse('"' + m[1] + '"') : null; })();
@@ -135,6 +145,68 @@ const laRecht = ((SQL4.match(/grant select \(([^)]*)\)\s*on public\.lieferanten_
 const laSelect = ((HTML.match(/from\("lieferanten_artikel"\)\.select\("([^"]+)"/) || ["", ""])[1]).split(",").map(x => x.trim()).filter(Boolean);
 pruef(laRecht.length >= 5 && laSelect.length >= 3 && laSelect.every(c => laRecht.includes(c)) && !laRecht.includes("letzter_preis"),
   "E4: lieferanten_artikel nur mit erlaubten Spalten gelesen (kein letzter_preis)", laSelect.filter(c => !laRecht.includes(c)).join(", ") || laSelect.join(","));
+
+/* E5-A: neue Gründe, feste Preisreihenfolge */
+const e5Gruende = ["beleg_speichern", "beleg_freigeben"].flatMap(fn => [...new Set([...((SQL5.match(new RegExp("create or replace function public\\." + fn + "\\([\\s\\S]*?\\nend \\$\\$;")) || [""])[0]).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1]))]);
+pruef(e5Gruende.includes("doppelt_standort") && e5Gruende.includes("datum") && e5Gruende.every(g => gruendeSeite.includes(g)),
+  "E5-A: jeder Grund von beleg_speichern/beleg_freigeben hat einen Satz", e5Gruende.filter(g => !gruendeSeite.includes(g)).join(", ") || e5Gruende.join(","));
+const viewSpalten = ((SQL5.match(/create or replace view public\.artikel_preise[\s\S]*?select([\s\S]*?)\bfrom\b/) || ["", ""])[1])
+  .split(",").map(x => x.trim().split(/\s+/).pop().replace(/^\w+\./, "")).filter(Boolean);
+const prSelect = ((HTML.match(/from\("artikel_preise"\)\.select\("([^"]+)"/) || ["", ""])[1]).split(",").map(x => x.trim());
+pruef(prSelect.includes("freigegeben_am") && prSelect.includes("pos") && prSelect.every(c => viewSpalten.includes(c)),
+  "E5-A: artikel_preise mit freigegeben_am und pos gelesen — jede Spalte gibt es in der Sicht", prSelect.filter(c => !viewSpalten.includes(c)).join(", ") || prSelect.join(","));
+const prOrdnung = [...((HTML.match(/from\("artikel_preise"\)[\s\S]*?\.limit\(/) || [""])[0]).matchAll(/\.order\("(\w+)"/g)].map(m => m[1]).join(">");
+const sqlOrdnung = [...((SQL5.match(/function public\.artikel_preis_betrieb[\s\S]*?limit 1/) || [""])[0]).matchAll(/pr\.(\w+) desc/g)].map(m => m[1]).join(">");
+pruef(prOrdnung === sqlOrdnung && /freigegeben_am/.test(sqlOrdnung), "E5-A: Seite sortiert die Preise wie artikel_preis_betrieb", prOrdnung + " / " + sqlOrdnung);
+
+/* E5-B: Umlagerung, Beleg verschieben, Standorte der Kette */
+const e5bFn = ["umlagerung_anlegen", "umlagerung_annehmen", "umlagerung_zurueckziehen", "beleg_verschieben"];
+const e5bKoerper = fn => (SQL6.match(new RegExp("create or replace function public\\." + fn + "\\([\\s\\S]*?\\nend \\$\\$;")) || [""])[0];
+const e5bGruende = [...new Set(e5bFn.flatMap(fn => [...e5bKoerper(fn).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1])))];
+pruef(e5bGruende.length >= 8 && e5bGruende.every(g => gruendeSeite.includes(g)), "E5-B: jeder Grund der Umlagerungs-Funktionen hat einen Satz",
+  e5bGruende.filter(g => !gruendeSeite.includes(g)).join(", ") || e5bGruende.join(","));
+const posFelder = [...new Set(e5bFn.flatMap(fn => [...e5bKoerper(fn).matchAll(/'feld',\s*'(\w+)'/g)].map(m => m[1])))];
+const posFeldSeite = (() => { const b = HTML.match(/const POS_FELD = \{([\s\S]*?)\n\};/); return b ? [...b[1].matchAll(/(\w+):"/g)].map(m => m[1]) : []; })();
+pruef(posFelder.length >= 5 && posFelder.every(f => posFeldSeite.includes(f)), "E5-B: jedes 'feld' einer Position hat einen Satz", posFelder.filter(f => !posFeldSeite.includes(f)).join(", ") || posFelder.join(","));
+const SIG6 = {};
+for(const fn of [...e5bFn, "kette_standorte"]){
+  const m = SQL6.match(new RegExp("function public\\." + fn + "\\(([^)]*)\\)"));
+  SIG6[fn] = m ? m[1].split(",").map(x => x.trim().split(/\s+/)[0]).filter(Boolean).sort() : null;
+}
+pruef(Object.values(SIG6).every(Boolean), "E5-B: Signaturen aus der Migration gelesen", JSON.stringify(SIG6));
+const tabSpalten = t => new Set([...((SQL6.match(new RegExp("create table if not exists public\\." + t + " \\(([\\s\\S]*?)\\n\\);")) || ["", ""])[1]).matchAll(/^\s*(\w+)\s/gm)].map(m => m[1]));
+const umSel = ((HTML.match(/from\("umlagerungen"\)\.select\("([^"]+)"/) || ["", ""])[1]);
+const umKopf = umSel.replace(/umlagerungspositionen\([^)]*\)/, "").split(",").map(x => x.trim()).filter(Boolean);
+const umPosSel = ((umSel.match(/umlagerungspositionen\(([^)]*)\)/) || ["", ""])[1]).split(",").map(x => x.trim()).filter(Boolean);
+pruef(umKopf.length >= 6 && umKopf.every(c => tabSpalten("umlagerungen").has(c)) && umPosSel.length >= 4 && umPosSel.every(c => tabSpalten("umlagerungspositionen").has(c)),
+  "E5-B: gelesene Spalten von umlagerungen und -positionen gibt es", [...umKopf, ...umPosSel].filter(c => !tabSpalten("umlagerungen").has(c) && !tabSpalten("umlagerungspositionen").has(c)).join(", ") || "alle");
+
+/* E5-C: Sortiment, Lieferanten je Standort, Zählung */
+const e5cFn = ["artikel_standort_setzen", "lieferant_standort_setzen", "inventur_entwurf_sichern", "inventur_buchen"];
+const e5cKoerper = fn => (SQL8.match(new RegExp("create or replace function public\\." + fn + "\\([\\s\\S]*?\\nend \\$\\$;")) || [""])[0];
+const e5cGruende = [...new Set(e5cFn.flatMap(fn => [...e5cKoerper(fn).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1])))];
+pruef(e5cGruende.includes("stichtag") && e5cGruende.every(g => gruendeSeite.includes(g)), "E5-C: jeder Grund hat einen Satz",
+  e5cGruende.filter(g => !gruendeSeite.includes(g)).join(", ") || e5cGruende.join(","));
+const SIG8 = {};
+for(const fn of e5cFn){ const m = SQL8.match(new RegExp("create or replace function public\\." + fn + "\\(([^)]*)\\)")); SIG8[fn] = m ? m[1].split(",").map(x => x.trim().split(/\s+/)[0]).filter(Boolean).sort() : null; }
+pruef(Object.values(SIG8).every(Boolean), "E5-C: Signaturen gelesen", JSON.stringify(SIG8));
+const tab8 = t => new Set([...((SQL8.match(new RegExp("create table if not exists public\\." + t + " \\(([\\s\\S]*?)\\n\\);")) || ["", ""])[1]).matchAll(/^\s*(\w+)\s/gm)].map(m => m[1]));
+const sel8 = t => ((HTML.match(new RegExp('from\\("' + t + '"\\)\\.select\\("([^"]+)"')) || ["", ""])[1]).split(",").map(x => x.trim()).filter(Boolean);
+const fremd8 = ["artikel_standort", "lieferanten_standort", "inventur_entwurf"].flatMap(t => sel8(t).filter(c => !tab8(t).has(c)).map(c => t + "." + c));
+pruef(["artikel_standort", "lieferanten_standort", "inventur_entwurf"].every(t => sel8(t).length >= 3) && !fremd8.length, "E5-C: gelesene Spalten gibt es in den Tabellen", fremd8.join(", ") || "alle");
+/* Jeder Schlüssel, den die Seite in p_daten schickt, wird in der SQL gelesen. */
+const datenSql = fn => new Set([...e5cKoerper(fn).matchAll(/p_daten\s*->>?\s*'(\w+)'/g)].map(m => m[1]));
+/* Aus dem Körper der Seiten-Funktion, die die SQL-Funktion ruft. */
+const SEITEN_FN = { artikel_standort_setzen:"sortimentSichern", lieferant_standort_setzen:"liefStandortSichern" };
+const datenSeite = fn => {
+  const koerper = (HTML.match(new RegExp("async function " + SEITEN_FN[fn] + "\\([\\s\\S]*?\\n\\}")) || [""])[0];
+  const b = (koerper.match(/const daten = \{([\s\S]*?)\};/) || ["", ""])[1];
+  return [...b.replace(/\[[^\]]*\]|\([^)]*\)/g, "").matchAll(/(\w+):/g)].map(m => m[1]);
+};
+for(const fn of ["artikel_standort_setzen", "lieferant_standort_setzen"]){
+  const ds = datenSeite(fn), dq = datenSql(fn);
+  pruef(ds.length >= 3 && ds.every(k => dq.has(k)), "E5-C: jeder Schlüssel in p_daten von " + fn + " wird gelesen", ds.filter(k => !dq.has(k)).join(", ") || ds.join(","));
+}
 
 /* ── 2 · Gestellte Datenbank ────────────────────────────────────── */
 const ORG = "org-1", BETRIEB = "af095b14-0000-4000-8000-000000000001";
@@ -207,6 +279,11 @@ function ersatz(start){
     function abfrage(tabelle){
       const q = { tabelle, filter:[], art:"select", werte:null };
       const fertig = () => {
+        const langsam = D.langsam && q.filter.some(([k, v]) => k === "betrieb_id" && v === D.langsam);
+        if(langsam) return new Promise(r => setTimeout(() => r(fertigJetzt()), D.langsamMs || 700));
+        return fertigJetzt();
+      };
+      const fertigJetzt = () => {
         if(!window.__pinOk) window.__vorPin++;
         if(q.art !== "select"){
           window.__schreib.push({ tabelle, art:q.art, werte:q.werte, filter:q.filter });
@@ -214,6 +291,7 @@ function ersatz(start){
           return { data:null, error: f || null };
         }
         window.__lesen.push(tabelle);
+        if((D.leseFehler || {})[tabelle]) return { data:null, error: D.leseFehler[tabelle] };
         let quelle = { betrieb_mitglieder:D.mitglieder }[tabelle] || D[tabelle] || [];
         for(const [k, v] of q.filter) quelle = quelle.filter(z => z[k] === v);
         return { data: JSON.parse(JSON.stringify(quelle)), error:null };
@@ -238,6 +316,7 @@ function ersatz(start){
       },
       rpc: async (name, args) => {
         window.__rufe.push({ name, args: JSON.parse(JSON.stringify(args || {})) });
+        if(D.langsam && args && args.p_betrieb === D.langsam) await new Promise(r => setTimeout(r, D.langsamMs || 700));
         if(name === "pin_status") return { data: D.pinPflicht ? { pflicht:true, ok:false, hat_pin:true, gesperrt:false } : { pflicht:false, ok:true }, error:null };
         if(name === "pin_pruefen"){ window.__pinOk = args.p_pin === "12345678"; return { data: window.__pinOk ? { ok:true } : { ok:false, grund:"falsch", verbleibend:4 }, error:null }; }
         if(name === "admin_anmelden") return { data:{ erlaubt:true }, error:null };
@@ -254,6 +333,7 @@ function ersatz(start){
           window.__hoch = { eimer, pfad, typ: opt && opt.contentType, groesse: b.length, kopf: [b[0], b[1], b[2], b[3]] };
           return D.hochFehler ? { data:null, error:{ message:"x" } } : { data:{ path: pfad }, error:null };
         },
+        download: async pfad => { window.__geladen = pfad; return D.dlFehler ? { data:null, error:{ message:"x" } } : { data: new Blob([new Uint8Array([0xff, 0xd8, 1, 2])]), error:null }; },
         createSignedUrl: async (pfad, sek) => { window.__signiert = { eimer, pfad, sek }; return { data:{ signedUrl:"about:blank#" + pfad }, error:null }; }
       }) },
       functions: { invoke: async (name, opt) => {
@@ -786,15 +866,308 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await ctx.close();
   }
 
+  /* ── E5-A · Mehrere Standorte verlässlich ──────────────────────── */
+  console.log("\n══ 15 · Mehrere Standorte verlässlich (E5-A) ══");
+  {
+    /* Veraltete Antwort: A antwortet langsam, B schnell — nach dem
+       Wechsel auf B darf A's späte Antwort nichts mehr überschreiben. */
+    const d = zweiStandorte("inhaber", ORG);
+    d.einkaufsbelege.push({ id: "be-zwei", betrieb_id: "b-zwei", lieferant_id: "l-2", belegnummer: "Z-9", belegdatum: "2026-10-10", netto: 5, steuer: null, brutto: null,
+      status: "entwurf", quelle: "manuell", notiz: null, positionen_entwurf: [], angelegt: "2026-10-10T08:00:00Z" });
+    const { ctx, p, kons } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]');
+    await p.selectOption("#betriebWahl", "b-zwei"); await p.waitForTimeout(200);
+    pruef(/Z-9/.test(await p.textContent("#belegListe")) && !/R-100/.test(await p.textContent("#belegListe")), "Voraussetzung: B zeigt nur seinen Beleg");
+    await p.evaluate(b => { window.__D.langsam = b; }, BETRIEB);
+    await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(60);
+    await p.selectOption("#betriebWahl", "b-zwei");
+    await p.waitForTimeout(1300);
+    const liste = await p.textContent("#belegListe"), name = await p.textContent("#betriebName");
+    pruef(/Café Zwei/.test(name) && /Z-9/.test(liste) && !/R-100/.test(liste), "schneller Wechsel A → B: die späte Antwort von A überschreibt B nicht", name + " · " + liste.replace(/\s+/g, " ").slice(0, 80));
+    pruef(!kons.length, "kein Seitenfehler beim Wechsel", kons.join(" | "));
+    await ctx.close();
+  }
+  {
+    /* Neuer Beleg nach Mitternacht (Berlin) trägt den Berliner Tag. */
+    const ctx = await browser.newContext({ viewport:{ width: 390, height: 844 } });
+    const p = await ctx.newPage();
+    await p.clock.setFixedTime(new Date("2026-10-17T22:30:00Z"));
+    await p.addInitScript({ content: ersatz(grundDaten("inhaber")) });
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto(SEITE);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click("#belegNeu");
+    const datum = await p.inputValue("#eDatum").catch(() => "");
+    pruef(datum === "2026-10-18", "neuer Beleg um 00:30 Berliner Zeit: Datum 18.10. (nicht der UTC-Tag 17.10.)", datum);
+    await ctx.close();
+  }
+  {
+    const d = grundDaten("inhaber");
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]');
+    await p.click('#belegListe [data-beleg="be-entwurf"]'); await p.waitForTimeout(150);
+    await p.evaluate(() => { window.__D.antworten.beleg_freigeben = { ok:false, grund:"doppelt_standort", standort:"Café Nord" }; });
+    await p.click('[data-aktion="freigeben"]'); await p.waitForTimeout(350);
+    const t1 = await p.textContent("#eMeldung");
+    pruef(/Café Nord/.test(t1) && /falschen Standort/.test(t1), "doppelt_standort → Satz mit dem Namen des anderen Standorts", t1);
+    await p.evaluate(() => { window.__D.antworten.beleg_freigeben = { ok:false, grund:"datum" }; });
+    await p.click('[data-aktion="freigeben"]'); await p.waitForTimeout(350);
+    pruef(/400 Tage/.test(await p.textContent("#eMeldung")), "datum → Satz", await p.textContent("#eMeldung"));
+    await p.evaluate(() => { window.__D.antworten.beleg_freigeben = { ok:true, positionen:1, preisaenderungen:[],
+      zuordnungen:[{ pos:1, bezeichnung:"Mehl 405 25 kg", artikel_vorher:"a-wein", artikel_jetzt:"a-mehl", gebinde_vorher:750, gebinde_jetzt:25000 }] }; });
+    await p.click('[data-aktion="freigeben"]'); await p.waitForTimeout(400);
+    const m = await p.evaluate(() => { const e = document.getElementById("eMeldung"); return { t: e.textContent, sicht: !e.hidden, fehler: e.classList.contains("fehler"), rolle: e.getAttribute("role") }; });
+    pruef(m.sicht && /Hauswein weiß/.test(m.t) && /Mehl 405/.test(m.t) && /alle Standorte/.test(m.t) && !m.fehler && m.rolle === "status",
+      "geänderte gelernte Zuordnung wird nach der Freigabe genannt (alt → neu, als Hinweis, nicht als Fehler)", JSON.stringify(m));
+    await ctx.close();
+  }
+  {
+    const d = grundDaten("inhaber");
+    d.antworten["fn:beleg-lesen"] = { ok:true, id:"be-entwurf", positionen:1, zugeordnet:1, hinweis:"datei_doppelt_standort", standort:"Café Nord", datum_verworfen:"2062-10-01" };
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]');
+    await p.setInputFiles("#einlesenDatei", { name:"rechnung.pdf", mimeType:"application/pdf", buffer: Buffer.from("%PDF-1.4\n%e5\n") });
+    await p.waitForTimeout(600);
+    const t = await p.textContent("#eMeldung").catch(() => "");
+    pruef(/Café Nord/.test(t) && /2062-10-01/.test(t), "Einlesen: gleiche Datei an anderem Standort und verworfenes Datum werden gesagt", t);
+    await ctx.close();
+  }
+
+  /* ── E5-B · Ware zwischen Standorten ───────────────────────────── */
+  console.log("\n══ 16 · Umlagerung, Zentraleinkauf, Beleg verschieben (E5-B) ══");
+  const UMLAGER = () => [
+    { id:"u-ein", von_betrieb:"b-zwei", nach_betrieb:BETRIEB, status:"unterwegs", notiz:"Dienstag", beleg_id:null, angelegt:"2026-10-16T08:00:00Z",
+      umlagerungspositionen:[{ pos:1, artikel_id:"a-wein", menge_basis:3000, wert_netto:18, menge_angekommen:null }, { pos:2, artikel_id:"a-mehl", menge_basis:2000, wert_netto:4, menge_angekommen:null }] },
+    { id:"u-aus", von_betrieb:BETRIEB, nach_betrieb:"b-zwei", status:"unterwegs", notiz:null, beleg_id:null, angelegt:"2026-10-15T08:00:00Z",
+      umlagerungspositionen:[{ pos:1, artikel_id:"a-wein", menge_basis:1500, wert_netto:9, menge_angekommen:null }] },
+    { id:"u-alt", von_betrieb:BETRIEB, nach_betrieb:"b-zwei", status:"angenommen", notiz:null, beleg_id:null, angelegt:"2026-10-01T08:00:00Z", angenommen_am:"2026-10-02T08:00:00Z",
+      umlagerungspositionen:[{ pos:1, artikel_id:"a-mehl", menge_basis:1000, wert_netto:2, menge_angekommen:600 }] }
+  ];
+  const mitLager = (rolle) => { const d = zweiStandorte(rolle || "inhaber", ORG); d.antworten.kette_standorte = [{ id:"b-zwei", name:"Café Zwei" }]; d.umlagerungen = UMLAGER(); return d; };
+  {
+    const { ctx, p } = await oeffnen(browser, grundDaten("inhaber"));
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    /* Seit E5-C hat jeder Standort „Lager“ (Nachbestellen) — den Teil
+       Umlagerungen aber nur mit Kette. */
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    pruef(await p.isVisible("#nachListe") && await p.isHidden("#umTeil"), "ohne Kette und ohne Umlagerung: „Lager“ ohne den Teil Umlagerungen");
+    await ctx.close();
+  }
+  {
+    const { ctx, p, kons } = await oeffnen(browser, mitLager());
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    pruef(await p.isVisible("#reiterLager"), "mit anderem Standort in der Kette: Reiter „Lager“ da");
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    const t = await p.evaluate(() => ({ ein: document.getElementById("umEin").textContent, aus: document.getElementById("umAus").textContent, alt: document.getElementById("umVerlauf").textContent,
+      felder: document.querySelectorAll('[data-um="u-ein"] [data-um-an]').length, ziel: [...document.querySelectorAll("#umZiel option")].map(o => o.textContent) }));
+    pruef(/Von Café Zwei/.test(t.ein) && t.felder === 2 && /An Café Zwei/.test(t.aus) && /Fehlmenge/.test(t.alt) && t.ziel.join() === "Café Zwei",
+      "eingehend mit je einem Feld pro Position, ausgehend, Verlauf mit Fehlmenge, Ziel aus kette_standorte", JSON.stringify(t).slice(0, 200));
+    /* Schicken */
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(150);
+    pruef(!(await rufe(p, "umlagerung_anlegen")).length && /mindestens einen Artikel/.test(await p.textContent("#umMeldung")), "leer abschicken → Satz, kein Aufruf");
+    await p.selectOption('#umZeilen [data-umf="artikel_id"]', "a-wein");
+    await p.fill('#umZeilen [data-umf="menge"]', "viel");
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(150);
+    pruef(!(await rufe(p, "umlagerung_anlegen")).length && /Menge/.test(await p.textContent("#umMeldung")), "unlesbare Menge → Satz, kein Aufruf", await p.textContent("#umMeldung"));
+    await p.fill('#umZeilen [data-umf="menge"]', "1,5");
+    await p.evaluate(() => { window.__D.antworten.umlagerung_anlegen = { ok:true, id:"u-neu", wert:9, bestand_negativ:["a-wein"] }; });
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(300);
+    const an = (await rufe(p, "umlagerung_anlegen"))[0];
+    pruef(an && an.args.p_von === BETRIEB && an.args.p_nach === "b-zwei" && JSON.stringify(an.args.p_positionen) === JSON.stringify([{ artikel_id:"a-wein", menge_basis:1500 }])
+      && Object.keys(an.args).sort().join() === SIG6.umlagerung_anlegen.join(), "„1,5“ l Wein → 1500 ml, genau die Parameter der Funktion", JSON.stringify(an && an.args));
+    const mm = await p.evaluate(() => { const m = document.getElementById("umMeldung"); return { t: m.textContent, fehler: m.classList.contains("fehler"), sicht: !m.hidden }; });
+    pruef(mm.sicht && /Minus/.test(mm.t) && /Hauswein weiß/.test(mm.t) && !mm.fehler, "Bestand ins Minus → gesagt, als Hinweis (abgeschickt ist es trotzdem)", JSON.stringify(mm));
+    await p.evaluate(() => { window.__D.antworten.umlagerung_anlegen = { ok:false, grund:"position", pos:1, feld:"preis" }; });
+    await p.selectOption('#umZeilen [data-umf="artikel_id"]', "a-mehl"); await p.fill('#umZeilen [data-umf="menge"]', "2");
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(300);
+    pruef(/Position 1: hat an diesem Standort noch keinen Einkaufspreis/.test(await p.textContent("#umMeldung")), "Grund „preis“ → Satz", await p.textContent("#umMeldung"));
+    /* Annehmen */
+    await p.fill('[data-um="u-ein"] [data-um-an="2"]', "5");
+    await p.click('[data-aktion="um-annehmen"][data-id="u-ein"]'); await p.waitForTimeout(150);
+    pruef(!(await rufe(p, "umlagerung_annehmen")).length && /mehr als geschickt/.test(await p.textContent('[data-um-meldung="u-ein"]')), "mehr angekommen als geschickt → Satz, kein Aufruf");
+    await p.fill('[data-um="u-ein"] [data-um-an="2"]', "1,5");
+    await p.evaluate(() => { window.__D.antworten.umlagerung_annehmen = { ok:true, wert:21, fehlwert:1 }; });
+    await p.click('[data-aktion="um-annehmen"][data-id="u-ein"]'); await p.waitForTimeout(300);
+    const ann = (await rufe(p, "umlagerung_annehmen"))[0];
+    pruef(ann && ann.args.p_id === "u-ein" && JSON.stringify(ann.args.p_mengen) === JSON.stringify([{ pos:2, menge_angekommen:1500 }]) && Object.keys(ann.args).sort().join() === SIG6.umlagerung_annehmen.join(),
+      "leeres Feld = alles, „1,5“ kg Mehl → 1500 g, nur diese Position geschickt", JSON.stringify(ann && ann.args));
+    pruef(/Fehlmenge 1,00\s€/.test(await p.textContent("#toast")), "Fehlmenge im Satz genannt", await p.textContent("#toast"));
+    /* Zurückziehen erst beim zweiten Tipp */
+    await p.click('[data-aktion="um-zurueck"][data-id="u-aus"]'); await p.waitForTimeout(100);
+    pruef(!(await rufe(p, "umlagerung_zurueckziehen")).length, "Zurückziehen: erster Tipp ruft nichts");
+    await p.click('[data-aktion="um-zurueck"][data-id="u-aus"]'); await p.waitForTimeout(300);
+    const zr = (await rufe(p, "umlagerung_zurueckziehen"))[0];
+    pruef(zr && zr.args.p_id === "u-aus" && Object.keys(zr.args).join() === SIG6.umlagerung_zurueckziehen.join(), "zweiter Tipp zieht genau diese Umlagerung zurück", JSON.stringify(zr && zr.args));
+    /* Zentraleinkauf aus dem freigegebenen Beleg */
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click('#belegListe [data-beleg="be-frei"]'); await p.waitForTimeout(250);
+    await p.click('[data-aktion="um-aus-beleg"]'); await p.waitForTimeout(150);
+    const vor = await p.evaluate(() => ({ lager: !document.getElementById("v-lager").hidden, art: document.querySelector('#umZeilen [data-umf="artikel_id"]').value,
+      menge: document.querySelector('#umZeilen [data-umf="menge"]').value, hinweis: document.getElementById("umAusBeleg").textContent }));
+    pruef(vor.lager && vor.art === "a-wein" && vor.menge === "9" && /R-100/.test(vor.hinweis), "„An Standort weitergeben“: Lager offen, Wein 9 l aus dem Beleg", JSON.stringify(vor));
+    await p.fill('#umZeilen [data-umf="menge"]', "4");
+    await p.evaluate(() => { window.__D.antworten.umlagerung_anlegen = { ok:true, id:"u-z", wert:24, bestand_negativ:[] }; window.__rufe = []; });
+    await p.click('[data-aktion="um-schicken"]'); await p.waitForTimeout(300);
+    const zb = (await rufe(p, "umlagerung_anlegen"))[0];
+    pruef(zb && zb.args.p_beleg === "be-frei" && zb.args.p_positionen[0].menge_basis === 4000, "mit Beleg als Preisquelle, 4 l = 4000 ml", JSON.stringify(zb && zb.args));
+    pruef(!kons.length, "keine Seitenfehler", kons.join(" | "));
+    await ctx.close();
+  }
+  {
+    /* Entwurf an den anderen eigenen Standort, mit Kopie der Datei */
+    const { ctx, p, kons } = await oeffnen(browser, mitLager());
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click('#belegListe [data-beleg="be-entwurf"]'); await p.waitForTimeout(150);
+    const ziele = await p.evaluate(() => [...document.querySelectorAll("#eVerschiebenZiel option")].map(o => o.value));
+    pruef(ziele.join() === "b-zwei", "Verschieben: nur der andere eigene Standort", ziele.join());
+    await p.evaluate(() => { window.__D.antworten.beleg_verschieben = { ok:false, grund:"datei" }; });
+    await p.click('[data-aktion="beleg-verschieben"]'); await p.waitForTimeout(300);
+    const v1 = (await rufe(p, "beleg_verschieben"))[0], hoch = await p.evaluate(() => window.__hoch), geladen = await p.evaluate(() => window.__geladen);
+    pruef(geladen === BETRIEB + "/11111111-2222-4333-8444-555555555555.jpg" && hoch && /^b-zwei\/[0-9a-f-]{36}\.jpg$/.test(hoch.pfad) && hoch.eimer === "belege",
+      "alte Datei geladen, Kopie in den Ordner des Ziels hochgeladen", JSON.stringify({ geladen, hoch }));
+    pruef(v1 && v1.args.p_beleg === "be-entwurf" && v1.args.p_ziel === "b-zwei" && v1.args.p_pfad === hoch.pfad && Object.keys(v1.args).sort().join() === SIG6.beleg_verschieben.join(),
+      "beleg_verschieben mit Beleg, Ziel und dem Pfad der Kopie", JSON.stringify(v1 && v1.args));
+    pruef(/Kopie der Rechnung ist im anderen Standort nicht angekommen/.test(await p.textContent("#eMeldung")), "Grund „datei“ → eigener Satz", await p.textContent("#eMeldung"));
+    await p.evaluate(() => { window.__D.antworten.beleg_verschieben = { ok:true, id:"be-entwurf", betrieb:"b-zwei" }; });
+    await p.click('[data-aktion="beleg-verschieben"]'); await p.waitForTimeout(400);
+    pruef(/Café Zwei/.test(await p.textContent("#betriebName")) && /Café Zwei/.test(await p.textContent("#toast")), "danach steht der Standort des Ziels offen", await p.textContent("#toast"));
+    pruef(!kons.length, "keine Seitenfehler", kons.join(" | "));
+    await ctx.close();
+  }
+  {
+    const d = mitLager(); d.dlFehler = true;
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click('#belegListe [data-beleg="be-entwurf"]'); await p.waitForTimeout(150);
+    await p.click('[data-aktion="beleg-verschieben"]'); await p.waitForTimeout(300);
+    pruef(!(await rufe(p, "beleg_verschieben")).length && /nicht kopieren/.test(await p.textContent("#eMeldung")), "Datei nicht ladbar → Satz, NICHT verschoben (sonst Beleg ohne Datei)");
+    await ctx.close();
+  }
+  {
+    /* Team: sieht Unterwegs, kann nichts buchen */
+    const d = mitLager(); d.mitglieder[0].rolle = "team"; d.rolle = "team";
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(150);
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    const tm = await p.evaluate(() => ({ an: !!document.querySelector('[data-aktion="um-annehmen"]') && document.querySelector('[data-aktion="um-annehmen"]').offsetParent !== null,
+      form: document.getElementById("umNeuKarte").offsetParent !== null, ein: /Von Café Zwei/.test(document.getElementById("umEin").textContent) }));
+    pruef(tm.ein && !tm.an && !tm.form, "Team sieht, was unterwegs ist, kann aber weder annehmen noch schicken", JSON.stringify(tm));
+    await ctx.close();
+  }
+
+  /* ── E5-C · Sortiment, Lieferanten je Standort, Nachbestellen, Zählliste ── */
+  console.log("\n══ 17 · Sortiment und Nachbestellen je Standort (E5-C) ══");
+  const mitSortiment = () => { const d = grundDaten("inhaber");
+    /* 30,5 l mind., 18 l da → 12,5 l fehlen: KEIN Vielfaches der 0,75-l-Flasche,
+       sonst rundeten auf und ab gleich (§8.1g F). */
+    d.artikel_standort = [{ betrieb_id: BETRIEB, artikel_id:"a-wein", aktiv:true, mindestbestand:30500, lagerort:"Bar", reihenfolge:null },
+                          { betrieb_id: BETRIEB, artikel_id:"a-mehl", aktiv:true, mindestbestand:null, lagerort:"Keller", reihenfolge:null },
+                          { betrieb_id: "b-anders", artikel_id:"a-mehl", aktiv:false, mindestbestand:1, lagerort:"Fremd", reihenfolge:null }];
+    d.lieferanten_standort = [{ betrieb_id: BETRIEB, lieferant_id:"l-1", kundennummer:"K-HIER", ansprechpartner:null, liefertage:["mo","do"], mindestbestellwert:200 }];
+    d.inventur_entwurf = [{ betrieb_id: BETRIEB, daten:{ "a-mehl":"2,5" }, stichtag:"2026-10-16T18:00:00Z", geaendert:"2026-10-16T18:05:00Z" }];
+    return d; };
+  {
+    const { ctx, p, kons } = await oeffnen(browser, mitSortiment());
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.evaluate(() => { window.__kopiert = null; navigator.clipboard.writeText = async t => { window.__kopiert = t; }; });
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    const nb = await p.evaluate(() => ({ text: (document.querySelector("[data-nachtext]") || {}).textContent || "", karte: document.getElementById("nachListe").textContent,
+      wa: (document.querySelector('#nachListe a[href^="https://wa.me/"]') || {}).href || "", um: document.getElementById("umTeil").hidden }));
+    pruef(/Bestellung Café Probe — Kd\.-Nr\. K-HIER/.test(nb.text) && /• 17 × Flasche Wein 0,75 l \(je 750 ml\)/.test(nb.text),
+      "Wein: 30,5 l mind., 18 l da → 12,5 l fehlen = 17 Flaschen (aufgerundet), Bezeichnung des Lieferanten, Kd.-Nr. DIESES Standorts", nb.text);
+    pruef(!/Mehl/.test(nb.text), "Mehl ohne Mindestbestand steht nicht auf der Liste (der fremde Standort setzt ihn nicht)");
+    pruef(/ca\. 91,80\s€/.test(nb.karte) && /Mindestbestellwert von 200,00\s€/.test(nb.karte) && /Liefert Mo, Do/.test(nb.karte), "unter dem Mindestbestellwert (91,80 €) gesagt, Liefertage genannt", nb.karte.slice(0, 160));
+    pruef(nb.wa && decodeURIComponent(nb.wa.split("text=")[1]) === nb.text && nb.um, "WhatsApp-Link trägt genau den Text; ohne Kette kein Umlagerungsteil");
+    await p.click('[data-aktion="nach-kopieren"]'); await p.waitForTimeout(100);
+    pruef((await p.evaluate(() => window.__kopiert)) === nb.text && !(await rufe(p, "umlagerung_anlegen")).length, "„Text kopieren“ legt genau den Text ab, verschickt nichts");
+    /* Artikel: Standort-Angaben */
+    await p.click('.reiter [data-ansicht="artikel"]');
+    await p.click('[data-aktion="artikel-auf"][data-id="a-mehl"]');
+    await p.fill("#soMin", "abc"); await p.click('[data-aktion="sort-sichern"]'); await p.waitForTimeout(100);
+    pruef(!(await rufe(p, "artikel_standort_setzen")).length && /Mindestbestand/.test(await p.textContent("#soMeldung")), "unlesbarer Mindestbestand → Satz, kein Aufruf");
+    await p.fill("#soMin", "5"); await p.fill("#soOrt", " Keller ");
+    await p.click('[data-aktion="sort-sichern"]'); await p.waitForTimeout(250);
+    const ss = (await rufe(p, "artikel_standort_setzen"))[0];
+    pruef(ss && ss.args.p_betrieb === BETRIEB && ss.args.p_artikel === "a-mehl" && JSON.stringify(ss.args.p_daten) === JSON.stringify({ aktiv:true, mindestbestand:5000, lagerort:"Keller", reihenfolge:null })
+      && Object.keys(ss.args).sort().join() === SIG8.artikel_standort_setzen.join(), "5 kg → 5000 g, Lagerort getrimmt, genau die Parameter", JSON.stringify(ss && ss.args));
+    /* Die Zeile bleibt nach dem Sichern offen. */
+    await p.click('[data-aktion="sort-aktiv"][data-id="a-mehl"]'); await p.waitForTimeout(250);
+    const sa = (await rufe(p, "artikel_standort_setzen"))[1];
+    pruef(sa && sa.args.p_daten.aktiv === false, "„Hier nicht mehr führen“ → aktiv false nur für diesen Standort", JSON.stringify(sa && sa.args.p_daten));
+    /* Lieferant je Standort */
+    await p.click('.reiter [data-ansicht="lieferanten"]');
+    await p.click('[data-aktion="lief-auf"][data-id="l-1"]');
+    const vor = await p.evaluate(() => ({ kunde: document.getElementById("lsKunde").value, mo: document.querySelector('[data-tag="mo"]').getAttribute("aria-pressed") }));
+    pruef(vor.kunde === "K-HIER" && vor.mo === "true", "gespeicherte Angaben dieses Standorts stehen im Formular", JSON.stringify(vor));
+    await p.click('[data-tag="do"]'); await p.click('[data-tag="fr"]');
+    await p.fill("#lsMbw", "150,50");
+    await p.click('[data-aktion="lst-sichern"]'); await p.waitForTimeout(250);
+    const ls = (await rufe(p, "lieferant_standort_setzen"))[0];
+    pruef(ls && JSON.stringify(ls.args.p_daten) === JSON.stringify({ kundennummer:"K-HIER", ansprechpartner:null, liefertage:["mo","fr"], mindestbestellwert:150.5 })
+      && Object.keys(ls.args).sort().join() === SIG8.lieferant_standort_setzen.join(), "Liefertage umgeschaltet (Do aus, Fr an), 150,50 € gelesen", JSON.stringify(ls && ls.args));
+    pruef(!kons.length, "keine Seitenfehler", kons.join(" | "));
+    await ctx.close();
+  }
+  {
+    /* Zählliste: Lagerort-Reihenfolge, Zwischenstand, Stichtag */
+    const d = mitSortiment();
+    d.artikel_standort[0].aktiv = false;   /* Wein hier nicht mehr geführt, aber 18 l Bestand */
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="artikel"]');
+    pruef(/nicht hier/.test(await p.textContent("#artikelListe")), "Artikel hier abgeschaltet → „nicht hier“");
+    await p.click("#inventurKnopf");
+    const z = await p.evaluate(() => ({ reihe: [...document.querySelectorAll("#invListe h4, #invListe [data-inv]")].map(e => e.tagName === "H4" ? "#" + e.textContent : e.dataset.inv),
+      mehl: document.querySelector('[data-inv="a-mehl"]')?.value, stand: !document.getElementById("invStand").hidden, wein: document.querySelector('[data-inv="a-wein"]')?.closest("label").textContent || "(Wein fehlt in der Zählliste)",
+      stich: document.getElementById("invStichtag").value }));
+    pruef(z.reihe.join() === "#Bar,a-wein,#Keller,a-mehl", "Zählliste nach Lagerort (Bar vor Keller), mit Überschriften", z.reihe.join());
+    pruef(z.mehl === "2,5" && z.stand && /hier nicht mehr geführt/.test(z.wein), "Zwischenstand aus der Datenbank vorausgefüllt; nicht mehr geführter Wein mit Bestand bleibt zählbar", JSON.stringify(z));
+    await p.click('.reiter [data-ansicht="belege"]'); await p.click("#belegNeu");
+    const opt = await p.evaluate(() => [...document.querySelectorAll('[data-f="artikel_id"] option')].map(o => o.value).filter(Boolean));
+    pruef(!opt.includes("a-wein") && opt.includes("a-mehl"), "im Beleg nicht mehr wählbar, was hier nicht geführt wird", opt.join());
+    await p.click('.reiter [data-ansicht="artikel"]'); await p.click("#inventurKnopf");
+    if(await p.isHidden("#inventurKarte")) await p.click("#inventurKnopf");
+    await p.fill('[data-inv="a-wein"]', "17");
+    await p.fill("#invStichtag", "2026-10-16T20:00");
+    await p.click("#invZwischen"); await p.waitForTimeout(250);
+    const zw = (await rufe(p, "inventur_entwurf_sichern"))[0];
+    pruef(zw && zw.args.p_daten["a-wein"] === "17" && zw.args.p_daten["a-mehl"] === "2,5" && zw.args.p_stichtag === new Date("2026-10-16T20:00").toISOString()
+      && Object.keys(zw.args).sort().join() === SIG8.inventur_entwurf_sichern.join(), "Zwischenstand: getippte Werte wie getippt, Stichtag als Zeitpunkt", JSON.stringify(zw && zw.args));
+    await p.evaluate(() => { window.__D.antworten.inventur_buchen = { ok:false, grund:"stichtag" }; });
+    await p.click("#invBuchen"); await p.waitForTimeout(250);
+    const ib = (await rufe(p, "inventur_buchen"))[0];
+    pruef(ib && ib.args.p_stichtag === new Date("2026-10-16T20:00").toISOString() && /62 Tage/.test(await p.textContent("#invMeldung")), "Buchen schickt den Stichtag; Grund „stichtag“ als Satz", JSON.stringify(ib && ib.args.p_stichtag));
+    await ctx.close();
+  }
+  {
+    const d = mitSortiment(); d.leseFehler = { artikel_standort: { message:"relation does not exist", code:"42P01" } };
+    const { ctx, p, kons } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
+    pruef(/migration-einkauf-e5c/.test(await p.textContent("#nachListe")) && /R-100/.test(await p.evaluate(() => JSON.stringify(window.__D.einkaufsbelege))) && !kons.length,
+      "ohne E5-C-Migration: Satz im Lager, Rest der Seite lädt weiter");
+    await p.click('.reiter [data-ansicht="belege"]');
+    pruef(/R-100/.test(await p.textContent("#belegListe")), "… Belege weiterhin da");
+    await ctx.close();
+  }
+
   /* ── 12 · Maße, Kontrast, Überlauf ─────────────────────────────── */
   console.log("\n══ 11 · 360 und 1280 px ══");
   for(const breite of [360, 1280]){
     /* Zwei eigene Standorte in einer Kette: dann stehen auch „Standorte“
        und „In anderen Standort übernehmen“ im Bild und werden mitgemessen. */
     const d = zweiStandorte("inhaber", ORG); d.antworten.meine_ketten = KETTE_ANTWORT; d.antworten.zentrale_vergleich = VERGLEICH_ANTWORT;
+    d.antworten.kette_standorte = [{ id:"b-zwei", name:"Café Zwei mit einem recht langen Namen" }];
+    d.artikel_standort = [{ betrieb_id: BETRIEB, artikel_id:"a-wein", aktiv:true, mindestbestand:30000, lagerort:"Bar", reihenfolge:null }];
+    d.lieferanten_standort = [{ betrieb_id: BETRIEB, lieferant_id:"l-1", kundennummer:"K-HIER-SEHR-LANG-0001234567", ansprechpartner:null, liefertage:["mo","do"], mindestbestellwert:200 }];
+    d.umlagerungen = [{ id:"u-m", von_betrieb:"b-zwei", nach_betrieb:BETRIEB, status:"unterwegs", notiz:null, angelegt:"2026-10-16T08:00:00Z",
+      umlagerungspositionen:[{ pos:1, artikel_id:"a-wein", menge_basis:3000, wert_netto:18, menge_angekommen:null }] }];
     const { ctx, p } = await oeffnen(browser, d, breite);
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
-    for(const ansicht of ["uebersicht", "belege", "artikel", "kalkulation", "kalk-edit", "lieferanten", "standorte"]){
+    for(const ansicht of ["uebersicht", "belege", "artikel", "kalkulation", "kalk-edit", "lieferanten", "lager", "standorte"]){
       await p.click('.reiter [data-ansicht="' + (ansicht === "kalk-edit" ? "kalkulation" : ansicht) + '"]');
       if(ansicht === "kalk-edit") await p.click('[data-gericht="g-pizza"]');
       if(ansicht === "belege") await p.click("#belegNeu");

@@ -70,6 +70,7 @@ async function oeffnen(browser, haus, breite, sprache) {
   const browser = await chromium.launch();
   pruef(HAEUSER.length >= 2, "mindestens zwei Häuser erzeugt (§8.1a)", HAEUSER.join(", "));
 
+  let lieferGesehen = false;
   for (const haus of HAEUSER) {
     for (const breite of [320, 360, 390, 430, 1280]) {
       const { seite, ctx, fehler } = await oeffnen(browser, haus, breite);
@@ -89,18 +90,36 @@ async function oeffnen(browser, haus, breite, sprache) {
         };
       });
       const k = haus + " @" + breite;
-      const stand = await seite.evaluate(() => {
-        const st = document.getElementById("status"), kopf = document.querySelector("header");
-        const b = st && st.firstElementChild ? st.firstElementChild.getBoundingClientRect() : null;
-        return { inZeile: !!st && st.parentElement === document.querySelector(".kopfwahl"), text: st ? st.textContent.trim() : "",
-                 rechts: b ? Math.abs(b.right - (kopf.getBoundingClientRect().right - parseFloat(getComputedStyle(kopf).paddingRight))) : null };
+      /* Seit 17.10. (Foto 12.10.): Öffnungsstand als Glas-Pille UNTER
+         dem Siegel, die Knopfzeile (Licht/Bestellart/Sprache) fest oben
+         rechts an der Spalte (≤ 540 px). Nur der Ort, nicht die Länge
+         (§8.1j). Sie deckt weder Siegel, Name, Stand noch Slogan. */
+      const lage = await seite.evaluate(() => {
+        const r = el => el.getBoundingClientRect();
+        const st = document.getElementById("status"), pille = st && st.firstElementChild;
+        const logo = document.getElementById("logo"), wahl = document.querySelector(".kopfwahl");
+        const w = r(wahl), lo = r(logo), p = pille ? r(pille) : null;
+        const spalteR = Math.min(innerWidth, (innerWidth + 540) / 2);
+        const deckt = ["logo", "titel", "status", "claim"].map(id => {
+          const el = document.getElementById(id); if (!el || getComputedStyle(el).display === "none") return null;
+          const b = id === "status" && pille ? r(pille) : r(el);
+          if (!b.width || !b.height) return null;
+          const ueber = Math.min(b.right, w.right) - Math.max(b.left, w.left) > 0 && Math.min(b.bottom, w.bottom) - Math.max(b.top, w.top) > 0;
+          return ueber ? id : null;
+        }).filter(Boolean);
+        return { inZeile: !!st && wahl.contains(st), text: st ? st.textContent.trim() : "",
+                 pMitte: p ? p.left + p.width / 2 : null, lMitte: lo.left + lo.width / 2, pOben: p ? p.top : null, lUnten: lo.bottom,
+                 fest: getComputedStyle(wahl).position, oben: w.top, rechts: w.right, soll: spalteR - 8, deckt };
       });
-      /* Seit 10.10. oben rechts als Glas-Box (pruef-kopfzentrale.js misst
-         Sanduhr und Regenbogen). Nur der Ort, nicht die Länge (§8.1j). */
-      pruef(!stand.inZeile && stand.text.length > 0 && stand.rechts !== null && stand.rechts <= 2,
-        k + ": Öffnungsstand oben rechts, nicht mehr in der Knopfzeile", JSON.stringify(stand));
-      pruef(Math.abs(m.zeileMitte - m.kopfMitte) <= 1, k + ": Knopfzeile mittig (± 1 px)",
-        "Zeile " + m.zeileMitte.toFixed(1) + " / Kopf " + m.kopfMitte.toFixed(1));
+      pruef(!lage.inZeile && lage.text.length > 0 && lage.pMitte !== null && Math.abs(lage.pMitte - lage.lMitte) <= 2 && lage.pOben >= lage.lUnten - 1,
+        k + ": Öffnungsstand mittig unter dem Siegel, nicht in der Knopfzeile", JSON.stringify(lage));
+      pruef(lage.fest === "fixed" && lage.oben <= 12 && Math.abs(lage.rechts - lage.soll) <= 2,
+        k + ": Knopfzeile fest oben rechts an der Spalte",
+        lage.fest + " oben " + lage.oben.toFixed(1) + " rechts " + lage.rechts.toFixed(1) + " / soll " + lage.soll.toFixed(1));
+      if (breite === 320) lieferGesehen = lieferGesehen || await seite.evaluate(() => {
+        const l = document.querySelector(".kopfwahl .lieferwahl"); return !!l && getComputedStyle(l).display !== "none" && l.getBoundingClientRect().width > 0;
+      });
+      pruef(lage.deckt.length === 0, k + ": Knopfzeile deckt weder Siegel, Name, Stand noch Slogan", lage.deckt.join(", ") || "frei");
       pruef(m.sk.w <= 48 && m.sk.w >= 44 && m.sk.h >= 44, k + ": Sprachknopf ist ein Kreis 44–48 px",
         m.sk.w.toFixed(1) + "×" + m.sk.h.toFixed(1));
       pruef(m.sk.text === "", k + ": Sprachknopf zeigt keinen Sprachnamen", JSON.stringify(m.sk.text));
@@ -145,18 +164,16 @@ async function oeffnen(browser, haus, breite, sprache) {
       await ctx.close();
     }
 
-    /* RTL: dieselbe Mitte, Liste im Bild */
+    /* RTL: gespiegelt oben links, Liste im Bild */
     const { seite, ctx, fehler } = await oeffnen(browser, haus, 390, "ar");
     const rtl = await seite.evaluate(() => {
-      const r = el => el.getBoundingClientRect();
-      const kopf = document.querySelector("header"), wahl = document.querySelector(".kopfwahl");
-      const zeile = Array.from(wahl.children).filter(el => getComputedStyle(el).display !== "none" && !el.hidden);
-      const links = Math.min(...zeile.map(el => r(el).left)), rechts = Math.max(...zeile.map(el => r(el).right));
-      return { dir: document.documentElement.dir, kopfMitte: r(kopf).left + r(kopf).width / 2, zeileMitte: (links + rechts) / 2,
+      const w = document.querySelector(".kopfwahl").getBoundingClientRect();
+      const spalteL = Math.max(0, (innerWidth - 540) / 2);
+      return { dir: document.documentElement.dir, links: w.left, soll: spalteL + 8, oben: w.top,
                label: document.getElementById("sprachknopf").getAttribute("aria-label") };
     });
-    pruef(rtl.dir === "rtl" && Math.abs(rtl.zeileMitte - rtl.kopfMitte) <= 1, haus + " RTL: Knopfzeile mittig",
-      rtl.dir + " " + rtl.zeileMitte.toFixed(1) + " / " + rtl.kopfMitte.toFixed(1));
+    pruef(rtl.dir === "rtl" && Math.abs(rtl.links - rtl.soll) <= 2 && rtl.oben <= 12, haus + " RTL: Knopfzeile fest oben links",
+      rtl.dir + " links " + rtl.links.toFixed(1) + " / soll " + rtl.soll.toFixed(1) + " oben " + rtl.oben.toFixed(1));
     pruef(/العربية/.test(rtl.label), haus + " RTL: aria-label nennt Arabisch", rtl.label);
     await seite.click("#sprachknopf");
     await seite.waitForTimeout(450);
@@ -165,6 +182,8 @@ async function oeffnen(browser, haus, breite, sprache) {
     pruef(fehler.length === 0, haus + " RTL: keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
   }
+
+  pruef(lieferGesehen, "320 px: mindestens ein Haus zeigt den Liefer-Schalter in der Knopfzeile (Voraussetzung der Breitenprobe)");
 
   /* ── Kachelname auf der Unterseite (Vorfall 07.10.) ─────────────
      Die Kachel „cocktails“ heißt im Board „Kaiser und Säfte“; die
@@ -235,8 +254,13 @@ async function oeffnen(browser, haus, breite, sprache) {
       const m = teile.map(mitte);
       return { hoehe: Math.round(r(kopf).height), versatz: Math.round(Math.max(...m) - Math.min(...m)),
                claim: sichtbar(document.getElementById("claim")), status: sichtbar(document.getElementById("status")),
-               titel: document.getElementById("titel").textContent };
+               titel: document.getElementById("titel").textContent,
+               /* Der Name endet vor der festen Knopfzeile (seit 17.10.):
+                  kein Buchstabe darunter, auch nicht abgeschnitten-überlappend. */
+               titelEnde: r(document.getElementById("titel")).right, leisteAnfang: r(document.querySelector(".kopfwahl")).left };
     });
+    pruef(leiste.titelEnde <= leiste.leisteAnfang + 0.5, haus + ": Unterseite — Name endet vor der Knopfzeile",
+      leiste.titelEnde.toFixed(1) + " / " + leiste.leisteAnfang.toFixed(1));
     pruef(leiste.hoehe <= 120 && leiste.versatz <= 12 && !leiste.claim && !leiste.status && leiste.titel.length > 0,
       haus + ": Unterseite — Kopf ist eine flache Leiste (Siegel, Name, Knöpfe in einer Reihe, ohne Adresse/Slogan/Stand)",
       leiste.hoehe + " px hoch, Versatz " + leiste.versatz + " px, Slogan " + leiste.claim + ", Stand " + leiste.status);

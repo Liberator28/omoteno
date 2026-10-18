@@ -312,8 +312,10 @@ header{
      über den Rand hinaus (Zeile 313), ein overflow:hidden hier würde
      genau das abschneiden — die Herzen darunter clippen sich selbst
      in ihrer eigenen Ebene (.herzenfeld). */
-  grid-template-areas:"logo" "titel" "claim" "kopfwahl";
-  row-gap:6px;justify-items:center;align-items:center;
+  grid-template-areas:"logo" "titel" "status" "claim";
+  /* Eine Zahl für den Zeilenabstand: das Logo auf der Bildkante rechnet
+     mit derselben (vorher 6 px fest neben row-gap 8 → 2 px daneben). */
+  --kopf-luecke:8px;row-gap:var(--kopf-luecke);justify-items:center;align-items:center;
   transition:background-color .9s ease;
 }
 
@@ -410,27 +412,24 @@ body[data-phase="abend"] .logo .led{opacity:1;animation:ledDrehen 9s linear infi
    seine Mitte genau auf der Bildkante (gemessen in pruef-kopfbild.js). */
 .kopfbild{display:none}
 body[data-ansicht="start"][data-kopfbild="an"] header{
-  grid-template-areas:"bild" "logo" "titel" "claim" "kopfwahl";
+  grid-template-areas:"bild" "logo" "titel" "status" "claim";
   padding-top:0;
 }
 body[data-ansicht="start"][data-kopfbild="an"] .kopfbild{
   display:block;grid-area:bild;justify-self:stretch;position:relative;z-index:1;
   margin:0 calc(-1 * var(--rand));overflow:hidden;
-  aspect-ratio:16 / 9;max-height:42vh;max-height:42dvh;
+  /* 12.10. (Foto): 16:9 bis 42 % Schirmhöhe war zu lang — „kürze ihn
+     auf das Nötigste“. 5:2, höchstens 28 %: bei 390 px 156 statt 219 px. */
+  aspect-ratio:5 / 2;max-height:28vh;max-height:28dvh;
   background:color-mix(in srgb, var(--band-text) 12%, var(--band));
 }
 .kopfbild img{display:block;width:100%;height:100%;object-fit:cover}
 body[data-ansicht="start"][data-kopfbild="an"] .logo{
-  --logo-gr:96px;width:var(--logo-gr);height:var(--logo-gr);z-index:2;
-  margin-top:calc(-0.5 * var(--logo-gr) - 6px);
+  --logo-gr:80px;width:var(--logo-gr);height:var(--logo-gr);z-index:2;
+  margin-top:calc(-0.5 * var(--logo-gr) - var(--kopf-luecke));
 }
 body[data-ansicht="start"][data-kopfbild="an"] .logo svg,
 body[data-ansicht="start"][data-kopfbild="an"] .logo img{width:var(--logo-gr);height:var(--logo-gr)}
-/* Auf dem Foto trägt die Öffnungsanzeige eine deckende Fläche aus der
-   Bandfarbe — Glas über einem hellen Foto wäre unlesbar. */
-body[data-ansicht="start"][data-kopfbild="an"] .status{
-  background:color-mix(in srgb, var(--band) 92%, transparent);
-}
 /* Eigenes Logo statt des Siegels: das Bild füllt den Knopf, das
    gezeichnete Siegel tritt zurück. */
 .logo-eigen{display:none}
@@ -458,13 +457,10 @@ h1{
      und die Vorschau im Board zeigt genau das. */
   display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden;
 }
-/* Öffnungsstand oben rechts (Wunsch 10.10.), nicht mehr in der
-   Knopfzeile. Neben dem Siegel, auf dessen Mitte; nie breiter als der
-   Platz bis zum Siegel (bei 320 px ≈ 109 px, dann zweizeilig). */
-#status{
-  position:absolute;z-index:3;top:calc(var(--rand-oben) + 14px);inset-inline-end:var(--rand);
-  display:flex;max-width:calc(50% - 29px - var(--rand) - 14px);
-}
+/* Öffnungsstand unter dem Logo (Foto 12.10.: „soll unter dem Logo
+   sein, im modernen Look wie der Zurück-Button“). Oben rechts steht
+   jetzt die Kommandozentrale. */
+#status{grid-area:status;display:flex;justify-content:center;max-width:100%;min-height:34px}
 /* Wenig Text im Kopf: auf der Startseite nur Siegel und Slogan — der
    Gruß steht weiter im h1 (Vorleseprogramme, Seitentitel), aber nicht
    im Bild. */
@@ -478,8 +474,11 @@ body[data-ansicht="start"] h1{position:absolute;width:1px;height:1px;margin:-1px
    Vorher ~270 px Kopf vor der Karte, jetzt ~70 px. Die Rasterflächen
    folgen der Schreibrichtung — in RTL steht das Siegel rechts. */
 body[data-ansicht="unter"] header{
-  grid-template-columns:auto minmax(0,1fr) auto;grid-template-areas:"logo titel kopfwahl";
+  grid-template-columns:auto minmax(0,1fr);grid-template-areas:"logo titel";
   column-gap:12px;justify-items:start;padding-bottom:12px;padding-top:calc(var(--rand-oben) + 2px);
+  /* Rechts steht die schwebende Kommandozentrale: der Titel endet davor
+     (--kw-b misst kopfwahlPlatz(), Rückfall eine Leistenbreite). */
+  padding-inline-end:var(--kw-b, 216px);
 }
 body[data-ansicht="unter"] .logo,
 body[data-ansicht="unter"] .logo svg{width:40px;height:40px}
@@ -487,7 +486,6 @@ body[data-ansicht="unter"] h1{font-size:18px;text-align:start;justify-self:stret
   white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 body[data-ansicht="unter"] .claim,
 body[data-ansicht="unter"] #status{display:none}
-body[data-ansicht="unter"] .kopfwahl{justify-self:end}
 /* Der Glanzstreifen über dem Titel ist seit 10.10. weg („dieser Flash
    hinter ‚Guten Abend‘ soll weg“). */
 
@@ -511,7 +509,9 @@ body[data-ansicht="unter"] .kopfwahl{justify-self:end}
    Dauer-Animationen an (Herzen, Schein, LED, Guss, Laternen) — sie
    kosteten auch unsichtbar jedes Bild. Die Klasse setzt ein
    IntersectionObserver (kopfRuhe), zurück im Bild läuft alles weiter. */
-header.kopf-ruht, header.kopf-ruht *, header.kopf-ruht *::before, header.kopf-ruht *::after{
+header.kopf-ruht, header.kopf-ruht > :not(.kopfwahl), header.kopf-ruht > :not(.kopfwahl) *,
+header.kopf-ruht > :not(.kopfwahl)::before, header.kopf-ruht > :not(.kopfwahl)::after,
+header.kopf-ruht > :not(.kopfwahl) *::before, header.kopf-ruht > :not(.kopfwahl) *::after{
   animation-play-state:paused !important}
 @keyframes herzSteigen{
   0%{transform:translateY(0) scale(.85);opacity:0}
@@ -634,15 +634,29 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
    letzten Schließen).
    Offen: „Geöffnet bis …“ neben einem ruhigen Punkt (siehe unten).
    Alles in der Bandschrift — eine Farbe, gemessen ≥ 4,5:1. */
+/* Seit 12.10. eine Glas-Pille unter dem Logo, gebaut wie „Zurück“:
+   rund, Glas, ein feines Licht läuft um den Rand (gedreht nur per
+   transform, Maske steht). Das Licht ist die Bandschrift selbst —
+   der Wunsch vom 10.10. („ohne RGB“) gilt weiter: eine Farbe. */
 .status{
-  position:relative;display:inline-flex;align-items:center;gap:7px;overflow:hidden;isolation:isolate;
-  padding:6px 10px 8px;border-radius:12px;font-size:11.5px;line-height:1.2;font-weight:650;letter-spacing:.1px;
-  color:var(--band-text);
-  background:color-mix(in srgb, var(--band-text) 9%, transparent);
-  border:1px solid color-mix(in srgb, var(--band-text) 22%, transparent);
-  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 18%, transparent), 0 6px 16px -10px rgba(0,0,0,.6);
-  -webkit-backdrop-filter:blur(10px) saturate(150%);backdrop-filter:blur(10px) saturate(150%);
+  position:relative;display:inline-flex;align-items:center;gap:8px;overflow:hidden;isolation:isolate;
+  min-height:34px;padding:0 15px;border-radius:999px;font-size:13px;line-height:1.2;font-weight:650;letter-spacing:.1px;
+  color:var(--band-text);white-space:nowrap;
+  background:color-mix(in srgb, var(--band-text) 10%, transparent);
+  border:1px solid color-mix(in srgb, var(--band-text) 20%, transparent);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 18%, transparent), 0 8px 20px -10px rgba(0,0,0,.6);
+  -webkit-backdrop-filter:blur(12px) saturate(160%);backdrop-filter:blur(12px) saturate(160%);
 }
+.st-rand{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:-1;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+.st-licht{position:absolute;left:50%;top:50%;width:300%;aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);
+  background:conic-gradient(from 0deg, transparent 0 60%,
+    color-mix(in srgb, var(--band-text) 45%, transparent) 72%, var(--band-text) 80%,
+    color-mix(in srgb, var(--band-text) 45%, transparent) 88%, transparent 96%);
+  animation:zrLauf 8s linear infinite}
+@media (prefers-reduced-motion:reduce){ .st-licht{animation:none;transform:translate(-50%,-50%) rotate(-50deg)} }
 .st-text{min-width:0}
 /* Seit 10.10. (dritte Nachricht): „klassisch schlicht und modern ohne
    RGB“. Eine Farbe — die Bandschrift —, ein Punkt, ein Satz. Offen ein
@@ -655,7 +669,7 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 .status.offen .st-punkt::after{content:"";position:absolute;inset:0;border-radius:50%;
   background:var(--band-text);opacity:0;animation:stAtem 2.8s cubic-bezier(.16,1,.3,1) infinite}
 @keyframes stAtem{0%{transform:scale(1);opacity:.5}70%,100%{transform:scale(2.6);opacity:0}}
-.st-linie{position:absolute;left:10px;right:10px;bottom:3px;height:2px;border-radius:2px;overflow:hidden;pointer-events:none;
+.st-linie{position:absolute;left:16px;right:16px;bottom:4px;height:2px;border-radius:2px;overflow:hidden;pointer-events:none;
   background:color-mix(in srgb, var(--band-text) 18%, transparent)}
 .st-linie i{position:absolute;inset:0;border-radius:2px;background:var(--band-text);opacity:.7;
   transform-origin:0 50%;transform:scaleX(var(--anteil, 0))}
@@ -684,6 +698,9 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
   transition:filter .9s ease;
 }
 .guss .schicht{transform-origin:50% 0;fill:var(--band);transition:fill .9s ease}
+.trikolore{position:absolute;top:100%;left:0;right:0;height:4px;pointer-events:none;
+  background:linear-gradient(90deg, #009246 0 33.34%, #F4F5F0 33.34% 66.67%, #CE2B37 66.67% 100%);
+  box-shadow:0 2px 6px rgba(0,0,0,.25)}
 /* Die hintere Schicht ist eine Spur dunkler und läuft tiefer – dadurch
    entsteht Tiefe, ohne dass man zwei Ränder sieht. brightness statt
    color-mix, damit es auch auf älteren Android-Browsern stimmt. */
@@ -843,15 +860,34 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
    100 %) — und die offene Sprachliste darin mit, „Deutsch ✓“ lag unter
    dem Schokoguss. z-index 4: über Guss/Laternen (auto), unter nichts,
    was im Kopf noch darüber gehört. pruef-ueberdeckt.js misst das. */
+/* 12.10. (Foto): „Sprache, Helligkeit und so weiter sollen rechts oben
+   am Bildschirm bleiben, damit die Gäste immer darauf Zugriff haben.“
+   Fest oben rechts auf JEDER Seite, über dem Inhalt. Weil sie jetzt über
+   beliebigem Inhalt schwebt (helles Foto, helle Karte), trägt sie eine
+   fast deckende Fläche in der Bandfarbe — die Bandschrift darauf ist
+   je Haus gerechnet (§5.1). Inhalte, die oben kleben (Kategorie-Leiste,
+   Unterseiten-Leiste), lassen ihr Platz: --kw-frei/--kw-b aus
+   kopfwahlPlatz(). Liegt im header (Stapel 50) — über main (1). */
 .kopfwahl{
-  position:relative;z-index:4;
-  grid-area:kopfwahl;justify-self:center;align-self:center;
+  position:fixed;z-index:4;
+  /* An der Spalte (body max. 540 px), nicht an der Bildschirmkante —
+     auf dem Tablet/Desktop stünde sie sonst weit neben dem Hub. */
+  top:calc(env(safe-area-inset-top) + 8px);inset-inline-end:max(8px, calc((100vw - 540px) / 2 + 8px));
   display:flex;align-items:center;justify-content:center;gap:0;
-  margin-top:4px;padding:2px;border-radius:999px;
-  background:color-mix(in srgb, var(--band-text) 9%, transparent);
+  margin:0;padding:2px;border-radius:999px;
+  background:color-mix(in srgb, var(--band) 90%, transparent);
   border:1px solid color-mix(in srgb, var(--band-text) 22%, transparent);
-  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 16%, transparent), 0 10px 24px -14px rgba(0,0,0,.55);
+  box-shadow:inset 0 1px 0 color-mix(in srgb, var(--band-text) 16%, transparent), 0 10px 26px -10px rgba(0,0,0,.6);
   -webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);
+}
+@media (prefers-reduced-transparency:reduce){
+  .kopfwahl{background:var(--band);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+/* Startseite ohne Kopfbild auf schmalem Schirm: das mittige Siegel
+   rückt unter die schwebende Leiste, statt von ihr verdeckt zu werden.
+   Mit Kopfbild liegt die Leiste über dem Foto, dort ist Platz. */
+@media (max-width:560px){
+  body[data-ansicht="start"]:not([data-kopfbild="an"]) header{padding-top:calc(var(--rand-oben) + 46px)}
 }
 .kopfwahl > .lieferwahl,.kopfwahl > .sprachwahl{position:relative;margin-inline-start:9px}
 .kopfwahl > .lieferwahl::before,.kopfwahl > .sprachwahl::before{
@@ -1793,6 +1829,11 @@ html.textwahl body :is(h1,h2,h3,p,span,b,i,strong,a,button,label):hover{outline:
 
 .chips{
   display:flex;gap:7px;overflow-x:auto;margin:0 calc(-1 * var(--rand)) 6px;
+  /* Klebt sie oben, steht rechts die Kommandozentrale: die Leiste endet
+     davor. --kw-frei ist der Rand, den die Leiste dafür braucht
+     (kopfwahlPlatz()); liegt die Zentrale neben der Spalte, gilt der
+     alte Rand (−rand, bis an die Schirmkante). */
+  margin-inline-end:max(calc(-1 * var(--rand)), var(--kw-frei, -999px));
   padding:6px var(--rand) 12px;scrollbar-width:none;
   position:sticky;top:0;z-index:6;
   /* Glas statt reinem Verlauf: die Chips selbst sind opak (siehe
@@ -1892,6 +1933,14 @@ body.kat-klebt .zurueck.an{opacity:0;pointer-events:none}
 .wkopf .wp.pneu{color:var(--rot)}
 .wkopf .wp .palt{display:block;font-size:13px;font-weight:400;color:var(--tinte-leise);text-align:right;font-family:var(--schrift-text, inherit)}
 .tag.top{background:var(--gold-flaeche);color:var(--gold)}
+/* Gemessen 17.10. (pruef-kartenstil): „Beliebt“ 3,1:1 bei Choco, „Vegan“/
+   „Vegetarisch“ 3,1–3,9:1 bei Minhkeey und Nordstern — Goldschrift auf
+   Goldhauch erreicht in hellen Paletten die 4,5 nicht. Die Schrift
+   kommt jetzt aus der Tinte des Hauses; die Farbe der Plakette bleibt
+   als Rand und Hauch erkennbar. */
+.tag.top,.tag.veg,.tag.vegan{color:var(--tinte)}
+.tag.top{box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--gold) 60%, transparent)}
+.tag.veg{box-shadow:inset 0 0 0 1px color-mix(in srgb, var(--pistazie) 45%, transparent)}
 
 .ginfo{
   flex:1;min-width:0;background:none;border:0;padding:0;margin:0;text-align:inherit;
@@ -1986,6 +2035,179 @@ body.kat-klebt .zurueck.an{opacity:0;pointer-events:none}
 .korbflug img{width:100%;height:100%;object-fit:cover;display:block}
 .korbflug.kf-frei{overflow:visible;box-shadow:none;border-radius:0}
 .korbflug.kf-frei img{object-fit:contain;filter:drop-shadow(0 6px 8px rgba(42,26,20,.25))}
+/* ═══ Filter der Speisekarte (17.10., Präfix sf-, vorher gesucht §1.1) ═══ */
+.suche .sf-knopf{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:44px;
+  display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:50%;
+  background:transparent;color:var(--tinte);cursor:pointer;-webkit-tap-highlight-color:transparent}
+.suche .sf-knopf svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round}
+.suche .sf-knopf.an{color:var(--rot)}
+.sf-zahl{position:absolute;top:5px;right:5px;min-width:17px;height:17px;padding:0 4px;border-radius:999px;
+  background:var(--rot);color:var(--auf-rot);font:700 11px/17px var(--schrift-text, inherit);text-align:center;font-variant-numeric:tabular-nums}
+/* Mit Filterknopf rückt das Löschen-Kreuz einen Platz nach innen —
+   nur in der Speisekarte (.sf-mit); andere Suchfelder bleiben, wie sie sind. */
+.suche.sf-mit input{padding-right:96px}
+.suche.sf-mit .clear{right:50px}
+[dir="rtl"] .suche .sf-knopf{right:auto;left:4px}
+[dir="rtl"] .suche.sf-mit .clear{right:auto;left:50px}
+[dir="rtl"] .suche.sf-mit input{padding-right:42px;padding-left:96px}
+.sf-feld{margin:-2px 0 12px;padding:12px;border:1px solid var(--linie);border-radius:16px;background:var(--flaeche);
+  display:flex;flex-direction:column;gap:8px}
+.sf-reihe{display:flex;flex-wrap:wrap;gap:7px}
+.sf-titel{font-size:12.5px;font-weight:600;color:var(--tinte-leise);margin-top:2px}
+.sf-chip{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--linie-stark);background:var(--grund);
+  color:var(--tinte);font:500 14px/1.2 var(--schrift-text, inherit);cursor:pointer}
+.sf-chip[aria-pressed="true"]{background:var(--tinte);border-color:var(--tinte);color:var(--grund);font-weight:600}
+.sf-weg{align-self:flex-start;min-height:44px;padding:0 4px;border:0;background:none;color:var(--tinte);
+  font:600 14px/1 var(--schrift-text, inherit);text-decoration:underline;text-underline-offset:3px;cursor:pointer}
+
+/* ═══ Stile der Speisekarte (17.10., Präfix ks-) ═════════════════════
+   Alle Farben aus der Palette des Hauses (§5.1): „Bühne“ dreht Grund
+   und Tinte um — das Paar, das in jedem Haus ohnehin ≥ 4,5:1 hat.
+   Bewegung nur transform/opacity. */
+.ks-zeichen{display:grid;place-items:center;background:color-mix(in srgb, var(--rot) 10%, var(--flaeche-2));color:var(--tinte)}
+.ks-zeichen .bz{font-size:40px}
+.gericht.ks-ohnebild .gbild.ks-zeichen{border-radius:16px}
+
+/* ── Bühne ── */
+body[data-kartenstil="buehne"] .gericht{
+  background:var(--tinte);color:var(--grund);border:0;border-radius:calc(var(--rundung, 16px) + 6px);
+  padding:16px 14px 16px 18px;margin:12px 0;min-height:126px;align-items:center;
+  box-shadow:0 10px 26px color-mix(in srgb, var(--tinte) 22%, transparent)}
+body[data-kartenstil="buehne"] .gericht .n{color:var(--grund);font-family:var(--schrift-gericht, inherit);font-size:18px;line-height:1.2}
+body[data-kartenstil="buehne"] .gericht .b{color:color-mix(in srgb, var(--grund) 82%, var(--tinte));
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body[data-kartenstil="buehne"] .gericht .urname{color:color-mix(in srgb, var(--grund) 80%, var(--tinte))}
+body[data-kartenstil="buehne"] .gericht .p{color:var(--grund);font-size:17px;display:inline-block;padding-bottom:3px;
+  background:linear-gradient(var(--rot), var(--rot)) 0 100% / 26px 3px no-repeat}
+body[data-kartenstil="buehne"] .gericht .p.pneu{color:var(--grund)}
+body[data-kartenstil="buehne"] .gericht .palt{color:color-mix(in srgb, var(--grund) 80%, var(--tinte))}
+body[data-kartenstil="buehne"] .gericht .infopunkt{background:var(--grund)}
+/* Plaketten auf der dunklen Karte: Grund als Fläche, Tinte als Schrift —
+   das Paar mit ≥ 4,5:1 in jedem Haus; die Farbe bleibt als Rand. */
+body[data-kartenstil="buehne"] .gericht .tag{background:var(--grund);color:var(--tinte)}
+body[data-kartenstil="buehne"] .gericht.gmitbild .gbild{flex:0 0 120px;width:120px;height:120px;margin:-26px -6px -26px 0;
+  border-radius:20px;box-shadow:0 12px 24px color-mix(in srgb, var(--tinte) 40%, transparent)}
+body[data-kartenstil="buehne"] .gericht.gmitbild .gbild.schwebt{box-shadow:none}
+body[data-kartenstil="buehne"] .gericht.ks-ohnebild .gbild.ks-zeichen{border-radius:50%;background:color-mix(in srgb, var(--grund) 16%, var(--tinte));box-shadow:none}
+body[data-kartenstil="buehne"] .gericht.gmitbild .gpreis{right:-4px;bottom:-12px}
+body[data-kartenstil="buehne"] .gplus,body[data-kartenstil="buehne"] .gmenge{box-shadow:0 0 0 3px var(--tinte), 0 6px 14px var(--rot-schein)}
+body[data-kartenstil="buehne"] .chips{gap:10px}
+body[data-kartenstil="buehne"] .chip.mitbz{display:inline-flex;flex-direction:column;align-items:center;gap:4px;
+  border-radius:20px;padding:9px 12px 8px;min-width:64px;font-size:12.5px}
+body[data-kartenstil="buehne"] .chip.mitbz .bz{font-size:26px}
+body[data-kartenstil="buehne"] .gruppe{font-size:21px;font-family:var(--schrift-abschnitt, inherit)}
+body[data-kartenstil="buehne"] .gruppe::after{content:"";display:block;width:34px;height:3px;border-radius:2px;background:var(--rot);margin-top:6px}
+@media (max-width:360px){
+  body[data-kartenstil="buehne"] .gericht.gmitbild .gbild{flex-basis:96px;width:96px;height:96px}
+}
+/* ── Teller (17.10.): das runde Gericht groß auf der Bühne ──────────
+   Farben nur aus der Palette des Hauses: Der Teller ist die Fläche mit
+   einem Hauch Tinte, sein Rand eine Stufe tiefer; Schrift steht auf
+   dem Grund (--tinte / --tinte-leise, je Haus ≥ 4,5:1). Nur transform
+   und opacity bewegen sich. */
+.tl{margin:4px 0 20px;padding:6px 0 14px;text-align:center}
+.tl-buehne{position:relative;display:flex;align-items:center;justify-content:center;
+  padding:10px 0 4px;touch-action:pan-y;-webkit-user-select:none;user-select:none}
+.tl-teller{position:relative;display:grid;place-items:center;width:min(78%, 340px);aspect-ratio:1/1;border-radius:50%;
+  background:radial-gradient(circle at 50% 50%,
+    color-mix(in srgb, var(--flaeche) 88%, var(--tinte)) 0 60%,
+    color-mix(in srgb, var(--flaeche) 94%, var(--tinte)) 61% 100%);
+  box-shadow:0 18px 38px rgba(0,0,0,.28), inset 0 0 0 1px color-mix(in srgb, var(--tinte) 10%, transparent)}
+.tl-teller > *{grid-area:1/1}
+.tl-zeichen{display:grid;place-items:center;font-size:clamp(80px, 30vw, 150px);line-height:1}
+.tl-zeichen .bz{font-size:inherit}
+.tl-foto{width:90%;height:90%;border-radius:50%;object-fit:cover;
+  box-shadow:0 8px 18px rgba(0,0,0,.22)}
+.tl-frei{width:104%;height:104%;max-width:none;object-fit:contain;
+  filter:drop-shadow(0 14px 18px rgba(0,0,0,.34))}
+.tl-pfeil{position:absolute;top:50%;width:44px;height:44px;margin-top:-22px;border-radius:50%;padding:0;
+  display:grid;place-items:center;cursor:pointer;color:var(--tinte);
+  background:color-mix(in srgb, var(--flaeche) 90%, transparent);border:1px solid var(--linie-stark);
+  box-shadow:0 4px 12px rgba(0,0,0,.14)}
+.tl-pfeil svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.4;stroke-linecap:round;stroke-linejoin:round}
+.tl-zurueck{inset-inline-start:0}
+.tl-vor{inset-inline-end:0}
+.tl-vor svg{transform:scaleX(-1)}
+[dir="rtl"] .tl-zurueck svg{transform:scaleX(-1)}
+[dir="rtl"] .tl-vor svg{transform:none}
+.tl-pfeil:focus-visible,.tl-name:focus-visible,.tl-mehr:focus-visible{outline:2px solid var(--tinte);outline-offset:3px}
+.tl-info{max-width:430px;margin:10px auto 0;padding:0 6px}
+.tl-name{display:inline-flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;min-height:44px;
+  padding:4px 10px;border:0;background:none;color:var(--tinte);cursor:pointer;
+  font:inherit;font-family:var(--schrift-gericht, inherit);font-size:24px;line-height:1.2;text-wrap:balance}
+.tl-tags:empty{display:none}
+.tl-b{color:var(--tinte-leise);font-size:15px;line-height:1.45;margin-top:2px;min-height:0;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.tl-b:empty{display:none}
+.tl-zeile{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px}
+.tl-preis .p{color:var(--tinte);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;
+  display:inline-block;padding-bottom:3px;background:linear-gradient(var(--rot), var(--rot)) 0 100% / 26px 3px no-repeat}
+.tl-preis .palt{color:var(--tinte-leise);margin-inline-start:6px}
+.tl-korb{position:static}
+.tl-mehr{min-height:44px;margin-top:12px;padding:0 20px;border-radius:999px;cursor:pointer;
+  border:1px solid var(--linie-stark);background:none;color:var(--tinte);font:inherit;font-size:15px}
+.tl-zaehler{margin-top:10px;font-size:13px;color:var(--tinte-leise);font-variant-numeric:tabular-nums}
+.tl-punkte{display:flex;justify-content:center;flex-wrap:wrap;gap:7px;margin-top:6px}
+.tl-punkte i{width:7px;height:7px;border-radius:50%;background:var(--tinte);opacity:.28;
+  transition:opacity .2s ease-out, transform .2s ease-out}
+.tl-punkte i.an{opacity:1;transform:scale(1.35)}
+@media (max-width:360px){ .tl-name{font-size:21px} }
+@media (prefers-reduced-motion:reduce){ .tl-punkte i{transition:none} }
+
+/* ── Raster ── */
+.ks-raster{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin:4px 0 18px}
+body[data-kartenstil="raster"] .ks-raster .gericht{flex-direction:column;align-items:stretch;gap:0;padding:0;margin:0;border:1px solid var(--linie);
+  border-radius:calc(var(--rundung, 16px) + 2px);background:var(--flaeche);overflow:hidden}
+body[data-kartenstil="raster"] .ks-raster .ginfo{flex-direction:column-reverse;gap:0}
+body[data-kartenstil="raster"] .ks-raster .gericht.gmitbild .gbild{flex:none;width:100%;height:auto;aspect-ratio:1 / 1;border-radius:0;margin:0}
+body[data-kartenstil="raster"] .ks-raster .gericht.gmitbild .gbild.schwebt{background:var(--flaeche-2);overflow:hidden}
+body[data-kartenstil="raster"] .ks-raster .gericht.gmitbild .gbild.schwebt img{object-fit:contain;padding:8px}
+body[data-kartenstil="raster"] .ks-raster .gtext{padding:10px 12px 8px}
+body[data-kartenstil="raster"] .ks-raster .gericht .n{font-size:14.5px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+body[data-kartenstil="raster"] .ks-raster .gericht .n .tag{display:none}
+body[data-kartenstil="raster"] .ks-raster .gericht .b{display:-webkit-box;-webkit-line-clamp:1;-webkit-box-orient:vertical;overflow:hidden}
+/* Preis und „+“ teilen sich die letzte Zeile — der Knopf liegt nie
+   über der Beschreibung. */
+body[data-kartenstil="raster"] .ks-raster .gericht .gpz{display:flex;align-items:center;flex-wrap:wrap;min-height:44px;margin-top:4px;padding-right:46px}
+body[data-kartenstil="raster"] .ks-raster .gericht .gpreis,
+body[data-kartenstil="raster"] .ks-raster .gericht.gmitbild .gpreis{position:absolute;right:8px;bottom:11px;top:auto}
+body[data-kartenstil="raster"] .gruppe::before{content:"// ";color:var(--rot);font-weight:700}
+body[data-kartenstil="raster"] .chips{counter-reset:kschip}
+body[data-kartenstil="raster"] .chip[data-g]:not([data-g="Alle"]):not([data-g="Beliebt"])::before{
+  counter-increment:kschip;content:counter(kschip, decimal-leading-zero);font-size:11px;font-weight:700;
+  font-variant-numeric:tabular-nums;opacity:.75;margin-inline-end:6px}
+[dir="rtl"] body[data-kartenstil="raster"] .ks-raster .gericht .gpz{padding-right:0;padding-left:44px}
+[dir="rtl"] body[data-kartenstil="raster"] .ks-raster .gericht .gpreis{right:auto;left:8px}
+
+/* ── Flink ── */
+.ks-gruss{font-family:var(--schrift-abschnitt, inherit);font-size:23px;font-weight:700;letter-spacing:-.3px;color:var(--tinte);margin:4px 0 12px}
+.ks-titel{font-size:15px;font-weight:700;color:var(--tinte);margin:0 0 8px}
+.ks-bahn{display:flex;gap:12px;overflow-x:auto;margin:0 calc(-1 * var(--rand)) 16px;padding:2px var(--rand) 8px;
+  scroll-snap-type:x mandatory;scroll-padding-inline:var(--rand);scrollbar-width:none}
+.ks-bahn::-webkit-scrollbar{display:none}
+.ks-tipp{flex:0 0 152px;scroll-snap-align:start;display:flex;flex-direction:column;gap:5px;text-align:start;
+  padding:0;border:0;background:none;color:var(--tinte);font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent;
+  transition:transform var(--kurz) var(--weich)}
+.ks-tipp:active{transform:scale(.97)}
+.ks-tbild{position:relative;display:block;width:152px;height:112px;border-radius:16px;overflow:hidden;background:var(--flaeche-2)}
+.ks-tbild img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;opacity:0;transition:opacity 260ms var(--weich)}
+.ks-tbild img.geladen{opacity:1}
+.ks-tzeichen{display:grid;place-items:center}
+.ks-tzeichen .bz{font-size:46px}
+.ks-tname{font-size:14px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.ks-tpreis .p{font-size:14px;font-weight:600;color:var(--tinte)}
+.ks-tpreis .p.pneu{color:var(--rot)}
+.ks-tpreis .palt{font-size:12px;color:var(--tinte-leise);margin-left:6px}
+.ks-tpreis .tag{display:none}
+body[data-kartenstil="flink"] .gericht{background:var(--flaeche);border:1px solid var(--linie);border-radius:calc(var(--rundung, 16px) + 4px);
+  padding:12px 12px 12px 14px;margin:10px 0;box-shadow:0 6px 16px color-mix(in srgb, var(--tinte) 7%, transparent)}
+body[data-kartenstil="flink"] .gericht.gmitbild .gbild{flex:0 0 88px;width:88px;height:88px;border-radius:14px}
+body[data-kartenstil="flink"] .gericht.gmitbild .gpreis{right:4px;bottom:4px}
+body[data-kartenstil="flink"] .gplus{width:42px;height:42px}
+body[data-kartenstil="flink"] .chip{box-shadow:0 4px 12px color-mix(in srgb, var(--tinte) 8%, transparent)}
+body[data-kartenstil="flink"] .chip.mitbz .bz{font-size:20px}
+body[data-kartenstil="flink"] .suche input{border-radius:999px}
+@media (prefers-reduced-motion:reduce){ .ks-tipp{transition:none} .ks-tbild img{transition:none} }
 /* ═══ Foodroulette · Glücksrad (Wunsch 09.10.) ═══════════════════
    „Man soll direkt das Rad sehen; ‚Für mich entscheiden‘ dreht es, und
    oben steht sofort, was man bekommt.“ Oben die Ergebniskarte, darunter
@@ -3089,6 +3311,13 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
   .summe{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 .summe .l{font-size:13px;color:var(--tinte-leise)}
+/* Zahlteil direkt über dem Bestellknopf und Preisnote unter der Karte
+   (18.10., § 312j BGB, PAngV) — leise, aber lesbar. */
+.zahlteil{margin:20px 0 12px}
+.zahlzeile{display:flex;justify-content:space-between;align-items:baseline;gap:12px;font-weight:700;color:var(--tinte)}
+.zahlzeile b{font-size:18px;font-variant-numeric:tabular-nums}
+.zahlhinweis{margin:4px 0 0;font-size:12.5px;line-height:1.5;color:var(--tinte-leise)}
+.preisnote{margin:14px 0 0;font-size:12.5px;line-height:1.5;color:var(--tinte-leise)}
 .summe .b{font-size:23px;font-weight:600}
 
 /* Bestellstopp: deutlich, aber nicht alarmierend. Der Gast hat nichts
@@ -3442,6 +3671,26 @@ textarea.feld{resize:vertical;min-height:96px;line-height:1.5}
 
 /* ═══ Fuß ═══════════════════════════════════════════════════════ */
 footer{margin-top:48px;text-align:center;position:relative;z-index:1}
+/* Impressum · Datenschutz (18.10.): ein Bedienelement, nie Zierschrift
+   (§5.2a) — 44 px Tapfläche, Farbe aus dem Markenblatt hergeleitet. */
+.rechtfuss{display:flex;justify-content:center;flex-wrap:wrap;gap:0 6px}
+/* Seit die Fußzeile Links trägt, darf sie nicht unter den schwebenden
+   Leisten liegen (pruef-fotofehler: „unterstes Antippbare über den
+   Leisten“). Platz genau dann, wenn eine Leiste steht. */
+body.hat-balken footer{padding-bottom:16px}
+body:has(#vstreifen:not([hidden])) footer,
+body:has(#wsstreifen:not([hidden])) footer{padding-bottom:12px}
+body.hat-balken:has(#vstreifen:not([hidden])) footer,
+body.hat-balken:has(#wsstreifen:not([hidden])) footer{padding-bottom:76px}
+.rechtlink{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;font-size:13px;
+  color:var(--tinte-leise);text-decoration:underline;text-underline-offset:3px}
+.rechtseite h3{font-size:15px;margin:24px 0 6px}
+.rechtseite p{font-size:14px;line-height:1.6;margin:0 0 10px;overflow-wrap:anywhere}
+.rs-fehlt{color:var(--tinte);font-weight:700;text-decoration:underline dashed;text-underline-offset:3px}
+.rs-tabelle{display:grid;gap:8px;margin:10px 0 0}
+.rs-eintrag{display:grid;gap:2px;padding:10px 12px;border:1px solid var(--linie);border-radius:10px;font-size:13px;line-height:1.45}
+.rs-eintrag span{color:var(--tinte-leise)}
+.rs-eintrag code{font-size:11.5px;color:var(--tinte-leise);overflow-wrap:anywhere}
 .marke2{font-size:9.5px;letter-spacing:1.8px;color:var(--tinte-leise)}
 /* Der Herkunftsbegriff gehört zur Absenderzeile, nicht zur Karte.
    Deshalb klein, blass und ohne Sperrung im Fließtext. */
@@ -3823,6 +4072,10 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
   transform-origin:50% 85%;
   animation:wkFigur .8s cubic-bezier(.34,1.56,.64,1) both;
 }
+/* Die Szene (17.10.) kommt wie die Figur herein; ihre eigene Bewegung
+   läuft darin weiter. */
+.willkommen .wz{animation:wkFigur .8s cubic-bezier(.34,1.56,.64,1) both}
+.willkommen .wz .figur{animation:none}
 .willkommen .wk-wahl{
   display:flex;flex-direction:column;width:100%;max-width:320px;
 }
@@ -4212,7 +4465,7 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 }
 
 @media (prefers-reduced-motion:reduce){
-  .willkommen .haus,.willkommen .wort,.willkommen .figur,
+  .willkommen .haus,.willkommen .wort,.willkommen .figur,.willkommen .wz,
   .willkommen .wk-wahl button,.willkommen .wk-hinweis{animation:none}
   .willkommen{transition:none}
 }
@@ -5023,6 +5276,9 @@ function farbMerkwert(fb){
     <path class="kante"          d="M0 11.0L28.5 11.0C29.7 26.7 31.6 33.5 35.8 33.5C40.0 33.5 41.9 26.7 43.1 11.0L65.0 11.0C66.4 20.8 68.7 25.0 73.8 25.0C78.9 25.0 81.1 20.8 82.5 11.0L92.9 11.0C94.8 26.8 97.7 33.6 104.3 33.6C111.0 33.6 113.9 26.8 115.8 11.0L140.7 11.0C142.0 23.6 144.1 29.1 148.7 29.1C153.4 29.1 155.4 23.6 156.7 11.0L170.0 11.0C171.3 25.7 173.4 32.0 178.3 32.0C183.1 32.0 185.2 25.7 186.5 11.0L202.0 11.0C203.2 20.0 205.1 23.8 209.4 23.8C213.7 23.8 215.6 20.0 216.8 11.0L231.4 11.0C232.5 27.0 234.2 33.9 237.9 33.9C241.7 33.9 243.4 27.0 244.4 11.0L260.6 11.0C262.2 19.5 264.7 23.1 270.4 23.1C276.0 23.1 278.6 19.5 280.1 11.0L286.3 11.0C287.3 27.5 289.0 34.5 292.7 34.5C296.4 34.5 298.1 27.5 299.1 11.0L312.3 11.0C314.1 18.4 317.1 21.6 323.7 21.6C330.4 21.6 333.3 18.4 335.2 11.0L342.1 11.0C343.8 27.7 346.5 34.9 352.5 34.9C358.5 34.9 361.2 27.7 362.9 11.0L400.0 11.0"/>
     <path class="glanz"          d="M29.5 12.6Q30.0 21.3 33.6 27.6 M66.2 12.6Q66.8 17.5 71.1 21.4 M94.5 12.6Q95.2 21.4 100.9 27.7 M141.8 12.6Q142.3 19.3 146.3 24.4 M171.1 12.6Q171.6 20.7 175.8 26.6 M203.1 12.6Q203.5 16.9 207.2 20.5 M232.3 12.6Q232.7 21.5 236.0 28.0 M262.0 12.6Q262.5 16.6 267.4 20.0 M287.2 12.6Q287.6 21.8 290.8 28.4 M343.6 12.6Q344.2 22.0 349.4 28.7"/>
   </svg>
+  <!-- Pizzeria (17.10.): statt Guss eine feine Trikolore-Kante. Nur
+       Schmuck, keine Schrift darauf — die Farben dürfen fest sein. -->
+  <div class="trikolore" aria-hidden="true" hidden></div>
   <!-- Die Laternen: Ersatz fuer den Guss bei kopfband:"laternen".
        Siehe kopfbandSetzen() im Skript, das genau eines der beiden
        Baender per hidden-Attribut zeigt. Kein Balken mehr -- nach
@@ -5233,7 +5489,8 @@ function farbMerkwert(fb){
 <div class="warenkarte" id="warenkarte" role="dialog" aria-modal="true"
      aria-labelledby="wname" tabindex="-1"></div>
 
-<footer><div class="marke2">POWERED BY OMOTENO <span class="jp" lang="ja">おもてなし</span></div>
+<footer><div class="rechtfuss" id="rechtFuss"><a class="rechtlink" href="#/impressum">Impressum</a><a class="rechtlink" href="#/datenschutz">Datenschutz</a></div>
+<div class="marke2">POWERED BY OMOTENO <span class="jp" lang="ja">おもてなし</span></div>
 <!-- Der Weg des Wirts an sein eigenes Board. Er steht hier, weil der
      Hub die einzige Seite ist, die der Betrieb unter SEINER Adresse
      kennt — und weil ohne ihn nichts vom Hub dorthin führt.
@@ -5316,6 +5573,11 @@ function farbMerkwert(fb){
    und welches erst hier feststeht). SVG kennt .hidden nicht als
    Eigenschaft (§8.1c) — deshalb setAttribute/removeAttribute. */
 (function kopfbandSetzen(){
+  if(MARKENBLATT.kopfband === "trikolore"){
+    const guss = document.querySelector(".guss"), tri = document.querySelector(".trikolore");
+    if(guss && tri){ guss.setAttribute("hidden", ""); tri.removeAttribute("hidden"); }
+    return;
+  }
   if(MARKENBLATT.kopfband !== "laternen") return;
   const guss = document.querySelector(".guss"), laternen = document.querySelector(".laternen");
   if(!guss || !laternen) return;
@@ -5591,6 +5853,46 @@ const OPTIONEN = {
     ]
   }
 };
+/* ─── Extras und Beläge des Betriebs (betriebe.optionen, 17.10.) ─────
+   Gruppen aus der Datenbank kommen NEBEN die des Gerüsts; ein gleicher
+   Schlüssel ersetzt die Gerüst-Gruppe. Dieselbe Form prüft die Schranke
+   betriebe_optionen_form (optionen_form_ok) — hier ein zweites Mal,
+   denn die Texte gehen ungeschützt in die Auszeichnung (t(z.n),
+   t(grp.titel)). Was ein Zeichen aus <>"'&` trägt, fällt still weg
+   (§2.3a): ein Name mit Anführungszeichen hätte ein Attribut geöffnet.
+   Der Server rechnet die Aufpreise aus derselben Spalte nach
+   (positionen_pruefen) — der Preis hier ist nur Anzeige.
+   Gemerkt im Gerät: Die gemerkte Auswahl im Korb wird gleich beim
+   Laden gegen OPTIONEN bereinigt (optBereinigt) — ohne den gemerkten
+   Stand fehlten die Gruppen dort noch, und ein Neuladen verlöre die
+   Beläge (§8.1q). */
+const OPT_GERUEST = Object.assign({}, OPTIONEN);
+const OPT_MERK = "omoteno-optionen-" + HAUS;
+function optionenPruefen(o){
+  const aus = {};
+  if(!o || typeof o !== "object" || Array.isArray(o)) return aus;
+  const textOk = (s, max) => typeof s === "string" && s.trim().length >= 1 && s.trim().length <= max && !/[<>"'&`]/.test(s);
+  Object.keys(o).slice(0, 12).forEach(k => {
+    const g = o[k];
+    if(!/^[a-z0-9-]{1,24}$/.test(k) || !g || typeof g !== "object" || Array.isArray(g)) return;
+    if(!textOk(g.titel, 40) || (g.art !== "eine" && g.art !== "mehrere") || !Array.isArray(g.zeilen)) return;
+    const zeilen = g.zeilen.slice(0, 40).filter(z => z && textOk(z.n, 40) && !/[,·()]/.test(z.n) &&
+      typeof z.auf === "number" && isFinite(z.auf) && z.auf >= 0 && z.auf <= 50)
+      .map(z => ({ n:z.n.trim(), auf:Math.round(z.auf * 100) / 100 }));
+    if(!zeilen.length) return;
+    const grp = { titel:g.titel.trim(), art:g.art, pflicht:g.pflicht === true, zeilen };
+    if(textOk(g.hinweis, 120)) grp.hinweis = g.hinweis.trim();
+    aus[k] = grp;
+  });
+  return aus;
+}
+function optionenUebernehmen(o){
+  Object.keys(OPTIONEN).forEach(k => { if(OPT_GERUEST[k]) OPTIONEN[k] = OPT_GERUEST[k]; else delete OPTIONEN[k]; });
+  const ok = optionenPruefen(o);
+  Object.assign(OPTIONEN, ok);
+  return ok;
+}
+try{ optionenUebernehmen(JSON.parse(localStorage.getItem(OPT_MERK) || "null")); }catch(e){}
 
 
 /*  ============================================================
@@ -6377,6 +6679,35 @@ document.addEventListener("visibilitychange", () => {
   });
 });
 
+/* Die Kommandozentrale schwebt oben rechts (12.10.). Was oben klebt,
+   lässt ihr Platz: --kw-frei für Leisten in main (0, wenn sie neben der
+   Spalte liegt — auf breiten Schirmen), --kw-b für den Kopf der
+   Unterseiten. Gemessen statt geschätzt: die Breite hängt am
+   Liefer-Schalter und an der Schreibrichtung. */
+function kopfwahlPlatz(){
+  const kw = document.querySelector("header .kopfwahl"), m = document.querySelector("main"), h = document.querySelector("header");
+  if(!kw || !m || !h) return;
+  const r = kw.getBoundingClientRect(), mr = m.getBoundingClientRect(), hr = h.getBoundingClientRect();
+  const rtl = document.documentElement.dir === "rtl";
+  /* Rand der Kategorie-Leiste: von der Kante von main bis 6 px vor die
+     Zentrale. main hat kein Polster; die Leiste blutet sonst per
+     −rand bis an den Schirm. Negativ heißt: die Zentrale liegt daneben. */
+  const frei = rtl ? r.right - mr.left + 6 : mr.right - r.left + 6;
+  const b = rtl ? r.right - hr.left + 6 : hr.right - r.left + 6;
+  const st = document.documentElement.style;
+  st.setProperty("--kw-frei", Math.round(frei) + "px");
+  st.setProperty("--kw-b", Math.max(0, Math.round(b)) + "px");
+}
+(function(){
+  const los = () => {
+    kopfwahlPlatz();
+    const kw = document.querySelector("header .kopfwahl");
+    if(kw && "ResizeObserver" in window) new ResizeObserver(kopfwahlPlatz).observe(kw);
+    addEventListener("resize", kopfwahlPlatz, { passive:true });
+    new MutationObserver(kopfwahlPlatz).observe(document.documentElement, { attributes:true, attributeFilter:["dir"] });
+  };
+  if(document.readyState === "loading") document.addEventListener("DOMContentLoaded", los); else los();
+})();
 /* Kopf außer Sicht: seine Dauer-Animationen ruhen (CSS header.kopf-ruht). */
 (function kopfRuhe(){
   const kopf = document.querySelector("header");
@@ -6551,7 +6882,7 @@ function aktionBandHTML(){
       '<div class="aktionfuss"><span class="rest"><i class="aktion-puls" aria-hidden="true"></i>' + rest + '</span>' +
       (g ? '<button type="button" class="sofort" data-aktionmerk="' +
         encodeURIComponent(a.gericht_name) + '" data-preis="' + sicherText(preisText(a.preis_neu)) +
-        '" aria-label="' + t("Sofort bestellen") + '">' + SOFORT_SVG + '</button>' : '') +
+        '" aria-label="' + t("In den Warenkorb") + '">' + SOFORT_SVG + '</button>' : '') +
       '</div></div>';
   }).join("");
 }
@@ -6734,21 +7065,71 @@ function bnRadVerdrahten(){
    Die Kennung ist zufällig und je Betrieb eine andere. Wer in zwei
    Häusern isst, ist zwei Gäste — das ist Absicht: Ein Betrieb soll
    nicht sehen, wo sein Gast sonst noch war.
+
+   NUR AUF WUNSCH (18.10., § 25 TDDDG, dokumente/recht/01 Befund 2).
+   Vorher legte der Hub die Kennung beim ersten Öffnen der Karte ab und
+   meldete jeden Aufruf an gast_melden — ein Besuchszähler, um den der
+   Gast nie gebeten hatte. Jetzt:
+   · Ohne Zutun wird nichts dauerhaft abgelegt und nichts gemeldet.
+   · Bestellung und Missbrauchsschutz bekommen eine Zufallsnummer, die
+     mit dem Tab stirbt (sessionStorage) — ein Sitzungsmerkmal für den
+     Dienst, den der Gast gerade nutzt.
+   · Erst der Knopf „Einschalten“ in „Mein Tisch“ legt die dauerhafte
+     Kennung an und merkt sich die Entscheidung (STAMMGAST_SCHLUESSEL).
+     Eine Kennung aus der Zeit davor wird dabei übernommen, nicht
+     vorher gelesen — so kommen Besuche und Gutscheine zurück.
    ══════════════════════════════════════════════════════════════════ */
-const GERAET_SCHLUESSEL = "omoteno-geraet-" + (SERVER.betrieb || "haus");
+const GERAET_SCHLUESSEL    = "omoteno-geraet-" + (SERVER.betrieb || "haus");
+const STAMMGAST_SCHLUESSEL = "omoteno-stammgast-" + (SERVER.betrieb || "haus");
+const TAB_GERAET_SCHLUESSEL = "omoteno-tabgeraet-" + (SERVER.betrieb || "haus");
+
+/* Die Datenbank lässt nur [A-Za-z0-9_-] und 8–64 Zeichen zu. Was
+   hier nicht hineinpasst, wird ersetzt statt mitgeschleppt. */
+function kennungGueltig(k){ return /^[A-Za-z0-9_-]{8,64}$/.test(k || ""); }
+function neueKennung(){
+  return (self.crypto && crypto.randomUUID)
+    ? crypto.randomUUID().replace(/-/g, "")
+    : "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 14);
+}
+
+function stammgastAn(){
+  try{ return !!localStorage.getItem(STAMMGAST_SCHLUESSEL); }catch(e){ return false; }
+}
 
 function geraetKennung(){
   let k = "";
-  try{ k = localStorage.getItem(GERAET_SCHLUESSEL) || ""; }catch(e){}
-  /* Die Datenbank lässt nur [A-Za-z0-9_-] und 8–64 Zeichen zu. Was
-     hier nicht hineinpasst, wird ersetzt statt mitgeschleppt. */
-  if(!/^[A-Za-z0-9_-]{8,64}$/.test(k)){
-    k = (self.crypto && crypto.randomUUID)
-      ? crypto.randomUUID().replace(/-/g, "")
-      : "g" + Date.now().toString(36) + Math.random().toString(36).slice(2, 14);
-    try{ localStorage.setItem(GERAET_SCHLUESSEL, k); }catch(e){ /* privates Fenster */ }
+  if(stammgastAn()){
+    try{ k = localStorage.getItem(GERAET_SCHLUESSEL) || ""; }catch(e){}
+    if(!kennungGueltig(k)){
+      k = neueKennung();
+      try{ localStorage.setItem(GERAET_SCHLUESSEL, k); }catch(e){ /* privates Fenster */ }
+    }
+    return k;
+  }
+  try{ k = sessionStorage.getItem(TAB_GERAET_SCHLUESSEL) || ""; }catch(e){}
+  if(!kennungGueltig(k)){
+    k = neueKennung();
+    try{ sessionStorage.setItem(TAB_GERAET_SCHLUESSEL, k); }catch(e){}
   }
   return k;
+}
+
+/* Der Knopf „Einschalten“: Entscheidung merken, die Kennung des Tabs
+   NICHT übernehmen (sie hat schon Bestellungen ohne Einwilligung
+   getragen und soll kein Profil nachträglich füllen), eine alte
+   dauerhafte Kennung dagegen schon. */
+function stammgastEinschalten(){
+  try{ localStorage.setItem(STAMMGAST_SCHLUESSEL, new Date().toISOString()); }catch(e){ return false; }
+  return stammgastAn();
+}
+
+/* Ausschalten löscht beides auf dem Gerät. Was der Betrieb schon
+   gezählt hat, bleibt dort, bis es gelöscht wird — der Satz an der
+   Stelle sagt das. */
+function stammgastAusschalten(){
+  try{ localStorage.removeItem(STAMMGAST_SCHLUESSEL); }catch(e){}
+  try{ localStorage.removeItem(GERAET_SCHLUESSEL); }catch(e){}
+  gastStand = { geladen:false, ok:false, besuche:0, lieblinge:[], gutscheine:[] };
 }
 
 /* Was der Server zurückgemeldet hat. Solange geladen false ist, zeigt
@@ -6756,7 +7137,7 @@ function geraetKennung(){
 let gastStand = { geladen:false, ok:false, besuche:0, lieblinge:[], gutscheine:[] };
 
 function gastLaden(){
-  if(!serverBereit()) return Promise.resolve();
+  if(!serverBereit() || !stammgastAn()) return Promise.resolve();
   const ziel = SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/gast_melden";
   return sicherFetch(ziel, {
       method:"POST",
@@ -8780,6 +9161,8 @@ const ZUSATZ_NAMEN = {
     veg = vegetarisch · scharf = scharf
     Stand: Speisekarte vom 20.05.2026. Preisänderungen einfach hier eintragen. */
 
+/*{{KARTE_GERUEST}} Chocos Karte als Gerüst. Ein Haus mit „geruestKarte“ im
+   Markenblatt bekommt hier seine eigene Karte — nie die eines anderen Hauses. */
 let SPEISEKARTE = [
   { gruppe:"Crêpe", eintraege:[
     { n:"L'AMouR Crêpe", b:"Unser Herzstück – der Crêpe, nach dem das Haus benannt ist", p:"15,90", top:true , bild:"l-amour-crepe.jpg", frei:1, opt:["suess","sauce"]},
@@ -8916,6 +9299,7 @@ let COCKTAILS = [
     { n:"Oriental Eis", b:"Mit arabischer Sahne", p:"6,90" , bild:"oriental-eis.jpg", frei:1, opt:["suess","sauce"]}
   ]}
 ];
+/*{{/KARTE_GERUEST}}*/
 
 /* ═══ KARTEN — mehr als die drei festen ═════════════════════════════
    Wunsch 07.10.: bis zu 20 Karten (Mittagskarte, Abendkarte …), jede
@@ -9521,7 +9905,6 @@ const TEXTE = {
 "Suchen …":{en:"Search …",tr:"Ara …",ru:"Поиск …",fr:"Rechercher …",es:"Buscar …",it:"Cerca …",pl:"Szukaj …",ar:"بحث …",uk:"Пошук …",nl:"Zoeken …",ro:"Căutare …"},
 "Löschen":{en:"Clear",tr:"Temizle",ru:"Очистить",fr:"Effacer",es:"Borrar",it:"Cancella",pl:"Wyczyść",ar:"مسح",uk:"Очистити",nl:"Wissen",ro:"Șterge"},
 "Merken":{en:"Save",tr:"Kaydet",ru:"В избранное",fr:"Garder",es:"Guardar",it:"Salva",pl:"Zapisz",ar:"حفظ",uk:"Зберегти",nl:"Bewaren",ro:"Salvează"},
-"Sofort bestellen":{en:"Order now",tr:"Hemen sipariş ver",ru:"Заказать сразу",fr:"Commander maintenant",es:"Pedir ahora",it:"Ordina subito",pl:"Zamów od razu",ar:"اطلب الآن",uk:"Замовити зараз",nl:"Nu bestellen",ro:"Comandă acum"},
 "Bestellung zeigen":{en:"Show order",tr:"Siparişi göster",ru:"Показать заказ",fr:"Montrer la commande",es:"Mostrar el pedido",it:"Mostra l'ordine",pl:"Pokaż zamówienie",ar:"عرض الطلب",uk:"Показати замовлення",nl:"Bestelling tonen",ro:"Arată comanda"},
 "Zeigen Sie unserem Team einfach diese Bestellung – wir nehmen sie direkt auf.":{en:"Just show this order to our team, we will take it straight away.",tr:"Bu siparişi ekibimize gösterin, hemen alalım.",ru:"Просто покажите заказ нашему персоналу, мы сразу его примем.",fr:"Montrez simplement cette commande à notre équipe, nous la prenons aussitôt.",es:"Muestre este pedido a nuestro equipo, lo tomamos enseguida.",it:"Mostri l'ordine al nostro team, lo prendiamo subito.",pl:"Pokaż to zamówienie obsłudze, przyjmiemy je od razu.",ar:"أظهروا هذا الطلب لفريقنا، وسنأخذه فوراً.",uk:"Просто покажіть замовлення нашому персоналу, ми одразу його приймемо.",nl:"Laat deze bestelling aan ons team zien, we nemen hem meteen op.",ro:"Arătați comanda echipei noastre, o preluăm imediat."},
 "Bitte zeigen Sie diesen Bildschirm unserem Serviceteam. Wir nehmen die Bestellung dann direkt auf.":{en:"Please show this screen to our team. We will take your order right away.",tr:"Lütfen bu ekranı ekibimize gösterin. Siparişinizi hemen alalım.",ru:"Покажите, пожалуйста, этот экран персоналу. Мы сразу примем заказ.",fr:"Montrez cet écran à notre équipe. Nous prenons votre commande aussitôt.",es:"Muestre esta pantalla a nuestro equipo. Tomamos su pedido enseguida.",it:"Mostri questo schermo al nostro team. Prendiamo subito l'ordine.",pl:"Pokaż ten ekran obsłudze. Przyjmiemy zamówienie od razu.",ar:"يرجى عرض هذه الشاشة على فريقنا. سنأخذ طلبكم فوراً.",uk:"Покажіть, будь ласка, цей екран персоналу. Ми одразу приймемо замовлення.",nl:"Laat dit scherm aan ons team zien. We nemen uw bestelling meteen op.",ro:"Vă rugăm să arătați acest ecran echipei. Preluăm comanda imediat."},
@@ -9615,6 +9998,11 @@ const TEXTE = {
 "Gerade nicht auf der Karte: {x}":{en:"Not on the menu right now: {x}",tr:"Şu an menüde yok: {x}",ru:"Сейчас нет в меню: {x}",fr:"Pas à la carte en ce moment : {x}",es:"Ahora no está en la carta: {x}",it:"Al momento non in menu: {x}",pl:"Obecnie nie ma w karcie: {x}",ar:"غير متوفر في القائمة حالياً: {x}",uk:"Зараз немає в меню: {x}",nl:"Nu niet op de kaart: {x}",ro:"Momentan nu e în meniu: {x}"},
 "Nicht mehr dabei: {x}":{en:"No longer available: {x}",tr:"Artık yok: {x}",ru:"Больше нет: {x}",fr:"Plus disponible : {x}",es:"Ya no disponible: {x}",it:"Non più disponibile: {x}",pl:"Już niedostępne: {x}",ar:"لم يعد متوفراً: {x}",uk:"Більше немає: {x}",nl:"Niet meer beschikbaar: {x}",ro:"Nu mai este disponibil: {x}"},
 "Zurück":{en:"Back",tr:"Geri",ru:"Назад",fr:"Retour",es:"Volver",it:"Indietro",pl:"Wstecz",ar:"رجوع",uk:"Назад",nl:"Terug",ro:"Înapoi"},
+"Vorheriges Gericht":{en:"Previous dish",tr:"Önceki yemek",ru:"Предыдущее блюдо",fr:"Plat précédent",es:"Plato anterior",it:"Piatto precedente",pl:"Poprzednie danie",ar:"الطبق السابق",uk:"Попередня страва",nl:"Vorig gerecht",ro:"Preparatul anterior"},
+"Nächstes Gericht":{en:"Next dish",tr:"Sonraki yemek",ru:"Следующее блюдо",fr:"Plat suivant",es:"Plato siguiente",it:"Piatto successivo",pl:"Następne danie",ar:"الطبق التالي",uk:"Наступна страва",nl:"Volgend gerecht",ro:"Preparatul următor"},
+"Karussell":{en:"Carousel",tr:"Karusel",ru:"Карусель",fr:"Carrousel",es:"Carrusel",it:"Carosello",pl:"Karuzela",ar:"عرض دوّار",uk:"Карусель",nl:"Carrousel",ro:"Carusel"},
+"ohne Zwiebeln":{en:"without onions",tr:"soğansız",ru:"без лука",fr:"sans oignons",es:"sin cebolla",it:"senza cipolle",pl:"bez cebuli",ar:"بدون بصل",uk:"без цибулі",nl:"zonder uien",ro:"fără ceapă"},
+"Beläge wählen":{en:"Choose toppings",tr:"Malzeme seç",ru:"Выбрать начинку",fr:"Choisir les garnitures",es:"Elegir ingredientes",it:"Scelga i condimenti",pl:"Wybór dodatków",ar:"اختر الإضافات",uk:"Обрати начинку",nl:"Toppings kiezen",ro:"Alege toppingurile"},
 "Zurück zur Übersicht":{en:"Back to overview",tr:"Genel bakışa dön",ru:"К обзору",fr:"Retour à l'aperçu",es:"Volver al inicio",it:"Torna alla panoramica",pl:"Powrót do przeglądu",ar:"العودة إلى النظرة العامة",uk:"Назад до огляду",nl:"Terug naar overzicht",ro:"Înapoi la prezentare"},
 "Hier hakt gerade etwas.":{en:"Something is stuck here right now.",tr:"Burada bir şeyler takıldı.",ru:"Здесь что-то пошло не так.",fr:"Quelque chose coince ici.",es:"Aquí algo se ha atascado.",it:"Qui qualcosa si è bloccato.",pl:"Tutaj coś się zacięło.",ar:"حدث خلل هنا.",uk:"Тут щось не спрацювало.",nl:"Hier loopt iets vast.",ro:"Aici s-a blocat ceva."},
 "Bitte einmal zurück zur Übersicht, unser Team hilft Ihnen sonst gerne persönlich weiter.":{en:"Please head back to the overview, otherwise our team is happy to help you in person.",tr:"Lütfen genel bakışa dönün, aksi halde ekibimiz size memnuniyetle şahsen yardımcı olur.",ru:"Вернитесь, пожалуйста, к обзору, иначе наша команда с радостью поможет лично.",fr:"Revenez à l'aperçu, sinon notre équipe vous aide volontiers en personne.",es:"Vuelva al inicio; si no, nuestro equipo le ayuda con gusto en persona.",it:"Torni alla panoramica, altrimenti il nostro team la aiuta volentieri di persona.",pl:"Wróć do przeglądu, w innym razie nasz zespół chętnie pomoże osobiście.",ar:"يرجى العودة إلى النظرة العامة، وإلا فسيسعد فريقنا بمساعدتكم شخصياً.",uk:"Поверніться, будь ласка, до огляду, інакше наша команда радо допоможе особисто.",nl:"Ga even terug naar het overzicht, anders helpt ons team u graag persoonlijk.",ro:"Reveniți la prezentare, altfel echipa noastră vă ajută cu plăcere personal."},
@@ -9890,6 +10278,11 @@ const TEXTE = {
 /* --- Menügruppen --- */
 "Vorspeisen":{en:"Starters",tr:"Başlangıçlar",ru:"Закуски",fr:"Entrées",es:"Entrantes",it:"Antipasti",pl:"Przystawki",ar:"المقبلات",uk:"Закуски",nl:"Voorgerechten",ro:"Aperitive"},
 "Salate":{en:"Salads",tr:"Salatalar",ru:"Салаты",fr:"Salades",es:"Ensaladas",it:"Insalate",pl:"Sałatki",ar:"السلطات",uk:"Салати",nl:"Salades",ro:"Salate"},
+"Benvenuti! Schön, dass Sie da sind.":{en:"Benvenuti! Lovely to have you here.",tr:"Benvenuti! Hoş geldiniz.",ru:"Benvenuti! Рады вас видеть.",fr:"Benvenuti ! Ravis de vous accueillir.",es:"¡Benvenuti! Nos alegra tenerle aquí.",it:"Benvenuti! Che piacere averla qui.",pl:"Benvenuti! Miło Państwa gościć.",ar:"Benvenuti! يسعدنا وجودك.",uk:"Benvenuti! Раді вас бачити.",nl:"Benvenuti! Fijn dat u er bent.",ro:"Benvenuti! Ne bucurăm că sunteți aici."},
+"AUS DEM OFEN":{en:"FROM THE OVEN",tr:"FIRINDAN",ru:"ИЗ ПЕЧИ",fr:"SORTI DU FOUR",es:"RECIÉN HORNEADO",it:"DAL FORNO",pl:"Z PIECA",ar:"من الفرن",uk:"З ПЕЧІ",nl:"UIT DE OVEN",ro:"DIN CUPTOR"},
+"Unsere Pizzen":{en:"Our pizzas",tr:"Pizzalarımız",ru:"Наши пиццы",fr:"Nos pizzas",es:"Nuestras pizzas",it:"Le nostre pizze",pl:"Nasze pizze",ar:"البيتزا لدينا",uk:"Наші піци",nl:"Onze pizza's",ro:"Pizzele noastre"},
+"Frisch aus dem Ofen, Beläge nach Wahl":{en:"Fresh from the oven, toppings of your choice",tr:"Fırından taze, malzemeler isteğe göre",ru:"Прямо из печи, начинка на выбор",fr:"Tout juste sorties du four, garnitures au choix",es:"Recién salidas del horno, ingredientes a elegir",it:"Appena sfornate, condimenti a scelta",pl:"Prosto z pieca, dodatki do wyboru",ar:"طازجة من الفرن، والإضافات حسب اختيارك",uk:"Просто з печі, начинка на вибір",nl:"Vers uit de oven, beleg naar keuze",ro:"Proaspete din cuptor, toppinguri la alegere"},
+"Wir kommen zu Ihnen":{en:"We come to you",tr:"Size geliyoruz",ru:"Мы приедем к вам",fr:"Nous venons chez vous",es:"Vamos a su casa",it:"Veniamo da Lei",pl:"Przyjedziemy do Państwa",ar:"نأتي إليك",uk:"Ми приїдемо до вас",nl:"Wij komen naar u toe",ro:"Venim la dumneavoastră"},
 "Pizza":{en:"Pizza",tr:"Pizza",ru:"Пицца",fr:"Pizzas",es:"Pizzas",it:"Pizze",pl:"Pizza",ar:"البيتزا",uk:"Піца",nl:"Pizza",ro:"Pizza"},
 "Nudeln":{en:"Pasta",tr:"Makarna",ru:"Паста",fr:"Pâtes",es:"Pasta",it:"Pasta",pl:"Makarony",ar:"المعكرونة",uk:"Паста",nl:"Pasta",ro:"Paste"},
 "Desserts":{en:"Desserts",tr:"Tatlılar",ru:"Десерты",fr:"Desserts",es:"Postres",it:"Dolci",pl:"Desery",ar:"الحلويات",uk:"Десерти",nl:"Desserts",ro:"Deserturi"},
@@ -10038,7 +10431,6 @@ const TEXTE = {
 "An uns senden":{en:"Send to us",tr:"Bize gönder",ru:"Отправить нам",fr:"Nous envoyer",es:"Enviarnos",it:"Invia a noi",pl:"Wyślij do nas",ar:"أرسل إلينا",uk:"Надіслати нам",nl:"Naar ons sturen",ro:"Trimite la noi"},
 "IHR TISCH (OPTIONAL)":{en:"YOUR TABLE (OPTIONAL)",tr:"MASANIZ (İSTEĞE BAĞLI)",ru:"ВАШ СТОЛИК (НЕОБЯЗАТЕЛЬНО)",fr:"VOTRE TABLE (FACULTATIF)",es:"SU MESA (OPCIONAL)",it:"IL VOSTRO TAVOLO (FACOLTATIVO)",pl:"PAŃSTWA STOLIK (OPCJONALNIE)",ar:"طاولتكم (اختياري)",uk:"ВАШ СТОЛИК (НЕОБОВ'ЯЗКОВО)",nl:"UW TAFEL (OPTIONEEL)",ro:"MASA DVS. (OPȚIONAL)"},
 "Zwei Sätze auf Google helfen uns sehr":{en:"Two lines on Google help us a lot",tr:"Google'da iki cümle bize çok yardımcı olur",ru:"Пара строк в Google очень нам помогает",fr:"Deux phrases sur Google nous aident beaucoup",es:"Dos frases en Google nos ayudan mucho",it:"Due righe su Google ci aiutano molto",pl:"Dwa zdania w Google bardzo nam pomagają",ar:"سطران على غوغل يساعداننا كثيراً",uk:"Кілька рядків у Google дуже нам допомагають",nl:"Twee zinnen op Google helpen ons enorm",ro:"Două rânduri pe Google ne ajută mult"},
-"Bestellung abschicken":{en:"Send order",tr:"Siparişi gönder",ru:"Отправить заказ",fr:"Envoyer la commande",es:"Enviar pedido",it:"Invia ordine",pl:"Wyślij zamówienie",ar:"إرسال الطلب",uk:"Надіслати замовлення",nl:"Bestelling versturen",ro:"Trimite comanda"},
 "Wird gesendet …":{en:"Sending …",tr:"Gönderiliyor …",ru:"Отправляем …",fr:"Envoi …",es:"Enviando …",it:"Invio …",pl:"Wysyłanie …",ar:"جارٍ الإرسال …",uk:"Надсилаємо …",nl:"Versturen …",ro:"Se trimite …"},
 "ANMERKUNG (OPTIONAL)":{en:"NOTE (OPTIONAL)",tr:"NOT (İSTEĞE BAĞLI)",ru:"ПРИМЕЧАНИЕ (НЕОБЯЗАТЕЛЬНО)",fr:"REMARQUE (FACULTATIF)",es:"NOTA (OPCIONAL)",it:"NOTA (FACOLTATIVO)",pl:"UWAGA (OPCJONALNIE)",ar:"ملاحظة (اختياري)",uk:"ПРИМІТКА (НЕОБОВ'ЯЗКОВО)",nl:"OPMERKING (OPTIONEEL)",ro:"OBSERVAȚIE (OPȚIONAL)"},
 "z. B. ohne Zwiebeln":{en:"e.g. no onions",tr:"örn. soğansız",ru:"например, без лука",fr:"p. ex. sans oignons",es:"p. ej. sin cebolla",it:"es. senza cipolla",pl:"np. bez cebuli",ar:"مثلاً بدون بصل",uk:"наприклад, без цибулі",nl:"bijv. zonder ui",ro:"de ex. fără ceapă"},
@@ -10202,7 +10594,6 @@ const TEXTE = {
 "Ich war hier":{en:"I was here",tr:"Buradaydım",ru:"Я был здесь",fr:"J'étais ici",es:"Estuve aquí",it:"Sono stato qui",pl:"Byłem tutaj",ar:"كنت هنا",uk:"Я був тут",nl:"Ik was hier",ro:"Am fost aici"},
 "Ihr erster Besuch bei uns.":{en:"Your first visit with us.",tr:"Bizdeki ilk ziyaretiniz.",ru:"Ваш первый визит к нам.",fr:"Votre première visite chez nous.",es:"Su primera visita con nosotros.",it:"La sua prima visita da noi.",pl:"Państwa pierwsza wizyta u nas.",ar:"زيارتك الأولى لنا.",uk:"Ваш перший візит до нас.",nl:"Uw eerste bezoek bij ons.",ro:"Prima dumneavoastră vizită la noi."},
 "Ihr {n}. Besuch bei uns.":{en:"Your visit no. {n} with us.",tr:"Bizdeki {n}. ziyaretiniz.",ru:"Ваш {n}-й визит к нам.",fr:"Votre {n}e visite chez nous.",es:"Su visita n.º {n} con nosotros.",it:"La sua {n}ª visita da noi.",pl:"Państwa {n}. wizyta u nas.",ar:"زيارتك رقم {n} لنا.",uk:"Ваш {n}-й візит до нас.",nl:"Uw {n}e bezoek bij ons.",ro:"A {n}-a vizită la noi."},
-"Ihre Besuche merkt sich Ihr Gerät, nicht wir – dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.":{en:"Your device remembers your visits, not us – that needs a brief connection. Ordering and everything else works without it.",tr:"Ziyaretlerinizi biz değil cihazınız hatırlar – bunun için kısa bir bağlantı gerekir. Sipariş ve diğer her şey bağlantısız da çalışır.",ru:"Ваши визиты помнит ваше устройство, а не мы — для этого нужна короткая связь. Заказ и всё остальное работает и без неё.",fr:"C'est votre appareil qui retient vos visites, pas nous – il lui faut une brève connexion. Commander et tout le reste fonctionne sans.",es:"Sus visitas las recuerda su dispositivo, no nosotros: para eso hace falta conexión un momento. Pedir y todo lo demás funciona igual sin ella.",it:"Le sue visite se le ricorda il suo dispositivo, non noi: serve una breve connessione. Ordinare e tutto il resto funziona anche senza.",pl:"Państwa wizyty pamięta Państwa urządzenie, nie my – potrzebne jest do tego krótkie połączenie. Zamawianie i reszta działa też bez niego.",ar:"جهازك هو من يتذكر زياراتك، لا نحن — ويحتاج ذلك إلى اتصال قصير. الطلب وكل شيء آخر يعمل بدونه.",uk:"Ваші візити пам'ятає ваш пристрій, а не ми — для цього потрібен короткий зв'язок. Замовлення й усе інше працює й без нього.",nl:"Uw toestel onthoudt uw bezoeken, wij niet – daarvoor is even verbinding nodig. Bestellen en al het andere gaat ook zonder.",ro:"Vizitele le ține minte dispozitivul dumneavoastră, nu noi – pentru asta e nevoie de o scurtă conexiune. Comanda și restul funcționează și fără."},
 "Ihre E-Mail-Adresse":{en:"Your email address",tr:"E-posta adresiniz",ru:"Ваш адрес электронной почты",fr:"Votre adresse e-mail",es:"Su dirección de correo",it:"Il suo indirizzo e-mail",pl:"Państwa adres e-mail",ar:"بريدك الإلكتروني",uk:"Ваша електронна адреса",nl:"Uw e-mailadres",ro:"Adresa dumneavoastră de e-mail"},
 "Unentschlossen?":{en:"Can't decide?",tr:"Karar veremediniz mi?",ru:"Не можете выбрать?",fr:"Vous hésitez ?",es:"¿No sabe qué elegir?",it:"Indeciso?",pl:"Nie możesz się zdecydować?",ar:"محتار؟",uk:"Не можете обрати?",nl:"Twijfelt u?",ro:"Nu vă puteți decide?"},
 "Wir helfen beim Aussuchen – und zeigen Ihnen Neues zum Probieren.":{en:"We'll help you choose – and show you something new to try.",tr:"Seçmenize yardımcı oluyoruz – ve denemeniz için yeni şeyler gösteriyoruz.",ru:"Мы поможем выбрать – и покажем что-то новое, что стоит попробовать.",fr:"Nous vous aidons à choisir – et vous montrons des nouveautés à goûter.",es:"Le ayudamos a elegir – y le mostramos algo nuevo para probar.",it:"La aiutiamo a scegliere – e Le mostriamo qualcosa di nuovo da provare.",pl:"Pomożemy wybrać – i pokażemy coś nowego do spróbowania.",ar:"نساعدك في الاختيار – ونعرض عليك أشياء جديدة لتجربتها.",uk:"Ми допоможемо обрати – і покажемо щось нове, що варто скуштувати.",nl:"Wij helpen u kiezen – en laten u iets nieuws zien om te proberen.",ro:"Vă ajutăm să alegeți – și vă arătăm ceva nou de încercat."},
@@ -10210,6 +10601,11 @@ const TEXTE = {
 "Worauf haben Sie Lust?":{en:"What are you in the mood for?",tr:"Canınız ne istiyor?",ru:"Чего бы вам хотелось?",fr:"De quoi avez-vous envie ?",es:"¿Qué le apetece?",it:"Di cosa ha voglia?",pl:"Na co mają Państwo ochotę?",ar:"ماذا تشتهي؟",uk:"Чого б вам хотілося?",nl:"Waar heeft u zin in?",ro:"Ce poftă aveți?"},
 "Neu für Sie":{en:"New for you",tr:"Sizin için yeni",ru:"Новое для вас",fr:"Nouveau pour vous",es:"Nuevo para usted",it:"Nuovo per Lei",pl:"Nowość dla Państwa",ar:"جديد لك",uk:"Нове для вас",nl:"Nieuw voor u",ro:"Nou pentru dumneavoastră"},
 "Beliebt im Haus":{en:"House favourite",tr:"Evin favorisi",ru:"Любимое у гостей",fr:"Favori de la maison",es:"Favorito de la casa",it:"Il preferito della casa",pl:"Ulubione gości",ar:"مفضّل لدى الضيوف",uk:"Улюблене гостями",nl:"Favoriet van het huis",ro:"Preferatul casei"},
+"Scharf":{en:"Spicy",tr:"Acılı",ru:"Острое",fr:"Épicé",es:"Picante",it:"Piccante",pl:"Ostre",ar:"حار",uk:"Гостре",nl:"Pittig",ro:"Picant"},
+"Ohne":{en:"Without",tr:"İçermeyen",ru:"Без",fr:"Sans",es:"Sin",it:"Senza",pl:"Bez",ar:"بدون",uk:"Без",nl:"Zonder",ro:"Fără"},
+"Filter":{en:"Filter",tr:"Filtre",ru:"Фильтр",fr:"Filtre",es:"Filtro",it:"Filtro",pl:"Filtr",ar:"تصفية",uk:"Фільтр",nl:"Filter",ro:"Filtru"},
+"Filter zurücksetzen":{en:"Reset filters",tr:"Filtreleri sıfırla",ru:"Сбросить фильтры",fr:"Réinitialiser les filtres",es:"Restablecer filtros",it:"Azzera filtri",pl:"Wyczyść filtry",ar:"إعادة ضبط التصفية",uk:"Скинути фільтри",nl:"Filters wissen",ro:"Resetează filtrele"},
+"Für diesen Filter gibt es hier nichts.":{en:"Nothing here matches this filter.",tr:"Bu filtreye uyan bir şey yok.",ru:"По этому фильтру здесь ничего нет.",fr:"Rien ne correspond à ce filtre.",es:"No hay nada para este filtro.",it:"Nulla corrisponde a questo filtro.",pl:"Nic tu nie pasuje do tego filtra.",ar:"لا يوجد هنا ما يطابق هذه التصفية.",uk:"За цим фільтром тут нічого немає.",nl:"Niets past bij dit filter.",ro:"Nimic nu corespunde acestui filtru."},
 "Vegetarisch":{en:"Vegetarian",tr:"Vejetaryen",ru:"Вегетарианское",fr:"Végétarien",es:"Vegetariano",it:"Vegetariano",pl:"Wegetariańskie",ar:"نباتي",uk:"Вегетаріанське",nl:"Vegetarisch",ro:"Vegetarian"},
 "Vegan":{en:"Vegan",tr:"Vegan",ru:"Веганское",fr:"Végane",es:"Vegano",it:"Vegano",pl:"Wegańskie",ar:"نباتي صرف",uk:"Веганське",nl:"Veganistisch",ro:"Vegan"},
 "Enthält: {x}":{en:"Contains: {x}",tr:"İçerir: {x}",ru:"Содержит: {x}",fr:"Contient : {x}",es:"Contiene: {x}",it:"Contiene: {x}",pl:"Zawiera: {x}",ar:"يحتوي على: {x}",uk:"Містить: {x}",nl:"Bevat: {x}",ro:"Conține: {x}"},
@@ -10233,9 +10629,16 @@ const TEXTE = {
 "{n} von {m}":{en:"{n} of {m}",tr:"{n} / {m}",ru:"{n} из {m}",fr:"{n} sur {m}",es:"{n} de {m}",it:"{n} di {m}",pl:"{n} z {m}",ar:"{n} من {m}",uk:"{n} з {m}",nl:"{n} van {m}",ro:"{n} din {m}"},
 "Ihre Gutscheine, direkt ins Postfach.":{en:"Your vouchers, straight to your inbox.",tr:"Kuponlarınız doğrudan e-posta kutunuza.",ru:"Ваши купоны — прямо на вашу почту.",fr:"Vos bons, directement dans votre boîte mail.",es:"Sus vales, directamente en su bandeja de entrada.",it:"I suoi buoni, direttamente nella sua casella di posta.",pl:"Państwa kupony prosto do skrzynki odbiorczej.",ar:"قسائمك مباشرة إلى بريدك الوارد.",uk:"Ваші купони — просто на вашу пошту.",nl:"Uw tegoedbonnen, direct in uw inbox.",ro:"Voucherele dumneavoastră, direct în căsuța de e-mail."},
 "Karte, bestellen und rufen — direkt am Tisch.":{en:"Menu, ordering and service — right at the table.",tr:"Menü, sipariş ve servis — doğrudan masada.",ru:"Меню, заказ и вызов — прямо за столом.",fr:"Carte, commande et service — directement à table.",es:"Carta, pedidos y servicio: directamente en la mesa.",it:"Menù, ordini e servizio — direttamente al tavolo.",pl:"Karta, zamawianie i obsługa — prosto przy stoliku.",ar:"القائمة والطلب والنداء — من الطاولة مباشرة.",uk:"Меню, замовлення та виклик — прямо за столом.",nl:"Kaart, bestellen en roepen — direct aan tafel.",ro:"Meniu, comandă și chemare — direct la masă."},
+"Auf Wunsch merken wir uns, dass Sie bei uns waren: Ihre Besuche, Ihre Lieblingsgerichte und Gutscheine, die wir für Sie hinterlegen.":{en:"If you like, we'll remember that you've been here: your visits, your favourite dishes and vouchers we set aside for you.",tr:"İsterseniz burada olduğunuzu hatırlarız: ziyaretleriniz, en sevdiğiniz yemekler ve sizin için ayırdığımız kuponlar.",ru:"По желанию мы запомним, что вы у нас были: ваши визиты, любимые блюда и купоны, которые мы для вас оставим.",fr:"Si vous le souhaitez, nous nous souvenons de vos passages : vos visites, vos plats préférés et les bons que nous vous réservons.",es:"Si lo desea, recordamos que ha estado aquí: sus visitas, sus platos favoritos y los vales que le reservamos.",it:"Se lo desidera, ci ricordiamo che è stato da noi: le sue visite, i suoi piatti preferiti e i buoni che le riserviamo.",pl:"Na życzenie zapamiętamy, że byli Państwo u nas: wizyty, ulubione dania i bony, które dla Państwa odłożymy.",ar:"إذا رغبت، نتذكر أنك زرتنا: زياراتك وأطباقك المفضلة والقسائم التي نحتفظ بها لك.",uk:"За бажанням ми запам'ятаємо, що ви в нас були: ваші візити, улюблені страви й купони, які ми для вас залишимо.",nl:"Als u wilt, onthouden we dat u bij ons was: uw bezoeken, uw favoriete gerechten en bonnen die we voor u klaarzetten.",ro:"Dacă doriți, ne amintim că ați fost la noi: vizitele, preparatele preferate și voucherele pe care vi le păstrăm."},
+"Dafür legt Ihr Gerät eine zufällige Nummer ab, und wir speichern dazu Ihre Besuche und Bestellungen – ohne Namen, ohne Konto. Ausschalten können Sie es hier jederzeit.":{en:"For this your device stores a random number, and we save your visits and orders with it – no name, no account. You can switch it off here at any time.",tr:"Bunun için cihazınız rastgele bir numara saklar, biz de ziyaretlerinizi ve siparişlerinizi bununla kaydederiz – isim yok, hesap yok. Buradan istediğiniz zaman kapatabilirsiniz.",ru:"Для этого ваше устройство хранит случайный номер, а мы сохраняем к нему ваши визиты и заказы — без имени и без аккаунта. Отключить это можно здесь в любой момент.",fr:"Pour cela, votre appareil enregistre un numéro aléatoire, et nous y associons vos visites et commandes – sans nom, sans compte. Vous pouvez le désactiver ici à tout moment.",es:"Para ello su dispositivo guarda un número aleatorio y nosotros guardamos con él sus visitas y pedidos, sin nombre ni cuenta. Puede desactivarlo aquí en cualquier momento.",it:"Per questo il suo dispositivo conserva un numero casuale e noi vi associamo visite e ordini – senza nome, senza account. Può disattivarlo qui in qualsiasi momento.",pl:"W tym celu urządzenie zapisuje losowy numer, a my zapisujemy przy nim wizyty i zamówienia – bez imienia, bez konta. Można to tu w każdej chwili wyłączyć.",ar:"لهذا يحفظ جهازك رقمًا عشوائيًا، ونحفظ معه زياراتك وطلباتك – بلا اسم ولا حساب. يمكنك إيقاف ذلك هنا في أي وقت.",uk:"Для цього ваш пристрій зберігає випадковий номер, а ми зберігаємо до нього ваші візити й замовлення — без імені та без облікового запису. Вимкнути можна тут будь-коли.",nl:"Daarvoor bewaart uw apparaat een willekeurig nummer en slaan wij daarbij uw bezoeken en bestellingen op – zonder naam, zonder account. U kunt het hier altijd weer uitzetten.",ro:"Pentru aceasta, dispozitivul păstrează un număr aleatoriu, iar noi salvăm împreună cu el vizitele și comenzile – fără nume, fără cont. Puteți dezactiva oricând aici."},
+"Einschalten":{en:"Switch on",tr:"Aç",ru:"Включить",fr:"Activer",es:"Activar",it:"Attiva",pl:"Włącz",ar:"تشغيل",uk:"Увімкнути",nl:"Inschakelen",ro:"Activează"},
+"Auf diesem Gerät ausschalten":{en:"Switch off on this device",tr:"Bu cihazda kapat",ru:"Отключить на этом устройстве",fr:"Désactiver sur cet appareil",es:"Desactivar en este dispositivo",it:"Disattiva su questo dispositivo",pl:"Wyłącz na tym urządzeniu",ar:"إيقاف على هذا الجهاز",uk:"Вимкнути на цьому пристрої",nl:"Uitschakelen op dit apparaat",ro:"Dezactivează pe acest dispozitiv"},
+"Ausgeschaltet. Sollen wir auch Ihre bisherigen Besuche löschen, sagen Sie es unserem Team.":{en:"Switched off. If you'd like us to delete your earlier visits too, just tell our team.",tr:"Kapatıldı. Önceki ziyaretlerinizi de silmemizi isterseniz ekibimize söylemeniz yeterli.",ru:"Отключено. Если хотите, чтобы мы удалили и прежние визиты, скажите нашей команде.",fr:"Désactivé. Si vous souhaitez que nous supprimions aussi vos visites précédentes, dites-le à notre équipe.",es:"Desactivado. Si quiere que borremos también sus visitas anteriores, dígaselo a nuestro equipo.",it:"Disattivato. Se desidera che cancelliamo anche le visite precedenti, lo dica al nostro team.",pl:"Wyłączone. Jeśli mamy usunąć także wcześniejsze wizyty, prosimy powiedzieć naszemu zespołowi.",ar:"تم الإيقاف. إذا أردت أن نحذف زياراتك السابقة أيضًا، أخبر فريقنا.",uk:"Вимкнено. Якщо хочете, щоб ми видалили й попередні візити, скажіть нашій команді.",nl:"Uitgeschakeld. Wilt u dat we ook uw eerdere bezoeken wissen, zeg het dan tegen ons team.",ro:"Dezactivat. Dacă doriți să ștergem și vizitele anterioare, spuneți echipei noastre."},
+"Das ging auf diesem Gerät nicht – in einem privaten Fenster kann sich der Browser nichts merken.":{en:"That didn't work on this device – in a private window the browser can't remember anything.",tr:"Bu cihazda olmadı – gizli pencerede tarayıcı hiçbir şeyi hatırlayamaz.",ru:"На этом устройстве не получилось — в приватном окне браузер ничего не запоминает.",fr:"Cela n'a pas fonctionné sur cet appareil – en navigation privée, le navigateur ne peut rien retenir.",es:"No ha funcionado en este dispositivo: en una ventana privada el navegador no puede recordar nada.",it:"Non è stato possibile su questo dispositivo – in una finestra privata il browser non può ricordare nulla.",pl:"Na tym urządzeniu się nie udało – w oknie prywatnym przeglądarka niczego nie zapamięta.",ar:"لم ينجح ذلك على هذا الجهاز – في النافذة الخاصة لا يستطيع المتصفح تذكر أي شيء.",uk:"На цьому пристрої не вдалося — у приватному вікні браузер нічого не запам'ятовує.",nl:"Dat lukte niet op dit apparaat – in een privévenster kan de browser niets onthouden.",ro:"Nu a mers pe acest dispozitiv – într-o fereastră privată browserul nu poate reține nimic."},
+"Dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.":{en:"This needs a brief connection. Ordering and everything else works without it.",tr:"Bunun için kısa bir bağlantı gerekiyor. Sipariş ve diğer her şey bağlantısız da çalışır.",ru:"Для этого нужно ненадолго подключиться к сети. Заказ и всё остальное работает и без этого.",fr:"Il faut pour cela une brève connexion. Commander et tout le reste fonctionne aussi sans.",es:"Para esto hace falta conexión un momento. Pedir y todo lo demás funciona también sin ella.",it:"Serve per un attimo la connessione. Ordinare e tutto il resto funziona anche senza.",pl:"Do tego potrzebne jest na chwilę połączenie. Zamawianie i cała reszta działa także bez niego.",ar:"يحتاج ذلك إلى اتصال قصير. الطلب وكل شيء آخر يعمل بدونه أيضًا.",uk:"Для цього потрібне коротке з'єднання. Замовлення й усе інше працює і без нього.",nl:"Daarvoor is even verbinding nodig. Bestellen en al het andere werkt ook zonder.",ro:"Pentru asta e nevoie de conexiune pentru scurt timp. Comanda și restul funcționează și fără."},
+"Ohne Konto, ohne Passwort, ohne Namen.":{en:"No account, no password, no name.",tr:"Hesap yok, şifre yok, isim yok.",ru:"Без аккаунта, без пароля, без имени.",fr:"Sans compte, sans mot de passe, sans nom.",es:"Sin cuenta, sin contraseña, sin nombre.",it:"Senza account, senza password, senza nome.",pl:"Bez konta, bez hasła, bez imienia.",ar:"بلا حساب ولا كلمة مرور ولا اسم.",uk:"Без облікового запису, без пароля, без імені.",nl:"Geen account, geen wachtwoord, geen naam.",ro:"Fără cont, fără parolă, fără nume."},
 "Mein Tisch":{en:"My table",tr:"Masam",ru:"Мой стол",fr:"Ma table",es:"Mi mesa",it:"Il mio tavolo",pl:"Mój stolik",ar:"طاولتي",uk:"Мій стіл",nl:"Mijn tafel",ro:"Masa mea"},
 "Notiert. Sie hören erst von uns, wenn Sie die Adresse bestätigt haben.":{en:"Noted. You'll only hear from us once you've confirmed the address.",tr:"Not edildi. Adresi onaylayana kadar sizden haber almayız.",ru:"Записано. Мы напишем только после того, как вы подтвердите адрес.",fr:"C'est noté. Vous n'aurez de nos nouvelles qu'après confirmation de l'adresse.",es:"Anotado. Solo tendrá noticias nuestras cuando confirme la dirección.",it:"Annotato. Le scriveremo solo dopo che avrà confermato l'indirizzo.",pl:"Zapisane. Odezwiemy się dopiero po potwierdzeniu adresu.",ar:"تم التسجيل. لن نراسلك إلا بعد تأكيد العنوان.",uk:"Записано. Ми напишемо лише після підтвердження адреси.",nl:"Genoteerd. U hoort pas van ons zodra u het adres bevestigd hebt.",ro:"Notat. Vă scriem doar după ce confirmați adresa."},
-"Ohne Konto, ohne Passwort – das merkt sich Ihr Gerät.":{en:"No account, no password – your device remembers this.",tr:"Hesap yok, şifre yok – bunu cihazınız hatırlıyor.",ru:"Без аккаунта и пароля — всё помнит ваше устройство.",fr:"Sans compte ni mot de passe – votre appareil s'en souvient.",es:"Sin cuenta ni contraseña: lo recuerda su dispositivo.",it:"Senza account né password: se ne ricorda il suo dispositivo.",pl:"Bez konta i hasła – pamięta to Państwa urządzenie.",ar:"بلا حساب وبلا كلمة مرور — جهازك هو من يتذكر.",uk:"Без облікового запису й пароля — це пам'ятає ваш пристрій.",nl:"Zonder account, zonder wachtwoord – uw toestel onthoudt dit.",ro:"Fără cont, fără parolă – dispozitivul dumneavoastră ține minte."},
 "POST VOM HAUS (FREIWILLIG)":{en:"NEWS FROM US (OPTIONAL)",tr:"BİZDEN HABERLER (İSTEĞE BAĞLI)",ru:"НОВОСТИ ОТ НАС (ПО ЖЕЛАНИЮ)",fr:"DES NOUVELLES DE NOUS (FACULTATIF)",es:"NOTICIAS NUESTRAS (OPCIONAL)",it:"NOTIZIE DA NOI (FACOLTATIVO)",pl:"WIADOMOŚCI OD NAS (OPCJONALNIE)",ar:"رسائل منا (اختياري)",uk:"НОВИНИ ВІД НАС (ЗА БАЖАННЯМ)",nl:"POST VAN ONS (VRIJWILLIG)",ro:"VEȘTI DE LA NOI (OPȚIONAL)"},
 "Schön, dass Sie wieder da sind.":{en:"Good to see you again.",tr:"Tekrar aramızda olmanız güzel.",ru:"Рады видеть вас снова.",fr:"Ravis de vous revoir.",es:"Nos alegra verle de nuevo.",it:"Che bello rivederla.",pl:"Miło znów Cię widzieć.",ar:"سعداء بعودتك.",uk:"Раді бачити вас знову.",nl:"Fijn dat u er weer bent.",ro:"Ne bucurăm să vă revedem."},
 "Text ist offen — das Bild bitte über „Bild sichern“ dazulegen.":{en:"The message is open — please add the image via \\u201ESave image\\u201C.",tr:"Mesaj açık — görseli lütfen „Görseli kaydet\\u201C ile ekleyin.",ru:"Сообщение открыто — изображение добавьте через «Сохранить изображение».",fr:"Le message est ouvert — ajoutez l'image via « Enregistrer l'image ».",es:"El mensaje está abierto: añada la imagen con «Guardar imagen».",it:"Il messaggio è aperto: aggiunga l'immagine con «Salva immagine».",pl:"Wiadomość jest otwarta — obraz dodaj przez „Zapisz obraz”.",ar:"الرسالة مفتوحة — أضف الصورة عبر «حفظ الصورة».",uk:"Повідомлення відкрито — зображення додайте через «Зберегти зображення».",nl:"Het bericht staat open — voeg de afbeelding toe via „Afbeelding bewaren”.",ro:"Mesajul este deschis — adăugați imaginea prin „Salvați imaginea”."},
@@ -10311,6 +10714,17 @@ const TEXTE = {
    Markenblatt, weil sie bei jedem Haus gleich sind — nur Gebiet,
    Gebühr und Zeit unterscheiden sich, und die sind Zahlen. */
 "Lieferung":{en:"Delivery",tr:"Teslimat",ru:"Доставка",fr:"Livraison",es:"Entrega",it:"Consegna",pl:"Dostawa",ar:"التوصيل",uk:"Доставка",nl:"Bezorging",ro:"Livrare"},
+"Zahlungspflichtig bestellen":{en:"Order with obligation to pay",tr:"Ödeme yükümlülüğüyle sipariş ver",ru:"Заказать с обязательством оплаты",fr:"Commander avec obligation de paiement",es:"Pedido con obligación de pago",it:"Ordine con obbligo di pagamento",pl:"Zamawiam z obowiązkiem zapłaty",ar:"اطلب مع الالتزام بالدفع",uk:"Замовити з обов'язком оплати",nl:"Bestellen met betalingsverplichting",ro:"Comandă cu obligație de plată"},
+"Alle Preise in Euro inkl. MwSt.":{en:"All prices in euros incl. VAT.",tr:"Tüm fiyatlar avro cinsinden, KDV dahildir.",ru:"Все цены в евро, включая НДС.",fr:"Tous les prix en euros, TVA comprise.",es:"Todos los precios en euros, IVA incluido.",it:"Tutti i prezzi in euro, IVA inclusa.",pl:"Wszystkie ceny w euro, z VAT.",ar:"جميع الأسعار باليورو شاملة ضريبة القيمة المضافة.",uk:"Усі ціни в євро, з ПДВ.",nl:"Alle prijzen in euro, incl. btw.",ro:"Toate prețurile în euro, cu TVA inclus."},
+"inkl. Liefergebühr {b}":{en:"incl. delivery fee {b}",tr:"teslimat ücreti {b} dahil",ru:"включая доставку {b}",fr:"frais de livraison {b} inclus",es:"gastos de envío {b} incluidos",it:"consegna {b} inclusa",pl:"z opłatą za dostawę {b}",ar:"شاملة رسوم التوصيل {b}",uk:"з доставкою {b}",nl:"incl. bezorgkosten {b}",ro:"taxa de livrare {b} inclusă"},
+"zzgl. Liefergebühr {b}":{en:"plus delivery fee {b}",tr:"artı teslimat ücreti {b}",ru:"плюс доставка {b}",fr:"plus frais de livraison {b}",es:"más gastos de envío {b}",it:"più consegna {b}",pl:"plus opłata za dostawę {b}",ar:"بالإضافة إلى رسوم التوصيل {b}",uk:"плюс доставка {b}",nl:"plus bezorgkosten {b}",ro:"plus taxa de livrare {b}"},
+"frei ab {b}":{en:"free from {b}",tr:"{b} üzeri ücretsiz",ru:"бесплатно от {b}",fr:"offerte dès {b}",es:"gratis a partir de {b}",it:"gratis da {b}",pl:"gratis od {b}",ar:"مجانًا ابتداءً من {b}",uk:"безкоштовно від {b}",nl:"gratis vanaf {b}",ro:"gratuit de la {b}"},
+"Ein Widerrufsrecht besteht nicht, da Speisen und Getränke frisch zubereitet werden und schnell verderben.":{en:"There is no right of withdrawal, as food and drinks are freshly prepared and perish quickly.",tr:"Yiyecek ve içecekler taze hazırlandığı ve çabuk bozulduğu için cayma hakkı yoktur.",ru:"Права на отказ от заказа нет, так как блюда и напитки готовятся свежими и быстро портятся.",fr:"Il n'existe pas de droit de rétractation, car les plats et boissons sont préparés frais et se périment rapidement.",es:"No existe derecho de desistimiento, ya que la comida y las bebidas se preparan al momento y se estropean rápidamente.",it:"Non sussiste il diritto di recesso, poiché cibi e bevande sono preparati al momento e deperiscono rapidamente.",pl:"Prawo odstąpienia od umowy nie przysługuje, ponieważ potrawy i napoje są przygotowywane na świeżo i szybko się psują.",ar:"لا يوجد حق في الانسحاب، لأن الطعام والمشروبات تُحضَّر طازجة وتفسد بسرعة.",uk:"Права на відмову немає, оскільки страви й напої готуються свіжими та швидко псуються.",nl:"Er is geen herroepingsrecht, omdat eten en drinken vers worden bereid en snel bederven.",ro:"Nu există drept de retragere, deoarece mâncarea și băuturile sunt preparate proaspăt și se strică repede."},
+"In den Warenkorb":{en:"Add to basket",tr:"Sepete ekle",ru:"В корзину",fr:"Ajouter au panier",es:"Añadir a la cesta",it:"Aggiungi al carrello",pl:"Do koszyka",ar:"أضف إلى السلة",uk:"До кошика",nl:"In het mandje",ro:"Adaugă în coș"},
+"Impressum":{en:"Legal notice",tr:"Künye",ru:"Выходные данные",fr:"Mentions légales",es:"Aviso legal",it:"Note legali",pl:"Nota prawna",ar:"بيانات الناشر",uk:"Вихідні дані",nl:"Colofon",ro:"Informații legale"},
+"Datenschutz":{en:"Privacy",tr:"Gizlilik",ru:"Конфиденциальность",fr:"Confidentialité",es:"Privacidad",it:"Privacy",pl:"Prywatność",ar:"الخصوصية",uk:"Конфіденційність",nl:"Privacy",ro:"Confidențialitate"},
+"Dieser Text ist nur auf Deutsch verfügbar.":{en:"This text is only available in German.",tr:"Bu metin yalnızca Almanca olarak mevcuttur.",ru:"Этот текст доступен только на немецком языке.",fr:"Ce texte n'est disponible qu'en allemand.",es:"Este texto solo está disponible en alemán.",it:"Questo testo è disponibile solo in tedesco.",pl:"Ten tekst jest dostępny tylko po niemiecku.",ar:"هذا النص متاح باللغة الألمانية فقط.",uk:"Цей текст доступний лише німецькою мовою.",nl:"Deze tekst is alleen in het Duits beschikbaar.",ro:"Acest text este disponibil doar în germană."},
+"Mehr dazu in unserer Datenschutzerklärung":{en:"More in our privacy policy",tr:"Ayrıntılar gizlilik politikamızda",ru:"Подробнее в нашей политике конфиденциальности",fr:"Plus d'informations dans notre politique de confidentialité",es:"Más información en nuestra política de privacidad",it:"Maggiori informazioni nella nostra informativa sulla privacy",pl:"Więcej w naszej polityce prywatności",ar:"المزيد في سياسة الخصوصية لدينا",uk:"Докладніше в нашій політиці конфіденційності",nl:"Meer in onze privacyverklaring",ro:"Mai multe în politica noastră de confidențialitate"},
 "Zu zahlen":{en:"Total to pay",tr:"Ödenecek tutar",ru:"К оплате",fr:"Total à payer",es:"Total a pagar",it:"Totale da pagare",pl:"Do zapłaty",ar:"المبلغ المستحق",uk:"До сплати",nl:"Te betalen",ro:"De plată"},
 "kostenlos":{en:"free",tr:"ücretsiz",ru:"бесплатно",fr:"offerte",es:"gratis",it:"gratuita",pl:"bezpłatnie",ar:"مجاناً",uk:"безкоштовно",nl:"gratis",ro:"gratuit"},
 "IHR NAME":{en:"YOUR NAME",tr:"ADINIZ",ru:"ВАШЕ ИМЯ",fr:"VOTRE NOM",es:"SU NOMBRE",it:"IL SUO NOME",pl:"IMIĘ I NAZWISKO",ar:"اسمك",uk:"ВАШЕ ІМʼЯ",nl:"UW NAAM",ro:"NUMELE DUMNEAVOASTRĂ"},
@@ -10915,12 +11329,12 @@ function jetztOffen(){
 function statusHTML(st){
   if(st.offen && st.bis){
     const satz = t("Geöffnet bis {x}", {x: st.bis});
-    return '<span class="status offen" title="' + hs(satz) + '"><span class="st-punkt" aria-hidden="true"></span>' +
+    return '<span class="status offen" title="' + hs(satz) + '"><span class="st-rand" aria-hidden="true"><span class="st-licht"></span></span><span class="st-punkt" aria-hidden="true"></span>' +
            '<span class="st-text">' + hs(satz) + '</span></span>';
   }
   const satz = st.ab ? t("Öffnet {w} {x}", {w: st.wann, x: st.ab}) : st.text;
   const anteil = Math.max(0, Math.min(1, st.anteil || 0));
-  return '<span class="status zu" title="' + hs(st.text) + '"><span class="st-punkt" aria-hidden="true"></span>' +
+  return '<span class="status zu" title="' + hs(st.text) + '"><span class="st-rand" aria-hidden="true"><span class="st-licht"></span></span><span class="st-punkt" aria-hidden="true"></span>' +
          '<span class="st-text">' + hs(satz) + '</span>' +
          (st.ab ? '<span class="st-linie" aria-hidden="true" data-anteil="' + anteil.toFixed(3) + '">' +
                   '<i style="--anteil:' + anteil.toFixed(3) + '"></i></span>' : "") + '</span>';
@@ -11490,7 +11904,177 @@ function gerichtPreisHTML(g){
     '<span class="tag rabatt">−' + r.prozent + ' %</span>';
 }
 
-function gerichtHTML(g){
+/* ═══ Stile der Speisekarte (17.10.) ═══════════════════════════════
+   Wunsch: „Die Gerichte sind im Vordergrund … Ideen von den drei
+   Stilen“ (Fotos: Sushi-App, MenuVA, FeastRocket). Der Betrieb wählt
+   im Board (hub_stil.karte), der Gast sieht genau diesen Stil.
+     liste  — wie bisher, bytegleich (Vorgabe für jeden, der nichts wählt)
+     buehne — große Karte je Gericht, umgekehrte Farben des Hauses,
+              Foto ragt heraus, Kategorien als runde Zeichen
+     raster — zwei Spalten Fotokarten, „// Kategorie“, nummerierte Chips
+     flink  — Gruß, Bahn „Beliebt“, kompakte Karten mit kräftigem „+“
+     teller — (17.10., Pizzeria) je Kategorie eine Bühne: das Gericht rund
+              und groß in der Mitte, wischen/Pfeile wechseln; darunter die Liste
+   Nur Werte aus der festen Liste — eine Live-Spalte geht nie roh in ein
+   Attribut (§2.3a). Die Griffe bleiben in jedem Stil dieselben
+   (.gericht, .ginfo[data-detail], .gpreis, .gplus[data-merk]): Korb,
+   Flug, Detailblatt und Mitlaufen tragen unverändert. */
+const KARTENSTILE = ["liste", "buehne", "raster", "flink", "teller"];
+let kartenStilVorschau = null;
+function kartenStil(){
+  const w = kartenStilVorschau !== null ? kartenStilVorschau : (HUBSTIL && HUBSTIL.karte);
+  return KARTENSTILE.indexOf(w) >= 0 ? w : "liste";
+}
+/* Ohne Foto zeigt jeder neue Stil das Zeichen der Kategorie groß auf
+   einem getönten Teller — eine leere Fläche sähe kaputt aus. */
+function ksZeichenHTML(gruppe, karte){
+  return '<span class="gbild ks-zeichen" aria-hidden="true">' +
+    bzHTML(bzKategorie(gruppe || "", karte || "speisekarte"), "ks:" + (karte || "") + ":" + (gruppe || "")) + '</span>';
+}
+/* Flink: oben der Gruß nach Tageszeit und eine Bahn mit den Hausklassikern. */
+function ksFlinkKopfHTML(id, daten){
+  const top = [];
+  daten.forEach(x => x.eintraege.forEach(e => { if(e.top && top.length < 8) top.push([e, x.gruppe]); }));
+  const bahn = top.length < 2 ? "" :
+    '<div class="ks-titel">' + hs(t("Beliebt")) + '</div><div class="ks-bahn">' +
+    top.map(([e, gr]) => '<button type="button" class="ks-tipp" data-detail="' + encodeURIComponent(e.n) + '" aria-label="' +
+      t("Infos zu {x}", {x:t(e.n)}) + '">' +
+      /* Das Zeichen liegt immer darunter: Lädt das Foto nicht, bleibt
+         statt einer leeren Fläche das Zeichen der Kategorie stehen. */
+      '<span class="ks-tbild ks-tzeichen">' + bzHTML(bzKategorie(gr, id), "kst:" + id + ":" + gr) +
+      (hatVorschau(e)
+        ? '<img src="' + hs(vorschauBild(e, true)) + '" alt="" ' + ersatzAttr(e, true) +
+          'loading="lazy" decoding="async" onload="this.classList.add(&quot;geladen&quot;)" onerror="this.remove()">'
+        : "") + '</span>' +
+      '<span class="ks-tname">' + t(e.n) + '</span><span class="ks-tpreis">' + gerichtPreisHTML(e) + '</span></button>').join("") +
+    '</div>';
+  return '<div class="ks-gruss">' + hs(begruessung()) + '</div>' + bahn;
+}
+
+/* ─── Filter (aus FeastRocket, in jedem Stil) ──────────────────────
+   Vegan · Vegetarisch · Scharf und „ohne …“ je Allergen, das in dieser
+   Karte überhaupt vorkommt. Nur im Speicher: Ein Filter soll den
+   nächsten Besuch nicht leerer machen, als er ist. Ein Gericht OHNE
+   Allergen-Angaben fällt bei „ohne …“ heraus — wer Nüsse meiden muss,
+   bekommt nichts gezeigt, wofür niemand gebürgt hat. */
+const sfStand = { vegan:false, veg:false, scharf:false, ohne:[] };
+let sfOffen = false;
+function sfAnzahl(){ return (sfStand.vegan ? 1 : 0) + (sfStand.veg ? 1 : 0) + (sfStand.scharf ? 1 : 0) + sfStand.ohne.length; }
+function sfPasst(g){
+  if(sfStand.vegan && !g.vegan) return false;
+  if(sfStand.veg && !(g.veg || g.vegan)) return false;
+  if(sfStand.scharf && !g.scharf) return false;
+  if(sfStand.ohne.length){
+    const info = INHALTSSTOFFE[g.n];
+    if(!info || !Array.isArray(info.a)) return false;
+    if(sfStand.ohne.some(k => info.a.indexOf(k) >= 0)) return false;
+  }
+  return true;
+}
+function sfFeldHTML(id, daten){
+  const da = new Set();
+  daten.forEach(x => x.eintraege.forEach(e => { const i = INHALTSSTOFFE[e.n]; if(i && Array.isArray(i.a)) i.a.forEach(k => da.add(k)); }));
+  const knopf = (attr, an, text) => '<button type="button" class="sf-chip" ' + attr + ' aria-pressed="' + an + '">' + hs(text) + '</button>';
+  const ohne = Object.keys(ALLERGEN_NAMEN).filter(k => da.has(k));
+  return '<div class="sf-feld" id="sfFeld"' + (sfOffen ? "" : " hidden") + '>' +
+    '<div class="sf-reihe">' +
+      knopf('data-sf="vegan" data-seite="' + id + '"', sfStand.vegan, t("Vegan")) +
+      knopf('data-sf="veg" data-seite="' + id + '"', sfStand.veg, t("Vegetarisch")) +
+      knopf('data-sf="scharf" data-seite="' + id + '"', sfStand.scharf, t("Scharf")) + '</div>' +
+    (ohne.length ? '<div class="sf-titel">' + hs(t("Ohne")) + '</div><div class="sf-reihe">' +
+      ohne.map(k => knopf('data-sf-ohne="' + k + '" data-seite="' + id + '"', sfStand.ohne.indexOf(k) >= 0, t(ALLERGEN_NAMEN[k]))).join("") + '</div>' : "") +
+    (sfAnzahl() ? '<button type="button" class="sf-weg" data-sf-weg="' + id + '">' + hs(t("Filter zurücksetzen")) + '</button>' : "") +
+    '</div>';
+}
+
+/* ═══ TELLER — die Bühne für runde Gerichte (17.10., Più Gusto) ════════
+   Wunsch: „Die Pizzen sollen gut sichtbar sein, und man soll bei den
+   Pizzen wechseln können — die Pizza rund in der Mitte.“
+   Je Kategorie EINE Bühne: das Gericht groß und rund auf einem Teller,
+   darunter Name, Preis, Beschreibung, Korb. Wischen (dem Finger 1:1
+   nach, mit Wurf), Pfeile, Pfeiltasten wechseln. DIESELBEN Elemente
+   bleiben, nur ihr Inhalt wechselt (§4.3) — eine Bewegung läuft am
+   Teller, nicht an einem neu gebauten Knoten. Nur transform/opacity.
+   Die Bühne trägt KEIN .gericht: Zahl der Gerichte, Korb-Griffe und
+   alle Prüfungen bleiben an der Liste darunter, die wie in jedem Stil
+   steht. Rundes Bild: zuerst der Freisteller (bild_frei — der runde
+   Ausschnitt aus dem Board ist einer), sonst das Foto im Kreis, sonst
+   das Zeichen der Kategorie auf dem Teller. Nie eine leere Fläche. */
+const tlStand = {}, tlListen = {};
+const TL_PFEIL = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>';
+function tlTellerInnen(e, gruppe, karte){
+  /* Das Zeichen liegt immer darunter: Lädt das Bild nicht, bleibt es stehen. */
+  return '<span class="tl-zeichen">' + bzHTML(bzKategorie(gruppe || "", karte || "speisekarte"), "tl:" + karte + ":" + gruppe) + '</span>' +
+    (e.bf ? '<img class="tl-frei" src="' + hs(e.bf) + '" alt="" decoding="async" onerror="this.remove()">'
+          : (e.bild ? '<img class="tl-foto" src="' + hs(bildFuer(e, false)) + '" alt="" decoding="async" onerror="this.remove()">' : ""));
+}
+function tlTagsHTML(e){
+  return (e.vegan ? '<span class="tag vegan">' + t("VEGAN") + '</span>'
+                  : (e.veg ? '<span class="tag veg">' + t("VEGETARISCH") + '</span>' : "")) +
+         (e.alter ? '<span class="tag abalter">' + e.alter + '+</span>' : "");
+}
+function tlHTML(eintraege, gruppe, karte){
+  if(!eintraege.length) return "";
+  const key = karte + "|" + gruppe;
+  tlListen[key] = eintraege;
+  const n = eintraege.length;
+  const i = Math.min(tlStand[key] || 0, n - 1);
+  tlStand[key] = i;
+  const e = eintraege[i], name = encodeURIComponent(e.n);
+  const pfeile = n < 2 ? "" :
+    '<button type="button" class="tl-pfeil tl-zurueck" data-tl-schritt="-1" aria-label="' + hs(t("Vorheriges Gericht")) + '">' + TL_PFEIL + '</button>' +
+    '<button type="button" class="tl-pfeil tl-vor" data-tl-schritt="1" aria-label="' + hs(t("Nächstes Gericht")) + '">' + TL_PFEIL + '</button>';
+  return '<section class="tl wisch-aus" data-tl="' + hs(key) + '" aria-roledescription="' + hs(t("Karussell")) + '" aria-label="' + hs(t(gruppe)) + '">' +
+    '<div class="tl-buehne">' + '<div class="tl-teller">' + tlTellerInnen(e, gruppe, karte) + '</div>' + pfeile + '</div>' +
+    '<div class="tl-info" aria-live="polite">' +
+      '<button type="button" class="tl-name" data-detail="' + name + '"><span class="tl-n">' + t(e.n) + '</span><span class="tl-tags">' + tlTagsHTML(e) + '</span></button>' +
+      '<div class="tl-b">' + (e.b ? t(e.b) : "") + '</div>' +
+      '<div class="tl-zeile"><span class="tl-preis">' + gerichtPreisHTML(e) + '</span>' +
+        '<div class="gpreis tl-korb" data-gname="' + name + '">' + korbSteuerungHTML(e) + '</div></div>' +
+      '<button type="button" class="tl-mehr" data-detail="' + name + '"' + ((e.opt || []).length ? "" : " hidden") + '>' + hs(t("Beläge wählen")) + '</button>' +
+      (n < 2 ? "" : '<div class="tl-zaehler"><span class="tl-nr">' + (i + 1) + '</span> / ' + n + '</div>' +
+        '<div class="tl-punkte" aria-hidden="true">' + eintraege.map((x, j) => '<i' + (j === i ? ' class="an"' : "") + '></i>').join("") + '</div>') +
+    '</div></section>';
+}
+/* Wechsel AM SELBEN Element: Inhalt tauschen, dann der Teller rollt von
+   der Seite herein (translateX + Drehung, ease-out). richtung: +1 = das
+   nächste kommt von der Ende-Seite. Unterbrechbar: Eine laufende
+   Bewegung wird abgebrochen, nicht hintereinander gereiht. */
+function tlZeigen(sek, i, richtung){
+  const key = sek.dataset.tl, liste = tlListen[key];
+  if(!liste || !liste.length) return;
+  const n = liste.length;
+  i = ((i % n) + n) % n;
+  tlStand[key] = i;
+  const e = liste[i], name = encodeURIComponent(e.n);
+  const karte = key.slice(0, key.indexOf("|")), gruppe = key.slice(key.indexOf("|") + 1);
+  const teller = sek.querySelector(".tl-teller");
+  teller.getAnimations().forEach(a => a.cancel());
+  teller.style.transform = "";
+  teller.innerHTML = tlTellerInnen(e, gruppe, karte);
+  sek.querySelector(".tl-n").innerHTML = t(e.n);
+  sek.querySelector(".tl-tags").innerHTML = tlTagsHTML(e);
+  sek.querySelector(".tl-b").innerHTML = e.b ? t(e.b) : "";
+  sek.querySelector(".tl-preis").innerHTML = gerichtPreisHTML(e);
+  sek.querySelectorAll("[data-detail]").forEach(b => { b.dataset.detail = name; });
+  sek.querySelector(".tl-mehr").hidden = !(e.opt || []).length;
+  const korb = sek.querySelector(".tl-korb");
+  korb.dataset.gname = name; korb.innerHTML = korbSteuerungHTML(e);
+  const nr = sek.querySelector(".tl-nr"); if(nr) nr.textContent = String(i + 1);
+  sek.querySelectorAll(".tl-punkte i").forEach((p, j) => p.classList.toggle("an", j === i));
+  if(ruhigeBewegung() || !teller.animate || !richtung) return;
+  const r = document.documentElement.dir === "rtl" ? -richtung : richtung;
+  teller.animate([{ transform:"translateX(" + (r * 46) + "%) rotate(" + (r * 34) + "deg)", opacity:0 },
+                  { transform:"translateX(0) rotate(0deg)", opacity:1 }],
+                 { duration:380, easing:"cubic-bezier(.16,1,.3,1)" });
+  const info = sek.querySelector(".tl-info");
+  info.getAnimations().forEach(a => a.cancel());
+  info.animate([{ transform:"translateY(6px)", opacity:.35 }, { transform:"translateY(0)", opacity:1 }],
+               { duration:260, easing:"cubic-bezier(.16,1,.3,1)" });
+}
+
+function gerichtHTML(g, gruppe, karte){
+  const stil = kartenStil();
   const tags = (g.top ? '<span class="tag top">' + t("BELIEBT") + '</span>' : "")
              + (g.vegan ? '<span class="tag vegan">' + t("VEGAN") + '</span>'
                         : (g.veg ? '<span class="tag veg">' + t("VEGETARISCH") + '</span>' : ""))
@@ -11516,12 +12100,12 @@ function gerichtHTML(g){
       'loading="lazy" decoding="async" ' +
       'onload="this.classList.add(&quot;geladen&quot;)" ' +
       'onerror="vorschauFehler(this,&quot;.gbild&quot;,&quot;.gericht&quot;,&quot;gmitbild&quot;)"></span>'
-    : "";
+    : (stil !== "liste" ? ksZeichenHTML(gruppe, karte) : "");
 
   /* Text und Preis links, das Bild rechts, der
      Knopf sitzt auf der Bildecke. Ohne Bild steht der Knopf allein
      rechts, mittig zur Zeile. */
-  return '<div class="gericht' + (hatVorschau(g) ? " gmitbild" : "") + '">' +
+  return '<div class="gericht' + (hatVorschau(g) ? " gmitbild" : (stil !== "liste" ? " gmitbild ks-ohnebild" : "")) + '">' +
          '<button class="ginfo" data-detail="' + encodeURIComponent(g.n) + '" aria-label="' +
          t("Infos zu {x}", {x:t(g.n)}) + '">' +
          '<span class="gtext">' +
@@ -11627,7 +12211,7 @@ function inDenKorbFliegen(quelle, name){
   if(quelle.tagName === "IMG" && quelle.currentSrc){
     f.innerHTML = '<img alt="" src="' + hs(quelle.currentSrc) + '">';
     /* Ein Freisteller fliegt als Ding, nicht als Kachel: ohne Rahmen. */
-    if(quelle.classList.contains("ed-pop") || quelle.closest(".schwebt")) f.classList.add("kf-frei");
+    if(quelle.classList.contains("ed-pop") || quelle.classList.contains("tl-frei") || quelle.closest(".schwebt")) f.classList.add("kf-frei");
   } else {
     const ort = gerichtOrt(name);
     f.classList.add("kf-zeichen");
@@ -11688,7 +12272,9 @@ function karteSeite(id, daten, titel, unter, fuss){
     '<span>' + t(g) + '</span></button>').join("");
 
   const q = suchtext[id].trim().toLowerCase();
-  const passt = g => !q || (t(g.n) + " " + g.n + " " + (g.b ? t(g.b) : "")).toLowerCase().indexOf(q) >= 0;
+  const stil = kartenStil();
+  document.body.dataset.kartenstil = stil;
+  const passt = g => (!q || (t(g.n) + " " + g.n + " " + (g.b ? t(g.b) : "")).toLowerCase().indexOf(q) >= 0) && sfPasst(g);
 
   let sichtbar =
     filter[id] === "Alle"    ? daten :
@@ -11703,18 +12289,27 @@ function karteSeite(id, daten, titel, unter, fuss){
         /* Kein Versalsatz mehr: die Überschriften stehen jetzt in der
            Anzeigeschrift, da wirkt Großschrift wie Geschrei. */
         '<div class="gruppe" data-gruppe="' + hs(x.gruppe) + '">' + t(x.gruppe) + '</div>' +
-        x.eintraege.map(gerichtHTML).join("")).join("")
-    : '<div class="leer">' + t("Nichts gefunden. Versuchen Sie einen anderen Begriff.") + '</div>';
+        (stil === "raster"
+          ? '<div class="ks-raster">' + x.eintraege.map(e => gerichtHTML(e, x.gruppe, id)).join("") + '</div>'
+          : (stil === "teller" ? tlHTML(x.eintraege, x.gruppe, id) : "") +
+            x.eintraege.map(e => gerichtHTML(e, x.gruppe, id)).join(""))).join("")
+    : '<div class="leer">' + t(sfAnzahl() && !q ? "Für diesen Filter gibt es hier nichts." : "Nichts gefunden. Versuchen Sie einen anderen Begriff.") +
+      (sfAnzahl() ? ' <button type="button" class="sf-weg" data-sf-weg="' + id + '">' + hs(t("Filter zurücksetzen")) + '</button>' : "") + '</div>';
 
   const suche =
-    '<div class="suche"><svg class="lupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/>' +
+    '<div class="suche sf-mit"><svg class="lupe" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/>' +
     '<path d="M21 21l-4.3-4.3"/></svg>' +
     '<input id="suchfeld" data-seite="' + id + '" value="' + suchtext[id].replace(/"/g, "&quot;") +
     '" placeholder="' + t("Suchen …") + '" autocomplete="off">' +
     '<button class="clear' + (suchtext[id] ? " an" : "") + '" data-clear="' + id + '" aria-label="' +
-    t("Löschen") + '">×</button></div>';
+    t("Löschen") + '">×</button>' +
+    '<button type="button" class="sf-knopf' + (sfAnzahl() ? " an" : "") + '" data-sf-auf="' + id + '" aria-expanded="' + sfOffen +
+    '" aria-controls="sfFeld" aria-label="' + hs(t("Filter")) + '">' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>' +
+    (sfAnzahl() ? '<span class="sf-zahl">' + sfAnzahl() + '</span>' : "") + '</button></div>' + sfFeldHTML(id, daten);
 
-  return '<div class="seite">' + (id === "speisekarte" && foodrouletteAn() ? entscheidungCTA() : "") +
+  return '<div class="seite">' + (stil === "flink" ? ksFlinkKopfHTML(id, daten) : "") +
+         (id === "speisekarte" && foodrouletteAn() ? entscheidungCTA() : "") +
          '<h2>' + hs(t(titel)) + '</h2>' + (unter ? '<p class="unter">' + hs(t(unter)) + '</p>' : "") +
          aktionBandHTML() +
          suche + '<div class="chips">' +
@@ -11723,7 +12318,7 @@ function karteSeite(id, daten, titel, unter, fuss){
            '<button type="button" class="chip-zurueck" data-zurueck="1" aria-label="' + hs(t("Zurück zur Übersicht")) + '">' +
              '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>' + hs(t("Zurück")) + '</span></button>' +
            chips + '</div>' + liste +
-         '<div class="hinweis">' + fuss + '</div></div>';
+         '<div class="hinweis">' + fuss + '</div>' + preisNoteHTML() + '</div>';
 }
 
 /* ═══ FOODROULETTE — ein Glücksrad (Wunsch 09.10.) ════════════════
@@ -12381,6 +12976,69 @@ function konfetti(x, y, menge){
   }
 }
 
+/* Teller: Der Finger führt den Teller (1:1, mit leichter Drehung wie
+   eine rollende Scheibe). Weit genug oder schnell genug → nächstes
+   Gericht, sonst federt er zurück. Senkrecht rollt die Seite weiter
+   (touch-action:pan-y). Die Seite wechselt dabei NICHT die Unterseite:
+   .tl trägt .wisch-aus (wischSperre). */
+document.addEventListener("pointerdown", e => {
+  const buehne = e.target.closest && e.target.closest(".tl-buehne");
+  if(!buehne || e.target.closest(".tl-pfeil") || e.button > 0) return;
+  const sek = buehne.closest("[data-tl]"), teller = buehne.querySelector(".tl-teller");
+  if(!sek || !teller || (tlListen[sek.dataset.tl] || []).length < 2) return;
+  const start = { x:e.clientX, y:e.clientY, id:e.pointerId };
+  const spur = [{ x:e.clientX, t:performance.now() }];
+  let dx = 0, lenkt = false;
+  const zieh = ev => {
+    if(ev.pointerId !== start.id) return;
+    dx = ev.clientX - start.x;
+    const dy = ev.clientY - start.y;
+    if(!lenkt){
+      if(Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+      if(Math.abs(dy) > Math.abs(dx)){ los(); return; }
+      lenkt = true;
+      teller.getAnimations().forEach(a => a.cancel());
+      try{ buehne.setPointerCapture(start.id); }catch(x){}
+    }
+    const jetzt = performance.now();
+    spur.push({ x:ev.clientX, t:jetzt });
+    while(spur.length > 2 && jetzt - spur[0].t > 80) spur.shift();
+    teller.style.transform = "translateX(" + dx + "px)" + (ruhigeBewegung() ? "" : " rotate(" + (dx / 6).toFixed(1) + "deg)");
+  };
+  const los = () => {
+    document.removeEventListener("pointermove", zieh);
+    document.removeEventListener("pointerup", los);
+    document.removeEventListener("pointercancel", los);
+    if(!lenkt) return;
+    const a = spur[0], b = spur[spur.length - 1];
+    const v = (b.x - a.x) / Math.max(16, b.t - a.t);
+    const weit = Math.abs(dx) > buehne.clientWidth * .22 ||
+                 (Math.abs(v) > .5 && Math.abs(dx) > 24 && Math.sign(v) === Math.sign(dx));
+    if(weit){
+      /* Nach links gezogen = das nächste (in RTL gespiegelt). */
+      const vor = document.documentElement.dir === "rtl" ? dx > 0 : dx < 0;
+      const d = vor ? 1 : -1;
+      tlZeigen(sek, (tlStand[sek.dataset.tl] || 0) + d, d);
+      return;
+    }
+    const bisher = teller.style.transform;
+    teller.style.transform = "";
+    if(teller.animate && !ruhigeBewegung())
+      teller.animate([{ transform:bisher }, { transform:"translateX(0) rotate(0deg)" }], { duration:420, easing:FEDER });
+  };
+  document.addEventListener("pointermove", zieh, { passive:true });
+  document.addEventListener("pointerup", los);
+  document.addEventListener("pointercancel", los);
+});
+document.addEventListener("keydown", e => {
+  const sek = e.target.closest && e.target.closest("[data-tl]");
+  if(!sek || (e.key !== "ArrowLeft" && e.key !== "ArrowRight") || e.target.matches("input,textarea")) return;
+  const rtl = document.documentElement.dir === "rtl";
+  const d = (e.key === "ArrowRight") !== rtl ? 1 : -1;
+  e.preventDefault();
+  tlZeigen(sek, (tlStand[sek.dataset.tl] || 0) + d, d);
+});
+
 /* Wischen: der Finger führt die oberste Karte, die zweite rückt mit
    dem Zug schon ein Stück nach vorn. Das Tempo beim Loslassen wird aus
    den letzten ~80 ms gemessen, nicht über die ganze Geste gemittelt —
@@ -12743,6 +13401,52 @@ function auswahlNeuMitFeldern(neuName){
                 {duration:260, easing:"cubic-bezier(.16,1,.3,1)"});
 }
 
+/* ── Was der Gast zahlt, unmittelbar vor dem Knopf (18.10.) ──────────
+   § 312j Abs. 2 BGB: Gesamtpreis und Lieferkosten „unmittelbar“ vor der
+   Bestellung, Abs. 3: ein Knopf „zahlungspflichtig bestellen“; § 6/§ 7
+   PAngV: Endpreise mit Umsatzsteuer; bei Lieferung der Hinweis, dass kein
+   Widerrufsrecht besteht (Art. 246a § 1 Abs. 3 EGBGB). Zwischen Summe und
+   Knopf lagen bis zu acht Felder — deshalb steht der Betrag dort noch
+   einmal. Eine Stelle für Seite UND Nachziehen bei −/+ (vorher blieben
+   „Lieferung“ und „Zu zahlen“ beim alten Betrag stehen, nur die
+   Zwischensumme lief mit). dokumente/recht/01 Befunde 3 und 8. */
+function zahlStand(){
+  const summe = merkSumme();
+  const liefern = liefermodus && LIEFER.an;
+  const mindest = liefern ? LIEFER.mindest : BESTELLUNG.mindest;
+  const gebuehr = liefern ? lieferGebuehrFuer(summe) : 0;
+  return { summe, liefern, gebuehr, lieferZu: liefern && !liefertGerade(),
+           unterMindest: mindest > 0 && summe < mindest };
+}
+function lieferSummeTeil(z){
+  return '<div id="liefersumme">' + ((z.liefern && z.summe > 0)
+    ? '<div class="summe"><span class="l">' + t("Lieferung") + '</span>' +
+      '<span class="b">' + (z.gebuehr > 0 ? preisText(z.gebuehr) : t("kostenlos")) + '</span></div>' +
+      '<div class="summe"><span class="l">' + t("Zu zahlen") + '</span>' +
+      '<span class="b">' + preisText(z.summe + z.gebuehr) + '</span></div>'
+    : "") + '</div>';
+}
+function zahlTeil(z){
+  return '<div class="zahlteil" id="zahlteil">' +
+    '<div class="zahlzeile"><span>' + t("Zu zahlen") + '</span><b>' + preisText(z.summe + z.gebuehr) + '</b></div>' +
+    '<p class="zahlhinweis">' +
+      (z.liefern && z.gebuehr > 0 ? t("inkl. Liefergebühr {b}", {b: preisText(z.gebuehr)}) + " · " : "") +
+      t("Alle Preise in Euro inkl. MwSt.") + '</p>' +
+    (z.liefern ? '<p class="zahlhinweis">' +
+      t("Ein Widerrufsrecht besteht nicht, da Speisen und Getränke frisch zubereitet werden und schnell verderben.") + '</p>' : "") +
+    '<div class="rechtfuss">' + rechtLinksHTML() + '</div>' +
+    '</div>';
+}
+/* Unter jeder Karte: Endpreise, im Liefermodus die Kosten der Lieferung. */
+function preisNoteHTML(){
+  const liefern = liefermodus && LIEFER.an;
+  let satz = t("Alle Preise in Euro inkl. MwSt.");
+  if(liefern && LIEFER.gebuehr > 0)
+    satz += " " + t("zzgl. Liefergebühr {b}", {b: preisText(LIEFER.gebuehr)}) +
+      (LIEFER.gratis_ab > 0 ? " · " + t("frei ab {b}", {b: preisText(LIEFER.gratis_ab)}) : "");
+  return '<p class="preisnote">' + satz + '</p>';
+}
+
 SEITEN.auswahl = () => {
   const namen = Object.keys(merk);
   if(!namen.length){
@@ -12795,13 +13499,8 @@ SEITEN.auswahl = () => {
 
   /* Im Liefermodus kommt zur Ware die Gebühr. Der Gast soll die Zahl
      sehen, die er an der Tür bezahlt — nicht die halbe. */
-  const gebuehr = liefern ? lieferGebuehrFuer(summe) : 0;
-  const lieferSummeHTML = (liefern && summe > 0)
-    ? '<div class="summe"><span class="l">' + t("Lieferung") + '</span>' +
-      '<span class="b">' + (gebuehr > 0 ? preisText(gebuehr) : t("kostenlos")) + '</span></div>' +
-      '<div class="summe"><span class="l">' + t("Zu zahlen") + '</span>' +
-      '<span class="b">' + preisText(summe + gebuehr) + '</span></div>'
-    : "";
+  const zs = zahlStand();
+  const lieferSummeHTML = lieferSummeTeil(zs);
 
   let bestellteil = "";
   if(bestellbar){
@@ -12830,9 +13529,10 @@ SEITEN.auswahl = () => {
       '<div class="label">' + t("RABATTCODE (OPTIONAL)") + '</div>' +
       '<input class="feld" id="bRabattcode" autocapitalize="characters" placeholder="' +
         t("z. B. WILLKOMMEN10") + '">' +
+      zahlTeil(zs) +
       '<button class="knopf" data-aktion="bestellen"' +
         ((unterMindest || lieferZu) ? " disabled" : "") + '>' +
-      t("Bestellung abschicken") + '</button>' +
+      t("Zahlungspflichtig bestellen") + '</button>' +
       '<div class="kopiert" id="melde"></div>' +
       '<div class="ersatzweg" id="ersatzweg">' +
         '<p>' + t("Die Verbindung ist gerade schwierig. Zeigen Sie Ihre Bestellung einfach unserem Serviceteam:") + '</p>' +
@@ -13606,6 +14306,136 @@ SEITEN.haus = () => {
     '<button type="button" class="knopf zweit" data-heim="1">' + t("Zur Übersicht") + '</button></div>';
 };
 
+/* ═══ IMPRESSUM UND DATENSCHUTZ IM HUB (18.10.) ══════════════════
+   Vorher hatte der Hub keins von beiden (dokumente/recht/01 Befund 1)
+   — § 5 DDG und Art. 13 DSGVO verlangen beides für JEDEN Betrieb.
+   Erreichbar über die Fußzeile jeder Ansicht, über dem Bestellknopf und
+   am E-Mail-Feld. Texte aus dokumente/recht/07 und 08; die Werte aus
+   MARKENBLATT.recht und BETRIEB, immer über hs() (§2.3a).
+   Rechtstexte stehen auf Deutsch (Entscheidung D) — übersetzt sind nur
+   Link, Überschrift und der Satz, dass der Text deutsch ist.          */
+
+/* Die Löschfristen (datenbank/migration-loeschfristen.sql) nennt die
+   Seite erst, wenn die Migration live ist. Vorher wäre „wir löschen
+   nach 90 Tagen“ eine Behauptung (CLAUDE.md §0). */
+const LOESCHFRISTEN_LIVE = false;
+
+/* Jeder Eintrag, den der Hub im Gerät ablegt — EINE Liste für die
+   Seite; pruef-rechtstexte.js hält jeden Schlüssel der Vorlage
+   dagegen (eine neue Zeile ohne Eintrag hier wird rot). */
+const SPEICHER_EINTRAEGE = [
+  { m:"omoteno-merk-",        w:"Warenkorb samt Extras",                         d:"bis zur Bestellung oder zum Leeren",  a:"erst mit der Bestellung" },
+  { m:"omoteno-opt-",         w:"zuletzt gewählte Extras je Gericht",            d:"bis Sie Browserdaten löschen",        a:"nein" },
+  { m:"omoteno-zuletzt-",     w:"Ihre letzte Bestellung für „Wie letztes Mal“",   d:"bis Sie Browserdaten löschen",        a:"nein" },
+  { m:"omoteno-probiert-",    w:"was Sie schon bestellt haben (für „Neu für Sie“)", d:"bis Sie Browserdaten löschen",     a:"nein" },
+  { m:"omoteno-warteschlange",w:"hält eine Bestellung, wenn die Verbindung abreißt", d:"bis sie angekommen ist",          a:"ja, das ist die Bestellung" },
+  { m:"omoteno-vorgaenge",    w:"Stand Ihrer laufenden Bestellungen",            d:"bis zum Abschluss",                   a:"nein" },
+  { m:"omoteno-lieferadresse-", w:"Lieferanschrift fürs nächste Mal",            d:"bis Sie Browserdaten löschen",        a:"erst mit der nächsten Bestellung" },
+  { m:"omoteno-tabgeraet-",   w:"Zufallsnummer für Bestellung und Schutz vor Missbrauch", d:"bis der Tab geschlossen wird", a:"ja, mit der Bestellung" },
+  { m:"omoteno-geraet-",      w:"Zufallsnummer für „Mein Tisch“ — nur wenn Sie es eingeschaltet haben", d:"bis Sie ausschalten oder Browserdaten löschen", a:"ja, mit Bestellungen und beim Öffnen von „Mein Tisch“" },
+  { m:"omoteno-stammgast-",   w:"dass Sie „Mein Tisch“ eingeschaltet haben",     d:"bis Sie ausschalten",                 a:"nein" },
+  { m:"omoteno-tisch-",       w:"Ihre Tischnummer",                              d:"bis der Tab geschlossen wird",        a:"ja, mit der Bestellung" },
+  { m:"omoteno-sitzung-",     w:"Sitzung am Tisch (vom Untersetzer)",            d:"bis der Tab geschlossen wird",        a:"ja, mit der Bestellung" },
+  { m:"tapto-sprache",        w:"Ihre Sprache",                                  d:"bis zur Änderung",                    a:"nein" },
+  { m:"omoteno-licht-",       w:"hell oder dunkel",                              d:"bis zur Änderung",                    a:"nein" },
+  { m:"omoteno-farben-",      w:"Farben des Hauses für den Aufruf ohne Netz",    d:"bis zur nächsten Änderung des Hauses", a:"nein" },
+  { m:"omoteno-texte-",       w:"Texte des Hauses für den Aufruf ohne Netz",     d:"bis zur nächsten Änderung des Hauses", a:"nein" },
+  { m:"omoteno-kopf-",        w:"Kopfbild des Hauses für den Aufruf ohne Netz",  d:"bis zur nächsten Änderung des Hauses", a:"nein" },
+  { m:"omoteno-lade-",        w:"Begrüßungsbild des Hauses",                     d:"bis zur nächsten Änderung des Hauses", a:"nein" },
+  { m:"omoteno-schrift-",     w:"Schrift des Hauses",                            d:"bis zur nächsten Änderung des Hauses", a:"nein" },
+  { m:"omoteno-optionen-",    w:"Extras des Hauses für den Aufruf ohne Netz",    d:"bis zur nächsten Änderung des Hauses", a:"nein" },
+  { m:"omoteno-fr-modus-",    w:"Foodroulette: Rad oder Karten",                 d:"bis zur Änderung",                    a:"nein" },
+  { m:"omoteno-quiz-gesehen", w:"Tischquiz: keine Frage doppelt",                d:"bis Sie Browserdaten löschen",        a:"nein" },
+  { m:"omoteno-bestenliste-", w:"Tischquiz: Ihre Punkte",                        d:"bis Sie Browserdaten löschen",        a:"nein" },
+  { m:"omoteno-bereiche",     w:"welche Bereiche der Startseite offen sind",     d:"bis der Tab geschlossen wird",        a:"nein" },
+  { m:"omoteno-willkommen",   w:"Begrüßung nur einmal",                          d:"bis der Tab geschlossen wird",        a:"nein" },
+  { m:"omoteno-aktionen",     w:"Aktion schon gezeigt",                          d:"bis der Tab geschlossen wird",        a:"nein" },
+  { m:"omoteno-alter",        w:"Altersbestätigung 16+/18+",                     d:"bis der Tab geschlossen wird",        a:"nein" },
+  { m:"omoteno-rufe-",        w:"Zeitpunkte Ihrer Servicerufe (höchstens 4 in 10 Minuten)", d:"zehn Minuten",           a:"nein" },
+  { m:"omoteno-res-",         w:"Nummer, Zeit und Personenzahl Ihrer Reservierungsanfragen", d:"bis einen Tag nach dem Termin", a:"nein — die Anfrage selbst ging beim Absenden an uns" }
+];
+
+function rechtLinksHTML(){
+  return '<a class="rechtlink" href="#/impressum">' + hs(t("Impressum")) + '</a>' +
+         '<a class="rechtlink" href="#/datenschutz">' + hs(t("Datenschutz")) + '</a>';
+}
+
+/* Ein Wert aus dem Markenblatt oder ein sichtbares „fehlt noch“ — nie
+   still nichts. */
+function rechtWert(w){
+  const x = String(w || "").trim();
+  return x ? hs(x) : '<span class="rs-fehlt">Angabe fehlt noch</span>';
+}
+function rechtVorfuehrung(){
+  return window.OMOTENO_DEMO === true || !!MARKENBLATT.demo;
+}
+function rechtKopf(titel){
+  return '<div class="seite rechtseite"><h2>' + hs(t(titel)) + '</h2>' +
+    (sprache !== "de" ? '<p class="unter">' + hs(t("Dieser Text ist nur auf Deutsch verfügbar.")) + '</p>' : "");
+}
+
+SEITEN.impressum = () => {
+  if(rechtVorfuehrung()){
+    return rechtKopf("Impressum") +
+      '<p>Dies ist eine Vorführung von Omoteno mit erfundenen Daten — kein echter Betrieb, keine echten Bestellungen.</p>' +
+      '<h3>Angaben nach § 5 DDG</h3><p>Elias Faber · Omoteno<br>Ringstraße 12<br>35260 Stadtallendorf<br>' +
+      'E-Mail: hallo@omoteno.de<br>Telefon: +49 15678 505529</p></div>';
+  }
+  const r = MARKENBLATT.recht || {};
+  const zeile = (l, w) => String(w || "").trim() ? '<p><b>' + l + ':</b> ' + hs(String(w).trim()) + '</p>' : "";
+  return rechtKopf("Impressum") +
+    '<h3>Angaben nach § 5 DDG</h3>' +
+    '<p>' + rechtWert(r.firma) + (r.rechtsform ? ' · ' + hs(r.rechtsform) : "") + '<br>' +
+      rechtWert(BETRIEB.strasse) + '<br>' + rechtWert(BETRIEB.ort) + '</p>' +
+    zeile("Vertreten durch", r.vertreten) +
+    '<p><b>Telefon:</b> ' + rechtWert(BETRIEB.telefon) + '<br><b>E-Mail:</b> ' + rechtWert(BETRIEB.mail) + '</p>' +
+    zeile("Registereintrag", r.register) +
+    zeile("Umsatzsteuer-Identifikationsnummer", r.ustid) +
+    zeile("Wirtschafts-Identifikationsnummer", r.wid) +
+    zeile("Zuständige Aufsichtsbehörde", r.aufsicht) +
+    '<h3>Verbraucherstreitbeilegung</h3>' +
+    '<p>Wir sind nicht bereit und nicht verpflichtet, an Streitbeilegungsverfahren vor einer Verbraucherschlichtungsstelle teilzunehmen.</p>' +
+    '<h3>Technik</h3>' +
+    '<p>Diese Karte läuft mit Omoteno (Elias Faber, Stadtallendorf). Für Inhalt, Preise und Angaben zu Allergenen ist ' +
+      hs(BETRIEB.name) + ' verantwortlich.</p></div>';
+};
+
+SEITEN.datenschutz = () => {
+  const r = MARKENBLATT.recht || {};
+  const vor = rechtVorfuehrung();
+  const anbieter = vor ? "Elias Faber · Omoteno, Ringstraße 12, 35260 Stadtallendorf, hallo@omoteno.de"
+    : [rechtWert(r.firma), rechtWert(BETRIEB.strasse), rechtWert(BETRIEB.ort)].join(", ") +
+      "<br>Telefon " + rechtWert(BETRIEB.telefon) + " · E-Mail " + rechtWert(BETRIEB.mail);
+  const kontakt = vor ? "hallo@omoteno.de" : rechtWert(BETRIEB.mail);
+  const reserv = sichtbareKacheln().some(k => k.schluessel === "reservierung");
+  const frist = (text) => LOESCHFRISTEN_LIVE ? " " + text : "";
+  const tabelle = '<div class="rs-tabelle">' + SPEICHER_EINTRAEGE.map(e =>
+    '<div class="rs-eintrag"><b>' + hs(e.w) + '</b><span>' + hs(e.d) + ' · geht an uns: ' + hs(e.a) + '</span>' +
+    '<code>' + hs(e.m) + '</code></div>').join("") + '</div>';
+  const teil = (titel, text) => '<h3>' + titel + '</h3>' + text;
+  return rechtKopf("Datenschutz") +
+    (vor ? '<p>Dies ist eine Vorführung: Bestellungen, Rufe und Eingaben gehen nirgendwohin, und nichts wird dauerhaft auf Ihrem Gerät gespeichert.</p>' : "") +
+    '<p>Wir verarbeiten nur, was wir brauchen, um Sie zu bedienen. Keine Werbung von Dritten, keine Analyse, kein Tracking.</p>' +
+    teil("1 · Wer verantwortlich ist", '<p>' + anbieter + '</p>' +
+      '<p>Die Technik dieser Karte stellt Omoteno (Elias Faber, Ringstraße 12, 35260 Stadtallendorf) bereit. Omoteno verarbeitet Ihre Daten nur in unserem Auftrag und nach unseren Weisungen (Art. 28 DSGVO).</p>') +
+    teil("2 · Karte ansehen", '<p>Beim Öffnen der Karte verarbeitet der Hoster technisch nötige Verbindungsdaten (IP-Adresse, Zeit, aufgerufene Adresse, Browser), um die Seite auszuliefern und vor Angriffen zu schützen (Art. 6 Abs. 1 lit. f DSGVO). Gespeichert werden sie nur in den Protokollen des Hosters. Schriften, Bilder und Programme kommen von unserem eigenen Server; es werden keine fremden Dienste geladen.</p>') +
+    (BESTELLUNG.an ? teil("3 · Bestellen und Servicerufe", '<p>Wenn Sie bestellen oder den Service rufen, verarbeiten wir Ihre Auswahl, die Tischnummer, Ihre Notiz und die Uhrzeit, um die Bestellung zuzubereiten, zu servieren und abzurechnen (Art. 6 Abs. 1 lit. b DSGVO).</p>' +
+      '<p>Damit niemand in Ihrem Namen erfundene Bestellungen aufgibt, zählen wir kurz, wie viele Bestellungen von einem Gerät, einem Tisch und einer Herkunft kommen. Ihre IP-Adresse wird dabei nicht gespeichert, nur ein täglich neu verschlüsselter Prüfwert, der nach zwei Tagen niemandem mehr zuzuordnen ist. Auffällige Bestellungen lehnen wir nicht ab, unser Personal sieht sie sich an (Art. 6 Abs. 1 lit. f DSGVO).' +
+      frist("Personenbezogene Angaben an der Bestellung löschen wir nach 90 Tagen; Gerichte und Beträge bleiben für unsere Buchhaltung.") + '</p>') : "") +
+    (LIEFER.an ? teil("4 · Lieferung", '<p>Für eine Lieferung brauchen wir Namen, Anschrift und Telefonnummer (Art. 6 Abs. 1 lit. b DSGVO). Wir verwenden sie nur für diese Lieferung und für Rückfragen.' + frist("Wir löschen sie nach 90 Tagen.") + ' Ihr Gerät merkt sich die Anschrift für das nächste Mal; sie verlässt es erst mit der nächsten Bestellung.</p>') : "") +
+    (reserv ? teil("5 · Reservierung", '<p>Name, Telefonnummer, Personenzahl, Termin und Ihr Wunsch — für die Reservierung und Rückfragen (Art. 6 Abs. 1 lit. b DSGVO).' + frist("Gelöscht 30 Tage nach dem Termin.") + '</p>') : "") +
+    teil("6 · Was auf Ihrem Gerät gespeichert wird", '<p>Nach § 25 TDDDG zählt jedes Ablegen auf Ihrem Gerät. Alle Einträge sind für eine Funktion nötig, die Sie nutzen (§ 25 Abs. 2 Nr. 2 TDDDG). Sie löschen sie in den Einstellungen Ihres Browsers unter „Websitedaten“.</p>' + tabelle) +
+    (serverBereit() ? teil("7 · Mein Tisch und Gutscheine", '<p>Nur wenn Sie „Mein Tisch“ einschalten, legt Ihr Gerät eine zufällige Nummer ab, und wir merken uns dazu, wie oft Sie bei uns waren, was Sie gern bestellen und welche Gutscheine Sie haben. Wir kennen dabei weder Ihren Namen noch Ihre Adresse. Sie haben diesen Dienst ausdrücklich gewählt (§ 25 Abs. 2 Nr. 2 TDDDG, Art. 6 Abs. 1 lit. b DSGVO) und können ihn in „Mein Tisch“ jederzeit ausschalten.' + frist("Gelöscht 24 Monate nach Ihrem letzten Besuch.") + '</p>') +
+      teil("8 · Post vom Haus", '<p>Tragen Sie in „Mein Tisch“ Ihre E-Mail-Adresse ein, schicken wir Ihnen erst eine Bestätigungsmail. Erst wenn Sie die Adresse dort freigeben, schreiben wir Ihnen — gelegentlich einen Gutschein, eine Einladung oder eine Erinnerung, wenn Sie länger nicht da waren (Art. 6 Abs. 1 lit. a DSGVO, § 7 Abs. 2 UWG). Dafür übermitteln wir an unseren Versanddienst Klaviyo, Inc. (USA) Ihre Adresse, das Datum Ihres letzten Besuchs, die Zahl Ihrer Besuche, Ihr Lieblingsgericht und bei Bestellungen Summe und Gerichte. Klaviyo verarbeitet das in unserem Auftrag; Grundlage der Übermittlung in die USA sind das EU-US Data Privacy Framework oder Standardvertragsklauseln. Sie können jederzeit widerrufen — über den Link in jeder Mail oder per Nachricht an ' + kontakt + '.</p>') : "") +
+    (r.alessia === true ? teil("9 · Telefonbestellung mit Alessia", '<p>Rufen Sie uns an, nimmt unter Umständen Alessia ab, eine KI-Assistentin. Sie nimmt Fragen zur Karte und Bestellungen zur Abholung entgegen. Wir speichern Ihre Rufnummer, den genannten Namen, die Abholzeit, die Bestellung und eine Mitschrift des Gesprächs als Text (Art. 6 Abs. 1 lit. b DSGVO). Ihre Stimme wird nicht aufgezeichnet. Dienstleister ist Vapi, Inc. (USA), in unserem Auftrag.' + frist("Die Mitschrift löschen wir nach 30 Tagen.") + ' Möchten Sie nicht mit Alessia sprechen, sagen Sie es — oder bestellen Sie über die Karte.</p>') : "") +
+    (TRINKGELD && TRINKGELD.paypal ? teil("10 · Trinkgeld über PayPal", '<p>Tippen Sie auf „Trinkgeld geben“, öffnet sich PayPal. Ab dort gelten die Bedingungen und die Datenschutzerklärung der PayPal (Europe) S.à r.l. et Cie, S.C.A.; wir erfahren nur, dass ein Betrag eingegangen ist.</p>') : "") +
+    teil("Empfänger", '<p>Omoteno (Technik) und deren Dienstleister: Supabase (Datenbank in Frankfurt am Main), Netlify (Auslieferung)' + (serverBereit() ? ", Klaviyo (nur bei Post vom Haus)" : "") + (r.alessia === true ? ", Vapi (Telefon)" : "") + '. Bei US-Anbietern ist ein Zugriff aus den USA nicht ausgeschlossen; Grundlage sind das EU-US Data Privacy Framework oder Standardvertragsklauseln.</p>') +
+    teil("Ihre Rechte", '<p>Auskunft (Art. 15), Berichtigung (16), Löschung (17), Einschränkung (18), Datenübertragbarkeit (20), Widerspruch (21), Widerruf einer Einwilligung (7 Abs. 3). Eine Nachricht an ' + kontakt + ' genügt.</p>' +
+      '<p><b>Widerspruch:</b> Gegen Verarbeitungen aus berechtigtem Interesse (Abschnitte 2 und 3) können Sie aus Gründen Ihrer besonderen Situation jederzeit widersprechen.</p>' +
+      '<p>Sie können sich bei einer Datenschutz-Aufsichtsbehörde beschweren, etwa der Ihres Bundeslandes oder der für uns zuständigen. Es gibt keine automatisierte Entscheidung über Sie (Art. 22 DSGVO).</p>') +
+    '</div>';
+};
+
 /* ---------- Tischquiz ---------- */
 let partie = [];      // alle Fragen dieser Partie
 let runde  = 1;       // aktuelle Runde
@@ -14031,6 +14861,17 @@ function gastSeiteFuer(name){
 SEITEN.meintisch = () => {
   const kopf = '<div class="seite"><h2>' + t("Mein Tisch") + '</h2>';
 
+  /* Noch nicht eingeschaltet: erst fragen, nichts melden (§ 25 TDDDG,
+     siehe MEIN TISCH oben). Ohne Server gibt es nichts einzuschalten. */
+  if(!stammgastAn()){
+    return kopf +
+      '<p class="unter">' + t("Ohne Konto, ohne Passwort, ohne Namen.") + '</p>' +
+      '<p>' + t("Auf Wunsch merken wir uns, dass Sie bei uns waren: Ihre Besuche, Ihre Lieblingsgerichte und Gutscheine, die wir für Sie hinterlegen.") + '</p>' +
+      '<div class="hinweis">' + t("Dafür legt Ihr Gerät eine zufällige Nummer ab, und wir speichern dazu Ihre Besuche und Bestellungen – ohne Namen, ohne Konto. Ausschalten können Sie es hier jederzeit.") + '</div>' +
+      '<button class="knopf" data-aktion="stammgastAn">' + t("Einschalten") + '</button>' +
+      '<div class="kopiert" id="melde"></div></div>';
+  }
+
   /* Solange die Antwort unterwegs ist: Flächen im Maß dessen, was
      kommt. Ein drehender Kreis sagt nur „warte", ein Skelett sagt
      „hier stehen gleich deine Besuche und deine Lieblinge". */
@@ -14046,7 +14887,7 @@ SEITEN.meintisch = () => {
     return kopf +
       '<p class="unter">' + t("Das klappt hier gerade nicht.") + '</p>' +
       '<div class="hinweis">' +
-      t("Ihre Besuche merkt sich Ihr Gerät, nicht wir – dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.") +
+      t("Dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.") +
       '</div>' +
       '<a class="knopf zweit" href="#/speisekarte">' + t("Zur Karte") + '</a></div>';
   }
@@ -14054,7 +14895,7 @@ SEITEN.meintisch = () => {
   const n = gastStand.besuche;
   let html = kopf +
     '<p class="unter">' +
-    t("Ohne Konto, ohne Passwort – das merkt sich Ihr Gerät.") + '</p>' +
+    t("Ohne Konto, ohne Passwort, ohne Namen.") + '</p>' +
     '<div class="gastkopf"><span class="zahl">' + n + '</span>' +
     '<span class="wort">' +
       (n <= 1 ? t("Ihr erster Besuch bei uns.") : t("Ihr {n}. Besuch bei uns.", {n:n})) +
@@ -14117,7 +14958,11 @@ SEITEN.meintisch = () => {
     '<div class="kopiert" id="melde"></div>' +
     '<div class="hinweis">' +
     t("Wofür: gelegentlich ein Gutschein oder eine Einladung von uns – und eine Erinnerung, wenn Sie länger nicht da waren. Dafür merken wir uns, wann Sie zuletzt bei uns waren und was Sie gern bestellen; verschickt wird über Klaviyo. Wir schreiben Ihnen erst, wenn Sie die Adresse in einer Bestätigungsmail freigegeben haben, und Sie können jederzeit widersprechen.") +
-    '</div></section>';
+    '</div>' +
+    '<div class="rechtfuss"><a class="rechtlink" href="#/datenschutz">' + hs(t("Mehr dazu in unserer Datenschutzerklärung")) + '</a></div>' +
+    '</section>';
+
+  html += '<button class="knopf zweit" data-aktion="stammgastAus">' + t("Auf diesem Gerät ausschalten") + '</button>';
 
   return html + '</div>';
 };
@@ -14358,6 +15203,8 @@ function zeichne(){
      Betrieb". Der Link ist entfernt (siehe Fuß im Gerüst), und mit
      ihm die Suche nach seinem Element — ein getElementById auf etwas,
      das es nicht gibt, ist genau das, was pruef-datei.py meldet. */
+  const rf = document.getElementById("rechtFuss");
+  if(rf) rf.innerHTML = rechtLinksHTML();
   const roh = location.hash.replace(/^#\//,"");
 
   /* Ein Ziel darf jetzt „seite?g=Gerichtname“ heißen. Vorher fiel so
@@ -15348,6 +16195,14 @@ function auswahlAktualisieren(name){
   }
 
   wert.textContent = preisText(merkSumme());
+  /* Was vom Betrag abhängt, mitziehen (zahlStand, eine Stelle). Kippt
+     dabei Mindestwert oder Lieferzeit, ändern sich Knopf und Hinweis —
+     dann die Seite neu, Getipptes bleibt. */
+  const zs = zahlStand();
+  const ls = $("liefersumme"); if(ls) ls.outerHTML = lieferSummeTeil(zs);
+  const zt = $("zahlteil");    if(zt) zt.outerHTML = zahlTeil(zs);
+  const knopf = document.querySelector('[data-aktion="bestellen"]');
+  if(knopf && knopf.disabled !== (zs.unterMindest || zs.lieferZu)){ auswahlNeuMitFeldern(); return; }
   const az = $("artikelzahl");
   if(az) az.textContent = t("{n} Artikel", {n:merkAnzahl()});
 }
@@ -16131,13 +16986,24 @@ function katSpion(){
   const g = Date.now() < katZielBis && katZiel ? katZiel : katJetzt();
   let ziel = alle;
   l.querySelectorAll(".chip[data-g]").forEach(c => { if(g && c.dataset.g === g) ziel = c; });
-  if(ziel.classList.contains("an")) return;
-  l.querySelectorAll(".chip.an").forEach(c => { c.classList.remove("an"); c.removeAttribute("aria-current"); });
-  ziel.classList.add("an");
-  ziel.setAttribute("aria-current", "true");
-  /* Den Chip ins Bild holen, mittig — die Leiste rollt mit. */
-  const links = ziel.offsetLeft - (l.clientWidth - ziel.offsetWidth) / 2;
-  if(ziel.offsetLeft < l.scrollLeft + 8 || ziel.offsetLeft + ziel.offsetWidth > l.scrollLeft + l.clientWidth - 8){
+  if(!ziel.classList.contains("an")){
+    l.querySelectorAll(".chip.an").forEach(c => { c.classList.remove("an"); c.removeAttribute("aria-current"); });
+    ziel.classList.add("an");
+    ziel.setAttribute("aria-current", "true");
+  }
+  /* Den Chip ins Bild holen, mittig — die Leiste rollt mit. Auch wenn
+     er schon markiert war: Klebt die Leiste, rückt „Zurück“ vorn hinein
+     und schiebt alle Chips um seine Breite weiter (17.10., gemessen:
+     „Waffel“ stand danach bei 184–278 in einer 258 px breiten Leiste).
+     Der sichtbare Raum beginnt deshalb hinter „Zurück“. */
+  const zr = klebt ? l.querySelector(".chip-zurueck") : null, vorn = zr ? zr.offsetWidth + 4 : 0;
+  const frei = l.clientWidth - vorn;
+  /* Passt der Chip nicht in den Raum hinter „Zurück“ (schmaler Schirm,
+     langer Name), steht sein rechtes Ende im Bild — der Anfang darf
+     unter „Zurück“ gleiten, die Mitte bleibt antippbar. */
+  const links = ziel.offsetWidth > frei - 16 ? ziel.offsetLeft + ziel.offsetWidth - l.clientWidth + 8
+    : ziel.offsetLeft - vorn - (frei - ziel.offsetWidth) / 2;
+  if(ziel.offsetLeft < l.scrollLeft + vorn + 8 || ziel.offsetLeft + ziel.offsetWidth > l.scrollLeft + l.clientWidth - 8){
     l.scrollTo({ left: Math.max(0, links), behavior: ruhigeBewegung() ? "auto" : "smooth" });
   }
 }
@@ -16250,6 +17116,32 @@ $("inhalt").addEventListener("click", e => {
     return;
   }
 
+  /* Filter der Speisekarte (17.10.) */
+  const sfAuf = e.target.closest("[data-sf-auf]");
+  if(sfAuf){
+    sfOffen = !sfOffen;
+    const feld = $("sfFeld");
+    if(feld) feld.hidden = !sfOffen;
+    sfAuf.setAttribute("aria-expanded", String(sfOffen));
+    return;
+  }
+  const sfKnopf = e.target.closest("[data-sf],[data-sf-ohne],[data-sf-weg]");
+  if(sfKnopf){
+    if(sfKnopf.dataset.sfWeg !== undefined){ sfStand.vegan = sfStand.veg = sfStand.scharf = false; sfStand.ohne = []; }
+    else if(sfKnopf.dataset.sf){
+      const k = sfKnopf.dataset.sf;
+      if(k === "vegan" || k === "veg" || k === "scharf") sfStand[k] = !sfStand[k];
+    }else{
+      const k = sfKnopf.dataset.sfOhne;
+      if(ALLERGEN_NAMEN[k]) sfStand.ohne = sfStand.ohne.indexOf(k) >= 0 ? sfStand.ohne.filter(x => x !== k) : sfStand.ohne.concat(k);
+    }
+    const id = sfKnopf.dataset.seite || sfKnopf.dataset.sfWeg;
+    const y = scrollY;
+    neuKarte(id);
+    scrollTo(0, y);
+    return;
+  }
+
   const clear = e.target.closest("[data-clear]");
   if(clear){
     const id = clear.dataset.clear;
@@ -16266,8 +17158,8 @@ $("inhalt").addEventListener("click", e => {
     if(!g) return;
     merk[name] = { n:g.n, p:korbPreis(g), b:g.b || "", m:1 };
     merkSpeichern();
-    const zeile = plus.closest(".gericht");
-    const bild = zeile && zeile.querySelector(".gbild img.geladen");
+    const zeile = plus.closest(".gericht, .tl");
+    const bild = zeile && zeile.querySelector(".gbild img.geladen, .tl-teller img");
     balkenAktualisieren();
     inDenKorbFliegen(bild || plus, name);
     korbSteuerungNeu(name, true);
@@ -16318,6 +17210,14 @@ $("inhalt").addEventListener("click", e => {
     sofort.classList.toggle("an", !!merk[name]);
     korbSteuerungNeu(name, false);
     balkenAktualisieren();
+    return;
+  }
+
+  /* Teller: Pfeile wechseln das Gericht auf der Bühne (17.10.). */
+  const tlS = e.target.closest("[data-tl-schritt]");
+  if(tlS){
+    const sek = tlS.closest("[data-tl]"), d = +tlS.dataset.tlSchritt;
+    if(sek) tlZeigen(sek, (tlStand[sek.dataset.tl] || 0) + d, d);
     return;
   }
 
@@ -16468,6 +17368,21 @@ $("inhalt").addEventListener("click", e => {
       storyOeffnen(gastStand.lieblinge.map(l => ({ n:l.name, m:l.mal })));
     }
     if(was === "storyTeilen"){ storyTeilen(); }
+
+    if(was === "stammgastAn"){
+      if(!stammgastEinschalten()){
+        melden(t("Das ging auf diesem Gerät nicht – in einem privaten Fenster kann sich der Browser nichts merken."), true);
+        return;
+      }
+      gastStand.geladen = !serverBereit();
+      zeichne();
+      gastLaden();
+    }
+    if(was === "stammgastAus"){
+      stammgastAusschalten();
+      zeichne();
+      melden(t("Ausgeschaltet. Sollen wir auch Ihre bisherigen Besuche löschen, sagen Sie es unserem Team."));
+    }
 
     if(was === "gastMail"){
       const adresse = wert("gastMail");
@@ -17178,6 +18093,172 @@ zeichne();
 
    Antippen überspringt. Wer keine Bewegung will, sieht ihn kurz und
    ohne Lauf: Der Schirm trägt eine Ansage, keine Verzierung. */
+/* ═══ WILLKOMMEN-SZENEN · GETEILTER BLOCK ════════════════════════════
+   Steht Zeichen für Zeichen gleich in vorlagen/hub.vorlage.html und
+   seiten/admin.html (pruef-willkommen-szenen.js vergleicht beide). Alles,
+   worauf der Block sich stützt — Grundregeln der Flächen, Keyframes —
+   liegt IM Block (§8.1e): wzStil() hängt es einmal an.
+   Wunsch (17.10.): „Der Ladebildschirm soll verbessert werden … eine
+   ansehnliche Animation … man soll zwischen verschiedenen Animationen
+   wechseln können … von der Figur sowie von einem Café oder Restaurant
+   mit Essen, Restaurant-Utensilien“. Bewegt wird NUR transform und
+   opacity (Skill bewegung); bei reduzierter Bewegung steht jede Szene
+   still in ihrem schönsten Bild. Farben aus dem Haus (§5.1): --wz-*
+   darf die Seite setzen, sonst gelten die Rollen des Hubs. */
+const WZ_ARTEN = ["figur", "cafe", "tisch", "kueche", "lieferung", "still"];
+const WZ_NAME = { figur:"Figur", cafe:"Café", tisch:"Gedeckter Tisch", kueche:"Küche", lieferung:"Lieferung", still:"Ohne Bewegung" };
+const WZ_CSS = [
+  ".wz{--_t:var(--wz-t,var(--tinte,#2B1B14));--_a:var(--wz-a,var(--rot,#C8202E));--_g:var(--wz-g,var(--gold,#E2A73B));",
+  "--_f:var(--wz-f,var(--flaeche,#FFFFFF));--_n:var(--wz-n,var(--pistazie,#5F7F42));",
+  "position:relative;display:block;width:200px;max-width:64vw;margin:0 auto}",
+  ".wz svg{display:block;width:100%;height:auto;overflow:visible}",
+  ".wz .t{fill:var(--_t)}.wz .a{fill:var(--_a)}.wz .g{fill:var(--_g)}.wz .f{fill:var(--_f)}.wz .n{fill:var(--_n)}",
+  ".wz .lt{fill:none;stroke:var(--_t);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}",
+  ".wz .la{fill:none;stroke:var(--_a);stroke-width:7;stroke-linecap:round}",
+  ".wz .sch{fill:var(--_t);opacity:.12}",
+  ".wz .dampf{fill:none;stroke:var(--_t);stroke-width:3;stroke-linecap:round;opacity:0}",
+  ".wz > svg *{transform-box:fill-box;transform-origin:50% 50%}",
+  /* Café: Dampf steigt versetzt, der Löffel rührt, das Milchschaum-Herz blüht */
+  ".wz-cafe .dampf{animation:wzDampf 2.4s cubic-bezier(.33,1,.68,1) infinite}",
+  ".wz-cafe .dampf:nth-of-type(2){animation-delay:.6s}.wz-cafe .dampf:nth-of-type(3){animation-delay:1.2s}",
+  ".wz-cafe .loeffel{transform-box:view-box;transform-origin:100px 74px;animation:wzRuehren 1.6s cubic-bezier(.37,0,.63,1) infinite alternate}",
+  ".wz-cafe .herz{animation:wzBluehen 2.4s cubic-bezier(.34,1.56,.64,1) infinite}",
+  ".wz-cafe .hoernchen{animation:wzWippen 2.4s cubic-bezier(.37,0,.63,1) infinite}",
+  /* Gedeckter Tisch: das Gericht landet, Besteck gleitet heran, das Glas füllt sich, die Flamme flackert */
+  ".wz-tisch .gericht{animation:wzLanden 2.8s cubic-bezier(.34,1.56,.64,1) infinite}",
+  ".wz-tisch .gabel{animation:wzVonLinks 2.8s cubic-bezier(.16,1,.3,1) infinite}",
+  ".wz-tisch .messer{animation:wzVonRechts 2.8s cubic-bezier(.16,1,.3,1) infinite}",
+  ".wz-tisch .fuellung{transform-origin:50% 100%;animation:wzFuellen 2.8s cubic-bezier(.33,1,.68,1) infinite}",
+  ".wz-tisch .flamme{transform-origin:50% 100%;animation:wzFlackern .9s cubic-bezier(.37,0,.63,1) infinite alternate}",
+  /* Küche: die Pfanne schwingt, der Pfannkuchen fliegt und wendet, die Flammen züngeln */
+  ".wz-kueche .pfanne{transform-box:view-box;transform-origin:160px 104px;animation:wzSchwingen 1.8s cubic-bezier(.37,0,.63,1) infinite}",
+  ".wz-kueche .kuchen{animation:wzWenden 1.8s cubic-bezier(.45,0,.55,1) infinite}",
+  ".wz-kueche .glut{transform-origin:50% 100%;animation:wzFlackern .7s cubic-bezier(.37,0,.63,1) infinite alternate}",
+  ".wz-kueche .glut:nth-of-type(2){animation-delay:.2s}.wz-kueche .glut:nth-of-type(3){animation-delay:.4s}",
+  ".wz-kueche .funke{opacity:0;animation:wzFunke 1.8s cubic-bezier(.16,1,.3,1) infinite}",
+  ".wz-kueche .funke:nth-of-type(2){animation-delay:.3s}",
+  /* Lieferung: die Straße zieht vorbei, die Räder drehen, der Roller federt, Dampf aus der Box */
+  /* Die Straße läuft über den Rand hinaus nach — die Szene schneidet sie ab. */
+  ".wz-lieferung svg{overflow:hidden}",
+  ".wz-lieferung .strasse{animation:wzStrasse .8s linear infinite}",
+  ".wz-lieferung .rad{animation:wzDrehen .6s linear infinite}",
+  ".wz-lieferung .roller{animation:wzFedern .4s cubic-bezier(.37,0,.63,1) infinite alternate}",
+  ".wz-lieferung .dampf{animation:wzDampf 1.8s cubic-bezier(.33,1,.68,1) infinite}",
+  ".wz-lieferung .dampf:nth-of-type(2){animation-delay:.9s}",
+  ".wz-lieferung .wolke{animation:wzWolke 3.2s linear infinite}",
+  /* Figur: hüpft herein, landet mit einem Hauch Stauchung, Funkeln steigt */
+  ".wz-figur .huelle{transform-origin:50% 100%;will-change:transform;animation:wzHuepfen 1.6s cubic-bezier(.33,1,.68,1) infinite}",
+  ".wz-figur .boden{animation:wzSchatten 1.6s cubic-bezier(.33,1,.68,1) infinite}",
+  ".wz-figur .stern{opacity:0;animation:wzStern 1.6s cubic-bezier(.16,1,.3,1) infinite}",
+  ".wz-figur .stern:nth-of-type(2){animation-delay:.5s}.wz-figur .stern:nth-of-type(3){animation-delay:1s}",
+  ".wz-figur .huelle > svg,.wz-figur .huelle > .figur{width:100%;height:auto}",
+  /* Der Boden der Szene ersetzt den Schatten der Figur — sonst stehen zwei da */
+  ".wz-figur .huelle .schatten{display:none}",
+  "@keyframes wzDampf{0%{opacity:0;transform:translateY(8px) scaleY(.7)}35%{opacity:.5}100%{opacity:0;transform:translateY(-18px) scaleY(1.15)}}",
+  "@keyframes wzRuehren{from{transform:rotate(-14deg)}to{transform:rotate(14deg)}}",
+  "@keyframes wzBluehen{0%,20%{transform:scale(.4);opacity:0}45%,85%{transform:scale(1);opacity:1}100%{transform:scale(1);opacity:0}}",
+  "@keyframes wzWippen{0%,100%{transform:translateY(0) rotate(-3deg)}50%{transform:translateY(-3px) rotate(3deg)}}",
+  "@keyframes wzLanden{0%{transform:translateY(-34px) scale(.9);opacity:0}22%{transform:translateY(0) scale(1.06);opacity:1}34%,86%{transform:none;opacity:1}100%{transform:none;opacity:0}}",
+  "@keyframes wzVonLinks{0%,10%{transform:translateX(-22px);opacity:0}34%,86%{transform:none;opacity:1}100%{transform:none;opacity:0}}",
+  "@keyframes wzVonRechts{0%,14%{transform:translateX(22px);opacity:0}38%,86%{transform:none;opacity:1}100%{transform:none;opacity:0}}",
+  "@keyframes wzFuellen{0%,30%{transform:scaleY(0)}70%,90%{transform:scaleY(1)}100%{transform:scaleY(1);opacity:0}}",
+  "@keyframes wzFlackern{from{transform:scale(1,1);opacity:.85}to{transform:scale(.86,1.12);opacity:1}}",
+  "@keyframes wzSchwingen{0%,100%{transform:rotate(0)}18%{transform:rotate(-9deg)}36%{transform:rotate(3deg)}70%{transform:rotate(-2deg)}}",
+  "@keyframes wzWenden{0%,100%{transform:translateY(0) scaleY(1)}12%{transform:translateY(0) scaleY(.82)}45%{transform:translateY(-56px) scaleY(-1)}78%{transform:translateY(0) scaleY(1)}86%{transform:translateY(0) scaleY(.86)}}",
+  "@keyframes wzFunke{0%{opacity:0;transform:translateY(0) scale(.6)}30%{opacity:1}100%{opacity:0;transform:translateY(-26px) scale(1)}}",
+  "@keyframes wzStrasse{from{transform:translateX(0)}to{transform:translateX(-40px)}}",
+  "@keyframes wzDrehen{to{transform:rotate(360deg)}}",
+  "@keyframes wzFedern{from{transform:translateY(0)}to{transform:translateY(-2.5px)}}",
+  "@keyframes wzWolke{from{transform:translateX(40px);opacity:0}20%{opacity:.6}80%{opacity:.6}to{transform:translateX(-60px);opacity:0}}",
+  "@keyframes wzHuepfen{0%,100%{transform:translateY(0) scale(1.04,.94)}12%{transform:translateY(0) scale(.96,1.05)}45%{transform:translateY(-22px) scale(1,1)}78%{transform:translateY(0) scale(1.05,.93)}88%{transform:translateY(0) scale(1)}}",
+  "@keyframes wzSchatten{0%,100%,78%{transform:scale(1);opacity:.14}45%{transform:scale(.7);opacity:.07}}",
+  "@keyframes wzStern{0%{opacity:0;transform:translateY(6px) scale(.4) rotate(0)}40%{opacity:1}100%{opacity:0;transform:translateY(-22px) scale(1) rotate(90deg)}}",
+  "@media (prefers-reduced-motion:reduce){.wz *{animation:none !important}.wz .dampf,.wz .funke,.wz .stern{opacity:.4}}"
+].join("\n");
+function wzStil(){
+  if(document.getElementById("wzStil")) return;
+  const s = document.createElement("style"); s.id = "wzStil"; s.textContent = WZ_CSS;
+  document.head.appendChild(s);
+}
+/* Eine kleine Figur für Stellen ohne die Hausfigur (Auswahl im Board). */
+const WZ_MINIFIGUR = '<svg viewBox="0 0 120 120"><ellipse class="a" cx="60" cy="64" rx="38" ry="40"/>' +
+  '<ellipse class="f" cx="60" cy="58" rx="24" ry="20" opacity=".9"/><circle class="t" cx="51" cy="56" r="3.6"/><circle class="t" cx="69" cy="56" r="3.6"/>' +
+  '<path class="lt" d="M52 66 q8 7 16 0"/><path class="lt" d="M24 70 q-10 6 -6 16"/><path class="lt" d="M96 70 q10 -10 14 -20"/>' +
+  '<ellipse class="t" cx="46" cy="104" rx="9" ry="5"/><ellipse class="t" cx="74" cy="104" rx="9" ry="5"/></svg>';
+function wzSzeneHTML(art, figur){
+  wzStil();
+  art = WZ_ARTEN.indexOf(art) >= 0 ? art : "figur";
+  const huelle = svg => '<div class="wz wz-' + art + '" data-wz="' + art + '" aria-hidden="true">' + svg + '</div>';
+  const fig = figur || WZ_MINIFIGUR;
+  if(art === "still") return huelle('<div class="wz-figurruhe">' + fig + '</div>');
+  if(art === "figur") return huelle(
+    '<svg viewBox="0 0 200 150"><ellipse class="sch boden" cx="100" cy="126" rx="30" ry="5"/>' +
+    '<path class="g stern" d="M28 58 l3 8 8 3 -8 3 -3 8 -3 -8 -8 -3 8 -3z"/>' +
+    '<path class="a stern" d="M172 42 l2.5 6 6 2.5 -6 2.5 -2.5 6 -2.5 -6 -6 -2.5 6 -2.5z"/>' +
+    '<path class="g stern" d="M168 96 l2 5 5 2 -5 2 -2 5 -2 -5 -5 -2 5 -2z"/></svg>' +
+    '<div class="huelle" style="position:absolute;left:22%;top:10%;width:56%">' + fig + '</div>');
+  if(art === "cafe") return huelle('<svg viewBox="0 0 200 150">' +
+    '<ellipse class="sch" cx="100" cy="138" rx="70" ry="7"/>' +
+    '<path class="dampf" d="M84 52 c-7 -9 7 -14 0 -24"/><path class="dampf" d="M100 50 c-7 -9 7 -14 0 -24"/><path class="dampf" d="M116 52 c-7 -9 7 -14 0 -24"/>' +
+    '<ellipse class="f" cx="100" cy="124" rx="62" ry="11"/><ellipse class="lt" cx="100" cy="124" rx="62" ry="11"/>' +
+    '<path class="la" d="M140 80 c20 0 20 26 -2 26"/>' +
+    '<path class="a" d="M60 70 h80 v16 a40 40 0 0 1 -40 34 a40 40 0 0 1 -40 -34z"/>' +
+    '<ellipse class="t" cx="100" cy="70" rx="40" ry="8.5"/><ellipse class="g" cx="100" cy="70.5" rx="33" ry="6"/>' +
+    '<path class="f herz" d="M100 76 c-9 -6 -9 -11 -4 -12 c2.5 -.5 4 1.5 4 2.5 c0 -1 1.5 -3 4 -2.5 c5 1 5 6 -4 12z"/>' +
+    '<g class="loeffel"><path class="lt" d="M100 70 L128 40"/><circle class="t" cx="130" cy="37" r="4.5"/></g>' +
+    '<g class="hoernchen"><path class="g" d="M150 118 c6 -16 30 -16 36 0 c-6 -4 -12 -5 -18 -5 c-6 0 -12 1 -18 5z"/>' +
+    '<path class="lt" d="M160 112 l3 6 M168 109 v7 M176 112 l-3 6" opacity=".55"/></g></svg>');
+  if(art === "tisch") return huelle('<svg viewBox="0 0 200 150">' +
+    '<rect class="a" x="0" y="128" width="200" height="22" rx="3" opacity=".16"/>' +
+    '<g class="kerze"><rect class="f" x="26" y="74" width="10" height="40" rx="3"/><rect class="lt" x="26" y="74" width="10" height="40" rx="3"/>' +
+    '<path class="g flamme" d="M31 58 c6 8 4 14 0 14 c-4 0 -6 -6 0 -14z"/></g>' +
+    '<g class="glas"><path class="lt" d="M158 70 h22 l-3 34 h-16z"/><path class="a fuellung" d="M160.5 84 h17 l-1.8 19 h-13.4z" opacity=".8"/>' +
+    '<path class="lt" d="M169 104 v14 M161 118 h16"/></g>' +
+    '<g class="gabel"><path class="lt" d="M50 82 v46 M44 82 v12 q6 8 12 0 v-12 M50 82 v12"/></g>' +
+    '<g class="messer"><path class="lt" d="M150 82 v46"/><path class="t" d="M150 82 c6 4 6 18 0 22z"/></g>' +
+    '<ellipse class="sch" cx="100" cy="128" rx="44" ry="6"/>' +
+    '<ellipse class="f" cx="100" cy="118" rx="44" ry="12"/><ellipse class="lt" cx="100" cy="118" rx="44" ry="12"/><ellipse class="lt" cx="100" cy="117" rx="30" ry="7" opacity=".35"/>' +
+    '<g class="gericht"><ellipse class="a" cx="100" cy="110" rx="22" ry="8"/><path class="g" d="M84 108 c4 -14 28 -14 32 0z"/>' +
+    '<path class="n" d="M96 98 c-2 -6 3 -9 5 -5 c2 -5 8 -3 5 3z"/></g></svg>');
+  if(art === "kueche") return huelle('<svg viewBox="0 0 200 150">' +
+    '<rect class="t" x="40" y="128" width="120" height="10" rx="5" opacity=".85"/>' +
+    '<path class="a glut" d="M74 128 c-6 -8 0 -16 4 -20 c0 6 6 8 4 20z"/><path class="g glut" d="M98 128 c-6 -9 0 -18 4 -22 c0 7 6 9 4 22z"/><path class="a glut" d="M122 128 c-6 -8 0 -16 4 -20 c0 6 6 8 4 20z"/>' +
+    '<circle class="g funke" cx="84" cy="84" r="2.6"/><circle class="a funke" cx="118" cy="80" r="2.2"/>' +
+    '<g class="pfanne"><path class="t" d="M52 104 h96 c-4 14 -18 18 -48 18 s-44 -4 -48 -18z"/><rect class="t" x="146" y="100" width="44" height="8" rx="4"/></g>' +
+    '<g class="kuchen"><ellipse class="g" cx="100" cy="102" rx="30" ry="6"/><ellipse class="a" cx="100" cy="100.5" rx="18" ry="2.6" opacity=".35"/></g></svg>');
+  return huelle('<svg viewBox="0 0 200 150">' +
+    '<path class="lt wolke" d="M150 36 h22 M142 46 h30" opacity=".5"/>' +
+    '<g class="strasse"><rect class="t" x="0" y="134" width="24" height="4" rx="2" opacity=".35"/><rect class="t" x="40" y="134" width="24" height="4" rx="2" opacity=".35"/>' +
+    '<rect class="t" x="80" y="134" width="24" height="4" rx="2" opacity=".35"/><rect class="t" x="120" y="134" width="24" height="4" rx="2" opacity=".35"/>' +
+    '<rect class="t" x="160" y="134" width="24" height="4" rx="2" opacity=".35"/><rect class="t" x="200" y="134" width="24" height="4" rx="2" opacity=".35"/></g>' +
+    '<g class="roller"><path class="dampf" d="M70 46 c-6 -8 6 -12 0 -20"/><path class="dampf" d="M82 46 c-6 -8 6 -12 0 -20"/>' +
+    '<rect class="g" x="56" y="50" width="40" height="34" rx="6"/><rect class="lt" x="56" y="50" width="40" height="34" rx="6"/><path class="a" d="M76 61 c-5 -4 -5 -7 -2 -8 c1.5 -.3 2 .8 2 1.4 c0 -.6 .8 -1.7 2 -1.4 c3 1 3 4 -2 8z"/>' +
+    '<path class="a" d="M54 88 h56 l14 -30 h10 l-10 34 c-2 8 -8 12 -16 12 h-50 c-6 0 -8 -10 -4 -16z"/>' +
+    '<path class="lt" d="M124 58 l6 -14 h10"/><rect class="t" x="58" y="80" width="26" height="6" rx="3"/>' +
+    '<g class="rad"><circle class="t" cx="62" cy="118" r="13"/><circle class="f" cx="62" cy="118" r="5"/><rect class="f" x="60.5" y="106" width="3" height="7" rx="1.5"/></g>' +
+    '<g class="rad"><circle class="t" cx="134" cy="118" r="13"/><circle class="f" cx="134" cy="118" r="5"/><rect class="f" x="132.5" y="106" width="3" height="7" rx="1.5"/></g></g></svg>');
+}
+/* ═══ Ende WILLKOMMEN-SZENEN · GETEILTER BLOCK ═══════════════════════ */
+
+/* Welche Szene: Wahl des Betriebs (hub_stil.lade, feste Liste), bis sie
+   geladen ist die gemerkte vom letzten Besuch — der Gruß steht, BEVOR
+   die Datenbank antwortet. Vorgabe: die Figur des Hauses. */
+let wzVorschau = null;
+const WZ_MERK = "omoteno-lade-" + HAUS;
+function wzWahl(){
+  if(wzVorschau && WZ_ARTEN.indexOf(wzVorschau) >= 0) return wzVorschau;
+  const w = HUBSTIL && HUBSTIL.lade;
+  if(WZ_ARTEN.indexOf(w) >= 0) return w;
+  try{ const m = localStorage.getItem(WZ_MERK); if(WZ_ARTEN.indexOf(m) >= 0) return m; }catch(e){}
+  return "figur";
+}
+function wzZeigen(){
+  const f = $("wkFigur"); if(!f) return;
+  const art = wzWahl();
+  if(f.firstElementChild && f.firstElementChild.dataset.wz === art) return;
+  f.innerHTML = wzSzeneHTML(art, avatarSVG(120));
+}
+
 (function willkommen(){
   const schirm = $("willkommen");
   if(!schirm) return;
@@ -17205,7 +18286,7 @@ zeichne();
   const tief = (location.hash || "").replace(/^#\/?/, "");
   if(tief && tief !== "/"){ schirm.remove(); return; }
 
-  $("wkFigur").innerHTML = avatarSVG(120);
+  wzZeigen();
   $("wkHaus").textContent = BETRIEB.name;
   $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
   $("wkSpeisekarte").textContent = t("Speisekarte ansehen");
@@ -17221,7 +18302,7 @@ zeichne();
     schirm.classList.add("weg");
     /* Erst nach dem Ausblenden aus dem Weg nehmen — sonst springt
        die Karte einen Bildaufbau lang. */
-    setTimeout(() => { schirm.hidden = true; }, still ? 0 : 520);
+    setTimeout(() => { schirm.hidden = true; const f = $("wkFigur"); if(f) f.textContent = ""; }, still ? 0 : 520);
   }
   /* Wunsch des Betreibers (27.09.): "so einfach wie möglich ... sofort
      alle Speisen zu sehen" — der Knopf „Speisekarte ansehen" springt
@@ -17305,6 +18386,8 @@ setInterval(() => { if(!document.hidden) aktionenLaden(); }, 120000);
    und Gutscheine. Kein Takt dahinter — was sich hier ändert, ändert
    sich zwischen Besuchen und nicht während einem. */
 /* In der Vorschau des Boards: kein Besuch, keine Gastzeile. */
+/* Nur wer „Mein Tisch“ eingeschaltet hat, wird gemeldet (gastLaden fragt
+   stammgastAn selbst). */
 if(!VORSCHAU) gastLaden();
 
 /* Lief beim letzten Besuch noch etwas? Dann sofort nachfragen und
@@ -17580,6 +18663,18 @@ function betriebsTeileAnwenden(z, immer){
     /* Kopfbild und Logo ebenso nur, wenn der Entwurf sie trägt. */
     if(z.hub_stil && typeof z.hub_stil === "object" && "kopf" in z.hub_stil &&
        kopfAnwenden(z.hub_stil.kopf)) neu = true;
+    /* Szene des Grußes: in der Vorschau sofort. */
+    if(z.hub_stil && typeof z.hub_stil === "object" && "lade" in z.hub_stil){
+      const vorher = wzWahl();
+      wzVorschau = WZ_ARTEN.indexOf(z.hub_stil.lade) >= 0 ? z.hub_stil.lade : "figur";
+      if(wzWahl() !== vorher) wzZeigen();
+    }
+    /* Stil der Speisekarte: in der Vorschau sofort, aus derselben festen Liste. */
+    if(z.hub_stil && typeof z.hub_stil === "object" && "karte" in z.hub_stil){
+      const vorher = kartenStil();
+      kartenStilVorschau = KARTENSTILE.indexOf(z.hub_stil.karte) >= 0 ? z.hub_stil.karte : "liste";
+      if(kartenStil() !== vorher) neu = true;
+    }
   }
 
   /* Das Aktions-Banner-Rad: eine echte freie Liste, bannerAusZeile()
@@ -17633,7 +18728,7 @@ function vorschauZeige(ziel){
   if(!VORSCHAU) return;
   const wk = $("willkommen");
   if(ziel === "gruss" && wk){
-    if(!$("wkFigur").innerHTML) $("wkFigur").innerHTML = avatarSVG(120);
+    wzZeigen();
     $("wkHaus").textContent = BETRIEB.name;
     $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
     $("wkSpeisekarte").textContent = t("Speisekarte ansehen");
@@ -17719,7 +18814,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil,karten");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil,karten,optionen");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 
@@ -17818,9 +18913,15 @@ async function karteHolen(erstesMal){
        boolean. Ändert es den Stand, wird neu gezeichnet. */
     const stil = b[0].hub_stil;
     if(stil && typeof stil === "object" && !Array.isArray(stil)){
-      const vorher = bewegteZeichenAn(), restVorher = restzeitZeigen();
+      const vorher = bewegteZeichenAn(), restVorher = restzeitZeigen(), stilVorher = kartenStil();
       HUBSTIL = stil;
-      if(bewegteZeichenAn() !== vorher) zeichne();
+      if(bewegteZeichenAn() !== vorher || kartenStil() !== stilVorher) zeichne();
+      /* Szene des Grußes merken (nur Geprüftes) und — steht der Schirm
+         noch — sofort tauschen. */
+      if(WZ_ARTEN.indexOf(stil.lade) >= 0){ try{ localStorage.setItem(WZ_MERK, stil.lade); }catch(e){} }
+      else { try{ localStorage.removeItem(WZ_MERK); }catch(e){} }
+      const wkJetzt = $("willkommen");
+      if(wkJetzt && !wkJetzt.hidden) wzZeigen();
       /* Der Streifen steht schon aus dem Speicher des Geräts da, bevor
          diese Antwort kommt — und wird sonst nur neu gezeichnet, wenn
          sich die Restzeit ändert. Ohne diese Zeile zeigte er bei „Nur
@@ -17966,6 +19067,10 @@ async function karteHolen(erstesMal){
     // Jede Karte einzeln prüfen. Wären z.B. nur Cocktails gepflegt,
     // bleiben Speisen und Getränke aus dem Quelltext erhalten.
     const neu = { speisekarte:bau("speisekarte"), getraenke:bau("getraenke"), cocktails:bau("cocktails") };
+    /* Extras des Betriebs (betriebe.optionen) — geprüft, gemerkt, und im
+       Fingerabdruck, damit eine Änderung im Board neu zeichnet. */
+    neu.optionen = optionenUebernehmen(b[0].optionen);
+    try{ localStorage.setItem(OPT_MERK, JSON.stringify(neu.optionen)); }catch(e){}
     /* Eigene Karten: alle aus dem Verzeichnis und alle, die an einem
        Gericht stehen — eine Karte ohne Gericht bleibt leer, aber da. */
     const eigene = new Set(KARTEN_VERZ.map(k => k.id).filter(id => KARTE_ID_MUSTER.test(id)));

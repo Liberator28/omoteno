@@ -147,6 +147,31 @@ interface Gelesen { lesbar: boolean; lieferant: string | null; belegnummer: stri
 const zahlOderNull = (v: unknown) => (typeof v === "number" && Number.isFinite(v) ? Math.round(v * 10000) / 10000 : null);
 const textOderNull = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : null);
 
+/* Belegdatum wie beleg_speichern (E5-A): höchstens morgen, höchstens
+   400 Tage alt — gerechnet am Berliner Tag. */
+function datumPlausibel(t: string | null, jetzt = new Date()): boolean {
+  if (!t || !/^\d{4}-\d{2}-\d{2}$/.test(t)) return false;
+  const d = new Date(t + "T00:00:00Z");
+  if (isNaN(d.getTime()) || d.toISOString().slice(0, 10) !== t) return false;
+  const heute = new Date(new Intl.DateTimeFormat("en-CA", { timeZone: "Europe/Berlin" }).format(jetzt) + "T00:00:00Z");
+  const tage = Math.round((d.getTime() - heute.getTime()) / 86400000);
+  return tage <= 1 && tage >= -400;
+}
+
+interface Lieferant { id: string; name: string }
+function lieferantWaehlen(liste: Lieferant[], gelesen: string | null, hier: Set<string>): Lieferant | undefined {
+  const n = (gelesen ?? "").toLowerCase();
+  if (!n) return undefined;
+  const sortiert = [...liste].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+  const gleich = sortiert.filter((l) => l.name.trim().toLowerCase() === n);
+  const teil = gleich.length ? gleich : sortiert.filter((l) => {
+    const m = l.name.trim().toLowerCase();
+    return m && (n.includes(m) || m.includes(n));
+  });
+  return teil.sort((a, b) => (Number(hier.has(b.id)) - Number(hier.has(a.id)))
+    || (b.name.trim().length - a.name.trim().length) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))[0];
+}
+
 Deno.serve(async (anfrage: Request) => {
   if (anfrage.method === "OPTIONS") return antwort({}, 200);
   if (anfrage.method !== "POST") return antwort({ ok: false, grund: "nur_post" }, 405);
@@ -190,7 +215,7 @@ Deno.serve(async (anfrage: Request) => {
   const key = schluessel();
   if (!key) return nein("kein_schluessel");
 
-  const { data: rest, error: kontoFehler } = await alsNutzer.rpc("ki_kontingent_nehmen", { p_anzahl: KOSTEN });
+  const { data: rest, error: kontoFehler } = await alsNutzer.rpc("ki_kontingent_nehmen", { p_anzahl: KOSTEN, p_betrieb: betrieb });
   if (kontoFehler && kontoFehler.code !== "42883" && kontoFehler.code !== "PGRST202") return nein("kein_recht");
   if (!kontoFehler && typeof rest === "number" && rest < 0) return nein("kontingent");
 
@@ -233,10 +258,16 @@ Deno.serve(async (anfrage: Request) => {
      dieser Lieferant beim letzten Mal so genannt hat. ───────────── */
   const { data: b } = await alsNutzer.from("betriebe").select("organisation_id").eq("id", betrieb).limit(1);
   const org = Array.isArray(b) && b.length ? b[0].organisation_id : null;
-  const { data: lieferanten } = await alsNutzer.from("lieferanten").select("id, name").eq("organisation_id", org).eq("aktiv", true);
-  const lName = (textOderNull(gelesen.lieferant, 120) ?? "").toLowerCase();
-  const lief = (lieferanten ?? []).find((l: { name: string }) => lName && l.name.trim().toLowerCase() === lName)
-    ?? (lieferanten ?? []).find((l: { name: string }) => lName && (lName.includes(l.name.trim().toLowerCase()) || l.name.trim().toLowerCase().includes(lName)));
+  /* Fest gewählt (E5-A): ohne Sortierung entschied die Reihenfolge der
+     Datenbank, welcher von zwei ähnlichen Lieferanten der Kette es wird.
+     Reihenfolge: genau gleich → schon in DIESEM Standort benutzt →
+     längster passender Name → id. */
+  const { data: lieferanten } = await alsNutzer.from("lieferanten").select("id, name").eq("organisation_id", org).eq("aktiv", true)
+    .order("name").order("id");
+  const { data: hierBenutzt } = await alsNutzer.from("einkaufsbelege").select("lieferant_id").eq("betrieb_id", betrieb)
+    .not("lieferant_id", "is", null).limit(500);
+  const lief = lieferantWaehlen(lieferanten ?? [], textOderNull(gelesen.lieferant, 120),
+    new Set((hierBenutzt ?? []).map((x: { lieferant_id: string }) => x.lieferant_id)));
   const { data: artikel } = await alsNutzer.from("artikel").select("id, basiseinheit, aktiv").eq("organisation_id", org);
   const zuordnung = lief
     ? ((await alsNutzer.from("lieferanten_artikel").select("artikel_id, bezeichnung, einkaufseinheit, gebinde_basis").eq("lieferant_id", lief.id)).data ?? [])
@@ -270,18 +301,24 @@ Deno.serve(async (anfrage: Request) => {
   });
 
   const lieferantText = textOderNull(gelesen.lieferant, 120);
+  /* Ein verlesenes Jahr („2062“) liefe beim Speichern in den Grund
+     `datum` — nach bezahltem Lesen. Dann bleibt das Datum leer (der
+     Server nimmt den Berliner Tag) und die Notiz nennt, was gelesen wurde. */
+  const datumText = textOderNull(gelesen.belegdatum, 10);
+  const datumOk = datumPlausibel(datumText);
   const { data: gespeichert, error: speicherFehler } = await alsNutzer.rpc("beleg_speichern", {
     p_beleg: null,
     p_betrieb: betrieb,
     p_daten: {
       lieferant_id: lief ? lief.id : null,
       belegnummer: textOderNull(gelesen.belegnummer, 60),
-      belegdatum: /^\d{4}-\d{2}-\d{2}$/.test(String(gelesen.belegdatum ?? "")) ? gelesen.belegdatum : null,
+      belegdatum: datumOk ? gelesen.belegdatum : null,
       netto: zahlOderNull(gelesen.netto),
       steuer: zahlOderNull(gelesen.steuer),
       brutto: zahlOderNull(gelesen.brutto),
       quelle: istPdf ? "pdf" : "foto",
-      notiz: !lief && lieferantText ? ("Lieferant laut Beleg: " + lieferantText).slice(0, 500) : null,
+      notiz: [!lief && lieferantText ? "Lieferant laut Beleg: " + lieferantText : "",
+              datumText && !datumOk ? "Datum laut Beleg: " + datumText + " — bitte prüfen" : ""].filter(Boolean).join(" · ").slice(0, 500) || null,
       datei_pfad: pfad,
       datei_hash: hash,
       positionen,
@@ -293,5 +330,7 @@ Deno.serve(async (anfrage: Request) => {
   return antwort({
     ok: true, id: gespeichert.id, positionen: positionen.length, zugeordnet,
     lieferant: lief ? lief.name : null, lieferant_text: lieferantText,
+    ...(gespeichert.hinweis ? { hinweis: gespeichert.hinweis, standort: gespeichert.standort ?? null } : {}),
+    ...(datumText && !datumOk ? { datum_verworfen: datumText } : {}),
   });
 });

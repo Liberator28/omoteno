@@ -78,7 +78,7 @@ const FIGURNAMEN       = ausGeruest(/const AVATAR_FIGUREN = \{([\s\S]*?)\n\};/, 
    an der man das automatisch ablesen könnte: kopfbandSetzen() im
    Gerüst kennt nur "laternen" als Sonderfall, alles andere bleibt
    beim Guss. */
-const KOPFBAND_ARTEN    = ["guss", "laternen"];
+const KOPFBAND_ARTEN    = ["guss", "laternen", "trikolore"];
 /* Zierrat: zusätzlicher, wählbarer Gestaltungs-Zierrat (Bambus im
    Kopf, Tuschekleckse statt Farbwolken, Pfingstrosen-Knospe vor jeder
    .bereich-Überschrift). Fehlt zierrat ganz, bleibt der Hub wie
@@ -184,6 +184,40 @@ function pruefeMarkenblatt(mb){
           if(!text) return;
           const fehlt = sprachen.filter(s => !z[feld] || !String(z[feld][s] || "").trim());
           if(fehlt.length) F(wo + ": " + feld + " fehlt für " + fehlt.join(","));
+        });
+      });
+    }
+  }
+
+  /* Eigene Gerüst-Karte (17.10., Più Gusto). Die Karten im Gerüst sind
+     Chocos echte Karte. Gemessen: Getränke und Cocktails werden live nur
+     ersetzt, wenn die Datenbank dort etwas hat — ein Haus, das nur Pizzen
+     pflegt, bekäme sonst unter „Getränke“, in „Passt dazu“ und im Rad
+     Chocos Säfte angeboten, offline sogar Chocos Crêpes. Mit
+     geruestKarte steht stattdessen DIESE Karte im Hub (fehlende Karten
+     leer); live ersetzt die Datenbank sie wie gewohnt. */
+  if(mb.geruestKarte !== undefined){
+    const gk = mb.geruestKarte;
+    const ALLERG = /^[A-HLMNOPR]$/;
+    if(!gk || typeof gk !== "object" || Array.isArray(gk)) F("geruestKarte muss ein Objekt sein");
+    else {
+      Object.keys(gk).forEach(k => {
+        if(["speisekarte","getraenke","cocktails"].indexOf(k) < 0) F("geruestKarte." + k + ": nur speisekarte, getraenke, cocktails");
+        else if(!Array.isArray(gk[k])) F("geruestKarte." + k + " muss eine Liste von Gruppen sein");
+        else gk[k].forEach((gr, i) => {
+          const wo = "geruestKarte." + k + "[" + i + "]";
+          if(!gr || typeof gr.gruppe !== "string" || !gr.gruppe.trim() || !Array.isArray(gr.eintraege) || !gr.eintraege.length)
+            return F(wo + ": gruppe und eintraege sind Pflicht");
+          gr.eintraege.forEach((e, j) => {
+            const w2 = wo + ".eintraege[" + j + "] " + ((e && e.n) || "");
+            if(!e || typeof e.n !== "string" || !e.n.trim()) return F(w2 + ": n (Name) fehlt");
+            /* positionen_pruefen liest alles ab „ (“ als Extras — mit Klammer
+               im Namen fände der Server das Gericht nie. */
+            if(e.n.indexOf(" (") >= 0) F(w2 + ": „ (“ im Namen — der Server läse den Rest als Extras");
+            if(!/^\d{1,4},\d{2}$/.test(String(e.p || ""))) F(w2 + ": p als Preis „13,00“");
+            if(e.a !== undefined && (!Array.isArray(e.a) || e.a.some(x => !ALLERG.test(x))))
+              F(w2 + ": a nur Buchstaben aus dem Schlüssel A–R ohne I, J, K, Q (§6.3)");
+          });
         });
       });
     }
@@ -306,6 +340,7 @@ function pruefeMarkenblatt(mb){
      fest im Gerüst, und der zweite Kunde hätte die des ersten
      bekommen, ohne dass es irgendwo aufgefallen wäre. */
   if(!b.telefon && !b.mail) W("betrieb.telefon und betrieb.mail fehlen — die Kontaktseite bleibt leer");
+  if(!b.strasse || !b.ort) W("betrieb.strasse oder betrieb.ort fehlt — keine Anschrift auf der Kontaktseite, kein Weg dorthin");
   if(!Array.isArray(mb.zeiten) || mb.zeiten.length !== 7)
     W("zeiten fehlt oder hat nicht sieben Einträge (Sonntag zuerst) — der Hub zeigt „—\"");
   if(!mb.links || !mb.links.bewertung)
@@ -417,6 +452,30 @@ function pruefeMarkenblatt(mb){
     }
   }
 
+  /* Impressum im Hub (18.10., § 5 DDG, dokumente/recht/07). Fehlende
+     Angaben sind ein HINWEIS, kein Fehler: Ein Haus ohne sie soll
+     erzeugt werden können — der Hub zeigt dann sichtbar „fehlt noch“
+     statt still nichts. Nur Text, nichts anderes (§2.3a: der Hub setzt
+     es als Text, aber ein Objekt hätte dort nichts zu suchen). */
+  const RECHT_FELDER = ["firma","rechtsform","vertreten","register","ustid","wid","aufsicht","alessia"];
+  if(mb.recht !== undefined){
+    if(!mb.recht || typeof mb.recht !== "object" || Array.isArray(mb.recht)) F("recht muss ein Objekt sein");
+    else Object.keys(mb.recht).forEach(k => {
+      const w = mb.recht[k];
+      if(!RECHT_FELDER.includes(k)) F("recht." + k + " ist unbekannt — erlaubt: " + RECHT_FELDER.join(", "));
+      else if(k === "alessia" ? typeof w !== "boolean" : typeof w !== "string") F("recht." + k + " hat die falsche Art");
+      else if(typeof w === "string" && w.length > 200) F("recht." + k + " ist länger als 200 Zeichen");
+    });
+  }
+  const recht = (mb.recht && typeof mb.recht === "object") ? mb.recht : {};
+  if(!String(recht.firma || "").trim())
+    W("recht.firma fehlt — das Impressum im Hub nennt keinen Anbieter (§ 5 DDG)");
+  if(/\b(GmbH|UG|AG|KG|OHG|GbR|e\.\s?K)/.test(String(recht.rechtsform || "") + " " + String(recht.firma || ""))
+     && !String(recht.vertreten || "").trim())
+    W("recht.vertreten fehlt — bei einer Gesellschaft muss das Impressum die Vertretung nennen");
+  if(!String(b.mail || "").trim() || !String(b.strasse || "").trim())
+    W("Impressum im Hub unvollständig: Anschrift und E-Mail sind Pflicht (§ 5 DDG)");
+
   /* Kontrast, Tag und Abend */
   const pruefePaare = (farben, wann) => {
     [
@@ -505,6 +564,7 @@ function alsQuelltext(mb){
     mb.links     ? block("links",     mb.links,     null) : null,
     mb.wlan      ? block("wlan",      mb.wlan,      null) : null,
     mb.trinkgeld ? liste("trinkgeld", mb.trinkgeld)       : null,
+    mb.recht     ? liste("recht",     mb.recht)           : null,
     liste("kacheln",    mb.kacheln),
     liste("empfehlung", mb.empfehlung),
     liste("quiz",       mb.quiz),
@@ -717,6 +777,30 @@ function erzeuge(slug, nurPruefen){
                 "nicht vor echte Gäste.");
   } else {
     aus = aus.replace(VORF, "");
+  }
+
+  const GERUEST_KARTE = /\/\*\{\{KARTE_GERUEST\}\}[\s\S]*?\/\*\{\{\/KARTE_GERUEST\}\}\*\//;
+  if(!GERUEST_KARTE.test(aus))
+    throw new Error("Die Vorlage hat keine KARTE_GERUEST-Marke ({{KARTE_GERUEST}} … {{/KARTE_GERUEST}})");
+  if(mb.geruestKarte){
+    /* a (Allergene) gehen nach INHALTSSTOFFE, wie die Datenbank es live tut. */
+    const stoffe = {};
+    const karte = k => (mb.geruestKarte[k] || []).map(gr => {
+      const g = { gruppe:gr.gruppe, eintraege:gr.eintraege.map(e => {
+        const x = { n:e.n, b:e.b || "", p:e.p };
+        ["veg","vegan","top"].forEach(f => { if(e[f] === true) x[f] = true; });
+        if(Array.isArray(e.opt) && e.opt.length) x.opt = e.opt.slice();
+        if(Array.isArray(e.a) && e.a.length) stoffe[e.n] = { a:e.a.slice(), z:[] };
+        return x;
+      }) };
+      if(gr.zeichen) g.zeichen = gr.zeichen;
+      return g;
+    });
+    aus = aus.replace(GERUEST_KARTE, () => "/* geruestKarte aus dem Markenblatt (erzeuge-hub.js) */\n" +
+      "let SPEISEKARTE = " + JSON.stringify(karte("speisekarte")) + ";\n" +
+      "let GETRAENKE = " + JSON.stringify(karte("getraenke")) + ";\n" +
+      "let COCKTAILS = " + JSON.stringify(karte("cocktails")) + ";\n" +
+      "Object.assign(INHALTSSTOFFE, " + JSON.stringify(stoffe) + ");");
   }
 
   /* Das Vorführhaus läuft immer vorgeführt (siehe Prüfung oben). Der

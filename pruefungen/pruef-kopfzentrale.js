@@ -17,8 +17,12 @@
    2 · Wenig Text: kein Glanzstreifen (.glanzflug weg), der Gruß ist
        auf der Startseite nicht im Bild (h1 bleibt für Vorleser), der
        Slogan schon; Öffnungsstand NICHT in der Knopfzeile.
-   3 · Oben rechts: rechter Rand der Box = Kopf − Rand (± 2), auf Höhe
-       des Siegels, kein Überlappen mit dem Siegel; RTL oben links.
+   3 · Seit 17.10. (Foto 12.10.: „die geöffnet Anzeige soll unter dem
+       Logo sein … die Kommandozentrale rechts oben sticky“):
+       Leiste FEST oben rechts an der Spalte (540 px), auch nach dem
+       Rollen an derselben Stelle; RTL oben links; sie überdeckt weder
+       Siegel noch Anzeige noch Slogan. Die Anzeige steht mittig UNTER
+       dem Siegel, als Glas-Pille (rund, ≥ 34 px hoch).
    4 · Geschlossen: hohler Ring, feine Linie, Anteil = (jetzt − letzter
        Schluss) / (Öffnung − letzter Schluss) aus ZEITEN nachgerechnet
        UND am gemalten scaleX abgelesen; zwei Stunden später länger.
@@ -28,8 +32,10 @@
    5b · EINE Farbe (Wunsch 10.10., dritte Nachricht: „ohne rgb colors“):
        jede gemalte Farbe in der Box — Schrift, Grund, Rand, auch an
        ::before/::after — hat den Farbton der Bandschrift (nur die
-       Deckkraft darf abweichen); kein Verlauf. Gegenbeweis: eine
-       hsl()-Farbe an einem Buchstaben → rot.
+       Deckkraft darf abweichen). Ein Verlauf ist nur erlaubt, wenn
+       JEDER Halt diese Farbe oder durchsichtig ist (das umlaufende
+       Licht der Pille). Gegenbeweis: eine hsl()-Farbe an einem
+       Buchstaben → rot; Gold im Licht → rot.
    6 · Reduzierte Bewegung: in der Box läuft nichts.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
@@ -83,7 +89,12 @@ const einfarbig = s => s.evaluate(() => {
   for (const el of els) for (const pseudo of [null, "::before", "::after"]) {
     const cs = getComputedStyle(el, pseudo);
     if (pseudo && (cs.content === "none" || cs.content === "normal")) continue;
-    if (cs.backgroundImage !== "none") fremd.push(el.className + (pseudo || "") + " Verlauf/Bild");
+    if (cs.backgroundImage !== "none") {
+      /* Nur ein Verlauf aus der Bandschrift (jede Deckkraft) oder Durchsichtigem. */
+      const halte = cs.backgroundImage.match(/rgba?\([^)]*\)|color\([^)]*\)/g) || [];
+      if (/url\(/.test(cs.backgroundImage) || !halte.length) fremd.push(el.className + (pseudo || "") + " Bild");
+      for (const h of halte) { const f = lies(h); n++; if (f.a >= 0.02 && f.c.some((v, i) => Math.abs(v - ref[i]) > 3)) fremd.push((el.getAttribute("class") || el.tagName) + (pseudo || "") + " Verlauf " + h); }
+    }
     /* fill nur an SVG — an HTML steht dort immer Schwarz, gemalt wird es nie. */
     for (const eig of el instanceof SVGElement ? ["color", "fill"] : ["color", "backgroundColor", "borderTopColor"]) {
       const w = cs[eig]; if (!w || w === "none" || w === "transparent") continue;
@@ -112,13 +123,16 @@ const einfarbig = s => s.evaluate(() => {
         const sichtbar = el => { const q = r(el); return q.width > 2 && q.height > 2 && getComputedStyle(el).visibility !== "hidden"; };
         return {
           leiste: { rand: cs.borderTopWidth, randFarbe: cs.borderTopColor, grund: cs.backgroundColor, breite: r(wahl).width,
-            mitte: r(wahl).left + r(wahl).width / 2 - (r(kopf).left + r(kopf).width / 2) },
+            pos: cs.position, l: r(wahl).left, r: r(wahl).right, t: r(wahl).top, b: r(wahl).bottom,
+            spalteR: Math.min(innerWidth, (innerWidth + 540) / 2) },
+          claimR: (() => { const q = r(claim); return { l: q.left, r: q.right, t: q.top, b: q.bottom }; })(),
           knopf: knoepfe.map(b => ({ w: r(b).width, h: r(b).height, rand: getComputedStyle(b).borderTopColor, innen: r(b).left >= r(wahl).left - .5 && r(b).right <= r(wahl).right + .5 })),
           kinder: kinder.length,
           glanz: !!document.querySelector(".glanzflug"),
           h1: sichtbar(h1), h1text: h1.textContent.trim(), claim: sichtbar(claim) && claim.textContent.trim().length > 0,
           inZeile: st.parentElement === wahl,
-          box: box ? { r: r(box).right, l: r(box).left, t: r(box).top, b: r(box).bottom } : null,
+          box: box ? { r: r(box).right, l: r(box).left, t: r(box).top, b: r(box).bottom, h: r(box).height,
+            rund: parseFloat(getComputedStyle(box).borderTopLeftRadius) >= r(box).height / 2 - 1 } : null,
           kopf: { r: r(kopf).right, l: r(kopf).left }, rand: parseFloat(getComputedStyle(kopf).paddingRight),
           logo: { l: r(logo).left, r: r(logo).right, t: r(logo).top, b: r(logo).bottom },
           ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth,
@@ -128,17 +142,28 @@ const einfarbig = s => s.evaluate(() => {
         k + ": EINE Leiste mit eigenem Rand und Glas", m.leiste.rand + " " + m.leiste.randFarbe + " / " + m.leiste.grund);
       pruef(m.knopf.every(b => b.w >= 44 && b.h >= 44 && b.innen && /rgba\([^)]*,\s*0\)|transparent/.test(b.rand)),
         k + ": Licht und Sprache darin, randlos, ≥ 44 px", JSON.stringify(m.knopf));
-      pruef(Math.abs(m.leiste.mitte) <= 1, k + ": Leiste mittig", m.leiste.mitte.toFixed(1));
+      pruef(m.leiste.pos === "fixed" && Math.abs(m.leiste.r - (m.leiste.spalteR - 8)) <= 2 && m.leiste.t <= 12,
+        k + ": Leiste fest oben rechts an der Spalte", m.leiste.pos + " rechts " + m.leiste.r.toFixed(1) + " / " + (m.leiste.spalteR - 8).toFixed(1) + ", oben " + m.leiste.t.toFixed(1));
+      const schneidet = (a, b) => !(a.r <= b.l || a.l >= b.r || a.b <= b.t || a.t >= b.b);
+      pruef(!schneidet(m.leiste, m.logo) && (!m.box || !schneidet(m.leiste, m.box)) && !schneidet(m.leiste, m.claimR),
+        k + ": Leiste überdeckt weder Siegel noch Anzeige noch Slogan", JSON.stringify({ leiste: [m.leiste.l, m.leiste.b].map(Math.round), logo: [m.logo.l, m.logo.t].map(Math.round) }));
       pruef(!m.glanz, k + ": kein Glanzstreifen mehr");
       pruef(!m.h1 && m.h1text.length > 0 && m.claim, k + ": wenig Text — Gruß nicht im Bild (h1 für Vorleser da), Slogan sichtbar", m.h1 + " / " + m.claim);
       pruef(!m.inZeile && !!m.box, k + ": Öffnungsstand nicht mehr in der Knopfzeile");
       if (m.box) {
-        const rechts = m.kopf.r - m.rand;
-        pruef(Math.abs(m.box.r - rechts) <= 2 && m.box.t < m.logo.b, k + ": Box oben rechts (bündig mit dem Rand, auf Höhe des Siegels)",
-          "rechts " + m.box.r.toFixed(1) + " / " + rechts.toFixed(1) + ", oben " + m.box.t.toFixed(1));
-        pruef(m.box.l >= m.logo.r + 4 || m.box.t >= m.logo.b, k + ": Box überdeckt das Siegel nicht", "Box links " + m.box.l.toFixed(1) + ", Siegel rechts " + m.logo.r.toFixed(1));
+        const mitteBox = (m.box.l + m.box.r) / 2, mitteLogo = (m.logo.l + m.logo.r) / 2;
+        pruef(m.box.t >= m.logo.b && Math.abs(mitteBox - mitteLogo) <= 2, k + ": Anzeige mittig UNTER dem Siegel",
+          "oben " + m.box.t.toFixed(1) + " / Siegel unten " + m.logo.b.toFixed(1) + ", Mitte " + mitteBox.toFixed(1) + " / " + mitteLogo.toFixed(1));
+        pruef(m.box.rund && m.box.h >= 34, k + ": Glas-Pille (rund, ≥ 34 px)", m.box.h.toFixed(1));
       }
       pruef(m.ueber <= 0, k + ": kein seitliches Überlaufen", m.ueber);
+      if (breite === 390 || breite === 1280) {
+        await s.evaluate(() => { document.body.style.minHeight = "3000px"; scrollTo(0, 900); });
+        await s.waitForTimeout(250);
+        const g = await s.evaluate(() => { const q = document.querySelector(".kopfwahl").getBoundingClientRect(); return { r: q.right, t: q.top }; });
+        pruef(Math.abs(g.r - m.leiste.r) <= 1 && Math.abs(g.t - m.leiste.t) <= 1, k + ": nach dem Rollen an derselben Stelle (klebt)", JSON.stringify(g));
+        await s.evaluate(() => scrollTo(0, 0));
+      }
 
       if (breite === 390) {
         /* 4 · Geschlossen: Linie gegen die Rechnung — und gegen das Bild */
@@ -201,12 +226,11 @@ const einfarbig = s => s.evaluate(() => {
   {
     const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", 390, "2026-10-10T14:00:00", { sprache: "ar" });
     const r = await s.evaluate(() => {
-      const box = document.querySelector("#status .status"), kopf = document.querySelector("header");
-      const b = box.getBoundingClientRect();
-      return { links: Math.abs(b.left - (kopf.getBoundingClientRect().left + parseFloat(getComputedStyle(kopf).paddingLeft))),
+      const box = document.querySelector("#status .status"), wahl = document.querySelector(".kopfwahl").getBoundingClientRect();
+      return { leisteLinks: Math.round(wahl.left),
         spans: box.querySelectorAll(".st-text span").length, text: box.textContent.trim() };
     });
-    pruef(r.links <= 2 && r.spans === 0 && r.text.length > 0, "Arabisch: Box oben LINKS, Text ohne Einzelbuchstaben", JSON.stringify(r));
+    pruef(r.leisteLinks >= 6 && r.leisteLinks <= 10 && r.spans === 0 && r.text.length > 0, "Arabisch: Leiste oben LINKS, Text ohne Einzelbuchstaben", JSON.stringify(r));
     pruef(!fehler.length, "RTL: keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
   }

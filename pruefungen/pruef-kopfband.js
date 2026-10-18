@@ -89,6 +89,9 @@ function pruef(b, t, d) {
     ["chocolamour", false, true],
     ["blend", false, true],
     ["minhkeey", true, false],
+    /* 17.10.: die Pizzeria trägt statt Guss eine Trikolore-Kante —
+       Guss UND Laternen weg, die Kante sichtbar (unten geprüft). */
+    ["piugusto", true, true],
   ]) {
     const seite = await (await browser.newContext()).newPage();
     const konsole = [];
@@ -101,11 +104,15 @@ function pruef(b, t, d) {
       gussVerborgen: document.querySelector(".guss").hasAttribute("hidden"),
       laternenVerborgen: document.querySelector(".laternen").hasAttribute("hidden"),
       laternenAnzahl: document.querySelectorAll(".laternen .laterne").length,
+      trikolore: (() => { const t = document.querySelector(".trikolore");
+        return t ? !t.hasAttribute("hidden") && getComputedStyle(t).display !== "none" && t.getBoundingClientRect().height >= 3 : false; })(),
     }));
     pruef(zustand.gussVerborgen === erwartetGuss,
       haus + ": .guss hidden=" + zustand.gussVerborgen, "erwartet " + erwartetGuss);
     pruef(zustand.laternenVerborgen === erwartetLaternen,
       haus + ": .laternen hidden=" + zustand.laternenVerborgen, "erwartet " + erwartetLaternen);
+    pruef(zustand.trikolore === (haus === "piugusto"),
+      haus + ": Trikolore-Kante " + (zustand.trikolore ? "sichtbar" : "verborgen"), "nur bei piugusto");
     if (haus === "minhkeey")
       pruef(zustand.laternenAnzahl === 7, "minhkeey: sieben Laternen gezeichnet", zustand.laternenAnzahl);
     pruef(konsole.length === 0, haus + ": keine Ausnahme in der Konsole", konsole.join(" | ") || "still");

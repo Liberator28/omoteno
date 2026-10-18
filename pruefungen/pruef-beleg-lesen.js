@@ -41,7 +41,9 @@ const JPEG = Buffer.concat([Buffer.from([0xff, 0xd8, 0xff, 0xe0]), Buffer.from("
 const PDF = Buffer.from("%PDF-1.4\n%probe\n");
 
 const GELESEN = {
-  lesbar: true, lieferant: "METRO Frankfurt", belegnummer: "R-77", belegdatum: "2026-10-01",
+  lesbar: true, lieferant: "METRO Frankfurt", belegnummer: "R-77",
+  /* relativ zu heute (§8.1j): die Funktion prüft „höchstens 400 Tage alt“ */
+  belegdatum: new Date(Date.now() - 16 * 86400000).toISOString().slice(0, 10),
   netto: 74, steuer: 14.06, brutto: 88.06,
   positionen: [
     { text: "Weißwein 0,75 l", art: "ware", menge: 12, einheit: "Flasche", menge_je_einheit: "0,75 l", netto: 54, steuersatz: 19 },
@@ -72,9 +74,10 @@ function laden(opt) {
     }
   }
   const tabellen = {
-    einkaufsbelege: opt.schon ? [{ id: "schon-da", betrieb_id: BETRIEB, datei_hash: null, status: "entwurf" }] : [],
+    einkaufsbelege: opt.schon ? [{ id: "schon-da", betrieb_id: BETRIEB, datei_hash: null, status: "entwurf" }]
+      : (opt.hierBenutzt || []).map((l, k) => ({ id: "alt-" + k, betrieb_id: BETRIEB, datei_hash: "x", status: "freigegeben", lieferant_id: l })),
     betriebe: [{ id: BETRIEB, organisation_id: "org-1" }],
-    lieferanten: [{ id: "l-metro", name: "Metro Frankfurt", organisation_id: "org-1", aktiv: true }, { id: "l-andere", name: "Bäckerei", organisation_id: "org-1", aktiv: true }],
+    lieferanten: opt.lieferanten || [{ id: "l-metro", name: "Metro Frankfurt", organisation_id: "org-1", aktiv: true }, { id: "l-andere", name: "Bäckerei", organisation_id: "org-1", aktiv: true }],
     artikel: [{ id: "a-wein", basiseinheit: "ml", aktiv: true, organisation_id: "org-1" }, { id: "a-mehl", basiseinheit: "g", aktiv: true, organisation_id: "org-1" }],
     lieferanten_artikel: [{ lieferant_id: "l-metro", artikel_id: "a-wein", bezeichnung: "WEISSWEIN 0,75 L".toLowerCase() === "x" ? "" : "Weißwein 0,75 l", einkaufseinheit: "Flasche", gebinde_basis: 750 }],
   };
@@ -99,7 +102,7 @@ function laden(opt) {
         spur.push("rpc:" + name); rpc.push({ name, args });
         if (name === "ist_inhaber") return { data: opt.inhaber !== false, error: null };
         if (name === "ki_kontingent_nehmen") return { data: opt.kontingent ?? 300, error: null };
-        if (name === "beleg_speichern") return { data: { ok: true, id: "be-neu" }, error: null };
+        if (name === "beleg_speichern") return { data: opt.speichern || { ok: true, id: "be-neu" }, error: null };
         return { data: null, error: null };
       },
       from: (t) => abfrage(t),
@@ -220,6 +223,37 @@ async function lauf(opt, koerper = { betrieb_id: BETRIEB, pfad: PFAD }) {
   ok(dn.lieferant_id === null && /Neuer Händler GmbH/.test(dn.notiz) && !dn.positionen[0].artikel_id, "unbekannter Lieferant: offen, Name in der Notiz, keine fremde Zuordnung");
   r = await lauf({ gelesen: { ...GELESEN, belegdatum: "01.10.2026" } });
   ok(r.rpc.find((y) => y.name === "beleg_speichern").args.p_daten.belegdatum === null, "Datum in falscher Form → null statt Fehler");
+
+  console.log("\n══ 3b · Mehrere Standorte (E5-A) ══");
+  r = await lauf({});
+  const k5 = r.rpc.find((y) => y.name === "ki_kontingent_nehmen");
+  ok(k5 && k5.args.p_betrieb === BETRIEB, "Kontingent wird beim Standort des Belegs gezogen (p_betrieb)", k5 && JSON.stringify(k5.args));
+  const SQL5 = fs.readFileSync(path.join(__dirname, "..", "datenbank", "migration-einkauf-e5a.sql"), "utf8");
+  const sig5 = (SQL5.match(/create or replace function public\.ki_kontingent_nehmen\(([^)]*)\)/) || [])[1] || "";
+  const params5 = [...sig5.matchAll(/(p_\w+)/g)].map((y) => y[1]);
+  ok(k5 && Object.keys(k5.args).every((x) => params5.includes(x)), "gesendete Schlüssel = Parameter in migration-einkauf-e5a.sql", params5.join(","));
+  /* Zwei ähnliche Lieferanten: ohne feste Wahl entschied die Reihenfolge der Datenbank. */
+  /* Ids gegen die Regel gelegt (§8.1g F): nach id gewänne der kurze Name. */
+  const ZWEI = [{ id: "l-a", name: "Metro", organisation_id: "org-1", aktiv: true }, { id: "l-b", name: "Metro Frankfurt Ost", organisation_id: "org-1", aktiv: true }];
+  const wahl = async (liste, hier) => (await lauf({ lieferanten: liste, hierBenutzt: hier, gelesen: { ...GELESEN, lieferant: "METRO Frankfurt Ost-Markt" } }))
+    .rpc.find((y) => y.name === "beleg_speichern").args.p_daten.lieferant_id;
+  const w1 = await wahl(ZWEI, []), w2 = await wahl([...ZWEI].reverse(), []);
+  ok(w1 === "l-b" && w2 === "l-b", "ähnliche Lieferanten: längster passender Name, unabhängig von der Reihenfolge", w1 + " / " + w2);
+  const w3 = await wahl(ZWEI, ["l-a"]), w4 = await wahl([...ZWEI].reverse(), ["l-a"]);
+  ok(w3 === "l-a" && w4 === "l-a", "… außer einer wird in DIESEM Standort schon benutzt", w3 + " / " + w4);
+  const w5 = await wahl([{ id: "l-z", name: "METRO Frankfurt Ost-Markt", organisation_id: "org-1", aktiv: true }, ...ZWEI], ["l-a"]);
+  ok(w5 === "l-z", "genau gleicher Name schlägt alles", w5);
+  const alt = new Date(Date.now() - 500 * 86400000).toISOString().slice(0, 10), bald = new Date(Date.now() + 5 * 86400000).toISOString().slice(0, 10);
+  for (const [d, was] of [[alt, "500 Tage alt"], [bald, "5 Tage in der Zukunft"], ["2026-02-30", "30. Februar"]]) {
+    r = await lauf({ gelesen: { ...GELESEN, belegdatum: d } });
+    const pd = r.rpc.find((y) => y.name === "beleg_speichern").args.p_daten;
+    ok(pd.belegdatum === null && pd.notiz && pd.notiz.includes(d) && r.a.ok === true && r.a.datum_verworfen === d,
+      "Datum " + was + " → leer (Server nimmt den Berliner Tag), gelesener Wert in der Notiz, Beleg trotzdem angelegt", JSON.stringify([pd.belegdatum, pd.notiz]));
+  }
+  r = await lauf({});
+  ok(r.rpc.find((y) => y.name === "beleg_speichern").args.p_daten.belegdatum === GELESEN.belegdatum, "plausibles Datum bleibt");
+  r = await lauf({ speichern: { ok: true, id: "be-neu", hinweis: "datei_doppelt_standort", standort: "Choco Nord" } });
+  ok(r.a.ok && r.a.hinweis === "datei_doppelt_standort" && r.a.standort === "Choco Nord", "Hinweis „gleiche Datei an anderem Standort“ wird durchgereicht", JSON.stringify(r.a));
 
   console.log("\n══ 4 · Ablehnung, Fehler, Unlesbares ══");
   r = await lauf({ ablehnen: true });

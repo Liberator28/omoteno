@@ -103,8 +103,15 @@ function eigenschaften(){
   }
   const imRuhigen = pos => ruhigBereiche.some(([a2, b2]) => pos >= a2 && pos < b2);
 
-  const wort = [...s.matchAll(/animation:[^;}]*?\s(ease-out|ease-in|ease-in-out|linear)\b/g)]
+  /* Gleichförmige Dauerbewegung ist die eine Ausnahme des Skills
+     bewegung (§2: „was sich endlos dreht“): Räder, Straße und Wolken der
+     Lieferungs-Szene laufen mit fester Geschwindigkeit — eine Kurve
+     ließe den Roller bei jeder Runde ruckeln. Namentlich, nicht per
+     Muster (§8.1g D); NUR „linear“, nur diese drei. */
+  const GLEICHFOERMIG = ["wzDrehen", "wzStrasse", "wzWolke"];
+  const wort = [...s.matchAll(/animation:([A-Za-z-]*)[^;}]*?\s(ease-out|ease-in|ease-in-out|linear)\b/g)]
     .filter(x => !imRuhigen(x.index))
+    .filter(x => !(x[2] === "linear" && GLEICHFOERMIG.includes(x[1])))
     .map(x => x[0].slice(0, 52));
   ok(wort.length === 0, "keine Bewegung auf dem schwächeren CSS-Schlüsselwort",
      wort.length ? wort.join(" | ") : "alle auf den Kurven des Hauses");

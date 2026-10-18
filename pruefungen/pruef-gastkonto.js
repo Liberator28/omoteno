@@ -18,6 +18,12 @@
        verliert ab der zweiten Bestellung jede weitere – still. Deshalb
        schickt der Hub beides getrennt, und das wird hier gemessen.
 
+   3 · NUR AUF WUNSCH (18.10., § 25 TDDDG). Ohne den Knopf
+       „Einschalten" legt der Hub nichts Dauerhaftes ab und meldet
+       nichts an gast_melden — auch nicht beim Stöbern durch jede
+       Seite. Eine Kennung aus der Zeit davor wird erst NACH dem
+       Einschalten gelesen und übernommen. Ausschalten räumt beides.
+
    2 · KONTRAST WIRD GERECHNET, NICHT ANGESEHEN. Gemessen wird am
        fertigen Bild, nicht aus den Markenblattwerten: Die Flächen sind
        teils durchscheinend, und nur der Browser weiß, was am Ende
@@ -91,6 +97,21 @@ async function verdrahten(seite, antwort, gesammelt, verzoegerung){
 }
 
 const leer = () => ({ melden:[], mail:[], bestellt:[] });
+
+/* Für die Abschnitte, die „Mein Tisch" MIT Inhalt prüfen: so, als hätte
+   der Gast früher schon eingeschaltet. Der Weg über den Knopf selbst
+   steht in Abschnitt 1. */
+async function eingeschaltet(ctx, slug){
+  await ctx.addInitScript(s => {
+    try{ localStorage.setItem("omoteno-stammgast-" + s, "2026-10-01T12:00:00.000Z"); }catch(e){}
+  }, slug);
+}
+
+/* Was liegt dauerhaft im Gerät? Alles mit „geraet" oder „stammgast". */
+async function dauerhaft(seite){
+  return seite.evaluate(() => Object.keys(localStorage)
+    .filter(k => /^omoteno-(geraet|stammgast)-/.test(k)));
+}
 
 /* Ein Gericht, das es in DIESEM Haus wirklich gibt – sonst prüft der
    Sprung nichts. */
@@ -210,7 +231,7 @@ const MESSUNG = `
   }
   const HAUPT = "file://" + path.join(HIER, "dist", haupt, "index.html");
 
-  /* ───── 1 · erster Besuch ───── */
+  /* ───── 1 · erster Besuch: erst fragen ───── */
   console.log("\n── Erster Besuch (" + haupt + ") ──");
   {
     const ctx = await browser.newContext({ viewport: MASSE[1] });
@@ -222,25 +243,120 @@ const MESSUNG = `
     await seite.evaluate(() => { location.hash = "#/meintisch"; });
     await seite.waitForTimeout(400);
 
-    const txt = await seite.textContent("#inhalt");
-    pruef(g.melden.length === 1, "gast_melden genau einmal gerufen", "n=" + g.melden.length);
-    pruef(/^[A-Za-z0-9_-]{8,64}$/.test(g.melden[0].p_kennung || ""),
-      "Kennung passt zur Regel der Datenbank", g.melden[0].p_kennung);
+    let txt = await seite.textContent("#inhalt");
+    pruef(g.melden.length === 0, "vor dem Einschalten nichts an gast_melden", "n=" + g.melden.length);
+    pruef((await dauerhaft(seite)).length === 0, "vor dem Einschalten nichts Dauerhaftes im Gerät",
+      (await dauerhaft(seite)).join(", "));
+    pruef(/zufällige Nummer/.test(txt) && /jederzeit/.test(txt),
+      "Zweck und Ausschalten stehen vor dem Knopf");
+    const knopf = await seite.$('[data-aktion="stammgastAn"]');
+    pruef(!!knopf, "Knopf „Einschalten“ da");
+    pruef(!(await seite.$("#gastMail")), "E-Mail-Feld erst nach dem Einschalten");
+    if(knopf){
+      const box = await knopf.boundingBox();
+      pruef(box && box.height >= 44, "Knopf ≥ 44 px", box && box.height);
+      await knopf.click();
+    }
+    await seite.waitForTimeout(500);
+
+    txt = await seite.textContent("#inhalt");
+    pruef(g.melden.length === 1, "nach dem Einschalten gast_melden genau einmal", "n=" + g.melden.length);
+    const k = (g.melden[0] || {}).p_kennung || "";
+    pruef(/^[A-Za-z0-9_-]{8,64}$/.test(k), "Kennung passt zur Regel der Datenbank", k);
+    pruef(await seite.evaluate(s => localStorage.getItem("omoteno-geraet-" + s), haupt) === k,
+      "dieselbe Kennung dauerhaft im Gerät");
     pruef(/erster Besuch/.test(txt), "erster Besuch benannt");
     pruef(/sammeln sich hier Ihre Lieblingsspeisen/.test(txt),
       "kein leeres Feld, sondern ein Satz");
     pruef(!/IHRE LIEBLINGE/.test(txt), "keine Überschrift ohne Inhalt darunter");
     pruef(/FREIWILLIG/.test(txt), "E-Mail ausdrücklich freiwillig");
     pruef(/Bestätigungsmail/.test(txt), "Doppelbestätigung angekündigt");
+    pruef(!/merkt sich Ihr Gerät/.test(txt), "kein Satz, der die Speicherung beim Server verschweigt");
 
     await seite.fill("#gastMail", "gast@example.de");
     await seite.click('[data-aktion="gastMail"]');
     await seite.waitForTimeout(300);
     pruef(g.mail.length === 1 && g.mail[0].p_email === "gast@example.de",
       "Adresse geht an gast_mail_merken");
-    pruef(g.mail[0].p_kennung === g.melden[0].p_kennung, "dieselbe Gerätekennung");
+    pruef(g.mail[0] && g.mail[0].p_kennung === k, "dieselbe Gerätekennung");
     pruef(/bestätigt/.test(await seite.textContent("#melde")),
       "Rückmeldung verspricht nichts, was noch nicht geht");
+
+    /* Neu laden: eingeschaltet bleibt eingeschaltet, dieselbe Kennung. */
+    await seite.reload();
+    await seite.waitForTimeout(500);
+    pruef(g.melden.length === 2 && g.melden[1].p_kennung === k,
+      "nach Neuladen wieder gemeldet, dieselbe Kennung", "n=" + g.melden.length);
+
+    /* Ausschalten über den echten Knopf. */
+    await seite.evaluate(() => { location.hash = "#/meintisch"; });
+    await seite.waitForTimeout(400);
+    const aus = await seite.$('[data-aktion="stammgastAus"]');
+    pruef(!!aus, "Knopf „Ausschalten“ da");
+    if(aus) await aus.click();
+    await seite.waitForTimeout(300);
+    pruef((await dauerhaft(seite)).length === 0, "nach dem Ausschalten nichts Dauerhaftes mehr",
+      (await dauerhaft(seite)).join(", "));
+    pruef(!!(await seite.$('[data-aktion="stammgastAn"]')), "zurück bei der Frage");
+    pruef(/bisherigen Besuche/.test(await seite.textContent("#melde")),
+      "sagt, wie die Daten beim Haus gelöscht werden");
+    await seite.reload();
+    await seite.waitForTimeout(500);
+    pruef(g.melden.length === 2, "nach Ausschalten + Neuladen keine Meldung", "n=" + g.melden.length);
+    await ctx.close();
+  }
+
+  /* ───── 1b · stöbern, ohne einzuschalten ───── */
+  console.log("\n── Stöbern ohne Einschalten ──");
+  {
+    const ctx = await browser.newContext({ viewport: MASSE[1] });
+    const seite = await ctx.newPage();
+    const g = leer();
+    await verdrahten(seite, ANTWORT_LEER, g);
+    await seite.goto(HAUPT);
+    await seite.waitForTimeout(400);
+    const seiten = await seite.evaluate(() => Object.keys(SEITEN));
+    pruef(seiten.length >= 5, "Voraussetzung: Seiten gefunden", seiten.length);
+    for(const name of seiten){
+      await seite.evaluate(n => { location.hash = "#/" + n; }, name);
+      await seite.waitForTimeout(120);
+    }
+    await seite.waitForTimeout(300);
+    pruef(g.melden.length === 0, "durch " + seiten.length + " Seiten: nichts an gast_melden",
+      "n=" + g.melden.length);
+    pruef((await dauerhaft(seite)).length === 0, "nichts Dauerhaftes im Gerät",
+      (await dauerhaft(seite)).join(", "));
+    await ctx.close();
+  }
+
+  /* ───── 1c · Kennung aus der Zeit vor dem 18.10. ───── */
+  console.log("\n── Alte Kennung ──");
+  {
+    const ALT = "altekennung0123456789";
+    const ctx = await browser.newContext({ viewport: MASSE[1] });
+    await ctx.addInitScript(([s, a]) => {
+      if(!sessionStorage.getItem("probe-alt")){
+        localStorage.setItem("omoteno-geraet-" + s, a);
+        sessionStorage.setItem("probe-alt", "1");
+      }
+    }, [haupt, ALT]);
+    const seite = await ctx.newPage();
+    const g = leer();
+    await verdrahten(seite, ANTWORT_LEER, g);
+    await seite.goto(HAUPT);
+    await seite.waitForTimeout(500);
+    pruef(await seite.evaluate(s => localStorage.getItem("omoteno-geraet-" + s), haupt) === ALT,
+      "Voraussetzung: alte Kennung liegt im Gerät");
+    pruef(g.melden.length === 0, "alte Kennung allein meldet nichts", "n=" + g.melden.length);
+    await seite.evaluate(() => { location.hash = "#/meintisch"; });
+    await seite.waitForTimeout(300);
+    const an = await seite.$('[data-aktion="stammgastAn"]');
+    pruef(!!an, "alte Kennung allein schaltet nicht ein (Frage steht da)");
+    if(an) await an.click();
+    await seite.waitForTimeout(500);
+    pruef(g.melden.length === 1 && g.melden[0].p_kennung === ALT,
+      "nach dem Einschalten wird die alte Kennung übernommen (Besuche, Gutscheine)",
+      g.melden[0] && g.melden[0].p_kennung);
     await ctx.close();
   }
 
@@ -255,6 +371,7 @@ const MESSUNG = `
     await ctx.close();
 
     const ctx2 = await browser.newContext({ viewport: MASSE[1] });
+    await eingeschaltet(ctx2, haupt);
     const s2 = await ctx2.newPage();
     const voll = JSON.parse(JSON.stringify(ANTWORT_VOLL));
     voll.lieblinge[0].name = gericht;
@@ -290,6 +407,7 @@ const MESSUNG = `
   console.log("\n── Ladezustand ──");
   {
     const ctx = await browser.newContext({ viewport: MASSE[1] });
+    await eingeschaltet(ctx, haupt);
     const seite = await ctx.newPage();
     await verdrahten(seite, ANTWORT_LEER, leer(), 2500);
     await seite.goto(HAUPT);
@@ -353,6 +471,12 @@ const MESSUNG = `
         "verschiedene Quittungsnummern – die zweite wird nicht verschluckt");
       pruef(a.p_geraet !== a.p_gast_kennung, "Gerät und Quittung sind nicht dasselbe Feld");
     }
+    pruef((await dauerhaft(seite)).length === 0,
+      "Bestellen ohne Einschalten legt nichts Dauerhaftes ab", (await dauerhaft(seite)).join(", "));
+    pruef(g.melden.length === 0, "Bestellen ohne Einschalten meldet keinen Besuch", "n=" + g.melden.length);
+    pruef(g.bestellt[0] && await seite.evaluate(s => sessionStorage.getItem("omoteno-tabgeraet-" + s), haupt)
+            === g.bestellt[0].p_geraet,
+      "Kennung der Bestellung lebt nur im Tab");
     await ctx.close();
   }
 
@@ -366,6 +490,7 @@ const MESSUNG = `
     await ctx.close();
 
     const ctx2 = await browser.newContext({ viewport: m });
+    await eingeschaltet(ctx2, haupt);
     const s2 = await ctx2.newPage();
     const voll = JSON.parse(JSON.stringify(ANTWORT_VOLL));
     voll.lieblinge[0].name = gericht;
@@ -384,6 +509,7 @@ const MESSUNG = `
   console.log("\n── prefers-reduced-motion ──");
   {
     const ctx = await browser.newContext({ viewport: MASSE[1], reducedMotion: "reduce" });
+    await eingeschaltet(ctx, haupt);
     const seite = await ctx.newPage();
     await verdrahten(seite, ANTWORT_LEER, leer(), 1500);
     await seite.goto(HAUPT);
@@ -405,6 +531,7 @@ const MESSUNG = `
     const datei = "file://" + path.join(HIER, "dist", slug, "index.html");
     for(const [phase, stunde] of [["Tag", 14], ["Abend", 22]]){
       const ctx = await browser.newContext({ viewport: MASSE[1] });
+      await eingeschaltet(ctx, slug);
       const seite = await ctx.newPage();
       await verdrahten(seite, ANTWORT_VOLL, leer());
       await seite.goto(datei);
@@ -412,9 +539,23 @@ const MESSUNG = `
       await seite.evaluate(h => { stunde = h; nachtSchalten(); }, stunde);
       await seite.evaluate(() => { location.hash = "#/meintisch"; });
       await seite.waitForTimeout(500);
+      /* Das Vorführhaus ersetzt localStorage durch einen leeren Speicher
+         im Arbeitsspeicher — dort kommt „eingeschaltet" aus dem
+         Init-Skript nie an. Dann der echte Knopf. */
+      const an = await seite.$('[data-aktion="stammgastAn"]');
+      if(an){ await an.click(); await seite.waitForTimeout(500); }
 
       console.log("\n── Kontrast · " + slug + " · " + phase + " ──");
+      /* Das Vorführhaus beantwortet gast_melden selbst (Demo-Block der
+         Vorlage) mit leeren Listen — die gestellte Antwort hier kommt
+         nie an, Lieblinge und Gutscheine werden dort nicht gezeichnet.
+         Namentlich ausgenommen, nicht per Muster (§8.1g D). */
+      const vorfuehrung = await seite.evaluate(() => window.OMOTENO_DEMO === true);
+      const OHNE_IM_VORFUEHRHAUS = ["Liebling auf Karte", "Anzahl auf Karte", "Gutscheintitel",
+                                     "Gutscheintext", "Code auf Goldfläche", "Frist"];
+      if(vorfuehrung) console.log("  (Vorführhaus: " + OHNE_IM_VORFUEHRHAUS.join(", ") + " nicht gezeichnet)");
       for(const w of await seite.evaluate(MESSUNG)){
+        if(vorfuehrung && w.wert == null && OHNE_IM_VORFUEHRHAUS.includes(w.name)) continue;
         if(w.wert == null){ pruef(false, w.name + " (nicht gefunden)"); continue; }
         /* Große, fette Schrift darf nach WCAG bei 3:1 liegen. */
         const grenze = w.gross ? 3 : 4.5;

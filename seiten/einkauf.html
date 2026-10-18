@@ -74,6 +74,13 @@ label.feld > span{font-weight:600}
   transition:transform 120ms var(--aus),background-color 120ms ease-out;
 }
 .knopf:active{transform:scale(.97)}
+a.knopf{text-decoration:none;color:inherit}
+/* E5-C: Liefertage, Lagerort-Überschriften, Bestelltext */
+.tagwahl{display:flex;gap:6px;flex-wrap:wrap}
+.tagwahl button{min-width:44px;min-height:44px;border-radius:11px;border:1px solid var(--linie-stark);background:var(--flaeche);font-weight:600}
+.tagwahl button[aria-pressed=true]{background:var(--messing);color:var(--auf-messing);border-color:var(--messing)}
+h4.lagerort{margin:6px 0 0;font-size:15px;color:var(--gedaempft)}
+.nachtext{margin:0;white-space:pre-wrap;overflow-wrap:anywhere;font-family:var(--mono);font-size:14px;background:var(--flaeche);border:1px solid var(--linie);border-radius:10px;padding:10px 12px}
 .knopf.haupt{background:var(--messing);color:var(--auf-messing);border-color:var(--messing)}
 .knopf.leer{background:transparent}
 .knopf.gefahr{color:var(--fehler);border-color:rgba(255,154,139,.45);background:transparent}
@@ -228,6 +235,7 @@ button.zeile:active{background:var(--flaeche)}
       <button role="tab" type="button" aria-selected="false" data-ansicht="artikel">Artikel</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="kalkulation">Kalkulation</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="lieferanten">Lieferanten</button>
+      <button role="tab" type="button" aria-selected="false" data-ansicht="lager" id="reiterLager" hidden>Lager</button>
       <button role="tab" type="button" aria-selected="false" data-ansicht="standorte" id="reiterStandorte" hidden>Standorte</button>
     </div>
   </header>
@@ -292,10 +300,15 @@ button.zeile:active{background:var(--flaeche)}
       <div class="karte" id="inventurKarte" hidden>
         <h3>Inventur</h3>
         <p class="leise" style="margin:0;font-size:14px">Tragen Sie ein, was Sie gezählt haben. Gebucht wird nur die Abweichung zum Bestand; leere Felder bleiben unberührt.</p>
+        <p class="leise" id="invStand" style="margin:0;font-size:14px" hidden></p>
         <div id="invListe" class="abschnitt" style="gap:10px"></div>
-        <label class="feld"><span>Notiz</span><input id="invNotiz" type="text" maxlength="200" placeholder="z. B. Monatsende"></label>
+        <div class="raster">
+          <label class="feld"><span>Gezählt am (Stichtag)</span><input id="invStichtag" type="datetime-local"></label>
+          <label class="feld"><span>Notiz</span><input id="invNotiz" type="text" maxlength="200" placeholder="z. B. Monatsende"></label>
+        </div>
         <p class="meldung fehler" id="invMeldung" hidden></p>
         <div class="werkzeuge"><button class="knopf haupt" id="invBuchen" type="button">Inventur buchen</button>
+          <button class="knopf" id="invZwischen" type="button">Zwischenstand sichern</button>
           <button class="knopf leer" id="invAbbrechen" type="button">Abbrechen</button></div>
       </div>
       <div class="liste" id="artikelListe"></div>
@@ -332,6 +345,33 @@ button.zeile:active{background:var(--flaeche)}
         <button class="knopf haupt" id="lAnlegen" type="button">Lieferant anlegen</button>
       </div>
       <div class="liste" id="lieferantListe"></div>
+    </section>
+    <!-- Lager: Umlagerungen zwischen Standorten (E5-B) -->
+    <section class="abschnitt" id="v-lager" hidden>
+      <h2>Nachbestellen</h2>
+      <p class="leise" style="margin:0;font-size:14px">Was unter dem Mindestbestand dieses Standorts liegt, nach Lieferant — als Text zum Kopieren. Verschickt wird nichts von selbst.</p>
+      <div id="nachListe" class="abschnitt" style="gap:12px"></div>
+      <div id="umTeil" class="abschnitt">
+      <h2>Umlagerungen</h2>
+      <p class="leise" style="margin:0;font-size:14px">Ware an einen anderen Standort Ihrer Kette schicken. Der Wert wandert mit; im Lager des Empfängers steht sie erst, wenn er sie annimmt.</p>
+      <p class="meldung fehler" id="umFehler" hidden></p>
+      <h3>Unterwegs zu Ihnen</h3>
+      <div id="umEin" class="abschnitt" style="gap:12px"></div>
+      <h3>Von Ihnen unterwegs</h3>
+      <div id="umAus" class="abschnitt" style="gap:12px"></div>
+      <div class="karte nur-inhaber" id="umNeuKarte">
+        <h3>Ware schicken</h3>
+        <p class="leise" id="umAusBeleg" style="margin:0;font-size:14px" hidden></p>
+        <label class="feld"><span>An Standort</span><select id="umZiel"></select></label>
+        <div id="umZeilen" class="abschnitt" style="gap:10px"></div>
+        <button type="button" class="knopf" data-aktion="um-zeile-neu">Artikel hinzufügen</button>
+        <label class="feld"><span>Notiz</span><input id="umNotiz" type="text" maxlength="300" placeholder="z. B. Lieferung Dienstag"></label>
+        <p class="meldung" id="umMeldung" role="status" hidden></p>
+        <div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="um-schicken">Abschicken</button></div>
+      </div>
+      <h3>Zuletzt</h3>
+      <div class="liste" id="umVerlauf"></div>
+      </div>
     </section>
     <!-- Standorte (E4) -->
     <section class="abschnitt" id="v-standorte" hidden>
@@ -605,6 +645,17 @@ const GRUENDE = {
   keine_summe:       "Bitte die Netto-Summe des Belegs eintragen.",
   keine_positionen:  "Der Beleg hat noch keine Position.",
   doppelt:           "Diese Belegnummer ist bei diesem Lieferanten schon freigegeben.",
+  /* E5-A (migration-einkauf-e5a.sql) */
+  doppelt_standort:  "Diese Belegnummer ist bei diesem Lieferanten schon in einem anderen Standort freigegeben.",
+  datum:             "Das Belegdatum liegt mehr als einen Tag in der Zukunft oder über 400 Tage zurück.",
+  /* E5-B: Umlagerung (migration-einkauf-e5b.sql) */
+  gleich:            "Absender und Empfänger sind derselbe Standort.",
+  andere_kette:      "Dieser Standort gehört nicht zu Ihrer Kette.",
+  nicht_unterwegs:   "Diese Umlagerung ist schon angenommen oder zurückgezogen.",
+  notiz:             "Die Notiz ist zu lang (höchstens 300 Zeichen).",
+  beleg:             "Der Beleg gehört nicht zu diesem Standort oder ist nicht freigegeben.",
+  /* E5-C: Sortiment, Zählung (migration-einkauf-e5c.sql) */
+  stichtag:          "Der Stichtag darf höchstens 62 Tage zurückliegen und nicht in der Zukunft sein.",
   position:          "Eine Position ist nicht vollständig.",
   nicht_zugeordnet:  "Jede Ware braucht einen Artikel und die Menge je Einheit.",
   summe:             "Die Positionen ergeben nicht die Netto-Summe des Belegs.",
@@ -641,12 +692,16 @@ const GRUENDE = {
 const POS_FELD = {
   text:"braucht einen Text (bis 200 Zeichen)", art:"hat eine unbekannte Art", menge:"braucht eine Menge über 0",
   netto:"braucht einen Netto-Betrag", steuersatz:"Steuersatz zwischen 0 und 30 %",
-  artikel:"Der Artikel gehört nicht zu Ihrem Betrieb.", zahl:"Eine Zahl ist nicht lesbar."
+  artikel:"Der Artikel gehört nicht zu Ihrem Betrieb.", zahl:"Eine Zahl ist nicht lesbar.",
+  /* E5-B */
+  doppelt:"dieser Artikel steht schon in einer anderen Zeile", pos:"diese Position gibt es in der Umlagerung nicht",
+  preis:"hat an diesem Standort noch keinen Einkaufspreis — der Wert der Ware wäre unbekannt"
 };
 function grundSatz(a){
   if(!a) return "Keine Antwort vom Server. Bitte noch einmal.";
   if(a.grund === "position" && a.pos) return "Position " + a.pos + ": " + (POS_FELD[a.feld] || GRUENDE.position) + ".";
   if(a.grund === "nicht_zugeordnet" && Array.isArray(a.pos)) return "Position " + a.pos.join(", ") + ": " + GRUENDE.nicht_zugeordnet;
+  if(a.grund === "doppelt_standort" && a.standort) return "Diese Belegnummer ist bei diesem Lieferanten schon im Standort „" + a.standort + "“ freigegeben — wurde der Beleg am falschen Standort erfasst?";
   if(a.grund === "summe") return "Die Positionen ergeben " + euro.format(a.positionen) + ", der Beleg sagt " + euro.format(a.beleg) + " netto.";
   return GRUENDE[a.grund] || ("Das hat nicht geklappt (" + a.grund + ").");
 }
@@ -752,6 +807,13 @@ async function nachAnmeldung(){
 /* ═══ Betrieb ═════════════════════════════════════════════════ */
 let BETRIEBE = [];
 let B = null;          /* { id, name, organisation_id, rolle } */
+/* Heute als Berliner Tag (JJJJ-MM-TT) — toISOString() ist UTC, nach
+   Mitternacht stand ein neuer Beleg sonst auf gestern (E5-A). */
+const heuteBerlin = () => new Intl.DateTimeFormat("en-CA", { timeZone:"Europe/Berlin" }).format(new Date());
+/* Jedes Laden bekommt eine Nummer. Wechselt der Standort, während eine
+   Antwort noch unterwegs ist, wird die alte verworfen (E5-A) — sonst
+   zeigte B die Belege von A, wenn A langsamer antwortete. */
+let LADE_LAUF = 0;
 let DATEN = { artikel:[], lieferanten:[], belege:[], bestand:{}, preise:[], zuordnung:[] };
 let ANSICHT = "uebersicht";
 
@@ -791,18 +853,25 @@ function ladefehler(t){ const f = $("ladefehler"); f.textContent = t; f.hidden =
 /* Jede Sortierung endet mit id (§2.6). */
 async function allesLaden(){
   ladefehler("");
+  const lauf = ++LADE_LAUF;
   const org = B.organisation_id;
-  const kalk = kalkLaden();
+  const kalk = kalkLaden(lauf);
+  const lager = lagerLaden(lauf);
   const [art, lief, bel, best, pr, zu] = await Promise.all([
     sb.from("artikel").select("id, name, kategorie, basiseinheit, aktiv").eq("organisation_id", org).order("name").order("id"),
     sb.from("lieferanten").select("id, name, kundennummer, kontakt, aktiv").eq("organisation_id", org).order("name").order("id"),
     sb.from("einkaufsbelege").select("id, lieferant_id, belegnummer, belegdatum, netto, steuer, brutto, status, quelle, notiz, positionen_entwurf, angelegt, datei_pfad")
       .eq("betrieb_id", B.id).order("belegdatum", { ascending:false }).order("angelegt", { ascending:false }).order("id").limit(300),
     sb.from("lagerbestand").select("artikel_id, menge_basis, wert_netto").eq("betrieb_id", B.id),
-    sb.from("artikel_preise").select("artikel_id, preis_basis, belegdatum, position_id, lieferant_id").eq("betrieb_id", B.id)
-      .order("belegdatum", { ascending:false }).order("position_id", { ascending:false }).limit(1000),
+    /* Dieselbe Reihenfolge wie artikel_preis_betrieb (E5-A): bei gleichem
+       Datum gilt der zuletzt freigegebene Beleg, nicht die Zufalls-UUID. */
+    sb.from("artikel_preise").select("artikel_id, preis_basis, belegdatum, position_id, lieferant_id, freigegeben_am, pos").eq("betrieb_id", B.id)
+      .order("belegdatum", { ascending:false }).order("freigegeben_am", { ascending:false, nullsFirst:false })
+      .order("pos", { ascending:false }).order("position_id", { ascending:false }).limit(1000),
     sb.from("lieferanten_artikel").select("id, lieferant_id, artikel_id, bezeichnung, einkaufseinheit, gebinde_basis").order("bezeichnung").order("id")
   ]);
+  await kalk; await lager;
+  if(lauf !== LADE_LAUF) return;
   const fehler = [art, lief, bel, best, pr, zu].find(r => r && r.error);
   if(fehler){
     ladefehler(/relation|does not exist|schema cache/i.test(fehler.error.message || "")
@@ -817,7 +886,6 @@ async function allesLaden(){
   DATEN.preise = (pr && pr.data) || [];
   const meineLief = new Set(DATEN.lieferanten.map(l => l.id));
   DATEN.zuordnung = ((zu && zu.data) || []).filter(z => meineLief.has(z.lieferant_id));
-  await kalk;
   zeichnen();
 }
 
@@ -846,13 +914,14 @@ function preisaenderungen(){
 /* ═══ Zeichnen ════════════════════════════════════════════════ */
 function zeichnen(){
   for(const k of document.querySelectorAll(".reiter [data-ansicht]")) k.setAttribute("aria-selected", String(k.dataset.ansicht === ANSICHT));
-  for(const v of ["uebersicht", "belege", "artikel", "kalkulation", "lieferanten", "standorte"]) $("v-" + v).hidden = v !== ANSICHT;
+  for(const v of ["uebersicht", "belege", "artikel", "kalkulation", "lieferanten", "lager", "standorte"]) $("v-" + v).hidden = v !== ANSICHT;
   if(ANSICHT === "uebersicht") uebersichtZeichnen();
   if(ANSICHT === "belege") (EDIT ? editZeichnen() : belegListeZeichnen());
   if(ANSICHT === "artikel") artikelZeichnen();
   if(ANSICHT === "lieferanten") lieferantenZeichnen();
   if(ANSICHT === "kalkulation") (REZ ? rezZeichnen() : kalkZeichnen());
   if(ANSICHT === "standorte") standorteZeichnen();
+  if(ANSICHT === "lager") lagerZeichnen();
 }
 
 const STATUS_NAME = { entwurf:"Entwurf", freigegeben:"Freigegeben", storniert:"Storniert", verworfen:"Verworfen" };
@@ -915,7 +984,7 @@ function belegOeffnen(id){
     id: b ? b.id : null, status:"entwurf",
     kopf: b ? { lieferant_id:b.lieferant_id || "", belegnummer:b.belegnummer || "", belegdatum:b.belegdatum || "",
                 netto:fmtEingabe(b.netto), steuer:fmtEingabe(b.steuer), brutto:fmtEingabe(b.brutto), notiz:b.notiz || "" }
-            : { lieferant_id:"", belegnummer:"", belegdatum:new Date().toISOString().slice(0, 10), netto:"", steuer:"", brutto:"", notiz:"" },
+            : { lieferant_id:"", belegnummer:"", belegdatum:heuteBerlin(), netto:"", steuer:"", brutto:"", notiz:"" },
     pos: b && Array.isArray(b.positionen_entwurf) && b.positionen_entwurf.length
       ? b.positionen_entwurf.map(p => ({ text:p.text || "", art:p.art || "ware", artikel_id:p.artikel_id || "", menge:fmtEingabe(p.menge),
           einkaufseinheit:p.einkaufseinheit || "", gebinde:p.gebinde_text || fmtEingabe(p.gebinde_basis), netto:fmtEingabe(p.netto),
@@ -949,7 +1018,7 @@ function editZeichnen(){
   if(EDIT.nurAnsehen){ ansehenZeichnen(); return; }
   const k = EDIT.kopf;
   const lieferanten = DATEN.lieferanten.filter(l => l.aktiv || l.id === k.lieferant_id);
-  const artikel = DATEN.artikel.filter(a => a.aktiv);
+  const artikel = DATEN.artikel.filter(aktivHier);
   box.innerHTML =
     '<div class="werkzeuge"><button type="button" class="knopf leer" data-aktion="liste">Zurück zur Liste</button>' +
     '<h2 class="wachsen">' + (EDIT.id ? "Entwurf bearbeiten" : "Beleg erfassen") + "</h2></div>" +
@@ -990,7 +1059,7 @@ function editZeichnen(){
       '<button type="button" class="knopf" data-aktion="sichern">Entwurf sichern</button>' +
       '<button type="button" class="knopf haupt" data-aktion="freigeben">Freigeben</button>' +
       (EDIT.id ? '<button type="button" class="knopf gefahr" data-aktion="verwerfen">Entwurf verwerfen</button>' : "") +
-    "</div>" +
+    "</div>" + verschiebenHTML() +
     '<p class="leise" style="margin:0;font-size:14px">Freigeben bucht die Ware ins Lager und schreibt die Preise fest. Danach ist der Beleg unveränderlich — korrigiert wird mit Storno und neuem Beleg.</p>';
   summeZeichnen();
 }
@@ -1015,7 +1084,7 @@ function zuordnungAnwenden(p){
   const t = p.text.trim().toLowerCase();
   const z = DATEN.zuordnung.find(x => x.lieferant_id === lief && String(x.bezeichnung).trim().toLowerCase() === t);
   const a = z && artikelVon(z.artikel_id);
-  if(!a || !a.aktiv) return false;
+  if(!a || !aktivHier(a)) return false;
   p.artikel_id = a.id;
   if(!p.gebinde) p.gebinde = fmtEingabe(Number(z.gebinde_basis)) + " " + EINHEIT_KURZ[a.basiseinheit];
   if(!p.einkaufseinheit) p.einkaufseinheit = z.einkaufseinheit || "";
@@ -1059,7 +1128,13 @@ function sammeln(){
   } };
 }
 
-function eMeldung(t){ const m = $("eMeldung"); if(!m) return; m.textContent = t || ""; m.hidden = !t; if(t) m.scrollIntoView({ block:"nearest" }); }
+/* Fehler (rot, role=alert) oder Hinweis (ruhig, role=status). */
+function eMeldung(t, art){
+  const m = $("eMeldung"); if(!m) return;
+  const hinweis = art === "hinweis";
+  m.className = "meldung" + (hinweis ? "" : " fehler"); m.setAttribute("role", hinweis ? "status" : "alert");
+  m.textContent = t || ""; m.hidden = !t; if(t) m.scrollIntoView({ block:"nearest" });
+}
 
 let LAEUFT = false;
 async function sichern(){
@@ -1089,7 +1164,19 @@ async function aktionFreigeben(){
       (betroffen.size ? " · betrifft " + betroffen.size + " Gericht" + (betroffen.size > 1 ? "e" : "") + " (siehe Kalkulation)" : ""));
     EDIT = null; await allesLaden();
     belegOeffnen(id);
+    /* Eine gelernte Zuordnung, die diese Freigabe geändert hat, gilt ab
+       jetzt für die ganze Kette — gesagt wird es, nicht still (E5-A). */
+    const zu = Array.isArray(a.zuordnungen) ? a.zuordnungen : [];
+    if(zu.length) eMeldung(zuordnungSatz(zu), "hinweis");
   }finally{ LAEUFT = false; }
+}
+
+function zuordnungSatz(zu){
+  const name = id => { const x = artikelVon(id); return x ? x.name : "einem anderen Artikel"; };
+  return "Gelernte Zuordnung geändert (gilt ab jetzt für alle Standorte): " + zu.map(z =>
+    "„" + z.bezeichnung + "“ " + (z.artikel_vorher !== z.artikel_jetzt
+      ? "war " + name(z.artikel_vorher) + ", jetzt " + name(z.artikel_jetzt)
+      : "Gebinde " + Number(z.gebinde_vorher).toLocaleString("de-DE") + " → " + Number(z.gebinde_jetzt).toLocaleString("de-DE"))).join(" · ") + ".";
 }
 
 /* Gefährliches erst beim zweiten Tipp: Der erste färbt den Knopf und
@@ -1152,7 +1239,9 @@ function ansehenZeichnen(){
     (b.notiz ? '<p class="leise" style="margin:0">' + esc(b.notiz) + "</p>" : "") + dateiKnopf(b.id) +
     '<p class="meldung fehler" id="aMeldungBeleg" role="alert" hidden></p>' +
     (b.status === "freigegeben" ? '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf gefahr" data-aktion="stornieren">Beleg stornieren</button>' +
-      '<span class="leise" style="font-size:14px">Bucht den Bestand zurück. Danach einen neuen Beleg erfassen.</span></div>' : "");
+      '<span class="leise" style="font-size:14px">Bucht den Bestand zurück. Danach einen neuen Beleg erfassen.</span></div>' : "") +
+    (b.status === "freigegeben" && UM.orte.length ? '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf" data-aktion="um-aus-beleg">An Standort weitergeben</button>' +
+      '<span class="leise" style="font-size:14px">Zentral eingekauft? Teile davon zum Einkaufspreis an einen anderen Standort schicken.</span></div>' : "");
 }
 
 /* ═══ Kalkulation (E3, datenbank/migration-einkauf-e3.sql) ═════
@@ -1167,8 +1256,9 @@ let REZ = null;          /* { gericht_id, portionen, mwst, notiz, pos:[{artikel_
 const WE_GRENZE = 0.35;
 const prozentFmt = new Intl.NumberFormat("de-DE", { style:"percent", maximumFractionDigits:1 });
 
-async function kalkLaden(){
-  KALK = { fehler:"", zeilen:[], rezepturen:[], we:null };
+async function kalkLaden(lauf){
+  const neu = { fehler:"", zeilen:[], rezepturen:[], we:null };
+  const fertig = () => { if(lauf === undefined || lauf === LADE_LAUF) KALK = neu; };
   const jetzt = new Date(), monat = new Date(jetzt.getFullYear(), jetzt.getMonth(), 1);
   let k, r, w;
   try{
@@ -1178,14 +1268,15 @@ async function kalkLaden(){
         .eq("betrieb_id", B.id).order("gueltig_ab", { ascending:false }).order("id", { ascending:false }).limit(2000),
       sb.rpc("wareneinsatz_theoretisch", { p_betrieb: B.id, p_von: monat.toISOString(), p_bis: jetzt.toISOString() })
     ]);
-  }catch(e){ KALK.fehler = "Die Kalkulation ließ sich nicht laden. Bitte Seite neu laden."; return; }
+  }catch(e){ neu.fehler = "Die Kalkulation ließ sich nicht laden. Bitte Seite neu laden."; fertig(); return; }
   const f = [k, r, w].find(x => x && x.error);
-  if(f) KALK.fehler = /function|does not exist|schema cache|relation/i.test(f.error.message || "")
+  if(f) neu.fehler = /function|does not exist|schema cache|relation/i.test(f.error.message || "")
     ? "Die Kalkulation ist in der Datenbank noch nicht eingerichtet (migration-einkauf-e3.sql)."
     : "Die Kalkulation ließ sich nicht laden. Bitte Seite neu laden.";
-  KALK.zeilen = k && Array.isArray(k.data) ? k.data : [];
-  KALK.rezepturen = r && Array.isArray(r.data) ? r.data : [];
-  KALK.we = w && w.data && typeof w.data === "object" ? w.data : null;
+  neu.zeilen = k && Array.isArray(k.data) ? k.data : [];
+  neu.rezepturen = r && Array.isArray(r.data) ? r.data : [];
+  neu.we = w && w.data && typeof w.data === "object" ? w.data : null;
+  fertig();
 }
 
 const kalkVon = gid => KALK.zeilen.find(z => z.gericht_id === gid);
@@ -1307,7 +1398,7 @@ function rezZeichnen(){
     return;
   }
   const v = rezVorschau();
-  const artikel = DATEN.artikel.filter(a => a.aktiv || REZ.pos.some(p => p.artikel_id === a.id));
+  const artikel = DATEN.artikel.filter(a => aktivHier(a) || REZ.pos.some(p => p.artikel_id === a.id));
   box.innerHTML = kopf + stand +
     '<div id="rezZahlen">' + kennzahlenRez(z, v.kosten, REZ.mwst, v.ohne) + "</div>" +
     '<div class="karte"><div class="raster">' +
@@ -1543,17 +1634,22 @@ function artikelZeichnen(){
   $("artikelListe").innerHTML = liste.length ? liste.map(a => {
     const best = DATEN.bestand[a.id], pr = letzter.get(a.id);
     const offen = A_OFFEN === a.id;
-    return '<div class="zeile"><span class="titel">' + esc(a.name) + (a.aktiv ? "" : ' <span class="pille">inaktiv</span>') + "</span>" +
+    const so = STANDORT.sortiment[a.id], min = so && so.mindestbestand != null ? Number(so.mindestbestand) : null;
+    const knapp = min != null && (best ? Number(best.menge_basis) : 0) < min;
+    return '<div class="zeile"><span class="titel">' + esc(a.name) + (a.aktiv ? (aktivHier(a) ? "" : ' <span class="pille">nicht hier</span>') : ' <span class="pille">inaktiv</span>') +
+      (knapp ? ' <span class="pille hoch">unter Mindestbestand</span>' : "") + "</span>" +
       '<span class="rechts">' + esc(best ? mengeText(best.menge_basis, a.basiseinheit) : "0 " + EINHEIT_KURZ[a.basiseinheit]) + "</span>" +
       '<span class="unter">' + esc(a.kategorie || "Ohne Kategorie") + " · " + esc(EINHEIT_NAME[a.basiseinheit]) +
         (pr ? " · zuletzt " + esc(preisText(pr.preis_basis, a.basiseinheit)) : "") +
+        (min != null ? " · mind. " + esc(mengeText(min, a.basiseinheit)) : "") + (so && so.lagerort ? " · " + esc(so.lagerort) : "") +
         ' <button type="button" class="textknopf nur-inhaber" style="padding:0 0 0 8px;min-height:44px" data-aktion="artikel-auf" data-id="' + esc(a.id) + '" aria-expanded="' + offen + '">Ändern</button></span>' +
       (offen ? '<div class="unter" style="display:flex;flex-direction:column;gap:10px;padding-top:6px">' +
         '<label class="feld"><span>Name</span><input type="text" maxlength="120" id="aeName" value="' + esc(a.name) + '"></label>' +
         '<label class="feld"><span>Kategorie</span><input type="text" maxlength="60" id="aeKat" value="' + esc(a.kategorie || "") + '"></label>' +
         '<p class="meldung fehler" id="aeMeldung" hidden></p>' +
         '<div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="artikel-sichern" data-id="' + esc(a.id) + '">Sichern</button>' +
-        '<button type="button" class="knopf" data-aktion="artikel-aktiv" data-id="' + esc(a.id) + '">' + (a.aktiv ? "Nicht mehr einkaufen" : "Wieder aktiv") + "</button></div>" +
+        '<button type="button" class="knopf" data-aktion="artikel-aktiv" data-id="' + esc(a.id) + '">' + (a.aktiv ? (UM.orte.length ? "In der ganzen Kette nicht mehr einkaufen" : "Nicht mehr einkaufen") : "Wieder aktiv") + "</button></div>" +
+        sortimentHTML(a) +
         "<b>Verlust buchen</b>" +
         '<div class="raster"><label class="feld"><span>Menge (' + esc(GROSS_NAME[a.basiseinheit]) + ')</span><input type="text" inputmode="decimal" id="vMenge" placeholder="z. B. 1,5"></label>' +
         '<label class="feld"><span>Grund</span><input type="text" maxlength="200" id="vGrund" placeholder="z. B. verdorben, Bruch"></label></div>' +
@@ -1600,7 +1696,8 @@ function lieferantenZeichnen(){
     const offen = L_OFFEN === l.id;
     return '<div class="zeile"><span class="titel">' + esc(l.name) + (l.aktiv ? "" : ' <span class="pille">inaktiv</span>') + "</span>" +
       '<span class="rechts leise">' + gelernt.length + " Zuordn.</span>" +
-      '<span class="unter">' + esc([l.kundennummer ? "Kd.-Nr. " + l.kundennummer : "", l.kontakt || ""].filter(Boolean).join(" · ") || "Keine Angaben") +
+      '<span class="unter">' + esc([lsKundennummer(l) ? "Kd.-Nr. " + lsKundennummer(l) : "", l.kontakt || "",
+        (STANDORT.lief[l.id] || {}).liefertage ? "liefert " + (STANDORT.lief[l.id].liefertage || []).map(t => TAGE[t] || t).join(", ") : ""].filter(Boolean).join(" · ") || "Keine Angaben") +
         ' <button type="button" class="textknopf" style="padding:0 0 0 8px;min-height:44px" data-aktion="lief-auf" data-id="' + esc(l.id) + '" aria-expanded="' + offen + '">' + (offen ? "Schließen" : "Details") + "</button></span>" +
       (offen ? '<div class="unter" style="display:flex;flex-direction:column;gap:10px;padding-top:6px">' +
         '<div class="nur-inhaber" style="display:flex;flex-direction:column;gap:10px">' +
@@ -1610,6 +1707,7 @@ function lieferantenZeichnen(){
           '<p class="meldung fehler" id="leMeldung" hidden></p>' +
           '<div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="lief-sichern" data-id="' + esc(l.id) + '">Sichern</button>' +
           '<button type="button" class="knopf" data-aktion="lief-aktiv" data-id="' + esc(l.id) + '">' + (l.aktiv ? "Nicht mehr nutzen" : "Wieder aktiv") + "</button></div></div>" +
+        liefStandortHTML(l) +
         "<b>So heißt es bei diesem Lieferanten</b>" +
         (gelernt.length ? gelernt.map(z => { const a = artikelVon(z.artikel_id);
           return "<span>„" + esc(z.bezeichnung) + "“ → " + esc(a ? a.name : "?") + " · " + esc(a ? mengeText(z.gebinde_basis, a.basiseinheit) : "") + " je " + esc(z.einkaufseinheit) + "</span>"; }).join("")
@@ -1700,6 +1798,10 @@ async function einlesen(datei){
     lesestand("");
     belegOeffnen(a.id);
     toast(a.positionen + " Positionen gelesen, " + a.zugeordnet + " davon zugeordnet — bitte prüfen und freigeben.");
+    const hinweise = [];
+    if(a.hinweis === "datei_doppelt_standort") hinweise.push("Dieselbe Datei liegt schon im Standort „" + (a.standort || "?") + "“ — gehört die Rechnung hierher?");
+    if(a.datum_verworfen) hinweise.push("Das gelesene Datum „" + a.datum_verworfen + "“ ist unplausibel — bitte das Belegdatum prüfen.");
+    if(hinweise.length) eMeldung(hinweise.join(" "), "hinweis");
   }finally{
     LIEST = false; $("einlesenDatei").value = "";
   }
@@ -1723,13 +1825,53 @@ async function dateiOeffnen(id, knopf){
 /* ═══ E2 · Inventur und Verlust ══════════════════════════════
    Eingegeben wird in kg / l / Stück (wie der Bestand angezeigt wird),
    gebucht in g / ml / Stück. Leer = nicht gezählt, nicht „0“. */
+/* Zählliste (E5-C): Reihenfolge wie man durchs Lager geht — Lagerort,
+   dann Reihenfolge, dann Name. Auch was hier nicht mehr geführt wird,
+   aber noch Bestand hat (sonst bliebe ein Rest für immer stehen). Der
+   Zwischenstand liegt in der Datenbank, nicht im Gerät. */
+function zaehlArtikel(){
+  const best = a => DATEN.bestand[a.id] ? Number(DATEN.bestand[a.id].menge_basis) : 0;
+  return DATEN.artikel.filter(a => aktivHier(a) || best(a) !== 0).sort((x, y) => {
+    const sx = STANDORT.sortiment[x.id] || {}, sy = STANDORT.sortiment[y.id] || {};
+    const ox = sx.lagerort || "\uffff", oy = sy.lagerort || "\uffff";
+    if(ox !== oy) return ox.localeCompare(oy, "de");
+    const rx = sx.reihenfolge == null ? 99999 : sx.reihenfolge, ry = sy.reihenfolge == null ? 99999 : sy.reihenfolge;
+    return rx - ry || x.name.localeCompare(y.name, "de") || (x.id < y.id ? -1 : 1);
+  });
+}
+const lokalJetzt = () => { const d = new Date(); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); };
 function inventurZeichnen(){
-  const artikel = DATEN.artikel.filter(a => a.aktiv);
+  const artikel = zaehlArtikel(), ent = STANDORT.entwurf;
+  const werte = ent ? ent.daten : {};
+  /* Überschriften je Lagerort nur, wenn es Lagerorte gibt. */
+  const mitOrten = artikel.some(a => (STANDORT.sortiment[a.id] || {}).lagerort);
+  let ort = null;
   $("invListe").innerHTML = artikel.length ? artikel.map(a => {
-    const best = DATEN.bestand[a.id];
-    return '<label class="feld"><span>' + esc(a.name) + ' — Bestand ' + esc(best ? mengeText(best.menge_basis, a.basiseinheit) : "0 " + EINHEIT_KURZ[a.basiseinheit]) + '</span>' +
-      '<input type="text" inputmode="decimal" data-inv="' + esc(a.id) + '" placeholder="gezählt in ' + esc(GROSS_NAME[a.basiseinheit]) + '"></label>';
+    const best = DATEN.bestand[a.id], so = STANDORT.sortiment[a.id] || {};
+    const kopf = mitOrten && (so.lagerort || "Ohne Lagerort") !== ort ? '<h4 class="lagerort">' + esc(ort = so.lagerort || "Ohne Lagerort") + "</h4>" : "";
+    return kopf + '<label class="feld"><span>' + esc(a.name) + (aktivHier(a) ? "" : " (hier nicht mehr geführt)") + ' — Bestand ' + esc(best ? mengeText(best.menge_basis, a.basiseinheit) : "0 " + EINHEIT_KURZ[a.basiseinheit]) + '</span>' +
+      '<input type="text" inputmode="decimal" data-inv="' + esc(a.id) + '" value="' + esc(werte[a.id] || "") + '" placeholder="gezählt in ' + esc(GROSS_NAME[a.basiseinheit]) + '"></label>';
   }).join("") : '<p class="leerzeile">Noch kein aktiver Artikel.</p>';
+  $("invStichtag").value = ent && ent.stichtag ? (() => { const d = new Date(ent.stichtag); d.setMinutes(d.getMinutes() - d.getTimezoneOffset()); return d.toISOString().slice(0, 16); })() : lokalJetzt();
+  const stand = $("invStand");
+  stand.hidden = !ent;
+  stand.textContent = ent ? "Zwischenstand vom " + datumFmt.format(new Date(ent.geaendert)) + " geladen — gilt auf jedem Gerät dieses Standorts." : "";
+}
+function zaehlStichtag(){
+  const v = $("invStichtag").value;
+  if(!v) return null;
+  const d = new Date(v);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+}
+async function inventurZwischen(){
+  const m = $("invMeldung"); m.hidden = true;
+  const daten = {};
+  for(const f of document.querySelectorAll("[data-inv]")) if(f.value.trim()) daten[f.dataset.inv] = f.value.trim();
+  const r = await sb.rpc("inventur_entwurf_sichern", { p_betrieb: B.id, p_daten: daten, p_stichtag: zaehlStichtag() });
+  const a = r && !r.error ? r.data : null;
+  if(!a || a.ok !== true){ m.textContent = r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a); m.hidden = false; return; }
+  STANDORT.entwurf = Object.keys(daten).length ? { daten, stichtag: zaehlStichtag(), geaendert: new Date().toISOString() } : null;
+  toast("Zwischenstand gesichert — " + Object.keys(daten).length + " gezählt");
 }
 async function inventurBuchen(){
   const m = $("invMeldung"); m.hidden = true;
@@ -1742,7 +1884,7 @@ async function inventurBuchen(){
     zaehlung.push({ artikel_id: a.id, menge: Math.round(n * GROSS_FAKTOR[a.basiseinheit] * 10000) / 10000 });
   }
   if(!zaehlung.length){ m.textContent = GRUENDE.zaehlung; m.hidden = false; return; }
-  const r = await sb.rpc("inventur_buchen", { p_betrieb: B.id, p_zaehlung: zaehlung, p_notiz: $("invNotiz").value.trim() || null });
+  const r = await sb.rpc("inventur_buchen", { p_betrieb: B.id, p_zaehlung: zaehlung, p_notiz: $("invNotiz").value.trim() || null, p_stichtag: zaehlStichtag() });
   const a = r && !r.error ? r.data : null;
   if(!a || a.ok !== true){ m.textContent = grundSatz(a); m.hidden = false; return; }
   $("inventurKarte").hidden = true; $("inventurKnopf").setAttribute("aria-expanded", "false"); $("invNotiz").value = "";
@@ -1758,6 +1900,364 @@ async function verlustBuchen(id){
   if(!e || e.ok !== true){ m.textContent = grundSatz(e); m.hidden = false; return; }
   toast("Verlust gebucht" + (e.wert != null ? " · " + euro.format(e.wert) : ""));
   A_OFFEN = null; await allesLaden();
+}
+
+/* ═══ E5-B · Lager: Umlagerungen zwischen Standorten ══════════
+   Gebucht wird in der Datenbank (umlagerung_anlegen/_annehmen/
+   _zurueckziehen). Die Seite liest Mengen in kg / l / Stück wie bei der
+   Inventur und schickt sie in g / ml / Stück. Leer heißt beim Annehmen
+   „alles angekommen“ — nie 0. */
+let UM = { orte:[], liste:[], fehler:"", zeilen:[{ artikel_id:"", menge:"" }], ziel:"", notiz:"", beleg:null };
+/* E5-C: was nur für DIESEN Standort gilt. Keine Zeile = wie die Kette. */
+let STANDORT = { sortiment:{}, lief:{}, entwurf:null, fehlt:false };
+function aktivHier(a){ const s = STANDORT.sortiment[a.id]; return !!a.aktiv && !(s && s.aktiv === false); }
+async function lagerLaden(lauf){
+  const neu = { orte:[], liste:[], fehler:"" };
+  let o = null, l = null, so = null, ls = null, ie = null;
+  try{
+    [o, l, so, ls, ie] = await Promise.all([
+      sb.rpc("kette_standorte", { p_betrieb: B.id }),
+      sb.from("umlagerungen").select("id, von_betrieb, nach_betrieb, status, notiz, beleg_id, angelegt, angenommen_am, zurueckgezogen_am, umlagerungspositionen(pos, artikel_id, menge_basis, wert_netto, menge_angekommen)")
+        .or("von_betrieb.eq." + B.id + ",nach_betrieb.eq." + B.id).order("angelegt", { ascending:false }).order("id").limit(100),
+      sb.from("artikel_standort").select("artikel_id, aktiv, mindestbestand, lagerort, reihenfolge").eq("betrieb_id", B.id),
+      sb.from("lieferanten_standort").select("lieferant_id, kundennummer, ansprechpartner, liefertage, mindestbestellwert").eq("betrieb_id", B.id),
+      sb.from("inventur_entwurf").select("daten, stichtag, geaendert").eq("betrieb_id", B.id)
+    ]);
+  }catch(e){ o = l = so = ls = ie = null; }
+  /* E5-C: fehlt die Migration, gilt alles wie die Kette — die Seite
+     bleibt benutzbar, sagt es aber. */
+  const st = { sortiment:{}, lief:{}, entwurf:null, fehlt: !so || !ls || !ie || !!(so.error || ls.error || ie.error) };
+  ((so && so.data) || []).forEach(z => { st.sortiment[z.artikel_id] = z; });
+  ((ls && ls.data) || []).forEach(z => { st.lief[z.lieferant_id] = z; });
+  const ent = ie && Array.isArray(ie.data) && ie.data[0];
+  st.entwurf = ent && ent.daten && Object.keys(ent.daten).length ? ent : null;
+  const fehler = !o || !l || o.error || l.error;
+  if(fehler) neu.fehler = "Umlagerungen ließen sich nicht laden — fehlt migration-einkauf-e5b.sql, oder die Verbindung ist weg.";
+  neu.orte = o && Array.isArray(o.data) ? o.data : [];
+  neu.liste = l && Array.isArray(l.data) ? l.data.filter(u => u.von_betrieb === B.id || u.nach_betrieb === B.id) : [];
+  if(lauf !== undefined && lauf !== LADE_LAUF) return;
+  UM.orte = neu.orte; UM.liste = neu.liste; UM.fehler = neu.fehler; STANDORT = st;
+  if(!UM.orte.some(x => x.id === UM.ziel)) UM.ziel = UM.orte.length ? UM.orte[0].id : "";
+  /* „Lager“ gibt es für jeden Standort (Nachbestellen); den Teil
+     „Umlagerungen“ nur mit Kette oder wenn etwas unterwegs ist. */
+  $("reiterLager").hidden = false;
+}
+const ortName = id => id === B.id ? B.name : ((UM.orte.find(x => x.id === id) || {}).name || "anderer Standort");
+function umPosText(z){
+  const a = artikelVon(z.artikel_id);
+  return (a ? a.name : "Artikel") + " " + (a ? mengeText(Number(z.menge_basis), a.basiseinheit) : zahlFmt.format(Number(z.menge_basis)));
+}
+const umPos = u => (u.umlagerungspositionen || []).slice().sort((x, y) => x.pos - y.pos);
+const umWert = u => (u.umlagerungspositionen || []).reduce((s, z) => s + Number(z.wert_netto || 0), 0);
+function lagerZeichnen(){
+  nachbestellenZeichnen();
+  $("umTeil").hidden = !UM.orte.length && !UM.liste.length;
+  const f = $("umFehler"); f.textContent = UM.fehler; f.hidden = !UM.fehler;
+  const ein = UM.liste.filter(u => u.status === "unterwegs" && u.nach_betrieb === B.id);
+  const aus = UM.liste.filter(u => u.status === "unterwegs" && u.von_betrieb === B.id);
+  const fertig = UM.liste.filter(u => u.status !== "unterwegs").slice(0, 20);
+  $("umEin").innerHTML = ein.length ? ein.map(u =>
+    '<div class="karte" data-um="' + esc(u.id) + '"><div class="werkzeuge"><b class="wachsen">Von ' + esc(ortName(u.von_betrieb)) + "</b>" +
+      '<span class="leise">' + esc(datumFmt.format(new Date(u.angelegt))) + " · " + esc(euro.format(umWert(u))) + "</span></div>" +
+      (u.notiz ? '<p class="leise" style="margin:0">' + esc(u.notiz) + "</p>" : "") +
+      umPos(u).map(z => { const a = artikelVon(z.artikel_id);
+        return '<label class="feld"><span>' + esc(a ? a.name : "Artikel") + " — geschickt " + esc(a ? mengeText(Number(z.menge_basis), a.basiseinheit) : zahlFmt.format(Number(z.menge_basis))) + "</span>" +
+          '<input type="text" inputmode="decimal" data-um-an="' + esc(z.pos) + '" placeholder="angekommen in ' + esc(a ? GROSS_NAME[a.basiseinheit] : "") + ' — leer heißt alles"></label>'; }).join("") +
+      '<p class="meldung fehler" data-um-meldung="' + esc(u.id) + '" hidden></p>' +
+      '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf haupt" data-aktion="um-annehmen" data-id="' + esc(u.id) + '">Annehmen</button>' +
+      '<span class="leise" style="font-size:14px">Fehlt etwas, tragen Sie die angekommene Menge ein — der Rest wird beim Absender als Verlust gebucht.</span></div></div>').join("")
+    : '<p class="leerzeile">Nichts unterwegs zu Ihnen.</p>';
+  $("umAus").innerHTML = aus.length ? aus.map(u =>
+    '<div class="karte"><div class="werkzeuge"><b class="wachsen">An ' + esc(ortName(u.nach_betrieb)) + "</b>" +
+      '<span class="leise">' + esc(datumFmt.format(new Date(u.angelegt))) + " · " + esc(euro.format(umWert(u))) + "</span></div>" +
+      '<p class="leise" style="margin:0">' + esc(umPos(u).map(umPosText).join(" · ")) + "</p>" +
+      '<p class="meldung fehler" data-um-meldung="' + esc(u.id) + '" hidden></p>' +
+      '<div class="werkzeuge nur-inhaber"><button type="button" class="knopf gefahr" data-aktion="um-zurueck" data-id="' + esc(u.id) + '">Zurückziehen</button>' +
+      '<span class="leise" style="font-size:14px">Solange der Empfänger nicht angenommen hat. Die Ware kommt zurück in Ihren Bestand.</span></div></div>').join("")
+    : '<p class="leerzeile">Nichts von Ihnen unterwegs.</p>';
+  $("umVerlauf").innerHTML = fertig.length ? fertig.map(u => {
+    const raus = u.von_betrieb === B.id, pos = umPos(u);
+    const fehlt = u.status === "angenommen" && pos.some(z => z.menge_angekommen != null && Number(z.menge_angekommen) < Number(z.menge_basis));
+    return '<div class="zeile"><span class="titel">' + esc(raus ? "An " + ortName(u.nach_betrieb) : "Von " + ortName(u.von_betrieb)) + "</span>" +
+      '<span class="pille ' + (u.status === "angenommen" ? (fehlt ? "entwurf" : "freigegeben") : "storniert") + '">' +
+        (u.status === "angenommen" ? (fehlt ? "Angenommen, Fehlmenge" : "Angenommen") : "Zurückgezogen") + "</span>" +
+      '<span class="unter">' + esc(datumFmt.format(new Date(u.angenommen_am || u.zurueckgezogen_am || u.angelegt))) + " · " + esc(euro.format(umWert(u))) + " · " +
+      esc(pos.map(umPosText).join(" · ")) + "</span></div>";
+  }).join("") : '<p class="leerzeile">Noch keine Umlagerung.</p>';
+  $("umNeuKarte").hidden = !UM.orte.length;
+  $("umZiel").innerHTML = UM.orte.map(o => '<option value="' + esc(o.id) + '"' + (o.id === UM.ziel ? " selected" : "") + ">" + esc(o.name) + "</option>").join("");
+  const b = UM.beleg && DATEN.belege.find(x => x.id === UM.beleg);
+  $("umAusBeleg").hidden = !b;
+  $("umAusBeleg").textContent = b ? "Aus Beleg " + (b.belegnummer || "") + " — als Wert gilt der Einkaufspreis dieses Belegs." : "";
+  const artikel = DATEN.artikel.filter(aktivHier);
+  $("umZeilen").innerHTML = UM.zeilen.map((z, i) => {
+    const a = artikelVon(z.artikel_id), best = a && DATEN.bestand[a.id];
+    return '<div class="pos" data-umz="' + i + '"><div class="pos-raster">' +
+      '<label class="feld"><span>Artikel</span><select data-umf="artikel_id">' + optionen(artikel, z.artikel_id, "– wählen –") + "</select></label>" +
+      '<label class="feld"><span>Menge' + (a ? " (" + esc(GROSS_NAME[a.basiseinheit]) + ")" : "") + '</span><input type="text" inputmode="decimal" data-umf="menge" value="' + esc(z.menge) + '" placeholder="z. B. 2,5"></label>' +
+      "</div>" + (a ? '<div class="ergebnis">Bestand hier ' + esc(best ? mengeText(Number(best.menge_basis), a.basiseinheit) : "0 " + EINHEIT_KURZ[a.basiseinheit]) + "</div>" : "") +
+      (UM.zeilen.length > 1 ? '<button type="button" class="knopf leer" data-aktion="um-zeile-weg" data-i="' + i + '">Zeile entfernen</button>' : "") + "</div>";
+  }).join("");
+  $("umNotiz").value = UM.notiz;
+}
+/* Eingaben ins UM übernehmen, ohne neu zu zeichnen (Fokus bleibt). */
+function umFormLesen(){
+  if(!$("umZiel")) return;
+  UM.ziel = $("umZiel").value || UM.ziel; UM.notiz = $("umNotiz").value;
+  for(const el of document.querySelectorAll("#umZeilen [data-umz]")){
+    const z = UM.zeilen[Number(el.dataset.umz)]; if(!z) continue;
+    z.artikel_id = el.querySelector('[data-umf="artikel_id"]').value; z.menge = el.querySelector('[data-umf="menge"]').value;
+  }
+}
+function umMeldung(text, art){ const m = $("umMeldung"); m.className = "meldung" + (art === "fehler" ? " fehler" : ""); m.textContent = text || ""; m.hidden = !text; }
+async function umSchicken(){
+  if(LAEUFT) return; umFormLesen(); umMeldung("");
+  const pos = [];
+  for(const [i, z] of UM.zeilen.entries()){
+    if(!z.artikel_id && !String(z.menge).trim()) continue;
+    const a = artikelVon(z.artikel_id), n = zahl(z.menge);
+    if(!a){ umMeldung("Zeile " + (i + 1) + ": bitte einen Artikel wählen.", "fehler"); return; }
+    if(n == null || Number.isNaN(n) || n <= 0){ umMeldung("Zeile " + (i + 1) + ": " + GRUENDE.menge, "fehler"); return; }
+    pos.push({ artikel_id: a.id, menge_basis: Math.round(n * GROSS_FAKTOR[a.basiseinheit] * 10000) / 10000 });
+  }
+  if(!pos.length){ umMeldung("Bitte mindestens einen Artikel mit Menge eintragen.", "fehler"); return; }
+  if(!UM.ziel){ umMeldung("Bitte den Standort wählen.", "fehler"); return; }
+  LAEUFT = true;
+  try{
+    const r = await sb.rpc("umlagerung_anlegen", { p_von: B.id, p_nach: UM.ziel, p_positionen: pos, p_notiz: UM.notiz.trim() || null, p_beleg: UM.beleg || null });
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){ umMeldung(r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a), "fehler"); return; }
+    const ziel = ortName(UM.ziel), minus = Array.isArray(a.bestand_negativ) ? a.bestand_negativ : [];
+    UM.zeilen = [{ artikel_id:"", menge:"" }]; UM.notiz = ""; UM.beleg = null;
+    toast("Unterwegs an " + ziel + " · " + euro.format(a.wert || 0));
+    await allesLaden();
+    if(minus.length) umMeldung("Abgeschickt. Ihr Bestand ist danach im Minus bei " + minus.map(id => (artikelVon(id) || {}).name || "einem Artikel").join(", ") + " — vielleicht fehlt noch ein Beleg oder eine Zählung.");
+  }finally{ LAEUFT = false; }
+}
+async function umAnnehmen(id){
+  if(LAEUFT) return;
+  const u = UM.liste.find(x => x.id === id); if(!u) return;
+  const m = document.querySelector('[data-um-meldung="' + id + '"]'); m.hidden = true;
+  const mengen = [];
+  for(const z of umPos(u)){
+    const f = document.querySelector('[data-um="' + id + '"] [data-um-an="' + z.pos + '"]'), a = artikelVon(z.artikel_id);
+    const n = zahl(f ? f.value : "");
+    if(n == null) continue;
+    if(Number.isNaN(n) || n < 0){ m.textContent = (a ? a.name : "Position " + z.pos) + ": Menge ist nicht lesbar."; m.hidden = false; f.focus(); return; }
+    const basis = Math.round(n * (a ? GROSS_FAKTOR[a.basiseinheit] : 1) * 10000) / 10000;
+    if(basis > Number(z.menge_basis)){ m.textContent = (a ? a.name : "Position " + z.pos) + ": mehr als geschickt."; m.hidden = false; f.focus(); return; }
+    mengen.push({ pos: z.pos, menge_angekommen: basis });
+  }
+  LAEUFT = true;
+  try{
+    const r = await sb.rpc("umlagerung_annehmen", { p_id: id, p_mengen: mengen.length ? mengen : null });
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){ m.textContent = r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a); m.hidden = false; return; }
+    toast("Angenommen · " + euro.format(a.wert || 0) + " im Lager" + (Number(a.fehlwert) > 0 ? " · Fehlmenge " + euro.format(a.fehlwert) + " beim Absender als Verlust" : ""));
+    await allesLaden();
+  }finally{ LAEUFT = false; }
+}
+async function umZurueck(id, knopf){
+  if(LAEUFT || !zweiterTipp(knopf, "Wirklich zurückziehen?")) return;
+  const m = document.querySelector('[data-um-meldung="' + id + '"]');
+  LAEUFT = true;
+  try{
+    const r = await sb.rpc("umlagerung_zurueckziehen", { p_id: id });
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){ m.textContent = r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(a); m.hidden = false; return; }
+    toast("Zurückgezogen — wieder in Ihrem Bestand");
+    await allesLaden();
+  }finally{ LAEUFT = false; }
+}
+/* Zentraleinkauf: die Ware eines freigegebenen Belegs vorausgefüllt —
+   kein zweiter Buchungsweg, nur eine Umlagerung mit Beleg als Preisquelle. */
+function umAusBeleg(){
+  const b = DATEN.belege.find(x => x.id === (EDIT && EDIT.id)); if(!b) return;
+  const quelle = (EDIT.positionen && EDIT.positionen.length ? EDIT.positionen : (b.positionen_entwurf || []))
+    .filter(p => (p.art || "ware") === "ware" && p.artikel_id);
+  const je = new Map();
+  for(const p of quelle){
+    const basis = p.menge_basis != null ? Number(p.menge_basis) : Number(p.menge || 0) * Number(p.gebinde_basis || 0);
+    je.set(p.artikel_id, (je.get(p.artikel_id) || 0) + basis);
+  }
+  UM.zeilen = [...je].map(([aid, basis]) => { const a = artikelVon(aid);
+    return { artikel_id: aid, menge: a && basis ? fmtEingabe(Math.round(basis / GROSS_FAKTOR[a.basiseinheit] * 1000) / 1000) : "" }; });
+  if(!UM.zeilen.length) UM.zeilen = [{ artikel_id:"", menge:"" }];
+  UM.beleg = b.id; UM.notiz = "Aus Beleg " + (b.belegnummer || "");
+  EDIT = null; ANSICHT = "lager"; zeichnen();
+  umMeldung("Mengen aus dem Beleg vorausgefüllt — tragen Sie ein, was der andere Standort bekommt.");
+  const f = document.querySelector('#umZeilen [data-umf="menge"]'); if(f) f.focus();
+}
+
+/* Entwurf am falschen Standort: nur zwischen eigenen Standorten derselben
+   Kette, nur Entwürfe. Die Datei kommt als Kopie in den Ordner des Ziels
+   (die Speicherregeln kennen kein Umbenennen); erst dann zieht der
+   Entwurf um. Die alte Datei bleibt liegen. */
+function verschiebenZiele(){ return BETRIEBE.filter(b => b.id !== B.id && b.organisation_id === B.organisation_id && b.rolle === "inhaber"); }
+function verschiebenHTML(){
+  if(!EDIT || !EDIT.id) return "";
+  const ziele = verschiebenZiele(); if(!ziele.length) return "";
+  return '<div class="werkzeuge"><label class="feld wachsen"><span>Gehört zu einem anderen Standort?</span><select id="eVerschiebenZiel">' +
+    ziele.map(z => '<option value="' + esc(z.id) + '">' + esc(z.name) + "</option>").join("") + "</select></label>" +
+    '<button type="button" class="knopf" data-aktion="beleg-verschieben">Dorthin verschieben</button></div>';
+}
+async function belegVerschieben(){
+  if(LAEUFT || !EDIT || !EDIT.id) return;
+  const ziel = $("eVerschiebenZiel").value, zielName = (BETRIEBE.find(b => b.id === ziel) || {}).name || "anderer Standort";
+  LAEUFT = true;
+  let id = null;
+  try{ id = await sichern(); }finally{ LAEUFT = false; }
+  if(!id) return;
+  const b = DATEN.belege.find(x => x.id === id) || {};
+  LAEUFT = true; eMeldung("");
+  try{
+    let pfad = null;
+    if(b.datei_pfad){
+      const dl = await sb.storage.from("belege").download(b.datei_pfad);
+      if(!dl || dl.error || !dl.data){ eMeldung("Die Rechnungsdatei ließ sich nicht kopieren. Bitte noch einmal."); return; }
+      const pdf = /\.pdf$/.test(b.datei_pfad);
+      pfad = ziel + "/" + neueId() + (pdf ? ".pdf" : ".jpg");
+      const hoch = await sb.storage.from("belege").upload(pfad, dl.data, { contentType: pdf ? "application/pdf" : "image/jpeg", upsert:false });
+      if(hoch.error){ eMeldung("Die Rechnungsdatei ließ sich nicht kopieren. Bitte noch einmal."); return; }
+    }
+    const r = await sb.rpc("beleg_verschieben", { p_beleg: id, p_ziel: ziel, p_pfad: pfad });
+    const a = r && !r.error ? r.data : null;
+    if(!a || a.ok !== true){
+      eMeldung(r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal."
+        : a && a.grund === "datei" ? "Die Kopie der Rechnung ist im anderen Standort nicht angekommen. Bitte noch einmal." : grundSatz(a));
+      return;
+    }
+    toast("Entwurf liegt jetzt bei " + zielName);
+    EDIT = null;
+    await betriebWaehlen(ziel);
+    ANSICHT = "belege"; belegOeffnen(id);
+  }finally{ LAEUFT = false; }
+}
+
+/* ═══ E5-C · Sortiment, Lieferanten und Nachbestellen je Standort ═══
+   Artikel und Lieferanten gehören der Kette; was hier steht, gilt nur
+   für DIESEN Standort (artikel_standort_setzen, lieferant_standort_setzen).
+   Nachbestellen rechnet die Seite: Mindestbestand − Bestand, beim
+   letzten Lieferanten dieses Standorts, auf das gelernte Gebinde
+   aufgerundet. Verschickt wird nichts. */
+const TAGE = { mo:"Mo", di:"Di", mi:"Mi", do:"Do", fr:"Fr", sa:"Sa", so:"So" };
+const lsKundennummer = l => (STANDORT.lief[l.id] || {}).kundennummer || l.kundennummer || "";
+function sortimentHTML(a){
+  if(STANDORT.fehlt) return '<p class="leise" style="margin:0">Angaben je Standort brauchen noch die Datenbank-Erweiterung (migration-einkauf-e5c.sql).</p>';
+  const so = STANDORT.sortiment[a.id] || {}, hier = aktivHier(a);
+  return '<b>Nur an diesem Standort</b>' +
+    '<div class="raster"><label class="feld"><span>Mindestbestand (' + esc(GROSS_NAME[a.basiseinheit]) + ')</span><input type="text" inputmode="decimal" id="soMin" value="' +
+      esc(so.mindestbestand != null ? fmtEingabe(Math.round(Number(so.mindestbestand) / GROSS_FAKTOR[a.basiseinheit] * 1000) / 1000) : "") + '" placeholder="leer = keiner"></label>' +
+    '<label class="feld"><span>Lagerort</span><input type="text" maxlength="60" id="soOrt" value="' + esc(so.lagerort || "") + '" placeholder="z. B. Kühlhaus"></label></div>' +
+    '<p class="meldung fehler" id="soMeldung" hidden></p>' +
+    '<div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="sort-sichern" data-id="' + esc(a.id) + '">Für diesen Standort sichern</button>' +
+    (a.aktiv ? '<button type="button" class="knopf" data-aktion="sort-aktiv" data-wert="' + (hier ? "aus" : "an") + '" data-id="' + esc(a.id) + '">' + (hier ? "Hier nicht mehr führen" : "Hier wieder führen") + "</button>" : "") + "</div>";
+}
+async function sortimentSichern(id, aktiv){
+  const a = artikelVon(id), so = STANDORT.sortiment[id] || {}, m = $("soMeldung");
+  m.hidden = true;
+  const roh = $("soMin").value, n = zahl(roh), ort = $("soOrt").value.trim();
+  if(n != null && (Number.isNaN(n) || n < 0)){ m.textContent = "Mindestbestand: " + GRUENDE.menge; m.hidden = false; return; }
+  const daten = { aktiv: aktiv == null ? aktivHier(a) : aktiv,
+    mindestbestand: n == null ? null : Math.round(n * GROSS_FAKTOR[a.basiseinheit] * 10000) / 10000,
+    lagerort: ort || null, reihenfolge: so.reihenfolge == null ? null : so.reihenfolge };
+  const r = await sb.rpc("artikel_standort_setzen", { p_betrieb: B.id, p_artikel: id, p_daten: daten });
+  const e = r && !r.error ? r.data : null;
+  if(!e || e.ok !== true){ m.textContent = r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(e); m.hidden = false; return; }
+  toast(aktiv === false ? "Hier nicht mehr geführt — in den anderen Standorten unverändert" : aktiv === true ? "Hier wieder geführt" : "Für diesen Standort gesichert");
+  await allesLaden();
+}
+function liefStandortHTML(l){
+  if(STANDORT.fehlt) return "";
+  const ls = STANDORT.lief[l.id] || {}, tage = ls.liefertage || [];
+  return '<div class="nur-inhaber" style="display:flex;flex-direction:column;gap:10px"><b>Nur für diesen Standort</b>' +
+    '<div class="raster"><label class="feld"><span>Kundennummer hier</span><input type="text" maxlength="60" id="lsKunde" value="' + esc(ls.kundennummer || "") + '" placeholder="' + esc(l.kundennummer || "leer = wie die Kette") + '"></label>' +
+    '<label class="feld"><span>Ansprechpartner</span><input type="text" maxlength="120" id="lsPartner" value="' + esc(ls.ansprechpartner || "") + '"></label>' +
+    '<label class="feld"><span>Mindestbestellwert (€)</span><input type="text" inputmode="decimal" id="lsMbw" value="' + esc(ls.mindestbestellwert != null ? fmtEingabe(ls.mindestbestellwert) : "") + '" placeholder="leer = keiner"></label></div>' +
+    '<div class="feld"><span class="leise" id="lsTageTitel">Liefert an</span><div class="tagwahl" role="group" aria-labelledby="lsTageTitel">' +
+      Object.entries(TAGE).map(([k, n]) => '<button type="button" data-aktion="lst-tag" data-tag="' + k + '" aria-pressed="' + tage.includes(k) + '">' + n + "</button>").join("") + "</div></div>" +
+    '<p class="meldung fehler" id="lsMeldung" hidden></p>' +
+    '<div class="werkzeuge"><button type="button" class="knopf haupt" data-aktion="lst-sichern" data-id="' + esc(l.id) + '">Für diesen Standort sichern</button></div></div>';
+}
+async function liefStandortSichern(id){
+  const m = $("lsMeldung"); m.hidden = true;
+  const mbw = zahl($("lsMbw").value);
+  if(mbw != null && (Number.isNaN(mbw) || mbw < 0)){ m.textContent = "Mindestbestellwert ist nicht lesbar."; m.hidden = false; return; }
+  const daten = { kundennummer: $("lsKunde").value.trim() || null, ansprechpartner: $("lsPartner").value.trim() || null,
+    liefertage: [...document.querySelectorAll('[data-aktion="lst-tag"][aria-pressed="true"]')].map(b => b.dataset.tag), mindestbestellwert: mbw };
+  const r = await sb.rpc("lieferant_standort_setzen", { p_betrieb: B.id, p_lieferant: id, p_daten: daten });
+  const e = r && !r.error ? r.data : null;
+  if(!e || e.ok !== true){ m.textContent = r && r.error ? "Keine Verbindung oder kein Zugriff. Bitte noch einmal." : grundSatz(e); m.hidden = false; return; }
+  toast("Für diesen Standort gesichert"); await allesLaden();
+}
+
+function nachbestellGruppen(){
+  const gruppen = new Map();
+  for(const a of DATEN.artikel){
+    const so = STANDORT.sortiment[a.id];
+    if(!aktivHier(a) || !so || so.mindestbestand == null) continue;
+    const best = DATEN.bestand[a.id] ? Number(DATEN.bestand[a.id].menge_basis) : 0, min = Number(so.mindestbestand);
+    if(best >= min) continue;
+    const fehlt = min - best;
+    /* DATEN.preise ist neueste zuerst — der erste Eintrag mit Lieferant
+       ist der letzte Einkauf HIER (Umlagerungen haben keinen). */
+    const pr = DATEN.preise.find(p => p.artikel_id === a.id && p.lieferant_id);
+    const lief = pr ? pr.lieferant_id : "";
+    const z = lief ? DATEN.zuordnung.filter(x => x.lieferant_id === lief && x.artikel_id === a.id && Number(x.gebinde_basis) > 0)
+      .sort((x, y) => String(x.id) < String(y.id) ? -1 : 1)[0] : null;
+    const geb = z ? Number(z.gebinde_basis) : null, stueck = geb ? Math.ceil(fehlt / geb - 1e-9) : null;
+    const menge = geb ? stueck * geb : fehlt;
+    const zeile = { a, best, min, fehlt, z, geb, stueck, menge, wert: pr ? menge * Number(pr.preis_basis) : null };
+    if(!gruppen.has(lief)) gruppen.set(lief, []);
+    gruppen.get(lief).push(zeile);
+  }
+  return [...gruppen].map(([lief, zeilen]) => ({ lief, l: lieferantVon(lief), zeilen: zeilen.sort((x, y) => x.a.name.localeCompare(y.a.name, "de")) }))
+    .sort((x, y) => (x.l ? 0 : 1) - (y.l ? 0 : 1) || String(x.l ? x.l.name : "").localeCompare(String(y.l ? y.l.name : ""), "de"));
+}
+function nachZeileText(z){
+  return z.geb ? z.stueck + " × " + (z.z.einkaufseinheit || "Gebinde") + " " + (z.z.bezeichnung || z.a.name) + " (je " + mengeText(z.geb, z.a.basiseinheit) + ")"
+               : mengeText(z.menge, z.a.basiseinheit) + " " + z.a.name;
+}
+function nachText(g){
+  const kd = g.l ? lsKundennummer(g.l) : "";
+  return "Bestellung " + B.name + (kd ? " — Kd.-Nr. " + kd : "") + "\n" + g.zeilen.map(z => "• " + nachZeileText(z)).join("\n");
+}
+function nachbestellenZeichnen(){
+  const box = $("nachListe");
+  if(STANDORT.fehlt){ box.innerHTML = '<p class="meldung fehler">Nachbestellen braucht noch die Datenbank-Erweiterung (migration-einkauf-e5c.sql).</p>'; return; }
+  const gruppen = nachbestellGruppen();
+  if(!gruppen.length){
+    const mitMin = Object.values(STANDORT.sortiment).some(s => s.mindestbestand != null);
+    box.innerHTML = '<p class="leerzeile">' + (mitMin ? "Alles über dem Mindestbestand." : "Noch kein Mindestbestand gesetzt — beim Artikel unter „Ändern“ › „Nur an diesem Standort“.") + "</p>";
+    return;
+  }
+  box.innerHTML = gruppen.map(g => {
+    const ls = g.l ? (STANDORT.lief[g.l.id] || {}) : {};
+    const summe = g.zeilen.every(z => z.wert != null) ? g.zeilen.reduce((s, z) => s + z.wert, 0) : null;
+    const mbw = ls.mindestbestellwert != null ? Number(ls.mindestbestellwert) : null;
+    const text = nachText(g), mail = g.l && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(g.l.kontakt || "").trim()) ? g.l.kontakt.trim() : "";
+    return '<div class="karte"><div class="werkzeuge"><b class="wachsen">' + esc(g.l ? g.l.name : "Ohne bekannten Lieferanten") + "</b>" +
+        (summe != null ? '<span class="leise">ca. ' + esc(euro.format(summe)) + "</span>" : "") + "</div>" +
+      (ls.liefertage && ls.liefertage.length ? '<p class="leise" style="margin:0">Liefert ' + esc(ls.liefertage.map(t => TAGE[t] || t).join(", ")) + "</p>" : "") +
+      (mbw != null && summe != null && summe < mbw ? '<p class="meldung">Unter dem Mindestbestellwert von ' + esc(euro.format(mbw)) + " — vielleicht etwas dazunehmen.</p>" : "") +
+      '<div class="liste">' + g.zeilen.map(z => '<div class="zeile"><span class="titel">' + esc(z.a.name) + "</span>" +
+        '<span class="rechts">' + esc(z.geb ? z.stueck + " × " + (z.z.einkaufseinheit || "Gebinde") : mengeText(z.menge, z.a.basiseinheit)) + "</span>" +
+        '<span class="unter">Bestand ' + esc(mengeText(z.best, z.a.basiseinheit)) + " · mind. " + esc(mengeText(z.min, z.a.basiseinheit)) + "</span></div>").join("") + "</div>" +
+      '<pre class="nachtext" data-nachtext="' + esc(g.lief) + '">' + esc(text) + "</pre>" +
+      '<div class="werkzeuge"><button type="button" class="knopf" data-aktion="nach-kopieren" data-id="' + esc(g.lief) + '">Text kopieren</button>' +
+        (mail ? '<a class="knopf" href="mailto:' + esc(mail) + "?subject=" + esc(encodeURIComponent("Bestellung " + B.name)) + "&body=" + esc(encodeURIComponent(text)) + '">Per E-Mail</a>' : "") +
+        '<a class="knopf" target="_blank" rel="noopener" href="https://wa.me/?text=' + esc(encodeURIComponent(text)) + '">WhatsApp</a></div></div>';
+  }).join("");
+}
+async function nachKopieren(lief, knopf){
+  const g = nachbestellGruppen().find(x => x.lief === lief); if(!g) return;
+  try{ await navigator.clipboard.writeText(nachText(g)); toast("Bestelltext kopiert"); }
+  catch(e){
+    /* Ohne Zwischenablage (altes Gerät, kein https): Text markieren. */
+    const pre = document.querySelector('[data-nachtext="' + CSS.escape(lief) + '"]');
+    if(pre){ const r = document.createRange(); r.selectNodeContents(pre); const sel = getSelection(); sel.removeAllRanges(); sel.addRange(r); }
+    toast("Text markiert — jetzt kopieren");
+  }
 }
 
 /* ═══ Bedienung ══════════════════════════════════════════════ */
@@ -1777,6 +2277,18 @@ document.addEventListener("click", e => {
   else if(was === "freigeben") aktionFreigeben();
   else if(was === "verwerfen") aktionVerwerfen(k);
   else if(was === "stornieren") aktionStornieren(k);
+  else if(was === "um-zeile-neu"){ umFormLesen(); UM.zeilen.push({ artikel_id:"", menge:"" }); lagerZeichnen(); const f = document.querySelectorAll("#umZeilen select"); f[f.length - 1].focus(); }
+  else if(was === "um-zeile-weg"){ umFormLesen(); UM.zeilen.splice(Number(k.dataset.i), 1); if(!UM.zeilen.length) UM.zeilen.push({ artikel_id:"", menge:"" }); lagerZeichnen(); }
+  else if(was === "um-schicken") umSchicken(k);
+  else if(was === "um-annehmen") umAnnehmen(id, k);
+  else if(was === "um-zurueck") umZurueck(id, k);
+  else if(was === "um-aus-beleg") umAusBeleg();
+  else if(was === "beleg-verschieben") belegVerschieben(k);
+  else if(was === "sort-sichern") sortimentSichern(id, null);
+  else if(was === "sort-aktiv") sortimentSichern(id, k.dataset.wert === "an");
+  else if(was === "lst-tag"){ k.setAttribute("aria-pressed", String(k.getAttribute("aria-pressed") !== "true")); }
+  else if(was === "lst-sichern") liefStandortSichern(id);
+  else if(was === "nach-kopieren") nachKopieren(id, k);
   else if(was === "artikel-auf"){ A_OFFEN = A_OFFEN === id ? null : id; artikelZeichnen(); }
   else if(was === "artikel-sichern") artikelSichern(id);
   else if(was === "artikel-aktiv") artikelAktiv(id);
@@ -1796,6 +2308,7 @@ document.addEventListener("click", e => {
    bleibt im Feld. Nur Art und Artikel ändern die Felder selbst. */
 document.addEventListener("input", e => {
   if(REZ && e.target.closest("#kalkEdit")){ rezEingabe(e); return; }
+  if(e.target.closest("#umNeuKarte")){ umFormLesen(); if(e.target.dataset.umf === "artikel_id") lagerZeichnen(); return; }
   if(!EDIT || EDIT.nurAnsehen) return;
   const kopf = { eLieferant:"lieferant_id", eNummer:"belegnummer", eDatum:"belegdatum", eNetto:"netto", eSteuer:"steuer", eBrutto:"brutto", eNotiz:"notiz" }[e.target.id];
   if(kopf){ EDIT.kopf[kopf] = e.target.value; if(kopf === "netto") summeZeichnen(); return; }
@@ -1856,6 +2369,7 @@ $("inventurKnopf").addEventListener("click", () => {
 });
 $("invAbbrechen").addEventListener("click", () => { $("inventurKarte").hidden = true; $("inventurKnopf").setAttribute("aria-expanded", "false"); });
 $("invBuchen").addEventListener("click", inventurBuchen);
+$("invZwischen").addEventListener("click", inventurZwischen);
 $("loginBtn").addEventListener("click", anmelden);
 $("password").addEventListener("keydown", e => { if(e.key === "Enter") anmelden(); });
 $("vergessenBtn").addEventListener("click", vergessen);
