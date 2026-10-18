@@ -1,5 +1,10 @@
 # Vorlage · Datenschutzerklärung im Gästehub
 
+> **Umgesetzt 18.10.** in `vorlagen/hub.vorlage.html` (`SEITEN.datenschutz`,
+> `SPEICHER_EINTRAEGE`). Maßgeblich ist ab jetzt der Code; diese Datei ist die
+> Vorlage für den Anwalt. Unterschied: Löschfristen erscheinen erst mit
+> `LOESCHFRISTEN_LIVE`.
+
 Wird im Hub unter `#/datenschutz` gezeichnet (Technik T1). Abschnitte für
 Funktionen, die ein Betrieb nicht nutzt (Lieferung, Newsletter, Alessia,
 Reservierung, Trinkgeld), entfallen automatisch — die Schalter dafür kennt
@@ -89,6 +94,8 @@ in den Einstellungen Ihres Browsers unter „Websitedaten".
 | Helligkeit (`omoteno-licht-…`) | hell/dunkel | bis zur Änderung | nein |
 | Darstellung des Hauses (`omoteno-farben-`, `-texte-`, `-kopf-`, `-lade-`, `-schrift-`, `-optionen-`) | Farben, Texte, Kopfbild und Extras des Hauses, damit die Karte ohne Netz richtig aussieht | bis zur nächsten Änderung durch das Haus | nein — kommt von uns |
 | Bereiche, Willkommen, Aktionen, Alter (Tab-Speicher) | aufgeklappte Bereiche, Begrüßung einmal, Aktion gesehen, Altersbestätigung 16+/18+ | bis der Tab geschlossen wird | nein |
+| Servicerufe (`omoteno-rufe-…`) | Zeitpunkte Ihrer Rufe, höchstens 4 in 10 Minuten | zehn Minuten | nein |
+| Reservierungen (`omoteno-res-…`) | Nummer, Zeit, Personen Ihrer Anfragen | bis einen Tag nach dem Termin | die Anfrage selbst beim Absenden |
 | Foodroulette (`…-fr-modus`) | Rad oder Karten | bis zur Änderung | nein |
 | Quiz (`omoteno-quiz-gesehen`, `…-bestenliste`) | keine Frage doppelt, Ihre Punkte | bis Sie Browserdaten löschen | nein |
 

@@ -1,5 +1,17 @@
 # Technische To-do-Liste · Recht
 
+## Stand 18.10. abends
+
+| Nr | Stand |
+|---|---|
+| T1 | **umgesetzt** — Fußzeile, `#/impressum`, `#/datenschutz`, Links über dem Knopf und am E-Mail-Feld; `pruef-rechtstexte.js`. Offen: die Angaben `recht` je Betrieb (siehe 11). |
+| T2 | **umgesetzt** — strenger als geplant: dauerhafte Kennung erst nach „Einschalten" in „Mein Tisch"; `pruef-gastkonto.js`. |
+| T3 | **umgesetzt** — `pruef-preisangaben.js`. |
+| T4 | **umgesetzt** — `pruef-preisangaben.js`. Offen: Frage zu § 11 PAngV an den Anwalt. |
+| T5 | **Entwurf** — `datenbank/migration-loeschfristen.sql`, lokal geprüft; einspielen, wenn Supabase erreichbar ist, dann `LOESCHFRISTEN_LIVE = true` und den Kopf der Migration auf ANGEWENDET (sonst wird `pruef-rechtstexte` rot). |
+| T6 | **umgesetzt** — Pflichtsatz, Aufnahme aus, Regel „ich bin eine KI"; `pruef-alessia.js`. Offen: die bestehenden Assistenten in Vapi neu einfügen. |
+| T7–T11 | offen |
+
 Jede Zeile verweist auf den Befund in `01-risikoanalyse.md`. Reihenfolge =
 Dringlichkeit. Jede Änderung bekommt ihre Prüfung und ihren Gegenbeweis
 (CLAUDE.md §8.1b) — die Spalte „Prüfung" sagt, welche.
