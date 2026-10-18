@@ -350,7 +350,9 @@ const MESSUNG = `
     pruef(g.melden.length === 0, "alte Kennung allein meldet nichts", "n=" + g.melden.length);
     await seite.evaluate(() => { location.hash = "#/meintisch"; });
     await seite.waitForTimeout(300);
-    await seite.click('[data-aktion="stammgastAn"]');
+    const an = await seite.$('[data-aktion="stammgastAn"]');
+    pruef(!!an, "alte Kennung allein schaltet nicht ein (Frage steht da)");
+    if(an) await an.click();
     await seite.waitForTimeout(500);
     pruef(g.melden.length === 1 && g.melden[0].p_kennung === ALT,
       "nach dem Einschalten wird die alte Kennung übernommen (Besuche, Gutscheine)",
