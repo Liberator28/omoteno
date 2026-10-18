@@ -98,6 +98,14 @@ const geh = async (seite, h) => { await seite.evaluate(x => { location.hash = x;
   pruef(tot.length === 0, "kein Eintrag ohne Schlüssel in der Vorlage", tot.join(", "));
   pruef(/const LOESCHFRISTEN_LIVE = false;/.test(VORLAGE) || /const LOESCHFRISTEN_LIVE = true;/.test(VORLAGE),
     "Voraussetzung: Schalter für die Löschfristen gefunden");
+  /* Zweite Quelle für „ist die Migration live?“: ihr eigener Kopf. Der
+     Schalter allein reichte nicht — umgelegt, ohne dass die Migration
+     lief, blieb die Probe grün (Gegenbeweis 18.10.). */
+  const MIG = fs.readFileSync(path.join(HIER, "datenbank", "migration-loeschfristen.sql"), "utf8").slice(0, 600);
+  const migLive = !/NOCH NICHT EINGESPIELT/.test(MIG);
+  pruef(!/const LOESCHFRISTEN_LIVE = true;/.test(VORLAGE) || migLive,
+    "Löschfristen nur eingeschaltet, wenn die Migration als eingespielt gilt",
+    migLive ? "Migration eingespielt" : "Migration: NOCH NICHT EINGESPIELT");
 
   for(const slug of liste){
     const datei = "file://" + path.join(HIER, "dist", slug, "index.html");
@@ -115,11 +123,13 @@ const geh = async (seite, h) => { await seite.evaluate(x => { location.hash = x;
       const k = await kontrastVon(seite, "#rechtFuss .rechtlink");
       pruef(k != null && k >= 4.5, h + ": lesbar", k && k.toFixed(2) + ":1");
     }
-    /* echter Tipp */
-    await seite.locator("#rechtFuss .rechtlink").first().scrollIntoViewIfNeeded();
-    await seite.locator("#rechtFuss .rechtlink").first().click();
+    /* echter Tipp — nur wenn es den Link gibt (sonst stürzte die Prüfung
+       ab, statt den Fehler zu melden) */
+    const link = await seite.$("#rechtFuss .rechtlink");
+    if(link){ await link.scrollIntoViewIfNeeded(); await link.click(); }
+    else await geh(seite, "#/impressum");
     await seite.waitForTimeout(400);
-    pruef(await seite.evaluate(() => location.hash) === "#/impressum", "Tipp öffnet #/impressum");
+    pruef(!!link && await seite.evaluate(() => location.hash) === "#/impressum", "Tipp öffnet #/impressum");
     const imp = await seite.textContent("#inhalt");
     const vor = await seite.evaluate(() => window.OMOTENO_DEMO === true || !!MARKENBLATT.demo);
     const mb = await seite.evaluate(() => ({ r: MARKENBLATT.recht || {}, b: BETRIEB }));
