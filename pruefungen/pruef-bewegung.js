@@ -107,8 +107,10 @@ function eigenschaften(){
      bewegung (§2: „was sich endlos dreht“): Räder, Straße und Wolken der
      Lieferungs-Szene laufen mit fester Geschwindigkeit — eine Kurve
      ließe den Roller bei jeder Runde ruckeln. Namentlich, nicht per
-     Muster (§8.1g D); NUR „linear“, nur diese drei. */
-  const GLEICHFOERMIG = ["wzDrehen", "wzStrasse", "wzWolke"];
+     Muster (§8.1g D); NUR „linear“, nur diese. Dazu seit 18.10. das
+     umlaufende Licht im Rand der Einstellungs-Kacheln (euLauf) — es
+     dreht endlos wie das des Zurück-Knopfs im Hub. */
+  const GLEICHFOERMIG = ["wzDrehen", "wzStrasse", "wzWolke", "euLauf"];
   const wort = [...s.matchAll(/animation:([A-Za-z-]*)[^;}]*?\s(ease-out|ease-in|ease-in-out|linear)\b/g)]
     .filter(x => !imRuhigen(x.index))
     .filter(x => !(x[2] === "linear" && GLEICHFOERMIG.includes(x[1])))
