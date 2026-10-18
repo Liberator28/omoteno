@@ -188,9 +188,25 @@ const werkzeug = (id, name, arg) => ({ id, type: "function", function: { name, a
       ok(props.every(p => argServer.includes(p)) && argServer.every(p => props.includes(p)),
         sl + ": Argumente von „bestellen“ = die, die die Server-Funktion liest", props.join(",") + " | " + [...new Set(argServer)].join(","));
       ok(!props.some(p => /nummer|betrieb|preis|summe/.test(p)), sl + ": kein Argument für Ziel oder Preis (beides entscheidet der Server)", props.join(","));
+      /* KI-VO Art. 50, § 201 StGB (18.10.) */
+      ok(a.firstMessage.startsWith("Hallo, hier ist Alessia, die KI-Assistentin von " + namen[sl] + ".")
+        && /als Text mitgeschrieben/.test(a.firstMessage),
+        sl + ": Begrüßung beginnt mit dem KI-Hinweis und sagt, dass mitgeschrieben wird", a.firstMessage.slice(0, 70));
+      ok(!!a.artifactPlan && a.artifactPlan.recordingEnabled === false, sl + ": Tonaufnahme ausdrücklich aus");
+      ok(/dass du eine KI bist/.test(a.systemprompt) && /nie als Mensch/.test(a.systemprompt),
+        sl + ": auf Nachfrage immer „ich bin eine KI“");
       const roh = JSON.stringify(a);
       ok(a.tools.every(t => /\/functions\/v1\/alessia-bestellung$/.test(t.server.url)) && !/geheim|sk_|eyJ/.test(roh) && /<VAPI_SECRET>/.test(roh),
         sl + ": beide Werkzeuge auf die eine Server-Adresse, nur ein Platzhalter für das Geheimnis");
+    }
+    /* Ein eigener Gruß ersetzt nur den freien Teil, nie den Hinweis. */
+    {
+      const sl = slugs[0];
+      execFileSync("node", [path.join(WURZEL, "erzeuger", "erzeuge-alessia.js"), sl, "--gruss", "Ciao! Was darf es sein?"], { stdio: "pipe" });
+      const a = JSON.parse(fs.readFileSync(path.join(WURZEL, "dist-alessia", sl + ".json"), "utf8"));
+      ok(/KI-Assistentin/.test(a.firstMessage) && /Ciao! Was darf es sein\?$/.test(a.firstMessage),
+        sl + " mit --gruss: eigener Gruß hinter dem Pflichtsatz, nicht statt seiner", a.firstMessage);
+      execFileSync("node", [path.join(WURZEL, "erzeuger", "erzeuge-alessia.js"), sl], { stdio: "pipe" });
     }
     ok(!fs.readFileSync(path.join(WURZEL, "erzeuger", "bauen.js"), "utf8").includes("dist-alessia")
       && /dist-alessia\//.test(fs.readFileSync(path.join(WURZEL, ".gitignore"), "utf8")),
