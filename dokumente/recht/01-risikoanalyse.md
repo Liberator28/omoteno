@@ -74,8 +74,14 @@ Kennung ist das falsch (irreführend, Art. 5 Abs. 1 lit. a, Art. 13 DSGVO).
 
 ### 3 · Bestellknopf ohne „zahlungspflichtig" — HOCH
 
-**Belegt:** Der Knopf heißt „Bestellung abschicken" (Vorlage, Zeile ~10352,
-13395); „Sofort bestellen" bestellt mit einem Tipp aus dem Top-Runner-Streifen.
+**Belegt:** Der Knopf heißt „Bestellung abschicken" (Vorlage, Zeile ~13451).
+
+*Korrektur 18.10.:* In der ersten Fassung stand hier, „Sofort bestellen" im
+Top-Runner-Streifen bestelle mit einem Tipp. Das stimmt nicht — der Knopf
+legt das Gericht nur zum Aktionspreis in den Warenkorb
+(`data-aktionmerk`-Verteiler). Falsch ist nur seine Beschriftung für
+Vorleser (`aria-label="Sofort bestellen"`), die einen Kauf ankündigt, den es
+nicht gibt.
 
 **Folge:** § 312j Abs. 3 BGB: Bei einem Verbrauchervertrag im elektronischen
 Geschäftsverkehr muss die Schaltfläche gut lesbar mit „zahlungspflichtig
@@ -89,8 +95,8 @@ Eigenschaften (die Positionen) und bei Lieferung die Kosten stehen — der
 Warenkorb zeigt das bereits, die Liefergebühr ist zu prüfen.
 
 **Lösung:** Knopf „Zahlungspflichtig bestellen" in allen zwölf Sprachen;
-„Sofort bestellen" öffnet statt direkt zu bestellen eine Bestätigung mit
-Preis und demselben Knopf. Texte: `10-ui-texte.md`. Technik: T3.
+die Beschriftung des Top-Runner-Knopfs sagt, was er tut („In den
+Warenkorb"). Texte: `10-ui-texte.md`. Technik: T3.
 
 ### 4 · Datenschutzerklärung von omoteno.de stimmt nicht mehr — MITTEL
 

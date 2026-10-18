@@ -83,7 +83,9 @@ function hubDatei(){
   await seite.click(".willkommen");
   await seite.waitForTimeout(700);
   pruef(!(await seite.isVisible(".willkommen")), "Antippen überspringt ihn");
-  pruef(gesendet.gast.length === 1, "der Besuch ist gemeldet", "n=" + gesendet.gast.length);
+  /* Seit 18.10. meldet der Hub keinen Besuch, bevor der Gast „Mein
+     Tisch" eingeschaltet hat (§ 25 TDDDG) — Abschnitt 6 schaltet ein. */
+  pruef(gesendet.gast.length === 0, "ohne Einschalten kein Besuch gemeldet", "n=" + gesendet.gast.length);
 
   /* Zweites Öffnen: der Schirm darf NICHT wiederkommen. */
   await seite.reload();
@@ -179,6 +181,11 @@ function hubDatei(){
   console.log("\n── Mein Tisch und das Bild ──");
   await seite.evaluate(() => { location.hash = "#/meintisch"; });
   await seite.waitForTimeout(500);
+  const einschalten = await seite.$('[data-aktion="stammgastAn"]');
+  pruef(!!einschalten, "Mein Tisch fragt zuerst");
+  if(einschalten) await einschalten.click();
+  await seite.waitForTimeout(600);
+  pruef(gesendet.gast.length === 1, "nach dem Einschalten ist der Besuch gemeldet", "n=" + gesendet.gast.length);
   const meins = await seite.textContent("#inhalt");
   pruef(/4\. Besuch/.test(meins), "der Besuchszähler steht");
   pruef(/Nutella Crêpe/.test(meins), "die Lieblingsspeise steht");

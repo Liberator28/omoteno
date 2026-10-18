@@ -34,14 +34,14 @@ einen deutschen Betrieb ist der deutsche Text; die anderen sind Lesehilfe.
 
 Mindestgröße: 16 px, Kontrast ≥ 4,5:1, Knopf ≥ 44 px hoch (wie alle Knöpfe).
 
-## B · „Sofort bestellen" (Top-Runner)
+## B · Top-Runner-Knopf „+"
 
-Knopf am Streifen: „Jetzt bestellen" → öffnet ein Blatt:
-
-> **{Gericht}** · {Menge} × {Preis}
-> Tisch {Nr}
-> Summe {Betrag}
-> [ Zahlungspflichtig bestellen ]   [ Abbrechen ]
+Er legt das Gericht zum Aktionspreis in den Warenkorb, er bestellt nicht.
+Beschriftung für Vorleser (`aria-label`) statt „Sofort bestellen":
+„In den Warenkorb" (en „Add to basket", tr „Sepete ekle", ru „В корзину",
+fr „Ajouter au panier", es „Añadir a la cesta", it „Aggiungi al carrello",
+pl „Do koszyka", ar „أضف إلى السلة", uk „До кошика", nl „In het mandje",
+ro „Adaugă în coș").
 
 ## C · Unter der Karte und im Warenkorb
 

@@ -8,7 +8,7 @@ Dringlichkeit. Jede Änderung bekommt ihre Prüfung und ihren Gegenbeweis
 |---|---|---|---|---|
 | T1 | Impressum und Datenschutz im Hub | Vorlage, Erzeuger, Markenblatt, Board | neu `pruef-rechtstexte.js` | 1 |
 | T2 | Gerätekennung erst bei Bedarf | Vorlage `geraetKennung`, `gastLaden` | neu, Teil von `pruef-rechtstexte.js`; `pruef-gastkonto.js` anpassen | 2 |
-| T3 | Knopf „Zahlungspflichtig bestellen", Bestätigung bei „Sofort bestellen" | Vorlage, Wörterbuch | `pruef-uebersetzung.js`, `pruef-sofort.js`, `pruef-durchgang.js` | 3 |
+| T3 | Knopf „Zahlungspflichtig bestellen", Top-Runner-Knopf ehrlich beschriften | Vorlage, Wörterbuch | `pruef-uebersetzung.js`, `pruef-sofort.js`, `pruef-durchgang.js` | 3 |
 | T4 | „inkl. MwSt." und Lieferkosten | Vorlage, Karte und Warenkorb | Teil von `pruef-rechtstexte.js` | 8 |
 | T5 | Löschfristen | neue Migration, Board-Einstellung | zurückgedrehte Probe | 5 |
 | T6 | Alessia: Pflichtsatz, Aufnahme aus | `erzeuge-alessia.js` | `pruef-alessia.js` | 6 |
@@ -74,9 +74,9 @@ Dringlichkeit. Jede Änderung bekommt ihre Prüfung und ihren Gegenbeweis
 
 - „Bestellung abschicken" → „Zahlungspflichtig bestellen"; bei Lieferung
   ebenso. Wörterbuch: zwölf Sprachen (`10-ui-texte.md`).
-- „Sofort bestellen" (Top-Runner) öffnet ein kleines Blatt: Gericht, Menge,
-  Preis, ggf. Tisch — Knopf „Zahlungspflichtig bestellen". Ein Tipp allein
-  bestellt nicht mehr.
+- Top-Runner: Der Knopf „+" legt in den Warenkorb, bestellt aber nicht
+  (Korrektur 18.10.). Nur sein `aria-label` „Sofort bestellen" wird zu
+  „In den Warenkorb" — kein Bestätigungsblatt nötig.
 - Unmittelbar über dem Knopf: Summe, bei Lieferung Liefergebühr und
   Gesamtbetrag (§ 312j Abs. 2 BGB). Der Warenkorb zeigt das; prüfen, dass die
   Liefergebühr in der Summe **über dem Knopf** steht, nicht erst danach.

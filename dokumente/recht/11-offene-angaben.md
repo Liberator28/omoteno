@@ -5,18 +5,19 @@ Entwürfe mit `{Platzhaltern}`.
 
 ## Entscheidungen
 
-**A · Gerätekennung im Hub (Befund 2).** Empfehlung: erst nach der ersten
-Bestellung anlegen (T2). Folge: Besuche werden erst ab der ersten Bestellung
-gezählt; wer nur die Karte liest, ist nirgends erfasst. Alternative wäre eine
-Einwilligungsabfrage für jeden Gast. **Welche Variante?**
+**A · Gerätekennung im Hub (Befund 2) — entschieden 18.10.:** der
+sauberste Weg. Bestellung und Missbrauchsschutz mit einer Kennung nur für
+den Tab; dauerhafte Kennung, Besuchszählung und Lieblinge erst, wenn der Gast
+„Mein Tisch" ausdrücklich einschaltet (§ 25 Abs. 2 Nr. 2 TDDDG: ausdrücklich
+gewünschter Dienst). Kein Banner. Umgesetzt, `pruef-gastkonto.js`.
 
-**B · Bestellknopf (Befund 3).** „Zahlungspflichtig bestellen" in allen
-Sprachen und ein Bestätigungsblatt für „Sofort bestellen". Der Ein-Tipp-Weg
-fällt damit weg. **Einverstanden?**
+**B · Bestellknopf (Befund 3) — entschieden 18.10.:** „Zahlungspflichtig
+bestellen" in allen Sprachen. Ein Bestätigungsblatt für „Sofort bestellen"
+entfällt: Der Knopf bestellt gar nicht, er legt nur in den Warenkorb
+(meine erste Analyse war hier falsch); nur seine Beschriftung wird ehrlich.
 
-**C · Löschfristen (Befund 5).** Vorschlag: Bestellungen 90 Tage,
-Transkripte 30 Tage, Reservierungen 30 Tage nach Termin, Gäste 24 Monate,
-Protokoll 3 Jahre. **Passt das, oder soll der Betrieb im Board wählen?**
+**C · Löschfristen — entschieden 18.10.:** der Vorschlag gilt. (Fristen: Bestellungen 90 Tage, Transkripte 30 Tage, Reservierungen 30 Tage
+nach Termin, Gäste 24 Monate, Protokoll 3 Jahre.)
 
 **D · Rechtstexte übersetzen?** Vorschlag: Impressum und Datenschutz im Hub
 nur auf Deutsch, Überschriften übersetzt. Übersetzen kostet nichts, aber jede

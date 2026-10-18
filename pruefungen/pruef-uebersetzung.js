@@ -155,6 +155,13 @@ const MB_TECH = new Set(["schluessel","icon","slug","code","farbe","stil","raste
   "ziel","bild","logo","schrift","version","hex","typ","art","id","klasse","form","instagram",
   "google","maps","web","tel","mail","ssid","passwort","figur","netz","strasse","ort","name",
   "claim","gericht","was","zeiten","links","wlan","trinkgeld","kopfband","zierrat","thema"]);
+/* Eine eigene Offline-Karte im Markenblatt (geruestKarte, zuerst bei
+   Più Gusto) folgt derselben Regel wie die Karte im Gerüst oben: der
+   Name (n) ist ein Eigenname, a/zeichen/opt sind Schlüssel und Kürzel,
+   p ist ein Preis. Beschreibung (b) und Kategorie (gruppe) gehen durch
+   t() und brauchen einen Eintrag — gruppe also hier ausdrücklich, obwohl
+   es sonst in MB_TECH steht. Namentlich, nicht als Muster (§8.1g D). */
+const GERUEST_OHNE = new Set(["n", "a", "zeichen", "opt", "p"]);
 function ausMarkenblatt(o, wo){
   if(Array.isArray(o)) return o.forEach(v => ausMarkenblatt(v, wo));
   if(o && typeof o === "object")
@@ -164,6 +171,10 @@ function ausMarkenblatt(o, wo){
          gerendert, deshalb keine Übersetzung nötig. */
       if(k.startsWith("_")) return;
       if(k === "demo" && /^markenblatt\/[^.]+$/.test(wo)) return demoPruefen(o[k], wo + ".demo");
+      if(/\.geruestKarte\b/.test(wo)){
+        if(GERUEST_OHNE.has(k)) return;
+        if(k === "gruppe") return merke(wo + ".gruppe", o[k]);
+      }
       if(!MB_TECH.has(k)) ausMarkenblatt(o[k], wo + "." + k);
     });
   if(typeof o === "string") merke(wo, o);
@@ -203,7 +214,7 @@ for(const [t, wo] of ausDaten){
 }
 pruef(ohneEintrag.length === 0,
   ausDaten.size + " Texte aus Daten haben einen Wörterbucheintrag",
-  ohneEintrag.length ? ohneEintrag.slice(0, 4).join(" | ") : "keine Lücke");
+  ohneEintrag.length ? ohneEintrag.slice(0, 4).join(" | ") + (process.env.ALLE ? "\n      " + ohneEintrag.join("\n      ") : "") : "keine Lücke");
 
 /* ══ 3 · Die Anrede bleibt in jeder Sprache dieselbe ════════════════
    > Vorfall, 09.09. Gemessen: Polnisch duzte in 29 Eintraegen und
