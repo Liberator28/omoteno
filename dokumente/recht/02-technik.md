@@ -10,7 +10,9 @@
 | T4 | **umgesetzt** — `pruef-preisangaben.js`. Offen: Frage zu § 11 PAngV an den Anwalt. |
 | T5 | **Entwurf** — `datenbank/migration-loeschfristen.sql`, lokal geprüft; einspielen, wenn Supabase erreichbar ist, dann `LOESCHFRISTEN_LIVE = true` und den Kopf der Migration auf ANGEWENDET (sonst wird `pruef-rechtstexte` rot). |
 | T6 | **umgesetzt** — Pflichtsatz, Aufnahme aus, Regel „ich bin eine KI"; `pruef-alessia.js`. Offen: die bestehenden Assistenten in Vapi neu einfügen. |
-| T7–T11 | offen |
+| T8 | **umgesetzt, soweit belegt** — jsDelivr raus; Anthropic, Google-Anmeldung, Web-Push, Team/PIN/Protokoll, Hub-Verweis rein; „Keiner verlässt dein Gerät“ berichtigt; Netlify-Frist ohne erfundene Zahl. Offen: Vertragspartner Anthropic, DPF/SCC je Anbieter (11, Punkt 6–8). |
+| T9 | **umgesetzt** — Kontaktstelle und Meldeweg (DSA) im Impressum. |
+| T7, T10, T11 | offen |
 
 Jede Zeile verweist auf den Befund in `01-risikoanalyse.md`. Reihenfolge =
 Dringlichkeit. Jede Änderung bekommt ihre Prüfung und ihren Gegenbeweis
