@@ -500,12 +500,21 @@ function pruefeMarkenblatt(mb){
    Quelltext der Hub-Datei und soll dort auch von Hand
    nachgebessert werden können. Eine einzeilige JSON-Zeile kann
    das nicht. */
+/* Text, der in einen <script>-Block wandert: JSON, das kein </script>, kein
+   <!-- und keinen Zeilentrenner der Seite hineinträgt (Sicherheits-Sweep
+   19.10.: ein Wert mit „</script><img onerror=…>“ im Markenblatt hätte den
+   Block beendet). Für sonstige Werte bleibt die Ausgabe Zeichen für Zeichen
+   gleich. */
+const skriptJson = (w, ...r) => JSON.stringify(w, ...r)
+  .replace(/<\/(script)/gi, "<\\/$1").replace(/<!--/g, "<\\!--")
+  .replace(/\u2028/g, "\\u2028").replace(/\u2029/g, "\\u2029");
+
 function alsQuelltext(mb){
   const z = (schl, wert, einzug) => {
-    const w = typeof wert === "string" ? '"' + wert.replace(/"/g,'\\"') + '"'
+    const w = typeof wert === "string" ? skriptJson(wert)
             : typeof wert === "boolean" ? String(wert)
             : typeof wert === "number"  ? String(wert)
-            : JSON.stringify(wert);
+            : skriptJson(wert);
     return einzug + (schl + ":").padEnd(15) + w + ",";
   };
   const block = (name, obj, reihenfolge) => {
@@ -533,7 +542,7 @@ function alsQuelltext(mb){
      auch nachschlagen können. */
   const liste = (name, wert) => {
     if(wert === undefined || wert === null) return null;
-    const roh = JSON.stringify(wert, null, 2)
+    const roh = skriptJson(wert, null, 2)
       .split("\n").map((z, i) => i === 0 ? z : "  " + z).join("\n");
     return "  " + name + ": " + roh + ",";
   };
@@ -797,10 +806,10 @@ function erzeuge(slug, nurPruefen){
       return g;
     });
     aus = aus.replace(GERUEST_KARTE, () => "/* geruestKarte aus dem Markenblatt (erzeuge-hub.js) */\n" +
-      "let SPEISEKARTE = " + JSON.stringify(karte("speisekarte")) + ";\n" +
-      "let GETRAENKE = " + JSON.stringify(karte("getraenke")) + ";\n" +
-      "let COCKTAILS = " + JSON.stringify(karte("cocktails")) + ";\n" +
-      "Object.assign(INHALTSSTOFFE, " + JSON.stringify(stoffe) + ");");
+      "let SPEISEKARTE = " + skriptJson(karte("speisekarte")) + ";\n" +
+      "let GETRAENKE = " + skriptJson(karte("getraenke")) + ";\n" +
+      "let COCKTAILS = " + skriptJson(karte("cocktails")) + ";\n" +
+      "Object.assign(INHALTSSTOFFE, " + skriptJson(stoffe) + ");");
   }
 
   /* Das Vorführhaus läuft immer vorgeführt (siehe Prüfung oben). Der

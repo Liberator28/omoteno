@@ -11073,6 +11073,19 @@ function liveText(w){
   return typeof w === "string" ? w.replace(/[<>]/g, "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ") : "";
 }
 function liveTextDoppel(w){ return liveText(w).replace(/"/g, "\u201D"); }
+/* Fotos: Eine volle Adresse aus der Datenbank wird nur geladen, wenn sie in
+   unserem eigenen Speicher liegt. Ein Foto von einem fremden Server
+   (eine Bilddatenbank, ein Instagram-Link) zeigt dem Fremden die IP-
+   Adresse jedes Gastes, ohne dass der Gast je gefragt wurde — rechtlich
+   dasselbe Muster wie Google Fonts (LG München I, 3 O 17493/20), und
+   die Datenschutzerklärung verspricht „Bilder von unserem eigenen
+   Server“. Dateinamen ohne Adresse laufen wie bisher über BILDER.basis. */
+function eigenesFoto(u){
+  const x = String(u == null ? "" : u);
+  if(!/^https?:\/\//i.test(x)) return true;                      /* Dateiname: eigener Weg */
+  const eimer = String(OMOTENO_DB.url || "").replace(/\/+$/, "") + "/storage/v1/object/public/";
+  return !!OMOTENO_DB.url && x.indexOf(eimer) === 0 && !/["'<>\s]/.test(x);
+}
 function liveWoerter(o){
   const aus = {};
   if(o && typeof o === "object" && !Array.isArray(o))
@@ -19350,13 +19363,13 @@ async function karteHolen(erstesMal){
         /* Altersfreigabe: nur 16 oder 18 (dieselbe Liste steht als CHECK
            auf gerichte.ab_alter). Alles andere fällt still weg. */
         if(z.ab_alter === 16 || z.ab_alter === 18) e.alter = z.ab_alter;
-        if(z.bild) e.bild = z.bild;
+        if(z.bild && eigenesFoto(z.bild)) e.bild = z.bild;
         /* frei nur bei eigenen Dateien: Ein aus dem Board hochgeladenes
            Foto hat einen Hintergrund und darf nicht schweben. */
         if(z.frei && !/^https?:/i.test(String(z.bild || ""))) e.frei = 1;
         /* Freisteller aus dem Board (Edge Function gericht-bild). Nur
            https — dieselbe Regel steht als CHECK auf der Spalte. */
-        if(typeof z.bild_frei === "string" && /^https:\/\//.test(z.bild_frei)) e.bf = z.bild_frei;
+        if(typeof z.bild_frei === "string" && /^https:\/\//.test(z.bild_frei) && eigenesFoto(z.bild_frei)) e.bf = z.bild_frei;
         /* Toppings kommen als Text „suess,sauce" aus der Datenbank */
         if(z.opt) e.opt = String(z.opt).split(",").map(x => x.trim()).filter(Boolean);
         /* Allergene und Zusatzstoffe aus der Datenbank übernehmen.
