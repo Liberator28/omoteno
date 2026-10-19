@@ -3755,11 +3755,17 @@ footer{margin-top:48px;text-align:center;position:relative;z-index:1}
 /* Seit die Fußzeile Links trägt, darf sie nicht unter den schwebenden
    Leisten liegen (pruef-fotofehler: „unterstes Antippbare über den
    Leisten“). Platz genau dann, wenn eine Leiste steht. */
-body.hat-balken footer{padding-bottom:16px}
+/* Die Auswahl-Leiste (≈ 56 px + 20 px Abstand) darf die letzte Zeile
+   der Fußzeile nicht verdecken — auf kurzen Seiten rollt sonst nichts
+   mehr hoch (gemeldet: „Powered by“ hinter der Leiste). */
+body.hat-balken footer{padding-bottom:100px}
 body:has(#vstreifen:not([hidden])) footer,
 body:has(#wsstreifen:not([hidden])) footer{padding-bottom:12px}
 body.hat-balken:has(#vstreifen:not([hidden])) footer,
-body.hat-balken:has(#wsstreifen:not([hidden])) footer{padding-bottom:76px}
+body.hat-balken:has(#wsstreifen:not([hidden])) footer{padding-bottom:160px}
+/* Im Warenkorb stehen die Links schon vor dem Bestellknopf (Zahlteil);
+   die Fußzeile zeigte sie ein zweites Mal untereinander. */
+body:has(#zahlteil) #rechtFuss{display:none}
 .rechtlink{display:inline-flex;align-items:center;min-height:44px;padding:0 10px;font-size:13px;
   color:var(--tinte-leise);text-decoration:underline;text-underline-offset:3px}
 .rechtseite h3{font-size:15px;margin:24px 0 6px}
@@ -12809,6 +12815,23 @@ function ehInfoHTML(g){
   return teile.length ? '<div class="eh-info">' + hs(teile.join(" · ")) + '</div>' : "";
 }
 
+/* Fotos der nächsten Karten vorab holen. Vorher kam das Bild einer
+   nachrückenden Karte erst, wenn sie schon vorn lag: Das große Zeichen
+   sprang zum Abzeichen, das Foto blendete mitten im Wisch ein (der
+   „verbuggte“ Kartenwechsel im Foto vom Nutzer). Was geladen und
+   entschlüsselt ist, steht beim Bau der Karte schon als fertig da. */
+const edBereit = new Set();
+function edFotoUrl(g){ return g ? (g.bf ? g.bf : g.bild ? bildFuer(g, false) : "") : ""; }
+function edVorladen(von, bis){
+  for(let i = von; i <= bis && i < edStapel.length; i++){
+    const u = edFotoUrl(findeGericht(edStapel[i]));
+    if(!u || edBereit.has(u)) continue;
+    const bild = new Image();
+    const fertig = () => edBereit.add(u);
+    bild.onload = () => { (bild.decode ? bild.decode().catch(() => {}) : Promise.resolve()).then(fertig); };
+    bild.src = u;
+  }
+}
 function edKarteHTML(name, tiefe){
   const g = findeGericht(name);
   if(!g) return "";
@@ -12824,7 +12847,7 @@ function edKarteHTML(name, tiefe){
   return '<div class="ed-karte" data-ed="' + encodeURIComponent(name) + '" data-tiefe="' + tiefe +
     '" style="--tiefe:' + tiefe + '"' +
     (tiefe ? ' aria-hidden="true"' : '') + '>' +
-    '<div class="ed-bildflaeche">' + foto +
+    '<div class="ed-bildflaeche' + (edBereit.has(edFotoUrl(g)) ? (g.bf ? " mitpop" : " mitfoto") : "") + '">' + foto +
       '<span class="ed-emo">' + (bewegteZeichenAn() && !tiefe ? bzHTML(cp, "ed:" + name) : bzZeichen(cp)) + '</span>' +
       '<span class="ed-stempel ja">' + t("Nehm ich!") + '</span>' +
       '<span class="ed-stempel nein">' + t("Weiter") + '</span>' +
@@ -12842,6 +12865,7 @@ function edKarteHTML(name, tiefe){
 }
 
 function edFlaecheHTML(){
+  edVorladen(edPos, edPos + 5);
   if(edPos >= edStapel.length){
     return '<div class="ed-ende">' +
       '<span class="ed-ende-emo">' + (bewegteZeichenAn() ? bzHTML("1f973", "ed:ende") : bzZeichen("1f973")) + '</span>' +
@@ -12899,6 +12923,7 @@ function edNachruecken(){
       if(emo && !emo.querySelector(".bz")) emo.innerHTML = bzHTML(bzKategorie(ort.gruppe, ort.karte), "ed:" + name);
     }
   });
+  edVorladen(edPos + 2, edPos + 6);
   const hinten = edPos + 2;
   if(hinten < edStapel.length){
     const tmp = document.createElement("div");
@@ -13172,7 +13197,10 @@ document.addEventListener("keydown", e => {
 document.addEventListener("pointerdown", e => {
   const karte = e.target.closest && e.target.closest('#edStapel .ed-karte[data-tiefe="0"]');
   if(!karte) return;
-  karte.getAnimations().forEach(a => a.cancel());
+  /* Nur Web-Animationen (Rückfederung) stoppen: Die CSS-Transition des
+     Nachrückens zu kappen ließ die Karte beim schnellen zweiten Griff
+     auf ihren Endstand springen. */
+  karte.getAnimations().forEach(a => { if(!(window.CSSTransition && a instanceof CSSTransition)) a.cancel(); });
   const zweite = document.querySelector('#edStapel .ed-karte[data-tiefe="1"]');
   const start = { x:e.clientX, y:e.clientY, id:e.pointerId };
   const spur = [{ x:e.clientX, t:performance.now() }];
@@ -18042,7 +18070,7 @@ function wischSperre(el){
     const dx = e.clientX - w.x0, dy = e.clientY - w.y0;
     if(!w.an){
       if(Math.abs(dx) < 10 && Math.abs(dy) < 10) return;
-      if(Math.abs(dx) < Math.abs(dy) * 1.3){ w = null; return; }   /* senkrecht: rollen */
+      if(Math.abs(dx) < Math.abs(dy) * 1.8){ w = null; return; }   /* schräg oder senkrecht: rollen */
       w.an = true;
       feld.classList.add("wischt");
       feld.getAnimations().forEach(a => a.cancel());
@@ -19638,40 +19666,13 @@ function wischZu(o){
 }
 /* ╚═══ WISCHZU · GETEILTER BLOCK · ENDE ═══════════════════════════╝ */
 
-/* ══════════════════════════════════════════════════════════════════
-   NACH UNTEN WISCHEN FÜHRT ZUR ÜBERSICHT
-
-   Nur am oberen Rand, nur auf Unterseiten, nur mit einem Finger und
-   nur wenn kein Detailfenster offen ist. Sonst kollidiert die Geste
-   mit normalem Scrollen und mit Safaris Zum-Aktualisieren-Ziehen.
-   Alle Listener sind passiv - das Scrollen bleibt flüssig.
-   ══════════════════════════════════════════════════════════════════ */
-(function(){
-  const KEINE_GESTE = ["start", "auswahl", "bestellt"];
-  const SCHWELLE = 110;                 /* px - bewusst hoch, gegen Fehlgriffe */
-  let startY = 0, aktiv = false;
-
-  document.addEventListener("touchstart", e => {
-    aktiv = e.touches.length === 1 && window.scrollY <= 0 &&
-            KEINE_GESTE.indexOf(seiteJetzt) < 0 && !detailName;
-    startY = aktiv ? e.touches[0].clientY : 0;
-  }, {passive:true});
-
-  document.addEventListener("touchmove", e => {
-    /* Zweiter Finger oder zwischendurch doch gescrollt: Geste verwerfen. */
-    if(aktiv && (e.touches.length > 1 || window.scrollY > 0)) aktiv = false;
-  }, {passive:true});
-
-  document.addEventListener("touchend", e => {
-    if(!aktiv) return;
-    aktiv = false;
-    const ende = e.changedTouches && e.changedTouches[0];
-    if(!ende || window.scrollY > 0) return;
-    if(ende.clientY - startY > SCHWELLE) location.hash = "#/";
-  }, {passive:true});
-
-  document.addEventListener("touchcancel", () => { aktiv = false; }, {passive:true});
-})();
+/* Hier stand bis 19.10. „Nach unten wischen führt zur Übersicht“ (ein
+   Zug von 110 px am oberen Rand). Gemeldet vom Nutzer: Wer schnell hoch-
+   und runterrollt, landet auf der Startseite. Der Finger setzt auf, wenn
+   die Seite gerade oben ankommt (Schwung, Gummiband), und der nächste
+   Zug nach unten zählte als Geste. Es gibt „Zurück“ und die Kachel-Wische
+   zwischen den Unterseiten — ein dritter Weg, der mit dem Rollen
+   kollidiert, ist keiner. */
 </script>
 </body>
 </html>

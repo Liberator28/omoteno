@@ -1609,6 +1609,30 @@ vermisst. Und die Prüfung dazu misst **nach dem Öffnen** (Höhe ≥ 44 px, akt
 Stück in der Mitte), nicht „ist da“. `pruefungen/werkzeug/zentrale.js`
 öffnet Unterseiten dafür per echtem Tipp auf die Kachel.
 
+### 8.1v Eine Geste, die mit dem Rollen konkurriert, trifft den, der schnell rollt
+
+> **Vorfall, gemeldet vom Nutzer (Foto + Satz).** „Wenn man schnell nach
+> oben und unten scrollt in der Speisekarte, wirft es einen auf die
+> Startseite zurück.“ Ursache: „am oberen Rand 110 px nach unten ziehen →
+> Übersicht“. Wer schnell hochrollt, setzt den Finger auf, wenn die Seite
+> gerade oben ankommt (Schwung, Gummiband) — der nächste Zug nach unten
+> war die Geste. Die Prüfung dazu rollte nie schnell und hatte den Fehler
+> nie gesehen. Entfernt: „Zurück“ und die Kachel-Wische reichen; ein
+> dritter Weg ist keiner.
+>
+> **Derselbe Fund, zweiter Teil.** Beim Kartenwischen kam das Foto der
+> nachrückenden Karte erst, wenn sie schon vorn lag (Zeichen sprang zum
+> Abzeichen, Foto blendete im Wisch ein). Auf dem schnellen Netz des
+> Entwicklers unsichtbar. Die Probe stellt die Fotos 900 ms langsam
+> (§8.1g); der Gegenbeweis im Worktree zeigte 6 späte Einblendungen statt 0.
+> Und: Meine erste Messung wischte NEBEN die Karte (`elementFromPoint` =
+> Chip) und meldete „keine Sprünge“ — `edPos` blieb 0. Eine Gestenprobe
+> prüft zuerst, dass die Geste etwas bewegt hat.
+
+Jede Geste auf der Seitenfläche wird mit **schnellem, wiederholtem
+Rollen** geprüft, nicht nur mit einem sauberen Zug. Was in Wartezeit
+nachlädt (Fotos der nächsten Karte), wird vorab geholt.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1718,6 +1742,7 @@ Dazu je nach Änderung:
 | **Kacheln, Symbole, Banner, Baukasten im Board** | `pruefungen/pruef-baukasten.js` (braucht `dist/`) — zweite Quelle, Zuschnitt, Schrift nie auf dem Bild |
 | **Besuchsbild, Sterne, Foto** | `pruefungen/pruef-besuchsbild.js` (braucht `dist/`) — Sterne auf der Leinwand, Bild aus der Karte |
 | **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung; dazu mit echtem Finger (CDP-Touch): kein zweiter Scrollbereich im Kategorie-Blatt, Wische rollen bis „Sichern", gescrollt schließt ein Wisch nach unten NICHT, oben schließt er auch auf einem Knopf, Antippen wählt weiterhin, Schleier rollt das Board nicht, im Hub zählt ein Wisch nicht zusätzlich als „Zurück" |
+| **Fehler aus dem Kundentest (schnelles Rollen, Kartenwisch-Fotos, doppelte Rechtslinks, Fußzeile hinter der Leiste)** | `pruefungen/pruef-kundenweg.js` (braucht `dist/`) — echter Finger (CDP): 8 Runden hoch/runter + Zug nach unten am oberen Rand bleibt in der Speisekarte (Voraussetzung: scrollY 0); sieben Karten gewischt mit nachgestellten, 900 ms langsamen Fotos: keine Karte blendet ihr Foto ein, wenn sie schon vorn liegt (`edPos` = 7 selbst geprüft); Warenkorb: leer ein Link je Art, gefüllt genau einer (Zahlteil), Fußzeile ausgeblendet; letzte Zeile der Fußzeile endet über der Auswahl-Leiste auf fünf Unterseiten. `HUB_DATEI=` für den Gegenbeweis im Worktree (3 von 12 rot auf dem alten Stand) |
 | **Notizen des Teams (Board, Küche), Nachricht an den Gast, Reservierung mit Nummer** | `pruefungen/pruef-notizen.js` (braucht `dist/`) — Naht als Quelltext gegen `migration-notizen.sql` (Parameter, Gründe, Spaltenrechte), Board: Stufe 1 sendet NICHTS, Stufe 2 genau den Vorschautext, `text_anders` zeigt den neuen Stand, Bearbeiten ohne Bestätigung lässt den Gast die alte Fassung sehen, Tipp ändert keinen Status, 44 px; Küche dasselbe am Bon; Hub: Streifen „Neue Nachricht“, Text nie als Auszeichnung, Englisch nur der Rahmen, Reservierung zeigt Stand und Nachricht. Die DB-Hälfte: zurückgedrehter Probelauf, 24 Proben |
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
