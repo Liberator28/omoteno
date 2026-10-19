@@ -384,7 +384,7 @@ begin
     return jsonb_build_object('ok', false, 'grund', 'nicht_offen');
   end if;
   if z.stripe_url is not null and z.stripe_ablauf is not null and z.stripe_ablauf > now() + interval '2 minutes' and z.status = 'offen' then
-    return jsonb_build_object('ok', true, 'url', z.stripe_url, 'wiederverwendet', true);
+    return jsonb_build_object('ok', true, 'url', z.stripe_url, 'wiederverwendet', true, 'versuch', z.sessions_erstellt);
   end if;
   if z.sessions_erstellt >= 5 then return jsonb_build_object('ok', false, 'grund', 'zu_oft'); end if;
   select * into za from public.betrieb_zahlarten where betrieb_id = z.betrieb_id;
@@ -400,7 +400,7 @@ begin
   return jsonb_build_object(
     'ok', true, 'zahlung_id', z.id, 'betrieb_id', z.betrieb_id, 'stripe_konto', z.stripe_konto,
     'betrag_cent', z.betrag_cent, 'methoden', to_jsonb(v_methoden), 'betrieb_name', v_betrieb.name,
-    'slug', v_betrieb.slug, 'zweck', public.zahlung_zweck(p_bestellung));
+    'slug', v_betrieb.slug, 'zweck', public.zahlung_zweck(p_bestellung), 'versuch', z.sessions_erstellt);
 end $function$;
 
 create or replace function public.zahlung_session_merken(p_bestellung uuid, p_session text, p_url text, p_ablauf timestamptz)
@@ -430,6 +430,16 @@ begin
   insert into public.zahlung_ereignisse (ereignis_id) values (p_id) on conflict do nothing;
   get diagnostics v_n = row_count;
   return v_n = 1;
+end $function$;
+
+-- Scheitert die Verarbeitung NACH dem Eintrag, gibt die Funktion den Eintrag
+-- wieder frei und antwortet Stripe mit 500: Stripe wiederholt dann, und die
+-- Wiederholung wird nicht als „schon gesehen“ weggeworfen (sonst ginge die
+-- Zahlung still verloren).
+create or replace function public.zahlung_ereignis_frei(p_id text)
+returns void language plpgsql volatile security definer set search_path = public as $function$
+begin
+  delete from public.zahlung_ereignisse where ereignis_id = p_id;
 end $function$;
 
 -- Freigeben: erst jetzt gehört die Bestellung der Küche. Gibt es die
@@ -477,7 +487,7 @@ declare f text;
 begin
   foreach f in array array[
     'zahlung_stripe_vorbereiten(uuid)', 'zahlung_session_merken(uuid, text, text, timestamptz)', 'zahlung_finden(text)',
-    'zahlung_ereignis_neu(text)', 'zahlung_freigeben(uuid, text, text, text)', 'zahlung_scheitert(uuid, text)'] loop
+    'zahlung_ereignis_neu(text)', 'zahlung_ereignis_frei(text)', 'zahlung_freigeben(uuid, text, text, text)', 'zahlung_scheitert(uuid, text)'] loop
     execute format('revoke execute on function public.%s from public, anon, authenticated', f);
     if exists (select 1 from pg_roles where rolname = 'service_role') then
       execute format('grant execute on function public.%s to service_role', f);

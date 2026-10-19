@@ -174,11 +174,11 @@ select 'Z60 anon UND authenticated dürfen keine der sechs Service-Funktionen ru
   (select bool_and(not has_function_privilege(r, p.oid, 'EXECUTE'))
      from pg_proc p cross join (values ('anon'), ('authenticated')) v(r)
     where p.pronamespace = 'public'::regnamespace
-      and p.proname in ('zahlung_stripe_vorbereiten','zahlung_session_merken','zahlung_finden','zahlung_ereignis_neu','zahlung_freigeben','zahlung_scheitert','zahlung_vormerken'));
+      and p.proname in ('zahlung_stripe_vorbereiten','zahlung_session_merken','zahlung_finden','zahlung_ereignis_neu','zahlung_ereignis_frei','zahlung_freigeben','zahlung_scheitert','zahlung_vormerken'));
 select 'Z60b service_role darf die sechs | ' ||
   (select bool_and(has_function_privilege('service_role', p.oid, 'EXECUTE')) from pg_proc p
     where p.pronamespace = 'public'::regnamespace
-      and p.proname in ('zahlung_stripe_vorbereiten','zahlung_session_merken','zahlung_finden','zahlung_ereignis_neu','zahlung_freigeben','zahlung_scheitert'));
+      and p.proname in ('zahlung_stripe_vorbereiten','zahlung_session_merken','zahlung_finden','zahlung_ereignis_neu','zahlung_ereignis_frei','zahlung_freigeben','zahlung_scheitert'));
 set local role anon; select pg_temp.als(null);
 select 'Z61 anon ruft zahlung_freigeben direkt → Ausnahme, nichts bezahlt | ' ||
   (pg_temp.fehler(format('select zahlung_freigeben(%L)', (select v from st where k = 'o1'))) ~ 'permission denied');
@@ -205,6 +205,9 @@ select 'Z73b unbekannte Sitzung → null | ' || (zahlung_finden('cs_test_gibtesn
 select 'Z74 Ereignis: erstes Mal neu, zweites Mal nicht, Müll nie | ' ||
   (zahlung_ereignis_neu('evt_test_12345678') and not zahlung_ereignis_neu('evt_test_12345678') and not zahlung_ereignis_neu('x') and not zahlung_ereignis_neu(null));
 -- freigeben mit falschem Konto
+select zahlung_ereignis_frei('evt_test_12345678');
+select 'Z74b …nach „frei“ zählt dasselbe Ereignis wieder als neu (Wiederholung von Stripe wird nicht verschluckt) | ' || zahlung_ereignis_neu('evt_test_12345678');
+select 'Z74c Vorbereiten nennt den Versuch (für den Idempotenz-Schlüssel) | ' || ((zahlung_stripe_vorbereiten((select v::uuid from st where k = 'o1'))->>'versuch') = '1');
 select 'Z75 Webhook mit FREMDEM Konto: abgelehnt, nichts bezahlt | ' ||
   (zahlung_freigeben((select v::uuid from st where k = 'o1'), 'card', 'pi_test_1', 'acct_FREMDERFREMDER')->>'grund' = 'konto');
 select 'Z76 freigeben: ok, Bestellung frei, Zeit frisch | ' ||
