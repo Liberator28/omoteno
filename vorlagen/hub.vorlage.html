@@ -6342,6 +6342,14 @@ const KACHEL_WERTE = {
    überschlagen wie bei kachelTinte). */
 const KACHEL_HOEHE_SKALA = { kompakt:.8, hoch:1.35 };
 
+/* Rubrik (Gruppe) einer Kachel, vom Wirt im Board benannt. Der Name geht in
+   Text und Attribut: nur gerade Zeichen, höchstens 28 — dieselbe Regel wie
+   kbGruppeSauber im Board. Leer/ungültig → die Rubrik der Vorgabe. */
+function kachelGruppeSauber(w){
+  const t = typeof w === "string" ? w.replace(/[<>"'`\\&]/g, "").replace(/\s+/g, " ").trim().slice(0, 28) : "";
+  return t;
+}
+
 function kachelBauen(schluessel, wunsch){
   let art = KACHELARTEN[schluessel];
   const eigen = !art && KACHEL_EIGEN_MUSTER.test(String(schluessel || "")) && wunsch &&
@@ -6371,6 +6379,11 @@ function kachelBauen(schluessel, wunsch){
   if(wunsch) KACHEL_ERLAUBT.forEach(f => {
     if(wunsch[f] !== undefined && wunsch[f] !== null) k[f] = wunsch[f];
   });
+  /* Die Rubrik darf der Wirt umbenennen oder neu anlegen; „nur am Tisch“ hängt
+     aber an der Kachel-ART, nicht am Namen — sonst führte eine umbenannte
+     Rubrik im Liefermodus zu Kacheln, die ins Leere zeigen. */
+  k.nurTisch = art.gruppe === "Jetzt am Tisch";
+  k.gruppe = kachelGruppeSauber(k.gruppe) || art.gruppe;
   Object.keys(KACHEL_WERTE).forEach(f => {
     if(k[f] !== undefined && k[f] !== "" && !KACHEL_WERTE[f].includes(k[f]))
       k[f] = f === "breite" || f === "bildform" || f === "symbolLage" || f === "hoehe" ? "" : (art[f] || "");
@@ -11783,7 +11796,7 @@ function lieferWahl(ziel){
 function sichtbareKacheln(){
   return KACHELN.filter(k =>
     stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
-    !(liefermodus && LIEFER.an && k.gruppe === "Jetzt am Tisch") &&
+    !(liefermodus && LIEFER.an && k.nurTisch) &&
     (typeof k.wenn !== "function" || k.wenn()) &&
     /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
        neu. Lieber gar keine Kachel als eine, die im Kreis führt. */

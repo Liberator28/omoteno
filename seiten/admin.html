@@ -2341,6 +2341,13 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
   background:var(--flaeche-2);border:1px solid var(--linie)}
 .kbanordnung-hilfe{margin:0 0 10px}
 .kbr-bereich{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gedaempft);margin-top:4px}
+.kbr-kopf{display:flex;align-items:center;gap:2px;margin-top:4px}
+.kbr-kopf .kbr-bereich{flex:1;min-width:0;margin-top:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kbr-rknopf{width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;flex:none;
+  background:none;border:0;border-radius:8px;color:var(--gedaempft);cursor:pointer}
+.kbr-rknopf:hover:not(:disabled){background:var(--flaeche-2);color:var(--kreide)}
+.kbr-rknopf:disabled{opacity:.3;cursor:default}
+.kbr-rknopf:focus-visible{outline:2px solid var(--messing);outline-offset:-2px}
 .kbr-gitter{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
 .kbr-kachel{grid-column:span 6;position:relative;display:flex;align-items:stretch;min-height:48px;border-radius:10px;
   background:var(--flaeche);border:1px solid var(--linie);color:var(--kreide);min-width:0}
@@ -14688,14 +14695,20 @@ function kbAusZeile(roh){
     }
   });
   KACHELPLAN.forEach(k => { if(!gesehen.has(k.s)){ geordnet.push(k); gesehen.add(k.s); } });
-  /* Jede Gruppe am Stück halten (Ziehen/Pfeile bleiben in der Gruppe):
-     stabil nach der Reihenfolge der Gruppen in KACHELPLAN sortieren. */
-  const gruppenFolge = [...new Set(KACHELPLAN.map(k => k.gruppe))];
-  geordnet.sort((a, b) => gruppenFolge.indexOf(a.gruppe) - gruppenFolge.indexOf(b.gruppe));
+  /* Jede Rubrik am Stück halten (Ziehen/Pfeile bleiben in der Rubrik). Die
+     Reihenfolge der Rubriken ist die ihres ersten Auftretens in der
+     gespeicherten Liste — der Wirt kann ganze Rubriken verschieben. Eine
+     Liste ohne eigene Wahl enthält sie in der Reihenfolge von KACHELPLAN
+     (so wurde sie gespeichert), das Ergebnis bleibt also wie vorher. */
+  const rubrik = k => kbGruppeSauber((nach[k.s] || {}).gruppe) || k.gruppe;
+  const folge = [...new Set(geordnet.map(rubrik))];
+  geordnet.sort((a, b) => folge.indexOf(rubrik(a)) - folge.indexOf(rubrik(b)));
   KACHELSTAND = geordnet.map(k => {
     const e = nach[k.s] || {};
     return {
       schluessel: k.s,
+      /* Eigene Rubrik; "" = die der Vorgabe. */
+      gruppe: (g => g && g !== k.gruppe ? g : "")(kbGruppeSauber(e.gruppe)),
       an:     e.an !== false,
       titel:  typeof e.titel === "string" && e.titel.trim() ? e.titel : k.titel,
       unter:  typeof e.unter === "string" ? e.unter : k.unter,
@@ -14807,7 +14820,84 @@ function kbNeueId(){
   let id; do { id = "e-" + Math.random().toString(36).slice(2, 9); } while(da.has(id));
   return id;
 }
-function kbGruppeVon(sch){ return (kbPlan(sch) || {}).gruppe || ""; }
+function kbGruppeVon(sch){
+  const k = KACHELSTAND.find(x => x.schluessel === sch);
+  return (k && k.gruppe) || (kbPlan(sch) || {}).gruppe || "";
+}
+/* Name einer Rubrik: nur gerade Zeichen, höchstens 28 — dieselbe Regel wie
+   kachelGruppeSauber im Hub (der Name geht dort in Text und Attribut). */
+const KB_RUBRIKEN_HOECHST = 10;
+function kbGruppeSauber(w){
+  return typeof w === "string" ? w.replace(/[<>"'`\\&]/g, "").replace(/\s+/g, " ").trim().slice(0, 28) : "";
+}
+function kbRubriken(){ return [...new Set(KACHELSTAND.map(k => kbGruppeVon(k.schluessel)))]; }
+/* Rubriken wieder am Stück, in Reihenfolge des ersten Auftretens. */
+function kbRubrikenZusammenhalten(){
+  const folge = kbRubriken();
+  KACHELSTAND.sort((a, b) => folge.indexOf(kbGruppeVon(a.schluessel)) - folge.indexOf(kbGruppeVon(b.schluessel)));
+}
+function kbBloecke(){
+  const bl = [];
+  KACHELSTAND.forEach(k => {
+    const g = kbGruppeVon(k.schluessel);
+    if(bl.length && bl[bl.length - 1].name === g) bl[bl.length - 1].kacheln.push(k);
+    else bl.push({ name:g, kacheln:[k] });
+  });
+  return bl;
+}
+/* Ganze Rubrik verschieben: an der nächsten Rubrik VORBEI, die der Gast
+   überhaupt sieht (eine, deren Kacheln alle aus sind, hat keine Stelle). */
+function kbRubrikFinden(name, richtung){
+  const bl = kbBloecke(), i = bl.findIndex(b => b.name === name);
+  if(i < 0) return -1;
+  for(let j = i + richtung; j >= 0 && j < bl.length; j += richtung)
+    if(bl[j].kacheln.some(k => k.an)) return j;
+  return -1;
+}
+function kbRubrikVerschieben(name, richtung){
+  const j = kbRubrikFinden(name, richtung); if(j < 0) return;
+  const bl = kbBloecke(), i = bl.findIndex(b => b.name === name);
+  const [b] = bl.splice(i, 1);
+  bl.splice(j, 0, b);
+  KACHELSTAND = [].concat(...bl.map(x => x.kacheln));
+  kbZeichnen();
+  const knopf = document.querySelector('[data-kbr-rubrik="' + CSS.escape(name) + '"] [' + (richtung < 0 ? "data-kbr-rhoch" : "data-kbr-rrunter") + ']');
+  if(knopf && !knopf.disabled) knopf.focus();
+}
+function kbRubrikUmbenennen(alt){
+  const neu = kbGruppeSauber(window.prompt("Neuer Name der Rubrik (höchstens 28 Zeichen):", alt));
+  if(!neu || neu === alt) return;
+  KACHELSTAND.forEach(k => {
+    if(kbGruppeVon(k.schluessel) !== alt) return;
+    const v = (kbPlan(k.schluessel) || {}).gruppe;
+    k.gruppe = neu === v ? "" : neu;
+  });
+  kbRubrikenZusammenhalten();
+  kbZeichnen();
+  melde("Rubrik umbenannt — mit „Übernehmen“ für Gäste wirksam");
+}
+/* Eine Kachel in eine andere (oder neue) Rubrik legen: ans Ende dieser Rubrik. */
+function kbInRubrik(sch, wahl){
+  const k = kbFinden(sch); if(!k) return;
+  let ziel = wahl;
+  if(wahl === ""){
+    if(kbRubriken().length >= KB_RUBRIKEN_HOECHST) return melde("Höchstens " + KB_RUBRIKEN_HOECHST + " Rubriken", true);
+    ziel = kbGruppeSauber(window.prompt("Name der neuen Rubrik (höchstens 28 Zeichen):", ""));
+    if(!ziel){ kbZeichnen(); return; }
+  }
+  const v = (kbPlan(sch) || {}).gruppe;
+  k.gruppe = ziel === v ? "" : ziel;
+  KACHELSTAND = KACHELSTAND.filter(x => x !== k);
+  let letzte = -1;
+  KACHELSTAND.forEach((x, i) => { if(kbGruppeVon(x.schluessel) === ziel) letzte = i; });
+  if(letzte > -1) KACHELSTAND.splice(letzte + 1, 0, k); else KACHELSTAND.push(k);
+  kbRubrikenZusammenhalten();
+  kbOffen.add(sch);
+  kbZeichnen();
+  const zeile = document.querySelector('[data-kb="' + sch + '"]');
+  if(zeile) zeile.scrollIntoView({ block:"center" });
+  melde("In Rubrik „" + ziel + "“ gelegt — mit „Übernehmen“ für Gäste wirksam");
+}
 
 /* Innerhalb der eigenen Gruppe verschieben — dasselbe Muster wie
    bnVerschieben() beim Banner-Rad, nur an der Gruppengrenze gestoppt.
@@ -14857,12 +14947,19 @@ function kbFuerRaster(k){
 function kbAnordnungHTML(){
   const bereiche = [];
   KACHELSTAND.filter(k => k.an).forEach(k => {
-    const g = (kbPlan(k.schluessel) || {}).gruppe || "";
+    const g = kbGruppeVon(k.schluessel);
     if(!bereiche.length || bereiche[bereiche.length - 1].gruppe !== g) bereiche.push({ gruppe:g, kacheln:[] });
     bereiche[bereiche.length - 1].kacheln.push(kbFuerRaster(k));
   });
   if(!bereiche.length) return '<p class="kbr-leer">Alle Kacheln sind aus.</p>';
-  return bereiche.map(b => '<div class="kbr-bereich">' + sicher(b.gruppe) + '</div>' +
+  const pf = (r) => '<svg width="12" height="7" viewBox="0 0 12 7" aria-hidden="true"><path d="' + (r < 0 ? "M1 6l5-5 5 5" : "M1 1l5 5 5-5") + '" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  return bereiche.map(b => '<div class="kbr-kopf" data-kbr-rubrik="' + sicher(b.gruppe) + '">' +
+      '<span class="kbr-bereich">' + sicher(b.gruppe) + '</span>' +
+      '<button type="button" class="kbr-rknopf" data-kbr-rname aria-label="Rubrik ' + sicher(b.gruppe) + ' umbenennen">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>' +
+      '<button type="button" class="kbr-rknopf" data-kbr-rhoch aria-label="Rubrik ' + sicher(b.gruppe) + ' nach oben"' + (kbRubrikFinden(b.gruppe, -1) < 0 ? " disabled" : "") + '>' + pf(-1) + '</button>' +
+      '<button type="button" class="kbr-rknopf" data-kbr-rrunter aria-label="Rubrik ' + sicher(b.gruppe) + ' nach unten"' + (kbRubrikFinden(b.gruppe, 1) < 0 ? " disabled" : "") + '>' + pf(1) + '</button>' +
+    '</div>' +
     '<div class="kbr-gitter">' + [].concat(...kachelReihen(b.kacheln)).map(x => {
       const k = x.k.stand;
       return '<div class="kbr-kachel kbr-' + x.form + (k.grund ? " hatgrund" : "") + '" data-kbr="' + sicher(k.schluessel) + '"' +
@@ -14943,6 +15040,12 @@ function kbZeichnen(){
           '<input data-kb-unter maxlength="90" value="' + sicher(k.unter) + '"></label>') +
         '<small class="hvwarn" data-hvwarn="kb:' + sch + '"></small>' +
       '</div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Rubrik</span>' +
+        '<select class="kbkarte" data-kb-rubrik aria-label="Rubrik dieser Kachel">' +
+          kbRubriken().map(g => '<option value="' + sicher(g) + '"' + (g === gruppe ? " selected" : "") + '>' + sicher(g) + '</option>').join("") +
+          (kbRubriken().length < KB_RUBRIKEN_HOECHST ? '<option value="">＋ Neue Rubrik …</option>' : "") +
+        '</select>' +
+        '<small class="kbhinweis">Eine Rubrik klappt für Gäste auf und zu, wie „Jetzt am Tisch“. Ganze Rubriken verschiebst du oben in der Anordnung.</small></div>' +
       kbZielHTML(k, p) +
       '<div class="kbwahlblock"><span class="kbwahlname">Breite</span>' +
         kbSegment("Breite", ["drittel","halb","voll"], kbBreite(k), "kb-breite", KB_BREITENNAME) +
@@ -15068,6 +15171,22 @@ function kbAendern(sch, feld, wert){
   k[feld] = wert;
   kbZeichnen();
 }
+
+/* ── Rubriken (ganze aufklappbare Bereiche des Hubs) ─────────────── */
+document.addEventListener("click", e => {
+  const kopf = e.target.closest && e.target.closest("[data-kbr-rubrik]");
+  if(!kopf) return;
+  const name = kopf.dataset.kbrRubrik;
+  const k = e.target.closest("button"); if(!k || k.disabled) return;
+  if(k.hasAttribute("data-kbr-rhoch"))   kbRubrikVerschieben(name, -1);
+  else if(k.hasAttribute("data-kbr-rrunter")) kbRubrikVerschieben(name, 1);
+  else if(k.hasAttribute("data-kbr-rname"))   kbRubrikUmbenennen(name);
+});
+document.addEventListener("change", e => {
+  const sel = e.target.closest && e.target.closest("[data-kb-rubrik]");
+  if(!sel) return;
+  kbInRubrik(sel.closest("[data-kb]").dataset.kb, sel.value);
+});
 
 /* ── Bedienung ─────────────────────────────────────────────────── */
 document.addEventListener("click", e => {
@@ -15630,6 +15749,7 @@ function kbRoh(){
     const v = p(k.schluessel);
     const e = { schluessel: k.schluessel };
     if(!k.an)                       e.an     = false;
+    if(k.gruppe && k.gruppe !== v.gruppe) e.gruppe = k.gruppe;
     if(k.titel  !== v.titel)        e.titel  = k.titel;
     if((k.unter||"") !== (v.unter||"")) e.unter = k.unter;
     if(k.icon   !== v.icon)         e.icon   = k.icon;
