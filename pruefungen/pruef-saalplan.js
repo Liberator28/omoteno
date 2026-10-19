@@ -204,6 +204,45 @@ const mitte = (p, sel) => p.evaluate(s => { const r = document.querySelector(s).
     await ctx.close();
   }
 
+  /* ── 3b · Zwei Finger (echte Touch-Folgen über CDP) ───────────── */
+  console.log("\n══ Zwei Finger ══");
+  {
+    const { ctx, p, pf } = await neu(br, 390, 844, { hasTouch: true });
+    await stelle(p);
+    const cdp = await ctx.newCDPSession(p);
+    const m = await mitte(p, "#spBuehne");
+    const k0 = await p.evaluate(() => SAAL.kamera.k);
+    const berühre = (art, punkte) => cdp.send("Input.dispatchTouchEvent", { type: art, touchPoints: punkte.map((q, i) => ({ x: q.x, y: q.y, id: i + 1 })) });
+    const y = m.y, cx = m.x - 30;
+    await berühre("touchStart", [{ x: cx - 30, y }, { x: cx + 30, y }]);
+    for(let i = 1; i <= 8; i++) await berühre("touchMove", [{ x: cx - 30 - i * 9, y }, { x: cx + 30 + i * 9, y }]);
+    await berühre("touchEnd", []);
+    await p.waitForTimeout(150);
+    const k1 = await p.evaluate(() => SAAL.kamera.k);
+    pruef(k1 > k0 * 1.8, "Auseinanderziehen mit zwei Fingern zoomt hinein", (k1 / k0).toFixed(2) + "×");
+    const tx = await p.evaluate(() => SAAL.kamera.tx);
+    const sel = await p.evaluate(() => SAAL.auswahl);
+    await berühre("touchStart", [{ x: cx + 80, y }, { x: cx - 80, y }]);
+    for(let i = 1; i <= 8; i++) await berühre("touchMove", [{ x: cx + 80 - i * 6, y }, { x: cx - 80 + i * 6, y }]);
+    await berühre("touchEnd", []);
+    await p.waitForTimeout(150);
+    const k2 = await p.evaluate(() => SAAL.kamera.k);
+    pruef(k2 < k1 * 0.7, "Zusammenziehen zoomt heraus", (k2 / k1).toFixed(2) + "×");
+    pruef(await p.evaluate(() => SAAL.auswahl) === sel, "und wählt dabei keinen Tisch");
+    /* Ein Finger schiebt den Plan */
+    const t0 = await p.evaluate(() => SAAL.kamera.tx);
+    await berühre("touchStart", [{ x: m.x - 40, y: m.y }]);
+    for(let i = 1; i <= 8; i++) await berühre("touchMove", [{ x: m.x - 40 + i * 8, y: m.y }]);
+    await berühre("touchEnd", []);
+    await p.waitForTimeout(100);
+    const t1 = await p.evaluate(() => SAAL.kamera.tx);
+    pruef(Math.abs(t1 - t0) > 30, "ein Finger schiebt den Plan", Math.round(t1 - t0) + " px");
+    pruef(await p.evaluate(() => window.scrollY === 0), "und die Seite rollt dabei nicht mit");
+    void tx;
+    pruef(pf.length === 0, "kein Seitenfehler", pf.join(" | "));
+    await ctx.close();
+  }
+
   /* ── 4 · Bewegung ──────────────────────────────────────────────── */
   console.log("\n══ Bewegung ══");
   {
