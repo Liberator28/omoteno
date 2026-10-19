@@ -22,4 +22,9 @@ PY
 $PSQL -d $DB -f /tmp/zahl_funktionen.sql
 $PSQL -d $DB -f datenbank/migration-zahlungen.sql
 $PSQL -d $DB -tA -f datenbank/pruef-zahlungen.sql | tee /tmp/zahl_ergebnis.txt
-! grep -q '| false' /tmp/zahl_ergebnis.txt
+# Ein NULL-Ergebnis druckt GAR KEINE Zeile (NULL || text = NULL) — darum zählen, nicht nur nach „false“ suchen.
+erwartet=$(grep -c "^select 'Z" datenbank/pruef-zahlungen.sql)
+bekommen=$(grep -c '^Z.* | true$' /tmp/zahl_ergebnis.txt)
+if grep -q '| false' /tmp/zahl_ergebnis.txt || [ "$erwartet" != "$bekommen" ]; then
+  echo "ROT: $bekommen von $erwartet Proben grün (fehlende Zeilen = NULL-Ergebnis)"; exit 1; fi
+echo "alle $bekommen Proben grün"

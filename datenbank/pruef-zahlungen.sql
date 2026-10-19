@@ -146,10 +146,10 @@ select 'Z40 zweites Vormerken liefert dieselbe Zahlung, keine zweite | ' ||
 -- bereits markierte Bestellung (Quarantäne) behält ihren Grund
 insert into st select 'o5', bestellung_aufgeben(:'B1', 'tisch', '7', 9, null, '[]', 'g20')::text;
 update bestellungen set pruefen = true, pruef_grund = 'Netz' where id = (select v::uuid from st where k = 'o5');
+select zahlung_vormerken((select v::uuid from st where k = 'o5'), :'B1', 'stripe') is not null;
 select 'Z42 Vormerken: alte Markierung bleibt, „Zahlung offen“ kommt dazu | ' ||
-  ((zahlung_vormerken((select v::uuid from st where k = 'o5'), :'B1', 'stripe') is not null)
-   and (select be.pruef_grund = 'Netz · Zahlung offen' and za.vorher_markiert
-          from bestellungen be join zahlungen za on za.bestellung_id = be.id where be.id = (select v::uuid from st where k = 'o5')));
+  (select be.pruef_grund = 'Netz · Zahlung offen' and za.vorher_markiert
+     from bestellungen be join zahlungen za on za.bestellung_id = be.id where be.id = (select v::uuid from st where k = 'o5'));
 
 -- ── Z5x Stand für den Gast ──────────────────────────────────────────
 set local role anon; select pg_temp.als(null);
