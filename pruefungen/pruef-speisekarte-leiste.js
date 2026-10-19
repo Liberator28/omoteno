@@ -54,6 +54,13 @@ async function oeffnen(browser, slug, breite, opt = {}) {
   await s.goto(HUB(slug) + "#/speisekarte");
   await s.waitForTimeout(1200);
   if (opt.sprache) { await s.evaluate(sp => { spracheSetzen(sp); zeichne(); }, opt.sprache); await s.waitForTimeout(500); }
+  /* Mit Lieferung steht der Liefer-Schalter in der Zentrale oben rechts,
+     und sie wird doppelt so breit — der Fall vom Bildschirmfoto 19.10. */
+  if (opt.liefer) {
+    await s.evaluate(() => { LIEFER.an = true; zeichne(); }); await s.waitForTimeout(500);
+    const breit = await s.evaluate(() => Math.round(document.querySelector("header .kopfwahl").getBoundingClientRect().width));
+    pruef(breit > 150, "Voraussetzung: Liefer-Schalter steht in der Zentrale (breiter)", breit + " px");
+  }
   return { ctx, s, fehler };
 }
 
@@ -67,9 +74,9 @@ const stand = s => s.evaluate(() => {
     jetzt: katJetzt(), y: scrollY, gerichte: document.querySelectorAll("#inhalt .gericht").length };
 });
 
-async function haus(browser, slug, breite) {
-  console.log("\n══ " + slug + " · " + breite + " px ══");
-  const { ctx, s, fehler } = await oeffnen(browser, slug, breite);
+async function haus(browser, slug, breite, opt = {}) {
+  console.log("\n══ " + slug + " · " + breite + " px" + (opt.liefer ? " · mit Liefer-Schalter" : "") + " ══");
+  const { ctx, s, fehler } = await oeffnen(browser, slug, breite, opt);
   /* 1 · Pille */
   const pille = await s.evaluate(() => {
     const cta = document.querySelector(".seite > .eh-cta"), k = cta && cta.querySelector("[data-eh-los]");
@@ -120,7 +127,30 @@ async function haus(browser, slug, breite) {
     pruef(st.an.length === 1 && st.an[0] === g && st.imBild, "von Hand nach „" + g + "“ gerollt: Markierung folgt und rollt mit", JSON.stringify(st.an) + " im Bild " + st.imBild);
   }
 
-  /* 4 · Klebt: Zurück in der Leiste */
+  /* 4 · Klebt. Zwei Fassungen (19.10.): Reicht der Platz neben der
+     Zentrale, steht „Zurück“ IN der Leiste; ist er zu eng (html.kw-eng),
+     klebt die Leiste eine Zeile tiefer über die ganze Breite und die
+     schwebende Pille steht oben neben der Zentrale. */
+  const eng = await s.evaluate(() => document.documentElement.classList.contains("kw-eng"));
+  if (eng) {
+    const z = await s.evaluate(() => {
+      const zp = document.getElementById("zurueck"), r = zp.getBoundingClientRect();
+      const kw = document.querySelector("header .kopfwahl").getBoundingClientRect();
+      const l = document.querySelector("#inhalt .chips"), lr = l.getBoundingClientRect();
+      const e = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
+      const sh = getComputedStyle(l).boxShadow, zahlen = (sh.match(/-?[\d.]+px/g) || []).map(parseFloat);
+      return { pille: +getComputedStyle(zp).opacity, h: r.height, trifft: !!e && e.closest("#zurueck") === zp,
+        zc: getComputedStyle(l.querySelector(".chip-zurueck")).display,
+        unterKw: lr.top >= kw.bottom - 1, unterPille: lr.top >= r.bottom - 1, breit: lr.width >= innerWidth - 1,
+        /* Schatten deckt die Zeile darüber: nach oben reicht er um -y + spread */
+        deckt: zahlen.length >= 4 && (-zahlen[1] + zahlen[3]) >= lr.top - 1,
+        ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth };
+    });
+    pruef(z.pille === 1 && z.h >= 44 && z.trifft && z.zc === "none", "zu eng für eine Zeile: die schwebende Pille „Zurück“ steht oben, ≥ 44 px, getroffen — keine zweite in der Leiste", JSON.stringify(z));
+    pruef(z.unterKw && z.unterPille && z.breit, "… die Leiste klebt UNTER Zentrale und Pille, über die ganze Breite", JSON.stringify({ unterKw: z.unterKw, unterPille: z.unterPille, breit: z.breit }));
+    pruef(z.deckt, "… und deckt die Zeile darüber (nichts von der Karte scheint zwischen Pille und Zentrale durch)", z.deckt);
+    pruef(z.ueber <= 0, "kein seitliches Überlaufen", z.ueber);
+  } else {
   const kleb = await s.evaluate(() => {
     const zc = document.querySelector("#inhalt .chip-zurueck"), zp = document.getElementById("zurueck");
     const r = zc.getBoundingClientRect();
@@ -132,13 +162,14 @@ async function haus(browser, slug, breite) {
   pruef(kleb.sichtbar && kleb.trifft, "Leiste klebt: „Zurück“ steht IN der Leiste (≥ 44 px) und der Finger trifft ihn", JSON.stringify(kleb));
   pruef(+kleb.pille === 0 && kleb.pilleTipp === "none", "… die schwebende Pille ist weg und nicht antippbar", kleb.pille + " / " + kleb.pilleTipp);
   pruef(kleb.ueber <= 0, "kein seitliches Überlaufen", kleb.ueber);
+  }
   const verdeckt = await s.evaluate(() => {
     const l = document.querySelector("#inhalt .chips"), lr = l.getBoundingClientRect(), aus = [];
     l.querySelectorAll(".chip").forEach(c => { const r = c.getBoundingClientRect();
       if (r.right < lr.left + 4 || r.left > lr.right - 4) return;
       const x = Math.min(Math.max(r.left + r.width / 2, lr.left + 2), lr.right - 2);
       const e = document.elementFromPoint(x, r.top + r.height / 2);
-      if (e && !e.closest(".chip") && !e.closest(".chip-zurueck")) aus.push(c.dataset.g + "→" + (e.className || e.tagName)); });
+      if (e && !e.closest(".chip") && !e.closest(".chip-zurueck")) aus.push(c.dataset.g + "→" + (e.className && e.className.baseVal !== undefined ? e.className.baseVal : e.className || e.tagName)); });
     return aus;
   });
   pruef(!verdeckt.length, "kein Chip liegt unter einem fremden Element", verdeckt.join(", ") || "frei");
@@ -172,6 +203,9 @@ async function haus(browser, slug, breite) {
   for (const slug of ["chocolamour", "blend"]) for (const b of [360, 390, 430]) {
     try { await haus(browser, slug, b); } catch (e) { pruef(false, slug + " " + b + " lief durch", String(e).slice(0, 200)); }
   }
+  for (const b of [360, 390, 430]) {
+    try { await haus(browser, "chocolamour", b, { liefer: true }); } catch (e) { pruef(false, "chocolamour " + b + " mit Lieferung lief durch", String(e).slice(0, 200)); }
+  }
   console.log("\n══ Tipp auf die Pille, reduzierte Bewegung, RTL ══");
   {
     const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", 390);
@@ -193,9 +227,11 @@ async function haus(browser, slug, breite) {
     const { ctx, s, fehler } = await oeffnen(browser, "chocolamour", 390, { sprache: "ar" });
     await s.evaluate(() => scrollTo({ top: 1800, behavior: "instant" })); await s.waitForTimeout(600);
     const r = await s.evaluate(() => {
-      const zc = document.querySelector("#inhalt .chip-zurueck"), b = zc.getBoundingClientRect();
+      /* Unter kw-eng ist es die schwebende Pille, sonst die in der Leiste. */
+      const eng = document.documentElement.classList.contains("kw-eng");
+      const zc = eng ? document.getElementById("zurueck") : document.querySelector("#inhalt .chip-zurueck"), b = zc.getBoundingClientRect();
       const e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2);
-      return { rechts: b.left > innerWidth / 2, trifft: !!e && !!e.closest(".chip-zurueck"), text: zc.textContent.trim(),
+      return { eng, rechts: b.left > innerWidth / 2, trifft: !!e && e.closest(eng ? "#zurueck" : ".chip-zurueck") === zc, text: zc.textContent.trim(),
         ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth };
     });
     pruef(r.rechts && r.trifft && r.text !== "Zurück" && r.ueber <= 0, "Arabisch: „Zurück“ in der Leiste rechts, übersetzt, getroffen, kein Überlauf", JSON.stringify(r));

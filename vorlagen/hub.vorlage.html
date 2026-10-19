@@ -1930,6 +1930,20 @@ html.textwahl body :is(h1,h2,h3,p,span,b,i,strong,a,button,label):hover{outline:
 .chips.chips-neben .chip-zurueck{display:inline-flex}
 /* Die schwebende Pille tritt zurück, solange der Weg in der Leiste steht. */
 body.kat-klebt .zurueck.an{opacity:0;pointer-events:none}
+/* ZU ENG FÜR EINE ZEILE (19.10., Bildschirmfoto iPhone): Mit dem
+   Liefer-Schalter ist die Zentrale oben rechts so breit, dass neben ihr
+   und „Zurück“ kein Chip mehr Platz fand — der gewählte glitt unter
+   „Zurück“, und zwischen Leiste und Zentrale schien die Karte durch.
+   kopfwahlPlatz() setzt dann html.kw-eng: Die Leiste klebt eine Zeile
+   tiefer (--kw-unten, unter der Zentrale) und über die ganze Breite;
+   oben stehen die schwebende Pille „Zurück“ und die Zentrale. Der
+   Schatten in der Grundfarbe deckt die Zeile darüber, damit dort
+   nichts durchscheint (die Leiste rollt waagrecht und schneidet alles
+   ab, was über ihren Rand hinausragt — ein Schatten nicht). */
+html.kw-eng .chips{margin-inline-end:calc(-1 * var(--rand));top:var(--kw-unten, 0px)}
+html.kw-eng .chips.chips-neben{box-shadow:0 calc(var(--kw-unten, 0px) / -2) 0 calc(var(--kw-unten, 0px) / 2) var(--grund)}
+html.kw-eng .chips.chips-neben .chip-zurueck{display:none}
+html.kw-eng body.kat-klebt .zurueck.an{opacity:1;pointer-events:auto}
 .chip{
   flex:0 0 auto;background:var(--flaeche);border:1px solid var(--linie);
   color:var(--tinte-leise);border-radius:999px;padding:10px 15px;font-size:13.5px;
@@ -6761,6 +6775,15 @@ function kopfwahlPlatz(){
   const st = document.documentElement.style;
   st.setProperty("--kw-frei", Math.round(frei) + "px");
   st.setProperty("--kw-b", Math.max(0, Math.round(b)) + "px");
+  /* Bleibt neben „Zurück“ (≈ 110 px) weniger als ein Chip mittlerer
+     Länge (170 px), bekommt die Leiste eine eigene Zeile unter der
+     Zentrale (CSS html.kw-eng). */
+  const eng = frei > 0 && mr.width - frei - 110 < 170;
+  document.documentElement.classList.toggle("kw-eng", eng);
+  st.setProperty("--kw-unten", Math.round(r.bottom + 6) + "px");
+  /* katSpionPlanen steht weiter unten und nutzt ein let — vor dessen
+     Zeile wäre der Aufruf ein ReferenceError (§8.1l). */
+  try{ katSpionPlanen(); }catch(e){}
 }
 (function(){
   const los = () => {
@@ -17055,7 +17078,8 @@ function katSpion(){
   /* Klebt die Leiste oben, wird „Zurück“ ihr erstes Element (selbst
      klebend, die Chips gleiten darunter durch), und die schwebende Pille
      tritt zurück — vorher lag sie über dem ersten Chip. */
-  const klebt = !!document.querySelector(".zurueck.an") && l.getBoundingClientRect().top <= 1;
+  const oben = parseFloat(getComputedStyle(l).top) || 0;   /* 0, unter kw-eng --kw-unten */
+  const klebt = !!document.querySelector(".zurueck.an") && l.getBoundingClientRect().top <= oben + 1;
   l.classList.toggle("chips-neben", klebt);
   document.body.classList.toggle("kat-klebt", klebt);
   const alle = l.querySelector('.chip[data-g="Alle"]');
@@ -17100,7 +17124,8 @@ function katSpringen(g){
     const gr = [...document.querySelectorAll("#inhalt .gruppe[data-gruppe]")].find(x => x.dataset.gruppe === g);
     if(!gr || !gr.nextElementSibling) return false;
     const l = document.querySelector("#inhalt .chips");
-    y = scrollY + gr.nextElementSibling.getBoundingClientRect().top - gr.offsetHeight - (l ? l.offsetHeight : 0) - 2;
+    y = scrollY + gr.nextElementSibling.getBoundingClientRect().top - gr.offsetHeight
+      - (l ? l.offsetHeight + (parseFloat(getComputedStyle(l).top) || 0) : 0) - 2;
   }else{
     const l = document.querySelector("#inhalt .chips");
     y = l ? Math.max(0, scrollY + l.getBoundingClientRect().top - 4) : 0;
