@@ -1633,6 +1633,33 @@ Jede Geste auf der Seitenfläche wird mit **schnellem, wiederholtem
 Rollen** geprüft, nicht nur mit einem sauberen Zug. Was in Wartezeit
 nachlädt (Fotos der nächsten Karte), wird vorab geholt.
 
+### 8.1w Eine Regel, die an EINEM Feld geprüft wurde, gilt für dieses Feld
+
+> **Vorfall, im Sicherheits-Sweep vom 19.10. gemessen.** §2.3a verlangte
+> seit Wochen: „Was aus einer Live-Spalte in ein Attribut geht, läuft über
+> eine feste Liste oder `hs()`.“ Die Kacheln, Banner, Kopfbild und
+> `hub_texte.eigen` taten es — und wurden geprüft, jeweils mit einem
+> Anführungszeichen in DIESEM Feld. Gerichtname, Beschreibung, Kategorie,
+> Aktionstitel, Pausentext, `hub_woerter` und beide Übersetzungsspalten
+> gingen roh durch `t()` in `innerHTML`. `<img src=x onerror=…>` hat 28
+> Zeichen und passt unter jede Längenschranke. Gemessen: Die Nutzlast lief
+> beim Gast, sobald er die Karte öffnete. Gefunden hat es erst eine Probe,
+> die JEDES Feld zugleich vergiftet (je eine eigene Marke), nicht eine, die
+> ein Feld nach dem anderen für sauber erklärt.
+>
+> Daneben: ein CSV-Export, der Gast-Notizen unverändert als Zelle schrieb
+> (`=HYPERLINK(…)` beim Personal), und eine CSP, die `*.supabase.co`
+> erlaubte statt des eigenen Projekts — ein eingeschleustes Skript hätte
+> seine Beute an ein Projekt des Angreifers schicken dürfen.
+
+Regel: Wer „alle Live-Spalten sind geprüft“ sagt, belegt es mit der
+Vergiftungsprobe (`pruef-einschleusung.js`), und jede NEUE Spalte, die ein
+Gast, das Team oder ein Übersetzer schreibt, kommt in
+`pruefungen/werkzeug/hub-vergiftet.js` mit hinein — sonst prüft die
+Probe sie nicht. Ein Text, der als Schlüssel dient (Gerichtname,
+Kategorie), verliert nur `<>`; Anzeigetext zusätzlich das gerade `"`
+(`liveText`/`liveTextDoppel`). Und am Senke zählt `hs()` trotzdem.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1707,7 +1734,7 @@ Dazu je nach Änderung:
 | **Gericht anlegen im Board (Blatt, „Mehr Angaben“, Speichern & nächstes)** | `pruefungen/pruef-gericht-schnell.js` — Ruhelage zugeklappt, Preis mit Komma, erkannte Allergene nur als Vorschlag (nichts von selbst gesetzt, Gegenfall ohne Treffer), Serienanlage behält Karte/Kategorie und leert den Rest, unlesbarer Preis speichert nicht und sagt warum |
 | **Rabatt am Gericht, Aktionspreis in der Karte** | `pruefungen/pruef-rabatt-gericht.js` (braucht `dist/`) — Board schreibt in `aktionen` innerhalb jeder Schranke (zweite Quelle `datenbank/stand-aktionen-schranken.sql`), Hub zeigt neuen und alten Preis samt „−20 %“, „+“ legt zum Aktionspreis in den Korb und zieht nach Ende nach, Dauer-Rabatt nicht im Streifen, Plakette lesbar je Haus Tag/Abend |
 | **Altersfreigabe 16+/18+ (Board, Hub, Küche)** | `pruefungen/pruef-altersfreigabe.js` (braucht `dist/`) — Alkohol aus dem Namen nur VORGESCHLAGEN, gegen die echten Getränkenamen (§6.1), Frage einmal je Stufe und Sitzung auch über zweiten Weg, „Wieder herausnehmen“ nimmt nur Betroffenes, Schirm entfernt statt versteckt, Küche „Ausweis 18+“ an der Position |
-| **Sicherheit: Kopfzeilen, CSP, selbst ausgelieferte Bibliotheken, 429 an den Türen, Polling, offene anon-Funktionen** | `pruefungen/pruef-sicherheit.js` — lokaler Server mit den echten `_headers` (wie Netlify zusammengeführt): CSP/HSTS/DENY, `/lib/` immutable, keine Seite lädt fremdes Skript; elf Seiten ohne `securitypolicyviolation`; manipulierte `/lib/`-Datei wird nicht ausgeführt (integrity); HTTP 429 an Board, Konto, Küche, Master gibt einen Satz und KEINEN Login-Versuch (Gegenfall: erlaubt → Versuch); versteckter Tab fragt zehn Minuten nichts, zurück holt sofort; jede anon-Funktion aus `datenbank/stand-anon-funktionen.sql` gebremst oder namentlich begründet, und jede Funktion in `migration-schutz-2.sql` trägt ihre Bremse |
+| **Sicherheit: Kopfzeilen, CSP, selbst ausgelieferte Bibliotheken, 429 an den Türen, Polling, offene anon-Funktionen** | `pruefungen/pruef-sicherheit.js` — lokaler Server mit den echten `_headers` (wie Netlify zusammengeführt): CSP/HSTS/DENY, `/lib/` immutable, keine Seite lädt fremdes Skript; elf Seiten ohne `securitypolicyviolation`; manipulierte `/lib/`-Datei wird nicht ausgeführt (integrity); HTTP 429 an Board, Konto, Küche, Master gibt einen Satz und KEINEN Login-Versuch (Gegenfall: erlaubt → Versuch); versteckter Tab fragt zehn Minuten nichts, zurück holt sofort; `connect-src` nennt nur das EIGENE Projekt (Adresse aus dem Board gelesen, kein `*.supabase.co`; Browserprobe: `evilproject.supabase.co` wird gesperrt); jede anon-Funktion aus `datenbank/stand-anon-funktionen.sql` gebremst oder namentlich begründet, und jede Funktion in `migration-schutz-2.sql` trägt ihre Bremse |
 | **Speisekarte: Pille „Für mich entscheiden“ über dem Titel, Kategorie-Leiste geht beim Rollen mit, „Zurück“ in der klebenden Leiste** | `pruefungen/pruef-speisekarte-leiste.js` (braucht `dist/`) — beide Häuser 360/390/430 px: Pille erstes Element vor dem `h2`, eine Zeile ≤ 52 px, ≥ 44 px, ≥ 4,5:1, Tipp → Rad; Tipp auf eine Kategorie SPRINGT (filtert nicht — alle Gerichte bleiben), genau ein Chip `.an` mit `aria-current`, ganz im Bild der Leiste, nicht verdeckt (`elementFromPoint`), erstes Gericht direkt unter der Leiste; von Hand gerollt folgt die Markierung, oben wieder „Alle“; klebt die Leiste, steht „Zurück“ IN ihr (getroffen) und die schwebende Pille ist weg (opacity 0, nicht antippbar), kein Chip unter fremdem Element; „Beliebt“ filtert wie bisher; reduzierte Bewegung springt sofort; Arabisch: Zurück rechts, übersetzt. Liefer-Schalter ohne Feder: `pruef-liefern.js` (nur steigend, nie über 44 px, keine Stauchung) |
 | **Kachel → Unterseite (seit 11.10. OHNE Übergang), Glas-Knopf „Zurück“** | `pruefungen/pruef-reise.js` (braucht `dist/`) — jede Kachel der echten Startseite über den echten Tipp: Adresse im selben Takt, nie eine `.reise`-Ebene, im ersten Bild deckend (gegen die RUHE gemessen — die 0,85 des Foodroulette-Pfeils ist Gestaltung; Fotos blenden erst nach dem Laden ein und sind ausgenommen), nur eine transform-Bewegung ≤ 220 ms ohne Verzögerung; reduzierte Bewegung: keine Animation; Zurück ohne Ebene; Glas-Knopf je Sprache, ≥ 44 px, Licht nur transform |
 | **Wischen zwischen den Unterseiten (nächste/vorige Kachel)** | `pruefungen/pruef-seitenwischen.js` (braucht `dist/`) — echte Touch-Folgen über CDP, beide Häuser: Folge = Reihenfolge der Kacheln auf der gezeichneten Startseite (`sichtbareKacheln()`, EINE Stelle für Startseite und Wischen), mitten im Zug folgt die Seite dem Finger (translateX ≈ Weg) mit Zielpille, links → nächste, rechts → vorige, 40 px → federt zurück, senkrecht rollt, in einer seitlich rollenden Leiste kein Wechsel, Ränder bleiben, nur transform ≤ 300 ms, reduzierte Bewegung ohne Animation, Arabisch gespiegelt. **Ehrliche Grenze:** In Chromium bricht eine rollende Leiste den Zug selbst ab (`pointercancel`); die eigene overflow-Ausnahme ist dort nicht messbar (Gegenbeweis blieb grün) und bleibt als Vorsorge |
@@ -1743,6 +1770,8 @@ Dazu je nach Änderung:
 | **Kacheln, Symbole, Banner, Baukasten im Board** | `pruefungen/pruef-baukasten.js` (braucht `dist/`) — zweite Quelle, Zuschnitt, Schrift nie auf dem Bild |
 | **Besuchsbild, Sterne, Foto** | `pruefungen/pruef-besuchsbild.js` (braucht `dist/`) — Sterne auf der Leinwand, Bild aus der Karte |
 | **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung; dazu mit echtem Finger (CDP-Touch): kein zweiter Scrollbereich im Kategorie-Blatt, Wische rollen bis „Sichern", gescrollt schließt ein Wisch nach unten NICHT, oben schließt er auch auf einem Knopf, Antippen wählt weiterhin, Schleier rollt das Board nicht, im Hub zählt ein Wisch nicht zusätzlich als „Zurück" |
+| **Eingeschleuster Code aus Live-Spalten (Gerichtname, Beschreibung, Kategorie, Aktion, Pausentext, Wörter, Übersetzungen, Kacheln, Banner …), neue Spalte, die jemand außer dem Bauer schreibt** | `pruefungen/pruef-einschleusung.js` (braucht `dist/`) — Werkzeug `pruefungen/werkzeug/hub-vergiftet.js` stellt die Datenbank nach, JEDES Feld trägt eine eigene Marke, die Nutzlast ruft `__x.push(Marke)`; fünf Arten (Tag, JS-String, Attribut mit " und ', javascript:-URL) × de/en; Voraussetzung: Mindestmenge von 10 Feldern kam im DOM an (sonst grünes Nichts, §8.1g); Gegenbeweis im Worktree auf dem alten Stand: html 4 Felder, attr 1 Feld feuern. Grenze: WLAN, Lieferung, hub_stil nur als Positivliste gelesen |
+| **CSV-Export im Board** | `pruefungen/pruef-csv-schutz.js` — Gast-Notiz/Gastname/Telefon mit = + - @ Tab: keine Zelle der erzeugten Datei beginnt mit einem Formelzeichen (Telefonnummern „+49 …“ bleiben), `awCsvFeld` ebenso. Grenze: ob Excel ausführt, nicht gemessen |
 | **Fehler aus dem Kundentest (schnelles Rollen, Kartenwisch-Fotos, doppelte Rechtslinks, Fußzeile hinter der Leiste)** | `pruefungen/pruef-kundenweg.js` (braucht `dist/`) — echter Finger (CDP): 8 Runden hoch/runter + Zug nach unten am oberen Rand bleibt in der Speisekarte (Voraussetzung: scrollY 0); sieben Karten gewischt mit nachgestellten, 900 ms langsamen Fotos: keine Karte blendet ihr Foto ein, wenn sie schon vorn liegt (`edPos` = 7 selbst geprüft); Warenkorb: leer ein Link je Art, gefüllt genau einer (Zahlteil), Fußzeile ausgeblendet; letzte Zeile der Fußzeile endet über der Auswahl-Leiste auf fünf Unterseiten. `HUB_DATEI=` für den Gegenbeweis im Worktree (3 von 12 rot auf dem alten Stand) |
 | **Notizen des Teams (Board, Küche), Nachricht an den Gast, Reservierung mit Nummer** | `pruefungen/pruef-notizen.js` (braucht `dist/`) — Naht als Quelltext gegen `migration-notizen.sql` (Parameter, Gründe, Spaltenrechte), Board: Stufe 1 sendet NICHTS, Stufe 2 genau den Vorschautext, `text_anders` zeigt den neuen Stand, Bearbeiten ohne Bestätigung lässt den Gast die alte Fassung sehen, Tipp ändert keinen Status, 44 px; Küche dasselbe am Bon; Hub: Streifen „Neue Nachricht“, Text nie als Auszeichnung, Englisch nur der Rahmen, Reservierung zeigt Stand und Nachricht. Die DB-Hälfte: zurückgedrehter Probelauf, 24 Proben |
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
