@@ -26,6 +26,7 @@
        den Kopf.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -60,6 +61,9 @@ async function oeffnen(browser, breite, hoehe, ctxAlt){
   const scharf = await p.$("#scharfJetzt");
   if(scharf && await p.isVisible("#scharf")){ await scharf.click(); await p.waitForTimeout(300); }
   await p.evaluate(() => tafelZeigen("startseite"));
+  /* Seit 19.10. liegt jede Gruppe hinter einer Kachel; Kopf und Vorschau
+     erscheinen erst in einer Unterseite. „Schrift“ ist die Vorgabe der Proben. */
+  pruef(await gruppeZu(p, "#swGruppe"), "Voraussetzung: Unterseite „Schrift“ über ihre Kachel geöffnet");
   for(let i = 0; i < 40; i++){
     const ok = await p.evaluate(() => { const h = hvAlle().gestalten; return !!(h && h.bereit); });
     if(ok) break;
@@ -74,7 +78,7 @@ const platz = async p => { await p.evaluate(() => {
     /* Gemessen wird KLEBEND — mitten in den Einstellungen, nicht oben
        auf der Seite, wo die Vorschau noch im Fluss steht. */
     if(document.activeElement && document.activeElement.matches("input,textarea,select")) return;
-    const g = document.getElementById("swGruppe");
+    const g = document.querySelector("#t-startseite > .egruppe.eu-jetzt") || document.getElementById("swGruppe");
     scrollTo(0, g.getBoundingClientRect().top + scrollY - 100);
   }); await p.waitForTimeout(150); return p.evaluate(() => {
   const v = document.querySelector(".gh-vorschau"), kopf = document.querySelector("header");
@@ -123,7 +127,7 @@ const platz = async p => { await p.evaluate(() => {
   await p.waitForTimeout(200);
 
   console.log("══ 2 · Fokus in einem Feld ══");
-  await p.evaluate(() => document.getElementById("gh-worte").scrollIntoView());
+  pruef(await gruppeZu(p, "#gh-worte"), "Voraussetzung: Unterseite „Ihre Worte“ über ihre Kachel geöffnet");
   await p.waitForTimeout(200);
   await p.focus("#hubClaim");
   await p.waitForTimeout(400);
@@ -145,11 +149,12 @@ const platz = async p => { await p.evaluate(() => {
 
   console.log("══ 3 · Jeder Sprung landet im freien Bereich ══");
   const ziele = await p.evaluate(() => [...document.querySelectorAll("[data-gh-sprung]")].map(a => a.dataset.ghSprung));
-  pruef(ziele.length >= 9, "Sprungleiste gelesen (zweite Quelle für die Gruppen)", ziele.length);
+  const gruppenZahl = await p.evaluate(() => document.querySelectorAll("#t-startseite > .egruppe:not(.eu-uebersicht)").length);
+  pruef(ziele.length === gruppenZahl && ziele.length >= 9, "Symbolleiste gelesen: ein Eintrag je Gruppe (zweite Quelle: die Gruppen)", ziele.length + " / " + gruppenZahl);
   for(const z of ziele){
     await p.evaluate(() => scrollTo(0, 0));
     await p.click('[data-gh-sprung="' + z + '"]');
-    await p.waitForTimeout(900);
+    await p.waitForTimeout(500);
     const r = await p.evaluate(z => {
       const g = document.getElementById(z), t = g.querySelector("h2,h3,.etitel") || g;
       const tr = t.getBoundingClientRect();
@@ -159,7 +164,7 @@ const platz = async p => { await p.evaluate(() => {
       const e = document.elementFromPoint(x, y);
       return { top: Math.round(tr.top), oben: Math.round(oben), trifft: !!(e && g.contains(e)) };
     }, z);
-    pruef(r.top >= r.oben - 2 && r.trifft, "Sprung zu " + z + ": Titel sichtbar und getroffen", JSON.stringify(r));
+    pruef(r.top >= r.oben - 2 && r.trifft, "Wechsel zu " + z + ": Titel steht frei unter Kopf und Vorschau und wird getroffen", JSON.stringify(r));
   }
 
   console.log("══ 4 · Neuaufbau beschriftet nach Zustand ══");
@@ -175,6 +180,7 @@ const platz = async p => { await p.evaluate(() => {
 
   console.log("══ 5 · Desktop 1280×800: nebeneinander ══");
   ({ p, fehler } = await oeffnen(browser, 1280, 800));
+  pruef(await gruppeZu(p, "#kfGruppe"), "Voraussetzung: Unterseite „Kopf & Logo“ über ihre Kachel geöffnet");
   const d = await p.evaluate(() => {
     const v = document.querySelector(".gh-vorschau").getBoundingClientRect(), g = document.getElementById("kfGruppe").getBoundingClientRect();
     const k = document.getElementById("t-startseite").querySelector(".gh-kopf").getBoundingClientRect();
@@ -192,10 +198,10 @@ const platz = async p => { await p.evaluate(() => {
   pruef(steht.top >= 0 && steht.top < 200, "beim Rollen bleibt sie stehen", JSON.stringify(steht));
   await p.evaluate(() => scrollTo(0, 0));
   await p.click('[data-gh-sprung="fbGruppe"]');
-  await p.waitForTimeout(900);
-  const sp = await p.evaluate(() => ({ top: Math.round(document.getElementById("fbGruppe").getBoundingClientRect().top),
+  await p.waitForTimeout(500);
+  const sp = await p.evaluate(() => ({ top: Math.round(document.querySelector("#fbGruppe h2.etitel").getBoundingClientRect().top),
                                        kopf: Math.round(document.querySelector("header").getBoundingClientRect().bottom) }));
-  pruef(sp.top >= sp.kopf && sp.top <= sp.kopf + 40, "Sprung am Desktop: direkt unter den Kopf (die Vorschau steht daneben)", JSON.stringify(sp));
+  pruef(sp.top >= sp.kopf && sp.top <= sp.kopf + 220, "Wechsel am Desktop: die Unterseite beginnt gleich unter dem Kopf und der Symbolleiste (die Vorschau steht daneben)", JSON.stringify(sp));
   pruef(!fehler.length, "keine Seitenfehler (Desktop)", fehler.join(" | "));
 
   await browser.close();

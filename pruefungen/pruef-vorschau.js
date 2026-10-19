@@ -245,6 +245,7 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
   }
 
   /* Die Kachelzeilen sind zugeklappt (26.09.) — die erste aufklappen. */
+  await gruppeZu(p, "#kbListe");
   const ersteAuf = await p.$('#kbListe .kbzeile [data-kb-auf]');
   if(ersteAuf){ await ersteAuf.click(); await p.waitForTimeout(450); }
   const kbFeld = await p.$('#kbListe .kbzeile [data-kb-titel]');

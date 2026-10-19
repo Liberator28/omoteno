@@ -171,6 +171,20 @@ const AUFBAU = id => {
       leisteSichtbar: document.querySelector("#t-startseite .gh-sprung").getClientRects().length > 0 }));
     pruef(w.offen === "fbGruppe" && w.sichtbar.join() === "fbGruppe" && w.aktiv.join() === "fbGruppe" && w.leisteSichtbar,
       "Tipp auf ein Symbol wechselt die Unterseite sofort (Farben), die Leiste bleibt, aktives Symbol wechselt mit", JSON.stringify(w));
+    /* Das Rad der Figur steht nach dem Öffnen: Es wird erst gemessen, wenn
+       die Gruppe sichtbar ist — verborgen hat jedes Stück Breite 0 (gefunden
+       von pruef-figur-board nach dem Umbau: Auswahlknöpfe 0 px hoch). */
+    await p.evaluate(() => { document.getElementById("t-startseite").querySelector(".eu-zurueck").click(); });
+    await p.waitForTimeout(100);
+    await p.click('#t-startseite [data-eu-seite="gh-figur"]');
+    await p.click('#t-startseite [data-av-auf="figur"]');
+    await p.waitForTimeout(500);
+    const rad = await p.evaluate(() => { const spur = document.getElementById("avspur-figur"), a = spur.querySelector(".avstueck.aktiv");
+      const sr = spur.getBoundingClientRect(), ar = a.getBoundingClientRect();
+      return { hoehe: Math.min(...[...spur.querySelectorAll(".avstueck")].map(x => x.getBoundingClientRect().height)),
+        mitte: Math.abs((ar.left + ar.width / 2) - (sr.left + sr.width / 2)), spur: sr.width }; });
+    pruef(rad.spur > 100 && rad.hoehe >= 44 && rad.mitte <= 6, "Rad der Figur nach dem Öffnen: Auswahlknöpfe ≥ 44 px hoch, aktive Figur in der Mitte der Spur",
+      JSON.stringify({ hoehe: Math.round(rad.hoehe), abwMitte: Math.round(rad.mitte), spur: Math.round(rad.spur) }));
     /* Ein Tipp in der Vorschau auf einen Text öffnet „Alle Texte“. */
     await p.evaluate(() => { document.getElementById("t-startseite").querySelector(".eu-zurueck").click(); });
     await p.waitForTimeout(100);

@@ -521,9 +521,14 @@ const MESSEN = () => {
     await p.addInitScript(() => { Element.prototype.requestFullscreen = () => Promise.resolve(); });
     await p.goto("file://" + path.join(OBEN, "seiten", "admin.html"));
     await p.waitForTimeout(800);
+    /* Erst die Unterseite öffnen — der Zuschnitt-Dialog legte sich sonst
+       über die Kachel und finge den Tipp. tafelZeigen() steht deshalb
+       VOR dem Öffnen, nicht danach (es schlösse die Unterseite wieder). */
+    await p.evaluate(() => { document.getElementById("tor").hidden = true; demoStarten(); zeichneAlles();
+      const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("startseite"); });
+    await p.waitForTimeout(300);
+    await gruppeZu(p, art === "kb" ? "#gh-kacheln" : "#gh-banner");
     await p.evaluate(async art => {
-      document.getElementById("tor").hidden = true; demoStarten(); zeichneAlles();
-      const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("startseite");
       /* Ein Bild mit Muster, 1200×900, als echte Datei. */
       const c = document.createElement("canvas"); c.width = 1200; c.height = 900;
       const g = c.getContext("2d");
@@ -533,7 +538,6 @@ const MESSEN = () => {
       if(art === "kb"){ kbAusZeile([]); kbZeichnen(); kbZuschnittOeffnen("tischruf", datei); }
       else { bnAusZeile([]); bnNeu(); bnZuschnittOeffnen(BANNERSTAND[0].id, datei); }
     }, art);
-    await gruppeZu(p, art === "kb" ? "#gh-kacheln" : "#gh-banner");
     await p.waitForTimeout(900);
     const R = "#" + art + "Rahmen", Z = art === "kb" ? "kbZuschnitt" : "bnZuschnitt", G = art === "kb" ? "kbGrundmass" : "bnGrundmass";
     const lage = () => p.evaluate(([R, Z, G]) => { const r = document.querySelector(R).getBoundingClientRect(), st = window.eval(Z);

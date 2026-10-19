@@ -373,10 +373,12 @@ const STUFEN = ["weiss", "creme", "warm", "gedaempft", "dunkel", "schwarz"];
       /* Seit 18.10. liegen die Einstellungen in Unterseiten hinter
          Kacheln: jede einzeln, ihre ids aus dem gezeichneten Board. */
       let wege = f.seiten || [null];
-      if(wege.includes("einstellungen")){
-        const ids = await seite.evaluate(() => [...document.querySelectorAll("#t-einstellungen [data-eu-seite]")].map(k => k.dataset.euSeite)).catch(() => []);
-        pruef(ids.length >= 10, f.name + " " + lage + ": Voraussetzung: Unterseiten der Einstellungen gefunden", ids.length);
-        wege = wege.flatMap(w => w === "einstellungen" ? [w, ...ids.map(i => "einstellungen/" + i)] : [w]);
+      /* Seit 19.10. haben „Einstellungen“ UND „Gast-Hub gestalten“ Unterseiten. */
+      for(const reiter of ["einstellungen", "startseite"]){
+        if(!wege.includes(reiter)) continue;
+        const ids = await seite.evaluate(r => [...document.querySelectorAll("#t-" + r + " [data-eu-seite]")].map(k => k.dataset.euSeite), reiter).catch(() => []);
+        pruef(ids.length >= 10, f.name + " " + lage + ": Voraussetzung: Unterseiten von „" + reiter + "“ gefunden", ids.length);
+        wege = wege.flatMap(w => w === reiter ? [w, ...ids.map(i => reiter + "/" + i)] : [w]);
       }
       const gesammelt = new Map();
       for(const w of wege){

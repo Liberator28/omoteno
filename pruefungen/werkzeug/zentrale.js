@@ -18,6 +18,10 @@ async function gruppeZu(p, sel){
   }, sel);
   if(!info || !info.sichtbar) return false;
   if(info.offen === info.id) return true;
+  /* Die Einblendung „Vollbild?“ des Boards läge über den Kacheln und finge
+     den Tipp (der kopflose Browser meldet sie immer) — wie ein Mensch sie
+     wegtippt, nur ohne den Umweg über den Vollbildmodus (§3.8). */
+  await p.evaluate(() => { const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; });
   if(info.offen) await p.click("#" + info.tafel + " > .eu-zurueck");
   await p.click("#" + info.tafel + ' [data-eu-seite="' + info.id + '"]');
   await p.waitForTimeout(150);

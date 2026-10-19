@@ -430,8 +430,12 @@ const LAEUFT = () => {
   pruef(JSON.stringify(b.arten) === JSON.stringify(ARTEN) && JSON.stringify(b.szenen) === JSON.stringify(ARTEN), "sechs Kacheln = WZ_ARTEN, jede zeigt ihre Szene", b.arten.join(","));
   pruef(b.an.length === 1 && b.an[0] === "tisch" && b.knopf, "gespeicherte Szene gewählt, „Übernehmen“ gesperrt ohne Änderung", b.an.join(","));
   pruef(b.hoehe >= 44 && b.ueber <= 0 && b.inhaber, "Kacheln ≥ 44 px, 360 px ohne Überlauf, Besitzer-Gruppe", b.hoehe + " / " + b.ueber);
-  /* Außer Sicht ruhen die Szenen: ganz nach oben gerollt. */
-  await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(300);
+  /* Außer Sicht ruhen die Szenen. Seit 19.10. steht die Gruppe als eigene
+     Unterseite da, und bei 900 px Höhe passen alle sechs Kacheln ins Bild —
+     „außer Sicht“ gäbe es nie. Deshalb ein niedriges Fenster: Die unteren
+     Reihen liegen darunter. Voraussetzung wird mitgemessen (unten). */
+  await p.setViewportSize({ width:360, height:380 });
+  await p.evaluate(() => scrollTo(0, 0)); await p.waitForTimeout(500);
   const ruhe = await p.evaluate(() => [...document.querySelectorAll("#wzWahlen .wz-wahl")].map(x => { const r = x.getBoundingClientRect();
     return { aus: r.bottom < 0 || r.top > innerHeight, ruht: x.classList.contains("wz-ruht") }; }));
   pruef(ruhe.some(x => x.aus) && ruhe.every(x => !x.aus || x.ruht), "außer Sicht ruhen die Szenen", ruhe.filter(x => x.aus).length + " außer Sicht");
