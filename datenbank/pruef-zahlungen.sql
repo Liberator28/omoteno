@@ -291,6 +291,31 @@ set local role authenticated; select pg_temp.als(:'C');
 select 'Z98h zweites „vor Ort“ auf bezahlter Zahlung ändert nichts | ' || (zahlung_vor_ort_freigeben((select v::uuid from st where k = 'o7'))->>'schon' = 'true');
 reset role;
 
+-- ── Z99 Rückzahlung: bezahlt, danach storniert ─────────────────────
+insert into st select 'o8', bestellung_aufgeben(:'B1', 'tisch', '4', 16, null, '[]', 'g50')::text;
+insert into st select 'o9', bestellung_aufgeben(:'B1', 'tisch', '4', 17, null, '[]', 'g51')::text;
+select zahlung_vormerken((select v::uuid from st where k = 'o8'), :'B1', 'stripe') is not null;
+select zahlung_vormerken((select v::uuid from st where k = 'o9'), :'B1', 'stripe') is not null;
+set local role service_role;
+select zahlung_freigeben((select v::uuid from st where k = 'o8'), 'card', 'pi_8', 'acct_1ABCDEFGHIJ') is not null;
+reset role;
+update bestellungen set status = 'storniert' where id in ((select v::uuid from st where k = 'o8'), (select v::uuid from st where k = 'o9'));
+select 'Z99 bezahlt und dann storniert → Rückzahlung nötig (Trigger) | ' || (select rueckzahlung_noetig from zahlungen where bestellung_id = (select v::uuid from st where k = 'o8'));
+select 'Z99b storniert, aber NIE bezahlt → keine Rückzahlung | ' || (select not rueckzahlung_noetig from zahlungen where bestellung_id = (select v::uuid from st where k = 'o9'));
+set local role authenticated; select pg_temp.als(:'C');
+select 'Z99c Team darf „Rückzahlung erledigt“ nicht setzen | ' || (zahlung_rueckzahlung_erledigt((select v::uuid from st where k = 'o8'))->>'grund' = 'kein_recht');
+select pg_temp.als(:'B');
+select 'Z99d fremder Inhaber auch nicht | ' || (zahlung_rueckzahlung_erledigt((select v::uuid from st where k = 'o8'))->>'grund' = 'kein_recht');
+select pg_temp.als(:'A');
+select 'Z99e Inhaber auf nicht nötige Zahlung → nicht_noetig | ' || (zahlung_rueckzahlung_erledigt((select v::uuid from st where k = 'o9'))->>'grund' = 'nicht_noetig');
+select 'Z99f Inhaber sieht die offene Rückzahlung (Spalte lesbar) | ' || ((select count(*) from zahlungen where rueckzahlung_noetig and not rueckzahlung_erledigt) >= 1);
+select 'Z99g Inhaber setzt „erledigt“ | ' || (zahlung_rueckzahlung_erledigt((select v::uuid from st where k = 'o8'))->>'ok' = 'true');
+select 'Z99h …danach ist sie nicht mehr offen | ' || ((select count(*) from zahlungen where bestellung_id = (select v::uuid from st where k = 'o8') and rueckzahlung_noetig and not rueckzahlung_erledigt) = 0);
+set local role anon; select pg_temp.als(null);
+select 'Z99i anon kann es nicht | ' || (pg_temp.fehler(format('select zahlung_rueckzahlung_erledigt(%L)', (select v from st where k = 'o8'))) ~ 'permission denied');
+reset role;
+select 'Z99j Trigger-Funktion ist kein rpc-Endpunkt (§2.3a) | ' || (not has_function_privilege('anon', 'public.zahlung_storno_merken()', 'EXECUTE') and not has_function_privilege('authenticated', 'public.zahlung_storno_merken()', 'EXECUTE'));
+
 -- ── Z10x Einstellungen wieder ausschalten ──────────────────────────
 set local role authenticated; select pg_temp.als(:'A');
 select 'Z100 Überweisung ausschalten (Rest bleibt) → ok | ' || (zahlarten_setzen(:'B1',

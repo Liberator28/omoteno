@@ -116,6 +116,7 @@ create table if not exists public.zahlungen (
   sessions_erstellt smallint not null default 0 check (sessions_erstellt between 0 and 20),
   vorher_markiert   boolean not null default false,
   rueckzahlung_noetig boolean not null default false,
+  rueckzahlung_erledigt boolean not null default false,
   erstellt_am       timestamptz not null default now(),
   bezahlt_am        timestamptz,
   geaendert_am      timestamptz not null default now()
@@ -128,7 +129,7 @@ comment on table public.zahlungen is
 alter table public.zahlungen enable row level security;
 revoke all on public.zahlungen from anon, authenticated, public;
 grant select (id, betrieb_id, bestellung_id, art, methode, status, betrag_cent, waehrung, erstellt_am, bezahlt_am,
-              rueckzahlung_noetig) on public.zahlungen to authenticated;
+              rueckzahlung_noetig, rueckzahlung_erledigt) on public.zahlungen to authenticated;
 do $$ begin
   if not exists (select 1 from pg_policies where schemaname='public' and tablename='zahlungen' and policyname='zahlungen_team_liest') then
     create policy zahlungen_team_liest on public.zahlungen for select to authenticated
@@ -526,6 +527,42 @@ begin
 end $function$;
 revoke execute on function public.zahlung_vor_ort_freigeben(uuid) from public, anon;
 grant  execute on function public.zahlung_vor_ort_freigeben(uuid) to authenticated;
+
+-- ── 7c · Bezahlt, aber die Bestellung fällt weg → Rückzahlung nötig ──
+-- Storniert der Gast (oder lehnt das Personal ab), NACHDEM bezahlt wurde, steht
+-- die Karte nirgends mehr im Board — das Geld würde still behalten. Der Trigger
+-- merkt es in der Zahlung; das Board listet jede offene Rückzahlung, an
+-- welchem Tag auch immer, bis der Besitzer „erledigt“ tippt.
+create or replace function public.zahlung_storno_merken()
+returns trigger language plpgsql security definer set search_path = public as $function$
+begin
+  update public.zahlungen set rueckzahlung_noetig = true, geaendert_am = now()
+   where bestellung_id = new.id and status = 'bezahlt' and not rueckzahlung_noetig;
+  return null;
+end $function$;
+revoke execute on function public.zahlung_storno_merken() from public, anon, authenticated;
+do $$ begin
+  if not exists (select 1 from pg_trigger where tgname = 'zahlung_bei_storno' and tgrelid = 'public.bestellungen'::regclass) then
+    create trigger zahlung_bei_storno after update of status on public.bestellungen
+      for each row when (new.status in ('storniert','abgelehnt') and old.status is distinct from new.status)
+      execute function public.zahlung_storno_merken();
+  end if;
+end $$;
+
+create or replace function public.zahlung_rueckzahlung_erledigt(p_bestellung uuid)
+returns jsonb language plpgsql volatile security definer set search_path = public as $function$
+declare z public.zahlungen%rowtype;
+begin
+  if auth.uid() is null then return jsonb_build_object('ok', false, 'grund', 'nicht_angemeldet'); end if;
+  select * into z from public.zahlungen where bestellung_id = p_bestellung for update;
+  if not found then return jsonb_build_object('ok', false, 'grund', 'unbekannt'); end if;
+  if not public.ist_inhaber(z.betrieb_id) then return jsonb_build_object('ok', false, 'grund', 'kein_recht'); end if;
+  if not z.rueckzahlung_noetig then return jsonb_build_object('ok', false, 'grund', 'nicht_noetig'); end if;
+  update public.zahlungen set rueckzahlung_erledigt = true, geaendert_am = now() where id = z.id;
+  return jsonb_build_object('ok', true);
+end $function$;
+revoke execute on function public.zahlung_rueckzahlung_erledigt(uuid) from public, anon;
+grant  execute on function public.zahlung_rueckzahlung_erledigt(uuid) to authenticated;
 
 -- ── 8 · Überweisung bestätigen (Inhaber im Board) ──────────────────
 create or replace function public.zahlung_ueberweisung_bestaetigen(p_bestellung uuid)

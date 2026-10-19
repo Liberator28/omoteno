@@ -1132,6 +1132,12 @@ body.hell .tmchip[aria-pressed=true]{color:var(--flaeche)}
 }
 .pruefband b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn)}
 .pruefknoepfe{display:flex;gap:8px;flex-wrap:wrap}
+/* Zahlung: Chip an der Karte, Band bei offener Zahlung und bei nötiger Rückzahlung */
+.zahlchip{display:inline-block;margin-top:4px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;
+  color:var(--kreide);background:color-mix(in srgb, var(--gut) 18%, transparent);border:1px solid color-mix(in srgb, var(--gut) 45%, transparent)}
+.pruefband.rueckband{background:color-mix(in srgb, var(--warn) 22%, transparent)}
+.zhfeld{display:grid;gap:6px;margin:10px 0}
+.zhstand{font-size:13.5px;color:var(--gedaempft);margin:8px 0 0}
 .pruefknoepfe .knopf{flex:1;min-width:120px;min-height:44px}
 .bestellung.zupruefen{border-style:dashed}
 .notiz{
@@ -3661,6 +3667,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
       <p class="filterinfo" id="filterInfo"></p>
     </div>
+    <div id="rueckListe" aria-live="polite"></div>
     <div class="karten" id="karten"></div>
   </section>
 
@@ -4441,7 +4448,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <h2 class="etitel">Lieferung</h2>
       <p class="ehilfe">Ist sie an, kann ein Gast sich von zu Hause beliefern lassen —
         dieselbe Karte, derselbe Korb, nur mit Adresse statt Tischnummer.
-        Bezahlt wird bei Ihnen an der Tür; über Omoteno fließt kein Geld.</p>
+        Bezahlt wird bei Ihnen an der Tür — oder, wenn Sie es unter „Bezahlen“ einschalten, online. Über Omoteno fließt nie Geld.</p>
 
       <div class="schalter">
         <div><div class="schaltertext">Wir liefern</div>
@@ -4674,6 +4681,42 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          (zusammengeführt, keine neue Spalte). Die Zeit setzt das Team
          weiter — sie steuert Küche und Mahnung, nur der Gast sieht sie
          dann nicht. -->
+    <!-- Bezahlen (migration-zahlungen.sql). Standard bleibt: der Gast zahlt bei Ihnen.
+         Geschrieben nur über zahlarten_setzen (Inhaber + PIN). Kein geheimer Schlüssel
+         hier: nur die Kontonummer acct_… Ihres EIGENEN Stripe-Kontos. -->
+    <div class="egruppe" data-nur-inhaber id="zhGruppe">
+      <h2 class="etitel">Bezahlen</h2>
+      <p class="ehilfe">Standard: Der Gast zahlt bei Ihnen. Hier schalten Sie Online-Zahlung
+        (über Ihr eigenes Stripe-Konto) und Überweisung dazu. Das Geld geht immer direkt auf
+        Ihr Konto — nie über Omoteno. Jede Änderung bestätigen Sie mit Ihrer PIN.</p>
+      <label class="ezeile"><span><b>Bankkarte</b><i>Visa, Mastercard, Apple Pay, Google Pay</i></span>
+        <input type="checkbox" class="kipp" id="zhKarte"></label>
+      <label class="ezeile"><span><b>Klarna</b><i>Sofort bezahlen oder später</i></span>
+        <input type="checkbox" class="kipp" id="zhKlarna"></label>
+      <label class="ezeile"><span><b>PayPal</b><i>Der Gast zahlt mit seinem PayPal-Konto</i></span>
+        <input type="checkbox" class="kipp" id="zhPaypal"></label>
+      <label class="ezeile"><span><b>SEPA-Lastschrift</b><i>Wird erst nach Tagen bestätigt — für Essen zum Sofortverzehr ungeeignet</i></span>
+        <input type="checkbox" class="kipp" id="zhSepa"></label>
+      <label class="ezeile"><span><b>Überweisung</b><i>Nur bei Lieferung. Die Küche beginnt erst, wenn Sie „Zahlung eingegangen“ tippen</i></span>
+        <input type="checkbox" class="kipp" id="zhUeb"></label>
+      <div class="ezeile senkrecht zhfeld">
+        <label class="feld"><span>Stripe-Konto (acct_…)</span>
+          <input id="zhStripe" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="acct_1AbCdEfGhIjKlMn">
+          <small class="feldhilfe">Aus Ihrem Stripe-Dashboard unter Einstellungen → Konto. Ohne dieses Konto gibt es keine Online-Zahlung.</small>
+        </label>
+        <label class="feld"><span>IBAN</span>
+          <input id="zhIban" type="text" autocomplete="off" spellcheck="false" placeholder="DE89 3704 0044 0532 0130 00"></label>
+        <label class="feld"><span>Kontoinhaber</span>
+          <input id="zhInhaber" type="text" autocomplete="off" placeholder="Name wie auf dem Konto"></label>
+        <label class="feld"><span>BIC (optional)</span>
+          <input id="zhBic" type="text" autocomplete="off" spellcheck="false" placeholder="COBADEFFXXX"></label>
+        <label class="feld"><span>Bank (optional)</span>
+          <input id="zhBank" type="text" autocomplete="off" placeholder="Commerzbank"></label>
+      </div>
+      <div class="eknoepfe"><button class="knopf" id="zhSichern" disabled>Speichern</button></div>
+      <p class="zhstand" id="zhStand" aria-live="polite">Wird geladen …</p>
+    </div>
+
     <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Bestellstand beim Gast</h2>
       <p class="ehilfe">Was Ihr Gast nach dem Bestellen auf seinem Telefon sieht,
@@ -9307,6 +9350,13 @@ const EU_BEREICHE = [
       return euWippe("lfAn") ? "An · " + plz + (plz === 1 ? " Postleitzahl" : " Postleitzahlen") : "Aus"; },
     bild:() => '<g class="' + (euWippe("lfAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.roller.replace(/<(path|circle)/g, '<$1 transform="translate(8 8) scale(1.4)"') + '</g>' },
+  { titel:"Bezahlen", sym:"beleg", ton:"var(--gut)",
+    satz:"Online-Zahlung und Überweisung",
+    stand:() => { if(zahlSet === undefined) return "…"; const z = zahlSet || {};
+      const a = [z.karte_an ? "Karte" : "", z.klarna_an ? "Klarna" : "", z.paypal_an ? "PayPal" : "", z.sepa_an ? "SEPA" : "", z.ueberweisung_an ? "Überweisung" : ""].filter(Boolean);
+      return a.length ? a.join(" · ") : "Nur beim Personal"; },
+    bild:() => '<g class="' + ((zahlSet && (zahlSet.karte_an || zahlSet.klarna_an || zahlSet.paypal_an || zahlSet.sepa_an || zahlSet.ueberweisung_an)) ? "eu-strich" : "eu-strich eu-blass") + '">' +
+      '<rect x="6" y="12" width="36" height="24" rx="4" fill="none"/><path d="M6 20h36M12 30h8" fill="none"/></g>' },
   { titel:"Gäste-Newsletter", sym:"brief", ton:"var(--gut)",
     satz:"Gutschein und Erinnerung per E-Mail",
     stand:() => euWippe("nlAn") ? "An" : "Aus",
@@ -10345,6 +10395,9 @@ async function betriebOeffnen(id){
 
   gerichte     = (g.data || []).filter(x => x.betrieb_id === id);
   bestellungen = (o.data || []).filter(x => x.betrieb_id === id);
+  zahlungen = {}; zahlSet = undefined;
+  zahlungenLaden(id).then(() => { if(marke === ladeMarke) neuZeichnen(); });
+  zhLaden();
   /* Kartenverzeichnis getrennt lesen: fehlt die Spalte, bleibt der Rest
      des Boards unberührt (die Abfrage oben kennt sie nicht). */
   kartenLaden(id).then(() => { if(marke === ladeMarke) zeichneKarte(); });
@@ -10508,6 +10561,7 @@ async function nachholen(id){
       klingel();
       melde(frisch + (frisch === 1 ? " Meldung nachgeholt" : " Meldungen nachgeholt"));
     }
+    await zahlungenLaden(betriebId);
     neuZeichnen();
     const p = $("#statusText");
     if(p && p.textContent.indexOf("unterbrochen") > -1) p.textContent = "live verbunden";
@@ -10773,6 +10827,7 @@ function rabattZeile(b){
 }
 
 function zeichneBoard(){
+  rueckZeichnen();
   /* Während ein Finger eine Karte zieht, wird nicht neu gezeichnet —
      sonst rutscht die Karte unter dem Finger weg (§4.2). Nach der
      Geste zeichnet statusSetzen() ohnehin neu. */
@@ -10908,7 +10963,8 @@ function zeichneBoard(){
     /* Vom Server markiert (migration-missbrauch.sql): Die Küche sieht
        sie erst nach „Freigeben“. Statt Zusage und Schritten steht hier
        nur die Entscheidung — nichts, was man aus Versehen annimmt. */
-    const pruefband = b.pruefen
+    const zh = zahlHTML(b);
+    const pruefband = zh.offen ? zh.band : b.pruefen
       ? `<div class="pruefband" role="group" aria-label="Bestellung prüfen">
            <b>Zu prüfen</b>
            <span>${sicher(b.pruef_grund || "Vom Server markiert")}. Die Küche sieht sie erst nach der Freigabe.</span>
@@ -10985,11 +11041,12 @@ function zeichneBoard(){
                   euro((+b.summe || 0) + (+b.liefergebuehr || 0) - (+b.rabatt_betrag || 0))
                 : euro((+b.summe || 0) + (+b.liefergebuehr || 0))}</div>`
             : ""}
+          ${zh.chip}
         </div>
       </div>
       ${kurz}
       ${tmZuwHTML(b)}
-      ${pruefband}${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
+      ${zh.offen ? "" : zh.band}${pruefband}${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
       ${b.summe > 0 ? rabattZeile(b) : ""}
       <div class="schritte"${b.pruefen ? " hidden" : ""}>
         ${["neu","arbeit","fertig"].map(s =>
@@ -17061,9 +17118,9 @@ $("#apOk").onclick = async () => {
 
 /* Ruft rufe(pin) so lange, bis der Server mehr sagt als „PIN“: falsche
    PIN fragt neu, fehlende lässt sie erstmals festlegen. null = abgebrochen. */
-async function mitPin(rufe){
+async function mitPin(rufe, satz){
   const r = grRecht || {};
-  let pin = await apFragen(r.pin === false ? "festlegen" : "eingeben");
+  let pin = await apFragen(r.pin === false ? "festlegen" : "eingeben", satz);
   for(let runde = 0; runde < 5 && pin; runde++){
     const {data, error} = await rufe(pin);
     if(error) throw error;
@@ -17272,6 +17329,182 @@ function gsFehlerText(err){
   return "Nicht gespeichert — bitte Verbindung prüfen.";
 }
 
+/* ═══ Bezahlen (migration-zahlungen.sql) ═══════════════════════════
+   Zwei Dinge, getrennt gelesen: die EINSTELLUNG des Hauses (betrieb_zahlarten,
+   nur lesen — geschrieben wird allein über zahlarten_setzen mit PIN) und die
+   ZAHLUNGEN des Tages (für die Chips an den Bestellkarten).
+   Nicht gelesen heißt „unbekannt“ (undefined), nicht „aus“: Ein Formular,
+   das die ganze Einstellung ersetzt, speichert erst nach dem Lesen (§8.1m). */
+let zahlSet = undefined;
+let zahlungen = {};
+let rueckOffen = [];         /* bezahlt, aber nicht bedient — jeder Tag, bis „erledigt“ */
+const ZH_GRUND = {
+  kein_recht: "Das darf nur der Besitzer.",
+  nicht_angemeldet: "Bitte neu anmelden.",
+  stripe_konto_form: "Das Stripe-Konto beginnt mit „acct_“ — bitte genau so aus dem Stripe-Dashboard kopieren.",
+  stripe_konto_fehlt: "Für Karte, Klarna, PayPal und SEPA fehlt das Stripe-Konto.",
+  iban: "Diese IBAN stimmt nicht (Prüfsumme). Bitte noch einmal vergleichen.",
+  ueberweisung_unvollstaendig: "Für Überweisungen brauchen Gäste IBAN und Kontoinhaber.",
+  kontoinhaber: "Der Kontoinhaber ist zu kurz, zu lang oder enthält unerlaubte Zeichen.",
+  bank: "Der Name der Bank ist zu kurz, zu lang oder enthält unerlaubte Zeichen.",
+  bic: "Diese BIC stimmt nicht (8 oder 11 Zeichen).",
+  pin_gesperrt: "Ihre PIN ist gesperrt. Die Zentrale kann sie freigeben.",
+  pin_form: "Die PIN hat genau acht Ziffern."
+};
+function zhFuellen(){
+  const g = $("#zhGruppe"); if(!g) return;
+  const z = zahlSet || {};
+  const k = (id, an) => { const e = $("#" + id); if(e) e.checked = an === true; };
+  k("zhKarte", z.karte_an); k("zhKlarna", z.klarna_an); k("zhPaypal", z.paypal_an); k("zhSepa", z.sepa_an); k("zhUeb", z.ueberweisung_an);
+  [["zhStripe", z.stripe_konto], ["zhIban", z.iban], ["zhInhaber", z.kontoinhaber], ["zhBic", z.bic], ["zhBank", z.bank]]
+    .forEach(([id, w]) => { const e = $("#" + id); if(e && document.activeElement !== e) e.value = w || ""; });
+  $("#zhSichern").disabled = zahlSet === undefined;
+  const a = [z.karte_an && "Karte", z.klarna_an && "Klarna", z.paypal_an && "PayPal", z.sepa_an && "SEPA", z.ueberweisung_an && "Überweisung"].filter(Boolean);
+  $("#zhStand").textContent = zahlSet === undefined ? "Konnte nicht gelesen werden — Speichern ist gesperrt, bis der Stand da ist."
+    : a.length ? "Gäste können online bezahlen: " + a.join(", ") + "." : "Aus — Gäste zahlen wie bisher bei Ihnen.";
+}
+async function zhLaden(){
+  if(demo || !db || !betriebId){ zahlSet = zahlSet === undefined ? {} : zahlSet; zhFuellen(); return; }
+  const fuer = betriebId;
+  try{
+    const {data, error} = await db.from("betrieb_zahlarten").select("*").eq("betrieb_id", fuer).maybeSingle();
+    if(fuer !== betriebId) return;
+    if(error){
+      zahlSet = undefined;
+      zhFuellen();
+      if(/relation|does not exist|42P01/i.test(error.message || error.code || "")) $("#zhStand").textContent = "Noch nicht eingerichtet (Datenbank-Migration fehlt).";
+      return;
+    }
+    zahlSet = data || {};
+  }catch(e){ zahlSet = undefined; }
+  zhFuellen();
+  if(typeof euBald === "function") euBald();
+}
+async function zahlungenLaden(id){
+  if(demo || !db || !id) return;
+  try{
+    const {data, error} = await db.from("zahlungen")
+      .select("bestellung_id,art,methode,status,betrag_cent,rueckzahlung_noetig")
+      .eq("betrieb_id", id).gte("erstellt_am", tagesBeginn());
+    if(error || id !== betriebId) return;       /* Tabelle fehlt: es gibt schlicht keine Chips */
+    const neu = {};
+    (data || []).forEach(z => { neu[z.bestellung_id] = z; });
+    zahlungen = neu;
+    /* Rückzahlungen unabhängig vom Tag: Eine stornierte Bestellung steht nicht
+       mehr im Board, das Geld des Gastes aber noch auf Ihrem Konto. */
+    const r = await db.from("zahlungen")
+      .select("bestellung_id,methode,betrag_cent,erstellt_am")
+      .eq("betrieb_id", id).eq("rueckzahlung_noetig", true).eq("rueckzahlung_erledigt", false)
+      .order("erstellt_am", {ascending:false}).limit(30);
+    if(!r.error && id === betriebId) rueckOffen = r.data || [];
+  }catch(e){ /* stiller Versuch, nächster Takt */ }
+}
+function rueckZeichnen(){
+  const el = $("#rueckListe"); if(!el) return;
+  if(!rueckOffen.length){ el.innerHTML = ""; return; }
+  el.innerHTML = rueckOffen.map(z => `<div class="pruefband rueckband" role="alert">
+    <b>Rückzahlung nötig</b>
+    <span>${sicher(euro((z.betrag_cent || 0) / 100))} · ${sicher(ZH_METHODE[z.methode] || "online")} · Bestellung
+      ${sicher(String(z.bestellung_id).replace(/-/g, "").slice(0, 8).toUpperCase())} · ${sicher(new Date(z.erstellt_am).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}))}.
+      Der Gast hat bezahlt, die Bestellung wurde aber nicht bedient. Bitte im Stripe-Dashboard zurückzahlen.</span>
+    ${istInhaberRolle() ? `<div class="pruefknoepfe"><button class="knopf leise" data-rueck-ok="${sicher(z.bestellung_id)}">Zurückgezahlt – erledigt</button></div>` : ""}
+  </div>`).join("");
+}
+$("#rueckListe").addEventListener("click", async e => {
+  const k = e.target.closest("[data-rueck-ok]"); if(!k) return;
+  k.disabled = true;
+  try{
+    if(demo || !db){ rueckOffen = rueckOffen.filter(z => z.bestellung_id !== k.dataset.rueckOk); }
+    else{
+      const {data, error} = await db.rpc("zahlung_rueckzahlung_erledigt", { p_bestellung: k.dataset.rueckOk });
+      if(error) throw error;
+      if(!data || !data.ok){ k.disabled = false; melde(data && data.grund === "kein_recht" ? ZH_GRUND.kein_recht : "Nicht gespeichert — bitte Verbindung prüfen.", true); return; }
+      await zahlungenLaden(betriebId);
+    }
+    rueckZeichnen(); melde("Vermerkt");
+  }catch(err){ k.disabled = false; melde("Nicht gespeichert — bitte Verbindung prüfen.", true); }
+});
+const ZH_METHODE = { card:"Karte", klarna:"Klarna", paypal:"PayPal", sepa_debit:"SEPA-Lastschrift", ueberweisung:"Überweisung", unbekannt:"online" };
+function zahlHTML(b){
+  const z = zahlungen[b.id]; if(!z) return { band:"", chip:"", offen:false };
+  const sum = euro((z.betrag_cent || 0) / 100);
+  const noch = z.status === "offen" || z.status === "fehlgeschlagen" || z.status === "abgelaufen";
+  let band = "", chip = "";
+  if(z.status === "bezahlt") chip = `<div class="zahlchip">Bezahlt · ${sicher(ZH_METHODE[z.methode] || "online")}</div>`;
+  else if(z.status === "vor_ort") chip = `<div class="zahlchip">Beim Personal bezahlt</div>`;
+  if(z.status === "bezahlt" && z.rueckzahlung_noetig){
+    band = `<div class="pruefband rueckband" role="alert"><b>Rückzahlung nötig</b>
+      <span>Der Gast hat ${sum} online bezahlt, aber die Bestellung wurde nicht bedient (storniert, abgelehnt oder schon beim Personal bezahlt).
+      Bitte im Stripe-Dashboard zurückzahlen.</span></div>`;
+  }
+  const offen = b.pruefen === true && noch && b.status === "neu";
+  if(offen){
+    const ueb = z.art === "ueberweisung";
+    band = `<div class="pruefband" role="group" aria-label="Zahlung offen">
+      <b>Zahlung offen</b>
+      <span>${ueb ? `Wartet auf eine Überweisung über ${sum}. Verwendungszweck: Bestellung ${sicher(String(b.id).replace(/-/g, "").slice(0, 8).toUpperCase())}.`
+                  : `Der Gast bezahlt online (${sum}). Die Küche sieht die Bestellung erst nach der Zahlung.`}
+        ${z.status === "fehlgeschlagen" || z.status === "abgelaufen" ? " Der letzte Versuch hat nicht geklappt." : ""}</span>
+      <div class="pruefknoepfe">
+        ${ueb && istInhaberRolle() ? `<button class="knopf" data-ueb-ok="${sicher(b.id)}">Zahlung eingegangen</button>` : ""}
+        <button class="knopf leise" data-vorort="${sicher(b.id)}">Beim Personal bezahlt – freigeben</button>
+        <button class="knopf leise" data-verwerfen="${sicher(b.id)}">Verwerfen</button>
+      </div></div>`;
+  }
+  return { band, chip, offen };
+}
+async function zahlungFreigeben(id, art){
+  const b = bestellungen.find(x => x.id === id); if(!b || inArbeit.has(id)) return;
+  if(art === "vorort" && !confirm("Der Gast hat bei Ihnen bezahlt? Die Bestellung geht dann an die Küche. Zahlt er später doch noch online, erscheint ein Hinweis zur Rückzahlung.")) return;
+  inArbeit.add(id);
+  try{
+    if(demo || !db){ b.pruefen = false; b.pruef_grund = null; if(zahlungen[id]) zahlungen[id].status = art === "vorort" ? "vor_ort" : "bezahlt"; }
+    else{
+      const fn = art === "vorort" ? "zahlung_vor_ort_freigeben" : "zahlung_ueberweisung_bestaetigen";
+      const {data, error} = await db.rpc(fn, { p_bestellung: id });
+      if(error) throw error;
+      if(!data || !data.ok){ melde(data && data.grund === "kein_recht" ? ZH_GRUND.kein_recht : "Nicht gespeichert — bitte Verbindung prüfen.", true); return; }
+      b.pruefen = false; b.pruef_grund = null;
+      await zahlungenLaden(betriebId);
+    }
+    melde(art === "vorort" ? "Freigegeben — die Küche sieht sie jetzt" : "Zahlung vermerkt — die Küche sieht sie jetzt");
+  }catch(e){ melde("Nicht gespeichert — bitte Verbindung prüfen.", true); }
+  finally{ inArbeit.delete(id); neuZeichnen(); }
+}
+$("#karten").addEventListener("click", e => {
+  const v = e.target.closest("[data-vorort]");
+  if(v){ e.stopPropagation(); return zahlungFreigeben(v.dataset.vorort, "vorort"); }
+  const u = e.target.closest("[data-ueb-ok]");
+  if(u){ e.stopPropagation(); return zahlungFreigeben(u.dataset.uebOk, "ueberweisung"); }
+}, true);
+
+$("#zhSichern").onclick = async () => {
+  if(zahlSet === undefined) return;
+  const w = id => ($("#" + id).value || "").trim();
+  const daten = {
+    karte_an: $("#zhKarte").checked, klarna_an: $("#zhKlarna").checked, paypal_an: $("#zhPaypal").checked,
+    sepa_an: $("#zhSepa").checked, ueberweisung_an: $("#zhUeb").checked,
+    stripe_konto: w("zhStripe"), iban: w("zhIban"), kontoinhaber: w("zhInhaber"), bic: w("zhBic"), bank: w("zhBank")
+  };
+  if((daten.karte_an || daten.klarna_an || daten.paypal_an || daten.sepa_an) && !daten.stripe_konto){ melde(ZH_GRUND.stripe_konto_fehlt, true); $("#zhStripe").focus(); return; }
+  if(daten.ueberweisung_an && (!daten.iban || !daten.kontoinhaber)){ melde(ZH_GRUND.ueberweisung_unvollstaendig, true); $("#zhIban").focus(); return; }
+  const knopf = $("#zhSichern"); knopf.disabled = true;
+  try{
+    if(demo || !db){
+      const pin = await apFragen("eingeben", "Vorführung: nichts wird wirklich gespeichert.");
+      if(pin){ zahlSet = Object.assign({}, daten); melde("Vorführung — nicht gespeichert"); }
+    }else{
+      await grLaden();
+      const data = await mitPin(pin => db.rpc("zahlarten_setzen", { p_betrieb: betriebId, p_daten: daten, p_pin: pin }),
+        "Zahlungsdaten bestätigen Sie mit Ihrer PIN — hier würde sonst Geld umgeleitet.");
+      if(data && data.ok){ melde("Gespeichert"); await zhLaden(); }
+      else if(data){ melde(ZH_GRUND[data.grund] || "Nicht gespeichert — bitte Verbindung prüfen.", true); }
+    }
+  }catch(e){ melde("Nicht gespeichert — bitte Verbindung prüfen.", true); }
+  knopf.disabled = zahlSet === undefined;
+  zhFuellen();
+};
+
 /* ═══ Wer hat was geändert (migration-protokoll.sql) ═══
    Die Zeilen schreibt die Datenbank, nie das Board; lesen darf nur der
    Inhaber (RLS). Jeder Wert aus der Zeile geht als TEXT in die Seite —
@@ -17294,9 +17527,14 @@ const AE_FELD = {
   betrag:"Betrag", prozent:"Prozent", eingeloest:"eingelöst", eingeloest_bestellung_id:"eingelöst an Bestellung",
   quelle:"Herkunft", angelegt_am:"angelegt am", ziel_gericht_id:"Ziel-Gericht", ziel_gericht_name:"Ziel-Gericht",
   rolle:"Rolle", anzeigename:"Name", darf_gutscheine:"Gutschein-Recht", gutschein_max_betrag:"Höchstwert",
-  gutschein_max_prozent:"Höchstprozent", gutschein_tag_max:"Gutscheine je Tag"
+  gutschein_max_prozent:"Höchstprozent", gutschein_tag_max:"Gutscheine je Tag",
+  karte_an:"Kartenzahlung", klarna_an:"Klarna", paypal_an:"PayPal", sepa_an:"SEPA-Lastschrift", ueberweisung_an:"Überweisung",
+  stripe_konto:"Stripe-Konto", iban:"IBAN", kontoinhaber:"Kontoinhaber", bic:"BIC", bank:"Bank",
+  geaendert_am:"Stand", geaendert_von:"geändert von", status:"Stand der Zahlung", methode:"Zahlart", bezahlt_am:"bezahlt am",
+  rueckzahlung_noetig:"Rückzahlung nötig", rueckzahlung_erledigt:"Rückzahlung erledigt", betrag_cent:"Betrag", art:"Art"
 };
-const AE_DING = { gerichte:"das Gericht", aktionen:"die Aktion", gutscheine:"den Gutschein", rabattcodes:"den Rabattcode" };
+const AE_DING = { gerichte:"das Gericht", aktionen:"die Aktion", gutscheine:"den Gutschein", rabattcodes:"den Rabattcode",
+                  betrieb_zahlarten:"die Zahlarten", zahlungen:"die Zahlung" };
 let aeZeilen = [], aeSeite = 0;
 function aeEuro(v){ const n = Number(v); return Number.isFinite(n) ? n.toLocaleString("de-DE", {minimumFractionDigits:2, maximumFractionDigits:2}) + " €" : String(v); }
 function aeSatz(z){
