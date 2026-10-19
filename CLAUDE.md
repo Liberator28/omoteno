@@ -361,6 +361,20 @@ Und beim Erweitern bleibt **jeder** alte Wert drin — auch einer, der
 heute keine Zeile hat. Der fehlende neue Wert fehlt laut; ein
 verlorener alter fehlt still.
 
+> **Vorfall, 19.10., beim Einspielen von E5-D.** `protokoll_tabelle_check`
+> wird von mehreren Migrationen erweitert. E5-D hatte die Liste fest
+> hingeschrieben und hätte `betrieb_zahlarten`/`zahlungen` still wieder
+> herausgeworfen. Die Korrektur las die Liste aus dem Katalog — mit
+> `'([a-z_]+)'`. Das passt nur auf `ARRAY['a'::text,…]`; nach einem Umbau
+> über `format('%L')` druckt Postgres `'{a,b}'::text[]`, der Ausdruck fand
+> nichts, und die Liste war danach **leer plus die neuen Namen**. Gemessen
+> live: 13 statt 15 Einträge, die Zahlungs-Tabellen weg — jede Änderung
+> der Zahlarten wäre am CHECK gescheitert. Gefunden nur, weil nach dem
+> Einspielen die Schranke selbst gelesen wurde, nicht `success: true`.
+
+Wer eine Liste aus dem Katalog liest, versteht **beide** Schreibweisen
+und bricht laut ab, wenn weniger als erwartet herauskommt.
+
 ### 2.3d Was ausgerollt ist, aber nicht im Verzeichnis steht, prüft niemand
 
 > **Vorfall.** Die Edge Function „melden“ (Push an die Geräte des

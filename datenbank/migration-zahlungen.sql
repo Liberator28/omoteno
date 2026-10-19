@@ -157,7 +157,11 @@ begin
   select pg_get_constraintdef(oid) into v_def from pg_constraint
    where conrelid = 'public.protokoll'::regclass and conname = 'protokoll_tabelle_check';
   if v_def is null then return; end if;
-  select array_agg(distinct m[1]) into v_alt from regexp_matches(v_def, '''([a-z_]+)''', 'g') m;
+  -- Zwei Schreibweisen des Katalogs: ARRAY['a'::text, …] (Erstanlage) und '{a,b}'::text[] (nach format %L).
+  -- Nur die erste zu lesen ließ die Liste nach dem ersten Umbau leer (Fund 19.10., beim Einspielen von E5-D).
+  if v_def ~ '\{' then v_alt := string_to_array(substring(v_def from '\{([^}]*)\}'), ',');
+  else select array_agg(distinct m[1]) into v_alt from regexp_matches(v_def, '''([a-z_]+)''', 'g') m; end if;
+  if coalesce(array_length(v_alt, 1), 0) < 5 then raise exception 'Liste der Protokoll-Tabellen nicht gelesen: %', v_def; end if;
   v_neu := (select array_agg(distinct x order by x) from unnest(v_alt || array['betrieb_zahlarten','zahlungen']) x);
   execute 'alter table public.protokoll drop constraint protokoll_tabelle_check';
   execute format('alter table public.protokoll add constraint protokoll_tabelle_check check (tabelle = any (%L::text[]))', v_neu);

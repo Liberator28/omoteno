@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
---  ENTWURF 17.10. — NOCH NICHT EINGESPIELT.
+--  EINGESPIELT am 19.10.2026 (live geprüft: je Funktion eine Signatur, Wächter periode_zu in den drei Funktionen, 6 Trigger, GRANT auf betrieb_mitglieder nur SELECT, anon ohne EXECUTE).
 --  Zurückgedrehter Trockenlauf live (Supabase quxwweuvdqtjsdwgjdrh):
 --  fehlerfrei; 6 Protokoll-Trigger angelegt, die Wächter „periode_zu“
 --  stehen in beleg_freigeben, beleg_stornieren und inventur_buchen.
@@ -194,9 +194,25 @@ create or replace function public.zentrale_vergleich(p_org uuid, p_von timestamp
 $function$;
 
 -- ── 20 · Protokoll für den Einkauf ───────────────────────────────────
-alter table public.protokoll drop constraint protokoll_tabelle_check, add constraint protokoll_tabelle_check check (tabelle = any (array[
-  'betriebe','gerichte','aktionen','gutscheine','rabattcodes','team','einkaufsbelege',
-  'artikel','lieferanten','inventuren','lagerbewegungen','umlagerungen','einkauf_perioden']));
+-- Die Liste wird aus dem LIVE-Katalog gelesen (§2.3c): jeder alte Wert bleibt,
+-- auch die, die spätere Migrationen (Zahlarten) dazugebracht haben.
+do $$
+declare v_def text; v_alt text[]; v_neu text[];
+begin
+  select pg_get_constraintdef(oid) into v_def from pg_constraint
+   where conrelid = 'public.protokoll'::regclass and conname = 'protokoll_tabelle_check';
+  if v_def is null then raise exception 'protokoll_tabelle_check fehlt'; end if;
+  -- Zwei Schreibweisen des Katalogs: ARRAY['a'::text, …] (Erstanlage) und '{a,b}'::text[] (nach format %L).
+  -- Nur die erste zu lesen ließ die Liste nach dem ersten Umbau leer (Fund 19.10., beim Einspielen von E5-D).
+  if v_def ~ '\{' then v_alt := string_to_array(substring(v_def from '\{([^}]*)\}'), ',');
+  else select array_agg(distinct m[1]) into v_alt from regexp_matches(v_def, '''([a-z_]+)''', 'g') m; end if;
+  if coalesce(array_length(v_alt, 1), 0) < 5 then raise exception 'Liste der Protokoll-Tabellen nicht gelesen: %', v_def; end if;
+  v_neu := (select array_agg(distinct x order by x) from unnest(v_alt || array[
+    'betriebe','gerichte','aktionen','gutscheine','rabattcodes','team','einkaufsbelege',
+    'artikel','lieferanten','inventuren','lagerbewegungen','umlagerungen','einkauf_perioden']) x);
+  execute 'alter table public.protokoll drop constraint protokoll_tabelle_check';
+  execute format('alter table public.protokoll add constraint protokoll_tabelle_check check (tabelle = any (%L::text[]))', v_neu);
+end $$;
 
 create or replace function public.protokoll_einkauf()
 returns trigger language plpgsql security definer set search_path = public as $$
