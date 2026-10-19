@@ -220,13 +220,69 @@ const lesen = p => p.evaluate(() => {
       const offen = await p.evaluate(() => ({ k: TX_OFFEN, ed: !!document.querySelector("[data-tx-ed] [data-tx-text]") }));
       pruef(offen.k === ziel.k && offen.ed, "echter Tipp im Rahmen öffnet genau diesen Text", offen.k);
       await p.fill("[data-tx-ed] [data-tx-text]", "Probe Wortlaut"); await p.waitForTimeout(600);
-      await p.selectOption("[data-tx-ed] [data-tx-schrift]", "pacifico"); await p.waitForTimeout(700);
+      await p.click('[data-tx-ed] [data-tx-schrift="pacifico"]'); await p.waitForTimeout(700);
       const imRahmen = await p.evaluate(() => { const d = hvAlle().gestalten.frame.contentWindow.document;
         const el = [...d.querySelectorAll("#inhalt *")].find(x => x.children.length === 0 && x.textContent.trim() === "Probe Wortlaut");
         return el ? { schrift: getComputedStyle(el).fontFamily } : null; });
       pruef(imRahmen && /omo-pacifico/.test(imRahmen.schrift), "Vorschau zeigt neuen Wortlaut in der gewählten Schrift", JSON.stringify(imRahmen));
     }
     await p.click("#txTippen");
+
+    /* Aufbau des Editors (19.10.): Filter-Chips, Karten, Schriftmuster, Leiste.
+       Der Eintrag oben ist noch offen und trägt Wortlaut + Pacifico. */
+    if(ziel){
+      const ui = await p.evaluate(() => {
+        const r = s => [...document.querySelectorAll(s)];
+        const klein = r(".txchip, .txzeile, .txschrift, #txVerwerfen, #txSichern").filter(e => e.getClientRects().length)
+          .map(e => { const b = e.getBoundingClientRect(); return { h:b.height, w:b.width, t:(e.className || e.id) }; }).filter(x => x.h < 43.5 || x.w < 43.5);
+        const stil = e => getComputedStyle(e);
+        const probe = document.querySelector("[data-tx-probe]"), kopf = document.querySelector(".txkarte.offen .txwort");
+        const leiste = document.getElementById("txLeiste").getBoundingClientRect();
+        return { chips: r(".txchip").map(c => c.textContent.trim()), pressed: r('.txchip[aria-pressed="true"]').length,
+          muster: r(".txschrift").length, gewaehlt: r('.txschrift[aria-checked="true"]').map(b => b.dataset.txSchrift),
+          probe: probe && probe.textContent, probeFont: probe && stil(probe).fontFamily, kopfFont: kopf && stil(kopf).fontFamily,
+          zaehler: (document.querySelector("[data-tx-zaehler]") || {}).textContent, hinweis: (document.querySelector("[data-tx-hinweis]") || {}).textContent,
+          zahl: document.getElementById("txZahl").textContent, klein,
+          musterOhneStil: r(".txschrift .aa").filter(a => !/omo-sw-/.test(a.getAttribute("style") || "") && a.parentElement.dataset.txSchrift).length,
+          ueberlauf: document.documentElement.scrollWidth - document.documentElement.clientWidth,
+          breit: [...document.querySelectorAll("body *")].filter(e => { const b = e.getBoundingClientRect(); if(b.right <= innerWidth + 2 || !e.getClientRects().length) return false;
+            for(let a = e.parentElement; a && a !== document.body; a = a.parentElement){ const o = getComputedStyle(a); if(o.overflowX !== "visible" || o.clipPath !== "none") return false; } return true; })
+            .slice(0, 3).map(e => e.tagName + "." + String(e.className && e.className.baseVal === undefined ? e.className : "").slice(0, 30) + "#" + (e.id || "") + ":" + Math.round(e.getBoundingClientRect().right)),
+          leisteSticky: stil(document.getElementById("txLeiste")).position, leisteUnten: Math.round(innerHeight - leiste.bottom),
+          leisteFrei: (() => { const b = document.getElementById("txSichern").getBoundingClientRect(); const e = document.elementFromPoint(b.left + b.width / 2, b.top + b.height / 2); return !!e && document.getElementById("txLeiste").contains(e); })() };
+      });
+      pruef(ui.chips.length >= 3 && /^Alle/.test(ui.chips[0]) && ui.pressed === 1, "Filter-Chips: Alle, Geändert und je Seite, genau einer gewählt", ui.chips.slice(0, 4).join(" | "));
+      const n0 = await p.evaluate(() => ({ alle: TX_LISTE.length, chip: +document.querySelector('.txchip[data-tx-filter="alle"] b').textContent }));
+      pruef(n0.alle === n0.chip, "Zahl im Chip „Alle“ = Zahl der Texte (zweite Quelle: TX_LISTE)", n0.chip + " = " + n0.alle);
+      pruef(ui.muster === (await p.evaluate(() => SCHRIFT_WAHL.length)) + 1 && ui.gewaehlt.length === 1 && ui.gewaehlt[0] === "pacifico",
+        "Schriftmuster: eines je Schrift plus „Wie überall“, genau das gewählte angekreuzt", ui.muster + " / " + ui.gewaehlt.join());
+      pruef(ui.musterOhneStil === 0, "jedes Muster steht in seiner eigenen Schrift", ui.musterOhneStil + " ohne");
+      pruef(ui.probe === "Probe Wortlaut" && /omo-sw-pacifico/.test(ui.probeFont) && /omo-sw-pacifico/.test(ui.kopfFont),
+        "„So sieht es aus“ und die Zeile zeigen Wortlaut UND Schrift sofort", ui.probe + " / " + ui.probeFont.slice(0, 30));
+      pruef(ui.zaehler === "14 / 160" && /elf Sprachen übersetzt/.test(ui.hinweis), "Zähler und Übersetzungs-Hinweis folgen dem Tippen", ui.zaehler + " · " + ui.hinweis);
+      pruef(/^1 Änderung$/.test(ui.zahl), "Leiste zählt die Änderungen", ui.zahl);
+      pruef(!ui.klein.length, "jede Tapfläche ≥ 44 px (Chips, Zeilen, Muster, Knöpfe)", ui.klein.slice(0, 2).map(x => x.t + " " + Math.round(x.h) + "×" + Math.round(x.w)).join(", ") || "alle");
+      pruef(ui.ueberlauf <= 1, "kein seitlicher Überlauf des Boards", ui.ueberlauf + " " + ui.breit.join(" "));
+      pruef(ui.leisteSticky === "sticky" && ui.leisteUnten >= 0 && ui.leisteUnten <= 120 && ui.leisteFrei, "Leiste klebt unten im Bild und „Übernehmen“ liegt nicht unter der Reiterleiste", ui.leisteSticky + ", Abstand " + ui.leisteUnten + ", frei " + ui.leisteFrei);
+      if(process.env.SHOT){ await p.evaluate(() => { const k = document.querySelector(".txkarte.offen"); if(k) scrollTo(0, scrollY + k.getBoundingClientRect().top - 330); }); await p.waitForTimeout(300); await p.screenshot({ path: process.env.SHOT + "-hell.png" }); await p.evaluate(() => { EINST.licht = "dunkel"; lichtAnwenden(); }); await p.waitForTimeout(300); await p.screenshot({ path: process.env.SHOT + "-dunkel.png" }); }
+      /* Filter nach Seite: nur deren Texte, aus der Liste gerechnet */
+      const f = await p.evaluate(async () => {
+        const sz = TX_LISTE.find(x => x.sz === "speisekarte") ? "speisekarte" : TX_LISTE[0].sz;
+        document.querySelector('.txchip[data-tx-filter="' + sz + '"]').click();
+        await new Promise(r => setTimeout(r, 100));
+        return { sz, soll: TX_LISTE.filter(x => x.sz === sz).length, ist: document.querySelectorAll("#txListe .txkarte").length,
+          fremd: [...document.querySelectorAll("#txListe .txmeta")].filter(m => m.textContent !== TX_SEITEN[sz]).length };
+      });
+      pruef(f.soll > 0 && f.ist === f.soll && f.fremd === 0, "Chip „" + f.sz + "“ zeigt genau die Texte dieser Seite", f.ist + " von " + f.soll);
+      const g = await p.evaluate(async () => {
+        document.querySelector('.txchip[data-tx-filter="geaendert"]').click();
+        await new Promise(r => setTimeout(r, 100));
+        const k = [...document.querySelectorAll("#txListe .txkarte")].map(e => e.dataset.txKarte);
+        document.querySelector('.txchip[data-tx-filter="alle"]').click();
+        return { k, soll: TX_LISTE.filter(x => txGeaendert(x.k)).map(x => x.k) };
+      });
+      pruef(g.soll.length >= 1 && g.k.length === g.soll.length && g.soll.every(x => g.k.includes(x)), "Chip „Geändert“ zeigt genau die geänderten Texte", g.k.length + " von " + g.soll.length);
+    }
 
     /* 30 Texte → zwei Übersetzer-Aufrufe */
     /* Den eben getippten Text NICHT mit überschreiben — sonst prüft die
@@ -270,6 +326,21 @@ const lesen = p => p.evaluate(() => {
     await gruppeZu(p, "#txGruppe");
     const neu = await p.evaluate(() => ({ n: Object.keys(TX).length, markiert: document.querySelectorAll("#txListe .txneu").length }));
     pruef(neu.n >= 31 && neu.markiert >= 1, "nach erneutem Öffnen steht der gespeicherte Stand", JSON.stringify(neu));
+    /* Verwerfen: erst beim zweiten Tipp, und es nimmt nur Ungesichertes zurück. */
+    const v = await p.evaluate(async () => {
+      const k = TX_LISTE.find(x => !TX[x.k]).k, vorher = Object.keys(TX).length;
+      TX[k] = { de:"Nur versucht" }; TX_NEU.add(k); TX_BERUEHRT.add(k); txGeruehrt = true; txZeichnen();
+      const b = document.getElementById("txVerwerfen");
+      const an = !b.disabled && !b.hidden; b.click();
+      const erst = { text: b.textContent, da: !!TX[k] };
+      b.click();
+      await new Promise(r => setTimeout(r, 150));
+      return { an, erst, danach: { da: !!TX[k], n: Object.keys(TX).length, vorher, zahl: document.getElementById("txZahl").textContent,
+        aus: document.getElementById("txVerwerfen").disabled && document.getElementById("txVerwerfen").hidden } };
+    });
+    pruef(v.an && v.erst.text === "Wirklich verwerfen?" && v.erst.da, "Verwerfen: der erste Tipp fragt nur, nichts geht verloren", JSON.stringify(v.erst));
+    pruef(!v.danach.da && v.danach.n === v.danach.vorher && /^Keine Änderungen/.test(v.danach.zahl) && v.danach.aus,
+      "der zweite Tipp nimmt das Ungesicherte zurück, Gesichertes bleibt", JSON.stringify(v.danach));
     pruef(!fehler.length, "Board: keine Seitenfehler", fehler.join(" | ") || "–");
     await ctx.close();
   }
