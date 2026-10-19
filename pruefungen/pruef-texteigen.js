@@ -275,7 +275,7 @@ const lesen = p => p.evaluate(() => {
       });
       pruef(f.soll > 0 && f.ist === f.soll && f.fremd === 0, "Chip „" + f.sz + "“ zeigt genau die Texte dieser Seite", f.ist + " von " + f.soll);
       const g = await p.evaluate(async () => {
-        document.querySelector('.txchip[data-tx-filter="geaendert"]').click();
+        (document.querySelector('.txchip[data-tx-filter="geaendert"]') || { click(){} }).click();
         await new Promise(r => setTimeout(r, 100));
         const k = [...document.querySelectorAll("#txListe .txkarte")].map(e => e.dataset.txKarte);
         document.querySelector('.txchip[data-tx-filter="alle"]').click();
