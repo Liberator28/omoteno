@@ -266,6 +266,31 @@ select 'Z96b …Bestellung ist frei | ' || (select pruefen is false from bestell
 select 'Z97 Bank-Daten erscheinen nach der Zahlung nicht mehr im Gast-Stand | ' ||
   ((select zahlung_status((select v::uuid from st where k = 'o3'))->'ueberweisung') = 'null'::jsonb);
 
+-- ── Z98 Beim Personal bezahlt (Stripe fällt aus / bar) ──────────────
+insert into st select 'o7', bestellung_aufgeben(:'B1', 'tisch', '3', 14, null, '[]', 'g40')::text;
+select zahlung_vormerken((select v::uuid from st where k = 'o7'), :'B1', 'stripe') is not null;
+set local role anon; select pg_temp.als(null);
+select 'Z98 anon darf nicht „beim Personal bezahlt“ freigeben | ' || (pg_temp.fehler(format('select zahlung_vor_ort_freigeben(%L)', (select v from st where k = 'o7'))) ~ 'permission denied');
+reset role;
+set local role authenticated; select pg_temp.als(:'B');
+select 'Z98b Inhaber eines fremden Betriebs darf es nicht | ' || (zahlung_vor_ort_freigeben((select v::uuid from st where k = 'o7'))->>'grund' = 'kein_recht');
+select pg_temp.als(:'C');
+select 'Z98c Koch/Team des Betriebs darf es (kein Inhaber-Recht nötig) | ' || (zahlung_vor_ort_freigeben((select v::uuid from st where k = 'o7'))->>'ok' = 'true');
+reset role;
+select 'Z98d Bestellung ist frei, Zahlung steht auf „vor_ort“ | ' ||
+  ((select pruefen is false and pruef_grund is null from bestellungen where id = (select v::uuid from st where k = 'o7'))
+   and (select status = 'vor_ort' from zahlungen where bestellung_id = (select v::uuid from st where k = 'o7')));
+set local role service_role;
+select 'Z98e …neue Stripe-Sitzung für diese Bestellung ist gesperrt | ' || (zahlung_stripe_vorbereiten((select v::uuid from st where k = 'o7'))->>'grund' = 'nicht_offen');
+select 'Z98f kommt trotzdem Geld an → Rückzahlung nötig, Bestellung unberührt | ' ||
+  (zahlung_freigeben((select v::uuid from st where k = 'o7'), 'card', 'pi_doppelt', 'acct_1ABCDEFGHIJ') @> '{"ok":true,"rueckzahlung":true}');
+reset role;
+select 'Z98g …gemerkt, Küche bekam keine zweite Freigabe | ' ||
+  ((select rueckzahlung_noetig and status = 'bezahlt' from zahlungen where bestellung_id = (select v::uuid from st where k = 'o7')));
+set local role authenticated; select pg_temp.als(:'C');
+select 'Z98h zweites „vor Ort“ auf bezahlter Zahlung ändert nichts | ' || (zahlung_vor_ort_freigeben((select v::uuid from st where k = 'o7'))->>'schon' = 'true');
+reset role;
+
 -- ── Z10x Einstellungen wieder ausschalten ──────────────────────────
 set local role authenticated; select pg_temp.als(:'A');
 select 'Z100 Überweisung ausschalten (Rest bleibt) → ok | ' || (zahlarten_setzen(:'B1',

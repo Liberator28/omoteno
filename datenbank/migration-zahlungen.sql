@@ -105,7 +105,7 @@ create table if not exists public.zahlungen (
   bestellung_id     uuid not null unique references public.bestellungen(id) on delete cascade,
   art               text not null check (art in ('stripe','ueberweisung')),
   methode           text check (methode is null or methode in ('card','klarna','paypal','sepa_debit','ueberweisung','unbekannt')),
-  status            text not null default 'offen' check (status in ('offen','bezahlt','fehlgeschlagen','abgelaufen')),
+  status            text not null default 'offen' check (status in ('offen','bezahlt','fehlgeschlagen','abgelaufen','vor_ort')),
   betrag_cent       integer not null check (betrag_cent between 50 and 10000000),
   waehrung          text not null default 'eur' check (waehrung = 'eur'),
   stripe_konto      text,
@@ -457,13 +457,15 @@ begin
     return jsonb_build_object('ok', false, 'grund', 'konto');
   end if;
   select * into b from public.bestellungen where id = p_bestellung for update;
+  -- „vor_ort“: das Personal hat die Bestellung schon freigegeben (Gast hat dort bezahlt).
+  -- Kommt trotzdem Geld an, zahlte er zweimal → Rückzahlung nötig, Bestellung bleibt unberührt.
   update public.zahlungen
      set status = 'bezahlt', bezahlt_am = now(), geaendert_am = now(),
          methode = case when p_methode in ('card','klarna','paypal','sepa_debit','ueberweisung') then p_methode else 'unbekannt' end,
          stripe_zahlung = left(p_ref, 120),
-         rueckzahlung_noetig = (b.status is distinct from 'neu')
+         rueckzahlung_noetig = (b.status is distinct from 'neu') or z.status = 'vor_ort'
    where id = z.id;
-  if b.status is distinct from 'neu' then
+  if b.status is distinct from 'neu' or z.status = 'vor_ort' then
     return jsonb_build_object('ok', true, 'betrieb_id', z.betrieb_id, 'rueckzahlung', true);
   end if;
   update public.bestellungen
@@ -494,6 +496,36 @@ begin
     end if;
   end loop;
 end $$;
+
+-- ── 7b · Beim Personal bezahlt (Team UND Inhaber im Board) ─────────
+-- Fällt Stripe aus oder will der Gast doch bar zahlen, darf die Bestellung
+-- nicht unsichtbar bleiben (§7: ein echter Gast ohne Essen kostet mehr als
+-- eine Zahlung, die später doppelt eintrifft). Das Personal gibt frei; kommt
+-- später doch Geld an, steht die Zahlung auf „Rückzahlung nötig“.
+create or replace function public.zahlung_vor_ort_freigeben(p_bestellung uuid)
+returns jsonb language plpgsql volatile security definer set search_path = public as $function$
+declare z public.zahlungen%rowtype; b public.bestellungen%rowtype;
+begin
+  if auth.uid() is null then return jsonb_build_object('ok', false, 'grund', 'nicht_angemeldet'); end if;
+  select * into z from public.zahlungen where bestellung_id = p_bestellung for update;
+  if not found then return jsonb_build_object('ok', false, 'grund', 'unbekannt'); end if;
+  if z.betrieb_id not in (select public.meine_betriebe()) and not public.ist_master() then
+    return jsonb_build_object('ok', false, 'grund', 'kein_recht');
+  end if;
+  if z.status in ('bezahlt','vor_ort') then return jsonb_build_object('ok', true, 'schon', true); end if;
+  select * into b from public.bestellungen where id = p_bestellung for update;
+  update public.zahlungen set status = 'vor_ort', geaendert_am = now() where id = z.id;
+  if b.status = 'neu' then
+    update public.bestellungen
+       set pruefen = z.vorher_markiert,
+           pruef_grund = case when z.vorher_markiert then nullif(replace(coalesce(b.pruef_grund, ''), ' · Zahlung offen', ''), 'Zahlung offen') end,
+           zeitpunkt = now()
+     where id = p_bestellung;
+  end if;
+  return jsonb_build_object('ok', true);
+end $function$;
+revoke execute on function public.zahlung_vor_ort_freigeben(uuid) from public, anon;
+grant  execute on function public.zahlung_vor_ort_freigeben(uuid) to authenticated;
 
 -- ── 8 · Überweisung bestätigen (Inhaber im Board) ──────────────────
 create or replace function public.zahlung_ueberweisung_bestaetigen(p_bestellung uuid)
