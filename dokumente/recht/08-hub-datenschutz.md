@@ -144,7 +144,7 @@ S.C.A.; wir erfahren nur, dass ein Betrag eingegangen ist.
 ### 11 · Empfänger
 
 Omoteno (Technik) und deren Dienstleister: Supabase (Datenbank in
-Frankfurt am Main), Netlify (Auslieferung) {+ Klaviyo, Vapi, wenn genutzt}.
+Frankfurt am Main), Netlify (Auslieferung) {+ Klaviyo, Vapi, Stripe, wenn genutzt}.
 Bei US-Anbietern ist ein Zugriff aus den USA nicht ausgeschlossen; Grundlage
 sind das EU-US Data Privacy Framework oder Standardvertragsklauseln.
 
@@ -165,3 +165,21 @@ Datenschutz und Informationsfreiheit, Postfach 3163, 65021 Wiesbaden}.
 Es gibt keine automatisierte Entscheidung über Sie (Art. 22 DSGVO).
 
 Stand: {Datum der Erzeugung}
+
+## 11 · Bezahlen (nur wenn das Haus Online-Zahlung oder Überweisung anbietet)
+
+*Der Hub setzt diesen Abschnitt automatisch ein und nennt nur Anbieter, die das
+Haus wirklich eingeschaltet hat (Quelltext: `zahlenText()` in
+`vorlagen/hub.vorlage.html`). Wortlaut dort; hier zum Gegenlesen durch den
+Datenschutzberater.*
+
+Sie können online bezahlen (Karte, Klarna, PayPal, SEPA-Lastschrift). Dazu
+leiten wir Sie auf die Bezahlseite von Stripe (Stripe Payments Europe, Ltd.,
+Irland) weiter. Ihre Karten- oder Kontodaten geben Sie ausschließlich dort ein;
+weder wir noch das Haus sehen sie. Wir erfahren nur Betrag, Zahlart und ob die
+Zahlung gelungen ist (Art. 6 Abs. 1 lit. b DSGVO). Stripe verarbeitet Ihre Daten
+für die Zahlung und zur Betrugsabwehr in eigener Verantwortung; eine
+Übermittlung in die USA ist möglich (DPF oder Standardvertragsklauseln). Bei
+Klarna und PayPal gelten zusätzlich deren Bedingungen und Datenschutzerklärungen.
+Bei Überweisung nennen wir die Bankverbindung; Ihre Bank teilt uns Namen und
+Betrag mit, damit wir die Zahlung Ihrer Bestellung zuordnen können.

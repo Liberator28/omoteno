@@ -186,3 +186,27 @@ gebaut und geprüft, **nicht** gegen echte Stripe-, PayPal- oder Klarna-Konten.
 Ob PayPal, Klarna und SEPA im Stripe-Konto eines Betriebs freigeschaltet
 sind, entscheidet Stripe — nicht dieser Code. Ein echter Testlauf mit dem
 Stripe-Testmodus ist der erste Schritt nach dem Einspielen (Checkliste).
+
+## Stand der Umsetzung (Zahlarten)
+
+Gebaut, lokal geprüft, **nicht live**: `datenbank/migration-zahlungen.sql`,
+Edge Functions `zahlung-starten` und `stripe-webhook`, Hub (Wahl im Warenkorb,
+Bestellseite, Rückkehr), Board („Einstellungen → Bezahlen“, Chips,
+Rückzahlungsliste). Ablauf und Teststand: `dokumente/checkliste-live-und-kunden.md`
+Block 7b.
+
+Entscheidungen, die ein Mensch bestätigen muss:
+- **Direct charges auf das Konto des Betriebs**, keine Plattformgebühr
+  (`application_fee` wird nie gesetzt). Das ist die rechtlich ruhigste Form;
+  ob sie nach ZAG für Omoteno genügt, entscheidet der Anwalt.
+- **Standard bleibt Zahlung beim Personal** (§ 312a Abs. 4 BGB). Online ist
+  immer eine zusätzliche Wahl, nie die einzige.
+- **Keine Aufschläge** auf irgendeine Zahlart (§ 270a BGB).
+- **Der Knopf heißt weiter „Zahlungspflichtig bestellen“** (§ 312j BGB), auch
+  bei Online-Zahlung; die Bezahlseite von Stripe kommt danach.
+- **Ausfall:** Hält Stripe nicht, gibt das Personal die Bestellung frei
+  („Beim Personal bezahlt“). Zahlt der Gast später doch, steht „Rückzahlung
+  nötig“ im Board, bis der Besitzer sie abhakt.
+- **Datenschutzerklärung des Hubs** nennt Stripe, Klarna, PayPal, SEPA und
+  Überweisung nur, wenn das Haus sie wirklich anbietet.
+

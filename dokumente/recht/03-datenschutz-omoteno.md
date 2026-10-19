@@ -161,6 +161,7 @@ Auftragsverarbeiter nach Art. 28 DSGVO:
 | fal.ai (Features & Labels, Inc., USA) | Freisteller, Profi-Foto auf Anforderung des Betriebs | USA |
 | Klaviyo, Inc. (USA) | E-Mails der Betriebe an Gäste, die zugestimmt haben | USA |
 | Vapi, Inc. (USA) | Telefon-Assistentin Alessia, nur bei Betrieben, die sie einsetzen | USA |
+| Stripe Payments Europe, Ltd. (Irland) | Online-Zahlung auf dem Stripe-Konto des Betriebs (Karte, Klarna, PayPal, SEPA); Karten- und Kontodaten gibt der Gast nur dort ein, Omoteno sieht sie nie. Nur bei Betrieben, die Online-Zahlung einschalten. Stripe handelt für die Zahlung in eigener Verantwortung | EU; Übermittlung in die USA möglich (DPF/SCC) |
 | IONOS SE | Domain omoteno.de | Deutschland |
 
 Eigenständig Verantwortliche, wenn du sie nutzt: OpenPLZ API

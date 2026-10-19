@@ -181,6 +181,53 @@ Für Choco L'AMouR, Blend, Minhkeey, Più Gusto und jeden weiteren:
 - [ ] **E** Referenz: ein Foto/ein Satz vom ersten Haus (mit Erlaubnis)
       für die Landingpage.
 
+## 7b · Zahlarten live schalten (Karte, Klarna, PayPal, SEPA, Überweisung)
+
+Standard bleibt: Der Gast zahlt beim Personal. Nichts davon ändert sich,
+bis ein Betrieb unter „Einstellungen → Bezahlen“ etwas einschaltet.
+
+- [ ] **E** `datenbank/migration-zahlungen.sql` einspielen. Vorher die
+      zwei Abfragen aus ihrem Kopf (Signaturen von `bestellung_aufgeben`
+      und `bestellung_liefern`, Schranken von `bestellungen`) — **genau
+      eine Zeile je Funktion**. Danach `datenbank/pruef-zahlungen.sql` im
+      SQL-Editor (dreht sich zurück): jede Zeile muss `true` sein. Lokal
+      laufen sie 116 von 116 — gegen die echte Datenbank noch nie.
+- [ ] **E** Edge Functions ausrollen, beide **ohne** Token-Prüfung (die
+      Echtheit kommt beim Webhook aus der Unterschrift):
+      `supabase functions deploy zahlung-starten --no-verify-jwt` und
+      `supabase functions deploy stripe-webhook --no-verify-jwt`.
+      Geheimnisse nur in Supabase: `STRIPE_SECRET_KEY` (Plattform),
+      `STRIPE_WEBHOOK_SECRET`. Dann `list_edge_functions` gegen den Ordner
+      halten (CLAUDE.md §2.3d).
+- [ ] **E** Stripe-Plattformkonto: Connect aktivieren; Webhook-Endpunkt
+      vom Typ „Connected accounts“ auf `…/functions/v1/stripe-webhook` mit
+      `checkout.session.completed`, `.async_payment_succeeded`,
+      `.async_payment_failed`, `.expired`.
+- [ ] **E** **Erst im Teststand** durchspielen: Testkarte, Abbruch auf der
+      Bezahlseite, abgelaufene Sitzung (30 min), fehlgeschlagene Zahlung,
+      Klarna-/PayPal-Testkonto, SEPA-Testmandat. Bei jedem Weg: Landet
+      die Bestellung erst NACH der Zahlung in der Küche? Kommt der Push?
+- [ ] **E** Ausfall üben: Webhook-Geheimnis absichtlich falsch → die
+      Bestellung bleibt „Zahlung offen“ im Board → „Beim Personal bezahlt
+      – freigeben“ funktioniert → eine spätere Zahlung erscheint als
+      „Rückzahlung nötig“.
+- [ ] **E** Rückzahlung üben (Stripe-Dashboard) und „erledigt“ tippen.
+- [ ] **E** Je Betrieb: eigenes Stripe-Konto (Standard-Konto, Betrieb
+      ist Vertragspartner von Stripe), Klarna und PayPal im
+      Stripe-Dashboard des Betriebs freigeschaltet (Klarna prüft den
+      Händler), `acct_…` im Board eintragen, PIN bestätigen.
+- [ ] **E** Rechtlich (Fragen stehen in `recht/12`): Anwalt zur
+      Einschätzung nach ZAG (Omoteno hält nie Geld, keine
+      Plattformgebühr über die Zahlung); Steuerberater zum Preismodell;
+      Stripe/Klarna/PayPal als Empfänger in `recht/03` und im AVV
+      (`recht/06`) namentlich; kein Aufpreis auf irgendeine Zahlart
+      (§ 270a BGB).
+- [ ] **E** SEPA-Lastschrift nur einschalten, wenn der Betrieb weiß:
+      Bestätigung kann Tage dauern, die Küche beginnt dann erst
+      spät. Für Essen zum Sofortverzehr nicht sinnvoll.
+- [ ] **E** Überweisung nur bei Lieferung, nur wenn gewünscht; die
+      Küche beginnt erst nach „Zahlung eingegangen“ (Besitzer tippt).
+
 ## 8 · Was ich NICHT belegen kann
 
 - Wie Animationen und Schriften auf echten Telefonen aussehen
@@ -191,3 +238,6 @@ Für Choco L'AMouR, Blend, Minhkeey, Più Gusto und jeden weiteren:
 - Ob E-Mails (Passwort-Reset, Einladung, Klaviyo) ankommen — zeigt nur
   ein echter Versuch.
 - Alles, was in Supabase, DNS und Netlify-Einstellungen steht.
+- Ob Stripe, Klarna und PayPal mit diesem Code wirklich Geld bewegen — die
+  Edge Functions laufen in der Prüfung gegen gestelltes Deno/fetch, nie
+  gegen Stripe.

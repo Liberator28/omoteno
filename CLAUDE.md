@@ -1660,6 +1660,40 @@ Probe sie nicht. Ein Text, der als Schlüssel dient (Gerichtname,
 Kategorie), verliert nur `<>`; Anzeigetext zusätzlich das gerade `"`
 (`liveText`/`liveTextDoppel`). Und am Senke zählt `hs()` trotzdem.
 
+### 8.1x Wo Geld fließt, braucht jeder Ausfall einen Ausweg — und jede Rückzahlung einen Ort
+
+> **Vorfall, beim Bau der Zahlarten (Stripe, Klarna, PayPal, SEPA, Überweisung)
+> viermal im Entwurf gefunden, nicht live.** (1) Eine online bezahlte
+> Bestellung wird bis zur Zahlung unsichtbar gehalten (`pruefen`). Fällt
+> Stripe aus, hätte ein echter Gast bestellt und nie etwas bekommen — §7
+> andersherum. Ausweg: „Beim Personal bezahlt – freigeben“
+> (`zahlung_vor_ort_freigeben`), und kommt später doch Geld an, steht die
+> Zahlung auf „Rückzahlung nötig“. (2) Storniert der Gast NACH der Zahlung,
+> verschwindet die Karte aus dem Board — mit ihr der Hinweis. Das Board
+> filtert `storniert` heraus; ein Band an der Karte hätte nie jemand
+> gesehen (die Probe fand `null`). Jetzt merkt ein Trigger die Rückzahlung
+> in der Zahlung, und das Board listet jede offene, an welchem Tag auch
+> immer, bis der Besitzer „erledigt“ tippt. (3) `zahlung_stripe_vorbereiten`
+> baute die Zahlarten mit `array || 'card'` — Postgres liest das
+> Literal als Array und wirft erst beim ersten Aufruf (§2.2). (4) Der Hub
+> zeigte einen Fehlersatz über `melden()`; auf der Bestellseite gibt es
+> kein `#melde`, der Satz stand im Nichts (§8.1h).
+
+- Jeder Zahlungsweg hat eine Antwort auf „Anbieter fällt aus“ und auf
+  „Geld ist da, Essen nicht“. Fehlt eine, ist der Weg nicht fertig.
+- Der Betrag kommt aus der Datenbank, nie aus dem Browser; das Konto
+  ebenso. Die Probe schickt einen gefälschten Betrag und ein fremdes
+  Konto MIT (`pruef-zahlung-edge.js`).
+- Eine Webhook-Funktion gibt nur frei, wenn Unterschrift, Konto, Betrag
+  und Währung stimmen — und jede dieser Prüfungen hat ihren eigenen
+  Gegenbeweis (acht Sabotagen im Worktree, jede rot).
+- Eine Probe, die `NULL` liefert, druckt NICHTS (`NULL || text` ist
+  NULL). Beim SQL-Lauf zählt der Runner die Zeilen gegen die Zahl der
+  Proben; sonst blieben Z75, Z90 und Z91 bei entfernter Prüfung „grün“.
+- Ehrliche Grenzen: Kein Lauf gegen echtes Stripe, Klarna oder PayPal
+  (braucht Konten und Schlüssel). SEPA-Lastschrift ist erst nach Tagen
+  bestätigt und für Essen zum Sofortverzehr ungeeignet — das Board sagt es.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1734,6 +1768,7 @@ Dazu je nach Änderung:
 | **Gericht anlegen im Board (Blatt, „Mehr Angaben“, Speichern & nächstes)** | `pruefungen/pruef-gericht-schnell.js` — Ruhelage zugeklappt, Preis mit Komma, erkannte Allergene nur als Vorschlag (nichts von selbst gesetzt, Gegenfall ohne Treffer), Serienanlage behält Karte/Kategorie und leert den Rest, unlesbarer Preis speichert nicht und sagt warum |
 | **Rabatt am Gericht, Aktionspreis in der Karte** | `pruefungen/pruef-rabatt-gericht.js` (braucht `dist/`) — Board schreibt in `aktionen` innerhalb jeder Schranke (zweite Quelle `datenbank/stand-aktionen-schranken.sql`), Hub zeigt neuen und alten Preis samt „−20 %“, „+“ legt zum Aktionspreis in den Korb und zieht nach Ende nach, Dauer-Rabatt nicht im Streifen, Plakette lesbar je Haus Tag/Abend |
 | **Altersfreigabe 16+/18+ (Board, Hub, Küche)** | `pruefungen/pruef-altersfreigabe.js` (braucht `dist/`) — Alkohol aus dem Namen nur VORGESCHLAGEN, gegen die echten Getränkenamen (§6.1), Frage einmal je Stufe und Sitzung auch über zweiten Weg, „Wieder herausnehmen“ nimmt nur Betroffenes, Schirm entfernt statt versteckt, Küche „Ausweis 18+“ an der Position |
+| **Zahlarten (Stripe: Karte/Klarna/PayPal/SEPA, Überweisung), `zahlungen`, `betrieb_zahlarten`, Rückzahlung** | DB: `pruefungen/pruef-zahlungen-lokal.sh` (lokales Postgres 16: `datenbank/modell-lokal-zahlung.sql` + die ECHTEN Funktionen aus den Migrationen + `migration-zahlungen.sql` + `datenbank/pruef-zahlungen.sql`, zurückgedreht) — Runner zählt Zeilen gegen Proben (NULL druckt nichts); IBAN-Prüfsumme, Einstellen nur Inhaber + PIN (Formfehler kosten keinen Versuch), kein direktes Schreiben (Recht UND Zeilenzahl), Betrag = Ware + Lieferung − Rabatt in Cent, abgewiesene Aufrufe hinterlassen keine Bestellung, Service-Funktionen nur `service_role`, Webhook-Freigabe nur bei passendem Konto, „abgelaufen“ überschreibt nie „bezahlt“, Rückzahlung bei stornierter/vor-Ort-bezahlter Bestellung, Überweisung nur Inhaber. Gegenbeweise im Worktree (7 Sabotagen). Edge: `pruefungen/pruef-zahlung-edge.js` führt die echten `zahlung-starten`/`stripe-webhook` aus (Unterschrift mit Nodes crypto selbst gerechnet, gefälschter Betrag/Konto/Rückkehradresse, SEPA erst bei `async_payment_succeeded`, DB-Fehler → 500 + Ereignis frei; 8 Sabotagen). Hub: `pruefungen/pruef-zahlung.js` (braucht `dist/`) — beide Häuser: nichts sichtbar ohne Zahlarten/bei 404/500 und genau EINE Anfrage; Wahl am Tisch 2 Wege, Lieferung 3; ≥ 44 px, ≥ 4,5:1 hell/dunkel; Zahlungs-Funktion mit allen alten Feldern + `p_zahlart`, Weiterleitung NUR zu checkout.stripe.com; Wahl eingefroren über Neuladen (§8.1q); Rückkehr `?zahlung=ok|abbruch`; Bankdaten nur als Text; Datenschutz nennt nur vorhandene Anbieter; alle neuen Sätze in elf Sprachen. Board: `pruefungen/pruef-zahlung-board.js` — PIN-Blatt VOR dem Schreiben, Nutzlast, Lesefehler sperrt Speichern (§8.1m), Zahlung-offen-Band ohne freies „Freigeben“, Rückzahlungsliste, Team ohne Geldeingang-Taste. **Ehrliche Grenze:** nie gegen echtes Stripe/Klarna/PayPal gelaufen; DB-Hälfte nur lokal, `migration-zahlungen.sql` ist NOCH NICHT live eingespielt |
 | **Sicherheit: Kopfzeilen, CSP, selbst ausgelieferte Bibliotheken, 429 an den Türen, Polling, offene anon-Funktionen** | `pruefungen/pruef-sicherheit.js` — lokaler Server mit den echten `_headers` (wie Netlify zusammengeführt): CSP/HSTS/DENY, `/lib/` immutable, keine Seite lädt fremdes Skript; elf Seiten ohne `securitypolicyviolation`; manipulierte `/lib/`-Datei wird nicht ausgeführt (integrity); HTTP 429 an Board, Konto, Küche, Master gibt einen Satz und KEINEN Login-Versuch (Gegenfall: erlaubt → Versuch); versteckter Tab fragt zehn Minuten nichts, zurück holt sofort; `connect-src` nennt nur das EIGENE Projekt (Adresse aus dem Board gelesen, kein `*.supabase.co`; Browserprobe: `evilproject.supabase.co` wird gesperrt); jede anon-Funktion aus `datenbank/stand-anon-funktionen.sql` gebremst oder namentlich begründet, und jede Funktion in `migration-schutz-2.sql` trägt ihre Bremse |
 | **Speisekarte: Pille „Für mich entscheiden“ über dem Titel, Kategorie-Leiste geht beim Rollen mit, „Zurück“ in der klebenden Leiste** | `pruefungen/pruef-speisekarte-leiste.js` (braucht `dist/`) — beide Häuser 360/390/430 px: Pille erstes Element vor dem `h2`, eine Zeile ≤ 52 px, ≥ 44 px, ≥ 4,5:1, Tipp → Rad; Tipp auf eine Kategorie SPRINGT (filtert nicht — alle Gerichte bleiben), genau ein Chip `.an` mit `aria-current`, ganz im Bild der Leiste, nicht verdeckt (`elementFromPoint`), erstes Gericht direkt unter der Leiste; von Hand gerollt folgt die Markierung, oben wieder „Alle“; klebt die Leiste, steht „Zurück“ IN ihr (getroffen) und die schwebende Pille ist weg (opacity 0, nicht antippbar), kein Chip unter fremdem Element; „Beliebt“ filtert wie bisher; reduzierte Bewegung springt sofort; Arabisch: Zurück rechts, übersetzt. Liefer-Schalter ohne Feder: `pruef-liefern.js` (nur steigend, nie über 44 px, keine Stauchung) |
 | **Kachel → Unterseite (seit 11.10. OHNE Übergang), Glas-Knopf „Zurück“** | `pruefungen/pruef-reise.js` (braucht `dist/`) — jede Kachel der echten Startseite über den echten Tipp: Adresse im selben Takt, nie eine `.reise`-Ebene, im ersten Bild deckend (gegen die RUHE gemessen — die 0,85 des Foodroulette-Pfeils ist Gestaltung; Fotos blenden erst nach dem Laden ein und sind ausgenommen), nur eine transform-Bewegung ≤ 220 ms ohne Verzögerung; reduzierte Bewegung: keine Animation; Zurück ohne Ebene; Glas-Knopf je Sprache, ≥ 44 px, Licht nur transform |
