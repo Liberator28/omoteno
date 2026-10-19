@@ -269,7 +269,11 @@ async function oeffnen(browser, haus, breite, sprache) {
     const kl = await seite.evaluate(() => {
       /* Klebt die Kategorie-Leiste, steht der Weg zurück IN ihr (seit
          10.10.; die schwebende Pille tritt dann zurück) — dann gilt dieser. */
-      const b = document.body.classList.contains("kat-klebt") ? document.querySelector("#inhalt .chip-zurueck")
+      /* Seit 19.10.: Ist neben der Zentrale zu wenig Platz (html.kw-eng),
+         klebt die Leiste eine Zeile tiefer und „Zurück“ bleibt die
+         schwebende Pille oben — die in der Leiste ist dann ausgeblendet. */
+      const eng = document.documentElement.classList.contains("kw-eng");
+      const b = document.body.classList.contains("kat-klebt") && !eng ? document.querySelector("#inhalt .chip-zurueck")
                                                               : document.getElementById("zurueck"), r = b.getBoundingClientRect();
       const mitte = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);
       return { top: r.top, scroll: scrollY, oben: mitte === b || b.contains(mitte) };
