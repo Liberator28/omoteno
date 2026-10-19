@@ -6993,7 +6993,7 @@ function aktionBandHTML(){
           encodeURIComponent(a.gericht_name) + '">'
         : '<div class="aktionklick">') +
         '<span class="kennz-zeile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2 4.8 13.4h6l-1.2 8.6 8.6-11.6h-6.1z"/></svg>' +
-          '<span class="kennz">' + titel + '</span></span>' +
+          '<span class="kennz">' + hs(titel) + '</span></span>' +
         '<span class="was"><span class="name">' + sicherText(a.gericht_name) + '</span>' +
         '<span class="preise"><span class="neu">' + preisText(a.preis_neu) + '</span>' +
         '<span class="alt">' + preisText(a.preis_alt) + '</span></span></span>' +
@@ -11060,6 +11060,25 @@ function eigenWert(w){
   if(typeof w !== "string") return "";
   return w.replace(/[<>]/g, "").replace(/"/g, "\u201D").replace(/[\u0000-\u001F\u007F]/g, " ").trim().slice(0, 160);
 }
+/* Texte aus Live-Spalten (Gericht, Kategorie, Aktion, Pausentext, Wörter,
+   Übersetzungen) landen an vielen Stellen roh in innerHTML und in
+   Attributen. Ein Gast-Hub, der „<img onerror=…>“ aus einem Gerichtnamen
+   ausführt, hat den Anspruch aus §2.3a nicht gehalten — gemessen am
+   19.10. (Sweep): Name, Beschreibung, Kategorie, Aktionstitel,
+   Pausentext, Wörter und Übersetzungen feuerten.
+   liveText: keine spitzen Klammern (Namen und Kategorien dienen als
+   Schlüssel und gehen unverändert an den Server — dort steht kein <>);
+   liveTextDoppel zusätzlich „"“ → „”“ für reinen Anzeigetext. */
+function liveText(w){
+  return typeof w === "string" ? w.replace(/[<>]/g, "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ") : "";
+}
+function liveTextDoppel(w){ return liveText(w).replace(/"/g, "\u201D"); }
+function liveWoerter(o){
+  const aus = {};
+  if(o && typeof o === "object" && !Array.isArray(o))
+    Object.keys(o).slice(0, 20).forEach(k => { if(typeof o[k] === "string") aus[k] = liveTextDoppel(o[k]); });
+  return aus;
+}
 function eigenSauber(roh){
   const aus = {};
   if(!roh || typeof roh !== "object" || Array.isArray(roh)) return aus;
@@ -12073,7 +12092,7 @@ function ksFlinkKopfHTML(id, daten){
   const bahn = top.length < 2 ? "" :
     '<div class="ks-titel">' + hs(t("Beliebt")) + '</div><div class="ks-bahn">' +
     top.map(([e, gr]) => '<button type="button" class="ks-tipp" data-detail="' + encodeURIComponent(e.n) + '" aria-label="' +
-      t("Infos zu {x}", {x:t(e.n)}) + '">' +
+      t("Infos zu {x}", {x:hs(t(e.n))}) + '">' +
       /* Das Zeichen liegt immer darunter: Lädt das Foto nicht, bleibt
          statt einer leeren Fläche das Zeichen der Kategorie stehen. */
       '<span class="ks-tbild ks-tzeichen">' + bzHTML(bzKategorie(gr, id), "kst:" + id + ":" + gr) +
@@ -12242,7 +12261,7 @@ function gerichtHTML(g, gruppe, karte){
      rechts, mittig zur Zeile. */
   return '<div class="gericht' + (hatVorschau(g) ? " gmitbild" : (stil !== "liste" ? " gmitbild ks-ohnebild" : "")) + '">' +
          '<button class="ginfo" data-detail="' + encodeURIComponent(g.n) + '" aria-label="' +
-         t("Infos zu {x}", {x:t(g.n)}) + '">' +
+         t("Infos zu {x}", {x:hs(t(g.n))}) + '">' +
          '<span class="gtext">' +
          '<div class="n">' + t(g.n) + tags + (hatInfo ? '<span class="infopunkt"></span>' : "") + '</div>' +
          urnameHTML(g.n) +
@@ -12402,7 +12421,7 @@ function karteSeite(id, daten, titel, unter, fuss){
   const mitZeichen = bewegteZeichenAn();
   const chips = gruppen.map(g =>
     '<button class="chip ' + (g === filter[id] ? "an" : "") + (mitZeichen ? " mitbz" : "") +
-    '" data-seite="' + id + '" data-g="' + g + '">' +
+    '" data-seite="' + id + '" data-g="' + hs(g) + '">' +
     (mitZeichen ? bzHTML(bzKategorie(g, id), "chip:" + id + ":" + g) : "") +
     '<span>' + t(g) + '</span></button>').join("");
 
@@ -13514,7 +13533,7 @@ function dazuHTML(){
          wie in der Karte. „+“ legt hinein; danach steht dort −/+. */
       return '<div class="dazu-karte' + (drin ? ' drin' : '') + '" data-name="' + encodeURIComponent(g.n) + '" data-grund="' + hs(x.grund) + '">' +
         '<button type="button" class="dazu-info" data-detail="' + encodeURIComponent(g.n) + '" aria-label="' +
-          t("Infos zu {x}", {x:t(g.n)}) + '">' +
+          t("Infos zu {x}", {x:hs(t(g.n))}) + '">' +
         '<span class="dazu-bild">' + dazuBildHTML(x) +
           '<span class="dazu-grund dazu-pille">' + (drin ? t("Im Korb") : t(x.grund)) + '</span></span>' +
         '<b class="dazu-name">' + t(g.n) + '</b></button>' +
@@ -13627,7 +13646,7 @@ SEITEN.auswahl = () => {
     const kennt = !!findeGericht(n);
     const mn = kennt
       ? '<button type="button" class="mn" data-detail="' + encodeURIComponent(n) + '" aria-label="' +
-          t("Infos zu {x}", {x:t(g.n)}) + '">'
+          t("Infos zu {x}", {x:hs(t(g.n))}) + '">'
       : '<div class="mn">';
     return '<div class="merkzeile" data-zeile="' + encodeURIComponent(n) + '">' + mn + t(g.n) +
       (g.b ? '<small>' + t(g.b) + '</small>' : "") + stueck +
@@ -13731,7 +13750,7 @@ SEITEN.auswahl = () => {
     bestellteil +
     (stopp
       ? '<div class="stoppfeld"><b>' + t(stopp.titel) + '</b>' +
-        '<p>' + t(stopp.text) + '</p></div>'
+        '<p>' + hs(t(stopp.text)) + '</p></div>'
       : summe > 0 && !bestellbar
       ? '<div class="hinweis">' + t("Ihre Auswahl ist keine Bestellung – bestellen Sie einfach beim Serviceteam.") + '</div>'
       : "") +
@@ -16201,7 +16220,7 @@ function warenkarteHTML(g){
   const bild = hatVorschau(g)
     ? '<div class="wbild' + (detailSchwebt ? ' schwebt' : '') + (detailQuadrat ? ' fuellt' : '') + '" style="aspect-ratio:' +
       (detailSchwebt ? '1 / 1' : 'auto') + '">' +
-      '<img src="' + hs(detailFrei ? g.bf : bildFuer(g, false)) + '" alt="' + t(g.n) +
+      '<img src="' + hs(detailFrei ? g.bf : bildFuer(g, false)) + '" alt="' + hs(t(g.n)) +
       '" loading="lazy" decoding="async" ' +
       'onload="this.classList.add(&quot;geladen&quot;)" ' +
       'onerror="this.closest(&quot;.wbild&quot;).style.visibility=&quot;hidden&quot;"></div>'
@@ -19112,7 +19131,7 @@ async function karteHolen(erstesMal){
     /* Bestellpause aus dem Board übernehmen. Das Team schaltet sie dort
        mit einem Tipp, der Gast sieht es beim nächsten Abgleich. */
     BETRIEB.bestellPause     = !!b[0].bestell_pause;
-    BETRIEB.bestellPauseText = b[0].bestell_pause_text || "";
+    BETRIEB.bestellPauseText = liveTextDoppel(b[0].bestell_pause_text);
 
     /* ─── Liefereinstellungen ────────────────────────────────────
        Ganz oder gar nicht: Ein Haus mit Liefergebiet, aber ohne
@@ -19176,7 +19195,7 @@ async function karteHolen(erstesMal){
           const wert = topf[deutsch];
           if(typeof wert !== "string" || !wert.trim()) return;
           TEXTE[deutsch] = Object.assign({}, TEXTE[deutsch] || {});
-          TEXTE[deutsch][code] = wert;
+          TEXTE[deutsch][code] = liveTextDoppel(wert);
         });
       });
     }
@@ -19303,24 +19322,25 @@ async function karteHolen(erstesMal){
         /* Übersetzungen aus der DB-Spalte "uebersetzungen" (jsonb) ins
            Wörterbuch mischen – z.B. {"en":"…","tr":"…"}. So bleibt die
            Karte auch nach Änderungen im Admin-Panel mehrsprachig. */
-        if(z.uebersetzungen && typeof z.uebersetzungen === "object" && z.beschreibung)
-          TEXTE[z.beschreibung] = Object.assign({}, TEXTE[z.beschreibung] || {}, z.uebersetzungen);
+        const nm = liveText(z.name), beschr = liveTextDoppel(z.beschreibung), kat = liveText(z.kategorie);
+        if(z.uebersetzungen && typeof z.uebersetzungen === "object" && beschr)
+          TEXTE[beschr] = Object.assign({}, TEXTE[beschr] || {}, liveWoerter(z.uebersetzungen));
         /* Der NAME geht durch dieselbe Funktion t() wie die
            Beschreibung, hatte aber nirgends eine Übersetzung. Eigene
            Spalte statt eines Unterobjekts in "uebersetzungen": Ein
            Schlüssel "name" in derselben Zeile wäre hier ab sofort eine
            Sprache namens „name“ geworden. */
-        if(z.name_uebersetzungen && typeof z.name_uebersetzungen === "object" && z.name)
-          TEXTE[z.name] = Object.assign({}, TEXTE[z.name] || {}, z.name_uebersetzungen);
-        let g = topf.find(x => x.gruppe === z.kategorie);
-        if(!g) topf.push(g = { gruppe:z.kategorie, eintraege:[] });
+        if(z.name_uebersetzungen && typeof z.name_uebersetzungen === "object" && nm)
+          TEXTE[nm] = Object.assign({}, TEXTE[nm] || {}, liveWoerter(z.name_uebersetzungen));
+        let g = topf.find(x => x.gruppe === kat);
+        if(!g) topf.push(g = { gruppe:kat, eintraege:[] });
         /* Das Zeichen der Kategorie steht an jedem ihrer Gerichte; es
            reist in der Gruppe mit, damit auch eine Änderung NUR am
            Zeichen den Fingerabdruck unten ändert und neu gezeichnet wird. */
         if(!g.zeichen && typeof z.kat_emoji === "string" && z.kat_emoji) g.zeichen = z.kat_emoji;
         const e = {
-          n: z.name,
-          b: z.beschreibung || "",
+          n: nm,
+          b: beschr,
           p: Number(z.preis) > 0
                ? Number(z.preis).toFixed(2).replace(".", ",")
                : "–"
@@ -19346,7 +19366,7 @@ async function karteHolen(erstesMal){
            Ziffern 1–12 nach LMZDV. */
         const alg = String(z.allergene    || "").split(",").map(x => x.trim()).filter(Boolean);
         const zus = String(z.zusatzstoffe || "").split(",").map(x => x.trim()).filter(Boolean);
-        const hin = String(z.stoff_hinweis || "").trim();
+        const hin = liveTextDoppel(String(z.stoff_hinweis || "")).trim();
         if(alg.length || zus.length || hin){
           INHALTSSTOFFE[e.n] = { a: alg, z: zus, hinweis: hin || undefined };
         }

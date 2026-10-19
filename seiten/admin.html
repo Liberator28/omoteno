@@ -7487,8 +7487,20 @@ function awTun(was, name){
 /* ── Export ────────────────────────────────────────────────────────
    Semikolon, Dezimalkomma, UTF-8 mit BOM: So öffnet ein deutsches
    Excel die Datei ohne Umweg. Keine Namen, keine Adressen. */
+/* Tabellenprogramme führen eine Zelle als Formel aus, wenn sie mit = + - @
+   (oder Tab/Zeilenumbruch) beginnt. Gast-Notiz und Gastname stammen vom
+   Gast — „=HYPERLINK(…)“ in einer Notiz wäre beim Öffnen der Datei beim
+   Personal angekommen (Sweep 19.10.). Zeichen davor: ein Apostroph, der
+   die Zelle zu Text macht. Telefonnummern („+49 6422 …“) bleiben, wie
+   sie sind: nach + oder - nur Ziffern und Trennzeichen. */
+function csvZelle(w){
+  const t = String(w ?? "");
+  if(/^[=@\t\r]/.test(t)) return "'" + t;
+  if(/^[+\-]/.test(t) && !/^[+\-][0-9 ()\/.\-]*$/.test(t)) return "'" + t;
+  return t;
+}
 function awCsvFeld(v){
-  const t = typeof v === "number" ? v.toFixed(2).replace(".", ",") : String(v ?? "");
+  const t = typeof v === "number" ? v.toFixed(2).replace(".", ",") : csvZelle(v);
   return /[;"\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
 }
 function awCsv(art){
@@ -19856,7 +19868,7 @@ $("#csvKnopf").onclick = () => {
   const zeilen = tabelle();
   if(zeilen.length < 2) return melde("Nichts zu sichern", true);
   const csv = "\uFEFF" + zeilen.map(z =>
-    z.map(f => `"${String(f ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+    z.map(f => `"${csvZelle(f).replace(/"/g,'""')}"`).join(";")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
   a.download = `omoteno-${new Date().toISOString().slice(0,10)}.csv`;
