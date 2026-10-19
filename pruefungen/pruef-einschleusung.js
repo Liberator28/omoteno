@@ -30,6 +30,9 @@ const pruef = (g, t, z) => { n++; if(!g) f++; console.log((g ? "  ok   " : "  FE
 const WERKZEUG = path.join(__dirname, "werkzeug", "hub-vergiftet.js");
 const MINDESTENS = ["gericht.name.speisekarte", "gericht.beschreibung.speisekarte", "gericht.kategorie.speisekarte",
   "gericht.stoff_hinweis", "betrieb.bestell_pause_text", "aktion.titel", "texte.claim", "texte.ueber", "kachel.titel", "banner.titel"];
+/* Auf Englisch ersetzt die Übersetzungsspalte die Beschreibung: dort zählt die statt ihrer. */
+const MINDESTENS_EN = MINDESTENS.map(m => m === "gericht.beschreibung.speisekarte" ? "gericht.uebersetzungen.en" : m)
+  .concat(["gericht.name_uebersetzungen.en", "woerter.*"]);
 const LAEUFE = [["html", "de"], ["attr", "de"], ["sq", "de"], ["js", "de"], ["url", "de"], ["html", "en"], ["attr", "en"]];
 const haus = process.env.HAUS || "chocolamour";
 
@@ -41,8 +44,9 @@ for(const [art, sprache] of LAEUFE){
   pruef(!!gef && !!err, "Voraussetzung: der Lauf hat gemessen", gef ? "ja" : aus.slice(-200));
   if(!gef || !err) continue;
   const erreicht = JSON.parse(err[1]), gefeuert = JSON.parse(gef[1]);
-  const fehlt = MINDESTENS.filter(m => !erreicht.includes(m));
-  pruef(!fehlt.length, "Voraussetzung: die Marken kamen im DOM an (Mindestmenge " + MINDESTENS.length + " Felder)", fehlt.join(", ") || erreicht.length + " Felder erreicht");
+  const soll = sprache === "en" ? MINDESTENS_EN : MINDESTENS;
+  const fehlt = soll.filter(m => !erreicht.includes(m));
+  pruef(!fehlt.length, "Voraussetzung: die Marken kamen im DOM an (Mindestmenge " + soll.length + " Felder)", fehlt.join(", ") || erreicht.length + " Felder erreicht");
   pruef(!gefeuert.length, "keine Nutzlast wurde ausgeführt", gefeuert.length ? gefeuert.slice(0, 4).join(" | ") : "0 von " + erreicht.length + " Feldern");
   pruef(!pe || /pageerrors: \[\]/.test(pe[0]), "kein Seitenfehler");
 }
