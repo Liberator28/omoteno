@@ -23,6 +23,7 @@
    6 · Entfernen → archivieren, „Rückgängig“ holt zurück; Umbenennen.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -104,6 +105,7 @@ async function board(browser, opt){
   await p.waitForTimeout(300);
   await p.evaluate(() => document.querySelector('[data-tafel="startseite"]').click());
   await p.waitForTimeout(300);
+  await gruppeZu(p, "#pjGruppe");
   await p.$eval("#pjGruppe", g => g.scrollIntoView({ block:"start" }));
   return { ctx, p, fehler };
 }

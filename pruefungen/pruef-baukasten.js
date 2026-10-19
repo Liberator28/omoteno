@@ -27,6 +27,7 @@
        Verhältnis der Kachel; was herauskommt, muss es auch haben.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -136,6 +137,7 @@ async function board(br){
 
   await p.evaluate(() => tafelZeigen("startseite"));
   await p.waitForTimeout(400);
+  await gruppeZu(p, "#gh-kacheln");
 
   const a = await p.evaluate(() => ({
     sichtbar: !document.getElementById("t-startseite").hidden,

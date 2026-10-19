@@ -599,8 +599,10 @@ html{font-size:calc(16px * var(--skala,1))}
 .gh-titel{font-size:20px;font-weight:650;margin:0 0 4px;color:var(--kreide)}
 .gh-sprung{display:flex;gap:8px;overflow-x:auto;padding:4px 0 6px;margin:8px -16px 0;padding-inline:16px;scrollbar-width:none}
 .gh-sprung::-webkit-scrollbar{display:none}
-.gh-sprung a{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);
+.gh-sprung a{flex:none;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);
   border:1px solid var(--linie);color:var(--kreide);text-decoration:none;font-size:14px;font-weight:600;background:var(--flaeche)}
+.gh-sprung a svg{flex:none;width:18px;height:18px;fill:none;stroke:var(--ton, currentColor);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.gh-sprung a[aria-current="true"]{border-color:var(--ton, var(--messing));box-shadow:inset 0 0 0 1px var(--ton, var(--messing))}
 .gh-vorschau{position:sticky;top:var(--board-kopf, 64px);z-index:6;margin:10px -16px 14px;padding:8px 16px 10px;
   background:var(--nacht);border-bottom:1px solid var(--linie);--hv-mass:.5;--hv-hoehe:210px}
 .gh-vorschau.gross{--hv-mass:.72;--hv-hoehe:520px}
@@ -2748,12 +2750,22 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
    Kachel mit eigenem Versatz, damit nicht alle im Gleichschritt
    leuchten. Schrift in --kreide/--gedaempft auf --glas: dieselben
    Paare wie überall im Board. */
-#t-einstellungen:not([data-eu-offen]) > .egruppe:not(.eu-uebersicht){display:none}
-#t-einstellungen[data-eu-offen] > .eu-uebersicht,
+.tafel[data-eu-kacheln]:not([data-eu-offen]) > .egruppe:not(.eu-uebersicht){display:none}
+.tafel[data-eu-kacheln][data-eu-offen] > .eu-uebersicht,
 #t-einstellungen > .einkauflink,
-#t-einstellungen[data-eu-offen] > .egruppe:not(.eu-jetzt){display:none}
+.tafel[data-eu-kacheln][data-eu-offen] > .egruppe:not(.eu-jetzt){display:none}
 .eu-zurueck{display:none}
-#t-einstellungen[data-eu-offen] > .eu-zurueck{display:inline-flex}
+.tafel[data-eu-kacheln][data-eu-offen] > .eu-zurueck{display:inline-flex}
+/* Reiter „Gast-Hub gestalten“ (19.10.): dieselbe Technik. Ohne offene Gruppe
+   nur Kacheln — Kopf und Vorschau erscheinen erst in einer Unterseite, denn
+   die Vorschau zeigt, was die Gruppe darunter ändert. Dort steht oben die
+   Leiste mit Symbolen: ein Tipp wechselt die Unterseite, ohne den Umweg über
+   die Kacheln. „Alle Bereiche“ klebt hier nicht — die Vorschau klebt schon. */
+#t-startseite:not([data-eu-offen]) > .gh-kopf,
+#t-startseite:not([data-eu-offen]) > .gh-vorschau{display:none}
+#t-startseite[data-eu-offen] .gh-kopf > .gh-titel,
+#t-startseite[data-eu-offen] .gh-kopf > .ehilfe{display:none}
+#t-startseite > .eu-zurueck{position:relative;top:auto}
 .eu-uebersicht{background:none;border:0;box-shadow:none;padding:0}
 .eu-kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:6px}
 .eu-kachel,.eu-zurueck{
@@ -2771,7 +2783,7 @@ a.eu-kachel{text-decoration:none}
 .eu-ktext{display:flex;flex-direction:column;gap:3px;min-width:0}
 .eu-ktext b{font-size:15.5px;font-weight:650;line-height:1.25}
 .eu-ktext i{font-size:12.5px;font-style:normal;color:var(--gedaempft);line-height:1.35;
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
 .eu-kachel .eu-wert{margin-top:auto;text-align:left;max-width:none;color:var(--kreide);font-weight:600;
   display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .eu-kachel .eu-wert:empty{display:none}
@@ -2797,6 +2809,7 @@ a.eu-kachel{text-decoration:none}
   .eu-kachel,.eu-zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
 }
 .eu-kopf{display:grid;grid-template-columns:40px minmax(0,1fr) 56px;align-items:center;gap:12px;margin:14px 0 8px}
+.eu-kopf.ohne-bild{grid-template-columns:40px minmax(0,1fr)}
 .eu-kopf .eu-symbol{width:40px;height:40px;border-radius:12px}
 .eu-kopf .eu-symbol svg{width:22px;height:22px}
 .eu-mitte{min-width:0}
@@ -3819,7 +3832,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
        die Aufnahme eines neuen Hauses, dieses Board ist das des
        Wirts. Was er hier einstellt, sieht der Gast beim nächsten
        Öffnen — ohne dass der Hub neu erzeugt werden muss. -->
-  <section class="tafel" id="t-startseite" hidden>
+  <section class="tafel" id="t-startseite" data-eu-kacheln hidden>
     <!-- ══ GAST-HUB GESTALTEN (Wunsch 11.10.) ══
          „Alles soll auf einem Platz machbar sein und nicht in
          verschiedene Rubriken aufgeteilt werden.“ Kopf, Texte, Schrift,
@@ -3836,6 +3849,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="gh-sprung" role="navigation" aria-label="Bereiche des Gast-Hubs">
         <a href="#pjGruppe" data-gh-sprung="pjGruppe">Projekte</a>
         <a href="#ksGruppe" data-gh-sprung="ksGruppe">Speisekarte</a>
+        <a href="#eoGruppe" data-gh-sprung="eoGruppe">Extras</a>
         <a href="#wzGruppe" data-gh-sprung="wzGruppe">Willkommen</a>
         <a href="#kfGruppe" data-gh-sprung="kfGruppe">Kopf &amp; Logo</a>
         <a href="#gh-worte" data-gh-sprung="gh-worte">Ihre Worte</a>
@@ -3846,6 +3860,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <a href="#gh-banner" data-gh-sprung="gh-banner">Banner</a>
         <a href="#gh-figur" data-gh-sprung="gh-figur">Figur</a>
         <a href="#gh-roulette" data-gh-sprung="gh-roulette">Foodroulette</a>
+        <a href="#gh-emojis" data-gh-sprung="gh-emojis">Emojis</a>
       </div>
     </div>
     <div class="hvrahmen gh-vorschau" data-hv="gestalten"></div>
@@ -4304,7 +4319,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     </div>
   </section>
 
-  <section class="tafel glasgrund" id="t-einstellungen" hidden>
+  <section class="tafel glasgrund" id="t-einstellungen" data-eu-kacheln hidden>
 
     <a class="einkauflink" href="/einkauf.html">
       <span><b>Einkauf &amp; Kosten</b><i>Rechnungen, Artikel, Lieferanten und Bestand</i></span>
@@ -9172,7 +9187,20 @@ const EU_SYMBOL = {
   sanduhr:'<path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/>',
   haus:   '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>',
   geraet: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
-  beleg:  '<path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z"/><path d="M9 8h6M9 12h6M9 16h3"/>'
+  beleg:  '<path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+  /* Reiter „Gast-Hub gestalten“ */
+  ordner: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  speise: '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10"/><path d="M17 3c-2 2-3 4.5-3 7 0 1.5 1 2.5 3 3v8"/>',
+  plus:   '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
+  funken: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8z"/>',
+  bild:   '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4 4 3 3-2 4 3"/>',
+  text:   '<path d="M5 6V4h14v2M12 4v16M9 20h6"/>',
+  schrift:'<path d="M4 19l5-14 5 14M6 14h6"/><path d="M15 12h5M17.5 12v7"/>',
+  farbe:  '<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-1.3-1.2-1.4-1.2-2.6 0-1 .8-1.6 1.8-1.6H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15.5" cy="7.5" r="1"/>',
+  gitter: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  banner: '<rect x="3" y="6" width="14" height="12" rx="2"/><path d="M19.5 8.5v7M22 10v4"/>',
+  wuerfel:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="9" cy="15" r="1"/><circle cx="15" cy="15" r="1"/>',
+  smiley: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14c1 1.6 2.2 2.3 3.5 2.3s2.5-.7 3.5-2.3"/><path d="M9 9.5v.5M15 9.5v.5"/>'
 };
 const euIcon = s => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (EU_SYMBOL[s] || "") + '</svg>';
 const euWippe = id => { const k = $("#" + id); return !!k && k.getAttribute("aria-pressed") === "true"; };
@@ -9182,7 +9210,7 @@ const euKlang = { ruhig:"Ruhig", moderat:"Moderat", stark:"Stark" };
    er tut, sein Zustand und seine kleine Grafik. */
 const EU_BEREICHE = [
   { titel:"Melden", sym:"glocke", ton:"var(--messing)",
-    satz:"Ton, Vibration und Mitteilungen bei neuen Bestellungen",
+    satz:"Ton, Vibration, Mitteilungen",
     stand:() => EINST.ton ? "Ton an · " + (euKlang[EINST.klang] || EINST.klang) + " · " + EINST.lautstaerke + " %" : "Ton aus",
     bild:() => {
       const n = !EINST.ton ? 0 : EINST.klang === "stark" ? 3 : EINST.klang === "ruhig" ? 1 : 2;
@@ -9191,76 +9219,76 @@ const EU_BEREICHE = [
         (n ? "" : '<path class="eu-aus" d="M6 34L34 6"/>');
     } },
   { titel:"Ihre Worte im Gast-Hub", sym:"blase", ton:"var(--telefon)",
-    satz:"Slogan, Gruß beim Öffnen und der Name Ihrer Aktionen",
+    satz:"Slogan, Gruß, Aktionsname",
     stand:() => (HUBTEXTE.claim || "").trim() ? "„" + (HUBTEXTE.claim.trim().length > 26 ? HUBTEXTE.claim.trim().slice(0, 25) + "…" : HUBTEXTE.claim.trim()) + "“" : "Vorgaben des Hauses",
     bild:() => '<rect class="eu-rahmen" x="14" y="2" width="28" height="44" rx="5"/><rect class="eu-fuell" x="17" y="6" width="22" height="9" rx="2"/>' +
       '<path class="eu-linie" d="M19 20h18M19 25h13M19 30h16"/>' },
   { titel:"Lieferung", sym:"roller", ton:"var(--lieferung)",
-    satz:"Ob, wohin, wann und zu welchen Kosten Sie liefern",
+    satz:"Ob, wohin, wann, zu welchen Kosten",
     stand:() => { const plz = ($("#lfPlz") ? $("#lfPlz").value : "").split(/[,\s]+/).filter(x => /^\d{5}$/.test(x)).length;
       return euWippe("lfAn") ? "An · " + plz + (plz === 1 ? " Postleitzahl" : " Postleitzahlen") : "Aus"; },
     bild:() => '<g class="' + (euWippe("lfAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.roller.replace(/<(path|circle)/g, '<$1 transform="translate(8 8) scale(1.4)"') + '</g>' },
   { titel:"Gäste-Newsletter", sym:"brief", ton:"var(--gut)",
-    satz:"Willkommensgutschein und Erinnerung nach 20 Tagen per E-Mail",
+    satz:"Gutschein und Erinnerung per E-Mail",
     stand:() => euWippe("nlAn") ? "An" : "Aus",
     bild:() => '<g class="' + (euWippe("nlAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.brief.replace(/<(path|rect)/g, '<$1 transform="translate(6 4) scale(1.5)"') + '</g>' },
   { titel:"Gutscheine für Stammgäste", sym:"karte", ton:"var(--glut)",
-    satz:"Codes, die Gäste unter „Mein Tisch“ sehen",
+    satz:"Codes unter „Mein Tisch“",
     stand:() => { const n = $$("#gsListe .gs-zeile").length; return n ? n + (n === 1 ? " Gutschein aktiv" : " Gutscheine aktiv") : "Keiner aktiv"; },
     bild:() => { const n = $$("#gsListe .gs-zeile").length;
       return '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
         (n ? '<circle class="eu-punkt" cx="42" cy="9" r="8"/><text class="eu-zahl" x="42" y="12.5" text-anchor="middle">' + n + '</text>' : ""); } },
   { titel:"Eigene Rabattcodes", sym:"karte", ton:"var(--messing)",
-    satz:"Codes mit Prozent oder Betrag, die Ihr Team an der Kasse einlöst",
+    satz:"Prozent oder Betrag an der Kasse",
     stand:() => { const n = (typeof rabattcodeTeam !== "undefined" && rabattcodeTeam) ? rabattcodeTeam.length : 0;
       return n ? n + (n === 1 ? " Code aktiv" : " Codes aktiv") : "Keiner aktiv"; },
     bild:() => '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
       '<text class="eu-zahl dunkel" x="24" y="30" text-anchor="middle">%</text>' },
   { titel:"Foodroulette", sym:"figur", ton:"var(--glut)",
-    satz:"Die Entscheidungshilfe auf der Speisekarte",
+    satz:"Entscheidungshilfe in der Karte",
     stand:() => frZeigen ? "An" : "Aus",
     bild:() => '<g class="' + (frZeigen ? "eu-strich" : "eu-strich eu-blass") + '">' +
       '<rect class="eu-rahmen" x="12" y="14" width="22" height="28" rx="4" transform="rotate(-10 23 28)"/>' +
       '<rect class="eu-rahmen" x="14" y="10" width="22" height="28" rx="4"/>' +
       '<rect class="eu-fuell" x="18" y="15" width="14" height="10" rx="2"/></g>' },
   { titel:"Bestellstand beim Gast", sym:"sanduhr", ton:"var(--telefon)",
-    satz:"Ob der Gast die Restzeit sieht oder nur den Stand",
+    satz:"Restzeit oder nur der Stand",
     stand:() => rzZeigen ? "Mit Restzeit" : "Nur Stand",
     bild:() => '<rect class="eu-rahmen" x="14" y="2" width="20" height="44" rx="5"/>' +
       '<rect class="eu-fuell" x="17" y="8" width="14" height="5" rx="2"/>' +
       (rzZeigen ? '<text class="eu-zahl dunkel" x="24" y="31" text-anchor="middle">12′</text>'
                 : '<path class="eu-linie" d="M18 24h12M18 30h8"/>') },
   { titel:"Figur des Hauses", sym:"figur", ton:"var(--messing)",
-    satz:"Wer den Gast begleitet, mit welcher Laune, was er hält",
+    satz:"Wer begleitet, mit welcher Laune",
     stand:() => AVATARSTAND ? ((AV_FIGUREN.find(f => f.s === AVATARSTAND.figur) || {}).name || AVATARSTAND.figur) +
       " · " + ((AV_ZUEGE.find(z => z.s === AVATARSTAND.art) || {}).name || AVATARSTAND.art) : "—",
     bild:() => AVATARSTAND && AV_ICONS[AVATARSTAND.figur]
       ? '<g class="eu-strich" transform="translate(4 0) scale(1.7)">' + AV_ICONS[AVATARSTAND.figur].replace(/^<svg[^>]*>|<\/svg>$/g, "") + '</g>' : "" },
   { titel:"Bildschirm", sym:"schirm", ton:"var(--telefon)",
-    satz:"Hell oder dunkel, Schriftgröße, wach halten",
+    satz:"Hell oder dunkel, Schriftgröße",
     stand:() => ({auto:"Automatisch", hell:"Hell", dunkel:"Dunkel", schwarz:"Ganz schwarz", weiss:"Ganz weiß"}[EINST.licht] || EINST.licht) + " · " + Math.round(EINST.skala * 100) + " %",
     bild:() => '<rect class="eu-rahmen" x="4" y="8" width="40" height="28" rx="4"/>' +
       '<path class="eu-hell" d="M5 9h19v26H9a4 4 0 0 1-4-4z"/><path class="eu-dunkel" d="M24 9h16a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H24z"/>' +
       (EINST.licht === "hell" || EINST.licht === "weiss" ? '<path class="eu-wahl" d="M8 40h13"/>' : EINST.licht === "dunkel" || EINST.licht === "schwarz" ? '<path class="eu-wahl" d="M27 40h13"/>' : '<path class="eu-wahl" d="M8 40h32"/>') },
   { titel:"Nichts übersehen", sym:"uhr", ton:"var(--warn)",
-    satz:"Mahnt, wenn eine Bestellung zu lange auf „Neu“ steht",
+    satz:"Mahnt bei zu lange offenen Bestellungen",
     stand:() => EINST.mahnungAb ? "Mahnt nach " + EINST.mahnungAb + " Minuten" : "Aus",
     bild:() => { const a = Math.min(1, (EINST.mahnungAb || 0) / 30), r = 16, u = 2 * Math.PI * r;
       return '<circle class="eu-bahn" cx="24" cy="24" r="' + r + '"/>' +
         '<circle class="eu-bogen" cx="24" cy="24" r="' + r + '" stroke-dasharray="' + (u * a).toFixed(1) + ' ' + u.toFixed(1) + '" transform="rotate(-90 24 24)"/>' +
         '<text class="eu-zahl dunkel" x="24" y="28" text-anchor="middle">' + (EINST.mahnungAb || "–") + '</text>'; } },
   { titel:"Wer hat was geändert", sym:"uhr", ton:"var(--messing)",
-    satz:"Jede Änderung an Karte und Startseite, mit Namen",
+    satz:"Jede Änderung, mit Namen",
     stand:() => { const n = aeHeute(); return n ? n + (n === 1 ? " Änderung heute" : " Änderungen heute") : "Heute nichts geändert"; },
     bild:() => '<path class="eu-linie" d="M10 12h28M10 22h22M10 32h26"/><circle class="eu-punkt" cx="40" cy="10" r="6"/>' },
   { titel:"Betrieb", sym:"haus", ton:"var(--gut)",
-    satz:"Mit welchem Konto und für welches Haus Sie arbeiten",
+    satz:"Konto und Haus, mit dem Sie arbeiten",
     stand:() => ($("#eBetrieb") ? $("#eBetrieb").textContent.trim() : "") || "—",
     bild:() => '<g class="eu-strich">' + EU_SYMBOL.haus.replace(/<path/g, '<path transform="translate(6 4) scale(1.5)"') + '</g>' },
   { titel:"Dieses Gerät", sym:"geraet", ton:"var(--reservierung)",
-    satz:"Ist dieses Gerät bereit für den Dienst?",
+    satz:"Bereit für den Dienst?",
     stand:() => { const w = $$("#geraetLage .warn").length; return w ? w + (w === 1 ? " Hinweis" : " Hinweise") : "Alles bereit"; },
     bild:() => { const w = $$("#geraetLage .warn").length;
       return '<g class="eu-strich">' + EU_SYMBOL.geraet.replace(/<(path|rect)/g, '<$1 transform="translate(6 2) scale(1.5)"') + '</g>' +
@@ -9350,11 +9378,17 @@ function euEinrichten(){
 
 /* Eine Gruppe als Unterseite zeigen. Nimmt die id der Gruppe. */
 function euOeffnen(id){
-  const tafel = $("#t-einstellungen"), gruppe = id && document.getElementById(id);
-  if(!tafel || !gruppe || gruppe.parentElement !== tafel) return false;
+  const gruppe = id && document.getElementById(id), tafel = gruppe && gruppe.parentElement;
+  if(!tafel || !tafel.hasAttribute("data-eu-kacheln") || !gruppe.classList.contains("egruppe") || gruppe.classList.contains("eu-uebersicht")) return false;
   tafel.querySelectorAll(":scope > .eu-jetzt").forEach(g => g.classList.remove("eu-jetzt"));
   gruppe.classList.add("eu-jetzt");
   tafel.dataset.euOffen = id;
+  /* Die Symbolleiste im Gast-Hub zeigt, wo man gerade ist. */
+  tafel.querySelectorAll("[data-gh-sprung]").forEach(a => {
+    const jetzt = a.dataset.ghSprung === id;
+    if(jetzt) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current");
+    if(jetzt && a.scrollIntoView) a.scrollIntoView({ block:"nearest", inline:"center" });
+  });
   window.scrollTo(0, 0);
   const h = gruppe.querySelector("h2.etitel");
   if(h){ h.tabIndex = -1; h.focus({ preventScroll:true }); }
@@ -9363,8 +9397,10 @@ function euOeffnen(id){
 }
 /* Zurück zu den Kacheln; die zuletzt offene Kachel bekommt den Fokus,
    damit Tastatur und Vorleser dort weitermachen, wo sie waren. */
-function euSchliessen(){
-  const tafel = $("#t-einstellungen"); if(!tafel || !tafel.dataset.euOffen) return;
+function euSchliessen(tafel){
+  /* Ohne Angabe: der gerade sichtbare Reiter mit Kacheln. */
+  if(!tafel) tafel = document.querySelector(".tafel[data-eu-kacheln]:not([hidden])") || $("#t-einstellungen");
+  if(!tafel || !tafel.dataset.euOffen) return;
   const war = tafel.dataset.euOffen;
   delete tafel.dataset.euOffen;
   tafel.querySelectorAll(":scope > .eu-jetzt").forEach(g => g.classList.remove("eu-jetzt"));
@@ -9374,8 +9410,8 @@ function euSchliessen(){
 }
 document.addEventListener("keydown", e => {
   if(e.key !== "Escape") return;
-  const tafel = $("#t-einstellungen");
-  if(!tafel || tafel.hidden || !tafel.dataset.euOffen) return;
+  const tafel = document.querySelector(".tafel[data-eu-kacheln]:not([hidden])");
+  if(!tafel || !tafel.dataset.euOffen) return;
   /* Ein offenes Blatt oder Feld darüber schließt zuerst sich selbst. */
   /* Gemessen sichtbar, nicht nur ohne hidden: #katPanel trägt
      role=dialog und ist zu, ohne hidden zu tragen. */
@@ -9407,6 +9443,77 @@ function euBald(){
 ["click","change","input"].forEach(art =>
   $("#t-einstellungen").addEventListener(art, () => euBald()));
 euEinrichten();
+
+/* ── Reiter „Gast-Hub gestalten“ als Zentrale (19.10.) ─────────────
+   Wunsch: „nicht alle Einstellungen auf einer Seite, sondern in
+   Unterseiten — übersichtlich, Symbole, leuchtende Ränder, Glas; schnell
+   wie in einer Zentrale.“ Dieselben Kacheln wie unter „Einstellungen“
+   (euOeffnen/euSchliessen gelten für beide); die Gruppen behalten ihre ids
+   und ihren Platz, gezeigt wird eine über CSS. Neu gegenüber dem
+   Wunsch vom 11.10. („alles auf einem Platz“): Die klebende Vorschau
+   bleibt in jeder Unterseite sichtbar — „alles auf einem Platz“ heißt
+   dort weiter: eine Änderung zeigt sich sofort im Bild. */
+const GH_BEREICHE = [
+  { id:"pjGruppe",   titel:"Projekte",       sym:"ordner",  ton:"var(--messing)",     satz:"Hub sichern, laden, wechseln" },
+  { id:"ksGruppe",   titel:"Speisekarte",    sym:"speise",  ton:"var(--glut)",        satz:"Liste, Bühne, Raster, Flink oder Teller" },
+  { id:"eoGruppe",   titel:"Extras & Beläge",sym:"plus",    ton:"var(--gut)",         satz:"Beläge und Aufpreise zum Dazuwählen" },
+  { id:"wzGruppe",   titel:"Willkommen",     sym:"funken",  ton:"var(--telefon)",     satz:"Die Animation beim ersten Öffnen" },
+  { id:"kfGruppe",   titel:"Kopf & Logo",    sym:"bild",    ton:"var(--reservierung)",satz:"Kopfbild, Logo und „Über uns“" },
+  { id:"gh-worte",   titel:"Ihre Worte",     sym:"blase",   ton:"var(--telefon)",     satz:"Slogan, Gruß, Aktionsname, WLAN" },
+  { id:"txGruppe",   titel:"Alle Texte",     sym:"text",    ton:"var(--messing)",     satz:"Jeden Satz ändern, in elf Sprachen" },
+  { id:"swGruppe",   titel:"Schrift",        sym:"schrift", ton:"var(--glut)",        satz:"Schriftarten, auch eigene Dateien" },
+  { id:"fbGruppe",   titel:"Farben",         sym:"farbe",   ton:"var(--lieferung)",   satz:"Hintergrund, Karten, Hausfarben" },
+  { id:"gh-kacheln", titel:"Kacheln",        sym:"gitter",  ton:"var(--gut)",         satz:"Knöpfe der Startseite: Titel, Bild, Breite" },
+  { id:"gh-banner",  titel:"Banner",         sym:"banner",  ton:"var(--warn)",        satz:"Wischbares Karussell mit Angeboten" },
+  { id:"gh-figur",   titel:"Figur",          sym:"figur",   ton:"var(--messing)",     satz:"Figur, Stimmung, Gesten je Bestellphase" },
+  { id:"gh-roulette",titel:"Foodroulette",   sym:"wuerfel", ton:"var(--glut)",        satz:"Entscheidungshilfe an oder aus" },
+  { id:"gh-emojis",  titel:"Bewegte Emojis", sym:"smiley",  ton:"var(--telefon)",     satz:"Lebendige oder ruhige Zeichen" }
+];
+function ghEinrichten(){
+  const tafel = $("#t-startseite"); if(!tafel || tafel.querySelector(".eu-uebersicht")) return;
+  const da = [];
+  GH_BEREICHE.forEach(b => {
+    const gruppe = document.getElementById(b.id);
+    const h = gruppe && gruppe.parentElement === tafel ? gruppe.querySelector(":scope > h2.etitel") : null;
+    if(!h) return;
+    gruppe.dataset.eu = b.id;
+    gruppe.style.setProperty("--ton", b.ton);
+    const kopf = document.createElement("div");
+    kopf.className = "eu-kopf ohne-bild";
+    kopf.innerHTML = '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span><div class="eu-mitte"></div>';
+    gruppe.insertBefore(kopf, h);
+    kopf.querySelector(".eu-mitte").appendChild(h);
+    da.push(b);
+  });
+  const nav = document.createElement("div");
+  nav.setAttribute("role", "navigation");
+  nav.className = "egruppe eu-uebersicht"; nav.id = "ghUebersicht";
+  nav.setAttribute("aria-label", "Alle Bereiche des Gast-Hubs");
+  nav.innerHTML = '<h2 class="etitel">Gast-Hub gestalten</h2>' +
+    '<p class="ehilfe">Alles, was Ihre Gäste sehen. Ein Bereich öffnet sich mit der Vorschau darüber — jede Änderung zeigt sich sofort; Gäste sehen sie nach „Übernehmen“.</p>' +
+    '<div class="eu-kacheln">' + da.map(b =>
+      '<button type="button" class="eu-kachel" data-eu-seite="' + b.id + '" style="--ton:' + b.ton + '">' +
+        '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+        '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
+        '<span class="eu-ktext"><b>' + sicher(b.titel) + '</b><i>' + sicher(b.satz) + '</i></span></button>').join("") + '</div>';
+  tafel.insertBefore(nav, tafel.firstElementChild);
+  const zurueck = document.createElement("button");
+  zurueck.type = "button"; zurueck.className = "eu-zurueck"; zurueck.id = "ghZurueck";
+  zurueck.innerHTML = '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Alle Bereiche</span>';
+  tafel.insertBefore(zurueck, tafel.firstElementChild);
+  zurueck.addEventListener("click", () => euSchliessen(tafel));
+  nav.addEventListener("click", e => {
+    const k = e.target.closest("[data-eu-seite]"); if(k) euOeffnen(k.dataset.euSeite);
+  });
+  /* Die Sprungleiste wird zur Symbolleiste: jedes Ziel mit seinem Zeichen und seiner Farbe. */
+  tafel.querySelectorAll("[data-gh-sprung]").forEach(a => {
+    const b = GH_BEREICHE.find(x => x.id === a.dataset.ghSprung); if(!b) return;
+    a.style.setProperty("--ton", b.ton);
+    a.insertAdjacentHTML("afterbegin", euIcon(b.sym));
+  });
+}
+ghEinrichten();
 
 /* Die gefüllte Spur der Regler. Auch ein Wert, der per Skript gesetzt
    wird, soll stimmen — deshalb nach einstZeichnen() und bei jeder
@@ -12566,8 +12673,8 @@ function tafelZeigen(ziel){
   const tafelId = ziel === "lieferungen" ? "bestellungen" : ziel;
   $$("[data-tafel]").forEach(x => x.setAttribute("aria-selected", x.dataset.tafel === tafelId));
   $$(".tafel").forEach(t => t.hidden = t.id !== "t-" + tafelId);
-  /* Wer den Reiter Einstellungen (neu) betritt, beginnt bei den Kacheln. */
-  if(tafelId === "einstellungen" && typeof euSchliessen === "function") euSchliessen();
+  /* Wer einen Reiter mit Kacheln (neu) betritt, beginnt bei den Kacheln. */
+  if(typeof euSchliessen === "function"){ const kt = $("#t-" + tafelId); if(kt && kt.hasAttribute("data-eu-kacheln")) euSchliessen(kt); }
   leistePilleBewegen();
 
   /* Erst jetzt ist der Block gezeichnet — vorher war er in einem
@@ -13809,6 +13916,7 @@ document.addEventListener("click", e => {
   const a = e.target.closest && e.target.closest("[data-gh-sprung]");
   if(!a) return;
   e.preventDefault();
+  if(euOeffnen(a.dataset.ghSprung)) return;
   const ziel = document.getElementById(a.dataset.ghSprung); if(!ziel) return;
   const ab = ghObenFrei() + 8;
   const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -14091,6 +14199,7 @@ function txOeffnen(k){
 }
 /* Aus der Vorschau: der Hub ruft das, wenn im Textmodus getippt wird. */
 window.vorschauTextGewaehlt = (k, seite) => {
+  euOeffnen("txGruppe");
   if(!k){ $("#txStand").textContent = "Dieser Text lässt sich hier nicht ändern — Gerichte ändern Sie in der Karte."; return; }
   $("#txStand").textContent = "";
   $("#txSuche").value = "";

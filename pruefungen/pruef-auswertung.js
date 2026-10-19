@@ -21,24 +21,7 @@
    6  Rundung: --ecke und --ecke-pille in allen sechs Dateien gleich.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
-
-/* Seit 18.10. liegt jede Einstellungsgruppe hinter einer Kachel. Öffnet
-   die Unterseite, in der `sel` steht — über einen ECHTEN Tipp auf die
-   Kachel (vorher „Alle Einstellungen“, falls eine andere offen ist).
-   Gibt false, wenn es die Gruppe nicht gibt (Voraussetzung, §8.1g). */
-async function euZu(p, sel) {
-  const id = await p.evaluate(s => {
-    const el = document.querySelector(s);
-    const g = el && el.closest("#t-einstellungen > .egruppe");
-    return g && !g.classList.contains("eu-uebersicht") ? g.id : null;
-  }, sel);
-  if (!id) return false;
-  if (await p.evaluate(i => document.getElementById("t-einstellungen").dataset.euOffen === i, id)) return true;
-  if (await p.isVisible("#euZurueck")) await p.click("#euZurueck");
-  await p.click('[data-eu-seite="' + id + '"]');
-  await p.waitForTimeout(150);
-  return p.evaluate(i => document.getElementById("t-einstellungen").dataset.euOffen === i, id);
-}
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 const OBEN = path.resolve(__dirname, "..");
@@ -295,7 +278,7 @@ const kontrast = (a, b) => { const l1 = lum(a), l2 = lum(b); return (Math.max(l1
      EINST: EINST stand schon vorher richtig, das Bild nicht. */
   const lichtFehler = [];
   e.p.on("pageerror", x => lichtFehler.push(String(x).slice(0, 120)));
-  pruef(await euZu(e.p, "#lichtWahl"), "Voraussetzung: Unterseite „Bildschirm“ über ihre Kachel geöffnet");
+  pruef(await gruppeZu(e.p, "#lichtWahl"), "Voraussetzung: Unterseite „Bildschirm“ über ihre Kachel geöffnet");
   const licht = [];
   for(const w of ["dunkel", "hell", "dunkel"]){
     await e.p.click('#lichtWahl [data-licht="' + w + '"]');

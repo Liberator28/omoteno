@@ -27,6 +27,7 @@
        verlieren (und umgekehrt), „Auf Vorgabe zurück“ lässt das WLAN.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -258,6 +259,7 @@ const kontrast = (a, b) => { const x = lum(a), y = lum(b); return x === null || 
     await p.evaluate(() => { HUBTEXTE = { claim: "Alt-Slogan", wlan_netz: "Gast-Alt", wlan_passwort: "alt123" };
       const r = document.querySelector('[data-tafel="startseite"]'); if (r) r.click(); });
     await p.waitForTimeout(400);
+    await gruppeZu(p, "#gh-worte");
     const felder = await p.evaluate(() => ["hubWlanNetz", "hubWlanPasswort"].map(id => { const el = document.getElementById(id);
       return el ? { max: +el.getAttribute("maxlength"), wert: el.value, gruppe: (el.closest(".egruppe").querySelector(".etitel") || {}).textContent,
         groesse: parseFloat(getComputedStyle(el).fontSize) } : null; }));

@@ -46,6 +46,7 @@
        Gruppen; ein Betrieb OHNE eigene Gruppen schreibt kein opt.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -481,6 +482,7 @@ async function teilE(browser){
   await p.waitForTimeout(1200);
   await p.evaluate(() => { const s = document.getElementById("scharf"); if(s) s.hidden = true; tafelZeigen("startseite"); });
   await p.waitForTimeout(300);
+  await gruppeZu(p, "#eoGruppe");
   const gelesen = await p.evaluate(() => ({ karten:document.querySelectorAll("#eoListe .eo-karte").length,
     zeilen:document.querySelectorAll("#eoListe .eo-zeile").length, zu:document.getElementById("eoSichern").disabled,
     preis:document.querySelector('#eoListe [data-eo-zfeld="auf"]').value, inhaber:document.getElementById("eoGruppe").hasAttribute("data-nur-inhaber") }));

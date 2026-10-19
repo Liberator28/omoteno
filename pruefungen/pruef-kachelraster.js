@@ -24,6 +24,7 @@
      · 360–1280 px ohne Überlauf, in zwei Häusern, keine Laufzeitfehler
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const path = require("path");
 const fs = require("fs");
 const OBEN = path.resolve(__dirname, "..");
@@ -284,6 +285,7 @@ const MESSEN = () => {
       const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("startseite");
       kbAusZeile([]); kbZeichnen(); });
     await p.waitForTimeout(400);
+    await gruppeZu(p, "#gh-kacheln");
     const vor = await p.evaluate(() => ({
       zu: [...document.querySelectorAll("#kbListe [data-kb-auf]")].every(b => b.getAttribute("aria-expanded") === "false"),
       zeilenHoehe: Math.max(...[...document.querySelectorAll("#kbListe .kbzeile")].map(z => z.getBoundingClientRect().height)),
@@ -477,6 +479,7 @@ const MESSEN = () => {
       const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("startseite");
       kbAusZeile([]); kbZeichnen(); });
     await p.waitForTimeout(400);
+    await gruppeZu(p, "#gh-kacheln");
     /* scrollIntoView und das Maß in zwei Aufrufen mit Warten dazwischen
        (Bewegungs-Skill §9, wie oben bei ziehReihenfolge) — sonst zeigt
        das Maß eine Stelle, an der die Kachel (noch) nicht steht. */
@@ -530,6 +533,7 @@ const MESSEN = () => {
       if(art === "kb"){ kbAusZeile([]); kbZeichnen(); kbZuschnittOeffnen("tischruf", datei); }
       else { bnAusZeile([]); bnNeu(); bnZuschnittOeffnen(BANNERSTAND[0].id, datei); }
     }, art);
+    await gruppeZu(p, art === "kb" ? "#gh-kacheln" : "#gh-banner");
     await p.waitForTimeout(900);
     const R = "#" + art + "Rahmen", Z = art === "kb" ? "kbZuschnitt" : "bnZuschnitt", G = art === "kb" ? "kbGrundmass" : "bnGrundmass";
     const lage = () => p.evaluate(([R, Z, G]) => { const r = document.querySelector(R).getBoundingClientRect(), st = window.eval(Z);
@@ -701,6 +705,7 @@ const MESSEN = () => {
       kbZeileOeffnen("speisekarte");
     });
     await p.waitForTimeout(400);
+    await gruppeZu(p, "#gh-kacheln");
     await p.click('[data-kb="speisekarte"] [data-kb-hoehe="hoch"]');
     await p.evaluate(() => {
       const inp = document.querySelector('[data-kb="speisekarte"] [data-kb-textgroesse]');

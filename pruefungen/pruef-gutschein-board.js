@@ -37,24 +37,7 @@
         Spalte gibt es" und „Naht" rot.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
-
-/* Seit 18.10. liegt jede Einstellungsgruppe hinter einer Kachel. Öffnet
-   die Unterseite, in der `sel` steht — über einen ECHTEN Tipp auf die
-   Kachel (vorher „Alle Einstellungen“, falls eine andere offen ist).
-   Gibt false, wenn es die Gruppe nicht gibt (Voraussetzung, §8.1g). */
-async function euZu(p, sel) {
-  const id = await p.evaluate(s => {
-    const el = document.querySelector(s);
-    const g = el && el.closest("#t-einstellungen > .egruppe");
-    return g && !g.classList.contains("eu-uebersicht") ? g.id : null;
-  }, sel);
-  if (!id) return false;
-  if (await p.evaluate(i => document.getElementById("t-einstellungen").dataset.euOffen === i, id)) return true;
-  if (await p.isVisible("#euZurueck")) await p.click("#euZurueck");
-  await p.click('[data-eu-seite="' + id + '"]');
-  await p.waitForTimeout(150);
-  return p.evaluate(i => document.getElementById("t-einstellungen").dataset.euOffen === i, id);
-}
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs   = require("fs");
 const path = require("path");
 
@@ -134,7 +117,7 @@ async function boardOeffnen(browser, breite) {
     if (k) k.click();
   });
   await seite.waitForTimeout(400);
-  await euZu(seite, "#gsGruppe");
+  await gruppeZu(seite, "#gsGruppe");
   return { ctx, seite };
 }
 

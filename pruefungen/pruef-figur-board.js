@@ -33,6 +33,7 @@
    Markenblatt" wurde rot. Zurückgenommen → grün.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs   = require("fs");
 const path = require("path");
 
@@ -174,6 +175,7 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
 
   await seite.evaluate(() => document.querySelector('[data-tafel="startseite"]').click());
   await seite.waitForTimeout(400);
+  await gruppeZu(seite, "#gh-figur");
 
   const zeilen = await seite.evaluate(() => document.querySelectorAll("#avListe > .kbzeile").length);
   pruef(zeilen === 3, "drei Zeilen stehen im Board (Figur, Stimmung, Hände)", zeilen + "");
@@ -269,6 +271,7 @@ function schluesselNamen(text, blockStart, blockEndeMuster){
   if (scharfR && await seiteR.isVisible("#scharf")) { await scharfR.click(); await seiteR.waitForTimeout(200); }
   await seiteR.evaluate(() => document.querySelector('[data-tafel="startseite"]').click());
   await seiteR.waitForTimeout(400);
+  await gruppeZu(seiteR, "#gh-figur");
   await seiteR.click('[data-av-auf="figur"]');
   await seiteR.waitForTimeout(200);
   await seiteR.click('[data-av-wahl="figur"][data-av-wert="burger"]');

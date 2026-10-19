@@ -40,24 +40,7 @@
    KLAVIYO_API_KEY am Server.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
-
-/* Seit 18.10. liegt jede Einstellungsgruppe hinter einer Kachel. Öffnet
-   die Unterseite, in der `sel` steht — über einen ECHTEN Tipp auf die
-   Kachel (vorher „Alle Einstellungen“, falls eine andere offen ist).
-   Gibt false, wenn es die Gruppe nicht gibt (Voraussetzung, §8.1g). */
-async function euZu(p, sel) {
-  const id = await p.evaluate(s => {
-    const el = document.querySelector(s);
-    const g = el && el.closest("#t-einstellungen > .egruppe");
-    return g && !g.classList.contains("eu-uebersicht") ? g.id : null;
-  }, sel);
-  if (!id) return false;
-  if (await p.evaluate(i => document.getElementById("t-einstellungen").dataset.euOffen === i, id)) return true;
-  if (await p.isVisible("#euZurueck")) await p.click("#euZurueck");
-  await p.click('[data-eu-seite="' + id + '"]');
-  await p.waitForTimeout(150);
-  return p.evaluate(i => document.getElementById("t-einstellungen").dataset.euOffen === i, id);
-}
+const { gruppeZu } = require("./werkzeug/zentrale");
 const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
@@ -269,7 +252,7 @@ const lesen = () => {
 
     /* Bild: Gruppe sichtbar machen, Überlauf und Kontrast bei 360 px. */
     await tafel(seite, "einstellungen");
-    pruef(await euZu(seite, "#nlUebersicht"), "Voraussetzung: Unterseite Newsletter über ihre Kachel geöffnet");
+    pruef(await gruppeZu(seite, "#nlUebersicht"), "Voraussetzung: Unterseite Newsletter über ihre Kachel geöffnet");
     for (const breite of [360, 1280]) {
       await seite.setViewportSize({ width: breite, height: 900 });
       for (const licht of ["dunkel", "hell"]) {

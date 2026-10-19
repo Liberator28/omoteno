@@ -35,6 +35,7 @@
        ruhen die Kacheln, 44 px, 360 px ohne Überlauf.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -413,6 +414,7 @@ const LAEUFT = () => {
     await p.waitForTimeout(300);
     await p.evaluate(() => document.querySelector('[data-tafel="startseite"]').click());
     await p.waitForTimeout(300);
+    await gruppeZu(p, "#wzGruppe");
     await p.$eval("#wzGruppe", g => g.scrollIntoView({ block:"start" }));
     await p.waitForTimeout(250);
     return { ctx, p, fehler };

@@ -36,6 +36,7 @@
        Schlüssel stehen.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -330,6 +331,7 @@ const kopfMessen = p => p.evaluate(m => {
     await p.evaluate(() => { const s = document.getElementById("scharf"); if(s) s.hidden = true;
       document.querySelector('[data-tafel="startseite"]').click(); });
     await p.waitForTimeout(500);
+    await gruppeZu(p, "#kfGruppe");
     const gr = await p.evaluate(() => { const g = document.getElementById("kfGruppe");
       return { da:!!g, inhaber:g && g.hasAttribute("data-nur-inhaber"), sichern:document.getElementById("kfSichern").disabled }; });
     pruef(gr.da && gr.inhaber && gr.sichern, "Gruppe da, nur Inhaber, „Übernehmen“ erst nach einer Änderung");
@@ -373,6 +375,7 @@ const kopfMessen = p => p.evaluate(m => {
     /* „Über uns“ in „Ihre Worte“ */
     await p.evaluate(() => tafelZeigen("startseite"));
     await p.waitForTimeout(400);
+    await gruppeZu(p, "#gh-worte");
     await p.evaluate(() => { const f = document.getElementById("hubUeber"); f.value = "Seit 2019 hier."; f.dispatchEvent(new Event("input", { bubbles:true })); });
     await p.evaluate(() => hubTexteSichern());
     await p.waitForTimeout(300);
