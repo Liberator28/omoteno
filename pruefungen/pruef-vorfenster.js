@@ -189,9 +189,10 @@ function pruef(b, t, d) {
     await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
     await p.goto("file://" + DIST);
     // Deutlich länger als die längste Verzögerung + Dauer (Hinweistext
-    // bei .78s + .5s ≈ 1,28s) — danach MUSS alles am Endzustand stehen,
-    // kein Blur, kein Transform, keine Transparenz hängengeblieben.
-    await p.waitForTimeout(1600);
+    // bei 1,12 s + .5 s ≈ 1,62 s seit der Bühne vom 19.10.; vorher .78 s)
+    // — danach MUSS alles am Endzustand stehen, kein Blur, kein
+    // Transform, keine Transparenz hängengeblieben.
+    await p.waitForTimeout(2200);
     const zustand = await p.evaluate(() => {
       const lies = sel => {
         const el = document.querySelector(sel);
@@ -205,10 +206,19 @@ function pruef(b, t, d) {
         hinweis: lies(".willkommen .wk-hinweis"),
       };
     });
-    const sauber = z => z && z.opacity === "1" && z.filter === "blur(0px)" &&
+    /* „none“ zählt ebenso: Der Titel trägt seit 19.10. selbst keine
+       Animation mehr — seine Buchstaben fahren einzeln ein (unten). */
+    const sauber = z => z && z.opacity === "1" && (z.filter === "blur(0px)" || z.filter === "none") &&
       (z.transform === "none" || z.transform === "matrix(1, 0, 0, 1, 0, 0)");
     pruef(Object.values(zustand).every(sauber),
       "nach der vollen Choreografie ist jedes Stück am Endzustand", JSON.stringify(zustand));
+    const buchstaben = await p.evaluate(() => [...document.querySelectorAll(".willkommen .wk-b")].map(el => {
+      const s = getComputedStyle(el); return { opacity: s.opacity, transform: s.transform, text: el.textContent }; }));
+    const name = await p.evaluate(() => document.getElementById("wkHaus").textContent);
+    pruef(buchstaben.length > 3 && buchstaben.every(b => b.opacity === "1" && (b.transform === "none" || b.transform === "matrix(1, 0, 0, 1, 0, 0)")) &&
+      buchstaben.map(b => b.text).join("") === name.replace(/ /g, ""),
+      "jeder Buchstabe des Namens steht am Ende da (Deckkraft 1, kein Versatz) und ergibt zusammen den Namen",
+      buchstaben.length + " Buchstaben, Name „" + name + "“");
     await ctx.close();
   }
 

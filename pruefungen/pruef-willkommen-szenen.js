@@ -231,6 +231,150 @@ const LAEUFT = () => {
     await s.ctx.close();
   }
 
+  console.log("══ 9 · Bühne (Aura, Strahlen, Wellen, Teilchen, Name als Buchstaben, Abgang) ══");
+  {
+    /* Zweite Quelle: Zahl der Teilchen je Szene aus dem Block gelesen. */
+    const cfg = {};
+    for(const m of (bH || "").matchAll(/(\w+):\s*\{\s*n:(\d+),\s*f:"(\w+)"/g)) cfg[m[1]] = { n:+m[2], f:m[3] };
+    pruef(ARTEN.filter(a => a !== "still").every(a => cfg[a] && cfg[a].n >= 8) && !cfg.still, "Teilchen je Szene im Block festgelegt (mindestens 8), „still“ ohne", JSON.stringify(Object.keys(cfg)));
+    const STUFEN = [1800, 3400, 5000];
+    const HELL = (p, farbe) => p.evaluate(f => { const k = f.match(/[\d.]+/g).map(Number); return k; }, farbe);
+    /* Der Kontrast wird am GEMALTEN Bild gemessen: Text unsichtbar schalten,
+       Animationen auf feste Zeiten stellen, Ausschnitt fotografieren und
+       jedes Pixel gegen die Schriftfarbe halten. Die Farbwerte allein
+       (Abschnitt 2) sähen die Bühne gar nicht. */
+    const MESSBILD = async (p, stufe) => {
+      const kopf = await p.evaluate(() => {
+        /* Die Schriftfarbe wird EINMAL je Seite gelesen: Ab dem zweiten
+           Aufruf stünde dort schon „transparent“ (erster Lauf dieser
+           Prüfung maß so 1,07:1 und beschuldigte die Bühne zu Unrecht). */
+        window.__wkFarbe = window.__wkFarbe || {};
+        const aus = ["wkHaus", "wkWort"].map(id => { const el = document.getElementById(id), r = el.getBoundingClientRect();
+          if(!window.__wkFarbe[id]) window.__wkFarbe[id] = getComputedStyle(el).color;
+          return { id, farbe:window.__wkFarbe[id], x:Math.floor(r.left), y:Math.floor(r.top), w:Math.ceil(r.width), h:Math.ceil(r.height) }; });
+        ["wkHaus", "wkWort"].forEach(id => { document.getElementById(id).style.color = "transparent"; });
+        return aus;
+      });
+      if(kopf.some(k => /^rgba\(0, 0, 0, 0\)$|transparent/.test(k.farbe))) throw new Error("Voraussetzung: Schriftfarbe gelesen, nicht transparent");
+      await p.evaluate(t => document.getAnimations().forEach(a => { try{ a.pause(); a.currentTime = t; }catch(e){} }), stufe);
+      await p.waitForTimeout(60);
+      const ergebnis = {};
+      for(const k of kopf){
+        const buf = await p.screenshot({ clip:{ x:Math.max(0, k.x), y:Math.max(0, k.y), width:Math.max(1, Math.min(k.w, 390 - Math.max(0, k.x))), height:Math.max(1, k.h) } });
+        ergebnis[k.id] = await p.evaluate(async ([b64, farbe]) => {
+          const img = new Image(); img.src = "data:image/png;base64," + b64; await img.decode();
+          const c = document.createElement("canvas"); c.width = img.width; c.height = img.height;
+          const g = c.getContext("2d"); g.drawImage(img, 0, 0);
+          const d = g.getImageData(0, 0, c.width, c.height).data;
+          const lum = v => { const q = v.map(x => { x /= 255; return x <= .03928 ? x / 12.92 : Math.pow((x + .055) / 1.055, 2.4); }); return .2126 * q[0] + .7152 * q[1] + .0722 * q[2]; };
+          const t = farbe.match(/[\d.]+/g).slice(0, 3).map(Number), lt = lum(t);
+          let min = 99;
+          for(let i = 0; i < d.length; i += 4){ const lp = lum([d[i], d[i + 1], d[i + 2]]);
+            const k = (Math.max(lt, lp) + .05) / (Math.min(lt, lp) + .05); if(k < min) min = k; }
+          return min;
+        }, [buf.toString("base64"), k.farbe]);
+      }
+      return ergebnis;
+    };
+    for(const haus of HAEUSER) for(const abend of [false, true]){
+      const schlecht = [];
+      let geprueft = 0;
+      for(const art of ARTEN.filter(a => a !== "still")){
+        const { ctx, p } = await hubSeite(browser, haus, { init:[([h, a, ab]) => { try{ localStorage.setItem("omoteno-lade-" + h, a); if(ab) localStorage.setItem("omoteno-licht-" + h, "dunkel"); }catch(e){} }, [haus, art, abend]] });
+        await p.waitForTimeout(500);
+        await p.evaluate(a => { HUBSTIL = Object.assign({}, HUBSTIL || {}, { lade:a }); wzZeigen(); }, art);
+        if(abend){ await p.evaluate(() => { if(typeof lichtSetzen === "function") lichtSetzen("dunkel"); }); await p.waitForTimeout(1000); }
+        const da = await p.evaluate(() => !!document.querySelector("#wkFigur .wz-buehne"));
+        if(!da){ schlecht.push(art + ": keine Bühne"); await ctx.close(); continue; }
+        for(const st of STUFEN){
+          const m = await MESSBILD(p, st); geprueft++;
+          for(const id of Object.keys(m)) if(m[id] < 4.5) schlecht.push(art + "@" + st + " " + id + " " + m[id].toFixed(2));
+        }
+        await ctx.close();
+      }
+      pruef(geprueft === 15 && !schlecht.length, haus + " · " + (abend ? "abends" : "tags") + ": Name und Gruß ≥ 4,5:1 AM GEMALTEN BILD (5 Szenen × 3 Zeitpunkte, schlechtester Bildpunkt)",
+        schlecht.slice(0, 4).join(" | ") || geprueft + " Bilder");
+    }
+
+    /* Aufbau, Bewegung und Tippschutz der Bühne in jeder Szene. */
+    for(const art of ARTEN){
+      const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", art]] });
+      await p.waitForTimeout(1200);
+      const b = await p.evaluate(() => {
+        const st = document.querySelector("#wkFigur .wz-buehne");
+        if(!st) return null;
+        const lauf = st.getAnimations({ subtree:true }).filter(a => a.playState === "running").length;
+        const fremd = new Set();
+        st.getAnimations({ subtree:true }).forEach(a => (a.effect.getKeyframes() || []).forEach(k => Object.keys(k).forEach(x => {
+          if(!["offset", "computedOffset", "easing", "composite", "transform", "opacity"].includes(x)) fremd.add(x); })));
+        const kinder = [...st.children].map(c => getComputedStyle(c).pointerEvents);
+        const fig = document.querySelector("#wkFigur .wz").getBoundingClientRect();
+        const e = document.elementFromPoint(fig.left + fig.width / 2, fig.top + fig.height / 2);
+        return { strahl:st.querySelectorAll(".wz-strahl").length, aura:st.querySelectorAll(".wz-aura").length, welle:st.querySelectorAll(".wz-welle").length,
+          schein:st.querySelectorAll(".wz-schein").length, teile:st.querySelectorAll(".wz-teil").length, lauf, fremd:[...fremd],
+          tippfrei:kinder.every(x => x === "none") && st.style.pointerEvents !== "auto" && getComputedStyle(st).pointerEvents === "none",
+          obenauf:!!e && !e.closest(".wz-buehne") };
+      });
+      if(art === "still"){ pruef(b === null, "still: keine Bühne"); await ctx.close(); continue; }
+      pruef(!!b && b.strahl === 1 && b.aura === 3 && b.welle === 2 && b.schein === 1 && b.teile === cfg[art].n,
+        art + ": Bühne vollständig (1 Strahlenkranz, 3 Auren, 2 Wellen, 1 Schein, " + cfg[art].n + " Teilchen)", JSON.stringify(b));
+      pruef(!!b && b.lauf >= 12 && !b.fremd.length, art + ": die Bühne läuft (≥ 12 Animationen), nur transform/opacity", b && (b.lauf + " laufend" + (b.fremd.length ? ", fremd: " + b.fremd.join(",") : "")));
+      pruef(!!b && b.tippfrei && b.obenauf, art + ": die Bühne fängt keinen Tipp (pointer-events none, Szene liegt obenauf)", b && JSON.stringify({ tippfrei:b.tippfrei, obenauf:b.obenauf }));
+      await ctx.close();
+      /* Reduzierte Bewegung: Aura und Strahlen stehen still da, nichts läuft, Wellen/Teilchen entfallen. */
+      const s = await hubSeite(browser, "chocolamour", { still:true, init:[merk, ["chocolamour", art]] });
+      await s.p.waitForTimeout(400);
+      const r = await s.p.evaluate(() => { const st = document.querySelector("#wkFigur .wz-buehne");
+        const op = sel => [...st.querySelectorAll(sel)].map(e => +getComputedStyle(e).opacity);
+        return { lauf:st.getAnimations({ subtree:true }).filter(a => a.playState === "running").length, aura:op(".wz-aura"), strahl:op(".wz-strahl"),
+          teile:op(".wz-teil").filter(x => x > 0).length, welle:op(".wz-welle").filter(x => x > 0).length }; });
+      pruef(r.lauf === 0 && r.aura.every(x => x > .3) && r.strahl[0] > .5 && r.teile === 0 && r.welle === 0,
+        art + " bei reduzierter Bewegung: Aura und Strahlen stehen sichtbar still, Wellen und Teilchen entfallen", JSON.stringify(r));
+      await s.ctx.close();
+    }
+
+    /* Der Name als Buchstaben. */
+    {
+      const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", "cafe"]] });
+      await p.waitForTimeout(2200);
+      const n = await p.evaluate(() => { const h = document.getElementById("wkHaus"), name = BETRIEB.name;
+        const b = [...h.querySelectorAll(".wk-b")], ids = b.map(x => +x.style.getPropertyValue("--i"));
+        return { name, text:h.textContent, label:h.getAttribute("aria-label"), buchstaben:b.length, soll:Array.from(name.replace(/ /g, "")).length,
+          versteckt:[...h.querySelectorAll(".wk-wort")].every(w => w.getAttribute("aria-hidden") === "true"), aufsteigend:ids.every((x, i) => i === 0 || x >= ids[i - 1]) }; });
+      pruef(n.text === n.name && n.label === n.name && n.buchstaben === n.soll && n.versteckt && n.aufsteigend,
+        "Name als Buchstaben: Text unverändert, Beschriftung = Name, jeder Buchstabe eigen, Folge steigt, für Vorleser nur die Beschriftung", JSON.stringify(n));
+      /* Ein sehr langer Name: Folge auf 22 gedeckelt, umbrochen wird nur zwischen Wörtern, nichts läuft über. */
+      await p.setViewportSize({ width:360, height:700 });
+      const lang = await p.evaluate(() => { wkTitel("Gasthaus zum goldenen Löwen am Marktplatz — Weinstube & Küche");
+        const h = document.getElementById("wkHaus"), ids = [...h.querySelectorAll(".wk-b")].map(x => +x.style.getPropertyValue("--i"));
+        const worte = [...h.querySelectorAll(".wk-wort")].map(w => w.getBoundingClientRect());
+        return { max:Math.max(...ids), ueber:document.documentElement.scrollWidth - innerWidth, hr:h.getBoundingClientRect().right,
+          imBild:worte.every(r => r.left >= -1 && r.right <= innerWidth + 1), zeilen:new Set(worte.map(r => Math.round(r.top))).size }; });
+      pruef(lang.max === 22 && lang.ueber <= 0 && lang.imBild && lang.zeilen >= 2, "langer Name bei 360 px: Folge höchstens 22, in Zeilen umbrochen, nichts ragt hinaus", JSON.stringify(lang));
+      const sonder = await p.evaluate(() => { wkTitel('<img src=x onerror="window.__x=1"> & "Q" 🍕'); const h = document.getElementById("wkHaus");
+        return { img:h.querySelectorAll("img").length, x:window.__x === 1, text:h.textContent }; });
+      pruef(!sonder.img && !sonder.x && sonder.text.includes("<img") && sonder.text.includes("🍕"), "Name mit Markup und Emoji bleibt Text (kein Tag, Emoji ganz)", JSON.stringify(sonder));
+      await ctx.close();
+    }
+
+    /* Der Abgang: Beim Schließen zieht die Bühne an und verschwindet nach vorn. */
+    {
+      const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", "figur"]] });
+      await p.waitForTimeout(1900);
+      const vor = await p.evaluate(() => { const b = document.querySelector(".wk-buehne"), cs = getComputedStyle(b); return { o:+cs.opacity, t:cs.transform }; });
+      await p.evaluate(() => document.getElementById("wkHub").click());
+      await p.waitForTimeout(230);
+      const mitte = await p.evaluate(() => { const b = document.querySelector(".wk-buehne"), cs = getComputedStyle(b);
+        const m = cs.transform.match(/matrix\(([^)]+)\)/); return { o:+cs.opacity, sk:m ? +m[1].split(",")[0] : 1 }; });
+      pruef(vor.o === 1 && mitte.o < 1 && mitte.sk > 1.003 && mitte.sk < 1.12, "Abgang: nach 230 ms ist die Bühne schon größer (Hindurchfahren) und halb ausgeblendet",
+        "vorher Deckkraft " + vor.o + ", dann " + mitte.o.toFixed(2) + " / Maßstab " + mitte.sk.toFixed(3));
+      await p.waitForTimeout(700);
+      const ende = await p.evaluate(() => !document.getElementById("willkommen") || document.getElementById("willkommen").hidden);
+      pruef(ende, "Abgang: nach 0,9 s ist der Schirm weg", ende);
+      await ctx.close();
+    }
+  }
+
   console.log("══ 8 · Board ══");
   async function board(stil, opt){
     opt = opt || {};
