@@ -330,8 +330,24 @@ async function oeffnen(browser, slug, hash, opt = {}) {
       /* In BEIDEN Richtungen sichtbar: Die Chip-Leiste rollt waagrecht,
          und was rechts draußen liegt, lädt absichtlich erst beim Hinrollen. */
       const h = innerHeight, w = innerWidth;
+      /* Sichtbar heißt: im Fenster UND im Ausschnitt jedes rollenden
+         Vorfahren. Seit 17.10. endet die Chip-Leiste vor der Knopfzeile
+         (--kw-frei, 273 von 390 px); ein Chip bei x = 352 lag im Fenster,
+         aber außerhalb der Leiste — nicht gemalt, und der Hub lädt ihn
+         zu Recht erst beim Hinrollen. Gezählt hatte die Probe ihn doch:
+         „3/4“, rot seit dem Umbau, auf main ebenso. */
+      const ausschnitt = el => {
+        let r = el.getBoundingClientRect(), o = { l: r.left, t: r.top, r: r.right, b: r.bottom };
+        for (let a = el.parentElement; a; a = a.parentElement) {
+          const cs = getComputedStyle(a);
+          if (cs.overflowX === "visible" && cs.overflowY === "visible") continue;
+          const q = a.getBoundingClientRect();
+          o = { l: Math.max(o.l, q.left), t: Math.max(o.t, q.top), r: Math.min(o.r, q.right), b: Math.min(o.b, q.bottom) };
+        }
+        return o;
+      };
       const sicht = [...document.querySelectorAll("#inhalt .bz")].filter(el => {
-        const r = el.getBoundingClientRect(); return r.bottom > 0 && r.top < h && r.right > 0 && r.left < w && r.width > 0; });
+        const o = ausschnitt(el); return o.b > Math.max(o.t, 0) && o.t < h && o.r > Math.max(o.l, 0) && o.l < w; });
       return { n: sicht.length, bereit: sicht.filter(el => el.classList.contains("bz-bereit")).length };
     });
     const vorher = await zaehl();
