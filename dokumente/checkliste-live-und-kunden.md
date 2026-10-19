@@ -186,7 +186,7 @@ Für Choco L'AMouR, Blend, Minhkeey, Più Gusto und jeden weiteren:
 Standard bleibt: Der Gast zahlt beim Personal. Nichts davon ändert sich,
 bis ein Betrieb unter „Einstellungen → Bezahlen“ etwas einschaltet.
 
-- [ ] **E** `datenbank/migration-zahlungen.sql` einspielen. Vorher die
+- [x] **E** (19.10. eingespielt und live geprüft) `datenbank/migration-zahlungen.sql` einspielen. Vorher die
       zwei Abfragen aus ihrem Kopf (Signaturen von `bestellung_aufgeben`
       und `bestellung_liefern`, Schranken von `bestellungen`) — **genau
       eine Zeile je Funktion**. Danach `datenbank/pruef-zahlungen.sql` im

@@ -2,7 +2,7 @@
 --  ZAHLUNGEN · Karte, Klarna, PayPal, SEPA-Lastschrift (über Stripe) und
 --  IBAN-Überweisung. Geld geht NUR auf das Konto des Betriebs.
 --
---  NOCH NICHT EINGESPIELT. Standard ist AUS: ohne Zeile in
+--  EINGESPIELT am 19.10.2026 (live geprüft: je Funktion eine Signatur, Service-Funktionen nur service_role, RLS an, Rechte auf den drei Tabellen zu, Protokoll-Schranke erweitert). Funktionen noch NICHT in der Edge ausgerollt. Standard ist AUS: ohne Zeile in
 --  betrieb_zahlarten ändert sich für niemanden etwas (§2.5 additiv).
 --
 --  Der Weg einer Online-Zahlung:
