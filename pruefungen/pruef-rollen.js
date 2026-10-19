@@ -29,7 +29,8 @@ const NUR_INHABER = ["Bewegte Emojis", "Projekte", "Stil der Speisekarte", "Extr
   "Ihre Worte im Gast-Hub", "Lieferung", "Gäste-Newsletter", "Eigene Rabattcodes",
   "Gutscheine für Stammgäste", "Bestellstand beim Gast", "Foodroulette", "Figur des Hauses",
   "Wer hat was geändert"];
-const AUCH_TEAM = ["Einstellungen", "Melden", "Bildschirm", "Nichts übersehen", "Betrieb", "Dieses Gerät"];
+/* „Einstellungen“ und „Gast-Hub gestalten“ sind die Übersichten (Kacheln), keine Gruppe mit Bedienelementen — für jede Rolle da. */
+const AUCH_TEAM = ["Einstellungen", "Gast-Hub gestalten", "Melden", "Bildschirm", "Nichts übersehen", "Betrieb", "Dieses Gerät"];
 const SATZ = "Nur der Besitzer kann das ändern.";
 
 let n = 0, f = 0;
