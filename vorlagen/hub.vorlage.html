@@ -1266,21 +1266,85 @@ a.tipp.mitmenge{padding-bottom:62px}
 .sbereich > .gitter{margin-top:6px}
 .sb-ein{animation:sbEin .26s var(--weich) both}
 @keyframes sbEin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
-/* Schnellzeile: bis zu vier Wege als Felder mit Zeichen und Wort. */
-.schnellzeile{display:grid;grid-template-columns:repeat(var(--sz-n, 4),minmax(0,1fr));gap:8px;margin:0 0 16px}
-.sz{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;
-  min-height:66px;padding:10px 4px 9px;border-radius:16px;
-  background:var(--flaeche);border:1px solid var(--linie);color:var(--tinte);text-decoration:none;
-  font-family:inherit;font-size:11.5px;font-weight:600;line-height:1.2;text-align:center;cursor:pointer;
-  box-shadow:0 8px 18px -14px rgba(0,0,0,.5);transition:transform .14s var(--weich);-webkit-tap-highlight-color:transparent}
-.sz:active{transform:scale(.96)}
-.sz.sz-jetzt{border-color:color-mix(in srgb, var(--rot) 60%, var(--linie))}
-.sz-ico{width:24px;height:24px;color:var(--rot);display:block}
-.sz-ico svg{display:block;width:100%;height:100%;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
-.sz-text{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-width:100%;overflow-wrap:anywhere}
-.sz-zahl{position:absolute;top:6px;inset-inline-end:7px;min-width:18px;height:18px;padding:0 5px;border-radius:9px;
-  display:inline-flex;align-items:center;justify-content:center;font-size:10.5px;font-weight:700;
-  background:var(--rot);color:var(--auf-rot);font-variant-numeric:tabular-nums}
+/* Schnellzugriff (18.10., Wunsch: „Quick-Access-Knöpfe zu Meine
+   Auswahl, Speisekarte, Foodroulette und Service rufen“, Vorbild der
+   Liquid-Glass-Showroom). Zwei Spalten großer Glas-Felder: Zeichen in
+   einer getönten Kachel, Name, eine Zeile darunter, Pfeil. Glas und
+   Lichtrand wie beim Zurück-Knopf (.zurueck): dieselbe Mischung, das
+   Licht dreht nur per transform. Kein Dauerglanz (Wunsch 17.10. „kein
+   Glanz“) — der Glanzstreif läuft nur beim Tippen einmal durch.
+   Eine laufende Bestellung liegt als breite Pille obenauf; bleibt
+   eine ungerade Zahl Felder, nimmt das letzte die ganze Breite.
+   Schrift --tinte/--tinte-leise: die Paare, die pruef-glas.js für das
+   Glas des Zurück-Knopfs gegen Schwarz und Weiß dahinter rechnet. */
+.schnellzeile{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 18px}
+.sz{--sz-ton:var(--gold);position:relative;isolation:isolate;overflow:hidden;
+  display:grid;grid-template-columns:44px minmax(0,1fr) 16px;align-items:center;column-gap:10px;
+  min-height:70px;padding:12px 10px 12px 12px;border-radius:20px;text-align:start;
+  background:color-mix(in srgb, var(--flaeche) 78%, transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(170%);backdrop-filter:blur(16px) saturate(170%);
+  border:1px solid color-mix(in srgb, var(--linie-stark) 80%, transparent);color:var(--tinte);text-decoration:none;
+  font-family:inherit;cursor:pointer;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28), 0 1px 2px rgba(0,0,0,.06), 0 10px 24px -12px rgba(0,0,0,.34);
+  transition:transform .22s cubic-bezier(.34,1.56,.64,1);-webkit-tap-highlight-color:transparent}
+.sz:active{transform:scale(.96);transition-duration:.1s}
+.sz:focus-visible{outline:2px solid var(--tinte);outline-offset:2px}
+.sz.sz-jetzt,.sz.sz-breit{grid-column:1 / -1}
+.sz.sz-jetzt{--sz-ton:var(--rot);min-height:60px;border-radius:999px;padding-inline:8px 16px}
+/* Schmal (zwei Felder je ~170 px) stehen Zeichen und Pfeil oben, Name
+   und Zeile darunter über die ganze Breite — nebeneinander blieben für
+   „Foodroulette“ 70 px, das Wort brach mitten durch (Bildschirmfoto
+   390 px). Breit, und immer bei einem Feld über die ganze Breite, liegt
+   alles in einer Reihe. */
+.sz:not(.sz-jetzt):not(.sz-breit){grid-template-rows:auto auto;row-gap:8px;align-items:start;align-content:start;padding:11px 12px 12px}
+.sz:not(.sz-jetzt):not(.sz-breit) .sz-ico{width:40px;height:40px;border-radius:13px}
+.sz:not(.sz-jetzt):not(.sz-breit) .sz-mitte{grid-column:1 / -1;grid-row:2}
+.sz:not(.sz-jetzt):not(.sz-breit) .sz-pfeil{grid-column:3;grid-row:1;align-self:center}
+@media (min-width:520px){
+  .sz:not(.sz-jetzt):not(.sz-breit){grid-template-rows:none;row-gap:0;align-items:center;padding:12px 10px 12px 12px}
+  .sz:not(.sz-jetzt):not(.sz-breit) .sz-mitte{grid-column:2;grid-row:1}
+}
+.sz-ico{position:relative;width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;
+  color:var(--rot);background:color-mix(in srgb, var(--rot) 13%, transparent);
+  border:1px solid color-mix(in srgb, var(--rot) 28%, transparent)}
+.sz-jetzt .sz-ico{border-radius:50%}
+.sz-ico svg{display:block;width:23px;height:23px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.sz-mitte{display:flex;flex-direction:column;gap:2px;min-width:0}
+.sz-text{font-size:15px;font-weight:650;line-height:1.2;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:break-word;hyphens:auto}
+.sz-unter{font-size:12.5px;line-height:1.3;color:var(--tinte-leise);font-variant-numeric:tabular-nums;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.sz-pfeil{width:16px;height:16px;fill:none;stroke:var(--tinte-leise);stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+[dir="rtl"] .sz-pfeil{transform:scaleX(-1)}
+.sz-zahl{position:absolute;top:-7px;inset-inline-end:-7px;min-width:20px;height:20px;padding:0 5px;border-radius:10px;
+  display:inline-flex;align-items:center;justify-content:center;font-size:11px;font-weight:750;
+  background:var(--rot);color:var(--auf-rot);font-variant-numeric:tabular-nums;
+  box-shadow:0 0 0 2px color-mix(in srgb, var(--flaeche) 90%, transparent)}
+.sz-rand{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:-1;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+.sz-licht{position:absolute;left:50%;top:50%;width:300%;aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);
+  background:conic-gradient(from 0deg, transparent 0 58%,
+    color-mix(in srgb, var(--sz-ton) 35%, transparent) 70%, var(--sz-ton) 80%,
+    color-mix(in srgb, var(--sz-ton) 35%, transparent) 88%, transparent 96%);
+  animation:zrLauf 9s linear infinite}
+.sz:nth-child(2n) .sz-licht{animation-delay:-3s}
+.sz:nth-child(3n) .sz-licht{animation-delay:-6s}
+.sz-jetzt .sz-licht{animation-duration:4.5s}
+/* Der Glanzstreif: nur beim Tippen, einmal, nur transform. */
+.sz-glanz{position:absolute;top:0;bottom:0;left:0;width:45%;pointer-events:none;z-index:-1;
+  background:linear-gradient(90deg, transparent, rgba(255,255,255,.22), transparent);
+  transform:translateX(-120%) skewX(-22deg);opacity:0}
+.sz:active .sz-glanz{animation:szGlanz .55s var(--weich) both}
+@keyframes szGlanz{from{opacity:1;transform:translateX(-120%) skewX(-22deg)}to{opacity:1;transform:translateX(330%) skewX(-22deg)}}
+@media (prefers-reduced-transparency:reduce){
+  .sz{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
+@media (prefers-reduced-motion:reduce){
+  .sz-licht{animation:none;transform:translate(-50%,-50%) rotate(-50deg)}
+  .sz:active .sz-glanz{animation:none}
+}
 @media (prefers-reduced-motion:reduce){ .sb-ein{animation:none} .sb-pfeil,.sz{transition:none} }
 /* Zierrat "tusche": eine kleine Pfingstrosen-Knospe vor jeder
    Abschnittsüberschrift — derselbe Trenner auf jeder Seite, die
@@ -1866,6 +1930,20 @@ html.textwahl body :is(h1,h2,h3,p,span,b,i,strong,a,button,label):hover{outline:
 .chips.chips-neben .chip-zurueck{display:inline-flex}
 /* Die schwebende Pille tritt zurück, solange der Weg in der Leiste steht. */
 body.kat-klebt .zurueck.an{opacity:0;pointer-events:none}
+/* ZU ENG FÜR EINE ZEILE (19.10., Bildschirmfoto iPhone): Mit dem
+   Liefer-Schalter ist die Zentrale oben rechts so breit, dass neben ihr
+   und „Zurück“ kein Chip mehr Platz fand — der gewählte glitt unter
+   „Zurück“, und zwischen Leiste und Zentrale schien die Karte durch.
+   kopfwahlPlatz() setzt dann html.kw-eng: Die Leiste klebt eine Zeile
+   tiefer (--kw-unten, unter der Zentrale) und über die ganze Breite;
+   oben stehen die schwebende Pille „Zurück“ und die Zentrale. Der
+   Schatten in der Grundfarbe deckt die Zeile darüber, damit dort
+   nichts durchscheint (die Leiste rollt waagrecht und schneidet alles
+   ab, was über ihren Rand hinausragt — ein Schatten nicht). */
+html.kw-eng .chips{margin-inline-end:calc(-1 * var(--rand));top:var(--kw-unten, 0px)}
+html.kw-eng .chips.chips-neben{box-shadow:0 calc(var(--kw-unten, 0px) / -2) 0 calc(var(--kw-unten, 0px) / 2) var(--grund)}
+html.kw-eng .chips.chips-neben .chip-zurueck{display:none}
+html.kw-eng body.kat-klebt .zurueck.an{opacity:1;pointer-events:auto}
 .chip{
   flex:0 0 auto;background:var(--flaeche);border:1px solid var(--linie);
   color:var(--tinte-leise);border-radius:999px;padding:10px 15px;font-size:13.5px;
@@ -4047,10 +4125,20 @@ body.hat-balken:has(#wsstreifen:not([hidden])) footer{padding-bottom:76px}
   position:fixed;inset:0;z-index:1000;
   background:var(--grund);color:var(--tinte);
   display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:18px;padding:32px;text-align:center;
+  padding:32px;text-align:center;
   transition:opacity .5s cubic-bezier(.16,1,.3,1);
 }
 .willkommen.weg{opacity:0;pointer-events:none}
+/* Die Bühne trägt alles und geht als EIN Körper (19.10.): Beim
+   Schließen zieht sie an und verschwindet nach vorn, ein Hindurchfahren
+   statt eines bloßen Verblassens. Hinausgehen ist kürzer als Hereinkommen
+   (bewegung §3) und nimmt ease-in (§2). Die Hülle trägt keine
+   Einflug-Animation — nur deshalb greift hier die Transition. */
+.wk-buehne{
+  display:flex;flex-direction:column;align-items:center;gap:18px;width:100%;
+  transition:opacity .32s cubic-bezier(.55,0,1,.45),transform .46s cubic-bezier(.55,0,1,.45);
+}
+.willkommen.weg .wk-buehne{opacity:0;transform:scale(1.1)}
 /* Eine Choreografie statt lauter Einzelteile, die zufällig gleichzeitig
    antreten: EIN Fokuspunkt (die Figur) schwingt sanft ein wie ein
    App-Icon beim ersten Start, alles andere folgt ruhig und ohne
@@ -4062,11 +4150,23 @@ body.hat-balken:has(#wsstreifen:not([hidden])) footer{padding-bottom:76px}
 .willkommen .haus{
   font-family:var(--schrift-titel);font-size:clamp(26px,7vw,38px);
   line-height:1.1;letter-spacing:-.01em;margin:0;
-  animation:wkAuf .6s var(--weich) .32s both;
+}
+/* Der Name des Hauses fährt Buchstabe für Buchstabe ein (kinetische
+   Schrift): leichtes Kippen, Überschwingen der Feder, 32 ms Versatz —
+   bei 20 Buchstaben unter einer Sekunde. Jedes Wort bleibt in einem
+   Stück (nowrap), umbrochen wird nur zwischen Wörtern. */
+.willkommen .wk-wort{display:inline-block;white-space:nowrap}
+.willkommen .wk-b{
+  display:inline-block;
+  animation:wkBuchstabe .72s cubic-bezier(.34,1.56,.64,1) calc(.3s + var(--i,0) * 32ms) both;
+}
+@keyframes wkBuchstabe{
+  from{opacity:0;transform:translateY(.5em) rotate(5deg) scale(.72)}
+  to{opacity:1;transform:none}
 }
 .willkommen .wort{
   font-size:15px;color:var(--tinte-leise);max-width:30ch;margin:0;text-wrap:balance;
-  animation:wkAuf .6s var(--weich) .42s both;
+  animation:wkAuf .6s var(--weich) .8s both;
 }
 .willkommen .figur{
   transform-origin:50% 85%;
@@ -4080,12 +4180,12 @@ body.hat-balken:has(#wsstreifen:not([hidden])) footer{padding-bottom:76px}
   display:flex;flex-direction:column;width:100%;max-width:320px;
 }
 .willkommen .wk-wahl button{animation:wkAuf .55s var(--weich) both}
-.willkommen .wk-wahl button:nth-child(1){animation-delay:.56s}
-.willkommen .wk-wahl button:nth-child(2){animation-delay:.63s}
+.willkommen .wk-wahl button:nth-child(1){animation-delay:.92s}
+.willkommen .wk-wahl button:nth-child(2){animation-delay:.99s}
 .willkommen .wk-hinweis{
   font-size:11.5px;letter-spacing:.1em;text-transform:uppercase;
   color:var(--tinte-still);margin:0;
-  animation:wkAuf .5s var(--weich) .78s both;
+  animation:wkAuf .5s var(--weich) 1.12s both;
 }
 @keyframes wkAuf{
   from{opacity:0;transform:translateY(10px);filter:blur(4px)}
@@ -4096,7 +4196,7 @@ body.hat-balken:has(#wsstreifen:not([hidden])) footer{padding-bottom:76px}
    schwingt zurück — der Effekt, den ein frisch installiertes App-Icon
    beim ersten Antippen macht. */
 @keyframes wkFigur{
-  from{opacity:0;transform:translateY(16px) scale(.8);filter:blur(6px)}
+  from{opacity:0;transform:translateY(22px) scale(.74) rotate(-2.5deg);filter:blur(6px)}
   to{opacity:1;transform:none;filter:blur(0)}
 }
 
@@ -4465,9 +4565,9 @@ body.hat-balken:has(#wsstreifen:not([hidden])) footer{padding-bottom:76px}
 }
 
 @media (prefers-reduced-motion:reduce){
-  .willkommen .haus,.willkommen .wort,.willkommen .figur,.willkommen .wz,
+  .willkommen .wk-b,.willkommen .wort,.willkommen .figur,.willkommen .wz,
   .willkommen .wk-wahl button,.willkommen .wk-hinweis{animation:none}
-  .willkommen{transition:none}
+  .willkommen,.wk-buehne{transition:none}
 }
 
 /* ═══ Kleine Geräte ═════════════════════════════════════════════ */
@@ -5079,6 +5179,7 @@ function farbMerkwert(fb){
      ersten Bildaufbau da. Käme er aus dem Skript, sähe der Gast
      erst die halbe Karte und dann den Schirm darüber. -->
 <div class="willkommen" id="willkommen" hidden>
+ <div class="wk-buehne">
   <div id="wkFigur"></div>
   <h2 class="haus" id="wkHaus"></h2>
   <p class="wort" id="wkWort"></p>
@@ -5092,6 +5193,7 @@ function farbMerkwert(fb){
     <button type="button" class="knopf zweit" data-wk-ziel="hub" id="wkHub"></button>
   </div>
   <p class="wk-hinweis" id="wkTipp"></p>
+ </div>
 </div>
 
 <!-- ═══ Konditorei im Raum ══════════════════════════════════════════
@@ -6697,6 +6799,15 @@ function kopfwahlPlatz(){
   const st = document.documentElement.style;
   st.setProperty("--kw-frei", Math.round(frei) + "px");
   st.setProperty("--kw-b", Math.max(0, Math.round(b)) + "px");
+  /* Bleibt neben „Zurück“ (≈ 110 px) weniger als ein Chip mittlerer
+     Länge (170 px), bekommt die Leiste eine eigene Zeile unter der
+     Zentrale (CSS html.kw-eng). */
+  const eng = frei > 0 && mr.width - frei - 110 < 170;
+  document.documentElement.classList.toggle("kw-eng", eng);
+  st.setProperty("--kw-unten", Math.round(r.bottom + 6) + "px");
+  /* katSpionPlanen steht weiter unten und nutzt ein let — vor dessen
+     Zeile wäre der Aufruf ein ReferenceError (§8.1l). */
+  try{ katSpionPlanen(); }catch(e){}
 }
 (function(){
   const los = () => {
@@ -10007,6 +10118,10 @@ const TEXTE = {
 "Hier hakt gerade etwas.":{en:"Something is stuck here right now.",tr:"Burada bir şeyler takıldı.",ru:"Здесь что-то пошло не так.",fr:"Quelque chose coince ici.",es:"Aquí algo se ha atascado.",it:"Qui qualcosa si è bloccato.",pl:"Tutaj coś się zacięło.",ar:"حدث خلل هنا.",uk:"Тут щось не спрацювало.",nl:"Hier loopt iets vast.",ro:"Aici s-a blocat ceva."},
 "Bitte einmal zurück zur Übersicht, unser Team hilft Ihnen sonst gerne persönlich weiter.":{en:"Please head back to the overview, otherwise our team is happy to help you in person.",tr:"Lütfen genel bakışa dönün, aksi halde ekibimiz size memnuniyetle şahsen yardımcı olur.",ru:"Вернитесь, пожалуйста, к обзору, иначе наша команда с радостью поможет лично.",fr:"Revenez à l'aperçu, sinon notre équipe vous aide volontiers en personne.",es:"Vuelva al inicio; si no, nuestro equipo le ayuda con gusto en persona.",it:"Torni alla panoramica, altrimenti il nostro team la aiuta volentieri di persona.",pl:"Wróć do przeglądu, w innym razie nasz zespół chętnie pomoże osobiście.",ar:"يرجى العودة إلى النظرة العامة، وإلا فسيسعد فريقنا بمساعدتكم شخصياً.",uk:"Поверніться, будь ласка, до огляду, інакше наша команда радо допоможе особисто.",nl:"Ga even terug naar het overzicht, anders helpt ons team u graag persoonlijk.",ro:"Reveniți la prezentare, altfel echipa noastră vă ajută cu plăcere personal."},
 "Nichts gefunden. Versuchen Sie einen anderen Begriff.":{en:"Nothing found. Try another term.",tr:"Bir şey bulunamadı. Başka bir sözcük deneyin.",ru:"Ничего не найдено. Попробуйте другой запрос.",fr:"Aucun résultat. Essayez un autre mot.",es:"Sin resultados. Pruebe otra palabra.",it:"Nessun risultato. Prova un altro termine.",pl:"Brak wyników. Spróbuj inaczej.",ar:"لا نتائج. جرّب كلمة أخرى.",uk:"Нічого не знайдено. Спробуйте інакше.",nl:"Niets gevonden. Probeer een ander woord.",ro:"Niciun rezultat. Încercați alt termen."},
+"Alles auf einen Blick":{en:"Everything at a glance",tr:"Hepsi bir bakışta",ru:"Всё с первого взгляда",fr:"Tout en un coup d'œil",es:"Todo de un vistazo",it:"Tutto a colpo d'occhio",pl:"Wszystko w jednym miejscu",ar:"كل شيء في لمحة",uk:"Усе з першого погляду",nl:"Alles in één oogopslag",ro:"Totul dintr-o privire"},
+"Lassen Sie sich überraschen":{en:"Let us surprise you",tr:"Kendinizi şaşırtın",ru:"Позвольте нам удивить вас",fr:"Laissez-vous surprendre",es:"Déjese sorprender",it:"Lasciatevi sorprendere",pl:"Dajcie się zaskoczyć",ar:"دعنا نفاجئكم",uk:"Дозвольте нам вас здивувати",nl:"Laat u verrassen",ro:"Lăsați-vă surprinși"},
+"Noch nichts ausgewählt":{en:"Nothing selected yet",tr:"Henüz bir şey seçilmedi",ru:"Пока ничего не выбрано",fr:"Rien de sélectionné pour l'instant",es:"Aún no ha elegido nada",it:"Ancora nulla di scelto",pl:"Jeszcze nic nie wybrano",ar:"لم يتم اختيار شيء بعد",uk:"Ще нічого не вибрано",nl:"Nog niets gekozen",ro:"Nimic ales încă"},
+"Stand ansehen":{en:"See status",tr:"Durumu gör",ru:"Посмотреть статус",fr:"Voir l'état",es:"Ver el estado",it:"Vedi lo stato",pl:"Zobacz status",ar:"عرض الحالة",uk:"Переглянути статус",nl:"Status bekijken",ro:"Vezi starea"},
 "Ihre Auswahl":{en:"Your selection",tr:"Seçiminiz",ru:"Ваш выбор",fr:"Votre sélection",es:"Su selección",it:"La vostra selezione",pl:"Państwa wybór",ar:"اختياركم",uk:"Ваш вибір",nl:"Uw selectie",ro:"Selecția dvs."},
 "Schnellzugriff":{en:"Quick access",tr:"Hızlı erişim",ru:"Быстрый доступ",fr:"Accès rapide",es:"Acceso rápido",it:"Accesso rapido",pl:"Szybki dostęp",ar:"وصول سريع",uk:"Швидкий доступ",nl:"Snelle toegang",ro:"Acces rapid"},
 "Auswahl ansehen":{en:"View selection",tr:"Seçimi görüntüle",ru:"Посмотреть выбор",fr:"Voir la sélection",es:"Ver selección",it:"Vedi selezione",pl:"Zobacz wybór",ar:"عرض الاختيار",uk:"Переглянути вибір",nl:"Selectie bekijken",ro:"Vezi selecția"},
@@ -11747,30 +11862,41 @@ document.addEventListener("click", e => {
 });
 
 /* ── Schnellzeile ─────────────────────────────────────────────────
-   Bis zu vier Wege, je nach Lage: eine laufende Bestellung zuerst,
-   dann die erste Karte, der Serviceruf (nur am Tisch — im Liefermodus
-   ist die Gruppe gar nicht sichtbar), die eigene Auswahl (nur, wenn
-   etwas darin liegt) und die Foodroulette (nur, wenn das Haus sie
-   zeigt). Jeder Weg ist ein vorhandener; die Zeile erfindet nichts. */
+   Bis zu vier Wege und obenauf eine laufende Bestellung: die eigene
+   Auswahl, die erste Karte, die Foodroulette (nur, wenn das Haus sie
+   zeigt) und der Serviceruf (nur am Tisch — im Liefermodus ist die
+   Gruppe gar nicht sichtbar). Jeder Weg ist ein vorhandener; die
+   Zeile erfindet nichts. */
 function schnellzeileHTML(sichtbar){
+  /* Reihenfolge wie gewünscht: Auswahl, Karte, Foodroulette, Serviceruf.
+     „Ihre Auswahl“ steht seit 18.10. immer da (ein Schnellzugriff, der
+     erst mit Inhalt erscheint, ist keiner) — leer mit einem Satz statt
+     einer Zahl. */
   const wege = [];
-  if(!VORSCHAU && offeneVorgaenge().length)
-    wege.push({ knopf:true, icon:ICONS.glocke, text:t("Ihre Bestellung"), jetzt:true });
-  const karte = sichtbar.find(k => k.art === "karte");
-  if(karte) wege.push({ href:kachelZiel(karte), icon:ICONS[karte.icon] || ICONS.speise, text:t(karte.titel) });
-  const ruf = sichtbar.find(k => k.schluessel === "tischruf");
-  if(ruf) wege.push({ href:kachelZiel(ruf), icon:ICONS.hand, text:t(ruf.titel) });
   const n = merkAnzahl();
-  if(n) wege.push({ href:"#/auswahl", icon:ICONS.herz, text:t("Ihre Auswahl"), zahl:n });
-  if(foodrouletteAn()) wege.push({ href:"#/entdecken", icon:ICONS.wuerfel, text:"Foodroulette" /* Name, nicht übersetzt (wie im Rad) */ });
-  const zeile = wege.slice(0, 4);
-  if(zeile.length < 2) return "";
-  return '<div class="schnellzeile" role="group" aria-label="' + hs(t("Schnellzugriff")) + '" style="--sz-n:' + zeile.length + '">' +
-    zeile.map(w => (w.knopf ? '<button type="button" class="sz sz-jetzt" data-sz-vorgang>'
-                            : '<a class="sz" href="' + hs(w.href) + '">') +
-      '<span class="sz-ico" aria-hidden="true">' + (w.icon || "") + '</span>' +
-      '<span class="sz-text">' + hs(w.text) + '</span>' +
-      (w.zahl ? '<span class="sz-zahl">' + w.zahl + '</span>' : "") +
+  wege.push({ href:"#/auswahl", icon:ICONS.herz, text:t("Ihre Auswahl"),
+              unter: n ? preisText(merkSumme()) : t("Noch nichts ausgewählt"), zahl:n });
+  const karte = sichtbar.find(k => k.art === "karte");
+  if(karte) wege.push({ href:kachelZiel(karte), icon:ICONS[karte.icon] || ICONS.speise, text:t(karte.titel),
+                        unter: karte.unter ? t(karte.unter) : t("Alles auf einen Blick") });
+  if(foodrouletteAn()) wege.push({ href:"#/entdecken", icon:ICONS.wuerfel, text:"Foodroulette" /* Name, nicht übersetzt (wie im Rad) */,
+                                   unter:t("Lassen Sie sich überraschen") });
+  const ruf = sichtbar.find(k => k.schluessel === "tischruf");
+  if(ruf) wege.push({ href:kachelZiel(ruf), icon:ICONS.hand, text:t(ruf.titel), unter: ruf.unter ? t(ruf.unter) : "" });
+  if(wege.length < 2) return "";
+  if(wege.length % 2) wege[wege.length - 1].breit = true;
+  if(!VORSCHAU && offeneVorgaenge().length)
+    wege.unshift({ knopf:true, icon:ICONS.glocke, text:t("Ihre Bestellung"), unter:t("Stand ansehen"), jetzt:true });
+  const pfeil = '<svg class="sz-pfeil" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>';
+  return '<div class="schnellzeile" role="group" aria-label="' + hs(t("Schnellzugriff")) + '">' +
+    wege.map(w => (w.knopf ? '<button type="button" class="sz sz-jetzt" data-sz-vorgang>'
+                            : '<a class="sz' + (w.breit ? ' sz-breit' : '') + '" href="' + hs(w.href) + '">') +
+      '<span class="sz-rand" aria-hidden="true"><span class="sz-licht"></span></span>' +
+      '<span class="sz-glanz" aria-hidden="true"></span>' +
+      '<span class="sz-ico" aria-hidden="true">' + (w.icon || "") +
+        (w.zahl ? '<span class="sz-zahl">' + w.zahl + '</span>' : "") + '</span>' +
+      '<span class="sz-mitte"><span class="sz-text">' + hs(w.text) + '</span>' +
+        (w.unter ? '<span class="sz-unter">' + hs(w.unter) + '</span>' : "") + '</span>' + pfeil +
       (w.knopf ? '</button>' : '</a>')).join("") + '</div>';
 }
 /* Die laufende Bestellung: derselbe Weg wie der Streifen unten. */
@@ -16976,7 +17102,8 @@ function katSpion(){
   /* Klebt die Leiste oben, wird „Zurück“ ihr erstes Element (selbst
      klebend, die Chips gleiten darunter durch), und die schwebende Pille
      tritt zurück — vorher lag sie über dem ersten Chip. */
-  const klebt = !!document.querySelector(".zurueck.an") && l.getBoundingClientRect().top <= 1;
+  const oben = parseFloat(getComputedStyle(l).top) || 0;   /* 0, unter kw-eng --kw-unten */
+  const klebt = !!document.querySelector(".zurueck.an") && l.getBoundingClientRect().top <= oben + 1;
   l.classList.toggle("chips-neben", klebt);
   document.body.classList.toggle("kat-klebt", klebt);
   const alle = l.querySelector('.chip[data-g="Alle"]');
@@ -17021,7 +17148,8 @@ function katSpringen(g){
     const gr = [...document.querySelectorAll("#inhalt .gruppe[data-gruppe]")].find(x => x.dataset.gruppe === g);
     if(!gr || !gr.nextElementSibling) return false;
     const l = document.querySelector("#inhalt .chips");
-    y = scrollY + gr.nextElementSibling.getBoundingClientRect().top - gr.offsetHeight - (l ? l.offsetHeight : 0) - 2;
+    y = scrollY + gr.nextElementSibling.getBoundingClientRect().top - gr.offsetHeight
+      - (l ? l.offsetHeight + (parseFloat(getComputedStyle(l).top) || 0) : 0) - 2;
   }else{
     const l = document.querySelector("#inhalt .chips");
     y = l ? Math.max(0, scrollY + l.getBoundingClientRect().top - 4) : 0;
@@ -18104,13 +18232,39 @@ zeichne();
    mit Essen, Restaurant-Utensilien“. Bewegt wird NUR transform und
    opacity (Skill bewegung); bei reduzierter Bewegung steht jede Szene
    still in ihrem schönsten Bild. Farben aus dem Haus (§5.1): --wz-*
-   darf die Seite setzen, sonst gelten die Rollen des Hubs. */
+   darf die Seite setzen, sonst gelten die Rollen des Hubs.
+
+   BÜHNE (19.10., Wunsch: „Animationen der Ladeseite wie von einem
+   renommierten FX-Studio — flüssig, farbig, ansehnlich“): Hinter jeder
+   Szene (außer „still“) liegt eine Bühne aus fünf Schichten, alle nur
+   transform/opacity und alle aus den Farben des Hauses:
+     Aura     drei weiche Lichtfelder, die langsam umeinander treiben
+     Strahlen ein umlaufender Kranz feiner Lichtkeile (die einzige
+              gleichförmige Dauerbewegung hier — wie ein Rad, §2 bewegung)
+     Wellen   zwei Ringe, die vom Zentrum auslaufen
+     Schein   ein atmender Lichtfleck am Boden
+     Teilchen je Szene eigener Charakter (Konfetti, Perlen, Glut, Striche)
+   Bewegt sich etwas im Bild, hat es einen Grund: Die Bühne gibt der
+   Szene Tiefe und Licht, die Szene bleibt der Fokuspunkt. Verteilung
+   der Teilchen fest gerechnet, nicht gewürfelt — dieselbe Szene sieht
+   überall gleich aus. Maße in cqw (Breite der Szene): im 120-px-Feld des
+   Boards läuft dieselbe Bühne verkleinert. Reduzierte Bewegung: Aura und
+   Strahlen stehen still da, Wellen und Teilchen entfallen. */
 const WZ_ARTEN = ["figur", "cafe", "tisch", "kueche", "lieferung", "still"];
 const WZ_NAME = { figur:"Figur", cafe:"Café", tisch:"Gedeckter Tisch", kueche:"Küche", lieferung:"Lieferung", still:"Ohne Bewegung" };
+/* Teilchen je Szene: Zahl, Form, Dauer (s), Steighöhe (cqw), Farbfolge
+   (g Gold, a Akzent, n Natur, w helles Champagner), Startlage (% von unten). */
+const WZ_TEILE = {
+  figur:     { n:14, f:"konfetti", t:3.6, h:-46, farbe:"gawn", y:22, dy:30 },
+  cafe:      { n:12, f:"perle",    t:4.6, h:-54, farbe:"gwa",  y:10, dy:26 },
+  tisch:     { n:14, f:"perle",    t:3.8, h:-58, farbe:"wgwa", y:10, dy:26 },
+  kueche:    { n:16, f:"glut",     t:2.6, h:-62, farbe:"agga", y:8,  dy:22 },
+  lieferung: { n:10, f:"strich",   t:1.6, h:0,   farbe:"wga",  y:20, dy:44 }
+};
 const WZ_CSS = [
   ".wz{--_t:var(--wz-t,var(--tinte,#2B1B14));--_a:var(--wz-a,var(--rot,#C8202E));--_g:var(--wz-g,var(--gold,#E2A73B));",
   "--_f:var(--wz-f,var(--flaeche,#FFFFFF));--_n:var(--wz-n,var(--pistazie,#5F7F42));",
-  "position:relative;display:block;width:200px;max-width:64vw;margin:0 auto}",
+  "position:relative;display:block;width:200px;max-width:64vw;margin:0 auto;container-type:inline-size}",
   ".wz svg{display:block;width:100%;height:auto;overflow:visible}",
   ".wz .t{fill:var(--_t)}.wz .a{fill:var(--_a)}.wz .g{fill:var(--_g)}.wz .f{fill:var(--_f)}.wz .n{fill:var(--_n)}",
   ".wz .lt{fill:none;stroke:var(--_t);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}",
@@ -18118,6 +18272,48 @@ const WZ_CSS = [
   ".wz .sch{fill:var(--_t);opacity:.12}",
   ".wz .dampf{fill:none;stroke:var(--_t);stroke-width:3;stroke-linecap:round;opacity:0}",
   ".wz > svg *{transform-box:fill-box;transform-origin:50% 50%}",
+  /* Bühne: liegt hinter Szene und Figur, fängt keinen Tipp */
+  ".wz > svg{position:relative;z-index:1}.wz > .huelle{z-index:1}",
+  /* Ein weicher Ausklang nach unten (mask-image): Am unteren Rand der Bühne ist
+     jede Schicht durchsichtig — unter der Szene steht Text, der Kontrast
+     braucht, und ein harter Schnitt (so die erste Fassung) zeigte sich als
+     gerade Kante im Licht. Die Auren sind so gesetzt, dass sie samt Drift
+     in der Bühne bleiben. */
+  ".wz-buehne{position:absolute;left:-55%;right:-55%;top:-42%;bottom:-4%;z-index:0;pointer-events:none;",
+  "-webkit-mask-image:linear-gradient(to bottom,#000 86%,transparent 100%);mask-image:linear-gradient(to bottom,#000 86%,transparent 100%)}",
+  ".wz-buehne > span{display:block;position:absolute}",
+  ".wz-aura{width:46%;aspect-ratio:1;border-radius:50%;opacity:var(--o,.55);will-change:transform;",
+  "background:radial-gradient(closest-side,color-mix(in srgb,var(--c) 62%,transparent),transparent);",
+  "animation:wzAufgehen 1.6s cubic-bezier(.16,1,.3,1) .1s both,wzSchweben var(--t,8s) cubic-bezier(.45,0,.55,1) infinite alternate}",
+  ".wz-a1{--c:var(--_a);--dx:16%;--dy:6%;--sk:1.18;--t:7.6s;left:6%;top:4%;width:42%}",
+  ".wz-a2{--c:var(--_g);--dx:-14%;--dy:8%;--sk:1.12;--t:9.4s;left:50%;top:0;width:42%}",
+  ".wz-a3{--c:var(--_n);--dx:10%;--dy:-12%;--sk:1.22;--t:11s;--o:.42;left:33%;top:24%;width:34%}",
+  ".wz-strahl{left:50%;top:56%;width:56%;aspect-ratio:1;opacity:.85;transform:translate(-50%,-50%);will-change:transform;",
+  "background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--_g) 44%,transparent) 0 4deg,transparent 4deg 15deg);",
+  "-webkit-mask-image:radial-gradient(closest-side,transparent 6%,#000 28%,transparent 88%);mask-image:radial-gradient(closest-side,transparent 6%,#000 28%,transparent 88%);",
+  "animation:wzAufgehen 2.2s cubic-bezier(.16,1,.3,1) .2s both,wzStrahlen 56s linear infinite}",
+  ".wz-schein{left:21%;width:58%;bottom:10%;height:14%;border-radius:50%;opacity:.8;",
+  "background:radial-gradient(closest-side,color-mix(in srgb,var(--_g) 55%,transparent),transparent);",
+  "animation:wzAtmen 3.4s cubic-bezier(.45,0,.55,1) infinite alternate}",
+  ".wz-welle{left:50%;top:56%;width:46%;aspect-ratio:1;border-radius:50%;opacity:0;transform:translate(-50%,-50%) scale(.4);",
+  "border:max(1.5px,.8cqw) solid color-mix(in srgb,var(--_g) 72%,transparent);",
+  "animation:wzWelle 3.6s cubic-bezier(.16,1,.3,1) .25s infinite}",
+  ".wz-w2{border-color:color-mix(in srgb,var(--_a) 66%,transparent);animation-delay:2.05s}",
+  ".wz-teil{left:calc(var(--x,50) * 1%);bottom:calc(var(--y,10) * 1%);width:calc(var(--s,1) * 3.4cqw);aspect-ratio:1;border-radius:50%;opacity:0;",
+  "background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 55%,#fff),var(--c) 62%,transparent);",
+  "animation:wzSteigen var(--t,3s) cubic-bezier(.33,1,.68,1) var(--d,0s) infinite}",
+  ".wz-cg{--c:var(--_g)}.wz-ca{--c:var(--_a)}.wz-cn{--c:var(--_n)}.wz-cw{--c:color-mix(in srgb,var(--_g) 38%,#fff)}",
+  ".wz-t-glut{background:var(--c);box-shadow:0 0 calc(var(--s,1) * 3cqw) var(--c)}",
+  ".wz-t-konfetti{width:calc(var(--s,1) * 2.8cqw);height:calc(var(--s,1) * 1.4cqw);aspect-ratio:auto;border-radius:1px;background:var(--c);animation-name:wzKonfetti}",
+  ".wz-t-strich{width:calc(var(--s,1) * 13cqw);height:max(1px,.6cqw);aspect-ratio:auto;border-radius:1px;background:linear-gradient(90deg,transparent,var(--c));animation-name:wzZug}",
+  /* Lichtblitze und Nachbilder der Szenen */
+  ".wz .funkel{opacity:0;animation:wzFunkeln 2.6s cubic-bezier(.16,1,.3,1) infinite}",
+  ".wz .halo{animation:wzHalo 1.4s cubic-bezier(.37,0,.63,1) infinite alternate}",
+  ".wz-kueche .geist{opacity:.3;animation:wzWenden 1.8s cubic-bezier(.45,0,.55,1) .07s infinite}",
+  ".wz-kueche .geist + .geist{opacity:.15;animation-delay:.14s}",
+  ".wz-lieferung .haeuser{animation:wzHaeuser 3.2s linear infinite}",
+  ".wz-lieferung .staub{opacity:0;animation:wzStaub .9s cubic-bezier(.33,1,.68,1) infinite}",
+  ".wz-lieferung .staub:nth-of-type(2){animation-delay:.3s}.wz-lieferung .staub:nth-of-type(3){animation-delay:.6s}",
   /* Café: Dampf steigt versetzt, der Löffel rührt, das Milchschaum-Herz blüht */
   ".wz-cafe .dampf{animation:wzDampf 2.4s cubic-bezier(.33,1,.68,1) infinite}",
   ".wz-cafe .dampf:nth-of-type(2){animation-delay:.6s}.wz-cafe .dampf:nth-of-type(3){animation-delay:1.2s}",
@@ -18173,7 +18369,19 @@ const WZ_CSS = [
   "@keyframes wzHuepfen{0%,100%{transform:translateY(0) scale(1.04,.94)}12%{transform:translateY(0) scale(.96,1.05)}45%{transform:translateY(-22px) scale(1,1)}78%{transform:translateY(0) scale(1.05,.93)}88%{transform:translateY(0) scale(1)}}",
   "@keyframes wzSchatten{0%,100%,78%{transform:scale(1);opacity:.14}45%{transform:scale(.7);opacity:.07}}",
   "@keyframes wzStern{0%{opacity:0;transform:translateY(6px) scale(.4) rotate(0)}40%{opacity:1}100%{opacity:0;transform:translateY(-22px) scale(1) rotate(90deg)}}",
-  "@media (prefers-reduced-motion:reduce){.wz *{animation:none !important}.wz .dampf,.wz .funke,.wz .stern{opacity:.4}}"
+  "@keyframes wzAufgehen{from{opacity:0}}",
+  "@keyframes wzSchweben{from{transform:translate(0,0) scale(1)}to{transform:translate(var(--dx,0%),var(--dy,0%)) scale(var(--sk,1))}}",
+  "@keyframes wzStrahlen{to{transform:translate(-50%,-50%) rotate(360deg)}}",
+  "@keyframes wzWelle{0%{opacity:.75;transform:translate(-50%,-50%) scale(.4)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.3)}}",
+  "@keyframes wzAtmen{from{opacity:.5;transform:scale(.94)}to{opacity:1;transform:scale(1.08)}}",
+  "@keyframes wzSteigen{0%{opacity:0;transform:translate(0,0) scale(.5)}18%{opacity:.9}100%{opacity:0;transform:translate(calc(var(--w,0) * 1cqw),calc(var(--h,-50) * 1cqw)) scale(1.1)}}",
+  "@keyframes wzKonfetti{0%{opacity:0;transform:translate(0,0) rotate(0)}10%{opacity:1}45%{transform:translate(calc(var(--w,0) * .6cqw),calc(var(--h,-50) * 1cqw)) rotate(200deg)}100%{opacity:0;transform:translate(calc(var(--w,0) * 1cqw),calc(var(--h,-50) * -.25cqw)) rotate(560deg)}}",
+  "@keyframes wzZug{0%{opacity:0;transform:translateX(30cqw)}25%{opacity:.7}100%{opacity:0;transform:translateX(-70cqw)}}",
+  "@keyframes wzFunkeln{0%,100%{opacity:0;transform:scale(.2) rotate(0)}45%{opacity:1;transform:scale(1) rotate(45deg)}}",
+  "@keyframes wzHalo{from{opacity:.16;transform:scale(.94)}to{opacity:.46;transform:scale(1.1)}}",
+  "@keyframes wzHaeuser{from{transform:translateX(0)}to{transform:translateX(-100px)}}",
+  "@keyframes wzStaub{0%{opacity:0;transform:translate(0,0) scale(.4)}25%{opacity:.45}100%{opacity:0;transform:translate(-26px,-7px) scale(1.5)}}",
+  "@media (prefers-reduced-motion:reduce){.wz *{animation:none !important}.wz .dampf,.wz .funke,.wz .stern{opacity:.4}.wz .halo{opacity:.3}}"
 ].join("\n");
 function wzStil(){
   if(document.getElementById("wzStil")) return;
@@ -18185,10 +18393,24 @@ const WZ_MINIFIGUR = '<svg viewBox="0 0 120 120"><ellipse class="a" cx="60" cy="
   '<ellipse class="f" cx="60" cy="58" rx="24" ry="20" opacity=".9"/><circle class="t" cx="51" cy="56" r="3.6"/><circle class="t" cx="69" cy="56" r="3.6"/>' +
   '<path class="lt" d="M52 66 q8 7 16 0"/><path class="lt" d="M24 70 q-10 6 -6 16"/><path class="lt" d="M96 70 q10 -10 14 -20"/>' +
   '<ellipse class="t" cx="46" cy="104" rx="9" ry="5"/><ellipse class="t" cx="74" cy="104" rx="9" ry="5"/></svg>';
+/* Die Bühne hinter einer Szene (siehe Kopf des Blocks). */
+function wzBuehne(art){
+  const c = WZ_TEILE[art]; if(!c) return "";
+  let h = '<div class="wz-buehne" aria-hidden="true"><span class="wz-strahl"></span>' +
+    '<span class="wz-aura wz-a1"></span><span class="wz-aura wz-a2"></span><span class="wz-aura wz-a3"></span>' +
+    '<span class="wz-schein"></span><span class="wz-welle"></span><span class="wz-welle wz-w2"></span>';
+  for(let i = 0; i < c.n; i++){
+    const x = 8 + (i * 41 + 17) % 84, y = c.y + (i * 19) % c.dy, s = .7 + ((i * 13) % 7) / 10;
+    const d = .5 + ((i * 7) % 11) * .27, t = c.t + ((i * 3) % 5) * .35, w = (i % 2 ? 1 : -1) * (3 + (i * 5) % 11);
+    h += '<span class="wz-teil wz-t-' + c.f + ' wz-c' + c.farbe.charAt(i % c.farbe.length) + '" style="--x:' + x + ';--y:' + y +
+      ';--s:' + s.toFixed(2) + ';--d:' + d.toFixed(2) + 's;--t:' + t.toFixed(2) + 's;--w:' + w + ';--h:' + c.h + '"></span>';
+  }
+  return h + '</div>';
+}
 function wzSzeneHTML(art, figur){
   wzStil();
   art = WZ_ARTEN.indexOf(art) >= 0 ? art : "figur";
-  const huelle = svg => '<div class="wz wz-' + art + '" data-wz="' + art + '" aria-hidden="true">' + svg + '</div>';
+  const huelle = svg => '<div class="wz wz-' + art + '" data-wz="' + art + '" aria-hidden="true">' + wzBuehne(art) + svg + '</div>';
   const fig = figur || WZ_MINIFIGUR;
   if(art === "still") return huelle('<div class="wz-figurruhe">' + fig + '</div>');
   if(art === "figur") return huelle(
@@ -18203,6 +18425,8 @@ function wzSzeneHTML(art, figur){
     '<ellipse class="f" cx="100" cy="124" rx="62" ry="11"/><ellipse class="lt" cx="100" cy="124" rx="62" ry="11"/>' +
     '<path class="la" d="M140 80 c20 0 20 26 -2 26"/>' +
     '<path class="a" d="M60 70 h80 v16 a40 40 0 0 1 -40 34 a40 40 0 0 1 -40 -34z"/>' +
+    '<path class="g funkel" d="M142 56 l2 5.5 5.5 2 -5.5 2 -2 5.5 -2 -5.5 -5.5 -2 5.5 -2z"/>' +
+    '<path class="a funkel" style="animation-delay:1.2s" d="M60 88 l1.6 4.4 4.4 1.6 -4.4 1.6 -1.6 4.4 -1.6 -4.4 -4.4 -1.6 4.4 -1.6z"/>' +
     '<ellipse class="t" cx="100" cy="70" rx="40" ry="8.5"/><ellipse class="g" cx="100" cy="70.5" rx="33" ry="6"/>' +
     '<path class="f herz" d="M100 76 c-9 -6 -9 -11 -4 -12 c2.5 -.5 4 1.5 4 2.5 c0 -1 1.5 -3 4 -2.5 c5 1 5 6 -4 12z"/>' +
     '<g class="loeffel"><path class="lt" d="M100 70 L128 40"/><circle class="t" cx="130" cy="37" r="4.5"/></g>' +
@@ -18211,7 +18435,7 @@ function wzSzeneHTML(art, figur){
   if(art === "tisch") return huelle('<svg viewBox="0 0 200 150">' +
     '<rect class="a" x="0" y="128" width="200" height="22" rx="3" opacity=".16"/>' +
     '<g class="kerze"><rect class="f" x="26" y="74" width="10" height="40" rx="3"/><rect class="lt" x="26" y="74" width="10" height="40" rx="3"/>' +
-    '<path class="g flamme" d="M31 58 c6 8 4 14 0 14 c-4 0 -6 -6 0 -14z"/></g>' +
+    '<circle class="g halo" cx="31" cy="64" r="17" opacity=".22"/><path class="g flamme" d="M31 58 c6 8 4 14 0 14 c-4 0 -6 -6 0 -14z"/></g>' +
     '<g class="glas"><path class="lt" d="M158 70 h22 l-3 34 h-16z"/><path class="a fuellung" d="M160.5 84 h17 l-1.8 19 h-13.4z" opacity=".8"/>' +
     '<path class="lt" d="M169 104 v14 M161 118 h16"/></g>' +
     '<g class="gabel"><path class="lt" d="M50 82 v46 M44 82 v12 q6 8 12 0 v-12 M50 82 v12"/></g>' +
@@ -18219,18 +18443,24 @@ function wzSzeneHTML(art, figur){
     '<ellipse class="sch" cx="100" cy="128" rx="44" ry="6"/>' +
     '<ellipse class="f" cx="100" cy="118" rx="44" ry="12"/><ellipse class="lt" cx="100" cy="118" rx="44" ry="12"/><ellipse class="lt" cx="100" cy="117" rx="30" ry="7" opacity=".35"/>' +
     '<g class="gericht"><ellipse class="a" cx="100" cy="110" rx="22" ry="8"/><path class="g" d="M84 108 c4 -14 28 -14 32 0z"/>' +
-    '<path class="n" d="M96 98 c-2 -6 3 -9 5 -5 c2 -5 8 -3 5 3z"/></g></svg>');
+    '<path class="n" d="M96 98 c-2 -6 3 -9 5 -5 c2 -5 8 -3 5 3z"/></g>' +
+    '<path class="g funkel" style="animation-delay:.9s" d="M124 96 l2 5.5 5.5 2 -5.5 2 -2 5.5 -2 -5.5 -5.5 -2 5.5 -2z"/></svg>');
   if(art === "kueche") return huelle('<svg viewBox="0 0 200 150">' +
+    '<ellipse class="a halo" cx="100" cy="128" rx="58" ry="10" opacity=".24"/>' +
     '<rect class="t" x="40" y="128" width="120" height="10" rx="5" opacity=".85"/>' +
     '<path class="a glut" d="M74 128 c-6 -8 0 -16 4 -20 c0 6 6 8 4 20z"/><path class="g glut" d="M98 128 c-6 -9 0 -18 4 -22 c0 7 6 9 4 22z"/><path class="a glut" d="M122 128 c-6 -8 0 -16 4 -20 c0 6 6 8 4 20z"/>' +
     '<circle class="g funke" cx="84" cy="84" r="2.6"/><circle class="a funke" cx="118" cy="80" r="2.2"/>' +
     '<g class="pfanne"><path class="t" d="M52 104 h96 c-4 14 -18 18 -48 18 s-44 -4 -48 -18z"/><rect class="t" x="146" y="100" width="44" height="8" rx="4"/></g>' +
+    '<g class="geist"><ellipse class="g" cx="100" cy="102" rx="30" ry="6"/></g><g class="geist"><ellipse class="g" cx="100" cy="102" rx="30" ry="6"/></g>' +
     '<g class="kuchen"><ellipse class="g" cx="100" cy="102" rx="30" ry="6"/><ellipse class="a" cx="100" cy="100.5" rx="18" ry="2.6" opacity=".35"/></g></svg>');
   return huelle('<svg viewBox="0 0 200 150">' +
     '<path class="lt wolke" d="M150 36 h22 M142 46 h30" opacity=".5"/>' +
+    '<g class="haeuser">' + [0, 100, 200, 300].map(k => '<rect class="t" x="' + (k + 8) + '" y="100" width="22" height="34" opacity=".1"/>' +
+      '<rect class="t" x="' + (k + 38) + '" y="82" width="30" height="52" opacity=".1"/><rect class="t" x="' + (k + 74) + '" y="108" width="18" height="26" opacity=".1"/>').join("") + '</g>' +
     '<g class="strasse"><rect class="t" x="0" y="134" width="24" height="4" rx="2" opacity=".35"/><rect class="t" x="40" y="134" width="24" height="4" rx="2" opacity=".35"/>' +
     '<rect class="t" x="80" y="134" width="24" height="4" rx="2" opacity=".35"/><rect class="t" x="120" y="134" width="24" height="4" rx="2" opacity=".35"/>' +
     '<rect class="t" x="160" y="134" width="24" height="4" rx="2" opacity=".35"/><rect class="t" x="200" y="134" width="24" height="4" rx="2" opacity=".35"/></g>' +
+    '<circle class="t staub" cx="48" cy="126" r="5"/><circle class="t staub" cx="48" cy="126" r="5"/><circle class="t staub" cx="48" cy="126" r="5"/>' +
     '<g class="roller"><path class="dampf" d="M70 46 c-6 -8 6 -12 0 -20"/><path class="dampf" d="M82 46 c-6 -8 6 -12 0 -20"/>' +
     '<rect class="g" x="56" y="50" width="40" height="34" rx="6"/><rect class="lt" x="56" y="50" width="40" height="34" rx="6"/><path class="a" d="M76 61 c-5 -4 -5 -7 -2 -8 c1.5 -.3 2 .8 2 1.4 c0 -.6 .8 -1.7 2 -1.4 c3 1 3 4 -2 8z"/>' +
     '<path class="a" d="M54 88 h56 l14 -30 h10 l-10 34 c-2 8 -8 12 -16 12 h-50 c-6 0 -8 -10 -4 -16z"/>' +
@@ -18251,6 +18481,29 @@ function wzWahl(){
   if(WZ_ARTEN.indexOf(w) >= 0) return w;
   try{ const m = localStorage.getItem(WZ_MERK); if(WZ_ARTEN.indexOf(m) >= 0) return m; }catch(e){}
   return "figur";
+}
+/* Der Name als bewegte Schrift: jedes Wort ein Stück, jeder Buchstabe ein
+   eigenes Element mit seinem Platz in der Folge (--i, höchstens 22, damit
+   ein sehr langer Name nicht zwei Sekunden braucht). Der Titel behält
+   den ganzen Namen als Beschriftung für Vorleser; die Buchstaben selbst
+   sind ihnen verborgen. DOM statt innerHTML: Der Name ist Text. */
+function wkTitel(name){
+  const h = $("wkHaus"); if(!h) return;
+  name = String(name == null ? "" : name);
+  h.setAttribute("aria-label", name);
+  h.textContent = "";
+  let i = 0;
+  name.split(" ").forEach((wort, k) => {
+    if(k) h.appendChild(document.createTextNode(" "));
+    const w = document.createElement("span");
+    w.className = "wk-wort"; w.setAttribute("aria-hidden", "true");
+    Array.from(wort).forEach(z => {
+      const b = document.createElement("span");
+      b.className = "wk-b"; b.style.setProperty("--i", String(Math.min(i++, 22))); b.textContent = z;
+      w.appendChild(b);
+    });
+    h.appendChild(w);
+  });
 }
 function wzZeigen(){
   const f = $("wkFigur"); if(!f) return;
@@ -18287,7 +18540,7 @@ function wzZeigen(){
   if(tief && tief !== "/"){ schirm.remove(); return; }
 
   wzZeigen();
-  $("wkHaus").textContent = BETRIEB.name;
+  wkTitel(BETRIEB.name);
   $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
   $("wkSpeisekarte").textContent = t("Speisekarte ansehen");
   $("wkHub").textContent = t("Zur Übersicht");
@@ -18729,7 +18982,7 @@ function vorschauZeige(ziel){
   const wk = $("willkommen");
   if(ziel === "gruss" && wk){
     wzZeigen();
-    $("wkHaus").textContent = BETRIEB.name;
+    wkTitel(BETRIEB.name);
     $("wkWort").textContent = t(BETRIEB.begruessung || "Schön, dass Sie da sind.");
     $("wkSpeisekarte").textContent = t("Speisekarte ansehen");
     $("wkHub").textContent = t("Zur Übersicht");

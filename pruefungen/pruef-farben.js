@@ -33,6 +33,7 @@
        der Spalte wieder das Markenblatt, und der Merker ist weg.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 const vm = require("vm");
@@ -152,6 +153,7 @@ async function board(browser, bb, haus){
     await betriebWaehlen(); }, bb.id);
   await p.waitForTimeout(300);
   await p.evaluate(() => document.querySelector('[data-tafel="startseite"]').click());
+  await gruppeZu(p, "#fbGruppe");
   return { ctx, p, fehler };
 }
 const bereit = async p => { for(let i = 0; i < 50; i++){

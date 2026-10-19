@@ -40,6 +40,7 @@
    KLAVIYO_API_KEY am Server.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const { execFileSync } = require("child_process");
 const fs = require("fs");
 const path = require("path");
@@ -251,6 +252,7 @@ const lesen = () => {
 
     /* Bild: Gruppe sichtbar machen, Überlauf und Kontrast bei 360 px. */
     await tafel(seite, "einstellungen");
+    pruef(await gruppeZu(seite, "#nlUebersicht"), "Voraussetzung: Unterseite Newsletter über ihre Kachel geöffnet");
     for (const breite of [360, 1280]) {
       await seite.setViewportSize({ width: breite, height: 900 });
       for (const licht of ["dunkel", "hell"]) {

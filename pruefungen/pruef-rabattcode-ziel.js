@@ -30,6 +30,7 @@
    Gegenbeweis (CLAUDE.md §8.1k, git worktree): siehe Bericht.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const path = require("path");
 
 const ADMIN = path.join(__dirname, "..", "seiten", "admin.html");
@@ -71,6 +72,7 @@ function pruef(b, t, d) {
   console.log("\n══ Aufruf, Vorschlag, Grundzustand ══");
   await seite.evaluate(() => document.querySelector('[data-tafel="einstellungen"]').click());
   await seite.waitForTimeout(400);
+  pruef(await gruppeZu(seite, "#rcGruppe"), "Voraussetzung: Unterseite Rabattcodes über ihre Kachel geöffnet");
 
   pruef(await seite.isVisible("#rcGruppe"), "Gruppe „Eigene Rabattcodes“ sichtbar");
   pruef(!(await seite.$("#rcCode")), "kein Feld für einen selbst gewählten Code mehr");

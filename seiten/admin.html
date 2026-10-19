@@ -599,8 +599,10 @@ html{font-size:calc(16px * var(--skala,1))}
 .gh-titel{font-size:20px;font-weight:650;margin:0 0 4px;color:var(--kreide)}
 .gh-sprung{display:flex;gap:8px;overflow-x:auto;padding:4px 0 6px;margin:8px -16px 0;padding-inline:16px;scrollbar-width:none}
 .gh-sprung::-webkit-scrollbar{display:none}
-.gh-sprung a{flex:none;display:inline-flex;align-items:center;min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);
+.gh-sprung a{flex:none;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);
   border:1px solid var(--linie);color:var(--kreide);text-decoration:none;font-size:14px;font-weight:600;background:var(--flaeche)}
+.gh-sprung a svg{flex:none;width:18px;height:18px;fill:none;stroke:var(--ton, currentColor);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.gh-sprung a[aria-current="true"]{border-color:var(--ton, var(--messing));box-shadow:inset 0 0 0 1px var(--ton, var(--messing))}
 .gh-vorschau{position:sticky;top:var(--board-kopf, 64px);z-index:6;margin:10px -16px 14px;padding:8px 16px 10px;
   background:var(--nacht);border-bottom:1px solid var(--linie);--hv-mass:.5;--hv-hoehe:210px}
 .gh-vorschau.gross{--hv-mass:.72;--hv-hoehe:520px}
@@ -637,6 +639,9 @@ html{font-size:calc(16px * var(--skala,1))}
   /* Farben der Szenen im Board — der Hub nimmt die Farben des Hauses. */
   --wz-t:var(--kreide);--wz-a:#D9533F;--wz-g:var(--messing);--wz-f:var(--flaeche-2);--wz-n:#6E9A4E}
 .wz-wahl .wz{width:120px;max-width:100%;pointer-events:none}
+/* Die Bühne der Szene läuft über das Feld hinaus — in der Kachel wird sie
+   an deren Rand abgeschnitten. */
+.wz-wahl{position:relative;overflow:hidden}
 .wz-wahl:active{transform:scale(.97)}
 .wz-wahl[aria-checked="true"]{border-color:var(--messing);background:var(--karte);box-shadow:inset 0 0 0 1px var(--messing)}
 .wz-ruht .wz *{animation-play-state:paused !important}
@@ -2737,7 +2742,74 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
   .eu-pfeil{grid-column:3;grid-row:1 / span 2}
 }
 .egruppe[data-eu]{scroll-margin-top:84px}
+
+/* ── Kacheln und Unterseiten (18.10.) ───────────────────────────
+   Ohne data-eu-offen nur die Kacheln, mit ihm genau eine Gruppe.
+   Glas wie der Zurück-Knopf im Hub; das Licht im Rand läuft hinter
+   einer Maske um, gedreht wird nur per transform (Compositor), jede
+   Kachel mit eigenem Versatz, damit nicht alle im Gleichschritt
+   leuchten. Schrift in --kreide/--gedaempft auf --glas: dieselben
+   Paare wie überall im Board. */
+.tafel[data-eu-kacheln]:not([data-eu-offen]) > .egruppe:not(.eu-uebersicht){display:none}
+.tafel[data-eu-kacheln][data-eu-offen] > .eu-uebersicht,
+#t-einstellungen > .einkauflink,
+.tafel[data-eu-kacheln][data-eu-offen] > .egruppe:not(.eu-jetzt){display:none}
+.eu-zurueck{display:none}
+.tafel[data-eu-kacheln][data-eu-offen] > .eu-zurueck{display:inline-flex}
+/* Reiter „Gast-Hub gestalten“ (19.10.): dieselbe Technik. Ohne offene Gruppe
+   nur Kacheln — Kopf und Vorschau erscheinen erst in einer Unterseite, denn
+   die Vorschau zeigt, was die Gruppe darunter ändert. Dort steht oben die
+   Leiste mit Symbolen: ein Tipp wechselt die Unterseite, ohne den Umweg über
+   die Kacheln. „Alle Bereiche“ klebt hier nicht — die Vorschau klebt schon. */
+#t-startseite:not([data-eu-offen]) > .gh-kopf,
+#t-startseite:not([data-eu-offen]) > .gh-vorschau{display:none}
+#t-startseite[data-eu-offen] .gh-kopf > .gh-titel,
+#t-startseite[data-eu-offen] .gh-kopf > .ehilfe{display:none}
+#t-startseite > .eu-zurueck{position:relative;top:auto}
+.eu-uebersicht{background:none;border:0;box-shadow:none;padding:0}
+.eu-kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:6px}
+.eu-kachel,.eu-zurueck{
+  position:relative;isolation:isolate;overflow:hidden;font:inherit;color:var(--kreide);cursor:pointer;
+  background:var(--glas);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);
+  border:1px solid var(--glas-rand);box-shadow:var(--glas-schatten);-webkit-tap-highlight-color:transparent;
+  transition:transform var(--t-druck) var(--ease-out)}
+a.eu-kachel{text-decoration:none}
+.eu-kachel{display:flex;flex-direction:column;align-items:flex-start;gap:10px;text-align:left;
+  min-height:150px;padding:16px 14px 14px;border-radius:20px}
+.eu-kachel:active,.eu-zurueck:active{transform:scale(.97)}
+.eu-kachel:focus-visible,.eu-zurueck:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
+.eu-kachel .eu-symbol{width:46px;height:46px;border-radius:14px}
+.eu-kachel .eu-symbol svg{width:26px;height:26px}
+.eu-ktext{display:flex;flex-direction:column;gap:3px;min-width:0}
+.eu-ktext b{font-size:15.5px;font-weight:650;line-height:1.25}
+.eu-ktext i{font-size:12.5px;font-style:normal;color:var(--gedaempft);line-height:1.35;
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.eu-kachel .eu-wert{margin-top:auto;text-align:left;max-width:none;color:var(--kreide);font-weight:600;
+  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.eu-kachel .eu-wert:empty{display:none}
+.eu-zurueck{align-items:center;gap:6px;height:44px;padding:0 18px 0 12px;border-radius:999px;margin:4px 0 14px;
+  position:sticky;top:calc(var(--kopf-h, 64px) + 8px);z-index:5;font-weight:600;font-size:15px}
+.eu-zurueck svg{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.eu-krand{position:absolute;inset:0;border-radius:inherit;padding:1.5px;pointer-events:none;z-index:-1;
+  -webkit-mask:linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite:xor;mask-composite:exclude}
+.eu-klicht{position:absolute;left:50%;top:50%;width:300%;aspect-ratio:1;
+  transform:translate(-50%,-50%) rotate(0deg);
+  background:conic-gradient(from 0deg, transparent 0 60%,
+    color-mix(in srgb, var(--ton, var(--messing)) 35%, transparent) 72%, var(--ton, var(--messing)) 81%,
+    color-mix(in srgb, var(--ton, var(--messing)) 35%, transparent) 89%, transparent 96%);
+  animation:euLauf 9s linear infinite}
+.eu-kachel:nth-child(3n+2) .eu-klicht{animation-delay:-3s}
+.eu-kachel:nth-child(3n) .eu-klicht{animation-delay:-6s}
+@keyframes euLauf{to{transform:translate(-50%,-50%) rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){
+  .eu-klicht{animation:none;transform:translate(-50%,-50%) rotate(-50deg)}
+}
+@media (prefers-reduced-transparency:reduce){
+  .eu-kachel,.eu-zurueck{background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none}
+}
 .eu-kopf{display:grid;grid-template-columns:40px minmax(0,1fr) 56px;align-items:center;gap:12px;margin:14px 0 8px}
+.eu-kopf.ohne-bild{grid-template-columns:40px minmax(0,1fr)}
 .eu-kopf .eu-symbol{width:40px;height:40px;border-radius:12px}
 .eu-kopf .eu-symbol svg{width:22px;height:22px}
 .eu-mitte{min-width:0}
@@ -3760,7 +3832,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
        die Aufnahme eines neuen Hauses, dieses Board ist das des
        Wirts. Was er hier einstellt, sieht der Gast beim nächsten
        Öffnen — ohne dass der Hub neu erzeugt werden muss. -->
-  <section class="tafel" id="t-startseite" hidden>
+  <section class="tafel" id="t-startseite" data-eu-kacheln hidden>
     <!-- ══ GAST-HUB GESTALTEN (Wunsch 11.10.) ══
          „Alles soll auf einem Platz machbar sein und nicht in
          verschiedene Rubriken aufgeteilt werden.“ Kopf, Texte, Schrift,
@@ -3777,6 +3849,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="gh-sprung" role="navigation" aria-label="Bereiche des Gast-Hubs">
         <a href="#pjGruppe" data-gh-sprung="pjGruppe">Projekte</a>
         <a href="#ksGruppe" data-gh-sprung="ksGruppe">Speisekarte</a>
+        <a href="#eoGruppe" data-gh-sprung="eoGruppe">Extras</a>
         <a href="#wzGruppe" data-gh-sprung="wzGruppe">Willkommen</a>
         <a href="#kfGruppe" data-gh-sprung="kfGruppe">Kopf &amp; Logo</a>
         <a href="#gh-worte" data-gh-sprung="gh-worte">Ihre Worte</a>
@@ -3787,6 +3860,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <a href="#gh-banner" data-gh-sprung="gh-banner">Banner</a>
         <a href="#gh-figur" data-gh-sprung="gh-figur">Figur</a>
         <a href="#gh-roulette" data-gh-sprung="gh-roulette">Foodroulette</a>
+        <a href="#gh-emojis" data-gh-sprung="gh-emojis">Emojis</a>
       </div>
     </div>
     <div class="hvrahmen gh-vorschau" data-hv="gestalten"></div>
@@ -4245,7 +4319,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     </div>
   </section>
 
-  <section class="tafel glasgrund" id="t-einstellungen" hidden>
+  <section class="tafel glasgrund" id="t-einstellungen" data-eu-kacheln hidden>
 
     <a class="einkauflink" href="/einkauf.html">
       <span><b>Einkauf &amp; Kosten</b><i>Rechnungen, Artikel, Lieferanten und Bestand</i></span>
@@ -7627,13 +7701,39 @@ $("#frAn").onclick = frUmschalten;
    mit Essen, Restaurant-Utensilien“. Bewegt wird NUR transform und
    opacity (Skill bewegung); bei reduzierter Bewegung steht jede Szene
    still in ihrem schönsten Bild. Farben aus dem Haus (§5.1): --wz-*
-   darf die Seite setzen, sonst gelten die Rollen des Hubs. */
+   darf die Seite setzen, sonst gelten die Rollen des Hubs.
+
+   BÜHNE (19.10., Wunsch: „Animationen der Ladeseite wie von einem
+   renommierten FX-Studio — flüssig, farbig, ansehnlich“): Hinter jeder
+   Szene (außer „still“) liegt eine Bühne aus fünf Schichten, alle nur
+   transform/opacity und alle aus den Farben des Hauses:
+     Aura     drei weiche Lichtfelder, die langsam umeinander treiben
+     Strahlen ein umlaufender Kranz feiner Lichtkeile (die einzige
+              gleichförmige Dauerbewegung hier — wie ein Rad, §2 bewegung)
+     Wellen   zwei Ringe, die vom Zentrum auslaufen
+     Schein   ein atmender Lichtfleck am Boden
+     Teilchen je Szene eigener Charakter (Konfetti, Perlen, Glut, Striche)
+   Bewegt sich etwas im Bild, hat es einen Grund: Die Bühne gibt der
+   Szene Tiefe und Licht, die Szene bleibt der Fokuspunkt. Verteilung
+   der Teilchen fest gerechnet, nicht gewürfelt — dieselbe Szene sieht
+   überall gleich aus. Maße in cqw (Breite der Szene): im 120-px-Feld des
+   Boards läuft dieselbe Bühne verkleinert. Reduzierte Bewegung: Aura und
+   Strahlen stehen still da, Wellen und Teilchen entfallen. */
 const WZ_ARTEN = ["figur", "cafe", "tisch", "kueche", "lieferung", "still"];
 const WZ_NAME = { figur:"Figur", cafe:"Café", tisch:"Gedeckter Tisch", kueche:"Küche", lieferung:"Lieferung", still:"Ohne Bewegung" };
+/* Teilchen je Szene: Zahl, Form, Dauer (s), Steighöhe (cqw), Farbfolge
+   (g Gold, a Akzent, n Natur, w helles Champagner), Startlage (% von unten). */
+const WZ_TEILE = {
+  figur:     { n:14, f:"konfetti", t:3.6, h:-46, farbe:"gawn", y:22, dy:30 },
+  cafe:      { n:12, f:"perle",    t:4.6, h:-54, farbe:"gwa",  y:10, dy:26 },
+  tisch:     { n:14, f:"perle",    t:3.8, h:-58, farbe:"wgwa", y:10, dy:26 },
+  kueche:    { n:16, f:"glut",     t:2.6, h:-62, farbe:"agga", y:8,  dy:22 },
+  lieferung: { n:10, f:"strich",   t:1.6, h:0,   farbe:"wga",  y:20, dy:44 }
+};
 const WZ_CSS = [
   ".wz{--_t:var(--wz-t,var(--tinte,#2B1B14));--_a:var(--wz-a,var(--rot,#C8202E));--_g:var(--wz-g,var(--gold,#E2A73B));",
   "--_f:var(--wz-f,var(--flaeche,#FFFFFF));--_n:var(--wz-n,var(--pistazie,#5F7F42));",
-  "position:relative;display:block;width:200px;max-width:64vw;margin:0 auto}",
+  "position:relative;display:block;width:200px;max-width:64vw;margin:0 auto;container-type:inline-size}",
   ".wz svg{display:block;width:100%;height:auto;overflow:visible}",
   ".wz .t{fill:var(--_t)}.wz .a{fill:var(--_a)}.wz .g{fill:var(--_g)}.wz .f{fill:var(--_f)}.wz .n{fill:var(--_n)}",
   ".wz .lt{fill:none;stroke:var(--_t);stroke-width:3;stroke-linecap:round;stroke-linejoin:round}",
@@ -7641,6 +7741,48 @@ const WZ_CSS = [
   ".wz .sch{fill:var(--_t);opacity:.12}",
   ".wz .dampf{fill:none;stroke:var(--_t);stroke-width:3;stroke-linecap:round;opacity:0}",
   ".wz > svg *{transform-box:fill-box;transform-origin:50% 50%}",
+  /* Bühne: liegt hinter Szene und Figur, fängt keinen Tipp */
+  ".wz > svg{position:relative;z-index:1}.wz > .huelle{z-index:1}",
+  /* Ein weicher Ausklang nach unten (mask-image): Am unteren Rand der Bühne ist
+     jede Schicht durchsichtig — unter der Szene steht Text, der Kontrast
+     braucht, und ein harter Schnitt (so die erste Fassung) zeigte sich als
+     gerade Kante im Licht. Die Auren sind so gesetzt, dass sie samt Drift
+     in der Bühne bleiben. */
+  ".wz-buehne{position:absolute;left:-55%;right:-55%;top:-42%;bottom:-4%;z-index:0;pointer-events:none;",
+  "-webkit-mask-image:linear-gradient(to bottom,#000 86%,transparent 100%);mask-image:linear-gradient(to bottom,#000 86%,transparent 100%)}",
+  ".wz-buehne > span{display:block;position:absolute}",
+  ".wz-aura{width:46%;aspect-ratio:1;border-radius:50%;opacity:var(--o,.55);will-change:transform;",
+  "background:radial-gradient(closest-side,color-mix(in srgb,var(--c) 62%,transparent),transparent);",
+  "animation:wzAufgehen 1.6s cubic-bezier(.16,1,.3,1) .1s both,wzSchweben var(--t,8s) cubic-bezier(.45,0,.55,1) infinite alternate}",
+  ".wz-a1{--c:var(--_a);--dx:16%;--dy:6%;--sk:1.18;--t:7.6s;left:6%;top:4%;width:42%}",
+  ".wz-a2{--c:var(--_g);--dx:-14%;--dy:8%;--sk:1.12;--t:9.4s;left:50%;top:0;width:42%}",
+  ".wz-a3{--c:var(--_n);--dx:10%;--dy:-12%;--sk:1.22;--t:11s;--o:.42;left:33%;top:24%;width:34%}",
+  ".wz-strahl{left:50%;top:56%;width:56%;aspect-ratio:1;opacity:.85;transform:translate(-50%,-50%);will-change:transform;",
+  "background:repeating-conic-gradient(from 0deg,color-mix(in srgb,var(--_g) 44%,transparent) 0 4deg,transparent 4deg 15deg);",
+  "-webkit-mask-image:radial-gradient(closest-side,transparent 6%,#000 28%,transparent 88%);mask-image:radial-gradient(closest-side,transparent 6%,#000 28%,transparent 88%);",
+  "animation:wzAufgehen 2.2s cubic-bezier(.16,1,.3,1) .2s both,wzStrahlen 56s linear infinite}",
+  ".wz-schein{left:21%;width:58%;bottom:10%;height:14%;border-radius:50%;opacity:.8;",
+  "background:radial-gradient(closest-side,color-mix(in srgb,var(--_g) 55%,transparent),transparent);",
+  "animation:wzAtmen 3.4s cubic-bezier(.45,0,.55,1) infinite alternate}",
+  ".wz-welle{left:50%;top:56%;width:46%;aspect-ratio:1;border-radius:50%;opacity:0;transform:translate(-50%,-50%) scale(.4);",
+  "border:max(1.5px,.8cqw) solid color-mix(in srgb,var(--_g) 72%,transparent);",
+  "animation:wzWelle 3.6s cubic-bezier(.16,1,.3,1) .25s infinite}",
+  ".wz-w2{border-color:color-mix(in srgb,var(--_a) 66%,transparent);animation-delay:2.05s}",
+  ".wz-teil{left:calc(var(--x,50) * 1%);bottom:calc(var(--y,10) * 1%);width:calc(var(--s,1) * 3.4cqw);aspect-ratio:1;border-radius:50%;opacity:0;",
+  "background:radial-gradient(circle at 35% 30%,color-mix(in srgb,var(--c) 55%,#fff),var(--c) 62%,transparent);",
+  "animation:wzSteigen var(--t,3s) cubic-bezier(.33,1,.68,1) var(--d,0s) infinite}",
+  ".wz-cg{--c:var(--_g)}.wz-ca{--c:var(--_a)}.wz-cn{--c:var(--_n)}.wz-cw{--c:color-mix(in srgb,var(--_g) 38%,#fff)}",
+  ".wz-t-glut{background:var(--c);box-shadow:0 0 calc(var(--s,1) * 3cqw) var(--c)}",
+  ".wz-t-konfetti{width:calc(var(--s,1) * 2.8cqw);height:calc(var(--s,1) * 1.4cqw);aspect-ratio:auto;border-radius:1px;background:var(--c);animation-name:wzKonfetti}",
+  ".wz-t-strich{width:calc(var(--s,1) * 13cqw);height:max(1px,.6cqw);aspect-ratio:auto;border-radius:1px;background:linear-gradient(90deg,transparent,var(--c));animation-name:wzZug}",
+  /* Lichtblitze und Nachbilder der Szenen */
+  ".wz .funkel{opacity:0;animation:wzFunkeln 2.6s cubic-bezier(.16,1,.3,1) infinite}",
+  ".wz .halo{animation:wzHalo 1.4s cubic-bezier(.37,0,.63,1) infinite alternate}",
+  ".wz-kueche .geist{opacity:.3;animation:wzWenden 1.8s cubic-bezier(.45,0,.55,1) .07s infinite}",
+  ".wz-kueche .geist + .geist{opacity:.15;animation-delay:.14s}",
+  ".wz-lieferung .haeuser{animation:wzHaeuser 3.2s linear infinite}",
+  ".wz-lieferung .staub{opacity:0;animation:wzStaub .9s cubic-bezier(.33,1,.68,1) infinite}",
+  ".wz-lieferung .staub:nth-of-type(2){animation-delay:.3s}.wz-lieferung .staub:nth-of-type(3){animation-delay:.6s}",
   /* Café: Dampf steigt versetzt, der Löffel rührt, das Milchschaum-Herz blüht */
   ".wz-cafe .dampf{animation:wzDampf 2.4s cubic-bezier(.33,1,.68,1) infinite}",
   ".wz-cafe .dampf:nth-of-type(2){animation-delay:.6s}.wz-cafe .dampf:nth-of-type(3){animation-delay:1.2s}",
@@ -7696,7 +7838,19 @@ const WZ_CSS = [
   "@keyframes wzHuepfen{0%,100%{transform:translateY(0) scale(1.04,.94)}12%{transform:translateY(0) scale(.96,1.05)}45%{transform:translateY(-22px) scale(1,1)}78%{transform:translateY(0) scale(1.05,.93)}88%{transform:translateY(0) scale(1)}}",
   "@keyframes wzSchatten{0%,100%,78%{transform:scale(1);opacity:.14}45%{transform:scale(.7);opacity:.07}}",
   "@keyframes wzStern{0%{opacity:0;transform:translateY(6px) scale(.4) rotate(0)}40%{opacity:1}100%{opacity:0;transform:translateY(-22px) scale(1) rotate(90deg)}}",
-  "@media (prefers-reduced-motion:reduce){.wz *{animation:none !important}.wz .dampf,.wz .funke,.wz .stern{opacity:.4}}"
+  "@keyframes wzAufgehen{from{opacity:0}}",
+  "@keyframes wzSchweben{from{transform:translate(0,0) scale(1)}to{transform:translate(var(--dx,0%),var(--dy,0%)) scale(var(--sk,1))}}",
+  "@keyframes wzStrahlen{to{transform:translate(-50%,-50%) rotate(360deg)}}",
+  "@keyframes wzWelle{0%{opacity:.75;transform:translate(-50%,-50%) scale(.4)}100%{opacity:0;transform:translate(-50%,-50%) scale(1.3)}}",
+  "@keyframes wzAtmen{from{opacity:.5;transform:scale(.94)}to{opacity:1;transform:scale(1.08)}}",
+  "@keyframes wzSteigen{0%{opacity:0;transform:translate(0,0) scale(.5)}18%{opacity:.9}100%{opacity:0;transform:translate(calc(var(--w,0) * 1cqw),calc(var(--h,-50) * 1cqw)) scale(1.1)}}",
+  "@keyframes wzKonfetti{0%{opacity:0;transform:translate(0,0) rotate(0)}10%{opacity:1}45%{transform:translate(calc(var(--w,0) * .6cqw),calc(var(--h,-50) * 1cqw)) rotate(200deg)}100%{opacity:0;transform:translate(calc(var(--w,0) * 1cqw),calc(var(--h,-50) * -.25cqw)) rotate(560deg)}}",
+  "@keyframes wzZug{0%{opacity:0;transform:translateX(30cqw)}25%{opacity:.7}100%{opacity:0;transform:translateX(-70cqw)}}",
+  "@keyframes wzFunkeln{0%,100%{opacity:0;transform:scale(.2) rotate(0)}45%{opacity:1;transform:scale(1) rotate(45deg)}}",
+  "@keyframes wzHalo{from{opacity:.16;transform:scale(.94)}to{opacity:.46;transform:scale(1.1)}}",
+  "@keyframes wzHaeuser{from{transform:translateX(0)}to{transform:translateX(-100px)}}",
+  "@keyframes wzStaub{0%{opacity:0;transform:translate(0,0) scale(.4)}25%{opacity:.45}100%{opacity:0;transform:translate(-26px,-7px) scale(1.5)}}",
+  "@media (prefers-reduced-motion:reduce){.wz *{animation:none !important}.wz .dampf,.wz .funke,.wz .stern{opacity:.4}.wz .halo{opacity:.3}}"
 ].join("\n");
 function wzStil(){
   if(document.getElementById("wzStil")) return;
@@ -7708,10 +7862,24 @@ const WZ_MINIFIGUR = '<svg viewBox="0 0 120 120"><ellipse class="a" cx="60" cy="
   '<ellipse class="f" cx="60" cy="58" rx="24" ry="20" opacity=".9"/><circle class="t" cx="51" cy="56" r="3.6"/><circle class="t" cx="69" cy="56" r="3.6"/>' +
   '<path class="lt" d="M52 66 q8 7 16 0"/><path class="lt" d="M24 70 q-10 6 -6 16"/><path class="lt" d="M96 70 q10 -10 14 -20"/>' +
   '<ellipse class="t" cx="46" cy="104" rx="9" ry="5"/><ellipse class="t" cx="74" cy="104" rx="9" ry="5"/></svg>';
+/* Die Bühne hinter einer Szene (siehe Kopf des Blocks). */
+function wzBuehne(art){
+  const c = WZ_TEILE[art]; if(!c) return "";
+  let h = '<div class="wz-buehne" aria-hidden="true"><span class="wz-strahl"></span>' +
+    '<span class="wz-aura wz-a1"></span><span class="wz-aura wz-a2"></span><span class="wz-aura wz-a3"></span>' +
+    '<span class="wz-schein"></span><span class="wz-welle"></span><span class="wz-welle wz-w2"></span>';
+  for(let i = 0; i < c.n; i++){
+    const x = 8 + (i * 41 + 17) % 84, y = c.y + (i * 19) % c.dy, s = .7 + ((i * 13) % 7) / 10;
+    const d = .5 + ((i * 7) % 11) * .27, t = c.t + ((i * 3) % 5) * .35, w = (i % 2 ? 1 : -1) * (3 + (i * 5) % 11);
+    h += '<span class="wz-teil wz-t-' + c.f + ' wz-c' + c.farbe.charAt(i % c.farbe.length) + '" style="--x:' + x + ';--y:' + y +
+      ';--s:' + s.toFixed(2) + ';--d:' + d.toFixed(2) + 's;--t:' + t.toFixed(2) + 's;--w:' + w + ';--h:' + c.h + '"></span>';
+  }
+  return h + '</div>';
+}
 function wzSzeneHTML(art, figur){
   wzStil();
   art = WZ_ARTEN.indexOf(art) >= 0 ? art : "figur";
-  const huelle = svg => '<div class="wz wz-' + art + '" data-wz="' + art + '" aria-hidden="true">' + svg + '</div>';
+  const huelle = svg => '<div class="wz wz-' + art + '" data-wz="' + art + '" aria-hidden="true">' + wzBuehne(art) + svg + '</div>';
   const fig = figur || WZ_MINIFIGUR;
   if(art === "still") return huelle('<div class="wz-figurruhe">' + fig + '</div>');
   if(art === "figur") return huelle(
@@ -7726,6 +7894,8 @@ function wzSzeneHTML(art, figur){
     '<ellipse class="f" cx="100" cy="124" rx="62" ry="11"/><ellipse class="lt" cx="100" cy="124" rx="62" ry="11"/>' +
     '<path class="la" d="M140 80 c20 0 20 26 -2 26"/>' +
     '<path class="a" d="M60 70 h80 v16 a40 40 0 0 1 -40 34 a40 40 0 0 1 -40 -34z"/>' +
+    '<path class="g funkel" d="M142 56 l2 5.5 5.5 2 -5.5 2 -2 5.5 -2 -5.5 -5.5 -2 5.5 -2z"/>' +
+    '<path class="a funkel" style="animation-delay:1.2s" d="M60 88 l1.6 4.4 4.4 1.6 -4.4 1.6 -1.6 4.4 -1.6 -4.4 -4.4 -1.6 4.4 -1.6z"/>' +
     '<ellipse class="t" cx="100" cy="70" rx="40" ry="8.5"/><ellipse class="g" cx="100" cy="70.5" rx="33" ry="6"/>' +
     '<path class="f herz" d="M100 76 c-9 -6 -9 -11 -4 -12 c2.5 -.5 4 1.5 4 2.5 c0 -1 1.5 -3 4 -2.5 c5 1 5 6 -4 12z"/>' +
     '<g class="loeffel"><path class="lt" d="M100 70 L128 40"/><circle class="t" cx="130" cy="37" r="4.5"/></g>' +
@@ -7734,7 +7904,7 @@ function wzSzeneHTML(art, figur){
   if(art === "tisch") return huelle('<svg viewBox="0 0 200 150">' +
     '<rect class="a" x="0" y="128" width="200" height="22" rx="3" opacity=".16"/>' +
     '<g class="kerze"><rect class="f" x="26" y="74" width="10" height="40" rx="3"/><rect class="lt" x="26" y="74" width="10" height="40" rx="3"/>' +
-    '<path class="g flamme" d="M31 58 c6 8 4 14 0 14 c-4 0 -6 -6 0 -14z"/></g>' +
+    '<circle class="g halo" cx="31" cy="64" r="17" opacity=".22"/><path class="g flamme" d="M31 58 c6 8 4 14 0 14 c-4 0 -6 -6 0 -14z"/></g>' +
     '<g class="glas"><path class="lt" d="M158 70 h22 l-3 34 h-16z"/><path class="a fuellung" d="M160.5 84 h17 l-1.8 19 h-13.4z" opacity=".8"/>' +
     '<path class="lt" d="M169 104 v14 M161 118 h16"/></g>' +
     '<g class="gabel"><path class="lt" d="M50 82 v46 M44 82 v12 q6 8 12 0 v-12 M50 82 v12"/></g>' +
@@ -7742,18 +7912,24 @@ function wzSzeneHTML(art, figur){
     '<ellipse class="sch" cx="100" cy="128" rx="44" ry="6"/>' +
     '<ellipse class="f" cx="100" cy="118" rx="44" ry="12"/><ellipse class="lt" cx="100" cy="118" rx="44" ry="12"/><ellipse class="lt" cx="100" cy="117" rx="30" ry="7" opacity=".35"/>' +
     '<g class="gericht"><ellipse class="a" cx="100" cy="110" rx="22" ry="8"/><path class="g" d="M84 108 c4 -14 28 -14 32 0z"/>' +
-    '<path class="n" d="M96 98 c-2 -6 3 -9 5 -5 c2 -5 8 -3 5 3z"/></g></svg>');
+    '<path class="n" d="M96 98 c-2 -6 3 -9 5 -5 c2 -5 8 -3 5 3z"/></g>' +
+    '<path class="g funkel" style="animation-delay:.9s" d="M124 96 l2 5.5 5.5 2 -5.5 2 -2 5.5 -2 -5.5 -5.5 -2 5.5 -2z"/></svg>');
   if(art === "kueche") return huelle('<svg viewBox="0 0 200 150">' +
+    '<ellipse class="a halo" cx="100" cy="128" rx="58" ry="10" opacity=".24"/>' +
     '<rect class="t" x="40" y="128" width="120" height="10" rx="5" opacity=".85"/>' +
     '<path class="a glut" d="M74 128 c-6 -8 0 -16 4 -20 c0 6 6 8 4 20z"/><path class="g glut" d="M98 128 c-6 -9 0 -18 4 -22 c0 7 6 9 4 22z"/><path class="a glut" d="M122 128 c-6 -8 0 -16 4 -20 c0 6 6 8 4 20z"/>' +
     '<circle class="g funke" cx="84" cy="84" r="2.6"/><circle class="a funke" cx="118" cy="80" r="2.2"/>' +
     '<g class="pfanne"><path class="t" d="M52 104 h96 c-4 14 -18 18 -48 18 s-44 -4 -48 -18z"/><rect class="t" x="146" y="100" width="44" height="8" rx="4"/></g>' +
+    '<g class="geist"><ellipse class="g" cx="100" cy="102" rx="30" ry="6"/></g><g class="geist"><ellipse class="g" cx="100" cy="102" rx="30" ry="6"/></g>' +
     '<g class="kuchen"><ellipse class="g" cx="100" cy="102" rx="30" ry="6"/><ellipse class="a" cx="100" cy="100.5" rx="18" ry="2.6" opacity=".35"/></g></svg>');
   return huelle('<svg viewBox="0 0 200 150">' +
     '<path class="lt wolke" d="M150 36 h22 M142 46 h30" opacity=".5"/>' +
+    '<g class="haeuser">' + [0, 100, 200, 300].map(k => '<rect class="t" x="' + (k + 8) + '" y="100" width="22" height="34" opacity=".1"/>' +
+      '<rect class="t" x="' + (k + 38) + '" y="82" width="30" height="52" opacity=".1"/><rect class="t" x="' + (k + 74) + '" y="108" width="18" height="26" opacity=".1"/>').join("") + '</g>' +
     '<g class="strasse"><rect class="t" x="0" y="134" width="24" height="4" rx="2" opacity=".35"/><rect class="t" x="40" y="134" width="24" height="4" rx="2" opacity=".35"/>' +
     '<rect class="t" x="80" y="134" width="24" height="4" rx="2" opacity=".35"/><rect class="t" x="120" y="134" width="24" height="4" rx="2" opacity=".35"/>' +
     '<rect class="t" x="160" y="134" width="24" height="4" rx="2" opacity=".35"/><rect class="t" x="200" y="134" width="24" height="4" rx="2" opacity=".35"/></g>' +
+    '<circle class="t staub" cx="48" cy="126" r="5"/><circle class="t staub" cx="48" cy="126" r="5"/><circle class="t staub" cx="48" cy="126" r="5"/>' +
     '<g class="roller"><path class="dampf" d="M70 46 c-6 -8 6 -12 0 -20"/><path class="dampf" d="M82 46 c-6 -8 6 -12 0 -20"/>' +
     '<rect class="g" x="56" y="50" width="40" height="34" rx="6"/><rect class="lt" x="56" y="50" width="40" height="34" rx="6"/><path class="a" d="M76 61 c-5 -4 -5 -7 -2 -8 c1.5 -.3 2 .8 2 1.4 c0 -.6 .8 -1.7 2 -1.4 c3 1 3 4 -2 8z"/>' +
     '<path class="a" d="M54 88 h56 l14 -30 h10 l-10 34 c-2 8 -8 12 -16 12 h-50 c-6 0 -8 -10 -4 -16z"/>' +
@@ -9010,7 +9186,21 @@ const EU_SYMBOL = {
   uhr:    '<circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/>',
   sanduhr:'<path d="M7 3h10M7 21h10M8 3c0 5 8 5 8 9s-8 4-8 9M16 3c0 5-8 5-8 9s8 4 8 9"/>',
   haus:   '<path d="M4 11l8-7 8 7v9H4z"/><path d="M10 20v-5h4v5"/>',
-  geraet: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>'
+  geraet: '<rect x="7" y="3" width="10" height="18" rx="2"/><path d="M11 18h2"/>',
+  beleg:  '<path d="M6 3h12v18l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5L6 21z"/><path d="M9 8h6M9 12h6M9 16h3"/>',
+  /* Reiter „Gast-Hub gestalten“ */
+  ordner: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  speise: '<path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10"/><path d="M17 3c-2 2-3 4.5-3 7 0 1.5 1 2.5 3 3v8"/>',
+  plus:   '<circle cx="12" cy="12" r="8.5"/><path d="M12 8v8M8 12h8"/>',
+  funken: '<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/><path d="M18 16l.8 2.2L21 19l-2.2.8L18 22l-.8-2.2L15 19l2.2-.8z"/>',
+  bild:   '<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="1.8"/><path d="M4 17l5-4 4 3 3-2 4 3"/>',
+  text:   '<path d="M5 6V4h14v2M12 4v16M9 20h6"/>',
+  schrift:'<path d="M4 19l5-14 5 14M6 14h6"/><path d="M15 12h5M17.5 12v7"/>',
+  farbe:  '<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-1.3-1.2-1.4-1.2-2.6 0-1 .8-1.6 1.8-1.6H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15.5" cy="7.5" r="1"/>',
+  gitter: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
+  banner: '<rect x="3" y="6" width="14" height="12" rx="2"/><path d="M19.5 8.5v7M22 10v4"/>',
+  wuerfel:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="9" cy="15" r="1"/><circle cx="15" cy="15" r="1"/>',
+  smiley: '<circle cx="12" cy="12" r="8.5"/><path d="M8.5 14c1 1.6 2.2 2.3 3.5 2.3s2.5-.7 3.5-2.3"/><path d="M9 9.5v.5M15 9.5v.5"/>'
 };
 const euIcon = s => '<svg viewBox="0 0 24 24" aria-hidden="true">' + (EU_SYMBOL[s] || "") + '</svg>';
 const euWippe = id => { const k = $("#" + id); return !!k && k.getAttribute("aria-pressed") === "true"; };
@@ -9020,7 +9210,7 @@ const euKlang = { ruhig:"Ruhig", moderat:"Moderat", stark:"Stark" };
    er tut, sein Zustand und seine kleine Grafik. */
 const EU_BEREICHE = [
   { titel:"Melden", sym:"glocke", ton:"var(--messing)",
-    satz:"Ton, Vibration und Mitteilungen bei neuen Bestellungen",
+    satz:"Ton, Vibration, Mitteilungen",
     stand:() => EINST.ton ? "Ton an · " + (euKlang[EINST.klang] || EINST.klang) + " · " + EINST.lautstaerke + " %" : "Ton aus",
     bild:() => {
       const n = !EINST.ton ? 0 : EINST.klang === "stark" ? 3 : EINST.klang === "ruhig" ? 1 : 2;
@@ -9029,76 +9219,76 @@ const EU_BEREICHE = [
         (n ? "" : '<path class="eu-aus" d="M6 34L34 6"/>');
     } },
   { titel:"Ihre Worte im Gast-Hub", sym:"blase", ton:"var(--telefon)",
-    satz:"Slogan, Gruß beim Öffnen und der Name Ihrer Aktionen",
+    satz:"Slogan, Gruß, Aktionsname",
     stand:() => (HUBTEXTE.claim || "").trim() ? "„" + (HUBTEXTE.claim.trim().length > 26 ? HUBTEXTE.claim.trim().slice(0, 25) + "…" : HUBTEXTE.claim.trim()) + "“" : "Vorgaben des Hauses",
     bild:() => '<rect class="eu-rahmen" x="14" y="2" width="28" height="44" rx="5"/><rect class="eu-fuell" x="17" y="6" width="22" height="9" rx="2"/>' +
       '<path class="eu-linie" d="M19 20h18M19 25h13M19 30h16"/>' },
   { titel:"Lieferung", sym:"roller", ton:"var(--lieferung)",
-    satz:"Ob, wohin, wann und zu welchen Kosten Sie liefern",
+    satz:"Ob, wohin, wann, zu welchen Kosten",
     stand:() => { const plz = ($("#lfPlz") ? $("#lfPlz").value : "").split(/[,\s]+/).filter(x => /^\d{5}$/.test(x)).length;
       return euWippe("lfAn") ? "An · " + plz + (plz === 1 ? " Postleitzahl" : " Postleitzahlen") : "Aus"; },
     bild:() => '<g class="' + (euWippe("lfAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.roller.replace(/<(path|circle)/g, '<$1 transform="translate(8 8) scale(1.4)"') + '</g>' },
   { titel:"Gäste-Newsletter", sym:"brief", ton:"var(--gut)",
-    satz:"Willkommensgutschein und Erinnerung nach 20 Tagen per E-Mail",
+    satz:"Gutschein und Erinnerung per E-Mail",
     stand:() => euWippe("nlAn") ? "An" : "Aus",
     bild:() => '<g class="' + (euWippe("nlAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.brief.replace(/<(path|rect)/g, '<$1 transform="translate(6 4) scale(1.5)"') + '</g>' },
   { titel:"Gutscheine für Stammgäste", sym:"karte", ton:"var(--glut)",
-    satz:"Codes, die Gäste unter „Mein Tisch“ sehen",
+    satz:"Codes unter „Mein Tisch“",
     stand:() => { const n = $$("#gsListe .gs-zeile").length; return n ? n + (n === 1 ? " Gutschein aktiv" : " Gutscheine aktiv") : "Keiner aktiv"; },
     bild:() => { const n = $$("#gsListe .gs-zeile").length;
       return '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
         (n ? '<circle class="eu-punkt" cx="42" cy="9" r="8"/><text class="eu-zahl" x="42" y="12.5" text-anchor="middle">' + n + '</text>' : ""); } },
   { titel:"Eigene Rabattcodes", sym:"karte", ton:"var(--messing)",
-    satz:"Codes mit Prozent oder Betrag, die Ihr Team an der Kasse einlöst",
+    satz:"Prozent oder Betrag an der Kasse",
     stand:() => { const n = (typeof rabattcodeTeam !== "undefined" && rabattcodeTeam) ? rabattcodeTeam.length : 0;
       return n ? n + (n === 1 ? " Code aktiv" : " Codes aktiv") : "Keiner aktiv"; },
     bild:() => '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
       '<text class="eu-zahl dunkel" x="24" y="30" text-anchor="middle">%</text>' },
   { titel:"Foodroulette", sym:"figur", ton:"var(--glut)",
-    satz:"Die Entscheidungshilfe auf der Speisekarte",
+    satz:"Entscheidungshilfe in der Karte",
     stand:() => frZeigen ? "An" : "Aus",
     bild:() => '<g class="' + (frZeigen ? "eu-strich" : "eu-strich eu-blass") + '">' +
       '<rect class="eu-rahmen" x="12" y="14" width="22" height="28" rx="4" transform="rotate(-10 23 28)"/>' +
       '<rect class="eu-rahmen" x="14" y="10" width="22" height="28" rx="4"/>' +
       '<rect class="eu-fuell" x="18" y="15" width="14" height="10" rx="2"/></g>' },
   { titel:"Bestellstand beim Gast", sym:"sanduhr", ton:"var(--telefon)",
-    satz:"Ob der Gast die Restzeit sieht oder nur den Stand",
+    satz:"Restzeit oder nur der Stand",
     stand:() => rzZeigen ? "Mit Restzeit" : "Nur Stand",
     bild:() => '<rect class="eu-rahmen" x="14" y="2" width="20" height="44" rx="5"/>' +
       '<rect class="eu-fuell" x="17" y="8" width="14" height="5" rx="2"/>' +
       (rzZeigen ? '<text class="eu-zahl dunkel" x="24" y="31" text-anchor="middle">12′</text>'
                 : '<path class="eu-linie" d="M18 24h12M18 30h8"/>') },
   { titel:"Figur des Hauses", sym:"figur", ton:"var(--messing)",
-    satz:"Wer den Gast begleitet, mit welcher Laune, was er hält",
+    satz:"Wer begleitet, mit welcher Laune",
     stand:() => AVATARSTAND ? ((AV_FIGUREN.find(f => f.s === AVATARSTAND.figur) || {}).name || AVATARSTAND.figur) +
       " · " + ((AV_ZUEGE.find(z => z.s === AVATARSTAND.art) || {}).name || AVATARSTAND.art) : "—",
     bild:() => AVATARSTAND && AV_ICONS[AVATARSTAND.figur]
       ? '<g class="eu-strich" transform="translate(4 0) scale(1.7)">' + AV_ICONS[AVATARSTAND.figur].replace(/^<svg[^>]*>|<\/svg>$/g, "") + '</g>' : "" },
   { titel:"Bildschirm", sym:"schirm", ton:"var(--telefon)",
-    satz:"Hell oder dunkel, Schriftgröße, wach halten",
+    satz:"Hell oder dunkel, Schriftgröße",
     stand:() => ({auto:"Automatisch", hell:"Hell", dunkel:"Dunkel", schwarz:"Ganz schwarz", weiss:"Ganz weiß"}[EINST.licht] || EINST.licht) + " · " + Math.round(EINST.skala * 100) + " %",
     bild:() => '<rect class="eu-rahmen" x="4" y="8" width="40" height="28" rx="4"/>' +
       '<path class="eu-hell" d="M5 9h19v26H9a4 4 0 0 1-4-4z"/><path class="eu-dunkel" d="M24 9h16a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H24z"/>' +
       (EINST.licht === "hell" || EINST.licht === "weiss" ? '<path class="eu-wahl" d="M8 40h13"/>' : EINST.licht === "dunkel" || EINST.licht === "schwarz" ? '<path class="eu-wahl" d="M27 40h13"/>' : '<path class="eu-wahl" d="M8 40h32"/>') },
   { titel:"Nichts übersehen", sym:"uhr", ton:"var(--warn)",
-    satz:"Mahnt, wenn eine Bestellung zu lange auf „Neu“ steht",
+    satz:"Mahnt bei zu lange offenen Bestellungen",
     stand:() => EINST.mahnungAb ? "Mahnt nach " + EINST.mahnungAb + " Minuten" : "Aus",
     bild:() => { const a = Math.min(1, (EINST.mahnungAb || 0) / 30), r = 16, u = 2 * Math.PI * r;
       return '<circle class="eu-bahn" cx="24" cy="24" r="' + r + '"/>' +
         '<circle class="eu-bogen" cx="24" cy="24" r="' + r + '" stroke-dasharray="' + (u * a).toFixed(1) + ' ' + u.toFixed(1) + '" transform="rotate(-90 24 24)"/>' +
         '<text class="eu-zahl dunkel" x="24" y="28" text-anchor="middle">' + (EINST.mahnungAb || "–") + '</text>'; } },
   { titel:"Wer hat was geändert", sym:"uhr", ton:"var(--messing)",
-    satz:"Jede Änderung an Karte und Startseite, mit Namen",
+    satz:"Jede Änderung, mit Namen",
     stand:() => { const n = aeHeute(); return n ? n + (n === 1 ? " Änderung heute" : " Änderungen heute") : "Heute nichts geändert"; },
     bild:() => '<path class="eu-linie" d="M10 12h28M10 22h22M10 32h26"/><circle class="eu-punkt" cx="40" cy="10" r="6"/>' },
   { titel:"Betrieb", sym:"haus", ton:"var(--gut)",
-    satz:"Mit welchem Konto und für welches Haus Sie arbeiten",
+    satz:"Konto und Haus, mit dem Sie arbeiten",
     stand:() => ($("#eBetrieb") ? $("#eBetrieb").textContent.trim() : "") || "—",
     bild:() => '<g class="eu-strich">' + EU_SYMBOL.haus.replace(/<path/g, '<path transform="translate(6 4) scale(1.5)"') + '</g>' },
   { titel:"Dieses Gerät", sym:"geraet", ton:"var(--reservierung)",
-    satz:"Ist dieses Gerät bereit für den Dienst?",
+    satz:"Bereit für den Dienst?",
     stand:() => { const w = $$("#geraetLage .warn").length; return w ? w + (w === 1 ? " Hinweis" : " Hinweise") : "Alles bereit"; },
     bild:() => { const w = $$("#geraetLage .warn").length;
       return '<g class="eu-strich">' + EU_SYMBOL.geraet.replace(/<(path|rect)/g, '<$1 transform="translate(6 2) scale(1.5)"') + '</g>' +
@@ -9106,29 +9296,41 @@ const EU_BEREICHE = [
         '<path class="eu-haken" d="' + (w ? "M40 6.5v4M40 13v.1" : "M37 10l2 2 4-4") + '"/>'; } }
 ];
 
-/* Einmal: Köpfe in die Bereiche, Übersicht nach oben. */
+/* Einmal: Köpfe in die Bereiche, Kacheln nach oben.
+
+   UNTERSEITEN (18.10., Wunsch: „große Kästen mit animierten Rändern
+   wie beim Zurück-Knopf, Glas, das passende Symbol — nicht alles auf
+   eine Seite gequetscht“). Vorher stand jede Gruppe untereinander und
+   die Übersicht rollte nur hin. Jetzt zeigt der Reiter zuerst nur die
+   Kacheln; ein Tipp öffnet GENAU eine Gruppe (data-eu-offen am Reiter),
+   oben steht „Alle Einstellungen“. Die Gruppen bleiben, wo sie sind —
+   ihre ids tragen Skripte und Prüfungen —, gezeigt wird über CSS.
+
+   Schlüssel ist die Stelle in EU_BEREICHE, nicht das Symbol: „karte“
+   und „uhr“ stehen je zweimal, und der Zustand des zweiten Bereichs
+   überschrieb den des ersten (gefunden beim Umbau). */
 function euEinrichten(){
   const tafel = $("#t-einstellungen"); if(!tafel || tafel.querySelector(".eu-uebersicht")) return;
   const liste = [];
   tafel.querySelectorAll(":scope > .egruppe").forEach(gruppe => {
     const h = gruppe.querySelector(":scope > h2.etitel"); if(!h) return;
-    const b = EU_BEREICHE.find(x => x.titel === h.textContent.trim()); if(!b) return;
-    const id = "eu-" + b.sym;
-    gruppe.id = gruppe.id || id;
-    gruppe.dataset.eu = b.sym;
+    const nr = EU_BEREICHE.findIndex(x => x.titel === h.textContent.trim()); if(nr < 0) return;
+    const b = EU_BEREICHE[nr];
+    gruppe.id = gruppe.id || "eu-" + nr;
+    gruppe.dataset.eu = String(nr);
     gruppe.style.setProperty("--ton", b.ton);
     const kopf = document.createElement("div");
     kopf.className = "eu-kopf";
     kopf.innerHTML = '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
       '<div class="eu-mitte"></div>' +
-      '<svg class="eu-bild" viewBox="0 0 48 48" aria-hidden="true" data-eu-bild="' + b.sym + '"></svg>';
+      '<svg class="eu-bild" viewBox="0 0 48 48" aria-hidden="true" data-eu-bild="' + nr + '"></svg>';
     gruppe.insertBefore(kopf, h);
     const mitte = kopf.querySelector(".eu-mitte");
     mitte.appendChild(h);
     const stand = document.createElement("span");
-    stand.className = "eu-stand"; stand.dataset.euStand = b.sym;
+    stand.className = "eu-stand"; stand.dataset.euStand = String(nr);
     mitte.appendChild(stand);
-    liste.push({ b, ziel: gruppe.id });
+    liste.push({ b, nr, ziel: gruppe.id });
   });
   /* Ein div mit Rolle, KEIN <nav>: nav{…} ist im Board die Reiterleiste
      (display:flex, waagerecht rollbar) — die Übersicht erbte das und
@@ -9136,31 +9338,92 @@ function euEinrichten(){
   const nav = document.createElement("div");
   nav.setAttribute("role", "navigation");
   nav.className = "egruppe eu-uebersicht"; nav.id = "euUebersicht";
-  nav.setAttribute("aria-label", "Alle Einstellungen auf einen Blick");
+  nav.setAttribute("aria-label", "Alle Einstellungen");
+  const kachel = (attr, ton, sym, titel, satz, stand) =>
+    '<button type="button" class="eu-kachel" ' + attr + ' style="--ton:' + ton + '">' +
+      '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+      '<span class="eu-symbol" aria-hidden="true">' + euIcon(sym) + '</span>' +
+      '<span class="eu-ktext"><b>' + titel + '</b><i>' + satz + '</i></span>' +
+      '<span class="eu-wert"' + stand + '></span></button>';
   /* Seit 11.10. liegt alles, was Gäste sehen, im Reiter „Gast-Hub“ —
-     die Übersicht verweist dorthin, statt die Bereiche doppelt zu führen. */
-  nav.innerHTML = '<h2 class="etitel">Auf einen Blick</h2>' +
-    '<a class="eu-reihe" href="#" data-eu-tafel="startseite" style="--ton:var(--telefon)">' +
-      '<span class="eu-symbol" aria-hidden="true">' + euIcon("blase") + '</span>' +
-      '<span class="eu-text"><b>Gast-Hub gestalten</b><i>Kopf und Logo, Texte, Schrift, Farben, Kacheln, Banner, Figur</i></span>' +
-      '<span class="eu-wert"></span><span class="eu-pfeil" aria-hidden="true">›</span></a>' + liste.map(({b, ziel}) =>
-    '<a class="eu-reihe" href="#' + ziel + '" data-eu-ziel="' + ziel + '" style="--ton:' + b.ton + '">' +
-      '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
-      '<span class="eu-text"><b>' + sicher(b.titel) + '</b><i>' + sicher(b.satz) + '</i></span>' +
-      '<span class="eu-wert" data-eu-stand="' + b.sym + '"></span>' +
-      '<span class="eu-pfeil" aria-hidden="true">›</span></a>').join("");
+     die erste Kachel führt dorthin, statt die Bereiche doppelt zu führen. */
+  nav.innerHTML = '<h2 class="etitel">Einstellungen</h2><div class="eu-kacheln">' +
+    kachel('data-eu-tafel="startseite"', "var(--telefon)", "blase", "Gast-Hub gestalten",
+           "Kopf, Texte, Schrift, Farben, Kacheln, Figur", "") +
+    liste.map(({b, nr, ziel}) => kachel('data-eu-seite="' + ziel + '"', b.ton, b.sym,
+      sicher(b.titel), sicher(b.satz), ' data-eu-stand="' + nr + '"')).join("") +
+    /* Eine eigene Seite, deshalb ein Link: die letzte Kachel. */
+    '<a class="eu-kachel" href="/einkauf.html" style="--ton:var(--gut)">' +
+      '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+      '<span class="eu-symbol" aria-hidden="true">' + euIcon("beleg") + '</span>' +
+      '<span class="eu-ktext"><b>Einkauf &amp; Kosten</b><i>Rechnungen, Artikel, Lieferanten und Bestand</i></span></a>' +
+    '</div>';
   tafel.insertBefore(nav, tafel.firstElementChild);
+
+  const zurueck = document.createElement("button");
+  zurueck.type = "button"; zurueck.className = "eu-zurueck"; zurueck.id = "euZurueck";
+  zurueck.innerHTML = '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Alle Einstellungen</span>';
+  tafel.insertBefore(zurueck, tafel.firstElementChild);
+  zurueck.addEventListener("click", () => euSchliessen());
+
   nav.addEventListener("click", e => {
     const t = e.target.closest("[data-eu-tafel]");
     if(t){ e.preventDefault(); tafelZeigen(t.dataset.euTafel); window.scrollTo(0, 0); return; }
-    const a = e.target.closest("[data-eu-ziel]"); if(!a) return;
-    e.preventDefault();
-    const ziel = document.getElementById(a.dataset.euZiel); if(!ziel) return;
-    const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
-    ziel.scrollIntoView({ block:"start", behavior: ruhig ? "auto" : "smooth" });
+    const k = e.target.closest("[data-eu-seite]"); if(!k) return;
+    euOeffnen(k.dataset.euSeite);
   });
   euZeichnen();
 }
+
+/* Eine Gruppe als Unterseite zeigen. Nimmt die id der Gruppe. */
+function euOeffnen(id){
+  const gruppe = id && document.getElementById(id), tafel = gruppe && gruppe.parentElement;
+  if(!tafel || !tafel.hasAttribute("data-eu-kacheln") || !gruppe.classList.contains("egruppe") || gruppe.classList.contains("eu-uebersicht")) return false;
+  tafel.querySelectorAll(":scope > .eu-jetzt").forEach(g => g.classList.remove("eu-jetzt"));
+  gruppe.classList.add("eu-jetzt");
+  tafel.dataset.euOffen = id;
+  /* Die Symbolleiste im Gast-Hub zeigt, wo man gerade ist. */
+  tafel.querySelectorAll("[data-gh-sprung]").forEach(a => {
+    const jetzt = a.dataset.ghSprung === id;
+    if(jetzt) a.setAttribute("aria-current", "true"); else a.removeAttribute("aria-current");
+    if(jetzt && a.scrollIntoView) a.scrollIntoView({ block:"nearest", inline:"center" });
+  });
+  /* Was beim Anzeigen MISST (die Räder der Figur, die Spur der Regler),
+     läuft erst jetzt: tafelZeigen() richtet sie aus, solange die Gruppe
+     noch verborgen ist — dort hat jedes Stück Breite 0 und das Rad blieb
+     falsch stehen (gefunden von pruef-figur-board: Auswahlknöpfe 0 px hoch,
+     nachdem die Kachel getippt war). */
+  try{ reglerFuellen(); avRaederAusrichten(); }catch(e){}
+  window.scrollTo(0, 0);
+  const h = gruppe.querySelector("h2.etitel");
+  if(h){ h.tabIndex = -1; h.focus({ preventScroll:true }); }
+  euBald();
+  return true;
+}
+/* Zurück zu den Kacheln; die zuletzt offene Kachel bekommt den Fokus,
+   damit Tastatur und Vorleser dort weitermachen, wo sie waren. */
+function euSchliessen(tafel){
+  /* Ohne Angabe: der gerade sichtbare Reiter mit Kacheln. */
+  if(!tafel) tafel = document.querySelector(".tafel[data-eu-kacheln]:not([hidden])") || $("#t-einstellungen");
+  if(!tafel || !tafel.dataset.euOffen) return;
+  const war = tafel.dataset.euOffen;
+  delete tafel.dataset.euOffen;
+  tafel.querySelectorAll(":scope > .eu-jetzt").forEach(g => g.classList.remove("eu-jetzt"));
+  window.scrollTo(0, 0);
+  const k = tafel.querySelector('[data-eu-seite="' + war + '"]');
+  if(k) k.focus({ preventScroll:true });
+}
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  const tafel = document.querySelector(".tafel[data-eu-kacheln]:not([hidden])");
+  if(!tafel || !tafel.dataset.euOffen) return;
+  /* Ein offenes Blatt oder Feld darüber schließt zuerst sich selbst. */
+  /* Gemessen sichtbar, nicht nur ohne hidden: #katPanel trägt
+     role=dialog und ist zu, ohne hidden zu tragen. */
+  if([...document.querySelectorAll(".blatt.offen, [role=dialog]:not([hidden])")].some(x => x.getClientRects().length)) return;
+  euSchliessen();
+});
 
 /* Zustände und Grafiken nachziehen — gebündelt auf ein Bild, und nie
    mitten in einer Radgeste (das Rad schreibt erst am Ende). */
@@ -9169,11 +9432,11 @@ function euEinrichten(){
    dead zone“ und würfe (CLAUDE.md §8.1l). */
 var euGeplant = false;
 function euZeichnen(){
-  EU_BEREICHE.forEach(b => {
+  EU_BEREICHE.forEach((b, nr) => {
     let text = "";
     try{ text = b.stand() || ""; }catch(e){ text = ""; }
-    $$('[data-eu-stand="' + b.sym + '"]').forEach(el => { if(el.textContent !== text) el.textContent = text; });
-    const bild = $('[data-eu-bild="' + b.sym + '"]');
+    $$('[data-eu-stand="' + nr + '"]').forEach(el => { if(el.textContent !== text) el.textContent = text; });
+    const bild = $('[data-eu-bild="' + nr + '"]');
     if(bild){ let inhalt = ""; try{ inhalt = b.bild() || ""; }catch(e){}
       if(bild._inhalt !== inhalt){ bild.innerHTML = inhalt; bild._inhalt = inhalt; } }
   });
@@ -9186,6 +9449,77 @@ function euBald(){
 ["click","change","input"].forEach(art =>
   $("#t-einstellungen").addEventListener(art, () => euBald()));
 euEinrichten();
+
+/* ── Reiter „Gast-Hub gestalten“ als Zentrale (19.10.) ─────────────
+   Wunsch: „nicht alle Einstellungen auf einer Seite, sondern in
+   Unterseiten — übersichtlich, Symbole, leuchtende Ränder, Glas; schnell
+   wie in einer Zentrale.“ Dieselben Kacheln wie unter „Einstellungen“
+   (euOeffnen/euSchliessen gelten für beide); die Gruppen behalten ihre ids
+   und ihren Platz, gezeigt wird eine über CSS. Neu gegenüber dem
+   Wunsch vom 11.10. („alles auf einem Platz“): Die klebende Vorschau
+   bleibt in jeder Unterseite sichtbar — „alles auf einem Platz“ heißt
+   dort weiter: eine Änderung zeigt sich sofort im Bild. */
+const GH_BEREICHE = [
+  { id:"pjGruppe",   titel:"Projekte",       sym:"ordner",  ton:"var(--messing)",     satz:"Hub sichern, laden, wechseln" },
+  { id:"ksGruppe",   titel:"Speisekarte",    sym:"speise",  ton:"var(--glut)",        satz:"Liste, Bühne, Raster, Flink oder Teller" },
+  { id:"eoGruppe",   titel:"Extras & Beläge",sym:"plus",    ton:"var(--gut)",         satz:"Beläge und Aufpreise zum Dazuwählen" },
+  { id:"wzGruppe",   titel:"Willkommen",     sym:"funken",  ton:"var(--telefon)",     satz:"Die Animation beim ersten Öffnen" },
+  { id:"kfGruppe",   titel:"Kopf & Logo",    sym:"bild",    ton:"var(--reservierung)",satz:"Kopfbild, Logo und „Über uns“" },
+  { id:"gh-worte",   titel:"Ihre Worte",     sym:"blase",   ton:"var(--telefon)",     satz:"Slogan, Gruß, Aktionsname, WLAN" },
+  { id:"txGruppe",   titel:"Alle Texte",     sym:"text",    ton:"var(--messing)",     satz:"Jeden Satz ändern, in elf Sprachen" },
+  { id:"swGruppe",   titel:"Schrift",        sym:"schrift", ton:"var(--glut)",        satz:"Schriftarten, auch eigene Dateien" },
+  { id:"fbGruppe",   titel:"Farben",         sym:"farbe",   ton:"var(--lieferung)",   satz:"Hintergrund, Karten, Hausfarben" },
+  { id:"gh-kacheln", titel:"Kacheln",        sym:"gitter",  ton:"var(--gut)",         satz:"Knöpfe der Startseite: Titel, Bild, Breite" },
+  { id:"gh-banner",  titel:"Banner",         sym:"banner",  ton:"var(--warn)",        satz:"Wischbares Karussell mit Angeboten" },
+  { id:"gh-figur",   titel:"Figur",          sym:"figur",   ton:"var(--messing)",     satz:"Figur, Stimmung, Gesten je Bestellphase" },
+  { id:"gh-roulette",titel:"Foodroulette",   sym:"wuerfel", ton:"var(--glut)",        satz:"Entscheidungshilfe an oder aus" },
+  { id:"gh-emojis",  titel:"Bewegte Emojis", sym:"smiley",  ton:"var(--telefon)",     satz:"Lebendige oder ruhige Zeichen" }
+];
+function ghEinrichten(){
+  const tafel = $("#t-startseite"); if(!tafel || tafel.querySelector(".eu-uebersicht")) return;
+  const da = [];
+  GH_BEREICHE.forEach(b => {
+    const gruppe = document.getElementById(b.id);
+    const h = gruppe && gruppe.parentElement === tafel ? gruppe.querySelector(":scope > h2.etitel") : null;
+    if(!h) return;
+    gruppe.dataset.eu = b.id;
+    gruppe.style.setProperty("--ton", b.ton);
+    const kopf = document.createElement("div");
+    kopf.className = "eu-kopf ohne-bild";
+    kopf.innerHTML = '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span><div class="eu-mitte"></div>';
+    gruppe.insertBefore(kopf, h);
+    kopf.querySelector(".eu-mitte").appendChild(h);
+    da.push(b);
+  });
+  const nav = document.createElement("div");
+  nav.setAttribute("role", "navigation");
+  nav.className = "egruppe eu-uebersicht"; nav.id = "ghUebersicht";
+  nav.setAttribute("aria-label", "Alle Bereiche des Gast-Hubs");
+  nav.innerHTML = '<h2 class="etitel">Gast-Hub gestalten</h2>' +
+    '<p class="ehilfe">Alles, was Ihre Gäste sehen. Ein Bereich öffnet sich mit der Vorschau darüber — jede Änderung zeigt sich sofort; Gäste sehen sie nach „Übernehmen“.</p>' +
+    '<div class="eu-kacheln">' + da.map(b =>
+      '<button type="button" class="eu-kachel" data-eu-seite="' + b.id + '" style="--ton:' + b.ton + '">' +
+        '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+        '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
+        '<span class="eu-ktext"><b>' + sicher(b.titel) + '</b><i>' + sicher(b.satz) + '</i></span></button>').join("") + '</div>';
+  tafel.insertBefore(nav, tafel.firstElementChild);
+  const zurueck = document.createElement("button");
+  zurueck.type = "button"; zurueck.className = "eu-zurueck"; zurueck.id = "ghZurueck";
+  zurueck.innerHTML = '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+    '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg><span>Alle Bereiche</span>';
+  tafel.insertBefore(zurueck, tafel.firstElementChild);
+  zurueck.addEventListener("click", () => euSchliessen(tafel));
+  nav.addEventListener("click", e => {
+    const k = e.target.closest("[data-eu-seite]"); if(k) euOeffnen(k.dataset.euSeite);
+  });
+  /* Die Sprungleiste wird zur Symbolleiste: jedes Ziel mit seinem Zeichen und seiner Farbe. */
+  tafel.querySelectorAll("[data-gh-sprung]").forEach(a => {
+    const b = GH_BEREICHE.find(x => x.id === a.dataset.ghSprung); if(!b) return;
+    a.style.setProperty("--ton", b.ton);
+    a.insertAdjacentHTML("afterbegin", euIcon(b.sym));
+  });
+}
+ghEinrichten();
 
 /* Die gefüllte Spur der Regler. Auch ein Wert, der per Skript gesetzt
    wird, soll stimmen — deshalb nach einstZeichnen() und bei jeder
@@ -12345,6 +12679,8 @@ function tafelZeigen(ziel){
   const tafelId = ziel === "lieferungen" ? "bestellungen" : ziel;
   $$("[data-tafel]").forEach(x => x.setAttribute("aria-selected", x.dataset.tafel === tafelId));
   $$(".tafel").forEach(t => t.hidden = t.id !== "t-" + tafelId);
+  /* Wer einen Reiter mit Kacheln (neu) betritt, beginnt bei den Kacheln. */
+  if(typeof euSchliessen === "function"){ const kt = $("#t-" + tafelId); if(kt && kt.hasAttribute("data-eu-kacheln")) euSchliessen(kt); }
   leistePilleBewegen();
 
   /* Erst jetzt ist der Block gezeichnet — vorher war er in einem
@@ -13586,6 +13922,7 @@ document.addEventListener("click", e => {
   const a = e.target.closest && e.target.closest("[data-gh-sprung]");
   if(!a) return;
   e.preventDefault();
+  if(euOeffnen(a.dataset.ghSprung)) return;
   const ziel = document.getElementById(a.dataset.ghSprung); if(!ziel) return;
   const ab = ghObenFrei() + 8;
   const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -13868,6 +14205,7 @@ function txOeffnen(k){
 }
 /* Aus der Vorschau: der Hub ruft das, wenn im Textmodus getippt wird. */
 window.vorschauTextGewaehlt = (k, seite) => {
+  euOeffnen("txGruppe");
   if(!k){ $("#txStand").textContent = "Dieser Text lässt sich hier nicht ändern — Gerichte ändern Sie in der Karte."; return; }
   $("#txStand").textContent = "";
   $("#txSuche").value = "";

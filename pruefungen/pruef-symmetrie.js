@@ -54,6 +54,13 @@ function pruef(b, t, d) {
       await seite.click('#mehrfach [data-tafel="einstellungen"]');
     }
     await seite.waitForTimeout(300);
+    /* Seit 18.10. liegt „Lieferung“ hinter ihrer Kachel — echter Tipp.
+       Versteckt hätte jedes Rechteck 0 × 0 und jede Probe hier wäre
+       grün (§8.1g). */
+    const lfId = await seite.evaluate(() => document.getElementById("lfVon").closest("#t-einstellungen > .egruppe").id);
+    await seite.click('[data-eu-seite="' + lfId + '"]');
+    await seite.waitForTimeout(200);
+    pruef(await seite.isVisible("#lfTage"), "Voraussetzung: Unterseite Lieferung offen, Tagesknöpfe sichtbar");
 
     for (const sel of ["#lfVon", "#lfBis", "#lfTage"]) {
       const info = await seite.$eval(sel, el => {

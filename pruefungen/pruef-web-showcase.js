@@ -185,6 +185,12 @@ const aktiv = (p, reihe) => p.evaluate(r => {
   if(rahmen){
     const k = await rahmen.$('a.kachel[href="#/speisekarte"]');
     if(k){
+      /* Erst in die Mitte rollen, wie ein Mensch: Seit 19.10. ist der
+         Schnellzugriff höher als die alte Zeile, die Kachel liegt im kleinen
+         Telefonfenster zuerst unter der festen Leiste „Ihre Bestellung“ —
+         ein Klick auf die bloße Koordinate traf sie (Weg „#/bestellt“). */
+      await k.evaluate(e => e.scrollIntoView({ block:"center" }));
+      await p.waitForTimeout(250);
       await k.click({ force:true });
       await p.waitForTimeout(900);
       tipp = await p.evaluate(() => { const w = document.getElementById("fnRahmen").contentWindow;

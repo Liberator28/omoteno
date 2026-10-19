@@ -123,6 +123,12 @@ async function oeffnen(browser, slug, opt = {}) {
     pruef(beimLaden.n === 0 && beimLaden.film > 0 && beimLaden.film >= beimLaden.load,
       "der erste Film entsteht erst NACH load (bis dahin steht das Ruhebild)", JSON.stringify(beimLaden));
     await s.evaluate(() => { document.body.dataset.phase = "tag"; });
+    /* Die Kacheln mit ihren Filmen ins Bild holen: Seit 18.10. steht der
+       Schnellzugriff (zwei Reihen) darüber, und bei 844 px begannen sie
+       unter dem Rand — dort wartet jeder Film zu Recht. Gezählt wird
+       die Grenze für Filme IM Bild, nicht die Lage der Kacheln. */
+    await s.evaluate(() => { const g = document.querySelector(".sbereich .gitter"); if (g) g.scrollIntoView({ block: "start" }); });
+    await s.waitForTimeout(600);
     const takt = await s.evaluate(() => new Promise(ok => {
       let max = 0, proben = 0, bereit = 0;
       const t0 = performance.now();

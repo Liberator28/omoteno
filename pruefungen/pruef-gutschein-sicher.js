@@ -27,6 +27,7 @@
    echten Bestand gemessen — Protokoll im Kopf der Migration.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -202,6 +203,7 @@ function gruppe(id) {
 
     /* Beenden über die Funktion, nicht über die Tabelle. */
     pruef(/ausgestellt von Mara/.test(await seite.textContent("#gsListe")), "Liste nennt, wer ausgestellt hat");
+    pruef(await gruppeZu(seite, "#gsListe"), "Voraussetzung: Unterseite Gutscheine über ihre Kachel geöffnet");
     await seite.click('#gsListe [data-gs-ende="gs-1"]');
     await seite.waitForTimeout(400);
     const log = await seite.evaluate(() => window.__log);

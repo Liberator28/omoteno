@@ -222,7 +222,7 @@ const FLAECHEN = [
       await p.waitForTimeout(300);
     },
     seiten:["bestellungen","speisekarte","auswertung","einstellungen","startseite"],
-    blaettern: (p, ziel) => p.evaluate(z => tafelZeigen(z), ziel) },
+    blaettern: (p, ziel) => p.evaluate(z => { const [t, eu] = z.split("/"); tafelZeigen(t); if(eu) euOeffnen(eu); }, ziel) },
 
   { datei:"kueche.html", name:"Küchendisplay",
     lagen:[["dunkel", p => p.evaluate(() => { EINST.hell=false; document.body.classList.remove("hell"); })],
@@ -370,7 +370,16 @@ const STUFEN = ["weiss", "creme", "warm", "gedaempft", "dunkel", "schwarz"];
         catch(e){ pruef(false, "Voraussetzung", String(e.message || e)); await ctx.close(); continue; }
       }
 
-      const wege = f.seiten || [null];
+      /* Seit 18.10. liegen die Einstellungen in Unterseiten hinter
+         Kacheln: jede einzeln, ihre ids aus dem gezeichneten Board. */
+      let wege = f.seiten || [null];
+      /* Seit 19.10. haben „Einstellungen“ UND „Gast-Hub gestalten“ Unterseiten. */
+      for(const reiter of ["einstellungen", "startseite"]){
+        if(!wege.includes(reiter)) continue;
+        const ids = await seite.evaluate(r => [...document.querySelectorAll("#t-" + r + " [data-eu-seite]")].map(k => k.dataset.euSeite), reiter).catch(() => []);
+        pruef(ids.length >= 10, f.name + " " + lage + ": Voraussetzung: Unterseiten von „" + reiter + "“ gefunden", ids.length);
+        wege = wege.flatMap(w => w === reiter ? [w, ...ids.map(i => reiter + "/" + i)] : [w]);
+      }
       const gesammelt = new Map();
       for(const w of wege){
         if(w !== null && f.blaettern){

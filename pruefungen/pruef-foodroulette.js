@@ -26,6 +26,7 @@
        die Falle, die iconAus/stilEmoji/restzeit schon einmal hatten.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs   = require("fs");
 const path = require("path");
 
@@ -58,6 +59,7 @@ function pruef(b, t, d) {
   if (scharf && await p.isVisible("#scharf")) { await scharf.click(); await p.waitForTimeout(200); }
   await p.evaluate(() => document.querySelector('[data-tafel="startseite"]').click());
   await p.waitForTimeout(400);
+  await gruppeZu(p, "#gh-roulette");
 
   const start = await p.evaluate(() => $("#frAn").getAttribute("aria-pressed"));
   pruef(start === "true", "Standard: Schalter steht auf an", start);

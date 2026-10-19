@@ -44,6 +44,7 @@
    migration-lieferung.sql.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -98,6 +99,7 @@ async function board(br){
 
   await p.evaluate(() => tafelZeigen("einstellungen"));
   await p.waitForTimeout(400);
+  if(!(await gruppeZu(p, "#lfAn"))) throw new Error("Voraussetzung: Unterseite Lieferung über ihre Kachel");
 
   const da = await p.evaluate(() => ({
     bereich: !!document.getElementById("lfAn"),

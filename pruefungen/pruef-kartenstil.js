@@ -33,6 +33,7 @@
        dem Neuöffnen der gespeicherte Stand (§8.1m).
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 const { execSync } = require("child_process");
@@ -303,7 +304,7 @@ const LESBAR = () => {
     }, BB);
     const oeffnen = async () => { await p.evaluate(async id => { document.getElementById("tor").hidden = true;
       try{ localStorage.setItem(merkSchluessel(), id); }catch(e){} await betriebWaehlen(); }, BB.id);
-      await p.waitForTimeout(300); await p.evaluate(() => document.querySelector('[data-tafel="startseite"]').click()); };
+      await p.waitForTimeout(300); await p.evaluate(() => document.querySelector('[data-tafel="startseite"]').click()); await gruppeZu(p, "#ksGruppe"); };
     await oeffnen();
     for(let i = 0; i < 50; i++){ if(await p.evaluate(() => { const h = hvAlle().gestalten; return !!(h && h.bereit); })) break; await p.waitForTimeout(150); }
     await p.waitForTimeout(500);

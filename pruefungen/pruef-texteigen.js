@@ -31,6 +31,7 @@
          Deutsch, Satz sagt es; erneutes Öffnen zeigt den Stand.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -186,6 +187,7 @@ const lesen = p => p.evaluate(() => {
       await betriebWaehlen(); }, BB.id);
     await p.waitForTimeout(300);
     await p.evaluate(() => { const s = document.getElementById("scharf"); if(s) s.hidden = true; tafelZeigen("startseite"); });
+    await gruppeZu(p, "#txGruppe");
     let bereit = false;
     for(let i = 0; i < 60 && !bereit; i++){ await p.waitForTimeout(200);
       bereit = await p.evaluate(() => TX_LISTE.length > 20); }
@@ -265,6 +267,7 @@ const lesen = p => p.evaluate(() => {
     /* Neu öffnen: Stand aus HUBTEXTE */
     await p.evaluate(() => { tafelZeigen("einstellungen"); tafelZeigen("startseite"); });
     await p.waitForTimeout(400);
+    await gruppeZu(p, "#txGruppe");
     const neu = await p.evaluate(() => ({ n: Object.keys(TX).length, markiert: document.querySelectorAll("#txListe .txneu").length }));
     pruef(neu.n >= 31 && neu.markiert >= 1, "nach erneutem Öffnen steht der gespeicherte Stand", JSON.stringify(neu));
     pruef(!fehler.length, "Board: keine Seitenfehler", fehler.join(" | ") || "–");

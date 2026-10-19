@@ -21,6 +21,7 @@
    Uhr fest (§8.1j). Beide Häuser, hell und dunkel, 360/390/430 px.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs   = require("fs");
 const path = require("path");
 
@@ -195,6 +196,7 @@ const KONTRAST = () => {
     /* Wie der Besitzer: Einstellungen öffnen — erst dann füllt das Board die Felder. */
     await p.evaluate(() => { const r = document.querySelector('[data-tafel="startseite"]'); if (r) r.click(); });
     await p.waitForTimeout(400);
+    await gruppeZu(p, "#gh-worte");
     const feld = await p.evaluate(() => { const el = document.getElementById("hubLaufschrift");
       return el ? { max: +el.getAttribute("maxlength") } : null; });
     pruef(!!feld && feld.max === GRENZE, "Feld „Laufschrift“ da, nimmt höchstens so viel wie die Datenbank", feld && feld.max);

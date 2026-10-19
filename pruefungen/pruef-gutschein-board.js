@@ -37,6 +37,7 @@
         Spalte gibt es" und „Naht" rot.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs   = require("fs");
 const path = require("path");
 
@@ -116,6 +117,7 @@ async function boardOeffnen(browser, breite) {
     if (k) k.click();
   });
   await seite.waitForTimeout(400);
+  await gruppeZu(seite, "#gsGruppe");
   return { ctx, seite };
 }
 

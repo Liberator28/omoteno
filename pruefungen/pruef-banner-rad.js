@@ -36,6 +36,7 @@
         auch im Hub erlaubt" wurde rot. Zurückgenommen → grün.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs   = require("fs");
 const path = require("path");
 
@@ -98,6 +99,7 @@ async function boardPruefen() {
   if (scharf && await seite.isVisible("#scharf")) { await scharf.click(); await seite.waitForTimeout(200); }
   await seite.evaluate(() => document.querySelector('[data-tafel="startseite"]').click());
   await seite.waitForTimeout(300);
+  await gruppeZu(seite, "#gh-banner");
 
   /* Rundlauf: eine rohe Zeile mit allen vier Zieltypen (plus einem
      ungültigen fünften) direkt durch bnAusZeile schicken. */

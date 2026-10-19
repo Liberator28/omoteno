@@ -28,6 +28,7 @@
    wirklich display != none" wurden rot. Zurückgenommen → grün.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const path = require("path");
 
 const ADMIN = path.join(__dirname, "..", "seiten", "admin.html");
@@ -96,6 +97,7 @@ function pruef(b, t, d) {
   console.log("\n══ Newsletter-Bereich in Einstellungen ══");
   await seite.evaluate(() => document.querySelector('[data-tafel="einstellungen"]').click());
   await seite.waitForTimeout(300);
+  pruef(await gruppeZu(seite, "#nlAn"), "Voraussetzung: Unterseite Newsletter über ihre Kachel geöffnet");
   pruef(await seite.isVisible("#nlAn"), "Newsletter-Schalter sichtbar in Einstellungen");
   pruef(await seite.isVisible("#nlVorratAuffuellen"), "„Vorrat auffüllen“-Knopf sichtbar");
 

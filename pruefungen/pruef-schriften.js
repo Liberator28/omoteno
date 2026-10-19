@@ -21,6 +21,7 @@
        Ordner und schreibt hub_stil.schrift — der Emoji-Schalter bleibt.
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -296,6 +297,7 @@ function schriftDatei(u){
   const scharf = await p.$("#scharfJetzt");
   if(scharf && await p.isVisible("#scharf")){ await scharf.click(); await p.waitForTimeout(300); }
   await p.evaluate(() => tafelZeigen("startseite"));
+  await gruppeZu(p, "#swGruppe");
   const bereit = async () => { for(let i = 0; i < 40; i++){
     if(await p.evaluate(() => { const h = hvAlle().startseite;
       try{ return !!(h && h.bereit && typeof h.frame.contentWindow.vorschauSetzen === "function"); }catch(e){ return false; } }))

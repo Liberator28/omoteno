@@ -245,8 +245,7 @@ async function seite(br, datei, licht){
       const tafeln = datei === "admin.html" ? ["bestellungen", "speisekarte", "reservierungen", "einstellungen"] : [null];
       const alle = { dunkel:new Set(), gewaehlt:[], schwach:new Set(), gezaehlt:0 };
       let erst = null;
-      for(const t of tafeln){
-        if(t) await p.evaluate(t => { if(typeof tafelZeigen === "function") tafelZeigen(t); }, t);
+      const einmal = async name => {
         await p.waitForTimeout(250);
         await ruhe(p);
         const m = await p.evaluate(MESSEN);
@@ -254,8 +253,21 @@ async function seite(br, datei, licht){
         alle.gewaehlt.push(...m.gewaehlt);
         const tm = await p.evaluate(TEXTMESSEN);
         if(!erst) erst = tm;
-        tm.schwach.forEach(x => alle.schwach.add((t || "") + " " + x));
+        tm.schwach.forEach(x => alle.schwach.add(name + " " + x));
         alle.gezaehlt += tm.gezaehlt;
+      };
+      for(const t of tafeln){
+        if(t) await p.evaluate(t => { if(typeof tafelZeigen === "function") tafelZeigen(t); }, t);
+        await einmal(t || "");
+        /* Seit 18.10. Kacheln + Unterseiten: jede Unterseite einzeln. */
+        if(t === "einstellungen"){
+          const ids = await p.evaluate(() => [...document.querySelectorAll("#t-einstellungen [data-eu-seite]")].map(k => k.dataset.euSeite));
+          for(const id of ids){
+            await p.evaluate(id => euOeffnen(id), id);
+            await einmal("einstellungen/" + id);
+          }
+          await p.evaluate(() => euSchliessen());
+        }
       }
       const soll = licht === "weiss" ? "rgb(255, 255, 255)" : "rgb(0, 0, 0)";
       pruef(erst.klassen.split(/\s+/).includes(licht), "Voraussetzung: die Wahl ist angekommen (body." + licht + ")", erst.klassen);

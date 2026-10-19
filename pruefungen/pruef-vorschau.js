@@ -24,6 +24,7 @@
    5 · Kein Fehler in Board UND Rahmen (§8.1l).
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -92,6 +93,7 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
   /* ── 1 · Startseite ──────────────────────────────────────────── */
   console.log("══ Startseite: Banner und Kacheln ══");
   await p.evaluate(() => tafelZeigen("startseite"));
+  await gruppeZu(p, "#gh-banner");
   pruef(await bereit("startseite"), "die Vorschau lädt den echten Hub (srcdoc)");
   const vorschau = await p.evaluate(() => {
     const f = document.querySelector('[data-hv="gestalten"] iframe');
@@ -243,6 +245,7 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
   }
 
   /* Die Kachelzeilen sind zugeklappt (26.09.) — die erste aufklappen. */
+  await gruppeZu(p, "#kbListe");
   const ersteAuf = await p.$('#kbListe .kbzeile [data-kb-auf]');
   if(ersteAuf){ await ersteAuf.click(); await p.waitForTimeout(450); }
   const kbFeld = await p.$('#kbListe .kbzeile [data-kb-titel]');
@@ -275,6 +278,7 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
   /* ── 2 · Ihre Worte ──────────────────────────────────────────── */
   console.log("\n══ Ihre Worte: Slogan und Gruß ══");
   await p.evaluate(() => tafelZeigen("startseite"));
+  await gruppeZu(p, "#gh-worte");
   pruef(await bereit("worte"), "die Vorschau der Einstellungen lädt");
   await p.fill("#hubClaim", "Frisch gebacken, jeden Tag, mit Liebe gemacht");
   await p.waitForTimeout(600);

@@ -22,6 +22,7 @@
    dem Schirm steht. Jeder Wert ist Text, nie Auszeichnung (§2.3a).
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
+const { gruppeZu } = require("./werkzeug/zentrale");
 const fs = require("fs");
 const path = require("path");
 
@@ -107,6 +108,7 @@ async function oeffnen(browser, z) {
   await p.waitForTimeout(300);
   await p.evaluate(() => document.querySelector('[data-tafel="einstellungen"]').click());
   await p.waitForTimeout(500);
+  await gruppeZu(p, "#aeListe");
   return { ctx, p, fehler };
 }
 const zeilenText = p => p.evaluate(() => [...document.querySelectorAll("#aeListe .ae-zeile")].map(r => ({
@@ -153,7 +155,7 @@ const zeilenText = p => p.evaluate(() => [...document.querySelectorAll("#aeListe
     pruef(abf.includes("eq:betrieb_id") && abf.indexOf("order:zeit:false") >= 0 && abf.indexOf("order:id:false") > abf.indexOf("order:zeit:false"),
       "Abfrage: nur dieser Betrieb, neueste zuerst, bei Gleichstand nach id (§2.6)", abf.join(" "));
     const karte = await p.evaluate(() => { const b = EU_BEREICHE.find(x => x.titel === "Wer hat was geändert"); return b ? b.stand() : null; });
-    pruef(karte === "4 Änderungen heute", "Karte in „Auf einen Blick“ zählt die von heute", karte);
+    pruef(karte === "4 Änderungen heute", "Kachel in der Übersicht zählt die von heute", karte);
     pruef(fehler.length === 0, "keine Skriptfehler", fehler.join(" | "));
     await ctx.close();
   }

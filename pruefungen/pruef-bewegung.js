@@ -107,12 +107,32 @@ function eigenschaften(){
      bewegung (§2: „was sich endlos dreht“): Räder, Straße und Wolken der
      Lieferungs-Szene laufen mit fester Geschwindigkeit — eine Kurve
      ließe den Roller bei jeder Runde ruckeln. Namentlich, nicht per
-     Muster (§8.1g D); NUR „linear“, nur diese drei. */
-  const GLEICHFOERMIG = ["wzDrehen", "wzStrasse", "wzWolke"];
-  const wort = [...s.matchAll(/animation:([A-Za-z-]*)[^;}]*?\s(ease-out|ease-in|ease-in-out|linear)\b/g)]
-    .filter(x => !imRuhigen(x.index))
-    .filter(x => !(x[2] === "linear" && GLEICHFOERMIG.includes(x[1])))
-    .map(x => x[0].slice(0, 52));
+     Muster (§8.1g D); NUR „linear“, nur diese. Dazu seit 18.10. das
+     umlaufende Licht im Rand der Einstellungs-Kacheln (euLauf) — es
+     dreht endlos wie das des Zurück-Knopfs im Hub. */
+  const GLEICHFOERMIG = ["wzDrehen", "wzStrasse", "wzWolke", "euLauf", "wzStrahlen", "wzHaeuser"];
+  /* Eine Angabe kann mehrere Animationen tragen („animation:a 1s x, b 2s y“).
+     Die erste Fassung dieser Prüfung sah nur die ERSTE (19.10. aufgefallen:
+     „wzStrahlen 56s linear“ stand an zweiter Stelle und wäre durchgerutscht).
+     Deshalb: die Angabe an Kommas AUSSERHALB von Klammern teilen — in
+     cubic-bezier(…) stehen auch welche — und jedes Stück einzeln lesen. */
+  const teile = deklaration => { const aus = []; let tiefe = 0, start = 0;
+    for(let i = 0; i < deklaration.length; i++){ const c = deklaration[i];
+      if(c === "(") tiefe++; else if(c === ")") tiefe--;
+      else if(c === "," && !tiefe){ aus.push(deklaration.slice(start, i)); start = i + 1; } }
+    aus.push(deklaration.slice(start)); return aus; };
+  const wort = [];
+  for(const m of s.matchAll(/animation:([^;}]*)/g)){
+    if(imRuhigen(m.index)) continue;
+    for(const stueck of teile(m[1])){
+      const ohneKlammern = stueck.replace(/\([^)]*\)/g, "()");
+      const kw = ohneKlammern.match(/(?:^|\s)(ease-out|ease-in-out|ease-in|linear)(?=\s|$)/);
+      if(!kw) continue;
+      const name = (stueck.trim().match(/^[A-Za-z][\w-]*/) || [""])[0];
+      if(kw[1] === "linear" && GLEICHFOERMIG.includes(name)) continue;
+      wort.push(("animation:" + stueck.trim()).slice(0, 52));
+    }
+  }
   ok(wort.length === 0, "keine Bewegung auf dem schwächeren CSS-Schlüsselwort",
      wort.length ? wort.join(" | ") : "alle auf den Kurven des Hauses");
   console.log("         (" + ruhigBereiche.length +
