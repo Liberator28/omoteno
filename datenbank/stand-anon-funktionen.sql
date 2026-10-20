@@ -3,6 +3,7 @@
 --
 -- Gelesen am 08.10., nachgelesen am zweiten Tag nach dem Einspielen
 -- von admin_anmelden und tisch_sitzung_start, erneut nach
+-- migration-zahlungen.sql (vier neue Zeilen, noch NICHT eingespielt) und nach
 -- rabattcode_pruefen (migration-gutschein-sicher.sql, Teil 2b), mit:
 --
 --   select p.proname, pg_get_function_identity_arguments(p.oid),
@@ -27,6 +28,8 @@
 admin_anmelden          | koerper
 anfrage_anhang_ok       | koerper
 bestellung_aufgeben     | koerper
+bestellung_aufgeben_zahlung | koerper
+bestellung_liefern_zahlung | koerper
 bestellung_gefunden     | koerper
 bestellung_abholen      | aufgeben
 bestellung_liefern      | aufgeben
@@ -43,3 +46,5 @@ reservierung_anfragen   | trigger
 reservierung_stand      | koerper
 slug_frei               | koerper
 tisch_sitzung_start     | koerper
+zahlarten_oeffentlich   | koerper
+zahlung_status          | koerper

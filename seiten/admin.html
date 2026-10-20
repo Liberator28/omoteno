@@ -1132,6 +1132,12 @@ body.hell .tmchip[aria-pressed=true]{color:var(--flaeche)}
 }
 .pruefband b{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--warn)}
 .pruefknoepfe{display:flex;gap:8px;flex-wrap:wrap}
+/* Zahlung: Chip an der Karte, Band bei offener Zahlung und bei nötiger Rückzahlung */
+.zahlchip{display:inline-block;margin-top:4px;padding:3px 9px;border-radius:999px;font-size:11.5px;font-weight:600;
+  color:var(--kreide);background:color-mix(in srgb, var(--gut) 18%, transparent);border:1px solid color-mix(in srgb, var(--gut) 45%, transparent)}
+.pruefband.rueckband{background:color-mix(in srgb, var(--warn) 22%, transparent)}
+.zhfeld{display:grid;gap:6px;margin:10px 0}
+.zhstand{font-size:13.5px;color:var(--gedaempft);margin:8px 0 0}
 .pruefknoepfe .knopf{flex:1;min-width:120px;min-height:44px}
 .bestellung.zupruefen{border-style:dashed}
 .notiz{
@@ -1239,6 +1245,80 @@ body.hell .tmchip[aria-pressed=true]{color:var(--flaeche)}
    gibt es schon als Zweispalter der Auswertung (§1.1). */
 .aw-segment.seg-zwei{grid-template-columns:repeat(2,1fr)}
 .aw-segment.seg-zwei::before{width:calc((100% - 6px) / 2)}
+/* ═══ SAALPLAN ═══ */
+.saalansicht{margin-bottom:12px}
+.saal{margin:0 0 14px;position:relative}
+/* Auf dem Tablet liegt das Einrichten-Blatt links AUF dem Plan: Wer einen Tisch zieht, soll
+   den Plan nicht aus dem Bild scrollen, um Form oder Stühle zu ändern. */
+@media (min-width:761px){
+  .saal.einrichten .sp-edit{position:absolute;left:10px;top:64px;width:272px;max-height:calc(100% - 140px);overflow:auto;z-index:6;margin:0;
+    background:var(--glas);-webkit-backdrop-filter:blur(18px);backdrop-filter:blur(18px)}
+}
+.sp-leiste{display:flex;gap:6px;overflow-x:auto;padding:2px 0 8px;scrollbar-width:none}
+.sp-leiste::-webkit-scrollbar{display:none}
+.sp-chip{flex:none;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 14px;border-radius:22px;
+  border:1px solid var(--linie);background:var(--flaeche);color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+.sp-chip i{width:11px;height:11px;border-radius:50%;flex:none;box-shadow:0 0 8px currentColor}
+.sp-chip b{font-variant-numeric:tabular-nums}
+.sp-chip[aria-pressed="true"]{background:var(--kreide);color:var(--nacht);border-color:var(--kreide)}
+.sp-buehne{position:relative;height:clamp(300px,calc(100dvh - 330px - var(--leiste-h,64px)),620px);border-radius:18px;overflow:hidden;
+  background:radial-gradient(120% 90% at 50% 0%,var(--sp-himmel1),var(--sp-himmel2));
+  border:1px solid var(--linie);touch-action:none;user-select:none;-webkit-user-select:none;cursor:grab}
+.sp-buehne:active{cursor:grabbing}
+.sp-buehne.gross{height:clamp(420px,calc(100dvh - 150px),980px)}
+/* Im Saal ersetzen die Zustands-Chips die Filter; erst mit einer Auswahl stehen sie wieder da. */
+body.saal-an:not(.saal-sel) #t-bestellungen .filterblock{display:none}
+#spSvg{display:block;width:100%;height:100%}
+.sp-kamera{transition:transform .38s cubic-bezier(.2,.8,.2,1)}
+.sp-kamera.fest{transition:none}
+.sp-boden{fill:var(--sp-boden);stroke:var(--sp-linie);stroke-width:1;vector-effect:non-scaling-stroke}
+.sp-wand{fill:var(--sp-wand)}
+.sp-wand.r{fill:var(--sp-wand2)}
+.sp-gitter{stroke:var(--sp-linie);stroke-width:1;vector-effect:non-scaling-stroke;opacity:.55}
+.sp-skala{transform:scale(var(--lz,1))}
+.sp-nr{font:700 13px/1 system-ui,-apple-system,sans-serif;fill:#10151C;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+.sp-zahl{font:800 11px/1 system-ui,-apple-system,sans-serif;fill:#10151C;paint-order:stroke;stroke:#fff;stroke-width:3px;stroke-linejoin:round;pointer-events:none}
+.sp-tisch{cursor:pointer;outline:none}
+.sp-tisch:focus-visible .sp-ring,.sp-tisch.gewaehlt .sp-ring{opacity:1}
+.sp-ring{opacity:0}
+.sp-treffer{pointer-events:all}
+.sp-abz{pointer-events:none}
+.sp-glow{pointer-events:none;opacity:.8}
+.sp-glow.s2{opacity:.9}
+.sp-glow.s3{opacity:1}
+.sp-glow.s2,.sp-glow.s3{animation:spPuls 1.8s cubic-bezier(.45,.05,.55,.95) infinite}
+.sp-glow.s3{animation-duration:1s}
+@keyframes spPuls{0%,100%{opacity:.5}50%{opacity:1}}
+@media (prefers-reduced-motion:reduce){.sp-glow.s2,.sp-glow.s3{animation:none}.sp-kamera{transition:none}}
+.sp-buehne[data-hebt="servieren"] .sp-tisch:not([data-st~="servieren"]),
+.sp-buehne[data-hebt="ruf"] .sp-tisch:not([data-st~="ruf"]),
+.sp-buehne[data-hebt="neu"] .sp-tisch:not([data-st~="neu"]),
+.sp-buehne[data-hebt="pruefen"] .sp-tisch:not([data-st~="pruefen"]),
+.sp-buehne[data-hebt="arbeit"] .sp-tisch:not([data-st~="arbeit"]){opacity:.25}
+.sp-werkzeug{position:absolute;right:10px;top:10px;display:flex;flex-direction:column;gap:8px;touch-action:manipulation}
+.sp-werkzeug button{width:44px;height:44px;border-radius:12px;border:1px solid var(--glas-rand);
+  background:var(--glas);-webkit-backdrop-filter:blur(14px);backdrop-filter:blur(14px);
+  color:var(--kreide);font:600 22px/1 system-ui;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.sp-werkzeug button[hidden]{display:none}
+.sp-werkzeug button[aria-pressed="true"]{background:var(--kreide);color:var(--nacht)}
+.sp-zeile{margin:8px 2px 0;font-size:14px;color:var(--gedaempft);min-height:20px}
+.sp-rest{margin-top:8px}
+.sp-restknopf{width:100%;min-height:52px;display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;
+  padding:8px 14px;border-radius:14px;border:1px dashed var(--messing);background:var(--flaeche);color:var(--kreide);font:inherit;text-align:left;cursor:pointer}
+.sp-restknopf span{font-size:13px;color:var(--gedaempft)}
+.sp-restknopf[aria-pressed="true"]{border-style:solid;background:var(--flaeche-2)}
+.sp-edit{margin-top:10px;padding:14px;border-radius:16px;border:1px solid var(--linie);background:var(--flaeche);display:flex;flex-direction:column;gap:14px}
+.sp-editkopf{display:flex;flex-direction:column;gap:2px}
+.sp-editkopf span,.sp-hinweis,.sp-leer{font-size:13px;color:var(--gedaempft);margin:0}
+.sp-editblock{display:flex;flex-direction:column;gap:8px}
+.sp-editname{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gedaempft)}
+.sp-chips{display:flex;flex-wrap:wrap;gap:6px}
+.sp-plaetze{display:flex;align-items:center;gap:14px}
+.sp-pm{width:44px;height:44px;border-radius:12px;border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);font:600 22px/1 system-ui;cursor:pointer}
+.sp-editknoepfe{display:flex;gap:8px;flex-wrap:wrap}
+body.saal-an #karten{margin-top:6px}
+.sp-buehne{--sp-himmel1:#243a4a;--sp-himmel2:#0d1a22;--sp-boden:#1c2c36;--sp-linie:rgba(190,210,225,.16);--sp-wand:#13212a;--sp-wand2:#0f1a21}
+body.hell .sp-buehne{--sp-himmel1:#f4f6f9;--sp-himmel2:#dfe5ec;--sp-boden:#eef1f5;--sp-linie:rgba(60,80,100,.18);--sp-wand:#cbd3dd;--sp-wand2:#b9c3cf}
 .bestellansicht{margin-bottom:12px}
 .bestellansicht .zahl{margin-left:6px;vertical-align:1px}
 .aw-seg{
@@ -2335,6 +2415,13 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
   background:var(--flaeche-2);border:1px solid var(--linie)}
 .kbanordnung-hilfe{margin:0 0 10px}
 .kbr-bereich{font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gedaempft);margin-top:4px}
+.kbr-kopf{display:flex;align-items:center;gap:2px;margin-top:4px}
+.kbr-kopf .kbr-bereich{flex:1;min-width:0;margin-top:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kbr-rknopf{width:44px;min-height:44px;display:flex;align-items:center;justify-content:center;flex:none;
+  background:none;border:0;border-radius:8px;color:var(--gedaempft);cursor:pointer}
+.kbr-rknopf:hover:not(:disabled){background:var(--flaeche-2);color:var(--kreide)}
+.kbr-rknopf:disabled{opacity:.3;cursor:default}
+.kbr-rknopf:focus-visible{outline:2px solid var(--messing);outline-offset:-2px}
 .kbr-gitter{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px}
 .kbr-kachel{grid-column:span 6;position:relative;display:flex;align-items:stretch;min-height:48px;border-radius:10px;
   background:var(--flaeche);border:1px solid var(--linie);color:var(--kreide);min-width:0}
@@ -2518,19 +2605,73 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
 #txTippen[aria-pressed="true"]{border-color:var(--messing);color:var(--messing)}
 .gh-vorschau.tippen .hvfenster iframe{pointer-events:auto}
 .gh-vorschau.tippen .hvfenster{outline:2px solid var(--messing);outline-offset:2px}
-.txliste{display:flex;flex-direction:column;gap:2px;margin:10px 0 12px}
+.txwerk{display:flex;flex-direction:column;gap:10px;margin:0 0 12px}
+.txsuchfeld{position:relative}
+.txsuchfeld svg{position:absolute;left:14px;top:50%;width:18px;height:18px;margin-top:-9px;fill:none;
+  stroke:var(--kreide-leise);stroke-width:2;stroke-linecap:round;pointer-events:none}
+.txsuchfeld .suche{margin:0;padding-left:42px}
+/* Filter nach Seite: eine Reihe zum Wischen, jeder Chip mit seiner Zahl. */
+.txchips{display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;padding:2px 2px 6px;margin:0 -2px;
+  scrollbar-width:none;scroll-snap-type:x proximity}
+.txchips::-webkit-scrollbar{display:none}
+.txchip{flex:none;scroll-snap-align:start;display:inline-flex;align-items:center;gap:7px;min-height:44px;padding:0 15px;
+  border-radius:999px;border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);font:inherit;font-size:14px;
+  font-weight:600;cursor:pointer;white-space:nowrap;transition:border-color .2s, background-color .2s}
+.txchip b{font-family:var(--mono);font-size:11px;font-weight:700;color:var(--kreide-leise)}
+.txchip[aria-pressed="true"]{border-color:var(--messing);background:color-mix(in srgb, var(--messing) 20%, var(--flaeche-2))}
+.txchip[aria-pressed="true"] b{color:var(--kreide)}
+.txliste{display:flex;flex-direction:column;gap:8px;margin:4px 0 14px}
 .txliste:empty{display:none}
-.txseite{font-family:var(--mono);font-size:11px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;
-  color:var(--messing);padding:12px 2px 4px}
-.txzeile{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:44px;
-  padding:8px 12px;text-align:left;border:1px solid var(--linie);border-radius:10px;background:var(--flaeche-2);
-  color:var(--kreide);font:inherit;font-size:15px;cursor:pointer}
-.txzeile[aria-expanded="true"]{border-color:var(--messing)}
-.txzeile .txneu{flex:none;font-size:11px;font-weight:700;color:var(--messing)}
-.txeditor{padding:10px 2px 14px;display:flex;flex-direction:column;gap:10px}
+.txkarte{border:1px solid var(--linie);border-radius:14px;background:var(--flaeche-2);overflow:hidden;
+  }
+.txkarte.offen{border-color:var(--messing);box-shadow:0 10px 26px -18px rgba(0,0,0,.55)}
+.txzeile{display:flex;align-items:center;gap:12px;width:100%;min-height:58px;padding:10px 14px;text-align:left;
+  border:0;background:none;color:var(--kreide);font:inherit;cursor:pointer}
+.txpunkt{flex:none;width:8px;height:8px;border-radius:50%;background:var(--linie);transition:background-color .2s}
+.txkarte.geaendert .txpunkt{background:var(--messing);box-shadow:0 0 0 4px color-mix(in srgb, var(--messing) 22%, transparent)}
+.txtext{flex:1;min-width:0;display:grid;gap:3px}
+.txwort{font-size:15px;line-height:1.3;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+  overflow-wrap:anywhere}
+.txmeta{font-family:var(--mono);font-size:10.5px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--kreide-leise)}
+.txzeile .txneu{flex:none;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;color:var(--kreide);
+  background:color-mix(in srgb, var(--messing) 22%, transparent)}
+.txpfeil{flex:none;width:18px;height:18px;fill:none;stroke:var(--kreide-leise);stroke-width:2.2;stroke-linecap:round;
+  stroke-linejoin:round;transition:transform .25s cubic-bezier(.22,1,.36,1)}
+.txzeile[aria-expanded="true"] .txpfeil{transform:rotate(180deg)}
+.txeditor{padding:14px;display:flex;flex-direction:column;gap:16px;border-top:1px solid var(--linie)}
+/* „So sieht es aus“: der Satz in der gewählten Schrift, sofort. */
+.txprobe{padding:18px 14px;border-radius:12px;background:var(--flaeche);border:1px dashed var(--linie);
+  text-align:center;font-size:22px;line-height:1.25;color:var(--kreide);overflow-wrap:anywhere;min-height:68px;
+  display:grid;place-items:center}
+.txfeld{display:flex;flex-direction:column;gap:6px}
+.txfeldkopf{display:flex;align-items:baseline;justify-content:space-between;gap:10px}
+.txfeldname{font-size:13px;font-weight:700;color:var(--kreide)}
+.txzaehler{font-family:var(--mono);font-size:11px;color:var(--kreide-leise)}
 .txeditor textarea{min-height:66px}
+/* Schriftwahl als Muster zum Wischen (wie Framer): jede Schrift in sich selbst. */
+.txschriften{display:flex;gap:8px;overflow-x:auto;overscroll-behavior-x:contain;padding:2px 14px 6px;margin:0 -14px;
+  scrollbar-width:none;scroll-snap-type:x proximity}
+.txschriften::-webkit-scrollbar{display:none}
+.txschrift{flex:none;scroll-snap-align:start;width:92px;min-height:84px;display:grid;place-items:center;align-content:center;gap:4px;
+  padding:8px;border:1px solid var(--linie);border-radius:12px;background:var(--flaeche);color:var(--kreide);font:inherit;cursor:pointer;
+  transition:border-color .2s}
+.txschrift .aa{font-size:30px;line-height:1}
+.txschrift .nm{font-size:11px;color:var(--kreide-leise);max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.txschrift[aria-checked="true"]{border-color:var(--messing);box-shadow:0 0 0 1px var(--messing)}
+.txschrift[aria-checked="true"] .nm{color:var(--kreide)}
+.txhinweis{margin:0;font-size:13px;line-height:1.45;color:var(--kreide-leise)}
 .txeditor .txknoepfe{display:flex;gap:8px;flex-wrap:wrap}
 .txeditor .txknoepfe .knopf{min-height:44px}
+/* Die Leiste klebt unten: Wer lange durch die Texte geht, findet „Übernehmen“ immer. */
+.txleiste{position:sticky;bottom:calc(var(--leiste-h, 0px) + 12px);z-index:30;display:flex;align-items:center;gap:8px;
+  padding:10px 12px;border-radius:16px;border:1px solid var(--linie);background:var(--flaeche-2);
+  box-shadow:0 14px 34px -14px rgba(0,0,0,.6)}
+.txleiste .txzahl{flex:none;font-size:13px;font-weight:600;color:var(--kreide);white-space:nowrap}
+.txleiste #txVerwerfen{flex:none;background:none;border:0;color:var(--kreide);padding:0 10px;text-decoration:underline;text-underline-offset:3px;margin-left:auto}
+.txleiste #txSichern{flex:1;min-width:0}
+.txleiste .knopf{min-height:44px;width:auto;padding:0 14px}
+.txleiste #txSichern{padding:0 8px}
+@media (prefers-reduced-motion:reduce){.txkarte,.txchip,.txschrift,.txpunkt,.txpfeil{transition:none}}
 /* Kopf & Logo im Board */
 .kfreihe{display:flex;align-items:center;gap:14px;margin:0 0 12px}
 .kfschau{flex:none;overflow:hidden;background:var(--flaeche-2);border:1px solid var(--linie);
@@ -3582,6 +3723,28 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <!-- Zum Abholen (Wunsch 10.10.): Die Küche hakt ab („Abholbereit“),
          hier steht es für den Service — mit eigenem Ton —, bis jemand
          „Gebracht“ tippt. Ganz oben, weil warmes Essen nicht wartet. -->
+    <!-- Saalplan (Wunsch 19.10.): alle Tische auf einer Karte. Die Ansicht
+         wählt der Besitzer; ohne eingezeichnete Tische bleibt es die Liste. -->
+    <div class="aw-segment seg-zwei saalansicht" id="saalAnsicht" role="radiogroup" aria-label="Ansicht der Bestellungen" hidden>
+      <button type="button" class="aw-seg" role="radio" data-saal-ansicht="liste" aria-checked="true">Liste</button>
+      <button type="button" class="aw-seg" role="radio" data-saal-ansicht="saal" aria-checked="false">Saal</button>
+    </div>
+    <section class="saal" id="saal" aria-label="Saalplan" hidden>
+      <div class="sp-leiste" id="spLeiste" role="group" aria-label="Zustände hervorheben"></div>
+      <div class="sp-buehne" id="spBuehne">
+        <svg id="spSvg" role="group" aria-label="Saalplan, Tische mit Zustand" xmlns="http://www.w3.org/2000/svg"></svg>
+        <div class="sp-werkzeug" role="group" aria-label="Plan bedienen">
+          <button type="button" data-sp-wz="plus" aria-label="Hineinzoomen">+</button>
+          <button type="button" data-sp-wz="minus" aria-label="Herauszoomen">−</button>
+          <button type="button" data-sp-wz="alles" aria-label="Alle Tische zeigen"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" data-sp-wz="gross" aria-pressed="false" aria-label="Plan größer darstellen"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M5 9l7-5 7 5M5 15l7 5 7-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          <button type="button" data-sp-wz="einrichten" aria-label="Saal einrichten" hidden><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>
+      <p class="sp-zeile" id="spZeile" aria-live="polite"></p>
+      <div class="sp-rest" id="spRest" hidden></div>
+      <div class="sp-edit" id="spEdit" hidden></div>
+    </section>
     <section class="abholen" id="abholen" aria-label="Zum Abholen" hidden>
       <div class="abkopf"><b>Zum Abholen</b><span class="abzahl" id="abholZahl"></span></div>
       <div class="abliste" id="abholListe" aria-live="polite"></div>
@@ -3607,6 +3770,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
       <p class="filterinfo" id="filterInfo"></p>
     </div>
+    <div id="rueckListe" aria-live="polite"></div>
     <div class="karten" id="karten"></div>
   </section>
 
@@ -4069,11 +4233,19 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         Hinweise. Tippen Sie ihn oben in der Vorschau an oder suchen Sie ihn hier,
         ändern Sie Wortlaut und Schrift. Beim Übernehmen wird Ihre Änderung in alle
         elf Sprachen übersetzt. Gerichte ändern Sie in der Karte.</p>
-      <button type="button" class="knopf leise schmal" id="txTippen" aria-pressed="false">Text in der Vorschau antippen</button>
-      <input type="text" class="suche" id="txSuche" placeholder="Text suchen" autocomplete="off" aria-label="Text suchen">
+      <div class="txwerk">
+        <button type="button" class="knopf leise schmal" id="txTippen" aria-pressed="false">Text in der Vorschau antippen</button>
+        <div class="txsuchfeld">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>
+          <input type="text" class="suche" id="txSuche" placeholder="Text suchen" autocomplete="off" aria-label="Text suchen">
+        </div>
+        <div class="txchips" id="txChips" role="group" aria-label="Filter nach Seite"></div>
+      </div>
       <div class="txliste" id="txListe" aria-live="polite"></div>
       <div class="epruefung" id="txStand"></div>
-      <div class="eknoepfe">
+      <div class="txleiste" id="txLeiste">
+        <span class="txzahl" id="txZahl">Keine neuen Änderungen</span>
+        <button type="button" class="knopf leise schmal" id="txVerwerfen" disabled>Verwerfen</button>
         <button class="knopf" id="txSichern" disabled>Übernehmen</button>
       </div>
     </div>
@@ -4085,6 +4257,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         Vorgabe für die vier Bereiche darunter, solange Sie dort nichts
         Eigenes wählen. Die Vorschau oben zeigt es sofort; Gäste sehen es,
         sobald Sie übernehmen.</p>
+      <p class="ehilfe">Unsere Auswahl ist frei lizenziert (SIL Open Font License) und
+        wird von unserem eigenen Server geladen — es geht keine Gäste-Adresse an Google.
+        Eine eigene Schriftdatei laden Sie nur hoch, wenn Ihre Lizenz die Nutzung im
+        Web erlaubt; eine Lizenz nur für Drucksachen reicht dafür meist nicht.</p>
       <div class="swrolle" data-sw-rolle="kopf">
         <button type="button" class="swkopfknopf" data-sw-auf aria-expanded="false" aria-controls="swinhalt-kopf">
           <span class="swkopftext"><b>Alle Überschriften (Vorgabe)</b><i data-sw-zusammenfassung></i></span>
@@ -4375,7 +4551,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <h2 class="etitel">Lieferung</h2>
       <p class="ehilfe">Ist sie an, kann ein Gast sich von zu Hause beliefern lassen —
         dieselbe Karte, derselbe Korb, nur mit Adresse statt Tischnummer.
-        Bezahlt wird bei Ihnen an der Tür; über Omoteno fließt kein Geld.</p>
+        Bezahlt wird bei Ihnen an der Tür — oder, wenn Sie es unter „Bezahlen“ einschalten, online. Über Omoteno fließt nie Geld.</p>
 
       <div class="schalter">
         <div><div class="schaltertext">Wir liefern</div>
@@ -4608,6 +4784,42 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          (zusammengeführt, keine neue Spalte). Die Zeit setzt das Team
          weiter — sie steuert Küche und Mahnung, nur der Gast sieht sie
          dann nicht. -->
+    <!-- Bezahlen (migration-zahlungen.sql). Standard bleibt: der Gast zahlt bei Ihnen.
+         Geschrieben nur über zahlarten_setzen (Inhaber + PIN). Kein geheimer Schlüssel
+         hier: nur die Kontonummer acct_… Ihres EIGENEN Stripe-Kontos. -->
+    <div class="egruppe" data-nur-inhaber id="zhGruppe">
+      <h2 class="etitel">Bezahlen</h2>
+      <p class="ehilfe">Standard: Der Gast zahlt bei Ihnen. Hier schalten Sie Online-Zahlung
+        (über Ihr eigenes Stripe-Konto) und Überweisung dazu. Das Geld geht immer direkt auf
+        Ihr Konto — nie über Omoteno. Jede Änderung bestätigen Sie mit Ihrer PIN.</p>
+      <label class="ezeile"><span><b>Bankkarte</b><i>Visa, Mastercard, Apple Pay, Google Pay</i></span>
+        <input type="checkbox" class="kipp" id="zhKarte"></label>
+      <label class="ezeile"><span><b>Klarna</b><i>Sofort bezahlen oder später</i></span>
+        <input type="checkbox" class="kipp" id="zhKlarna"></label>
+      <label class="ezeile"><span><b>PayPal</b><i>Der Gast zahlt mit seinem PayPal-Konto</i></span>
+        <input type="checkbox" class="kipp" id="zhPaypal"></label>
+      <label class="ezeile"><span><b>SEPA-Lastschrift</b><i>Wird erst nach Tagen bestätigt — für Essen zum Sofortverzehr ungeeignet</i></span>
+        <input type="checkbox" class="kipp" id="zhSepa"></label>
+      <label class="ezeile"><span><b>Überweisung</b><i>Nur bei Lieferung. Die Küche beginnt erst, wenn Sie „Zahlung eingegangen“ tippen</i></span>
+        <input type="checkbox" class="kipp" id="zhUeb"></label>
+      <div class="ezeile senkrecht zhfeld">
+        <label class="feld"><span>Stripe-Konto (acct_…)</span>
+          <input id="zhStripe" type="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="acct_1AbCdEfGhIjKlMn">
+          <small class="feldhilfe">Aus Ihrem Stripe-Dashboard unter Einstellungen → Konto. Ohne dieses Konto gibt es keine Online-Zahlung.</small>
+        </label>
+        <label class="feld"><span>IBAN</span>
+          <input id="zhIban" type="text" autocomplete="off" spellcheck="false" placeholder="DE89 3704 0044 0532 0130 00"></label>
+        <label class="feld"><span>Kontoinhaber</span>
+          <input id="zhInhaber" type="text" autocomplete="off" placeholder="Name wie auf dem Konto"></label>
+        <label class="feld"><span>BIC (optional)</span>
+          <input id="zhBic" type="text" autocomplete="off" spellcheck="false" placeholder="COBADEFFXXX"></label>
+        <label class="feld"><span>Bank (optional)</span>
+          <input id="zhBank" type="text" autocomplete="off" placeholder="Commerzbank"></label>
+      </div>
+      <div class="eknoepfe"><button class="knopf" id="zhSichern" disabled>Speichern</button></div>
+      <p class="zhstand" id="zhStand" aria-live="polite">Wird geladen …</p>
+    </div>
+
     <div class="egruppe" data-nur-inhaber>
       <h2 class="etitel">Bestellstand beim Gast</h2>
       <p class="ehilfe">Was Ihr Gast nach dem Bestellen auf seinem Telefon sieht,
@@ -7421,8 +7633,20 @@ function awTun(was, name){
 /* ── Export ────────────────────────────────────────────────────────
    Semikolon, Dezimalkomma, UTF-8 mit BOM: So öffnet ein deutsches
    Excel die Datei ohne Umweg. Keine Namen, keine Adressen. */
+/* Tabellenprogramme führen eine Zelle als Formel aus, wenn sie mit = + - @
+   (oder Tab/Zeilenumbruch) beginnt. Gast-Notiz und Gastname stammen vom
+   Gast — „=HYPERLINK(…)“ in einer Notiz wäre beim Öffnen der Datei beim
+   Personal angekommen (Sweep 19.10.). Zeichen davor: ein Apostroph, der
+   die Zelle zu Text macht. Telefonnummern („+49 6422 …“) bleiben, wie
+   sie sind: nach + oder - nur Ziffern und Trennzeichen. */
+function csvZelle(w){
+  const t = String(w ?? "");
+  if(/^[=@\t\r]/.test(t)) return "'" + t;
+  if(/^[+\-]/.test(t) && !/^[+\-][0-9 ()\/.\-]*$/.test(t)) return "'" + t;
+  return t;
+}
 function awCsvFeld(v){
-  const t = typeof v === "number" ? v.toFixed(2).replace(".", ",") : String(v ?? "");
+  const t = typeof v === "number" ? v.toFixed(2).replace(".", ",") : csvZelle(v);
   return /[;"\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
 }
 function awCsv(art){
@@ -8713,7 +8937,7 @@ function zeichneReservierungen(){
     return `<article class="res ${offen ? "" : "erledigt"}" data-id="${sicher(r.id)}">
       <div class="reskopf">
         <span class="reswann">${w.uhr}</span>
-        <span class="restag">${w.wann}${r.personen ? " · " + r.personen + " Pers." : ""}</span>
+        <span class="restag">${w.wann}${r.personen ? " · " + sicher(r.personen) + " Pers." : ""}</span>
         <span class="resmarke">${r.quelle === "telefon" ? "Alessia" : "Tisch"}${
           r.status === "bestaetigt" ? " · angenommen" : r.status === "abgelehnt" ? " · abgelehnt" : ""}</span>
       </div>
@@ -9229,6 +9453,13 @@ const EU_BEREICHE = [
       return euWippe("lfAn") ? "An · " + plz + (plz === 1 ? " Postleitzahl" : " Postleitzahlen") : "Aus"; },
     bild:() => '<g class="' + (euWippe("lfAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.roller.replace(/<(path|circle)/g, '<$1 transform="translate(8 8) scale(1.4)"') + '</g>' },
+  { titel:"Bezahlen", sym:"beleg", ton:"var(--gut)",
+    satz:"Online-Zahlung und Überweisung",
+    stand:() => { if(zahlSet === undefined) return "…"; const z = zahlSet || {};
+      const a = [z.karte_an ? "Karte" : "", z.klarna_an ? "Klarna" : "", z.paypal_an ? "PayPal" : "", z.sepa_an ? "SEPA" : "", z.ueberweisung_an ? "Überweisung" : ""].filter(Boolean);
+      return a.length ? a.join(" · ") : "Nur beim Personal"; },
+    bild:() => '<g class="' + ((zahlSet && (zahlSet.karte_an || zahlSet.klarna_an || zahlSet.paypal_an || zahlSet.sepa_an || zahlSet.ueberweisung_an)) ? "eu-strich" : "eu-strich eu-blass") + '">' +
+      '<rect x="6" y="12" width="36" height="24" rx="4" fill="none"/><path d="M6 20h36M12 30h8" fill="none"/></g>' },
   { titel:"Gäste-Newsletter", sym:"brief", ton:"var(--gut)",
     satz:"Gutschein und Erinnerung per E-Mail",
     stand:() => euWippe("nlAn") ? "An" : "Aus",
@@ -10071,6 +10302,7 @@ function demoStarten(){
   $("#statusText").textContent = "Demo";
   $("#betriebName").textContent = "Blend · Beispieldaten";
   beispieldaten();
+  saalLaden();
   // Nach 9 Sekunden kommt eine Telefonbestellung rein — damit du siehst,
   // wie sich das Board im Betrieb verhält.
   setTimeout(()=>{
@@ -10267,6 +10499,9 @@ async function betriebOeffnen(id){
 
   gerichte     = (g.data || []).filter(x => x.betrieb_id === id);
   bestellungen = (o.data || []).filter(x => x.betrieb_id === id);
+  zahlungen = {}; zahlSet = undefined;
+  zahlungenLaden(id).then(() => { if(marke === ladeMarke) neuZeichnen(); });
+  zhLaden();
   /* Kartenverzeichnis getrennt lesen: fehlt die Spalte, bleibt der Rest
      des Boards unberührt (die Abfrage oben kennt sie nicht). */
   kartenLaden(id).then(() => { if(marke === ladeMarke) zeichneKarte(); });
@@ -10305,6 +10540,7 @@ async function betriebOeffnen(id){
   nlUebersichtLaden(id);
 
   teamLaden(id);
+  saalLaden(id);
   live_anmelden(id, marke);
   reservierungenLaden(id);
   notizenLaden(id);
@@ -10430,6 +10666,7 @@ async function nachholen(id){
       klingel();
       melde(frisch + (frisch === 1 ? " Meldung nachgeholt" : " Meldungen nachgeholt"));
     }
+    await zahlungenLaden(betriebId);
     neuZeichnen();
     const p = $("#statusText");
     if(p && p.textContent.indexOf("unterbrochen") > -1) p.textContent = "live verbunden";
@@ -10521,6 +10758,13 @@ function beispieldaten(){
     {id:"b3", quelle:"tisch", status:"arbeit", tisch:"2", zeitpunkt:vor(19),
      positionen:[{name:"Flammkuchen Elsässer",menge:1,preis:11.50}], summe:11.50},
 
+    {id:"b5", quelle:"service", status:"neu", tisch:"4", zeitpunkt:vor(4), notiz:"Rechnung bitte", positionen:[], summe:0},
+    {id:"b6", quelle:"tisch", status:"arbeit", tisch:"3", zeitpunkt:vor(15), kueche_fertig_um:vor(2),
+     positionen:[{name:"Pommes mit Aioli",menge:1,preis:5.50}], summe:5.50},
+    {id:"b7", quelle:"tisch", status:"neu", tisch:"10", zeitpunkt:vor(8),
+     positionen:[{name:"Flammkuchen Elsässer",menge:3,preis:11.50}], summe:34.50},
+    {id:"b8", quelle:"tisch", status:"arbeit", tisch:"6", zeitpunkt:vor(11), wartezeit_min:10, bestaetigt_um:vor(9),
+     positionen:[{name:"Garden Spritz",menge:2,preis:6.50}], summe:13.00},
     {id:"b4", quelle:"telefon", status:"fertig", gast_name:"Murat Yildiz",
      gast_telefon:"0151 88420310", abholung:true, zeitpunkt:vor(46),
      positionen:[{name:"Pommes mit Aioli",menge:2,preis:5.50}], summe:11.00},
@@ -10579,7 +10823,585 @@ function neuZeichnen(){
     }, 0);
   }, {passive:true, capture:true}));
 
-function zeichneAlles(){ zeichneBoard(); zeichneKarte(); zeichneAusgabe(); aktionenZeichnen(); }
+/* ═══════════════════════════════════════════════════════════════════
+   SAALPLAN · alle Tische auf einer Karte (Wunsch 19.10.)
+
+   „Eine eigene 3D-Karte aller Tische … weiße Polygone mit Leuchtstufen, die
+   je nach Bedarf am Tisch eine andere Signalfarbe zeigen. Jeden Tisch
+   anklicken. Eine kleine Ansicht mit allen Tischen, dann hereinholen.“
+
+   Gebaut als SVG in Isometrie: Vektoren bleiben in jeder Vergrößerung scharf
+   (das war die Bedingung „gute Auflösung“), und es braucht keine
+   Bibliothek. Der Stand je Tisch wird NUR aus den Bestellungen gerechnet,
+   die das Board ohnehin hat (Serviceruf, Annahme, Zahlung, in Arbeit,
+   abholbereit) — kein zweiter Datenweg, der auseinanderlaufen könnte.
+
+   Nichts darf unsichtbar werden (§7): Was zu keinem Tisch auf dem Plan
+   gehört (Lieferung, Telefon, ein getippter Tisch, der nicht eingezeichnet
+   ist), steht in „Außerhalb des Plans“ und lässt sich dort antippen. Ohne
+   Auswahl zeigt die Liste darunter weiterhin ALLES.
+   ═══════════════════════════════════════════════════════════════════ */
+const SAAL = {
+  an: false,                 /* Ansicht „Saal“ gewählt und Plan vorhanden */
+  tische: [],                /* { id, nummer, aktiv, x, y, form, plaetze } */
+  geladen: false, fehlt: false,
+  auswahl: null,             /* normierte Tischnummer | "__rest" | null */
+  kamera: { k: 1, tx: 0, ty: 0 },
+  passt: null,               /* Zoom der Gesamtansicht */
+  edit: false, entwurf: null, gewaehlt: null,
+  sig: "", gross: false, hebt: null
+};
+const SAAL_U = 9;                              /* Bildpunkte je Welteinheit */
+const SAAL_C = Math.cos(Math.PI / 6);
+const SAAL_MERK = "omoteno-saal-ansicht";
+/* Signalfarben: dunkle Zeichen darauf sind überall ≥ 4,5:1; die Bedeutung
+   steht zusätzlich als Zeichen und Wort da, nie nur als Farbe. */
+const SAAL_ART = {
+  servieren: { name: "Servieren",  farbe: "#22D17A", rang: 0, zeichen: "M5 12.5l4.5 4.5L19 7" },
+  ruf:       { name: "Ruf",        farbe: "#FF3D81", rang: 1, zeichen: "M12 4a5 5 0 0 0-5 5v3.5L5.5 16h13L17 12.5V9a5 5 0 0 0-5-5zM10 18.5a2 2 0 0 0 4 0" },
+  neu:       { name: "Neu",        farbe: "#FFB300", rang: 2, zeichen: "M12 5v9M12 18v1.5" },
+  pruefen:   { name: "Zahlung",    farbe: "#A78BFA", rang: 3, zeichen: "M15.5 8.5A4.5 4.5 0 1 0 15.5 15.5M7 11h6M7 13.5h6" },
+  arbeit:    { name: "In Arbeit",  farbe: "#38BDF8", rang: 4, zeichen: "M12 6v6l4 2.5" },
+  sitzt:     { name: "Gäste da",   farbe: "#8FA3B8", rang: 5, zeichen: "M7 17v-1a5 5 0 0 1 10 0v1M12 11a2.6 2.6 0 1 0 0-5.2 2.6 2.6 0 0 0 0 5.2" }
+};
+const SAAL_FOLGE = Object.keys(SAAL_ART);
+function saalRuhig(){ return matchMedia("(prefers-reduced-motion: reduce)").matches; }
+const SAAL_FORMEN = { rund: "Rund", eckig: "Eckig", lang: "Lang" };
+
+function saalNk(t){ return String(t == null ? "" : t).trim().toLowerCase(); }
+function saalMin(zeit){ return Math.max(0, Math.floor((Date.now() - (Date.parse(zeit) || Date.now())) / 60000)); }
+
+/* ── Stand je Tisch, nur aus den Bestellungen ──────────────────────── */
+function saalStufe(art, min, b){
+  if(art === "sitzt") return 0;
+  if(art === "arbeit"){ const r = restLage(b); return r ? (r.sehrSpaet ? 3 : r.spaet ? 2 : 1) : 1; }
+  const grenzen = { ruf: [2, 5], neu: [3, 6], servieren: [2, 4], pruefen: [5, 10] }[art];
+  return min < grenzen[0] ? 1 : min < grenzen[1] ? 2 : 3;
+}
+function saalStand(){
+  const tische = new Map(), rest = { n: 0, teile: {}, ids: [] };
+  const eintrag = nk => { if(!tische.has(nk)) tische.set(nk, { arten: {}, haupt: null, stufe: 0 }); return tische.get(nk); };
+  const zaehle = (nk, art, min, b) => {
+    const t = eintrag(nk), a = t.arten[art] || (t.arten[art] = { n: 0, min: 0, stufe: 0 });
+    a.n++; a.min = Math.max(a.min, min); a.stufe = Math.max(a.stufe, saalStufe(art, min, b));
+  };
+  bestellungen.forEach(b => {
+    if(!b || b.status === "storniert" || b.status === "abgelehnt") return;
+    const nk = saalNk(b.tisch), arten = [];
+    if(b.quelle === "service"){
+      if(b.pruefen){ if(b.status === "neu") arten.push(["pruefen", saalMin(b.zeitpunkt)]); }
+      else if(b.status !== "fertig") arten.push(["ruf", saalMin(b.zeitpunkt)]);
+    }else if(b.pruefen){
+      if(b.status === "neu") arten.push(["pruefen", saalMin(b.zeitpunkt)]);
+    }else{
+      if(b.status === "neu") arten.push(["neu", saalMin(b.zeitpunkt)]);
+      if(b.status === "arbeit") arten.push(["arbeit", saalMin(b.zeitpunkt)]);
+      if(istAbholbereit(b)) arten.push(["servieren", saalMin(new Date(spurZeit(b)).toISOString())]);
+      if(!arten.length && b.quelle === "tisch" && saalMin(b.zeitpunkt) < 120) arten.push(["sitzt", saalMin(b.zeitpunkt)]);
+    }
+    if(!arten.length) return;
+    const aktiv = arten.some(x => x[0] !== "sitzt");
+    if(nk && SAAL.tische.some(t => t.x != null && saalNk(t.nummer) === nk && t.aktiv)){
+      arten.forEach(([art, min]) => zaehle(nk, art, min, b));
+    }else if(aktiv){
+      rest.n++; rest.ids.push(b.id);
+      const wer = b.quelle === "lieferung" ? "Lieferung" : b.quelle === "telefon" ? "Telefon"
+        : b.tisch ? "Tisch " + b.tisch : "ohne Tisch";
+      rest.teile[wer] = (rest.teile[wer] || 0) + 1;
+    }
+  });
+  tische.forEach(t => {
+    const liste = Object.keys(t.arten).sort((a, b) =>
+      (a === "sitzt") - (b === "sitzt") || t.arten[b].stufe - t.arten[a].stufe || SAAL_ART[a].rang - SAAL_ART[b].rang);
+    t.haupt = liste[0] || null;
+    t.stufe = t.haupt ? t.arten[t.haupt].stufe : 0;
+    t.liste = liste;
+  });
+  return { tische, rest };
+}
+function saalBeschreibung(tisch, st){
+  if(!st || !st.haupt) return "Tisch " + tisch.nummer + ": frei";
+  const teile = st.liste.map(a => {
+    const x = st.arten[a];
+    return SAAL_ART[a].name + (x.n > 1 ? " ×" + x.n : "") + (a === "sitzt" ? "" : (x.min < 1 ? " gerade eben" : " seit " + x.min + " Min"));
+  });
+  return "Tisch " + tisch.nummer + ": " + teile.join(", ");
+}
+
+/* Für „Auswahl“ in der Liste darunter (gefiltert() fragt hier). */
+function saalFilter(b){
+  if(!SAAL.an || SAAL.auswahl == null) return true;
+  if(SAAL.auswahl === "__rest") return SAAL.restIds && SAAL.restIds.indexOf(b.id) > -1;
+  return saalNk(b.tisch) === SAAL.auswahl;
+}
+
+/* ── Geometrie ─────────────────────────────────────────────────────── */
+function saalP(x, y, z){ return [(x - y) * SAAL_C * SAAL_U, (x + y) * 0.5 * SAAL_U - (z || 0) * SAAL_U]; }
+const saalPkt = l => l.map(p => p[0].toFixed(1) + "," + p[1].toFixed(1)).join(" ");
+/* Licht von links vorn: Flächen zum Betrachter-Links sind heller. */
+function saalGrau(nx, ny){
+  const l = Math.max(0, nx * -0.35 + ny * 0.94);
+  const v = Math.round(196 + 46 * l);
+  return "rgb(" + v + "," + (v + 3) + "," + Math.min(255, v + 9) + ")";
+}
+/* Ein Quader; liefert nur die drei sichtbaren Flächen. */
+function saalQuader(x0, y0, x1, y1, z0, z1, ebenen){
+  ebenen.links.push(saalPkt([saalP(x0, y1, z1), saalP(x1, y1, z1), saalP(x1, y1, z0), saalP(x0, y1, z0)]));
+  ebenen.rechts.push(saalPkt([saalP(x1, y0, z1), saalP(x1, y1, z1), saalP(x1, y1, z0), saalP(x1, y0, z0)]));
+  ebenen.oben.push(saalPkt([saalP(x0, y0, z1), saalP(x1, y0, z1), saalP(x1, y1, z1), saalP(x0, y1, z1)]));
+}
+function saalEbenen(){ return { links: [], rechts: [], oben: [], flaechen: [] }; }
+/* Achteckiges Prisma, die zum Betrachter gewandten Seiten. */
+function saalPrisma(cx, cy, r, z0, z1, ebenen, kurz){
+  const n = 8, v = [];
+  for(let i = 0; i < n; i++){ const a = (i + 0.5) * Math.PI * 2 / n; v.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]); }
+  for(let i = 0; i < n; i++){
+    const a = v[i], b = v[(i + 1) % n], m = (i + 1) * Math.PI * 2 / n;
+    const nx = Math.cos(m), ny = Math.sin(m);
+    if(nx + ny <= 0.05) continue;
+    ebenen.flaechen.push({ d: saalPkt([saalP(a[0], a[1], z1), saalP(b[0], b[1], z1), saalP(b[0], b[1], z0), saalP(a[0], a[1], z0)]), f: saalGrau(nx, ny) });
+  }
+  return v.map(p => saalP(p[0], p[1], z1));
+}
+function saalSitze(form, n, hx, hy){
+  const s = [];
+  if(form === "rund"){
+    for(let i = 0; i < n; i++){ const a = i * Math.PI * 2 / n + 0.4; s.push([Math.cos(a) * (4.2 + 2.3), Math.sin(a) * (4.2 + 2.3)]); }
+  }else if(form === "eckig"){
+    const w = 4.4, jeSeite = [0, 0, 0, 0];
+    for(let i = 0; i < n; i++) jeSeite[i % 4]++;
+    [[0, -1], [1, 0], [0, 1], [-1, 0]].forEach((d, k) => {
+      const c = jeSeite[k];
+      for(let i = 0; i < c; i++){ const o = (i - (c - 1) / 2) * 3.4; s.push(d[0] === 0 ? [o, d[1] * (w + 2.3)] : [d[0] * (w + 2.3), o]); }
+    });
+  }else{
+    const a = Math.ceil(n / 2), b = n - a;
+    for(let i = 0; i < a; i++) s.push([(i - (a - 1) / 2) * 3.6, -(3.2 + 2.3)]);
+    for(let i = 0; i < b; i++) s.push([(i - (b - 1) / 2) * 3.6, 3.2 + 2.3]);
+  }
+  return s;
+}
+
+/* Ein Tisch als Markup. Reihenfolge von hinten nach vorn: Glühen, Stühle
+   hinter dem Tisch, Fuß, Platte, Stühle davor. Je Ebene EIN Pfad pro Farbe
+   (statt einem Element je Fläche) — die Zeichnung bleibt auch bei vielen
+   Tischen flink. */
+function saalTischSVG(t, st, gewaehlt){
+  const form = t.form || "rund", n = t.plaetze || 4;
+  const hinten = saalEbenen(), vorn = saalEbenen(), fuss = saalEbenen(), platte = saalEbenen();
+  saalSitze(form, n).forEach(s => {
+    const cx = t.x + s[0], cy = t.y + s[1], ziel = (s[0] + s[1] < 0) ? hinten : vorn;
+    saalQuader(cx - 1.1, cy - 1.1, cx + 1.1, cy + 1.1, 0, 2.6, ziel);
+  });
+  let oben = [];
+  const hoehe = 4.2, dick = 0.9;
+  if(form === "rund"){
+    saalPrisma(t.x, t.y, 0.9, 0, hoehe, fuss, true);
+    const deck = saalPrisma(t.x, t.y, 4.2, hoehe, hoehe + dick, platte, false);
+    oben = [deck];
+  }else{
+    const hx = form === "lang" ? 7 : 4.4, hy = form === "lang" ? 3.2 : 4.4;
+    [[-1, -1], [1, -1], [1, 1], [-1, 1]].forEach(e => {
+      const lx = t.x + e[0] * (hx - 0.9), ly = t.y + e[1] * (hy - 0.9);
+      saalQuader(lx - 0.45, ly - 0.45, lx + 0.45, ly + 0.45, 0, hoehe, fuss);
+    });
+    saalQuader(t.x - hx, t.y - hy, t.x + hx, t.y + hy, hoehe, hoehe + dick, platte);
+    oben = [[saalP(t.x - hx, t.y - hy, hoehe + dick), saalP(t.x + hx, t.y - hy, hoehe + dick), saalP(t.x + hx, t.y + hy, hoehe + dick), saalP(t.x - hx, t.y + hy, hoehe + dick)]];
+  }
+  const ebene = e => (e.links.length ? '<path d="M' + e.links.map(p => p.split(" ").join("L")).join("ZM") + 'Z" fill="rgb(232,235,242)"/>' : "") +
+    (e.rechts.length ? '<path d="M' + e.rechts.map(p => p.split(" ").join("L")).join("ZM") + 'Z" fill="rgb(196,203,215)"/>' : "") +
+    (e.flaechen || []).map(f => '<polygon points="' + f.d + '" fill="' + f.f + '"/>').join("") +
+    (e.oben.length ? '<path d="M' + e.oben.map(p => p.split(" ").join("L")).join("ZM") + 'Z" fill="rgb(250,251,253)"/>' : "");
+  const mitte = saalP(t.x, t.y, hoehe + dick);
+  const fuss0 = saalP(t.x, t.y, 0);
+  const art = st && st.haupt ? SAAL_ART[st.haupt] : null, stufe = st ? st.stufe : 0;
+  /* Platte: zwei Dreiecke leicht verschieden hell (Polygon-Optik). */
+  let topFlaeche = "";
+  oben.forEach(pts => {
+    const p = pts.map(q => [q[0], q[1]]);
+    if(p.length === 4){
+      topFlaeche += '<polygon points="' + saalPkt([p[0], p[1], p[2]]) + '" fill="rgb(255,255,255)"/><polygon points="' + saalPkt([p[0], p[2], p[3]]) + '" fill="rgb(243,246,250)"/>';
+    }else{
+      for(let i = 1; i < p.length - 1; i++) topFlaeche += '<polygon points="' + saalPkt([p[0], p[i], p[i + 1]]) + '" fill="rgb(' + (i % 2 ? 255 : 244) + ',' + (i % 2 ? 255 : 247) + ',' + (i % 2 ? 255 : 251) + ')"/>';
+    }
+  });
+  const tint = art && st.haupt !== "sitzt"
+    ? oben.map(pts => '<polygon points="' + saalPkt(pts) + '" fill="' + art.farbe + '" fill-opacity="' + (0.16 + 0.1 * stufe).toFixed(2) + '" stroke="' + art.farbe + '" stroke-width="' + (1 + stufe * 0.5) + '" vector-effect="non-scaling-stroke"/>').join("")
+    : (art ? oben.map(pts => '<polygon points="' + saalPkt(pts) + '" fill="none" stroke="' + art.farbe + '" stroke-width="1.4" vector-effect="non-scaling-stroke" stroke-opacity=".8"/>').join("") : "");
+  const gl = (art && st.haupt !== "sitzt")
+    ? '<ellipse class="sp-glow s' + stufe + '" cx="' + fuss0[0].toFixed(1) + '" cy="' + fuss0[1].toFixed(1) + '" rx="' + (SAAL_U * (11 + stufe * 3)).toFixed(0) + '" ry="' + (SAAL_U * (11 + stufe * 3) * 0.5).toFixed(0) + '" fill="url(#spg-' + st.haupt + ')"/>' : "";
+  const ring = '<ellipse class="sp-ring" cx="' + fuss0[0].toFixed(1) + '" cy="' + fuss0[1].toFixed(1) + '" rx="' + (SAAL_U * 11) + '" ry="' + (SAAL_U * 5.5) + '" fill="none" stroke="var(--kreide)" stroke-width="2" vector-effect="non-scaling-stroke"/>';
+  const abzeichen = art ? '<g class="sp-abz" transform="translate(' + (mitte[0] + 0).toFixed(1) + ' ' + (mitte[1] - SAAL_U * 5.5).toFixed(1) + ')"><g class="sp-skala">' +
+      '<circle r="13" fill="' + art.farbe + '" stroke="rgba(10,20,30,.55)" stroke-width="1"/>' +
+      '<path d="' + art.zeichen + '" transform="translate(-9.5 -9.5) scale(.8)" fill="none" stroke="#10151C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' +
+      (st.arten[st.haupt].n > 1 ? '<text x="13" y="-9" class="sp-zahl">' + st.arten[st.haupt].n + '</text>' : "") +
+      '</g></g>' : "";
+  const beschr = saalBeschreibung(t, st);
+  const kurz = String(t.nummer).length > 6 ? String(t.nummer).slice(0, 5) + "…" : String(t.nummer);
+  return '<g class="sp-tisch' + (gewaehlt ? " gewaehlt" : "") + '" data-sp-tisch="' + sicher(t.id) + '" data-st="' + (st ? st.liste.join(" ") : "") + '"' +
+      ' role="button" tabindex="0" aria-label="' + sicher(beschr) + '" aria-pressed="' + (!!gewaehlt) + '">' +
+    gl + ring +
+    '<g class="sp-koerper">' + ebene(hinten) + ebene(fuss) + ebene(platte) + topFlaeche + tint + ebene(vorn) + '</g>' +
+    '<g transform="translate(' + mitte[0].toFixed(1) + ' ' + mitte[1].toFixed(1) + ')"><g class="sp-skala"><text class="sp-nr" text-anchor="middle" dominant-baseline="central">' + sicher(kurz) + '</text></g></g>' +
+    abzeichen +
+    '<g transform="translate(' + mitte[0].toFixed(1) + ' ' + mitte[1].toFixed(1) + ')"><g class="sp-skala"><circle class="sp-treffer" r="24" fill="transparent"/></g></g>' +
+    '</g>';
+}
+
+function saalBoden(){
+  const ecke = [saalP(0, 0, 0), saalP(100, 0, 0), saalP(100, 100, 0), saalP(0, 100, 0)];
+  const dick = 3;
+  let s = '<polygon class="sp-wand" points="' + saalPkt([saalP(0, 100, 0), saalP(100, 100, 0), saalP(100, 100, -dick), saalP(0, 100, -dick)]) + '"/>' +
+          '<polygon class="sp-wand r" points="' + saalPkt([saalP(100, 0, 0), saalP(100, 100, 0), saalP(100, 100, -dick), saalP(100, 0, -dick)]) + '"/>' +
+          '<polygon class="sp-boden" points="' + saalPkt(ecke) + '"/>';
+  for(let i = 10; i < 100; i += 10){
+    s += '<line class="sp-gitter" x1="' + saalP(i, 0)[0].toFixed(1) + '" y1="' + saalP(i, 0)[1].toFixed(1) + '" x2="' + saalP(i, 100)[0].toFixed(1) + '" y2="' + saalP(i, 100)[1].toFixed(1) + '"/>' +
+         '<line class="sp-gitter" x1="' + saalP(0, i)[0].toFixed(1) + '" y1="' + saalP(0, i)[1].toFixed(1) + '" x2="' + saalP(100, i)[0].toFixed(1) + '" y2="' + saalP(100, i)[1].toFixed(1) + '"/>';
+  }
+  return s;
+}
+function saalDefs(){
+  return '<defs>' + SAAL_FOLGE.filter(a => a !== "sitzt").map(a =>
+    '<radialGradient id="spg-' + a + '"><stop offset="0" stop-color="' + SAAL_ART[a].farbe + '" stop-opacity=".95"/>' +
+    '<stop offset=".55" stop-color="' + SAAL_ART[a].farbe + '" stop-opacity=".38"/><stop offset="1" stop-color="' + SAAL_ART[a].farbe + '" stop-opacity="0"/></radialGradient>').join("") + '</defs>';
+}
+
+/* ── Kamera ────────────────────────────────────────────────────────── */
+function saalMasse(){ const b = $("#spBuehne"); return b ? { w: b.clientWidth || 360, h: b.clientHeight || 300 } : { w: 360, h: 300 }; }
+function saalPlatziert(){
+  const quelle = SAAL.edit && SAAL.entwurf ? SAAL.entwurf : null;
+  return SAAL.tische.filter(t => t.aktiv).map(t => quelle && quelle.has(t.id) ? { ...t, ...quelle.get(t.id) } : t).filter(t => t.x != null);
+}
+function saalPassend(){
+  const m = saalMasse(), pl = saalPlatziert();
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  const nimm = (x, y, z) => { const p = saalP(x, y, z); x0 = Math.min(x0, p[0]); x1 = Math.max(x1, p[0]); y0 = Math.min(y0, p[1]); y1 = Math.max(y1, p[1]); };
+  if(SAAL.edit || !pl.length){ [[0, 0], [100, 0], [100, 100], [0, 100]].forEach(e => nimm(e[0], e[1], 0)); }
+  pl.forEach(t => { [[-8, -8], [8, -8], [8, 8], [-8, 8]].forEach(e => nimm(t.x + e[0], t.y + e[1], 0)); nimm(t.x, t.y, 12); });
+  /* Rechts bleibt Platz für die Knöpfe (44 px + Rand) — ein Tisch darunter wäre nicht antippbar. */
+  const links = SAAL.edit && innerWidth > 760 ? 296 : 0;
+  const rand = 24, rechts = 62, bw = x1 - x0, bh = y1 - y0;
+  const k = Math.min((m.w - rand - rechts - links) / bw, (m.h - rand) / bh);
+  SAAL.passt = k;
+  return { k, tx: links + (m.w - rechts - links) / 2 - (x0 + bw / 2) * k, ty: m.h / 2 - (y0 + bh / 2) * k };
+}
+function saalKameraSetzen(kam, sanft){
+  const g = $("#spKamera"), b = $("#spBuehne"); if(!g || !b) return;
+  const passt = SAAL.passt || 1;
+  kam.k = Math.min(passt * 9, Math.max(passt * 0.7, kam.k));
+  SAAL.kamera = kam;
+  g.classList.toggle("fest", !sanft || saalRuhig());
+  g.style.transform = "translate(" + kam.tx.toFixed(1) + "px," + kam.ty.toFixed(1) + "px) scale(" + kam.k.toFixed(4) + ")";
+  b.style.setProperty("--lz", (1 / kam.k).toFixed(4));
+}
+function saalAlles(sanft){ saalKameraSetzen(saalPassend(), sanft); }
+function saalZoomUm(faktor, mx, my, sanft){
+  const c = SAAL.kamera, m = saalMasse();
+  mx = mx == null ? m.w / 2 : mx; my = my == null ? m.h / 2 : my;
+  const k2 = Math.min((SAAL.passt || 1) * 9, Math.max((SAAL.passt || 1) * 0.7, c.k * faktor)), f = k2 / c.k;
+  saalKameraSetzen({ k: k2, tx: mx - (mx - c.tx) * f, ty: my - (my - c.ty) * f }, sanft);
+}
+function saalHerein(t){
+  const m = saalMasse(), p = saalP(t.x, t.y, 4), k = Math.max(SAAL.kamera.k, (SAAL.passt || 1) * 3);
+  saalKameraSetzen({ k, tx: (m.w - 62) / 2 - p[0] * k, ty: m.h / 2 - p[1] * k }, true);
+}
+function saalWelt(clientX, clientY){
+  const r = $("#spBuehne").getBoundingClientRect(), c = SAAL.kamera;
+  const px = (clientX - r.left - c.tx) / c.k, py = (clientY - r.top - c.ty) / c.k + 4.2 * SAAL_U;
+  const a = px / (SAAL_C * SAAL_U), b = py / (0.5 * SAAL_U);
+  return { x: (a + b) / 2, y: (b - a) / 2 };
+}
+
+/* ── Zeichnen ──────────────────────────────────────────────────────── */
+function saalSignatur(stand){
+  return [SAAL.edit ? "E" : "", SAAL.tische.map(t => t.id + ":" + t.x + ":" + t.y + ":" + t.form + ":" + t.plaetze + ":" + t.aktiv).join("|"),
+    SAAL.edit && SAAL.entwurf ? [...SAAL.entwurf].map(([k, v]) => k + v.x + v.y + v.form + v.plaetze).join("|") : "",
+    [...stand.tische].map(([k, v]) => k + ":" + v.haupt + ":" + v.stufe + ":" + v.liste.map(a => a + v.arten[a].n).join(",")).join("|")].join("#");
+}
+function saalZeichnen(){
+  const bereich = $("#saal"), segment = $("#saalAnsicht");
+  if(!bereich || !segment) return;
+  const hatTische = SAAL.tische.some(t => t.aktiv);
+  const platz = SAAL.tische.some(t => t.aktiv && t.x != null);
+  segment.hidden = !(hatTische && (platz || (istInhaberRolle() && !SAAL.fehlt)));
+  const waehle = (() => { try { return localStorage.getItem(SAAL_MERK); } catch(e){ return null; } })();
+  /* Ohne eigene Wahl: mit Plan der Saal, sonst die Liste. */
+  SAAL.an = !segment.hidden && (waehle ? waehle === "saal" : platz);
+  segment.querySelectorAll("[data-saal-ansicht]").forEach(b => b.setAttribute("aria-checked", String((b.dataset.saalAnsicht === "saal") === SAAL.an)));
+  bereich.hidden = !SAAL.an;
+  document.body.classList.toggle("saal-an", SAAL.an);
+  if(!SAAL.an){ SAAL.auswahl = null; saalKlassen(); return; }
+  if(SAAL.auswahl && SAAL.auswahl !== "__rest" && !SAAL.tische.some(t => t.aktiv && t.x != null && saalNk(t.nummer) === SAAL.auswahl)) SAAL.auswahl = null;
+  saalKlassen();
+
+  const stand = saalStand();
+  SAAL.restIds = stand.rest.ids;
+  SAAL.stand = stand;
+  const svg = $("#spSvg");
+  const sig = saalSignatur(stand);
+  if(sig !== SAAL.sig || !$("#spKamera")){
+    const erste = !$("#spKamera");
+    const pl = saalPlatziert().sort((a, b) => (a.x + a.y) - (b.x + b.y));
+    svg.innerHTML = saalDefs() + '<g id="spKamera" class="sp-kamera">' + saalBoden() +
+      pl.map(t => saalTischSVG(t, stand.tische.get(saalNk(t.nummer)), SAAL.auswahl === saalNk(t.nummer) || (SAAL.edit && SAAL.gewaehlt === t.id))).join("") + '</g>';
+    SAAL.sig = sig;
+    if(erste || SAAL.passt == null){ saalAlles(false); }
+    else saalKameraSetzen(SAAL.kamera, false);
+  }
+  saalLeiste(stand);
+  saalZeile(stand);
+  saalRest(stand);
+  saalEditZeichnen();
+}
+/* Anzahl je Zustand — zugleich der Filter zum Hervorheben. */
+function saalLeiste(stand){
+  const zaehl = {};
+  stand.tische.forEach(t => { if(t.haupt) zaehl[t.haupt] = (zaehl[t.haupt] || 0) + 1; });
+  const html = SAAL_FOLGE.filter(a => a !== "sitzt").map(a =>
+    '<button type="button" class="sp-chip" data-sp-hebe="' + a + '" aria-pressed="' + (SAAL.hebt === a) + '">' +
+      '<i style="background:' + SAAL_ART[a].farbe + '"></i>' + SAAL_ART[a].name + ' <b>' + (zaehl[a] || 0) + '</b></button>').join("");
+  const el = $("#spLeiste");
+  if(el.dataset.sig !== html){ el.innerHTML = html; el.dataset.sig = html; }
+  $("#spBuehne").dataset.hebt = SAAL.hebt || "";
+}
+function saalZeile(stand){
+  const z = $("#spZeile");
+  let text = "Tisch antippen — dann stehen seine Bestellungen unten. Zwei Finger oder die Tasten ± zoomen.";
+  if(SAAL.auswahl && SAAL.auswahl !== "__rest"){
+    const t = SAAL.tische.find(x => saalNk(x.nummer) === SAAL.auswahl);
+    text = t ? saalBeschreibung(t, stand.tische.get(SAAL.auswahl)) + " · nochmal antippen zeigt wieder alle" : text;
+  }else if(SAAL.auswahl === "__rest") text = "Außerhalb des Plans: " + stand.rest.n + " offen · antippen zeigt wieder alle";
+  if(z.textContent !== text) z.textContent = text;
+}
+function saalRest(stand){
+  const el = $("#spRest");
+  if(!stand.rest.n){ el.hidden = true; el.innerHTML = ""; return; }
+  el.hidden = false;
+  const teile = Object.keys(stand.rest.teile).map(k => k + " " + stand.rest.teile[k]).join(" · ");
+  const html = '<button type="button" class="sp-restknopf" data-sp-rest aria-pressed="' + (SAAL.auswahl === "__rest") + '">' +
+    '<b>Außerhalb des Plans</b><span>' + sicher(teile) + '</span></button>';
+  if(el.dataset.sig !== html){ el.innerHTML = html; el.dataset.sig = html; }
+}
+
+/* ── Bedienung: Tippen, Ziehen, Zoomen ─────────────────────────────── */
+function saalWaehlen(t){
+  const nk = saalNk(t.nummer);
+  SAAL.auswahl = SAAL.auswahl === nk ? null : nk;
+  if(SAAL.auswahl) saalHerein(t); else saalAlles(true);
+  document.querySelectorAll("#spSvg .sp-tisch").forEach(g => {
+    const an = SAAL.auswahl != null && g.dataset.spTisch === t.id && SAAL.auswahl === nk;
+    g.classList.toggle("gewaehlt", an); g.setAttribute("aria-pressed", String(an));
+  });
+  saalKlassen();
+  zeichneBoard();
+  saalZeile(SAAL.stand);
+  /* Nur auf dem Telefon führt der Tipp zu den Karten: Dort liegen sie unter dem Plan.
+     Auf dem Tablet bliebe der Plan sonst nicht stehen, auf den man gerade getippt hat. */
+  if(SAAL.auswahl && matchMedia("(max-width:760px)").matches){ const k = $("#karten"); if(k) setTimeout(() => k.scrollIntoView({ behavior: saalRuhig() ? "auto" : "smooth", block: "nearest" }), 60); }
+}
+(function saalBinden(){
+  const buehne = $("#spBuehne"); if(!buehne) return;
+  const zeiger = new Map(); let weg = 0, ziehen = null, pinch = null, bewegt = false;
+  buehne.addEventListener("pointerdown", e => {
+    if(e.target.closest(".sp-werkzeug")) return;
+    zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    buehne.setPointerCapture && buehne.setPointerCapture(e.pointerId);
+    bewegt = false; weg = 0;
+    const g = e.target.closest("[data-sp-tisch]");
+    if(zeiger.size === 2){
+      const [a, b] = [...zeiger.values()];
+      pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: SAAL.kamera.k }; ziehen = null; bewegt = true; return;
+    }
+    const sicherEdit = SAAL.edit && g && SAAL.entwurf;
+    ziehen = { x: e.clientX, y: e.clientY, tx: SAAL.kamera.tx, ty: SAAL.kamera.ty,
+      tisch: sicherEdit ? g.dataset.spTisch : null, ziel: g ? g.dataset.spTisch : null };
+  });
+  buehne.addEventListener("pointermove", e => {
+    if(!zeiger.has(e.pointerId)) return;
+    zeiger.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if(pinch && zeiger.size >= 2){
+      const [a, b] = [...zeiger.values()], d = Math.hypot(a.x - b.x, a.y - b.y), r = buehne.getBoundingClientRect();
+      const f = (pinch.k * d / pinch.d) / SAAL.kamera.k;
+      saalZoomUm(f, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top, false);
+      return;
+    }
+    if(!ziehen) return;
+    const dx = e.clientX - ziehen.x, dy = e.clientY - ziehen.y;
+    weg = Math.max(weg, Math.hypot(dx, dy));
+    if(weg < 6) return;
+    bewegt = true;
+    if(ziehen.tisch){
+      const w = saalWelt(e.clientX, e.clientY), v = SAAL.entwurf.get(ziehen.tisch);
+      if(v){ v.x = Math.min(100, Math.max(0, Math.round(w.x))); v.y = Math.min(100, Math.max(0, Math.round(w.y))); saalNeuBauen(); }
+    }else saalKameraSetzen({ k: SAAL.kamera.k, tx: ziehen.tx + dx, ty: ziehen.ty + dy }, false);
+  });
+  const ende = e => {
+    if(!zeiger.has(e.pointerId)) return;
+    zeiger.delete(e.pointerId);
+    if(zeiger.size < 2) pinch = null;
+    if(zeiger.size === 0){
+      if(!bewegt && ziehen && ziehen.ziel && e.type === "pointerup") saalTipp(ziehen.ziel);
+      ziehen = null;
+    }
+  };
+  buehne.addEventListener("pointerup", ende);
+  buehne.addEventListener("pointercancel", ende);
+  buehne.addEventListener("wheel", e => {
+    e.preventDefault();
+    const r = buehne.getBoundingClientRect();
+    saalZoomUm(Math.exp(-e.deltaY * 0.0016), e.clientX - r.left, e.clientY - r.top, false);
+  }, { passive: false });
+  buehne.addEventListener("keydown", e => {
+    const g = e.target.closest && e.target.closest("[data-sp-tisch]");
+    if(g && (e.key === "Enter" || e.key === " ")){ e.preventDefault(); saalTipp(g.dataset.spTisch); }
+  });
+})();
+function saalTipp(id){
+  const t = SAAL.tische.find(x => x.id === id); if(!t) return;
+  if(SAAL.edit){ SAAL.gewaehlt = id; saalNeuBauen(); return; }
+  saalWaehlen(t);
+}
+function saalNeuBauen(){ SAAL.sig = ""; saalZeichnen(); }
+function saalKlassen(){ document.body.classList.toggle("saal-sel", SAAL.an && SAAL.auswahl != null); }
+
+document.addEventListener("click", e => {
+  const seg = e.target.closest && e.target.closest("[data-saal-ansicht]");
+  if(seg){
+    try { localStorage.setItem(SAAL_MERK, seg.dataset.saalAnsicht); } catch(_){}
+    SAAL.sig = ""; saalZeichnen(); zeichneBoard();
+    if(SAAL.an) saalAlles(false);
+    return;
+  }
+  const w = e.target.closest && e.target.closest(".sp-werkzeug [data-sp-wz]");
+  if(w){
+    const a = w.dataset.spWz;
+    if(a === "plus") saalZoomUm(1.5, null, null, true);
+    else if(a === "minus") saalZoomUm(1 / 1.5, null, null, true);
+    else if(a === "alles"){ SAAL.auswahl = null; saalAlles(true); document.querySelectorAll("#spSvg .sp-tisch.gewaehlt").forEach(g => g.classList.remove("gewaehlt")); saalKlassen(); zeichneBoard(); saalZeile(SAAL.stand); }
+    else if(a === "gross"){ SAAL.gross = !SAAL.gross; $("#spBuehne").classList.toggle("gross", SAAL.gross); w.setAttribute("aria-pressed", String(SAAL.gross)); setTimeout(() => saalAlles(false), 30); }
+    else if(a === "einrichten") saalEinrichten(true);
+    return;
+  }
+  const h = e.target.closest && e.target.closest("[data-sp-hebe]");
+  if(h){ SAAL.hebt = SAAL.hebt === h.dataset.spHebe ? null : h.dataset.spHebe; saalLeiste(SAAL.stand); return; }
+  const r = e.target.closest && e.target.closest("[data-sp-rest]");
+  if(r){ SAAL.auswahl = SAAL.auswahl === "__rest" ? null : "__rest"; document.querySelectorAll("#spSvg .sp-tisch.gewaehlt").forEach(g => g.classList.remove("gewaehlt")); saalKlassen(); zeichneBoard(); saalRest(SAAL.stand); saalZeile(SAAL.stand); return; }
+  if(e.target.closest && e.target.closest("#spEdit")) saalEditKlick(e);
+});
+
+/* ── Einrichten (nur Inhaber) ──────────────────────────────────────── */
+function saalEinrichten(an){
+  if(an && !istInhaberRolle()) return melde("Den Saal einrichtet der Besitzer.", true);
+  SAAL.edit = an;
+  SAAL.entwurf = an ? new Map(SAAL.tische.filter(t => t.aktiv).map(t => [t.id, { x: t.x, y: t.y, form: t.form, plaetze: t.plaetze }])) : null;
+  SAAL.gewaehlt = null;
+  SAAL.auswahl = null; saalKlassen();
+  $("#saal").classList.toggle("einrichten", an);
+  saalNeuBauen();
+  saalAlles(false);
+  zeichneBoard();
+}
+function saalFreierPlatz(){
+  const belegt = [...SAAL.entwurf.values()].filter(v => v.x != null);
+  for(let y = 14; y <= 90; y += 16) for(let x = 14; x <= 90; x += 16){
+    if(!belegt.some(v => Math.abs(v.x - x) < 12 && Math.abs(v.y - y) < 12)) return { x, y };
+  }
+  return { x: 50, y: 50 };
+}
+function saalEditZeichnen(){
+  const el = $("#spEdit"); if(!el) return;
+  el.hidden = !SAAL.edit;
+  const knopf = $("[data-sp-wz=\"einrichten\"]");
+  if(knopf) knopf.hidden = SAAL.edit || !istInhaberRolle() || SAAL.fehlt;
+  if(!SAAL.edit) return;
+  const frei = SAAL.tische.filter(t => t.aktiv && SAAL.entwurf.has(t.id) && SAAL.entwurf.get(t.id).x == null);
+  const sel = SAAL.gewaehlt ? SAAL.tische.find(t => t.id === SAAL.gewaehlt) : null, v = sel ? SAAL.entwurf.get(sel.id) : null;
+  const html = '<div class="sp-editkopf"><b>Saal einrichten</b><span>Tische ziehen, Form und Stühle wählen.</span></div>' +
+    '<div class="sp-editblock"><span class="sp-editname">Noch nicht auf dem Plan</span><div class="sp-chips">' +
+      (frei.length ? frei.map(t => '<button type="button" class="sp-chip" data-sp-setzen="' + sicher(t.id) + '">Tisch ' + sicher(t.nummer) + '</button>').join("")
+                   : '<span class="sp-leer">Alle Tische sind eingezeichnet.</span>') + '</div></div>' +
+    (sel && v && v.x != null
+      ? '<div class="sp-editblock"><span class="sp-editname">Tisch ' + sicher(sel.nummer) + '</span>' +
+        '<div class="aw-segment kbseg sp-formen" role="radiogroup" aria-label="Form" style="grid-template-columns:repeat(3,1fr)">' +
+          Object.keys(SAAL_FORMEN).map(f => '<button type="button" class="aw-seg" role="radio" data-sp-form="' + f + '" aria-checked="' + ((v.form || "rund") === f) + '">' + SAAL_FORMEN[f] + '</button>').join("") + '</div>' +
+        '<div class="sp-plaetze"><button type="button" class="sp-pm" data-sp-plaetze="-1" aria-label="Ein Stuhl weniger">−</button>' +
+          '<span aria-live="polite"><b>' + (v.plaetze || 4) + '</b> Stühle</span>' +
+          '<button type="button" class="sp-pm" data-sp-plaetze="1" aria-label="Ein Stuhl mehr">+</button></div>' +
+        '<button type="button" class="knopf leise" data-sp-nehmen>Vom Plan nehmen</button></div>'
+      : '<p class="sp-hinweis">Tippe einen Tisch auf dem Plan an, um Form und Stühle zu ändern.</p>') +
+    '<div class="sp-editknoepfe"><button type="button" class="knopf" data-sp-speichern>Speichern</button>' +
+    '<button type="button" class="knopf leise" data-sp-abbrechen>Abbrechen</button></div>' +
+    '<p class="sp-hinweis" id="spEditMeldung" role="status"></p>';
+  if(el.dataset.sig !== html){ el.innerHTML = html; el.dataset.sig = html; }
+}
+function saalEditKlick(e){
+  const s = e.target.closest("[data-sp-setzen]");
+  if(s){ const p = saalFreierPlatz(), v = SAAL.entwurf.get(s.dataset.spSetzen); Object.assign(v, p, { form: v.form || "rund", plaetze: v.plaetze || 4 }); SAAL.gewaehlt = s.dataset.spSetzen; saalNeuBauen(); return; }
+  const f = e.target.closest("[data-sp-form]");
+  if(f && SAAL.gewaehlt){ SAAL.entwurf.get(SAAL.gewaehlt).form = f.dataset.spForm; saalNeuBauen(); return; }
+  const p = e.target.closest("[data-sp-plaetze]");
+  if(p && SAAL.gewaehlt){ const v = SAAL.entwurf.get(SAAL.gewaehlt); v.plaetze = Math.min(20, Math.max(1, (v.plaetze || 4) + Number(p.dataset.spPlaetze))); saalNeuBauen(); return; }
+  if(e.target.closest("[data-sp-nehmen]") && SAAL.gewaehlt){ const v = SAAL.entwurf.get(SAAL.gewaehlt); v.x = null; v.y = null; SAAL.gewaehlt = null; saalNeuBauen(); return; }
+  if(e.target.closest("[data-sp-abbrechen]")){ saalEinrichten(false); return; }
+  if(e.target.closest("[data-sp-speichern]")) saalSpeichern();
+}
+async function saalSpeichern(){
+  const meld = $("#spEditMeldung"), knopf = $("[data-sp-speichern]");
+  const aend = SAAL.tische.filter(t => {
+    const v = SAAL.entwurf.get(t.id); if(!v) return false;
+    return v.x !== t.x || v.y !== t.y || v.form !== t.form || v.plaetze !== t.plaetze;
+  });
+  if(!aend.length){ saalEinrichten(false); return; }
+  knopf.disabled = true; knopf.textContent = "Wird gespeichert …";
+  try{
+    if(demo || !db){
+      aend.forEach(t => Object.assign(t, SAAL.entwurf.get(t.id)));
+    }else{
+      const antworten = await Promise.all(aend.map(t => {
+        const v = SAAL.entwurf.get(t.id), platz = v.x != null;
+        return db.from("tische").update({ x: platz ? v.x : null, y: platz ? v.y : null, form: platz ? (v.form || "rund") : null, plaetze: platz ? (v.plaetze || 4) : null })
+          .eq("id", t.id).eq("betrieb_id", betriebId).select("id");
+      }));
+      const fehler = antworten.find(a => a.error), leer = antworten.findIndex(a => !a.error && (!a.data || !a.data.length));
+      if(fehler) throw fehler.error;
+      if(leer > -1){ meld.textContent = "Nicht gespeichert — dafür fehlt dir das Recht (nur der Besitzer richtet den Saal ein)."; knopf.disabled = false; knopf.textContent = "Speichern"; return; }
+      aend.forEach(t => Object.assign(t, SAAL.entwurf.get(t.id)));
+    }
+    melde("Saalplan gespeichert");
+    saalEinrichten(false);
+  }catch(err){
+    const txt = String(err && err.message || "");
+    meld.textContent = /x|y|form|plaetze|column/i.test(txt) && /column|schema/i.test(txt)
+      ? "Die Spalten für den Saalplan fehlen noch (migration-saalplan.sql)."
+      : "Nicht gespeichert, bitte Verbindung prüfen.";
+    knopf.disabled = false; knopf.textContent = "Speichern";
+  }
+}
+
+/* ── Laden ─────────────────────────────────────────────────────────── */
+async function saalLaden(id){
+  SAAL.geladen = false; SAAL.fehlt = false; SAAL.tische = []; SAAL.edit = false; SAAL.entwurf = null; SAAL.auswahl = null; SAAL.sig = "";
+  if(demo || !db){
+    const f = [["1","rund",4,18,22],["2","eckig",4,40,18],["3","rund",2,62,20],["4","lang",6,82,26],["5","rund",4,20,50],["6","eckig",4,42,48],
+               ["7","rund",4,64,52],["8","rund",4,84,56],["9","eckig",2,20,78],["10","lang",6,50,80],["11","rund",4,78,84],["12","rund",3,null,null]];
+    SAAL.tische = f.map(([n, form, pl, x, y]) => ({ id: "demo-t" + n, nummer: n, aktiv: true, x, y, form: x == null ? null : form, plaetze: x == null ? null : pl }));
+    SAAL.geladen = true; saalZeichnen(); return;
+  }
+  let r = await db.from("tische").select("id,nummer,aktiv,x,y,form,plaetze").eq("betrieb_id", id).order("nummer").order("id");
+  if(id !== betriebId) return;
+  if(r.error){
+    /* Migration fehlt: Tische ohne Lage, Einrichten gesperrt (der Satz steht im Knopf). */
+    SAAL.fehlt = true;
+    r = await db.from("tische").select("id,nummer,aktiv").eq("betrieb_id", id).order("nummer").order("id");
+    if(id !== betriebId) return;
+  }
+  const num = (a, b) => String(a.nummer).localeCompare(String(b.nummer), "de", { numeric: true }) || String(a.id).localeCompare(String(b.id));
+  SAAL.tische = ((r.data) || []).map(t => ({ id: t.id, nummer: String(t.nummer), aktiv: t.aktiv !== false, x: t.x == null ? null : Number(t.x), y: t.y == null ? null : Number(t.y), form: t.form || null, plaetze: t.plaetze || null })).sort(num);
+  SAAL.geladen = true;
+  saalZeichnen();
+}
+
+function zeichneAlles(){ saalZeichnen(); zeichneBoard(); zeichneKarte(); zeichneAusgabe(); aktionenZeichnen(); }
 
 /* Wie viele Karten höchstens gleichzeitig gezeichnet werden.
 
@@ -10646,7 +11468,7 @@ function standGruppe(b){
 function gefiltert(){
   const nur = tmNurMeineAktiv();
   return bestellungen.filter(b => zeigeQuelle[b.quelle] && zeigeStatus[b.status] &&
-    (!nur || Number(b.zugewiesen) === TM.geraet));
+    (!nur || Number(b.zugewiesen) === TM.geraet) && saalFilter(b));
 }
 
 /* Servicerufe desselben Tisches als EINE Karte (Wunsch 10.10., Foto:
@@ -10695,6 +11517,7 @@ function rabattZeile(b){
 }
 
 function zeichneBoard(){
+  rueckZeichnen();
   /* Während ein Finger eine Karte zieht, wird nicht neu gezeichnet —
      sonst rutscht die Karte unter dem Finger weg (§4.2). Nach der
      Geste zeichnet statusSetzen() ohnehin neu. */
@@ -10830,7 +11653,8 @@ function zeichneBoard(){
     /* Vom Server markiert (migration-missbrauch.sql): Die Küche sieht
        sie erst nach „Freigeben“. Statt Zusage und Schritten steht hier
        nur die Entscheidung — nichts, was man aus Versehen annimmt. */
-    const pruefband = b.pruefen
+    const zh = zahlHTML(b);
+    const pruefband = zh.offen ? zh.band : b.pruefen
       ? `<div class="pruefband" role="group" aria-label="Bestellung prüfen">
            <b>Zu prüfen</b>
            <span>${sicher(b.pruef_grund || "Vom Server markiert")}. Die Küche sieht sie erst nach der Freigabe.</span>
@@ -10907,11 +11731,12 @@ function zeichneBoard(){
                   euro((+b.summe || 0) + (+b.liefergebuehr || 0) - (+b.rabatt_betrag || 0))
                 : euro((+b.summe || 0) + (+b.liefergebuehr || 0))}</div>`
             : ""}
+          ${zh.chip}
         </div>
       </div>
       ${kurz}
       ${tmZuwHTML(b)}
-      ${pruefband}${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
+      ${zh.offen ? "" : zh.band}${pruefband}${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
       ${b.summe > 0 ? rabattZeile(b) : ""}
       <div class="schritte"${b.pruefen ? " hidden" : ""}>
         ${["neu","arbeit","fertig"].map(s =>
@@ -14126,7 +14951,7 @@ let TX = null, TX_NEU = new Set(), TX_LISTE = [], TX_OFFEN = null, TX_TIPPEN = f
 function txLaden(){
   const e = HUBTEXTE && HUBTEXTE.eigen && typeof HUBTEXTE.eigen === "object" ? HUBTEXTE.eigen : {};
   TX = JSON.parse(JSON.stringify(e));
-  TX_NEU = new Set(); TX_OFFEN = null;
+  TX_NEU = new Set(); TX_OFFEN = null; TX_BERUEHRT = new Set(); txGeruehrt = false;
   $("#txStand").textContent = "";
   txZeichnen();
 }
@@ -14155,35 +14980,94 @@ function txListeLaden(){
   txZeichnen();
 }
 function txAnzeige(k){ return (TX && TX[k] && TX[k].de) || k; }
+function txGeaendert(k){ const e = TX && TX[k]; return !!(e && (e.de || e.schrift)); }
+/* Nur Schlüssel aus SCHRIFT_WAHL werden zu einem Schriftnamen im Stil. */
+function txSchriftStil(s){ return s && SCHRIFT_WAHL.some(w => w.s === s) ? ' style="font-family:omo-sw-' + s + ',sans-serif"' : ""; }
+const TX_PFEIL = '<svg class="txpfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+let TX_FILTER = "alle", TX_BERUEHRT = new Set(), txGeruehrt = false, txVerwerfenBereit = false;
+function txChipsZeichnen(){
+  const chips = $("#txChips"); if(!chips) return;
+  if(!TX || !TX_LISTE.length){ chips.innerHTML = ""; return; }
+  const zahl = {}, seiten = [];
+  TX_LISTE.forEach(x => { if(!(x.sz in zahl)){ zahl[x.sz] = 0; seiten.push(x.sz); } zahl[x.sz]++; });
+  const geaendert = TX_LISTE.filter(x => txGeaendert(x.k)).length;
+  const chip = (id, name, n) => '<button type="button" class="txchip" data-tx-filter="' + sicher(id) + '" aria-pressed="' +
+    (TX_FILTER === id) + '">' + sicher(name) + ' <b>' + n + '</b></button>';
+  chips.innerHTML = chip("alle", "Alle", TX_LISTE.length) + (geaendert ? chip("geaendert", "Geändert", geaendert) : "") +
+    seiten.map(sz => chip(sz, TX_SEITEN[sz] || sz, zahl[sz])).join("");
+}
+function txLeisteZeichnen(){
+  const n = Math.max(TX_BERUEHRT.size, TX_NEU.size, txGeruehrt ? 1 : 0);
+  const z = $("#txZahl"); if(z) z.textContent = n ? n + (n === 1 ? " Änderung" : " Änderungen") : "Keine Änderungen";
+  const v = $("#txVerwerfen");
+  if(v){ v.disabled = !n; v.hidden = !n; v.textContent = txVerwerfenBereit ? "Wirklich verwerfen?" : "Verwerfen"; }
+  const s = $("#txSichern"); if(s && TX) s.disabled = !TX_NEU.size && !txGeruehrt;
+}
 function txZeichnen(){
   const feld = $("#txListe"); if(!feld) return;
-  if(!TX){ feld.innerHTML = '<p class="hvstand">Der gespeicherte Stand ist noch nicht gelesen.</p>'; $("#txSichern").disabled = true; return; }
+  swProbenLaden();
+  if(!TX){ feld.innerHTML = '<p class="hvstand">Der gespeicherte Stand ist noch nicht gelesen.</p>'; $("#txSichern").disabled = true; txChipsZeichnen(); return; }
   if(!TX_LISTE.length){ feld.innerHTML = '<p class="hvstand">Die Liste erscheint, sobald die Vorschau oben geladen ist.</p>'; }
   else {
     const such = String($("#txSuche").value || "").trim().toLowerCase();
-    let html = "", letzte = null;
-    TX_LISTE.filter(x => !such || x.k.toLowerCase().includes(such) || txAnzeige(x.k).toLowerCase().includes(such)).forEach(x => {
-      if(x.sz !== letzte){ html += '<div class="txseite">' + sicher(TX_SEITEN[x.sz] || x.sz) + '</div>'; letzte = x.sz; }
-      const offen = TX_OFFEN === x.k;
-      const eigen = TX[x.k] && (TX[x.k].de || TX[x.k].schrift);
-      html += '<button type="button" class="txzeile" data-tx="' + sicher(x.k) + '" aria-expanded="' + offen + '">' +
-        '<span>' + sicher(txAnzeige(x.k)) + '</span>' + (eigen ? '<span class="txneu">geändert</span>' : "") + '</button>';
-      if(offen) html += txEditorHTML(x.k);
-    });
-    feld.innerHTML = html || '<p class="hvstand">Kein Text gefunden.</p>';
+    const sichtbar = TX_LISTE.filter(x =>
+      (TX_FILTER === "alle" || (TX_FILTER === "geaendert" ? txGeaendert(x.k) : x.sz === TX_FILTER)) &&
+      (!such || x.k.toLowerCase().includes(such) || txAnzeige(x.k).toLowerCase().includes(such)));
+    feld.innerHTML = sichtbar.map(x => {
+      const offen = TX_OFFEN === x.k, g = txGeaendert(x.k), schrift = TX[x.k] && TX[x.k].schrift;
+      return '<div class="txkarte' + (offen ? " offen" : "") + (g ? " geaendert" : "") + '" data-tx-karte="' + sicher(x.k) + '">' +
+        '<button type="button" class="txzeile" data-tx="' + sicher(x.k) + '" aria-expanded="' + offen + '">' +
+          '<span class="txpunkt" aria-hidden="true"></span>' +
+          '<span class="txtext"><span class="txwort"' + txSchriftStil(schrift) + '>' + sicher(txAnzeige(x.k)) + '</span>' +
+            '<span class="txmeta">' + sicher(TX_SEITEN[x.sz] || x.sz) + '</span></span>' +
+          (g ? '<span class="txneu">geändert</span>' : "") + TX_PFEIL + '</button>' +
+        (offen ? txEditorHTML(x.k) : "") + '</div>';
+    }).join("") || '<p class="hvstand">Kein Text gefunden.</p>';
   }
-  $("#txSichern").disabled = !TX_NEU.size && !txGeruehrt;
+  txChipsZeichnen();
+  txLeisteZeichnen();
 }
-let txGeruehrt = false;
-function txEditorHTML(k){
+function txHinweisText(k){
   const e = (TX && TX[k]) || {};
-  const opt = '<option value="">Wie überall</option>' + SCHRIFT_WAHL.map(w =>
-    '<option value="' + sicher(w.s) + '"' + (e.schrift === w.s ? " selected" : "") + '>' + sicher(w.familie) + '</option>').join("");
+  if(TX_NEU.has(k)) return "Beim Übernehmen wird dieser Satz in elf Sprachen übersetzt.";
+  if(e.de && e.en) return "In elf Sprachen übersetzt.";
+  if(e.de) return "Noch nicht übersetzt — Gäste in anderen Sprachen sehen Ihren deutschen Text.";
+  return "Unverändert. Der Hub nutzt seine eigene Übersetzung.";
+}
+function txEditorHTML(k){
+  const e = (TX && TX[k]) || {}, text = e.de || k;
+  const muster = (wert, aa, name) => '<button type="button" role="radio" class="txschrift" data-tx-schrift="' + sicher(wert) + '" aria-checked="' +
+    ((e.schrift || "") === wert) + '" tabindex="' + (((e.schrift || "") === wert) ? 0 : -1) + '">' +
+    '<span class="aa"' + txSchriftStil(wert) + '>' + aa + '</span><span class="nm">' + sicher(name) + '</span></button>';
   return '<div class="txeditor" data-tx-ed="' + sicher(k) + '">' +
-    '<label class="feld"><span>Text</span><textarea data-tx-text rows="2" maxlength="160">' + sicher(e.de || k) + '</textarea>' +
-      '<small class="feldhilfe">Vorgabe: „' + sicher(k) + '“' + (k.indexOf("{") >= 0 ? " — Teile in {…} füllt der Hub, bitte stehen lassen." : "") + '</small></label>' +
-    '<label class="feld"><span>Schrift dieses Textes</span><select data-tx-schrift>' + opt + '</select></label>' +
+    '<div class="txprobe" data-tx-probe' + txSchriftStil(e.schrift) + '>' + sicher(text) + '</div>' +
+    '<div class="txfeld"><div class="txfeldkopf"><label class="txfeldname" for="txText">Text</label>' +
+      '<span class="txzaehler" data-tx-zaehler>' + text.length + ' / 160</span></div>' +
+      '<textarea id="txText" data-tx-text rows="2" maxlength="160">' + sicher(text) + '</textarea>' +
+      '<small class="feldhilfe">Vorgabe: „' + sicher(k) + '“' + (k.indexOf("{") >= 0 ? " — Teile in {…} füllt der Hub, bitte stehen lassen." : "") + '</small></div>' +
+    '<div class="txfeld"><span class="txfeldname" id="txSchriftName">Schrift dieses Textes</span>' +
+      '<div class="txschriften" role="radiogroup" aria-labelledby="txSchriftName">' + muster("", "Aa", "Wie überall") +
+      SCHRIFT_WAHL.map(w => muster(w.s, "Aa", w.familie)).join("") + '</div></div>' +
+    '<p class="txhinweis" data-tx-hinweis>' + sicher(txHinweisText(k)) + '</p>' +
     '<div class="txknoepfe"><button type="button" class="knopf leise schmal" data-tx-zurueck>Vorgabe wiederherstellen</button></div></div>';
+}
+/* Was beim Tippen am offenen Eintrag mitgeht, ohne alles neu zu bauen —
+   sonst verlöre das Feld mitten im Wort den Fokus. */
+function txAuffrischen(k){
+  const karte = document.querySelector('[data-tx-karte="' + CSS.escape(k) + '"]'); if(!karte) return;
+  const e = (TX && TX[k]) || {}, g = txGeaendert(k), text = e.de || k;
+  karte.classList.toggle("geaendert", g);
+  const w = karte.querySelector(".txwort");
+  if(w){ w.textContent = text; w.style.fontFamily = e.schrift && SCHRIFT_WAHL.some(x => x.s === e.schrift) ? "omo-sw-" + e.schrift + ",sans-serif" : ""; }
+  const z = karte.querySelector(".txzeile"), badge = z && z.querySelector(".txneu");
+  if(z && g && !badge) z.insertBefore(Object.assign(document.createElement("span"), { className:"txneu", textContent:"geändert" }), z.querySelector(".txpfeil"));
+  if(badge && !g) badge.remove();
+  const pr = karte.querySelector("[data-tx-probe]");
+  if(pr){ pr.textContent = text; pr.style.fontFamily = w ? w.style.fontFamily : ""; }
+  const c = karte.querySelector("[data-tx-zaehler]"); if(c) c.textContent = text.length + " / 160";
+  const h = karte.querySelector("[data-tx-hinweis]"); if(h) h.textContent = txHinweisText(k);
+  karte.querySelectorAll("[data-tx-schrift]").forEach(b => { const an = b.dataset.txSchrift === (e.schrift || ""); b.setAttribute("aria-checked", String(an)); b.tabIndex = an ? 0 : -1; });
+  txChipsZeichnen(); txLeisteZeichnen();
 }
 function txVorschau(k){
   const x = TX_LISTE.find(y => y.k === k);
@@ -14191,7 +15075,7 @@ function txVorschau(k){
 }
 function txOeffnen(k){
   TX_OFFEN = TX_OFFEN === k ? null : k;
-  $("#txSuche").value = TX_OFFEN && !TX_LISTE.some(x => x.k === k) ? "" : $("#txSuche").value;
+  if(TX_OFFEN){ TX_FILTER = "alle"; $("#txSuche").value = TX_LISTE.some(x => x.k === k) ? $("#txSuche").value : ""; }
   if(TX_OFFEN && !TX_LISTE.some(x => x.k === k)) TX_LISTE.unshift({ k, sz:"start" });
   txZeichnen();
   if(!TX_OFFEN) return;
@@ -14213,14 +15097,33 @@ window.vorschauTextGewaehlt = (k, seite) => {
   TX_OFFEN = null;
   txOeffnen(k);
 };
+function txSchriftWaehlen(k, w){
+  TX[k] = TX[k] || {};
+  if(w && SCHRIFT_WAHL.some(x => x.s === w)) TX[k].schrift = w; else delete TX[k].schrift;
+  if(!Object.keys(TX[k]).length) delete TX[k];
+  TX_BERUEHRT.add(k); txGeruehrt = true;
+  txAuffrischen(k); txVorschau(k);
+}
 $("#txListe").addEventListener("click", e => {
   const z = e.target.closest("[data-tx]"); if(z){ txOeffnen(z.dataset.tx); return; }
+  const sw = e.target.closest("[data-tx-schrift]");
+  if(sw && TX){ txSchriftWaehlen(sw.closest("[data-tx-ed]").dataset.txEd, sw.dataset.txSchrift); return; }
   const zur = e.target.closest("[data-tx-zurueck]");
   if(zur && TX){
     const k = zur.closest("[data-tx-ed]").dataset.txEd;
-    delete TX[k]; TX_NEU.delete(k); txGeruehrt = true;
+    delete TX[k]; TX_NEU.delete(k); TX_BERUEHRT.add(k); txGeruehrt = true;
     TX_OFFEN = null; txZeichnen(); txVorschau(k);
   }
+});
+/* Pfeiltasten in der Schriftwahl: wie bei jeder Radiogruppe. */
+$("#txListe").addEventListener("keydown", e => {
+  const b = e.target.closest && e.target.closest("[data-tx-schrift]");
+  if(!b || !TX || ["ArrowLeft","ArrowRight","ArrowUp","ArrowDown"].indexOf(e.key) < 0) return;
+  e.preventDefault();
+  const alle = [...b.parentElement.querySelectorAll("[data-tx-schrift]")];
+  const nach = alle[(alle.indexOf(b) + (e.key === "ArrowLeft" || e.key === "ArrowUp" ? -1 : 1) + alle.length) % alle.length];
+  txSchriftWaehlen(b.closest("[data-tx-ed]").dataset.txEd, nach.dataset.txSchrift);
+  nach.focus({ preventScroll:false });
 });
 $("#txListe").addEventListener("input", e => {
   const ed = e.target.closest("[data-tx-ed]"); if(!ed || !TX) return;
@@ -14235,20 +15138,26 @@ $("#txListe").addEventListener("input", e => {
     if(v.trim() && v.trim() !== k) TX[k].de = v.trim();
     if(!Object.keys(TX[k]).length) delete TX[k];
     if(TX[k] && TX[k].de) TX_NEU.add(k); else TX_NEU.delete(k);
-    txGeruehrt = true;
-    $("#txSichern").disabled = false;
+    TX_BERUEHRT.add(k); txGeruehrt = true;
+    txAuffrischen(k);
     txVorschau(k);
   }
 });
-$("#txListe").addEventListener("change", e => {
-  const ed = e.target.closest("[data-tx-ed]"); if(!ed || !TX || !e.target.matches("[data-tx-schrift]")) return;
-  const k = ed.dataset.txEd, w = e.target.value;
-  TX[k] = TX[k] || {};
-  if(w && SCHRIFT_WAHL.some(x => x.s === w)) TX[k].schrift = w; else delete TX[k].schrift;
-  if(!Object.keys(TX[k]).length) delete TX[k];
-  txGeruehrt = true; $("#txSichern").disabled = false;
-  txVorschau(k);
+$("#txChips").addEventListener("click", e => {
+  const c = e.target.closest("[data-tx-filter]"); if(!c) return;
+  TX_FILTER = c.dataset.txFilter; TX_OFFEN = null; txZeichnen();
 });
+$("#txVerwerfen").onclick = () => {
+  if(!txVerwerfenBereit){
+    txVerwerfenBereit = true; txLeisteZeichnen();
+    setTimeout(() => { txVerwerfenBereit = false; txLeisteZeichnen(); }, 4000);
+    return;
+  }
+  txVerwerfenBereit = false; TX_BERUEHRT = new Set(); txGeruehrt = false;
+  txLaden();
+  hvSenden("worte", { hub_texte:{ eigen: txFuerHub() } }, "start");
+  $("#txStand").textContent = "Änderungen verworfen.";
+};
 $("#txSuche").addEventListener("input", () => txZeichnen());
 $("#txTippen").onclick = () => {
   TX_TIPPEN = !TX_TIPPEN;
@@ -14286,7 +15195,7 @@ $("#txSichern").onclick = async () => {
   if(demo || !db){
     TX = JSON.parse(JSON.stringify(eigen)); HUBTEXTE = neu;
     raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
-    k.textContent = "Übernehmen"; TX_NEU = new Set(); txGeruehrt = false; txZeichnen(); return;
+    k.textContent = "Übernehmen"; TX_NEU = new Set(); txGeruehrt = false; TX_BERUEHRT = new Set(); txZeichnen(); return;
   }
   const {error} = await db.from("betriebe").update({ hub_texte: neu }).eq("id", betriebId);
   k.textContent = "Übernehmen";
@@ -14298,7 +15207,7 @@ $("#txSichern").onclick = async () => {
   }
   HUBTEXTE = neu; TX = JSON.parse(JSON.stringify(eigen));
   const b = meineBetriebe.find(x => x.id === betriebId); if(b) b.hub_texte = neu;
-  TX_NEU = new Set(); txGeruehrt = false;
+  TX_NEU = new Set(); txGeruehrt = false; TX_BERUEHRT = new Set();
   raus.textContent = "Übernommen." + (offen.length ? (uebersetzt === offen.length
       ? " " + uebersetzt + (uebersetzt === 1 ? " Text" : " Texte") + " in elf Sprachen übersetzt."
       : " Nicht übersetzt — Gäste in anderen Sprachen sehen bis dahin Ihren deutschen Text. " + (grund || "")) : "");
@@ -14469,14 +15378,20 @@ function kbAusZeile(roh){
     }
   });
   KACHELPLAN.forEach(k => { if(!gesehen.has(k.s)){ geordnet.push(k); gesehen.add(k.s); } });
-  /* Jede Gruppe am Stück halten (Ziehen/Pfeile bleiben in der Gruppe):
-     stabil nach der Reihenfolge der Gruppen in KACHELPLAN sortieren. */
-  const gruppenFolge = [...new Set(KACHELPLAN.map(k => k.gruppe))];
-  geordnet.sort((a, b) => gruppenFolge.indexOf(a.gruppe) - gruppenFolge.indexOf(b.gruppe));
+  /* Jede Rubrik am Stück halten (Ziehen/Pfeile bleiben in der Rubrik). Die
+     Reihenfolge der Rubriken ist die ihres ersten Auftretens in der
+     gespeicherten Liste — der Wirt kann ganze Rubriken verschieben. Eine
+     Liste ohne eigene Wahl enthält sie in der Reihenfolge von KACHELPLAN
+     (so wurde sie gespeichert), das Ergebnis bleibt also wie vorher. */
+  const rubrik = k => kbGruppeSauber((nach[k.s] || {}).gruppe) || k.gruppe;
+  const folge = [...new Set(geordnet.map(rubrik))];
+  geordnet.sort((a, b) => folge.indexOf(rubrik(a)) - folge.indexOf(rubrik(b)));
   KACHELSTAND = geordnet.map(k => {
     const e = nach[k.s] || {};
     return {
       schluessel: k.s,
+      /* Eigene Rubrik; "" = die der Vorgabe. */
+      gruppe: (g => g && g !== k.gruppe ? g : "")(kbGruppeSauber(e.gruppe)),
       an:     e.an !== false,
       titel:  typeof e.titel === "string" && e.titel.trim() ? e.titel : k.titel,
       unter:  typeof e.unter === "string" ? e.unter : k.unter,
@@ -14588,7 +15503,84 @@ function kbNeueId(){
   let id; do { id = "e-" + Math.random().toString(36).slice(2, 9); } while(da.has(id));
   return id;
 }
-function kbGruppeVon(sch){ return (kbPlan(sch) || {}).gruppe || ""; }
+function kbGruppeVon(sch){
+  const k = KACHELSTAND.find(x => x.schluessel === sch);
+  return (k && k.gruppe) || (kbPlan(sch) || {}).gruppe || "";
+}
+/* Name einer Rubrik: nur gerade Zeichen, höchstens 28 — dieselbe Regel wie
+   kachelGruppeSauber im Hub (der Name geht dort in Text und Attribut). */
+const KB_RUBRIKEN_HOECHST = 10;
+function kbGruppeSauber(w){
+  return typeof w === "string" ? w.replace(/[<>"'`\\&]/g, "").replace(/\s+/g, " ").trim().slice(0, 28) : "";
+}
+function kbRubriken(){ return [...new Set(KACHELSTAND.map(k => kbGruppeVon(k.schluessel)))]; }
+/* Rubriken wieder am Stück, in Reihenfolge des ersten Auftretens. */
+function kbRubrikenZusammenhalten(){
+  const folge = kbRubriken();
+  KACHELSTAND.sort((a, b) => folge.indexOf(kbGruppeVon(a.schluessel)) - folge.indexOf(kbGruppeVon(b.schluessel)));
+}
+function kbBloecke(){
+  const bl = [];
+  KACHELSTAND.forEach(k => {
+    const g = kbGruppeVon(k.schluessel);
+    if(bl.length && bl[bl.length - 1].name === g) bl[bl.length - 1].kacheln.push(k);
+    else bl.push({ name:g, kacheln:[k] });
+  });
+  return bl;
+}
+/* Ganze Rubrik verschieben: an der nächsten Rubrik VORBEI, die der Gast
+   überhaupt sieht (eine, deren Kacheln alle aus sind, hat keine Stelle). */
+function kbRubrikFinden(name, richtung){
+  const bl = kbBloecke(), i = bl.findIndex(b => b.name === name);
+  if(i < 0) return -1;
+  for(let j = i + richtung; j >= 0 && j < bl.length; j += richtung)
+    if(bl[j].kacheln.some(k => k.an)) return j;
+  return -1;
+}
+function kbRubrikVerschieben(name, richtung){
+  const j = kbRubrikFinden(name, richtung); if(j < 0) return;
+  const bl = kbBloecke(), i = bl.findIndex(b => b.name === name);
+  const [b] = bl.splice(i, 1);
+  bl.splice(j, 0, b);
+  KACHELSTAND = [].concat(...bl.map(x => x.kacheln));
+  kbZeichnen();
+  const knopf = document.querySelector('[data-kbr-rubrik="' + CSS.escape(name) + '"] [' + (richtung < 0 ? "data-kbr-rhoch" : "data-kbr-rrunter") + ']');
+  if(knopf && !knopf.disabled) knopf.focus();
+}
+function kbRubrikUmbenennen(alt){
+  const neu = kbGruppeSauber(window.prompt("Neuer Name der Rubrik (höchstens 28 Zeichen):", alt));
+  if(!neu || neu === alt) return;
+  KACHELSTAND.forEach(k => {
+    if(kbGruppeVon(k.schluessel) !== alt) return;
+    const v = (kbPlan(k.schluessel) || {}).gruppe;
+    k.gruppe = neu === v ? "" : neu;
+  });
+  kbRubrikenZusammenhalten();
+  kbZeichnen();
+  melde("Rubrik umbenannt — mit „Übernehmen“ für Gäste wirksam");
+}
+/* Eine Kachel in eine andere (oder neue) Rubrik legen: ans Ende dieser Rubrik. */
+function kbInRubrik(sch, wahl){
+  const k = kbFinden(sch); if(!k) return;
+  let ziel = wahl;
+  if(wahl === ""){
+    if(kbRubriken().length >= KB_RUBRIKEN_HOECHST) return melde("Höchstens " + KB_RUBRIKEN_HOECHST + " Rubriken", true);
+    ziel = kbGruppeSauber(window.prompt("Name der neuen Rubrik (höchstens 28 Zeichen):", ""));
+    if(!ziel){ kbZeichnen(); return; }
+  }
+  const v = (kbPlan(sch) || {}).gruppe;
+  k.gruppe = ziel === v ? "" : ziel;
+  KACHELSTAND = KACHELSTAND.filter(x => x !== k);
+  let letzte = -1;
+  KACHELSTAND.forEach((x, i) => { if(kbGruppeVon(x.schluessel) === ziel) letzte = i; });
+  if(letzte > -1) KACHELSTAND.splice(letzte + 1, 0, k); else KACHELSTAND.push(k);
+  kbRubrikenZusammenhalten();
+  kbOffen.add(sch);
+  kbZeichnen();
+  const zeile = document.querySelector('[data-kb="' + sch + '"]');
+  if(zeile) zeile.scrollIntoView({ block:"center" });
+  melde("In Rubrik „" + ziel + "“ gelegt — mit „Übernehmen“ für Gäste wirksam");
+}
 
 /* Innerhalb der eigenen Gruppe verschieben — dasselbe Muster wie
    bnVerschieben() beim Banner-Rad, nur an der Gruppengrenze gestoppt.
@@ -14638,12 +15630,19 @@ function kbFuerRaster(k){
 function kbAnordnungHTML(){
   const bereiche = [];
   KACHELSTAND.filter(k => k.an).forEach(k => {
-    const g = (kbPlan(k.schluessel) || {}).gruppe || "";
+    const g = kbGruppeVon(k.schluessel);
     if(!bereiche.length || bereiche[bereiche.length - 1].gruppe !== g) bereiche.push({ gruppe:g, kacheln:[] });
     bereiche[bereiche.length - 1].kacheln.push(kbFuerRaster(k));
   });
   if(!bereiche.length) return '<p class="kbr-leer">Alle Kacheln sind aus.</p>';
-  return bereiche.map(b => '<div class="kbr-bereich">' + sicher(b.gruppe) + '</div>' +
+  const pf = (r) => '<svg width="12" height="7" viewBox="0 0 12 7" aria-hidden="true"><path d="' + (r < 0 ? "M1 6l5-5 5 5" : "M1 1l5 5 5-5") + '" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  return bereiche.map(b => '<div class="kbr-kopf" data-kbr-rubrik="' + sicher(b.gruppe) + '">' +
+      '<span class="kbr-bereich">' + sicher(b.gruppe) + '</span>' +
+      '<button type="button" class="kbr-rknopf" data-kbr-rname aria-label="Rubrik ' + sicher(b.gruppe) + ' umbenennen">' +
+        '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>' +
+      '<button type="button" class="kbr-rknopf" data-kbr-rhoch aria-label="Rubrik ' + sicher(b.gruppe) + ' nach oben"' + (kbRubrikFinden(b.gruppe, -1) < 0 ? " disabled" : "") + '>' + pf(-1) + '</button>' +
+      '<button type="button" class="kbr-rknopf" data-kbr-rrunter aria-label="Rubrik ' + sicher(b.gruppe) + ' nach unten"' + (kbRubrikFinden(b.gruppe, 1) < 0 ? " disabled" : "") + '>' + pf(1) + '</button>' +
+    '</div>' +
     '<div class="kbr-gitter">' + [].concat(...kachelReihen(b.kacheln)).map(x => {
       const k = x.k.stand;
       return '<div class="kbr-kachel kbr-' + x.form + (k.grund ? " hatgrund" : "") + '" data-kbr="' + sicher(k.schluessel) + '"' +
@@ -14724,6 +15723,12 @@ function kbZeichnen(){
           '<input data-kb-unter maxlength="90" value="' + sicher(k.unter) + '"></label>') +
         '<small class="hvwarn" data-hvwarn="kb:' + sch + '"></small>' +
       '</div>' +
+      '<div class="kbwahlblock"><span class="kbwahlname">Rubrik</span>' +
+        '<select class="kbkarte" data-kb-rubrik aria-label="Rubrik dieser Kachel">' +
+          kbRubriken().map(g => '<option value="' + sicher(g) + '"' + (g === gruppe ? " selected" : "") + '>' + sicher(g) + '</option>').join("") +
+          (kbRubriken().length < KB_RUBRIKEN_HOECHST ? '<option value="">＋ Neue Rubrik …</option>' : "") +
+        '</select>' +
+        '<small class="kbhinweis">Eine Rubrik klappt für Gäste auf und zu, wie „Jetzt am Tisch“. Ganze Rubriken verschiebst du oben in der Anordnung.</small></div>' +
       kbZielHTML(k, p) +
       '<div class="kbwahlblock"><span class="kbwahlname">Breite</span>' +
         kbSegment("Breite", ["drittel","halb","voll"], kbBreite(k), "kb-breite", KB_BREITENNAME) +
@@ -14849,6 +15854,22 @@ function kbAendern(sch, feld, wert){
   k[feld] = wert;
   kbZeichnen();
 }
+
+/* ── Rubriken (ganze aufklappbare Bereiche des Hubs) ─────────────── */
+document.addEventListener("click", e => {
+  const kopf = e.target.closest && e.target.closest("[data-kbr-rubrik]");
+  if(!kopf) return;
+  const name = kopf.dataset.kbrRubrik;
+  const k = e.target.closest("button"); if(!k || k.disabled) return;
+  if(k.hasAttribute("data-kbr-rhoch"))   kbRubrikVerschieben(name, -1);
+  else if(k.hasAttribute("data-kbr-rrunter")) kbRubrikVerschieben(name, 1);
+  else if(k.hasAttribute("data-kbr-rname"))   kbRubrikUmbenennen(name);
+});
+document.addEventListener("change", e => {
+  const sel = e.target.closest && e.target.closest("[data-kb-rubrik]");
+  if(!sel) return;
+  kbInRubrik(sel.closest("[data-kb]").dataset.kb, sel.value);
+});
 
 /* ── Bedienung ─────────────────────────────────────────────────── */
 document.addEventListener("click", e => {
@@ -15411,6 +16432,7 @@ function kbRoh(){
     const v = p(k.schluessel);
     const e = { schluessel: k.schluessel };
     if(!k.an)                       e.an     = false;
+    if(k.gruppe && k.gruppe !== v.gruppe) e.gruppe = k.gruppe;
     if(k.titel  !== v.titel)        e.titel  = k.titel;
     if((k.unter||"") !== (v.unter||"")) e.unter = k.unter;
     if(k.icon   !== v.icon)         e.icon   = k.icon;
@@ -16899,9 +17921,9 @@ $("#apOk").onclick = async () => {
 
 /* Ruft rufe(pin) so lange, bis der Server mehr sagt als „PIN“: falsche
    PIN fragt neu, fehlende lässt sie erstmals festlegen. null = abgebrochen. */
-async function mitPin(rufe){
+async function mitPin(rufe, satz){
   const r = grRecht || {};
-  let pin = await apFragen(r.pin === false ? "festlegen" : "eingeben");
+  let pin = await apFragen(r.pin === false ? "festlegen" : "eingeben", satz);
   for(let runde = 0; runde < 5 && pin; runde++){
     const {data, error} = await rufe(pin);
     if(error) throw error;
@@ -17110,6 +18132,182 @@ function gsFehlerText(err){
   return "Nicht gespeichert — bitte Verbindung prüfen.";
 }
 
+/* ═══ Bezahlen (migration-zahlungen.sql) ═══════════════════════════
+   Zwei Dinge, getrennt gelesen: die EINSTELLUNG des Hauses (betrieb_zahlarten,
+   nur lesen — geschrieben wird allein über zahlarten_setzen mit PIN) und die
+   ZAHLUNGEN des Tages (für die Chips an den Bestellkarten).
+   Nicht gelesen heißt „unbekannt“ (undefined), nicht „aus“: Ein Formular,
+   das die ganze Einstellung ersetzt, speichert erst nach dem Lesen (§8.1m). */
+let zahlSet = undefined;
+let zahlungen = {};
+let rueckOffen = [];         /* bezahlt, aber nicht bedient — jeder Tag, bis „erledigt“ */
+const ZH_GRUND = {
+  kein_recht: "Das darf nur der Besitzer.",
+  nicht_angemeldet: "Bitte neu anmelden.",
+  stripe_konto_form: "Das Stripe-Konto beginnt mit „acct_“ — bitte genau so aus dem Stripe-Dashboard kopieren.",
+  stripe_konto_fehlt: "Für Karte, Klarna, PayPal und SEPA fehlt das Stripe-Konto.",
+  iban: "Diese IBAN stimmt nicht (Prüfsumme). Bitte noch einmal vergleichen.",
+  ueberweisung_unvollstaendig: "Für Überweisungen brauchen Gäste IBAN und Kontoinhaber.",
+  kontoinhaber: "Der Kontoinhaber ist zu kurz, zu lang oder enthält unerlaubte Zeichen.",
+  bank: "Der Name der Bank ist zu kurz, zu lang oder enthält unerlaubte Zeichen.",
+  bic: "Diese BIC stimmt nicht (8 oder 11 Zeichen).",
+  pin_gesperrt: "Ihre PIN ist gesperrt. Die Zentrale kann sie freigeben.",
+  pin_form: "Die PIN hat genau acht Ziffern."
+};
+function zhFuellen(){
+  const g = $("#zhGruppe"); if(!g) return;
+  const z = zahlSet || {};
+  const k = (id, an) => { const e = $("#" + id); if(e) e.checked = an === true; };
+  k("zhKarte", z.karte_an); k("zhKlarna", z.klarna_an); k("zhPaypal", z.paypal_an); k("zhSepa", z.sepa_an); k("zhUeb", z.ueberweisung_an);
+  [["zhStripe", z.stripe_konto], ["zhIban", z.iban], ["zhInhaber", z.kontoinhaber], ["zhBic", z.bic], ["zhBank", z.bank]]
+    .forEach(([id, w]) => { const e = $("#" + id); if(e && document.activeElement !== e) e.value = w || ""; });
+  $("#zhSichern").disabled = zahlSet === undefined;
+  const a = [z.karte_an && "Karte", z.klarna_an && "Klarna", z.paypal_an && "PayPal", z.sepa_an && "SEPA", z.ueberweisung_an && "Überweisung"].filter(Boolean);
+  $("#zhStand").textContent = zahlSet === undefined ? "Konnte nicht gelesen werden — Speichern ist gesperrt, bis der Stand da ist."
+    : a.length ? "Gäste können online bezahlen: " + a.join(", ") + "." : "Aus — Gäste zahlen wie bisher bei Ihnen.";
+}
+async function zhLaden(){
+  if(demo || !db || !betriebId){ zahlSet = zahlSet === undefined ? {} : zahlSet; zhFuellen(); return; }
+  const fuer = betriebId;
+  try{
+    const {data, error} = await db.from("betrieb_zahlarten").select("*").eq("betrieb_id", fuer).maybeSingle();
+    if(fuer !== betriebId) return;
+    if(error){
+      zahlSet = undefined;
+      zhFuellen();
+      if(/relation|does not exist|42P01/i.test(error.message || error.code || "")) $("#zhStand").textContent = "Noch nicht eingerichtet (Datenbank-Migration fehlt).";
+      return;
+    }
+    zahlSet = data || {};
+  }catch(e){ zahlSet = undefined; }
+  zhFuellen();
+  if(typeof euBald === "function") euBald();
+}
+async function zahlungenLaden(id){
+  if(demo || !db || !id) return;
+  try{
+    const {data, error} = await db.from("zahlungen")
+      .select("bestellung_id,art,methode,status,betrag_cent,rueckzahlung_noetig")
+      .eq("betrieb_id", id).gte("erstellt_am", tagesBeginn());
+    if(error || id !== betriebId) return;       /* Tabelle fehlt: es gibt schlicht keine Chips */
+    const neu = {};
+    (data || []).forEach(z => { neu[z.bestellung_id] = z; });
+    zahlungen = neu;
+    /* Rückzahlungen unabhängig vom Tag: Eine stornierte Bestellung steht nicht
+       mehr im Board, das Geld des Gastes aber noch auf Ihrem Konto. */
+    const r = await db.from("zahlungen")
+      .select("bestellung_id,methode,betrag_cent,erstellt_am")
+      .eq("betrieb_id", id).eq("rueckzahlung_noetig", true).eq("rueckzahlung_erledigt", false)
+      .order("erstellt_am", {ascending:false}).limit(30);
+    if(!r.error && id === betriebId) rueckOffen = r.data || [];
+  }catch(e){ /* stiller Versuch, nächster Takt */ }
+}
+function rueckZeichnen(){
+  const el = $("#rueckListe"); if(!el) return;
+  if(!rueckOffen.length){ el.innerHTML = ""; return; }
+  el.innerHTML = rueckOffen.map(z => `<div class="pruefband rueckband" role="alert">
+    <b>Rückzahlung nötig</b>
+    <span>${sicher(euro((z.betrag_cent || 0) / 100))} · ${sicher(ZH_METHODE[z.methode] || "online")} · Bestellung
+      ${sicher(String(z.bestellung_id).replace(/-/g, "").slice(0, 8).toUpperCase())} · ${sicher(new Date(z.erstellt_am).toLocaleString("de-DE", {day:"2-digit", month:"2-digit", hour:"2-digit", minute:"2-digit"}))}.
+      Der Gast hat bezahlt, die Bestellung wurde aber nicht bedient. Bitte im Stripe-Dashboard zurückzahlen.</span>
+    ${istInhaberRolle() ? `<div class="pruefknoepfe"><button class="knopf leise" data-rueck-ok="${sicher(z.bestellung_id)}">Zurückgezahlt – erledigt</button></div>` : ""}
+  </div>`).join("");
+}
+$("#rueckListe").addEventListener("click", async e => {
+  const k = e.target.closest("[data-rueck-ok]"); if(!k) return;
+  k.disabled = true;
+  try{
+    if(demo || !db){ rueckOffen = rueckOffen.filter(z => z.bestellung_id !== k.dataset.rueckOk); }
+    else{
+      const {data, error} = await db.rpc("zahlung_rueckzahlung_erledigt", { p_bestellung: k.dataset.rueckOk });
+      if(error) throw error;
+      if(!data || !data.ok){ k.disabled = false; melde(data && data.grund === "kein_recht" ? ZH_GRUND.kein_recht : "Nicht gespeichert — bitte Verbindung prüfen.", true); return; }
+      await zahlungenLaden(betriebId);
+    }
+    rueckZeichnen(); melde("Vermerkt");
+  }catch(err){ k.disabled = false; melde("Nicht gespeichert — bitte Verbindung prüfen.", true); }
+});
+const ZH_METHODE = { card:"Karte", klarna:"Klarna", paypal:"PayPal", sepa_debit:"SEPA-Lastschrift", ueberweisung:"Überweisung", unbekannt:"online" };
+function zahlHTML(b){
+  const z = zahlungen[b.id]; if(!z) return { band:"", chip:"", offen:false };
+  const sum = euro((z.betrag_cent || 0) / 100);
+  const noch = z.status === "offen" || z.status === "fehlgeschlagen" || z.status === "abgelaufen";
+  let band = "", chip = "";
+  if(z.status === "bezahlt") chip = `<div class="zahlchip">Bezahlt · ${sicher(ZH_METHODE[z.methode] || "online")}</div>`;
+  else if(z.status === "vor_ort") chip = `<div class="zahlchip">Beim Personal bezahlt</div>`;
+  if(z.status === "bezahlt" && z.rueckzahlung_noetig){
+    band = `<div class="pruefband rueckband" role="alert"><b>Rückzahlung nötig</b>
+      <span>Der Gast hat ${sum} online bezahlt, aber die Bestellung wurde nicht bedient (storniert, abgelehnt oder schon beim Personal bezahlt).
+      Bitte im Stripe-Dashboard zurückzahlen.</span></div>`;
+  }
+  const offen = b.pruefen === true && noch && b.status === "neu";
+  if(offen){
+    const ueb = z.art === "ueberweisung";
+    band = `<div class="pruefband" role="group" aria-label="Zahlung offen">
+      <b>Zahlung offen</b>
+      <span>${ueb ? `Wartet auf eine Überweisung über ${sum}. Verwendungszweck: Bestellung ${sicher(String(b.id).replace(/-/g, "").slice(0, 8).toUpperCase())}.`
+                  : `Der Gast bezahlt online (${sum}). Die Küche sieht die Bestellung erst nach der Zahlung.`}
+        ${z.status === "fehlgeschlagen" || z.status === "abgelaufen" ? " Der letzte Versuch hat nicht geklappt." : ""}</span>
+      <div class="pruefknoepfe">
+        ${ueb && istInhaberRolle() ? `<button class="knopf" data-ueb-ok="${sicher(b.id)}">Zahlung eingegangen</button>` : ""}
+        <button class="knopf leise" data-vorort="${sicher(b.id)}">Beim Personal bezahlt – freigeben</button>
+        <button class="knopf leise" data-verwerfen="${sicher(b.id)}">Verwerfen</button>
+      </div></div>`;
+  }
+  return { band, chip, offen };
+}
+async function zahlungFreigeben(id, art){
+  const b = bestellungen.find(x => x.id === id); if(!b || inArbeit.has(id)) return;
+  if(art === "vorort" && !confirm("Der Gast hat bei Ihnen bezahlt? Die Bestellung geht dann an die Küche. Zahlt er später doch noch online, erscheint ein Hinweis zur Rückzahlung.")) return;
+  inArbeit.add(id);
+  try{
+    if(demo || !db){ b.pruefen = false; b.pruef_grund = null; if(zahlungen[id]) zahlungen[id].status = art === "vorort" ? "vor_ort" : "bezahlt"; }
+    else{
+      const fn = art === "vorort" ? "zahlung_vor_ort_freigeben" : "zahlung_ueberweisung_bestaetigen";
+      const {data, error} = await db.rpc(fn, { p_bestellung: id });
+      if(error) throw error;
+      if(!data || !data.ok){ melde(data && data.grund === "kein_recht" ? ZH_GRUND.kein_recht : "Nicht gespeichert — bitte Verbindung prüfen.", true); return; }
+      b.pruefen = false; b.pruef_grund = null;
+      await zahlungenLaden(betriebId);
+    }
+    melde(art === "vorort" ? "Freigegeben — die Küche sieht sie jetzt" : "Zahlung vermerkt — die Küche sieht sie jetzt");
+  }catch(e){ melde("Nicht gespeichert — bitte Verbindung prüfen.", true); }
+  finally{ inArbeit.delete(id); neuZeichnen(); }
+}
+$("#karten").addEventListener("click", e => {
+  const v = e.target.closest("[data-vorort]");
+  if(v){ e.stopPropagation(); return zahlungFreigeben(v.dataset.vorort, "vorort"); }
+  const u = e.target.closest("[data-ueb-ok]");
+  if(u){ e.stopPropagation(); return zahlungFreigeben(u.dataset.uebOk, "ueberweisung"); }
+}, true);
+
+$("#zhSichern").onclick = async () => {
+  if(zahlSet === undefined) return;
+  const w = id => ($("#" + id).value || "").trim();
+  const daten = {
+    karte_an: $("#zhKarte").checked, klarna_an: $("#zhKlarna").checked, paypal_an: $("#zhPaypal").checked,
+    sepa_an: $("#zhSepa").checked, ueberweisung_an: $("#zhUeb").checked,
+    stripe_konto: w("zhStripe"), iban: w("zhIban"), kontoinhaber: w("zhInhaber"), bic: w("zhBic"), bank: w("zhBank")
+  };
+  if((daten.karte_an || daten.klarna_an || daten.paypal_an || daten.sepa_an) && !daten.stripe_konto){ melde(ZH_GRUND.stripe_konto_fehlt, true); $("#zhStripe").focus(); return; }
+  if(daten.ueberweisung_an && (!daten.iban || !daten.kontoinhaber)){ melde(ZH_GRUND.ueberweisung_unvollstaendig, true); $("#zhIban").focus(); return; }
+  const knopf = $("#zhSichern"); knopf.disabled = true;
+  try{
+    if(demo || !db){
+      const pin = await apFragen("eingeben", "Vorführung: nichts wird wirklich gespeichert.");
+      if(pin){ zahlSet = Object.assign({}, daten); melde("Vorführung — nicht gespeichert"); }
+    }else{
+      await grLaden();
+      const data = await mitPin(pin => db.rpc("zahlarten_setzen", { p_betrieb: betriebId, p_daten: daten, p_pin: pin }),
+        "Zahlungsdaten bestätigen Sie mit Ihrer PIN — hier würde sonst Geld umgeleitet.");
+      if(data && data.ok){ melde("Gespeichert"); await zhLaden(); }
+      else if(data){ melde(ZH_GRUND[data.grund] || "Nicht gespeichert — bitte Verbindung prüfen.", true); }
+    }
+  }catch(e){ melde("Nicht gespeichert — bitte Verbindung prüfen.", true); }
+  knopf.disabled = zahlSet === undefined;
+  zhFuellen();
+};
+
 /* ═══ Wer hat was geändert (migration-protokoll.sql) ═══
    Die Zeilen schreibt die Datenbank, nie das Board; lesen darf nur der
    Inhaber (RLS). Jeder Wert aus der Zeile geht als TEXT in die Seite —
@@ -17132,9 +18330,14 @@ const AE_FELD = {
   betrag:"Betrag", prozent:"Prozent", eingeloest:"eingelöst", eingeloest_bestellung_id:"eingelöst an Bestellung",
   quelle:"Herkunft", angelegt_am:"angelegt am", ziel_gericht_id:"Ziel-Gericht", ziel_gericht_name:"Ziel-Gericht",
   rolle:"Rolle", anzeigename:"Name", darf_gutscheine:"Gutschein-Recht", gutschein_max_betrag:"Höchstwert",
-  gutschein_max_prozent:"Höchstprozent", gutschein_tag_max:"Gutscheine je Tag"
+  gutschein_max_prozent:"Höchstprozent", gutschein_tag_max:"Gutscheine je Tag",
+  karte_an:"Kartenzahlung", klarna_an:"Klarna", paypal_an:"PayPal", sepa_an:"SEPA-Lastschrift", ueberweisung_an:"Überweisung",
+  stripe_konto:"Stripe-Konto", iban:"IBAN", kontoinhaber:"Kontoinhaber", bic:"BIC", bank:"Bank",
+  geaendert_am:"Stand", geaendert_von:"geändert von", status:"Stand der Zahlung", methode:"Zahlart", bezahlt_am:"bezahlt am",
+  rueckzahlung_noetig:"Rückzahlung nötig", rueckzahlung_erledigt:"Rückzahlung erledigt", betrag_cent:"Betrag", art:"Art"
 };
-const AE_DING = { gerichte:"das Gericht", aktionen:"die Aktion", gutscheine:"den Gutschein", rabattcodes:"den Rabattcode" };
+const AE_DING = { gerichte:"das Gericht", aktionen:"die Aktion", gutscheine:"den Gutschein", rabattcodes:"den Rabattcode",
+                  betrieb_zahlarten:"die Zahlarten", zahlungen:"die Zahlung" };
 let aeZeilen = [], aeSeite = 0;
 function aeEuro(v){ const n = Number(v); return Number.isFinite(n) ? n.toLocaleString("de-DE", {minimumFractionDigits:2, maximumFractionDigits:2}) + " €" : String(v); }
 function aeSatz(z){
@@ -19706,7 +20909,7 @@ $("#csvKnopf").onclick = () => {
   const zeilen = tabelle();
   if(zeilen.length < 2) return melde("Nichts zu sichern", true);
   const csv = "\uFEFF" + zeilen.map(z =>
-    z.map(f => `"${String(f ?? "").replace(/"/g,'""')}"`).join(";")).join("\r\n");
+    z.map(f => `"${csvZelle(f).replace(/"/g,'""')}"`).join(";")).join("\r\n");
   const a = document.createElement("a");
   a.href = URL.createObjectURL(new Blob([csv], {type:"text/csv;charset=utf-8"}));
   a.download = `omoteno-${new Date().toISOString().slice(0,10)}.csv`;

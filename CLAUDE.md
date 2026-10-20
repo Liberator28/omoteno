@@ -361,6 +361,20 @@ Und beim Erweitern bleibt **jeder** alte Wert drin — auch einer, der
 heute keine Zeile hat. Der fehlende neue Wert fehlt laut; ein
 verlorener alter fehlt still.
 
+> **Vorfall, 19.10., beim Einspielen von E5-D.** `protokoll_tabelle_check`
+> wird von mehreren Migrationen erweitert. E5-D hatte die Liste fest
+> hingeschrieben und hätte `betrieb_zahlarten`/`zahlungen` still wieder
+> herausgeworfen. Die Korrektur las die Liste aus dem Katalog — mit
+> `'([a-z_]+)'`. Das passt nur auf `ARRAY['a'::text,…]`; nach einem Umbau
+> über `format('%L')` druckt Postgres `'{a,b}'::text[]`, der Ausdruck fand
+> nichts, und die Liste war danach **leer plus die neuen Namen**. Gemessen
+> live: 13 statt 15 Einträge, die Zahlungs-Tabellen weg — jede Änderung
+> der Zahlarten wäre am CHECK gescheitert. Gefunden nur, weil nach dem
+> Einspielen die Schranke selbst gelesen wurde, nicht `success: true`.
+
+Wer eine Liste aus dem Katalog liest, versteht **beide** Schreibweisen
+und bricht laut ab, wenn weniger als erwartet herauskommt.
+
 ### 2.3d Was ausgerollt ist, aber nicht im Verzeichnis steht, prüft niemand
 
 > **Vorfall.** Die Edge Function „melden“ (Push an die Geräte des
@@ -1609,6 +1623,91 @@ vermisst. Und die Prüfung dazu misst **nach dem Öffnen** (Höhe ≥ 44 px, akt
 Stück in der Mitte), nicht „ist da“. `pruefungen/werkzeug/zentrale.js`
 öffnet Unterseiten dafür per echtem Tipp auf die Kachel.
 
+### 8.1v Eine Geste, die mit dem Rollen konkurriert, trifft den, der schnell rollt
+
+> **Vorfall, gemeldet vom Nutzer (Foto + Satz).** „Wenn man schnell nach
+> oben und unten scrollt in der Speisekarte, wirft es einen auf die
+> Startseite zurück.“ Ursache: „am oberen Rand 110 px nach unten ziehen →
+> Übersicht“. Wer schnell hochrollt, setzt den Finger auf, wenn die Seite
+> gerade oben ankommt (Schwung, Gummiband) — der nächste Zug nach unten
+> war die Geste. Die Prüfung dazu rollte nie schnell und hatte den Fehler
+> nie gesehen. Entfernt: „Zurück“ und die Kachel-Wische reichen; ein
+> dritter Weg ist keiner.
+>
+> **Derselbe Fund, zweiter Teil.** Beim Kartenwischen kam das Foto der
+> nachrückenden Karte erst, wenn sie schon vorn lag (Zeichen sprang zum
+> Abzeichen, Foto blendete im Wisch ein). Auf dem schnellen Netz des
+> Entwicklers unsichtbar. Die Probe stellt die Fotos 900 ms langsam
+> (§8.1g); der Gegenbeweis im Worktree zeigte 6 späte Einblendungen statt 0.
+> Und: Meine erste Messung wischte NEBEN die Karte (`elementFromPoint` =
+> Chip) und meldete „keine Sprünge“ — `edPos` blieb 0. Eine Gestenprobe
+> prüft zuerst, dass die Geste etwas bewegt hat.
+
+Jede Geste auf der Seitenfläche wird mit **schnellem, wiederholtem
+Rollen** geprüft, nicht nur mit einem sauberen Zug. Was in Wartezeit
+nachlädt (Fotos der nächsten Karte), wird vorab geholt.
+
+### 8.1w Eine Regel, die an EINEM Feld geprüft wurde, gilt für dieses Feld
+
+> **Vorfall, im Sicherheits-Sweep vom 19.10. gemessen.** §2.3a verlangte
+> seit Wochen: „Was aus einer Live-Spalte in ein Attribut geht, läuft über
+> eine feste Liste oder `hs()`.“ Die Kacheln, Banner, Kopfbild und
+> `hub_texte.eigen` taten es — und wurden geprüft, jeweils mit einem
+> Anführungszeichen in DIESEM Feld. Gerichtname, Beschreibung, Kategorie,
+> Aktionstitel, Pausentext, `hub_woerter` und beide Übersetzungsspalten
+> gingen roh durch `t()` in `innerHTML`. `<img src=x onerror=…>` hat 28
+> Zeichen und passt unter jede Längenschranke. Gemessen: Die Nutzlast lief
+> beim Gast, sobald er die Karte öffnete. Gefunden hat es erst eine Probe,
+> die JEDES Feld zugleich vergiftet (je eine eigene Marke), nicht eine, die
+> ein Feld nach dem anderen für sauber erklärt.
+>
+> Daneben: ein CSV-Export, der Gast-Notizen unverändert als Zelle schrieb
+> (`=HYPERLINK(…)` beim Personal), und eine CSP, die `*.supabase.co`
+> erlaubte statt des eigenen Projekts — ein eingeschleustes Skript hätte
+> seine Beute an ein Projekt des Angreifers schicken dürfen.
+
+Regel: Wer „alle Live-Spalten sind geprüft“ sagt, belegt es mit der
+Vergiftungsprobe (`pruef-einschleusung.js`), und jede NEUE Spalte, die ein
+Gast, das Team oder ein Übersetzer schreibt, kommt in
+`pruefungen/werkzeug/hub-vergiftet.js` mit hinein — sonst prüft die
+Probe sie nicht. Ein Text, der als Schlüssel dient (Gerichtname,
+Kategorie), verliert nur `<>`; Anzeigetext zusätzlich das gerade `"`
+(`liveText`/`liveTextDoppel`). Und am Senke zählt `hs()` trotzdem.
+
+### 8.1x Wo Geld fließt, braucht jeder Ausfall einen Ausweg — und jede Rückzahlung einen Ort
+
+> **Vorfall, beim Bau der Zahlarten (Stripe, Klarna, PayPal, SEPA, Überweisung)
+> viermal im Entwurf gefunden, nicht live.** (1) Eine online bezahlte
+> Bestellung wird bis zur Zahlung unsichtbar gehalten (`pruefen`). Fällt
+> Stripe aus, hätte ein echter Gast bestellt und nie etwas bekommen — §7
+> andersherum. Ausweg: „Beim Personal bezahlt – freigeben“
+> (`zahlung_vor_ort_freigeben`), und kommt später doch Geld an, steht die
+> Zahlung auf „Rückzahlung nötig“. (2) Storniert der Gast NACH der Zahlung,
+> verschwindet die Karte aus dem Board — mit ihr der Hinweis. Das Board
+> filtert `storniert` heraus; ein Band an der Karte hätte nie jemand
+> gesehen (die Probe fand `null`). Jetzt merkt ein Trigger die Rückzahlung
+> in der Zahlung, und das Board listet jede offene, an welchem Tag auch
+> immer, bis der Besitzer „erledigt“ tippt. (3) `zahlung_stripe_vorbereiten`
+> baute die Zahlarten mit `array || 'card'` — Postgres liest das
+> Literal als Array und wirft erst beim ersten Aufruf (§2.2). (4) Der Hub
+> zeigte einen Fehlersatz über `melden()`; auf der Bestellseite gibt es
+> kein `#melde`, der Satz stand im Nichts (§8.1h).
+
+- Jeder Zahlungsweg hat eine Antwort auf „Anbieter fällt aus“ und auf
+  „Geld ist da, Essen nicht“. Fehlt eine, ist der Weg nicht fertig.
+- Der Betrag kommt aus der Datenbank, nie aus dem Browser; das Konto
+  ebenso. Die Probe schickt einen gefälschten Betrag und ein fremdes
+  Konto MIT (`pruef-zahlung-edge.js`).
+- Eine Webhook-Funktion gibt nur frei, wenn Unterschrift, Konto, Betrag
+  und Währung stimmen — und jede dieser Prüfungen hat ihren eigenen
+  Gegenbeweis (acht Sabotagen im Worktree, jede rot).
+- Eine Probe, die `NULL` liefert, druckt NICHTS (`NULL || text` ist
+  NULL). Beim SQL-Lauf zählt der Runner die Zeilen gegen die Zahl der
+  Proben; sonst blieben Z75, Z90 und Z91 bei entfernter Prüfung „grün“.
+- Ehrliche Grenzen: Kein Lauf gegen echtes Stripe, Klarna oder PayPal
+  (braucht Konten und Schlüssel). SEPA-Lastschrift ist erst nach Tagen
+  bestätigt und für Essen zum Sofortverzehr ungeeignet — das Board sagt es.
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1649,6 +1748,7 @@ Dazu je nach Änderung:
 | **Irgendein Text, den ein Gast liest** | `pruefungen/pruef-uebersetzung.js` (braucht `dist/`) — zweite Quelle, jede Sprache am gemalten Bild, Anrede, und der Weg aus dem Board |
 | Freie Texte des Betriebs, Bestellpass, Begleitersatz | `pruefungen/pruef-texte.js` (braucht `dist/`) |
 | **Schriften (Auswahl, eigener Import), Schriften der Seiten** | `pruefungen/pruef-schriften.js` (braucht `dist/`) — zweite Quelle: SCHRIFT_WAHL (Board) = SCHRIFT_WEB (Hub) = Dateien in `auslieferung/schriften/` = LIZENZEN.txt, `_headers` und `bauen.js`; KEINE Seite lädt von Google (`<link>` in allen `seiten/*.html`), `seiten.css` zeigt nur auf vorhandene Dateien; Hub zeichnet die gewählte Schrift (computed style + `document.fonts.check`), latin-ext genau bei Bedarf, fremder Server/Anführungszeichen/javascript:/fremder Eimer/blob: werden nicht geladen (gemessen an den Anfragen); Board: Probe je Karte, umbenannte Bilddatei abgewiesen, echte Datei in der Vorschau vor dem Hochladen, Upload in den eigenen Ordner, `hub_stil` zusammengeführt (Emoji bleibt), gespeicherte Adresse passiert das Hub-Muster. DB: `datenbank/pruef-schriften.sql` |
+| **Schriften: Lizenzen, Urhebervermerke, nichts von Google** | `pruefungen/pruef-lizenzen.py` (braucht `pip install fonttools brotli`, sonst Exit 2 — eine Prüfung, die nicht läuft, ist keine) — zweite Quelle ist die NAME-TABELLE der ausgelieferten Datei: Urheberzeile jeder Familie steht im Block von `auslieferung/schriften/LIZENZEN.txt` (Anlass 19.10.: Source Sans 3 trug nur „Google Inc.“, die Datei sagt „© 2023 Adobe“), jeder Block mit vollem OFL-1.1-Text, Dateifamilien = Lizenzköpfe, jede Schrift von `SCHRIFT_WAHL` mit Datei UND Block, kein `fonts.googleapis/gstatic` außerhalb von Kommentaren, Impressum im Hub nennt OFL und Noto (CC BY 4.0) mit Links. Gegenbeweise im Worktree (alter Stand: 3 rot; Google-Link: rot; Familie ohne Block: 2 rot). **Ehrliche Grenze:** prüft Vermerke, nicht ob ein Anbieter „OFL“ zu Recht sagt |
 | **Live-Vorschau im Board (Startseite, Ihre Worte, Aktion), Vorschaumodus des Hubs** | `pruefungen/pruef-vorschau.js` (braucht `dist/`) — die Naht am Stück: echtes Board lädt die echte Hub-Datei als srcdoc (nicht per src, X-Frame-Options bleibt DENY), Tippen in Banner/Kachel/Slogan/Aktionsname erscheint im Rahmen ohne „Übernehmen“, Fokus auf den Gruß zeigt den Willkommensschirm, Kürzungshinweis unter dem Feld nur, wenn der Hub WIRKLICH kürzt (Gegenfall kurzer Text), die Vorschau meldet keinen Besuch und schickt nichts ab, ist nicht bedienbar, kein Fehler in Board und Rahmen |
 | **Textgrenzen (Banner, Kacheln, Slogan, Gruß, Aktionsname, Gutschein)** | `pruefungen/pruef-textplatz.js` (braucht `dist/`) — Grenzen aus dem Board gelesen (zweite Quelle, keine Zahl in der Prüfung), Texte an der Höchstgrenze mit echten Wörtern in beiden Häusern bei 360/390/430 px: nichts läuft seitlich über, Slogan ≤ 3 Zeilen, Bannerkarte bleibt 4:3 und ihr Text in der Karte, Kacheltext ≤ 2 + 3 Zeilen (aus den echten Zeilenhöhen gerechnet), Aktionsname ≤ 2 Zeilen, Gruß passt auf den Willkommensschirm. Die DB-Hälfte: `datenbank/migration-texte-laenger.sql` (gleiche Namen, nur gelockert) |
 | **Allergene/Zusatzstoffe, Kennziffern-Zuordnung** | `pruefungen/pruef-stoffe.js` (braucht `dist/`) — Rundlauf admin.html ↔ hub.vorlage.html Ziffer für Ziffer, dazu die Überlauf-Prüfung (scrollWidth/scrollHeight) am längsten echten Zusatzstoff-Text |
@@ -1682,7 +1782,8 @@ Dazu je nach Änderung:
 | **Gericht anlegen im Board (Blatt, „Mehr Angaben“, Speichern & nächstes)** | `pruefungen/pruef-gericht-schnell.js` — Ruhelage zugeklappt, Preis mit Komma, erkannte Allergene nur als Vorschlag (nichts von selbst gesetzt, Gegenfall ohne Treffer), Serienanlage behält Karte/Kategorie und leert den Rest, unlesbarer Preis speichert nicht und sagt warum |
 | **Rabatt am Gericht, Aktionspreis in der Karte** | `pruefungen/pruef-rabatt-gericht.js` (braucht `dist/`) — Board schreibt in `aktionen` innerhalb jeder Schranke (zweite Quelle `datenbank/stand-aktionen-schranken.sql`), Hub zeigt neuen und alten Preis samt „−20 %“, „+“ legt zum Aktionspreis in den Korb und zieht nach Ende nach, Dauer-Rabatt nicht im Streifen, Plakette lesbar je Haus Tag/Abend |
 | **Altersfreigabe 16+/18+ (Board, Hub, Küche)** | `pruefungen/pruef-altersfreigabe.js` (braucht `dist/`) — Alkohol aus dem Namen nur VORGESCHLAGEN, gegen die echten Getränkenamen (§6.1), Frage einmal je Stufe und Sitzung auch über zweiten Weg, „Wieder herausnehmen“ nimmt nur Betroffenes, Schirm entfernt statt versteckt, Küche „Ausweis 18+“ an der Position |
-| **Sicherheit: Kopfzeilen, CSP, selbst ausgelieferte Bibliotheken, 429 an den Türen, Polling, offene anon-Funktionen** | `pruefungen/pruef-sicherheit.js` — lokaler Server mit den echten `_headers` (wie Netlify zusammengeführt): CSP/HSTS/DENY, `/lib/` immutable, keine Seite lädt fremdes Skript; elf Seiten ohne `securitypolicyviolation`; manipulierte `/lib/`-Datei wird nicht ausgeführt (integrity); HTTP 429 an Board, Konto, Küche, Master gibt einen Satz und KEINEN Login-Versuch (Gegenfall: erlaubt → Versuch); versteckter Tab fragt zehn Minuten nichts, zurück holt sofort; jede anon-Funktion aus `datenbank/stand-anon-funktionen.sql` gebremst oder namentlich begründet, und jede Funktion in `migration-schutz-2.sql` trägt ihre Bremse |
+| **Zahlarten (Stripe: Karte/Klarna/PayPal/SEPA, Überweisung), `zahlungen`, `betrieb_zahlarten`, Rückzahlung** | DB: `pruefungen/pruef-zahlungen-lokal.sh` (lokales Postgres 16: `datenbank/modell-lokal-zahlung.sql` + die ECHTEN Funktionen aus den Migrationen + `migration-zahlungen.sql` + `datenbank/pruef-zahlungen.sql`, zurückgedreht) — Runner zählt Zeilen gegen Proben (NULL druckt nichts); IBAN-Prüfsumme, Einstellen nur Inhaber + PIN (Formfehler kosten keinen Versuch), kein direktes Schreiben (Recht UND Zeilenzahl), Betrag = Ware + Lieferung − Rabatt in Cent, abgewiesene Aufrufe hinterlassen keine Bestellung, Service-Funktionen nur `service_role`, Webhook-Freigabe nur bei passendem Konto, „abgelaufen“ überschreibt nie „bezahlt“, Rückzahlung bei stornierter/vor-Ort-bezahlter Bestellung, Überweisung nur Inhaber. Gegenbeweise im Worktree (7 Sabotagen). Edge: `pruefungen/pruef-zahlung-edge.js` führt die echten `zahlung-starten`/`stripe-webhook` aus (Unterschrift mit Nodes crypto selbst gerechnet, gefälschter Betrag/Konto/Rückkehradresse, SEPA erst bei `async_payment_succeeded`, DB-Fehler → 500 + Ereignis frei; 8 Sabotagen). Hub: `pruefungen/pruef-zahlung.js` (braucht `dist/`) — beide Häuser: nichts sichtbar ohne Zahlarten/bei 404/500 und genau EINE Anfrage; Wahl am Tisch 2 Wege, Lieferung 3; ≥ 44 px, ≥ 4,5:1 hell/dunkel; Zahlungs-Funktion mit allen alten Feldern + `p_zahlart`, Weiterleitung NUR zu checkout.stripe.com; Wahl eingefroren über Neuladen (§8.1q); Rückkehr `?zahlung=ok|abbruch`; Bankdaten nur als Text; Datenschutz nennt nur vorhandene Anbieter; alle neuen Sätze in elf Sprachen. Board: `pruefungen/pruef-zahlung-board.js` — PIN-Blatt VOR dem Schreiben, Nutzlast, Lesefehler sperrt Speichern (§8.1m), Zahlung-offen-Band ohne freies „Freigeben“, Rückzahlungsliste, Team ohne Geldeingang-Taste. **Ehrliche Grenze:** nie gegen echtes Stripe/Klarna/PayPal gelaufen; DB-Hälfte nur lokal, `migration-zahlungen.sql` ist seit 19.10. live eingespielt und geprüft (Signaturen, Rechte, RLS, Trigger, Aufruf in zurückgedrehter Transaktion) — die Edge Functions `zahlung-starten`/`stripe-webhook` sind NOCH NICHT ausgerollt, Stripe-Schlüssel fehlen |
+| **Sicherheit: Kopfzeilen, CSP, selbst ausgelieferte Bibliotheken, 429 an den Türen, Polling, offene anon-Funktionen** | `pruefungen/pruef-sicherheit.js` — lokaler Server mit den echten `_headers` (wie Netlify zusammengeführt): CSP/HSTS/DENY, `/lib/` immutable, keine Seite lädt fremdes Skript; elf Seiten ohne `securitypolicyviolation`; manipulierte `/lib/`-Datei wird nicht ausgeführt (integrity); HTTP 429 an Board, Konto, Küche, Master gibt einen Satz und KEINEN Login-Versuch (Gegenfall: erlaubt → Versuch); versteckter Tab fragt zehn Minuten nichts, zurück holt sofort; `connect-src` nennt nur das EIGENE Projekt (Adresse aus dem Board gelesen, kein `*.supabase.co`; Browserprobe: `evilproject.supabase.co` wird gesperrt); jede anon-Funktion aus `datenbank/stand-anon-funktionen.sql` gebremst oder namentlich begründet, und jede Funktion in `migration-schutz-2.sql` trägt ihre Bremse |
 | **Speisekarte: Pille „Für mich entscheiden“ über dem Titel, Kategorie-Leiste geht beim Rollen mit, „Zurück“ in der klebenden Leiste** | `pruefungen/pruef-speisekarte-leiste.js` (braucht `dist/`) — beide Häuser 360/390/430 px: Pille erstes Element vor dem `h2`, eine Zeile ≤ 52 px, ≥ 44 px, ≥ 4,5:1, Tipp → Rad; Tipp auf eine Kategorie SPRINGT (filtert nicht — alle Gerichte bleiben), genau ein Chip `.an` mit `aria-current`, ganz im Bild der Leiste, nicht verdeckt (`elementFromPoint`), erstes Gericht direkt unter der Leiste; von Hand gerollt folgt die Markierung, oben wieder „Alle“; klebt die Leiste, steht „Zurück“ IN ihr (getroffen) und die schwebende Pille ist weg (opacity 0, nicht antippbar), kein Chip unter fremdem Element; „Beliebt“ filtert wie bisher; reduzierte Bewegung springt sofort; Arabisch: Zurück rechts, übersetzt. Liefer-Schalter ohne Feder: `pruef-liefern.js` (nur steigend, nie über 44 px, keine Stauchung) |
 | **Kachel → Unterseite (seit 11.10. OHNE Übergang), Glas-Knopf „Zurück“** | `pruefungen/pruef-reise.js` (braucht `dist/`) — jede Kachel der echten Startseite über den echten Tipp: Adresse im selben Takt, nie eine `.reise`-Ebene, im ersten Bild deckend (gegen die RUHE gemessen — die 0,85 des Foodroulette-Pfeils ist Gestaltung; Fotos blenden erst nach dem Laden ein und sind ausgenommen), nur eine transform-Bewegung ≤ 220 ms ohne Verzögerung; reduzierte Bewegung: keine Animation; Zurück ohne Ebene; Glas-Knopf je Sprache, ≥ 44 px, Licht nur transform |
 | **Wischen zwischen den Unterseiten (nächste/vorige Kachel)** | `pruefungen/pruef-seitenwischen.js` (braucht `dist/`) — echte Touch-Folgen über CDP, beide Häuser: Folge = Reihenfolge der Kacheln auf der gezeichneten Startseite (`sichtbareKacheln()`, EINE Stelle für Startseite und Wischen), mitten im Zug folgt die Seite dem Finger (translateX ≈ Weg) mit Zielpille, links → nächste, rechts → vorige, 40 px → federt zurück, senkrecht rollt, in einer seitlich rollenden Leiste kein Wechsel, Ränder bleiben, nur transform ≤ 300 ms, reduzierte Bewegung ohne Animation, Arabisch gespiegelt. **Ehrliche Grenze:** In Chromium bricht eine rollende Leiste den Zug selbst ab (`pointercancel`); die eigene overflow-Ausnahme ist dort nicht messbar (Gegenbeweis blieb grün) und bleibt als Vorsorge |
@@ -1715,9 +1816,15 @@ Dazu je nach Änderung:
 | **Telefonbestellungen** | `pruefungen/pruef-telefonbon.js` — kommt der Bon in der Küche an |
 | **Zugesagte Zeit, Countdown in Küche und Hub** | `pruefungen/pruef-zusage.js` (braucht `dist/`) — beide Seiten, und der Fall „Migration fehlt noch"; dazu die Wahl **„Bestellstand beim Gast“** (`hub_stil.restzeit`): „Nur Stand“ zeigt weder im Streifen noch im Kasten Minuten, die Stufen bleiben; strikt boolean (Zeichenkette "false" = an); der Streifen aus dem Gerätespeicher wird nach dem Laden der Wahl neu gezeichnet; Board führt `hub_stil` zusammen (emoji, schrift bleiben) |
 | **Kachel-Raster im Hub: Breite, Selbst-Füllen, Farbe, Bildform, ohne Symbol** | `pruefungen/pruef-kachelraster.js` (braucht `dist/`) — Packen als Rechnung (allein → ganz, zwei → halb/halb, Reihen gehen immer auf), Standard wie vorher (drei Säulen), „nur Speisekarte“ zieht sich breit, Positivliste für raster/stil/farbe/breite/bildform (Anführungszeichen MIT Bild), Schrift ≥ 4,5:1 auf jeder Farbe inkl. Mittelgrau, „flaeche“ über rein weißem Foto ≥ 4,5:1, „rund“ ist ein Kreis statt Symbol, ohne Symbol: Strich, größere Schrift, Säule unten bündig (Säule mit Nachbarn, sonst keine Säule), 360–1280 px, zwei Häuser, Uhr fest auf 14 Uhr; **Board**: geteilter Block KACHELRASTER Zeichen für Zeichen gleich (Anordnung rechnet wie der Hub), Zeilen starten zugeklappt und kompakt, Tipp auf den Namen in der Anordnung öffnet genau diese Zeile, Griff mit Maus UND Finger (CDP-Touch, Seite rollt nicht mit), Pfeiltasten, „allein in der Reihe“ wird gesagt, Farbe/eigene Farbe/Bildform/Breite gehen in `kbRoh`, Zuschnitt folgt der Bildform, Zeile bleibt nach einer Wahl offen — geöffnet über den ECHTEN Tipp (über `kbOffen` direkt war der Gegenbeweis grün); **Umsortieren**: langer Druck auf den Namen (Maus UND Finger) tauscht innerhalb der eigenen Gruppe, bleibt an der Gruppengrenze stehen (kein Sprung in eine fremde Gruppe — jede Gruppe ihr eigenes `.kbr-gitter`), ein kurzer Tipp öffnet weiterhin nur die Einstellungen (kein Doppel-Klick nach echtem Zug), Pfeil-Knöpfe als Zweitweg tauschen mit dem Nachbarn und sind an den Gruppengrenzen deaktiviert, `prefers-reduced-motion` überspringt das Nachrücken, Endposition stimmt trotzdem; **Zuschnitt** (Kachel UND Banner) mit zwei echten Fingern (CDP, zwei Kontaktpunkte): hineinzoomen bis 3×, Regler läuft mit, der Bildpunkt unter den Fingern bleibt dort — ABSEITS der Mitte gemessen (in der Mitte bliebe er auch bei naivem Zoom liegen), ein Finger schiebt, Zusammenkneifen lässt keinen Rand, Mausrad zoomt |
+| **Rubriken der Startseite (ganze aufklappbare Bereiche verschieben, umbenennen, neu anlegen; `hub_kacheln[].gruppe`)** | `pruefungen/pruef-rubriken.js` (braucht `dist/`) — ohne eigene Wahl schickt `kbRoh()` KEIN Feld `gruppe` und die Reihenfolge bleibt die Vorgabe (alte Häuser ändern sich nicht); echter Tipp auf ▲/▼ im Rubrikkopf der Anordnung verschiebt die GANZE Rubrik an der nächsten SICHTBAREN vorbei, keine Rubrik zerfällt, Fokus bleibt, ≥ 44 px; neue Rubrik über die Auswahl „Rubrik“ der Kachel (höchstens 10), Umbenennen setzt den Namen an jeder Kachel; Rundlauf `kbRoh → kbAusZeile` gleiche Reihenfolge; Name nur gerade Zeichen ≤ 28 in BEIDEN Dateien (`kbGruppeSauber`/`kachelGruppeSauber`, §8.1w), `<img onerror>` bleibt Text; Hub zeichnet die Rubriken in der gespeicherten Reihenfolge; **„nur am Tisch“ hängt an der Kachel-Art (`nurTisch`), nicht am Namen** — eine umbenannte „Jetzt am Tisch“-Rubrik bleibt im Liefermodus weg. Gegenbeweise im Worktree (5 Sabotagen, jede rot). **Ehrliche Grenze:** Schnellzeile, Begleiter, Aktion, Banner und „Nochmal“ stehen weiter VOR den Rubriken; ein eigener Rubrikname wird nicht übersetzt (bleibt, wie getippt) |
+| **Saalplan: 3D-Karte aller Tische (Ansicht „Saal“ in Bestellungen), Leuchtstufen je Bedarf, Zoom, „Saal einrichten“, `tische.x/y/form/plaetze`** | `pruefungen/pruef-saalplan.js` — Stand je Tisch am GEMALTEN Bild (Farbe des Abzeichens, Stufe am Glühring, gestellte Bestellungen und Uhr, §8.1j): Ruf · Servieren · Neu · Zahlung · In Arbeit, bei mehreren Zuständen leuchtet der dringendste, Stufe wächst mit der Wartezeit, „Gäste da“ ohne Leuchten, jeder Tisch trägt den Zustand als Wort (nie nur Farbe); **nichts wird unsichtbar (§7)**: Lieferung/Telefon/nicht eingezeichneter Tisch stehen unter „Außerhalb des Plans“, ohne Auswahl zeigt die Liste ALLES, Auswahl filtert nur diesen Tisch; echter Tipp (Maus) wählt, holt heran, nochmal/„Alle Tische“ zurück; Zoom (Rad, Knöpfe, Pinch über Zeiger) — Schrift und Tapfläche behalten ihre Bildschirmgröße (Vektor, ≥ 44 px) bei jedem Zoom, Übersicht zeigt jeden Tisch ganz im Bild und lässt rechts Platz für die Knöpfe (390 und 1280 px); Pulsen nur über opacity, kein Neuaufbau bei gleichem Stand (§4.1/§4.2), reduzierte Bewegung ohne Puls; Einrichten nur Inhaber (Team sieht den Knopf nicht und kommt auch über die Funktion nicht hinein), Ziehen bewegt nur den Entwurf, Abbrechen verwirft; Speichern gegen gestellten Server: Nutzlast genau x/y/form/plaetze im eigenen Betrieb, „vom Plan nehmen“ leert alle vier, 0 Zeilen (RLS) → Satz statt Erfolg (§2.3b); fehlende Migration → Liste statt leerem Saal. Gegenbeweise im Worktree (8 Sabotagen, jede rot). DB-Hälfte: `datenbank/pruef-saalplan.sql` (zurückgedreht; Inhaber 1 Zeile, Nummer/Schlüssel/Anlegen/Löschen abgewiesen, Schranken, Team 0 Zeilen mit geöffneter Lese-Regel). **Der Fund beim Bau (§2.3f):** `tische` war für JEDES Teammitglied voll beschreibbar (ALL-Regel) — auch der Untersetzer-SCHLÜSSEL; jetzt nur Inhaber und nur vier Spalten. Zwei Finger über echte Touch-Folgen (CDP): Pinch zoomt hinein und heraus, wählt nichts, ein Finger schiebt, die Seite rollt nicht mit (Gegenbeweis: Pinch-Zweig abgeschaltet → rot). **Ehrliche Grenzen:** nie auf einem echten Gerät gesehen (nur kopfloses Chromium); die Küche (`kueche.html`) hat noch KEINEN Saal; `pruef-leisten` wählt namentlich die Liste (das Vorführhaus öffnet im Saal) |
 | **Kacheln, Symbole, Banner, Baukasten im Board** | `pruefungen/pruef-baukasten.js` (braucht `dist/`) — zweite Quelle, Zuschnitt, Schrift nie auf dem Bild |
 | **Besuchsbild, Sterne, Foto** | `pruefungen/pruef-besuchsbild.js` (braucht `dist/`) — Sterne auf der Leinwand, Bild aus der Karte |
 | **Fenster, Blätter, Wischgeste** | `pruefungen/pruef-wischen.js` (braucht `dist/`) — Hub, Board und Küche, auch mit reduzierter Bewegung; dazu mit echtem Finger (CDP-Touch): kein zweiter Scrollbereich im Kategorie-Blatt, Wische rollen bis „Sichern", gescrollt schließt ein Wisch nach unten NICHT, oben schließt er auch auf einem Knopf, Antippen wählt weiterhin, Schleier rollt das Board nicht, im Hub zählt ein Wisch nicht zusätzlich als „Zurück" |
+| **Härtungen (Push-Endpunkte, mailto im Master, </script> im Markenblatt, „constructor“ in der Küche, Personenzahl, Fotos von fremden Servern)** | `pruefungen/pruef-haertung.js` (braucht `dist/`) — je Fall der frühere Durchgänger UND der Gegenfall: Push nur https + Chrome/Firefox/Safari/Edge-Dienste (12 Fremdfälle inkl. `fcm.googleapis.com@evil`, `:8443`, `169.254.169.254`); `mailto:` nur schlichte Adresse; Markenblatt-Wert mit `</script><img onerror>` in einer Kopie des Erzeugers, im Browser läuft nichts; echte `alterVon` aus der Datei geschnitten; Reservierung mit Nutzlast in `personen`; Hub mit zwei Gerichten, eines mit Foto von `fremd.example`, eines aus dem eigenen Speicher: 0 Anfragen an den Fremden (Gäste-IP), eigenes Foto geladen. Gegenbeweis auf dem alten Stand: 8 von 16 rot. Der Erzeuger gibt für alle fünf Häuser bytegleiche Hubs (bis auf den Zeitstempel) |
+| **Eingeschleuster Code aus Live-Spalten (Gerichtname, Beschreibung, Kategorie, Aktion, Pausentext, Wörter, Übersetzungen, Kacheln, Banner …), neue Spalte, die jemand außer dem Bauer schreibt** | `pruefungen/pruef-einschleusung.js` (braucht `dist/`) — Werkzeug `pruefungen/werkzeug/hub-vergiftet.js` stellt die Datenbank nach, JEDES Feld trägt eine eigene Marke, die Nutzlast ruft `__x.push(Marke)`; fünf Arten (Tag, JS-String, Attribut mit " und ', javascript:-URL) × de/en; Voraussetzung: Mindestmenge von 10 Feldern kam im DOM an (sonst grünes Nichts, §8.1g); Gegenbeweis im Worktree auf dem alten Stand: html 4 Felder, attr 1 Feld feuern. Grenze: WLAN, Lieferung, hub_stil nur als Positivliste gelesen |
+| **CSV-Export im Board** | `pruefungen/pruef-csv-schutz.js` — Gast-Notiz/Gastname/Telefon mit = + - @ Tab: keine Zelle der erzeugten Datei beginnt mit einem Formelzeichen (Telefonnummern „+49 …“ bleiben), `awCsvFeld` ebenso. Grenze: ob Excel ausführt, nicht gemessen |
+| **Fehler aus dem Kundentest (schnelles Rollen, Kartenwisch-Fotos, doppelte Rechtslinks, Fußzeile hinter der Leiste)** | `pruefungen/pruef-kundenweg.js` (braucht `dist/`) — echter Finger (CDP): 8 Runden hoch/runter + Zug nach unten am oberen Rand bleibt in der Speisekarte (Voraussetzung: scrollY 0); sieben Karten gewischt mit nachgestellten, 900 ms langsamen Fotos: keine Karte blendet ihr Foto ein, wenn sie schon vorn liegt (`edPos` = 7 selbst geprüft); Warenkorb: leer ein Link je Art, gefüllt genau einer (Zahlteil), Fußzeile ausgeblendet; letzte Zeile der Fußzeile endet über der Auswahl-Leiste auf fünf Unterseiten. `HUB_DATEI=` für den Gegenbeweis im Worktree (3 von 12 rot auf dem alten Stand) |
 | **Notizen des Teams (Board, Küche), Nachricht an den Gast, Reservierung mit Nummer** | `pruefungen/pruef-notizen.js` (braucht `dist/`) — Naht als Quelltext gegen `migration-notizen.sql` (Parameter, Gründe, Spaltenrechte), Board: Stufe 1 sendet NICHTS, Stufe 2 genau den Vorschautext, `text_anders` zeigt den neuen Stand, Bearbeiten ohne Bestätigung lässt den Gast die alte Fassung sehen, Tipp ändert keinen Status, 44 px; Küche dasselbe am Bon; Hub: Streifen „Neue Nachricht“, Text nie als Auszeichnung, Englisch nur der Rahmen, Reservierung zeigt Stand und Nachricht. Die DB-Hälfte: zurückgedrehter Probelauf, 24 Proben |
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |

@@ -36,6 +36,25 @@ const db = createClient(
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+/* Der Endpunkt eines Geräts steht in push_geraete, und das Team schreibt
+   ihn selbst (Board, Upsert). web-push ruft genau diese Adresse auf —
+   ohne Prüfung wäre jeder angemeldete Mitarbeiter ein Server-Request-
+   Absender aus unserer Funktion heraus (Sweep 19.10., SSRF). Nur https
+   und die Dienste der Browser-Hersteller. */
+const PUSH_HOSTS = [
+  /^fcm\.googleapis\.com$/, /^android\.googleapis\.com$/,
+  /^updates\.push\.services\.mozilla\.com$/, /^[a-z0-9.-]+\.push\.services\.mozilla\.com$/,
+  /^web\.push\.apple\.com$/, /^[a-z0-9.-]+\.push\.apple\.com$/,
+  /^[a-z0-9.-]+\.notify\.windows\.com$/,
+];
+export function pushEndpunktOk(u: string): boolean {
+  try {
+    const a = new URL(u);
+    return a.protocol === "https:" && !a.username && !a.password && (a.port === "" || a.port === "443") &&
+      PUSH_HOSTS.some((r) => r.test(a.hostname));
+  } catch { return false; }
+}
+
 interface Posten { menge?: number; name?: string }
 interface Zeile {
   id: string; betrieb_id: string; quelle: string; status: string; tisch: string | null;
@@ -91,7 +110,8 @@ Deno.serve(async (anfrage: Request) => {
     const { data: geraete, error: fehlerGeraete } = await db.from("push_geraete")
       .select("endpunkt, p256dh, auth").eq("betrieb_id", zeile.betrieb_id);
     if (fehlerGeraete) throw fehlerGeraete;
-    if (!geraete || !geraete.length) return antwort({ zugestellt: 0, grund: "kein Gerät gemeldet" });
+    const erlaubt = (geraete ?? []).filter((g: { endpunkt: string }) => pushEndpunktOk(g.endpunkt));
+    if (!geraete || !erlaubt.length) return antwort({ zugestellt: 0, grund: "kein Gerät gemeldet" });
 
     const wer = zeile.tisch ? `Tisch ${zeile.tisch}` : "Gast";
     const inhalt = JSON.stringify({
@@ -100,7 +120,7 @@ Deno.serve(async (anfrage: Request) => {
       text: text(zeile), url: "/",
     });
 
-    const ergebnisse = await Promise.allSettled(geraete.map((g: { endpunkt: string; p256dh: string; auth: string }) =>
+    const ergebnisse = await Promise.allSettled(erlaubt.map((g: { endpunkt: string; p256dh: string; auth: string }) =>
       webpush.sendNotification({ endpoint: g.endpunkt, keys: { p256dh: g.p256dh, auth: g.auth } },
         inhalt, { TTL: 600, urgency: "high" })));
 
@@ -110,7 +130,7 @@ Deno.serve(async (anfrage: Request) => {
     ergebnisse.forEach((r, i) => {
       if (r.status === "rejected") {
         const code = (r.reason as { statusCode?: number })?.statusCode;
-        if (code === 404 || code === 410) tot.push(geraete[i].endpunkt);
+        if (code === 404 || code === 410) tot.push(erlaubt[i].endpunkt);
         else console.error("Push fehlgeschlagen:", code);
       }
     });

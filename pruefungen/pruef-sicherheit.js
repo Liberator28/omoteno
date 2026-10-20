@@ -132,6 +132,15 @@ async function seiteAuf(browser, basis, pfad, opt = {}) {
     pruef(/max-age=31536000/.test(k["Strict-Transport-Security"] || ""), pfad + ": HSTS ein Jahr");
     pruef(k["X-Frame-Options"] === "DENY", pfad + ": X-Frame-Options DENY");
   }
+  {
+    /* connect-src nennt nur das EIGENE Projekt (zweite Quelle: die Adresse aus dem Board),
+       nie *.supabase.co — sonst geht ein Abfluss zu fremden Projekten durch (19.10.). */
+    const eigen = (fs.readFileSync(path.join(OBEN, "seiten", "admin.html"), "utf8").match(/https:\/\/([a-z0-9]+)\.supabase\.co/) || [])[1];
+    const alle = ["/index.html", "/admin.html", "/h/chocolamour/index.html", "/konto.html", "/kueche.html", "/master.html"].map(x => (kopfFuer(regeln, x)["Content-Security-Policy"] || "").match(/connect-src[^;]*/)[0]);
+    pruef(!!eigen && alle.every(c => c.includes("https://" + eigen + ".supabase.co") && c.includes("wss://" + eigen + ".supabase.co")),
+      "connect-src enthält das eigene Projekt (https UND wss)", eigen);
+    pruef(alle.every(c => !/\*\.supabase\.co|\*\.supabase/.test(c) && !/ \*[ ;]|https:(?!\/)/.test(c + " ")), "connect-src ohne Wildcard auf fremde Projekte", alle[0].slice(0, 120));
+  }
   pruef(/immutable/.test(kopfFuer(regeln, "/lib/supabase-js-2.117.3.js")["Cache-Control"] || ""), "/lib/* ein Jahr, immutable");
   pruef(/max-age=0/.test(kopfFuer(regeln, "/sw.js")["Cache-Control"] || ""), "/sw.js wird jedes Mal geprüft");
   const seiten = fs.readdirSync(path.join(OBEN, "seiten")).filter(x => x.endsWith(".html"));
@@ -165,6 +174,20 @@ async function seiteAuf(browser, basis, pfad, opt = {}) {
       pruef(lauf > 3, pfad + ": Karte steht trotz CSP", lauf + " Gerichte");
     }
     pruef(!fehler.length, pfad + ": keine Skriptfehler", fehler.slice(0, 2).join(" | ") || "still");
+    await ctx.close();
+  }
+
+  console.log("\n══ 2b · Ein fremdes Supabase-Projekt ist gesperrt ══");
+  {
+    const { ctx, p } = await seiteAuf(browser, basis, "/konto.html");
+    const r = await p.evaluate(async () => {
+      const stand = { fremd: "offen", eigen: "offen" };
+      const horch = new Promise(f => { document.addEventListener("securitypolicyviolation", e => { if(/evilproject/.test(e.blockedURI)) { stand.fremd = "gesperrt"; f(); } }); setTimeout(f, 1500); });
+      try { await fetch("https://evilproject.supabase.co/rest/v1/x", { mode: "no-cors" }); } catch (e) {}
+      await horch;
+      return stand;
+    });
+    pruef(r.fremd === "gesperrt", "fetch zu https://evilproject.supabase.co wird von der CSP gesperrt (gemessen am Verstoß)", r.fremd);
     await ctx.close();
   }
 

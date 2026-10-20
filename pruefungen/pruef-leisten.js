@@ -40,6 +40,9 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
     await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
     await p.goto("file://" + path.join(__dirname, "..", "seiten", "admin.html"));
     await p.waitForTimeout(900);
+    /* Diese Prüfung misst die LISTE der Bestellungen (Filterleiste unten). Das Vorführhaus hat einen
+       Saalplan und öffnet damit im Saal — der ersetzt die Filter; hier namentlich die Liste wählen. */
+    await p.evaluate(() => { try { localStorage.setItem("omoteno-saal-ansicht", "liste"); } catch(e){} });
     await p.evaluate(() => { document.getElementById("tor").hidden = true;
       if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); } });
     await p.waitForTimeout(500);

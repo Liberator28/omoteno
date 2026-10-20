@@ -108,6 +108,7 @@ wird nur für die Bestellung verwendet.
 | Netlify, Inc. | Auslieferung, Protokolle | weltweit — {DPF/SCC} |
 | Klaviyo, Inc. | E-Mail-Versand (nur bei gebuchtem Newsletter) | USA — {DPF/SCC} |
 | Vapi, Inc. | Telefon-Assistentin (nur bei Buchung) | USA — {DPF/SCC} |
+| Stripe Payments Europe, Ltd. | Online-Zahlung auf dem eigenen Stripe-Konto des Betriebs (nur wenn der Betrieb sie einschaltet). Stripe ist hier **eigener Verantwortlicher** für die Zahlungsabwicklung; Omoteno speichert nur Betrag, Zahlart, Status und die Kontonummer `acct_…`. **{Anwalt: Einordnung Auftragsverarbeiter / eigener Verantwortlicher prüfen}** | Irland — Übermittlung USA {DPF/SCC} |
 | Features & Labels, Inc. (fal.ai) | Bildbearbeitung (nur auf Anforderung) | USA — {DPF/SCC} |
 | Anthropic {Vertragspartner} | Übersetzung, Rechnungen auslesen | USA — {DPF/SCC} |
 
