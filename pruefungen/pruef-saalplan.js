@@ -508,6 +508,16 @@ const mitte = (p, sel) => p.evaluate(s => { const r = document.querySelector(s).
     await b.p.waitForTimeout(150);
     const tabs = await b.p.evaluate(() => [...document.querySelectorAll("#spZonen .sp-zone")].map(z => z.textContent.replace(/\d+$/, "").trim()));
     pruef(tabs.join("|") === "Saal|Terrasse" && await b.p.evaluate(() => document.querySelectorAll("#spSvg [data-sp-tisch]").length === 8), "Umbenennen: die Tische ziehen mit (8 im „Saal“), kein Tisch fällt heraus", tabs.join("|"));
+    /* Ein NICHT erster Bereich: ohne Mitnehmen fielen seine Tische still in den ersten (der Fallback verdeckt es beim ersten Bereich). */
+    await b.p.fill('[data-sp-zname="1"]', "Dach");
+    await b.p.dispatchEvent('[data-sp-zname="1"]', "change");
+    await b.p.click('[data-sp-zone="Dach"]');
+    await b.p.waitForTimeout(150);
+    const dach = await b.p.evaluate(() => [...document.querySelectorAll("#spSvg [data-sp-tisch]")].map(g => SAAL.tische.find(t => t.id === g.dataset.spTisch).nummer).sort().join(","));
+    pruef(dach === "10,11,9", "Umbenennen der Terrasse in „Dach“: ihre drei Tische (9, 10, 11) ziehen mit", dach);
+    await b.p.fill('[data-sp-zname="1"]', "Terrasse");
+    await b.p.dispatchEvent('[data-sp-zname="1"]', "change");
+    await b.p.click('[data-sp-zone="Saal"]');
     await b.p.click("[data-sp-zneu]");
     await b.p.waitForTimeout(100);
     pruef(await b.p.evaluate(() => saalZonen().length === 3 && saalZonen()[2] === "Bereich 3"), "„＋ Bereich“ legt „Bereich 3“ an");
