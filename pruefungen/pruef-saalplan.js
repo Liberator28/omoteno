@@ -38,8 +38,8 @@ async function neu(br, breite, hoehe, extra){
   await p.addInitScript(() => { Element.prototype.requestFullscreen = () => Promise.resolve(); });
   await p.goto(ADMIN);
   await p.waitForTimeout(700);
-  await p.evaluate(() => { document.getElementById("tor").hidden = true; demoStarten(); const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; });
-  await p.waitForTimeout(300);
+  await p.evaluate(() => { document.getElementById("tor").hidden = true; demoStarten(); const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("reservierungen"); });
+  await p.waitForTimeout(400);
   return { ctx, p, pf };
 }
 /* Gestellte Lage: feste Uhr, feste Bestellungen (§8.1j). */
@@ -82,14 +82,21 @@ const mitte = (p, sel) => p.evaluate(s => { const r = document.querySelector(s).
     await stelle(p);
     pruef(await p.evaluate(() => !document.getElementById("saal").hidden), "Voraussetzung: der Saal ist sichtbar (Plan vorhanden)");
     const n = await p.evaluate(() => document.querySelectorAll("#spSvg [data-sp-tisch]").length);
-    pruef(n === 11, "11 von 12 Tischen sind eingezeichnet (Tisch 12 nicht)", String(n));
+    pruef(n === 8, "im Haupt-Raum stehen 8 Tische (die Terrasse hat drei, Tisch 12 ist nirgends eingezeichnet)", String(n));
     const FARBE = { servieren: "#22D17A", ruf: "#FF3D81", neu: "#FFB300", pruefen: "#A78BFA", arbeit: "#38BDF8" };
-    const erwartet = { 4: ["ruf", 1], 10: ["neu", 3], 7: ["neu", 1], 2: ["arbeit", 1], 3: ["servieren", 1], 6: ["pruefen", 3] };
+    const erwartet = { 4: ["ruf", 1], 7: ["neu", 1], 2: ["arbeit", 1], 3: ["servieren", 1], 6: ["pruefen", 3] };
     for(const [nr, [art, stufe]] of Object.entries(erwartet)){
       const a = await abzeichen(p, nr);
       pruef(a && a.fill === FARBE[art], "Tisch " + nr + " leuchtet " + art, a ? a.fill : "kein Tisch");
       pruef(a && String(a.stufe) === String(stufe), "Tisch " + nr + ": Leuchtstufe " + stufe, a ? a.stufe : "");
     }
+    /* Die Terrasse ist ein eigener Bereich: erst dort steht Tisch 10. */
+    await p.click('[data-sp-zone="Terrasse"]');
+    await p.waitForTimeout(150);
+    const t10 = await abzeichen(p, 10);
+    pruef(t10 && t10.fill === FARBE.neu && String(t10.stufe) === "3", "Terrasse: Tisch 10 leuchtet neu in Stufe 3 (8 Min)", t10 ? t10.fill + " / " + t10.stufe : "");
+    await p.click('[data-sp-zone="Haupt-Raum"]');
+    await p.waitForTimeout(150);
     const frei = await abzeichen(p, 1);
     pruef(frei && frei.fill === null && frei.stufe === null, "Tisch 1 ohne Bedarf: kein Abzeichen, kein Leuchten");
     const sitzt = await abzeichen(p, 8);
@@ -116,26 +123,80 @@ const mitte = (p, sel) => p.evaluate(s => { const r = document.querySelector(s).
     const { ctx, p } = await neu(br, 390, 844);
     await stelle(p);
     const alleKarten = () => p.evaluate(() => document.querySelectorAll("#karten .bestellung").length);
+    const ort = () => p.evaluate(() => document.getElementById("karten").parentElement.id);
     const ohneAuswahl = await alleKarten();
-    pruef(ohneAuswahl >= 7, "ohne Auswahl zeigt die Liste darunter ALLES (offene Bestellungen)", String(ohneAuswahl));
+    pruef(ohneAuswahl >= 7, "ohne Auswahl zeigt die Liste ALLES (offene Bestellungen)", String(ohneAuswahl));
+    pruef(await ort() === "t-bestellungen", "und wohnt unter „Bestellungen“, nicht auf der Tische-Seite", await ort());
     const rest = await p.evaluate(() => ({ da: !document.getElementById("spRest").hidden, text: document.getElementById("spRest").textContent }));
     pruef(rest.da && /Lieferung 1/.test(rest.text) && /Tisch 67 1/.test(rest.text), "„Außerhalb des Plans“ nennt Lieferung und den nicht eingezeichneten Tisch 67", rest.text);
     await p.click("[data-sp-rest]");
-    await p.waitForTimeout(150);
+    await p.waitForTimeout(200);
     const nurRest = await p.evaluate(() => [...document.querySelectorAll("#karten .bestellung")].map(k => k.dataset.quelle).sort().join(","));
     pruef(nurRest === "lieferung,tisch", "Tipp darauf zeigt genau die beiden", nurRest);
-    pruef(await p.evaluate(() => document.body.classList.contains("saal-sel") && getComputedStyle(document.querySelector("#t-bestellungen .filterblock")).display !== "none"), "mit Auswahl stehen die Filter wieder da");
+    pruef(await ort() === "spKartenOrt" && await p.evaluate(() => !document.getElementById("spDetail").hidden && /Außerhalb/.test(document.getElementById("spDetailTitel").textContent)),
+      "die Karten ziehen in das Blatt unter dem Plan um (dieselben Griffe, kein zweiter Satz)", await ort());
     await p.click("[data-sp-rest]");
+    await p.waitForTimeout(200);
+    pruef(await alleKarten() === ohneAuswahl && await ort() === "t-bestellungen", "nochmal tippen: wieder alles, die Karten wohnen wieder unter „Bestellungen“");
+    /* Wer mit gewähltem Tisch die Seite wechselt, findet unter „Bestellungen“ wieder ALLES. */
+    await p.click('[data-sp-listetisch]');
+    await p.waitForTimeout(200);
+    pruef(await p.evaluate(() => SAAL.auswahl != null && SAAL.kartenDa), "Voraussetzung: ein Tisch aus der Liste links ist gewählt, die Karten sind umgezogen");
+    await p.evaluate(() => tafelZeigen("bestellungen"));
     await p.waitForTimeout(150);
-    pruef(await alleKarten() === ohneAuswahl, "nochmal tippen: wieder alles");
-    pruef(await p.evaluate(() => getComputedStyle(document.querySelector("#t-bestellungen .filterblock")).display === "none"), "ohne Auswahl ersetzen die Zustands-Chips die Filter");
-    /* Umschalten auf Liste: alles wie vorher */
-    await p.click('[data-saal-ansicht="liste"]');
-    await p.waitForTimeout(150);
-    pruef(await p.evaluate(() => document.getElementById("saal").hidden && !document.body.classList.contains("saal-an")), "„Liste“ blendet den Saal aus");
-    pruef(await alleKarten() === ohneAuswahl, "und die Liste zeigt dasselbe");
-    pruef(await p.evaluate(() => { try { return localStorage.getItem(SAAL_MERK) === "liste"; } catch(e){ return true; } }), "die Wahl bleibt gemerkt");
+    pruef(await ort() === "t-bestellungen" && await alleKarten() === ohneAuswahl, "Seitenwechsel: Karten zurück unter „Bestellungen“ und ungefiltert", ohneAuswahl + " → " + await alleKarten());
+    pruef(await p.evaluate(() => getComputedStyle(document.querySelector("#t-bestellungen .filterblock")).display !== "none"), "die Filter der Bestellungen stehen unberührt da");
     await ctx.close();
+  }
+
+  /* ── 2b · Seite „Tische“: Liste links, Bereiche ───────────────── */
+  console.log("\n══ Seite „Tische“: Liste links, Bereiche ══");
+  {
+    const { ctx, p, pf } = await neu(br, 1440, 900);
+    await stelle(p);
+    pruef(await p.evaluate(() => document.querySelector('nav[role=tablist] [data-tafel="reservierungen"]').textContent.trim().startsWith("Tische")), "der Reiter heißt „Tische“");
+    const lage = await p.evaluate(() => { const l = document.querySelector(".tisch-links").getBoundingClientRect(), h = document.querySelector(".tisch-haupt").getBoundingClientRect(); return { lb: l.width, hl: h.left, lr: l.right, ho: h.top, lo: l.top }; });
+    pruef(lage.lr <= lage.hl && lage.lb >= 300 && lage.lb <= 400, "bei 1440 px: links die Liste (300–400 px), rechts der Plan, nebeneinander", Math.round(lage.lb) + " px, Plan ab " + Math.round(lage.hl));
+    const zeilen = await p.evaluate(() => [...document.querySelectorAll("#spListe .sp-tz")].map(z => z.querySelector("b").textContent + "|" + z.querySelector(".sp-meter").dataset.s));
+    pruef(zeilen.length === 6 && zeilen[0] === "Tisch 10|3", "links stehen die 6 Tische mit Bedarf, der dringendste (Tisch 10, Stufe 3) zuerst", zeilen.join(", "));
+    const stuf = zeilen.map(z => +z.split("|")[1]);
+    pruef(stuf.every((v, i) => i === 0 || stuf[i - 1] >= v), "nach Stufe geordnet (nie eine schwächere vor einer stärkeren)", stuf.join(""));
+    pruef(await p.evaluate(() => [...document.querySelectorAll("#spListe .sp-tz")].every(z => z.getBoundingClientRect().height >= 44)), "jede Zeile ≥ 44 px");
+    /* Bereiche */
+    const zonen = await p.evaluate(() => [...document.querySelectorAll("#spZonen .sp-zone")].map(z => z.textContent.replace(/\d+$/, "").trim() + ":" + (z.querySelector(".sp-zonenzahl") || {}).textContent + ":" + z.getAttribute("aria-pressed")));
+    pruef(zonen.join("|") === "Haupt-Raum:5:true|Terrasse:1:false", "Bereiche als Reiter, mit der Zahl der Tische, die gerade etwas brauchen", zonen.join("|"));
+    /* Ein Tipp auf eine Zeile aus dem anderen Bereich wechselt den Bereich UND wählt */
+    await p.click('#spListe .sp-tz:first-child');
+    await p.waitForTimeout(500);
+    const nach = await p.evaluate(() => ({ zone: SAAL.zone, auswahl: SAAL.auswahl, da: !!document.querySelector('#spSvg [data-sp-tisch="demo-t10"].gewaehlt'), karten: [...document.querySelectorAll("#spKartenOrt .bestellung .tischnr")].map(x => x.textContent.trim()) }));
+    pruef(nach.zone === "Terrasse" && nach.auswahl === "10" && nach.da, "Tipp auf „Tisch 10“ links schaltet auf die Terrasse und wählt ihn dort", JSON.stringify(nach));
+    pruef(nach.karten.length === 1 && /Tisch 10/.test(nach.karten[0]), "im Blatt rechts unter dem Plan stehen nur seine Bestellungen", nach.karten.join("|"));
+    const blatt = await p.evaluate(() => { const d = document.getElementById("spDetail").getBoundingClientRect(), b = document.getElementById("spBuehne").getBoundingClientRect(); return d.top >= b.bottom - 1 && d.left >= document.querySelector(".tisch-haupt").getBoundingClientRect().left - 1; });
+    pruef(blatt, "das Blatt liegt unter dem Plan (rechte Spalte), nicht unter der Liste");
+    /* Bereich wechseln hebt die Auswahl auf */
+    await p.click('[data-sp-zone="Haupt-Raum"]');
+    await p.waitForTimeout(200);
+    pruef(await p.evaluate(() => SAAL.auswahl === null && document.getElementById("spDetail").hidden && document.getElementById("karten").parentElement.id === "t-bestellungen"), "Bereichswechsel hebt die Auswahl auf, die Karten gehen zurück");
+    /* Reservierungen bleiben bedienbar (alter Weg, dieselben Griffe) */
+    await p.evaluate(() => { reservierungen.push({ id: "rr1", name: "Familie Probe", wunsch: new Date(Date.now() + 3600000).toISOString(), personen: 4, telefon: "0151 1", status: "offen", quelle: "tisch" }); zeichneReservierungen(); });
+    await p.click('[data-res-ja="rr1"]');
+    await p.waitForTimeout(150);
+    pruef(await p.evaluate(() => reservierungen.find(r => r.id === "rr1").status === "bestaetigt"), "„Annehmen“ einer Reservierung geht auf der neuen Seite wie vorher");
+    /* Liste umschalten */
+    await p.click('[data-sp-liste="res"]');
+    pruef(await p.evaluate(() => document.getElementById("spListeBlock").hidden && !document.getElementById("resBlock").hidden), "„Reservierung“ zeigt nur die Reservierungen");
+    await p.click('[data-sp-liste="tisch"]');
+    pruef(await p.evaluate(() => !document.getElementById("spListeBlock").hidden && document.getElementById("resBlock").hidden), "„Am Tisch“ zeigt nur die Tische");
+    await p.click('[data-sp-liste="alle"]');
+    /* Telefon: Plan oben, Listen darunter */
+    pruef(pf.length === 0, "kein Seitenfehler", pf.join(" | "));
+    await ctx.close();
+    const t = await neu(br, 390, 844);
+    await stelle(t.p);
+    const ord = await t.p.evaluate(() => { const h = document.querySelector(".tisch-haupt").getBoundingClientRect(), l = document.querySelector(".tisch-links").getBoundingClientRect(); return { plan: h.top, liste: l.top, ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth }; });
+    pruef(ord.plan < ord.liste, "Telefon: der Plan steht oben, die Listen darunter", Math.round(ord.plan) + " < " + Math.round(ord.liste));
+    pruef(ord.ueber <= 0, "Telefon: kein seitlicher Überlauf", ord.ueber + " px");
+    await t.ctx.close();
   }
 
   /* ── 3 · Tippen, Zoomen, Schärfe ───────────────────────────────── */
@@ -196,10 +257,10 @@ const mitte = (p, sel) => p.evaluate(s => { const r = document.querySelector(s).
     pruef(+ops.ruf === 1 && +ops.anderer < 0.4, breite + " px: Chip „Ruf“ hebt Ruf-Tische hervor, die anderen treten zurück", ops.ruf + " / " + ops.anderer);
     await p.click('[data-sp-hebe="ruf"]');
     /* Tastatur */
-    await p.focus('[data-sp-tisch="demo-t10"]');
+    await p.focus('[data-sp-tisch="demo-t7"]');
     await p.keyboard.press("Enter");
     await p.waitForTimeout(200);
-    pruef(await p.evaluate(() => SAAL.auswahl === "10"), breite + " px: Enter auf einem fokussierten Tisch wählt ihn");
+    pruef(await p.evaluate(() => SAAL.auswahl === "7"), breite + " px: Enter auf einem fokussierten Tisch wählt ihn");
     pruef(pf.length === 0, breite + " px: kein Seitenfehler", pf.join(" | "));
     await ctx.close();
   }
@@ -248,19 +309,19 @@ const mitte = (p, sel) => p.evaluate(s => { const r = document.querySelector(s).
   {
     const { ctx, p } = await neu(br, 390, 844);
     await stelle(p);
-    const an = await p.evaluate(() => { const g = document.querySelector('[data-sp-tisch="demo-t10"] .sp-glow'); return { name: getComputedStyle(g).animationName, prop: [...document.getAnimations()].filter(a => a.animationName === "spPuls").map(a => a.effect.getKeyframes().map(k => Object.keys(k).filter(x => !["offset", "easing", "composite", "computedOffset"].includes(x)).join()).join()).join("|") }; });
-    pruef(an.name === "spPuls", "Stufe 3 pulsiert", an.name);
+    const an = await p.evaluate(() => { const g = document.querySelector('[data-sp-tisch="demo-t6"] .sp-glow'); return { name: getComputedStyle(g).animationName, prop: [...document.getAnimations()].filter(a => a.animationName === "spPuls").map(a => a.effect.getKeyframes().map(k => Object.keys(k).filter(x => !["offset", "easing", "composite", "computedOffset"].includes(x)).join()).join()).join("|") }; });
+    pruef(an.name === "spPuls", "Stufe 3 pulsiert (Tisch 6, Zahlung seit 12 Min)", an.name);
     pruef(an.prop && !/transform|left|top|width|height|filter/.test(an.prop) && /opacity/.test(an.prop), "und nur über opacity", an.prop);
     const ruhig = await p.evaluate(() => { const g = document.querySelector('[data-sp-tisch="demo-t3"] .sp-glow'); return getComputedStyle(g).animationName; });
     pruef(ruhig === "none", "Stufe 1 pulsiert nicht", ruhig);
     /* Neu zeichnen setzt den Puls nicht zurück (§4.1/§4.2): gleiche Lage → dasselbe Element */
-    const vorher = await p.evaluate(() => { window.__g = document.querySelector('[data-sp-tisch="demo-t10"] .sp-glow'); return true; });
+    const vorher = await p.evaluate(() => { window.__g = document.querySelector('[data-sp-tisch="demo-t6"] .sp-glow'); return true; });
     await p.evaluate(() => { zeichneAlles(); zeichneAlles(); });
-    pruef(await p.evaluate(() => window.__g === document.querySelector('[data-sp-tisch="demo-t10"] .sp-glow') && document.contains(window.__g)), "unveränderter Stand: kein Neuaufbau (derselbe Glühring läuft weiter)");
+    pruef(await p.evaluate(() => window.__g === document.querySelector('[data-sp-tisch="demo-t6"] .sp-glow') && document.contains(window.__g)), "unveränderter Stand: kein Neuaufbau (derselbe Glühring läuft weiter)");
     await ctx.close();
     const c2 = await neu(br, 390, 844, { reducedMotion: "reduce" });
     await stelle(c2.p);
-    const r = await c2.p.evaluate(() => getComputedStyle(document.querySelector('[data-sp-tisch="demo-t10"] .sp-glow')).animationName);
+    const r = await c2.p.evaluate(() => getComputedStyle(document.querySelector('[data-sp-tisch="demo-t6"] .sp-glow')).animationName);
     pruef(r === "none", "reduzierte Bewegung: nichts pulsiert (Stufe zeigt sich über Helligkeit)", r);
     await c2.ctx.close();
   }
@@ -329,10 +390,10 @@ const mitte = (p, sel) => p.evaluate(s => { const r = document.querySelector(s).
     const ok = await lauf({ data: [{ id: "t" }], error: null });
     pruef(ok.edit === false && ok.gesendet.length === 2, "Erfolg: zwei Tische geändert, Einrichten schließt", ok.gesendet.length + " Anfragen");
     const kn = ok.gesendet.find(g => /demo-t12/.test(g.filter.join()));
-    pruef(kn && Object.keys(kn.daten).sort().join() === "form,plaetze,x,y" && kn.tab === "tische", "Nutzlast: genau x, y, form, plaetze", kn ? Object.keys(kn.daten).join() : "");
+    pruef(kn && Object.keys(kn.daten).sort().join() === "form,plaetze,x,y,zone" && kn.tab === "tische", "Nutzlast: genau x, y, form, plaetze, zone", kn ? Object.keys(kn.daten).join() : "");
     pruef(kn && kn.filter.includes("betrieb_id=b-1"), "und nur im eigenen Betrieb", kn ? kn.filter.join() : "");
     const weg = ok.gesendet.find(g => /demo-t1$/.test(g.filter.join().replace(/,.*/, "")) || /id=demo-t1,/.test(g.filter.join() + ","));
-    pruef(weg && weg.daten.x === null && weg.daten.y === null && weg.daten.form === null && weg.daten.plaetze === null, "„Vom Plan nehmen“ leert alle vier zugleich (sonst lehnt die Schranke ab)", weg ? JSON.stringify(weg.daten) : "");
+    pruef(weg && weg.daten.x === null && weg.daten.y === null && weg.daten.form === null && weg.daten.plaetze === null && weg.daten.zone === null, "„Vom Plan nehmen“ leert alle fünf zugleich (sonst lehnt die Schranke ab)", weg ? JSON.stringify(weg.daten) : "");
     await ctx.close();
     const c2 = await neu(br, 1280, 800);
     await stelle(c2.p);
@@ -353,15 +414,117 @@ const mitte = (p, sel) => p.evaluate(s => { const r = document.querySelector(s).
     const { ctx, p, pf } = await neu(br, 390, 844);
     await stelle(p);
     const r = await p.evaluate(async () => {
-      demo = false; betriebId = "b-1"; let n = 0;
-      db = { from: () => ({ select: (sp) => { const o = { eq: () => o, order: () => o, then: (f) => f(/x,y/.test(sp) ? { error: { message: "column tische.x does not exist" } } : { data: [{ id: "a", nummer: "1", aktiv: true }, { id: "b", nummer: "2", aktiv: true }], error: null }) }; return o; } }) };
+      demo = false; betriebId = "b-1";
+      const wahl = sp => /x,y/.test(sp) ? { error: { message: "column tische.x does not exist" } } : { data: [{ id: "a", nummer: "1", aktiv: true }, { id: "b", nummer: "2", aktiv: true }], error: null };
+      db = { from: tab => tab === "saal_einstellungen"
+        ? { select: () => { const o = { eq: () => o, maybeSingle: () => Promise.resolve({ data: null, error: { message: "relation does not exist" } }) }; return o; } }
+        : { select: sp => { const o = { eq: () => o, order: () => o, then: f => f(wahl(sp)) }; return o; } } };
       await saalLaden("b-1");
-      return { fehlt: SAAL.fehlt, tische: SAAL.tische.length, plan: SAAL.tische.filter(t => t.x != null).length, segment: document.getElementById("saalAnsicht").hidden, saal: document.getElementById("saal").hidden, einr: document.querySelector('[data-sp-wz="einrichten"]').hidden };
+      return { fehlt: SAAL.fehlt, einst: SAAL.einstFehlt, tische: SAAL.tische.length, plan: SAAL.tische.filter(t => t.x != null).length,
+        buehne: document.getElementById("spBuehne").hidden, leer: !document.getElementById("spLeer").hidden, text: document.getElementById("spLeer").textContent,
+        knopf: !!document.querySelector("#spLeer [data-sp-wz=einrichten]") };
     });
-    pruef(r.fehlt && r.tische === 2 && r.plan === 0, "ohne Spalten: Tische ohne Lage geladen, nichts gezeichnet", JSON.stringify(r));
-    pruef(r.segment && r.saal, "ohne Plan und ohne Migration bleibt es die Liste (kein leerer Saal)");
+    pruef(r.fehlt && r.einst && r.tische === 2 && r.plan === 0, "ohne Spalten und Tabelle: Tische ohne Lage geladen, nichts gezeichnet", JSON.stringify(r));
+    pruef(r.buehne && r.leer && /noch leer/.test(r.text) && !r.knopf, "statt eines leeren Plans ein Satz — und KEIN Knopf „einrichten“, der nicht speichern könnte", r.text);
     pruef(pf.length === 0, "kein Seitenfehler", pf.join(" | "));
     await ctx.close();
+  }
+
+  /* ── 8 · Leuchtstufen und Bereiche einstellen ──────────────────── */
+  console.log("\n══ Leuchtstufen und Bereiche einstellen ══");
+  {
+    const { ctx, p, pf } = await neu(br, 1440, 900);
+    await stelle(p);
+    const kontrast = (a, b) => { const l = h => { const c = [1, 3, 5].map(i => parseInt(h.slice(i, i + 2), 16) / 255).map(v => v <= .03928 ? v / 12.92 : Math.pow((v + .055) / 1.055, 2.4)); return .2126 * c[0] + .7152 * c[1] + .0722 * c[2]; }; const x = l(a), y = l(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
+    const badge = nr => p.evaluate(n => { const g = document.querySelector('#spSvg [data-sp-tisch="demo-t' + n + '"]'); const c = g && g.querySelector(".sp-abz circle"), w = g && g.querySelector(".sp-abz path"); return g ? { fill: c && c.getAttribute("fill"), glyph: w && w.getAttribute("stroke"), stufe: ((g.querySelector(".sp-glow") || { getAttribute: () => "" }).getAttribute("class").match(/s(\d)/) || [])[1] } : null; }, nr);
+    pruef((await badge(4)).stufe === "1", "Voraussetzung: Tisch 4 (Ruf seit 1 Min) steht in Stufe 1");
+    await p.click('[data-sp-wz="einrichten"]');
+    await p.waitForTimeout(200);
+    await p.click('[data-sp-tab="stufen"]');
+    const reihen = await p.evaluate(() => [...document.querySelectorAll("#spEdit [data-sp-stufe]")].map(r => r.dataset.spStufe + ":" + r.querySelectorAll("[data-sp-min]").length));
+    pruef(reihen.join(",") === "ruf:2,servieren:2,neu:2,pruefen:2,arbeit:0", "fünf Zeilen: vier mit Minuten, „In Arbeit“ nur mit Farbe", reihen.join(","));
+    const vorgabe = await p.evaluate(() => ["ruf", "servieren", "neu", "pruefen"].map(a => a + SAAL.konfig.stufen[a].min2 + "/" + SAAL.konfig.stufen[a].min3).join(" "));
+    pruef(vorgabe === "ruf2/5 servieren2/4 neu3/6 pruefen5/10", "die Vorgaben sind die alten Werte (nichts ändert sich ungefragt)", vorgabe);
+    /* Zeit ändern: Vorschau am Plan sofort, Feld behält den Fokus */
+    await p.fill('[data-sp-stufe="ruf"] [data-sp-min="2"]', "1");
+    await p.waitForTimeout(150);
+    pruef((await badge(4)).stufe === "2", "Ruf „Stufe 2 ab 1 Min“: Tisch 4 (1 Min) leuchtet sofort in Stufe 2", (await badge(4)).stufe);
+    pruef(await p.evaluate(() => document.activeElement && document.activeElement.matches('[data-sp-stufe="ruf"] [data-sp-min="2"]')), "das Feld behält beim Tippen den Fokus (das Blatt baut sich nicht neu auf)");
+    pruef(await p.evaluate(() => SAAL.konfig.stufen.ruf.min2 === 2), "gespeichert gilt noch der alte Wert, bis „Speichern“");
+    /* Farbe wählen: Zeichen darauf wird gerechnet (§5.1) */
+    const farbe = async hex => { await p.evaluate(h => { const f = document.querySelector('[data-sp-farbe="ruf"]'); f.value = h; f.dispatchEvent(new Event("input", { bubbles: true })); }, hex); await p.waitForTimeout(120); return badge(4); };
+    const hell = await farbe("#ffee00"), dunkel = await farbe("#101820");
+    pruef(hell.fill === "#FFEE00" && kontrast(hell.fill, hell.glyph) >= 4.5, "helle Farbe: Zeichen darauf ≥ 4,5:1", hell.fill + " / " + hell.glyph + " = " + kontrast(hell.fill, hell.glyph).toFixed(1));
+    pruef(dunkel.fill === "#101820" && kontrast(dunkel.fill, dunkel.glyph) >= 4.5, "dunkle Farbe: das Zeichen wechselt und bleibt ≥ 4,5:1", dunkel.fill + " / " + dunkel.glyph + " = " + kontrast(dunkel.fill, dunkel.glyph).toFixed(1));
+    await farbe("#00c8ff");
+    /* Ungültig: Stufe 3 nicht nach Stufe 2 */
+    await p.fill('[data-sp-stufe="neu"] [data-sp-min="3"]', "3");
+    const sendungen = [];
+    await p.evaluate(() => { window.__rpc = []; demo = false; betriebId = "b-1";
+      db = { from: () => ({ update: () => { const o = { eq: () => o, select: () => Promise.resolve({ data: [{ id: "x" }], error: null }) }; return o; } }),
+             rpc: (fn, a) => { window.__rpc.push({ fn, a: JSON.parse(JSON.stringify(a)) }); return Promise.resolve(window.__antwort || { data: { ok: true }, error: null }); } }; });
+    await p.click("[data-sp-speichern]");
+    await p.waitForTimeout(200);
+    const schlecht = await p.evaluate(() => ({ rpc: window.__rpc.length, edit: SAAL.edit, text: (document.getElementById("spEditMeldung") || {}).textContent || "" }));
+    pruef(schlecht.rpc === 0 && schlecht.edit && /Stufe 3 muss später/.test(schlecht.text), "Stufe 3 nicht nach Stufe 2: ein Satz, nichts gesendet, das Blatt bleibt offen", schlecht.text);
+    await p.click('[data-sp-tab="stufen"]');
+    await p.fill('[data-sp-stufe="neu"] [data-sp-min="3"]', "9");
+    /* Server sagt nein (kein Recht): Satz, kein Erfolg */
+    await p.evaluate(() => { window.__antwort = { data: { ok: false, grund: "kein_recht" }, error: null }; });
+    await p.click("[data-sp-speichern]");
+    await p.waitForTimeout(200);
+    const nein = await p.evaluate(() => ({ edit: SAAL.edit, text: (document.getElementById("spEditMeldung") || {}).textContent || "", alt: SAAL.konfig.stufen.ruf.farbe }));
+    pruef(nein.edit && /Recht/.test(nein.text) && nein.alt === "#FF3D81", "Server verweigert: Satz, Blatt offen, gespeichert bleibt der alte Stand", nein.text);
+    /* Erfolg */
+    await p.evaluate(() => { window.__antwort = { data: { ok: true }, error: null }; window.__rpc.length = 0; });
+    await p.click("[data-sp-speichern]");
+    await p.waitForTimeout(250);
+    const ok = await p.evaluate(() => ({ edit: SAAL.edit, rpc: window.__rpc, ruf: SAAL.konfig.stufen.ruf, neu: SAAL.konfig.stufen.neu }));
+    const a = ok.rpc[0];
+    pruef(!ok.edit && ok.rpc.length === 1 && a.fn === "saal_einstellungen_setzen" && a.a.p_betrieb === "b-1", "Erfolg: genau EIN Aufruf von saal_einstellungen_setzen für den eigenen Betrieb", ok.rpc.length + " Aufrufe");
+    pruef(a && JSON.stringify(a.a.p_daten.stufen.ruf) === JSON.stringify({ farbe: "#00C8FF", min2: 1, min3: 5 }) && JSON.stringify(a.a.p_daten.stufen.arbeit) === JSON.stringify({ farbe: "#38BDF8" }), "Nutzlast: Ruf mit Farbe und beiden Zeiten, „In Arbeit“ nur mit Farbe", JSON.stringify(a && a.a.p_daten.stufen.ruf));
+    pruef(a && Object.keys(a.a.p_daten).sort().join() === "stufen,zonen", "und nichts sonst (nur stufen, zonen)");
+    pruef(ok.neu.min3 === 9 && ok.ruf.farbe === "#00C8FF", "danach gilt der neue Stand", JSON.stringify(ok.ruf));
+    const chip = await p.evaluate(() => document.querySelector('[data-sp-hebe="ruf"] i').style.background);
+    pruef(/0, 200, 255|#00c8ff/i.test(chip), "die Legende trägt die neue Farbe", chip);
+    /* Neuöffnen (§8.1m): was gespeichert wurde, kommt aus der Datenbank wieder */
+    const neuLaden = await p.evaluate(async daten => {
+      db = { from: tab => tab === "saal_einstellungen"
+        ? { select: () => { const o = { eq: () => o, maybeSingle: () => Promise.resolve({ data: { daten }, error: null }) }; return o; } }
+        : { select: () => { const o = { eq: () => o, order: () => o, then: f => f({ data: [{ id: "demo-t4", nummer: "4", aktiv: true, x: 82, y: 26, form: "lang", plaetze: 6, zone: "Haupt-Raum" }], error: null }) }; return o; } } };
+      await saalLaden("b-1");
+      return { ruf: SAAL.konfig.stufen.ruf, zonen: SAAL.konfig.zonen };
+    }, a.a.p_daten);
+    pruef(neuLaden.ruf.farbe === "#00C8FF" && neuLaden.ruf.min2 === 1, "nach dem Neuladen steht der gespeicherte Stand da", JSON.stringify(neuLaden.ruf));
+    pruef(pf.length === 0, "kein Seitenfehler", pf.join(" | "));
+    await ctx.close();
+    /* Bereiche: umbenennen, anlegen, entfernen */
+    const b = await neu(br, 1440, 900);
+    await stelle(b.p);
+    await b.p.click('[data-sp-wz="einrichten"]');
+    await b.p.click('[data-sp-tab="bereiche"]');
+    await b.p.fill('[data-sp-zname="0"]', "Saal");
+    await b.p.dispatchEvent('[data-sp-zname="0"]', "change");
+    await b.p.waitForTimeout(150);
+    const tabs = await b.p.evaluate(() => [...document.querySelectorAll("#spZonen .sp-zone")].map(z => z.textContent.replace(/\d+$/, "").trim()));
+    pruef(tabs.join("|") === "Saal|Terrasse" && await b.p.evaluate(() => document.querySelectorAll("#spSvg [data-sp-tisch]").length === 8), "Umbenennen: die Tische ziehen mit (8 im „Saal“), kein Tisch fällt heraus", tabs.join("|"));
+    await b.p.click("[data-sp-zneu]");
+    await b.p.waitForTimeout(100);
+    pruef(await b.p.evaluate(() => saalZonen().length === 3 && saalZonen()[2] === "Bereich 3"), "„＋ Bereich“ legt „Bereich 3“ an");
+    await b.p.click('[data-sp-zweg="1"]');
+    await b.p.waitForTimeout(100);
+    const nachweg = await b.p.evaluate(() => ({ zonen: saalZonen(), t10: saalTischZone(SAAL.tische.find(t => t.nummer === "10")) }));
+    pruef(nachweg.zonen.join("|") === "Saal|Bereich 3" && nachweg.t10 === "Saal", "Entfernen der Terrasse: ihre Tische rutschen in den ersten Bereich", JSON.stringify(nachweg));
+    await b.p.fill('[data-sp-zname="1"]', "Saal");
+    await b.p.dispatchEvent('[data-sp-zname="1"]', "change");
+    pruef(await b.p.evaluate(() => saalZonen().join("|") === "Saal|Bereich 3" && document.querySelector('[data-sp-zname="1"]').value === "Bereich 3"), "ein doppelter Name wird abgelehnt (Feld springt zurück)");
+    await b.p.fill('[data-sp-zname="1"]', 'Bar <b>"x"');
+    await b.p.dispatchEvent('[data-sp-zname="1"]', "change");
+    pruef(await b.p.evaluate(() => saalZonen()[1] === "Bar bx"), "Sonderzeichen im Namen fallen weg (kein Element, kein Attribut)", await b.p.evaluate(() => saalZonen()[1]));
+    pruef(await b.p.evaluate(() => !document.querySelector("#spZonen b:not(.sp-zonenzahl), #spZonen img, #spEdit img")), "und stehen nie als Auszeichnung da");
+    await b.p.click("[data-sp-abbrechen]");
+    pruef(await b.p.evaluate(() => saalZonen().join("|") === "Haupt-Raum|Terrasse"), "Abbrechen verwirft alles (Bereiche wie vorher)");
+    await b.ctx.close();
   }
 
   await br.close();
