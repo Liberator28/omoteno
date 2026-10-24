@@ -2731,10 +2731,14 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
      schaut der Gast hin und die Bewegung erklärt, woher das Blatt
      kommt. Beim Schließen hat er schon entschieden – da ist jede
      Millisekunde nur noch Verzögerung. */
-  transition:transform .28s var(--blatt);
+  transition:transform .28s var(--blatt),visibility 0s linear .28s;
+  /* Geschlossen wird das Blatt nicht nur nach unten geschoben, sondern unsichtbar gemacht (visibility, erst NACH dem
+     Schließen-Weg). Nur geschoben, hängt sein oberer Rand sichtbar am Schirmrand, sobald der Browser Inhalt unter seine
+     Leiste malt: auf dem iPhone ragte „das Gericht mit der Beschreibung“ unten aus der Karte heraus. */
+  visibility:hidden;
   will-change:transform;-webkit-backface-visibility:hidden;backface-visibility:hidden
 }
-.warenkarte.an{transform:translate3d(-50%,0,0);transition-duration:.4s}
+.warenkarte.an{transform:translate3d(-50%,0,0);visibility:visible;transition:transform .4s var(--blatt),visibility 0s linear 0s}
 .wgriff{width:40px;height:4px;border-radius:4px;background:var(--linie-stark);margin:0 auto 16px}
 .wbild{
   margin:2px -20px 18px;overflow:hidden;background:var(--flaeche-2);
@@ -3903,7 +3907,8 @@ body:has(#zahlteil) #rechtFuss{display:none}
   /* Druckfeedback und Herzschlag: kein Skalieren */
   .knopf:active,.antwort:active,a.tipp:active,.logo:active,
   .sprachknopf:active,.gplus:active{transform:none}
-  .warenkarte{transition:transform 180ms linear}
+  .warenkarte{transition:transform 180ms linear,visibility 0s linear 180ms}
+  .warenkarte.an{transition:transform 180ms linear,visibility 0s linear 0s}
   html{scroll-behavior:auto}
 }
 
@@ -4748,6 +4753,10 @@ body[data-nav="an"]{--nav-h:calc(64px + env(safe-area-inset-bottom))}
   display:flex;align-items:stretch;gap:2px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));
   background:var(--flaeche);border-top:1px solid var(--linie-stark);
   box-shadow:0 -12px 24px -18px rgba(0,0,0,.4)}
+/* Schürze: malt der Browser Inhalt unter seine eigene Leiste (iPhone), endet eine am unteren Rand verankerte Leiste ÜBER dem
+   sichtbaren Rand und „schwebt“ — die Seite scheint darunter durch. Die Schürze füllt diesen Streifen in der Farbe der Leiste;
+   liegt der Rand der Leiste am Schirmrand, steht sie außerhalb und ist unsichtbar. Fängt keinen Tipp. */
+.hauptnav::after{content:"";position:absolute;left:0;right:0;top:100%;height:240px;background:var(--flaeche);pointer-events:none}
 .hn-tab{flex:1 1 0;min-width:0;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
   border-radius:var(--p-ecke-klein,14px);color:var(--tinte-leise);text-decoration:none;font-size:12px;font-weight:650;line-height:1.1;
   -webkit-tap-highlight-color:transparent;transition:background-color .2s ease,color .2s ease}
@@ -5444,6 +5453,53 @@ function farbMerkwert(fb){
      mit der Stunde der Anwendung, die im Demo-Betrieb abweichen kann. */
   const st = new Date().getHours();
   markeAnwenden(mb.abend.an && (st >= mb.abend.ab || st < 5));
+})();
+</script>
+
+<script>
+/* ═══ FRÜHER START DER KARTEN-ABFRAGE (24.10.) ══════════════════════
+   Wunsch: „Die Seite ist relativ langsam — sorge dafür, dass sie
+   schneller lädt, ohne dass die Qualität leidet.“ Gemessen (Chromium,
+   CPU 4-fach gedrosselt): Die Abfrage an die Datenbank begann erst, wenn
+   die GANZE Datei (1,5 MB, davon über eine Million Zeichen Skript) geladen
+   und das Hauptskript ausgeführt war — am Ende des Dokuments. Dazu kamen
+   zwei weitere Abfragen nach derselben Betriebs-ID (Aktionen und
+   Zahlarten fragten, bevor die Karte da war, jede für sich).
+   Jetzt beginnt die Abfrage hier, sobald der Kopf angekommen ist, und die
+   Verbindung zum Server wird gleichzeitig aufgebaut; karteHolen() nimmt
+   die laufende Antwort. Fehlschlag → derselbe Weg wie vorher (eigene
+   Abfrage), nichts ist anders als ohne diesen Block. Nicht in der
+   Vorschau (dort gilt, was das Board schickt), und im Vorführmodus geht
+   die Abfrage durch dieselbe Weiche wie jede andere (window.fetch ist
+   dort schon ersetzt, das Skript davor). */
+const OMOTENO_DB = {
+  url:  "https://quxwweuvdqtjsdwgjdrh.supabase.co",
+  key:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk",
+  slug: HAUS,                 /* nie fest hinschreiben — siehe HAUS oben */
+  wartezeit: 6000
+};
+const KARTE_BETRIEB_PFAD = "/rest/v1/betriebe?slug=eq." + encodeURIComponent(OMOTENO_DB.slug) +
+  "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_bloecke,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil,karten,optionen";
+const OMOTENO_FRUEH = { rennt:null, genutzt:false };
+(function(){
+  try{
+    if(!OMOTENO_DB.url || !OMOTENO_DB.key || !OMOTENO_DB.slug) return;
+    const l = document.createElement("link");
+    l.rel = "preconnect"; l.href = OMOTENO_DB.url; l.crossOrigin = "";
+    document.head.appendChild(l);
+    /* Die bewegten Zeichen kommen von omoteno.de (eine andere Herkunft, auch wenn der Hub unter einer Kundenadresse läuft):
+       Verbindung früh aufbauen, damit das erste Zeichen nicht auf den Handschlag wartet. */
+    if(location.protocol === "https:" && location.hostname !== "omoteno.de"){
+      const m = document.createElement("link");
+      m.rel = "preconnect"; m.href = "https://omoteno.de"; m.crossOrigin = "";
+      document.head.appendChild(m);
+    }
+    if(window.OMOTENO_VORSCHAU === true) return;
+    OMOTENO_FRUEH.rennt = window.fetch(OMOTENO_DB.url + KARTE_BETRIEB_PFAD, {
+      headers:{ apikey:OMOTENO_DB.key, Authorization:"Bearer " + OMOTENO_DB.key }
+    }).then(a => { if(!a.ok) throw new Error("HTTP " + a.status); return a.json(); });
+    OMOTENO_FRUEH.rennt.catch(() => {});      /* ohne Abnehmer keine „unhandled rejection“ */
+  }catch(e){ OMOTENO_FRUEH.rennt = null; }
 })();
 </script>
 
@@ -17496,15 +17552,25 @@ async function rabattcodePruefen(code, namen){
 let betriebId = null;
 
 /* Holt die Betriebs-ID nach, falls die Karte noch nicht geladen war. */
+let betriebIdLaeuft = null;
 function betriebIdHolen(){
   if(betriebId) return Promise.resolve(betriebId);
   if(!serverBereit()) return Promise.resolve(null);
-  return sicherFetch(SERVER.adresse.replace(/\/+$/,"") +
+  if(betriebIdLaeuft) return betriebIdLaeuft;
+  /* Aktionen, Zahlarten, Reservierung … fragen beim Start fast gleichzeitig. Vorher ging jede mit einer eigenen Abfrage
+     hinaus (gemessen: zwei identische select=id vor der Karte); jetzt teilen sie sich EINE — und nehmen, wenn sie schon
+     läuft, die Antwort der frühen Kartenabfrage (OMOTENO_FRUEH), die dieselbe id mitbringt. */
+  const einzeln = () => sicherFetch(SERVER.adresse.replace(/\/+$/,"") +
       "/rest/v1/betriebe?slug=eq." + encodeURIComponent(SERVER.betrieb) + "&select=id",
       { headers:{ apikey:SERVER.schluessel, Authorization:"Bearer " + SERVER.schluessel } })
-    .then(a => a.ok ? a.json() : null)
-    .then(r => (betriebId = (r && r[0] && r[0].id) || null))
-    .catch(() => null);
+    .then(a => a.ok ? a.json() : null);
+  const quelle = (OMOTENO_FRUEH.rennt && SERVER.betrieb === OMOTENO_DB.slug)
+    ? OMOTENO_FRUEH.rennt.catch(() => einzeln()) : einzeln();
+  betriebIdLaeuft = quelle
+    .then(r => (betriebId = betriebId || (r && r[0] && r[0].id) || null))
+    .catch(() => null)
+    .then(id => { betriebIdLaeuft = null; return id; });
+  return betriebIdLaeuft;
 }
 
 /* fetch mit Abbruch-Signal – fällt automatisch auf einen Aufruf ohne
@@ -19883,12 +19949,7 @@ document.addEventListener("visibilitychange", () => {
    Sekunden sauber antwortet, wird ersetzt. Bei schlechtem WLAN
    sieht der Gast eine Karte von gestern statt einer leeren Seite.
    ═══════════════════════════════════════════════════════════════ */
-const OMOTENO_DB = {
-  url:  "https://quxwweuvdqtjsdwgjdrh.supabase.co",
-  key:  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InF1eHd3ZXV2ZHF0anNkd2dqZHJoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NzA2NDAsImV4cCI6MjEwMTQ0NjY0MH0.IODFI8j0JBsRIv_UqCd3UU3vifhWllcawK_PYcCxqLk",
-  slug: HAUS,                 /* nie fest hinschreiben — siehe HAUS oben */
-  wartezeit: 6000
-};
+/* OMOTENO_DB steht im Kopf der Seite (Skript „früher Start“), damit die Abfrage beginnen kann, bevor dieses Skript geladen ist. */
 
 /* Merkzettel, um unnötiges Neuzeichnen zu vermeiden: Nur wenn sich die
    Karte wirklich geändert hat, wird die Ansicht aufgefrischt. */
@@ -20286,8 +20347,17 @@ async function karteHolen(erstesMal){
   }).then(a => { if(!a.ok) throw new Error("HTTP "+a.status); return a.json(); });
 
   try{
-    const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_bloecke,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil,karten,optionen");
+    /* Beim ersten Mal die Antwort nehmen, die schon im Kopf der Seite angefragt wurde (OMOTENO_FRUEH). Bleibt sie aus oder
+       scheitert, geht es wie vorher mit einer eigenen Abfrage — und die Wartezeit gilt für beide Wege. */
+    let b = null;
+    if(erstesMal && OMOTENO_FRUEH.rennt && !OMOTENO_FRUEH.genutzt){
+      OMOTENO_FRUEH.genutzt = true;
+      try{
+        b = await Promise.race([OMOTENO_FRUEH.rennt,
+          new Promise((_, nein) => abbruch.signal.addEventListener("abort", () => nein(new Error("Zeit"))))]);
+      }catch(e){ b = null; }
+    }
+    if(!b) b = await hol(KARTE_BETRIEB_PFAD);
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 

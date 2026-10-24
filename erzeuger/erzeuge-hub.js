@@ -27,6 +27,7 @@
 
 const fs   = require("fs");
 const path = require("path");
+const { kompaktHtml } = require("./kompakt");
 
 /* ─── Wo die Dateien liegen ───────────────────────────────────
    Zwei Formen sind erlaubt, und zwar aus einem praktischen Grund:
@@ -46,7 +47,7 @@ const VORLAGE  = nimm(path.join(OBEN, "vorlagen", "hub.vorlage.html"),
 const BLAETTER = nimm(path.join(OBEN, "markenblaetter"),
                       HIER);
 const WURZEL   = fs.existsSync(path.join(OBEN, "vorlagen")) ? OBEN : HIER;
-const ZIEL     = path.join(WURZEL, "dist");
+const ZIEL     = process.env.OMOTENO_ZIEL ? path.resolve(process.env.OMOTENO_ZIEL) : path.join(WURZEL, "dist");   /* Gegenbeweise und pruef-kompakt.js erzeugen in ein anderes Verzeichnis */
 
 /* ─── Schriften und Schatten ──────────────────────────────────
    Muss deckungsgleich mit dem sein, was in der Vorlage steht.
@@ -914,6 +915,14 @@ function erzeuge(slug, nurPruefen){
       "   Das ist der Fehler aus §8.1a. Der Wert gehoert ins Markenblatt\n" +
       "   oder wird aus HAUS abgeleitet, nicht ins Geruest geschrieben.\n" +
       treffer.join("\n"));
+  }
+
+  /* Kommentare raus (erzeuger/kompakt.js): rund ein Viertel weniger Bytes auf der Leitung. Erst NACH den Prüfungen
+     oben — sie sehen den vollen Text. OMOTENO_OHNE_KOMPAKT=1 liefert die Datei mit Kommentaren (für Gegenbeweise). */
+  if(process.env.OMOTENO_OHNE_KOMPAKT !== "1"){
+    const k = kompaktHtml(aus, m => console.log("   ⚠ " + slug + ": " + m));
+    aus = k.html;
+    console.log("   kompakt: Skript und Stil " + Math.round(k.vorher / 1024) + " → " + Math.round(k.nachher / 1024) + " KB");
   }
 
   const ordner = path.join(ZIEL, slug);
