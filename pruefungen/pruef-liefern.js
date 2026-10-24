@@ -286,6 +286,11 @@ async function hubAuf(br, haus, liefer, adresszusatz){
   await p.goto("file://" + path.join(OBEN, "dist", haus, "index.html") +
                (ohne ? (rest || "") : "?modus=liefern" + rest));
   await p.waitForTimeout(1500);
+  /* Der Liefer-Schalter im Kopf ist der KLASSISCHE Weg; die Premium-Startseite ersetzt ihn dort durch zwei Chips
+     (pruef-start-premium.js misst sie, auch den Tipp, der denselben lieferWahl() ruft). Ein Haus mit dem Schalter
+     „premium“ wird hier in klassischer Form gemessen, damit der Schalter bewacht bleibt. */
+  await p.evaluate(() => { if (typeof MARKENBLATT !== "undefined" && MARKENBLATT.startstil === "premium") {
+    MARKENBLATT.startstil = "klassisch"; startstilSetzen(); zeichne(); } });
   /* Öffnungszeiten für JEDES Haus festlegen, nicht nur für Blend: Choco
      öffnet um 10:30. Vorher zeigt der Hub zu Recht kein Bestellfeld,
      und diese Prüfung wurde morgens rot („0 Felder“), obwohl der

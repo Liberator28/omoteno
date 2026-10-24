@@ -53,7 +53,9 @@ async function kueche(browser) {
     const json = (b, st) => r.fulfill({ status: st || 200, contentType: "application/json", body: JSON.stringify(b) });
     if (u.startsWith("file://")) return r.continue();
     if (u.includes("/rest/v1/bestellungen")) {
-      if (r.request().method() === "PATCH") { patches.push({ u, body: JSON.parse(r.request().postData() || "{}") }); return json([]); }
+      if (r.request().method() === "PATCH") { patches.push({ u, body: JSON.parse(r.request().postData() || "{}") });
+        /* Wie PostgREST: mit angeforderter Rückgabe kommen die geschriebenen Zeilen zurück (hier: die lebende Zeile). */
+        return /return=representation/.test(r.request().headers()["prefer"] || "") ? json([bon]) : json([]); }
       return json([bon]);
     }
     if (u.includes("/rest/v1/betriebe")) return json([{ id: B, name: "Prüfhaus" }]);

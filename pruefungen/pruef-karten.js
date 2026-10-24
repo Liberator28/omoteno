@@ -64,7 +64,8 @@ async function lies(seite, ziel) {
   return seite.evaluate(() => ({
     seite: seiteJetzt,
     h2: (document.querySelector("#inhalt .seite h2") || {}).textContent || "",
-    unter: (document.querySelector("#inhalt .seite > p.unter") || {}).textContent || "",
+    /* Klassisch steht die Unterzeile direkt unter der Überschrift der Seite, im Premium-Stil (Choco) in der Kopfkarte (.kopfkarte p.unter). */
+    unter: (document.querySelector("#inhalt .seite > p.unter, #inhalt .seite .kopfkarte p.unter") || {}).textContent || "",
     gerichte: Array.from(document.querySelectorAll("#inhalt .gericht .n, #inhalt .gericht [data-gname]"))
       .map(e => e.textContent.trim()).join("|"),
     text: document.getElementById("inhalt").textContent,
@@ -245,9 +246,9 @@ async function lies(seite, ziel) {
       document.querySelector('#fKarten [data-karte-wahl="k-mittagskarte"]').click();
       await sichern(false);
       welcheKarte = "k-mittagskarte"; zeichneKarte();
-      const inMittag = [...document.querySelectorAll("#karteListe .gname")].map(e => e.textContent);
+      const inMittag = [...document.querySelectorAll("#karteListe .gname, #karteListe .kr-name")].map(e => e.textContent);
       welcheKarte = "speisekarte"; zeichneKarte();
-      const inSpeise = [...document.querySelectorAll("#karteListe .gname")].map(e => e.textContent);
+      const inSpeise = [...document.querySelectorAll("#karteListe .gname, #karteListe .kr-name")].map(e => e.textContent);
       return { karten: g.karten.join(","), karte: g.karte, inMittag, inSpeise };
     });
     pruef(zwei.karten === "speisekarte,k-mittagskarte" && zwei.karte === "speisekarte",

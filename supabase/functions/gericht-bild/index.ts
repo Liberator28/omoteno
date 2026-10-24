@@ -56,8 +56,14 @@ const SZENE =
   "soft natural daylight from the side, gentle realistic shadow under the plate, " +
   "no extra food, no props, no garnish added";
 
-type Fehler = "ungueltig" | "quelle" | "zugriff" | "tarif" | "grenze" |
+type Fehler = "ungueltig" | "quelle" | "zugriff" | "tarif" | "grenze" | "budget" |
               "kein_schluessel" | "anbieter" | "speichern";
+
+/* Die zwei fal-Modelle, wie sie in ki_preise (migration-ki-nutzung.sql)
+   stehen. Je erfolgreichem Bild eine Buchung — fal berechnet nach Bild,
+   nicht nach Token. */
+const MODELL_FREI = "fal-ai/birefnet/v2";
+const MODELL_PROFI = "fal-ai/bria/product-shot";
 
 const antwort = (koerper: unknown, status = 200) =>
   new Response(JSON.stringify(koerper), {
@@ -152,6 +158,11 @@ Deno.serve(async (req: Request) => {
   const schluessel = Deno.env.get("FAL_KEY") ?? "";
   if (!schluessel) return fehler("kein_schluessel");
 
+  /* Monatsbudget in Euro: nur ein HARTES, erreichtes Budget weist ab;
+     Fehler/fehlende Funktion lassen durch (fail-open, §7). */
+  const { data: budget, error: budgetFehler } = await db.rpc("ki_budget_stand", { p_betrieb: betrieb });
+  if (!budgetFehler && budget && budget.hart === true && budget.ueber === true) return fehler("budget");
+
   const monatsanfang = new Date();
   monatsanfang.setUTCDate(1); monatsanfang.setUTCHours(0, 0, 0, 0);
   const { count } = await db.from("bild_auftraege")
@@ -192,6 +203,19 @@ Deno.serve(async (req: Request) => {
       ? (profi.value as { images?: Array<{ url?: string }> })?.images?.[0]?.url : undefined;
     if (!freiAdresse && !profiAdresse) return fehler("anbieter");
 
+    /* Verbrauch ins Logbuch: je Bild, das fal wirklich geliefert hat. Ein
+       Fehler dabei blockiert nie das Foto (fail-open), wird aber gemeldet. */
+    const buche = async (modell: string): Promise<boolean> => {
+      try {
+        const { data, error } = await db.rpc("ki_nutzung_buchen", {
+          p_funktion: "bild_profi_frei", p_modell: modell, p_ein: 0, p_aus: 0, p_cache: 0, p_bilder: 1, p_betrieb: betrieb,
+        });
+        return !error && data?.gebucht === true;
+      } catch { return false; }
+    };
+    const gebuchtFrei  = freiAdresse  ? await buche(MODELL_FREI)  : true;
+    const gebuchtProfi = profiAdresse ? await buche(MODELL_PROFI) : true;
+
     const aus: { frei?: string; profi?: string; teilweise?: boolean } = {};
     try {
       if (freiAdresse) aus.frei = await ablegen(db, freiAdresse, betrieb, "png");
@@ -201,7 +225,7 @@ Deno.serve(async (req: Request) => {
     }
     /* Eines von beiden reicht, um es anzubieten — ehrlich markiert. */
     if (!aus.frei || !aus.profi) aus.teilweise = true;
-    return antwort(aus);
+    return antwort({ ...aus, gebucht: gebuchtFrei && gebuchtProfi });
   } catch {
     return fehler("anbieter");
   }

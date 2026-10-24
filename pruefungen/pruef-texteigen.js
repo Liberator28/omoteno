@@ -271,7 +271,7 @@ const lesen = p => p.evaluate(() => {
         document.querySelector('.txchip[data-tx-filter="' + sz + '"]').click();
         await new Promise(r => setTimeout(r, 100));
         return { sz, soll: TX_LISTE.filter(x => x.sz === sz).length, ist: document.querySelectorAll("#txListe .txkarte").length,
-          fremd: [...document.querySelectorAll("#txListe .txmeta")].filter(m => m.textContent !== TX_SEITEN[sz]).length };
+          fremd: [...document.querySelectorAll("#txListe .txmeta")].filter(m => m.textContent.indexOf(TX_SEITEN[sz] + " · ") !== 0).length };
       });
       pruef(f.soll > 0 && f.ist === f.soll && f.fremd === 0, "Chip „" + f.sz + "“ zeigt genau die Texte dieser Seite", f.ist + " von " + f.soll);
       const g = await p.evaluate(async () => {
@@ -282,6 +282,67 @@ const lesen = p => p.evaluate(() => {
         return { k, soll: TX_LISTE.filter(x => txGeaendert(x.k)).map(x => x.k) };
       });
       pruef(g.soll.length >= 1 && g.k.length === g.soll.length && g.soll.every(x => g.k.includes(x)), "Chip „Geändert“ zeigt genau die geänderten Texte", g.k.length + " von " + g.soll.length);
+
+      /* ── Orte im Hub: Gruppen mit Herkunftsangabe (24.10.) ────────────────────────────────────────────
+         Ohne Filter und Suche steht die Liste nach Seite gruppiert; jeder Text nennt seine Herkunft. Die Zahlen werden aus
+         TX_LISTE gerechnet (zweite Quelle), nicht aus dem Bild abgeschrieben. */
+      await p.evaluate(() => { TX_OFFEN = null; TX_GRUPPEN_OFFEN = null; $("#txSuche").value = ""; document.querySelector('.txchip[data-tx-filter="alle"]').click(); });
+      await p.waitForTimeout(150);
+      const gr = await p.evaluate(() => {
+        const orte = []; TX_LISTE.forEach(x => { if(orte.indexOf(x.sz) < 0) orte.push(x.sz); });
+        const koepfe = [...document.querySelectorAll("#txListe .txgruppenkopf")];
+        return { orte, soll: orte.map(sz => ({ name: TX_SEITEN[sz] || sz, n: TX_LISTE.filter(x => x.sz === sz).length })), koepfe: koepfe.map(k => ({ sz: k.dataset.txGruppenkopf, auf: k.getAttribute("aria-expanded"), name: k.querySelector(".txgruppenname").textContent, zahl: k.querySelector(".txgruppenzahl").textContent,
+          h: Math.round(k.getBoundingClientRect().height), karten: k.parentElement.querySelectorAll(".txkarte").length })),
+          unterKopf: [...document.querySelectorAll("#txListe > :not(.txgruppe)")].length, metaFlach: [...document.querySelectorAll("#txListe .txmeta")].some(m => m.textContent.indexOf(" · ") >= 0) };
+      });
+      pruef(gr.koepfe.length === gr.orte.length && gr.koepfe.map(k => k.sz).join() === gr.orte.join() && gr.unterKopf === 0, "ohne Filter: eine Gruppe je Ort im Hub, in der Reihenfolge der Liste, sonst nichts", gr.koepfe.length + " von " + gr.orte.length);
+      pruef(gr.koepfe[0].auf === "true" && gr.koepfe.slice(1).every(k => k.auf === "false" && k.karten === 0), "Ruhelage: nur die erste Gruppe offen, die anderen zu und OHNE gezeichnete Karten", gr.koepfe.map(k => k.auf + ":" + k.karten).join(" "));
+      const erste = await p.evaluate(() => ({ soll: TX_LISTE.filter(x => x.sz === TX_LISTE[0].sz).length, ist: document.querySelectorAll("#txListe .txgruppe.offen .txkarte").length }));
+      pruef(erste.soll > 0 && erste.ist === erste.soll, "die offene Gruppe zeigt alle ihre Texte", erste.ist + " von " + erste.soll);
+      pruef(gr.koepfe.every((k, i) => k.name === gr.soll[i].name && k.zahl === gr.soll[i].n + (gr.soll[i].n === 1 ? " Text" : " Texte")), "Kopf nennt Ort und Zahl der Texte (aus der Liste gerechnet)", gr.koepfe.map(k => k.name + " " + k.zahl).slice(0, 3).join(" | "));
+      pruef(gr.koepfe.every(k => k.h >= 44), "jeder Gruppenkopf ≥ 44 px", gr.koepfe.map(k => k.h).join(","));
+      pruef(!gr.metaFlach, "in der Gruppe nennt jede Zeile nur ihre Art (der Ort steht im Kopf)");
+      /* Tipp öffnet/schließt */
+      const zweite = gr.koepfe[1].sz;
+      await p.click('[data-tx-gruppenkopf="' + zweite + '"]'); await p.waitForTimeout(150);
+      const o2 = await p.evaluate(sz => ({ auf: document.querySelector('[data-tx-gruppenkopf="' + sz + '"]').getAttribute("aria-expanded"), n: document.querySelectorAll('[data-tx-gruppe="' + sz + '"] .txkarte').length,
+        soll: TX_LISTE.filter(x => x.sz === sz).length, erste: document.querySelector("#txListe .txgruppenkopf").getAttribute("aria-expanded"), fokus: document.activeElement && document.activeElement.dataset.txGruppenkopf }), zweite);
+      pruef(o2.auf === "true" && o2.n === o2.soll && o2.erste === "true" && o2.fokus === zweite, "echter Tipp klappt eine zweite Gruppe auf (die erste bleibt offen), Fokus bleibt auf dem Kopf", JSON.stringify(o2));
+      await p.click('[data-tx-gruppenkopf="' + zweite + '"]'); await p.waitForTimeout(150);
+      pruef(await p.evaluate(sz => document.querySelector('[data-tx-gruppenkopf="' + sz + '"]').getAttribute("aria-expanded") === "false" && !document.querySelector('[data-tx-gruppe="' + sz + '"] .txkarte'), zweite), "zweiter Tipp klappt sie wieder zu (Karten weg)");
+      /* Herkunft im Editor */
+      const ersterText = await p.evaluate(() => TX_LISTE[0].k);
+      await p.click('[data-tx="' + ersterText.replace(/"/g, '\\"') + '"]'); await p.waitForTimeout(200);
+      const he = await p.evaluate(k => { const x = TX_LISTE.find(y => y.k === k), el = document.querySelector("[data-tx-herkunft]");
+        return { text: el ? el.textContent : "", orte: x.orte.map(o => TX_SEITEN[o] || o), art: txArt(k), meta: document.querySelector('[data-tx-karte] .txmeta').textContent }; }, ersterText);
+      pruef(/^Herkunft: Vorgabe/.test(he.text) && he.orte.every(o => he.text.indexOf(o) >= 0) && he.text.indexOf("steht auf:") > 0, "Editor: „Herkunft: Vorgabe …, steht auf: <alle Orte>“", he.text);
+      /* Änderung wandert in Art, Gruppenkopf und Herkunft — ohne dass das Feld den Fokus verliert */
+      const summeKopf = () => p.evaluate(() => [...document.querySelectorAll("#txListe .txgruppenkopf .txneu")].reduce((a, e) => a + (parseInt(e.textContent) || 0), 0));
+      const k0 = await summeKopf(), schonGeaendert = await p.evaluate(k => txGeaendert(k), ersterText);
+      await p.fill("[data-tx-text]", "Mein eigener Satz zum Probieren"); await p.waitForTimeout(250);
+      const ge = await p.evaluate(() => ({ herkunft: document.querySelector("[data-tx-herkunft]").textContent, kopf: document.querySelector("#txListe .txgruppenkopf .txneu") ? document.querySelector("#txListe .txgruppenkopf .txneu").textContent : "",
+        fokus: document.activeElement && document.activeElement.matches("[data-tx-text]"), meta: document.querySelector("[data-tx-karte].offen .txmeta").textContent }));
+      const k1 = await summeKopf();
+      pruef(/Herkunft: Von Ihnen geändert/.test(ge.herkunft) && /^\d+ geändert$/.test(ge.kopf) && k1 === k0 + (schonGeaendert ? 0 : 1) && ge.fokus && ge.meta === "Von Ihnen geändert", "Tippen: Herkunft „Von Ihnen geändert“, Gruppenkopf zählt mit (+1), das Feld behält den Fokus", JSON.stringify([ge, k0, k1]));
+      await p.click("[data-tx-zurueck]"); await p.waitForTimeout(200);
+      const k2 = await summeKopf();
+      pruef(await p.evaluate(() => txArt(TX_LISTE[0].k).indexOf("Vorgabe") === 0) && k2 === k0 - (schonGeaendert ? 1 : 0), "„Vorgabe wiederherstellen“: Herkunft wieder „Vorgabe“, Zähler im Kopf zurück", [k0, k2]);
+      /* Platzhalter */
+      const mitP = await p.evaluate(() => { const x = TX_LISTE.find(y => y.k.indexOf("{") >= 0); return x ? { k: x.k, art: txArt(x.k) } : null; });
+      pruef(!mitP || mitP.art === "Vorgabe mit Platzhalter", "Satz mit {…}: „Vorgabe mit Platzhalter“", mitP && mitP.art);
+      /* Suche → flach, mit Ort und Art in jeder Zeile */
+      await p.evaluate(() => { TX_OFFEN = null; }); await p.fill("#txSuche", "e"); await p.waitForTimeout(200);
+      const fl = await p.evaluate(() => ({ gruppen: document.querySelectorAll("#txListe .txgruppe").length, karten: document.querySelectorAll("#txListe .txkarte").length,
+        meta: [...document.querySelectorAll("#txListe .txmeta")].every(m => m.textContent.split(" · ").length === 2) }));
+      pruef(fl.gruppen === 0 && fl.karten > 0 && fl.meta, "Suche: flache Trefferliste, jede Zeile nennt Ort · Art", JSON.stringify(fl));
+      await p.fill("#txSuche", ""); await p.waitForTimeout(150);
+      pruef(await p.evaluate(() => document.querySelectorAll("#txListe .txgruppe").length > 1), "Suche leeren: die Gruppen sind wieder da");
+      /* Aus der Vorschau geöffneter Text: seine Gruppe steht auf, auch wenn sie zu war */
+      const fern = await p.evaluate(() => { const x = TX_LISTE[TX_LISTE.length - 1]; TX_GRUPPEN_OFFEN = null; TX_OFFEN = null; window.vorschauTextGewaehlt(x.k, x.sz); return x; });
+      await p.waitForTimeout(250);
+      pruef(await p.evaluate(f => { const k = document.querySelector('[data-tx-gruppenkopf="' + f.sz + '"]'); return !!k && k.getAttribute("aria-expanded") === "true" && !!document.querySelector('[data-tx-karte].offen') && !!document.querySelector("[data-tx-ed]"); }, fern),
+        "Tipp in der Vorschau auf einen Text einer ZUGEKLAPPTEN Gruppe: die Gruppe klappt auf, der Editor ist offen", fern.sz);
+      await p.evaluate(() => { TX_OFFEN = null; TX_GRUPPEN_OFFEN = null; txZeichnen(); });
     }
 
     /* 30 Texte → zwei Übersetzer-Aufrufe */

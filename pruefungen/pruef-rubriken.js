@@ -144,8 +144,12 @@ const echt = k => k.filter(z => !/net::ERR|Failed to load|ERR_FAILED/i.test(z));
   h.on("pageerror", e => hf.push(String(e).slice(0, 160)));
   await h.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
   await h.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); } catch(e){} });
+  /* Uhr und Öffnungszeiten legt die Prüfung selbst fest (§8.1j): Außerhalb der Öffnungszeit zeichnet der Hub
+     die Kacheln, die ein offenes Haus voraussetzen, nicht — um 7 Uhr fehlte dadurch die Rubrik „Früh“. */
+  await h.clock.setFixedTime(new Date("2026-10-10T14:00:00"));
   await h.goto("file://" + HUB + "#/");
   await h.waitForTimeout(1200);
+  await h.evaluate(() => { ZEITEN.length = 0; for (let i = 0; i < 7; i++) ZEITEN.push("10:30 – 00:30"); stunde = new Date().getHours(); zeichne(); });
 
   const zeig = roh => h.evaluate(r => {
     KACHELN.length = 0;

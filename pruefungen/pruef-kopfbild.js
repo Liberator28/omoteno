@@ -115,6 +115,13 @@ async function hubOeffnen(br, haus, breite, opt){
   });
   await p.goto("file://" + path.join(DIST, haus, "index.html") + (opt.hash || "#/"));
   await p.waitForTimeout(1300);
+  /* Ein Haus mit Markenblatt-Schalter „premium“ (Choco) hat einen anderen Kopf: Foto hinter dem Kopf, Siegel darüber.
+     Die Geometrie unten (Logo-Mitte auf der Bildkante, Bild ≤ 28 vh) gilt für den KLASSISCHEN Kopf und soll dort
+     bewacht bleiben — deshalb wird das Haus hier in klassischer Form gemessen. Der Premium-Kopf steht in
+     pruef-start-premium.js (§8.1o: nicht abschwächen, sondern die Struktur benennen, die gemessen wird). */
+  const klassisch = await p.evaluate(() => { if(MARKENBLATT.startstil !== "premium") return false;
+    MARKENBLATT.startstil = "klassisch"; startstilSetzen(); zeichne(); return document.body.dataset.startstil === undefined; });
+  if(klassisch) await p.waitForTimeout(300);
   return { ctx, p, fehler, geladen };
 }
 

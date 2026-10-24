@@ -1328,10 +1328,32 @@ function ladeBons(){
     });
 }
 
+/* Ein Schreibweg, der den STATUS setzt, weckt keine Zeile wieder auf, die der Gast inzwischen storniert hat
+   (oder das Board abgelehnt): Die Datenbank kennt keinen Wächter für Statusübergänge, und „letzter gewinnt“
+   hätte die Stornierung überschrieben (Integrationsplan Saal↔Küche, Abschnitt 3). Der Filter hängt NUR an
+   PATCHes mit status — einen stornierten Bon abzuhaken schreibt kueche_fertig_um ohne status und muss
+   möglich bleiben. „status is null“ kommt durch (die Spalte ist nullbar, NULL NOT IN (…) schlösse die Zeile
+   aus, §7) („Abhaken heißt hier nur: vom Schirm“). Antwortet der Server mit einer leeren Liste,
+   wurde nichts geschrieben: Konflikt. Ohne lesbare Liste (204, leerer Körper) gilt es als gelungen
+   (fail-open, §7) — ein echter Handgriff am Pass wird nie wegen fehlender Rückmeldung verworfen. */
 function setzeBon(id, felder){
-  return ruf("/rest/v1/bestellungen?id=eq."+encodeURIComponent(id), {
-    method:"PATCH", body: JSON.stringify(felder)
-  }).then(function(a){ if(!a.ok) throw new Error("Nicht gespeichert ("+a.status+")"); });
+  var mitStatus = Object.prototype.hasOwnProperty.call(felder, "status");
+  var pfad = "/rest/v1/bestellungen?id=eq."+encodeURIComponent(id) +
+             (mitStatus ? "&or=(status.is.null,status.not.in.(storniert,abgelehnt))" : "");
+  return ruf(pfad, {
+    method:"PATCH", body: JSON.stringify(felder),
+    dazu: mitStatus ? { "Prefer": "return=representation" } : null
+  }).then(function(a){
+    if(!a.ok) throw new Error("Nicht gespeichert ("+a.status+")");
+    if(!mitStatus) return;
+    return a.text().then(function(t){
+      var liste = null;
+      try{ liste = t ? JSON.parse(t) : null; }catch(e){ liste = null; }
+      if(Array.isArray(liste) && liste.length === 0){
+        var k = new Error("Bestellung inzwischen storniert oder abgelehnt"); k.konflikt = true; throw k;
+      }
+    });
+  });
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -1844,6 +1866,12 @@ function ausfuehren(b, tun, zusatz){
     if(tun === "fertig") toast((b.tisch ? "Tisch " + b.tisch : "#" + (b.tagesnummer != null ? b.tagesnummer : "?")) +
                           " abholbereit – der Service bekommt Bescheid.", "ok");
   }, function(e){
+    if(e && e.konflikt){
+      /* Wiederholen hilft nicht: Die Zeile ist storniert. Echten Stand holen, der Bon folgt der Datenbank. */
+      toast("„" + (b.tisch||"?") + "“ wurde inzwischen storniert oder abgelehnt – nichts geändert.", "err");
+      aktualisieren();
+      return;
+    }
     toast("„" + (b.tisch||"?") + "“ nicht gespeichert.", "err", {
       text:"Erneut", tun: function(){ ausfuehren(b, tun, zusatz); }
     });

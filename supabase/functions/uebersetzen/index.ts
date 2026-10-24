@@ -40,6 +40,37 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 
 const SPRACHEN = ["en","tr","ru","fr","es","it","pl","ar","uk","nl","ro"] as const;
 
+/* ── Welches Modell uebersetzt ─────────────────────────────────────
+   Standard ist, was die Funktion von Anfang an benutzt (Opus 5): ohne
+   Secret aendert sich NICHTS, nicht ein Byte der Anfrage. Wer
+   guenstiger uebersetzen will, setzt UEBERSETZER_MODELL (Supabase →
+   Edge Functions → Secrets) auf einen Namen AUS DIESER LISTE. Ein
+   anderer Wert (Tippfehler, ein Name, den es nicht gibt) wird NICHT an
+   Anthropic geschickt, sondern faellt auf den Standard zurueck —
+   sonst saehe der Wirt statt einer Uebersetzung einen 404.
+
+   Die zwei Schalter je Modell stehen hier, weil sie sich unterscheiden
+   (Stand 24.10.2026, aus der Modelluebersicht der SDK-Doku — NICHT
+   gegen die echte API gelaufen):
+     erzwingen  tool_choice {type:"tool"} ist bei Opus 5.5 und Sonnet 5.5
+                ein 400. Dort wird "auto" geschickt und das Werkzeug im
+                Auftrag namentlich verlangt; strict:true haelt die
+                Argumente schemagenau. Haiku 5.5 ist nicht als
+                "erzwingen" belegt und laeuft darum ebenfalls ueber auto.
+     ersatz     Der serverseitige Ersatz bei Ablehnung (fallbacks:"default")
+                ist fuer Haiku 5.5 nicht vorgesehen. */
+const STANDARD_MODELL = "claude-opus-5";
+const MODELLE: Record<string, { erzwingen: boolean; ersatz: boolean }> = {
+  "claude-opus-5":     { erzwingen: true,  ersatz: true },
+  "claude-opus-5-5":   { erzwingen: false, ersatz: true },
+  "claude-sonnet-5-5": { erzwingen: false, ersatz: true },
+  "claude-haiku-5-5":  { erzwingen: false, ersatz: false },
+};
+function modellWaehlen(): string {
+  const wunsch = (Deno.env.get("UEBERSETZER_MODELL") ?? "").trim();
+  return Object.prototype.hasOwnProperty.call(MODELLE, wunsch) ? wunsch : STANDARD_MODELL;
+}
+
 /* Wie viele Saetze auf einmal. Nicht willkuerlich: 25 Saetze x 11
    Sprachen x ~80 Zeichen sind rund 8 000 Token Antwort und passen
    sicher unter max_tokens. Mehr waere ein Aufruf, der mitten im Satz
@@ -272,6 +303,15 @@ Deno.serve(async (anfrage: Request) => {
     .slice(0, HOECHSTENS);
   if (!texte.length) return antwort({ uebersetzt: {} }, 200);
 
+  /* Monatsbudget in Euro (migration-ki-nutzung.sql) — VOR dem Kontingent,
+     damit eine Absage kein Kontingent verbraucht. Nur ein HARTES und
+     erreichtes Budget weist ab; Fehler/fehlende Funktion lassen durch
+     (fail-open, CLAUDE.md §7: der Wirt speichert sein Gericht trotzdem). */
+  const { data: budget, error: budgetFehler } = await alsNutzer.rpc("ki_budget_stand");
+  if (!budgetFehler && budget && budget.hart === true && budget.ueber === true) {
+    return antwort({ fehler: "budget", uebersetzt: {} }, 200);
+  }
+
   /* Tageskontingent je Betrieb (migration-ki-kontingent.sql), gezählt
      VOR dem Aufruf — wie bei gericht-bild. Vorher konnte jeder, der
      sich über konto.html registriert und einen Betrieb anlegt, in
@@ -326,6 +366,24 @@ Deno.serve(async (anfrage: Request) => {
 
   const claude = new Anthropic({ apiKey: schluessel });
   const bekannt = new Set(texte);
+  const modell = modellWaehlen();
+  const eigenschaftenModell = MODELLE[modell];
+
+  /* Was Anthropic berechnet hat, ueber alle Anlaeufe. Gebucht wird am
+     Ende (ein Eintrag je Aufruf), auch wenn ein Anlauf mittendrin
+     scheitert — Kosten entstehen, sobald die Anfrage lief. */
+  const verbrauch = { ein: 0, aus: 0, cache: 0 };
+  const buchen = async (): Promise<boolean | null> => {
+    /* Nichts verbraucht (kein Anlauf kam bis zu einer Antwort): nichts zu buchen → null. */
+    if (!verbrauch.ein && !verbrauch.aus && !verbrauch.cache) return null;
+    try {
+      const { data, error } = await alsNutzer.rpc("ki_nutzung_buchen", {
+        p_funktion: "uebersetzen", p_modell: modell,
+        p_ein: Math.min(verbrauch.ein, 400000), p_aus: Math.min(verbrauch.aus, 64000), p_cache: Math.min(verbrauch.cache, 400000),
+      });
+      return !error && data?.gebucht === true;
+    } catch { return false; }
+  };
 
   /* Das Ergebnis wird ZUSAMMENGETRAGEN, nicht in einem Zug
      abgenommen. Was schon da ist, bleibt; ein zweiter Anlauf fuellt
@@ -337,8 +395,11 @@ Deno.serve(async (anfrage: Request) => {
     auftrag: string[],
     nurSprachen: readonly string[],
   ): Promise<{ fehler?: string; kategorie?: string }> {
+    const nurDeutsch = nurSprachen.length === SPRACHEN.length
+      ? "Uebersetze diese Texte:\n\n"
+      : "Uebersetze diese Texte, aber NUR in diese Sprachen: " + nurSprachen.join(", ") + ".\n\n";
     const ergebnis = await claude.beta.messages.create({
-      model: "claude-opus-5",
+      model: modell,
       max_tokens: 16000,
       system: ANWEISUNG,
       thinking: { type: "adaptive" },
@@ -347,20 +408,26 @@ Deno.serve(async (anfrage: Request) => {
          anderen Modell laufen, statt uns die Ablehnung
          zurueckzugeben — nach Ablehnungsgrund geroutet, also ohne
          dass hier ein Modell festgenagelt wird, das irgendwann
-         abgekuendigt ist. */
-      betas: ["server-side-fallback-2026-07-01"],
-      fallbacks: "default",
+         abgekuendigt ist. Nicht bei jedem Modell vorgesehen (MODELLE). */
+      ...(eigenschaftenModell.ersatz ? { betas: ["server-side-fallback-2026-07-01"], fallbacks: "default" } : {}),
       tools: [werkzeugFuer(nurSprachen) as never],
-      tool_choice: { type: "tool", name: "uebersetzt" },
+      /* Bei Modellen, die ein erzwungenes Werkzeug ablehnen (MODELLE),
+         "auto" + ausdrueckliche Aufforderung im Auftrag. */
+      tool_choice: eigenschaftenModell.erzwingen ? { type: "tool", name: "uebersetzt" } : { type: "auto" },
       messages: [{
         role: "user",
-        content: (nurSprachen.length === SPRACHEN.length
-          ? "Uebersetze diese Texte:\n\n"
-          : "Uebersetze diese Texte, aber NUR in diese Sprachen: " +
-            nurSprachen.join(", ") + ".\n\n") +
-          auftrag.map((t, i) => (i + 1) + ". " + t).join("\n"),
+        content: (eigenschaftenModell.erzwingen ? "" : "Antworte ausschliesslich, indem du das Werkzeug \"uebersetzt\" aufrufst.\n\n") +
+          nurDeutsch + auftrag.map((t, i) => (i + 1) + ". " + t).join("\n"),
       }],
     } as never);
+
+    /* Verbrauch zaehlen, BEVOR irgendetwas ausgewertet wird: Auch eine
+       Ablehnung oder eine unbrauchbare Antwort hat Token gekostet. */
+    const u = (ergebnis as { usage?: { input_tokens?: number; output_tokens?: number;
+      cache_read_input_tokens?: number; cache_creation_input_tokens?: number } }).usage;
+    verbrauch.ein   += Math.max(0, Math.floor(Number(u?.input_tokens ?? 0))) + Math.max(0, Math.floor(Number(u?.cache_creation_input_tokens ?? 0)));
+    verbrauch.aus   += Math.max(0, Math.floor(Number(u?.output_tokens ?? 0)));
+    verbrauch.cache += Math.max(0, Math.floor(Number(u?.cache_read_input_tokens ?? 0)));
 
     /* ZUERST stop_reason, DANN content. Bei einer Ablehnung steht in
        content nichts Brauchbares, und "keine_antwort" waere eine
@@ -407,6 +474,7 @@ Deno.serve(async (anfrage: Request) => {
         fehler: erster.fehler,
         kategorie: erster.kategorie,
         uebersetzt: {},
+        gebucht: await buchen(),
       }, 200);
     }
 
@@ -453,12 +521,15 @@ Deno.serve(async (anfrage: Request) => {
       teilweise: unvollstaendig,
       nachgeholt: nachzuholen.length,
       fehler: zweiterFehler,
+      /* false = der Verbrauch ging NICHT ins Logbuch (Migration fehlt oder
+         Buchung abgewiesen) — die Uebersetzung selbst ist davon unberuehrt. */
+      gebucht: await buchen(),
     });
   } catch (e) {
     /* Fail-open (CLAUDE.md 7). Der Wirt speichert sein Gericht auch
        dann, wenn der Uebersetzer nicht antwortet — ein Gericht, das
        sich nicht speichern laesst, kostet Umsatz; eine fehlende
        Uebersetzung kostet einen zweiten Anlauf. */
-    return antwort({ fehler: grundAus(e), uebersetzt: {} }, 200);
+    return antwort({ fehler: grundAus(e), uebersetzt: {}, gebucht: await buchen() }, 200);
   }
 });

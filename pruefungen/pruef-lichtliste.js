@@ -136,8 +136,13 @@ const SWEEP = fs.readFileSync(path.join(__dirname, "pruef-lesbarkeit.js"), "utf8
        Kopf. Ein fester Punkt (195, 700) traf beim Vorführhaus die Karte
        des Flash-Sale und öffnete ein Gericht; danach lag die Blende über
        allem und jeder weitere Tipp lief ins Leere. */
-    const daneben = await p.evaluate(() => { const r = document.getElementById("claim").getBoundingClientRect();
-      return r.width ? { x:r.left + r.width / 2, y:r.top + r.height / 2 } : { x:195, y:700 }; });
+    /* Der Slogan steht je nach Kopf (klassisch/premium) an anderer Stelle; die offene Liste hängt rechts darunter und
+       kann seine Mitte überdecken (Premium: gemessen). Gewählt wird ein Punkt IM Slogan, der nicht in der Liste liegt. */
+    const daneben = await p.evaluate(() => { const r = document.getElementById("claim").getBoundingClientRect(), l = document.getElementById("lichtliste").getBoundingClientRect();
+      if(!r.width) return { x:195, y:700 };
+      const y = r.top + r.height / 2, frei = x => !(x >= l.left && x <= l.right && y >= l.top && y <= l.bottom);
+      const kand = [r.left + r.width / 2, r.left + 6, r.right - 6].find(frei);
+      return { x: kand === undefined ? r.left + 6 : kand, y }; });
     await p.mouse.click(daneben.x, daneben.y); await p.waitForTimeout(250);
     pruef(!(await stand(p)).offen, "ein Tipp daneben schließt");
     await p.click("#lichtknopf"); await p.waitForTimeout(250);

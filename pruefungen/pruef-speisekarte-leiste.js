@@ -83,11 +83,12 @@ async function haus(browser, slug, breite, opt = {}) {
     if (!cta || !k) return null;
     const r = cta.getBoundingClientRect(), kr = k.getBoundingClientRect(), cs = getComputedStyle(k);
     return { erstes: cta.parentElement.firstElementChild === cta, danach: cta.nextElementSibling && cta.nextElementSibling.tagName,
+      titelInKarte: !!(cta.nextElementSibling && cta.nextElementSibling.classList.contains("kopfkarte") && cta.nextElementSibling.querySelector("h2")),
       h: r.height, kh: kr.height, kw: kr.width, farbe: cs.color, grund: cs.backgroundColor, text: k.textContent.trim() };
   });
   pruef(!!pille, "Voraussetzung: Pille „Für mich entscheiden“ steht in der Speisekarte");
   if (pille) {
-    pruef(pille.erstes && pille.danach === "H2", "sie steht ÜBER dem Titel (erstes Element, danach h2)", pille.erstes + " / " + pille.danach);
+    pruef(pille.erstes && (pille.danach === "H2" || pille.titelInKarte), "sie steht ÜBER dem Titel (erstes Element, danach h2 — in der Premium-Kopfkarte das Element, das den h2 trägt)", pille.erstes + " / " + pille.danach + " / " + pille.titelInKarte);
     pruef(pille.h <= 52 && pille.kh >= 44 && pille.kw >= 44, "eine Zeile (≤ 52 px), Tapfläche ≥ 44 px", Math.round(pille.h) + " / " + Math.round(pille.kw) + "×" + Math.round(pille.kh));
     const k = kontrast(rgb(pille.farbe), rgb(pille.grund));
     pruef(k >= 4.5, "Schrift auf der Pille ≥ 4,5:1", k.toFixed(2));

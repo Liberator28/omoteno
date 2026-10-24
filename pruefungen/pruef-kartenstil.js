@@ -157,6 +157,9 @@ const LESBAR = () => {
     if(alt){
       const gleich = await p.evaluate(code => {
         (0, eval)(code);
+        /* Ein Haus mit Schalter „premium“ (Choco) hat andere Produktkarten; der Vergleich mit dem Stand VORHER gilt für
+           die klassische Karte und soll dort bewacht bleiben. Die Premium-Karten misst pruef-speisekarte-premium.js. */
+        if(MARKENBLATT.startstil === "premium"){ MARKENBLATT.startstil = "klassisch"; startstilSetzen(); }
         HUBSTIL = Object.assign({}, HUBSTIL, { karte:"liste" });
         const namen = [...new Set([...document.querySelectorAll("#inhalt .ginfo[data-detail]")].map(b => decodeURIComponent(b.dataset.detail)))];
         let anders = 0, n = 0;

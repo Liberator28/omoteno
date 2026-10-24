@@ -120,8 +120,9 @@ async function board(browser) {
         pruef(st.laeuft && !st.eingabe && /statt/.test(st.stand), "Blatt zeigt den laufenden Rabatt statt der Eingabe", st.stand);
         pruef(/Rabatt −20 %/.test(st.satz), "Satz unter „Mehr Angaben“ nennt ihn", st.satz);
         await seite.click("#abbrechen"); await seite.waitForTimeout(400);
-        const marke = await seite.evaluate(name => { const z = [...document.querySelectorAll(".gzeile")].find(x => x.querySelector(".gname").textContent === name);
-          const m = z && z.querySelector(".rbmarke"); return m ? m.textContent : ""; }, g.name);
+        /* Liste (.gzeile/.rbmarke) UND Kacheln (.kr-kachel/.kr-marke): beide tragen die Plakette. */
+        const marke = await seite.evaluate(name => { const z = [...document.querySelectorAll(".gzeile, .kr-kachel")].find(x => (x.querySelector(".gname, .kr-name") || {}).textContent === name);
+          const t = z ? [...z.querySelectorAll(".rbmarke, .kr-marke")].map(m => m.textContent).find(x => /^−\d+ %$/.test(x)) : ""; return t || ""; }, g.name);
         pruef(marke === "−20 %", "Kartenliste im Board trägt „−20 %“", marke);
         await seite.evaluate(id => blattOeffnen(gerichte.find(x => x.id === id)), g.id); await seite.waitForTimeout(300);
         await seite.click("#mehrAuf"); await seite.waitForTimeout(350);

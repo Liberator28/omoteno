@@ -68,8 +68,9 @@ function laden(opt) {
       return { messages: { create: async (p) => {
         spur.push("claude"); anfragen.push(p);
         if (opt.claudeWirft) throw Object.assign(new Error("boom"), { status: opt.claudeWirft });
-        if (opt.ablehnen) return { stop_reason: "refusal", content: [] };
-        return { stop_reason: "end_turn", content: [{ type: "thinking", thinking: "" }, { type: "text", text: JSON.stringify(opt.gelesen || GELESEN) }] };
+        const usage = opt.usage === undefined ? { input_tokens: 1800, output_tokens: 900, cache_read_input_tokens: 0, cache_creation_input_tokens: 0 } : opt.usage;
+        if (opt.ablehnen) return { stop_reason: "refusal", content: [], usage };
+        return { stop_reason: "end_turn", content: [{ type: "thinking", thinking: "" }, { type: "text", text: JSON.stringify(opt.gelesen || GELESEN) }], usage };
       } } };
     }
   }
@@ -102,6 +103,8 @@ function laden(opt) {
         spur.push("rpc:" + name); rpc.push({ name, args });
         if (name === "ist_inhaber") return { data: opt.inhaber !== false, error: null };
         if (name === "ki_kontingent_nehmen") return { data: opt.kontingent ?? 300, error: null };
+        if (name === "ki_budget_stand") return opt.budgetFehler ? { data: null, error: { code: "42883" } } : { data: opt.budget ?? { ueber: false, warnung: false, hart: false }, error: null };
+        if (name === "ki_nutzung_buchen") return opt.buchenFehler ? { data: null, error: { code: "PGRST202" } } : { data: { gebucht: true, preis_fehlt: false }, error: null };
         if (name === "beleg_speichern") return { data: opt.speichern || { ok: true, id: "be-neu" }, error: null };
         return { data: null, error: null };
       },
@@ -203,7 +206,7 @@ async function lauf(opt, koerper = { betrieb_id: BETRIEB, pfad: PFAD }) {
   ok(s && s.args.p_beleg === null && s.args.p_betrieb === BETRIEB, "neuer Entwurf im richtigen Betrieb");
   ok(dt.lieferant_id === "l-metro" && dt.notiz === null, "„METRO Frankfurt“ → Lieferant Metro Frankfurt (Groß/klein egal)", dt.lieferant_id);
   ok(dt.datei_pfad === PFAD && dt.datei_hash === crypto.createHash("sha256").update(JPEG).digest("hex") && dt.quelle === "foto", "Pfad, SHA-256 der Datei und Quelle foto");
-  ok(dt.netto === 74 && dt.steuer === 14.06 && dt.brutto === 88.06 && dt.belegnummer === "R-77" && dt.belegdatum === "2026-10-01", "Kopfdaten übernommen");
+  ok(dt.netto === 74 && dt.steuer === 14.06 && dt.brutto === 88.06 && dt.belegnummer === "R-77" && !!GELESEN.belegdatum && dt.belegdatum === GELESEN.belegdatum, "Kopfdaten übernommen (Datum = das gelesene, nicht ein festes — GELESEN.belegdatum ist „heute minus 16 Tage“)");
   const [w, m, pf, x] = dt.positionen;
   ok(w.artikel_id === "a-wein" && w.gebinde_basis === 750 && w.gelernt === true, "gelernte Bezeichnung → Artikel und Gebinde 750 ml", JSON.stringify(w));
   ok(!m.artikel_id && m.gebinde_basis === null && m.gebinde_text === "25 kg", "unbekannte Ware bleibt offen, Gebinde als Text für den Menschen", JSON.stringify(m));
@@ -264,6 +267,35 @@ async function lauf(opt, koerper = { betrieb_id: BETRIEB, pfad: PFAD }) {
   ok(r.a.grund === "schluessel_ungueltig", "401 → schluessel_ungueltig");
   r = await lauf({ claudeWirft: 529 });
   ok(r.a.grund === "ueberlastet", "529 → ueberlastet");
+
+  console.log("\n══ 5 · KI-Nutzung: Budget und Logbuch (migration-ki-nutzung.sql) ══");
+  r = await lauf({ budget: { ueber: true, warnung: true, hart: true } });
+  ok(r.a.grund === "budget" && !r.spur.includes("claude") && !r.spur.includes("rpc:ki_kontingent_nehmen") && !r.spur.includes("rpc:ki_nutzung_buchen"),
+    "hartes, erreichtes Budget → budget, KEIN Claude, KEIN Kontingent, keine Buchung", r.spur.join(","));
+  r = await lauf({ budget: { ueber: true, warnung: true, hart: false } });
+  ok(r.a.ok === true && r.spur.includes("claude"), "weiches Budget, erreicht → läuft weiter (nur Anzeige im Master-Board)", JSON.stringify(r.a));
+  r = await lauf({ budgetFehler: true });
+  ok(r.a.ok === true && r.spur.includes("claude"), "Budget-Funktion fehlt (Migration nicht eingespielt) → fail-open, wie bisher");
+  r = await lauf({});
+  const bu = r.rpc.find((y) => y.name === "ki_nutzung_buchen");
+  ok(bu && bu.args.p_funktion === "beleg_lesen" && bu.args.p_modell === "claude-opus-5-5" && bu.args.p_betrieb === BETRIEB && bu.args.p_ein === 1800 && bu.args.p_aus === 900,
+    "Verbrauch aus usage gebucht: Funktion, Modell, Standort, 1800 ein / 900 aus", JSON.stringify(bu && bu.args));
+  ok(r.spur.indexOf("claude") < r.spur.indexOf("rpc:ki_nutzung_buchen") && r.spur.indexOf("rpc:ki_nutzung_buchen") < r.spur.indexOf("rpc:beleg_speichern"),
+    "gebucht NACH Claude und VOR dem Auswerten/Speichern", r.spur.join(" › "));
+  ok(r.a.gebucht === true && r.a.ok === true, "Antwort meldet gebucht:true", JSON.stringify(r.a));
+  const SQLK = fs.readFileSync(path.join(OBEN, "datenbank", "migration-ki-nutzung.sql"), "utf8");
+  const sigK = (SQLK.match(/create or replace function public\.ki_nutzung_buchen\(([\s\S]*?)\)\s*returns/) || [])[1] || "";
+  const paramsK = [...sigK.matchAll(/(p_\w+)/g)].map((y) => y[1]);
+  ok(bu && Object.keys(bu.args).every((x) => paramsK.includes(x)), "gesendete Schlüssel = Parameter von ki_nutzung_buchen (Naht, zweite Quelle)", paramsK.join(","));
+  r = await lauf({ ablehnen: true });
+  ok(r.a.grund === "abgelehnt" && r.rpc.some((y) => y.name === "ki_nutzung_buchen"), "auch eine ABLEHNUNG hat Token gekostet und wird gebucht");
+  r = await lauf({ buchenFehler: true });
+  ok(r.a.ok === true && r.a.gebucht === false, "Buchung scheitert (Funktion fehlt) → Beleg wird trotzdem angelegt, gebucht:false statt Schweigen", JSON.stringify(r.a));
+  r = await lauf({ usage: { input_tokens: 99999999, output_tokens: 99999999 } });
+  const bu2 = r.rpc.find((y) => y.name === "ki_nutzung_buchen");
+  ok(bu2 && bu2.args.p_ein <= 400000 && bu2.args.p_aus <= 64000, "absurde usage wird auf die Obergrenzen der SQL gekappt (sonst „menge“ und nichts gebucht)", JSON.stringify(bu2 && bu2.args));
+  r = await lauf({ usage: null });
+  ok(r.a.ok === true && r.a.gebucht === null && !r.rpc.some((y) => y.name === "ki_nutzung_buchen"), "keine usage in der Antwort → keine Nullbuchung (gebucht:null), Beleg trotzdem da");
 
   console.log("\n" + (fehler ? fehler + " FEHLER" : "Alles grün.") + " (" + n + " Proben)");
   process.exit(fehler ? 1 : 0);

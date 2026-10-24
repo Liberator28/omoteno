@@ -343,7 +343,9 @@ function schriftDatei(u){
   const andereRolleBleibtZu = await kompaktZustand("kachel");
   pruef(!andereRolleBleibtZu.offen, "eine fremde Rolle bleibt dabei zu", JSON.stringify(andereRolleBleibtZu));
   await p.click('[data-sw-rolle="gericht"] [data-sw="lora"]');
-  await p.waitForTimeout(400);
+  /* Die Zuklapp-Animation dauert --t-blatt = 400 ms; ein festes Warten von 400 ms las die Höhe im Auslauf
+     (gemessen 0,16 und 7,1 px, je nach Last). Gewartet wird auf den Endzustand; die Forderung „Höhe 0“ bleibt. */
+  await p.waitForFunction(() => { const k = document.querySelector('[data-sw-rolle="gericht"] .swklapp'); return k && k.getBoundingClientRect().height === 0; }, null, { timeout: 3000 }).catch(() => {});
   const nachWahl = await kompaktZustand("gericht");
   pruef(!nachWahl.offen && nachWahl.hoehe === 0 && /Lora/.test(nachWahl.zusammenfassung),
     "eine echte Wahl klappt die Liste automatisch wieder zu und zeigt die neue Wahl", JSON.stringify(nachWahl));
