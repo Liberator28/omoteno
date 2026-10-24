@@ -112,6 +112,10 @@ brauchen **vorher** die Klärung, wer eine Lieferung „besitzt“: heute gibt e
   1. ~~Bedingtes Schreiben gegen Überschreiben von „storniert/abgelehnt“ (Abschnitt 3).~~ **Erledigt 24.10.**
   2. ~~Alter-des-Standes im Saal (Abschnitt 6).~~ **Erledigt 24.10.**
   3. Spaltenrecht auf `bestellungen` kürzen — **mit Freigabe**, nach Wegeliste (Abschnitt 4).
+     **Vorbereitet am 24.10.2026, NICHT eingespielt:** Wegeliste `dokumente/bestellungen-schreibwege.md`, Migration
+     `datenbank/migration-bestellungen-spaltenrechte.sql` (9 statt 34 Spalten), lokale Probe (21 Proben, Gegenbeweise)
+     und `pruefungen/pruef-bestellungen-schreibwege.js`. Vor dem Einspielen die drei Lesefragen im Kopf der Migration
+     gegen die Live-Datenbank stellen.
   4. Küche liest `gebracht_um` (Rückrichtung), erst nach 1–3.
   5. Erst danach die Wünsche: Gästezahl, Raummaße/Sperren, Lieferwagen, Nachrichtenvorlagen.
 

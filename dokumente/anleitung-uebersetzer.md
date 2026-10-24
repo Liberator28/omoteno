@@ -1,5 +1,10 @@
 # Übersetzer: So bringst du ihn zum Laufen
 
+> **Neu 24.10.2026:** Den Weg von null bis „läuft“ (inkl. Modellwahl, Kosten, Budget) beschreibt jetzt
+> `anleitung-uebersetzer-einrichten.md`. Diese Datei bleibt die **Fehlersuche mit Messwerten** vom 25./26.09.
+> Eine Aussage unten ist überholt: Die Kosten stehen dort nicht mehr bei „rund 0,5 bis 1 Cent je Gericht“,
+> sondern als ausdrückliche Schätzung (Opus 5 ≈ 1,90 $ je 100 Gerichte) — gemessen wird im Master-Board.
+
 Stand 26.09.2026. Ersetzt `uebersetzer-fix-anleitung.md` — die lag
 falsch (siehe unten).
 
