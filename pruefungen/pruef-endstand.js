@@ -57,9 +57,12 @@ async function kueche(browser, fall) {
       if (r.request().method() === "PATCH") {
         const body = JSON.parse(r.request().postData() || "{}");
         const kopf = r.request().headers();
-        const filter = /status=not\.in\.\(storniert,abgelehnt\)/.test(u);
-        const darf = !filter || !["storniert", "abgelehnt"].includes(server.status);   /* so wertet PostgREST aus */
-        log.patches.push({ u, body, filter, prefer: kopf["prefer"] || "", darf });
+        const orForm = /[?&]or=\(status\.is\.null,status\.not\.in\.\(storniert,abgelehnt\)\)/.test(u);
+        const nurNot = /[?&]status=not\.in\./.test(u);
+        const filter = orForm || nurNot;
+        /* So wertet SQL aus: NULL NOT IN (…) ist „unbekannt“ → Zeile fällt heraus; „is null“ in der Klammer rettet sie. */
+        const darf = !filter || (server.status == null ? orForm : !["storniert", "abgelehnt"].includes(server.status));
+        log.patches.push({ u, body, filter, orForm, prefer: kopf["prefer"] || "", darf });
         if (!darf) return json(fall.stumm ? undefined : []);
         Object.assign(server, body);
         if (fall.stumm) return r.fulfill({ status: 204, body: "" });
@@ -94,6 +97,7 @@ async function kuecheProben(browser) {
       const p = k.log.patches[0] || {};
       pruef(k.log.patches.length === 1 && p.body && p.body.status === "fertig", "Voraussetzung: der PATCH setzt den Status", JSON.stringify(p.body));
       pruef(p.filter === true, "PATCH mit status trägt den Filter „nicht storniert/abgelehnt“", p.u);
+      pruef(p.orForm === true, "… und lässt Zeilen ohne Status durch („status is null“ in der Klammer)", p.u);
       pruef(/return=representation/.test(p.prefer), "PATCH fordert die geschriebenen Zeilen an", p.prefer);
       pruef(k.server.status === "fertig", "lebende Zeile wird geschrieben", k.server.status);
       const t = await k.s.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map(x => x.textContent).join(" | "));
@@ -149,6 +153,22 @@ async function kuecheProben(browser) {
     pruef(!k.fehler.length, "keine Ausnahme (c)", k.fehler.join(" | ") || "still");
     await k.ctx.close();
   }
+  /* e) Zeile OHNE Status (die Spalte ist nullbar): bleibt bedienbar, NULL NOT IN (…) schlösse sie aus */
+  {
+    const k = await kueche(browser, { serverStatus: null });
+    const da = await k.s.evaluate(() => !!document.querySelector('#feld .bon [data-tun="fertig"]'));
+    pruef(da, "Voraussetzung (e): der Bon ohne Status steht da");
+    if (da) {
+      await k.s.click('#feld .bon [data-tun="fertig"]');
+      await k.s.waitForTimeout(700);
+      const p = k.log.patches[0] || {};
+      pruef(p.filter === true && p.darf === true, "Voraussetzung (e): Filter gesetzt, der Server lässt die Zeile durch", JSON.stringify({ filter: p.filter, darf: p.darf }));
+      pruef(k.server.status === "fertig", "die Zeile ohne Status wurde geschrieben", String(k.server.status));
+      const t = await k.s.evaluate(() => [...document.querySelectorAll("#toasts .toast")].map(x => x.textContent).join(" | "));
+      pruef(!/storniert/.test(t), "kein falscher Alarm", t);
+    }
+    await k.ctx.close();
+  }
   /* d) keine lesbare Antwort: gelungen (fail-open) */
   {
     const k = await kueche(browser, { serverStatus: "arbeit", stumm: true });
@@ -191,12 +211,21 @@ const DB_STELLEN = () => {
           eq(c, v) { if (c === "id") q.ids = [v]; return api; },
           in(c, v) { if (c === "id") q.ids = v; return api; },
           not(c, op, v) { q.filt.push([c, op, v]); return api; },
+          or(expr) { q.filt.push(["or", expr]); return api; },
           select() { q.sel = true; return api; },
           then(ok, nein) {
             const srv = window.__srv, gespeichert = [];
             (q.ids || []).forEach(id => {
               const z = srv.rows[id]; if (!z) return;
-              const gesperrt = q.filt.some(([c, op, v]) => c === "status" && op === "in" && /storniert|abgelehnt/.test(v) && ["storniert", "abgelehnt"].includes(z.status));
+              const ende = ["storniert", "abgelehnt"].includes(z.status);
+              const gesperrt = q.filt.some(f => {
+                if (f[0] === "or") {                                    /* .or("status.is.null,status.not.in.(…)") */
+                  if (z.status == null) return !/status\.is\.null/.test(f[1]);
+                  return /status\.not\.in\.\(storniert,abgelehnt\)/.test(f[1]) && ende;
+                }
+                if (f[0] === "status" && f[1] === "in") return z.status == null || ende;   /* NULL NOT IN (…) = unbekannt */
+                return false;
+              });
               if (!gesperrt){ Object.assign(z, felder); gespeichert.push({ id }); }
             });
             srv.log.push({ tab, felder, filt: q.filt, sel: q.sel, ids: q.ids });
@@ -248,7 +277,7 @@ async function boardProben(browser) {
   await s.evaluate(() => statusSetzen("o1", "fertig")); await s.waitForTimeout(150);
   let l = (await log())[0] || {};
   pruef((await server("o1")) === "fertig" && (await lokal("o1")) === "fertig", "lebende Zeile: Server und Anzeige stehen auf „fertig“");
-  pruef(JSON.stringify(l.filt) === JSON.stringify([["status", "in", "(storniert,abgelehnt)"]]) && l.sel === true, "statusSetzen trägt den Filter und fordert die Zeilen an", JSON.stringify(l));
+  pruef(JSON.stringify(l.filt) === JSON.stringify([["or", "status.is.null,status.not.in.(storniert,abgelehnt)"]]) && l.sel === true, "statusSetzen trägt den Filter und fordert die Zeilen an", JSON.stringify(l));
   pruef(!(await melden()), "kein falscher Alarm", await melden());
 
   /* b) inzwischen storniert */
@@ -290,6 +319,11 @@ async function boardProben(browser) {
   const r = await s.evaluate(() => bestellungSchreiben({ status: "fertig" }, ["o1", "o2"]));
   pruef(JSON.stringify(r.verloren) === '["o2"]' && !r.error, "bestellungSchreiben: von zwei Zeilen ist nur die stornierte verloren", JSON.stringify(r));
   pruef((await server("o1")) === "fertig" && (await server("o2")) === "storniert", "die lebende wurde geschrieben, die stornierte nicht");
+
+  /* h) Zeile OHNE Status (nullbar): bleibt bedienbar */
+  await s.evaluate(() => { window.__neu([window.__z("o1", { status: null })]); });
+  await s.evaluate(() => statusSetzen("o1", "arbeit")); await s.waitForTimeout(250);
+  pruef((await server("o1")) === "arbeit" && !(await melden()), "Zeile ohne Status: wird geschrieben, kein falscher Alarm", (await server("o1")) + " / " + (await melden()));
 
   pruef(!b.fehler.length, "keine Ausnahme im Board", b.fehler.join(" | ") || "still");
   await b.ctx.close();

@@ -18998,7 +18998,9 @@ async function bestellungSchreiben(felder, ids){
   const mitStatus = Object.prototype.hasOwnProperty.call(felder, "status");
   let q = db.from("bestellungen").update(felder);
   q = (ids.length > 1 ? q.in("id", ids) : q.eq("id", ids[0])).eq("betrieb_id", betriebId);   /* Gürtel und Hosenträger */
-  if(mitStatus) q = q.not("status", "in", BESTELL_ENDSTAND).select("id");
+  /* „status is null“ muss durch: bestellungen.status ist nullbar (Vorgabe „neu“), und NULL NOT IN (…) ist in SQL
+     „unbekannt“ — ohne diese Klammer wäre eine Zeile ohne Status nie mehr zu bedienen (§7). */
+  if(mitStatus) q = q.or("status.is.null,status.not.in." + BESTELL_ENDSTAND).select("id");
   const {data, error} = await q;
   if(error) return {error, verloren:[]};
   if(!mitStatus || !Array.isArray(data)) return {error:null, verloren:[]};
