@@ -79,6 +79,21 @@ async function oeffnen(browser, breite, opt) {
   await p.waitForTimeout(250);
   return { ctx, p, fehler };
 }
+/* 24 weitere Pizzen: genug Reihen zum Rollen und damit etwas UNTER der Leiste und UNTER dem Menü liegt. */
+const VIELE = p => p.evaluate(() => {
+  const z = i => ({ id: "m" + i, betrieb_id: "B", name: "Pizza " + i, kategorie: "Pizza", karte: "speisekarte", karten: ["speisekarte"], preis: 9.5, beschreibung: "", allergene: "",
+    verfuegbar: true, veg: false, vegan: false, reihenfolge: 10 + i, kat_sort: 1, kat_emoji: null, bild: "" });
+  gerichte = gerichte.concat(Array.from({ length: 24 }, (_, i) => z(i))); krWahl.clear(); zeichneKarte();
+});
+/* Raster über ein Rechteck: wie viele Punkte treffen NICHT `el` oder ein Kind davon. Die Ecken bleiben aus (abgerundet,
+   dort liegt zu Recht das Darunter). Dazu: wie viele fremde Bedienflächen (Häkchen, ⋯) liegen unter dem Rechteck. */
+const UEBER = `(el, nx, ny) => { const r = el.getBoundingClientRect(); let falsch = 0, gesamt = 0; const wer = new Set();
+  for (let ix = 0; ix <= nx; ix++) for (let iy = 0; iy <= ny; iy++){
+    const x = r.left + 12 + (r.width - 24) * ix / nx, y = r.top + 12 + (r.height - 24) * iy / ny; gesamt++;
+    const t = document.elementFromPoint(x, y); if(!t || !el.contains(t)){ falsch++; wer.add(t ? (t.className || t.tagName) : "nichts"); } }
+  const darunter = [...document.querySelectorAll(".kr-haken, .kr-mehr")].filter(b => !el.contains(b) && !b.closest(".kr-menue") && (() => { const q = b.getBoundingClientRect();
+    return q.right > r.left && q.left < r.right && q.bottom > r.top && q.top < r.bottom && q.bottom > 0 && q.top < innerHeight; })()).length;
+  return { falsch, gesamt, wer: [...wer], darunter }; }`;
 const kacheln = p => p.evaluate(() => [...document.querySelectorAll("#karteListe .kr-kachel")].map(k => k.querySelector(".kr-name").textContent));
 const melden = p => p.evaluate(() => window.__melde.join(" | "));
 
@@ -209,6 +224,19 @@ async function auswahl(browser) {
       return { sichtbar: r.top >= 0 && r.bottom <= innerHeight, trifft: !!t && e.contains(t) }; });
     pruef(ob.sichtbar && ob.trifft, "gerollt klebt die Leiste und liegt obenauf (nicht unter Kopf oder Kategorien-Leiste)" + tag, JSON.stringify(ob));
     await p.evaluate(() => window.scrollTo(0, 0));
+    /* Die Leiste klebt über einer langen Liste: bei jedem Rollstand trifft jeder Punkt sie, nicht ein Häkchen darunter */
+    await VIELE(p);
+    await p.click('[data-kr-wahl="g1"]');
+    let darunterMax = 0, schlecht = [];
+    for (const y of [300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900]) {
+      await p.evaluate(v => window.scrollTo(0, v), y); await p.waitForTimeout(90);
+      const m = await p.evaluate(`(${UEBER})(document.getElementById("krAuswahl"), 10, 2)`);
+      darunterMax = Math.max(darunterMax, m.darunter); if (m.falsch) schlecht.push(y + ":" + m.wer.join("/"));
+    }
+    pruef(darunterMax >= 1, "Voraussetzung: beim Rollen liegt mindestens ein Häkchen/⋯ UNTER der Leiste (sonst könnte die Probe nichts sehen)" + tag, "höchstens " + darunterMax + " darunter");
+    pruef(schlecht.length === 0, "an jedem Rollstand trifft jeder Punkt der Leiste die Leiste (liegt über Häkchen und ⋯, §3.9)" + tag, schlecht.join(" | ") || "frei");
+    await p.evaluate(() => { window.scrollTo(0, 0); gerichte = gerichte.filter(g => !/^m\d+$/.test(g.id)); krWahl.clear(); krWahl.add("g1"); krWahl.add("g2"); zeichneKarte(); });
+
     /* Suche löscht die Auswahl nicht, wenn das Gericht bleibt */
     await p.evaluate(() => { suchtext = "pizza"; zeichneKarte(); });
     pruef(await p.evaluate(() => document.querySelector('.kr-kachel[data-kr-id="g1"]').hasAttribute("data-gewaehlt")) && (await leiste()).text === "2 Gerichte ausgewählt", "ein Neuzeichnen (Suche) behält die Auswahl" + tag);
@@ -248,6 +276,16 @@ async function menue(browser) {
       pruef(m.obenauf && m.hoch >= 44 && m.expanded === "true", "Menü von " + id + " liegt obenauf, Einträge ≥ 44 px, aria-expanded" + tag, JSON.stringify({ obenauf: m.obenauf, hoch: m.hoch, e: m.expanded }));
       await p.evaluate(() => krMenueZu());
     }
+    /* Wird das Menü länger (ein Eintrag mehr), ragt es in die nächste Reihe: es liegt obenauf, nicht unter deren Häkchen */
+    await VIELE(p);
+    await p.evaluate(() => { const ks = [...document.querySelectorAll(".kr-kachel")]; window.__k = ks[4]; ks[4].scrollIntoView({ block: "start" }); window.scrollBy(0, -140); });
+    await p.waitForTimeout(150);
+    const lang = await p.evaluate(`(() => { const k = window.__k; k.querySelector("[data-kr-menue]").click(); const m = k.querySelector(".kr-menue");
+      for (let i = 0; i < 3; i++){ const x = document.createElement("button"); x.type = "button"; x.textContent = "Extra " + i; m.appendChild(x); }
+      return (${UEBER})(m, 8, 12); })()`);
+    pruef(lang.darunter >= 1, "Voraussetzung: das verlängerte Menü liegt über mindestens einem Häkchen/⋯ der nächsten Reihe" + tag, lang.darunter + " darunter");
+    pruef(lang.falsch === 0, "und liegt trotzdem obenauf: jeder Punkt trifft das Menü" + tag, lang.falsch + " von " + lang.gesamt + " daneben: " + lang.wer.join("/"));
+    await p.evaluate(() => { krMenueZu(); window.scrollTo(0, 0); gerichte = gerichte.filter(g => !/^m\d+$/.test(g.id)); zeichneKarte(); });
     await p.evaluate(() => document.querySelector('[data-kr-menue="g1"]').click());
     await p.evaluate(() => document.querySelector('[data-kr-menue="g1"]').click());
     pruef((await offen()) === 0, "zweiter Tipp auf ⋯ schließt" + tag);
