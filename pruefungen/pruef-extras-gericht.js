@@ -531,7 +531,7 @@ async function teilC(browser){
   console.log("\n══ C · Naht: Board → Hub → Bestellung → positionen_pruefen ══");
   const optionen = global.__BOARD_OPT, id = global.__BOARD_ID, keys = global.__BOARD_KEYS;
   if(!optionen || !id){ pruef(false, "Voraussetzung: Teil B hat Gruppen geschrieben, die hier weitergereicht werden"); return; }
-  let db_ = "extras_naht";
+  let db_ = process.env.EXTRAS_DB || "extras_naht";
   try{
     execFileSync("bash", [path.join(__dirname, "pruef-extras-lokal.sh")], { env:Object.assign({}, process.env, { DB:db_, NUR_AUFBAU:"1" }), cwd:OBEN, stdio:"pipe" });
   }catch(e){ pruef(false, "Voraussetzung: lokales Postgres mit den echten Funktionen aufgebaut", String(e.stderr || e.message).slice(0, 200)); return; }
