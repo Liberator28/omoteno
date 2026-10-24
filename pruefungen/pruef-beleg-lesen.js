@@ -203,7 +203,7 @@ async function lauf(opt, koerper = { betrieb_id: BETRIEB, pfad: PFAD }) {
   ok(s && s.args.p_beleg === null && s.args.p_betrieb === BETRIEB, "neuer Entwurf im richtigen Betrieb");
   ok(dt.lieferant_id === "l-metro" && dt.notiz === null, "„METRO Frankfurt“ → Lieferant Metro Frankfurt (Groß/klein egal)", dt.lieferant_id);
   ok(dt.datei_pfad === PFAD && dt.datei_hash === crypto.createHash("sha256").update(JPEG).digest("hex") && dt.quelle === "foto", "Pfad, SHA-256 der Datei und Quelle foto");
-  ok(dt.netto === 74 && dt.steuer === 14.06 && dt.brutto === 88.06 && dt.belegnummer === "R-77" && dt.belegdatum === "2026-10-01", "Kopfdaten übernommen");
+  ok(dt.netto === 74 && dt.steuer === 14.06 && dt.brutto === 88.06 && dt.belegnummer === "R-77" && !!GELESEN.belegdatum && dt.belegdatum === GELESEN.belegdatum, "Kopfdaten übernommen (Datum = das gelesene, nicht ein festes — GELESEN.belegdatum ist „heute minus 16 Tage“)");
   const [w, m, pf, x] = dt.positionen;
   ok(w.artikel_id === "a-wein" && w.gebinde_basis === 750 && w.gelernt === true, "gelernte Bezeichnung → Artikel und Gebinde 750 ml", JSON.stringify(w));
   ok(!m.artikel_id && m.gebinde_basis === null && m.gebinde_text === "25 kg", "unbekannte Ware bleibt offen, Gebinde als Text für den Menschen", JSON.stringify(m));
