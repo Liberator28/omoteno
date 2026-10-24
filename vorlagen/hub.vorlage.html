@@ -2718,7 +2718,7 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 }
 [dir="rtl"] .wzu{right:auto;left:16px}
 .warenkarte{
-  position:fixed;left:50%;bottom:0;z-index:61;
+  position:fixed;left:50%;bottom:calc(0px - var(--vv-versatz, 0px));z-index:61;
   width:100%;max-width:540px;
   transform:translate3d(-50%,102%,0);
   background:var(--flaeche);border:1px solid var(--linie);border-bottom:0;
@@ -2955,8 +2955,8 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
    Sichtbarkeit wird zusätzlich inline gesetzt (siehe JS). */
 .auswahlbalken{
   position:fixed;left:50%;transform:translate3d(-50%,100px,0);
-  bottom:14px;
-  bottom:calc(14px + env(safe-area-inset-bottom));
+  bottom:calc(14px - var(--vv-versatz, 0px));
+  bottom:calc(14px + env(safe-area-inset-bottom) - var(--vv-versatz, 0px));
   width:calc(100% - 32px);max-width:508px;
   background:var(--tinte);color:var(--grund);border:0;border-radius:15px;
   padding:15px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px;
@@ -3259,7 +3259,7 @@ button.mn:focus-visible{outline:2px solid var(--gold);outline-offset:3px;border-
    muss. Deshalb kein Knopf, sondern eine Mitteilung. */
 .wsstreifen{
   position:fixed;left:12px;right:12px;z-index:49;
-  bottom:calc(12px + env(safe-area-inset-bottom));
+  bottom:calc(12px + env(safe-area-inset-bottom) - var(--vv-versatz, 0px));
   display:flex;align-items:center;gap:14px;
   background:var(--flaeche);border:1px solid var(--gold);
   border-radius:16px;padding:14px 16px;
@@ -3330,7 +3330,7 @@ body.hat-balken .wsstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
    ist ein Knopf, kein Kasten: Ein Tipp führt zum vollen Stand. */
 .vstreifen{
   position:fixed;left:12px;right:12px;z-index:48;
-  bottom:calc(12px + env(safe-area-inset-bottom));
+  bottom:calc(12px + env(safe-area-inset-bottom) - var(--vv-versatz, 0px));
   display:flex;align-items:center;gap:12px;
   background:var(--flaeche);border:1px solid var(--linie-stark);
   border-radius:16px;padding:13px 15px;
@@ -4744,7 +4744,7 @@ body[data-startstil="premium"] .schnellzeile{gap:12px;margin-bottom:16px}
    rechnet damit, und der Fuß der Seite bekommt denselben Abstand zusätzlich — als Polster, in denselben vier Fällen wie
    oben beim Fuß (Randabstand wirkte nicht: gemessen blieben die letzten Links 34 px unter der Leiste). */
 body[data-nav="an"]{--nav-h:calc(64px + env(safe-area-inset-bottom))}
-.hauptnav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:540px;z-index:39;
+.hauptnav{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(0px - var(--vv-versatz, 0px));width:100%;max-width:540px;z-index:39;
   display:flex;align-items:stretch;gap:2px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));
   background:var(--flaeche);border-top:1px solid var(--linie-stark);
   box-shadow:0 -12px 24px -18px rgba(0,0,0,.4)}
@@ -4757,9 +4757,9 @@ body[data-nav="an"]{--nav-h:calc(64px + env(safe-area-inset-bottom))}
 .hn-tab.an{color:var(--tinte);background:color-mix(in srgb, var(--rot) 13%, var(--flaeche))}
 .hn-tab.an .hn-ico{color:var(--rot)}
 @media (prefers-reduced-motion:reduce){ .hn-tab{transition:none} }
-body[data-nav="an"] .auswahlbalken{bottom:calc(var(--nav-h) + 10px)}
-body[data-nav="an"] .vstreifen,body[data-nav="an"] .wsstreifen{bottom:calc(var(--nav-h) + 10px)}
-body[data-nav="an"].hat-balken .vstreifen,body[data-nav="an"].hat-balken .wsstreifen{bottom:calc(var(--nav-h) + 78px)}
+body[data-nav="an"] .auswahlbalken{bottom:calc(var(--nav-h) + 10px - var(--vv-versatz, 0px))}
+body[data-nav="an"] .vstreifen,body[data-nav="an"] .wsstreifen{bottom:calc(var(--nav-h) + 10px - var(--vv-versatz, 0px))}
+body[data-nav="an"].hat-balken .vstreifen,body[data-nav="an"].hat-balken .wsstreifen{bottom:calc(var(--nav-h) + 78px - var(--vv-versatz, 0px))}
 body[data-nav="an"] footer{padding-bottom:calc(12px + var(--nav-h))}
 body[data-nav="an"].hat-balken footer{padding-bottom:calc(100px + var(--nav-h))}
 body[data-nav="an"]:has(#vstreifen:not([hidden])) footer,
@@ -20764,6 +20764,33 @@ function wischZu(o){
    Zug nach unten zählte als Geste. Es gibt „Zurück“ und die Kachel-Wische
    zwischen den Unterseiten — ein dritter Weg, der mit dem Rollen
    kollidiert, ist keiner. */
+
+/* Die festen Leisten unten (Hauptnavigation, Auswahl-Leiste, Streifen) und die Blätter schwebten gelegentlich mitten im Bild
+   (Foto vom Nutzer, iPhone): iOS lässt manchmal den Layout-Viewport kürzer als das Sichtbare — „bottom:0“ meint dann die Mitte,
+   und ein geschlossenes Blatt (unter dem Rand geparkt) schaut unten heraus. Gemessen wird der Abstand zwischen der Unterkante
+   des SICHTBAREN Bereichs (visualViewport) und der des Layout-Viewports; alles Feste unten rückt um genau diesen Abstand
+   (--vv-versatz). Ohne Abstand, mit Tastatur (fokussiertes Feld) oder ohne visualViewport bleibt alles beim Alten.
+   Ehrliche Grenze: auf einem Gerät nicht gesehen, nur die Rechnung geprüft (pruef-leiste-hub.js). */
+var leisteAnkerGeplant = false;
+function leisteAnkern(){
+  var vv = window.visualViewport, wurzel = document.documentElement, v = 0;
+  if(vv){
+    var a = document.activeElement, feld = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
+    var abstand = Math.round(vv.offsetTop + vv.height - wurzel.clientHeight);
+    if(!feld && abstand >= 2 && abstand <= 600) v = abstand;
+  }
+  if(wurzel.style.getPropertyValue("--vv-versatz") !== v + "px") wurzel.style.setProperty("--vv-versatz", v + "px");
+  return v;
+}
+function leisteAnkernBald(){
+  if(leisteAnkerGeplant) return;
+  leisteAnkerGeplant = true;
+  requestAnimationFrame(function(){ leisteAnkerGeplant = false; leisteAnkern(); });
+}
+if(window.visualViewport){ visualViewport.addEventListener("resize", leisteAnkernBald); visualViewport.addEventListener("scroll", leisteAnkernBald); }
+["resize", "orientationchange", "pageshow", "focusout", "touchend", "scroll"].forEach(function(e){ addEventListener(e, leisteAnkernBald, { passive:true }); });
+document.addEventListener("visibilitychange", leisteAnkernBald);
+leisteAnkernBald();
 </script>
 </body>
 </html>
