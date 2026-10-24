@@ -1254,6 +1254,7 @@ body.hell .tmchip[aria-pressed=true]{color:var(--flaeche)}
 .sp-zonen{display:flex;gap:6px;flex-wrap:wrap}
 .sp-zone{min-height:44px;padding:0 18px;border-radius:12px;border:1px solid var(--linie);background:var(--flaeche);color:var(--kreide);font:inherit;font-size:14.5px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;gap:8px}
 .sp-zone[aria-pressed="true"]{background:var(--messing);border-color:var(--messing);color:var(--nacht)}
+.sp-alter{margin:0 0 10px;padding:10px 14px;border-radius:12px;border:1px solid var(--warn);background:var(--flaeche);color:var(--warn);font-size:14px;font-weight:600}
 .sp-zonenzahl{min-width:20px;height:20px;border-radius:10px;background:#FF3D81;color:#10151C;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;padding:0 5px}
 .sp-block{min-width:0}
 .sp-h{margin:0 0 10px;font-size:10.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--gedaempft);font-weight:700}
@@ -4033,6 +4034,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </section>
       </aside>
       <div class="tisch-haupt">
+        <div class="sp-alter" id="spAlter" role="status" hidden></div>
         <div class="sp-kopf">
           <h2 class="sp-titel">Tische</h2>
           <div class="sp-zonen" id="spZonen" role="group" aria-label="Bereich wählen" hidden></div>
@@ -6408,6 +6410,25 @@ let tonWerk = null;
 let tonBereit = false;
 let kanal = null;
 let netzTakt = null;
+/* Wann das Board zuletzt WIRKLICH etwas von der Datenbank gehört hat (Erstladen, Nachholen, Live-Ereignis,
+   Abo-Bestätigung). 0 = noch nichts. Der Saal zeigt ab STAND_ALT_SEKUNDEN ein Band, damit ein Kellner bei
+   gekappter Leitung keinen alten Stand für einen gültigen hält (Integrationsplan, Abschnitt 6). Das
+   Nachholen läuft alle 25 s — 60 s sind zwei verpasste Runden, kein Einzelwackler. */
+let STAND_ZEIT = 0;
+const STAND_ALT_SEKUNDEN = 60;
+function standFrisch(){ STAND_ZEIT = Date.now(); spAlterZeigen(); }
+/* Fasst nur Text und hidden an — nie den Plan (§4.2). */
+function spAlterZeigen(){
+  const el = $("#spAlter"); if(!el) return;
+  const alt = (!demo && betriebId && STAND_ZEIT) ? Math.floor((Date.now() - STAND_ZEIT) / 1000) : 0;
+  const zeigen = alt > STAND_ALT_SEKUNDEN;
+  if(zeigen){
+    const text = "Stand von vor " + Math.max(1, Math.round(alt / 60)) + " Min – Verbindung prüfen";
+    if(el.textContent !== text) el.textContent = text;
+  }
+  if(el.hidden === zeigen) el.hidden = !zeigen;
+}
+setInterval(spAlterZeigen, 10000);
 
 /* ═══════════════════════════════════════════════════════════════
    SCHARF SCHALTEN
@@ -9283,12 +9304,12 @@ async function pruefEntscheiden(id, freigeben){
   alle.forEach(x => Object.assign(x, felder));
   neuZeichnen();
   if(!demo){
-    const anfrage = db.from("bestellungen").update(felder);
-    const {error} = await (ids.length > 1 ? anfrage.in("id", ids) : anfrage.eq("id", id)).eq("betrieb_id", betriebId);
-    if(error){
+    const {error, verloren} = await bestellungSchreiben(felder, ids);
+    if(error || verloren.length){
       vorher.forEach(v => { const {x, ...alt} = v; Object.assign(x, alt); });
       ids.forEach(i => inArbeit.delete(i)); neuZeichnen();
-      melde("Nicht gespeichert, bitte Verbindung prüfen", true); return;
+      if(error){ melde("Nicht gespeichert, bitte Verbindung prüfen", true); return; }
+      bestellungVerloren(verloren); return;
     }
   }
   ids.forEach(i => inArbeit.delete(i));
@@ -10543,6 +10564,7 @@ async function betriebOeffnen(id){
   /* 1 · Alles Alte abbauen */
   if(kanal){ try{ await db.removeChannel(kanal); }catch(e){} kanal = null; }
   clearInterval(netzTakt); netzTakt = null;
+  STAND_ZEIT = 0; spAlterZeigen();
   gerichte = []; bestellungen = []; reservierungen = []; notizen = []; nzSignatur = "";
   schonGezeigt.clear();
   bekannt.clear();
@@ -10583,6 +10605,7 @@ async function betriebOeffnen(id){
      des Boards unberührt (die Abfrage oben kennt sie nicht). */
   kartenLaden(id).then(() => { if(marke === ladeMarke) zeichneKarte(); });
   bestellungen.forEach(x => bekannt.add(x.id));
+  if(!o.error) standFrisch();
 
   $("#punkt").className = "punkt live";
   $("#statusText").textContent = "live";
@@ -10652,6 +10675,7 @@ function live_anmelden(id, marke){
       {event:"INSERT", schema:"public", table:"bestellungen", filter:`betrieb_id=eq.${id}`},
       nutz => {
         if(marke !== ladeMarke) return;
+        standFrisch();
         if(neueBestellung(nutz.new)){
           /* Markiert (Flut, unbekanntes Gericht): aufnehmen, aber nicht
              klingeln — eine Flut soll das Team nicht vom Pass holen. */
@@ -10663,6 +10687,7 @@ function live_anmelden(id, marke){
       {event:"UPDATE", schema:"public", table:"bestellungen", filter:`betrieb_id=eq.${id}`},
       nutz => {
         if(marke !== ladeMarke) return;
+        standFrisch();
         /* Läuft für diese Zeile gerade eine eigene Änderung, ist unsere
            Fassung die neuere. Fremde Antworten würden sie zurückdrehen. */
         if(inArbeit.has(nutz.new.id)) return;
@@ -10697,7 +10722,7 @@ function live_anmelden(id, marke){
     .subscribe(zustand => {
       if(marke !== ladeMarke) return;
       const p = $("#statusText");
-      if(zustand === "SUBSCRIBED"){ if(p) p.textContent = "live verbunden"; }
+      if(zustand === "SUBSCRIBED"){ standFrisch(); if(p) p.textContent = "live verbunden"; }
       else if(zustand === "CHANNEL_ERROR" || zustand === "TIMED_OUT"){
         if(p) p.textContent = "Verbindung unterbrochen – hole nach";
         setTimeout(() => nachholen(id), 2000);
@@ -10720,6 +10745,7 @@ async function nachholen(id){
       .order("zeitpunkt", {ascending:false}).limit(60);
     if(error || !data) return;
     if(marke !== ladeMarke) return;
+    standFrisch();
 
     let frisch = 0;
     data.slice().reverse().forEach(z => {
@@ -18960,6 +18986,33 @@ $("#karten").onclick = async e => {
   await statusSetzen(k.dataset.id, k.dataset.status);
 };
 
+/* Schreibt auf Bestellungen, ohne eine inzwischen STORNIERTE oder ABGELEHNTE Zeile wieder aufzuwecken
+   (Integrationsplan Saal↔Küche, Abschnitt 3: die Datenbank hat keinen Wächter für Statusübergänge, und
+   „letzter Schreiber gewinnt“ hätte die Stornierung des Gastes überschrieben). Der Filter hängt nur an
+   Schreibwegen, die den STATUS setzen — wer nur eine Zeit oder eine Zuweisung schreibt, soll auch eine
+   stornierte Zeile ändern dürfen. Antwort: {error} oder {verloren:[ids]} — Zeilen, die der Server nicht
+   mehr angefasst hat. Kommt keine Zeilenliste zurück, gilt es als gelungen (fail-open, §7): ein echter
+   Handgriff am Pass wird nie wegen einer fehlenden Rückmeldung verworfen. */
+const BESTELL_ENDSTAND = "(storniert,abgelehnt)";
+async function bestellungSchreiben(felder, ids){
+  const mitStatus = Object.prototype.hasOwnProperty.call(felder, "status");
+  let q = db.from("bestellungen").update(felder);
+  q = (ids.length > 1 ? q.in("id", ids) : q.eq("id", ids[0])).eq("betrieb_id", betriebId);   /* Gürtel und Hosenträger */
+  if(mitStatus) q = q.not("status", "in", BESTELL_ENDSTAND).select("id");
+  const {data, error} = await q;
+  if(error) return {error, verloren:[]};
+  if(!mitStatus || !Array.isArray(data)) return {error:null, verloren:[]};
+  const da = new Set(data.map(r => r.id));
+  return {error:null, verloren: ids.filter(i => !da.has(i))};
+}
+/* Zeilen, die inzwischen storniert wurden: Anzeige zurücknehmen und den echten Stand holen. */
+function bestellungVerloren(verloren){
+  if(!verloren.length) return;
+  melde(verloren.length === 1 ? "Diese Bestellung wurde inzwischen storniert oder abgelehnt – nicht geändert"
+                              : verloren.length + " Bestellungen wurden inzwischen storniert oder abgelehnt – nicht geändert", true);
+  setTimeout(() => nachholen(betriebId), 50);
+}
+
 /* Ein Statuswechsel, egal woher: Knopf oder Wischgeste (Wunsch 11.10.).
    EINE Schreibstelle — die Geste ruft genau das, was der Knopf ruft. */
 async function statusSetzen(id, status){
@@ -18986,13 +19039,15 @@ async function statusSetzen(id, status){
      beim Gast eine Wartezeit, die niemand mehr zugesagt hat. */
   if(status === "neu"){ satz.wartezeit_min = null; satz.bestaetigt_um = null; alle.forEach(x => { x.wartezeit_min = null; }); }
 
+  let verloren = [];
   try{
-    const anfrage = db.from("bestellungen").update(satz);
-    const {error} = await (ids.length > 1 ? anfrage.in("id", ids) : anfrage.eq("id", id))
-      .eq("betrieb_id", betriebId);   /* Gürtel und Hosenträger */
-    if(error){
+    const r = await bestellungSchreiben(satz, ids);
+    if(r.error){
       zurueck();
       melde("Konnte nicht gespeichert werden, bitte Verbindung prüfen", true);
+    }else if(r.verloren.length){
+      zurueck();                                 /* der echte Stand kommt gleich von der Datenbank */
+      verloren = r.verloren;
     }
   }catch(fehler){
     zurueck();
@@ -19004,6 +19059,7 @@ async function statusSetzen(id, status){
     ids.forEach(i => inArbeit.delete(i));
     neuZeichnen();
   }
+  bestellungVerloren(verloren);
 }
 
 /* ═══════════════════════════════════════════════════════════════
@@ -19365,16 +19421,19 @@ async function bestaetigen(b, minuten){
 
   if(demo){ ids.forEach(i => inArbeit.delete(i)); melde("Bestätigt · ca. " + minuten + " Min"); return; }
 
-  const anfrage = db.from("bestellungen")
-    .update({status:"arbeit", wartezeit_min:minuten, bestaetigt_um:um});
-  const {error} = await (ids.length > 1 ? anfrage.in("id", ids) : anfrage.eq("id", b.id))
-    .eq("betrieb_id", betriebId);
+  const {error, verloren} = await bestellungSchreiben({status:"arbeit", wartezeit_min:minuten, bestaetigt_um:um}, ids);
 
   ids.forEach(i => inArbeit.delete(i));
   if(error){
     vorher.forEach(v => { v.x.status = v.status; v.x.wartezeit_min = v.zeit; });
     neuZeichnen();
     melde("Zusage nicht gespeichert, bitte Verbindung prüfen", true);
+    return;
+  }
+  if(verloren.length){
+    vorher.forEach(v => { v.x.status = v.status; v.x.wartezeit_min = v.zeit; });
+    neuZeichnen();
+    bestellungVerloren(verloren);
     return;
   }
   melde("Bestätigt · Gast sieht ca. " + minuten + " Min");
