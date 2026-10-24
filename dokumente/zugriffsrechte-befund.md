@@ -31,8 +31,13 @@ Köpfen der Migrationen (dort steht, was beim Einspielen gemessen wurde) — nic
    `bewegung betrieb liest`, `inventur betrieb liest`, `rezeptur betrieb liest`, `rezepturposition betrieb liest`,
    `einkauf_perioden_lesen` prüfen nur `betrieb_id in (select meine_betriebe())`. Das gilt auch für `team` und
    `kueche`. `einkauf.html` zeigt Team sogar ausdrücklich „nur ansehen“ (`B.rolle !== "inhaber"`). `lagerbewegungen`
-   trägt `wert_netto`, `inventuren` `differenz_wert`, `umlagerungspositionen` `wert_netto`, `lieferanten_artikel`
-   `letzter_preis`.
+   trägt `wert_netto`, `inventuren` `differenz_wert`, `umlagerungspositionen` `wert_netto`.
+   **Berichtigung (beim Bau der Probe gefunden, nicht angenommen):** In der ersten Fassung dieses Befunds stand auch
+   `lieferanten_artikel.letzter_preis`. Das stimmt nicht mehr: `migration-einkauf-e4.sql` entzieht `authenticated` das
+   Tabellenrecht und gibt nur noch Spalten OHNE `letzter_preis` frei. Die Zeile trägt Stammdaten (Bezeichnung, Einheit).
+   Deshalb bleibt diese Tabelle unangetastet — `hat_recht_org()` ist wieder gestrichen. Die Probe misst das Spaltenrecht
+   (K17). Ebenfalls geprüft und nicht geändert: `artikel_standort`, `lieferanten_standort`, `inventur_entwurf` (e5c) tragen
+   Mindestbestand, Lagerort, Liefertage, Mindestbestellwert und Zählstand — betrieblich, keine Kosten.
 2. **Die Kalkulations-Funktionen** `gericht_kalkulation` und `wareneinsatz_theoretisch` (beide `security invoker`)
    prüfen nur Mitgliedschaft. `wareneinsatz_theoretisch` liefert zusätzlich `umsatz_brutto`.
 3. **Belegfotos:** Storage-Regel `belege mitglied liest` — jedes Mitglied darf die Rechnungs-PDFs/Fotos laden.

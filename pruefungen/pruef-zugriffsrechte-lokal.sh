@@ -135,4 +135,15 @@ for i in extra: print("OHNE ERWARTUNG:", i)
 if len(ist) != len(erw): print("ROT, Zeilenzahl %d statt %d" % (len(ist), len(erw)))
 sys.exit(1 if fehl or extra or len(ist) != len(erw) else 0)
 PY
+# Leistung: Eine Lese-Regel, die je ZEILE eine Funktion ruft, rechnet bei großen Tabellen minutenlang (gemessen am ersten Entwurf:
+# 200 000 Lagerzeilen, hat_recht() je Zeile). Die Regeln bilden die Menge deshalb einmal (betriebe_mit_recht) — hier der Beleg.
+$PSQL -d $DB -c "insert into public.lagerbewegungen(betrieb_id, artikel_id, art, menge_basis, wert_netto) select 'aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','0b000000-0000-0000-0000-000000000001','eingang', g, g from generate_series(1,200000) g" >/dev/null
+for wer in "22222222-2222-2222-2222-222222222222|Manager mit kosten_view" "33333333-3333-3333-3333-333333333333|Lager-Mitglied (darf_lager)"; do
+  id=${wer%%|*}; name=${wer#*|}
+  t0=$(date +%s%N)
+  n=$(PGOPTIONS="-c statement_timeout=10000" $PSQL -d $DB -tA -c "select set_config('request.jwt.claims','{\"sub\":\"$id\",\"role\":\"authenticated\",\"session_id\":\"s\"}',true); set local role authenticated; select count(*) from public.lagerbewegungen" 2>&1 | tail -1)
+  ms=$(( ($(date +%s%N) - t0) / 1000000 ))
+  if [ "$n" = "200001" ] && [ $ms -lt 3000 ]; then echo "Leistung: $name zählt 200 001 Lagerzeilen in $ms ms"
+  else echo "ROT (Leistung), $name: Ergebnis '$n' nach $ms ms (erwartet 200001 in unter 3000 ms)"; rot=1; fi
+done
 [ $rot = 0 ] && echo "alle ${#ERWARTET_VOR[@]} Vorher-Zeilen und $(grep -c . $T.nach.txt) Nachher-Zeilen genau so da" || exit 1

@@ -36,7 +36,7 @@ insert into probe select 'K1 Schranke der Rollen nennt manager UND jeden alten W
      from (select pg_get_constraintdef(oid) d from pg_constraint where conrelid='public.betrieb_mitglieder'::regclass and conname='betrieb_mitglieder_rolle_check') x);
 insert into probe select 'K2 anon hat auf KEINE neue Funktion EXECUTE',
   (select bool_and(not has_function_privilege('anon', p.oid, 'execute'))::text from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-    where n.nspname='public' and p.proname in ('rechte_katalog','hat_recht','meine_rechte','rechte_wirksam','team_rechte_setzen','team_rechte_liste','team_rechte_verlauf',
+    where n.nspname='public' and p.proname in ('rechte_katalog','hat_recht','betriebe_mit_recht','meine_rechte','rechte_wirksam','team_rechte_setzen','team_rechte_liste','team_rechte_verlauf',
       'teamziel_speichern','teamziel_freigeben','teamziel_archivieren','teamaufgabe_haken','teamziele_stand','finanz_export_belege','teamziel_nachziehen','mitglied_rechte_wache'));
 insert into probe select 'K2b authenticated und service_role dürfen den Katalog rufen (die Schranke auf der Spalte braucht es, §2.7)',
   (has_function_privilege('authenticated','public.rechte_katalog()','execute') and has_function_privilege('service_role','public.rechte_katalog()','execute'))::text;
@@ -53,7 +53,7 @@ insert into probe select 'K5 anon liest keine Einkaufs-, Ziel- oder Rechte-Tabel
     'public.rezepturen','public.rezepturpositionen','public.einkauf_perioden','public.umlagerungen','public.umlagerungspositionen','public.lieferanten_artikel','public.team_ziele','public.team_aufgaben','public.team_erfolge','public.rechte_protokoll']) c);
 insert into probe select 'K6 genau EINE Fassung je neuer Funktion (§2.1)',
   (select count(*)::text from (select p.proname from pg_proc p join pg_namespace n on n.oid=p.pronamespace where n.nspname='public'
-    and p.proname in ('hat_recht','meine_rechte','rechte_wirksam','rechte_katalog','rechte_form_ok','team_rechte_setzen','team_rechte_liste','team_rechte_verlauf',
+    and p.proname in ('hat_recht','betriebe_mit_recht','meine_rechte','rechte_wirksam','rechte_katalog','rechte_form_ok','team_rechte_setzen','team_rechte_liste','team_rechte_verlauf',
       'teamziel_speichern','teamziel_freigeben','teamziel_archivieren','teamaufgabe_haken','teamziele_stand','finanz_export_belege','teamziel_nachziehen') group by 1 having count(*) <> 1) x);
 insert into probe select 'K7 Katalog: sieben Rechte, davon genau ein Standard-Recht des Managers',
   (select count(*)||'/'||count(*) filter (where standard_manager) from public.rechte_katalog());
@@ -66,12 +66,12 @@ do $$ begin
         insert into probe values ('K12 Schranke auf der Spalte weist ein erfundenes Recht ab','ERFOLG (falsch)');
   exception when check_violation then insert into probe values ('K12 Schranke auf der Spalte weist ein erfundenes Recht ab','abgewiesen'); end;
 end $$;
-insert into probe select 'K13 Anhäufung: jede Lese-Regel (SELECT/ALL) der zehn Tabellen trägt hat_recht (keine alte „true“-Regel daneben)',
+insert into probe select 'K13 Anhäufung: jede Lese-Regel (SELECT/ALL) der neun Tabellen trägt betriebe_mit_recht (keine alte „true“-Regel daneben)',
   (select count(*)::text from pg_policies where schemaname='public' and cmd in ('SELECT','ALL')
      and tablename in ('einkaufsbelege','einkaufspositionen','lagerbewegungen','inventuren','rezepturen','rezepturpositionen','einkauf_perioden','umlagerungen','umlagerungspositionen')
-     and coalesce(qual,'') not like '%hat_recht%');
+     and coalesce(qual,'') not like '%betriebe_mit_recht%');
 insert into probe select 'K14 Belegfotos: die Regel im Speicher trägt hat_recht',
-  (select (count(*) = 1 and bool_and(qual like '%hat_recht%'))::text from pg_policies where schemaname='storage' and tablename='objects' and policyname='belege mitglied liest');
+  (select (count(*) = 1 and bool_and(qual like '%betriebe_mit_recht%'))::text from pg_policies where schemaname='storage' and tablename='objects' and policyname='belege mitglied liest');
 insert into probe select 'K15 Anhäufung: auf storage.objects keine zweite Lese-Regel für den Eimer „belege“',
   (select count(*)::text from pg_policies where schemaname='storage' and tablename='objects' and cmd in ('SELECT','ALL'));
 insert into probe select 'K17 Preise der Lieferanten: authenticated liest lieferanten_artikel.letzter_preis nicht (Spaltenrecht aus E4, kein Fall für Teil B)', (not has_column_privilege('authenticated','public.lieferanten_artikel','letzter_preis','select'))::text;
@@ -94,6 +94,7 @@ select pg_temp.als('11111111-1111-1111-1111-111111111111');
 insert into probe select 'I1 Voraussetzung: Inhaber ist Mitglied und sieht seinen Betrieb (erwartet 1)', (select count(*) from public.betriebe where id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 insert into probe select 'I2 Inhaber sieht Einkauf/Lager/Rezeptur/Kalkulation/Belegfotos NUR des eigenen Betriebs', public.zz_sicht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 insert into probe select 'I3 Inhaber: kosten_view', public.hat_recht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','kosten_view')::text;
+insert into probe select 'I3b Menge der Betriebe mit kosten_view: genau der eigene', (select coalesce(string_agg(x::text, ','), 'leer') from public.betriebe_mit_recht('kosten_view') x);
 insert into probe select 'I4 Inhaber: erfundenes Recht „gewinn“ gibt es nicht', public.hat_recht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','gewinn')::text;
 insert into probe select 'I5 Inhaber A hat in Betrieb B kein Recht', public.hat_recht('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','kosten_view')::text;
 insert into probe select 'I6 Betrieb NULL und Recht NULL: false', (public.hat_recht(null,'kosten_view') or public.hat_recht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', null))::text;
@@ -118,6 +119,7 @@ reset role;
 select pg_temp.als('22222222-2222-2222-2222-222222222221');
 insert into probe select 'M0 Voraussetzung: Manager ist Mitglied und sieht den Betrieb (erwartet 1)', (select count(*) from public.betriebe where id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 insert into probe select 'M1 Manager sieht standardmäßig KEINE Einkaufs-/Lager-/Rezeptur-/Kalkulationszahl, kein Belegfoto', public.zz_sicht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+insert into probe select 'M1b Menge der Betriebe mit kosten_view beim Manager ohne Freigabe: leer', (select coalesce(string_agg(x::text, ','), 'leer') from public.betriebe_mit_recht('kosten_view') x);
 insert into probe select 'M2 Manager: Tageszahlen ja', public.hat_recht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','kennzahlen_tag')::text;
 insert into probe select 'M3 Manager: kosten_view nein', public.hat_recht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','kosten_view')::text;
 insert into probe select 'M4 Manager: Berichte/Export/Finanzexport/Ziele nein', (select count(*) filter (where public.hat_recht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', r))::text from unnest(array['berichte_view','berichte_export','finanz_export','ziele_edit','ziele_approve']) r);
@@ -139,6 +141,7 @@ reset role;
 -- ════ F · Manager mit „Einkauf und Kalkulation“ (A) ═══════════════════════════════════
 select pg_temp.als('22222222-2222-2222-2222-222222222222');
 insert into probe select 'F1 Manager mit kosten_view sieht seinen Betrieb A — und nur den', public.zz_sicht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+insert into probe select 'F1b Menge beim Manager mit kosten_view: nur A', (select coalesce(string_agg(x::text, ','), 'leer') from public.betriebe_mit_recht('kosten_view') x);
 insert into probe select 'F2 kosten_view allein gibt keinen Export', (public.finanz_export_belege('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', current_date - 5, current_date)->>'grund');
 insert into probe select 'F3 und keine Rechtevergabe', (public.team_rechte_setzen('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','22222222-2222-2222-2222-222222222221','kosten_view', true)->>'grund');
 insert into probe select 'F4 und keine Ziele', public.hat_recht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa','ziele_edit')::text;
@@ -148,6 +151,7 @@ reset role;
 select pg_temp.als('33333333-3333-3333-3333-333333333331');
 insert into probe select 'T0 Voraussetzung: die Spalte des Teams trägt kosten_view (Vergiftung angekommen, erwartet 1)', (select count(*) from public.betrieb_mitglieder where nutzer_id='33333333-3333-3333-3333-333333333331' and (rechte->>'kosten_view')::boolean) || '';
 insert into probe select 'T1 Team: Betrieb sichtbar (erwartet 1)', (select count(*) from public.betriebe where id='aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
+insert into probe select 'T1b Menge beim Team (Spalte vergiftet): leer', (select coalesce(string_agg(x::text, ','), 'leer') from public.betriebe_mit_recht('kosten_view') x);
 insert into probe select 'T2 Team (Spalte vergiftet) sieht keine Finanzzahl', public.zz_sicht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa');
 insert into probe select 'T3 Team: kein einziges Recht', (select count(*) filter (where public.hat_recht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', recht))::text from public.rechte_katalog());
 insert into probe select 'T4 Team: meine_rechte zeigt Rolle team und nichts erlaubt', (select (r->>'rolle')||'/'||(select count(*) from jsonb_each_text(r->'rechte') where value='true') from (select public.meine_rechte('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa') r) x);
@@ -182,15 +186,18 @@ insert into probe select 'X10 Manager einer Kette (nur Standort C, kosten_view):
 insert into probe select 'X11 derselbe Manager: kein Recht an Standort D', public.hat_recht('cccccccc-cccc-cccc-cccc-cccccccccccc','kosten_view')::text||'/'||public.hat_recht('dddddddd-dddd-dddd-dddd-dddddddddddd','kosten_view')::text;
 reset role;
 select pg_temp.als('66666666-6666-6666-6666-666666666666');
+insert into probe select 'X12b Menge des Inhabers beider Standorte: C und D', (select string_agg(x::text, ',' order by x::text) from public.betriebe_mit_recht('kosten_view') x);
 insert into probe select 'X12 Inhaber beider Standorte sieht beide Belege (zwei) und die Umlagerung', public.zz_sicht('cccccccc-cccc-cccc-cccc-cccccccccccc');
 reset role;
 select pg_temp.als('99999999-9999-9999-9999-999999999999');
+insert into probe select 'X13b Master: die Menge sind alle Betriebe, die er sieht (und mindestens die fünf der Probe)', ((select count(*) from public.betriebe_mit_recht('kosten_view')) = (select count(*) from public.betriebe) and (select count(*) from public.betriebe) >= 5)::text;
 insert into probe select 'X13 Master: alles, jeder Betrieb (vier Belege), Recht in jedem Betrieb', public.zz_sicht('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa')||' '||public.hat_recht('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','finanz_export')::text;
 reset role;
 
 -- ════ P · PIN-pflichtiger Betrieb (E) ═════════════════════════════════════════════════
 select pg_temp.als('88888888-8888-8888-8888-888888888888', 'ohne-pin');
 insert into probe select 'P1 Manager im PIN-Haus OHNE PIN-Sitzung: kein Recht, nicht einmal die Tageszahlen', public.hat_recht('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee','kennzahlen_tag')::text||'/'||public.hat_recht('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee','kosten_view')::text;
+insert into probe select 'P1b … und die Menge ist leer', (select coalesce(string_agg(x::text, ','), 'leer') from public.betriebe_mit_recht('kosten_view') x);
 reset role;
 select pg_temp.als('88888888-8888-8888-8888-888888888888', 'sE');
 insert into probe select 'P2 derselbe MIT PIN-Sitzung: Tageszahlen und kosten_view', public.hat_recht('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee','kennzahlen_tag')::text||'/'||public.hat_recht('eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee','kosten_view')::text;

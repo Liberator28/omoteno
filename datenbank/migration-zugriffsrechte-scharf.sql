@@ -72,32 +72,44 @@ begin
 end $$;
 
 -- ── 2 · Lese-Regeln ──────────────────────────────────────────────────────────────────────
+-- Immer „betrieb_id in (select betriebe_mit_recht('kosten_view'))“: die Menge entsteht EINMAL je Anfrage (hat_recht je Zeile
+-- wäre bei großen Tabellen — Lagerbewegungen — um Größenordnungen langsamer, gemessen).
 alter policy "beleg betrieb liest" on public.einkaufsbelege
-  using (public.hat_recht(betrieb_id, 'kosten_view'));
+  using (betrieb_id in (select public.betriebe_mit_recht('kosten_view')));
 alter policy "position betrieb liest" on public.einkaufspositionen
-  using (exists (select 1 from public.einkaufsbelege e where e.id = beleg_id and public.hat_recht(e.betrieb_id, 'kosten_view')));
+  using (exists (select 1 from public.einkaufsbelege e where e.id = beleg_id
+                  and e.betrieb_id in (select public.betriebe_mit_recht('kosten_view'))));
+-- Lagerwerte: kosten_view ODER das ausdrücklich vergebene Lagerrecht (darf_lager, wie darf_lager_buchen(): Mitglied dieses
+-- Betriebs, mit PIN). Der Inhaber steckt in kosten_view.
 alter policy "bewegung betrieb liest" on public.lagerbewegungen
-  using (public.hat_recht(betrieb_id, 'kosten_view') or public.darf_lager_buchen(betrieb_id));
+  using (betrieb_id in (select public.betriebe_mit_recht('kosten_view'))
+      or betrieb_id in (select m.betrieb_id from public.betrieb_mitglieder m
+                         where m.nutzer_id = auth.uid() and m.darf_lager and m.betrieb_id in (select public.meine_betriebe())));
 alter policy "inventur betrieb liest" on public.inventuren
-  using (public.hat_recht(betrieb_id, 'kosten_view') or public.darf_lager_buchen(betrieb_id));
+  using (betrieb_id in (select public.betriebe_mit_recht('kosten_view'))
+      or betrieb_id in (select m.betrieb_id from public.betrieb_mitglieder m
+                         where m.nutzer_id = auth.uid() and m.darf_lager and m.betrieb_id in (select public.meine_betriebe())));
 alter policy "rezeptur betrieb liest" on public.rezepturen
-  using (public.hat_recht(betrieb_id, 'kosten_view'));
+  using (betrieb_id in (select public.betriebe_mit_recht('kosten_view')));
 alter policy "rezepturposition betrieb liest" on public.rezepturpositionen
-  using (exists (select 1 from public.rezepturen r where r.id = rezeptur_id and public.hat_recht(r.betrieb_id, 'kosten_view')));
+  using (exists (select 1 from public.rezepturen r where r.id = rezeptur_id
+                  and r.betrieb_id in (select public.betriebe_mit_recht('kosten_view'))));
 alter policy einkauf_perioden_lesen on public.einkauf_perioden
-  using (public.hat_recht(betrieb_id, 'kosten_view'));
+  using (betrieb_id in (select public.betriebe_mit_recht('kosten_view')));
 alter policy "umlagerung beteiligte lesen" on public.umlagerungen
-  using (public.hat_recht(von_betrieb, 'kosten_view') or public.hat_recht(nach_betrieb, 'kosten_view'));
+  using (von_betrieb in (select public.betriebe_mit_recht('kosten_view'))
+      or nach_betrieb in (select public.betriebe_mit_recht('kosten_view')));
 alter policy "umlagerungsposition beteiligte lesen" on public.umlagerungspositionen
   using (exists (select 1 from public.umlagerungen u where u.id = umlagerung_id
-                  and (public.hat_recht(u.von_betrieb, 'kosten_view') or public.hat_recht(u.nach_betrieb, 'kosten_view'))));
+                  and (u.von_betrieb in (select public.betriebe_mit_recht('kosten_view'))
+                    or u.nach_betrieb in (select public.betriebe_mit_recht('kosten_view')))));
 
--- Belegfotos (Rechnungen) im Speicher: gleiche Regel. Nur die Stelle „Mitglied“ wird ersetzt; der Ordner-Test bleibt.
+-- Belegfotos (Rechnungen) im Speicher: gleiche Regel. Der Ordner-Test bleibt (nur eine UUID als erster Ordner).
 -- (storage.objects gehört nicht uns: fehlt die Regel oder darf sie diese Rolle nicht ändern, bricht es laut ab.)
 alter policy "belege mitglied liest" on storage.objects
   using (bucket_id = 'belege' and case
     when (storage.foldername(name))[1] ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
-    then public.hat_recht(((storage.foldername(name))[1])::uuid, 'kosten_view')
+    then ((storage.foldername(name))[1])::uuid in (select public.betriebe_mit_recht('kosten_view'))
     else false end);
 
 -- ── 3 · Die beiden Kalkulations-Funktionen: Zugriff = Recht, nicht Mitgliedschaft ──────────
@@ -128,7 +140,7 @@ commit;
 -- ── Nach dem Einspielen live LESEN (nicht „success“ glauben) ────────────────────────────────
 --   select tablename, policyname, cmd, qual from pg_policies where schemaname='public'
 --    and tablename in ('einkaufsbelege','einkaufspositionen','lagerbewegungen','inventuren','rezepturen','rezepturpositionen',
---                      'einkauf_perioden','umlagerungen','umlagerungspositionen') order by 1,2;   -- jede qual trägt hat_recht
+--                      'einkauf_perioden','umlagerungen','umlagerungspositionen') order by 1,2;   -- jede qual trägt betriebe_mit_recht
 --   select polname, pg_get_expr(polqual, polrelid) from pg_policy where polrelid = 'storage.objects'::regclass and polname = 'belege mitglied liest';
 --   select proname, prosrc like '%hat_recht%' as ok from pg_proc where proname in ('gericht_kalkulation','wareneinsatz_theoretisch');
 --   select has_column_privilege('authenticated','public.lieferanten_artikel','letzter_preis','select');   -- muss false sein (E4)

@@ -13,7 +13,7 @@
 --   · Rolle „manager“ in betrieb_mitglieder_rolle_check (aus dem Katalog gelesen, §2.3c: jeder alte Wert bleibt).
 --   · betrieb_mitglieder.rechte (jsonb, nur Schlüssel aus dem Katalog, nur boolean) — EINE Stelle für Rechte
 --     je Mitglied. darf_lager/darf_gutscheine bleiben, wie sie sind (kein zweites System).
---   · rechte_katalog(), rechte_wirksam(), hat_recht(), meine_rechte().
+--   · rechte_katalog(), rechte_wirksam(), hat_recht(), betriebe_mit_recht() (für Lese-Regeln), meine_rechte().
 --     Rechte gelten NUR für Manager; Team/Küche bekommen nie ein Finanzrecht. Inhaber (mit PIN) und Master: alles.
 --   · team_rechte_liste / team_rechte_setzen / team_rechte_verlauf — nur Inhaber, nie für sich selbst,
 --     nur für Manager desselben Betriebs, jede Änderung im Verlauf.
@@ -142,6 +142,20 @@ begin
 end $function$;
 revoke execute on function public.hat_recht(uuid, text) from public, anon;
 grant  execute on function public.hat_recht(uuid, text) to authenticated;
+
+-- Die Betriebe, in denen dieses Konto ein Recht hat — für Lese-REGELN. Eine Regel, die hat_recht() je Zeile ruft, rechnet bei
+-- 200 000 Lagerzeilen 200 000 Mal; als „betrieb_id in (select …)“ wird die Menge EINMAL gebildet und die Zeile nur nachgeschlagen.
+-- (Gemessen: pruefungen/pruef-zugriffsrechte-lokal.sh, Abschnitt „Leistung“.) Eine Rechnung, ein Wort: hat_recht() entscheidet.
+create or replace function public.betriebe_mit_recht(p_recht text)
+returns setof uuid language sql stable security definer set search_path = public as $function$
+  select m.betrieb_id from public.betrieb_mitglieder m
+   where auth.uid() is not null and m.nutzer_id = auth.uid() and public.hat_recht(m.betrieb_id, p_recht)
+  union
+  select b.id from public.betriebe b
+   where auth.uid() is not null and public.ist_master() and public.hat_recht(b.id, p_recht);
+$function$;
+revoke execute on function public.betriebe_mit_recht(text) from public, anon;
+grant  execute on function public.betriebe_mit_recht(text) to authenticated;       -- in Regeln (§2.7)
 
 -- Für die Seiten: meine Rolle und meine wirksamen Rechte in einem Aufruf.
 create or replace function public.meine_rechte(p_betrieb uuid)
