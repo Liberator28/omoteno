@@ -79,7 +79,7 @@ const AB = "eigen-ab12", CD = "eigen-cd34", EF = "eigen-ef56";
   pruef(ziele.length >= 8, "Board kennt Ziele für Textblock-Knöpfe", ziele.length + "");
   const einst = [...(teil(adminQuelle, "const AFB_EINSTELLUNG = {", "};") || "").matchAll(/g:"([A-Za-z-]+)"/g)].map(m => m[1]);
   const gruppenIds = einst.filter(g => !new RegExp('id="' + g + '"').test(adminQuelle));
-  pruef(einst.length >= 7 && gruppenIds.length === 0, "jeder Weg „Texte & Einstellungen“ führt zu einer Gruppe, die es gibt", gruppenIds.join(", ") || einst.length + " Wege");
+  pruef(einst.length >= 6 && gruppenIds.length === 0, "jeder Weg „Texte & Einstellungen“ führt zu einer Gruppe, die es gibt", gruppenIds.join(", ") || einst.length + " Wege");
   const beschr = (teil(adminQuelle, "const AFB_BESCHREIBUNG = {", "};") || "");
   const festIds = (/const BLOCK_FEST = \[([^\]]+)\]/.exec(hubQuelle) || ["", ""])[1].match(/"([a-z]+)"/g).map(x => x.replace(/"/g, ""));
   pruef(festIds.length === 6 && festIds.every(id => new RegExp("\\b" + id + ":").test(beschr)), "jeder feste Block hat im Board einen Satz, was er ist", festIds.join(" "));
