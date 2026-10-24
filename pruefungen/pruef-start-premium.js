@@ -211,6 +211,10 @@ async function lauf(b, kopf){
       const ls = [...document.querySelectorAll("footer a, footer p, footer button, footer span, main > *:last-child")].filter(e => e.getBoundingClientRect().height > 0).map(e => e.getBoundingClientRect().bottom);
       return { maxB: Math.max.apply(null, ls), nav: nav.top, leiste: bal }; });
     pruef(w + " px: leerer Korb: letzter Link endet über der Navigation (Voraussetzung: keine Leiste)", !un2.leiste && un2.maxB <= un2.nav + 1, un2);
+    await p.evaluate(() => { window.scrollTo(0, 0); document.getElementById("vstreifen").hidden = false; }); await p.waitForTimeout(500);
+    const str2 = await p.evaluate(() => { const v = document.getElementById("vstreifen"), r = v.getBoundingClientRect(), n = document.getElementById("hauptnav").getBoundingClientRect(); v.hidden = true;
+      return { b: r.bottom, nt: n.top, leiste: document.getElementById("auswahlbalken").classList.contains("an") }; });
+    pruef(w + " px: leerer Korb: Bestell-Streifen endet über der Navigation (Voraussetzung: keine Leiste)", !str2.leiste && str2.b <= str2.nt + .5, str2);
     const hn = await p.evaluate(() => { const n = document.getElementById("hauptnav").getBoundingClientRect(); return { r: n.right, l: n.left }; });
     pruef(w + " px: Navigation innerhalb des Schirms", hn.l >= -.5 && hn.r <= w + .5, hn);
     pruef(w + " px: keine Fehler", h.fehler.length === 0 && h.konsole.length === 0, [h.fehler, h.konsole]);
