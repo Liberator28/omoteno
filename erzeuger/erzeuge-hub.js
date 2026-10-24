@@ -95,6 +95,17 @@ const THEMA_ARTEN       = ["kaiserlich"];
    alle (§2.5: bestehende Häuser sehen ohne eigenes Zutun keine Änderung). Fehlt das Feld, bleibt der Hub wie bisher;
    startstilSetzen() im Gerüst kennt nur „premium“. */
 const STARTSTIL_ARTEN   = ["klassisch", "premium"];
+/* Layout je Haus (nur mit startstil "premium"): Regler und Profile stehen im Gerüst (LAYOUT_REGLER, LAYOUT_PROFILE) und werden
+   von dort gelesen — eine zweite Liste hier liefe auseinander, und der Kunde bekäme ein Blatt durch, das der Hub nicht kennt.
+   Der Gerüst-Block ist reines JSON-artiges JavaScript; er wird als Ausdruck gelesen, nichts davon ausgeführt außer diesem. */
+function layoutAusGeruest(name){
+  const datei = fs.readFileSync(path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), "utf8");
+  const t = datei.match(new RegExp("const " + name + " = (\\{[\\s\\S]*?\\n\\});"));
+  if(!t){ console.error("Im Gerüst nicht gefunden: " + name); process.exit(1); }
+  return new Function("return (" + t[1] + ")")();
+}
+const LAYOUT_REGLER    = layoutAusGeruest("LAYOUT_REGLER");
+const LAYOUT_PROFILE   = layoutAusGeruest("LAYOUT_PROFILE");
 /* Was die Figur je Bestellphase tragen kann, und welche Phasen es
    gibt — beides aus dem Gerüst, aus demselben Grund wie oben. */
 const REQUISITEN       = ausGeruest(/const E_REQUISITEN = \{([\s\S]*?)\n\};/, "E_REQUISITEN");
@@ -407,6 +418,23 @@ function pruefeMarkenblatt(mb){
   if(mb.startstil !== undefined && STARTSTIL_ARTEN.indexOf(mb.startstil) < 0)
     F("startstil unbekannt: " + JSON.stringify(mb.startstil) +
       " — erlaubt: " + STARTSTIL_ARTEN.join(", "));
+  /* Layout je Haus: jeder Tippfehler wäre sonst ein stiller Rückfall auf den Standard, und der Kunde sähe nichts. */
+  if(mb.startlayout !== undefined){
+    const sl = mb.startlayout;
+    if(mb.startstil !== "premium")
+      F("startlayout wirkt nur mit startstil \"premium\" — steht: " + JSON.stringify(mb.startstil));
+    if(!sl || typeof sl !== "object" || Array.isArray(sl)) F("startlayout muss ein Objekt sein, steht: " + JSON.stringify(sl));
+    else for(const [k, v] of Object.entries(sl)){
+      if(k === "profil"){
+        if(!Object.prototype.hasOwnProperty.call(LAYOUT_PROFILE, v))
+          F("startlayout.profil unbekannt: " + JSON.stringify(v) + " — erlaubt: " + Object.keys(LAYOUT_PROFILE).join(", "));
+      } else if(!Object.prototype.hasOwnProperty.call(LAYOUT_REGLER, k)){
+        F("startlayout." + k + " gibt es nicht — erlaubt: profil, " + Object.keys(LAYOUT_REGLER).join(", "));
+      } else if(LAYOUT_REGLER[k].indexOf(v) < 0){
+        F("startlayout." + k + " unbekannt: " + JSON.stringify(v) + " — erlaubt: " + LAYOUT_REGLER[k].join(", "));
+      }
+    }
+  }
   /* Dieselbe Begründung wie bei figur: Ein Tippfehler in haende
      ergäbe im Hub wortlos wieder die Vorgabe. Der Kunde hätte seine
      Pfanne gewählt und bekäme den Kuchenstapel. */
@@ -576,6 +604,7 @@ function alsQuelltext(mb){
     mb.zierrat   ? liste("zierrat", mb.zierrat) : null,
     mb.thema     ? liste("thema", mb.thema) : null,
     mb.startstil ? liste("startstil", mb.startstil) : null,
+    mb.startlayout ? block("startlayout", mb.startlayout, ["profil"].concat(Object.keys(LAYOUT_REGLER))) : null,
     /* false ist ein Wert, kein Fehlen: typeof statt Wahrheitswert,
        sonst verschwände genau das Abschalten. */
     typeof mb.bewegteZeichen === "boolean" ? liste("bewegteZeichen", mb.bewegteZeichen) : null,

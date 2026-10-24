@@ -36,7 +36,7 @@ function gerichteZeilen(bildName){
 
 /* opt: haus, breite, hoehe, kopf ("hell" | "dunkel" | null), kachelFoto (bool), gerichtFoto ("gericht" | "gericht-weiss"),
         uhr, sprache, farbe ("hell" | "dunkel" für die Wahl des Gastes), stil ("premium" erzwingen, auch bei Häusern ohne
-        Schalter), korb ([Gerichtname, …]), hash, reduziert, skala,
+        Schalter), layout (Objekt wie markenblatt.startlayout, null = ohne), korb ([Gerichtname, …]), hash, reduziert, skala,
         zeilen (Funktion: ändert die nachgestellten Gerichtzeilen — Preis, Allergene, Merkmale), gerichteFehler (true: die
         Datenbank antwortet 500) */
 async function oeffneHub(browser, opt){
@@ -83,6 +83,8 @@ async function oeffneHub(browser, opt){
   await p.evaluate(() => { try{ ZEITEN.length = 0; for(let i = 0; i < 7; i++) ZEITEN.push("10:30 – 00:30"); stunde = new Date().getHours(); }catch(e){} });
   if(opt.stil === "premium") await p.evaluate(() => { MARKENBLATT.startstil = "premium"; startstilSetzen(); zeichne(); });
   if(opt.stil === "klassisch") await p.evaluate(() => { MARKENBLATT.startstil = "klassisch"; startstilSetzen(); zeichne(); });
+  /* layout: das Markenblatt-Feld startlayout (Objekt) wie der Erzeuger es schriebe; null = ohne. Funktioniert nur mit Premium. */
+  if(opt.layout !== undefined) await p.evaluate(l => { MARKENBLATT.startlayout = l === null ? undefined : l; startlayoutSetzen(); zeichne(); hauptNavZeichnen(); }, opt.layout);
   if(opt.korb && opt.korb.length){
     await p.evaluate(namen => {
       namen.forEach(n => { const g = findeGericht(n); if(g) merk[n] = { n: g.n, p: g.p, b: g.b || "", m: 1 }; });
