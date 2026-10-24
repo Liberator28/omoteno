@@ -54,7 +54,9 @@ bekommt Bescheid“ nur in eine Richtung gilt.
 damit „0 Zeilen“ als „inzwischen storniert“ erkannt und gezeigt wird statt als Erfolg (§2.3b). Der Filter
 hängt nur an Schreibwegen, die `status` setzen — die Küche hakt einen stornierten Bon ab, indem sie nur
 `kueche_fertig_um` schreibt, und das bleibt möglich. Ohne lesbare Zeilenliste in der Antwort gilt das
-Schreiben als gelungen (fail-open, §7). **Ehrliche Grenze:** Die gestellten Gegenstellen werten den Filter
+Schreiben als gelungen (fail-open, §7). Der Filter lautet `or(status.is.null, status.not.in.(storniert,abgelehnt))`: `bestellungen.status`
+ist nullbar (Vorgabe „neu“, kein CHECK; live 24.10.: 0 Zeilen ohne Status), und `NULL NOT IN (…)` ist in SQL
+„unbekannt“ — ein einfaches `not.in` hätte eine Zeile ohne Status nie mehr bedienbar gemacht. **Ehrliche Grenze:** Die gestellten Gegenstellen werten den Filter
 wie PostgREST aus; ob die echte Datenbank `status=not.in.(…)` genauso trifft, ist im Browser nicht
 gemessen. Am lokalen Postgres wurde es nicht nachgestellt (dort fehlt PostgREST selbst).
 
