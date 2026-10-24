@@ -308,6 +308,9 @@ insert into probe select 'Z14 Fremder hakt eine echte Aufgabe fremden Betriebs a
 insert into probe select 'Z15 Inhaber B legt in B ein NEUES Ziel an, dessen Aufgabe-id aus A stammt: aufgaben', (public.teamziel_speichern('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', null, 'Klau', null, null, jsonb_build_array(jsonb_build_object('id', (select id from aid), 'titel','x')))->>'grund');
 insert into probe select 'Z15b … und in B ist nichts angelegt (als Inhaber B gelesen — er sähe es)', (select count(*) from public.team_ziele where betrieb_id='bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb')::text;
 insert into probe select 'Z16 Inhaber B ändert das Ziel aus A über den eigenen Betrieb: unbekannt', (public.teamziel_speichern('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', (select id from zid where k='z1'), 'Klau', null, null, '[{"titel":"x"}]'::jsonb)->>'grund');
+insert into zid select 'zb', (public.teamziel_speichern('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', null, 'Eigenes B-Ziel', null, null, '[{"titel":"b1"}]'::jsonb)->>'id')::uuid;
+insert into probe select 'Z16b Inhaber B ändert sein eigenes Ziel mit einer Aufgabe-id aus A: aufgaben', (public.teamziel_speichern('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb', (select id from zid where k='zb'), 'Eigenes B-Ziel', null, null, jsonb_build_array(jsonb_build_object('id', (select id from aid), 'titel','x')))->>'grund');
+insert into probe select 'Z16c … und die eigene Aufgabe von B ist unangetastet (eigene Anweisung)', (select count(*)||'/'||min(titel) from public.team_aufgaben where ziel_id=(select id from zid where k='zb'));
 reset role;
 select pg_temp.als('22222222-2222-2222-2222-222222222223');
 insert into probe select 'Z17 Eingaben: Titel leer', (public.teamziel_speichern('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa', null, '   ', null, null, '[]'::jsonb)->>'grund');
