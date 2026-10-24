@@ -335,7 +335,7 @@ function paramAusBoard(admin, name) {
     const g = await seite.evaluate(() => ({ satz: !document.getElementById("awGesperrt").hidden && getComputedStyle(document.getElementById("awGesperrt")).display !== "none",
       kacheln: document.querySelectorAll("#awKacheln .aw-kpi").length, kopf: document.querySelector("#awUnternehmen .aw-kopf").getClientRects().length,
       abgefragt: window.__abfragen.filter(a => a.tab === "bestellungen" && /liefergebuehr/.test(a.select || "")).length,
-      text: document.getElementById("t-auswertung").innerText }));
+      text: document.getElementById("t-auswertung").textContent }));
     pruef(g.satz && g.kacheln === 0 && g.kopf === 0 && g.abgefragt === 0 && !/12,50|777|888/.test(g.text), "Unternehmen: Satz „gesperrt“, keine Kachel, keine Abfrage, kein Betrag", JSON.stringify({ satz: g.satz, kacheln: g.kacheln, abgefragt: g.abgefragt }));
     pruef(fehler.length === 0, "keine Skriptfehler", fehler.join(" | "));
     await ctx.close();
@@ -371,9 +371,18 @@ function paramAusBoard(admin, name) {
     await seite.evaluate(async () => { window.__cfg.rechte = Object.assign({}, window.__cfg.rechte, { berichte_view: true }); await rechteLaden(); });
     await seite.waitForTimeout(500);
     pruef(await seite.evaluate(() => document.getElementById("awUnternehmen").dataset.sicht === "berichte" && document.querySelectorAll("#awKacheln .aw-kpi").length === 4), "ein neu gelesenes Recht schaltet die offene Seite um (vier Kacheln)");
+    /* Rückstufung Berichte → nur Tageszahlen: vom Verlauf, den Gerichten und den Zielen darf NICHTS im Dokument bleiben (textContent
+       zählt auch Verstecktes, innerText nicht). */
+    pruef(await seite.evaluate(() => /Probe-Crêpe/.test(document.getElementById("awRenner").textContent)), "Voraussetzung: mit Berichten steht ein Gericht in der Liste");
+    await seite.evaluate(async () => { window.__cfg.rechte = Object.assign({}, window.__cfg.rechte, { berichte_view: false }); await rechteLaden(); });
+    await seite.waitForTimeout(500);
+    const rs = await seite.evaluate(() => ({ s: document.getElementById("awUnternehmen").dataset.sicht, k: document.querySelectorAll("#awKacheln .aw-kpi").length,
+      leer: ["awBefunde", "awVerlauf", "awStunden", "awRenner", "awQuellen", "awZiele"].every(id => document.getElementById(id).innerHTML.trim() === ""),
+      text: document.getElementById("awUnternehmen").textContent }));
+    pruef(rs.s === "tag" && rs.k === 2 && rs.leer && !/Probe-Crêpe|Gestern-Gericht|999/.test(rs.text), "Rückstufung auf nur Tageszahlen: zwei Kacheln, die übrigen Behälter leer, kein Gericht und kein Ziel im Text", JSON.stringify({ s: rs.s, k: rs.k, leer: rs.leer }));
     await seite.evaluate(async () => { window.__cfg.rechte = Object.assign({}, window.__cfg.rechte, { berichte_view: false, kennzahlen_tag: false }); await rechteLaden(); });
     await seite.waitForTimeout(500);
-    const w = await seite.evaluate(() => ({ s: document.getElementById("awUnternehmen").dataset.sicht, b: awBereich, k: document.querySelectorAll("#awKacheln .aw-kpi").length, text: document.getElementById("t-auswertung").innerText }));
+    const w = await seite.evaluate(() => ({ s: document.getElementById("awUnternehmen").dataset.sicht, b: awBereich, k: document.querySelectorAll("#awKacheln .aw-kpi").length, text: document.getElementById("t-auswertung").textContent }));
     pruef(w.s === "gesperrt" && w.b === "team" && w.k === 0 && !/12,50/.test(w.text), "wird ein Recht entzogen, ist die Seite sofort gesperrt und leer (auch das Versteckte)", JSON.stringify({ s: w.s, b: w.b, k: w.k }));
     await ctx.close();
   }
@@ -414,6 +423,21 @@ function paramAusBoard(admin, name) {
     await seite.click('[data-tz-frei="22222222-2222-4222-8222-222222222222"]'); await seite.waitForTimeout(300);
     pruef(await seite.evaluate(() => /mindestens eine Aufgabe/.test(document.getElementById("meldung").textContent)), "Abweisung „keine_aufgaben“ erscheint als Satz");
     pruef(fehler.length === 0, "keine Skriptfehler", fehler.join(" | "));
+    await ctx.close();
+  }
+
+  console.log("\n══ Manager mit Teamziel-Recht „bearbeiten“, aber ohne „freigeben“ ══");
+  {
+    const stand = JSON.parse(JSON.stringify(ZIELE)); stand.darf = { edit: true, approve: false };
+    stand.ziele.push({ id: "22222222-2222-4222-8222-222222222222", titel: "Entwurf Ziel", beschreibung: null, frist: null, status: "entwurf", erledigt: 0, gesamt: 1, aufgaben: [{ id: "a3333333-3333-4333-8333-333333333333", titel: "Plakat", erledigt: false, von: null }] });
+    const { ctx, seite } = await oeffnen(browser, { rolle: "manager", rechte: mit({ kennzahlen_tag: true, ziele_edit: true }), rpc: { teamziele_stand: stand } });
+    await tafel(seite, "auswertung");
+    await seite.click('[data-aw-bereich="team"]'); await seite.waitForTimeout(350);
+    const s = await seite.evaluate(() => ({ neu: !!document.getElementById("tzNeu"), bearb: document.querySelectorAll("[data-tz-bearbeiten]").length,
+      frei: document.querySelectorAll("[data-tz-frei]").length, zurueck: document.querySelectorAll("[data-tz-zurueck]").length, archiv: document.querySelectorAll("[data-tz-archiv]").length,
+      entwurf: !!document.querySelector('[data-tz-ziel="22222222-2222-4222-8222-222222222222"]') }));
+    pruef(s.entwurf, "Voraussetzung: der Entwurf ist für ihn sichtbar (er darf bearbeiten)");
+    pruef(s.neu && s.bearb === 2 && s.archiv === 2 && s.frei === 0 && s.zurueck === 0, "Bearbeiten und Archivieren ja — Freigeben und Zurückziehen NICHT", JSON.stringify(s));
     await ctx.close();
   }
 

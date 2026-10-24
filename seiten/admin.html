@@ -822,7 +822,7 @@ html{font-size:calc(16px * var(--skala,1))}
 
   #t-bestellungen .filterblock{
     position:fixed;left:0;right:0;z-index:39;
-    bottom:var(--leiste-h);
+    bottom:calc(var(--leiste-h) - var(--vv-versatz, 0px));
     margin:0;padding:8px 12px 6px;
     background:var(--leiste-glas);
     -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
@@ -838,7 +838,10 @@ html{font-size:calc(16px * var(--skala,1))}
 
   .befehlsleiste{
     display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
-    position:fixed;left:0;right:0;bottom:0;z-index:40;
+    /* bottom: --vv-versatz holt die Leiste an den echten unteren Rand zurück, wenn iOS (Home-Bildschirm) den Layout-Viewport kürzer
+       lässt als das Sichtbare (leisteAnkern()). translateZ(0): eigene Ebene, damit sie beim Auslaufen des Rollens nicht hinterherhinkt. */
+    position:fixed;left:0;right:0;bottom:calc(0px - var(--vv-versatz, 0px));z-index:40;
+    -webkit-transform:translateZ(0);transform:translateZ(0);
     background:var(--leiste-glas);
     -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
     border-top:1px solid var(--linie);
@@ -896,7 +899,7 @@ html{font-size:calc(16px * var(--skala,1))}
        jetzt die Filter, also eine Etage hoeher. Gerechnet aus
        denselben Variablen — eine zweite Zahl daneben waere eine
        zweite Wahrheit. */
-    bottom:calc(var(--leiste-h) + var(--filter-h) + 6px);
+    bottom:calc(var(--leiste-h) + var(--filter-h) + 6px - var(--vv-versatz, 0px));
     background:var(--karte);border:1px solid var(--linie);border-radius:16px;
     padding:8px;box-shadow:0 -10px 40px rgba(0,0,0,.5);
     animation:mehrauf .26s var(--ease-out) both;
@@ -1090,7 +1093,7 @@ body.hell .tmchip[aria-pressed=true]{color:var(--flaeche)}
 .wischziel[data-stufe="fertig"]{background:color-mix(in srgb, var(--gut) 24%, var(--karte))}
 .wischziel span{opacity:.55;transform:scale(.94);transition:opacity .15s,transform .15s var(--ease-out)}
 .wischziel.bereit span{opacity:1;transform:none}
-.rueckleiste{position:fixed;left:50%;bottom:calc(var(--leiste-h, 64px) + 14px);transform:translateX(-50%);z-index:81;
+.rueckleiste{position:fixed;left:50%;bottom:calc(var(--leiste-h, 64px) + 14px - var(--vv-versatz, 0px));transform:translateX(-50%);z-index:81;
   display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;
   border-radius:var(--ecke-pille);background:var(--kreide);color:var(--nacht);font-size:14px;font-weight:600;
   box-shadow:0 8px 28px rgba(0,0,0,.35)}
@@ -15080,6 +15083,34 @@ function leistePilleBewegen(){
   ], { duration: 420, easing: feder, fill: "forwards" });
 }
 addEventListener("resize", () => { if($("#leistePille")) leistePilleBewegen(); });
+
+/* Die feste Leiste unten schwebte gelegentlich mitten im Bild (Foto vom Nutzer, iPhone, Home-Bildschirm): iOS lässt dort
+   manchmal den Layout-Viewport kürzer als das Sichtbare — „bottom:0“ meint dann die Mitte. Gemessen wird der Abstand
+   zwischen der Unterkante des SICHTBAREN Bereichs (visualViewport) und der des Layout-Viewports; die Leiste und alles, was
+   an ihr hängt, rücken um genau diesen Abstand nach unten (--vv-versatz). Ohne Abstand, mit offener Tastatur oder ohne
+   visualViewport bleibt alles beim Alten. Ehrliche Grenze: auf einem Gerät nicht gesehen, nur die Rechnung geprüft. */
+let leisteAnkerGeplant = false;
+function leisteAnkern(){
+  const vv = window.visualViewport, wurzel = document.documentElement;
+  let v = 0;
+  if(vv){
+    const feld = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
+    const abstand = Math.round(vv.offsetTop + vv.height - wurzel.clientHeight);
+    if(!feld && abstand >= 2 && abstand <= 600) v = abstand;
+  }
+  const alt = wurzel.style.getPropertyValue("--vv-versatz");
+  if(alt !== v + "px") wurzel.style.setProperty("--vv-versatz", v + "px");
+  return v;
+}
+function leisteAnkernBald(){
+  if(leisteAnkerGeplant) return;
+  leisteAnkerGeplant = true;
+  requestAnimationFrame(() => { leisteAnkerGeplant = false; leisteAnkern(); });
+}
+if(window.visualViewport){ visualViewport.addEventListener("resize", leisteAnkernBald); visualViewport.addEventListener("scroll", leisteAnkernBald); }
+["resize", "orientationchange", "pageshow", "focusout", "touchend", "scroll"].forEach(e => addEventListener(e, leisteAnkernBald, { passive:true }));
+document.addEventListener("visibilitychange", leisteAnkernBald);
+leisteAnkernBald();
 /* Erststellung: die Pille existiert in der statischen Auszeichnung
    ohne left/width, requestAnimationFrame wartet auf das erste Layout. */
 requestAnimationFrame(() => requestAnimationFrame(leistePilleBewegen));

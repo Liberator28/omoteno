@@ -826,8 +826,8 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(300);
     pruef((await p.textContent("#kMonat")).replace(/\s/g, " ") === "64,80 €" && !(await p.evaluate(() => document.body.classList.contains("gesperrt"))), "Voraussetzung: im eigenen Betrieb sind die Zahlen da");
     await p.selectOption("#betriebWahl", "b-zwei"); await p.waitForTimeout(400);
-    const z = await p.evaluate(() => ({ gesperrt: document.body.classList.contains("gesperrt"), text: document.body.innerText, belege: document.querySelectorAll("#belegListe .zeile").length }));
-    pruef(z.gesperrt && !/64,80|Mehl 405|Weinhandel/.test(z.text) && z.belege === 0, "Wechsel in einen Betrieb ohne Recht: gesperrt, und die Zahlen des anderen Betriebs sind weg", JSON.stringify({ g: z.gesperrt, b: z.belege }));
+    const z = await p.evaluate(() => ({ gesperrt: document.body.classList.contains("gesperrt"), text: document.querySelector("main").textContent, belege: document.querySelectorAll("#belegListe .zeile").length }));
+    pruef(z.gesperrt && !/64,80|Mehl 405|Weinhandel|Pizza/.test(z.text) && z.belege === 0, "Wechsel in einen Betrieb ohne Recht: gesperrt, und die Zahlen des anderen Betriebs sind weg (auch im versteckten Dokument, textContent)", JSON.stringify({ g: z.gesperrt, b: z.belege }));
     await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(400);
     pruef((await p.textContent("#kMonat")).replace(/\s/g, " ") === "64,80 €" && !(await p.evaluate(() => document.body.classList.contains("gesperrt"))), "und zurück: die Zahlen kommen wieder");
     await ctx.close();
