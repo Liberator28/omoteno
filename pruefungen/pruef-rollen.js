@@ -28,7 +28,7 @@ const ADMIN = path.join(__dirname, "..", "seiten", "admin.html");
 const NUR_INHABER = ["Bewegte Emojis", "Projekte", "Stil der Speisekarte", "Extras & Beläge", "Willkommen-Animation", "Kopf & Logo", "Aufbau der Startseite", "Texte & Schrift", "Schrift", "Farben des Hubs", "Kacheln", "Aktions-Banner-Rad",
   "Ihre Worte im Gast-Hub", "Lieferung", "Gäste-Newsletter", "Eigene Rabattcodes",
   "Gutscheine für Stammgäste", "Bezahlen", "Bestellstand beim Gast", "Foodroulette", "Figur des Hauses",
-  "Wer hat was geändert"];
+  "Wer hat was geändert", "Zugriffsrechte"];
 /* „Einstellungen“ und „Gast-Hub gestalten“ sind die Übersichten (Kacheln), keine Gruppe mit Bedienelementen — für jede Rolle da. */
 const AUCH_TEAM = ["Einstellungen", "Gast-Hub gestalten", "Melden", "Bildschirm", "Nichts übersehen", "Betrieb", "Dieses Gerät"];
 const SATZ = "Nur der Besitzer kann das ändern.";

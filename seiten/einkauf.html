@@ -124,6 +124,11 @@ main{max-width:980px;margin:0 auto;padding-top:20px;display:flex;flex-direction:
 .lesesatz{background:rgba(240,184,96,.10);border:1px solid rgba(240,184,96,.35);color:var(--kreide);
   border-radius:var(--ecke);padding:12px 14px;font-size:15px;margin:0}
 body.nurlesen .nur-inhaber{display:none !important}
+/* Ohne das Recht „Einkauf und Kalkulation“ (hat_recht, migration-zugriffsrechte.sql) gibt es hier nichts als diesen Satz:
+   die Seite fragt gar nicht erst nach Belegen, Lager oder Rezepturen. */
+body.gesperrt .reiter,body.gesperrt main > :not(#gesperrtSatz){display:none !important}
+.exportzeile{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.exportzeile input[type=date]{width:auto;min-width:150px;min-height:44px}
 .leerzeile{color:var(--gedaempft);padding:18px 4px;margin:0}
 
 /* Kennzahlen der Übersicht: drei, und nur weil sie die Antwort sind. */
@@ -242,6 +247,7 @@ button.zeile:active{background:var(--flaeche)}
 
   <main>
     <p class="lesesatz" id="lesesatz" hidden>Sie sehen den Einkauf dieses Betriebs. Belege erfassen, freigeben und Artikel pflegen kann nur der Besitzer.</p>
+    <p class="lesesatz" id="gesperrtSatz" hidden><b>Für dieses Konto gesperrt.</b> Einkauf, Kosten und Kalkulation sind nicht freigeschaltet. Den Zugang vergibt der Besitzer im Board unter Einstellungen → Zugriffsrechte.</p>
     <p class="meldung fehler" id="ladefehler" hidden></p>
 
     <!-- Übersicht -->
@@ -266,6 +272,11 @@ button.zeile:active{background:var(--flaeche)}
           <button class="knopf nur-inhaber" id="belegNeu" type="button">Von Hand erfassen</button>
           <button class="knopf haupt nur-inhaber" id="einlesenKnopf" type="button">Rechnung einlesen</button>
           <input id="einlesenDatei" type="file" accept="image/*,application/pdf" hidden>
+        </div>
+        <div class="exportzeile" id="exportZeile" hidden>
+          <input id="exportVon" type="date" aria-label="Belege exportieren von">
+          <input id="exportBis" type="date" aria-label="Belege exportieren bis">
+          <button class="knopf" id="exportKnopf" type="button">Belege als CSV</button>
         </div>
         <p class="meldung" id="lesestand" role="status" hidden></p>
         <div class="liste" id="belegListe"></div>
@@ -846,8 +857,71 @@ async function betriebWaehlen(id){
   document.body.classList.toggle("nurlesen", lesen);
   $("lesesatz").hidden = !lesen;
   EDIT = null; REZ = null;
+  const lauf = ++LADE_LAUF;
+  B.rechte = await rechteLesen(B);
+  if(lauf !== LADE_LAUF) return;                       // inzwischen anderer Standort gewählt
+  const darfKosten = B.rechte.kosten_view === true;
+  document.body.classList.toggle("gesperrt", !darfKosten);
+  $("gesperrtSatz").hidden = darfKosten;
+  $("exportZeile").hidden = !(darfKosten && B.rechte.finanz_export === true);
+  if(!darfKosten){
+    /* Gesperrt: nichts holen, nichts behalten — kein Wert, der nur versteckt wäre. */
+    DATEN = { artikel:[], lieferanten:[], belege:[], bestand:{}, preise:[], zuordnung:[] };
+    ladefehler("");
+    return;
+  }
   await allesLaden();
 }
+
+/* Was darf dieses Konto? hat_recht() auf dem Server; fehlt die Antwort, gilt der Rückfall nach Rolle:
+   der Besitzer wie bisher (der Server hält ohnehin), jeder andere nichts — im Zweifel weniger, nie mehr. */
+async function rechteLesen(b){
+  const rueckfall = { kosten_view: b.rolle === "inhaber", finanz_export: b.rolle === "inhaber" };
+  try{
+    const { data, error } = await sb.rpc("meine_rechte", { p_betrieb: b.id });
+    if(!error && data && data.rechte && typeof data.rechte === "object")
+      return { kosten_view: data.rechte.kosten_view === true, finanz_export: data.rechte.finanz_export === true };
+  }catch(e){}
+  return rueckfall;
+}
+
+/* Finanzexport: Einkaufsbelege als CSV. Ob das erlaubt ist, entscheidet finanz_export_belege() — mit „Einkauf und
+   Kalkulation“ UND „Finanzexport“; der Knopf ist nur die Anzeige davon. Zellen, die als Formel gelesen würden, bekommen ein ' vorn. */
+const EXPORT_GRUND = {
+  kein_recht: "Dafür fehlt dir das Recht. Der Besitzer schaltet es im Board unter Einstellungen → Zugriffsrechte frei.",
+  zeitraum: "Bitte einen Zeitraum von höchstens 400 Tagen wählen (von vor bis)."
+};
+function exportZelle(v){
+  const t = typeof v === "number" ? v.toFixed(2).replace(".", ",") : String(v == null ? "" : v);
+  const sicher = /^[=+\-@\t\r]/.test(t) && typeof v !== "number" ? "'" + t : t;
+  return /[;"\n\r]/.test(sicher) ? '"' + sicher.replace(/"/g, '""') + '"' : sicher;
+}
+async function belegeExportieren(){
+  const von = $("exportVon").value, bis = $("exportBis").value;
+  ladefehler("");
+  if(!von || !bis){ ladefehler(EXPORT_GRUND.zeitraum); return; }
+  const lauf = LADE_LAUF;
+  const { data, error } = await sb.rpc("finanz_export_belege", { p_betrieb: B.id, p_von: von, p_bis: bis });
+  if(lauf !== LADE_LAUF) return;
+  if(error || !data || data.ok !== true){
+    ladefehler(error ? "Der Export ließ sich nicht laden. Bitte neu versuchen." : (EXPORT_GRUND[data && data.grund] || "Der Export hat nicht geklappt."));
+    return;
+  }
+  const kopf = ["Belegdatum", "Belegnummer", "Lieferant", "Netto", "Steuer", "Brutto", "Status"];
+  const zeilen = (data.zeilen || []).map(z => [z.belegdatum, z.belegnummer, z.lieferant, Number(z.netto) || 0, Number(z.steuer) || 0, Number(z.brutto) || 0, z.status]);
+  const text = "\uFEFF" + [kopf].concat(zeilen).map(r => r.map(exportZelle).join(";")).join("\r\n") + "\r\n";
+  const url = URL.createObjectURL(new Blob([text], { type:"text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = "omoteno-einkaufsbelege-" + von + "-bis-" + bis + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+$("exportKnopf").onclick = belegeExportieren;
+(() => {
+  const heute = new Date(), vor = new Date(heute.getFullYear(), heute.getMonth() - 1, 1);
+  const f = d => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  $("exportVon").value = f(vor); $("exportBis").value = f(heute);
+})();
 
 function ladefehler(t){ const f = $("ladefehler"); f.textContent = t; f.hidden = !t; }
 
