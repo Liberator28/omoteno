@@ -64,7 +64,8 @@ async function lies(seite, ziel) {
   return seite.evaluate(() => ({
     seite: seiteJetzt,
     h2: (document.querySelector("#inhalt .seite h2") || {}).textContent || "",
-    unter: (document.querySelector("#inhalt .seite > p.unter") || {}).textContent || "",
+    /* Klassisch steht die Unterzeile direkt unter der Überschrift der Seite, im Premium-Stil (Choco) in der Kopfkarte (.kopfkarte p.unter). */
+    unter: (document.querySelector("#inhalt .seite > p.unter, #inhalt .seite .kopfkarte p.unter") || {}).textContent || "",
     gerichte: Array.from(document.querySelectorAll("#inhalt .gericht .n, #inhalt .gericht [data-gname]"))
       .map(e => e.textContent.trim()).join("|"),
     text: document.getElementById("inhalt").textContent,
