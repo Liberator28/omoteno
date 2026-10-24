@@ -527,7 +527,9 @@ async function teilE(browser){
   await p.evaluate(() => sichern(false)); await p.waitForTimeout(300);
   const g = await p.evaluate(() => window.__schreib.filter(w => w.tab === "gerichte" && w.op === "update").pop());
   const zweite = keys[1];
-  pruef(g && g.daten.opt === zweite + ",kaeserand", "Speichern schreibt opt = gewählte Gruppe + Vorlagen-Gruppe bleibt", g && g.daten.opt);
+  /* Die Reihenfolge in opt ist die der Gruppen beim Gast: Bestehendes behält seinen Platz (die Vorlagen-Gruppe), Neues kommt hinten. */
+  pruef(g && String(g.daten.opt).split(",").sort().join(",") === [zweite, "kaeserand"].sort().join(",") && g.daten.opt === "kaeserand," + zweite,
+    "Speichern schreibt opt = gewählte Gruppe + Vorlagen-Gruppe bleibt (Vorlagen-Gruppe behält ihren Platz, Neues hinten)", g && g.daten.opt);
   pruef(!fehler.length, "Board: keine Seitenfehler", fehler.join(" | ") || "–");
   await ctx.close();
 
