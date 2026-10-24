@@ -215,11 +215,18 @@ Deno.serve(async (anfrage: Request) => {
   const key = schluessel();
   if (!key) return nein("kein_schluessel");
 
+  /* Monatsbudget in Euro (migration-ki-nutzung.sql), vor dem Kontingent:
+     eine Absage verbraucht kein Kontingent. Nur ein HARTES, erreichtes
+     Budget weist ab; Fehler/fehlende Funktion lassen durch (fail-open §7). */
+  const { data: budget, error: budgetFehler } = await alsNutzer.rpc("ki_budget_stand", { p_betrieb: betrieb });
+  if (!budgetFehler && budget && budget.hart === true && budget.ueber === true) return nein("budget");
+
   const { data: rest, error: kontoFehler } = await alsNutzer.rpc("ki_kontingent_nehmen", { p_anzahl: KOSTEN, p_betrieb: betrieb });
   if (kontoFehler && kontoFehler.code !== "42883" && kontoFehler.code !== "PGRST202") return nein("kein_recht");
   if (!kontoFehler && typeof rest === "number" && rest < 0) return nein("kontingent");
 
   let gelesen: Gelesen;
+  let gebucht: boolean | null = null;
   try {
     const claude = new Anthropic({ apiKey: key });
     const daten = base64(bytes);
@@ -243,6 +250,27 @@ Deno.serve(async (anfrage: Request) => {
         ],
       }],
     });
+    /* Verbrauch ins Logbuch (migration-ki-nutzung.sql) — VOR jeder Auswertung:
+       auch eine Ablehnung oder eine unlesbare Antwort hat Token gekostet. Ein
+       Fehler hier blockiert nie das Ergebnis (fail-open), wird aber gemeldet. */
+    const u = (ergebnis as { usage?: { input_tokens?: number; output_tokens?: number;
+      cache_read_input_tokens?: number; cache_creation_input_tokens?: number } }).usage;
+    const zahl = (x: unknown, max: number) => Math.min(max, Math.max(0, Math.floor(Number(x ?? 0)) || 0));
+    const verbraucht = {
+      ein: zahl(Number(u?.input_tokens ?? 0) + Number(u?.cache_creation_input_tokens ?? 0), 400000),
+      aus: zahl(u?.output_tokens, 64000), cache: zahl(u?.cache_read_input_tokens, 400000),
+    };
+    /* Keine usage in der Antwort: nichts zu buchen → null (weder „gebucht“ noch „gescheitert“). */
+    if (verbraucht.ein || verbraucht.aus || verbraucht.cache) {
+      try {
+        const { data, error } = await alsNutzer.rpc("ki_nutzung_buchen", {
+          p_funktion: "beleg_lesen", p_modell: MODELL, p_betrieb: betrieb,
+          p_ein: verbraucht.ein, p_aus: verbraucht.aus, p_cache: verbraucht.cache,
+        });
+        gebucht = !error && data?.gebucht === true;
+      } catch { gebucht = false; }
+    }
+
     /* Erst stop_reason, dann der Inhalt (bei Ablehnung steht dort nichts). */
     if (ergebnis.stop_reason === "refusal") return nein("abgelehnt");
     if (ergebnis.stop_reason === "max_tokens") return nein("zu_lang");
@@ -332,5 +360,6 @@ Deno.serve(async (anfrage: Request) => {
     lieferant: lief ? lief.name : null, lieferant_text: lieferantText,
     ...(gespeichert.hinweis ? { hinweis: gespeichert.hinweis, standort: gespeichert.standort ?? null } : {}),
     ...(datumText && !datumOk ? { datum_verworfen: datumText } : {}),
+    gebucht,
   });
 });

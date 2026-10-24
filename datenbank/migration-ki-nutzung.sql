@@ -59,12 +59,14 @@ create table if not exists public.ki_preise (
 alter table public.ki_preise enable row level security;
 revoke all on public.ki_preise from anon, authenticated;
 
--- Die Modelle, die die Edge Functions heute rufen. Preise bewusst leer:
+-- Die Modelle, die die Edge Functions rufen oder rufen können (UEBERSETZER_MODELL). Preise bewusst leer:
 -- Sie stehen nicht verlässlich im Verzeichnis (die Anleitung nennt USD, hier
 -- wird in EUR gerechnet) — der Master trägt sie ein, bis dahin „Preis fehlt“.
 insert into public.ki_preise (modell, art, bemerkung) values
   ('claude-opus-5',               'token', 'Übersetzer (Standard). Preis in EUR je Mio. Token eintragen.'),
   ('claude-opus-5-5',             'token', 'Rechnung lesen (beleg-lesen). Preis in EUR je Mio. Token eintragen.'),
+  ('claude-sonnet-5-5',           'token', 'Übersetzer-Alternative (UEBERSETZER_MODELL). Preis in EUR je Mio. Token eintragen.'),
+  ('claude-haiku-5-5',            'token', 'Übersetzer-Alternative (UEBERSETZER_MODELL). Preis in EUR je Mio. Token eintragen.'),
   ('fal-ai/birefnet/v2',          'bild',  'Freisteller. Preis in EUR je Bild eintragen.'),
   ('fal-ai/bria/product-shot',    'bild',  'Profi-Foto. Preis in EUR je Bild eintragen.')
 on conflict (modell) do nothing;

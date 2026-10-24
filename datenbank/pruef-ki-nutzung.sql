@@ -52,8 +52,8 @@ select 'K04 von jeder Funktion gibt es genau EINE Fassung (§2.1) | ' || (
   select count(*) = 5 and count(distinct p.proname) = 5
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
    where n.nspname = 'public' and p.proname in ('ki_nutzung_buchen','ki_budget_stand','master_ki_nutzung','master_ki_budget_setzen','master_ki_preis_setzen'));
-select 'K05 die vier Modelle sind eingetragen, alle OHNE Preis | ' || (
-  select count(*) = 4 and bool_and(eingabe_eur_je_mio is null and eur_je_bild is null) from ki_preise);
+select 'K05 die sechs Modelle sind eingetragen, alle OHNE Preis | ' || (
+  select count(*) = 6 and bool_and(eingabe_eur_je_mio is null and eur_je_bild is null) from ki_preise);
 
 -- ── K1x Buchen: Betrieb kommt aus der Mitgliedschaft, Preis aus dem Server ─
 set local role authenticated; select pg_temp.als(:'A');
@@ -288,7 +288,7 @@ select 'K41c Budgets: beide Betriebe aufgeführt, verbraucht_monat Blend = 0 (Vo
   ((select jsonb_array_length(v::jsonb->'budgets') from st where k = 'm1') = 2
    and (select (b->>'verbraucht_monat_eur')::numeric from st, jsonb_array_elements(v::jsonb->'budgets') b
          where k = 'm1' and b->>'betrieb_name' = 'Blend') = 0);
-select 'K41d Preistabelle liegt bei | ' || ((select jsonb_array_length(v::jsonb->'preise') from st where k = 'm1') = 4);
+select 'K41d Preistabelle liegt bei | ' || ((select jsonb_array_length(v::jsonb->'preise') from st where k = 'm1') = 6);
 select 'K42 Zeitraum falsch herum / über 400 Tage / NULL → zeitraum | ' ||
   ((select v::jsonb->>'grund' from st where k = 'm2') = 'zeitraum' and (select v::jsonb->>'grund' from st where k = 'm3') = 'zeitraum'
    and (select v::jsonb->>'grund' from st where k = 'm4') = 'zeitraum');
