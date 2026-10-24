@@ -36,8 +36,10 @@ insert into probe select 'K1 Schranke der Rollen nennt manager UND jeden alten W
      from (select pg_get_constraintdef(oid) d from pg_constraint where conrelid='public.betrieb_mitglieder'::regclass and conname='betrieb_mitglieder_rolle_check') x);
 insert into probe select 'K2 anon hat auf KEINE neue Funktion EXECUTE',
   (select bool_and(not has_function_privilege('anon', p.oid, 'execute'))::text from pg_proc p join pg_namespace n on n.oid=p.pronamespace
-    where n.nspname='public' and p.proname in ('hat_recht','meine_rechte','rechte_wirksam','team_rechte_setzen','team_rechte_liste','team_rechte_verlauf',
+    where n.nspname='public' and p.proname in ('rechte_katalog','hat_recht','meine_rechte','rechte_wirksam','team_rechte_setzen','team_rechte_liste','team_rechte_verlauf',
       'teamziel_speichern','teamziel_freigeben','teamziel_archivieren','teamaufgabe_haken','teamziele_stand','finanz_export_belege','teamziel_nachziehen','mitglied_rechte_wache'));
+insert into probe select 'K2b authenticated und service_role dürfen den Katalog rufen (die Schranke auf der Spalte braucht es, §2.7)',
+  (has_function_privilege('authenticated','public.rechte_katalog()','execute') and has_function_privilege('service_role','public.rechte_katalog()','execute'))::text;
 insert into probe select 'K3 teamziel_nachziehen und die Wache sind für authenticated KEIN Endpunkt',
   (select bool_and(not has_function_privilege('authenticated', p.oid, 'execute'))::text from pg_proc p join pg_namespace n on n.oid=p.pronamespace
     where n.nspname='public' and p.proname in ('teamziel_nachziehen','mitglied_rechte_wache'));

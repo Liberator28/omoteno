@@ -74,6 +74,11 @@ language sql immutable set search_path = public as $$
   ) v(recht, bereich, art, standard_manager, durchsetzung, titel, satz)
 $$;
 
+-- Der Katalog ist kein Endpunkt für Fremde (§2.3a: PostgREST stellt jede Funktion bereit, sobald die Rolle EXECUTE hat);
+-- authenticated und service_role brauchen ihn für die Schranke unten (§2.7).
+revoke execute on function public.rechte_katalog() from public, anon;
+grant  execute on function public.rechte_katalog() to authenticated, service_role;
+
 -- ── 3 · Spalte, Form-Schranke (§2.7: EXECUTE für jede Rolle, die die Zeile schreibt) ──────
 alter table public.betrieb_mitglieder add column if not exists rechte jsonb not null default '{}'::jsonb;
 
