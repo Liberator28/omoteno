@@ -90,6 +90,11 @@ const ZIERRAT_ARTEN     = ["tusche"];
    hartkodiert (§8.1a), damit kein Codepfad je "HAUS===minhkeey"
    prüfen muss. themaSetzen() im Gerüst kennt nur "kaiserlich". */
 const THEMA_ARTEN       = ["kaiserlich"];
+/* Startstil: wie die STARTSEITE aussieht — „klassisch“ ist der Hub von vorher, „premium“ die Fassung mit Foto-Kopf,
+   Bildkarten, Leiste „Auswahl ansehen“ und Hauptnavigation. Ein Schalter je Haus statt eines stillen Wechsels für
+   alle (§2.5: bestehende Häuser sehen ohne eigenes Zutun keine Änderung). Fehlt das Feld, bleibt der Hub wie bisher;
+   startstilSetzen() im Gerüst kennt nur „premium“. */
+const STARTSTIL_ARTEN   = ["klassisch", "premium"];
 /* Was die Figur je Bestellphase tragen kann, und welche Phasen es
    gibt — beides aus dem Gerüst, aus demselben Grund wie oben. */
 const REQUISITEN       = ausGeruest(/const E_REQUISITEN = \{([\s\S]*?)\n\};/, "E_REQUISITEN");
@@ -398,6 +403,10 @@ function pruefeMarkenblatt(mb){
   if(mb.thema !== undefined && THEMA_ARTEN.indexOf(mb.thema) < 0)
     F("thema unbekannt: " + mb.thema +
       " — erlaubt: " + THEMA_ARTEN.join(", "));
+  /* Ein Tippfehler („Premium“, „premiun“) bliebe sonst wortlos beim alten Hub — der Kunde hätte umgestellt und sähe nichts. */
+  if(mb.startstil !== undefined && STARTSTIL_ARTEN.indexOf(mb.startstil) < 0)
+    F("startstil unbekannt: " + JSON.stringify(mb.startstil) +
+      " — erlaubt: " + STARTSTIL_ARTEN.join(", "));
   /* Dieselbe Begründung wie bei figur: Ein Tippfehler in haende
      ergäbe im Hub wortlos wieder die Vorgabe. Der Kunde hätte seine
      Pfanne gewählt und bekäme den Kuchenstapel. */
@@ -566,6 +575,7 @@ function alsQuelltext(mb){
     mb.kopfband  ? liste("kopfband", mb.kopfband) : null,
     mb.zierrat   ? liste("zierrat", mb.zierrat) : null,
     mb.thema     ? liste("thema", mb.thema) : null,
+    mb.startstil ? liste("startstil", mb.startstil) : null,
     /* false ist ein Wert, kein Fehlen: typeof statt Wahrheitswert,
        sonst verschwände genau das Abschalten. */
     typeof mb.bewegteZeichen === "boolean" ? liste("bewegteZeichen", mb.bewegteZeichen) : null,

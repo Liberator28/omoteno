@@ -4610,6 +4610,130 @@ body:has(#zahlteil) #rechtFuss{display:none}
   a.kachel.saeule{min-height:calc(124px * var(--kachel-hoehe, 1));padding:12px 10px}
   .kachel.saeule .txt strong{font-size:calc(14px * var(--kachel-textgroesse, 1))}
 }
+/* ═══ Premium-Startseite (Markenblatt „startstil":"premium") ════════════
+   Foto-Kopf, Bestellart-Chips, Bildkarten, Leiste „Auswahl ansehen“, Hauptnavigation. Alles unter
+   body[data-startstil="premium"]; ohne den Schalter trägt der Hub keine Zeile davon im Bild.
+   Farben nur aus den Markenblatt-Rollen (--band, --band-text, --flaeche, --tinte …): was auf der Hausfarbe steht, rechnet
+   das Haus (§5.1); was über einem Foto steht, liegt auf einem Schleier aus --band, nie auf dem Foto selbst.
+   Spezifität: Die Kopfregeln oben (kopfbild, schmal ohne Bild) haben 0,2–0,3 Attribute; Premium-Regeln stehen später mit
+   gleicher oder höherer Stufe — die Reihenfolge im Blatt allein hielte bei einer künftigen Regel nicht. */
+body[data-startstil="premium"][data-ansicht="start"]:not([data-kopfbild="an"]) header,
+body[data-startstil="premium"][data-ansicht="start"][data-kopfbild="an"] header{
+  grid-template-areas:"logo" "status" "claim" "chips";
+  align-content:center;row-gap:12px;
+  min-height:clamp(300px,44vh,420px);min-height:clamp(300px,44dvh,420px);
+  padding:calc(var(--rand-oben) + 58px) var(--rand) 30px;
+  background:radial-gradient(120% 90% at 50% 0%, color-mix(in srgb, var(--band-text) 12%, var(--band)), var(--band) 72%);
+}
+body[data-startstil="premium"][data-ansicht="start"][data-kopfbild="an"] header{background:var(--band)}
+body[data-startstil="premium"][data-ansicht="start"][data-kopfbild="an"] .kopfbild{
+  position:absolute;inset:0;margin:0;z-index:0;aspect-ratio:auto;max-height:none;grid-area:auto}
+/* Der Schleier: oben nur leicht (das Foto soll atmen), zur Schrift hin fast Hausfarbe. Aus --band gerechnet, damit Schrift
+   in --band-text auf JEDEM Foto lesbar bleibt — pruef-start-premium.js misst den schlechtesten Bildpunkt hinter Slogan und Pille. */
+body[data-startstil="premium"][data-ansicht="start"][data-kopfbild="an"] .kopfbild::after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--band) 38%, transparent) 0%,
+    color-mix(in srgb, var(--band) 72%, transparent) 46%, color-mix(in srgb, var(--band) 94%, transparent) 100%)}
+body[data-startstil="premium"][data-ansicht="start"] .logo,
+body[data-startstil="premium"][data-ansicht="start"] #status,
+body[data-startstil="premium"][data-ansicht="start"] .claim,
+body[data-startstil="premium"][data-ansicht="start"] .bestellart{position:relative;z-index:2}
+body[data-startstil="premium"][data-ansicht="start"] .logo{--logo-gr:104px;width:var(--logo-gr);height:var(--logo-gr);margin-top:0}
+body[data-startstil="premium"][data-ansicht="start"] .logo svg,
+body[data-startstil="premium"][data-ansicht="start"] .logo img{width:var(--logo-gr);height:var(--logo-gr)}
+body[data-startstil="premium"][data-ansicht="start"] .claim{
+  font-size:17px;line-height:1.35;max-width:30ch;color:var(--band-text);font-style:italic;
+  text-shadow:0 1px 10px color-mix(in srgb, var(--band) 80%, transparent)}
+/* Die Pille „Geöffnet bis …“ ist ein Link zu „Alles über uns“. Dunkles Glas aus der Hausfarbe: die Schrift steht auf --band,
+   nicht auf dem Foto. */
+body[data-startstil="premium"][data-ansicht="start"] .st-link{display:inline-flex;max-width:100%;border-radius:999px;
+  color:inherit;text-decoration:none;-webkit-tap-highlight-color:transparent}
+body[data-startstil="premium"][data-ansicht="start"] .st-link:focus-visible{outline:2px solid var(--band-text);outline-offset:3px}
+body[data-startstil="premium"][data-ansicht="start"] .st-link .status{
+  min-height:48px;padding:0 14px 0 18px;font-size:15px;
+  background:color-mix(in srgb, var(--band) 66%, transparent);
+  border-color:color-mix(in srgb, var(--band-text) 30%, transparent)}
+.st-pfeil{flex:none;width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round;opacity:.85}
+[dir="rtl"] .st-pfeil{transform:scaleX(-1)}
+/* Bestellart: zwei Chips unter dem Slogan. Gewählt = Hausfarbe und Schrift vertauscht (beide Rollen messen ≥ 4,5:1 ohnehin,
+   weil sie als Paar gelten); nicht gewählt = dunkles Glas. Ersetzt auf der Startseite den Schalter oben rechts. */
+.bestellart{grid-area:chips;display:flex;gap:10px;justify-content:center;width:100%;max-width:360px;margin-top:4px}
+.ba-chip{flex:1 1 0;min-width:0;min-height:48px;display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:0 14px;border-radius:999px;font:inherit;font-size:15px;font-weight:650;cursor:pointer;
+  color:var(--band-text);background:color-mix(in srgb, var(--band) 66%, transparent);
+  border:1px solid color-mix(in srgb, var(--band-text) 30%, transparent);
+  -webkit-backdrop-filter:blur(12px) saturate(150%);backdrop-filter:blur(12px) saturate(150%);
+  -webkit-tap-highlight-color:transparent;
+  transition:background-color .2s ease,color .2s ease,transform .2s cubic-bezier(.34,1.56,.64,1)}
+.ba-chip.an{background:var(--band-text);color:var(--band);border-color:var(--band-text)}
+.ba-chip:active{transform:scale(.97)}
+.ba-chip:focus-visible{outline:2px solid var(--band-text);outline-offset:3px}
+.ba-ico{flex:none;display:inline-flex}
+.ba-ico svg{display:block;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.ba-text{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+body[data-startstil="premium"][data-ansicht="start"] .kopfwahl > .lieferwahl{display:none}
+@media (prefers-reduced-motion:reduce){ .ba-chip{transition:none} .ba-chip:active{transform:none} }
+@media (prefers-reduced-transparency:reduce){
+  .ba-chip,body[data-startstil="premium"][data-ansicht="start"] .st-link .status{
+    background:var(--band);-webkit-backdrop-filter:none;backdrop-filter:none}
+  .ba-chip.an{background:var(--band-text)}
+}
+/* Die vier Wege als Bildkarten: oben eine Fläche (Foto, sonst getönt mit Zeichen), darunter Name, Zeile, Pfeil. Schrift steht
+   auf --flaeche, nie auf dem Foto. */
+/* body[…] davor: .sz:not(.sz-jetzt):not(.sz-breit) hat 0,3,0 und setzt Polster/Zeilen der alten Karte. */
+body[data-startstil="premium"] .sz.sz-p{--sz-ton:var(--gold);display:grid;grid-template-columns:minmax(0,1fr) auto;grid-template-rows:auto 1fr;row-gap:0;column-gap:0;
+  align-items:stretch;align-content:stretch;padding:0;min-height:0;border-radius:22px;
+  background:var(--flaeche);-webkit-backdrop-filter:none;backdrop-filter:none;
+  box-shadow:0 1px 2px rgba(0,0,0,.06), 0 14px 28px -16px rgba(0,0,0,.45)}
+body[data-startstil="premium"] .sz.sz-p[data-sz="auswahl"],body[data-startstil="premium"] .sz.sz-p[data-sz="roulette"]{--sz-ton:var(--rot)}
+body[data-startstil="premium"] .sz.sz-p .sz-bild{grid-column:1 / -1;grid-row:1}
+body[data-startstil="premium"] .sz.sz-p .sz-mitte{grid-column:1;grid-row:2;padding:11px 0 13px 14px;justify-content:center}
+body[data-startstil="premium"] .sz.sz-p .sz-pfeil{grid-column:2;grid-row:2;align-self:center;margin:0 14px 0 8px}
+.sz-bild{position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;
+  height:clamp(92px,27vw,124px);
+  background:color-mix(in srgb, var(--sz-ton) 17%, var(--flaeche))}
+.sz-p.sz-breit .sz-bild{height:clamp(84px,24vw,112px)}
+.sz-art{display:flex;align-items:center;justify-content:center;font-size:54px;line-height:1;color:var(--sz-ton)}
+.sz-art svg{display:block;width:44px;height:44px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round}
+.sz-bild img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block}
+.sz-p .sz-text{font-size:16px;font-weight:700}
+.sz-p .sz-unter{font-size:13px;-webkit-line-clamp:1}
+.sz-p .sz-zahl{top:9px;inset-inline-end:9px;min-width:24px;height:24px;border-radius:12px;font-size:12.5px}
+/* Die Markenbotschaft (der Begleiter): eine ruhige Karte, kein Kasten in Kastenfarbe. */
+body[data-startstil="premium"] .begleiter{padding:14px 16px;gap:14px;border-radius:22px;background:var(--flaeche);
+  box-shadow:0 1px 2px rgba(0,0,0,.05), 0 12px 26px -18px rgba(0,0,0,.4)}
+body[data-startstil="premium"] .begleiter p{font-size:15.5px;line-height:1.45;color:var(--tinte)}
+body[data-startstil="premium"] .schnellzeile{gap:12px;margin-bottom:16px}
+/* Hauptnavigation und Auswahl-Leiste (Premium). --nav-h = Höhe der Leiste samt Sicherheitsabstand; jede feste Leiste darüber
+   rechnet damit, und der Fuß der Seite bekommt denselben Abstand zusätzlich — als Polster, in denselben vier Fällen wie
+   oben beim Fuß (Randabstand wirkte nicht: gemessen blieben die letzten Links 34 px unter der Leiste). */
+body[data-nav="an"]{--nav-h:calc(64px + env(safe-area-inset-bottom))}
+.hauptnav{position:fixed;left:50%;transform:translateX(-50%);bottom:0;width:100%;max-width:540px;z-index:39;
+  display:flex;align-items:stretch;gap:2px;padding:6px 8px calc(6px + env(safe-area-inset-bottom));
+  background:var(--flaeche);border-top:1px solid var(--linie-stark);
+  box-shadow:0 -12px 24px -18px rgba(0,0,0,.4)}
+.hn-tab{flex:1 1 0;min-width:0;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;
+  border-radius:14px;color:var(--tinte-leise);text-decoration:none;font-size:12px;font-weight:650;line-height:1.1;
+  -webkit-tap-highlight-color:transparent;transition:background-color .2s ease,color .2s ease}
+.hn-tab:focus-visible{outline:2px solid var(--tinte);outline-offset:-2px}
+.hn-ico svg{display:block;width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.hn-text{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.hn-tab.an{color:var(--tinte);background:color-mix(in srgb, var(--rot) 13%, var(--flaeche))}
+.hn-tab.an .hn-ico{color:var(--rot)}
+@media (prefers-reduced-motion:reduce){ .hn-tab{transition:none} }
+body[data-nav="an"] .auswahlbalken{bottom:calc(var(--nav-h) + 10px)}
+body[data-nav="an"] .vstreifen,body[data-nav="an"] .wsstreifen{bottom:calc(var(--nav-h) + 10px)}
+body[data-nav="an"].hat-balken .vstreifen,body[data-nav="an"].hat-balken .wsstreifen{bottom:calc(var(--nav-h) + 78px)}
+body[data-nav="an"] footer{padding-bottom:calc(12px + var(--nav-h))}
+body[data-nav="an"].hat-balken footer{padding-bottom:calc(100px + var(--nav-h))}
+body[data-nav="an"]:has(#vstreifen:not([hidden])) footer,
+body[data-nav="an"]:has(#wsstreifen:not([hidden])) footer{padding-bottom:calc(12px + var(--nav-h))}
+body[data-nav="an"].hat-balken:has(#vstreifen:not([hidden])) footer,
+body[data-nav="an"].hat-balken:has(#wsstreifen:not([hidden])) footer{padding-bottom:calc(160px + var(--nav-h))}
+body[data-startstil="premium"] .auswahlbalken{border-radius:20px;padding:10px 16px 10px 10px}
+body[data-startstil="premium"] .auswahlbalken > span:first-child{display:inline-flex;align-items:center;gap:10px;min-width:0}
+.ab-bild{flex:none;width:44px;height:44px;border-radius:12px;overflow:hidden;background:color-mix(in srgb, var(--grund) 18%, transparent)}
+.ab-bild img{display:block;width:100%;height:100%;object-fit:cover}
 </style>
 
 <script>
@@ -5361,6 +5485,9 @@ function farbMerkwert(fb){
   </button>
   <h1 id="titel"></h1>
   <p class="claim" id="claim"></p>
+  <!-- Premium-Startseite: Bestellart als zwei Chips im Kopf (nur echte Wege: Im Haus, Lieferung). Leer und hidden, bis
+       bestellartZeichnen() sie füllt; klassisch bleibt das Element leer. -->
+  <div class="bestellart" id="bestellart" role="radiogroup" aria-label="Bestellart" hidden></div>
   <!-- Öffnungsstand oben rechts als kleine Glas-Box: Punkt + Satz,
        geschlossen dazu eine feine Linie bis zur Öffnung. Eine Farbe.
        statusHTML() zeichnet. -->
@@ -5615,9 +5742,11 @@ function farbMerkwert(fb){
 <button class="vstreifen" id="vstreifen" hidden></button>
 
 <button class="auswahlbalken" id="auswahlbalken">
-  <span><span class="anzahl" id="auswahlzahl">0</span> <span id="auswahltext"></span></span>
+  <span><span class="ab-bild" id="auswahlbild" hidden aria-hidden="true"></span><span class="anzahl" id="auswahlzahl">0</span> <span id="auswahltext"></span></span>
   <span class="balkenrechts"><span id="auswahlsumme"></span><span class="bpfeil">›</span></span>
 </button>
+<!-- Premium-Startseite: Hauptnavigation unten. Leer und hidden, bis hauptNavZeichnen() sie füllt; klassisch bleibt sie leer. -->
+<nav class="hauptnav" id="hauptnav" aria-label="Hauptnavigation" hidden></nav>
 
 <div class="blende" id="blende"></div>
 <div class="warenkarte" id="warenkarte" role="dialog" aria-modal="true"
@@ -5744,6 +5873,16 @@ function farbMerkwert(fb){
   if(MARKENBLATT.thema !== "kaiserlich") return;
   document.body.dataset.thema = "kaiserlich";
 })();
+
+/* Startstil „premium“: Foto-Kopf, Bildkarten, Leiste „Auswahl ansehen“, Hauptnavigation. Ein Schalter je Haus über
+   das Markenblatt (nie am Slug, §8.1a). body[data-startstil] ist der einzige Schalter; ohne ihn ist der Hub wie vorher.
+   Alles Neue in den Regeln steht unter body[data-startstil="premium"] — „klassisch“ trägt keine Zeile davon. */
+function startstilSetzen(){
+  if(MARKENBLATT.startstil === "premium") document.body.dataset.startstil = "premium";
+  else delete document.body.dataset.startstil;
+}
+startstilSetzen();
+function startPremium(){ return document.body.dataset.startstil === "premium"; }
 
 /* ==========================================================
    K O N F I G   ·   hier änderst du alles
@@ -10218,6 +10357,10 @@ const TEXTE = {
 
 /* --- Kacheln --- */
 "Für den Betrieb":{en:"Staff area",tr:"İşletme için",ru:"Для персонала",fr:"Espace équipe",es:"Para el personal",it:"Area staff",pl:"Dla personelu",ar:"لطاقم العمل",uk:"Для персоналу",nl:"Voor het team",ro:"Pentru personal"},
+"Start":{en:"Home",tr:"Ana sayfa",ru:"Главная",fr:"Accueil",es:"Inicio",it:"Home",pl:"Start",ar:"الرئيسية",uk:"Головна",nl:"Start",ro:"Acasă"},
+"Bestellungen":{en:"Orders",tr:"Siparişler",ru:"Заказы",fr:"Commandes",es:"Pedidos",it:"Ordini",pl:"Zamówienia",ar:"الطلبات",uk:"Замовлення",nl:"Bestellingen",ro:"Comenzi"},
+"Profil":{en:"Profile",tr:"Profil",ru:"Профиль",fr:"Profil",es:"Perfil",it:"Profilo",pl:"Profil",ar:"الملف الشخصي",uk:"Профіль",nl:"Profiel",ro:"Profil"},
+"Hauptnavigation":{en:"Main navigation",tr:"Ana gezinme",ru:"Главная навигация",fr:"Navigation principale",es:"Navegación principal",it:"Navigazione principale",pl:"Nawigacja główna",ar:"التنقل الرئيسي",uk:"Головна навігація",nl:"Hoofdnavigatie",ro:"Navigare principală"},
 "Speisekarte":{en:"Food menu",tr:"Yemek menüsü",ru:"Меню блюд",fr:"Carte",es:"Carta",it:"Menù",pl:"Menu",ar:"قائمة الطعام",uk:"Меню страв",nl:"Menukaart",ro:"Meniu"},
 "Vorspeisen, Salate, Pizza, Nudeln, Desserts":{en:"Starters, salads, pizza, pasta, desserts",tr:"Başlangıçlar, salatalar, pizza, makarna, tatlılar",ru:"Закуски, салаты, пицца, паста, десерты",fr:"Entrées, salades, pizzas, pâtes, desserts",es:"Entrantes, ensaladas, pizza, pasta, postres",it:"Antipasti, insalate, pizza, pasta, dolci",pl:"Przystawki, sałatki, pizza, makarony, desery",ar:"المقبلات والسلطات والبيتزا والمعكرونة والحلويات",uk:"Закуски, салати, піца, паста, десерти",nl:"Voorgerechten, salades, pizza, pasta, desserts",ro:"Aperitive, salate, pizza, paste, deserturi"},
 "Getränkekarte":{en:"Drinks menu",tr:"İçecek menüsü",ru:"Карта напитков",fr:"Carte des boissons",es:"Carta de bebidas",it:"Lista bevande",pl:"Karta napojów",ar:"قائمة المشروبات",uk:"Карта напоїв",nl:"Drankenkaart",ro:"Lista de băuturi"},
@@ -11556,22 +11699,28 @@ function jetztOffen(){
 /* Die Öffnungsanzeige oben rechts (siehe CSS .status). Eine Farbe,
    ein Punkt, ein Satz — geschlossen dazu die feine Linie bis zur
    Öffnung (Anteil aus jetztOffen()). */
-function statusHTML(st){
+function statusHTML(st, pfeil){
   if(st.offen && st.bis){
     const satz = t("Geöffnet bis {x}", {x: st.bis});
     return '<span class="status offen" title="' + hs(satz) + '"><span class="st-rand" aria-hidden="true"><span class="st-licht"></span></span><span class="st-punkt" aria-hidden="true"></span>' +
-           '<span class="st-text">' + hs(satz) + '</span></span>';
+           '<span class="st-text">' + hs(satz) + '</span>' + (pfeil || "") + '</span>';
   }
   const satz = st.ab ? t("Öffnet {w} {x}", {w: st.wann, x: st.ab}) : st.text;
   const anteil = Math.max(0, Math.min(1, st.anteil || 0));
   return '<span class="status zu" title="' + hs(st.text) + '"><span class="st-rand" aria-hidden="true"><span class="st-licht"></span></span><span class="st-punkt" aria-hidden="true"></span>' +
-         '<span class="st-text">' + hs(satz) + '</span>' +
+         '<span class="st-text">' + hs(satz) + '</span>' + (pfeil || "") +
          (st.ab ? '<span class="st-linie" aria-hidden="true" data-anteil="' + anteil.toFixed(3) + '">' +
                   '<i style="--anteil:' + anteil.toFixed(3) + '"></i></span>' : "") + '</span>';
 }
+/* Premium: die Pille führt zu „Alles über uns“ (Öffnungszeiten, Adresse — dieselbe Seite wie das Siegel), mit Pfeil.
+   Klassisch bleibt sie reine Anzeige. */
+const ST_PFEIL = '<svg class="st-pfeil" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>';
 function statusZeichnen(){
   const el = $("status"); if(!el) return;
-  const html = statusHTML(jetztOffen());
+  const st = jetztOffen();
+  const html = startPremium()
+    ? '<a class="st-link" href="#/haus" aria-label="' + hs(t("Alles über uns")) + '">' + statusHTML(st, ST_PFEIL) + '</a>'
+    : statusHTML(st);
   if(el.innerHTML !== html) el.innerHTML = html;
 }
 /* Die Linie wächst weiter: einmal je Minute neu (nur sichtbar). */
@@ -11789,6 +11938,36 @@ function lieferWahl(ziel){
   lwUhr = setTimeout(() => w.classList.remove("zeigt"), wechsel ? 1900 : 1500);
 }
 
+/* Premium-Startseite: die Bestellart als zwei Chips im Kopf. Gleiche Bedingung wie der Schalter oben rechts
+   (Lieferung an, niemand am Tisch) — ein Chip, der nirgends hinführt, erscheint nicht. „Abholen“ kennt der Hub nicht,
+   also gibt es den Chip nicht. Der Tipp geht über denselben Weg wie der Schalter (lieferWahl). */
+const BA_ROLLER = '<svg viewBox="0 0 24 24"><rect x="3.2" y="4.6" width="6.4" height="5.4" rx="1.2"/><path d="M6.4 10v2.2"/><path d="M3.5 15.4c.5-1.9 2.1-3.2 4-3.2h3.6"/><path d="M8.4 17.5h5.2c0-3.3 1.6-5.9 3.9-7.2"/><path d="M17.5 10.3 16.1 5h-2.4"/><circle cx="6" cy="17.5" r="2.3"/><circle cx="18.2" cy="17.5" r="2.3"/></svg>';
+function bestellartZeichnen(){
+  const w = $("bestellart"); if(!w) return;
+  const zeigen = startPremium() && document.body.dataset.ansicht === "start" && LIEFER.an && !tischNr;
+  if(!zeigen){ w.hidden = true; w.innerHTML = ""; return; }
+  const wahl = liefermodus ? "liefern" : "haus";
+  const chip = (art, icon, name) => '<button type="button" role="radio" class="ba-chip' + (art === wahl ? " an" : "") +
+    '" data-bestellart="' + art + '" aria-checked="' + (art === wahl) + '" tabindex="' + (art === wahl ? 0 : -1) + '">' +
+    '<span class="ba-ico" aria-hidden="true">' + icon + '</span><span class="ba-text">' + hs(name) + '</span></button>';
+  const html = chip("haus", ICONS.speise, t("Im Haus")) + chip("liefern", BA_ROLLER, t("Lieferung"));
+  w.setAttribute("aria-label", t("Bestellart"));
+  w.hidden = false;
+  if(w.innerHTML !== html) w.innerHTML = html;
+}
+document.addEventListener("click", e => {
+  const c = e.target.closest && e.target.closest("[data-bestellart]");
+  if(c) lieferWahl(c.dataset.bestellart);
+});
+document.addEventListener("keydown", e => {
+  const c = e.target.closest && e.target.closest("[data-bestellart]");
+  if(!c || (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+  e.preventDefault();
+  const ziel = c.dataset.bestellart === "haus" ? "liefern" : "haus";
+  lieferWahl(ziel);
+  const n = document.querySelector('[data-bestellart="' + ziel + '"]'); if(n) n.focus();
+});
+
 /* Welche Kacheln die Startseite gerade zeigt, in ihrer Reihenfolge.
    EINE Stelle: Die Wischgeste zwischen den Unterseiten (seitenWischen)
    blättert genau in dieser Folge — sonst führte ein Wisch zu einer
@@ -11982,36 +12161,69 @@ document.addEventListener("click", e => {
    zeigt) und der Serviceruf (nur am Tisch — im Liefermodus ist die
    Gruppe gar nicht sichtbar). Jeder Weg ist ein vorhandener; die
    Zeile erfindet nichts. */
+/* Premium: Fotos für die Karten der Schnellzeile — immer echte Daten, nie ein erfundenes Bild. Auswahl: das erste Gericht im
+   Korb, das ein Foto hat; Karte: das Kachel-Banner, sonst das erste Foto irgendeines Gerichts. Ohne Foto bleibt eine
+   getönte Fläche mit dem bewegten Zeichen (oder dem Strich, wenn die Zeichen aus sind). Dieselben Wege wie Liste und
+   Detailblatt (vorschauBild → bildFuer): keine zweite Regel, welche Adresse als sicher gilt. */
+function merkFoto(){
+  for(const name of Object.keys(merk)){
+    const g = findeGericht(name), u = g ? vorschauBild(g, true) : "";
+    if(u) return u;
+  }
+  return "";
+}
+function karteFoto(karte){
+  const b = karte && /^https:\/\//i.test(String(karte.banner || "")) ? karte.banner : "";
+  if(b) return b;
+  for(const [, quelle] of alleKarten())
+    for(const gr of quelle)
+      for(const e of gr.eintraege){ const u = vorschauBild(e, true); if(u) return u; }
+  return "";
+}
 function schnellzeileHTML(sichtbar){
   /* Reihenfolge wie gewünscht: Auswahl, Karte, Foodroulette, Serviceruf.
      „Ihre Auswahl“ steht seit 18.10. immer da (ein Schnellzugriff, der
      erst mit Inhalt erscheint, ist keiner) — leer mit einem Satz statt
      einer Zahl. */
+  const prem = startPremium();
   const wege = [];
   const n = merkAnzahl();
-  wege.push({ href:"#/auswahl", icon:ICONS.herz, text:t("Ihre Auswahl"),
-              unter: n ? preisText(merkSumme()) : t("Noch nichts ausgewählt"), zahl:n });
+  wege.push({ id:"auswahl", href:"#/auswahl", icon:ICONS.herz, text:t("Ihre Auswahl"),
+              unter: n ? preisText(merkSumme()) : t("Noch nichts ausgewählt"), zahl:n,
+              foto: prem ? merkFoto() : "", cp:"1f970" });
   const karte = sichtbar.find(k => k.art === "karte");
-  if(karte) wege.push({ href:kachelZiel(karte), icon:ICONS[karte.icon] || ICONS.speise, text:t(karte.titel),
-                        unter: karte.unter ? t(karte.unter) : t("Alles auf einen Blick") });
-  if(foodrouletteAn()) wege.push({ href:"#/entdecken", icon:ICONS.wuerfel, text:"Foodroulette" /* Name, nicht übersetzt (wie im Rad) */,
-                                   unter:t("Lassen Sie sich überraschen") });
+  if(karte) wege.push({ id:"karte", href:kachelZiel(karte), icon:ICONS[karte.icon] || ICONS.speise, text:t(karte.titel),
+                        unter: karte.unter ? t(karte.unter) : t("Alles auf einen Blick"),
+                        foto: prem ? karteFoto(karte) : "", cp:bzKachelCode(karte) || "1f37d" });
+  if(foodrouletteAn()) wege.push({ id:"roulette", href:"#/entdecken", icon:ICONS.wuerfel, text:"Foodroulette" /* Name, nicht übersetzt (wie im Rad) */,
+                                   unter:t("Lassen Sie sich überraschen"), foto:"", cp:"1f389" });
   const ruf = sichtbar.find(k => k.schluessel === "tischruf");
-  if(ruf) wege.push({ href:kachelZiel(ruf), icon:ICONS.hand, text:t(ruf.titel), unter: ruf.unter ? t(ruf.unter) : "" });
+  if(ruf) wege.push({ id:"ruf", href:kachelZiel(ruf), icon:ICONS.hand, text:t(ruf.titel), unter: ruf.unter ? t(ruf.unter) : "",
+                      foto:"", cp:bzKachelCode(ruf) || "1f6ce" });
   if(wege.length < 2) return "";
   if(wege.length % 2) wege[wege.length - 1].breit = true;
   if(!VORSCHAU && offeneVorgaenge().length)
     wege.unshift({ knopf:true, icon:ICONS.glocke, text:t("Ihre Bestellung"), unter:t("Stand ansehen"), jetzt:true });
   const pfeil = '<svg class="sz-pfeil" viewBox="0 0 16 16" aria-hidden="true"><path d="M6 3l5 5-5 5"/></svg>';
+  /* Die Bildfläche der Premium-Karte: Foto (wenn es eins gibt) über einer getönten Fläche mit Zeichen. Die Zahl der
+     Auswahl sitzt auf der Fläche, nicht auf dem Foto-Rand — dort bliebe sie bei jedem Haus lesbar (Schrift auf --rot). */
+  const bild = w => '<span class="sz-bild" aria-hidden="true"><span class="sz-art">' +
+    (bewegteZeichenAn() && w.cp ? bzHTML(w.cp, "sz:" + w.id) : (w.icon || "")) + '</span>' +
+    (w.foto ? '<img src="' + hs(w.foto) + '" alt="" loading="lazy" decoding="async">' : "") +
+    (w.zahl ? '<span class="sz-zahl">' + w.zahl + '</span>' : "") + '</span>';
   return '<div class="schnellzeile" role="group" aria-label="' + hs(t("Schnellzugriff")) + '">' +
     wege.map(w => (w.knopf ? '<button type="button" class="sz sz-jetzt" data-sz-vorgang>'
-                            : '<a class="sz' + (w.breit ? ' sz-breit' : '') + '" href="' + hs(w.href) + '">') +
-      '<span class="sz-rand" aria-hidden="true"><span class="sz-licht"></span></span>' +
-      '<span class="sz-glanz" aria-hidden="true"></span>' +
-      '<span class="sz-ico" aria-hidden="true">' + (w.icon || "") +
-        (w.zahl ? '<span class="sz-zahl">' + w.zahl + '</span>' : "") + '</span>' +
-      '<span class="sz-mitte"><span class="sz-text">' + hs(w.text) + '</span>' +
-        (w.unter ? '<span class="sz-unter">' + hs(w.unter) + '</span>' : "") + '</span>' + pfeil +
+                            : '<a class="sz' + (w.breit ? ' sz-breit' : '') + (prem ? ' sz-p' : '') + '"' +
+                              (prem ? ' data-sz="' + w.id + '"' : "") + ' href="' + hs(w.href) + '">') +
+      (prem && !w.knopf
+        ? bild(w) + '<span class="sz-mitte"><span class="sz-text">' + hs(w.text) + '</span>' +
+            (w.unter ? '<span class="sz-unter">' + hs(w.unter) + '</span>' : "") + '</span>' + pfeil
+        : '<span class="sz-rand" aria-hidden="true"><span class="sz-licht"></span></span>' +
+          '<span class="sz-glanz" aria-hidden="true"></span>' +
+          '<span class="sz-ico" aria-hidden="true">' + (w.icon || "") +
+            (w.zahl ? '<span class="sz-zahl">' + w.zahl + '</span>' : "") + '</span>' +
+          '<span class="sz-mitte"><span class="sz-text">' + hs(w.text) + '</span>' +
+            (w.unter ? '<span class="sz-unter">' + hs(w.unter) + '</span>' : "") + '</span>' + pfeil) +
       (w.knopf ? '</button>' : '</a>')).join("") + '</div>';
 }
 /* Die laufende Bestellung: derselbe Weg wie der Streifen unten. */
@@ -15351,6 +15563,13 @@ function balkenAktualisieren(){
     $("auswahltext").textContent  = t("Auswahl ansehen");
     const su = merkSumme();
     $("auswahlsumme").textContent = su > 0 ? preisText(su) : "";
+    /* Premium: das erste Korbgericht mit Foto als kleines Vorschaubild (nur echte Daten, sonst nichts). */
+    const bild = $("auswahlbild"), foto = startPremium() ? merkFoto() : "";
+    if(bild && bild.dataset.foto !== foto){
+      bild.dataset.foto = foto;
+      bild.innerHTML = foto ? '<img src="' + hs(foto) + '" alt="" decoding="async">' : "";
+      bild.hidden = !foto;
+    }
   }
 
   bal.classList.toggle("an", zeigen);           /* für die Abend-Effekte */
@@ -15363,6 +15582,37 @@ function balkenAktualisieren(){
   document.body.classList.toggle("hat-balken", zeigen);
   /* „void bal.offsetHeight" ist raus: es erzwang bei JEDEM Herz-Tipp ein
      synchrones Layout. Die Inline-Stile oben wirken auch ohne. */
+}
+
+/* ── Hauptnavigation (Premium-Startseite) ─────────────────────────
+   Vier Wege, die der Hub ohnehin kennt: Start, Karte (Ziel der ersten Karten-Kachel), Bestellungen (Bestellpass) und —
+   nur wo der Bereich „Mein Tisch“ läuft — Profil. Ein Weg ohne Ziel erscheint nicht. Gezeigt auf Start, den drei
+   Kartenseiten, Bestellungen und Mein Tisch; nicht in der Vorschau des Boards und nicht in der Entscheidungshilfe,
+   der Kasse oder auf Serviceseiten (dort liegen eigene feste Knöpfe unten). body[data-nav] trägt --nav-h für alle festen
+   Leisten darüber. */
+const HN_ICON = {
+  start:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 11.2 12 4l8 7.2"/><path d="M6 10v9.2h12V10"/><path d="M10 19.2v-5h4v5"/></svg>',
+  bestellt:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5.6 8.4h12.8l-1 11.2H6.6z"/><path d="M9 8.4V7a3 3 0 0 1 6 0v1.4"/></svg>',
+  profil:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.6" r="3.6"/><path d="M4.8 20c.6-3.6 3.5-5.6 7.2-5.6s6.6 2 7.2 5.6"/></svg>'
+};
+function hauptNavZeichnen(){
+  const nav = $("hauptnav"); if(!nav) return;
+  const mit = KARTENSEITEN.concat(["start", "bestellt", "meintisch"]);
+  const zeigen = startPremium() && !VORSCHAU && mit.indexOf(seiteJetzt) >= 0;
+  if(!zeigen){ nav.hidden = true; nav.innerHTML = ""; delete document.body.dataset.nav; return; }
+  const sichtbar = sichtbareKacheln();
+  const karte = sichtbar.find(k => k.art === "karte");
+  const tabs = [{ id:"start", href:"#/", ico:HN_ICON.start, text:t("Start"), an:seiteJetzt === "start" }];
+  if(karte) tabs.push({ id:"karte", href:kachelZiel(karte), ico:ICONS.speise, text:t("Karte"), an:KARTENSEITEN.indexOf(seiteJetzt) >= 0 });
+  tabs.push({ id:"bestellt", href:"#/bestellt", ico:HN_ICON.bestellt, text:t("Bestellungen"), an:seiteJetzt === "bestellt" });
+  if(sichtbar.some(k => k.schluessel === "meintisch"))
+    tabs.push({ id:"profil", href:"#/meintisch", ico:HN_ICON.profil, text:t("Profil"), an:seiteJetzt === "meintisch" });
+  const html = tabs.map(x => '<a class="hn-tab' + (x.an ? " an" : "") + '" data-hn="' + x.id + '" href="' + hs(x.href) + '"' +
+    (x.an ? ' aria-current="page"' : "") + '><span class="hn-ico">' + x.ico + '</span><span class="hn-text">' + hs(x.text) + '</span></a>').join("");
+  nav.setAttribute("aria-label", t("Hauptnavigation"));
+  nav.hidden = false;
+  if(nav.innerHTML !== html) nav.innerHTML = html;
+  document.body.dataset.nav = "an";
 }
 
 function nachtSchalten(){
@@ -15564,6 +15814,7 @@ function zeichne(){
   $("sprachknopf").setAttribute("aria-label", t("Sprache") + ": " + aktiv.name);
   $("sprachknopf").title = aktiv.name;
   lieferWahlZeichnen();
+  bestellartZeichnen();
   $("sprachliste").innerHTML = SPRACHEN.map(sp =>
     '<button type="button" role="menuitemradio" data-sprache="' + sp.code + '" aria-checked="' +
     (sp.code === sprache) + '"><span>' + sp.name + '</span>' +
@@ -15575,6 +15826,7 @@ function zeichne(){
   feld.classList.add("rein");
   balkenAktualisieren();
   statusZeichnen();
+  hauptNavZeichnen();
   bestellStatusSteuern(seiteJetzt);
   resStandSteuern(seiteJetzt);
   vorgangStreifenZeichnen();
@@ -19581,6 +19833,7 @@ async function karteHolen(erstesMal){
         ? z.tage.map(Number).filter(n => n >= 1 && n <= 7) : [];
       if(liefermodusAbgleichen()) zeichne();
       lieferWahlZeichnen();
+      bestellartZeichnen();
     }
 
     /* Worte, die der Betrieb selbst ändern darf — ohne dass der Hub
