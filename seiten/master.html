@@ -495,10 +495,12 @@ button{
   letter-spacing:-.01em; margin:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
 }
 .z-mail{font-size:12.5px; color:var(--text-dim); margin-top:2px; overflow-wrap:anywhere;}
-.z-meta{font-size:11px; color:var(--text-faint); margin-top:5px; font-family:var(--font-mono);}
+/* --text-dim statt --text-faint: auf der Glaskarte gemessen 3,78:1 (Betriebe, Zugänge, Alessia, Ketten, KI) — Text, den man liest (§5.2). */
+.z-meta{font-size:11px; color:var(--text-dim); margin-top:5px; font-family:var(--font-mono);}
 .stand.s-aktiv{background:rgba(127,207,166,.12); color:var(--sage); border:1px solid rgba(127,207,166,.30);}
 .stand.s-master{background:rgba(240,168,104,.16); color:var(--amber-hot); border:1px solid rgba(240,168,104,.40);}
-.stand.s-gesperrt{background:rgba(255,106,94,.16); color:var(--alert); border:1px solid rgba(255,106,94,.40);}
+/* --alert auf der roten Tönung der Glaskarte gemessen 4,13:1; ein Ton heller trägt (§5.2). */
+.stand.s-gesperrt{background:rgba(255,106,94,.16); color:#FF8F85; border:1px solid rgba(255,106,94,.40);}
 .stand.s-unbestaetigt{background:rgba(255,255,255,.05); color:var(--text-faint); border:1px solid var(--stroke);}
 
 /* ---------- Alessia je Betrieb (10.10.) ----------
@@ -507,9 +509,30 @@ button{
    Tipp auf eine Karte öffnet das Einrichten. */
 .alessia-karte{cursor:pointer; text-align:left; width:100%; font:inherit; color:inherit; border:1px solid var(--stroke);}
 .alessia-karte .z-meta{white-space:normal}
-.stand.s-aus{background:rgba(255,255,255,.05); color:var(--text-faint); border:1px solid var(--stroke);}
+/* --text-dim statt --text-faint: gemessen auf der Karte 3,25:1 (Alessia „Aus“, Ketten, KI „Kein Budget“) — ein Stand wird gelesen (§5.2). */
+.stand.s-aus{background:rgba(255,255,255,.05); color:var(--text-dim); border:1px solid var(--stroke);}
 .al-check{display:flex; align-items:center; gap:10px; margin:14px 0 4px; min-height:44px; font-size:14px}
 
+/* ---------- KI-Nutzung (migration-ki-nutzung.sql) ----------
+   Was Übersetzer, Rechnung-lesen und Profi-Foto je Betrieb kosten, mit
+   Monatsbudget. Tipp auf eine Karte öffnet das Budget; „Preise“ die
+   Preistabelle. Nur der Master sieht das (RLS: keine Tabelle für Betriebe). */
+.ki-karte{cursor:pointer; text-align:left; width:100%; font:inherit; color:inherit; border:1px solid var(--stroke);}
+.ki-karte .z-meta{white-space:normal}
+.ki-zeile{display:flex; justify-content:space-between; gap:10px; font-size:12.5px; color:var(--text-dim); margin-top:4px}
+.ki-zeile b{font-weight:600; color:var(--text); font-variant-numeric:tabular-nums; white-space:nowrap}
+.ki-balken{height:6px; border-radius:99px; background:rgba(255,255,255,.10); margin-top:10px; overflow:hidden}
+.ki-balken > i{display:block; height:100%; border-radius:99px; background:var(--sage)}
+.ki-balken.warn > i{background:var(--amber)}
+.ki-balken.ueber > i{background:var(--alert)}
+.ki-summe{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; text-align:center}
+.ki-summe b{display:block; font-family:var(--font-display); font-size:20px; font-weight:800; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.ki-summe span{display:block; font-size:11.5px; color:var(--text-dim); margin-top:2px}
+.ki-preis{border-top:1px solid var(--stroke); padding:16px 0 6px}
+.ki-preis h4{margin:0 0 2px; font-size:14px; font-family:var(--font-mono); overflow-wrap:anywhere}
+.ki-preis .ki-felder{display:grid; grid-template-columns:repeat(3,1fr); gap:8px}
+.ki-preis .ki-felder.ein{grid-template-columns:1fr}
+.ki-preis .ki-fehlt{color:var(--amber-hot)}
 /* ---------- Ketten & Standorte (E4, migration-einkauf-e4.sql) ----------
    Jede Organisation eine Karte; Tipp öffnet Zusammenlegen und die
    Zentrale der Kette. Zusammenlegen und Entfernen erst beim zweiten Tipp. */
@@ -809,6 +832,12 @@ textarea:focus{background-color:rgba(0,0,0,.34); border-color:rgba(240,168,104,.
 
   <p class="section-label">Ketten &amp; Standorte<span class="rechts" id="kettenNote">—</span></p>
   <div id="kettenListe"></div>
+
+  <p class="section-label">KI-Nutzung<span class="rechts" id="kiNote">—</span>
+    <button class="mini" id="kiMonat" type="button">Vormonat</button>
+    <button class="mini" id="kiPreiseKnopf" type="button">Preise</button>
+    <button class="mini" id="kiCsv" type="button">CSV</button></p>
+  <div id="kiListe"></div>
 
   <div id="diagBox" class="card hidden"></div>
 
@@ -1362,7 +1391,7 @@ function pinSchirm(rufen, s){
      RAW hält 30 Tage Rohdaten. Alle Ansichten werden daraus
      berechnet, ohne neue Abfrage.
      ============================================================ */
-  var RAW = { betriebe:[], bestellungen:[], rufe:[], umsaetze:[], anfragen:[], zugaenge:[], alessia:[], ketten:[] };
+  var RAW = { betriebe:[], bestellungen:[], rufe:[], umsaetze:[], anfragen:[], zugaenge:[], alessia:[], ketten:[], ki:null };
   var STATE = { range:'heute', betriebe:[], ersterLauf:true, zeigeErledigte:false };
 
   function pruefeAuthFehler(msg){
@@ -1389,7 +1418,8 @@ function pinSchirm(rufen, s){
       ladeAnfragen(),
       ladeZugaenge(),
       ladeAlessia(),
-      ladeKetten()
+      ladeKetten(),
+      ladeKi()
     ]).then(function(res){
       RAW.betriebe     = res[0];
       RAW.bestellungen = res[1];
@@ -1399,6 +1429,7 @@ function pinSchirm(rufen, s){
       RAW.zugaenge     = res[5];
       RAW.alessia      = res[6];
       RAW.ketten       = res[7];
+      RAW.ki           = res[8];
       console.log(LOG,'Rohdaten:',{
         betriebe:RAW.betriebe.length, bestellungen:RAW.bestellungen.length,
         rufe:RAW.rufe.length, umsaetze:RAW.umsaetze.length, anfragen:RAW.anfragen.length,
@@ -1685,6 +1716,7 @@ function pinSchirm(rufen, s){
     renderZugaenge();
     renderAlessia();
     renderKetten();
+    renderKi();
     $('standNote').textContent = 'Stand ' + uhr.format(new Date()) + ' Uhr';
   }
 
@@ -1986,6 +2018,242 @@ function pinSchirm(rufen, s){
   document.addEventListener('click', function(e){
     var k = e.target.closest && e.target.closest('[data-alessia]');
     if(k) oeffneAlessiaSheet(k.getAttribute('data-alessia'));
+  });
+
+  /* ============================================================
+     6.5e KI-NUTZUNG — was Übersetzer, Rechnung lesen und Profi-Foto kosten
+     master_ki_nutzung() liefert je Betrieb × Funktion × Modell Aufrufe,
+     Token, Bilder und Euro (Preise stehen in ki_preise, nicht hier);
+     Budget je Betrieb und Monat (master_ki_budget_setzen); Preise
+     pflegen (master_ki_preis_setzen rechnet frühere Buchungen ohne
+     Preis nach). Grundlage fürs Preisschema, kein Abrechnungsbeleg.
+     Ein Betrieb sieht davon nichts: keine Tabelle ist für ihn lesbar.
+     ============================================================ */
+  var KI_FUNKTION = { uebersetzen:'Übersetzer', beleg_lesen:'Rechnung lesen', bild_profi_frei:'Profi-Foto' };
+  var KI_GRUND = {
+    kein_master: 'Die KI-Nutzung sieht und ändert nur ein Master-Konto.',
+    zeitraum: 'Der Zeitraum ist ungültig.',
+    betrieb: 'Den Betrieb gibt es nicht mehr.',
+    betrag: 'Der Betrag ist ungültig (0 bis 100 000).',
+    warnung: 'Die Warnschwelle liegt zwischen 1 und 100 Prozent.',
+    modell: 'Der Modellname ist ungültig.',
+    art: 'Die Art des Preises ist ungültig.',
+    bemerkung: 'Die Bemerkung ist zu lang (höchstens 300 Zeichen).'
+  };
+  var kiVormonat = false;
+  var kiEuroFmt = new Intl.NumberFormat('de-DE', { style:'currency', currency:'EUR', minimumFractionDigits:2, maximumFractionDigits:4 });
+  var kiZahlFmt = new Intl.NumberFormat('de-DE');
+  function kiZeitraum(){
+    var j = new Date(), y = j.getFullYear(), m = j.getMonth() - (kiVormonat ? 1 : 0);
+    var von = new Date(y, m, 1), bis = kiVormonat ? new Date(y, m + 1, 0) : j;
+    return { von: tagKey(von), bis: tagKey(bis) };
+  }
+  /* Eingabe wie ein Mensch sie tippt: „7,5“, „7.5“, „1.234,50“. Leer ist
+     leer (heißt: kein Wert), Unlesbares ist ein Fehler — es wird NIE als 0
+     weitergegeben (sonst stünde ein Preis von 0 € in der Rechnung). */
+  function kiZahl(text){
+    var t = String(text == null ? '' : text).replace(/\s/g, '');
+    if(!t) return { leer:true };
+    if(t.indexOf(',') >= 0) t = t.replace(/\./g, '').replace(',', '.');
+    if(!/^\d+(\.\d+)?$/.test(t)) return { fehler:true };
+    return { wert: Number(t) };
+  }
+  function kiCsvFeld(w){
+    var t = String(w == null ? '' : w);
+    /* Formelzeichen entschärfen (=, +, -, @, Tab, CR): Betriebsnamen schreibt das Team. */
+    if(/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+    return /[;"\n\r]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t;
+  }
+  function ladeKi(){
+    var z = kiZeitraum();
+    return sb.rpc('master_ki_nutzung', { p_von: z.von, p_bis: z.bis }).then(function(res){
+      if(res.error){
+        DIAG.ki = (res.error.code === '42883' || res.error.code === 'PGRST202' || /does not exist|schema cache/i.test(res.error.message))
+          ? 'Funktion fehlt — migration-ki-nutzung.sql noch nicht ausgeführt'
+          : 'FEHLER: ' + res.error.message;
+        pruefeAuthFehler(res.error.message);
+        return null;
+      }
+      var d = res.data || {};
+      if(!d.ok){ DIAG.ki = d.grund === 'kein_master' ? 'kein Recht' : 'FEHLER: ' + (d.grund || 'unbekannt'); return null; }
+      DIAG.ki = (d.zeilen || []).length + ' Zeilen';
+      return d;
+    }).catch(function(e){
+      DIAG.ki = 'FEHLER: ' + (e && e.message ? e.message : 'unbekannt');
+      return null;
+    });
+  }
+  function kiStatus(b, verbraucht){
+    if(b.monat_eur == null) return { txt:'Kein Budget', cls:'s-aus', balken:'' };
+    var anteil = b.monat_eur > 0 ? verbraucht / b.monat_eur : 1;
+    if(verbraucht >= b.monat_eur) return { txt: b.hart ? 'Gesperrt' : 'Über Budget', cls:'s-gesperrt', balken:'ueber' };
+    if(anteil * 100 >= b.warn_prozent) return { txt:'Warnung', cls:'s-master', balken:'warn' };
+    return { txt:'Im Rahmen', cls:'s-aktiv', balken:'' };
+  }
+  function renderKi(){
+    var box = $('kiListe'); if(!box) return;
+    $('kiMonat').textContent = kiVormonat ? 'Dieser Monat' : 'Vormonat';
+    var d = RAW.ki;
+    if(!d){
+      $('kiNote').textContent = '—';
+      box.innerHTML = '<div class="card empty">' +
+        (DIAG.ki && String(DIAG.ki).indexOf('Funktion fehlt') === 0
+          ? 'Die KI-Nutzung gibt es noch nicht.<br>Führ <b>migration-ki-nutzung.sql</b> im SQL-Editor aus.'
+          : DIAG.ki === 'kein Recht' ? 'Die KI-Nutzung sieht nur ein Master-Konto.'
+          : 'Die KI-Nutzung konnte nicht geladen werden.') + '</div>';
+      return;
+    }
+    var zeilen = d.zeilen || [], budgets = d.budgets || [];
+    var gesamt = 0, aufrufe = 0, tin = 0, tout = 0, ohne = 0, bilder = 0, je = {};
+    zeilen.forEach(function(z){
+      gesamt += Number(z.kosten_eur) || 0; aufrufe += z.aufrufe || 0; tin += Number(z.tokens_ein) || 0;
+      tout += Number(z.tokens_aus) || 0; ohne += z.ohne_preis || 0; bilder += z.bilder || 0;
+      (je[z.betrieb_id] = je[z.betrieb_id] || []).push(z);
+    });
+    var z0 = kiZeitraum();
+    $('kiNote').textContent = z0.von.slice(8) + '.' + z0.von.slice(5, 7) + '. – ' + z0.bis.slice(8) + '.' + z0.bis.slice(5, 7) + '.';
+    var html = '<div class="card ki-summe-karte"><div class="ki-summe">' +
+      '<div><b>' + esc(kiEuroFmt.format(gesamt)) + '</b><span>Kosten</span></div>' +
+      '<div><b>' + esc(kiZahlFmt.format(aufrufe)) + '</b><span>Aufrufe</span></div>' +
+      '<div><b>' + esc(kiZahlFmt.format(tin + tout)) + '</b><span>Token' + (bilder ? ' · ' + esc(String(bilder)) + ' Bilder' : '') + '</span></div>' +
+      '</div>' +
+      (ohne ? '<p class="z-meta kt-warn" style="margin:12px 0 0">' + esc(String(ohne)) + (ohne === 1 ? ' Aufruf' : ' Aufrufe') + ' ohne Preis — unter „Preise“ eintragen, dann wird nachgerechnet.</p>' : '') +
+      '</div>';
+    var reihe = budgets.slice().sort(function(a, b){
+      var ka = (je[a.betrieb_id] || []).reduce(function(x, z){ return x + (Number(z.kosten_eur) || 0); }, 0);
+      var kb = (je[b.betrieb_id] || []).reduce(function(x, z){ return x + (Number(z.kosten_eur) || 0); }, 0);
+      return kb - ka || String(a.betrieb_name).localeCompare(String(b.betrieb_name), 'de');
+    });
+    html += reihe.map(function(b){
+      var zs = je[b.betrieb_id] || [];
+      var summe = zs.reduce(function(x, z){ return x + (Number(z.kosten_eur) || 0); }, 0);
+      var n = zs.reduce(function(x, z){ return x + (z.aufrufe || 0); }, 0);
+      var verbraucht = Number(b.verbraucht_monat_eur) || 0, st = kiStatus(b, verbraucht);
+      var anteil = b.monat_eur > 0 ? Math.min(100, Math.round(verbraucht / b.monat_eur * 100)) : (b.monat_eur == null ? 0 : 100);
+      return '<button type="button" class="card zugang ki-karte" data-ki-betrieb="' + esc(b.betrieb_id) + '">' +
+        '<div class="z-main">' +
+          '<h2 class="z-betrieb">' + esc(b.betrieb_name || 'Ohne Namen') + '</h2>' +
+          '<div class="z-mail">' + esc(kiEuroFmt.format(summe)) + ' &middot; ' + esc(String(n)) + (n === 1 ? ' Aufruf' : ' Aufrufe') + '</div>' +
+          (zs.length ? zs.map(function(z){
+            return '<div class="ki-zeile"><span>' + esc(KI_FUNKTION[z.funktion] || z.funktion) + ' &middot; ' + esc(z.modell) + ' &middot; ' +
+              esc(String(z.aufrufe)) + '×' + (z.bilder ? ' &middot; ' + esc(String(z.bilder)) + ' Bilder' : ' &middot; ' + esc(kiZahlFmt.format((Number(z.tokens_ein) || 0) + (Number(z.tokens_aus) || 0))) + ' Token') +
+              (z.ohne_preis ? ' &middot; <span class="kt-warn">Preis fehlt</span>' : '') + '</span><b>' + esc(kiEuroFmt.format(Number(z.kosten_eur) || 0)) + '</b></div>';
+          }).join('') : '<div class="z-meta">keine Nutzung im Zeitraum</div>') +
+          (b.monat_eur != null
+            ? '<div class="ki-balken ' + st.balken + '" role="img" aria-label="Budget dieses Monats zu ' + anteil + ' Prozent verbraucht"><i style="width:' + anteil + '%"></i></div>' +
+              '<div class="z-meta">Budget dieses Monats: ' + esc(kiEuroFmt.format(verbraucht)) + ' von ' + esc(kiEuroFmt.format(b.monat_eur)) + (b.hart ? ' &middot; hart' : ' &middot; nur Anzeige') + '</div>'
+            : '') +
+        '</div>' +
+        '<span class="stand ' + st.cls + '">' + esc(st.txt) + '</span>' +
+      '</button>';
+    }).join('');
+    box.innerHTML = html;
+  }
+  function oeffneKiBudgetSheet(id){
+    var b = ((RAW.ki && RAW.ki.budgets) || []).filter(function(x){ return x.betrieb_id === id; })[0];
+    if(!b) return;
+    var ov = baueSheet(
+      '<h3>KI-Budget · ' + esc(b.betrieb_name || 'Betrieb') + '</h3>' +
+      '<p class="sub">Gilt je Kalendermonat. Leer lassen heißt: kein Budget. „Hart“ sperrt Übersetzer, Rechnung lesen und Profi-Foto dieses Betriebs, sobald das Budget erreicht ist; sonst ist es nur eine Anzeige. Der Betrieb sieht keine Beträge.</p>' +
+      '<label for="kiBetrag">Budget pro Monat in Euro</label>' +
+      '<input id="kiBetrag" type="text" inputmode="decimal" autocomplete="off" placeholder="z. B. 25" value="' + esc(b.monat_eur == null ? '' : String(b.monat_eur).replace('.', ',')) + '">' +
+      '<label for="kiWarn">Warnung ab (Prozent)</label>' +
+      '<input id="kiWarn" type="text" inputmode="numeric" autocomplete="off" value="' + esc(String(b.warn_prozent || 80)) + '">' +
+      '<label class="al-check"><input id="kiHart" type="checkbox"' + (b.hart ? ' checked' : '') + '> Bei erreichtem Budget sperren</label>' +
+      '<p class="sub" id="kiMeldung" aria-live="polite"></p>' +
+      '<button id="kiSave" class="btn-primary">Speichern</button>' +
+      '<button id="kiClose" class="btn-ghost">Abbrechen</button>'
+    );
+    if(!ov) return;
+    function schliesse(){ if(ov.parentNode) ov.remove(); }
+    ov.querySelector('#kiClose').addEventListener('click', schliesse);
+    ov.querySelector('#kiSave').addEventListener('click', function(){
+      var meld = ov.querySelector('#kiMeldung');
+      var betrag = kiZahl(ov.querySelector('#kiBetrag').value), warn = kiZahl(ov.querySelector('#kiWarn').value);
+      if(betrag.fehler || (betrag.wert != null && betrag.wert > 100000)){ meld.textContent = KI_GRUND.betrag; return; }
+      if(warn.fehler || warn.leer || warn.wert < 1 || warn.wert > 100 || Math.floor(warn.wert) !== warn.wert){ meld.textContent = KI_GRUND.warnung; return; }
+      var knopf = ov.querySelector('#kiSave'); knopf.disabled = true;
+      sb.rpc('master_ki_budget_setzen', { p_betrieb: id, p_monat_eur: betrag.leer ? null : betrag.wert, p_hart: ov.querySelector('#kiHart').checked, p_warn: warn.wert }).then(function(res){
+        knopf.disabled = false;
+        var d = res && res.data;
+        if(res.error || !d || !d.ok){ meld.textContent = (d && KI_GRUND[d.grund]) || 'Nicht gespeichert, bitte Verbindung prüfen.'; return; }
+        toast('Budget gespeichert', 'ok'); schliesse(); ladeAlles();
+      }, function(){ knopf.disabled = false; meld.textContent = 'Nicht gespeichert, bitte Verbindung prüfen.'; });
+    });
+  }
+  function oeffneKiPreiseSheet(){
+    var preise = (RAW.ki && RAW.ki.preise) || [];
+    var ov = baueSheet(
+      '<h3>KI-Preise</h3>' +
+      '<p class="sub">Preise in <b>Euro</b> (Anbieter rechnen in Dollar — selbst umrechnen und in die Bemerkung Kurs und Datum schreiben). Token: Euro je 1 Million; Bilder: Euro je Bild. Ein neuer Preis gilt für neue Aufrufe; Aufrufe, die noch keinen Preis hatten, werden nachgerechnet, bereits bewertete nicht.</p>' +
+      preise.map(function(p, i){
+        var ein = p.art === 'bild';
+        var wert = function(x){ return esc(x == null ? '' : String(x).replace('.', ',')); };
+        var fehlt = ein ? p.eur_je_bild == null : (p.eingabe_eur_je_mio == null || p.ausgabe_eur_je_mio == null);
+        return '<div class="ki-preis" data-ki-modell="' + esc(p.modell) + '" data-ki-art="' + esc(p.art) + '">' +
+          '<h4>' + esc(p.modell) + '</h4>' +
+          '<p class="sub" style="margin:2px 0 10px">' + esc(ein ? 'Bild' : 'Token') + (fehlt ? ' &middot; <span class="ki-fehlt">Preis fehlt</span>' : '') + '</p>' +
+          (ein
+            ? '<div class="ki-felder ein"><div><label for="kiP' + i + 'b">Euro je Bild</label><input id="kiP' + i + 'b" data-f="bild" type="text" inputmode="decimal" autocomplete="off" value="' + wert(p.eur_je_bild) + '"></div></div>'
+            : '<div class="ki-felder">' +
+                '<div><label for="kiP' + i + 'e">Eingabe</label><input id="kiP' + i + 'e" data-f="ein" type="text" inputmode="decimal" autocomplete="off" value="' + wert(p.eingabe_eur_je_mio) + '"></div>' +
+                '<div><label for="kiP' + i + 'a">Ausgabe</label><input id="kiP' + i + 'a" data-f="aus" type="text" inputmode="decimal" autocomplete="off" value="' + wert(p.ausgabe_eur_je_mio) + '"></div>' +
+                '<div><label for="kiP' + i + 'c">Cache</label><input id="kiP' + i + 'c" data-f="cache" type="text" inputmode="decimal" autocomplete="off" value="' + wert(p.cache_eur_je_mio) + '"></div>' +
+              '</div>') +
+          '<label for="kiP' + i + 'm">Bemerkung (Kurs, Datum, Quelle)</label>' +
+          '<input id="kiP' + i + 'm" data-f="bem" type="text" maxlength="300" autocomplete="off" value="' + esc(p.bemerkung || '') + '">' +
+          '<p class="sub" data-ki-meldung aria-live="polite" style="margin:8px 0 0"></p>' +
+          '<button type="button" class="btn-primary" data-ki-preis-speichern style="margin-top:10px">Preis speichern</button>' +
+        '</div>';
+      }).join('') +
+      '<button id="kiPClose" class="btn-ghost">Schließen</button>'
+    );
+    if(!ov) return;
+    ov.querySelector('#kiPClose').addEventListener('click', function(){ ov.remove(); });
+    ov.addEventListener('click', function(e){
+      var k = e.target.closest && e.target.closest('[data-ki-preis-speichern]'); if(!k) return;
+      var zeile = k.closest('.ki-preis'), meld = zeile.querySelector('[data-ki-meldung]');
+      var f = function(n){ var el = zeile.querySelector('[data-f="' + n + '"]'); return el ? el.value : ''; };
+      var art = zeile.getAttribute('data-ki-art');
+      var w = art === 'bild' ? { ein:{ leer:true }, aus:{ leer:true }, cache:{ leer:true }, bild:kiZahl(f('bild')) }
+                             : { ein:kiZahl(f('ein')), aus:kiZahl(f('aus')), cache:kiZahl(f('cache')), bild:{ leer:true } };
+      /* Unlesbar wird NIE gesendet. Eingabe und Ausgabe gehören zusammen: nur eines von beiden wäre ein halber Preis. */
+      var ungueltig = ['ein', 'aus', 'cache', 'bild'].some(function(n){ return w[n].fehler || (w[n].wert != null && w[n].wert > (n === 'bild' ? 1000 : 100000)); });
+      if(ungueltig){ meld.textContent = KI_GRUND.betrag; return; }
+      if(art !== 'bild' && (!!w.ein.leer !== !!w.aus.leer)){ meld.textContent = 'Eingabe- und Ausgabepreis gehören zusammen — beide eintragen oder beide leer lassen.'; return; }
+      var v = function(x){ return x.leer ? null : x.wert; };
+      k.disabled = true;
+      sb.rpc('master_ki_preis_setzen', { p_modell: zeile.getAttribute('data-ki-modell'), p_art: art, p_ein: v(w.ein), p_aus: v(w.aus),
+        p_cache: v(w.cache), p_bild: v(w.bild), p_bemerkung: f('bem').trim() || null }).then(function(res){
+        k.disabled = false;
+        var d = res && res.data;
+        if(res.error || !d || !d.ok){ meld.textContent = (d && KI_GRUND[d.grund]) || 'Nicht gespeichert, bitte Verbindung prüfen.'; return; }
+        meld.textContent = 'Gespeichert' + (d.nachgerechnet ? ' — ' + d.nachgerechnet + ' frühere Aufrufe nachgerechnet.' : '.');
+        toast('Preis gespeichert', 'ok'); ladeAlles();
+      }, function(){ k.disabled = false; meld.textContent = 'Nicht gespeichert, bitte Verbindung prüfen.'; });
+    });
+  }
+  function kiCsvLaden(){
+    var d = RAW.ki; if(!d || !(d.zeilen || []).length){ toast('Keine Nutzung zum Exportieren', 'err'); return; }
+    var kopf = ['Betrieb', 'Funktion', 'Modell', 'Aufrufe', 'Token Eingabe', 'Token Ausgabe', 'Token Cache', 'Bilder', 'Kosten EUR', 'Aufrufe ohne Preis'];
+    var zahl = function(x){ return String(x == null ? 0 : x).replace('.', ','); };
+    var zeilen = d.zeilen.map(function(z){
+      return [z.betrieb_name, KI_FUNKTION[z.funktion] || z.funktion, z.modell, z.aufrufe, z.tokens_ein, z.tokens_aus, z.tokens_cache, z.bilder, zahl(z.kosten_eur), z.ohne_preis]
+        .map(kiCsvFeld).join(';');
+    });
+    var blob = new Blob(['﻿' + [kopf.join(';')].concat(zeilen).join('\r\n')], { type:'text/csv;charset=utf-8' });
+    var a = document.createElement('a'), z0 = kiZeitraum();
+    a.href = URL.createObjectURL(blob); a.download = 'ki-nutzung-' + z0.von + '-bis-' + z0.bis + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function(){ URL.revokeObjectURL(a.href); }, 4000);
+  }
+  document.addEventListener('click', function(e){
+    var t = e.target.closest && e.target.closest('#kiMonat,#kiPreiseKnopf,#kiCsv,[data-ki-betrieb]');
+    if(!t) return;
+    if(t.id === 'kiMonat'){ kiVormonat = !kiVormonat; ladeAlles(); return; }
+    if(t.id === 'kiPreiseKnopf'){ if(RAW.ki) oeffneKiPreiseSheet(); else toast('Die KI-Preise sind noch nicht geladen', 'err'); return; }
+    if(t.id === 'kiCsv'){ kiCsvLaden(); return; }
+    oeffneKiBudgetSheet(t.getAttribute('data-ki-betrieb'));
   });
 
   /* ============================================================
