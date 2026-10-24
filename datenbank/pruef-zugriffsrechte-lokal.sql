@@ -228,6 +228,13 @@ insert into probe select 'S7 Wert fehlt: wert', (public.team_rechte_setzen('aaaa
 insert into probe select 'S8 im fremden Betrieb B: kein_inhaber', (public.team_rechte_setzen('bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb','55555555-5555-5555-5555-555555555555','kosten_view', false)->>'grund');
 insert into probe select 'S9 Verlauf zeigt genau die EINE erfolgreiche Änderung, mit Namen statt Kennung', (select count(*)||'/'||min(von_name)||'/'||min(ziel_name)||'/'||min(recht) from public.team_rechte_verlauf('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'));
 reset role;
+-- Der Verlauf ist jetzt NICHT leer (S9): erst jetzt kann gemessen werden, dass Fremde und Manager ihn nicht lesen.
+select pg_temp.als('44444444-4444-4444-4444-444444444444');
+insert into probe select 'S9b Inhaber B liest Verlauf und Liste von A: leer (Voraussetzung: S9 hat eine Zeile)', (select count(*) from public.team_rechte_verlauf('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'))||'/'||(select count(*) from public.team_rechte_liste('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'));
+reset role;
+select pg_temp.als('22222222-2222-2222-2222-222222222221');
+insert into probe select 'S9c Manager Mia liest den Verlauf ihres eigenen Betriebs: leer', (select count(*) from public.team_rechte_verlauf('aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa'));
+reset role;
 -- Widerruf gilt sofort für eine schon angemeldete Sitzung: dieselben Claims, vorher/nachher.
 select pg_temp.als('22222222-2222-2222-2222-222222222221');
 insert into probe select 'S10 Mia (angemeldet, freigeschaltet) sieht Belege', (select count(*) from public.einkaufsbelege);

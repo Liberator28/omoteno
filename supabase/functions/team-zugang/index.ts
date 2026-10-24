@@ -16,7 +16,7 @@
    Erst danach wird der Dienstschlüssel angefasst.
 
    aktion:
-     einladen   E-Mail, Rolle (team|kueche|inhaber), Anzeigename →
+     einladen   E-Mail, Rolle (team|kueche|manager|inhaber), Anzeigename →
                 Einladungsmail (Rücksprung ins Board bzw. die Küche).
                 Kommt keine Mail heraus (kein eigener Mailversand
                 eingerichtet), gibt es EINMAL den Link zurück, den der
@@ -31,7 +31,9 @@
    ═══════════════════════════════════════════════════════════════════ */
 import { createClient } from "npm:@supabase/supabase-js@2";
 
-const ROLLEN = ["inhaber", "team", "kueche"];
+/* „manager“: wie Team im Betrieb, aber mit Rechten je Person (hat_recht, migration-zugriffsrechte.sql). Die Rechte
+   selbst vergibt NICHT diese Funktion, sondern team_rechte_setzen() — ein Rollenwechsel setzt sie per Wache zurück. */
+const ROLLEN = ["inhaber", "manager", "team", "kueche"];
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const MAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 const SEITE = (Deno.env.get("OMOTENO_SEITE") ?? "https://omoteno.de").replace(/\/+$/, "");
