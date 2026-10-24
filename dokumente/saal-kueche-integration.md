@@ -49,10 +49,14 @@ bekommt Bescheid“ nur in eine Richtung gilt.
   das Personal gleichzeitig „Starten“, kann die Stornierung überschrieben werden.
   **[Risiko, nicht behoben]**
 
-Vorschlag (klein, ohne Migration, zuerst): bedingtes Schreiben —
+**Umgesetzt am 24.10.2026** (`pruefungen/pruef-endstand.js`, 79 Proben, 9 Gegenbeweise rot): bedingtes Schreiben —
 `…&status=neq.storniert&status=neq.abgelehnt` an beiden Schreibwegen, dazu `Prefer: return=representation`,
-damit „0 Zeilen“ als „inzwischen storniert“ erkannt und gezeigt wird statt als Erfolg (§2.3b). Prüfbar
-im Browser mit gestellter Antwort **und** am lokalen Postgres, ob die Bedingung wirklich 0 Zeilen trifft.
+damit „0 Zeilen“ als „inzwischen storniert“ erkannt und gezeigt wird statt als Erfolg (§2.3b). Der Filter
+hängt nur an Schreibwegen, die `status` setzen — die Küche hakt einen stornierten Bon ab, indem sie nur
+`kueche_fertig_um` schreibt, und das bleibt möglich. Ohne lesbare Zeilenliste in der Antwort gilt das
+Schreiben als gelungen (fail-open, §7). **Ehrliche Grenze:** Die gestellten Gegenstellen werten den Filter
+wie PostgREST aus; ob die echte Datenbank `status=not.in.(…)` genauso trifft, ist im Browser nicht
+gemessen. Am lokalen Postgres wurde es nicht nachgestellt (dort fehlt PostgREST selbst).
 
 ## 4 · Rollen je Zustand
 
@@ -88,8 +92,11 @@ brauchen **vorher** die Klärung, wer eine Lieferung „besitzt“: heute gibt e
 - **Lücke:** Der Saal selbst kennzeichnet nicht, wie alt sein Stand ist. Nur die allgemeine
   Kopfzeile des Boards spricht. Ein Kellner am Plan sieht bei gekappter Leitung einen scheinbar
   gültigen, in Wahrheit alten Stand. [Code; Wirkung am Gerät offen]
-  Vorschlag: Alter des letzten erfolgreichen Abrufs im Plan, ab > 60 s ein sichtbares Band
-  („Stand von vor 3 Min – Verbindung prüfen“), nur Text und Farbe, kein Neuaufbau.
+  **Umgesetzt am 24.10.2026:** Band `#spAlter` über dem Plan, ab > 60 s seit dem letzten Lebenszeichen
+  (Erstladen, Nachholen, Live-Ereignis, Abo-Bestätigung): „Stand von vor N Min – Verbindung prüfen“. Nur
+  Text und `hidden`, kein Neuaufbau des Plans; im Vorführmodus nie. Grenze: Es misst, wann das Board zuletzt
+  etwas **gehört** hat, nicht, ob die Leitung heute still ist, weil nichts los war — bei einem ruhigen Haus
+  kommt das Nachholen alle 25 s, das ist das Lebenszeichen.
 - Optimistische Anzeige (Board und Küche) mit Rückdrehen und Toast bei Fehler [Code].
 
 ## 7 · Beeinträchtigungen und Reihenfolge
@@ -100,8 +107,8 @@ brauchen **vorher** die Klärung, wer eine Lieferung „besitzt“: heute gibt e
 - Der Saal zeichnet nur bei geänderter Signatur (§4.2) und nur, wenn er sichtbar ist (§8.1u).
   Mehr Datenquellen ändern daran nichts, solange sie in `saalStand()` einfließen.
 - Umsetzungsreihenfolge, kleinste vollständige Schritte, jeder einzeln prüfbar:
-  1. Bedingtes Schreiben gegen Überschreiben von „storniert/abgelehnt“ (Abschnitt 3).
-  2. Alter-des-Standes im Saal (Abschnitt 6).
+  1. ~~Bedingtes Schreiben gegen Überschreiben von „storniert/abgelehnt“ (Abschnitt 3).~~ **Erledigt 24.10.**
+  2. ~~Alter-des-Standes im Saal (Abschnitt 6).~~ **Erledigt 24.10.**
   3. Spaltenrecht auf `bestellungen` kürzen — **mit Freigabe**, nach Wegeliste (Abschnitt 4).
   4. Küche liest `gebracht_um` (Rückrichtung), erst nach 1–3.
   5. Erst danach die Wünsche: Gästezahl, Raummaße/Sperren, Lieferwagen, Nachrichtenvorlagen.

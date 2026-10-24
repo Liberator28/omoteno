@@ -73,9 +73,11 @@ async function board(browser) {
     const altHinweis = hinweisZeigen; hinweisZeigen = z => { window.__hinweise++; };
     const tab = name => {
       const q = { f: [] };
-      q.select = () => q; q.eq = (k, v) => { q.f.push([k, v]); return q; }; q.gte = () => q; q.order = () => q;
-      q.update = d => { window.__upd.push([name, d, q]); return q; };
-      q.then = (ok, nein) => Promise.resolve({ data: [], error: null }).then(ok, nein);
+      q.select = () => { q._sel = true; return q; }; q.eq = (k, v) => { q.f.push([k, v]); return q; }; q.gte = () => q; q.order = () => q;
+      q.not = () => q;                        /* wie PostgREST ein Filter; die storniert-Prüfung macht pruef-endstand.js */
+      q.update = d => { window.__upd.push([name, d, q]); q._upd = true; return q; };
+      /* Ein Schreibweg mit angeforderter Rückgabe bekommt die lebenden Zeilen seiner id-Filter zurück. */
+      q.then = (ok, nein) => Promise.resolve({ data: q._upd && q._sel ? q.f.filter(x => x[0] === "id").map(x => ({ id: x[1] })) : [], error: null }).then(ok, nein);
       return q;
     };
     db = { from: tab, rpc: () => Promise.resolve({ data: null, error: null }) };

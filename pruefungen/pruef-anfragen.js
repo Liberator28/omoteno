@@ -192,7 +192,13 @@ async function board(browser) {
       const k = { _f: [] };
       k.eq = (a, b) => { k._f.push(["eq", a, b]); return k; };
       k.in = (a, b) => { k._f.push(["in", a, b]); return k; };
-      k.then = (ok, nein) => { window.__log.push({ op, felder, filter: k._f }); return Promise.resolve({ error: null }).then(ok, nein); };
+      /* Wie PostgREST: .not() ist ein Filter, .select() fordert die geschriebenen Zeilen an — die Antwort nennt die
+         lebenden Zeilen der id-Filter (eine storniert-Prüfung macht diese Gegenstelle nicht; das tut pruef-endstand.js). */
+      k.not = (a, o, v) => { k._f.push(["not", a, o, v]); return k; };
+      k.select = () => { k._sel = true; return k; };
+      k.then = (ok, nein) => { window.__log.push({ op, felder, filter: k._f });
+        const ids = k._f.filter(y => y[1] === "id").flatMap(y => Array.isArray(y[2]) ? y[2] : [y[2]]);
+        return Promise.resolve({ error: null, data: k._sel ? ids.map(id => ({ id })) : null }).then(ok, nein); };
       return k;
     };
     demo = false;
