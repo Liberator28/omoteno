@@ -36,7 +36,9 @@ function gerichteZeilen(bildName){
 
 /* opt: haus, breite, hoehe, kopf ("hell" | "dunkel" | null), kachelFoto (bool), gerichtFoto ("gericht" | "gericht-weiss"),
         uhr, sprache, farbe ("hell" | "dunkel" für die Wahl des Gastes), stil ("premium" erzwingen, auch bei Häusern ohne
-        Schalter), korb ([Gerichtname, …]), hash, reduziert, skala */
+        Schalter), korb ([Gerichtname, …]), hash, reduziert, skala,
+        zeilen (Funktion: ändert die nachgestellten Gerichtzeilen — Preis, Allergene, Merkmale), gerichteFehler (true: die
+        Datenbank antwortet 500) */
 async function oeffneHub(browser, opt){
   opt = opt || {};
   const haus = opt.haus || "chocolamour";
@@ -69,7 +71,10 @@ async function oeffneHub(browser, opt){
     if(/\/rest\/v1\/betriebe\?/.test(u)) return r.fulfill({ status: 200, contentType: "application/json",
       body: JSON.stringify([{ id: "b1", bestell_pause: false, hub_texte: {}, hub_stil: stil, hub_kacheln: kacheln, hub_banner: null, hub_avatar: null,
         karten: null, liefer: opt.liefer || null }]) });
-    if(/\/rest\/v1\/gerichte\?/.test(u)) return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(gerichteZeilen(bildName)) });
+    if(/\/rest\/v1\/gerichte\?/.test(u)){
+      if(opt.gerichteFehler) return r.fulfill({ status: 500, contentType: "application/json", body: '{"message":"boom"}' });
+      return r.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(opt.zeilen ? opt.zeilen(gerichteZeilen(bildName)) : gerichteZeilen(bildName)) });
+    }
     return r.fulfill({ status: 200, contentType: "application/json", body: "[]" });
   });
   await p.goto("file://" + path.join(DIST, haus, "index.html") + (opt.hash || "#/"));

@@ -2125,6 +2125,11 @@ html.kw-eng body.kat-klebt .zurueck.an{opacity:1;pointer-events:auto}
    nur in der Speisekarte (.sf-mit); andere Suchfelder bleiben, wie sie sind. */
 .suche.sf-mit input{padding-right:96px}
 .suche.sf-mit .clear{right:50px}
+/* VORFALL (pruef-speisekarte-premium, beim ersten Lauf): Wer ins Suchfeld tippt, gibt ihm :focus-visible — und das setzt
+   position:relative;z-index:1 (Zeile oben, für den Fokusring). Das Feld lag damit ÜBER dem Löschen-Kreuz und dem
+   Filterknopf; ein Tipp auf das Kreuz traf das Feld (elementFromPoint = INPUT, gemessen auch am unveränderten Hub). Beide
+   Knöpfe sind absolut gesetzt, brauchen also eine eigene Ebene über dem Feld. */
+.suche .clear,.suche .sf-knopf{z-index:2}
 [dir="rtl"] .suche .sf-knopf{right:auto;left:4px}
 [dir="rtl"] .suche.sf-mit .clear{right:auto;left:50px}
 [dir="rtl"] .suche.sf-mit input{padding-right:42px;padding-left:96px}
@@ -4734,6 +4739,65 @@ body[data-startstil="premium"] .auswahlbalken{border-radius:20px;padding:10px 16
 body[data-startstil="premium"] .auswahlbalken > span:first-child{display:inline-flex;align-items:center;gap:10px;min-width:0}
 .ab-bild{flex:none;width:44px;height:44px;border-radius:12px;overflow:hidden;background:color-mix(in srgb, var(--grund) 18%, transparent)}
 .ab-bild img{display:block;width:100%;height:100%;object-fit:cover}
+/* ── Speisekarte (Premium) ──────────────────────────────────────
+   Kopfkarte, Suche als Pille, Chips, Produktkarten. Gleiche Sprache wie die Startseite: 22 px Rundung, dezenter Schatten,
+   Hausfarbe nur über --band/--band-text. Die Produktkarten gelten für den Stil „liste“ (die anderen Stile — Bühne,
+   Raster, Flink — behalten ihr eigenes Bild; sie tragen eigene Regeln unter body[data-kartenstil]). */
+body[data-startstil="premium"] .kopfkarte{position:relative;overflow:hidden;isolation:isolate;display:flex;align-items:flex-end;
+  min-height:104px;margin:0 0 14px;border-radius:22px;background:var(--band);color:var(--band-text);
+  box-shadow:0 1px 2px rgba(0,0,0,.06), 0 14px 28px -18px rgba(0,0,0,.5)}
+body[data-startstil="premium"] .kopfkarte.kk-mitbild{min-height:148px}
+.kk-bild{position:absolute;top:0;bottom:0;inset-inline-start:36%;inset-inline-end:0;z-index:-1}
+.kk-bild img{display:block;width:100%;height:100%;object-fit:cover}
+/* Schleier von der Textseite her: dort ist es reine Hausfarbe, zur Bildseite hin wird es durchsichtig. */
+.kk-bild::after{content:"";position:absolute;inset:0;
+  background:linear-gradient(to right, var(--band) 0%, color-mix(in srgb, var(--band) 92%, transparent) 20%, transparent 100%)}
+[dir="rtl"] .kk-bild::after{background:linear-gradient(to left, var(--band) 0%, color-mix(in srgb, var(--band) 92%, transparent) 20%, transparent 100%)}
+.kk-text{padding:18px 16px 16px;max-width:60%}
+body[data-startstil="premium"] .kopfkarte:not(.kk-mitbild) .kk-text{max-width:100%}
+body[data-startstil="premium"] .seite .kopfkarte h2{margin:0 0 6px;font-size:25px;color:var(--band-text)}
+body[data-startstil="premium"] .seite .kopfkarte .unter{margin:0;font-size:13.5px;line-height:1.45;color:var(--band-text);
+  display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+/* Suche: eine Pille mit Rand, der Filterknopf sitzt IN ihr. */
+body[data-startstil="premium"] .suche input{min-height:52px;border-radius:999px;background:var(--flaeche);
+  border:1px solid var(--linie-stark);padding:13px 96px 13px 44px;
+  box-shadow:0 1px 2px rgba(0,0,0,.05)}
+body[data-startstil="premium"] .suche input:focus{border-color:var(--tinte)}
+body[data-startstil="premium"] .suche .sf-knopf{right:5px;width:44px;height:44px}
+[dir="rtl"] body[data-startstil="premium"] .suche input,body[data-startstil="premium"] [dir="rtl"] .suche input{padding:13px 44px 13px 96px}
+body[data-startstil="premium"] .suche .lupe{left:17px;width:18px;height:18px}
+[dir="rtl"] body[data-startstil="premium"] .suche .lupe{left:auto;right:17px}
+/* Kategorien: Pillen mit Rand, die gewählte in Schriftfarbe auf Grund (vertauscht, also lesbar in jedem Haus). */
+body[data-startstil="premium"] .chip{min-height:44px;border-radius:999px;border:1px solid var(--linie-stark);background:var(--flaeche)}
+body[data-startstil="premium"] .chip.an{background:var(--tinte);border-color:var(--tinte);color:var(--grund)}
+/* Produktkarten */
+body[data-startstil="premium"][data-kartenstil="liste"] .gruppe{font-size:20px;margin-top:4px;padding-top:8px}
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht{padding:12px;margin:0 0 12px;border:1px solid var(--linie);
+  border-bottom:1px solid var(--linie);border-radius:20px;background:var(--flaeche);align-items:stretch;
+  box-shadow:0 1px 2px rgba(0,0,0,.05), 0 12px 24px -18px rgba(0,0,0,.4)}
+body[data-startstil="premium"][data-kartenstil="liste"] .ginfo{align-items:stretch;gap:14px}
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht .gbild,
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht.gmitbild .gbild{order:-1;flex:0 0 96px;width:96px;height:auto;min-height:96px;border-radius:14px}
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht .gbild.schwebt{border-radius:0}
+body[data-startstil="premium"][data-kartenstil="liste"] .gbild img{position:absolute;inset:0;height:100%}
+body[data-startstil="premium"][data-kartenstil="liste"] .gtext{display:flex;flex-direction:column}
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht .n{font-size:16.5px;margin-bottom:4px}
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht .b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.gmerk{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.gmerk .tag{margin:0;padding:4px 9px;border-radius:999px;font-size:10.5px;letter-spacing:.4px;vertical-align:baseline}
+.tag.gallerg{background:var(--flaeche-2);color:var(--tinte);box-shadow:inset 0 0 0 1px var(--linie-stark);text-transform:none;font-size:11px;letter-spacing:.1px;font-weight:650}
+/* Preis unten in der Textspalte, Plus unten rechts; für das Plus bleibt in der Preiszeile Platz. */
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht .gpz{margin-top:auto;padding-top:8px;padding-inline-end:52px}
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht .p{font-size:16.5px}
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht.gmitbild .gpreis,
+body[data-startstil="premium"][data-kartenstil="liste"] .gericht .gpreis{position:absolute;right:12px;left:auto;bottom:12px}
+[dir="rtl"] body[data-startstil="premium"][data-kartenstil="liste"] .gericht .gpreis{left:12px;right:auto}
+body[data-startstil="premium"][data-kartenstil="liste"] .gplus,
+body[data-startstil="premium"][data-kartenstil="liste"] .gmenge{box-shadow:0 6px 14px var(--rot-schein)}
+body[data-startstil="premium"][data-kartenstil="liste"] .gplus{width:44px;height:44px}
+body[data-startstil="premium"][data-kartenstil="liste"] .gplus::after{inset:0}
+body[data-startstil="premium"][data-kartenstil="liste"] .gmenge{height:44px}
+body[data-startstil="premium"][data-kartenstil="liste"] .gmenge button{margin:0}
 </style>
 
 <script>
@@ -12526,14 +12590,27 @@ function tlZeigen(sek, i, richtung){
                { duration:260, easing:"cubic-bezier(.16,1,.3,1)" });
 }
 
+/* Premium-Karte: eine Pille „Allergene · n“ aus den hinterlegten Angaben (INHALTSSTOFFE[…].a), nie aus dem Namen
+   geraten. Steht nichts hinterlegt, erscheint nichts — „keine Pille“ heißt „unbekannt“, nicht „frei von“; das Detailblatt
+   sagt es dann ausdrücklich. Mit einem Allergen steht sein Name da, mit mehreren die Zahl (alle Namen im title/Detailblatt). */
+function allergenPilleHTML(g){
+  const i = INHALTSSTOFFE[g.n];
+  if(!i || !Array.isArray(i.a)) return "";
+  const namen = i.a.map(k => ALLERGEN_NAMEN[k]).filter(Boolean).map(x => t(x));
+  if(!namen.length) return "";
+  const text = namen.length === 1 ? namen[0] : t("Allergene") + " · " + namen.length;
+  return '<span class="tag gallerg" title="' + hs(namen.join(", ")) + '">' + hs(text) + '</span>';
+}
 function gerichtHTML(g, gruppe, karte){
   const stil = kartenStil();
+  const prem = startPremium() && stil === "liste";
   const tags = (g.top ? '<span class="tag top">' + t("BELIEBT") + '</span>' : "")
              + (g.vegan ? '<span class="tag vegan">' + t("VEGAN") + '</span>'
                         : (g.veg ? '<span class="tag veg">' + t("VEGETARISCH") + '</span>' : ""))
              + (g.scharf ? '<span class="tag scharf">' + t("SCHARF") + '</span>' : "")
              + (g.alter ? '<span class="tag abalter">' + g.alter + '+</span>' : "");
   const hatInfo = !!INHALTSSTOFFE[g.n];
+  const allerg = prem ? allergenPilleHTML(g) : "";
 
   /* Vorschaubild neben dem Titel. Bewusst klein und quadratisch: In
      einer Liste mit 60 Gerichten muss der Blick weiter über die Namen
@@ -12562,9 +12639,10 @@ function gerichtHTML(g, gruppe, karte){
          '<button class="ginfo" data-detail="' + encodeURIComponent(g.n) + '" aria-label="' +
          t("Infos zu {x}", {x:hs(t(g.n))}) + '">' +
          '<span class="gtext">' +
-         '<div class="n">' + t(g.n) + tags + (hatInfo ? '<span class="infopunkt"></span>' : "") + '</div>' +
+         '<div class="n">' + t(g.n) + (prem ? "" : tags) + (hatInfo && !(prem && allerg) ? '<span class="infopunkt"></span>' : "") + '</div>' +
          urnameHTML(g.n) +
          (g.b ? '<div class="b">' + t(g.b) + '</div>' : "") +
+         (prem && (tags || allerg) ? '<div class="gmerk">' + tags + allerg + '</div>' : "") +
          '<span class="gpz">' + gerichtPreisHTML(g) + '</span>' +
          '</span>' +
          vorschau +
@@ -12709,6 +12787,13 @@ function karteKopf(id, titel, unter){
   return { titel, unter: eigenUnter || unter };
 }
 
+function karteHeroFoto(id, daten){
+  const k = KACHELN.find(x => x.art === "karte" && kachelKarte(x) === id) || KACHELN.find(x => x.schluessel === id);
+  const b = k && /^https:\/\//i.test(String(k.banner || "")) ? k.banner : "";
+  if(b) return b;
+  for(const gr of daten) for(const e of gr.eintraege){ const u = hatVorschau(e) ? vorschauBild(e, false) : ""; if(u) return u; }
+  return "";
+}
 function karteSeite(id, daten, titel, unter, fuss){
   ({ titel, unter } = karteKopf(id, titel, unter));
   if(!(id in filter))   filter[id] = "Alle";
@@ -12761,9 +12846,18 @@ function karteSeite(id, daten, titel, unter, fuss){
     '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M7 12h10M10 17h4"/></svg>' +
     (sfAnzahl() ? '<span class="sf-zahl">' + sfAnzahl() + '</span>' : "") + '</button></div>' + sfFeldHTML(id, daten);
 
+  const kopf = '<h2>' + hs(t(titel)) + '</h2>' + (unter ? '<p class="unter">' + hs(t(unter)) + '</p>' : "");
+  /* Premium: Titel und Unterzeile (beide aus der Kachel/dem Verzeichnis, nichts Erfundenes) in einer Kopfkarte, rechts ein
+     Foto aus den Daten dieser Karte — das Banner der Kachel, sonst das erste Gerichtfoto. Ohne Foto bleibt die Karte
+     eine ruhige Fläche in der Hausfarbe, ohne leeren Bildkasten. */
+  const heroFoto = startPremium() ? karteHeroFoto(id, daten) : "";
   return '<div class="seite">' + (stil === "flink" ? ksFlinkKopfHTML(id, daten) : "") +
          (id === "speisekarte" && foodrouletteAn() ? entscheidungCTA() : "") +
-         '<h2>' + hs(t(titel)) + '</h2>' + (unter ? '<p class="unter">' + hs(t(unter)) + '</p>' : "") +
+         (startPremium()
+           ? '<div class="kopfkarte' + (heroFoto ? " kk-mitbild" : "") + '">' +
+             (heroFoto ? '<span class="kk-bild" aria-hidden="true"><img src="' + hs(heroFoto) + '" alt="" decoding="async"></span>' : "") +
+             '<div class="kk-text">' + kopf + '</div></div>'
+           : kopf) +
          aktionBandHTML() +
          suche + '<div class="chips">' +
            /* Klebt die Leiste oben, ist DAS der Weg zurück (die schwebende

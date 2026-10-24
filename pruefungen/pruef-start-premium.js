@@ -136,12 +136,16 @@ async function lauf(b, kopf){
   {
     const h = await oeffneHub(b, Object.assign({ kopf: "dunkel", breite: 390, hoehe: 844 }, kopf.opt));
     const p = h.p;
+    /* Voraussetzung für den Tisch-Fall: das Haus liefert, die Chips WÄREN also da — nur der Tisch nimmt sie weg (§8.1g). */
+    const d0 = await p.evaluate(() => { LIEFER.an = true; zeichne(); return document.querySelectorAll("[data-bestellart]").length; });
+    pruef("Voraussetzung: bei liefernder Karte ohne Tisch stehen die zwei Chips", d0 === 2, d0);
+    await p.evaluate(() => { LIEFER.an = false; zeichne(); });
     const d = await p.evaluate(() => ({ chipsHidden: document.getElementById("bestellart").hidden, chips: document.querySelectorAll("[data-bestellart]").length,
       unter: document.querySelector('[data-sz="auswahl"] .sz-unter').textContent, zahl: !!document.querySelector('[data-sz="auswahl"] .sz-zahl'), aImg: !!document.querySelector('[data-sz="auswahl"] img'),
       balken: document.getElementById("auswahlbalken").classList.contains("an"), lieferSchalter: getComputedStyle(document.getElementById("lieferwahl")).display }));
     pruef("ohne Lieferung: keine Chips (kein Weg, der nirgends hinführt)", d.chipsHidden && d.chips === 0, d);
     pruef("leerer Korb: „Noch nichts ausgewählt“, keine Zahl, kein Foto, keine Leiste", d.unter.length > 5 && !/\d+,\d\d/.test(d.unter) && !d.zahl && !d.aImg && !d.balken, d);
-    await p.evaluate(() => { tischNr = "7"; zeichne(); }); await p.waitForTimeout(300);
+    await p.evaluate(() => { LIEFER.an = true; tischNr = "7"; zeichne(); }); await p.waitForTimeout(300);
     const t = await p.evaluate(() => ({ karten: [...document.querySelectorAll(".sz.sz-p")].map(c => c.dataset.sz), chips: document.getElementById("bestellart").hidden }));
     pruef("am Tisch: Service-Karte erscheint, keine Bestellart-Chips", t.karten.indexOf("ruf") >= 0 && t.chips, t);
     pruef("keine Fehler", h.fehler.length === 0 && h.konsole.length === 0, [h.fehler, h.konsole]);
