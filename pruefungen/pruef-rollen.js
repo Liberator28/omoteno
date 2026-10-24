@@ -203,7 +203,7 @@ function gruppenLesen() {
     const k = await seite.evaluate(() => {
       const sicht = el => !!el && getComputedStyle(el).display !== "none" && !el.closest("[hidden]");
       return {
-        gerichte: document.querySelectorAll("#karteListe [data-klapp]").length,
+        gerichte: document.querySelectorAll("#karteListe [data-klapp], #karteListe .kr-kachel").length,
         satz: sicht(document.getElementById("karteTeamSatz")),
         knoepfe: sicht(document.querySelector(".kartenknoepfe")),
         runner: sicht(document.getElementById("runner")),

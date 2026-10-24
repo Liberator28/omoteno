@@ -34,6 +34,8 @@ function pruef(b, t, d) {
 
 async function board(ctx) {
   const seite = await ctx.newPage();
+  /* Diese Prüfung gilt den aufklappbaren ZEILEN der Liste; die Kacheln hat pruef-karte-raster.js. */
+  await seite.addInitScript(() => { try{ localStorage.setItem("omoteno-karte-ansicht", "liste"); }catch(e){} });
   const konsole = [];
   seite.on("pageerror", e => konsole.push(String(e).slice(0, 300)));
   await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());

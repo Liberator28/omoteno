@@ -245,9 +245,9 @@ async function lies(seite, ziel) {
       document.querySelector('#fKarten [data-karte-wahl="k-mittagskarte"]').click();
       await sichern(false);
       welcheKarte = "k-mittagskarte"; zeichneKarte();
-      const inMittag = [...document.querySelectorAll("#karteListe .gname")].map(e => e.textContent);
+      const inMittag = [...document.querySelectorAll("#karteListe .gname, #karteListe .kr-name")].map(e => e.textContent);
       welcheKarte = "speisekarte"; zeichneKarte();
-      const inSpeise = [...document.querySelectorAll("#karteListe .gname")].map(e => e.textContent);
+      const inSpeise = [...document.querySelectorAll("#karteListe .gname, #karteListe .kr-name")].map(e => e.textContent);
       return { karten: g.karten.join(","), karte: g.karte, inMittag, inSpeise };
     });
     pruef(zwei.karten === "speisekarte,k-mittagskarte" && zwei.karte === "speisekarte",

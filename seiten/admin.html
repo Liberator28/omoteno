@@ -985,6 +985,79 @@ html{font-size:calc(16px * var(--skala,1))}
 #karteListe .kat{scroll-margin-top:calc(var(--board-kopf, 64px) + var(--kl-hoehe, 62px) + 8px)}
 @media (prefers-reduced-motion:reduce){ .kl-chip{transition:none} }
 
+/* ─── Karte als Kacheln (20.10.) ──────────────────────────────
+   Präfix kr-. Die Kachel ist EIN Knopf (Bild + Text → Bearbeiten); Häkchen und ⋯ liegen als Geschwister
+   darüber, nicht darin (Knöpfe in Knöpfen sind kein HTML). Das Häkchen ist ein role=checkbox-Knopf, kein
+   <input>: die globale Regel label{display:block;margin-bottom:14px} schöbe sonst jede Kachel. Die Kachel
+   selbst schneidet nichts ab (overflow sichtbar), sonst verschwände das ⋯-Menü an ihrem Rand. */
+.kr-werkzeug{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 14px}
+.kr-schalter{display:inline-flex;gap:2px;padding:3px;border:1px solid var(--linie);border-radius:var(--ecke-pille);background:var(--tresen)}
+.kr-schalter button{min-height:44px;padding:0 18px;border-radius:var(--ecke-pille);font-size:14px;font-weight:600;color:var(--gedaempft)}
+.kr-schalter button[aria-pressed="true"]{background:var(--messing);color:var(--nacht)}
+.kr-filter{display:flex;flex-wrap:wrap;gap:6px}
+.kr-filter[hidden]{display:none}
+.kr-fchip{min-height:44px;padding:0 14px;border:1px solid var(--linie);border-radius:var(--ecke-pille);background:var(--tresen);color:var(--gedaempft);font-size:14px;font-weight:600}
+.kr-fchip[aria-pressed="true"]{color:var(--kreide);background:var(--karte);border-color:var(--messing)}
+.kr-layout{display:block}
+.kr-panel{display:none}
+.kr-haupt{min-width:0}
+@media (min-width:900px){
+  .kr-layout{display:grid;grid-template-columns:230px minmax(0,1fr);gap:22px;align-items:start}
+  .kr-panel{display:flex;flex-direction:column;gap:6px}
+}
+.kr-pk{display:flex;align-items:center;gap:10px;min-height:44px;padding:0 12px;border:1px solid transparent;border-radius:var(--r);
+  color:var(--kreide);font-size:14.5px;font-weight:600;text-align:left}
+.kr-pk > span:not(.kr-pk-emo){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kr-pk b{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--gedaempft);font-variant-numeric:tabular-nums}
+.kr-pk-emo{flex:none;width:30px;height:30px;display:grid;place-items:center;font-size:18px;line-height:1;border-radius:9px;background:var(--flaeche-2)}
+.kr-pk[aria-pressed="true"]{background:var(--karte);border-color:var(--messing)}
+.kr-panel .kted-neu{margin-top:8px}
+.kr-raster{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));grid-auto-rows:1fr;gap:12px}
+.kr-kachel{position:relative;display:flex;min-width:0}
+.kr-karte{display:flex;flex-direction:column;width:100%;padding:0;text-align:left;color:var(--kreide);
+  background:var(--tresen);border:1px solid var(--linie);border-radius:var(--r);overflow:hidden;-webkit-tap-highlight-color:transparent}
+button.kr-karte{cursor:pointer}
+.kr-karte:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
+.kr-kachel[data-gewaehlt="1"] .kr-karte{border-color:var(--messing);box-shadow:0 0 0 2px var(--messing)}
+.kr-bild{display:block;position:relative;width:100%;aspect-ratio:4/3;background:var(--flaeche-2);overflow:hidden}
+.kr-bild img{display:block;width:100%;height:100%;object-fit:cover}
+.kr-platz{position:absolute;inset:0;display:grid;place-items:center;font-size:42px;line-height:1}
+.kr-text{display:flex;flex-direction:column;gap:3px;padding:10px 12px 12px;min-width:0;flex:1}
+.kr-name{font-size:15px;font-weight:600;line-height:1.3;overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.kr-preis{font-family:var(--mono);font-size:14px;font-variant-numeric:tabular-nums;color:var(--kreide)}
+.kr-kategorie{font-size:12.5px;color:var(--gedaempft);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kr-marken{display:flex;flex-wrap:wrap;gap:4px;margin-top:2px}
+.kr-marke{font-size:11.5px;font-weight:700;padding:2px 7px;border-radius:7px;background:var(--flaeche-2);color:var(--kreide)}
+.kr-marke.aus{background:var(--warn);color:var(--nacht)}
+.kr-kachel.aus .kr-bild{opacity:.55}
+.kr-haken,.kr-mehr{position:absolute;top:0;width:44px;height:44px;display:grid;place-items:center;z-index:2}
+.kr-haken{left:0}
+.kr-mehr{right:0}
+.kr-haken::before{content:"";width:24px;height:24px;border-radius:8px;border:2px solid #fff;background:rgba(16,21,28,.62);box-sizing:border-box}
+.kr-haken[aria-checked="true"]::before{content:"✓";display:grid;place-items:center;background:var(--messing);border-color:var(--messing);color:var(--nacht);font-size:15px;font-weight:800;line-height:1}
+.kr-mehr::before{content:"⋯";width:30px;height:30px;border-radius:50%;display:grid;place-items:center;background:rgba(16,21,28,.72);color:#fff;font-size:18px;font-weight:700;line-height:1;padding-bottom:6px;box-sizing:border-box}
+.kr-haken:focus-visible,.kr-mehr:focus-visible{outline:2px solid var(--messing);outline-offset:-4px;border-radius:12px}
+.kr-menue{position:absolute;right:6px;top:44px;z-index:7;min-width:150px;max-width:calc(100vw - 32px);padding:6px;border:1px solid var(--linie);border-radius:var(--r);
+  background:var(--karte);box-shadow:0 10px 28px rgba(0,0,0,.35);display:flex;flex-direction:column}
+.kr-menue button{min-height:44px;padding:0 12px;border-radius:var(--ecke);text-align:left;font-size:14.5px;color:var(--kreide);width:100%}
+.kr-menue button:hover,.kr-menue button:focus-visible{background:var(--flaeche-2)}
+.kr-neu{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:100%;min-height:150px;padding:12px;
+  border:1.5px dashed var(--linie);border-radius:var(--r);background:transparent;color:var(--kreide);font-size:14.5px;font-weight:600;text-align:center}
+.kr-neu:hover{border-color:var(--messing)}
+.kr-neu span:first-child{font-size:24px;line-height:1}
+.kr-auswahl{position:sticky;top:calc(var(--board-kopf, 64px) + var(--kl-hoehe, 0px) + 4px);z-index:6;display:flex;flex-wrap:wrap;align-items:center;gap:8px;
+  margin:0 0 12px;padding:8px 12px;border:1px solid var(--messing);border-radius:var(--r);background:var(--karte)}
+.kr-auswahl[hidden]{display:none}
+.kr-auswahl b{flex:1 1 auto;font-size:14.5px;font-weight:600;color:var(--kreide)}
+.kr-ziele{display:flex;flex-direction:column;gap:6px;margin-bottom:16px}
+.kr-ziel{display:flex;align-items:center;gap:10px;min-height:48px;padding:0 12px;border:1px solid var(--linie);border-radius:var(--r);background:var(--tresen);
+  color:var(--kreide);font-size:15px;font-weight:600;text-align:left}
+.kr-ziel > span:not(.kr-pk-emo){flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.kr-ziel b{font-family:var(--mono);font-size:12px;font-weight:600;color:var(--gedaempft)}
+.kr-ziel[aria-checked="true"]{border-color:var(--messing);background:var(--karte)}
+.kr-foto-gross{display:block;width:100%;max-height:60dvh;object-fit:contain;border-radius:var(--r);background:var(--flaeche-2)}
+.kr-filterhinweis{margin:0 0 10px;font-size:13.5px;color:var(--gedaempft)}
+
 /* ─── Bestellkarte ─────────────────────────────────────────── */
 .karten{display:flex;flex-direction:column;gap:12px;position:relative}
 /* Team-Modus: Knopf über den Filtern, Plakette auf der Karte. */
@@ -3682,6 +3755,11 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   main{max-width:none;padding-left:28px;padding-right:28px}
   main > .tafel:not(#t-bestellungen):not(#t-reservierungen){max-width:1280px;margin:0 auto}
 }
+/* Die Kacheln der Karte brauchen die Breite (Panel + mehrere Spalten); Suche und Knöpfe bleiben bei 900 px.
+   Gleiche Spezifität wie die Regel oben (die :not(#…) zählen als Kennungen) — deshalb steht diese danach. */
+@media (min-width:1180px){
+  body[data-karte-ansicht="raster"] #t-speisekarte > #karteListe{max-width:none}
+}
 </style>
 </head>
 <body>
@@ -3889,6 +3967,19 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     </div>
     <p class="nur-inhaber-satz" id="karteTeamSatz" hidden><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg><span>Die Karte ändert nur der Besitzer. Ausverkauftes stellen Sie unter „Verfügbar“ ab.</span></p>
     <input type="text" class="suche" id="karteSuche" placeholder="Gericht suchen" autocomplete="off">
+    <!-- Ansicht der Karte (20.10., Wunsch „Gerichte wie in der Vorlage“): Kacheln mit Foto oder die Liste von
+         vorher. Präfix kr- (vorher gesucht, §1.1). Die Filter gelten nur in den Kacheln. -->
+    <div class="kr-werkzeug" id="krWerkzeug">
+      <div class="kr-schalter" role="group" aria-label="Ansicht der Karte">
+        <button type="button" data-kr-ansicht="raster" aria-pressed="true">Kacheln</button>
+        <button type="button" data-kr-ansicht="liste" aria-pressed="false">Liste</button>
+      </div>
+      <div class="kr-filter" id="krFilter" role="group" aria-label="Filter">
+        <button type="button" class="kr-fchip" data-kr-filter="alle" aria-pressed="true">Alle</button>
+        <button type="button" class="kr-fchip" data-kr-filter="aus" aria-pressed="false">Nicht verfügbar</button>
+        <button type="button" class="kr-fchip" data-kr-filter="ohnefoto" aria-pressed="false">Ohne Foto</button>
+      </div>
+    </div>
     <!-- Kategorien-Leiste (17.10., Wunsch „wie bei der Speisekarte die
          Kategorienanzeige, die automatisch wechselt, je nachdem wo man
          ist“). Klebt unter dem Kopf; die Markierung folgt dem Rollen,
@@ -5095,6 +5186,40 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
   </div>
 </div>
 
+<!-- ══ Gerichte verschieben (Kacheln der Karte): Kategorie wählen oder neu, bei mehreren Karten auch die Karte ══ -->
+<div class="blatt" id="krBlatt" hidden role="dialog" aria-modal="true" aria-labelledby="krTitel">
+  <div class="blattinhalt kted-blatt">
+    <div class="griff"></div>
+    <h2 class="blatttitel" id="krTitel">Verschieben</h2>
+    <p class="kted-hilfe" id="krHilfe">Wohin sollen sie? Die Reihenfolge innerhalb der Kategorie bleibt wie ausgewählt, neue Gerichte stehen hinten.</p>
+    <label class="kted-feld" id="krKarteWahl" hidden>
+      <span>Karte</span>
+      <select id="krKarte"></select>
+    </label>
+    <div class="kr-ziele" id="krZiele" role="radiogroup" aria-label="Kategorie"></div>
+    <label class="kted-feld">
+      <span>Oder eine neue Kategorie</span>
+      <input id="krNeu" maxlength="40" autocomplete="off" enterkeyhint="done" placeholder="z. B. Neuheiten">
+    </label>
+    <div class="kted-knoepfe">
+      <button type="button" class="knopf" id="krOk">Verschieben</button>
+      <button type="button" class="knopf leise" id="krAbbrechen">Abbrechen</button>
+    </div>
+  </div>
+</div>
+<!-- ══ Foto ansehen: das Bild, das der Gast in der Karte sieht ══ -->
+<div class="blatt" id="krFoto" hidden role="dialog" aria-modal="true" aria-labelledby="krFotoName">
+  <div class="blattinhalt kted-blatt">
+    <div class="griff"></div>
+    <h2 class="blatttitel" id="krFotoName">Foto</h2>
+    <img id="krFotoBild" class="kr-foto-gross" alt="">
+    <p class="kted-hilfe" id="krFotoWas"></p>
+    <div class="kted-knoepfe">
+      <button type="button" class="knopf leise" id="krFotoZu">Schließen</button>
+    </div>
+  </div>
+</div>
+
 <!-- ══ Karten: anlegen, benennen, ordnen, entfernen (bis 20) ══ -->
 <div class="blatt" id="kvBlatt" hidden role="dialog" aria-modal="true" aria-labelledby="kvTitel">
   <div class="blattinhalt kted-blatt">
@@ -5898,7 +6023,8 @@ const NUR_INHABER_SCHLOSS = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x
    Stellen, deshalb EIN Wächter für alle (§4.5), nicht je Zeichenstelle. */
 const NUR_INHABER_KLICK = '[data-bearbeiten],[data-kted],[data-kted-neu],[data-karte-neu],' +
   '[data-karten-bearbeiten],[data-aw-tun="bearbeiten"],[data-schieb],[data-katschieb],' +
-  '[data-leerkat-gericht],#neuesGericht,#neueKategorie,#karteImport,#runnerAuf';
+  '[data-leerkat-gericht],#neuesGericht,#neueKategorie,#karteImport,#runnerAuf,' +
+  '[data-kr-wahl],[data-kr-verschieben],[data-kr-verschieben-eins],[data-kr-alle],[data-kr-neukat]';
 function istInhaberRolle(){ return ROLLE !== "team" && ROLLE !== "kueche"; }
 function rolleAnwenden(rolle){
   ROLLE = (rolle === "team" || rolle === "kueche") ? rolle : "inhaber";
@@ -12140,6 +12266,24 @@ function katSortNeu(karte){
   return werte.length ? Math.max(...werte) + 1 : 1;
 }
 
+/* Kopf einer Kategorie (Zeichen+Name, Zahl, ▲▼): Liste und Kacheln zeichnen ihn gleich — EINE Stelle. */
+function katKopfHtml(k, ki, anzahlKats, n, aus, schiebbar){
+  return `<div class="katkopf">
+        <button type="button" class="kted-knopf" data-kted="${sicher(k)}" aria-label="Kategorie ${sicher(k)} bearbeiten">
+          <span class="kted-emo" aria-hidden="true">${katZeichenGlyph(katZeichenWirksam(k, welcheKarte))}</span>
+          <span class="katname">${sicher(k)}</span>
+          <svg class="kted-stift" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.5 2.5l2 2L6 12l-3 1 1-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
+        </button>
+        <span class="katzahl">${n}${aus ? ` · ${aus} aus` : ""}</span>
+        ${schiebbar ? `<div class="sortier katsortier">
+          <button data-katschieb="${sicher(k)}" data-richtung="-1"
+            ${ki===0?"disabled":""} aria-label="Kategorie nach oben">▲</button>
+          <button data-katschieb="${sicher(k)}" data-richtung="1"
+            ${ki===anzahlKats-1?"disabled":""} aria-label="Kategorie nach unten">▼</button>
+        </div>` : ""}
+      </div>`;
+}
+
 function zeichneKarte(){
   const ziel = $("#karteListe");
   kartenWahlZeichnen();
@@ -12190,6 +12334,14 @@ function zeichneKarte(){
   const passt = g => !suchen ||
     (g.name + " " + (g.beschreibung||"")).toLowerCase().includes(suchen);
 
+  if(KR_ANSICHT === "raster"){
+    ziel.innerHTML = krHtml(kats, dieser, suchen, passt, leerHTML);
+    krNachZeichnen();
+    katLeisteZeichnen();
+    return;
+  }
+  krWerkzeugZeichnen();
+
   const stuecke = kats.map((k, ki) => {
     const alle = dieser.filter(g => g.kategorie === k)
                        .sort((a,b) => (a.reihenfolge||0) - (b.reihenfolge||0));
@@ -12202,20 +12354,7 @@ function zeichneKarte(){
     const schiebbar = !suchen;
 
     return `<div class="kat" data-kat="${sicher(k)}">
-      <div class="katkopf">
-        <button type="button" class="kted-knopf" data-kted="${sicher(k)}" aria-label="Kategorie ${sicher(k)} bearbeiten">
-          <span class="kted-emo" aria-hidden="true">${katZeichenGlyph(katZeichenWirksam(k, welcheKarte))}</span>
-          <span class="katname">${sicher(k)}</span>
-          <svg class="kted-stift" width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M11.5 2.5l2 2L6 12l-3 1 1-3z" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"/></svg>
-        </button>
-        <span class="katzahl">${drin.length}${aus ? ` · ${aus} aus` : ""}</span>
-        ${schiebbar ? `<div class="sortier katsortier">
-          <button data-katschieb="${sicher(k)}" data-richtung="-1"
-            ${ki===0?"disabled":""} aria-label="Kategorie nach oben">▲</button>
-          <button data-katschieb="${sicher(k)}" data-richtung="1"
-            ${ki===kats.length-1?"disabled":""} aria-label="Kategorie nach unten">▼</button>
-        </div>` : ""}
-      </div>
+      ${katKopfHtml(k, ki, kats.length, drin.length, aus, schiebbar)}
       ${drin.map(g => {
         const i = alle.indexOf(g);
         const kuerzel = String(g.allergene || "").split(",").map(x => x.trim().toUpperCase()).filter(Boolean);
@@ -12261,6 +12400,207 @@ function zeichneKarte(){
   katLeisteZeichnen();
 }
 
+/* ═══ KARTE ALS KACHELN (Wunsch 20.10., Vorlage „Gerichte“) ═════════════════════════════════════════
+   Zweite Ansicht neben der Liste: Foto-Kacheln je Kategorie, links ein Panel mit Zählern, Häkchen zum
+   Auswählen, ⋯-Menü, gestrichelte „Neues Gericht in …“-Kachel, Verschieben in eine andere Kategorie (oder
+   Karte). Die Liste bleibt unverändert und wählbar; gemerkt wird die Wahl pro Gerät (localStorage, nie
+   wichtiger als die Karte selbst). Jede Kategorie bleibt EIN Abschnitt `.kat[data-kat]` mit demselben Kopf
+   (Kategorie-Editor, ▲▼) — so laufen Kategorien-Leiste und ihr Spion unverändert weiter.
+
+   Verschieben schreibt je Gericht genau: kategorie, kat_sort, kat_emoji, reihenfolge (und bei einer
+   anderen Karte karte, karten) — dieselben Felder wie sichern(). Nur Inhaber; ein Team-Konto kommt an
+   der Datenbank nicht vorbei, und 0 geschriebene Zeilen heißen „kein Recht“, nicht „gelungen“ (§2.3b). */
+const KR_SCHLUESSEL = "omoteno-karte-ansicht";
+function krAnsichtLesen(){ try{ return localStorage.getItem(KR_SCHLUESSEL) === "liste" ? "liste" : "raster"; }catch(e){ return "raster"; } }
+let KR_ANSICHT = krAnsichtLesen();
+let krKat = "";                 /* im Panel gewählte Kategorie; "" = alle (nur ab 900 px wirksam) */
+let krFilter = "alle";          /* alle | aus | ohnefoto */
+const krWahl = new Set();       /* ausgewählte Gericht-ids */
+let krMove = null;              /* { ids, karte, ziel } solange das Verschieben-Blatt offen ist */
+const KR_BREIT = window.matchMedia("(min-width:900px)");
+KR_BREIT.addEventListener("change", () => { if(KR_ANSICHT === "raster") zeichneKarte(); });
+
+/* Nur ein https-Foto ohne Sonderzeichen kommt in ein src (§2.3a). Die kleine Fassung (-q320) nur, wo die große
+   (-q1080) die Board-Fassung ist — sonst die Adresse, wie sie steht (wie bildKlein im Hub). */
+function krFoto(g, klein){
+  const u = String((g && g.bild) || "").trim();
+  if(!/^https:\/\/[^\s"'<>\\`()]{3,400}$/i.test(u)) return "";
+  return klein ? u.replace(/-q1080\.(webp|jpg)$/, "-q320.$1") : u;
+}
+function krKachelHtml(g, inh){
+  const foto = krFoto(g, true), gewaehlt = krWahl.has(g.id), r = rbLaufend(g);
+  const marken = (g.verfuegbar ? "" : '<span class="kr-marke aus">aus</span>') +
+    (r ? '<span class="kr-marke">−' + Math.round((1 - r.preis_neu / r.preis_alt) * 100) + ' %</span>' : "") +
+    (g.vegan ? '<span class="kr-marke">Vegan</span>' : g.veg ? '<span class="kr-marke">Vegetarisch</span>' : "");
+  const id = sicher(g.id);
+  return '<div class="kr-kachel' + (g.verfuegbar ? "" : " aus") + '" data-kr-id="' + id + '"' + (gewaehlt ? ' data-gewaehlt="1"' : "") + '>' +
+    /* Besitzer: die Kachel ist der Weg zum Bearbeiten. Team: nur ansehen — keine Bedienung, die der Server abweist. */
+    (inh ? '<button type="button" class="kr-karte" data-bearbeiten="' + id + '" aria-label="' + sicher(g.name) + ", " + sicher(euro(g.preis)) + ', bearbeiten">'
+         : '<div class="kr-karte">') +
+      '<span class="kr-bild">' + (foto ? '<img src="' + sicher(foto) + '" alt="" loading="lazy" decoding="async">'
+        : '<span class="kr-platz" aria-hidden="true">' + katZeichenGlyph(katZeichenWirksam(g.kategorie, welcheKarte)) + '</span>') + '</span>' +
+      '<span class="kr-text"><b class="kr-name">' + sicher(g.name) + '</b><span class="kr-preis">' + euro(g.preis) + '</span>' +
+        '<span class="kr-kategorie">' + sicher(g.kategorie) + '</span>' + (marken ? '<span class="kr-marken">' + marken + '</span>' : "") + '</span>' +
+    (inh ? '</button>' : '</div>') +
+    (inh ? '<button type="button" class="kr-haken" role="checkbox" aria-checked="' + gewaehlt + '" data-kr-wahl="' + id + '" aria-label="' + sicher(g.name) + ' auswählen"></button>' : "") +
+    (inh || foto ? '<button type="button" class="kr-mehr" aria-haspopup="menu" aria-expanded="false" data-kr-menue="' + id + '" aria-label="Mehr zu ' + sicher(g.name) + '"></button>' : "") +
+  '</div>';
+}
+/* Die ganze Kachel-Ansicht (ohne die leeren Kategorien — die hängt zeichneKarte dahinter, wie in der Liste). */
+function krHtml(kats, dieser, suchen, passt, leerHTML){
+  const inh = istInhaberRolle();
+  const aktiv = KR_BREIT.matches && kats.includes(krKat) ? krKat : "";
+  const filterOk = g => krFilter === "alle" || (krFilter === "aus" && !g.verfuegbar) || (krFilter === "ohnefoto" && !krFoto(g));
+  /* Eine Auswahl, die es nicht mehr gibt (gelöscht, verschoben, andere Karte), fällt weg. */
+  [...krWahl].forEach(id => { if(!dieser.some(g => g.id === id)) krWahl.delete(id); });
+  const panel = '<div class="kr-panel" role="group" aria-label="Kategorien">' +
+    '<button type="button" class="kr-pk" data-kr-kat="" aria-pressed="' + (aktiv === "") + '"><span class="kr-pk-emo" aria-hidden="true">▦</span><span>Alle</span><b>' + dieser.length + '</b></button>' +
+    kats.map(k => '<button type="button" class="kr-pk" data-kr-kat="' + sicher(k) + '" aria-pressed="' + (aktiv === k) + '"><span class="kr-pk-emo" aria-hidden="true">' +
+      katZeichenGlyph(katZeichenWirksam(k, welcheKarte)) + '</span><span>' + sicher(k) + '</span><b>' + dieser.filter(g => g.kategorie === k).length + '</b></button>').join("") +
+    (suchen || !inh ? "" : '<button type="button" class="kted-neu" data-kr-neukat><span aria-hidden="true">＋</span> Neue Kategorie</button>') + '</div>';
+  const abschnitte = kats.filter(k => !aktiv || k === aktiv).map(k => {
+    const ki = kats.indexOf(k);
+    const alle = dieser.filter(g => g.kategorie === k).sort((a, b) => (a.reihenfolge || 0) - (b.reihenfolge || 0));
+    const drin = alle.filter(g => passt(g) && filterOk(g));
+    if(!drin.length) return "";
+    const aus = drin.filter(g => !g.verfuegbar).length;
+    const neu = inh && !suchen && krFilter === "alle"
+      ? '<button type="button" class="kr-neu" data-leerkat-gericht="' + sicher(k) + '"><span aria-hidden="true">＋</span><span>Neues Gericht in ' + sicher(k) + '</span></button>' : "";
+    return '<div class="kat" data-kat="' + sicher(k) + '">' + katKopfHtml(k, ki, kats.length, drin.length, aus, !suchen && krFilter === "alle") +
+      '<div class="kr-raster">' + neu + drin.map(g => krKachelHtml(g, inh)).join("") + '</div></div>';
+  }).join("");
+  const auswahl = inh ? '<div class="kr-auswahl" id="krAuswahl" role="region" aria-label="Auswahl" hidden><b data-kr-zahl></b>' +
+    '<button type="button" class="knopf" data-kr-verschieben>Verschieben …</button>' +
+    '<button type="button" class="knopf leise" data-kr-alle>Alle sichtbaren</button>' +
+    '<button type="button" class="knopf leise" data-kr-weg>Aufheben</button></div>' : "";
+  const hinweis = (krFilter !== "alle" && !abschnitte) ? '<p class="kr-filterhinweis">Kein Gericht passt zu diesem Filter.</p>' : "";
+  return '<div class="kr-layout">' + panel + '<div class="kr-haupt">' + auswahl + hinweis +
+    (abschnitte || (hinweis ? "" : '<div class="leer"><div class="gross">Nichts gefunden</div><p>Kein Gericht enthält „' + sicher(suchtext) + '“.</p></div>')) +
+    (suchen || krFilter !== "alle" ? "" : leerHTML +
+      '<button type="button" class="kted-neu" data-kted-neu><span aria-hidden="true">＋</span> Neue Kategorie</button>') + '</div></div>';
+}
+function krNachZeichnen(){ krMenueZu(); krAuswahlZeichnen(); krWerkzeugZeichnen(); }
+function krWerkzeugZeichnen(){
+  document.body.dataset.karteAnsicht = KR_ANSICHT;
+  document.querySelectorAll("[data-kr-ansicht]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.krAnsicht === KR_ANSICHT)));
+  const f = document.getElementById("krFilter"); if(f) f.hidden = KR_ANSICHT !== "raster";
+  document.querySelectorAll("[data-kr-filter]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.krFilter === krFilter)));
+}
+function krAuswahlZeichnen(){
+  const el = document.getElementById("krAuswahl"); if(!el) return;
+  const n = krWahl.size;
+  el.hidden = n === 0;
+  if(n) el.querySelector("[data-kr-zahl]").textContent = n + (n === 1 ? " Gericht ausgewählt" : " Gerichte ausgewählt");
+}
+/* Ein Häkchen ändert nur sich, seine Kachel und die Leiste — kein Neuaufbau des Rasters (§4.2). */
+function krWahlUmschalten(id, an){
+  const jetzt = an === undefined ? !krWahl.has(id) : an;
+  if(jetzt) krWahl.add(id); else krWahl.delete(id);
+  const k = document.querySelector('.kr-kachel[data-kr-id="' + CSS.escape(id) + '"]');
+  if(k){
+    if(jetzt) k.setAttribute("data-gewaehlt", "1"); else k.removeAttribute("data-gewaehlt");
+    const h = k.querySelector("[data-kr-wahl]"); if(h) h.setAttribute("aria-checked", String(jetzt));
+  }
+  krAuswahlZeichnen();
+}
+function krMenueZu(){
+  document.querySelectorAll(".kr-menue").forEach(m => m.remove());
+  document.querySelectorAll('[data-kr-menue][aria-expanded="true"]').forEach(b => b.setAttribute("aria-expanded", "false"));
+}
+function krMenueUmschalten(id){
+  const kachel = document.querySelector('.kr-kachel[data-kr-id="' + CSS.escape(id) + '"]');
+  const war = kachel && kachel.querySelector(".kr-menue");
+  krMenueZu();
+  const g = gerichte.find(x => x.id === id);
+  if(war || !kachel || !g) return;
+  const inh = istInhaberRolle(), i = sicher(id);
+  const m = document.createElement("div");
+  m.className = "kr-menue"; m.setAttribute("role", "menu");
+  m.innerHTML = (inh ? '<button type="button" role="menuitem" data-bearbeiten="' + i + '">Bearbeiten</button>' +
+                       '<button type="button" role="menuitem" data-kr-verschieben-eins="' + i + '">Verschieben …</button>' : "") +
+                (krFoto(g) ? '<button type="button" role="menuitem" data-kr-foto="' + i + '">Foto ansehen</button>' : "");
+  kachel.appendChild(m);
+  kachel.querySelector("[data-kr-menue]").setAttribute("aria-expanded", "true");
+  const erst = m.querySelector("button"); if(erst) erst.focus();
+}
+function krFotoZeigen(id){
+  const g = gerichte.find(x => x.id === id), u = krFoto(g, false);
+  if(!u){ melde("Dieses Gericht hat noch kein Foto", true); return; }
+  $("#krFotoBild").src = u;
+  $("#krFotoName").textContent = g.name;
+  $("#krFotoWas").textContent = (g.bild_frei ? "Mit Freisteller (Pop-Ansicht im Detailblatt). " : "") + "So sieht der Gast das Foto in der Karte.";
+  $("#krFoto").hidden = false;
+}
+function krFotoZu(){ blattFortAnimieren($("#krFoto"), () => { $("#krFoto").hidden = true; $("#krFotoBild").removeAttribute("src"); }); }
+
+/* ── Verschieben ── */
+function krVerschiebenOeffnen(ids){
+  const liste = ids.map(id => gerichte.find(g => g.id === id)).filter(Boolean);
+  if(!liste.length) return;
+  krMove = { ids: liste.map(g => g.id), karte: welcheKarte, ziel: "" };
+  $("#krTitel").textContent = liste.length === 1 ? "„" + liste[0].name + "“ verschieben" : liste.length + " Gerichte verschieben";
+  $("#krNeu").value = "";
+  krMoveZeichnen();
+  $("#krBlatt").hidden = false;
+}
+function krMoveZeichnen(){
+  const karten = kartenListe();
+  $("#krKarteWahl").hidden = karten.length < 2;
+  if(karten.length >= 2) $("#krKarte").innerHTML = karten.map(k => '<option value="' + sicher(k.id) + '"' + (k.id === krMove.karte ? " selected" : "") + '>' + sicher(k.name) + '</option>').join("");
+  const namen = katNamen(krMove.karte);
+  $("#krZiele").innerHTML = namen.length ? namen.map(n => '<button type="button" class="kr-ziel" role="radio" aria-checked="' + (krMove.ziel === n) + '" data-kr-ziel="' + sicher(n) + '">' +
+    '<span class="kr-pk-emo" aria-hidden="true">' + katZeichenGlyph(katZeichenWirksam(n, krMove.karte)) + '</span><span>' + sicher(n) + '</span><b>' +
+    gerichte.filter(g => inKarte(g, krMove.karte) && g.kategorie === n).length + '</b></button>').join("")
+    : '<p class="kted-hilfe">Auf dieser Karte gibt es noch keine Kategorie — unten eine neue anlegen.</p>';
+}
+function krVerschiebenZu(){ blattFortAnimieren($("#krBlatt"), () => { $("#krBlatt").hidden = true; krMove = null; }); }
+
+/* Schreibt je Gericht seine neuen Plätze. Gibt {ok, bewegt, grund} zurück; lokal übernommen wird nur, was die
+   Datenbank wirklich geschrieben hat (eine Zeile zurück = geschrieben; 0 Zeilen = die Regel hat gehalten). */
+async function gerichteVerschieben(ids, ziel){
+  const karteNeu = ziel.karte || welcheKarte, karteAlt = welcheKarte;
+  const kat = String(ziel.kategorie || "").trim().replace(/\s+/g, " ");
+  if(!kat) return { ok:false, bewegt:0, grund:"keine_kategorie" };
+  if(kat.length > 40) return { ok:false, bewegt:0, grund:"zu_lang" };
+  const liste = ids.map(id => gerichte.find(g => g.id === id)).filter(Boolean);
+  /* Was schon dort liegt, wird nicht angefasst. */
+  const zuBewegen = liste.filter(g => !(g.kategorie === kat && inKarte(g, karteNeu) && (karteNeu === karteAlt)));
+  if(!zuBewegen.length) return { ok:true, bewegt:0, grund:"schon_dort" };
+  const rest = gerichte.filter(g => inKarte(g, karteNeu) && !ids.includes(g.id));
+  const vorhanden = rest.find(g => g.kategorie === kat);
+  const katSort = vorhanden ? (vorhanden.kat_sort ?? 0) : katSortNeu(karteNeu);
+  const kat_emoji = vorhanden ? katZeichenVon(kat, karteNeu) : katZeichenVerz(kat, karteNeu);
+  const basis = rest.filter(g => g.kategorie === kat).length;
+  const neueKategorie = !vorhanden && !katNamen(karteNeu).includes(kat);
+  const schreibe = (g, n) => {
+    const satz = { kategorie:kat, kat_sort:katSort, kat_emoji:kat_emoji ?? null, reihenfolge:basis + n };
+    if(karteNeu !== karteAlt){
+      satz.karten = [...new Set(gerichtKarten(g).filter(k => k !== karteAlt).concat(karteNeu))];
+      satz.karte = g.karte === karteAlt || !g.karte ? karteNeu : g.karte;
+    }
+    return satz;
+  };
+  let bewegt = 0;
+  for(let n = 0; n < zuBewegen.length; n++){
+    const g = zuBewegen[n], satz = schreibe(g, n);
+    if(!demo){
+      const { data, error } = await db.from("gerichte").update({ ...satz, geaendert:new Date().toISOString() })
+        .eq("id", g.id).eq("betrieb_id", betriebId).select("id");
+      if(error){ melde("Nicht gespeichert — Verbindung prüfen" + (bewegt ? " (" + bewegt + " schon verschoben)" : ""), true);
+        zeichneKarte(); return { ok:false, bewegt, grund:"netz" }; }
+      if(!Array.isArray(data) || data.length !== 1){ melde("Das darf nur der Besitzer" + (bewegt ? " (" + bewegt + " schon verschoben)" : ""), true);
+        zeichneKarte(); return { ok:false, bewegt, grund:"kein_recht" }; }
+    }
+    Object.assign(g, satz);
+    bewegt++;
+  }
+  krWahl.clear();
+  zeichneKarte();
+  melde(bewegt === 1 ? "„" + zuBewegen[0].name + "“ verschoben nach „" + kat + "“" : bewegt + " Gerichte verschoben nach „" + kat + "“");
+  if(neueKategorie && typeof katUebersetzen === "function") katUebersetzen(kat, true);
+  return { ok:true, bewegt, grund:"" };
+}
+
 /* ─── Kategorien-Leiste der Karte (17.10.) ────────────────────
    Die Chips kommen aus dem, was GEZEICHNET wurde (.kat[data-kat]) —
    nicht aus einer zweiten Rechnung: Bei der Suche fehlen Kategorien
@@ -12271,7 +12611,7 @@ let KL_AKTIV = "";
 function katLeisteZeichnen(){
   const leiste = $("#karteKatLeiste"); if(!leiste) return;
   const kats = [...document.querySelectorAll("#karteListe .kat[data-kat]")];
-  if(kats.length < 2){ leiste.hidden = true; leiste.textContent = ""; return; }
+  if(kats.length < 2){ leiste.hidden = true; leiste.textContent = ""; document.documentElement.style.setProperty("--kl-hoehe", "0px"); return; }
   leiste.innerHTML = kats.map(el => {
     const name = el.dataset.kat;
     const emo = el.querySelector(".kted-emo"), zahl = el.querySelector(".katzahl");
@@ -13794,6 +14134,8 @@ function tabelle(){
    ["#awBlatt",   function(){ awBlattZu(); }],
    ["#ktedBlatt", function(){ ktedZu(); }],
    ["#nzBlatt",   function(){ nzSchliessen(); }],
+   ["#krBlatt",   function(){ krVerschiebenZu(); }],
+   ["#krFoto",    function(){ krFotoZu(); }],
    ["#apBlatt",   function(){ apZu(null); }]].forEach(function(paar){
     var schirm = document.querySelector(paar[0]); if(!schirm) return;
     var inhalt = schirm.querySelector(".blattinhalt"); if(!inhalt) return;
@@ -19443,6 +19785,22 @@ async function bestaetigen(b, minuten){
 
 // Gericht öffnen
 $("#karteListe").onclick = e => {
+  /* Kacheln (kr-): Auswahl, ⋯-Menü, Panel, Verschieben, Foto — vor allem anderen. */
+  const krW = e.target.closest("[data-kr-wahl]");
+  if(krW) return krWahlUmschalten(krW.dataset.krWahl);
+  const krM = e.target.closest("[data-kr-menue]");
+  if(krM) return krMenueUmschalten(krM.dataset.krMenue);
+  const krEins = e.target.closest("[data-kr-verschieben-eins]");
+  if(krEins){ krMenueZu(); return krVerschiebenOeffnen([krEins.dataset.krVerschiebenEins]); }
+  const krF = e.target.closest("[data-kr-foto]");
+  if(krF){ krMenueZu(); return krFotoZeigen(krF.dataset.krFoto); }
+  const krK = e.target.closest("[data-kr-kat]");
+  if(krK){ krKat = krK.dataset.krKat; return zeichneKarte(); }
+  if(e.target.closest("[data-kr-neukat]")) return ktedOeffnen(null);
+  if(e.target.closest("[data-kr-verschieben]")) return krVerschiebenOeffnen([...krWahl]);
+  if(e.target.closest("[data-kr-weg]")){ [...krWahl].forEach(id => krWahlUmschalten(id, false)); return; }
+  if(e.target.closest("[data-kr-alle]")){ document.querySelectorAll("#karteListe .kr-kachel").forEach(k => krWahlUmschalten(k.dataset.krId, true)); return; }
+
   const leerKat = e.target.closest("[data-leerkat-gericht]");
   if(leerKat){
     blattOeffnen(null);
@@ -19481,6 +19839,49 @@ $("#karteListe").onclick = e => {
 };
 
 $("#karteSuche").oninput = e => { suchtext = e.target.value.trim(); zeichneKarte(); };
+
+/* Ansicht und Filter der Kacheln */
+$("#krWerkzeug").addEventListener("click", e => {
+  const a = e.target.closest("[data-kr-ansicht]");
+  if(a){
+    KR_ANSICHT = a.dataset.krAnsicht === "liste" ? "liste" : "raster";
+    try{ localStorage.setItem(KR_SCHLUESSEL, KR_ANSICHT); }catch(x){}
+    return zeichneKarte();
+  }
+  const f = e.target.closest("[data-kr-filter]");
+  if(f){ krFilter = f.dataset.krFilter; return zeichneKarte(); }
+});
+/* ⋯-Menü: ein Tipp daneben und Escape schließen es */
+document.addEventListener("click", e => { if(!e.target.closest(".kr-menue, [data-kr-menue]")) krMenueZu(); });
+document.addEventListener("keydown", e => {
+  if(e.key !== "Escape") return;
+  if(!$("#krBlatt").hidden) krVerschiebenZu(); else if(!$("#krFoto").hidden) krFotoZu(); else krMenueZu();
+});
+/* Blatt „Verschieben“ */
+$("#krZiele").addEventListener("click", e => {
+  const z = e.target.closest("[data-kr-ziel]"); if(!z || !krMove) return;
+  krMove.ziel = z.dataset.krZiel; $("#krNeu").value = ""; krMoveZeichnen();
+});
+$("#krNeu").addEventListener("input", () => { if(krMove && $("#krNeu").value.trim()){ krMove.ziel = ""; krMoveZeichnen(); } });
+$("#krKarte").addEventListener("change", e => { if(!krMove) return; krMove.karte = e.target.value; krMove.ziel = ""; krMoveZeichnen(); });
+$("#krAbbrechen").onclick = () => krVerschiebenZu();
+$("#krBlatt").addEventListener("click", e => { if(e.target === $("#krBlatt")) krVerschiebenZu(); });
+$("#krOk").onclick = async () => {
+  if(!krMove) return;
+  const kat = $("#krNeu").value.trim().replace(/\s+/g, " ") || krMove.ziel;
+  if(!kat){ melde("Wähle eine Kategorie oder tippe einen neuen Namen", true); return; }
+  if(kat.length > 40){ melde("Höchstens 40 Zeichen", true); return; }
+  $("#krOk").disabled = true;
+  const r = await gerichteVerschieben(krMove.ids, { kategorie:kat, karte:krMove.karte });
+  $("#krOk").disabled = false;
+  if(r.ok){
+    if(r.grund === "schon_dort") melde("Liegt schon dort");
+    krVerschiebenZu();
+  }
+};
+/* Blatt „Foto ansehen“ */
+$("#krFotoZu").onclick = () => krFotoZu();
+$("#krFoto").addEventListener("click", e => { if(e.target === $("#krFoto")) krFotoZu(); });
 
 $("#lKnopf").onclick = anmelden;
 $("#lPass").onkeydown = e => { if(e.key === "Enter") anmelden(); };
