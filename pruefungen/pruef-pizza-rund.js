@@ -504,7 +504,10 @@ async function teilE(browser){
   pruef(/Klammern|Zeichen/.test(satz) && !(await optUpdates(p)).length, "Klammer bzw. „&“ → Satz, nichts geschrieben", satz);
   await eingeben('#eoListe [data-eo-feld="titel"]', "Fleisch extra");
   await eingeben('#eoListe [data-eo-zfeld="n"]', "Salami");
-  await p.click("#eoSichern"); await p.waitForTimeout(300);
+  await p.click("#eoSichern");
+  /* Vor dem Schreiben liest das Board die Spalte frisch (die Gruppen einzelner Gerichte bleiben stehen) — hier um 900 ms
+     verzögert. Gewartet wird auf den Endzustand, nicht auf eine Zeit (§8.1j). */
+  await p.waitForFunction(() => window.__schreib.some(w => w.tab === "betriebe" && w.op === "update" && w.daten && "optionen" in w.daten), null, { timeout:4000 }).catch(() => {});
   const up = await optUpdates(p);
   const o = up.length ? up[up.length - 1].daten.optionen : null;
   const keys = o ? Object.keys(o) : [];

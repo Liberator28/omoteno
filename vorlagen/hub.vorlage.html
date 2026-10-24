@@ -2881,6 +2881,10 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
 .ozeile.an .okasten::after{transform:rotate(42deg) scale(1)}
 
 .oname{flex:1;min-width:0;line-height:1.35}
+/* „Vorschlag“: das Haus hat diese Zeile vorgewählt; der Gast ändert sie mit einem Tipp. Schrift --tinte (nicht die leise):
+   auf Chocos Tag-Fläche kommt --tinte-leise nur auf 4,15:1. */
+.ovor{display:inline-block;margin-inline-start:8px;padding:1px 8px;border:1px solid var(--linie-stark);border-radius:999px;
+  font-size:10.5px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--tinte);vertical-align:2px;white-space:nowrap}
 .oauf{flex:0 0 auto;font-size:14px;font-weight:600;color:var(--rot);white-space:nowrap}
 .oauf.leise{color:var(--tinte-still);font-weight:500;font-size:12.5px}
 
@@ -6302,13 +6306,13 @@ function optionenPruefen(o){
   const aus = {};
   if(!o || typeof o !== "object" || Array.isArray(o)) return aus;
   const textOk = (s, max) => typeof s === "string" && s.trim().length >= 1 && s.trim().length <= max && !/[<>"'&`]/.test(s);
-  Object.keys(o).slice(0, 12).forEach(k => {
+  Object.keys(o).slice(0, 60).forEach(k => {
     const g = o[k];
     if(!/^[a-z0-9-]{1,24}$/.test(k) || !g || typeof g !== "object" || Array.isArray(g)) return;
     if(!textOk(g.titel, 40) || (g.art !== "eine" && g.art !== "mehrere") || !Array.isArray(g.zeilen)) return;
     const zeilen = g.zeilen.slice(0, 40).filter(z => z && textOk(z.n, 40) && !/[,·()]/.test(z.n) &&
       typeof z.auf === "number" && isFinite(z.auf) && z.auf >= 0 && z.auf <= 50)
-      .map(z => ({ n:z.n.trim(), auf:Math.round(z.auf * 100) / 100 }));
+      .map(z => z.vor === true ? { n:z.n.trim(), auf:Math.round(z.auf * 100) / 100, vor:true } : { n:z.n.trim(), auf:Math.round(z.auf * 100) / 100 });
     if(!zeilen.length) return;
     const grp = { titel:g.titel.trim(), art:g.art, pflicht:g.pflicht === true, zeilen };
     if(textOk(g.hinweis, 120)) grp.hinweis = g.hinweis.trim();
@@ -11302,6 +11306,7 @@ const TEXTE = {
 "Zu viele Versuche. Bitte sagen Sie dem Personal Bescheid.":{en:"Too many attempts. Please tell the staff.",tr:"Çok fazla deneme. Lütfen personele haber verin.",ru:"Слишком много попыток. Пожалуйста, сообщите персоналу.",fr:"Trop de tentatives. Veuillez prévenir le personnel.",es:"Demasiados intentos. Avise al personal, por favor.",it:"Troppi tentativi. Avvisi il personale, per favore.",pl:"Zbyt wiele prób. Powiedz o tym obsłudze.",ar:"محاولات كثيرة جدًا. يرجى إبلاغ الموظفين.",uk:"Забагато спроб. Будь ласка, повідомте персонал.",nl:"Te veel pogingen. Meld het alstublieft bij het personeel.",ro:"Prea multe încercări. Vă rugăm să anunțați personalul."},
 "Das Bezahlen klappt gerade nicht. Bitte versuchen Sie es gleich noch einmal oder zahlen Sie beim Personal.":{en:"Paying does not work right now. Please try again in a moment or pay the staff.",tr:"Ödeme şu anda çalışmıyor. Lütfen birazdan tekrar deneyin veya personele ödeyin.",ru:"Оплата сейчас не работает. Попробуйте ещё раз чуть позже или оплатите у персонала.",fr:"Le paiement ne fonctionne pas pour le moment. Réessayez dans un instant ou payez auprès du personnel.",es:"El pago no funciona ahora mismo. Inténtelo de nuevo en un momento o pague al personal.",it:"Il pagamento al momento non funziona. Riprovi tra poco o paghi al personale.",pl:"Płatność chwilowo nie działa. Spróbuj za chwilę ponownie lub zapłać u obsługi.",ar:"الدفع لا يعمل حاليًا. حاول مرة أخرى بعد قليل أو ادفع لدى الموظفين.",uk:"Оплата зараз не працює. Спробуйте ще раз за мить або оплатіть у персоналу.",nl:"Betalen lukt nu niet. Probeer het zo nog eens of betaal bij het personeel.",ro:"Plata nu funcționează acum. Încercați din nou imediat sau plătiți la personal."},
 "Diese Zahlungsart gibt es gerade nicht":{en:"This payment method is not available right now",tr:"Bu ödeme yöntemi şu anda yok",ru:"Этот способ оплаты сейчас недоступен",fr:"Ce mode de paiement n'est pas disponible pour le moment",es:"Este método de pago no está disponible ahora",it:"Questo metodo di pagamento al momento non è disponibile",pl:"Ta metoda płatności jest teraz niedostępna",ar:"طريقة الدفع هذه غير متاحة حاليًا",uk:"Цей спосіб оплати зараз недоступний",nl:"Deze betaalwijze is nu niet beschikbaar",ro:"Această metodă de plată nu este disponibilă acum"},
+"Vorschlag":{en:"Suggestion",tr:"Öneri",ru:"Предложение",fr:"Suggestion",es:"Sugerencia",it:"Suggerimento",pl:"Propozycja",ar:"اقتراح",uk:"Пропозиція",nl:"Suggestie",ro:"Sugestie"},
 "Zahlungspflichtig bestellen":{en:"Order with obligation to pay",tr:"Ödeme yükümlülüğüyle sipariş ver",ru:"Заказать с обязательством оплаты",fr:"Commander avec obligation de paiement",es:"Pedido con obligación de pago",it:"Ordine con obbligo di pagamento",pl:"Zamawiam z obowiązkiem zapłaty",ar:"اطلب مع الالتزام بالدفع",uk:"Замовити з обов'язком оплати",nl:"Bestellen met betalingsverplichting",ro:"Comandă cu obligație de plată"},
 "Alle Preise in Euro inkl. MwSt.":{en:"All prices in euros incl. VAT.",tr:"Tüm fiyatlar avro cinsinden, KDV dahildir.",ru:"Все цены в евро, включая НДС.",fr:"Tous les prix en euros, TVA comprise.",es:"Todos los precios en euros, IVA incluido.",it:"Tutti i prezzi in euro, IVA inclusa.",pl:"Wszystkie ceny w euro, z VAT.",ar:"جميع الأسعار باليورو شاملة ضريبة القيمة المضافة.",uk:"Усі ціни в євро, з ПДВ.",nl:"Alle prijzen in euro, incl. btw.",ro:"Toate prețurile în euro, cu TVA inclus."},
 "inkl. Liefergebühr {b}":{en:"incl. delivery fee {b}",tr:"teslimat ücreti {b} dahil",ru:"включая доставку {b}",fr:"frais de livraison {b} inclus",es:"gastos de envío {b} incluidos",it:"consegna {b} inclusa",pl:"z opłatą za dostawę {b}",ar:"شاملة رسوم التوصيل {b}",uk:"з доставкою {b}",nl:"incl. bezorgkosten {b}",ro:"taxa de livrare {b} inclusă"},
@@ -16690,6 +16695,16 @@ function stoffGruppe(kennung, titel, codes, namen, klasse){
    Optionen (OPTIONEN): Eine Zeile, die es nicht mehr gibt, fällt still
    weg, statt als Text auf dem Bon zu landen. */
 const OPT_SCHLUESSEL = hSchluessel("opt");
+/* Was in einer Gruppe vorgewählt ist, solange der Gast sie nicht angefasst hat — EINE Stelle (vorher fünf, jede mit
+   „Pflicht + genau eine → erste Zeile“). Dazu der Vorschlag des Hauses: Zeilen mit vor:true (Board: „Vorschlag“).
+   „genau eine“: höchstens EIN Vorschlag, sonst die erste Zeile der Pflichtgruppe wie bisher. Die Auswahl des Gastes
+   schlägt den Vorschlag immer; eine leere Auswahl, die er selbst getroffen hat, bleibt leer. */
+function optStandard(grp){
+  if(!grp || !grp.zeilen || !grp.zeilen.length) return [];
+  const vor = grp.zeilen.filter(z => z.vor === true).map(z => z.n);
+  if(grp.art === "eine") return vor.length ? vor.slice(0, 1) : (grp.pflicht ? [grp.zeilen[0].n] : []);
+  return vor;
+}
 function optBereinigt(wahl, g){
   const aus = {};
   if(!wahl || typeof wahl !== "object") return aus;
@@ -16758,7 +16773,7 @@ function optAnzeige(gericht, wahl){
   const g = findeGericht(gericht), w = wahl || {}, teile = [];
   ((g && g.opt) || []).forEach(kennung => {
     const grp = OPTIONEN[kennung]; if(!grp) return;
-    const gewaehlt = w[kennung] || (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
+    const gewaehlt = w[kennung] || optStandard(grp);
     if(gewaehlt.length) teile.push(gewaehlt.map(n => t(n)).join(", "));
   });
   return teile.join(" · ");
@@ -16857,14 +16872,13 @@ function optGewaehlt(gericht, gruppe, zeile, i, grp){
   /* Pflichtgruppen starten auf der ersten Zeile. Eine leere
      Pflichtauswahl wäre eine Sackgasse: Der Gast sieht einen Knopf,
      der nicht reagiert, und weiß nicht warum. */
-  return !!(grp && grp.pflicht && grp.art === "eine" && i === 0);
+  return !!grp && optStandard(grp).indexOf(zeile) > -1;
 }
 
 function optSetzen(gericht, gruppe, zeile){
   const grp = OPTIONEN[gruppe]; if(!grp) return;
   optWahl[gericht] = optWahl[gericht] || {};
-  const jetzt = optWahl[gericht][gruppe] ||
-    (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
+  const jetzt = optWahl[gericht][gruppe] || optStandard(grp);
 
   if(grp.art === "eine"){
     optWahl[gericht][gruppe] = [zeile];
@@ -16884,8 +16898,7 @@ function optAufpreis(gericht, wahl){
   let summe = 0;
   ((g && g.opt) || []).forEach(kennung => {
     const grp = OPTIONEN[kennung]; if(!grp) return;
-    const gewaehlt = w[kennung] ||
-      (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
+    const gewaehlt = w[kennung] || optStandard(grp);
     grp.zeilen.forEach(z => { if(gewaehlt.indexOf(z.n) > -1) summe += z.auf; });
   });
   return summe;
@@ -16898,8 +16911,7 @@ function optText(gericht, wahl){
   const teile = [];
   ((g && g.opt) || []).forEach(kennung => {
     const grp = OPTIONEN[kennung]; if(!grp) return;
-    const gewaehlt = w[kennung] ||
-      (grp.pflicht && grp.art === "eine" ? [grp.zeilen[0].n] : []);
+    const gewaehlt = w[kennung] || optStandard(grp);
     if(gewaehlt.length) teile.push(gewaehlt.join(", "));
   });
   return teile.join(" · ");
@@ -16938,10 +16950,13 @@ function warenkarteHTML(g){
       const auf = z.auf > 0
         ? '<span class="oauf">+' + preisText(z.auf) + '</span>'
         : '<span class="oauf leise">' + t("ohne Aufpreis") + '</span>';
+      /* „Vorschlag“ nur, wo das Haus ihn gesetzt hat (vor:true) und der Gast die Gruppe noch nicht angefasst hat. */
+      const vorschlag = z.vor === true && !(optWahl[g.n] || {})[kennung] && optStandard(grp).indexOf(z.n) > -1;
       return '<button class="ozeile' + (gewaehlt ? " an" : "") + '" role="' +
         (grp.art === "eine" ? "radio" : "checkbox") + '" aria-checked="' + gewaehlt + '"' +
         ' data-ogrp="' + kennung + '" data-ozeile="' + encodeURIComponent(z.n) + '">' +
-        '<span class="okasten"></span><span class="oname">' + t(z.n) + '</span>' + auf +
+        '<span class="okasten"></span><span class="oname">' + t(z.n) +
+        (vorschlag ? '<span class="ovor">' + t("Vorschlag") + '</span>' : "") + '</span>' + auf +
         '</button>';
     }).join("");
     gruppen +=
