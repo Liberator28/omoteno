@@ -1,5 +1,7 @@
 -- pruef-saal-einstellungen.sql · Rechte und Grenzen von migration-saal-einstellungen.sql
--- Zurückgedreht. Gelaufen live am 20.10.2026: 33 Zeilen, jede wie erwartet.
+-- Zurückgedreht. Live am 20.10.2026 gelaufen; die damals genannte Zahl „33 Zeilen“ stimmt nicht mit
+-- den 18 Proben dieser Datei überein und ist nicht belegt (Korrektur 24.10.2026). Belegt: lokal am 24.10.2026,
+-- 18 Zeilen, jede wie erwartet, samt Gegenbeweisen (pruefungen/pruef-saalplan-lokal.sh).
 -- Zeilenzahl statt Ausnahme (§2.3b); „Team“ ist ein fremder Inhaber, der für diese Transaktion
 -- Mitglied wird (so sieht er die Zeilen, nur die UPDATE-Regel kann 0 Zeilen erzwingen).
 -- Ein Teil der Proben ruft mit UNGÜLTIGEN Werten (§2.3g: gültige Werte machen jede Schranke grün).
