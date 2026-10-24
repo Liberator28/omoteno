@@ -211,7 +211,7 @@ async function oeffnen(browser, haus, breite, sprache) {
       await seite.waitForTimeout(500);
       return seite.evaluate(() => ({
         h2: (document.querySelector("#inhalt .seite h2") || {}).textContent || "",
-        unter: (document.querySelector("#inhalt .seite > p.unter") || {}).textContent || "",
+        unter: (document.querySelector("#inhalt .seite p.unter") || {}).textContent || "",
         kachel: Array.from(document.querySelectorAll("#inhalt .kachel")).map(k => k.textContent).join("|"),
       }));
     };

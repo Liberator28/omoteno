@@ -175,11 +175,14 @@ async function tippen(s, sel) {
     await s.waitForTimeout(350);
     const glas = await s.evaluate(() => [...document.querySelectorAll(".schnellzeile .sz")].map(a => ({
       blur: /blur/.test(getComputedStyle(a).backdropFilter || getComputedStyle(a).webkitBackdropFilter || ""),
-      licht: a.querySelector(".sz-licht").getAnimations().filter(x => x.playState === "running")
+      prem: a.classList.contains("sz-p"),
+      licht: !a.querySelector(".sz-licht") ? "" : a.querySelector(".sz-licht").getAnimations().filter(x => x.playState === "running")
         .map(x => Object.keys(x.effect.getKeyframes()[0] || {}).filter(k => !["offset","easing","composite","computedOffset"].includes(k)).join("+")).join(","),
       sonst: a.getAnimations({ subtree: true }).filter(x => x.playState === "running" && !x.effect.target.classList.contains("sz-licht")).length })));
-    pruef(glas.length >= 2 && glas.every(g => g.blur && g.licht === "transform" && g.sonst === 0),
-      haus + ": jedes Feld Glas, Lichtrand läuft nur per transform, sonst nichts in Bewegung", JSON.stringify(glas[0]));
+    /* Premium-Karten (Markenblatt startstil) sind Bildkarten ohne Glas und ohne Lichtrand — ihre Messung steht in
+       pruef-start-premium.js; hier gilt für sie nur „nichts in Bewegung“. */
+    pruef(glas.length >= 2 && glas.every(g => g.prem ? g.sonst === 0 : (g.blur && g.licht === "transform" && g.sonst === 0)),
+      haus + ": jedes Feld Glas, Lichtrand läuft nur per transform, sonst nichts in Bewegung (Premium: nur nichts in Bewegung)", JSON.stringify(glas[0]));
     for (const ziel of ["#/entdecken", "#/service"]) {
       if (!w.some(x => x.href === ziel)) continue;
       await s.evaluate(() => { location.hash = "#/"; });
