@@ -42,7 +42,7 @@ const DATEN = {
   zeilen: [
     { betrieb_id:"b1", betrieb_name:"Choco <img src=x onerror=\"window.__xss=1\">", funktion:"uebersetzen", modell:"claude-opus-5", aufrufe:12, tokens_ein:24000, tokens_aus:12000, tokens_cache:0, bilder:0, kosten_eur:0.54, ohne_preis:0 },
     { betrieb_id:"b1", betrieb_name:"Choco <img src=x onerror=\"window.__xss=1\">", funktion:"bild_profi_frei", modell:"fal-ai/birefnet/v2", aufrufe:4, tokens_ein:0, tokens_aus:0, tokens_cache:0, bilder:4, kosten_eur:0, ohne_preis:2 },
-    { betrieb_id:"b2", betrieb_name:"=HYPERLINK(\"http://x\";\"Klick\")", funktion:"beleg_lesen", modell:"claude-opus-5-5", aufrufe:3, tokens_ein:9000, tokens_aus:3000, tokens_cache:0, bilder:0, kosten_eur:1.2, ohne_preis:0 },
+    { betrieb_id:"b2", betrieb_name:"=HYPERLINK(\"http://x\";\"Klick\")", funktion:"beleg_lesen", modell:"claude-opus-5-5", aufrufe:3, tokens_ein:9000, tokens_aus:3000, tokens_cache:0, bilder:0, kosten_eur:0.3, ohne_preis:0 },
   ],
   budgets: [
     { betrieb_id:"b1", betrieb_name:"Choco <img src=x onerror=\"window.__xss=1\">", monat_eur:10, hart:true, warn_prozent:80, verbraucht_monat_eur:8.5 },
@@ -223,10 +223,11 @@ async function messen(p, wurzel){
         balken: k.querySelector(".ki-balken") ? { klasse: k.querySelector(".ki-balken").className, breite: k.querySelector(".ki-balken i").style.width, aria: k.querySelector(".ki-balken").getAttribute("aria-label") } : null,
         h: k.getBoundingClientRect().height }))
     }));
-    pruef(/1,74\s?€/.test(st.summe) && /19/.test(st.summe) && /48\.000/.test(st.summe) && /4 Bilder/.test(st.summe), "Summe: 1,74 €, 19 Aufrufe, 48.000 Token (36.000 + 12.000), 4 Bilder", st.summe);
+    pruef(/0,84\s?€/.test(st.summe) && /19/.test(st.summe) && /48\.000/.test(st.summe) && /4 Bilder/.test(st.summe), "Summe: 0,84 €, 19 Aufrufe, 48.000 Token (36.000 + 12.000), 4 Bilder", st.summe);
     pruef(/2 Aufrufe ohne Preis/.test(st.warn), "Aufrufe ohne Preis werden genannt (nicht als 0 € verschwiegen)", st.warn);
     pruef(st.karten.length === 5, "je Betrieb eine Karte (auch ohne Nutzung)", st.karten.length);
-    pruef(st.karten[0].id === "b2" && st.karten[1].id === "b1", "geordnet nach Kosten: erst der teurere Betrieb", st.karten.map(k => k.id).join(","));
+    /* Die Namen sind so gewählt, dass die Reihenfolge nach NAME („=HYPERLINK…“ vor „Choco…“) eine andere wäre als nach KOSTEN. */
+    pruef(st.karten[0].id === "b1" && st.karten[1].id === "b2" && st.karten.slice(2).map(k => k.id).join() === "b3,b4,b5", "geordnet nach Kosten (nicht nach Name); bei Gleichstand nach Name", st.karten.map(k => k.id).join(","));
     const stand = Object.fromEntries(st.karten.map(k => [k.id, k.stand]));
     pruef(stand.b1 === "Warnung" && stand.b2 === "Gesperrt" && stand.b3 === "Kein Budget" && stand.b4 === "Im Rahmen" && stand.b5 === "Über Budget",
       "fünf Stände: Warnung (85 %, hart) · Gesperrt (hart, erreicht) · Kein Budget · Im Rahmen · Über Budget (weich)", JSON.stringify(stand));
@@ -261,7 +262,7 @@ async function messen(p, wurzel){
     for(const [betrag, warn, was] of [["abc", "80", "Betrag „abc“"], ["10 Euro", "80", "Betrag „10 Euro“"], ["-5", "80", "negativer Betrag"], ["200000", "80", "Betrag über 100 000"],
       ["10", "0", "Warnung 0"], ["10", "101", "Warnung 101"], ["10", "", "Warnung leer"], ["10", "7,5", "Warnung 7,5"]]){
       await p.fill("#kiBetrag", betrag); await p.fill("#kiWarn", warn); await p.click("#kiSave"); await p.waitForTimeout(150);
-      const s = await p.evaluate(() => ({ gesendet: window.__rufe.budget.length, meld: document.getElementById("kiMeldung").textContent, offen: !!document.querySelector(".overlay") }));
+      const s = await p.evaluate(() => ({ gesendet: window.__rufe.budget.length, meld: (document.getElementById("kiMeldung") || {}).textContent || "", offen: !!document.querySelector(".overlay") }));
       pruef(s.gesendet === 0 && s.offen && s.meld.length > 10, "unlesbar: " + was + " → Satz, nichts gesendet", s.meld);
     }
     await p.fill("#kiBetrag", "7,5"); await p.fill("#kiWarn", "60");
