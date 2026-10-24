@@ -185,7 +185,9 @@ async function boardAuf(browser, optionen, opt){
         return { data:z.op === "update" ? [{ id:"x" }] : null, error:null };
       }
       if(z.tab === "betrieb_mitglieder") return { data:[{ rolle:"inhaber", betriebe:{ id, slug:"piugusto", name:"Più Gusto", hub_stil:{}, hub_texte:{} } }], error:null };
-      if(z.tab === "betriebe" && z.einzeln){ window.__lese++; return { data:{ optionen:window.__zustand.optionen }, error:null }; }
+      /* Jede Antwort ist eine KOPIE: Ein geteiltes Objekt ließe Änderungen „des anderen Geräts“ auch im Speicher des Boards
+         erscheinen — der Gegenbeweis „ohne frisches Lesen“ blieb damit grün (§8.1g). */
+      if(z.tab === "betriebe" && z.einzeln){ window.__lese++; return { data:{ optionen:JSON.parse(JSON.stringify(window.__zustand.optionen)) }, error:null }; }
       return { data: z.einzeln ? null : [], error:null };
     }
     function kette(tab){

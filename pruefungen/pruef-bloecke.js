@@ -263,6 +263,26 @@ const AB = "eigen-ab12", CD = "eigen-cd34", EF = "eigen-ef56";
     await h.ctx.close();
   }
 
+  /* C6b · Die Senke schützt selbst (§8.1w: „am Senke zählt hs() trotzdem“). C6 geht durch bloeckeSauber(), das <> ohnehin
+     entfernt — ein Renderer ohne hs() bliebe dort grün. Hier kommt der Aufbau OHNE die Prüfung in die Seite. */
+  {
+    const h = await oeffneHub(br, { haus: "chocolamour", bloecke: null });
+    await h.p.evaluate(({ id }) => {
+      window.__y = undefined;
+      BLOECKE = [{ id, an: true, breite: "voll", groesse: "", look: "karte", titel: '<img src=x onerror="window.__y=1">',
+        text: '<img src=x onerror="window.__y=2">', knopf: '<b onmouseover="window.__y=3">Los</b>', ziel: '#/speisekarte"onmouseover="window.__y=4' }];
+      zeichne();
+    }, { id: AB });
+    await h.p.waitForTimeout(500);
+    const r = await h.p.evaluate(id => { const el = document.querySelector('[data-eigen="' + id + '"]');
+      return { da: !!el, y: window.__y, bilder: el ? el.querySelectorAll("img, b").length : -1,
+        attribute: el ? [...el.querySelectorAll("*")].some(e => [...e.attributes].some(at => /^on/i.test(at.name))) : null,
+        text: el ? el.textContent : "" }; }, AB);
+    pruef(r.da, "Voraussetzung: der von Hand gesetzte Textblock steht auf der Seite", r.text.slice(0, 60));
+    pruef(r.y === undefined && r.bilder === 0 && r.attribute === false, "ohne vorgeschaltete Prüfung: <img onerror>, <b onmouseover> und ein Ziel mit Anführungszeichen bleiben Text (hs() am Senke)", JSON.stringify({ y: r.y, bilder: r.bilder, attribute: r.attribute }));
+    await h.ctx.close();
+  }
+
   /* C7 · Lesbarkeit der eigenen Blöcke — am gemalten Bild, beide Aussehen, hell und dunkel, zwei Häuser */
   {
     let min = 99, wo = "";
@@ -395,6 +415,7 @@ const AB = "eigen-ab12", CD = "eigen-cd34", EF = "eigen-ef56";
   pruef(await p.evaluate(() => afbRoh() === null), "wieder in der Vorgabe-Reihenfolge ⇒ wieder null (nichts zu speichern)");
 
   /* Ziehen mit der Maus am Griff */
+  await p.evaluate(() => { AFBGEAENDERT = false; });
   await p.evaluate(() => { document.querySelector('[data-afb="schnell"]').scrollIntoView({ block: "start" }); scrollBy(0, -140); });
   await p.waitForTimeout(150);
   const gb = await p.locator('[data-afb="banner"] [data-afb-griff]').boundingBox(), zb = await p.locator('[data-afb="schnell"]').boundingBox();
@@ -405,6 +426,7 @@ const AB = "eigen-ab12", CD = "eigen-cd34", EF = "eigen-ef56";
   const nachZug = await reihe();
   pruef(nachZug[0] === "banner" && nachZug[1] === "schnell", "Ziehen am Griff verschiebt den Block (Maus)", nachZug.slice(0, 3).join(" "));
   pruef(gleich(await domReihe(), nachZug), "und die gezeichnete Liste folgt dem Stand");
+  pruef(await p.evaluate(() => AFBGEAENDERT === true), "Ziehen gilt als Änderung (Voraussetzung vorher selbst auf „nicht geändert“ gestellt)");
   const nach = await p.evaluate(() => ({ sel: String(getSelection()), zieht: document.body.classList.contains("afb-zieht"), roh: afbRoh().map(e => e.id), fokus: document.activeElement && document.activeElement.hasAttribute("data-afb-griff") }));
   pruef(nach.sel === "" && !nach.zieht, "danach keine Auswahl und kein Zieh-Zustand mehr");
   pruef(nach.roh[0] === "banner" && nach.roh.length === nachZug.length, "afbRoh() trägt die neue Reihenfolge (alle Blöcke)", nach.roh.slice(0, 3).join(" "));
