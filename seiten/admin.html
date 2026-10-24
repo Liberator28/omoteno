@@ -2311,6 +2311,36 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
    Eine Zeile je Knopf des Hubs. Bewusst untereinander statt in einem
    Raster: Der Wirt bedient das am Telefon zwischen zwei Gästen, und
    dort ist eine Spalte immer richtig. */
+/* ═══ Aufbau der Startseite ══════════════════════════════════════
+   Eine Zeile je Block, untereinander (Telefon, §3.8: nur die Seite rollt). Gezogen wird NUR am Griff — der Rest der
+   Zeile bleibt Fläche zum Rollen. Nichts an der Liste ist markierbar (Eingabefelder ausgenommen), und während des
+   Ziehens ist es die ganze Seite. Eigene Namen (§1.1): .afb-* gibt es sonst nirgends. */
+.afb-liste{display:flex;flex-direction:column;gap:10px;margin:6px 0 10px;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.afb-liste input,.afb-liste textarea,.afb-liste select{-webkit-user-select:text;user-select:text}
+.afb-fest{display:flex;align-items:center;gap:10px;margin:10px 0 0;padding:10px 12px;border:1px dashed var(--linie);
+  border-radius:12px;color:var(--gedaempft)}
+.afb-fest svg{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.afb-fest div{flex:1;min-width:0}
+.afb-fest b{display:block;font-size:14.5px;color:var(--kreide)}
+.afb-fest i{display:block;font-style:normal;font-size:12.5px;line-height:1.35}
+.afb-fest .knopf{flex:none;width:auto;min-height:44px;padding:8px 12px}
+.afb-griff{flex:none;display:flex;align-items:center;justify-content:center;width:44px;height:44px;margin:-4px 0 -4px -6px;
+  border-radius:10px;color:var(--gedaempft);cursor:grab;touch-action:none;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.afb-griff svg{width:20px;height:20px;fill:currentColor}
+.afb-griff:hover{color:var(--kreide)}
+.afb-griff:focus-visible{outline:2px solid var(--messing);outline-offset:-2px}
+.afb-zeile.zieht{position:relative;z-index:6;opacity:.97;transition:none;
+  box-shadow:0 14px 34px -10px rgba(0,0,0,.55);border-color:var(--messing)}
+.afb-zeile.zieht .afb-griff{cursor:grabbing;color:var(--messing)}
+body.afb-zieht,body.afb-zieht *{-webkit-user-select:none!important;user-select:none!important;cursor:grabbing!important}
+.afb-aktionen{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.afb-aktionen .knopf,.afb-weg,.afb-loeschen{width:100%;min-height:44px;margin:0}
+.afb-loeschen{color:var(--rot,#FF8F85)}
+.kbfelder textarea{width:100%;padding:10px 11px;border-radius:9px;border:1px solid var(--linie);background:var(--flaeche-2);
+  color:var(--kreide);-webkit-text-fill-color:var(--kreide);font:inherit;font-size:16px;line-height:1.4;resize:vertical;
+  -webkit-appearance:none;scroll-margin-top:96px}
 .kbliste{display:flex;flex-direction:column;gap:12px;margin:6px 0 18px}
 .kbzeile{
   border:1px solid var(--linie);border-radius:12px;padding:12px;
@@ -4204,6 +4234,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <a href="#txGruppe" data-gh-sprung="txGruppe">Alle Texte</a>
         <a href="#swGruppe" data-gh-sprung="swGruppe">Schrift</a>
         <a href="#fbGruppe" data-gh-sprung="fbGruppe">Farben</a>
+        <a href="#gh-aufbau" data-gh-sprung="gh-aufbau">Aufbau</a>
         <a href="#gh-kacheln" data-gh-sprung="gh-kacheln">Kacheln</a>
         <a href="#gh-banner" data-gh-sprung="gh-banner">Banner</a>
         <a href="#gh-figur" data-gh-sprung="gh-figur">Figur</a>
@@ -4579,6 +4610,36 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </div>
       </div>
       <div class="epruefung" id="fbPruefung" aria-live="polite"></div>
+    </div>
+
+    <!-- ══ AUFBAU DER STARTSEITE ══
+         Blöcke ordnen (ziehen am Griff), ein- und ausblenden, halb breit, klein oder groß, eigene
+         Textblöcke anlegen. Schreibt nach betriebe.hub_bloecke (migration-hub-bloecke.sql), eigener
+         Sichern-Knopf: eine ungültige Kachel soll einen gültigen Aufbau nicht blockieren. -->
+    <div class="egruppe" data-nur-inhaber id="gh-aufbau">
+      <h2 class="etitel">Aufbau der Startseite</h2>
+      <p class="ehilfe">Alles auf Ihrer Startseite ist ein Block. Ziehen Sie den Griff links, um einen
+        Block zu verschieben, oder öffnen Sie ihn für Pfeile, Breite und Größe. Mit dem Schalter
+        blenden Sie einen Block aus. Die Vorschau zeigt jede Änderung sofort; Gäste sehen sie nach „Übernehmen“.</p>
+      <div class="afb-fest">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>
+        <div><b>Kopf</b><i>Logo, Name, Slogan, Öffnungsstand — bleibt immer ganz oben</i></div>
+        <button type="button" class="knopf leise" data-afb-gehe="kfGruppe">Kopf &amp; Logo</button>
+      </div>
+      <p class="ehilfe" id="afbLese" hidden></p>
+      <div class="afb-liste" id="afbListe"></div>
+      <p class="kbhinweis" id="afbSage" aria-live="polite"></p>
+      <div class="kbneu">
+        <button type="button" class="kted-neu" id="afbNeuText"><span aria-hidden="true">＋</span> Eigener Textblock</button>
+      </div>
+      <div class="ezeile senkrecht">
+        <span><b>Übernehmen</b><i>Gäste sehen es beim nächsten Öffnen</i></span>
+        <div class="kbknoepfe">
+          <button class="knopf" id="afbSichern" disabled>Übernehmen</button>
+          <button class="knopf leise" id="afbZurueck">Auf Vorgabe zurück</button>
+        </div>
+      </div>
+      <div class="epruefung" id="afbPruefung" aria-live="polite"></div>
     </div>
 
     <div class="egruppe" data-nur-inhaber id="gh-kacheln">
@@ -5843,6 +5904,9 @@ const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 
 /* ─── Zustand ─────────────────────────────────────────────── */
 let db = null, betriebId = null, demo = false;
+/* Aufbau der Startseite (siehe AFB… weiter unten). Hier oben, weil hvStartseite() sie beim Anmelden schon liest (§8.1l). */
+let AFBSTAND = [], AFBGESPEICHERT, AFBGEAENDERT = false, AFBLESEFEHLER = false;
+const AFB_OFFEN = new Set();
 /* Kommt die Seite aus dem Link „Passwort zurücksetzen“? Das steht nur
    jetzt in der Adresse — supabase-js räumt sie beim Start ab. */
 /* recovery = „Passwort vergessen“, invite = Einladung ins Team
@@ -9659,6 +9723,7 @@ const EU_SYMBOL = {
   text:   '<path d="M5 6V4h14v2M12 4v16M9 20h6"/>',
   schrift:'<path d="M4 19l5-14 5 14M6 14h6"/><path d="M15 12h5M17.5 12v7"/>',
   farbe:  '<path d="M12 3a9 9 0 1 0 0 18c1.2 0 2-.8 2-1.8 0-1.3-1.2-1.4-1.2-2.6 0-1 .8-1.6 1.8-1.6H17a4 4 0 0 0 4-4c0-4.4-4-8-9-8z"/><circle cx="7.5" cy="11" r="1"/><circle cx="10.5" cy="7" r="1"/><circle cx="15.5" cy="7.5" r="1"/>',
+  schichten: '<rect x="4" y="4" width="16" height="4" rx="1.5"/><rect x="4" y="10" width="16" height="4" rx="1.5"/><rect x="4" y="16" width="16" height="4" rx="1.5"/>',
   gitter: '<rect x="4" y="4" width="7" height="7" rx="1.5"/><rect x="13" y="4" width="7" height="7" rx="1.5"/><rect x="4" y="13" width="7" height="7" rx="1.5"/><rect x="13" y="13" width="7" height="7" rx="1.5"/>',
   banner: '<rect x="3" y="6" width="14" height="12" rx="2"/><path d="M19.5 8.5v7M22 10v4"/>',
   wuerfel:'<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1"/><circle cx="15" cy="9" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="9" cy="15" r="1"/><circle cx="15" cy="15" r="1"/>',
@@ -9938,6 +10003,7 @@ const GH_BEREICHE = [
   { id:"txGruppe",   titel:"Alle Texte",     sym:"text",    ton:"var(--messing)",     satz:"Jeden Satz ändern, in elf Sprachen" },
   { id:"swGruppe",   titel:"Schrift",        sym:"schrift", ton:"var(--glut)",        satz:"Schriftarten, auch eigene Dateien" },
   { id:"fbGruppe",   titel:"Farben",         sym:"farbe",   ton:"var(--lieferung)",   satz:"Hintergrund, Karten, Hausfarben" },
+  { id:"gh-aufbau",  titel:"Aufbau",         sym:"schichten", ton:"var(--messing)",    satz:"Blöcke ordnen, zeigen, verstecken" },
   { id:"gh-kacheln", titel:"Kacheln",        sym:"gitter",  ton:"var(--gut)",         satz:"Knöpfe der Startseite: Titel, Bild, Breite" },
   { id:"gh-banner",  titel:"Banner",         sym:"banner",  ton:"var(--warn)",        satz:"Wischbares Karussell mit Angeboten" },
   { id:"gh-figur",   titel:"Figur",          sym:"figur",   ton:"var(--messing)",     satz:"Figur, Stimmung, Gesten je Bestellphase" },
@@ -14235,7 +14301,7 @@ function tafelZeigen(ziel){
      laufende Aktion", obwohl welche liefen. */
   /* „Gast-Hub“ (früher „Startseite“): seit 11.10. stehen hier auch
      „Ihre Worte“, Figur und Foodroulette — sie werden mit gefüllt. */
-  if(ziel === "startseite"){ kbStandLaden(); bnStandLaden(); swLaden(); fbLaden(); kfLaden(); aktionenLaden();
+  if(ziel === "startseite"){ kbStandLaden(); afbStandLaden(); bnStandLaden(); swLaden(); fbLaden(); kfLaden(); aktionenLaden();
                              hubTexteFuellen(); avStandLaden(); reglerFuellen(); avRaederAusrichten();
                              txLaden(); setTimeout(txListeLaden, 0); }
   /* Die Bestellkarten wohnen nur auf der Seite „Tische“, solange dort ein Tisch gewählt ist. */
@@ -15353,7 +15419,11 @@ function hvStartseite(ziel){
      dem Rahmen das Kopfbild, einer nur mit „kopf“ die Schrift. */
   const stil = { schrift: swFuerHub(true) };
   if(KF) stil.kopf = kfRoh();
-  hvSenden("startseite", { hub_kacheln: kbRoh(), hub_banner: bnRoh(), hub_stil: stil }, ziel || "");
+  const teil = { hub_kacheln: kbRoh(), hub_banner: bnRoh(), hub_stil: stil };
+  /* Aufbau nur schicken, wenn der gespeicherte Stand gelesen ist — sonst zeigte die Vorschau die Vorgabe,
+     wo das Haus längst etwas anderes eingestellt hat (§8.1m). [] = zurück auf die Vorgabe. */
+  if(AFBGESPEICHERT !== undefined) teil.hub_bloecke = afbRoh() || [];
+  hvSenden("startseite", teil, ziel || "");
 }
 function hvWorte(ziel){
   const wert = id => ($("#" + id) || {}).value || "";
@@ -16324,8 +16394,12 @@ function kbRubrikUmbenennen(alt){
     k.gruppe = neu === v ? "" : neu;
   });
   kbRubrikenZusammenhalten();
+  /* Gilt ein eigener Aufbau, wandert der Block der Rubrik unter dem neuen Namen mit — samt Platz. Beide Stände
+     (Kacheln und Aufbau) müssen dann übernommen werden. */
+  const umbenannt = afbEigeneWahl() && afbFinden("rubrik:" + alt);
+  if(umbenannt){ umbenannt.id = "rubrik:" + neu; if(AFB_OFFEN.delete("rubrik:" + alt)) AFB_OFFEN.add("rubrik:" + neu); AFBGEAENDERT = true; }
   kbZeichnen();
-  melde("Rubrik umbenannt — mit „Übernehmen“ für Gäste wirksam");
+  melde(umbenannt ? "Rubrik umbenannt — bitte Kacheln UND Aufbau übernehmen" : "Rubrik umbenannt — mit „Übernehmen“ für Gäste wirksam");
 }
 /* Eine Kachel in eine andere (oder neue) Rubrik legen: ans Ende dieser Rubrik. */
 function kbInRubrik(sch, wahl){
@@ -16404,12 +16478,13 @@ function kbAnordnungHTML(){
   });
   if(!bereiche.length) return '<p class="kbr-leer">Alle Kacheln sind aus.</p>';
   const pf = (r) => '<svg width="12" height="7" viewBox="0 0 12 7" aria-hidden="true"><path d="' + (r < 0 ? "M1 6l5-5 5 5" : "M1 1l5 5 5-5") + '" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>';
-  return bereiche.map(b => '<div class="kbr-kopf" data-kbr-rubrik="' + sicher(b.gruppe) + '">' +
+  const hinweis = afbEigeneWahl() ? '<p class="kbhinweis kbr-aufbau">Die Reihenfolge der Rubriken stellen Sie unter „Aufbau der Startseite“ ein — dort gilt ein eigener Aufbau.</p>' : "";
+  return hinweis + bereiche.map(b => '<div class="kbr-kopf" data-kbr-rubrik="' + sicher(b.gruppe) + '">' +
       '<span class="kbr-bereich">' + sicher(b.gruppe) + '</span>' +
       '<button type="button" class="kbr-rknopf" data-kbr-rname aria-label="Rubrik ' + sicher(b.gruppe) + ' umbenennen">' +
         '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20h4l10-10-4-4L4 16v4z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button>' +
-      '<button type="button" class="kbr-rknopf" data-kbr-rhoch aria-label="Rubrik ' + sicher(b.gruppe) + ' nach oben"' + (kbRubrikFinden(b.gruppe, -1) < 0 ? " disabled" : "") + '>' + pf(-1) + '</button>' +
-      '<button type="button" class="kbr-rknopf" data-kbr-rrunter aria-label="Rubrik ' + sicher(b.gruppe) + ' nach unten"' + (kbRubrikFinden(b.gruppe, 1) < 0 ? " disabled" : "") + '>' + pf(1) + '</button>' +
+      '<button type="button" class="kbr-rknopf" data-kbr-rhoch aria-label="Rubrik ' + sicher(b.gruppe) + ' nach oben"' + (kbRubrikFinden(b.gruppe, -1) < 0 || afbEigeneWahl() ? " disabled" : "") + '>' + pf(-1) + '</button>' +
+      '<button type="button" class="kbr-rknopf" data-kbr-rrunter aria-label="Rubrik ' + sicher(b.gruppe) + ' nach unten"' + (kbRubrikFinden(b.gruppe, 1) < 0 || afbEigeneWahl() ? " disabled" : "") + '>' + pf(1) + '</button>' +
     '</div>' +
     '<div class="kbr-gitter">' + [].concat(...kachelReihen(b.kacheln)).map(x => {
       const k = x.k.stand;
@@ -16552,6 +16627,7 @@ function kbZeichnen(){
       '</div></div></div>' +
     '</article>';
   }).join("");
+  afbZeichnen();
   hvStartseite("kacheln");
 }
 
@@ -16987,6 +17063,511 @@ document.addEventListener("keydown", e => {
       aktivIndizes.forEach((idx, i) => { KACHELSTAND[idx] = neu[i]; });
     kbZeichnen();
   }
+})();
+
+/* ═══ AUFBAU DER STARTSEITE (hub_bloecke) ═════════════════════════
+   Die Startseite besteht aus Blöcken (Schnellzugriff, Figur mit Satz,
+   Aktion, Banner-Rad, „Nochmal“, Empfehlung, jede Rubrik der Kacheln,
+   eigene Textblöcke). Hier ordnet der Wirt sie: ziehen am Griff (oder
+   Pfeile), ein- und ausblenden, halb breit, klein oder groß, eigene
+   Textblöcke anlegen. Der Hub liest die Liste zur Laufzeit.
+
+   Die Prüfung der Liste ist der GETEILTE BLOCK unten — wortgleich im
+   Hub (pruef-bloecke.js vergleicht beide). Der Kopf ist kein Block:
+   Siegel, Guss und Knopfzeile hängen am oberen Rand.
+
+   Gelesen wird getrennt von den übrigen Betriebsdaten (wie das
+   Banner-Rad, §8.1m): bis der Stand da ist, bleibt „Übernehmen“
+   gesperrt — „nicht gelesen“ ist nicht „leer“. */
+/* BLOECKE — GETEILTER BLOCK, wortgleich in seiten/admin.html.
+   pruef-bloecke.js vergleicht beide Zeichen für Zeichen: Das Board stellt
+   den Aufbau der Startseite mit DERSELBEN Prüfung ein, die der Hub beim
+   Zeichnen benutzt — sonst nähme das Board etwas an, das der Hub still
+   verwirft.
+
+   Die Startseite besteht aus Blöcken: sechs feste (Schnellzugriff, Figur
+   mit Satz, Aktion, Banner-Rad, „Nochmal“, Empfehlung), je einer pro
+   Rubrik der Kacheln („rubrik:<Name>“) und eigene Textblöcke
+   („eigen-<kürzel>“). betriebe.hub_bloecke ist eine Live-Spalte, die das
+   Team schreibt: Alles geht durch diese Positivliste (§2.3a/§8.1w), nichts
+   roh in class=, href= oder Text. Der Kopf ist KEIN Block — Siegel, Guss,
+   Laternen und die feste Knopfzeile hängen am oberen Rand der Seite.
+   Ohne Eintrag (leere Liste) bleibt alles, wie es war (§2.5/§8.1a). */
+const BLOCK_FEST = ["schnell", "begleiter", "aktion", "banner", "nochmal", "empfehlung"];
+const BLOCK_NAMEN = { schnell:"Schnellzugriff", begleiter:"Figur mit Satz", aktion:"Aktion · Top-Runner",
+                      banner:"Banner-Rad", nochmal:"Nochmal wie letztes Mal", empfehlung:"Empfehlung des Hauses" };
+/* Nur Blöcke, die in einer halben Spalte (≈ 180 px) lesbar bleiben, dürfen halb breit sein. */
+const BLOCK_HALB_OK = ["begleiter", "nochmal", "empfehlung", "eigen"];
+const BLOCK_WERTE = { breite:["voll", "halb"], groesse:["klein", "gross"], look:["karte", "band"] };
+const BLOCK_ZOOM = { klein:.88, gross:1.1 };
+/* Der Schnellzugriff packt zwei Felder in die Breite; größer gezoomt bräche „Foodroulette“ mitten im Wort
+   (bei 390 px gemessen) — er darf klein, nicht groß sein. */
+const BLOCK_GROSS_NICHT = ["schnell"];
+const BLOCK_EIGEN_MUSTER = /^eigen-[a-z0-9]{2,8}$/;
+const BLOCK_GRENZEN = { titel:40, text:280, knopf:24, max:40, rubrik:28 };
+function blockText(w, max){
+  return typeof w === "string"
+    ? w.replace(/[<>]/g, "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ").replace(/"/g, "”").trim().slice(0, max) : "";
+}
+function blockRubrikName(w){
+  return typeof w === "string" ? w.replace(/[<>"'`\\&]/g, "").replace(/\s+/g, " ").trim().slice(0, BLOCK_GRENZEN.rubrik) : "";
+}
+/* "fest" | "rubrik" | "eigen" | "" — was eine Kennung ist. */
+function blockArt(id){
+  if(typeof id !== "string") return "";
+  if(BLOCK_FEST.indexOf(id) >= 0) return "fest";
+  if(BLOCK_EIGEN_MUSTER.test(id)) return "eigen";
+  if(id.indexOf("rubrik:") === 0 && id.length > 7 && blockRubrikName(id.slice(7)) === id.slice(7)) return "rubrik";
+  return "";
+}
+function blockHalbOk(id){ const a = blockArt(id); return a === "eigen" ? true : BLOCK_HALB_OK.indexOf(id) >= 0; }
+/* Ziel eines eigenen Blocks: eine Seite des Hubs („#/speisekarte“) oder eine https-Adresse — sonst nichts. */
+function blockZielSauber(w){
+  const z = typeof w === "string" ? w.trim() : "";
+  if(/^#\/[a-z0-9-]{1,30}$/.test(z)) return z;
+  return /^https:\/\/[^\s"'<>\\`]{3,300}$/i.test(z) ? z : "";
+}
+/* Aus einer Live-Spalte (unbekannte Form!) die geprüfte Liste. Doppelte Kennungen und alles
+   Unbekannte fallen weg; was bleibt, hat feste Schlüssel in fester Reihenfolge. */
+function bloeckeSauber(roh){
+  if(!Array.isArray(roh)) return [];
+  const gesehen = {}, aus = [];
+  roh.slice(0, BLOCK_GRENZEN.max).forEach(e => {
+    if(!e || typeof e !== "object" || Array.isArray(e)) return;
+    const art = blockArt(e.id);
+    if(!art || gesehen[e.id]) return;
+    gesehen[e.id] = true;
+    const b = { id:e.id, an:e.an !== false,
+                breite: e.breite === "halb" && blockHalbOk(e.id) ? "halb" : "voll",
+                groesse: BLOCK_WERTE.groesse.indexOf(e.groesse) >= 0 && !(e.groesse === "gross" && BLOCK_GROSS_NICHT.indexOf(e.id) >= 0) ? e.groesse : "" };
+    if(art === "eigen"){
+      b.titel = blockText(e.titel, BLOCK_GRENZEN.titel);
+      b.text  = blockText(e.text, BLOCK_GRENZEN.text);
+      b.knopf = blockText(e.knopf, BLOCK_GRENZEN.knopf);
+      b.ziel  = blockZielSauber(e.ziel);
+      b.look  = BLOCK_WERTE.look.indexOf(e.look) >= 0 ? e.look : "karte";
+    }
+    aus.push(b);
+  });
+  return aus;
+}
+/* ENDE BLOECKE */
+const AFB_EIGEN_HOECHST = 10;
+const AFB_ZIELE = [["#/speisekarte","Speisekarte"],["#/getraenke","Getränke"],["#/cocktails","Cocktails"],["#/entdecken","Foodroulette"],
+  ["#/auswahl","Ihre Auswahl"],["#/meintisch","Mein Tisch"],["#/reservieren","Tisch reservieren"],["#/kontakt","Öffnungszeiten & Weg"],
+  ["#/haus","Über uns"],["#/service","Service rufen"],["#/wlan","WLAN verbinden"]];
+const AFB_BESCHREIBUNG = {
+  schnell:"Ihre Auswahl, Karte, Foodroulette, Serviceruf — und die laufende Bestellung als Pille obenauf.",
+  begleiter:"Die Figur Ihres Hauses mit ihrem Satz.",
+  aktion:"Der Top-Runner: laufende Aktionen mit Restzeit. Steht nur da, wenn gerade eine Aktion läuft.",
+  banner:"Das wischbare Karussell mit Angeboten. Steht nur da, wenn Banner angelegt sind.",
+  nochmal:"„Nochmal wie letztes Mal“ für Gäste, die schon bestellt haben.",
+  empfehlung:"Die Empfehlung des Hauses. Steht nur da, wenn es eine gibt.",
+  rubrik:"Eine Gruppe von Kacheln, die der Gast auf- und zuklappt. Die Kacheln darin stellen Sie unter „Kacheln“ ein."
+};
+/* Wohin der Weg „Texte & Einstellungen“ führt: die Gruppe, in der dieser Block seine Worte hat. */
+const AFB_EINSTELLUNG = {
+  schnell:{ g:"txGruppe", suche:"Schnellzugriff" }, begleiter:{ g:"gh-figur" }, aktion:{ g:"gh-worte" },
+  banner:{ g:"gh-banner" }, nochmal:{ g:"txGruppe", suche:"Nochmal" }, empfehlung:{ g:"txGruppe", suche:"Empfehlung" },
+  rubrik:{ g:"gh-kacheln" }
+};
+const AFB_BREITE = { voll:"Ganz", halb:"Halb" };
+const AFB_GROESSE = { klein:"Klein", "":"Normal", gross:"Groß" };
+const AFB_LOOK = { karte:"Karte", band:"Band" };
+
+/* Rubriken, die der Gast sieht: mindestens eine Kachel an. */
+function afbRubriken(){
+  return kbRubriken().filter(g => blockRubrikName(g) === g && KACHELSTAND.some(k => k.an && kbGruppeVon(k.schluessel) === g));
+}
+function afbNeuEintrag(id){
+  const b = { id, an:true, breite:"voll", groesse:"" };
+  if(blockArt(id) === "eigen") Object.assign(b, { titel:"", text:"", knopf:"", ziel:"", look:"karte" });
+  return b;
+}
+function afbVorgabe(){ return BLOCK_FEST.concat(afbRubriken().map(g => "rubrik:" + g)).map(afbNeuEintrag); }
+/* Hat der Wirt eine eigene Wahl (gespeichert oder gerade getroffen)? Sonst zeigt die Liste die Vorgabe —
+   inklusive der Rubrik-Reihenfolge der Kacheln. */
+function afbEigeneWahl(){ return AFBGEAENDERT || !!(AFBGESPEICHERT && AFBGESPEICHERT.length); }
+function afbAbgleichen(){
+  if(!afbEigeneWahl()){ AFBSTAND = afbVorgabe(); return; }
+  const rub = afbRubriken().map(g => "rubrik:" + g), erlaubt = new Set(BLOCK_FEST.concat(rub));
+  const da = AFBSTAND.filter(b => blockArt(b.id) === "eigen" || erlaubt.has(b.id));
+  const ids = new Set(da.map(b => b.id));
+  BLOCK_FEST.concat(rub).forEach(id => { if(!ids.has(id)) da.push(afbNeuEintrag(id)); });
+  AFBSTAND = da;
+}
+function afbIstVorgabe(){
+  const v = afbVorgabe();
+  return v.length === AFBSTAND.length && v.every((b, i) => { const a = AFBSTAND[i]; return a.id === b.id && a.an && a.breite === "voll" && !a.groesse; });
+}
+/* Was an hub_bloecke geht — für „Übernehmen“ UND für die Vorschau, EINE Stelle (sonst zeigt die Vorschau etwas,
+   das nie gespeichert wird). null = keine eigene Wahl: dann gilt die Vorgabe. */
+function afbRoh(){
+  if(!afbEigeneWahl() || afbIstVorgabe()) return null;
+  return AFBSTAND.map(b => {
+    const e = { id:b.id };
+    if(!b.an) e.an = false;
+    if(b.breite === "halb" && blockHalbOk(b.id)) e.breite = "halb";
+    if(b.groesse && !(b.groesse === "gross" && BLOCK_GROSS_NICHT.indexOf(b.id) >= 0)) e.groesse = b.groesse;
+    if(blockArt(b.id) === "eigen"){
+      if(b.titel) e.titel = b.titel;
+      if(b.text)  e.text  = b.text;
+      if(b.knopf) e.knopf = b.knopf;
+      if(b.ziel)  e.ziel  = b.ziel;
+      if(b.look && b.look !== "karte") e.look = b.look;
+    }
+    return e;
+  });
+}
+function afbName(b){
+  const a = blockArt(b.id);
+  return a === "fest" ? BLOCK_NAMEN[b.id] : a === "rubrik" ? "Rubrik „" + b.id.slice(7) + "“" : (b.titel || "Eigener Textblock");
+}
+function afbZusammenfassung(b){
+  const t = [];
+  if(!b.an) t.push("Ausgeblendet");
+  t.push(b.breite === "halb" && blockHalbOk(b.id) ? "Halb breit" : "Ganze Breite");
+  if(b.groesse) t.push(b.groesse === "klein" ? "Klein" : "Groß");
+  if(blockArt(b.id) === "eigen" && !b.titel && !b.text) t.push("noch leer");
+  if(blockArt(b.id) === "rubrik"){
+    const n = KACHELSTAND.filter(k => k.an && kbGruppeVon(k.schluessel) === b.id.slice(7)).length;
+    t.push(n + (n === 1 ? " Kachel" : " Kacheln"));
+  }
+  return t.join(" · ");
+}
+/* Fehler, die „Übernehmen“ verhindern — jeder als Satz mit dem Namen des Blocks. */
+function afbPruefen(){
+  const s = [];
+  AFBSTAND.forEach(b => {
+    if(blockArt(b.id) !== "eigen") return;
+    const n = afbName(b);
+    if(b.knopf && !b.ziel) s.push("„" + n + "“: Der Knopf braucht ein Ziel — oder lassen Sie den Knopftext leer.");
+    if(b.ziel && !blockZielSauber(b.ziel)) s.push("„" + n + "“: Ein Link muss mit https:// beginnen und darf keine Leerzeichen oder Anführungszeichen enthalten.");
+    if(b.ziel && !b.knopf) s.push("„" + n + "“: Ein Ziel ohne Knopftext wird nicht gezeigt — bitte einen Knopftext eintragen.");
+  });
+  return s;
+}
+
+function afbStandAusSpeicher(liste){
+  AFBSTAND = JSON.parse(JSON.stringify(liste || []));
+  afbAbgleichen();
+}
+async function afbStandLaden(){
+  AFBGEAENDERT = false; AFBGESPEICHERT = undefined; AFBLESEFEHLER = false;
+  afbStandAusSpeicher([]); afbZeichnen();
+  if(demo || !db || !betriebId){ AFBGESPEICHERT = []; afbZeichnen(); return; }
+  const fuer = betriebId;
+  try{
+    const {data, error} = await db.from("betriebe").select("hub_bloecke").eq("id", betriebId).maybeSingle();
+    if(error) throw error;
+    if(fuer !== betriebId) return;
+    AFBGESPEICHERT = bloeckeSauber(data && data.hub_bloecke);
+    /* Nur neu aufbauen, wenn der Wirt noch nichts angefasst hat — sonst risse es ihm die Eingabe weg. */
+    if(!AFBGEAENDERT){ afbStandAusSpeicher(AFBGESPEICHERT); }
+    afbZeichnen(); hvStartseite();
+  }catch(e){ AFBLESEFEHLER = true; afbZeichnen(); }
+}
+function afbGeaendert(){
+  AFBGEAENDERT = true;
+  const roh = $("#afbPruefung"); if(roh) roh.textContent = "";
+  hvStartseite();
+}
+function afbSage(text){ const s = $("#afbSage"); if(s) s.textContent = text; }
+
+/* ── Zeichnen ──────────────────────────────────────────────────── */
+function afbSegment(name, werte, jetzt, fuer, namen){
+  return '<div class="aw-segment kbseg' + (werte.length === 2 ? " seg-zwei" : "") + '" role="radiogroup" aria-label="' + sicher(name) + '"' +
+    ' style="grid-template-columns:repeat(' + werte.length + ',1fr)">' +
+    werte.map(w => '<button type="button" class="aw-seg" role="radio" data-' + fuer + '="' + sicher(w) + '"' +
+      ' aria-checked="' + (w === jetzt) + '">' + sicher(namen[w]) + '</button>').join("") + '</div>';
+}
+function afbZielWert(b){
+  if(!b.ziel) return "";
+  return AFB_ZIELE.some(z => z[0] === b.ziel) ? b.ziel : "link";
+}
+function afbEinstellungenHTML(b, i){
+  const art = blockArt(b.id), n = AFBSTAND.length;
+  const name = sicher(afbName(b));
+  let h = '<p class="kbhinweis">' + sicher(AFB_BESCHREIBUNG[art === "fest" ? b.id : art] || "") + '</p>';
+  if(art === "eigen"){
+    const ziel = afbZielWert(b);
+    h += '<div class="kbfelder">' +
+      '<label><span>Titel</span><input data-afb-titel maxlength="' + BLOCK_GRENZEN.titel + '" value="' + sicher(b.titel) + '" autocomplete="off"></label>' +
+      '<label><span>Text</span><textarea data-afb-text maxlength="' + BLOCK_GRENZEN.text + '" rows="4">' + sicher(b.text) + '</textarea></label>' +
+      '<label><span>Knopftext (leer = kein Knopf)</span><input data-afb-knopf maxlength="' + BLOCK_GRENZEN.knopf + '" value="' + sicher(b.knopf) + '" autocomplete="off"></label>' +
+      '<label><span>Wohin führt der Knopf?</span><select class="kbkarte" data-afb-ziel>' +
+        '<option value=""' + (ziel === "" ? " selected" : "") + '>Nirgendwohin</option>' +
+        AFB_ZIELE.map(z => '<option value="' + sicher(z[0]) + '"' + (ziel === z[0] ? " selected" : "") + '>' + sicher(z[1]) + '</option>').join("") +
+        '<option value="link"' + (ziel === "link" ? " selected" : "") + '>Eigener Link (https://…)</option></select></label>' +
+      (ziel === "link" ? '<label><span>Link</span><input data-afb-link maxlength="300" inputmode="url" value="' + sicher(b.ziel) + '" placeholder="https://" autocomplete="off" spellcheck="false"></label>' : "") +
+      '<small class="kbhinweis">Der Text erscheint in allen Sprachen so, wie Sie ihn schreiben — er wird nicht übersetzt.</small>' +
+    '</div>' +
+    '<div class="kbwahlblock"><span class="kbwahlname">Aussehen</span>' + afbSegment("Aussehen", ["karte","band"], b.look || "karte", "afb-look", AFB_LOOK) +
+      '<small class="kbhinweis">„Band“ nimmt die Farben des Kopfbands Ihres Hauses.</small></div>';
+  }
+  if(blockHalbOk(b.id))
+    h += '<div class="kbwahlblock"><span class="kbwahlname">Breite</span>' + afbSegment("Breite", ["voll","halb"], b.breite, "afb-breite", AFB_BREITE) +
+         '<small class="kbhinweis">Zwei halbe Blöcke nebeneinander teilen sich eine Reihe. Ein einzelner halber steht ganz.</small></div>';
+  else
+    h += '<p class="kbhinweis">Dieser Block braucht die volle Breite.</p>';
+  const groessen = BLOCK_GROSS_NICHT.indexOf(b.id) >= 0 ? ["klein",""] : ["klein","","gross"];
+  h += '<div class="kbwahlblock"><span class="kbwahlname">Größe</span>' + afbSegment("Größe", groessen, b.groesse || "", "afb-groesse", AFB_GROESSE) +
+       (BLOCK_GROSS_NICHT.indexOf(b.id) >= 0 ? '<small class="kbhinweis">Größer geht hier nicht: Zwei Felder müssen in die Breite passen.</small>' : "") + '</div>';
+  h += '<div class="afb-aktionen">' +
+    '<button type="button" class="knopf leise" data-afb-hoch' + (i === 0 ? " disabled" : "") + '>Nach oben</button>' +
+    '<button type="button" class="knopf leise" data-afb-runter' + (i === n - 1 ? " disabled" : "") + '>Nach unten</button></div>';
+  const e = AFB_EINSTELLUNG[art === "fest" ? b.id : art];
+  if(e) h += '<button type="button" class="knopf leise afb-weg" data-afb-gehe="' + sicher(e.g) + '"' + (e.suche ? ' data-afb-suche="' + sicher(e.suche) + '"' : "") + '>Texte &amp; Einstellungen dieses Blocks</button>';
+  if(art === "eigen") h += '<button type="button" class="knopf leise afb-loeschen" data-afb-loeschen>Block entfernen</button>';
+  return h;
+}
+function afbZeichnen(){
+  const feld = $("#afbListe"); if(!feld) return;
+  afbAbgleichen();
+  const knopf = $("#afbSichern");
+  if(knopf) knopf.disabled = AFBGESPEICHERT === undefined;
+  const lese = $("#afbLese");
+  if(lese){
+    lese.hidden = AFBGESPEICHERT !== undefined && !AFBLESEFEHLER;
+    lese.textContent = AFBLESEFEHLER ? "Der gespeicherte Aufbau konnte nicht gelesen werden. „Übernehmen“ bleibt gesperrt, damit nichts überschrieben wird." : "Der gespeicherte Aufbau wird gelesen …";
+  }
+  feld.innerHTML = AFBSTAND.map((b, i) => {
+    const offen = AFB_OFFEN.has(b.id), id = sicher(b.id), art = blockArt(b.id);
+    return '<article class="kbzeile afb-zeile' + (b.an ? "" : " aus") + (offen ? " offen" : "") + '" data-afb="' + id + '">' +
+      '<div class="kbkopf">' +
+        '<span class="afb-griff" data-afb-griff role="button" tabindex="0" aria-label="' + sicher(afbName(b)) + ' verschieben" aria-describedby="afbSage"' +
+          ' aria-keyshortcuts="ArrowUp ArrowDown"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="6" r="1.7"/><circle cx="15" cy="6" r="1.7"/><circle cx="9" cy="12" r="1.7"/><circle cx="15" cy="12" r="1.7"/><circle cx="9" cy="18" r="1.7"/><circle cx="15" cy="18" r="1.7"/></svg></span>' +
+        '<button type="button" class="kbkopfknopf" data-afb-auf aria-expanded="' + offen + '" aria-controls="afbinhalt-' + i + '">' +
+          '<span class="kbkopftext"><b>' + sicher(afbName(b)) + '</b><i>' + sicher(afbZusammenfassung(b)) + '</i></span>' +
+          '<svg class="chevron" width="11" height="7" viewBox="0 0 11 7" aria-hidden="true"><path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>' +
+        '</button>' +
+        '<input type="checkbox" class="kipp" data-afb-an ' + (b.an ? "checked" : "") + ' aria-label="' + sicher(afbName(b)) + ' anzeigen">' +
+      '</div>' +
+      '<div class="kbklapp kbinhalt' + (offen ? " offen" : "") + '" id="afbinhalt-' + i + '"><div><div class="kbinnen">' + (offen ? afbEinstellungenHTML(b, i) : "") + '</div></div></div>' +
+    '</article>';
+  }).join("");
+}
+
+/* ── Bedienung ─────────────────────────────────────────────────── */
+function afbFinden(id){ return AFBSTAND.find(b => b.id === id); }
+function afbZeileVon(el){ const z = el.closest && el.closest("[data-afb]"); return z ? afbFinden(z.dataset.afb) : null; }
+function afbVerschieben(id, richtung){
+  const i = AFBSTAND.findIndex(b => b.id === id), j = i + richtung;
+  if(i < 0 || j < 0 || j >= AFBSTAND.length) return false;
+  const [b] = AFBSTAND.splice(i, 1);
+  AFBSTAND.splice(j, 0, b);
+  afbGeaendert(); afbZeichnen();
+  afbSage(afbName(b) + ": Platz " + (j + 1) + " von " + AFBSTAND.length);
+  return true;
+}
+function afbZeileAktualisieren(b){
+  const z = document.querySelector('[data-afb="' + CSS.escape(b.id) + '"]'); if(!z) return;
+  z.classList.toggle("aus", !b.an);
+  const t = z.querySelector(".kbkopftext b"), u = z.querySelector(".kbkopftext i");
+  if(t) t.textContent = afbName(b);
+  if(u) u.textContent = afbZusammenfassung(b);
+}
+document.addEventListener("click", e => {
+  const auf = e.target.closest && e.target.closest("[data-afb-auf]");
+  if(auf){ const b = afbZeileVon(auf); if(!b) return;
+    if(AFB_OFFEN.has(b.id)) AFB_OFFEN.delete(b.id); else AFB_OFFEN.add(b.id);
+    afbZeichnen(); return; }
+  const gehe = e.target.closest && e.target.closest("[data-afb-gehe]");
+  if(gehe){
+    euOeffnen(gehe.dataset.afbGehe);
+    if(gehe.dataset.afbSuche){ const s = $("#txSuche"); if(s){ s.value = gehe.dataset.afbSuche; txZeichnen(); } }
+    return; }
+  const b = e.target.closest && e.target.closest("[data-afb]") ? afbZeileVon(e.target) : null;
+  if(!b) return;
+  const seg = e.target.closest("[data-afb-breite],[data-afb-groesse],[data-afb-look]");
+  if(seg){
+    if(seg.hasAttribute("data-afb-breite")) b.breite = seg.dataset.afbBreite === "halb" && blockHalbOk(b.id) ? "halb" : "voll";
+    if(seg.hasAttribute("data-afb-groesse")) b.groesse = BLOCK_WERTE.groesse.indexOf(seg.dataset.afbGroesse) >= 0 ? seg.dataset.afbGroesse : "";
+    if(seg.hasAttribute("data-afb-look")) b.look = BLOCK_WERTE.look.indexOf(seg.dataset.afbLook) >= 0 ? seg.dataset.afbLook : "karte";
+    afbGeaendert(); afbZeichnen(); return; }
+  if(e.target.closest("[data-afb-hoch]")){ if(afbVerschieben(b.id, -1)) afbFokus(b.id, "[data-afb-hoch]"); return; }
+  if(e.target.closest("[data-afb-runter]")){ if(afbVerschieben(b.id, 1)) afbFokus(b.id, "[data-afb-runter]"); return; }
+  const weg = e.target.closest("[data-afb-loeschen]");
+  if(weg){
+    /* Entfernen erst beim zweiten Tipp. */
+    if(!weg.dataset.sicher){ weg.dataset.sicher = "1"; weg.textContent = "Wirklich entfernen?";
+      setTimeout(() => { if(weg.isConnected){ delete weg.dataset.sicher; weg.textContent = "Block entfernen"; } }, 4000); return; }
+    AFBSTAND = AFBSTAND.filter(x => x !== b); AFB_OFFEN.delete(b.id);
+    afbGeaendert(); afbZeichnen(); afbSage("Block entfernt"); return; }
+});
+function afbFokus(id, wahl){
+  const z = document.querySelector('[data-afb="' + CSS.escape(id) + '"]');
+  const k = z && (z.querySelector(wahl + ":not([disabled])") || z.querySelector("[data-afb-griff]"));
+  if(k) k.focus({ preventScroll:true });
+}
+document.addEventListener("change", e => {
+  const an = e.target.closest && e.target.closest("[data-afb-an]");
+  if(an){ const b = afbZeileVon(an); if(!b) return; b.an = an.checked; afbGeaendert(); afbZeileAktualisieren(b); return; }
+  const ziel = e.target.closest && e.target.closest("[data-afb-ziel]");
+  if(ziel){ const b = afbZeileVon(ziel); if(!b) return;
+    b.ziel = ziel.value === "link" ? (/^https:/i.test(b.ziel) ? b.ziel : "") : ziel.value;
+    if(ziel.value === "link" && !b.ziel) b.ziel = "https://";
+    afbGeaendert(); afbZeichnen(); }
+});
+document.addEventListener("input", e => {
+  const f = e.target.closest && e.target.closest("[data-afb-titel],[data-afb-text],[data-afb-knopf],[data-afb-link]");
+  if(!f) return;
+  const b = afbZeileVon(f); if(!b || blockArt(b.id) !== "eigen") return;
+  /* Nur das Eingegebene merken und die Kopfzeile nachziehen — kein Neuaufbau, sonst verlöre das Feld den Fokus. */
+  if(f.hasAttribute("data-afb-titel")) b.titel = f.value;
+  if(f.hasAttribute("data-afb-text"))  b.text  = f.value;
+  if(f.hasAttribute("data-afb-knopf")) b.knopf = f.value;
+  if(f.hasAttribute("data-afb-link"))  b.ziel  = f.value.trim();
+  afbGeaendert(); afbZeileAktualisieren(b);
+});
+$("#afbNeuText").onclick = () => {
+  if(AFBSTAND.filter(b => blockArt(b.id) === "eigen").length >= AFB_EIGEN_HOECHST) return melde("Höchstens " + AFB_EIGEN_HOECHST + " eigene Textblöcke", true);
+  if(AFBSTAND.length >= BLOCK_GRENZEN.max) return melde("Höchstens " + BLOCK_GRENZEN.max + " Blöcke", true);
+  let id; do{ id = "eigen-" + Math.random().toString(36).slice(2, 8); }while(afbFinden(id) || !BLOCK_EIGEN_MUSTER.test(id));
+  AFBGEAENDERT = true;
+  afbAbgleichen();
+  /* Neue Blöcke stehen oben: Der Wirt sieht sofort, was er angelegt hat. */
+  AFBSTAND.unshift(afbNeuEintrag(id));
+  AFB_OFFEN.add(id);
+  afbGeaendert(); afbZeichnen();
+  const z = document.querySelector('[data-afb="' + id + '"]');
+  if(z){ z.scrollIntoView({ block:"center" }); const f = z.querySelector("[data-afb-titel]"); if(f) f.focus({ preventScroll:true }); }
+};
+
+async function afbSichern(){
+  const raus = $("#afbPruefung"), knopf = $("#afbSichern");
+  if(AFBGESPEICHERT === undefined){ raus.textContent = "Der gespeicherte Stand ist noch nicht gelesen."; return; }
+  const saetze = afbPruefen();
+  if(saetze.length){ raus.innerHTML = saetze.map(s => '<div class="zeile warn"><i>!</i><span>' + sicher(s) + '</span></div>').join(""); return; }
+  const roh = afbRoh();
+  knopf.disabled = true; knopf.textContent = "Wird übernommen …";
+  try{
+    if(demo || !db){
+      raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
+    }else{
+      const {data, error} = await db.from("betriebe").update({ hub_bloecke: roh }).eq("id", betriebId).select("id");
+      if(error) throw error;
+      /* Keine Zeile getroffen heißt: die Regel hat es verweigert (§2.3b) — kein Erfolg. */
+      if(!data || !data.length){ raus.textContent = "Nicht gespeichert: Nur der Besitzer kann den Aufbau der Startseite ändern."; knopf.disabled = false; knopf.textContent = "Übernehmen"; return; }
+      const b = meineBetriebe.find(x => x.id === betriebId); if(b) b.hub_bloecke = roh;
+      AFBGESPEICHERT = bloeckeSauber(roh || []); AFBGEAENDERT = false;
+      afbStandAusSpeicher(AFBGESPEICHERT); afbZeichnen();
+      raus.textContent = roh ? "Übernommen. Gäste sehen es beim nächsten Öffnen." : "Übernommen: Die Vorgabe gilt wieder.";
+    }
+    melde("Aufbau der Startseite übernommen");
+  }catch(err){
+    const txt = String(err && err.message || "");
+    raus.textContent = /hub_bloecke/.test(txt) && /column|spalte/i.test(txt)
+      ? "Die Spalte hub_bloecke fehlt noch. Bitte migration-hub-bloecke.sql einspielen."
+      : (/check|violat/i.test(txt) ? "Zu viele oder zu lange Blöcke. Bitte Texte kürzen oder Blöcke entfernen."
+                                   : "Nicht gespeichert, bitte Verbindung prüfen.");
+  }
+  knopf.disabled = AFBGESPEICHERT === undefined; knopf.textContent = "Übernehmen";
+}
+$("#afbSichern").onclick = afbSichern;
+$("#afbZurueck").onclick = () => {
+  AFBGEAENDERT = true; AFBSTAND = afbVorgabe(); AFB_OFFEN.clear();
+  afbGeaendert(); afbZeichnen();
+  $("#afbPruefung").textContent = "Zurückgesetzt. Mit „Übernehmen“ gilt wieder die Vorgabe.";
+};
+
+/* ── Ziehen am Griff ──────────────────────────────────────────────
+   Nur der Griff zieht (44 × 44 px, touch-action:none): Der Rest der
+   Zeile bleibt Fläche zum Rollen und Tippen, und am Griff gibt es
+   keinen Text, den ein Finger markieren könnte. Während des Ziehens
+   ist die ganze Seite unmarkierbar (body.afb-zieht), eine begonnene
+   Auswahl wird verworfen, das Kontextmenü des langen Drucks gesperrt.
+   Die Plätze werden bei JEDER Bewegung neu gemessen: Zeilen sind
+   verschieden hoch (aufgeklappt oder nicht), feste Plätze träfen dann
+   daneben. Eingefügt wird vor der ersten Zeile, deren Mitte unter dem
+   Finger liegt — die gezogene Zeile selbst zählt nicht mit, deshalb
+   pendelt nichts. Nachbarn rücken per FLIP nach (nur transform). */
+(function(){
+  let zug = null;
+  const leeren = () => { try{ const s = window.getSelection(); if(s && s.rangeCount) s.removeAllRanges(); }catch(e){} };
+  document.addEventListener("pointerdown", e => {
+    const g = e.target.closest && e.target.closest("[data-afb-griff]");
+    if(!g || e.button > 0 || zug) return;
+    const zeile = g.closest("[data-afb]"); if(!zeile) return;
+    e.preventDefault();
+    try{ g.setPointerCapture(e.pointerId); }catch(err){}
+    const r = zeile.getBoundingClientRect();
+    zug = { id:e.pointerId, g, zeile, liste:zeile.parentElement, grab:e.clientY - r.top, start:e.clientY, y:e.clientY, bewegt:false, raf:0,
+            reduziert: matchMedia("(prefers-reduced-motion: reduce)").matches };
+    document.body.classList.add("afb-zieht"); leeren();
+  });
+  document.addEventListener("pointermove", e => {
+    if(!zug || e.pointerId !== zug.id) return;
+    e.preventDefault();
+    zug.y = e.clientY;
+    if(!zug.bewegt){ if(Math.abs(zug.y - zug.start) < 4) return; zug.bewegt = true; zug.zeile.classList.add("zieht"); }
+    bewegen(); randrollen();
+  }, { passive:false });
+  const ende = e => {
+    if(!zug || (e && e.pointerId !== zug.id)) return;
+    const z = zug; zug = null; cancelAnimationFrame(z.raf);
+    document.body.classList.remove("afb-zieht"); leeren();
+    z.zeile.classList.remove("zieht"); z.zeile.style.transform = "";
+    [...z.liste.children].forEach(el => { el.style.transition = ""; el.style.transform = ""; });
+    if(!z.bewegt) return;
+    const ids = [...z.liste.children].filter(el => el.hasAttribute("data-afb")).map(el => el.dataset.afb);
+    const neu = ids.map(afbFinden).filter(Boolean);
+    if(neu.length !== AFBSTAND.length) { afbZeichnen(); return; }
+    const vorher = AFBSTAND.map(b => b.id).join("|");
+    AFBSTAND = neu;
+    if(ids.join("|") !== vorher){ afbGeaendert(); afbSage(afbName(afbFinden(z.zeile.dataset.afb)) + ": Platz " + (ids.indexOf(z.zeile.dataset.afb) + 1) + " von " + ids.length); }
+    afbZeichnen();
+    afbFokus(z.zeile.dataset.afb, "[data-afb-griff]");
+  };
+  document.addEventListener("pointerup", ende);
+  document.addEventListener("pointercancel", ende);
+  function bewegen(){
+    const z = zug; if(!z || !z.bewegt) return;
+    const andere = [...z.liste.children].filter(el => el !== z.zeile && el.hasAttribute("data-afb"));
+    let ziel = null;
+    for(const el of andere){ const r = el.getBoundingClientRect(); if(z.y < r.top + r.height / 2){ ziel = el; break; } }
+    const naechste = z.zeile.nextElementSibling;
+    if(ziel !== naechste && !(ziel === null && naechste === null)){
+      const vorher = z.reduziert ? null : new Map(andere.map(el => [el, el.getBoundingClientRect()]));
+      z.zeile.style.transform = "";
+      z.liste.insertBefore(z.zeile, ziel);
+      if(vorher) andere.forEach(el => {
+        const vor = vorher.get(el), nach = el.getBoundingClientRect(), dy = vor.top - nach.top;
+        if(!dy) return;
+        el.style.transition = "none"; el.style.transform = "translateY(" + dy + "px)";
+        requestAnimationFrame(() => { el.style.transition = "transform .2s var(--ease-out)"; el.style.transform = ""; });
+      });
+    }
+    z.zeile.style.transform = "";
+    const r = z.zeile.getBoundingClientRect();
+    z.zeile.style.transform = "translateY(" + (z.y - z.grab - r.top) + "px)";
+  }
+  /* Am Rand des Bildschirms rollt die Seite mit, solange der Finger dort liegt. */
+  function randrollen(){
+    const z = zug; if(!z || z.raf) return;
+    const schritt = () => {
+      z.raf = 0; if(zug !== z) return;
+      const h = window.innerHeight, dy = z.y < 80 ? -14 : z.y > h - 80 ? 14 : 0;
+      if(!dy) return;
+      window.scrollBy(0, dy); bewegen();
+      z.raf = requestAnimationFrame(schritt);
+    };
+    z.raf = requestAnimationFrame(schritt);
+  }
+  /* Tastatur am Griff: Pfeil hoch/runter verschiebt, ohne Ziehen. */
+  document.addEventListener("keydown", e => {
+    const g = e.target.closest && e.target.closest("[data-afb-griff]");
+    if(!g || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+    e.preventDefault();
+    const b = afbZeileVon(g); if(!b) return;
+    if(afbVerschieben(b.id, e.key === "ArrowUp" ? -1 : 1)) afbFokus(b.id, "[data-afb-griff]");
+  });
+  /* Keine Textmarkierung an der Liste (Eingabefelder ausgenommen) und kein Menü des langen Drucks am Griff. */
+  document.addEventListener("selectstart", e => {
+    const t = e.target.nodeType === 1 ? e.target : e.target.parentElement;
+    if(zug || (t && t.closest && t.closest("#afbListe") && !t.closest("input,textarea,select"))) e.preventDefault();
+  }, true);
+  document.addEventListener("contextmenu", e => { if(e.target.closest && e.target.closest("[data-afb-griff]")) e.preventDefault(); });
 })();
 
 /* ── Der Zuschnitt ─────────────────────────────────────────────── */
@@ -19085,7 +19666,7 @@ const AE_FELD = {
   zusatzstoffe:"Zusatzstoffe", stoff_hinweis:"Hinweis zu den Stoffen", bild:"Foto", bild_frei:"Profi-Foto",
   veg:"vegetarisch", vegan:"vegan", karte:"Karte", karten:"Karten", ab_alter:"Altersfreigabe", spur:"Spur",
   opt:"Extras", kat_emoji:"Zeichen der Kategorie", frei:"Freitext", verfuegbar:"verfügbar",
-  hub_texte:"Texte im Hub", hub_kacheln:"Kacheln", hub_banner:"Banner-Rad", hub_stil:"Gestaltung",
+  hub_texte:"Texte im Hub", hub_kacheln:"Kacheln", hub_bloecke:"Aufbau der Startseite", hub_banner:"Banner-Rad", hub_stil:"Gestaltung",
   hub_avatar:"Figur", optionen:"Extras & Beläge", liefer:"Lieferung", bestell_pause:"Bestellpause", bestell_pause_text:"Text der Bestellpause",
   newsletter_aktiv:"Newsletter", klaviyo_liste_id:"Newsletter-Liste", markenblatt:"Markenblatt", ziele:"Umsatzziele",
   pin_pflicht:"PIN-Pflicht", kontakt_telefon:"Telefon", telefon_nummer:"Alessia-Rufnummer", alessia:"Alessia-Einstellungen", tisch_pflicht:"Tischpflicht", slug:"Adresse",

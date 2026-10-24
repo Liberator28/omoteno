@@ -1266,6 +1266,28 @@ a.tipp.mitmenge{padding-bottom:62px}
 .sbereich > .gitter{margin-top:6px}
 .sb-ein{animation:sbEin .26s var(--weich) both}
 @keyframes sbEin{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:none}}
+/* ── Startseite aus Blöcken (hub_bloecke) ───────────────────────────
+   Hülle jedes Blocks; ohne eingestellten Aufbau gibt es sie nicht. Größe = Zoom der ganzen Hülle (die Werte
+   stehen auch in BLOCK_ZOOM). Ein Block füllt dabei weiter die Breite: zoom verkleinert Maße, nicht den Platz. */
+.sblock{display:block}
+.sblock[data-groesse="klein"]{zoom:.88}
+.sblock[data-groesse="gross"]{zoom:1.1}
+.sblock-reihe{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:0 0 16px}
+.sblock-reihe > .sblock > *{margin:0;height:100%;box-sizing:border-box}
+.sblock-reihe .begleiter{flex-direction:column;text-align:center;justify-content:center}
+/* Eigener Textblock: Titel, Satz, Knopf. „karte“ wie der Begleiter, der Satz aber in --tinte statt --tinte-leise (auf Chocos Tag-Fläche nur 4,15:1 — gemessen),
+   „band“ in den Farben des Kopfbands (Band und Bandschrift rechnet der Hub je Haus auf Lesbarkeit). */
+.sblock-eigen{margin:0 0 18px;padding:14px 16px;border-radius:var(--rundung-klein);text-align:start}
+.sblock-eigen h2{margin:0 0 6px;font-size:19px;line-height:1.2;color:inherit;overflow-wrap:anywhere}
+.sblock-eigen p{margin:0 0 12px;font-size:14.5px;line-height:1.5;white-space:pre-line;color:inherit;overflow-wrap:anywhere}
+.sblock-eigen > :last-child{margin-bottom:0}
+.sblock-eigen .knopf{display:inline-flex;width:auto;max-width:100%;min-height:44px;margin:0;padding:12px 18px;box-shadow:none;text-align:center;overflow-wrap:anywhere}
+.sblock-eigen.look-karte{background:var(--flaeche-2);border:1px solid var(--linie);color:var(--tinte)}
+.sblock-eigen.look-band{background:var(--band);color:var(--band-text)}
+.sblock-eigen.look-band .knopf{background:var(--band-text);color:var(--band)}
+.sblock-reihe .sblock-eigen{display:flex;flex-direction:column;justify-content:center}
+.sblock-reihe .sblock-eigen .knopf{align-self:flex-start}
+
 /* Schnellzugriff (18.10., Wunsch: „Quick-Access-Knöpfe zu Meine
    Auswahl, Speisekarte, Foodroulette und Service rufen“, Vorbild der
    Liquid-Glass-Showroom). Zwei Spalten großer Glas-Felder: Zeichen in
@@ -6681,6 +6703,96 @@ function kachelBauen(schluessel, wunsch){
   k.textgroesse = Number.isFinite(tg) && tg !== 1 ? Math.min(1.4, Math.max(.8, tg)) : "";
   return k;
 }
+
+/* BLOECKE — GETEILTER BLOCK, wortgleich in seiten/admin.html.
+   pruef-bloecke.js vergleicht beide Zeichen für Zeichen: Das Board stellt
+   den Aufbau der Startseite mit DERSELBEN Prüfung ein, die der Hub beim
+   Zeichnen benutzt — sonst nähme das Board etwas an, das der Hub still
+   verwirft.
+
+   Die Startseite besteht aus Blöcken: sechs feste (Schnellzugriff, Figur
+   mit Satz, Aktion, Banner-Rad, „Nochmal“, Empfehlung), je einer pro
+   Rubrik der Kacheln („rubrik:<Name>“) und eigene Textblöcke
+   („eigen-<kürzel>“). betriebe.hub_bloecke ist eine Live-Spalte, die das
+   Team schreibt: Alles geht durch diese Positivliste (§2.3a/§8.1w), nichts
+   roh in class=, href= oder Text. Der Kopf ist KEIN Block — Siegel, Guss,
+   Laternen und die feste Knopfzeile hängen am oberen Rand der Seite.
+   Ohne Eintrag (leere Liste) bleibt alles, wie es war (§2.5/§8.1a). */
+const BLOCK_FEST = ["schnell", "begleiter", "aktion", "banner", "nochmal", "empfehlung"];
+const BLOCK_NAMEN = { schnell:"Schnellzugriff", begleiter:"Figur mit Satz", aktion:"Aktion · Top-Runner",
+                      banner:"Banner-Rad", nochmal:"Nochmal wie letztes Mal", empfehlung:"Empfehlung des Hauses" };
+/* Nur Blöcke, die in einer halben Spalte (≈ 180 px) lesbar bleiben, dürfen halb breit sein. */
+const BLOCK_HALB_OK = ["begleiter", "nochmal", "empfehlung", "eigen"];
+const BLOCK_WERTE = { breite:["voll", "halb"], groesse:["klein", "gross"], look:["karte", "band"] };
+const BLOCK_ZOOM = { klein:.88, gross:1.1 };
+/* Der Schnellzugriff packt zwei Felder in die Breite; größer gezoomt bräche „Foodroulette“ mitten im Wort
+   (bei 390 px gemessen) — er darf klein, nicht groß sein. */
+const BLOCK_GROSS_NICHT = ["schnell"];
+const BLOCK_EIGEN_MUSTER = /^eigen-[a-z0-9]{2,8}$/;
+const BLOCK_GRENZEN = { titel:40, text:280, knopf:24, max:40, rubrik:28 };
+function blockText(w, max){
+  return typeof w === "string"
+    ? w.replace(/[<>]/g, "").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, " ").replace(/"/g, "”").trim().slice(0, max) : "";
+}
+function blockRubrikName(w){
+  return typeof w === "string" ? w.replace(/[<>"'`\\&]/g, "").replace(/\s+/g, " ").trim().slice(0, BLOCK_GRENZEN.rubrik) : "";
+}
+/* "fest" | "rubrik" | "eigen" | "" — was eine Kennung ist. */
+function blockArt(id){
+  if(typeof id !== "string") return "";
+  if(BLOCK_FEST.indexOf(id) >= 0) return "fest";
+  if(BLOCK_EIGEN_MUSTER.test(id)) return "eigen";
+  if(id.indexOf("rubrik:") === 0 && id.length > 7 && blockRubrikName(id.slice(7)) === id.slice(7)) return "rubrik";
+  return "";
+}
+function blockHalbOk(id){ const a = blockArt(id); return a === "eigen" ? true : BLOCK_HALB_OK.indexOf(id) >= 0; }
+/* Ziel eines eigenen Blocks: eine Seite des Hubs („#/speisekarte“) oder eine https-Adresse — sonst nichts. */
+function blockZielSauber(w){
+  const z = typeof w === "string" ? w.trim() : "";
+  if(/^#\/[a-z0-9-]{1,30}$/.test(z)) return z;
+  return /^https:\/\/[^\s"'<>\\`]{3,300}$/i.test(z) ? z : "";
+}
+/* Aus einer Live-Spalte (unbekannte Form!) die geprüfte Liste. Doppelte Kennungen und alles
+   Unbekannte fallen weg; was bleibt, hat feste Schlüssel in fester Reihenfolge. */
+function bloeckeSauber(roh){
+  if(!Array.isArray(roh)) return [];
+  const gesehen = {}, aus = [];
+  roh.slice(0, BLOCK_GRENZEN.max).forEach(e => {
+    if(!e || typeof e !== "object" || Array.isArray(e)) return;
+    const art = blockArt(e.id);
+    if(!art || gesehen[e.id]) return;
+    gesehen[e.id] = true;
+    const b = { id:e.id, an:e.an !== false,
+                breite: e.breite === "halb" && blockHalbOk(e.id) ? "halb" : "voll",
+                groesse: BLOCK_WERTE.groesse.indexOf(e.groesse) >= 0 && !(e.groesse === "gross" && BLOCK_GROSS_NICHT.indexOf(e.id) >= 0) ? e.groesse : "" };
+    if(art === "eigen"){
+      b.titel = blockText(e.titel, BLOCK_GRENZEN.titel);
+      b.text  = blockText(e.text, BLOCK_GRENZEN.text);
+      b.knopf = blockText(e.knopf, BLOCK_GRENZEN.knopf);
+      b.ziel  = blockZielSauber(e.ziel);
+      b.look  = BLOCK_WERTE.look.indexOf(e.look) >= 0 ? e.look : "karte";
+    }
+    aus.push(b);
+  });
+  return aus;
+}
+/* ENDE BLOECKE */
+
+/* Der geprüfte Aufbau. Leer = Vorgabe. Gemerkt im Gerät (nur das Geprüfte), damit der zweite Besuch schon im
+   ersten Bild so aussieht wie das Haus es eingestellt hat — sonst sprängen die Blöcke nach dem Laden um.
+   Vorschau und Vorführhaus merken nichts. window.… statt VORSCHAU/DEMO: Diese Konstanten stehen weiter unten (§8.1l). */
+let BLOECKE = [];
+const BLOCK_MERK = "omoteno-bloecke-" + HAUS;
+function bloeckeUebernehmen(roh){
+  const neu = bloeckeSauber(roh);
+  const geaendert = JSON.stringify(neu) !== JSON.stringify(BLOECKE);
+  BLOECKE = neu;
+  return geaendert;
+}
+try{
+  if(window.OMOTENO_VORSCHAU !== true && window.OMOTENO_DEMO !== true)
+    bloeckeUebernehmen(JSON.parse(localStorage.getItem(BLOCK_MERK) || "null"));
+}catch(e){}
 
 /* KACHELRASTER — GETEILTER BLOCK, wortgleich in seiten/admin.html.
    pruef-kachelraster.js vergleicht beide Zeichen für Zeichen: Das Board
@@ -12107,7 +12219,7 @@ document.addEventListener("keydown", e => {
    EINE Stelle: Die Wischgeste zwischen den Unterseiten (seitenWischen)
    blättert genau in dieser Folge — sonst führte ein Wisch zu einer
    Kachel, die der Gast gar nicht sieht. */
-function sichtbareKacheln(){
+function sichtbareKachelnRoh(){
   return KACHELN.filter(k =>
     stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
     !(liefermodus && LIEFER.an && k.nurTisch) &&
@@ -12115,6 +12227,21 @@ function sichtbareKacheln(){
     /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
        neu. Lieber gar keine Kachel als eine, die im Kreis führt. */
     kachelZiel(k) !== "");
+}
+/* Mit eingestelltem Aufbau (hub_bloecke) stehen die Rubriken in der Reihenfolge der Blöcke, ausgeblendete fehlen;
+   Rubriken, die der Aufbau nicht kennt (nachträglich angelegt), folgen in der Vorgabe-Reihenfolge. Ohne Aufbau: die
+   Liste von vorher, dasselbe Array. */
+function bloeckeRubrikenOrdnen(roh){
+  const gruppen = new Map();
+  roh.forEach(k => { if(!gruppen.has(k.gruppe)) gruppen.set(k.gruppe, []); gruppen.get(k.gruppe).push(k); });
+  const genannt = BLOECKE.filter(b => blockArt(b.id) === "rubrik").map(b => b.id.slice(7));
+  const sichtbar = BLOECKE.filter(b => blockArt(b.id) === "rubrik" && b.an).map(b => b.id.slice(7)).filter(g => gruppen.has(g));
+  const dazu = [...gruppen.keys()].filter(g => genannt.indexOf(g) < 0);
+  return [].concat(...sichtbar.concat(dazu).map(g => gruppen.get(g)));
+}
+function sichtbareKacheln(){
+  const roh = sichtbareKachelnRoh();
+  return BLOECKE.length ? bloeckeRubrikenOrdnen(roh) : roh;
 }
 
 function start(){
@@ -12128,8 +12255,11 @@ function start(){
      morgen eine sechste Kachel dorthin stellt, muss nicht daran
      denken. Eine Regel, die man vergessen kann, ist eine Regel, die
      man vergessen wird. */
-  const sichtbar = sichtbareKacheln();
-  if(!sichtbar.length){
+  /* alle = was heute sichtbar ist; sichtbar = davon die Rubriken, die der Aufbau zeigt. Der Schnellzugriff
+     und die Leermeldung fragen „alle“: Eine ausgeblendete Rubrik nimmt dem Gast den Weg zur Karte nicht. */
+  const alle = sichtbareKachelnRoh();
+  const sichtbar = BLOECKE.length ? bloeckeRubrikenOrdnen(alle) : alle;
+  if(!alle.length){
     return '<div class="leer">' + t("Gerade ist nichts freigeschaltet.") + '<br>' +
            t("Schauen Sie später noch einmal vorbei.") + '</div>';
   }
@@ -12227,34 +12357,95 @@ function start(){
      gerade eine Bestellung, rückt Werbung (Aktion, Banner, „Nochmal“,
      Empfehlung) hinter den ersten Bereich — der Gast will dann zu
      seiner Bestellung, nicht zum Angebot. */
-  const werbung = aktionBandHTML() + bannerRadHTML() + nochmalHTML() + empfehlungHTML();
-  const laeuft = !VORSCHAU && offeneVorgaenge().length > 0;
-  let html = schnellzeileHTML(sichtbar) + begleiterHTML("start") + (laeuft ? "" : werbung);
-  /* Aufeinanderfolgende Kacheln derselben Gruppe bilden einen Bereich;
-     jeder Bereich packt seine Reihen selbst (kachelReihen). */
-  const bereiche = [];
-  sichtbar.forEach(k => {
-    if(!bereiche.length || bereiche[bereiche.length - 1].gruppe !== k.gruppe)
-      bereiche.push({ gruppe:k.gruppe, kacheln:[] });
-    bereiche[bereiche.length - 1].kacheln.push(k);
-  });
-  bereiche.forEach((b, i) => {
-    const reihen = kachelReihen(b.kacheln), alle = [].concat(...reihen);
+  /* Aufbau aus Blöcken (hub_bloecke): eigener Weg, der Weg von vorher bleibt unten unverändert. */
+  const bereicheBilden = () => {
+    const liste = [];
+    sichtbar.forEach(k => {
+      if(!liste.length || liste[liste.length - 1].gruppe !== k.gruppe)
+        liste.push({ gruppe:k.gruppe, kacheln:[] });
+      liste[liste.length - 1].kacheln.push(k);
+    });
+    return liste;
+  };
+  const bereichHTML = (b, i) => {
+    const reihen = kachelReihen(b.kacheln), alleK = [].concat(...reihen);
     const offen = bereichOffen(b.gruppe, i), id = "sb-" + i;
-    html += '<section class="sbereich' + (offen ? " offen" : "") + '">' +
+    return '<section class="sbereich' + (offen ? " offen" : "") + '">' +
             '<button type="button" class="bereich sb-kopf" aria-expanded="' + offen + '" aria-controls="' + id + '"' +
             ' data-sb-auf="' + hs(b.gruppe) + '">' +
               '<span class="sb-name">' + hs(t(b.gruppe).toUpperCase()) + '</span>' +
-              '<span class="sb-zahl" aria-hidden="true">' + alle.length + '</span>' +
+              '<span class="sb-zahl" aria-hidden="true">' + alleK.length + '</span>' +
               '<svg class="sb-pfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 9.5l6 6 6-6"/></svg>' +
             '</button>' +
-            '<div class="gitter kraster' + (alle.some(symbolOben) ? " mitsaeulen" : "") + '" id="' + id + '"' +
+            '<div class="gitter kraster' + (alleK.some(symbolOben) ? " mitsaeulen" : "") + '" id="' + id + '"' +
             (offen ? "" : " hidden") + '>' +
-            alle.map(kachelHTML).join("") + '</div></section>';
+            alleK.map(kachelHTML).join("") + '</div></section>';
+  };
+  if(BLOECKE.length) return bloeckeHTML(alle, bereicheBilden(), bereichHTML);
+
+  const werbung = aktionBandHTML() + bannerRadHTML() + nochmalHTML() + empfehlungHTML();
+  const laeuft = !VORSCHAU && offeneVorgaenge().length > 0;
+  let html = schnellzeileHTML(alle) + begleiterHTML("start") + (laeuft ? "" : werbung);
+  /* Aufeinanderfolgende Kacheln derselben Gruppe bilden einen Bereich;
+     jeder Bereich packt seine Reihen selbst (kachelReihen). */
+  const bereiche = bereicheBilden();
+  bereiche.forEach((b, i) => {
+    html += bereichHTML(b, i);
     if(i === 0 && laeuft) html += werbung;
   });
   if(!bereiche.length && laeuft) html += werbung;
   return html;
+}
+
+/* ── Startseite aus Blöcken (hub_bloecke) ─────────────────────────
+   Nur mit eingestelltem Aufbau (BLOECKE nicht leer). Jeder Block steht in
+   seiner Hülle (data-sblock), damit Größe und Breite an EINER Stelle
+   hängen; zwei aufeinanderfolgende halbe Blöcke teilen sich eine Reihe,
+   ein einzelner halber bleibt ganz — wie im Kachelraster („allein →
+   ganz“). Ein Block ohne Inhalt (kein Banner, keine Aktion) macht keine
+   Hülle auf. Was der Aufbau nicht nennt (neue Rubrik, später ergänzter
+   fester Block), folgt hinten in der Vorgabe-Reihenfolge — nichts
+   verschwindet, weil das Team es nicht in der Liste hatte (§7).
+   Die Regel „laufende Bestellung: Werbung hinter den ersten Bereich“ gilt
+   hier nicht: Wer die Reihenfolge einstellt, hat sie entschieden; die
+   laufende Bestellung bleibt als Pille im Schnellzugriff. */
+function bloeckeEigenHTML(b){
+  if(!b.titel && !b.text) return "";
+  const knopf = b.knopf && b.ziel
+    ? '<a class="knopf" href="' + hs(b.ziel) + '"' + (b.ziel.indexOf("http") === 0 ? ' target="_blank" rel="noopener"' : "") + '>' + hs(b.knopf) + '</a>' : "";
+  return '<section class="sblock-eigen look-' + b.look + '" data-eigen="' + hs(b.id) + '">' +
+    (b.titel ? '<h2>' + hs(b.titel) + '</h2>' : "") + (b.text ? '<p>' + hs(b.text) + '</p>' : "") + knopf + '</section>';
+}
+function bloeckeHTML(alle, bereiche, bereichHTML){
+  const teil = {
+    schnell: () => schnellzeileHTML(alle), begleiter: () => begleiterHTML("start"), aktion: () => aktionBandHTML(),
+    banner: () => bannerRadHTML(), nochmal: () => nochmalHTML(), empfehlung: () => empfehlungHTML()
+  };
+  const genannt = BLOECKE.map(b => b.id);
+  const reihe = BLOECKE.filter(b => b.an)
+    .concat(BLOCK_FEST.filter(id => genannt.indexOf(id) < 0).map(id => ({ id:id, an:true, breite:"voll", groesse:"" })))
+    .concat(bereiche.filter(b => genannt.indexOf("rubrik:" + b.gruppe) < 0)
+      .map(b => ({ id:"rubrik:" + b.gruppe, an:true, breite:"voll", groesse:"" })));
+  let rubrikNr = 0;
+  const teile = [];
+  reihe.forEach(e => {
+    const art = blockArt(e.id);
+    let html = "";
+    if(art === "fest") html = teil[e.id]();
+    else if(art === "eigen") html = bloeckeEigenHTML(e);
+    else { const b = bereiche.find(x => x.gruppe === e.id.slice(7)); if(b) html = bereichHTML(b, rubrikNr++); }
+    if(html) teile.push({ e:e, html:html });
+  });
+  const huelle = x => '<div class="sblock" data-sblock="' + hs(x.e.id) + '"' +
+    (x.e.groesse ? ' data-groesse="' + x.e.groesse + '"' : "") + '>' + x.html + '</div>';
+  const halb = e => e.breite === "halb" && blockHalbOk(e.id);
+  let aus = "";
+  for(let i = 0; i < teile.length; i++){
+    const x = teile[i], y = teile[i + 1];
+    if(halb(x.e) && y && halb(y.e)){ aus += '<div class="sblock-reihe">' + huelle(x) + huelle(y) + '</div>'; i++; }
+    else aus += huelle(x);
+  }
+  return aus;
 }
 
 /* ── Bereiche auf- und zuklappen ──────────────────────────────────
@@ -15016,6 +15207,7 @@ const SPEICHER_EINTRAEGE = [
   { m:"omoteno-lade-",        w:"Begrüßungsbild des Hauses",                     d:"bis zur nächsten Änderung des Hauses", a:"nein" },
   { m:"omoteno-schrift-",     w:"Schrift des Hauses",                            d:"bis zur nächsten Änderung des Hauses", a:"nein" },
   { m:"omoteno-optionen-",    w:"Extras des Hauses für den Aufruf ohne Netz",    d:"bis zur nächsten Änderung des Hauses", a:"nein" },
+  { m:"omoteno-bloecke-",     w:"Aufbau der Startseite für den Aufruf ohne Netz", d:"bis zur nächsten Änderung des Hauses", a:"nein" },
   { m:"omoteno-fr-modus-",    w:"Foodroulette: Rad oder Karten",                 d:"bis zur Änderung",                    a:"nein" },
   { m:"omoteno-quiz-gesehen", w:"Tischquiz: keine Frage doppelt",                d:"bis Sie Browserdaten löschen",        a:"nein" },
   { m:"omoteno-bestenliste-", w:"Tischquiz: Ihre Punkte",                        d:"bis Sie Browserdaten löschen",        a:"nein" },
@@ -19801,6 +19993,16 @@ function betriebsTeileAnwenden(z, immer){
     }
   }
 
+  /* Aufbau der Startseite (hub_bloecke): durch dieselbe Positivliste wie im Board (bloeckeSauber). Eine leere
+     oder unlesbare Spalte heißt: Vorgabe-Reihenfolge. Gemerkt wird nur das Geprüfte — nie der rohe Wert. */
+  if("hub_bloecke" in z){
+    const geaendert = bloeckeUebernehmen(z.hub_bloecke);
+    if(!immer && !VORSCHAU){
+      try{ if(BLOECKE.length) localStorage.setItem(BLOCK_MERK, JSON.stringify(BLOECKE)); else localStorage.removeItem(BLOCK_MERK); }catch(e){}
+    }
+    if(geaendert && (immer || seiteJetzt === "start")) neu = true;
+  }
+
   /* Schrift: im laufenden Betrieb nur beim ersten Laden (siehe
      karteHolen) — in der Vorschau sofort, dafür ist sie da. */
   if("hub_stil" in z && immer){
@@ -19964,7 +20166,7 @@ async function karteHolen(erstesMal){
 
   try{
     const b = await hol("/rest/v1/betriebe?slug=eq."+encodeURIComponent(OMOTENO_DB.slug)+
-      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil,karten,optionen");
+      "&select=id,bestell_pause,bestell_pause_text,hub_texte,hub_kacheln,hub_bloecke,hub_banner,hub_woerter,liefer,hub_avatar,hub_stil,karten,optionen");
     if(!b.length) throw new Error("Betrieb nicht gefunden");
     betriebId = b[0].id;          // für Bestellungen merken
 

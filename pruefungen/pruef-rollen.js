@@ -25,7 +25,7 @@ const path = require("path");
 
 const ADMIN = path.join(__dirname, "..", "seiten", "admin.html");
 
-const NUR_INHABER = ["Bewegte Emojis", "Projekte", "Stil der Speisekarte", "Extras & Beläge", "Willkommen-Animation", "Kopf & Logo", "Texte & Schrift", "Schrift", "Farben des Hubs", "Kacheln", "Aktions-Banner-Rad",
+const NUR_INHABER = ["Bewegte Emojis", "Projekte", "Stil der Speisekarte", "Extras & Beläge", "Willkommen-Animation", "Kopf & Logo", "Aufbau der Startseite", "Texte & Schrift", "Schrift", "Farben des Hubs", "Kacheln", "Aktions-Banner-Rad",
   "Ihre Worte im Gast-Hub", "Lieferung", "Gäste-Newsletter", "Eigene Rabattcodes",
   "Gutscheine für Stammgäste", "Bezahlen", "Bestellstand beim Gast", "Foodroulette", "Figur des Hauses",
   "Wer hat was geändert"];
