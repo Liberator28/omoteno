@@ -154,7 +154,7 @@ blockText("const OPTIONEN", /hinweis:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merk
 const MB_TECH = new Set(["schluessel","icon","slug","code","farbe","stil","raster","gruppe",
   "ziel","bild","logo","schrift","version","hex","typ","art","id","klasse","form","instagram",
   "google","maps","web","tel","mail","ssid","passwort","figur","netz","strasse","ort","name",
-  "claim","gericht","was","zeiten","links","wlan","trinkgeld","kopfband","zierrat","thema"]);
+  "claim","gericht","was","zeiten","links","wlan","trinkgeld","kopfband","zierrat","thema","startstil"]);
 /* Eine eigene Offline-Karte im Markenblatt (geruestKarte, zuerst bei
    Più Gusto) folgt derselben Regel wie die Karte im Gerüst oben: der
    Name (n) ist ein Eigenname, a/zeichen/opt sind Schlüssel und Kürzel,

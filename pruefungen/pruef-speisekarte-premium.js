@@ -53,6 +53,7 @@ async function lauf(b, kopf){
     pruef("Merkmal „Vegetarisch“ der Banane als Pille in der Merkmalzeile, Waffel ohne", e["Banane Erdbeere"].tags.some(t => /^veg:/.test(t)) && !e["Waffel Classic"].tags.some(t => /^veg:/.test(t)), a.karten);
     pruef("keine Fehler", h.fehler.length === 0 && h.konsole.length === 0, [h.fehler, h.konsole]);
 
+    pruef("ganz oben ist „Alle“ markiert (die Gruppenüberschrift darf nicht schon unter der Leiste stehen — katJetzt misst mit 8 px)", await p.evaluate(() => JSON.stringify([...document.querySelectorAll("#inhalt .chip.an")].map(c => c.dataset.g)) === '["Alle"]'));
     /* Layout: Bild links vom Text, Plus rechts unten, Touchflächen */
     const l = await p.evaluate(() => { const g = [...document.querySelectorAll(".gericht")].find(x => /Waffel/.test(x.textContent)); const r = s => { const e = g.querySelector(s); if(!e) return null; const b = e.getBoundingClientRect(); return { x: b.x, r: b.right, y: b.y, b: b.bottom, w: b.width, h: b.height }; };
       return { bild: r(".gbild"), text: r(".gtext"), plus: r(".gplus"), preis: r(".p") }; });

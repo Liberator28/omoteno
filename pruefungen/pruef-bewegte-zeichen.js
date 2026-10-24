@@ -95,6 +95,14 @@ async function oeffnen(browser, slug, hash, opt = {}) {
   if (opt.vorher) await s.addInitScript(opt.vorher);
   await s.goto(HUB(slug) + (hash || ""));
   await s.waitForTimeout(opt.warten || 2200);
+  /* Ein Haus mit Markenblatt-Schalter „premium“ (Choco) hat eine andere Startseite und andere Produktkarten (Kopfkarte,
+     Plus unten rechts statt auf der Bildecke, Kacheln unter dem Foto-Kopf). Die Proben hier gelten dem KLASSISCHEN
+     Bild und sollen dort bewacht bleiben; die Premium-Fassung misst pruef-start-premium/pruef-speisekarte-premium. */
+  if (opt.premium !== true) {
+    const k = await s.evaluate(() => { if (MARKENBLATT.startstil !== "premium") return false;
+      MARKENBLATT.startstil = "klassisch"; startstilSetzen(); zeichne(); return true; });
+    if (k) await s.waitForTimeout(opt.warten ? Math.min(opt.warten, 2500) : 1800);
+  }
   return { ctx, s, fehler };
 }
 
