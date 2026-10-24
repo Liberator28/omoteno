@@ -2745,6 +2745,20 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
 .txchip[aria-pressed="true"] b{color:var(--kreide)}
 .txliste{display:flex;flex-direction:column;gap:8px;margin:4px 0 14px}
 .txliste:empty{display:none}
+/* Gruppen nach Ort im Hub (je Seite): aufklappbarer Kopf, darunter die Texte dieser Seite. */
+.txgruppe{border-radius:16px;background:color-mix(in srgb, var(--flaeche) 60%, transparent)}
+.txgruppenkopf{display:flex;align-items:center;gap:10px;width:100%;min-height:52px;padding:8px 14px;text-align:left;font:inherit;
+  color:var(--kreide);background:transparent;border:1px solid var(--linie);border-radius:16px;-webkit-appearance:none;appearance:none}
+.txgruppe.offen > .txgruppenkopf{border-color:var(--messing)}
+.txgruppenname{flex:1;min-width:0;font-weight:700;font-size:15px}
+.txgruppenzahl{flex:none;font-family:var(--mono);font-size:11px;color:var(--kreide-leise)}
+.txgruppenkopf .txneu{flex:none;font-size:11px;font-weight:700;padding:3px 9px;border-radius:999px;color:var(--kreide);
+  background:color-mix(in srgb, var(--messing) 22%, transparent);border:1px solid var(--messing)}
+.txgruppenkopf .txpfeil{flex:none}
+.txgruppenkopf[aria-expanded="true"] .txpfeil{transform:rotate(180deg)}
+.txgruppenliste{display:flex;flex-direction:column;gap:8px;padding:8px 0 4px}
+.txherkunft{margin:0;font-size:12.5px;line-height:1.45;color:var(--kreide-leise)}
+.txherkunft b{color:var(--kreide)}
 .txkarte{border:1px solid var(--linie);border-radius:14px;background:var(--flaeche-2);overflow:hidden;
   }
 .txkarte.offen{border-color:var(--messing);box-shadow:0 10px 26px -18px rgba(0,0,0,.55)}
@@ -15647,7 +15661,7 @@ let TX = null, TX_NEU = new Set(), TX_LISTE = [], TX_OFFEN = null, TX_TIPPEN = f
 function txLaden(){
   const e = HUBTEXTE && HUBTEXTE.eigen && typeof HUBTEXTE.eigen === "object" ? HUBTEXTE.eigen : {};
   TX = JSON.parse(JSON.stringify(e));
-  TX_NEU = new Set(); TX_OFFEN = null; TX_BERUEHRT = new Set(); txGeruehrt = false;
+  TX_NEU = new Set(); TX_OFFEN = null; TX_BERUEHRT = new Set(); txGeruehrt = false; TX_GRUPPEN_OFFEN = null;
   $("#txStand").textContent = "";
   txZeichnen();
 }
@@ -15669,9 +15683,15 @@ function txListeLaden(){
   let roh = null;
   try{ roh = h && h.bereit && h.frame.contentWindow.vorschauTexte ? h.frame.contentWindow.vorschauTexte() : null; }catch(e){}
   if(!roh){ TX_LISTE = []; txZeichnen(); return; }
-  const gesehen = new Set(), liste = [];
+  /* Ein Satz kann an mehreren Orten stehen (Startseite UND Speisekarte): er steht einmal in der Liste, am ersten Ort,
+     und kennt alle seine Orte — die Herkunftsangabe im Editor nennt sie. */
+  const eintrag = new Map(), liste = [];
   const reihe = ["start", "haus"].concat(Object.keys(roh).filter(x => x !== "start" && x !== "haus"));
-  reihe.forEach(sz => (roh[sz] || []).forEach(k => { if(gesehen.has(k)) return; gesehen.add(k); liste.push({ k, sz }); }));
+  reihe.forEach(sz => (roh[sz] || []).forEach(k => {
+    const e = eintrag.get(k);
+    if(e){ if(e.orte.indexOf(sz) < 0) e.orte.push(sz); return; }
+    const neu = { k, sz, orte: [sz] }; eintrag.set(k, neu); liste.push(neu);
+  }));
   TX_LISTE = liste;
   txZeichnen();
 }
@@ -15679,6 +15699,15 @@ function txAnzeige(k){ return (TX && TX[k] && TX[k].de) || k; }
 function txGeaendert(k){ const e = TX && TX[k]; return !!(e && (e.de || e.schrift)); }
 /* Nur Schlüssel aus SCHRIFT_WAHL werden zu einem Schriftnamen im Stil. */
 function txSchriftStil(s){ return s && SCHRIFT_WAHL.some(w => w.s === s) ? ' style="font-family:omo-sw-' + s + ',sans-serif"' : ""; }
+/* Herkunft eines Textes: Jeder Eintrag der Liste ist ein Satz des Hubs (Wörterbuchschlüssel) — „Vorgabe“. Hat das Haus ihn
+   geändert, ist er „Von Ihnen geändert“. Mit {…} füllt der Hub einen Teil selbst (Zahl, Name). */
+function txArt(k){
+  if(txGeaendert(k)) return "Von Ihnen geändert";
+  return k.indexOf("{") >= 0 ? "Vorgabe mit Platzhalter" : "Vorgabe von Omoteno";
+}
+/* Welche Gruppen aufgeklappt sind. null = noch nichts gewählt: dann die erste (Startseite). */
+let TX_GRUPPEN_OFFEN = null;
+function txGruppeOffen(sz, erste){ return TX_GRUPPEN_OFFEN ? TX_GRUPPEN_OFFEN.has(sz) : sz === erste; }
 const TX_PFEIL = '<svg class="txpfeil" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 let TX_FILTER = "alle", TX_BERUEHRT = new Set(), txGeruehrt = false, txVerwerfenBereit = false;
 function txChipsZeichnen(){
@@ -15709,16 +15738,35 @@ function txZeichnen(){
     const sichtbar = TX_LISTE.filter(x =>
       (TX_FILTER === "alle" || (TX_FILTER === "geaendert" ? txGeaendert(x.k) : x.sz === TX_FILTER)) &&
       (!such || x.k.toLowerCase().includes(such) || txAnzeige(x.k).toLowerCase().includes(such)));
-    feld.innerHTML = sichtbar.map(x => {
+    const karte = x => {
       const offen = TX_OFFEN === x.k, g = txGeaendert(x.k), schrift = TX[x.k] && TX[x.k].schrift;
       return '<div class="txkarte' + (offen ? " offen" : "") + (g ? " geaendert" : "") + '" data-tx-karte="' + sicher(x.k) + '">' +
         '<button type="button" class="txzeile" data-tx="' + sicher(x.k) + '" aria-expanded="' + offen + '">' +
           '<span class="txpunkt" aria-hidden="true"></span>' +
           '<span class="txtext"><span class="txwort"' + txSchriftStil(schrift) + '>' + sicher(txAnzeige(x.k)) + '</span>' +
-            '<span class="txmeta">' + sicher(TX_SEITEN[x.sz] || x.sz) + '</span></span>' +
+            '<span class="txmeta">' + sicher(gruppiert ? txArt(x.k) : (TX_SEITEN[x.sz] || x.sz) + " · " + txArt(x.k)) + '</span></span>' +
           (g ? '<span class="txneu">geändert</span>' : "") + TX_PFEIL + '</button>' +
         (offen ? txEditorHTML(x.k) : "") + '</div>';
-    }).join("") || '<p class="hvstand">Kein Text gefunden.</p>';
+    };
+    /* Ohne Filter und Suche nach Orten im Hub gruppiert (je Seite eine aufklappbare Gruppe); sobald gesucht oder gefiltert
+       wird, steht die Trefferliste flach — dort nennt jede Zeile ihren Ort. */
+    const gruppiert = TX_FILTER === "alle" && !such && sichtbar.length > 0;
+    if(!gruppiert){
+      feld.innerHTML = sichtbar.map(karte).join("") || '<p class="hvstand">Kein Text gefunden.</p>';
+    } else {
+      const orte = [], je = {};
+      sichtbar.forEach(x => { if(!(x.sz in je)){ je[x.sz] = []; orte.push(x.sz); } je[x.sz].push(x); });
+      feld.innerHTML = orte.map(sz => {
+        const offen = txGruppeOffen(sz, orte[0]) || je[sz].some(x => x.k === TX_OFFEN);
+        const geaendert = je[sz].filter(x => txGeaendert(x.k)).length;
+        return '<section class="txgruppe' + (offen ? " offen" : "") + '" data-tx-gruppe="' + sicher(sz) + '">' +
+          '<button type="button" class="txgruppenkopf" data-tx-gruppenkopf="' + sicher(sz) + '" aria-expanded="' + offen + '">' +
+            '<span class="txgruppenname">' + sicher(TX_SEITEN[sz] || sz) + '</span>' +
+            '<span class="txgruppenzahl">' + je[sz].length + (je[sz].length === 1 ? " Text" : " Texte") + '</span>' +
+            (geaendert ? '<span class="txneu">' + geaendert + ' geändert</span>' : "") + TX_PFEIL + '</button>' +
+          (offen ? '<div class="txgruppenliste">' + je[sz].map(karte).join("") + '</div>' : "") + '</section>';
+      }).join("");
+    }
   }
   txChipsZeichnen();
   txLeisteZeichnen();
@@ -15744,6 +15792,8 @@ function txEditorHTML(k){
     '<div class="txfeld"><span class="txfeldname" id="txSchriftName">Schrift dieses Textes</span>' +
       '<div class="txschriften" role="radiogroup" aria-labelledby="txSchriftName">' + muster("", "Aa", "Wie überall") +
       SCHRIFT_WAHL.map(w => muster(w.s, "Aa", w.familie)).join("") + '</div></div>' +
+    '<p class="txherkunft" data-tx-herkunft><b>Herkunft:</b> ' + sicher(txArt(k)) + ' · steht auf: ' +
+      sicher(((TX_LISTE.find(y => y.k === k) || {}).orte || ["start"]).map(o => TX_SEITEN[o] || o).join(", ")) + '</p>' +
     '<p class="txhinweis" data-tx-hinweis>' + sicher(txHinweisText(k)) + '</p>' +
     '<div class="txknoepfe"><button type="button" class="knopf leise schmal" data-tx-zurueck>Vorgabe wiederherstellen</button></div></div>';
 }
@@ -15762,6 +15812,12 @@ function txAuffrischen(k){
   if(pr){ pr.textContent = text; pr.style.fontFamily = w ? w.style.fontFamily : ""; }
   const c = karte.querySelector("[data-tx-zaehler]"); if(c) c.textContent = text.length + " / 160";
   const h = karte.querySelector("[data-tx-hinweis]"); if(h) h.textContent = txHinweisText(k);
+  const he = karte.querySelector("[data-tx-herkunft]"); if(he) he.innerHTML = '<b>Herkunft:</b> ' + sicher(txArt(k)) + he.innerHTML.slice(he.innerHTML.indexOf(" · steht auf:"));
+  const mt = karte.querySelector(".txmeta"); if(mt){ const ort = mt.textContent.split(" · ").length > 1 ? mt.textContent.split(" · ")[0] + " · " : ""; mt.textContent = ort + txArt(k); }
+  const gk = karte.closest("[data-tx-gruppe]");
+  if(gk){ const n = gk.querySelectorAll(".txkarte.geaendert").length, kopf = gk.querySelector(".txgruppenkopf"); let b = kopf.querySelector(".txneu");
+    if(n && !b){ b = document.createElement("span"); b.className = "txneu"; kopf.insertBefore(b, kopf.querySelector(".txpfeil")); }
+    if(b){ if(n) b.textContent = n + " geändert"; else b.remove(); } }
   karte.querySelectorAll("[data-tx-schrift]").forEach(b => { const an = b.dataset.txSchrift === (e.schrift || ""); b.setAttribute("aria-checked", String(an)); b.tabIndex = an ? 0 : -1; });
   txChipsZeichnen(); txLeisteZeichnen();
 }
@@ -15771,6 +15827,12 @@ function txVorschau(k){
 }
 function txOeffnen(k){
   TX_OFFEN = TX_OFFEN === k ? null : k;
+  if(TX_OFFEN){
+    /* Die Gruppe des geöffneten Textes steht auf — sonst wäre er nicht zu sehen. */
+    const x = TX_LISTE.find(y => y.k === k), sz = x ? x.sz : "start";
+    if(!TX_GRUPPEN_OFFEN) TX_GRUPPEN_OFFEN = new Set([(TX_LISTE[0] || {}).sz || "start"]);
+    TX_GRUPPEN_OFFEN.add(sz);
+  }
   if(TX_OFFEN){ TX_FILTER = "alle"; $("#txSuche").value = TX_LISTE.some(x => x.k === k) ? $("#txSuche").value : ""; }
   if(TX_OFFEN && !TX_LISTE.some(x => x.k === k)) TX_LISTE.unshift({ k, sz:"start" });
   txZeichnen();
@@ -15801,6 +15863,16 @@ function txSchriftWaehlen(k, w){
   txAuffrischen(k); txVorschau(k);
 }
 $("#txListe").addEventListener("click", e => {
+  const gk = e.target.closest("[data-tx-gruppenkopf]");
+  if(gk){
+    const sz = gk.dataset.txGruppenkopf;
+    if(!TX_GRUPPEN_OFFEN) TX_GRUPPEN_OFFEN = new Set([(TX_LISTE[0] || {}).sz || "start"]);
+    if(TX_GRUPPEN_OFFEN.has(sz)){ TX_GRUPPEN_OFFEN.delete(sz); if(TX_LISTE.some(x => x.sz === sz && x.k === TX_OFFEN)) TX_OFFEN = null; }
+    else TX_GRUPPEN_OFFEN.add(sz);
+    txZeichnen();
+    const neu = document.querySelector('[data-tx-gruppenkopf="' + CSS.escape(sz) + '"]'); if(neu) neu.focus({ preventScroll:true });
+    return;
+  }
   const z = e.target.closest("[data-tx]"); if(z){ txOeffnen(z.dataset.tx); return; }
   const sw = e.target.closest("[data-tx-schrift]");
   if(sw && TX){ txSchriftWaehlen(sw.closest("[data-tx-ed]").dataset.txEd, sw.dataset.txSchrift); return; }
