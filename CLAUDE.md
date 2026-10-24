@@ -782,6 +782,25 @@ ausdrücklich, und die Probe misst das **gemalte Feld und das Bild**, nicht nur
 den Rahmen. Ein quadratisches Testbild versteckt den Fehler — die Probe nimmt ein
 Hochkant-Bild.
 
+### 3.14 Was nur aus dem Bild geschoben ist, ist nicht weg
+
+> **Vorfall, gemeldet vom Nutzer mit iPhone-Bildschirmfoto.** „Unten am Ende
+> der Karte hängt ein Gericht offen mit der Beschreibung fest.“ Das
+> geschlossene Detail-Blatt (`.warenkarte`) stand auf `translate3d(-50%,102%,0)`
+> — nach unten GESCHOBEN, nicht unsichtbar. Malt der Browser Inhalt unter seine
+> eigene Leiste (iPhone), ragt sein oberer Rand (Foto, erste Zeile) in den
+> sichtbaren Streifen; die Navigation darüber endete am Rand des Layouts und
+> „schwebte“. Derselbe Vorfall war schon einmal mit `visualViewport` erklärt und
+> „behoben“ worden — die Rechnung stimmte, die Annahme über die Ursache nicht.
+
+Ein geschlossenes Blatt, Menü oder Fenster, das nur außerhalb des Schirms
+geparkt ist, wartet auf den Tag, an dem der Schirm größer ist als gedacht:
+`visibility:hidden` (mit Verzögerung bis zum Ende des Schließens) macht es
+unsichtbar, gleich, was der Browser darunter malt. Eine feste Leiste, die am
+Rand endet, bekommt eine Schürze in ihrer Farbe. Geprüft wird am gemalten Bild
+mit nachgestelltem Streifen (`pruef-blatt-zu.js`), nicht an der Rechnung — und
+ein Mittel, das eine Ursache nur vermutet, sagt das.
+
 ### 3.12 Ein Fokusring, der `z-index` setzt, hebt das Feld über seine absoluten Nachbarn
 
 > **Vorfall, beim ersten Lauf von `pruef-speisekarte-premium.js` gefunden — am
@@ -1833,6 +1852,29 @@ Kategorie), verliert nur `<>`; Anzeigetext zusätzlich das gerade `"`
   direkt rufen und für den **eigenen** Betrieb falsche Zahlen eintragen;
   Obergrenzen je Aufruf halten das klein.
 
+### 8.1aa Wer die Ladezeit verbessert, misst den Weg, nicht die Größe
+
+> **Vorfall (24.10., „die Seite ist relativ langsam“).** Gemessen am erzeugten
+> Hub von Choco: 1,5 MB, davon 1,14 MB Skript und 280 KB Stil, 186 KB gzip allein
+> das Wörterbuch. Der erste Griff wäre die Größe gewesen. Gemessen wurde der Weg:
+> Die erste Abfrage an die Datenbank ging erst nach ~3,5 s hinaus (CPU 4-fach,
+> 1,6 Mbit, 150 ms) — am Ende des Dokuments, nachdem die GANZE Datei geladen
+> und ihr Skript ausgeführt war; dazu zwei weitere, identische `select=id`-
+> Abfragen, weil Aktionen und Zahlarten je für sich nach der Betriebs-id
+> fragten. Der größte Gewinn kam nicht aus dem Kürzen, sondern aus dem
+> früheren Start (3,5 s → 0,5 s); das Kürzen der Kommentare brachte ein
+> Viertel der Bytes.
+
+- Vor jeder Beschleunigung: Verlauf messen (wann geht die erste Anfrage hinaus,
+  wann malt der erste Pixel, wann ist das Skript fertig), mit gedrosselter CPU
+  UND gedrosseltem Netz (CDP). Lokal von `file://` zeigt nur die Rechenzeit.
+- Ein früher Start bekommt ein ausdrückliches „scheitert er“: der alte Weg
+  bleibt, die Prüfung bricht die frühe Abfrage ab und sieht nach (§7, §8.1g).
+- Wo etwas nur gekürzt wird (Kommentare), beweist ein Vergleich der Syntaxbäume
+  vorher/nachher, dass es nur das war — „läuft noch“ beweist es nicht.
+- Eine Größe, die man nicht angefasst hat, wird genannt, nicht verschwiegen
+  (hier: das Wörterbuch).
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1886,6 +1928,10 @@ Dazu je nach Änderung:
 | **Irgendeine Seite, irgendeine Palette** | `pruefungen/pruef-farbschema.js` — sagt jede Seite an, was sie zeigt? |
 | **WLAN-Seite im Hub, WLAN-Felder im Board, QR-Code** | `pruefungen/pruef-wlan.js` (braucht `dist/`) — Passwort steht nirgends auf der Seite (Text UND Auszeichnung), genau zwei Knöpfe ≥ 44 px ≥ 4,5:1, keine Anleitung, „Kopieren“ legt GENAU das Passwort ab, der gezeichnete QR wird mit jsQR (`pruefungen/werkzeug/`) ZURÜCKGELESEN = WIFI:-Zeile mit ; , : " \\ und Umlaut, Bibliothek erst beim Tipp und mit integrity (veränderte Datei läuft NICHT, Satz statt QR), Platzhalter „BITTE-EINTRAGEN“ = leer, live schlägt Markenblatt, Grenzen aus `migration-wlan.sql`; Board: Felder in „Ihre Worte“ mit 16 px, Übernehmen behält die anderen Worte und umgekehrt, „Auf Vorgabe zurück“ lässt das WLAN |
 | **Ladezeit, Dauer-Animationen, bewegte Zeichen beim Laden** | `pruefungen/pruef-leistung.js` (braucht `dist/`) — abends keine Dauer-Animation außer transform/opacity, gelesen auch aus den `@keyframes`-Regeln selbst (Chromiums `getKeyframes()` verschweigt animierte CSS-Variablen — der alte `ledLauf` war so unsichtbar) (Voraussetzung: Goldring läuft), `.blende` ohne backdrop-filter in Ruhe, auf einer nachgestellt LANGSAMEN Seite (ein Bild hält `load` 1,5 s auf) entsteht der erste Film erst nach `load` (lokal käme `load` sonst so früh, dass kein Film es überholen könnte), danach höchstens `BZ_ZUGLEICH` zugleich (8 s gezählt), Tipp spielt sofort, Kopf außer Sicht hält an und läuft zurück im Bild weiter |
+| **Ladestart des Hubs (Abfrage im Kopf der Seite, eine Betriebs-Abfrage, `OMOTENO_FRUEH`, `betriebIdHolen`)** | `pruefungen/pruef-ladestart.js` (braucht `dist/`) — Datenbank gestellt, jeder `fetch` mit Zeit und „Körper schon da?“ festgehalten: die Karten-Abfrage geht hinaus, solange `document.body` noch fehlt, genau einmal je Haus; KEINE `select=id`-Abfrage nebenher (Aktionen, Zahlarten teilen die id); die Antwort kommt an (Pause, Text, Betriebs-ID) und danach die Gerichte; **scheitert die frühe Abfrage (abgebrochen, 500) → zweite Abfrage auf dem alten Weg, die Karte steht trotzdem da**; keine Antwort → der Hub steht nach 1 s, nach 6 s bleibt die eingebaute Karte; Vorschau im Board: kein früher Start; Vorführhaus: nichts erreicht die Datenbank, die Weiche beantwortet die frühe Abfrage; fünf gleichzeitige `betriebIdHolen()` = EINE Abfrage, nach einem Fehlschlag darf erneut gefragt werden. 6 Gegenbeweise im Worktree, jede rot (der siebte, „echtes fetch statt Weiche“, war eine Sabotage ohne Wirkung — der Vorführweg läuft über dasselbe `window.fetch` und ist NICHT einzeln belegt). **Gemessen (Chromium, CPU 4-fach, 1,6 Mbit, 150 ms):** erste Datenbank-Abfrage vorher bei ~3,5 s, jetzt ~0,5 s; FCP ~930 → ~690 ms; `load` ~3,7 → ~3,0 s. **Ehrliche Grenzen:** kein echtes Netz, kein Gerät; das Wörterbuch (`TEXTE`, 411 KB roh, 186 KB gzip = rund ein Drittel der Leitung, für Gäste in Deutsch unbenutzt) steht weiter in der Datei — es nachzuladen braucht eine andere Reihenfolge im Start (`Object.keys(TEXTE)` läuft beim Laden) und sieben Prüfungen, die es als Text lesen: eigenes Vorhaben |
+| **Kommentare aus der ausgelieferten Hub-Datei (`erzeuger/kompakt.js`, `OMOTENO_OHNE_KOMPAKT`, `OMOTENO_ZIEL`)** | `pruefungen/pruef-kompakt.js` — die Prüfung erzeugt die VOLLE Fassung selbst in ein eigenes Verzeichnis (dist/ bleibt) und hält jeden Skriptblock vor/nach mit TypeScripts Parser als AST ohne Kommentare gegeneinander (gleich oder nicht gleich), jeden Stilblock ohne Kommentare, die gelieferte Datei kürzer, Skript um mindestens ein Sechstel; 15 knifflige Eingaben (Zeichenkette mit `/*` und `//`, Regex mit Quote und Schrägstrich, Regex in Klasse, Teilung, Schablone mit Kommentar und verschachtelt, `return` + Umbruch-Kommentar, ganze Zeilen, Apostroph) und CSS mit `url("x/*y*/z")`. Gewinn: gzip 534 → 391 KB. Der Erzeuger übersetzt jeden gekürzten Skriptblock zusätzlich als `vm.Script` und lässt ihn bei Fehlschlag UNVERÄNDERT (Netlify hat kein TypeScript — der AST-Beweis läuft nur hier). 4 Gegenbeweise im Worktree, jede rot. Quelle bleibt unangetastet |
+| **Geschlossenes Gericht-Blatt (`.warenkarte`) hängt nicht am Rand, Schürze unter der Navigation** | `pruefungen/pruef-blatt-zu.js` (braucht `dist/`) — alle Häuser × 360/430 px × reduzierte Bewegung: geschlossen `visibility:hidden`, offen sichtbar, beim Schließen bis zum Ende der Bewegung sichtbar (Inhalt bleibt, wie auf dem Foto); die festen Leisten enden 120 px ÜBER dem Schirmrand (nachgestellt, was das Gerät mit Inhalt unter seiner Leiste malt) und der Streifen darunter ist an JEDEM Pixel in Navigationsfarbe. 4 Gegenbeweise im Worktree (Blatt nur geschoben, sofort unsichtbar, ohne Schürze, Schürze zu niedrig), jede rot. **Ehrliche Grenze:** der Auslöser auf dem Gerät ist nicht gesehen; belegt ist die Wirkung des Mittels, nicht die Ursache |
+| **Eindrücken der Gericht-Karte, Staffelung beim Öffnen des Blatts (`druckStart`, `.druck`, `.oeffnet`)** | `pruefungen/pruef-eindruecken.js` (braucht `dist/`; Fotos als echtes PNG gestellt, sonst entfernt der Hub sie per onerror) — echter Zeiger: Aufsetzen → Karte ≈ .972, Foto ≈ 1.07, Tönung, Nachbarn auf den Pixel gleich; Loslassen → Klasse weg, scale 1; kurzer Tipp zeigt den Eindruck ≥ 100 ms; „+“ löst keinen aus; Finger (CDP-Touch) setzt zum Rollen auf und zieht 72 px → nichts hängt, kein Blatt; zwei Tipps kurz nacheinander → nie mehr als zwei; Blatt: ≥ 3 gestaffelte Animationen nur transform/opacity, nach 1,3 s ruhig und jeder Teil steht da, **Neuzeichnen im offenen Blatt spielt nichts erneut ab (§4.1)**, geschlossen kleiner; reduzierte Bewegung: kein Skalieren, keine Staffelung. 13 Gegenbeweise im Worktree. **Ehrliche Grenzen:** kopfloses Chromium, keine Bilder pro Sekunde auf einem Gerät gemessen; Nordstern/Piugusto haben lokal keine Fotos (Fotoprobe dort ohne Gegenstand) |
 | **Gericht-Blatt (Entwurf-Hinweis, Kategorie-Panel, Preis), Leisten unten im Hub, Laternen über Zurück, Marken im Foodroulette** | `pruefungen/pruef-fotofehler.js` (braucht `dist/`) — die Fehler aus den Fotos vom 10.10., je am gezeichneten Bild: Satz und „Verwerfen“ überlappen nicht, wiederhergestellter Preis „10,90“, Kategorie-Panel so breit wie die Zeile mit 13 echten Kategorien ohne eigenen Scrollbereich, ganz unten liegt jedes Antippbare über Ruf-Streifen + Auswahl-Leiste (Wache), Zurück unter den Laternen ohne Leerstreifen, keine Marke abgeschnitten |
 | **Kopfbild, eigenes Logo (rund/eckig), Haus-Seite hinter dem Logo** | `pruefungen/pruef-kopfbild.js` (braucht `dist/`) — Naht: Upload-Pfad des Boards passt auf `kopfBildOk` im Hub (beide aus den Dateien); alle Häuser 360–1280 px: ohne Kopf alles wie vorher, mit Bild Logo-Mitte auf der Bildkante (±1 px — die Lücke im Raster und der Logo-Versatz hängen an EINER Variable `--kopf-luecke`), Bild über die Breite des Kopfbands und ≤ 28 vh, Öffnungs-Pille unter dem Bild und ≥ 4,5:1 auf dem Band (gegen `--band` gemischt), Logo rund/eckig, **das Logo ist QUADRATISCH und füllt den Knopf (Feld = Bild = Knopf, auch Premium mit Hochkant-Bild — die Probe nimmt absichtlich ein 300×400-Bild, ein quadratisches hätte das Ei versteckt, §8.1g)**, Unterseite ohne Bild; fremder Server/http/javascript:/Anführungszeichen/anderer Ordner → nichts geladen (Anfragen gezählt); echter Tipp aufs Logo → `#/haus` (Name, Woche, „Über uns“ als Text, jede Schrift ≥ 4,5:1, Knöpfe ≥ 44 px), zweiter Tipp zurück; Arabisch übersetzt; zweiter Besuch ohne Netz mit gemerktem Bild; Board: Zuschnitt 16:9 / 1:1 mit Maske, Upload nach `<Betrieb>/kopf/`, Vorschau vor dem Speichern, `hub_stil` zusammengeführt, „Über uns“ lässt unbekannte `hub_texte`-Schlüssel stehen. DB: `datenbank/migration-haus.sql` |
 | **Gast-Hub gestalten (ein Reiter, eine klebende Vorschau), „Texte & Schrift“ (jeder Text, eigene Schrift, Übersetzung)** | `pruefungen/pruef-texteigen.js` (braucht `dist/`) — **Orte und Herkunft (24.10.)**: ohne Filter und Suche stehen die Texte nach Ort im Hub gruppiert (eine aufklappbare Gruppe je Seite, nur die erste offen, zugeklappte Gruppen zeichnen KEINE Karten), Kopf nennt Ort und Zahl (aus `TX_LISTE` gerechnet), ≥ 44 px; echter Tipp klappt auf/zu, Fokus bleibt; Editor nennt „Herkunft: Vorgabe von Omoteno / Vorgabe mit Platzhalter / Von Ihnen geändert · steht auf: <alle Orte>“; Tippen zählt im Gruppenkopf mit, „Vorgabe wiederherstellen“ nimmt es zurück; Suche/Filter → flache Liste mit „Ort · Art“; ein Tipp in der Vorschau auf einen Text einer zugeklappten Gruppe klappt sie auf. — Hub: eigener Text in Deutsch, eigene Übersetzung, sonst Wörterbuch (Reihenfolge eigen → Wörterbuch → eigen.de), Schrift nur am gemeinten Element und nach jedem Neuzeichnen, Schlüssel außerhalb des Wörterbuchs und fremde Schrift verworfen, `<img onerror>` bleibt Text, Anführungszeichen öffnet kein Attribut, zweiter Besuch ohne Netz; Board: jeder Listeneintrag ist ein Wörterbuchschlüssel (zweite Quelle aus der Datei), echter Mausklick im Rahmen öffnet genau diesen Text, Vorschau zeigt Wortlaut und Schrift, Übersetzer in Paketen ≤ 25, de + elf Sprachen gespeichert, Kontingent leer → Deutsch + Satz, Neuöffnen zeigt den Stand. Die Vorschau teilen sich Startseite, Farben und Worte (`HV_ALIAS`) — `pruef-vorschau`, `pruef-farben`, `pruef-schriften` laufen über denselben Rahmen |
