@@ -481,6 +481,22 @@ async function teilB(browser){
   pruef(/60 Gruppen/.test(m) && !(await ALLE(p)).length, "mehr als 60 Gruppen zusammen → Satz mit der Grenze, nichts geschrieben", m);
   await ctx.close();
 
+  /* B10b · Ein Haus OHNE gemeinsame Gruppen: opt gehört trotzdem geschrieben (früher schrieb nur ein Haus mit gemeinsamen
+     Gruppen überhaupt opt — mit gemeinsamen Gruppen daneben bleiben diese beiden Wege in jeder Probe oben unsichtbar, §8.1f). */
+  ({ ctx, p, fehler } = await boardAuf(browser, { "g-aaaaaaaa-extra": { titel:"Extras", art:"mehrere", zeilen:[{ n:"Käse", auf:1 }] } }));
+  await NEUES_GERICHT(p, "Wrap"); await p.click("#egNeu"); await eingeben(p, '#egListe [data-eo-zfeld="n"]', "Ei");
+  await p.evaluate(() => sichern(false)); await p.waitForTimeout(500);
+  const ohne = (await SCHREIB(p, "gerichte", "insert"))[0];
+  pruef(ohne && /^g-[0-9a-f]{8}-extras$/.test(ohne.daten.opt || ""), "Haus ohne gemeinsame Gruppen: das neue Gericht bekommt trotzdem seine opt", ohne && String(ohne.daten.opt));
+  await p.evaluate(() => { const g = { id:"aaaaaaaa-1111-1111-1111-111111111111", name:"Burger", kategorie:"Hauptgerichte", preis:10.9, karte:"speisekarte", verfuegbar:true, opt:"g-aaaaaaaa-extra" };
+    gerichte.push(g); blattOeffnen(g); mehrAufZu(true); });
+  await p.waitForTimeout(250);
+  await p.click('#egListe [data-eo-weg]'); await p.waitForTimeout(80);
+  await p.evaluate(() => sichern(false)); await p.waitForTimeout(500);
+  const leerG = (await SCHREIB(p, "gerichte", "update")).pop();
+  pruef(leerG && "opt" in leerG.daten && leerG.daten.opt === null, "Haus ohne gemeinsame Gruppen, letzte Gruppe entfernt: opt wird auf null gesetzt (kein Verweis ins Leere)", leerG && JSON.stringify(leerG.daten.opt));
+  await ctx.close();
+
   /* B11 · Bedienung: Maße, Lesbarkeit */
   await bedienung(browser);
 }
