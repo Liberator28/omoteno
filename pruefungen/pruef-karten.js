@@ -56,6 +56,9 @@ async function hub(browser, haus, karten, kacheln) {
   await seite.waitForTimeout(1600);
   /* Öffnungszeiten fest (§8.1j), sonst fehlt außerhalb der Zeit der Korbknopf. */
   await seite.evaluate(() => { if (typeof ZEITEN !== "undefined") { ZEITEN.length = 0; for (let i = 0; i < 7; i++) ZEITEN.push("00:00 - 23:59"); } });
+  /* Diese Prüfung gilt dem Benennen der Karten (Kachel vor Kartenname). Mit Startgrafik trägt die Speisekarte die Kopfkarte des Hauses
+     (Titel/Text aus dem Markenblatt, pruef-startgrafik.js) — die Namensregel wird deshalb OHNE sie geprüft. */
+  await seite.evaluate(() => { if (typeof MARKENBLATT !== "undefined") { MARKENBLATT.startgrafik = undefined; sgDekoStand = "#"; zeichne(); } });
   return { ctx, seite, fehler };
 }
 async function lies(seite, ziel) {

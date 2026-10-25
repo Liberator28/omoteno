@@ -74,6 +74,15 @@ const lauf = s => s.evaluate(() => {
   pruef(HAEUSER.length >= 2, "mindestens zwei Häuser erzeugt (§8.1a)", HAEUSER.join(", "));
   for (const haus of HAEUSER) {
     const { ctx, s, fehler } = await oeffnen(browser, haus);
+    /* Mit Startgrafik (Choco, seit 24.10.) steht auf der Startseite die Botschaftskarte statt des Begleiters — das ist gewollt und
+       wird hier festgehalten; die Figur selbst probt dieselbe Seite danach OHNE die Startgrafik (sie bleibt Zeichensatz des Hauses). */
+    const sgAn = await s.evaluate(() => document.body.dataset.sg === "an");
+    if (sgAn) {
+      const d = await s.evaluate(() => ({ bot: !!document.querySelector(".botschaft"), beg: !!document.querySelector(".begleiter .figur") }));
+      pruef(d.bot && !d.beg, haus + ": mit Startgrafik steht die Botschaftskarte statt des Begleiters", JSON.stringify(d));
+      await s.evaluate(() => { MARKENBLATT.startgrafik = undefined; sgDekoStand = "#"; zeichne(); sgDekoZeichnen(); });
+      await s.waitForTimeout(250);
+    }
     let m = await lauf(s);
     pruef(!!m, haus + ": Begleiter mit Figur auf der Startseite (Voraussetzung)");
     if (!m) { await ctx.close(); continue; }

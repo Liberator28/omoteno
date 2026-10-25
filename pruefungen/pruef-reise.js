@@ -147,7 +147,7 @@ const TIPP = href => new Promise(fertig => {
         pruef(k.text === soll && k.h >= 44 && k.w >= 44 && k.oben && !k.ueber,
           "Zurück-Knopf (" + sp + "): „" + soll + "“, ≥ 44 px, obenauf, nichts abgeschnitten",
           JSON.stringify(k.text) + " " + Math.round(k.w) + "×" + Math.round(k.h));
-        if (sp === "en") pruef(k.label === "Back to overview", "die volle Ansage bleibt im aria-label (übersetzt)", k.label);
+        if (sp === "en") pruef(k.label === "Back to home page", "die volle Ansage bleibt im aria-label (übersetzt)", k.label);
       }
       const lauf = await p.evaluate(() => {
         const l = document.querySelector("#zurueck .zr-licht");

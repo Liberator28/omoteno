@@ -13713,12 +13713,15 @@ function karteSeite(id, daten, titel, unter, fuss){
   const hatTop  = daten.some(x => x.eintraege.some(e => e.top));
   const gruppen = ["Alle"].concat(hatTop ? ["Beliebt"] : []).concat(daten.map(x => x.gruppe));
   const sgK = startPremium() && !!sgDaten();
-  const mitZeichen = bewegteZeichenAn() && !sgK;
+  /* Mit Startgrafik tragen die Chips ein Strichsymbol — AUSSER der Wirt hat dieser Kategorie ausdrücklich ein Zeichen gewählt
+     (gerichte.kat_emoji, im Board „Zeichen der Kategorie“): seine Wahl bleibt sichtbar, sie wird nicht still übergangen. */
+  const gewaehlt = g => { const gr = daten.find(x => x && x.gruppe === g); return !!(gr && typeof gr.zeichen === "string" && BZ_WAHL.includes(gr.zeichen)); };
+  const filmChip = g => bewegteZeichenAn() && (!sgK || gewaehlt(g));
   const chips = gruppen.map(g =>
-    '<button class="chip ' + (g === filter[id] ? "an" : "") + (mitZeichen ? " mitbz" : "") + (sgK ? " mitico" : "") +
+    '<button class="chip ' + (g === filter[id] ? "an" : "") + (filmChip(g) ? " mitbz" : "") + (sgK && !filmChip(g) ? " mitico" : "") +
     '" data-seite="' + id + '" data-g="' + hs(g) + '">' +
-    (mitZeichen ? bzHTML(bzKategorie(g, id), "chip:" + id + ":" + g) : "") +
-    (sgK ? '<span class="chip-ico" aria-hidden="true">' + sgKategorieIcon(g) + '</span>' : "") +
+    (filmChip(g) ? bzHTML(bzKategorie(g, id), "chip:" + id + ":" + g) : "") +
+    (sgK && !filmChip(g) ? '<span class="chip-ico" aria-hidden="true">' + sgKategorieIcon(g) + '</span>' : "") +
     '<span>' + t(g) + '</span></button>').join("");
 
   const q = suchtext[id].trim().toLowerCase();
