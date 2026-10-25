@@ -1,7 +1,7 @@
 # Startgrafik, Abholen, Speisekarte nach Entwurf (24./25.10.)
 
-Stand: Branch `claude/landingpage-design-integration-r000h9`. Alles unten ist im Verzeichnis, **nichts davon ist gegen die
-Live-Datenbank gelaufen** (der Supabase-Zugang war in dieser Sitzung nicht erreichbar). Migrationen sind Vorschläge.
+Stand: Branch `claude/landingpage-design-integration-r000h9`. Die beiden Migrationen unten sind seit 25.10. live eingespielt und
+geprüft (Lesefragen vorher, Probe in zurückgedrehter Transaktion nachher).
 
 ## Was gebaut ist
 
@@ -19,22 +19,22 @@ Markenblatt (Choco): `startgrafik: { figur, sticker, botschaft[2], karte: { eyeb
 lehnt alles ab, was er nicht kennt (Positivliste, keine `< > " \``). Alle Texte laufen im Hub durch `t()` — jeder Satz hat
 einen Wörterbucheintrag in elf Sprachen (`pruef-uebersetzung.js` hält sie gegen das Markenblatt).
 
-## Einspielreihenfolge (nichts davon ist eingespielt)
+## Eingespielt (25.10., Supabase-MCP)
 
-1. `datenbank/migration-karte-kopf.sql` — CHECK `hub_texte_karte` (40/60/160/60 Zeichen) und Spalte `gerichte.beliebt`.
-   Additiv (kein `drop`). Der Hub liest `beliebt === true` schon heute (fehlt die Spalte, ändert sich nichts); der Board-Schalter
-   erscheint erst, wenn die Spalte in den gelesenen Zeilen vorkommt. Lokal in Postgres 16 geprobt (60/61 Zeichen, andere
-   Spalte derselben Zeile, `beliebt` setzen).
-2. `datenbank/migration-tischpflicht-lieferung.sql` — Tischpflicht darf Lieferung und Abholung nicht abweisen (CLAUDE.md §2.3i).
-   Lesefragen im Dateikopf **vorher** beantworten; der Block bricht laut ab, wenn eine Funktion anders aussieht.
-   Probe: `pruefungen/pruef-tischpflicht-lokal.sh`.
+1. `migration-karte-kopf.sql` — CHECK `hub_texte_karte` und Spalte `gerichte.beliebt`. Probe: 60/61 Zeichen, andere Spalte, `beliebt`
+   setzen; anon liest `beliebt`, schreibt es nicht.
+2. `migration-tischpflicht-lieferung.sql` — Tischpflicht weist Lieferung und Abholung nicht mehr ab (CLAUDE.md §2.3i). Probe mit echtem
+   Betrieb und Gericht: Abholung mit Tischpflicht ok; Tisch, Serviceruf, Roh-Aufruf (auch nach einer Abholung in derselben Transaktion)
+   weiter abgewiesen; Helfer für Clients gesperrt. Es blieb nichts zurück.
+
+Wirkung im Betrieb: Der Board-Schalter „Beliebt (Highlights)“ erscheint jetzt (die Spalte kommt in den gelesenen Zeilen vor). Abholen ist in
+KEINEM Haus eingeschaltet (`liefer.abholen`) — das stellt der Wirt unter „Lieferung“ ein.
 
 ## Offen (benannt, nicht verschwiegen)
 
 - **Grafiken sind Nachzeichnungen** des Entwurfs, nicht seine Originale. Wer die Originale hat, ersetzt die Zeichnungen im Block
   (`SG.*`); die Prüfung misst Feld, Füllung und Überdeckung, nicht die Ähnlichkeit.
-- **Ohne `migration-karte-kopf.sql`** zeigt eine echte Karte keine „Highlights“ (es gibt dort kein „beliebt“); nur das Gerüst-Haus
-  hat `top:true`.
+- Eine echte Karte zeigt „Highlights“ erst, wenn der Wirt Gerichte als „Beliebt“ markiert hat (bisher hat keines die Markierung).
 - **Abholen nur mit Zahlung vor Ort**; eine Online-Zahlung braucht eine neue Funktion `bestellung_abholen_zahlung` (eigenes Vorhaben).
 - Der Name im Kopf der Unterseiten wird bei schmalen Telefonen mit „…“ gekürzt, weil die Knopfzeile Platz braucht.
 - Ein Haus ohne Startgrafik hat auf einem rein weißen Kopfbild weiter kein Polster hinter dem Slogan (vorbestehend, nicht angefasst).

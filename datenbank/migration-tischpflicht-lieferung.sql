@@ -2,9 +2,12 @@
 --  migration-tischpflicht-lieferung.sql · Tischpflicht darf Lieferung und Abholung nicht abweisen
 --  (Fund 25.10., beim Bau der Abholung)
 --
---  NOCH NICHT EINGESPIELT. Vorschlag, lokal in Postgres 16 geprüft (pruefungen/pruef-tischpflicht-lokal.sh), aber nie
---  gegen die Live-Datenbank gelaufen — diese Umgebung hatte keinen Zugang. Vor dem Einspielen die drei Lesefragen unten
---  beantworten; der Block bricht LAUT ab, wenn eine Funktion nicht so aussieht, wie er sie erwartet.
+--  ANGEWENDET 25.10. (Supabase-MCP, Migration „tischpflicht_lieferung_abholung“). Vorher gelesen: je Funktion genau eine Fassung,
+--  Signatur wie erwartet, jeder Anker genau einmal, 0 Häuser mit Tischpflicht. Danach in zurückgedrehter Transaktion mit echten Daten
+--  gemessen (Betrieb + Gericht aus der Live-Tabelle): Abholung MIT Tischpflicht ok; Tisch, Serviceruf, Roh-Aufruf mit Quelle lieferung und
+--  Roh-Aufruf NACH einer Abholung (gleiche Transaktion) weiter abgewiesen; Helfer für anon/authenticated gesperrt; EXECUTE der drei
+--  Funktionen unverändert. Nach dem Lauf: nichts zurückgeblieben (0 Probe-Bestellungen, kein Haus mit Tischpflicht/Abholung).
+--  (Früherer Hinweis: lokal in Postgres 16 geprüft mit pruefungen/pruef-tischpflicht-lokal.sh.)
 --
 --  DER BEFUND (gemessen, nicht angenommen). bestellung_aufgeben prüft die Tischpflicht VOR der Quelle:
 --      if not bestaetigt and b.tisch_pflicht then raise exception 'Zum Bestellen bitte kurz den Untersetzer …'

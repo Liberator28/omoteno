@@ -1,6 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════════
 --  migration-karte-kopf.sql · Texte im Kopf der Speisekarte + „Beliebt“
---  (VORSCHLAG — NICHT eingespielt; der Supabase-Zugang war nicht erreichbar)
+--  ANGEWENDET 25.10. (Supabase-MCP, Migration „karte_kopf_und_beliebt“; Vorab: Spalte und CHECK fehlten, kein hub_texte trug
+--  einen karte_*-Schlüssel). Probe danach in zurückgedrehter Transaktion: 60 Zeichen → 1 Zeile · 61 → abgewiesen · andere Spalte → 1 Zeile ·
+--  beliebt setzen → 1 Zeile · anon darf beliebt lesen, nicht schreiben (auch die Tabelle nicht).
 --
 --  Zwei Dinge, beide additiv (§2.5, §2.8: keine Zeile beginnt mit drop):
 --
