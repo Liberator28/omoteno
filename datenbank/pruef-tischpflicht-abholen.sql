@@ -1,0 +1,59 @@
+-- Probe (zurückgedreht): Was macht die Tischpflicht mit einer Abholung? Läuft gegen datenbank/modell-lokal-abholen.sql
+-- mit den ECHTEN Funktionen bestellung_aufgeben (migration-gutschein-sicher.sql) und bestellung_abholen.
+-- Aufruf: pruefungen/pruef-tischpflicht-lokal.sh  (Argument "nachher" spielt vorher die Korrektur ein)
+begin;
+create temp table probe(nr text, was text, ergebnis text);
+do $$
+declare
+  v_b uuid; r jsonb; m text; n int;
+  pos jsonb := '[{"name":"Probe","menge":1}]';
+begin
+  insert into betriebe(slug, liefer) values ('probe', '{"abholen":true}') returning id into v_b;
+
+  -- T1 · ohne Tischpflicht geht die Abholung durch (Gegenfall: der Weg an sich ist in Ordnung)
+  r := bestellung_abholen(v_b, 'Gast', '0151 1', pos, 10, null, null, null, null, null);
+  insert into probe values ('T1','ohne Tischpflicht: Abholung angenommen', (r->>'ok'));
+
+  -- T2 · MIT Tischpflicht, Abholung (der Anlassfall): angenommen oder abgewiesen?
+  update betriebe set tisch_pflicht = true where id = v_b;
+  begin
+    r := bestellung_abholen(v_b, 'Gast', '0151 1', pos, 10, null, null, null, null, null);
+    insert into probe values ('T2','Tischpflicht an: Abholung angenommen', (r->>'ok'));
+  exception when others then
+    get stacked diagnostics m = message_text;
+    insert into probe values ('T2','Tischpflicht an: Abholung angenommen', 'Ausnahme: ' || m);
+  end;
+
+  -- T3 · MIT Tischpflicht, Tisch ohne Beleg: bleibt abgewiesen (das ist der Sinn der Tischpflicht, darf sich nie lockern)
+  begin
+    perform bestellung_aufgeben(v_b, 'tisch', '5', 10, null, pos, null, null, null, null, null);
+    insert into probe values ('T3','Tischpflicht an: Tischbestellung ohne Beleg abgewiesen', 'false');
+  exception when others then
+    get stacked diagnostics m = message_text;
+    insert into probe values ('T3','Tischpflicht an: Tischbestellung ohne Beleg abgewiesen', (m like '%Untersetzer%')::text);
+  end;
+
+  -- T4 · MIT Tischpflicht, Serviceruf ohne Beleg: bleibt abgewiesen
+  begin
+    perform bestellung_aufgeben(v_b, 'service', '5', 0, null, '[]', null, null, null, null, null);
+    insert into probe values ('T4','Tischpflicht an: Serviceruf ohne Beleg abgewiesen', 'false');
+  exception when others then
+    get stacked diagnostics m = message_text;
+    insert into probe values ('T4','Tischpflicht an: Serviceruf ohne Beleg abgewiesen', (m like '%Untersetzer%')::text);
+  end;
+
+  -- T5 · direkter Aufruf der Roh-Funktion mit Quelle 'lieferung' (so, wie ein Angreifer ihn schicken würde) bei Tischpflicht
+  begin
+    perform bestellung_aufgeben(v_b, 'lieferung', null, 10, null, pos, null, null, null, null, null);
+    insert into probe values ('T5','Tischpflicht an: Roh-Aufruf mit Quelle lieferung angenommen', 'true');
+  exception when others then
+    get stacked diagnostics m = message_text;
+    insert into probe values ('T5','Tischpflicht an: Roh-Aufruf mit Quelle lieferung angenommen', 'Ausnahme: ' || m);
+  end;
+
+  -- T6 · Zeilen: wie viele Bestellungen gibt es am Ende (T1 immer, T2/T5 je nach Stand)
+  select count(*) into n from bestellungen where betrieb_id = v_b;
+  insert into probe values ('T6','Zeilen in bestellungen', n::text);
+end $$;
+select nr || ' | ' || was || ' → ' || coalesce(ergebnis,'NULL') from probe order by nr;
+rollback;

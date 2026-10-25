@@ -3980,13 +3980,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          „Alle“. -->
     <div class="aw-segment seg-zwei bestellansicht" id="bestellAnsicht" role="radiogroup" aria-label="Welche Bestellungen zeigen">
       <button type="button" class="aw-seg" role="radio" data-ansicht="alle" aria-checked="true">Alle</button>
-      <button type="button" class="aw-seg" role="radio" data-ansicht="lieferung" aria-checked="false">Lieferungen<span class="zahl" id="lieferZahl" hidden>0</span></button>
+      <button type="button" class="aw-seg" role="radio" data-ansicht="lieferung" aria-checked="false">Außer Haus<span class="zahl" id="lieferZahl" hidden>0</span></button>
     </div>
     <div class="filterblock">
       <div class="filterzeile" id="quellenFilter">
         <button class="chip" data-quelle="tisch"        aria-pressed="true"><span class="kasten"></span>Tisch <span class="anzahl" data-z="tisch">0</span></button>
         <button class="chip" data-quelle="telefon"      aria-pressed="true"><span class="kasten"></span>Alessia <span class="anzahl" data-z="telefon">0</span></button>
-        <button class="chip" data-quelle="lieferung"    aria-pressed="true"><span class="kasten"></span>Lieferung <span class="anzahl" data-z="lieferung">0</span></button>
+        <button class="chip" data-quelle="lieferung"    aria-pressed="true"><span class="kasten"></span>Lieferung · Abholung <span class="anzahl" data-z="lieferung">0</span></button>
       </div>
       <div class="filterzeile" id="statusFilter">
         <button class="chip" data-status="neu"    aria-pressed="true"><span class="kasten"></span>Neu</button>
@@ -4890,7 +4890,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <h2 class="etitel">Lieferung</h2>
       <p class="ehilfe">Ist sie an, kann ein Gast sich von zu Hause beliefern lassen —
         dieselbe Karte, derselbe Korb, nur mit Adresse statt Tischnummer.
-        Bezahlt wird bei Ihnen an der Tür — oder, wenn Sie es unter „Bezahlen“ einschalten, online. Über Omoteno fließt nie Geld.</p>
+        Bezahlt wird bei Ihnen an der Tür — oder, wenn Sie es unter „Bezahlen“ einschalten, online. Über Omoteno fließt nie Geld.
+        Weiter unten stellen Sie die Abholung ein: Der Gast bestellt, nennt Name und Telefon und holt selbst ab (bezahlt wird dann bei Ihnen vor Ort).</p>
 
       <div class="schalter">
         <div><div class="schaltertext">Wir liefern</div>
@@ -4962,6 +4963,20 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
           <div><div class="schaltertext">Kartengerät</div></div>
           <button class="wippe" id="lfKarte" aria-pressed="false" aria-label="Kartengerät"></button>
         </div>
+      </div>
+
+      <div class="ezeile senkrecht" id="lfAbholBlock">
+        <span><b>Abholung</b><i>Der Gast holt selbst ab — ohne Adresse, mit Name, Telefon und Wunschzeit</i></span>
+        <div class="schalter">
+          <div><div class="schaltertext">Zum Abholen bestellen</div>
+          <div class="schalterhilfe">Aus = der Chip „Abholen“ ist für Gäste nicht sichtbar. Bezahlt wird vor Ort.</div></div>
+          <button class="wippe" id="lfAbholen" aria-pressed="false" aria-label="Abholung"></button>
+        </div>
+        <label class="feld">
+          <span>Vorlauf in Minuten</span>
+          <input id="lfAbholMin" autocomplete="off" inputmode="numeric" placeholder="20">
+          <small class="feldhilfe">So lange braucht die Küche mindestens. Der Gast sieht „frühestens in {n} Minuten“ und kann keine frühere Zeit wählen.</small>
+        </label>
       </div>
 
       <div class="eknoepfe">
@@ -6186,7 +6201,10 @@ const FELDER = [
   {id:"status",  text:"Status",           an:false},
 ];
 
-const QUELLE_TEXT = {tisch:"Tisch", telefon:"Alessia · Telefon", lieferung:"Lieferung", reservierung:"Reservierung", service:"Serviceruf"};
+const QUELLE_TEXT = {tisch:"Tisch", telefon:"Alessia · Telefon", lieferung:"Lieferung", abholung:"Abholung", reservierung:"Reservierung", service:"Serviceruf"};
+/* Eine Abholung läuft in der Datenbank als Quelle „lieferung“ mit abholung = true (migration-abholen.sql). */
+const quelleKey  = b => (b && b.quelle === "lieferung" && b.abholung === true) ? "abholung" : (b && b.quelle);
+const quelleText = b => QUELLE_TEXT[quelleKey(b)] || (b && b.quelle) || "";
 const $  = s => document.querySelector(s);
 const $$ = s => [...document.querySelectorAll(s)];
 
@@ -6987,7 +7005,7 @@ function hinweisZeigen(b){
     }
 
     const istService = b.quelle === "service";
-    const wer = b.tisch ? "Tisch " + b.tisch : (QUELLE_TEXT[b.quelle] || "Gast");
+    const wer = b.tisch ? "Tisch " + b.tisch : (quelleText(b) || "Gast");
 
     let zeilen = "";
     if(istService){
@@ -7180,7 +7198,7 @@ function abholSpuren(b){
 }
 function abholWer(b){
   const nr = b.tagesnummer != null ? " #" + b.tagesnummer : "";
-  if(b.quelle === "lieferung") return "Lieferung" + nr;
+  if(b.quelle === "lieferung") return (b.abholung === true ? "Abholung" : "Lieferung") + nr;
   if(b.quelle === "telefon") return (b.abholung === false ? "Lieferung" : "Abholung") + nr;
   return b.tisch ? "Tisch " + b.tisch : "Bestellung" + nr;
 }
@@ -7481,7 +7499,8 @@ function awAuswerten(zeilen, von, bis){
     aus.woche[awWtag(t)][st]++;
     const tg = aus.tage[k] || (aus.tage[k] = {umsatz:0, n:0});
     tg.umsatz += u; tg.n++;
-    const q = aus.quellen[b.quelle || "tisch"] || (aus.quellen[b.quelle || "tisch"] = {n:0, umsatz:0});
+    const qk = quelleKey(b) || "tisch";
+    const q = aus.quellen[qk] || (aus.quellen[qk] = {n:0, umsatz:0});
     q.n++; q.umsatz += u;
     (Array.isArray(b.positionen) ? b.positionen : []).forEach(p => {
       const n = awName(p); if(!n) return;
@@ -8138,7 +8157,7 @@ function awCsv(art){
     zeilen = awDaten.filter(b => { const t = new Date(b.zeitpunkt); return t >= f.von && t < f.bis; })
       .sort((a, b) => new Date(a.zeitpunkt) - new Date(b.zeitpunkt))
       .map(b => { const t = new Date(b.zeitpunkt);
-        return [t.toLocaleDateString("de-DE"), uhrzeit(b.zeitpunkt), QUELLE_TEXT[b.quelle] || b.quelle || "", b.status || "",
+        return [t.toLocaleDateString("de-DE"), uhrzeit(b.zeitpunkt), quelleText(b), b.status || "",
           +b.summe || 0, +b.liefergebuehr || 0, +b.rabatt_betrag || 0,
           (AW_RAUS.includes(b.status) || b.pruefen === true) ? 0 : awUmsatzVon(b),
           (Array.isArray(b.positionen) ? b.positionen : []).map(p => (+p.menge || 1) + "× " + awName(p)).join(", ")]; });
@@ -10542,10 +10561,11 @@ const EU_BEREICHE = [
     bild:() => '<rect class="eu-rahmen" x="14" y="2" width="28" height="44" rx="5"/><rect class="eu-fuell" x="17" y="6" width="22" height="9" rx="2"/>' +
       '<path class="eu-linie" d="M19 20h18M19 25h13M19 30h16"/>' },
   { titel:"Lieferung", sym:"roller", ton:"var(--lieferung)",
-    satz:"Ob, wohin, wann, zu welchen Kosten",
+    satz:"Wohin, wann, was es kostet · Abholung",
     stand:() => { const plz = ($("#lfPlz") ? $("#lfPlz").value : "").split(/[,\s]+/).filter(x => /^\d{5}$/.test(x)).length;
-      return euWippe("lfAn") ? "An · " + plz + (plz === 1 ? " Postleitzahl" : " Postleitzahlen") : "Aus"; },
-    bild:() => '<g class="' + (euWippe("lfAn") ? "eu-strich" : "eu-strich eu-blass") + '">' +
+      const teile = [euWippe("lfAn") ? "Lieferung · " + plz + (plz === 1 ? " Postleitzahl" : " Postleitzahlen") : "", euWippe("lfAbholen") ? "Abholung" : ""].filter(Boolean);
+      return teile.length ? teile.join(" · ") : "Aus"; },
+    bild:() => '<g class="' + (euWippe("lfAn") || euWippe("lfAbholen") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.roller.replace(/<(path|circle)/g, '<$1 transform="translate(8 8) scale(1.4)"') + '</g>' },
   { titel:"Bezahlen", sym:"beleg", ton:"var(--gut)",
     satz:"Online-Zahlung und Überweisung",
@@ -12063,7 +12083,7 @@ function saalStand(){
       arten.forEach(([art, min]) => zaehle(nk, art, min, b));
     }else if(aktiv){
       rest.n++; rest.ids.push(b.id);
-      const wer = b.quelle === "lieferung" ? "Lieferung" : b.quelle === "telefon" ? "Telefon"
+      const wer = b.quelle === "lieferung" ? (b.abholung === true ? "Abholung" : "Lieferung") : b.quelle === "telefon" ? "Telefon"
         : b.tisch ? "Tisch " + b.tisch : "ohne Tisch";
       rest.teile[wer] = (rest.teile[wer] || 0) + 1;
     }
@@ -12975,6 +12995,16 @@ function zeichneBoard(){
         `</div>`
       : "";
 
+    /* Eine Abholung hat keine Adresse: Name steht oben, hier Telefon (antippbar) und die Abholzeit. Ohne Wunschzeit
+       heißt es „so bald wie möglich“ — der Gast hat keine Zeit gewählt. */
+    const abholblock = (b.quelle === "lieferung" && b.abholung === true && !ladr)
+      ? `<div class="lieferadresse abholblock"><b>Abholung</b>` +
+        `<span class="lz">${b.wunschzeit ? "Abholzeit " + sicher(uhrzeit(b.wunschzeit)) + " Uhr" : "So bald wie möglich"}</span>` +
+        (b.gast_telefon
+          ? `<a class="lz" href="tel:${sicher(String(b.gast_telefon).replace(/[^\d+]/g,""))}">${sicher(b.gast_telefon)}</a>` : "") +
+        `</div>`
+      : "";
+
     const welle = b.quelle === "telefon"
       ? `<span class="welle">${[5,9,11,7,10,4].map(h=>`<i style="height:${h}px"></i>`).join("")}</span>` : "";
 
@@ -13073,7 +13103,7 @@ function zeichneBoard(){
     return gkopf + `<article class="bestellung ${b.status==="fertig"?"fertig":""}${spaet?" mahnt":""}${b.pruefen?" zupruefen":""}${zu?" bzu":""}" data-quelle="${b.quelle}" data-id="${sicher(b.id)}">
       <div class="bkopf">
         <div class="herkunft">
-          <div class="hmarke">${welle}${QUELLE_TEXT[b.quelle]}${rufzahl}</div>
+          <div class="hmarke">${welle}${quelleText(b)}${rufzahl}</div>
           ${kopf}
         </div>
         <div class="rechts">
@@ -13090,7 +13120,7 @@ function zeichneBoard(){
       </div>
       ${kurz}
       ${tmZuwHTML(b)}
-      ${zh.offen ? "" : zh.band}${pruefband}${pos}${lieferblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
+      ${zh.offen ? "" : zh.band}${pruefband}${pos}${lieferblock}${abholblock}${notiz}${trans}${nzHTML("bestellung", b.id)}${zusage}
       ${b.summe > 0 ? rabattZeile(b) : ""}
       <div class="schritte"${b.pruefen ? " hidden" : ""}>
         ${["neu","arbeit","fertig"].map(s =>
@@ -14971,7 +15001,7 @@ function tabelle(){
   const zeilen = gefiltert().map(b => an.map(f => {
     switch(f.id){
       case "zeit":    return uhrzeit(b.zeitpunkt);
-      case "quelle":  return QUELLE_TEXT[b.quelle];
+      case "quelle":  return quelleText(b);
       case "tisch":   return b.quelle === "tisch" ? "Tisch " + (b.tisch||"") : (b.gast_name || "");
       case "pos":     return (b.positionen||[]).map(p => `${p.menge}× ${p.name}`).join(", ");
       case "summe":   return euro(b.summe);
@@ -16401,6 +16431,8 @@ function hubTexteFuellen(){
    halbfertiger Wochenplan in die Datenbank geht — dasselbe Prinzip
    wie beim Kachel-Baukasten.                                     */
 let LFTAGE = [];
+/* Die Schlüssel von betriebe.liefer, die dieses Formular selbst setzt (alles andere bleibt beim Übernehmen stehen). */
+const LF_FORMULAR = ["an","plz","mindest","gebuehr","gratis_ab","dauer_min","bar","karte","zeiten","abholen","abhol_min"];
 
 function lfFuellen(){
   const b = meineBetriebe.find(x => x.id === betriebId);
@@ -16420,6 +16452,8 @@ function lfFuellen(){
   setz("lfBis", z.bis || "");
   wippe("lfBar",   l.bar !== false);
   wippe("lfKarte", l.karte === true);
+  wippe("lfAbholen", l.abholen === true);
+  setz("lfAbholMin", l.abhol_min || "");
 
   LFTAGE = Array.isArray(z.tage) ? z.tage.map(Number).filter(n => n >= 1 && n <= 7) : [];
   lfTageZeichnen();
@@ -16452,12 +16486,19 @@ async function lfSichern(){
     return;
   }
 
-  const neu = {
+  /* Was dieses Formular nicht kennt, bleibt stehen. Bis 24.10. baute jedes Übernehmen betriebe.liefer frisch aus den
+     Feldern und löschte den Schlüssel „abholen“, den die Datenbank längst kennt (migration-abholen.sql). */
+  const alt = (() => { const b = meineBetriebe.find(x => x.id === betriebId);
+    return (b && b.liefer && typeof b.liefer === "object" && !Array.isArray(b.liefer)) ? b.liefer : {}; })();
+  const neu = {};
+  Object.keys(alt).forEach(k => { if(!LF_FORMULAR.includes(k)) neu[k] = alt[k]; });
+  Object.assign(neu, {
     an: an("lfAn"), plz: plz,
     mindest: zahl("lfMindest"), gebuehr: zahl("lfGebuehr"),
     gratis_ab: zahl("lfGratis"), dauer_min: Math.round(zahl("lfDauer")),
-    bar: an("lfBar"), karte: an("lfKarte")
-  };
+    bar: an("lfBar"), karte: an("lfKarte"),
+    abholen: an("lfAbholen"), abhol_min: Math.min(240, Math.round(zahl("lfAbholMin")))
+  });
   if(von && bis) neu.zeiten = { von: von, bis: bis, tage: LFTAGE.slice().sort() };
   else if(LFTAGE.length) neu.zeiten = { tage: LFTAGE.slice().sort() };
 
@@ -16471,9 +16512,9 @@ async function lfSichern(){
       if(error) throw error;
       const b = meineBetriebe.find(x => x.id === betriebId);
       if(b) b.liefer = neu;          /* sonst zeigt das naechste Oeffnen den alten Stand */
-      raus.textContent = neu.an
+      raus.textContent = (neu.an || neu.abholen)
         ? "Übernommen. Gäste sehen es beim nächsten Öffnen."
-        : "Übernommen — die Lieferung ist aus.";
+        : "Übernommen — Lieferung und Abholung sind aus.";
     }
     melde("Liefereinstellungen übernommen");
   }catch(err){
@@ -21201,7 +21242,7 @@ function zeitBlattOeffnen(id){
   const b = bestellungen.find(x => x.id === id); if(!b) return;
   zeitFuerId = id;
   zeitRadFuellen();
-  const wer = b.tisch ? "Tisch " + b.tisch : (QUELLE_TEXT[b.quelle] || "Gast");
+  const wer = b.tisch ? "Tisch " + b.tisch : (quelleText(b) || "Gast");
   $("#zeitFuer").textContent = wer + " sieht die Zeit sofort im Hub.";
   $("#zeitBlatt").hidden = false;
   setTimeout(() => { const r = $("#zeitRad"); if(r) r.focus(); }, 120);

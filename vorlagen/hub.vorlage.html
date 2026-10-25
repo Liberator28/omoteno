@@ -982,6 +982,7 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
 }
 .lw-innen{display:flex;width:88px;height:100%;transform:translateX(0);
   transition:transform .36s cubic-bezier(.22,1,.36,1)}
+.lieferwahl[data-wahl="abholen"] .lw-daumen{opacity:0}
 .lieferwahl[data-wahl="liefern"] .lw-daumen{transform:translateX(44px)}
 .lieferwahl[data-wahl="liefern"] .lw-innen{transform:translateX(-44px)}
 /* Seit 10.10. ohne Feder: Wunsch „das Springen … flüssiger und
@@ -6482,6 +6483,9 @@ const LIEFER = {
   dauer_min: 0,      /* zugesagte Lieferzeit in Minuten */
   bar:       true,   /* bar an der Tür */
   karte:     false,  /* Kartengerät an der Tür */
+  /* Abholung (migration-abholen.sql): eigener Schalter, unabhängig von der Lieferung — kein Liefergebiet nötig. */
+  abholen:   false,
+  abhol_min: 0,      /* Vorlauf in Minuten: früher ist nicht abholbereit */
   /* Zeitfenster. Leer = immer. Der Server prüft dasselbe noch einmal
      und hat das letzte Wort — hier steht es, damit der Gast es sieht,
      BEVOR er seine Adresse tippt. */
@@ -10619,7 +10623,6 @@ const TEXTE = {
 "Ganze Bestellung stornieren":{en:"Cancel the whole order",tr:"Tüm siparişi iptal et",ru:"Отменить весь заказ",fr:"Annuler toute la commande",es:"Cancelar todo el pedido",it:"Annulla tutto l'ordine",pl:"Anuluj całe zamówienie",ar:"إلغاء الطلب كله",uk:"Скасувати все замовлення",nl:"Hele bestelling annuleren",ro:"Anulați toată comanda"},
 "Doch nicht":{en:"Never mind",tr:"Vazgeçtim",ru:"Передумал",fr:"Finalement non",es:"Mejor no",it:"Lasci stare",pl:"Jednak nie",ar:"تراجعت",uk:"Передумав",nl:"Toch niet",ro:"Totuși nu"},
 "Die ganze Bestellung zurückziehen?":{en:"Take the whole order back?",tr:"Tüm sipariş geri alınsın mı?",ru:"Отменить весь заказ?",fr:"Annuler toute la commande ?",es:"¿Retirar todo el pedido?",it:"Ritirare tutto l'ordine?",pl:"Cofnąć całe zamówienie?",ar:"هل تتراجع عن الطلب كله؟",uk:"Скасувати все замовлення?",nl:"De hele bestelling intrekken?",ro:"Retrageți toată comanda?"},
-"Wird gesendet …":{en:"Sending …",tr:"Gönderiliyor …",ru:"Отправляется …",fr:"Envoi …",es:"Enviando …",it:"Invio …",pl:"Wysyłanie …",ar:"جارٍ الإرسال …",uk:"Надсилання …",nl:"Versturen …",ro:"Se trimite …"},
 "Die zwei Minuten sind um. Bitte sagen Sie kurz Bescheid.":{en:"The two minutes are up. Please let us know at the table.",tr:"İki dakika doldu. Lütfen bize haber verin.",ru:"Две минуты прошли. Скажите, пожалуйста, персоналу.",fr:"Les deux minutes sont écoulées. Faites-nous signe.",es:"Los dos minutos han pasado. Avísenos, por favor.",it:"I due minuti sono passati. Ce lo dica, per favore.",pl:"Dwie minuty minęły. Daj nam znać przy stoliku.",ar:"انتهت الدقيقتان. أخبرونا من فضلكم.",uk:"Дві хвилини минули. Скажіть, будь ласка, персоналу.",nl:"De twee minuten zijn om. Laat het ons even weten.",ro:"Cele două minute au trecut. Vă rugăm să ne spuneți."},
 "Die Küche ist schon dran. Bitte sagen Sie kurz Bescheid.":{en:"The kitchen has started. Please let us know at the table.",tr:"Mutfak başladı. Lütfen bize haber verin.",ru:"Кухня уже начала. Скажите, пожалуйста, персоналу.",fr:"La cuisine a commencé. Faites-nous signe.",es:"La cocina ya empezó. Avísenos, por favor.",it:"La cucina ha già iniziato. Ce lo dica, per favore.",pl:"Kuchnia już zaczęła. Daj nam znać przy stoliku.",ar:"المطبخ بدأ بالفعل. أخبرونا من فضلكم.",uk:"Кухня вже почала. Скажіть, будь ласка, персоналу.",nl:"De keuken is begonnen. Laat het ons even weten.",ro:"Bucătăria a început deja. Vă rugăm să ne spuneți."},
 "Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.":{en:"That is not possible right now. Please let us know at the table.",tr:"Şu anda mümkün değil. Lütfen bize haber verin.",ru:"Сейчас это невозможно. Скажите, пожалуйста, персоналу.",fr:"Ce n'est pas possible pour le moment. Faites-nous signe.",es:"Ahora mismo no es posible. Avísenos, por favor.",it:"Ora non è possibile. Ce lo dica, per favore.",pl:"Teraz to niemożliwe. Daj nam znać przy stoliku.",ar:"هذا غير ممكن الآن. أخبرونا من فضلكم.",uk:"Зараз це неможливо. Скажіть, будь ласка, персоналу.",nl:"Dat kan nu niet. Laat het ons even weten.",ro:"Acum nu se poate. Vă rugăm să ne spuneți."},
@@ -11107,6 +11110,22 @@ const TEXTE = {
 "Summe":{en:"Total",tr:"Toplam",ru:"Итого",fr:"Total",es:"Total",it:"Totale",pl:"Suma",ar:"الإجمالي",uk:"Разом",nl:"Totaal",ro:"Total"},
 "Noch etwas bestellen":{en:"Order something else",tr:"Bir şey daha sipariş et",ru:"Заказать ещё",fr:"Commander autre chose",es:"Pedir algo más",it:"Ordinare altro",pl:"Zamów coś jeszcze",ar:"اطلب شيئاً آخر",uk:"Замовити ще",nl:"Nog iets bestellen",ro:"Mai comand ceva"},
 "Zur Startseite":{en:"Back to start",tr:"Ana sayfaya",ru:"На главную",fr:"Retour à l'accueil",es:"A la portada",it:"Alla pagina iniziale",pl:"Do strony głównej",ar:"إلى الصفحة الرئيسية",uk:"На головну",nl:"Naar het begin",ro:"La pagina principală"},
+"Abholen":{en:"Pickup",tr:"Gel-al",ru:"Самовывоз",fr:"À emporter",es:"Recoger",it:"Ritiro",pl:"Odbiór",ar:"استلام",uk:"Самовивіз",nl:"Afhalen",ro:"Ridicare"},
+"TELEFON FÜR RÜCKFRAGEN":{en:"PHONE FOR QUESTIONS",tr:"SORULAR İÇİN TELEFON",ru:"ТЕЛЕФОН ДЛЯ СВЯЗИ",fr:"TÉLÉPHONE POUR VOUS JOINDRE",es:"TELÉFONO PARA CONSULTAS",it:"TELEFONO PER CONTATTARLA",pl:"TELEFON DO KONTAKTU",ar:"الهاتف للاستفسارات",uk:"ТЕЛЕФОН ДЛЯ ЗВ'ЯЗКУ",nl:"TELEFOON VOOR VRAGEN",ro:"TELEFON PENTRU ÎNTREBĂRI"},
+"ABHOLZEIT (OPTIONAL)":{en:"PICKUP TIME (OPTIONAL)",tr:"TESLİM ALMA SAATİ (İSTEĞE BAĞLI)",ru:"ВРЕМЯ ЗАБОРА (НЕОБЯЗАТЕЛЬНО)",fr:"HEURE DE RETRAIT (FACULTATIF)",es:"HORA DE RECOGIDA (OPCIONAL)",it:"ORARIO DI RITIRO (FACOLTATIVO)",pl:"GODZINA ODBIORU (OPCJONALNIE)",ar:"وقت الاستلام (اختياري)",uk:"ЧАС ОТРИМАННЯ (НЕОБОВ'ЯЗКОВО)",nl:"AFHAALTIJD (OPTIONEEL)",ro:"ORA DE RIDICARE (OPȚIONAL)"},
+"Leer lassen heißt: so bald wie möglich. Frühestens {z} Uhr.":{en:"Leave empty for as soon as possible. Earliest {z}.",tr:"Boş bırakırsanız en kısa sürede hazırlanır. En erken {z}.",ru:"Если оставить пустым — как можно скорее. Не раньше {z}.",fr:"Laissez vide pour au plus tôt. Au plus tôt à {z}.",es:"Déjelo vacío para lo antes posible. Como pronto a las {z}.",it:"Lasci vuoto per il prima possibile. Non prima delle {z}.",pl:"Zostaw puste, jeśli jak najszybciej. Najwcześniej {z}.",ar:"اتركه فارغًا لأقرب وقت ممكن. أبكر وقت {z}.",uk:"Залиште порожнім — якнайшвидше. Не раніше {z}.",nl:"Leeg laten betekent: zo snel mogelijk. Vroegst {z}.",ro:"Lăsați gol pentru cât mai curând. Cel mai devreme {z}."},
+"Heute geht keine feste Zeit mehr – wir bereiten Ihre Bestellung so bald wie möglich vor.":{en:"A fixed time is no longer possible today – we'll prepare your order as soon as possible.",tr:"Bugün sabit bir saat artık mümkün değil – siparişinizi en kısa sürede hazırlarız.",ru:"Сегодня конкретное время уже недоступно – мы приготовим заказ как можно скорее.",fr:"Plus d'horaire précis possible aujourd'hui – nous préparons votre commande au plus tôt.",es:"Hoy ya no es posible una hora fija – prepararemos su pedido lo antes posible.",it:"Oggi non è più possibile un orario preciso – prepariamo il suo ordine il prima possibile.",pl:"Na dziś nie da się już wybrać godziny – przygotujemy zamówienie jak najszybciej.",ar:"لم يعد ممكنًا تحديد وقت اليوم – سنجهّز طلبك في أقرب وقت.",uk:"Сьогодні вказати точний час уже не можна – ми приготуємо замовлення якнайшвидше.",nl:"Vandaag kan geen vaste tijd meer – we maken uw bestelling zo snel mogelijk klaar.",ro:"Astăzi nu mai este posibilă o oră fixă – vă pregătim comanda cât mai curând."},
+"Bitte füllen Sie Name und Telefon aus.":{en:"Please fill in your name and phone.",tr:"Lütfen adınızı ve telefonunuzu girin.",ru:"Пожалуйста, укажите имя и телефон.",fr:"Veuillez indiquer votre nom et votre téléphone.",es:"Por favor, indique su nombre y teléfono.",it:"Inserisca nome e telefono.",pl:"Podaj imię i telefon.",ar:"يرجى إدخال الاسم والهاتف.",uk:"Вкажіть ім'я та телефон.",nl:"Vul uw naam en telefoonnummer in.",ro:"Completați numele și telefonul."},
+"Bitte wählen Sie eine Abholzeit zwischen {von} und {bis} Uhr – oder lassen Sie das Feld leer.":{en:"Please choose a pickup time between {von} and {bis} – or leave the field empty.",tr:"Lütfen {von} ile {bis} arasında bir saat seçin – ya da alanı boş bırakın.",ru:"Выберите время забора с {von} до {bis} – или оставьте поле пустым.",fr:"Choisissez une heure de retrait entre {von} et {bis} – ou laissez le champ vide.",es:"Elija una hora de recogida entre las {von} y las {bis} – o deje el campo vacío.",it:"Scelga un orario di ritiro tra le {von} e le {bis} – oppure lasci il campo vuoto.",pl:"Wybierz godzinę odbioru między {von} a {bis} – albo zostaw pole puste.",ar:"اختر وقت استلام بين {von} و{bis} – أو اترك الحقل فارغًا.",uk:"Оберіть час отримання між {von} і {bis} – або залиште поле порожнім.",nl:"Kies een afhaaltijd tussen {von} en {bis} – of laat het veld leeg.",ro:"Alegeți o oră de ridicare între {von} și {bis} – sau lăsați câmpul gol."},
+"Bezahlt wird bei der Abholung, direkt bei uns.":{en:"You pay on pickup, right here with us.",tr:"Ödeme teslim alırken, doğrudan bizde yapılır.",ru:"Оплата при получении, прямо у нас.",fr:"Le paiement se fait au retrait, directement chez nous.",es:"Se paga al recoger, directamente con nosotros.",it:"Si paga al ritiro, direttamente da noi.",pl:"Płatność przy odbiorze, bezpośrednio u nas.",ar:"الدفع عند الاستلام، مباشرةً لدينا.",uk:"Оплата під час отримання, безпосередньо у нас.",nl:"Betalen doet u bij het afhalen, rechtstreeks bij ons.",ro:"Se plătește la ridicare, direct la noi."},
+"Frühestens in etwa {m} Minuten abholbereit.":{en:"Ready for pickup in about {m} minutes at the earliest.",tr:"En erken yaklaşık {m} dakika sonra hazır.",ru:"Будет готово не раньше чем через {m} мин.",fr:"Prêt au plus tôt dans environ {m} minutes.",es:"Listo como pronto en unos {m} minutos.",it:"Pronto non prima di circa {m} minuti.",pl:"Gotowe najwcześniej za około {m} minut.",ar:"جاهز بعد {m} دقيقة تقريبًا على الأقل.",uk:"Буде готово не раніше ніж за {m} хв.",nl:"Op zijn vroegst over ongeveer {m} minuten klaar.",ro:"Gata cel mai devreme în aproximativ {m} minute."},
+"Wir haben Ihre Bestellung erhalten. Sobald sie abholbereit ist, sehen Sie es hier.":{en:"We've received your order. You'll see it here as soon as it's ready for pickup.",tr:"Siparişinizi aldık. Teslime hazır olunca burada görürsünüz.",ru:"Мы получили ваш заказ. Как только он будет готов, вы увидите это здесь.",fr:"Nous avons bien reçu votre commande. Vous le verrez ici dès qu'elle est prête.",es:"Hemos recibido su pedido. Aquí verá cuándo esté listo para recoger.",it:"Abbiamo ricevuto il suo ordine. Qui vedrà quando è pronto per il ritiro.",pl:"Zamówienie dotarło. Gdy będzie gotowe do odbioru, zobaczysz to tutaj.",ar:"استلمنا طلبك. سترى هنا عندما يصبح جاهزًا للاستلام.",uk:"Ми отримали ваше замовлення. Коли воно буде готове, ви побачите це тут.",nl:"We hebben uw bestelling ontvangen. Zodra hij klaar is om af te halen, ziet u dat hier.",ro:"Am primit comanda. Veți vedea aici când este gata de ridicare."},
+"Abholung um {z} Uhr":{en:"Pickup at {z}",tr:"Teslim alma saati {z}",ru:"Забор в {z}",fr:"Retrait à {z}",es:"Recogida a las {z}",it:"Ritiro alle {z}",pl:"Odbiór o {z}",ar:"الاستلام الساعة {z}",uk:"Отримання о {z}",nl:"Afhalen om {z}",ro:"Ridicare la {z}"},
+"Abholung so bald wie möglich":{en:"Pickup as soon as possible",tr:"En kısa sürede teslim alma",ru:"Забор как можно скорее",fr:"Retrait au plus tôt",es:"Recogida lo antes posible",it:"Ritiro il prima possibile",pl:"Odbiór jak najszybciej",ar:"الاستلام في أقرب وقت",uk:"Отримання якнайшвидше",nl:"Afhalen zo snel mogelijk",ro:"Ridicare cât mai curând"},
+"Bezahlt wird bei der Abholung. Sollte etwas nicht stimmen, sagen Sie uns bitte kurz Bescheid.":{en:"You pay on pickup. If anything is off, just let us know.",tr:"Ödeme teslim alırken yapılır. Bir sorun olursa lütfen bize kısaca haber verin.",ru:"Оплата при получении. Если что-то не так, просто скажите нам.",fr:"Le paiement se fait au retrait. Si quelque chose ne va pas, dites-le-nous simplement.",es:"Se paga al recoger. Si algo no cuadra, avísenos, por favor.",it:"Si paga al ritiro. Se qualcosa non torna, ce lo dica pure.",pl:"Płatność przy odbiorze. Jeśli coś się nie zgadza, daj nam znać.",ar:"الدفع عند الاستلام. إذا كان هناك أي خطأ، أخبرنا بذلك.",uk:"Оплата під час отримання. Якщо щось не так, просто скажіть нам.",nl:"Betalen doet u bij het afhalen. Klopt er iets niet, laat het ons dan even weten.",ro:"Se plătește la ridicare. Dacă ceva nu e în regulă, spuneți-ne."},
+"Fertig — bitte abholen":{en:"Ready — please pick up",tr:"Hazır — lütfen teslim alın",ru:"Готово — заберите, пожалуйста",fr:"Prêt — à venir chercher",es:"Listo — puede recogerlo",it:"Pronto — può ritirare",pl:"Gotowe — zapraszamy po odbiór",ar:"جاهز — يرجى الاستلام",uk:"Готово — заберіть, будь ласка",nl:"Klaar — kom het halen",ro:"Gata — vă rugăm să ridicați"},
+"Ist abholbereit":{en:"Ready for pickup",tr:"Teslime hazır",ru:"Готово к выдаче",fr:"Prêt à être retiré",es:"Listo para recoger",it:"Pronto per il ritiro",pl:"Gotowe do odbioru",ar:"جاهز للاستلام",uk:"Готово до видачі",nl:"Klaar om af te halen",ro:"Gata de ridicare"},
+"Diese Abholung klappt gerade nicht":{en:"This pickup isn't working right now",tr:"Bu teslim alma şu anda çalışmıyor",ru:"Самовывоз сейчас недоступен",fr:"Ce retrait ne fonctionne pas pour le moment",es:"Esta recogida no funciona ahora mismo",it:"Questo ritiro al momento non funziona",pl:"Odbiór chwilowo nie działa",ar:"الاستلام لا يعمل حاليًا",uk:"Самовивіз зараз не працює",nl:"Dit afhalen werkt nu even niet",ro:"Această ridicare nu funcționează acum"},
 "Bezahlt wird beim Personal. Sollte etwas nicht stimmen, sagen Sie uns bitte kurz Bescheid.":{en:"You pay our staff. If anything isn't right, please just tell us.",tr:"Ödeme personele yapılır. Bir sorun olursa lütfen bize söyleyin.",ru:"Оплата у персонала. Если что-то не так, просто скажите нам.",fr:"Le paiement se fait auprès du personnel. Si quelque chose ne va pas, dites-le nous.",es:"Se paga al personal. Si algo no está bien, díganoslo sin más.",it:"Si paga al personale. Se qualcosa non va, ditecelo pure.",pl:"Płatność u obsługi. Jeśli coś się nie zgadza, po prostu nam powiedz.",ar:"الدفع لدى الموظفين. إن كان هناك خطأ، أخبرونا من فضلكم.",uk:"Оплата в персоналу. Якщо щось не так, просто скажіть нам.",nl:"Betalen doet u bij het personeel. Klopt er iets niet, zeg het gerust.",ro:"Plata se face la personal. Dacă ceva nu e în regulă, spuneți-ne."},
 "Das hat nicht geklappt. Bitte sprechen Sie uns kurz an – oder versuchen Sie es gleich noch einmal.":{en:"That didn't work. Please just tell us – or try again in a moment.",tr:"Bu olmadı. Lütfen bize söyleyin ya da birazdan tekrar deneyin.",ru:"Не получилось. Просто скажите нам — или попробуйте ещё раз.",fr:"Cela n'a pas fonctionné. Dites-le nous ou réessayez dans un instant.",es:"No ha funcionado. Díganoslo o inténtelo de nuevo en un momento.",it:"Non ha funzionato. Ditecelo pure o riprovate tra poco.",pl:"Nie udało się. Powiedz nam albo spróbuj za chwilę.",ar:"لم ينجح الأمر. أخبرونا من فضلكم أو حاولوا مرة أخرى.",uk:"Не вдалося. Просто скажіть нам — або спробуйте ще раз.",nl:"Dat lukte niet. Zeg het ons even of probeer het zo nog eens.",ro:"Nu a funcționat. Spuneți-ne sau încercați din nou."},
 "Die Verbindung ist gerade schwierig. Sie können uns Ihre Bestellung auch als Nachricht schicken:":{en:"The connection is poor right now. You can also send us your order as a message:",tr:"Bağlantı şu an zayıf. Siparişinizi mesaj olarak da gönderebilirsiniz:",ru:"Связь сейчас плохая. Вы можете отправить заказ сообщением:",fr:"La connexion est mauvaise. Vous pouvez aussi envoyer votre commande par message :",es:"La conexión falla ahora. También puede enviarnos el pedido por mensaje:",it:"La connessione è debole. Potete inviarci l'ordine anche via messaggio:",pl:"Połączenie jest słabe. Możesz wysłać zamówienie wiadomością:",ar:"الاتصال ضعيف حالياً. يمكنكم إرسال الطلب كرسالة أيضاً:",uk:"Зв'язок зараз слабкий. Ви можете надіслати замовлення повідомленням:",nl:"De verbinding is nu slecht. U kunt uw bestelling ook als bericht sturen:",ro:"Conexiunea e slabă acum. Puteți trimite comanda și ca mesaj:"},
@@ -11223,7 +11242,6 @@ const TEXTE = {
 "Speisekarte ansehen":{en:"View menu",tr:"Menüyü görüntüle",ru:"Посмотреть меню",fr:"Voir la carte",es:"Ver la carta",it:"Vedi il menù",pl:"Zobacz menu",ar:"عرض قائمة الطعام",uk:"Переглянути меню",nl:"Menukaart bekijken",ro:"Vezi meniul"},
 "Alles über uns":{en:"All about us",tr:"Hakkımızda her şey",ru:"Всё о нас",fr:"Tout sur nous",es:"Todo sobre nosotros",it:"Tutto su di noi",pl:"Wszystko o nas",ar:"كل شيء عنا",uk:"Усе про нас",nl:"Alles over ons",ro:"Totul despre noi"},
 "ÜBER UNS":{en:"ABOUT US",tr:"HAKKIMIZDA",ru:"О НАС",fr:"À PROPOS",es:"SOBRE NOSOTROS",it:"CHI SIAMO",pl:"O NAS",ar:"من نحن",uk:"ПРО НАС",nl:"OVER ONS",ro:"DESPRE NOI"},
-"Zur Startseite":{en:"To the home page",tr:"Ana sayfaya",ru:"На главную",fr:"Vers l'accueil",es:"Al inicio",it:"Alla home",pl:"Do strony głównej",ar:"إلى الصفحة الرئيسية",uk:"На головну",nl:"Naar de startpagina",ro:"La pagina principală"},
 "Besuch zusammenfassen":{en:"Sum up the visit",tr:"Ziyareti özetle",ru:"Собрать визит в картинку",fr:"Résumer la visite",es:"Resumir la visita",it:"Riassumi la visita",pl:"Podsumuj wizytę",ar:"لخّص الزيارة",uk:"Підсумувати візит",nl:"Bezoek samenvatten",ro:"Rezumați vizita"},
 "Bitte tragen Sie noch Ihre Adresse ein.":{en:"Please enter your address first.",tr:"Lütfen önce adresinizi girin.",ru:"Пожалуйста, укажите свой адрес.",fr:"Veuillez d'abord saisir votre adresse.",es:"Introduzca antes su dirección.",it:"Inserisca prima il suo indirizzo.",pl:"Najpierw wpisz swój adres.",ar:"يرجى إدخال عنوانك أولاً.",uk:"Спершу вкажіть свою адресу.",nl:"Vul eerst uw adres in.",ro:"Introduceți mai întâi adresa."},
 "DAS GAB ES":{en:"WHAT WE HAD",tr:"NELER YEDİK",ru:"ЧТО БЫЛО",fr:"AU MENU",es:"LO QUE HUBO",it:"COSA C'ERA",pl:"CO BYŁO",ar:"ما تناولناه",uk:"ЩО БУЛО",nl:"DIT WAS ER",ro:"CE A FOST"},
@@ -12230,6 +12248,7 @@ function empfehlungHTML(){
 let lwUhr = 0;
 
 function lwNameText(wahl){
+  if(wahl === "abholen") return t("Abholen");
   if(wahl !== "liefern") return t("Im Haus");
   if(liefertGerade()) return t("Lieferung");
   return LIEFER.von && LIEFER.bis ? LIEFER.von + "\u2013" + LIEFER.bis : t("Gerade zu");
@@ -12244,18 +12263,20 @@ function lieferWahlZeichnen(){
     return;
   }
   w.hidden = false;
+  /* Bei Abholung steht der Daumen auf keinem der beiden (data-wahl="abholen" blendet ihn aus): Die Wahl treffen dann die Chips der Startseite. */
+  const abholen = abholenAktiv();
   const wahl = liefermodus ? "liefern" : "haus";
-  w.dataset.wahl = wahl;
-  w.setAttribute("aria-label", t("Bestellart"));
+  w.dataset.wahl = abholen ? "abholen" : wahl;
+  w.setAttribute("aria-label", abholen ? t("Bestellart") + ": " + t("Abholen") : t("Bestellart"));
   const zeiten = !liefertGerade()
     ? (LIEFER.von && LIEFER.bis
         ? t("Wir liefern von {von} bis {bis} Uhr.", {von: LIEFER.von, bis: LIEFER.bis})
         : t("Wir liefern gerade nicht."))
     : "";
   w.querySelectorAll("[data-lieferwahl]").forEach(k => {
-    const art = k.dataset.lieferwahl, an = art === wahl;
+    const art = k.dataset.lieferwahl, an = !abholen && art === wahl;
     k.setAttribute("aria-checked", an ? "true" : "false");
-    k.tabIndex = an ? 0 : -1;
+    k.tabIndex = (an || (abholen && art === "haus")) ? 0 : -1;
     const name = art === "liefern" ? t("Liefern lassen") : t("Im Haus bestellen");
     const ganz = art === "liefern" && zeiten ? name + " \u00b7 " + zeiten : name;
     k.setAttribute("aria-label", ganz);
@@ -12268,14 +12289,21 @@ function lieferWahlZeichnen(){
    den Namen — so erfährt man, was es heißt, ohne etwas zu ändern.
    Unterbrechbar: ein zweiter Tipp startet Uhr und Stauchung neu. */
 function lieferWahl(ziel){
-  const w = $("lieferwahl");
-  if(!w || w.hidden) return;
-  const wechsel = (ziel === "liefern") !== liefermodus;
+  const w = $("lieferwahl"), c = $("bestellart");
+  const imKopf = !!w && !w.hidden, chips = !!c && !c.hidden;
+  if(!imKopf && !chips) return;
+  /* Nichts wählbar machen, was es nicht gibt (§7: fail-open heißt hier: der Weg bleibt, wie er war). */
+  if(ziel === "liefern" && !LIEFER.an) return;
+  if(ziel === "abholen" && !abholAngebot()) return;
+  if(ziel !== "liefern" && ziel !== "abholen") ziel = "haus";
+  const wechsel = (ziel === "liefern") !== liefermodus || (ziel === "abholen") !== abholmodus;
   if(wechsel){
     liefermodus = ziel === "liefern";
-    liefernAngefragt = false;
+    abholmodus  = ziel === "abholen";
+    liefernAngefragt = false; abholenAngefragt = false;
     zeichne();                   // Kacheln „Jetzt am Tisch“, Warenkorb
   }
+  if(!imKopf) return;
   w.querySelector(".lw-name span").textContent = lwNameText(ziel);
   w.classList.add("zeigt");
   clearTimeout(lwUhr);
@@ -12285,16 +12313,20 @@ function lieferWahl(ziel){
 /* Premium-Startseite: die Bestellart als zwei Chips im Kopf. Gleiche Bedingung wie der Schalter oben rechts
    (Lieferung an, niemand am Tisch) — ein Chip, der nirgends hinführt, erscheint nicht. „Abholen“ kennt der Hub nicht,
    also gibt es den Chip nicht. Der Tipp geht über denselben Weg wie der Schalter (lieferWahl). */
+const BA_TUETE = '<svg viewBox="0 0 24 24"><path d="M5.5 8.5h13l-1 11.2a1.4 1.4 0 0 1-1.4 1.3H7.9a1.4 1.4 0 0 1-1.4-1.3z"/><path d="M9 8.5V7a3 3 0 0 1 6 0v1.5"/></svg>';
 const BA_ROLLER = '<svg viewBox="0 0 24 24"><rect x="3.2" y="4.6" width="6.4" height="5.4" rx="1.2"/><path d="M6.4 10v2.2"/><path d="M3.5 15.4c.5-1.9 2.1-3.2 4-3.2h3.6"/><path d="M8.4 17.5h5.2c0-3.3 1.6-5.9 3.9-7.2"/><path d="M17.5 10.3 16.1 5h-2.4"/><circle cx="6" cy="17.5" r="2.3"/><circle cx="18.2" cy="17.5" r="2.3"/></svg>';
 function bestellartZeichnen(){
   const w = $("bestellart"); if(!w) return;
-  const zeigen = startPremium() && document.body.dataset.ansicht === "start" && LIEFER.an && !tischNr;
+  const zeigen = startPremium() && document.body.dataset.ansicht === "start" && (LIEFER.an || abholAngebot()) && !tischNr;
   if(!zeigen){ w.hidden = true; w.innerHTML = ""; return; }
-  const wahl = liefermodus ? "liefern" : "haus";
+  const wahl = abholenAktiv() ? "abholen" : liefermodus ? "liefern" : "haus";
   const chip = (art, icon, name) => '<button type="button" role="radio" class="ba-chip' + (art === wahl ? " an" : "") +
     '" data-bestellart="' + art + '" aria-checked="' + (art === wahl) + '" tabindex="' + (art === wahl ? 0 : -1) + '">' +
     '<span class="ba-ico" aria-hidden="true">' + icon + '</span><span class="ba-text">' + hs(name) + '</span></button>';
-  const html = chip("haus", ICONS.speise, t("Im Haus")) + chip("liefern", BA_ROLLER, t("Lieferung"));
+  /* Reihenfolge wie im Entwurf: Abholen · Lieferung · Im Haus. Jede Art nur, wenn es sie gibt. */
+  const html = (abholAngebot() ? chip("abholen", BA_TUETE, t("Abholen")) : "") +
+               (LIEFER.an ? chip("liefern", BA_ROLLER, t("Lieferung")) : "") +
+               chip("haus", ICONS.speise, t("Im Haus"));
   w.setAttribute("aria-label", t("Bestellart"));
   w.hidden = false;
   if(w.innerHTML !== html) w.innerHTML = html;
@@ -12307,9 +12339,13 @@ document.addEventListener("keydown", e => {
   const c = e.target.closest && e.target.closest("[data-bestellart]");
   if(!c || (e.key !== "ArrowLeft" && e.key !== "ArrowRight" && e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
   e.preventDefault();
-  const ziel = c.dataset.bestellart === "haus" ? "liefern" : "haus";
-  lieferWahl(ziel);
-  const n = document.querySelector('[data-bestellart="' + ziel + '"]'); if(n) n.focus();
+  /* Pfeiltaste: zum nächsten bzw. vorigen Chip der Reihe (rechts/unten vor, links/oben zurück; die Reihe schließt sich). */
+  const alle = Array.from(document.querySelectorAll("[data-bestellart]")), i = alle.indexOf(c);
+  const vor = e.key === "ArrowRight" || e.key === "ArrowDown";
+  const n = alle[(i + (vor ? 1 : alle.length - 1)) % alle.length];
+  if(!n) return;
+  lieferWahl(n.dataset.bestellart);
+  const neu = document.querySelector('[data-bestellart="' + n.dataset.bestellart + '"]'); if(neu) neu.focus();
 });
 
 /* Welche Kacheln die Startseite gerade zeigt, in ihrer Reihenfolge.
@@ -12319,7 +12355,7 @@ document.addEventListener("keydown", e => {
 function sichtbareKachelnRoh(){
   return KACHELN.filter(k =>
     stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
-    !(liefermodus && LIEFER.an && k.nurTisch) &&
+    !(aussenModus() && k.nurTisch) &&
     (typeof k.wenn !== "function" || k.wenn()) &&
     /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
        neu. Lieber gar keine Kachel als eine, die im Kreis führt. */
@@ -14347,7 +14383,7 @@ function zahlStand(){
   const liefern = liefermodus && LIEFER.an;
   const mindest = liefern ? LIEFER.mindest : BESTELLUNG.mindest;
   const gebuehr = liefern ? lieferGebuehrFuer(summe) : 0;
-  return { summe, liefern, gebuehr, lieferZu: liefern && !liefertGerade(),
+  return { summe, liefern, abholen: abholenAktiv(), gebuehr, lieferZu: liefern && !liefertGerade(),
            unterMindest: mindest > 0 && summe < mindest };
 }
 function lieferSummeTeil(z){
@@ -14364,7 +14400,7 @@ function zahlTeil(z){
     '<p class="zahlhinweis">' +
       (z.liefern && z.gebuehr > 0 ? t("inkl. Liefergebühr {b}", {b: preisText(z.gebuehr)}) + " · " : "") +
       t("Alle Preise in Euro inkl. MwSt.") + '</p>' +
-    (z.liefern ? '<p class="zahlhinweis">' +
+    ((z.liefern || z.abholen) ? '<p class="zahlhinweis">' +
       t("Ein Widerrufsrecht besteht nicht, da Speisen und Getränke frisch zubereitet werden und schnell verderben.") + '</p>' : "") +
     '<div class="rechtfuss">' + rechtLinksHTML() + '</div>' +
     '</div>';
@@ -14377,6 +14413,24 @@ function preisNoteHTML(){
     satz += " " + t("zzgl. Liefergebühr {b}", {b: preisText(LIEFER.gebuehr)}) +
       (LIEFER.gratis_ab > 0 ? " · " + t("frei ab {b}", {b: preisText(LIEFER.gratis_ab)}) : "");
   return '<p class="preisnote">' + satz + '</p>';
+}
+
+/* Abholzeit: frühestens jetzt + Vorlauf, spätestens in 12 Stunden (dasselbe Fenster prüft bestellung_abholen), und nur
+   HEUTE — die Funktion nimmt „HH:MM“ von heute. Leer heißt: so bald wie möglich. Gerechnet wird mit der Uhr des Geräts
+   (wie bei liefertGerade); der Server hat das letzte Wort und sagt „zeit“. */
+function abholFenster(){
+  const jetzt = new Date(), min = jetzt.getHours() * 60 + jetzt.getMinutes();
+  const von = min + (LIEFER.abhol_min || 0), bis = Math.min(min + 720, 24 * 60 - 1);
+  const uhr = m => String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0");
+  return { von, bis, vonText: uhr(Math.min(von, 24 * 60 - 1)), bisText: uhr(bis), heuteNoch: von <= bis };
+}
+function abholZeitFeldHTML(){
+  const f = abholFenster();
+  return '<div class="label">' + t("ABHOLZEIT (OPTIONAL)") + '</div>' +
+    '<input class="feld" id="aZeit" type="time" step="300"' + (f.heuteNoch ? ' min="' + f.vonText + '" max="' + f.bisText + '"' : "") + '>' +
+    '<p class="zahlhinweis" id="aZeitHilfe">' + (f.heuteNoch
+      ? t("Leer lassen heißt: so bald wie möglich. Frühestens {z} Uhr.", {z: f.vonText})
+      : t("Heute geht keine feste Zeit mehr – wir bereiten Ihre Bestellung so bald wie möglich vor.")) + '</p>';
 }
 
 SEITEN.auswahl = () => {
@@ -14426,6 +14480,7 @@ SEITEN.auswahl = () => {
   const stopp = bestellStopp();
   const bestellbar = BESTELLUNG.an && serverBereit() && merkAnzahl() > 0 && !stopp;
   const liefern = liefermodus && LIEFER.an;
+  const abholen = abholenAktiv();
   const lieferZu = liefern && !liefertGerade();
   const mindest = liefern ? LIEFER.mindest : BESTELLUNG.mindest;
   const unterMindest = mindest > 0 && summe < mindest;
@@ -14437,7 +14492,7 @@ SEITEN.auswahl = () => {
 
   let bestellteil = "";
   if(bestellbar){
-    const a = liefern ? lieferAdresseLesen() : {};
+    const a = (liefern || abholen) ? lieferAdresseLesen() : {};
     const f = (id, beschriftung, wertName, zusatz) =>
       '<div class="label">' + beschriftung + '</div>' +
       '<input class="feld" id="' + id + '" ' + (zusatz || "") +
@@ -14453,6 +14508,10 @@ SEITEN.auswahl = () => {
           f("lTelefon", t("TELEFON FÜR DEN FAHRER"), "telefon", 'inputmode="tel" autocomplete="tel"') +
           f("lKlingel", t("KLINGEL ODER ETAGE (OPTIONAL)"), "klingel", "") +
           '<div class="hinweis" id="lGebiet" hidden></div>'
+        : abholen
+        ? f("aName",    t("IHR NAME"),            "name",    'autocomplete="name"') +
+          f("aTelefon", t("TELEFON FÜR RÜCKFRAGEN"), "telefon", 'inputmode="tel" autocomplete="tel"') +
+          abholZeitFeldHTML()
         : tischNr
           ? '<div class="tischnote">' + t("Tisch {n}", {n:tischNr}) + '</div>'
           : '<div class="label">' + t("AN WELCHEM TISCH SITZEN SIE?") + '</div>' +
@@ -14485,6 +14544,11 @@ SEITEN.auswahl = () => {
                 {b: preisText(mindest)})) + '</div>'
         : zahlartOnline()
           ? ""
+        : abholen
+          ? '<div class="hinweis"><b>' + t("Wichtig:") + '</b> ' +
+            t("Bezahlt wird bei der Abholung, direkt bei uns.") +
+            (LIEFER.abhol_min > 0 ? " " + t("Frühestens in etwa {m} Minuten abholbereit.", {m: LIEFER.abhol_min}) : "") +
+            '</div>'
         : liefern
           ? '<div class="hinweis"><b>' + t("Wichtig:") + '</b> ' +
             t("Bezahlt wird bei der Lieferung, direkt bei uns an der Tür.") + " " +
@@ -14763,6 +14827,8 @@ function wsVersuch(eintrag){
 
       /* Zahlungsart weg: kein Grund, es zehn Minuten weiter zu versuchen. */
       if(erg.grund === "zahlart") return {fertig: false, endgueltig: "zahlart"};
+      /* Abholung grundsätzlich abgelehnt (aus / Angaben / Zeit): ebenso. */
+      if(erg.grund === "abholung") return {fertig: false, endgueltig: "abholung"};
 
       return {fertig: false, status: erg.status};
     })
@@ -14859,6 +14925,7 @@ function wsErfolg(e, zeile){
       tisch: e.daten.tisch, summe: e.daten.summe,
       bestellung: {
         nummer: nummer, tisch: e.daten.tisch,
+        abholung: e.daten.abholung ? { name: e.daten.abholung.name, zeit: e.daten.abholung.zeit } : null,
         posten: (e.daten.inhalt && e.daten.inhalt.posten) || [],
         summe: e.daten.summe, notiz: (e.daten.inhalt && e.daten.inhalt.notiz) || ""
       }
@@ -14900,7 +14967,7 @@ function wsStreifenZeichnen(){
     el.innerHTML =
       wsFigur() +
       '<span class="wstext">' +
-        '<span class="wstitel">' + t(hin[0].grund === "zahlart" ? "Diese Zahlungsart gibt es gerade nicht" : "Wir erreichen die Küche gerade nicht") + '</span>' +
+        '<span class="wstitel">' + t(hin[0].grund === "zahlart" ? "Diese Zahlungsart gibt es gerade nicht" : hin[0].grund === "abholung" ? "Diese Abholung klappt gerade nicht" : "Wir erreichen die Küche gerade nicht") + '</span>' +
         '<span class="wsunter">' + t("Zeigen Sie unserem Team einfach diese Bestellung – wir nehmen sie direkt auf.") + '</span>' +
       '</span>' +
       '<button class="wsknopf" data-ws-zeigen="1">' + t("Bestellung zeigen") + '</button>';
@@ -15150,12 +15217,14 @@ SEITEN.bestellt = () => {
     begleiterHTML("bestellt") +
     '<h2 style="text-align:center">' + (zo ? t("Fast geschafft!") : t("Bestellung ist da!")) + '</h2>' +
     (zo ? "" : '<p class="unter" style="text-align:center">' +
-      t("Wir haben Ihre Bestellung erhalten und kommen gleich zu Ihnen an den Tisch.") + '</p>') +
+      (b.abholung ? t("Wir haben Ihre Bestellung erhalten. Sobald sie abholbereit ist, sehen Sie es hier.")
+                  : t("Wir haben Ihre Bestellung erhalten und kommen gleich zu Ihnen an den Tisch.")) + '</p>') +
     zahlBlockHTML(b) +
-    (zo ? "" : phaseHTML(stand, b.tagesnummer)) +
+    (zo ? "" : phaseHTML(stand, b.tagesnummer, !!b.abholung)) +
     '<div class="bstatus" id="bstatus" hidden></div>' +
     '<div class="bkasten">' +
       (b.tisch ? '<div class="btisch">' + t("Tisch {n}", {n:b.tisch}) + '</div>' : "") +
+      (b.abholung ? '<div class="btisch">' + (b.abholung.zeit ? t("Abholung um {z} Uhr", {z: b.abholung.zeit}) : t("Abholung so bald wie möglich")) + '</div>' : "") +
       posten +
       (b.notiz ? '<div class="bnotiz">' + b.notiz + '</div>' : "") +
       (b.summe > 0 ? '<div class="bsumme"><span>' + t("Summe") + '</span><span>' +
@@ -15169,7 +15238,8 @@ SEITEN.bestellt = () => {
     '<a class="knopf zweit" href="#/speisekarte">' + t("Noch etwas bestellen") + '</a>' +
     '<a class="knopf zweit" href="#/">' + t("Zur Startseite") + '</a>' +
     ((zb && zb.status !== "vor_ort") ? "" : '<div class="hinweis">' +
-    t("Bezahlt wird beim Personal. Sollte etwas nicht stimmen, sagen Sie uns bitte kurz Bescheid.") +
+    (b.abholung ? t("Bezahlt wird bei der Abholung. Sollte etwas nicht stimmen, sagen Sie uns bitte kurz Bescheid.")
+                : t("Bezahlt wird beim Personal. Sollte etwas nicht stimmen, sagen Sie uns bitte kurz Bescheid.")) +
     '</div>') + '</div>';
 };
 
@@ -15290,7 +15360,7 @@ const SPEICHER_EINTRAEGE = [
   { m:"omoteno-probiert-",    w:"was Sie schon bestellt haben (für „Neu für Sie“)", d:"bis Sie Browserdaten löschen",     a:"nein" },
   { m:"omoteno-warteschlange",w:"hält eine Bestellung, wenn die Verbindung abreißt", d:"bis sie angekommen ist",          a:"ja, das ist die Bestellung" },
   { m:"omoteno-vorgaenge",    w:"Stand Ihrer laufenden Bestellungen",            d:"bis zum Abschluss",                   a:"nein" },
-  { m:"omoteno-lieferadresse-", w:"Lieferanschrift fürs nächste Mal",            d:"bis Sie Browserdaten löschen",        a:"erst mit der nächsten Bestellung" },
+  { m:"omoteno-lieferadresse-", w:"Lieferanschrift bzw. Name und Telefon (Abholung) fürs nächste Mal",            d:"bis Sie Browserdaten löschen",        a:"erst mit der nächsten Bestellung" },
   { m:"omoteno-tabgeraet-",   w:"Zufallsnummer für Bestellung und Schutz vor Missbrauch", d:"bis der Tab geschlossen wird", a:"ja, mit der Bestellung" },
   { m:"omoteno-geraet-",      w:"Zufallsnummer für „Mein Tisch“ — nur wenn Sie es eingeschaltet haben", d:"bis Sie ausschalten oder Browserdaten löschen", a:"ja, mit Bestellungen und beim Öffnen von „Mein Tisch“" },
   { m:"omoteno-stammgast-",   w:"dass Sie „Mein Tisch“ eingeschaltet haben",     d:"bis Sie ausschalten",                 a:"nein" },
@@ -15406,7 +15476,10 @@ SEITEN.datenschutz = () => {
     (BESTELLUNG.an ? teil("3 · Bestellen und Servicerufe", '<p>Wenn Sie bestellen oder den Service rufen, verarbeiten wir Ihre Auswahl, die Tischnummer, Ihre Notiz und die Uhrzeit, um die Bestellung zuzubereiten, zu servieren und abzurechnen (Art. 6 Abs. 1 lit. b DSGVO).</p>' +
       '<p>Damit niemand in Ihrem Namen erfundene Bestellungen aufgibt, zählen wir kurz, wie viele Bestellungen von einem Gerät, einem Tisch und einer Herkunft kommen. Ihre IP-Adresse wird dabei nicht gespeichert, nur ein täglich neu verschlüsselter Prüfwert, der nach zwei Tagen niemandem mehr zuzuordnen ist. Auffällige Bestellungen lehnen wir nicht ab, unser Personal sieht sie sich an (Art. 6 Abs. 1 lit. f DSGVO).' +
       frist("Personenbezogene Angaben an der Bestellung löschen wir nach 90 Tagen; Gerichte und Beträge bleiben für unsere Buchhaltung.") + '</p>') : "") +
-    (LIEFER.an ? teil("4 · Lieferung", '<p>Für eine Lieferung brauchen wir Namen, Anschrift und Telefonnummer (Art. 6 Abs. 1 lit. b DSGVO). Wir verwenden sie nur für diese Lieferung und für Rückfragen.' + frist("Wir löschen sie nach 90 Tagen.") + ' Ihr Gerät merkt sich die Anschrift für das nächste Mal; sie verlässt es erst mit der nächsten Bestellung.</p>') : "") +
+    ((LIEFER.an || LIEFER.abholen) ? teil(LIEFER.an && LIEFER.abholen ? "4 · Lieferung und Abholung" : LIEFER.an ? "4 · Lieferung" : "4 · Abholung",
+      '<p>' + (LIEFER.an ? 'Für eine Lieferung brauchen wir Namen, Anschrift und Telefonnummer' : 'Für eine Abholung brauchen wir Ihren Namen und Ihre Telefonnummer') +
+      ' (Art. 6 Abs. 1 lit. b DSGVO)' + (LIEFER.an && LIEFER.abholen ? '; bei einer Abholung ohne Anschrift, mit Ihrer gewünschten Abholzeit' : (LIEFER.abholen ? ' und, wenn Sie eine wünschen, Ihre Abholzeit' : '')) +
+      '. Wir verwenden sie nur für diese Bestellung und für Rückfragen.' + frist("Wir löschen sie nach 90 Tagen.") + ' Ihr Gerät merkt sich ' + (LIEFER.an ? 'die Anschrift' : 'Name und Telefonnummer') + ' für das nächste Mal; sie verlassen es erst mit der nächsten Bestellung.</p>') : "") +
     (reserv ? teil("5 · Reservierung", '<p>Name, Telefonnummer, Personenzahl, Termin und Ihr Wunsch — für die Reservierung und Rückfragen (Art. 6 Abs. 1 lit. b DSGVO).' + frist("Gelöscht 30 Tage nach dem Termin.") + '</p>') : "") +
     teil("6 · Was auf Ihrem Gerät gespeichert wird", '<p>Nach § 25 TDDDG zählt jedes Ablegen auf Ihrem Gerät. Alle Einträge sind für eine Funktion nötig, die Sie nutzen (§ 25 Abs. 2 Nr. 2 TDDDG). Sie löschen sie in den Einstellungen Ihres Browsers unter „Websitedaten“.</p>' + tabelle) +
     (serverBereit() ? teil("7 · Mein Tisch und Gutscheine", '<p>Nur wenn Sie „Mein Tisch“ einschalten, legt Ihr Gerät eine zufällige Nummer ab, und wir merken uns dazu, wie oft Sie bei uns waren, was Sie gern bestellen und welche Gutscheine Sie haben. Wir kennen dabei weder Ihren Namen noch Ihre Adresse. Sie haben diesen Dienst ausdrücklich gewählt (§ 25 Abs. 2 Nr. 2 TDDDG, Art. 6 Abs. 1 lit. b DSGVO) und können ihn in „Mein Tisch“ jederzeit ausschalten.' + frist("Gelöscht 24 Monate nach Ihrem letzten Besuch.") + '</p>') +
@@ -16363,9 +16436,12 @@ const PHASEN = {
             text:E_PHASENTEXTE.fertig,       klasse:"p-fertig" }
 };
 
-function phaseHTML(status, tagesnummer){
+function phaseHTML(status, tagesnummer, abholung){
   const p = PHASEN[status] || PHASEN.neu;
-  const eigen = hausText(MARKENBLATT.texte, "phase", status);
+  /* Abholung: „Fertig“ heißt „bitte abholen“, nicht „kommt zum Tisch“ — auch der eigene Satz des Hauses für diese Phase
+     geht von einem Tisch aus und gilt hier nicht. */
+  const abholFertig = abholung === true && status === "fertig";
+  const eigen = abholFertig ? "" : hausText(MARKENBLATT.texte, "phase", status);
   /* Die Nummer kommt mit der ersten Statusabfrage, also einen Wimpernschlag
      nach dem Absenden. Bis dahin steht dort ein ruhiger Satz statt einer
      blinkenden Lücke. */
@@ -16379,7 +16455,7 @@ function phaseHTML(status, tagesnummer){
     /* Der eigene Satz des Hauses geht bewusst NICHT durch t(): Er
        steht in allen zwölf Sprachen so da, wie das Haus ihn schreibt.
        Nur die Vorgabe wird übersetzt. */
-    '<div class="bp-text">' + (eigen || t(p.text)) + '</div>' +
+    '<div class="bp-text">' + (eigen || t(abholFertig ? "Fertig — bitte abholen" : p.text)) + '</div>' +
     nummer + '</div>';
 }
 
@@ -16431,7 +16507,7 @@ function vorgangStreifenZeichnen(){
       '<span class="vtitel">' + titel + '</span>' +
       '<span class="vunter">' + ((v.nachrichten && v.nachrichten.length > (v.gelesen || 0))
         ? t("Neue Nachricht vom Haus")
-        : t(zoV ? (v.zahlung.art === "ueberweisung" ? "Warten auf Ihre Überweisung" : "Zahlung offen – bitte bezahlen") : st.text)) + weitere + '</span>' +
+        : t(zoV ? (v.zahlung.art === "ueberweisung" ? "Warten auf Ihre Überweisung" : "Zahlung offen – bitte bezahlen") : (v.status === "fertig" && v.bestellung && v.bestellung.abholung ? "Ist abholbereit" : st.text))) + weitere + '</span>' +
     '</span>' + warte +
     '<span class="vpfeil">›</span>';
 }
@@ -16616,7 +16692,7 @@ function bestellStatusSteuern(pfad){
   if(!b || !b.nummer || !serverBereit() || !kasten) return;
   if(zahlungOffen(b)){ zahlungSteuern(b); return; }
 
-  const STUFEN = [["neu","Angenommen"],["arbeit","Wird zubereitet"],["fertig","Ist unterwegs zu Ihnen"]];
+  const STUFEN = [["neu","Angenommen"],["arbeit","Wird zubereitet"],["fertig", b.abholung ? "Ist abholbereit" : "Ist unterwegs zu Ihnen"]];
   const malen = (status, minuten, tagesnummer) => {
     /* Die Anzeigenummer kommt über die Statusabfrage, nicht über die
        Antwort auf das Absenden: bestellung_aufgeben gibt weiterhin nur
@@ -16635,7 +16711,7 @@ function bestellStatusSteuern(pfad){
        sonst startete die Animation alle 15 Sekunden von vorn. */
     const pass = $("bpass");
     if(pass){
-      const neu = phaseHTML(status, b.tagesnummer);
+      const neu = phaseHTML(status, b.tagesnummer, !!b.abholung);
       const huelle = document.createElement("div");
       huelle.innerHTML = neu;
       if(huelle.firstChild.outerHTML !== pass.outerHTML)
@@ -17349,6 +17425,16 @@ const SITZ_SCHLUESSEL = hSchluessel("sitzung");
    (dieselbe Stelle, die liefermodus bisher nur AUSschalten konnte). */
 let liefermodus = false;
 let liefernAngefragt = false;
+/* Die dritte Bestellart: Abholen. Ein Zustand NEBEN liefermodus, nie beide zugleich (EINE Stelle schaltet: lieferWahl).
+   liefermodus bleibt, was er war — „der Gast lässt sich beliefern“ —, damit jeder alte Leser unverändert gilt. */
+let abholmodus = false;
+let abholenAngefragt = false;
+/* Wird Abholung angeboten? Schalter an, niemand am Tisch, und nur dort, wo die Wahl sichtbar ist (die Chips der
+   Premium-Startseite). Ein Haus ohne diese Chips behält seinen Zwei-Wege-Schalter. */
+function abholAngebot(){ return LIEFER.abholen === true && !tischNr && startPremium(); }
+function abholenAktiv(){ return abholmodus && abholAngebot(); }
+/* „Außer Haus“ (Lieferung ODER Abholung): hier gibt es keinen Tisch — Kacheln „nur am Tisch“ fehlen. */
+function aussenModus(){ return (liefermodus && LIEFER.an) || abholenAktiv(); }
 
 const LIEFERADRESSE_SCHLUESSEL = hSchluessel("lieferadresse");
 
@@ -17356,7 +17442,9 @@ function liefermodusLaden(){
   try{
     liefernAngefragt = /[?&]modus=liefern\b/i.test(location.search) ||
                         /^#\/liefern\b/i.test(location.hash);
-  }catch(e){ liefernAngefragt = false; }
+    abholenAngefragt = /[?&]modus=abholen\b/i.test(location.search) ||
+                        /^#\/abholen\b/i.test(location.hash);
+  }catch(e){ liefernAngefragt = false; abholenAngefragt = false; }
 }
 
 /* Trägt die Absicht (liefernAngefragt) in den wirklichen Zustand
@@ -17367,12 +17455,18 @@ function liefermodusLaden(){
    Aufrufstelle weiß, ob ein erneutes zeichne() nötig ist. */
 function liefermodusAbgleichen(){
   if(tischNr){
-    const geaendert = liefermodus || liefernAngefragt;
-    liefermodus = false; liefernAngefragt = false;
+    const geaendert = liefermodus || liefernAngefragt || abholmodus || abholenAngefragt;
+    liefermodus = false; liefernAngefragt = false; abholmodus = false; abholenAngefragt = false;
     return geaendert;
   }
+  if(abholenAngefragt && abholAngebot() && !abholmodus){
+    abholmodus = true; liefermodus = false; abholenAngefragt = false; liefernAngefragt = false;
+    try{ history.replaceState(null, "", location.pathname); }catch(e){}
+    return true;
+  }
+  if(abholmodus && !abholAngebot()){ abholmodus = false; return true; }
   if(liefernAngefragt && LIEFER.an && !liefermodus){
-    liefermodus = true; liefernAngefragt = false;
+    liefermodus = true; abholmodus = false; liefernAngefragt = false;
     /* Die Adresse aufräumen wie beim "?g="-Sprung oben: replaceState
        löst kein hashchange aus, zeichne() läuft also nicht zweimal,
        und ein Neuladen später öffnet nicht wortlos wieder "#/liefern". */
@@ -17855,6 +17949,8 @@ function zahlartenLaden(){
    Ändert sich das Angebot zwischen Wahl und Knopf, fällt es auf „beim
    Personal“ zurück statt eine Zahlart zu schicken, die der Server ablehnt. */
 function zahlartOnline(){
+  /* Abholung wird vor Ort bezahlt: eine Online-Zahlung für sie gibt es nicht (bestellung_abholen_zahlung fehlt). */
+  if(abholenAktiv()) return null;
   const liefern = liefermodus && LIEFER.an;
   if(zahlWahl === "stripe" && ZAHLARTEN.stripe) return "stripe";
   if(zahlWahl === "ueberweisung" && ZAHLARTEN.ueberweisung && liefern) return "ueberweisung";
@@ -17876,6 +17972,7 @@ function zahlSatz(art){
       : "";
 }
 function zahlWahlHTML(liefern){
+  if(abholenAktiv()) return "";
   const hatStripe = ZAHLARTEN.stripe, hatUeb = ZAHLARTEN.ueberweisung && liefern;
   if(!hatStripe && !hatUeb) return "";
   const aktiv = zahlartOnline() || "ort";
@@ -18090,6 +18187,25 @@ function anServer(art, daten){
            Gäste eines Tisches die 4). */
         p_geraet:     geraetKennung()
       };
+    } else if(istBestellung && daten.abholung){
+      /* ─── Abholung ───────────────────────────────────────────
+         bestellung_abholen (migration-abholen.sql): prüft den Schalter, Name, Telefon und die Zeit und ruft DANN dieselbe
+         bestellung_aufgeben wie Tisch und Lieferung — Preis aus der Karte, Pausen, Bremsen. Kein Liefergebiet, keine Gebühr.
+         Alles, was sie braucht, steht im Eintrag der Warteschlange (§8.1q). */
+      const posten = (daten.inhalt && daten.inhalt.posten) || [];
+      ziel  = SERVER.adresse.replace(/\/+$/, "") + "/rest/v1/rpc/bestellung_abholen";
+      paket = {
+        p_betrieb_id:   bid,
+        p_name:         daten.abholung.name,
+        p_telefon:      daten.abholung.telefon,
+        p_positionen:   serverPositionen(posten),
+        p_summe:        daten.summe,
+        p_abholzeit:    daten.abholung.zeit || null,
+        p_notiz:        (daten.inhalt && daten.inhalt.notiz) || null,
+        p_gast_kennung: daten.kennung || null,
+        p_geraet:       geraetKennung(),
+        p_rabattcode:   daten.rabattcode || null
+      };
     } else if(istBestellung && daten.adresse){
       /* ─── Lieferung ──────────────────────────────────────────
          Eigene Funktion, nicht bestellung_aufgeben direkt: Sie prüft
@@ -18226,8 +18342,12 @@ function anServer(art, daten){
           if(wert && typeof wert === "object" && wert.ok === true && wert.id)
             return { ok:true, zeile:{ id: wert.id,
               zahlung: (wert.zahlung && typeof wert.zahlung === "object") ? wert.zahlung : null } };
+          /* Eine Abholung, die der Server grundsätzlich ablehnt (Schalter aus, Angaben, Zeit), wird durch Wiederholen nicht
+             besser: eigener Grund, sonst liefe die Warteschlange zehn Minuten ins Leere. */
           if(wert && typeof wert === "object" && wert.ok === false)
-            return { ok:false, grund:"abgelehnt", warum: wert.grund || null };
+            return /^(aus|angaben|zeit)$/.test(String(wert.grund || "")) && daten.abholung
+              ? { ok:false, grund:"abholung", warum: wert.grund }
+              : { ok:false, grund:"abgelehnt", warum: wert.grund || null };
           return { ok:true, zeile:null };
         },
         () => ({ ok:true, zeile:null })
@@ -18236,6 +18356,20 @@ function anServer(art, daten){
       if(wecker) clearTimeout(wecker);
       return { ok:false, grund:"netz" };
     });
+  });
+}
+
+/* Die Positionen, wie der Server sie rechnet: Name mit den eingefrorenen Extras, Menge, Preis MIT Aufpreis. Dieselbe Abbildung
+   hatten bisher Lieferung und Tisch je für sich; die Abholung nimmt diese. */
+function serverPositionen(posten){
+  return posten.map(p => {
+    const auf = p.a != null ? +p.a || 0 : optAufpreis(p.n);
+    const zusatz = p.o != null ? String(p.o) : optText(p.n);
+    return {
+      name:  p.n + (zusatz ? " (" + zusatz + ")" : ""),
+      menge: p.m || 1,
+      preis: (Number(String(p.p).replace(",", ".")) || 0) + auf
+    };
   });
 }
 
@@ -18809,12 +18943,13 @@ $("inhalt").addEventListener("click", e => {
         return;
       }
       const liefern = liefermodus && LIEFER.an;
+      const abholen = abholenAktiv();
 
       /* ─── Liefermodus: Adresse statt Tisch ────────────────────
          Geprüft wird hier, damit der Gast es sofort sieht. Der Server
          prüft dasselbe noch einmal — eine Prüfung im Browser ist
          keine Prüfung, sie ist nur eine Höflichkeit. */
-      let adresse = null, nr = "";
+      let adresse = null, nr = "", abholung = null;
       if(liefern && !liefertGerade()){
         melden(t("Wir liefern gerade nicht."), true); return;
       }
@@ -18834,6 +18969,27 @@ $("inhalt").addEventListener("click", e => {
           melden(t("Dorthin liefern wir leider nicht."), true); return;
         }
         lieferAdresseMerken(adresse);
+      } else if(abholen){
+        /* ─── Abholung: Name und Telefon, optional eine Zeit ─────────
+           Die Zeit wird HIER gegen das Fenster gehalten, das der Server auch prüft (heute, frühestens nach dem Vorlauf,
+           höchstens 12 Stunden voraus) — eine Absage nach dem Absenden käme nach zehn Minuten Wiederholen. Leer = so bald
+           wie möglich. */
+        const name = wert("aName").trim().slice(0, 80), tel = wert("aTelefon").trim().slice(0, 40);
+        if(!name || !tel){ melden(t("Bitte füllen Sie Name und Telefon aus."), true); return; }
+        let zeit = wert("aZeit").trim();
+        if(zeit){
+          const m = /^(\d{1,2}):(\d{2})$/.exec(zeit), f = abholFenster();
+          const min = m ? (+m[1]) * 60 + (+m[2]) : -1;
+          if(min < 0 || min < f.von || min > f.bis || !f.heuteNoch){
+            melden(f.heuteNoch ? t("Bitte wählen Sie eine Abholzeit zwischen {von} und {bis} Uhr – oder lassen Sie das Feld leer.", {von: f.vonText, bis: f.bisText})
+                               : t("Heute geht keine feste Zeit mehr – wir bereiten Ihre Bestellung so bald wie möglich vor."), true);
+            return;
+          }
+          zeit = String(Math.floor(min / 60)).padStart(2, "0") + ":" + String(min % 60).padStart(2, "0");
+        }
+        abholung = { name: name, telefon: tel, zeit: zeit || null };
+        /* Name und Telefon bleiben im Gerät wie die Lieferanschrift (gleicher Eintrag, gleiche Auskunft im Datenschutz). */
+        lieferAdresseMerken(Object.assign({}, lieferAdresseLesen(), { name: name, telefon: tel }));
       } else {
         nr = tischHolen("bTisch");
         if(!nr){ melden(t("Bitte tragen Sie noch Ihre Tischnummer ein."), true); return; }
@@ -18916,16 +19072,17 @@ $("inhalt").addEventListener("click", e => {
         }
       }
       const eintrag = wsEintragen({
-        tisch:      liefern ? null : nr,
+        tisch:      (liefern || abholen) ? null : nr,
         adresse:    adresse,
+        abholung:   abholung,
         zahlart:    zahlart,
         summe:      summe > 0 ? Number(summe.toFixed(2)) : null,
         rabattcode: rabattcode,
         inhalt:     { posten: posten, notiz: notiz }
       });
 
-      letzteBestellung = { nummer: null, tisch: liefern ? null : nr,
-                           adresse: adresse, posten: posten,
+      letzteBestellung = { nummer: null, tisch: (liefern || abholen) ? null : nr,
+                           adresse: adresse, abholung: abholung ? { name: abholung.name, zeit: abholung.zeit } : null, posten: posten,
                            summe: summe, notiz: notiz, kennung: eintrag.kennung };
 
       bestellSperre = Date.now() + (BESTELLUNG.wartezeit * 1000);
@@ -19451,7 +19608,7 @@ tischLaden();
 liefermodusLaden();
 /* Der Untersetzer schlägt die Adresszeile: Wer am Tisch sitzt, soll
    kein Adressformular sehen, auch wenn er den Lieferlink erwischt hat. */
-if(tischNr) liefernAngefragt = false;
+if(tischNr){ liefernAngefragt = false; abholenAngefragt = false; }
 spracheLaden();
 /* LIEFER steht hier noch nicht fest (kommt erst mit dem Betrieb aus
    karteHolen()) — trotzdem schon versuchen: Ist das Haus zufällig
@@ -20477,6 +20634,8 @@ async function karteHolen(erstesMal){
       LIEFER.dauer_min = Math.round(Math.max(0, +lf.dauer_min || 0));
       LIEFER.bar       = lf.bar   !== false;
       LIEFER.karte     = lf.karte === true;
+      LIEFER.abholen   = lf.abholen === true;
+      LIEFER.abhol_min = Math.min(240, Math.round(Math.max(0, +lf.abhol_min || 0)));
       const z = (lf.zeiten && typeof lf.zeiten === "object") ? lf.zeiten : {};
       LIEFER.von  = /^\d{1,2}:\d{2}$/.test(z.von || "") ? z.von : "";
       LIEFER.bis  = /^\d{1,2}:\d{2}$/.test(z.bis || "") ? z.bis : "";
