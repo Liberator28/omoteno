@@ -3553,6 +3553,16 @@ a.eu-kachel{text-decoration:none}
 .gzeilehaupt{display:flex;align-items:stretch;gap:4px}
 .gkopf{flex:1;min-width:0}
 .sortier{display:flex;flex-direction:column;justify-content:center;gap:2px;flex-shrink:0}
+/* Schalter „Verfügbar“ direkt an Gericht und Kachel, „Karte aktiv“ unter den Karten-Chips. Die Antippfläche ist das Label (≥ 44 px). */
+.gverf{display:flex;align-items:center;justify-content:center;flex:0 0 auto;min-width:44px;min-height:44px;padding:0 2px;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.karte-aktiv{display:flex;align-items:center;gap:12px;margin:-6px 0 16px;padding:6px 8px 6px 14px;border:1px solid var(--linie);border-radius:var(--ecke);
+  background:var(--flaeche);color:var(--kreide)}
+.karte-aktiv[hidden]{display:none}
+.karte-aktiv .ka-text{flex:1;min-width:0;font-size:14px;line-height:1.35}
+.karte-aktiv .ka-text b{font-weight:600}
+.karte-aktiv.aus{border-color:var(--gedaempft)}
+.karte-aktiv.nurlesen .gverf{display:none}
+.kr-verf{position:absolute;top:0;left:50%;margin-left:-26px;width:52px;height:44px;display:grid;place-items:center;z-index:2;cursor:pointer}
 .sortier button{width:34px;height:24px;border-radius:6px;background:var(--tresen);
   border:1px solid var(--linie);color:var(--gedaempft);font-size:11px;line-height:1}
 .sortier button:disabled{opacity:.28}
@@ -4072,6 +4082,12 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <button class="chip" data-karte="speisekarte" aria-pressed="true">Speisekarte</button>
       <button class="chip" data-karte="getraenke"   aria-pressed="false">Getränke</button>
       <button class="chip" data-karte="cocktails"   aria-pressed="false">Cocktails</button>
+    </div>
+    <!-- Schalter „Karte aktiv“ (25.10.): eine ausgeschaltete Karte sehen Gäste nicht — ihre Kachel, ihre Seite und ihre Gerichte in
+         Foodroulette und Suche fehlen. Zeichnet kartenAktivZeichnen(); nur der Besitzer schaltet, das Team sieht den Stand. -->
+    <div class="karte-aktiv" id="karteAktivZeile" hidden>
+      <span class="ka-text" id="karteAktivText"></span>
+      <label class="gverf" id="karteAktivSchalter"><input type="checkbox" class="kipp" id="karteAktiv" aria-label="Karte für Gäste sichtbar"></label>
     </div>
     <!-- Wunsch 11.10.: „Kategorien hinzufügen und Karte einlesen direkt
          oben sehen“. Vorher schwebten zwei Knöpfe unten über der
@@ -9966,11 +9982,11 @@ async function verfuegbarSetzen(id, an){
   g.verfuegbar = an;
   verfuegbarZeichnen();
 
-  if(demo) return;
+  if(demo){ zeichneKarte(); return; }
   const {error} = await db.from("gerichte")
     .update({verfuegbar: an}).eq("id", id).eq("betrieb_id", betriebId);
   if(error){
-    g.verfuegbar = vorher; verfuegbarZeichnen();
+    g.verfuegbar = vorher; verfuegbarZeichnen(); zeichneKarte();
     melde("Nicht gespeichert, bitte Verbindung prüfen", true);
     return;
   }
@@ -9978,6 +9994,11 @@ async function verfuegbarSetzen(id, an){
   zeichneKarte();
 }
 
+/* Der Schalter „Verfügbar“ sitzt jetzt auch direkt an jedem Gericht in der Karte (Liste und Kacheln) — dieselbe Funktion, dieselbe Zeile in der Datenbank. */
+$("#karteListe").addEventListener("change", e => {
+  const k = e.target.closest("[data-verf]"); if(!k) return;
+  verfuegbarSetzen(k.dataset.verf, k.checked);
+});
 $("#vListe").onchange = e => {
   const k = e.target.closest("[data-verf]"); if(!k) return;
   verfuegbarSetzen(k.dataset.verf, k.checked);
@@ -13312,6 +13333,7 @@ function zeichneKarte(){
                 <path d="M1 1l4.5 4.5L10 1" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
               </svg>
             </button>
+            <label class="gverf" title="Heute verfügbar"><input type="checkbox" class="kipp" data-verf="${sicher(g.id)}" aria-label="${sicher(g.name)} verfügbar"${g.verfuegbar ? " checked" : ""}></label>
             <div class="sortier">
               <button data-schieb="${g.id}" data-richtung="-1" ${i===0?"disabled":""} aria-label="Nach oben">▲</button>
               <button data-schieb="${g.id}" data-richtung="1" ${i===alle.length-1?"disabled":""} aria-label="Nach unten">▼</button>
@@ -13381,6 +13403,7 @@ function krKachelHtml(g, inh){
         '<span class="kr-kategorie">' + sicher(g.kategorie) + '</span>' + (marken ? '<span class="kr-marken">' + marken + '</span>' : "") + '</span>' +
     (inh ? '</button>' : '</div>') +
     (inh ? '<button type="button" class="kr-haken" role="checkbox" aria-checked="' + gewaehlt + '" data-kr-wahl="' + id + '" aria-label="' + sicher(g.name) + ' auswählen"></button>' : "") +
+    '<label class="kr-verf" title="Heute verfügbar"><input type="checkbox" class="kipp" data-verf="' + id + '" aria-label="' + sicher(g.name) + ' verfügbar"' + (g.verfuegbar ? " checked" : "") + '></label>' +
     (inh || foto ? '<button type="button" class="kr-mehr" aria-haspopup="menu" aria-expanded="false" data-kr-menue="' + id + '" aria-label="Mehr zu ' + sicher(g.name) + '"></button>' : "") +
   '</div>';
 }
@@ -13820,8 +13843,10 @@ function karteSauber(k){
     .map(x => ({ name:x.name.trim().slice(0, 40),
                  zeichen: typeof x.zeichen === "string" && /^[a-z0-9]{1,12}$/.test(x.zeichen) ? x.zeichen : null }))
     .slice(0, 60);
+  /* aktiv: nur der AUSGESCHALTETE Zustand wird gespeichert (strikt false) — ohne den Schlüssel ist die Karte an, wie bei jedem
+     Haus vor diesem Schalter. */
   return { id:k.id, name:String(k.name || "").trim().slice(0, 40) || "Karte",
-           unter:String(k.unter || "").trim().slice(0, 90), kategorien };
+           unter:String(k.unter || "").trim().slice(0, 90), kategorien, ...(k.aktiv === false ? { aktiv:false } : {}) };
 }
 /* Alle Karten, die das Board zeigt: das Verzeichnis (oder die drei
    festen) und dahinter jede Karte, die an einem Gericht steht, aber im
@@ -22431,12 +22456,44 @@ function kartenWahlZeichnen(){
   if(!liste.some(k => k.id === welcheKarte)) welcheKarte = liste[0] ? liste[0].id : "speisekarte";
   $("#kartenWahl").innerHTML = liste.map(k =>
     '<button class="chip" data-karte="' + sicher(k.id) + '" aria-pressed="' + (k.id === welcheKarte) + '">' +
-    sicher(k.name) + '</button>').join("") +
+    sicher(k.name) + (k.aktiv === false ? ' <span class="ausmarke">aus</span>' : "") + '</button>').join("") +
     (liste.length < KARTEN_HOECHST
       ? '<button class="chip" data-karte-neu aria-label="Neue Karte anlegen">＋ Karte</button>' : "") +
     '<button class="chip" data-karten-bearbeiten aria-label="Karten bearbeiten">✎ Karten</button>';
   karteAuswahlenFuellen();
+  kartenAktivZeichnen();
 }
+/* „Karte aktiv“: die gewählte Karte, ein Schalter, sofort gespeichert (betriebe.karten[].aktiv = false). Mindestens eine Karte bleibt an —
+   sonst fände der Gast gar keine. Das Team sieht den Stand, schaltet nicht (die Datenbank ließe es nicht zu, §2.3b). */
+function kartenAktivZeichnen(){
+  const zeile = $("#karteAktivZeile"); if(!zeile) return;
+  const k = karteEintrag(welcheKarte);
+  const inh = istInhaberRolle();
+  const an = !(k && k.aktiv === false);
+  zeile.hidden = !k || (!inh && an);
+  if(zeile.hidden) return;
+  zeile.classList.toggle("aus", !an);
+  zeile.classList.toggle("nurlesen", !inh);
+  $("#karteAktiv").checked = an;
+  $("#karteAktiv").disabled = !inh;
+  $("#karteAktivText").innerHTML = an
+    ? "<b>" + sicher(k.name) + "</b> ist für Gäste sichtbar"
+    : "<b>" + sicher(k.name) + "</b> ist ausgeschaltet — Gäste sehen sie nicht" + (inh ? "" : " (schaltet der Besitzer)");
+}
+async function kartenAktivSetzen(an){
+  const liste = kartenKopie();
+  const k = liste.find(x => x.id === welcheKarte); if(!k) return false;
+  if(!an && liste.filter(x => x.aktiv !== false && x.id !== welcheKarte).length === 0){
+    melde("Mindestens eine Karte muss eingeschaltet bleiben", true); kartenAktivZeichnen(); return false;
+  }
+  if(an) delete k.aktiv; else k.aktiv = false;
+  const ok = await kartenSichern(liste);
+  if(!ok){ kartenAktivZeichnen(); return false; }
+  melde(an ? k.name + " ist wieder für Gäste da" : k.name + " ist für Gäste ausgeschaltet");
+  kartenWahlZeichnen();
+  return true;
+}
+$("#karteAktiv").addEventListener("change", e => { kartenAktivSetzen(e.target.checked); });
 $("#kartenWahl").onclick = e => {
   if(e.target.closest("[data-karte-neu]")) return kvOeffnen(true);
   if(e.target.closest("[data-karten-bearbeiten]")) return kvOeffnen(false);

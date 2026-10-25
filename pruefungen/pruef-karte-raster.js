@@ -228,7 +228,11 @@ async function auswahl(browser) {
     await VIELE(p);
     await p.click('[data-kr-wahl="g1"]');
     let darunterMax = 0, schlecht = [];
-    for (const y of [300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900]) {
+    /* Rollstände RELATIV zur natürlichen Lage der Leiste (Messwert bei Rollstand 0), nicht fest: Die Zeile „Karte aktiv“ davor schob die Leiste
+       um 82 px nach unten, bei festem y=300 lag sie dann unter der Navigation — eine Probe, die am Layout davor hängt, prüft das Layout davor. */
+    const natuerlich = await p.evaluate(() => Math.round(document.getElementById("krAuswahl").getBoundingClientRect().top + scrollY));
+    for (const y0 of [300, 360, 420, 480, 540, 600, 660, 720, 780, 840, 900]) {
+      const y = y0 + natuerlich - (breite === 390 ? 825 : 688); /* 825/688: natürliche Lage vor der Zeile „Karte aktiv“ — die Rollstände bleiben dieselben wie vorher */
       await p.evaluate(v => window.scrollTo(0, v), y); await p.waitForTimeout(90);
       const m = await p.evaluate(`(${UEBER})(document.getElementById("krAuswahl"), 10, 2)`);
       darunterMax = Math.max(darunterMax, m.darunter); if (m.falsch) schlecht.push(y + ":" + m.wer.join("/"));
@@ -267,6 +271,8 @@ async function menue(browser) {
     const offen = () => p.evaluate(() => document.querySelectorAll(".kr-menue").length);
     /* linke UND rechte Kachel einer Reihe: das Menü bleibt ganz im Bild */
     for (const id of ["g1", "g2"]) {
+      /* Kachel mittig ins Bild holen: Das Menü misst „obenauf“ an seiner Mitte, und die liegt sonst je nach Zeilen davor unter dem Schirmrand */
+      await p.evaluate(i => document.querySelector('.kr-kachel[data-kr-id="' + i + '"]').scrollIntoView({ block: "center" }), id);
       await p.evaluate(i => document.querySelector('.kr-kachel[data-kr-id="' + i + '"] [data-kr-menue]').click(), id);
       await p.waitForTimeout(100);
       const m = await p.evaluate(() => { const e = document.querySelector(".kr-menue"), r = e.getBoundingClientRect(), t = document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2);

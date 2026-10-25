@@ -10132,9 +10132,13 @@ function karteDaten(id){
    „alle Karten“ durchgeht, nimmt diese Liste; vorher standen die drei
    an elf Stellen einzeln da. */
 function alleKarten(){
-  return KARTEN_FEST.map(id => [id, karteDaten(id)])
-    .concat(Object.keys(KARTEN_EXTRA).map(id => [id, KARTEN_EXTRA[id]]));
+  return KARTEN_FEST.filter(karteAktiv).map(id => [id, karteDaten(id)])
+    .concat(Object.keys(KARTEN_EXTRA).filter(karteAktiv).map(id => [id, KARTEN_EXTRA[id]]));
 }
+/* Karte aktiv (Schalter im Board, betriebe.karten[].aktiv): NUR ein echtes false schaltet eine Karte für Gäste ab — ohne den Schlüssel
+   ist sie an, wie bei jedem Haus vor diesem Schalter. EINE Stelle: alleKarten() (Foodroulette, Suche, Vorschläge), die Kacheln der
+   Startseite und der Seitenaufruf fragen hier. Eine ausgeschaltete Karte ist für den Gast nicht da — weder Kachel noch Adresse. */
+function karteAktiv(id){ const v = KARTEN_VERZ.find(k => k.id === id); return !(v && v.aktiv === false); }
 /* Was zählt als Getränk? Die beiden festen Getränke-Karten. Eigene
    Karten zählen als Essen — eine Mittagskarte ist das Übliche. */
 function karteIstGetraenk(id){ return id === "getraenke" || id === "cocktails"; }
@@ -12593,6 +12597,7 @@ document.addEventListener("keydown", e => {
 function sichtbareKachelnRoh(){
   return KACHELN.filter(k =>
     stunde >= k.von && stunde < k.bis && !(k.nurDe && sprache !== "de") &&
+    !((k.art === "karte" || KACHEL_KARTEN_FEST.includes(k.schluessel)) && !karteAktiv(kachelKarte(k))) &&
     !(aussenModus() && k.nurTisch) &&
     (typeof k.wenn !== "function" || k.wenn()) &&
     /* Ein leeres Ziel hieß bisher href="" — ein Tipp lud die Seite
@@ -16855,7 +16860,7 @@ function zeichne(){
     if(treffer){ try{ sprung = decodeURIComponent(treffer[1]); }catch(e){ sprung = ""; } }
   }
 
-  const istStart = !pfad || !SEITEN[pfad];
+  const istStart = !pfad || !SEITEN[pfad] || !karteAktiv(pfad);
   seiteJetzt = istStart ? "start" : pfad;
   /* Ein neuer Besuch der Seite — nicht ein Neuzeichnen derselben. Nur
      dann dürfen die bewegten Zeichen erneut einmal spielen. */
@@ -21333,7 +21338,7 @@ async function karteHolen(erstesMal){
         (KARTEN_FEST.includes(k.id) || KARTE_ID_MUSTER.test(k.id)))
       .slice(0, 20)
       .map(k => ({ id:k.id, name:String(k.name || "").trim().slice(0, 40),
-                   unter:String(k.unter || "").trim().slice(0, 90) }));
+                   unter:String(k.unter || "").trim().slice(0, 90), aktiv:k.aktiv !== false }));
 
     const zeilen = await hol("/rest/v1/gerichte?betrieb_id=eq."+b[0].id+
       "&verfuegbar=eq.true&select=*&order=karte.asc,kat_sort.asc,reihenfolge.asc,id.asc");
@@ -21419,6 +21424,8 @@ async function karteHolen(erstesMal){
     const extra = {};
     eigene.forEach(id => { extra[id] = bau(id); });
     neu.extra = extra;
+    /* Ausgeschaltete Karten gehören in den Fingerabdruck: ein Schalter im Board muss neu zeichnen. */
+    neu.aus = KARTEN_VERZ.filter(k => !k.aktiv).map(k => k.id);
 
     /* Hat sich gegenüber dem letzten Abruf überhaupt etwas geändert?
        Wenn nicht, tun wir gar nichts – kein Flackern für den Gast. */
