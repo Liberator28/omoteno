@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
---  NOCH NICHT EINGESPIELT · migration-bestellungen-spaltenrechte.sql
+--  EINGESPIELT am 25.10.2026 · migration-bestellungen-spaltenrechte.sql (Lesefragen live: 34 Spalten, Trigger alle security definer)
 --  Vorbereitet am 24.10.2026. Einspielen NUR mit ausdrücklicher Freigabe
 --  des Betreibers und erst nach den Lesefragen unten (CLAUDE.md §2.3f, §2.5).
 --

@@ -91,7 +91,7 @@ const docListe = (docSpalten[2] || "").match(/`(\w+)`/g) || [];
 pruef(docListe.map(x => x.replace(/`/g, "")).sort().join() === GRANT.join() && Number(docSpalten[1]) === GRANT.length, "die Wegeliste im Dokument nennt dieselben Spalten und die richtige Zahl", docListe.length + " / " + docSpalten[1]);
 pruef(GRANT.length === 9, "neun Spalten (gekürzt von 34)");
 pruef(!/\b(summe|positionen|rabatt_betrag|betrieb_id|quelle|gast_kennung|liefergebuehr)\b/.test(grantText), "Preis, Summe, Positionen, Rabatt, Betrieb stehen NICHT im GRANT");
-pruef(/NOCH NICHT EINGESPIELT/.test(MIG.split("\n")[1] || MIG.slice(0, 200)), "die Migration trägt im Kopf „NOCH NICHT EINGESPIELT“ (Freigabe steht aus)");
+pruef(/EINGESPIELT am \d{2}\.\d{2}\.\d{4}/.test(MIG.split("\n")[1] || MIG.slice(0, 200)) && !/NOCH NICHT EINGESPIELT/.test(MIG.slice(0, 400)), "die Migration trägt im Kopf „EINGESPIELT am <Datum>“ (seit 25.10.2026 live) und nicht mehr „NOCH NICHT“");
 const lesefragen = (MIG.match(/select column_name from information_schema\.column_privileges/g) || []).length + (MIG.match(/pg_trigger t join pg_proc/g) || []).length + (MIG.match(/not p\.prosecdef/g) || []).length;
 pruef(lesefragen === 3, "die drei Lesefragen vor dem Einspielen stehen im Kopf (Spalten-Ist, Trigger, Nicht-definer-Funktionen)", lesefragen);
 

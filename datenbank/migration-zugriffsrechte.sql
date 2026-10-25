@@ -1,7 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════════
 --  migration-zugriffsrechte.sql · TEIL A (additiv) · Rolle „Manager“, Rechte je Mitglied, Teamziele
 --
---  NOCH NICHT EINGESPIELT. Der Live-Katalog war bei der Entstehung nicht erreichbar (Supabase-MCP
+--  EINGESPIELT am 25.10.2026 (live gelesen vorher, nachher Katalog + zurückgedrehte Probe mit echten Konten; Edge Function
+--  team-zugang v4 ausgerollt). Entstanden war sie ohne Live-Zugriff: der Live-Katalog war nicht erreichbar (Supabase-MCP
 --  „ERR_PROXY_TUNNEL“); gelaufen ist alles im lokalen Postgres 16 (pruefungen/pruef-zugriffsrechte-lokal.sh)
 --  gegen die ECHTEN Funktionen und Regeln aus den Migrationsdateien. Siehe dokumente/zugriffsrechte-befund.md.
 --
