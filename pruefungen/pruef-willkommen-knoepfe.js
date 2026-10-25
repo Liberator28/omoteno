@@ -97,8 +97,9 @@ const MESSEN = () => {
       pruef(Math.abs(k.im - k.xm) <= 2.5, wo + " · " + id + ": auf einer Höhe mit dem Text", Math.abs(k.im - k.xm).toFixed(1));
       pruef(k.kh >= 44, wo + " · " + id + ": Tapfläche ≥ 44 px hoch", Math.round(k.kh));
       pruef(k.ksw <= k.kcw + 1, wo + " · " + id + ": nichts läuft über", k.ksw + "/" + k.kcw);
+      pruef(k.stroke === k.farbe, wo + " · " + id + ": Symbol hat dieselbe Farbe wie die Schrift (currentColor, nicht fest)", k.stroke + " / " + k.farbe);
       const sw = await schlechtester(p, "#" + id + " .wk-txt");
-      pruef(sw !== null && sw >= 4.5, wo + " · " + id + ": Schrift (und Symbol, gleiche Farbe) ≥ 4,5:1 am gemalten Bild", sw && sw.toFixed(2));
+      pruef(sw !== null && sw >= 4.5, wo + " · " + id + ": Schrift ≥ 4,5:1 am gemalten Bild (das Symbol hat dieselbe Farbe, siehe vorher)", sw && sw.toFixed(2));
     }
     pruef(fehler.length === 0, wo + ": keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
