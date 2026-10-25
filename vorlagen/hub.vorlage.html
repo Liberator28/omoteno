@@ -21740,12 +21740,27 @@ function wischZu(o){
    (--vv-versatz). Ohne Abstand, mit Tastatur (fokussiertes Feld) oder ohne visualViewport bleibt alles beim Alten.
    Ehrliche Grenze: auf einem Gerät nicht gesehen, nur die Rechnung geprüft (pruef-leiste-hub.js). */
 var leisteAnkerGeplant = false;
+function leisteSonde(){
+  var s = document.getElementById("vvSonde");
+  if(!s){
+    s = document.createElement("div"); s.id = "vvSonde"; s.setAttribute("aria-hidden", "true");
+    s.style.cssText = "position:fixed;left:0;bottom:0;width:1px;height:0;visibility:hidden;pointer-events:none";
+    document.body.appendChild(s);
+  }
+  return s;
+}
 function leisteAnkern(){
   var vv = window.visualViewport, wurzel = document.documentElement, v = 0;
   if(vv){
     var a = document.activeElement, feld = a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName);
-    var abstand = Math.round(vv.offsetTop + vv.height - wurzel.clientHeight);
-    if(!feld && abstand >= 2 && abstand <= 600) v = abstand;
+    var gezoomt = (vv.scale || 1) > 1.01;
+    if(vv.offsetTop < -1) return parseInt(wurzel.style.getPropertyValue("--vv-versatz"), 10) || 0;
+    if(!feld && !gezoomt){
+      /* Gemessen wird, wo „bottom:0“ WIRKLICH liegt (Sonde) — in BEIDE Richtungen: Leiste zu hoch (Schweben) oder unter dem
+         sichtbaren Rand (abgeschnitten, Foto vom 25.10. aus dem Board). */
+      var abstand = Math.round(vv.offsetTop + vv.height - leisteSonde().getBoundingClientRect().bottom);
+      if(Math.abs(abstand) >= 2 && Math.abs(abstand) <= 600) v = abstand;
+    }
   }
   if(wurzel.style.getPropertyValue("--vv-versatz") !== v + "px") wurzel.style.setProperty("--vv-versatz", v + "px");
   return v;

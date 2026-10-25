@@ -174,9 +174,20 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 1, addEventListener(){} } }); leisteAnkern(); });
     const rauschen = await messe();
     ok(rauschen.unten === rauschen.vh, "1 px Abstand (Rundung) bewegt nichts", rauschen.unten + " / " + rauschen.vh);
+    /* Foto vom 25.10. (iPhone): die Leiste saß UNTER dem sichtbaren Rand, abgeschnitten. Ohne Eingabefeld und ohne Zoom rückt sie nach OBEN. */
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight - 47, addEventListener(){} } }); leisteAnkern(); });
+    const abg = await messe();
+    ok(abg.unten === abg.vh - 47 && abg.versatz === "-47px", "Leiste unter dem sichtbaren Rand (47 px): sie rückt um genau 47 px nach oben", abg.unten + " / " + (abg.vh - 47));
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, scale:2, height:document.documentElement.clientHeight - 300, addEventListener(){} } }); leisteAnkern(); });
+    const zoom = await messe();
+    ok(zoom.unten === zoom.vh, "gezoomt (scale 2): die Leiste bleibt, wo sie ist", zoom.unten + " / " + zoom.vh);
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight - 300, addEventListener(){} } }); leisteAnkern(); });
-    const tast = await messe();
-    ok(tast.unten === tast.vh, "Sichtbares kürzer (Tastatur): die Leiste bleibt, wo sie ist", tast.unten + " / " + tast.vh);
+    const kuerz = await messe();
+    ok(kuerz.unten === kuerz.vh - 300, "Sichtbares 300 px kürzer, ohne Eingabefeld: die Leiste folgt nach oben", kuerz.unten + " / " + (kuerz.vh - 300));
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:-60, scale:1, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); leisteAnkern(); });
+    const gummi = await messe();
+    ok(gummi.versatz === "-300px", "Gummiband oben (offsetTop −60): der letzte Stand bleibt, nichts zuckt", gummi.versatz);
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight, addEventListener(){} } }); leisteAnkern(); });
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); leisteAnkern(); });
     const ink = await p.evaluate(() => { const i = document.createElement("input"); i.id = "ankerProbe"; document.body.appendChild(i); i.focus(); return leisteAnkern(); });
     ok(ink === 0, "mit fokussiertem Eingabefeld wird nicht verschoben (Tastatur)", String(ink));

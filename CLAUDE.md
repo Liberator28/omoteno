@@ -823,6 +823,30 @@ ausdrücklich, und die Probe misst das **gemalte Feld und das Bild**, nicht nur
 den Rahmen. Ein quadratisches Testbild versteckt den Fehler — die Probe nimmt ein
 Hochkant-Bild.
 
+### 3.15 Eine Rechnung, die nur eine Richtung kennt, korrigiert die andere zum Fehler
+
+> **Vorfall, gemeldet vom Nutzer mit zwei iPhone-Bildschirmfotos (25.10.).**
+> Die Reiterleiste des Boards war unten abgeschnitten — Symbole sichtbar,
+> Beschriftung und Rand unter dem Schirm. `leisteAnkern()` (seit dem Fall
+> „Leiste schwebt mitten im Bild“) rechnete `visualViewport.offsetTop +
+> height − documentElement.clientHeight` und schob die Leiste nur bei
+> POSITIVEM Abstand nach unten; ein negativer Abstand war „Tastatur“ und
+> blieb liegen. Gemessen wird dort aber, was `clientHeight` verspricht,
+> nicht, wo `bottom:0` wirklich liegt. Die Prüfung stellte genau einen
+> Fall nach (Sichtbares 120 px länger) und blieb grün.
+
+Jetzt misst eine unsichtbare Sonde (`#vvSonde`, `position:fixed;bottom:0`),
+wo „unten“ im Layout liegt, und die Leiste rückt um den Abstand zum
+sichtbaren Rand — in beide Richtungen. Ausgenommen bleiben: fokussiertes
+Eingabefeld (Tastatur), Zoom (`scale > 1`) und das Gummiband am oberen Rand
+(`offsetTop < 0`, dort gilt der letzte Stand). Gegenbeweis im Worktree: die
+drei neuen Fälle (47 px unter dem Rand, 300 px kürzer ohne Feld,
+Gummiband) sind auf dem alten Stand rot. **Ehrliche Grenze:** der Auslöser
+auf dem Gerät ist weiter nicht gesehen; belegt ist, dass die Leiste dem
+sichtbaren Rand in beide Richtungen folgt, wo die API ihn meldet. Meldet
+iOS den Versatz gar nicht, hilft kein Skript — dann bräuchte es ein Layout
+ohne feste Leiste.
+
 ### 3.14 Was nur aus dem Bild geschoben ist, ist nicht weg
 
 > **Vorfall, gemeldet vom Nutzer mit iPhone-Bildschirmfoto.** „Unten am Ende

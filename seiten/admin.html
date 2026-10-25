@@ -15255,13 +15255,29 @@ addEventListener("resize", () => { if($("#leistePille")) leistePilleBewegen(); }
    an ihr hängt, rücken um genau diesen Abstand nach unten (--vv-versatz). Ohne Abstand, mit offener Tastatur oder ohne
    visualViewport bleibt alles beim Alten. Ehrliche Grenze: auf einem Gerät nicht gesehen, nur die Rechnung geprüft. */
 let leisteAnkerGeplant = false;
+function leisteSonde(){
+  let s = document.getElementById("vvSonde");
+  if(!s){
+    s = document.createElement("div"); s.id = "vvSonde"; s.setAttribute("aria-hidden", "true");
+    s.style.cssText = "position:fixed;left:0;bottom:0;width:1px;height:0;visibility:hidden;pointer-events:none";
+    document.body.appendChild(s);
+  }
+  return s;
+}
 function leisteAnkern(){
   const vv = window.visualViewport, wurzel = document.documentElement;
   let v = 0;
   if(vv){
     const feld = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
-    const abstand = Math.round(vv.offsetTop + vv.height - wurzel.clientHeight);
-    if(!feld && abstand >= 2 && abstand <= 600) v = abstand;
+    const gezoomt = (vv.scale || 1) > 1.01;
+    /* Gummiband am oberen Rand: der Sichtbereich wandert kurz ins Negative — dann nichts ändern, sonst zuckt die Leiste. */
+    if(vv.offsetTop < -1) return parseInt(wurzel.style.getPropertyValue("--vv-versatz"), 10) || 0;
+    if(!feld && !gezoomt){
+      /* Gemessen wird, wo „bottom:0“ WIRKLICH liegt (Sonde, unabhängig vom Versatz) — nicht, was clientHeight verspricht: Das Foto vom
+         25.10. zeigte die Leiste UNTER dem sichtbaren Rand abgeschnitten; die alte Rechnung kannte nur die Richtung „Leiste zu hoch“. */
+      const abstand = Math.round(vv.offsetTop + vv.height - leisteSonde().getBoundingClientRect().bottom);
+      if(Math.abs(abstand) >= 2 && Math.abs(abstand) <= 600) v = abstand;
+    }
   }
   const alt = wurzel.style.getPropertyValue("--vv-versatz");
   if(alt !== v + "px") wurzel.style.setProperty("--vv-versatz", v + "px");
