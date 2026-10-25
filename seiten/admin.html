@@ -2888,7 +2888,20 @@ body.afb-zieht,body.afb-zieht *{-webkit-user-select:none!important;user-select:n
 /* Texte & Schrift */
 #txTippen{min-height:44px;margin:0 0 10px}
 #txTippen[aria-pressed="true"]{border-color:var(--messing);color:var(--messing)}
-.gh-vorschau.tippen .hvfenster iframe{pointer-events:auto}
+.gh-vorschau.tippen .hvfenster iframe,.gh-vorschau.ordnen .hvfenster iframe{pointer-events:auto}
+.gh-vorschau.ordnen .hvfenster{outline:2px solid #FF3D81;outline-offset:2px}
+.lo-karte{margin:0 0 12px;padding:14px;border-radius:16px;border:1px solid var(--linie);background:var(--flaeche);display:flex;flex-direction:column;gap:10px}
+.lo-kopf{display:flex;gap:12px;align-items:flex-start}
+.lo-symbol{flex:none;width:44px;height:44px;border-radius:12px;border:1px solid var(--linie);background:var(--flaeche-2);color:var(--messing);display:flex;align-items:center;justify-content:center}
+.lo-text{display:flex;flex-direction:column;gap:2px;min-width:0}
+.lo-text b{font-size:15px}
+.lo-text i{font-style:normal;font-size:13px;line-height:1.4;color:var(--gedaempft)}
+.lo-knoepfe{display:flex;gap:8px;flex-wrap:wrap}
+.lo-karte[data-an="1"]{border-color:#FF3D81}
+.lo-sage{margin:0;font-size:13px;color:var(--gedaempft);min-height:18px}
+.lo-alt{margin:0 0 12px}
+.lo-alt > summary{min-height:44px;display:flex;align-items:center;padding:0 4px;font-size:14px;font-weight:600;color:var(--gedaempft);cursor:pointer}
+.lo-alt > summary:focus-visible{outline:2px solid var(--messing);outline-offset:2px}
 .gh-vorschau.tippen .hvfenster{outline:2px solid var(--messing);outline-offset:2px}
 .txwerk{display:flex;flex-direction:column;gap:10px;margin:0 0 12px}
 .txsuchfeld{position:relative}
@@ -4859,11 +4872,29 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <p class="ehilfe">Die Knöpfe auf Ihrer Seite — welche erscheinen, wie
         sie heißen und welches Bild darauf liegt.</p>
 
-      <!-- Die Startseite als kleines Raster: Griff rechts an jeder Kachel
-           ziehen = Breite. Tippen auf den Namen öffnet ihre Einstellungen. -->
-      <div class="kbanordnung" id="kbAnordnung" aria-label="Anordnung der Kacheln"></div>
-      <p class="kbhinweis kbanordnung-hilfe">Rechten Rand einer Kachel ziehen, um die Breite zu ändern.
-        Namen antippen, um sie einzustellen.</p>
+      <!-- LIVE ORDNEN (Wunsch 25.10.): Die Vorschau oben wird zur Arbeitsfläche. Flächen und Kacheln halten, an die neue
+           Stelle ziehen, loslassen — ein Tipp öffnet ihre Einstellungen. Ersetzt die kleine Raster-Anordnung, die darunter
+           (zugeklappt) als Liste bleibt: für die Tastatur und für die Breite je Kachel. -->
+      <div class="lo-karte" id="loKarte">
+        <div class="lo-kopf">
+          <span class="lo-symbol" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="M12 3v18M3 12h18M12 3l-3 3M12 3l3 3M12 21l-3-3M12 21l3-3M3 12l3-3M3 12l3 3M21 12l-3-3M21 12l-3 3" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+          <span class="lo-text"><b>Direkt in der Vorschau ordnen</b>
+            <i>Fläche oder Kachel gedrückt halten, an die neue Stelle ziehen, loslassen. Antippen öffnet die Einstellungen.</i></span>
+        </div>
+        <div class="lo-knoepfe">
+          <button type="button" class="knopf" id="loAn" aria-pressed="false">Ordnen starten</button>
+          <button type="button" class="knopf leise" id="loSichern" hidden>Ordnung übernehmen</button>
+        </div>
+        <p class="lo-sage" id="loSage" role="status" aria-live="polite"></p>
+      </div>
+      <details class="lo-alt" id="loAlt">
+        <summary>Breite und Reihenfolge als Liste</summary>
+        <!-- Die Startseite als kleines Raster: Griff rechts an jeder Kachel
+             ziehen = Breite. Tippen auf den Namen öffnet ihre Einstellungen. -->
+        <div class="kbanordnung" id="kbAnordnung" aria-label="Anordnung der Kacheln"></div>
+        <p class="kbhinweis kbanordnung-hilfe">Rechten Rand einer Kachel ziehen, um die Breite zu ändern.
+          Namen antippen, um sie einzustellen.</p>
+      </details>
 
       <div class="kbliste" id="kbListe"></div>
       <!-- Eigene Kacheln anlegen (Wunsch 07.10.): eine weitere Karte
@@ -6178,6 +6209,8 @@ const SUPABASE_KEY  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFz
 let db = null, betriebId = null, demo = false;
 /* Aufbau der Startseite (siehe AFB… weiter unten). Hier oben, weil hvStartseite() sie beim Anmelden schon liest (§8.1l). */
 let AFBSTAND = [], AFBGESPEICHERT, AFBGEAENDERT = false, AFBLESEFEHLER = false;
+/* Live ordnen (Vorschau als Arbeitsfläche): an/aus, und ob schon etwas verschoben wurde. Steht HIER oben, weil hvStartseite() früh fragt (§8.1l). */
+let LO_AN = false, LO_GEAENDERT = false;
 const AFB_OFFEN = new Set();
 /* Kommt die Seite aus dem Link „Passwort zurücksetzen“? Das steht nur
    jetzt in der Adresse — supabase-js räumt sie beim Start ab. */
@@ -15693,15 +15726,15 @@ const TOUR = (function(){
     ".tour-loch{position:absolute;left:0;top:0;width:0;height:0;border-radius:16px;pointer-events:none;opacity:0;" +
       "box-shadow:0 0 0 2px var(--tour-akzent,#fff),0 0 0 200vmax rgba(8,6,5,.68);transition:transform .32s cubic-bezier(.3,.7,.3,1),opacity .2s ease}" +
     ".tour-wurzel[data-ohneloch=\"0\"] .tour-loch{opacity:1}" +
-    ".tour-loch::after{content:\"\";position:absolute;inset:-6px;border-radius:20px;border:2px solid var(--tour-akzent,#fff);opacity:0;animation:tour-puls 1.8s ease-out infinite}" +
+    ".tour-loch::after{content:\"\";position:absolute;inset:-6px;border-radius:20px;border:2px solid var(--tour-akzent,#fff);opacity:0;animation:tour-puls 1.8s cubic-bezier(.23,1,.32,1) infinite}" +
     "@keyframes tour-puls{0%{opacity:.7;transform:scale(.97)}80%,100%{opacity:0;transform:scale(1.06)}}" +
     ".tour-hand{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:none;opacity:0}" +
     ".tour-hand::before{content:\"\";position:absolute;inset:0;border-radius:50%;background:var(--tour-akzent,#fff);opacity:.6;box-shadow:0 0 0 3px rgba(255,255,255,.55),0 6px 16px rgba(0,0,0,.45)}" +
     ".tour-hand::after{content:\"\";position:absolute;inset:-10px;border-radius:50%;border:2px solid var(--tour-akzent,#fff);opacity:0}" +
-    ".tour-hand[data-demo=\"tippen\"]{opacity:1;animation:tour-tippen 1.7s ease-in-out infinite}" +
-    ".tour-hand[data-demo=\"tippen\"]::after{animation:tour-welle 1.7s ease-out infinite}" +
-    ".tour-hand[data-demo=\"halten\"]{opacity:1;animation:tour-halten 2.2s ease-in-out infinite}" +
-    ".tour-hand[data-demo=\"halten\"]::after{animation:tour-welle 2.2s ease-out infinite}" +
+    ".tour-hand[data-demo=\"tippen\"]{opacity:1;animation:tour-tippen 1.7s cubic-bezier(.45,0,.55,1) infinite}" +
+    ".tour-hand[data-demo=\"tippen\"]::after{animation:tour-welle 1.7s cubic-bezier(.23,1,.32,1) infinite}" +
+    ".tour-hand[data-demo=\"halten\"]{opacity:1;animation:tour-halten 2.2s cubic-bezier(.45,0,.55,1) infinite}" +
+    ".tour-hand[data-demo=\"halten\"]::after{animation:tour-welle 2.2s cubic-bezier(.23,1,.32,1) infinite}" +
     ".tour-hand[data-demo=\"wischen\"]{opacity:1;animation:tour-wischen 2s cubic-bezier(.5,0,.3,1) infinite}" +
     ".tour-hand[data-demo=\"wischen-hoch\"]{opacity:1;animation:tour-hoch 2s cubic-bezier(.5,0,.3,1) infinite}" +
     "@keyframes tour-tippen{0%,100%{transform:scale(1)}40%{transform:scale(.78)}60%{transform:scale(.78)}}" +
@@ -16627,6 +16660,7 @@ function hvStart(schl){
         if(echt === "gestalten" && FB && !FB.eigen && !FB_BERUEHRT) fbLaden();
         if(echt === "gestalten"){
           try{ if(TX_TIPPEN) h.frame.contentWindow.vorschauTextTippen(true); }catch(e){}
+          try{ if(LO_AN) h.frame.contentWindow.vorschauOrdnen(true); }catch(e){}
           setTimeout(() => { if(typeof txListeLaden === "function") txListeLaden(); }, 1700);
         }
         /* Der Hub gleicht nach dem Laden mit der Datenbank ab und
@@ -17360,7 +17394,7 @@ function hvStartseite(ziel){
   const teil = { hub_kacheln: kbRoh(), hub_banner: bnRoh(), hub_stil: stil };
   /* Aufbau nur schicken, wenn der gespeicherte Stand gelesen ist — sonst zeigte die Vorschau die Vorgabe,
      wo das Haus längst etwas anderes eingestellt hat (§8.1m). [] = zurück auf die Vorgabe. */
-  if(AFBGESPEICHERT !== undefined) teil.hub_bloecke = afbRoh() || [];
+  if(AFBGESPEICHERT !== undefined) teil.hub_bloecke = (LO_AN ? (afbAbgleichen(), afbAbbild()) : afbRoh()) || [];
   hvSenden("startseite", teil, ziel || "");
 }
 function hvWorte(ziel){
@@ -19162,6 +19196,11 @@ function afbIstVorgabe(){
    das nie gespeichert wird). null = keine eigene Wahl: dann gilt die Vorgabe. */
 function afbRoh(){
   if(!afbEigeneWahl() || afbIstVorgabe()) return null;
+  return afbAbbild();
+}
+/* Das volle Abbild der Liste — auch die Vorgabe. Die Vorschau im Modus „Live ordnen“ braucht die Hüllen der Blöcke
+   (data-sblock) sofort, ohne dass schon etwas gespeichert würde. */
+function afbAbbild(){
   return AFBSTAND.map(b => {
     const e = { id:b.id };
     if(!b.an) e.an = false;
@@ -19800,6 +19839,133 @@ function kbZurueck(){
 /* ── Die Knöpfe ────────────────────────────────────────────────── */
 $("#kbSichern").onclick  = kbSichern;
 $("#kbZurueck").onclick  = kbZurueck;
+
+/* ══ LIVE ORDNEN ══════════════════════════════════════════════════════════════════════════════════════════════
+   Wunsch 25.10.: „Per Drag and drop alle Kacheln und Flächen wie Blöcke verschieben, live in der Ansicht vom Hub; beim
+   Draufdrücken kann man es bearbeiten.“ Die Vorschau (derselbe Hub, in einem Rahmen) bekommt den Modus ordnen: Der Hub
+   lässt dort Flächen und Kacheln greifen und MELDET dem Board, was verschoben oder angetippt wurde (vorschauOrdnenFertig /
+   vorschauOrdnenTipp). Das Board schreibt es in seine zwei Stände — AFBSTAND (Aufbau, hub_bloecke) und KACHELSTAND
+   (hub_kacheln, samt Rubrik) — und schickt die Vorschau neu. Gespeichert wird erst mit „Ordnung übernehmen“. */
+function loSage(text){ const e = $("#loSage"); if(e) e.textContent = text; }
+function loAn(an){
+  LO_AN = !!an;
+  const k = $("#loAn"), karte = $("#loKarte"), sich = $("#loSichern");
+  if(k){ k.setAttribute("aria-pressed", String(LO_AN)); k.textContent = LO_AN ? "Ordnen beenden" : "Ordnen starten"; }
+  if(karte) karte.dataset.an = LO_AN ? "1" : "0";
+  if(sich) sich.hidden = !LO_AN && !LO_GEAENDERT;
+  const r = document.querySelector(".gh-vorschau");
+  if(r){
+    r.classList.toggle("ordnen", LO_AN);
+    if(LO_AN){ delete r.dataset.autoZu; r.classList.remove("zu"); r.classList.add("gross"); }
+    ghKnoepfe();
+  }
+  const bis = h => { try{ if(h && h.bereit) h.frame.contentWindow.vorschauOrdnen(LO_AN); }catch(e){} };
+  /* Der Hub bekommt zuerst den vollen Aufbau (Hüllen der Blöcke), dann den Modus. */
+  hvStartseite(LO_AN ? "kacheln" : "");
+  const h = hvAlle().gestalten;
+  bis(h);
+  if(h) setTimeout(() => bis(hvAlle().gestalten), 250);
+  loSage(LO_AN ? "Bereit: Halten Sie eine Fläche oder Kachel gedrückt und ziehen Sie sie an die neue Stelle." : (LO_GEAENDERT ? "Beendet. Die Ordnung ist noch nicht übernommen." : ""));
+  if(LO_AN && r) window.scrollTo({ top: window.scrollY + r.getBoundingClientRect().top - (document.querySelector("header") || {getBoundingClientRect:()=>({height:0})}).getBoundingClientRect().height - 8 });
+}
+$("#loAn").onclick = () => loAn(!LO_AN);
+
+/* Reihenfolge der Blöcke aus der Vorschau: Was der Hub nicht zeigt (ausgeblendet, ohne Inhalt), behält seinen Platz
+   hinter dem sichtbaren Vorgänger — nichts verschwindet, weil es nicht zu sehen war (§7). */
+function loBloeckeSetzen(ids){
+  afbAbgleichen();
+  const alt = AFBSTAND.slice(), sicht = new Set(ids);
+  const neu = ids.map(id => afbFinden(id)).filter(Boolean);
+  const dazu = []; let vor = null;
+  alt.forEach(b => { if(sicht.has(b.id)) vor = b.id; else dazu.push({ b, nach: vor }); });
+  const eingefuegt = {};
+  dazu.forEach(({ b, nach }) => {
+    const i = nach ? neu.findIndex(x => x.id === nach) : -1;
+    const n = eingefuegt[nach || ""] = (eingefuegt[nach || ""] || 0) + 1;
+    neu.splice(i + n, 0, b);
+  });
+  if(neu.length === alt.length && neu.every((b, i) => b === alt[i])) return false;
+  AFBGEAENDERT = true; AFBSTAND = neu;
+  afbGeaendert(); afbZeichnen();
+  return true;
+}
+/* Eine Kachel an eine Stelle einer Rubrik: vor/hinter ihre Nachbarn im Hub; ohne Nachbarn ans Ende der Rubrik. */
+function loKachelSetzen(d){
+  const k = kbFinden(d.s); if(!k) return false;
+  const ziel = kbGruppeSauber(d.gruppe) || kbGruppeVon(d.s), v = (kbPlan(d.s) || {}).gruppe;
+  const vorher = KACHELSTAND.map(x => x.schluessel + "|" + kbGruppeVon(x.schluessel)).join();
+  KACHELSTAND = KACHELSTAND.filter(x => x !== k);
+  k.gruppe = ziel === v ? "" : ziel;
+  let i = -1;
+  if(d.davor) i = KACHELSTAND.findIndex(x => x.schluessel === d.davor);
+  else if(d.danach){ i = KACHELSTAND.findIndex(x => x.schluessel === d.danach); if(i >= 0) i++; }
+  if(i < 0){
+    let letzte = -1;
+    KACHELSTAND.forEach((x, j) => { if(kbGruppeVon(x.schluessel) === ziel) letzte = j; });
+    i = letzte > -1 ? letzte + 1 : KACHELSTAND.length;
+  }
+  KACHELSTAND.splice(i, 0, k);
+  kbRubrikenZusammenhalten();
+  return KACHELSTAND.map(x => x.schluessel + "|" + kbGruppeVon(x.schluessel)).join() !== vorher;
+}
+/* Vom Hub gerufen (window.parent.vorschauOrdnenFertig). Eine Ausnahme hier dürfte den Hub nie stören — er fängt sie ab. */
+window.vorschauOrdnenFertig = function(art, d){
+  if(!LO_AN || !d) return;
+  let geaendert = false, was = "";
+  if(art === "block" && Array.isArray(d.ids)){
+    const bloecke = d.ids.filter(x => typeof x === "string").slice(0, 60);
+    geaendert = loBloeckeSetzen(bloecke);
+    was = "Fläche verschoben";
+  }else if(art === "kachel" && typeof d.s === "string"){
+    const k = kbFinden(d.s), titel = k ? (k.titel || (kbPlan(d.s) || {}).titel || d.s) : d.s;
+    geaendert = loKachelSetzen({ s:d.s, gruppe:d.gruppe, davor:d.davor, danach:d.danach });
+    if(geaendert){ kbZeichnen(); }
+    was = "„" + titel + "“ verschoben" + (d.gruppe ? " (Rubrik „" + kbGruppeSauber(d.gruppe) + "“)" : "");
+  }
+  if(geaendert){
+    LO_GEAENDERT = true;
+    const sich = $("#loSichern"); if(sich) sich.hidden = false;
+    loSage(was + " — noch nicht übernommen.");
+  }else{
+    loSage("Am alten Platz geblieben.");
+    hvStartseite("");
+  }
+};
+/* Antippen: die Einstellungen genau dieses Stücks öffnen. */
+window.vorschauOrdnenTipp = function(art, id, gruppe){
+  if(!LO_AN || typeof id !== "string") return;
+  if(art === "kachel" && kbFinden(id)){
+    const al = $("#loAlt"); if(al) al.open = false;
+    kbZeileOeffnen(id);
+    const k = kbFinden(id);
+    loSage("Geöffnet: „" + (k.titel || (kbPlan(id) || {}).titel || id) + "“ — Einstellungen unten.");
+    return;
+  }
+  if(art === "block"){
+    afbAbgleichen();
+    const b = afbFinden(id); if(!b) return;
+    AFB_OFFEN.add(id);
+    euOeffnen("gh-aufbau"); afbZeichnen();
+    const z = document.querySelector('[data-afb="' + CSS.escape(id) + '"]');
+    if(z) z.scrollIntoView({ block:"start", behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+    loSage("Geöffnet: „" + afbName(b) + "“ — Einstellungen im Aufbau.");
+  }
+};
+/* Beide Stände zugleich übernehmen — der Wirt hat EINE Ordnung gemacht, nicht zwei. */
+async function loSichern(){
+  const k = $("#loSichern"); if(!k) return;
+  k.disabled = true; k.textContent = "Wird übernommen …";
+  try{
+    if(afbEigeneWahl() && AFBGESPEICHERT !== undefined) await afbSichern();
+    await kbSichern();
+    LO_GEAENDERT = false;
+    loSage("Übernommen. Gäste sehen die neue Ordnung beim nächsten Öffnen.");
+    if(!LO_AN) k.hidden = true;
+  }catch(e){ loSage("Nicht gespeichert, bitte Verbindung prüfen."); }
+  k.disabled = false; k.textContent = "Ordnung übernehmen";
+}
+$("#loSichern").onclick = loSichern;
+
 $("#kbBlattOk").onclick  = kbZuschnittFertig;
 $("#kbBlattWeg").onclick = kbSchliessen;
 /* Neben das Blatt tippen schließt — wie bei den anderen Blättern. */

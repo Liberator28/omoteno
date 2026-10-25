@@ -17,7 +17,7 @@
    hallo@omoteno.de
   ═══════════════════════════════════════════════════════════════════
 -->
-<html lang="de" translate="no">
+<html lang="de" translate="no" data-kopfband="balken">
 <head>
 <meta charset="utf-8">
 <!-- Der Hub übersetzt sich SELBST in zwölf Sprachen (SPRACHEN weiter
@@ -705,6 +705,12 @@ body[data-zierrat="tusche"] .raum-tusche{display:block}
   transition:filter .9s ease;
 }
 .guss .schicht{transform-origin:50% 0;fill:var(--band);transition:fill .9s ease}
+/* Welcher Schmuck unter dem Kopfband steht, steht schon im <html>-Tag (der Erzeuger schreibt data-kopfband aus dem
+   Markenblatt): so malt der erste Anstrich gleich das Richtige, kein Guss, der erst per Skript wieder verschwindet.
+   Vorgabe seit 25.10.: "balken" — ein flaches Band mit abgerundeten Unterkanten. Den Schokoguss trägt nur, wer
+   ausdrücklich kopfband:"guss" wählt (Choco L'AMouR; zum Thema passt er, anderswo nicht). */
+html:not([data-kopfband="guss"]) .guss{display:none}
+html[data-kopfband="balken"] header{border-radius:0 0 28px 28px;box-shadow:var(--guss-schatten);margin-bottom:30px}
 .trikolore{position:absolute;top:100%;left:0;right:0;height:4px;pointer-events:none;
   background:linear-gradient(90deg, #009246 0 33.34%, #F4F5F0 33.34% 66.67%, #CE2B37 66.67% 100%);
   box-shadow:0 2px 6px rgba(0,0,0,.25)}
@@ -1295,6 +1301,15 @@ a.tipp.mitmenge{padding-bottom:62px}
 .sblock-eigen.look-band .knopf{background:var(--band-text);color:var(--band)}
 .sblock-reihe .sblock-eigen{display:flex;flex-direction:column;justify-content:center}
 .sblock-reihe .sblock-eigen .knopf{align-self:flex-start}
+/* Live ordnen (nur in der Vorschau des Boards, html.ordnen): Flächen und Kacheln zeigen ihre Ränder und ihren Namen, ein
+   gehaltenes Stück hebt sich ab. Reine Bearbeitungshilfe — der Gast sieht nichts davon, deshalb feste Farben. */
+html.ordnen, html.ordnen *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html.ordnen .sblock{position:relative;outline:2px dashed #FF3D81;outline-offset:-2px;border-radius:12px;cursor:grab}
+html.ordnen .sblock::after{content:attr(data-ordnen-name);position:absolute;left:8px;top:8px;z-index:5;max-width:calc(100% - 16px);padding:3px 10px;
+  border-radius:11px;background:#FF3D81;color:#10151C;font:700 11px/1.3 system-ui,-apple-system,sans-serif;pointer-events:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+html.ordnen a.kachel{outline:2px dashed #FFB300;outline-offset:-2px;cursor:grab;-webkit-user-drag:none}
+html.ordnen .ordnen-hebt{position:relative;z-index:60;pointer-events:none;box-shadow:0 16px 32px rgba(0,0,0,.45);opacity:.95;outline-style:solid}
+html.ordnen-zieht, html.ordnen-zieht body{cursor:grabbing;overscroll-behavior:contain}
 
 /* Schnellzugriff (18.10., Wunsch: „Quick-Access-Knöpfe zu Meine
    Auswahl, Speisekarte, Foodroulette und Service rufen“, Vorbild der
@@ -12025,6 +12040,191 @@ document.addEventListener("click", e => {
          window.parent.vorschauTextGewaehlt(k, seite); }catch(x){}
 }, true);
 
+/* ── Live ordnen in der Vorschau des Boards ────────────────────────
+   Im Board („Gast-Hub gestalten → Kacheln → Live ordnen“) wird die Vorschau zur Arbeitsfläche: Flächen (die Blöcke der
+   Startseite) und Kacheln lassen sich festhalten und an eine neue Stelle ziehen; ein kurzer Tipp öffnet im Board ihre
+   Einstellungen. Der Hub ordnet dabei nur sein eigenes Abbild um und MELDET das Ergebnis (vorschauOrdnenFertig/-Tipp im
+   Board) — geschrieben wird im Board, für Gäste gilt es erst nach „Übernehmen“.
+   Finger: erst nach 260 ms Halten (vorher bleibt es ein Rollen der Vorschau), danach rollt nichts mehr mit; Maus: nach 6 px
+   Zug. Ein Halten ohne Zug zählt als Tipp. Am Rand rollt die Vorschau von selbst. Die Rubrik einer Kachel steht an ihrem
+   Bereich (data-sb-auf) — keine zweite Kennung im Auszeichnungstext. */
+let ordnenAn = false;
+const ORDNEN = { s:null, aktiv:false, timer:0, px:0, py:0, lauf:0 };
+function vorschauOrdnen(an){
+  ordnenAn = !!an && VORSCHAU;
+  document.documentElement.classList.toggle("ordnen", ordnenAn);
+  if(!ordnenAn) ordnenAbbrechen();
+  ordnenBeschriften();
+}
+function ordnenBeschriften(){
+  if(!ordnenAn) return;
+  document.querySelectorAll(".sblock[data-sblock]").forEach(b => {
+    const id = b.getAttribute("data-sblock");
+    const n = BLOCK_NAMEN[id] || (id.indexOf("rubrik:") === 0 ? "Rubrik „" + id.slice(7) + "“" : "Eigener Textblock");
+    if(b.getAttribute("data-ordnen-name") !== n) b.setAttribute("data-ordnen-name", n);
+  });
+}
+/* EIN Beobachter (§4.5): Jedes Neuzeichnen der Startseite bekommt seine Namensschilder. */
+if(typeof MutationObserver === "function")
+  new MutationObserver(() => { if(ordnenAn) ordnenBeschriften(); }).observe(document.documentElement, { childList:true, subtree:true });
+
+function ordnenRubrik(el){
+  const sec = el.closest && el.closest(".sbereich"), k = sec && sec.querySelector("[data-sb-auf]");
+  return k ? k.getAttribute("data-sb-auf") : "";
+}
+function ordnenElternBoard(){ try{ return window.parent && window.parent !== window ? window.parent : null; }catch(e){ return null; } }
+function ordnenTipp(s){
+  const p = ordnenElternBoard();
+  try{ if(p && typeof p.vorschauOrdnenTipp === "function") p.vorschauOrdnenTipp(s.art, s.id, s.art === "kachel" ? ordnenRubrik(s.el) : ""); }catch(e){}
+}
+function ordnenAbbrechen(){
+  clearTimeout(ORDNEN.timer); cancelAnimationFrame(ORDNEN.lauf);
+  const s = ORDNEN.s; ORDNEN.s = null;
+  if(s && ORDNEN.aktiv){ ordnenAufraeumen(s.el); try{ zeichne(); }catch(e){} }
+  ORDNEN.aktiv = false;
+}
+function ordnenAufraeumen(el){
+  el.classList.remove("ordnen-hebt");
+  el.style.removeProperty("transform"); el.style.removeProperty("transition");
+  document.documentElement.classList.remove("ordnen-zieht");
+}
+function ordnenStart(){
+  const s = ORDNEN.s; if(!s || ORDNEN.aktiv) return;
+  ORDNEN.aktiv = true;
+  const r = s.el.getBoundingClientRect();
+  s.gx = s.x - r.left; s.gy = s.y - r.top; s.weg = 0;
+  s.el.classList.add("ordnen-hebt");
+  document.documentElement.classList.add("ordnen-zieht");
+  try{ document.documentElement.setPointerCapture(s.pid); }catch(e){}
+  ordnenBewegen();
+  ORDNEN.lauf = requestAnimationFrame(ordnenRollen);
+}
+/* Am oberen und unteren Rand der Vorschau rollt sie von selbst — sonst käme man nicht zu den Flächen weiter unten. */
+function ordnenRollen(){
+  if(!ORDNEN.aktiv) return;
+  const h = window.innerHeight, rand = Math.min(72, h * 0.18), box = document.scrollingElement || document.documentElement;
+  let v = 0;
+  if(ORDNEN.py < rand) v = -Math.ceil((rand - ORDNEN.py) / 5);
+  else if(ORDNEN.py > h - rand) v = Math.ceil((ORDNEN.py - (h - rand)) / 5);
+  if(v){ const alt = box.scrollTop; box.scrollTop = alt + v; if(box.scrollTop !== alt) ordnenBewegen(); }
+  ORDNEN.lauf = requestAnimationFrame(ordnenRollen);
+}
+function ordnenBewegen(){
+  const s = ORDNEN.s; if(!s || !ORDNEN.aktiv) return;
+  const el = s.el;
+  s.weg = Math.max(s.weg, Math.hypot(ORDNEN.px - s.x, ORDNEN.py - s.y));
+  el.style.setProperty("transition", "none", "important");
+  el.style.setProperty("transform", "none", "important");
+  ordnenPlatz();
+  const n = el.getBoundingClientRect();
+  el.style.setProperty("transform", "translate(" + (ORDNEN.px - s.gx - n.left).toFixed(1) + "px," + (ORDNEN.py - s.gy - n.top).toFixed(1) + "px) scale(1.02)", "important");
+}
+/* Wohin gehört das gehaltene Stück jetzt? Blöcke: nach der Höhe des Zeigers; Kacheln: zur nächsten Kachel, in dem
+   Bereich, über dem der Zeiger steht (ein leerer Bereich nimmt sie am Ende). */
+function ordnenPlatz(){
+  const s = ORDNEN.s, el = s.el, px = ORDNEN.px, py = ORDNEN.py;
+  if(s.art === "block"){
+    const liste = Array.from(document.querySelectorAll(".sblock[data-sblock]")).filter(b => b !== el);
+    if(!liste.length) return;
+    const nach = liste.find(b => { const r = b.getBoundingClientRect(); return py < r.top + r.height / 2; });
+    const ref = nach || liste[liste.length - 1];
+    const huelle = ref.parentElement && ref.parentElement.classList.contains("sblock-reihe") ? ref.parentElement : ref;
+    ordnenVerschieben(el, huelle.parentNode, nach ? huelle : huelle.nextSibling, liste);
+    return;
+  }
+  const alle = Array.from(document.querySelectorAll("a.kachel[data-kachel]")).filter(k => k !== el);
+  const sec = document.elementsFromPoint(px, py).map(x => x.closest && x.closest(".sbereich")).find(Boolean);
+  const pool = sec ? alle.filter(k => k.closest(".sbereich") === sec) : alle;
+  if(sec && !pool.length){ const g = sec.querySelector(".gitter"); if(g) ordnenVerschieben(el, g, null, alle); return; }
+  if(!pool.length) return;
+  let best = null, bd = Infinity;
+  pool.forEach(k => {
+    const r = k.getBoundingClientRect();
+    const dx = Math.max(r.left - px, 0, px - r.right), dy = Math.max(r.top - py, 0, py - r.bottom);
+    const d = dx * dx + dy * dy + 0.001 * (Math.pow(px - (r.left + r.right) / 2, 2) + Math.pow(py - (r.top + r.bottom) / 2, 2));
+    if(d < bd){ bd = d; best = k; }
+  });
+  const r = best.getBoundingClientRect(), gr = best.parentElement.getBoundingClientRect();
+  const breit = r.width > gr.width * 0.6;
+  const vorher = breit ? py < r.top + r.height / 2 : px < r.left + r.width / 2;
+  ordnenVerschieben(el, best.parentNode, vorher ? best : best.nextSibling, alle);
+}
+/* Umhängen mit Nachrücken: Die anderen gleiten von ihrer alten an die neue Stelle (nur transform, §4.3). */
+function ordnenVerschieben(el, eltern, vorKnoten, andere){
+  if(vorKnoten === el || (el.parentNode === eltern && el.nextSibling === vorKnoten)) return;
+  const vor = new Map(andere.map(x => [x, x.getBoundingClientRect()]));
+  eltern.insertBefore(el, vorKnoten);
+  if(ruhigeBewegung()) return;
+  andere.forEach(x => {
+    const a = vor.get(x), b = x.getBoundingClientRect(), dx = a.left - b.left, dy = a.top - b.top;
+    if(Math.abs(dx) < 1 && Math.abs(dy) < 1) return;
+    x.style.transition = "none"; x.style.transform = "translate(" + dx.toFixed(1) + "px," + dy.toFixed(1) + "px)";
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      x.style.transition = "transform .18s ease-out"; x.style.transform = "";
+      setTimeout(() => { x.style.transition = ""; }, 240);
+    }));
+  });
+}
+function ordnenAblegen(gelungen){
+  const s = ORDNEN.s; if(!s) return;
+  cancelAnimationFrame(ORDNEN.lauf); ORDNEN.aktiv = false;
+  const el = s.el;
+  ordnenAufraeumen(el);
+  try{ document.documentElement.releasePointerCapture(s.pid); }catch(e){}
+  ORDNEN.s = null;
+  const p = ordnenElternBoard();
+  if(!gelungen){ try{ zeichne(); }catch(e){} return; }
+  /* Ein Halten ohne nennenswerten Zug ist ein Tipp, kein Ablegen. */
+  if(s.weg < 8){ try{ zeichne(); }catch(e){} ordnenTipp(s); return; }
+  let nutzlast;
+  if(s.art === "block"){
+    nutzlast = { ids: Array.from(document.querySelectorAll(".sblock[data-sblock]")).map(b => b.getAttribute("data-sblock")) };
+  }else{
+    const vor = el.nextElementSibling, nach = el.previousElementSibling;
+    nutzlast = { s: s.id, gruppe: ordnenRubrik(el),
+                 davor: vor && vor.matches && vor.matches("a.kachel[data-kachel]") ? vor.getAttribute("data-kachel") : null,
+                 danach: nach && nach.matches && nach.matches("a.kachel[data-kachel]") ? nach.getAttribute("data-kachel") : null };
+  }
+  try{ if(p && typeof p.vorschauOrdnenFertig === "function") p.vorschauOrdnenFertig(s.art, nutzlast); else zeichne(); }catch(e){ try{ zeichne(); }catch(x){} }
+}
+document.addEventListener("pointerdown", e => {
+  if(!ordnenAn || (e.pointerType === "mouse" && e.button !== 0)) return;
+  const k = e.target.closest && e.target.closest("a.kachel[data-kachel]"), b = e.target.closest && e.target.closest(".sblock[data-sblock]");
+  const el = k || b; if(!el) return;
+  ordnenAbbrechen();
+  e.stopPropagation();   /* keine eigenen Druck-Effekte des Hubs unter dem Finger */
+  ORDNEN.s = { art: k ? "kachel" : "block", el: el, id: k ? k.getAttribute("data-kachel") : b.getAttribute("data-sblock"),
+               x: e.clientX, y: e.clientY, pid: e.pointerId, t: performance.now(), finger: e.pointerType !== "mouse", bewegt: false, weg: 0 };
+  ORDNEN.px = e.clientX; ORDNEN.py = e.clientY;
+  if(ORDNEN.s.finger) ORDNEN.timer = setTimeout(ordnenStart, 260);
+}, true);
+document.addEventListener("pointermove", e => {
+  const s = ORDNEN.s; if(!s || e.pointerId !== s.pid) return;
+  ORDNEN.px = e.clientX; ORDNEN.py = e.clientY;
+  if(!ORDNEN.aktiv){
+    if(Math.hypot(e.clientX - s.x, e.clientY - s.y) > (s.finger ? 9 : 6)){
+      if(s.finger){ clearTimeout(ORDNEN.timer); ORDNEN.s = null; }   /* der Finger rollt: nichts ordnen */
+      else ordnenStart();
+    }
+    return;
+  }
+  e.preventDefault();
+  ordnenBewegen();
+}, true);
+["pointerup", "pointercancel"].forEach(typ => document.addEventListener(typ, e => {
+  const s = ORDNEN.s; if(!s || e.pointerId !== s.pid) return;
+  clearTimeout(ORDNEN.timer);
+  if(ORDNEN.aktiv) ordnenAblegen(typ === "pointerup");
+  else{ ORDNEN.s = null; if(typ === "pointerup" && performance.now() - s.t < 700) ordnenTipp(s); }
+}, true));
+/* Nach dem Griff rollt der Finger die Vorschau nicht mehr mit. */
+document.addEventListener("touchmove", e => { if(ORDNEN.aktiv) e.preventDefault(); }, { passive:false, capture:true });
+document.addEventListener("contextmenu", e => { if(ordnenAn) e.preventDefault(); }, true);
+/* Eine Kachel ist ein Link — der Browser beginnt mit der Maus sein EIGENES Ziehen (Adresse ablegen) und bricht damit unseren Zeiger ab (pointercancel). */
+document.addEventListener("dragstart", e => { if(ordnenAn) e.preventDefault(); }, true);
+/* Ein Tipp bedient den Hub nicht (kein Link, kein Auf-/Zuklappen): Er wurde schon beim Loslassen gemeldet. */
+document.addEventListener("click", e => { if(!ordnenAn) return; e.preventDefault(); e.stopPropagation(); }, true);
+
 /* Alle Texte, die der Gast sehen kann, nach Seite — für die Liste im
    Board. Jede Seite wird einmal als Text gebaut (nicht gezeigt), dabei
    merkt t() die Schlüssel; danach steht die Vorschau wieder, wie sie war. */
@@ -14749,15 +14949,15 @@ const TOUR = (function(){
     ".tour-loch{position:absolute;left:0;top:0;width:0;height:0;border-radius:16px;pointer-events:none;opacity:0;" +
       "box-shadow:0 0 0 2px var(--tour-akzent,#fff),0 0 0 200vmax rgba(8,6,5,.68);transition:transform .32s cubic-bezier(.3,.7,.3,1),opacity .2s ease}" +
     ".tour-wurzel[data-ohneloch=\"0\"] .tour-loch{opacity:1}" +
-    ".tour-loch::after{content:\"\";position:absolute;inset:-6px;border-radius:20px;border:2px solid var(--tour-akzent,#fff);opacity:0;animation:tour-puls 1.8s ease-out infinite}" +
+    ".tour-loch::after{content:\"\";position:absolute;inset:-6px;border-radius:20px;border:2px solid var(--tour-akzent,#fff);opacity:0;animation:tour-puls 1.8s cubic-bezier(.23,1,.32,1) infinite}" +
     "@keyframes tour-puls{0%{opacity:.7;transform:scale(.97)}80%,100%{opacity:0;transform:scale(1.06)}}" +
     ".tour-hand{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:none;opacity:0}" +
     ".tour-hand::before{content:\"\";position:absolute;inset:0;border-radius:50%;background:var(--tour-akzent,#fff);opacity:.6;box-shadow:0 0 0 3px rgba(255,255,255,.55),0 6px 16px rgba(0,0,0,.45)}" +
     ".tour-hand::after{content:\"\";position:absolute;inset:-10px;border-radius:50%;border:2px solid var(--tour-akzent,#fff);opacity:0}" +
-    ".tour-hand[data-demo=\"tippen\"]{opacity:1;animation:tour-tippen 1.7s ease-in-out infinite}" +
-    ".tour-hand[data-demo=\"tippen\"]::after{animation:tour-welle 1.7s ease-out infinite}" +
-    ".tour-hand[data-demo=\"halten\"]{opacity:1;animation:tour-halten 2.2s ease-in-out infinite}" +
-    ".tour-hand[data-demo=\"halten\"]::after{animation:tour-welle 2.2s ease-out infinite}" +
+    ".tour-hand[data-demo=\"tippen\"]{opacity:1;animation:tour-tippen 1.7s cubic-bezier(.45,0,.55,1) infinite}" +
+    ".tour-hand[data-demo=\"tippen\"]::after{animation:tour-welle 1.7s cubic-bezier(.23,1,.32,1) infinite}" +
+    ".tour-hand[data-demo=\"halten\"]{opacity:1;animation:tour-halten 2.2s cubic-bezier(.45,0,.55,1) infinite}" +
+    ".tour-hand[data-demo=\"halten\"]::after{animation:tour-welle 2.2s cubic-bezier(.23,1,.32,1) infinite}" +
     ".tour-hand[data-demo=\"wischen\"]{opacity:1;animation:tour-wischen 2s cubic-bezier(.5,0,.3,1) infinite}" +
     ".tour-hand[data-demo=\"wischen-hoch\"]{opacity:1;animation:tour-hoch 2s cubic-bezier(.5,0,.3,1) infinite}" +
     "@keyframes tour-tippen{0%,100%{transform:scale(1)}40%{transform:scale(.78)}60%{transform:scale(.78)}}" +

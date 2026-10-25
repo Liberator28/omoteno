@@ -79,7 +79,7 @@ const FIGURNAMEN       = ausGeruest(/const AVATAR_FIGUREN = \{([\s\S]*?)\n\};/, 
    an der man das automatisch ablesen könnte: kopfbandSetzen() im
    Gerüst kennt nur "laternen" als Sonderfall, alles andere bleibt
    beim Guss. */
-const KOPFBAND_ARTEN    = ["guss", "laternen", "trikolore"];
+const KOPFBAND_ARTEN    = ["balken", "guss", "laternen", "trikolore"];
 /* Zierrat: zusätzlicher, wählbarer Gestaltungs-Zierrat (Bambus im
    Kopf, Tuschekleckse statt Farbwolken, Pfingstrosen-Knospe vor jeder
    .bereich-Überschrift). Fehlt zierrat ganz, bleibt der Hub wie
@@ -401,8 +401,8 @@ function pruefeMarkenblatt(mb){
     F("avatar.figur unbekannt: " + mb.avatar.figur +
       " — erlaubt: " + FIGURNAMEN.join(", "));
   /* Derselbe Grund wie bei figur: ein Tippfehler bliebe wortlos beim
-     Guss statt beim gewählten Schmuck. Fehlt kopfband ganz, bleibt es
-     beim Guss — die Vorgabe für jedes bestehende Markenblatt. */
+     Balken statt beim gewählten Schmuck. Fehlt kopfband ganz, gilt der
+     flache Balken (seit 25.10.; den Guss trägt nur ein Markenblatt mit kopfband:"guss"). */
   if(mb.kopfband !== undefined && KOPFBAND_ARTEN.indexOf(mb.kopfband) < 0)
     F("kopfband unbekannt: " + mb.kopfband +
       " — erlaubt: " + KOPFBAND_ARTEN.join(", "));
@@ -846,6 +846,12 @@ function erzeuge(slug, nurPruefen){
   if(!/(?<!prefers-)color-scheme:[^;]*;/.test(aus))
     throw new Error('Die Vorlage hat keinen CSS-Ruckfall :root{color-scheme:...} mehr');
   aus = aus.replace(/(?<!prefers-)color-scheme:[^;]*;/, "color-scheme:" + schema + ";");
+
+  /* Kopfband-Schmuck schon im ersten Anstrich: data-kopfband im <html>-Tag. Fehlt kopfband, gilt der flache Balken —
+     den Guss trägt nur, wer ihn ausdrücklich wählt. */
+  if(!/<html [^>]*data-kopfband="balken"/.test(aus))
+    throw new Error('Die Vorlage hat kein data-kopfband im <html>-Tag');
+  aus = aus.replace(/(<html [^>]*data-kopfband=")balken(")/, "$1" + (mb.kopfband || "balken") + "$2");
 
   /* Der Vorführblock fliegt raus, wenn ihn niemand bestellt hat.
 

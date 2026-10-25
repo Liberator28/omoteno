@@ -990,6 +990,27 @@ wirklich läuft.
 
 ---
 
+### 4.6 Ein Link beginnt sein eigenes Ziehen — und bricht den Zeiger ab
+
+> **Vorfall, im ersten Lauf von `pruef-ordnen.js` gefunden (25.10.).** Das
+> Ordnen der Startseite in der Vorschau ließ sich mit der Maus an den
+> **Flächen** ziehen, an den **Kacheln** nie: `hebt` blieb leer, die
+> Reihenfolge unverändert, kein Fehler, keine Meldung. Eine Kachel ist ein
+> `<a href>`. Zieht man einen Link mit der Maus, beginnt Chromium sein
+> EIGENES Ziehen (die Adresse ablegen) und schickt dem Skript
+> `pointercancel` — ordnen war damit vorbei, bevor es anfing. Mein
+> Erkundungsskript zuvor hatte nur eine Fläche gezogen und „es geht“
+> gemeldet.
+
+Wer Links oder Bilder per Zeiger ziehbar machen will, schaltet das Ziehen
+des Browsers ab: `dragstart` mit `preventDefault()` (in der Fangphase) und
+`-webkit-user-drag:none`; auf dem Finger zusätzlich `-webkit-touch-callout:none`
+und `contextmenu` verhindern. Und die Probe zieht **jede Art** von Stück
+(Fläche UND Kachel), nicht eine stellvertretend (§8.1g F) — und sie misst
+das Ziel bei jedem Schritt neu, ohne zu rollen: Der Rand rollt von selbst,
+ein einmal gemessenes Ziel wandert weg (`scrollIntoView` ohne
+`behavior:"instant"` rollt weich — die Messung war dann veraltet).
+
 ## 5 · Farben, die der Kunde wählt
 
 ### 5.1 Schriftfarbe auf farbigem Grund wird gerechnet, nie gesetzt
@@ -2111,7 +2132,8 @@ Dazu je nach Änderung:
 | **Allergene/Zusatzstoffe, Kennziffern-Zuordnung** | `pruefungen/pruef-stoffe.js` (braucht `dist/`) — Rundlauf admin.html ↔ hub.vorlage.html Ziffer für Ziffer, dazu die Überlauf-Prüfung (scrollWidth/scrollHeight) am längsten echten Zusatzstoff-Text |
 | Farben, hell oder dunkel | `pruefungen/pruef-lesbarkeit.js` (braucht `dist/`) — dazu JEDE Stufe der Helligkeitsleiter (Weiß … Schwarz, aus `farbStufeAuf`) in JEDEM Haus über alle Gastseiten, Voraussetzung „Stufe angekommen“ selbst gemessen; Verläufe mit `color(srgb …)`-Stopps werden gelesen (vorher stieg die Prüfung am Foodroulette-Rad vorbei: 1,11:1 Fehlalarm). **Ehrliche Grenze:** Die ORIGINAL-Paletten misst sie weiterhin nur am ersten Haus — Choco/Minhkeey am Tag haben heute Stellen unter 4,5:1 (Preis, „Beliebt“, „Vegan“), siehe Bericht 11.10. |
 | **Farben des Hubs im Board (hub_stil.farben), Helligkeitsstufen, „Lesbar machen“** | `pruefungen/pruef-farben.js` (braucht `dist/`) — geteilter Block FARBEN Hub = Board Zeichen für Zeichen; jede Stufe × jedes Haus (zweite Quelle `markenblaetter/*.json`) × Tag/Abend lesbar, leise/stille Schrift ≥ 4,5:1; `farbPruefen` lässt nur sechs Hexwerte je Fassung durch (Anführungszeichen, `#fff`, Farbname, fehlende Rolle, Unlesbares → Markenblatt); Board über `betriebWaehlen()` mit der ECHTEN Hub-Datei in der Vorschau: ohne gespeicherten Stand das Markenblatt DES HUBS (`farbMarke()`), Tipp auf Stufe färbt den Rahmen (am Rahmen gemessen), Abend-Reiter und -Schalter, unlesbar sperrt mit Satz und schreibt nichts, „Übernehmen“ führt `hub_stil` zusammen (< 600 Bytes), nach dem Neuöffnen der gespeicherte Stand (§8.1m), „Auf Markenblatt zurück“ nimmt NUR `farben`, Choco-Gold (3,0:1) → Satz + „Lesbar machen“ (Farbton bleibt), Team gesperrt; Hub mit gestellter Antwort: gemalt Tag/Abend, gemerkt nur Geprüftes, zweiter Besuch ohne Netz farbig ab dem ersten Anstrich, ohne `farben` zurück aufs Markenblatt |
-| **Kopfband-Schmuck (Guss/Laternen), neue Markenblatt-Varianten am Kopf** | `pruefungen/pruef-kopfband.js` (braucht `dist/`) — welches Band sichtbar ist je Haus, reduzierte Bewegung |
+| **Kopfband-Schmuck (Guss/Laternen/Trikolore/flacher Balken), neue Markenblatt-Varianten am Kopf (`kopfband`)** | `pruefungen/pruef-kopfband.js` (braucht `dist/`) — **Vorgabe ist der flache Balken** (Unterkanten rund, 28 px, Schatten; `data-kopfband="balken"` am `<html>`, vom Erzeuger gesetzt); den Schokoguss trägt NUR, wer `"kopfband":"guss"` im Markenblatt hat (Choco). Anlass 25.10. (Foto vom Nutzer): „jeder neue Hub hat auch einen Guss im Header — das war speziell nur für Choco Lamour“; der Guss stand fest im Gerüst für alle (§8.1a, eingebrannte Fremdangabe). Gemessen wird das GEMALTE (`display`, Radius, Schatten), nicht das `hidden`-Attribut; fünf Häuser (Guss nur Choco, Balken bei Blend/Nordstern, Laternen Minh Keey, Trikolore Piu Gusto), reduzierte Bewegung. Unbekannter Wert im Markenblatt → Erzeuger lehnt laut ab |
+| **Startseite live in der Hub-Vorschau ordnen („Ordnen starten“ unter Gast-Hub → Kacheln): Flächen und Kacheln ziehen, Tippen bearbeitet** | `pruefungen/pruef-ordnen.js` (braucht `dist/`) — die Naht am Stück (§8.1i): echtes Board, die ECHTE Hub-Datei als Rahmen (Blend und Choco), echte Zeiger. Ruhe: ohne Modus keine Klasse/Schilder im Hub; Maus: Fläche nach oben ziehen → Hub-Reihenfolge = `AFBSTAND` (Unsichtbares behält seinen Platz, §7), nichts geschrieben; Kachel innerhalb der Rubrik und IN EINE ANDERE (`kbGruppeVon`, `kbRoh()` trägt `gruppe`), Rubriken zerfallen nicht; Tipp auf Kachel/Fläche öffnet genau deren Einstellungen, der Hub bleibt auf der Startseite; „Ordnung übernehmen“ schreibt `hub_bloecke` UND `hub_kacheln`; Beenden räumt auf. Finger (CDP-Touch): Zug vor 260 ms rollt nur, Halten hebt, Seite rollt nicht mit, Fläche UND Kachel (andere Rubrik) mit dem Finger, kurzer Tipp öffnet; `dragstart` an Links verhindert (§4.6); reduzierte Bewegung: Endstand stimmt, keine Übergänge beim Greifen; Team: Bereich `inert`, Tipp schaltet nichts ein. Die alte Anordnung bleibt eingeklappt darunter (`#loAlt`); `pruef-kachelraster`, `pruef-rubriken`, `pruef-bloecke` öffnen sie. **Ehrliche Grenzen:** kopfloses Chromium; Vorführhaus (kein echtes Speichern: Nutzlast gegen ein gestelltes `db` gemessen); auf einem iPhone nicht gesehen — insbesondere das lange Drücken auf einem Link (iOS-Vorschau) ist nur durch `-webkit-touch-callout:none`/`contextmenu` abgedeckt, nicht beobachtet |
 | **Zierrat (Bambus/Tuschekleckse/Pfingstrose), neue Markenblatt-Stile** | `pruefungen/pruef-zierrat.js` (braucht `dist/`) — nur beim gewählten Haus sichtbar, kein Leck in andere Häuser, kein horizontales Überlaufen bei mehreren Breiten, Tag/Abend |
 | **Thema (feste Neueinfärbung eines einzelnen Hauses, z. B. "kaiserlich")** | `pruefungen/pruef-thema.js` (braucht `dist/`) — Schalter gesetzt, Rahmen/Knopf-Stil und Kopf-Schrift wirklich da, kein Leck in andere Häuser |
 | **Helle Fassung von Board und Küche, gewählte Zustände, Anmeldung im Hellen, „Ganz schwarz“/„Ganz weiß“** | `pruefungen/pruef-hell.js` — **ganz weiß/schwarz** über den echten Knopf (Board „Bildschirm“, Küche Ansicht-Reihe): Grund am `body` wirklich #FFF/#000, `color-scheme` folgt der Fläche, jede sichtbare Schrift ≥ 4,5:1 auf ihrer gemischten Fläche (auch auf einem absolut darunterliegenden Geschwister wie dem Segment-Schieber), alter Küchen-Speicher `hell:true/false` behält seine Wahl, Anmeldung bei Wahl GEGEN das Gerät; dazu jedes Bedienelement (auch in versteckten Blättern) ohne schwarze, unbunte Fläche im Hellen; gewählte Zustände Schrift ≥ 4,5:1 und vom Nachbarn unterscheidbar; Gegenfall dunkel. Voraussetzung wird selbst geprüft (gewählte Stufe unter einer Bestellung, Spur und Einstellungen der Küche über die echten Griffe); dazu `#tor` (Anmeldung) bei HELLER Wahl UND dunklem Gerät (`colorScheme:"dark"` im Kontext) — Kontrast jedes Feldes, `color-scheme` folgt der Wahl statt dem Gerät, `-webkit-text-fill-color` ausdrücklich gesetzt |

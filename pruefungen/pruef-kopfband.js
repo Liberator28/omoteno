@@ -85,13 +85,17 @@ function pruef(b, t, d) {
 (async () => {
   const browser = await chromium.launch();
 
-  for (const [haus, erwartetGuss, erwartetLaternen] of [
-    ["chocolamour", false, true],
-    ["blend", false, true],
-    ["minhkeey", true, false],
+  /* 25.10.: den Schokoguss trägt NUR Choco (kopfband:"guss" im Markenblatt). Wer nichts wählt (Blend, Nordstern) bekommt
+     einen flachen Balken mit abgerundeten Unterkanten; Laternen und Trikolore bleiben ausdrückliche Wahlen. Gemessen wird
+     das GEMALTE (display), nicht das hidden-Attribut: der Guss ist seither per CSS aus, nicht per Skript. */
+  for (const [haus, gussSichtbar, laternenVerborgen, balken] of [
+    ["chocolamour", true, true, false],
+    ["blend", false, true, true],
+    ["nordstern", false, true, true],
+    ["minhkeey", false, false, false],
     /* 17.10.: die Pizzeria trägt statt Guss eine Trikolore-Kante —
        Guss UND Laternen weg, die Kante sichtbar (unten geprüft). */
-    ["piugusto", true, true],
+    ["piugusto", false, true, false],
   ]) {
     const seite = await (await browser.newContext()).newPage();
     const konsole = [];
@@ -101,16 +105,21 @@ function pruef(b, t, d) {
     await seite.waitForTimeout(300);
 
     const zustand = await seite.evaluate(() => ({
-      gussVerborgen: document.querySelector(".guss").hasAttribute("hidden"),
+      gussSichtbar: !document.querySelector(".guss").hasAttribute("hidden") && getComputedStyle(document.querySelector(".guss")).display !== "none",
+      kopfattr: document.documentElement.getAttribute("data-kopfband"),
+      radius: parseFloat(getComputedStyle(document.querySelector("header")).borderBottomLeftRadius) || 0,
+      schatten: getComputedStyle(document.querySelector("header")).boxShadow !== "none",
       laternenVerborgen: document.querySelector(".laternen").hasAttribute("hidden"),
       laternenAnzahl: document.querySelectorAll(".laternen .laterne").length,
       trikolore: (() => { const t = document.querySelector(".trikolore");
         return t ? !t.hasAttribute("hidden") && getComputedStyle(t).display !== "none" && t.getBoundingClientRect().height >= 3 : false; })(),
     }));
-    pruef(zustand.gussVerborgen === erwartetGuss,
-      haus + ": .guss hidden=" + zustand.gussVerborgen, "erwartet " + erwartetGuss);
-    pruef(zustand.laternenVerborgen === erwartetLaternen,
-      haus + ": .laternen hidden=" + zustand.laternenVerborgen, "erwartet " + erwartetLaternen);
+    pruef(zustand.gussSichtbar === gussSichtbar,
+      haus + ": Guss " + (zustand.gussSichtbar ? "gemalt" : "nicht gemalt"), "erwartet " + (gussSichtbar ? "gemalt" : "nicht gemalt") + " (data-kopfband=" + zustand.kopfattr + ")");
+    pruef(zustand.laternenVerborgen === laternenVerborgen,
+      haus + ": .laternen hidden=" + zustand.laternenVerborgen, "erwartet " + laternenVerborgen);
+    pruef((zustand.radius >= 20 && zustand.schatten) === balken,
+      haus + ": " + (balken ? "flacher Balken mit abgerundeten Unterkanten (Radius " + zustand.radius + " px, Schatten)" : "kein Balken (Radius " + zustand.radius + " px)"));
     pruef(zustand.trikolore === (haus === "piugusto"),
       haus + ": Trikolore-Kante " + (zustand.trikolore ? "sichtbar" : "verborgen"), "nur bei piugusto");
     if (haus === "minhkeey")
