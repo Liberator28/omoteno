@@ -38,7 +38,7 @@ function gerichteZeilen(bildName){
         uhr, sprache, farbe ("hell" | "dunkel" für die Wahl des Gastes), stil ("premium" erzwingen, auch bei Häusern ohne
         Schalter), layout (Objekt wie markenblatt.startlayout, null = ohne), korb ([Gerichtname, …]), hash, reduziert, skala,
         karten (Liste wie betriebe.karten, z. B. [{id:"cocktails",name:"Cocktails",aktiv:false}]), vorschau (true: wie im Board-Rahmen, vorschauSetzen() nimmt Entwürfe), optionen (Objekt wie betriebe.optionen: Gruppen für Extras/Beilagen), bloecke (Liste wie betriebe.hub_bloecke, null = ohne Aufbau), dist (anderer dist-Ordner, auch HUB_DIST), texte (Objekt wie betriebe.hub_texte), startgrafik (Objekt wie markenblatt.startgrafik, null = ohne), zeilen (Funktion: ändert die nachgestellten Gerichtzeilen — Preis, Allergene, Merkmale), gerichteFehler (true: die
-        Datenbank antwortet 500) */
+        Datenbank antwortet 500), initSkript (Text, läuft vor der Seite) */
 async function oeffneHub(browser, opt){
   opt = opt || {};
   const haus = opt.haus || "chocolamour";
@@ -52,6 +52,7 @@ async function oeffneHub(browser, opt){
   p.on("console", m => { if(m.type() === "error" && !/Failed to load resource/.test(m.text())) konsole.push(m.text().slice(0, 160)); });
   await p.clock.setFixedTime(new Date(opt.uhr || "2026-10-10T14:00:00"));
   await p.addInitScript(() => { try{ sessionStorage.setItem("omoteno-willkommen", "1"); }catch(e){} });
+  if(opt.initSkript) await p.addInitScript(opt.initSkript);   /* Text, vor jedem Skript der Seite ausgeführt (z. B. window.OMOTENO_DEMO_OHNE_GRUSS = true) */
   if(opt.vorschau) await p.addInitScript(() => { window.OMOTENO_VORSCHAU = true; });
   if(opt.sprache) await p.addInitScript(s => { try{ localStorage.setItem("tapto-sprache", s); }catch(e){} }, opt.sprache);
   if(opt.farbe) await p.addInitScript(f => { try{ localStorage.setItem("omoteno-licht", f); localStorage.setItem("tapto-licht", f); }catch(e){} }, opt.farbe);

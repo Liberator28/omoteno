@@ -2710,6 +2710,17 @@ body[data-kartenstil="flink"] .suche input{border-radius:999px}
 }
 
 /* ═══ Detailkarte zum Gericht ═══════════════════════════════════ */
+/* Der schwebende Anleitungs-Knopf (nur beim ersten Besuch): links, über der höchsten festen Leiste unten — --tour-pille-unten misst der Hub. */
+.tour-pille{position:fixed;inset-inline-start:12px;bottom:calc(var(--tour-pille-unten, 16px) - var(--vv-versatz, 0px));z-index:46;display:flex;align-items:center;
+  border-radius:999px;background:var(--flaeche);color:var(--tinte);border:1px solid var(--linie-stark);box-shadow:0 8px 24px rgba(0,0,0,.28)}
+.tour-pille button{min-height:44px;margin:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.tour-pille-los{display:flex;align-items:center;gap:8px;padding:0 6px 0 8px;font-size:14.5px;font-weight:700}
+.tour-pille-los .tp-zeichen{display:grid;place-items:center;width:28px;height:28px;border-radius:50%;background:var(--rot);color:var(--auf-rot);font-size:15px;font-weight:800}
+.tour-pille-weg{min-width:44px;padding:0 12px 0 6px;font-size:15px;color:var(--tinte-leise)}
+/* Farben der geführten Tour (Block TOUR): am Element selbst abgeleitet, nicht in :root — sonst bliebe die Karte im Abend/auf „Ganz schwarz“
+   bei den Werten des Tages (§3.2). Schrift auf dem Rot wird aus --auf-rot genommen (§5.1), nie fest gesetzt. */
+#tourWurzel{--tour-karte:var(--flaeche);--tour-schrift:var(--tinte);--tour-leise:var(--tinte-leise);--tour-akzent:var(--rot);
+  --tour-akzent-schrift:var(--auf-rot);--tour-linie:var(--linie-stark)}
 .blende{
   position:fixed;inset:0;z-index:60;background:rgba(26,16,12,.55);
   opacity:0;pointer-events:none;transition:opacity .24s var(--blatt)
@@ -6126,6 +6137,11 @@ const OMOTENO_FRUEH = { rennt:null, genutzt:false };
 <!-- Premium-Startseite: Hauptnavigation unten. Leer und hidden, bis hauptNavZeichnen() sie füllt; klassisch bleibt sie leer. -->
 <nav class="hauptnav" id="hauptnav" aria-label="Hauptnavigation" hidden></nav>
 
+<!-- Schwebender Anleitungs-Knopf (nur beim ersten Besuch, siehe tourPilleAbgleichen): leer und hidden, bis der Hub ihn füllt. -->
+<div class="tour-pille" id="tourPille" hidden>
+  <button type="button" class="tour-pille-los" data-tour-los="1"><span class="tp-zeichen" aria-hidden="true">?</span><span class="tp-text"></span></button>
+  <button type="button" class="tour-pille-weg" data-tour-weg="1"></button>
+</div>
 <div class="blende" id="blende"></div>
 <div class="warenkarte" id="warenkarte" role="dialog" aria-modal="true"
      aria-labelledby="wname" tabindex="-1"></div>
@@ -11808,7 +11824,44 @@ const TEXTE = {
 "Stäbchen und Löffel":{en:"Chopsticks and a spoon",tr:"Çubuklar ve kaşık",ru:"Палочками и ложкой",fr:"Des baguettes et une cuillère",es:"Palillos y cuchara",it:"Bacchette e cucchiaio",pl:"Pałeczkami i łyżką",ar:"عيدان وملعقة",uk:"Паличками та ложкою",nl:"Eetstokjes en een lepel",ro:"Bețișoare și lingură"},
 "Nur Löffel":{en:"Only a spoon",tr:"Sadece kaşık",ru:"Только ложкой",fr:"Seulement une cuillère",es:"Solo cuchara",it:"Solo il cucchiaio",pl:"Tylko łyżką",ar:"ملعقة فقط",uk:"Лише ложкою",nl:"Alleen een lepel",ro:"Doar lingură"},
 "Nur Gabel":{en:"Only a fork",tr:"Sadece çatal",ru:"Только вилкой",fr:"Seulement une fourchette",es:"Solo tenedor",it:"Solo la forchetta",pl:"Tylko widelcem",ar:"شوكة فقط",uk:"Лише виделкою",nl:"Alleen een vork",ro:"Doar furculiță"},
-"Stäbchen für die Nudeln, Löffel für die Brühe – beides zugleich.":{en:"Chopsticks for the noodles, a spoon for the broth — both at once.",tr:"Erişteler için çubuklar, çorba için kaşık — ikisi birlikte.",ru:"Палочки для лапши, ложка для бульона — оба сразу.",fr:"Des baguettes pour les nouilles, une cuillère pour le bouillon — les deux à la fois.",es:"Palillos para los fideos, cuchara para el caldo: ambos a la vez.",it:"Bacchette per i noodles, cucchiaio per il brodo — entrambi insieme.",pl:"Pałeczki do makaronu, łyżka do bulionu — oba naraz.",ar:"عيدان للمعكرونة وملعقة للمرق — الاثنان معاً.",uk:"Палички для локшини, ложка для бульйону — обидва одразу.",nl:"Eetstokjes voor de noedels, lepel voor de bouillon — allebei tegelijk.",ro:"Bețișoare pentru tăiței, lingură pentru supă — amândouă deodată."}
+"Stäbchen für die Nudeln, Löffel für die Brühe – beides zugleich.":{en:"Chopsticks for the noodles, a spoon for the broth — both at once.",tr:"Erişteler için çubuklar, çorba için kaşık — ikisi birlikte.",ru:"Палочки для лапши, ложка для бульона — оба сразу.",fr:"Des baguettes pour les nouilles, une cuillère pour le bouillon — les deux à la fois.",es:"Palillos para los fideos, cuchara para el caldo: ambos a la vez.",it:"Bacchette per i noodles, cucchiaio per il brodo — entrambi insieme.",pl:"Pałeczki do makaronu, łyżka do bulionu — oba naraz.",ar:"عيدان للمعكرونة وملعقة للمرق — الاثنان معاً.",uk:"Палички для локшини, ложка для бульйону — обидва одразу.",nl:"Eetstokjes voor de noedels, lepel voor de bouillon — allebei tegelijk.",ro:"Bețișoare pentru tăiței, lingură pentru supă — amândouă deodată."},
+/* Geführte Tour (Anleitung): Sätze der Schritte, Bereiche und Knöpfe — Block TOUR und tourDef(). Knopfnamen in den Sätzen stammen aus den vorhandenen Einträgen. */
+"Anleitung":{en:"Guide",tr:"Kılavuz",ru:"Инструкция",fr:"Guide",es:"Guía",it:"Guida",pl:"Przewodnik",ar:"دليل الاستخدام",uk:"Інструкція",nl:"Uitleg",ro:"Ghid"},
+"Anleitung schließen":{en:"Close guide",tr:"Kılavuzu kapat",ru:"Закрыть инструкцию",fr:"Fermer le guide",es:"Cerrar la guía",it:"Chiudi la guida",pl:"Zamknij przewodnik",ar:"إغلاق الدليل",uk:"Закрити інструкцію",nl:"Uitleg sluiten",ro:"Închide ghidul"},
+"Anleitung ausblenden":{en:"Hide guide",tr:"Kılavuzu gizle",ru:"Скрыть инструкцию",fr:"Masquer le guide",es:"Ocultar la guía",it:"Nascondi la guida",pl:"Ukryj przewodnik",ar:"إخفاء الدليل",uk:"Приховати інструкцію",nl:"Uitleg verbergen",ro:"Ascunde ghidul"},
+"Bereiche":{en:"Sections",tr:"Bölümler",ru:"Разделы",fr:"Rubriques",es:"Secciones",it:"Sezioni",pl:"Sekcje",ar:"الأقسام",uk:"Розділи",nl:"Onderdelen",ro:"Secțiuni"},
+"Bereich":{en:"Section",tr:"Bölüm",ru:"Раздел",fr:"Rubrique",es:"Sección",it:"Sezione",pl:"Sekcja",ar:"القسم",uk:"Розділ",nl:"Onderdeel",ro:"Secțiune"},
+"Schritt":{en:"Step",tr:"Adım",ru:"Шаг",fr:"Étape",es:"Paso",it:"Passo",pl:"Krok",ar:"الخطوة",uk:"Крок",nl:"Stap",ro:"Pasul"},
+"Fertig":{en:"Done",tr:"Bitti",ru:"Готово",fr:"Terminé",es:"Listo",it:"Fatto",pl:"Gotowe",ar:"تم",uk:"Готово",nl:"Klaar",ro:"Gata"},
+"Am Tisch":{en:"At the table",tr:"Masada",ru:"За столом",fr:"À table",es:"En la mesa",it:"Al tavolo",pl:"Przy stoliku",ar:"على الطاولة",uk:"За столом",nl:"Aan tafel",ro:"La masă"},
+"Willkommen":{en:"Welcome",tr:"Hoş geldiniz",ru:"Добро пожаловать",fr:"Bienvenue",es:"Bienvenido",it:"Benvenuto",pl:"Witamy",ar:"أهلاً بكم",uk:"Ласкаво просимо",nl:"Welkom",ro:"Bun venit"},
+"Diese kurze Tour zeigt Ihnen Schritt für Schritt, was Sie hier können. Wischen Sie nach links oder rechts, um den Bereich zu wechseln.":{en:"This short tour shows you step by step what you can do here. Swipe left or right to switch section.",tr:"Bu kısa tur, burada neler yapabileceğinizi adım adım gösterir. Bölümü değiştirmek için sola veya sağa kaydırın.",ru:"Этот короткий тур шаг за шагом покажет, что здесь можно сделать. Проведите пальцем влево или вправо, чтобы перейти к другому разделу.",fr:"Ce petit tour vous montre pas à pas ce que vous pouvez faire ici. Glissez vers la gauche ou la droite pour changer de rubrique.",es:"Este breve recorrido le muestra paso a paso lo que puede hacer aquí. Deslice a izquierda o derecha para cambiar de sección.",it:"Questo breve percorso Le mostra passo dopo passo cosa può fare qui. Scorra a sinistra o a destra per cambiare sezione.",pl:"Ta krótka wycieczka pokazuje krok po kroku, co mogą Państwo tu zrobić. Proszę przesunąć palcem w lewo lub w prawo, aby zmienić sekcję.",ar:"تعرض لك هذه الجولة القصيرة خطوة بخطوة ما يمكنك فعله هنا. اسحب إلى اليسار أو اليمين للتنقل بين الأقسام.",uk:"Цей короткий тур крок за кроком покаже, що тут можна робити. Проведіть пальцем ліворуч або праворуч, щоб перейти до іншого розділу.",nl:"Deze korte rondleiding laat u stap voor stap zien wat u hier kunt doen. Veeg naar links of rechts om van onderdeel te wisselen.",ro:"Acest scurt tur vă arată pas cu pas ce puteți face aici. Glisați la stânga sau la dreapta pentru a schimba secțiunea."},
+"Sprache und Licht":{en:"Language and light",tr:"Dil ve ışık",ru:"Язык и свет",fr:"Langue et luminosité",es:"Idioma y luz",it:"Lingua e luce",pl:"Język i jasność",ar:"اللغة والإضاءة",uk:"Мова і світло",nl:"Taal en licht",ro:"Limbă și lumină"},
+"Oben stellen Sie Sprache und Helligkeit ein. Ihre Wahl bleibt auf diesem Gerät gemerkt.":{en:"At the top you set language and brightness. Your choice is remembered on this device.",tr:"Yukarıdan dili ve parlaklığı ayarlarsınız. Seçiminiz bu cihazda hatırlanır.",ru:"Вверху можно выбрать язык и яркость. Ваш выбор сохранится на этом устройстве.",fr:"En haut, vous réglez la langue et la luminosité. Votre choix est mémorisé sur cet appareil.",es:"Arriba puede ajustar el idioma y el brillo. Su elección se recuerda en este dispositivo.",it:"In alto può impostare lingua e luminosità. La Sua scelta resta memorizzata su questo dispositivo.",pl:"U góry ustawiają Państwo język i jasność. Państwa wybór zostanie zapamiętany na tym urządzeniu.",ar:"في الأعلى تضبط اللغة والسطوع. يُحفظ اختيارك على هذا الجهاز.",uk:"Угорі можна вибрати мову та яскравість. Ваш вибір збережеться на цьому пристрої.",nl:"Bovenaan stelt u taal en helderheid in. Uw keuze wordt op dit apparaat onthouden.",ro:"Sus puteți seta limba și luminozitatea. Alegerea dvs. este reținută pe acest dispozitiv."},
+"Mit einem Tipp zur Karte, zu Ihrer Auswahl und zu weiteren Wegen des Hauses.":{en:"One tap takes you to the menu, your selection and the house's other shortcuts.",tr:"Tek dokunuşla menüye, seçiminize ve işletmenin diğer kısayollarına ulaşırsınız.",ru:"Одним касанием вы попадёте в меню, к своему выбору и к другим быстрым ссылкам заведения.",fr:"Un seul toucher vous mène à la carte, à votre sélection et aux autres raccourcis de la maison.",es:"Con un toque llega a la carta, a su selección y a los demás accesos rápidos de la casa.",it:"Con un tocco arriva al menù, alla Sua selezione e agli altri accessi rapidi del locale.",pl:"Jednym dotknięciem przechodzą Państwo do menu, do swojego wyboru i do innych skrótów lokalu.",ar:"بلمسة واحدة تصل إلى القائمة واختيارك وبقية الاختصارات الخاصة بالمكان.",uk:"Одним дотиком ви потрапите до меню, до свого вибору та інших швидких переходів закладу.",nl:"Met één tik gaat u naar de kaart, uw selectie en de andere snelkoppelingen van het huis.",ro:"Cu o singură atingere ajungeți la meniu, la selecția dvs. și la celelalte scurtături ale localului."},
+"Alles auf der Startseite":{en:"Everything on the start page",tr:"Ana sayfadaki her şey",ru:"Всё на главной странице",fr:"Tout sur la page d'accueil",es:"Todo en el inicio",it:"Tutto nella pagina iniziale",pl:"Wszystko na stronie głównej",ar:"كل شيء في الصفحة الرئيسية",uk:"Усе на головній сторінці",nl:"Alles op de startpagina",ro:"Totul pe pagina de start"},
+"Darunter finden Sie alles, was dieses Haus anbietet. Bereiche klappen Sie mit einem Tipp auf und zu.":{en:"Below you find everything this place offers. Tap a section to open or close it.",tr:"Aşağıda bu işletmenin sunduğu her şeyi bulursunuz. Bölümleri dokunarak açıp kapatırsınız.",ru:"Ниже — всё, что предлагает заведение. Раздел раскрывается и сворачивается касанием.",fr:"En dessous, vous trouvez tout ce que la maison propose. Touchez une rubrique pour l'ouvrir ou la fermer.",es:"Debajo encuentra todo lo que ofrece la casa. Toque una sección para abrirla o cerrarla.",it:"Qui sotto trova tutto ciò che offre il locale. Tocchi una sezione per aprirla o chiuderla.",pl:"Poniżej znajdą Państwo wszystko, co oferuje lokal. Proszę dotknąć sekcji, aby ją otworzyć lub zamknąć.",ar:"في الأسفل تجد كل ما يقدّمه المكان. المس قسماً لفتحه أو إغلاقه.",uk:"Нижче — усе, що пропонує заклад. Торкніться розділу, щоб розгорнути або згорнути його.",nl:"Hieronder vindt u alles wat dit huis biedt. Tik op een onderdeel om het te openen of te sluiten.",ro:"Mai jos găsiți tot ce oferă localul. Atingeți o secțiune pentru a o deschide sau închide."},
+"Suchen":{en:"Search",tr:"Ara",ru:"Поиск",fr:"Rechercher",es:"Buscar",it:"Cerca",pl:"Szukaj",ar:"بحث",uk:"Пошук",nl:"Zoeken",ro:"Căutare"},
+"Tippen Sie einen Teil des Namens ein – die Karte zeigt nur passende Gerichte.":{en:"Type part of a name – the menu shows only matching dishes.",tr:"Adın bir kısmını yazın – menü yalnızca eşleşen yemekleri gösterir.",ru:"Введите часть названия – в меню останутся только подходящие блюда.",fr:"Saisissez une partie du nom – la carte n'affiche que les plats correspondants.",es:"Escriba parte del nombre: la carta muestra solo los platos que coinciden.",it:"Scriva una parte del nome: il menù mostra solo i piatti corrispondenti.",pl:"Proszę wpisać fragment nazwy – menu pokaże tylko pasujące dania.",ar:"اكتب جزءاً من الاسم – تعرض القائمة الأطباق المطابقة فقط.",uk:"Введіть частину назви – у меню залишаться лише відповідні страви.",nl:"Typ een deel van de naam – de kaart toont alleen passende gerechten.",ro:"Introduceți o parte din nume – meniul arată doar preparatele potrivite."},
+"Kategorien":{en:"Categories",tr:"Kategoriler",ru:"Категории",fr:"Catégories",es:"Categorías",it:"Categorie",pl:"Kategorie",ar:"الفئات",uk:"Категорії",nl:"Categorieën",ro:"Categorii"},
+"Ein Tipp springt zur Kategorie. Wischen Sie die Leiste zur Seite, um alle zu sehen.":{en:"Tap a category to jump to it. Swipe the bar sideways to see them all.",tr:"Bir kategoriye dokunarak oraya gidin. Hepsini görmek için çubuğu yana kaydırın.",ru:"Коснитесь категории, чтобы перейти к ней. Проведите по ленте в сторону, чтобы увидеть все.",fr:"Touchez une catégorie pour y aller. Faites glisser la barre sur le côté pour toutes les voir.",es:"Toque una categoría para ir a ella. Deslice la barra hacia un lado para verlas todas.",it:"Tocchi una categoria per andarci. Scorra la barra di lato per vederle tutte.",pl:"Proszę dotknąć kategorii, aby do niej przejść. Proszę przesunąć pasek w bok, aby zobaczyć wszystkie.",ar:"المس فئة للانتقال إليها. مرّر الشريط جانبياً لرؤية جميع الفئات.",uk:"Торкніться категорії, щоб перейти до неї. Проведіть стрічку вбік, щоб побачити всі.",nl:"Tik op een categorie om erheen te gaan. Veeg de balk opzij om ze allemaal te zien.",ro:"Atingeți o categorie pentru a sări la ea. Glisați bara lateral pentru a le vedea pe toate."},
+"Gericht ansehen":{en:"View a dish",tr:"Yemeğe bakın",ru:"Посмотреть блюдо",fr:"Voir un plat",es:"Ver un plato",it:"Vedere un piatto",pl:"Zobacz danie",ar:"عرض طبق",uk:"Переглянути страву",nl:"Een gerecht bekijken",ro:"Vezi un preparat"},
+"Ein Tipp auf ein Gericht zeigt Beschreibung, Allergene und Zusatzstoffe.":{en:"Tap a dish to see its description, allergens and additives.",tr:"Bir yemeğe dokunarak açıklamasını, alerjenlerini ve katkı maddelerini görün.",ru:"Коснитесь блюда, чтобы увидеть описание, аллергены и добавки.",fr:"Touchez un plat pour voir sa description, ses allergènes et ses additifs.",es:"Toque un plato para ver su descripción, alérgenos y aditivos.",it:"Tocchi un piatto per vedere descrizione, allergeni e additivi.",pl:"Proszę dotknąć dania, aby zobaczyć opis, alergeny i dodatki.",ar:"المس طبقاً لرؤية الوصف ومسببات الحساسية والمضافات.",uk:"Торкніться страви, щоб побачити опис, алергени та добавки.",nl:"Tik op een gerecht voor beschrijving, allergenen en toevoegingen.",ro:"Atingeți un preparat pentru a vedea descrierea, alergenii și aditivii."},
+"Mit dem Plus legen Sie ein Gericht in Ihre Auswahl. Bestellt ist damit noch nichts.":{en:"The plus adds a dish to your selection. Nothing is ordered yet.",tr:"Artı ile bir yemeği seçiminize eklersiniz. Bununla henüz sipariş verilmiş olmaz.",ru:"Кнопка «+» добавляет блюдо в ваш выбор. Заказ при этом ещё не отправлен.",fr:"Le plus ajoute un plat à votre sélection. Rien n'est encore commandé.",es:"El signo más añade un plato a su selección. Todavía no se ha pedido nada.",it:"Il più aggiunge un piatto alla Sua selezione. Non è ancora stato ordinato nulla.",pl:"Plus dodaje danie do Państwa wyboru. Nic nie zostało jeszcze zamówione.",ar:"تضيف علامة الزائد الطبق إلى اختيارك. لم يتم طلب أي شيء بعد.",uk:"Плюс додає страву до вашого вибору. Замовлення ще не надіслано.",nl:"Met de plus voegt u een gerecht toe aan uw selectie. Er is nog niets besteld.",ro:"Plusul adaugă un preparat în selecția dvs. Nu s-a comandat încă nimic."},
+"Die Auswahl-Leiste":{en:"The selection bar",tr:"Seçim çubuğu",ru:"Панель выбора",fr:"La barre de sélection",es:"La barra de selección",it:"La barra della selezione",pl:"Pasek wyboru",ar:"شريط الاختيار",uk:"Панель вибору",nl:"De selectiebalk",ro:"Bara de selecție"},
+"Sobald Sie etwas gewählt haben, erscheint unten Ihre Auswahl mit der Summe. Ein Tipp darauf öffnet sie.":{en:"Once you have picked something, your selection appears at the bottom with the total. Tap it to open.",tr:"Bir şey seçtiğinizde seçiminiz toplamla birlikte altta görünür. Açmak için dokunun.",ru:"Как только вы что-то выберете, внизу появится ваш выбор с суммой. Коснитесь его, чтобы открыть.",fr:"Dès que vous avez choisi quelque chose, votre sélection apparaît en bas avec le total. Touchez-la pour l'ouvrir.",es:"En cuanto elija algo, su selección aparece abajo con el total. Tóquela para abrirla.",it:"Appena ha scelto qualcosa, in basso compare la Sua selezione con il totale. La tocchi per aprirla.",pl:"Gdy coś Państwo wybiorą, na dole pojawi się Państwa wybór z sumą. Proszę go dotknąć, aby otworzyć.",ar:"عندما تختار شيئاً يظهر اختيارك في الأسفل مع المجموع. المسه لفتحه.",uk:"Щойно ви щось оберете, унизу з'явиться ваш вибір із сумою. Торкніться його, щоб відкрити.",nl:"Zodra u iets hebt gekozen, verschijnt onderaan uw selectie met het totaal. Tik erop om te openen.",ro:"De îndată ce ați ales ceva, selecția dvs. apare jos împreună cu totalul. Atingeți-o pentru a o deschide."},
+"Menge und Extras":{en:"Quantity and extras",tr:"Adet ve ekstralar",ru:"Количество и добавки",fr:"Quantité et suppléments",es:"Cantidad y extras",it:"Quantità ed extra",pl:"Ilość i dodatki",ar:"الكمية والإضافات",uk:"Кількість і добавки",nl:"Aantal en extra's",ro:"Cantitate și extra"},
+"In Ihrer Auswahl ändern Sie die Menge mit Plus und Minus und wählen Extras, wo es welche gibt.":{en:"In your selection you change the quantity with plus and minus and pick extras where available.",tr:"Seçiminizde adedi artı ve eksi ile değiştirir, varsa ekstraları seçersiniz.",ru:"В вашем выборе количество меняется кнопками «+» и «−», а дополнения выбираются там, где они есть.",fr:"Dans votre sélection, vous changez la quantité avec plus et moins et choisissez des suppléments quand il y en a.",es:"En su selección cambia la cantidad con más y menos y elige extras donde los haya.",it:"Nella Sua selezione cambia la quantità con più e meno e sceglie gli extra, dove ce ne sono.",pl:"W Państwa wyborze zmieniają Państwo ilość plusem i minusem oraz wybierają dodatki, jeśli są dostępne.",ar:"في اختيارك تغيّر الكمية بالزائد والناقص وتختار الإضافات حيث تتوفر.",uk:"У вашому виборі кількість змінюється плюсом і мінусом, а додатки обираються там, де вони є.",nl:"In uw selectie wijzigt u het aantal met plus en min en kiest u extra's waar die er zijn.",ro:"În selecția dvs. schimbați cantitatea cu plus și minus și alegeți extra acolo unde există."},
+"Bestellen":{en:"Order",tr:"Sipariş ver",ru:"Заказать",fr:"Commander",es:"Pedir",it:"Ordinare",pl:"Zamów",ar:"اطلب",uk:"Замовити",nl:"Bestellen",ro:"Comandați"},
+"Erst „Zahlungspflichtig bestellen“ schickt Ihre Bestellung an das Haus. Davor steht, was Sie zahlen.":{en:"Only “Order with obligation to pay” sends your order to the house. Above it you see what you pay.",tr:"Siparişinizi yalnızca “Ödeme yükümlülüğüyle sipariş ver” işletmeye gönderir. Üstünde ödeyeceğiniz tutarı görürsünüz.",ru:"Заказ уходит в заведение только по кнопке «Заказать с обязательством оплаты». Выше указано, сколько вы платите.",fr:"Seul « Commander avec obligation de paiement » envoie votre commande à la maison. Au-dessus, vous voyez ce que vous payez.",es:"Solo “Pedido con obligación de pago” envía su pedido a la casa. Encima ve lo que paga.",it:"Solo “Ordine con obbligo di pagamento” invia il Suo ordine al locale. Sopra vede quanto paga.",pl:"Dopiero “Zamawiam z obowiązkiem zapłaty” wysyła zamówienie do lokalu. Nad nim widzą Państwo, ile płacą.",ar:"فقط “اطلب مع الالتزام بالدفع” يرسل طلبك إلى المكان. وفوقه ترى المبلغ الذي تدفعه.",uk:"Лише “Замовити з обов'язком оплати” надсилає замовлення до закладу. Вище видно, скільки ви платите.",nl:"Pas “Bestellen met betalingsverplichting” stuurt uw bestelling naar het huis. Erboven ziet u wat u betaalt.",ro:"Doar “Comandă cu obligație de plată” trimite comanda către local. Deasupra vedeți cât plătiți."},
+"Unentschlossen? Das Rad sucht für Sie ein Gericht aus der Karte aus.":{en:"Can't decide? The wheel picks a dish from the menu for you.",tr:"Kararsız mısınız? Çark sizin için menüden bir yemek seçer.",ru:"Не можете выбрать? Колесо выберет для вас блюдо из меню.",fr:"Indécis ? La roue choisit pour vous un plat de la carte.",es:"¿Indeciso? La ruleta elige por usted un plato de la carta.",it:"Indeciso? La ruota sceglie per Lei un piatto dal menù.",pl:"Nie mogą się Państwo zdecydować? Koło wybierze dla Państwa danie z menu.",ar:"لا تستطيع أن تقرر؟ تختار العجلة لك طبقاً من القائمة.",uk:"Не можете обрати? Колесо вибере для вас страву з меню.",nl:"Twijfelt u? Het rad kiest een gerecht uit de kaart voor u.",ro:"Nu puteți decide? Roata alege pentru dvs. un preparat din meniu."},
+"Tippen Sie auf „Für mich entscheiden“. Mit „Nehm ich!“ übernehmen Sie das Ergebnis in Ihre Auswahl.":{en:"Tap “Decide for me”. With “I'll take it!” you add the result to your selection.",tr:"“Benim yerime seçin” düğmesine dokunun. “Bunu alıyorum!” ile sonucu seçiminize eklersiniz.",ru:"Нажмите «Выберите за меня». Кнопкой «Беру!» вы добавите результат в свой выбор.",fr:"Touchez « Choisissez pour moi ». Avec « Je prends ! », vous ajoutez le résultat à votre sélection.",es:"Toque “Elija por mí”. Con “¡Me lo quedo!” añade el resultado a su selección.",it:"Tocchi “Scelga la casa”. Con “Lo prendo!” aggiunge il risultato alla Sua selezione.",pl:"Proszę dotknąć “Proszę wybrać za mnie”. Przyciskiem “Biorę!” dodają Państwo wynik do swojego wyboru.",ar:"المس “اختر لي”. بـ “سآخذه!” تضيف النتيجة إلى اختيارك.",uk:"Торкніться “Оберіть за мене”. Кнопкою “Беру!” ви додасте результат до свого вибору.",nl:"Tik op “Kies voor mij”. Met “Neem ik!” voegt u het resultaat toe aan uw selectie.",ro:"Atingeți “Alegeți pentru mine”. Cu “Îl iau!” adăugați rezultatul în selecția dvs."},
+"Am Tisch rufen Sie das Personal mit einem Tipp – ohne zu winken.":{en:"At the table you call the staff with one tap – no waving needed.",tr:"Masada tek dokunuşla personeli çağırırsınız – el sallamanıza gerek yok.",ru:"За столом вы вызываете персонал одним касанием – махать рукой не нужно.",fr:"À table, vous appelez le personnel d'un seul toucher – sans lever la main.",es:"En la mesa llama al personal con un toque, sin tener que hacer señas.",it:"Al tavolo chiama il personale con un tocco, senza dover fare cenni.",pl:"Przy stoliku wzywają Państwo obsługę jednym dotknięciem – bez machania ręką.",ar:"على الطاولة تستدعي الطاقم بلمسة واحدة – دون الحاجة للتلويح.",uk:"За столом ви кличете персонал одним дотиком – махати рукою не потрібно.",nl:"Aan tafel roept u het personeel met één tik – zonder te zwaaien.",ro:"La masă chemați personalul cu o atingere – fără să faceți semne."},
+"Wenn Sie es einschalten, merkt sich das Haus Ihre Besuche, Lieblingsgerichte und Gutscheine – ohne Konto und Passwort. Ohne Ihr Einschalten wird nichts gespeichert.":{en:"If you switch it on, the house remembers your visits, favourite dishes and vouchers – no account, no password. Nothing is stored unless you switch it on.",tr:"Açarsanız işletme ziyaretlerinizi, favori yemeklerinizi ve kuponlarınızı hatırlar – hesap ve şifre olmadan. Siz açmadıkça hiçbir şey kaydedilmez.",ru:"Если вы включите эту функцию, заведение запомнит ваши визиты, любимые блюда и купоны – без аккаунта и пароля. Пока вы её не включили, ничего не сохраняется.",fr:"Si vous l'activez, la maison retient vos visites, vos plats préférés et vos bons – sans compte ni mot de passe. Rien n'est enregistré tant que vous ne l'activez pas.",es:"Si lo activa, la casa recuerda sus visitas, platos favoritos y cupones, sin cuenta ni contraseña. No se guarda nada mientras no lo active.",it:"Se lo attiva, il locale ricorda le Sue visite, i piatti preferiti e i buoni, senza account né password. Finché non lo attiva, non viene salvato nulla.",pl:"Jeśli Państwo to włączą, lokal zapamięta Państwa wizyty, ulubione dania i vouchery – bez konta i hasła. Dopóki Państwo tego nie włączą, nic nie jest zapisywane.",ar:"إذا قمت بتفعيله يتذكر المكان زياراتك وأطباقك المفضلة وقسائمك – دون حساب أو كلمة مرور. لا يُحفظ شيء ما لم تفعّله.",uk:"Якщо ви це ввімкнете, заклад запам'ятає ваші візити, улюблені страви та ваучери – без облікового запису й пароля. Доки ви не ввімкнете, нічого не зберігається.",nl:"Als u het inschakelt, onthoudt het huis uw bezoeken, favoriete gerechten en bonnen – zonder account of wachtwoord. Zonder uw inschakelen wordt niets opgeslagen.",ro:"Dacă îl activați, localul reține vizitele, preparatele preferate și voucherele dvs. – fără cont și parolă. Fără activarea dvs. nu se salvează nimic."},
+"Bestellstand":{en:"Order status",tr:"Sipariş durumu",ru:"Статус заказа",fr:"État de la commande",es:"Estado del pedido",it:"Stato dell'ordine",pl:"Status zamówienia",ar:"حالة الطلب",uk:"Стан замовлення",nl:"Stand van de bestelling",ro:"Starea comenzii"},
+"Nach dem Bestellen sehen Sie hier, wie weit Ihre Bestellung ist.":{en:"After ordering you see here how far along your order is.",tr:"Sipariş verdikten sonra siparişinizin ne durumda olduğunu burada görürsünüz.",ru:"После заказа здесь видно, на каком этапе ваш заказ.",fr:"Après la commande, vous voyez ici où en est votre commande.",es:"Después de pedir verá aquí cómo va su pedido.",it:"Dopo l'ordine vede qui a che punto è il Suo ordine.",pl:"Po zamówieniu widzą Państwo tu, na jakim etapie jest Państwa zamówienie.",ar:"بعد الطلب ترى هنا مرحلة طلبك.",uk:"Після замовлення тут видно, на якому етапі ваше замовлення.",nl:"Na het bestellen ziet u hier hoe ver uw bestelling is.",ro:"După comandă vedeți aici cum evoluează comanda dvs."},
+"Das war's":{en:"That's it",tr:"Hepsi bu kadar",ru:"Вот и всё",fr:"C'est tout",es:"Eso es todo",it:"È tutto",pl:"To wszystko",ar:"هذا كل شيء",uk:"Ось і все",nl:"Dat was het",ro:"Asta e tot"},
+"Diese Anleitung finden Sie jederzeit wieder: Tippen Sie oben auf das Logo und dann auf „Anleitung“.":{en:"Find this guide again any time: tap the logo at the top, then “Guide”.",tr:"Bu kılavuzu istediğiniz zaman tekrar bulabilirsiniz: Üstteki logoya, sonra “Kılavuz” düğmesine dokunun.",ru:"Эту инструкцию всегда можно открыть снова: коснитесь логотипа вверху, затем «Инструкция».",fr:"Vous retrouvez ce guide à tout moment : touchez le logo en haut, puis « Guide ».",es:"Puede volver a ver esta guía cuando quiera: toque el logotipo de arriba y luego “Guía”.",it:"Può rivedere questa guida in qualsiasi momento: tocchi il logo in alto, poi “Guida”.",pl:"Ten przewodnik znajdą Państwo zawsze ponownie: proszę dotknąć logo u góry, a potem “Przewodnik”.",ar:"يمكنك العثور على هذا الدليل في أي وقت: المس الشعار في الأعلى ثم “دليل الاستخدام”.",uk:"Цю інструкцію можна знайти знову будь-коли: торкніться логотипа вгорі, а потім “Інструкція”.",nl:"Deze uitleg vindt u altijd terug: tik bovenaan op het logo en dan op “Uitleg”.",ro:"Găsiți acest ghid oricând: atingeți logo-ul de sus, apoi “Ghid”."},
 };
 
 const TAGE = ["Sonntag","Montag","Dienstag","Mittwoch","Donnerstag","Freitag","Samstag"];
@@ -14667,6 +14720,284 @@ function hinweisSpeisen(){
     t("Tippen Sie ein Gericht an, um Inhaltsstoffe zu sehen. Bei Allergien fragen Sie bitte zusätzlich unser Serviceteam.");
 }
 
+/* ╔═══ TOUR · GETEILTER BLOCK · ANFANG ══════════════════════════════╗
+   Geführte Tour („Tutorial-Modus“): ein Schleier mit Loch über dem echten Element, oben die Bereiche zum Antippen, eine Karte mit
+   Titel, Text und Schritt, auf Wunsch eine Vorführung (tippen, wischen, halten) am Loch. Wortgleich in vorlagen/hub.vorlage.html und
+   seiten/admin.html — pruefungen/pruef-tour.js hält beide Kopien Zeichen für Zeichen gleich.
+
+   Alles, worauf der Block sich stützt, steht IN ihm (§8.1e): sein Stil entsteht hier, nur die Farben liefert die Seite als --tour-karte,
+   --tour-schrift, --tour-leise, --tour-akzent, --tour-akzent-schrift und --tour-linie (mit Rückfall) — Schrift auf Farbe wird nie fest
+   gesetzt, sondern aus den Rollen der Seite genommen (§5.1).
+
+   Die Seite ruft TOUR.start({ titel, t, bereiche:[{ id, titel, schritte:[{ ziel, titel, text, demo }] }], vorBereich, ende }, bereichNr):
+     t(text)          Übersetzer der Seite (Hub: t, Board: unverändert); alle Beschriftungen des Blocks laufen darüber.
+     ziel             Selektor oder Liste davon; das erste SICHTBARE Element bekommt das Loch. Fehlt es, steht die Karte ohne Loch in der
+                      Mitte — die Tour bleibt bedienbar (§7: lieber ein Schritt ohne Hervorhebung als eine Tour, die hängt).
+     demo             "tippen" | "wischen" | "wischen-hoch" | "halten": eine Hand am Loch, nur transform und opacity; ohne Bewegung (reduzierte
+                      Bewegung) steht sie still.
+     vorBereich(b)    Die Seite navigiert dorthin (Adresse, Reiter, Blatt öffnen) und darf ein Promise liefern.
+     ende()           Aufräumen der Seite (Blätter zu, zurück zum Start).
+   Bedienung: Weiter/Zurück (auch Pfeiltasten), Wischen nach links/rechts wechselt den BEREICH, Antippen eines Bereichs oben, Escape/✕
+   beendet. Der Schleier fängt jeden Tipp ab; die Tour führt die Seite selbst, der Gast kann nichts versehentlich auslösen.
+   Ehrliche Grenze: kopfloses Chromium, kein Gerät; die Vorführung ist eine Zeichnung der Geste, keine Aufzeichnung.  */
+const TOUR = (function(){
+  "use strict";
+  const STIL =
+    ".tour-wurzel{position:fixed;inset:0;z-index:3000;touch-action:none;-webkit-tap-highlight-color:transparent;font-family:inherit}" +
+    ".tour-schild{position:absolute;inset:0;background:rgba(8,6,5,.68);opacity:0;transition:opacity .25s ease}" +
+    ".tour-wurzel[data-ohneloch=\"1\"] .tour-schild{opacity:1}" +
+    ".tour-loch{position:absolute;left:0;top:0;width:0;height:0;border-radius:16px;pointer-events:none;opacity:0;" +
+      "box-shadow:0 0 0 2px var(--tour-akzent,#fff),0 0 0 200vmax rgba(8,6,5,.68);transition:transform .32s cubic-bezier(.3,.7,.3,1),opacity .2s ease}" +
+    ".tour-wurzel[data-ohneloch=\"0\"] .tour-loch{opacity:1}" +
+    ".tour-loch::after{content:\"\";position:absolute;inset:-6px;border-radius:20px;border:2px solid var(--tour-akzent,#fff);opacity:0;animation:tour-puls 1.8s ease-out infinite}" +
+    "@keyframes tour-puls{0%{opacity:.7;transform:scale(.97)}80%,100%{opacity:0;transform:scale(1.06)}}" +
+    ".tour-hand{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:none;opacity:0}" +
+    ".tour-hand::before{content:\"\";position:absolute;inset:0;border-radius:50%;background:var(--tour-akzent,#fff);opacity:.6;box-shadow:0 0 0 3px rgba(255,255,255,.55),0 6px 16px rgba(0,0,0,.45)}" +
+    ".tour-hand::after{content:\"\";position:absolute;inset:-10px;border-radius:50%;border:2px solid var(--tour-akzent,#fff);opacity:0}" +
+    ".tour-hand[data-demo=\"tippen\"]{opacity:1;animation:tour-tippen 1.7s ease-in-out infinite}" +
+    ".tour-hand[data-demo=\"tippen\"]::after{animation:tour-welle 1.7s ease-out infinite}" +
+    ".tour-hand[data-demo=\"halten\"]{opacity:1;animation:tour-halten 2.2s ease-in-out infinite}" +
+    ".tour-hand[data-demo=\"halten\"]::after{animation:tour-welle 2.2s ease-out infinite}" +
+    ".tour-hand[data-demo=\"wischen\"]{opacity:1;animation:tour-wischen 2s cubic-bezier(.5,0,.3,1) infinite}" +
+    ".tour-hand[data-demo=\"wischen-hoch\"]{opacity:1;animation:tour-hoch 2s cubic-bezier(.5,0,.3,1) infinite}" +
+    "@keyframes tour-tippen{0%,100%{transform:scale(1)}40%{transform:scale(.78)}60%{transform:scale(.78)}}" +
+    "@keyframes tour-halten{0%{transform:scale(1)}30%,80%{transform:scale(.8)}100%{transform:scale(1)}}" +
+    "@keyframes tour-welle{0%,35%{opacity:0;transform:scale(.7)}50%{opacity:.8}100%{opacity:0;transform:scale(1.5)}}" +
+    "@keyframes tour-wischen{0%{opacity:0;transform:translateX(60px)}15%{opacity:1;transform:translateX(60px)}70%{opacity:1;transform:translateX(-60px)}100%{opacity:0;transform:translateX(-60px)}}" +
+    "@keyframes tour-hoch{0%{opacity:0;transform:translateY(46px)}15%{opacity:1;transform:translateY(46px)}70%{opacity:1;transform:translateY(-46px)}100%{opacity:0;transform:translateY(-46px)}}" +
+    ".tour-kopf{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) 10px 8px;display:flex;flex-direction:column;gap:6px;" +
+      "background:linear-gradient(rgba(8,6,5,.86),rgba(8,6,5,.0))}" +
+    ".tour-zeile{display:flex;align-items:center;gap:8px}" +
+    ".tour-chips{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px;touch-action:pan-x}" +
+    ".tour-chips::-webkit-scrollbar{display:none}" +
+    ".tour-chip{flex:0 0 auto;min-height:44px;padding:0 14px;border-radius:22px;border:1px solid var(--tour-linie,rgba(255,255,255,.28));background:var(--tour-karte,#fff);" +
+      "color:var(--tour-schrift,#111);font:inherit;font-size:14px;font-weight:600;white-space:nowrap;cursor:pointer}" +
+    ".tour-chip[aria-current=\"step\"]{background:var(--tour-akzent,#c00);border-color:var(--tour-akzent,#c00);color:var(--tour-akzent-schrift,#fff)}" +
+    ".tour-zu{flex:0 0 auto;width:44px;height:44px;border-radius:50%;border:1px solid var(--tour-linie,rgba(255,255,255,.28));background:var(--tour-karte,#fff);" +
+      "color:var(--tour-schrift,#111);font:inherit;font-size:20px;line-height:1;cursor:pointer}" +
+    ".tour-punkte{display:flex;gap:6px;justify-content:center;padding:0 4px}" +
+    ".tour-punkt{width:7px;height:7px;border-radius:50%;background:rgba(255,255,255,.38)}" +
+    ".tour-punkt[data-an=\"1\"]{background:var(--tour-akzent,#fff);transform:scale(1.25)}" +
+    ".tour-karte{position:absolute;left:50%;width:min(520px,calc(100vw - 24px));transform:translateX(-50%);box-sizing:border-box;padding:16px 18px 14px;border-radius:20px;" +
+      "background:var(--tour-karte,#fff);color:var(--tour-schrift,#111);box-shadow:0 14px 40px rgba(0,0,0,.45);border:1px solid var(--tour-linie,transparent)}" +
+    ".tour-wurzel[data-pos=\"unten\"] .tour-karte{bottom:calc(14px + env(safe-area-inset-bottom))}" +
+    ".tour-wurzel[data-pos=\"oben\"] .tour-karte{top:112px}" +
+    ".tour-wurzel[data-pos=\"mitte\"] .tour-karte{top:50%;transform:translate(-50%,-50%)}" +
+    ".tour-wurzel[data-kopf=\"unten\"] .tour-kopf{top:auto;bottom:0;padding:8px 10px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(rgba(8,6,5,0),rgba(8,6,5,.86))}" +
+    ".tour-wurzel[data-kopf=\"unten\"][data-pos=\"unten\"] .tour-karte{bottom:calc(var(--tour-kh,64px) + 14px)}" +
+    ".tour-karte h2{margin:0 0 6px;font-size:18px;line-height:1.25;font-weight:700;color:var(--tour-schrift,#111)}" +
+    ".tour-karte p{margin:0;font-size:15px;line-height:1.5;color:var(--tour-schrift,#111)}" +
+    ".tour-stand{margin:10px 0 0;font-size:12.5px;color:var(--tour-leise,#555)}" +
+    ".tour-knoepfe{display:flex;gap:8px;margin-top:12px}" +
+    ".tour-knopf{flex:1;min-height:48px;border-radius:14px;border:1px solid var(--tour-linie,#bbb);background:transparent;color:var(--tour-schrift,#111);font:inherit;font-size:15px;font-weight:600;cursor:pointer}" +
+    ".tour-knopf.haupt{flex:1.6;background:var(--tour-akzent,#c00);border-color:var(--tour-akzent,#c00);color:var(--tour-akzent-schrift,#fff)}" +
+    ".tour-knopf:disabled{opacity:.4;cursor:default}" +
+    ".tour-wurzel :focus-visible{outline:3px solid var(--tour-akzent,#fff);outline-offset:2px}" +
+    "@media (prefers-reduced-motion:reduce){.tour-schild,.tour-loch{transition:none}.tour-loch::after{animation:none}" +
+      ".tour-hand,.tour-hand::after{animation:none!important}.tour-hand[data-demo]{opacity:1}.tour-hand::after{opacity:.6}}";
+
+  let Z = null;              // laufende Tour: { def, b, s, fokus, laufNr, gemessen }
+  let stilEl = null;
+
+  const wort = x => (Z && typeof Z.def.t === "function") ? Z.def.t(x) : x;
+  const neu = (tag, klasse, text) => { const e = document.createElement(tag); if(klasse) e.className = klasse; if(text !== undefined) e.textContent = text; return e; };
+  const sichtbar = e => { if(!e) return false; const r = e.getBoundingClientRect(); const cs = getComputedStyle(e);
+    return r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none"; };
+  const finden = ziel => { const liste = [].concat(ziel || []); for(let i = 0; i < liste.length; i++){
+    let e = null; try{ e = document.querySelector(liste[i]); }catch(x){}
+    if(sichtbar(e)) return e; } return null; };
+  /* Ein Element in einer festen oder klebenden Leiste rollt nirgendwohin — dort würde scrollIntoView nur die Seite verschieben. */
+  const festAngeheftet = e => { for(let k = e, i = 0; k && k !== document.body && i < 12; k = k.parentElement, i++){
+    const p = getComputedStyle(k).position; if(p === "fixed" || p === "sticky") return true; } return false; };
+  const warte = ms => new Promise(ok => setTimeout(ok, ms));
+  const rahmen = () => new Promise(ok => requestAnimationFrame(() => requestAnimationFrame(ok)));
+  const rtl = () => getComputedStyle(document.documentElement).direction === "rtl";
+
+  function stilAnlegen(){
+    if(stilEl && stilEl.isConnected) return;
+    stilEl = document.createElement("style"); stilEl.id = "tourStil"; stilEl.textContent = STIL;
+    document.head.appendChild(stilEl);
+  }
+
+  function bauen(){
+    const w = neu("div", "tour-wurzel");
+    w.id = "tourWurzel"; w.setAttribute("role", "dialog"); w.setAttribute("aria-modal", "true");
+    w.setAttribute("aria-label", wort(Z.def.titel || "Anleitung"));
+    w.dataset.ohneloch = "1"; w.dataset.pos = "unten";
+    const schild = neu("div", "tour-schild");
+    const loch = neu("div", "tour-loch");
+    const hand = neu("div", "tour-hand"); hand.setAttribute("aria-hidden", "true");
+    const kopf = neu("div", "tour-kopf");
+    const zeile = neu("div", "tour-zeile");
+    const chips = neu("div", "tour-chips"); chips.setAttribute("role", "tablist"); chips.setAttribute("aria-label", wort("Bereiche"));
+    const zu = neu("button", "tour-zu", "✕"); zu.type = "button"; zu.setAttribute("aria-label", wort("Anleitung schließen"));
+    zeile.appendChild(chips); zeile.appendChild(zu);
+    const punkte = neu("div", "tour-punkte"); punkte.setAttribute("aria-hidden", "true");
+    kopf.appendChild(zeile); kopf.appendChild(punkte);
+    const karte = neu("div", "tour-karte");
+    const h = neu("h2"); h.id = "tourTitel";
+    const p = neu("p"); p.id = "tourText"; p.setAttribute("aria-live", "polite");
+    const stand = neu("p", "tour-stand");
+    const knoepfe = neu("div", "tour-knoepfe");
+    const zurueck = neu("button", "tour-knopf", wort("Zurück")); zurueck.type = "button";
+    const weiter = neu("button", "tour-knopf haupt", wort("Weiter")); weiter.type = "button";
+    knoepfe.appendChild(zurueck); knoepfe.appendChild(weiter);
+    karte.appendChild(h); karte.appendChild(p); karte.appendChild(stand); karte.appendChild(knoepfe);
+    w.setAttribute("aria-labelledby", "tourTitel");
+    w.appendChild(schild); w.appendChild(loch); w.appendChild(hand); w.appendChild(kopf); w.appendChild(karte);
+    document.body.appendChild(w);
+    Z.el = { w, schild, loch, hand, kopf, chips, zu, punkte, karte, h, p, stand, zurueck, weiter };
+
+    Z.def.bereiche.forEach((b, i) => {
+      const c = neu("button", "tour-chip", wort(b.titel)); c.type = "button"; c.dataset.bereich = String(i);
+      c.setAttribute("role", "tab"); chips.appendChild(c);
+    });
+    chips.addEventListener("click", e => { const c = e.target.closest("[data-bereich]"); if(c) gehe(+c.dataset.bereich, 0); });
+    zu.addEventListener("click", () => ende());
+    zurueck.addEventListener("click", () => schritt(-1));
+    weiter.addEventListener("click", () => schritt(1));
+    /* Wischen wechselt den Bereich. Der Schleier fängt alles ab: Tipp daneben tut nichts, Rollen rollt die Seite dahinter nicht. */
+    let start = null;
+    w.addEventListener("pointerdown", e => { if(e.target.closest("button")) return; start = { x:e.clientX, y:e.clientY, t:Date.now() }; });
+    w.addEventListener("pointerup", e => {
+      if(!start) return; const dx = e.clientX - start.x, dy = e.clientY - start.y, dt = Date.now() - start.t; start = null;
+      if(Math.abs(dx) >= 56 && Math.abs(dy) <= 70 && dt < 900){ const vor = (dx < 0) !== rtl(); gehe(Z.b + (vor ? 1 : -1), 0); }
+    });
+    w.addEventListener("pointercancel", () => { start = null; });
+    w.addEventListener("wheel", e => e.preventDefault(), { passive:false });
+    Z.taste = e => {
+      if(!Z) return;
+      if(e.key === "Escape"){ e.preventDefault(); e.stopPropagation(); ende(); }
+      else if(e.key === "ArrowRight"){ e.preventDefault(); e.stopPropagation(); schritt(rtl() ? -1 : 1); }
+      else if(e.key === "ArrowLeft"){ e.preventDefault(); e.stopPropagation(); schritt(rtl() ? 1 : -1); }
+      else if(e.key === "Tab"){
+        const f = [...w.querySelectorAll("button:not([disabled])")].filter(sichtbar); if(!f.length) return;
+        const erst = f[0], letzt = f[f.length - 1];
+        if(!w.contains(document.activeElement)){ e.preventDefault(); erst.focus(); }
+        else if(e.shiftKey && document.activeElement === erst){ e.preventDefault(); letzt.focus(); }
+        else if(!e.shiftKey && document.activeElement === letzt){ e.preventDefault(); erst.focus(); }
+      }
+    };
+    document.addEventListener("keydown", Z.taste, true);
+    Z.messen = () => { if(Z.geplant) return; Z.geplant = true; requestAnimationFrame(() => { if(!Z) return; Z.geplant = false; platzieren(); }); };
+    addEventListener("resize", Z.messen); addEventListener("scroll", Z.messen, true);
+    if(window.visualViewport) visualViewport.addEventListener("resize", Z.messen);
+  }
+
+  /* Loch, Hand und Kartenlage zum aktuellen Schritt. Misst, wo das Element JETZT ist. */
+  function platzieren(){
+    if(!Z || !Z.el) return;
+    const s = Z.def.bereiche[Z.b].schritte[Z.s], e = Z.el;
+    const ziel = finden(s.ziel);
+    const vh = innerHeight, vw = innerWidth;
+    if(!ziel){
+      e.w.dataset.ohneloch = "1"; e.w.dataset.pos = "mitte"; e.w.dataset.kopf = "oben"; e.karte.style.top = ""; e.hand.removeAttribute("data-demo"); Z.gemessen = null; return;
+    }
+    const r = ziel.getBoundingClientRect(), rand = 6;
+    let x = Math.max(4, r.left - rand), y = Math.max(4, r.top - rand);
+    let b = Math.min(vw - 4, r.right + rand) - x, h = Math.min(vh - 4, r.bottom + rand) - y;
+    b = Math.max(24, b); h = Math.max(24, h);
+    e.loch.style.width = Math.round(b) + "px"; e.loch.style.height = Math.round(h) + "px";
+    e.loch.style.transform = "translate(" + Math.round(x) + "px," + Math.round(y) + "px)";
+    e.w.dataset.ohneloch = "0";
+    /* Lage über left/top, die Bewegung der Geste läuft in der Animation (transform): sonst überschriebe die Animation die Lage. */
+    e.hand.style.left = Math.round(x + b / 2) + "px"; e.hand.style.top = Math.round(y + h / 2) + "px";
+    e.hand.dataset.demo = s.demo || "";
+    if(!s.demo) e.hand.removeAttribute("data-demo");
+    /* Die Karte dorthin, wo mehr Platz ist — nie über das Loch: erst die gemessene Höhe der Karte, dann oben oder unten. */
+    const kh = e.kopf.offsetHeight;
+    /* Liegt das Ziel unter der Bereichsleiste oben (Sprachknopf, Kopf), wandert die Leiste nach unten — sonst läge sie auf dem Ziel. */
+    const kopfUnten = y < kh + 4;
+    e.w.dataset.kopf = kopfUnten ? "unten" : "oben"; e.w.style.setProperty("--tour-kh", kh + "px");
+    const randOben = kopfUnten ? 12 : kh, randUnten = kopfUnten ? kh : 0;
+    const noetig = e.karte.offsetHeight + 24, oben = y - randOben, unten = vh - (y + h) - randUnten - 14;
+    const pos = unten >= noetig ? "unten" : (oben >= noetig ? "oben" : (unten >= oben ? "unten" : "oben"));
+    e.w.dataset.pos = pos;
+    e.karte.style.top = pos === "oben" ? (randOben + 8) + "px" : "";
+    Z.gemessen = { x, y, b, h, pos, kopf:e.w.dataset.kopf };
+  }
+
+  async function zeigen(nr){
+    const b = Z.def.bereiche[Z.b], s = b.schritte[Z.s], e = Z.el;
+    e.h.textContent = wort(s.titel); e.p.textContent = wort(s.text);
+    e.stand.textContent = wort("Bereich") + " " + (Z.b + 1) + "/" + Z.def.bereiche.length + " · " + wort("Schritt") + " " + (Z.s + 1) + "/" + b.schritte.length;
+    [...e.chips.children].forEach((c, i) => { if(i === Z.b){ c.setAttribute("aria-current", "step"); c.setAttribute("aria-selected", "true"); } else { c.removeAttribute("aria-current"); c.setAttribute("aria-selected", "false"); } });
+    const cur = e.chips.children[Z.b]; if(cur && cur.scrollIntoView) cur.scrollIntoView({ block:"nearest", inline:"center" });
+    e.punkte.innerHTML = ""; b.schritte.forEach((_, i) => { const d = neu("span", "tour-punkt"); if(i === Z.s) d.dataset.an = "1"; e.punkte.appendChild(d); });
+    const letzter = Z.b === Z.def.bereiche.length - 1 && Z.s === b.schritte.length - 1;
+    e.weiter.textContent = wort(letzter ? "Fertig" : "Weiter");
+    e.zurueck.disabled = Z.b === 0 && Z.s === 0;
+    /* Erst hinbringen, dann messen: Blatt öffnen, Seite wechseln, Element ins Bild rollen. */
+    try{ if(typeof s.vorher === "function") await s.vorher(); }catch(x){}
+    /* Während des Wartens kann die Tour enden (Escape) oder weitergehen (schnelles Wischen): Z ist dann null bzw. hat eine neue laufNr. */
+    if(!Z || nr !== Z.laufNr) return;
+    await rahmen(); if(!Z || nr !== Z.laufNr) return;
+    const ziel = finden(s.ziel);
+    if(ziel && ziel.scrollIntoView && !festAngeheftet(ziel)){ try{ ziel.scrollIntoView({ block:"center", inline:"nearest", behavior:"auto" }); }catch(x){} }
+    platzieren();
+    /* Späte Bilder und Layouts: noch zweimal nachmessen. */
+    await warte(180); if(!Z || nr !== Z.laufNr) return; platzieren();
+    await warte(520); if(!Z || nr !== Z.laufNr) return; platzieren();
+  }
+
+  async function gehe(b, s){
+    if(!Z) return;
+    const n = Z.def.bereiche.length;
+    if(b < 0 || b >= n) return;
+    const neuerBereich = b !== Z.b || !Z.gestartet;
+    Z.b = b; Z.s = Math.max(0, Math.min(s, Z.def.bereiche[b].schritte.length - 1));
+    Z.gestartet = true;
+    const nr = ++Z.laufNr;           /* jeder spätere Wechsel macht diesen Gang ungültig (schnelles Wischen) */
+    if(neuerBereich && typeof Z.def.vorBereich === "function"){
+      try{ await Z.def.vorBereich(Z.def.bereiche[b], b); }catch(x){}
+      if(!Z || nr !== Z.laufNr) return;
+    }
+    return zeigen(nr);
+  }
+
+  function schritt(d){
+    if(!Z) return;
+    const b = Z.def.bereiche[Z.b];
+    if(d > 0){
+      if(Z.s < b.schritte.length - 1) return gehe(Z.b, Z.s + 1);
+      if(Z.b < Z.def.bereiche.length - 1) return gehe(Z.b + 1, 0);
+      return ende();
+    }
+    if(Z.s > 0) return gehe(Z.b, Z.s - 1);
+    if(Z.b > 0) return gehe(Z.b - 1, Z.def.bereiche[Z.b - 1].schritte.length - 1);
+  }
+
+  function ende(){
+    if(!Z) return;
+    const z = Z; Z = null;
+    document.removeEventListener("keydown", z.taste, true);
+    removeEventListener("resize", z.messen); removeEventListener("scroll", z.messen, true);
+    if(window.visualViewport) visualViewport.removeEventListener("resize", z.messen);
+    if(z.el && z.el.w) z.el.w.remove();
+    try{ if(typeof z.def.ende === "function") z.def.ende(); }catch(x){}
+    if(z.fokus && z.fokus.focus && z.fokus.isConnected){ try{ z.fokus.focus({ preventScroll:true }); }catch(x){} }
+  }
+
+  function start(def, bereichNr){
+    if(Z) ende();
+    if(!def || !Array.isArray(def.bereiche) || !def.bereiche.length) return false;
+    stilAnlegen();
+    Z = { def, b:0, s:0, laufNr:0, gestartet:false, fokus:document.activeElement, geplant:false, gemessen:null };
+    bauen();
+    gehe(Math.max(0, Math.min(+bereichNr || 0, def.bereiche.length - 1)), 0).then(() => { if(Z && Z.el) Z.el.weiter.focus({ preventScroll:true }); });
+    return true;
+  }
+
+  return {
+    start, ende, schritt, gehe,
+    laeuft: () => !!Z,
+    /* Für die Prüfung: wo die Tour gerade steht und was sie gemessen hat. */
+    stand: () => Z ? { bereich:Z.b, schritt:Z.s, bereiche:Z.def.bereiche.length, gemessen:Z.gemessen,
+                       ohneLoch:Z.el.w.dataset.ohneloch === "1", lage:Z.el.w.dataset.pos, demo:Z.el.hand.dataset.demo || "" } : null
+  };
+})();
+/* ╚═══ TOUR · GETEILTER BLOCK · ENDE ════════════════════════════════╝ */
+
 const SEITEN = {};
 
 /* ---------- Meine Auswahl (Merkliste) ---------- */
@@ -15877,8 +16208,129 @@ SEITEN.haus = () => {
     (HAUS_UEBER ? '<div class="block hp-ueber"><h3>' + t("ÜBER UNS") + '</h3><p>' + hs(HAUS_UEBER) + '</p></div>' : "") +
     '<div class="block"><h3>' + t("WANN WIR DA SIND") + '</h3>' + reihen + '</div>' +
     kontakt.join("") +
+    '<button type="button" class="knopf zweit" data-tour-los="1">' + t("Anleitung") + '</button>' +
     '<button type="button" class="knopf zweit" data-heim="1">' + t("Zur Startseite") + '</button></div>';
 };
+
+/* ═══ ANLEITUNG · die geführte Tour des Gast-Hubs ═══════════════════
+   Wunsch 25.10.: „Tutorial-Modus … Schritt für Schritt durch alle Funktionen … oben der Bereich, dazwischen wischen … direkt in der
+   Seite, bestimmte Bereiche gehighlighted … beim ersten Besuch schwebt ein Knopf“. Die Maschine ist der geteilte Block TOUR; hier steht
+   nur, WAS gezeigt wird und WANN der schwebende Knopf erscheint.
+
+   Gerät: Der Knopf erscheint, solange der Gast die Anleitung nie angetippt oder weggetippt hat. Gemerkt wird erst DANACH — also auf
+   eine ausdrückliche Handlung hin (§ 25 TDDDG), nie beim bloßen Besuch. Das Vorführhaus merkt sich nichts (wie die Begrüßung).
+   Gezeigt wird nur, was es in diesem Haus gibt: Foodroulette bei foodrouletteAn(), Serviceruf und „Mein Tisch“ mit ihrer Kachel.
+   „Ihre Auswahl“ ohne Gericht im Korb bleibt ein Satz ohne Hervorhebung (§7: lieber ein Schritt ohne Loch als eine Tour, die hängt). */
+const TOUR_SCHLUESSEL = hSchluessel("tour");
+/* tourWeg: gilt für diesen Aufruf der Seite auch dort, wo nichts gemerkt wird (Vorführhaus) oder das Gerät das Merken verweigert (privates Fenster) —
+   sonst käme der Knopf nach dem Wegtippen sofort wieder. */
+let tourWeg = false;
+function tourGesehen(){ if(tourWeg) return true; try{ return localStorage.getItem(TOUR_SCHLUESSEL) === "1"; }catch(e){ return false; } }
+function tourMerken(){ tourWeg = true; if(DEMO || VORSCHAU) return; try{ localStorage.setItem(TOUR_SCHLUESSEL, "1"); }catch(e){} }
+function tourWarte(ms){ return new Promise(ok => setTimeout(ok, ms)); }
+function tourGeheZu(hash){
+  if((location.hash || "#/") === hash) return tourWarte(0);
+  location.hash = hash;
+  return tourWarte(420);
+}
+function tourDef(){
+  const sicht = sichtbareKacheln();
+  const kachel = sch => sicht.find(k => k.schluessel === sch);
+  const karte = sicht.find(k => k.art === "karte");
+  const kz = karte ? kachelZiel(karte) : "";
+  const kartenHash = /^#\//.test(kz) ? kz : "#/speisekarte";
+  const an = h => () => tourGeheZu(h);
+  const zu = k => k ? ['a[href="' + String(kachelZiel(k)).replace(/["\\]/g, "") + '"]'] : [];
+  const bereiche = [];
+  bereiche.push({ id:"start", titel:"Start", schritte:[
+    { titel:"Willkommen", text:"Diese kurze Tour zeigt Ihnen Schritt für Schritt, was Sie hier können. Wischen Sie nach links oder rechts, um den Bereich zu wechseln." },
+    { ziel:[".kopfwahl"], demo:"tippen", titel:"Sprache und Licht", text:"Oben stellen Sie Sprache und Helligkeit ein. Ihre Wahl bleibt auf diesem Gerät gemerkt." },
+    { ziel:[".schnellzeile"], titel:"Schnellzugriff", text:"Mit einem Tipp zur Karte, zu Ihrer Auswahl und zu weiteren Wegen des Hauses." },
+    { ziel:[".sb-kopf", ".kachel"], demo:"tippen", titel:"Alles auf der Startseite", text:"Darunter finden Sie alles, was dieses Haus anbietet. Bereiche klappen Sie mit einem Tipp auf und zu." }
+  ] });
+  if(karte) bereiche.push({ id:"karte", titel:"Speisekarte", vor:an(kartenHash), schritte:[
+    { ziel:[".suche"], demo:"tippen", titel:"Suchen", text:"Tippen Sie einen Teil des Namens ein – die Karte zeigt nur passende Gerichte." },
+    { ziel:[".chips"], demo:"wischen", titel:"Kategorien", text:"Ein Tipp springt zur Kategorie. Wischen Sie die Leiste zur Seite, um alle zu sehen." },
+    { ziel:[".gericht"], demo:"tippen", titel:"Gericht ansehen", text:"Ein Tipp auf ein Gericht zeigt Beschreibung, Allergene und Zusatzstoffe." },
+    { ziel:[".gplus"], demo:"tippen", titel:"Zur Auswahl hinzufügen", text:"Mit dem Plus legen Sie ein Gericht in Ihre Auswahl. Bestellt ist damit noch nichts." }
+  ] });
+  bereiche.push({ id:"auswahl", titel:"Ihre Auswahl", vor:an(karte ? kartenHash : "#/"), schritte:[
+    { ziel:["#auswahlbalken"], demo:"tippen", titel:"Die Auswahl-Leiste", text:"Sobald Sie etwas gewählt haben, erscheint unten Ihre Auswahl mit der Summe. Ein Tipp darauf öffnet sie." },
+    { vorher:an("#/auswahl"), ziel:[".merkzeile .stepper"], demo:"tippen", titel:"Menge und Extras", text:"In Ihrer Auswahl ändern Sie die Menge mit Plus und Minus und wählen Extras, wo es welche gibt." },
+    { vorher:an("#/auswahl"), ziel:['.knopf[data-aktion="bestellen"]'], titel:"Bestellen", text:"Erst „Zahlungspflichtig bestellen“ schickt Ihre Bestellung an das Haus. Davor steht, was Sie zahlen." }
+  ] });
+  if(foodrouletteAn()) bereiche.push({ id:"roulette", titel:"Foodroulette", vor:an("#/entdecken"), schritte:[
+    { ziel:["#frRad", ".fr-rad"], titel:"Foodroulette", text:"Unentschlossen? Das Rad sucht für Sie ein Gericht aus der Karte aus." },
+    { ziel:[".fr-knopf.haupt"], demo:"tippen", titel:"Drehen", text:"Tippen Sie auf „Für mich entscheiden“. Mit „Nehm ich!“ übernehmen Sie das Ergebnis in Ihre Auswahl." }
+  ] });
+  const ruf = kachel("tischruf"), mein = kachel("meintisch");
+  if(ruf || mein){
+    const s = [];
+    if(ruf) s.push({ ziel:zu(ruf), demo:"tippen", titel:"Serviceruf", text:"Am Tisch rufen Sie das Personal mit einem Tipp – ohne zu winken." });
+    if(mein) s.push({ ziel:zu(mein), demo:"tippen", titel:"Mein Tisch", text:"Wenn Sie es einschalten, merkt sich das Haus Ihre Besuche, Lieblingsgerichte und Gutscheine – ohne Konto und Passwort. Ohne Ihr Einschalten wird nichts gespeichert." });
+    bereiche.push({ id:"tisch", titel:"Am Tisch", vor:an("#/"), schritte:s });
+  }
+  bereiche.push({ id:"bestellung", titel:"Bestellung", vor:an("#/"), schritte:[
+    { ziel:["[data-sz-vorgang]", "#vstreifen"], titel:"Bestellstand", text:"Nach dem Bestellen sehen Sie hier, wie weit Ihre Bestellung ist." },
+    { ziel:[".logo"], demo:"tippen", titel:"Das war's", text:"Diese Anleitung finden Sie jederzeit wieder: Tippen Sie oben auf das Logo und dann auf „Anleitung“." }
+  ] });
+  return { titel:"Anleitung", bereiche };
+}
+function tourStarten(){
+  if(TOUR.laeuft() || VORSCHAU) return;
+  const von = location.hash || "#/";
+  tourMerken();
+  const def = tourDef();
+  def.t = x => t(x);
+  def.vorBereich = b => b.vor ? b.vor() : undefined;
+  def.ende = () => { tourPilleAbgleichen(); if((location.hash || "#/") !== von) location.hash = von; };
+  TOUR.start(def, 0);
+  tourPilleAbgleichen();
+}
+/* Der schwebende Knopf: nur auf Start und Speisekarte, nur solange nie angetippt, nicht vor dem Begrüßungsschirm, nicht über einem Blatt, nicht im
+   Vorführ- und Vorschaumodus des Showcase. Er sitzt links, über der höchsten festen Leiste unten (Navigation, Auswahl, Streifen) — gemessen. */
+function tourPilleAbgleichen(){
+  const p = $("tourPille");
+  const pfad = (location.hash || "").replace(/^#\/?/, "");
+  const wk = $("willkommen"), blatt = $("warenkarte");
+  const darf = !VORSCHAU && !(DEMO && window.OMOTENO_DEMO_OHNE_GRUSS === true) && !tourGesehen() && !TOUR.laeuft() &&
+    (pfad === "" || pfad === "speisekarte") && !(wk && !wk.hidden) && !(blatt && blatt.classList.contains("an"));
+  if(!p) return;
+  if(!darf){ p.hidden = true; return; }
+  const q = p;
+  q.querySelector(".tp-text").textContent = t("Anleitung");
+  q.querySelector(".tour-pille-weg").setAttribute("aria-label", t("Anleitung ausblenden"));
+  q.querySelector(".tour-pille-weg").textContent = "✕";
+  q.hidden = false;
+  /* Die Lage, die die Leiste NACH dem Einfahren hat: die Auswahl-Leiste fährt aus 100 px Tiefe ein, gemessen mitten im Einfahren läge der Knopf
+     auf ihr. Deshalb die Verschiebung herausrechnen und die Auswahl-Leiste nur zählen, wenn sie „an“ ist. */
+  let hoch = innerHeight;
+  ["hauptnav", "auswahlbalken", "vstreifen"].forEach(id => { const e = $(id); if(!e || e.hidden) return;
+    if(id === "auswahlbalken" && !e.classList.contains("an")) return;
+    const r = e.getBoundingClientRect(); const cs = getComputedStyle(e);
+    if(!(r.height > 0 && r.width > 0) || cs.visibility === "hidden" || cs.display === "none") return;
+    let dy = 0; try{ dy = new DOMMatrix(cs.transform).m42; }catch(x){}
+    hoch = Math.min(hoch, r.top - dy); });
+  q.style.setProperty("--tour-pille-unten", Math.round(innerHeight - hoch + 12) + "px");
+}
+/* Fährt eine der Leisten ein oder aus (Auswahl, Navigation, Streifen), zieht der Knopf mit — EIN Beobachter an allen dreien (§4.5). */
+(function(){
+  if(!window.MutationObserver) return;
+  let geplant = false;
+  const mo = new MutationObserver(() => { if(geplant) return; geplant = true; setTimeout(() => { geplant = false; tourPilleAbgleichen(); }, 80); });
+  ["hauptnav", "auswahlbalken", "vstreifen"].forEach(id => { const e = $(id); if(e) mo.observe(e, { attributes:true, attributeFilter:["class", "hidden"] }); });
+  mo.observe(document.body, { attributes:true, attributeFilter:["data-nav"] });
+})();
+document.addEventListener("click", e => {
+  const c = e.target.closest && e.target.closest("[data-tour-los], [data-tour-weg]");
+  if(!c) { setTimeout(tourPilleAbgleichen, 650); return; }
+  if(c.hasAttribute("data-tour-weg")){ tourMerken(); tourPilleAbgleichen(); return; }
+  tourStarten();
+});
+addEventListener("hashchange", () => setTimeout(tourPilleAbgleichen, 60));
+addEventListener("resize", () => tourPilleAbgleichen());
+setTimeout(tourPilleAbgleichen, 900);
+
 
 /* ═══ IMPRESSUM UND DATENSCHUTZ IM HUB (18.10.) ══════════════════
    Vorher hatte der Hub keins von beiden (dokumente/recht/01 Befund 1)
@@ -15919,6 +16371,7 @@ const SPEICHER_EINTRAEGE = [
   { m:"omoteno-schrift-",     w:"Schrift des Hauses",                            d:"bis zur nächsten Änderung des Hauses", a:"nein" },
   { m:"omoteno-optionen-",    w:"Extras des Hauses für den Aufruf ohne Netz",    d:"bis zur nächsten Änderung des Hauses", a:"nein" },
   { m:"omoteno-bloecke-",     w:"Aufbau der Startseite für den Aufruf ohne Netz", d:"bis zur nächsten Änderung des Hauses", a:"nein" },
+  { m:"omoteno-tour-",         w:"dass Sie die Anleitung angetippt oder ausgeblendet haben", d:"bis Sie Browserdaten löschen",   a:"nein" },
   { m:"omoteno-fr-modus-",    w:"Foodroulette: Rad oder Karten",                 d:"bis zur Änderung",                    a:"nein" },
   { m:"omoteno-quiz-gesehen", w:"Tischquiz: keine Frage doppelt",                d:"bis Sie Browserdaten löschen",        a:"nein" },
   { m:"omoteno-bestenliste-", w:"Tischquiz: Ihre Punkte",                        d:"bis Sie Browserdaten löschen",        a:"nein" },
