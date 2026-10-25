@@ -277,6 +277,24 @@ const ZEILEN = rows => rows.map(r => {
     pruef("ein geleertes Feld entfernt seinen Schlüssel (leer = Vorgabe des Hauses), die anderen bleiben", !("karte_text" in r.b) && r.b.karte_titel === "Neuer Titel", r.b);
     pruef("„Auf Vorgabe zurück“ leert die vier Felder, lässt das WLAN — und das nächste „Übernehmen“ schreibt keinen karte_*-Schlüssel mehr", r.nachZurueck.slice(0, 4).every(x => x === "") && r.nachZurueck[4] === "Gast-Alt" && !Object.keys(r.c).some(k => /^karte_/.test(k)) && r.c.wlan_passwort === "alt123", [r.nachZurueck, r.c]);
     pruef("keine Ausnahme im Board", fehler.length === 0, fehler);
+
+    /* „Beliebt“ am Gericht: der Schalter steht nur, wenn die Spalte da ist (migration-karte-kopf.sql) — sonst scheiterte „Sichern“ ganz. */
+    await p.evaluate(() => { zeichneAlles(); });
+    const ohne = await p.evaluate(async () => { const g = gerichte[0]; delete g.beliebt; gerichte.forEach(x => delete x.beliebt); blattOeffnen(g);
+      const versteckt = document.getElementById("fBeliebtBlock").hidden; document.getElementById("speichern").click(); await new Promise(r => setTimeout(r, 400));
+      return { versteckt, schluessel: Object.prototype.hasOwnProperty.call(g, "beliebt") }; });
+    pruef("ohne Spalte: Schalter versteckt, Speichern schreibt kein „beliebt“ (die Spalte gibt es nicht)", ohne.versteckt === true && ohne.schluessel === false, ohne);
+    const mit = await p.evaluate(async () => { gerichte.forEach(x => { x.beliebt = false; }); const g = gerichte[0]; blattOeffnen(g);
+      const sichtbar = !document.getElementById("fBeliebtBlock").hidden, vorher = document.getElementById("fBeliebt").getAttribute("aria-pressed");
+      document.getElementById("fBeliebt").click(); const danach = document.getElementById("fBeliebt").getAttribute("aria-pressed");
+      document.getElementById("speichern").click(); await new Promise(r => setTimeout(r, 400));
+      return { sichtbar, vorher, danach, gespeichert: g.beliebt }; });
+    pruef("mit Spalte: Schalter sichtbar, Tipp schaltet ein, Speichern schreibt beliebt = true", mit.sichtbar && mit.vorher === "false" && mit.danach === "true" && mit.gespeichert === true, mit);
+    const nein = await p.evaluate(async () => { const g = gerichte[1]; g.beliebt = true; blattOeffnen(g);
+      const an = document.getElementById("fBeliebt").getAttribute("aria-pressed"); document.getElementById("fBeliebt").click(); document.getElementById("speichern").click(); await new Promise(r => setTimeout(r, 400));
+      return { an, danach: g.beliebt }; });
+    pruef("ein beliebtes Gericht öffnet mit eingeschaltetem Schalter; ausschalten + Speichern nimmt es heraus", nein.an === "true" && nein.danach === false, nein);
+    pruef("keine Ausnahme beim Speichern", fehler.length === 0, fehler);
     await ctx.close();
   }
 

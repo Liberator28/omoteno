@@ -5931,6 +5931,14 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <button class="wippe" id="fVegan" aria-pressed="false" aria-label="Vegan"></button>
     </div>
 
+    <!-- Hausklassiker (24.10.): gerichte.beliebt, erst nach migration-karte-kopf.sql. Der Schalter steht nur da, wenn die Spalte
+         in den gelesenen Zeilen vorkommt — sonst schriebe „Sichern“ in eine Spalte, die es nicht gibt, und scheiterte ganz. -->
+    <div class="schalter" id="fBeliebtBlock" hidden>
+      <div><div class="schaltertext">Beliebt (Highlights)</div>
+      <div class="schalterhilfe">Erscheint beim Gast unter „Unsere Highlights“, mit dem Abzeichen „Beliebt“</div></div>
+      <button class="wippe" id="fBeliebt" aria-pressed="false" aria-label="Beliebt"></button>
+    </div>
+
     <div class="schalter">
       <div><div class="schaltertext">Heute verfügbar</div>
       <div class="schalterhilfe">Aus = im Gast-Hub durchgestrichen</div></div>
@@ -22342,6 +22350,8 @@ function blattOeffnen(g){
   karteSegmentAktualisieren();
   $("#fVeg").setAttribute("aria-pressed", g ? !!g.veg : false);
   $("#fVegan").setAttribute("aria-pressed", g ? !!g.vegan : false);
+  $("#fBeliebtBlock").hidden = !beliebtSpalteDa();
+  $("#fBeliebt").setAttribute("aria-pressed", g ? g.beliebt === true : false);
   $("#fVerf").setAttribute("aria-pressed", g ? !!g.verfuegbar : true);
   $("#loeschen").hidden  = !g;
   $("#kopie").hidden     = !g;
@@ -22384,7 +22394,9 @@ function blattSchliessen(){ blattFortAnimieren($("#blatt"), function(){
 
 $("#abbrechen").onclick = blattSchliessen;
 $("#blatt").onclick = e => { if(e.target === $("#blatt")) blattSchliessen(); };
-[["#fVerf"],["#fVeg"],["#fVegan"]].forEach(([w]) => {
+/* Die Spalte gerichte.beliebt gibt es erst nach migration-karte-kopf.sql; ob sie da ist, sagen die gelesenen Zeilen (select *). */
+function beliebtSpalteDa(){ return Array.isArray(gerichte) && gerichte.some(x => x && Object.prototype.hasOwnProperty.call(x, "beliebt")); }
+[["#fVerf"],["#fVeg"],["#fVegan"],["#fBeliebt"]].forEach(([w]) => {
   $(w).onclick = e => {
     const a = e.currentTarget;
     const an = a.getAttribute("aria-pressed") !== "true";
@@ -23123,6 +23135,7 @@ async function sichern(alsKopie, weiter){
     veg:   $("#fVeg").getAttribute("aria-pressed") === "true",
     vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
   };
+  if(beliebtSpalteDa()) satz.beliebt = $("#fBeliebt").getAttribute("aria-pressed") === "true";
   /* Beilagen & Extras dieses Gerichts: erst prüfen, vor jedem Schreiben. */
   const eigen = fEigenVorbereiten(alsKopie);
   if(eigen.fehler){ melde(eigen.fehler, true); return; }

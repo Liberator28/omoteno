@@ -476,6 +476,29 @@ mit Größe gemessen, nicht an der Probe-Handvoll
 (`pruef-zugriffsrechte-lokal.sh`, „Leistung“: 200 001 Zeilen unter 3 s;
 Gegenbeweis mit `hat_recht` je Zeile → rot).
 
+### 2.3i Eine Vorprüfung in einer geteilten Funktion gilt für jeden neuen Weg, der sie ruft
+
+> **Vorfall, gemessen beim Bau der Abholung (25.10.), nie live.**
+> `bestellung_abholen` und `bestellung_liefern` rufen `bestellung_aufgeben`
+> mit `p_quelle 'lieferung'` und ohne Tisch. Die ruft ihre Tischpflicht
+> VOR der Quelle: `if not bestaetigt and b.tisch_pflicht then raise …`.
+> Ein Haus mit Tischpflicht UND Lieferung/Abholung wies also jede
+> Lieferung mit dem Satz über den Untersetzer ab — den der Gast zu Hause
+> nicht antippen kann. Die Probe in `migration-lieferung.sql` hatte die
+> Frage offen gelassen („Probe 3 beantwortet es“); beantwortet hat sie
+> erst die lokale Probe mit der ECHTEN Funktion
+> (`pruef-tischpflicht-lokal.sh`, T2).
+
+Wer einen neuen Weg an eine vorhandene Funktion hängt, liest **jede
+Vorprüfung darin** und fragt, ob sie für den neuen Weg gemeint ist. Das
+einfache „`p_quelle <> 'lieferung'`“ in der Roh-Funktion wäre falsch
+gewesen — sie ist für `anon` aufrufbar, jeder könnte den Parameter selbst
+setzen (§2.3a). Die Ausnahme gilt nur für EINEN Aufruf, gesetzt von den
+beiden Funktionen, die Name/Anschrift prüfen (`set_config(…, true)`,
+gelesen und gelöscht beim Verbrauch). **Stand:**
+`datenbank/migration-tischpflicht-lieferung.sql` ist ein Vorschlag, NICHT
+eingespielt; die Lesefragen stehen im Kopf.
+
 ### 2.4 Rollenwechsel allein simuliert PostgREST nicht
 
 `set role anon` reicht nicht. Der einzige verlässliche Weg:
@@ -939,6 +962,17 @@ sondern nachgemessen — ein Fehlalarm und ein echter Fehler sehen in
 der Liste gleich aus. Und Schrift auf einer Fläche, die in einer
 Fassung die Helligkeit wechselt, wird in **jeder** Fassung neu
 festgelegt (§3.2).
+
+> **Vorfall, zweimal derselbe in einer Runde (25.10.).** Die neuen
+> Wege-Karten und die Botschaftskarte der Startseite hatten ihren Grund
+> nur als `linear-gradient(…)` — `background-color` blieb durchsichtig.
+> `pruef-startseite`, `pruef-lesbarkeit` und `pruef-lichtliste` stiegen die
+> Eltern hinauf, fanden „durchsichtig“ und nahmen die Seitenfarbe: in
+> „Ganz weiß“ 1,24:1 an zehn Stellen — Schrift in Bandfarbe auf Seitenweiß.
+> Genau der Fehler, der für den Kopf mit Verlauf schon einmal gemeldet
+> war. Jede Fläche, die Schrift trägt und einen Verlauf als Grund hat,
+> bekommt die Grundfarbe darunter (und in jeder Fassung, in der sie
+> wechselt, neu — nach der Shorthand, nicht davor).
 
 ### 5.2b Hell und dunkel entscheidet der Grund, nicht die Uhr
 
@@ -1875,6 +1909,50 @@ Kategorie), verliert nur `<>`; Anzeigetext zusätzlich das gerade `"`
 - Eine Größe, die man nicht angefasst hat, wird genannt, nicht verschwiegen
   (hier: das Wörterbuch).
 
+### 8.1ab Ein Objektliteral mit doppeltem Schlüssel gewinnt stillschweigend der letzte
+
+> **Vorfall, beim Umbenennen („Zur Übersicht“ → „Zur Startseite“).** Das
+> Wörterbuch `TEXTE` ist ein Objektliteral mit rund 1 400 Schlüsseln. Mein
+> neuer Eintrag stand neben einem vorhandenen mit demselben Schlüssel; der
+> spätere gewinnt, kein Parser meldet es, `tsc` und `pruef-datei.py` waren
+> zufrieden. Dazu fand sich ein zweiter, älterer Doppelgänger
+> („Wird gesendet …“): sein Wortlaut war seit Wochen verdeckt.
+
+`pruef-uebersetzung.js` zählt seither die Schlüssel des Wörterbuchs gegen
+ihre Menge. Wer einen Satz hinzufügt, sucht den Schlüssel zuerst
+(`grep -n '^"Satz":' vorlagen/hub.vorlage.html`) — dieselbe Regel wie §1.1,
+nur für Daten statt für Klassen.
+
+### 8.1ac Ein Befund, den man nicht versteht, ist ein Pixel — man sucht es
+
+> **Vorfall, Slogan 2,63:1.** Der handgeschriebene Slogan der
+> Startgrafik stand auf dem Kopfbild, `pruef-start-premium.js` meldete
+> 2,63:1. Die erste Vermutung (Foto zu hell) war falsch: Das Rechteck des
+> GEDREHTEN Feldes enthielt die Zierlinie darunter (eigene Farbe, keine
+> Schrift). Ohne sie 4,91:1. Der echte Fehler lag eine Ebene tiefer —
+> auf einem rein weißen Kopfbild stand weiße Schrift auf weißem Grund
+> (1,00:1), weil die Fläche in Bandfarbe hinter der Zeile fehlte. Die
+> Probe mit dem Testbild hatte ihn nie erreichen können (§8.1g).
+
+- Das Rechteck eines gedrehten Elements ist achsparallel und größer als
+  sein Text: gemessen wird ohne Drehung und ohne Zierrat, am Textrechteck
+  (`schlechtester(p, sel, true)`, Range) — und die Probe bekommt ihren
+  härtesten Fall selbst (rein weißer Grund), mit Gegenbeweis.
+- Dasselbe gilt für Zeilenzählung: `offsetHeight` minus Polster, nicht
+  `getBoundingClientRect().height` (`pruef-textplatz.js`).
+
+### 8.1ad Ein Regler hängt an einer Variablen — wer das Element umbaut, sucht jeden Leser
+
+> **Vorfall.** `startlayout.wege: kompakt` setzte `--p-sz-bild:64px`. Beim
+> Umbau der Wege-Karten (gezeichnete Kunst statt Foto-Fläche) verschwand
+> `.sz-bild`; die Variable hatte keinen Leser mehr. Der Regler wirkte
+> nicht — gemeldet hat es kein Nutzer, sondern `pruef-startlayout.js`
+> mit `Cannot read properties of null (reading 'h')`: Sie maß die
+> Bildfläche. Ohne diese Probe wäre er still tot geblieben.
+
+Vor dem Umbau eines Elements: `grep -n 'p-sz-bild'` auf jede Variable, die
+es trug, und auf jede Prüfung, die seine Klasse im Namen führt (§8.1o).
+
 ### 8.2 Eine Prüfung, die nicht startet, ist keine
 
 > **Vorfall.** `pruef-kontrast.js`, `pruef-import.js` und
@@ -1949,7 +2027,7 @@ Dazu je nach Änderung:
 | **Startkacheln, Bereiche, Markenblatt, iconAus-Schalter** | `pruefungen/pruef-kacheln.js` — Kreuzvergleich: kein Hub trägt fremden Text; iconAus schaltet nur das Symbol ab (strikt `=== true`, keine Zeichenkette) |
 | **Irgendetwas am Hub** | `pruefungen/pruef-durchgang.js` — geht den ganzen Weg des Gastes |
 | **Irgendetwas am Hub** | `pruefungen/pruef-hub-hand.js` — Neuladen, jeder Bereich, jede Sprache, hell/dunkel |
-| **Willkommensschirm, Vorfenster (Speisekarte direkt oder Hub)** | `pruefungen/pruef-vorfenster.js` (braucht `dist/`) — „Speisekarte ansehen“ springt ohne Umweg und schließt den Schirm mit, „Zur Übersicht“ und ein Tipp daneben bleiben beim Hub, tiefe Links (`#/speisekarte`) überspringen den Schirm ganz, beide Knopftexte wirklich übersetzt (nicht deutsch stehengeblieben) |
+| **Willkommensschirm, Vorfenster (Speisekarte direkt oder Hub)** | `pruefungen/pruef-vorfenster.js` (braucht `dist/`) — „Speisekarte ansehen“ springt ohne Umweg und schließt den Schirm mit, „Zur Startseite“ (vorher „Zur Übersicht“; beide Knöpfe tragen seit 24.10. ein Symbol, `pruef-willkommen-knoepfe.js`) und ein Tipp daneben bleiben beim Hub, tiefe Links (`#/speisekarte`) überspringen den Schirm ganz, beide Knopftexte wirklich übersetzt (nicht deutsch stehengeblieben) |
 | **Gericht anlegen im Board (Blatt, „Mehr Angaben“, Speichern & nächstes)** | `pruefungen/pruef-gericht-schnell.js` — Ruhelage zugeklappt, Preis mit Komma, erkannte Allergene nur als Vorschlag (nichts von selbst gesetzt, Gegenfall ohne Treffer), Serienanlage behält Karte/Kategorie und leert den Rest, unlesbarer Preis speichert nicht und sagt warum |
 | **Rabatt am Gericht, Aktionspreis in der Karte** | `pruefungen/pruef-rabatt-gericht.js` (braucht `dist/`) — Board schreibt in `aktionen` innerhalb jeder Schranke (zweite Quelle `datenbank/stand-aktionen-schranken.sql`), Hub zeigt neuen und alten Preis samt „−20 %“, „+“ legt zum Aktionspreis in den Korb und zieht nach Ende nach, Dauer-Rabatt nicht im Streifen, Plakette lesbar je Haus Tag/Abend |
 | **Altersfreigabe 16+/18+ (Board, Hub, Küche)** | `pruefungen/pruef-altersfreigabe.js` (braucht `dist/`) — Alkohol aus dem Namen nur VORGESCHLAGEN, gegen die echten Getränkenamen (§6.1), Frage einmal je Stufe und Sitzung auch über zweiten Weg, „Wieder herausnehmen“ nimmt nur Betroffenes, Schirm entfernt statt versteckt, Küche „Ausweis 18+“ an der Position |
@@ -2007,6 +2085,9 @@ Dazu je nach Änderung:
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
 | **Anmeldung an Küche, Konto, Master; Rolle im Master; „Neues Passwort“ nach dem Reset-Link** | `pruefungen/pruef-sperre-ueberall.js` — jede Tür fragt die Sperre VOR dem Login (gesperrt/falsch → kein Login-Versuch, fehlt → niemand ausgesperrt), Master wirft Nicht-Master hinaus (auch bei gemerkter Sitzung), der Reset-Link zeigt in Board, Konto UND Master das Passwort-Formular — Adresse und Ereignis EINZELN geprüft; Master: „Passwort vergessen?“ auf der Seite selbst (Rücksprung auf diese Adresse, kein Versand ohne Adresse, „not authorized“ als Satz), nach dem Link nie das Dashboard vor dem neuen Passwort, keine echte Adresse als Platzhalter auf irgendeiner Seite (§8.1n) |
 | **Master-Board: Zugänge-Übersicht (`master_zugaenge`)** | `pruefungen/pruef-master-zugaenge.js` — echte Zugangs-Zeilen (Betrieb, E-Mail, Rolle, letzter Login, Status) erscheinen als Karten, Login- UND PIN-Sperre je eigens benannt aber gleich dringlich einsortiert, unbestätigt/Master/ohne-Betrieb einzeln erkennbar, leere Antwort zeigt einen Satz statt „0 Konten“ oder Absturz, fehlende Migration (`42883`) zeigt, welche fehlt, statt der rohen Postgres-Meldung |
+| **Startgrafik (Maskottchen, Wunderbox, Teller, Sticker, Botschaft), Schweben der Auswahl, Glas-Knopfzeile, Speisekarte mit Kopfkarte/Highlights/Pillen, Board „Kopf der Speisekarte“, „Beliebt“-Schalter** | `pruefungen/pruef-startgrafik.js` (braucht `dist/`) — **Erzeuger** im Wegwerf-Verzeichnis: unbekannte Figur/`__proto__`/fremder Schlüssel (auch in `karte`)/Sticker über 26/Tag in Botschaft und Text/Zeichenkette statt Objekt/ohne Premium → laut abgelehnt, geschrieben wird genau figur/sticker/botschaft/karte, ohne Angabe nichts; **Startseite** 360/430 px: Grafiken da, keine schwarze Fläche (SVG füllt ohne Regel mit Schwarz, §8.1e), das Maskottchen nicht im Kreis des Siegels (gemalte Fläche, nicht der Rahmen), Kunst fängt keinen Tipp, Kachelschrift ≥ 4,5:1 am Textrechteck, kein Titel bricht im Wort; **Schweben**: Fotos schweben, nur transform/opacity, Einflug nur bei neuem Stand (§4.1), neues Gericht → wieder, reduziert nichts; **Glas**: Weichzeichner ≥ 16 px und ≤ 45 % Fläche über dem Kopfbild, ≥ 85 % nach dem Wegrollen, Zeichen ≥ 3:1; **Speisekarte**: Kopfkarte = Markenblatt UND `hub_texte.karte_*` schlägt das Markenblatt, Tag bleibt Text, gekürzt auf die Grenzen der Migration (zweite Quelle: CHECK-Text), Highlights jedes Gericht genau einmal, Abzeichen nur bei `beliebt:true`, Pillen mit Zeichen (Allergen-Klartext aus `ALLERGEN_NAMEN`, höchstens zwei plus „+n“, Cola ohne Angabe = keine Pille), Preis über dem Plus; **Sprachen** en/ar: Sticker, Botschaft, Kopfkarte, Kopfzeile aus dem Wörterbuch (zweite Quelle `TEXTE`), RTL; **Board**: vier Felder mit maxlength = CHECK der Migration, Tippen → Vorschau auf der Speisekarte, „Übernehmen“ behält Slogan/WLAN/eigene Texte, leeres Feld entfernt den Schlüssel, „Auf Vorgabe zurück“ lässt das WLAN; **Beliebt-Schalter nur, wenn die Spalte in den gelesenen Zeilen vorkommt**. Gegenbeweise im Worktree (20 Sabotagen, jede per Zählung belegt). **Ehrliche Grenzen:** die Grafiken sind Nachzeichnungen des Entwurfs, nicht seine Originale; kopfloses Chromium, neutrale Testbilder, kein Gerät (Glas-Look nicht auf einem iPhone gesehen); `gerichte.beliebt` und der CHECK `hub_texte_karte` stehen in `migration-karte-kopf.sql` — NICHT eingespielt (kein Live-Zugang), ohne die Migration zeigt eine echte Karte keine Highlights; der Name im Kopf der Unterseite wird bei schmalen Telefonen mit „…“ gekürzt (die Leiste braucht Platz); ein Haus ohne Startgrafik hat auf einem rein weißen Kopfbild weiter kein Polster hinter dem Slogan (vorbestehend) |
+| **Abholen als dritte Bestellart (Board-Schalter, Küche, Hub-Chip, Warenkorb, `bestellung_abholen`)** | `pruefungen/pruef-abholen.js` (braucht `dist/`) — Naht gegen die Signatur in `migration-abholen.sql`, Reihenfolge Abholen · Lieferung · Vor Ort, nur Premium und nie am Tisch, Zeitfenster geprüft, Zahlung nur vor Ort, Bestellpass „bitte abholen“, Küche/Board-Karte mit Name/Telefon/Zeit, Board schreibt `liefer.abholen` ohne fremde Schlüssel zu löschen (`lfSichern`), Herkunft Abholung ≠ Lieferung; 18 Gegenbeweise im Worktree (S1–S18, jede rot). DB: `pruefungen/pruef-tischpflicht-lokal.sh` (lokales Postgres 16, echte Funktionen, Tischpflicht-Befund §2.3i) |
+| **Willkommen-Knöpfe (Symbol, Text, Höhe)** | `pruefungen/pruef-willkommen-knoepfe.js` (braucht `dist/`) — beide Knöpfe tragen ein sichtbares Symbol in Schriftfarbe, Symbol und Text auf einer Höhe, ≥ 44 px, Arabisch gespiegelt, reduzierte Bewegung |
 | **Lieferung, Liefereinstellungen, /liefern** | `pruefungen/pruef-liefern.js` (braucht `dist/`) — Board, die drei Absagen im Hub, die Naht, der **Liefer-Schalter im Kopf** (echter Tipp schaltet liefermodus UND das Adressformular im Warenkorb, Name blitzt auf und verschwindet, Tipp auf das Gewählte ändert nichts, Pfeiltasten, Name passt in jeder Sprache, am Tisch/ohne Lieferung kein Schalter, außerhalb der Zeit nennt er die Uhrzeiten), die Bewegung (nur transform/opacity, Symbolkopie im Daumen MITTEN im Gleiten deckungsgleich, schnelle Tipps: der letzte gewinnt, reduzierte Bewegung sofort am Ziel), Kontrast von Symbol und Name je Haus, Tag und Abend (Spur mit dem Grund darunter GEMISCHT, `color(srgb …)` gelesen) |
 | **Kopf als Kommandozentrale (fest oben rechts), Öffnungs-Pille unter dem Siegel (schlicht, EINE Farbe), kein Glanz, wenig Text** | `pruefungen/pruef-kopfzentrale.js` (braucht `dist/`) — alle Häuser 320–1280 px, Uhr UND Zeiten fest (§8.1j): Licht/Bestellart/Sprache in EINER Leiste mit eigenem Rand und Glas, Knöpfe darin randlos ≥ 44 px; seit 17.10. fest oben rechts an der Spalte (bleibt nach dem Rollen stehen), deckt weder Siegel, Pille noch Slogan; kein `.glanzflug`; Gruß nicht im Bild (h1 bleibt für Vorleser), Slogan sichtbar; Pille mittig unter dem Siegel, rund, ≥ 34 px; die Kategorie-Leiste der Speisekarte endet vor der Leiste (`--kw-frei`, `pruef-speisekarte-leiste`: kein Chip darunter); geschlossen: hohler Ring, Anteil der Linie aus ZEITEN nachgerechnet (07:30 zwischen 00:30 und 10:30 = 0,7, zwei Stunden später 0,9) UND am gemalten `scaleX` abgelesen; offen: Punkt atmet (nur transform/opacity), ein Satz ohne Einzelbuchstaben; **EINE Farbe** (Wunsch 10.10.: „ohne rgb colors“): jede gemalte Farbe der Box — Schrift, Grund, Rand, auch `::before/::after` — hat den Farbton der Bandschrift; ein Verlauf nur, wenn JEDER Halt Bandschrift oder durchsichtig ist (das umlaufende Licht der Pille) (Gegenbeweis: Gold statt Bandschrift → rot); Schrift ≥ 4,5:1; Arabisch oben links; reduzierte Bewegung: nichts läuft |
 | **Aufklappende Flächen (Sprachliste, Detailblatt, Foodroulette-Ergebnis), Kopf, Guss/Laternen, neue z-index-Ebenen** | `pruefungen/pruef-ueberdeckt.js` (braucht `dist/`) — alle Häuser 360–1280 px, Tag/Abend, Arabisch: jede sichtbare Textzeile der Fläche wird an ihrer Mitte gegen die MALREIHENFOLGE gemessen (`pointer-events:auto` für die Messung, sonst übersieht `elementFromPoint` den Guss), weggerollte Zeilen ausgenommen; jede Fläche über den echten Griff geöffnet und „ist offen“ selbst geprüft |
