@@ -286,6 +286,7 @@ const MESSEN = () => {
       kbAusZeile([]); kbZeichnen(); });
     await p.waitForTimeout(400);
     await gruppeZu(p, "#gh-kacheln");
+    await p.evaluate(() => { const a = document.getElementById("loAlt"); if(a) a.open = true; });   /* die alte Anordnung liegt seit 25.10. eingeklappt unter „Ordnen starten“ */
     const vor = await p.evaluate(() => ({
       zu: [...document.querySelectorAll("#kbListe [data-kb-auf]")].every(b => b.getAttribute("aria-expanded") === "false"),
       zeilenHoehe: Math.max(...[...document.querySelectorAll("#kbListe .kbzeile")].map(z => z.getBoundingClientRect().height)),
@@ -480,6 +481,7 @@ const MESSEN = () => {
       kbAusZeile([]); kbZeichnen(); });
     await p.waitForTimeout(400);
     await gruppeZu(p, "#gh-kacheln");
+    await p.evaluate(() => { const a = document.getElementById("loAlt"); if(a) a.open = true; });   /* die alte Anordnung liegt seit 25.10. eingeklappt unter „Ordnen starten“ */
     /* scrollIntoView und das Maß in zwei Aufrufen mit Warten dazwischen
        (Bewegungs-Skill §9, wie oben bei ziehReihenfolge) — sonst zeigt
        das Maß eine Stelle, an der die Kachel (noch) nicht steht. */
@@ -528,6 +530,7 @@ const MESSEN = () => {
       const sc = document.getElementById("scharf"); if(sc) sc.hidden = true; tafelZeigen("startseite"); });
     await p.waitForTimeout(300);
     await gruppeZu(p, art === "kb" ? "#gh-kacheln" : "#gh-banner");
+    await p.evaluate(() => { const a = document.getElementById("loAlt"); if(a) a.open = true; });   /* die alte Anordnung liegt seit 25.10. eingeklappt unter „Ordnen starten“ */
     await p.evaluate(async art => {
       /* Ein Bild mit Muster, 1200×900, als echte Datei. */
       const c = document.createElement("canvas"); c.width = 1200; c.height = 900;
@@ -710,6 +713,7 @@ const MESSEN = () => {
     });
     await p.waitForTimeout(400);
     await gruppeZu(p, "#gh-kacheln");
+    await p.evaluate(() => { const a = document.getElementById("loAlt"); if(a) a.open = true; });   /* die alte Anordnung liegt seit 25.10. eingeklappt unter „Ordnen starten“ */
     await p.click('[data-kb="speisekarte"] [data-kb-hoehe="hoch"]');
     await p.evaluate(() => {
       const inp = document.querySelector('[data-kb="speisekarte"] [data-kb-textgroesse]');

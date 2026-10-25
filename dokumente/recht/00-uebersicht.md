@@ -17,6 +17,7 @@ einen Fachanwalt für IT-Recht — **keine Rechtsberatung**.
 | `09-gaeste-hinweise.md` | Widerruf, Preisangaben, Vertragsschluss für Gäste | Hub |
 | `10-ui-texte.md` | Knopf, Häkchen, Hinweise, zwölf Sprachen | Hub, Konto |
 | `11-offene-angaben.md` | Entscheidungen A–D und fehlende Angaben | Elias |
+| `14-ki-software-hessen-stand-2510.md` | Rechtslage für mit KI gebaute Software (Hessen, Stand 25.10.2026) mit Quellen, Abgleich mit dem Projekt (R1–R16) und Änderungsvorschlägen — **noch nichts umgesetzt** | Elias, Anwalt |
 
 ## Die drei dringendsten Punkte
 

@@ -54,6 +54,7 @@ const echt = k => k.filter(z => !/net::ERR|Failed to load|ERR_FAILED/i.test(z));
     kbAusZeile([]); kbZeichnen(); });
   await p.waitForTimeout(400);
   const da = await gruppeZu(p, "#gh-kacheln");
+  await p.evaluate(() => { const a = document.getElementById("loAlt"); if(a) a.open = true; });   /* die alte Anordnung liegt seit 25.10. eingeklappt unter „Ordnen starten“ */
   pruef(da, "Voraussetzung: die Unterseite „Kacheln“ ist offen");
 
   const rubriken = () => p.evaluate(() => [...document.querySelectorAll("#kbAnordnung [data-kbr-rubrik]")].map(k => k.dataset.kbrRubrik));
