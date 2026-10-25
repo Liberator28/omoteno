@@ -38,7 +38,7 @@ async function lauf(b, kopf){
       kk: !!document.querySelector(".seite > .kopfkarte h2"), h2: document.querySelector(".kopfkarte h2").textContent,
       kkImg: document.querySelector(".kk-bild img") && document.querySelector(".kk-bild img").getAttribute("src"),
       karten: [...document.querySelectorAll(".gericht")].map(g => ({ n: g.querySelector(".n").textContent.trim(), p: g.querySelector(".p").textContent.trim(),
-        tags: [...g.querySelectorAll(".gmerk .tag")].map(t => t.className.replace("tag ", "") + ":" + t.textContent.trim()), titel: (g.querySelector(".gallerg") || {}).title || "" })),
+        tags: [...g.querySelectorAll(".gmerk .tag")].map(t => t.className.replace("tag ", "") + ":" + t.textContent.trim()), titel: (g.querySelector(".gallerg, .gp-all") || {}).title || "" })),
       chips: [...document.querySelectorAll(".chip")].map(c => c.dataset.g),
       gruppen: [...document.querySelectorAll(".gruppe")].map(g => g.dataset.gruppe) }));
     pruef("Speisekarte im Stil „liste“, Kopfkarte mit Überschrift", a.seite === "speisekarte" && a.stil === "liste" && a.kk && a.h2.length > 2, a);
@@ -47,10 +47,14 @@ async function lauf(b, kopf){
     pruef("drei Produktkarten, Namen aus den Datenzeilen", ["Banane Erdbeere", "Waffel Classic", "Cola"].every(n => e[n]), a.karten.map(k => k.n));
     pruef("Preise = die Zeilen (nicht die Vorgabe 10,90 / 8,50 / 3,20)", e["Waffel Classic"].p === komma(9.2) && e["Banane Erdbeere"].p === komma(11.4) && e["Cola"].p === komma(3.6), a.karten.map(k => k.p));
     pruef("Kategorien dynamisch aus den Daten (Live-Zeilen kennen kein „Beliebt“): Alle · Süßes · Getränke", a.chips.join("|") === "Alle|Süßes|Getränke" && a.gruppen.join("|") === "Süßes|Getränke", [a.chips, a.gruppen]);
-    pruef("Allergene nur aus der Zeile: Waffel „Allergene · 2“, Banane der eine Name, Cola KEINE Pille",
-      e["Waffel Classic"].tags.some(t => /^gallerg:Allergene · 2$/.test(t)) && e["Banane Erdbeere"].tags.some(t => /^gallerg:Milch/.test(t)) && !e["Cola"].tags.some(t => /gallerg/.test(t)), a.karten);
-    pruef("Pille nennt im title ALLE Namen der Zeile (Gluten, Milch)", /Glutenhaltiges Getreide/.test(e["Waffel Classic"].titel) && /Milch/.test(e["Waffel Classic"].titel), e["Waffel Classic"].titel);
-    pruef("Merkmal „Vegetarisch“ der Banane als Pille in der Merkmalzeile, Waffel ohne", e["Banane Erdbeere"].tags.some(t => /^veg:/.test(t)) && !e["Waffel Classic"].tags.some(t => /^veg:/.test(t)), a.karten);
+    /* Mit Startgrafik (Choco) stehen Allergene als Klartext je Stoff („Enthält Milch“, Zeichen davor, tag gp gp-all) statt der einen Pille
+       „Allergene · n“ — die Messung dazu steht in pruef-startgrafik.js; hier gilt dieselbe Regel „nur aus der Zeile“ in der neuen Form. */
+    const mitSg = await p.evaluate(() => document.body.dataset.sg === "an");
+    pruef("Allergene nur aus der Zeile: Waffel zwei Stoffe, Banane der eine Name, Cola KEINE Pille",
+      mitSg ? (e["Waffel Classic"].tags.filter(t => /^gp gp-all:Enthält /.test(t)).length === 2 && e["Banane Erdbeere"].tags.some(t => /^gp gp-all:Enthält Milch/.test(t)) && !e["Cola"].tags.some(t => /gp-all|gallerg/.test(t)))
+            : (e["Waffel Classic"].tags.some(t => /^gallerg:Allergene · 2$/.test(t)) && e["Banane Erdbeere"].tags.some(t => /^gallerg:Milch/.test(t)) && !e["Cola"].tags.some(t => /gallerg/.test(t))), a.karten);
+    pruef("Pille nennt im title ALLE Namen der Zeile (Gluten, Milch)", mitSg ? /Gluten/.test(e["Waffel Classic"].titel) && /Milch/.test(e["Waffel Classic"].titel) : (/Glutenhaltiges Getreide/.test(e["Waffel Classic"].titel) && /Milch/.test(e["Waffel Classic"].titel)), e["Waffel Classic"].titel);
+    pruef("Merkmal „Vegetarisch“ der Banane als Pille in der Merkmalzeile, Waffel ohne", e["Banane Erdbeere"].tags.some(t => /^(gp gp-)?veg:/.test(t)) && !e["Waffel Classic"].tags.some(t => /^(gp gp-)?veg:/.test(t)), a.karten);
     pruef("keine Fehler", h.fehler.length === 0 && h.konsole.length === 0, [h.fehler, h.konsole]);
 
     pruef("ganz oben ist „Alle“ markiert (die Gruppenüberschrift darf nicht schon unter der Leiste stehen — katJetzt misst mit 8 px)", await p.evaluate(() => JSON.stringify([...document.querySelectorAll("#inhalt .chip.an")].map(c => c.dataset.g)) === '["Alle"]'));
@@ -58,7 +62,9 @@ async function lauf(b, kopf){
     const l = await p.evaluate(() => { const g = [...document.querySelectorAll(".gericht")].find(x => /Waffel/.test(x.textContent)); const r = s => { const e = g.querySelector(s); if(!e) return null; const b = e.getBoundingClientRect(); return { x: b.x, r: b.right, y: b.y, b: b.bottom, w: b.width, h: b.height }; };
       return { bild: r(".gbild"), text: r(".gtext"), plus: r(".gplus"), preis: r(".p") }; });
     const gb = await p.evaluate(() => { const g = [...document.querySelectorAll(".gericht")].find(x => /Waffel/.test(x.textContent)).getBoundingClientRect(); return { r: g.right, b: g.bottom }; });
-    pruef("Bild links vom Text, Plus rechts neben/unter dem Preis, innerhalb der Karte", l.bild && l.bild.r <= l.text.x + 1 && l.plus.r <= gb.r + 1 && l.plus.x > l.preis.r - 2 && l.plus.b <= gb.b + 1, l);
+    /* Mit Startgrafik steht der Preis ÜBER dem Plus (gleiche Spalte rechts), sonst links davon. */
+    const sgL = await p.evaluate(() => document.body.dataset.sg === "an");
+    pruef("Bild links vom Text, Plus rechts neben/unter dem Preis, innerhalb der Karte", l.bild && l.bild.r <= l.text.x + 1 && l.plus.r <= gb.r + 1 && (sgL ? (l.preis.b <= l.plus.y + 2 && l.preis.x >= l.text.x) : l.plus.x > l.preis.r - 2) && l.plus.b <= gb.b + 1, l);
     pruef("Plus ≥ 44 × 44 px", l.plus.w >= 44 && l.plus.h >= 44, l.plus);
 
     /* Suche */
@@ -185,7 +191,9 @@ async function lauf(b, kopf){
   {
     const h = await oeffneHub(b, Object.assign({}, OPT, kopf.opt, { korb: ["Cola"] }));
     const p = h.p;
-    await p.evaluate(() => window.scrollTo(0, 400)); await p.waitForTimeout(300);
+    /* weit genug, dass die Chips kleben — die Kopfkarte mit Startgrafik ist höher (196 statt 148 px): bei 400 stand sie noch im Fluss. Voraussetzung: gescrollt. */
+    await p.evaluate(() => window.scrollTo(0, 900)); await p.waitForTimeout(300);
+    pruef("Voraussetzung: wirklich gerollt (scrollY ≥ 500)", await p.evaluate(() => scrollY) >= 500);
     const v = await p.evaluate(() => { const c = document.querySelector(".chips").getBoundingClientRect(), n = document.getElementById("hauptnav").getBoundingClientRect();
       const punkt = [...document.querySelectorAll(".chip")].map(ch => { const r = ch.getBoundingClientRect(); const e = document.elementFromPoint(r.x + r.width / 2, r.y + r.height / 2); return e && ch.contains(e); });
       return { oben: c.top, punkt, navTop: n.top }; });

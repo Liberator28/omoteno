@@ -112,7 +112,9 @@ function textMit(len){
           if(!el) return -1;
           const s = getComputedStyle(el);
           const zh = parseFloat(s.lineHeight) || parseFloat(s.fontSize) * 1.25;
-          return Math.round(el.getBoundingClientRect().height / zh);
+          /* Layouthöhe ohne Polster, nicht das Rechteck: Der handgeschriebene Slogan (Startgrafik) ist gedreht — sein Rechteck wäre höher
+             als sein Text — und trägt unten Polster für die Zierlinie. */
+          return Math.round((el.offsetHeight - parseFloat(s.paddingTop) - parseFloat(s.paddingBottom)) / zh);
         };
         const raus = { ueber: document.documentElement.scrollWidth - innerWidth };
         const c = document.getElementById("claim");

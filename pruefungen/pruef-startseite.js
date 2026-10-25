@@ -178,11 +178,13 @@ async function tippen(s, sel) {
       prem: a.classList.contains("sz-p"),
       licht: !a.querySelector(".sz-licht") ? "" : a.querySelector(".sz-licht").getAnimations().filter(x => x.playState === "running")
         .map(x => Object.keys(x.effect.getKeyframes()[0] || {}).filter(k => !["offset","easing","composite","computedOffset"].includes(k)).join("+")).join(","),
-      sonst: a.getAnimations({ subtree: true }).filter(x => x.playState === "running" && !x.effect.target.classList.contains("sz-licht")).length })));
+      sonst: a.getAnimations({ subtree: true }).filter(x => x.playState === "running" && !x.effect.target.classList.contains("sz-licht")).length,
+      /* Premium: die gewählten Gerichte und Herzen schweben (Wunsch 24.10.) — erlaubt, solange es nur transform/opacity ist */
+      fremd: a.getAnimations({ subtree: true }).filter(x => x.playState === "running").flatMap(x => Object.keys(x.effect.getKeyframes()[0] || {}).concat(x.effect.getKeyframes().flatMap(k => Object.keys(k)))).filter(k => !["offset","easing","composite","computedOffset","transform","opacity"].includes(k)).length })));
     /* Premium-Karten (Markenblatt startstil) sind Bildkarten ohne Glas und ohne Lichtrand — ihre Messung steht in
-       pruef-start-premium.js; hier gilt für sie nur „nichts in Bewegung“. */
-    pruef(glas.length >= 2 && glas.every(g => g.prem ? g.sonst === 0 : (g.blur && g.licht === "transform" && g.sonst === 0)),
-      haus + ": jedes Feld Glas, Lichtrand läuft nur per transform, sonst nichts in Bewegung (Premium: nur nichts in Bewegung)", JSON.stringify(glas[0]));
+       pruef-start-premium.js; hier gilt für sie nur „in Bewegung nur transform/opacity“ (seit 24.10. schweben die Auswahl und die Herzen). */
+    pruef(glas.length >= 2 && glas.every(g => g.prem ? g.fremd === 0 : (g.blur && g.licht === "transform" && g.sonst === 0)),
+      haus + ": jedes Feld Glas, Lichtrand läuft nur per transform, sonst nichts in Bewegung (Premium: nur transform/opacity darf laufen — das Schweben der Auswahl)", JSON.stringify(glas[0]));
     for (const ziel of ["#/entdecken", "#/service"]) {
       if (!w.some(x => x.href === ziel)) continue;
       await s.evaluate(() => { location.hash = "#/"; });

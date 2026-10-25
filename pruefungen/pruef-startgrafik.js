@@ -17,6 +17,8 @@ const fs = require("fs"), path = require("path"), os = require("os");
 const { spawnSync } = require("child_process");
 const { oeffneHub } = require("./werkzeug/start-hub.js");
 const { schlechtester, rect } = require("./werkzeug/messen.js");
+const { gruppeZu } = require("./werkzeug/zentrale.js");
+const ADMIN = "file://" + path.join(__dirname, "..", "seiten", "admin.html");
 
 let ok = 0, bad = 0;
 const pruef = (name, bed, info) => { if(bed){ ok++; console.log("  ok   " + name); } else { bad++; console.log("  ROT  " + name + (info !== undefined ? "  → " + JSON.stringify(info) : "")); } };
@@ -207,6 +209,75 @@ const ZEILEN = rows => rows.map(r => {
     const ko = await o.p.evaluate(() => ({ sg: document.body.dataset.sg || "", eyebrow: !!document.querySelector(".kk-eyebrow"), hl: !!document.querySelector(".sg-highlights"), gp: document.querySelectorAll(".tag.gp").length, badge: document.querySelectorAll(".gbadge").length, pfeil: document.querySelectorAll(".gpfeil").length, ico: document.querySelectorAll(".chip-ico").length, zeile: (document.getElementById("titel").dataset.unterzeile || "") }));
     pruef("ohne startgrafik: keine Kennzeile, keine Highlights, keine Pillen/Badge/Pfeil/Chip-Zeichen (Karte wie vorher)", ko.sg === "" && !ko.eyebrow && !ko.hl && ko.gp === 0 && ko.badge === 0 && ko.pfeil === 0 && ko.ico === 0 && ko.zeile === "", ko);
     await o.ctx.close();
+  }
+
+  /* ── 6a · Sprachen: Sticker, Botschaft und Kopfkarte kommen aus dem Wörterbuch (zweite Quelle: TEXTE), nicht aus dem Markenblatt ── */
+  console.log("\n══ 6a · Sprachen ══");
+  for(const sprache of ["en", "ar"]){
+    const h = await oeffneHub(b, { kopf: "dunkel", kachelFoto: true, stil: "premium", breite: 390, hoehe: 900, zeilen: ZEILEN, sprache });
+    const p = h.p;
+    const q = await p.evaluate(sp => { const sg = MARKENBLATT.startgrafik, w = k => (TEXTE[k] || {})[sp] || "";
+      return { sg, soll: { bot0: w(sg.botschaft[0]), bot1: w(sg.botschaft[1]), sticker: w(sg.sticker), titel: w(sg.karte.titel), text: w(sg.karte.text), zeile: w(sg.karte.kopfzeile) },
+        ist: { bot0: (document.querySelector(".bo-text strong") || {}).textContent, bot1: (document.querySelector(".bo-text span") || {}).textContent,
+               sticker: [...document.querySelectorAll(".sg-s tspan, .sg-s text")].map(e => e.textContent).join(" ").replace(/\s+/g, " ").trim(), dir: document.documentElement.dir } }; }, sprache);
+    pruef(sprache + ": Voraussetzung — das Wörterbuch kennt alle Texte des Markenblatts in dieser Sprache", Object.values(q.soll).every(x => x && x.length > 2), q.soll);
+    pruef(sprache + ": Botschaft der Startseite übersetzt (= Wörterbuch)", q.ist.bot0 === q.soll.bot0 && q.ist.bot1 === q.soll.bot1, [q.ist, q.soll]);
+    pruef(sprache + ": Sticker übersetzt (alle Wörter des Wörterbuchtexts stehen im Aufkleber)", q.soll.sticker.split(/\s+/).every(w => q.ist.sticker.indexOf(w) >= 0), [q.ist.sticker, q.soll.sticker]);
+    await p.evaluate(() => { location.hash = "#/speisekarte"; }); await p.waitForTimeout(500);
+    const k = await p.evaluate(() => ({ titel: document.querySelector(".kopfkarte h2").textContent, text: document.querySelector(".kopfkarte .unter").textContent, zeile: document.getElementById("titel").dataset.unterzeile, eyebrow: document.querySelector(".kk-eyebrow").textContent }));
+    pruef(sprache + ": Kopfkarte der Speisekarte übersetzt (Titel, Text, Kopfzeile = Wörterbuch)", k.titel === q.soll.titel && k.text === q.soll.text && k.zeile === q.soll.zeile && k.eyebrow !== "Unsere Speisekarte", [k, q.soll]);
+    if(sprache === "ar") pruef("ar: Seite läuft von rechts nach links, Herz oben LINKS und Kopfkarte-Text rechtsbündig", await p.evaluate(() => { const hr = document.querySelector(".kk-herz2").getBoundingClientRect(), kk = document.querySelector(".kopfkarte").getBoundingClientRect(), t = document.querySelector(".kk-text").getBoundingClientRect(); return document.documentElement.dir === "rtl" && hr.left - kk.left < kk.right - hr.right && t.right > kk.left + kk.width * .5; }));
+    pruef(sprache + ": keine Seitenfehler", h.fehler.length === 0 && h.konsole.length === 0, [h.fehler, h.konsole]);
+    await h.ctx.close();
+  }
+
+  /* ── 6b · Board: Felder „Kopf der Speisekarte“ in „Ihre Worte“ ── */
+  console.log("\n══ 6b · Board ══");
+  {
+    /* Zweite Quelle für die Grenzen: der CHECK im Vorschlag der Migration (40 / 60 / 160 / 60). */
+    const mig = fs.readFileSync(path.join(__dirname, "..", "datenbank", "migration-karte-kopf.sql"), "utf8");
+    const G = Object.fromEntries([...mig.matchAll(/'(karte_[a-z]+)'\), 0\)\s*<=\s*(\d+)/g)].map(m => [m[1], +m[2]]));
+    pruef("Voraussetzung: die Migration nennt vier Grenzen (eyebrow, titel, text, kopfzeile)", Object.keys(G).length === 4 && G.karte_titel === 60, G);
+    const ctx = await b.newContext({ viewport: { width: 900, height: 900 } });
+    const p = await ctx.newPage(); const fehler = [];
+    p.on("pageerror", e => fehler.push(String(e).slice(0, 200)));
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto(ADMIN); await p.waitForTimeout(700);
+    await p.evaluate(() => { document.getElementById("tor").hidden = true; if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); } });
+    await p.waitForTimeout(400);
+    await p.evaluate(() => { HUBTEXTE = { claim: "Alt-Slogan", wlan_netz: "Gast-Alt", wlan_passwort: "alt123", karte_titel: "Alter Titel", eigen: { "Hallo": { de: "Servus" } } };
+      const r = document.querySelector('[data-tafel="startseite"]'); if(r) r.click(); });
+    await p.waitForTimeout(400);
+    await gruppeZu(p, "#gh-worte");
+    const ids = { karte_eyebrow: "hubKarteEyebrow", karte_titel: "hubKarteTitel", karte_text: "hubKarteText", karte_kopfzeile: "hubKarteKopfzeile" };
+    const felder = await p.evaluate(ids => Object.fromEntries(Object.entries(ids).map(([k, id]) => { const el = document.getElementById(id);
+      return [k, el ? { max: +el.getAttribute("maxlength"), wert: el.value, gruppe: (el.closest(".egruppe").querySelector(".etitel") || {}).textContent, groesse: parseFloat(getComputedStyle(el).fontSize), nachbar: parseFloat(getComputedStyle(document.getElementById("hubGruss")).fontSize) } : null]; })), ids);
+    pruef("Board: vier Felder da, jedes nimmt genau so viel wie die Datenbank (maxlength = CHECK der Migration)", Object.keys(ids).every(k => felder[k] && felder[k].max === G[k]), felder);
+    pruef("… in „Ihre Worte im Gast-Hub“, Schrift wie das Nachbarfeld", Object.keys(ids).every(k => felder[k] && felder[k].gruppe === "Ihre Worte im Gast-Hub" && felder[k].groesse === felder[k].nachbar), felder);
+    pruef("gespeicherter Stand wird in die Felder geladen (Titel „Alter Titel“)", felder.karte_titel.wert === "Alter Titel", felder.karte_titel.wert);
+    const r = await p.evaluate(async () => {
+      const gesendet = [];
+      const alt = hvSenden; hvSenden = (art, teil, ziel) => { gesendet.push({ teil, ziel }); };
+      const set = (id, v) => { const el = document.getElementById(id); el.value = v; el.dispatchEvent(new Event("input", { bubbles: true })); };
+      set("hubKarteTitel", "Neuer Titel"); set("hubKarteEyebrow", "Frisch"); set("hubKarteText", "Ein Satz."); set("hubKarteKopfzeile", "Seit 2019");
+      hvSenden = alt;
+      const letzte = gesendet[gesendet.length - 1] || {};
+      await hubTexteSichern();
+      const a = JSON.parse(JSON.stringify(HUBTEXTE));
+      set("hubKarteText", "");
+      await hubTexteSichern();
+      const b = JSON.parse(JSON.stringify(HUBTEXTE));
+      document.getElementById("hubTexteZurueck").click();
+      const nachZurueck = ["hubKarteTitel", "hubKarteEyebrow", "hubKarteText", "hubKarteKopfzeile", "hubWlanNetz"].map(id => document.getElementById(id).value);
+      await hubTexteSichern();
+      return { letzte, a, b, nachZurueck, c: JSON.parse(JSON.stringify(HUBTEXTE)) };
+    });
+    pruef("Tippen schickt die Texte an die Vorschau und schaltet sie auf die Speisekarte", (r.letzte.teil.hub_texte || {}).karte_titel === "Neuer Titel" && r.letzte.ziel === "speisekarte", r.letzte);
+    pruef("„Übernehmen“ legt alle vier in hub_texte UND behält Slogan, WLAN und eigene Texte", r.a.karte_titel === "Neuer Titel" && r.a.karte_eyebrow === "Frisch" && r.a.karte_text === "Ein Satz." && r.a.karte_kopfzeile === "Seit 2019" && r.a.claim === "Alt-Slogan" && r.a.wlan_passwort === "alt123" && !!r.a.eigen && r.a.eigen.Hallo.de === "Servus", r.a);
+    pruef("ein geleertes Feld entfernt seinen Schlüssel (leer = Vorgabe des Hauses), die anderen bleiben", !("karte_text" in r.b) && r.b.karte_titel === "Neuer Titel", r.b);
+    pruef("„Auf Vorgabe zurück“ leert die vier Felder, lässt das WLAN — und das nächste „Übernehmen“ schreibt keinen karte_*-Schlüssel mehr", r.nachZurueck.slice(0, 4).every(x => x === "") && r.nachZurueck[4] === "Gast-Alt" && !Object.keys(r.c).some(k => /^karte_/.test(k)) && r.c.wlan_passwort === "alt123", [r.nachZurueck, r.c]);
+    pruef("keine Ausnahme im Board", fehler.length === 0, fehler);
+    await ctx.close();
   }
 
   /* ── 6 · Ein Haus ohne Schalter bleibt, wie es war ── */

@@ -221,7 +221,10 @@ async function oeffnen(browser, haus, breite, sprache) {
     pruef(c.h2 === "Kaiser und Säfte", haus + ": Unterseite heißt wie die Kachel", c.h2);
     pruef(!/Hinter der Bar/.test(c.unter), haus + ": keine fremde Vorgabe-Unterzeile mehr", c.unter || "(keine)");
     const s2 = await lies("#/speisekarte");
-    pruef(s2.h2 === "Speisekarte" && /Küche/.test(s2.unter), haus + ": unveränderte Kachel behält Titel und Unterzeile", s2.h2 + " / " + s2.unter);
+    /* Ein Haus mit Startgrafik trägt auf der Speisekarte die Kopfkarte des Hauses (Markenblatt startgrafik.karte, im Board änderbar) —
+       dort steht deren Titel und Text statt der Kachel (zweite Quelle: das Markenblatt-Objekt; pruef-startgrafik.js misst den Rest). */
+    const sgk = await seite.evaluate(() => (typeof MARKENBLATT !== "undefined" && MARKENBLATT.startgrafik && MARKENBLATT.startgrafik.karte) || null);
+    pruef(sgk ? (s2.h2 === sgk.titel && s2.unter === sgk.text) : (s2.h2 === "Speisekarte" && /Küche/.test(s2.unter)), haus + ": unveränderte Kachel behält Titel und Unterzeile" + (sgk ? " (Kopfkarte des Hauses statt Kachel)" : ""), s2.h2 + " / " + s2.unter);
     const g = await lies("#/getraenke");
     pruef(g.h2 === "Getränkekarte" && g.unter === "Frisch & kalt", haus + ": eigene Unterzeile allein wird übernommen", g.h2 + " / " + g.unter);
     await seite.evaluate(() => { spracheSetzen("en"); });
