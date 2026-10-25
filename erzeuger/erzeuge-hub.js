@@ -451,7 +451,7 @@ function pruefeMarkenblatt(mb){
     if(!sg || typeof sg !== "object" || Array.isArray(sg)) F("startgrafik muss ein Objekt sein, steht: " + JSON.stringify(sg));
     else{
       for(const k of Object.keys(sg)) if(["figur", "sticker", "botschaft", "karte"].indexOf(k) < 0) F("startgrafik." + k + " gibt es nicht — erlaubt: figur, sticker, botschaft, karte");
-      if(SG_FIGUREN.indexOf(sg.figur) < 0) F("startgrafik.figur unbekannt: " + JSON.stringify(sg.figur) + " — erlaubt: " + SG_FIGUREN.join(", "));
+      if(sg.figur !== undefined && SG_FIGUREN.indexOf(sg.figur) < 0) F("startgrafik.figur unbekannt: " + JSON.stringify(sg.figur) + " — erlaubt: " + SG_FIGUREN.join(", "));
       const rein = (v, max) => typeof v === "string" && v.trim() !== "" && v.length <= max && !/[<>"`]/.test(v);
       if(sg.sticker !== undefined && !rein(sg.sticker, 26)) F("startgrafik.sticker: Text bis 26 Zeichen ohne < > \" ` — steht: " + JSON.stringify(sg.sticker));
       if(sg.botschaft !== undefined && !(Array.isArray(sg.botschaft) && sg.botschaft.length === 2 && sg.botschaft.every(x => rein(x, 56))))

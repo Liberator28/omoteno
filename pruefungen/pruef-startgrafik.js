@@ -49,8 +49,10 @@ const ZEILEN = rows => rows.map(r => {
       const r = spawnSync("node", [path.join(wurzel, "erzeuger", "erzeuge-hub.js"), "probe"].concat(nurPruefen ? ["--pruefen-nur"] : []), { encoding: "utf8" });
       return { code: r.status, text: r.stdout + r.stderr, hub: fs.existsSync(path.join(wurzel, "dist", "probe", "index.html")) ? fs.readFileSync(path.join(wurzel, "dist", "probe", "index.html"), "utf8") : "" };
     };
-    const sg0 = basis.startgrafik;
-    pruef("Voraussetzung: Chocos Markenblatt trägt startgrafik mit allen vier Teilen", !!sg0 && !!sg0.figur && !!sg0.sticker && sg0.botschaft.length === 2 && !!sg0.karte && Object.keys(sg0.karte).length === 4, sg0);
+    /* Maskottchen und Aufkleber sind Zugaben (Wunsch 25.10.: bei Choco raus); Chocos Blatt trägt nur Botschaft und Kopfkarte. Die volle Form
+       (alle vier Teile) probt die Prüfung selbst — sonst bliebe die Zeichnung im Erzeuger ungeprüft. */
+    const sg0 = Object.assign({ figur: "erdbeere", sticker: "Süßes macht glücklich!" }, basis.startgrafik);
+    pruef("Voraussetzung: Chocos Markenblatt trägt Botschaft und Kopfkarte, aber KEIN Maskottchen und keinen Aufkleber", !!basis.startgrafik && basis.startgrafik.figur === undefined && basis.startgrafik.sticker === undefined && basis.startgrafik.botschaft.length === 2 && Object.keys(basis.startgrafik.karte).length === 4, basis.startgrafik);
     pruef("Basis (Choco) geht durch — Voraussetzung der Gegenfälle", erzeuge({}, true).code === 0, erzeuge({}, true).text.slice(-120));
     const F = (g, teil, name) => { const r = erzeuge({ startgrafik: g }, true); pruef("Erzeuger lehnt ab (" + name + ")", r.code !== 0 && r.text.indexOf(teil) >= 0, r.text.split("\n").filter(x => /FEHLER/.test(x)).join(" | ").slice(0, 160)); };
     F(Object.assign({}, sg0, { figur: "pizza" }), "startgrafik.figur unbekannt", "unbekannte Figur");
@@ -67,9 +69,11 @@ const ZEILEN = rows => rows.map(r => {
     F("erdbeere", "muss ein Objekt sein", "Zeichenkette statt Objekt");
     let r = erzeuge({ startstil: "klassisch" }, true);
     pruef("Erzeuger lehnt startgrafik ohne Premium ab (sonst wirkungslos und still)", r.code !== 0 && /wirkt nur mit startstil/.test(r.text));
-    r = erzeuge({}, false);
+    r = erzeuge({ startgrafik: sg0 }, false);
     const block = (r.hub.match(/startgrafik: \{([\s\S]*?)\n  \},/) || ["", ""])[1];
     pruef("Erzeuger schreibt alle vier Teile ins Markenblatt des Hubs (figur, sticker, botschaft, karte)", r.code === 0 && /figur:/.test(block) && /sticker:/.test(block) && /botschaft:/.test(block) && /karte:/.test(block), block.slice(0, 200));
+    const rc = erzeuge({}, false);
+    pruef("Chocos Blatt ohne figur/sticker geht durch und schreibt beide NICHT in den Hub", rc.code === 0 && !/\n    figur:/.test((rc.hub.match(/startgrafik: \{([\s\S]*?)\n  \},/) || ["", ""])[1]) && /botschaft:/.test(rc.hub), rc.text.slice(-120));
     pruef("… und die Texte der Kopfkarte stehen wörtlich darin (Rundlauf Markenblatt → Hub)", Object.values(sg0.karte).every(v => block.indexOf(JSON.stringify(v).slice(1, -1)) >= 0 || block.indexOf(v) >= 0));
     r = erzeuge({}, false, ["startgrafik"]);
     pruef("ohne startgrafik steht nichts davon im erzeugten Hub (Markenblatt-Zeile)", r.code === 0 && r.hub.length > 1000 && !/\n  startgrafik:/.test(r.hub));
@@ -77,9 +81,21 @@ const ZEILEN = rows => rows.map(r => {
   }
 
   /* ── 2 · Startseite: Grafiken, Botschaft, Teller ── */
-  console.log("\n══ 2 · Startseite mit Startgrafik ══");
+  console.log("\n══ 2a · Chocos Kopf ohne Maskottchen und ohne Aufkleber ══");
   for(const breite of [360, 430]){
     const h = await oeffneHub(b, { kopf: "dunkel", kachelFoto: false, korb: KORB, stil: "premium", breite, hoehe: 900, zeilen: ZEILEN });
+    const k = await h.p.evaluate(() => ({ m: document.querySelectorAll("header .sg-m, header .sg-s").length, an: document.body.dataset.startgrafik, bot: !!document.querySelector(".botschaft .bo-text"), sw: document.documentElement.scrollWidth, cw: document.documentElement.clientWidth,
+      text: document.body.innerText.indexOf("Süßes macht glücklich") }));
+    pruef(breite + " px: kein Maskottchen, kein Aufkleber, der Text „Süßes macht glücklich“ steht nirgends — die Startgrafik (Botschaft) bleibt", k.m === 0 && k.an === "an" && k.bot && k.text < 0 && k.sw <= k.cw, k);
+    const lg = await rect(h.p, "#logo");
+    pruef(breite + " px: das Siegel steht mittig (±2 px)", Math.abs(lg.x + lg.w / 2 - breite / 2) <= 2, lg);
+    await h.ctx.close();
+  }
+
+  console.log("\n══ 2 · Startseite mit Startgrafik (Maskottchen und Aufkleber als Option des Erzeugers) ══");
+  for(const breite of [360, 430]){
+    const h = await oeffneHub(b, { kopf: "dunkel", kachelFoto: false, korb: KORB, stil: "premium", breite, hoehe: 900, zeilen: ZEILEN,
+      startgrafik: { figur: "erdbeere", sticker: "Süßes macht glücklich!", botschaft: ["Ihr Besuch, Ihre Entscheidung.", "Alles da. Nur entscheiden müssen Sie selbst."], karte: {} } });
     const p = h.p;
     const s = await p.evaluate(() => ({ an: document.body.dataset.startgrafik, m: !!document.querySelector("header .sg-m svg"), st: !!document.querySelector("header .sg-s svg"),
       bot: !!document.querySelector(".botschaft .bo-text"), teller: !!document.querySelector('[data-sz="karte"] .sz-k-teller svg'), box: !!document.querySelector('[data-sz="roulette"] .sz-k-box svg'),
@@ -214,7 +230,9 @@ const ZEILEN = rows => rows.map(r => {
   /* ── 6a · Sprachen: Sticker, Botschaft und Kopfkarte kommen aus dem Wörterbuch (zweite Quelle: TEXTE), nicht aus dem Markenblatt ── */
   console.log("\n══ 6a · Sprachen ══");
   for(const sprache of ["en", "ar"]){
-    const h = await oeffneHub(b, { kopf: "dunkel", kachelFoto: true, stil: "premium", breite: 390, hoehe: 900, zeilen: ZEILEN, sprache });
+    const h = await oeffneHub(b, { kopf: "dunkel", kachelFoto: true, stil: "premium", breite: 390, hoehe: 900, zeilen: ZEILEN, sprache,
+      startgrafik: { figur: "erdbeere", sticker: "Süßes macht glücklich!", botschaft: ["Ihr Besuch, Ihre Entscheidung.", "Alles da. Nur entscheiden müssen Sie selbst."],
+        karte: { eyebrow: "Unsere Speisekarte", titel: "Süße Momente für jeden Geschmack", text: "Von cremigen Waffeln bis zu fruchtigen Desserts – entdecke unsere liebevoll zubereiteten Spezialitäten.", kopfzeile: "Schokolade. Liebe. Genuss." } } });
     const p = h.p;
     const q = await p.evaluate(sp => { const sg = MARKENBLATT.startgrafik, w = k => (TEXTE[k] || {})[sp] || "";
       return { sg, soll: { bot0: w(sg.botschaft[0]), bot1: w(sg.botschaft[1]), sticker: w(sg.sticker), titel: w(sg.karte.titel), text: w(sg.karte.text), zeile: w(sg.karte.kopfzeile) },

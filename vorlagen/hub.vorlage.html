@@ -12522,14 +12522,17 @@ function sgDekoZeichnen(){
   const sg = document.body.dataset.ansicht === "start" ? sgAlle : null;
   const stk = sg && sg.sticker ? t(sg.sticker) : "";   /* übersetzt — die Sprache gehört in den Stand, sonst bliebe der Aufkleber beim Wechsel deutsch */
   const stand = sg ? sg.figur + "|" + stk : "";
-  if(stand === sgDekoStand && (!sg || kopf.querySelector(".sg-m"))) return;
+  const gewollt = (sg && sg.figur ? 1 : 0) + (stk ? 1 : 0);
+  if(stand === sgDekoStand && (!sg || kopf.querySelectorAll(".sg-m,.sg-s").length === gewollt)) return;
   sgDekoStand = stand;
   kopf.querySelectorAll(".sg-m,.sg-s").forEach(e => e.remove());
   if(!sg){ delete document.body.dataset.startgrafik; return; }
   document.body.dataset.startgrafik = "an";
   sgSchrift();
-  const m = document.createElement("div"); m.className = "sg-m"; m.setAttribute("aria-hidden", "true"); m.innerHTML = SG.maskottchen();
-  kopf.appendChild(m);
+  if(sg.figur){
+    const m = document.createElement("div"); m.className = "sg-m"; m.setAttribute("aria-hidden", "true"); m.innerHTML = SG.maskottchen();
+    kopf.appendChild(m);
+  }
   if(stk){
     const st = document.createElement("div"); st.className = "sg-s"; st.setAttribute("aria-hidden", "true");
     st.innerHTML = SG.sticker(stk.split(" ").length >= 3 ? [stk.split(" ")[0], stk.split(" ")[1], stk.split(" ").slice(2).join(" ")] : stk.split(" "));
@@ -13020,11 +13023,12 @@ SG.stern(150, 22, 8) +
 function sgDaten(){
   const g = typeof MARKENBLATT === "object" && MARKENBLATT ? MARKENBLATT.startgrafik : null;
   if(!startPremium() || !g || typeof g !== "object" || Array.isArray(g)) return null;
-  if(SG_FIGUREN.indexOf(g.figur) < 0) return null;
+  /* figur und sticker sind Zugaben: fehlen sie, steht im Kopf kein Maskottchen und kein Aufkleber. Eine UNBEKANNTE Figur ist dagegen ein Fehler (nichts). */
+  if(g.figur !== undefined && SG_FIGUREN.indexOf(g.figur) < 0) return null;
   const text = (v, max) => typeof v === "string" ? v.replace(/[<>"`]/g, "").replace(/\s+/g, " ").trim().slice(0, max) : "";
   const b = Array.isArray(g.botschaft) ? g.botschaft.slice(0, 2).map(x => text(x, 56)) : [];
   const k = g.karte && typeof g.karte === "object" && !Array.isArray(g.karte) ? g.karte : {};
-  return { figur: g.figur, sticker: text(g.sticker, 26), botschaft: b.length === 2 && b[0] && b[1] ? b : null,
+  return { figur: g.figur || "", sticker: text(g.sticker, 26), botschaft: b.length === 2 && b[0] && b[1] ? b : null,
            karte: { eyebrow: text(k.eyebrow, 40), titel: text(k.titel, 60), text: text(k.text, 160), kopfzeile: text(k.kopfzeile, 60) } };
 }
 /* Die Texte im Kopf der Speisekarte: live aus dem Board (hub_texte.karte_*) vor dem Markenblatt (startgrafik.karte) vor nichts.
