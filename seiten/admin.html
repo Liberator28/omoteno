@@ -4520,6 +4520,30 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </label>
       </div>
 
+      <div class="ezeile senkrecht">
+        <span><b>Kopf der Speisekarte</b><i>Kennzeile, Überschrift und Text über der Karte — nur bei Häusern mit gezeichneter Startseite; leer: Vorgabe des Hauses</i></span>
+        <label class="feld">
+          <span>Kennzeile <em class="mass" id="hubKarteEyebrowMass"></em></span>
+          <input type="text" id="hubKarteEyebrow" autocomplete="off" placeholder="Unsere Speisekarte">
+          <small class="feldhilfe" id="hubKarteEyebrowHilfe">Steht klein in Großbuchstaben über der Überschrift.</small>
+        </label>
+        <label class="feld">
+          <span>Überschrift <em class="mass" id="hubKarteTitelMass"></em></span>
+          <input type="text" id="hubKarteTitel" autocomplete="off" placeholder="Süße Momente für jeden Geschmack">
+          <small class="feldhilfe" id="hubKarteTitelHilfe">Der große Titel. Zwei Zeilen sehen am besten aus.</small>
+        </label>
+        <label class="feld">
+          <span>Text <em class="mass" id="hubKarteTextMass"></em></span>
+          <textarea id="hubKarteText" rows="3" placeholder="Von cremigen Waffeln bis zu fruchtigen Desserts …"></textarea>
+          <small class="feldhilfe" id="hubKarteTextHilfe">Zwei, drei Sätze, die Ihr Haus vorstellen.</small>
+        </label>
+        <label class="feld">
+          <span>Zeile unter dem Namen <em class="mass" id="hubKarteKopfzeileMass"></em></span>
+          <input type="text" id="hubKarteKopfzeile" autocomplete="off" placeholder="Schokolade. Liebe. Genuss.">
+          <small class="feldhilfe" id="hubKarteKopfzeileHilfe">Steht im Kopf der Unterseiten unter dem Namen Ihres Hauses.</small>
+        </label>
+      </div>
+
       <!-- Rückfall, wenn der echte Hub oben nicht zu laden ist (offline). -->
       <div class="hubschau" id="hubSchau" aria-live="polite" hidden></div>
 
@@ -15360,6 +15384,11 @@ const TEXTMASS = {
   /* Dieselbe Zahl wie hub_texte_ueber (migration-haus.sql). */
   hubUeber:    { gut:240, hart:400,
     warnung:"Ab 240 Zeichen wird der Text auf dem Telefon lang — kurz liest sich schneller." },
+  /* Dieselben Zahlen wie hub_texte_karte (migration-karte-kopf.sql) und KARTE_LIVE im Hub. */
+  hubKarteEyebrow:  { gut:26, hart:40, warnung:"Ab 26 Zeichen braucht die Kennzeile auf schmalen Telefonen eine zweite Zeile." },
+  hubKarteTitel:    { gut:34, hart:60, warnung:"Ab 34 Zeichen wird die Überschrift auf dem Telefon dreizeilig." },
+  hubKarteText:     { gut:110, hart:160, warnung:"Ab 110 Zeichen wird der Text vierzeilig; mehr als vier Zeilen zeigt der Hub nicht." },
+  hubKarteKopfzeile:{ gut:30, hart:60, warnung:"Ab 30 Zeichen wird die Zeile im Kopf der Unterseiten mit „…“ gekürzt." },
   hubRunner:   { gut:20, hart:40,
     warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." },
   /* Die Laufschrift bricht nie um, sie läuft. „gut“ ist Lesezeit:
@@ -15396,6 +15425,11 @@ function massZeigen(feldId){
 
 /* Den ruhigen Text einmal merken, damit die Warnung ihn nicht
    dauerhaft überschreibt. */
+/* Welche Seite der Vorschau zu welchem Feld gehört. */
+function hvWorteZiel(id){
+  return id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : id === "hubUeber" ? "haus"
+       : id.indexOf("hubKarte") === 0 ? "speisekarte" : "kopf";
+}
 function massVerdrahten(){
   Object.keys(TEXTMASS).forEach(id => {
     const el = $("#" + id); if(!el) return;
@@ -15408,12 +15442,12 @@ function massVerdrahten(){
       el.dataset.verdrahtet = "1";
       el.addEventListener("input", () => {
         massZeigen(id);
-        if(id.indexOf("hub") === 0){ hubSchauZeichnen(); hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : id === "hubUeber" ? "haus" : "kopf"); }
+        if(id.indexOf("hub") === 0){ hubSchauZeichnen(); hvWorte(hvWorteZiel(id)); }
       });
       /* Wer ins Gruß-Feld tippt, will den Willkommensschirm sehen,
          nicht den Kopf der Startseite. */
       if(id.indexOf("hub") === 0) el.addEventListener("focus", () =>
-        hvWorte(id === "hubGruss" ? "gruss" : (id === "hubRunner" || id === "hubLaufschrift") ? "aktion" : id === "hubUeber" ? "haus" : "kopf"));
+        hvWorte(hvWorteZiel(id)));
     }
     massZeigen(id);
   });
@@ -16284,7 +16318,9 @@ function hvWorte(ziel){
   hvSenden("worte", { hub_texte:{ claim:wert("hubClaim"), gruss:wert("hubGruss"),
                                   runner_titel:wert("hubRunner"), laufschrift:wert("hubLaufschrift"),
                                   wlan_netz:wert("hubWlanNetz"), wlan_passwort:wert("hubWlanPasswort"),
-                                  ueber:wert("hubUeber") },
+                                  ueber:wert("hubUeber"),
+                                  karte_eyebrow:wert("hubKarteEyebrow"), karte_titel:wert("hubKarteTitel"),
+                                  karte_text:wert("hubKarteText"), karte_kopfzeile:wert("hubKarteKopfzeile") },
                       /* Ohne laufende Aktion wäre der Aktionsname nirgends zu sehen. */
                       aktion: ziel === "aktion" && gerichte[0]
                         ? { titel:"", gericht_name:gerichte[0].name,
@@ -16420,6 +16456,10 @@ function hubTexteFuellen(){
   setz("hubWlanNetz", HUBTEXTE.wlan_netz);
   setz("hubWlanPasswort", HUBTEXTE.wlan_passwort);
   setz("hubUeber", HUBTEXTE.ueber);
+  setz("hubKarteEyebrow", HUBTEXTE.karte_eyebrow);
+  setz("hubKarteTitel", HUBTEXTE.karte_titel);
+  setz("hubKarteText", HUBTEXTE.karte_text);
+  setz("hubKarteKopfzeile", HUBTEXTE.karte_kopfzeile);
   massVerdrahten();
   hubSchauZeichnen();
   hvWorte("kopf");
@@ -16534,7 +16574,7 @@ async function hubTexteSichern(){
      „Texte & Schrift“), bleibt stehen — vorher baute jedes Übernehmen
      hub_texte frisch aus den Feldern und hätte es gelöscht. */
   const neu = Object.assign({}, HUBTEXTE || {});
-  ["claim","gruss","runner_titel","laufschrift","wlan_netz","wlan_passwort","ueber"].forEach(k => { delete neu[k]; });
+  ["claim","gruss","runner_titel","laufschrift","wlan_netz","wlan_passwort","ueber","karte_eyebrow","karte_titel","karte_text","karte_kopfzeile"].forEach(k => { delete neu[k]; });
   const claim  = $("#hubClaim").value.trim();
   const gruss  = $("#hubGruss").value.trim();
   const runner = $("#hubRunner").value.trim();
@@ -16551,6 +16591,9 @@ async function hubTexteSichern(){
   if(wPass) neu.wlan_passwort = wPass;
   const ueber = ($("#hubUeber") || {value:""}).value.trim();
   if(ueber) neu.ueber = ueber;
+  /* Kopf der Speisekarte: leer heißt „Vorgabe des Hauses“ — der Schlüssel fehlt dann ganz. */
+  [["karte_eyebrow","hubKarteEyebrow"],["karte_titel","hubKarteTitel"],["karte_text","hubKarteText"],["karte_kopfzeile","hubKarteKopfzeile"]]
+    .forEach(([k, id]) => { const v = ($("#" + id) || {value:""}).value.trim(); if(v) neu[k] = v; });
 
   const knopf = $("#hubTexteSichern");
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
@@ -16572,7 +16615,7 @@ async function hubTexteSichern(){
     /* Die Datenbank hat dieselben Grenzen als Schranke. Wenn sie
        zuschlägt, ist das kein Serverfehler, sondern ein zu langer
        Text — und das gehört genau so gesagt. */
-    raus.textContent = /hub_texte_(masse|wlan|laufschrift|ueber)|check/i.test(String(err && err.message))
+    raus.textContent = /hub_texte_(masse|wlan|laufschrift|ueber|karte)|check/i.test(String(err && err.message))
       ? "Ein Text ist zu lang. Bitte die Hinweise an den Feldern beachten."
       : "Nicht gespeichert, bitte Verbindung prüfen.";
   }
@@ -19863,7 +19906,7 @@ function runnerTitelWert(){
 if($("#hubTexteSichern")){
   $("#hubTexteSichern").onclick = hubTexteSichern;
   $("#hubTexteZurueck").onclick = () => {
-    ["hubClaim","hubGruss","hubRunner","hubLaufschrift"].forEach(id => {
+    ["hubClaim","hubGruss","hubRunner","hubLaufschrift","hubKarteEyebrow","hubKarteTitel","hubKarteText","hubKarteKopfzeile"].forEach(id => {
       const el = $("#" + id); if(el) el.value = "";
       massZeigen(id);
     });

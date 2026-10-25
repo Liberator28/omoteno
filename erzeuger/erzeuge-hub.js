@@ -105,6 +105,13 @@ function layoutAusGeruest(name){
   if(!t){ console.error("Im Gerüst nicht gefunden: " + name); process.exit(1); }
   return new Function("return (" + t[1] + ")")();
 }
+/* Figuren der Startgrafiken (gezeichnete Vektorbilder, nur Premium): ebenfalls aus dem Gerüst gelesen. */
+const SG_FIGUREN       = (() => {
+  const datei = fs.readFileSync(path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), "utf8");
+  const t = datei.match(/const SG_FIGUREN = (\[[^\]]*\]);/);
+  if(!t){ console.error("Im Gerüst nicht gefunden: SG_FIGUREN"); process.exit(1); }
+  return JSON.parse(t[1]);
+})();
 const LAYOUT_REGLER    = layoutAusGeruest("LAYOUT_REGLER");
 const LAYOUT_PROFILE   = layoutAusGeruest("LAYOUT_PROFILE");
 /* Was die Figur je Bestellphase tragen kann, und welche Phasen es
@@ -436,6 +443,33 @@ function pruefeMarkenblatt(mb){
       }
     }
   }
+  /* Startgrafiken: gezeichnete Figuren, Sticker und Botschaft der Startseite. Jeder Tippfehler wäre sonst ein stiller Rückfall
+     auf „keine Grafik“ — der Kunde hätte sie bestellt und sähe nichts. Nur Text ohne Auszeichnung (kein < > " `). */
+  if(mb.startgrafik !== undefined){
+    const sg = mb.startgrafik;
+    if(mb.startstil !== "premium") F("startgrafik wirkt nur mit startstil \"premium\" — steht: " + JSON.stringify(mb.startstil));
+    if(!sg || typeof sg !== "object" || Array.isArray(sg)) F("startgrafik muss ein Objekt sein, steht: " + JSON.stringify(sg));
+    else{
+      for(const k of Object.keys(sg)) if(["figur", "sticker", "botschaft", "karte"].indexOf(k) < 0) F("startgrafik." + k + " gibt es nicht — erlaubt: figur, sticker, botschaft, karte");
+      if(SG_FIGUREN.indexOf(sg.figur) < 0) F("startgrafik.figur unbekannt: " + JSON.stringify(sg.figur) + " — erlaubt: " + SG_FIGUREN.join(", "));
+      const rein = (v, max) => typeof v === "string" && v.trim() !== "" && v.length <= max && !/[<>"`]/.test(v);
+      if(sg.sticker !== undefined && !rein(sg.sticker, 26)) F("startgrafik.sticker: Text bis 26 Zeichen ohne < > \" ` — steht: " + JSON.stringify(sg.sticker));
+      if(sg.botschaft !== undefined && !(Array.isArray(sg.botschaft) && sg.botschaft.length === 2 && sg.botschaft.every(x => rein(x, 56))))
+        F("startgrafik.botschaft: genau zwei Zeilen, je bis 56 Zeichen ohne < > \" ` — steht: " + JSON.stringify(sg.botschaft));
+      /* Die Texte im Kopf der Speisekarte (Vorgabe des Hauses; das Board kann sie überschreiben). Gleiche Grenzen wie
+         hub_texte.karte_* im Hub — sonst kürzt der Hub still, was der Kunde bestellt hat. */
+      if(sg.karte !== undefined){
+        if(!sg.karte || typeof sg.karte !== "object" || Array.isArray(sg.karte)) F("startgrafik.karte muss ein Objekt sein, steht: " + JSON.stringify(sg.karte));
+        else{
+          const grenzen = { eyebrow:40, titel:60, text:160, kopfzeile:60 };
+          for(const k of Object.keys(sg.karte)){
+            if(!(k in grenzen)) F("startgrafik.karte." + k + " gibt es nicht — erlaubt: " + Object.keys(grenzen).join(", "));
+            else if(!rein(sg.karte[k], grenzen[k])) F("startgrafik.karte." + k + ": Text bis " + grenzen[k] + " Zeichen ohne < > \" ` — steht: " + JSON.stringify(sg.karte[k]));
+          }
+        }
+      }
+    }
+  }
   /* Dieselbe Begründung wie bei figur: Ein Tippfehler in haende
      ergäbe im Hub wortlos wieder die Vorgabe. Der Kunde hätte seine
      Pfanne gewählt und bekäme den Kuchenstapel. */
@@ -606,6 +640,7 @@ function alsQuelltext(mb){
     mb.thema     ? liste("thema", mb.thema) : null,
     mb.startstil ? liste("startstil", mb.startstil) : null,
     mb.startlayout ? block("startlayout", mb.startlayout, ["profil"].concat(Object.keys(LAYOUT_REGLER))) : null,
+    mb.startgrafik ? block("startgrafik", mb.startgrafik, ["figur", "sticker", "botschaft", "karte"]) : null,
     /* false ist ein Wert, kein Fehlen: typeof statt Wahrheitswert,
        sonst verschwände genau das Abschalten. */
     typeof mb.bewegteZeichen === "boolean" ? liste("bewegteZeichen", mb.bewegteZeichen) : null,

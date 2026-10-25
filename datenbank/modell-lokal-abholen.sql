@@ -1,5 +1,5 @@
 -- Kleinstes Modell, in dem die ECHTEN Funktionen bestellung_aufgeben (migration-gutschein-sicher.sql) und
--- bestellung_abholen (migration-abholen.sql) laufen. Nachgestellt ist nur, was sie lesen: Tabellen mit den
+-- bestellung_abholen (migration-abholen.sql) und bestellung_liefern (migration-aktionspreis-pruefen.sql) laufen. Nachgestellt ist nur, was sie lesen: Tabellen mit den
 -- Spalten, die im Körper vorkommen, und die Schutz-Helfer als Stummel (kein Zähler, keine Herkunft). Die Frage,
 -- die damit gemessen wird (greift die Tischpflicht vor oder nach der Quelle?), steht VOR allen Stummeln im Körper.
 create schema if not exists extensions;
@@ -17,7 +17,7 @@ create table public.rabattcodes(id uuid primary key default gen_random_uuid(), b
 create table public.bestellungen(id uuid primary key default gen_random_uuid(), betrieb_id uuid, quelle text, status text, tisch text,
   summe numeric, summe_gast numeric, notiz text, positionen jsonb, gast_kennung text, tagesnummer smallint, tisch_bestaetigt boolean,
   geraet text, pruefen boolean, pruef_grund text, zeitpunkt timestamptz default now(), rabatt_betrag numeric, rabatt_code text,
-  rabatt_ziel text, abholung boolean default false, liefergebuehr numeric, gast_name text, gast_telefon text, wunschzeit timestamptz);
+  rabatt_ziel text, abholung boolean default false, liefergebuehr numeric, gast_name text, gast_telefon text, wunschzeit timestamptz, liefer_adresse jsonb);
 create function public.positionen_pruefen(p_betrieb uuid, p jsonb) returns jsonb language sql as
  $$ select '{"positionen":[{"name":"Probe","menge":1,"preis":10}],"summe":10,"waren":10,"unbekannt":0}'::jsonb $$;
 create function public.schutz_herkunft() returns text language sql as $$ select null::text $$;

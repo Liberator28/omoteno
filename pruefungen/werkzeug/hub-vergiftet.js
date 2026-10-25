@@ -32,7 +32,7 @@ function gerichte(){
     bild: P("gericht.bild"), bild_frei: "https://x.test/" + P("gericht.bild_frei"),
     frei: true, opt: P("gericht.opt"), allergene: P("gericht.allergene"),
     zusatzstoffe: P("gericht.zusatzstoffe"), stoff_hinweis: P("gericht.stoff_hinweis"),
-    veg: true, vegan: true, ab_alter: 18,
+    veg: true, vegan: true, beliebt: true, ab_alter: 18,
     uebersetzungen: { en: P("gericht.uebersetzungen.en") },
     name_uebersetzungen: { en: P("gericht.name_uebersetzungen.en") }
   }));
@@ -44,7 +44,7 @@ function betrieb(){
     id: "b1", bestell_pause: true, bestell_pause_text: P("betrieb.bestell_pause_text"),
     hub_texte: { claim: P("texte.claim"), gruss: P("texte.gruss"), runner_titel: "<img src=x onerror=__x.push(\"RT\")>",
       laufschrift: P("texte.laufschrift"), wlan_netz: P("texte.wlan_netz"), wlan_passwort: P("texte.wlan_passwort"),
-      ueber: P("texte.ueber"), eigen: Object.fromEntries(SCHL.slice(0, 200).map(k => [k, { de: P("eigen.de"), en: P("eigen.en"), schrift: P("eigen.schrift") }])) },
+      ueber: P("texte.ueber"), karte_eyebrow: P("texte.karte_eyebrow"), karte_titel: P("texte.karte_titel"), karte_text: P("texte.karte_text"), karte_kopfzeile: P("texte.karte_kopfzeile"), eigen: Object.fromEntries(SCHL.slice(0, 200).map(k => [k, { de: P("eigen.de"), en: P("eigen.en"), schrift: P("eigen.schrift") }])) },
     hub_kacheln: [
       ...["speisekarte","getraenke","cocktails","tischquiz","musikwunsch","rueckmeldung","kontakt","reservieren","wlan"].map(s => ({ schluessel: s, an: true, titel: P("kachel.titel"), unter: P("kachel.unter"), icon: P("kachel.icon"), emoji: P("kachel.emoji"), gruppe: P("kachel.gruppe"), raster: P("kachel.raster"), stil: P("kachel.stil"), farbe: P("kachel.farbe"), banner: "https://x.test/" + P("kachel.banner"), breite: P("kachel.breite"), bildform: P("kachel.bildform"), grund: P("kachel.grund"), symbolLage: P("kachel.symbolLage"), hoehe: P("kachel.hoehe"), textgroesse: P("kachel.textgroesse") })),
       { schluessel: "e-abc123", an: true, art: "link", link: "https://x.test/" + P("kachel.link"), titel: P("kachel.eigen.titel"), unter: P("kachel.eigen.unter") },

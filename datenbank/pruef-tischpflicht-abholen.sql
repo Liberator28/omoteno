@@ -8,7 +8,7 @@ declare
   v_b uuid; r jsonb; m text; n int;
   pos jsonb := '[{"name":"Probe","menge":1}]';
 begin
-  insert into betriebe(slug, liefer) values ('probe', '{"abholen":true}') returning id into v_b;
+  insert into betriebe(slug, liefer) values ('probe', '{"abholen":true,"an":true,"plz":["35037"]}') returning id into v_b;
 
   -- T1 · ohne Tischpflicht geht die Abholung durch (Gegenfall: der Weg an sich ist in Ordnung)
   r := bestellung_abholen(v_b, 'Gast', '0151 1', pos, 10, null, null, null, null, null);
@@ -50,6 +50,41 @@ begin
     get stacked diagnostics m = message_text;
     insert into probe values ('T5','Tischpflicht an: Roh-Aufruf mit Quelle lieferung angenommen', 'Ausnahme: ' || m);
   end;
+
+  -- T7 · MIT Tischpflicht, Lieferung (derselbe Weg wie die Abholung, bestellung_liefern → bestellung_aufgeben)
+  begin
+    r := bestellung_liefern(v_b, '{"name":"Frau Weber","strasse":"Musterweg 1","plz":"35037","ort":"Marburg","telefon":"0173 1"}'::jsonb, pos, 10, null, null, null, null);
+    insert into probe values ('T7','Tischpflicht an: Lieferung angenommen', (r->>'ok'));
+  exception when others then
+    get stacked diagnostics m = message_text;
+    insert into probe values ('T7','Tischpflicht an: Lieferung angenommen', 'Ausnahme: ' || m);
+  end;
+
+  -- T8 · die Ausnahme gilt nur im Aufruf der beiden Funktionen: danach, in DERSELBEN Transaktion, ist sie weg
+  begin
+    perform bestellung_aufgeben(v_b, 'lieferung', null, 10, null, pos, null, null, null, null, null);
+    insert into probe values ('T8','Tischpflicht an: Roh-Aufruf NACH einer Abholung in derselben Transaktion angenommen', 'true');
+  exception when others then
+    get stacked diagnostics m = message_text;
+    insert into probe values ('T8','Tischpflicht an: Roh-Aufruf NACH einer Abholung in derselben Transaktion angenommen', 'Ausnahme: ' || m);
+  end;
+
+  -- T9 · der Helfer ist kein Endpunkt: weder anon noch authenticated dürfen ihn rufen (§2.3a); vor der Korrektur gibt es ihn nicht
+  insert into probe values ('T9','Helfer tischpflicht_ausnahme_nehmen für Clients gesperrt',
+    case when to_regprocedure('public.tischpflicht_ausnahme_nehmen(text)') is null then 'entfällt'
+         else (not has_function_privilege('anon','public.tischpflicht_ausnahme_nehmen(text)','EXECUTE')
+               and not has_function_privilege('authenticated','public.tischpflicht_ausnahme_nehmen(text)','EXECUTE'))::text end);
+
+  -- T10 · selbst wenn die Einstellung irgendwie gesetzt wäre: für Tisch und Serviceruf gilt sie nie (die Ausnahme ist an die Quelle gebunden)
+  perform set_config('omoteno.ohne_tischpflicht', '1', true);
+  begin
+    perform bestellung_aufgeben(v_b, 'tisch', '5', 10, null, pos, null, null, null, null, null);
+    insert into probe values ('T10','Tischpflicht an, Einstellung gesetzt: Tischbestellung ohne Beleg abgewiesen', 'false');
+  exception when others then
+    get stacked diagnostics m = message_text;
+    insert into probe values ('T10','Tischpflicht an, Einstellung gesetzt: Tischbestellung ohne Beleg abgewiesen', (m like '%Untersetzer%')::text);
+  end;
+  perform set_config('omoteno.ohne_tischpflicht', '', true);
 
   -- T6 · Zeilen: wie viele Bestellungen gibt es am Ende (T1 immer, T2/T5 je nach Stand)
   select count(*) into n from bestellungen where betrieb_id = v_b;
