@@ -241,7 +241,7 @@ async function oeffnen(browser, haus, breite, sprache) {
     });
     pruef(z.an && z.w >= 44 && z.h >= 44 && z.text === "Zurück", haus + ": Zurück ist eine Pille „Zurück“, ≥ 44 px",
       z.w.toFixed(0) + "×" + z.h.toFixed(0) + " " + JSON.stringify(z.text));
-    pruef(z.label === "Zurück zur Übersicht" && z.oben, haus + ": beschriftet und obenauf (nichts deckt ihn)", z.label + " " + z.oben);
+    pruef(z.label === "Zurück zur Startseite" && z.oben, haus + ": beschriftet und obenauf (nichts deckt ihn)", z.label + " " + z.oben);
     /* 09.10. „Spare Text im Header — kompakt“: Auf der
        Unterseite ist der Kopf EINE Leiste — Siegel, Name und Knöpfe auf
        einer Höhe, ohne Adresse, Slogan und Öffnungsstand. Vorher ~270 px. */
@@ -283,7 +283,7 @@ async function oeffnen(browser, haus, breite, sprache) {
     await seite.click("#zurueck");
     await seite.waitForTimeout(500);
     const heim = await seite.evaluate(() => ({ hash: location.hash, start: seiteJetzt }));
-    pruef(heim.start === "start", haus + ": Tipp führt zur Übersicht", JSON.stringify(heim));
+    pruef(heim.start === "start", haus + ": Tipp führt zur Startseite", JSON.stringify(heim));
     pruef(fehler.length === 0, haus + ": keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
   }

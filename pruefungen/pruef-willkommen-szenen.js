@@ -191,7 +191,7 @@ const LAEUFT = () => {
     const weg = await p.evaluate(() => ({ szene: document.querySelectorAll(".wz").length, figur: (document.getElementById("wkFigur") || {}).innerHTML,
       laeuft: document.getAnimations().filter(a => a.effect && a.effect.target && a.effect.target.closest && a.effect.target.closest(".wz")).length,
       schirm: !!document.getElementById("willkommen") && !document.getElementById("willkommen").hidden }));
-    pruef(weg.szene === 0 && !weg.figur && weg.laeuft === 0 && !weg.schirm, "nach „Zur Übersicht“: Szene entfernt, keine ihrer Animationen läuft", JSON.stringify(weg));
+    pruef(weg.szene === 0 && !weg.figur && weg.laeuft === 0 && !weg.schirm, "nach „Zur Startseite“: Szene entfernt, keine ihrer Animationen läuft", JSON.stringify(weg));
     await p.reload(); await p.waitForTimeout(500);
     const zweit = await p.evaluate(() => ({ schirm: !!document.getElementById("willkommen"), szene: document.querySelectorAll(".wz").length }));
     pruef(!zweit.schirm && zweit.szene === 0, "zweiter Besuch in der Sitzung: kein Schirm, keine Szene", JSON.stringify(zweit));
