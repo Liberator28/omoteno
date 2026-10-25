@@ -23,6 +23,7 @@ $PSQL -d $DB -f /tmp/saal_funktionen.sql
 $PSQL -d $DB -f datenbank/modell-lokal-saal.sql
 $PSQL -d $DB -f datenbank/migration-saalplan.sql
 $PSQL -d $DB -f datenbank/migration-saal-einstellungen.sql
+$PSQL -d $DB -f datenbank/migration-saal-raeume.sql
 ERWARTET=(
  "Inhaber legt Lage (erwartet 1)|1"
  "Inhaber ändert nummer|abgewiesen" "Inhaber ändert schluessel|abgewiesen"
@@ -43,10 +44,26 @@ ERWARTET=(
  "R5 TEAM pausiert Bestellungen (legitim, erwartet 1)|1"
  "R6 Voraussetzung: Fremder sieht den Betrieb NICHT (erwartet 0)|0" "R7 FREMDER ändert Rubriken (erwartet 0 Zeilen)|0"
  "R8 Fremder legt Betrieb an|abgewiesen" "R9 anon ändert Rubriken|abgewiesen"
- "R10 Stand nach allen Versuchen|[{\"gruppe\": \"Meine Rubrik\"}]")
+ "R10 Stand nach allen Versuchen|[{\"gruppe\": \"Meine Rubrik\"}]"
+ "RM00 Voraussetzung|true" "RM01 gültig mit Theke → ok|{\"ok\": true}" "RM02 gespeichert: Breite 12.5|12.5"
+ "RM03 alter Stand ohne Räume bleibt gültig|{\"ok\": true}"
+ "RM10 Breite 1.9|{\"ok\": false, \"grund\": \"raeume\"}" "RM11 Breite 61|{\"ok\": false, \"grund\": \"raeume\"}"
+ "RM12 Breite als Text|{\"ok\": false, \"grund\": \"raeume\"}" "RM13 zwei Nachkommastellen|{\"ok\": false, \"grund\": \"raeume\"}"
+ "RM14 Tiefe fehlt|{\"ok\": false, \"grund\": \"raeume\"}" "RM15 fremder Schlüssel im Raum|{\"ok\": false, \"grund\": \"raeume\"}"
+ "RM16 Räume kein Array|{\"ok\": false, \"grund\": \"raeume\"}" "RM17 sieben Räume|{\"ok\": false, \"grund\": \"raeume\"}"
+ "RM18 Lage x 301|{\"ok\": false, \"grund\": \"raeume\"}" "RM19 Lage x negativ|{\"ok\": false, \"grund\": \"raeume\"}"
+ "RM20 Theke 0.3 m lang|{\"ok\": false, \"grund\": \"raeume\"}" "RM21 Theke 31 m lang|{\"ok\": false, \"grund\": \"raeume\"}"
+ "RM22 Theke x 61|{\"ok\": false, \"grund\": \"raeume\"}" "RM23 fremder Schlüssel an der Theke|{\"ok\": false, \"grund\": \"raeume\"}"
+ "RM24 Theke ohne y|{\"ok\": false, \"grund\": \"raeume\"}" "RM25 vier Theken|{\"ok\": false, \"grund\": \"raeume\"}"
+ "RM26 Theken kein Array|{\"ok\": false, \"grund\": \"raeume\"}"
+ "RM30 Stand nach Abweisungen = RM03|{\"zonen\": [\"Nur\"]}"
+ "RM31 Höchstmaß passt in die Schranke|{\"ok\": true}" "RM32 Größe des Höchstmaßes unter 3500|true"
+ "RM40 direkt ändern|abgewiesen" "RM50 TEAM setzt Räume (erwartet kein_recht)|{\"ok\": false, \"grund\": \"kein_recht\"}"
+ "RM60 anon ruft|abgewiesen" "RM70 genau eine Fassung|1")
 $PSQL -d $DB -tA -f datenbank/pruef-saalplan.sql > /tmp/saal_ergebnis.txt
 $PSQL -d $DB -tA -f datenbank/pruef-saal-einstellungen.sql >> /tmp/saal_ergebnis.txt
 $PSQL -d $DB -tA -f datenbank/pruef-rubriken-lokal.sql >> /tmp/saal_ergebnis.txt
+$PSQL -d $DB -tA -f datenbank/pruef-saal-raeume.sql >> /tmp/saal_ergebnis.txt
 rot=0
 for e in "${ERWARTET[@]}"; do
   if ! grep -qxF -- "$e" /tmp/saal_ergebnis.txt; then echo "ROT, Zeile fehlt oder weicht ab: $e"; rot=1; fi
