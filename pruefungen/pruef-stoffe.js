@@ -130,7 +130,7 @@ function vergleiche(bezeichnung, quelle, ziel, quelleName, zielName) {
     await seite.goto("file://" + DIST);
     await seite.waitForTimeout(500);
 
-    const ergebnis = await seite.evaluate(() => {
+    const ergebnis = await seite.evaluate(async () => {
       /* Testweise: "Dubai Crêpe" (echtes Gericht) bekommt den
          vollständigen, echten Zusatzstoff-Katalog inklusive des
          längsten Texts (16). Nicht dauerhaft — nur für diese Messung
@@ -139,6 +139,9 @@ function vergleiche(bezeichnung, quelle, ziel, quelleName, zielName) {
       INHALTSSTOFFE["Dubai Crêpe"] = { a: ["A", "C", "G", "H"], z: alleCodes };
 
       detailOeffnen("Dubai Crêpe");
+      /* Warten auf den ENDZUSTAND, nicht auf eine Zeit (§8.1j): Das Blatt tritt mit 0,96 heran und seine Teile kommen
+         gestaffelt (24.10.) — mitten darin messen hieße 42 statt 44 px Tippfläche. */
+      await Promise.all(document.getAnimations().filter(a => a.effect && a.effect.getComputedTiming().iterations !== Infinity).map(a => a.finished.catch(() => 0)));   /* Endlosschleifen enden nie */
 
       const karte = document.getElementById("warenkarte");
       const gruppen = Array.from(karte.querySelectorAll(".wgruppe"));

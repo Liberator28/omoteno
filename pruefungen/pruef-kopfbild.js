@@ -119,7 +119,7 @@ async function hubOeffnen(br, haus, breite, opt){
      Die Geometrie unten (Logo-Mitte auf der Bildkante, Bild ≤ 28 vh) gilt für den KLASSISCHEN Kopf und soll dort
      bewacht bleiben — deshalb wird das Haus hier in klassischer Form gemessen. Der Premium-Kopf steht in
      pruef-start-premium.js (§8.1o: nicht abschwächen, sondern die Struktur benennen, die gemessen wird). */
-  const klassisch = await p.evaluate(() => { if(MARKENBLATT.startstil !== "premium") return false;
+  const klassisch = opt.premium ? false : await p.evaluate(() => { if(MARKENBLATT.startstil !== "premium") return false;
     MARKENBLATT.startstil = "klassisch"; startstilSetzen(); zeichne(); return document.body.dataset.startstil === undefined; });
   if(klassisch) await p.waitForTimeout(300);
   return { ctx, p, fehler, geladen };
@@ -154,7 +154,12 @@ const kopfMessen = p => p.evaluate(m => {
     ueber: document.documentElement.scrollWidth - document.documentElement.clientWidth,
     stK, stAufBild, bildHoehe: rb.height, vh: innerHeight, eigen: getComputedStyle(eigen).display !== "none" && !!eigen.querySelector("img"),
     siegelSicht: siegel ? getComputedStyle(siegel).display !== "none" : false,
-    radius: getComputedStyle(logo).borderRadius, form: document.body.dataset.logoform || "rund"
+    radius: getComputedStyle(logo).borderRadius, form: document.body.dataset.logoform || "rund",
+    /* Das eigene Logo MUSS quadratisch sein und den Knopf füllen: <button> bringt padding 1px 6px mit, das Logo war 12 px
+       schmaler als hoch und wurde als Ei beschnitten (gemeldet mit Bildschirmfoto). */
+    eigenB: eigen.getBoundingClientRect().width, eigenH: eigen.getBoundingClientRect().height,
+    imgB: (eigen.querySelector("img") || eigen).getBoundingClientRect().width, imgH: (eigen.querySelector("img") || eigen).getBoundingClientRect().height,
+    knopfB: rl.width, knopfH: rl.height
   };
 }, MESSUNG);
 
@@ -200,6 +205,8 @@ const kopfMessen = p => p.evaluate(m => {
       pruef(m.bildHoehe <= m.vh * 0.28 + 1, haus + " " + breite + ": Kopfbild höchstens 28 % der Schirmhöhe",
         Math.round(m.bildHoehe) + " / " + Math.round(m.vh * 0.28));
       pruef(m.eigen && !m.siegelSicht && m.radius === "50%", haus + " " + breite + ": eigenes Logo rund, Siegel weg", m.radius);
+      pruef(Math.abs(m.eigenB - m.eigenH) <= 0.5 && Math.abs(m.eigenB - m.knopfB) <= 0.5 && Math.abs(m.eigenH - m.knopfH) <= 0.5 && Math.abs(m.imgB - m.imgH) <= 0.5,
+        haus + " " + breite + ": das Logo ist QUADRATISCH und füllt den Knopf (kein Ei)", "Feld " + m.eigenB + "×" + m.eigenH + " · Bild " + m.imgB + "×" + m.imgH + " · Knopf " + m.knopfB + "×" + m.knopfH);
       if(breite === 390){
         await mit.p.evaluate(() => { location.hash = "#/speisekarte"; });
         await mit.p.waitForTimeout(400);
@@ -213,6 +220,26 @@ const kopfMessen = p => p.evaluate(m => {
     const e = await kopfMessen(eck.p);
     pruef(e.eigen && e.form === "eckig" && e.radius === "22%" && !e.an, haus + ": Logo eckig, ohne Kopfbild bleibt der Kopf", e.radius);
     await eck.ctx.close();
+  }
+
+  console.log("\n══ 2a · Premium-Kopf: das eigene Logo bleibt ein Kreis ══");
+  {
+    /* Ein HOCHKANT-Logo (300×400) macht das Ei sichtbar, ein quadratisches würde es verstecken (§8.1g). */
+    const hoch = await (async () => { const q = await br.newPage({ viewport:{ width:300, height:400 } });
+      await q.setContent('<body style="margin:0;background:#c33;display:grid;place-items:center;height:400px;font:700 90px Georgia;color:#fff">Ö</body>');
+      const b = await q.screenshot(); await q.close(); return b; })();
+    for(const haus of HAEUSER.filter(h => { try{ return JSON.parse(fs.readFileSync(path.join(OBEN, "markenblaetter", h + ".json"), "utf8")).startstil === "premium"; }catch(e){ return false; } })){
+      for(const breite of [360, 390, 430]){
+        const o = await hubOeffnen(br, haus, breite, { bilder:{ kopf:bilder.kopf, logo:hoch }, stil:{ emoji:false, kopf:{ logo:LOGO, form:"rund" } }, premium:true });
+        await o.p.waitForTimeout(500);
+        const m = await o.p.evaluate(() => { const e = document.getElementById("logoEigen"), k = document.querySelector(".logo"), i = e && e.querySelector("img");
+          const r = x => x ? x.getBoundingClientRect() : { width:0, height:0 };
+          return { premium: document.body.dataset.startstil === "premium", eigen: r(e).width + "×" + r(e).height, img: r(i).width + "×" + r(i).height, knopf: r(k).width + "×" + r(k).height, rund: !!e && getComputedStyle(e).borderRadius === "50%" }; });
+        pruef(m.premium && m.eigen === m.knopf && m.img === m.knopf && m.rund && m.knopf.split("×")[0] === m.knopf.split("×")[1],
+          haus + " " + breite + " (premium, Hochkant-Logo): Feld = Bild = Knopf, quadratisch, rund", JSON.stringify(m));
+        await o.ctx.close();
+      }
+    }
   }
 
   console.log("\n══ 2b · Nur das eigene Ordnermuster wird geladen ══");

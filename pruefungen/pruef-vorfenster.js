@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   PRÜFUNG · Vorfenster — Speisekarte direkt oder zur Übersicht
+   PRÜFUNG · Vorfenster — Speisekarte direkt oder zur Startseite
 
      node erzeuger/erzeuge-hub.js --alle
      NODE_PATH=/opt/node22/lib/node_modules node pruefungen/pruef-vorfenster.js
@@ -7,7 +7,7 @@
    Auftrag des Betreibers (27.09.): Manche Gäste wollen nur die Karte
    sehen. Der Willkommensschirm (bisher: Gruß, dann automatisch weiter
    zum Hub) trägt jetzt zwei echte Knöpfe — „Speisekarte ansehen"
-   springt OHNE Umweg dorthin, „Zur Übersicht" (oder ein Tipp daneben,
+   springt OHNE Umweg dorthin, „Zur Startseite" (oder ein Tipp daneben,
    wie bisher) bleibt beim Hub.
 
    ZWEITE ANWEISUNG, selber Tag: Der Schirm schloss sich zusätzlich von
@@ -31,12 +31,12 @@
    Geprüft:
    1 · Knopf „Speisekarte ansehen" setzt den Hash auf #/speisekarte
        UND schließt den Schirm — beides, nicht nur eins von beidem.
-   2 · Knopf „Zur Übersicht" bleibt auf der Startseite.
+   2 · Knopf „Zur Startseite" bleibt auf der Startseite.
    3 · Der Schirm schließt sich NICHT von selbst — auch nach deutlich
        mehr als den früheren 3s steht er noch offen, und lässt sich
        danach ganz normal bedienen.
    4 · Ein Tipp NEBEN den Knöpfen (der bisherige Weg) tut dasselbe wie
-       „Zur Übersicht" — nichts Neues bricht den alten Pfad.
+       „Zur Startseite" — nichts Neues bricht den alten Pfad.
    5 · Ein tiefer Link (#/speisekarte in der Adresse) zeigt das
        Vorfenster GAR NICHT — wer schon weiß, wohin er will, bekommt
        keine zusätzliche Frage.
@@ -102,7 +102,7 @@ function pruef(b, t, d) {
     await p.waitForTimeout(700);
     const nach = await p.evaluate(() => ({ hash: location.hash, seite: seiteJetzt }));
     pruef(nach.seite === "start" && !nach.hash,
-      "„Zur Übersicht“ bleibt auf der Startseite", JSON.stringify(nach));
+      "„Zur Startseite“ bleibt auf der Startseite", JSON.stringify(nach));
     await ctx.close();
   }
 
@@ -173,11 +173,11 @@ function pruef(b, t, d) {
       spracheSetzen(code);
       const wk = document.getElementById("willkommen");
       wk.hidden = false; wk.classList.remove("weg");
-      $("wkSpeisekarte").textContent = t("Speisekarte ansehen");
-      $("wkHub").textContent = t("Zur Übersicht");
-      return { sk: $("wkSpeisekarte").textContent, hub: $("wkHub").textContent };
+      wkKnoepfe();
+      const txt = (id) => { const x = $(id).querySelector(".wk-txt"); return x ? x.textContent : null; };
+      return { sk: txt("wkSpeisekarte"), hub: txt("wkHub") };
     }, "tr");
-    pruef(texte.sk === "Menüyü görüntüle" && texte.hub === "Genel bakışa",
+    pruef(texte.sk === "Menüyü görüntüle" && texte.hub === "Ana sayfaya",
       "auf Türkisch stehen beide Knöpfe wirklich übersetzt da, nicht deutsch", JSON.stringify(texte));
     await ctx.close();
   }

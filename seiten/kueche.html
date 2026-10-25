@@ -1722,7 +1722,7 @@ function zeichne(){
              steht, muss auf einen Blick wissen, ob der Teller zum
              Gast geht oder in eine Tüte. */
           (b.quelle === "lieferung"
-            ? '<div class="tisch telefon"><small>Lieferung</small>' +
+            ? '<div class="tisch telefon"><small>' + (b.abholung === true ? 'Abholung' : 'Lieferung') + '</small>' +
                 h(b.tagesnummer != null ? "#" + b.tagesnummer : "Aus") + '</div>'
             : b.quelle === "telefon"
             ? '<div class="tisch telefon"><small>' +
@@ -1748,6 +1748,16 @@ function zeichne(){
            Wer packt, muss wissen, wohin — und der Zettel in der Tuete
            ist oft das Einzige, was der Fahrer mitnimmt. Dieselbe
            Flaeche wie beim Telefonbon, kein neuer Block. */
+        /* Eine Abholung hat keine Adresse (migration-abholen.sql): Name, Telefon und Abholzeit sind das, was der Pass
+           braucht — dieselbe Fläche wie beim Telefonbon. Ohne Wunschzeit: so bald wie möglich. */
+        (b.quelle === "lieferung" && b.abholung === true && !b.liefer_adresse
+          ? '<div class="anrufer"><b>Zum Abholen</b>' +
+              h([b.gast_name, b.gast_telefon].filter(Boolean).join(" · ") || "ohne Namen") +
+              '<span class="wunsch">' + (b.wunschzeit
+                ? h(new Date(b.wunschzeit).toLocaleTimeString("de-DE",{hour:"2-digit",minute:"2-digit"})) + ' Uhr'
+                : 'So bald wie möglich') + '</span>' +
+            '</div>'
+          : '') +
         (b.quelle === "lieferung" && b.liefer_adresse
           ? '<div class="anrufer"><b>Liefern an</b>' +
               h([b.liefer_adresse.name,

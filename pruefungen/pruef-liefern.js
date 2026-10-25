@@ -880,8 +880,8 @@ function naht(){
   /* Was lfSichern() schreibt, muss karteHolen() lesen. Beide Listen
      kommen aus den Dateien, keine ist von mir hingeschrieben — sonst
      prüfte ich meine Erinnerung gegen meine Erinnerung (§8.1i). */
-  const schreibt = (adm.match(/an:\s*an\("lfAn"\)[\s\S]{0,400}?\n\s*\};/) || [""])[0];
-  const felder = ["an","plz","mindest","gebuehr","gratis_ab","dauer_min","bar","karte"];
+  const schreibt = (adm.match(/an:\s*an\("lfAn"\)[\s\S]{0,500}?\n\s*\}\)?;/) || [""])[0];
+  const felder = ["an","plz","mindest","gebuehr","gratis_ab","dauer_min","bar","karte","abholen","abhol_min"];
   const fehlend = felder.filter(f => !new RegExp("\\b" + f + ":").test(schreibt));
   ok(fehlend.length === 0, "das Board schreibt jedes Feld, das der Hub kennt",
      fehlend.length ? "fehlt: " + fehlend.join(", ") : felder.length + " Felder");

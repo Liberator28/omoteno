@@ -70,14 +70,14 @@ async function lauf(b, kopf){
       chipHidden: document.getElementById("bestellart").hidden, karten: [...document.querySelectorAll(".sz.sz-p")].map(c => c.dataset.sz),
       nav: document.body.dataset.nav, navHidden: document.getElementById("hauptnav").hidden, tabs: [...document.querySelectorAll(".hn-tab")].map(t => t.dataset.hn) }));
     pruef("Schalter steht, Startseite", st.stil === "premium" && st.ansicht === "start", st);
-    pruef("zwei Chips: nur echte Wege (Im Haus, Lieferung) — kein Abholen", st.chips.join() === "haus,liefern" && !st.chipHidden, st);
+    pruef("zwei Chips in der Reihenfolge des Entwurfs (Lieferung · Im Haus) — Abholen nur, wenn das Haus es anbietet (LIEFER ohne abholen)", st.chips.join() === "liefern,haus" && !st.chipHidden, st);
     pruef("Karten in Reihenfolge Auswahl · Karte · Foodroulette (Service nur am Tisch)", st.karten.join() === "auswahl,karte,roulette", st.karten);
     pruef("Navigation: Start · Karte · Bestellungen", st.nav === "an" && !st.navHidden && st.tabs.slice(0, 3).join() === "start,karte,bestellt", st);
 
     const y = {};
     for(const [k, s] of [["logo", "#logo"], ["status", ".st-link"], ["claim", "#claim"], ["chips", "#bestellart"], ["karte1", ".sz-p"], ["leiste", "#auswahlbalken"], ["nav", "#hauptnav"]]) y[k] = await rect(p, s);
-    pruef("Hierarchie von oben nach unten: Siegel < Pille < Slogan < Chips < erste Karte",
-      y.logo.y < y.status.y && y.status.y < y.claim.y && y.claim.y < y.chips.y && y.chips.y < y.karte1.y, y);
+    pruef("Hierarchie von oben nach unten: Siegel < Pille < Chips < erste Karte; der Slogan (mit Startgrafik handgeschrieben neben dem Siegel) endet über den Chips",
+      y.logo.y < y.status.y && y.status.y < y.chips.y && y.chips.y < y.karte1.y && y.claim.b < y.chips.y, y);
     pruef("erste Karte beginnt im ersten Bildschirm (390×844)", y.karte1.y < 844 - 60, y.karte1);
     const hk = await rect(p, "header");
     pruef("Kopf nimmt höchstens 52 % des Schirms", hk.h <= 844 * .52, hk.h);
@@ -168,9 +168,23 @@ async function lauf(b, kopf){
     const h = await oeffneHub(b, Object.assign({ kopf: bild, korb: KORB, liefer: LIEFER, breite: 390, hoehe: 844, farbe, reduziert: true }, kopf.opt));
     const p = h.p;
     const m = {};
+    /* Der Slogan steht (mit Startgrafik) handgeschrieben und gedreht neben dem Siegel. Gemessen wird das Schriftfeld ohne Drehung —
+       ein Rechteck kann nur achsparallel fotografieren, die Ecken des gedrehten Feldes wären sonst fremder Grund — und ohne die
+       Zierlinie darunter (keine Schrift, eigene Farbe). Was zählt, ist die Fläche hinter den Buchstaben. */
+    await p.addStyleTag({ content: "#claim{transform:none!important} #claim::after{display:none!important}" });
     for(const [k, s] of [["Slogan", "#claim"], ["Pille", ".st-link .st-text"], ["Chip aus", '.ba-chip:not(.an) .ba-text']]) m[k] = await schlechtester(p, s);
     const tag = "Bild " + bild + ", Licht " + farbe;
     pruef(tag + ": Slogan, Pille und Chip ≥ 4,5:1 am schlechtesten Bildpunkt", Object.values(m).every(v => v !== null && v >= 4.5), m);
+    if(bild === "hell" && farbe === "hell" && await p.evaluate(() => document.body.dataset.startgrafik === "an")){ /* nur das Haus mit Startgrafik trägt die Fläche; ein Haus ohne sie hat auf einem rein weißen Foto weiter kein Polster (ehrliche Grenze, vorbestehend) */
+      /* Der härteste Fall: ein rein weißes Kopfbild. Die Fläche in Bandfarbe hinter der Zeile muss die Schrift tragen (Gegenbeweis:
+         ::before weg → rot). Voraussetzung selbst gemessen: der Grund ist wirklich weiß. */
+      await p.addStyleTag({ content: "header,.kopfbild,header::before,header::after,.kopfbild::before,.kopfbild::after{background:#fff!important;background-image:none!important;transition:none!important} .kopfbild img{display:none!important}" });
+      await p.waitForTimeout(150);
+      const w = await schlechtester(p, "#claim");
+      const grund = await p.evaluate(() => getComputedStyle(document.querySelector("header")).backgroundColor);
+      pruef("Voraussetzung: Kopfbild rein weiß (header = " + grund + ")", /255, 255, 255/.test(grund), grund);
+      pruef("Slogan auch auf rein weißem Kopfbild ≥ 4,5:1 (eigene Fläche in Bandfarbe)", w !== null && w >= 4.5, w);
+    }
     /* aktiver Chip: Schrift (Hausfarbe) auf Fläche (Bandschrift) — beide Rollen, gerechnet */
     const ak = await p.evaluate(() => { const c = document.querySelector(".ba-chip.an"), cs = getComputedStyle(c); const f = s => (/rgba?\(([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)/.exec(s) || []).slice(1, 4).map(Number); return [f(cs.color), f(cs.backgroundColor)]; });
     pruef(tag + ": aktiver Chip ≥ 4,5:1", kontrast(ak[0], ak[1]) >= 4.5, ak);
@@ -235,7 +249,7 @@ async function lauf(b, kopf){
   { /* Englisch, deutsche Wörter dürfen nicht stehen bleiben */
     const h = await oeffneHub(b, Object.assign({ kopf: "hell", korb: KORB, liefer: LIEFER, breite: 390, sprache: "en" }, kopf.opt));
     const a = await h.p.evaluate(() => [...document.querySelectorAll(".ba-text, .hn-text")].map(e => e.textContent));
-    pruef("Englisch: Chips und Tabs übersetzt", a.slice(0, 5).join("|") === "Dine in|Delivery|Home|Menu|Orders" && (a.length === 5 || a[5] === "Profile"), a);
+    pruef("Englisch: Chips und Tabs übersetzt", a.slice(0, 5).join("|") === "Delivery|On site|Home|Menu|Orders" && (a.length === 5 || a[5] === "Profile"), a);
     await h.ctx.close();
   }
 
@@ -254,7 +268,7 @@ async function lauf(b, kopf){
     const n0 = h.anfragen.length;
     await p.evaluate(() => { const k = KACHELN.find(x => x.art === "karte"); k.banner = "http://fremd.example/x.jpg"; zeichne(); });
     await p.waitForTimeout(300);
-    const fr = await p.evaluate(() => { const c = document.querySelector('[data-sz="karte"]'); return { img: c.querySelector("img") && c.querySelector("img").getAttribute("src"), art: !!c.querySelector(".sz-art").textContent.trim() || !!c.querySelector(".sz-art svg") }; });
+    const fr = await p.evaluate(() => { const c = document.querySelector('[data-sz="karte"]'); return { img: c.querySelector("img") && c.querySelector("img").getAttribute("src"), art: !!c.querySelector(".sz-art, .sz-kunst svg, .sz-kunst img") }; });
     pruef("Banner mit http:// fremd wird nicht als Karten-Foto genommen (Gerichtsfoto oder Fläche)", !/fremd\.example/.test(fr.img || ""), fr);
     pruef("keine Anfrage an den fremden Server", !h.anfragen.slice(n0).some(u => /fremd\.example/.test(u)), h.anfragen.filter(u => /fremd/.test(u)));
     await p.evaluate(() => { const k = KACHELN.find(x => x.art === "karte"); k.banner = 'https://x.example/"onerror="__x=1'; zeichne(); });
@@ -262,8 +276,8 @@ async function lauf(b, kopf){
     /* Foto lädt nicht: die getönte Fläche mit Zeichen bleibt sichtbar */
     await p.route("**/storage/v1/object/public/**", r => r.abort());
     await p.evaluate(() => { const k = KACHELN.find(x => x.art === "karte"); k.banner = ""; zeichne(); }); await p.waitForTimeout(500);
-    const k = await rect(p, '[data-sz="karte"] .sz-bild');
-    pruef("Foto lädt nicht: Karte behält ihre Fläche (Höhe ≥ 80 px) mit Zeichen", k.h >= 80 && await p.evaluate(() => !!document.querySelector('[data-sz="karte"] .sz-art').innerHTML.trim()), k);
+    const k = await rect(p, '[data-sz="karte"]');
+    pruef("Foto lädt nicht: Karte behält ihre Fläche (Höhe ≥ 80 px) mit Zeichen oder gezeichneter Kunst", k.h >= 80 && await p.evaluate(() => !!document.querySelector('[data-sz="karte"] .sz-art, [data-sz="karte"] .sz-kunst svg, [data-sz="karte"] .sz-kunst img')), k);
     await h.ctx.close();
   }
 

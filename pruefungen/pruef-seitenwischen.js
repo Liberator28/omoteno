@@ -51,7 +51,15 @@ async function oeffnen(browser, haus, opt){
   return { ctx, p, cdp, fehler };
 }
 /* Ein Zug: von (x,y) um (dx,dy) in n Schritten; optional mitten im Zug messen. */
+/* y = "yz": der Finger setzt auf einer Fläche auf, die NICHT seitlich rollt — je Seite neu bestimmt. Die Kategorie-Chips sind so eine
+   Leiste (der Wechsel bleibt dort aus, gewollt); mit der höheren Kopfkarte der Startgrafik lagen sie bei 520 px. Mitte der Kopfkarte bzw.
+   der Überschrift der gerade gezeigten Seite, sonst 520. */
+async function aufsetzY(p){
+  return p.evaluate(() => { const e = document.querySelector(".kopfkarte, #inhalt .seite h2"); const b = e && e.getBoundingClientRect();
+    return b && b.height > 20 && b.y > 0 && b.bottom < innerHeight - 120 ? Math.round(b.y + b.height / 2) : 520; });
+}
 async function zug(p, cdp, x, y, dx, dy, mitte){
+  if(y === "yz") y = await aufsetzY(p);
   const n = 14;
   await cdp.send("Input.dispatchTouchEvent", { type:"touchStart", touchPoints:[{ x, y }] });
   let gemessen = null;
@@ -93,9 +101,8 @@ const gehe = async (p, z) => { await p.evaluate(z => { location.hash = z; window
     const i = Math.max(0, F.findIndex(z => z.startsWith("#/speisekarte")));
     const ziel = F[i + 1] || F[i - 1];
     await gehe(p, F[i]);
-
     /* 2 · nach links → nächste */
-    const mitte = await zug(p, cdp, 330, 520, -280, 6, true);
+    const mitte = await zug(p, cdp, 330, "yz", -280, 6, true);
     let l = await lage(p);
     pruef(!!mitte && mitte.tx < -100 && mitte.tx > -160 && mitte.deck > .2 && mitte.pille.length > 1,
       "mitten im Zug: die Seite folgt dem Finger, eine Pille nennt das Ziel", JSON.stringify(mitte));
@@ -103,10 +110,10 @@ const gehe = async (p, z) => { await p.evaluate(z => { location.hash = z; window
     pruef(l.tf === "none" && !l.pille && l.trifft, "danach: ohne transform, Pille weg, die neue Seite liegt obenauf", JSON.stringify(l));
 
     /* 3 · nach rechts → zurück; kurzer Zug → bleibt */
-    await zug(p, cdp, 60, 520, 280, 6);
+    await zug(p, cdp, 60, "yz", 280, 6);
     l = await lage(p);
     pruef(l.hash === F[i], "nach rechts: zurück (" + F[i] + ")", l.hash);
-    await zug(p, cdp, 300, 520, -40, 0);
+    await zug(p, cdp, 300, "yz", -40, 0);
     l = await lage(p);
     pruef(l.hash === F[i] && l.tf === "none", "kurzer Zug (40 px): bleibt und federt zurück", JSON.stringify(l));
 
@@ -143,10 +150,10 @@ const gehe = async (p, z) => { await p.evaluate(z => { location.hash = z; window
 
     /* 5 · Ränder */
     await gehe(p, F[0]);
-    await zug(p, cdp, 60, 520, 280, 6);
+    await zug(p, cdp, 60, "yz", 280, 6);
     pruef((await lage(p)).hash === F[0], "erste Kachel, nach rechts: bleibt");
     await gehe(p, F[F.length - 1]);
-    await zug(p, cdp, 330, 520, -280, 6);
+    await zug(p, cdp, 330, "yz", -280, 6);
     pruef((await lage(p)).hash === F[F.length - 1], "letzte Kachel, nach links: bleibt");
 
     /* 6 · Bewegung: nur transform, kurz */
@@ -154,7 +161,7 @@ const gehe = async (p, z) => { await p.evaluate(z => { location.hash = z; window
     await p.evaluate(() => { window.__ani = []; const feld = document.getElementById("inhalt");
       const alt = feld.animate.bind(feld);
       feld.animate = (k, o) => { const a = alt(k, o); window.__ani.push({ props:[...new Set(k.flatMap(x => Object.keys(x)))], d:+(o && o.duration) || 0 }); return a; }; });
-    await zug(p, cdp, 330, 520, -280, 6);
+    await zug(p, cdp, 330, "yz", -280, 6);
     const ani = await p.evaluate(() => window.__ani);
     pruef(ani.length >= 1 && ani.every(a => a.props.every(x => x === "transform" || x === "offset" || x === "easing") && a.d <= 300),
       "Bewegung nur transform, je ≤ 300 ms", JSON.stringify(ani));
@@ -164,7 +171,7 @@ const gehe = async (p, z) => { await p.evaluate(z => { location.hash = z; window
     /* reduzierte Bewegung */
     ({ ctx, p, cdp, fehler } = await oeffnen(browser, haus, { ruhig:true }));
     await gehe(p, F[i]);
-    await zug(p, cdp, 330, 520, -280, 6);
+    await zug(p, cdp, 330, "yz", -280, 6);
     l = await lage(p);
     const laeuft = await p.evaluate(() => document.getElementById("inhalt").getAnimations().length);
     pruef(l.hash === F[i + 1] && l.tf === "none" && laeuft === 0, "reduzierte Bewegung: Wechsel ohne Animation", JSON.stringify({ hash:l.hash, laeuft }));
@@ -175,7 +182,7 @@ const gehe = async (p, z) => { await p.evaluate(z => { location.hash = z; window
     const FA = await p.evaluate(() => wischFolge().map(x => x.ziel));
     const ia = Math.max(0, FA.findIndex(z => z.startsWith("#/speisekarte")));
     await gehe(p, FA[ia]);
-    await zug(p, cdp, 60, 520, 280, 6);
+    await zug(p, cdp, 60, "yz", 280, 6);
     l = await lage(p);
     pruef(l.hash === FA[ia + 1], "Arabisch: nach rechts = weiter", l.hash);
     pruef(!fehler.length, "Arabisch: keine Seitenfehler", fehler[0]);

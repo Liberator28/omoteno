@@ -40,7 +40,7 @@ async function startMasse(p){
   return p.evaluate(() => {
     const px = (s, e) => { const el = document.querySelector(s); return el ? getComputedStyle(el)[e] : null; };
     const r = s => { const el = document.querySelector(s); if(!el) return null; const b = el.getBoundingClientRect(); return { x: Math.round(b.x), y: Math.round(b.y), w: Math.round(b.width), h: Math.round(b.height), b: Math.round(b.bottom), r: Math.round(b.right) }; };
-    return { szRadius: px(".sz.sz-p", "borderRadius"), szBild: r(".sz.sz-p .sz-bild"), szBreit: r(".sz-p.sz-breit .sz-bild"), begleiter: px(".begleiter", "borderRadius"),
+    return { szRadius: px(".sz.sz-p", "borderRadius"), szBild: r(".sz.sz-p"), szBreit: r(".sz-p.sz-breit"), begleiter: px(".begleiter, .botschaft", "borderRadius"),
       kopf: r("header"), logo: r(".logo"), chipRadius: px(".ba-chip", "borderRadius"), chip: r(".ba-chip"), bestellart: px(".bestellart", "display"),
       auswahlRadius: px(".auswahlbalken", "borderRadius"), tab: r(".hn-tab"), nav: r("#hauptnav"), tabRadius: px(".hn-tab", "borderRadius"),
       ueberlauf: document.documentElement.scrollWidth - document.documentElement.clientWidth };
@@ -85,7 +85,7 @@ async function lauf(browser, layout, opt){
     pruef("ohne startlayout: kein Attribut data-pl-… am body", JSON.stringify(await attrs(h.p)) === "{}", await attrs(h.p));
     ref = await startMasse(h.p); refKarte = await karteMasse(h.p);
     pruef("Maße wie vorher: Karten 22 px, Kopf ≥ 300 px, Logo 104 px, Wege-Bild ≥ 92 px, Chip-Pille 999 px",
-      ref.szRadius === "22px" && ref.kopf.h >= 300 && ref.logo.w === 104 && ref.szBild.h >= 92 && /^(999|3\.35544e\+07)px$|33554400px/.test(ref.chipRadius), JSON.stringify([ref.szRadius, ref.kopf.h, ref.logo.w, ref.szBild.h, ref.chipRadius]));
+      ref.szRadius === "22px" && ref.kopf.h >= 300 && ref.logo.w === 104 && ref.szBild.h >= 170 && /^(999|3\.35544e\+07)px$|33554400px/.test(ref.chipRadius), JSON.stringify([ref.szRadius, ref.kopf.h, ref.logo.w, ref.szBild.h, ref.chipRadius]));
     pruef("Speisekarte wie vorher: Karte 20 px, Polster 12 px, Abstand 12 px, Bild 96 px links vom Text",
       refKarte.gericht.radius === "20px" && refKarte.gericht.pad === "12px" && refKarte.gericht.mb === "12px" && refKarte.gbild.w === 96 && refKarte.gbild.x < refKarte.gtext.x, JSON.stringify([refKarte.gericht, refKarte.gbild]));
     pruef("keine JS-Fehler", h.fehler.length === 0, h.fehler);
@@ -125,7 +125,7 @@ async function lauf(browser, layout, opt){
   }
   {
     const h = await lauf(browser, { wege: "kompakt" }); const m = await startMasse(h.p);
-    pruef("wege kompakt: Bildfläche 64 px, breite Karte 56 px (vorher höher)", m.szBild.h === 64 && (m.szBreit === null || m.szBreit.h === 56) && m.szBild.h < ref.szBild.h, JSON.stringify([m.szBild, m.szBreit, ref.szBild]));
+    pruef("wege kompakt: die Karte ist höchstens 150 px hoch (vorher ≥ 170) — das Maß hängt seit der gezeichneten Karte an der Karte, nicht an einer Bildfläche", m.szBild.h <= 150 && m.szBild.h < ref.szBild.h - 20, JSON.stringify([m.szBild, m.szBreit, ref.szBild]));
     pruef("wege kompakt: Name und Zeile der Karte bleiben sichtbar (nicht abgeschnitten)", await h.p.evaluate(() => [...document.querySelectorAll(".sz-p .sz-text")].every(e => e.scrollWidth <= e.clientWidth + 1 && e.getBoundingClientRect().height > 10)));
     await h.ctx.close();
   }
@@ -281,6 +281,7 @@ async function lauf(browser, layout, opt){
     const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), "layout-"));
     fs.mkdirSync(path.join(wurzel, "erzeuger")); fs.mkdirSync(path.join(wurzel, "vorlagen")); fs.mkdirSync(path.join(wurzel, "markenblaetter"));
     fs.copyFileSync(path.join(__dirname, "..", "erzeuger", "erzeuge-hub.js"), path.join(wurzel, "erzeuger", "erzeuge-hub.js"));
+    fs.copyFileSync(path.join(__dirname, "..", "erzeuger", "kompakt.js"), path.join(wurzel, "erzeuger", "kompakt.js"));   /* der Erzeuger lädt es seit 24.10. */
     fs.copyFileSync(path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), path.join(wurzel, "vorlagen", "hub.vorlage.html"));
     const basis = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "markenblaetter", "chocolamour.json"), "utf8"));
     const erzeuge = (inhalt, nurPruefen) => {

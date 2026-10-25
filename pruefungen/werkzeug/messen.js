@@ -11,8 +11,8 @@ const lum = c => .2126 * lin(c[0]) + .7152 * lin(c[1]) + .0722 * lin(c[2]);
 const kontrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y) + .05) / (Math.min(x, y) + .05); };
 
 /* Schlechtester Bildpunkt hinter einem Text: Schrift unsichtbar, Rechteck fotografiert, Pixel gegen die Schriftfarbe. */
-async function schlechtester(p, selektor){
-  const r = await p.evaluate(sel => {
+async function schlechtester(p, selektor, nurText){
+  const r = await p.evaluate(([sel, nurText]) => {
     const el = document.querySelector(sel); if(!el) return null;
     const cs = getComputedStyle(el);
     const m = /rgba?\(([\d.]+)[, ]+([\d.]+)[, ]+([\d.]+)/.exec(cs.color) || [0, 0, 0, 0];
@@ -20,9 +20,12 @@ async function schlechtester(p, selektor){
     el.style.setProperty("color", "transparent", "important");
     el.style.setProperty("-webkit-text-fill-color", "transparent", "important");
     el.style.setProperty("text-shadow", "none", "important");
-    const b = el.getBoundingClientRect();
+    /* nurText: das Rechteck der Buchstaben (Range) statt des ganzen Feldes — ein Feld, das breiter ist als sein Text, misst sonst
+       auch Nachbarn, die den Text gar nicht berühren (Zierherz neben dem Preis). */
+    let b = el.getBoundingClientRect();
+    if(nurText){ const rg = document.createRange(); rg.selectNodeContents(el); const t = rg.getBoundingClientRect(); if(t.width > 0 && t.height > 0) b = t; }
     return { x: b.x, y: b.y, w: b.width, h: b.height, farbe: [+m[1], +m[2], +m[3]] };
-  }, selektor);
+  }, [selektor, !!nurText]);
   if(!r) return null;
   const png = await p.screenshot({ clip: { x: Math.max(0, r.x), y: Math.max(0, r.y), width: Math.max(1, r.w), height: Math.max(1, r.h) } });
   const worst = await p.evaluate(async ([b64, farbe]) => {

@@ -147,6 +147,42 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
     ok(kons.length === 0, "keine Ausnahme", kons[0] || "still");
     await ctx.close();
   }
+  /* Die feste Leiste unten schwebte mitten im Bild (Foto vom Nutzer, iPhone Home-Bildschirm): iOS ließ den Layout-Viewport kürzer
+     als das Sichtbare. Nachgestellt: ein visualViewport, dessen Unterkante 120 px unter dem Layout-Viewport liegt. Die Leiste
+     muss an die Unterkante des SICHTBAREN Bereichs zurück, mit ihr Filter und „Mehr“-Fach; ohne Abstand bleibt alles stehen. */
+  {
+    const ctx = await br.newContext({viewport:{width:390,height:844}});
+    const p = await ctx.newPage();
+    const kons = [];
+    p.on("pageerror", e => kons.push(String(e).slice(0,140)));
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto("file://" + path.join(__dirname, "..", "seiten", "admin.html"));
+    await p.waitForTimeout(900);
+    await p.evaluate(() => { document.getElementById("tor").hidden = true; if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); } });
+    await p.waitForTimeout(400);
+    const sch = await p.$("#scharfJetzt");
+    if(sch && await p.isVisible("#scharf")){ await sch.click(); await p.waitForTimeout(300); }
+    console.log("\n══ Leiste unten bei kürzerem Layout-Viewport ══");
+    const messe = () => p.evaluate(() => ({ unten: Math.round(document.getElementById("befehlsleiste").getBoundingClientRect().bottom), vh: document.documentElement.clientHeight,
+      versatz: document.documentElement.style.getPropertyValue("--vv-versatz") }));
+    const vorher = await messe();
+    ok(vorher.unten === vorher.vh, "Ruhelage: die Leiste sitzt am unteren Rand", vorher.unten + " / " + vorher.vh);
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); leisteAnkern(); });
+    await p.waitForTimeout(100);
+    const kurz = await messe();
+    ok(kurz.unten === kurz.vh + 120 && kurz.versatz === "120px", "Sichtbares reicht 120 px weiter: die Leiste rückt um genau 120 px nach unten", kurz.unten + " / " + (kurz.vh + 120));
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 1, addEventListener(){} } }); leisteAnkern(); });
+    const rauschen = await messe();
+    ok(rauschen.unten === rauschen.vh, "1 px Abstand (Rundung) bewegt nichts", rauschen.unten + " / " + rauschen.vh);
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight - 300, addEventListener(){} } }); leisteAnkern(); });
+    const tast = await messe();
+    ok(tast.unten === tast.vh, "Sichtbares kürzer (Tastatur): die Leiste bleibt, wo sie ist", tast.unten + " / " + tast.vh);
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); leisteAnkern(); });
+    const ink = await p.evaluate(() => { const i = document.createElement("input"); i.id = "ankerProbe"; document.body.appendChild(i); i.focus(); return leisteAnkern(); });
+    ok(ink === 0, "mit fokussiertem Eingabefeld wird nicht verschoben (Tastatur)", String(ink));
+    ok(kons.length === 0, "keine Ausnahme", kons[0] || "still");
+    await ctx.close();
+  }
   await br.close();
   console.log(fehler ? "\n✗ " + fehler + " Fehler." : "\n✓ Die Leisten sitzen.");
   process.exit(fehler ? 1 : 0);

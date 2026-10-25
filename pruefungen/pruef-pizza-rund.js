@@ -504,7 +504,10 @@ async function teilE(browser){
   pruef(/Klammern|Zeichen/.test(satz) && !(await optUpdates(p)).length, "Klammer bzw. „&“ → Satz, nichts geschrieben", satz);
   await eingeben('#eoListe [data-eo-feld="titel"]', "Fleisch extra");
   await eingeben('#eoListe [data-eo-zfeld="n"]', "Salami");
-  await p.click("#eoSichern"); await p.waitForTimeout(300);
+  await p.click("#eoSichern");
+  /* Vor dem Schreiben liest das Board die Spalte frisch (die Gruppen einzelner Gerichte bleiben stehen) — hier um 900 ms
+     verzögert. Gewartet wird auf den Endzustand, nicht auf eine Zeit (§8.1j). */
+  await p.waitForFunction(() => window.__schreib.some(w => w.tab === "betriebe" && w.op === "update" && w.daten && "optionen" in w.daten), null, { timeout:4000 }).catch(() => {});
   const up = await optUpdates(p);
   const o = up.length ? up[up.length - 1].daten.optionen : null;
   const keys = o ? Object.keys(o) : [];
@@ -524,7 +527,9 @@ async function teilE(browser){
   await p.evaluate(() => sichern(false)); await p.waitForTimeout(300);
   const g = await p.evaluate(() => window.__schreib.filter(w => w.tab === "gerichte" && w.op === "update").pop());
   const zweite = keys[1];
-  pruef(g && g.daten.opt === zweite + ",kaeserand", "Speichern schreibt opt = gewählte Gruppe + Vorlagen-Gruppe bleibt", g && g.daten.opt);
+  /* Die Reihenfolge in opt ist die der Gruppen beim Gast: Bestehendes behält seinen Platz (die Vorlagen-Gruppe), Neues kommt hinten. */
+  pruef(g && String(g.daten.opt).split(",").sort().join(",") === [zweite, "kaeserand"].sort().join(",") && g.daten.opt === "kaeserand," + zweite,
+    "Speichern schreibt opt = gewählte Gruppe + Vorlagen-Gruppe bleibt (Vorlagen-Gruppe behält ihren Platz, Neues hinten)", g && g.daten.opt);
   pruef(!fehler.length, "Board: keine Seitenfehler", fehler.join(" | ") || "–");
   await ctx.close();
 

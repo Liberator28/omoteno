@@ -210,7 +210,15 @@ for(const fn of ["artikel_standort_setzen", "lieferant_standort_setzen"]){
 
 /* ── 2 · Gestellte Datenbank ────────────────────────────────────── */
 const ORG = "org-1", BETRIEB = "af095b14-0000-4000-8000-000000000001";
+const KEINE_RECHTE = { kennzahlen_tag:false, berichte_view:false, berichte_export:false, kosten_view:false, finanz_export:false, ziele_edit:false, ziele_approve:false };
+/* Seit migration-zugriffsrechte.sql sieht den Einkauf nur, wer „Einkauf und Kalkulation“ hat: Besitzer immer, ein Manager nur
+   nach Freigabe, Team und Küche nie. Wer „nur ansehen“ prüfen will, ist deshalb ein Manager mit diesem Recht. */
 function grundDaten(rolle){
+  const d = grundDaten0(rolle);
+  if(rolle === "manager") d.antworten.meine_rechte = { rolle, rechte: Object.assign({}, KEINE_RECHTE, { kosten_view:true }) };
+  return d;
+}
+function grundDaten0(rolle){
   return {
     rolle,
     mitglieder: [{ rolle, betriebe: { id: BETRIEB, name: "Café Probe", organisation_id: ORG } }],
@@ -321,6 +329,7 @@ function ersatz(start){
         if(name === "pin_pruefen"){ window.__pinOk = args.p_pin === "12345678"; return { data: window.__pinOk ? { ok:true } : { ok:false, grund:"falsch", verbleibend:4 }, error:null }; }
         if(name === "admin_anmelden") return { data:{ erlaubt:true }, error:null };
         if((D.rpcFehler || {})[name]) return { data:null, error: D.rpcFehler[name] };
+        if(name === "meine_rechte" && D.rechteJe && args) return { data: D.rechteJe[args.p_betrieb] || { rolle:null, rechte:{} }, error:null };
         const a = (D.antworten || {})[name];
         if(a) return { data: JSON.parse(JSON.stringify(a)), error:null };
         if(name === "beleg_speichern") return { data:{ ok:true, id: args.p_beleg || "be-neu" }, error:null };
@@ -704,13 +713,13 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await ctx.close();
   }
   {
-    const { ctx, p } = await oeffnen(browser, grundDaten("team"));
+    const { ctx, p } = await oeffnen(browser, grundDaten("manager"));
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
     await p.click('.reiter [data-ansicht="kalkulation"]');
     await p.click('[data-gericht="g-pizza"]');
     const t = await p.evaluate(() => ({ felder: document.querySelectorAll("#kalkEdit input, #kalkEdit select").length, sichern: !!document.querySelector('[data-aktion="rez-sichern"]'),
       text: document.getElementById("kalkEdit").textContent.replace(/\s/g, " ") }));
-    pruef(t.felder === 0 && !t.sichern && /Mehl 405/.test(t.text) && /400 g/.test(t.text), "Team: Rezeptur nur ansehen", JSON.stringify({ f:t.felder, s:t.sichern }));
+    pruef(t.felder === 0 && !t.sichern && /Mehl 405/.test(t.text) && /400 g/.test(t.text), "Manager mit Kosten-Recht: Rezeptur nur ansehen", JSON.stringify({ f:t.felder, s:t.sichern }));
     await ctx.close();
   }
   {
@@ -726,19 +735,117 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
     await ctx.close();
   }
 
-  /* ── 11 · Team ─────────────────────────────────────────────────── */
-  console.log("\n══ 10 · Team ══");
+  /* ── 10b · Rechte: Einkauf und Kalkulation nur mit Recht (migration-zugriffsrechte.sql) ── */
+  console.log("\n══ 10b · Rechte: gesperrt ist gesperrt, Export nur mit Recht ══");
+  const MIGR = fs.readFileSync(path.join(OBEN, "datenbank", "migration-zugriffsrechte.sql"), "utf8");
   {
-    const { ctx, p } = await oeffnen(browser, grundDaten("team"));
+    const kopf = MIGR.indexOf("function public.finanz_export_belege(");
+    const sig = MIGR.slice(kopf, MIGR.indexOf(")", kopf)).match(/p_[a-z_]+/g);
+    const gruende = [...new Set([...MIGR.slice(kopf, MIGR.indexOf("end $function$;", kopf)).matchAll(/'grund',\s*'(\w+)'/g)].map(m => m[1]))];
+    const seite = HTML.match(/const EXPORT_GRUND = \{([\s\S]*?)\n\};/);
+    const gebaut = seite ? [...seite[1].matchAll(/^\s*(\w+):/gm)].map(m => m[1]) : [];
+    const rpcStelle = HTML.match(/rpc\("finanz_export_belege",\s*\{([^}]*)\}/);
+    const gesendet = rpcStelle ? [...rpcStelle[1].matchAll(/(p_\w+)\s*:/g)].map(m => m[1]) : [];
+    pruef(JSON.stringify(sig) === JSON.stringify(gesendet), "finanz_export_belege: gesendete Parameter = Signatur der Migration", JSON.stringify(gesendet) + " · " + JSON.stringify(sig));
+    pruef(gruende.length >= 2 && gruende.every(g => gebaut.includes(g)), "jeder Grund des Exports hat auf der Seite einen Satz", gruende.join(","));
+  }
+  const KEIN_DATUM = ["einkaufsbelege", "lagerbestand", "artikel_preise", "lieferanten", "artikel", "lieferanten_artikel", "rezepturen", "lagerbewegungen"];
+  for(const [rolle, rechte, was] of [["team", {}, "Team"], ["kueche", {}, "Küche"], ["manager", { kennzahlen_tag:true, berichte_view:true, berichte_export:true }, "Manager ohne Einkauf-Recht"]]){
+    const d = grundDaten(rolle);
+    d.antworten.meine_rechte = { rolle, rechte: Object.assign({}, KEINE_RECHTE, rechte) };
+    const { ctx, p, kons } = await oeffnen(browser, d);
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
-    pruef(await p.isVisible("#lesesatz"), "Team: Satz statt Bedienung");
+    await p.waitForTimeout(250);
+    const g = await p.evaluate(() => ({ gesperrt: document.body.classList.contains("gesperrt"), satz: document.getElementById("gesperrtSatz").getClientRects().length > 0,
+      reiter: document.querySelector(".reiter").getClientRects().length > 0, text: document.body.innerText, gelesen: window.__lesen.slice(), rufe: window.__rufe.map(r => r.name) }));
+    pruef(g.gesperrt && g.satz && !g.reiter, was + ": nur der Satz „gesperrt“, keine Reiter", JSON.stringify({ g: g.gesperrt, s: g.satz, r: g.reiter }));
+    pruef(!g.gelesen.some(t => KEIN_DATUM.includes(t)), was + ": kein einziger Einkaufs-/Lager-/Rezeptur-Zugriff", g.gelesen.join(","));
+    pruef(!g.rufe.some(n => /gericht_kalkulation|wareneinsatz_theoretisch|finanz_export_belege|zentrale_vergleich/.test(n)), was + ": keine Kalkulations-/Export-Funktion gerufen", g.rufe.join(","));
+    pruef(!/Mehl 405|64,80|Weinhandel/.test(g.text), was + ": kein Wert der Seite im Dokument");
+    pruef(await p.evaluate(() => document.getElementById("exportZeile").getClientRects().length === 0), was + ": kein Export");
+    pruef(!kons.length, was + ": keine Ausnahme", kons[0]);
+    await ctx.close();
+  }
+  {
+    /* meine_rechte fehlt (Migration noch nicht eingespielt): im Zweifel weniger, nie mehr */
+    const d = grundDaten("team"); d.rpcFehler = { meine_rechte: { code:"PGRST202", message:"Could not find the function public.meine_rechte" } };
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 }); await p.waitForTimeout(250);
+    pruef(await p.evaluate(() => document.body.classList.contains("gesperrt")), "Team ohne Antwort von meine_rechte: gesperrt");
+    await ctx.close();
+    const d2 = grundDaten("inhaber"); d2.rpcFehler = { meine_rechte: { code:"PGRST202", message:"Could not find the function public.meine_rechte" } };
+    const o2 = await oeffnen(browser, d2);
+    await o2.p.waitForSelector("#app:not([hidden])", { timeout: 5000 }); await o2.p.waitForTimeout(250);
+    pruef(await o2.p.evaluate(() => !document.body.classList.contains("gesperrt")) && (await o2.p.textContent("#kMonat")).replace(/\s/g, " ") === "64,80 €", "Besitzer ohne Antwort: wie bisher (der Server hält ohnehin)");
+    await o2.ctx.close();
+  }
+  {
+    /* Export */
+    const d = grundDaten("manager");
+    d.antworten.meine_rechte = { rolle:"manager", rechte: Object.assign({}, KEINE_RECHTE, { kosten_view:true }) };
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
     await p.click('.reiter [data-ansicht="belege"]');
-    pruef(!(await p.isVisible("#belegNeu")) && !(await p.isVisible("#einlesenKnopf")), "Team: weder erfassen noch einlesen");
+    pruef(await p.evaluate(() => document.getElementById("exportZeile").getClientRects().length === 0), "Manager mit nur Einkauf-Recht: kein Export-Knopf");
+    await ctx.close();
+  }
+  {
+    const d = grundDaten("manager");
+    d.antworten.meine_rechte = { rolle:"manager", rechte: Object.assign({}, KEINE_RECHTE, { kosten_view:true, finanz_export:true }) };
+    d.antworten.finanz_export_belege = { ok:true, zeilen:[
+      { belegdatum:"2026-10-02", belegnummer:"=HYPERLINK(\"http://x\")", lieferant:"Weinhandel; Probe", netto:100, steuer:7, brutto:107, status:"freigegeben" },
+      { belegdatum:"2026-10-03", belegnummer:"R-2", lieferant:"@SUMME(1)", netto:12.5, steuer:0.88, brutto:13.38, status:"freigegeben" }] };
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.click('.reiter [data-ansicht="belege"]');
+    pruef(await p.isVisible("#exportKnopf") && await p.evaluate(() => ["exportVon", "exportBis", "exportKnopf"].every(i => document.getElementById(i).getBoundingClientRect().height >= 43.5 && getComputedStyle(document.getElementById(i)).fontSize !== "")), "Manager mit Export-Recht: Knopf und Zeitraum da, ≥ 44 px");
+    await p.evaluate(() => { window.__csv = null; const alt = URL.createObjectURL.bind(URL); URL.createObjectURL = b => { b.text().then(t => { window.__csv = t; }); return alt(b); }; });
+    await p.fill("#exportVon", "2026-10-01"); await p.fill("#exportBis", "2026-10-31");
+    await p.click("#exportKnopf"); await p.waitForTimeout(400);
+    const r = await rufe(p, "finanz_export_belege");
+    pruef(r.length === 1 && JSON.stringify(r[0].args) === JSON.stringify({ p_betrieb: BETRIEB, p_von: "2026-10-01", p_bis: "2026-10-31" }), "Export ruft finanz_export_belege mit Betrieb und Zeitraum", JSON.stringify(r.map(x => x.args)));
+    const csv = await p.evaluate(() => window.__csv);
+    pruef(csv && csv.split("\r\n")[0].replace("﻿", "") === "Belegdatum;Belegnummer;Lieferant;Netto;Steuer;Brutto;Status" && /;12,50;0,88;13,38;/.test(csv), "CSV: Kopfzeile, Zahlen mit Komma", (csv || "").slice(0, 120));
+    pruef(csv && !/(^|;)=HYPERLINK|(^|;)@SUMME/m.test(csv) && /'=HYPERLINK/.test(csv) && /'@SUMME/.test(csv), "Zellen mit Formelzeichen vorn bekommen ein ' (kein =, @ als erstes Zeichen)");
+    pruef(csv && /"Weinhandel; Probe"/.test(csv), "Semikolon in einer Zelle wird in Anführungszeichen gesetzt");
+    await p.evaluate(() => { window.__D.antworten.finanz_export_belege = { ok:false, grund:"kein_recht" }; });
+    await p.click("#exportKnopf"); await p.waitForTimeout(300);
+    pruef(/fehlt dir das Recht/.test(await p.textContent("#ladefehler")) && await p.isVisible("#ladefehler"), "Abweisung „kein_recht“ erscheint als Satz");
+    await p.fill("#exportVon", ""); const vor = (await rufe(p, "finanz_export_belege")).length;
+    await p.click("#exportKnopf"); await p.waitForTimeout(200);
+    pruef((await rufe(p, "finanz_export_belege")).length === vor && /höchstens 400 Tagen/.test(await p.textContent("#ladefehler")), "ohne Datum geht nichts hinaus, der Satz nennt die Grenze");
+    await ctx.close();
+  }
+  {
+    /* Standortwechsel: das Recht gilt je Betrieb, und nichts vom vorigen bleibt stehen */
+    const d = grundDaten("inhaber");
+    d.mitglieder.push({ rolle:"team", betriebe:{ id:"b-zwei", name:"Café Zwei", organisation_id: ORG } });
+    d.rechteJe = { [BETRIEB]: { rolle:"inhaber", rechte: Object.assign({}, KEINE_RECHTE, { kosten_view:true, finanz_export:true }) }, "b-zwei": { rolle:"team", rechte: KEINE_RECHTE } };
+    const { ctx, p } = await oeffnen(browser, d);
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(300);
+    pruef((await p.textContent("#kMonat")).replace(/\s/g, " ") === "64,80 €" && !(await p.evaluate(() => document.body.classList.contains("gesperrt"))), "Voraussetzung: im eigenen Betrieb sind die Zahlen da");
+    await p.selectOption("#betriebWahl", "b-zwei"); await p.waitForTimeout(400);
+    const z = await p.evaluate(() => ({ gesperrt: document.body.classList.contains("gesperrt"), text: document.querySelector("main").textContent, belege: document.querySelectorAll("#belegListe .zeile").length }));
+    pruef(z.gesperrt && !/64,80|Mehl 405|Weinhandel|Pizza/.test(z.text) && z.belege === 0, "Wechsel in einen Betrieb ohne Recht: gesperrt, und die Zahlen des anderen Betriebs sind weg (auch im versteckten Dokument, textContent)", JSON.stringify({ g: z.gesperrt, b: z.belege }));
+    await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(400);
+    pruef((await p.textContent("#kMonat")).replace(/\s/g, " ") === "64,80 €" && !(await p.evaluate(() => document.body.classList.contains("gesperrt"))), "und zurück: die Zahlen kommen wieder");
+    await ctx.close();
+  }
+
+  /* ── 11 · Manager mit Einkauf-Recht ───────────────────────────── */
+  console.log("\n══ 10 · Manager mit Einkauf-Recht (früher Team): nur ansehen ══");
+  {
+    const { ctx, p } = await oeffnen(browser, grundDaten("manager"));
+    await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
+    pruef(await p.isVisible("#lesesatz"), "Manager: Satz statt Bedienung");
+    await p.click('.reiter [data-ansicht="belege"]');
+    pruef(!(await p.isVisible("#belegNeu")) && !(await p.isVisible("#einlesenKnopf")), "Manager: weder erfassen noch einlesen");
     await p.click('#belegListe [data-beleg="be-entwurf"]'); await p.waitForTimeout(150);
     const f = await p.evaluate(() => document.querySelectorAll("#belegEdit input, #belegEdit select").length);
-    pruef(f === 0 && /Mehl 405/.test(await p.textContent("#belegEdit")), "Team: Entwurf nur ansehen", f + " Felder");
+    pruef(f === 0 && /Mehl 405/.test(await p.textContent("#belegEdit")), "Manager: Entwurf nur ansehen", f + " Felder");
     await p.click('.reiter [data-ansicht="artikel"]');
-    pruef(!(await p.isVisible("#aAnlegen")) && !(await p.isVisible('[data-aktion="artikel-auf"]')) && !(await p.isVisible("#inventurKnopf")), "Team: Artikel weder anlegen noch ändern, keine Inventur");
+    pruef(!(await p.isVisible("#aAnlegen")) && !(await p.isVisible('[data-aktion="artikel-auf"]')) && !(await p.isVisible("#inventurKnopf")), "Manager: Artikel weder anlegen noch ändern, keine Inventur");
     await ctx.close();
   }
 
@@ -857,12 +964,12 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
   }
   {
     /* Selbst nur Team im aktuellen Betrieb, Inhaber im anderen: auch kein Übernehmen. */
-    const d = grundDaten("team"); d.mitglieder.push({ rolle: "inhaber", betriebe: { id: "b-zwei", name: "Café Zwei", organisation_id: ORG } });
+    const d = grundDaten("manager"); d.mitglieder.push({ rolle: "inhaber", betriebe: { id: "b-zwei", name: "Café Zwei", organisation_id: ORG } });
     const { ctx, p } = await oeffnen(browser, d);
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
     await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(150);
     await p.click('.reiter [data-ansicht="kalkulation"]'); await p.click('[data-gericht="g-pizza"]');
-    pruef(!(await p.$('[data-aktion="rez-uebertragen"]')) && !(await p.$('[data-aktion="rez-sichern"]')), "Team im eigenen Standort: weder sichern noch übernehmen");
+    pruef(!(await p.$('[data-aktion="rez-uebertragen"]')) && !(await p.$('[data-aktion="rez-sichern"]')), "Manager im eigenen Standort: weder sichern noch übernehmen");
     await ctx.close();
   }
 
@@ -1047,14 +1154,14 @@ const ueberlauf = p => p.evaluate(() => document.documentElement.scrollWidth - d
   }
   {
     /* Team: sieht Unterwegs, kann nichts buchen */
-    const d = mitLager(); d.mitglieder[0].rolle = "team"; d.rolle = "team";
+    const d = mitLager(); d.mitglieder[0].rolle = "manager"; d.rolle = "manager"; d.antworten.meine_rechte = { rolle: "manager", rechte: Object.assign({}, KEINE_RECHTE, { kosten_view:true }) };
     const { ctx, p } = await oeffnen(browser, d);
     await p.waitForSelector("#app:not([hidden])", { timeout: 5000 });
     await p.selectOption("#betriebWahl", BETRIEB); await p.waitForTimeout(150);
     await p.click('.reiter [data-ansicht="lager"]'); await p.waitForTimeout(100);
     const tm = await p.evaluate(() => ({ an: !!document.querySelector('[data-aktion="um-annehmen"]') && document.querySelector('[data-aktion="um-annehmen"]').offsetParent !== null,
       form: document.getElementById("umNeuKarte").offsetParent !== null, ein: /Von Café Zwei/.test(document.getElementById("umEin").textContent) }));
-    pruef(tm.ein && !tm.an && !tm.form, "Team sieht, was unterwegs ist, kann aber weder annehmen noch schicken", JSON.stringify(tm));
+    pruef(tm.ein && !tm.an && !tm.form, "Manager sieht, was unterwegs ist, kann aber weder annehmen noch schicken", JSON.stringify(tm));
     await ctx.close();
   }
 

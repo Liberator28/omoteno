@@ -12,6 +12,13 @@
    Was der Gast als „Ladebildschirm“ sieht, ist der Willkommensschirm.
    Er trägt jetzt eine von sechs Szenen (hub_stil.lade, feste Liste).
 
+   NEU GEZEICHNET (24.10., Wunsch: „zu einheitlich … wie aus einem
+   Animationsstudio, gezeichnet im modernen Stil, alle unterschiedlich“):
+   Jede Szene hat ihren eigenen Hintergrund, ihre eigene Teilchenform und
+   ihre eigene Bewegungssprache. Abschnitt 9 prüft deshalb nicht mehr „alle
+   tragen dieselben fünf Schichten“, sondern das Gegenteil: keine zwei
+   Szenen teilen eine Hintergrundschicht, jede hat eigene Animationen.
+
    ZWEITE QUELLEN: der geteilte Block steht Zeichen für Zeichen gleich in
    Hub und Board; jede Keyframe-Regel, die der Block benutzt, steht IM
    Block (§8.1e); die Liste WZ_ARTEN des Hubs ist die Liste des Boards.
@@ -63,9 +70,9 @@ pruef(!/class="b[ "]/.test(bH || ""), "keine Fläche in der Bandfarbe (sie ist b
 
 /* Tragende Teile je Szene: Was ohne sie nicht mehr zu erkennen ist. */
 const TRAGEND = {
-  cafe: [".la", "path.a", "ellipse.lt"],
-  tisch: ["ellipse.lt", ".gabel .lt", ".glas .lt", ".kerze .lt"],
-  kueche: [".pfanne path.t", ".pfanne rect.t", ".kuchen .g"],
+  cafe: [".la", "circle.a", "circle.lt"],
+  tisch: ["ellipse.lt", ".gabel .lt", ".kerze .lt", ".glasl .lt"],
+  kueche: [".pfanne path.t", ".pfanne rect.t", ".kuchen"],
   lieferung: ["g.roller > path.a", "g.roller > rect.lt", ".rad circle.t"],
   /* Figur und „still“ tragen die Hausfigur — ihre Kontraste misst pruef-figur.js. */
   figur: [], still: []
@@ -184,7 +191,7 @@ const LAEUFT = () => {
     const weg = await p.evaluate(() => ({ szene: document.querySelectorAll(".wz").length, figur: (document.getElementById("wkFigur") || {}).innerHTML,
       laeuft: document.getAnimations().filter(a => a.effect && a.effect.target && a.effect.target.closest && a.effect.target.closest(".wz")).length,
       schirm: !!document.getElementById("willkommen") && !document.getElementById("willkommen").hidden }));
-    pruef(weg.szene === 0 && !weg.figur && weg.laeuft === 0 && !weg.schirm, "nach „Zur Übersicht“: Szene entfernt, keine ihrer Animationen läuft", JSON.stringify(weg));
+    pruef(weg.szene === 0 && !weg.figur && weg.laeuft === 0 && !weg.schirm, "nach „Zur Startseite“: Szene entfernt, keine ihrer Animationen läuft", JSON.stringify(weg));
     await p.reload(); await p.waitForTimeout(500);
     const zweit = await p.evaluate(() => ({ schirm: !!document.getElementById("willkommen"), szene: document.querySelectorAll(".wz").length }));
     pruef(!zweit.schirm && zweit.szene === 0, "zweiter Besuch in der Sitzung: kein Schirm, keine Szene", JSON.stringify(zweit));
@@ -232,7 +239,7 @@ const LAEUFT = () => {
     await s.ctx.close();
   }
 
-  console.log("══ 9 · Bühne (Aura, Strahlen, Wellen, Teilchen, Name als Buchstaben, Abgang) ══");
+  console.log("══ 9 · Bühne je Szene (eigener Hintergrund, Teilchen, Unterschiede, Name als Buchstaben, Abgang) ══");
   {
     /* Zweite Quelle: Zahl der Teilchen je Szene aus dem Block gelesen. */
     const cfg = {};
@@ -297,41 +304,61 @@ const LAEUFT = () => {
         schlecht.slice(0, 4).join(" | ") || geprueft + " Bilder");
     }
 
-    /* Aufbau, Bewegung und Tippschutz der Bühne in jeder Szene. */
+    /* Aufbau, Bewegung und Tippschutz der Bühne in jeder Szene — und: Die Szenen
+       sind UNTERSCHIEDLICH (Wunsch 24.10.: „zu einheitlich … alle unterschiedlich“).
+       Vorher trugen alle fünf dieselben fünf Schichten; die Probe zählte genau das
+       als Erfolg („1 Strahlenkranz, 3 Auren, 2 Wellen“) und hätte jede Angleichung
+       belohnt. Jetzt zählt das Gegenteil: eigener Hintergrund, eigene Animationen. */
+    const hintergruende = {}, namen = {}, formen = {};
     for(const art of ARTEN){
       const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", art]] });
       await p.waitForTimeout(1200);
       const b = await p.evaluate(() => {
         const st = document.querySelector("#wkFigur .wz-buehne");
         if(!st) return null;
-        const lauf = st.getAnimations({ subtree:true }).filter(a => a.playState === "running").length;
+        const alle = st.getAnimations({ subtree:true }).filter(a => a.playState === "running");
         const fremd = new Set();
         st.getAnimations({ subtree:true }).forEach(a => (a.effect.getKeyframes() || []).forEach(k => Object.keys(k).forEach(x => {
           if(!["offset", "computedOffset", "easing", "composite", "transform", "opacity"].includes(x)) fremd.add(x); })));
         const kinder = [...st.children].map(c => getComputedStyle(c).pointerEvents);
         const fig = document.querySelector("#wkFigur .wz").getBoundingClientRect();
         const e = document.elementFromPoint(fig.left + fig.width / 2, fig.top + fig.height / 2);
-        return { strahl:st.querySelectorAll(".wz-strahl").length, aura:st.querySelectorAll(".wz-aura").length, welle:st.querySelectorAll(".wz-welle").length,
-          schein:st.querySelectorAll(".wz-schein").length, teile:st.querySelectorAll(".wz-teil").length, lauf, fremd:[...fremd],
+        const szene = document.querySelector("#wkFigur .wz");
+        return { bg:st.dataset.bg, hinten:[...st.children].filter(c => !c.classList.contains("wz-teil")).map(c => c.className.split(" ")[0]),
+          teile:st.querySelectorAll(".wz-teil").length, form:(st.querySelector(".wz-teil") || { className:"" }).className.split(" ")[1],
+          lauf:alle.length, fremd:[...fremd],
+          namen:[...new Set(szene.getAnimations({ subtree:true }).filter(a => a.playState === "running" && a.animationName).map(a => a.animationName))],
           tippfrei:kinder.every(x => x === "none") && st.style.pointerEvents !== "auto" && getComputedStyle(st).pointerEvents === "none",
           obenauf:!!e && !e.closest(".wz-buehne") };
       });
       if(art === "still"){ pruef(b === null, "still: keine Bühne"); await ctx.close(); continue; }
-      pruef(!!b && b.strahl === 1 && b.aura === 3 && b.welle === 2 && b.schein === 1 && b.teile === cfg[art].n,
-        art + ": Bühne vollständig (1 Strahlenkranz, 3 Auren, 2 Wellen, 1 Schein, " + cfg[art].n + " Teilchen)", JSON.stringify(b));
-      pruef(!!b && b.lauf >= 12 && !b.fremd.length, art + ": die Bühne läuft (≥ 12 Animationen), nur transform/opacity", b && (b.lauf + " laufend" + (b.fremd.length ? ", fremd: " + b.fremd.join(",") : "")));
+      hintergruende[art] = b && b.hinten; namen[art] = (b && b.namen) || []; formen[art] = b && b.form;
+      pruef(!!b && b.bg === art && b.hinten.length >= 2 && b.teile === cfg[art].n,
+        art + ": eigener Hintergrund (≥ 2 Schichten, data-bg = Szene) und " + cfg[art].n + " Teilchen (Zahl aus dem Block)", JSON.stringify(b && { bg:b.bg, hinten:b.hinten, teile:b.teile }));
+      pruef(!!b && b.lauf >= cfg[art].n + 1 && !b.fremd.length, art + ": die Bühne läuft (Teilchen + Hintergrund), nur transform/opacity", b && (b.lauf + " laufend" + (b.fremd.length ? ", fremd: " + b.fremd.join(",") : "")));
       pruef(!!b && b.tippfrei && b.obenauf, art + ": die Bühne fängt keinen Tipp (pointer-events none, Szene liegt obenauf)", b && JSON.stringify({ tippfrei:b.tippfrei, obenauf:b.obenauf }));
       await ctx.close();
-      /* Reduzierte Bewegung: Aura und Strahlen stehen still da, nichts läuft, Wellen/Teilchen entfallen. */
+      /* Reduzierte Bewegung: der Hintergrund steht sichtbar still da, nichts läuft, die Teilchen entfallen. */
       const s = await hubSeite(browser, "chocolamour", { still:true, init:[merk, ["chocolamour", art]] });
       await s.p.waitForTimeout(400);
       const r = await s.p.evaluate(() => { const st = document.querySelector("#wkFigur .wz-buehne");
-        const op = sel => [...st.querySelectorAll(sel)].map(e => +getComputedStyle(e).opacity);
-        return { lauf:st.getAnimations({ subtree:true }).filter(a => a.playState === "running").length, aura:op(".wz-aura"), strahl:op(".wz-strahl"),
-          teile:op(".wz-teil").filter(x => x > 0).length, welle:op(".wz-welle").filter(x => x > 0).length }; });
-      pruef(r.lauf === 0 && r.aura.every(x => x > .3) && r.strahl[0] > .5 && r.teile === 0 && r.welle === 0,
-        art + " bei reduzierter Bewegung: Aura und Strahlen stehen sichtbar still, Wellen und Teilchen entfallen", JSON.stringify(r));
+        const hinten = [...st.children].filter(c => !c.classList.contains("wz-teil"));
+        return { lauf:st.getAnimations({ subtree:true }).filter(a => a.playState === "running").length, licht:Math.max(...hinten.map(c => +getComputedStyle(c).opacity)),
+          teile:[...st.querySelectorAll(".wz-teil")].filter(e => +getComputedStyle(e).opacity > 0).length }; });
+      pruef(r.lauf === 0 && r.licht > .3 && r.teile === 0, art + " bei reduzierter Bewegung: mindestens eine Hintergrundschicht steht sichtbar still, die Teilchen entfallen", JSON.stringify(r));
       await s.ctx.close();
+    }
+    {
+      const arten = Object.keys(hintergruende);
+      const paare = [];
+      for(let i = 0; i < arten.length; i++) for(let j = i + 1; j < arten.length; j++){
+        const A = arten[i], B = arten[j];
+        const gemeinsamHg = hintergruende[A].filter(c => hintergruende[B].includes(c));
+        const nurA = namen[A].filter(x => !namen[B].includes(x)).length, nurB = namen[B].filter(x => !namen[A].includes(x)).length;
+        if(gemeinsamHg.length || nurA < 4 || nurB < 4) paare.push(A + "/" + B + " (gemeinsame Schichten " + gemeinsamHg.join("+") + "; nur-eigene Animationen " + nurA + "/" + nurB + ")");
+      }
+      pruef(arten.length === 5 && !paare.length, "keine zwei Szenen teilen eine Hintergrundschicht, jede hat ≥ 4 Animationen, die die andere nicht benutzt (alle Paare)", paare.join(" | ") || "10 Paare");
+      pruef(new Set(Object.values(formen)).size === 5, "jede Szene hat ihre eigene Teilchenform", JSON.stringify(formen));
     }
 
     /* Der Name als Buchstaben. */

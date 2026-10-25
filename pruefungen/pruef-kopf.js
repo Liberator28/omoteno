@@ -221,7 +221,10 @@ async function oeffnen(browser, haus, breite, sprache) {
     pruef(c.h2 === "Kaiser und Säfte", haus + ": Unterseite heißt wie die Kachel", c.h2);
     pruef(!/Hinter der Bar/.test(c.unter), haus + ": keine fremde Vorgabe-Unterzeile mehr", c.unter || "(keine)");
     const s2 = await lies("#/speisekarte");
-    pruef(s2.h2 === "Speisekarte" && /Küche/.test(s2.unter), haus + ": unveränderte Kachel behält Titel und Unterzeile", s2.h2 + " / " + s2.unter);
+    /* Ein Haus mit Startgrafik trägt auf der Speisekarte die Kopfkarte des Hauses (Markenblatt startgrafik.karte, im Board änderbar) —
+       dort steht deren Titel und Text statt der Kachel (zweite Quelle: das Markenblatt-Objekt; pruef-startgrafik.js misst den Rest). */
+    const sgk = await seite.evaluate(() => (typeof MARKENBLATT !== "undefined" && MARKENBLATT.startgrafik && MARKENBLATT.startgrafik.karte) || null);
+    pruef(sgk ? (s2.h2 === sgk.titel && s2.unter === sgk.text) : (s2.h2 === "Speisekarte" && /Küche/.test(s2.unter)), haus + ": unveränderte Kachel behält Titel und Unterzeile" + (sgk ? " (Kopfkarte des Hauses statt Kachel)" : ""), s2.h2 + " / " + s2.unter);
     const g = await lies("#/getraenke");
     pruef(g.h2 === "Getränkekarte" && g.unter === "Frisch & kalt", haus + ": eigene Unterzeile allein wird übernommen", g.h2 + " / " + g.unter);
     await seite.evaluate(() => { spracheSetzen("en"); });
@@ -241,7 +244,7 @@ async function oeffnen(browser, haus, breite, sprache) {
     });
     pruef(z.an && z.w >= 44 && z.h >= 44 && z.text === "Zurück", haus + ": Zurück ist eine Pille „Zurück“, ≥ 44 px",
       z.w.toFixed(0) + "×" + z.h.toFixed(0) + " " + JSON.stringify(z.text));
-    pruef(z.label === "Zurück zur Übersicht" && z.oben, haus + ": beschriftet und obenauf (nichts deckt ihn)", z.label + " " + z.oben);
+    pruef(z.label === "Zurück zur Startseite" && z.oben, haus + ": beschriftet und obenauf (nichts deckt ihn)", z.label + " " + z.oben);
     /* 09.10. „Spare Text im Header — kompakt“: Auf der
        Unterseite ist der Kopf EINE Leiste — Siegel, Name und Knöpfe auf
        einer Höhe, ohne Adresse, Slogan und Öffnungsstand. Vorher ~270 px. */
@@ -283,7 +286,7 @@ async function oeffnen(browser, haus, breite, sprache) {
     await seite.click("#zurueck");
     await seite.waitForTimeout(500);
     const heim = await seite.evaluate(() => ({ hash: location.hash, start: seiteJetzt }));
-    pruef(heim.start === "start", haus + ": Tipp führt zur Übersicht", JSON.stringify(heim));
+    pruef(heim.start === "start", haus + ": Tipp führt zur Startseite", JSON.stringify(heim));
     pruef(fehler.length === 0, haus + ": keine Ausnahme", fehler.join(" | ") || "still");
     await ctx.close();
   }

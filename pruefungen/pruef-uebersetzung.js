@@ -88,6 +88,19 @@ pruef(/<html[^>]*\btranslate="no"/.test(s), 'die Vorlage trägt <html translate=
 pruef(/<meta\s+name="google"\s+content="notranslate">/.test(s),
   "und die Google-Meta-Angabe dazu");
 
+/* ══ 0 · Kein Schlüssel zweimal mit verschiedenem Inhalt ════════════
+   Vorfall 25.10.: Beim Umbenennen von „Zur Übersicht“ entstand „Zur Startseite“ ein zweites Mal — der Schlüssel stand
+   schon in der Datei (andere Übersetzung). In einem Objektliteral gewinnt der SPÄTERE Eintrag still; der frühere
+   verschwindet ohne Fehler. Gleicher Inhalt zweimal ist harmlos (namentlich: nichts), verschiedener ein Fehler. */
+{
+  const zeilen = [...s.matchAll(/^"((?:[^"\\]|\\.)+)":(\{en:.*\}),?$/gm)];
+  const je = new Map();
+  zeilen.forEach(m => { const l = je.get(m[1]) || []; l.push(m[2]); je.set(m[1], l); });
+  const doppelt = [...je].filter(([, l]) => l.length > 1 && new Set(l).size > 1).map(([k]) => k);
+  pruef(zeilen.length > 500 && doppelt.length === 0, "kein Wörterbuch-Schlüssel steht zweimal mit anderer Übersetzung",
+    doppelt.length ? doppelt.slice(0, 3).map(k => "„" + k.slice(0, 40) + "“").join(", ") : zeilen.length + " Zeilen gelesen");
+}
+
 /* ══ 1 · Ist jeder Eintrag vollständig? ═════════════════════════════ */
 console.log("\n══ Das Wörterbuch selbst ══");
 const unvoll = Object.keys(TEXTE)

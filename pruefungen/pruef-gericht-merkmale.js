@@ -131,19 +131,22 @@ function pruef(b, t, d) {
     const nurVegan = [{ id: "g1", name: "Testgericht Vegan", kategorie: "Test", beschreibung: "",
       preis: 9, karte: "speisekarte", verfuegbar: true, kat_sort: 0, reihenfolge: 0,
       veg: true, vegan: true }];
+    /* Zwei Schreibweisen: klassisch `tag vegan` / `tag veg`, mit Startgrafik (Choco) EINE Pille `tag gp gp-veg` mit Zeichen und Wort. */
+    const hatVegan = h => /class="tag vegan"/.test(h) || /gp-veg"><svg[\s\S]*?<span>Vegan<\/span>/.test(h);
+    const hatVeg = h => /class="tag veg"[^a]/.test(h) || /gp-veg"><svg[\s\S]*?<span>Vegetarisch<\/span>/.test(h);
     const r1 = await seiteMitGerichten(nurVegan);
-    pruef(/class="tag vegan"/.test(r1.html), "veganes Gericht trägt das Vegan-Zeichen");
-    pruef(!/class="tag veg"[^a]/.test(r1.html),
+    pruef(hatVegan(r1.html), "veganes Gericht trägt das Vegan-Zeichen");
+    pruef(!hatVeg(r1.html),
       "und NICHT zusätzlich das Vegetarisch-Zeichen (vegan schließt es ein)",
-      /class="tag veg"[^a]/.test(r1.html) ? "beide Zeichen da" : "nur Vegan");
+      hatVeg(r1.html) ? "beide Zeichen da" : "nur Vegan");
     pruef(r1.kons2.length === 0, "keine Ausnahme (nur vegan)", r1.kons2.join(" | ") || "still");
 
     const nurVeg = [{ id: "g2", name: "Testgericht Vegetarisch", kategorie: "Test", beschreibung: "",
       preis: 9, karte: "speisekarte", verfuegbar: true, kat_sort: 0, reihenfolge: 0,
       veg: true, vegan: false }];
     const r2 = await seiteMitGerichten(nurVeg);
-    pruef(/class="tag veg"[^a]/.test(r2.html), "nur-vegetarisches Gericht trägt das Vegetarisch-Zeichen");
-    pruef(!/class="tag vegan"/.test(r2.html), "und kein Vegan-Zeichen, wo keins gesetzt ist");
+    pruef(hatVeg(r2.html), "nur-vegetarisches Gericht trägt das Vegetarisch-Zeichen");
+    pruef(!hatVegan(r2.html), "und kein Vegan-Zeichen, wo keins gesetzt ist");
     pruef(r2.kons2.length === 0, "keine Ausnahme (nur vegetarisch)", r2.kons2.join(" | ") || "still");
 
     const keins = [{ id: "g3", name: "Testgericht Normal", kategorie: "Test", beschreibung: "",

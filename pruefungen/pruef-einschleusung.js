@@ -29,7 +29,7 @@ let n = 0, f = 0;
 const pruef = (g, t, z) => { n++; if(!g) f++; console.log((g ? "  ok   " : "  FEHL ") + t + (z !== undefined ? "  → " + z : "")); };
 const WERKZEUG = path.join(__dirname, "werkzeug", "hub-vergiftet.js");
 const MINDESTENS = ["gericht.name.speisekarte", "gericht.beschreibung.speisekarte", "gericht.kategorie.speisekarte",
-  "gericht.stoff_hinweis", "betrieb.bestell_pause_text", "aktion.titel", "texte.claim", "texte.ueber", "kachel.titel", "banner.titel"];
+  "gericht.stoff_hinweis", "betrieb.bestell_pause_text", "aktion.titel", "texte.claim", "texte.ueber", "texte.karte_titel", "texte.karte_text", "texte.karte_kopfzeile", "kachel.titel", "banner.titel"];
 /* Auf Englisch ersetzt die Übersetzungsspalte die Beschreibung: dort zählt die statt ihrer. */
 const MINDESTENS_EN = MINDESTENS.map(m => m === "gericht.beschreibung.speisekarte" ? "gericht.uebersetzungen.en" : m)
   .concat(["gericht.name_uebersetzungen.en", "woerter.*"]);
