@@ -281,6 +281,7 @@ async function lauf(browser, layout, opt){
     const wurzel = fs.mkdtempSync(path.join(os.tmpdir(), "layout-"));
     fs.mkdirSync(path.join(wurzel, "erzeuger")); fs.mkdirSync(path.join(wurzel, "vorlagen")); fs.mkdirSync(path.join(wurzel, "markenblaetter"));
     fs.copyFileSync(path.join(__dirname, "..", "erzeuger", "erzeuge-hub.js"), path.join(wurzel, "erzeuger", "erzeuge-hub.js"));
+    fs.copyFileSync(path.join(__dirname, "..", "erzeuger", "kompakt.js"), path.join(wurzel, "erzeuger", "kompakt.js"));   /* der Erzeuger lädt es seit 24.10. */
     fs.copyFileSync(path.join(__dirname, "..", "vorlagen", "hub.vorlage.html"), path.join(wurzel, "vorlagen", "hub.vorlage.html"));
     const basis = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "markenblaetter", "chocolamour.json"), "utf8"));
     const erzeuge = (inhalt, nurPruefen) => {
