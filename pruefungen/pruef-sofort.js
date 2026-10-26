@@ -130,8 +130,9 @@ function aktionMock(name, extra){
       "der Knopf zeigt seinen aktiven Zustand");
     pruef(await seite.isVisible("#auswahlbalken"), "der Balken unten zeigt den Korb");
 
-    /* Zweiter Tipp nimmt wieder heraus — dieselbe Geste wie beim Herz. */
-    await sofort.click();
+    /* Zweiter Tipp nimmt wieder heraus — dieselbe Geste wie beim Herz. Das Blatt zeichnet nach dem ersten Tipp neu (der Korb
+       steckt in seiner Signatur): ein Gast tippt auf das AKTUELLE Element, nicht auf das alte Handle. */
+    await seite.click("#aktionBlatt .sofort[data-aktionmerk]");
     await seite.waitForTimeout(300);
     pruef(!(await seite.evaluate(() => !!merk["Dubai Crêpe"])), "erneutes Tippen nimmt es wieder heraus");
   }

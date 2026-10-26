@@ -203,8 +203,9 @@ async function verdrahten(seite, texte){
        nicht an der Zeichenzahl. */
     pruef(zahl.claimBeiHart <= 3,
       "    Slogan bei „hart" + '"' + " höchstens dreizeilig", zahl.claimBeiHart + " Zeile(n)");
-    pruef(zahl.runnerBeiGut <= 1,
-      "    Aktionsname bei „gut" + '"' + " noch einzeilig", zahl.runnerBeiGut + " Zeile(n)");
+    /* Der Aktions-Knopf zeigt den Titel im Blatt in höchstens zwei Zeilen (line-clamp:2, seit 26.10.); einzeilig war der Streifen. */
+    pruef(zahl.runnerBeiGut <= 2,
+      "    Aktionsname bei „gut\" noch höchstens zweizeilig", zahl.runnerBeiGut + " Zeile(n)");
     await ctx.close();
   }
 

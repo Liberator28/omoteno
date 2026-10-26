@@ -161,7 +161,7 @@ function hubDatei(){
   pruef(!!pass, "der Pass steht da");
   if(pass){
     pruef(pass.zeichen > 0, "mit einem gezeichneten Bild, nicht mit Emoji");
-    pruef(/Bestellzettel|Angenommen/.test(pass.text), "und der Phase in Worten",
+    pruef(/Bestellung eingegangen|Angenommen/.test(pass.text), "und der Phase in Worten",
       pass.text.split("\n")[0]);
   }
 

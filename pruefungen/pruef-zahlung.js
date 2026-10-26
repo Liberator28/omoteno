@@ -294,7 +294,7 @@ const KONTRAST = `(sel) => {
       await p.waitForFunction(() => !!document.getElementById("bpass"), null, { timeout: 9000 }).catch(() => {});
       const t = await p.evaluate(() => ({ h2: (document.querySelector("#inhalt h2") || {}).innerText, block: (document.querySelector(".zahlblock") || {}).innerText || "", pass: !!document.getElementById("bpass"),
         streifen: (document.getElementById("vstreifen") || {}).innerText || "" }));
-      pruef(/Bestellung ist da/.test(t.h2) && t.pass && /Bezahlt/.test(t.block), "nach „bezahlt“: normaler Bestellpass und „Bezahlt“", t.h2 + " / " + t.block.slice(0, 20));
+      pruef(/Bestellung eingegangen/.test(t.h2) && t.pass && /Bezahlt/.test(t.block), "nach „bezahlt“: normaler Bestellpass und „Bezahlt“", t.h2 + " / " + t.block.slice(0, 20));
       const hinweis = await p.evaluate(() => /Bezahlt wird beim Personal/.test(document.body.innerText));
       pruef(!hinweis, "…und der Satz „bezahlt wird beim Personal“ steht NICHT mehr da (wäre falsch)");
       pruef(fehler.length === 0, "kein Seitenfehler", fehler.join("|"));

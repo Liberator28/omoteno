@@ -214,8 +214,9 @@ async function board(browser) {
     }, name);
     const zk = await zeile(k.n), zu = await zeile(u.n);
     const pt = v => v.toFixed(2).replace(".", ",") + " €";
-    pruef(zk && zk.neu === pt(neuK) && zk.alt === pt(k.p) && zk.strich === "line-through" && zk.tag === "−20 %",
-      "Karte: neuer Preis, alter gestrichen, „−20 %“", JSON.stringify(zk));
+    /* Variante A (Rechtsbericht R3, § 11 PAngV): nur der Aktionspreis und das Wort „Aktion“ — kein Streichpreis, kein Prozentwert. */
+    pruef(zk && zk.neu === pt(neuK) && zk.alt === null && zk.strich === "" && zk.tag === "Aktion" && !/[%−]/.test(zk.neu + zk.tag),
+      "Karte: nur der Aktionspreis mit „Aktion“ — kein Streichpreis, kein „−20 %“", JSON.stringify(zk));
     pruef(zu && !zu.neu && !zu.tag && zu.normal === pt(u.p), "Aktionspreis über dem Kartenpreis: nichts Rabattiertes", JSON.stringify(zu));
 
     /* 8 · Lesbarkeit der Plakette, Tag und Abend */
@@ -236,9 +237,9 @@ async function board(browser) {
       pruef(istPhase === phase, "Voraussetzung: Phase „" + phase + "“ ist gesetzt", istPhase + (hatAbend ? "" : ""));
       const werte = await seite.evaluate(new Function("name", KONTRAST + `
         const z = [...document.querySelectorAll(".gericht")].find(x => decodeURIComponent(x.querySelector(".ginfo").dataset.detail) === name);
-        return { tag: kontrast(z.querySelector(".tag.rabatt")), neu: kontrast(z.querySelector(".p.pneu")), alt: kontrast(z.querySelector(".palt")) };`), k.n);
-      pruef(werte.tag >= 4.5 && werte.neu >= 4.5 && werte.alt >= 4.5, "lesbar (" + phase + "): Plakette, neuer, alter Preis ≥ 4,5:1",
-        werte.tag.toFixed(2) + " / " + werte.neu.toFixed(2) + " / " + werte.alt.toFixed(2));
+        return { tag: kontrast(z.querySelector(".tag.rabatt")), neu: kontrast(z.querySelector(".p.pneu")) };`), k.n);
+      pruef(werte.tag >= 4.5 && werte.neu >= 4.5, "lesbar (" + phase + "): Marke „Aktion“ und Aktionspreis ≥ 4,5:1",
+        werte.tag.toFixed(2) + " / " + werte.neu.toFixed(2));
     }
 
     /* 7 · Aktions-Knopf (seit 26.10. statt des Streifens): im Blatt steht der kurze Rabatt, der Dauer-Rabatt nicht */
