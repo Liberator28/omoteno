@@ -95,7 +95,8 @@ begin
 
 
   -- Räume (Wunsch 25.10.): parallel zu den Bereichen, in Metern mit höchstens einer Nachkommastelle.
-  --   [ { b, t, x, y, theken: [ { x, y, b, t } ] } ]   b,t 2..60 · x,y leer oder 0..300 · Theken 0..3
+  --   [ { b, t, x, y, theken: [ { x, y, b, t } ], kueche: { x, y, b, t } | fehlt } ]
+  --   b,t 2..60 · x,y leer oder 0..300 · Theken 0..3 · Küche höchstens EINE im ganzen Gebäude, 1..30 m (Wunsch 25.10.)
   if p_daten ? 'raeume' then
     r := p_daten -> 'raeume';
     if jsonb_typeof(r) <> 'array' or jsonb_array_length(r) > 6 then
@@ -103,7 +104,7 @@ begin
     end if;
     for i in 0 .. jsonb_array_length(r) - 1 loop
       if jsonb_typeof(r -> i) <> 'object' then return jsonb_build_object('ok', false, 'grund', 'raeume'); end if;
-      if exists (select 1 from jsonb_object_keys(r -> i) k where k <> all (array['b','t','x','y','theken'])) then
+      if exists (select 1 from jsonb_object_keys(r -> i) k where k <> all (array['b','t','x','y','theken','kueche'])) then
         return jsonb_build_object('ok', false, 'grund', 'raeume');
       end if;
       -- Breite und Tiefe: Pflicht, Zahl, 2 bis 60
@@ -142,7 +143,28 @@ begin
           return jsonb_build_object('ok', false, 'grund', 'raeume');
         end if;
       end loop;
+      -- Küche (Wunsch 25.10.): ein Rechteck wie eine Theke, damit der Koch auf dem Plan seinen Platz hat
+      if r -> i ? 'kueche' and jsonb_typeof(r -> i -> 'kueche') <> 'null' then
+        if jsonb_typeof(r -> i -> 'kueche') <> 'object'
+           or exists (select 1 from jsonb_object_keys(r -> i -> 'kueche') k where k <> all (array['x','y','b','t'])) then
+          return jsonb_build_object('ok', false, 'grund', 'raeume');
+        end if;
+        foreach v_t in array array['x','y','b','t'] loop
+          if jsonb_typeof(r -> i -> 'kueche' -> v_t) is distinct from 'number'
+             or (r -> i -> 'kueche' ->> v_t) !~ '^[0-9]{1,2}(\.[0-9])?$' then
+            return jsonb_build_object('ok', false, 'grund', 'raeume');
+          end if;
+        end loop;
+        if (r -> i -> 'kueche' ->> 'x')::numeric > 60 or (r -> i -> 'kueche' ->> 'y')::numeric > 60
+           or (r -> i -> 'kueche' ->> 'b')::numeric not between 1 and 30 or (r -> i -> 'kueche' ->> 't')::numeric not between 1 and 30 then
+          return jsonb_build_object('ok', false, 'grund', 'raeume');
+        end if;
+      end if;
     end loop;
+    -- Ein Gebäude hat eine Küche: in höchstens einem Raum
+    if (select count(*) from jsonb_array_elements(r) e where jsonb_typeof(e -> 'kueche') = 'object') > 1 then
+      return jsonb_build_object('ok', false, 'grund', 'raeume');
+    end if;
   end if;
 
   insert into public.saal_einstellungen (betrieb_id, daten, geaendert)

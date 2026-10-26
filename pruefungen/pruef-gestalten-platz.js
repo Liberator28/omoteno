@@ -31,7 +31,7 @@ const fs = require("fs");
 const path = require("path");
 
 const OBEN = path.join(__dirname, "..");
-const ADMIN = path.join(OBEN, "seiten", "admin.html");
+const ADMIN = process.env.ADMIN_DATEI || path.join(OBEN, "seiten", "admin.html");   /* ADMIN_DATEI: Gegenbeweis auf einer Kopie */
 const HUB = path.join(OBEN, "dist", "blend", "index.html");
 const BASIS = "https://omoteno.test/h/";
 
@@ -110,6 +110,11 @@ const platz = async p => { await p.evaluate(() => {
   m = await platz(p);
   pruef(!m.zu, "ein Tipp auf die Mini öffnet die Vorschau");
   pruef(m.frei >= 0.4, "geöffnet ≥ 40 % frei", Math.round(m.frei * 100) + " %");
+  /* Luft unter dem Gezeigten (Meldung 25.10.: „zu wenig Abstand zwischen den oberen Blöcken“): Die Vorschau klebt, die Blöcke rollen
+     unter ihrem Rand durch — sichtbar ist als Abstand, was zwischen letzter Zeile der Vorschau und ihrem Rand liegt. */
+  const luft = await p.evaluate(() => { const v = document.querySelector(".gh-vorschau"), s = v.querySelector(".hvstand");
+    if(!s || !s.getClientRects().length) return null; return Math.round(v.getBoundingClientRect().bottom - s.getBoundingClientRect().bottom); });
+  pruef(luft !== null && luft >= 14, "geöffnet: mindestens 14 px Luft zwischen der letzten Zeile der Vorschau und ihrem unteren Rand", String(luft));
   await p.click(".gh-vorschau [data-hv-gross]");
   await p.waitForTimeout(250);
   m = await platz(p);
@@ -165,6 +170,8 @@ const platz = async p => { await p.evaluate(() => {
       return { top: Math.round(tr.top), oben: Math.round(oben), trifft: !!(e && g.contains(e)) };
     }, z);
     pruef(r.top >= r.oben - 2 && r.trifft, "Wechsel zu " + z + ": Titel steht frei unter Kopf und Vorschau und wird getroffen", JSON.stringify(r));
+    /* Luft zwischen Vorschau und erstem Block (Meldung 25.10.: „zu wenig Abstand zwischen den oberen Blöcken“): mindestens 12 px, nicht nur „nicht darunter“. */
+    pruef(r.top - r.oben >= 12, "… mit mindestens 12 px Luft unter der Vorschau (" + z + ")", (r.top - r.oben) + " px");
   }
 
   console.log("══ 4 · Neuaufbau beschriftet nach Zustand ══");

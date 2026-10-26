@@ -194,9 +194,9 @@ async function details(br, haus, erstes){
 }
 
 
-/* ── Mach es komplett, Schwelle, Rad am Ende, Kontrast ─────────────── */
+/* ── Bestellung ergänzen, Schwelle, Rad am Ende, Kontrast ─────────────── */
 async function mehr(br, haus, erstes){
-  console.log("  ── Mach es komplett, Weg zur Schwelle, Rad");
+  console.log("  ── Bestellung ergänzen, Weg zur Schwelle, Rad");
   const { p, ctx, fehler } = await hubAuf(br, haus, 390, { [erstes.n]: { n:erstes.n, p:erstes.p, b:"", m:1 } });
   const k = await p.evaluate(() => {
     const b = document.querySelector("[data-dazu-beide]");
@@ -207,7 +207,7 @@ async function mehr(br, haus, erstes){
              soll: preisText(namen.reduce((s, n) => s + preisNum(korbPreis(findeGericht(n))), 0)),
              vorne: dazuVorschlaege()[0].e.n };
   });
-  pruef(!!k && k.namen.length === 2 && k.welten[0] !== k.welten[1], "„Mach es komplett“: zwei Dinge, ein Getränk und etwas zu essen", k && k.namen.join(" + "));
+  pruef(!!k && k.namen.length === 2 && k.welten[0] !== k.welten[1], "„Bestellung ergänzen“: zwei Dinge, ein Getränk und etwas zu essen", k && k.namen.join(" + "));
   pruef(!!k && k.namen[0] === k.vorne, "… das erste ist der dringendste Vorschlag", k && k.vorne);
   pruef(!!k && k.preis === k.soll, "… mit der Summe der beiden (Aktionspreis zählt)", k && (k.preis + " = " + k.soll));
   if(k){
@@ -256,7 +256,7 @@ async function mehr(br, haus, erstes){
     /* Hell/Dunkel blendet über (Farbübergang) — erst danach messen. */
     await q.p.waitForTimeout(900);
     await q.p.evaluate(() => { LIEFER.an = true; LIEFER.gratis_ab = 99; liefermodus = true; auswahlNeuMitFeldern(); });
-    /* Zweimal gemessen: vorher steht „Mach es komplett“, nachher eine Karte „Im Korb“. */
+    /* Zweimal gemessen: vorher steht „Bestellung ergänzen“, nachher eine Karte „Im Korb“. */
     const KONTRAST = () => {
       const zahl = t => { const s = String(t);
         const m = s.match(/color\(srgb\s+([\d.]+)\s+([\d.]+)\s+([\d.]+)(?:\s*\/\s*([\d.]+))?\)/);
@@ -294,7 +294,7 @@ async function mehr(br, haus, erstes){
       return aus;
     };
     const vorher = await q.p.evaluate(KONTRAST);
-    pruef(vorher.some(x => /dazu-grund/.test(x[0])) && await q.p.evaluate(() => !!document.querySelector(".dazu-komplett")), "Voraussetzung: „Mach es komplett“ steht beim Messen da");
+    pruef(vorher.some(x => /dazu-grund/.test(x[0])) && await q.p.evaluate(() => !!document.querySelector(".dazu-komplett")), "Voraussetzung: „Bestellung ergänzen“ steht beim Messen da");
     await q.p.click(".dazu-reihe [data-dazu]"); await q.p.waitForTimeout(400);
     const r = vorher.concat(await q.p.evaluate(KONTRAST));
     const schlecht = r.filter(x => x[1] < 4.5);

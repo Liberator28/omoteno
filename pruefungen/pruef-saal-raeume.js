@@ -402,7 +402,7 @@ const imBild = (p, sel) => p.evaluate(s => {
     const a = ok.rpc[0];
     pruef(!ok.edit && ok.rpc.length === 1 && a.fn === "saal_einstellungen_setzen" && a.a.p_betrieb === "b-1", "Erfolg: genau EIN Aufruf von saal_einstellungen_setzen für den eigenen Betrieb", ok.rpc.length + " Aufrufe");
     pruef(a && Object.keys(a.a.p_daten).sort().join() === "raeume,stufen,zonen", "Nutzlast: zonen, stufen, raeume — sonst nichts", a && Object.keys(a.a.p_daten).join());
-    pruef(a && a.a.p_daten.raeume.length === 2 && Object.keys(a.a.p_daten.raeume[0]).sort().join() === "b,t,theken,x,y" && a.a.p_daten.raeume[0].b === 14 && a.a.p_daten.raeume[0].t === 8.5 && a.a.p_daten.raeume[0].x === null, "ein Raum je Bereich mit genau b, t, x, y, theken (Lage leer = null)", JSON.stringify(a && a.a.p_daten.raeume[0]));
+    pruef(a && a.a.p_daten.raeume.length === 2 && Object.keys(a.a.p_daten.raeume[0]).sort().join() === "b,kueche,t,theken,x,y" && Object.keys(a.a.p_daten.raeume[1]).sort().join() === "b,t,theken,x,y" && a.a.p_daten.raeume[0].b === 14 && a.a.p_daten.raeume[0].t === 8.5 && a.a.p_daten.raeume[0].x === null, "ein Raum je Bereich mit genau b, t, x, y, theken (Lage leer = null) — „kueche“ NUR im Raum, in dem eine steht (Vorführhaus: Haupt-Raum)", JSON.stringify(a && a.a.p_daten.raeume[0]));
     pruef(a && a.a.p_daten.raeume[0].theken.length === 2 && Object.keys(a.a.p_daten.raeume[0].theken[1]).sort().join() === "b,t,x,y", "Theken mit genau x, y, b, t");
     pruef(ok.b === 14 && ok.t === 8.5, "danach gilt der neue Stand im Plan", ok.b + " × " + ok.t);
     /* Neuöffnen (§8.1m): aus der Datenbank lesen */

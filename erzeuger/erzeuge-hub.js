@@ -547,6 +547,13 @@ function pruefeMarkenblatt(mb){
     W("recht.vertreten fehlt — bei einer Gesellschaft muss das Impressum die Vertretung nennen");
   if(!String(b.mail || "").trim() || !String(b.strasse || "").trim())
     W("Impressum im Hub unvollständig: Anschrift und E-Mail sind Pflicht (§ 5 DDG)");
+  /* --streng (Prüflauf, Rechtsbericht R2): Ein echter Betrieb — kein Vorführhaus (mb.demo) — ohne Anbieter, Anschrift und E-Mail
+     im Impressum ist KEIN Hinweis mehr, sondern ein Fehler (§ 5 DDG, Bußgeld bis 50 000 €). NUR hier: Im Netlify-Build
+     (bauen.js) läuft der Erzeuger ohne --streng, sonst nähme ein fehlendes Feld ALLE Hubs vom Netz. */
+  if(STRENG && !mb.demo){
+    if(!String(recht.firma || "").trim()) F("[streng] recht.firma fehlt — das Impressum nennt keinen Anbieter (§ 5 DDG)");
+    if(!String(b.mail || "").trim() || !String(b.strasse || "").trim()) F("[streng] Anschrift und E-Mail im Impressum fehlen (§ 5 DDG)");
+  }
 
   /* Kontrast, Tag und Abend */
   const pruefePaare = (farben, wann) => {
@@ -979,6 +986,7 @@ function erzeuge(slug, nurPruefen){
 /* ─── Aufruf ──────────────────────────────────────────────────── */
 const args = process.argv.slice(2);
 const nurPruefen = args.includes("--pruefen-nur");
+const STRENG = args.includes("--streng");
 /* Im flachen Verzeichnis liegen neben den Markenblättern auch andere
    JSON-Dateien. „--alle" nimmt deshalb nur, was wirklich eins ist:
    ein Objekt mit version und farben. Ohne diese Prüfung meldete der
@@ -997,7 +1005,7 @@ const slugs = args.includes("--alle")
   : args.filter(a => !a.startsWith("--"));
 
 if(!slugs.length){
-  console.log("Aufruf: node erzeuger/erzeuge-hub.js <slug> [--pruefen-nur]");
+  console.log("Aufruf: node erzeuger/erzeuge-hub.js <slug> [--pruefen-nur] [--streng]");
   console.log("        node erzeuger/erzeuge-hub.js --alle");
   process.exit(1);
 }

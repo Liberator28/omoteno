@@ -396,11 +396,11 @@ const KONTRAST = `(sel) => {
         "Nach dem Bestellen sehen Sie die Bankverbindung. Die Küche beginnt erst, wenn Ihre Überweisung beim Haus eingegangen ist – das kann ein bis zwei Werktage dauern.",
         "Für eine Online-Zahlung ist der Betrag zu klein. Bitte zahlen Sie beim Personal.", "Fast geschafft!", "Ihre Bestellung ist vorgemerkt. Sie geht an die Küche, sobald bezahlt ist.",
         "Jetzt bezahlen", "Zahlung wird bestätigt …", "Das dauert nur einen Moment. Bei Lastschrift kann es länger dauern – sagen Sie dann dem Personal Bescheid.",
-        "Die Zahlung wurde abgebrochen. Ihre Bestellung ist noch nicht in der Küche.", "Die Zahlung hat nicht geklappt. Sie können es noch einmal versuchen – oder beim Personal bezahlen.",
+        "Die Zahlung wurde abgebrochen. Ihre Bestellung ist noch nicht in der Küche.", "Die Zahlung war nicht erfolgreich. Sie können es noch einmal versuchen – oder beim Personal bezahlen.",
         "Bezahlt", "Danke, Ihre Zahlung ist angekommen.", "Bitte jetzt überweisen", "Empfänger", "Bank", "Betrag", "Verwendungszweck", "Kopieren", "Kopiert.",
         "Bitte genau so angeben, damit wir Ihre Zahlung zuordnen können.", "Die Küche beginnt, sobald Ihre Überweisung eingegangen ist.", "Zahlung offen – bitte bezahlen",
         "Warten auf Ihre Überweisung", "Diese Bestellung ist nicht mehr offen.", "Zu viele Versuche. Bitte sagen Sie dem Personal Bescheid.",
-        "Das Bezahlen klappt gerade nicht. Bitte versuchen Sie es gleich noch einmal oder zahlen Sie beim Personal.", "Diese Zahlungsart gibt es gerade nicht"];
+        "Die Zahlung ist gerade nicht möglich. Bitte versuchen Sie es gleich noch einmal oder zahlen Sie beim Personal.", "Diese Zahlungsart gibt es gerade nicht"];
       const codes = SPRACHEN.map(s => s.code).filter(c => c !== "de");
       const luecken = [];
       for (const c of codes) {

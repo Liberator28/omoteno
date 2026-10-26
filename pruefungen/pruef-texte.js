@@ -119,7 +119,7 @@ async function verdrahten(seite, texte){
                     preis_alt:15.9, preis_neu:11.9,
                     bis:new Date(Date.now()+3600000).toISOString() }];
       zeichne();
-      const k = document.querySelector(".aktion .kennz");
+      const k = document.querySelector("#aktionBlatt .ak-titel");
       return k ? k.textContent : "";
     });
     pruef(band === "Happy Hour", "Aktion ohne eigenen Titel nimmt die Vorgabe", band);
@@ -130,7 +130,7 @@ async function verdrahten(seite, texte){
                     preis_alt:15.9, preis_neu:11.9,
                     bis:new Date(Date.now()+3600000).toISOString() }];
       zeichne();
-      const k = document.querySelector(".aktion .kennz");
+      const k = document.querySelector("#aktionBlatt .ak-titel");
       return k ? k.textContent : "";
     });
     pruef(band2 === "Nur heute", "eigener Titel der Aktion gewinnt", band2);
@@ -185,7 +185,7 @@ async function verdrahten(seite, texte){
                     preis_alt:15.9, preis_neu:11.9,
                     bis:new Date(Date.now()+3600000).toISOString() }];
       zeichne();
-      const k = document.querySelector(".aktion .kennz");
+      const k = document.querySelector("#aktionBlatt .ak-titel");
       raus.runnerBeiGut = k ? zeilen(k) : 0;
       aktionen = []; zeichne();
       return raus;

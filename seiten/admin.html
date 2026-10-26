@@ -603,12 +603,12 @@ html{font-size:calc(16px * var(--skala,1))}
   border:1px solid var(--linie);color:var(--kreide);text-decoration:none;font-size:14px;font-weight:600;background:var(--flaeche)}
 .gh-sprung a svg{flex:none;width:18px;height:18px;fill:none;stroke:var(--ton, currentColor);stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
 .gh-sprung a[aria-current="true"]{border-color:var(--ton, var(--messing));box-shadow:inset 0 0 0 1px var(--ton, var(--messing))}
-.gh-vorschau{position:sticky;top:var(--board-kopf, 64px);z-index:6;margin:10px -16px 14px;padding:8px 16px 10px;
+.gh-vorschau{position:sticky;top:var(--board-kopf, 64px);z-index:6;margin:10px -16px 14px;padding:8px 16px 18px;
   background:var(--nacht);border-bottom:1px solid var(--linie);--hv-mass:.5;--hv-hoehe:210px}
 .gh-vorschau.gross{--hv-mass:.72;--hv-hoehe:520px}
 .gh-vorschau.zu .hvfenster,.gh-vorschau.zu .hvstand{display:none}
 .gh-vorschau .hvkopf{margin-bottom:6px}
-.gh-vorschau .hvstand{margin-top:4px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.gh-vorschau .hvstand{margin-top:8px;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hvknoepfe{display:flex;gap:8px}
 @media (min-width:700px){ .gh-vorschau{--hv-mass:.6;--hv-hoehe:340px} }
 /* Vorschau-Dock (17.10., Wunsch „die Hub-Ansicht versperrt die
@@ -700,7 +700,7 @@ html{font-size:calc(16px * var(--skala,1))}
    (Fokus, Sprung, Tab), landet zwischen beiden — nicht darunter (§3.5).
    Die Höhe der Vorschau misst das Skript (--gh-vorschau-h). */
 #t-startseite :is(button,input,textarea,select,a,.egruppe){
-  scroll-margin-top:calc(var(--board-kopf, 64px) + var(--gh-vorschau-h, 300px) + 12px);
+  scroll-margin-top:calc(var(--board-kopf, 64px) + var(--gh-vorschau-h, 300px) + 16px);
   scroll-margin-bottom:calc(var(--leiste-h, 64px) + 16px);
 }
 .hvrahmen{--hv-mass:.6;--hv-hoehe:400px;margin:14px 0 4px}
@@ -818,11 +818,14 @@ html{font-size:calc(16px * var(--skala,1))}
        Danach setzt filterHoeheMessen() den echten Wert. */
     --filter-h:134px;
   }
-  main{padding-bottom:calc(96px + env(safe-area-inset-bottom))}
+  main{padding-bottom:calc(var(--leiste-h) + 48px)}
 
   #t-bestellungen .filterblock{
     position:fixed;left:0;right:0;z-index:39;
-    bottom:calc(var(--leiste-h) - var(--vv-versatz, 0px));
+    bottom:calc(var(--leiste-h) * var(--vv-kehr, 1) - var(--vv-versatz, 0px));
+    left:var(--vv-x, 0px);right:auto;width:100%;
+    -webkit-transform-origin:0 100%;transform-origin:0 100%;
+    -webkit-transform:scale(var(--vv-kehr, 1));transform:scale(var(--vv-kehr, 1));
     margin:0;padding:8px 12px 6px;
     background:var(--leiste-glas);
     -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
@@ -840,8 +843,9 @@ html{font-size:calc(16px * var(--skala,1))}
     display:grid;grid-template-columns:repeat(5,minmax(0,1fr));
     /* bottom: --vv-versatz holt die Leiste an den echten unteren Rand zurück, wenn iOS (Home-Bildschirm) den Layout-Viewport kürzer
        lässt als das Sichtbare (leisteAnkern()). translateZ(0): eigene Ebene, damit sie beim Auslaufen des Rollens nicht hinterherhinkt. */
-    position:fixed;left:0;right:0;bottom:calc(0px - var(--vv-versatz, 0px));z-index:40;
-    -webkit-transform:translateZ(0);transform:translateZ(0);
+    position:fixed;left:var(--vv-x, 0px);right:auto;width:100%;bottom:calc(0px - var(--vv-versatz, 0px));z-index:40;
+    -webkit-transform-origin:0 100%;transform-origin:0 100%;
+    -webkit-transform:translateZ(0) scale(var(--vv-kehr, 1));transform:translateZ(0) scale(var(--vv-kehr, 1));
     background:var(--leiste-glas);
     -webkit-backdrop-filter:blur(16px) saturate(150%);backdrop-filter:blur(16px) saturate(150%);
     border-top:1px solid var(--linie);
@@ -894,15 +898,17 @@ html{font-size:calc(16px * var(--skala,1))}
        „Einstellungen“, die Menüpunkte waren nicht zu erreichen.
        Seit 11.10. stehen die Karte-Knöpfe oben im Fluss; die 41 bleibt
        über der Befehlsleiste. */
-    position:fixed;left:10px;right:10px;z-index:41;
+    position:fixed;left:calc(var(--vv-x, 0px) + 10px * var(--vv-kehr, 1));right:auto;width:calc(100% - 20px);z-index:41;
+    -webkit-transform-origin:0 100%;transform-origin:0 100%;
+    -webkit-transform:scale(var(--vv-kehr, 1));transform:scale(var(--vv-kehr, 1));
     /* Schob sich bisher direkt ueber die Reiterleiste. Dort liegen
        jetzt die Filter, also eine Etage hoeher. Gerechnet aus
        denselben Variablen — eine zweite Zahl daneben waere eine
        zweite Wahrheit. */
-    bottom:calc(var(--leiste-h) + var(--filter-h) + 6px - var(--vv-versatz, 0px));
+    bottom:calc((var(--leiste-h) + var(--filter-h) + 6px) * var(--vv-kehr, 1) - var(--vv-versatz, 0px));
     background:var(--karte);border:1px solid var(--linie);border-radius:16px;
     padding:8px;box-shadow:0 -10px 40px rgba(0,0,0,.5);
-    animation:mehrauf .26s var(--ease-out) both;
+    animation:mehrbox .26s var(--ease-out) both;
   }
   .mehrfach[hidden]{display:none}
   .mehrfach button{
@@ -918,6 +924,8 @@ html{font-size:calc(16px * var(--skala,1))}
   .mehrfach svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:1.9;
     stroke-linecap:round;stroke-linejoin:round;flex:none}
   @keyframes mehrauf{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  /* Der Rahmen des Menüs trägt dauerhaft die Verkleinerung für den Zoom (--vv-kehr); die Knöpfe darin nutzen mehrauf. */
+  @keyframes mehrbox{from{opacity:0;transform:translateY(10px) scale(var(--vv-kehr, 1))}to{opacity:1;transform:scale(var(--vv-kehr, 1))}}
 
   /* Drei Knöpfe, gestaffelt um je 40 ms. Der Skill nennt 3 bis 5
      Elemente und 30 bis 50 ms — darüber wirkt es langsam, darunter
@@ -1093,7 +1101,8 @@ body.hell .tmchip[aria-pressed=true]{color:var(--flaeche)}
 .wischziel[data-stufe="fertig"]{background:color-mix(in srgb, var(--gut) 24%, var(--karte))}
 .wischziel span{opacity:.55;transform:scale(.94);transition:opacity .15s,transform .15s var(--ease-out)}
 .wischziel.bereit span{opacity:1;transform:none}
-.rueckleiste{position:fixed;left:50%;bottom:calc(var(--leiste-h, 64px) + 14px - var(--vv-versatz, 0px));transform:translateX(-50%);z-index:81;
+.rueckleiste{position:fixed;left:calc(var(--vv-x, 0px) + 50% * var(--vv-kehr, 1));bottom:calc((var(--leiste-h, 64px) + 14px) * var(--vv-kehr, 1) - var(--vv-versatz, 0px));
+  -webkit-transform-origin:50% 100%;transform-origin:50% 100%;transform:translateX(-50%) scale(var(--vv-kehr, 1));z-index:81;
   display:flex;align-items:center;gap:14px;max-width:calc(100vw - 32px);padding:6px 6px 6px 16px;
   border-radius:var(--ecke-pille);background:var(--kreide);color:var(--nacht);font-size:14px;font-weight:600;
   box-shadow:0 8px 28px rgba(0,0,0,.35)}
@@ -1125,6 +1134,15 @@ body.hell .tmchip[aria-pressed=true]{color:var(--flaeche)}
 .abspur i{font-style:normal}
 .abwas{grid-area:was;font-size:13px;color:var(--gedaempft);overflow-wrap:anywhere}
 .abkarte .abgebracht{grid-area:knopf;width:auto;min-height:44px;padding:10px 16px}
+/* Einzelne Gerichte (25.10.): Haken an der Zeile und „Bitte servieren“ mit „Gebracht“ unter den Positionen. */
+.pos .gfertig{display:inline-block;margin-left:8px;padding:1px 8px;border-radius:999px;font-size:12px;font-weight:800;
+  color:var(--gut);border:1px solid var(--gut);white-space:nowrap;vertical-align:1px}
+.pos .gfertig.gebracht{color:var(--gedaempft);border-color:var(--gedaempft)}
+.pos.pweg .pname{opacity:.55}
+.servieren-zeile{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:8px 0 2px;
+  padding:10px 12px;border-radius:12px;border:1.5px solid var(--gut);background:color-mix(in srgb, var(--gut) 12%, transparent)}
+.servieren-zeile span{min-width:0;overflow-wrap:anywhere;font-size:14px}
+.servieren-zeile .abgebracht{width:auto;min-height:44px;padding:10px 16px;flex:none}
 
 .bestellung{
   position:relative;
@@ -1481,6 +1499,12 @@ body[data-rolle="team"] .aw-nur-inhaber{display:none !important}
 .sp-k-thekeoben .l{fill:#E4D2B8}.sp-k-thekeoben .r{fill:#C9B497}.sp-k-thekeoben .o{fill:#F3E7D3}
 .sp-k-hocker .l{fill:#4A5563}.sp-k-hocker .r{fill:#394250}.sp-k-hocker .o{fill:#7B8798}
 .sp-thekentext{font:700 11px/1 system-ui,-apple-system,sans-serif;fill:#3A2412;pointer-events:none}
+/* Küche (25.10.): Edelstahl-Block mit Messing-Pass auf der Seite zur Raummitte; „Weg“ = gestrichelte Linie vom Pass zu jedem Tisch, an dem etwas zum Servieren fertig ist. */
+.sp-k-kueche .l{fill:#6C7B88}.sp-k-kueche .r{fill:#55626E}.sp-k-kueche .o{fill:#8FA0AE}
+.sp-k-kuechenoben .l{fill:#DDE4EA}.sp-k-kuechenoben .r{fill:#C2CCD5}.sp-k-kuechenoben .o{fill:#F1F4F7}
+.sp-k-pass .l{fill:#D9A441}.sp-k-pass .r{fill:#B3822B}.sp-k-pass .o{fill:#F0C36A}
+.sp-kuechentext{font:700 11px/1 system-ui,-apple-system,sans-serif;fill:#27323B;pointer-events:none}
+.sp-weg{fill:none;stroke-width:3;stroke-dasharray:3 9;stroke-linecap:round;vector-effect:non-scaling-stroke;pointer-events:none}
 .sp-raum.fern{cursor:pointer}
 .sp-raum.fern .sp-boden{opacity:.78}
 .sp-raum.fern .sp-gitter{opacity:.3}
@@ -2447,10 +2471,10 @@ body.hell .katchip[aria-selected=true]{color:var(--flaeche)}
    Eine Zeile je Block, untereinander (Telefon, §3.8: nur die Seite rollt). Gezogen wird NUR am Griff — der Rest der
    Zeile bleibt Fläche zum Rollen. Nichts an der Liste ist markierbar (Eingabefelder ausgenommen), und während des
    Ziehens ist es die ganze Seite. Eigene Namen (§1.1): .afb-* gibt es sonst nirgends. */
-.afb-liste{display:flex;flex-direction:column;gap:10px;margin:6px 0 10px;
+.afb-liste{display:flex;flex-direction:column;gap:14px;margin:14px 0 14px;
   -webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 .afb-liste input,.afb-liste textarea,.afb-liste select{-webkit-user-select:text;user-select:text}
-.afb-fest{display:flex;align-items:center;gap:10px;margin:10px 0 0;padding:10px 12px;border:1px dashed var(--linie);
+.afb-fest{display:flex;align-items:center;gap:10px;margin:16px 0 0;padding:10px 12px;border:1px dashed var(--linie);
   border-radius:12px;color:var(--gedaempft)}
 .afb-fest svg{flex:none;width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .afb-fest div{flex:1;min-width:0}
@@ -4592,12 +4616,12 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
 
       <div class="ezeile senkrecht">
-        <span><b>Laufschrift beim Top-Runner</b><i>Läuft im farbigen Band über der Aktion — leer: Name, Gericht, Rabatt und Restzeit</i></span>
+        <span><b>Satz zur Aktion</b><i>Steht über der Aktion in dem kleinen Blatt, das der „%“-Knopf unten rechts öffnet — leer: kein Satz</i></span>
         <label class="feld">
-          <span>Laufschrift <em class="mass" id="hubLaufschriftMass"></em></span>
+          <span>Satz zur Aktion <em class="mass" id="hubLaufschriftMass"></em></span>
           <input type="text" id="hubLaufschrift" autocomplete="off" placeholder="Nur heute · solange der Vorrat reicht">
-          <small class="feldhilfe" id="hubLaufschriftHilfe">Der Rabatt in Prozent kommt von selbst
-            dazu. Kurz und laut wirkt am besten.</small>
+          <small class="feldhilfe" id="hubLaufschriftHilfe">Der Gast sieht den Aktionspreis und die ablaufende Zeit
+            — keinen durchgestrichenen Preis und kein „−x %“. Kurz und klar wirkt am besten.</small>
         </label>
       </div>
 
@@ -5041,6 +5065,12 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         dieselbe Karte, derselbe Korb, nur mit Adresse statt Tischnummer.
         Bezahlt wird bei Ihnen an der Tür — oder, wenn Sie es unter „Bezahlen“ einschalten, online. Über Omoteno fließt nie Geld.
         Weiter unten stellen Sie die Abholung ein: Der Gast bestellt, nennt Name und Telefon und holt selbst ab (bezahlt wird dann bei Ihnen vor Ort).</p>
+      <!-- Rechtsbericht R9: Wer Speisen zum Mitnehmen oder Liefern in Einwegverpackung abgibt, muss grundsätzlich eine Mehrwegalternative
+           anbieten (§§ 33, 34 VerpackG). Die Pflicht trifft den Betrieb, nicht Omoteno — der Hinweis steht hier, wo er sie einschaltet. -->
+      <p class="ehilfe" id="lfMehrweg"><b>Mehrweg:</b> Wer Speisen oder Getränke zum Mitnehmen oder Liefern in Einwegverpackungen abgibt,
+        muss grundsätzlich auch eine Mehrwegverpackung anbieten und darauf hinweisen (§§ 33, 34 VerpackG). Ausgenommen sind nur Betriebe mit
+        höchstens fünf Beschäftigten und höchstens 80 m² Verkaufsfläche — sie müssen mitgebrachte Behälter befüllen. Prüfen Sie Ihre Pflicht
+        und die Verpackungsregistrierung (LUCID) selbst, gern mit Ihrer Kammer oder Beratung.</p>
 
       <div class="schalter">
         <div><div class="schaltertext">Wir liefern</div>
@@ -5983,6 +6013,8 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
           <button type="button" class="knopf leise bk-weg" id="bkFreiWeg">Entfernen</button>
         </div>
         <input type="hidden" id="fBildFrei">
+        <!-- „KI-bearbeitet“ (Rechtsbericht R8): 1, sobald ein Profi-Foto oder Freisteller der KI übernommen wurde; der Hub zeigt dann die Marke. -->
+        <input type="hidden" id="fBildKi">
       </div>
     </div>
 
@@ -7349,18 +7381,52 @@ function klingel(){
    erscheint wieder.
    ═══════════════════════════════════════════════════════════════ */
 const ABHOL_FENSTER = 4 * 3600000;   /* älter als 4 h: niemand wartet mehr am Pass */
+
+/* EINZELNE GERICHTE (Wunsch 25.10., migration-gericht-fertig.sql): Der Koch kann im Küchenboard jedes Gericht
+   für sich fertig melden. Sobald an einem Bon auch nur EIN Gericht gemeldet ist, zählen hier die Gerichte —
+   „bereit“ = gemeldet und noch nicht gebracht. Ein Gericht gilt auch als gebracht, wenn der ältere Weg
+   (gebracht_um) nach seiner Meldung gesetzt wurde. Ohne gemeldetes Gericht bleibt alles beim alten Weg
+   (kueche_fertig_um / theke_fertig_um je Spur). Die Nummer ist der Platz in positionen (ab 0). */
+function gerichteStand(b){
+  const f = b && b.positionen_fertig;
+  if(!f || typeof f !== "object" || Array.isArray(f)) return null;
+  const pos = Array.isArray(b.positionen) ? b.positionen : [];
+  const gb = b.gebracht_um ? Date.parse(b.gebracht_um) || 0 : 0;
+  const bereit = [], gebracht = [];
+  let n = 0;
+  Object.keys(f).filter(k => /^\d+$/.test(k)).map(Number).sort((a, c) => a - c).forEach(nr => {
+    const e = f[String(nr)], p = pos[nr];
+    if(!e || typeof e !== "object" || !p) return;
+    n++;
+    const zeit = Date.parse(e.f) || 0;
+    const weg = !!e.g || (gb && zeit && gb >= zeit);
+    (weg ? gebracht : bereit).push({ nr, zeit, menge: Number(p.menge) || 1, name: String(p.name || "") });
+  });
+  return n ? { bereit, gebracht, gesamt: pos.length } : null;
+}
+/* Neueste Meldung, die noch am Pass steht (für den Ton: klingelt nur bei einer jüngeren). */
 function spurZeit(b){
+  const g = gerichteStand(b);
+  if(g) return g.bereit.reduce((m, x) => Math.max(m, x.zeit), 0);
   return Math.max(b && b.kueche_fertig_um ? Date.parse(b.kueche_fertig_um) || 0 : 0,
                   b && b.theke_fertig_um  ? Date.parse(b.theke_fertig_um)  || 0 : 0);
+}
+/* Seit wann wartet der Tisch? Das ÄLTESTE Gericht am Pass zählt, nicht das neueste. */
+function wartetSeit(b){
+  const g = gerichteStand(b);
+  if(g && g.bereit.length) return g.bereit.reduce((m, x) => Math.min(m, x.zeit || m), Infinity);
+  return spurZeit(b);
 }
 function istAbholbereit(b){
   if(!b || b.quelle === "service" || b.pruefen) return false;
   if(b.status === "storniert" || b.status === "abgelehnt") return false;
   const t = spurZeit(b);
   if(!t || Date.now() - t > ABHOL_FENSTER) return false;
+  if(gerichteStand(b)) return true;                 /* spurZeit() kennt nur noch Gerichte, die am Pass stehen */
   return !b.gebracht_um || (Date.parse(b.gebracht_um) || 0) < t;
 }
 function abholSpuren(b){
+  if(gerichteStand(b)) return [];
   const g = b.gebracht_um ? Date.parse(b.gebracht_um) || 0 : 0, s = [];
   if(b.kueche_fertig_um && Date.parse(b.kueche_fertig_um) > g) s.push("Küche");
   if(b.theke_fertig_um  && Date.parse(b.theke_fertig_um)  > g) s.push("Theke");
@@ -7416,23 +7482,27 @@ function abholPruefen(alt, neu){
   if(spurZeit(neu) <= spurZeit(alt)) return;
   abholFrisch.add(neu.id);
   abholTon();
-  melde(abholWer(neu) + " · abholbereit");
+  const gs = gerichteStand(neu);
+  melde(abholWer(neu) + " · " + (gs && gs.bereit.length
+    ? gs.bereit.map(x => x.name.split(" (")[0]).slice(0, 2).join(", ") + (gs.bereit.length > 2 ? " …" : "") + " fertig"
+    : "abholbereit"));
 }
 const abholFrisch = new Set();
 
 function zeichneAbholen(){
   const feld = $("#abholen"), ziel = $("#abholListe");
   if(!feld || !ziel) return;
-  const liste = bestellungen.filter(istAbholbereit).sort((a, b) => spurZeit(a) - spurZeit(b));
+  const liste = bestellungen.filter(istAbholbereit).sort((a, b) => wartetSeit(a) - wartetSeit(b));
   feld.hidden = liste.length === 0;
   $("#abholZahl").textContent = liste.length;
   ziel.innerHTML = liste.map(b => {
-    const min = Math.max(0, Math.floor((Date.now() - spurZeit(b)) / 60000));
-    const pos = b.positionen || [];
-    const was = pos.slice(0, 4).map(p => (p.menge || 1) + "× " + sicher(p.name)).join(" · ") + (pos.length > 4 ? " …" : "");
+    const min = Math.max(0, Math.floor((Date.now() - wartetSeit(b)) / 60000));
+    const gs = gerichteStand(b);
+    const pos = gs ? gs.bereit : (b.positionen || []);
+    const was = pos.slice(0, 4).map(p => (p.menge || 1) + "× " + sicher(gs ? p.name.split(" (")[0] : p.name)).join(" · ") + (pos.length > 4 ? " …" : "");
     return `<article class="abkarte" data-abid="${sicher(b.id)}">
       <div class="abwer">${sicher(abholWer(b))}</div>
-      <div class="abspur">${abholSpuren(b).map(x => `<span>${x}</span>`).join("")}<i>${min < 1 ? "gerade eben" : "seit " + min + " Min"}</i></div>
+      <div class="abspur">${gs ? `<span>${gs.bereit.length} von ${gs.gesamt} fertig</span>` : abholSpuren(b).map(x => `<span>${x}</span>`).join("")}<i>${min < 1 ? "gerade eben" : "seit " + min + " Min"}</i></div>
       ${was ? `<div class="abwas">${was}</div>` : ""}
       <button type="button" class="knopf abgebracht" data-gebracht="${sicher(b.id)}">Gebracht</button>
     </article>`;
@@ -7443,9 +7513,46 @@ function zeichneAbholen(){
   });
 }
 
+/* Gebracht für einzelne Gerichte: Der Server ergänzt „g“ je Gericht (gerichte_gebracht_setzen) und setzt
+   gebracht_um erst, wenn JEDES Gericht gebracht ist. Gesendet werden genau die Nummern, die dieser Bildschirm als
+   bereit zeigte — ein Gericht, das der Koch in der Zwischenzeit meldete, hat der Service noch nicht gesehen. */
+const GERICHT_FEHLER = {
+  storniert: "Die Bestellung wurde inzwischen storniert oder abgelehnt.",
+  kein_recht: "Dafür fehlt dieses Konto die Berechtigung.",
+  nicht_angemeldet: "Bitte neu anmelden."
+};
+async function gerichteGebracht(b, gs){
+  const nummern = gs.bereit.map(x => x.nr);
+  const vorherF = b.positionen_fertig ? JSON.parse(JSON.stringify(b.positionen_fertig)) : null, vorherG = b.gebracht_um;
+  const jetzt = new Date().toISOString();
+  b.positionen_fertig = Object.assign({}, b.positionen_fertig);
+  nummern.forEach(nr => { b.positionen_fertig[String(nr)] = Object.assign({}, b.positionen_fertig[String(nr)], { g: jetzt }); });
+  const alle = (b.positionen || []).length > 0 && (b.positionen || []).every((_, i) => b.positionen_fertig[String(i)] && b.positionen_fertig[String(i)].g);
+  if(alle) b.gebracht_um = jetzt;
+  inArbeit.add(b.id);
+  zeichneAbholen();
+  if(demo){ inArbeit.delete(b.id); melde("Gebracht · " + abholWer(b)); neuZeichnen(); return; }
+  try{
+    const {data, error} = await db.rpc("gerichte_gebracht_setzen", { p_bestellung: b.id, p_positionen: nummern });
+    if(error || !data || data.ok !== true){
+      b.positionen_fertig = vorherF || {}; b.gebracht_um = vorherG;
+      melde(error && /gerichte_gebracht_setzen|function/i.test(error.message || "")
+        ? "Die Datenbank kennt „Gericht fertig“ noch nicht (migration-gericht-fertig.sql)."
+        : (data && GERICHT_FEHLER[data.grund]) || "Nicht gespeichert, bitte Verbindung prüfen", true);
+    }else melde("Gebracht · " + abholWer(b));
+  }catch(e){
+    b.positionen_fertig = vorherF || {}; b.gebracht_um = vorherG;
+    melde("Nicht gespeichert, bitte Verbindung prüfen", true);
+  }finally{
+    inArbeit.delete(b.id);
+    neuZeichnen();
+  }
+}
 async function abholGebracht(id){
   const b = bestellungen.find(x => x.id === id);
   if(!b || inArbeit.has(id)) return;
+  const gs = gerichteStand(b);
+  if(gs){ if(gs.bereit.length) await gerichteGebracht(b, gs); return; }
   const vorher = b.gebracht_um;
   b.gebracht_um = new Date().toISOString();
   inArbeit.add(id);
@@ -10508,6 +10615,8 @@ $("#karten").addEventListener("click", e => {
   if(f){ e.stopPropagation(); return pruefEntscheiden(f.dataset.freigeben, true); }
   const v = e.target.closest("[data-verwerfen]");
   if(v){ e.stopPropagation(); return pruefEntscheiden(v.dataset.verwerfen, false); }
+  const gb = e.target.closest("[data-gebracht]");
+  if(gb){ e.stopPropagation(); return abholGebracht(gb.dataset.gebracht); }
 }, true);
 $("#resListe").addEventListener("click", nzKlick, true);
 $("#abholen").addEventListener("click", e => {
@@ -11961,7 +12070,8 @@ async function nachholen(id){
                     bestellungen[i].wartezeit_min !== z.wartezeit_min ||
                     bestellungen[i].kueche_fertig_um !== z.kueche_fertig_um ||
                     bestellungen[i].theke_fertig_um !== z.theke_fertig_um ||
-                    bestellungen[i].gebracht_um !== z.gebracht_um)){
+                    bestellungen[i].gebracht_um !== z.gebracht_um ||
+                    JSON.stringify(bestellungen[i].positionen_fertig || null) !== JSON.stringify(z.positionen_fertig || null))){
         abholPruefen(bestellungen[i], z);
         bestellungen[i] = z;
       }
@@ -12066,6 +12176,9 @@ function beispieldaten(){
     {id:"b5", quelle:"service", status:"neu", tisch:"4", zeitpunkt:vor(4), notiz:"Rechnung bitte", positionen:[], summe:0},
     {id:"b6", quelle:"tisch", status:"arbeit", tisch:"3", zeitpunkt:vor(15), kueche_fertig_um:vor(2),
      positionen:[{name:"Pommes mit Aioli",menge:1,preis:5.50}], summe:5.50},
+    {id:"b9", quelle:"tisch", status:"arbeit", tisch:"5", zeitpunkt:vor(22),
+     positionen:[{name:"Flammkuchen Elsässer",menge:1,preis:11.50},{name:"Pommes mit Aioli",menge:2,preis:5.50},{name:"Garden Spritz",menge:2,preis:6.50}],
+     summe:35.50, positionen_fertig:{ "1": { f: vor(3) } }},
     {id:"b7", quelle:"tisch", status:"neu", tisch:"10", zeitpunkt:vor(8),
      positionen:[{name:"Flammkuchen Elsässer",menge:3,preis:11.50}], summe:34.50},
     {id:"b8", quelle:"tisch", status:"arbeit", tisch:"6", zeitpunkt:vor(11), wartezeit_min:10, bestaetigt_um:vor(9),
@@ -12209,7 +12322,14 @@ function saalRaum(roh){
     const tb = saalDez(x.b, 0.4, Math.min(30, b), Math.min(2, b)), tt = saalDez(x.t, 0.4, Math.min(30, t), Math.min(0.8, t));
     return { x: saalDez(x.x, 0, Math.max(0, b - tb), 0), y: saalDez(x.y, 0, Math.max(0, t - tt), 0), b: tb, t: tt };
   });
-  return { b, t, x: lage(r.x), y: lage(r.y), theken };
+  /* Die Küche (Wunsch 25.10.): ein Rechteck wie eine Theke, höchstens eine je Raum (im Gebäude nur eine, siehe saalKuecheRaum). */
+  const k = r.kueche && typeof r.kueche === "object" && !Array.isArray(r.kueche) ? r.kueche : null;
+  let kueche = null;
+  if(k){
+    const kb = saalDez(k.b, 1, Math.min(30, b), Math.min(4, b)), kt = saalDez(k.t, 1, Math.min(30, t), Math.min(3, t));
+    kueche = { x: saalDez(k.x, 0, Math.max(0, b - kb), 0), y: saalDez(k.y, 0, Math.max(0, t - kt), 0), b: kb, t: kt };
+  }
+  return { b, t, x: lage(r.x), y: lage(r.y), theken, kueche };
 }
 /* Aus einer Live-Spalte in eine feste Form — was nicht passt, fällt auf die Vorgabe. */
 function saalKonfig(roh){
@@ -12269,9 +12389,9 @@ function saalStand(){
   const tische = new Map(), rest = { n: 0, teile: {}, ids: [] }, lief = { n: 0, ids: [], min: 0 };
   const platz = new Set(SAAL.tische.filter(t => t.aktiv && t.x != null).map(t => saalNk(t.nummer)));
   const eintrag = nk => { if(!tische.has(nk)) tische.set(nk, { arten: {}, haupt: null, stufe: 0 }); return tische.get(nk); };
-  const zaehle = (nk, art, min, b) => {
+  const zaehle = (nk, art, min, b, anzahl) => {
     const t = eintrag(nk), a = t.arten[art] || (t.arten[art] = { n: 0, min: 0, stufe: 0 });
-    a.n++; a.min = Math.max(a.min, min); a.stufe = Math.max(a.stufe, saalStufe(art, min, b));
+    a.n += anzahl || 1; a.min = Math.max(a.min, min); a.stufe = Math.max(a.stufe, saalStufe(art, min, b));
   };
   bestellungen.forEach(b => {
     if(!b || b.status === "storniert" || b.status === "abgelehnt") return;
@@ -12284,13 +12404,17 @@ function saalStand(){
     }else{
       if(b.status === "neu") arten.push(["neu", saalMin(b.zeitpunkt)]);
       if(b.status === "arbeit") arten.push(["arbeit", saalMin(b.zeitpunkt)]);
-      if(istAbholbereit(b)) arten.push(["servieren", saalMin(new Date(spurZeit(b)).toISOString())]);
+      if(istAbholbereit(b)){
+        /* Mit einzelnen Gerichten zählt „Servieren ×n“ die Gerichte am Pass und die Wartezeit des ältesten. */
+        const gs = gerichteStand(b);
+        arten.push(["servieren", saalMin(new Date(wartetSeit(b)).toISOString()), gs ? gs.bereit.length : 1]);
+      }
       if(!arten.length && b.quelle === "tisch" && saalMin(b.zeitpunkt) < 120) arten.push(["sitzt", saalMin(b.zeitpunkt)]);
     }
     if(!arten.length) return;
     const aktiv = arten.some(x => x[0] !== "sitzt");
     if(nk && platz.has(nk)){
-      arten.forEach(([art, min]) => zaehle(nk, art, min, b));
+      arten.forEach(([art, min, anzahl]) => zaehle(nk, art, min, b, anzahl));
     }else if(aktiv){
       rest.n++; rest.ids.push(b.id);
       if(b.quelle === "lieferung" && b.abholung !== true){ lief.n++; lief.ids.push(b.id); lief.min = Math.max(lief.min, saalMin(b.zeitpunkt)); }
@@ -12457,7 +12581,7 @@ function saalLay(){
     const r = k.raeume[i] || saalRaum(null);
     const ox = r.x != null ? r.x : frei, oy = r.y != null ? r.y : 0;
     frei = Math.max(frei, ox + r.b + 2);
-    return { zone: z, i, ox, oy, b: r.b, t: r.t, theken: r.theken };
+    return { zone: z, i, ox, oy, b: r.b, t: r.t, theken: r.theken, kueche: r.kueche };
   });
 }
 function saalRaumVon(zone){ const l = saalLay(); return l.find(r => r.zone === zone) || l[0]; }
@@ -12566,6 +12690,40 @@ function saalThekeSVG(th, r){
   const text = th.b >= 2 ? '<g transform="translate(' + mitte[0].toFixed(1) + ' ' + mitte[1].toFixed(1) + ')"><g class="sp-skala"><text class="sp-thekentext" text-anchor="middle" dominant-baseline="central">Theke</text></g></g>' : "";
   return '<g class="sp-theke" role="img" aria-label="Theke, ' + saalZ(th.b) + ' mal ' + saalZ(th.t) + ' Meter">' + (vorn ? koerper + hocker : hocker + koerper) + text + '</g>';
 }
+/* Wo holt der Service ab? Der Pass liegt auf der Seite der Küche, die zur Raummitte zeigt (längere Strecke, relativ zum Raum). */
+function saalKuechePass(k, r){
+  const cx = k.x + k.b / 2, cy = k.y + k.t / 2, dx = (r.b / 2 - cx) / r.b, dy = (r.t / 2 - cy) / r.t;
+  if(Math.abs(dx) >= Math.abs(dy)) return dx >= 0 ? { seite: "x1", X: r.ox + k.x + k.b + 0.4, Y: r.oy + cy } : { seite: "x0", X: r.ox + k.x - 0.4, Y: r.oy + cy };
+  return dy >= 0 ? { seite: "y1", X: r.ox + cx, Y: r.oy + k.y + k.t + 0.4 } : { seite: "y0", X: r.ox + cx, Y: r.oy + k.y - 0.4 };
+}
+/* Die Küche: Edelstahlblock mit Messing-Pass. */
+function saalKuecheSVG(k, r){
+  const z = SAAL_BODEN, x0 = r.ox + k.x, y0 = r.oy + k.y, x1 = x0 + k.b, y1 = y0 + k.t, p = saalKuechePass(k, r);
+  const laenge = Math.min(1.6, (p.seite[0] === "x" ? k.t : k.b) * 0.7), d = 0.14;
+  const pass = p.seite === "x1" ? saalKiste(x1 - 0.02, (y0 + y1) / 2 - laenge / 2, x1 + d, (y0 + y1) / 2 + laenge / 2, z + 0.85, z + 1.0, "pass")
+    : p.seite === "x0" ? saalKiste(x0 - d, (y0 + y1) / 2 - laenge / 2, x0 + 0.02, (y0 + y1) / 2 + laenge / 2, z + 0.85, z + 1.0, "pass")
+    : p.seite === "y1" ? saalKiste((x0 + x1) / 2 - laenge / 2, y1 - 0.02, (x0 + x1) / 2 + laenge / 2, y1 + d, z + 0.85, z + 1.0, "pass")
+    : saalKiste((x0 + x1) / 2 - laenge / 2, y0 - d, (x0 + x1) / 2 + laenge / 2, y0 + 0.02, z + 0.85, z + 1.0, "pass");
+  const koerper = saalKiste(x0, y0, x1, y1, z, z + 1.5, "kueche") + saalKiste(x0 - 0.05, y0 - 0.05, x1 + 0.05, y1 + 0.05, z + 1.5, z + 1.57, "kuechenoben");
+  const mitte = saalP((x0 + x1) / 2, (y0 + y1) / 2, z + 1.57);
+  const text = k.b >= 1.2 ? '<g transform="translate(' + mitte[0].toFixed(1) + ' ' + mitte[1].toFixed(1) + ')"><g class="sp-skala"><text class="sp-kuechentext" text-anchor="middle" dominant-baseline="central">Küche</text></g></g>' : "";
+  return '<g class="sp-kueche" role="img" aria-label="Küche, ' + saalZ(k.b) + ' mal ' + saalZ(k.t) + ' Meter, Pass zur ' + ({ x1: "rechten", x0: "linken", y1: "vorderen", y0: "hinteren" })[p.seite] + ' Seite">' + koerper + pass + text + '</g>';
+}
+/* Wege vom Pass zu jedem Tisch dieses Raums, an dem etwas zum Servieren fertig ist (nur Anzeige, keine Bewegung). */
+function saalWegeSVG(r, pl, stand){
+  if(!r.kueche || SAAL.edit) return "";
+  const p = saalKuechePass(r.kueche, r), a = saalP(p.X, p.Y, SAAL_BODEN + 0.03);
+  let d = "";
+  pl.filter(t => saalTischZone(t) === r.zone).forEach(t => {
+    const st = stand.tische.get(saalNk(t.nummer));
+    if(!st || !st.arten.servieren) return;
+    const w = saalTischWelt(t), b = saalP(w.X, w.Y, SAAL_BODEN + 0.03);
+    d += "M" + a[0].toFixed(1) + " " + a[1].toFixed(1) + "L" + b[0].toFixed(1) + " " + b[1].toFixed(1);
+  });
+  return d ? '<path class="sp-weg" style="stroke:' + saalFarbe("servieren") + '" d="' + d + '"/>' : "";
+}
+/* Welcher Raum hat die Küche? (-1: keiner) */
+function saalKuecheRaum(k){ return (k || saalAktiv()).raeume.findIndex(r => r && r.kueche); }
 /* Ein Raum: Boden mit Kante und Raster, Theken, Tische (nach Tiefe geordnet), Schild mit Namen und Maß. */
 function saalRaumSVG(r, pl, stand){
   const z = SAAL_BODEN, aktuell = r.zone === SAAL.zone, bedienbar = !aktuell && !SAAL.edit;
@@ -12578,6 +12736,8 @@ function saalRaumSVG(r, pl, stand){
     teile.push({ d: w.X + w.Y, s: saalTischSVG(t, stand.tische.get(nk), SAAL.auswahl === nk || (SAAL.edit && SAAL.gewaehlt === t.id), { X: w.X, Y: w.Y, fern: SAAL.edit && !aktuell, zone: r.zone }) });
   });
   r.theken.forEach(th => teile.push({ d: r.ox + th.x + th.b / 2 + r.oy + th.y + th.t / 2, s: saalThekeSVG(th, r) }));
+  if(r.kueche) teile.push({ d: r.ox + r.kueche.x + r.kueche.b / 2 + r.oy + r.kueche.y + r.kueche.t / 2, s: saalKuecheSVG(r.kueche, r) });
+  s += saalWegeSVG(r, pl, stand);
   s += teile.sort((a, b) => a.d - b.d).map(x => x.s).join("");
   const lp = saalP(r.ox + r.b / 2, r.oy + r.t + 0.95, z);
   s += '<g class="sp-raumschild ' + (aktuell ? "an" : "fern") + '" data-sp-raum="' + sicher(r.zone) + '" transform="translate(' + lp[0].toFixed(1) + ' ' + lp[1].toFixed(1) + ')">' +
@@ -13042,7 +13202,17 @@ function saalEditZeichnen(){
         '<div class="sp-zahlen">' + ["x", "y", "b", "t"].map(f => feld('data-sp-th="' + j + '" data-sp-thf="' + f + '"',
           ({ x: "von links (m)", y: "von hinten (m)", b: "Länge (m)", t: "Tiefe (m)" })[f], th[f])).join("") + '</div>' +
         '<button type="button" class="knopf leise" data-sp-theke-weg="' + j + '">Theke ' + (j + 1) + ' entfernen</button></div>').join("") +
-      (r.theken.length < SAAL_MAX_THEKEN ? '<button type="button" class="knopf leise" data-sp-theke-neu>＋ Theke / Bar</button>' : "") + '</div>';
+      (r.theken.length < SAAL_MAX_THEKEN ? '<button type="button" class="knopf leise" data-sp-theke-neu>＋ Theke / Bar</button>' : "") + '</div>' +
+      '<div class="sp-editblock"><span class="sp-editname">Küche</span>' +
+      (r.kueche
+        ? '<div class="sp-theke-edit"><b>Küche</b><div class="sp-zahlen">' + ["x", "y", "b", "t"].map(f => feld('data-sp-kf="' + f + '"',
+            ({ x: "von links (m)", y: "von hinten (m)", b: "Breite (m)", t: "Tiefe (m)" })[f], r.kueche[f])).join("") + '</div>' +
+          '<p class="sp-hinweis">Der Pass — hier holt der Service ab — liegt automatisch auf der Seite zur Raummitte. Ist an einem Tisch ein Gericht fertig, führt eine gestrichelte Linie vom Pass dorthin.</p>' +
+          '<button type="button" class="knopf leise" data-sp-kueche-weg>Küche entfernen</button></div>'
+        : (saalKuecheRaum(k) > -1
+          ? '<p class="sp-hinweis">Die Küche steht im Bereich „' + sicher(zonen[saalKuecheRaum(k)]) + '“. Dort lässt sie sich ändern oder entfernen.</p>'
+          : '<button type="button" class="knopf leise" data-sp-kueche-neu>＋ Küche einzeichnen</button>' +
+            '<p class="sp-hinweis">Zeichnen Sie ein, wo Ihre Küche steht. Der Koch meldet im Küchenboard jedes fertige Gericht — auf dem Plan sehen Sie dann, an welchen Tisch es gebracht werden soll.</p>')) + '</div>';
   }else{
     innen = '<div class="sp-editblock"><span class="sp-editname">Wann leuchtet was wie stark</span>' +
       SAAL_EINSTELLBAR.map(a => {
@@ -13074,11 +13244,11 @@ document.addEventListener("input", e => {
   const el = e.target;
   if(!SAAL.edit || !SAAL.konfigEntwurf || !el.closest || !el.closest("#spEdit")) return;
   /* Maße: nur eine gültige Zahl im erlaubten Bereich geht in den Entwurf (sonst bleibt der vorige Wert, das Feld wird beim Verlassen zurückgesetzt). */
-  const rm = el.closest("[data-sp-rm]"), thf = el.closest("[data-sp-thf]");
-  if(rm || thf){
+  const rm = el.closest("[data-sp-rm]"), thf = el.closest("[data-sp-thf]"), kf = el.closest("[data-sp-kf]");
+  if(rm || thf || kf){
     const i = Math.max(0, saalZonen().indexOf(SAAL.zone)), raum = SAAL.konfigEntwurf.raeume[i]; if(!raum) return;
-    const feld = rm ? rm.dataset.spRm : thf.dataset.spThf, ziel = rm ? raum : raum.theken[Number(thf.dataset.spTh)]; if(!ziel) return;
-    const grenze = rm ? ({ b: [2, 60], t: [2, 60], x: [0, 300], y: [0, 300] })[feld] : ({ x: [0, 60], y: [0, 60], b: [0.4, 30], t: [0.4, 30] })[feld];
+    const feld = rm ? rm.dataset.spRm : kf ? kf.dataset.spKf : thf.dataset.spThf, ziel = rm ? raum : kf ? raum.kueche : raum.theken[Number(thf.dataset.spTh)]; if(!ziel) return;
+    const grenze = rm ? ({ b: [2, 60], t: [2, 60], x: [0, 300], y: [0, 300] })[feld] : kf ? ({ x: [0, 60], y: [0, 60], b: [1, 30], t: [1, 30] })[feld] : ({ x: [0, 60], y: [0, 60], b: [0.4, 30], t: [0.4, 30] })[feld];
     if(rm && (feld === "x" || feld === "y") && String(el.value).trim() === "") ziel[feld] = null;
     else{ const v = saalLies(el.value); if(v == null || v < grenze[0] || v > grenze[1]) return; ziel[feld] = saalDez(v, grenze[0], grenze[1], ziel[feld]); }
     SAAL.konfigEntwurf.raeume[i] = saalRaum(raum);
@@ -13095,10 +13265,10 @@ document.addEventListener("input", e => {
 });
 document.addEventListener("change", e => {
   const el = e.target; if(!SAAL.edit || !el.closest || !el.closest("#spEdit")) return;
-  const rm = el.closest("[data-sp-rm]"), thf = el.closest("[data-sp-thf]");
-  if(rm || thf){
-    const raum = SAAL.konfigEntwurf.raeume[Math.max(0, saalZonen().indexOf(SAAL.zone))], ziel = raum && (rm ? raum : raum.theken[Number(thf.dataset.spTh)]);
-    const v = ziel ? ziel[rm ? rm.dataset.spRm : thf.dataset.spThf] : null;
+  const rm = el.closest("[data-sp-rm]"), thf = el.closest("[data-sp-thf]"), kf = el.closest("[data-sp-kf]");
+  if(rm || thf || kf){
+    const raum = SAAL.konfigEntwurf.raeume[Math.max(0, saalZonen().indexOf(SAAL.zone))], ziel = raum && (rm ? raum : kf ? raum.kueche : raum.theken[Number(thf.dataset.spTh)]);
+    const v = ziel ? ziel[rm ? rm.dataset.spRm : kf ? kf.dataset.spKf : thf.dataset.spThf] : null;
     el.value = v == null ? "" : saalZ(v); return;
   }
   const zn = el.closest("[data-sp-zname]");
@@ -13131,6 +13301,17 @@ function saalEditKlick(e){
     if(!r || r.theken.length >= SAAL_MAX_THEKEN) return;
     const len = Math.max(0.4, Math.min(6, r.b - 2));
     r.theken.push({ x: saalDez((r.b - len) / 2, 0, 60, 0), y: saalDez(r.t - 1.2, 0, 60, 0), b: len, t: 0.8 });
+    SAAL.konfigEntwurf.raeume[i] = saalRaum(r); saalNeuBauen(); return;
+  }
+  if(e.target.closest("[data-sp-kueche-neu]")){
+    const i = Math.max(0, saalZonen().indexOf(SAAL.zone)), r = SAAL.konfigEntwurf.raeume[i];
+    if(!r || saalKuecheRaum(SAAL.konfigEntwurf) > -1) return;
+    r.kueche = { x: 0.5, y: 0.5, b: Math.min(4, Math.max(1, r.b - 1)), t: Math.min(3, Math.max(1, r.t - 1)) };
+    SAAL.konfigEntwurf.raeume[i] = saalRaum(r); saalNeuBauen(); return;
+  }
+  if(e.target.closest("[data-sp-kueche-weg]")){
+    const i = Math.max(0, saalZonen().indexOf(SAAL.zone)), r = SAAL.konfigEntwurf.raeume[i];
+    if(r) r.kueche = null;
     SAAL.konfigEntwurf.raeume[i] = saalRaum(r); saalNeuBauen(); return;
   }
   const tw = e.target.closest("[data-sp-theke-weg]");
@@ -13196,7 +13377,7 @@ async function saalSpeichern(){
         SAAL_EINSTELLBAR.forEach(a => { const s = neueKonfig.stufen[a]; daten.stufen[a] = SAAL_ART[a].grenzen ? { farbe: s.farbe, min2: s.min2, min3: s.min3 } : { farbe: s.farbe }; });
         /* Maße nur mitschicken, wenn sie von der Vorgabe (10 × 10 m, nichts sonst) abweichen — so bleibt der alte Weg ohne die neue Migration gangbar. */
         const hatMasse = JSON.stringify(neueKonfig.raeume) !== JSON.stringify(saalKonfig({ zonen: neueKonfig.zonen }).raeume);
-        if(hatMasse) daten.raeume = neueKonfig.raeume.map(r => ({ b: r.b, t: r.t, x: r.x, y: r.y, theken: r.theken }));
+        if(hatMasse) daten.raeume = neueKonfig.raeume.map(r => Object.assign({ b: r.b, t: r.t, x: r.x, y: r.y, theken: r.theken }, r.kueche ? { kueche: r.kueche } : {}));
         const r = await db.rpc("saal_einstellungen_setzen", { p_betrieb: betriebId, p_daten: daten });
         if(r.error) throw r.error;
         if(!r.data || !r.data.ok){
@@ -13226,7 +13407,7 @@ async function saalLaden(id){
     const f = [["1","rund",4,18,22,0],["2","eckig",4,40,18,0],["3","rund",2,62,20,0],["4","lang",6,82,26,0],["5","rund",4,20,50,0],["6","eckig",4,42,48,0],
                ["7","rund",4,64,52,0],["8","rund",4,84,56,0],["9","eckig",2,24,30,1],["10","lang",6,60,60,1],["11","rund",4,78,24,1],["12","rund",3,null,null,0]];
     SAAL.einst = { zonen: ["Haupt-Raum", "Terrasse"], stufen: {}, raeume: [
-      { b: 12, t: 9, x: null, y: null, theken: [{ x: 2.5, y: 7.6, b: 7, t: 0.8 }] }, { b: 8, t: 5, x: null, y: null, theken: [] }] };
+      { b: 12, t: 9, x: null, y: null, theken: [{ x: 2.5, y: 7.6, b: 7, t: 0.8 }], kueche: { x: 0.2, y: 0.2, b: 1.4, t: 1.5 } }, { b: 8, t: 5, x: null, y: null, theken: [] }] };
     SAAL.konfig = saalKonfig(SAAL.einst);
     SAAL.tische = f.map(([n, form, pl, x, y, zi]) => ({ id: "demo-t" + n, nummer: n, aktiv: true, x, y, form: x == null ? null : form, plaetze: x == null ? null : pl, zone: SAAL.einst.zonen[zi] }));
     SAAL.geladen = true; saalZeichnen(); return;
@@ -13484,11 +13665,23 @@ function zeichneBoard(){
     const welle = b.quelle === "telefon"
       ? `<span class="welle">${[5,9,11,7,10,4].map(h=>`<i style="height:${h}px"></i>`).join("")}</span>` : "";
 
+    const gstand = (b.status === "storniert" || b.status === "abgelehnt" || b.pruefen) ? null : gerichteStand(b);
+    const gMarke = nr => {
+      if(!gstand) return "";
+      if(gstand.bereit.some(x => x.nr === nr)) return `<span class="gfertig" title="Der Koch hat dieses Gericht fertig gemeldet">✓ fertig</span>`;
+      if(gstand.gebracht.some(x => x.nr === nr)) return `<span class="gfertig gebracht">gebracht</span>`;
+      return "";
+    };
+    const servieren = (gstand && gstand.bereit.length)
+      ? `<div class="servieren-zeile" role="group" aria-label="Zum Servieren bereit">
+           <span><b>Bitte servieren:</b> ${gstand.bereit.map(x => (x.menge) + "× " + sicher(x.name.split(" (")[0])).join(" · ")}</span>
+           <button type="button" class="knopf abgebracht" data-gebracht="${sicher(b.id)}">Gebracht</button>
+         </div>` : "";
     const pos = (b.positionen || []).length
-      ? `<div class="positionen">${b.positionen.map(p =>
-          `<div class="pos"><span class="menge">${p.menge}×</span>
-           <span class="pname">${sicher(p.name)}</span>
-           <span class="ppreis">${euro(p.preis * p.menge)}</span></div>`).join("")}</div>` : "";
+      ? `<div class="positionen">${b.positionen.map((p, nr) =>
+          `<div class="pos${gstand ? (gstand.bereit.some(x => x.nr === nr) ? " pbereit" : gstand.gebracht.some(x => x.nr === nr) ? " pweg" : "") : ""}"><span class="menge">${p.menge}×</span>
+           <span class="pname">${sicher(p.name)}${gMarke(nr)}</span>
+           <span class="ppreis">${euro(p.preis * p.menge)}</span></div>`).join("")}</div>${servieren}` : "";
 
     const gruppe = mitGebuendelt(b);
     let notiz = b.notiz ? `<div class="notiz">${sicher(b.notiz)}</div>` : "";
@@ -15522,7 +15715,13 @@ function tabelle(){
    ["#nzBlatt",   function(){ nzSchliessen(); }],
    ["#krBlatt",   function(){ krVerschiebenZu(); }],
    ["#krFoto",    function(){ krFotoZu(); }],
-   ["#apBlatt",   function(){ apZu(null); }]].forEach(function(paar){
+   ["#apBlatt",   function(){ apZu(null); }],
+   /* Jedes Blatt braucht seinen Eintrag: Ohne ihn ist der Griff nur Zierde und das Blatt ist nur über „Abbrechen“
+      ganz unten zu schließen (Karten: bis 20 Zeilen, Nutzermeldung 25.10. „man hängt fest“). pruef-wischen.js prüft
+      JEDES .blatt dieser Datei gegen diese Liste. */
+   ["#kvBlatt",   function(){ kvZu(); }],
+   ["#bnBlatt",   function(){ bnSchliessen(); }],
+   ["#teamBlatt", function(){ blattFortAnimieren($("#teamBlatt"), function(){ $("#teamBlatt").hidden = true; }); }]].forEach(function(paar){
     var schirm = document.querySelector(paar[0]); if(!schirm) return;
     var inhalt = schirm.querySelector(".blattinhalt"); if(!inhalt) return;
     wischZu({ blatt: inhalt, zu: paar[1], griff: ".griff, .blattgriff" });
@@ -16032,8 +16231,9 @@ const AN_WIKI = [
       "Ein Tipp auf einen Tisch holt dessen Bestellkarten unter den Plan. Lieferungen, Telefonbestellungen und Tische ohne Platz im Plan stehen unter „Außerhalb des Plans“ — nichts wird unsichtbar.",
       "Der Plan ist maßstäblich: Jeder Bereich ist ein Raum in Metern, in Kästchen von 1 × 1 m unterteilt, mit Theke / Bar und einer Umrandung um das Gebäude. Mit „Ganzes Gebäude zeigen“ oder durch Herauszoomen sehen Sie alle Bereiche samt ihren Bestellungen; ein Tipp auf einen anderen Raum zoomt dorthin.",
       "Das Lieferauto vor dem Gebäude zählt die offenen Lieferungen. Ein Tipp darauf — oder auf „Lieferungen zeigen“ in der Leiste am Plan — listet alle Lieferungen unter dem Plan auf.",
-      "Reservierungen nehmen Sie mit „Annehmen“ an oder lehnen sie mit „Ablehnen“ ab. Einrichten darf nur der Besitzer, in vier Reitern: Tische (ziehen, Form, Stühle), Bereiche, Maße (Breite und Tiefe in Metern, Lage im Gebäude, Theke / Bar) und die Leuchtstufen je Zustand."],
-    labels:["Am Tisch · jetzt", "Annehmen", "Ablehnen", "Außerhalb des Plans", "Ganzes Gebäude zeigen", "Lieferungen zeigen", "Theke / Bar", "Saal einrichten"], tafel:"reservierungen", tour:"tische" },
+      "Reservierungen nehmen Sie mit „Annehmen“ an oder lehnen sie mit „Ablehnen“ ab. Einrichten darf nur der Besitzer, in vier Reitern: Tische (ziehen, Form, Stühle), Bereiche, Maße (Breite und Tiefe in Metern, Lage im Gebäude, Theke / Bar, Küche) und die Leuchtstufen je Zustand.",
+      "Die Küche zeichnen Sie unter „Maße“ ein („Küche einzeichnen“). Meldet der Koch im Küchenboard ein Gericht als fertig, steht der Tisch auf „Servieren“ und eine gestrichelte Linie führt vom Pass der Küche dorthin; in der Bestellkarte steht „Bitte servieren“ — mit „Gebracht“ haken Sie es ab."],
+    labels:["Am Tisch · jetzt", "Annehmen", "Ablehnen", "Außerhalb des Plans", "Ganzes Gebäude zeigen", "Lieferungen zeigen", "Theke / Bar", "Küche einzeichnen", "Gebracht", "Saal einrichten"], tafel:"reservierungen", tour:"tische" },
   { id:"verfuegbar", kapitel:"Tagesgeschäft", titel:"Verfügbar schalten", ort:"Mehr → Verfügbar, oder der Schalter an jedem Gericht in der Karte",
     text:["Ist etwas aus, schalten Sie es hier aus. Der Gast sieht das Gericht dann nicht mehr in der Karte. Am nächsten Morgen wieder einschalten — die Änderung gilt sofort, ohne Speichern. „Alle wieder an“ holt alles auf einmal zurück.",
       "Denselben Schalter gibt es in der Karte an jedem Gericht (Liste und Kacheln). Auch das Team darf ihn bedienen. Ausverkauftes stellen Sie auf „nicht verfügbar“ statt es zu löschen."],
@@ -16048,7 +16248,7 @@ const AN_WIKI = [
     labels:["Karte aktiv", "＋ Karte", "✎ Karten", "Gericht hinzufügen", "＋ Kategorie", "Karte einlesen", "Mehr Angaben"], tafel:"speisekarte", tour:"karte" },
   { id:"runner", kapitel:"Karte und Zahlen", titel:"Top-Runner", ort:"Reiter Karte, oben",
     text:["Ein Gericht, zeitlich begrenzt günstiger — sofort im Gast-Hub sichtbar. Mit „Aktion starten“ wählen Sie Gericht, Preis, Dauer und Start; die Vorschau zeigt, wie der Gast es sieht.",
-      "Der Rabatt in Prozent kommt von selbst dazu. Die Laufschrift im farbigen Band ändern Sie unter „Ihre Worte im Gast-Hub“."],
+      "Der Gast sieht einen kleinen „%“-Knopf unten rechts; er öffnet ein Blatt mit Aktion, Gericht, Aktionspreis und der ablaufenden Zeit. Einen Satz dazu ändern Sie unter „Ihre Worte im Gast-Hub“."],
     labels:["Top-Runner", "Aktion starten"], tafel:"speisekarte", tour:"karte" },
   { id:"zahlen", kapitel:"Karte und Zahlen", titel:"Zahlen", ort:"Reiter Zahlen",
     text:["Oben wählen Sie den Zeitraum: Heute, 7 Tage, 30 Tage oder Eigener. „Auf einen Blick“ zeigt die Kennzahlen im Vergleich zum Zeitraum davor; darunter folgen der Umsatz im Verlauf (auch als Tabelle), „Wann bestellt wird“ (hilft beim Planen der Schichten), woher die Bestellungen kommen und die Gerichte mit Stück und Umsatz — ein Tipp auf ein Gericht zeigt Verlauf und beste Stunde.",
@@ -16087,7 +16287,7 @@ const AN_WIKI = [
     text:["Ein Bild ganz oben auf Ihrer Startseite, darauf mittig Ihr Logo — rund oder eckig. Tippt ein Gast aufs Logo, sieht er alles Wichtige über Ihr Haus: Zeiten, Weg, Kontakt und „Über uns“."],
     labels:["Kopfbild wählen", "Logo wählen", "Form des Logos"], gruppe:"Kopf & Logo" },
   { id:"gh-worte", kapitel:"Gast-Hub gestalten", titel:"Ihre Worte im Gast-Hub", ort:"Gast-Hub → Ihre Worte",
-    text:["Ihr Slogan, der Gruß beim Öffnen, der Name Ihrer Aktionen, die Laufschrift beim Top-Runner, das WLAN für Gäste und „Über uns“. Die Vorschau oben zeigt jede Zeile beim Tippen; Gäste sehen sie nach „Übernehmen“.",
+    text:["Ihr Slogan, der Gruß beim Öffnen, der Name Ihrer Aktionen, der Satz zur Aktion, das WLAN für Gäste und „Über uns“. Die Vorschau oben zeigt jede Zeile beim Tippen; Gäste sehen sie nach „Übernehmen“.",
       "Kurz wirkt am besten — der Slogan ist eine Zeile, die man im Vorbeigehen liest."],
     labels:["Slogan im Kopf", "Gruß beim Öffnen", "So heißen Ihre Aktionen", "WLAN für Gäste"], gruppe:"Ihre Worte im Gast-Hub" },
   { id:"gh-texte", kapitel:"Gast-Hub gestalten", titel:"Texte & Schrift", ort:"Gast-Hub → Alle Texte",
@@ -16108,8 +16308,9 @@ const AN_WIKI = [
     labels:["Eigener Textblock", "Auf Vorgabe zurück"], gruppe:"Aufbau der Startseite" },
   { id:"gh-kacheln", kapitel:"Gast-Hub gestalten", titel:"Kacheln", ort:"Gast-Hub → Kacheln",
     text:["Die Knöpfe auf Ihrer Seite — welche erscheinen, wie sie heißen und welches Bild darauf liegt. Den rechten Rand einer Kachel ziehen Sie, um die Breite zu ändern; den Namen tippen Sie an, um sie einzustellen.",
-      "Mit „＋ Karten-Kachel“ und „＋ Link-Kachel“ kommen neue hinzu. Mehrere Kacheln lassen sich zu aufklappbaren Rubriken gruppieren, die Sie ebenfalls verschieben und umbenennen."],
-    labels:["Karten-Kachel", "Link-Kachel"], gruppe:"Kacheln" },
+      "Mit „＋ Karten-Kachel“ und „＋ Link-Kachel“ kommen neue hinzu. Mehrere Kacheln lassen sich zu aufklappbaren Rubriken gruppieren, die Sie ebenfalls verschieben und umbenennen.",
+      "Am einfachsten geht es mit „Ordnen starten“: Dann ziehen Sie Kacheln und Flächen direkt in der Vorschau an ihren Platz — ein Tipp darauf öffnet die Einstellungen. „Ordnung übernehmen“ speichert alles."],
+    labels:["Karten-Kachel", "Link-Kachel", "Ordnen starten", "Ordnung übernehmen"], gruppe:"Kacheln" },
   { id:"gh-banner", kapitel:"Gast-Hub gestalten", titel:"Aktions-Banner-Rad", ort:"Gast-Hub → Banner",
     text:["Ein wischbares Bilderkarussell ganz oben auf der Startseite — für ein Angebot, eine Neuigkeit oder eine laufende Aktion. Bild, Text, Farbe und Ziel bestimmen Sie je Banner."],
     labels:["+ Banner hinzufügen"], gruppe:"Aktions-Banner-Rad" },
@@ -16321,32 +16522,55 @@ function leisteSonde(){
   }
   return s;
 }
+/* Tastatur nur bei Feldern, in die man tippt. Ein Schalter (Checkbox/Radio/Range/Farbe/Datei) im Fokus ist keine Tastatur:
+   Die erste Fassung nahm jedes INPUT aus und setzte die Verankerung nach einem Tipp auf einen Schalter aus. */
+function leisteTastaturFeld(e){
+  if(!e || !e.tagName) return false;
+  if(e.tagName === "TEXTAREA" || e.tagName === "SELECT") return true;
+  return e.tagName === "INPUT" && !/^(checkbox|radio|range|color|file|button|submit|reset|image|hidden)$/i.test(e.type || "text");
+}
 function leisteAnkern(){
   const vv = window.visualViewport, wurzel = document.documentElement;
-  let v = 0;
+  let v = 0, kehr = 1, x = 0;
   if(vv){
-    const feld = document.activeElement && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName);
-    const gezoomt = (vv.scale || 1) > 1.01;
-    /* Gummiband am oberen Rand: der Sichtbereich wandert kurz ins Negative — dann nichts ändern, sonst zuckt die Leiste. */
+    const feld = leisteTastaturFeld(document.activeElement);
+    const s = vv.scale || 1;
+    const gezoomt = s > 1.01;
+    /* Gezoomt (Pinch): Die feste Leiste hängt am LAYOUT-Viewport und bliebe mitten im vergrößerten Bild stehen (Meldung 25.10.:
+       „nach dem Reinzoomen nicht mehr unten gefixt“). Sie folgt jetzt dem sichtbaren Rand: gleiche Rechnung wie im Normalfall,
+       dazu um 1/Zoom verkleinert (bleibt so groß wie sonst) und um den seitlichen Versatz verschoben. Vorher setzte eine Ausnahme
+       „gezoomt“ den Versatz auf 0 — die Ausnahme war der Fehler. */
+    if(gezoomt){ kehr = 1 / s; x = Math.round(vv.offsetLeft || 0); }
+    /* Gummiband am oberen Rand: der Sichtbereich wandert kurz ins Negative — dann nichts ändern, sonst zuckt die Leiste.
+       Das Nachlaufen in leisteAnkernBald() rechnet nach dem Auslaufen noch einmal. */
     if(vv.offsetTop < -1) return parseInt(wurzel.style.getPropertyValue("--vv-versatz"), 10) || 0;
-    if(!feld && !gezoomt){
+    if(!feld){
       /* Gemessen wird, wo „bottom:0“ WIRKLICH liegt (Sonde, unabhängig vom Versatz) — nicht, was clientHeight verspricht: Das Foto vom
          25.10. zeigte die Leiste UNTER dem sichtbaren Rand abgeschnitten; die alte Rechnung kannte nur die Richtung „Leiste zu hoch“. */
       const abstand = Math.round(vv.offsetTop + vv.height - leisteSonde().getBoundingClientRect().bottom);
-      if(Math.abs(abstand) >= 2 && Math.abs(abstand) <= 600) v = abstand;
+      if(Math.abs(abstand) >= 2 && Math.abs(abstand) <= (gezoomt ? 6000 : 600)) v = abstand;
     }
   }
   const alt = wurzel.style.getPropertyValue("--vv-versatz");
   if(alt !== v + "px") wurzel.style.setProperty("--vv-versatz", v + "px");
+  const k = kehr.toFixed(4), ax = x + "px";
+  if(wurzel.style.getPropertyValue("--vv-kehr") !== k) wurzel.style.setProperty("--vv-kehr", k);
+  if(wurzel.style.getPropertyValue("--vv-x") !== ax) wurzel.style.setProperty("--vv-x", ax);
   return v;
 }
+let leisteNachlauf = null;
 function leisteAnkernBald(){
+  /* Nachlaufen: iOS meldet das Ende von Pinch und Gummiband nicht zuverlässig (touchend kommt VOR dem Einrasten). Nach jedem
+     Anstoß wird deshalb nach dem Auslaufen noch zweimal gerechnet — ohne dieses Nachlaufen blieb die Leiste auf dem Stand des
+     letzten Ereignisses stehen. */
+  clearTimeout(leisteNachlauf);
+  leisteNachlauf = setTimeout(() => { leisteAnkern(); leisteNachlauf = setTimeout(leisteAnkern, 300); }, 160);
   if(leisteAnkerGeplant) return;
   leisteAnkerGeplant = true;
   requestAnimationFrame(() => { leisteAnkerGeplant = false; leisteAnkern(); });
 }
 if(window.visualViewport){ visualViewport.addEventListener("resize", leisteAnkernBald); visualViewport.addEventListener("scroll", leisteAnkernBald); }
-["resize", "orientationchange", "pageshow", "focusout", "touchend", "scroll"].forEach(e => addEventListener(e, leisteAnkernBald, { passive:true }));
+["resize", "orientationchange", "pageshow", "focusout", "touchend", "touchcancel", "gestureend", "scroll"].forEach(e => addEventListener(e, leisteAnkernBald, { passive:true }));
 document.addEventListener("visibilitychange", leisteAnkernBald);
 leisteAnkernBald();
 /* Erststellung: die Pille existiert in der statischen Auszeichnung
@@ -16451,8 +16675,8 @@ function aktionenZeichnen(){
    dahinter nicht.
    ═══════════════════════════════════════════════════════════════ */
 const TEXTMASS = {
-  runnerTitel: { gut:20, hart:40,
-    warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." },
+  runnerTitel: { gut:40, hart:40,
+    warnung:"Ab 40 Zeichen wird die Kennzeichnung im Aktions-Blatt des Gast-Hubs gekürzt." },
   hubClaim:    { gut:22, hart:90,
     warnung:"Ab 22 Zeichen braucht der Slogan auf schmalen Telefonen zwei Zeilen, ab etwa 48 drei. Mehr als drei Zeilen zeigt der Hub nicht — die Vorschau zeigt, wo er kürzt." },
   hubGruss:    { gut:56, hart:160,
@@ -16472,13 +16696,12 @@ const TEXTMASS = {
   hubKarteTitel:    { gut:34, hart:60, warnung:"Ab 34 Zeichen wird die Überschrift auf dem Telefon dreizeilig." },
   hubKarteText:     { gut:110, hart:160, warnung:"Ab 110 Zeichen wird der Text vierzeilig; mehr als vier Zeilen zeigt der Hub nicht." },
   hubKarteKopfzeile:{ gut:30, hart:60, warnung:"Ab 30 Zeichen wird die Zeile im Kopf der Unterseiten mit „…“ gekürzt." },
-  hubRunner:   { gut:20, hart:40,
-    warnung:"Ab 20 Zeichen rutscht die Kennzeichnung im Gast-Hub in eine zweite Zeile und das Band wird höher." },
-  /* Die Laufschrift bricht nie um, sie läuft. „gut“ ist Lesezeit:
-     Ab 60 Zeichen ist ein Durchlauf länger als ein Blick. „hart“ =
-     hub_texte_laufschrift in der Datenbank. */
+  hubRunner:   { gut:40, hart:40,
+    warnung:"Ab 40 Zeichen wird die Kennzeichnung im Aktions-Blatt des Gast-Hubs gekürzt." },
+  /* Der Satz zur Aktion (Spalte heißt weiter „laufschrift“) steht im Blatt des Aktions-Knopfs und bricht um. „gut“ ist Lesezeit;
+     „hart“ = hub_texte_laufschrift in der Datenbank. */
   hubLaufschrift: { gut:60, hart:80,
-    warnung:"Ab 60 Zeichen dauert ein Durchlauf länger, als ein Gast hinsieht. Kürzer liest sich besser." },
+    warnung:"Ab 60 Zeichen liest sich der Satz im Blatt wie ein Absatz. Kürzer wirkt besser." },
   /* Keine Stilfrage, sondern Technik: 32 = längster WLAN-Name, 63 =
      längstes WPA-Passwort. Dieselben Zahlen wie hub_texte_wlan. */
   hubWlanNetz:     { gut:32, hart:32, warnung:"Länger als 32 Zeichen kann ein WLAN-Name nicht sein." },
@@ -17503,7 +17726,7 @@ document.addEventListener("click", e => {
   e.preventDefault();
   if(euOeffnen(a.dataset.ghSprung)) return;
   const ziel = document.getElementById(a.dataset.ghSprung); if(!ziel) return;
-  const ab = ghObenFrei() + 8;
+  const ab = ghObenFrei() + 16;
   const ruhig = matchMedia("(prefers-reduced-motion: reduce)").matches;
   window.scrollTo({ top: window.scrollY + ziel.getBoundingClientRect().top - ab, behavior: ruhig ? "auto" : "smooth" });
 });
@@ -18127,9 +18350,9 @@ const KACHELPLAN = [
     icon:"glas",     form:"saeule" },
   { s:"cocktails", gruppe:"Die Karte",    titel:"Cocktails",            unter:"",
     icon:"cocktail", form:"saeule" },
-  { s:"tischruf", gruppe:"Jetzt am Tisch",     titel:"Service rufen",        unter:"Zahlen, nachbestellen, kurz Bescheid geben",
+  { s:"tischruf", gruppe:"Jetzt am Tisch",     titel:"Service rufen",        unter:"Zahlen, nachbestellen oder Hilfe anfordern",
     icon:"hand",     form:"reihe" },
-  { s:"wlan", gruppe:"Jetzt am Tisch",         titel:"WLAN verbinden",       unter:"Ohne Passwort tippen – ein Tap genügt",
+  { s:"wlan", gruppe:"Jetzt am Tisch",         titel:"WLAN verbinden",       unter:"Verbinden ohne Passwort-Eingabe",
     icon:"wlan",     form:"reihe" },
   { s:"quiz", gruppe:"Jetzt am Tisch",         titel:"Tischquiz",            unter:"Kurze Runde – wer weiß mehr?",
     icon:"quiz",     form:"reihe" },
@@ -19086,7 +19309,7 @@ document.addEventListener("keydown", e => {
    Laternen und die feste Knopfzeile hängen am oberen Rand der Seite.
    Ohne Eintrag (leere Liste) bleibt alles, wie es war (§2.5/§8.1a). */
 const BLOCK_FEST = ["schnell", "begleiter", "aktion", "banner", "nochmal", "empfehlung"];
-const BLOCK_NAMEN = { schnell:"Schnellzugriff", begleiter:"Figur mit Satz", aktion:"Aktion · Top-Runner",
+const BLOCK_NAMEN = { schnell:"Schnellzugriff", begleiter:"Figur mit Satz", aktion:"Aktion · Top-Runner (Knopf unten rechts)",
                       banner:"Banner-Rad", nochmal:"Nochmal wie letztes Mal", empfehlung:"Empfehlung des Hauses" };
 /* Nur Blöcke, die in einer halben Spalte (≈ 180 px) lesbar bleiben, dürfen halb breit sein. */
 const BLOCK_HALB_OK = ["begleiter", "nochmal", "empfehlung", "eigen"];
@@ -20038,7 +20261,7 @@ const AV_REQUISITEN = [
 ];
 /* Namen und Vorgaben wie E_PHASENNAMEN/E_PHASENVORGABE. */
 const AV_PHASEN = [
-  {s:"neu",    name:"Bestellzettel hängt", vorgabe:"zettel"},
+  {s:"neu",    name:"Bestellung eingegangen", vorgabe:"zettel"},
   {s:"arbeit", name:"In Arbeit",           vorgabe:"flasche"},
   {s:"fertig", name:"Fertig",              vorgabe:"teller"}
 ];
@@ -21787,7 +22010,7 @@ $("#zhSichern").onclick = async () => {
    ein Name oder Gerichtname kann alles enthalten (§2.3a). */
 const AE_FELD = {
   preis:"Preis", name:"Name", beschreibung:"Beschreibung", kategorie:"Kategorie", allergene:"Allergene",
-  zusatzstoffe:"Zusatzstoffe", stoff_hinweis:"Hinweis zu den Stoffen", bild:"Foto", bild_frei:"Profi-Foto",
+  zusatzstoffe:"Zusatzstoffe", stoff_hinweis:"Hinweis zu den Stoffen", bild:"Foto", bild_frei:"Profi-Foto", bild_ki:"KI-Kennzeichnung",
   veg:"vegetarisch", vegan:"vegan", karte:"Karte", karten:"Karten", ab_alter:"Altersfreigabe", spur:"Spur",
   opt:"Extras", kat_emoji:"Zeichen der Kategorie", frei:"Freitext", verfuegbar:"verfügbar",
   hub_texte:"Texte im Hub", hub_kacheln:"Kacheln", hub_bloecke:"Aufbau der Startseite", hub_banner:"Banner-Rad", hub_stil:"Gestaltung",
@@ -23551,6 +23774,7 @@ function blattOeffnen(g){
   bildStand("");
   if(gbZuschnitt) gbZu();
   $("#fBildFrei").value = g?.bild_frei || "";
+  $("#fBildKi").value = g && g.bild_ki === true ? "1" : "";
   bkWahlZu();
   bkZeichnen();
   fKartenWahl = g ? gerichtKarten(g).slice() : [welcheKarte];
@@ -23603,6 +23827,7 @@ function blattSchliessen(){ blattFortAnimieren($("#blatt"), function(){
 $("#abbrechen").onclick = blattSchliessen;
 $("#blatt").onclick = e => { if(e.target === $("#blatt")) blattSchliessen(); };
 /* Die Spalte gerichte.beliebt gibt es erst nach migration-karte-kopf.sql; ob sie da ist, sagen die gelesenen Zeilen (select *). */
+function bildKiSpalteDa(){ return Array.isArray(gerichte) && gerichte.some(x => x && Object.prototype.hasOwnProperty.call(x, "bild_ki")); }
 function beliebtSpalteDa(){ return Array.isArray(gerichte) && gerichte.some(x => x && Object.prototype.hasOwnProperty.call(x, "beliebt")); }
 [["#fVerf"],["#fVeg"],["#fVegan"],["#fBeliebt"]].forEach(([w]) => {
   $(w).onclick = e => {
@@ -23951,6 +24176,7 @@ async function gbFertig(){
     if(error) throw error;
     const { data } = db.storage.from("gerichte").getPublicUrl(pfad);
     $("#fBild").value = data.publicUrl;
+    $("#fBildKi").value = "";   /* ein neu hochgeladenes Foto ist kein KI-Bild */
     bildSchauSetzen(data.publicUrl);
     if(gbZuschnitt.rund){
       bildStand("Runder Ausschnitt wird hochgeladen …", "laeuft");
@@ -24314,6 +24540,7 @@ $("#bkLos").onclick = bkErstellen;
 $("#bkProfiNehmen").onclick = () => {
   if(!bkErgebnis || !bkErgebnis.profi) return;
   $("#fBild").value = bkErgebnis.profi;
+  $("#fBildKi").value = "1";
   bildSchauSetzen(bkErgebnis.profi);
   bkZeichnen();
   bildStand("Profi-Foto übernommen. Mit „Sichern“ speichern.");
@@ -24321,6 +24548,7 @@ $("#bkProfiNehmen").onclick = () => {
 $("#bkFreiNehmen").onclick = () => {
   if(!bkErgebnis || !bkErgebnis.frei) return;
   $("#fBildFrei").value = bkErgebnis.frei;
+  $("#fBildKi").value = "1";
   bkZeichnen();
   bildStand("Freisteller übernommen — er erscheint im Hub als Pop-Ansicht. Mit „Sichern“ speichern.");
 };
@@ -24376,6 +24604,8 @@ async function sichern(alsKopie, weiter){
     vegan: $("#fVegan").getAttribute("aria-pressed") === "true",
   };
   if(beliebtSpalteDa()) satz.beliebt = $("#fBeliebt").getAttribute("aria-pressed") === "true";
+  /* Die Spalte gibt es erst nach migration-bild-ki-marke.sql; ohne sie wird nichts geschickt (sonst scheitert das Speichern). */
+  if(bildKiSpalteDa()) satz.bild_ki = $("#fBildKi").value === "1";
   /* Beilagen & Extras dieses Gerichts: erst prüfen, vor jedem Schreiben. */
   const eigen = fEigenVorbereiten(alsKopie);
   if(eigen.fehler){ melde(eigen.fehler, true); return; }

@@ -345,9 +345,9 @@ async function textProbe(browser){
   pruef(fehlt.length === 0, "jeder Satz der Tour ist ein Wörterbuchschlüssel mit allen elf Sprachen", fehlt.slice(0, 5).join(" | "));
   pruef(gleich.length === 0, "keine Sprache zeigt den deutschen Satz stehen (außer namentlich erlaubt)", gleich.slice(0, 5).join(" | "));
   /* Knopfnamen in den Sätzen: die Sprache nennt den Knopf so, wie der Knopf heißt */
-  const knoepfe = await p.evaluate(() => ({ b: TEXTE["Zahlungspflichtig bestellen"], f: TEXTE["Für mich entscheiden"], n: TEXTE["Nehm ich!"], a: TEXTE["Anleitung"],
+  const knoepfe = await p.evaluate(() => ({ b: TEXTE["Zahlungspflichtig bestellen"], f: TEXTE["Für mich entscheiden"], n: TEXTE["Das nehme ich"], a: TEXTE["Anleitung"],
     sb: TEXTE["Erst „Zahlungspflichtig bestellen“ schickt Ihre Bestellung an das Haus. Davor steht, was Sie zahlen."],
-    sd: TEXTE["Tippen Sie auf „Für mich entscheiden“. Mit „Nehm ich!“ übernehmen Sie das Ergebnis in Ihre Auswahl."],
+    sd: TEXTE["Tippen Sie auf „Für mich entscheiden“. Mit „Das nehme ich“ übernehmen Sie das Ergebnis in Ihre Auswahl."],
     sl: TEXTE["Diese Anleitung finden Sie jederzeit wieder: Tippen Sie oben auf das Logo und dann auf „Anleitung“."] }));
   const falsch = [];
   for(const l of SPRACHEN){

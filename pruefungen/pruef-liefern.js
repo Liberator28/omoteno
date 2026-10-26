@@ -513,7 +513,7 @@ async function hubUmschalter(br){
         if(sp.scrollWidth > n.clientWidth - 12) aus.push(s.code + ":" + sp.textContent + " " + sp.scrollWidth + "/" + (n.clientWidth - 12));
       }
     }
-    for(const x of ["18:00–01:00", t("Gerade zu")]){
+    for(const x of ["18:00–01:00", t("Gerade geschlossen")]){
       sp.textContent = x;
       if(sp.scrollWidth > n.clientWidth - 12) aus.push(x);
     }

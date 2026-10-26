@@ -42,6 +42,8 @@ const fs = require("fs");
 const path = require("path");
 
 const OBEN = path.join(__dirname, "..");
+/* Gegenbeweise: ADMIN_DATEI=<Kopie von admin.html> */
+const ADMIN_PFAD = process.env.ADMIN_DATEI ? path.resolve(process.env.ADMIN_DATEI) : path.join(OBEN, "seiten", "admin.html");
 let fehler = 0;
 const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:"")); if(!g) fehler++; };
 const echt = k => k.filter(z => !/net::ERR|Failed to load|ERR_FAILED/i.test(z));
@@ -237,6 +239,82 @@ async function board(br){
   ok(a.zu, "ein langer Zug schließt es", a.zu ? "zu" : "noch offen");
   ok(a.inline === "", "keine Inline-Angabe bleibt zurück", a.inline || "leer");
 
+  ok(echt(kons).length === 0, "kein Fehler in der Konsole", echt(kons)[0] || "still");
+  await ctx.close();
+}
+
+/* ── Jedes Blatt des Boards ist wegwischbar (Quelltext gegen Quelltext) ───
+   Anlass 25.10. (Nutzer, Foto): Im Blatt „Karten“ ließ sich nichts wegwischen,
+   „man hängt fest“. `#kvBlatt` fehlte in blaetterWischbar(): der Griff war
+   Zierde, geschlossen ging es nur über „Abbrechen“ ganz unten (bis 20 Zeilen
+   lang). Jede Wisch-Prüfung hatte EIN Blatt angesehen (§8.1b: eine Prüfung über
+   das Vorhandene ist blind für das Fehlende). Zweite Quelle hier: ALLE
+   `.blatt` mit `.blattinhalt` aus dem Auszeichnungstext. */
+function alleBlaetter(){
+  console.log("\n══ Board · jedes Blatt steht in blaetterWischbar() ══");
+  const html = fs.readFileSync(ADMIN_PFAD, "utf8");
+  const liste = (html.match(/\(function blaetterWischbar\(\)\{[\s\S]*?\.forEach\(function\(paar\)/) || [""])[0];
+  ok(liste.length > 200, "Voraussetzung: die Liste in blaetterWischbar() ist gefunden", liste.length + " Zeichen");
+  /* jedes <div class="blatt…" id="X"> samt Inhalt bis zum nächsten Blatt */
+  const ids = [];
+  html.replace(/<div class="blatt(?: [^"]*)?" id="([A-Za-z]+)"([\s\S]*?)(?=<div class="blatt(?: [^"]*)?" id="|<\/body>)/g, (m, id, rest) => {
+    if(/class="blattinhalt/.test(rest.slice(0, 400))) ids.push(id);
+    return m;
+  });
+  ok(ids.length >= 14, "Voraussetzung: das Board hat mindestens 14 Blätter mit Inhalt (sonst findet der Auszug nichts)", ids.length + ": " + ids.join(", "));
+  const fehlt = ids.filter(id => liste.indexOf('"#' + id + '"') < 0);
+  ok(fehlt.length === 0, "jedes Blatt hat seinen Eintrag zum Wegwischen", fehlt.length ? "OHNE: " + fehlt.join(", ") : ids.length + " von " + ids.length);
+  ok(ids.includes("kvBlatt") && ids.includes("bnBlatt") && ids.includes("teamBlatt"), "die drei, die fehlten (Karten, Banner-Zuschnitt, Team), sind im Auszug");
+}
+
+/* ── Blatt „Karten“ mit dem Finger, mit 20 Karten ─────────────────────────── */
+async function kartenBlatt(br){
+  console.log("\n══ Board · Finger · Blatt „Karten“ (20 Zeilen) ══");
+  const ctx = await br.newContext({ viewport:{width:390,height:844}, hasTouch:true, isMobile:true });
+  const p = await ctx.newPage();
+  const kons = [];
+  p.on("pageerror", e => kons.push("JS: " + String(e).slice(0,150)));
+  await p.addInitScript(() => { Element.prototype.requestFullscreen = function(){ return Promise.resolve(); }; });
+  await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+  await p.goto("file://" + ADMIN_PFAD);
+  await p.waitForTimeout(900);
+  await p.evaluate(() => {
+    document.getElementById("tor").hidden = true;
+    if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); }
+  });
+  await p.waitForTimeout(400);
+  const scharf = await p.$("#scharfJetzt");
+  if(scharf && await p.isVisible("#scharf")){ await scharf.click(); await p.waitForTimeout(300); }
+  const cdp = await ctx.newCDPSession(p);
+  const offen = () => p.evaluate(() => !document.getElementById("kvBlatt").hidden);
+  const oeffnen = async () => {
+    await p.evaluate(() => {
+      kvOeffnen();
+      /* bis zur Höchstzahl auffüllen: so lang wie bei der Meldung */
+      while(kvEntwurf.length < 20) kvEntwurf.push({ id: "k-t" + kvEntwurf.length, name: "Karte " + kvEntwurf.length, unter: "", kategorien: [] });
+      kvZeichnen();
+    });
+    await p.waitForTimeout(700);
+    return p.evaluate(() => !document.getElementById("kvBlatt").hidden && document.querySelectorAll("#kvListe .kv-zeile").length >= 20);
+  };
+  ok(await oeffnen(), "Voraussetzung: das Blatt ist offen und zeigt 20 Karten-Zeilen");
+  const m = await p.evaluate(() => { const i = document.querySelector("#kvBlatt .blattinhalt"); return { max: i.scrollHeight - i.clientHeight, inline: i.style.transform }; });
+  ok(m.max > 300, "Voraussetzung: das Blatt ist deutlich länger als der Schirm", m.max + " px");
+  const g = await p.evaluate(() => { const b = document.querySelector("#kvBlatt .griff").getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2, h: b.height }; });
+  /* kurzer Zug schließt nicht */
+  await finger(p, cdp, g.x, g.y, 40);
+  ok(await offen(), "ein kurzer Zug am Griff schließt NICHT");
+  /* langer Zug schließt */
+  await finger(p, cdp, g.x, g.y, 320);
+  ok(!(await offen()), "ein langer Zug am Griff schließt das Blatt");
+  ok(await p.evaluate(() => document.querySelector("#kvBlatt .blattinhalt").style.transform === ""), "keine Inline-Angabe bleibt zurück");
+  /* nach dem Schließen ist das Board bedienbar: wieder öffnen geht */
+  ok(await oeffnen(), "danach lässt es sich wieder öffnen (man hängt nicht fest)");
+  /* ganz nach unten gerollt, dann am oberen Rand wischen: oben schließt der Wisch erst, wenn ganz oben */
+  await p.evaluate(() => { document.querySelector("#kvBlatt .blattinhalt").scrollTop = 0; });
+  const t = await p.evaluate(() => { const b = document.querySelector("#kvBlatt .blatttitel").getBoundingClientRect(); return { x: b.left + b.width / 2, y: b.top + b.height / 2 }; });
+  await finger(p, cdp, t.x, t.y, 320);
+  ok(!(await offen()), "ein langer Zug am Titel (Blatt ganz oben) schließt es ebenfalls");
   ok(echt(kons).length === 0, "kein Fehler in der Konsole", echt(kons)[0] || "still");
   await ctx.close();
 }
@@ -473,7 +551,9 @@ async function kueche(br){
   await hub(br, false);
   await hub(br, true);
   await board(br);
+  alleBlaetter();
   await boardFinger(br);
+  await kartenBlatt(br);
   await hubFinger(br);
   await kueche(br);
   await br.close();

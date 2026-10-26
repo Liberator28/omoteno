@@ -2051,10 +2051,8 @@ html.kw-eng body.kat-klebt .zurueck.an{opacity:1;pointer-events:auto}
 /* Rabatt in der Karte: neuer Preis in Rot vorn, der alte leise
    gestrichen daneben, die Plakette wie die anderen Merkmale. */
 .gericht .p.pneu{color:var(--rot)}
-.gericht .palt{font-size:12.5px;color:var(--tinte-leise);margin-left:7px;white-space:nowrap;font-variant-numeric:tabular-nums}
 .gpz .tag.rabatt{margin-left:7px;vertical-align:1px}
 .wkopf .wp.pneu{color:var(--rot)}
-.wkopf .wp .palt{display:block;font-size:13px;font-weight:400;color:var(--tinte-leise);text-align:right;font-family:var(--schrift-text, inherit)}
 .tag.top{background:var(--gold-flaeche);color:var(--gold)}
 /* Gemessen 17.10. (pruef-kartenstil): „Beliebt“ 3,1:1 bei Choco, „Vegan“/
    „Vegetarisch“ 3,1–3,9:1 bei Minhkeey und Nordstern — Goldschrift auf
@@ -2226,7 +2224,6 @@ body[data-kartenstil="buehne"] .gericht .urname{color:color-mix(in srgb, var(--g
 body[data-kartenstil="buehne"] .gericht .p{color:var(--grund);font-size:17px;display:inline-block;padding-bottom:3px;
   background:linear-gradient(var(--rot), var(--rot)) 0 100% / 26px 3px no-repeat}
 body[data-kartenstil="buehne"] .gericht .p.pneu{color:var(--grund)}
-body[data-kartenstil="buehne"] .gericht .palt{color:color-mix(in srgb, var(--grund) 80%, var(--tinte))}
 body[data-kartenstil="buehne"] .gericht .infopunkt{background:var(--grund)}
 /* Plaketten auf der dunklen Karte: Grund als Fläche, Tinte als Schrift —
    das Paar mit ≥ 4,5:1 in jedem Haus; die Farbe bleibt als Rand. */
@@ -2288,7 +2285,6 @@ body[data-kartenstil="buehne"] .gruppe::after{content:"";display:block;width:34p
 .tl-zeile{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:12px}
 .tl-preis .p{color:var(--tinte);font-size:22px;font-weight:700;font-variant-numeric:tabular-nums;
   display:inline-block;padding-bottom:3px;background:linear-gradient(var(--rot), var(--rot)) 0 100% / 26px 3px no-repeat}
-.tl-preis .palt{color:var(--tinte-leise);margin-inline-start:6px}
 .tl-korb{position:static}
 .tl-mehr{min-height:44px;margin-top:12px;padding:0 20px;border-radius:999px;cursor:pointer;
   border:1px solid var(--linie-stark);background:none;color:var(--tinte);font:inherit;font-size:15px}
@@ -2343,7 +2339,6 @@ body[data-kartenstil="raster"] .chip[data-g]:not([data-g="Alle"]):not([data-g="B
 .ks-tname{font-size:14px;font-weight:600;line-height:1.25;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .ks-tpreis .p{font-size:14px;font-weight:600;color:var(--tinte)}
 .ks-tpreis .p.pneu{color:var(--rot)}
-.ks-tpreis .palt{font-size:12px;color:var(--tinte-leise);margin-left:6px}
 .ks-tpreis .tag{display:none}
 body[data-kartenstil="flink"] .gericht{background:var(--flaeche);border:1px solid var(--linie);border-radius:calc(var(--rundung, 16px) + 4px);
   padding:12px 12px 12px 14px;margin:10px 0;box-shadow:0 6px 16px color-mix(in srgb, var(--tinte) 7%, transparent)}
@@ -2856,6 +2851,10 @@ body.fest{position:fixed;left:0;right:0;width:100%;overflow:hidden}
    cover und mittig — der Ausschnitt ist gewählt, nicht zufällig, und
    oben wie unten fällt gleich viel weg. */
 .wbild.fuellt{height:min(42vh,320px);max-height:none}
+/* „KI-bearbeitet“ (Rechtsbericht R8): kleine Marke unten links am Foto, vom Betrieb nicht abschaltbar. Eigener dunkler Grund mit Alpha .7 —
+   auf einem rein weißen Foto bleibt die Schrift bei 6,5:1. */
+.wki{position:absolute;inset-inline-start:10px;bottom:10px;z-index:2;padding:3px 9px;border-radius:999px;pointer-events:none;
+  background:rgba(20,12,9,.7);color:#FBF6F2;font-size:11px;font-weight:700;letter-spacing:.04em;line-height:1.4}
 .wbild.fuellt img{object-fit:cover;object-position:50% 50%}
 
 /* Beim Öffnen kommt das Gericht dem Gast leicht entgegen. Das ist der
@@ -3975,106 +3974,57 @@ body:has(#zahlteil) #rechtFuss{display:none}
 }
 
 /* ═══ TOP-RUNNER ════════════════════════════════════════════════
-   Eine zeitlich begrenzte Aktion auf ein Gericht. Sie steht oben auf
-   der Startseite und über der Karte — dort, wo der Gast ohnehin
-   hinsieht, und nicht als Pop-up, das er wegtippen muss.
-
-   Der Streifen trägt die Akzentfarbe des Hauses, nicht ein eigenes
-   Rot: Eine Aktion ist ein Angebot, kein Alarm. */
-/* 09.10. als Flash-Sale umgebaut (Wunsch: „moderner, Text größer,
-   Bild rechts, mehr Farbe, eine Laufschrift mit Streifen, deren Text
-   man eingeben kann“). Oben ein Band in der Hausfarbe mit wandernden
-   Streifen und der Laufschrift (hub_texte.laufschrift, sonst Titel,
-   Gericht, Rabatt, Restzeit), darunter Name und Preis groß, rechts
-   das Gericht mit der Rabatt-Plakette. Schrift auf Farbe ist immer
-   das gerechnete Paar --rot/--auf-rot (§5.1); die Streifen mischen
-   in die Richtung WEG von der Schrift (--gegen-auf-rot), so heben
-   sie den Kontrast nur (gemessen in pruef-runner.js). Bewegung nur
-   über transform. */
-.aktion{
-  position:relative;display:block;margin:0 0 16px;overflow:hidden;
-  border-radius:var(--rundung);
-  /* Deckende Fläche unter der Schrift: Ein roter Verlauf drückte
-     Kennzeichnung und Preis (beide in --rot) auf 4,07:1 und die
-     Restzeit auf 3,5:1 (Choco, gemessen). Die Farbe tragen Band,
-     Rahmen, Plakette und der Schein hinter dem Gericht. */
-  background:var(--flaeche);
-  box-shadow:0 0 0 1.5px var(--rot), 0 16px 32px -20px color-mix(in srgb, var(--rot) 75%, transparent);
+   Eine zeitlich begrenzte Aktion auf ein Gericht. Seit 26.10. schlicht (Wunsch des Betreibers: „kleiner Prozent-Knopf an der Seite
+   unten rechts, wo man die Aktion und das Produkt sieht, am besten mit der Zeit, die abläuft“): ein schwebender Knopf über der
+   höchsten festen Leiste unten (die Lage misst festeLeistenOben(), Endlage nach CLAUDE.md §3.16) und ein kleines Blatt mit Aktion,
+   Gericht, Aktionspreis, ablaufender Zeit und „In den Warenkorb“. Kein Band, keine Laufschrift, kein durchgestrichener Preis.
+   Schrift auf Rot ist das gerechnete Paar --rot/--auf-rot (§5.1). Bewegung nur über transform/opacity. */
+.aktion-knopf{
+  position:fixed;inset-inline-end:max(12px, calc((100vw - 540px) / 2 + 12px));
+  bottom:calc(var(--aktion-unten, 16px) - var(--vv-versatz, 0px));z-index:47;
 }
-.aktion-band{
-  position:relative;height:30px;overflow:hidden;display:flex;align-items:center;
-  background:var(--rot);color:var(--auf-rot);white-space:nowrap;
+.ak-taste{
+  display:inline-flex;align-items:center;gap:7px;min-height:44px;margin:0;padding:0 14px 0 6px;border:0;border-radius:999px;
+  background:var(--rot);color:var(--auf-rot);font:inherit;font-size:14px;font-weight:800;font-variant-numeric:tabular-nums;
+  cursor:pointer;box-shadow:0 8px 18px -8px rgba(0,0,0,.55);-webkit-tap-highlight-color:transparent;
+  transition:transform var(--kurz) var(--feder);
 }
-.aktion-band::before{
-  content:"";position:absolute;top:0;bottom:0;left:-40px;width:calc(100% + 80px);
-  background:repeating-linear-gradient(-45deg, transparent 0 10px, color-mix(in srgb, var(--rot) 84%, var(--gegen-auf-rot)) 10px 20px);
-  animation:aktionStreifen 1.1s linear infinite;
+.ak-taste:active{transform:scale(.94)}
+.ak-zeichen{display:grid;place-items:center;flex:none;width:32px;height:32px;border-radius:50%;background:var(--auf-rot);color:var(--rot);
+  font-size:17px;font-weight:900;line-height:1}
+/* Das Blatt: geschlossen unsichtbar (visibility, erst NACH dem Schließen-Weg) — nur geschoben bliebe es auf dem Gerät sichtbar (§3.14). */
+.aktion-blatt{
+  position:fixed;inset-inline-end:max(12px, calc((100vw - 540px) / 2 + 12px));
+  bottom:calc(var(--aktion-unten, 16px) + 54px - var(--vv-versatz, 0px));z-index:62;
+  width:min(330px, calc(100vw - 24px));padding:14px 14px 12px;
+  background:var(--flaeche);color:var(--tinte);border:1px solid var(--linie);border-radius:20px;box-shadow:var(--schatten-hoch);
+  transform-origin:100% 100%;transform:translate3d(0,10px,0) scale(.94);opacity:0;visibility:hidden;
+  transition:transform .22s var(--blatt),opacity .18s var(--blatt),visibility 0s linear .22s;
 }
-/* 20 px Streifenabstand senkrecht, waagerecht 20/sin45° = 28,28 px:
-   so viel weiter, und das Muster liegt nahtlos wieder gleich. */
-@keyframes aktionStreifen{from{transform:translateX(0)}to{transform:translateX(28.284px)}}
-.aktion-lauf{
-  position:relative;display:inline-flex;flex:none;
-  font-size:12.5px;font-weight:800;letter-spacing:.09em;text-transform:uppercase;line-height:1;
-  animation:aktionLauf var(--lauf, 14s) linear infinite;
-}
-.aktion-lauf span{padding-right:2.4em}
-/* Von links nach rechts, wie gewünscht: Die Spur trägt den Text
-   zweimal, startet um die halbe Breite nach links versetzt und
-   läuft bis 0 — dann steht die zweite Hälfte genau dort, wo die
-   erste begann. */
-@keyframes aktionLauf{from{transform:translateX(-50%)}to{transform:translateX(0)}}
-/* Öffnet die Gerichtsvorschau — ein echter <button>, kein Klick auf
-   ein bloßes <div>. Ohne Gericht in der Karte bleibt es ein <div>. */
-/* Die Kennzeichnung steht in einer eigenen Zeile über die ganze Breite
-   (flex-basis 100 %): Neben dem Bild brach ein Titel von 20 Zeichen
-   schon zweizeilig, einer von 40 dreizeilig (pruef-texte/-textplatz). */
-.aktionklick{
-  display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;width:100%;
-  background:none;border:0;padding:14px 14px 6px;margin:0;text-align:left;
-  color:inherit;font:inherit;cursor:pointer;
-}
-.aktionklick:active{opacity:.78}
-.aktion .was{flex:1;min-width:0;display:flex;flex-direction:column;gap:3px}
-.aktion .kennz-zeile{flex:1 1 100%;display:flex;align-items:center;gap:5px;color:var(--rot)}
-.aktion .kennz-zeile svg{flex:none;width:14px;height:14px;fill:currentColor}
-.aktion .kennz{
-  display:block;font-size:11.5px;letter-spacing:1.4px;font-weight:800;
-  color:var(--rot);text-transform:uppercase;
-}
-.aktion .name{font-family:var(--schrift-gericht);font-weight:700;font-size:21px;line-height:1.18;text-wrap:balance;color:var(--tinte);
-  display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.aktion .preise{display:flex;align-items:baseline;gap:9px;white-space:nowrap;margin-top:3px}
-.aktion .neu{color:var(--rot);font-weight:800;font-size:27px;line-height:1;font-variant-numeric:tabular-nums}
-.aktion .alt{color:var(--tinte-still);text-decoration:line-through;font-size:14px;font-variant-numeric:tabular-nums}
-/* Rechts das Gericht: Freisteller schwebt, Foto im Rahmen, sonst das
-   Zeichen der Kategorie. Die Plakette sitzt oben an der Ecke. */
-.aktion-bild{position:relative;flex:none;width:100px;height:100px;display:grid;place-items:center;
-  border-radius:20px;background:radial-gradient(circle at 50% 58%, color-mix(in srgb, var(--gold) 38%, transparent), transparent 70%)}
-.aktion-bild img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 10px 12px rgba(42,26,20,.3))}
-.aktion-bild.foto img{object-fit:cover;border-radius:20px;filter:none;box-shadow:0 8px 18px -8px rgba(0,0,0,.45)}
-.aktion-bild .aktion-emo{font-size:60px;line-height:1}
-.aktion-rabatt{
-  position:absolute;top:-4px;right:-6px;z-index:1;padding:5px 9px;border-radius:999px;
-  background:var(--rot);color:var(--auf-rot);font-size:14px;font-weight:800;line-height:1;
-  font-variant-numeric:tabular-nums;transform:rotate(-8deg);box-shadow:0 6px 14px -6px rgba(0,0,0,.5)
-}
-.aktionfuss{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:0 14px 14px;
-}
-.aktionfuss .rest{
-  display:inline-flex;align-items:center;gap:8px;
-  font-size:13px;font-weight:600;color:var(--tinte-leise);font-variant-numeric:tabular-nums;
-}
+[dir="rtl"] .aktion-blatt{transform-origin:0 100%}
+.aktion-blatt.an{transform:none;opacity:1;visibility:visible;transition:transform .34s var(--blatt),opacity .22s var(--blatt),visibility 0s linear 0s}
+.ak-satz{margin:0 0 10px;font-size:13px;line-height:1.35;color:var(--tinte-leise);overflow-wrap:anywhere}
+.ak-zeile{display:flex;align-items:center;gap:10px}
+.ak-zeile + .ak-zeile{margin-top:12px;padding-top:12px;border-top:1px solid var(--linie)}
+.ak-info{flex:1;min-width:0;display:flex;flex-direction:column;align-items:flex-start;gap:2px;text-align:start;
+  background:none;border:0;padding:0;margin:0;color:inherit;font:inherit;cursor:pointer}
+div.ak-info{cursor:default}
+.ak-titel{overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  font-size:11.5px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:var(--rot)}
+.ak-name{overflow-wrap:anywhere;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;
+  font-family:var(--schrift-gericht);font-weight:700;font-size:17px;line-height:1.2;color:var(--tinte)}
+.ak-preis{font-size:13px;color:var(--tinte-leise)}
+.ak-preis b{margin-inline-start:4px;font-size:21px;font-weight:800;line-height:1;color:var(--rot);font-variant-numeric:tabular-nums}
+.ak-rest{display:inline-flex;align-items:center;gap:7px;margin-top:3px;font-size:13px;font-weight:600;color:var(--tinte-leise);font-variant-numeric:tabular-nums}
 /* Ein Punkt, der atmet: Es läuft gerade. */
 .aktion-puls{position:relative;flex:none;width:8px;height:8px;border-radius:50%;background:var(--rot)}
 .aktion-puls::after{content:"";position:absolute;inset:0;border-radius:50%;background:var(--rot);
   animation:aktionPuls 1.6s cubic-bezier(.16,1,.3,1) infinite}
 @keyframes aktionPuls{from{transform:scale(1);opacity:.6}to{transform:scale(2.8);opacity:0}}
 @media (prefers-reduced-motion:reduce){
-  .aktion-band::before,.aktion-puls::after{animation:none}
-  .aktion-lauf{animation:none;transform:none}
+  .aktion-puls::after{animation:none}
+  .aktion-blatt,.aktion-blatt.an{transition:none}
+  .ak-taste{transition:none}
 }
 /* Sofort bestellen — derselbe Kreisknopf wie bei der Empfehlung
    (.tippsofort teilt diese Regeln über denselben Klassennamen). Eine
@@ -6096,9 +6046,9 @@ const OMOTENO_FRUEH = { rennt:null, genutzt:false };
     <h2 id="stTitel">Bestellung ändern</h2>
     <p class="lead" id="stLead"></p>
     <div class="stliste" id="stListe"></div>
-    <button class="knopf" id="stEinzeln">Ausgewähltes streichen</button>
+    <button class="knopf" id="stEinzeln">Ausgewähltes entfernen</button>
     <button class="knopf zweit" id="stAlles">Ganze Bestellung stornieren</button>
-    <button class="knopf zweit" id="stZurueck">Doch nicht</button>
+    <button class="knopf zweit" id="stZurueck">Abbrechen</button>
     <p class="hinweis" id="stMeldung"></p>
   </div>
 </div>
@@ -6157,6 +6107,11 @@ const OMOTENO_FRUEH = { rennt:null, genutzt:false };
   <button type="button" class="tour-pille-los" data-tour-los="1"><span class="tp-zeichen" aria-hidden="true">?</span><span class="tp-text"></span></button>
   <button type="button" class="tour-pille-weg" data-tour-weg="1"></button>
 </div>
+<!-- Top-Runner: kleiner Knopf unten rechts und sein Blatt. Leer und hidden, bis aktionKnopfAbgleichen() es füllt. -->
+<div class="aktion-knopf" id="aktionKnopf" hidden>
+  <button type="button" class="ak-taste" id="aktionTaste" data-akt-auf="1" aria-haspopup="dialog" aria-expanded="false" aria-controls="aktionBlatt"></button>
+</div>
+<div class="aktion-blatt" id="aktionBlatt" role="dialog" aria-label="Aktion"></div>
 <div class="blende" id="blende"></div>
 <div class="warenkarte" id="warenkarte" role="dialog" aria-modal="true"
      aria-labelledby="wname" tabindex="-1"></div>
@@ -6818,11 +6773,11 @@ const KACHELARTEN = {
     gruppe:"Die Karte", raster:"saeulen", stil:"saeule", farbe:"gold" },
 
   tischruf: { ziel:"#/service",
-    titel:"Service rufen", unter:"Zahlen, nachbestellen, kurz Bescheid geben",
+    titel:"Service rufen", unter:"Zahlen, nachbestellen oder Hilfe anfordern",
     icon:"hand", gruppe:"Jetzt am Tisch" },
 
   wlan: { ziel:"#/wlan",
-    titel:"WLAN verbinden", unter:"Ohne Passwort tippen – ein Tap genügt",
+    titel:"WLAN verbinden", unter:"Verbinden ohne Passwort-Eingabe",
     icon:"wlan", gruppe:"Jetzt am Tisch", cyan:true },
 
   quiz: { ziel:"#/quiz",
@@ -7015,7 +6970,7 @@ function kachelBauen(schluessel, wunsch){
    Laternen und die feste Knopfzeile hängen am oberen Rand der Seite.
    Ohne Eintrag (leere Liste) bleibt alles, wie es war (§2.5/§8.1a). */
 const BLOCK_FEST = ["schnell", "begleiter", "aktion", "banner", "nochmal", "empfehlung"];
-const BLOCK_NAMEN = { schnell:"Schnellzugriff", begleiter:"Figur mit Satz", aktion:"Aktion · Top-Runner",
+const BLOCK_NAMEN = { schnell:"Schnellzugriff", begleiter:"Figur mit Satz", aktion:"Aktion · Top-Runner (Knopf unten rechts)",
                       banner:"Banner-Rad", nochmal:"Nochmal wie letztes Mal", empfehlung:"Empfehlung des Hauses" };
 /* Nur Blöcke, die in einer halben Spalte (≈ 180 px) lesbar bleiben, dürfen halb breit sein. */
 const BLOCK_HALB_OK = ["begleiter", "nochmal", "empfehlung", "eigen"];
@@ -7658,9 +7613,9 @@ function aktionenLaden(){
         const vorher = aktionen.map(a => a.id).join(",");
         aktionen = Array.isArray(liste) ? liste : [];
         /* Vorschau: Die Beispiel-Aktion des Boards bleibt stehen. */
-        if(VORSCHAU && vorschauAktion()) return;
+        if(VORSCHAU && vorschauAktion()){ aktionKnopfAbgleichen(); return; }
         merkPreiseAbgleichen();
-        if(aktionen.map(a => a.id).join(",") !== vorher) aktionAnzeigen();
+        if(aktionen.map(a => a.id).join(",") !== vorher) aktionAnzeigen(); else aktionKnopfAbgleichen();
       })
       .catch(() => {});
   });
@@ -7672,59 +7627,110 @@ function aktionenLaden(){
    gehört in die Karte, nicht in den Streifen ganz oben — dort stünde er
    sonst monatelang als „noch 8760 Stunden“. */
 const AKTION_STREIFEN_MIN = 30 * 24 * 60;
-function aktionBandHTML(){
-  const kurz = aktionen.filter(a => (new Date(a.bis) - Date.now()) / 60000 <= AKTION_STREIFEN_MIN);
-  if(!kurz.length) return "";
-  return kurz.map(a => {
-    const restMin = Math.max(0, Math.round((new Date(a.bis) - Date.now()) / 60000));
-    const rest = restMin >= 48 * 60
-      ? t("noch {n} Tage", {n: Math.floor(restMin / 1440)})
-      : restMin >= 60
-      ? t("noch {n} Stunden", {n: Math.floor(restMin / 60)})
-      : t("nur noch {n} Minuten", {n: restMin});
-    /* Nur anklickbar/bestellbar, wenn das Gericht wirklich in DIESER
-       Karte steht — eine Aktion kann ein Gericht tragen, das
-       inzwischen aus der Karte genommen wurde (gericht_id ist
-       nullable, siehe Migration). Dann bleibt der Streifen ein reiner
-       Hinweis, wie bisher. */
-    const g = findeGericht(a.gericht_name);
-    const titel = t(a.titel || RUNNER_TITEL);
-    const prozent = a.preis_alt > 0 ? Math.round((1 - a.preis_neu / a.preis_alt) * 100) : 0;
-    const rabatt = prozent >= 1 ? "−" + prozent + " %" : "";
-    /* Das Band: der eigene Satz des Hauses — sonst Titel, Gericht,
-       Rabatt, Restzeit. Zweimal hintereinander, damit die Spur nahtlos
-       läuft. Für Vorleser steht es nicht da (aria-hidden): Alles, was
-       es sagt, steht darunter noch einmal als Text. */
-    const lauf = (RUNNER_LAUFSCHRIFT ? [RUNNER_LAUFSCHRIFT, rabatt] : [titel, a.gericht_name, rabatt, rest])
-      .filter(Boolean).join("  ✦  ");
-    const sek = Math.max(9, Math.min(26, Math.round(lauf.length * .32)));
-    const ort = gerichtOrt(a.gericht_name);
-    /* Das Zeichen der Kategorie liegt immer darunter; ein Bild, das
-       nicht lädt, nimmt sich selbst heraus und gibt es frei. */
-    const zeichen = bzZeichen(bzKategorie(ort ? ort.gruppe : "", ort ? ort.karte : ""));
-    const bild = '<span class="aktion-bild' + (g && !g.bf && g.bild ? ' foto' : '') + '">' +
-      '<span class="aktion-emo" aria-hidden="true">' + zeichen + '</span>' +
-      (g && hatVorschau(g) ? '<img src="' + hs(vorschauBild(g, true)) + '" alt="" decoding="async" onerror="this.remove()">' : '');
-    return '<div class="aktion">' +
-      '<div class="aktion-band" aria-hidden="true"><span class="aktion-lauf" style="--lauf:' + sek + 's">' +
-        '<span>' + sicherText(lauf) + '</span><span>' + sicherText(lauf) + '</span></span></div>' +
-      (g
-        ? '<button type="button" class="aktionklick" data-detail="' +
-          encodeURIComponent(a.gericht_name) + '">'
-        : '<div class="aktionklick">') +
-        '<span class="kennz-zeile"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M13.2 2 4.8 13.4h6l-1.2 8.6 8.6-11.6h-6.1z"/></svg>' +
-          '<span class="kennz">' + hs(titel) + '</span></span>' +
-        '<span class="was"><span class="name">' + sicherText(a.gericht_name) + '</span>' +
-        '<span class="preise"><span class="neu">' + preisText(a.preis_neu) + '</span>' +
-        '<span class="alt">' + preisText(a.preis_alt) + '</span></span></span>' +
-        bild + (rabatt ? '<span class="aktion-rabatt">' + rabatt + '</span>' : '') + '</span>' +
-      (g ? '</button>' : '</div>') +
-      '<div class="aktionfuss"><span class="rest"><i class="aktion-puls" aria-hidden="true"></i>' + rest + '</span>' +
-      (g ? '<button type="button" class="sofort" data-aktionmerk="' +
-        encodeURIComponent(a.gericht_name) + '" data-preis="' + sicherText(preisText(a.preis_neu)) +
-        '" aria-label="' + t("In den Warenkorb") + '">' + SOFORT_SVG + '</button>' : '') +
-      '</div></div>';
-  }).join("");
+/* Die Aktionen, die in den Knopf gehören: laufend, nicht „bis ich es beende“. Nach Ende, dann Name (§2.6: Gleichstand endet eindeutig). */
+const AKTION_KNOPF_MAX = 3;
+function aktionenKurz(){
+  const jetzt = Date.now();
+  return aktionen.filter(a => { const r = new Date(a.bis) - jetzt; return r > 0 && r / 60000 <= AKTION_STREIFEN_MIN; })
+    .sort((x, y) => (new Date(x.bis) - new Date(y.bis)) || String(x.id).localeCompare(String(y.id)))
+    .slice(0, AKTION_KNOPF_MAX);
+}
+/* Die ablaufende Zeit als Text. Ab zwei Tagen in Tagen, ab einem Tag in Stunden, sonst als Uhr (h:mm:ss) — die Uhr läuft am
+   bestehenden Element weiter (aktionUhrTakt), das Blatt wird dafür nicht neu gebaut (§4.2). */
+function aktionRestAnzeige(bis, form){
+  const s = Math.max(0, Math.floor((new Date(bis) - Date.now()) / 1000));
+  if(s >= 172800) return form === "knopf" ? t("Aktion") : t("noch {n} Tage", {n: Math.floor(s / 86400)});
+  if(s >= 86400)  return form === "knopf" ? t("Aktion") : t("noch {n} Stunden", {n: Math.floor(s / 3600)});
+  const z = n => (n < 10 ? "0" : "") + n;
+  const uhr = s >= 3600 ? Math.floor(s / 3600) + ":" + z(Math.floor(s % 3600 / 60)) + ":" + z(s % 60) : Math.floor(s / 60) + ":" + z(s % 60);
+  return form === "knopf" ? uhr : t("noch {zeit}", {zeit: uhr});
+}
+/* Nur anklickbar/bestellbar, wenn das Gericht wirklich in DIESER Karte steht — eine Aktion kann ein Gericht tragen, das
+   inzwischen aus der Karte genommen wurde (gericht_id ist nullable, siehe Migration). Dann bleibt die Zeile ein reiner Hinweis. */
+function aktionBlattHTML(liste){
+  return (RUNNER_LAUFSCHRIFT ? '<p class="ak-satz">' + sicherText(RUNNER_LAUFSCHRIFT) + '</p>' : '') +
+    liste.map(a => {
+      const g = findeGericht(a.gericht_name);
+      const titel = t(a.titel || RUNNER_TITEL);
+      const info = '<span class="ak-titel">' + hs(titel) + '</span>' +
+        '<span class="ak-name">' + sicherText(a.gericht_name) + '</span>' +
+        '<span class="ak-preis">' + hs(t("Aktionspreis")) + '<b>' + preisText(a.preis_neu) + '</b></span>' +
+        '<span class="ak-rest"><i class="aktion-puls" aria-hidden="true"></i><span data-akt-bis="' + hs(a.bis) + '" data-akt-form="blatt">' +
+          hs(aktionRestAnzeige(a.bis, "blatt")) + '</span></span>';
+      return '<div class="ak-zeile">' +
+        (g ? '<button type="button" class="ak-info" data-detail="' + encodeURIComponent(a.gericht_name) + '">' + info + '</button>'
+           : '<div class="ak-info">' + info + '</div>') +
+        (g ? '<button type="button" class="sofort' + (merk[a.gericht_name] ? ' an' : '') + '" data-aktionmerk="' +
+          encodeURIComponent(a.gericht_name) + '" data-preis="' + sicherText(preisText(a.preis_neu)) +
+          '" aria-label="' + hs(t("In den Warenkorb")) + '">' + SOFORT_SVG + '</button>' : '') +
+      '</div>';
+    }).join("");
+}
+/* „+“ im Aktions-Blatt: dasselbe Gericht zum AKTIONSPREIS in die Auswahl (der Preis kommt aus dem Knopf selbst, kein zweiter Rechenweg). */
+function aktionMerken(sofort){
+  const name = decodeURIComponent(sofort.dataset.aktionmerk);
+  const g = findeGericht(name);
+  if(merk[name]) delete merk[name];
+  else if(g) merk[name] = { n:g.n, p:sofort.dataset.preis, b:g.b || "", m:1 };
+  merkSpeichern();
+  sofort.classList.toggle("an", !!merk[name]);
+  korbSteuerungNeu(name, false);
+  balkenAktualisieren();
+}
+let aktionKnopfSig = "";
+function aktionBlattZu(){
+  const b = $("aktionBlatt"), k = $("aktionTaste");
+  if(b) b.classList.remove("an");
+  if(k) k.setAttribute("aria-expanded", "false");
+}
+function aktionBlattAuf(auf){
+  const b = $("aktionBlatt"), k = $("aktionTaste");
+  if(!b || !k) return;
+  b.classList.toggle("an", !!auf);
+  k.setAttribute("aria-expanded", auf ? "true" : "false");
+}
+/* Zeigt oder versteckt den Knopf und baut sein Blatt neu, wenn sich an den Aktionen (oder an der Auswahl) etwas geändert hat. */
+function aktionKnopfAbgleichen(){
+  const knopf = $("aktionKnopf"), blatt = $("aktionBlatt"), taste = $("aktionTaste");
+  if(!knopf || !blatt || !taste) return;
+  const liste = aktionenKurz();
+  const pfad = (location.hash || "").replace(/^#\/?/, "");
+  const wk = $("willkommen"), karte = $("warenkarte");
+  const darf = liste.length > 0 && (pfad === "" || pfad === "speisekarte") && !(wk && !wk.hidden) && !(karte && karte.classList.contains("an"));
+  /* Ohne Aktion steht auch das Blatt leer da (die Vorschau im Board misst seinen Text). */
+  const sig = liste.map(a => [a.id, a.gericht_name, a.titel, a.preis_neu, a.bis, merk[a.gericht_name] ? 1 : 0].join("|")).join("~") +
+              "#" + RUNNER_TITEL + "#" + RUNNER_LAUFSCHRIFT + "#" + (typeof sprache === "string" ? sprache : "");
+  if(sig !== aktionKnopfSig){
+    aktionKnopfSig = sig;
+    blatt.innerHTML = aktionBlattHTML(liste);
+    if(liste.length){
+      const a = liste[0];
+      taste.innerHTML = '<span class="ak-zeichen" aria-hidden="true">%</span><span class="ak-zeit" data-akt-bis="' + hs(a.bis) +
+        '" data-akt-form="knopf">' + hs(aktionRestAnzeige(a.bis, "knopf")) + '</span>';
+      taste.setAttribute("aria-label", t("Aktion") + ": " + a.gericht_name);
+      blatt.setAttribute("aria-label", t("Aktion"));
+    }else{
+      taste.innerHTML = "";
+      aktionBlattZu();
+    }
+  }
+  if(!darf){ knopf.hidden = true; aktionBlattZu(); return; }
+  knopf.hidden = false;
+  const unten = Math.round(innerHeight - festeLeistenOben() + 12) + "px";
+  knopf.style.setProperty("--aktion-unten", unten);
+  blatt.style.setProperty("--aktion-unten", unten);
+}
+/* Die Uhr: einmal je Sekunde, nur am vorhandenen Element; ist eine Aktion zu Ende, baut der Abgleich neu. */
+function aktionUhrTakt(){
+  const k = $("aktionKnopf");
+  if(!k || k.hidden || document.hidden) return;
+  let aus = false;
+  document.querySelectorAll("[data-akt-bis]").forEach(el => {
+    const neu = aktionRestAnzeige(el.dataset.aktBis, el.dataset.aktForm);
+    if(el.textContent !== neu) el.textContent = neu;
+    if(new Date(el.dataset.aktBis) <= Date.now()) aus = true;
+  });
+  if(aus) aktionKnopfAbgleichen();
 }
 
 /* Fängt eine Aktion an, während der Gast im Hub ist, schiebt sich der
@@ -7758,13 +7764,13 @@ function aktionAnzeigen(){
    Betrieb legt so viele Banner an, wie er will, jedes mit eigenem
    Bild/Text/Ziel. Vier Zieltypen, alle über schon vorhandene Wege
    aufgelöst statt neu erfunden:
-     produkt → dasselbe data-detail wie aktionBandHTML() → detailOeffnen()
+     produkt → dasselbe data-detail wie das Aktions-Blatt → detailOeffnen()
      seite   → ein echter Hash aus der Zulassungsliste unten
      url     → externer Link wie bei den Kacheln
      aktion  → NIE ein gespeicherter Preis, sondern live aus dem schon
                geladenen aktionen-Array gelesen (CLAUDE.md §2.3a) — ist
                die Aktion nicht mehr da, bleibt die Karte stehen, aber
-               ohne Ziel, genau wie aktionBandHTML() bei einem Gericht,
+               ohne Ziel, genau wie das Aktions-Blatt bei einem Gericht,
                das nicht mehr in der Karte steht.
    ══════════════════════════════════════════════════════════════════ */
 const BANNER_ERLAUBT = ["id","an","bild","titel","text","farbe","zielTyp","zielWert","reihenfolge","ausrichtung"];
@@ -8354,10 +8360,10 @@ function stornoOeffnen(){
   stornoWahl = {};
   const el = $("storno"); if(!el) return;
   $("stTitel").textContent = t("Bestellung ändern");
-  $("stLead").textContent  = t("Tippen Sie an, was weg soll. Oder ziehen Sie alles zurück.");
-  $("stEinzeln").textContent = t("Ausgewähltes streichen");
+  $("stLead").textContent  = t("Wählen Sie aus, was entfernt werden soll – oder ziehen Sie die gesamte Bestellung zurück.");
+  $("stEinzeln").textContent = t("Ausgewähltes entfernen");
   $("stAlles").textContent   = t("Ganze Bestellung stornieren");
-  $("stZurueck").textContent = t("Doch nicht");
+  $("stZurueck").textContent = t("Abbrechen");
   $("stMeldung").textContent = "";
   stornoListeZeichnen();
   el.hidden = false;
@@ -8408,16 +8414,16 @@ async function stornoSenden(alles){
        kein Fehler des Gastes, und er soll auch nicht raten. */
     if(a.status === 404){
       $("stMeldung").textContent =
-        t("Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.");
+        t("Das ist gerade nicht möglich. Bitte sprechen Sie unser Team an.");
       knopf.disabled = false; return;
     }
     const antwort = a.ok ? await a.json() : null;
     if(!antwort || !antwort.ok){
       const grund = antwort && antwort.grund;
       $("stMeldung").textContent =
-        grund === "frist"   ? t("Die zwei Minuten sind um. Bitte sagen Sie kurz Bescheid.")
-      : grund === "zu_spaet"? t("Die Küche ist schon dran. Bitte sagen Sie kurz Bescheid.")
-      :                       t("Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.");
+        grund === "frist"   ? t("Die Frist von zwei Minuten ist abgelaufen. Bitte sprechen Sie unser Team an.")
+      : grund === "zu_spaet"? t("Die Küche hat Ihre Bestellung bereits begonnen. Bitte sprechen Sie unser Team an.")
+      :                       t("Das ist gerade nicht möglich. Bitte sprechen Sie unser Team an.");
       knopf.disabled = false;
       return;
     }
@@ -8438,9 +8444,9 @@ async function stornoSenden(alles){
     stornoSchliessen();
     vorgangStreifenZeichnen();
     if(seiteJetzt === "bestellt") bestellStatusSteuern("bestellt");
-    melden(antwort.alles ? t("Bestellung zurückgezogen.") : t("Gestrichen."));
+    melden(antwort.alles ? t("Bestellung zurückgezogen.") : t("Entfernt."));
   }catch(e){
-    $("stMeldung").textContent = t("Keine Verbindung. Bitte kurz Bescheid sagen.");
+    $("stMeldung").textContent = t("Keine Verbindung. Bitte sprechen Sie unser Team an.");
     knopf.disabled = false;
   }
 }
@@ -8978,7 +8984,7 @@ const E_REQUISITEN = {
 const E_PHASENVORGABE = { neu: "zettel", arbeit: "flasche", fertig: "teller" };
 
 /* Und wie die Phasen im Studio heißen. */
-const E_PHASENNAMEN = { neu: "Bestellzettel hängt",
+const E_PHASENNAMEN = { neu: "Bestellung eingegangen",
                         arbeit: "In Arbeit",
                         fertig: "Fertig" };
 
@@ -9585,14 +9591,14 @@ const AVATAR_TEXTE = {
     witzig:     "Alles da. Nur entscheiden müssen Sie selbst."
   },
   bestellt: {
-    freundlich: "Ist notiert. Wir sagen Bescheid, sobald es rausgeht.",
+    freundlich: "Ist notiert. Wir informieren Sie, sobald es herausgeht.",
     ruhig:      "Angekommen. Lehnen Sie sich zurück.",
-    witzig:     "Bestellt. Ab hier ist es unser Problem."
+    witzig:     "Bestellt. Ab hier kümmern wir uns."
   },
   bewerten: {
-    freundlich: "Ehrlich ist uns lieber als nett.",
+    freundlich: "Ehrliche Rückmeldungen sind uns wichtig.",
     ruhig:      "Ein paar Worte genügen.",
-    witzig:     "Fünf Sterne nehmen wir auch."
+    witzig:     "Eine ehrliche Bewertung hilft uns sehr."
   },
   meintisch: {
     freundlich: "Ich merke mir, was Ihnen schmeckt – mehr nicht.",
@@ -9606,9 +9612,9 @@ const AVATAR_TEXTE = {
    muss dieselbe Vorgabe kennen wie der Hub, sonst zeigt die Vorschau
    als Platzhalter etwas anderes, als der Gast später liest. */
 const E_PHASENTEXTE = {
-  neu:    "Bestellzettel hängt",
-  arbeit: "Kommt in die Pfanne",
-  fertig: "Fertig — kommt zum Tisch"
+  neu:    "Bestellung eingegangen",
+  arbeit: "Wird zubereitet",
+  fertig: "Ihre Bestellung ist fertig"
 };
 
 /* WIE LANG DARF EIN EIGENER SATZ SEIN. Die Zahlen sind GEMESSEN, auf
@@ -10718,7 +10724,7 @@ const TEXTE = {
 "Kaiser & Eis":{en:"Kaiser & ice cream",tr:"Kaiser & dondurma",ru:"Kaiser и мороженое",fr:"Kaiser & glaces",es:"Kaiser y helados",it:"Kaiser & gelato",pl:"Kaiser i lody",ar:"كايزر ومثلجات",uk:"Kaiser і морозиво",nl:"Kaiser & ijs",ro:"Kaiser & înghețată"},
 "BELIEBT":{en:"POPULAR",tr:"POPÜLER",ru:"ПОПУЛЯРНОЕ",fr:"POPULAIRE",es:"POPULAR",it:"POPOLARE",pl:"POPULARNE",ar:"الأكثر طلباً",uk:"ПОПУЛЯРНЕ",nl:"POPULAIR",ro:"POPULAR"},
 "Passt dazu":{en:"Goes well with it",tr:"Yanına yakışır",ru:"Хорошо сочетается",fr:"Pour accompagner",es:"Para acompañar",it:"Da abbinare",pl:"Pasuje do tego",ar:"يناسبه",uk:"Добре пасує",nl:"Past erbij",ro:"Se potrivește"},
-"Mach es komplett":{en:"Make it complete",tr:"Tamamla",ru:"Дополните заказ",fr:"Complétez",es:"Complétalo",it:"Completa",pl:"Uzupełnij",ar:"أكمل طلبك",uk:"Доповніть замовлення",nl:"Maak het compleet",ro:"Completează"},
+"Bestellung ergänzen":{en:"Complete your order",tr:"Siparişinizi tamamlayın",ru:"Дополните заказ",fr:"Complétez votre commande",es:"Complete su pedido",it:"Completi il suo ordine",pl:"Uzupełnij zamówienie",ar:"أكملوا طلبكم",uk:"Доповніть замовлення",nl:"Vul uw bestelling aan",ro:"Completați comanda"},
 "Beides dazu":{en:"Add both",tr:"İkisini ekle",ru:"Добавить оба",fr:"Ajouter les deux",es:"Añadir ambos",it:"Aggiungi entrambi",pl:"Dodaj oba",ar:"أضف الاثنين",uk:"Додати обидва",nl:"Beide toevoegen",ro:"Adaugă-le pe amândouă"},
 "Im Korb":{en:"In basket",tr:"Sepette",ru:"В корзине",fr:"Dans le panier",es:"En la cesta",it:"Nel carrello",pl:"W koszyku",ar:"في السلة",uk:"У кошику",nl:"In mandje",ro:"În coș"},
 "Noch unentschlossen?":{en:"Still undecided?",tr:"Hâlâ kararsız mısınız?",ru:"Ещё не решили?",fr:"Encore indécis ?",es:"¿Aún indeciso?",it:"Ancora indeciso?",pl:"Wciąż niezdecydowani?",ar:"لم تقرر بعد؟",uk:"Ще не вирішили?",nl:"Nog twijfels?",ro:"Încă nehotărât?"},
@@ -10739,7 +10745,7 @@ const TEXTE = {
 "Noch Platz für etwas Süßes?":{en:"Room for something sweet?",tr:"Tatlıya yer var mı?",ru:"Найдётся место для сладкого?",fr:"Encore de la place pour un dessert ?",es:"¿Queda sitio para algo dulce?",it:"C'è posto per qualcosa di dolce?",pl:"Znajdzie się miejsce na coś słodkiego?",ar:"هل يتسع المجال لشيء حلو؟",uk:"Знайдеться місце для солодкого?",nl:"Nog ruimte voor iets zoets?",ro:"Mai e loc de ceva dulce?"},
 "Das bestellen Gäste gern dazu.":{en:"Guests like to order these with it.",tr:"Misafirler bunları yanına sık sipariş eder.",ru:"Это гости часто заказывают вместе.",fr:"Nos clients les prennent volontiers avec.",es:"Los clientes suelen pedir esto también.",it:"Gli ospiti lo ordinano volentieri insieme.",pl:"Goście chętnie zamawiają to do tego.",ar:"يطلب الضيوف هذه غالباً معه.",uk:"Це гості охоче замовляють разом.",nl:"Gasten bestellen dit er graag bij.",ro:"Oaspeții comandă adesea și acestea."},
 "Beliebt":{en:"Popular",tr:"Popüler",ru:"Популярное",fr:"Populaires",es:"Populares",it:"Popolari",pl:"Popularne",ar:"الأكثر طلباً",uk:"Популярне",nl:"Populair",ro:"Populare"},
-"Der Ruf geht sofort an unser Team – ohne Umweg über eine App. Wenn gerade viel los ist, kann es einen Moment dauern. Winken Sie uns dann bitte einfach zu, wir sind Menschen und keine Maschine.":{en:"Your call goes straight to our team – no app needed. When it is busy it can take a moment. Just wave at us then, we are people, not a machine.",tr:"Çağrınız doğrudan ekibimize ulaşır, uygulamaya gerek yok. Yoğun olduğunda biraz sürebilir; o zaman bize el sallamanız yeterli, biz makine değil insanız.",ru:"Вызов сразу поступает нашей команде — без приложений. Когда много гостей, это может занять минуту. Тогда просто помашите нам: мы люди, а не машина.",fr:"Votre appel arrive directement à notre équipe, sans application. Quand il y a du monde, cela peut prendre un instant. Faites-nous simplement signe : nous sommes des humains, pas une machine.",es:"Su llamada llega directamente a nuestro equipo, sin aplicación. Cuando hay mucha gente puede tardar un momento. Entonces basta con hacernos una señal: somos personas, no una máquina.",it:"La chiamata arriva subito al nostro team, senza app. Quando c'è molta gente può volerci un attimo: in quel caso basta un cenno, siamo persone e non una macchina.",pl:"Wezwanie trafia od razu do naszego zespołu, bez aplikacji. Gdy jest tłoczno, może to chwilę potrwać – wtedy wystarczy do nas pomachać: jesteśmy ludźmi, nie maszyną.",ar:"يصل النداء مباشرة إلى فريقنا دون تطبيق. عند الازدحام قد يستغرق الأمر لحظة، عندها لوّحوا لنا فقط — نحن بشر لا آلة.",uk:"Виклик одразу надходить нашій команді — без застосунку. Коли багато гостей, це може зайняти хвилину. Тоді просто помахайте нам: ми люди, а не машина.",nl:"Uw oproep gaat direct naar ons team, zonder app. Als het druk is kan het even duren. Zwaai dan gewoon even: wij zijn mensen en geen machine.",ro:"Apelul ajunge direct la echipa noastră, fără aplicație. Când e aglomerat poate dura un moment – atunci faceți-ne pur și simplu semn: suntem oameni, nu o mașină."},
+"Ihr Ruf geht direkt an unser Team. Wenn gerade viel los ist, kann es einen Moment dauern. Bitte machen Sie sich dann gern bemerkbar.":{en:"Your call goes straight to our team. When it is busy, it can take a moment. Please feel free to get our attention then.",tr:"Çağrınız doğrudan ekibimize iletilir. Yoğun zamanlarda biraz sürebilir; bu durumda lütfen bizi çağırmaktan çekinmeyin.",ru:"Ваш вызов сразу поступает нашей команде. Когда много гостей, это может занять некоторое время. В таком случае, пожалуйста, подзовите нас.",fr:"Votre appel parvient directement à notre équipe. En cas de forte affluence, cela peut prendre un moment. N'hésitez alors pas à nous faire signe.",es:"Su llamada llega directamente a nuestro equipo. Si hay mucho trabajo, puede tardar un momento. En ese caso, no dude en llamar nuestra atención.",it:"La sua chiamata arriva direttamente al nostro team. Quando c'è molto da fare, può volerci un momento. In tal caso ci faccia pure un cenno.",pl:"Wezwanie trafia bezpośrednio do naszego zespołu. Gdy jest dużo gości, może to chwilę potrwać. Wtedy prosimy śmiało zwrócić naszą uwagę.",ar:"يصل ندائكم مباشرةً إلى فريقنا. عند الازدحام قد يستغرق الأمر لحظة. يُرجى حينها لفت انتباهنا بكل سهولة.",uk:"Ваш виклик одразу надходить до нашої команди. Коли гостей багато, це може зайняти хвилину. Тоді, будь ласка, привертайте нашу увагу.",nl:"Uw oproep gaat rechtstreeks naar ons team. Als het druk is, kan het even duren. Roep ons dan gerust.",ro:"Apelul dvs. ajunge direct la echipa noastră. Când este aglomerat, poate dura un moment. În acest caz, atrageți-ne atenția fără ezitare."},
 "Ihre Auswahl liegt aktuell bei {x}.":{en:"Your selection currently adds up to {x}.",tr:"Seçiminiz şu anda {x} tutuyor.",ru:"Ваш выбор сейчас составляет {x}.",fr:"Votre sélection s'élève actuellement à {x}.",es:"Su selección suma actualmente {x}.",it:"La vostra selezione ammonta a {x}.",pl:"Państwa wybór wynosi obecnie {x}.",ar:"اختياركم يبلغ حالياً {x}.",uk:"Ваш вибір зараз становить {x}.",nl:"Uw selectie komt momenteel op {x}.",ro:"Selecția dvs. ajunge acum la {x}."},
 "Passend dazu von unserer Bar:":{en:"To go with it, from our bar:",tr:"Barımızdan tam uyar:",ru:"Кстати, из нашего бара:",fr:"Pour l'occasion, de notre bar :",es:"Para la ocasión, de nuestra barra:",it:"Per l'occasione, dal nostro bar:",pl:"Do tego z naszego baru:",ar:"يناسبها من بارنا:",uk:"До цього з нашого бару:",nl:"Daarbij past, van onze bar:",ro:"Se potrivește, de la barul nostru:"},
 
@@ -10756,7 +10762,7 @@ const TEXTE = {
 "Stattdessen anrufen":{en:"Call us instead",tr:"Bunun yerine arayın",ru:"Позвонить вместо этого",fr:"Nous appeler plutôt",es:"Llamar en su lugar",it:"Chiamare invece",pl:"Zadzwoń zamiast tego",ar:"اتصلوا بنا بدلاً من ذلك",uk:"Зателефонувати натомість",nl:"In plaats daarvan bellen",ro:"Sunați în schimb"},
 "Ohne Tischnummer":{en:"No table number",tr:"Masa numarası yok",ru:"Без номера столика",fr:"Sans numéro de table",es:"Sin número de mesa",it:"Senza numero di tavolo",pl:"Bez numeru stolika",ar:"بدون رقم طاولة",uk:"Без номера столика",nl:"Zonder tafelnummer",ro:"Fără număr de masă"},
 "Anmerkung":{en:"Note",tr:"Not",ru:"Пожелание",fr:"Remarque",es:"Nota",it:"Nota",pl:"Uwaga",ar:"ملاحظة",uk:"Побажання",nl:"Opmerking",ro:"Observație"},
-"Das kam gerade nicht durch. Bitte winken Sie uns kurz – wir sind gleich da.":{en:"That did not get through. Please wave to us, we will be right there.",tr:"Bu iletilemedi. Lütfen bize el sallayın, hemen geliyoruz.",ru:"Не прошло. Помашите нам, пожалуйста, мы сейчас подойдём.",fr:"Cela n'est pas passé. Faites-nous signe, nous arrivons.",es:"No ha llegado. Háganos una señal, vamos enseguida.",it:"Non è passato. Ci faccia un cenno, arriviamo subito.",pl:"Nie dotarło. Pomachaj do nas, zaraz przyjdziemy.",ar:"لم يصل. لوّحوا لنا من فضلكم، سنأتي حالاً.",uk:"Не пройшло. Помахайте нам, ми зараз підійдемо.",nl:"Dat kwam niet door. Wenk ons even, we komen zo.",ro:"Nu a ajuns. Faceți-ne semn, venim imediat."},
+"Das konnte nicht gesendet werden. Bitte machen Sie sich kurz bemerkbar – wir kommen zu Ihnen.":{en:"That could not be sent. Please get our attention – we will come to you.",tr:"Gönderilemedi. Lütfen bizi kısaca çağırın, hemen yanınıza geliyoruz.",ru:"Не удалось отправить. Пожалуйста, подзовите нас — мы подойдём к вам.",fr:"L'envoi a échoué. Veuillez nous faire signe, nous venons à votre table.",es:"No se ha podido enviar. Llámenos la atención, enseguida acudimos.",it:"Invio non riuscito. Ci chiami pure, arriviamo subito.",pl:"Nie udało się wysłać. Proszę zwrócić naszą uwagę – zaraz podejdziemy.",ar:"تعذّر الإرسال. يرجى لفت انتباهنا وسنأتي إليكم.",uk:"Не вдалося надіслати. Будь ласка, привертайте нашу увагу — ми підійдемо до вас.",nl:"Verzenden is niet gelukt. Roep ons even, dan komen we naar u toe.",ro:"Trimiterea nu a reușit. Vă rugăm să ne atrageți atenția, venim imediat."},
 "Bestellung wird gesendet":{en:"Sending your order",tr:"Siparişiniz gönderiliyor",ru:"Отправляем заказ",fr:"Envoi de votre commande",es:"Enviando su pedido",it:"Invio dell'ordine",pl:"Wysyłamy zamówienie",ar:"جارٍ إرسال طلبكم",uk:"Надсилаємо замовлення",nl:"Bestelling wordt verstuurd",ro:"Trimitem comanda"},
 "Einen Moment bitte.":{en:"One moment please.",tr:"Bir saniye lütfen.",ru:"Один момент.",fr:"Un instant.",es:"Un momento.",it:"Un attimo.",pl:"Chwileczkę.",ar:"لحظة من فضلكم.",uk:"Хвилинку.",nl:"Een moment.",ro:"Un moment."},
 "Verbindung ist schwierig":{en:"The connection is poor",tr:"Bağlantı zayıf",ru:"Связь неустойчива",fr:"La connexion est mauvaise",es:"La conexión es mala",it:"La connessione è debole",pl:"Połączenie jest słabe",ar:"الاتصال ضعيف",uk:"Зв'язок нестабільний",nl:"De verbinding is slecht",ro:"Conexiunea este slabă"},
@@ -10818,17 +10824,17 @@ const TEXTE = {
 "Bild sichern":{en:"Save image",tr:"Görseli kaydet",ru:"Сохранить изображение",fr:"Enregistrer l'image",es:"Guardar imagen",it:"Salva immagine",pl:"Zapisz obraz",ar:"حفظ الصورة",uk:"Зберегти зображення",nl:"Afbeelding bewaren",ro:"Salvați imaginea"},
 "Bestellung ändern oder zurückziehen":{en:"Change or cancel the order",tr:"Siparişi değiştir veya iptal et",ru:"Изменить или отменить заказ",fr:"Modifier ou annuler la commande",es:"Cambiar o cancelar el pedido",it:"Modifica o annulla l'ordine",pl:"Zmień lub anuluj zamówienie",ar:"تعديل الطلب أو إلغاؤه",uk:"Змінити або скасувати замовлення",nl:"Bestelling wijzigen of annuleren",ro:"Modificați sau anulați comanda"},
 "Bestellung ändern":{en:"Change the order",tr:"Siparişi değiştir",ru:"Изменить заказ",fr:"Modifier la commande",es:"Cambiar el pedido",it:"Modifica l'ordine",pl:"Zmień zamówienie",ar:"تعديل الطلب",uk:"Змінити замовлення",nl:"Bestelling wijzigen",ro:"Modificați comanda"},
-"Tippen Sie an, was weg soll. Oder ziehen Sie alles zurück.":{en:"Tap what should go. Or take the whole order back.",tr:"Çıkarılacakları seçin. Ya da tüm siparişi geri alın.",ru:"Отметьте, что убрать. Или отмените заказ целиком.",fr:"Touchez ce qui doit partir. Ou annulez toute la commande.",es:"Toque lo que debe quitarse. O retire todo el pedido.",it:"Tocchi ciò che va tolto. Oppure ritiri tutto l'ordine.",pl:"Dotknij, co ma zniknąć. Albo cofnij całe zamówienie.",ar:"اضغط على ما تريد إزالته. أو تراجع عن الطلب كله.",uk:"Торкніться того, що прибрати. Або скасуйте все замовлення.",nl:"Tik aan wat weg moet. Of trek de hele bestelling in.",ro:"Atingeți ce trebuie scos. Sau retrageți toată comanda."},
-"Ausgewähltes streichen":{en:"Remove selected",tr:"Seçilenleri çıkar",ru:"Убрать выбранное",fr:"Retirer la sélection",es:"Quitar lo seleccionado",it:"Togli i selezionati",pl:"Usuń zaznaczone",ar:"إزالة المحدد",uk:"Прибрати вибране",nl:"Selectie verwijderen",ro:"Eliminați selecția"},
+"Wählen Sie aus, was entfernt werden soll – oder ziehen Sie die gesamte Bestellung zurück.":{en:"Select what should be removed – or withdraw the entire order.",tr:"Çıkarılacakları seçin veya tüm siparişi geri çekin.",ru:"Выберите, что убрать, или отмените заказ целиком.",fr:"Sélectionnez ce qui doit être retiré – ou annulez toute la commande.",es:"Seleccione lo que desea quitar o retire todo el pedido.",it:"Selezioni ciò che va rimosso oppure ritiri l'intero ordine.",pl:"Wybierz, co ma zostać usunięte, lub wycofaj całe zamówienie.",ar:"اختر ما تريد إزالته أو تراجع عن الطلب بأكمله.",uk:"Виберіть, що прибрати, або скасуйте все замовлення.",nl:"Selecteer wat verwijderd moet worden – of trek de hele bestelling in.",ro:"Selectați ce trebuie eliminat sau retrageți întreaga comandă."},
+"Ausgewähltes entfernen":{en:"Remove selected",tr:"Seçilenleri çıkar",ru:"Убрать выбранное",fr:"Retirer la sélection",es:"Quitar lo seleccionado",it:"Togli i selezionati",pl:"Usuń zaznaczone",ar:"إزالة المحدد",uk:"Прибрати вибране",nl:"Selectie verwijderen",ro:"Eliminați selecția"},
 "Ganze Bestellung stornieren":{en:"Cancel the whole order",tr:"Tüm siparişi iptal et",ru:"Отменить весь заказ",fr:"Annuler toute la commande",es:"Cancelar todo el pedido",it:"Annulla tutto l'ordine",pl:"Anuluj całe zamówienie",ar:"إلغاء الطلب كله",uk:"Скасувати все замовлення",nl:"Hele bestelling annuleren",ro:"Anulați toată comanda"},
-"Doch nicht":{en:"Never mind",tr:"Vazgeçtim",ru:"Передумал",fr:"Finalement non",es:"Mejor no",it:"Lasci stare",pl:"Jednak nie",ar:"تراجعت",uk:"Передумав",nl:"Toch niet",ro:"Totuși nu"},
+"Abbrechen":{en:"Cancel",tr:"Vazgeç",ru:"Отмена",fr:"Annuler",es:"Cancelar",it:"Annulla",pl:"Anuluj",ar:"إلغاء",uk:"Скасувати",nl:"Annuleren",ro:"Anulează"},
 "Die ganze Bestellung zurückziehen?":{en:"Take the whole order back?",tr:"Tüm sipariş geri alınsın mı?",ru:"Отменить весь заказ?",fr:"Annuler toute la commande ?",es:"¿Retirar todo el pedido?",it:"Ritirare tutto l'ordine?",pl:"Cofnąć całe zamówienie?",ar:"هل تتراجع عن الطلب كله؟",uk:"Скасувати все замовлення?",nl:"De hele bestelling intrekken?",ro:"Retrageți toată comanda?"},
-"Die zwei Minuten sind um. Bitte sagen Sie kurz Bescheid.":{en:"The two minutes are up. Please let us know at the table.",tr:"İki dakika doldu. Lütfen bize haber verin.",ru:"Две минуты прошли. Скажите, пожалуйста, персоналу.",fr:"Les deux minutes sont écoulées. Faites-nous signe.",es:"Los dos minutos han pasado. Avísenos, por favor.",it:"I due minuti sono passati. Ce lo dica, per favore.",pl:"Dwie minuty minęły. Daj nam znać przy stoliku.",ar:"انتهت الدقيقتان. أخبرونا من فضلكم.",uk:"Дві хвилини минули. Скажіть, будь ласка, персоналу.",nl:"De twee minuten zijn om. Laat het ons even weten.",ro:"Cele două minute au trecut. Vă rugăm să ne spuneți."},
-"Die Küche ist schon dran. Bitte sagen Sie kurz Bescheid.":{en:"The kitchen has started. Please let us know at the table.",tr:"Mutfak başladı. Lütfen bize haber verin.",ru:"Кухня уже начала. Скажите, пожалуйста, персоналу.",fr:"La cuisine a commencé. Faites-nous signe.",es:"La cocina ya empezó. Avísenos, por favor.",it:"La cucina ha già iniziato. Ce lo dica, per favore.",pl:"Kuchnia już zaczęła. Daj nam znać przy stoliku.",ar:"المطبخ بدأ بالفعل. أخبرونا من فضلكم.",uk:"Кухня вже почала. Скажіть, будь ласка, персоналу.",nl:"De keuken is begonnen. Laat het ons even weten.",ro:"Bucătăria a început deja. Vă rugăm să ne spuneți."},
-"Das geht hier gerade nicht. Bitte sagen Sie kurz Bescheid.":{en:"That is not possible right now. Please let us know at the table.",tr:"Şu anda mümkün değil. Lütfen bize haber verin.",ru:"Сейчас это невозможно. Скажите, пожалуйста, персоналу.",fr:"Ce n'est pas possible pour le moment. Faites-nous signe.",es:"Ahora mismo no es posible. Avísenos, por favor.",it:"Ora non è possibile. Ce lo dica, per favore.",pl:"Teraz to niemożliwe. Daj nam znać przy stoliku.",ar:"هذا غير ممكن الآن. أخبرونا من فضلكم.",uk:"Зараз це неможливо. Скажіть, будь ласка, персоналу.",nl:"Dat kan nu niet. Laat het ons even weten.",ro:"Acum nu se poate. Vă rugăm să ne spuneți."},
-"Keine Verbindung. Bitte kurz Bescheid sagen.":{en:"No connection. Please let us know at the table.",tr:"Bağlantı yok. Lütfen bize haber verin.",ru:"Нет связи. Скажите, пожалуйста, персоналу.",fr:"Pas de connexion. Faites-nous signe.",es:"Sin conexión. Avísenos, por favor.",it:"Nessuna connessione. Ce lo dica, per favore.",pl:"Brak połączenia. Daj nam znać przy stoliku.",ar:"لا يوجد اتصال. أخبرونا من فضلكم.",uk:"Немає зв'язку. Скажіть, будь ласка, персоналу.",nl:"Geen verbinding. Laat het ons even weten.",ro:"Fără conexiune. Vă rugăm să ne spuneți."},
+"Die Frist von zwei Minuten ist abgelaufen. Bitte sprechen Sie unser Team an.":{en:"The two-minute window has passed. Please speak to our team.",tr:"İki dakikalık süre doldu. Lütfen ekibimizle konuşun.",ru:"Двухминутный срок истёк. Пожалуйста, обратитесь к нашей команде.",fr:"Le délai de deux minutes est écoulé. Veuillez vous adresser à notre équipe.",es:"Ha pasado el plazo de dos minutos. Diríjase, por favor, a nuestro equipo.",it:"Il termine di due minuti è scaduto. Si rivolga al nostro team.",pl:"Dwuminutowy termin minął. Proszę zwrócić się do naszego zespołu.",ar:"انتهت مهلة الدقيقتين. يرجى التوجّه إلى فريقنا.",uk:"Двохвилинний термін минув. Зверніться, будь ласка, до нашої команди.",nl:"De termijn van twee minuten is verstreken. Spreek ons team aan.",ro:"Termenul de două minute a expirat. Vă rugăm să vă adresați echipei noastre."},
+"Die Küche hat Ihre Bestellung bereits begonnen. Bitte sprechen Sie unser Team an.":{en:"The kitchen has already started your order. Please speak to our team.",tr:"Mutfak siparişinize başladı. Lütfen ekibimizle konuşun.",ru:"Кухня уже начала готовить ваш заказ. Пожалуйста, обратитесь к нашей команде.",fr:"La cuisine a déjà commencé votre commande. Veuillez vous adresser à notre équipe.",es:"La cocina ya ha empezado su pedido. Diríjase, por favor, a nuestro equipo.",it:"La cucina ha già iniziato il suo ordine. Si rivolga al nostro team.",pl:"Kuchnia rozpoczęła już realizację zamówienia. Proszę zwrócić się do naszego zespołu.",ar:"بدأ المطبخ بتحضير طلبكم. يرجى التوجّه إلى فريقنا.",uk:"Кухня вже почала готувати ваше замовлення. Зверніться, будь ласка, до нашої команди.",nl:"De keuken is al met uw bestelling begonnen. Spreek ons team aan.",ro:"Bucătăria a început deja comanda dvs. Vă rugăm să vă adresați echipei noastre."},
+"Das ist gerade nicht möglich. Bitte sprechen Sie unser Team an.":{en:"That is not possible right now. Please speak to our team.",tr:"Şu anda mümkün değil. Lütfen ekibimizle konuşun.",ru:"Сейчас это невозможно. Пожалуйста, обратитесь к нашей команде.",fr:"Ce n'est pas possible pour le moment. Veuillez vous adresser à notre équipe.",es:"Ahora mismo no es posible. Diríjase, por favor, a nuestro equipo.",it:"Al momento non è possibile. Si rivolga al nostro team.",pl:"W tej chwili to niemożliwe. Proszę zwrócić się do naszego zespołu.",ar:"هذا غير ممكن حاليًا. يرجى التوجّه إلى فريقنا.",uk:"Зараз це неможливо. Зверніться, будь ласка, до нашої команди.",nl:"Dat is nu niet mogelijk. Spreek ons team aan.",ro:"Momentan nu este posibil. Vă rugăm să vă adresați echipei noastre."},
+"Keine Verbindung. Bitte sprechen Sie unser Team an.":{en:"No connection. Please speak to our team.",tr:"Bağlantı yok. Lütfen ekibimizle konuşun.",ru:"Нет связи. Пожалуйста, обратитесь к нашей команде.",fr:"Pas de connexion. Veuillez vous adresser à notre équipe.",es:"Sin conexión. Diríjase, por favor, a nuestro equipo.",it:"Nessuna connessione. Si rivolga al nostro team.",pl:"Brak połączenia. Proszę zwrócić się do naszego zespołu.",ar:"لا يوجد اتصال. يرجى التوجّه إلى فريقنا.",uk:"Немає зв'язку. Зверніться, будь ласка, до нашої команди.",nl:"Geen verbinding. Spreek ons team aan.",ro:"Fără conexiune. Vă rugăm să vă adresați echipei noastre."},
 "Bestellung zurückgezogen.":{en:"Order cancelled.",tr:"Sipariş iptal edildi.",ru:"Заказ отменён.",fr:"Commande annulée.",es:"Pedido cancelado.",it:"Ordine annullato.",pl:"Zamówienie anulowane.",ar:"تم إلغاء الطلب.",uk:"Замовлення скасовано.",nl:"Bestelling geannuleerd.",ro:"Comandă anulată."},
-"Gestrichen.":{en:"Removed.",tr:"Çıkarıldı.",ru:"Убрано.",fr:"Retiré.",es:"Quitado.",it:"Tolto.",pl:"Usunięte.",ar:"تمت الإزالة.",uk:"Прибрано.",nl:"Verwijderd.",ro:"Eliminat."},
+"Entfernt.":{en:"Removed.",tr:"Çıkarıldı.",ru:"Убрано.",fr:"Retiré.",es:"Quitado.",it:"Tolto.",pl:"Usunięte.",ar:"تمت الإزالة.",uk:"Прибрано.",nl:"Verwijderd.",ro:"Eliminat."},
 "vom Team bestätigt":{en:"confirmed by the team",tr:"ekip tarafından onaylandı",ru:"подтверждено командой",fr:"confirmé par l'équipe",es:"confirmado por el equipo",it:"confermato dal team",pl:"potwierdzone przez zespół",ar:"مؤكد من الفريق",uk:"підтверджено командою",nl:"bevestigd door het team",ro:"confirmat de echipă"},
 "Schließen":{en:"Close",tr:"Kapat",ru:"Закрыть",fr:"Fermer",es:"Cerrar",it:"Chiudi",pl:"Zamknij",ar:"إغلاق",uk:"Закрити",nl:"Sluiten",ro:"Închide"},
 "Karte":{en:"Menu",tr:"Menü",ru:"Меню",fr:"Carte",es:"Carta",it:"Menù",pl:"Karta",ar:"القائمة",uk:"Меню",nl:"Kaart",ro:"Meniu"},
@@ -10847,8 +10853,8 @@ const TEXTE = {
 "ohne Zwiebeln":{en:"without onions",tr:"soğansız",ru:"без лука",fr:"sans oignons",es:"sin cebolla",it:"senza cipolle",pl:"bez cebuli",ar:"بدون بصل",uk:"без цибулі",nl:"zonder uien",ro:"fără ceapă"},
 "Beläge wählen":{en:"Choose toppings",tr:"Malzeme seç",ru:"Выбрать начинку",fr:"Choisir les garnitures",es:"Elegir ingredientes",it:"Scelga i condimenti",pl:"Wybór dodatków",ar:"اختر الإضافات",uk:"Обрати начинку",nl:"Toppings kiezen",ro:"Alege toppingurile"},
 "Zurück zur Startseite":{en:"Back to home page",tr:"Ana sayfaya dön",ru:"Назад на главную",fr:"Retour à l'accueil",es:"Volver al inicio",it:"Torna alla home",pl:"Wróć do strony głównej",ar:"العودة إلى الصفحة الرئيسية",uk:"Назад на головну",nl:"Terug naar de startpagina",ro:"Înapoi la pagina principală"},
-"Hier hakt gerade etwas.":{en:"Something is stuck here right now.",tr:"Burada bir şeyler takıldı.",ru:"Здесь что-то пошло не так.",fr:"Quelque chose coince ici.",es:"Aquí algo se ha atascado.",it:"Qui qualcosa si è bloccato.",pl:"Tutaj coś się zacięło.",ar:"حدث خلل هنا.",uk:"Тут щось не спрацювало.",nl:"Hier loopt iets vast.",ro:"Aici s-a blocat ceva."},
-"Bitte einmal zurück zur Übersicht, unser Team hilft Ihnen sonst gerne persönlich weiter.":{en:"Please head back to the overview, otherwise our team is happy to help you in person.",tr:"Lütfen genel bakışa dönün, aksi halde ekibimiz size memnuniyetle şahsen yardımcı olur.",ru:"Вернитесь, пожалуйста, к обзору, иначе наша команда с радостью поможет лично.",fr:"Revenez à l'aperçu, sinon notre équipe vous aide volontiers en personne.",es:"Vuelva al inicio; si no, nuestro equipo le ayuda con gusto en persona.",it:"Torni alla panoramica, altrimenti il nostro team la aiuta volentieri di persona.",pl:"Wróć do przeglądu, w innym razie nasz zespół chętnie pomoże osobiście.",ar:"يرجى العودة إلى النظرة العامة، وإلا فسيسعد فريقنا بمساعدتكم شخصياً.",uk:"Поверніться, будь ласка, до огляду, інакше наша команда радо допоможе особисто.",nl:"Ga even terug naar het overzicht, anders helpt ons team u graag persoonlijk.",ro:"Reveniți la prezentare, altfel echipa noastră vă ajută cu plăcere personal."},
+"Das hat gerade nicht funktioniert.":{en:"That didn't work just now.",tr:"Bu işlem şu anda gerçekleşmedi.",ru:"Сейчас это не удалось.",fr:"Cela n'a pas fonctionné à l'instant.",es:"Esto no ha funcionado en este momento.",it:"Questa operazione non è riuscita.",pl:"Ta operacja się nie powiodła.",ar:"لم تنجح هذه العملية الآن.",uk:"Зараз це не вдалося.",nl:"Dit is zojuist niet gelukt.",ro:"Acest lucru nu a reușit acum."},
+"Bitte kehren Sie zur Startseite zurück. Unser Team hilft Ihnen auch gern persönlich weiter.":{en:"Please return to the start page. Our team will also be glad to help you in person.",tr:"Lütfen başlangıç sayfasına dönün. Ekibimiz size memnuniyetle şahsen de yardımcı olur.",ru:"Вернитесь, пожалуйста, на главную страницу. Наша команда также с радостью поможет вам лично.",fr:"Veuillez revenir à la page d'accueil. Notre équipe se fera aussi un plaisir de vous aider en personne.",es:"Vuelva a la página de inicio. Nuestro equipo también le ayudará con mucho gusto en persona.",it:"Torni alla pagina iniziale. Il nostro team sarà lieto di aiutarla anche di persona.",pl:"Proszę wrócić na stronę główną. Nasz zespół chętnie pomoże również osobiście.",ar:"يرجى العودة إلى الصفحة الرئيسية. يسعد فريقنا أيضًا بمساعدتكم شخصيًا.",uk:"Поверніться, будь ласка, на головну сторінку. Наша команда також із радістю допоможе вам особисто.",nl:"Ga terug naar de startpagina. Ons team helpt u ook graag persoonlijk.",ro:"Vă rugăm să reveniți la pagina de start. Echipa noastră vă ajută cu plăcere și personal."},
 "Nichts gefunden. Versuchen Sie einen anderen Begriff.":{en:"Nothing found. Try another term.",tr:"Bir şey bulunamadı. Başka bir sözcük deneyin.",ru:"Ничего не найдено. Попробуйте другой запрос.",fr:"Aucun résultat. Essayez un autre mot.",es:"Sin resultados. Pruebe otra palabra.",it:"Nessun risultato. Prova un altro termine.",pl:"Brak wyników. Spróbuj inaczej.",ar:"لا نتائج. جرّب كلمة أخرى.",uk:"Нічого не знайдено. Спробуйте інакше.",nl:"Niets gevonden. Probeer een ander woord.",ro:"Niciun rezultat. Încercați alt termen."},
 "Alles auf einen Blick":{en:"Everything at a glance",tr:"Hepsi bir bakışta",ru:"Всё с первого взгляда",fr:"Tout en un coup d'œil",es:"Todo de un vistazo",it:"Tutto a colpo d'occhio",pl:"Wszystko w jednym miejscu",ar:"كل شيء في لمحة",uk:"Усе з першого погляду",nl:"Alles in één oogopslag",ro:"Totul dintr-o privire"},
 "Lassen Sie sich überraschen":{en:"Let us surprise you",tr:"Kendinizi şaşırtın",ru:"Позвольте нам удивить вас",fr:"Laissez-vous surprendre",es:"Déjese sorprender",it:"Lasciatevi sorprendere",pl:"Dajcie się zaskoczyć",ar:"دعنا نفاجئكم",uk:"Дозвольте нам вас здивувати",nl:"Laat u verrassen",ro:"Lăsați-vă surprinși"},
@@ -10914,7 +10920,7 @@ const TEXTE = {
 "Cocktails & Spirituosen":{en:"Cocktails & spirits",tr:"Kokteyller ve içkiler",ru:"Коктейли и крепкие напитки",fr:"Cocktails et spiritueux",es:"Cócteles y licores",it:"Cocktail e distillati",pl:"Koktajle i alkohole",ar:"الكوكتيلات والمشروبات الروحية",uk:"Коктейлі та міцні напої",nl:"Cocktails & sterke drank",ro:"Cocktailuri și băuturi spirtoase"},
 "Was unsere Bar heute Abend mixt":{en:"What our bar is mixing tonight",tr:"Barımızın bu akşam hazırladıkları",ru:"Что наш бар готовит сегодня",fr:"Ce que notre bar prépare ce soir",es:"Lo que prepara nuestra barra esta noche",it:"Cosa prepara il nostro bar stasera",pl:"Co dziś miesza nasz bar",ar:"ما يحضّره البار هذا المساء",uk:"Що наш бар готує сьогодні",nl:"Wat onze bar vanavond mixt",ro:"Ce prepară barul nostru diseară"},
 "WLAN verbinden":{en:"Connect to Wi-Fi",tr:"Wi-Fi bağlantısı",ru:"Подключить Wi-Fi",fr:"Se connecter au Wi-Fi",es:"Conectar al Wi-Fi",it:"Connettersi al Wi-Fi",pl:"Połącz z Wi-Fi",ar:"الاتصال بالواي فاي",uk:"Підключити Wi-Fi",nl:"Verbinden met wifi",ro:"Conectare la Wi-Fi"},
-"Ohne Passwort tippen – ein Tap genügt":{en:"No typing – one tap is enough",tr:"Şifre yazmadan – tek dokunuş yeter",ru:"Без ввода пароля — одно касание",fr:"Sans saisir de mot de passe",es:"Sin teclear la contraseña",it:"Senza digitare la password",pl:"Bez wpisywania hasła",ar:"دون كتابة كلمة المرور",uk:"Без введення пароля",nl:"Zonder wachtwoord typen",ro:"Fără să tastați parola"},
+"Verbinden ohne Passwort-Eingabe":{en:"Connect without typing a password",tr:"Şifre yazmadan bağlanın",ru:"Подключение без ввода пароля",fr:"Connexion sans saisir de mot de passe",es:"Conéctese sin escribir la contraseña",it:"Connessione senza digitare la password",pl:"Połączenie bez wpisywania hasła",ar:"اتصال دون كتابة كلمة المرور",uk:"Підключення без введення пароля",nl:"Verbinden zonder wachtwoord in te typen",ro:"Conectare fără a tasta parola"},
 "Musikwunsch":{en:"Song request",tr:"Şarkı isteği",ru:"Заказ песни",fr:"Demander une chanson",es:"Pedir una canción",it:"Richiesta musicale",pl:"Zamów piosenkę",ar:"طلب أغنية",uk:"Замовити пісню",nl:"Muziekverzoek",ro:"Cerere muzicală"},
 "Geht direkt an die Bar":{en:"Goes straight to the bar",tr:"Doğrudan bara iletilir",ru:"Отправляется прямо в бар",fr:"Va directement au bar",es:"Va directo a la barra",it:"Arriva subito al bar",pl:"Trafia prosto do baru",ar:"يصل مباشرة إلى البار",uk:"Надходить прямо в бар",nl:"Gaat rechtstreeks naar de bar",ro:"Ajunge direct la bar"},
 /* ---- Gerichtsnamen (nur echte deutsche Bezeichnungen; Markennamen
@@ -11236,14 +11242,14 @@ const TEXTE = {
 "Allergene":{en:"Allergens",tr:"Alerjenler",ru:"Аллергены",fr:"Allergènes",es:"Alérgenos",it:"Allergeni",pl:"Alergeny",ar:"مسببات الحساسية",uk:"Алергени",nl:"Allergenen",ro:"Alergeni"},
 "Zusatzstoffe":{en:"Additives",tr:"Katkı maddeleri",ru:"Пищевые добавки",fr:"Additifs",es:"Aditivos",it:"Additivi",pl:"Dodatki",ar:"الإضافات الغذائية",uk:"Харчові добавки",nl:"Toevoegingen",ro:"Aditivi"},
 "Für dieses Gericht sind die Angaben noch nicht hinterlegt. Unser Serviceteam gibt Ihnen gerne persönlich Auskunft.":{en:"Details for this item have not been added yet. Our service team will gladly help you in person.",tr:"Bu ürün için bilgiler henüz eklenmedi. Servis ekibimiz size memnuniyetle bilgi verir.",ru:"Данные по этому блюду ещё не внесены. Наша команда с радостью подскажет лично.",fr:"Les informations pour ce plat ne sont pas encore renseignées. Notre équipe vous renseigne volontiers.",es:"Los datos de este plato aún no están registrados. Nuestro equipo le informa con mucho gusto.",it:"I dati per questo piatto non sono ancora inseriti. Il nostro team vi informa volentieri.",pl:"Dane dla tej pozycji nie zostały jeszcze dodane. Nasza obsługa chętnie udzieli informacji.",ar:"لم تُضف بيانات هذا الطبق بعد. يسعد فريق الخدمة بإفادتكم شخصياً.",uk:"Дані щодо цієї страви ще не внесені. Наша команда охоче підкаже особисто.",nl:"De gegevens voor dit gerecht zijn nog niet ingevoerd. Ons team helpt u graag persoonlijk.",ro:"Datele pentru acest preparat nu au fost încă adăugate. Echipa noastră vă informează cu plăcere."},
-"Angaben ohne Gewähr. Bei Allergien oder Unverträglichkeiten sprechen Sie bitte immer unser Serviceteam an.":{en:"Information without guarantee. In case of allergies or intolerances, please always speak to our service team.",tr:"Bilgiler garanti edilmez. Alerji veya intolerans durumunda lütfen daima servis ekibimize danışın.",ru:"Информация без гарантии. При аллергии или непереносимости всегда обращайтесь к нашей команде.",fr:"Informations sans garantie. En cas d'allergie ou d'intolérance, adressez-vous toujours à notre équipe.",es:"Información sin garantía. En caso de alergias o intolerancias, consulte siempre a nuestro equipo.",it:"Informazioni senza garanzia. In caso di allergie o intolleranze rivolgetevi sempre al nostro team.",pl:"Informacje bez gwarancji. W razie alergii lub nietolerancji prosimy zawsze pytać obsługę.",ar:"المعلومات دون ضمان. في حال وجود حساسية أو عدم تحمل، يُرجى دائماً مراجعة فريق الخدمة.",uk:"Інформація без гарантії. У разі алергії чи непереносимості завжди звертайтеся до нашої команди.",nl:"Informatie onder voorbehoud. Bij allergieën of intoleranties altijd ons team raadplegen.",ro:"Informații fără garanție. În caz de alergii sau intoleranțe, adresați-vă întotdeauna echipei noastre."},
+"Bei Allergien oder Unverträglichkeiten fragen Sie bitte vor der Bestellung unser Serviceteam. Die Angaben zu Allergenen und Zusatzstoffen stammen vom Betrieb.":{en:"If you have allergies or intolerances, please ask our service team before ordering. The information on allergens and additives is provided by the establishment.",tr:"Alerji veya hoşgörüsüzlüğünüz varsa lütfen sipariş vermeden önce servis ekibimize danışın. Alerjen ve katkı maddesi bilgileri işletme tarafından sağlanmaktadır.",ru:"При аллергии или непереносимости, пожалуйста, перед заказом обратитесь к нашему персоналу. Сведения об аллергенах и добавках предоставлены заведением.",fr:"En cas d'allergie ou d'intolérance, veuillez demander à notre équipe avant de commander. Les informations sur les allergènes et les additifs proviennent de l'établissement.",es:"Si tiene alergias o intolerancias, consulte a nuestro personal antes de pedir. La información sobre alérgenos y aditivos procede del establecimiento.",it:"In caso di allergie o intolleranze, chieda al nostro personale prima di ordinare. Le informazioni su allergeni e additivi provengono dall'esercizio.",pl:"W przypadku alergii lub nietolerancji prosimy zapytać nasz zespół przed złożeniem zamówienia. Informacje o alergenach i dodatkach pochodzą od lokalu.",ar:"في حال وجود حساسية أو عدم تحمّل، يُرجى سؤال فريق الخدمة لدينا قبل الطلب. معلومات مسببات الحساسية والإضافات مقدَّمة من المنشأة.",uk:"У разі алергії чи непереносимості, будь ласка, зверніться до нашого персоналу перед замовленням. Відомості про алергени та добавки надає заклад.",nl:"Bij allergieën of intoleranties vraagt u het servicepersoneel vóór het bestellen. De gegevens over allergenen en toevoegingen komen van het bedrijf.",ro:"În caz de alergii sau intoleranțe, vă rugăm să întrebați echipa noastră înainte de a comanda. Informațiile despre alergeni și aditivi provin de la unitate."},
 "Zur Auswahl hinzufügen":{en:"Add to selection",tr:"Seçime ekle",ru:"Добавить к выбору",fr:"Ajouter à la sélection",es:"Añadir a la selección",it:"Aggiungi alla selezione",pl:"Dodaj do wyboru",ar:"أضف إلى الاختيار",uk:"Додати до вибору",nl:"Aan selectie toevoegen",ro:"Adaugă la selecție"},
 "Aus meiner Auswahl entfernen":{en:"Remove from selection",tr:"Seçimden çıkar",ru:"Убрать из выбора",fr:"Retirer de la sélection",es:"Quitar de la selección",it:"Rimuovi dalla selezione",pl:"Usuń z wyboru",ar:"إزالة من الاختيار",uk:"Прибрати з вибору",nl:"Uit selectie verwijderen",ro:"Elimină din selecție"},
 "Infos zu {x}":{en:"Details about {x}",tr:"{x} hakkında bilgi",ru:"Информация о {x}",fr:"Infos sur {x}",es:"Información sobre {x}",it:"Informazioni su {x}",pl:"Informacje o {x}",ar:"معلومات عن {x}",uk:"Інформація про {x}",nl:"Info over {x}",ro:"Informații despre {x}"},
 "Tippen Sie ein Gericht an, um Inhaltsstoffe zu sehen. Bei Allergien fragen Sie bitte zusätzlich unser Serviceteam.":{en:"Tap an item to see its ingredients. In case of allergies, please also ask our service team.",tr:"İçindekileri görmek için bir ürüne dokunun. Alerji durumunda lütfen ayrıca servis ekibimize sorun.",ru:"Нажмите на позицию, чтобы увидеть состав. При аллергии дополнительно спросите нашу команду.",fr:"Touchez un plat pour voir sa composition. En cas d'allergie, demandez aussi à notre équipe.",es:"Toque un plato para ver los ingredientes. En caso de alergia, pregunte también a nuestro equipo.",it:"Toccate un piatto per vedere gli ingredienti. In caso di allergie chiedete anche al nostro team.",pl:"Dotknij pozycji, aby zobaczyć skład. W razie alergii zapytaj dodatkowo obsługę.",ar:"اضغط على الطبق لعرض المكونات. في حال الحساسية يُرجى سؤال فريق الخدمة أيضاً.",uk:"Торкніться страви, щоб побачити склад. У разі алергії додатково запитайте нашу команду.",nl:"Tik op een gerecht voor de ingrediënten. Vraag bij allergieën ook ons team.",ro:"Atingeți un preparat pentru a vedea ingredientele. În caz de alergii, întrebați și echipa noastră."},
 "Service rufen":{en:"Call service",tr:"Servis çağır",ru:"Позвать официанта",fr:"Appeler le service",es:"Llamar al servicio",it:"Chiamare il servizio",pl:"Wezwij obsługę",ar:"استدعاء الخدمة",uk:"Покликати офіціанта",nl:"Bediening roepen",ro:"Cheamă ospătarul"},
-"Zahlen, nachbestellen, kurz Bescheid geben":{en:"Pay, order more, or just let us know",tr:"Ödeme, sipariş ya da kısa bir haber",ru:"Оплатить, дозаказать, дать знать",fr:"Payer, recommander, nous prévenir",es:"Pagar, pedir más o avisarnos",it:"Pagare, riordinare, avvisarci",pl:"Zapłacić, dozamówić, dać znać",ar:"الدفع أو طلب المزيد أو إبلاغنا",uk:"Оплатити, дозамовити, повідомити",nl:"Betalen, nabestellen of iets melden",ro:"Plată, comandă nouă sau un semn"},
-"Kein Winken nötig. Tippen Sie an, was Sie brauchen – wir kommen zu Ihnen.":{en:"No need to wave. Tap what you need and we'll come to you.",tr:"El sallamanıza gerek yok. İhtiyacınız olana dokunun, size geliriz.",ru:"Не нужно махать рукой. Нажмите, что вам нужно, — мы подойдём.",fr:"Inutile de faire signe. Touchez ce dont vous avez besoin, nous arrivons.",es:"No hace falta llamar la atención. Toque lo que necesita y vamos.",it:"Non serve fare cenno. Toccate ciò che vi serve e arriviamo.",pl:"Nie trzeba machać. Dotknij, czego potrzebujesz – przyjdziemy.",ar:"لا داعي للإشارة. اضغط على ما تحتاجه وسنأتي إليك.",uk:"Не треба махати. Торкніться того, що потрібно, — ми підійдемо.",nl:"Zwaaien hoeft niet. Tik aan wat u nodig heeft, wij komen eraan.",ro:"Nu e nevoie să faceți semn. Atingeți ce vă trebuie și venim."},
+"Zahlen, nachbestellen oder Hilfe anfordern":{en:"Pay, order more or ask for help",tr:"Ödeme, ek sipariş veya yardım isteyin",ru:"Оплатить, дозаказать или позвать на помощь",fr:"Payer, recommander ou demander de l'aide",es:"Pagar, pedir más o solicitar ayuda",it:"Pagare, riordinare o chiedere aiuto",pl:"Zapłacić, dozamówić lub poprosić o pomoc",ar:"الدفع أو طلب المزيد أو طلب المساعدة",uk:"Оплатити, дозамовити або покликати на допомогу",nl:"Betalen, nabestellen of hulp vragen",ro:"Plată, comandă suplimentară sau cerere de ajutor"},
+"Wählen Sie aus, was Sie brauchen – wir kommen zu Ihnen.":{en:"Choose what you need – we will come to you.",tr:"İhtiyacınız olanı seçin; size geliyoruz.",ru:"Выберите, что вам нужно, — мы подойдём к вам.",fr:"Choisissez ce dont vous avez besoin, nous venons à vous.",es:"Elija lo que necesita y acudiremos a su mesa.",it:"Scelga ciò di cui ha bisogno: veniamo da lei.",pl:"Proszę wybrać, czego Państwo potrzebują – podejdziemy do stolika.",ar:"اختاروا ما تحتاجونه وسنأتي إليكم.",uk:"Оберіть, що вам потрібно, — ми підійдемо до вас.",nl:"Kies wat u nodig hebt, dan komen wij naar u toe.",ro:"Alegeți ce aveți nevoie – venim la dumneavoastră."},
 "Wir möchten zahlen":{en:"We'd like to pay",tr:"Ödemek istiyoruz",ru:"Мы хотели бы рассчитаться",fr:"Nous aimerions régler",es:"Queremos pagar",it:"Vorremmo pagare",pl:"Chcemy zapłacić",ar:"نود الدفع",uk:"Ми хотіли б розрахуватися",nl:"Wij willen graag afrekenen",ro:"Dorim să plătim"},
 "Noch eine Runde, bitte":{en:"Another round, please",tr:"Bir tur daha, lütfen",ru:"Ещё по одной, пожалуйста",fr:"Une autre tournée, s'il vous plaît",es:"Otra ronda, por favor",it:"Un altro giro, per favore",pl:"Jeszcze jedna kolejka, proszę",ar:"جولة أخرى من فضلكم",uk:"Ще по одній, будь ласка",nl:"Nog een rondje, graag",ro:"Încă un rând, vă rog"},
 "Bitte einmal an den Tisch":{en:"Please come to our table",tr:"Lütfen masamıza gelin",ru:"Подойдите, пожалуйста, к столику",fr:"Pouvez-vous venir à notre table",es:"Por favor, acérquense a la mesa",it:"Potete venire al tavolo",pl:"Prosimy podejść do stolika",ar:"من فضلكم تعالوا إلى الطاولة",uk:"Підійдіть, будь ласка, до столика",nl:"Kunt u even naar onze tafel komen",ro:"Vă rugăm veniți la masă"},
@@ -11293,8 +11299,8 @@ const TEXTE = {
 "z. B. WILLKOMMEN10":{en:"e.g. WELCOME10",tr:"örn. HOSGELDIN10",ru:"например, WELCOME10",fr:"p. ex. BIENVENUE10",es:"p. ej. BIENVENIDO10",it:"es. BENVENUTO10",pl:"np. WITAMY10",ar:"مثلاً WELCOME10",uk:"наприклад, WELCOME10",nl:"bijv. WELKOM10",ro:"de ex. BINEVENIT10"},
 "Wichtig:":{en:"Important:",tr:"Önemli:",ru:"Важно:",fr:"Important :",es:"Importante:",it:"Importante:",pl:"Ważne:",ar:"مهم:",uk:"Важливо:",nl:"Belangrijk:",ro:"Important:"},
 "Hier wird nicht bezahlt. Ihre Bestellung geht an unser Team, wir bestätigen sie bei Ihnen am Tisch. Abgerechnet wird wie immer beim Personal.":{en:"No payment here. Your order goes to our team and we'll confirm it at your table. You settle up with our staff as usual.",tr:"Burada ödeme yapılmaz. Siparişiniz ekibimize gider, masanızda onaylarız. Hesap her zamanki gibi personelde ödenir.",ru:"Здесь не оплачивают. Заказ уходит нашей команде, мы подтвердим его у вашего столика. Рассчитываетесь, как обычно, у персонала.",fr:"Aucun paiement ici. Votre commande part vers notre équipe, nous la confirmons à votre table. Le règlement se fait comme d'habitude auprès du personnel.",es:"Aquí no se paga. Su pedido llega a nuestro equipo y se lo confirmamos en la mesa. Se abona como siempre al personal.",it:"Qui non si paga. L'ordine arriva al nostro team e ve lo confermiamo al tavolo. Si salda come sempre con il personale.",pl:"Tu się nie płaci. Zamówienie trafia do naszego zespołu, potwierdzimy je przy stoliku. Rachunek regulujesz jak zwykle u obsługi.",ar:"لا دفع هنا. يصل طلبكم إلى فريقنا ونؤكده لكم على الطاولة. الحساب كالمعتاد لدى الموظفين.",uk:"Тут не платять. Замовлення надходить нашій команді, ми підтвердимо його біля столика. Розрахунок, як завжди, у персоналу.",nl:"Hier wordt niet betaald. Uw bestelling gaat naar ons team en we bevestigen die aan tafel. Afrekenen doet u zoals altijd bij het personeel.",ro:"Aici nu se plătește. Comanda ajunge la echipa noastră și o confirmăm la masă. Plata se face ca de obicei la personal."},
-"Bestellung ist da!":{en:"Order received!",tr:"Siparişiniz alındı!",ru:"Заказ получен!",fr:"Commande reçue !",es:"¡Pedido recibido!",it:"Ordine ricevuto!",pl:"Zamówienie przyjęte!",ar:"تم استلام الطلب!",uk:"Замовлення отримано!",nl:"Bestelling ontvangen!",ro:"Comandă primită!"},
-"Live-Status":{en:"Live status",tr:"Canlı durum",ru:"Статус заказа",fr:"Statut en direct",es:"Estado en vivo",it:"Stato in tempo reale",pl:"Status na żywo",ar:"الحالة المباشرة",uk:"Статус наживо",nl:"Live status",ro:"Stare live"},
+"Bestellung eingegangen":{en:"Order received",tr:"Sipariş alındı",ru:"Заказ получен",fr:"Commande reçue",es:"Pedido recibido",it:"Ordine ricevuto",pl:"Zamówienie przyjęte",ar:"تم استلام الطلب",uk:"Замовлення отримано",nl:"Bestelling ontvangen",ro:"Comandă primită"},
+"Stand Ihrer Bestellung":{en:"Order status",tr:"Sipariş durumu",ru:"Статус заказа",fr:"État de votre commande",es:"Estado de su pedido",it:"Stato del suo ordine",pl:"Status zamówienia",ar:"حالة طلبكم",uk:"Статус замовлення",nl:"Status van uw bestelling",ro:"Starea comenzii dvs."},
 "Angenommen":{en:"Received",tr:"Alındı",ru:"Принят",fr:"Reçue",es:"Recibido",it:"Ricevuto",pl:"Przyjęte",ar:"تم الاستلام",uk:"Прийнято",nl:"Ontvangen",ro:"Primită"},
 "Wird zubereitet":{en:"Being prepared",tr:"Hazırlanıyor",ru:"Готовится",fr:"En préparation",es:"En preparación",it:"In preparazione",pl:"W przygotowaniu",ar:"قيد التحضير",uk:"Готується",nl:"Wordt bereid",ro:"În pregătire"},
 "Ist unterwegs zu Ihnen":{en:"On its way to you",tr:"Masanıza geliyor",ru:"Уже несут к вам",fr:"En route vers vous",es:"En camino a su mesa",it:"In arrivo al tavolo",pl:"W drodze do Państwa",ar:"في الطريق إليكم",uk:"Вже прямує до вас",nl:"Onderweg naar u",ro:"Este pe drum spre dvs."},
@@ -11302,10 +11308,8 @@ const TEXTE = {
 /* --- Bestellpass: Nummer und Phasen --- */
 "IHRE NUMMER":{en:"YOUR NUMBER",tr:"NUMARANIZ",ru:"ВАШ НОМЕР",fr:"VOTRE NUMÉRO",es:"SU NÚMERO",it:"IL VOSTRO NUMERO",pl:"PAŃSTWA NUMER",ar:"رقمكم",uk:"ВАШ НОМЕР",nl:"UW NUMMER",ro:"NUMĂRUL DVS."},
 "Nummer kommt gleich":{en:"Number coming up",tr:"Numara birazdan",ru:"Номер сейчас будет",fr:"Numéro dans un instant",es:"El número llega enseguida",it:"Il numero arriva subito",pl:"Numer za chwilę",ar:"الرقم بعد لحظات",uk:"Номер зараз буде",nl:"Nummer komt zo",ro:"Numărul vine imediat"},
-"Bestellzettel hängt":{en:"Ticket is up",tr:"Fiş asıldı",ru:"Заказ принят на кухне",fr:"Le bon est affiché",es:"La comanda está puesta",it:"Il biglietto è appeso",pl:"Zamówienie na tablicy",ar:"الطلب مُعلَّق في المطبخ",uk:"Замовлення на кухні",nl:"Bon hangt klaar",ro:"Bonul este afișat"},
-"Kommt in die Pfanne":{en:"Into the pan",tr:"Tavaya giriyor",ru:"Отправляется на сковороду",fr:"Ça passe en cuisine",es:"A la sartén",it:"In padella",pl:"Ląduje na patelni",ar:"على النار الآن",uk:"Вирушає на сковороду",nl:"De pan in",ro:"Intră în tigaie"},
-"Fertig — kommt zum Tisch":{en:"Ready — on its way",tr:"Hazır — masanıza geliyor",ru:"Готово — несут к столу",fr:"Prêt — on arrive",es:"Listo — va a su mesa",it:"Pronto — arriva al tavolo",pl:"Gotowe — już niesiemy",ar:"جاهز — في طريقه إليكم",uk:"Готово — вже несемо",nl:"Klaar — komt eraan",ro:"Gata — vine la masă"},
-"Wir haben Ihre Bestellung erhalten und kommen gleich zu Ihnen an den Tisch.":{en:"We've got your order and will be at your table shortly.",tr:"Siparişinizi aldık, birazdan masanıza geliyoruz.",ru:"Мы получили ваш заказ и скоро подойдём к столику.",fr:"Nous avons votre commande et arrivons à votre table.",es:"Hemos recibido su pedido y vamos enseguida a su mesa.",it:"Abbiamo ricevuto il vostro ordine e arriviamo subito al tavolo.",pl:"Mamy Państwa zamówienie, zaraz będziemy przy stoliku.",ar:"استلمنا طلبكم وسنأتي إلى طاولتكم قريباً.",uk:"Ми отримали ваше замовлення й скоро підійдемо до столика.",nl:"We hebben uw bestelling en komen zo naar uw tafel.",ro:"Am primit comanda și venim imediat la masă."},
+"Ihre Bestellung ist fertig":{en:"Your order is ready",tr:"Siparişiniz hazır",ru:"Ваш заказ готов",fr:"Votre commande est prête",es:"Su pedido está listo",it:"Il suo ordine è pronto",pl:"Państwa zamówienie jest gotowe",ar:"طلبكم جاهز",uk:"Ваше замовлення готове",nl:"Uw bestelling is klaar",ro:"Comanda dvs. este gata"},
+"Wir haben Ihre Bestellung erhalten und bringen sie Ihnen an den Tisch.":{en:"We have received your order and will bring it to your table.",tr:"Siparişinizi aldık ve masanıza getireceğiz.",ru:"Мы получили ваш заказ и принесём его к вашему столику.",fr:"Nous avons bien reçu votre commande et vous l'apporterons à votre table.",es:"Hemos recibido su pedido y se lo llevaremos a la mesa.",it:"Abbiamo ricevuto il suo ordine e glielo porteremo al tavolo.",pl:"Otrzymaliśmy Państwa zamówienie i przyniesiemy je do stolika.",ar:"استلمنا طلبكم وسنحضره إلى طاولتكم.",uk:"Ми отримали ваше замовлення й принесемо його до вашого столика.",nl:"We hebben uw bestelling ontvangen en brengen die naar uw tafel.",ro:"Am primit comanda dvs. și v-o vom aduce la masă."},
 "Bestellung":{en:"Order",tr:"Sipariş",ru:"Заказ",fr:"Commande",es:"Pedido",it:"Ordine",pl:"Zamówienie",ar:"الطلب",uk:"Замовлення",nl:"Bestelling",ro:"Comandă"},
 "Summe":{en:"Total",tr:"Toplam",ru:"Итого",fr:"Total",es:"Total",it:"Totale",pl:"Suma",ar:"الإجمالي",uk:"Разом",nl:"Totaal",ro:"Total"},
 "Noch etwas bestellen":{en:"Order something else",tr:"Bir şey daha sipariş et",ru:"Заказать ещё",fr:"Commander autre chose",es:"Pedir algo más",it:"Ordinare altro",pl:"Zamów coś jeszcze",ar:"اطلب شيئاً آخر",uk:"Замовити ще",nl:"Nog iets bestellen",ro:"Mai comand ceva"},
@@ -11325,9 +11329,9 @@ const TEXTE = {
 "Bezahlt wird bei der Abholung. Sollte etwas nicht stimmen, sagen Sie uns bitte kurz Bescheid.":{en:"You pay on pickup. If anything is off, just let us know.",tr:"Ödeme teslim alırken yapılır. Bir sorun olursa lütfen bize kısaca haber verin.",ru:"Оплата при получении. Если что-то не так, просто скажите нам.",fr:"Le paiement se fait au retrait. Si quelque chose ne va pas, dites-le-nous simplement.",es:"Se paga al recoger. Si algo no cuadra, avísenos, por favor.",it:"Si paga al ritiro. Se qualcosa non torna, ce lo dica pure.",pl:"Płatność przy odbiorze. Jeśli coś się nie zgadza, daj nam znać.",ar:"الدفع عند الاستلام. إذا كان هناك أي خطأ، أخبرنا بذلك.",uk:"Оплата під час отримання. Якщо щось не так, просто скажіть нам.",nl:"Betalen doet u bij het afhalen. Klopt er iets niet, laat het ons dan even weten.",ro:"Se plătește la ridicare. Dacă ceva nu e în regulă, spuneți-ne."},
 "Fertig — bitte abholen":{en:"Ready — please pick up",tr:"Hazır — lütfen teslim alın",ru:"Готово — заберите, пожалуйста",fr:"Prêt — à venir chercher",es:"Listo — puede recogerlo",it:"Pronto — può ritirare",pl:"Gotowe — zapraszamy po odbiór",ar:"جاهز — يرجى الاستلام",uk:"Готово — заберіть, будь ласка",nl:"Klaar — kom het halen",ro:"Gata — vă rugăm să ridicați"},
 "Ist abholbereit":{en:"Ready for pickup",tr:"Teslime hazır",ru:"Готово к выдаче",fr:"Prêt à être retiré",es:"Listo para recoger",it:"Pronto per il ritiro",pl:"Gotowe do odbioru",ar:"جاهز للاستلام",uk:"Готово до видачі",nl:"Klaar om af te halen",ro:"Gata de ridicare"},
-"Diese Abholung klappt gerade nicht":{en:"This pickup isn't working right now",tr:"Bu teslim alma şu anda çalışmıyor",ru:"Самовывоз сейчас недоступен",fr:"Ce retrait ne fonctionne pas pour le moment",es:"Esta recogida no funciona ahora mismo",it:"Questo ritiro al momento non funziona",pl:"Odbiór chwilowo nie działa",ar:"الاستلام لا يعمل حاليًا",uk:"Самовивіз зараз не працює",nl:"Dit afhalen werkt nu even niet",ro:"Această ridicare nu funcționează acum"},
+"Diese Abholung ist gerade nicht möglich":{en:"This pickup is not possible right now",tr:"Bu teslim alma şu anda mümkün değil",ru:"Самовывоз сейчас недоступен",fr:"Ce retrait n'est pas possible pour le moment",es:"Esta recogida no es posible ahora mismo",it:"Questo ritiro al momento non è possibile",pl:"Odbiór jest chwilowo niemożliwy",ar:"الاستلام غير ممكن حاليًا",uk:"Самовивіз зараз неможливий",nl:"Afhalen is nu niet mogelijk",ro:"Această ridicare nu este posibilă acum"},
 "Bezahlt wird beim Personal. Sollte etwas nicht stimmen, sagen Sie uns bitte kurz Bescheid.":{en:"You pay our staff. If anything isn't right, please just tell us.",tr:"Ödeme personele yapılır. Bir sorun olursa lütfen bize söyleyin.",ru:"Оплата у персонала. Если что-то не так, просто скажите нам.",fr:"Le paiement se fait auprès du personnel. Si quelque chose ne va pas, dites-le nous.",es:"Se paga al personal. Si algo no está bien, díganoslo sin más.",it:"Si paga al personale. Se qualcosa non va, ditecelo pure.",pl:"Płatność u obsługi. Jeśli coś się nie zgadza, po prostu nam powiedz.",ar:"الدفع لدى الموظفين. إن كان هناك خطأ، أخبرونا من فضلكم.",uk:"Оплата в персоналу. Якщо щось не так, просто скажіть нам.",nl:"Betalen doet u bij het personeel. Klopt er iets niet, zeg het gerust.",ro:"Plata se face la personal. Dacă ceva nu e în regulă, spuneți-ne."},
-"Das hat nicht geklappt. Bitte sprechen Sie uns kurz an – oder versuchen Sie es gleich noch einmal.":{en:"That didn't work. Please just tell us – or try again in a moment.",tr:"Bu olmadı. Lütfen bize söyleyin ya da birazdan tekrar deneyin.",ru:"Не получилось. Просто скажите нам — или попробуйте ещё раз.",fr:"Cela n'a pas fonctionné. Dites-le nous ou réessayez dans un instant.",es:"No ha funcionado. Díganoslo o inténtelo de nuevo en un momento.",it:"Non ha funzionato. Ditecelo pure o riprovate tra poco.",pl:"Nie udało się. Powiedz nam albo spróbuj za chwilę.",ar:"لم ينجح الأمر. أخبرونا من فضلكم أو حاولوا مرة أخرى.",uk:"Не вдалося. Просто скажіть нам — або спробуйте ще раз.",nl:"Dat lukte niet. Zeg het ons even of probeer het zo nog eens.",ro:"Nu a funcționat. Spuneți-ne sau încercați din nou."},
+"Das war nicht erfolgreich. Bitte sprechen Sie uns an – oder versuchen Sie es gleich noch einmal.":{en:"That didn't work. Please just tell us – or try again in a moment.",tr:"Bu olmadı. Lütfen bize söyleyin ya da birazdan tekrar deneyin.",ru:"Не получилось. Просто скажите нам — или попробуйте ещё раз.",fr:"Cela n'a pas fonctionné. Dites-le nous ou réessayez dans un instant.",es:"No ha funcionado. Díganoslo o inténtelo de nuevo en un momento.",it:"Non ha funzionato. Ditecelo pure o riprovate tra poco.",pl:"Nie udało się. Powiedz nam albo spróbuj za chwilę.",ar:"لم ينجح الأمر. أخبرونا من فضلكم أو حاولوا مرة أخرى.",uk:"Не вдалося. Просто скажіть нам — або спробуйте ще раз.",nl:"Dat lukte niet. Zeg het ons even of probeer het zo nog eens.",ro:"Nu a funcționat. Spuneți-ne sau încercați din nou."},
 "Die Verbindung ist gerade schwierig. Sie können uns Ihre Bestellung auch als Nachricht schicken:":{en:"The connection is poor right now. You can also send us your order as a message:",tr:"Bağlantı şu an zayıf. Siparişinizi mesaj olarak da gönderebilirsiniz:",ru:"Связь сейчас плохая. Вы можете отправить заказ сообщением:",fr:"La connexion est mauvaise. Vous pouvez aussi envoyer votre commande par message :",es:"La conexión falla ahora. También puede enviarnos el pedido por mensaje:",it:"La connessione è debole. Potete inviarci l'ordine anche via messaggio:",pl:"Połączenie jest słabe. Możesz wysłać zamówienie wiadomością:",ar:"الاتصال ضعيف حالياً. يمكنكم إرسال الطلب كرسالة أيضاً:",uk:"Зв'язок зараз слабкий. Ви можете надіслати замовлення повідомленням:",nl:"De verbinding is nu slecht. U kunt uw bestelling ook als bericht sturen:",ro:"Conexiunea e slabă acum. Puteți trimite comanda și ca mesaj:"},
 "Als Nachricht senden":{en:"Send as message",tr:"Mesaj olarak gönder",ru:"Отправить сообщением",fr:"Envoyer par message",es:"Enviar por mensaje",it:"Invia come messaggio",pl:"Wyślij wiadomością",ar:"إرسال كرسالة",uk:"Надіслати повідомленням",nl:"Als bericht sturen",ro:"Trimite ca mesaj"},
 "Ihre Auswahl ist noch leer.":{en:"Your selection is still empty.",tr:"Seçiminiz henüz boş.",ru:"Ваш выбор пока пуст.",fr:"Votre sélection est encore vide.",es:"Su selección está vacía.",it:"La vostra selezione è ancora vuota.",pl:"Państwa wybór jest jeszcze pusty.",ar:"اختياركم فارغ حتى الآن.",uk:"Ваш вибір поки порожній.",nl:"Uw selectie is nog leeg.",ro:"Selecția dvs. este încă goală."},
@@ -11391,7 +11395,6 @@ const TEXTE = {
 "Im Haus bestellen":{en:"Order here in the restaurant",tr:"Restoranda sipariş ver",ru:"Заказать в заведении",fr:"Commander sur place",es:"Pedir en el local",it:"Ordina sul posto",pl:"Zamów na miejscu",ar:"اطلب في المطعم",uk:"Замовити в закладі",nl:"In de zaak bestellen",ro:"Comandă în local"},
 "Liefern lassen":{en:"Get it delivered",tr:"Eve teslim",ru:"С доставкой",fr:"Se faire livrer",es:"Pedir a domicilio",it:"Farsi consegnare",pl:"Z dostawą",ar:"اطلب التوصيل",uk:"З доставкою",nl:"Laten bezorgen",ro:"Cu livrare"},
 "Bestellart":{en:"Order type",tr:"Sipariş türü",ru:"Способ заказа",fr:"Mode de commande",es:"Tipo de pedido",it:"Tipo di ordine",pl:"Sposób zamówienia",ar:"نوع الطلب",uk:"Спосіб замовлення",nl:"Soort bestelling",ro:"Tip comandă"},
-"Gerade zu":{en:"Closed now",tr:"Şu an kapalı",ru:"Сейчас закрыто",fr:"Fermé",es:"Cerrado",it:"Chiuso ora",pl:"Zamknięte",ar:"مغلق الآن",uk:"Зачинено",nl:"Nu dicht",ro:"Închis acum"},
 "Sagen Sie Ihren Wunsch gerne unserem Team.":{en:"Just tell our team your request.",tr:"İsteğinizi ekibimize söyleyebilirsiniz.",ru:"Просто скажите о своём пожелании нашей команде.",fr:"Dites simplement votre souhait à notre équipe.",es:"Dígale su deseo a nuestro equipo.",it:"Dica il suo desiderio al nostro team.",pl:"Powiedz o swoim życzeniu naszemu zespołowi.",ar:"أخبر فريقنا برغبتك.",uk:"Просто скажіть про своє побажання нашій команді.",nl:"Vertel uw wens gewoon aan ons team.",ro:"Spuneți-i dorința echipei noastre."},
 "Nachricht wird geöffnet – bitte noch abschicken.":{en:"Opening your message – please send it.",tr:"Mesaj açılıyor – lütfen gönderin.",ru:"Открываем сообщение — не забудьте отправить.",fr:"Le message s'ouvre – envoyez-le.",es:"Se abre el mensaje: envíelo.",it:"Il messaggio si apre – invialo.",pl:"Wiadomość się otworzy – wyślij ją.",ar:"سيتم فتح الرسالة – يرجى إرسالها.",uk:"Повідомлення відкриється — надішліть його.",nl:"Het bericht opent – verstuur het nog.",ro:"Se deschide mesajul – trimiteți-l."},
 "Musikwunsch: ":{en:"Song request: ",tr:"Şarkı isteği: ",ru:"Заказ песни: ",fr:"Demande : ",es:"Petición: ",it:"Richiesta: ",pl:"Prośba o utwór: ",ar:"طلب أغنية: ",uk:"Прохання про пісню: ",nl:"Muziekverzoek: ",ro:"Cerere muzicală: "},
@@ -11472,7 +11475,7 @@ const TEXTE = {
 "Dafür fehlt noch eine Bestellung.":{en:"There's no order to show yet.",tr:"Bunun için henüz bir sipariş yok.",ru:"Для этого пока нет заказа.",fr:"Il manque encore une commande pour cela.",es:"Todavía falta un pedido para eso.",it:"Manca ancora un ordine.",pl:"Brakuje jeszcze zamówienia.",ar:"لا يوجد طلب بعد.",uk:"Для цього ще немає замовлення.",nl:"Daarvoor ontbreekt nog een bestelling.",ro:"Încă lipsește o comandă."},
 "Das Bild ist noch nicht fertig.":{en:"The image isn't ready yet.",tr:"Görsel henüz hazır değil.",ru:"Изображение ещё не готово.",fr:"L'image n'est pas encore prête.",es:"La imagen aún no está lista.",it:"L'immagine non è ancora pronta.",pl:"Obraz jeszcze nie jest gotowy.",ar:"الصورة ليست جاهزة بعد.",uk:"Зображення ще не готове.",nl:"De afbeelding is nog niet klaar.",ro:"Imaginea nu este încă gata."},
 "Das Bild ließ sich nicht bauen.":{en:"The image couldn't be created.",tr:"Görsel oluşturulamadı.",ru:"Не удалось создать изображение.",fr:"L'image n'a pas pu être créée.",es:"No se ha podido crear la imagen.",it:"Non è stato possibile creare l'immagine.",pl:"Nie udało się utworzyć obrazu.",ar:"تعذّر إنشاء الصورة.",uk:"Не вдалося створити зображення.",nl:"De afbeelding kon niet worden gemaakt.",ro:"Imaginea nu a putut fi creată."},
-"Das klappt hier gerade nicht.":{en:"That isn't working right now.",tr:"Bu şu anda çalışmıyor.",ru:"Сейчас это не работает.",fr:"Cela ne fonctionne pas pour le moment.",es:"Ahora mismo esto no funciona.",it:"Al momento non funziona.",pl:"W tej chwili to nie działa.",ar:"هذا لا يعمل في الوقت الحالي.",uk:"Зараз це не працює.",nl:"Dat lukt op dit moment niet.",ro:"Momentan nu funcționează."},
+"Das ist gerade nicht möglich.":{en:"That is not possible right now.",tr:"Şu anda bu mümkün değil.",ru:"Сейчас это невозможно.",fr:"Ce n'est pas possible pour le moment.",es:"Ahora mismo no es posible.",it:"Al momento non è possibile.",pl:"W tej chwili to niemożliwe.",ar:"هذا غير ممكن حاليًا.",uk:"Зараз це неможливо.",nl:"Dat is nu niet mogelijk.",ro:"Momentan nu este posibil."},
 "Diese Adresse sieht nicht vollständig aus.":{en:"That address doesn't look complete.",tr:"Bu adres eksik görünüyor.",ru:"Этот адрес выглядит неполным.",fr:"Cette adresse semble incomplète.",es:"Esa dirección parece incompleta.",it:"Questo indirizzo sembra incompleto.",pl:"Ten adres wygląda na niepełny.",ar:"يبدو أن هذا العنوان غير مكتمل.",uk:"Ця адреса виглядає неповною.",nl:"Dit adres lijkt niet compleet.",ro:"Adresa pare incompletă."},
 "Einen Augenblick, wir sehen nach.":{en:"One moment, we're looking.",tr:"Bir saniye, bakıyoruz.",ru:"Минутку, проверяем.",fr:"Un instant, nous regardons.",es:"Un momento, lo estamos mirando.",it:"Un attimo, stiamo controllando.",pl:"Chwileczkę, sprawdzamy.",ar:"لحظة من فضلك، نتحقق.",uk:"Хвилинку, перевіряємо.",nl:"Een ogenblik, we kijken even.",ro:"O clipă, verificăm."},
 "Eingelöst wird am Tisch: Zeigen Sie den Code einfach unserem Team.":{en:"Redeemed at the table: just show the code to our team.",tr:"Masada kullanılır: kodu ekibimize göstermeniz yeterli.",ru:"Погашается за столом: просто покажите код нашей команде.",fr:"À échanger à table : montrez simplement le code à notre équipe.",es:"Se canjea en la mesa: solo enseñe el código a nuestro equipo.",it:"Si riscatta al tavolo: mostri il codice al nostro team.",pl:"Realizacja przy stoliku: wystarczy pokazać kod naszemu zespołowi.",ar:"يُستبدل على الطاولة: اعرض الرمز على فريقنا فحسب.",uk:"Використовується за столом: просто покажіть код нашій команді.",nl:"Inwisselen aan tafel: laat de code gewoon aan ons team zien.",ro:"Se folosește la masă: arătați codul echipei noastre."},
@@ -11501,12 +11504,12 @@ const TEXTE = {
 "Enthält: {x}":{en:"Contains: {x}",tr:"İçerir: {x}",ru:"Содержит: {x}",fr:"Contient : {x}",es:"Contiene: {x}",it:"Contiene: {x}",pl:"Zawiera: {x}",ar:"يحتوي على: {x}",uk:"Містить: {x}",nl:"Bevat: {x}",ro:"Conține: {x}"},
 "Details":{en:"Details",tr:"Ayrıntılar",ru:"Подробнее",fr:"Détails",es:"Detalles",it:"Dettagli",pl:"Szczegóły",ar:"التفاصيل",uk:"Докладніше",nl:"Details",ro:"Detalii"},
 "Unsere Wahl für Sie":{en:"Our pick for you",tr:"Sizin için seçimimiz",ru:"Наш выбор для вас",fr:"Notre choix pour vous",es:"Nuestra elección para usted",it:"La nostra scelta per Lei",pl:"Nasz wybór dla Państwa",ar:"اختيارنا لك",uk:"Наш вибір для вас",nl:"Onze keuze voor u",ro:"Alegerea noastră pentru dumneavoastră"},
-"Das klingt lecker!":{en:"That sounds delicious!",tr:"Kulağa çok lezzetli geliyor!",ru:"Звучит аппетитно!",fr:"Ça a l'air délicieux !",es:"¡Suena delicioso!",it:"Sembra delizioso!",pl:"Brzmi pysznie!",ar:"يبدو لذيذًا!",uk:"Звучить смачно!",nl:"Dat klinkt heerlijk!",ro:"Sună delicios!"},
-"Nehm ich!":{en:"I'll take it!",tr:"Bunu alıyorum!",ru:"Беру!",fr:"Je prends !",es:"¡Me lo quedo!",it:"Lo prendo!",pl:"Biorę!",ar:"سآخذه!",uk:"Беру!",nl:"Neem ik!",ro:"Îl iau!"},
+"Unser Vorschlag":{en:"Our suggestion",tr:"Önerimiz",ru:"Наше предложение",fr:"Notre suggestion",es:"Nuestra sugerencia",it:"Il nostro suggerimento",pl:"Nasza propozycja",ar:"اقتراحنا",uk:"Наша пропозиція",nl:"Ons voorstel",ro:"Sugestia noastră"},
+"Das nehme ich":{en:"I'll take this",tr:"Bunu alıyorum",ru:"Беру это",fr:"Je prends celui-ci",es:"Me quedo con este",it:"Prendo questo",pl:"Biorę to",ar:"سآخذ هذا",uk:"Беру це",nl:"Dit neem ik",ro:"Îl iau pe acesta"},
 "Karten wischen":{en:"Swipe cards",tr:"Kartları kaydır",ru:"Листать карточки",fr:"Faire défiler les cartes",es:"Deslizar tarjetas",it:"Sfogliare le carte",pl:"Przesuwanie kart",ar:"تصفح البطاقات",uk:"Гортати картки",nl:"Kaarten swipen",ro:"Glisați cardurile"},
 "Weiter":{en:"Next",tr:"Geç",ru:"Дальше",fr:"Suivant",es:"Siguiente",it:"Avanti",pl:"Dalej",ar:"التالي",uk:"Далі",nl:"Volgende",ro:"Mai departe"},
 "Gute Wahl!":{en:"Great choice!",tr:"Harika seçim!",ru:"Отличный выбор!",fr:"Excellent choix !",es:"¡Buena elección!",it:"Ottima scelta!",pl:"Świetny wybór!",ar:"اختيار رائع!",uk:"Чудовий вибір!",nl:"Goede keuze!",ro:"Alegere bună!"},
-"Alles gesehen!":{en:"You've seen it all!",tr:"Hepsini gördünüz!",ru:"Вы всё посмотрели!",fr:"Vous avez tout vu !",es:"¡Lo ha visto todo!",it:"Ha visto tutto!",pl:"Wszystko obejrzane!",ar:"لقد رأيت كل شيء!",uk:"Ви все переглянули!",nl:"Alles gezien!",ro:"Ați văzut tot!"},
+"Das waren alle Vorschläge.":{en:"That was every suggestion.",tr:"Tüm öneriler bu kadardı.",ru:"Это были все предложения.",fr:"Voilà toutes nos suggestions.",es:"Esas eran todas las sugerencias.",it:"Questi erano tutti i suggerimenti.",pl:"To były wszystkie propozycje.",ar:"هذه كانت كل الاقتراحات.",uk:"Це були всі пропозиції.",nl:"Dat waren alle voorstellen.",ro:"Acestea au fost toate sugestiile."},
 "Nochmal mischen":{en:"Shuffle again",tr:"Yeniden karıştır",ru:"Перемешать снова",fr:"Mélanger à nouveau",es:"Barajar de nuevo",it:"Rimescola",pl:"Potasuj ponownie",ar:"اخلط من جديد",uk:"Перемішати знову",nl:"Opnieuw schudden",ro:"Amestecă din nou"},
 "Toppings nach Wahl":{en:"Toppings of your choice",tr:"İsteğe bağlı soslar ve süslemeler",ru:"Топпинги на выбор",fr:"Garnitures au choix",es:"Toppings a elegir",it:"Topping a scelta",pl:"Dodatki do wyboru",ar:"إضافات حسب اختيارك",uk:"Топінги на вибір",nl:"Toppings naar keuze",ro:"Toppinguri la alegere"},
 "Wischen Sie nach rechts, was Ihnen schmeckt – nach links, was heute nicht passt.":{en:"Swipe right on what you fancy – left on what doesn't suit you today.",tr:"Beğendiğinizi sağa, bugün size uymayanı sola kaydırın.",ru:"Смахните вправо то, что вам по вкусу, — влево то, что сегодня не подходит.",fr:"Glissez à droite ce qui vous plaît – à gauche ce qui ne vous tente pas aujourd'hui.",es:"Deslice a la derecha lo que le apetece y a la izquierda lo que hoy no le convence.",it:"Scorra a destra ciò che le piace, a sinistra ciò che oggi non fa per lei.",pl:"Przesuń w prawo to, co Państwu smakuje – w lewo to, co dziś nie pasuje.",ar:"اسحب لليمين ما يعجبك، ولليسار ما لا يناسبك اليوم.",uk:"Проведіть праворуч те, що вам до смаку, — ліворуч те, що сьогодні не пасує.",nl:"Veeg naar rechts wat u lekker vindt – naar links wat vandaag niet past.",ro:"Glisați la dreapta ce vă place – la stânga ce nu vi se potrivește azi."},
@@ -11540,6 +11543,10 @@ const TEXTE = {
 "Das Personal prüft beim Servieren den Ausweis.":{en:"Our staff will check your ID when serving.",tr:"Personel servis sırasında kimliğinizi kontrol eder.",ru:"При подаче персонал проверит удостоверение личности.",fr:"Le personnel vérifie la pièce d’identité au service.",es:"El personal comprobará el documento de identidad al servir.",it:"Il personale controlla il documento al momento del servizio.",pl:"Obsługa sprawdzi dowód tożsamości przy podaniu.",ar:"سيتحقق الموظفون من الهوية عند التقديم.",uk:"Під час подачі персонал перевірить посвідчення.",nl:"Het personeel controleert bij het serveren uw legitimatie.",ro:"Personalul verifică actul de identitate la servire."},
 "Ich bin {n} oder älter":{en:"I am {n} or older",tr:"{n} yaşında veya daha büyüğüm",ru:"Мне {n} или больше",fr:"J’ai {n} ans ou plus",es:"Tengo {n} años o más",it:"Ho {n} anni o più",pl:"Mam {n} lat lub więcej",ar:"عمري {n} عامًا أو أكثر",uk:"Мені {n} або більше",nl:"Ik ben {n} of ouder",ro:"Am {n} ani sau mai mult"},
 "Wieder herausnehmen":{en:"Remove again",tr:"Geri çıkar",ru:"Убрать",fr:"Retirer",es:"Quitar de nuevo",it:"Togli di nuovo",pl:"Usuń z powrotem",ar:"إزالة مرة أخرى",uk:"Прибрати",nl:"Weer verwijderen",ro:"Scoate din nou"},
+"Aktion":{en:"Offer",tr:"Kampanya",ru:"Акция",fr:"Offre",es:"Oferta",it:"Offerta",pl:"Promocja",ar:"عرض",uk:"Акція",nl:"Actie",ro:"Ofertă"},
+"KI-bearbeitet":{en:"AI-edited",tr:"Yapay zekâ ile düzenlendi",ru:"Обработано ИИ",fr:"Retouché par IA",es:"Editado con IA",it:"Elaborato con IA",pl:"Edytowane przez AI",ar:"معالَج بالذكاء الاصطناعي",uk:"Оброблено ШІ",nl:"Bewerkt met AI",ro:"Prelucrat cu IA"},
+"Aktionspreis":{en:"Offer price",tr:"Kampanya fiyatı",ru:"Цена по акции",fr:"Prix de l'offre",es:"Precio de oferta",it:"Prezzo in offerta",pl:"Cena promocyjna",ar:"سعر العرض",uk:"Ціна за акцією",nl:"Actieprijs",ro:"Preț ofertă"},
+"noch {zeit}":{en:"{zeit} left",tr:"{zeit} kaldı",ru:"осталось {zeit}",fr:"encore {zeit}",es:"quedan {zeit}",it:"ancora {zeit}",pl:"jeszcze {zeit}",ar:"بقي {zeit}",uk:"ще {zeit}",nl:"nog {zeit}",ro:"încă {zeit}"},
 "noch {n} Tage":{en:"{n} days left",tr:"{n} gün kaldı",ru:"ещё {n} дн.",fr:"encore {n} jours",es:"quedan {n} días",it:"ancora {n} giorni",pl:"jeszcze {n} dni",ar:"بقي {n} أيام",uk:"ще {n} дн.",nl:"nog {n} dagen",ro:"încă {n} zile"},
 "noch {n} Stunden":{en:"{n} hours left",tr:"{n} saat kaldı",ru:"ещё {n} ч.",fr:"encore {n} heures",es:"quedan {n} horas",it:"ancora {n} ore",pl:"jeszcze {n} godz.",ar:"بقي {n} ساعات",uk:"ще {n} год",nl:"nog {n} uur",ro:"încă {n} ore"},
 "nur noch {n} Minuten":{en:"only {n} minutes left",tr:"sadece {n} dakika kaldı",ru:"осталось {n} мин.",fr:"plus que {n} minutes",es:"solo quedan {n} minutos",it:"solo {n} minuti",pl:"tylko {n} min",ar:"بقي {n} دقائق فقط",uk:"лише {n} хв",nl:"nog maar {n} minuten",ro:"doar {n} minute"},
@@ -11571,12 +11578,12 @@ const TEXTE = {
 "Schön, dass Sie da sind. Suchen Sie sich in Ruhe etwas aus.":{en:"Good to have you here. Take your time choosing.",tr:"Geldiğinize sevindik. Acele etmeden seçin.",ru:"Рады, что вы у нас. Выбирайте спокойно.",fr:"Ravis de vous accueillir. Prenez le temps de choisir.",es:"Nos alegra tenerle aquí. Elija con calma.",it:"Siamo felici che sia qui. Scelga con calma.",pl:"Cieszymy się, że są Państwo u nas. Proszę wybierać spokojnie.",ar:"سعداء بوجودكم. اختاروا على راحتكم.",uk:"Раді, що ви завітали. Обирайте спокійно.",nl:"Fijn dat u er bent. Neemt u rustig de tijd om te kiezen.",ro:"Ne bucurăm că sunteți aici. Alegeți în liniște."},
 "Lassen Sie sich Zeit. Hier drängt nichts.":{en:"Take your time. Nothing is rushing here.",tr:"Acele etmeyin. Burada kimse sizi sıkıştırmaz.",ru:"Не торопитесь. Здесь никто не подгоняет.",fr:"Prenez votre temps. Rien ne presse ici.",es:"Tómese su tiempo. Aquí no corre prisa.",it:"Si prenda il suo tempo. Qui non c'è fretta.",pl:"Proszę się nie spieszyć. Tu nic nie nagli.",ar:"خذوا وقتكم. لا شيء يستعجلكم هنا.",uk:"Не поспішайте. Тут ніщо не квапить.",nl:"Neemt u de tijd. Hier hoeft niets snel.",ro:"Luați-vă timp. Aici nu grăbește nimic."},
 "Alles da. Nur entscheiden müssen Sie selbst.":{en:"Everything's here. The choosing is up to you.",tr:"Her şey hazır. Kararı siz vereceksiniz.",ru:"Всё на месте. Выбрать придётся вам.",fr:"Tout est là. Il ne reste qu'à choisir.",es:"Está todo. Solo falta que elija usted.",it:"C'è tutto. Scegliere tocca a lei.",pl:"Wszystko jest. Wybrać muszą Państwo sami.",ar:"كل شيء جاهز. يبقى عليكم الاختيار.",uk:"Усе на місці. Обирати доведеться вам.",nl:"Alles is er. Alleen kiezen moet u zelf.",ro:"Avem de toate. Alegerea rămâne la dumneavoastră."},
-"Ist notiert. Wir sagen Bescheid, sobald es rausgeht.":{en:"Noted. We'll let you know as soon as it's on its way.",tr:"Not aldık. Çıktığı anda haber vereceğiz.",ru:"Записали. Сообщим, как только всё будет готово к подаче.",fr:"C'est noté. Nous vous prévenons dès que ça part.",es:"Anotado. Le avisamos en cuanto salga.",it:"Annotato. La avvisiamo appena esce.",pl:"Zapisane. Damy znać, gdy tylko wyjdzie.",ar:"سُجّل الطلب. سنُعلمكم فور خروجه.",uk:"Записали. Повідомимо, щойно все вирушить до вас.",nl:"Genoteerd. We laten het weten zodra het eraan komt.",ro:"Am notat. Vă anunțăm imediat ce pleacă."},
+"Ist notiert. Wir informieren Sie, sobald es herausgeht.":{en:"Noted. We'll let you know as soon as it's on its way.",tr:"Not aldık. Çıktığı anda haber vereceğiz.",ru:"Записали. Сообщим, как только всё будет готово к подаче.",fr:"C'est noté. Nous vous prévenons dès que ça part.",es:"Anotado. Le avisamos en cuanto salga.",it:"Annotato. La avvisiamo appena esce.",pl:"Zapisane. Damy znać, gdy tylko wyjdzie.",ar:"سُجّل الطلب. سنُعلمكم فور خروجه.",uk:"Записали. Повідомимо, щойно все вирушить до вас.",nl:"Genoteerd. We laten het weten zodra het eraan komt.",ro:"Am notat. Vă anunțăm imediat ce pleacă."},
 "Angekommen. Lehnen Sie sich zurück.":{en:"Received. Sit back and relax.",tr:"Ulaştı. Arkanıza yaslanın.",ru:"Заказ принят. Можно расслабиться.",fr:"Bien reçu. Détendez-vous.",es:"Recibido. Relájese.",it:"Ricevuto. Si rilassi pure.",pl:"Przyjęte. Proszę się rozsiąść.",ar:"وصل الطلب. استرخوا الآن.",uk:"Отримано. Можна розслабитися.",nl:"Ontvangen. Leunt u maar achterover.",ro:"Am primit. Relaxați-vă."},
-"Bestellt. Ab hier ist es unser Problem.":{en:"Ordered. From here it's our problem.",tr:"Sipariş verildi. Bundan sonrası bizim işimiz.",ru:"Заказано. Дальше это уже наша забота.",fr:"Commandé. À partir d'ici, c'est notre affaire.",es:"Pedido. A partir de aquí es cosa nuestra.",it:"Ordinato. Da qui in poi è affar nostro.",pl:"Zamówione. Od tej chwili to nasze zmartwienie.",ar:"تم الطلب. من هنا الأمر مسؤوليتنا.",uk:"Замовлено. Далі це вже наш клопіт.",nl:"Besteld. Vanaf hier is het ons probleem.",ro:"Comandat. De aici încolo e treaba noastră."},
-"Ehrlich ist uns lieber als nett.":{en:"We'd rather have honest than nice.",tr:"Nazik olmasından çok dürüst olmasını isteriz.",ru:"Честно нам важнее, чем вежливо.",fr:"Nous préférons l'honnêteté à la politesse.",es:"Preferimos sincero a amable.",it:"Preferiamo sincero a gentile.",pl:"Wolimy szczerze niż miło.",ar:"نفضّل الصراحة على المجاملة.",uk:"Чесно нам важливіше, ніж ввічливо.",nl:"Eerlijk is ons liever dan aardig.",ro:"Preferăm sincer în locul politicos."},
+"Bestellt. Ab hier kümmern wir uns.":{en:"Ordered. From here on, we'll take care of it.",tr:"Sipariş verildi. Bundan sonrasıyla biz ilgileniriz.",ru:"Заказано. Дальше мы всё берём на себя.",fr:"Commandé. À partir d'ici, nous nous en occupons.",es:"Pedido realizado. A partir de aquí nos encargamos nosotros.",it:"Ordinato. Da qui in poi ci pensiamo noi.",pl:"Zamówione. Od tej chwili my się tym zajmiemy.",ar:"تم الطلب. من هنا نتولى الأمر.",uk:"Замовлено. Далі ми про все подбаємо.",nl:"Besteld. Vanaf hier nemen wij het over.",ro:"Comandat. De aici ne ocupăm noi."},
+"Ehrliche Rückmeldungen sind uns wichtig.":{en:"Honest feedback matters to us.",tr:"Dürüst geri bildirim bizim için önemlidir.",ru:"Для нас важна честная обратная связь.",fr:"Les retours sincères comptent pour nous.",es:"Para nosotros importan los comentarios sinceros.",it:"Per noi i riscontri sinceri sono importanti.",pl:"Szczere opinie są dla nas ważne.",ar:"نُقدّر الملاحظات الصادقة.",uk:"Для нас важливий щирий відгук.",nl:"Eerlijke feedback is belangrijk voor ons.",ro:"Feedbackul sincer este important pentru noi."},
 "Ein paar Worte genügen.":{en:"A few words are plenty.",tr:"Birkaç kelime yeter.",ru:"Достаточно пары слов.",fr:"Quelques mots suffisent.",es:"Bastan unas pocas palabras.",it:"Bastano poche parole.",pl:"Wystarczy kilka słów.",ar:"تكفي بضع كلمات.",uk:"Достатньо кількох слів.",nl:"Een paar woorden is genoeg.",ro:"Sunt de ajuns câteva cuvinte."},
-"Fünf Sterne nehmen wir auch.":{en:"We'll happily take five stars, too.",tr:"Beş yıldızı da seve seve kabul ederiz.",ru:"Пять звёзд мы тоже возьмём.",fr:"Cinq étoiles, on prend aussi.",es:"Cinco estrellas también nos valen.",it:"Anche cinque stelle vanno benissimo.",pl:"Pięć gwiazdek też chętnie przyjmiemy.",ar:"وخمس نجوم نقبلها بكل سرور.",uk:"П'ять зірок ми теж візьмемо.",nl:"Vijf sterren nemen we ook graag aan.",ro:"Primim cu plăcere și cinci stele."},
+"Eine ehrliche Bewertung hilft uns sehr.":{en:"An honest review helps us a lot.",tr:"Dürüst bir değerlendirme bize çok yardımcı olur.",ru:"Честная оценка очень помогает нам.",fr:"Un avis sincère nous aide beaucoup.",es:"Una valoración sincera nos ayuda mucho.",it:"Una valutazione sincera ci aiuta molto.",pl:"Szczera opinia bardzo nam pomaga.",ar:"التقييم الصادق يساعدنا كثيرًا.",uk:"Щира оцінка дуже нам допомагає.",nl:"Een eerlijke beoordeling helpt ons enorm.",ro:"O evaluare sinceră ne ajută foarte mult."},
 "Ihre Spuren bleiben auf Ihrem Gerät.":{en:"Your traces stay on your device.",tr:"İzleriniz cihazınızda kalır.",ru:"Ваши следы остаются на вашем устройстве.",fr:"Vos traces restent sur votre appareil.",es:"Sus datos se quedan en su dispositivo.",it:"Le sue tracce restano sul suo dispositivo.",pl:"Ślady zostają na Państwa urządzeniu.",ar:"آثاركم تبقى على أجهزتكم.",uk:"Ваші сліди залишаються на вашому пристрої.",nl:"Uw sporen blijven op uw eigen toestel.",ro:"Urmele rămân pe dispozitivul dumneavoastră."},
 "Ich merke mir, was Ihnen schmeckt – mehr nicht.":{en:"I remember what you like – nothing more.",tr:"Sadece neyi sevdiğinizi hatırlıyorum – fazlasını değil.",ru:"Я запоминаю, что вам нравится, — и только.",fr:"Je retiens ce que vous aimez – rien de plus.",es:"Recuerdo lo que le gusta, nada más.",it:"Ricordo che cosa le piace – nient'altro.",pl:"Zapamiętuję tylko to, co Państwu smakuje — nic więcej.",ar:"أتذكّر ما يعجبكم فقط – لا أكثر.",uk:"Я запам'ятовую, що вам смакує, — і тільки.",nl:"Ik onthoud wat u lekker vindt – meer niet.",ro:"Rețin ce vă place – nimic mai mult."},
 "Ich habe mitgezählt. Nur das, versprochen.":{en:"I've been counting. That's all, promise.",tr:"Sadece saydım. Başka bir şey yok, söz.",ru:"Я только считал. Больше ничего, обещаю.",fr:"J'ai compté, c'est tout. Promis.",es:"He ido contando. Solo eso, se lo prometo.",it:"Ho solo contato. Nient'altro, promesso.",pl:"Tylko liczyłem. Nic więcej, obiecuję.",ar:"اكتفيت بالعدّ. لا شيء غير ذلك، أعدكم.",uk:"Я лише рахував. Більше нічого, обіцяю.",nl:"Ik heb meegeteld. Meer niet, beloofd.",ro:"Doar am numărat. Atât, promit."},
@@ -11585,7 +11592,7 @@ const TEXTE = {
 "Eigene Karte für die Bar":{en:"A menu of its own for the bar",tr:"Bara özel ayrı bir menü",ru:"Отдельная карта для бара",fr:"Une carte à part pour le bar",es:"Una carta propia para la barra",it:"Una carta a parte per il bar",pl:"Osobna karta dla baru",ar:"قائمة خاصة بالبار",uk:"Окрема карта для бару",nl:"Een eigen kaart voor de bar",ro:"Un meniu separat pentru bar"},
 "Die Karte zum Bestellen":{en:"The menu to order from",tr:"Sipariş verebileceğiniz menü",ru:"Меню, из которого можно заказать",fr:"La carte pour commander",es:"La carta para pedir",it:"Il menù da cui ordinare",pl:"Karta do zamawiania",ar:"القائمة التي تطلبون منها",uk:"Меню, з якого можна замовити",nl:"De kaart om uit te bestellen",ro:"Meniul din care comandați"},
 "Wein, Kaffee, Alkoholfreies":{en:"Wine, coffee, alcohol-free",tr:"Şarap, kahve, alkolsüzler",ru:"Вино, кофе, безалкогольное",fr:"Vins, cafés, sans alcool",es:"Vino, café, sin alcohol",it:"Vini, caffè, analcolici",pl:"Wino, kawa, bezalkoholowe",ar:"نبيذ وقهوة ومشروبات بلا كحول",uk:"Вино, кава, безалкогольне",nl:"Wijn, koffie, alcoholvrij",ro:"Vin, cafea, fără alcool"},
-"Winken ohne zu winken":{en:"Wave us over without waving",tr:"El sallamadan çağırın",ru:"Позвать, не поднимая руки",fr:"Nous appeler sans lever la main",es:"Llamarnos sin levantar la mano",it:"Chiamarci senza alzare la mano",pl:"Przywołać bez machania ręką",ar:"نادونا دون أن تلوّحوا",uk:"Покликати, не махаючи рукою",nl:"Wenken zonder te wenken",ro:"Ne chemați fără să faceți semn"},
+"Service per Tipp rufen":{en:"Call service with a tap",tr:"Tek dokunuşla servis çağırın",ru:"Вызвать официанта одним касанием",fr:"Appeler le service d'un geste",es:"Llame al servicio con un toque",it:"Chiami il servizio con un tocco",pl:"Przywołaj obsługę jednym dotknięciem",ar:"اطلبوا الخدمة بلمسة واحدة",uk:"Викликати обслуговування одним дотиком",nl:"Roep de bediening met één tik",ro:"Chemați serviciul cu o atingere"},
 "Ihre Besuche und Lieblinge – ohne Konto":{en:"Your visits and favourites – no account needed",tr:"Ziyaretleriniz ve favorileriniz – hesap gerekmez",ru:"Ваши визиты и любимое — без регистрации",fr:"Vos visites et vos favoris – sans compte",es:"Sus visitas y favoritos: sin cuenta",it:"Le sue visite e i preferiti – senza account",pl:"Państwa wizyty i ulubione — bez konta",ar:"زياراتكم ومفضلاتكم – دون حساب",uk:"Ваші візити та улюблене — без облікового запису",nl:"Uw bezoeken en favorieten – zonder account",ro:"Vizitele și favoritele dumneavoastră – fără cont"},
 "Tisch anfragen":{en:"Request a table",tr:"Masa talep edin",ru:"Запросить столик",fr:"Demander une table",es:"Solicitar mesa",it:"Richiedere un tavolo",pl:"Zapytać o stolik",ar:"طلب طاولة",uk:"Запитати столик",nl:"Tafel aanvragen",ro:"Solicitați o masă"},
 "Anfrage ans Team":{en:"A request to the team",tr:"Ekibe bir talep",ru:"Запрос команде",fr:"Une demande à l'équipe",es:"Una solicitud al equipo",it:"Una richiesta al team",pl:"Zapytanie do zespołu",ar:"طلب إلى الفريق",uk:"Запит до команди",nl:"Een aanvraag aan het team",ro:"O cerere către echipă"},
@@ -11622,7 +11629,7 @@ const TEXTE = {
 "Zahlung wird bestätigt …":{en:"Confirming payment …",tr:"Ödeme onaylanıyor …",ru:"Подтверждаем оплату …",fr:"Confirmation du paiement …",es:"Confirmando el pago …",it:"Conferma del pagamento …",pl:"Potwierdzanie płatności …",ar:"جارٍ تأكيد الدفع …",uk:"Підтверджуємо оплату …",nl:"Betaling wordt bevestigd …",ro:"Se confirmă plata …"},
 "Das dauert nur einen Moment. Bei Lastschrift kann es länger dauern – sagen Sie dann dem Personal Bescheid.":{en:"This only takes a moment. Direct debit can take longer – if so, please tell the staff.",tr:"Bu sadece bir an sürer. Otomatik ödemede daha uzun sürebilir – bu durumda lütfen personele haber verin.",ru:"Это займёт всего момент. При прямом дебете может быть дольше – тогда сообщите персоналу.",fr:"Cela ne prend qu'un instant. Un prélèvement peut prendre plus de temps – prévenez alors le personnel.",es:"Solo tarda un momento. Con domiciliación puede tardar más; en ese caso avise al personal.",it:"Ci vuole solo un attimo. L'addebito diretto può richiedere più tempo: in tal caso avvisi il personale.",pl:"To potrwa chwilę. Polecenie zapłaty może potrwać dłużej – wtedy powiedz o tym obsłudze.",ar:"يستغرق ذلك لحظة فقط. قد يستغرق الخصم المباشر وقتًا أطول – عندها أبلغ الموظفين.",uk:"Це триває лише мить. Прямий дебет може тривати довше – тоді повідомте персонал.",nl:"Dit duurt maar even. Een incasso kan langer duren – meld het dan bij het personeel.",ro:"Durează doar o clipă. Debitul direct poate dura mai mult – în acest caz anunțați personalul."},
 "Die Zahlung wurde abgebrochen. Ihre Bestellung ist noch nicht in der Küche.":{en:"The payment was cancelled. Your order is not in the kitchen yet.",tr:"Ödeme iptal edildi. Siparişiniz henüz mutfakta değil.",ru:"Оплата отменена. Ваш заказ ещё не на кухне.",fr:"Le paiement a été annulé. Votre commande n'est pas encore en cuisine.",es:"El pago se canceló. Su pedido aún no está en la cocina.",it:"Il pagamento è stato annullato. Il suo ordine non è ancora in cucina.",pl:"Płatność została anulowana. Zamówienie nie jest jeszcze w kuchni.",ar:"تم إلغاء الدفع. طلبك ليس في المطبخ بعد.",uk:"Оплату скасовано. Ваше замовлення ще не на кухні.",nl:"De betaling is geannuleerd. Uw bestelling is nog niet in de keuken.",ro:"Plata a fost anulată. Comanda dumneavoastră nu este încă în bucătărie."},
-"Die Zahlung hat nicht geklappt. Sie können es noch einmal versuchen – oder beim Personal bezahlen.":{en:"The payment did not go through. You can try again – or pay the staff.",tr:"Ödeme gerçekleşmedi. Tekrar deneyebilir veya personele ödeyebilirsiniz.",ru:"Оплата не прошла. Можно попробовать ещё раз или оплатить у персонала.",fr:"Le paiement n'a pas abouti. Vous pouvez réessayer – ou payer auprès du personnel.",es:"El pago no se completó. Puede intentarlo de nuevo o pagar al personal.",it:"Il pagamento non è andato a buon fine. Può riprovare – oppure pagare al personale.",pl:"Płatność się nie powiodła. Możesz spróbować ponownie lub zapłacić u obsługi.",ar:"لم تنجح عملية الدفع. يمكنك المحاولة مرة أخرى أو الدفع لدى الموظفين.",uk:"Оплата не пройшла. Можна спробувати ще раз або оплатити в персоналу.",nl:"De betaling is niet gelukt. U kunt het opnieuw proberen – of bij het personeel betalen.",ro:"Plata nu a reușit. Puteți încerca din nou – sau plăti la personal."},
+"Die Zahlung war nicht erfolgreich. Sie können es noch einmal versuchen – oder beim Personal bezahlen.":{en:"The payment did not go through. You can try again – or pay the staff.",tr:"Ödeme gerçekleşmedi. Tekrar deneyebilir veya personele ödeyebilirsiniz.",ru:"Оплата не прошла. Можно попробовать ещё раз или оплатить у персонала.",fr:"Le paiement n'a pas abouti. Vous pouvez réessayer – ou payer auprès du personnel.",es:"El pago no se completó. Puede intentarlo de nuevo o pagar al personal.",it:"Il pagamento non è andato a buon fine. Può riprovare – oppure pagare al personale.",pl:"Płatność się nie powiodła. Możesz spróbować ponownie lub zapłacić u obsługi.",ar:"لم تنجح عملية الدفع. يمكنك المحاولة مرة أخرى أو الدفع لدى الموظفين.",uk:"Оплата не пройшла. Можна спробувати ще раз або оплатити в персоналу.",nl:"De betaling is niet gelukt. U kunt het opnieuw proberen – of bij het personeel betalen.",ro:"Plata nu a reușit. Puteți încerca din nou – sau plăti la personal."},
 "Bezahlt":{en:"Paid",tr:"Ödendi",ru:"Оплачено",fr:"Payé",es:"Pagado",it:"Pagato",pl:"Zapłacono",ar:"تم الدفع",uk:"Оплачено",nl:"Betaald",ro:"Plătit"},
 "Danke, Ihre Zahlung ist angekommen.":{en:"Thank you, your payment has arrived.",tr:"Teşekkürler, ödemeniz ulaştı.",ru:"Спасибо, ваша оплата поступила.",fr:"Merci, votre paiement est bien arrivé.",es:"Gracias, su pago ha llegado.",it:"Grazie, il suo pagamento è arrivato.",pl:"Dziękujemy, Państwa płatność dotarła.",ar:"شكرًا، وصلت دفعتك.",uk:"Дякуємо, вашу оплату отримано.",nl:"Dank u, uw betaling is binnen.",ro:"Mulțumim, plata dumneavoastră a ajuns."},
 "Bitte jetzt überweisen":{en:"Please transfer now",tr:"Lütfen şimdi havale edin",ru:"Пожалуйста, переведите сейчас",fr:"Veuillez virer maintenant",es:"Por favor, transfiera ahora",it:"Effettui ora il bonifico",pl:"Prześlij teraz przelew",ar:"يرجى التحويل الآن",uk:"Будь ласка, переведіть зараз",nl:"Maak nu over",ro:"Vă rugăm să transferați acum"},
@@ -11638,7 +11645,7 @@ const TEXTE = {
 "Warten auf Ihre Überweisung":{en:"Waiting for your transfer",tr:"Havaleniz bekleniyor",ru:"Ожидаем ваш перевод",fr:"En attente de votre virement",es:"Esperando su transferencia",it:"In attesa del suo bonifico",pl:"Czekamy na Państwa przelew",ar:"في انتظار حوالتك",uk:"Очікуємо ваш переказ",nl:"Wachten op uw overschrijving",ro:"Așteptăm transferul dumneavoastră"},
 "Diese Bestellung ist nicht mehr offen.":{en:"This order is no longer open.",tr:"Bu sipariş artık açık değil.",ru:"Этот заказ больше не открыт.",fr:"Cette commande n'est plus ouverte.",es:"Este pedido ya no está abierto.",it:"Questo ordine non è più aperto.",pl:"To zamówienie nie jest już otwarte.",ar:"هذا الطلب لم يعد مفتوحًا.",uk:"Це замовлення більше не відкрите.",nl:"Deze bestelling staat niet meer open.",ro:"Această comandă nu mai este deschisă."},
 "Zu viele Versuche. Bitte sagen Sie dem Personal Bescheid.":{en:"Too many attempts. Please tell the staff.",tr:"Çok fazla deneme. Lütfen personele haber verin.",ru:"Слишком много попыток. Пожалуйста, сообщите персоналу.",fr:"Trop de tentatives. Veuillez prévenir le personnel.",es:"Demasiados intentos. Avise al personal, por favor.",it:"Troppi tentativi. Avvisi il personale, per favore.",pl:"Zbyt wiele prób. Powiedz o tym obsłudze.",ar:"محاولات كثيرة جدًا. يرجى إبلاغ الموظفين.",uk:"Забагато спроб. Будь ласка, повідомте персонал.",nl:"Te veel pogingen. Meld het alstublieft bij het personeel.",ro:"Prea multe încercări. Vă rugăm să anunțați personalul."},
-"Das Bezahlen klappt gerade nicht. Bitte versuchen Sie es gleich noch einmal oder zahlen Sie beim Personal.":{en:"Paying does not work right now. Please try again in a moment or pay the staff.",tr:"Ödeme şu anda çalışmıyor. Lütfen birazdan tekrar deneyin veya personele ödeyin.",ru:"Оплата сейчас не работает. Попробуйте ещё раз чуть позже или оплатите у персонала.",fr:"Le paiement ne fonctionne pas pour le moment. Réessayez dans un instant ou payez auprès du personnel.",es:"El pago no funciona ahora mismo. Inténtelo de nuevo en un momento o pague al personal.",it:"Il pagamento al momento non funziona. Riprovi tra poco o paghi al personale.",pl:"Płatność chwilowo nie działa. Spróbuj za chwilę ponownie lub zapłać u obsługi.",ar:"الدفع لا يعمل حاليًا. حاول مرة أخرى بعد قليل أو ادفع لدى الموظفين.",uk:"Оплата зараз не працює. Спробуйте ще раз за мить або оплатіть у персоналу.",nl:"Betalen lukt nu niet. Probeer het zo nog eens of betaal bij het personeel.",ro:"Plata nu funcționează acum. Încercați din nou imediat sau plătiți la personal."},
+"Die Zahlung ist gerade nicht möglich. Bitte versuchen Sie es gleich noch einmal oder zahlen Sie beim Personal.":{en:"Payment is not possible right now. Please try again in a moment or pay the staff.",tr:"Ödeme şu anda mümkün değil. Lütfen birazdan tekrar deneyin veya personele ödeyin.",ru:"Оплата сейчас невозможна. Попробуйте ещё раз чуть позже или оплатите у персонала.",fr:"Le paiement n'est pas possible pour le moment. Réessayez dans un instant ou payez auprès du personnel.",es:"El pago no es posible ahora mismo. Inténtelo de nuevo en un momento o pague al personal.",it:"Il pagamento al momento non è possibile. Riprovi tra poco o paghi al personale.",pl:"Płatność jest chwilowo niemożliwa. Proszę spróbować za chwilę ponownie lub zapłacić u obsługi.",ar:"الدفع غير ممكن حاليًا. يرجى المحاولة بعد قليل أو الدفع لدى الموظفين.",uk:"Оплата зараз неможлива. Спробуйте ще раз трохи згодом або оплатіть персоналу.",nl:"Betalen is nu niet mogelijk. Probeer het zo opnieuw of betaal bij het personeel.",ro:"Plata nu este posibilă în acest moment. Încercați din nou imediat sau plătiți la personal."},
 "Diese Zahlungsart gibt es gerade nicht":{en:"This payment method is not available right now",tr:"Bu ödeme yöntemi şu anda yok",ru:"Этот способ оплаты сейчас недоступен",fr:"Ce mode de paiement n'est pas disponible pour le moment",es:"Este método de pago no está disponible ahora",it:"Questo metodo di pagamento al momento non è disponibile",pl:"Ta metoda płatności jest teraz niedostępna",ar:"طريقة الدفع هذه غير متاحة حاليًا",uk:"Цей спосіб оплати зараз недоступний",nl:"Deze betaalwijze is nu niet beschikbaar",ro:"Această metodă de plată nu este disponibilă acum"},
 "Vorschlag":{en:"Suggestion",tr:"Öneri",ru:"Предложение",fr:"Suggestion",es:"Sugerencia",it:"Suggerimento",pl:"Propozycja",ar:"اقتراح",uk:"Пропозиція",nl:"Suggestie",ro:"Sugestie"},
 "Zahlungspflichtig bestellen":{en:"Order with obligation to pay",tr:"Ödeme yükümlülüğüyle sipariş ver",ru:"Заказать с обязательством оплаты",fr:"Commander avec obligation de paiement",es:"Pedido con obligación de pago",it:"Ordine con obbligo di pagamento",pl:"Zamawiam z obowiązkiem zapłaty",ar:"اطلب مع الالتزام بالدفع",uk:"Замовити з обов'язком оплати",nl:"Bestellen met betalingsverplichting",ro:"Comandă cu obligație de plată"},
@@ -11870,7 +11877,7 @@ const TEXTE = {
 "Bestellen":{en:"Order",tr:"Sipariş ver",ru:"Заказать",fr:"Commander",es:"Pedir",it:"Ordinare",pl:"Zamów",ar:"اطلب",uk:"Замовити",nl:"Bestellen",ro:"Comandați"},
 "Erst „Zahlungspflichtig bestellen“ schickt Ihre Bestellung an das Haus. Davor steht, was Sie zahlen.":{en:"Only “Order with obligation to pay” sends your order to the house. Above it you see what you pay.",tr:"Siparişinizi yalnızca “Ödeme yükümlülüğüyle sipariş ver” işletmeye gönderir. Üstünde ödeyeceğiniz tutarı görürsünüz.",ru:"Заказ уходит в заведение только по кнопке «Заказать с обязательством оплаты». Выше указано, сколько вы платите.",fr:"Seul « Commander avec obligation de paiement » envoie votre commande à la maison. Au-dessus, vous voyez ce que vous payez.",es:"Solo “Pedido con obligación de pago” envía su pedido a la casa. Encima ve lo que paga.",it:"Solo “Ordine con obbligo di pagamento” invia il Suo ordine al locale. Sopra vede quanto paga.",pl:"Dopiero “Zamawiam z obowiązkiem zapłaty” wysyła zamówienie do lokalu. Nad nim widzą Państwo, ile płacą.",ar:"فقط “اطلب مع الالتزام بالدفع” يرسل طلبك إلى المكان. وفوقه ترى المبلغ الذي تدفعه.",uk:"Лише “Замовити з обов'язком оплати” надсилає замовлення до закладу. Вище видно, скільки ви платите.",nl:"Pas “Bestellen met betalingsverplichting” stuurt uw bestelling naar het huis. Erboven ziet u wat u betaalt.",ro:"Doar “Comandă cu obligație de plată” trimite comanda către local. Deasupra vedeți cât plătiți."},
 "Unentschlossen? Das Rad sucht für Sie ein Gericht aus der Karte aus.":{en:"Can't decide? The wheel picks a dish from the menu for you.",tr:"Kararsız mısınız? Çark sizin için menüden bir yemek seçer.",ru:"Не можете выбрать? Колесо выберет для вас блюдо из меню.",fr:"Indécis ? La roue choisit pour vous un plat de la carte.",es:"¿Indeciso? La ruleta elige por usted un plato de la carta.",it:"Indeciso? La ruota sceglie per Lei un piatto dal menù.",pl:"Nie mogą się Państwo zdecydować? Koło wybierze dla Państwa danie z menu.",ar:"لا تستطيع أن تقرر؟ تختار العجلة لك طبقاً من القائمة.",uk:"Не можете обрати? Колесо вибере для вас страву з меню.",nl:"Twijfelt u? Het rad kiest een gerecht uit de kaart voor u.",ro:"Nu puteți decide? Roata alege pentru dvs. un preparat din meniu."},
-"Tippen Sie auf „Für mich entscheiden“. Mit „Nehm ich!“ übernehmen Sie das Ergebnis in Ihre Auswahl.":{en:"Tap “Decide for me”. With “I'll take it!” you add the result to your selection.",tr:"“Benim yerime seçin” düğmesine dokunun. “Bunu alıyorum!” ile sonucu seçiminize eklersiniz.",ru:"Нажмите «Выберите за меня». Кнопкой «Беру!» вы добавите результат в свой выбор.",fr:"Touchez « Choisissez pour moi ». Avec « Je prends ! », vous ajoutez le résultat à votre sélection.",es:"Toque “Elija por mí”. Con “¡Me lo quedo!” añade el resultado a su selección.",it:"Tocchi “Scelga la casa”. Con “Lo prendo!” aggiunge il risultato alla Sua selezione.",pl:"Proszę dotknąć “Proszę wybrać za mnie”. Przyciskiem “Biorę!” dodają Państwo wynik do swojego wyboru.",ar:"المس “اختر لي”. بـ “سآخذه!” تضيف النتيجة إلى اختيارك.",uk:"Торкніться “Оберіть за мене”. Кнопкою “Беру!” ви додасте результат до свого вибору.",nl:"Tik op “Kies voor mij”. Met “Neem ik!” voegt u het resultaat toe aan uw selectie.",ro:"Atingeți “Alegeți pentru mine”. Cu “Îl iau!” adăugați rezultatul în selecția dvs."},
+"Tippen Sie auf „Für mich entscheiden“. Mit „Das nehme ich“ übernehmen Sie das Ergebnis in Ihre Auswahl.":{en:"Tap “Decide for me”. With “I'll take this” you add the result to your selection.",tr:"“Benim yerime seçin” düğmesine dokunun. “Bunu alıyorum” ile sonucu seçiminize eklersiniz.",ru:"Нажмите «Выберите за меня». Кнопкой «Беру это» вы добавите результат в свой выбор.",fr:"Touchez « Choisissez pour moi ». Avec « Je prends celui-ci », vous ajoutez le résultat à votre sélection.",es:"Toque “Elija por mí”. Con “Me quedo con este” añade el resultado a su selección.",it:"Tocchi “Scelga la casa”. Con “Prendo questo” aggiunge il risultato alla Sua selezione.",pl:"Proszę dotknąć “Proszę wybrać za mnie”. Przyciskiem “Biorę to” dodają Państwo wynik do swojego wyboru.",ar:"المس “اختر لي”. بـ “سآخذ هذا” تضيف النتيجة إلى اختيارك.",uk:"Торкніться “Оберіть за мене”. Кнопкою “Беру це” ви додасте результат до свого вибору.",nl:"Tik op “Kies voor mij”. Met “Dit neem ik” voegt u het resultaat toe aan uw selectie.",ro:"Atingeți “Alegeți pentru mine”. Cu “Îl iau pe acesta” adăugați rezultatul în selecția dvs."},
 "Am Tisch rufen Sie das Personal mit einem Tipp – ohne zu winken.":{en:"At the table you call the staff with one tap – no waving needed.",tr:"Masada tek dokunuşla personeli çağırırsınız – el sallamanıza gerek yok.",ru:"За столом вы вызываете персонал одним касанием – махать рукой не нужно.",fr:"À table, vous appelez le personnel d'un seul toucher – sans lever la main.",es:"En la mesa llama al personal con un toque, sin tener que hacer señas.",it:"Al tavolo chiama il personale con un tocco, senza dover fare cenni.",pl:"Przy stoliku wzywają Państwo obsługę jednym dotknięciem – bez machania ręką.",ar:"على الطاولة تستدعي الطاقم بلمسة واحدة – دون الحاجة للتلويح.",uk:"За столом ви кличете персонал одним дотиком – махати рукою не потрібно.",nl:"Aan tafel roept u het personeel met één tik – zonder te zwaaien.",ro:"La masă chemați personalul cu o atingere – fără să faceți semne."},
 "Wenn Sie es einschalten, merkt sich das Haus Ihre Besuche, Lieblingsgerichte und Gutscheine – ohne Konto und Passwort. Ohne Ihr Einschalten wird nichts gespeichert.":{en:"If you switch it on, the house remembers your visits, favourite dishes and vouchers – no account, no password. Nothing is stored unless you switch it on.",tr:"Açarsanız işletme ziyaretlerinizi, favori yemeklerinizi ve kuponlarınızı hatırlar – hesap ve şifre olmadan. Siz açmadıkça hiçbir şey kaydedilmez.",ru:"Если вы включите эту функцию, заведение запомнит ваши визиты, любимые блюда и купоны – без аккаунта и пароля. Пока вы её не включили, ничего не сохраняется.",fr:"Si vous l'activez, la maison retient vos visites, vos plats préférés et vos bons – sans compte ni mot de passe. Rien n'est enregistré tant que vous ne l'activez pas.",es:"Si lo activa, la casa recuerda sus visitas, platos favoritos y cupones, sin cuenta ni contraseña. No se guarda nada mientras no lo active.",it:"Se lo attiva, il locale ricorda le Sue visite, i piatti preferiti e i buoni, senza account né password. Finché non lo attiva, non viene salvato nulla.",pl:"Jeśli Państwo to włączą, lokal zapamięta Państwa wizyty, ulubione dania i vouchery – bez konta i hasła. Dopóki Państwo tego nie włączą, nic nie jest zapisywane.",ar:"إذا قمت بتفعيله يتذكر المكان زياراتك وأطباقك المفضلة وقسائمك – دون حساب أو كلمة مرور. لا يُحفظ شيء ما لم تفعّله.",uk:"Якщо ви це ввімкнете, заклад запам'ятає ваші візити, улюблені страви та ваучери – без облікового запису й пароля. Доки ви не ввімкнете, нічого не зберігається.",nl:"Als u het inschakelt, onthoudt het huis uw bezoeken, favoriete gerechten en bonnen – zonder account of wachtwoord. Zonder uw inschakelen wordt niets opgeslagen.",ro:"Dacă îl activați, localul reține vizitele, preparatele preferate și voucherele dvs. – fără cont și parolă. Fără activarea dvs. nu se salvează nimic."},
 "Bestellstand":{en:"Order status",tr:"Sipariş durumu",ru:"Статус заказа",fr:"État de la commande",es:"Estado del pedido",it:"Stato dell'ordine",pl:"Status zamówienia",ar:"حالة الطلب",uk:"Стан замовлення",nl:"Stand van de bestelling",ro:"Starea comenzii"},
@@ -12697,7 +12704,7 @@ function lwNameText(wahl){
   if(wahl === "abholen") return t("Abholen");
   if(wahl !== "liefern") return t("Im Haus");
   if(liefertGerade()) return t("Lieferung");
-  return LIEFER.von && LIEFER.bis ? LIEFER.von + "\u2013" + LIEFER.bis : t("Gerade zu");
+  return LIEFER.von && LIEFER.bis ? LIEFER.von + "\u2013" + LIEFER.bis : t("Gerade geschlossen");
 }
 
 function lieferWahlZeichnen(){
@@ -13012,7 +13019,7 @@ function start(){
   };
   if(BLOECKE.length) return bloeckeHTML(alle, bereicheBilden(), bereichHTML);
 
-  const werbung = aktionBandHTML() + bannerRadHTML() + nochmalHTML() + empfehlungHTML();
+  const werbung = bannerRadHTML() + nochmalHTML() + empfehlungHTML();
   const laeuft = !VORSCHAU && offeneVorgaenge().length > 0;
   let html = schnellzeileHTML(alle) + (sgBotschaftHTML() || begleiterHTML("start")) + (laeuft ? "" : werbung);
   /* Aufeinanderfolgende Kacheln derselben Gruppe bilden einen Bereich;
@@ -13047,7 +13054,7 @@ function bloeckeEigenHTML(b){
 }
 function bloeckeHTML(alle, bereiche, bereichHTML){
   const teil = {
-    schnell: () => schnellzeileHTML(alle), begleiter: () => sgBotschaftHTML() || begleiterHTML("start"), aktion: () => aktionBandHTML(),
+    schnell: () => schnellzeileHTML(alle), begleiter: () => sgBotschaftHTML() || begleiterHTML("start"), aktion: () => "",   /* der Top-Runner ist ein Knopf außerhalb des Flusses (aktionKnopfAbgleichen), der Block bleibt als Name für alte Aufbauten */
     banner: () => bannerRadHTML(), nochmal: () => nochmalHTML(), empfehlung: () => empfehlungHTML()
   };
   const genannt = BLOECKE.map(b => b.id);
@@ -13509,15 +13516,12 @@ function merkSumme(){
 }
 function preisText(v){ return v.toFixed(2).replace(".", ",") + " €"; }
 
-/* ── Rabatt direkt am Gericht (Wunsch 07.10.) ─────────────────────
-   Eine laufende Aktion zeigt sich jetzt auch in der Karte selbst:
-   alter Preis gestrichen, neuer Preis, „−20 %“. Kein zweites
-   Rabattsystem — es ist dieselbe Tabelle aktionen, die der Server beim
-   Bestellen ohnehin nachrechnet (least() aus Karte und Aktion). Der
-   gestrichene Preis ist der AKTUELLE Kartenpreis, nicht preis_alt: Hat
-   der Wirt den Preis seither geändert, stimmte sonst die Rechnung auf
-   dem Schirm nicht. Liegt der Aktionspreis nicht darunter, gibt es
-   nichts zu zeigen. */
+/* ── Aktionspreis direkt am Gericht (Wunsch 07.10., Variante A seit 26.10.) ──
+   Eine laufende Aktion zeigt sich auch in der Karte selbst: der Aktionspreis, dazu die Marke „Aktion“. KEIN durchgestrichener
+   Preis und KEIN „−20 %“ mehr — wer eine Ermäßigung bekanntgibt, muss den niedrigsten Preis der letzten 30 Tage nennen
+   (§ 11 PAngV, BGH I ZR 183/24); zeigt der Hub nur den Aktionspreis, gibt er keine Ermäßigung bekannt (Rechtsbericht R3). Kein
+   zweites Rabattsystem — es ist dieselbe Tabelle aktionen, die der Server beim Bestellen ohnehin nachrechnet (least() aus
+   Karte und Aktion). Liegt der Aktionspreis nicht unter dem Kartenpreis, gibt es nichts zu zeigen. */
 function aktionVon(name){
   const g = findeGericht(name); if(!g || g.p === "–") return null;
   const karte = preisNum(g.p);
@@ -13525,7 +13529,7 @@ function aktionVon(name){
     Number(x.preis_neu) >= 0 && Number(x.preis_neu) < karte);
   if(!a) return null;
   const neu = Number(a.preis_neu);
-  return { a, alt: karte, neu, prozent: Math.max(1, Math.round((1 - neu / karte) * 100)) };
+  return { a, neu };
 }
 /* Der Preis, der in den Korb geht — im Format der Karte („7,90“). */
 function korbPreis(g){
@@ -13549,8 +13553,7 @@ function gerichtPreisHTML(g){
   const r = aktionVon(g.n);
   if(!r) return '<span class="p">' + g.p + ' €</span>';
   return '<span class="p pneu">' + preisText(r.neu) + '</span>' +
-    '<s class="palt">' + preisText(r.alt) + '</s>' +
-    '<span class="tag rabatt">−' + r.prozent + ' %</span>';
+    '<span class="tag rabatt">' + hs(t("Aktion")) + '</span>';
 }
 
 /* ═══ Stile der Speisekarte (17.10.) ═══════════════════════════════
@@ -14053,7 +14056,6 @@ function karteSeite(id, daten, titel, unter, fuss){
              (heroFoto && kt ? '<span class="kk-herz2" aria-hidden="true">' + herz() + '</span>' : "") +
              '<div class="kk-text">' + heroKopf + '</div></div>'
            : kopf) +
-         aktionBandHTML() +
          suche + '<div class="chips">' +
            /* Klebt die Leiste oben, ist DAS der Weg zurück (die schwebende
               Pille tritt dann zurück) — vorher lag die Pille über den Chips. */
@@ -14238,7 +14240,7 @@ function frKnoepfeHTML(){
       '<button type="button" class="fr-knopf" data-eh-los="1">' + t("Nochmal drehen") + '</button>' +
       (merk[frErgebnis]
         ? '<a class="fr-knopf haupt" href="#/auswahl">' + t("Auswahl ansehen") + '</a>'
-        : '<button type="button" class="fr-knopf haupt" data-eh-nehm="' + encodeURIComponent(frErgebnis) + '">' + t("Nehm ich!") + '</button>') +
+        : '<button type="button" class="fr-knopf haupt" data-eh-nehm="' + encodeURIComponent(frErgebnis) + '">' + t("Das nehme ich") + '</button>') +
       '</div>';
   }
   return '<div class="fr-knoepfe" id="frKnoepfe">' +
@@ -14460,7 +14462,7 @@ function edKarteHTML(name, tiefe){
     (tiefe ? ' aria-hidden="true"' : '') + '>' +
     '<div class="ed-bildflaeche' + (edBereit.has(edFotoUrl(g)) ? (g.bf ? " mitpop" : " mitfoto") : "") + '">' + foto +
       '<span class="ed-emo">' + (bewegteZeichenAn() && !tiefe ? bzHTML(cp, "ed:" + name) : bzZeichen(cp)) + '</span>' +
-      '<span class="ed-stempel ja">' + t("Nehm ich!") + '</span>' +
+      '<span class="ed-stempel ja">' + t("Das nehme ich") + '</span>' +
       '<span class="ed-stempel nein">' + t("Weiter") + '</span>' +
     '</div>' +
     '<div class="ed-text">' +
@@ -14480,7 +14482,7 @@ function edFlaecheHTML(){
   if(edPos >= edStapel.length){
     return '<div class="ed-ende">' +
       '<span class="ed-ende-emo">' + (bewegteZeichenAn() ? bzHTML("1f973", "ed:ende") : bzZeichen("1f973")) + '</span>' +
-      '<h3>' + t("Alles gesehen!") + '</h3>' +
+      '<h3>' + t("Das waren alle Vorschläge.") + '</h3>' +
       '<p>' + t("{n} Artikel", {n:merkAnzahl()}) + '</p>' +
       '<a class="knopf" href="#/auswahl">' + t("Auswahl ansehen") + '</a>' +
       '<button type="button" class="knopf zweit" data-ed-neu="1">' + t("Nochmal mischen") + '</button>' +
@@ -14494,8 +14496,8 @@ function edFlaecheHTML(){
     '<div class="ed-knoepfe">' +
       '<button type="button" class="ed-knopf nein" data-ed-wahl="nein" aria-label="' + t("Weiter") + '">' +
         (bewegteZeichenAn() ? bzHTML("1f44e", "ed:nein") : bzZeichen("1f44e")) + '<span>' + t("Weiter") + '</span></button>' +
-      '<button type="button" class="ed-knopf ja" data-ed-wahl="ja" aria-label="' + t("Nehm ich!") + '">' +
-        (bewegteZeichenAn() ? bzHTML("1f60d", "ed:ja") : bzZeichen("1f60d")) + '<span>' + t("Nehm ich!") + '</span></button>' +
+      '<button type="button" class="ed-knopf ja" data-ed-wahl="ja" aria-label="' + t("Das nehme ich") + '">' +
+        (bewegteZeichenAn() ? bzHTML("1f60d", "ed:ja") : bzZeichen("1f60d")) + '<span>' + t("Das nehme ich") + '</span></button>' +
     '</div>';
 }
 
@@ -14889,7 +14891,7 @@ document.addEventListener("keydown", e => {
 
 /* ═══ Bestellung feiern ════════════════════════════════════════════
    Einmal, direkt nach dem Abschicken: Konfetti und ein großes 🎉.
-   Bewusst „Das klingt lecker!" und NICHT „Bestellt!": In diesem
+   Bewusst „Unser Vorschlag" und NICHT „Bestellt!": In diesem
    Augenblick ist die Bestellung unterwegs, nicht bestätigt — was
    wirklich ankam, sagt der Bestellpass darunter (CLAUDE.md §9: nichts
    behaupten, was nicht feststeht). Liegt über allem, fängt keinen
@@ -14902,7 +14904,7 @@ function feiern(){
   f.className = "feier";
   f.setAttribute("aria-hidden", "true");
   f.innerHTML = '<span class="feier-emo">' + (bewegteZeichenAn() ? bzHTML("1f389", "feier") : bzZeichen("1f389")) + '</span>' +
-                '<b>' + t("Das klingt lecker!") + '</b>';
+                '<b>' + t("Unser Vorschlag") + '</b>';
   document.body.appendChild(f);
   bzVerdrahten();
   konfetti(window.innerWidth / 2, window.innerHeight * .42, 36);
@@ -15387,7 +15389,7 @@ function dazuHTML(){
       ? '<div class="dazu-komplett">' +
           '<span class="dazu-komplett-bilder" aria-hidden="true"><span class="dazu-bild">' + dazuBildHTML(komplett[0]) + '</span>' +
           '<b>+</b><span class="dazu-bild">' + dazuBildHTML(komplett[1]) + '</span></span>' +
-          '<span class="dazu-komplett-text"><span class="dazu-grund">' + t("Mach es komplett") + '</span>' +
+          '<span class="dazu-komplett-text"><span class="dazu-grund">' + t("Bestellung ergänzen") + '</span>' +
             '<b>' + hs(t(komplett[0].e.n)) + '<br>+ ' + hs(t(komplett[1].e.n)) + '</b></span>' +
           '<button type="button" class="dazu-beide" data-dazu-beide="' + encodeURIComponent(komplett[0].e.n) + '|' + encodeURIComponent(komplett[1].e.n) + '">' +
             t("Beides dazu") + ' · <span class="dazu-beide-preis">' + preisText(summeKomplett) + '</span></button>' +
@@ -16042,7 +16044,7 @@ function wsStreifenZeichnen(){
     el.innerHTML =
       wsFigur() +
       '<span class="wstext">' +
-        '<span class="wstitel">' + t(hin[0].grund === "zahlart" ? "Diese Zahlungsart gibt es gerade nicht" : hin[0].grund === "abholung" ? "Diese Abholung klappt gerade nicht" : "Wir erreichen die Küche gerade nicht") + '</span>' +
+        '<span class="wstitel">' + t(hin[0].grund === "zahlart" ? "Diese Zahlungsart gibt es gerade nicht" : hin[0].grund === "abholung" ? "Diese Abholung ist gerade nicht möglich" : "Wir erreichen die Küche gerade nicht") + '</span>' +
         '<span class="wsunter">' + t("Zeigen Sie unserem Team einfach diese Bestellung – wir nehmen sie direkt auf.") + '</span>' +
       '</span>' +
       '<button class="wsknopf" data-ws-zeigen="1">' + t("Bestellung zeigen") + '</button>';
@@ -16290,10 +16292,10 @@ SEITEN.bestellt = () => {
   const zb = zahlungVon(b), zo = zahlungNochOffen(zb);
   return '<div class="seite">' + (zo ? "" : '<div class="haken">✓</div>') +
     begleiterHTML("bestellt") +
-    '<h2 style="text-align:center">' + (zo ? t("Fast geschafft!") : t("Bestellung ist da!")) + '</h2>' +
+    '<h2 style="text-align:center">' + (zo ? t("Fast geschafft!") : t("Bestellung eingegangen")) + '</h2>' +
     (zo ? "" : '<p class="unter" style="text-align:center">' +
       (b.abholung ? t("Wir haben Ihre Bestellung erhalten. Sobald sie abholbereit ist, sehen Sie es hier.")
-                  : t("Wir haben Ihre Bestellung erhalten und kommen gleich zu Ihnen an den Tisch.")) + '</p>') +
+                  : t("Wir haben Ihre Bestellung erhalten und bringen sie Ihnen an den Tisch.")) + '</p>') +
     zahlBlockHTML(b) +
     (zo ? "" : phaseHTML(stand, b.tagesnummer, !!b.abholung)) +
     '<div class="bstatus" id="bstatus" hidden></div>' +
@@ -16461,7 +16463,7 @@ function tourDef(){
   ] });
   if(foodrouletteAn()) bereiche.push({ id:"roulette", titel:"Foodroulette", vor:an("#/entdecken"), schritte:[
     { ziel:["#frRad", ".fr-rad"], titel:"Foodroulette", text:"Unentschlossen? Das Rad sucht für Sie ein Gericht aus der Karte aus." },
-    { ziel:[".fr-knopf.haupt"], demo:"tippen", titel:"Drehen", text:"Tippen Sie auf „Für mich entscheiden“. Mit „Nehm ich!“ übernehmen Sie das Ergebnis in Ihre Auswahl." }
+    { ziel:[".fr-knopf.haupt"], demo:"tippen", titel:"Drehen", text:"Tippen Sie auf „Für mich entscheiden“. Mit „Das nehme ich“ übernehmen Sie das Ergebnis in Ihre Auswahl." }
   ] });
   const ruf = kachel("tischruf"), mein = kachel("meintisch");
   if(ruf || mein){
@@ -16504,21 +16506,26 @@ function tourPilleAbgleichen(){
   q.hidden = false;
   /* Die Lage, die die Leiste NACH dem Einfahren hat: die Auswahl-Leiste fährt aus 100 px Tiefe ein, gemessen mitten im Einfahren läge der Knopf
      auf ihr. Deshalb die Verschiebung herausrechnen und die Auswahl-Leiste nur zählen, wenn sie „an“ ist. */
+  q.style.setProperty("--tour-pille-unten", Math.round(innerHeight - festeLeistenOben() + 12) + "px");
+}
+/* Oberkante der höchsten festen Leiste unten (Endlage, ohne die laufende Verschiebung) — für den Anleitungs-Knopf links UND den
+   Aktions-Knopf rechts. Der Bestellstand-Streifen (wsstreifen) gehört dazu: Er fehlte beim Anleitungs-Knopf. */
+function festeLeistenOben(){
   let hoch = innerHeight;
-  ["hauptnav", "auswahlbalken", "vstreifen"].forEach(id => { const e = $(id); if(!e || e.hidden) return;
+  ["hauptnav", "auswahlbalken", "vstreifen", "wsstreifen"].forEach(id => { const e = $(id); if(!e || e.hidden) return;
     if(id === "auswahlbalken" && !e.classList.contains("an")) return;
     const r = e.getBoundingClientRect(); const cs = getComputedStyle(e);
     if(!(r.height > 0 && r.width > 0) || cs.visibility === "hidden" || cs.display === "none") return;
     let dy = 0; try{ dy = new DOMMatrix(cs.transform).m42; }catch(x){}
     hoch = Math.min(hoch, r.top - dy); });
-  q.style.setProperty("--tour-pille-unten", Math.round(innerHeight - hoch + 12) + "px");
+  return hoch;
 }
 /* Fährt eine der Leisten ein oder aus (Auswahl, Navigation, Streifen), zieht der Knopf mit — EIN Beobachter an allen dreien (§4.5). */
 (function(){
   if(!window.MutationObserver) return;
   let geplant = false;
-  const mo = new MutationObserver(() => { if(geplant) return; geplant = true; setTimeout(() => { geplant = false; tourPilleAbgleichen(); }, 80); });
-  ["hauptnav", "auswahlbalken", "vstreifen"].forEach(id => { const e = $(id); if(e) mo.observe(e, { attributes:true, attributeFilter:["class", "hidden"] }); });
+  const mo = new MutationObserver(() => { if(geplant) return; geplant = true; setTimeout(() => { geplant = false; tourPilleAbgleichen(); aktionKnopfAbgleichen(); }, 80); });
+  ["hauptnav", "auswahlbalken", "vstreifen", "wsstreifen", "willkommen", "warenkarte"].forEach(id => { const e = $(id); if(e) mo.observe(e, { attributes:true, attributeFilter:["class", "hidden"] }); });
   mo.observe(document.body, { attributes:true, attributeFilter:["data-nav"] });
 })();
 document.addEventListener("click", e => {
@@ -16527,9 +16534,9 @@ document.addEventListener("click", e => {
   if(c.hasAttribute("data-tour-weg")){ tourMerken(); tourPilleAbgleichen(); return; }
   tourStarten();
 });
-addEventListener("hashchange", () => setTimeout(tourPilleAbgleichen, 60));
-addEventListener("resize", () => tourPilleAbgleichen());
-setTimeout(tourPilleAbgleichen, 900);
+addEventListener("hashchange", () => setTimeout(() => { tourPilleAbgleichen(); aktionKnopfAbgleichen(); }, 60));
+addEventListener("resize", () => { tourPilleAbgleichen(); aktionKnopfAbgleichen(); });
+setTimeout(() => { tourPilleAbgleichen(); aktionKnopfAbgleichen(); }, 900);
 
 
 /* ═══ IMPRESSUM UND DATENSCHUTZ IM HUB (18.10.) ══════════════════
@@ -16985,7 +16992,7 @@ SEITEN.service = () => {
     '<span class="ruftext">' + t(r.text) + '</span></button>').join("");
 
   return '<div class="seite"><h2>' + t("Service rufen") + '</h2>' +
-    '<p class="unter">' + t("Kein Winken nötig. Tippen Sie an, was Sie brauchen – wir kommen zu Ihnen.") + '</p>' +
+    '<p class="unter">' + t("Wählen Sie aus, was Sie brauchen – wir kommen zu Ihnen.") + '</p>' +
     '<div class="rufreihe">' + knoepfe + '</div>' +
     tischFeld("sTisch") +
     '<button class="knopf" data-aktion="service">' + t("Bescheid geben") + '</button>' +
@@ -16996,7 +17003,7 @@ SEITEN.service = () => {
         bleibt der ehrliche alte Text stehen.                        */
     '<div class="hinweis"><b>' + t("Ehrlich gesagt:") + '</b> ' +
     (serverBereit()
-      ? t("Der Ruf geht sofort an unser Team – ohne Umweg über eine App. Wenn gerade viel los ist, kann es einen Moment dauern. Winken Sie uns dann bitte einfach zu, wir sind Menschen und keine Maschine.")
+      ? t("Ihr Ruf geht direkt an unser Team. Wenn gerade viel los ist, kann es einen Moment dauern. Bitte machen Sie sich dann gern bemerkbar.")
       : t("Das ist kein automatisches Rufsystem. Ihre Nachricht öffnet sich in {x} und Sie schicken sie selbst ab. In der Regel sind wir in wenigen Minuten bei Ihnen – wenn es hektisch ist, winken Sie uns bitte trotzdem einfach zu.",
           {x: wegText(SERVICE)})) +
     '</div></div>';
@@ -17140,7 +17147,7 @@ SEITEN.meintisch = () => {
 
   if(!gastStand.ok){
     return kopf +
-      '<p class="unter">' + t("Das klappt hier gerade nicht.") + '</p>' +
+      '<p class="unter">' + t("Das ist gerade nicht möglich.") + '</p>' +
       '<div class="hinweis">' +
       t("Dafür braucht es kurz Verbindung. Bestellen und alles andere geht auch ohne.") +
       '</div>' +
@@ -17493,6 +17500,7 @@ function zeichne(){
      holt die Stelle bei LIEFER.an es nach. */
   if(/^#\/liefern\b/i.test(location.hash)) liefernAngefragt = true;
   liefermodusAbgleichen();
+  aktionKnopfAbgleichen();   /* der Top-Runner ist ein Knopf außerhalb des Flusses: folgt Aktionen, Seite und Sprache */
 
   /* Hier stand bis zum 08.09. die Übersetzung der Fußzeile „Für den
      Betrieb". Der Link ist entfernt (siehe Fuß im Gerüst), und mit
@@ -17525,8 +17533,8 @@ function zeichne(){
     console.error("[Omoteno] Seite \u201E" + seiteJetzt + "\u201C konnte nicht gebaut werden:", fehler);
     seiteJetzt = "start";
     $("inhalt").innerHTML =
-      '<div class="leer">' + t("Hier hakt gerade etwas.") + '<br>' +
-      t("Bitte einmal zurück zur Übersicht, unser Team hilft Ihnen sonst gerne persönlich weiter.") +
+      '<div class="leer">' + t("Das hat gerade nicht funktioniert.") + '<br>' +
+      t("Bitte kehren Sie zur Startseite zurück. Unser Team hilft Ihnen auch gern persönlich weiter.") +
       '</div><button class="knopf" data-heim="1">' + t("Zurück zur Startseite") + '</button>';
   }
   $("zurueck").classList.toggle("an", !istStart);
@@ -17938,7 +17946,7 @@ function bestellStatusSteuern(pfad){
     /* Nur anfassen, wenn sich wirklich etwas geändert hat. Der Kasten
        wird alle 15 Sekunden gerechnet; ein innerHTML bei jedem Takt
        setzte die Stufen-Übergänge jedes Mal zurück (§4.2). */
-    const neuHTML = '<div class="bs-titel">' + t("Live-Status") + '</div>' +
+    const neuHTML = '<div class="bs-titel">' + t("Stand Ihrer Bestellung") + '</div>' +
       '<div class="bs-stufen">' + STUFEN.map((s,i) =>
         '<div class="bs-stufe' + (i <= idx ? " an" : "") + '"><i></i><span>' +
         t(s[1]) + '</span></div>').join("") + '</div>' + zusage +
@@ -18365,7 +18373,8 @@ function warenkarteHTML(g){
       '<img src="' + hs(detailFrei ? g.bf : bildFuer(g, false)) + '" alt="' + hs(t(g.n)) +
       '" loading="lazy" decoding="async" ' +
       'onload="this.classList.add(&quot;geladen&quot;)" ' +
-      'onerror="this.closest(&quot;.wbild&quot;).style.visibility=&quot;hidden&quot;"></div>'
+      'onerror="this.closest(&quot;.wbild&quot;).style.visibility=&quot;hidden&quot;">' +
+      (g.ki ? '<span class="wki">' + hs(t("KI-bearbeitet")) + '</span>' : "") + '</div>'
     : "";
 
   /* Ohne Bild liegt der Schließknopf auf derselben Höhe wie der Preis und
@@ -18378,7 +18387,7 @@ function warenkarteHTML(g){
     '<div><div class="wn" id="wname">' + t(g.n) + tags + '</div>' +
       urnameHTML(g.n) + '</div>' +
     (aktionVon(g.n)
-      ? '<div class="wp pneu">' + preisText(aktionVon(g.n).neu) + '<s class="palt">' + preisText(aktionVon(g.n).alt) + '</s></div></div>'
+      ? '<div class="wp pneu">' + preisText(aktionVon(g.n).neu) + '</div></div>'
       : '<div class="wp">' + g.p + (g.p === "–" ? "" : " €") + '</div></div>') +
     (g.b ? '<div class="wbeschr">' + t(g.b) + '</div>' : "") +
     (gruppen ? '<div class="wtrenn"></div>' + wieLetztHTML(g) + gruppen : "") +
@@ -18386,7 +18395,7 @@ function warenkarteHTML(g){
     '<div class="wtitel">' + t("Inhalt & Allergene") + '</div>' +
     stoffe +
     '<div class="wfuss">' +
-      t("Angaben ohne Gewähr. Bei Allergien oder Unverträglichkeiten sprechen Sie bitte immer unser Serviceteam an.") +
+      t("Bei Allergien oder Unverträglichkeiten fragen Sie bitte vor der Bestellung unser Serviceteam. Die Angaben zu Allergenen und Zusatzstoffen stammen vom Betrieb.") +
     '</div>' +
     knopf;
 }
@@ -19239,7 +19248,7 @@ function zahlMeldung(text){
 function zahlungFehlerSatz(grund){
   return grund === "nicht_offen" ? t("Diese Bestellung ist nicht mehr offen.")
        : grund === "zu_oft"      ? t("Zu viele Versuche. Bitte sagen Sie dem Personal Bescheid.")
-       :                           t("Das Bezahlen klappt gerade nicht. Bitte versuchen Sie es gleich noch einmal oder zahlen Sie beim Personal.");
+       :                           t("Die Zahlung ist gerade nicht möglich. Bitte versuchen Sie es gleich noch einmal oder zahlen Sie beim Personal.");
 }
 /* Holt die Bezahlseite von Stripe und geht dorthin. Nur eine Adresse auf
    checkout.stripe.com wird aufgerufen — alles andere wäre ein Weg, den es
@@ -19322,7 +19331,7 @@ function zahlBlockHTML(b){
       t("Das dauert nur einen Moment. Bei Lastschrift kann es länger dauern – sagen Sie dann dem Personal Bescheid.") + '</p></div>';
   const satz = z.status === "offen"
     ? (zahlRueck === "abbruch" ? t("Die Zahlung wurde abgebrochen. Ihre Bestellung ist noch nicht in der Küche.") : t("Ihre Bestellung ist vorgemerkt. Sie geht an die Küche, sobald bezahlt ist."))
-    : t("Die Zahlung hat nicht geklappt. Sie können es noch einmal versuchen – oder beim Personal bezahlen.");
+    : t("Die Zahlung war nicht erfolgreich. Sie können es noch einmal versuchen – oder beim Personal bezahlen.");
   return '<div class="zahlblock"><p>' + satz + '</p>' +
     '<p class="zahlfehler" id="zahlfehler" role="alert" hidden></p>' +
     '<button type="button" class="knopf" data-zahlung-los="1">' + t("Jetzt bezahlen") + (betrag ? " · " + betrag : "") + '</button></div>';
@@ -19897,17 +19906,7 @@ $("inhalt").addEventListener("click", e => {
      Text, der auf der Karte stand, kein zweiter Rechenweg, der vom
      ersten abweichen könnte. */
   const sofort = e.target.closest("[data-aktionmerk]");
-  if(sofort){
-    const name = decodeURIComponent(sofort.dataset.aktionmerk);
-    const g = findeGericht(name);
-    if(merk[name]) delete merk[name];
-    else if(g) merk[name] = { n:g.n, p:sofort.dataset.preis, b:g.b || "", m:1 };
-    merkSpeichern();
-    sofort.classList.toggle("an", !!merk[name]);
-    korbSteuerungNeu(name, false);
-    balkenAktualisieren();
-    return;
-  }
+  if(sofort){ aktionMerken(sofort); return; }
 
   /* Teller: Pfeile wechseln das Gericht auf der Bühne (17.10.). */
   const tlS = e.target.closest("[data-tl-schritt]");
@@ -20083,7 +20082,7 @@ $("inhalt").addEventListener("click", e => {
     if(was === "gastMail"){
       const adresse = wert("gastMail");
       if(!adresse){ melden(t("Bitte tragen Sie noch Ihre Adresse ein."), true); return; }
-      if(!serverBereit()){ melden(t("Das klappt hier gerade nicht."), true); return; }
+      if(!serverBereit()){ melden(t("Das ist gerade nicht möglich."), true); return; }
       aktion.disabled = true;
       sicherFetch(SERVER.adresse.replace(/\/+$/,"") + "/rest/v1/rpc/gast_mail_merken", {
           method:"POST",
@@ -20104,10 +20103,10 @@ $("inhalt").addEventListener("click", e => {
           } else if(d && d.grund === "email"){
             melden(t("Diese Adresse sieht nicht vollständig aus."), true);
           } else {
-            melden(t("Das klappt hier gerade nicht."), true);
+            melden(t("Das ist gerade nicht möglich."), true);
           }
         })
-        .catch(() => { aktion.disabled = false; melden(t("Das klappt hier gerade nicht."), true); });
+        .catch(() => { aktion.disabled = false; melden(t("Das ist gerade nicht möglich."), true); });
     }
 
     if(was === "musik"){
@@ -20356,11 +20355,11 @@ $("inhalt").addEventListener("click", e => {
             /* Ein Serviceruf, der nicht durchkommt, braucht keinen
                Chat - der Gast will jemanden am Tisch. Also der Weg,
                der immer funktioniert: kurz Bescheid sagen. */
-            melden(t("Das kam gerade nicht durch. Bitte winken Sie uns kurz – wir sind gleich da."), true);
+            melden(t("Das konnte nicht gesendet werden. Bitte machen Sie sich kurz bemerkbar – wir kommen zu Ihnen."), true);
           }
         });
       } else {
-        melden(t("Das kam gerade nicht durch. Bitte winken Sie uns kurz – wir sind gleich da."), true);
+        melden(t("Das konnte nicht gesendet werden. Bitte machen Sie sich kurz bemerkbar – wir kommen zu Ihnen."), true);
       }
     }
 
@@ -21355,6 +21354,22 @@ lichtKnopfZeichnen();
 
 aktionenLaden();
 setInterval(() => { if(!document.hidden) aktionenLaden(); }, 120000);
+setInterval(aktionUhrTakt, 1000);
+/* Top-Runner-Knopf: öffnet und schließt das Blatt; ein Tipp daneben (außer auf den Knopf) oder auf das Gericht darin schließt es. */
+/* Das Blatt liegt außerhalb von #inhalt (fest am Rand) — dessen Klick-Weiche erreicht es nicht, deshalb hier. */
+document.addEventListener("click", e => {
+  if(e.target.closest("[data-akt-auf]")){
+    const b = $("aktionBlatt");
+    aktionBlattAuf(!(b && b.classList.contains("an")));
+    return;
+  }
+  const merken = e.target.closest("#aktionBlatt [data-aktionmerk]");
+  if(merken){ aktionMerken(merken); return; }
+  const gericht = e.target.closest("#aktionBlatt [data-detail]");
+  if(gericht){ aktionBlattZu(); detailOeffnen(decodeURIComponent(gericht.dataset.detail)); return; }
+  if(!e.target.closest("#aktionBlatt")) aktionBlattZu();
+});
+addEventListener("keydown", e => { if(e.key === "Escape") aktionBlattZu(); });
 
 /* Einmal beim Öffnen melden: Das zählt den Besuch und holt Lieblinge
    und Gutscheine. Kein Takt dahinter — was sich hier ändert, ändert
@@ -21733,7 +21748,7 @@ function vorschauZeige(ziel){
   const finde = { kopf:   () => $("claim"),
                   banner: () => document.querySelector(".bnrad"),
                   kacheln:() => document.querySelector("a.kachel"),
-                  aktion: () => document.querySelector(".aktion") }[ziel];
+                  aktion: () => null }[ziel];
   requestAnimationFrame(() => {
     const el = finde ? finde() : null;
     /* VORFALL (gemeldet vom Betreiber, Bildschirmfoto): Im Admin-Board
@@ -21780,7 +21795,7 @@ function vorschauMessen(){
                titel: ab(k.querySelector(".txt strong")), unter: sicht(sp) && ab(sp),
                unterVersteckt: !!sp && !sicht(sp) && !!sp.textContent.trim() };
     }),
-    aktion: ab(document.querySelector(".aktion .kennz"))
+    aktion: ab(document.querySelector("#aktionBlatt .ak-titel"))
   };
 }
 
@@ -22044,6 +22059,8 @@ async function karteHolen(erstesMal){
         /* Freisteller aus dem Board (Edge Function gericht-bild). Nur
            https — dieselbe Regel steht als CHECK auf der Spalte. */
         if(typeof z.bild_frei === "string" && /^https:\/\//.test(z.bild_frei) && eigenesFoto(z.bild_frei)) e.bf = z.bild_frei;
+        /* „KI-bearbeitet“: die Spalte gibt es erst nach migration-bild-ki-marke.sql; ohne sie keine Marke. Nur ein echtes true. */
+        if(z.bild_ki === true) e.ki = 1;
         /* Toppings kommen als Text „suess,sauce" aus der Datenbank */
         if(z.opt) e.opt = String(z.opt).split(",").map(x => x.trim()).filter(Boolean);
         /* Allergene und Zusatzstoffe aus der Datenbank übernehmen.

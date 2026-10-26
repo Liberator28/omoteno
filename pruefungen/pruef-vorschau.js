@@ -18,7 +18,7 @@
        dem Feld — gemessen im Hub, nicht gezählt im Board.
    2 · Ihre Worte: Slogan erscheint im Kopf; Fokus auf den Gruß zeigt
        den Willkommensschirm mit diesem Gruß.
-   3 · Aktion: der Aktionsname steht im Band der Vorschau.
+   3 · Aktion: der Aktionsname steht im Blatt des Aktions-Knopfs der Vorschau.
    4 · Keine Spuren: Die Vorschau meldet keinen Besuch (gast_melden),
        schickt keine Bestellung, und ist nicht bedienbar.
    5 · Kein Fehler in Board UND Rahmen (§8.1l).
@@ -312,7 +312,7 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
     "Hinweis zum Slogan genau dann, wenn der Hub wirklich kürzt", (zeilen ? "kürzt" : "passt") + " / „" + cw + "“");
 
   /* ── 3 · Aktion ─────────────────────────────────────────────── */
-  console.log("\n══ Aktion: der Name im Band ══");
+  console.log("\n══ Aktion: der Name im Aktions-Blatt ══");
   await p.evaluate(() => tafelZeigen("speisekarte"));
   await p.waitForTimeout(300);
   const auf = await p.$("#runnerAuf");
@@ -341,9 +341,9 @@ const LANG_TEXT  = ("Aus eigener Herstellung für die ganze Familie, mit frische
     pruef(await p.evaluate(() => window.scrollY) === vorherY,
       "die Elternseite bleibt stehen, während die Aktions-Vorschau im Rahmen scrollt",
       vorherY + " -> " + await p.evaluate(() => window.scrollY));
-    const band = await imRahmen("aktion", `const k = document.querySelector(".aktion .kennz");
+    const band = await imRahmen("aktion", `const k = document.querySelector("#aktionBlatt .ak-titel");
       return k ? k.textContent : null;`);
-    pruef(band && /Happy Hour am Nachmittag/i.test(band), "der Aktionsname steht im Band der Vorschau", String(band));
+    pruef(band && /Happy Hour am Nachmittag/i.test(band), "der Aktionsname steht im Blatt des Aktions-Knopfs der Vorschau", String(band));
   }
 
   /* ── 4 · Keine Spuren ───────────────────────────────────────── */

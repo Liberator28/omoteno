@@ -361,7 +361,7 @@ async function bestellen(br){
     await h.p.waitForTimeout(800);
     const st = await h.p.evaluate(() => ({ z: warteschlange.map(e => e.zustand + ":" + (e.grund || "")).join(","), titel: (document.querySelector(".wsstreifen .wstitel") || {}).textContent }));
     ok(h.gesendet.length === 1 && /gescheitert:abholung/.test(st.z), "Absage „" + grund + "“: ein Versuch, dann endgültig (nicht zehn Minuten Wiederholen)", h.gesendet.length + " Anfragen · " + st.z);
-    ok(/Diese Abholung klappt gerade nicht/.test(st.titel || ""), "und der Gast liest, was los ist (mit dem Ausweg „Bestellung zeigen“)", st.titel);
+    ok(/Diese Abholung ist gerade nicht möglich/.test(st.titel || ""), "und der Gast liest, was los ist (mit dem Ausweg „Bestellung zeigen“)", st.titel);
     await h.ctx.close();
   }
   ok(["aus", "angaben", "zeit"].every(g => GRUENDE.indexOf(g) >= 0), "zweite Quelle: die drei Gründe gibt es in der SQL", [...new Set(GRUENDE)].join(","));
@@ -415,7 +415,7 @@ async function sprachen(br){
     "Bitte wählen Sie eine Abholzeit zwischen {von} und {bis} Uhr – oder lassen Sie das Feld leer.", "Bezahlt wird bei der Abholung, direkt bei uns.",
     "Frühestens in etwa {m} Minuten abholbereit.", "Wir haben Ihre Bestellung erhalten. Sobald sie abholbereit ist, sehen Sie es hier.",
     "Abholung um {z} Uhr", "Abholung so bald wie möglich", "Bezahlt wird bei der Abholung. Sollte etwas nicht stimmen, sagen Sie uns bitte kurz Bescheid.",
-    "Fertig — bitte abholen", "Ist abholbereit", "Diese Abholung klappt gerade nicht"];
+    "Fertig — bitte abholen", "Ist abholbereit", "Diese Abholung ist gerade nicht möglich"];
   /* Jeder Satz, den der Quelltext mit t("…") ruft, steht im Wörterbuch — die Liste oben ist die zweite Quelle, der Quelltext die erste. */
   const imText = SCHL.filter(s => HUBQ.indexOf('t("' + s + '"') >= 0 || HUBQ.indexOf("t('" + s + "'") >= 0 || HUBQ.indexOf('"' + s + '"') >= 0);
   ok(imText.length === SCHL.length, "jeder neue Satz kommt im Quelltext vor (die Liste ist nicht erfunden)", SCHL.length - imText.length + " fehlen");

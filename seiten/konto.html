@@ -313,6 +313,9 @@ a{color:var(--kuli)}
 }
 .meldung.fehler{background:rgba(168,56,44,.08);border-color:rgba(168,56,44,.3);color:#7E2A20}
 .meldung.gut   {background:rgba(63,107,46,.08);border-color:rgba(63,107,46,.3);color:#2F5222}
+/* Verträge annehmen: Haken ≥ 44 px antippbar, Schrift 16 px (kein Zoom auf iOS) */
+.vt-haken{display:flex;align-items:flex-start;gap:12px;min-height:44px;padding:8px 0;font-size:16px;line-height:1.45;cursor:pointer}
+.vt-haken input{flex:none;width:24px;height:24px;margin:2px 0 0;accent-color:var(--akzent, #2B44C7)}
 .meldung.info  {background:var(--papier);border-color:var(--linie);color:var(--tinte-leise)}
 .meldung[hidden]{display:none}
 
@@ -747,6 +750,21 @@ a{color:var(--kuli)}
       <div class="zeile"><span class="was">Tische</span><span class="wert" id="vTische"></span></div>
     </div>
 
+    <!-- Verträge (Rechtsbericht R1): bleibt verborgen, bis VERTRAEGE_AN eingeschaltet ist — nicht vor der rechtlichen Prüfung der Texte. -->
+    <div class="tafel" id="vtTafel" hidden>
+      <h2>Verträge</h2>
+      <p class="unter" id="vtUnter">Allgemeine Geschäftsbedingungen und Auftragsverarbeitungsvertrag (Art. 28 DSGVO).</p>
+      <div class="meldung" id="vtMeldung" hidden></div>
+      <div id="vtStand"></div>
+      <div id="vtAnnahme" hidden>
+        <label class="vt-haken"><input type="checkbox" id="vtAgb">
+          <span>Ich habe die <a href="/agb.html" target="_blank" rel="noopener">AGB</a> gelesen und nehme sie an. Ich handle als Unternehmer.</span></label>
+        <label class="vt-haken"><input type="checkbox" id="vtAvv">
+          <span>Ich habe den <a href="/avv.html" target="_blank" rel="noopener">Auftragsverarbeitungsvertrag</a> gelesen und nehme ihn an.</span></label>
+        <button class="knopf" id="vtKnopf" disabled>Verträge annehmen</button>
+      </div>
+    </div>
+
     <div class="tafel">
       <h2>Rechnungsanschrift</h2>
       <p class="unter">Steht so auf jeder Rechnung.</p>
@@ -794,7 +812,9 @@ a{color:var(--kuli)}
 <footer class="fuss">
   Omoteno · Elias Faber · Stadtallendorf ·
   <a href="/impressum.html">Impressum</a> ·
-  <a href="/datenschutz.html">Datenschutz</a>
+  <a href="/datenschutz.html">Datenschutz</a> ·
+  <a href="/agb.html">AGB</a> ·
+  <a href="/avv.html">Auftragsverarbeitung</a>
 </footer>
 
 <script>
@@ -1280,6 +1300,7 @@ async function kontoZeichnen(){
     .catch(() => { $("vTische").textContent = "—"; });
 
   rechnungenZeichnen();
+  vertraegeZeichnen();
 }
 
 async function rechnungenZeichnen(){
@@ -1431,6 +1452,71 @@ $("raSpeichern").onclick = async () => {
     melde("raMeldung", fehlertext(e), "fehler");
   }
   knopf.disabled = false; knopf.textContent = "Anschrift speichern";
+};
+
+/* ─── Verträge annehmen (Rechtsbericht R1) ──────────────────────
+   AUS, bis die Texte (seiten/agb.html, seiten/avv.html) rechtlich geprüft und ihre „Angabe fehlt noch“-Stellen ausgefüllt sind.
+   Eingeschaltet wird mit VERTRAEGE_AN = true UND einer neuen VERTRAG_FASSUNG (Datum der geprüften Fassung). Die Annahme schreibt NUR
+   die Funktion vertrag_annehmen() (datenbank/migration-vertraege.sql) — fehlt sie noch (404), läuft das Konto wie bisher: kein
+   Zwang, keine Sperre (§7: ein echter Kunde, der nicht ins Board kommt, kostet mehr als ein fehlendes Häkchen). */
+const VERTRAEGE_AN = false;
+const VERTRAG_FASSUNG = "2026-10-26";
+const VERTRAG_GRUND = {
+  anmeldung:    "Bitte melde dich neu an.",
+  fassung:      "Diese Fassung kennen wir nicht. Bitte lade die Seite neu.",
+  nicht_beide:  "Bitte setze beide Haken.",
+  kein_inhaber: "Das kann nur der Inhaber des Betriebs."
+};
+async function vertraegeZeichnen(){
+  const tafel = $("vtTafel");
+  if(!VERTRAEGE_AN || !betrieb){ tafel.hidden = true; return; }
+  tafel.hidden = false;
+  let zeilen = null;
+  try{
+    const {data, error} = await db.from("vertrag_annahmen").select("art,fassung,angenommen_um").eq("betrieb_id", betrieb.id);
+    if(error) throw error;
+    zeilen = data || [];
+  }catch(e){ zeilen = null; }
+  const stand = $("vtStand"), annahme = $("vtAnnahme");
+  if(zeilen === null){
+    /* Tabelle noch nicht da oder Netz weg: sagen, was Sache ist, nichts sperren. */
+    stand.innerHTML = '<p class="leerhinweis">Die Annahme ist gerade nicht möglich. Dein Konto läuft wie bisher weiter.</p>';
+    annahme.hidden = true;
+    return;
+  }
+  const aktuell = a => zeilen.find(z => z.art === a && z.fassung === VERTRAG_FASSUNG);
+  const agb = aktuell("agb"), avv = aktuell("avv");
+  if(agb && avv){
+    stand.innerHTML = '<div class="zeile"><span class="was">AGB</span><span class="wert">Angenommen am ' + h(datum(agb.angenommen_um)) + '</span></div>' +
+                      '<div class="zeile"><span class="was">Auftragsverarbeitung</span><span class="wert">Angenommen am ' + h(datum(avv.angenommen_um)) + '</span></div>';
+    annahme.hidden = true;
+  }else{
+    stand.innerHTML = '<p class="leerhinweis">Noch nicht angenommen.</p>';
+    annahme.hidden = false;
+  }
+}
+function vertraegeKnopfStand(){ $("vtKnopf").disabled = !($("vtAgb").checked && $("vtAvv").checked); }
+$("vtAgb").onchange = vertraegeKnopfStand;
+$("vtAvv").onchange = vertraegeKnopfStand;
+$("vtKnopf").onclick = async () => {
+  const knopf = $("vtKnopf");
+  melde("vtMeldung","");
+  knopf.disabled = true; knopf.textContent = "Wird gespeichert …";
+  try{
+    const {data, error} = await db.rpc("vertrag_annehmen",
+      { p_betrieb: betrieb.id, p_fassung: VERTRAG_FASSUNG, p_agb: $("vtAgb").checked, p_avv: $("vtAvv").checked });
+    if(error) throw error;
+    if(!data || data.ok !== true){
+      melde("vtMeldung", VERTRAG_GRUND[data && data.grund] || "Das hat nicht geklappt. Bitte versuche es noch einmal.", "fehler");
+    }else{
+      melde("vtMeldung","Angenommen. Danke.","gut");
+      await vertraegeZeichnen();
+    }
+  }catch(e){
+    /* Fehlt die Funktion noch, ist das kein Fehler des Kunden. */
+    melde("vtMeldung", "Die Annahme ist noch nicht freigeschaltet. Dein Konto läuft wie bisher weiter.", "fehler");
+  }
+  knopf.textContent = "Verträge annehmen"; vertraegeKnopfStand();
 };
 
 /* ─── Kopieren ───────────────────────────────────────────────────

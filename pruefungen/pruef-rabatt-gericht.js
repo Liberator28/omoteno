@@ -241,14 +241,11 @@ async function board(browser) {
         werte.tag.toFixed(2) + " / " + werte.neu.toFixed(2) + " / " + werte.alt.toFixed(2));
     }
 
-    /* 7 · Streifen oben */
-    const band = await seite.evaluate(() => [...document.querySelectorAll(".aktion .name")].map(x => x.textContent));
-    pruef(band.includes(k.n) && !band.includes(d.n), "Streifen: kurzer Rabatt ja, Dauer-Rabatt nein", band.join(" · "));
+    /* 7 · Aktions-Knopf (seit 26.10. statt des Streifens): im Blatt steht der kurze Rabatt, der Dauer-Rabatt nicht */
+    const band = await seite.evaluate(() => [...document.querySelectorAll("#aktionBlatt .ak-name")].map(x => x.textContent));
+    pruef(band.includes(k.n) && !band.includes(d.n), "Aktions-Knopf: kurzer Rabatt ja, Dauer-Rabatt nein", band.join(" · "));
     const tage = await seite.evaluate(() => { aktionen = [{ id: "x", gericht_name: "X", preis_alt: 9, preis_neu: 8, bis: new Date(Date.now() + 5 * 864e5 + 6e4).toISOString() }];
-      /* Über das DOM gelesen, nicht per Muster: Vor dem Text steht seit
-         09.10. der Puls-Punkt (<i class="aktion-puls">). */
-      const d = document.createElement("div"); d.innerHTML = aktionBandHTML();
-      return d.querySelector(".rest").textContent; });
+      return aktionRestAnzeige(aktionen[0].bis, "blatt"); });
     pruef(/5/.test(tage) && !/Stunden/.test(tage), "Restzeit über zwei Tagen in Tagen", tage);
     await seite.evaluate(() => aktionenLaden()); await seite.waitForTimeout(300);
 

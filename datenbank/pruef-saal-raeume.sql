@@ -45,6 +45,18 @@ begin
   r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"theken":[{"x":1,"b":2,"t":0.8}]}]}');       insert into probe values ('RM24 Theke ohne y', r::text);
   r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"theken":[{"x":1,"y":1,"b":2,"t":1},{"x":1,"y":2,"b":2,"t":1},{"x":1,"y":3,"b":2,"t":1},{"x":1,"y":4,"b":2,"t":1}]}]}'); insert into probe values ('RM25 vier Theken', r::text);
   r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"theken":"viel"}]}'); insert into probe values ('RM26 Theken kein Array', r::text);
+  -- Küche (Wunsch 25.10.)
+  r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"kueche":{"x":0.5,"y":0.5,"b":4,"t":3}}]}');              insert into probe values ('RM27 gültig mit Küche → ok', r::text);
+  insert into probe values ('RM28 Küche gespeichert: Breite 4', (select daten -> 'raeume' -> 0 -> 'kueche' ->> 'b' from public.saal_einstellungen where betrieb_id = b));
+  r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"kueche":{"x":0.5,"y":0.5,"b":0.9,"t":3}}]}');            insert into probe values ('RM33 Küche 0.9 m breit', r::text);
+  r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"kueche":{"x":0.5,"y":0.5,"b":31,"t":3}}]}');             insert into probe values ('RM34 Küche 31 m breit', r::text);
+  r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"kueche":{"x":61,"y":0.5,"b":4,"t":3}}]}');               insert into probe values ('RM35 Küche x 61', r::text);
+  r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"kueche":{"x":0.5,"y":0.5,"b":4,"t":3,"farbe":"x"}}]}');  insert into probe values ('RM36 fremder Schlüssel an der Küche', r::text);
+  r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"kueche":{"x":0.5,"y":0.5,"b":"4","t":3}}]}');            insert into probe values ('RM37 Küche Breite als Text', r::text);
+  r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"kueche":[1,2]}]}');                                       insert into probe values ('RM38 Küche kein Objekt', r::text);
+  r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"kueche":{"x":0.5,"y":0.5,"b":4,"t":3}},{"b":8,"t":5,"kueche":{"x":0.5,"y":0.5,"b":4,"t":3}}]}'); insert into probe values ('RM39 zwei Küchen im Gebäude', r::text);
+  r := public.saal_einstellungen_setzen(b, '{"raeume":[{"b":12,"t":8,"kueche":null}]}');                                        insert into probe values ('RM29 Küche null = keine Küche → ok', r::text);
+  r := public.saal_einstellungen_setzen(b, '{"zonen":["Nur"]}');
   -- Der Stand nach allen abgewiesenen Versuchen ist der letzte gültige (RM03: Räume fehlen → Setzen ersetzt alles)
   insert into probe values ('RM30 Stand nach Abweisungen = RM03', (select daten::text from public.saal_einstellungen where betrieb_id = b));
   -- Größter erlaubter Inhalt: 6 Bereiche à 24 Zeichen, 6 Räume, je 3 Theken — muss in die Schranke (< 4000 Byte) passen
@@ -53,7 +65,9 @@ begin
     'raeume', (select jsonb_agg(jsonb_build_object('b', 60.0, 't', 60.0, 'x', 300.0, 'y', 300.0, 'theken',
         jsonb_build_array(jsonb_build_object('x', 60.0, 'y', 60.0, 'b', 30.0, 't', 30.0),
                           jsonb_build_object('x', 60.0, 'y', 60.0, 'b', 30.0, 't', 30.0),
-                          jsonb_build_object('x', 60.0, 'y', 60.0, 'b', 30.0, 't', 30.0)))) from generate_series(1, 6) i),
+                          jsonb_build_object('x', 60.0, 'y', 60.0, 'b', 30.0, 't', 30.0))
+        ) || case when i = 1 then jsonb_build_object('kueche', jsonb_build_object('x', 60.0, 'y', 60.0, 'b', 30.0, 't', 30.0)) else '{}'::jsonb end
+      ) from generate_series(1, 6) i),
     'stufen', jsonb_build_object('ruf', jsonb_build_object('farbe', '#FF3D81', 'min2', 120, 'min3', 240),
                                  'neu', jsonb_build_object('farbe', '#FFB300', 'min2', 120, 'min3', 240),
                                  'servieren', jsonb_build_object('farbe', '#22D17A', 'min2', 120, 'min3', 240),

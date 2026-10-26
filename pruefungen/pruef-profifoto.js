@@ -329,7 +329,7 @@ const PROFI   = ORDNER + "1-profi.jpg";
     pruef(w.pop && w.mitpop && w.danach === "1" && w.emoji === "none", "gelandet: der Freisteller steht groß da, das Emoji tritt zurück", JSON.stringify(w));
     const flug = s.waitForSelector(".korbflug.kf-frei", { timeout: 1500 }).then(() => true).catch(() => false);
     await s.evaluate(() => document.querySelector("[data-eh-nehm]").click());
-    pruef(await flug, "„Nehm ich!“: der Freisteller fliegt rahmenlos in den Korb");
+    pruef(await flug, "„Das nehme ich“: der Freisteller fliegt rahmenlos in den Korb");
     const ueber = await s.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
     pruef(ueber <= 1, "kein seitliches Schieben", ueber + "px");
     pruef(!fehler.length, "keine Ausnahme im Hub", fehler.join(" | ") || "still");
