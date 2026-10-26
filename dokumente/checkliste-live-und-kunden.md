@@ -192,6 +192,9 @@ bis ein Betrieb unter „Einstellungen → Bezahlen“ etwas einschaltet.
       eine Zeile je Funktion**. Danach `datenbank/pruef-zahlungen.sql` im
       SQL-Editor (dreht sich zurück): jede Zeile muss `true` sein. Lokal
       laufen sie 116 von 116 — gegen die echte Datenbank noch nie.
+> **STAND 26.10.: Die Online-Zahlung ist ausgeschaltet** (keine Erlaubnisklärung nach ZAG, Verbindungsschritt zu Stripe fehlt).
+> Alles in diesem Abschnitt gilt erst NACH `dokumente/zahlung-anbinden-anleitung.md`, Teil 1.
+
 - [ ] **E** Edge Functions ausrollen, beide **ohne** Token-Prüfung (die
       Echtheit kommt beim Webhook aus der Unterschrift):
       `supabase functions deploy zahlung-starten --no-verify-jwt` und

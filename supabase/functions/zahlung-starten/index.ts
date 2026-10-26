@@ -97,6 +97,8 @@ Deno.serve(async (anfrage: Request) => {
   const antwort = (k: unknown, status = 200) => new Response(JSON.stringify(k), { status, headers: kopf });
   if (anfrage.method === "OPTIONS") return new Response(null, { status: 204, headers: kopf });
   if (anfrage.method !== "POST") return antwort({ ok: false, grund: "nur_post" }, 405);
+  /* Abgeschaltet (26.10.): ohne ZAHLUNG_AN=1 geht nichts an Stripe und nichts an die Datenbank. */
+  if (Deno.env.get("ZAHLUNG_AN") !== "1") return antwort({ ok: false, grund: "abgeschaltet" });
   if (!SUPABASE_URL || !SERVICE_KEY || !STRIPE_KEY) return antwort({ ok: false, grund: "einrichtung" });
 
   let a: { bestellung_id?: unknown; zurueck?: unknown };

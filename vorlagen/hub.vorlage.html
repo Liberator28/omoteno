@@ -19126,6 +19126,10 @@ function rufBremseSatz(min){
    fehlt, kein Netz —, wird NICHTS angeboten und alles läuft wie vorher:
    Der Gast kann dann immer noch beim Personal zahlen (§7).
    ══════════════════════════════════════════════════════════════════ */
+/* ABGESCHALTET (26.10.): Omoteno hat keine Erlaubnis nach ZAG, die Rechtslage der Stripe-Anbindung ist nicht geklärt
+   (dokumente/recht/15, dokumente/zahlung-anbinden-anleitung.md). Ohne dieses Fenster-Zeichen fragt der Hub gar nicht erst
+   nach Zahlarten: kein Wahlfeld, kein Absatz in der Datenschutzerklärung, keine Anfrage. Einschalten nur dort beschrieben. */
+const ZAHLUNG_ONLINE_AN = window.OMOTENO_ZAHLUNG === true;
 const ZAHLARTEN = { geladen:false, laeuft:false, karte:false, klarna:false, paypal:false, sepa:false, stripe:false, ueberweisung:false };
 let zahlWahl = "ort";           /* "ort" | "stripe" | "ueberweisung" — nur im Speicher, nie im Gerät */
 const zahlungInfo = {};         /* nummer → letzte Antwort von zahlung_status; Bankdaten bleiben im Speicher */
@@ -19133,6 +19137,7 @@ let zahlRueck = null;           /* "ok" | "abbruch": woher Stripe den Gast zurü
 let zahlRueckGelesen = false;
 
 function zahlartenLaden(){
+  if(!ZAHLUNG_ONLINE_AN) return;
   if(ZAHLARTEN.geladen || ZAHLARTEN.laeuft || !serverBereit() || rechtVorfuehrung()) return;
   ZAHLARTEN.laeuft = true;
   betriebIdHolen().then(bid => {

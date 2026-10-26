@@ -5063,7 +5063,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <h2 class="etitel">Lieferung</h2>
       <p class="ehilfe">Ist sie an, kann ein Gast sich von zu Hause beliefern lassen —
         dieselbe Karte, derselbe Korb, nur mit Adresse statt Tischnummer.
-        Bezahlt wird bei Ihnen an der Tür — oder, wenn Sie es unter „Bezahlen“ einschalten, online. Über Omoteno fließt nie Geld.
+        Bezahlt wird bei Ihnen an der Tür. Über Omoteno fließt nie Geld.
         Weiter unten stellen Sie die Abholung ein: Der Gast bestellt, nennt Name und Telefon und holt selbst ab (bezahlt wird dann bei Ihnen vor Ort).</p>
       <!-- Rechtsbericht R9: Wer Speisen zum Mitnehmen oder Liefern in Einwegverpackung abgibt, muss grundsätzlich eine Mehrwegalternative
            anbieten (§§ 33, 34 VerpackG). Die Pflicht trifft den Betrieb, nicht Omoteno — der Hinweis steht hier, wo er sie einschaltet. -->
@@ -6408,6 +6408,11 @@ const QUELLE_TEXT = {tisch:"Tisch", telefon:"Alessia · Telefon", lieferung:"Lie
 const quelleKey  = b => (b && b.quelle === "lieferung" && b.abholung === true) ? "abholung" : (b && b.quelle);
 const quelleText = b => QUELLE_TEXT[quelleKey(b)] || (b && b.quelle) || "";
 const $  = s => document.querySelector(s);
+/* ABGESCHALTET (26.10.): Online-Zahlung (Stripe) und Überweisung sind aus dem Board genommen — Omoteno hat keine Erlaubnis nach ZAG, die
+   Rechtslage ist nicht geklärt (dokumente/recht/15, dokumente/zahlung-anbinden-anleitung.md). Die Bausteine bleiben im Quelltext, bis
+   das geklärt ist; ohne window.OMOTENO_ZAHLUNG=true gibt es weder Gruppe noch Kachel noch Abfrage. */
+const ZAHLUNG_ONLINE_AN = window.OMOTENO_ZAHLUNG === true;
+if(!ZAHLUNG_ONLINE_AN){ const zhg = document.getElementById("zhGruppe"); if(zhg) zhg.remove(); }
 const $$ = s => [...document.querySelectorAll(s)];
 
 
@@ -10852,13 +10857,13 @@ const EU_BEREICHE = [
       return teile.length ? teile.join(" · ") : "Aus"; },
     bild:() => '<g class="' + (euWippe("lfAn") || euWippe("lfAbholen") ? "eu-strich" : "eu-strich eu-blass") + '">' +
       EU_SYMBOL.roller.replace(/<(path|circle)/g, '<$1 transform="translate(8 8) scale(1.4)"') + '</g>' },
-  { titel:"Bezahlen", sym:"beleg", ton:"var(--gut)",
+  ...(!ZAHLUNG_ONLINE_AN ? [] : [{ titel:"Bezahlen", sym:"beleg", ton:"var(--gut)",
     satz:"Online-Zahlung und Überweisung",
     stand:() => { if(zahlSet === undefined) return "…"; const z = zahlSet || {};
       const a = [z.karte_an ? "Karte" : "", z.klarna_an ? "Klarna" : "", z.paypal_an ? "PayPal" : "", z.sepa_an ? "SEPA" : "", z.ueberweisung_an ? "Überweisung" : ""].filter(Boolean);
       return a.length ? a.join(" · ") : "Nur beim Personal"; },
     bild:() => '<g class="' + ((zahlSet && (zahlSet.karte_an || zahlSet.klarna_an || zahlSet.paypal_an || zahlSet.sepa_an || zahlSet.ueberweisung_an)) ? "eu-strich" : "eu-strich eu-blass") + '">' +
-      '<rect x="6" y="12" width="36" height="24" rx="4" fill="none"/><path d="M6 20h36M12 30h8" fill="none"/></g>' },
+      '<rect x="6" y="12" width="36" height="24" rx="4" fill="none"/><path d="M6 20h36M12 30h8" fill="none"/></g>' }]),
   { titel:"Gäste-Newsletter", sym:"brief", ton:"var(--gut)",
     satz:"Gutschein und Erinnerung per E-Mail",
     stand:() => euWippe("nlAn") ? "An" : "Aus",
@@ -16332,10 +16337,10 @@ const AN_WIKI = [
     text:["Ist die Lieferung an, kann ein Gast sich von zu Hause beliefern lassen — dieselbe Karte, derselbe Korb, nur mit Adresse statt Tischnummer. Sie legen das Liefergebiet (Postleitzahlen), Mindestbestellwert, Liefergebühr, die Grenze für „kostenlos“ und die zugesagte Lieferzeit fest; der Server rechnet damit, nicht das Telefon des Gastes.",
       "Weiter unten stellen Sie die Abholung ein: Der Gast bestellt, nennt Name und Telefon und holt selbst ab. Bezahlt wird bei Ihnen vor Ort. Über Omoteno fließt nie Geld."],
     labels:["Wir liefern", "Liefergebiet", "Mindestbestellwert in Euro", "Liefergebühr in Euro"], gruppe:"Lieferung" },
-  { id:"e-bezahlen", kapitel:"Einstellungen", titel:"Bezahlen", ort:"Einstellungen → Bezahlen",
+  ...(!ZAHLUNG_ONLINE_AN ? [] : [{ id:"e-bezahlen", kapitel:"Einstellungen", titel:"Bezahlen", ort:"Einstellungen → Bezahlen",
     text:["Standard: Der Gast zahlt bei Ihnen. Hier schalten Sie Online-Zahlung über Ihr eigenes Stripe-Konto (Bankkarte, Klarna, PayPal, SEPA-Lastschrift) und Überweisung dazu. Das Geld geht immer direkt auf Ihr Konto — nie über Omoteno.",
       "Jede Änderung bestätigen Sie mit Ihrer PIN. SEPA-Lastschrift wird erst nach Tagen bestätigt und taugt nicht für Essen zum Sofortverzehr. Bei Überweisung (nur bei Lieferung) beginnt die Küche erst, wenn Sie „Zahlung eingegangen“ tippen."],
-    labels:["Bankkarte", "Klarna", "PayPal", "SEPA-Lastschrift", "Überweisung", "Stripe-Konto (acct_…)"], gruppe:"Bezahlen" },
+    labels:["Bankkarte", "Klarna", "PayPal", "SEPA-Lastschrift", "Überweisung", "Stripe-Konto (acct_…)"], gruppe:"Bezahlen" }]),
   { id:"e-newsletter", kapitel:"Einstellungen", titel:"Gäste-Newsletter", ort:"Einstellungen → Gäste-Newsletter",
     text:["Gäste, die im Hub unter „Mein Tisch“ ihre E-Mail hinterlegen und bestätigen, bekommen einmal einen Willkommensgutschein — und wenn sie 20 Tage nicht da waren, die Erinnerung „Wir vermissen Sie“ mit Gutschein. Jeder Besuch und jede Bestellung zählt die 20 Tage neu.",
       "Verschickt wird erst, wenn die Abläufe in Klaviyo auf „Live“ stehen. Den Rabattcode-Vorrat füllen Sie mit „20 neue Codes anlegen“ auf; „Gäste & Newsletter“ zeigt Ihre Zahlen und was Klaviyo gerade tut."],
@@ -16485,7 +16490,7 @@ function boardTourDef(){
       { ziel:["#t-startseite .eu-kachel"], demo:"tippen", titel:"Alles, was Gäste sehen", text:"Jede Kachel öffnet ein Thema: Stil der Speisekarte, Farben, Schrift, Texte, Aufbau der Startseite, Banner und mehr. Die Vorschau zeigt jede Änderung sofort; Gäste sehen sie nach „Übernehmen“." }
     ] },
     { id:"einstellungen", titel:"Einstellungen", vor:tafel("einstellungen"), schritte:[
-      { ziel:["#t-einstellungen .eu-kachel"], demo:"tippen", titel:"Einstellungen", text:"Melden, Lieferung, Bezahlen, Gutscheine, Bildschirm und mehr — jede Kachel öffnet eine Unterseite." },
+      { ziel:["#t-einstellungen .eu-kachel"], demo:"tippen", titel:"Einstellungen", text:"Melden, Lieferung, Gutscheine, Bildschirm und mehr — jede Kachel öffnet eine Unterseite." },
       { ziel:['[data-eu-seite="anGruppe"]'], demo:"tippen", titel:"Die Anleitung", text:"Hier steht jede Funktion ausführlich erklärt — durchsuchbar, nach Kapiteln geordnet, mit „Im Board zeigen“ und „Dorthin springen“. Die Tour starten Sie dort jederzeit neu." }
     ] },
     { id:"einkauf", titel:"Einkauf", vor:tafel("einstellungen"), schritte:[
@@ -21863,6 +21868,7 @@ function zhFuellen(){
     : a.length ? "Gäste können online bezahlen: " + a.join(", ") + "." : "Aus — Gäste zahlen wie bisher bei Ihnen.";
 }
 async function zhLaden(){
+  if(!ZAHLUNG_ONLINE_AN){ zahlSet = {}; return; }
   if(demo || !db || !betriebId){ zahlSet = zahlSet === undefined ? {} : zahlSet; zhFuellen(); return; }
   const fuer = betriebId;
   try{
@@ -21880,6 +21886,7 @@ async function zhLaden(){
   if(typeof euBald === "function") euBald();
 }
 async function zahlungenLaden(id){
+  if(!ZAHLUNG_ONLINE_AN) return;
   if(demo || !db || !id) return;
   try{
     const {data, error} = await db.from("zahlungen")
@@ -21977,7 +21984,7 @@ $("#karten").addEventListener("click", e => {
   if(u){ e.stopPropagation(); return zahlungFreigeben(u.dataset.uebOk, "ueberweisung"); }
 }, true);
 
-$("#zhSichern").onclick = async () => {
+if($("#zhSichern")) $("#zhSichern").onclick = async () => {
   if(zahlSet === undefined) return;
   const w = id => ($("#" + id).value || "").trim();
   const daten = {

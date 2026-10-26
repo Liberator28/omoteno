@@ -51,7 +51,7 @@ const json = (o, status = 200) => new Response(JSON.stringify(o), { status });
 const rpcName = r => (r.url.split("/rpc/")[1] || null);
 const rpcKoerper = r => JSON.parse(r.opt.body);
 
-const BASIS = { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "dienst-geheim", STRIPE_SECRET_KEY: "sk_test_GEHEIM", STRIPE_WEBHOOK_SECRET: "whsec_GEHEIM" };
+const BASIS = { SUPABASE_URL: "https://x.supabase.co", SUPABASE_SERVICE_ROLE_KEY: "dienst-geheim", STRIPE_SECRET_KEY: "sk_test_GEHEIM", STRIPE_WEBHOOK_SECRET: "whsec_GEHEIM", ZAHLUNG_AN: "1" };
 const BEST = "11111111-2222-4333-8444-555555555555";
 const VORB = { ok: true, zahlung_id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", betrieb_id: "b", stripe_konto: "acct_1ABCDEFGHIJ", betrag_cent: 1250,
   methoden: ["card", "klarna", "paypal", "sepa_debit"], betrieb_name: "Choco L'AMouR", slug: "chocolamour", zweck: "Bestellung 11111111", versuch: 0 };
@@ -158,6 +158,20 @@ const VORB = { ok: true, zahlung_id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", bet
     ok(k2.grund === "keine_art" && !f2.rufe.some(r => r.url.includes("api.stripe.com")), "Datenbank ohne Konto → nicht an Stripe");
   }
 
+  /* ═══ Abgeschaltet (26.10.): ohne ZAHLUNG_AN=1 geht nichts hinaus ═══ */
+  console.log("\n══ Abgeschaltet (ZAHLUNG_AN fehlt) ══");
+  {
+    const AUS = { ...BASIS }; delete AUS.ZAHLUNG_AN;
+    const f = starten(VORB, S_OK, AUS);
+    const k = await (await f.handler(anfrage({ bestellung_id: BEST }))).json();
+    ok(k.ok === false && k.grund === "abgeschaltet" && f.rufe.length === 0, "zahlung-starten: „abgeschaltet“, KEIN Aufruf an Datenbank oder Stripe", k.grund + " / " + f.rufe.length);
+    const k2 = await f.handler(new Request("https://x/", { method: "GET" }));
+    ok(k2.status === 405, "…die Methodenprüfung davor bleibt (GET → 405)");
+    const eins = starten(VORB, S_OK, BASIS);
+    const k3 = await (await eins.handler(anfrage({ bestellung_id: BEST }))).json();
+    ok(k3.ok === true, "Gegenfall: mit ZAHLUNG_AN=1 läuft derselbe Aufruf (sonst bewiese das Obige nichts)", JSON.stringify(k3).slice(0, 80));
+  }
+
   /* ═══ stripe-webhook ═══ */
   console.log("\n══ stripe-webhook ══");
   const GEH = BASIS.STRIPE_WEBHOOK_SECRET;
@@ -183,6 +197,17 @@ const VORB = { ok: true, zahlung_id: "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee", bet
     return f;
   }
   const namen = f => f.rufe.map(r => rpcName(r) || (r.url.includes("swift-processor") ? "MELDEN" : r.url));
+
+  /* Abgeschaltet (26.10.): auch ein ECHT unterschriebenes Ereignis schreibt nichts, solange ZAHLUNG_AN fehlt. */
+  {
+    const AUS = { ...BASIS }; delete AUS.ZAHLUNG_AN;
+    const f = laden("stripe-webhook", AUS, () => json(null));
+    const a = await f.handler(post(ev("checkout.session.completed")));
+    ok(a.status === 200 && f.rufe.length === 0, "stripe-webhook ohne ZAHLUNG_AN: 200, KEIN Aufruf (Datenbank, Push), auch bei gültiger Unterschrift", a.status + " / " + f.rufe.length);
+    const g = hook();
+    const b = await g.handler(post(ev("checkout.session.completed")));
+    ok(b.status === 200 && g.rufe.length > 0, "Gegenfall: mit ZAHLUNG_AN=1 dasselbe Ereignis → es wird verarbeitet");
+  }
 
   {
     const f = hook();

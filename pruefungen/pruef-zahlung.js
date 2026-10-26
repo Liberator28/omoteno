@@ -109,6 +109,8 @@ async function hubAuf(browser, haus, netz, opt) {
     if (rpc === "bestellung_status") return j(200, [{ status: "neu", wartezeit_min: null, tagesnummer: 7 }]);
     return j(200, []);
   });
+  /* Ausgeliefert ist die Online-Zahlung AUS (26.10.); diese Prüfung schaltet sie wie ein Entwickler ein — außer opt.ohneSchalter. */
+  if (!opt.ohneSchalter) await p.addInitScript(() => { window.OMOTENO_ZAHLUNG = true; });
   await p.addInitScript(([slug, korb, vor]) => {
     try {
       sessionStorage.setItem("omoteno-willkommen", "1");
@@ -153,6 +155,25 @@ const KONTRAST = `(sel) => {
 
   for (const haus of HAEUSER) {
     console.log("\n══ " + haus + " ══");
+
+    /* ── 0 · Auslieferungszustand: AUS (26.10.) ───────────────── */
+    {
+      const netz = netzNeu({ zarten: ALLE });          /* der Server würde ALLES anbieten */
+      const { p, fehler } = await hubAuf(browser, haus, netz, { ohneSchalter: true });
+      await p.evaluate(() => { location.hash = "#/auswahl"; }); await p.waitForTimeout(700);
+      const s = await p.evaluate(() => ({ schalter: typeof ZAHLUNG_ONLINE_AN === "undefined" ? "fehlt" : ZAHLUNG_ONLINE_AN,
+        zw: document.querySelectorAll(".zw").length, wahl: !!document.querySelector(".zahlwahl"), knopf: !!document.querySelector('[data-aktion="bestellen"]'),
+        arten: ["karte", "klarna", "paypal", "sepa", "stripe", "ueberweisung"].filter(k => ZAHLARTEN[k]), geladen: ZAHLARTEN.geladen }));
+      pruef(s.schalter === false, "ausgeliefert: der Schalter ZAHLUNG_ONLINE_AN steht auf AUS", String(s.schalter));
+      pruef(s.knopf, "Voraussetzung: der Bestellknopf ist da (die Seite lief)");
+      pruef(netz.zartenAnfragen === 0, "kein einziger Aufruf nach Zahlarten, obwohl der Server alles anböte", netz.zartenAnfragen);
+      pruef(s.zw === 0 && !s.wahl && s.arten.length === 0 && !s.geladen, "keine Zahlungswahl, keine Art geladen", JSON.stringify(s.arten));
+      await p.evaluate(() => { location.hash = "#/datenschutz"; }); await p.waitForTimeout(500);
+      const ds = await p.evaluate(() => document.body.innerText);
+      pruef(!/11 · Bezahlen|Bezahlseite von Stripe|Klarna Bank|PayPal \(Europe\)/.test(ds), "Datenschutzerklärung im Hub: kein Absatz über Online-Zahlung", "");
+      pruef(fehler.length === 0, "kein Seitenfehler", fehler.join("|"));
+      await p.context().close();
+    }
 
     /* ── A · nichts angeboten ─────────────────────────────────── */
     for (const [name, zarten] of [["Haus ohne Zahlarten", { stripe: false, ueberweisung: false }], ["Migration fehlt (404)", null], ["Fehler 500", "kaputt"]]) {

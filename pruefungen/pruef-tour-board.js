@@ -162,7 +162,7 @@ async function wikiProbe(browser, breite){
     const ort = await p.evaluate(() => { const g = document.querySelector(".tafel:not([hidden]) > .egruppe.eu-jetzt"); const h = g && g.querySelector("h2.etitel"); const tafel = document.querySelector(".tafel:not([hidden])"); return { tafel: tafel && tafel.id, gruppe: h ? h.textContent.trim() : "" }; });
     pruef(ort.gruppe === erwartet, "„Dorthin springen“ bei „" + id + "“ öffnet die Gruppe „" + erwartet + "“", JSON.stringify(ort));
   };
-  await springe("e-bezahlen", "Bezahlen");
+  /* „Bezahlen“ (e-bezahlen) ist seit 26.10. abgeschaltet und fehlt in Board und Anleitung (pruef-zahlung-board.js: „Ausgeliefert: AUS“). */
   await springe("gh-farben", "Farben des Hubs");
   await springe("e-lieferung", "Lieferung");
   /* Reiter-Sprung */
