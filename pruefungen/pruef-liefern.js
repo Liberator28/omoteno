@@ -513,9 +513,21 @@ async function hubUmschalter(br){
         if(sp.scrollWidth > n.clientWidth - 12) aus.push(s.code + ":" + sp.textContent + " " + sp.scrollWidth + "/" + (n.clientWidth - 12));
       }
     }
-    for(const x of ["18:00–01:00", t("Geschlossen")]){
+    /* Der Name im geschlossenen Zustand kommt aus dem Hub selbst (lwNameText), nicht aus einem Wort, das die Probe kennt:
+       sonst bliebe sie grün, wenn der Hub auf einen längeren Satz zurückfällt (Anlass 26.10.: „Închis momentan“ auf Rumänisch). */
+    const heute = new Date().getDay() === 0 ? 7 : new Date().getDay();
+    const lieferAlt = JSON.stringify(LIEFER);
+    LIEFER.an = true; LIEFER.von = ""; LIEFER.bis = ""; LIEFER.tage = [heute % 7 + 1];
+    const geschlossen = [];
+    spracheSetzen("de");
+    const istZu = !liefertGerade() && lwNameText("liefern") !== t("Lieferung");
+    for(const s of SPRACHEN){ spracheSetzen(s.code); geschlossen.push(lwNameText("liefern")); }
+    Object.assign(LIEFER, JSON.parse(lieferAlt));
+    /* Voraussetzung selbst geprüft (§8.1g): sonst maße die Probe das Wort „Lieferung“ und meldete grün. */
+    if(!istZu) aus.push("Voraussetzung fehlt: Lieferung ist nicht geschlossen");
+    for(const x of ["18:00–01:00"].concat(geschlossen)){
       sp.textContent = x;
-      if(sp.scrollWidth > n.clientWidth - 12) aus.push(x);
+      if(sp.scrollWidth > n.clientWidth - 12) aus.push(x + " " + sp.scrollWidth + "/" + (n.clientWidth - 12) + (n.isConnected ? "" : " (Element nicht mehr im Dokument)"));
     }
     spracheSetzen("de"); zeichne();
     return aus;
