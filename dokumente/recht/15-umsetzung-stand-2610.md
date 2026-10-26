@@ -51,3 +51,10 @@ Reiterleiste folgt dem sichtbaren Rand auch bei Zoom.
 - Eigene Texte, die ein Wirt unter einem alten Wörterbuchschlüssel gespeichert hat (`hub_texte.eigen`), greifen unter den
   neuen Sätzen nicht mehr — der Wirt sieht dann wieder die neue Vorgabe.
 - Marken-Stimme der Häuser (Hausbeschreibungen, Landingpage in der Du-Form) wurde nicht angefasst.
+
+## 4 · Regression und Befunde dieser Runde (26.10.)
+
+- Berührte Prüfungen erneut gelaufen und grün: `pruef-runner` (152), `pruef-rechtspflichten` (97), `pruef-durchgang`, `pruef-zahlung`, `pruef-abholen` (101), `pruef-liefern`, `pruef-sofort`, `pruef-rabatt-gericht` (49), `pruef-uebersetzung`, `pruef-sprache`, `pruef-figur`, `pruef-tour`; dazu die übrige Regression (Sicherheit, Lesbarkeit, Hell, Farbschema, Rechtstexte, Startseite, Kopf, Lizenzen).
+- Gegenbeweise: Top-Runner 19 von 19 rot, Rechtspflichten 16 von 16 rot, Wortlaut/Pille 3 von 3 rot (Treffer je Sabotage gezählt).
+- **Eigener Fehler, gefunden von der Prüfung:** „Gerade geschlossen“ passte in der Liefer-Pille nicht (Rumänisch 124/76 px); die alte Probe hatte das Wort fest eingetragen und nie auf Deutsch gemessen. Jetzt „Zurzeit zu“, Probe fragt den Hub.
+- **Vorbestehend, nicht behoben:** `pruef-texte` „Begleitersatz bei gut/hart“ bei 360 px (3 bzw. 4 statt 2 bzw. 3 Zeilen) — am Stand vor dieser Sitzung (`0b321bb`) mit Blend und Choco ebenfalls rot.
