@@ -236,8 +236,9 @@ const text = html => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/st
     const ctx = await browser.newContext({ viewport: { width: 390, height: 844 } });
     const s = await ctx.newPage(); const fehler = [];
     s.on("pageerror", e => fehler.push(e.message));
-    await s.route("**/*", r => { const u = r.request().url(); if (u.startsWith("file://")) return r.continue();
+    await s.route("**/*", r => { const u = r.request().url();
       if (/probe\.png/.test(u)) return r.fulfill({ status: 200, contentType: "image/png", body: Buffer.from("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==", "base64") });
+      if (u.startsWith("file://")) return r.continue();
       return r.fulfill({ status: 200, contentType: "application/json", body: "[]" }); });
     await s.addInitScript(() => { try { sessionStorage.setItem("omoteno-willkommen", "1"); sessionStorage.setItem("omoteno-reise", "1"); } catch (e) {} });
     await s.goto("file://" + path.join(DIST, slug, "index.html") + "#/speisekarte");
@@ -270,9 +271,10 @@ const text = html => html.replace(/<script[\s\S]*?<\/script>|<style[\s\S]*?<\/st
       detailOeffnen("Dubai Crêpe"); return null; }, [ki]).then(async () => { await s.waitForTimeout(700);
         const r = await s.evaluate(() => { const m = document.querySelector("#warenkarte .wki"); if (!m) return null;
           const cs = getComputedStyle(m), q = m.getBoundingClientRect(), b = document.querySelector("#warenkarte .wbild").getBoundingClientRect();
-          return { text: m.textContent, sicht: cs.visibility, innen: q.left >= b.left && q.right <= b.right && q.top >= b.top && q.bottom <= b.bottom + 1, bg: cs.backgroundColor, fg: cs.color, fingerfrei: cs.pointerEvents }; });
+          return { text: m.textContent, sicht: cs.visibility, innen: q.left >= b.left && q.right <= b.right && q.top >= b.top && q.bottom <= b.bottom + 1, bg: cs.backgroundColor, fg: cs.color, fingerfrei: cs.pointerEvents, blatt: document.getElementById("warenkarte").className, blattSicht: getComputedStyle(document.getElementById("warenkarte")).visibility, elternSicht: getComputedStyle(m.parentElement).visibility, elternKlasse: m.parentElement.className }; });
         await s.evaluate(() => detailSchliessen()); await s.waitForTimeout(500); return r; });
     const mit = await marke(1);
+    pruef(mit && mit.elternSicht === "visible", slug + ": Voraussetzung: das Bildfeld des Detailblatts steht (Foto geladen, nicht per onerror entfernt)", mit && JSON.stringify({ elternSicht: mit.elternSicht }));
     pruef(mit && mit.text === "KI-bearbeitet" && mit.innen && mit.sicht === "visible" && mit.fingerfrei === "none", slug + ": KI-Marke im Detailblatt, im Bild, fängt keinen Tipp", JSON.stringify(mit));
     if (mit) {
       const zahl = t => (String(t).match(/[\d.]+/g) || []).map(Number);
