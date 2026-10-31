@@ -10,7 +10,7 @@
    > Figur sowie von einem Café oder Restaurant mit Essen, Utensilien.“
 
    Was der Gast als „Ladebildschirm“ sieht, ist der Willkommensschirm.
-   Er trägt jetzt eine von sechs Szenen (hub_stil.lade, feste Liste).
+   Er trägt jetzt eine von neun Szenen (hub_stil.lade, feste Liste; seit 31.10. auch Pizza, Sushi, Kurier).
 
    NEU GEZEICHNET (24.10., Wunsch: „zu einheitlich … wie aus einem
    Animationsstudio, gezeichnet im modernen Stil, alle unterschiedlich“):
@@ -35,7 +35,7 @@
    6 · Wahl: gemerkte Szene vom letzten Besuch, Live-Wert schlägt sie und
        wird gemerkt, Unbekanntes/Anführungszeichen → Figur.
    7 · Vorschau im Board-Rahmen zeigt den Entwurf.
-   8 · Board: sechs Kacheln, gespeicherte gewählt, „Übernehmen“ erst bei
+   8 · Board: neun Kacheln, gespeicherte gewählt, „Übernehmen“ erst bei
        Änderung, Tipp schickt den Entwurf an die Vorschau, Speichern
        führt hub_stil zusammen, nach dem Neuöffnen der neue Stand (§8.1m),
        ohne gelesenen Stand bleibt „Übernehmen“ gesperrt, außer Sicht
@@ -65,7 +65,7 @@ const benutzt = [...new Set([...(bH || "").matchAll(/animation:(wz[A-Z]\w*)/g)].
 const da = [...(bH || "").matchAll(/@keyframes (wz\w+)/g)].map(m => m[1]);
 pruef(benutzt.length >= 8 && benutzt.every(k => da.includes(k)), "jede benutzte Keyframe-Regel steht im Block", benutzt.filter(k => !da.includes(k)).join(",") || benutzt.length + " Regeln");
 const ARTEN = JSON.parse(((bH || "").match(/const WZ_ARTEN = (\[[^\]]*\])/) || [0, "[]"])[1]);
-pruef(ARTEN.length === 6 && ARTEN[0] === "figur", "sechs Szenen, Vorgabe zuerst", ARTEN.join(","));
+pruef(ARTEN.length === 9 && ARTEN[0] === "figur" && ARTEN[ARTEN.length - 1] === "still" && ["pizza", "sushi", "kurier"].every(a => ARTEN.includes(a)), "neun Szenen (acht bewegte + still), Vorgabe zuerst, Pizza/Sushi/Kurier dabei", ARTEN.join(","));
 pruef(!/class="b[ "]/.test(bH || ""), "keine Fläche in der Bandfarbe (sie ist bei dunklen Häusern so dunkel wie der Grund)");
 
 /* Tragende Teile je Szene: Was ohne sie nicht mehr zu erkennen ist. */
@@ -74,6 +74,9 @@ const TRAGEND = {
   tisch: ["ellipse.lt", ".gabel .lt", ".kerze .lt", ".glasl .lt"],
   kueche: [".pfanne path.t", ".pfanne rect.t", ".kuchen"],
   lieferung: ["g.roller > path.a", "g.roller > rect.lt", ".rad circle.t"],
+  pizza: [".pz-pie circle.lt", ".pz-schieber .lt", ".pz-pie circle.g"],
+  sushi: [".su-teller .lt", ".su-ruhe .lt", ".su-hand .lt"],
+  kurier: [".ku-tuer .lt", ".ku-bote .lt", ".ku-roller circle.t"],
   /* Figur und „still“ tragen die Hausfigur — ihre Kontraste misst pruef-figur.js. */
   figur: [], still: []
 };
@@ -300,7 +303,7 @@ const LAEUFT = () => {
         }
         await ctx.close();
       }
-      pruef(geprueft === 15 && !schlecht.length, haus + " · " + (abend ? "abends" : "tags") + ": Name und Gruß ≥ 4,5:1 AM GEMALTEN BILD (5 Szenen × 3 Zeitpunkte, schlechtester Bildpunkt)",
+      pruef(geprueft === 3 * (ARTEN.length - 1) && !schlecht.length, haus + " · " + (abend ? "abends" : "tags") + ": Name und Gruß ≥ 4,5:1 AM GEMALTEN BILD (" + (ARTEN.length - 1) + " Szenen × 3 Zeitpunkte, schlechtester Bildpunkt)",
         schlecht.slice(0, 4).join(" | ") || geprueft + " Bilder");
     }
 
@@ -357,8 +360,8 @@ const LAEUFT = () => {
         const nurA = namen[A].filter(x => !namen[B].includes(x)).length, nurB = namen[B].filter(x => !namen[A].includes(x)).length;
         if(gemeinsamHg.length || nurA < 4 || nurB < 4) paare.push(A + "/" + B + " (gemeinsame Schichten " + gemeinsamHg.join("+") + "; nur-eigene Animationen " + nurA + "/" + nurB + ")");
       }
-      pruef(arten.length === 5 && !paare.length, "keine zwei Szenen teilen eine Hintergrundschicht, jede hat ≥ 4 Animationen, die die andere nicht benutzt (alle Paare)", paare.join(" | ") || "10 Paare");
-      pruef(new Set(Object.values(formen)).size === 5, "jede Szene hat ihre eigene Teilchenform", JSON.stringify(formen));
+      pruef(arten.length === ARTEN.length - 1 && !paare.length, "keine zwei Szenen teilen eine Hintergrundschicht, jede hat ≥ 4 Animationen, die die andere nicht benutzt (alle Paare)", paare.join(" | ") || (arten.length * (arten.length - 1) / 2) + " Paare");
+      pruef(new Set(Object.values(formen)).size === ARTEN.length - 1, "jede Szene hat ihre eigene Teilchenform", JSON.stringify(formen));
     }
 
     /* Der Name als Buchstaben. */
@@ -399,6 +402,63 @@ const LAEUFT = () => {
       await p.waitForTimeout(700);
       const ende = await p.evaluate(() => !document.getElementById("willkommen") || document.getElementById("willkommen").hidden);
       pruef(ende, "Abgang: nach 0,9 s ist der Schirm weg", ende);
+      await ctx.close();
+    }
+  }
+
+  console.log("══ 10 · Schleifen-Naht, Drehpunkt, unsichtbare Übergabe (Anlass: Prüfung der Animations-MD, 31.10.) ══");
+  {
+    /* Eine Endlosschleife aus verschobenen Sätzen ist nur dann nahtlos, wenn die Verschiebung GENAU eine Periode ist —
+       gemessen an der Lage der Kinder, nicht an der Zahl im Keyframe allein. */
+    const periode = (wz, sel) => { const s = wz.getBoundingClientRect().width / 200; const g = wz.querySelector(sel); if(!g) return { fehlt:sel };
+      const a = g.getAnimations()[0]; a.pause(); a.currentTime = 0;
+      const k = a.effect.getKeyframes(), letzt = k[k.length - 1].transform, ende = +(String(letzt).match(/translateX\((-?[\d.]+)px\)/) || [0, NaN])[1] * s;
+      const kids = [...g.children], x0 = kids[0].getBoundingClientRect().left;
+      return { sel, ende:Math.round(ende * 10) / 10, passt:kids.some((c, j) => j > 0 && Math.abs(c.getBoundingClientRect().left - x0 + ende) < .6), kinder:kids.length }; };
+    for(const [art, sels] of [["sushi", [".su-band"]], ["lieferung", [".fern", ".mitte", ".nah"]]]){
+      const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", art]] });
+      await p.waitForTimeout(900);
+      for(const sel of sels){
+        const r = await p.evaluate(`(${periode.toString()})(document.querySelector("#wkFigur .wz"), ${JSON.stringify(sel)})`);
+        pruef(!r.fehlt && r.passt, art + " " + sel + ": die Verschiebung der Schleife ist genau eine Periode (Naht ohne Sprung)", JSON.stringify(r));
+      }
+      await ctx.close();
+    }
+    /* Drehpunkt: Die Pizza dreht sich um ihre eigene Mitte. Auf dem Gipfel (46 %) ist sie um genau 44 Einheiten gestiegen und
+       seitlich nirgends — mit einem falschen Ursprung (Mitte des ganzen Bildes) wüchse die seitliche Abweichung auf viele Einheiten.
+       720° wären Identität und würden den Fehler verstecken (§8.1g), deshalb die Halbzeit mit 540°. */
+    {
+      const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", "pizza"]] });
+      await p.waitForTimeout(900);
+      const m = await p.evaluate(() => { const wz = document.querySelector("#wkFigur .wz"), s = wz.getBoundingClientRect().width / 200, g = wz.querySelector(".pz-pie");
+        if(!g) return null; const a = g.getAnimations()[0]; a.pause(); a.currentTime = 0;
+        const mitte = r => [r.left + r.width / 2, r.top + r.height / 2], z0 = mitte(g.getBoundingClientRect());
+        a.currentTime = .46 * a.effect.getComputedTiming().duration; const z1 = mitte(g.getBoundingClientRect());
+        return { dx:z1[0] - z0[0], dy:(z1[1] - z0[1]) / s }; });
+      pruef(!!m && Math.abs(m.dx) < 1.2 && Math.abs(m.dy + 44) < 1.5, "Pizza: auf dem Gipfel (540°, Maßstab 1,18) bleibt die Mitte seitlich stehen und ist 44 Einheiten höher", JSON.stringify(m));
+      await ctx.close();
+    }
+    /* Kurier: Die Tür öffnet an ihrer linken Kante (scaleX um die Scharnierseite). */
+    {
+      const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", "kurier"]] });
+      await p.waitForTimeout(900);
+      const m = await p.evaluate(() => { const wz = document.querySelector("#wkFigur .wz"), g = wz.querySelector(".ku-tuer");
+        if(!g) return null; const a = g.getAnimations()[0]; a.pause(); a.currentTime = 0; const r0 = g.getBoundingClientRect();
+        a.currentTime = .5 * a.effect.getComputedTiming().duration; const r1 = g.getBoundingClientRect();
+        return { links:r1.left - r0.left, breite:r1.width / r0.width }; });
+      pruef(!!m && Math.abs(m.links) < 1 && m.breite > .1 && m.breite < .25, "Kurier: offene Tür sitzt an der Scharnierkante (links unverändert) und ist schmal", JSON.stringify(m));
+      await ctx.close();
+    }
+    /* Sushi: Der Wechsel zwischen dem ruhenden und dem gegriffenen Nigiri (30 % und 85 %) geschieht, wenn beide am selben Ort liegen. */
+    {
+      const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", "sushi"]] });
+      await p.waitForTimeout(900);
+      const m = await p.evaluate(() => { const wz = document.querySelector("#wkFigur .wz"), r = wz.querySelector(".su-ruhe"), h = wz.querySelector(".su-hnigiri");
+        if(!r || !h) return null; const an = wz.getAnimations({ subtree:true }).filter(a => a.effect.getComputedTiming().duration === 5000);
+        const aus = [.3, .85].map(f => { an.forEach(a => { a.pause(); a.currentTime = f * 5000; });
+          const x = r.getBoundingClientRect(), y = h.getBoundingClientRect(); return Math.max(Math.abs(x.left - y.left), Math.abs(x.top - y.top), Math.abs(x.width - y.width)); });
+        return { aus, anim:an.length }; });
+      pruef(!!m && m.anim >= 5 && m.aus.every(v => v < 1.5), "Sushi: beim Wechsel (30 % / 85 %) liegen ruhendes und gegriffenes Nigiri aufeinander (Übergabe unsichtbar)", JSON.stringify(m));
       await ctx.close();
     }
   }
@@ -454,11 +514,11 @@ const LAEUFT = () => {
       hoehe: Math.min(...k.map(x => x.getBoundingClientRect().height)), ueber: document.documentElement.scrollWidth - innerWidth,
       inhaber: document.getElementById("wzGruppe").hasAttribute("data-nur-inhaber") };
   });
-  pruef(JSON.stringify(b.arten) === JSON.stringify(ARTEN) && JSON.stringify(b.szenen) === JSON.stringify(ARTEN), "sechs Kacheln = WZ_ARTEN, jede zeigt ihre Szene", b.arten.join(","));
+  pruef(JSON.stringify(b.arten) === JSON.stringify(ARTEN) && JSON.stringify(b.szenen) === JSON.stringify(ARTEN), "Kacheln = WZ_ARTEN (alle neun), jede zeigt ihre Szene", b.arten.join(","));
   pruef(b.an.length === 1 && b.an[0] === "tisch" && b.knopf, "gespeicherte Szene gewählt, „Übernehmen“ gesperrt ohne Änderung", b.an.join(","));
   pruef(b.hoehe >= 44 && b.ueber <= 0 && b.inhaber, "Kacheln ≥ 44 px, 360 px ohne Überlauf, Besitzer-Gruppe", b.hoehe + " / " + b.ueber);
   /* Außer Sicht ruhen die Szenen. Seit 19.10. steht die Gruppe als eigene
-     Unterseite da, und bei 900 px Höhe passen alle sechs Kacheln ins Bild —
+     Unterseite da, und bei 900 px Höhe passen die Kacheln fast alle ins Bild —
      „außer Sicht“ gäbe es nie. Deshalb ein niedriges Fenster: Die unteren
      Reihen liegen darunter. Voraussetzung wird mitgemessen (unten). */
   await p.setViewportSize({ width:360, height:380 });
