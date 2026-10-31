@@ -254,19 +254,19 @@ const OBEN_FELD = () => {
         if (!r.dreht && r.unter === r.ergebnis && r.oben === r.soll && r.nehm === r.ergebnis) stimmt++;
         else console.log("        Drehung " + (i + 1) + ": " + JSON.stringify(r));
       }
-      pruef(stimmt === 5, "5 von 5: Feld unter dem Zeiger = Name oben = Gericht hinter „Nehm ich!“", stimmt + " von 5 · " + ergebnisse.join(" · "));
+      pruef(stimmt === 5, "5 von 5: Feld unter dem Zeiger = Name oben = Gericht hinter „Das nehme ich“", stimmt + " von 5 · " + ergebnisse.join(" · "));
       pruef(ergebnisse.every((x, i) => !i || x !== ergebnisse[i - 1]), "„Nochmal drehen“ bringt jedes Mal ein anderes Gericht", ergebnisse.join(" → "));
       pruef(!!anim && anim.props.length === 1 && anim.props[0] === "transform", "nur transform wird bewegt", anim && anim.props.join(","));
       pruef(!!anim && anim.dauer >= 2000 && anim.dauer <= 4000, "Dauer zwischen 2 und 4 s", anim && anim.dauer + " ms");
       pruef(doppel === 1, "ein zweiter Tipp während der Drehung startet keine zweite Bewegung", doppel);
-      /* Nehm ich! legt GENAU das Gericht in den Korb */
+      /* „Das nehme ich“ legt GENAU das Gericht in den Korb */
       const korb = await s.evaluate(() => {
         const vorher = Object.keys(merk);
         document.querySelector("#frKnoepfe [data-eh-nehm]").click();
         return { neu: Object.keys(merk).filter(k => !vorher.includes(k)), soll: frErgebnis,
                  ansehen: !!document.querySelector('#frKnoepfe a[href="#/auswahl"]') };
       });
-      pruef(korb.neu.length === 1 && korb.neu[0] === korb.soll && korb.ansehen, "„Nehm ich!“ legt genau dieses Gericht in den Korb", JSON.stringify(korb));
+      pruef(korb.neu.length === 1 && korb.neu[0] === korb.soll && korb.ansehen, "„Das nehme ich“ legt genau dieses Gericht in den Korb", JSON.stringify(korb));
       pruef(!fehler.length, "keine Ausnahme", fehler.join("|") || "still");
       await ctx.close();
     }

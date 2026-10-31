@@ -1,5 +1,5 @@
 -- ═══════════════════════════════════════════════════════════════════
---  NOCH NICHT EINGESPIELT · migration-ki-nutzung.sql
+--  EINGESPIELT am 25.10.2026 · migration-ki-nutzung.sql (Edge Functions uebersetzen v9, beleg-lesen v3, gericht-bild v3 ausgerollt)
 --  KI-Nutzung je Betrieb erfassen (Tokens / Bilder), in Euro bewerten,
 --  Monatsbudget je Betrieb, Auswertung im Master-Board.
 --

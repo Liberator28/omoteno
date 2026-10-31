@@ -61,9 +61,30 @@ const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d
     await setze(1);
     const rauschen = await stand();
     pruef(["nav", "blatt", "balken", "strv", "strw"].every(k => rauschen[k] === ruhe[k]), "1 px (Rundung) bewegt nichts", JSON.stringify(rauschen));
+    /* Foto vom 25.10. (Board, iPhone): die Leiste saß UNTER dem sichtbaren Rand, abgeschnitten. Die Rechnung kannte nur „Leiste zu hoch“.
+       Jetzt gilt die Richtung auch andersherum — ohne Tastatur (Eingabefeld) und ohne Zoom rückt alles genau um den Abstand NACH OBEN. */
+    await setze(-47);
+    const abgeschnitten = await stand();
+    pruef(festeNachher.every(k => abgeschnitten[k] === ruhe[k] - 47) && abgeschnitten.versatz === "-47px", "Leiste unter dem sichtbaren Rand (47 px): alles rückt um genau 47 px nach OBEN", JSON.stringify({ ruhe, abgeschnitten }));
     await setze(-300);
-    const tastatur = await stand();
-    pruef(["nav", "blatt", "balken", "strv", "strw"].every(k => tastatur[k] === ruhe[k]), "Sichtbares kürzer (Tastatur): nichts bewegt sich", JSON.stringify(tastatur));
+    const kuerzer = await stand();
+    /* Meldung 31.10. (Foto 1, iPhone): 300 px kürzer ist die TASTATUR — auch wenn der Fokus schon auf keinem Textfeld mehr liegt
+       oder sie noch einfährt. Bis dahin verlangte diese Probe, dass die Leiste um die Tastaturhöhe nach oben fährt: die Prüfung
+       schrieb den Fehler als Soll fest. */
+    pruef(festeNachher.every(k => kuerzer[k] === ruhe[k]) && kuerzer.versatz === "0px", "Sichtbares 300 px kürzer (Tastatur), ohne Eingabefeld: nichts fährt nach oben", JSON.stringify(kuerzer));
+    /* Meldung 31.10. (Foto 2): iOS 26 lässt nach dem Schließen der Tastatur visualViewport.offsetTop > 0 stehen. Ohne Zoom ist das
+       ein Fehlwert (sichtbarer = Layout-Bereich) — die Leiste darf deshalb NICHT unter den Rand rücken. */
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:58, scale:1, height:document.documentElement.clientHeight, addEventListener(){} } }); leisteAnkern(); });
+    const ios26 = await stand();
+    pruef(festeNachher.every(k => ios26[k] === ruhe[k]) && ios26.versatz === "0px", "iOS 26: offsetTop 58 ohne Zoom bei gleicher Höhe → nichts rückt unter den Rand", JSON.stringify(ios26));
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, scale:2, height:document.documentElement.clientHeight - 300, addEventListener(){} } }); leisteAnkern(); });
+    const gezoomt = await stand();
+    pruef(festeNachher.every(k => gezoomt[k] === ruhe[k]), "gezoomt (scale 2): nichts bewegt sich", JSON.stringify(gezoomt));
+    await setze(120);
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:-60, scale:1, height:document.documentElement.clientHeight + 300, addEventListener(){} } }); leisteAnkern(); });
+    const gummi = await stand();
+    pruef(gummi.versatz === "120px", "Gummiband oben (offsetTop −60): der letzte Stand bleibt, nichts zuckt", gummi.versatz);
+    await setze(0);
     const mitFeld = await setze(120, true);
     pruef(mitFeld === 0, "mit fokussiertem Eingabefeld wird nicht verschoben", String(mitFeld));
     pruef(fehler.length === 0, "keine Skriptfehler", fehler.join(" | "));

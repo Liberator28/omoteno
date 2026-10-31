@@ -6,9 +6,10 @@
 
    Zwei Knöpfe, zwei Preisquellen: Der Top-Runner-Streifen bestellt zum
    AKTIONSPREIS (aus aktionen.preis_neu, nicht aus der Karte), die
-   Empfehlung des Hauses zum normalen Kartenpreis. Ein Klick auf den
-   Top-Runner-Streifen SELBST öffnet die Vorschau; der Sofort-Knopf
-   daneben legt direkt in den Korb, ohne über die Vorschau zu gehen.
+   Empfehlung des Hauses zum normalen Kartenpreis. Seit 26.10. ist der
+   Top-Runner ein kleiner Knopf unten rechts; sein Blatt (#aktionBlatt)
+   trägt das Gericht — ein Tipp darauf öffnet die Vorschau —, der
+   Sofort-Knopf daneben legt direkt in den Korb, ohne Vorschau.
 
    Kritischste Zusicherung: Der Sofort-Preis beim Top-Runner weicht
    wirklich vom Kartenpreis ab. Würde jemand versehentlich g.p statt
@@ -85,8 +86,12 @@ function aktionMock(name, extra){
 
   /* ───── 1 · Top-Runner: Klick auf den Streifen öffnet die Vorschau ───── */
   console.log("\n── Top-Runner: Klick öffnet die Vorschau ──");
-  const klickKnopf = await seite.$(".aktion .aktionklick");
-  pruef(!!klickKnopf, "der Streifen ist ein echter <button>, kein bloßes <div>");
+  await seite.waitForFunction(() => !document.getElementById("aktionKnopf").hidden, null, { timeout: 5000 }).catch(() => {});
+  pruef(await seite.evaluate(() => !document.getElementById("aktionKnopf").hidden), "Voraussetzung: der Aktions-Knopf steht da");
+  await seite.click("#aktionTaste");
+  await seite.waitForTimeout(450);
+  const klickKnopf = await seite.$("#aktionBlatt button.ak-info");
+  pruef(!!klickKnopf, "das Gericht im Blatt ist ein echter <button>, kein bloßes <div>");
   if(klickKnopf){
     await klickKnopf.click();
     await seite.waitForTimeout(400);
@@ -105,8 +110,10 @@ function aktionMock(name, extra){
   const vorher = await seite.evaluate(() => Object.keys(merk).length);
   pruef(vorher === 0, "der Korb ist vor dem Tippen leer");
 
-  const sofort = await seite.$(".aktion .sofort[data-aktionmerk]");
-  pruef(!!sofort, "der Sofort-Knopf steht neben der Restzeit");
+  await seite.click("#aktionTaste");
+  await seite.waitForTimeout(450);
+  const sofort = await seite.$("#aktionBlatt .sofort[data-aktionmerk]");
+  pruef(!!sofort, "der Sofort-Knopf steht im Blatt neben dem Gericht");
   if(sofort){
     const box = await sofort.boundingBox();
     pruef(!!box && box.width >= 44 && box.height >= 44,
@@ -119,12 +126,13 @@ function aktionMock(name, extra){
     if(nachTipp){
       pruef(nachTipp.p === "11,90 €", "zum AKTIONSPREIS, nicht zum Kartenpreis (15,90 €)", nachTipp.p);
     }
-    pruef(await seite.evaluate(() => document.querySelector('.aktion .sofort[data-aktionmerk]').classList.contains("an")),
+    pruef(await seite.evaluate(() => document.querySelector('#aktionBlatt .sofort[data-aktionmerk]').classList.contains("an")),
       "der Knopf zeigt seinen aktiven Zustand");
     pruef(await seite.isVisible("#auswahlbalken"), "der Balken unten zeigt den Korb");
 
-    /* Zweiter Tipp nimmt wieder heraus — dieselbe Geste wie beim Herz. */
-    await sofort.click();
+    /* Zweiter Tipp nimmt wieder heraus — dieselbe Geste wie beim Herz. Das Blatt zeichnet nach dem ersten Tipp neu (der Korb
+       steckt in seiner Signatur): ein Gast tippt auf das AKTUELLE Element, nicht auf das alte Handle. */
+    await seite.click("#aktionBlatt .sofort[data-aktionmerk]");
     await seite.waitForTimeout(300);
     pruef(!(await seite.evaluate(() => !!merk["Dubai Crêpe"])), "erneutes Tippen nimmt es wieder heraus");
   }
@@ -139,12 +147,13 @@ function aktionMock(name, extra){
   await seite.waitForFunction(() => typeof aktionen !== "undefined" && Array.isArray(aktionen) && aktionen.length > 0, null, { timeout: 5000 }).catch(() => {});
   await seite.evaluate(() => { location.hash = ""; zeichne(); });
   await seite.waitForTimeout(300);
+  await seite.waitForFunction(() => !document.getElementById("aktionKnopf").hidden, null, { timeout: 5000 }).catch(() => {});
   const ohneGericht = await seite.evaluate(() => ({
-    div: !!document.querySelector(".aktion"),
-    knopf: !!document.querySelector(".aktion button.aktionklick"),
-    sofort: !!document.querySelector(".aktion .sofort")
+    div: !!document.querySelector("#aktionBlatt .ak-info") && !document.getElementById("aktionKnopf").hidden,
+    knopf: !!document.querySelector("#aktionBlatt button.ak-info"),
+    sofort: !!document.querySelector("#aktionBlatt .sofort")
   }));
-  pruef(ohneGericht.div, "der Streifen steht weiterhin als Hinweis");
+  pruef(ohneGericht.div, "der Knopf steht weiterhin, das Blatt zeigt die Aktion als Hinweis");
   pruef(!ohneGericht.knopf, "aber ohne anklickbare Vorschau");
   pruef(!ohneGericht.sofort, "und ohne Sofort-Knopf — es gäbe nichts zu bestellen");
 
@@ -238,11 +247,15 @@ function aktionMock(name, extra){
   await seite2.waitForTimeout(500);
   if(await seite2.isVisible(".willkommen")){ await seite2.click(".willkommen"); await seite2.waitForTimeout(500); }
   await seite2.waitForFunction(() => typeof aktionen !== "undefined" && Array.isArray(aktionen) && aktionen.length > 0, null, { timeout: 5000 }).catch(() => {});
-  const s2 = await seite2.$(".aktion .sofort[data-aktionmerk]");
+  await seite2.waitForFunction(() => !document.getElementById("aktionKnopf").hidden, null, { timeout: 5000 }).catch(() => {});
+  await seite2.click("#aktionTaste");
+  await seite2.waitForTimeout(150);
+  const s2 = await seite2.$("#aktionBlatt .sofort[data-aktionmerk]");
+  pruef(!!s2, "Voraussetzung: bei reduzierter Bewegung steht das Blatt sofort da, mit dem Sofort-Knopf");
   if(s2){
     await s2.click();
     await seite2.waitForTimeout(200);
-    pruef(await seite2.evaluate(() => document.querySelector('.aktion .sofort[data-aktionmerk]').classList.contains("an")),
+    pruef(await seite2.evaluate(() => document.querySelector('#aktionBlatt .sofort[data-aktionmerk]').classList.contains("an")),
       "der Zustand wechselt auch ohne Bewegung zuverlässig");
   }
   await browser.close();

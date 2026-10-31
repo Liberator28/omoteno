@@ -1,8 +1,9 @@
 # Rollen, Rechte, „Unternehmen“ und „Team & Ziele“
 
 Stand 24.10.2026. Vorher gelesen und begründet: `dokumente/zugriffsrechte-befund.md`. Alles hier ist in lokalen Proben
-gemessen (Postgres 16, Chromium) — **nichts davon ist live eingespielt** (der Supabase-MCP war in dieser Sitzung nicht
-verbunden). Reihenfolge und Handgriffe stehen unten.
+gemessen (Postgres 16, Chromium). **Seit 25.10.2026 live:** Teil A (`migration-zugriffsrechte.sql`), Teil B (`-scharf.sql`),
+Spaltenrechte auf `bestellungen` und die Edge Function `team-zugang` v4 — jeweils live gelesen, eingespielt, in zurückgedrehter
+Transaktion mit echten Konten gemessen. Reihenfolge und Handgriffe stehen unten.
 
 ## Wer darf was
 

@@ -1,7 +1,7 @@
 # Schreibwege auf `bestellungen` (Wegeliste)
 
 Stand 24.10.2026, gelesen im Quelltext (nicht aus dem Gedächtnis; CLAUDE.md §1.2/§1.3).
-Grundlage für `datenbank/migration-bestellungen-spaltenrechte.sql` (**nicht eingespielt**).
+Grundlage für `datenbank/migration-bestellungen-spaltenrechte.sql` (**seit 25.10.2026 live**, vorher live gelesen und danach in zurückgedrehter Transaktion gemessen).
 `pruefungen/pruef-bestellungen-schreibwege.js` hält diese Liste gegen den Code: ein neuer
 Schreibweg oder eine neue Spalte macht die Prüfung rot.
 

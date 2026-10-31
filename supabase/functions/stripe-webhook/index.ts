@@ -83,6 +83,8 @@ const antwort = (k: unknown, status = 200) => new Response(JSON.stringify(k), { 
 
 Deno.serve(async (anfrage: Request) => {
   if (anfrage.method !== "POST") return antwort({ fehler: "nur POST" }, 405);
+  /* Abgeschaltet (26.10.): ohne ZAHLUNG_AN=1 wird nichts angenommen und nichts geschrieben (200, damit Stripe nicht wiederholt). */
+  if (Deno.env.get("ZAHLUNG_AN") !== "1") return antwort({ fehler: "abgeschaltet" }, 200);
   if (!SUPABASE_URL || !SERVICE_KEY || !WEBHOOK_SECRET) return antwort({ fehler: "einrichtung" }, 500);
 
   const roh = await anfrage.text();

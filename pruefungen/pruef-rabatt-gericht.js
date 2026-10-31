@@ -214,8 +214,9 @@ async function board(browser) {
     }, name);
     const zk = await zeile(k.n), zu = await zeile(u.n);
     const pt = v => v.toFixed(2).replace(".", ",") + " €";
-    pruef(zk && zk.neu === pt(neuK) && zk.alt === pt(k.p) && zk.strich === "line-through" && zk.tag === "−20 %",
-      "Karte: neuer Preis, alter gestrichen, „−20 %“", JSON.stringify(zk));
+    /* Variante A (Rechtsbericht R3, § 11 PAngV): nur der Aktionspreis und das Wort „Aktion“ — kein Streichpreis, kein Prozentwert. */
+    pruef(zk && zk.neu === pt(neuK) && zk.alt === null && zk.strich === "" && zk.tag === "Aktion" && !/[%−]/.test(zk.neu + zk.tag),
+      "Karte: nur der Aktionspreis mit „Aktion“ — kein Streichpreis, kein „−20 %“", JSON.stringify(zk));
     pruef(zu && !zu.neu && !zu.tag && zu.normal === pt(u.p), "Aktionspreis über dem Kartenpreis: nichts Rabattiertes", JSON.stringify(zu));
 
     /* 8 · Lesbarkeit der Plakette, Tag und Abend */
@@ -236,19 +237,16 @@ async function board(browser) {
       pruef(istPhase === phase, "Voraussetzung: Phase „" + phase + "“ ist gesetzt", istPhase + (hatAbend ? "" : ""));
       const werte = await seite.evaluate(new Function("name", KONTRAST + `
         const z = [...document.querySelectorAll(".gericht")].find(x => decodeURIComponent(x.querySelector(".ginfo").dataset.detail) === name);
-        return { tag: kontrast(z.querySelector(".tag.rabatt")), neu: kontrast(z.querySelector(".p.pneu")), alt: kontrast(z.querySelector(".palt")) };`), k.n);
-      pruef(werte.tag >= 4.5 && werte.neu >= 4.5 && werte.alt >= 4.5, "lesbar (" + phase + "): Plakette, neuer, alter Preis ≥ 4,5:1",
-        werte.tag.toFixed(2) + " / " + werte.neu.toFixed(2) + " / " + werte.alt.toFixed(2));
+        return { tag: kontrast(z.querySelector(".tag.rabatt")), neu: kontrast(z.querySelector(".p.pneu")) };`), k.n);
+      pruef(werte.tag >= 4.5 && werte.neu >= 4.5, "lesbar (" + phase + "): Marke „Aktion“ und Aktionspreis ≥ 4,5:1",
+        werte.tag.toFixed(2) + " / " + werte.neu.toFixed(2));
     }
 
-    /* 7 · Streifen oben */
-    const band = await seite.evaluate(() => [...document.querySelectorAll(".aktion .name")].map(x => x.textContent));
-    pruef(band.includes(k.n) && !band.includes(d.n), "Streifen: kurzer Rabatt ja, Dauer-Rabatt nein", band.join(" · "));
+    /* 7 · Aktions-Knopf (seit 26.10. statt des Streifens): im Blatt steht der kurze Rabatt, der Dauer-Rabatt nicht */
+    const band = await seite.evaluate(() => [...document.querySelectorAll("#aktionBlatt .ak-name")].map(x => x.textContent));
+    pruef(band.includes(k.n) && !band.includes(d.n), "Aktions-Knopf: kurzer Rabatt ja, Dauer-Rabatt nein", band.join(" · "));
     const tage = await seite.evaluate(() => { aktionen = [{ id: "x", gericht_name: "X", preis_alt: 9, preis_neu: 8, bis: new Date(Date.now() + 5 * 864e5 + 6e4).toISOString() }];
-      /* Über das DOM gelesen, nicht per Muster: Vor dem Text steht seit
-         09.10. der Puls-Punkt (<i class="aktion-puls">). */
-      const d = document.createElement("div"); d.innerHTML = aktionBandHTML();
-      return d.querySelector(".rest").textContent; });
+      return aktionRestAnzeige(aktionen[0].bis, "blatt"); });
     pruef(/5/.test(tage) && !/Stunden/.test(tage), "Restzeit über zwei Tagen in Tagen", tage);
     await seite.evaluate(() => aktionenLaden()); await seite.waitForTimeout(300);
 

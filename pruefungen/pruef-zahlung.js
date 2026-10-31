@@ -109,6 +109,8 @@ async function hubAuf(browser, haus, netz, opt) {
     if (rpc === "bestellung_status") return j(200, [{ status: "neu", wartezeit_min: null, tagesnummer: 7 }]);
     return j(200, []);
   });
+  /* Ausgeliefert ist die Online-Zahlung AUS (26.10.); diese Prüfung schaltet sie wie ein Entwickler ein — außer opt.ohneSchalter. */
+  if (!opt.ohneSchalter) await p.addInitScript(() => { window.OMOTENO_ZAHLUNG = true; });
   await p.addInitScript(([slug, korb, vor]) => {
     try {
       sessionStorage.setItem("omoteno-willkommen", "1");
@@ -153,6 +155,25 @@ const KONTRAST = `(sel) => {
 
   for (const haus of HAEUSER) {
     console.log("\n══ " + haus + " ══");
+
+    /* ── 0 · Auslieferungszustand: AUS (26.10.) ───────────────── */
+    {
+      const netz = netzNeu({ zarten: ALLE });          /* der Server würde ALLES anbieten */
+      const { p, fehler } = await hubAuf(browser, haus, netz, { ohneSchalter: true });
+      await p.evaluate(() => { location.hash = "#/auswahl"; }); await p.waitForTimeout(700);
+      const s = await p.evaluate(() => ({ schalter: typeof ZAHLUNG_ONLINE_AN === "undefined" ? "fehlt" : ZAHLUNG_ONLINE_AN,
+        zw: document.querySelectorAll(".zw").length, wahl: !!document.querySelector(".zahlwahl"), knopf: !!document.querySelector('[data-aktion="bestellen"]'),
+        arten: ["karte", "klarna", "paypal", "sepa", "stripe", "ueberweisung"].filter(k => ZAHLARTEN[k]), geladen: ZAHLARTEN.geladen }));
+      pruef(s.schalter === false, "ausgeliefert: der Schalter ZAHLUNG_ONLINE_AN steht auf AUS", String(s.schalter));
+      pruef(s.knopf, "Voraussetzung: der Bestellknopf ist da (die Seite lief)");
+      pruef(netz.zartenAnfragen === 0, "kein einziger Aufruf nach Zahlarten, obwohl der Server alles anböte", netz.zartenAnfragen);
+      pruef(s.zw === 0 && !s.wahl && s.arten.length === 0 && !s.geladen, "keine Zahlungswahl, keine Art geladen", JSON.stringify(s.arten));
+      await p.evaluate(() => { location.hash = "#/datenschutz"; }); await p.waitForTimeout(500);
+      const ds = await p.evaluate(() => document.body.innerText);
+      pruef(!/11 · Bezahlen|Bezahlseite von Stripe|Klarna Bank|PayPal \(Europe\)/.test(ds), "Datenschutzerklärung im Hub: kein Absatz über Online-Zahlung", "");
+      pruef(fehler.length === 0, "kein Seitenfehler", fehler.join("|"));
+      await p.context().close();
+    }
 
     /* ── A · nichts angeboten ─────────────────────────────────── */
     for (const [name, zarten] of [["Haus ohne Zahlarten", { stripe: false, ueberweisung: false }], ["Migration fehlt (404)", null], ["Fehler 500", "kaputt"]]) {
@@ -294,7 +315,7 @@ const KONTRAST = `(sel) => {
       await p.waitForFunction(() => !!document.getElementById("bpass"), null, { timeout: 9000 }).catch(() => {});
       const t = await p.evaluate(() => ({ h2: (document.querySelector("#inhalt h2") || {}).innerText, block: (document.querySelector(".zahlblock") || {}).innerText || "", pass: !!document.getElementById("bpass"),
         streifen: (document.getElementById("vstreifen") || {}).innerText || "" }));
-      pruef(/Bestellung ist da/.test(t.h2) && t.pass && /Bezahlt/.test(t.block), "nach „bezahlt“: normaler Bestellpass und „Bezahlt“", t.h2 + " / " + t.block.slice(0, 20));
+      pruef(/Bestellung eingegangen/.test(t.h2) && t.pass && /Bezahlt/.test(t.block), "nach „bezahlt“: normaler Bestellpass und „Bezahlt“", t.h2 + " / " + t.block.slice(0, 20));
       const hinweis = await p.evaluate(() => /Bezahlt wird beim Personal/.test(document.body.innerText));
       pruef(!hinweis, "…und der Satz „bezahlt wird beim Personal“ steht NICHT mehr da (wäre falsch)");
       pruef(fehler.length === 0, "kein Seitenfehler", fehler.join("|"));
@@ -396,11 +417,11 @@ const KONTRAST = `(sel) => {
         "Nach dem Bestellen sehen Sie die Bankverbindung. Die Küche beginnt erst, wenn Ihre Überweisung beim Haus eingegangen ist – das kann ein bis zwei Werktage dauern.",
         "Für eine Online-Zahlung ist der Betrag zu klein. Bitte zahlen Sie beim Personal.", "Fast geschafft!", "Ihre Bestellung ist vorgemerkt. Sie geht an die Küche, sobald bezahlt ist.",
         "Jetzt bezahlen", "Zahlung wird bestätigt …", "Das dauert nur einen Moment. Bei Lastschrift kann es länger dauern – sagen Sie dann dem Personal Bescheid.",
-        "Die Zahlung wurde abgebrochen. Ihre Bestellung ist noch nicht in der Küche.", "Die Zahlung hat nicht geklappt. Sie können es noch einmal versuchen – oder beim Personal bezahlen.",
+        "Die Zahlung wurde abgebrochen. Ihre Bestellung ist noch nicht in der Küche.", "Die Zahlung war nicht erfolgreich. Sie können es noch einmal versuchen – oder beim Personal bezahlen.",
         "Bezahlt", "Danke, Ihre Zahlung ist angekommen.", "Bitte jetzt überweisen", "Empfänger", "Bank", "Betrag", "Verwendungszweck", "Kopieren", "Kopiert.",
         "Bitte genau so angeben, damit wir Ihre Zahlung zuordnen können.", "Die Küche beginnt, sobald Ihre Überweisung eingegangen ist.", "Zahlung offen – bitte bezahlen",
         "Warten auf Ihre Überweisung", "Diese Bestellung ist nicht mehr offen.", "Zu viele Versuche. Bitte sagen Sie dem Personal Bescheid.",
-        "Das Bezahlen klappt gerade nicht. Bitte versuchen Sie es gleich noch einmal oder zahlen Sie beim Personal.", "Diese Zahlungsart gibt es gerade nicht"];
+        "Die Zahlung ist gerade nicht möglich. Bitte versuchen Sie es gleich noch einmal oder zahlen Sie beim Personal.", "Diese Zahlungsart gibt es gerade nicht"];
       const codes = SPRACHEN.map(s => s.code).filter(c => c !== "de");
       const luecken = [];
       for (const c of codes) {

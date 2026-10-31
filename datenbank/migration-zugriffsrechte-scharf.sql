@@ -1,7 +1,8 @@
 -- ═══════════════════════════════════════════════════════════════════
 --  migration-zugriffsrechte-scharf.sql · TEIL B · Einkaufs- und Kalkulationszahlen nur mit Recht „kosten_view“
 --
---  NOCH NICHT EINGESPIELT. Voraussetzung: migration-zugriffsrechte.sql (TEIL A) liegt, und admin.html,
+--  EINGESPIELT am 25.10.2026 (Regelbestand vorher live gelesen: genau die bekannten Regeln; nachher Katalog + Probe: Team 0, Manager
+--  ohne Recht 0, mit kosten_view 1, Widerruf sofort 0). Voraussetzung war: migration-zugriffsrechte.sql (TEIL A) liegt, und admin.html,
 --  einkauf.html, konto.html und die Edge Function team-zugang sind ausgerollt (§2.5/§7). Läuft diese Datei
 --  VOR einkauf.html, bekommt ein Team-Konto Fehler statt eines Satzes.
 --

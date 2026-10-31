@@ -38,7 +38,10 @@ const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d
     const ctx = await br.newContext({ viewport:{ width:breite, height:800 }, reducedMotion: ruhig ? "reduce" : "no-preference", deviceScaleFactor:1 });
     const p = await ctx.newPage(); const fehler = [];
     p.on("pageerror", e => fehler.push(String(e).slice(0, 140)));
-    await p.addInitScript(() => { try{ sessionStorage.setItem("omoteno-willkommen", "1"); }catch(e){} });
+    /* Der schwebende Knopf „Anleitung“ (erster Besuch) sitzt über der Navigation und wird von der nachgestellten Verschiebung
+       unten nicht mitgenommen — er landete im gemessenen Streifen (2 Fehler bei Choco, Fund 31.10.: Probe, nicht Hub). Er gilt
+       hier als ausgeblendet; geprüft wird er in pruef-tour.js. */
+    await p.addInitScript(h => { try{ sessionStorage.setItem("omoteno-willkommen", "1"); localStorage.setItem("omoteno-tour-" + h, "1"); }catch(e){} }, haus);
     await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.fulfill({ status:200, contentType:"application/json", body:"[]" }));
     await p.goto("file://" + path.join(DIST, haus, "index.html") + "#/speisekarte");
     await p.waitForTimeout(1200);

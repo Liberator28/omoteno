@@ -81,6 +81,9 @@ const SEITEN = [
      Impressumslink ins Leere führt. */
   ["seiten/impressum.html",     "impressum.html"],
   ["seiten/datenschutz.html",   "datenschutz.html"],
+  /* AGB und Auftragsverarbeitung (Art. 28 DSGVO): aus den Fußzeilen verlinkt, im Konto zur Annahme. */
+  ["seiten/agb.html",           "agb.html"],
+  ["seiten/avv.html",           "avv.html"],
   /* Der Service Worker. admin.html registriert ihn beim Namen
      (register("sw.js")); fehlt er im Ordner, läuft die Registrierung
      auf ein 404 und das Personal bekommt nie eine Meldung über eine
@@ -195,6 +198,8 @@ fs.writeFileSync(path.join(ZIEL, "sitemap.xml"),
   <url><loc>https://omoteno.de/marken-studio.html</loc><priority>0.6</priority></url>
   <url><loc>https://omoteno.de/impressum.html</loc><priority>0.3</priority></url>
   <url><loc>https://omoteno.de/datenschutz.html</loc><priority>0.3</priority></url>
+  <url><loc>https://omoteno.de/agb.html</loc><priority>0.3</priority></url>
+  <url><loc>https://omoteno.de/avv.html</loc><priority>0.3</priority></url>
 </urlset>
 `);
 

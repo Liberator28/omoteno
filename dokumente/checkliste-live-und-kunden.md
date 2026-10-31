@@ -1,5 +1,8 @@
 # Checkliste · Live gehen und die ersten Kunden unter Vertrag
 
+> **31.10.: Für Gründung, Verträge und den Weg zum ersten Kunden gibt es jetzt den Fahrplan als PDF:**
+> `dokumente/fahrplan/Omoteno-Fahrplan-erster-Kunde.pdf` (Quelle `fahrplan.html`, Bau `node dokumente/fahrplan/bauen.js`).
+
 Stand 19.10.2026. Von oben nach unten; jede Zeile hat einen Besitzer
 (**E** = Elias, **C** = Claude-Sitzung, **A** = Anwalt/Steuerberater) und
 sagt, woran man „fertig" erkennt. Quellen stehen in Klammern — nichts
@@ -71,9 +74,10 @@ Block 5.
       Verzeichnis liegen (CLAUDE.md §2.3d).
 - [ ] **E** Push-Meldungen: Push-Schlüssel (Web-Push) gesetzt, ein echter Serviceruf
       kommt auf dem Team-Handy an (`pruef-push.js` prüft nur sw.js).
-- [ ] **C** Bekannte rote Prüfungen: `pruef-texte` (Begleitersatz bei
-      360 px, 3 statt 2 Zeilen, schon vor dieser Sitzung). Der
-      Lahmacun-Fehler im Foodroulette ist behoben.
+- [x] **C** (31.10.) `pruef-texte` Begleitersatz bei 360 px: behoben über das
+      Layout schmaler Telefone, Probe misst jetzt klassisch UND Premium.
+      Offen und vorbestehend: `pruef-auswertung` „Bildlücken ≤ 50 ms“ im
+      Figuren-Rad wackelt auch am Stand vor der Sitzung (1 von 2 Läufen rot).
 - [ ] **E** Alessia (Telefon), nur falls im ersten Vertrag: Vapi-Assistent
       je Betrieb neu einfügen (`erzeuger/erzeuge-alessia.js`), **Tonaufnahme
       im Assistenten aus** (Dashboard → Assistant → Artifact Plan),
@@ -192,6 +196,12 @@ bis ein Betrieb unter „Einstellungen → Bezahlen“ etwas einschaltet.
       eine Zeile je Funktion**. Danach `datenbank/pruef-zahlungen.sql` im
       SQL-Editor (dreht sich zurück): jede Zeile muss `true` sein. Lokal
       laufen sie 116 von 116 — gegen die echte Datenbank noch nie.
+> **STAND 26.10.: Die Online-Zahlung ist ausgeschaltet** (keine Erlaubnisklärung nach ZAG, Verbindungsschritt zu Stripe fehlt).
+> Alles in diesem Abschnitt gilt erst NACH `dokumente/zahlung-anbinden-anleitung.md`, Teil 1.
+> **Live seit 31.10.:** `zahlung-starten`/`stripe-webhook` v2 mit Sperre (antworten „abgeschaltet“), und die vier Gast-Funktionen
+> (`bestellung_aufgeben_zahlung`, `bestellung_liefern_zahlung`, `zahlarten_oeffentlich`, `zahlung_status`) sind für anon und
+> authenticated GESPERRT (`datenbank/migration-zahlung-aus-live.sql`). Beim Einschalten zuerst die GRANTs aus dem Kopf dieser Datei.
+
 - [ ] **E** Edge Functions ausrollen, beide **ohne** Token-Prüfung (die
       Echtheit kommt beim Webhook aus der Unterschrift):
       `supabase functions deploy zahlung-starten --no-verify-jwt` und

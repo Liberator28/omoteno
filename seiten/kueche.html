@@ -512,6 +512,17 @@ body[data-spalten="4"] .feld{grid-template-columns:repeat(4,1fr)}
   border:1px solid var(--warn);color:var(--warn);font-size:calc(11px * var(--skala));font-weight:800;
   letter-spacing:.04em;vertical-align:2px;white-space:nowrap}
 .posten .zusatz{display:block;font-size:calc(13px * var(--skala));color:var(--gedaempft);font-weight:400}
+/* Einzelnes Gericht fertig melden (Wunsch 25.10.): ein Knopf je Zeile, groß genug für den Daumen am Pass. */
+.posten li .name{flex:1;min-width:0}
+.posfertig{flex:none;align-self:center;min-width:88px;min-height:44px;padding:0 14px;border-radius:var(--ecke-pille);
+  border:1.5px solid var(--messing);background:transparent;color:var(--messing);
+  font:inherit;font-size:calc(14px * var(--skala));font-weight:800;cursor:pointer;
+  transition:transform .12s var(--ease-out,ease-out)}
+.posfertig:active{transform:scale(.96)}
+.posfertig.fertig{background:var(--gut);border-color:var(--gut);color:var(--nacht)}
+.posfertig.gebracht{background:transparent;border-color:var(--gedaempft);color:var(--gedaempft);cursor:default}
+.posten li.fertig .name{opacity:.78}
+.posten li.gebracht .name{opacity:.5;text-decoration:line-through}
 
 /* ─── Der Telefonbon ────────────────────────────────────────────
    --telefon steht seit jeher in der Palette (4,73:1, siehe oben) —
@@ -1284,12 +1295,19 @@ var BON_SPALTEN = "id,betrieb_id,quelle,status,tisch,positionen,notiz," +
                    "pruefen," +
                    /* Team-Modus (migration-teammodus.sql): Nummer des
                       Zuständigen — steht als Marke am Bon. */
-                   "zugewiesen";
+                   "zugewiesen," +
+                   /* Welche Gerichte der Koch schon einzeln fertig gemeldet
+                      hat (migration-gericht-fertig.sql): je Position
+                      {f: fertig um, g: gebracht um}. */
+                   "positionen_fertig";
 /* Fehlt eine Spalte noch (Migration nicht eingespielt), antwortet der
    Server 400 — dann Stufe für Stufe ohne die jüngsten, genau wie vorher.
-   Stufe 1: ohne zugewiesen; Stufe 2: auch ohne pruefen. */
-var BON_SPALTEN_STUFEN = [BON_SPALTEN, BON_SPALTEN.replace(",zugewiesen", ""),
-                          BON_SPALTEN.replace(",zugewiesen", "").replace(",pruefen", "")];
+   Stufe 1: ohne positionen_fertig; Stufe 2: auch ohne zugewiesen;
+   Stufe 3: auch ohne pruefen. */
+var BON_SPALTEN_STUFEN = [BON_SPALTEN,
+                          BON_SPALTEN.replace(",positionen_fertig", ""),
+                          BON_SPALTEN.replace(",positionen_fertig", "").replace(",zugewiesen", ""),
+                          BON_SPALTEN.replace(",positionen_fertig", "").replace(",zugewiesen", "").replace(",pruefen", "")];
 var spaltenStufe = 0;
 /* Namen zu den Nummern des Teams (team_nummern). Fehlt die Funktion,
    steht nur die Nummer. */
@@ -1394,6 +1412,105 @@ function aufteilen(b){
      ganz ohne Posten ist deshalb eine Bestellung, bei der nur eine
      Anmerkung steht — die gehört in die Küche, nicht in den Papierkorb. */
   return { kueche:kueche, theke:theke };
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   5b · EINZELNE GERICHTE FERTIG MELDEN (Wunsch 25.10.)
+
+   „Der Koch soll dem Service Bescheid sagen können, WELCHE Speise fertig
+   ist, damit sie zum Tisch gebracht werden kann.“ Bisher meldete die Küche
+   nur den ganzen Bon (Abholbereit); kommt die Vorspeise zehn Minuten vor dem
+   Hauptgang, wartete der Tisch. Jetzt hat jede Zeile ihren Knopf. Der Server
+   (gericht_fertig_setzen, security definer) ergänzt den Eintrag in der Zeile,
+   statt ein ganzes Objekt zu überschreiben — zwei Köche an zwei Schirmen
+   verlieren einander nicht. Die Nummer einer Position ist ihr Platz in
+   bestellungen.positionen (ab 0); die ändert sich nach dem Bestellen nie.
+   ═══════════════════════════════════════════════════════════════ */
+function posNummer(b, p){
+  var l = Array.isArray(b.positionen) ? b.positionen : [];
+  return l.indexOf(p);
+}
+function posEintrag(b, nr){
+  var f = b.positionen_fertig;
+  if(!f || typeof f !== "object" || Array.isArray(f)) return null;
+  var e = Object.prototype.hasOwnProperty.call(f, String(nr)) ? f[String(nr)] : null;
+  return e && typeof e === "object" ? e : null;
+}
+/* Für die Signatur: nur was die Karte anders aussehen lässt (fertig / gebracht je Position), keine Zeiten. */
+function fertigSignatur(b){
+  var f = b.positionen_fertig;
+  if(!f || typeof f !== "object" || Array.isArray(f)) return "";
+  return Object.keys(f).sort().map(function(k){ return k + (f[k] && f[k].g ? "g" : "f"); }).join("");
+}
+function gerichtRufen(b, nummern, fertig){
+  return ruf("/rest/v1/rpc/gericht_fertig_setzen", {
+    method:"POST", body: JSON.stringify({ p_bestellung: b.id, p_positionen: nummern, p_fertig: fertig })
+  }).then(function(a){
+    if(!a.ok){ var k = new Error("Nicht gespeichert ("+a.status+")"); k.status = a.status; throw k; }
+    return a.json();
+  }).then(function(j){
+    if(!j || j.ok !== true){ var k2 = new Error((j && j.grund) || "unbekannt"); k2.grund = (j && j.grund) || "unbekannt"; throw k2; }
+    return j;
+  });
+}
+/* Lokal sofort ändern (der Koch wartet nicht auf das Netz); gibt den alten Stand zurück. */
+function gerichtLokal(b, nummern, fertig){
+  var alt = b.positionen_fertig, neu = {}, k;
+  if(alt && typeof alt === "object" && !Array.isArray(alt)) for(k in alt) neu[k] = alt[k];
+  nummern.forEach(function(nr){
+    var e = neu[String(nr)];
+    if(fertig){ if(!e) neu[String(nr)] = { f: new Date().toISOString() }; }
+    else if(e && !e.g) delete neu[String(nr)];
+  });
+  b.positionen_fertig = neu;
+  return alt;
+}
+function gerichtName(b, nr){
+  var p = Array.isArray(b.positionen) ? b.positionen[nr] : null;
+  return p ? String(p.name || "").split(" (")[0] : "Gericht";
+}
+function bonBezeichnung(b){
+  return b.tisch ? "Tisch " + b.tisch : "#" + (b.tagesnummer != null ? b.tagesnummer : "?");
+}
+function gerichtFehlerText(e){
+  var g = e && e.grund;
+  if(g === "storniert") return "Die Bestellung wurde inzwischen storniert oder abgelehnt – nichts geändert.";
+  if(g === "kein_recht") return "Dafür fehlt dieses Konto die Berechtigung.";
+  if(e && (e.status === 404 || e.status === 400)) return "Die Datenbank kennt „Gericht fertig“ noch nicht (migration-gericht-fertig.sql).";
+  return "Nicht gespeichert – bitte Verbindung prüfen.";
+}
+/* Ein Tipp auf die Zeile: fertig melden — oder zurücknehmen, solange es der Service noch nicht gebracht hat. */
+function gerichtKlick(b, nr){
+  if(!(nr >= 0)) return;
+  var e = posEintrag(b, nr);
+  if(e && e.g) return;                       /* gebracht: gilt, nichts mehr zu tun */
+  var fertig = !e;
+  var alt = gerichtLokal(b, [nr], fertig);
+  letzteSignatur = null; zeichne();
+  gerichtRufen(b, [nr], fertig).then(function(){
+    toast(bonBezeichnung(b) + " · " + gerichtName(b, nr) + (fertig ? " fertig – der Service bekommt Bescheid." : " wieder offen."), "ok");
+  }, function(err){
+    b.positionen_fertig = alt;
+    letzteSignatur = null; zeichne();
+    toast(gerichtFehlerText(err), "err", (err && (err.grund || err.status === 404 || err.status === 400)) ? null : {
+      text:"Erneut", tun: function(){ gerichtKlick(b, nr); }
+    });
+    if(err && err.grund === "storniert") aktualisieren();
+  });
+}
+/* „Abholbereit“ für den ganzen Bon meldet auch alle Gerichte dieser Ansicht, die noch offen sind —
+   sonst zeigte das Board nur die einzeln gemeldeten (es liest die Gerichte, sobald eines gemeldet ist). Schlägt
+   das fehl (Migration fehlt, Netz), bleibt der alte Weg über kueche_fertig_um/theke_fertig_um bestehen. */
+function offeneNummern(b, spuren, fertigGemeldet){
+  var t = aufteilen(b), nr = [];
+  spuren.forEach(function(s){
+    (s === "kueche" ? t.kueche : t.theke).forEach(function(p){
+      var i = posNummer(b, p); if(i < 0) return;
+      var e = posEintrag(b, i);
+      if(fertigGemeldet ? !e : (e && !e.g)) nr.push(i);
+    });
+  });
+  return nr;
 }
 
 /* Welche Spuren hat dieser Bon überhaupt zu tun? */
@@ -1563,7 +1680,9 @@ function bonSignatur(liste){
            (b.wartezeit_min || "") + ":" +
            /* Ein Storno MUSS die Karte neu bauen: Die gestrichene
               Zeile ist eine Änderung am Bon, nicht an einer Uhr. */
-           ((b.storno && b.storno.length) || 0);
+           ((b.storno && b.storno.length) || 0) + ":" +
+           /* Ein einzeln gemeldetes Gericht ändert die Zeile (Haken, Farbe). */
+           fertigSignatur(b);
   }).join(",");
 }
 
@@ -1677,11 +1796,19 @@ function zeichne(){
         var haupt = klammer > 0 ? name.slice(0, klammer) : name;
         var zusatz = klammer > 0 ? name.slice(klammer + 2, -1) : "";
         var ab = alterVon(p);
-        zeilen += '<li><span class="menge">' + (p.menge || 1) + '×</span>' +
+        var nr = posNummer(b, p), eg = nr >= 0 ? posEintrag(b, nr) : null;
+        var gKlasse = eg ? (eg.g ? ' gebracht' : ' fertig') : '';
+        var gKnopf = (nr >= 0 && b.status !== "storniert" && !alleAbgehakt)
+          ? '<button type="button" class="posfertig' + gKlasse + '" data-tun="gericht" data-id="' + h(b.id) +
+            '" data-pos="' + nr + '" aria-pressed="' + (eg ? "true" : "false") + '"' + (eg && eg.g ? ' disabled' : '') +
+            ' aria-label="' + h(haupt) + (eg ? (eg.g ? ' – gebracht' : ' – fertig gemeldet, zurücknehmen') : ' – fertig melden') + '">' +
+            (eg ? (eg.g ? 'Gebracht' : '✓ Fertig') : 'Fertig') + '</button>'
+          : '';
+        zeilen += '<li' + (gKlasse ? ' class="' + gKlasse.trim() + '"' : '') + '><span class="menge">' + (p.menge || 1) + '×</span>' +
                   '<span class="name">' + h(haupt) +
                   (ab ? '<span class="ausweis">Ausweis ' + ab + '+</span>' : '') +
                   (zusatz ? '<span class="zusatz">' + h(zusatz) + '</span>' : '') +
-                  '</span></li>';
+                  '</span>' + gKnopf + '</li>';
       });
     });
     /* Die gestrichenen Zeilen stehen MIT auf dem Bon, durchgestrichen.
@@ -1856,6 +1983,12 @@ function ausfuehren(b, tun, zusatz){
        zurückgezogener Bon, den der Koch abhakt, tauchte sonst im
        Tagesbogen wieder auf. Abhaken heißt hier nur: vom Schirm. */
     if(!restOffen && b.status !== "storniert") felder.status = "fertig";
+    /* Alle noch offenen Gerichte dieser Ansicht gleich mitmelden (siehe 5b). */
+    var rest = offeneNummern(b, meine, true);
+    if(rest.length && b.status !== "storniert"){
+      gerichtLokal(b, rest, true);
+      gerichtRufen(b, rest, true)["catch"](function(){ /* alter Weg trägt: kueche_fertig_um steht */ });
+    }
   }
   else if(tun === "oeffnen"){
     var meine2 = spurenVon(b).filter(function(s){ return EINST.spur === "beides" || s === EINST.spur; });
@@ -1864,6 +1997,12 @@ function ausfuehren(b, tun, zusatz){
       else felder.theke_fertig_um = null;
     });
     felder.status = "arbeit";
+    /* Wieder öffnen nimmt die gemeldeten, noch nicht gebrachten Gerichte zurück. */
+    var rueck = offeneNummern(b, meine2, false);
+    if(rueck.length && b.status !== "storniert"){
+      gerichtLokal(b, rueck, false);
+      gerichtRufen(b, rueck, false)["catch"](function(){ });
+    }
   }
 
   /* Sofort im Bild ändern, dann erst senden — der Koch soll nicht auf
@@ -2084,6 +2223,8 @@ $('feld').addEventListener('click', function(ev){
     ausfuehren(b, "zeit", Math.min(480, wert));
     return;
   }
+
+  if(k.dataset.tun === "gericht"){ gerichtKlick(b, Number(k.dataset.pos)); return; }
 
   k.disabled = true;
   ausfuehren(b, k.dataset.tun, k.dataset.min);

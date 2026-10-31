@@ -28,6 +28,7 @@
    ═══════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const path = require("path");
+const ADMIN_PFAD = process.env.ADMIN_DATEI || path.join(__dirname, "..", "seiten", "admin.html");   /* ADMIN_DATEI: Gegenbeweis auf einer Kopie */
 let fehler = 0;
 const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:"")); if(!g) fehler++; };
 (async () => {
@@ -38,7 +39,7 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
     const kons = [];
     p.on("pageerror", e => kons.push(String(e).slice(0,140)));
     await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
-    await p.goto("file://" + path.join(__dirname, "..", "seiten", "admin.html"));
+    await p.goto("file://" + ADMIN_PFAD);
     await p.waitForTimeout(900);
     /* Diese Prüfung misst die LISTE der Bestellungen (Filterleiste unten). Das Vorführhaus hat einen
        Saalplan und öffnet damit im Saal — der ersetzt die Filter; hier namentlich die Liste wählen. */
@@ -156,7 +157,7 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
     const kons = [];
     p.on("pageerror", e => kons.push(String(e).slice(0,140)));
     await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
-    await p.goto("file://" + path.join(__dirname, "..", "seiten", "admin.html"));
+    await p.goto("file://" + ADMIN_PFAD);
     await p.waitForTimeout(900);
     await p.evaluate(() => { document.getElementById("tor").hidden = true; if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); } });
     await p.waitForTimeout(400);
@@ -174,13 +175,130 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 1, addEventListener(){} } }); leisteAnkern(); });
     const rauschen = await messe();
     ok(rauschen.unten === rauschen.vh, "1 px Abstand (Rundung) bewegt nichts", rauschen.unten + " / " + rauschen.vh);
+    /* Foto vom 25.10. (iPhone): die Leiste saß UNTER dem sichtbaren Rand, abgeschnitten. Ohne Eingabefeld und ohne Zoom rückt sie nach OBEN. */
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight - 47, addEventListener(){} } }); leisteAnkern(); });
+    const abg = await messe();
+    ok(abg.unten === abg.vh - 47 && abg.versatz === "-47px", "Leiste unter dem sichtbaren Rand (47 px): sie rückt um genau 47 px nach oben", abg.unten + " / " + (abg.vh - 47));
+    /* Gezoomt (Pinch, Meldung 25.10.: „nach dem Reinzoomen nicht mehr unten gefixt“): Die Leiste folgt dem SICHTBAREN Rand, bleibt
+       so groß wie sonst (1/Zoom) und rückt um den seitlichen Versatz. Die alte Fassung ließ sie bei scale > 1 stehen — dort
+       hing sie mitten im vergrößerten Bild. Rechnung: sichtbar unten = offsetTop + height = 100 + 422 = 522. */
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:100, offsetLeft:40, scale:2, width:195, height:document.documentElement.clientHeight / 2, addEventListener(){} } }); leisteAnkern(); });
+    await p.waitForTimeout(100);
+    const zoom = await p.evaluate(() => { const b = document.getElementById("befehlsleiste").getBoundingClientRect(), w = document.documentElement.style;
+      return { unten: Math.round(b.bottom), links: Math.round(b.left), breit: Math.round(b.width), kehr: w.getPropertyValue("--vv-kehr"), x: w.getPropertyValue("--vv-x"), vh: document.documentElement.clientHeight }; });
+    ok(zoom.unten === 522, "gezoomt (scale 2): die Leiste sitzt am sichtbaren unteren Rand (522)", zoom.unten + " / 522");
+    ok(zoom.kehr === "0.5000" && zoom.breit === 195, "… und ist so breit wie das Sichtbare (195 px), nicht vergrößert", "kehr " + zoom.kehr + ", Breite " + zoom.breit);
+    ok(zoom.links === 40 && zoom.x === "40px", "… und folgt dem seitlichen Versatz (40 px)", zoom.links + " / " + zoom.x);
+    const filterZ = await p.evaluate(() => { const f = document.querySelector("#t-bestellungen .filterblock"); if(!f) return null; const r = f.getBoundingClientRect(), b = document.getElementById("befehlsleiste").getBoundingClientRect(); return { luecke: Math.round(b.top - r.bottom), links: Math.round(r.left), breit: Math.round(r.width) }; });
+    ok(!filterZ || (Math.abs(filterZ.luecke) <= 1 && filterZ.links === 40 && filterZ.breit === 195), "gezoomt: der Filterblock sitzt unverändert auf der Leiste (keine Lücke, gleiche Breite)", JSON.stringify(filterZ));
+    /* Rauszoomen stellt zurück */
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, offsetLeft:0, scale:1, width:390, height:document.documentElement.clientHeight, addEventListener(){} } }); leisteAnkern(); });
+    const zurueck = await p.evaluate(() => { const b = document.getElementById("befehlsleiste").getBoundingClientRect(), w = document.documentElement.style;
+      return { unten: Math.round(b.bottom), links: Math.round(b.left), breit: Math.round(b.width), kehr: w.getPropertyValue("--vv-kehr"), x: w.getPropertyValue("--vv-x"), v: w.getPropertyValue("--vv-versatz"), vh: document.documentElement.clientHeight }; });
+    ok(zurueck.unten === zurueck.vh && zurueck.breit === 390 && zurueck.links === 0 && zurueck.kehr === "1.0000" && zurueck.v === "0px",
+      "wieder auf Zoom 1: alles zurück (unten, Breite 390, links 0, kein Versatz)", JSON.stringify(zurueck));
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight - 300, addEventListener(){} } }); leisteAnkern(); });
-    const tast = await messe();
-    ok(tast.unten === tast.vh, "Sichtbares kürzer (Tastatur): die Leiste bleibt, wo sie ist", tast.unten + " / " + tast.vh);
+    const kuerz = await messe();
+    /* Meldung 31.10. (Foto 1, iPhone): 300 px kürzer ist die TASTATUR — auch ohne Fokus in einem Textfeld (Fokus schon auf einem
+       Schalter, Tastatur fährt noch). Bis dahin verlangte diese Probe „die Leiste folgt nach oben“ — sie schrieb den Fehler als Soll fest. */
+    ok(kuerz.unten === kuerz.vh && kuerz.versatz === "0px", "Sichtbares 300 px kürzer (Tastatur), ohne Eingabefeld: die Leiste bleibt ganz unten", kuerz.unten + " / " + kuerz.vh + " · " + kuerz.versatz);
+    const kuerzSchalter = await p.evaluate(() => { const i = document.createElement("input"); i.type = "checkbox"; document.body.appendChild(i); i.focus(); const v = leisteAnkern(); i.remove(); return v; });
+    ok(kuerzSchalter === 0, "dasselbe mit fokussiertem SCHALTER (Tipp nach dem Tippen): kein Versatz", String(kuerzSchalter));
+    /* Meldung 31.10. (Foto 2): iOS 26 lässt nach dem Schließen der Tastatur visualViewport.offsetTop > 0 stehen; ohne Zoom ist das
+       ein Fehlwert. Die alte Rechnung schob die Leiste damit unter den Rand (Beschriftung abgeschnitten). */
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:58, offsetLeft:0, scale:1, width:390, height:document.documentElement.clientHeight, addEventListener(){} } }); leisteAnkern(); });
+    const ios26 = await messe();
+    ok(ios26.unten === ios26.vh && ios26.versatz === "0px", "iOS 26: offsetTop 58 ohne Zoom bei gleicher Höhe → Leiste ganz im Bild, kein Versatz", JSON.stringify(ios26));
+    /* Tastatur schließt (Höhe wächst um mehr als 120 px): Versatz sofort 0, danach neu gemessen — die Leiste steht ganz unten. */
+    const zu = await p.evaluate(async () => {
+      const st = { offsetTop:0, offsetLeft:0, scale:1, width:390, height:document.documentElement.clientHeight - 300 };
+      const ziel = new EventTarget(); ziel.offsetTop = 0;
+      Object.defineProperty(window, "visualViewport", { configurable:true, get(){ return st; } });
+      document.documentElement.style.setProperty("--vv-versatz", "-300px");
+      leisteSichtHoehe = st.height;
+      st.height = document.documentElement.clientHeight;
+      const i = document.createElement("input"); document.body.appendChild(i); i.focus(); i.blur(); i.remove();
+      const sofort = document.documentElement.style.getPropertyValue("--vv-versatz");
+      await new Promise(r => setTimeout(r, 900));
+      const b = document.getElementById("befehlsleiste").getBoundingClientRect();
+      return { sofort, spaeter: document.documentElement.style.getPropertyValue("--vv-versatz"), unten: Math.round(b.bottom), vh: document.documentElement.clientHeight };
+    });
+    ok(zu.sofort === "0px" && zu.spaeter === "0px" && zu.unten === zu.vh, "Tastatur zu (Feld verlässt den Fokus): Versatz sofort 0, nach dem Nachmessen ganz unten", JSON.stringify(zu));
+    const mess = await p.evaluate(() => !!document.getElementById("leisteMess"));
+    ok(!mess, "ohne ?leiste=mess keine Messanzeige im Dokument", String(mess));
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, scale:1, height:document.documentElement.clientHeight - 47, addEventListener(){} } }); leisteAnkern(); });
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:-60, scale:1, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); leisteAnkern(); });
+    const gummi = await messe();
+    ok(gummi.versatz === "-47px", "Gummiband oben (offsetTop −60): der letzte Stand bleibt, nichts zuckt", gummi.versatz);
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight, addEventListener(){} } }); leisteAnkern(); });
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); leisteAnkern(); });
     const ink = await p.evaluate(() => { const i = document.createElement("input"); i.id = "ankerProbe"; document.body.appendChild(i); i.focus(); return leisteAnkern(); });
     ok(ink === 0, "mit fokussiertem Eingabefeld wird nicht verschoben (Tastatur)", String(ink));
+    /* Ein Schalter im Fokus ist keine Tastatur: Die Verankerung bleibt an (die erste Fassung nahm jedes INPUT aus). */
+    await p.evaluate(() => { document.getElementById("ankerProbe").remove(); Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); });
+    const chk = await p.evaluate(() => { const i = document.createElement("input"); i.type = "checkbox"; i.id = "ankerSchalter"; document.body.appendChild(i); i.focus(); const v = leisteAnkern(); i.remove(); return v; });
+    ok(chk === 120, "ein fokussierter SCHALTER (Checkbox) hält die Verankerung nicht an", String(chk));
+    const txt = await p.evaluate(() => { const i = document.createElement("input"); i.type = "email"; i.id = "ankerMail"; document.body.appendChild(i); i.focus(); const v = leisteAnkern(); i.remove(); return v; });
+    ok(txt === 0, "ein fokussiertes Textfeld (E-Mail) schon (Tastatur)", String(txt));
     ok(kons.length === 0, "keine Ausnahme", kons[0] || "still");
+    await ctx.close();
+  }
+  /* Die Verdrahtung selbst (zweite Quelle statt Aufruf von Hand): echte Ereignisse am echten visualViewport, und das Nachlaufen
+     nach dem Auslaufen (iOS meldet das Einrasten nicht). Vorher hatten alle Prüfungen addEventListener(){} und riefen
+     leisteAnkern() direkt — ob die Ereignisse überhaupt rechneten, sah keine. */
+  {
+    const ctx = await br.newContext({viewport:{width:390,height:844}});
+    const p = await ctx.newPage();
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto("file://" + ADMIN_PFAD);
+    await p.waitForTimeout(900);
+    await p.evaluate(() => { document.getElementById("tor").hidden = true; if(typeof demoStarten === "function"){ demoStarten(); zeichneAlles(); } });
+    await p.waitForTimeout(400);
+    const sch = await p.$("#scharfJetzt");
+    if(sch && await p.isVisible("#scharf")){ await sch.click(); await p.waitForTimeout(300); }
+    console.log("\n══ Leiste: Ereignisse und Nachlaufen ══");
+    await p.evaluate(() => {
+      window.__echt = window.visualViewport;
+      const st = { offsetTop:0, offsetLeft:0, scale:1, width:390, height:document.documentElement.clientHeight + 90 };
+      window.__vvStand = st;
+      Object.defineProperty(window, "visualViewport", { configurable:true, get(){ return window.__vvStand; } });
+    });
+    const v = () => p.evaluate(() => document.documentElement.style.getPropertyValue("--vv-versatz"));
+    await p.evaluate(() => window.__echt.dispatchEvent(new Event("resize")));
+    await p.waitForTimeout(120);
+    ok(await v() === "90px", "ein echtes „resize“ am visualViewport rechnet neu", await v());
+    await p.evaluate(() => { window.__vvStand.height = document.documentElement.clientHeight + 30; window.__echt.dispatchEvent(new Event("scroll")); });
+    await p.waitForTimeout(120);
+    ok(await v() === "30px", "ein echtes „scroll“ am visualViewport rechnet neu", await v());
+    /* Nachlaufen: nach dem letzten Ereignis ändert sich der Stand ohne weiteres Ereignis (Einrasten nach dem Pinch). */
+    await p.evaluate(() => { window.__echt.dispatchEvent(new Event("resize")); });
+    await p.waitForTimeout(70);   /* der Bildlauf-Takt hat gerechnet (30 px), danach rastet der Stand ein — OHNE Ereignis */
+    await p.evaluate(() => { window.__vvStand.height = document.documentElement.clientHeight + 55; });
+    await p.waitForTimeout(40);
+    const sofort = await v();
+    ok(sofort === "30px", "Voraussetzung: bis hierher hat nichts nachgerechnet (Stand noch 30 px)", sofort);
+    await p.waitForTimeout(700);
+    ok(await v() === "55px", "ohne weiteres Ereignis holt das Nachlaufen den Endstand (55 px)", "gleich " + sofort + ", nach 0,8 s " + await v());
+    await p.evaluate(() => { window.__vvStand.height = document.documentElement.clientHeight; window.dispatchEvent(new Event("gestureend")); });
+    await p.waitForTimeout(120);
+    ok(await v() === "0px", "„gestureend“ (Safari: Pinch zu Ende) rechnet neu", await v());
+    await ctx.close();
+  }
+  /* Messanzeige (?leiste=mess): die Zahlen für ein Foto vom Gerät. Nur Text, fängt keinen Tipp, ohne Parameter gar nicht da (oben). */
+  {
+    const ctx = await br.newContext({viewport:{width:390,height:844}});
+    const p = await ctx.newPage();
+    const kons = [];
+    p.on("pageerror", e => kons.push(String(e).slice(0,140)));
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto("file://" + ADMIN_PFAD + "?leiste=mess");
+    await p.waitForTimeout(900);
+    console.log("\n══ Messanzeige ?leiste=mess ══");
+    const m = await p.evaluate(() => { leisteAnkern(); const e = document.getElementById("leisteMess");
+      return e ? { text: e.textContent, pe: getComputedStyle(e).pointerEvents, kinder: e.children.length } : null; });
+    ok(!!m && /vv\.top/.test(m.text) && /versatz 0/.test(m.text) && /sonde 844/.test(m.text) && m.pe === "none" && m.kinder === 0,
+      "mit ?leiste=mess: Zahlen als reiner Text, fängt keinen Tipp", JSON.stringify(m));
+    ok(kons.length === 0, "keine Skriptfehler", kons.join(" | "));
     await ctx.close();
   }
   await br.close();

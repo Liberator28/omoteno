@@ -27,7 +27,7 @@ let n = 0, f = 0;
 function pruef(b, t, d) { n++; if (!b) f++; console.log((b ? "  ok   " : "  FEHL ") + t + (d !== undefined ? "  → " + d : "")); }
 
 function stelleDb(opt) {
-  window.__rpc = []; window.__schreib = [];
+  window.__rpc = []; window.__schreib = []; window.__lesen = [];
   const jetzt = new Date().toISOString();
   const B = (id, extra) => Object.assign({ id, betrieb_id: "b-1", quelle: "tisch", tisch: "5", status: "neu", summe: 12.5, liefergebuehr: 0,
     positionen: [{ name: "Crêpe", menge: 1, preis: 12.5 }], zeitpunkt: jetzt, pruefen: false }, extra);
@@ -45,6 +45,7 @@ function stelleDb(opt) {
   ];
   const zarten = opt.zarten;
   function antwort(z) {
+    if (z.op === "select") window.__lesen.push(z.tab);
     if (z.op !== "select") { window.__schreib.push({ tab: z.tab, op: z.op, daten: z.daten }); return { data: null, error: null }; }
     if (z.tab === "betrieb_mitglieder") return { data: [{ rolle: opt.rolle, betriebe: { id: "b-1", slug: "b-1", name: "Choco", bestell_pause: false, hub_texte: {} } }], error: null };
     if (z.tab === "bestellungen") return { data: BEST.map(b => Object.assign({}, b)), error: null };
@@ -81,6 +82,8 @@ async function oeffnen(browser, opt) {
   seite.on("pageerror", e => fehler.push(String(e).slice(0, 160)));
   seite.on("dialog", d => d.accept());
   await seite.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+  /* Ausgeliefert ist die Online-Zahlung AUS (26.10.); diese Prüfung schaltet sie ein — außer opt.ohneSchalter. */
+  if (!opt.ohneSchalter) await seite.addInitScript(() => { window.OMOTENO_ZAHLUNG = true; });
   await seite.goto("file://" + ADMIN);
   await seite.waitForTimeout(600);
   const scharf = await seite.$("#scharfJetzt");
@@ -106,6 +109,23 @@ async function gruppeOeffnen(seite) {
 
 if (process.env.DEBUG_ZB) { module.exports = { oeffnen, gruppeOeffnen, ZARTEN }; } else (async () => {
   const browser = await chromium.launch();
+
+  console.log("\n══ Ausgeliefert: AUS (26.10.) ══");
+  {
+    const { ctx, seite, fehler } = await oeffnen(browser, { rolle: "inhaber", zarten: ZARTEN, ohneSchalter: true });
+    await seite.evaluate(() => tafelZeigen("einstellungen")); await seite.waitForTimeout(300);
+    const s = await seite.evaluate(() => ({ schalter: typeof ZAHLUNG_ONLINE_AN === "undefined" ? "fehlt" : ZAHLUNG_ONLINE_AN, gruppe: !!document.getElementById("zhGruppe"),
+      kacheln: document.querySelectorAll("#t-einstellungen .eu-kachel").length, bezahlen: [...document.querySelectorAll("#t-einstellungen .eu-kachel")].some(k => /Bezahlen/.test(k.textContent)),
+      zahlTabellen: window.__lesen.filter(t => t === "betrieb_zahlarten" || t === "zahlungen").length, bestellungenGelesen: window.__lesen.includes("bestellungen"),
+      zahlRpc: window.__rpc.filter(x => /^zahlarten_|^zahlung_/.test(x.fn)).length, wiki: typeof AN_WIKI !== "undefined" && JSON.stringify(AN_WIKI).includes("e-bezahlen") }));
+    pruef(s.schalter === false, "ausgeliefert: der Schalter ZAHLUNG_ONLINE_AN steht auf AUS", String(s.schalter));
+    pruef(s.bestellungenGelesen && s.kacheln > 3, "Voraussetzung: das Board lief und zeigt seine Kacheln", s.kacheln + " Kacheln");
+    pruef(!s.gruppe && !s.bezahlen, "keine Gruppe „Bezahlen“, keine Kachel dazu");
+    pruef(s.zahlTabellen === 0 && s.zahlRpc === 0, "kein Lesen von betrieb_zahlarten oder zahlungen, kein Aufruf zahlarten_/zahlung_", s.zahlTabellen + " / " + s.zahlRpc);
+    pruef(!s.wiki, "die Anleitung führt keinen Abschnitt „Bezahlen“");
+    pruef(fehler.length === 0, "kein Seitenfehler", fehler.join("|"));
+    await ctx.close();
+  }
 
   console.log("\n══ Einstellung (Besitzer) ══");
   {

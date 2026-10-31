@@ -165,7 +165,7 @@ function textMit(len){
         aktionen = [{ id:"m", gericht_name:"Dubai Crêpe", titel:runner, preis_alt:15.9, preis_neu:11.9,
                       bis:new Date(Date.now() + 3600000).toISOString() }];
         zeichne();
-        const kz = document.querySelector(".aktion .kennz");
+        const kz = document.querySelector("#aktionBlatt .ak-titel");
         raus.runner = kz ? { zeilen: zeilen(kz), lang: kz.textContent.length } : null;
         raus.ueberNachAktion = document.documentElement.scrollWidth - innerWidth;
         aktionen = []; zeichne();

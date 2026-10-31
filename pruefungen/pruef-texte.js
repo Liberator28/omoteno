@@ -119,7 +119,7 @@ async function verdrahten(seite, texte){
                     preis_alt:15.9, preis_neu:11.9,
                     bis:new Date(Date.now()+3600000).toISOString() }];
       zeichne();
-      const k = document.querySelector(".aktion .kennz");
+      const k = document.querySelector("#aktionBlatt .ak-titel");
       return k ? k.textContent : "";
     });
     pruef(band === "Happy Hour", "Aktion ohne eigenen Titel nimmt die Vorgabe", band);
@@ -130,7 +130,7 @@ async function verdrahten(seite, texte){
                     preis_alt:15.9, preis_neu:11.9,
                     bis:new Date(Date.now()+3600000).toISOString() }];
       zeichne();
-      const k = document.querySelector(".aktion .kennz");
+      const k = document.querySelector("#aktionBlatt .ak-titel");
       return k ? k.textContent : "";
     });
     pruef(band2 === "Nur heute", "eigener Titel der Aktion gewinnt", band2);
@@ -185,7 +185,7 @@ async function verdrahten(seite, texte){
                     preis_alt:15.9, preis_neu:11.9,
                     bis:new Date(Date.now()+3600000).toISOString() }];
       zeichne();
-      const k = document.querySelector(".aktion .kennz");
+      const k = document.querySelector("#aktionBlatt .ak-titel");
       raus.runnerBeiGut = k ? zeilen(k) : 0;
       aktionen = []; zeichne();
       return raus;
@@ -203,8 +203,9 @@ async function verdrahten(seite, texte){
        nicht an der Zeichenzahl. */
     pruef(zahl.claimBeiHart <= 3,
       "    Slogan bei „hart" + '"' + " höchstens dreizeilig", zahl.claimBeiHart + " Zeile(n)");
-    pruef(zahl.runnerBeiGut <= 1,
-      "    Aktionsname bei „gut" + '"' + " noch einzeilig", zahl.runnerBeiGut + " Zeile(n)");
+    /* Der Aktions-Knopf zeigt den Titel im Blatt in höchstens zwei Zeilen (line-clamp:2, seit 26.10.); einzeilig war der Streifen. */
+    pruef(zahl.runnerBeiGut <= 2,
+      "    Aktionsname bei „gut\" noch höchstens zweizeilig", zahl.runnerBeiGut + " Zeile(n)");
     await ctx.close();
   }
 
@@ -227,11 +228,14 @@ async function verdrahten(seite, texte){
     pruef(!!mass.phase && !!mass.begleiter, "Grenzen im Gerüst gefunden",
       JSON.stringify(mass));
     if(mass.phase){
-      for(const breite of BREITEN){
+      /* Klassisch UND Premium (31.10.): Premium setzt den Satz in 15,5 px — dort brach das Versprechen zuerst, und diese
+       Probe sah nur das erste Haus. */
+    const TEXTHAEUSER = [...new Set([liste[0], liste.includes("chocolamour") ? "chocolamour" : liste[0]])];
+    for(const haus of TEXTHAEUSER) for(const breite of BREITEN){
         const ctx = await browser.newContext({ viewport:{ width:breite, height:900 } });
         const seite = await ctx.newPage();
         await verdrahten(seite);
-        await seite.goto(DATEI);
+        await seite.goto("file://" + path.join(HIER, "dist", haus, "index.html"));
         await seite.waitForTimeout(400);
         const r = await seite.evaluate(({ mass, worte }) => {
           const wk = document.querySelector(".willkommen"); if(wk) wk.remove();
@@ -287,7 +291,7 @@ async function verdrahten(seite, texte){
         }, { mass, worte: ["Frisch","gebacken","jeden","Tag","für","Sie","mit","viel",
                            "Liebe","und","Schokolade","aus","der","eigenen","Küche"] });
 
-        console.log("  " + breite + "px");
+        console.log("  " + haus + " · " + breite + "px");
         pruef(r.passGut.zeilen <= 1, "    Passtext bei „gut\u201c noch einzeilig",
           r.passGut.zeilen + " Zeile(n)");
         pruef(r.passHart.zeilen <= 2, "    Passtext bei „hart\u201c höchstens zweizeilig",

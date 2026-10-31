@@ -580,7 +580,7 @@ async function oeffnen(browser, slug, hash, opt = {}) {
       return { a:+k[0].width.toFixed(1), b:+k[1].width.toFixed(1), l:+(k[0].left - r.left).toFixed(1), r:+(r.right - k[1].right).toFixed(1) };
     });
     pruef(!!kn && kn.a === kn.b && Math.abs(kn.l - kn.r) <= 1,
-      breite + "px: „Nochmal drehen“ und „Nehm ich!“ gleich breit, gleich weit vom Rand", JSON.stringify(kn));
+      breite + "px: „Nochmal drehen“ und „Das nehme ich“ gleich breit, gleich weit vom Rand", JSON.stringify(kn));
     await s.evaluate(() => feiern()); await s.waitForTimeout(450);
     const fe = await s.evaluate(() => {
       const f = document.querySelector(".feier"); if (!f) return null;
@@ -596,7 +596,7 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     /* Die längste Übersetzung des Feiersatzes, bei 320 px */
     const { ctx, s } = await oeffnen(browser, "chocolamour", "#/speisekarte", { breite:320 });
     const lang = await s.evaluate(() => {
-      const e = (typeof TEXTE !== "undefined" && TEXTE["Das klingt lecker!"]) || {};
+      const e = (typeof TEXTE !== "undefined" && TEXTE["Unser Vorschlag"]) || {};
       return Object.values(e).sort((a, b) => b.length - a.length)[0] || "";
     });
     await s.evaluate(txt => { feiern(); document.querySelector(".feier b").textContent = txt; }, lang);
@@ -717,7 +717,7 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     if (ed) {
       pruef(Math.abs(ed.links - ed.rechts) <= 1, breite + "px: Stapel mit gleichem Rand links und rechts", ed.links + " / " + ed.rechts);
       pruef(ed.knopfA === ed.knopfB && Math.abs(ed.knopfL - ed.knopfR) <= 1,
-        breite + "px: „Weiter“ und „Nehm ich!“ gleich breit, gleich weit vom Rand", ed.knopfA + "/" + ed.knopfB + ", " + ed.knopfL + "/" + ed.knopfR);
+        breite + "px: „Weiter“ und „Das nehme ich“ gleich breit, gleich weit vom Rand", ed.knopfA + "/" + ed.knopfB + ", " + ed.knopfL + "/" + ed.knopfR);
       pruef(ed.stJa === ed.stNein && ed.stTop[0] === ed.stTop[1] && ed.wJa === -ed.wNein,
         breite + "px: Stempel spiegelbildlich", ed.stJa + "/" + ed.stNein + ", " + ed.wJa + "°/" + ed.wNein + "°");
     }
@@ -845,12 +845,12 @@ async function oeffnen(browser, slug, hash, opt = {}) {
     await s.keyboard.press("Escape"); await s.waitForTimeout(400);
     await s.evaluate(() => { if (document.body.classList.contains("fest")) { const z = document.querySelector("[data-zu], .warenkarte-zu"); if (z) z.click(); } });
     await s.waitForTimeout(300);
-    /* Nehm ich! legt in den Korb; der Knopf wird zu „Auswahl ansehen“ */
+    /* „Das nehme ich“ legt in den Korb; der Knopf wird zu „Auswahl ansehen“ */
     await s.evaluate(() => document.querySelector("[data-eh-nehm]").click());
     await s.waitForTimeout(600);
     const genommen = await s.evaluate(n => ({ imKorb: !!merk[n], nehm: !!document.querySelector("#frKnoepfe [data-eh-nehm]"),
       ansehen: !!document.querySelector('#frKnoepfe a[href="#/auswahl"]') }), wahl.name);
-    pruef(genommen.imKorb && !genommen.nehm && genommen.ansehen, "„Nehm ich!“ legt es in den Korb, danach „Auswahl ansehen“", JSON.stringify(genommen));
+    pruef(genommen.imKorb && !genommen.nehm && genommen.ansehen, "„Das nehme ich“ legt es in den Korb, danach „Auswahl ansehen“", JSON.stringify(genommen));
 
     /* Lust: nur noch Gerichte dieser Kategorie — gegen gerichtOrt gehalten */
     const lust = await s.evaluate(async () => {

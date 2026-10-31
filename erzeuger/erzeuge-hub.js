@@ -79,7 +79,7 @@ const FIGURNAMEN       = ausGeruest(/const AVATAR_FIGUREN = \{([\s\S]*?)\n\};/, 
    an der man das automatisch ablesen könnte: kopfbandSetzen() im
    Gerüst kennt nur "laternen" als Sonderfall, alles andere bleibt
    beim Guss. */
-const KOPFBAND_ARTEN    = ["guss", "laternen", "trikolore"];
+const KOPFBAND_ARTEN    = ["balken", "guss", "laternen", "trikolore"];
 /* Zierrat: zusätzlicher, wählbarer Gestaltungs-Zierrat (Bambus im
    Kopf, Tuschekleckse statt Farbwolken, Pfingstrosen-Knospe vor jeder
    .bereich-Überschrift). Fehlt zierrat ganz, bleibt der Hub wie
@@ -401,8 +401,8 @@ function pruefeMarkenblatt(mb){
     F("avatar.figur unbekannt: " + mb.avatar.figur +
       " — erlaubt: " + FIGURNAMEN.join(", "));
   /* Derselbe Grund wie bei figur: ein Tippfehler bliebe wortlos beim
-     Guss statt beim gewählten Schmuck. Fehlt kopfband ganz, bleibt es
-     beim Guss — die Vorgabe für jedes bestehende Markenblatt. */
+     Balken statt beim gewählten Schmuck. Fehlt kopfband ganz, gilt der
+     flache Balken (seit 25.10.; den Guss trägt nur ein Markenblatt mit kopfband:"guss"). */
   if(mb.kopfband !== undefined && KOPFBAND_ARTEN.indexOf(mb.kopfband) < 0)
     F("kopfband unbekannt: " + mb.kopfband +
       " — erlaubt: " + KOPFBAND_ARTEN.join(", "));
@@ -547,6 +547,13 @@ function pruefeMarkenblatt(mb){
     W("recht.vertreten fehlt — bei einer Gesellschaft muss das Impressum die Vertretung nennen");
   if(!String(b.mail || "").trim() || !String(b.strasse || "").trim())
     W("Impressum im Hub unvollständig: Anschrift und E-Mail sind Pflicht (§ 5 DDG)");
+  /* --streng (Prüflauf, Rechtsbericht R2): Ein echter Betrieb — kein Vorführhaus (mb.demo) — ohne Anbieter, Anschrift und E-Mail
+     im Impressum ist KEIN Hinweis mehr, sondern ein Fehler (§ 5 DDG, Bußgeld bis 50 000 €). NUR hier: Im Netlify-Build
+     (bauen.js) läuft der Erzeuger ohne --streng, sonst nähme ein fehlendes Feld ALLE Hubs vom Netz. */
+  if(STRENG && !mb.demo){
+    if(!String(recht.firma || "").trim()) F("[streng] recht.firma fehlt — das Impressum nennt keinen Anbieter (§ 5 DDG)");
+    if(!String(b.mail || "").trim() || !String(b.strasse || "").trim()) F("[streng] Anschrift und E-Mail im Impressum fehlen (§ 5 DDG)");
+  }
 
   /* Kontrast, Tag und Abend */
   const pruefePaare = (farben, wann) => {
@@ -847,6 +854,12 @@ function erzeuge(slug, nurPruefen){
     throw new Error('Die Vorlage hat keinen CSS-Ruckfall :root{color-scheme:...} mehr');
   aus = aus.replace(/(?<!prefers-)color-scheme:[^;]*;/, "color-scheme:" + schema + ";");
 
+  /* Kopfband-Schmuck schon im ersten Anstrich: data-kopfband im <html>-Tag. Fehlt kopfband, gilt der flache Balken —
+     den Guss trägt nur, wer ihn ausdrücklich wählt. */
+  if(!/<html [^>]*data-kopfband="balken"/.test(aus))
+    throw new Error('Die Vorlage hat kein data-kopfband im <html>-Tag');
+  aus = aus.replace(/(<html [^>]*data-kopfband=")balken(")/, "$1" + (mb.kopfband || "balken") + "$2");
+
   /* Der Vorführblock fliegt raus, wenn ihn niemand bestellt hat.
 
      Im Gerüst stand jahrelang „Vor dem Livegang diesen Block
@@ -973,6 +986,7 @@ function erzeuge(slug, nurPruefen){
 /* ─── Aufruf ──────────────────────────────────────────────────── */
 const args = process.argv.slice(2);
 const nurPruefen = args.includes("--pruefen-nur");
+const STRENG = args.includes("--streng");
 /* Im flachen Verzeichnis liegen neben den Markenblättern auch andere
    JSON-Dateien. „--alle" nimmt deshalb nur, was wirklich eins ist:
    ein Objekt mit version und farben. Ohne diese Prüfung meldete der
@@ -991,7 +1005,7 @@ const slugs = args.includes("--alle")
   : args.filter(a => !a.startsWith("--"));
 
 if(!slugs.length){
-  console.log("Aufruf: node erzeuger/erzeuge-hub.js <slug> [--pruefen-nur]");
+  console.log("Aufruf: node erzeuger/erzeuge-hub.js <slug> [--pruefen-nur] [--streng]");
   console.log("        node erzeuger/erzeuge-hub.js --alle");
   process.exit(1);
 }
