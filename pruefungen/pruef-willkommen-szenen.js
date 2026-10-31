@@ -75,7 +75,7 @@ const TRAGEND = {
   kueche: [".pfanne path.t", ".pfanne rect.t", ".kuchen"],
   lieferung: ["g.roller > path.a", "g.roller > rect.lt", ".rad circle.t"],
   pizza: [".pz-pie circle.lt", ".pz-schieber .lt", ".pz-pie circle.g"],
-  sushi: [".su-teller .lt", ".su-ruhe .lt", ".su-hand .lt"],
+  sushi: [".su-teller .lt", ".su-hnigiri .lt", ".su-hand > path.lt"],
   kurier: [".ku-tuer .lt", ".ku-bote .lt", ".ku-roller circle.t"],
   /* Figur und „still“ tragen die Hausfigur — ihre Kontraste misst pruef-figur.js. */
   figur: [], still: []
@@ -330,7 +330,9 @@ const LAEUFT = () => {
         return { bg:st.dataset.bg, hinten:[...st.children].filter(c => !c.classList.contains("wz-teil")).map(c => c.className.split(" ")[0]),
           teile:st.querySelectorAll(".wz-teil").length, form:(st.querySelector(".wz-teil") || { className:"" }).className.split(" ")[1],
           lauf:alle.length, fremd:[...fremd],
-          namen:[...new Set(szene.getAnimations({ subtree:true }).filter(a => a.playState === "running" && a.animationName).map(a => a.animationName))],
+          /* Alle Animationen der Szene, auch beendete: Seit 31.10. erzählt jede Szene einmal und ruht dann —
+             was schon fertig ist, gehört trotzdem zu ihrer Bewegungssprache. */
+          namen:[...new Set(szene.getAnimations({ subtree:true }).filter(a => a.animationName).map(a => a.animationName))],
           tippfrei:kinder.every(x => x === "none") && st.style.pointerEvents !== "auto" && getComputedStyle(st).pointerEvents === "none",
           obenauf:!!e && !e.closest(".wz-buehne") };
       });
@@ -406,59 +408,106 @@ const LAEUFT = () => {
     }
   }
 
-  console.log("══ 10 · Schleifen-Naht, Drehpunkt, unsichtbare Übergabe (Anlass: Prüfung der Animations-MD, 31.10.) ══");
+  console.log("══ 10 · Einmal erzählen, dann ruhen: Ende vor 5 s, Endbild = Ruhebild, Logik der Bewegung (31.10., Subframe-Motion-Regeln) ══");
   {
-    /* Eine Endlosschleife aus verschobenen Sätzen ist nur dann nahtlos, wenn die Verschiebung GENAU eine Periode ist —
-       gemessen an der Lage der Kinder, nicht an der Zahl im Keyframe allein. */
-    const periode = (wz, sel) => { const s = wz.getBoundingClientRect().width / 200; const g = wz.querySelector(sel); if(!g) return { fehlt:sel };
-      const a = g.getAnimations()[0]; a.pause(); a.currentTime = 0;
-      const k = a.effect.getKeyframes(), letzt = k[k.length - 1].transform, ende = +(String(letzt).match(/translateX\((-?[\d.]+)px\)/) || [0, NaN])[1] * s;
-      const kids = [...g.children], x0 = kids[0].getBoundingClientRect().left;
-      return { sel, ende:Math.round(ende * 10) / 10, passt:kids.some((c, j) => j > 0 && Math.abs(c.getBoundingClientRect().left - x0 + ende) < .6), kinder:kids.length }; };
-    for(const [art, sels] of [["sushi", [".su-band"]], ["lieferung", [".fern", ".mitte", ".nah"]]]){
-      const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", art]] });
-      await p.waitForTimeout(900);
-      for(const sel of sels){
-        const r = await p.evaluate(`(${periode.toString()})(document.querySelector("#wkFigur .wz"), ${JSON.stringify(sel)})`);
-        pruef(!r.fehlt && r.passt, art + " " + sel + ": die Verschiebung der Schleife ist genau eine Periode (Naht ohne Sprung)", JSON.stringify(r));
-      }
+    /* (a) WCAG 2.2.2: Bewegung, die von selbst startet und länger als 5 s läuft, braucht einen Pausenknopf. Die Szenen
+       haben keinen — also ist JEDE Animation in der Szene (Zeichnung, Bühne, Teilchen) endlich und vor 5 s vorbei. */
+    const ENDE = () => { const wz = document.querySelector("#wkFigur .wz"); if(!wz) return null;
+      const an = wz.getAnimations({ subtree:true });
+      const zeiten = an.map(a => ({ n:a.animationName || "?", e:a.effect.getComputedTiming().endTime }));
+      return { zahl:an.length, endlos:zeiten.filter(z => !isFinite(z.e)).map(z => z.n), spaet:zeiten.filter(z => isFinite(z.e) && z.e > 5000).map(z => z.n + " " + Math.round(z.e)),
+        max:Math.round(Math.max(0, ...zeiten.filter(z => isFinite(z.e)).map(z => z.e))) }; };
+    /* (b) Das Ruhebild ist der Grundzustand: Nach dem Ende aller Animationen steht dasselbe Bild da wie bei reduzierter
+       Bewegung — jedes Teil am selben Ort, gleich sichtbar. Ausgenommen sind nur Spuren eines Augenblicks (Dampf, Glanz,
+       Ringe, Konfetti), die danach ohnehin unsichtbar sind. */
+    const FLUECHTIG = ["dampf", "puff", "funkel", "ring", "pop", "stern", "klirr", "funke", "staub", "pz-mehl", "su-welle", "ku-ring", "halo"];
+    const BILD = fluechtig => { const wz = document.querySelector("#wkFigur .wz"); if(!wz) return null;
+      const w = wz.getBoundingClientRect();
+      return [...wz.querySelectorAll("svg path, svg ellipse, svg circle, svg rect")].map((e, i) => {
+        if(fluechtig.some(k => e.closest("." + k))) return null;
+        let o = 1; for(let x = e; x && x !== wz; x = x.parentElement) o *= +getComputedStyle(x).opacity;
+        const r = e.getBoundingClientRect();
+        return { i, o:Math.round(o * 100) / 100, x:Math.round((r.left - w.left) * 10) / 10, y:Math.round((r.top - w.top) * 10) / 10, b:Math.round(r.width * 10) / 10, h:Math.round(r.height * 10) / 10,
+          k:(e.getAttribute("class") || e.tagName) + " in " + ((e.parentElement && e.parentElement.getAttribute("class")) || "") };
+      }).filter(Boolean); };
+    for(const art of ARTEN.filter(a => a !== "still")){
+      const a = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", art]] });
+      await a.p.waitForTimeout(600);
+      const ende = await a.p.evaluate(ENDE);
+      pruef(!!ende && ende.zahl >= 3 && !ende.endlos.length && !ende.spaet.length, art + ": nichts läuft endlos, alles ist vor 5 s vorbei (WCAG 2.2.2)",
+        ende && (ende.endlos.length ? "endlos: " + [...new Set(ende.endlos)].join(",") : ende.spaet.length ? "zu spät: " + ende.spaet.slice(0, 4).join(", ") : ende.zahl + " Animationen, letzte endet bei " + ende.max + " ms"));
+      await a.p.evaluate(() => document.getAnimations().forEach(x => { try{ x.finish(); }catch(e){} }));
+      await a.p.waitForTimeout(80);
+      const fertig = await a.p.evaluate(BILD, FLUECHTIG);
+      await a.ctx.close();
+      const r = await hubSeite(browser, "chocolamour", { still:true, init:[merk, ["chocolamour", art]] });
+      await r.p.waitForTimeout(600);
+      const ruhig = await r.p.evaluate(BILD, FLUECHTIG);
+      await r.ctx.close();
+      const abw = [];
+      if(!fertig || !ruhig || fertig.length !== ruhig.length) abw.push("Teile " + (fertig && fertig.length) + "/" + (ruhig && ruhig.length));
+      else fertig.forEach((f, n) => { const q = ruhig[n];
+        if(Math.abs(f.o - q.o) > .05 || (f.o > .02 && Math.max(Math.abs(f.x - q.x), Math.abs(f.y - q.y), Math.abs(f.b - q.b), Math.abs(f.h - q.h)) > 1.5))
+          abw.push(f.k + " " + JSON.stringify([f.o, f.x, f.y, f.b]) + "≠" + JSON.stringify([q.o, q.x, q.y, q.b])); });
+      pruef(!!fertig && fertig.length >= 3 && !abw.length, art + ": Endbild nach dem Auftritt = Bild bei reduzierter Bewegung (" + (fertig ? fertig.length : 0) + " Teile)", abw.slice(0, 3).join(" | "));
+    }
+    /* (c) Lieferung: Die Räder rollen, statt zu rutschen — gleiche Dauer, Kurve und Einsatz wie die Fahrt, und Drehwinkel
+       (Bogenmaß) × Radius = Weg. Radius aus der Zeichnung, nicht aus der Prüfung. */
+    {
+      const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", "lieferung"]] });
+      await p.waitForTimeout(300);
+      const m = await p.evaluate(() => { const wz = document.querySelector("#wkFigur .wz"); const f = wz.querySelector(".fahrt"), r = wz.querySelector(".rad");
+        if(!f || !r) return null; const af = f.getAnimations()[0], ar = r.getAnimations()[0]; if(!af || !ar) return { fehlt:true };
+        const weg = +(String(af.effect.getKeyframes()[0].transform).match(/translateX\((-?[\d.]+)px\)/) || [0, NaN])[1];
+        const winkel = +(String(ar.effect.getKeyframes()[0].transform).match(/rotate\((-?[\d.]+)deg\)/) || [0, NaN])[1];
+        const radius = +r.querySelector("circle").getAttribute("r");
+        const tf = af.effect.getComputedTiming(), tr = ar.effect.getComputedTiming();
+        return { weg, winkel, radius, rollt:Math.round(winkel * Math.PI / 180 * radius * 10) / 10, gleich:tf.duration === tr.duration && tf.delay === tr.delay && tf.easing === tr.easing }; });
+      pruef(!!m && !m.fehlt && m.gleich && Math.abs(m.rollt - m.weg) < 1, "Lieferung: Räder rollen ohne Rutschen (Winkel × Radius = Weg, gleiche Dauer/Kurve/Einsatz)", JSON.stringify(m));
       await ctx.close();
     }
-    /* Drehpunkt: Die Pizza dreht sich um ihre eigene Mitte. Auf dem Gipfel (46 %) ist sie um genau 44 Einheiten gestiegen und
-       seitlich nirgends — mit einem falschen Ursprung (Mitte des ganzen Bildes) wüchse die seitliche Abweichung auf viele Einheiten.
-       720° wären Identität und würden den Fehler verstecken (§8.1g), deshalb die Halbzeit mit 540°. */
+    /* (d) Drehpunkt: Der Teig dreht sich beim Landen um seine eigene Mitte — zu drei Zeitpunkten mitten in der Drehung
+       steht die Mitte seitlich genau über dem Endpunkt. Mit dem Ursprung in der Bildmitte wanderte sie seitlich. */
     {
       const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", "pizza"]] });
-      await p.waitForTimeout(900);
-      const m = await p.evaluate(() => { const wz = document.querySelector("#wkFigur .wz"), s = wz.getBoundingClientRect().width / 200, g = wz.querySelector(".pz-pie");
-        if(!g) return null; const a = g.getAnimations()[0]; a.pause(); a.currentTime = 0;
-        const mitte = r => [r.left + r.width / 2, r.top + r.height / 2], z0 = mitte(g.getBoundingClientRect());
-        a.currentTime = .46 * a.effect.getComputedTiming().duration; const z1 = mitte(g.getBoundingClientRect());
-        return { dx:z1[0] - z0[0], dy:(z1[1] - z0[1]) / s }; });
-      pruef(!!m && Math.abs(m.dx) < 1.2 && Math.abs(m.dy + 44) < 1.5, "Pizza: auf dem Gipfel (540°, Maßstab 1,18) bleibt die Mitte seitlich stehen und ist 44 Einheiten höher", JSON.stringify(m));
+      await p.waitForTimeout(300);
+      const m = await p.evaluate(() => { const g = document.querySelector("#wkFigur .wz .pz-teig"); if(!g) return null;
+        const a = g.getAnimations()[0]; if(!a) return { fehlt:true }; const t = a.effect.getComputedTiming(); a.pause();
+        const mitte = () => { const r = g.getBoundingClientRect(); return r.left + r.width / 2; };
+        a.currentTime = t.delay + t.duration; const x0 = mitte();
+        return { dx:[.2, .4, .55].map(f => { a.currentTime = t.delay + f * t.duration; return Math.round((mitte() - x0) * 100) / 100; }) }; });
+      pruef(!!m && !m.fehlt && m.dx.every(v => Math.abs(v) < 1.2), "Pizza: der Teig dreht sich beim Landen um seine eigene Mitte (seitlich ±1 px)", JSON.stringify(m));
       await ctx.close();
     }
-    /* Kurier: Die Tür öffnet an ihrer linken Kante (scaleX um die Scharnierseite). */
+    /* (e) Kurier: Die Tür öffnet an ihrer linken Kante und bleibt offen. */
     {
       const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", "kurier"]] });
-      await p.waitForTimeout(900);
-      const m = await p.evaluate(() => { const wz = document.querySelector("#wkFigur .wz"), g = wz.querySelector(".ku-tuer");
-        if(!g) return null; const a = g.getAnimations()[0]; a.pause(); a.currentTime = 0; const r0 = g.getBoundingClientRect();
-        a.currentTime = .5 * a.effect.getComputedTiming().duration; const r1 = g.getBoundingClientRect();
-        return { links:r1.left - r0.left, breite:r1.width / r0.width }; });
-      pruef(!!m && Math.abs(m.links) < 1 && m.breite > .1 && m.breite < .25, "Kurier: offene Tür sitzt an der Scharnierkante (links unverändert) und ist schmal", JSON.stringify(m));
+      await p.waitForTimeout(300);
+      const m = await p.evaluate(() => { const g = document.querySelector("#wkFigur .wz .ku-tuer"); if(!g) return null;
+        const a = g.getAnimations()[0]; if(!a) return { fehlt:true }; a.pause(); a.currentTime = 0; const r0 = g.getBoundingClientRect();
+        a.finish(); const r1 = g.getBoundingClientRect();
+        return { links:Math.round((r1.left - r0.left) * 100) / 100, breite:Math.round(r1.width / r0.width * 1000) / 1000 }; });
+      pruef(!!m && !m.fehlt && Math.abs(m.links) < 1 && m.breite > .1 && m.breite < .25, "Kurier: die Tür öffnet an der Scharnierkante und bleibt offen", JSON.stringify(m));
       await ctx.close();
     }
-    /* Sushi: Der Wechsel zwischen dem ruhenden und dem gegriffenen Nigiri (30 % und 85 %) geschieht, wenn beide am selben Ort liegen. */
+    /* (f) Sushi: Der Wechsel vom ruhenden zum gegriffenen Nigiri geschieht, wenn beide am selben Ort liegen — kurz vor
+       und kurz nach dem Wechsel gemessen. */
     {
       const { ctx, p } = await hubSeite(browser, "chocolamour", { init:[merk, ["chocolamour", "sushi"]] });
-      await p.waitForTimeout(900);
+      await p.waitForTimeout(300);
       const m = await p.evaluate(() => { const wz = document.querySelector("#wkFigur .wz"), r = wz.querySelector(".su-ruhe"), h = wz.querySelector(".su-hnigiri");
-        if(!r || !h) return null; const an = wz.getAnimations({ subtree:true }).filter(a => a.effect.getComputedTiming().duration === 5000);
-        const aus = [.3, .85].map(f => { an.forEach(a => { a.pause(); a.currentTime = f * 5000; });
-          const x = r.getBoundingClientRect(), y = h.getBoundingClientRect(); return Math.max(Math.abs(x.left - y.left), Math.abs(x.top - y.top), Math.abs(x.width - y.width)); });
+        if(!r || !h) return null; const hand = wz.querySelector(".su-hand").getAnimations()[0]; if(!hand) return { fehlt:true };
+        const t = hand.effect.getComputedTiming();
+        /* ALLE Animationen der Szene auf denselben Zeitpunkt — die Elterngruppe des Tellers hat ihren eigenen Auftritt;
+           nur die fünf der Hand zu stellen, ließ den Teller in Echtzeit mitten im Einflug stehen (erste Fassung: 5,6 px). */
+        const an = wz.getAnimations({ subtree:true });
+        const sicht = e => +getComputedStyle(e).opacity;
+        const aus = [.435, .445].map(f => { an.forEach(a => { a.pause(); a.currentTime = t.delay + f * t.duration; });
+          const x = r.getBoundingClientRect(), y = h.getBoundingClientRect();
+          return { d:Math.round(Math.max(Math.abs(x.left - y.left), Math.abs(x.top - y.top), Math.abs(x.width - y.width)) * 10) / 10, ruhe:sicht(r), hand:sicht(h) }; });
         return { aus, anim:an.length }; });
-      pruef(!!m && m.anim >= 5 && m.aus.every(v => v < 1.5), "Sushi: beim Wechsel (30 % / 85 %) liegen ruhendes und gegriffenes Nigiri aufeinander (Übergabe unsichtbar)", JSON.stringify(m));
+      pruef(!!m && !m.fehlt && m.anim >= 6 && m.aus.every(v => v.d < 1.5) && m.aus[0].ruhe === 1 && m.aus[0].hand === 0 && m.aus[1].ruhe === 0 && m.aus[1].hand === 1,
+        "Sushi: der Wechsel zum gegriffenen Nigiri geschieht deckungsgleich (vorher Teller, nachher Stäbchen)", JSON.stringify(m));
       await ctx.close();
     }
   }
