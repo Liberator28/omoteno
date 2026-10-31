@@ -1,76 +1,77 @@
-# Prüfung der „High-End Food Web App Vector Animations“-MD · Stand 31.10.2026
+# Animationen: Prüfung der KI-MD und Neuaufbau nach Subframe Motion · Stand 31.10.2026
 
-> **Was dieses Dokument ist.** Die Beurteilung einer KI-erzeugten Anleitung (Burger-Loader-Blueprint, SVG + CSS)
-> gegen das, was in diesem Projekt gemessen wurde. Jede Aussage unten ist an einer Szene gemessen, nicht
-> behauptet. Die MD selbst liegt **nicht** im Verzeichnis (`animation-instructions.md` existiert nicht); sie
-> wurde nur im Chat mitgegeben. Beurteilt ist ihr Inhalt, wie er dort stand.
+> **Was dieses Dokument ist.** Zwei Runden an einem Tag. Zuerst wurde eine KI-erzeugte Anleitung
+> („High-End Food Web App Vector Animations“, Burger-Loader-Blueprint, nur im Chat, **nicht** im Verzeichnis)
+> gegen das Projekt gehalten und daraus die Szenen Pizza, Sushi und Kurier gebaut. Danach wünschte der Nutzer:
+> „Benutze Subframe Motion … ich finde sie vom Aufbau unlogisch und visuell zu billig … sharper, cleaner,
+> smoother … Animationen, die einladen, etwas zu essen“. Daraufhin wurden **alle acht** Willkommen-Szenen nach den
+> Regeln des Subframe-Motion-Dienstes neu aufgebaut. Jede Aussage hier ist gemessen, nicht behauptet.
 
-## Ergebnis in einem Satz
+## 1 · Ergebnis
 
-Als **Grundgerüst** taugt sie (Ebenen zerlegen, Anlauf vor der Bewegung, Überschwung, Nachwippen, nur
-`transform`/`opacity`) — das deckt sich mit dem Skill `bewegung` und dem vorhandenen Block
-`WILLKOMMEN-SZENEN`. **Als Anleitung für dieses Projekt reicht sie nicht**, weil sie fünf Dinge nicht kennt,
-die hier schon einmal schiefgegangen sind.
+| | vorher (Schleife) | jetzt (Subframe-Regeln) |
+|---|---|---|
+| Ablauf | jede Szene lief endlos (Pizza flog alle 3,6 s, Stäbchen legten das Nigiri wieder zurück) | **einmal erzählen, dann ruhen**: ≤ 3,5 s Auftritt, danach steht das appetitlichste Bild |
+| Dauer | unendlich — verstößt gegen WCAG 2.2.2 (über 5 s ohne Pause) | **jede Animation endet vor 5 s** (gemessen 4,2–4,9 s je Szene) |
+| Endbild | zufälliger Zeitpunkt der Schleife | **Grundzustand = Endbild = Bild bei reduzierter Bewegung** (Keyframes nur für den Weg hinein) |
+| Szenenhülle | Maßstab .74 + `filter:blur` + Überschwung *zusätzlich* zur Szene | ruhiges Erscheinen (`scale(.97)`, 0,45 s); die Teile erzählen selbst |
+| Bewegungssprache | je Szene eigene Kurven | `--wz-aus` (Abbremsen) für Auftritte, `--wz-feder` (Überschwung ≤ 0,25) nur für Essen, das landet, `--wz-gleit` für Wege; `.rein`/`.fall` mit `--t0` |
+| Logik | — | Räder rollen genau so weit, wie der Roller fährt; Tomate rollt so weit, wie sie sich dreht; Glocke hebt sich **einmal**; Tür geht auf und **bleibt** auf; Nigiri wird dem Gast entgegengehoben, der Teller bleibt leer |
 
-## Was trägt
+Die Szenen im Einzelnen: **Figur** hüpft herein und landet; **Café** Untertasse, Tasse, Kaffee füllt sich, Milch,
+Herz, Löffel, Zucker; **Tisch** Glocke hebt sich, das Licht geht an, Dampf, Gläser klirren; **Küche** Pfanne und Topf,
+Flammen, EIN Wurf zurück in die Pfanne, Deckel klappert; **Lieferung** Roller fährt vor und bremst (Nicken), Staub,
+Herz; **Pizza** Teig landet mit Drehung, Soße, Käse, Salami, Basilikum, Glut leuchtet beim Landen; **Sushi** Band läuft
+ein und hält, Stäbchen greifen, tauchen in die Soja, heben das Nigiri an; **Kurier** Bote kommt, klingelt, Tür auf,
+Licht an, Paket in den Flur, Hüpfer.
 
-| Punkt der MD | Befund |
-|---|---|
-| Ebenen einzeln bewegen (Teig, Belag, Dampf getrennt) | trägt; in `pizza` sind Wurf, Schieber, Schatten, Mehl, Dampf, Tomate, Basilikum je eine eigene Bewegung |
-| Anlauf, Überschwung, Nachwippen | trägt; Wurf der Pizza: Stauchung 9 %, Absprung 15 %, Gipfel 46 %, Landung 74 %, Stoß 79 %, Nachwippen 88 % |
-| nur `transform` und `opacity` | trägt; `pruef-willkommen-szenen.js` liest jede laufende Animation aus dem Browser (`getKeyframes`) |
-| Easing je Segment statt einer Kurve für alles | trägt; im Wurf wechselt die Kurve an jedem Schlüsselbild |
+## 2 · Die KI-MD — was trägt, was fehlt
 
-## Was fehlt (die fünf Lücken)
+**Trägt:** Ebenen einzeln bewegen, Anlauf/Überschwung/Nachwippen, nur `transform`/`opacity`, Kurve je Abschnitt.
 
-1. **Drehpunkt.** Ohne `transform-box` dreht ein SVG-Teil um die Ecke des ganzen Bildes. Im Projekt gilt die
-   Grundregel `.wz > svg *{transform-box:fill-box;transform-origin:50% 50%}`; liegt der Drehpunkt außerhalb
-   des Teils (Schieber, Stäbchen), steht er ausdrücklich mit `transform-box:view-box` und Pixelpunkt. Die
-   Prüfung misst ihn: Die Pizza steigt auf dem Gipfel (540°, Maßstab 1,18) um genau 44 Einheiten und seitlich
-   um 0 (`dx 0, dy −44`); die offene Tür des Kuriers behält ihre Scharnierkante (Abweichung 0,00002 px).
-   **Fallstrick:** 720° wären die Identität und würden einen falschen Ursprung verstecken — die Probe misst
-   bei 540°.
-2. **Schleifen ohne Naht.** Ein Band, das „einfach weiterläuft“, springt, wenn die Verschiebung nicht genau
-   eine Periode ist. Das Sushi-Band besteht aus zwei Sätzen à 200 Einheiten und läuft um genau −200; die
-   Prüfung vergleicht die Verschiebung mit der Lage der Kinder (`passt:true`) — auch für die drei Ebenen der
-   Szene „Lieferung“. Versetzte Starts (Stagger) per `animation-delay` sind in Endlosschleifen nur bei
-   **gleicher Dauer** unbedenklich; bei verschiedenen Dauern laufen die Teile auseinander.
-3. **Feste Farben.** Eine feste Palette verletzt CLAUDE.md §5.1/§5.2: Der Hub hat Häuser mit hellem und mit
-   dunklem Grund. Die Szenen nehmen nur die Rollen des Hauses (`.t .a .g .f .n`, `--_*`). **Gefunden beim
-   Ansehen der Bilder, nicht von der Prüfung:** Die Rolle `.f` (Fläche) wird abends dunkel — der Käse wurde zum
-   schwarzen Fleck, der Schieber zur schwarzen Pfanne, die Sojasauce (`.t`) weiß. Behoben mit Gold bzw. Tinte
-   bei geringer Deckkraft und einer dunklen Mischfarbe für die Sauce. Die Kontrastprüfung am gemalten Bild
-   bestand schon vorher: Name und Gruß waren lesbar, **die Zeichnung sah trotzdem falsch aus.** Kontrast
-   misst Schrift, nicht, ob ein Käse wie Käse aussieht.
-4. **Reduzierte Bewegung und Vorleser.** Die MD nennt weder `prefers-reduced-motion` noch `aria-hidden`.
-   Hier steht jede Szene bei reduzierter Bewegung still in ihrem schönsten Bild (Tür offen, Paket im Flur,
-   Herz da; Nigiri auf dem Teller, Stäbchen am Reis) und hat `aria-hidden="true"`.
-5. **Namensraum und Prüfliste.** Zwei Klassen mit gleichem Namen in einem geteilten Block zerstören still das
-   Bild (CLAUDE.md §1.1). Alle neuen Klassen tragen Präfixe (`pz-`, `su-`, `ku-`, `wz-pz-`, …), vorher per
-   `grep` gegen Hub, Board und Studio geprüft (0 Treffer). Dazu gehört auch die Frage, die die MD nicht
-   stellt: *Wird die Vorlage von einem Prüfer gesehen, der nicht weiß, dass es sie gibt?* Hier: Die
-   Szenen-Prüfung liest `WZ_ARTEN` aus dem Hub, neue Szenen werden ohne Änderung mitgemessen.
+**Fehlt (gemessen):**
+1. **Drehpunkt** — ohne `transform-box` dreht ein SVG-Teil um die Bildecke. Probe: Der Teig dreht beim Landen um
+   seine eigene Mitte (seitlich 0 px zu drei Zeitpunkten); B5 (Ursprung Bildmitte) wird rot.
+2. **Schleifen und Staffelung** — eine Endlosschleife braucht genaue Perioden; besser gar keine (WCAG 2.2.2).
+3. **Feste Farben** — verletzt §5.1. Aber auch die *Rollen* des Hauses reichen nicht für alles: **Vorfall J**
+   (CLAUDE.md §8.1g) — Käse, Kaffee und Sojasauce kippten abends, weil ihre Rollen die Helligkeit wechseln; die
+   Kontrastprüfung war grün. Sachfarben (Kaffee dunkel, Milch/Mehl hell, Soja dunkel) als Mischung aus Hausfarbe und
+   festem Ton.
+4. **Reduzierte Bewegung, Vorleser** — fehlt in der MD; hier ist das Endbild der Grundzustand, die Szene trägt
+   `aria-hidden`.
+5. **Namensraum und Prüfprotokoll** — Präfixe `pz-`, `su-`, `ku-`, `wz-pz-` …, vorher per `grep` in Hub, Board und
+   Studio gesucht (0 Treffer).
 
-## Was die Prüfung beim ersten Lauf selbst gefunden hat
+**Subframe-Leitlinien, die den Ausschlag gaben:** Bewegung beantwortet eine Frage, sonst weg; seltene Momente
+(Erstbesuch) dürfen ausdrucksstark sein; Dauer-Bewegung über 5 s braucht eine Pause oder hört nach wenigen Durchläufen
+auf; Staffelung 20–60 ms; Ausgänge schneller als Eingänge; unter reduzierter Bewegung ein ruhiges Standbild. Die
+Bibliothek besteht aus React-Beispielen; übernommen wurden Werte und Mechanik, umgesetzt als CSS/Web Animations
+(keine neue Bibliothek im Hub).
 
-- `pruef-bewegung` lehnte `linear` an `wzSuBand` und `wzKuVorbei` ab. Beides sind Bewegungen ohne Anfang
-  und Ende (Band, vorbeiziehende Lichter); sie stehen jetzt **namentlich** in `GLEICHFOERMIG`, nicht per Muster.
+## 3 · Prüfung (`pruefungen/pruef-willkommen-szenen.js`, 213 Proben)
 
-## „Liefer-Scooter“ gab es schon
+Neu in Abschnitt 10: (a) jede Animation in der Szene endlich und vor 5 s vorbei, (b) Endbild nach `finish()` = Bild
+bei reduzierter Bewegung (jedes Teil an Ort und Sichtbarkeit), (c) Räder ohne Rutschen, (d) Drehpunkt Teig, (e) Tür
+am Scharnier, (f) Nigiri-Wechsel deckungsgleich. Dazu angepasst: Namensvergleich zählt auch beendete Animationen;
+neun Szenen aus `WZ_ARTEN` (keine Zahl in der Prüfung). Nachbarprüfungen grün: `pruef-bewegung`, `-leistung`,
+`-willkommen-knoepfe`, `-vorfenster`, `-figur`, `-uebersetzung`, `-farben`, `-kompakt`, `-sprache`, `-zentrale`,
+`-figur-board`, `-lesbarkeit`, `-durchgang`.
 
-Die Szene `lieferung` (Roller mit Wheelie, drei Häuserschichten) zeigt die **Fahrt**. Eine zweite Fahrt-Szene
-hätte genau den Fehler vom 24.10. wiederholt („zu einheitlich“). Der neue **Kurier** zeigt deshalb eine andere
-Bildidee: den Roller **stehend**, die **Übergabe** an der Haustür.
+**Gegenbeweise B1–B10** (Kopie des Verzeichnisses, Sabotage in Hub UND Board, Treffer gezählt): siehe Abschnitt 5.
 
-## Ehrliche Grenzen
+**Eigene Fehler dieser Runde:**
+- Erste Gegenbeweis-Runde (A1/A2) sabotierte nur die Vorlage → Block ungleich → rot aus dem falschen Grund
+  (Vorfall K b).
+- Probe „Nigiri-Wechsel“ stellte nur fünf Animationen auf den Zeitpunkt → 5,6 px Scheinabweichung (Vorfall K a).
+- Kaffee/Käse/Mehl/Soja mit Rollenfarben, die abends kippen (Vorfall J) — gefunden am gerenderten Bild.
 
-- Kopfloses Chromium, **kein Gerät**: Bilder pro Sekunde sind nicht gemessen; die Szenen laufen mit
-  `transform`/`opacity`, ob sie auf einem alten Telefon flüssig bleiben, zeigt nur ein Gerät.
-- Die Zeichnungen sind **eigene Nachbauten** nach Beschreibung, keine Referenz-Assets. „Wie aus einem
-  Animationsstudio“ lässt sich nicht messen; gemessen sind nur die Regeln (Handwerk, Maße, Kontrast,
-  Naht, Drehpunkt).
-- Die MD wurde nur aus dem Chat beurteilt. Was in einer Fassung der Datei steht, die ich nicht gesehen habe,
-  ist nicht beurteilt.
-- Die Prüfung der Bildlücken (`pruef-auswertung`, Figuren-Rad) ist **vorbestehend unzuverlässig**: am Stand vor
-  dieser Sitzung (`0b321bb`) in 1 von 2 Läufen rot (70 ms statt ≤ 50), am neuen Stand in 2 von 2 (65 und
-  114 ms). Nicht Teil dieser Änderung, nicht behoben.
+## 4 · Ehrliche Grenzen
+
+- Kopfloses Chromium, **kein Gerät**: Bilder pro Sekunde auf einem echten Telefon nicht gemessen.
+- „Appetitlich“ und „Studio-Qualität“ sind nicht messbar; gemessen sind die Regeln. Die Zeichnungen sind eigene
+  Nachbauten, keine Referenz-Assets.
+- Die MD wurde nur aus dem Chat beurteilt.
+
+## 5 · Ergebnis der Gegenbeweise
+
+(wird nach dem Lauf eingetragen)

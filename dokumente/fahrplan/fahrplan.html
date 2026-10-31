@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Omoteno — Fahrplan zum ersten Kunden</title>
+<!-- Erzeugt das PDF: node dokumente/fahrplan/bauen.js (Playwright/Chromium, Schriften aus auslieferung/schriften).
+     Stand der Recherche: 31.10.2026. Jede Aussage trägt eine Güte: [B] belegt (Behörde, Kammer, Kanzlei, Gesetzestext
+     über eine Quelle gelesen), [W] Wissen ohne Beleg in dieser Runde, [?] widersprüchlich oder nicht gefunden. -->
+<style>
+@font-face{font-family:"Instrument Sans";font-weight:400;src:url("../../auslieferung/schriften/instrument-sans-latin-400.woff2") format("woff2")}
+@font-face{font-family:"Instrument Sans";font-weight:500;src:url("../../auslieferung/schriften/instrument-sans-latin-500.woff2") format("woff2")}
+@font-face{font-family:"Instrument Sans";font-weight:600;src:url("../../auslieferung/schriften/instrument-sans-latin-600.woff2") format("woff2")}
+@font-face{font-family:"Instrument Serif";font-weight:400;src:url("../../auslieferung/schriften/instrument-serif-latin-400.woff2") format("woff2")}
+@font-face{font-family:"Instrument Serif";font-weight:400;font-style:italic;src:url("../../auslieferung/schriften/instrument-serif-latin-400-italic.woff2") format("woff2")}
+@font-face{font-family:"JetBrains Mono";font-weight:500;src:url("../../auslieferung/schriften/jetbrains-mono-latin-500.woff2") format("woff2")}
+:root{
+  --pappe:#F4F0E4; --blatt:#FBF9F1; --tinte:#16150F; --leise:#4F4B3E; --still:#625E4D; --linie:#CFC6AE;
+  --gruen:#1F5C45; --gruen-hell:#E3EFE7; --glut:#9A3A0C; --glut-hell:#FBE9DE; --blau:#22389E; --blau-hell:#E6EAF8;
+  --serif:"Instrument Serif",Georgia,serif; --sans:"Instrument Sans",Helvetica,Arial,sans-serif; --mono:"JetBrains Mono",ui-monospace,monospace;
+}
+@page{size:A4;margin:16mm 16mm 18mm}
+@page:first{margin:0}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{font-family:var(--sans);color:var(--tinte);font-size:10pt;line-height:1.55;-webkit-font-smoothing:antialiased;background:#fff}
+h1,h2,h3{font-family:var(--serif);font-weight:400;letter-spacing:-.01em}
+h2{font-size:24pt;line-height:1.05;margin:0 0 3mm;break-after:avoid}
+h2 .nr{font-family:var(--mono);font-size:9pt;letter-spacing:.2em;color:var(--glut);display:block;margin-bottom:2mm}
+h3{font-size:13.5pt;line-height:1.2;margin:4.2mm 0 1.4mm;break-after:avoid}
+p{margin:0 0 2.2mm}
+.lead{font-size:11.5pt;color:var(--leise);margin-bottom:4mm}
+b,strong{font-weight:600}
+a{color:var(--blau);text-decoration:none;word-break:break-word}
+.kapitel{break-before:page}
+ul,ol{margin:0 0 2.5mm 5mm}
+li{margin:0 0 1.2mm}
+.gute{font-family:var(--mono);font-size:7pt;letter-spacing:.06em;color:var(--still);white-space:nowrap}
+
+/* Titelseite */
+.titel{height:297mm;background:#0E2620;color:#EDE7D9;padding:22mm 20mm;position:relative;break-after:page}
+.titel .marke{font:500 8pt/1 var(--mono);letter-spacing:.3em;text-transform:uppercase;color:#9DB0A5}
+.titel h1{font-size:46pt;line-height:1;margin-top:40mm;max-width:150mm}
+.titel h1 em{color:#9DB0A5}
+.titel .unter{font-size:13pt;line-height:1.5;margin-top:8mm;max-width:140mm;color:#D6D0C1}
+.titel .stand{position:absolute;left:20mm;right:20mm;bottom:22mm;font:500 7.6pt/1.6 var(--mono);letter-spacing:.08em;color:#9DB0A5;border-top:.3mm solid rgba(237,231,217,.2);padding-top:5mm}
+.titel .stand b{color:#EDE7D9}
+
+/* Kästen */
+.kasten{border-radius:3mm;padding:4mm 5mm;margin:3mm 0 4mm;break-inside:avoid;border:.3mm solid var(--linie);background:var(--blatt)}
+.kasten.warn{background:var(--glut-hell);border-color:#E7B89A}
+.kasten.gut{background:var(--gruen-hell);border-color:#A9CDB6}
+.kasten.info{background:var(--blau-hell);border-color:#B9C3EC}
+.kasten .k{font:500 7.4pt/1 var(--mono);letter-spacing:.18em;text-transform:uppercase;margin-bottom:2mm;display:block}
+.kasten.warn .k{color:var(--glut)} .kasten.gut .k{color:var(--gruen)} .kasten.info .k{color:var(--blau)}
+
+/* Schrittlisten mit Kästchen */
+.schritte{list-style:none;margin:2mm 0 4mm;padding:0;counter-reset:s}
+.schritte > li{counter-increment:s;position:relative;padding:2.1mm 3mm 2.1mm 13mm;border-bottom:.25mm solid var(--linie);margin:0;break-inside:avoid}
+.schritte > li::before{content:counter(s);position:absolute;left:0;top:1.9mm;width:8mm;height:8mm;border-radius:50%;background:var(--tinte);color:#fff;font:500 8.5pt/8mm var(--mono);text-align:center}
+.schritte > li .wer{font:500 7pt/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--glut);margin-left:1.5mm}
+.schritte > li .fertig{display:block;font-size:8.6pt;color:var(--still);margin-top:.8mm}
+.haken{list-style:none;margin:1mm 0 3mm;padding:0}
+.haken li{padding-left:7mm;position:relative}
+.haken li::before{content:"";position:absolute;left:0;top:1.2mm;width:3.6mm;height:3.6mm;border:.35mm solid var(--tinte);border-radius:.8mm}
+
+/* Tabellen */
+table{width:100%;border-collapse:collapse;margin:2mm 0 4mm;font-size:9pt;break-inside:auto}
+th{font:500 7.2pt/1.3 var(--mono);letter-spacing:.12em;text-transform:uppercase;text-align:left;color:var(--still);border-bottom:.4mm solid var(--tinte);padding:1.6mm 2mm}
+td{border-bottom:.25mm solid var(--linie);padding:2mm;vertical-align:top}
+tr{break-inside:avoid}
+td.tag{font-family:var(--mono);font-size:8pt;white-space:nowrap;color:var(--glut);width:18mm}
+.zwei{display:grid;grid-template-columns:1fr 1fr;gap:4mm}
+.zwei .kasten{margin:0}
+.quellen li{font-size:8.2pt;margin-bottom:.9mm}
+</style>
+</head>
+<body>
+
+<!-- ═════════ TITEL ═════════ -->
+<section class="titel">
+  <div class="marke">Omoteno · Fahrplan</div>
+  <h1>Vom Projekt zum <em>ersten Kunden mit Vertrag</em></h1>
+  <p class="unter">Was du in den nächsten 14 Tagen in welcher Reihenfolge tust, damit Omoteno rechtlich, steuerlich und technisch sauber dasteht und du den ersten Restaurantvertrag unterschreiben kannst. In einfacher Sprache, Schritt für Schritt, mit Quellen.</p>
+  <div class="stand"><b>Stand der Recherche: 31. Oktober 2026.</b> Erstellt mit Claude (KI). Das ist <b>keine Rechts- und keine Steuerberatung</b>, sondern eine geordnete, belegte Vorbereitung für die Gespräche mit Anwalt, Steuerberater und Notar. Jede Aussage trägt eine Güte: <b>[B]</b> belegt über eine Behörde, Kammer, Kanzlei oder den Gesetzgeber · <b>[W]</b> Fachwissen, in dieser Runde nicht belegt · <b>[?]</b> Quellen widersprechen sich oder nichts gefunden.</div>
+</section>
+
+<!-- ═════════ 0 · AUF EINEN BLICK ═════════ -->
+<section>
+  <h2><span class="nr">00 · Auf einen Blick</span>Die kurze Fassung</h2>
+  <p class="lead">Omoteno ist technisch weit. Was fehlt, sind fast nur Dinge außerhalb des Codes: ein Unternehmen, geprüfte Verträge, ein paar Anmeldungen, Versicherung und die letzten Schalter in der Datenbank. Nichts davon ist schwer — aber die Reihenfolge zählt, und drei Schritte hängen von anderen Menschen ab (Notar, Anwalt, Steuerberater). <b>Die buchst du am ersten Tag.</b></p>
+
+  <div class="kasten warn"><span class="k">Die drei größten Risiken heute</span>
+    <ol>
+      <li><b>Du haftest persönlich mit allem, was du hast.</b> Laut Impressum ist Omoteno heute ein Einzelunternehmen von dir. Ab dem <b>9.12.2026</b> gilt ein neues Produkthaftungsrecht, das <b>Software ausdrücklich einschließt</b> und verschuldensunabhängig haftet <span class="gute">[B]</span>. Eine falsch angezeigte Allergenangabe ist für Omoteno das realistischste Schadensszenario.</li>
+      <li><b>Ohne geprüfte AGB und ohne Auftragsverarbeitungsvertrag (AVV)</b> gibt es keine Haftungsgrenze und keine Rechtsgrundlage für die Gästedaten, die Omoteno für das Restaurant speichert (Art. 28 DSGVO) <span class="gute">[B]</span>. Die Entwürfe liegen fertig im Projekt — sie müssen nur vom Anwalt geprüft werden.</li>
+      <li><b>Einige Live-Schalter fehlen noch</b> (Löschfristen, vier Datenbank-Migrationen, Rechte-Probe in der echten Datenbank). Die Datenbank war aus dieser Sitzung nicht erreichbar; das musst du im Supabase-Editor machen (Kapitel 6).</li>
+    </ol>
+  </div>
+
+  <div class="kasten gut"><span class="k">Meine Empfehlung in vier Sätzen</span>
+    <p>1. Gründe eine <b>UG (haftungsbeschränkt)</b> mit dir als einzigem Gesellschafter und Geschäftsführer — beim Notar online, mit dem Musterprotokoll (Kapitel 1).</p>
+    <p>2. Lass <b>AGB, AVV und den Pilotvertrag</b> von einer Fachanwältin oder einem Fachanwalt für IT-Recht prüfen; die Entwürfe liegen im Projekt (Kapitel 4).</p>
+    <p>3. Nimm einen <b>Steuerberater</b> von Anfang an (die UG muss bilanzieren) und entscheide mit ihm die Umsatzsteuerfrage; ich würde zur <b>Regelbesteuerung</b> tendieren, weil deine Kunden Unternehmer sind (Kapitel 3).</p>
+    <p>4. Unterschreibe den ersten Vertrag, sobald AGB/AVV geprüft sind und die UG eingetragen ist — klappt die Eintragung nicht in 14 Tagen, gibt es einen sauberen Plan B (Kapitel 1.4).</p>
+  </div>
+
+  <h3>Wer dir hilft — und was es kostet</h3>
+  <table>
+    <tr><th>Wer</th><th>Wofür</th><th>Hinweis</th></tr>
+    <tr><td><b>IHK Kassel-Marburg</b>, Gründungsberatung</td><td>Erstgespräch, Rechtsform, Förderung</td><td>Ein Beratungstag in der Gründungsphase kostet dank Landesförderung laut IHK <b>180 € netto statt 720 €</b> <span class="gute">[B]</span>. Stadtallendorf liegt im Altkreis Marburg, der zum Bezirk der IHK Kassel-Marburg gehört <span class="gute">[B, Zuordnung von mir geschlossen]</span>.</td></tr>
+    <tr><td><b>Fachanwalt/-anwältin für IT-Recht</b></td><td>AGB, AVV, Pilotvertrag, KI- und Haftungsfragen</td><td>Suche über die Rechtsanwaltskammer. Festpreis für „Prüfung von AGB + AVV“ vorher vereinbaren.</td></tr>
+    <tr><td><b>Steuerberater/in</b></td><td>Fragebogen Finanzamt, Umsatzsteuer, Buchhaltung, Jahresabschluss</td><td>Bei einer UG praktisch unverzichtbar (Bilanzpflicht) <span class="gute">[B]</span>.</td></tr>
+    <tr><td><b>Notar</b></td><td>UG-Gründung, Handelsregister</td><td>Gesetzlich vorgeschrieben; seit August 2022 auch per Video möglich <span class="gute">[B]</span>.</td></tr>
+    <tr><td><b>BAFA-Beratungsförderung</b></td><td>Zuschuss zu Beratung in den ersten Jahren</td><td>In Hessen etwa <b>50 %</b> der Beratungskosten; <b>Antrag VOR Beginn der Beratung</b> <span class="gute">[B, Sätze für 2026 auf bafa.de prüfen]</span>.</td></tr>
+  </table>
+</section>
+
+<!-- ═════════ 1 · RECHTSFORM ═════════ -->
+<section class="kapitel">
+  <h2><span class="nr">01 · Die erste Entscheidung</span>Welche Rechtsform?</h2>
+  <p class="lead">Du verkaufst Software an Restaurants, speicherst für sie Daten ihrer Gäste und setzt KI ein. Das ist kein „Freelancer-Risiko“, sondern das eines Herstellers. Deshalb gehört das Risiko in eine Gesellschaft, nicht auf dein Privatvermögen.</p>
+
+  <div class="zwei">
+    <div class="kasten"><span class="k">Einzelunternehmen (heute)</span>
+      <p><b>+</b> sofort möglich (nur Gewerbeanmeldung), billig, einfache Buchhaltung (Einnahmen-Überschuss-Rechnung).</p>
+      <p><b>−</b> du haftest <b>unbeschränkt mit deinem gesamten Privatvermögen</b> <span class="gute">[B]</span>. Eine Versicherung deckt viel, aber nicht alles (z. B. Vertragsstrafen, Bußgelder, Schäden über der Deckungssumme) <span class="gute">[W]</span>.</p>
+    </div>
+    <div class="kasten gut"><span class="k">UG (haftungsbeschränkt) — empfohlen</span>
+      <p><b>+</b> Haftung grundsätzlich auf das Gesellschaftsvermögen beschränkt; wirkt gegenüber Kunden und Investoren professioneller; kann später zur GmbH wachsen.</p>
+      <p><b>−</b> Notar nötig, Bilanzpflicht (Steuerberater), <b>25 % des Jahresgewinns</b> müssen als Rücklage bleiben <span class="gute">[B]</span> — bis das Stammkapital 25.000 € erreicht (dann ist der Wechsel zur GmbH möglich) <span class="gute">[W]</span>. Als Geschäftsführer haftest du trotzdem persönlich, wenn du z. B. trotz drohender Zahlungsunfähigkeit weiter Verträge eingehst <span class="gute">[B]</span>.</p>
+    </div>
+  </div>
+
+  <h3>1.1 So gründest du die UG — Schritt für Schritt</h3>
+  <ol class="schritte">
+    <li><b>Namen prüfen.</b> Im Handelsregister (handelsregister.de) und im Markenregister des DPMA (DPMAregister) nach „Omoteno“ suchen. Die Firma lautet dann z. B. <b>„Omoteno UG (haftungsbeschränkt)“</b> — der Zusatz ist Pflicht <span class="gute">[B]</span>.<span class="fertig">Fertig, wenn: keine gleichen oder sehr ähnlichen Firmen/Marken in deiner Branche gefunden.</span></li>
+    <li><b>Notartermin buchen</b> (auch online per Video möglich) <span class="gute">[B]</span>. Sag ihm: Ein-Personen-UG, <b>Musterprotokoll</b> (geht bis 3 Gesellschafter und 1 Geschäftsführer) <span class="gute">[B]</span>, Unternehmensgegenstand z. B. „Entwicklung, Betrieb und Vertrieb von Software und digitalen Diensten für die Gastronomie“.<span class="wer">Notar</span><span class="fertig">Fertig, wenn: Gesellschaftsvertrag beurkundet.</span></li>
+    <li><b>Stammkapital festlegen.</b> 1 € ist erlaubt, aber nicht ratsam, weil die Gründungskosten das sofort aufzehren <span class="gute">[B]</span>. Vorschlag: <b>1.000–2.500 €</b>, nur als Geld (Sacheinlagen wie ein Laptop sind bei der UG nicht erlaubt) <span class="gute">[B]</span>.</li>
+    <li><b>Geschäftskonto auf die UG in Gründung eröffnen</b> und das Stammkapital einzahlen; den Beleg braucht der Notar <span class="gute">[W]</span>.<span class="wer">Bank</span></li>
+    <li><b>Handelsregister:</b> Der Notar meldet an. Kosten mit Musterprotokoll laut Rechnern grob <b>240–500 €</b> gesamt <span class="gute">[? — Ratgeber, keine Gebührentabelle; beim Notar erfragen]</span>.<span class="wer">Notar</span><span class="fertig">Fertig, wenn: Eintragung mit HRB-Nummer (Registergericht nach Sitz) bekannt gemacht.</span></li>
+    <li><b>Transparenzregister:</b> Gleich nach der Eintragung die „wirtschaftlich Berechtigten“ melden — auch bei einer Ein-Personen-UG Pflicht; Eintrag kostenlos, Jahresgebühr etwa 19,80 € <span class="gute">[B]</span>. Nicht über bezahlte „Dienstleister“ — die IHK warnt ausdrücklich <span class="gute">[B]</span>.</li>
+    <li><b>Gewerbe anmelden</b> beim Gewerbeamt der Stadt, in der die UG ihren Sitz hat (laut Impressum Stadtallendorf). Gebühr legt die Gemeinde fest, üblich 15–65 € <span class="gute">[B, Stadtallendorf selbst nicht gefunden]</span>. Die Anmeldung geht automatisch an Finanzamt und IHK <span class="gute">[W]</span>.</li>
+    <li><b>Finanzamt:</b> „Fragebogen zur steuerlichen Erfassung“ über <b>ELSTER</b>, <b>Variante für Kapitalgesellschaften</b>, innerhalb eines Monats nach Beginn <span class="gute">[B]</span>. Darin die <b>USt-IdNr.</b> beantragen (brauchst du für Rechnungen und für Anbieter aus dem Ausland) <span class="gute">[W]</span>.<span class="wer">mit Steuerberater</span></li>
+  </ol>
+
+  <h3>1.2 Was danach im Projekt geändert werden muss</h3>
+  <ul class="haken">
+    <li><b>Impressum von omoteno.de</b> (<code>seiten/impressum.html</code>): heute „Elias Faber, Einzelunternehmen“. Neu: Firma, Rechtsform, Sitz, <b>Geschäftsführer</b>, Registergericht und HRB-Nummer, USt-IdNr. (§ 5 DDG) <span class="gute">[W]</span>.</li>
+    <li><b>AGB, AVV, Datenschutzerklärung</b> (<code>seiten/agb.html</code>, <code>seiten/avv.html</code>, <code>seiten/datenschutz.html</code>): Anbieter/Verantwortlicher = die UG.</li>
+    <li><b>Hub-Impressum der Restaurants</b> nennt Omoteno als technischen Dienstleister — Name nachziehen.</li>
+    <li>Verträge mit <b>Supabase, Netlify, Anthropic, Klaviyo, Vapi, fal.ai, Stripe, Domain</b>: Kunden-/Vertragsinhaber auf die UG umstellen (sonst bist privat du der Vertragspartner und Auftraggeber der Unterauftragsverarbeiter).</li>
+  </ul>
+
+  <h3>1.3 Kranken- und Sozialversicherung</h3>
+  <p>Als alleiniger Gesellschafter-Geschäftsführer bist du in der Regel <b>nicht</b> sozialversicherungspflichtig, musst dich aber selbst krankenversichern <span class="gute">[W]</span>. Wenn du gerade angestellt, Student oder arbeitslos gemeldet bist, kläre das <b>vor</b> der Gründung mit deiner Krankenkasse (und ggf. der Arbeitsagentur — beim Bezug von Arbeitslosengeld gibt es den Gründungszuschuss) <span class="gute">[W]</span>.</p>
+
+  <h3>1.4 Die 14-Tage-Frage: Was, wenn die Eintragung nicht rechtzeitig kommt?</h3>
+  <p>Wie lange das Registergericht braucht, ist von hier nicht vorherzusagen <span class="gute">[?]</span>. Drei saubere Wege — entscheide mit dem Anwalt:</p>
+  <table>
+    <tr><th>Weg</th><th>Wie</th><th>Haken</th></tr>
+    <tr><td><b>A · Warten</b></td><td>Unterschrift erst nach der Eintragung; bis dahin Pilot ohne Gästedaten (Vorführhaus) oder nur Absichtserklärung.</td><td>Kann die 14 Tage sprengen.</td></tr>
+    <tr><td><b>B · „UG in Gründung“</b></td><td>Nach der Beurkundung als „Omoteno UG (haftungsbeschränkt) i. G.“ unterschreiben.</td><td>Bis zur Eintragung haftet, <b>wer im Namen der Gesellschaft handelt, persönlich</b> (Handelndenhaftung) <span class="gute">[W]</span>.</td></tr>
+    <tr><td><b>C · Übertragungsklausel</b></td><td>Als Einzelunternehmen unterschreiben, im Vertrag steht: „Der Kunde stimmt schon jetzt der Übertragung des Vertrags auf die Omoteno UG (haftungsbeschränkt) zu.“</td><td>Bis zur Übertragung haftest du persönlich; Versicherung muss stehen <span class="gute">[W]</span>.</td></tr>
+  </table>
+  <div class="kasten info"><span class="k">Meine Einschätzung</span><p>Für einen <b>einzelnen Pilotkunden mit begrenztem Umfang</b> sind B und C vertretbar, wenn Versicherung und geprüfte AGB (Haftungsgrenze!) stehen. Ohne geprüfte AGB und AVV würde ich <b>nicht</b> unterschreiben — egal in welcher Rechtsform.</p></div>
+</section>
+
+<!-- ═════════ 2 · ANMELDUNGEN ═════════ -->
+<section style="margin-top:9mm">
+  <h2><span class="nr">02 · Pflichten rund um die Gründung</span>Register, Marke, Konto, Buchhaltung</h2>
+  <h3>2.1 Marke „Omoteno“ schützen</h3>
+  <ol class="schritte">
+    <li><b>Recherche</b> im DPMAregister und bei der EUIPO (eSearch) nach „Omoteno“ und ähnlich klingenden Namen in den Klassen 9, 35, 42 <span class="gute">[W, Klassenwahl mit Anwalt abstimmen]</span>.</li>
+    <li><b>Anmeldung beim DPMA online:</b> 290 € für bis zu drei Klassen, jede weitere 100 €; die Gebühr muss <b>innerhalb von drei Monaten</b> eingehen, sonst gilt die Anmeldung als zurückgenommen <span class="gute">[B — dpma.de]</span>. Das DPMA prüft <b>nicht</b>, ob ältere Rechte Dritter verletzt werden — die Recherche ist deine Aufgabe <span class="gute">[B]</span>.<span class="fertig">Fertig, wenn: Anmeldetag und Aktenzeichen vorliegen (Schutz rechnet ab Anmeldetag, 10 Jahre <span class="gute">[B]</span>).</span></li>
+    <li>Domains <b>omoteno.de</b> (vorhanden) und ggf. .com/.eu auf die UG übertragen.</li>
+  </ol>
+
+  <h3>2.2 Geld, Konto, Rechnungen</h3>
+  <ul class="haken">
+    <li><b>Geschäftskonto</b> nur für die UG; Privates und Geschäftliches nie mischen (bei einer UG wichtig für die Haftungstrennung) <span class="gute">[W]</span>.</li>
+    <li><b>Rechnungen</b> mit allen Pflichtangaben (u. a. fortlaufende Nummer, Steuernummer oder USt-IdNr., Leistungszeitraum, Netto, Steuersatz, Steuerbetrag) <span class="gute">[W]</span>. Ein Buchhaltungsprogramm, das <b>E-Rechnungen</b> (ZUGFeRD/XRechnung) erzeugt, nimmt dir das ab.</li>
+    <li><b>E-Rechnung:</b> Empfangen können müssen alle Unternehmen seit 1.1.2025. Ausstellen müssen sie Unternehmen über 800.000 € Vorjahresumsatz ab 1.1.2027, kleinere dürfen bis Ende 2027 noch PDF/Papier nutzen; ab 1.1.2028 gilt die Pflicht für alle inländischen B2B-Umsätze <span class="gute">[B]</span>. Ob Kleinunternehmer dauerhaft ausgenommen sind, widersprechen sich die Quellen <span class="gute">[?]</span>. <b>Praktisch:</b> von Anfang an E-Rechnungen schreiben.</li>
+    <li><b>Rücklagen:</b> Umsatzsteuer und Ertragssteuern gehören nicht dir — sofort auf ein zweites Konto legen <span class="gute">[W]</span>.</li>
+  </ul>
+
+  <h3>2.3 Versicherung (vor dem ersten Kunden!)</h3>
+  <p>Bei einem Makler mit IT-Schwerpunkt Angebote einholen und ausdrücklich nach diesen Bausteinen fragen:</p>
+  <ul class="haken">
+    <li><b>IT-Haftpflicht / Vermögensschadenhaftpflicht</b> (Fehler in der Software verursachen beim Restaurant einen Schaden) — inklusive <b>Erfüllungsfolgeschäden</b> und <b>Datenschutzverletzungen</b> <span class="gute">[B — Leistungsbeschreibungen von Versicherern]</span>.</li>
+    <li><b>Produkthaftung für Software</b> (Personen- und Sachschäden, z. B. durch eine falsche Allergenanzeige). Ab 9.12.2026 ist Software ausdrücklich ein Produkt; die Haftung ist verschuldensunabhängig <span class="gute">[B]</span>. Frage, ob die Police das <b>neue</b> Recht abdeckt.</li>
+    <li><b>Cyberversicherung</b> für eigene Schäden (Forensik, Wiederherstellung, Betriebsunterbrechung) <span class="gute">[B]</span>.</li>
+    <li>Prüfe, ob <b>Verteidigungskosten</b> auf die Deckungssumme angerechnet werden — dann ist die Summe schneller weg <span class="gute">[B]</span>.</li>
+  </ul>
+  <p class="klein">Konkrete Preise für ein deutsches SaaS-Startup habe ich nicht belastbar gefunden <span class="gute">[?]</span> — nur echte Angebote zählen.</p>
+</section>
+
+<!-- ═════════ 3 · STEUERN ═════════ -->
+<section class="kapitel">
+  <h2><span class="nr">03 · Steuern</span>Umsatzsteuer, Gewerbesteuer, Buchhaltung</h2>
+  <h3>3.1 Kleinunternehmer oder Regelbesteuerung?</h3>
+  <p>Kleinunternehmer (§ 19 UStG) dürfen keine Umsatzsteuer ausweisen. Grenzen 2026: <b>Vorjahr höchstens 25.000 €</b> und <b>laufendes Jahr höchstens 100.000 €</b>; im Gründungsjahr wird anteilig gerechnet <span class="gute">[B]</span>. Ob netto oder brutto gerechnet wird, schreiben die Quellen unterschiedlich <span class="gute">[?]</span>. Wer freiwillig verzichtet, ist <b>fünf Jahre</b> gebunden <span class="gute">[B]</span>.</p>
+  <div class="kasten info"><span class="k">Warum ich zur Regelbesteuerung tendiere</span>
+    <p>Deine Kunden sind <b>Unternehmer</b>: Sie ziehen die Umsatzsteuer auf deiner Rechnung als Vorsteuer ab — für sie ist 79 € + USt. gleich teuer wie 79 € ohne. Du dagegen bekommst bei Regelbesteuerung die Umsatzsteuer aus deinen Einkäufen (Laptop, Software, Beratung) zurück. Die Landingpage sagt bereits „zzgl. USt.“ — das passt dazu <span class="gute">[W — mit Steuerberater entscheiden]</span>.</p>
+  </div>
+  <h3>3.2 Weitere Steuerthemen für den Steuerberater</h3>
+  <ul>
+    <li><b>Gewerbesteuer:</b> Hebesatz Stadtallendorf 357 % (Stand 2024) <span class="gute">[B — papierkram.de, bei der Stadt prüfen]</span>.</li>
+    <li><b>Umsatzsteuer bei ausländischen Anbietern</b> (Supabase, Netlify, Anthropic, Vapi, fal.ai): meist „Reverse Charge“ — du meldest die Steuer selbst <span class="gute">[W]</span>.</li>
+    <li><b>Kasse/TSE (§ 146a AO):</b> Ist ein Bestell- und Bezahlsystem ein „elektronisches Aufzeichnungssystem“? Die Quellen beantworten das nicht <span class="gute">[?]</span>. Solange der Gast <b>bei Omoteno nicht bezahlt</b> (die Online-Zahlung ist ausgeschaltet), bleibt die Kasse des Restaurants die Kasse — das soll der Steuerberater schriftlich bestätigen.</li>
+    <li><b>Buchhaltung:</b> Als UG doppelte Buchführung und Jahresabschluss (Bilanz, Veröffentlichung im Unternehmensregister) <span class="gute">[B]</span>.</li>
+  </ul>
+</section>
+
+<!-- ═════════ 4 · VERTRÄGE ═════════ -->
+<section class="kapitel">
+  <h2><span class="nr">04 · Verträge mit dem Restaurant</span>Was unterschrieben werden muss</h2>
+  <p class="lead">Ein Kunde unterschreibt bei dir <b>drei Dinge</b>: den Vertrag (Angebot/Pilotvereinbarung), die AGB und den AVV. Die Entwürfe liegen im Projekt unter <code>dokumente/recht/05-agb.md</code>, <code>06-avv.md</code> und als Seiten <code>seiten/agb.html</code>, <code>seiten/avv.html</code>.</p>
+
+  <h3>4.1 Was der Anwalt prüfen soll (mitnehmen!)</h3>
+  <ol class="schritte">
+    <li><b>AGB nur für Unternehmer:</b> Haftungsgrenze (Entwurf: 12 Monatsentgelte; eine Deckelung auf eine Monatsgebühr gilt als angreifbar) <span class="gute">[B]</span>, Ausschluss der verschuldensunabhängigen Mietmängelhaftung (§ 536a BGB), Verfügbarkeit, Änderungsklausel (§ 12 — Zustimmung durch Schweigen im B2B?) <span class="gute">[B]</span>.</li>
+    <li><b>AVV nach Art. 28 DSGVO</b> mit Anlagen: Technische und organisatorische Maßnahmen, <b>Liste der Unterauftragsverarbeiter</b> (Supabase, Netlify, Anthropic, Klaviyo, Vapi, fal.ai), Löschfristen, Meldung von Datenpannen.</li>
+    <li><b>KI-Klausel:</b> Übersetzungen, gelesene Rechnungen, Profi-Fotos und Allergenvorschläge sind <b>Vorschläge</b>, der Betrieb prüft vor Veröffentlichung.</li>
+    <li><b>Allergene:</b> Verantwortung für die Angaben liegt beim Betrieb; Omoteno zeigt nur an. Hub-Satz: „Bei Allergien fragen Sie bitte vor der Bestellung unser Serviceteam.“</li>
+    <li><b>Pilotvereinbarung:</b> Laufzeit, Preis netto, was „live“ heißt, Abnahme, Support-Zeiten, Kündigung, Datenexport bei Ende.</li>
+    <li><b>Rechtsform-Übergang</b> (Kapitel 1.4): Klausel zur Übertragung auf die UG.</li>
+  </ol>
+
+  <h3>4.2 Wie unterschrieben wird</h3>
+  <ul>
+    <li>Der AVV muss <b>schriftlich oder in einem elektronischen Format</b> vorliegen (Art. 28 Abs. 9 DSGVO) <span class="gute">[W]</span>. Praktisch: PDF mit elektronischer Signatur oder ausgedruckt.</li>
+    <li>Im Kundenkonto gibt es bereits ein Feld zur Annahme mit Zeitpunkt und Fassung (<code>VERTRAEGE_AN</code>) — es ist <b>absichtlich aus</b>, bis der Anwalt die Texte freigibt. Danach einschalten und die Migration <code>migration-vertraege.sql</code> einspielen.</li>
+  </ul>
+
+  <h3>4.3 Was der Restaurantbetreiber liefern muss, bevor sein Hub live geht</h3>
+  <ul class="haken">
+    <li><b>Impressumsangaben</b>: Firma/Inhaber, Rechtsform, Vertretung, Registergericht/-nummer, USt-IdNr., Anschrift, Telefon, E-Mail. Ohne diese Angaben verweigert der Erzeuger mit <code>--streng</code> den Hub — absichtlich.</li>
+    <li><b>Allergene und Zusatzstoffe</b> selbst geprüft und freigegeben; <b>16+/18+</b> an jedem alkoholischen Getränk.</li>
+    <li>Bei Lieferung/Abholung: <b>Mehrwegangebotspflicht</b> (Ausnahme nur bis 80 m² Verkaufsfläche <b>und</b> 5 Beschäftigte) <span class="gute">[B]</span>.</li>
+    <li>Seine <b>Kasse bleibt seine Kasse</b> (TSE beim Restaurant).</li>
+  </ul>
+</section>
+
+<!-- ═════════ 5 · DATENSCHUTZ & KI ═════════ -->
+<section class="kapitel">
+  <h2><span class="nr">05 · Datenschutz und KI</span>Dein Datenschutz-Paket</h2>
+  <ol class="schritte">
+    <li><b>Verträge mit deinen Dienstleistern annehmen und ablegen</b> (DPA/AVV): Supabase, Netlify, Klaviyo, Vapi, fal.ai. Bei <b>Anthropic</b> ist der DPA mit Standardvertragsklauseln laut Anthropic <b>automatisch Teil der Commercial Terms</b> — gilt aber nicht für Verbraucher-Tarife (Free/Pro) <span class="gute">[B — Anthropic Help Center]</span>. Für jeden US-Anbieter notieren: Data Privacy Framework (dataprivacyframework.gov) oder Standardvertragsklauseln.<span class="fertig">Fertig, wenn: ein Ordner „Unterauftragsverarbeiter“ mit sechs PDFs und einer Tabelle (Anbieter, Zweck, Ort, Rechtsgrundlage).</span></li>
+    <li><b>Verzeichnis der Verarbeitungstätigkeiten</b> (Art. 30 DSGVO) — für dich als Verantwortlicher (Kunden-, Kontaktdaten) <b>und</b> als Auftragsverarbeiter (Gästedaten der Restaurants) <span class="gute">[W]</span>. Eine Tabelle genügt.</li>
+    <li><b>Löschfristen live schalten</b> (Kapitel 6) — versprochen sind sie bereits (Bestellungen 90 Tage, Transkripte 30 Tage …).</li>
+    <li><b>Datenpanne üben:</b> Ablauf liegt vor (<code>dokumente/recht/13-datenpanne.md</code>); Meldung an die Aufsicht innerhalb von <b>72 Stunden</b> <span class="gute">[W]</span>. Zuständig in Hessen: der Hessische Beauftragte für Datenschutz und Informationsfreiheit (HBDI) <span class="gute">[W]</span>.</li>
+    <li><b>KI-Verordnung:</b> Art. 50 (Menschen müssen erfahren, dass sie mit einer KI sprechen) gilt seit 2.8.2026 — Alessia nennt sich KI <span class="gute">[B]</span>. Art. 4 (KI-Kompetenz) gilt seit 2.2.2025 — schreib eine Seite, wie du die KI-Funktionen prüfst und wer sie bedient <span class="gute">[B/W]</span>.</li>
+    <li><b>Alessia (Telefon)</b> nur, wenn sie im Vertrag steht: im Vapi-Dashboard die <b>Tonaufnahme aus</b> (sonst Risiko nach § 201 StGB), Begrüßung mit KI-Hinweis <span class="gute">[B]</span>.</li>
+  </ol>
+</section>
+
+<!-- ═════════ 6 · TECHNIK ═════════ -->
+<section class="kapitel">
+  <h2><span class="nr">06 · Technik vor dem Livegang</span>Was im Projekt noch offen ist</h2>
+  <p class="lead">Diese Punkte kann ich aus dieser Arbeitsumgebung nicht erledigen, weil die Verbindung zur Datenbank (Supabase) fehlte. Du machst sie im Supabase-SQL-Editor und im Netlify-/Vapi-Dashboard.</p>
+  <ol class="schritte">
+    <li><b>Migrationen einspielen</b>, deren Kopf „NOCH NICHT EINGESPIELT“ sagt — u. a. <code>migration-loeschfristen.sql</code>, <code>migration-vertraege.sql</code> (erst nach Anwalt), <code>migration-bild-ki-marke.sql</code>, <code>migration-gericht-fertig.sql</code>, <code>migration-saal-raeume.sql</code>. Jede Datei hat oben die Lesefragen und eine zurückgedrehte Probe.<span class="wer">du</span></li>
+    <li><b>Danach</b> <code>LOESCHFRISTEN_LIVE = true</code> in der Vorlage setzen und neu erzeugen (die Prüfung verbietet es vorher).</li>
+    <li><b>Rechte-Probe in der echten Datenbank</b>: <code>datenbank/pruef-rechte.sql</code> und <code>pruef-missbrauch.sql</code> im SQL-Editor (drehen sich selbst zurück). Erst dann ist „Fremde sehen nichts“ belegt statt behauptet.</li>
+    <li><b>Supabase-Einstellungen</b>: Site URL und erlaubte Rücksprung-Adressen (Passwort vergessen), Mailversand, Sicherungen (wie lange?), Region notieren (für den AVV).</li>
+    <li><b>Geheimnisse</b> der Edge Functions gesetzt (Anthropic, fal.ai, Klaviyo, Vapi, Web-Push). <b>Online-Zahlung bleibt aus</b>, bis die ZAG-Frage geklärt ist (<code>dokumente/zahlung-anbinden-anleitung.md</code>).</li>
+    <li><b>Zusammenführen</b>: Zweig <code>claude/landingpage-design-integration-r000h9</code> als Pull Request nach <code>main</code>, Netlify-Vorschau ansehen, dann veröffentlichen.</li>
+    <li><b>Überwachung</b>: ein kostenloser Erreichbarkeitsdienst auf omoteno.de und den Hub des Kunden; eine Adresse für Fehlermeldungen.</li>
+    <li><b>Probebestellung durch alle Stationen</b> auf deinem eigenen Telefon: Hub → Warenkorb → Küche → Board → Bestellpass → Storno. Meine Prüfungen laufen in einem Browser ohne Bildschirm; ein echtes iPhone und Android hast nur du.</li>
+  </ol>
+  <div class="kasten info"><span class="k">Was bereits steht (geprüft im Projekt)</span>
+    <p>Rund 200 Prüfskripte (Browser, Datenbank, Edge Functions), viele mit Gegenbeweisen; „Zahlungspflichtig bestellen“ und „inkl. MwSt.“ im Hub; Gerätekennung erst nach Einschalten (§ 25 TDDDG); Impressum/Datenschutz je Hub; Aktionspreis ohne Streichpreis (§ 11 PAngV, Variante A); Allergensatz ohne „ohne Gewähr“; KI-Kennzeichnung von Fotos; Schriften selbst ausgeliefert (keine Google-Übermittlung); Online-Zahlung ausgeschaltet; Willkommen-Animationen ohne Endlosschleife (WCAG 2.2.2).</p>
+  </div>
+</section>
+
+<!-- ═════════ 7 · 14-TAGE-PLAN ═════════ -->
+<section class="kapitel">
+  <h2><span class="nr">07 · Der Plan</span>14 Tage bis zur Unterschrift</h2>
+  <p class="lead">Die fett gedruckten Punkte liegen auf dem kritischen Weg: Verzögern sie sich, verschiebt sich die Unterschrift.</p>
+  <table>
+    <tr><th>Tag</th><th>Was</th><th>Ergebnis</th></tr>
+    <tr><td class="tag">Tag 1</td><td><b>Termine buchen:</b> IHK-Gründungsberatung, Fachanwalt IT-Recht (Festpreis für AGB/AVV-Prüfung), Steuerberater, Notar (online), Versicherungsmakler. BAFA-Antrag <b>vor</b> der ersten geförderten Beratung stellen.</td><td>Fünf Termine im Kalender</td></tr>
+    <tr><td class="tag">Tag 1–2</td><td>Namensrecherche (Handelsregister, DPMA, EUIPO). Anwalt schickst du: <code>05-agb.md</code>, <code>06-avv.md</code>, <code>03-datenschutz-omoteno.md</code>, <code>14-ki-software-hessen…</code>, die Fragenliste aus Kapitel 9.</td><td>Unterlagen beim Anwalt</td></tr>
+    <tr><td class="tag">Tag 2–3</td><td>Steuerberater: Rechtsform bestätigen, Regel- vs. Kleinunternehmer, Kasse/TSE-Frage, Buchhaltungswerkzeug.</td><td>Entscheidung Rechtsform + USt</td></tr>
+    <tr><td class="tag">Tag 3–5</td><td><b>Notartermin</b> (Musterprotokoll), Geschäftskonto eröffnen, Stammkapital einzahlen. Krankenversicherung klären.</td><td>UG beurkundet, Konto da</td></tr>
+    <tr><td class="tag">Tag 3–7</td><td>Supabase: Migrationen, Rechte-Probe, Einstellungen (Kapitel 6). Datenschutz-Paket: DPAs ablegen, Verzeichnis (Kapitel 5). Markenanmeldung DPMA.</td><td>Technik grün, Ordner „Datenschutz“</td></tr>
+    <tr><td class="tag">Tag 5–9</td><td><b>Anwalt liefert geprüfte AGB/AVV</b> und Pilotvereinbarung. Texte im Projekt übernehmen, Seiten aktualisieren.</td><td>Freigegebene Vertragstexte</td></tr>
+    <tr><td class="tag">Tag 5–10</td><td><b>Handelsregister-Eintragung</b> (Dauer nicht planbar) → danach sofort Transparenzregister, Gewerbe, ELSTER-Fragebogen. Versicherung abschließen.</td><td>HRB-Nummer, Police</td></tr>
+    <tr><td class="tag">Tag 8–11</td><td>Impressum/AGB/AVV/Datenschutz auf die UG umstellen; Kundenverträge bei den Anbietern auf die UG umschreiben; PR nach main, veröffentlichen.</td><td>omoteno.de zeigt die UG</td></tr>
+    <tr><td class="tag">Tag 10–12</td><td>Mit dem Restaurant: Impressumsangaben, Karte einlesen, Allergene vom Betrieb freigeben lassen, Team-Konten, QR-Schilder drucken. Probebestellung durch alle Stationen.</td><td>Hub fertig, Daten geprüft</td></tr>
+    <tr><td class="tag">Tag 13</td><td>Entscheidung Plan A/B/C (Kapitel 1.4), falls die Eintragung fehlt. Vertrag, AGB, AVV als PDF vorbereiten.</td><td>Unterschriftsreif</td></tr>
+    <tr><td class="tag">Tag 14</td><td><b>Unterschrift</b> von Vertrag, AGB und AVV. Livegang an einem ruhigen Tag, du bist in der ersten Schicht dabei. Erste Rechnung (E-Rechnung).</td><td>Erster Kunde ✓</td></tr>
+  </table>
+</section>
+
+<!-- ═════════ 8 · RISIKEN ═════════ -->
+<section class="kapitel">
+  <h2><span class="nr">08 · Damit es nicht kippt</span>Was du NICHT tun solltest</h2>
+  <ul>
+    <li><b>Keine Online-Zahlung anbieten</b>, bevor ein Anwalt für Zahlungsverkehr die ZAG-Frage beantwortet hat. Gäste zahlen beim Personal.</li>
+    <li><b>Nichts versprechen, was nicht belegt ist</b> („DSGVO-zertifiziert“, „ersetzt die Kasse“, „100 % Verfügbarkeit“) — das ist abmahnfähig (UWG) <span class="gute">[B]</span>.</li>
+    <li><b>Keine Gästedaten verarbeiten ohne unterschriebenen AVV</b> — sonst handeln du und das Restaurant rechtswidrig <span class="gute">[B]</span>.</li>
+    <li><b>Keine Rabatt-Streichpreise</b> im Hub einschalten (§ 11 PAngV, 30-Tage-Tiefstpreis) <span class="gute">[B]</span>.</li>
+    <li><b>Newsletter nur mit Double-Opt-In</b>; die Bestätigungsmail darf keine Werbung enthalten <span class="gute">[B]</span>.</li>
+    <li><b>Kein Pilot „auf Zuruf“</b>: auch ein Gratis-Test braucht AVV und klare Absprache, sobald echte Gäste bestellen.</li>
+    <li><b>Ab 9.12.2026</b> (neues Produkthaftungsrecht): jede Version, die du ausrollst, ist ein „in Verkehr gebrachtes Produkt“ — Prüfprotokolle (die Prüfungen im Projekt) aufheben <span class="gute">[B/W]</span>.</li>
+  </ul>
+</section>
+
+<!-- ═════════ 9 · FRAGENLISTEN ═════════ -->
+<section class="kapitel">
+  <h2><span class="nr">09 · Zum Mitnehmen</span>Fragenlisten für die Termine</h2>
+  <div class="zwei">
+    <div class="kasten"><span class="k">Anwalt (IT-Recht)</span>
+      <ol>
+        <li>Tragen AGB und AVV? Haftungsgrenze, § 536a BGB, Änderungsklausel, Preisanpassung, Verfügbarkeit.</li>
+        <li>Welcher Weg bis zur HR-Eintragung (A/B/C)? Formulierung der Übertragungsklausel.</li>
+        <li>Allergenangaben im Fernabsatz bei losen Speisen: Was muss im Hub stehen?</li>
+        <li>§ 11 PAngV in der Gastronomie — reicht „nur Aktionspreis“?</li>
+        <li>Neues Produkthaftungsrecht und Cyber Resilience Act: Was heißt das für eine HTML-App?</li>
+        <li>BFSG (Barrierefreiheit): Gilt die Kleinstunternehmen-Ausnahme für Omoteno und die Restaurants?</li>
+        <li>KI-Code und Urheberrecht: Wie schütze ich das Produkt vertraglich?</li>
+        <li>Rolle von Stripe und ZAG — erst, wenn Online-Zahlung kommen soll.</li>
+      </ol>
+    </div>
+    <div class="kasten"><span class="k">Steuerberater</span>
+      <ol>
+        <li>UG oder Einzelunternehmen — passt die UG zu meinem Plan?</li>
+        <li>Regelbesteuerung oder Kleinunternehmer? Netto/Brutto-Grenze?</li>
+        <li>Monatliche Umsatzsteuer-Voranmeldung im ersten Jahr?</li>
+        <li>Reverse Charge bei Supabase, Anthropic, Netlify, Vapi, fal.ai.</li>
+        <li>Kasse/TSE: Ist Omoteno ohne Zahlung ein Aufzeichnungssystem?</li>
+        <li>E-Rechnung: welches Werkzeug, ab wann Pflicht für mich?</li>
+        <li>Was kostet Buchhaltung + Jahresabschluss pro Jahr?</li>
+        <li>Wie viel Geld zurücklegen für Steuern?</li>
+      </ol>
+    </div>
+  </div>
+  <div class="kasten"><span class="k">Notar</span>
+    <p>Ein-Personen-UG mit Musterprotokoll · Firma „Omoteno UG (haftungsbeschränkt)“ · Sitz · Unternehmensgegenstand · Stammkapital · Geschäftsführer (du, von § 181 BGB befreit — beim Musterprotokoll vorgesehen <span class="gute">[W]</span>) · Gesamtkosten und Dauer bis zur Eintragung?</p>
+  </div>
+</section>
+
+<!-- ═════════ 10 · GRENZEN & QUELLEN ═════════ -->
+<section class="kapitel">
+  <h2><span class="nr">10 · Ehrlich</span>Was ich nicht belegen kann — und die Quellen</h2>
+  <ul>
+    <li>Ich bin <b>kein Anwalt und kein Steuerberater</b>. Dieser Fahrplan ersetzt keine Beratung; er macht sie kürzer und billiger.</li>
+    <li>Gesetzestexte selbst (gesetze-im-internet.de, EUR-Lex) waren aus der Arbeitsumgebung in früheren Runden nicht abrufbar; Paragrafen stammen aus Kammer-, Kanzlei- und Behördenseiten oder aus meinem Wissen (<b>[W]</b>).</li>
+    <li>Nicht gefunden: die Gebühr und der Online-Weg der <b>Gewerbeanmeldung in Stadtallendorf</b>, die <b>Dauer der Handelsregister-Eintragung</b>, belastbare <b>Versicherungsprämien</b>, der Abschluss des Gesetzgebungsverfahrens im <b>Bundesrat</b> zum Produkthaftungsrecht.</li>
+    <li>Widersprüchlich: Netto/Brutto bei der Kleinunternehmergrenze; Dauer der E-Rechnungs-Befreiung für Kleinunternehmer.</li>
+    <li>Die ausführliche Recherche mit allen Befunden zum Produkt steht im Projekt: <code>dokumente/recht/14-ki-software-hessen-stand-2510.md</code>, Umsetzung in <code>15-umsetzung-stand-2610.md</code>.</li>
+  </ul>
+  <h3>Quellen (Abruf 31.10.2026, sofern nicht anders vermerkt)</h3>
+  <ul class="quellen">
+    <li>IHK Frankfurt — Modernisierung des Produkthaftungsrechts beschlossen: <a href="https://www.frankfurt-main.ihk.de/recht/recht-und-steuern-aktuell/modernisierung-des-produkthaftungsrechts-beschlossen-7199032">frankfurt-main.ihk.de</a> · MTR Legal — Neues Produkthaftungsrecht gilt ab Dezember 2026: <a href="https://www.mtrlegal.com/neues-produkthaftungsrecht-gilt-ab-dezember-2026/">mtrlegal.com</a> · Ebner Stolz — Neues Produkthaftungsgesetz: <a href="https://www.ebnerstolz.de/de/unser-angebot/leistungen/rechtsberatung/produktsicherheit-und-produkthaftung/neues-produkthaftungsgesetz-110227.html">ebnerstolz.de</a></li>
+    <li>Kleinunternehmerregelung 2026: <a href="https://www.mehrwertsteuerrechner.de/kleinunternehmerregelung/">mehrwertsteuerrechner.de</a> · <a href="https://selbststaendigkeit.de/steuern/kleinunternehmerregelung/">selbststaendigkeit.de</a></li>
+    <li>UG-Gründung, Musterprotokoll, Kosten: <a href="https://www.lexware.de/wissen/unternehmerlexikon/ug/">lexware.de</a> · <a href="https://www.deutschland-rechner.de/ug-gruendungskosten-rechner">deutschland-rechner.de</a> · <a href="https://www.commerzbank.de/unternehmerkunden/wissen/ratgeber/gruenden/ug-gruenden/">commerzbank.de</a> · Haftung UG/Geschäftsführer: <a href="https://finom.co/de-de/blog/ug-haftung/">finom.co</a></li>
+    <li>Transparenzregister: <a href="https://www.firma.de/firmengruendung/transparenzregister-meldepflicht-eintragung-faq/">firma.de</a> · IHK Magdeburg — Eintragungspflicht für alle: <a href="https://www.ihk.de/magdeburg/recht/allgemeine-rechtsauskuenfte-1/wirtschaft-und-recht/geldwaeschegesetz/eintragungspflicht-fuer-alle-unternehmen-5247256">ihk.de</a></li>
+    <li>Fragebogen zur steuerlichen Erfassung: <a href="https://selbststaendigkeit.de/gewerbe-anmelden/fragebogen-steuerliche-erfassung/">selbststaendigkeit.de</a> · Finanzverwaltung NRW — Merkblatt für Existenzgründer: <a href="https://www.finanzverwaltung.nrw.de/sites/default/files/asset/document/merkblatt_fuer_existenzgruenderinnen_und_existenzgruender.pdf">finanzverwaltung.nrw.de</a></li>
+    <li>DPMA — Gebühren Marken: <a href="https://www.dpma.de/service/gebuehren/marken/index.html">dpma.de</a> · Ablauf: <a href="https://dpma.de/marken/index.html">dpma.de/marken</a></li>
+    <li>E-Rechnung: IHK Stuttgart: <a href="https://www.ihk.de/stuttgart/fuer-unternehmen/recht-und-steuern/steuerrecht/steuermeldungen/e-rechnungen-5864496">ihk.de</a> · IHK Rhein-Neckar: <a href="https://www.ihk.de/rhein-neckar/recht/steuerrecht/umsatzsteuer/e-rechnungspflicht-5931752">ihk.de</a></li>
+    <li>IHK Kassel-Marburg — Bezirk und Mitgliedschaft: <a href="https://www.ihk.de/kassel-marburg/ueber-uns/beitrag-und-mitgliedschaft/die-gesetzliche-mitgliedschaft-4103480">ihk.de</a> · Beratungsförderung: <a href="https://www.ihk.de/kassel-marburg/hauptnavigation/gruendung/finanzierungs-und-foerderprogramme/beratungsfoerderung-4088106">ihk.de</a> · BAFA-Programm (IHK Nürnberg): <a href="https://www.ihk-nuernberg.de/ihr-unternehmen/gruendung/coaching-beratungsfoerderung/bafa-programm">ihk-nuernberg.de</a> · <a href="https://www.fuer-gruender.de/wissen/existenzgruendung-planen/gruendercoaching/nach-der-gruendung/">fuer-gruender.de</a></li>
+    <li>Gewerbeanmeldung Kosten: <a href="https://selbststaendigkeit.de/gewerbe-anmelden/gewerbe-anmelden-kosten/">selbststaendigkeit.de</a> · Hebesatz Stadtallendorf: <a href="https://www.papierkram.de/gewerbesteuer/hebesatz/hessen/stadtallendorf-stadt-2712/">papierkram.de</a></li>
+    <li>Versicherung für IT-Unternehmen: <a href="https://www.zurich.de/de-de/geschaeftskunden/produkte/haftpflichtversicherung/vermoegensschadenhaftpflicht/it-unternehmen">zurich.de</a> · <a href="https://versicherungsmakler.ac/versicherungen-it-dienstleister/">versicherungsmakler.ac</a></li>
+    <li>Anthropic — DPA für gewerbliche Kunden: <a href="https://privacy.claude.com/en/articles/7996862-i-am-a-commercial-customer-how-do-i-view-your-data-processing-addendum-dpa">privacy.claude.com</a></li>
+    <li>KI-Verordnung Art. 50 ab 2.8.2026, AGB/Haftung bei SaaS, Allergene, Mehrweg, Newsletter, § 11 PAngV, Kasse/TSE: siehe Quellen in <code>dokumente/recht/14-ki-software-hessen-stand-2510.md</code> (Abruf 25.10.2026).</li>
+  </ul>
+</section>
+
+</body>
+</html>
