@@ -74,4 +74,19 @@ neun Szenen aus `WZ_ARTEN` (keine Zahl in der Prüfung). Nachbarprüfungen grün
 
 ## 5 · Ergebnis der Gegenbeweise
 
-(wird nach dem Lauf eingetragen)
+Kopie des Verzeichnisses je Sabotage, Sabotage in Hub **und** Board (B8 absichtlich nur im Board), Treffer gezählt,
+gezielte Meldung gezählt.
+
+| Nr | Sabotage | Ergebnis |
+|---|---|---|
+| B1 | Flamme flackert endlos | ROT — „tisch: nichts läuft endlos … endlos: wzFlackern“ |
+| B2 | Figur atmet bis 7,6 s | ROT — „zu spät: wzFigurAtmen 7600“ |
+| B3 | Tür endet halb offen | ROT — Endbild ≠ Ruhebild, Tür 15 statt 4,8 px breit |
+| B4 | Räder drehen 400° statt 661° | ROT — Räder rutschen |
+| B5 | Teig dreht um die Bildmitte | ROT — seitlich 20–27 px |
+| B6 | Tür dreht um die Mitte | ROT — linke Kante 12,6 px verschoben |
+| B7 | Nigiri verschwindet zu früh | ROT — Wechsel nicht deckungsgleich |
+| B8 | Board kennt Kurier nicht | ROT — Block ungleich, Kacheln ≠ WZ_ARTEN |
+| B9 | Auftritt animiert `filter` | ROT — „fremd: filter“ in 4 Szenen |
+| B10 | Roller fährt linear, Rad mit Kurve | **erst GRÜN** — die Probe verglich `getComputedTiming().easing`, das bei CSS-Animationen immer „linear“ ist (die Kurve steht im Keyframe). Probe korrigiert (Kurve aus `getKeyframes()[0].easing`), volle Prüfung danach grün (213 Proben); Wiederholung von B10: siehe Commit-Verlauf |
+| G1 | Begleiter: Regel für schmale Telefone entfernt (`pruef-texte`) | ROT — 6 Meldungen „Begleitersatz …“ |

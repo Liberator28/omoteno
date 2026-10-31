@@ -462,7 +462,10 @@ const LAEUFT = () => {
         const winkel = +(String(ar.effect.getKeyframes()[0].transform).match(/rotate\((-?[\d.]+)deg\)/) || [0, NaN])[1];
         const radius = +r.querySelector("circle").getAttribute("r");
         const tf = af.effect.getComputedTiming(), tr = ar.effect.getComputedTiming();
-        return { weg, winkel, radius, rollt:Math.round(winkel * Math.PI / 180 * radius * 10) / 10, gleich:tf.duration === tr.duration && tf.delay === tr.delay && tf.easing === tr.easing }; });
+        return { weg, winkel, radius, rollt:Math.round(winkel * Math.PI / 180 * radius * 10) / 10, kurve:[af.effect.getKeyframes()[0].easing, ar.effect.getKeyframes()[0].easing],
+          /* Die Kurve steht bei CSS-Animationen im KEYFRAME, nicht im Effekt: getComputedTiming().easing ist immer
+             „linear“ — die erste Fassung verglich das und blieb im Gegenbeweis B10 (Roller linear) grün. */
+          gleich:tf.duration === tr.duration && tf.delay === tr.delay && af.effect.getKeyframes()[0].easing === ar.effect.getKeyframes()[0].easing }; });
       pruef(!!m && !m.fehlt && m.gleich && Math.abs(m.rollt - m.weg) < 1, "Lieferung: Räder rollen ohne Rutschen (Winkel × Radius = Weg, gleiche Dauer/Kurve/Einsatz)", JSON.stringify(m));
       await ctx.close();
     }
