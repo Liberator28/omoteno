@@ -16684,6 +16684,19 @@ function leisteTastaturFeld(e){
   if(e.tagName === "TEXTAREA" || e.tagName === "SELECT") return true;
   return e.tagName === "INPUT" && !/^(checkbox|radio|range|color|file|button|submit|reset|image|hidden)$/i.test(e.type || "text");
 }
+/* Ohne Zoom (Meldung 31.10., zwei iPhone-Fotos): (1) Leiste schwebte ~290 px zu hoch — der sichtbare Bereich war um die
+   TASTATUR kürzer, der Fokus lag aber schon nicht mehr in einem Textfeld (oder die Tastatur fuhr noch); die alte Rechnung (und
+   ihre Prüfung!) hielt das für „Leiste zu tief“ und hob sie um die Tastaturhöhe. (2) Leiste hing ~58 px zu tief — iOS 26 lässt
+   nach dem Schließen der Tastatur visualViewport.offsetTop > 0 stehen (Apple-Forum 800154/800125); ohne Zoom ist offsetTop aber
+   immer ein Fehlwert (sichtbarer = Layout-Bereich), die Rechnung schob die Leiste darum unter den Rand. Jetzt: offsetTop zählt
+   ohne Zoom nicht; mehr als 120 px kürzer = Tastatur = kein Versatz; nach oben höchstens 120 px (Fall 25.10.: 47 px),
+   nach unten wie bisher bis 600 px (Layout kürzer als das Sichtbare). */
+const LEISTE_TASTATUR = 120;
+function leisteVersatzOhneZoom(sichtHoehe, sondeUnten){
+  const a = Math.round(sichtHoehe - sondeUnten);
+  if(a < -LEISTE_TASTATUR) return 0;
+  return Math.abs(a) >= 2 && a <= 600 ? a : 0;
+}
 function leisteAnkern(){
   const vv = window.visualViewport, wurzel = document.documentElement;
   let v = 0, kehr = 1, x = 0;
@@ -16702,8 +16715,11 @@ function leisteAnkern(){
     if(!feld){
       /* Gemessen wird, wo „bottom:0“ WIRKLICH liegt (Sonde, unabhängig vom Versatz) — nicht, was clientHeight verspricht: Das Foto vom
          25.10. zeigte die Leiste UNTER dem sichtbaren Rand abgeschnitten; die alte Rechnung kannte nur die Richtung „Leiste zu hoch“. */
-      const abstand = Math.round(vv.offsetTop + vv.height - leisteSonde().getBoundingClientRect().bottom);
-      if(Math.abs(abstand) >= 2 && Math.abs(abstand) <= (gezoomt ? 6000 : 600)) v = abstand;
+      const unten = leisteSonde().getBoundingClientRect().bottom;
+      if(gezoomt){
+        const abstand = Math.round(vv.offsetTop + vv.height - unten);
+        if(Math.abs(abstand) >= 2 && Math.abs(abstand) <= 6000) v = abstand;
+      }else v = leisteVersatzOhneZoom(vv.height, unten);
     }
   }
   const alt = wurzel.style.getPropertyValue("--vv-versatz");
@@ -16711,8 +16727,42 @@ function leisteAnkern(){
   const k = kehr.toFixed(4), ax = x + "px";
   if(wurzel.style.getPropertyValue("--vv-kehr") !== k) wurzel.style.setProperty("--vv-kehr", k);
   if(wurzel.style.getPropertyValue("--vv-x") !== ax) wurzel.style.setProperty("--vv-x", ax);
+  if(LEISTE_MESS) leisteMessZeigen(v);
   return v;
 }
+/* Messanzeige NUR mit ?leiste=mess in der Adresse: Die Ursache auf dem Gerät ist nicht gesehen (kopfloses Chromium); ein Foto
+   dieser Zahlen vom iPhone belegt sie. Nur Text (textContent), fängt keinen Tipp. */
+const LEISTE_MESS = /(?:^|[?&])leiste=mess(?:&|$)/.test(location.search);
+function leisteMessZeigen(v){
+  let m = document.getElementById("leisteMess");
+  if(!m){
+    m = document.createElement("div"); m.id = "leisteMess"; m.setAttribute("aria-hidden", "true");
+    m.style.cssText = "position:fixed;left:8px;top:calc(8px + env(safe-area-inset-top));z-index:9999;pointer-events:none;background:#000;color:#fff;font:12px/1.35 ui-monospace,monospace;padding:6px 8px;border-radius:8px;white-space:pre";
+    document.body.appendChild(m);
+  }
+  const vv = window.visualViewport || {}, r = n => typeof n === "number" ? Math.round(n * 10) / 10 : "–";
+  m.textContent = "vv.top " + r(vv.offsetTop) + "  vv.h " + r(vv.height) + "  scale " + r(vv.scale) +
+    "\ninnerH " + r(innerHeight) + "  clientH " + r(document.documentElement.clientHeight) + "  sonde " + r(leisteSonde().getBoundingClientRect().bottom) +
+    "\nversatz " + v + "  standalone " + (navigator.standalone === true || matchMedia("(display-mode: standalone)").matches);
+}
+/* Tastatur zu: iOS 26 stellt den sichtbaren Bereich danach nicht zuverlässig zurück (offsetTop bleibt stehen, Apple-Forum 800154);
+   laut Meldungen dort richtet erst Rollen ihn wieder aus. Deshalb: Versatz sofort auf 0, nach dem Einfahren der Tastatur
+   einmal an derselben Stelle „rollen“ und neu messen. */
+let leisteSichtHoehe = window.visualViewport ? visualViewport.height : 0, leisteZuTimer = null;
+function leisteNachTastatur(){
+  clearTimeout(leisteZuTimer);
+  document.documentElement.style.setProperty("--vv-versatz", "0px");
+  leisteZuTimer = setTimeout(() => {
+    if(leisteTastaturFeld(document.activeElement)) return;
+    window.scrollTo(window.scrollX, window.scrollY);
+    leisteAnkernBald();
+  }, 350);
+}
+document.addEventListener("focusout", e => { if(leisteTastaturFeld(e.target)) leisteNachTastatur(); });
+if(window.visualViewport) visualViewport.addEventListener("resize", () => {
+  const h = visualViewport.height, alt = leisteSichtHoehe; leisteSichtHoehe = h;
+  if((visualViewport.scale || 1) <= 1.01 && h - alt > LEISTE_TASTATUR) leisteNachTastatur();
+});
 let leisteNachlauf = null;
 function leisteAnkernBald(){
   /* Nachlaufen: iOS meldet das Ende von Pinch und Gummiband nicht zuverlässig (touchend kommt VOR dem Einrasten). Nach jedem

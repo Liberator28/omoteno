@@ -871,6 +871,23 @@ ohne feste Leiste.
 > Tastatur-Ausnahme gilt nur für Textfelder, nicht für jedes fokussierte
 > Element (eine angetippte Checkbox ist keine Tastatur).
 
+> **Vorfall, dritte Runde (31.10., zwei iPhone-Fotos, Board als Home-Bildschirm-App).**
+> Einmal schwebte die Leiste ~290 px zu hoch (kurz vorher getippt), einmal hing sie ~58 px
+> zu tief. Beides kam aus der Rechnung selbst: (1) Ein um die TASTATUR kürzerer sichtbarer
+> Bereich, während der Fokus schon auf einem Schalter lag oder die Tastatur noch fuhr, galt als
+> „Leiste zu tief“ — und `pruef-leisten.js` **verlangte** genau das („300 px kürzer, ohne
+> Eingabefeld: die Leiste folgt nach oben“). Die Prüfung hatte den Fehler als Soll
+> festgeschrieben. (2) iOS 26 lässt nach dem Schließen der Tastatur `visualViewport.offsetTop`
+> > 0 stehen (Apple-Forum 800154/800125); ohne Zoom ist `offsetTop` aber immer ein Fehlwert,
+> und die Rechnung schob die Leiste damit unter den Rand.
+
+Ohne Zoom zählt `offsetTop` nicht mehr; was mehr als 120 px kürzer ist, ist die Tastatur — erkannt
+an der **Größe**, nicht am Fokus; nach der Tastatur wird zurückgesetzt und neu gemessen.
+Gegenbeweis auf einer Kopie: die alte Formel ergibt genau die Fotos (Leiste bei 544 statt 844,
+bei 902 statt 844). Wer eine Probe aus einer Annahme über das Gerät schreibt, schreibt die Annahme
+fest — ein Soll in einer Prüfung braucht einen Beleg, nicht nur eine Rechnung. **Ehrliche Grenze:**
+weiter auf keinem Gerät gesehen; `?leiste=mess` zeigt die Zahlen für ein Foto vom iPhone.
+
 ### 3.16 Wer etwas über eine Leiste setzt, die einfährt, misst die Endlage
 
 > **Vorfall, beim ersten Bildschirmfoto des schwebenden Anleitungs-Knopfs.**

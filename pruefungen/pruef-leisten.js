@@ -199,10 +199,37 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
       "wieder auf Zoom 1: alles zurück (unten, Breite 390, links 0, kein Versatz)", JSON.stringify(zurueck));
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight - 300, addEventListener(){} } }); leisteAnkern(); });
     const kuerz = await messe();
-    ok(kuerz.unten === kuerz.vh - 300, "Sichtbares 300 px kürzer, ohne Eingabefeld: die Leiste folgt nach oben", kuerz.unten + " / " + (kuerz.vh - 300));
+    /* Meldung 31.10. (Foto 1, iPhone): 300 px kürzer ist die TASTATUR — auch ohne Fokus in einem Textfeld (Fokus schon auf einem
+       Schalter, Tastatur fährt noch). Bis dahin verlangte diese Probe „die Leiste folgt nach oben“ — sie schrieb den Fehler als Soll fest. */
+    ok(kuerz.unten === kuerz.vh && kuerz.versatz === "0px", "Sichtbares 300 px kürzer (Tastatur), ohne Eingabefeld: die Leiste bleibt ganz unten", kuerz.unten + " / " + kuerz.vh + " · " + kuerz.versatz);
+    const kuerzSchalter = await p.evaluate(() => { const i = document.createElement("input"); i.type = "checkbox"; document.body.appendChild(i); i.focus(); const v = leisteAnkern(); i.remove(); return v; });
+    ok(kuerzSchalter === 0, "dasselbe mit fokussiertem SCHALTER (Tipp nach dem Tippen): kein Versatz", String(kuerzSchalter));
+    /* Meldung 31.10. (Foto 2): iOS 26 lässt nach dem Schließen der Tastatur visualViewport.offsetTop > 0 stehen; ohne Zoom ist das
+       ein Fehlwert. Die alte Rechnung schob die Leiste damit unter den Rand (Beschriftung abgeschnitten). */
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:58, offsetLeft:0, scale:1, width:390, height:document.documentElement.clientHeight, addEventListener(){} } }); leisteAnkern(); });
+    const ios26 = await messe();
+    ok(ios26.unten === ios26.vh && ios26.versatz === "0px", "iOS 26: offsetTop 58 ohne Zoom bei gleicher Höhe → Leiste ganz im Bild, kein Versatz", JSON.stringify(ios26));
+    /* Tastatur schließt (Höhe wächst um mehr als 120 px): Versatz sofort 0, danach neu gemessen — die Leiste steht ganz unten. */
+    const zu = await p.evaluate(async () => {
+      const st = { offsetTop:0, offsetLeft:0, scale:1, width:390, height:document.documentElement.clientHeight - 300 };
+      const ziel = new EventTarget(); ziel.offsetTop = 0;
+      Object.defineProperty(window, "visualViewport", { configurable:true, get(){ return st; } });
+      document.documentElement.style.setProperty("--vv-versatz", "-300px");
+      leisteSichtHoehe = st.height;
+      st.height = document.documentElement.clientHeight;
+      const i = document.createElement("input"); document.body.appendChild(i); i.focus(); i.blur(); i.remove();
+      const sofort = document.documentElement.style.getPropertyValue("--vv-versatz");
+      await new Promise(r => setTimeout(r, 900));
+      const b = document.getElementById("befehlsleiste").getBoundingClientRect();
+      return { sofort, spaeter: document.documentElement.style.getPropertyValue("--vv-versatz"), unten: Math.round(b.bottom), vh: document.documentElement.clientHeight };
+    });
+    ok(zu.sofort === "0px" && zu.spaeter === "0px" && zu.unten === zu.vh, "Tastatur zu (Feld verlässt den Fokus): Versatz sofort 0, nach dem Nachmessen ganz unten", JSON.stringify(zu));
+    const mess = await p.evaluate(() => !!document.getElementById("leisteMess"));
+    ok(!mess, "ohne ?leiste=mess keine Messanzeige im Dokument", String(mess));
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, scale:1, height:document.documentElement.clientHeight - 47, addEventListener(){} } }); leisteAnkern(); });
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:-60, scale:1, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); leisteAnkern(); });
     const gummi = await messe();
-    ok(gummi.versatz === "-300px", "Gummiband oben (offsetTop −60): der letzte Stand bleibt, nichts zuckt", gummi.versatz);
+    ok(gummi.versatz === "-47px", "Gummiband oben (offsetTop −60): der letzte Stand bleibt, nichts zuckt", gummi.versatz);
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight, addEventListener(){} } }); leisteAnkern(); });
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); leisteAnkern(); });
     const ink = await p.evaluate(() => { const i = document.createElement("input"); i.id = "ankerProbe"; document.body.appendChild(i); i.focus(); return leisteAnkern(); });
@@ -255,6 +282,23 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
     await p.evaluate(() => { window.__vvStand.height = document.documentElement.clientHeight; window.dispatchEvent(new Event("gestureend")); });
     await p.waitForTimeout(120);
     ok(await v() === "0px", "„gestureend“ (Safari: Pinch zu Ende) rechnet neu", await v());
+    await ctx.close();
+  }
+  /* Messanzeige (?leiste=mess): die Zahlen für ein Foto vom Gerät. Nur Text, fängt keinen Tipp, ohne Parameter gar nicht da (oben). */
+  {
+    const ctx = await br.newContext({viewport:{width:390,height:844}});
+    const p = await ctx.newPage();
+    const kons = [];
+    p.on("pageerror", e => kons.push(String(e).slice(0,140)));
+    await p.route("**/*", r => r.request().url().startsWith("file://") ? r.continue() : r.abort());
+    await p.goto("file://" + ADMIN_PFAD + "?leiste=mess");
+    await p.waitForTimeout(900);
+    console.log("\n══ Messanzeige ?leiste=mess ══");
+    const m = await p.evaluate(() => { leisteAnkern(); const e = document.getElementById("leisteMess");
+      return e ? { text: e.textContent, pe: getComputedStyle(e).pointerEvents, kinder: e.children.length } : null; });
+    ok(!!m && /vv\.top/.test(m.text) && /versatz 0/.test(m.text) && /sonde 844/.test(m.text) && m.pe === "none" && m.kinder === 0,
+      "mit ?leiste=mess: Zahlen als reiner Text, fängt keinen Tipp", JSON.stringify(m));
+    ok(kons.length === 0, "keine Skriptfehler", kons.join(" | "));
     await ctx.close();
   }
   await br.close();
