@@ -88,5 +88,5 @@ gezielte Meldung gezählt.
 | B7 | Nigiri verschwindet zu früh | ROT — Wechsel nicht deckungsgleich |
 | B8 | Board kennt Kurier nicht | ROT — Block ungleich, Kacheln ≠ WZ_ARTEN |
 | B9 | Auftritt animiert `filter` | ROT — „fremd: filter“ in 4 Szenen |
-| B10 | Roller fährt linear, Rad mit Kurve | **erst GRÜN** — die Probe verglich `getComputedTiming().easing`, das bei CSS-Animationen immer „linear“ ist (die Kurve steht im Keyframe). Probe korrigiert (Kurve aus `getKeyframes()[0].easing`), volle Prüfung danach grün (213 Proben); Wiederholung von B10: siehe Commit-Verlauf |
+| B10 | Roller fährt linear, Rad mit Kurve | **erst GRÜN** — die Probe verglich `getComputedTiming().easing`, das bei CSS-Animationen immer „linear“ ist (die Kurve steht im Keyframe). Probe korrigiert (Kurve aus `getKeyframes()[0].easing`), volle Prüfung danach grün (213 Proben); **Wiederholung B10: ROT** (gezielte Meldung 1×) |
 | G1 | Begleiter: Regel für schmale Telefone entfernt (`pruef-texte`) | ROT — 6 Meldungen „Begleitersatz …“ |
