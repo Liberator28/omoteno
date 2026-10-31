@@ -111,9 +111,12 @@ function eigenschaften(){
      Muster (§8.1g D); NUR „linear“, nur diese. Dazu seit 18.10. das
      umlaufende Licht im Rand der Einstellungs-Kacheln (euLauf) — es
      dreht endlos wie das des Zurück-Knopfs im Hub. */
+  /* wzSuBand/wzKuVorbei (31.10.): das Kaiten-Band der Sushi-Szene und die vorbeiziehenden Lichter der Kurier-Szene —
+     gleichbleibende Geschwindigkeit; mit Kurve pulsierte das Band im Takt der Schleife. Die Probe hat beide beim ersten Lauf
+     gefunden (nicht ich): erst dadurch stehen sie hier, namentlich. */
   /* wzWolkenzug/wzFern/wzMitte/wzNah/wzVogel/wzFlugX (24.10.): Wolken, Parallax-Ebenen, Vogel, Fluglinie —
      gleichmäßiger Zug ohne Anfang und Ende; eine Kurve gäbe ihm einen Takt, den es nicht gibt. */
-  const GLEICHFOERMIG = ["wzDrehen", "wzStrasse", "wzWolke", "euLauf", "wzStrahlen", "wzHaeuser", "wzWolkenzug", "wzFern", "wzMitte", "wzNah", "wzVogel", "wzFlugX"];
+  const GLEICHFOERMIG = ["wzDrehen", "wzStrasse", "wzWolke", "euLauf", "wzStrahlen", "wzHaeuser", "wzWolkenzug", "wzFern", "wzMitte", "wzNah", "wzVogel", "wzFlugX", "wzSuBand", "wzKuVorbei"];
   /* Eine Angabe kann mehrere Animationen tragen („animation:a 1s x, b 2s y“).
      Die erste Fassung dieser Prüfung sah nur die ERSTE (19.10. aufgefallen:
      „wzStrahlen 56s linear“ stand an zweiter Stelle und wäre durchgerutscht).
