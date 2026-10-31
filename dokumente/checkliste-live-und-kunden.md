@@ -198,6 +198,9 @@ bis ein Betrieb unter „Einstellungen → Bezahlen“ etwas einschaltet.
       laufen sie 116 von 116 — gegen die echte Datenbank noch nie.
 > **STAND 26.10.: Die Online-Zahlung ist ausgeschaltet** (keine Erlaubnisklärung nach ZAG, Verbindungsschritt zu Stripe fehlt).
 > Alles in diesem Abschnitt gilt erst NACH `dokumente/zahlung-anbinden-anleitung.md`, Teil 1.
+> **Live seit 31.10.:** `zahlung-starten`/`stripe-webhook` v2 mit Sperre (antworten „abgeschaltet“), und die vier Gast-Funktionen
+> (`bestellung_aufgeben_zahlung`, `bestellung_liefern_zahlung`, `zahlarten_oeffentlich`, `zahlung_status`) sind für anon und
+> authenticated GESPERRT (`datenbank/migration-zahlung-aus-live.sql`). Beim Einschalten zuerst die GRANTs aus dem Kopf dieser Datei.
 
 - [ ] **E** Edge Functions ausrollen, beide **ohne** Token-Prüfung (die
       Echtheit kommt beim Webhook aus der Unterschrift):

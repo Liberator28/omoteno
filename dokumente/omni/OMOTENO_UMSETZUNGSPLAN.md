@@ -36,20 +36,20 @@
 - **Datenmigration:** nein (nur Stoppen); bei (b2) ein einmaliger Anonymisierungslauf.
 - **Doppelter Job `ereignisse`:** einen entfernen (gleiche Wirkung, keine Datenänderung).
 
-### P0.2 Edge `melden` auf Repo-Stand ausrollen (S2)
+### P0.2 Edge `melden` auf Repo-Stand ausrollen (S2) — ERLEDIGT 31.10. (v7; Rückweg: `git show bf618d4^:supabase/functions/melden/index.ts` = v6)
 - **Objekte:** `supabase/functions/melden/index.ts` → `swift-processor`, `--no-verify-jwt` wie bisher.
 - **Grund:** SSRF-Positivliste für Push-Endpunkte (19.10.) ist nicht live.
 - **Tests vorher (lokal, schon vorhanden):** `pruefungen/pruef-haertung.js` (12 Fremdfälle), `pruef-push.js`. Nachher: Quelltext live gegen Repo vergleichen (`get_edge_function`), eine echte Testbestellung im Vorführhaus erzeugt genau eine Push-Meldung.
 - **Rollback:** v6-Quelltext ist gesichert (im Ist-Bericht gelesen; vor dem Ausrollen als Datei ablegen).
 
-### P0.3 Online-Zahlung live abschalten (S3)
+### P0.3 Online-Zahlung live abschalten (S3) — ERLEDIGT 31.10. (Edge v2, EXECUTE anon+authenticated entzogen; Rückweg im Kopf von `datenbank/migration-zahlung-aus-live.sql`)
 - **Objekte:** Edge `zahlung-starten`, `stripe-webhook` (Repo-Stand mit `ZAHLUNG_AN`-Sperre ausrollen) **oder** beide entfernen; `EXECUTE` für `anon` auf `bestellung_aufgeben_zahlung`, `bestellung_liefern_zahlung`, `zahlarten_oeffentlich`, `zahlung_status` entziehen, solange die Funktion aus ist.
 - **Grund:** Oberfläche ist aus (ZAG offen), Datenbank- und Edge-Wege sind es nicht.
 - **Risiko:** Ein alter, zwischengespeicherter Hub ruft `zahlarten_oeffentlich` → bekommt 401/404 statt leerer Liste; der Hub behandelt Fehler fail-open (`pruef-zahlung.js`: „nichts sichtbar bei 404/500“) [R].
 - **Tests:** `pruef-zahlung-edge.js` (Abgeschaltet-Proben), `pruef-zahlung.js`, `pruef-ladestart.js`; Gegenbeweis: EXECUTE zurück → Probe rot.
 - **Rollback:** GRANT zurück, alte Edge-Fassung erneut ausrollen.
 
-### P0.4 Auth: Schutz gegen geleakte Passwörter einschalten (S8)
+### P0.4 Auth: Schutz gegen geleakte Passwörter einschalten (S8) — OFFEN: Schalter im Dashboard (Authentication → Attack Protection / Passwort-Sicherheit → „Prevent use of leaked passwords“; laut Supabase ab Pro-Tarif)
 - Dashboard-Schalter; kein Code. Test: Registrierung mit bekanntem Passwort wird abgelehnt (Testkonto).
 
 **Abnahme P0:** Kein Lösch-Job ohne Repo-Gegenstück; Live-Quelltext von `melden`/`zahlung-*` = Repo; Advisor ohne die vier Zahlungs-RPCs bei `anon`.
