@@ -2354,6 +2354,9 @@ textarea{resize:vertical;min-height:66px}
    beide zu schmal sind (§3.6). */
 .lfzeit{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media (max-width:420px){ .lfzeit{grid-template-columns:1fr} }
+.lf-zu-neu{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap}
+.lf-zu-neu .feld{flex:1 1 180px}
+.lf-zu-neu .knopf{flex:0 0 auto;min-height:44px;margin-bottom:14px}
 
 /* Die sieben Tage. Umbrechend, damit auf dem Telefon nichts
    herausragt — und jeder Knopf 44px hoch, weil man ihn mit dem
@@ -5201,11 +5204,20 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <button class="wippe" id="lfAn" aria-pressed="false" aria-label="Lieferung"></button>
       </div>
 
+      <div class="ezeile senkrecht" id="lfPauseBlock">
+        <span><b>Kurz pausieren</b><i id="lfPauseStand">Die Lieferung läuft.</i></span>
+        <div class="eknoepfe lf-pause-knoepfe">
+          <button type="button" class="knopf" id="lfPause30">30 Min pausieren</button>
+          <button type="button" class="knopf leise" id="lfPauseEnde" hidden>Pause beenden</button>
+        </div>
+        <small class="feldhilfe">Gilt sofort, ohne „Übernehmen“. Der Gast sieht, ab wann wieder geliefert wird; danach läuft die Lieferung von selbst weiter.</small>
+      </div>
+
       <div class="ezeile senkrecht">
         <span><b>Liefergebiet</b><i>Postleitzahlen, durch Komma getrennt. Ohne sie bleibt die Lieferung aus</i></span>
         <label class="feld">
           <span>Postleitzahlen</span>
-          <input id="lfPlz" autocomplete="off" inputmode="numeric" placeholder="35037, 35039, 35041">
+          <input id="lfPlz" type="text" autocomplete="off" inputmode="numeric" placeholder="35037, 35039, 35041">
           <small class="feldhilfe">Nur wohin Sie wirklich fahren. Eine Postleitzahl
             reicht oft weiter, als ein Fahrer fahren will.</small>
         </label>
@@ -5215,19 +5227,19 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <span><b>Was eine Lieferung kostet</b><i>Der Server rechnet damit — nicht das Telefon des Gastes</i></span>
         <label class="feld">
           <span>Mindestbestellwert in Euro</span>
-          <input id="lfMindest" autocomplete="off" inputmode="decimal" placeholder="15">
+          <input id="lfMindest" type="text" autocomplete="off" inputmode="decimal" placeholder="15">
         </label>
         <label class="feld">
           <span>Liefergebühr in Euro</span>
-          <input id="lfGebuehr" autocomplete="off" inputmode="decimal" placeholder="2.50">
+          <input id="lfGebuehr" type="text" autocomplete="off" inputmode="decimal" placeholder="2.50">
         </label>
         <label class="feld">
           <span>Ab dieser Summe kostenlos <em class="mass">0 = nie</em></span>
-          <input id="lfGratis" autocomplete="off" inputmode="decimal" placeholder="30">
+          <input id="lfGratis" type="text" autocomplete="off" inputmode="decimal" placeholder="30">
         </label>
         <label class="feld">
           <span>Zugesagte Lieferzeit in Minuten</span>
-          <input id="lfDauer" autocomplete="off" inputmode="numeric" placeholder="45">
+          <input id="lfDauer" type="text" autocomplete="off" inputmode="numeric" placeholder="45">
           <small class="feldhilfe">Lieber großzügig. Eine Zusage, die hält, ist mehr
             wert als eine, die beeindruckt.</small>
         </label>
@@ -5256,6 +5268,15 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
 
       <div class="ezeile senkrecht">
+        <span><b>Geschlossene Tage</b><i>An diesen Tagen liefern Sie nicht — Urlaub, Feiertag, Betriebsfeier</i></span>
+        <div class="lf-zu-neu">
+          <label class="feld"><span>Tag</span><input id="lfZuTag" type="date" autocomplete="off"></label>
+          <button type="button" class="knopf leise" id="lfZuDazu">Tag hinzufügen</button>
+        </div>
+        <div class="lftage" id="lfZuListe" role="list" aria-label="Geschlossene Tage"></div>
+      </div>
+
+      <div class="ezeile senkrecht">
         <span><b>Womit bei Ihnen an der Tür bezahlt wird</b><i>Der Gast liest es, bevor er bestellt</i></span>
         <div class="schalter">
           <div><div class="schaltertext">Bar</div></div>
@@ -5276,7 +5297,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </div>
         <label class="feld">
           <span>Vorlauf in Minuten</span>
-          <input id="lfAbholMin" autocomplete="off" inputmode="numeric" placeholder="20">
+          <input id="lfAbholMin" type="text" autocomplete="off" inputmode="numeric" placeholder="20">
           <small class="feldhilfe">So lange braucht die Küche mindestens. Der Gast sieht „frühestens in {n} Minuten“ und kann keine frühere Zeit wählen.</small>
         </label>
       </div>
@@ -5285,6 +5306,15 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <button class="knopf" id="lfSichern">Übernehmen</button>
       </div>
       <div class="epruefung" id="lfPruefung"></div>
+
+      <div class="ezeile senkrecht lf-test">
+        <span><b>Liefergebiet prüfen</b><i>Was ein Gast mit dieser Postleitzahl sieht — nach den Werten oben, auch vor dem Übernehmen</i></span>
+        <div class="lfzeit">
+          <label class="feld"><span>Postleitzahl</span><input id="lfTestPlz" type="text" inputmode="numeric" maxlength="5" autocomplete="off" placeholder="35037"></label>
+          <label class="feld"><span>Warenwert in Euro</span><input id="lfTestWert" type="text" inputmode="decimal" autocomplete="off" placeholder="20"></label>
+        </div>
+        <p class="ehilfe" id="lfTestErgebnis" aria-live="polite"></p>
+      </div>
     </div>
 
     <div class="egruppe" data-nur-inhaber>
@@ -5504,6 +5534,24 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       </div>
       <p class="ehilfe" id="rzHilfe">Der Gast sieht „noch ca. 12 Minuten“ — die Zeit, die Sie
         zugesagt haben, zählt herunter.</p>
+      <div class="ezeile senkrecht">
+        <span><b>Satz, wenn die Zeit um ist</b><i>Steht unter „Jeden Moment“ — in allen Sprachen des Hubs übersetzt</i></span>
+        <div class="klangwahl kw-vier" id="vzWahl" role="radiogroup" aria-label="Satz, wenn die Zeit um ist">
+          <button class="klang" data-vz="" role="radio" aria-checked="true"><b>Keiner</b><i>Nur „Jeden Moment“</i></button>
+          <button class="klang" data-vz="geduld" role="radio" aria-checked="false"><b>Geduld</b><i>Dauert länger</i></button>
+          <button class="klang" data-vz="viel" role="radio" aria-checked="false"><b>Viel los</b><i>Kommt gleich</i></button>
+          <button class="klang" data-vz="frisch" role="radio" aria-checked="false"><b>Frisch</b><i>Wird zubereitet</i></button>
+        </div>
+        <p class="ehilfe" id="vzVorschau"></p>
+      </div>
+      <label class="ezeile">
+        <span><b>Vibrieren, wenn es fertig ist</b><i>Auf Telefonen, die es können (Android-Browser; das iPhone erlaubt es Webseiten nicht)</i></span>
+        <input type="checkbox" class="kipp" id="vzVib">
+      </label>
+      <label class="ezeile">
+        <span><b>Bestellnummer groß zeigen</b><i>Für Häuser, die am Tresen Nummern ausrufen</i></span>
+        <input type="checkbox" class="kipp" id="vzGross">
+      </label>
     </div>
 
 
@@ -13104,6 +13152,7 @@ async function betriebOeffnen(id){
   stilZeichnen();
   rzZeigen = rzAus(bb);
   rzZeichnen();
+  try{ vzZeichnen(); }catch(e){}
   frZeigen = frAus(bb);
   frZeichnen();
   ksGespeichert = bb ? ksAus(bb) : undefined;
@@ -17786,8 +17835,9 @@ const AN_WIKI = [
     labels:["Signalton", "Lautstärke", "Vibration", "Mitteilungen", "Ton testen", "Mitteilung testen", "Ruhezeit", "Klang für Servicerufe", "Nur diese Bereiche"], gruppe:"Melden" },
   { id:"e-lieferung", kapitel:"Einstellungen", titel:"Lieferung und Abholung", ort:"Einstellungen → Lieferung",
     text:["Ist die Lieferung an, kann ein Gast sich von zu Hause beliefern lassen — dieselbe Karte, derselbe Korb, nur mit Adresse statt Tischnummer. Sie legen das Liefergebiet (Postleitzahlen), Mindestbestellwert, Liefergebühr, die Grenze für „kostenlos“ und die zugesagte Lieferzeit fest; der Server rechnet damit, nicht das Telefon des Gastes.",
-      "Weiter unten stellen Sie die Abholung ein: Der Gast bestellt, nennt Name und Telefon und holt selbst ab. Bezahlt wird bei Ihnen vor Ort. Über Omoteno fließt nie Geld."],
-    labels:["Wir liefern", "Liefergebiet", "Mindestbestellwert in Euro", "Liefergebühr in Euro"], gruppe:"Lieferung" },
+      "Weiter unten stellen Sie die Abholung ein: Der Gast bestellt, nennt Name und Telefon und holt selbst ab. Bezahlt wird bei Ihnen vor Ort. Über Omoteno fließt nie Geld.",
+      "„30 Min pausieren“ hält die Lieferung sofort an, ohne „Übernehmen“; der Gast liest, ab wann wieder geliefert wird, danach läuft sie von selbst weiter. Unter „Geschlossene Tage“ tragen Sie Urlaub oder Feiertage ein. „Liefergebiet prüfen“ zeigt für eine Postleitzahl und einen Warenwert, was der Gast sieht: ob geliefert wird, die Gebühr und die Summe."],
+    labels:["Wir liefern", "Liefergebiet", "Mindestbestellwert in Euro", "Liefergebühr in Euro", "30 Min pausieren", "Pause beenden", "Geschlossene Tage", "Tag hinzufügen", "Liefergebiet prüfen"], gruppe:"Lieferung" },
   ...(!ZAHLUNG_ONLINE_AN ? [] : [{ id:"e-bezahlen", kapitel:"Einstellungen", titel:"Bezahlen", ort:"Einstellungen → Bezahlen",
     text:["Standard: Der Gast zahlt bei Ihnen. Hier schalten Sie Online-Zahlung über Ihr eigenes Stripe-Konto (Bankkarte, Klarna, PayPal, SEPA-Lastschrift) und Überweisung dazu. Das Geld geht immer direkt auf Ihr Konto — nie über Omoteno.",
       "Jede Änderung bestätigen Sie mit Ihrer PIN. SEPA-Lastschrift wird erst nach Tagen bestätigt und taugt nicht für Essen zum Sofortverzehr. Bei Überweisung (nur bei Lieferung) beginnt die Küche erst, wenn Sie „Zahlung eingegangen“ tippen."],
@@ -17805,8 +17855,9 @@ const AN_WIKI = [
       "Jeder Gutschein wird mit der PIN bestätigt. Titel ist Pflicht und das Erste, was der Gast liest; ein Satz dazu, die Vorsilbe und „Gültig bis“ sind freiwillig."],
     labels:["Gutschein anlegen", "Ein Satz dazu (freiwillig)", "Gültig bis (freiwillig)"], gruppe:"Gutscheine für Stammgäste" },
   { id:"e-bestellstand", kapitel:"Einstellungen", titel:"Bestellstand beim Gast", ort:"Einstellungen → Bestellstand beim Gast",
-    text:["Was Ihr Gast nach dem Bestellen auf seinem Telefon sieht, sobald Sie eine Zeit zugesagt haben. Mit Restzeit zählt „noch ca. 12 Minuten“ herunter — die Zeit, die Sie zugesagt haben. Mit Nur Stand sieht er „Angenommen“ und „Wird zubereitet“, ohne Minuten; Ihre zugesagte Zeit gilt weiter für Küche und Mahnung."],
-    labels:["Mit Restzeit", "Nur Stand"], gruppe:"Bestellstand beim Gast" },
+    text:["Was Ihr Gast nach dem Bestellen auf seinem Telefon sieht, sobald Sie eine Zeit zugesagt haben. Mit Restzeit zählt „noch ca. 12 Minuten“ herunter — die Zeit, die Sie zugesagt haben. Mit Nur Stand sieht er „Angenommen“ und „Wird zubereitet“, ohne Minuten; Ihre zugesagte Zeit gilt weiter für Küche und Mahnung.",
+      "„Satz, wenn die Zeit um ist“ setzt unter „Jeden Moment“ einen freundlichen Satz (Geduld, Viel los, Frisch), übersetzt in alle Sprachen. Dazu: das Telefon des Gastes vibriert, wenn es fertig ist, und die Bestellnummer steht auf Wunsch groß da."],
+    labels:["Mit Restzeit", "Nur Stand", "Satz, wenn die Zeit um ist", "Vibrieren, wenn es fertig ist", "Bestellnummer groß zeigen"], gruppe:"Bestellstand beim Gast" },
   { id:"e-bildschirm", kapitel:"Einstellungen", titel:"Bildschirm", ort:"Einstellungen → Bildschirm",
     text:["Hell oder dunkel: Am Fenster spiegelt Dunkel, im Abendbetrieb blendet Hell. Zur Wahl stehen Automatisch (folgt dem Gerät), Hell, Dunkel, Ganz schwarz (für dunkle Räume, OLED) und Ganz weiß (maximal hell).",
       "„Aus der Ferne lesen“ vergrößert die Schrift. „Wach halten“ lässt das Board im Betrieb nicht einschlafen, „Erledigte ausblenden“ nimmt fertige Meldungen vom Board. Auch diese Einstellung gilt nur für dieses Gerät.",
@@ -17838,7 +17889,9 @@ const AN_NEU = [
   { datum:"01.11.", titel:"Ruhezeit, eigener Klang für Servicerufe, nur Bereiche dieses Geräts", id:"e-melden" },
   { datum:"01.11.", titel:"Kompakte Karten, große Uhr, Rand leuchtet", id:"e-bildschirm" },
   { datum:"01.11.", titel:"Änderungen nach Person und Bereich filtern, als CSV", id:"e-protokoll" },
-  { datum:"01.11.", titel:"Vorlagen und Übertragen bei den Zugriffsrechten", id:"e-zugriff" }
+  { datum:"01.11.", titel:"Vorlagen und Übertragen bei den Zugriffsrechten", id:"e-zugriff" },
+  { datum:"01.11.", titel:"Lieferung 30 Minuten pausieren, geschlossene Tage, Liefergebiet prüfen", id:"e-lieferung" },
+  { datum:"01.11.", titel:"Satz bei Verzögerung, Vibration, große Bestellnummer", id:"e-bestellstand" }
 ];
 /* Merkliste: nur auf diesem Gerät, nur ids, die es im Wiki gibt (alles andere fällt beim Lesen weg). */
 const AN_MERK = "omoteno-an-merk";
@@ -19375,7 +19428,23 @@ function hubTexteFuellen(){
    wie beim Kachel-Baukasten.                                     */
 let LFTAGE = [];
 /* Die Schlüssel von betriebe.liefer, die dieses Formular selbst setzt (alles andere bleibt beim Übernehmen stehen). */
-const LF_FORMULAR = ["an","plz","mindest","gebuehr","gratis_ab","dauer_min","bar","karte","zeiten","abholen","abhol_min"];
+const LF_FORMULAR = ["an","plz","mindest","gebuehr","gratis_ab","dauer_min","bar","karte","zeiten","abholen","abhol_min","zu"];
+/* Geschlossene Tage (C2, 01.11.): „JJJJ-MM-TT“, nur heute und später, höchstens 60. Gehören zum Formular (erst „Übernehmen“
+   schreibt sie), wie die Liefertage. Die Pause dagegen ist ein Handgriff im Betrieb und gilt sofort (lfPauseSetzen). */
+let LFZU = [];
+const LF_ZU_MAX = 60;
+function lfTag(d){ return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function lfZuSauber(l){
+  const heute = lfTag(new Date());
+  return [...new Set((Array.isArray(l) ? l : []).filter(x => typeof x === "string" && /^\d{4}-\d{2}-\d{2}$/.test(x) && !isNaN(Date.parse(x)) && x >= heute))].sort().slice(0, LF_ZU_MAX);
+}
+function lfZuZeichnen(){
+  const el = $("#lfZuListe"); if(!el) return;
+  el.innerHTML = LFZU.length ? LFZU.map(t => { const d = new Date(t + "T12:00:00");
+    const txt = d.toLocaleDateString("de-DE", {weekday:"short", day:"2-digit", month:"2-digit", year:"numeric"});
+    return '<button type="button" class="tagknopf" role="listitem" data-lf-zu-weg="' + t + '" aria-label="' + sicher(txt) + ' entfernen">' + sicher(txt) + ' ✕</button>'; }).join("")
+    : '<span class="feldhilfe">Kein geschlossener Tag eingetragen.</span>';
+}
 
 function lfFuellen(){
   const b = meineBetriebe.find(x => x.id === betriebId);
@@ -19400,6 +19469,8 @@ function lfFuellen(){
 
   LFTAGE = Array.isArray(z.tage) ? z.tage.map(Number).filter(n => n >= 1 && n <= 7) : [];
   lfTageZeichnen();
+  LFZU = lfZuSauber(l.zu); lfZuZeichnen();
+  lfPauseZeichnen(); lfTestRechnen();
 }
 
 function lfTageZeichnen(){
@@ -19444,6 +19515,8 @@ async function lfSichern(){
   });
   if(von && bis) neu.zeiten = { von: von, bis: bis, tage: LFTAGE.slice().sort() };
   else if(LFTAGE.length) neu.zeiten = { tage: LFTAGE.slice().sort() };
+  LFZU = lfZuSauber(LFZU);
+  if(LFZU.length) neu.zu = LFZU.slice();
 
   const knopf = $("#lfSichern");
   knopf.disabled = true; knopf.textContent = "Wird übernommen …";
@@ -19469,6 +19542,100 @@ async function lfSichern(){
       : "Nicht gespeichert, bitte Verbindung prüfen.";
   }
   knopf.disabled = false; knopf.textContent = "Übernehmen";
+}
+
+/* ── Kurz pausieren (C2): liest betriebe.liefer FRISCH (§8.1m — ein zweites Gerät kann inzwischen etwas geändert haben),
+   setzt oder entfernt NUR pause_bis und schreibt mit .select("id"): 0 Zeilen heißt „kein Recht“, nicht „gespeichert“ (§2.3b).
+   Höchstens 6 Stunden voraus — weiter liest der Hub als Fehlwert und liefert (§7). */
+const LF_PAUSE_MIN = 30, LF_PAUSE_MAX_MS = 6 * 3600e3 - 60e3;
+function lfPauseBis(){ const b = meineBetriebe.find(x => x.id === betriebId); const l = b && b.liefer && typeof b.liefer === "object" ? b.liefer : {};
+  const pb = typeof l.pause_bis === "string" ? Date.parse(l.pause_bis) : NaN; return isFinite(pb) && pb > Date.now() ? pb : 0; }
+function lfUhr(ms){ const d = new Date(ms); return String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0"); }
+function lfPauseZeichnen(){
+  const st = $("#lfPauseStand"); if(!st) return;
+  const b = meineBetriebe.find(x => x.id === betriebId); const l = b && b.liefer && typeof b.liefer === "object" ? b.liefer : {};
+  const pb = lfPauseBis();
+  st.textContent = pb ? "Pausiert bis " + lfUhr(pb) + " Uhr — Gäste lesen „Wir liefern wieder ab " + lfUhr(pb) + " Uhr.“"
+    : l.an === true ? "Die Lieferung läuft." : "Die Lieferung ist aus — pausieren lässt sie sich erst, wenn sie an ist.";
+  const k = $("#lfPause30"), e = $("#lfPauseEnde");
+  k.textContent = pb ? "30 Min verlängern" : "30 Min pausieren";
+  k.disabled = l.an !== true; e.hidden = !pb;
+}
+async function lfPauseSetzen(an){
+  if(demo || !db){ melde("Im Vorführmodus wird nichts gespeichert."); return; }
+  const k1 = $("#lfPause30"), k2 = $("#lfPauseEnde"); k1.disabled = k2.disabled = true;
+  try{
+    const {data:f, error:e1} = await db.from("betriebe").select("liefer").eq("id", betriebId).maybeSingle();
+    if(e1) throw e1;
+    const frisch = f && f.liefer && typeof f.liefer === "object" && !Array.isArray(f.liefer) ? f.liefer : {};
+    const neu = Object.assign({}, frisch);
+    if(an){
+      const alt = typeof frisch.pause_bis === "string" ? Date.parse(frisch.pause_bis) : NaN;
+      const ab = isFinite(alt) && alt > Date.now() ? alt : Date.now();
+      neu.pause_bis = new Date(Math.min(ab + LF_PAUSE_MIN * 60e3, Date.now() + LF_PAUSE_MAX_MS)).toISOString();
+    }else delete neu.pause_bis;
+    const {data, error} = await db.from("betriebe").update({ liefer: neu }).eq("id", betriebId).select("id");
+    if(error) throw error;
+    if(!data || !data.length){ melde("Nur der Besitzer kann das ändern.", true); return; }
+    const b = meineBetriebe.find(x => x.id === betriebId); if(b) b.liefer = neu;
+    melde(an ? "Lieferung pausiert bis " + lfUhr(Date.parse(neu.pause_bis)) + " Uhr." : "Pause beendet — es wird wieder geliefert.");
+  }catch(err){ melde("Nicht gespeichert, bitte Verbindung prüfen.", true); }
+  finally{ k2.disabled = false; lfPauseZeichnen(); }
+}
+
+/* ── Liefergebiet prüfen (C2): rechnet aus den FELDERN (auch Ungespeichertes), mit derselben Regel wie lieferGebuehrFuer()
+   im Hub: frei ab gratis_ab (0 = nie), sonst die Gebühr; unter dem Mindestwert bestellt niemand. Kein Netz, nichts gespeichert.
+   Ersatz für „Liefergebühr je Postleitzahl“ aus dem Plan: die Gebühr rechnet der SERVER — eine Gebühr je PLZ im Hub zeigte dem
+   Gast bis zu einer Migration einen anderen Preis, als er bezahlt. */
+function lfEuro(v){ return v.toLocaleString("de-DE", {minimumFractionDigits:2, maximumFractionDigits:2}) + " €"; }
+function lfTestRechnen(){
+  const raus = $("#lfTestErgebnis"); if(!raus) return;
+  const plz = String(($("#lfTestPlz") || {}).value || "").trim();
+  if(!plz){ raus.textContent = "Postleitzahl eintippen, um zu sehen, was ein Gast dort sieht."; return; }
+  if(!/^\d{4,5}$/.test(plz)){ raus.textContent = "Eine Postleitzahl hat vier oder fünf Ziffern."; return; }
+  const zahl = id => { const v = parseFloat(String(($("#" + id) || {}).value || "").replace(",", ".")); return isFinite(v) && v > 0 ? v : 0; };
+  const gebiet = String($("#lfPlz").value).split(",").map(x => x.trim()).filter(x => /^\d{4,5}$/.test(x));
+  const an = $("#lfAn").getAttribute("aria-pressed") === "true";
+  if(!an){ raus.textContent = "Die Lieferung ist ausgeschaltet — kein Gast sieht sie."; return; }
+  if(!gebiet.includes(plz)){ raus.textContent = "Nach " + plz + " liefern Sie nicht. Der Gast erfährt es, sobald er die Postleitzahl eintippt."; return; }
+  const wert = zahl("lfTestWert"), mindest = zahl("lfMindest"), gebuehr = zahl("lfGebuehr"), gratis = zahl("lfGratis");
+  if(!wert){ raus.textContent = "Nach " + plz + " liefern Sie" + (mindest ? " ab " + lfEuro(mindest) + " Warenwert" : "") + ". Warenwert eintippen, um die Gebühr zu sehen."; return; }
+  if(mindest && wert < mindest){ raus.textContent = "Bei " + lfEuro(wert) + " kann der Gast nicht bestellen — es fehlen " + lfEuro(mindest - wert) + " bis zum Mindestbestellwert."; return; }
+  const g = gratis > 0 && wert >= gratis ? 0 : gebuehr;
+  raus.textContent = "Liefert nach " + plz + ": " + (g ? "Liefergebühr " + lfEuro(g) + ", zusammen " + lfEuro(wert + g) : "ohne Liefergebühr, zusammen " + lfEuro(wert)) +
+    (gratis > 0 && wert < gratis ? " · ab " + lfEuro(gratis) + " kostenlos" : "") + ".";
+}
+
+/* ── Bestellstand (C2): drei Wahlen in hub_stil, je ein Tipp. Frisch gelesen und zusammengeführt (Nachbarn wie restzeit,
+   emoji bleiben), 0 Zeilen = „kein Recht“. Die Sätze stehen hier nur für die Vorschau — der Hub hat sie in VERZUG_SAETZE mit
+   allen Übersetzungen (pruef-c2-bestellen.js hält beide gegeneinander). */
+const VZ_SAETZE = {
+  geduld: "Es dauert einen Moment länger — danke für Ihre Geduld.",
+  viel:   "Gerade ist viel los. Ihre Bestellung kommt gleich.",
+  frisch: "Wir bereiten alles frisch zu — gleich ist es so weit."
+};
+function vzStil(){ const bb = meineBetriebe.find(x => x.id === betriebId); return bb && bb.hub_stil && typeof bb.hub_stil === "object" ? bb.hub_stil : {}; }
+function vzZeichnen(){
+  const st = vzStil(), w = typeof st.verzug === "string" && Object.prototype.hasOwnProperty.call(VZ_SAETZE, st.verzug) ? st.verzug : "";
+  $$("#vzWahl [data-vz]").forEach(k => k.setAttribute("aria-checked", String(k.dataset.vz === w)));
+  const v = $("#vzVorschau"); if(v) v.textContent = w ? "Der Gast liest: „Jeden Moment — " + VZ_SAETZE[w] + "“" : "Der Gast liest nur „Jeden Moment“.";
+  const a = $("#vzVib"), g = $("#vzGross"); if(a) a.checked = st.vibration === true; if(g) g.checked = st.nummerGross === true;
+}
+async function vzSetzen(teil, text){
+  if(demo || !db){ melde("Im Vorführmodus wird nichts gespeichert."); vzZeichnen(); return; }
+  try{
+    const {data:f, error:e1} = await db.from("betriebe").select("hub_stil").eq("id", betriebId).maybeSingle();
+    if(e1) throw e1;
+    const frisch = f && f.hub_stil && typeof f.hub_stil === "object" && !Array.isArray(f.hub_stil) ? f.hub_stil : {};
+    const neu = Object.assign({}, frisch, teil);
+    Object.keys(teil).forEach(k => { if(teil[k] === null) delete neu[k]; });
+    const {data, error} = await db.from("betriebe").update({ hub_stil: neu }).eq("id", betriebId).select("id");
+    if(error) throw error;
+    if(!data || !data.length){ melde("Nur der Besitzer kann das ändern.", true); vzZeichnen(); return; }
+    const bb = meineBetriebe.find(x => x.id === betriebId); if(bb) bb.hub_stil = neu;
+    melde(text);
+  }catch(err){ melde(/hub_stil/.test(String(err && err.message)) ? "Diese Wahl braucht noch migration-hub-stil.sql in der Datenbank." : "Nicht gespeichert, bitte Verbindung prüfen", true); }
+  vzZeichnen();
 }
 
 async function hubTexteSichern(){
@@ -22973,6 +23140,33 @@ if($("#lfSichern")){
     if(i > -1) LFTAGE.splice(i, 1); else LFTAGE.push(tag);
     lfTageZeichnen();
   });
+
+  $("#lfPause30").addEventListener("click", () => lfPauseSetzen(true));
+  $("#lfPauseEnde").addEventListener("click", () => lfPauseSetzen(false));
+  setInterval(() => { if(document.visibilityState === "visible") lfPauseZeichnen(); }, 30000);
+  $("#lfZuDazu").addEventListener("click", () => {
+    const w = $("#lfZuTag").value;
+    if(!/^\d{4}-\d{2}-\d{2}$/.test(w)){ melde("Bitte zuerst einen Tag wählen.", true); return; }
+    if(w < lfTag(new Date())){ melde("Dieser Tag ist schon vorbei.", true); return; }
+    if(LFZU.includes(w)){ melde("Dieser Tag steht schon in der Liste."); return; }
+    if(LFZU.length >= LF_ZU_MAX){ melde("Höchstens " + LF_ZU_MAX + " Tage.", true); return; }
+    LFZU = lfZuSauber(LFZU.concat([w])); lfZuZeichnen(); $("#lfZuTag").value = "";
+    melde("Eingetragen — gilt nach „Übernehmen“.");
+  });
+  $("#lfZuListe").addEventListener("click", e => {
+    const k = e.target.closest("[data-lf-zu-weg]"); if(!k) return;
+    LFZU = LFZU.filter(x => x !== k.dataset.lfZuWeg); lfZuZeichnen();
+    const n = $("#lfZuListe [data-lf-zu-weg]") || $("#lfZuTag"); if(n) n.focus();
+  });
+  ["lfTestPlz", "lfTestWert", "lfPlz", "lfMindest", "lfGebuehr", "lfGratis"].forEach(id => $("#" + id).addEventListener("input", lfTestRechnen));
+  $("#lfAn").addEventListener("click", () => setTimeout(lfTestRechnen, 0));
+  lfTestRechnen();
+}
+if($("#vzWahl")){
+  $("#vzWahl").addEventListener("click", e => { const k = e.target.closest("[data-vz]"); if(!k) return;
+    const w = k.dataset.vz; vzSetzen({ verzug: w || null }, w ? "Gäste lesen den Satz, wenn die Zeit um ist." : "Kein eigener Satz mehr."); });
+  $("#vzVib").addEventListener("change", e => vzSetzen({ vibration: e.target.checked ? true : null }, e.target.checked ? "Das Telefon des Gastes vibriert, wenn es fertig ist." : "Keine Vibration mehr."));
+  $("#vzGross").addEventListener("change", e => vzSetzen({ nummerGross: e.target.checked ? true : null }, e.target.checked ? "Die Bestellnummer steht jetzt groß da." : "Die Bestellnummer steht wieder normal da."));
 }
 
 if($("#runnerAuf")){
