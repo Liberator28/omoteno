@@ -1438,6 +1438,37 @@ body[data-rolle="team"] .aw-nur-inhaber{display:none !important}
 .sp-detailkopf{display:flex;align-items:center;gap:10px;margin-bottom:12px;flex-wrap:wrap}
 .sp-detailkopf h3{margin:0;flex:1;min-width:140px;font-size:18px}
 .sp-pm:disabled{opacity:.35}
+/* Belegung (01.11.): Schild im Plan und Blatt des gewählten Tisches. Schrift auf festen Flächen: gerechnet ≥ 4,5:1. */
+.sp-bel{pointer-events:none}
+.sp-bel rect{fill:#10151C;stroke:#fff;stroke-width:1.5}
+.sp-bel text{font:700 11px/1 system-ui,-apple-system,sans-serif;fill:#fff}
+.sp-bel[data-bel="zahlt"] rect{fill:#F2C14E;stroke:#10151C}.sp-bel[data-bel="zahlt"] text{fill:#10151C}
+.sp-bel[data-bel="still"] rect{fill:#4A5361}
+.sp-bel[data-bel="frei"] rect{fill:#E8EBF2;stroke:#10151C}.sp-bel[data-bel="frei"] text{fill:#10151C}
+.sp-bel-blatt{display:flex;flex-direction:column;gap:8px;margin:0 0 14px;padding:12px;border-radius:14px;border:1px solid var(--linie);background:var(--flaeche-2)}
+.sp-bel-zeile{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.sp-bel-titel{font-weight:700;font-size:15px}
+.sp-bel-pm{display:inline-flex;align-items:center;gap:10px}
+.sp-bel-zahl{min-width:32px;text-align:center;font-size:22px;font-weight:800;font-variant-numeric:tabular-nums}
+.sp-bel-plaetze,.sp-bel-info{color:var(--gedaempft);font-size:13.5px}
+.sp-bel-info,.sp-bel-summe,.sp-bel-satz{margin:0}
+.sp-bel-summe{font-weight:600;font-size:14.5px}
+.sp-bel-knoepfe{display:flex;gap:8px;flex-wrap:wrap}
+.sp-bel-knoepfe .knopf{min-height:44px}
+.sp-bel-knoepfe .knopf[aria-pressed="true"]{background:var(--messing);border-color:var(--messing);color:var(--nacht)}
+.sp-bel-satz{padding:10px 12px;border-radius:10px;border:1px solid var(--warn);color:var(--kreide);font-size:14px}
+.sp-bel-gesamt{margin:0 0 10px;font-size:14px;font-weight:600}
+.sp-as{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px;width:100%;margin-top:4px}
+.sp-as .sp-feld{margin:0}
+@media (max-width:520px){.sp-as{grid-template-columns:1fr 1fr}.sp-as .sp-feld:last-child{grid-column:1 / -1}}
+.sp-as-knoepfe{display:flex;gap:8px;flex-wrap:wrap}
+.sp-as-knoepfe .knopf{min-height:44px}
+.sp-as-satz{margin:0;color:var(--warn);font-size:14px}
+.sp-ruhig{display:flex;flex-direction:column;gap:6px;margin-top:12px}
+.sp-tr{display:flex;flex-direction:column;align-items:flex-start;gap:2px;width:100%;min-height:52px;padding:8px 14px;border-radius:14px;border:1px solid var(--linie);border-left:4px solid #8FA3B8;
+  background:var(--flaeche);color:var(--kreide);font:inherit;text-align:left;cursor:pointer}
+.sp-tr.gewaehlt{background:var(--flaeche-2)}
+.sp-tr b{font-size:15px}.sp-tr span{font-size:13px;color:var(--gedaempft)}
 .sp-text{width:100%;min-height:44px;padding:0 12px;border-radius:10px;border:1px solid var(--linie);background:var(--flaeche-2);color:var(--kreide);-webkit-text-fill-color:var(--kreide);font:inherit;font-size:16px}
 .sp-zeile-edit{display:flex;gap:8px;align-items:center}
 .sp-feld{display:flex;flex-direction:column;gap:4px;font-size:13px;color:var(--gedaempft)}
@@ -4384,6 +4415,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </div>
         <section class="sp-block" id="spListeBlock" aria-label="Tische mit Bedarf">
           <h3 class="sp-h">Am Tisch · jetzt</h3>
+          <p class="sp-bel-gesamt" id="spGesamt" hidden></p>
           <div id="spListe" class="sp-liste" aria-live="polite"></div>
         </section>
         <section class="sp-block" id="resBlock" aria-label="Reservierungen">
@@ -4432,6 +4464,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
             <button type="button" class="chip" id="spErledigt" aria-pressed="false"><span class="kasten"></span>Erledigte zeigen</button>
             <button type="button" class="sp-pm" id="spDetailZu" aria-label="Auswahl aufheben">✕</button>
           </div>
+          <div class="sp-bel-blatt" id="spBeleg" aria-label="Gäste an diesem Tisch" hidden></div>
           <div id="spKartenOrt"></div>
         </section>
       </div>
@@ -12937,7 +12970,9 @@ const SAAL = {
   zone: null,                /* gezeigter Bereich */
   einst: null, einstFehlt: false, konfig: null, konfigEntwurf: null,
   edit: false, editTab: "tische", entwurf: null, gewaehlt: null,
-  sig: "", gross: false, hebt: null, liste: "alle", stand: null, restIds: [], liefIds: []
+  sig: "", gross: false, hebt: null, liste: "alle", stand: null, restIds: [], liefIds: [],
+  /* Belegung (01.11.): normierte Tischnummer → { personen, stand, seit, geaendert_um } bzw. { letzte, offen } */
+  beleg: new Map(), anw: new Map(), belegFehlt: false, anwFehlt: false, belegSatz: "", belegNr: new Map()
 };
 const SAAL_U = 24;                             /* Bildpunkte je METER (Welt = Meter, seit 25.10.) */
 const SAAL_M = 0.125;                          /* Tischzeichnung: eine Zeicheneinheit der Tische = 0,125 m */
@@ -13092,12 +13127,13 @@ function saalStand(){
   return { tische, rest, lief };
 }
 function saalBeschreibung(tisch, st){
-  if(!st || !st.haupt) return "Tisch " + tisch.nummer + ": frei";
+  const bel = saalBelegSatzText(saalBelegung(tisch));
+  if(!st || !st.haupt) return "Tisch " + tisch.nummer + ": " + (bel || "frei");
   const teile = st.liste.map(a => {
     const x = st.arten[a];
     return SAAL_ART[a].name + (x.n > 1 ? " ×" + x.n : "") + (a === "sitzt" ? "" : (x.min < 1 ? " gerade eben" : " seit " + x.min + " Min"));
   });
-  return "Tisch " + tisch.nummer + ": " + teile.join(", ");
+  return "Tisch " + tisch.nummer + ": " + teile.join(", ") + (bel ? "; " + bel : "");
 }
 
 /* Für die Liste darunter (gefiltert() fragt hier): nur solange sie in dieses Blatt gezogen ist. */
@@ -13215,15 +13251,20 @@ function saalTischSVG(roh, st, gewaehlt, ort){
       '<path d="' + art.zeichen + '" transform="translate(-9.5 -9.5) scale(.8)" fill="none" stroke="' + glyph + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' +
       (st.arten[st.haupt].n > 1 ? '<text x="13" y="-9" class="sp-zahl">' + st.arten[st.haupt].n + '</text>' : "") +
       '</g></g>' : "";
-  const beschr = saalBeschreibung(t, st);
+  const beschr = saalBeschreibung(roh, st);
   const kurz = String(t.nummer).length > 6 ? String(t.nummer).slice(0, 5) + "…" : String(t.nummer);
+  /* Belegung (01.11.): ein Schild unter der Nummer — 3/4, zahlt, still, frei. Fängt keinen Tipp. */
+  const sch = SAAL.edit ? null : saalBelegSchild(saalBelegung(roh));
+  const schild = sch ? '<g transform="translate(' + mitte[0].toFixed(1) + ' ' + mitte[1].toFixed(1) + ')"><g class="sp-skala"><g class="sp-bel" data-bel="' + sch.art + '">' +
+      '<rect x="' + (-(sch.text.length * 3.6 + 8)).toFixed(1) + '" y="11" width="' + (sch.text.length * 7.2 + 16).toFixed(1) + '" height="18" rx="9"/>' +
+      '<text x="0" y="20" text-anchor="middle" dominant-baseline="central">' + sicher(sch.text) + '</text></g></g></g>' : "";
   return '<g class="sp-tisch' + (gewaehlt ? " gewaehlt" : "") + (ort.fern ? " fern" : "") + '" data-zone="' + sicher(ort.zone) + '" transform="translate(' + platz[0].toFixed(1) + ' ' + platz[1].toFixed(1) +
       ') scale(' + SAAL_M + ')" style="--ts:' + (1 / SAAL_M) + '" data-sp-tisch="' + sicher(t.id) + '" data-st="' + (st ? st.liste.join(" ") : "") + '"' +
       ' role="button" tabindex="0" aria-label="' + sicher(beschr) + '" aria-pressed="' + (!!gewaehlt) + '">' +
     gl + ring +
     '<g class="sp-koerper">' + ebene(hinten) + ebene(fuss) + ebene(platte) + topFlaeche + tint + ebene(vorn) + '</g>' +
     '<g transform="translate(' + mitte[0].toFixed(1) + ' ' + mitte[1].toFixed(1) + ')"><g class="sp-skala"><text class="sp-nr" text-anchor="middle" dominant-baseline="central">' + sicher(kurz) + '</text></g></g>' +
-    abzeichen +
+    abzeichen + schild +
     '<g transform="translate(' + mitte[0].toFixed(1) + ' ' + mitte[1].toFixed(1) + ')"><g class="sp-skala"><circle class="sp-treffer" r="24" fill="transparent"/></g></g>' +
     '</g>';
 }
@@ -13488,7 +13529,7 @@ function saalSignatur(stand){
     SAAL.tische.map(t => t.id + ":" + t.x + ":" + t.y + ":" + t.form + ":" + t.plaetze + ":" + t.aktiv + ":" + t.zone).join("|"),
     SAAL.edit && SAAL.entwurf ? [...SAAL.entwurf].map(([k, v]) => k + v.x + v.y + v.form + v.plaetze + v.zone).join("|") : "",
     [...stand.tische].map(([k, v]) => k + ":" + v.haupt + ":" + v.stufe + ":" + v.liste.map(a => a + v.arten[a].n).join(",")).join("|"),
-    stand.lief.n + ":" + stand.lief.min + ":" + (saalAutoDa() ? 1 : 0)].join("#");
+    stand.lief.n + ":" + stand.lief.min + ":" + (saalAutoDa() ? 1 : 0), saalBelegSig()].join("#");
 }
 function saalSichtbar(){ const s = $("#t-reservierungen"); return !!s && !s.hidden; }
 function saalZeichnen(){
@@ -13508,10 +13549,22 @@ function saalZeichnen(){
   buehne.hidden = !SAAL.an; $("#spLeiste").hidden = !SAAL.an; $("#spZeile").hidden = !SAAL.an;
   leer.hidden = SAAL.an;
   if(!SAAL.an){
-    leer.innerHTML = !hatTische
+    /* Assistent (01.11.): Maße eingeben → Raum in 1×1-m-Feldern, Tische im Raster verteilt, danach im Editor ziehen.
+       Nur neu schreiben, wenn sich etwas ändert — sonst verlöre ein Feld beim nächsten Neuzeichnen, was getippt wurde. */
+    const n = SAAL.tische.filter(t => t.aktiv).length;
+    const html = !hatTische
       ? '<b>Noch keine Tische angelegt</b><span>Omoteno legt sie mit den Untersetzer-Codes an. Danach stellst du sie hier auf.</span>'
-      : '<b>Der Saal ist noch leer</b><span>' + (istInhaberRolle() ? 'Zeichne deine Tische ein — das dauert ein paar Minuten.' : 'Der Besitzer richtet den Saalplan noch ein.') + '</span>' +
-        (istInhaberRolle() && !SAAL.fehlt ? '<button type="button" class="knopf" data-sp-wz="einrichten">Saal einrichten</button>' : "");
+      : '<b>Der Saal ist noch leer</b><span>' + (istInhaberRolle() ? 'Geben Sie die Maße Ihres Gastraums ein: Er wird in 1×1-m-Feldern angelegt und Ihre ' + n + ' Tische werden darin verteilt. Danach ziehen Sie jeden an seinen Platz und speichern.' : 'Der Besitzer richtet den Saalplan noch ein.') + '</span>' +
+        (istInhaberRolle() && !SAAL.fehlt ?
+          '<div class="sp-as">' +
+            '<label class="sp-feld" for="spAsB">Breite in Metern<input class="sp-text" id="spAsB" inputmode="decimal" autocomplete="off" value="12"></label>' +
+            '<label class="sp-feld" for="spAsT">Tiefe in Metern<input class="sp-text" id="spAsT" inputmode="decimal" autocomplete="off" value="8"></label>' +
+            '<label class="sp-feld" for="spAsP">Plätze je Tisch<select class="sp-text" id="spAsP"><option value="2">2</option><option value="4" selected>4</option><option value="6">6</option></select></label>' +
+          '</div>' +
+          '<div class="sp-as-knoepfe"><button type="button" class="knopf" data-sp-wz="assistent">Raum anlegen und Tische verteilen</button>' +
+          '<button type="button" class="knopf leise" data-sp-wz="einrichten">Ohne Maße einrichten</button></div>' +
+          '<p class="sp-as-satz" id="spAsSatz" role="status" hidden></p>' : "");
+    if(leer.dataset.sig !== html){ leer.innerHTML = html; leer.dataset.sig = html; }
   }else{
     const sig = saalSignatur(stand);
     if(sig !== SAAL.sig || !$("#spKamera")){
@@ -13602,14 +13655,226 @@ function saalListe(stand){
     const was = st.liste.filter(x => x !== "sitzt").map(x => SAAL_ART[x].name + (st.arten[x].n > 1 ? " ×" + st.arten[x].n : "")).join(" · ");
     return '<button type="button" class="sp-tz' + (SAAL.auswahl === saalNk(t.nummer) ? " gewaehlt" : "") + '" data-sp-listetisch="' + sicher(t.id) + '" style="--c:' + farbe + ';--g:' + saalGlyph(farbe) + '">' +
       '<span class="sp-tzzeichen" aria-hidden="true"><svg viewBox="0 0 24 24" width="22" height="22"><path d="' + SAAL_ART[st.haupt].zeichen + '" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>' +
-      '<span class="sp-tztext"><b>Tisch ' + sicher(t.nummer) + '</b><span>' + sicher(was) + '</span></span>' +
+      '<span class="sp-tztext"><b>Tisch ' + sicher(t.nummer) + saalBelegKurz(t) + '</b><span>' + sicher(was) + '</span></span>' +
       '<span class="sp-tzrechts"><i class="sp-meter" data-s="' + st.stufe + '" aria-label="Stufe ' + st.stufe + ' von 3"><u></u><u></u><u></u></i>' +
       '<span>' + (a.min < 1 ? "gerade eben" : a.min + " Min") + '</span>' +
       (zonen.length > 1 ? '<em>' + sicher(saalTischZone(t)) + '</em>' : "") + '</span></button>';
   }).join("") : '<p class="sp-leerzeile">Gerade braucht kein Tisch etwas.</p>';
-  if(el.dataset.sig !== html){ el.innerHTML = html; el.dataset.sig = html; }
+  /* Belegung (01.11.): Gesamtzeile und eingetragene Tische ohne Bedarf — nur, wenn jemand etwas eingetragen hat
+     (sonst bleibt die Liste, wie sie war). */
+  const platziert = SAAL.tische.filter(t => t.aktiv && t.x != null), bel = platziert.map(t => ({ t, b: saalBelegung(t) }));
+  const eingetragen = bel.filter(x => x.b.quelle === "eingetragen");
+  let kopf = "", ruhig = "";
+  if(eingetragen.length){
+    const gaeste = bel.reduce((n, x) => n + (x.b.art && x.b.art !== "frei" && x.b.personen ? x.b.personen : 0), 0);
+    const frei = bel.reduce((n, x) => n + (!x.b.art || x.b.art === "frei" ? (x.t.plaetze || 0) : 0), 0);
+    kopf = gaeste + (gaeste === 1 ? " Gast" : " Gäste") + " im Haus · " + frei + " freie Plätze";
+    const bedarf = new Set(zeilen.map(z => z.t.id));
+    const ohne = eingetragen.filter(x => x.b.art !== "frei" && !bedarf.has(x.t.id))
+      .sort((a, b) => String(a.t.nummer).localeCompare(String(b.t.nummer), "de", { numeric: true }));
+    ruhig = ohne.map(({ t, b }) => {
+      const neben = [b.art === "zahlt" ? "zahlt gerade" : "alles gut", b.still != null && b.still >= SAAL_STILL_AB ? "still seit " + b.still + " Min" : ""].filter(Boolean).join(" · ");
+      return '<button type="button" class="sp-tr' + (SAAL.auswahl === saalNk(t.nummer) ? " gewaehlt" : "") + '" data-sp-listetisch="' + sicher(t.id) + '">' +
+        '<b>Tisch ' + sicher(t.nummer) + saalBelegKurz(t) + '</b><span>' + sicher(neben) + '</span></button>';
+    }).join("");
+    if(ruhig) ruhig = '<div class="sp-ruhig" aria-label="Besetzt, ohne offenen Bedarf"><h4 class="sp-h">Besetzt · alles gut</h4>' + ruhig + '</div>';
+  }
+  const g = $("#spGesamt");
+  if(g){ g.hidden = !kopf; if(g.textContent !== kopf) g.textContent = kopf; }
+  const htmlGanz = html + ruhig;
+  if(el.dataset.sig !== htmlGanz){ el.innerHTML = htmlGanz; el.dataset.sig = htmlGanz; }
   const z = $("#spListeZahl"); if(z){ z.textContent = zeilen.length; z.hidden = !zeilen.length; }
 }
+
+/* ── Belegung (Wunsch 01.11.: „wie viele Leute dort sitzen … und ob ein Gast noch da ist“) ───────────
+   Drei Quellen, in dieser Rangfolge:
+   1. tisch_belegung — was der Service einträgt (Personen, da / zahlt / frei). Das ist Wissen.
+   2. saal_anwesenheit — letzte Aktivität der Tischsitzung (Scan, Bestellung) und ob sie noch gilt. Ein
+      Hinweis, KEINE Gerätezahl: live gibt es eine Sitzung je Tisch, nicht je Gerät.
+   3. die Bestellungen (der alte Hinweis „Gäste da“).
+   Fehlt die Migration, zeichnet der Plan wie vorher (§7) und „− / +“ sagt, welche Datei fehlt (§8.1h).
+   Im Plan steht nur der ZUSTAND (3/4, zahlt, still, frei) — Minuten stehen in Liste und Blatt, sonst wäre
+   jede Minute ein Neuaufbau des Plans fällig (§4.2). */
+const SAAL_STILL_AB = 20;
+const SAAL_BELEG_MIG = "migration-tisch-belegung.sql";
+const SAAL_BELEG_MAX = 40;
+function saalTischBestellungen(nk, ab){
+  return bestellungen.filter(b => b && b.quelle !== "service" && b.status !== "storniert" && b.status !== "abgelehnt" &&
+    saalNk(b.tisch) === nk && (!ab || (Date.parse(b.zeitpunkt) || 0) >= ab));
+}
+function saalBelegung(t){
+  const nk = saalNk(t.nummer), bl = SAAL.beleg.get(nk), an = SAAL.anw.get(nk);
+  const st = SAAL.stand && SAAL.stand.tische.get(nk);
+  const lb = saalTischBestellungen(nk).reduce((m, b) => Math.max(m, Date.parse(b.zeitpunkt) || 0), 0);
+  const geaendert = bl ? (Date.parse(bl.geaendert_um) || 0) : 0;
+  const zeiten = [lb, an ? Date.parse(an.letzte) || 0 : 0, geaendert].filter(x => x > 0);
+  const letzte = zeiten.length ? Math.max(...zeiten) : 0;
+  let art = null, personen = null, seit = null, quelle = null;
+  /* „frei“ gilt, bis danach etwas Neues kommt: eine spätere Bestellung heißt, dort sitzt wieder jemand. */
+  if(bl && !(bl.stand === "frei" && (lb > geaendert || (an && (Date.parse(an.letzte) || 0) > geaendert)))){
+    art = bl.stand; quelle = "eingetragen";
+    if(bl.stand !== "frei"){ personen = bl.personen; seit = bl.seit; }
+  }else if(an && an.offen){ art = "da"; quelle = "sitzung"; }
+  else if(st && st.haupt){ art = "da"; quelle = "bestellung"; }
+  const still = art && art !== "frei" && letzte ? Math.max(0, Math.floor((Date.now() - letzte) / 60000)) : null;
+  const ab = seit ? Date.parse(seit) : (bl && bl.stand === "frei" ? geaendert : Date.now() - 6 * 3600000);
+  const offen = art && art !== "frei" ? saalTischBestellungen(nk, ab) : [];
+  return { nk, art, personen, seit, quelle, still, letzte, plaetze: t.plaetze || null, offen };
+}
+/* Was am Tisch im Plan steht: nur der Zustand, keine laufenden Minuten. */
+function saalBelegSchild(b){
+  if(!b || !b.art) return null;
+  if(b.art === "frei") return { text: "frei", art: "frei" };
+  /* Nur aus den Bestellungen vermutet: Das Zeichen des Tisches sagt schon „da“ — ein Schild nur, wenn es still ist. */
+  if(b.quelle === "bestellung") return b.still != null && b.still >= SAAL_STILL_AB ? { text: "still", art: "still" } : null;
+  const zahl = b.personen != null && b.personen > 0 ? b.personen + (b.plaetze ? "/" + b.plaetze : "") : null;
+  const still = b.still != null && b.still >= SAAL_STILL_AB;
+  const teile = [zahl || (b.quelle === "eingetragen" ? "0" + (b.plaetze ? "/" + b.plaetze : "") : "da")];
+  if(b.art === "zahlt") teile.push("zahlt");
+  else if(still) teile.push("still");
+  return { text: teile.join(" · "), art: b.art === "zahlt" ? "zahlt" : still ? "still" : "da" };
+}
+function saalBelegKurz(t){
+  const b = saalBelegung(t);
+  return b.quelle === "eingetragen" && b.art !== "frei" && b.personen ? " · " + b.personen + (b.personen === 1 ? " Person" : " Personen") : "";
+}
+function saalBelegSig(){
+  return SAAL.tische.filter(t => t.aktiv && t.x != null).map(t => { const sch = saalBelegSchild(saalBelegung(t)); return sch ? saalNk(t.nummer) + "=" + sch.text : ""; }).join("|");
+}
+function saalBelegSatzText(b){
+  const teile = [];
+  if(b.quelle === "eingetragen" && b.art !== "frei") teile.push(b.personen === 1 ? "1 Person" : b.personen + " Personen");
+  if(b.art === "zahlt") teile.push("zahlt gerade");
+  if(b.art === "frei") teile.push("als frei eingetragen");
+  if(b.still != null && b.still >= SAAL_STILL_AB) teile.push("still seit " + b.still + " Min");
+  return teile.join(", ");
+}
+async function saalBelegLaden(id){
+  if(demo || !db){
+    if(SAAL.beleg.size || SAAL.anw.size) return;
+    const vor = m => new Date(Date.now() - m * 60000).toISOString();
+    SAAL.beleg = new Map([["1", { personen: 3, stand: "da", seit: vor(42), geaendert_um: vor(42) }],
+                          ["4", { personen: 5, stand: "zahlt", seit: vor(95), geaendert_um: vor(4) }],
+                          ["6", { personen: 2, stand: "da", seit: vor(70), geaendert_um: vor(70) }],
+                          ["7", { personen: 0, stand: "frei", seit: vor(15), geaendert_um: vor(15) }]]);
+    SAAL.anw = new Map([["2", { letzte: vor(3), offen: true }], ["6", { letzte: vor(31), offen: true }]]);
+    return;
+  }
+  /* Fail-open (§7): was nicht antwortet oder fehlt, gilt als „nicht eingespielt“ — der Plan bleibt wie vorher. */
+  const versuch = async f => { try{ return await f(); }catch(e){ return { error: e || { message: "fehlt" } }; } };
+  const [b, a] = await Promise.all([
+    versuch(() => db.from("tisch_belegung").select("tisch_nummer,personen,stand,seit,geaendert_um").eq("betrieb_id", id).order("tisch_nummer")),
+    versuch(() => db.rpc("saal_anwesenheit", { p_betrieb: id }))
+  ]);
+  if(id !== betriebId) return;
+  if(b.error) SAAL.belegFehlt = true;
+  else{
+    SAAL.belegFehlt = false;
+    const neu = new Map();
+    (b.data || []).forEach(z => {
+      if(!z || typeof z.tisch_nummer !== "string") return;
+      const p = Number(z.personen);
+      if(!["da", "zahlt", "frei"].includes(z.stand) || !Number.isInteger(p) || p < 0 || p > SAAL_BELEG_MAX) return;
+      neu.set(saalNk(z.tisch_nummer), { personen: p, stand: z.stand, seit: String(z.seit || ""), geaendert_um: String(z.geaendert_um || "") });
+    });
+    /* Was gerade unterwegs ist, gewinnt gegen den älteren Stand vom Server (§8.1p). */
+    SAAL.belegNr.forEach((nr, nk) => { if(nr.laeuft) { const alt = SAAL.beleg.get(nk); if(alt) neu.set(nk, alt); else neu.delete(nk); } });
+    SAAL.beleg = neu;
+  }
+  if(a.error) SAAL.anwFehlt = true;
+  else{
+    SAAL.anwFehlt = false;
+    SAAL.anw = new Map((a.data || []).filter(z => z && typeof z.tisch_nummer === "string").map(z => [saalNk(z.tisch_nummer), { letzte: String(z.letzte_aktivitaet || ""), offen: z.offen === true }]));
+  }
+}
+function saalBelegFehlerSatz(fehlt, grund){
+  if(fehlt) return "Gäste eintragen braucht die Datenbank-Datei „" + SAAL_BELEG_MIG + "“. Der Besitzer spielt sie im SQL-Editor ein — bis dahin zeigt der Plan, was die Bestellungen sagen.";
+  if(grund === "kein_recht") return "Gäste tragen nur Mitglieder dieses Betriebs ein.";
+  if(grund === "tisch") return "Diesen Tisch kennt die Datenbank nicht — bitte die Seite neu laden.";
+  return "Nicht gespeichert — bitte noch einmal tippen.";
+}
+async function saalBelegSetzen(t, personen, stand){
+  const nk = saalNk(t.nummer);
+  if(SAAL.belegFehlt && !demo && db){ SAAL.belegSatz = saalBelegFehlerSatz(true); saalDetail(); return; }
+  const p = stand === "frei" ? 0 : Math.max(0, Math.min(SAAL_BELEG_MAX, personen | 0));
+  const alt = SAAL.beleg.get(nk), jetzt = new Date().toISOString();
+  const neu = { personen: p, stand, seit: alt && alt.stand !== "frei" && stand !== "frei" ? alt.seit : jetzt, geaendert_um: jetzt };
+  const nr = ((SAAL.belegNr.get(nk) || {}).nr || 0) + 1;
+  SAAL.belegNr.set(nk, { nr, laeuft: true });
+  SAAL.beleg.set(nk, neu); SAAL.belegSatz = "";
+  saalZeichnen();
+  if(demo || !db){ SAAL.belegNr.set(nk, { nr, laeuft: false }); return; }
+  const id = betriebId;
+  let r;
+  try{ r = await db.rpc("tisch_belegung_setzen", { p_betrieb: id, p_tisch: String(t.nummer), p_personen: p, p_stand: stand }); }
+  catch(e){ r = { error: e }; }
+  if(id !== betriebId) return;
+  const lauf = SAAL.belegNr.get(nk);
+  if(!lauf || lauf.nr !== nr) return;          /* ein späterer Tipp ist unterwegs: der entscheidet (§8.1ae) */
+  SAAL.belegNr.set(nk, { nr, laeuft: false });
+  const ok = !r.error && r.data && r.data.ok === true;
+  if(ok){
+    SAAL.beleg.set(nk, { personen: Number(r.data.personen), stand: String(r.data.stand), seit: String(r.data.seit || neu.seit), geaendert_um: String(r.data.geaendert_um || neu.geaendert_um) });
+  }else{
+    if(alt) SAAL.beleg.set(nk, alt); else SAAL.beleg.delete(nk);
+    const code = r.error && String(r.error.code || "");
+    const fehlt = !!r.error && (code === "PGRST202" || code === "42883" || code === "PGRST205" || code === "42P01" || r.error.status === 404);
+    if(fehlt) SAAL.belegFehlt = true;
+    SAAL.belegSatz = saalBelegFehlerSatz(fehlt, r.data && r.data.grund);
+  }
+  saalZeichnen();
+}
+function saalBelegBlatt(t){
+  const el = $("#spBeleg"); if(!el) return;
+  if(!t){ if(!el.hidden){ el.hidden = true; el.innerHTML = ""; el.dataset.sig = ""; } return; }
+  const b = saalBelegung(t), uhr = iso => { const d = Date.parse(iso); return d ? new Date(d).toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" }) : ""; };
+  const p = b.quelle === "eingetragen" && b.art !== "frei" ? b.personen : 0;
+  const gerichte = b.offen.reduce((n, x) => n + (Array.isArray(x.positionen) ? x.positionen.reduce((m, q) => m + (Number(q && q.menge) || 1), 0) : 0), 0);
+  const summe = b.offen.reduce((n, x) => n + (Number(x.summe) || 0), 0);
+  const info = [];
+  if(b.art === "frei") info.push("Als frei eingetragen um " + uhr(SAAL.beleg.get(b.nk).geaendert_um));
+  else{
+    if(b.seit) info.push("Besetzt seit " + uhr(b.seit));
+    if(b.still != null) info.push(b.still < 1 ? "gerade aktiv" : "zuletzt aktiv vor " + b.still + " Min");
+    info.push(b.quelle === "eingetragen" ? "vom Service eingetragen" : b.quelle === "sitzung" ? "Tischsitzung offen (Untersetzer gescannt)" : b.quelle === "bestellung" ? "vermutet aus den Bestellungen" : "niemand eingetragen");
+  }
+  const offenText = b.art && b.art !== "frei"
+    ? (b.offen.length ? b.offen.length + (b.offen.length === 1 ? " Bestellung" : " Bestellungen") + " · " + gerichte + (gerichte === 1 ? " Gericht" : " Gerichte") + " · " + euro(summe) : "Noch keine Bestellung in diesem Besuch")
+    : "";
+  const html =
+    '<div class="sp-bel-zeile">' +
+      '<span class="sp-bel-titel">Gäste am Tisch</span>' +
+      '<span class="sp-bel-pm"><button type="button" class="sp-pm" data-sp-bel="minus" aria-label="Eine Person weniger"' + (p <= 0 ? " disabled" : "") + '>−</button>' +
+      '<output class="sp-bel-zahl" id="spBelZahl" aria-live="polite">' + p + '</output>' +
+      '<button type="button" class="sp-pm" data-sp-bel="plus" aria-label="Eine Person mehr"' + (p >= SAAL_BELEG_MAX ? " disabled" : "") + '>+</button></span>' +
+      (b.plaetze ? '<span class="sp-bel-plaetze">von ' + b.plaetze + ' Plätzen</span>' : "") +
+    '</div>' +
+    '<p class="sp-bel-info">' + sicher(info.join(" · ")) + '</p>' +
+    (offenText ? '<p class="sp-bel-summe">' + sicher(offenText) + '</p>' : "") +
+    '<div class="sp-bel-knoepfe">' +
+      '<button type="button" class="knopf leise" data-sp-bel="zahlt" aria-pressed="' + (b.art === "zahlt") + '">Zahlt gerade</button>' +
+      '<button type="button" class="knopf leise" data-sp-bel="frei"' + (b.art === "frei" ? " disabled" : "") + '>Gäste gegangen · Tisch frei</button>' +
+    '</div>' +
+    (SAAL.belegSatz ? '<p class="sp-bel-satz" role="status">' + sicher(SAAL.belegSatz) + '</p>' : "");
+  el.hidden = false;
+  if(el.dataset.sig !== html){ el.innerHTML = html; el.dataset.sig = html; }
+}
+function saalBelegKlick(knopf){
+  const t = SAAL.tische.find(x => saalNk(x.nummer) === SAAL.auswahl); if(!t) return;
+  const b = saalBelegung(t), a = knopf.dataset.spBel;
+  const p = b.quelle === "eingetragen" && b.art !== "frei" ? b.personen : 0;
+  const stand = b.art === "zahlt" ? "zahlt" : "da";
+  if(a === "plus") saalBelegSetzen(t, p + 1, stand);
+  else if(a === "minus") saalBelegSetzen(t, p - 1, stand);
+  else if(a === "zahlt") saalBelegSetzen(t, p, b.art === "zahlt" ? "da" : "zahlt");
+  else if(a === "frei") saalBelegSetzen(t, 0, "frei");
+}
+/* Alle 30 s frisch — nur, wenn die Seite zu sehen ist und der Tab vorn liegt (versteckt fragt nichts). */
+setInterval(() => {
+  if(document.hidden || !betriebId || !saalSichtbar() || !SAAL.geladen) return;
+  const id = betriebId;
+  saalBelegLaden(id).then(() => { if(id === betriebId) saalZeichnen(); });
+}, 30000);
 
 /* Die Bestellkarten gibt es nur einmal: Mit einer Auswahl ziehen sie hierher, sonst wohnen sie unter „Bestellungen“. */
 function saalKartenOrt(hier){
@@ -13621,10 +13886,11 @@ function saalKartenOrt(hier){
 function saalDetail(){
   const d = $("#spDetail"); if(!d) return;
   d.hidden = SAAL.auswahl == null;
-  if(SAAL.auswahl == null) return;
+  if(SAAL.auswahl == null){ saalBelegBlatt(null); return; }
   const t = SAAL.auswahl === "__rest" || SAAL.auswahl === "__auto" ? null : SAAL.tische.find(x => saalNk(x.nummer) === SAAL.auswahl);
   const text = t ? "Tisch " + t.nummer + (saalZonen().length > 1 ? " · " + saalTischZone(t) : "") : SAAL.auswahl === "__auto" ? "Lieferungen" : "Außerhalb des Plans";
   const h = $("#spDetailTitel"); if(h.textContent !== text) h.textContent = text;
+  saalBelegBlatt(t);
   const chip = document.querySelector('#statusFilter [data-status="fertig"]');
   const e = $("#spErledigt"); if(e && chip) e.setAttribute("aria-pressed", chip.getAttribute("aria-pressed"));
 }
@@ -13781,12 +14047,15 @@ document.addEventListener("click", e => {
     else if(a === "auto") saalAutoWaehlen();
     else if(a === "gross"){ SAAL.gross = !SAAL.gross; $("#spBuehne").classList.toggle("gross", SAAL.gross); w.setAttribute("aria-pressed", String(SAAL.gross)); setTimeout(() => saalAlles(false), 30); }
     else if(a === "einrichten") saalEinrichten(true);
+    else if(a === "assistent") saalAssistent();
     return;
   }
   const h = e.target.closest && e.target.closest("[data-sp-hebe]");
   if(h){ SAAL.hebt = SAAL.hebt === h.dataset.spHebe ? null : h.dataset.spHebe; saalLeiste(SAAL.stand); return; }
   if(e.target.closest && e.target.closest("[data-sp-rest]")){ saalRestWaehlen(); return; }
-  if(e.target.closest && e.target.closest("#spDetailZu")){ saalAbwaehlen(); return; }
+  const bk = e.target.closest && e.target.closest("[data-sp-bel]");
+  if(bk && !bk.disabled){ saalBelegKlick(bk); return; }
+  if(e.target.closest && e.target.closest("#spDetailZu")){ saalAbwaehlen(); SAAL.belegSatz = ""; return; }
   if(e.target.closest && e.target.closest("#spErledigt")){ const c = document.querySelector('#statusFilter [data-status="fertig"]'); if(c) c.click(); saalDetail(); return; }
   if(e.target.closest && e.target.closest("#spEdit")) saalEditKlick(e);
 });
@@ -13804,6 +14073,42 @@ function saalEinrichten(an){
   saalNeuBauen();
   saalAlles(false);
   zeichneBoard();
+}
+/* Assistent: Raum in Metern anlegen und die Tische, die noch keinen Platz haben, im Raster (2,4 m) verteilen.
+   Gespeichert wird erst mit „Speichern“ im Editor — derselbe Weg, dieselbe Prüfung wie von Hand. */
+function saalMeter(id){
+  const roh = String(($("#" + id) || {}).value || "").trim().replace(",", ".");
+  if(!/^\d{1,2}(\.\d)?$/.test(roh)) return null;
+  const v = Number(roh);
+  return v >= 2 && v <= 60 ? v : null;
+}
+function saalAssistent(){
+  const satz = $("#spAsSatz");
+  const b = saalMeter("spAsB"), t = saalMeter("spAsT"), pl = Number(($("#spAsP") || {}).value);
+  if(b == null || t == null || ![2, 4, 6].includes(pl)){
+    if(satz){ satz.hidden = false; satz.textContent = "Bitte Breite und Tiefe zwischen 2 und 60 Metern eingeben, höchstens eine Nachkommastelle (z. B. 12,5)."; }
+    return;
+  }
+  saalEinrichten(true);
+  if(!SAAL.edit) return;
+  const k = SAAL.konfigEntwurf;
+  saalRaeumeAngleichen(k);
+  k.raeume[0] = { ...k.raeume[0], b, t };
+  SAAL.zone = saalZonen()[0];
+  const form = pl === 2 ? "rund" : pl === 6 ? "lang" : "eckig";
+  let gesetzt = 0, ohne = 0;
+  SAAL.tische.filter(x => x.aktiv && x.x == null).forEach(x => {
+    const v = SAAL.entwurf.get(x.id); if(!v) return;
+    const r = saalRaumVon(SAAL.zone), platz = saalFreierPlatz();
+    const besetzt = [...SAAL.entwurf.values()].some(w => w !== v && w.x != null && (w.zone || SAAL.zone) === SAAL.zone &&
+      Math.hypot((w.x - platz.x) / 100 * r.b, (w.y - platz.y) / 100 * r.t) < 2);
+    if(besetzt){ ohne++; return; }
+    Object.assign(v, { x: platz.x, y: platz.y, form, plaetze: pl, zone: SAAL.zone });
+    gesetzt++;
+  });
+  saalNeuBauen(); saalAlles(false);
+  melde(String(b).replace(".", ",") + " × " + String(t).replace(".", ",") + " m angelegt, " + gesetzt + (gesetzt === 1 ? " Tisch" : " Tische") + " verteilt" +
+    (ohne ? " (" + ohne + " ohne Platz)" : "") + ". Jetzt an ihren Platz ziehen und „Speichern“.");
 }
 function saalFreierPlatz(){
   /* Raster in Metern (alle 2,4 m), frei, wenn kein Tisch desselben Raumes näher als 2 m steht; ergibt Anteile 0–100. */
@@ -14069,7 +14374,7 @@ async function saalLaden(id){
       { b: 12, t: 9, x: null, y: null, theken: [{ x: 2.5, y: 7.6, b: 7, t: 0.8 }], kueche: { x: 0.2, y: 0.2, b: 1.4, t: 1.5 } }, { b: 8, t: 5, x: null, y: null, theken: [] }] };
     SAAL.konfig = saalKonfig(SAAL.einst);
     SAAL.tische = f.map(([n, form, pl, x, y, zi]) => ({ id: "demo-t" + n, nummer: n, aktiv: true, x, y, form: x == null ? null : form, plaetze: x == null ? null : pl, zone: SAAL.einst.zonen[zi] }));
-    SAAL.geladen = true; saalZeichnen(); return;
+    SAAL.geladen = true; await saalBelegLaden(id); saalZeichnen(); return;
   }
   const num = (a, b) => String(a.nummer).localeCompare(String(b.nummer), "de", { numeric: true }) || String(a.id).localeCompare(String(b.id));
   const holen = sp => db.from("tische").select(sp).eq("betrieb_id", id).order("nummer").order("id");
@@ -14088,6 +14393,11 @@ async function saalLaden(id){
   if(e.error) SAAL.einstFehlt = true;
   else if(e.data && e.data.daten){ SAAL.einst = e.data.daten; SAAL.konfig = saalKonfig(SAAL.einst); }
   SAAL.geladen = true;
+  saalZeichnen();
+  /* Belegung danach: der Plan steht schon, die Schilder kommen dazu (fehlt die Migration, bleibt alles wie vorher). */
+  SAAL.beleg = new Map(); SAAL.anw = new Map(); SAAL.belegSatz = "";
+  await saalBelegLaden(id);
+  if(id !== betriebId) return;
   saalZeichnen();
 }
 

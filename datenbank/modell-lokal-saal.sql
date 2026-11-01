@@ -39,3 +39,10 @@ create policy "betrieb team aendert" on public.betriebe for update to authentica
   with check (id in (select public.meine_betriebe()) or public.ist_master());
 grant update (name, hub_kacheln, bestell_pause, bestell_pause_text) on public.betriebe to authenticated;
 create trigger betrieb_rolle_wache before update on public.betriebe for each row execute function public.betrieb_rolle_wache();
+
+-- tisch_sitzungen: Spalten, die migration-tisch-belegung.sql liest (wie modell-lokal-abholen.sql; live: EINE
+-- Sitzung je Tisch, tisch_sitzung_start frischt letzte_aktivitaet auf). Rechte wie nach migration-grant-engen.sql.
+create table public.tisch_sitzungen(id uuid primary key default gen_random_uuid(), token text, betrieb_id uuid, tisch_id uuid,
+  gueltig_bis timestamptz, letzte_aktivitaet timestamptz);
+alter table public.tisch_sitzungen enable row level security;
+revoke insert, update, delete, truncate, references, trigger on public.tisch_sitzungen from authenticated;

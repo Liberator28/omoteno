@@ -50,3 +50,67 @@ Einspielen: SQL-Editor, danach (CLAUDE.md §2.1) `select pg_get_function_identit
 - Das Gebäude ist ein Rechteck um alle Räume; eine Terrasse „vor der Tür“ liegt innerhalb dieses Umrisses.
 - Mehrere Standorte einer Kette teilen sich keinen Plan: jeder Betrieb hat sein eigenes Gebäude.
 - Das Auto zeigt keine Fahrer, Touren oder Positionen — es zählt und listet nur die offenen Lieferungen.
+
+---
+
+## Belegung: wer sitzt wo, und ist er noch da? (01.11.)
+
+Wunsch: „… so soll man sehen wie viele Leute dort sitzen und welche Bestellungen und ob ein Gast noch da ist.“
+
+**Zuerst einspielen, sonst sieht man live nichts davon.** Beide Dateien gehen in den SQL-Editor, in dieser Reihenfolge:
+
+1. `datenbank/migration-saal-raeume.sql` — Meter, 1×1-m-Raster, Theke, Küche. Ohne sie speichert „Maße“ nicht.
+2. `datenbank/migration-tisch-belegung.sql` — Personen am Tisch, Stand, Anwesenheit.
+
+Danach je Funktion genau eine Fassung (§2.1):
+`select proname, pg_get_function_identity_arguments(oid) from pg_proc where proname in ('saal_einstellungen_setzen','tisch_belegung_setzen','saal_anwesenheit');`
+
+**Woher das Board weiß, was es zeigt** (in dieser Rangfolge):
+
+| Quelle | Was sie sagt | Ehrlich |
+|---|---|---|
+| `tisch_belegung` | Personen, „da“ / „zahlt“ / „frei“, seit wann | Wissen — der Service trägt es ein |
+| `saal_anwesenheit()` | letzte Aktivität der Tischsitzung, ob sie gilt | Hinweis: live gibt es EINE Sitzung je Tisch, keine Gerätezahl |
+| Bestellungen | der alte Hinweis „Gäste da“ | Vermutung |
+
+**Im Plan** steht unter der Tischnummer ein Schild: `3/4` (Personen/Plätze), `· zahlt`, `· still` (20 Minuten ohne Aktivität), `frei`.
+Minuten stehen nur in Liste und Blatt — sonst wäre jede Minute ein Neuaufbau des Plans (§4.2). Ein Tisch, den nur die Bestellungen
+kennen, bekommt nur „still“, sonst kein Schild (das Zeichen am Tisch sagt schon „da“).
+
+**Im Blatt** des gewählten Tisches: Gäste − / + (≥ 44 px), „Zahlt gerade“, „Gäste gegangen · Tisch frei“, „besetzt seit“, zuletzt
+aktiv, woher es stammt, und die Summe dieses Besuchs (Bestellungen, Gerichte, Euro). „Frei“ gilt, bis danach eine Bestellung oder ein
+Scan kommt.
+
+**Links:** „10 Gäste im Haus · 18 freie Plätze“, Personen je Zeile mit Bedarf, darunter „Besetzt · alles gut“ (eigene Klasse
+`.sp-tr`, nicht `.sp-tz` — die Prüfungen der Bedarfsliste zählen `.sp-tz`, §1.1).
+
+**Assistent für einen leeren Saal:** Breite und Tiefe in Metern, Plätze je Tisch → der Raum entsteht in 1×1-m-Feldern, die Tische
+werden im 2,4-m-Raster verteilt (≥ 2 m auseinander), der Editor ist offen. Gespeichert wird erst mit „Speichern“ — derselbe Weg und
+dieselbe Prüfung wie von Hand. Grenzen wie die Datenbank: 2–60 m, eine Nachkommastelle.
+
+**Rechte:** lesen alle Mitglieder; eintragen auch das Team (der Kellner zählt die Gäste), nur über `tisch_belegung_setzen`;
+kein INSERT/UPDATE-Recht auf die Tabelle (§2.3f). anon: nichts.
+
+**Prüfungen:**
+- `pruefungen/pruef-saal-belegung.js` (53 Proben):
+  - Naht gegen die Migration;
+  - Schilder an den richtigen Tischen;
+  - ungültige Zeilen fallen weg;
+  - Tipp auf den Schildrand wählt den Tisch;
+  - Kontrast;
+  - Liste;
+  - Blatt mit echten Tipps (Nutzlast, Absage, Wettlauf zweier Tipps, Neuladen während eines Tipps);
+  - Migration fehlt;
+  - Assistent;
+  - 360 px.
+  - Gegenbeweise B1–B10 auf Kopien, alle rot. B1 nur grob: Das Schild wurde entfernt; eine Sabotage, die es aus der Tischgruppe löst, gibt es nicht.
+- `pruefungen/pruef-saalplan-lokal.sh`:
+  - 37 neue Zeilen `TB…` in `datenbank/pruef-tisch-belegung.sql`, darunter der zweite Durchgang am selben Tisch, Fremder, anon und Team.
+  - Gegenbeweise D1–D7 je Schicht (Regel, Recht, Funktion), alle rot.
+
+**Ehrliche Grenzen:**
+- Beide Migrationen sind NICHT live.
+- Es gibt keine Gerätezahl; „Gast noch da“ ist die letzte Aktivität am Tisch, kein Beweis, dass jemand sitzt.
+- Reservierungen haben weiterhin keinen Tisch.
+- Der 30-s-Takt (nur bei sichtbarem Tab) ist nicht gemessen.
+- Kopfloses Chromium, kein Gerät.
