@@ -3603,6 +3603,8 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 /* Ohne Nummer (Server hat noch nicht geantwortet) bleibt die Zeile
    ruhig stehen, statt mit einem Platzhalter zu blinken. */
 .bpass .bp-nummer.wartet{color:var(--tinte-still);font-size:22px;letter-spacing:0}
+/* Große Bestellnummer (hub_stil.nummerGross, Wahl im Board): für Häuser, die am Tresen ausrufen. */
+.bpass .bp-nummer.bp-gross{font-size:56px;line-height:1.05}
 
 /* Angenommen: der Zettel haengt am Pass und wippt im Luftzug. */
 .bpass.p-neu .g-zeichen{animation:bpZettel 3.2s ease-in-out infinite}
@@ -3703,6 +3705,7 @@ body.hat-balken .vstreifen{bottom:calc(84px + env(safe-area-inset-bottom))}
 }
 .bs-warte b{font-size:16.5px;font-weight:700;color:var(--pistazie)}
 .bs-warte span{font-size:12.5px;color:var(--tinte-still)}
+.bs-verzug{flex:1 1 100%;margin:2px 0 0;font-size:14px;line-height:1.45;color:var(--tinte)}
 [dir="rtl"] .bs-stufe{flex-direction:row-reverse}
 /* Nachricht vom Haus (Notiz des Teams, zweimal bestätigt). Steht unter
    den Stufen, mit eigenem Rand: Sie ist ein Satz von Menschen, keine
@@ -6655,7 +6658,12 @@ const LIEFER = {
      BEVOR er seine Adresse tippt. */
   von:       "",     /* "17:00" */
   bis:       "",     /* "01:00" — darf über Mitternacht gehen */
-  tage:      []      /* 1 = Mo … 7 = So; leer = jeden Tag */
+  tage:      [],     /* 1 = Mo … 7 = So; leer = jeden Tag */
+  /* Kurze Pause und geschlossene Tage (C2, 01.11.): pause_bis ist eine Uhrzeit in ms, höchstens 6 Stunden voraus (älter oder
+     weiter = keine Pause), zu eine Liste von Tagen „JJJJ-MM-TT“. Beides blendet hier die Lieferung aus; der Server kennt es noch
+     NICHT — eine Bestellung an der Oberfläche vorbei ginge durch und stünde beim Team (§7: sehen und entscheiden). */
+  pause_bis: 0,
+  zu:        []
 };
 
 const MUSIK = {
@@ -7235,6 +7243,20 @@ function restzeitZeigen(){
   if(HUBSTIL && typeof HUBSTIL.restzeit === "boolean") return HUBSTIL.restzeit;
   return true;
 }
+/* Bestellstand (C2, 01.11.): drei Wahlen des Betriebs, jede ohne Wahl wie vorher.
+   Der Satz bei Verzögerung ist eine feste Liste übersetzter Sätze (kein freier Text: der stünde in elf Sprachen deutsch da und
+   ginge ungeprüft in die Seite) — unbekannt = kein Satz. Vibration und große Nummer nur bei echtem true. */
+const VERZUG_SAETZE = {
+  geduld: "Es dauert einen Moment länger — danke für Ihre Geduld.",
+  viel:   "Gerade ist viel los. Ihre Bestellung kommt gleich.",
+  frisch: "Wir bereiten alles frisch zu — gleich ist es so weit."
+};
+function verzugSatz(){
+  const w = HUBSTIL && HUBSTIL.verzug;
+  return typeof w === "string" && Object.prototype.hasOwnProperty.call(VERZUG_SAETZE, w) ? t(VERZUG_SAETZE[w]) : "";
+}
+function fertigVibrieren(){ return !!(HUBSTIL && HUBSTIL.vibration === true); }
+function nummerGross(){ return !!(HUBSTIL && HUBSTIL.nummerGross === true); }
 /* Foodroulette (der Wisch-Einstieg auf der Speisekarte) ein- oder
    ausblenden — Wahl des Betriebs im Board (hub_stil.foodroulette).
    Strikt boolean, sonst an: Der Einstieg lief bisher immer, ein
@@ -11690,6 +11712,11 @@ const TEXTE = {
 "Bitte füllen Sie Name, Adresse und Telefon aus.":{en:"Please fill in name, address and phone.",tr:"Lütfen ad, adres ve telefon bilgilerini doldurun.",ru:"Пожалуйста, заполните имя, адрес и телефон.",fr:"Merci d’indiquer nom, adresse et téléphone.",es:"Por favor, complete nombre, dirección y teléfono.",it:"La preghiamo di compilare nome, indirizzo e telefono.",pl:"Prosimy podać imię, adres i telefon.",ar:"يرجى إدخال الاسم والعنوان ورقم الهاتف.",uk:"Будь ласка, заповніть імʼя, адресу та телефон.",nl:"Vul uw naam, adres en telefoonnummer in.",ro:"Vă rugăm să completați numele, adresa și telefonul."},
 "Dorthin liefern wir leider nicht.":{en:"Unfortunately we don’t deliver there.",tr:"Maalesef oraya teslimat yapmıyoruz.",ru:"К сожалению, туда мы не доставляем.",fr:"Malheureusement, nous ne livrons pas à cette adresse.",es:"Lamentablemente no repartimos allí.",it:"Purtroppo non consegniamo a quell’indirizzo.",pl:"Niestety tam nie dowozimy.",ar:"للأسف لا نوصّل إلى هناك.",uk:"На жаль, туди ми не доставляємо.",nl:"Daar bezorgen wij helaas niet.",ro:"Din păcate, nu livrăm acolo."},
 "Wir liefern gerade nicht.":{en:"We are not delivering right now.",tr:"Şu anda teslimat yapmıyoruz.",ru:"Сейчас мы не доставляем.",fr:"Nous ne livrons pas en ce moment.",es:"Ahora mismo no repartimos.",it:"Al momento non consegniamo.",pl:"W tej chwili nie dowozimy.",ar:"لا نقوم بالتوصيل في الوقت الحالي.",uk:"Зараз ми не доставляємо.",nl:"Op dit moment bezorgen wij niet.",ro:"Momentan nu livrăm."},
+"Es dauert einen Moment länger — danke für Ihre Geduld.":{en:"It is taking a little longer — thank you for your patience.",tr:"Biraz daha uzun sürüyor — sabrınız için teşekkür ederiz.",ru:"Это займёт чуть больше времени — спасибо за терпение.",fr:"Cela prend un peu plus de temps — merci de votre patience.",es:"Tarda un poco más — gracias por su paciencia.",it:"Ci vuole un po' di più — grazie per la pazienza.",pl:"Potrwa to chwilę dłużej — dziękujemy za cierpliwość.",ar:"يستغرق الأمر وقتًا أطول قليلًا — شكرًا لصبركم.",uk:"Це займе трохи більше часу — дякуємо за терпіння.",nl:"Het duurt iets langer — bedankt voor uw geduld.",ro:"Durează puțin mai mult — vă mulțumim pentru răbdare."},
+"Gerade ist viel los. Ihre Bestellung kommt gleich.":{en:"We are very busy right now. Your order is coming shortly.",tr:"Şu anda çok yoğunuz. Siparişiniz birazdan geliyor.",ru:"Сейчас много заказов. Ваш заказ скоро будет готов.",fr:"Nous sommes très occupés en ce moment. Votre commande arrive bientôt.",es:"Ahora mismo hay mucho movimiento. Su pedido llega enseguida.",it:"In questo momento c'è molto da fare. Il suo ordine arriva subito.",pl:"Mamy teraz dużo zamówień. Państwa zamówienie zaraz będzie.",ar:"لدينا ضغط كبير الآن. طلبكم في الطريق قريبًا.",uk:"Зараз багато замовлень. Ваше замовлення скоро буде.",nl:"Het is nu erg druk. Uw bestelling komt zo.",ro:"Acum este foarte aglomerat. Comanda dumneavoastră vine imediat."},
+"Wir bereiten alles frisch zu — gleich ist es so weit.":{en:"We prepare everything fresh — it will be ready in a moment.",tr:"Her şeyi taze hazırlıyoruz — birazdan hazır.",ru:"Мы всё готовим свежим — скоро будет готово.",fr:"Nous préparons tout frais — ce sera prêt dans un instant.",es:"Lo preparamos todo al momento — enseguida estará listo.",it:"Prepariamo tutto al momento — tra poco è pronto.",pl:"Przygotowujemy wszystko na świeżo — zaraz będzie gotowe.",ar:"نحضّر كل شيء طازجًا — سيكون جاهزًا بعد لحظات.",uk:"Ми готуємо все свіжим — за мить буде готово.",nl:"Wij bereiden alles vers — zo is het klaar.",ro:"Pregătim totul proaspăt — în curând este gata."},
+"Heute liefern wir nicht.":{en:"We are not delivering today.",tr:"Bugün teslimat yapmıyoruz.",ru:"Сегодня мы не доставляем.",fr:"Nous ne livrons pas aujourd'hui.",es:"Hoy no repartimos.",it:"Oggi non consegniamo.",pl:"Dzisiaj nie dowozimy.",ar:"لا نقوم بالتوصيل اليوم.",uk:"Сьогодні ми не доставляємо.",nl:"Vandaag bezorgen wij niet.",ro:"Astăzi nu livrăm."},
+"Wir liefern wieder ab {zeit} Uhr.":{en:"We deliver again from {zeit}.",tr:"{zeit} itibarıyla yeniden teslimat yapıyoruz.",ru:"Мы снова доставляем с {zeit}.",fr:"Nous livrons à nouveau à partir de {zeit}.",es:"Volvemos a repartir a partir de las {zeit}.",it:"Consegniamo di nuovo dalle {zeit}.",pl:"Znowu dowozimy od {zeit}.",ar:"نعود للتوصيل اعتبارًا من {zeit}.",uk:"Ми знову доставляємо з {zeit}.",nl:"Wij bezorgen weer vanaf {zeit}.",ro:"Livrăm din nou de la {zeit}."},
 "Wir liefern von {von} bis {bis} Uhr.":{en:"We deliver from {von} to {bis}.",tr:"{von} ile {bis} arası teslimat yapıyoruz.",ru:"Мы доставляем с {von} до {bis}.",fr:"Nous livrons de {von} à {bis}.",es:"Repartimos de {von} a {bis}.",it:"Consegniamo dalle {von} alle {bis}.",pl:"Dowozimy od {von} do {bis}.",ar:"نوصّل من {von} حتى {bis}.",uk:"Ми доставляємо з {von} до {bis}.",nl:"Wij bezorgen van {von} tot {bis}.",ro:"Livrăm de la {von} până la {bis}."},
 /* --- Chocolamours Quiz (15 Fragen) --------------------------------
    Eigene Fragen des Hauses, ergänzt nach §8.1a: standen bisher fest
@@ -12722,7 +12749,7 @@ function lwNameText(wahl){
   if(wahl === "abholen") return t("Abholen");
   if(wahl !== "liefern") return t("Im Haus");
   if(liefertGerade()) return t("Lieferung");
-  return LIEFER.von && LIEFER.bis ? LIEFER.von + "\u2013" + LIEFER.bis : t("Zurzeit zu");
+  return LIEFER.von && LIEFER.bis && !lieferZuSatz() ? LIEFER.von + "\u2013" + LIEFER.bis : t("Zurzeit zu");
 }
 
 function lieferWahlZeichnen(){
@@ -12740,7 +12767,7 @@ function lieferWahlZeichnen(){
   w.dataset.wahl = abholen ? "abholen" : wahl;
   w.setAttribute("aria-label", abholen ? t("Bestellart") + ": " + t("Abholen") : t("Bestellart"));
   const zeiten = !liefertGerade()
-    ? (LIEFER.von && LIEFER.bis
+    ? lieferZuSatz() || (LIEFER.von && LIEFER.bis
         ? t("Wir liefern von {von} bis {bis} Uhr.", {von: LIEFER.von, bis: LIEFER.bis})
         : t("Wir liefern gerade nicht."))
     : "";
@@ -15636,7 +15663,7 @@ SEITEN.auswahl = () => {
         t("Bestellung zeigen") + '</button></div>' +
       (lieferZu
         ? '<div class="hinweis">' + t("Wir liefern gerade nicht.") +
-          (LIEFER.von && LIEFER.bis
+          (lieferZuSatz() ? " " + lieferZuSatz() : LIEFER.von && LIEFER.bis
             ? " " + t("Wir liefern von {von} bis {bis} Uhr.",
                       {von: LIEFER.von, bis: LIEFER.bis})
             : "") + '</div>'
@@ -15813,7 +15840,11 @@ function vorgangAktualisieren(nummer, status, minuten, tagesnummer){
   const v = vorgaenge.find(x => x.nummer === nummer);
   if(!v) return false;
   const anders = v.status !== status || v.warte !== minuten;
-  if(status === "fertig" && v.status !== "fertig") v.fertigSeit = Date.now();
+  if(status === "fertig" && v.status !== "fertig"){
+    v.fertigSeit = Date.now();
+    /* Nur beim Wechsel auf „fertig“, nie beim Wiederherstellen nach einem Neuladen (dort ist der Stand schon „fertig“). */
+    if(fertigVibrieren() && navigator.vibrate){ try{ navigator.vibrate([200, 100, 200]); }catch(e){} }
+  }
   v.status = status;
   if(minuten != null) v.warte = minuten;
 
@@ -17679,7 +17710,7 @@ function phaseHTML(status, tagesnummer, abholung){
      nach dem Absenden. Bis dahin steht dort ein ruhiger Satz statt einer
      blinkenden Lücke. */
   const nummer = tagesnummer
-    ? '<div class="bp-nummer"><small>' + t("IHRE NUMMER") + '</small>' +
+    ? '<div class="bp-nummer' + (nummerGross() ? " bp-gross" : "") + '"><small>' + t("IHRE NUMMER") + '</small>' +
       tagesnummer + '</div>'
     : '<div class="bp-nummer wartet">' + t("Nummer kommt gleich") + '</div>';
 
@@ -17966,9 +17997,10 @@ function bestellStatusSteuern(pfad){
                 : (rest != null
                     ? (rest > 0 ? t("noch ca. {a} Minuten", {a: rest}) : t("Jeden Moment"))
                     : (minuten ? t("ca. {a} Minuten", {a: minuten}) : null));
+    const verzug = rest === 0 ? verzugSatz() : "";
     const zusage = kopf
       ? '<div class="bs-warte"><b>' + kopf + '</b>' +
-        '<span>' + t("vom Team bestätigt") + '</span></div>'
+        '<span>' + t("vom Team bestätigt") + '</span>' + (verzug ? '<p class="bs-verzug">' + verzug + '</p>' : "") + '</div>'
       : "";
     kasten.hidden = false;
     /* Nur anfassen, wenn sich wirklich etwas geändert hat. Der Kasten
@@ -18744,8 +18776,24 @@ function imLiefergebiet(plz){
    ist eine Absage zu spät.
 
    Kein Fenster hinterlegt heißt „immer", nicht „nie" (§7). */
+function lieferHeuteZu(jetzt){
+  const d = jetzt || new Date();
+  const tag = d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
+  return LIEFER.zu.indexOf(tag) > -1;
+}
+function lieferPausiert(){ return LIEFER.pause_bis > Date.now(); }
+/* Warum gerade nicht: Pause und geschlossener Tag haben ihren eigenen Satz, sonst stünde „Wir liefern von 17 bis 22 Uhr“ da,
+   während es 19 Uhr ist. Leer = der übliche Satz gilt. */
+function lieferZuSatz(){
+  if(!LIEFER.an) return "";
+  if(lieferHeuteZu()) return t("Heute liefern wir nicht.");
+  if(lieferPausiert()){ const d = new Date(LIEFER.pause_bis);
+    return t("Wir liefern wieder ab {zeit} Uhr.", {zeit: String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0")}); }
+  return "";
+}
 function liefertGerade(){
   if(!LIEFER.an) return false;
+  if(lieferPausiert() || lieferHeuteZu()) return false;
   const jetzt = new Date();
   if(LIEFER.tage.length){
     /* getDay(): 0 = Sonntag. Die Datenbank zählt nach ISO, 1 = Montag,
@@ -22041,6 +22089,9 @@ async function karteHolen(erstesMal){
       LIEFER.bis  = /^\d{1,2}:\d{2}$/.test(z.bis || "") ? z.bis : "";
       LIEFER.tage = Array.isArray(z.tage)
         ? z.tage.map(Number).filter(n => n >= 1 && n <= 7) : [];
+      const pb = typeof lf.pause_bis === "string" ? Date.parse(lf.pause_bis) : NaN;
+      LIEFER.pause_bis = isFinite(pb) && pb > Date.now() && pb <= Date.now() + 6 * 3600e3 ? pb : 0;
+      LIEFER.zu = Array.isArray(lf.zu) ? lf.zu.filter(d => typeof d === "string" && /^\d{4}-\d{2}-\d{2}$/.test(d)).slice(0, 60) : [];
       if(liefermodusAbgleichen()) zeichne();
       lieferWahlZeichnen();
       bestellartZeichnen();

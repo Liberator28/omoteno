@@ -38,7 +38,7 @@ function gerichteZeilen(bildName){
         uhr, sprache, farbe ("hell" | "dunkel" für die Wahl des Gastes), stil ("premium" erzwingen, auch bei Häusern ohne
         Schalter), layout (Objekt wie markenblatt.startlayout, null = ohne), korb ([Gerichtname, …]), hash, reduziert, skala,
         karten (Liste wie betriebe.karten, z. B. [{id:"cocktails",name:"Cocktails",aktiv:false}]), vorschau (true: wie im Board-Rahmen, vorschauSetzen() nimmt Entwürfe), optionen (Objekt wie betriebe.optionen: Gruppen für Extras/Beilagen), bloecke (Liste wie betriebe.hub_bloecke, null = ohne Aufbau), dist (anderer dist-Ordner, auch HUB_DIST), texte (Objekt wie betriebe.hub_texte), startgrafik (Objekt wie markenblatt.startgrafik, null = ohne), zeilen (Funktion: ändert die nachgestellten Gerichtzeilen — Preis, Allergene, Merkmale), gerichteFehler (true: die
-        Datenbank antwortet 500), initSkript (Text, läuft vor der Seite) */
+        Datenbank antwortet 500), initSkript (Text, läuft vor der Seite), hubstil (Objekt: weitere Schlüssel von betriebe.hub_stil), liefer (Objekt wie betriebe.liefer) */
 async function oeffneHub(browser, opt){
   opt = opt || {};
   const haus = opt.haus || "chocolamour";
@@ -60,6 +60,7 @@ async function oeffneHub(browser, opt){
   const bildName = opt.gerichtFoto || "gericht";
   const stil = {};
   if(opt.kopf) stil.kopf = { bild: EIMER + BETRIEB + "/kopf/bild-1.jpg" };
+  if(opt.hubstil) Object.assign(stil, opt.hubstil);   /* weitere Wahlen des Boards (hub_stil), z. B. { verzug:"geduld" } */
   const kacheln = opt.kachelFoto ? [{ schluessel: "speisekarte", titel: "Unsere Speisekarte", banner: EIMER + BETRIEB + "/kacheln/speisekarte-1.jpg", breite: "voll", iconAus: true, bildform: "flaeche" }] : null;
 
   await p.route("**/*", r => {
