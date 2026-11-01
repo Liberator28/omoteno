@@ -2312,7 +2312,7 @@ label{display:block;margin-bottom:14px}
    UNGESTYLTE native Felder ausdrücklich zu. Jetzt jedes Textfeld mit
    ausdrücklicher Farbe, unabhängig vom color-scheme des Geräts. */
 input[type=text],input[type=number],input[type=email],input[type=password],
-input[type=date],input[type=tel],textarea,select{
+input[type=date],input[type=time],input[type=tel],textarea,select{
   width:100%;padding:12px 13px;
   background:var(--nacht);border:1px solid var(--linie);
   border-radius:9px;color:var(--kreide);-webkit-text-fill-color:var(--kreide);
@@ -3394,6 +3394,18 @@ a.eu-kachel{text-decoration:none}
    steht nur in der Reihe, deren Wahl gilt — die andere zeigt keinen. */
 .lichtreihen{display:grid;gap:8px}
 .klangwahl.kw-zwei{grid-template-columns:repeat(2,1fr)}
+.klangwahl.kw-vier{grid-template-columns:repeat(2,1fr)}
+.klangwahl.kw-vier::before{display:none}
+.klangwahl.kw-vier .klang[aria-checked="true"]{border-color:var(--messing);box-shadow:inset 0 0 0 1px var(--messing)}
+/* Nur dieses Gerät (01.11.) */
+body.kompakt .bestellung{padding:9px 12px 9px 16px}
+body.kompakt .karten{gap:7px}
+.gt-uhr{font-size:22px;font-weight:800;font-variant-numeric:tabular-nums;letter-spacing:.02em;color:var(--kreide)}
+.gt-name{font-size:12.5px;font-weight:700;padding:3px 10px;border-radius:12px;border:1px solid var(--linie);color:var(--kreide);white-space:nowrap;max-width:28vw;overflow:hidden;text-overflow:ellipsis}
+.gt-blitz{position:fixed;inset:0;z-index:2147483000;pointer-events:none;opacity:0;box-shadow:inset 0 0 0 6px var(--messing),inset 0 0 40px 8px color-mix(in srgb,var(--messing) 55%,transparent)}
+.gt-blitz.an{animation:gtBlitz 1.5s ease-out 1}
+.gt-blitz.still{opacity:1}
+@keyframes gtBlitz{0%{opacity:0}12%{opacity:1}40%{opacity:.25}55%{opacity:1}100%{opacity:0}}
 .klangwahl.kw-zwei::before{width:calc((100% - 6px) / 2)}
 .klang{
   position:relative;z-index:1;min-width:0;min-height:48px;padding:9px 6px;border-radius:11px;
@@ -4059,12 +4071,15 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
 </head>
 <body>
 
+<div class="gt-blitz" id="gtBlitz" aria-hidden="true"></div>
 <header>
   <div class="kopfzeile">
     <span class="marke">Omoteno</span>
     <span class="betrieb" id="betriebName">—</span>
     <button class="wechseln" id="wechseln" type="button" hidden
             aria-label="Betrieb wechseln">wechseln</button>
+    <span class="gt-name" id="gtName" hidden></span>
+    <span class="gt-uhr" id="gtUhr" aria-label="Uhrzeit" hidden></span>
     <span class="status"><span class="punkt" id="punkt"></span><span id="statusText">verbinde</span></span>
     <!-- Dieselbe Zeichnung wie in der Küche: vier Ecken, die nach
          außen zeigen. Auf dem Telefon ausgeblendet — ein Telefon
@@ -5073,7 +5088,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="egruppe">
       <h2 class="etitel">Melden</h2>
       <p class="ehilfe">Gilt nur für dieses Gerät. Das iPad an der Theke darf
-        laut sein, dein Handy still.</p>
+        laut sein, Ihr Handy still.</p>
 
       <label class="ezeile">
         <span><b>Signalton</b><i>Klingt bei jeder neuen Meldung</i></span>
@@ -5106,6 +5121,31 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <span><b>Mitteilungen</b><i id="mittHilfe">Auch bei geschlossenem Board</i></span>
         <input type="checkbox" class="kipp" data-einst="hinweise">
       </label>
+
+      <label class="ezeile">
+        <span><b>Ruhezeit</b><i id="ruheHilfe">Kein Ton in dieser Zeit — die Meldung erscheint trotzdem</i></span>
+        <input type="checkbox" class="kipp" data-einst="ruheAn">
+      </label>
+      <div class="ezeile senkrecht" id="ruheZeile">
+        <span><b>Ruhig von … bis …</b><i>Über Mitternacht geht: 22:00 bis 07:00</i></span>
+        <div class="lfzeit">
+          <label class="feld"><span>Von</span><input id="ruheVon" type="time" autocomplete="off"></label>
+          <label class="feld"><span>Bis</span><input id="ruheBis" type="time" autocomplete="off"></label>
+        </div>
+      </div>
+      <div class="ezeile senkrecht">
+        <span><b>Klang für Servicerufe</b><i>So hört man, ob ein Gast ruft oder Essen kommt</i></span>
+        <div class="klangwahl kw-vier" id="klangRufWahl" role="radiogroup" aria-label="Klang für Servicerufe">
+          <button class="klang" data-klangruf="gleich" role="radio" aria-checked="true"><b>Wie oben</b><i>Ein Klang für alles</i></button>
+          <button class="klang" data-klangruf="ruhig" role="radio" aria-checked="false"><b>Ruhig</b><i>Weich</i></button>
+          <button class="klang" data-klangruf="moderat" role="radio" aria-checked="false"><b>Moderat</b><i>Standard</i></button>
+          <button class="klang" data-klangruf="stark" role="radio" aria-checked="false"><b>Stark</b><i>Im Lärm</i></button>
+        </div>
+      </div>
+      <div class="ezeile senkrecht">
+        <span><b>Nur diese Bereiche</b><i>Dieses Gerät klingelt nur für Tische dort. Lieferung, Telefon und Tische außerhalb des Plans klingeln immer.</i></span>
+        <div class="lftage" id="gtBereiche" role="group" aria-label="Bereiche dieses Geräts"></div>
+      </div>
 
       <div class="eknoepfe">
         <button class="knopf" id="tonProbe">Ton testen</button>
@@ -5474,16 +5514,44 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <span><b>Erledigte ausblenden</b><i>Fertige Meldungen verschwinden vom Board</i></span>
         <input type="checkbox" class="kipp" data-einst="autoFertig">
       </label>
+      <label class="ezeile">
+        <span><b>Kompakte Karten</b><i>Mehr Bestellungen auf einen Blick, weniger Rand</i></span>
+        <input type="checkbox" class="kipp" data-einst="kompakt">
+      </label>
+      <label class="ezeile">
+        <span><b>Große Uhr</b><i>Die Uhrzeit groß oben — für den Pass und die Küche</i></span>
+        <input type="checkbox" class="kipp" data-einst="uhrGross">
+      </label>
+      <label class="ezeile">
+        <span><b>Rand leuchtet bei neuer Bestellung</b><i>Für laute Räume, in denen man den Ton nicht hört</i></span>
+        <input type="checkbox" class="kipp" data-einst="randBlitz">
+      </label>
     </div>
 
     <div class="egruppe">
       <h2 class="etitel">Nichts übersehen</h2>
       <p class="ehilfe">Steht eine Meldung zu lange auf „Neu", wird sie rot
-        hervorgehoben und der Ton wiederholt sich einmal.</p>
+        hervorgehoben und der Ton klingt noch einmal — oder im Takt, den Sie unten wählen.</p>
       <div class="ezeile senkrecht">
         <span><b>Mahnen nach</b><i id="mahnWert">10 Minuten</i></span>
         <input type="range" min="0" max="30" step="5" id="mahnRegler" class="regler">
       </div>
+      <div class="ezeile senkrecht">
+        <span><b>Servicerufe mahnen nach</b><i id="mahnRufWert">wie Bestellungen</i></span>
+        <input type="range" min="-5" max="30" step="5" id="mahnRufRegler" class="regler" aria-label="Servicerufe mahnen nach Minuten (ganz links: wie Bestellungen)">
+      </div>
+      <div class="ezeile senkrecht">
+        <span><b>Ton wiederholen</b><i>Solange eine Meldung wartet</i></span>
+        <div class="klangwahl" id="mahnTaktWahl" role="radiogroup" aria-label="Ton wiederholen">
+          <button class="klang" data-mahntakt="0" role="radio" aria-checked="true"><b>Einmal</b><i>Wie bisher</i></button>
+          <button class="klang" data-mahntakt="2" role="radio" aria-checked="false"><b>Alle 2 Min</b><i>Drängend</i></button>
+          <button class="klang" data-mahntakt="5" role="radio" aria-checked="false"><b>Alle 5 Min</b><i>Erinnernd</i></button>
+        </div>
+      </div>
+      <label class="ezeile">
+        <span><b>Titel des Tabs blinkt</b><i>Liegt das Board im Hintergrund, zeigt der Tab, dass etwas Neues wartet</i></span>
+        <input type="checkbox" class="kipp" data-einst="titelBlink">
+      </label>
     </div>
 
     <!-- Wer hat was geändert (migration-protokoll.sql). Geschrieben nur
@@ -5534,6 +5602,15 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
     <div class="egruppe">
       <h2 class="etitel">Dieses Gerät</h2>
       <div class="epruefung" id="geraetLage"></div>
+      <div class="ezeile senkrecht">
+        <span><b>Name dieses Geräts</b><i>Steht oben im Kopf, z. B. „Theke“ oder „Küche 2“ — nur auf diesem Gerät</i></span>
+        <label class="feld"><span>Name</span><input id="gtNameFeld" type="text" maxlength="24" autocomplete="off" placeholder="Theke"></label>
+      </div>
+      <div class="eknoepfe">
+        <button class="knopf" id="gtTestKnopf" type="button">Selbsttest starten</button>
+        <button class="knopf leise" id="gtLeerenKnopf" type="button">Neu laden und Zwischenspeicher leeren</button>
+      </div>
+      <div class="epruefung" id="gtTest" aria-live="polite"></div>
     </div>
 
   </section>
@@ -6360,13 +6437,15 @@ let stauZahl   = 0;
 let stauUhr    = null;
 const TON_ABSTAND = 1800;   /* ms zwischen zwei Signaltönen */
 
-function meldenGebuendelt(){
+function meldenGebuendelt(zeile){
   const jetzt = Date.now();
   stauZahl++;
+  gtBlitzen();
 
-  if(jetzt - letzterTon > TON_ABSTAND){
+  /* Ruhezeit und Bereiche dieses Geräts (01.11.): kein Ton — die Meldung erscheint trotzdem (§7: nichts wird unsichtbar). */
+  if(jetzt - letzterTon > TON_ABSTAND && gtTonErlaubt(zeile)){
     letzterTon = jetzt;
-    klingel();
+    klingel(zeile && zeile.quelle === "service" && EINST.klangRuf !== "gleich" ? EINST.klangRuf : null);
   }
 
   /* Kurz warten, ob noch mehr kommt, dann EINE Meldung für alle. */
@@ -6420,25 +6499,33 @@ function restLage(b, jetzt){
 /* ═══ ENDE RESTZEIT ═══════════════════════════════════════════════ */
 
 function istUeberfaellig(b){
-  if(!EINST.mahnungAb) return false;
+  const ab = gtMahnAb(b);
+  if(!ab) return false;
   if(b.status !== "neu") return false;
-  return offenSeit(b) >= EINST.mahnungAb;
+  return offenSeit(b) >= ab;
 }
+/* Servicerufe dürfen eine eigene Schwelle haben (-1 = wie Bestellungen). */
+function gtMahnAb(b){ return b && b.quelle === "service" && EINST.mahnungRuf >= 0 ? EINST.mahnungRuf : EINST.mahnungAb; }
 
 /* Läuft jede Minute. Prüft, ob etwas neu überfällig geworden ist. */
 function mahnungPruefen(){
-  if(!EINST.mahnungAb) return;
-  let neuUeberfaellig = 0;
+  if(!EINST.mahnungAb && !(EINST.mahnungRuf > 0)) return;
+  let neuUeberfaellig = 0, erneut = false;
+  const jetzt = Date.now();
   bestellungen.forEach(b => {
     if(istUeberfaellig(b) && !gemahnt.has(b.id)){
-      gemahnt.add(b.id);
+      gemahnt.add(b.id); gtGemahntUm.set(b.id, jetzt);
       neuUeberfaellig++;
+    }else if(istUeberfaellig(b) && EINST.mahnTakt && jetzt - (gtGemahntUm.get(b.id) || 0) >= EINST.mahnTakt * 60000 - 5000){
+      /* Wiederholtakt (01.11.): solange sie wartet, alle n Minuten erneut. */
+      gtGemahntUm.set(b.id, jetzt); erneut = true;
     }
     /* Wurde sie bearbeitet, kann sie später erneut mahnen. */
-    if(b.status !== "neu") gemahnt.delete(b.id);
+    if(b.status !== "neu"){ gemahnt.delete(b.id); gtGemahntUm.delete(b.id); }
   });
+  if(erneut && !neuUeberfaellig && gtTonErlaubt(null)) klingel();
   if(neuUeberfaellig){
-    klingel();
+    if(gtTonErlaubt(null)) klingel();
     melde(neuUeberfaellig === 1
       ? "Eine Meldung wartet seit über " + EINST.mahnungAb + " Minuten"
       : neuUeberfaellig + " Meldungen warten seit über " + EINST.mahnungAb + " Minuten", true);
@@ -6634,7 +6721,20 @@ const EINST_STANDARD = {
      werden. Der Schalter bleibt — wer es nicht will, legt ihn um,
      und das wird gemerkt. */
   vollbild:     true,
-  skala:        1      // 1 bis 1.6
+  skala:        1,     // 1 bis 1.6
+  /* Neu 01.11. — alles nur auf diesem Gerät (Wunsch: drei Funktionen je Einstellung). */
+  ruheAn:       false,   // Ruhezeit: kein Ton in diesem Fenster, die Meldung erscheint trotzdem
+  ruheVon:      "22:00",
+  ruheBis:      "07:00",
+  klangRuf:     "gleich",// eigener Klang für Servicerufe: 'gleich' | 'ruhig' | 'moderat' | 'stark'
+  bereiche:     [],      // leer = alle; sonst klingeln nur Tische dieser Saal-Bereiche
+  kompakt:      false,   // engere Karten
+  uhrGross:     false,   // große Uhr im Kopf
+  randBlitz:    false,   // Bildschirmrand leuchtet bei neuer Bestellung kurz auf
+  mahnungRuf:   -1,      // Minuten für Servicerufe (-1 = wie Bestellungen, 0 = aus)
+  mahnTakt:     0,       // 0 = einmal mahnen, sonst alle n Minuten erneut
+  titelBlink:   false,   // Titel des Tabs blinkt, solange etwas Neues wartet und der Tab im Hintergrund liegt
+  geraetName:   ""       // nur lokal, z. B. „Theke“
 };
 let EINST = Object.assign({}, EINST_STANDARD);
 
@@ -6643,6 +6743,19 @@ function einstLaden(){
     const roh = localStorage.getItem("omoteno-einstellungen");
     if(roh) EINST = Object.assign({}, EINST_STANDARD, JSON.parse(roh));
   }catch(e){ EINST = Object.assign({}, EINST_STANDARD); }
+  gtSauber();
+}
+/* Was aus dem Gerätespeicher kommt, wird geprüft — ein alter oder beschädigter Wert fällt auf die Vorgabe. */
+function gtSauber(){
+  const S = EINST_STANDARD, zeit = v => typeof v === "string" && /^([01]\d|2[0-3]):[0-5]\d$/.test(v);
+  ["ruheAn", "kompakt", "uhrGross", "randBlitz", "titelBlink"].forEach(k => { if(typeof EINST[k] !== "boolean") EINST[k] = S[k]; });
+  if(!zeit(EINST.ruheVon)) EINST.ruheVon = S.ruheVon;
+  if(!zeit(EINST.ruheBis)) EINST.ruheBis = S.ruheBis;
+  if(!["gleich", "ruhig", "moderat", "stark"].includes(EINST.klangRuf)) EINST.klangRuf = S.klangRuf;
+  EINST.bereiche = Array.isArray(EINST.bereiche) ? EINST.bereiche.filter(z => typeof z === "string" && z.length <= 40 && !/[<>"]/.test(z)).slice(0, 6) : [];
+  if(![-1, 0, 5, 10, 15, 20, 25, 30].includes(EINST.mahnungRuf)) EINST.mahnungRuf = S.mahnungRuf;
+  if(![0, 2, 5].includes(EINST.mahnTakt)) EINST.mahnTakt = S.mahnTakt;
+  EINST.geraetName = typeof EINST.geraetName === "string" ? EINST.geraetName.replace(/[<>"\u0000-\u001f]/g, "").trim().slice(0, 24) : "";
 }
 function einstSichern(){
   try{ localStorage.setItem("omoteno-einstellungen", JSON.stringify(EINST)); }catch(e){}
@@ -7395,7 +7508,7 @@ const KLANG_NOTEN = {
 function dreiklangSpielen(){
   try{
     if(!tonWerk || tonWerk.state !== "running") return false;
-    const k = KLANG_NOTEN[EINST.klang] || KLANG_NOTEN.moderat;
+    const k = KLANG_NOTEN[gtKlang || EINST.klang] || KLANG_NOTEN.moderat;
     k.noten.forEach(([hz, versatz]) => {
       const o = tonWerk.createOscillator();
       const g = tonWerk.createGain();
@@ -7416,7 +7529,7 @@ function dateiSpielen(){
   try{
     if(!tonElement) return false;
     /* Der Klang kann zwischendurch gewechselt worden sein. */
-    const soll = KLAENGE[EINST.klang] || KLAENGE.moderat;
+    const soll = KLAENGE[gtKlang || EINST.klang] || KLAENGE.moderat;
     if(tonElement.src !== soll) tonElement.src = soll;
     tonElement.currentTime = 0;
     tonElement.volume = Math.max(0, Math.min(1, EINST.lautstaerke / 100));
@@ -7426,8 +7539,105 @@ function dateiSpielen(){
   }catch(e){ return false; }
 }
 
-function klingel(){
+/* ══ Nur dieses Gerät (01.11.) ══════════════════════════════════════
+   Drei neue Funktionen je Gruppe „Melden“, „Bildschirm“, „Nichts
+   übersehen“ und „Dieses Gerät“. Alles liegt in EINST (localStorage
+   dieses Geräts), nichts geht an den Server. Kein Ton heißt nie „keine
+   Meldung“: Karten, Saal und Mitteilungstext bleiben (§7). */
+var gtKlang = null;
+const gtGemahntUm = new Map();
+function gtMinuten(hhmm){ const [h, m] = String(hhmm).split(":").map(Number); return h * 60 + m; }
+function gtRuheJetzt(jetzt){
+  if(!EINST.ruheAn) return false;
+  const d = jetzt ? new Date(jetzt) : new Date(), n = d.getHours() * 60 + d.getMinutes();
+  const von = gtMinuten(EINST.ruheVon), bis = gtMinuten(EINST.ruheBis);
+  if(von === bis) return false;
+  return von < bis ? n >= von && n < bis : n >= von || n < bis;   /* über Mitternacht */
+}
+function gtTonErlaubt(zeile){
+  if(gtRuheJetzt()) return false;
+  if(!zeile || !EINST.bereiche.length) return true;
+  let t = null;
+  try{ t = zeile.tisch != null && SAAL.tische.find(x => x.aktiv && saalNk(x.nummer) === saalNk(zeile.tisch)); }catch(e){ return true; }
+  /* Ohne Tisch im Plan (Lieferung, Telefon, Tisch nicht eingezeichnet) klingelt jedes Gerät — sonst hörte es niemand. */
+  if(!t || t.x == null) return true;
+  return EINST.bereiche.includes(saalTischZone(t));
+}
+function gtBlitzen(){
+  if(!EINST.randBlitz) return;
+  const el = $("#gtBlitz"); if(!el) return;
+  if(matchMedia("(prefers-reduced-motion: reduce)").matches){ el.classList.add("still"); setTimeout(() => el.classList.remove("still"), 1600); return; }
+  el.classList.remove("an"); void el.offsetWidth; el.classList.add("an");
+}
+function gtAnzeige(){
+  document.body.classList.toggle("kompakt", !!EINST.kompakt);
+  const u = $("#gtUhr"); if(u){ u.hidden = !EINST.uhrGross; gtUhrZeichnen(); }
+  const n = $("#gtName"); if(n){ n.hidden = !EINST.geraetName; if(n.textContent !== EINST.geraetName) n.textContent = EINST.geraetName; }
+}
+function gtUhrZeichnen(){
+  const u = $("#gtUhr"); if(!u || u.hidden) return;
+  const t = new Date().toLocaleTimeString("de-DE", { hour: "2-digit", minute: "2-digit" });
+  if(u.textContent !== t) u.textContent = t;
+}
+setInterval(gtUhrZeichnen, 10000);
+/* Titel des Tabs: nur im Hintergrund, nur solange etwas Neues wartet. */
+const gtTitelUrsprung = document.title;
+let gtTitelAn = false;
+setInterval(() => {
+  const n = EINST.titelBlink && document.hidden ? bestellungen.filter(b => b && b.status === "neu" && !b.pruefen).length : 0;
+  if(!n){ if(document.title !== gtTitelUrsprung) document.title = gtTitelUrsprung; gtTitelAn = false; return; }
+  gtTitelAn = !gtTitelAn;
+  document.title = gtTitelAn ? "● " + n + (n === 1 ? " neue Meldung" : " neue Meldungen") : gtTitelUrsprung;
+}, 1000);
+document.addEventListener("visibilitychange", () => { if(!document.hidden) document.title = gtTitelUrsprung; });
+function gtBereicheZeichnen(){
+  const el = $("#gtBereiche"); if(!el) return;
+  /* SAAL steht weiter unten als const — vor seiner Zeile wirft schon der Zugriff (TDZ, §8.1l). */
+  let zonen = [];
+  try{ zonen = SAAL.tische.some(t => t.x != null) ? saalZonen() : []; }catch(e){ zonen = []; }
+  const html = zonen.length > 1
+    ? '<button type="button" class="tagknopf" data-gt-bereich="" aria-pressed="' + (!EINST.bereiche.length) + '">Alle</button>' +
+      zonen.map(z => '<button type="button" class="tagknopf" data-gt-bereich="' + sicher(z) + '" aria-pressed="' + EINST.bereiche.includes(z) + '">' + sicher(z) + '</button>').join("")
+    : '<p class="ehilfe">Erst sinnvoll mit mindestens zwei Bereichen im Saalplan (Tische → Saal einrichten).</p>';
+  if(el.dataset.sig !== html){ el.innerHTML = html; el.dataset.sig = html; }
+}
+/* Selbsttest: was das Gerät für den Dienst braucht — gemessen, nicht angenommen. */
+async function gtSelbsttest(){
+  const ziel = $("#gtTest"); if(!ziel) return;
+  const zeilen = [], zeile = (gut, text) => zeilen.push('<div class="zeile"><i class="' + (gut ? "gut" : "warn") + '">' + (gut ? "✓" : "!") + '</i><span>' + sicher(text) + '</span></div>');
+  ziel.innerHTML = '<p class="ehilfe">Prüfe …</p>';
+  tonFreischalten(); klingel();
+  zeile(EINST.ton && tonBereit, !EINST.ton ? "Signalton ist ausgeschaltet (Melden)" : tonBereit ? "Ton freigeschaltet und abgespielt" : "Ton noch gesperrt — einmal „Ton testen“ antippen");
+  if(gtRuheJetzt()) zeile(false, "Gerade ist Ruhezeit (" + EINST.ruheVon + "–" + EINST.ruheBis + "): neue Bestellungen klingeln nicht");
+  zeile(navigator.onLine !== false, navigator.onLine === false ? "Kein Netz — neue Bestellungen kommen erst wieder, wenn das Netz da ist" : "Mit dem Netz verbunden");
+  let abw = null;
+  try{
+    const vor = Date.now(), r = await fetch(location.href.split("#")[0], { method: "HEAD", cache: "no-store" }), nach = Date.now();
+    const d = Date.parse(r.headers.get("date") || "");
+    if(d) abw = Math.round((d - (vor + nach) / 2) / 1000);
+  }catch(e){}
+  if(abw == null) zeile(true, "Uhrzeit des Geräts: nicht messbar (kein Server-Datum) — " + new Date().toLocaleTimeString("de-DE"));
+  else zeile(Math.abs(abw) <= 60, Math.abs(abw) <= 60 ? "Uhr des Geräts geht richtig (" + (abw >= 0 ? "+" : "") + abw + " s)" : "Uhr des Geräts weicht um " + Math.round(abw / 60) + " Minuten ab — Wartezeiten stimmen dann nicht");
+  zeile(EINST.mahnungAb > 0, EINST.mahnungAb > 0 ? "Mahnt nach " + EINST.mahnungAb + " Minuten" : "Mahnung ist aus (Nichts übersehen)");
+  ziel.innerHTML = zeilen.join("");
+}
+/* Zwischenspeicher leeren und neu laden — erst beim zweiten Tipp. Der Service Worker bleibt (sonst wären die Mitteilungen weg). */
+let gtLeerenScharf = 0;
+async function gtLeeren(knopf){
+  if(Date.now() - gtLeerenScharf > 5000){
+    gtLeerenScharf = Date.now();
+    knopf.textContent = "Wirklich? Noch einmal tippen";
+    setTimeout(() => { if(Date.now() - gtLeerenScharf >= 5000) knopf.textContent = "Neu laden und Zwischenspeicher leeren"; }, 5200);
+    return;
+  }
+  gtLeerenScharf = 0;
+  try{ if(window.caches){ const k = await caches.keys(); await Promise.all(k.map(n => caches.delete(n))); } }catch(e){}
+  location.reload();
+}
+
+function klingel(klang){
   if(!EINST.ton) return;
+  gtKlang = KLANG_NOTEN[klang] ? klang : null;
 
   /* Der Kontext schläft nach dem Sperren des Bildschirms ein. resume()
      liefert ein Versprechen – ohne das Abwarten würden die Töne ins
@@ -11810,6 +12020,7 @@ function euOeffnen(id){
      falsch stehen (gefunden von pruef-figur-board: Auswahlknöpfe 0 px hoch,
      nachdem die Kachel getippt war). */
   try{ reglerFuellen(); avRaederAusrichten(); }catch(e){}
+  try{ gtBereicheZeichnen(); }catch(e){}   /* die Bereiche kommen aus dem Saal, der später lädt */
   window.scrollTo(0, 0);
   const h = gruppe.querySelector("h2.etitel");
   if(h){ h.tabIndex = -1; h.focus({ preventScroll:true }); }
@@ -11990,6 +12201,50 @@ $("#mahnRegler").addEventListener("change", () => {
   gemahnt.clear();          /* neue Schwelle, neu bewerten */
   neuZeichnen();
 });
+
+/* ── Nur dieses Gerät (01.11.): Verdrahtung der neuen Bedienelemente ── */
+function gtZeichnen(){
+  const set = (id, v) => { const e = $("#" + id); if(e && document.activeElement !== e && e.value !== v) e.value = v; };
+  set("ruheVon", EINST.ruheVon); set("ruheBis", EINST.ruheBis); set("gtNameFeld", EINST.geraetName);
+  const rz = $("#ruheZeile"); if(rz) rz.hidden = !EINST.ruheAn;
+  const rh = $("#ruheHilfe"); if(rh) rh.textContent = EINST.ruheAn
+    ? (gtRuheJetzt() ? "Gerade ruhig (" : "Ruhig von ") + EINST.ruheVon + " bis " + EINST.ruheBis + " — die Meldung erscheint trotzdem"
+    : "Kein Ton in dieser Zeit — die Meldung erscheint trotzdem";
+  $$("#klangRufWahl [data-klangruf]").forEach(x => x.setAttribute("aria-checked", String(x.dataset.klangruf === EINST.klangRuf)));
+  $$("#mahnTaktWahl [data-mahntakt]").forEach(x => x.setAttribute("aria-checked", String(+x.dataset.mahntakt === EINST.mahnTakt)));
+  const mr = $("#mahnRufRegler"), mw = $("#mahnRufWert");
+  if(mr && document.activeElement !== mr) mr.value = String(EINST.mahnungRuf < 0 ? -5 : EINST.mahnungRuf);
+  if(mw) mw.textContent = EINST.mahnungRuf < 0 ? "wie Bestellungen" : EINST.mahnungRuf === 0 ? "aus – Servicerufe mahnen nicht" : EINST.mahnungRuf + " Minuten";
+  gtBereicheZeichnen();
+  gtAnzeige();
+}
+$("#ruheVon").addEventListener("change", e => { if(/^\d\d:\d\d$/.test(e.target.value)){ EINST.ruheVon = e.target.value; einstSichern(); } gtZeichnen(); });
+$("#ruheBis").addEventListener("change", e => { if(/^\d\d:\d\d$/.test(e.target.value)){ EINST.ruheBis = e.target.value; einstSichern(); } gtZeichnen(); });
+$("#klangRufWahl").addEventListener("click", e => {
+  const k = e.target.closest("[data-klangruf]"); if(!k) return;
+  EINST.klangRuf = k.dataset.klangruf; einstSichern(); gtZeichnen();
+  /* Vorspielen, synchron in der Berührung (iOS) — „Wie oben“ spielt den normalen Klang. */
+  tonFreischalten(); klingel(EINST.klangRuf === "gleich" ? null : EINST.klangRuf);
+});
+$("#mahnTaktWahl").addEventListener("click", e => {
+  const k = e.target.closest("[data-mahntakt]"); if(!k) return;
+  EINST.mahnTakt = +k.dataset.mahntakt; gtSauber(); einstSichern(); gtZeichnen();
+});
+$("#mahnRufRegler").addEventListener("input", e => { const v = +e.target.value; EINST.mahnungRuf = v < 0 ? -1 : v; gtZeichnen(); });
+$("#mahnRufRegler").addEventListener("change", () => { gtSauber(); einstSichern(); gemahnt.clear(); neuZeichnen(); });
+$("#gtBereiche").addEventListener("click", e => {
+  const k = e.target.closest("[data-gt-bereich]"); if(!k) return;
+  const z = k.dataset.gtBereich;
+  if(!z) EINST.bereiche = [];
+  else EINST.bereiche = EINST.bereiche.includes(z) ? EINST.bereiche.filter(x => x !== z) : EINST.bereiche.concat(z);
+  gtSauber(); einstSichern(); gtZeichnen();
+});
+$("#gtNameFeld").addEventListener("input", e => { EINST.geraetName = e.target.value; gtSauber(); einstSichern(); gtAnzeige(); });
+$("#gtTestKnopf").addEventListener("click", () => gtSelbsttest());
+$("#gtLeerenKnopf").addEventListener("click", e => gtLeeren(e.currentTarget));
+$("#t-einstellungen").addEventListener("change", e => { if(e.target.closest("[data-einst]")) gtZeichnen(); });
+/* Erst nach dem ganzen Skript: einstZeichnen() und der Saal stehen weiter unten. */
+setTimeout(gtZeichnen, 0);
 
 /* Klang wählen: sofort vorspielen, sonst kann man ihn nicht beurteilen.
    Muss synchron in der Berührung laufen, sonst sperrt iOS den Ton. */
@@ -12774,7 +13029,7 @@ function live_anmelden(id, marke){
         if(neueBestellung(nutz.new)){
           /* Markiert (Flut, unbekanntes Gericht): aufnehmen, aber nicht
              klingeln — eine Flut soll das Team nicht vom Pass holen. */
-          if(!nutz.new.pruefen){ hinweisZeigen(nutz.new); meldenGebuendelt(); }
+          if(!nutz.new.pruefen){ hinweisZeigen(nutz.new); meldenGebuendelt(nutz.new); }
           neuZeichnen();
         }
       })
