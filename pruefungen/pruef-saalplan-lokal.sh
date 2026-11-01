@@ -24,6 +24,7 @@ $PSQL -d $DB -f datenbank/modell-lokal-saal.sql
 $PSQL -d $DB -f datenbank/migration-saalplan.sql
 $PSQL -d $DB -f datenbank/migration-saal-einstellungen.sql
 $PSQL -d $DB -f datenbank/migration-saal-raeume.sql
+$PSQL -d $DB -f "${BELEGUNG_SQL:-datenbank/migration-tisch-belegung.sql}"
 ERWARTET=(
  "Inhaber legt Lage (erwartet 1)|1"
  "Inhaber ändert nummer|abgewiesen" "Inhaber ändert schluessel|abgewiesen"
@@ -60,11 +61,27 @@ ERWARTET=(
  "RM30 Stand nach Abweisungen = RM03|{\"zonen\": [\"Nur\"]}"
  "RM31 Höchstmaß passt in die Schranke|{\"ok\": true}" "RM32 Größe des Höchstmaßes unter 3500|true"
  "RM40 direkt ändern|abgewiesen" "RM50 TEAM setzt Räume (erwartet kein_recht)|{\"ok\": false, \"grund\": \"kein_recht\"}"
- "RM60 anon ruft|abgewiesen" "RM70 genau eine Fassung|1")
+ "RM60 anon ruft|abgewiesen" "RM70 genau eine Fassung|1"
+ "TB00 Voraussetzung|true" "TB01 Inhaber setzt 4 an Tisch 1|true/4" "TB02 zweiter Durchgang: 3, zahlt|true/3/zahlt"
+ "TB03 eine Zeile je Tisch (zweiter Durchgang überschreibt)|1" "TB04 gespeichert: 3 Personen|3" "TB05 seit bleibt beim zweiten Durchgang|true"
+ "TB06 frei setzt Personen auf 0|0" "TB07 wieder besetzt: seit beginnt neu|true"
+ "TB10 unbekannter Tisch|{\"ok\": false, \"grund\": \"tisch\"}" "TB10b Tisch null|{\"ok\": false, \"grund\": \"tisch\"}"
+ "TB11 Tisch im fremden Betrieb|{\"ok\": false, \"grund\": \"kein_recht\"}"
+ "TB12 41 Personen|{\"ok\": false, \"grund\": \"personen\"}" "TB13 -1 Personen|{\"ok\": false, \"grund\": \"personen\"}"
+ "TB14 Personen null|{\"ok\": false, \"grund\": \"personen\"}" "TB15 Stand weg|{\"ok\": false, \"grund\": \"stand\"}"
+ "TB16 Stand null|{\"ok\": false, \"grund\": \"stand\"}" "TB17 Tisch mit Anführungszeichen|{\"ok\": false, \"grund\": \"tisch\"}"
+ "TB18 Stand nach allen Abweisungen unverändert|2/da" "TB21 direkt einfügen|abgewiesen" "TB22 direkt ändern|abgewiesen"
+ "TB50 Anwesenheit Tisch 1 offen|true" "TB51 Anwesenheit Tisch 2 abgelaufen|false" "TB52 Anwesenheit nur Tische mit Sitzung|2"
+ "TB53 Anwesenheit eines fremden Betriebs|0" "TB20 Team trägt Personen ein|true" "TB23 Team liest die Belegung|2"
+ "TB31 Fremder liest Belegung (erwartet 0)|0" "TB32 Fremder setzt|{\"ok\": false, \"grund\": \"kein_recht\"}"
+ "TB33 Fremder liest Anwesenheit (erwartet 0)|0" "TB40 anon setzt|abgewiesen" "TB41 anon liest|abgewiesen" "TB42 anon Anwesenheit|abgewiesen"
+ "TB60 genau eine Fassung tisch_belegung_setzen|1" "TB61 genau eine Fassung saal_anwesenheit|1" "TB62 Rückgabe ohne Token|true"
+ "TB63 authenticated darf nicht schreiben|true")
 $PSQL -d $DB -tA -f datenbank/pruef-saalplan.sql > /tmp/saal_ergebnis.txt
 $PSQL -d $DB -tA -f datenbank/pruef-saal-einstellungen.sql >> /tmp/saal_ergebnis.txt
 $PSQL -d $DB -tA -f datenbank/pruef-rubriken-lokal.sql >> /tmp/saal_ergebnis.txt
 $PSQL -d $DB -tA -f datenbank/pruef-saal-raeume.sql >> /tmp/saal_ergebnis.txt
+$PSQL -d $DB -tA -f datenbank/pruef-tisch-belegung.sql >> /tmp/saal_ergebnis.txt
 rot=0
 for e in "${ERWARTET[@]}"; do
   if ! grep -qxF -- "$e" /tmp/saal_ergebnis.txt; then echo "ROT, Zeile fehlt oder weicht ab: $e"; rot=1; fi
