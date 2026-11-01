@@ -43,7 +43,11 @@ const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d
       return { vh: document.documentElement.clientHeight, versatz: document.documentElement.style.getPropertyValue("--vv-versatz"),
         nav: unten("#hauptnav"), blatt: unten(".warenkarte"), balken: unten(".auswahlbalken"), strv: unten(".vstreifen"), strw: unten(".wsstreifen") };
     });
+    /* Die Proben unten messen den RUHEZUSTAND (die Rechnung, wenn nichts mehr rollt): Ruhe wird ausdrücklich hergestellt
+       (leisteBewegtUm weit zurück) — ein fokussiertes Testfeld rollt die Seite und läge sonst in der Ruhezeit. Was WÄHREND des
+       Rollens geschieht, prüft der eigene Abschnitt „Rollen“ mit echten Rollereignissen. */
     const setze = (h, extra) => p.evaluate(([dy, fokus]) => {
+      leisteBewegtUm = -1e9;
       Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + dy, addEventListener(){} } });
       if(fokus){ const i = document.createElement("input"); document.body.appendChild(i); i.focus(); }
       return leisteAnkern();
@@ -118,12 +122,36 @@ const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d
     const gezoomt = await stand();
     pruef(festeNachher.every(k => gezoomt[k] === ruhe[k]), "gezoomt (scale 2): nichts bewegt sich", JSON.stringify(gezoomt));
     await setze(120);
-    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:-60, scale:1, height:document.documentElement.clientHeight + 300, addEventListener(){} } }); leisteAnkern(); });
+    await p.evaluate(() => { leisteBewegtUm = -1e9; Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:-60, scale:1, height:document.documentElement.clientHeight + 300, addEventListener(){} } }); leisteAnkern(); });
     const gummi = await stand();
     pruef(gummi.versatz === "120px", "Gummiband oben (offsetTop −60): der letzte Stand bleibt, nichts zuckt", gummi.versatz);
     await setze(0);
     const mitFeld = await setze(120, true);
     pruef(mitFeld === 0, "mit fokussiertem Eingabefeld wird nicht verschoben", String(mitFeld));
+    /* Rollen (Meldung 01.11.: „der Auswahl-Balken hängt nicht unten fest, er verschiebt sich mit der Seite“). Nachgestellt, was
+       Safari beim Rollen tut: visualViewport meldet die eingefahrene Adressleiste sofort (+70 px in Schritten), der Layout-Bereich
+       zieht erst nach. Echte Rollereignisse (scrollBy) — die Leiste darf in dieser Zeit nicht wandern. Danach Ruhe: Ein Abstand, der
+       BLEIBT (der Fall „schwebt mitten im Bild“), wird weiterhin ausgeglichen. */
+    await setze(0);
+    await p.evaluate(() => { const v = new EventTarget(); v.offsetTop = 0; v.scale = 1; v.height = document.documentElement.clientHeight;
+      Object.defineProperty(window, "visualViewport", { configurable:true, value:v }); window.__vv = v; document.activeElement && document.activeElement.blur && document.activeElement.blur(); window.scrollTo(0, 0); });
+    await p.waitForTimeout(400);
+    const balkenLage = () => p.evaluate(() => { const e = document.getElementById("auswahlbalken") || document.querySelector(".auswahlbalken"); return Math.round(e.getBoundingClientRect().bottom); });
+    const lage0 = await balkenLage(), spur = [];
+    for(let i = 1; i <= 10; i++){
+      /* scrollBy UND resize: Safari schickt beim Ein-/Ausfahren auch resize — resize rechnet sofort, die Ruhe-Sperre muss halten. */
+      await p.evaluate(i => { window.__vv.height = document.documentElement.clientHeight + Math.min(70, i * 12); scrollBy(0, 30); dispatchEvent(new Event("resize")); }, i);
+      await p.waitForTimeout(40);
+      spur.push((await balkenLage()) - lage0);
+    }
+    const nochVersatz = await p.evaluate(() => document.documentElement.style.getPropertyValue("--vv-versatz"));
+    pruef(spur.every(d => d === 0) && nochVersatz === "0px", "Rollen mit einfahrender Adressleiste: die Auswahl-Leiste wandert NICHT mit", spur.join(" ") + " · " + nochVersatz);
+    await p.waitForTimeout(700);
+    const nachRuhe = await p.evaluate(() => document.documentElement.style.getPropertyValue("--vv-versatz"));
+    pruef(nachRuhe === "70px", "danach in Ruhe: ein Abstand, der bleibt, wird ausgeglichen (der Fall „schwebt“)", nachRuhe);
+    await p.evaluate(() => { window.__vv.height = document.documentElement.clientHeight; dispatchEvent(new Event("resize")); });
+    await p.waitForTimeout(700);
+    pruef(await p.evaluate(() => document.documentElement.style.getPropertyValue("--vv-versatz")) === "0px", "Layout zieht nach (Unterkanten gleich): zurück auf 0");
     pruef(fehler.length === 0, "keine Skriptfehler", fehler.join(" | "));
     await ctx.close();
   }

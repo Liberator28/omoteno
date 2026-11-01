@@ -18132,9 +18132,20 @@ function leisteHaengtUm(feld){
   const soll = Math.max(leisteHoechst[o], schirm && schirm - jetzt < 600 ? schirm : 0), d = Math.round(soll - jetzt);
   return d > LEISTE_HAENGT && d < 600 ? d : 0;
 }
+/* Rollen (Meldung 01.11. aus dem Hub, derselbe Griff hier): Fährt Safari beim Rollen seine Leiste ein oder aus, meldet
+   visualViewport die neue Höhe sofort, der Layout-Bereich zieht erst nach, und der Browser führt die festen Leisten in der Zeit
+   selbst nach — der Versatz kam obendrauf und wanderte mit. Er ändert sich deshalb nur in RUHE (LEISTE_RUHE ms nach dem letzten
+   Rollen/Ein-/Ausfahren/Fingerzug); gezoomt folgt die Leiste weiter sofort (Meldung 26.10.). */
+const LEISTE_RUHE = 300;
+let leisteBewegtUm = -1e9, leisteRuheUhr = 0;
+function leisteBewegt(){
+  leisteBewegtUm = performance.now();
+  clearTimeout(leisteRuheUhr);
+  leisteRuheUhr = setTimeout(leisteAnkernBald, LEISTE_RUHE + 30);
+}
 function leisteAnkern(){
   const vv = window.visualViewport, wurzel = document.documentElement;
-  let v = 0, kehr = 1, x = 0;
+  let v = 0, kehr = 1, x = 0, zoom = false;
   if(vv){
     const feld = leisteTastaturFeld(document.activeElement);
     const s = vv.scale || 1;
@@ -18143,7 +18154,7 @@ function leisteAnkern(){
        „nach dem Reinzoomen nicht mehr unten gefixt“). Sie folgt jetzt dem sichtbaren Rand: gleiche Rechnung wie im Normalfall,
        dazu um 1/Zoom verkleinert (bleibt so groß wie sonst) und um den seitlichen Versatz verschoben. Vorher setzte eine Ausnahme
        „gezoomt“ den Versatz auf 0 — die Ausnahme war der Fehler. */
-    if(gezoomt){ kehr = 1 / s; x = Math.round(vv.offsetLeft || 0); }
+    if(gezoomt){ kehr = 1 / s; x = Math.round(vv.offsetLeft || 0); zoom = true; }
     /* Gummiband am oberen Rand: der Sichtbereich wandert kurz ins Negative — dann nichts ändern, sonst zuckt die Leiste.
        Das Nachlaufen in leisteAnkernBald() rechnet nach dem Auslaufen noch einmal. */
     if(vv.offsetTop < -1) return parseInt(wurzel.style.getPropertyValue("--vv-versatz"), 10) || 0;
@@ -18165,6 +18176,9 @@ function leisteAnkern(){
     }
   }
   const alt = wurzel.style.getPropertyValue("--vv-versatz");
+  if(!zoom && alt !== v + "px" && performance.now() - leisteBewegtUm < LEISTE_RUHE){
+    const a = parseInt(alt, 10) || 0; if(LEISTE_MESS) leisteMessZeigen(a); return a;
+  }
   if(alt !== v + "px") wurzel.style.setProperty("--vv-versatz", v + "px");
   const k = kehr.toFixed(4), ax = x + "px";
   if(wurzel.style.getPropertyValue("--vv-kehr") !== k) wurzel.style.setProperty("--vv-kehr", k);
@@ -18218,8 +18232,12 @@ function leisteAnkernBald(){
   leisteAnkerGeplant = true;
   requestAnimationFrame(() => { leisteAnkerGeplant = false; leisteAnkern(); });
 }
-if(window.visualViewport){ visualViewport.addEventListener("resize", leisteAnkernBald); visualViewport.addEventListener("scroll", leisteAnkernBald); }
-["resize", "orientationchange", "pageshow", "focusout", "touchend", "touchcancel", "gestureend", "scroll"].forEach(e => addEventListener(e, leisteAnkernBald, { passive:true }));
+if(window.visualViewport){
+  visualViewport.addEventListener("resize", () => { leisteBewegt(); if((visualViewport.scale || 1) > 1.01) leisteAnkernBald(); });
+  visualViewport.addEventListener("scroll", () => { leisteBewegt(); if((visualViewport.scale || 1) > 1.01) leisteAnkernBald(); });
+}
+["scroll", "touchmove"].forEach(e => addEventListener(e, leisteBewegt, { passive:true }));
+["resize", "orientationchange", "pageshow", "focusout", "touchend", "touchcancel", "gestureend"].forEach(e => addEventListener(e, leisteAnkernBald, { passive:true }));
 document.addEventListener("visibilitychange", leisteAnkernBald);
 leisteAnkernBald();
 /* Erststellung: die Pille existiert in der statischen Auszeichnung

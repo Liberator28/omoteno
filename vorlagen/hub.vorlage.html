@@ -22667,6 +22667,18 @@ function leisteSonde(){
    um mehr als LEISTE_HAENGT kleiner, hängt iOS: erst ein Anstoß (einmal rollen), dann rücken die Leisten um die Differenz nach
    unten. Ehrliche Grenze: auf keinem Gerät gesehen; ob iOS die nachgerückte Leiste zeichnet, zeigt ?leiste=mess. */
 var LEISTE_HAENGT = 200, leisteHoechst = { hoch: 0, quer: 0 }, leisteAnstoss = 0;
+/* Rollen (Meldung 01.11.: „der Auswahl-Balken hängt nicht unten fest, er verschiebt sich mit der Seite“): Fährt Safari beim Rollen
+   seine Leiste ein oder aus, meldet visualViewport die neue Höhe sofort, der Layout-Bereich (die Sonde, jede feste Leiste) zieht
+   erst nach — und der Browser führt seine festen Leisten in der Zeit SELBST nach. Der Versatz kam obendrauf und wanderte Schritt
+   für Schritt mit (nachgestellt: 0 → 70 px über zwölf Rollschritte). Deshalb ändert er sich nur in RUHE: frühestens LEISTE_RUHE ms
+   nach dem letzten Rollen, Ein-/Ausfahren oder Fingerzug; danach wird einmal nachgemessen. Während des Rollens bleibt die Leiste,
+   wo der Browser sie hält. */
+var LEISTE_RUHE = 300, leisteBewegtUm = -1e9, leisteRuheUhr = 0;
+function leisteBewegt(){
+  leisteBewegtUm = performance.now();
+  clearTimeout(leisteRuheUhr);
+  leisteRuheUhr = setTimeout(leisteAnkernBald, LEISTE_RUHE + 30);
+}
 function leisteTippfeld(a){ return !!a && (a.tagName === "TEXTAREA" || a.tagName === "SELECT" || (a.tagName === "INPUT" && !/^(checkbox|radio|range|color|file|button|submit|reset|image|hidden)$/i.test(a.type || "text")) || a.isContentEditable === true); }
 function leisteHaengtUm(feld){
   var vv = window.visualViewport, o = innerWidth > innerHeight ? "quer" : "hoch";
@@ -22698,6 +22710,8 @@ function leisteAnkern(){
       }
     }
   }
+  var alt = parseInt(wurzel.style.getPropertyValue("--vv-versatz"), 10) || 0;
+  if(v !== alt && performance.now() - leisteBewegtUm < LEISTE_RUHE){ if(LEISTE_MESS) leisteMessZeigen(alt); return alt; }
   if(wurzel.style.getPropertyValue("--vv-versatz") !== v + "px") wurzel.style.setProperty("--vv-versatz", v + "px");
   if(LEISTE_MESS) leisteMessZeigen(v);
   return v;
@@ -22720,8 +22734,9 @@ function leisteAnkernBald(){
   leisteAnkerGeplant = true;
   requestAnimationFrame(function(){ leisteAnkerGeplant = false; leisteAnkern(); });
 }
-if(window.visualViewport){ visualViewport.addEventListener("resize", leisteAnkernBald); visualViewport.addEventListener("scroll", leisteAnkernBald); }
-["resize", "orientationchange", "pageshow", "focusout", "touchend", "scroll"].forEach(function(e){ addEventListener(e, leisteAnkernBald, { passive:true }); });
+if(window.visualViewport){ visualViewport.addEventListener("resize", leisteBewegt); visualViewport.addEventListener("scroll", leisteBewegt); }
+["scroll", "touchmove"].forEach(function(e){ addEventListener(e, leisteBewegt, { passive:true }); });
+["resize", "orientationchange", "pageshow", "focusout", "touchend"].forEach(function(e){ addEventListener(e, leisteAnkernBald, { passive:true }); });
 document.addEventListener("visibilitychange", leisteAnkernBald);
 leisteAnkernBald();
 </script>
