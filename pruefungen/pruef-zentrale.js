@@ -32,7 +32,7 @@
 const { chromium } = require("playwright");
 const path = require("path");
 
-const ADMIN = "file://" + path.join(__dirname, "..", "seiten", "admin.html");
+const ADMIN = "file://" + (process.env.ADMIN_DATEI || path.join(__dirname, "..", "seiten", "admin.html"));
 let n = 0, f = 0;
 const pruef = (g, t, z) => { n++; if(!g) f++; console.log((g ? "  ok   " : "  FEHL ") + t + (z !== undefined ? "  → " + z : "")); };
 
@@ -233,6 +233,53 @@ const AUFBAU = id => {
     await tafelOeffnen(p, id);
     const a = await p.evaluate(AUFBAU, id);
     pruef(a.lauf.every(x => x === ""), name + " bei reduzierter Bewegung: an keiner Kachel läuft ein Lichtrand", "laufend: " + a.lauf.filter(x => x).length);
+    await ctx.close();
+  }
+
+  /* 7 · Ordnung (01.11.): Abschnitte, Suche, „Zuletzt geöffnet“. Zweite Quelle bleiben die Gruppen. */
+  console.log("\n══ Abschnitte, Suche, Zuletzt geöffnet ══");
+  const ERWARTET = { einstellungen: ["Bestellen & Service", "Nur dieses Gerät", ["Melden", "Bildschirm", "Dieses Gerät"], "euSuche", "lautstärke", "Melden"],
+                     startseite: ["Aussehen", "Texte", ["Ihre Worte", "Alle Texte"], "ghSuche", "logo", "Kopf & Logo"] };
+  for(const [id, name] of REITER){
+    const [erster, abName, abInhalt, suche, wort, findet] = ERWARTET[id];
+    const { ctx, p, fehler } = await board(browser, 390);
+    await p.evaluate(() => localStorage.removeItem("omoteno-eu-zuletzt"));
+    await tafelOeffnen(p, id);
+    const o = await p.evaluate(id => {
+      const tafel = document.getElementById("t-" + id), ab = [...tafel.querySelectorAll(".eu-uebersicht .eu-abschnitt")];
+      const kacheln = [...tafel.querySelectorAll(".eu-kachel")];
+      return { titel: ab.map(a => a.querySelector(".eu-abtitel").textContent),
+        jeEine: kacheln.every(k => k.closest(".eu-abschnitt")),
+        inhalt: Object.fromEntries(ab.map(a => [a.querySelector(".eu-abtitel").textContent, [...a.querySelectorAll(".eu-kachel b")].map(b => b.textContent)])) };
+    }, id);
+    pruef(o.titel[0] === erster && o.titel.length >= 4 && o.jeEine, name + ": Kacheln in Abschnitten, „" + erster + "“ zuerst, keine Kachel außerhalb", o.titel.join(" · "));
+    pruef(JSON.stringify(o.inhalt[abName]) === JSON.stringify(abInhalt), name + ": „" + abName + "“ enthält genau " + abInhalt.join(", "), JSON.stringify(o.inhalt[abName]));
+    const feld = await p.evaluate(s => { const e = document.getElementById(s), r = e.getBoundingClientRect(); return { px: parseFloat(getComputedStyle(e).fontSize), h: r.height }; }, suche);
+    pruef(feld.px >= 16 && feld.h >= 44, name + ": Suchfeld 16 px, ≥ 44 px hoch", JSON.stringify(feld));
+    await p.fill("#" + suche, wort); await p.waitForTimeout(120);
+    const t1 = await p.evaluate(id => [...document.querySelectorAll("#t-" + id + " .eu-uebersicht .eu-kachel")].filter(k => k.getClientRects().length).map(k => k.querySelector("b").textContent), id);
+    pruef(t1.includes(findet) && t1.length < 6, name + ": Suche „" + wort + "“ findet „" + findet + "“ (aus dem Inhalt der Gruppe)", t1.join(", "));
+    await p.fill("#" + suche, "qqxyzq"); await p.waitForTimeout(120);
+    const t2 = await p.evaluate(id => ({ sicht: [...document.querySelectorAll("#t-" + id + " .eu-uebersicht .eu-kachel")].filter(k => k.getClientRects().length).length,
+      leer: !document.querySelector("#t-" + id + " .eu-nichts").hidden, ab: [...document.querySelectorAll("#t-" + id + " .eu-abschnitt")].filter(a => a.getClientRects().length).length }), id);
+    pruef(t2.sicht === 0 && t2.leer && t2.ab === 0, name + ": ohne Treffer ein Satz, keine leeren Abschnitte", JSON.stringify(t2));
+    await p.fill("#" + suche, ""); await p.waitForTimeout(120);
+    const t3 = await p.evaluate(AUFBAU, id);
+    pruef(t3.kacheln === t3.gruppen && t3.klein === 0, name + ": Suche geleert → alle Kacheln wieder da", t3.kacheln + "/" + t3.gruppen);
+    /* Zuletzt: echter Tipp auf die zweite Kachel, zurück, dann der Chip. */
+    const ziel = t3.ids[1];
+    await p.click('#t-' + id + ' .eu-kachel[data-eu-seite="' + ziel + '"]'); await p.waitForTimeout(250);
+    await p.click("#t-" + id + " > .eu-zurueck"); await p.waitForTimeout(250);
+    const z = await p.evaluate(([id, ziel]) => { const c = document.querySelector('#t-' + id + ' [data-eu-zuletzt="' + ziel + '"]'), r = c && c.getBoundingClientRect();
+      return { da: !!c && !!c.getClientRects().length, h: r ? r.height : 0, kachel: !!(c && c.closest(".eu-kachel")), seite: !!(c && c.hasAttribute("data-eu-seite")),
+        fokus: document.activeElement && document.activeElement.dataset.euSeite }; }, [id, ziel]);
+    pruef(z.da && z.h >= 44 && !z.kachel && !z.seite, name + ": „Zuletzt geöffnet“ zeigt den Chip (≥ 44 px), keine zweite Kachel", JSON.stringify(z));
+    pruef(z.fokus === ziel, name + ": Zurück setzt den Fokus auf die KACHEL, nicht auf den Chip", z.fokus);
+    await p.click('#t-' + id + ' [data-eu-zuletzt="' + ziel + '"]'); await p.waitForTimeout(250);
+    pruef(await p.evaluate(([id, ziel]) => document.getElementById("t-" + id).dataset.euOffen === ziel, [id, ziel]), name + ": Tipp auf den Chip öffnet genau diese Gruppe");
+    const neu2 = await p.evaluate(() => JSON.parse(localStorage.getItem("omoteno-eu-zuletzt") || "{}"));
+    pruef(Object.values(neu2).every(l => Array.isArray(l) && l.length <= 3), name + ": gemerkt höchstens drei je Reiter, nur auf diesem Gerät", JSON.stringify(neu2));
+    pruef(!fehler.length, name + ": keine Laufzeitfehler", fehler[0] || "still");
     await ctx.close();
   }
 

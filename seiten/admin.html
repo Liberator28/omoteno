@@ -3287,6 +3287,18 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
 #t-startseite > .eu-zurueck{position:relative;top:auto}
 .eu-uebersicht{background:none;border:0;box-shadow:none;padding:0}
 .eu-kacheln{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-top:6px}
+/* Abschnitte, Suche, „Zuletzt geöffnet“ (01.11.) */
+.eu-abschnitt{margin-top:18px}
+.eu-abtitel{margin:0 4px 2px;font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--gedaempft);font-weight:700}
+.eu-sucheziele{margin:4px 0 6px}
+.eu-suche{width:100%;min-height:48px;padding:0 16px;border-radius:14px;border:1px solid var(--linie);background:var(--flaeche);
+  color:var(--kreide);-webkit-text-fill-color:var(--kreide);font:inherit;font-size:16px;-webkit-appearance:none;appearance:none;scroll-margin-top:96px}
+.eu-suche::placeholder{color:var(--gedaempft);-webkit-text-fill-color:var(--gedaempft);opacity:1}
+.eu-zuletzt{display:flex;flex-wrap:wrap;align-items:center;gap:8px;margin:8px 0 0}
+.eu-zuletzt.eu-aus{display:none}
+.eu-ztitel{font-size:12.5px;color:var(--gedaempft);margin-right:2px}
+.eu-zchip{min-height:44px;padding:0 16px;border-radius:22px;border:1px solid var(--linie);background:var(--flaeche);color:var(--kreide);font:inherit;font-size:14px;font-weight:600;cursor:pointer}
+.eu-nichts{margin:18px 4px;color:var(--gedaempft);font-size:15px}
 .eu-kachel,.eu-zurueck{
   position:relative;isolation:isolate;overflow:hidden;font:inherit;color:var(--kreide);cursor:pointer;
   background:var(--glas);-webkit-backdrop-filter:blur(16px) saturate(160%);backdrop-filter:blur(16px) saturate(160%);
@@ -11676,18 +11688,24 @@ function euEinrichten(){
       '<span class="eu-wert"' + stand + '></span></button>';
   /* Seit 11.10. liegt alles, was Gäste sehen, im Reiter „Gast-Hub“ —
      die erste Kachel führt dorthin, statt die Bereiche doppelt zu führen. */
-  nav.innerHTML = '<h2 class="etitel">Einstellungen</h2><div class="eu-kacheln">' +
-    kachel('data-eu-tafel="startseite"', "var(--telefon)", "blase", "Gast-Hub gestalten",
-           "Kopf, Texte, Schrift, Farben, Kacheln, Figur", "") +
-    liste.map(({b, nr, ziel}) => kachel('data-eu-seite="' + ziel + '"', b.ton, b.sym,
-      sicher(b.titel), sicher(b.satz), ' data-eu-stand="' + nr + '"')).join("") +
-    /* Eine eigene Seite, deshalb ein Link: die letzte Kachel. */
-    '<a class="eu-kachel" href="/einkauf.html" style="--ton:var(--gut)">' +
-      '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
-      '<span class="eu-symbol" aria-hidden="true">' + euIcon("beleg") + '</span>' +
-      '<span class="eu-ktext"><b>Einkauf &amp; Kosten</b><i>Rechnungen, Artikel, Lieferanten und Bestand</i></span></a>' +
-    '</div>';
+  /* Abschnitte (01.11., Wunsch: „wo alles sortiert ist“): vorher eine Wand aus 15 Kacheln, in der „Melden“
+     (nur dieses Gerät) neben „Lieferung“ (der ganze Betrieb) neben dem Newsletter stand. Jetzt nach dem, WEN es
+     betrifft. Zweite Quelle bleibt die Gruppe: was in keinem Abschnitt steht, landet unter „Weitere“ — keine
+     Kachel geht verloren (pruef-zentrale). */
+  const inhalt = liste.map(({b, nr, ziel}) => ({ titel: b.titel, html: kachel('data-eu-seite="' + ziel + '"', b.ton, b.sym,
+      sicher(b.titel), sicher(b.satz), ' data-eu-stand="' + nr + '"') }));
+  nav.innerHTML = '<h2 class="etitel">Einstellungen</h2>' + euSuchfeld("euSuche", "Einstellung suchen, z. B. Lautstärke") +
+    '<div class="eu-zuletzt" data-eu-zuletzt-ort hidden></div>' +
+    euAbschnitte(EU_ABSCHNITTE, inhalt,
+      kachel('data-eu-tafel="startseite"', "var(--telefon)", "blase", "Gast-Hub gestalten", "Kopf, Texte, Schrift, Farben, Kacheln, Figur", "") +
+      /* Eine eigene Seite, deshalb ein Link. */
+      '<a class="eu-kachel" href="/einkauf.html" style="--ton:var(--gut)">' +
+        '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
+        '<span class="eu-symbol" aria-hidden="true">' + euIcon("beleg") + '</span>' +
+        '<span class="eu-ktext"><b>Einkauf &amp; Kosten</b><i>Rechnungen, Artikel, Lieferanten und Bestand</i></span></a>') +
+    '<p class="eu-nichts" hidden>Keine Einstellung passt. Ein anderes Wort?</p>';
   tafel.insertBefore(nav, tafel.firstElementChild);
+  euSucheBinden(tafel, nav);
 
   const zurueck = document.createElement("button");
   zurueck.type = "button"; zurueck.className = "eu-zurueck"; zurueck.id = "euZurueck";
@@ -11699,10 +11717,77 @@ function euEinrichten(){
   nav.addEventListener("click", e => {
     const t = e.target.closest("[data-eu-tafel]");
     if(t){ e.preventDefault(); tafelZeigen(t.dataset.euTafel); window.scrollTo(0, 0); return; }
+    const z = e.target.closest("[data-eu-zuletzt]"); if(z){ euOeffnen(z.dataset.euZuletzt); return; }
     const k = e.target.closest("[data-eu-seite]"); if(!k) return;
     euOeffnen(k.dataset.euSeite);
   });
+  euZuletztZeichnen(tafel);
   euZeichnen();
+}
+
+/* Wem eine Einstellung gilt — danach sind die Kacheln geordnet (Titel = h2 der Gruppe). */
+const EU_ABSCHNITTE = [
+  ["Bestellen & Service", ["Lieferung", "Bestellstand beim Gast", "Nichts übersehen", "Bezahlen"]],
+  ["Gäste gewinnen", ["Gäste-Newsletter", "Eigene Rabattcodes", "Gutscheine für Stammgäste"]],
+  ["Betrieb & Team", ["Betrieb", "Zugriffsrechte", "Wer hat was geändert"]],
+  ["Nur dieses Gerät", ["Melden", "Bildschirm", "Dieses Gerät"]],
+  ["Hilfe", ["Anleitung"]]
+];
+const GH_ABSCHNITTE = [
+  ["Aussehen", ["Farben", "Schrift", "Kopf & Logo", "Figur", "Bewegte Emojis"]],
+  ["Startseite", ["Aufbau", "Kacheln", "Banner", "Willkommen"]],
+  ["Speisekarte", ["Speisekarte", "Extras & Beläge", "Foodroulette"]],
+  ["Texte", ["Ihre Worte", "Alle Texte"]],
+  ["Sichern", ["Projekte"]]
+];
+function euAbschnitte(plan, inhalt, weitere){
+  const vergeben = new Set();
+  const teil = (titel, html) => html ? '<section class="eu-abschnitt" aria-label="' + sicher(titel) + '"><h3 class="eu-abtitel">' + sicher(titel) + '</h3><div class="eu-kacheln">' + html + '</div></section>' : "";
+  let html = plan.map(([titel, namen]) => teil(titel, namen.map(n => { const x = inhalt.find(k => k.titel === n); if(!x) return ""; vergeben.add(x); return x.html; }).join(""))).join("");
+  const rest = inhalt.filter(x => !vergeben.has(x)).map(x => x.html).join("") + (weitere || "");
+  return html + teil(weitere ? "Weitere Bereiche" : "Weitere", rest);
+}
+function euSuchfeld(id, platz){
+  return '<div class="eu-sucheziele"><input type="search" class="eu-suche" id="' + id + '" placeholder="' + sicher(platz) + '" aria-label="' + sicher(platz) + '" autocomplete="off" enterkeyhint="search"></div>';
+}
+/* Suche über Titel, Satz UND den Inhalt der Gruppe (jedes Feld, jede Beschriftung) — „Lautstärke“ findet „Melden“. */
+function euSucheBinden(tafel, nav){
+  const feld = nav.querySelector(".eu-suche"); if(!feld) return;
+  const norm = t => String(t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/ß/g, "ss");
+  feld.addEventListener("input", () => {
+    const q = norm(feld.value.trim());
+    let treffer = 0;
+    nav.querySelectorAll(".eu-kachel").forEach(k => {
+      const g = k.dataset.euSeite ? document.getElementById(k.dataset.euSeite) : null;
+      const text = norm(k.textContent + " " + (g ? g.textContent : ""));
+      const ja = !q || q.split(/\s+/).every(w => text.includes(w));
+      k.hidden = !ja; if(ja) treffer++;
+    });
+    nav.querySelectorAll(".eu-abschnitt").forEach(a => { a.hidden = ![...a.querySelectorAll(".eu-kachel")].some(k => !k.hidden); });
+    const z = nav.querySelector("[data-eu-zuletzt-ort]"); if(z) z.classList.toggle("eu-aus", !!q);
+    const leer = nav.querySelector(".eu-nichts"); if(leer) leer.hidden = !!treffer;
+  });
+}
+/* „Zuletzt geöffnet“: drei Chips je Reiter, nur auf diesem Gerät. Eigene Chips mit eigenem Attribut, KEINE zweite
+   Kachel — die Prüfungen zählen eine Kachel je Gruppe, und der Fokus beim Zurückgehen sucht [data-eu-seite]. */
+const EU_ZULETZT = "omoteno-eu-zuletzt";
+function euZuletztLesen(){ try{ const v = JSON.parse(localStorage.getItem(EU_ZULETZT) || "{}"); return v && typeof v === "object" ? v : {}; }catch(e){ return {}; } }
+function euZuletztMerken(tafel, id){
+  if(!tafel || !tafel.id) return;
+  const alle = euZuletztLesen(), l = (Array.isArray(alle[tafel.id]) ? alle[tafel.id] : []).filter(x => typeof x === "string" && x !== id);
+  alle[tafel.id] = [id].concat(l).slice(0, 3);
+  try{ localStorage.setItem(EU_ZULETZT, JSON.stringify(alle)); }catch(e){}
+  euZuletztZeichnen(tafel);
+}
+function euZuletztZeichnen(tafel){
+  const ort = tafel && tafel.querySelector("[data-eu-zuletzt-ort]"); if(!ort) return;
+  const ids = (euZuletztLesen()[tafel.id] || []).filter(id => { const k = tafel.querySelector('.eu-kachel[data-eu-seite="' + id + '"]'); return !!k; });
+  const html = ids.length ? '<span class="eu-ztitel">Zuletzt geöffnet</span>' + ids.map(id => {
+    const k = tafel.querySelector('.eu-kachel[data-eu-seite="' + id + '"] .eu-ktext b');
+    return '<button type="button" class="eu-zchip" data-eu-zuletzt="' + sicher(id) + '">' + sicher(k ? k.textContent : id) + '</button>';
+  }).join("") : "";
+  ort.hidden = !html;
+  if(ort.dataset.sig !== html){ ort.innerHTML = html; ort.dataset.sig = html; }
 }
 
 /* Eine Gruppe als Unterseite zeigen. Nimmt die id der Gruppe. */
@@ -11712,6 +11797,7 @@ function euOeffnen(id){
   tafel.querySelectorAll(":scope > .eu-jetzt").forEach(g => g.classList.remove("eu-jetzt"));
   gruppe.classList.add("eu-jetzt");
   tafel.dataset.euOffen = id;
+  euZuletztMerken(tafel, id);
   /* Die Symbolleiste im Gast-Hub zeigt, wo man gerade ist. */
   tafel.querySelectorAll("[data-gh-sprung]").forEach(a => {
     const jetzt = a.dataset.ghSprung === id;
@@ -11827,12 +11913,16 @@ function ghEinrichten(){
   nav.setAttribute("aria-label", "Alle Bereiche des Gast-Hubs");
   nav.innerHTML = '<h2 class="etitel">Gast-Hub gestalten</h2>' +
     '<p class="ehilfe">Alles, was Ihre Gäste sehen. Ein Bereich öffnet sich mit der Vorschau darüber — jede Änderung zeigt sich sofort; Gäste sehen sie nach „Übernehmen“.</p>' +
-    '<div class="eu-kacheln">' + da.map(b =>
+    euSuchfeld("ghSuche", "Bereich suchen, z. B. Logo") +
+    '<div class="eu-zuletzt" data-eu-zuletzt-ort hidden></div>' +
+    euAbschnitte(GH_ABSCHNITTE, da.map(b => ({ titel: b.titel, html:
       '<button type="button" class="eu-kachel" data-eu-seite="' + b.id + '" style="--ton:' + b.ton + '">' +
         '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
         '<span class="eu-symbol" aria-hidden="true">' + euIcon(b.sym) + '</span>' +
-        '<span class="eu-ktext"><b>' + sicher(b.titel) + '</b><i>' + sicher(b.satz) + '</i></span></button>').join("") + '</div>';
+        '<span class="eu-ktext"><b>' + sicher(b.titel) + '</b><i>' + sicher(b.satz) + '</i></span></button>' })), "") +
+    '<p class="eu-nichts" hidden>Kein Bereich passt. Ein anderes Wort?</p>';
   tafel.insertBefore(nav, tafel.firstElementChild);
+  euSucheBinden(tafel, nav);
   const zurueck = document.createElement("button");
   zurueck.type = "button"; zurueck.className = "eu-zurueck"; zurueck.id = "ghZurueck";
   zurueck.innerHTML = '<span class="eu-krand" aria-hidden="true"><span class="eu-klicht"></span></span>' +
@@ -11840,8 +11930,10 @@ function ghEinrichten(){
   tafel.insertBefore(zurueck, tafel.firstElementChild);
   zurueck.addEventListener("click", () => euSchliessen(tafel));
   nav.addEventListener("click", e => {
+    const z = e.target.closest("[data-eu-zuletzt]"); if(z){ euOeffnen(z.dataset.euZuletzt); return; }
     const k = e.target.closest("[data-eu-seite]"); if(k) euOeffnen(k.dataset.euSeite);
   });
+  euZuletztZeichnen(tafel);
   /* Die Sprungleiste wird zur Symbolleiste: jedes Ziel mit seinem Zeichen und seiner Farbe. */
   tafel.querySelectorAll("[data-gh-sprung]").forEach(a => {
     const b = GH_BEREICHE.find(x => x.id === a.dataset.ghSprung); if(!b) return;
