@@ -707,6 +707,15 @@ font-size:16px; -webkit-appearance:none; scroll-margin-top:96px;
 > beweist, dass beide Schichten stehen und zusammen den gemeldeten
 > Fall schließen, nicht, dass jede einzeln in jedem Browser trägt.
 
+> **Vorfall, dieselbe Liste noch einmal zu kurz (01.11.).** Die neue
+> Ruhezeit im Board bekam zwei Felder `type=time` — gemessen 15 px Schrift
+> und 26 px Höhe. Die Grundregel kannte `time` nicht; die Lieferzeiten
+> „Von/Bis“ hatten denselben Fehler seit ihrem Einbau, und keine Prüfung
+> maß sie. Gefunden hat es die Maßprobe der NEUEN Felder.
+
+Wer einen neuen Feldtyp benutzt, sieht nach, ob die Grundregel ihn kennt —
+und misst Schrift und Höhe des Feldes, nicht nur, dass es da ist.
+
 ### 3.6 Beschriftung über die Bedienung, nicht daneben
 
 > **Vorfall.** Beschriftung, Regler und Wert standen in einer
@@ -2347,6 +2356,7 @@ Dazu je nach Änderung:
 | **Notizen des Teams (Board, Küche), Nachricht an den Gast, Reservierung mit Nummer** | `pruefungen/pruef-notizen.js` (braucht `dist/`) — Naht als Quelltext gegen `migration-notizen.sql` (Parameter, Gründe, Spaltenrechte), Board: Stufe 1 sendet NICHTS, Stufe 2 genau den Vorschautext, `text_anders` zeigt den neuen Stand, Bearbeiten ohne Bestätigung lässt den Gast die alte Fassung sehen, Tipp ändert keinen Status, 44 px; Küche dasselbe am Bon; Hub: Streifen „Neue Nachricht“, Text nie als Auszeichnung, Englisch nur der Rahmen, Reservierung zeigt Stand und Nachricht. Die DB-Hälfte: zurückgedrehter Probelauf, 24 Proben |
 | **Storno, Frist, Ton in der Küche** | `pruefungen/pruef-storno.js` (braucht `dist/`) — Gast, Küche, und die Migration |
 | **Vor jeder Übergabe, wenn mehrere Blöcke zusammenkommen** | `pruefungen/pruef-zusammenspiel.js` (braucht `dist/`) — der ganze Weg des Gastes am Stück, beide Häuser |
+| **Nur dieses Gerät: Ruhezeit, Klang für Servicerufe, Bereiche je Gerät, kompakte Karten, große Uhr, Rand leuchtet, Schwelle für Servicerufe, Wiederholtakt, Titel blinkt, Gerätename, Selbsttest, Neu laden** | `pruefungen/pruef-geraet.js` (39 Proben; `ADMIN_DATEI=` für Gegenbeweise) — beschädigter Gerätespeicher fällt auf die Vorgabe (Zeit, Klang, Takt, Schwelle, Schalter nur echtes true/false, Name ohne `<>"` und ≤ 24, als Text im Kopf); Ruhezeit über Mitternacht (23:30/06:59 ruhig, 07:00/12:00 nicht, gleiche Zeiten = nie), in der Ruhe KEIN Ton, die Meldung zählt trotzdem (§7); Ruf → eigener Klang, Bestellung → normaler; Bereiche: nur Tische dort klingeln, Tisch außerhalb des Plans, Lieferung, unbekannter Tisch IMMER; kompakte Karten am gemessenen Rand, Uhr HH:MM ohne Überlauf bei 360 px, Rand leuchtet nur über opacity und fängt keinen Tipp (reduziert: still); Servicerufe mit eigener Schwelle, „Einmal“ bleibt einmal, „Alle 2 Min“ nach 30 s still und nach 2 Min erneut; Titel nur bei VERBORGENEM Tab (dreimal über 2,5 s gelesen — einmal gelesen war die Probe blind, G8); Selbsttest je Zeile; „Neu laden“ erst beim zweiten Tipp; 360 px: Knöpfe ≥ 44 px, Felder 16 px. Gegenbeweise G1–G10 auf Kopien, gezielt rot. **Fund beim Bau:** `gtZeichnen()` lief vor `const SAAL` — schon `typeof SAAL` wirft in der TDZ (§8.1l); und `type=time` fehlte in der Grundregel (§3.5). **Ehrliche Grenze:** ob ein Klang hörbar anders ist, misst keine Probe; der Selbsttest misst die Uhr nur, wenn der Server ein Datum schickt |
 | **Anmeldung, Sperre, Board-Zugang** | `pruefungen/pruef-admin-login.js` — drei Fehlversuche, richtiges Passwort bleibt trotzdem draußen, Freischaltung, und der Fall „Migration fehlt noch" |
 | **Anmeldung an Küche, Konto, Master; Rolle im Master; „Neues Passwort“ nach dem Reset-Link** | `pruefungen/pruef-sperre-ueberall.js` — jede Tür fragt die Sperre VOR dem Login (gesperrt/falsch → kein Login-Versuch, fehlt → niemand ausgesperrt), Master wirft Nicht-Master hinaus (auch bei gemerkter Sitzung), der Reset-Link zeigt in Board, Konto UND Master das Passwort-Formular — Adresse und Ereignis EINZELN geprüft; Master: „Passwort vergessen?“ auf der Seite selbst (Rücksprung auf diese Adresse, kein Versand ohne Adresse, „not authorized“ als Satz), nach dem Link nie das Dashboard vor dem neuen Passwort, keine echte Adresse als Platzhalter auf irgendeiner Seite (§8.1n) |
 | **Master-Board: Zugänge-Übersicht (`master_zugaenge`)** | `pruefungen/pruef-master-zugaenge.js` — echte Zugangs-Zeilen (Betrieb, E-Mail, Rolle, letzter Login, Status) erscheinen als Karten, Login- UND PIN-Sperre je eigens benannt aber gleich dringlich einsortiert, unbestätigt/Master/ohne-Betrieb einzeln erkennbar, leere Antwort zeigt einen Satz statt „0 Konten“ oder Absturz, fehlende Migration (`42883`) zeigt, welche fehlt, statt der rohen Postgres-Meldung |

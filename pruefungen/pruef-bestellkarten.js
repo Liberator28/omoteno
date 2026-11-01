@@ -418,7 +418,7 @@ async function teil6(browser) {
   pruef(artBoard.length === 3 && artBoard.every(a => artSql.includes("'" + a + "'")), "jede Art des Boards steht in der CHECK-Schranke", artBoard.join(",") + " ⊆ " + artSql);
   pruef(/create or replace function public\.team_nummern\(p_betrieb uuid\)/.test(SQL_TM) && /rpc\("team_nummern", \{ p_betrieb: id \}\)/.test(html),
     "team_nummern: Parameter p_betrieb in SQL und Board");
-  pruef(/add column if not exists zugewiesen smallint/.test(SQL_TM) && /update\(\{ zugewiesen: neu \}\)/.test(html) && /"zugewiesen"/.test(kue),
+  pruef(/add column if not exists zugewiesen smallint/.test(SQL_TM) && /update\(\{ zugewiesen: neu \}\)/.test(html) && /"zugewiesen,"\s*\+/.test(kue),
     "Spalte zugewiesen: angelegt, vom Board geschrieben, von der Küche gelesen");
   pruef(/add column if not exists team_modus jsonb/.test(SQL_TM) && /select\("team_modus"\)/.test(html), "Spalte team_modus: angelegt und gelesen");
 
