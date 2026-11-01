@@ -3148,6 +3148,17 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
 .nlu .aw-kpis{grid-template-columns:repeat(2,minmax(0,1fr));margin:0}
 .nlu .aw-kpi{background:var(--flaeche-2);border:1px solid var(--linie);border-radius:14px}
 .nlu .aw-kpi .aw-wert{font-size:20px}
+.nlv-wahl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:10px 0 8px}
+.nlv-karte{display:flex;flex-direction:column;align-items:flex-start;gap:3px;min-height:64px;padding:10px 12px;border-radius:14px;text-align:left;
+  border:1px solid var(--linie);background:var(--flaeche);color:var(--kreide);font:inherit;cursor:pointer}
+.nlv-karte b{font-size:14.5px}
+.nlv-karte span{font-size:12.5px;line-height:1.35;color:var(--gedaempft)}
+.nlv-karte[aria-checked="true"]{border-color:var(--messing);box-shadow:inset 0 0 0 1px var(--messing)}
+.nlv-karte[aria-checked="true"] b::after{content:" ✓";color:var(--messing)}
+.nlv-art{display:flex;gap:6px;margin:0 0 8px}
+.nlv-artknopf{flex:1;min-height:44px;border-radius:12px;border:1px solid var(--linie);background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+.nlv-artknopf[aria-pressed="true"]{background:var(--flaeche-2);border-color:var(--messing)}
+.nlv-vorschau{display:block;width:100%;height:560px;border:0;border-radius:14px;background:#fff}
 .nlu-ablaeufe{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .nlu-ablaeufe:empty{display:none}
 .nlu-ablauf{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding:6px 12px;border:1px solid var(--linie);border-radius:12px}
@@ -5177,6 +5188,24 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <div><div class="schaltertext">Newsletter aktiv</div>
         <div class="schalterhilfe">Aus = keine neue Gast-E-Mail geht an Klaviyo, auch wenn eine hinterlegt wird</div></div>
         <button class="wippe" id="nlAn" aria-pressed="false" aria-label="Gäste-Newsletter"></button>
+      </div>
+
+      <!-- Aussehen der E-Mail (01.11.): vier Vorlagen aus dem geteilten Block NEWSLETTER-VARIANTEN, Vorschau mit den Farben und
+           Gerichten dieses Hauses. „Übernehmen“ merkt die Wahl in hub_stil.newsletter und ersetzt die Vorlagen in Klaviyo
+           (Edge Function newsletter-vorlage-setzen). Eigene Klassen nlv-* (§1.1: vorher gesucht, 0 Treffer). -->
+      <div class="ezeile senkrecht" id="nlvZeile">
+        <span><b>Aussehen der E-Mail</b><i>Vier Vorlagen — die Vorschau zeigt Ihre Farben und Gerichte</i></span>
+        <div class="nlv-wahl" id="nlvWahl" role="radiogroup" aria-label="Vorlage der E-Mail"></div>
+        <div class="nlv-art" role="group" aria-label="Welche E-Mail">
+          <button type="button" class="nlv-artknopf" data-nlv-art="gutschein" aria-pressed="true">Willkommen</button>
+          <button type="button" class="nlv-artknopf" data-nlv-art="rueckholung" aria-pressed="false">Wir vermissen Sie</button>
+        </div>
+        <iframe class="nlv-vorschau" id="nlvVorschau" title="Vorschau der E-Mail" sandbox="" loading="lazy"></iframe>
+        <div class="eknoepfe">
+          <button class="knopf" id="nlvUebernehmen" disabled>Übernehmen</button>
+          <button class="knopf leise" id="nlvKopieren">HTML kopieren</button>
+        </div>
+        <p class="epruefung" id="nlvSatz" aria-live="polite"></p>
       </div>
 
       <div class="ezeile senkrecht">
@@ -8936,6 +8965,480 @@ async function newsletterUmschalten(){
 
 $("#nlAn").onclick = newsletterUmschalten;
 
+/* ╔═══ NEWSLETTER-VARIANTEN · GETEILTER BLOCK · ANFANG ═══════════════╗
+   Die E-Mail-Vorlagen des Gäste-Newsletters (Klaviyo) — EINE Stelle für den Erzeuger (erzeuger/erzeuge-newsletter-vorlage.js,
+   als Modul) und das Board (seiten/admin.html, Vorschau und „Übernehmen“). Wortgleich in erzeuger/newsletter-varianten.js und
+   seiten/admin.html; pruefungen/pruef-newsletter-varianten.js hält beide Zeichen für Zeichen gleich.
+
+   Wunsch 31.10.: „Skizziere zuerst eine E-Mail anhand von McDonald's, Lieferando und anderen Diensten … mit geschmackvollem,
+   anziehendem Design. Man soll zwischen Varianten wechseln und es aktiv im Admin-Board steuern können.“ Übernommen wird der
+   AUFBAU, nicht Marke, Bild oder Wortlaut (Recherche: dokumente/newsletter/skizze.html):
+     klassisch  die bisherige Mail, Zeichen für Zeichen (Vorgabe — ohne Wahl ändert sich nichts).
+     kampagne   Muster McDonald's: das Angebot IST der Kopf (erster Bildschirm), ein großes Foto, EIN kräftiger Knopf,
+                Gerichte als Kacheln mit Preis, Text in kurzen beschrifteten Blöcken, der Code als Ticket.
+     liefer     Muster Lieferando/Uber Eats: persönliche Anrede, der Gutschein als Karte mit Bedingungen, drei Schritte
+                „So lösen Sie ihn ein“, eine Favoritenliste (Foto links, Preis rechts), Knopf zur Karte.
+     edel       ruhig: Serifenschrift, viel Weißraum, ein Foto, wenig Text.
+   Schrift auf Farbe wird GERECHNET (§5.1): jede Farbe aus lesbar(grund, kandidaten) mit ≥ 4,5:1. Fotos nur über https, ohne
+   Anführungszeichen und Spitzklammern; Name und Preis nur als maskierter Text (§8.1w). Die Klaviyo-Tags bleiben in jeder
+   Variante: {% coupon_code '<slug>_newsletter' %}, {% unsubscribe %}, das Lieblingsgericht nur in {% if %}.
+   Ohne DOM, ohne Node — läuft im Board und im Erzeuger gleich. */
+const NEWSLETTER = (function(){
+  "use strict";
+  const VARIANTEN = [
+    { id:"klassisch", name:"Klassisch", satz:"Ruhig und bewährt: Kopf in Ihrer Farbe, Gutschein-Kasten." },
+    { id:"kampagne",  name:"Kampagne",  satz:"Das Angebot ganz groß, ein Foto, ein Knopf — wie bei den großen Ketten." },
+    { id:"liefer",    name:"Persönlich", satz:"Mit Anrede, Gutschein-Karte, drei Schritten und Ihren Favoriten." },
+    { id:"edel",      name:"Edel",      satz:"Viel Weißraum, Serifenschrift, ein Bild — für die feine Küche." }
+  ];
+  const ARTEN = ["gutschein", "rueckholung"];
+  const varianteSauber = v => VARIANTEN.some(x => x.id === v) ? v : "klassisch";
+  const artSauber = a => ARTEN.indexOf(a) >= 0 ? a : "gutschein";
+
+function vorlageBauen(m, slug, art){
+  const b = m.betrieb || {};
+  const f = m.farben  || {};
+  const rundung = (m.form && m.form.rundung) || 16;
+
+  const logoBlock = (m.logo && m.logo.art === "bild" && m.logo.bild)
+    ? `<img src="${esc(m.logo.bild)}" alt="${esc(b.name || "")}" width="120" style="display:block;margin:0 auto;max-width:160px;height:auto">`
+    : `<div style="font-family:Georgia,'Times New Roman',serif;font-size:26px;font-weight:700;
+        letter-spacing:.02em;color:${esc(f.bandText || "#FFFFFF")};text-align:center">${esc(b.name || "")}</div>`;
+
+  return `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>${esc(b.name || "Newsletter")}</title>
+</head>
+<body style="margin:0;padding:0;background:${esc(f.grund || "#F5F3F0")};
+    font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif;">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${esc(f.grund || "#F5F3F0")}">
+<tr><td align="center" style="padding:24px 12px">
+<table role="presentation" width="100%" style="max-width:520px;background:${esc(f.flaeche || "#FFFFFF")};
+    border-radius:${rundung}px;overflow:hidden">
+
+<tr><td style="background:${esc(f.band || "#2A1A14")};padding:28px 24px">
+${logoBlock}
+</td></tr>
+
+${art === "rueckholung" ? rueckholungInhalt(m, slug) : gutscheinInhalt(m, slug)}
+<tr><td style="background:${esc(f.flaeche2 || "#F4EBE3")};padding:16px 28px;text-align:center">
+<p style="margin:0;font-size:11.5px;line-height:1.5;color:${esc(leise(f, f.flaeche2 || "#F4EBE3"))}">
+${esc(b.name || "")}${b.ort ? " · " + esc(b.ort) : ""}<br>
+{% unsubscribe 'Abmelden' %}
+</p>
+</td></tr>
+
+</table>
+</td></tr>
+</table>
+</body>
+</html>
+`;
+}
+
+/* Ein Code aus dem Vorrat des Betriebs — derselbe Kasten in beiden Arten. */
+function codeKasten(m, slug){
+  const f = m.farben || {};
+  const rundung = (m.form && m.form.rundung) || 16;
+  return `<tr><td style="padding:0 28px 28px">
+<table role="presentation" width="100%" style="background:${esc(f.flaeche2 || "#F4EBE3")};
+    border:1px dashed ${esc(f.akzent || "#C8202E")};border-radius:${Math.max(rundung - 4, 8)}px">
+<tr><td align="center" style="padding:22px 16px">
+<div style="font-family:'Courier New',monospace;font-size:22px;font-weight:700;
+    letter-spacing:.08em;color:${esc(f.akzent || "#C8202E")}">
+{% coupon_code '${slug}_newsletter' %}
+</div>
+</td></tr>
+</table>
+</td></tr>
+
+<tr><td style="padding:0 28px 32px">
+<p style="margin:0;font-size:12.5px;line-height:1.5;color:${esc(leise(f, f.flaeche || "#FFFFFF"))}">
+Einfach beim nächsten Besuch im Warenkorb eintragen oder am Tisch
+zeigen — der Code gilt einmal.
+</p>
+</td></tr>
+`;
+}
+
+function gutscheinInhalt(m, slug){
+  const b = m.betrieb || {};
+  const f = m.farben  || {};
+  return `<tr><td style="padding:32px 28px 8px">
+<p style="margin:0 0 16px;font-size:15px;line-height:1.5;color:${esc(f.tinte || "#2A1A14")}">
+${esc(b.begruessung || "Schön, dass Sie zu unseren Gästen zählen.")}
+</p>
+<h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;color:${esc(f.tinte || "#2A1A14")}">
+Ein kleiner Gutschein für Sie
+</h1>
+<p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:${esc(f.tinteLeise || "#846C62")}">
+Danke, dass Sie sich eingetragen haben — hier ist Ihr Code für den
+nächsten Besuch.
+</p>
+</td></tr>
+
+${codeKasten(m, slug)}`;
+}
+
+function rueckholungInhalt(m, slug){
+  const b = m.betrieb || {};
+  const f = m.farben  || {};
+  const lieb = `person|lookup:'omoteno_${slug}_liebling'`;
+  return `<tr><td style="padding:32px 28px 8px">
+<h1 style="margin:0 0 12px;font-size:22px;line-height:1.3;color:${esc(f.tinte || "#2A1A14")}">
+Wir vermissen Sie
+</h1>
+<p style="margin:0 0 12px;font-size:15px;line-height:1.5;color:${esc(f.tinte || "#2A1A14")}">
+Ihr letzter Besuch bei ${esc(b.name || "uns")} ist schon eine Weile her.
+Schauen Sie doch wieder vorbei — wir freuen uns auf Sie.
+</p>
+{% if ${lieb} %}<p style="margin:0 0 12px;font-size:15px;line-height:1.5;color:${esc(f.tinteLeise || "#846C62")}">
+Ihr Lieblingsgericht bei uns: <strong style="color:${esc(f.tinte || "#2A1A14")}">{{ ${lieb} }}</strong>.
+</p>{% endif %}
+<p style="margin:0 0 24px;font-size:15px;line-height:1.5;color:${esc(f.tinteLeise || "#846C62")}">
+Als kleines Willkommen zurück:
+</p>
+</td></tr>
+
+${codeKasten(m, slug)}`;
+}
+
+/* Leise Schrift auf dem Grund, auf dem sie wirklich steht (§5.1/§5.2a):
+   die leiseste Tinte des Hauses mit mindestens 4,5:1. VORFALL: Hinweis
+   und Fußzeile — samt Abmeldelink — standen fest auf tinteStill, bei
+   Choco 2,58:1, bei Blend 3,38:1. Ein Link ist nie Zierschrift. */
+function hell(hex){
+  const h = String(hex).replace("#", "");
+  const k = [0, 2, 4].map(i => parseInt(h.slice(i, i + 2), 16) / 255)
+    .map(c => c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  return 0.2126 * k[0] + 0.7152 * k[1] + 0.0722 * k[2];
+}
+function kontrast(a, b){
+  const [x, y] = [hell(a), hell(b)].sort((p, q) => q - p);
+  return (x + 0.05) / (y + 0.05);
+}
+function leise(f, grund){
+  const kandidaten = [f.tinteStill || "#A6907F", f.tinteLeise || "#846C62", f.tinte || "#2A1A14"];
+  return kandidaten.find(c => kontrast(c, grund) >= 4.5) || kandidaten[kandidaten.length - 1];
+}
+
+function esc(s){
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+
+  /* ── Gemeinsames der neuen Varianten ─────────────────────────────── */
+  const HEX = /^#[0-9A-Fa-f]{6}$/;
+  const farbe = (x, v) => (typeof x === "string" && HEX.test(x)) ? x : v;
+  /* die erste Farbe mit ≥ 4,5:1 auf dem Grund, sonst Schwarz oder Weiß — was mehr Kontrast hat */
+  function lesbar(grund, kandidaten){
+    for(const c of kandidaten) if(HEX.test(c || "") && kontrast(c, grund) >= 4.5) return c;
+    return kontrast("#111111", grund) >= kontrast("#FFFFFF", grund) ? "#111111" : "#FFFFFF";
+  }
+  function palette(m){
+    const f = m.farben || {};
+    const p = {
+      grund: farbe(f.grund, "#F5F3F0"), flaeche: farbe(f.flaeche, "#FFFFFF"), flaeche2: farbe(f.flaeche2, "#F4EBE3"),
+      band: farbe(f.band, "#2A1A14"), akzent: farbe(f.akzent, "#C8202E")
+    };
+    p.tinte = lesbar(p.flaeche, [farbe(f.tinte, "#2A1A14")]);
+    p.leise = lesbar(p.flaeche, [f.tinteLeise, f.tinte]);
+    p.bandText = lesbar(p.band, [f.bandText, "#FFFFFF", "#111111"]);
+    p.knopfText = lesbar(p.akzent, ["#FFFFFF", "#111111"]);
+    p.akzentAufFlaeche = lesbar(p.flaeche, [p.akzent, p.tinte]);
+    p.ticket = p.flaeche2;
+    p.ticketText = lesbar(p.flaeche2, [p.akzent, p.tinte]);
+    p.ticketLeise = lesbar(p.flaeche2, [f.tinteLeise, p.tinte]);
+    p.rund = Math.max(0, Math.min(28, +((m.form && m.form.rundung) || 16) || 16));
+    return p;
+  }
+  const BILD_OK = /^https:\/\/[^\s"'<>()\\]{1,480}$/;
+  const preisText = x => { const n = typeof x === "number" ? x : parseFloat(String(x == null ? "" : x).replace(",", "."));
+    return isFinite(n) && n > 0 ? n.toFixed(2).replace(".", ",") + " €" : ""; };
+  /* Höchstens drei Gerichte: zuerst die als „Beliebt“ markierten, dann die mit Foto; ohne Namen keins. */
+  function gerichteWaehlen(liste){
+    const g = (Array.isArray(liste) ? liste : []).filter(x => x && typeof x.name === "string" && x.name.trim() && x.verfuegbar !== false);
+    const rang = x => (x.beliebt === true ? 0 : 2) + (typeof x.bild === "string" && BILD_OK.test(x.bild) ? 0 : 1);
+    return g.map((x, i) => [x, i]).sort((a, b) => rang(a[0]) - rang(b[0]) || a[1] - b[1]).slice(0, 3)
+      .map(([x]) => ({ name: x.name.trim().slice(0, 60), preis: preisText(x.preis),
+        bild: (typeof x.bild === "string" && BILD_OK.test(x.bild)) ? x.bild : "" }));
+  }
+  const hubUrl = slug => "https://omoteno.de/h/" + encodeURIComponent(String(slug || "").replace(/[^a-z0-9-]/g, "")) + "/";
+  const SANS = "-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Arial,sans-serif";
+  const SERIF = "Georgia,'Times New Roman',serif";
+  function huelle(m, p, schrift, vorschau, innen){
+    const b = m.betrieb || {};
+    return `<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="light">
+<title>${esc(b.name || "Newsletter")}</title>
+</head>
+<body style="margin:0;padding:0;background:${p.grund};font-family:${schrift};">
+<div style="display:none;max-height:0;overflow:hidden;opacity:0">${esc(vorschau)}</div>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${p.grund}">
+<tr><td align="center" style="padding:20px 10px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:${p.flaeche};border-radius:${p.rund}px;overflow:hidden">
+${innen}
+<tr><td style="background:${p.ticket};padding:18px 28px;text-align:center">
+<p style="margin:0;font-size:12px;line-height:1.6;color:${p.ticketLeise}">
+${esc(b.name || "")}${b.ort ? " · " + esc(b.ort) : ""}<br>
+Sie bekommen diese E-Mail, weil Sie sich bei uns eingetragen haben.<br>
+{% unsubscribe 'Abmelden' %}
+</p>
+</td></tr>
+</table>
+</td></tr>
+</table>
+</body>
+</html>
+`;
+  }
+  const lieb = slug => `person|lookup:'omoteno_${slug}_liebling'`;
+  const knopf = (p, text, url, voll) => `<table role="presentation" cellpadding="0" cellspacing="0" ${voll ? 'width="100%"' : ""} style="margin:0 auto">
+<tr><td align="center" style="background:${p.akzent};border-radius:999px">
+<a href="${esc(url)}" style="display:block;padding:16px 30px;font-size:16px;font-weight:700;letter-spacing:.01em;color:${p.knopfText};text-decoration:none">${esc(text)}</a>
+</td></tr></table>`;
+  const code = (p, slug, groesse) => `<span style="font-family:'Courier New',monospace;font-size:${groesse || 24}px;font-weight:700;letter-spacing:.12em;word-break:break-all;color:${p.ticketText}">{% coupon_code '${slug}_newsletter' %}</span>`;
+
+  /* ── kampagne: Muster McDonald's ─────────────────────────────────── */
+  function kampagne(m, slug, art, liste){
+    const p = palette(m), b = m.betrieb || {}, g = gerichteWaehlen(liste);
+    const zurueck = art === "rueckholung";
+    const kopfzeile = zurueck ? "Wir haben Ihren Platz frei gehalten." : "Ein Geschenk für Ihren nächsten Besuch.";
+    const unter = zurueck ? `Ihr letzter Besuch bei ${esc(b.name || "uns")} ist eine Weile her. Kommen Sie wieder — mit einem Gutschein von uns.`
+                          : "Danke, dass Sie dabei sind. Ihr Gutschein wartet unten — einfach beim nächsten Besuch einlösen.";
+    const held = g.find(x => x.bild);
+    const fotoKopf = held ? `<tr><td style="padding:0 20px"><img src="${esc(held.bild)}" alt="${esc(held.name)}" width="520" style="display:block;width:100%;max-width:520px;height:auto;border-radius:${Math.max(p.rund - 4, 6)}px"></td></tr>` : "";
+    const kachel = x => `<td width="50%" valign="top" style="padding:6px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${p.ticket};border-radius:${Math.max(p.rund - 6, 6)}px;overflow:hidden">
+${x.bild ? `<tr><td><img src="${esc(x.bild)}" alt="" width="250" style="display:block;width:100%;height:auto"></td></tr>` : ""}
+<tr><td style="padding:12px 14px">
+<div style="font-size:15px;font-weight:700;line-height:1.3;color:${lesbar(p.ticket, [p.tinte])}">${esc(x.name)}</div>
+${x.preis ? `<div style="margin-top:4px;font-size:15px;font-weight:800;color:${p.ticketText}">${esc(x.preis)}</div>` : ""}
+</td></tr></table></td>`;
+    const paare = []; for(let i = 0; i < Math.min(g.length, 2); i++) paare.push(g[i]);
+    const kacheln = paare.length ? `<tr><td style="padding:26px 22px 4px">
+<p style="margin:0 0 4px 6px;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:${p.akzentAufFlaeche}">Beliebt bei uns</p>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>${paare.map(kachel).join("")}${paare.length === 1 ? '<td width="50%"></td>' : ""}</tr></table>
+</td></tr>` : "";
+    const innen = `<tr><td style="background:${p.band};padding:18px 28px">
+<div style="font-size:15px;font-weight:800;letter-spacing:.06em;color:${p.bandText}">${esc(b.name || "")}</div>
+</td></tr>
+<tr><td style="background:${p.band};padding:8px 28px 30px">
+<p style="margin:0 0 10px;font-size:12px;font-weight:800;letter-spacing:.16em;text-transform:uppercase;color:${p.bandText}">Nur für Sie · Gutschein</p>
+<h1 style="margin:0 0 12px;font-size:34px;line-height:1.1;font-weight:800;color:${p.bandText}">${kopfzeile}</h1>
+<p style="margin:0;font-size:16px;line-height:1.5;color:${p.bandText}">${unter}</p>
+</td></tr>
+${fotoKopf ? `<tr><td style="background:${p.band};height:24px;line-height:24px;font-size:0">&nbsp;</td></tr>` + fotoKopf : ""}
+<tr><td style="padding:26px 28px 8px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${p.ticket};border:2px dashed ${p.ticketText};border-radius:${Math.max(p.rund - 4, 8)}px">
+<tr><td align="center" style="padding:18px 14px 6px;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:${p.ticketLeise}">Ihr Code</td></tr>
+<tr><td align="center" style="padding:0 14px 18px">${code(p, slug, 26)}</td></tr>
+</table>
+</td></tr>
+${zurueck ? `{% if ${lieb(slug)} %}<tr><td style="padding:8px 28px 0"><p style="margin:0;font-size:15px;line-height:1.5;color:${p.tinte}">Ihr Lieblingsgericht wartet: <strong>{{ ${lieb(slug)} }}</strong></p></td></tr>{% endif %}` : ""}
+<tr><td style="padding:22px 28px 6px">${knopf(p, "Jetzt Karte öffnen", hubUrl(slug), true)}</td></tr>
+<tr><td style="padding:2px 28px 0;text-align:center"><p style="margin:0;font-size:12.5px;line-height:1.5;color:${p.leise}">Gilt einmal · im Warenkorb eintragen oder am Tisch zeigen</p></td></tr>
+${kacheln}
+<tr><td style="height:26px;line-height:26px;font-size:0">&nbsp;</td></tr>`;
+    return huelle(m, p, SANS, kopfzeile + " " + (b.name || ""), innen);
+  }
+
+  /* ── liefer: Muster Lieferando / Uber Eats ───────────────────────── */
+  function liefer(m, slug, art, liste){
+    const p = palette(m), b = m.betrieb || {}, g = gerichteWaehlen(liste);
+    const zurueck = art === "rueckholung";
+    const titel = zurueck ? "Lust auf ein Wiedersehen?" : "Ihr Gutschein ist da";
+    const satz = zurueck ? `Bei ${esc(b.name || "uns")} ist es ohne Sie zu ruhig. Ihr Gutschein für den nächsten Besuch:`
+                         : `Schön, dass Sie dabei sind. Hier ist Ihr persönlicher Gutschein für ${esc(b.name || "uns")}:`;
+    const schritt = (n, t) => `<tr><td width="36" valign="top" style="padding:6px 0">
+<div style="width:28px;height:28px;line-height:28px;border-radius:14px;text-align:center;font-size:14px;font-weight:800;background:${p.akzent};color:${p.knopfText}">${n}</div></td>
+<td valign="middle" style="padding:6px 0 6px 10px;font-size:15px;line-height:1.4;color:${p.tinte}">${t}</td></tr>`;
+    const zeile = x => `<tr><td style="padding:8px 0;border-top:1px solid ${p.ticket}">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+${x.bild ? `<td width="64" valign="middle"><img src="${esc(x.bild)}" alt="" width="64" height="64" style="display:block;width:64px;height:64px;object-fit:cover;border-radius:12px"></td>` : ""}
+<td valign="middle" style="padding:0 0 0 ${x.bild ? 12 : 0}px;font-size:15px;font-weight:700;line-height:1.3;color:${p.tinte}">${esc(x.name)}</td>
+<td valign="middle" align="right" style="font-size:15px;font-weight:800;white-space:nowrap;color:${p.akzentAufFlaeche}">${esc(x.preis)}</td>
+</tr></table></td></tr>`;
+    const favoriten = g.length ? `<tr><td style="padding:24px 28px 4px">
+<h2 style="margin:0 0 6px;font-size:18px;color:${p.tinte}">Unsere Favoriten</h2>
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0">${g.map(zeile).join("")}</table>
+</td></tr>` : "";
+    const innen = `<tr><td style="padding:22px 28px 6px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0"><tr>
+<td style="font-size:17px;font-weight:800;color:${p.tinte}">${esc(b.name || "")}</td>
+<td align="right"><span style="display:inline-block;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:800;background:${p.akzent};color:${p.knopfText}">Gutschein</span></td>
+</tr></table></td></tr>
+<tr><td style="padding:14px 28px 4px">
+<p style="margin:0 0 4px;font-size:15px;font-weight:600;color:${p.leise}">Hallo{% if first_name %} {{ first_name }}{% endif %},</p>
+<h1 style="margin:0 0 8px;font-size:26px;line-height:1.2;color:${p.tinte}">${titel}</h1>
+<p style="margin:0;font-size:15px;line-height:1.55;color:${p.leise}">${satz}</p>
+</td></tr>
+<tr><td style="padding:18px 28px 4px">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${p.ticket};border-radius:${Math.max(p.rund - 2, 8)}px;border-left:8px solid ${p.akzent}">
+<tr><td style="padding:18px 20px 4px;font-size:12px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:${p.ticketLeise}">Ihr Code</td></tr>
+<tr><td style="padding:0 20px 6px">${code(p, slug, 24)}</td></tr>
+<tr><td style="padding:0 20px 18px;font-size:13px;line-height:1.5;color:${p.ticketLeise}">Gilt einmal · für Ihre nächste Bestellung oder Ihren nächsten Besuch</td></tr>
+</table></td></tr>
+${zurueck ? `{% if ${lieb(slug)} %}<tr><td style="padding:14px 28px 0"><p style="margin:0;font-size:15px;line-height:1.5;color:${p.tinte}">Wie wäre es wieder mit <strong>{{ ${lieb(slug)} }}</strong>?</p></td></tr>{% endif %}` : ""}
+<tr><td style="padding:22px 28px 4px">
+<h2 style="margin:0 0 6px;font-size:18px;color:${p.tinte}">So lösen Sie ihn ein</h2>
+<table role="presentation" cellpadding="0" cellspacing="0">
+${schritt(1, "Karte öffnen — im Lokal per Tisch-Code oder über den Knopf unten")}
+${schritt(2, "Gerichte auswählen")}
+${schritt(3, "Den Code im Warenkorb eintragen oder am Tisch zeigen")}
+</table></td></tr>
+${favoriten}
+<tr><td style="padding:24px 28px 30px">${knopf(p, "Zur Speisekarte", hubUrl(slug), true)}</td></tr>`;
+    return huelle(m, p, SANS, titel + " · " + (b.name || ""), innen);
+  }
+
+  /* ── edel: ruhig, viel Weißraum ──────────────────────────────────── */
+  function edel(m, slug, art, liste){
+    const p = palette(m), b = m.betrieb || {}, g = gerichteWaehlen(liste);
+    const zurueck = art === "rueckholung";
+    const held = g.find(x => x.bild);
+    const titel = zurueck ? "Es ist Zeit für ein Wiedersehen" : "Willkommen an unserem Tisch";
+    const satz = zurueck ? "Wir würden uns freuen, Sie bald wieder bei uns zu begrüßen. Als kleine Aufmerksamkeit:"
+                         : "Danke für Ihr Vertrauen. Als kleine Aufmerksamkeit für Ihren nächsten Besuch:";
+    const innen = `<tr><td align="center" style="padding:40px 32px 8px">
+<div style="font-family:${SERIF};font-size:15px;letter-spacing:.32em;text-transform:uppercase;color:${p.tinte}">${esc(b.name || "")}</div>
+<div style="width:40px;height:1px;margin:18px auto 0;background:${p.tinte};opacity:.35;line-height:1px;font-size:0">&nbsp;</div>
+</td></tr>
+${held ? `<tr><td style="padding:22px 32px 0"><img src="${esc(held.bild)}" alt="${esc(held.name)}" width="496" style="display:block;width:100%;height:auto;border-radius:${Math.min(p.rund, 10)}px"></td></tr>` : ""}
+<tr><td align="center" style="padding:30px 36px 6px">
+<h1 style="margin:0 0 14px;font-family:${SERIF};font-size:28px;line-height:1.25;font-weight:400;color:${p.tinte}">${titel}</h1>
+<p style="margin:0;font-family:${SERIF};font-size:16px;line-height:1.7;color:${p.leise}">${satz}</p>
+</td></tr>
+${zurueck ? `{% if ${lieb(slug)} %}<tr><td align="center" style="padding:12px 36px 0"><p style="margin:0;font-family:${SERIF};font-size:16px;font-style:italic;line-height:1.6;color:${p.tinte}">{{ ${lieb(slug)} }} wartet auf Sie.</p></td></tr>{% endif %}` : ""}
+<tr><td align="center" style="padding:26px 36px 8px">
+<div style="display:inline-block;padding:16px 26px;border:1px solid ${p.tinte};border-radius:${Math.min(p.rund, 8)}px">${code(p, slug, 22).replace("color:" + p.ticketText, "color:" + p.tinte)}</div>
+<p style="margin:12px 0 0;font-size:12.5px;line-height:1.5;color:${p.leise}">Gilt einmal · beim nächsten Besuch</p>
+</td></tr>
+<tr><td align="center" style="padding:22px 36px 40px">
+<a href="${esc(hubUrl(slug))}" style="display:inline-block;padding:13px 26px;border:1px solid ${p.tinte};border-radius:999px;font-family:${SERIF};font-size:15px;color:${p.tinte};text-decoration:none">Unsere Karte ansehen</a>
+</td></tr>`;
+    return huelle(m, p, SERIF, titel + " · " + (b.name || ""), innen);
+  }
+
+  /* Nur zum Ansehen (Board, Skizze): Klaviyos Platzhalter durch Beispielwerte ersetzen — der lange Platzhalter des Codes
+     machte jede Mail breiter als das Telefon. Was an Klaviyo geht, ist immer bauen() ohne diese Ersetzung. */
+  function vorschau(html, beispiel){
+    const b = Object.assign({ code: "WILLKOMMEN-7K2Q", vorname: "Anna", liebling: "Waffel Classic" }, beispiel || {});
+    const t = x => String(x).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c]);
+    return String(html)
+      .replace(/\{% coupon_code '[a-z0-9_-]+' %\}/g, t(b.code))
+      .replace(/\{% unsubscribe '([^']*)' %\}/g, (x, w) => '<a href="#" style="color:inherit">' + t(w) + "</a>")
+      .replace(/\{% if first_name %\} \{\{ first_name \}\}\{% endif %\}/g, " " + t(b.vorname))
+      .replace(/\{% if person\|lookup:'[a-z0-9_]+' %\}([\s\S]*?)\{% endif %\}/g, "$1")
+      .replace(/\{\{ person\|lookup:'[a-z0-9_]+' \}\}/g, t(b.liebling));
+  }
+  /* bauen(markenblatt, slug, art, variante, gerichte) → vollständiges HTML der E-Mail */
+  function bauen(m, slug, art, variante, gerichte){
+    m = (m && typeof m === "object") ? m : {};
+    slug = String(slug || "").replace(/[^a-z0-9-]/g, "");
+    art = artSauber(art); variante = varianteSauber(variante);
+    if(variante === "kampagne") return kampagne(m, slug, art, gerichte);
+    if(variante === "liefer") return liefer(m, slug, art, gerichte);
+    if(variante === "edel") return edel(m, slug, art, gerichte);
+    return vorlageBauen(m, slug, art);
+  }
+  return { VARIANTEN, ARTEN, varianteSauber, artSauber, gerichteWaehlen, bauen, vorschau, kontrast };
+})();
+/* ╚═══ NEWSLETTER-VARIANTEN · GETEILTER BLOCK · ENDE ═════════════════╝ */
+
+/* ══ Aussehen des Newsletters im Board ═════════════════════════════
+   Gelesen wird hub_stil.newsletter.variante (Positivliste über NEWSLETTER.varianteSauber); ungelesen heißt nicht „klassisch“,
+   sondern „unbekannt“ — „Übernehmen“ bleibt gesperrt, bis der Stand da ist (§8.1m). Geschrieben wird zusammengeführt (die
+   Nachbarn in hub_stil bleiben) und VOR dem Schreiben frisch gelesen. Danach bekommt Klaviyo beide Mails dieser Vorlage
+   (newsletter-vorlage-setzen); scheitert das, ist die Wahl trotzdem gespeichert und der Satz sagt, was fehlt. */
+let nlvStand, nlvWahl = "klassisch", nlvArt = "gutschein";
+function nlvBetrieb(){ return meineBetriebe.find(x => x.id === betriebId) || null; }
+function nlvMarke(){
+  const bb = nlvBetrieb();
+  const mb = bb && bb.markenblatt && typeof bb.markenblatt === "object" ? bb.markenblatt : {};
+  const m = JSON.parse(JSON.stringify(mb));
+  m.betrieb = Object.assign({}, m.betrieb || {}, { name: (bb && bb.name) || (m.betrieb && m.betrieb.name) || "" });
+  const st = bb && bb.hub_stil && typeof bb.hub_stil === "object" ? bb.hub_stil : {};
+  const fb = st.farben && typeof st.farben === "object" ? fbSechs(st.farben.tag) : null;
+  if(fb) m.farben = Object.assign({}, m.farben || {}, { grund:fb.grund, flaeche:fb.flaeche, band:fb.band, tinte:fb.tinte, akzent:fb.akzent });
+  return m;
+}
+const nlvEsc = x => String(x).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c]);
+function nlvSlug(){ const bb = nlvBetrieb(); return String((bb && bb.slug) || "").replace(/[^a-z0-9-]/g, ""); }
+function nlvHtml(art, variante){ return NEWSLETTER.bauen(nlvMarke(), nlvSlug(), art, variante, (typeof gerichte !== "undefined" ? gerichte : [])); }
+function nlvLaden(){
+  const bb = nlvBetrieb();
+  const st = bb && bb.hub_stil && typeof bb.hub_stil === "object" ? bb.hub_stil : null;
+  nlvStand = bb ? NEWSLETTER.varianteSauber(st && st.newsletter && st.newsletter.variante) : undefined;
+  nlvWahl = nlvStand || "klassisch";
+  nlvZeichnen();
+}
+function nlvZeichnen(){
+  const w = $("#nlvWahl"); if(!w) return;
+  w.innerHTML = NEWSLETTER.VARIANTEN.map(v => '<button type="button" class="nlv-karte" role="radio" data-nlv="' + v.id + '" aria-checked="' + (v.id === nlvWahl) + '">' +
+    "<b>" + nlvEsc(v.name) + "</b><span>" + nlvEsc(v.satz) + "</span></button>").join("");
+  document.querySelectorAll("[data-nlv-art]").forEach(k => k.setAttribute("aria-pressed", String(k.dataset.nlvArt === nlvArt)));
+  const f = $("#nlvVorschau"); if(f) f.srcdoc = NEWSLETTER.vorschau(nlvHtml(nlvArt, nlvWahl));
+  const u = $("#nlvUebernehmen"); if(u) u.disabled = nlvStand === undefined;
+  const satz = $("#nlvSatz");
+  if(satz && !satz.dataset.halten) satz.textContent = nlvStand === undefined ? "Stand wird geladen …"
+    : "Gespeichert: " + NEWSLETTER.VARIANTEN.find(v => v.id === nlvStand).name + (nlvWahl !== nlvStand ? " · Vorschau: " + NEWSLETTER.VARIANTEN.find(v => v.id === nlvWahl).name : "");
+}
+function nlvSatz(t){ const s = $("#nlvSatz"); if(!s) return; s.textContent = t; s.dataset.halten = "1"; setTimeout(() => { delete s.dataset.halten; }, 6000); }
+document.addEventListener("click", e => {
+  const k = e.target.closest && e.target.closest("[data-nlv]");
+  if(k){ nlvWahl = NEWSLETTER.varianteSauber(k.dataset.nlv); nlvZeichnen(); return; }
+  const a = e.target.closest && e.target.closest("[data-nlv-art]");
+  if(a){ nlvArt = NEWSLETTER.artSauber(a.dataset.nlvArt); nlvZeichnen(); }
+});
+async function nlvUebernehmen(){
+  if(nlvStand === undefined) return;
+  const neu = NEWSLETTER.varianteSauber(nlvWahl), name = NEWSLETTER.VARIANTEN.find(v => v.id === neu).name;
+  if(demo || !db){ nlvStand = neu; nlvZeichnen(); nlvSatz("Vorführung: „" + name + "“ gewählt — gespeichert wird hier nichts."); return; }
+  const u = $("#nlvUebernehmen"); if(u) u.disabled = true;
+  try{
+    const { data:frisch, error:e1 } = await db.from("betriebe").select("hub_stil").eq("id", betriebId).maybeSingle();
+    if(e1 || !frisch){ nlvSatz("Nicht gespeichert: der aktuelle Stand ließ sich nicht lesen. Bitte Verbindung prüfen."); return; }
+    const st = Object.assign({}, frisch.hub_stil && typeof frisch.hub_stil === "object" ? frisch.hub_stil : {}, { newsletter: { variante: neu } });
+    const { data:zeilen, error:e2 } = await db.from("betriebe").update({ hub_stil: st }).eq("id", betriebId).select("id");
+    if(e2){ nlvSatz("Nicht gespeichert, bitte Verbindung prüfen."); return; }
+    if(!zeilen || !zeilen.length){ nlvSatz("Nur der Besitzer kann das Aussehen ändern."); return; }
+    const bb = nlvBetrieb(); if(bb) bb.hub_stil = st;
+    nlvStand = neu; nlvZeichnen();
+    let ergebnis = null;
+    try{
+      const { data, error } = await db.functions.invoke("newsletter-vorlage-setzen", { body: { betrieb_id: betriebId, variante: neu,
+        html: { gutschein: nlvHtml("gutschein", neu), rueckholung: nlvHtml("rueckholung", neu) } } });
+      ergebnis = error ? { ok:false, grund:"funktion" } : data;
+    }catch(x){ ergebnis = { ok:false, grund:"funktion" }; }
+    const GRUND = {
+      funktion: "Die Verbindung zu Klaviyo ist noch nicht ausgerollt — mit „HTML kopieren“ können Sie die Vorlage selbst in Klaviyo einfügen.",
+      kein_schluessel: "Klaviyo ist noch nicht verbunden (Schlüssel fehlt) — mit „HTML kopieren“ können Sie die Vorlage selbst einfügen.",
+      keine_vorlagen: "Für dieses Haus sind noch keine Klaviyo-Abläufe eingerichtet.",
+      kein_zugriff: "Nur der Besitzer kann die Vorlagen in Klaviyo ändern.",
+      klaviyo: "Klaviyo hat die Vorlage nicht angenommen. Bitte später noch einmal „Übernehmen“.",
+      ungueltig: "Die Vorlage war unvollständig und wurde nicht verschickt."
+    };
+    nlvSatz(ergebnis && ergebnis.ok ? "„" + name + "“ ist gespeichert und in Klaviyo übernommen (" + (ergebnis.ersetzt || 0) + " Vorlagen)."
+      : "„" + name + "“ ist gespeichert. " + (GRUND[ergebnis && ergebnis.grund] || GRUND.funktion));
+  } finally { if(u) u.disabled = nlvStand === undefined; }
+}
+$("#nlvUebernehmen").onclick = nlvUebernehmen;
+$("#nlvKopieren").onclick = async () => {
+  const html = nlvHtml(nlvArt, nlvWahl);
+  try{ await navigator.clipboard.writeText(html); nlvSatz("HTML kopiert — in Klaviyo unter Vorlagen → „Code your own“ einfügen."); }
+  catch(x){ nlvSatz("Kopieren ging nicht — Ihr Browser erlaubt es hier nicht."); }
+};
+
 /* ══ Bewegte Emojis im Hub (betriebe.hub_stil) ══════════════════════
    Dieselbe Rangfolge wie im Hub (bewegteZeichenAn): Board-Wert, dann
    Markenblatt, dann an. Strikt boolean — sonst zeigte der Schalter
@@ -12087,6 +12590,7 @@ async function betriebOeffnen(id){
   pauseZeichnen();
 
   newsletterAktiv = !!(bb && bb.newsletter_aktiv);
+  nlvLaden();
   stilEmoji = stilEmojiAus(bb);
   stilZeichnen();
   rzZeigen = rzAus(bb);
@@ -16052,8 +16556,10 @@ function leistePilleBewegen(){
 addEventListener("resize", () => { if($("#leistePille")) leistePilleBewegen(); });
 
 /* ╔═══ TOUR · GETEILTER BLOCK · ANFANG ══════════════════════════════╗
-   Geführte Tour („Tutorial-Modus“): ein Schleier mit Loch über dem echten Element, oben die Bereiche zum Antippen, eine Karte mit
-   Titel, Text und Schritt, auf Wunsch eine Vorführung (tippen, wischen, halten) am Loch. Wortgleich in vorlagen/hub.vorlage.html und
+   Geführte Tour („Tutorial-Modus“): ein dunkler Raum, in dem nur das gezeigte Element im Licht steht — kein Ring, keine Linie, kein
+   Punkt (Wunsch 31.10.: „wie in einem LED-Raum, das Licht kommt von dem Bereich, der Rest ist stark abgedunkelt“). Oben die Bereiche
+   zum Antippen, eine Karte mit Titel, Text, Geste als Wort und Schritt. Zwischen zwei Zielen geht das Licht kurz aus und am neuen
+   Ziel wieder an (nur opacity, Subframe-Vorlage „guided-inspection“: Wege ~0,5 s weich, Tastatur und reduzierte Bewegung sofort). Wortgleich in vorlagen/hub.vorlage.html und
    seiten/admin.html — pruefungen/pruef-tour.js hält beide Kopien Zeichen für Zeichen gleich.
 
    Alles, worauf der Block sich stützt, steht IN ihm (§8.1e): sein Stil entsteht hier, nur die Farben liefert die Seite als --tour-karte,
@@ -16064,8 +16570,7 @@ addEventListener("resize", () => { if($("#leistePille")) leistePilleBewegen(); }
      t(text)          Übersetzer der Seite (Hub: t, Board: unverändert); alle Beschriftungen des Blocks laufen darüber.
      ziel             Selektor oder Liste davon; das erste SICHTBARE Element bekommt das Loch. Fehlt es, steht die Karte ohne Loch in der
                       Mitte — die Tour bleibt bedienbar (§7: lieber ein Schritt ohne Hervorhebung als eine Tour, die hängt).
-     demo             "tippen" | "wischen" | "wischen-hoch" | "halten": eine Hand am Loch, nur transform und opacity; ohne Bewegung (reduzierte
-                      Bewegung) steht sie still.
+     demo             "tippen" | "wischen" | "wischen-hoch" | "halten": die Geste steht als Wort in der Karte (keine Zeichnung am Licht).
      vorBereich(b)    Die Seite navigiert dorthin (Adresse, Reiter, Blatt öffnen) und darf ein Promise liefern.
      ende()           Aufräumen der Seite (Blätter zu, zurück zum Start).
    Bedienung: Weiter/Zurück (auch Pfeiltasten), Wischen nach links/rechts wechselt den BEREICH, Antippen eines Bereichs oben, Escape/✕
@@ -16075,29 +16580,20 @@ const TOUR = (function(){
   "use strict";
   const STIL =
     ".tour-wurzel{position:fixed;inset:0;z-index:3000;touch-action:none;-webkit-tap-highlight-color:transparent;font-family:inherit}" +
-    ".tour-schild{position:absolute;inset:0;background:rgba(8,6,5,.68);opacity:0;transition:opacity .25s ease}" +
-    ".tour-wurzel[data-ohneloch=\"1\"] .tour-schild{opacity:1}" +
-    ".tour-loch{position:absolute;left:0;top:0;width:0;height:0;border-radius:16px;pointer-events:none;opacity:0;" +
-      "box-shadow:0 0 0 2px var(--tour-akzent,#fff),0 0 0 200vmax rgba(8,6,5,.68);transition:transform .32s cubic-bezier(.3,.7,.3,1),opacity .2s ease}" +
+    ".tour-schild{position:absolute;inset:0;background:rgba(4,3,2,.86);opacity:0;transition:opacity .16s ease-out}" +
+    ".tour-wurzel[data-ohneloch=\"1\"] .tour-schild,.tour-wurzel[data-licht=\"aus\"] .tour-schild{opacity:1}" +
+    ".tour-wurzel[data-licht=\"an\"] .tour-schild{transition:opacity .42s cubic-bezier(.22,.75,.22,1)}" +
+    /* Das Licht: ein Feld um das Ziel (22 px größer), außen hart dunkel (Spread), innen ein weicher Übergang (inset) — so fällt das
+       Licht zum Rand hin ab, ohne Linie. Darüber ein warmer Schein, der aus dem Feld in den dunklen Raum fällt. Keine Hausfarbe. */
+    ".tour-loch{position:absolute;left:0;top:0;width:0;height:0;border-radius:26px;pointer-events:none;opacity:0;" +
+      "box-shadow:0 0 46px 10px rgba(255,226,186,.15),inset 0 0 18px 9px rgba(4,3,2,.86),0 0 0 200vmax rgba(4,3,2,.86);" +
+      "transition:transform .5s cubic-bezier(.22,.75,.22,1),opacity .2s ease}" +
     ".tour-wurzel[data-ohneloch=\"0\"] .tour-loch{opacity:1}" +
-    ".tour-loch::after{content:\"\";position:absolute;inset:-6px;border-radius:20px;border:2px solid var(--tour-akzent,#fff);opacity:0;animation:tour-puls 1.8s cubic-bezier(.23,1,.32,1) infinite}" +
-    "@keyframes tour-puls{0%{opacity:.7;transform:scale(.97)}80%,100%{opacity:0;transform:scale(1.06)}}" +
-    ".tour-hand{position:absolute;left:0;top:0;width:44px;height:44px;margin:-22px 0 0 -22px;pointer-events:none;opacity:0}" +
-    ".tour-hand::before{content:\"\";position:absolute;inset:0;border-radius:50%;background:var(--tour-akzent,#fff);opacity:.6;box-shadow:0 0 0 3px rgba(255,255,255,.55),0 6px 16px rgba(0,0,0,.45)}" +
-    ".tour-hand::after{content:\"\";position:absolute;inset:-10px;border-radius:50%;border:2px solid var(--tour-akzent,#fff);opacity:0}" +
-    ".tour-hand[data-demo=\"tippen\"]{opacity:1;animation:tour-tippen 1.7s cubic-bezier(.45,0,.55,1) infinite}" +
-    ".tour-hand[data-demo=\"tippen\"]::after{animation:tour-welle 1.7s cubic-bezier(.23,1,.32,1) infinite}" +
-    ".tour-hand[data-demo=\"halten\"]{opacity:1;animation:tour-halten 2.2s cubic-bezier(.45,0,.55,1) infinite}" +
-    ".tour-hand[data-demo=\"halten\"]::after{animation:tour-welle 2.2s cubic-bezier(.23,1,.32,1) infinite}" +
-    ".tour-hand[data-demo=\"wischen\"]{opacity:1;animation:tour-wischen 2s cubic-bezier(.5,0,.3,1) infinite}" +
-    ".tour-hand[data-demo=\"wischen-hoch\"]{opacity:1;animation:tour-hoch 2s cubic-bezier(.5,0,.3,1) infinite}" +
-    "@keyframes tour-tippen{0%,100%{transform:scale(1)}40%{transform:scale(.78)}60%{transform:scale(.78)}}" +
-    "@keyframes tour-halten{0%{transform:scale(1)}30%,80%{transform:scale(.8)}100%{transform:scale(1)}}" +
-    "@keyframes tour-welle{0%,35%{opacity:0;transform:scale(.7)}50%{opacity:.8}100%{opacity:0;transform:scale(1.5)}}" +
-    "@keyframes tour-wischen{0%{opacity:0;transform:translateX(60px)}15%{opacity:1;transform:translateX(60px)}70%{opacity:1;transform:translateX(-60px)}100%{opacity:0;transform:translateX(-60px)}}" +
-    "@keyframes tour-hoch{0%{opacity:0;transform:translateY(46px)}15%{opacity:1;transform:translateY(46px)}70%{opacity:1;transform:translateY(-46px)}100%{opacity:0;transform:translateY(-46px)}}" +
-    ".tour-kopf{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) 10px 8px;display:flex;flex-direction:column;gap:6px;" +
-      "background:linear-gradient(rgba(8,6,5,.86),rgba(8,6,5,.0))}" +
+    ".tour-geste{display:inline-flex;align-items:center;gap:6px;margin:0 0 8px;padding:3px 10px 3px 8px;border-radius:999px;font-size:12.5px;font-weight:650;" +
+      "color:var(--tour-schrift,#111);background:color-mix(in srgb, var(--tour-schrift,#111) 9%, transparent)}" +
+    ".tour-geste[hidden]{display:none}" +
+    ".tour-geste svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}" +
+    ".tour-kopf{position:absolute;left:0;right:0;top:0;padding:calc(10px + env(safe-area-inset-top)) 10px 8px;display:flex;flex-direction:column;gap:6px}" +
     ".tour-zeile{display:flex;align-items:center;gap:8px}" +
     ".tour-chips{flex:1;min-width:0;display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;-webkit-overflow-scrolling:touch;padding:2px;touch-action:pan-x}" +
     ".tour-chips::-webkit-scrollbar{display:none}" +
@@ -16114,8 +16610,8 @@ const TOUR = (function(){
     ".tour-wurzel[data-pos=\"unten\"] .tour-karte{bottom:calc(14px + env(safe-area-inset-bottom))}" +
     ".tour-wurzel[data-pos=\"oben\"] .tour-karte{top:112px}" +
     ".tour-wurzel[data-pos=\"mitte\"] .tour-karte{top:50%;transform:translate(-50%,-50%)}" +
-    ".tour-wurzel[data-kopf=\"unten\"] .tour-kopf{top:auto;bottom:0;padding:8px 10px calc(10px + env(safe-area-inset-bottom));background:linear-gradient(rgba(8,6,5,0),rgba(8,6,5,.86))}" +
-    ".tour-wurzel[data-kopf=\"unten\"][data-pos=\"unten\"] .tour-karte{bottom:calc(var(--tour-kh,64px) + 14px)}" +
+    ".tour-kopf{transition:opacity .2s ease}" +
+    ".tour-wurzel[data-kopf=\"weg\"] .tour-kopf{opacity:0;pointer-events:none}" +
     ".tour-karte h2{margin:0 0 6px;font-size:18px;line-height:1.25;font-weight:700;color:var(--tour-schrift,#111)}" +
     ".tour-karte p{margin:0;font-size:15px;line-height:1.5;color:var(--tour-schrift,#111)}" +
     ".tour-stand{margin:10px 0 0;font-size:12.5px;color:var(--tour-leise,#555)}" +
@@ -16124,16 +16620,29 @@ const TOUR = (function(){
     ".tour-knopf.haupt{flex:1.6;background:var(--tour-akzent,#c00);border-color:var(--tour-akzent,#c00);color:var(--tour-akzent-schrift,#fff)}" +
     ".tour-knopf:disabled{opacity:.4;cursor:default}" +
     ".tour-wurzel :focus-visible{outline:3px solid var(--tour-akzent,#fff);outline-offset:2px}" +
-    "@media (prefers-reduced-motion:reduce){.tour-schild,.tour-loch{transition:none}.tour-loch::after{animation:none}" +
-      ".tour-hand,.tour-hand::after{animation:none!important}.tour-hand[data-demo]{opacity:1}.tour-hand::after{opacity:.6}}";
+    "@media (prefers-reduced-motion:reduce){.tour-schild,.tour-loch,.tour-kopf,.tour-wurzel[data-licht] .tour-schild{transition:none}}";
 
+  /* Die Geste als Wort mit kleinem Zeichen (statt einer Hand am Licht). */
+  const GESTE = {
+    tippen:         ["Tippen", "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"3.2\"/><circle cx=\"12\" cy=\"12\" r=\"8\" opacity=\".45\"/></svg>"],
+    halten:         ["Gedrückt halten", "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><circle cx=\"12\" cy=\"12\" r=\"8\"/><path d=\"M12 7.5V12l3 2\"/></svg>"],
+    wischen:        ["Zur Seite wischen", "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M4 12h16M8 8l-4 4 4 4M16 8l4 4-4 4\"/></svg>"],
+    "wischen-hoch": ["Nach oben wischen", "<svg viewBox=\"0 0 24 24\" aria-hidden=\"true\"><path d=\"M12 20V4M8 8l4-4 4 4\"/></svg>"]
+  };
   let Z = null;              // laufende Tour: { def, b, s, fokus, laufNr, gemessen }
   let stilEl = null;
 
   const wort = x => (Z && typeof Z.def.t === "function") ? Z.def.t(x) : x;
   const neu = (tag, klasse, text) => { const e = document.createElement(tag); if(klasse) e.className = klasse; if(text !== undefined) e.textContent = text; return e; };
+  /* Sichtbar heißt: gezeichnet, nicht durchsichtig — und ein Element in einer FESTEN Leiste muss wirklich im Bild stehen. Fund 31.10.
+     (Foto): die leere Auswahl-Leiste ist nur nach unten geschoben (translate, Deckkraft 0) und bekam trotzdem das Licht, am Bildrand. */
   const sichtbar = e => { if(!e) return false; const r = e.getBoundingClientRect(); const cs = getComputedStyle(e);
-    return r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none"; };
+    if(!(r.width > 0 && r.height > 0 && cs.visibility !== "hidden" && cs.display !== "none" && +cs.opacity > .05)) return false;
+    if(e.closest && e.closest("[inert]")) return false;
+    let fest = false; for(let k = e, i = 0; k && k !== document.body && i < 12; k = k.parentElement, i++){ if(getComputedStyle(k).position === "fixed"){ fest = true; break; } }
+    if(!fest) return true;   /* nur FESTE Leisten können aus dem Bild geschoben sein; klebende Spalten rollt die Tour ins Bild */
+    const sb = Math.max(0, Math.min(r.right, innerWidth) - Math.max(r.left, 0)), sh = Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0));
+    return sb * sh >= .5 * r.width * r.height; };
   const finden = ziel => { const liste = [].concat(ziel || []); for(let i = 0; i < liste.length; i++){
     let e = null; try{ e = document.querySelector(liste[i]); }catch(x){}
     if(sichtbar(e)) return e; } return null; };
@@ -16157,7 +16666,6 @@ const TOUR = (function(){
     w.dataset.ohneloch = "1"; w.dataset.pos = "unten";
     const schild = neu("div", "tour-schild");
     const loch = neu("div", "tour-loch");
-    const hand = neu("div", "tour-hand"); hand.setAttribute("aria-hidden", "true");
     const kopf = neu("div", "tour-kopf");
     const zeile = neu("div", "tour-zeile");
     const chips = neu("div", "tour-chips"); chips.setAttribute("role", "tablist"); chips.setAttribute("aria-label", wort("Bereiche"));
@@ -16166,6 +16674,7 @@ const TOUR = (function(){
     const punkte = neu("div", "tour-punkte"); punkte.setAttribute("aria-hidden", "true");
     kopf.appendChild(zeile); kopf.appendChild(punkte);
     const karte = neu("div", "tour-karte");
+    const geste = neu("p", "tour-geste"); geste.hidden = true;
     const h = neu("h2"); h.id = "tourTitel";
     const p = neu("p"); p.id = "tourText"; p.setAttribute("aria-live", "polite");
     const stand = neu("p", "tour-stand");
@@ -16173,11 +16682,11 @@ const TOUR = (function(){
     const zurueck = neu("button", "tour-knopf", wort("Zurück")); zurueck.type = "button";
     const weiter = neu("button", "tour-knopf haupt", wort("Weiter")); weiter.type = "button";
     knoepfe.appendChild(zurueck); knoepfe.appendChild(weiter);
-    karte.appendChild(h); karte.appendChild(p); karte.appendChild(stand); karte.appendChild(knoepfe);
+    karte.appendChild(geste); karte.appendChild(h); karte.appendChild(p); karte.appendChild(stand); karte.appendChild(knoepfe);
     w.setAttribute("aria-labelledby", "tourTitel");
-    w.appendChild(schild); w.appendChild(loch); w.appendChild(hand); w.appendChild(kopf); w.appendChild(karte);
+    w.appendChild(schild); w.appendChild(loch); w.appendChild(kopf); w.appendChild(karte);
     document.body.appendChild(w);
-    Z.el = { w, schild, loch, hand, kopf, chips, zu, punkte, karte, h, p, stand, zurueck, weiter };
+    Z.el = { w, schild, loch, kopf, chips, zu, punkte, karte, geste, h, p, stand, zurueck, weiter };
 
     Z.def.bereiche.forEach((b, i) => {
       const c = neu("button", "tour-chip", wort(b.titel)); c.type = "button"; c.dataset.bereich = String(i);
@@ -16222,25 +16731,22 @@ const TOUR = (function(){
     const ziel = finden(s.ziel);
     const vh = innerHeight, vw = innerWidth;
     if(!ziel){
-      e.w.dataset.ohneloch = "1"; e.w.dataset.pos = "mitte"; e.w.dataset.kopf = "oben"; e.karte.style.top = ""; e.hand.removeAttribute("data-demo"); Z.gemessen = null; return;
+      e.w.dataset.ohneloch = "1"; e.w.dataset.pos = "mitte"; e.w.dataset.kopf = "oben"; e.karte.style.top = ""; Z.gemessen = null; return;
     }
-    const r = ziel.getBoundingClientRect(), rand = 6;
+    const r = ziel.getBoundingClientRect(), rand = 22;   /* das Licht reicht über das Ziel hinaus; der weiche Rand liegt außerhalb */
     let x = Math.max(4, r.left - rand), y = Math.max(4, r.top - rand);
     let b = Math.min(vw - 4, r.right + rand) - x, h = Math.min(vh - 4, r.bottom + rand) - y;
     b = Math.max(24, b); h = Math.max(24, h);
     e.loch.style.width = Math.round(b) + "px"; e.loch.style.height = Math.round(h) + "px";
     e.loch.style.transform = "translate(" + Math.round(x) + "px," + Math.round(y) + "px)";
     e.w.dataset.ohneloch = "0";
-    /* Lage über left/top, die Bewegung der Geste läuft in der Animation (transform): sonst überschriebe die Animation die Lage. */
-    e.hand.style.left = Math.round(x + b / 2) + "px"; e.hand.style.top = Math.round(y + h / 2) + "px";
-    e.hand.dataset.demo = s.demo || "";
-    if(!s.demo) e.hand.removeAttribute("data-demo");
     /* Die Karte dorthin, wo mehr Platz ist — nie über das Loch: erst die gemessene Höhe der Karte, dann oben oder unten. */
     const kh = e.kopf.offsetHeight;
-    /* Liegt das Ziel unter der Bereichsleiste oben (Sprachknopf, Kopf), wandert die Leiste nach unten — sonst läge sie auf dem Ziel. */
-    const kopfUnten = y < kh + 4;
-    e.w.dataset.kopf = kopfUnten ? "unten" : "oben"; e.w.style.setProperty("--tour-kh", kh + "px");
-    const randOben = kopfUnten ? 12 : kh, randUnten = kopfUnten ? kh : 0;
+    /* Liegt das Ziel unter der Bereichsleiste oben (Sprachknopf, Kopf), tritt die Leiste für diesen Schritt zurück (durchsichtig, fängt
+       nichts) — vorher sprang sie nach unten und stand zwischen Karte und Seite. Die Tour bleibt über die Karte bedienbar. */
+    const kopfWeg = r.top < kh + 4;
+    e.w.dataset.kopf = kopfWeg ? "weg" : "oben";
+    const randOben = kopfWeg ? 12 : kh, randUnten = 0;
     const noetig = e.karte.offsetHeight + 24, oben = y - randOben, unten = vh - (y + h) - randUnten - 14;
     const pos = unten >= noetig ? "unten" : (oben >= noetig ? "oben" : (unten >= oben ? "unten" : "oben"));
     e.w.dataset.pos = pos;
@@ -16251,6 +16757,10 @@ const TOUR = (function(){
   async function zeigen(nr){
     const b = Z.def.bereiche[Z.b], s = b.schritte[Z.s], e = Z.el;
     e.h.textContent = wort(s.titel); e.p.textContent = wort(s.text);
+    const g = GESTE[s.demo];
+    if(g){ e.geste.innerHTML = g[1]; e.geste.appendChild(document.createTextNode(wort(g[0]))); e.geste.hidden = false; } else { e.geste.hidden = true; e.geste.textContent = ""; }
+    /* Das Licht geht aus, während die Seite hinbringt, und am neuen Ziel wieder an. */
+    if(Z.gemessen) e.w.dataset.licht = "aus";
     e.stand.textContent = wort("Bereich") + " " + (Z.b + 1) + "/" + Z.def.bereiche.length + " · " + wort("Schritt") + " " + (Z.s + 1) + "/" + b.schritte.length;
     [...e.chips.children].forEach((c, i) => { if(i === Z.b){ c.setAttribute("aria-current", "step"); c.setAttribute("aria-selected", "true"); } else { c.removeAttribute("aria-current"); c.setAttribute("aria-selected", "false"); } });
     const cur = e.chips.children[Z.b]; if(cur && cur.scrollIntoView) cur.scrollIntoView({ block:"nearest", inline:"center" });
@@ -16266,6 +16776,7 @@ const TOUR = (function(){
     const ziel = finden(s.ziel);
     if(ziel && ziel.scrollIntoView && !festAngeheftet(ziel)){ try{ ziel.scrollIntoView({ block:"center", inline:"nearest", behavior:"auto" }); }catch(x){} }
     platzieren();
+    if(Z.el.w.dataset.licht === "aus"){ await warte(30); if(!Z || nr !== Z.laufNr) return; Z.el.w.dataset.licht = "an"; }
     /* Späte Bilder und Layouts: noch zweimal nachmessen. */
     await warte(180); if(!Z || nr !== Z.laufNr) return; platzieren();
     await warte(520); if(!Z || nr !== Z.laufNr) return; platzieren();
@@ -16324,7 +16835,8 @@ const TOUR = (function(){
     laeuft: () => !!Z,
     /* Für die Prüfung: wo die Tour gerade steht und was sie gemessen hat. */
     stand: () => Z ? { bereich:Z.b, schritt:Z.s, bereiche:Z.def.bereiche.length, gemessen:Z.gemessen,
-                       ohneLoch:Z.el.w.dataset.ohneloch === "1", lage:Z.el.w.dataset.pos, demo:Z.el.hand.dataset.demo || "" } : null
+                       ohneLoch:Z.el.w.dataset.ohneloch === "1", lage:Z.el.w.dataset.pos, kopf:Z.el.w.dataset.kopf,
+                       demo:Z.def.bereiche[Z.b].schritte[Z.s].demo || "", geste:Z.el.geste.hidden ? "" : Z.el.geste.textContent } : null
   };
 })();
 /* ╚═══ TOUR · GETEILTER BLOCK · ENDE ════════════════════════════════╝ */
@@ -16697,6 +17209,20 @@ function leisteVersatzOhneZoom(sichtHoehe, sondeUnten){
   if(a < -LEISTE_TASTATUR) return 0;
   return Math.abs(a) >= 2 && a <= 600 ? a : 0;
 }
+/* Festhängen nach der Tastatur (Foto 31.10., Hub — dieselbe Lage im Board): iOS 26 hält den Layout-Bereich auf Tastaturhöhe fest,
+   innerHeight UND visualViewport melden die kurze Höhe (WebKit 297779). Zweite Quelle: die größte Höhe ohne Textfeld im Fokus (je
+   Ausrichtung), im Home-Bildschirm zusätzlich der Bildschirm. Mehr als LEISTE_HAENGT kürzer → Anstoß, dann rückt die Leiste nach. */
+const LEISTE_HAENGT = 200, leisteHoechst = { hoch: 0, quer: 0 };
+let leisteAnstoss = 0;
+function leisteHaengtUm(feld){
+  const o = innerWidth > innerHeight ? "quer" : "hoch", jetzt = innerHeight;
+  if(feld) return 0;
+  const standalone = navigator.standalone === true || (window.matchMedia && matchMedia("(display-mode: standalone)").matches);
+  const schirm = standalone ? (o === "hoch" ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height)) : 0;
+  if(jetzt > leisteHoechst[o]) leisteHoechst[o] = jetzt;
+  const soll = Math.max(leisteHoechst[o], schirm && schirm - jetzt < 600 ? schirm : 0), d = Math.round(soll - jetzt);
+  return d > LEISTE_HAENGT && d < 600 ? d : 0;
+}
 function leisteAnkern(){
   const vv = window.visualViewport, wurzel = document.documentElement;
   let v = 0, kehr = 1, x = 0;
@@ -16719,7 +17245,14 @@ function leisteAnkern(){
       if(gezoomt){
         const abstand = Math.round(vv.offsetTop + vv.height - unten);
         if(Math.abs(abstand) >= 2 && Math.abs(abstand) <= 6000) v = abstand;
-      }else v = leisteVersatzOhneZoom(vv.height, unten);
+      }else{
+        v = leisteVersatzOhneZoom(vv.height, unten);
+        const haengt = leisteHaengtUm(feld);
+        if(haengt){
+          if(Date.now() - leisteAnstoss > 2000){ leisteAnstoss = Date.now(); try{ scrollBy(0, 1); scrollBy(0, -1); }catch(x){} setTimeout(leisteAnkernBald, 250); }
+          v = Math.max(v, Math.round(innerHeight + haengt - unten));
+        }
+      }
     }
   }
   const alt = wurzel.style.getPropertyValue("--vv-versatz");
@@ -16743,7 +17276,7 @@ function leisteMessZeigen(v){
   const vv = window.visualViewport || {}, r = n => typeof n === "number" ? Math.round(n * 10) / 10 : "–";
   m.textContent = "vv.top " + r(vv.offsetTop) + "  vv.h " + r(vv.height) + "  scale " + r(vv.scale) +
     "\ninnerH " + r(innerHeight) + "  clientH " + r(document.documentElement.clientHeight) + "  sonde " + r(leisteSonde().getBoundingClientRect().bottom) +
-    "\nversatz " + v + "  standalone " + (navigator.standalone === true || matchMedia("(display-mode: standalone)").matches) +
+    "\nversatz " + v + "  hängt " + leisteHaengtUm(leisteTastaturFeld(document.activeElement)) + "  höchst " + r(leisteHoechst[innerWidth > innerHeight ? "quer" : "hoch"]) + "  standalone " + (navigator.standalone === true || matchMedia("(display-mode: standalone)").matches) +
     "\nscreen " + screen.width + "×" + screen.height + "  innerW " + r(innerWidth) + "  scrollY " + r(scrollY) +
     "\nleiste " + r(document.getElementById("befehlsleiste").getBoundingClientRect().top) + "–" + r(document.getElementById("befehlsleiste").getBoundingClientRect().bottom);
 }

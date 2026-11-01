@@ -122,6 +122,9 @@ const ZEILEN = rows => rows.map(r => {
     const pe = await p.evaluate(() => [...document.querySelectorAll(".sz-kunst")].map(e => getComputedStyle(e).pointerEvents));
     pruef(breite + " px: die Kunst in den Kacheln fängt keinen Tipp (pointer-events: none)", pe.length >= 2 && pe.every(x => x === "none"), pe);
     /* Schrift der Kacheln liegt auf der Fläche, nicht auf der Kunst: Titel ≥ 4,5:1 am gemalten Bild */
+    /* Der schwebende Knopf „Anleitung“ (erster Besuch) liegt absichtlich ÜBER dem Inhalt und ist wegtippbar — er deckte bei 360/430 × 900
+       den Titel „Foodroulette“ (1,00:1, auch auf dem alten Stand, Fund 01.11.). Gemessen wird hier die Kachelschrift auf ihrer Fläche. */
+    await p.evaluate(() => { const t = document.getElementById("tourPille"); if(t) t.hidden = true; });
     const tt = {}; for(const [k, sel] of [["Auswahl", '[data-sz="auswahl"] .sz-text'], ["Karte", '[data-sz="karte"] .sz-text'], ["Foodroulette", '[data-sz="roulette"] .sz-text']]) tt[k] = await schlechtester(p, sel, true);
     pruef(breite + " px: Kachelschrift ≥ 4,5:1 am schlechtesten Bildpunkt (auch über Kunst)", Object.values(tt).every(v => v !== null && v >= 4.5), tt);
     /* Kein Wort bricht mitten im Wort um („Foodroulett/e“, 360 px): ohne Umbruchzwang passt jedes Wort in die Zeile. */

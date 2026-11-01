@@ -224,6 +224,27 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
       return { sofort, spaeter: document.documentElement.style.getPropertyValue("--vv-versatz"), unten: Math.round(b.bottom), vh: document.documentElement.clientHeight };
     });
     ok(zu.sofort === "0px" && zu.spaeter === "0px" && zu.unten === zu.vh, "Tastatur zu (Feld verlässt den Fokus): Versatz sofort 0, nach dem Nachmessen ganz unten", JSON.stringify(zu));
+    /* iOS hängt nach der Tastatur (Foto 31.10.): innerHeight UND vv 372 px zu kurz, die Sonde bei der kurzen Höhe. */
+    const haengt = await p.evaluate(async () => {
+      const vh = document.documentElement.clientHeight;
+      Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, offsetLeft:0, scale:1, width:390, height:vh, addEventListener(){} } });
+      leisteAnkern();
+      const kurz = vh - 372, rollt = [], echtScroll = window.scrollBy;
+      const dH = Object.getOwnPropertyDescriptor(window, "innerHeight"), dW = Object.getOwnPropertyDescriptor(window, "innerWidth");
+      window.scrollBy = (x, y) => { rollt.push(y); };
+      Object.defineProperty(window, "innerHeight", { configurable:true, get: () => kurz });
+      Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, offsetLeft:0, scale:1, width:390, height:kurz, addEventListener(){} } });
+      const sonde = leisteSonde(), echtRect = sonde.getBoundingClientRect.bind(sonde);
+      sonde.getBoundingClientRect = () => ({ top:kurz, bottom:kurz, left:0, right:1, width:1, height:0 });
+      const v = leisteAnkern();
+      const i = document.createElement("input"); document.body.appendChild(i); i.focus(); const mitFeld = leisteAnkern(); i.blur(); i.remove();
+      Object.defineProperty(window, "innerWidth", { configurable:true, get: () => 844 }); const quer = leisteAnkern();
+      Object.defineProperty(window, "innerHeight", dH); Object.defineProperty(window, "innerWidth", dW); window.scrollBy = echtScroll; sonde.getBoundingClientRect = echtRect;
+      Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, offsetLeft:0, scale:1, width:390, height:vh, addEventListener(){} } }); leisteAnkern();
+      return { v, rollt: rollt.length, mitFeld, quer };
+    });
+    ok(haengt.v === 372 && haengt.rollt >= 1, "iOS hängt (372 px zu kurz, kein Feld): Anstoß, dann rückt die Leiste genau 372 px nach unten", JSON.stringify(haengt));
+    ok(haengt.mitFeld === 0 && haengt.quer === 0, "Gegenfälle: Textfeld im Fokus und Gerät quer → kein Versatz", JSON.stringify(haengt));
     const mess = await p.evaluate(() => !!document.getElementById("leisteMess"));
     ok(!mess, "ohne ?leiste=mess keine Messanzeige im Dokument", String(mess));
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, scale:1, height:document.documentElement.clientHeight - 47, addEventListener(){} } }); leisteAnkern(); });
