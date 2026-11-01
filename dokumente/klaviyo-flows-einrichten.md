@@ -83,3 +83,45 @@ selbst lassen sich ohne Live-Schaltung nicht prüfen. Die Naht
 Datenbank → Edge Function ist gemessen (200 mit dem echten Geheimnis,
 401 ohne), die Naht Edge Function → Klaviyo erst, sobald der Schlüssel
 gesetzt ist.
+
+## Aussehen der Mails wählen (seit 01.11.)
+
+Im Board unter **Einstellungen → Gäste-Newsletter → Aussehen der Mails**
+wählt der Inhaber eine von vier Fassungen. Für jede gibt es beide Mails
+(„Willkommen“ und „Wir vermissen Sie“) in einer Vorschau:
+
+| Variante | Aufbau | Vorbild (nur Aufbau und Wirkung, keine Marke, kein Bild) |
+|---|---|---|
+| **Klassisch** | die bisherige Mail, Zeichen für Zeichen | — (Vorgabe, nichts ändert sich ohne Wahl) |
+| **Kampagne** | Angebot als Kopf auf der Bandfarbe, ein kräftiger Knopf, „Beliebt bei uns“ mit Foto und Preis, Code als Ticket | Angebotsmails großer Burger-Ketten: Angebot und Preis auf dem ersten Bildschirm, große Produktbilder, kurze beschriftete Blöcke |
+| **Persönlich** | Anrede mit Vornamen, Gutschein als Karte mit Bedingungen, drei Schritte „So lösen Sie ihn ein“, Liste „Unsere Favoriten“ | Lieferdienst-Gutscheine: €-Wert, Bedingung, Schritte, Favoritenliste |
+| **Edel** | Serifenschrift, ein Foto, viel Weißraum, wenig Text | für Häuser, denen die anderen zu laut sind |
+
+Farben kommen aus dem Markenblatt bzw. den im Board gewählten Farben;
+jede Schrift auf Farbe wird gerechnet (≥ 4,5:1). Gerichte: zuerst die als
+„Beliebt“ markierten, dann die mit Foto, höchstens drei; Fotos nur über
+https. Die Klaviyo-Tags (Code, Abmeldelink, Lieblingsgericht) stehen in
+jeder Variante.
+
+**„Übernehmen“** speichert die Wahl in `hub_stil.newsletter.variante` und
+ruft danach die Edge Function `newsletter-vorlage-setzen`. Sie prüft den
+Inhaber, liest die Vorlagen-IDs aus `klaviyo_flows` und ersetzt die beiden
+Vorlagen in Klaviyo (`PATCH /api/templates/<id>/`) — nur, wenn jede Mail
+das Code-Tag des EIGENEN Hauses und den Abmeldelink trägt, kein Skript
+enthält und unter 100 KB bleibt.
+
+**Stand 01.11. — noch zu tun:**
+
+1. `supabase/functions/newsletter-vorlage-setzen` ausrollen (in dieser
+   Sitzung war Supabase nicht erreichbar). Bis dahin sagt das Board:
+   „gespeichert … mit ‚HTML kopieren‘ können Sie die Vorlage selbst in
+   Klaviyo einfügen.“
+2. Nach dem ersten echten Aufruf in Klaviyo nachsehen, ob die **Mail im
+   Ablauf** gewechselt hat. Klaviyo legt beim Anlegen eines Ablaufs eine
+   Kopie der Vorlage an; ob das Ersetzen der Vorlage diese Kopie erreicht,
+   ist nicht gemessen. Falls nicht: die Vorlage im Ablauf neu auswählen
+   oder „HTML kopieren“ nehmen.
+3. Von Hand erzeugen geht weiter: `node erzeuger/erzeuge-newsletter-vorlage.js
+   <slug> --variante kampagne` (Dateien je Variante und Art).
+
+Eine Skizze aller Varianten liegt unter `dokumente/newsletter/`.

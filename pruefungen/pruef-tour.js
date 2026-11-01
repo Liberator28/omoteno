@@ -45,7 +45,7 @@ const SPRACHEN = ["en", "tr", "ru", "fr", "es", "it", "pl", "ar", "uk", "nl", "r
 /* Schritte, bei denen es in JEDEM Haus ein Ziel geben muss (zweite Quelle: das ist die Oberfläche, nicht die Tour) */
 const MUSS_LOCH = ["Sprache und Licht", "Suchen", "Kategorien", "Gericht ansehen", "Zur Auswahl hinzufügen", "Die Auswahl-Leiste"];
 /* Schritte, die ohne Ziel eine Karte in der Mitte zeigen dürfen */
-const OHNE_ZIEL_OK = ["Willkommen", "Bestellstand", "Menge und Extras", "Bestellen"];
+const OHNE_ZIEL_OK = ["Willkommen"];   /* seit 31.10. haben alle anderen Schritte ein Ersatzziel */
 /* Wörterbuch: gleich dem Deutschen ist erlaubt, wo die Sprache dasselbe Wort hat (namentlich, kein Muster — §8.1g D) */
 const GLEICH_OK = { "Start": ["pl", "nl"], "Bestellen": ["nl"], "Foodroulette": SPRACHEN };
 
@@ -54,8 +54,9 @@ const szene = () => {
   const w = document.getElementById("tourWurzel"); if(!w) return null;
   const karte = w.querySelector(".tour-karte");
   return { loch: r(w.querySelector(".tour-loch")), karte: r(karte), zeile: r(w.querySelector(".tour-zeile")), punkte: r(w.querySelector(".tour-punkte")),
-    hand: r(w.querySelector(".tour-hand")), ohneLoch: w.dataset.ohneloch === "1", kopf: w.dataset.kopf, pos: w.dataset.pos,
-    demo: w.querySelector(".tour-hand").dataset.demo || "", ueber: karte.scrollHeight > karte.clientHeight + 1,
+    hand: w.querySelector(".tour-hand") ? 1 : 0, ohneLoch: w.dataset.ohneloch === "1", kopf: w.dataset.kopf,
+    kopfWeg: (() => { const k = getComputedStyle(w.querySelector(".tour-kopf")); return +k.opacity < .05 && k.pointerEvents === "none"; })(), pos: w.dataset.pos,
+    geste: (() => { const g = w.querySelector(".tour-geste"); return g && !g.hidden ? g.textContent : ""; })(), ueber: karte.scrollHeight > karte.clientHeight + 1,
     titel: w.querySelector("#tourTitel").textContent, text: w.querySelector("#tourText").textContent, stand: w.querySelector(".tour-stand").textContent,
     vw: innerWidth, vh: innerHeight, breite: document.documentElement.scrollWidth };
 };
@@ -84,9 +85,11 @@ function blockProbe(){
   pruef(h === b, "die beiden Kopien sind Zeichen für Zeichen gleich", h && b ? (h === b ? "gleich" : "ungleich ab Zeichen " + [...h].findIndex((c, i) => c !== b[i])) : "");
   if(h){
     /* Er trägt sich selbst: der Stil entsteht IM Block, die Seite liefert nur Farbrollen (§8.1e) */
-    pruef(/id = "tourStil"/.test(h) && /\.tour-loch\{/.test(h) && /\.tour-karte\{/.test(h) && /@keyframes tour-puls/.test(h), "Stil, Loch, Karte und Keyframes stehen im Block");
-    const noetig = [...h.matchAll(/@keyframes (tour-[a-z-]+)/g)].map(m => m[1]);
-    pruef(noetig.length >= 5 && noetig.every(k => new RegExp("animation:" + k + "|" + k + " ").test(h)), "jede Keyframe-Regel wird im Block benutzt", noetig.join(", "));
+    pruef(/id = "tourStil"/.test(h) && /\.tour-loch\{/.test(h) && /\.tour-karte\{/.test(h), "Stil, Licht und Karte stehen im Block");
+    /* Lichtkegel (31.10.): keine Dauer-Animation, keine Hand, kein Ring in der Hausfarbe am Licht */
+    pruef(!/@keyframes/.test(h) && !/tour-hand/.test(h), "keine Keyframes und keine Hand im Block (das Licht steht still)", [...h.matchAll(/@keyframes ([a-z-]+)/g)].map(m => m[1]).join(",") || "keine");
+    const lochRegel = (h.match(/\.tour-loch\{[^}]*\}/) || [""])[0];
+    pruef(lochRegel && !/--tour-akzent/.test(lochRegel) && /200vmax/.test(lochRegel) && /inset/.test(lochRegel), "das Licht hat keinen Rand in der Hausfarbe, aber einen weichen Übergang (inset) und den dunklen Raum (200vmax)", lochRegel.slice(0, 120));
     const farben = [...h.matchAll(/var\((--tour-[a-z-]+)/g)].map(m => m[1]);
     const rollen = [...new Set(farben)].filter(x => x !== "--tour-kh");   /* --tour-kh ist ein Maß (Höhe der Leiste), keine Farbe */
     pruef(rollen.sort().join(",") === "--tour-akzent,--tour-akzent-schrift,--tour-karte,--tour-leise,--tour-linie,--tour-schrift", "der Block liest genau sechs Farbrollen der Seite", rollen.join(" "));
@@ -189,12 +192,12 @@ async function schrittProbe(browser, haus){
         pruef(m.loch.l <= t.l + 1 && m.loch.t <= t.t + 1 && m.loch.r >= t.r - 1 && m.loch.b >= t.b - 1, "Loch umschließt das Ziel" + tag,
           "Loch " + [m.loch.l, m.loch.t, m.loch.r, m.loch.b].map(Math.round) + " Ziel " + [t.l, t.t, t.r, t.b].map(Math.round));
         pruef(!schneidet(m.loch, m.karte, 2), "die Karte liegt nicht auf dem Loch" + tag);
-        pruef(!schneidet(m.loch, m.zeile, 2) && !schneidet(m.loch, m.punkte, 2), "die Bereichsleiste liegt nicht auf dem Ziel" + tag, "Leiste " + m.kopf);
-        if(st.demo){
-          pruef(m.demo === st.demo, "Hand zeigt " + st.demo + tag, m.demo);
-          const hx = (m.hand.l + m.hand.r) / 2, hy = (m.hand.t + m.hand.b) / 2;
-          pruef(hx >= m.loch.l - 1 && hx <= m.loch.r + 1 && hy >= m.loch.t - 1 && hy <= m.loch.b + 1, "die Hand steht im Loch" + tag);
-        }
+        /* Seit 31.10. springt die Leiste nicht mehr nach unten: liegt das Ziel darunter, tritt sie zurück (durchsichtig, fängt nichts). */
+        pruef(m.kopf === "weg" ? m.kopfWeg : (!schneidet(m.loch, m.zeile, 2) && !schneidet(m.loch, m.punkte, 2)), "die Bereichsleiste liegt nicht auf dem Ziel (oder tritt zurück)" + tag, "Leiste " + m.kopf);
+        /* Lichtkegel (31.10.): keine Hand, kein Ring — die Geste steht als Wort in der Karte. */
+        pruef(m.hand === 0, "keine Hand-Zeichnung am Licht" + tag);
+        if(st.demo) pruef(m.geste.length > 1, "die Geste steht als Wort in der Karte" + tag, m.geste);
+        else pruef(m.geste === "", "ohne Geste kein Gesten-Wort" + tag, m.geste);
       }
     } else {
       pruef(m.ohneLoch && m.pos === "mitte", "ohne Ziel: Karte in der Mitte, kein Loch" + tag, m.pos);
@@ -411,14 +414,75 @@ async function bewegungProbe(browser, haus){
       const unendlich = l.filter(x => x.effect.getComputedTiming().iterations === Infinity);
       const eig = [...new Set(l.flatMap(x => x.effect.getKeyframes().flatMap(k => Object.keys(k)).filter(k => !["offset", "easing", "composite", "computedOffset"].includes(k))))];
       return { alle: l.length, unendlich: unendlich.length, eig, laufend: unendlich.filter(x => x.playState === "running").length }; });
-    if(!reduziert){
-      pruef(a.unendlich >= 1, "Voraussetzung: ohne Vorgabe läuft etwas endlos (Puls / Hand), sonst sähe die Probe nichts", JSON.stringify(a));
-      pruef(a.eig.every(k => ["transform", "opacity"].includes(k)), "nur transform und opacity", a.eig.join(","));
-    } else pruef(a.laufend === 0, "reduzierte Bewegung: nichts läuft endlos", JSON.stringify(a));
-    const hand = await p.evaluate(() => { const hd = document.querySelector(".tour-hand"); return { demo: hd.dataset.demo, op: getComputedStyle(hd).opacity }; });
-    if(reduziert) pruef(hand.demo && +hand.op > 0, "reduzierte Bewegung: die Hand steht trotzdem sichtbar (Geste bleibt erklärt)", JSON.stringify(hand));
+    pruef(a.unendlich === 0, (reduziert ? "reduzierte Bewegung: " : "") + "nichts läuft endlos (das Licht pulsiert nicht)", JSON.stringify(a));
+    pruef(a.eig.every(k => ["transform", "opacity"].includes(k)), "nur transform und opacity", a.eig.join(",") || "keine");
+    /* Übergänge: nur transform/opacity, bei reduzierter Bewegung keiner */
+    const tr = await p.evaluate(() => [".tour-loch", ".tour-schild", ".tour-kopf"].map(sel => { const e = document.querySelector(sel); const cs = getComputedStyle(e);
+      return { sel, eig: cs.transitionProperty, dauer: cs.transitionDuration }; }));
+    const nurTO = tr.every(x => x.eig.split(",").map(z => z.trim()).every(z => ["transform", "opacity", "all", "none"].includes(z) && z !== "all"));
+    pruef(nurTO, "Übergänge nur über transform/opacity", JSON.stringify(tr));
+    if(reduziert) pruef(tr.every(x => x.dauer.split(",").every(d => parseFloat(d) === 0)), "reduzierte Bewegung: kein Übergang", JSON.stringify(tr.map(x => x.dauer)));
+    const geste = await p.evaluate(() => { const g = document.querySelector(".tour-geste"); return { da: !!g && !g.hidden, text: g ? g.textContent : "" }; });
+    pruef(geste.da && geste.text.length > 1, "die Geste steht als Wort in der Karte (auch bei reduzierter Bewegung)", JSON.stringify(geste));
     await h.ctx.close();
   }
+}
+
+/* ── 9 · Licht am gemalten Bild ─────────────────────────────────
+   Wunsch 31.10.: „wie in einem LED-Raum — das Licht kommt vom Bereich, der Rest ist stark abgedunkelt“. Gemessen wird am Bild:
+   dasselbe Bild mit und ohne Tour (die Tour unsichtbar geschaltet, nichts sonst ändert sich). Im Licht (Mitte des Ziels) gleich,
+   außerhalb (fern vom Licht, nicht unter Karte und Leiste) mindestens 80 % dunkler, und am Rand des Lichts keine Linie, die heller
+   ist als das Licht selbst (der alte Ring in der Hausfarbe wäre eine solche Linie). */
+async function lichtProbe(browser, haus){
+  console.log("\n══ 9 · Licht · " + haus + " ══");
+  const h = await oeffneHub(browser, { haus, korb: [KORB(haus)] }), p = h.p;
+  await p.evaluate(() => { tourStarten(); }); await p.waitForTimeout(600);
+  await p.evaluate(() => TOUR.gehe(0, 2)); await p.waitForTimeout(1300);   /* Start / Schnellzugriff */
+  const g = await p.evaluate(() => TOUR.stand().gemessen);
+  pruef(!!g, "Voraussetzung: der Schritt hat ein Licht", JSON.stringify(g));
+  if(g){
+    const pix = async () => { const buf = await p.screenshot(); return buf.toString("base64"); };
+    const mit = await pix();
+    await p.evaluate(() => { document.getElementById("tourWurzel").style.visibility = "hidden"; }); await p.waitForTimeout(80);
+    const ohne = await pix();
+    await p.evaluate(() => { document.getElementById("tourWurzel").style.visibility = ""; });
+    const karte = await p.evaluate(() => { const r = document.querySelector(".tour-karte").getBoundingClientRect(); return { t: r.top, b: r.bottom }; });
+    const kopf = await p.evaluate(() => document.querySelector(".tour-kopf").getBoundingClientRect().bottom);
+    const m = await p.evaluate(async ([a, b, g, karte, kopf]) => {
+      const lade = async s => { const i = new Image(); i.src = "data:image/png;base64," + s; await i.decode(); const c = document.createElement("canvas"); c.width = i.width; c.height = i.height;
+        const x = c.getContext("2d"); x.drawImage(i, 0, 0); return x.getImageData(0, 0, c.width, c.height); };
+      const A = await lade(a), B = await lade(b), W = A.width;
+      const hell = (D, x, y) => { const i = (Math.round(y) * W + Math.round(x)) * 4; return .2126 * D.data[i] + .7152 * D.data[i + 1] + .0722 * D.data[i + 2]; };
+      const mittel = (D, x0, y0, x1, y1) => { let s = 0, n = 0; for(let y = y0; y < y1; y += 3) for(let x = x0; x < x1; x += 3){ s += hell(D, x, y); n++; } return s / Math.max(1, n); };
+      /* im Licht: die innere Hälfte des Ziels */
+      const cx0 = g.x + g.b * .3, cx1 = g.x + g.b * .7, cy0 = g.y + g.h * .3, cy1 = g.y + g.h * .7;
+      const innenMit = mittel(A, cx0, cy0, cx1, cy1), innenOhne = mittel(B, cx0, cy0, cx1, cy1);
+      /* außerhalb: Streifen zwischen Kopfleiste und Licht bzw. unter dem Licht, 60 px Abstand, nicht unter der Karte */
+      const proben = [];
+      for(let y = kopf + 8; y < A.height - 4; y += 6){ if(y > g.y - 60 && y < g.y + g.h + 60) continue; if(y > karte.t - 4 && y < karte.b + 4) continue;
+        for(let x = 10; x < W - 10; x += 8) proben.push([x, y]); }
+      let am = 0, ao = 0; proben.forEach(([x, y]) => { am += hell(A, x, y); ao += hell(B, x, y); });
+      am /= Math.max(1, proben.length); ao /= Math.max(1, proben.length);
+      /* Rand: die Kante des Lichtfelds (1–3 px außen) darf nicht heller sein als das Licht innen (kein Ring) */
+      let rand = 0; for(let x = g.x + 10; x < g.x + g.b - 10; x += 4){ rand = Math.max(rand, hell(A, x, g.y - 2), hell(A, x, g.y + g.h + 2)); }
+      return { innenMit, innenOhne, aussenMit: am, aussenOhne: ao, proben: proben.length, rand };
+    }, [mit, ohne, g, karte, kopf]);
+    pruef(m.proben > 50, "Voraussetzung: genug Bildpunkte außerhalb des Lichts", String(m.proben));
+    pruef(Math.abs(m.innenMit - m.innenOhne) <= 4, "im Licht steht die Seite unverdunkelt (Mitte des Ziels mit/ohne Tour gleich)", m.innenMit.toFixed(1) + " / " + m.innenOhne.toFixed(1));
+    pruef(m.aussenOhne > 8 && m.aussenMit <= .2 * m.aussenOhne + 2, "außerhalb des Lichts mindestens 80 % dunkler", m.aussenMit.toFixed(1) + " / " + m.aussenOhne.toFixed(1));
+    pruef(m.rand <= Math.max(m.innenMit, m.innenOhne) + 6, "am Rand des Lichts keine Linie, die heller ist als das Licht (kein Ring)", m.rand.toFixed(1) + " / " + m.innenMit.toFixed(1));
+  }
+  /* Die leere Auswahl-Leiste ist nur aus dem Bild geschoben — sie bekommt kein Licht (Fund 31.10., Foto) */
+  const h2 = await oeffneHub(browser, { haus }), q = h2.p;
+  await q.evaluate(() => { tourStarten(); }); await q.waitForTimeout(500);
+  const bi = await q.evaluate(() => tourDef().bereiche.findIndex(b => b.id === "auswahl"));
+  await q.evaluate(b => TOUR.gehe(b, 0), bi); await q.waitForTimeout(1500);
+  const ab = await q.evaluate(() => { const st = TOUR.stand(), e = document.getElementById("auswahlbalken"), r = e ? e.getBoundingClientRect() : null;
+    return { g: st.gemessen, vh: innerHeight, balkenAn: !!e && e.classList.contains("an"), balken: r && { t: r.top, b: r.bottom } }; });
+  pruef(!ab.balkenAn, "Voraussetzung: leerer Korb, die Auswahl-Leiste ist nicht „an“", JSON.stringify(ab.balken));
+  pruef(!!ab.g && ab.g.y + ab.g.h <= ab.vh + 1 && ab.g.y >= 0 && ab.g.h > 30, "leerer Korb: das Licht steht auf einem Ersatzziel im Bild, nicht unter dem Rand", JSON.stringify(ab.g));
+  pruef(h.fehler.length === 0 && h2.fehler.length === 0, "keine Skriptfehler", h.fehler.concat(h2.fehler).join(" | "));
+  await h.ctx.close(); await h2.ctx.close();
 }
 
 /* ── Vorführhaus im Showcase: kein Knopf, keine Tour ─────────── */
@@ -448,6 +512,7 @@ async function showcaseProbe(browser){
     for(const haus of haeuserFuer()) for(const licht of ["hell", "dunkel"]) await farbProbe(br, haus, licht);
   }
   if(will("bewegung")) for(const haus of ["chocolamour", "nordstern"]) await bewegungProbe(br, haus);
+  if(will("licht")) for(const haus of ["chocolamour", "blend", "nordstern"]) await lichtProbe(br, haus);
   if(will("showcase")) await showcaseProbe(br);
   await br.close();
   console.log("\n" + (f ? f + " von " + n + " Proben FEHLGESCHLAGEN" : "Alle " + n + " Proben bestanden."));

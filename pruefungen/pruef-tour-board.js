@@ -44,7 +44,9 @@ const szene = () => {
   const w = document.getElementById("tourWurzel"); if(!w) return null;
   const karte = w.querySelector(".tour-karte");
   return { loch: r(w.querySelector(".tour-loch")), karte: r(karte), zeile: r(w.querySelector(".tour-zeile")), punkte: r(w.querySelector(".tour-punkte")),
-    hand: r(w.querySelector(".tour-hand")), ohneLoch: w.dataset.ohneloch === "1", kopf: w.dataset.kopf, pos: w.dataset.pos, demo: w.querySelector(".tour-hand").dataset.demo || "",
+    hand: w.querySelector(".tour-hand") ? 1 : 0, ohneLoch: w.dataset.ohneloch === "1", kopf: w.dataset.kopf,
+    kopfWeg: (() => { const k = getComputedStyle(w.querySelector(".tour-kopf")); return +k.opacity < .05 && k.pointerEvents === "none"; })(), pos: w.dataset.pos,
+    geste: (() => { const g = w.querySelector(".tour-geste"); return g && !g.hidden ? g.textContent : ""; })(),
     ueber: karte.scrollHeight > karte.clientHeight + 1, titel: w.querySelector("#tourTitel").textContent, vw: innerWidth, vh: innerHeight, breite: document.documentElement.scrollWidth };
 };
 const zielRect = (b, s) => `(() => { const st = boardTourDef().bereiche[${b}].schritte[${s}]; for(const sel of [].concat(st.ziel || [])){ let e = null; try{ e = document.querySelector(sel); }catch(x){}
@@ -210,12 +212,12 @@ async function schrittProbe(browser, breite){
         const gross = m.loch.h > m.vh * .5;
         if(!gross) pruef(!schneidet(m.loch, m.karte, 2), "die Karte liegt nicht auf dem Loch" + tag);
         else pruef(true, "Ziel füllt über die Hälfte des Schirms: die Karte darf darüber liegen (zugelassen)" + tag, Math.round(m.loch.h) + " von " + m.vh);
-        pruef(!schneidet(m.loch, m.zeile, 2) && !schneidet(m.loch, m.punkte, 2), "die Bereichsleiste liegt nicht auf dem Ziel" + tag, "Leiste " + m.kopf);
-        if(st.demo){
-          pruef(m.demo === st.demo, "Hand zeigt " + st.demo + tag, m.demo);
-          const hx = (m.hand.l + m.hand.r) / 2, hy = (m.hand.t + m.hand.b) / 2;
-          pruef(hx >= m.loch.l - 1 && hx <= m.loch.r + 1 && hy >= m.loch.t - 1 && hy <= m.loch.b + 1, "die Hand steht im Loch" + tag);
-        }
+        /* Seit 31.10. springt die Leiste nicht mehr nach unten: liegt das Ziel darunter, tritt sie zurück (durchsichtig, fängt nichts). */
+        pruef(m.kopf === "weg" ? m.kopfWeg : (!schneidet(m.loch, m.zeile, 2) && !schneidet(m.loch, m.punkte, 2)), "die Bereichsleiste liegt nicht auf dem Ziel (oder tritt zurück)" + tag, "Leiste " + m.kopf);
+        /* Lichtkegel (31.10.): keine Hand, kein Ring — die Geste steht als Wort in der Karte. */
+        pruef(m.hand === 0, "keine Hand-Zeichnung am Licht" + tag);
+        if(st.demo) pruef(m.geste.length > 1, "die Geste steht als Wort in der Karte" + tag, m.geste);
+        else pruef(m.geste === "", "ohne Geste kein Gesten-Wort" + tag, m.geste);
       }
     } else pruef(m.ohneLoch && m.pos === "mitte", "ohne Ziel: Karte in der Mitte, kein Loch" + tag, m.pos + " (Ziele: " + JSON.stringify(await p.evaluate(([bi, s]) => boardTourDef().bereiche[bi].schritte[s].ziel || [], [bi, s])) + ")");
   }
@@ -275,8 +277,8 @@ async function bedienProbe(browser){
     const l = document.getAnimations().filter(x => x.effect && x.effect.target && (w.contains(x.effect.target) || (x.effect.target.parentElement && w.contains(x.effect.target.parentElement))));
     return { alle: l.length, unendlich: l.filter(x => x.effect.getComputedTiming().iterations === Infinity).length,
       eig: [...new Set(l.flatMap(x => x.effect.getKeyframes().flatMap(k => Object.keys(k)).filter(k => !["offset", "easing", "composite", "computedOffset"].includes(k))))] }; });
-  pruef(a.unendlich >= 1, "Voraussetzung: ohne Vorgabe läuft etwas endlos (Puls / Hand)", JSON.stringify(a));
-  pruef(a.eig.every(k => ["transform", "opacity"].includes(k)), "nur transform und opacity", a.eig.join(","));
+  pruef(a.unendlich === 0, "nichts läuft endlos (Lichtkegel statt Puls und Hand, 31.10.)", JSON.stringify(a));
+  pruef(a.eig.every(k => ["transform", "opacity"].includes(k)), "nur transform und opacity", a.eig.join(",") || "keine");
   /* Escape: am Ausgangsort */
   await p.keyboard.press("Escape"); await p.waitForTimeout(700);
   pruef(!(await p.evaluate(() => TOUR.laeuft())) && (await p.evaluate(() => !document.getElementById("tourWurzel"))), "Escape beendet die Tour");

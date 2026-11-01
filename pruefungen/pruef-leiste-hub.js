@@ -51,6 +51,15 @@ const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d
 
     console.log("\n══ " + haus + " ══");
     pruef(gesetzt.blatt, "Voraussetzung: das Blatt (.warenkarte) gibt es", JSON.stringify(gesetzt));
+    /* Wunsch 31.10.: die braunen Wellen („Lamellen“) über der Navigation sind weg — am gemalten Stil gemessen, nicht am Quelltext. */
+    if(gesetzt.nav){
+      /* Die Wellen hingen an data-startgrafik="an" — ohne das Merkmal wäre die Probe blind (§8.1g). */
+      const welle = await p.evaluate(() => { const alt = document.body.dataset.startgrafik; document.body.dataset.startgrafik = "an";
+        const cs = getComputedStyle(document.getElementById("hauptnav"), "::before");
+        const r = { inhalt: cs.content, bild: cs.backgroundImage, sg: document.body.dataset.startgrafik };
+        if(alt === undefined) delete document.body.dataset.startgrafik; else document.body.dataset.startgrafik = alt; return r; });
+      pruef(welle.inhalt === "none" || welle.bild === "none", "keine Wellen über der Navigation", JSON.stringify(welle));
+    }
     const ruhe = await stand();
     await setze(120);
     await p.waitForTimeout(100);
@@ -77,6 +86,34 @@ const HAEUSER = fs.readdirSync(DIST).filter(d => fs.existsSync(path.join(DIST, d
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:58, scale:1, height:document.documentElement.clientHeight, addEventListener(){} } }); leisteAnkern(); });
     const ios26 = await stand();
     pruef(festeNachher.every(k => ios26[k] === ruhe[k]) && ios26.versatz === "0px", "iOS 26: offsetTop 58 ohne Zoom bei gleicher Höhe → nichts rückt unter den Rand", JSON.stringify(ios26));
+    /* Foto 31.10. (Hub von Choco): iOS hält den Layout-Bereich nach der Tastatur ~372 px zu kurz, und innerHeight UND visualViewport
+       melden dieselbe kurze Höhe — die Sonde (bottom:0) liegt dann bei 472. Nachgestellt: Höhe vorher normal gemessen (gemerkt), dann
+       innerHeight/vv 472 und die Sonde bei 472. Erwartet: Anstoß (scrollBy) und die Leisten rücken genau 372 px nach unten. */
+    const haengt = await p.evaluate(async () => {
+      const vh = document.documentElement.clientHeight;
+      Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, scale:1, height:vh, addEventListener(){} } });
+      leisteAnkern();                                     /* volle Höhe wird gemerkt */
+      const kurz = vh - 372, rollt = [];
+      const dH = Object.getOwnPropertyDescriptor(window, "innerHeight"), dW = Object.getOwnPropertyDescriptor(window, "innerWidth");
+      const echtScroll = window.scrollBy; window.scrollBy = (x, y) => { rollt.push(y); };
+      Object.defineProperty(window, "innerHeight", { configurable:true, get: () => kurz });
+      Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, scale:1, height:kurz, addEventListener(){} } });
+      const sonde = document.getElementById("vvSonde"), echtRect = sonde.getBoundingClientRect.bind(sonde);
+      sonde.getBoundingClientRect = () => ({ top:kurz, bottom:kurz, left:0, right:1, width:1, height:0 });
+      const v = leisteAnkern();
+      /* Gegenfall 1: ein Textfeld im Fokus (die Tastatur ist wirklich offen) → nichts */
+      const i = document.createElement("input"); document.body.appendChild(i); i.focus();
+      const mitFeld = leisteAnkern(); i.remove();
+      /* Gegenfall 2: Gerät gedreht (quer, niedriger) → kein „hängt“, die Höhe quer wird neu gemerkt */
+      Object.defineProperty(window, "innerWidth", { configurable:true, get: () => 844 });
+      const quer = leisteAnkern();
+      Object.defineProperty(window, "innerHeight", dH); Object.defineProperty(window, "innerWidth", dW); window.scrollBy = echtScroll; sonde.getBoundingClientRect = echtRect;
+      return { v, rollt: rollt.length, mitFeld, quer, var: document.documentElement.style.getPropertyValue("--vv-versatz") };
+    });
+    pruef(haengt.v === 372 && haengt.rollt >= 1, "iOS hängt (Höhe 372 px zu kurz, kein Feld): erst Anstoß, dann rücken die Leisten genau 372 px nach unten", JSON.stringify(haengt));
+    pruef(haengt.mitFeld === 0, "Gegenfall: Textfeld im Fokus (Tastatur offen) → kein Versatz", String(haengt.mitFeld));
+    pruef(haengt.quer === 0, "Gegenfall: Gerät quer gedreht → kein falsches „hängt“", String(haengt.quer));
+    await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, scale:1, height:document.documentElement.clientHeight, addEventListener(){} } }); leisteAnkern(); });
     await p.evaluate(() => { Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, scale:2, height:document.documentElement.clientHeight - 300, addEventListener(){} } }); leisteAnkern(); });
     const gezoomt = await stand();
     pruef(festeNachher.every(k => gezoomt[k] === ruhe[k]), "gezoomt (scale 2): nichts bewegt sich", JSON.stringify(gezoomt));

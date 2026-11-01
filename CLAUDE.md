@@ -888,6 +888,16 @@ bei 902 statt 844). Wer eine Probe aus einer Annahme über das Gerät schreibt, 
 fest — ein Soll in einer Prüfung braucht einen Beleg, nicht nur eine Rechnung. **Ehrliche Grenze:**
 weiter auf keinem Gerät gesehen; `?leiste=mess` zeigt die Zahlen für ein Foto vom iPhone.
 
+> **Vierte Runde (01.11., Fotos vom Hub: „hängt sich aus der Verankerung“).** iOS 26.0 lässt nach
+> dem Schließen der Tastatur den LAYOUT-Bereich kurz um die Tastaturhöhe zu kurz stehen (WebKit
+> 297779) — `innerHeight` ist zu klein, `visualViewport` sagt dasselbe, und die Regel „mehr als
+> 120 px kürzer ist die Tastatur“ ließ die Leiste mitten im Bild stehen. Erkannt wird das jetzt an
+> einer **zweiten Quelle**: der gemerkten Höchsthöhe je Ausrichtung (in der Home-Bildschirm-App
+> `screen`). Ist kein Textfeld fokussiert und der Bereich um mehr als 200 px kürzer, wird einmal
+> angestoßen (`scrollBy`) und die Leiste um den Rest verschoben (`--vv-versatz`). Hub und Board
+> gleich; die Messanzeige nennt „hängt/höchst“. **Ehrliche Grenze:** nachgestellt, nicht auf
+> einem Gerät gesehen; laut WebKit ist der Fehler in iOS 26.1 behoben.
+
 ### 3.16 Wer etwas über eine Leiste setzt, die einfährt, misst die Endlage
 
 > **Vorfall, beim ersten Bildschirmfoto des schwebenden Anleitungs-Knopfs.**
@@ -926,6 +936,22 @@ unsichtbar, gleich, was der Browser darunter malt. Eine feste Leiste, die am
 Rand endet, bekommt eine Schürze in ihrer Farbe. Geprüft wird am gemalten Bild
 mit nachgestelltem Streifen (`pruef-blatt-zu.js`), nicht an der Rechnung — und
 ein Mittel, das eine Ursache nur vermutet, sagt das.
+
+> **Vorfall, dieselbe Falle für eine Messung (01.11., Fotos vom Nutzer: „die
+> Anleitung ist relativ verbuggt“).** Die Anleitung im Hub hielt ein Ziel für
+> „da“, sobald es Maße hatte (`getClientRects().length`). Die Auswahl-Leiste
+> ohne Korb ist aber nur aus dem Bild GESCHOBEN — sie hat Maße. Der Lichtkegel
+> zielte auf eine Stelle unter dem Schirmrand, die Karte schwebte über leerem
+> Grund. Ebenso standen in klassischen Häusern „Bestellstand“ und
+> „Auswahl-Leiste“ ohne Ziel da, und im Board fiel `#resBlock` aus, weil eine
+> Regel für „fest im Bild“ auch `sticky` traf.
+
+„Sichtbar“ heißt für eine Hervorhebung: Deckkraft > 0, nicht `inert`, und —
+bei `position:fixed` — zu mindestens der Hälfte im Bild. Was fehlt, bekommt ein
+**Ersatzziel**, das es in jedem Haus gibt (oder der Schritt führt erst dorthin,
+wo das Ziel steht); ein Schritt ohne Ziel steht namentlich in der Prüfung. Die
+Probe misst am gemalten Bild, ob das Licht auf dem Ziel liegt, nicht an der
+Rechnung (`pruef-tour.js`, `pruef-tour-board.js`).
 
 ### 3.12 Ein Fokusring, der `z-index` setzt, hebt das Feld über seine absoluten Nachbarn
 
@@ -2339,6 +2365,7 @@ Dazu je nach Änderung:
 | **Aktions-Banner-Rad (hub_banner), Board-Bedienung oder Gast-Karussell** | `pruefungen/pruef-banner-rad.js` — BANNER_SEITEN als zweite Quelle zwischen admin.html und hub.vorlage.html gegeneinander gehalten, bnAusZeile()-Rundlauf für alle vier Zieltypen + unbekannten Wert + unsicheres Bild, Anlegen/Umsortieren/Löschen im Board, im Hub: alle vier Zieltypen lösen ihr Ziel richtig auf (ungültiges Ziel bleibt sichtbar, aber nicht klickbar), ein aktion-Banner zeigt nachweislich den LIVE-Stand aus `aktionen` statt des gespeicherten, Kontrast der Bannerschrift gegen den ungünstigsten Fall (fast weißes Foto) gerechnet; Breite: Karte so breit und bündig wie die Kachelreihe, Nachbarkarte lugt ≥ 8 px herein, kein Überlaufen bei 360–1280 px; **Neuöffnen**: `betriebeHolen` liest `hub_banner`, das Rad zeigt den gespeicherten Stand, eine frische Abfrage zieht den Stand eines zweiten Geräts nach (ohne getippte Eingabe zu überschreiben), und ohne gelesenen Stand schreibt „Übernehmen“ nichts (§8.1m) |
 | **Rabattcode-Einlösung, Gäste-Newsletter im Board** | `pruefungen/pruef-rabatt-board.js` — Eingabefeld auf/zu, ehrliche Meldung im Vorführmodus; die eigentliche RPC-Logik (unbekannt/abgelaufen/bereits eingelöst/kein Zugriff) steht in `datenbank/pruef-rechte.sql` Teil 3 |
 | **Klaviyo: Besuche melden, Vorlagen, „Gäste & Newsletter“-Übersicht, Vorrat auffüllen** | `pruefungen/pruef-klaviyo.js` — zweite Quellen: jedes Feld, das das Board aus der Übersicht liest, baut `gaeste_uebersicht()` (migration-gaeste-uebersicht.sql); jeder Grund von `newsletter-uebersicht` hat einen Satz (Ausnahmen namentlich); `newsletter-vorrat-auffuellen` prüft den Klaviyo-Schlüssel VOR dem ersten `rabattcode_anlegen`; Besuchs-Trigger nur bei Erhöhung, Bestell-Trigger ohne Markiertes/Serviceruf; `person\|lookup` der Vorlagen ⊆ Eigenschaften aus `klaviyo-profil-melden`; erzeugte Vorlagen mit Coupon-Tag, Abmeldelink und Schrift ≥ 4,5:1 im gerenderten Bild (Klaviyos `{% %}` ausgenommen); Hub-Satz am E-Mail-Feld nennt Klaviyo in elf Sprachen, Datenschutz führt Klaviyo; kein „wöchentlich“ im Board. Board mit gestelltem `db` über `betriebWaehlen()`: Zahlen, Abläufe mit Stand und Link, Lücke Supabase↔Klaviyo als Warnung, fehlender Schlüssel → Zahlen bleiben + Satz, Netz weg/Migration fehlt → Satz, Team ruft nichts, Wert aus Klaviyo nie als Auszeichnung, 360/1280 px hell und dunkel (Glas als `color(srgb …)` gelesen) |
+| **Newsletter-Varianten (Klassisch, Kampagne, Persönlich, Edel), Wahl im Board unter „Gäste & Newsletter“, Edge `newsletter-vorlage-setzen`** | `pruefungen/pruef-newsletter-varianten.js` — geteilter Block NEWSLETTER-VARIANTEN `erzeuger/newsletter-varianten.js` = `admin.html` Zeichen für Zeichen; „klassisch“ ist bytegleich die Mail von vorher (aus `git show` des alten Erzeugers, fünf Häuser × zwei Arten); jede Variante × Art × Haus trägt Code-Tag des EIGENEN Hauses, Abmeldelink und das Lieblingsgericht nur im `{% if %}`; kein `<script>`/`on…=`/`javascript:`, Bilder nur https; **Eingeschleustes am geparsten DOM** (ein Textmuster kann „maskiert im alt-Wert“ nicht von „echtem Attribut“ trennen — die erste Fassung meldete beides falsch): Name `Probe" onerror=…` am Foto bleibt alt-Text, nichts läuft, mit Voraussetzung „der vergiftete Name kommt an“ je Variante; gerendert bei 360/600 px kein Überlauf, jede Schrift ≥ 4,5:1 (Klaviyo-Tags durch Beispielwerte ersetzt, sonst sprengt der lange Platzhalter die Breite); Board mit gestelltem `db`: Karten ≥ 44 px, Vorschau als `srcdoc` mit leerem `sandbox`, frisch lesen vor dem Schreiben (§8.1m), geschrieben wird NUR `hub_stil` zusammengeführt, 0 Zeilen → „Nur der Besitzer“ und kein Aufruf an Klaviyo, Funktion fehlt → Wahl gespeichert + Satz mit „HTML kopieren“, ungelesen gesperrt; Edge mit gestelltem fetch: kein Inhaber/ohne Schlüssel/ohne Abläufe/Mail ohne Pflicht-Tag, mit Skript, mit fremdem Code, zu groß → je ein Grund und KEIN Aufruf an Klaviyo. Gegenbeweise N1–N6 auf Kopien (Block ungleich, Kontrast fest, https weg, Positivliste weg, `esc` ohne Anführungszeichen, Edge ohne Skriptprüfung), jede gezielt rot. **Ehrliche Grenzen:** `newsletter-vorlage-setzen` ist NICHT ausgerollt; nie gegen Klaviyo gelaufen — ob ein Ablauf nach dem Ersetzen der Vorlage die neue Mail verschickt (Klaviyo kopiert Vorlagen in Abläufe), zeigt erst der echte Aufruf; die Varianten sind Anlehnungen an Aufbau und Wirkung großer Lieferdienste, keine Kopie ihrer Marken oder Bilder |
 | **Eigene Rabattcodes anlegen (Prozent/Betrag, ganze Rechnung/Gericht)** | `pruefungen/pruef-rabattcode-ziel.js` — Segmente Art/Ziel, Vorsilbe-Bereinigung (kein selbst gewählter Code mehr), Gerichtauswahl aus der echten Speisekarte, PIN-Blatt VOR dem Anlegen, Abbrechen legt nichts an, Code vom Server (Vorsilbe + 10 Zeichen ohne 0/O/1/I); mit gestelltem `db`: Konto ohne PIN → „PIN festlegen“ mit zweitem Feld, `pin_falsch` öffnet das Blatt wieder (das verzögerte Schließen darf es danach nicht verstecken, §8.1p), Nutzlast ohne `p_code`, alter Weg `rabattcode_team_anlegen` nie gerufen, Grenze des Servers als Satz mit Einheit; die zielbewusste, gedeckelte `rechnung_rabattieren()` und der GRANT-Fund (§2.3f) stehen in `datenbank/pruef-rechte.sql` TEIL 3b und TEIL 9 |
 | **Gutscheine/Codes nicht ausnutzbar: Recht je Mitglied, PIN je Ausstellung, Prüfung beim Gast** | `pruefungen/pruef-gutschein-sicher.js` (braucht `dist/`) — zweite Quelle: jeder Grund der Ausstell-Funktionen in `migration-gutschein-sicher.sql` hat im Board einen Satz, jeder Grund von `rabattcode_pruefen` im Hub; Board als Team über den ECHTEN Weg (`betriebWaehlen()`): ohne Recht beide Gruppen gesperrt, mit Recht GENAU diese beiden offen (jede andere Besitzer-Gruppe bleibt zu), Rahmen steht da, nach erneutem Öffnen weiter offen, Beenden über `gutschein_beenden`; Hub: Code VOR dem Abschicken geprüft — ungültig/falsches Gericht/zu viele/keine Antwort je ein Satz und KEINE Bestellung (die Warteschlange wiederholte eine Ablehnung zehn Minuten still), gültig → genau eine Prüfung, Bestellung mit Code, Naht Hub-Schlüssel = Parameter der Funktion, Englisch. DB-Hälfte: `datenbank/pruef-rechte.sql` TEIL 9 und der Kopf der Migration (Teil 3 „SCHARF“ erst beim Merge) |
 | **Gutscheine für Stammgäste im Board, „Mein Tisch" beim Gast** | `pruefungen/pruef-gutschein-board.js` — Grenzen gegen die CHECK-Schranke, längster Server-Code passt in die Code-Schranke, Anlegen mit PIN/Beenden, kein direktes Schreiben in `gutscheine`, gesendete Parameter = Parameter von `gutschein_ausstellen` in `migration-gutschein-sicher.sql`, kein rohes JSON, Datumsfeld in der Karte, und die Naht Funktion → `gast_melden` → Hub gegen `datenbank/stand-gast-melden.sql` (bytegleiche Kopie der Live-Funktion); dazu `pruef-gastkonto.js` für den Kontrast der Karten je Haus, Tag und Abend |
