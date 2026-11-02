@@ -6978,6 +6978,9 @@ function kachelBauen(schluessel, wunsch){
   k.karte = wunsch && KACHEL_KARTE_MUSTER.test(String(wunsch.karte || "")) ? wunsch.karte
           : (KACHEL_KARTEN_FEST.includes(schluessel) ? schluessel : "");
   k.plan = kachelPlanSauber(wunsch && wunsch.plan);
+  /* „Neu“ bis zu einem Tag (neuBis, einschließlich): dieselbe Plakette wie die des Tischquiz. */
+  const neuBis = tagSauber(wunsch && wunsch.neuBis);
+  if(neuBis) k.neu = heuteISO() <= neuBis;
   if(k.art === "karte" && (eigen || k.karte !== schluessel || k.plan.length)){
     k.ziel = () => { const id = kachelKarte(k); return id ? "#/" + id : ""; };
   }
@@ -7039,6 +7042,15 @@ function blockZielSauber(w){
   if(/^#\/[a-z0-9-]{1,30}$/.test(z)) return z;
   return /^https:\/\/[^\s"'<>\\`]{3,300}$/i.test(z) ? z : "";
 }
+/* Ein Tag als „JJJJ-MM-TT“ — nur echte Kalendertage (der 31.02. fällt weg), sonst "". Gilt für den Zeitraum
+   eines Textblocks, einer Kachel und eines Banners (eine Stelle für alle drei). */
+function tagSauber(w){
+  if(typeof w !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(w)) return "";
+  const d = new Date(w + "T12:00:00Z");
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === w ? w : "";
+}
+/* Ob heute („JJJJ-MM-TT“) im Zeitraum liegt; „bis“ zählt mit. Ohne Angabe: immer. */
+function tagGilt(von, bis, heute){ return !(von && heute < von) && !(bis && heute > bis); }
 /* Aus einer Live-Spalte (unbekannte Form!) die geprüfte Liste. Doppelte Kennungen und alles
    Unbekannte fallen weg; was bleibt, hat feste Schlüssel in fester Reihenfolge. */
 function bloeckeSauber(roh){
@@ -7058,6 +7070,9 @@ function bloeckeSauber(roh){
       b.knopf = blockText(e.knopf, BLOCK_GRENZEN.knopf);
       b.ziel  = blockZielSauber(e.ziel);
       b.look  = BLOCK_WERTE.look.indexOf(e.look) >= 0 ? e.look : "karte";
+      /* Zeitraum (beide frei): Ein „bis“ vor dem „von“ ist ein Tippfehler — dann gilt keins (§7: lieber zeigen). */
+      const von = tagSauber(e.von), bis = tagSauber(e.bis);
+      if(!(von && bis && bis < von)){ if(von) b.von = von; if(bis) b.bis = bis; }
     }
     aus.push(b);
   });
@@ -7280,7 +7295,8 @@ function figurWahl(){
 }
 /* Fingerabdruck dessen, was ein Neuzeichnen braucht, wenn es sich ändert. */
 function aussehenFp(){ return JSON.stringify([bewegteZeichenAn(), emojiWahl(), figurWahl()]); }
-const AUSSEHEN_SCHL = ["emoji", "emojiTempo", "emojiWo", "emojiEinmal", "figur"];
+/* Schlüssel aus hub_stil, die die Vorschau sofort übernimmt (C3a; C4: bannerTakt — der Takt liest ihn bei jedem Schlag). */
+const AUSSEHEN_SCHL = ["emoji", "emojiTempo", "emojiWo", "emojiEinmal", "figur", "bannerTakt"];
 /* Sieht der Gast, wie lange es noch dauert — oder nur, dass gerade
    gearbeitet wird? Wahl des Betriebs im Board (hub_stil.restzeit).
    Strikt boolean, sonst an: So war es vorher, und ein kaputter Wert
@@ -7862,7 +7878,7 @@ function aktionAnzeigen(){
                ohne Ziel, genau wie das Aktions-Blatt bei einem Gericht,
                das nicht mehr in der Karte steht.
    ══════════════════════════════════════════════════════════════════ */
-const BANNER_ERLAUBT = ["id","an","bild","titel","text","farbe","zielTyp","zielWert","reihenfolge","ausrichtung"];
+const BANNER_ERLAUBT = ["id","an","bild","titel","text","farbe","zielTyp","zielWert","reihenfolge","ausrichtung","von","bis"];
 let hubBanner = [];
 
 /* Positivliste wie kachelBauen()/KACHEL_ERLAUBT: was der Wirt nicht
@@ -7881,6 +7897,11 @@ function bannerAusZeile(roh){
        Regel wie beim Kachel-Banner (kachelHTML) — kein javascript:,
        kein data:. */
     .filter(b => b.an !== false && /^https:\/\//i.test(String(b.bild || "")))
+    /* Laufzeit von–bis (beide frei, „bis“ zählt mit). Ungültig oder „bis“ vor „von“ → gilt immer (§7). */
+    .filter(b => {
+      const von = tagSauber(b.von), bis = tagSauber(b.bis);
+      return (von && bis && bis < von) || tagGilt(von, bis, heuteISO());
+    })
     .sort((a,c) => (+a.reihenfolge || 0) - (+c.reihenfolge || 0));
 }
 
@@ -7980,6 +8001,47 @@ function bnRadVerdrahten(){
     });
   }, { root:spur, rootMargin:"0px -35% 0px -35%", threshold:[0,.25,.5,.75,1] });
   spur.querySelectorAll(".bnkarte").forEach(k => beob.observe(k));
+  bnTaktStarten(spur);
+}
+
+/* Wechseltempo (hub_stil.bannerTakt: 5 oder 8 Sekunden, sonst aus = die Vorgabe). EIN Takt für das Rad,
+   bei jedem Neuaufbau neu angeschlossen (§4.5). Er blättert nur, wenn niemand hinsieht, nichts davor liegt und
+   sich nichts bewegen soll: Hat der Gast das Rad einmal angefasst, steht es für diesen Besuch still (er
+   bestimmt dann selbst). Außer Sicht, im verborgenen Tab, bei offenem Detailblatt und bei reduzierter
+   Bewegung läuft nichts. */
+const BANNER_TAKTE = [5, 8];
+let bnTaktUhr = 0, bnTaktAus = false, bnTaktSicht = false, bnTaktBeob = null, bnTaktZaehler = 0;
+function bannerTakt(){ const w = HUBSTIL && HUBSTIL.bannerTakt; return BANNER_TAKTE.indexOf(w) >= 0 ? w : 0; }
+function bnTaktStoppen(){ clearInterval(bnTaktUhr); bnTaktUhr = 0; if(bnTaktBeob){ bnTaktBeob.disconnect(); bnTaktBeob = null; } }
+/* Ein Sekundenzähler statt eines Intervalls in Takt-Länge: Die Wahl (hub_stil) kann nach dem ersten Zeichnen
+   ankommen oder sich in der Vorschau ändern — der Zähler liest sie bei jedem Schlag neu. */
+function bnTaktStarten(spur){
+  bnTaktStoppen();
+  if(bnTaktAus || hubBanner.length < 2) return;
+  const halt = () => { bnTaktAus = true; bnTaktStoppen(); };
+  ["pointerdown", "touchstart", "wheel", "keydown", "focusin"].forEach(ev => spur.addEventListener(ev, halt, { passive:true, once:true }));
+  bnTaktSicht = false; bnTaktZaehler = 0;
+  if(typeof IntersectionObserver === "function"){
+    bnTaktBeob = new IntersectionObserver(es => es.forEach(e => { bnTaktSicht = e.isIntersecting && e.intersectionRatio >= .6; }),
+      { threshold:[0, .6, 1] });
+    bnTaktBeob.observe(spur);
+  } else bnTaktSicht = true;
+  bnTaktUhr = setInterval(() => {
+    if($("bnSpur") !== spur || !spur.isConnected){ bnTaktStoppen(); return; }
+    const sek = bannerTakt();
+    let still = false;
+    try{ still = matchMedia("(prefers-reduced-motion: reduce)").matches; }catch(e){}
+    if(!sek || still || document.hidden || !bnTaktSicht || document.querySelector(".warenkarte.an")){ bnTaktZaehler = 0; return; }
+    if(++bnTaktZaehler < sek) return;
+    bnTaktZaehler = 0;
+    const karten = spur.querySelectorAll(".bnkarte");
+    if(karten.length < 2) return;
+    /* Rechts nach links (Arabisch) zählt scrollLeft ins Negative — Richtung aus der Lage der Karten. */
+    const d = karten[1].offsetLeft - karten[0].offsetLeft, schritt = Math.abs(d), richtung = d < 0 ? -1 : 1;
+    if(!schritt) return;
+    const weiter = (Math.round(Math.abs(spur.scrollLeft) / schritt) + 1) % karten.length;
+    spur.scrollTo({ left: richtung * weiter * schritt, behavior:"smooth" });
+  }, 1000);
 }
 
 /* ══════════════════════════════════════════════════════════════════
@@ -13171,7 +13233,8 @@ function bloeckeHTML(alle, bereiche, bereichHTML){
     banner: () => bannerRadHTML(), nochmal: () => nochmalHTML(), empfehlung: () => empfehlungHTML()
   };
   const genannt = BLOECKE.map(b => b.id);
-  const reihe = BLOECKE.filter(b => b.an)
+  const heute = heuteISO();
+  const reihe = BLOECKE.filter(b => b.an && tagGilt(b.von, b.bis, heute))
     .concat(BLOCK_FEST.filter(id => genannt.indexOf(id) < 0).map(id => ({ id:id, an:true, breite:"voll", groesse:"" })))
     .concat(bereiche.filter(b => genannt.indexOf("rubrik:" + b.gruppe) < 0)
       .map(b => ({ id:"rubrik:" + b.gruppe, an:true, breite:"voll", groesse:"" })));
@@ -21480,12 +21543,41 @@ function wzSzeneHTML(art, figur){
    die Datenbank antwortet. Vorgabe: die Figur des Hauses. */
 let wzVorschau = null;
 const WZ_MERK = "omoteno-lade-" + HAUS;
+/* C4: Szene am Abend (hub_stil.ladeAbend, ab der Abendstunde des Hauses — dieselbe Uhr wie die Stimmung der
+   Figur, figurAbend) und Zufall aus einer Auswahl (hub_stil.ladeMix, 2–9 verschiedene aus WZ_ARTEN). Reihenfolge:
+   Vorschau → Abend → Zufall → feste Szene → gemerkt → Figur. Gemerkt wird „Tag|Abend“; der Tag-Teil ist bei Zufall
+   schon die Szene des NÄCHSTEN Besuchs — so steht sie im ersten Bild und springt nicht, wenn die Antwort kommt. */
+function wzMixAus(h){
+  const m = h && Array.isArray(h.ladeMix) ? h.ladeMix : [];
+  const l = m.filter((a, i) => typeof a === "string" && WZ_ARTEN.indexOf(a) >= 0 && m.indexOf(a) === i);
+  return l.length >= 2 ? l : [];
+}
+function wzMerkLesen(){
+  let m = "";
+  try{ m = String(localStorage.getItem(WZ_MERK) || ""); }catch(e){}
+  const [tag, abend] = m.split("|");
+  return { tag: WZ_ARTEN.indexOf(tag) >= 0 ? tag : "", abend: WZ_ARTEN.indexOf(abend) >= 0 ? abend : "" };
+}
+function wzMerkWert(h){
+  const mix = wzMixAus(h);
+  const tag = mix.length ? mix[Math.floor(Math.random() * mix.length)] : (WZ_ARTEN.indexOf(h.lade) >= 0 ? h.lade : "");
+  const abend = WZ_ARTEN.indexOf(h.ladeAbend) >= 0 ? h.ladeAbend : "";
+  return tag || abend ? (tag || "figur") + (abend ? "|" + abend : "") : "";
+}
+let wzZufall = "";
 function wzWahl(){
   if(wzVorschau && WZ_ARTEN.indexOf(wzVorschau) >= 0) return wzVorschau;
-  const w = HUBSTIL && HUBSTIL.lade;
-  if(WZ_ARTEN.indexOf(w) >= 0) return w;
-  try{ const m = localStorage.getItem(WZ_MERK); if(WZ_ARTEN.indexOf(m) >= 0) return m; }catch(e){}
-  return "figur";
+  const h = (HUBSTIL && typeof HUBSTIL === "object") ? HUBSTIL : {};
+  const abend = figurAbend(), merk = wzMerkLesen();
+  if(abend && WZ_ARTEN.indexOf(h.ladeAbend) >= 0) return h.ladeAbend;
+  const mix = wzMixAus(h);
+  if(mix.length){
+    if(mix.indexOf(wzZufall) < 0) wzZufall = mix.indexOf(merk.tag) >= 0 ? merk.tag : mix[Math.floor(Math.random() * mix.length)];
+    return wzZufall;
+  }
+  if(WZ_ARTEN.indexOf(h.lade) >= 0) return h.lade;
+  if(abend && merk.abend) return merk.abend;
+  return merk.tag || "figur";
 }
 /* Der Name als bewegte Schrift: jedes Wort ein Stück, jeder Buchstabe ein
    eigenes Element mit seinem Platz in der Folge (--i, höchstens 22, damit
@@ -21946,8 +22038,11 @@ function betriebsTeileAnwenden(z, immer){
      zwei Ständen. Und durch dieselbe Positivliste (kachelBauen) — was
      der Wirt nicht schicken darf, wird ignoriert, nicht übernommen. */
   if("hub_kacheln" in z){
+    /* „Wieder zeigen ab“ (zeigenAb): bis zum Tag davor fehlt die Kachel, danach kommt sie von selbst zurück.
+       Ein ungültiges Datum zählt nicht (§7: lieber zeigen). */
+    const heute = heuteISO();
     const gebaut = (Array.isArray(z.hub_kacheln) ? z.hub_kacheln : [])
-      .filter(e => e && e.schluessel && e.an !== false)
+      .filter(e => e && e.schluessel && e.an !== false && !(tagSauber(e.zeigenAb) && heute < e.zeigenAb))
       .map(e => kachelBauen(e.schluessel, e))
       .filter(Boolean);
     const liste = gebaut.length ? gebaut : (immer ? hubGrund.kacheln : null);
@@ -22047,6 +22142,13 @@ function vorschauAktion(){
     titel:String(a.titel || ""), preis_alt:+a.preis_alt || 0, preis_neu:+a.preis_neu || 0,
     bis:new Date(Date.now() + (+a.minuten || 60) * 60000).toISOString() }];
   return true;
+}
+
+/* „Nochmal abspielen“ im Board: dieselbe Szene als NEUE Elemente — nur so laufen ihre Animationen von vorn. */
+function vorschauNochmal(){
+  if(!VORSCHAU) return;
+  const f = $("wkFigur"); if(f) f.textContent = "";
+  vorschauZeige("gruss");
 }
 
 /* Zu dem Teil springen, an dem der Wirt gerade schreibt. */
@@ -22264,9 +22366,12 @@ async function karteHolen(erstesMal){
       if(aussehenFp() !== vorher || kartenStil() !== stilVorher) zeichne();
       /* Szene des Grußes merken (nur Geprüftes) und — steht der Schirm
          noch — sofort tauschen. */
-      if(WZ_ARTEN.indexOf(stil.lade) >= 0){ try{ localStorage.setItem(WZ_MERK, stil.lade); }catch(e){} }
-      else { try{ localStorage.removeItem(WZ_MERK); }catch(e){} }
       const wkJetzt = $("willkommen");
+      /* Erst die Szene dieses Besuchs festhalten (wzZufall), dann den Merkwert für den nächsten schreiben. */
+      if(wkJetzt && !wkJetzt.hidden) wzWahl();
+      const wzMerk = wzMerkWert(stil);
+      if(wzMerk){ try{ localStorage.setItem(WZ_MERK, wzMerk); }catch(e){} }
+      else { try{ localStorage.removeItem(WZ_MERK); }catch(e){} }
       if(wkJetzt && !wkJetzt.hidden) wzZeigen();
       /* Der Streifen steht schon aus dem Speicher des Geräts da, bevor
          diese Antwort kommt — und wird sonst nur neu gezeichnet, wenn
