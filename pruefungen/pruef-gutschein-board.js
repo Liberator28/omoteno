@@ -304,9 +304,11 @@ async function meldung(seite) { return seite.$eval("#meldung", m => m.textConten
       }
     }
   }
+  /* Seit 02.11. (C2c) lädt das Board alle Gutscheine und teilt sie selbst in Offen / Eingelöst / Abgelaufen ein
+     (pruef-c2-gaeste prüft, dass Abgelaufenes NICHT unter „Offen“ steht). Bleibt die Falle von damals: ein or()-Filter
+     mit ungeschütztem Zeitstempel — gibt es einen, muss der Zeitstempel in Anführungszeichen stehen. */
   const ende = aufrufe.filter(a => a[0] === "or");
-  pruef(ende.length && /gueltig_bis\.gt\."/.test(ende[0][2]), "Liste lädt nur nicht abgelaufene (Zeitstempel in Anführungszeichen)",
-    ende.length ? ende[0][2] : "kein or()");
+  pruef(!ende.length || ende.every(a => /gueltig_bis\.gt\."/.test(a[2])), "kein or()-Filter mit ungeschütztem Zeitstempel (Einteilung macht das Board)", ende.map(a => a[2]));
 
   await ctx.close();
   await browser.close();
