@@ -409,7 +409,13 @@ function schriftDatei(u){
       storage: { from: eimer => ({
         upload: async (pfad, datei, opt) => { log.push({ art:"upload", eimer, pfad, typ:opt.contentType, upsert:opt.upsert }); return { error:null }; },
         getPublicUrl: pfad => ({ data:{ publicUrl: "https://quxwweuvdqtjsdwgjdrh.supabase.co/storage/v1/object/public/" + eimer + "/" + pfad } }) }) },
-      from: tab => ({ update: satz => ({ eq: async (sp, wert) => { log.push({ art:"update", tab, satz, sp, wert }); return { error:null }; } }) })
+      /* Wie PostgREST: frisches Lesen liefert den Stand der Zeile, update … select("id") die getroffenen Zeilen (C3b). */
+      from: tab => ({
+        select: () => ({ eq: () => ({ maybeSingle: async () => ({ data:{ hub_stil: meineBetriebe[0].hub_stil }, error:null }) }) }),
+        update: satz => ({ eq: (sp, wert) => { log.push({ art:"update", tab, satz, sp, wert });
+          const fertig = Promise.resolve({ error:null });
+          fertig.select = async () => ({ data:[{ id:wert }], error:null });
+          return fertig; } }) })
     };
     await swSichern();
     return { log, meldung: document.getElementById("swPruefung").textContent };

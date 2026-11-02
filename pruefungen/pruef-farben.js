@@ -103,7 +103,10 @@ function stelleDb(){
     function antwort(z){
       if(z.op !== "select"){ window.__schreib.push({ tab:z.tab, op:z.op, daten:JSON.parse(JSON.stringify(z.daten || null)) });
         if(z.tab === "betriebe" && z.op === "update" && z.daten && z.daten.hub_stil) bb.hub_stil = z.daten.hub_stil;
+        /* Wie PostgREST: update … select("id") gibt die getroffenen Zeilen zurück (Board liest frisch, C3b). */
+        if(z.tab === "betriebe" && z.op === "update" && z.mitZeilen) return { data:[{ id:bb.id }], error:null };
         return { data:null, error:null }; }
+      if(z.tab === "betriebe" && z.einzeln) return { data:{ hub_stil: JSON.parse(JSON.stringify(bb.hub_stil || null)) }, error:null };
       if(z.tab === "betrieb_mitglieder") return { data:[{ rolle:bb.rolle, betriebe:Object.assign({}, bb) }], error:null };
       return { data: z.einzeln ? null : [], error:null };
     }
@@ -113,7 +116,8 @@ function stelleDb(){
         get(_, k){
           if(k === "then") return res => res(antwort(z));
           return (...a) => { if(["update", "insert", "upsert", "delete"].includes(k)){ z.op = k; z.daten = a[0]; }
-            if(k === "maybeSingle" || k === "single") z.einzeln = true; return p; };
+            if(k === "maybeSingle" || k === "single") z.einzeln = true;
+            if(k === "select" && z.op !== "select") z.mitZeilen = true; return p; };
         },
         apply(){ return p; }
       });
