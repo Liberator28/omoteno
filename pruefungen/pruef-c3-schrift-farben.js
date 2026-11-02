@@ -170,8 +170,16 @@ const kontrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y
     await gruppeZu(z.p, "#swGruppe");
     const nz = await z.p.evaluate(() => ({ feld: document.getElementById("swProbesatz").value, karte: document.querySelector(".swprobe").textContent }));
     pruef(nz.feld === "Gut gegessen" && nz.karte === "Gut gegessen", "Probesatz übersteht ein Neuladen", nz);
-    /* 0 Zeilen */
     await z.ctx.close();
+    /* Ein vergifteter gespeicherter Wert (anderer Weg in den Speicher): die Karten zeichnen ihn nur als Text. */
+    const zv = await oeffne(1280, true, () => { try { localStorage.setItem("omoteno-sw-probesatz", "<img src=x onerror=window.__x=1>Gut"); } catch (e) {} });
+    await gruppeZu(zv.p, "#swGruppe"); await zv.p.waitForTimeout(300);
+    const gv = await zv.p.evaluate(() => ({ img: document.querySelectorAll(".swliste img, .swprobe img").length, x: window.__x,
+      karte: document.querySelector(".swprobe").textContent, feld: document.getElementById("swProbesatz").value }));
+    pruef(!gv.img && !gv.x && gv.karte.indexOf("<") < 0 && gv.feld.indexOf("<") < 0, "vergifteter gespeicherter Probesatz: nur Text, nichts läuft", gv);
+    const z2 = zv;
+    /* 0 Zeilen */
+    await z2.ctx.close();
     const o = await oeffne(390, false);
     await gruppeZu(o.p, "#swGruppe");
     await o.p.click('#swGroesse [data-wahl="0.95"]'); await o.p.click("#swSichern"); await o.p.waitForTimeout(400);
