@@ -67,7 +67,7 @@ const kontrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y
 
   console.log("\n══ 2 · Board ══");
   const BB = { id: BETRIEB, slug: "blend", name: "Blend", rolle: "inhaber", bestell_pause: false, hub_texte: {}, markenblatt: null,
-    hub_stil: { emoji: false, fremd: { a: 1 }, kopf: { logo: EIMER + BETRIEB + "/kopf/logo-1.png", form: "rund" }, schrift: { kopf: "lora" } } };
+    hub_stil: { emoji: false, fremd: { a: 1 }, kopf: { logo: EIMER + BETRIEB + "/kopf/logo-1.png", form: "rund" }, schrift: { kopf: "lora", groesse: 1.2 } } };   /* 1.2 steht in keiner Liste: das Board darf ihn weder zeigen noch zurückschreiben */
   const oeffne = async (breite, zeilen, vorher) => {
     const ctx = await browser.newContext({ viewport: { width: breite, height: 900 } });
     const p = await ctx.newPage();
@@ -131,7 +131,8 @@ const kontrast = (a, b) => { const x = lum(a), y = lum(b); return (Math.max(x, y
   {
     const { ctx, p, fehler } = await oeffne(1280, true);
     pruef(await gruppeZu(p, "#swGruppe"), "Voraussetzung: Unterseite „Schrift“ offen");
-    pruef(await p.evaluate(() => document.querySelector('#swGroesse [aria-checked="true"]').dataset.wahl) === "", "Textgröße: ohne Wahl „Normal“ gewählt");
+    const start = await p.evaluate(() => { const b = document.querySelector('#swGroesse [aria-checked="true"]'); return { wahl: b ? b.dataset.wahl : null, roh: swFuerHub(false).groesse }; });
+    pruef(start.wahl === "" && start.roh === undefined, "gespeichert ungültig (1.2): „Normal“ gewählt, der Wert ginge nicht zurück in die Spalte", start);
     await p.click('#swGroesse [data-wahl="1.1"]'); await p.waitForTimeout(900);
     const v = await rahmen(p, "return { px: parseFloat(getComputedStyle(document.body).fontSize), mb: (MARKENBLATT.schrift && MARKENBLATT.schrift.groesse) || 1 };");
     pruef(v && Math.abs(v.px - 17.6 * v.mb) < 0.05, "„Groß“: die Vorschau (echter Hub im Rahmen) zeigt 17,6 px × Markenblatt", v);
