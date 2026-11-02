@@ -310,6 +310,9 @@ async function helligkeit(p, r) {
     const k2 = await p.evaluate(() => (window.__updates.pop() || {}).hub_stil.kopf);
     pruef(k2 && !("lage" in k2) && !("dunkel" in k2) && !("logoGroesse" in k2) && k2.form === "eckig", "Mitte, „Aus“ und Normal: die Schlüssel fallen weg", k2);
     /* ohne Kopfbild: keine Felder, und ein Ausschnitt geht nicht in die Spalte */
+    /* Erst wieder einen Ausschnitt und eine Dunkelstufe wählen — sonst kann die Probe den Fehler nicht treffen (§8.1g). */
+    await p.click('#kfLage [data-wahl="oben"]'); await p.click('#kfDunkel [data-wahl="30"]');
+    pruef(await p.evaluate(() => kfRoh().lage === "oben" && kfRoh().dunkel === 30), "Voraussetzung: mit Bild stehen Ausschnitt und Dunkelstufe im Entwurf");
     await p.click("#kfBildWeg"); await p.waitForTimeout(200);
     const v2 = await p.evaluate(() => ({ lage: document.getElementById("kfLageFeld").hidden, dunkel: document.getElementById("kfDunkelFeld").hidden, roh: kfRoh() }));
     pruef(v2.lage && v2.dunkel && !("lage" in v2.roh) && !("dunkel" in v2.roh), "ohne Kopfbild: Felder weg, kein Ausschnitt im Entwurf", v2);
