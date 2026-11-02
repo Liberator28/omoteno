@@ -1,7 +1,7 @@
 /* ═══════════════════════════════════════════════════════════════════
    PRÜFUNG · Newsletter-Varianten (klassisch, kampagne, liefer, edel)
 
-   Wunsch 31.10.: Newsletter nach dem Muster von McDonald's/Lieferando,
+   Wunsch 31.10.: Newsletter nach dem Muster großer Ketten und Lieferdienste,
    zwischen Varianten wechseln, im Board steuern. Geprüft wird:
    1 · Der geteilte Block NEWSLETTER-VARIANTEN steht Zeichen für Zeichen
        gleich in erzeuger/newsletter-varianten.js und seiten/admin.html.

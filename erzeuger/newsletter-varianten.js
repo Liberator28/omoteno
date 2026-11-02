@@ -3,13 +3,13 @@
    als Modul) und das Board (seiten/admin.html, Vorschau und „Übernehmen“). Wortgleich in erzeuger/newsletter-varianten.js und
    seiten/admin.html; pruefungen/pruef-newsletter-varianten.js hält beide Zeichen für Zeichen gleich.
 
-   Wunsch 31.10.: „Skizziere zuerst eine E-Mail anhand von McDonald's, Lieferando und anderen Diensten … mit geschmackvollem,
+   Wunsch 31.10.: „Skizziere zuerst eine E-Mail anhand von [großen Ketten], [Lieferdiensten] und anderen Diensten … mit geschmackvollem,
    anziehendem Design. Man soll zwischen Varianten wechseln und es aktiv im Admin-Board steuern können.“ Übernommen wird der
    AUFBAU, nicht Marke, Bild oder Wortlaut (Recherche: dokumente/newsletter/skizze.html):
      klassisch  die bisherige Mail, Zeichen für Zeichen (Vorgabe — ohne Wahl ändert sich nichts).
-     kampagne   Muster McDonald's: das Angebot IST der Kopf (erster Bildschirm), ein großes Foto, EIN kräftiger Knopf,
+     kampagne   Muster großer Ketten: das Angebot IST der Kopf (erster Bildschirm), ein großes Foto, EIN kräftiger Knopf,
                 Gerichte als Kacheln mit Preis, Text in kurzen beschrifteten Blöcken, der Code als Ticket.
-     liefer     Muster Lieferando/Uber Eats: persönliche Anrede, der Gutschein als Karte mit Bedingungen, drei Schritte
+     liefer     Muster großer Lieferdienste: persönliche Anrede, der Gutschein als Karte mit Bedingungen, drei Schritte
                 „So lösen Sie ihn ein“, eine Favoritenliste (Foto links, Preis rechts), Knopf zur Karte.
      edel       ruhig: Serifenschrift, viel Weißraum, ein Foto, wenig Text.
    Schrift auf Farbe wird GERECHNET (§5.1): jede Farbe aus lesbar(grund, kandidaten) mit ≥ 4,5:1. Fotos nur über https, ohne
@@ -241,7 +241,7 @@ Sie bekommen diese E-Mail, weil Sie sich bei uns eingetragen haben.<br>
 </td></tr></table>`;
   const code = (p, slug, groesse) => `<span style="font-family:'Courier New',monospace;font-size:${groesse || 24}px;font-weight:700;letter-spacing:.12em;word-break:break-all;color:${p.ticketText}">{% coupon_code '${slug}_newsletter' %}</span>`;
 
-  /* ── kampagne: Muster McDonald's ─────────────────────────────────── */
+  /* ── kampagne: Muster großer Ketten ──────────────────────────────── */
   function kampagne(m, slug, art, liste){
     const p = palette(m), b = m.betrieb || {}, g = gerichteWaehlen(liste);
     const zurueck = art === "rueckholung";
@@ -285,7 +285,7 @@ ${kacheln}
     return huelle(m, p, SANS, kopfzeile + " " + (b.name || ""), innen);
   }
 
-  /* ── liefer: Muster Lieferando / Uber Eats ───────────────────────── */
+  /* ── liefer: Muster großer Lieferdienste ────────────────────────── */
   function liefer(m, slug, art, liste){
     const p = palette(m), b = m.betrieb || {}, g = gerichteWaehlen(liste);
     const zurueck = art === "rueckholung";
