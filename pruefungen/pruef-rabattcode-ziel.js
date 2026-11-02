@@ -203,11 +203,13 @@ function pruef(b, t, d) {
   await seite.waitForTimeout(400);
 
   console.log("\n══ Beenden ══");
-  const vorBeenden = await seite.evaluate(() => rabattcodeTeam.length);
+  /* Seit 02.11. (C2c) bleibt ein beendeter Code in der Liste — unter „Abgelaufen“, nicht mehr unter „Aktiv“. */
+  const aktivZahl = () => seite.evaluate(() => ({ aktiv: rabattcodeTeam.filter(g => rcZustand(g) === "aktiv").length, alle: rabattcodeTeam.length }));
+  const vorBeenden = await aktivZahl();
   await seite.click('.gs-zeile[data-rc] [data-rc-ende]');
   await seite.waitForTimeout(250);
-  const nachBeenden = await seite.evaluate(() => rabattcodeTeam.length);
-  pruef(nachBeenden === vorBeenden - 1, "„Beenden“ entfernt genau einen Eintrag aus dem Bestand", nachBeenden);
+  const nachBeenden = await aktivZahl();
+  pruef(nachBeenden.aktiv === vorBeenden.aktiv - 1 && nachBeenden.alle === vorBeenden.alle, "„Beenden“ nimmt genau einen Code aus „Aktiv“ (er steht danach unter „Abgelaufen“)", nachBeenden);
 
   console.log("\n══ Echter Weg: gestelltes db, PIN festlegen, falsche PIN, Grenze ══");
   const rpc = await seite.evaluate(async () => {

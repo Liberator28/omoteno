@@ -761,6 +761,15 @@ html{font-size:calc(16px * var(--skala,1))}
 }
 .gs-frist{font-family:var(--mono);font-size:11.5px;color:var(--gedaempft);white-space:nowrap}
 .gs-zeile .knopf{min-height:44px;width:auto;flex:none;margin-left:auto}
+/* C2c (02.11.): Filter, Vorlagen, Werkzeug unter den Listen; die Knöpfe einer Zeile stehen zusammen. */
+.gs-filter,.gs-vorlagen,.gs-werkzeug{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:8px 0 2px}
+.gs-filter:empty{display:none}
+.gs-fknopf{min-height:44px;padding:0 14px;border-radius:22px;border:1px solid var(--linie);background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
+.gs-fknopf[aria-pressed="true"]{background:var(--flaeche-2);border-color:var(--messing)}
+.gs-fknopf b{font-variant-numeric:tabular-nums;margin-left:4px}
+.gs-mini{font-size:13px;color:var(--gedaempft)}
+.gs-zeile .gs-knoepfe{display:flex;flex-wrap:wrap;gap:6px;margin-left:auto}
+.gs-zeile .gs-knoepfe .knopf{margin-left:0}
 /* Zwei Spalten, verschieden viel Hilfetext darunter: ohne
    align-content:start verteilt das Raster die Resthöhe auf die
    Zeilen, und das Datumsfeld rutscht tiefer und wird höher als das
@@ -3252,6 +3261,16 @@ body[data-rolle="team"] [data-aw-tun="bearbeiten"]{display:none}
 .nlv-artknopf{flex:1;min-height:44px;border-radius:12px;border:1px solid var(--linie);background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
 .nlv-artknopf[aria-pressed="true"]{background:var(--flaeche-2);border-color:var(--messing)}
 .nlv-vorschau{display:block;width:100%;height:560px;border:0;border-radius:14px;background:#fff}
+/* Breite der Vorschau (C2c): Telefon 375 px, Desktop bis 640 px — beides mittig. */
+.nlv-vorschau.telefon{width:375px;max-width:100%;margin:0 auto}
+.nlv-vorschau.desktop{max-width:640px;margin:0 auto}
+.nlv-gerichtwahl{display:grid;grid-template-columns:1fr;gap:4px;margin:4px 0 10px}
+.nlv-gerichtwahl .feld{margin:0}
+.nlv-unter{display:flex;flex-direction:column;gap:2px;margin-bottom:4px}
+.nlv-unter b{font-size:14.5px}
+.nlv-unter i{font-style:normal;font-size:12.5px;color:var(--gedaempft)}
+.nlv-ghinweis{grid-column:1/-1;margin:2px 0 0;font-size:13px;color:var(--messing)}
+@media (min-width:900px){ .nlv-gerichtwahl{grid-template-columns:repeat(3,minmax(0,1fr))} .nlv-unter{grid-column:1/-1} }
 .nlu-ablaeufe{list-style:none;margin:0;padding:0;display:grid;gap:8px}
 .nlu-ablaeufe:empty{display:none}
 .nlu-ablauf{display:flex;align-items:center;gap:6px 10px;flex-wrap:wrap;padding:6px 12px;border:1px solid var(--linie);border-radius:12px}
@@ -5382,10 +5401,23 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
           <button type="button" class="nlv-artknopf" data-nlv-art="gutschein" aria-pressed="true">Willkommen</button>
           <button type="button" class="nlv-artknopf" data-nlv-art="rueckholung" aria-pressed="false">Wir vermissen Sie</button>
         </div>
+        <!-- C2c (02.11.): Gerichte selbst wählen, Breite der Vorschau, HTML als Datei. -->
+        <div class="nlv-gerichtwahl" id="nlvGerichtWahl">
+          <span class="nlv-unter"><b>Gerichte in der E-Mail</b><i>Bis zu drei. „Automatisch“ nimmt die als Beliebt markierten, dann die mit Foto.</i></span>
+          <label class="feld"><span>Erstes Gericht</span><select id="nlvG1" data-nlv-g="0"></select></label>
+          <label class="feld"><span>Zweites Gericht</span><select id="nlvG2" data-nlv-g="1"></select></label>
+          <label class="feld"><span>Drittes Gericht</span><select id="nlvG3" data-nlv-g="2"></select></label>
+          <p class="nlv-ghinweis" id="nlvGHinweis" hidden></p>
+        </div>
+        <div class="nlv-art nlv-breite" role="group" aria-label="Vorschau als">
+          <button type="button" class="nlv-artknopf" data-nlv-breite="telefon" aria-pressed="true">Telefon</button>
+          <button type="button" class="nlv-artknopf" data-nlv-breite="desktop" aria-pressed="false">Desktop</button>
+        </div>
         <iframe class="nlv-vorschau" id="nlvVorschau" title="Vorschau der E-Mail" sandbox="" loading="lazy"></iframe>
         <div class="eknoepfe">
           <button class="knopf" id="nlvUebernehmen" disabled>Übernehmen</button>
           <button class="knopf leise" id="nlvKopieren">HTML kopieren</button>
+          <button class="knopf leise" id="nlvHerunterladen">HTML herunterladen</button>
         </div>
         <p class="epruefung" id="nlvSatz" aria-live="polite"></p>
       </div>
@@ -5474,6 +5506,7 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         </div>
       </form>
 
+      <div class="gs-filter" id="rcFilter" role="group" aria-label="Welche Codes zeigen"></div>
       <div class="gs-liste" id="rcListe" aria-live="polite"></div>
     </div>
 
@@ -5490,8 +5523,18 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         wird mit der PIN bestätigt.</p>
       <p class="ehilfe" id="gsRahmen" hidden></p>
 
+      <div class="gs-filter" id="gsFilter" role="group" aria-label="Welche Gutscheine zeigen"></div>
       <div class="gs-liste" id="gsListe" aria-live="polite"></div>
-
+      <div class="gs-werkzeug">
+        <button type="button" class="knopf leise schmal" id="gsCsv">Als CSV laden</button>
+        <button type="button" class="knopf leise schmal" id="gsDrucken">Offene Gutscheine drucken</button>
+      </div>
+      <div class="gs-vorlagen" id="gsVorlagen" role="group" aria-label="Vorlage für einen neuen Gutschein">
+        <span class="gs-mini">Vorlage:</span>
+        <button type="button" class="gs-fknopf" data-gs-vorlage="0">Heißgetränk</button>
+        <button type="button" class="gs-fknopf" data-gs-vorlage="1">Dessert</button>
+        <button type="button" class="gs-fknopf" data-gs-vorlage="2">10 % nächstes Mal</button>
+      </div>
       <form class="runner-form gs-form" id="gsForm" novalidate>
         <label class="feld">
           <span>Was es gibt <em class="mass" id="gsTitelMass"></em></span>
@@ -9832,6 +9875,20 @@ ${zurueck ? `{% if ${lieb(slug)} %}<tr><td align="center" style="padding:12px 36
    Nachbarn in hub_stil bleiben) und VOR dem Schreiben frisch gelesen. Danach bekommt Klaviyo beide Mails dieser Vorlage
    (newsletter-vorlage-setzen); scheitert das, ist die Wahl trotzdem gespeichert und der Satz sagt, was fehlt. */
 let nlvStand, nlvWahl = "klassisch", nlvArt = "gutschein";
+/* Gerichte der Mail (C2c): höchstens drei IDs, gespeichert in hub_stil.newsletter.gerichte. Der geteilte Block bleibt
+   unverändert — das Board reicht ihm eine Kopie der Gerichte, in der die gewählten „beliebt“ und vorn sind. */
+let nlvGStand = [], nlvG = [];
+const nlvIdOk = v => typeof v === "string" && /^[A-Za-z0-9-]{1,40}$/.test(v);
+function nlvGSauber(roh){ const a = Array.isArray(roh) ? roh.filter(nlvIdOk) : []; return a.filter((v, i) => a.indexOf(v) === i).slice(0, 3); }
+function nlvGerichtListe(){
+  const alle = typeof gerichte !== "undefined" && Array.isArray(gerichte) ? gerichte : [];
+  const w = nlvG.filter(id => alle.some(g => g.id === id));
+  if(!w.length) return alle;
+  return w.map(id => Object.assign({}, alle.find(g => g.id === id), { beliebt: true }))
+    .concat(alle.filter(g => !w.includes(g.id)).map(g => Object.assign({}, g, { beliebt: false })));
+}
+const NLV_BREITE = ["telefon", "desktop"];
+function nlvBreite(){ let b = null; try{ b = localStorage.getItem("omoteno-nlv-breite"); }catch(e){} return NLV_BREITE.includes(b) ? b : "telefon"; }
 function nlvBetrieb(){ return meineBetriebe.find(x => x.id === betriebId) || null; }
 function nlvMarke(){
   const bb = nlvBetrieb();
@@ -9845,12 +9902,14 @@ function nlvMarke(){
 }
 const nlvEsc = x => String(x).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" })[c]);
 function nlvSlug(){ const bb = nlvBetrieb(); return String((bb && bb.slug) || "").replace(/[^a-z0-9-]/g, ""); }
-function nlvHtml(art, variante){ return NEWSLETTER.bauen(nlvMarke(), nlvSlug(), art, variante, (typeof gerichte !== "undefined" ? gerichte : [])); }
+function nlvHtml(art, variante){ return NEWSLETTER.bauen(nlvMarke(), nlvSlug(), art, variante, nlvGerichtListe()); }
 function nlvLaden(){
   const bb = nlvBetrieb();
   const st = bb && bb.hub_stil && typeof bb.hub_stil === "object" ? bb.hub_stil : null;
   nlvStand = bb ? NEWSLETTER.varianteSauber(st && st.newsletter && st.newsletter.variante) : undefined;
   nlvWahl = nlvStand || "klassisch";
+  nlvGStand = nlvGSauber(st && st.newsletter && typeof st.newsletter === "object" ? st.newsletter.gerichte : null);
+  nlvG = nlvGStand.slice();
   nlvZeichnen();
 }
 function nlvZeichnen(){
@@ -9858,33 +9917,71 @@ function nlvZeichnen(){
   w.innerHTML = NEWSLETTER.VARIANTEN.map(v => '<button type="button" class="nlv-karte" role="radio" data-nlv="' + v.id + '" aria-checked="' + (v.id === nlvWahl) + '">' +
     "<b>" + nlvEsc(v.name) + "</b><span>" + nlvEsc(v.satz) + "</span></button>").join("");
   document.querySelectorAll("[data-nlv-art]").forEach(k => k.setAttribute("aria-pressed", String(k.dataset.nlvArt === nlvArt)));
-  const f = $("#nlvVorschau"); if(f) f.srcdoc = NEWSLETTER.vorschau(nlvHtml(nlvArt, nlvWahl));
+  const f = $("#nlvVorschau");
+  if(f){ const neu = NEWSLETTER.vorschau(nlvHtml(nlvArt, nlvWahl)); if(f.srcdoc !== neu) f.srcdoc = neu; const br = nlvBreite(); f.classList.toggle("telefon", br === "telefon"); f.classList.toggle("desktop", br === "desktop"); }
+  document.querySelectorAll("[data-nlv-breite]").forEach(k => k.setAttribute("aria-pressed", String(k.dataset.nlvBreite === nlvBreite())));
+  const alle = (typeof gerichte !== "undefined" && Array.isArray(gerichte) ? gerichte : []).filter(g => g && g.name && g.verfuegbar !== false);
+  /* Zeigt die gewählte Vorlage überhaupt Gerichte? Gemessen am Ergebnis (mit und ohne Gerichte gebaut), nicht an einer
+     Liste — „Klassisch“ und „Edel“ kommen ohne aus, dort wirkt die Wahl erst mit einer anderen Vorlage. */
+  const gh = $("#nlvGHinweis");
+  if(gh){
+    const ohne = NEWSLETTER.bauen(nlvMarke(), nlvSlug(), nlvArt, nlvWahl, []) === NEWSLETTER.bauen(nlvMarke(), nlvSlug(), nlvArt, nlvWahl, nlvGerichtListe());
+    const mit = NEWSLETTER.VARIANTEN.filter(v => NEWSLETTER.bauen(nlvMarke(), nlvSlug(), nlvArt, v.id, []) !== NEWSLETTER.bauen(nlvMarke(), nlvSlug(), nlvArt, v.id, nlvGerichtListe())).map(v => "„" + v.name + "“");
+    gh.hidden = !ohne || !nlvGerichtListe().length;
+    gh.textContent = "Diese Vorlage zeigt keine Gerichte" + (mit.length ? " — " + mit.join(" und ") + " zeigen sie." : ".");
+  }
+  /* Angezeigt wird nur, was es in der Karte gibt — eine gespeicherte ID eines gelöschten Gerichts lässt keine Lücke. */
+  const sichtbar = nlvG.filter(id => alle.some(g => g.id === id));
+  document.querySelectorAll("[data-nlv-g]").forEach(sel => {
+    const i = Number(sel.dataset.nlvG), jetzt = sichtbar[i] || "";
+    const html = '<option value="">Automatisch</option>' + alle.map(g => '<option value="' + nlvEsc(g.id) + '"' + (g.id === jetzt ? " selected" : "") + ">" + nlvEsc(String(g.name).slice(0, 60)) + "</option>").join("");
+    if(sel.dataset.sig !== html){ sel.innerHTML = html; sel.dataset.sig = html; }
+    sel.value = alle.some(g => g.id === jetzt) ? jetzt : "";
+  });
   const u = $("#nlvUebernehmen"); if(u) u.disabled = nlvStand === undefined;
   const satz = $("#nlvSatz");
   if(satz && !satz.dataset.halten) satz.textContent = nlvStand === undefined ? "Stand wird geladen …"
-    : "Gespeichert: " + NEWSLETTER.VARIANTEN.find(v => v.id === nlvStand).name + (nlvWahl !== nlvStand ? " · Vorschau: " + NEWSLETTER.VARIANTEN.find(v => v.id === nlvWahl).name : "");
+    : "Gespeichert: " + NEWSLETTER.VARIANTEN.find(v => v.id === nlvStand).name + (nlvWahl !== nlvStand ? " · Vorschau: " + NEWSLETTER.VARIANTEN.find(v => v.id === nlvWahl).name : "") +
+      (nlvG.join() !== nlvGStand.join() ? " · Gerichte geändert" : "");
 }
 function nlvSatz(t){ const s = $("#nlvSatz"); if(!s) return; s.textContent = t; s.dataset.halten = "1"; setTimeout(() => { delete s.dataset.halten; }, 6000); }
 document.addEventListener("click", e => {
   const k = e.target.closest && e.target.closest("[data-nlv]");
   if(k){ nlvWahl = NEWSLETTER.varianteSauber(k.dataset.nlv); nlvZeichnen(); return; }
   const a = e.target.closest && e.target.closest("[data-nlv-art]");
-  if(a){ nlvArt = NEWSLETTER.artSauber(a.dataset.nlvArt); nlvZeichnen(); }
+  if(a){ nlvArt = NEWSLETTER.artSauber(a.dataset.nlvArt); nlvZeichnen(); return; }
+  const br = e.target.closest && e.target.closest("[data-nlv-breite]");
+  if(br && NLV_BREITE.includes(br.dataset.nlvBreite)){ try{ localStorage.setItem("omoteno-nlv-breite", br.dataset.nlvBreite); }catch(x){} nlvZeichnen(); }
+});
+document.addEventListener("change", e => {
+  const sel = e.target.closest && e.target.closest("[data-nlv-g]"); if(!sel) return;
+  const da = (typeof gerichte !== "undefined" && Array.isArray(gerichte) ? gerichte : []);
+  const sichtbar = nlvG.filter(id => da.some(g => g.id === id));
+  const neu = [0, 1, 2].map(i => i === Number(sel.dataset.nlvG) ? sel.value : (sichtbar[i] || ""));
+  /* Dasselbe Gericht zweimal zählt einmal; Lücken rücken nach. */
+  nlvG = nlvGSauber(neu.filter(Boolean));
+  nlvZeichnen();
 });
 async function nlvUebernehmen(){
   if(nlvStand === undefined) return;
   const neu = NEWSLETTER.varianteSauber(nlvWahl), name = NEWSLETTER.VARIANTEN.find(v => v.id === neu).name;
-  if(demo || !db){ nlvStand = neu; nlvZeichnen(); nlvSatz("Vorführung: „" + name + "“ gewählt — gespeichert wird hier nichts."); return; }
+  if(demo || !db){ nlvStand = neu; nlvGStand = nlvG.slice(); nlvZeichnen(); nlvSatz("Vorführung: „" + name + "“ gewählt — gespeichert wird hier nichts."); return; }
   const u = $("#nlvUebernehmen"); if(u) u.disabled = true;
   try{
     const { data:frisch, error:e1 } = await db.from("betriebe").select("hub_stil").eq("id", betriebId).maybeSingle();
     if(e1 || !frisch){ nlvSatz("Nicht gespeichert: der aktuelle Stand ließ sich nicht lesen. Bitte Verbindung prüfen."); return; }
-    const st = Object.assign({}, frisch.hub_stil && typeof frisch.hub_stil === "object" ? frisch.hub_stil : {}, { newsletter: { variante: neu } });
+    /* Zusammengeführt bis in newsletter hinein: Variante UND Gerichte, Fremdes darunter bleibt (vorher ersetzte die Wahl das ganze Objekt). */
+    const alt = frisch.hub_stil && typeof frisch.hub_stil === "object" ? frisch.hub_stil : {};
+    const nlAlt = alt.newsletter && typeof alt.newsletter === "object" && !Array.isArray(alt.newsletter) ? alt.newsletter : {};
+    const gw = nlvGSauber(nlvG.filter(id => (typeof gerichte !== "undefined" ? gerichte : []).some(g => g.id === id)));
+    const nl = Object.assign({}, nlAlt, { variante: neu });
+    if(gw.length) nl.gerichte = gw; else delete nl.gerichte;
+    const st = Object.assign({}, alt, { newsletter: nl });
     const { data:zeilen, error:e2 } = await db.from("betriebe").update({ hub_stil: st }).eq("id", betriebId).select("id");
     if(e2){ nlvSatz("Nicht gespeichert, bitte Verbindung prüfen."); return; }
     if(!zeilen || !zeilen.length){ nlvSatz("Nur der Besitzer kann das Aussehen ändern."); return; }
     const bb = nlvBetrieb(); if(bb) bb.hub_stil = st;
-    nlvStand = neu; nlvZeichnen();
+    nlvStand = neu; nlvGStand = gw.slice(); nlvG = gw.slice(); nlvZeichnen();
     let ergebnis = null;
     try{
       const { data, error } = await db.functions.invoke("newsletter-vorlage-setzen", { body: { betrieb_id: betriebId, variante: neu,
@@ -9904,6 +10001,15 @@ async function nlvUebernehmen(){
   } finally { if(u) u.disabled = nlvStand === undefined; }
 }
 $("#nlvUebernehmen").onclick = nlvUebernehmen;
+/* HTML als Datei (C2c): z. B. für ein anderes Mailprogramm. Der Name trägt nur gerade Zeichen. */
+$("#nlvHerunterladen").onclick = () => {
+  const html = nlvHtml(nlvArt, nlvWahl), url = URL.createObjectURL(new Blob([html], { type: "text/html;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = "newsletter-" + (nlvSlug() || "haus") + "-" + nlvArt + "-" + nlvWahl + ".html";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+  nlvSatz("HTML als Datei gespeichert.");
+};
 $("#nlvKopieren").onclick = async () => {
   const html = nlvHtml(nlvArt, nlvWahl);
   try{ await navigator.clipboard.writeText(html); nlvSatz("HTML kopiert — in Klaviyo unter Vorlagen → „Code your own“ einfügen."); }
@@ -11996,13 +12102,13 @@ const EU_BEREICHE = [
       EU_SYMBOL.brief.replace(/<(path|rect)/g, '<$1 transform="translate(6 4) scale(1.5)"') + '</g>' },
   { titel:"Gutscheine für Stammgäste", sym:"karte", ton:"var(--glut)",
     satz:"Codes unter „Mein Tisch“",
-    stand:() => { const n = $$("#gsListe .gs-zeile").length; return n ? n + (n === 1 ? " Gutschein aktiv" : " Gutscheine aktiv") : "Keiner aktiv"; },
-    bild:() => { const n = $$("#gsListe .gs-zeile").length;
+    stand:() => { const n = (typeof gutscheine !== "undefined" ? gutscheine : []).filter(g => gsZustand(g) === "offen").length; return n ? n + (n === 1 ? " Gutschein aktiv" : " Gutscheine aktiv") : "Keiner aktiv"; },
+    bild:() => { const n = (typeof gutscheine !== "undefined" ? gutscheine : []).filter(g => gsZustand(g) === "offen").length;
       return '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
         (n ? '<circle class="eu-punkt" cx="42" cy="9" r="8"/><text class="eu-zahl" x="42" y="12.5" text-anchor="middle">' + n + '</text>' : ""); } },
   { titel:"Eigene Rabattcodes", sym:"karte", ton:"var(--messing)",
     satz:"Prozent oder Betrag an der Kasse",
-    stand:() => { const n = (typeof rabattcodeTeam !== "undefined" && rabattcodeTeam) ? rabattcodeTeam.length : 0;
+    stand:() => { const n = (typeof rabattcodeTeam !== "undefined" && rabattcodeTeam) ? rabattcodeTeam.filter(g => rcZustand(g) === "aktiv").length : 0;
       return n ? n + (n === 1 ? " Code aktiv" : " Codes aktiv") : "Keiner aktiv"; },
     bild:() => '<g class="eu-strich">' + EU_SYMBOL.karte.replace(/<path/g, '<path transform="translate(4 4) scale(1.6)"') + '</g>' +
       '<text class="eu-zahl dunkel" x="24" y="30" text-anchor="middle">%</text>' },
@@ -12238,6 +12344,7 @@ function euOeffnen(id){
      nachdem die Kachel getippt war). */
   try{ reglerFuellen(); avRaederAusrichten(); }catch(e){}
   try{ gtBereicheZeichnen(); }catch(e){}   /* die Bereiche kommen aus dem Saal, der später lädt */
+  try{ if(gruppe.querySelector("#nlvZeile")) nlvZeichnen(); }catch(e){}   /* die Gerichte für die Mail kommen erst mit der Karte */
   window.scrollTo(0, 0);
   const h = gruppe.querySelector("h2.etitel");
   if(h){ h.tabIndex = -1; h.focus({ preventScroll:true }); }
@@ -17924,6 +18031,7 @@ const AN_WIKI = [
       "Der Plan ist maßstäblich: Jeder Bereich ist ein Raum in Metern, in Kästchen von 1 × 1 m unterteilt, mit Theke / Bar und einer Umrandung um das Gebäude. Mit „Ganzes Gebäude zeigen“ oder durch Herauszoomen sehen Sie alle Bereiche samt ihren Bestellungen; ein Tipp auf einen anderen Raum zoomt dorthin.",
       "Das Lieferauto vor dem Gebäude zählt die offenen Lieferungen. Ein Tipp darauf — oder auf „Lieferungen zeigen“ in der Leiste am Plan — listet alle Lieferungen unter dem Plan auf.",
       "Reservierungen nehmen Sie mit „Annehmen“ an oder lehnen sie mit „Ablehnen“ ab. Einrichten darf nur der Besitzer, in vier Reitern: Tische (ziehen, Form, Stühle), Bereiche, Maße (Breite und Tiefe in Metern, Lage im Gebäude, Theke / Bar, Küche) und die Leuchtstufen je Zustand.",
+      "Theke und Küche ziehen Sie im Einrichten mit dem Finger an ihren Platz; der runde Griff an der vorderen Ecke ändert die Größe von Raum, Theke und Küche, der Griff neben einem angetippten Tisch die Zahl der Stühle. Wer es genau braucht, tippt die Meter unter „Genaue Maße eintippen“ ein.",
       "Die Küche zeichnen Sie unter „Maße“ ein („Küche einzeichnen“). Meldet der Koch im Küchenboard ein Gericht als fertig, steht der Tisch auf „Servieren“ und eine gestrichelte Linie führt vom Pass der Küche dorthin; in der Bestellkarte steht „Bitte servieren“ — mit „Gebracht“ haken Sie es ab.",
       "Wie viele Gäste an einem Tisch sitzen, tragen Sie im Blatt des Tisches mit − und + ein; „Zahlt gerade“ und „Gäste gegangen · Tisch frei“ setzen den Stand. Am Tisch im Plan steht dann z. B. „3/4“, und „still“, wenn am Tisch seit 20 Minuten niemand mehr etwas getan hat. Oben in der Liste stehen die Gäste im Haus und die freien Plätze.",
       "Ist der Saal noch leer, legt „Raum anlegen und Tische verteilen“ einen Raum mit Breite und Tiefe in Metern an und verteilt die Tische im 1 × 1-m-Raster; verschieben Sie sie danach im Editor."],
@@ -18034,16 +18142,19 @@ const AN_WIKI = [
     labels:["Bankkarte", "Klarna", "PayPal", "SEPA-Lastschrift", "Überweisung", "Stripe-Konto (acct_…)"], gruppe:"Bezahlen" }]),
   { id:"e-newsletter", kapitel:"Einstellungen", titel:"Gäste-Newsletter", ort:"Einstellungen → Gäste-Newsletter",
     text:["Gäste, die im Hub unter „Mein Tisch“ ihre E-Mail hinterlegen und bestätigen, bekommen einmal einen Willkommensgutschein — und wenn sie 20 Tage nicht da waren, die Erinnerung „Wir vermissen Sie“ mit Gutschein. Jeder Besuch und jede Bestellung zählt die 20 Tage neu.",
-      "Verschickt wird erst, wenn die Abläufe in Klaviyo auf „Live“ stehen. Den Rabattcode-Vorrat füllen Sie mit „20 neue Codes anlegen“ auf; „Gäste & Newsletter“ zeigt Ihre Zahlen und was Klaviyo gerade tut."],
-    labels:["Newsletter aktiv", "Rabattcode-Vorrat", "20 neue Codes anlegen"], gruppe:"Gäste-Newsletter" },
+      "Verschickt wird erst, wenn die Abläufe in Klaviyo auf „Live“ stehen. Den Rabattcode-Vorrat füllen Sie mit „20 neue Codes anlegen“ auf; „Gäste & Newsletter“ zeigt Ihre Zahlen und was Klaviyo gerade tut.",
+      "Unter „Gerichte in der E-Mail“ wählen Sie bis zu drei Gerichte selbst; „Automatisch“ nimmt die als Beliebt markierten. Nicht jede Vorlage zeigt Gerichte — das steht dann darunter. Die Vorschau zeigt die Mail als Telefon oder Desktop, und „HTML herunterladen“ speichert sie als Datei."],
+    labels:["Newsletter aktiv", "Rabattcode-Vorrat", "20 neue Codes anlegen", "Gerichte in der E-Mail", "HTML herunterladen", "Desktop"], gruppe:"Gäste-Newsletter" },
   { id:"e-rabatt", kapitel:"Einstellungen", titel:"Eigene Rabattcodes", ort:"Einstellungen → Eigene Rabattcodes",
     text:["Legen Sie selbst einen Code an — mit Prozent oder festem Betrag, für die ganze Rechnung oder für ein bestimmtes Gericht. Ihr Team löst ihn später auf der Bestellkarte ein.",
-      "Jeder Code wird mit der PIN bestätigt — so steht fest, wer ihn ausgestellt hat. Den Code würfelt der Server (Vorsilbe freiwillig, bis zu 8 Zeichen, A–Z und 0–9, dazu zehn Zeichen, die niemand erraten kann)."],
-    labels:["Vorsilbe (freiwillig)", "Art des Rabatts", "Rabattcode anlegen"], gruppe:"Eigene Rabattcodes" },
+      "Jeder Code wird mit der PIN bestätigt — so steht fest, wer ihn ausgestellt hat. Den Code würfelt der Server (Vorsilbe freiwillig, bis zu 8 Zeichen, A–Z und 0–9, dazu zehn Zeichen, die niemand erraten kann).",
+      "Die Liste zeigt Aktiv, Eingelöst oder Abgelaufen. „Code kopieren“ legt den Code in die Zwischenablage; „Als Vorlage“ übernimmt Art, Wert und Gericht eines Codes ins Formular — angelegt wird erst mit „Rabattcode anlegen“ und PIN."],
+    labels:["Vorsilbe (freiwillig)", "Art des Rabatts", "Rabattcode anlegen", "Code kopieren", "Als Vorlage", "Eingelöst", "Abgelaufen"], gruppe:"Eigene Rabattcodes" },
   { id:"e-gutscheine", kapitel:"Einstellungen", titel:"Gutscheine für Stammgäste", ort:"Einstellungen → Gutscheine für Stammgäste",
     text:["Was Sie hier anlegen, sehen Ihre Gäste sofort im Hub unter „Mein Tisch“ — ohne Konto, ohne Passwort. Eingelöst wird am Tisch: Der Gast zeigt den Code, Ihr Team entscheidet.",
-      "Jeder Gutschein wird mit der PIN bestätigt. Titel ist Pflicht und das Erste, was der Gast liest; ein Satz dazu, die Vorsilbe und „Gültig bis“ sind freiwillig."],
-    labels:["Gutschein anlegen", "Ein Satz dazu (freiwillig)", "Gültig bis (freiwillig)"], gruppe:"Gutscheine für Stammgäste" },
+      "Jeder Gutschein wird mit der PIN bestätigt. Titel ist Pflicht und das Erste, was der Gast liest; ein Satz dazu, die Vorsilbe und „Gültig bis“ sind freiwillig.",
+      "Vorlagen (Heißgetränk, Dessert, 10 % nächstes Mal) füllen Titel und Satz vor. Die Liste zeigt Offen, Eingelöst oder Abgelaufen; „Als CSV laden“ gibt die gezeigte Auswahl als Tabelle aus, „Offene Gutscheine drucken“ eine Liste für die Kasse."],
+    labels:["Gutschein anlegen", "Ein Satz dazu (freiwillig)", "Gültig bis (freiwillig)", "Offene Gutscheine drucken", "Heißgetränk", "Dessert"], gruppe:"Gutscheine für Stammgäste" },
   { id:"e-bestellstand", kapitel:"Einstellungen", titel:"Bestellstand beim Gast", ort:"Einstellungen → Bestellstand beim Gast",
     text:["Was Ihr Gast nach dem Bestellen auf seinem Telefon sieht, sobald Sie eine Zeit zugesagt haben. Mit Restzeit zählt „noch ca. 12 Minuten“ herunter — die Zeit, die Sie zugesagt haben. Mit Nur Stand sieht er „Angenommen“ und „Wird zubereitet“, ohne Minuten; Ihre zugesagte Zeit gilt weiter für Küche und Mahnung.",
       "„Satz, wenn die Zeit um ist“ setzt unter „Jeden Moment“ einen freundlichen Satz (Geduld, Viel los, Frisch), übersetzt in alle Sprachen. Dazu: das Telefon des Gastes vibriert, wenn es fertig ist, und die Bestellnummer steht auf Wunsch groß da."],
@@ -18081,7 +18192,11 @@ const AN_NEU = [
   { datum:"01.11.", titel:"Änderungen nach Person und Bereich filtern, als CSV", id:"e-protokoll" },
   { datum:"01.11.", titel:"Vorlagen und Übertragen bei den Zugriffsrechten", id:"e-zugriff" },
   { datum:"01.11.", titel:"Lieferung 30 Minuten pausieren, geschlossene Tage, Liefergebiet prüfen", id:"e-lieferung" },
-  { datum:"01.11.", titel:"Satz bei Verzögerung, Vibration, große Bestellnummer", id:"e-bestellstand" }
+  { datum:"01.11.", titel:"Satz bei Verzögerung, Vibration, große Bestellnummer", id:"e-bestellstand" },
+  { datum:"02.11.", titel:"Gerichte für den Newsletter wählen, Vorschau als Telefon oder Desktop", id:"e-newsletter" },
+  { datum:"02.11.", titel:"Rabattcodes filtern, kopieren und als Vorlage nehmen", id:"e-rabatt" },
+  { datum:"02.11.", titel:"Gutscheine mit Vorlagen, Filter, CSV und Druckliste", id:"e-gutscheine" },
+  { datum:"02.11.", titel:"Saal mit dem Finger einrichten", id:"tische" }
 ];
 /* Merkliste: nur auf diesem Gerät, nur ids, die es im Wiki gibt (alles andere fällt beim Lesen weg). */
 const AN_MERK = "omoteno-an-merk";
@@ -23673,25 +23788,28 @@ function rcTypText(g){
                             : euro(+g.betrag) + " Rabatt";
 }
 
+/* C2c (02.11.): Die Liste kennt jetzt alle eigenen Codes (bis 200, neueste zuerst) und teilt sie im Board ein —
+   Aktiv / Eingelöst / Abgelaufen (beendet = abgelaufen: „Beenden“ setzt gueltig_bis auf jetzt). Fehlen neuere Spalten,
+   fällt die Abfrage auf die alten zurück (§8.1m: nicht leer, sondern ohne Namen). */
+let rcFilterWahl = "aktiv";
+const RC_ZUSTAENDE = [["aktiv", "Aktiv"], ["eingeloest", "Eingelöst"], ["abgelaufen", "Abgelaufen"]];
+function rcZustand(g){
+  if(g.eingeloest === true) return "eingeloest";
+  return g.gueltig_bis && Date.parse(g.gueltig_bis) <= Date.now() ? "abgelaufen" : "aktiv";
+}
 async function rcLaden(){
   rcArtZeichnen(); rcZielZeichnen(); rcGerichtFuellen();
   grLaden();
   if(demo || !db || !betriebId){ rcZeichnen(); return; }
   try{
-    const jetzt = new Date().toISOString();
-    let {data, error} = await db.from("rabattcodes")
-      .select("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am,angelegt_name")
-      .eq("betrieb_id", betriebId).eq("quelle", "team").eq("eingeloest", false)
-      .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
-      .order("angelegt_am", {ascending:false}).order("id");
+    const frage = sp => db.from("rabattcodes").select(sp)
+      .eq("betrieb_id", betriebId).eq("quelle", "team")
+      .order("angelegt_am", {ascending:false}).order("id").limit(200);
+    let {data, error} = await frage("id,code,betrag,prozent,ziel_gericht_id,ziel_gericht_name,gueltig_bis,angelegt_am,angelegt_name,eingeloest,eingeloest_am");
     /* Ohne Teil 1 der Migration gibt es angelegt_name nicht — dann
        ohne Namen weiter, nicht leer (§8.1m). */
-    if(error && /angelegt_name|column/i.test(error.message || ""))
-      ({data, error} = await db.from("rabattcodes")
-        .select("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am")
-        .eq("betrieb_id", betriebId).eq("quelle", "team").eq("eingeloest", false)
-        .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
-        .order("angelegt_am", {ascending:false}).order("id"));
+    if(error && /angelegt_name|ziel_gericht_id|eingeloest_am|column/i.test(error.message || ""))
+      ({data, error} = await frage("id,code,betrag,prozent,ziel_gericht_name,gueltig_bis,angelegt_am,eingeloest"));
     if(error) throw error;
     rabattcodeTeam = data || [];
   }catch(e){ rabattcodeTeam = []; }
@@ -23700,20 +23818,44 @@ async function rcLaden(){
 
 function rcZeichnen(){
   const ziel = $("#rcListe"); if(!ziel) return;
-  if(!rabattcodeTeam.length){
-    ziel.innerHTML = '<p class="ehilfe">Gerade liegt kein eigener Rabattcode bereit.</p>';
+  const zahl = z => rabattcodeTeam.filter(g => rcZustand(g) === z).length;
+  const f = $("#rcFilter");
+  if(f) f.innerHTML = rabattcodeTeam.length ? RC_ZUSTAENDE.map(([z, n]) => '<button type="button" class="gs-fknopf" data-rc-filter="' + z + '" aria-pressed="' + (z === rcFilterWahl) + '">' + n + "<b>" + zahl(z) + "</b></button>").join("") : "";
+  const liste = rabattcodeTeam.filter(g => rcZustand(g) === rcFilterWahl);
+  if(!liste.length){
+    ziel.innerHTML = '<p class="ehilfe">' + (rcFilterWahl === "aktiv" ? "Gerade liegt kein eigener Rabattcode bereit." : rcFilterWahl === "eingeloest" ? "Noch kein Code eingelöst." : "Kein abgelaufener Code.") + '</p>';
+    euBald();
     return;
   }
-  ziel.innerHTML = rabattcodeTeam.map(g =>
-    '<div class="gs-zeile" data-rc="' + sicher(g.id) + '">' +
+  ziel.innerHTML = liste.map(g => {
+    const z = rcZustand(g);
+    return '<div class="gs-zeile" data-rc="' + sicher(g.id) + '">' +
       '<span class="gs-was"><b>' + sicher(rcTypText(g)) + '</b>' +
         '<i>' + (g.ziel_gericht_name ? sicher(g.ziel_gericht_name) : "Ganze Rechnung") + '</i>' +
         (g.angelegt_name ? '<i>ausgestellt von ' + sicher(g.angelegt_name) + '</i>' : '') + '</span>' +
       '<span class="gs-code">' + sicher(g.code) + '</span>' +
-      '<span class="gs-frist">' +
-        (g.gueltig_bis ? "bis " + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist") + '</span>' +
-      '<button type="button" class="knopf leise schmal" data-rc-ende="' + sicher(g.id) + '">Beenden</button>' +
-    '</div>').join("");
+      '<span class="gs-frist">' + (z === "eingeloest"
+        ? "eingelöst" + (g.eingeloest_am ? " am " + new Date(g.eingeloest_am).toLocaleDateString("de-DE") : "")
+        : (g.gueltig_bis ? (z === "abgelaufen" ? "abgelaufen " : "bis ") + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist")) + '</span>' +
+      '<span class="gs-knoepfe">' +
+        '<button type="button" class="knopf leise schmal" data-rc-kopie="' + sicher(g.id) + '">Code kopieren</button>' +
+        '<button type="button" class="knopf leise schmal" data-rc-vorlage="' + sicher(g.id) + '">Als Vorlage</button>' +
+        (z === "aktiv" ? '<button type="button" class="knopf leise schmal" data-rc-ende="' + sicher(g.id) + '">Beenden</button>' : '') +
+      '</span></div>';
+  }).join("");
+  euBald();
+}
+/* „Als Vorlage“ füllt nur das Formular — angelegt wird erst mit „Rabattcode anlegen“ und PIN. */
+function rcAlsVorlage(g){
+  rcArt = g.prozent != null ? "prozent" : "betrag"; rcArtZeichnen();
+  const w = g.prozent != null ? +g.prozent : +g.betrag;
+  $("#rcWert").value = isFinite(w) ? String(w) : "";
+  const gid = g.ziel_gericht_id || (g.ziel_gericht_name ? ((gerichte.find(x => x.name === g.ziel_gericht_name) || {}).id || "") : "");
+  rcZielModus = gid ? "gericht" : "rechnung"; rcZielZeichnen();
+  if(gid){ rcGerichtFuellen(); const sel = $("#rcGericht"); if(sel && [...sel.options].some(o => o.value === gid)) sel.value = gid; }
+  $("#rcBis").value = "";
+  const f = $("#rcWert"); f.scrollIntoView({ block:"center", behavior:"instant" }); f.focus({ preventScroll:true });
+  melde("Vorlage übernommen — prüfen und „Rabattcode anlegen“ tippen.");
 }
 
 if($("#rcForm")){
@@ -23749,7 +23891,7 @@ if($("#rcForm")){
           const gericht = zielId ? gerichte.find(g => g.id === zielId) : null;
           code = demoCode(praefix);
           rabattcodeTeam.unshift({
-            id: "demo-" + Date.now(), code,
+            id: "demo-" + Date.now(), code, eingeloest: false, ziel_gericht_id: zielId || null,
             betrag: rcArt === "betrag" ? wert : null,
             prozent: rcArt === "prozent" ? wert : null,
             ziel_gericht_name: gericht ? gericht.name : null,
@@ -23778,14 +23920,27 @@ if($("#rcForm")){
     knopf.disabled = false; knopf.textContent = "Rabattcode anlegen";
   };
 
+  $("#rcFilter").onclick = e => {
+    const f = e.target.closest("[data-rc-filter]"); if(!f) return;
+    if(RC_ZUSTAENDE.some(([z]) => z === f.dataset.rcFilter)){ rcFilterWahl = f.dataset.rcFilter; rcZeichnen(); }
+  };
   $("#rcListe").onclick = async e => {
+    const kp = e.target.closest("[data-rc-kopie]");
+    if(kp){
+      const g = rabattcodeTeam.find(x => String(x.id) === kp.dataset.rcKopie); if(!g) return;
+      try{ await navigator.clipboard.writeText(String(g.code)); melde("Code " + g.code + " kopiert."); }
+      catch(x){ melde("Kopieren ging nicht — Ihr Browser erlaubt es hier nicht.", true); }
+      return;
+    }
+    const vl = e.target.closest("[data-rc-vorlage]");
+    if(vl){ const g = rabattcodeTeam.find(x => String(x.id) === vl.dataset.rcVorlage); if(g) rcAlsVorlage(g); return; }
     const k = e.target.closest("[data-rc-ende]"); if(!k) return;
     const id = k.dataset.rcEnde;
     const g = rabattcodeTeam.find(x => String(x.id) === id);
     if(!confirm("„" + (g ? g.code : "Rabattcode") + "“ beenden? Er lässt sich danach nicht mehr einlösen.")) return;
     k.disabled = true;
     if(demo || !db){
-      rabattcodeTeam = rabattcodeTeam.filter(x => String(x.id) !== id);
+      rabattcodeTeam = rabattcodeTeam.map(x => String(x.id) === id ? Object.assign({}, x, { gueltig_bis: new Date(Date.now() - 1000).toISOString() }) : x);
       rcZeichnen(); melde("Rabattcode beendet");
       return;
     }
@@ -24220,45 +24375,102 @@ $("#aeCsv").addEventListener("click", () => {
 });
 aeAuswahlFuellen();
 
+/* C2c (02.11.): alle Gutscheine des Hauses (bis 200, neueste zuerst), im Board eingeteilt in Offen / Eingelöst /
+   Abgelaufen (beendet = abgelaufen). Der Gast sieht weiter nur Offenes — das liest gast_melden() selbst. */
+let gsFilterWahl = "offen";
+const GS_ZUSTAENDE = [["offen", "Offen"], ["eingeloest", "Eingelöst"], ["abgelaufen", "Abgelaufen"]];
+const GS_VORLAGEN = [
+  { titel: "Ein Heißgetränk aufs Haus", text: "Danke, dass Sie wiederkommen." },
+  { titel: "Ein Dessert aufs Haus", text: "Zum Abschluss etwas Süßes von uns." },
+  { titel: "10 % auf die nächste Rechnung", text: "Einfach beim Bezahlen den Code zeigen." }
+];
+function gsZustand(g){
+  if(g.eingeloest_am) return "eingeloest";
+  return g.gueltig_bis && Date.parse(g.gueltig_bis) <= Date.now() ? "abgelaufen" : "offen";
+}
 async function gsLaden(){
   massVerdrahten();
   grLaden();
   if(demo || !db || !betriebId){ gsZeichnen(); return; }
   try{
-    const jetzt = new Date().toISOString();
     const frage = spalten => db.from("gutscheine").select(spalten)
       .eq("betrieb_id", betriebId)
-      .is("eingeloest_am", null)
-      .or('gueltig_bis.is.null,gueltig_bis.gt."' + jetzt + '"')
       /* Eindeutiges Feld am Ende (CLAUDE.md §2.6). */
-      .order("angelegt", {ascending:false}).order("id");
-    let {data, error} = await frage("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt,angelegt_name");
+      .order("angelegt", {ascending:false}).order("id").limit(200);
+    let {data, error} = await frage("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt,angelegt_name,eingeloest_am");
     if(error && /angelegt_name|column/i.test(error.message || ""))
-      ({data, error} = await frage("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt"));
+      ({data, error} = await frage("id,titel,beschreibung,code,gueltig_bis,gast_id,angelegt,eingeloest_am"));
     if(error) throw error;
     gutscheine = data || [];
   }catch(e){ gutscheine = []; }
   gsZeichnen();
 }
+function gsGezeigt(){ return gutscheine.filter(g => gsZustand(g) === gsFilterWahl); }
 
 function gsZeichnen(){
   const ziel = $("#gsListe"); if(!ziel) return;
-  if(!gutscheine.length){
-    ziel.innerHTML = '<p class="ehilfe" id="gsNichts">Gerade liegt kein Gutschein bereit.</p>';
+  const f = $("#gsFilter");
+  if(f) f.innerHTML = gutscheine.length ? GS_ZUSTAENDE.map(([z, n]) => '<button type="button" class="gs-fknopf" data-gs-filter="' + z + '" aria-pressed="' + (z === gsFilterWahl) + '">' + n + "<b>" + gutscheine.filter(g => gsZustand(g) === z).length + "</b></button>").join("") : "";
+  const liste = gsGezeigt();
+  const w = $("#gsCsv"), d = $("#gsDrucken");
+  if(w) w.disabled = !liste.length;
+  if(d) d.disabled = !gutscheine.some(g => gsZustand(g) === "offen");
+  if(!liste.length){
+    ziel.innerHTML = '<p class="ehilfe" id="gsNichts">' + (gsFilterWahl === "offen" ? "Gerade liegt kein Gutschein bereit." : gsFilterWahl === "eingeloest" ? "Noch kein Gutschein eingelöst." : "Kein abgelaufener Gutschein.") + '</p>';
+    euBald();
     return;
   }
-  ziel.innerHTML = gutscheine.map(g =>
-    '<div class="gs-zeile" data-gs="' + sicher(g.id) + '">' +
+  ziel.innerHTML = liste.map(g => {
+    const z = gsZustand(g);
+    return '<div class="gs-zeile" data-gs="' + sicher(g.id) + '">' +
       '<span class="gs-was"><b>' + sicher(g.titel) + '</b>' +
         (g.beschreibung ? '<i>' + sicher(g.beschreibung) + '</i>' : '') +
         (g.angelegt_name ? '<i>ausgestellt von ' + sicher(g.angelegt_name) + '</i>' : '') + '</span>' +
       '<span class="gs-code">' + sicher(g.code) + '</span>' +
-      '<span class="gs-frist">' +
-        (g.gueltig_bis ? "bis " + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist") +
+      '<span class="gs-frist">' + (z === "eingeloest" ? "eingelöst am " + new Date(g.eingeloest_am).toLocaleDateString("de-DE")
+        : (g.gueltig_bis ? (z === "abgelaufen" ? "abgelaufen " : "bis ") + new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist")) +
         (g.gast_id ? " · persönlich" : "") + '</span>' +
-      '<button type="button" class="knopf leise schmal" data-gs-ende="' + sicher(g.id) + '">Beenden</button>' +
-    '</div>').join("");
+      (z === "offen" ? '<button type="button" class="knopf leise schmal" data-gs-ende="' + sicher(g.id) + '">Beenden</button>' : '') +
+    '</div>';
+  }).join("");
   euBald();
+}
+/* CSV der gezeigten Auswahl; jede Zelle über awCsvFeld (keine Formel beim Öffnen, §8.1w). */
+function gsCsv(){
+  const zeilen = [["Titel", "Text", "Code", "Gültig bis", "Zustand", "Ausgestellt von"]].concat(gsGezeigt().map(g => [
+    g.titel || "", g.beschreibung || "", g.code || "", g.gueltig_bis ? new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "",
+    ({ offen: "offen", eingeloest: "eingelöst", abgelaufen: "abgelaufen" })[gsZustand(g)], g.angelegt_name || ""]));
+  const text = "\ufeff" + zeilen.map(z => z.map(awCsvFeld).join(";")).join("\r\n");
+  const url = URL.createObjectURL(new Blob([text], { type: "text/csv;charset=utf-8" }));
+  const a = document.createElement("a");
+  a.href = url; a.download = "gutscheine-" + gsFilterWahl + "-" + new Date().toISOString().slice(0, 10) + ".csv";
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 10000);
+}
+/* Liste der offenen Gutscheine zum Aushängen an der Kasse — gedruckt aus einem Rahmen (§8.1d), jeder Wert als Text. */
+function gsDrucken(){
+  const offen = gutscheine.filter(g => gsZustand(g) === "offen"); if(!offen.length) return;
+  const b = meineBetriebe.find(x => x.id === betriebId) || {};
+  const alt = document.getElementById("druckRahmen"); if(alt) alt.remove();
+  const r = document.createElement("iframe");
+  r.id = "druckRahmen"; r.setAttribute("aria-hidden", "true");
+  r.style.cssText = "position:fixed;left:-9999px;top:0;width:1px;height:1px;border:0";
+  document.body.appendChild(r);
+  const w = r.contentWindow; if(!w){ r.remove(); melde("Drucken geht hier nicht", true); return; }
+  w.document.open();
+  w.document.write('<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><title>Gutscheine · ' + sicher(b.name || "") + '</title><style>' +
+    'body{font:14px -apple-system,Segoe UI,sans-serif;color:#111;padding:28px}h1{font-size:22px;margin:0 0 14px}' +
+    'table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:8px 6px;border-bottom:1px solid #ccc;vertical-align:top}' +
+    'td.c{font-family:ui-monospace,Menlo,monospace;letter-spacing:.06em}</style></head><body>' +
+    '<h1>Offene Gutscheine · ' + sicher(b.name || "") + '</h1><table><thead><tr><th>Was es gibt</th><th>Code</th><th>Gültig bis</th></tr></thead><tbody>' +
+    offen.map(g => '<tr><td>' + sicher(g.titel) + (g.beschreibung ? '<br><small>' + sicher(g.beschreibung) + '</small>' : '') + '</td><td class="c">' + sicher(g.code) +
+      '</td><td>' + (g.gueltig_bis ? new Date(g.gueltig_bis).toLocaleDateString("de-DE") : "ohne Frist") + '</td></tr>').join("") +
+    '</tbody></table></body></html>');
+  w.document.close();
+  setTimeout(() => {
+    try{ w.focus(); w.print(); }catch(e){ melde("Drucken geht hier nicht", true); }
+    setTimeout(() => { const x = document.getElementById("druckRahmen"); if(x === r) r.remove(); }, 60000);
+  }, 300);
 }
 
 if($("#gsForm")){
@@ -24289,7 +24501,7 @@ if($("#gsForm")){
         if(pin){
           code = demoCode(praefix);
           gutscheine.unshift({id:"demo-" + Date.now(), titel, beschreibung:text, code,
-            gueltig_bis:ende, gast_id:null, angelegt:new Date().toISOString(), angelegt_name:"Vorführung"});
+            gueltig_bis:ende, gast_id:null, angelegt:new Date().toISOString(), angelegt_name:"Vorführung", eingeloest_am:null});
           gsZeichnen();
         }
       }else{
@@ -24311,6 +24523,20 @@ if($("#gsForm")){
     knopf.disabled = false; knopf.textContent = "Gutschein anlegen";
   };
 
+  $("#gsFilter").onclick = e => {
+    const f = e.target.closest("[data-gs-filter]"); if(!f) return;
+    if(GS_ZUSTAENDE.some(([z]) => z === f.dataset.gsFilter)){ gsFilterWahl = f.dataset.gsFilter; gsZeichnen(); }
+  };
+  $("#gsCsv").onclick = gsCsv;
+  $("#gsDrucken").onclick = gsDrucken;
+  /* Vorlagen füllen nur Titel und Text — angelegt wird erst mit „Gutschein anlegen“ und PIN. */
+  $("#gsVorlagen").onclick = e => {
+    const k = e.target.closest("[data-gs-vorlage]"); if(!k) return;
+    const v = GS_VORLAGEN[Number(k.dataset.gsVorlage)]; if(!v) return;
+    $("#gsTitel").value = v.titel; $("#gsText").value = v.text;
+    massZeigen("gsTitel"); massZeigen("gsText");
+    $("#gsTitel").focus();
+  };
   $("#gsListe").onclick = async e => {
     const k = e.target.closest("[data-gs-ende]"); if(!k) return;
     const id = k.dataset.gsEnde;
@@ -24318,7 +24544,7 @@ if($("#gsForm")){
     if(!confirm("„" + (g ? g.titel : "Gutschein") + "“ beenden? Gäste sehen ihn danach nicht mehr.")) return;
     k.disabled = true;
     if(demo || !db){
-      gutscheine = gutscheine.filter(x => String(x.id) !== id);
+      gutscheine = gutscheine.map(x => String(x.id) === id ? Object.assign({}, x, { gueltig_bis: new Date(Date.now() - 1000).toISOString() }) : x);
       gsZeichnen(); melde("Gutschein beendet");
       return;
     }
