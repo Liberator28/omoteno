@@ -479,6 +479,8 @@ async function saal(browser){
   await p.evaluate(() => { window.__rpc = []; demo = false; betriebId = "b-1";
     db = { rpc: (fn, a) => { window.__rpc.push({ fn, a: JSON.parse(JSON.stringify(a)) }); return Promise.resolve({ data: { ok: true }, error: null }); }, from: () => { const o = { update: () => o, eq: () => o, select: () => Promise.resolve({ data: [{ id: "x" }], error: null }) }; return o; } }; });
   await p.click('[data-sp-wz="einrichten"]'); await p.click('[data-sp-tab="masse"]');
+  /* Seit 02.11. liegen die Meterfelder eingeklappt unter „Genaue Maße eintippen“ — echter Tipp öffnet sie. */
+  await p.click("#spEdit [data-sp-genau] > summary");
   const ed = await p.evaluate(() => ({
     felder: [...document.querySelectorAll('#spEdit input[data-sp-kf]')].map(i => ({ f: i.dataset.spKf, v: i.value, fs: parseFloat(getComputedStyle(i).fontSize), h: i.getBoundingClientRect().height })),
     weg: !!document.querySelector("[data-sp-kueche-weg]"), neu: !!document.querySelector("[data-sp-kueche-neu]") }));
@@ -513,7 +515,7 @@ async function saal(browser){
   pruef(neuK && neuK.b >= 1 && neuK.t >= 1 && neuK.x >= 0 && neuK.y >= 0, "„Küche einzeichnen“ legt eine vernünftige Küche an", JSON.stringify(neuK));
   /* Zweiter Bereich: keine zweite Küche anbietbar */
   await p.evaluate(() => { SAAL.zone = saalZonen()[1]; saalEditZeichnen(); });
-  const zwei = await p.evaluate(() => ({ neu: !!document.querySelector("[data-sp-kueche-neu]"), satz: ([...document.querySelectorAll("#spEdit .sp-editblock")].pop().querySelector(".sp-hinweis") || {}).textContent || "" }));
+  const zwei = await p.evaluate(() => ({ neu: !!document.querySelector("[data-sp-kueche-neu]"), satz: (([...document.querySelectorAll("#spEdit .sp-editblock")].find(b => (b.querySelector(".sp-editname") || {}).textContent === "Küche") || document.body).querySelector(".sp-hinweis") || {}).textContent || "" }));
   pruef(!zwei.neu && /Küche steht im Bereich/.test(zwei.satz), "in der Terrasse: kein zweites „einzeichnen“, der Satz nennt den Bereich mit der Küche", zwei.satz);
   /* Auch erzwungen darf es nur eine geben */
   await p.click("[data-sp-speichern]"); await p.waitForTimeout(300);

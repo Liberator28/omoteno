@@ -45,6 +45,8 @@ const ADMIN = "file://" + (process.env.ADMIN_DATEI ? path.resolve(process.env.AD
 let fehler = 0;
 const pruef = (g, t, z) => { console.log((g ? "  ok   " : "  FEHL ") + t + (z !== undefined && z !== "" ? "  → " + z : "")); if(!g) fehler++; };
 const nah = (a, b, tol) => Math.abs(a - b) <= tol;
+/* Seit 02.11. liegen die Meterfelder eingeklappt unter „Genaue Maße eintippen“ — geöffnet wird mit einem echten Tipp. */
+const genau = async p => { if(!(await p.evaluate(() => { const d = document.querySelector("#spEdit [data-sp-genau]"); return !d || d.open; }))) await p.click("#spEdit [data-sp-genau] > summary"); };
 
 async function neu(br, breite, hoehe, extra){
   const ctx = await br.newContext({ viewport: { width: breite, height: hoehe }, colorScheme: "dark", ...(extra || {}) });
@@ -143,8 +145,8 @@ const imBild = (p, sel) => p.evaluate(s => {
     pruef(f5 === 1, "jede fünfte Linie ist kräftiger (zusammen in EINEM Pfad, nicht hundert Elemente)", String(f5));
     /* Tische: echte Maße der Platten (Kante aus dem gemalten Bild) */
     const platte = nr => p.evaluate(n => {
-      const g = document.querySelector('#spSvg [data-sp-tisch="demo-t' + n + '"]'), t = g && g.querySelector("polygon[fill-opacity]");
-      return t ? window.__ecken(t, SAAL_BODEN + 5.1 * SAAL_M) : null;
+      const g = document.querySelector('#spSvg [data-sp-tisch="demo-t' + n + '"]'), t = g && g.querySelector(".sp-oben");
+      return t ? window.__ecken(t, SAAL_BODEN + SAAL_TISCH_H) : null;
     }, nr);
     const lang = await platte(4), eckig = await platte(2), rund = await platte(3);
     if(lang){ const a = Math.hypot(lang[1].x - lang[0].x, lang[1].y - lang[0].y), b = Math.hypot(lang[2].x - lang[1].x, lang[2].y - lang[1].y);
@@ -155,7 +157,7 @@ const imBild = (p, sel) => p.evaluate(s => {
       pruef(nah(d, 1.05, 0.06), "Tisch 3 (rund): Durchmesser der Platte 1,05 m", d.toFixed(2)); }else pruef(false, "Tisch 3 hat keine gemalte Platte");
     /* Tische stehen an ihrem Anteil des Raumes */
     const lage = await p.evaluate(() => {
-      const r = document.querySelector('#spSvg [data-sp-tisch="demo-t2"] polygon[fill-opacity]'), e = window.__ecken(r, SAAL_BODEN + 5.1 * SAAL_M);
+      const r = document.querySelector('#spSvg [data-sp-tisch="demo-t2"] .sp-oben'), e = window.__ecken(r, SAAL_BODEN + SAAL_TISCH_H);
       return { x: (e[0].x + e[2].x) / 2, y: (e[0].y + e[2].y) / 2, t: SAAL.tische.find(t => t.id === "demo-t2") };
     });
     const e1o = e1[0];
@@ -171,7 +173,8 @@ const imBild = (p, sel) => p.evaluate(s => {
     pruef(nah(tw, 7.12, 0.06) && nah(td, 0.92, 0.06), "die Theke ist gemalt 7 × 0,8 m (mit 6 cm Überstand der Platte)", tw.toFixed(2) + " × " + td.toFixed(2));
     pruef(nah(thWelt[0].x, e1o.x + 2.5 - 0.06, 0.06) && nah(thWelt[0].y, e1o.y + 7.6 - 0.06, 0.06), "und steht 2,5 m von links, 7,6 m von hinten im Raum", thWelt[0].x.toFixed(2) + "/" + thWelt[0].y.toFixed(2));
     const hocker = await p.evaluate(() => document.querySelectorAll("#spSvg .sp-k-hocker").length);
-    pruef(hocker === 7, "sieben Hocker an einer 7-m-Theke (je 0,9 m)", String(hocker));
+    /* Barhocker stehen 0,6 m auseinander (wie an einer echten Theke, 02.11.; vorher 0,9 m). */
+    pruef(hocker === 11, "elf Hocker an einer 7-m-Theke (je 0,6 m)", String(hocker));
     pruef(pf.length === 0, "kein Seitenfehler", pf.join(" | "));
     await ctx.close();
   }
@@ -290,6 +293,7 @@ const imBild = (p, sel) => p.evaluate(s => {
     const glider = await p.evaluate(() => { const t = document.querySelector(".sp-tabs"); return { w: parseFloat(getComputedStyle(t, "::before").width), gesamt: t.getBoundingClientRect().width }; });
     pruef(nah(glider.w, (glider.gesamt - 8) / 4, 3), "die Auswahl-Pille ist ein Viertel breit (nicht ein Drittel wie bei drei Reitern)", glider.w.toFixed(1) + " von " + glider.gesamt.toFixed(1));
     await p.click('[data-sp-tab="masse"]');
+    await genau(p);
     const felder = await p.evaluate(() => [...document.querySelectorAll('#spEdit input[data-sp-rm]')].map(i => ({ f: i.dataset.spRm, v: i.value, fs: parseFloat(getComputedStyle(i).fontSize), h: i.getBoundingClientRect().height, ph: i.placeholder })));
     pruef(felder.length === 4 && felder.every(f => f.fs >= 16 && f.h >= 44), "vier Maßfelder (Breite, Tiefe, Lage links/hinten), 16 px, ≥ 44 px hoch", JSON.stringify(felder.map(f => f.f + "=" + f.v)));
     pruef(felder.find(f => f.f === "x").v === "" && felder.find(f => f.f === "x").ph === "0", "Lage leer = automatisch, der Platzhalter nennt den berechneten Wert");
@@ -319,7 +323,7 @@ const imBild = (p, sel) => p.evaluate(s => {
     const t1 = seitenlaenge(await boden(p, "Haupt-Raum"));
     pruef(nah(t1.t, 7.5, 0.05), "Tiefe „7.5“ (mit Punkt) gilt wie „7,5“", t1.t.toFixed(2));
     /* Tische wandern anteilig mit */
-    const anteil = await p.evaluate(() => { const r = document.querySelector('#spSvg [data-sp-tisch="demo-t2"] polygon[fill-opacity]'), e = window.__ecken(r, SAAL_BODEN + 5.1 * SAAL_M), bo = window.__ecken(document.querySelector('#spSvg .sp-raum[data-sp-raum="Haupt-Raum"] .sp-boden'), SAAL_BODEN), t = SAAL.tische.find(x => x.id === "demo-t2");
+    const anteil = await p.evaluate(() => { const r = document.querySelector('#spSvg [data-sp-tisch="demo-t2"] .sp-oben'), e = window.__ecken(r, SAAL_BODEN + SAAL_TISCH_H), bo = window.__ecken(document.querySelector('#spSvg .sp-raum[data-sp-raum="Haupt-Raum"] .sp-boden'), SAAL_BODEN), t = SAAL.tische.find(x => x.id === "demo-t2");
       return { x: ((e[0].x + e[2].x) / 2 - bo[0].x) / 15.5 * 100, y: ((e[0].y + e[2].y) / 2 - bo[0].y) / 7.5 * 100, soll: [t.x, t.y] }; });
     pruef(nah(anteil.x, anteil.soll[0], 0.8) && nah(anteil.y, anteil.soll[1], 0.8), "Tisch 2 bleibt bei " + anteil.soll[0] + " % × " + anteil.soll[1] + " % — er wandert mit dem Raum", anteil.x.toFixed(1) + " % × " + anteil.y.toFixed(1) + " %");
     /* Theke anlegen und klemmen */
@@ -358,7 +362,7 @@ const imBild = (p, sel) => p.evaluate(s => {
     });
     await p.mouse.move(ziel.von.x, ziel.von.y); await p.mouse.down(); await p.mouse.move(ziel.nach.x, ziel.nach.y, { steps: 8 }); await p.mouse.up();
     await p.waitForTimeout(120);
-    const v6 = await p.evaluate(() => { const v = SAAL.entwurf.get("demo-t6"); const e = window.__ecken(document.querySelector('#spSvg [data-sp-tisch="demo-t6"] polygon[fill-opacity]'), SAAL_BODEN + 5.1 * SAAL_M), bo = window.__ecken(document.querySelector('#spSvg .sp-raum[data-sp-raum="Haupt-Raum"] .sp-boden'), SAAL_BODEN);
+    const v6 = await p.evaluate(() => { const v = SAAL.entwurf.get("demo-t6"); const e = window.__ecken(document.querySelector('#spSvg [data-sp-tisch="demo-t6"] .sp-oben'), SAAL_BODEN + SAAL_TISCH_H), bo = window.__ecken(document.querySelector('#spSvg .sp-raum[data-sp-raum="Haupt-Raum"] .sp-boden'), SAAL_BODEN);
       return { x: v.x, y: v.y, mx: (e[0].x + e[2].x) / 2 - bo[0].x, my: (e[0].y + e[2].y) / 2 - bo[0].y }; });
     pruef(nah(v6.mx, 9, 0.3) && nah(v6.my, 3, 0.3), "Tisch 6 gezogen: er steht dort, wo der Zeiger losließ (9 × 3 m vom Eck)", v6.mx.toFixed(2) + " × " + v6.my.toFixed(2) + " m");
     pruef(nah(v6.x, 9 / 15.5 * 100, 1) && nah(v6.y, 3 / 7.5 * 100, 1) && v6.x === Math.round(v6.x), "gespeichert wird der ANTEIL des Raumes als ganze Zahl (die Spalten x/y verlangen 0–100)", v6.x + " % × " + v6.y + " %");
@@ -386,7 +390,7 @@ const imBild = (p, sel) => p.evaluate(s => {
     pruef(pf.length === 0, "kein Seitenfehler im Einrichten", pf.join(" | "));
     /* Speichern: Nutzlast, Gründe */
     await p.click("[data-sp-abbrechen]");
-    await p.click('[data-sp-wz="einrichten"]'); await p.click('[data-sp-tab="masse"]');
+    await p.click('[data-sp-wz="einrichten"]'); await p.click('[data-sp-tab="masse"]'); await genau(p);
     await p.fill('#spEdit [data-sp-rm="b"]', "14"); await p.fill('#spEdit [data-sp-rm="t"]', "8,5");
     await p.click("[data-sp-theke-neu]");
     await p.evaluate(() => { window.__rpc.length = 0; window.__antwort = { data: { ok: false, grund: "form" }, error: null }; });
@@ -411,7 +415,7 @@ const imBild = (p, sel) => p.evaluate(s => {
         ? { select: () => { const o = { eq: () => o, maybeSingle: () => Promise.resolve({ data: { daten }, error: null }) }; return o; } }
         : { select: () => { const o = { eq: () => o, order: () => o, then: f => f({ data: [{ id: "demo-t2", nummer: "2", aktiv: true, x: 50, y: 50, form: "eckig", plaetze: 4, zone: "Haupt-Raum" }], error: null }) }; return o; } } };
       await saalLaden("b-1");
-      const bo = window.__ecken(document.querySelector('#spSvg .sp-raum[data-sp-raum="Haupt-Raum"] .sp-boden'), SAAL_BODEN), t = window.__ecken(document.querySelector('#spSvg [data-sp-tisch="demo-t2"] .sp-treffer') ? document.querySelector('#spSvg [data-sp-tisch="demo-t2"] polygon[fill="rgb(255,255,255)"]') : null, SAAL_BODEN + 5.1 * SAAL_M);
+      const bo = window.__ecken(document.querySelector('#spSvg .sp-raum[data-sp-raum="Haupt-Raum"] .sp-boden'), SAAL_BODEN), t = window.__ecken(document.querySelector('#spSvg [data-sp-tisch="demo-t2"] .sp-treffer') ? document.querySelector('#spSvg [data-sp-tisch="demo-t2"] .sp-oben') : null, SAAL_BODEN + SAAL_TISCH_H);
       return { b: SAAL.konfig.raeume[0].b, th: SAAL.konfig.raeume[0].theken.length, zonen: SAAL.konfig.zonen, boden: Math.hypot(bo[1].x - bo[0].x, bo[1].y - bo[0].y), mitte: (t[0].x + t[2].x) / 2 - bo[0].x };
     }, a.a.p_daten);
     pruef(neuLaden.b === 14 && neuLaden.th === 2 && nah(neuLaden.boden, 14, 0.05), "nach dem Neuladen steht der gespeicherte Raum da (14 m, 2 Theken) — am gemalten Boden gemessen", JSON.stringify(neuLaden));
