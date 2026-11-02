@@ -38,7 +38,8 @@ function gerichteZeilen(bildName){
         uhr, sprache, farbe ("hell" | "dunkel" für die Wahl des Gastes), stil ("premium" erzwingen, auch bei Häusern ohne
         Schalter), layout (Objekt wie markenblatt.startlayout, null = ohne), korb ([Gerichtname, …]), hash, reduziert, skala,
         karten (Liste wie betriebe.karten, z. B. [{id:"cocktails",name:"Cocktails",aktiv:false}]), vorschau (true: wie im Board-Rahmen, vorschauSetzen() nimmt Entwürfe), optionen (Objekt wie betriebe.optionen: Gruppen für Extras/Beilagen), bloecke (Liste wie betriebe.hub_bloecke, null = ohne Aufbau), dist (anderer dist-Ordner, auch HUB_DIST), texte (Objekt wie betriebe.hub_texte), startgrafik (Objekt wie markenblatt.startgrafik, null = ohne), zeilen (Funktion: ändert die nachgestellten Gerichtzeilen — Preis, Allergene, Merkmale), gerichteFehler (true: die
-        Datenbank antwortet 500), initSkript (Text, läuft vor der Seite), hubstil (Objekt: weitere Schlüssel von betriebe.hub_stil), liefer (Objekt wie betriebe.liefer) */
+        Datenbank antwortet 500), initSkript (Text, läuft vor der Seite), hubstil (Objekt: weitere Schlüssel von betriebe.hub_stil), liefer (Objekt wie betriebe.liefer),
+        routen (async p => …: weitere page.route vor dem Laden) */
 async function oeffneHub(browser, opt){
   opt = opt || {};
   const haus = opt.haus || "chocolamour";
@@ -80,6 +81,8 @@ async function oeffneHub(browser, opt){
     }
     return r.fulfill({ status: 200, contentType: "application/json", body: "[]" });
   });
+  /* routen: weitere Antworten (z. B. die Emoji-Dateien von der Platte) — später angemeldet, also vorrangig. */
+  if(opt.routen) await opt.routen(p);
   await p.goto("file://" + path.join(opt.dist || process.env.HUB_DIST || DIST, haus, "index.html") + (opt.hash || "#/"));
   await p.waitForTimeout(1200);
   /* Öffnungszeiten selbst festlegen (der Hub liest sie aus dem Markenblatt). */

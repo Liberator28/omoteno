@@ -445,6 +445,18 @@ body[data-logo="eigen"] .logo > :not(.led):not(.logo-eigen){display:none}
 body[data-logoform="eckig"] .logo,
 body[data-logoform="eckig"] .logo::before,
 body[data-logoform="eckig"] .logo .led{border-radius:22%}
+/* Wahlen aus dem Board (C3a, 02.11.): Bildausschnitt, Abdunkeln, Logogröße (hub_stil.kopf). Ohne Wahl setzt kopfAnwenden()
+   kein Attribut, und keine dieser Regeln greift. Die Logo-Mitte bleibt auf der Bildkante: der Versatz hängt an --logo-gr. */
+body[data-kopflage="oben"] .kopfbild img{object-position:50% 0}
+body[data-kopflage="unten"] .kopfbild img{object-position:50% 100%}
+.kopfbild[data-dunkel]::before{content:"";position:absolute;inset:0;pointer-events:none;background:rgba(0,0,0,var(--kopf-dunkel,0))}
+body[data-logogr="klein"]{--logo-faktor:.82}
+body[data-logogr="gross"]{--logo-faktor:1.2}
+body[data-logogr][data-ansicht="start"]:not([data-kopfbild="an"]):not([data-startstil="premium"]) .logo,
+body[data-logogr][data-ansicht="start"]:not([data-kopfbild="an"]):not([data-startstil="premium"]) .logo svg{
+  width:calc(58px * var(--logo-faktor,1));height:calc(58px * var(--logo-faktor,1))}
+body[data-logogr][data-ansicht="start"][data-kopfbild="an"] .logo{--logo-gr:calc(80px * var(--logo-faktor,1))}
+body[data-logogr][data-startstil="premium"][data-ansicht="start"] .logo{--logo-gr:calc(var(--p-logo,104px) * var(--logo-faktor,1))}
 
 h1{
   grid-area:titel;font-size:23px;line-height:1.18;margin:0;
@@ -4623,6 +4635,9 @@ div.ak-info{cursor:default}
   border-radius:var(--rundung-klein);
 }
 .begleiter .figur{flex:none}
+/* Größe aus dem Board (hub_stil.figur.groesse, C3a); ohne Wahl keine Klasse, 48 px wie gezeichnet. */
+.begleiter.b-gr-klein .figur{width:40px;height:40px}
+.begleiter.b-gr-gross .figur{width:60px;height:60px}
 .begleiter p{margin:0;font-size:14px;line-height:1.45;color:var(--tinte-leise)}
 .begleiter p b{color:var(--tinte);font-weight:600}
 /* Die Figur lebt (Wunsch 10.10.: „mehr Figuren und Animationen“).
@@ -7234,6 +7249,38 @@ function bewegteZeichenAn(){
   if(typeof MARKENBLATT.bewegteZeichen === "boolean") return MARKENBLATT.bewegteZeichen;
   return true;
 }
+/* Bewegte Emojis, drei Wahlen aus dem Board (C3a, 02.11.): Tempo, wo, einmal. Feste Werte, sonst die Vorgabe
+   (normal, überall, wiederholt) — dieselbe Liste im Board (EMOJI_WAHL). Die Foodroulette bleibt immer bewegt:
+   dort IST das Zeichen der Inhalt. */
+function emojiWahl(){
+  const h = (HUBSTIL && typeof HUBSTIL === "object") ? HUBSTIL : {};
+  return { tempo: h.emojiTempo === "ruhig" ? "ruhig" : "",
+           wo: (h.emojiWo === "kacheln" || h.emojiWo === "karte") ? h.emojiWo : "",
+           einmal: h.emojiEinmal === true };
+}
+/* Der Ort steht im Schlüssel des Platzes (bzHTML: "kachel:…", "ks:…" …). */
+const BZ_ORTE = { kacheln: /^(kachel|sz|ruf):/, karte: /^(ks|kst|tl|chip|eh):/ };
+function bzOrtErlaubt(el){
+  const wo = emojiWahl().wo;
+  if(!wo || el.closest(".ed-seite")) return true;
+  return BZ_ORTE[wo].test(el.dataset.bzSchl || "");
+}
+const bzEinmalGespielt = new Set();
+function bzSchluessel(el){ return bzBesuch + "|" + (el.dataset.bzSchl || el.dataset.bz); }
+/* Figur des Hauses (hub_stil.figur, C3a): Größe des Begleiters, wo er steht, Stimmung am Abend. */
+const FIGUR_GROESSEN = ["klein", "gross"], FIGUR_WO = ["start", "aus"];
+/* Nur die drei Stimmungen — AVATAR_ZUEGE kennt dazu Haltungen für Requisiten, die keine Stimmung sind (wie AV_ZUEGE im Board). */
+const FIGUR_STIMMUNGEN = ["freundlich", "ruhig", "witzig"];
+function figurWahl(){
+  const f = HUBSTIL && HUBSTIL.figur;
+  const o = (f && typeof f === "object" && !Array.isArray(f)) ? f : {};
+  return { groesse: typeof o.groesse === "string" && FIGUR_GROESSEN.indexOf(o.groesse) >= 0 ? o.groesse : "",
+           wo: typeof o.wo === "string" && FIGUR_WO.indexOf(o.wo) >= 0 ? o.wo : "",
+           abendArt: typeof o.abendArt === "string" && FIGUR_STIMMUNGEN.indexOf(o.abendArt) >= 0 ? o.abendArt : "" };
+}
+/* Fingerabdruck dessen, was ein Neuzeichnen braucht, wenn es sich ändert. */
+function aussehenFp(){ return JSON.stringify([bewegteZeichenAn(), emojiWahl(), figurWahl()]); }
+const AUSSEHEN_SCHL = ["emoji", "emojiTempo", "emojiWo", "emojiEinmal", "figur"];
 /* Sieht der Gast, wie lange es noch dauert — oder nur, dass gerade
    gearbeitet wird? Wahl des Betriebs im Board (hub_stil.restzeit).
    Strikt boolean, sonst an: So war es vorher, und ein kaputter Wert
@@ -7386,7 +7433,12 @@ function bzStartenJetzt(el){
        nach einer Atempause WIEDER: Vorher lief jeder Film genau einmal
        je Besuch und blieb danach stehen (gemessen: Orange in der
        Entscheidungshilfe, Bild 19→99 in 1,6 s, danach für immer p99). */
-    anim.addEventListener("complete", () => { anim.goToAndStop(ruhe, true); bzNochmal(el); });
+    if(emojiWahl().tempo === "ruhig") anim.setSpeed(0.6);
+    anim.addEventListener("complete", () => {
+      anim.goToAndStop(ruhe, true);
+      if(emojiWahl().einmal && !el.closest(".ed-seite")) bzEinmalGespielt.add(bzSchluessel(el));
+      bzNochmal(el);
+    });
     anim.addEventListener("DOMLoaded", () => {
       el.classList.add("bz-bereit");
       bzSichtBeobachten(el);
@@ -7413,7 +7465,7 @@ function bzVerdrahten(){
     }
   });
   if(!bewegteZeichenAn()) return;
-  const els = document.querySelectorAll(".bz:not([data-bz-los])");
+  const els = Array.prototype.filter.call(document.querySelectorAll(".bz:not([data-bz-los])"), bzOrtErlaubt);
   if(!els.length) return;
   if(!("IntersectionObserver" in window)){ els.forEach(bzStarten); return; }
   if(!bzBeob) bzBeob = new IntersectionObserver(eintraege => eintraege.forEach(e => {
@@ -7471,7 +7523,9 @@ function bzNochmal(el){
   if(!el || !el._bz || bzRuhig() || !bewegteZeichenAn()) return;
   clearTimeout(el._bzUhr);
   const dauer = !!el.closest(".ed-seite");
-  const pause = dauer ? 400 + Math.random() * 800 : 2500 + Math.random() * 3500;
+  /* „Einmal“: nach dem ersten ganzen Durchlauf an diesem Platz plant hier nichts mehr — ein Tipp spielt trotzdem. */
+  if(!dauer && emojiWahl().einmal && bzEinmalGespielt.has(bzSchluessel(el))) return;
+  const pause = (dauer ? 400 + Math.random() * 800 : 2500 + Math.random() * 3500) * (emojiWahl().tempo === "ruhig" ? 1.6 : 1);
   el._bzUhr = setTimeout(() => {
     el._bzUhr = 0;
     if(!el.isConnected) return;
@@ -9695,7 +9749,19 @@ function hausText(alle, gruppe, schluessel){
 /* Ab hier wieder Hub: die dünne Hülle, die das Markenblatt liest. */
 function avatarArt(){
   const a = (typeof MARKENBLATT === "object" && MARKENBLATT.avatar) || {};
+  const abendArt = figurWahl().abendArt;
+  if(abendArt && figurAbend()) return abendArt;
   return AVATAR_ZUEGE[a.art] ? a.art : "freundlich";
+}
+/* Abend nach der Uhr des Hauses (Markenblatt abend.ab, sonst 18 Uhr) — nicht nach der Lichtwahl des Gastes: wer
+   mittags „Dunkel“ wählt, bekommt keine Abendstimmung. `stunde` steht weiter unten (let): vorher gelesen wirft sie
+   (TDZ, §8.1l), dann gilt die Uhr des Geräts. */
+function figurAbend(){
+  let h;
+  try{ h = stunde; }catch(e){ h = new Date().getHours(); }
+  const mb = (typeof MARKENBLATT === "object" && MARKENBLATT) || {};
+  const ab = (mb.abend && typeof mb.abend.ab === "number") ? mb.abend.ab : 18;
+  return h >= ab || h < 5;
 }
 
 /* Fehlt figur im Markenblatt, bleibt es der Untersetzer. Ein altes
@@ -9754,6 +9820,8 @@ function phasenBild(status, ersatz, groesse){
 
 const BEGLEITER_GEGRUESST = new Set();
 function begleiterHTML(anlass){
+  const fw = figurWahl();
+  if(fw.wo === "aus" || (fw.wo === "start" && anlass !== "start")) return "";
   const eigen = hausText(MARKENBLATT.texte, "figur", anlass);
   const satz = eigen || (AVATAR_TEXTE[anlass] || {})[avatarArt()];
   if(!satz) return "";
@@ -9769,7 +9837,7 @@ function begleiterHTML(anlass){
      Prüfung beantwortet die Datenbank mit [] und zeichnet nie neu. */
   const neu = !BEGLEITER_GEGRUESST.has(anlass);
   if(neu && ruhigeBewegung()) BEGLEITER_GEGRUESST.add(anlass);
-  return '<div class="begleiter' + (neu ? " b-hallo" : "") + '" data-anlass="' + hs(anlass) + '">' + avatarSVG(48) + '<p>' +
+  return '<div class="begleiter' + (neu ? " b-hallo" : "") + (fw.groesse ? " b-gr-" + fw.groesse : "") + '" data-anlass="' + hs(anlass) + '">' + avatarSVG(48) + '<p>' +
          (eigen || t(satz)) + '</p></div>';
 }
 
@@ -21694,10 +21762,17 @@ function kopfBildOk(u){
                   /^data:image\/(jpeg|webp|png);base64,[A-Za-z0-9+/=]{20,}$/.test(u))) return u;
   return "";
 }
+/* C3a: Ausschnitt, Abdunkeln (in %), Logogröße — nur aufgenommen, wenn der Wert in der Liste steht. Die Vorgaben
+   (Mitte, nicht abgedunkelt, normal) stehen nie im Objekt: ohne Wahl bleibt der Merkwert wie vorher. */
+const KOPF_LAGEN = ["oben", "unten"], KOPF_DUNKEL = [10, 20, 30, 40, 50], LOGO_GROESSEN = ["klein", "gross"];
 function kopfPruefen(k){
   const o = (k && typeof k === "object" && !Array.isArray(k)) ? k : {};
-  return { bild: kopfBildOk(o.bild), logo: kopfBildOk(o.logo),
-           form: o.form === "eckig" ? "eckig" : "rund" };
+  const r = { bild: kopfBildOk(o.bild), logo: kopfBildOk(o.logo),
+              form: o.form === "eckig" ? "eckig" : "rund" };
+  if(typeof o.lage === "string" && KOPF_LAGEN.indexOf(o.lage) >= 0) r.lage = o.lage;
+  if(typeof o.dunkel === "number" && KOPF_DUNKEL.indexOf(o.dunkel) >= 0) r.dunkel = o.dunkel;
+  if(typeof o.logoGroesse === "string" && LOGO_GROESSEN.indexOf(o.logoGroesse) >= 0) r.logoGroesse = o.logoGroesse;
+  return r;
 }
 /* Setzt Kopfbild und Logo. Gibt zurück, ob sich etwas geändert hat. */
 function kopfAnwenden(k){
@@ -21715,6 +21790,12 @@ function kopfAnwenden(k){
   if(logoFeld) logoFeld.innerHTML = neu.logo ? '<img src="' + hs(neu.logo) + '" alt="" decoding="async">' : "";
   if(neu.logo) b.dataset.logo = "eigen"; else delete b.dataset.logo;
   if(neu.logo && neu.form === "eckig") b.dataset.logoform = "eckig"; else delete b.dataset.logoform;
+  if(neu.lage) b.dataset.kopflage = neu.lage; else delete b.dataset.kopflage;
+  if(neu.logoGroesse) b.dataset.logogr = neu.logoGroesse; else delete b.dataset.logogr;
+  if(bildFeld){
+    if(neu.dunkel){ bildFeld.dataset.dunkel = String(neu.dunkel); bildFeld.style.setProperty("--kopf-dunkel", String(neu.dunkel / 100)); }
+    else if("dunkel" in bildFeld.dataset){ delete bildFeld.dataset.dunkel; bildFeld.style.removeProperty("--kopf-dunkel"); }
+  }
   return true;
 }
 /* Erster Anstrich wie beim letzten Besuch — sonst springt der Kopf um
@@ -21898,6 +21979,13 @@ function betriebsTeileAnwenden(z, immer){
       const vorher = wzWahl();
       wzVorschau = WZ_ARTEN.indexOf(z.hub_stil.lade) >= 0 ? z.hub_stil.lade : "figur";
       if(wzWahl() !== vorher) wzZeigen();
+    }
+    /* Figur und bewegte Emojis (C3a): in der Vorschau sofort. Geprüft wird beim Lesen (figurWahl, emojiWahl). */
+    if(z.hub_stil && typeof z.hub_stil === "object" && AUSSEHEN_SCHL.some(k => k in z.hub_stil)){
+      const vorher = aussehenFp(), h = Object.assign({}, HUBSTIL);
+      AUSSEHEN_SCHL.forEach(k => { if(k in z.hub_stil) h[k] = z.hub_stil[k]; });
+      HUBSTIL = h;
+      if(aussehenFp() !== vorher) neu = true;
     }
     /* Stil der Speisekarte: in der Vorschau sofort, aus derselben festen Liste. */
     if(z.hub_stil && typeof z.hub_stil === "object" && "karte" in z.hub_stil){
@@ -22157,9 +22245,15 @@ async function karteHolen(erstesMal){
        boolean. Ändert es den Stand, wird neu gezeichnet. */
     const stil = b[0].hub_stil;
     if(stil && typeof stil === "object" && !Array.isArray(stil)){
-      const vorher = bewegteZeichenAn(), restVorher = restzeitZeigen(), stilVorher = kartenStil();
+      const vorher = aussehenFp(), restVorher = restzeitZeigen(), stilVorher = kartenStil();
       HUBSTIL = stil;
-      if(bewegteZeichenAn() !== vorher || kartenStil() !== stilVorher) zeichne();
+      /* In der Vorschau liegt der Entwurf über dem Stand der Datenbank (wie bei Farben und Kopf). */
+      if(VORSCHAU && vorschauEntwurf && vorschauEntwurf.hub_stil && typeof vorschauEntwurf.hub_stil === "object"){
+        const h = Object.assign({}, stil);
+        AUSSEHEN_SCHL.forEach(k => { if(k in vorschauEntwurf.hub_stil) h[k] = vorschauEntwurf.hub_stil[k]; });
+        HUBSTIL = h;
+      }
+      if(aussehenFp() !== vorher || kartenStil() !== stilVorher) zeichne();
       /* Szene des Grußes merken (nur Geprüftes) und — steht der Schirm
          noch — sofort tauschen. */
       if(WZ_ARTEN.indexOf(stil.lade) >= 0){ try{ localStorage.setItem(WZ_MERK, stil.lade); }catch(e){} }

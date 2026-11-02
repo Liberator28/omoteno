@@ -337,7 +337,14 @@ const kopfMessen = p => p.evaluate(m => {
       window.__schreib = []; window.__hoch = [];
       function antwort(z){
         if(z.op !== "select"){ window.__schreib.push({ tab:z.tab, op:z.op, daten:JSON.parse(JSON.stringify(z.daten || null)) });
+          /* Wie PostgREST: update … select("id") gibt die getroffenen Zeilen zurück; der neue Stand bleibt für das
+             nächste frische Lesen stehen (Board liest vor dem Schreiben, C3a). */
+          if(z.tab === "betriebe" && z.op === "update"){
+            if(z.daten && z.daten.hub_stil) bb.hub_stil = JSON.parse(JSON.stringify(z.daten.hub_stil));
+            return { data: z.mitZeilen ? [{ id: bb.id }] : null, error:null };
+          }
           return { data:null, error:null }; }
+        if(z.tab === "betriebe" && z.einzeln) return { data:{ hub_stil: JSON.parse(JSON.stringify(bb.hub_stil)) }, error:null };
         if(z.tab === "betrieb_mitglieder") return { data:[{ rolle:bb.rolle, betriebe:Object.assign({}, bb) }], error:null };
         return { data: z.einzeln ? null : [], error:null };
       }
@@ -346,7 +353,8 @@ const kopfMessen = p => p.evaluate(m => {
         const p = new Proxy(function(){}, { get(_, k){
           if(k === "then") return res => res(antwort(z));
           return (...a) => { if(["update","insert","upsert","delete"].includes(k)){ z.op = k; z.daten = a[0]; }
-            if(k === "maybeSingle" || k === "single") z.einzeln = true; return p; }; }, apply(){ return p; } });
+            if(k === "maybeSingle" || k === "single") z.einzeln = true;
+            if(k === "select" && z.op !== "select") z.mitZeilen = true; return p; }; }, apply(){ return p; } });
         return p;
       }
       const speicher = { upload: async (pfad, blob, o) => { window.__hoch.push({ pfad, typ:o && o.contentType, gr:blob.size }); return { error:null }; },
