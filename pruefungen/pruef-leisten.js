@@ -257,9 +257,10 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
     ok(ink === 0, "mit fokussiertem Eingabefeld wird nicht verschoben (Tastatur)", String(ink));
     /* Ein Schalter im Fokus ist keine Tastatur: Die Verankerung bleibt an (die erste Fassung nahm jedes INPUT aus). */
     await p.evaluate(() => { document.getElementById("ankerProbe").remove(); Object.defineProperty(window, "visualViewport", { configurable:true, value:{ offsetTop:0, height:document.documentElement.clientHeight + 120, addEventListener(){} } }); });
-    const chk = await p.evaluate(() => { const i = document.createElement("input"); i.type = "checkbox"; i.id = "ankerSchalter"; document.body.appendChild(i); i.focus(); const v = leisteAnkern(); i.remove(); return v; });
+    /* Ruhezustand ausdrücklich: das fokussierte Testfeld davor hat die Seite gerollt (Ruhe-Sperre, 01.11.). */
+    const chk = await p.evaluate(() => { leisteBewegtUm = -1e9; const i = document.createElement("input"); i.type = "checkbox"; i.id = "ankerSchalter"; document.body.appendChild(i); i.focus(); const v = leisteAnkern(); i.remove(); return v; });
     ok(chk === 120, "ein fokussierter SCHALTER (Checkbox) hält die Verankerung nicht an", String(chk));
-    const txt = await p.evaluate(() => { const i = document.createElement("input"); i.type = "email"; i.id = "ankerMail"; document.body.appendChild(i); i.focus(); const v = leisteAnkern(); i.remove(); return v; });
+    const txt = await p.evaluate(() => { leisteBewegtUm = -1e9; const i = document.createElement("input"); i.type = "email"; i.id = "ankerMail"; document.body.appendChild(i); i.focus(); const v = leisteAnkern(); i.remove(); return v; });
     ok(txt === 0, "ein fokussiertes Textfeld (E-Mail) schon (Tastatur)", String(txt));
     ok(kons.length === 0, "keine Ausnahme", kons[0] || "still");
     await ctx.close();
@@ -285,12 +286,20 @@ const ok = (g,t,z) => { console.log((g?"  ok   ":"  FEHL ")+t+(z?"  → "+z:""))
       Object.defineProperty(window, "visualViewport", { configurable:true, get(){ return window.__vvStand; } });
     });
     const v = () => p.evaluate(() => document.documentElement.style.getPropertyValue("--vv-versatz"));
+    /* Seit 01.11. (Meldung: „der Balken verschiebt sich mit der Seite“): ein Ereignis des visualViewport ist BEWEGUNG — mitten im
+       Strom ändert sich nichts, gerechnet wird in Ruhe (LEISTE_RUHE nach dem letzten Ereignis). Vorher rechnete jedes Ereignis
+       sofort und schob die Leiste beim Ein-/Ausfahren der Adressleiste mit. */
     await p.evaluate(() => window.__echt.dispatchEvent(new Event("resize")));
     await p.waitForTimeout(120);
-    ok(await v() === "90px", "ein echtes „resize“ am visualViewport rechnet neu", await v());
-    await p.evaluate(() => { window.__vvStand.height = document.documentElement.clientHeight + 30; window.__echt.dispatchEvent(new Event("scroll")); });
+    ok(await v() === "0px", "mitten im Ereignisstrom (resize vor 120 ms): die Leiste bleibt, wo sie ist", await v());
+    await p.waitForTimeout(400);
+    ok(await v() === "90px", "ein echtes „resize“ am visualViewport rechnet neu, sobald es ruhig ist", await v());
+    /* scroll UND resize am Fenster (Safari schickt beim Ein-/Ausfahren beides): resize rechnet sofort — die Ruhe-Sperre muss halten. */
+    await p.evaluate(() => { window.__vvStand.height = document.documentElement.clientHeight + 30; window.__echt.dispatchEvent(new Event("scroll")); window.dispatchEvent(new Event("resize")); });
     await p.waitForTimeout(120);
-    ok(await v() === "30px", "ein echtes „scroll“ am visualViewport rechnet neu", await v());
+    ok(await v() === "90px", "mitten im Rollen (scroll vor 120 ms): kein Sprung", await v());
+    await p.waitForTimeout(400);
+    ok(await v() === "30px", "ein echtes „scroll“ am visualViewport rechnet neu, sobald es ruhig ist", await v());
     /* Nachlaufen: nach dem letzten Ereignis ändert sich der Stand ohne weiteres Ereignis (Einrasten nach dem Pinch). */
     await p.evaluate(() => { window.__echt.dispatchEvent(new Event("resize")); });
     await p.waitForTimeout(70);   /* der Bildlauf-Takt hat gerechnet (30 px), danach rastet der Stand ein — OHNE Ereignis */

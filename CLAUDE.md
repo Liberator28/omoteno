@@ -919,6 +919,21 @@ weiter auf keinem Gerät gesehen; `?leiste=mess` zeigt die Zahlen für ein Foto 
 > gleich; die Messanzeige nennt „hängt/höchst“. **Ehrliche Grenze:** nachgestellt, nicht auf
 > einem Gerät gesehen; laut WebKit ist der Fehler in iOS 26.1 behoben.
 
+> **Fünfte Runde (01.11., gemeldet vom Nutzer: „der Auswahl-Balken hängt nicht unten fest, er verschiebt sich mit der
+> Seite“ — nachdem ich die Prüfungen als grün gemeldet hatte).** Jedes Rollereignis rechnete den Versatz neu. Fährt
+> Safari beim Rollen seine Leiste ein, meldet `visualViewport` die neue Höhe sofort, der Layout-Bereich zieht erst nach,
+> und der Browser führt die festen Leisten in der Zeit SELBST nach — der Versatz kam obendrauf. Nachgestellt: 0 → 70 px
+> über zwölf Rollschritte. Keine Prüfung hatte je gerollt, während sich die Höhe ändert: Sie riefen `leisteAnkern()`
+> direkt und maßen den Ruhezustand — und `pruef-leisten.js` verlangte sogar „ein echtes scroll rechnet neu“ (sofort).
+
+Wer eine feste Leiste gegen den Browser korrigiert, korrigiert nur in **Ruhe** (Hub und Board: `LEISTE_RUHE`, 300 ms nach
+dem letzten Rollen/Ein-/Ausfahren/Fingerzug; Zoom im Board ausgenommen). Ein Ereignisstrom ist Bewegung, kein Messwert.
+Zwei Schichten, jede einzeln belegt: Rollen ruft nur noch `leisteBewegt()` (Gegenbeweis: alte Verdrahtung → rot), und
+`leisteAnkern()` ändert in der Ruhezeit nichts, auch wenn ein `resize` dazwischenfunkt (Gegenbeweis: Sperre weg → rot).
+Proben, die den Ruhezustand messen, stellen Ruhe ausdrücklich her — ein fokussiertes Testfeld rollt die Seite.
+**Ehrliche Grenze:** nachgestellt, nicht auf dem Gerät gesehen; ob iOS nach dem Rollen in Ruhe einen bleibenden Abstand meldet
+(dann rückt die Leiste nach dem Anhalten einmal), zeigt `?leiste=mess`.
+
 ### 3.16 Wer etwas über eine Leiste setzt, die einfährt, misst die Endlage
 
 > **Vorfall, beim ersten Bildschirmfoto des schwebenden Anleitungs-Knopfs.**
