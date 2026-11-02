@@ -533,11 +533,14 @@ const LAEUFT = () => {
       window.__upd = []; window.__send = []; window.__ohneStand = !!o.ohneStand;
       const antwort = z => {
         if(z.tab === "betrieb_mitglieder") return o.ohneStand ? { data:null, error:{ message:"weg" } } : { data:[{ rolle:"inhaber", betriebe:JSON.parse(JSON.stringify(window.__bb)) }], error:null };
+        /* Wie PostgREST (seit C4 liest „Übernehmen“ frisch und zählt die Zeilen, hubStilTeilSichern): */
+        if(z.tab === "betriebe" && z.aendern) return { data:[{ id:window.__bb.id }], error:null };
+        if(z.tab === "betriebe" && z.einzeln) return { data:{ hub_stil:JSON.parse(JSON.stringify(window.__bb.hub_stil || null)) }, error:null };
         return { data: z.einzeln ? null : [], error:null };
       };
       const kette = tab => { const z = { tab, einzeln:false };
         const p = new Proxy(function(){}, { get(_, k){ if(k === "then") return res => res(antwort(z));
-          return (...a) => { if(k === "update"){ window.__upd.push({ tab, wert:a[0] }); if(tab === "betriebe") Object.assign(window.__bb, a[0]); }
+          return (...a) => { if(k === "update"){ z.aendern = true; window.__upd.push({ tab, wert:a[0] }); if(tab === "betriebe") Object.assign(window.__bb, a[0]); }
             if(k === "maybeSingle" || k === "single") z.einzeln = true; return p; }; }, apply(){ return p; } }); return p; };
       db = { from:kette, rpc: async () => ({ data:[], error:null }), channel:() => kette("kanal"), removeChannel:async () => {},
         storage:{ from:() => kette("speicher") }, functions:{ invoke:async () => ({ data:null, error:null }) },
