@@ -2213,6 +2213,7 @@ body.hell .eo-vor[aria-pressed=true]{color:var(--flaeche)}
 .kbplan-neu{min-height:44px;padding:0 14px;border-radius:999px;border:1px dashed var(--linie);
   background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
 .kbloeschen{width:100%;margin-top:6px}
+.kbkopie{width:100%;min-height:44px;margin-top:6px}
 .kartenchips button{min-height:44px;padding:0 14px;border-radius:999px;border:1px solid var(--linie);
   background:transparent;color:var(--kreide);font:inherit;font-size:14px;cursor:pointer}
 .kartenchips button[aria-pressed=true]{background:var(--messing);border-color:var(--messing);
@@ -4723,11 +4724,29 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <h2 class="etitel">Willkommen-Animation</h2>
       <p class="ehilfe">Was der Gast beim ersten Öffnen über dem Namen Ihres Hauses sieht.
         Ein Tipp zeigt sie oben in der Vorschau; Gäste sehen sie nach „Übernehmen“.</p>
+      <!-- C4 (02.11.): eine Szene oder Zufall aus mehreren (hub_stil.ladeMix), eigene Szene am Abend
+           (hub_stil.ladeAbend), „Nochmal abspielen“ in der Vorschau. -->
+      <div class="auswahlfeld">
+        <span class="lname">Welche Szene?</span>
+        <div class="segment" id="wzModus" role="radiogroup" aria-label="Eine Szene oder zufällig">
+          <button type="button" data-wahl="" role="radio" aria-checked="true">Eine Szene</button>
+          <button type="button" data-wahl="zufall" role="radio" aria-checked="false">Zufällig aus mehreren</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+        <p class="feldhilfe" id="wzModusSatz">Ein Tipp auf eine Szene wählt sie.</p>
+      </div>
       <div class="wz-wahlen" id="wzWahlen" role="radiogroup" aria-label="Willkommen-Animation"></div>
+      <button type="button" class="knopf leise" id="wzNochmal">Nochmal abspielen</button>
+      <div class="auswahlfeld">
+        <span class="lname">Am Abend</span>
+        <div class="wahlreihe" id="wzAbend" role="radiogroup" aria-label="Szene am Abend"></div>
+        <p class="feldhilfe">Ab der Abendstunde Ihres Hauses zeigt der Hub diese Szene statt der für den Tag.</p>
+      </div>
       <div class="ezeile senkrecht">
         <span><b>Übernehmen</b><i>Gilt ab dem nächsten Besuch eines Gastes</i></span>
         <div class="kbknoepfe"><button class="knopf" id="wzSichern" disabled>Übernehmen</button></div>
       </div>
+      <p class="kbhinweis" id="wzSatz" aria-live="polite"></p>
     </div>
 
     <!-- Kopf & Logo (Wunsch 11.10.): Bild ganz oben auf der Startseite,
@@ -5135,6 +5154,13 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         <button type="button" class="knopf leise" data-afb-gehe="kfGruppe">Kopf &amp; Logo</button>
       </div>
       <p class="ehilfe" id="afbLese" hidden></p>
+      <!-- C4 (02.11.): Vorlagen ordnen die vorhandenen Blöcke neu — nichts wird entfernt, nichts gespeichert. -->
+      <div class="gs-vorlagen" id="afbVorlagen" role="group" aria-label="Aufbau nach Vorlage ordnen">
+        <span class="gs-mini">Vorlage:</span>
+        <button type="button" class="gs-fknopf" data-afb-vorlage="cafe">Café</button>
+        <button type="button" class="gs-fknopf" data-afb-vorlage="restaurant">Restaurant</button>
+        <button type="button" class="gs-fknopf" data-afb-vorlage="bar">Bar</button>
+      </div>
       <div class="afb-liste" id="afbListe"></div>
       <p class="kbhinweis" id="afbSage" aria-live="polite"></p>
       <div class="kbneu">
@@ -5217,6 +5243,18 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
       <div class="bnvorschau" id="bnVorschau"></div>
       <div class="bnliste" id="bnListe"></div>
       <button type="button" class="knopf leise bnneu" id="bnNeuKnopf">+ Banner hinzufügen</button>
+      <!-- C4 (02.11.): Wechseltempo — hub_stil.bannerTakt, „Aus“ ist die Vorgabe. -->
+      <div class="auswahlfeld">
+        <span class="lname">Selbst weiterblättern</span>
+        <div class="segment" id="bnTakt" role="radiogroup" aria-label="Banner selbst weiterblättern">
+          <button type="button" data-wahl="" role="radio" aria-checked="true">Aus</button>
+          <button type="button" data-wahl="5" role="radio" aria-checked="false">Alle 5 s</button>
+          <button type="button" data-wahl="8" role="radio" aria-checked="false">Alle 8 s</button>
+          <i class="segmentschieber" aria-hidden="true"></i>
+        </div>
+        <p class="feldhilfe">Das Rad blättert von selbst zur nächsten Karte. Es hält an, sobald ein Gast es berührt, und läuft
+          nicht, wenn das Gerät „Bewegung reduzieren“ eingestellt hat.</p>
+      </div>
 
       <div class="ezeile senkrecht">
         <span><b>Übernehmen</b><i>Gäste sehen es beim nächsten Öffnen</i></span>
@@ -10320,6 +10358,10 @@ document.addEventListener("click", e => {
   if(h.id === "emTempo" || h.id === "emWo"){ if(!EM) return; EM[h.id === "emTempo" ? "tempo" : "wo"] = w; emGeaendert(); }
   else if(h.id === "fgGroesse" || h.id === "fgWo" || h.id === "fgAbend"){
     if(!FG) return; FG[{ fgGroesse:"groesse", fgWo:"wo", fgAbend:"abendArt" }[h.id]] = w; fgGeaendert(); }
+  else if(h.id === "bnTakt"){
+    if(BNTAKT === null) return;
+    BNTAKT = +w || 0; bnGeaendert = true; wahlZeigen("bnTakt", w); hvStartseite("banner");
+  }
   else if(h.id === "kfLage" || h.id === "kfDunkel" || h.id === "kfLogoGr"){
     if(!KF) return;
     if(h.id === "kfLage") KF.lage = w;
@@ -10875,6 +10917,20 @@ function wzAus(bb){
   const st = bb && bb.hub_stil;
   return (st && typeof st === "object" && WZ_ARTEN.indexOf(st.lade) >= 0) ? st.lade : "figur";
 }
+/* C4: Zufall aus mehreren (wzMixB, mindestens zwei) und Szene am Abend (wzAbendB, "" = wie tagsüber). Der
+   gespeicherte Stand ist undefined, bis er gelesen ist (§8.1m) — dann bleibt „Übernehmen“ gesperrt. */
+let wzZufallB = false, wzMixB = [], wzAbendB = "", wzStandGespeichert = undefined;
+function wzC4Aus(bb){
+  const h = bb && bb.hub_stil && typeof bb.hub_stil === "object" && !Array.isArray(bb.hub_stil) ? bb.hub_stil : {};
+  const m = Array.isArray(h.ladeMix) ? h.ladeMix.filter((a, i) => WZ_ARTEN.indexOf(a) >= 0 && h.ladeMix.indexOf(a) === i) : [];
+  return { mix: m.length >= 2 ? m : [], abend: WZ_ARTEN.indexOf(h.ladeAbend) >= 0 ? h.ladeAbend : "" };
+}
+function wzStandJetzt(){ return JSON.stringify([wzWahlB, wzZufallB ? wzMixB : [], wzAbendB]); }
+function wzC4Laden(bb){
+  const c = wzC4Aus(bb);
+  wzZufallB = c.mix.length >= 2; wzMixB = c.mix.slice(); wzAbendB = c.abend;
+  wzStandGespeichert = bb ? wzStandJetzt() : undefined;
+}
 function wzWahlenZeichnen(){
   const ziel = $("#wzWahlen"); if(!ziel) return;
   if(!ziel.children.length){
@@ -10885,29 +10941,67 @@ function wzWahlenZeichnen(){
       ziel.querySelectorAll(".wz-wahl").forEach(b => { b.classList.add("wz-ruht"); wzBeob.observe(b); });
     }
   }
-  ziel.querySelectorAll(".wz-wahl").forEach(b => b.setAttribute("aria-checked", String(b.dataset.wzw === wzWahlB)));
-  const k = $("#wzSichern"); if(k) k.disabled = wzGespeichert === undefined || wzWahlB === wzGespeichert;
+  ziel.setAttribute("role", wzZufallB ? "group" : "radiogroup");
+  ziel.querySelectorAll(".wz-wahl").forEach(b => {
+    b.setAttribute("role", wzZufallB ? "checkbox" : "radio");
+    b.setAttribute("aria-checked", String(wzZufallB ? wzMixB.indexOf(b.dataset.wzw) >= 0 : b.dataset.wzw === wzWahlB));
+  });
+  const abend = $("#wzAbend");
+  if(abend && !abend.children.length)
+    abend.innerHTML = '<button type="button" data-wahl="" role="radio" aria-checked="true">Wie tagsüber</button>' +
+      WZ_ARTEN.map(a => '<button type="button" data-wahl="' + a + '" role="radio" aria-checked="false">' + WZ_NAME[a] + '</button>').join("");
+  wahlZeigen("wzAbend", wzAbendB);
+  wahlZeigen("wzModus", wzZufallB ? "zufall" : "");
+  const satz = $("#wzModusSatz");
+  if(satz) satz.textContent = wzZufallB
+    ? "Jeder Besuch zeigt eine der angehakten Szenen — " + (wzMixB.length < 2 ? "bitte mindestens zwei anhaken." : wzMixB.length + " sind angehakt.")
+    : "Ein Tipp auf eine Szene wählt sie.";
+  const k = $("#wzSichern");
+  if(k) k.disabled = wzGespeichert === undefined || wzStandGespeichert === undefined ||
+    wzStandJetzt() === wzStandGespeichert || (wzZufallB && wzMixB.length < 2);
 }
+function wzVorschauZeigen(art){ hvSenden("gestalten", { hub_stil:{ lade: art } }, "gruss"); }
 document.addEventListener("click", e => {
   const b = e.target.closest && e.target.closest("#wzWahlen .wz-wahl");
   if(!b || WZ_ARTEN.indexOf(b.dataset.wzw) < 0) return;
-  wzWahlB = b.dataset.wzw;
+  const a = b.dataset.wzw;
+  if(wzZufallB){
+    const i = wzMixB.indexOf(a);
+    if(i >= 0) wzMixB.splice(i, 1); else wzMixB.push(a);
+  } else wzWahlB = a;
   wzWahlenZeichnen();
-  hvSenden("gestalten", { hub_stil:{ lade: wzWahlB } }, "gruss");
+  wzVorschauZeigen(a);
 });
-$("#wzSichern").onclick = async () => {
-  if(wzGespeichert === undefined) return;
-  const text = "Willkommen-Animation: " + WZ_NAME[wzWahlB] + " — Gäste sehen sie beim nächsten Besuch.";
-  if(demo || !db){ wzGespeichert = wzWahlB; wzWahlenZeichnen(); melde(text); return; }
-  const bb = meineBetriebe.find(x => x.id === betriebId);
-  const neu = Object.assign({}, (bb && bb.hub_stil && typeof bb.hub_stil === "object") ? bb.hub_stil : {}, { lade: wzWahlB });
-  $("#wzSichern").disabled = true;
-  const {error} = await db.from("betriebe").update({ hub_stil: neu }).eq("id", betriebId);
-  if(error){ wzWahlenZeichnen(); melde("Nicht gespeichert, bitte Verbindung prüfen", true); return; }
-  if(bb) bb.hub_stil = neu;
-  wzGespeichert = wzWahlB;
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("#wzModus [data-wahl], #wzAbend [data-wahl]");
+  if(!b) return;
+  if(b.parentElement.id === "wzModus"){
+    wzZufallB = b.dataset.wahl === "zufall";
+    if(wzZufallB && !wzMixB.length) wzMixB = [wzWahlB];
+  } else {
+    wzAbendB = WZ_ARTEN.indexOf(b.dataset.wahl) >= 0 ? b.dataset.wahl : "";
+    wzVorschauZeigen(wzAbendB || wzWahlB);
+  }
   wzWahlenZeichnen();
-  melde(text);
+});
+/* „Nochmal abspielen“: dieselbe Szene als neue Elemente im Rahmen (vorschauNochmal im Hub). */
+$("#wzNochmal").onclick = () => {
+  wzVorschauZeigen(wzWahlB);
+  const h = hvAlle()["gestalten"]; if(h) h.nochmal = true;
+};
+$("#wzSichern").onclick = async () => {
+  if(wzGespeichert === undefined || wzStandGespeichert === undefined) return;
+  if(wzZufallB && wzMixB.length < 2){ $("#wzSatz").textContent = "Für „Zufällig“ bitte mindestens zwei Szenen anhaken."; return; }
+  const text = wzZufallB ? "Willkommen-Animation: zufällig aus " + wzMixB.length + " Szenen — Gäste sehen sie beim nächsten Besuch."
+    : "Willkommen-Animation: " + WZ_NAME[wzWahlB] + " — Gäste sehen sie beim nächsten Besuch.";
+  const fertig = () => { wzGespeichert = wzWahlB; wzStandGespeichert = wzStandJetzt(); wzWahlenZeichnen(); $("#wzSatz").textContent = ""; melde(text); };
+  if(demo || !db){ fertig(); return; }
+  $("#wzSichern").disabled = true;
+  /* Frisch gelesen und zusammengeführt (C3-Helfer); Vorgaben stehen nicht in der Spalte. */
+  const r = await hubStilTeilSichern({ lade: wzWahlB,
+    ladeMix: wzZufallB ? wzMixB.slice(0, WZ_ARTEN.length) : undefined, ladeAbend: wzAbendB || undefined });
+  if(!r.ok){ wzWahlenZeichnen(); $("#wzSatz").textContent = r.satz; return; }
+  fertig();
 };
 
 /* ══ Projekte (hub_projekte, 17.10.) ═════════════════════════════
@@ -13584,6 +13678,7 @@ async function betriebOeffnen(id){
   ksZeichnen();
   wzGespeichert = bb ? wzAus(bb) : undefined;
   wzWahlB = wzGespeichert || "figur";
+  wzC4Laden(bb);
   wzWahlenZeichnen();
   pjLaden();
   eoLaden(id);
@@ -18360,8 +18455,9 @@ const AN_WIKI = [
       "Der Aufpreis wird beim Bestellen vom Server nachgerechnet — ein Gast kann ihn nicht verändern."],
     labels:["+ Gruppe", "Mehr Angaben"], gruppe:"Extras & Beläge" },
   { id:"gh-willkommen", kapitel:"Gast-Hub gestalten", titel:"Willkommen-Animation", ort:"Gast-Hub → Willkommen",
-    text:["Was der Gast beim ersten Öffnen über dem Namen Ihres Hauses sieht. Ein Tipp zeigt die Szene oben in der Vorschau; Gäste sehen sie nach „Übernehmen“, ab dem nächsten Besuch."],
-    labels:["Übernehmen"], gruppe:"Willkommen-Animation" },
+    text:["Was der Gast beim ersten Öffnen über dem Namen Ihres Hauses sieht. Ein Tipp zeigt die Szene oben in der Vorschau; Gäste sehen sie nach „Übernehmen“, ab dem nächsten Besuch.",
+      "„Nochmal abspielen“ startet die Szene in der Vorschau von vorn. Mit „Zufällig aus mehreren“ haken Sie zwei oder mehr Szenen an — jeder Besuch zeigt eine davon. Unter „Am Abend“ wählen Sie eine eigene Szene ab der Abendstunde Ihres Hauses."],
+    labels:["Übernehmen", "Nochmal abspielen", "Zufällig aus mehreren", "Am Abend"], gruppe:"Willkommen-Animation" },
   { id:"gh-kopf", kapitel:"Gast-Hub gestalten", titel:"Kopf & Logo", ort:"Gast-Hub → Kopf & Logo",
     text:["Ein Bild ganz oben auf Ihrer Startseite, darauf mittig Ihr Logo — rund oder eckig. Tippt ein Gast aufs Logo, sieht er alles Wichtige über Ihr Haus: Zeiten, Weg, Kontakt und „Über uns“.",
       "Mit Kopfbild wählen Sie, welcher Teil zu sehen ist (oben, Mitte, unten) und wie stark es abgedunkelt wird — ein dunkleres Bild lässt Logo und Schrift ruhiger stehen. Die Größe des Logos (klein, normal, groß) gilt mit und ohne Bild."],
@@ -18386,16 +18482,19 @@ const AN_WIKI = [
     labels:["Lesbar machen", "Abendfassung", "Auf Markenblatt zurück", "Hauptfarbe", "Zweitfarbe", "Fertige Paletten", "Farben aus dem Logo"], gruppe:"Farben des Hubs" },
   { id:"gh-aufbau", kapitel:"Gast-Hub gestalten", titel:"Aufbau der Startseite", ort:"Gast-Hub → Aufbau",
     text:["Alles auf Ihrer Startseite ist ein Block. Ziehen Sie den Griff links, um einen Block zu verschieben, oder öffnen Sie ihn für Pfeile, Breite und Größe. Mit dem Schalter blenden Sie einen Block aus; „＋ Eigener Textblock“ fügt einen Text hinzu.",
-      "Der Kopf bleibt immer ganz oben. Die Vorschau zeigt jede Änderung sofort; Gäste sehen sie nach „Übernehmen“. „Auf Vorgabe zurück“ stellt den Aufbau von früher wieder her."],
-    labels:["Eigener Textblock", "Auf Vorgabe zurück"], gruppe:"Aufbau der Startseite" },
+      "Der Kopf bleibt immer ganz oben. Die Vorschau zeigt jede Änderung sofort; Gäste sehen sie nach „Übernehmen“. „Auf Vorgabe zurück“ stellt den Aufbau von früher wieder her.",
+      "Die Vorlagen Café, Restaurant und Bar ordnen die vorhandenen Blöcke in einem Zug neu — nichts wird entfernt. Ein eigener Textblock lässt sich duplizieren und bekommt auf Wunsch einen Zeitraum: außerhalb davon sehen Gäste ihn nicht (Feiertage, Aktionswoche, Betriebsferien)."],
+    labels:["Eigener Textblock", "Auf Vorgabe zurück", "Block duplizieren", "Zeigen ab (leer = sofort)"], gruppe:"Aufbau der Startseite" },
   { id:"gh-kacheln", kapitel:"Gast-Hub gestalten", titel:"Kacheln", ort:"Gast-Hub → Kacheln",
     text:["Die Knöpfe auf Ihrer Seite — welche erscheinen, wie sie heißen und welches Bild darauf liegt. Den rechten Rand einer Kachel ziehen Sie, um die Breite zu ändern; den Namen tippen Sie an, um sie einzustellen.",
       "Mit „＋ Karten-Kachel“ und „＋ Link-Kachel“ kommen neue hinzu. Mehrere Kacheln lassen sich zu aufklappbaren Rubriken gruppieren, die Sie ebenfalls verschieben und umbenennen.",
-      "Am einfachsten geht es mit „Ordnen starten“: Dann ziehen Sie Kacheln und Flächen direkt in der Vorschau an ihren Platz — ein Tipp darauf öffnet die Einstellungen. „Ordnung übernehmen“ speichert alles."],
-    labels:["Karten-Kachel", "Link-Kachel", "Ordnen starten", "Ordnung übernehmen"], gruppe:"Kacheln" },
+      "Am einfachsten geht es mit „Ordnen starten“: Dann ziehen Sie Kacheln und Flächen direkt in der Vorschau an ihren Platz — ein Tipp darauf öffnet die Einstellungen. „Ordnung übernehmen“ speichert alles.",
+      "Je Kachel: eine Plakette „Neu“ bis zu einem Tag, „Vorübergehend ausblenden“ bis zu einem Tag (danach kommt sie von selbst zurück) und — bei Karten- und eigenen Kacheln — „Kachel duplizieren“."],
+    labels:["Karten-Kachel", "Link-Kachel", "Ordnen starten", "Ordnung übernehmen", "Kachel duplizieren", "Vorübergehend ausblenden"], gruppe:"Kacheln" },
   { id:"gh-banner", kapitel:"Gast-Hub gestalten", titel:"Aktions-Banner-Rad", ort:"Gast-Hub → Banner",
-    text:["Ein wischbares Bilderkarussell ganz oben auf der Startseite — für ein Angebot, eine Neuigkeit oder eine laufende Aktion. Bild, Text, Farbe und Ziel bestimmen Sie je Banner."],
-    labels:["+ Banner hinzufügen"], gruppe:"Aktions-Banner-Rad" },
+    text:["Ein wischbares Bilderkarussell ganz oben auf der Startseite — für ein Angebot, eine Neuigkeit oder eine laufende Aktion. Bild, Text, Farbe und Ziel bestimmen Sie je Banner.",
+      "Jedes Banner kann eine Laufzeit bekommen und sich duplizieren lassen. „Selbst weiterblättern“ wechselt alle 5 oder 8 Sekunden zur nächsten Karte — es hält an, sobald ein Gast das Rad berührt."],
+    labels:["+ Banner hinzufügen", "Selbst weiterblättern", "Duplizieren"], gruppe:"Aktions-Banner-Rad" },
   { id:"gh-figur", kapitel:"Gast-Hub gestalten", titel:"Figur des Hauses", ort:"Gast-Hub → Figur",
     text:["Welche Figur den Gast im Hub begleitet, welche Stimmung sie hat und was sie je Bestellphase in der Hand hält. Das gilt sofort, ohne dass der Hub neu erzeugt werden muss; jede Zeile klappt mit einem Tipp auf.",
       "Darunter: wie groß die Figur auf der Startseite steht, ob sie Gäste überall, nur auf der Startseite oder nirgends begleitet (beim Willkommen und im Bestellstand bleibt sie immer), und welche Stimmung sie ab dem Abend nach der Uhr Ihres Hauses hat."],
@@ -18482,6 +18581,10 @@ const AN_NEU = [
   { datum:"02.11.", titel:"Kopfbild: Ausschnitt, Abdunkeln, Größe des Logos", id:"gh-kopf" },
   { datum:"02.11.", titel:"Figur: Größe, wo sie begleitet, Stimmung am Abend", id:"gh-figur" },
   { datum:"02.11.", titel:"Bewegte Emojis: Tempo, Ort, nur einmal", id:"gh-emojis" },
+  { datum:"02.11.", titel:"Textblöcke mit Zeitraum, duplizieren, Vorlagen für den Aufbau", id:"gh-aufbau" },
+  { datum:"02.11.", titel:"Kacheln: „Neu“ bis, ausblenden bis, duplizieren", id:"gh-kacheln" },
+  { datum:"02.11.", titel:"Banner: Laufzeit, duplizieren, selbst weiterblättern", id:"gh-banner" },
+  { datum:"02.11.", titel:"Willkommen: nochmal abspielen, Szene am Abend, zufällig", id:"gh-willkommen" },
   { datum:"02.11.", titel:"Schrift: Textgröße, passende Paare, eigener Probesatz", id:"gh-schrift" },
   { datum:"02.11.", titel:"Farben: fertige Paletten, Farben aus dem Logo, Ampel für die Lesbarkeit", id:"gh-farben" }
 ];
@@ -19188,6 +19291,7 @@ function hvAnwenden(schl){
   try{
     w.vorschauSetzen(h.entwurf);
     if(h.ziel) w.vorschauZeige(h.ziel);
+    if(h.nochmal){ h.nochmal = false; if(typeof w.vorschauNochmal === "function") w.vorschauNochmal(); }
   }catch(e){ return; }
   /* Gemessen wird nach dem Zeichnen — zwei Bilder später. */
   w.requestAnimationFrame(() => w.requestAnimationFrame(() => {
@@ -20000,6 +20104,7 @@ function hvStartseite(ziel){
      dem Rahmen das Kopfbild, einer nur mit „kopf“ die Schrift. */
   const stil = { schrift: swFuerHub(true) };
   if(KF) stil.kopf = kfRoh();
+  if(BNTAKT !== null) stil.bannerTakt = BNTAKT || null;
   const teil = { hub_kacheln: kbRoh(), hub_banner: bnRoh(), hub_stil: stil };
   /* Aufbau nur schicken, wenn der gespeicherte Stand gelesen ist — sonst zeigte die Vorschau die Vorgabe,
      wo das Haus längst etwas anderes eingestellt hat (§8.1m). [] = zurück auf die Vorgabe. */
@@ -20977,7 +21082,10 @@ function kbAusZeile(roh){
       art:   k.eigen ? k.art : (KB_KARTEN_FEST.includes(k.s) ? "karte" : ""),
       karte: KB_KARTE_MUSTER.test(String(e.karte || "")) ? e.karte : (KB_KARTEN_FEST.includes(k.s) ? k.s : ""),
       plan:  kbZeitplanSauber(e.plan),
-      link:  k.eigen && k.art === "link" ? kbLinkSauber(e.link) : ""
+      link:  k.eigen && k.art === "link" ? kbLinkSauber(e.link) : "",
+      /* C4: „Neu“ bis zu einem Tag, ausgeblendet bis zu einem Tag (beide wie tagSauber im Hub). */
+      neuBis:   tagSauber(e.neuBis),
+      zeigenAb: tagSauber(e.zeigenAb)
     };
   });
 }
@@ -21225,6 +21333,9 @@ function kbZusammenfassung(k){
   if(k.symbolLage) teile.push("Symbol " + KB_SYMBOLLAGENAME[k.symbolLage].toLowerCase());
   if(k.hoehe) teile.push(KB_HOEHENAME[k.hoehe]);
   if(k.textgroesse) teile.push(Math.round(k.textgroesse * 100) + " % Text");
+  const h = kbHeute();
+  if(k.neuBis && h <= k.neuBis) teile.push("„Neu“ bis " + afbTag(k.neuBis));
+  if(k.zeigenAb && h < k.zeigenAb) teile.push("pausiert bis " + afbTag(k.zeigenAb));
   return teile.join(" · ");
 }
 function kbSegment(name, werte, jetzt, fuer, namen){
@@ -21288,6 +21399,7 @@ function kbZeichnen(){
         '</select>' +
         '<small class="kbhinweis">Eine Rubrik klappt für Gäste auf und zu, wie „Jetzt am Tisch“. Ganze Rubriken verschiebst du oben in der Anordnung.</small></div>' +
       kbZielHTML(k, p) +
+      kbZeitHTML(k, p) +
       '<div class="kbwahlblock"><span class="kbwahlname">Breite</span>' +
         kbSegment("Breite", ["drittel","halb","voll"], kbBreite(k), "kb-breite", KB_BREITENNAME) +
         '<small class="kbhinweis">Steht eine Kachel allein in ihrer Reihe, zieht sie sich von selbst breit.</small></div>' +
@@ -21381,6 +21493,54 @@ function kbZielHTML(k, p){
   return html;
 }
 
+/* ── C4 (02.11.): „Neu“ bis, Pause bis, Duplizieren ─────────────── */
+function kbHeute(){ const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function kbKopierbar(k){ return KB_EIGEN_MUSTER.test(k.schluessel) || KB_KARTEN_FEST.includes(k.schluessel); }
+function kbZeitHTML(k, p){
+  const h = kbHeute();
+  return '<div class="kbwahlblock"><span class="kbwahlname">Hinweis „Neu“</span>' +
+      '<div class="kbfelder"><label><span>„Neu“ zeigen bis einschließlich (leer = nie)</span>' +
+        '<input type="date" data-kb-neubis value="' + sicher(k.neuBis || "") + '"></label></div>' +
+      '<small class="kbhinweis">' + (k.neuBis && h > k.neuBis ? "Abgelaufen — Gäste sehen den Hinweis nicht mehr." :
+        "Eine kleine Plakette „Neu“ am Titel; danach verschwindet sie von selbst.") + '</small></div>' +
+    '<div class="kbwahlblock"><span class="kbwahlname">Vorübergehend ausblenden</span>' +
+      '<div class="kbfelder"><label><span>Wieder zeigen ab (leer = nicht pausiert)</span>' +
+        '<input type="date" data-kb-zeigenab value="' + sicher(k.zeigenAb || "") + '"></label></div>' +
+      '<small class="kbhinweis">' + (k.zeigenAb && h < k.zeigenAb ? "Bis zum Tag davor sehen Gäste diese Kachel nicht; dann kommt sie von selbst zurück." :
+        "Statt zu löschen: Die Kachel ruht bis zu diesem Tag. Der Schalter oben blendet sie dagegen dauerhaft aus.") + '</small></div>' +
+    (kbKopierbar(k) ? '<button type="button" class="knopf leise kbkopie" data-kb-kopie>Kachel duplizieren</button>' : "");
+}
+function kbKopieren(sch){
+  const k = kbFinden(sch); if(!k || !kbKopierbar(k)) return;
+  if(KACHELSTAND.filter(x => KB_EIGEN_MUSTER.test(x.schluessel)).length >= KB_EIGEN_HOECHST)
+    return melde("Höchstens " + KB_EIGEN_HOECHST + " eigene Kacheln — die Kopie wurde nicht angelegt.", true);
+  const neu = JSON.parse(JSON.stringify(k));
+  neu.schluessel = kbNeueId();
+  /* Aus einer festen Karten-Kachel wird eine eigene Karten-Kachel; ihre Karte steht schon im Stand (kbAusZeile). */
+  neu.art = KB_EIGEN_MUSTER.test(k.schluessel) ? k.art : "karte";
+  /* Eine Kopie gehört in die Rubrik ihres Originals — auch wenn die der Vorgabe nie ausdrücklich gesetzt war. */
+  neu.gruppe = kbGruppeVon(sch);
+  neu.titel = (k.titel || "Kachel") + " (Kopie)";
+  if(neu.titel.length > 40) neu.titel = neu.titel.slice(0, 40);
+  KACHELSTAND.splice(KACHELSTAND.indexOf(k) + 1, 0, neu);
+  kbOffen.add(neu.schluessel);
+  kbZeichnen();
+  const zeile = document.querySelector('[data-kb="' + neu.schluessel + '"]');
+  if(zeile){ zeile.scrollIntoView({ block:"center" }); const f = zeile.querySelector("[data-kb-titel]"); if(f) f.focus({ preventScroll:true }); }
+  melde("Kachel dupliziert — mit „Übernehmen“ für Gäste wirksam");
+}
+document.addEventListener("change", e => {
+  const f = e.target.closest && e.target.closest("[data-kb-neubis],[data-kb-zeigenab]");
+  if(!f) return;
+  const z = f.closest("[data-kb]"); if(!z) return;
+  kbAendern(z.dataset.kb, f.hasAttribute("data-kb-neubis") ? "neuBis" : "zeigenAb", tagSauber(f.value));
+});
+document.addEventListener("click", e => {
+  const b = e.target.closest && e.target.closest("[data-kb-kopie]");
+  if(!b) return;
+  const z = b.closest("[data-kb]"); if(z) kbKopieren(z.dataset.kb);
+});
+
 /* Neue Kachel anlegen — am Ende ihrer Gruppe, offen zum Einstellen. */
 function kbNeu(art){
   if(KACHELSTAND.filter(k => KB_EIGEN_MUSTER.test(k.schluessel)).length >= KB_EIGEN_HOECHST)
@@ -21391,7 +21551,7 @@ function kbNeu(art){
     titel: art === "karte" ? karteName(ersteKarte) : "Neuer Link", unter:"",
     icon: art === "karte" ? "speise" : "stern", banner:"", iconAus:false, breite:"", bildform:"",
     grund:"", symbolLage:"", hoehe:"", textgroesse:"",
-    karte: art === "karte" ? ersteKarte : "", plan:[], link:"" };
+    karte: art === "karte" ? ersteKarte : "", plan:[], link:"", neuBis:"", zeigenAb:"" };
   const gruppe = art === "karte" ? "Die Karte" : "Für Ihren nächsten Besuch";
   KACHELSTAND.push(neu);
   let letzte = -1;
@@ -21842,6 +22002,15 @@ function blockZielSauber(w){
   if(/^#\/[a-z0-9-]{1,30}$/.test(z)) return z;
   return /^https:\/\/[^\s"'<>\\`]{3,300}$/i.test(z) ? z : "";
 }
+/* Ein Tag als „JJJJ-MM-TT“ — nur echte Kalendertage (der 31.02. fällt weg), sonst "". Gilt für den Zeitraum
+   eines Textblocks, einer Kachel und eines Banners (eine Stelle für alle drei). */
+function tagSauber(w){
+  if(typeof w !== "string" || !/^\d{4}-\d{2}-\d{2}$/.test(w)) return "";
+  const d = new Date(w + "T12:00:00Z");
+  return !isNaN(d.getTime()) && d.toISOString().slice(0, 10) === w ? w : "";
+}
+/* Ob heute („JJJJ-MM-TT“) im Zeitraum liegt; „bis“ zählt mit. Ohne Angabe: immer. */
+function tagGilt(von, bis, heute){ return !(von && heute < von) && !(bis && heute > bis); }
 /* Aus einer Live-Spalte (unbekannte Form!) die geprüfte Liste. Doppelte Kennungen und alles
    Unbekannte fallen weg; was bleibt, hat feste Schlüssel in fester Reihenfolge. */
 function bloeckeSauber(roh){
@@ -21861,6 +22030,9 @@ function bloeckeSauber(roh){
       b.knopf = blockText(e.knopf, BLOCK_GRENZEN.knopf);
       b.ziel  = blockZielSauber(e.ziel);
       b.look  = BLOCK_WERTE.look.indexOf(e.look) >= 0 ? e.look : "karte";
+      /* Zeitraum (beide frei): Ein „bis“ vor dem „von“ ist ein Tippfehler — dann gilt keins (§7: lieber zeigen). */
+      const von = tagSauber(e.von), bis = tagSauber(e.bis);
+      if(!(von && bis && bis < von)){ if(von) b.von = von; if(bis) b.bis = bis; }
     }
     aus.push(b);
   });
@@ -21935,6 +22107,8 @@ function afbAbbild(){
       if(b.knopf) e.knopf = b.knopf;
       if(b.ziel)  e.ziel  = b.ziel;
       if(b.look && b.look !== "karte") e.look = b.look;
+      if(b.von) e.von = b.von;
+      if(b.bis) e.bis = b.bis;
     }
     return e;
   });
@@ -21949,6 +22123,7 @@ function afbZusammenfassung(b){
   t.push(b.breite === "halb" && blockHalbOk(b.id) ? "Halb breit" : "Ganze Breite");
   if(b.groesse) t.push(b.groesse === "klein" ? "Klein" : "Groß");
   if(blockArt(b.id) === "eigen" && !b.titel && !b.text) t.push("noch leer");
+  if(blockArt(b.id) === "eigen" && (b.von || b.bis)) t.push(afbZeitraumSatz(b.von, b.bis));
   if(blockArt(b.id) === "rubrik"){
     const n = KACHELSTAND.filter(k => k.an && kbGruppeVon(k.schluessel) === b.id.slice(7)).length;
     t.push(n + (n === 1 ? " Kachel" : " Kacheln"));
@@ -21964,6 +22139,7 @@ function afbPruefen(){
     if(b.knopf && !b.ziel) s.push("„" + n + "“: Der Knopf braucht ein Ziel — oder lassen Sie den Knopftext leer.");
     if(b.ziel && !blockZielSauber(b.ziel)) s.push("„" + n + "“: Ein Link muss mit https:// beginnen und darf keine Leerzeichen oder Anführungszeichen enthalten.");
     if(b.ziel && !b.knopf) s.push("„" + n + "“: Ein Ziel ohne Knopftext wird nicht gezeigt — bitte einen Knopftext eintragen.");
+    if(b.von && b.bis && b.bis < b.von) s.push("„" + n + "“: „Zeigen bis“ liegt vor „Zeigen ab“ — bitte den Zeitraum prüfen.");
   });
   return s;
 }
@@ -22022,6 +22198,11 @@ function afbEinstellungenHTML(b, i){
       (ziel === "link" ? '<label><span>Link</span><input data-afb-link maxlength="300" inputmode="url" value="' + sicher(b.ziel) + '" placeholder="https://" autocomplete="off" spellcheck="false"></label>' : "") +
       '<small class="kbhinweis">Der Text erscheint in allen Sprachen so, wie Sie ihn schreiben — er wird nicht übersetzt.</small>' +
     '</div>' +
+    '<div class="kbfelder afb-zeit">' +
+      '<label><span>Zeigen ab (leer = sofort)</span><input type="date" data-afb-von value="' + sicher(b.von || "") + '"></label>' +
+      '<label><span>Zeigen bis einschließlich (leer = immer)</span><input type="date" data-afb-bis value="' + sicher(b.bis || "") + '"></label>' +
+      '<small class="kbhinweis">Für Feiertage, eine Aktionswoche oder Betriebsferien: Außerhalb des Zeitraums sehen Gäste den Block nicht. Es zählt das Datum im Gerät des Gastes.</small>' +
+    '</div>' +
     '<div class="kbwahlblock"><span class="kbwahlname">Aussehen</span>' + afbSegment("Aussehen", ["karte","band"], b.look || "karte", "afb-look", AFB_LOOK) +
       '<small class="kbhinweis">„Band“ nimmt die Farben des Kopfbands Ihres Hauses.</small></div>';
   }
@@ -22038,7 +22219,8 @@ function afbEinstellungenHTML(b, i){
     '<button type="button" class="knopf leise" data-afb-runter' + (i === n - 1 ? " disabled" : "") + '>Nach unten</button></div>';
   const e = AFB_EINSTELLUNG[art === "fest" ? b.id : art];
   if(e) h += '<button type="button" class="knopf leise afb-weg" data-afb-gehe="' + sicher(e.g) + '"' + (e.suche ? ' data-afb-suche="' + sicher(e.suche) + '"' : "") + '>Texte &amp; Einstellungen dieses Blocks</button>';
-  if(art === "eigen") h += '<button type="button" class="knopf leise afb-loeschen" data-afb-loeschen>Block entfernen</button>';
+  if(art === "eigen") h += '<button type="button" class="knopf leise afb-weg" data-afb-kopie>Block duplizieren</button>' +
+    '<button type="button" class="knopf leise afb-loeschen" data-afb-loeschen>Block entfernen</button>';
   return h;
 }
 function afbZeichnen(){
@@ -22107,6 +22289,7 @@ document.addEventListener("click", e => {
     afbGeaendert(); afbZeichnen(); return; }
   if(e.target.closest("[data-afb-hoch]")){ if(afbVerschieben(b.id, -1)) afbFokus(b.id, "[data-afb-hoch]"); return; }
   if(e.target.closest("[data-afb-runter]")){ if(afbVerschieben(b.id, 1)) afbFokus(b.id, "[data-afb-runter]"); return; }
+  if(e.target.closest("[data-afb-kopie]")){ afbKopieren(b); return; }
   const weg = e.target.closest("[data-afb-loeschen]");
   if(weg){
     /* Entfernen erst beim zweiten Tipp. */
@@ -22123,6 +22306,11 @@ function afbFokus(id, wahl){
 document.addEventListener("change", e => {
   const an = e.target.closest && e.target.closest("[data-afb-an]");
   if(an){ const b = afbZeileVon(an); if(!b) return; b.an = an.checked; afbGeaendert(); afbZeileAktualisieren(b); return; }
+  const tag = e.target.closest && e.target.closest("[data-afb-von],[data-afb-bis]");
+  if(tag){ const b = afbZeileVon(tag); if(!b || blockArt(b.id) !== "eigen") return;
+    const feld = tag.hasAttribute("data-afb-von") ? "von" : "bis", w = tagSauber(tag.value);
+    if(w) b[feld] = w; else delete b[feld];
+    afbGeaendert(); afbZeileAktualisieren(b); return; }
   const ziel = e.target.closest && e.target.closest("[data-afb-ziel]");
   if(ziel){ const b = afbZeileVon(ziel); if(!b) return;
     b.ziel = ziel.value === "link" ? (/^https:/i.test(b.ziel) ? b.ziel : "") : ziel.value;
@@ -22153,6 +22341,65 @@ $("#afbNeuText").onclick = () => {
   const z = document.querySelector('[data-afb="' + id + '"]');
   if(z){ z.scrollIntoView({ block:"center" }); const f = z.querySelector("[data-afb-titel]"); if(f) f.focus({ preventScroll:true }); }
 };
+
+/* ── C4 (02.11.): Duplizieren, Zeitraum, Vorlagen ────────────────── */
+function afbTag(t){ const [j, m, d] = t.split("-"); return +d + "." + +m + "." + j; }
+function afbZeitraumSatz(von, bis){
+  const heute = new Date(), h = heute.getFullYear() + "-" + String(heute.getMonth() + 1).padStart(2, "0") + "-" + String(heute.getDate()).padStart(2, "0");
+  if(bis && h > bis) return "abgelaufen am " + afbTag(bis);
+  if(von && h < von) return "ab " + afbTag(von) + (bis ? " bis " + afbTag(bis) : "");
+  return bis ? "bis " + afbTag(bis) : "seit " + afbTag(von);
+}
+function afbNeueEigenId(){
+  let id; do{ id = "eigen-" + Math.random().toString(36).slice(2, 8); }while(afbFinden(id) || !BLOCK_EIGEN_MUSTER.test(id));
+  return id;
+}
+/* Kopie direkt unter dem Original, mit allen Feldern — aufgeklappt, damit man sie gleich anpasst. */
+function afbKopieren(b){
+  if(AFBSTAND.filter(x => blockArt(x.id) === "eigen").length >= AFB_EIGEN_HOECHST) return afbSage("Höchstens " + AFB_EIGEN_HOECHST + " eigene Textblöcke — die Kopie wurde nicht angelegt.");
+  if(AFBSTAND.length >= BLOCK_GRENZEN.max) return afbSage("Höchstens " + BLOCK_GRENZEN.max + " Blöcke — die Kopie wurde nicht angelegt.");
+  const kopie = Object.assign({}, b, { id: afbNeueEigenId() });
+  AFBSTAND.splice(AFBSTAND.indexOf(b) + 1, 0, kopie);
+  AFB_OFFEN.add(kopie.id);
+  afbGeaendert(); afbZeichnen();
+  afbSage("Kopie angelegt: Platz " + (AFBSTAND.indexOf(kopie) + 1) + " von " + AFBSTAND.length);
+  afbFokus(kopie.id, "[data-afb-titel]");
+}
+/* Vorlagen: eine Reihenfolge der festen Blöcke (RUBRIKEN = alle Rubriken in ihrer Reihenfolge), dazu Breite und
+   Größe. Was nicht genannt ist, steht dahinter; eigene Textblöcke ganz hinten in ihrer Reihenfolge. Ein- und
+   Ausgeblendetes bleibt, wie es ist. */
+const AFB_VORLAGEN = {
+  cafe:       [["begleiter"], ["schnell"], ["banner"], ["empfehlung", "halb"], ["nochmal", "halb"], ["RUBRIKEN"], ["aktion"]],
+  restaurant: [["schnell"], ["aktion"], ["RUBRIKEN"], ["banner"], ["empfehlung"], ["nochmal"], ["begleiter", "", "klein"]],
+  bar:        [["banner", "", "gross"], ["aktion"], ["schnell"], ["RUBRIKEN"], ["begleiter", "halb"], ["nochmal", "halb"], ["empfehlung"]]
+};
+const AFB_VORLAGEN_NAME = { cafe:"Café", restaurant:"Restaurant", bar:"Bar" };
+function afbVorlage(name){
+  const plan = AFB_VORLAGEN[name]; if(!plan) return;
+  AFBGEAENDERT = true;
+  afbAbgleichen();
+  const rest = AFBSTAND.slice(), neu = [];
+  const nimm = id => { const i = rest.findIndex(b => b.id === id); return i < 0 ? null : rest.splice(i, 1)[0]; };
+  plan.forEach(([id, breite, groesse]) => {
+    if(id === "RUBRIKEN"){
+      rest.filter(b => blockArt(b.id) === "rubrik").forEach(b => { nimm(b.id); b.breite = "voll"; b.groesse = ""; neu.push(b); });
+      return;
+    }
+    const b = nimm(id); if(!b) return;
+    b.breite = breite === "halb" && blockHalbOk(b.id) ? "halb" : "voll";
+    b.groesse = groesse && !(groesse === "gross" && BLOCK_GROSS_NICHT.indexOf(b.id) >= 0) ? groesse : "";
+    neu.push(b);
+  });
+  rest.filter(b => blockArt(b.id) !== "eigen").forEach(b => neu.push(b));
+  rest.filter(b => blockArt(b.id) === "eigen").forEach(b => neu.push(b));
+  AFBSTAND = neu;
+  afbGeaendert(); afbZeichnen();
+  afbSage("Vorlage „" + AFB_VORLAGEN_NAME[name] + "“ angewendet — die Vorschau zeigt sie. Gäste sehen sie nach „Übernehmen“.");
+}
+document.addEventListener("click", e => {
+  const v = e.target.closest && e.target.closest("[data-afb-vorlage]");
+  if(v) afbVorlage(v.dataset.afbVorlage);
+});
 
 async function afbSichern(){
   const raus = $("#afbPruefung"), knopf = $("#afbSichern");
@@ -22517,6 +22764,8 @@ function kbRoh(){
     if(kbIstKarte(k) && k.karte && k.karte !== k.schluessel) e.karte = k.karte;
     if(kbIstKarte(k) && k.plan && k.plan.length) e.plan = k.plan.map(x => ({ ...x }));
     if(k.art === "link" && k.link) e.link = k.link;
+    if(k.neuBis)   e.neuBis = k.neuBis;
+    if(k.zeigenAb) e.zeigenAb = k.zeigenAb;
     return e;
   });
 }
@@ -23137,7 +23386,10 @@ function bnAusZeile(roh){
       ausrichtung: e.ausrichtung === "mitte" ? "mitte" : "links",
       zielTyp: ["produkt","seite","url","aktion"].indexOf(e.zielTyp) >= 0 ? e.zielTyp : "seite",
       zielWert: typeof e.zielWert === "string" ? e.zielWert : "",
-      reihenfolge: i
+      reihenfolge: i,
+      /* C4: Laufzeit — nur geprüfte Tage, sonst kein Schlüssel (die Nutzlast bleibt ohne Wahl wie vorher). */
+      ...(tagSauber(e.von) ? { von:e.von } : {}),
+      ...(tagSauber(e.bis) ? { bis:e.bis } : {})
     }))
     .sort((a, c) => (+a.reihenfolge || 0) - (+c.reihenfolge || 0));
 }
@@ -23152,6 +23404,7 @@ async function bnStandLaden(){
   const b = meineBetriebe.find(x => x.id === betriebId);
   bnGeladen = !!demo || !db || (b && b.hub_banner !== undefined);
   bnAusZeile(b && b.hub_banner);
+  bnTaktLaden(b);
   bnZeichnen();
   if(demo || !db || !betriebId) return;
   try{
@@ -23283,9 +23536,15 @@ function bnZeile(b, i){
       '</select></label>' +
       bnZielFeldHTML(b) +
     '</div>' +
+    '<div class="kbfelder bnzeit">' +
+      '<label><span>Zeigen ab (leer = sofort)</span><input type="date" data-bn-von value="' + sicher(b.von || "") + '"></label>' +
+      '<label><span>Zeigen bis einschließlich (leer = immer)</span><input type="date" data-bn-bis value="' + sicher(b.bis || "") + '"></label>' +
+      '<small class="kbhinweis">' + sicher(bnZeitSatz(b)) + '</small>' +
+    '</div>' +
     '<div class="bnreihe">' +
       '<button type="button" data-bn-hoch' + (i === 0 ? " disabled" : "") + ' aria-label="Nach oben">↑</button>' +
       '<button type="button" data-bn-runter' + (i === BANNERSTAND.length - 1 ? " disabled" : "") + ' aria-label="Nach unten">↓</button>' +
+      '<button type="button" data-bn-kopie>Duplizieren</button>' +
       '<button type="button" class="weg" data-bn-loeschen>Banner löschen</button>' +
     '</div>' +
   '</article>';
@@ -23308,7 +23567,39 @@ function bnAendern(id, feld, wert){
   bnZeichnen();
 }
 
+/* ── C4 (02.11.): Laufzeit, Duplizieren, Wechseltempo ───────────── */
+const BN_HOECHST = 12;
+function bnZeitSatz(b){
+  const h = kbHeute();
+  if(b.von && b.bis && b.bis < b.von) return "„Zeigen bis“ liegt vor „Zeigen ab“ — so gilt der Zeitraum nicht, das Banner läuft immer.";
+  if(b.bis && h > b.bis) return "Abgelaufen am " + afbTag(b.bis) + " — Gäste sehen dieses Banner nicht mehr.";
+  if(b.von && h < b.von) return "Läuft ab " + afbTag(b.von) + (b.bis ? " bis " + afbTag(b.bis) : "") + ".";
+  if(b.bis) return "Läuft bis " + afbTag(b.bis) + " und verschwindet dann von selbst.";
+  return "Für eine Aktionswoche: Außerhalb des Zeitraums sehen Gäste das Banner nicht.";
+}
+function bnKopieren(id){
+  const b = bnFinden(id); if(!b) return;
+  if(BANNERSTAND.length >= BN_HOECHST) return melde("Höchstens " + BN_HOECHST + " Banner — die Kopie wurde nicht angelegt.", true);
+  bnGeaendert = true;
+  const neu = Object.assign({}, b, { id: "b_" + Math.random().toString(16).slice(2, 10) });
+  BANNERSTAND.splice(BANNERSTAND.indexOf(b) + 1, 0, neu);
+  BANNERSTAND.forEach((x, i) => { x.reihenfolge = i; });
+  bnZeichnen();
+  const z = document.querySelector('[data-bn="' + neu.id + '"]');
+  if(z){ z.scrollIntoView({ block:"nearest" }); const f = z.querySelector("[data-bn-titel]"); if(f) f.focus({ preventScroll:true }); }
+  melde("Banner dupliziert — mit „Übernehmen“ für Gäste wirksam");
+}
+/* Wechseltempo: hub_stil.bannerTakt (5 oder 8), „Aus“ steht nie in der Spalte. null = noch nicht gelesen (§8.1m). */
+let BNTAKT = null, BNTAKT_GESPEICHERT = null;
+function bnTaktLaden(bb){
+  const h = bb && bb.hub_stil && typeof bb.hub_stil === "object" && !Array.isArray(bb.hub_stil) ? bb.hub_stil : {};
+  BNTAKT = BNTAKT_GESPEICHERT = (h.bannerTakt === 5 || h.bannerTakt === 8) ? h.bannerTakt : 0;
+  if(!bb && !demo) BNTAKT = BNTAKT_GESPEICHERT = null;
+  wahlZeigen("bnTakt", BNTAKT || "");
+}
+
 function bnNeu(){
+  if(BANNERSTAND.length >= BN_HOECHST) return melde("Höchstens " + BN_HOECHST + " Banner", true);
   bnGeaendert = true;
   BANNERSTAND.push({
     id: "b_" + Math.random().toString(16).slice(2, 10), an:true, bild:"",
@@ -23353,6 +23644,7 @@ document.addEventListener("click", e => {
     if(e.target.closest("[data-bn-hoch]"))    { bnVerschieben(id, -1); return; }
     if(e.target.closest("[data-bn-runter]"))  { bnVerschieben(id, 1);  return; }
     if(e.target.closest("[data-bn-loeschen]")){ bnLoeschen(id); return; }
+    if(e.target.closest("[data-bn-kopie]"))   { bnKopieren(id); return; }
   }
   if(e.target.closest("[data-bn-neu]")) bnNeu();
 });
@@ -23370,6 +23662,13 @@ document.addEventListener("change", e => {
     bnAendern(id, "zielWert", "");
   }
   if(e.target.matches("[data-bn-zielwert]")) bnAendern(id, "zielWert", e.target.value);
+  if(e.target.matches("[data-bn-von],[data-bn-bis]")){
+    const b = bnFinden(id); if(!b) return;
+    const feld = e.target.matches("[data-bn-von]") ? "von" : "bis", w = tagSauber(e.target.value);
+    bnGeaendert = true;
+    if(w) b[feld] = w; else delete b[feld];
+    bnZeichnen();
+  }
   if(e.target.matches("[data-bn-datei]")){
     const datei = e.target.files && e.target.files[0];
     e.target.value = "";
@@ -23755,6 +24054,12 @@ async function bnSichern(){
     if(demo || !db){
       raus.textContent = "Im Vorführmodus wird nichts gespeichert.";
     }else{
+      /* Wechseltempo zuerst, frisch gelesen und zusammengeführt (C3-Helfer). Scheitert es, bleibt alles stehen. */
+      if(BNTAKT !== null && BNTAKT !== BNTAKT_GESPEICHERT){
+        const r = await hubStilTeilSichern({ bannerTakt: BNTAKT || undefined });
+        if(!r.ok){ raus.textContent = r.satz; knopf.disabled = false; knopf.textContent = "Übernehmen"; return; }
+        BNTAKT_GESPEICHERT = BNTAKT;
+      }
       const {error} = await db.from("betriebe")
         .update({ hub_banner: raw }).eq("id", betriebId);
       if(error) throw error;

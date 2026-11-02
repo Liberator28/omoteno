@@ -39,7 +39,8 @@ function gerichteZeilen(bildName){
         Schalter), layout (Objekt wie markenblatt.startlayout, null = ohne), korb ([Gerichtname, …]), hash, reduziert, skala,
         karten (Liste wie betriebe.karten, z. B. [{id:"cocktails",name:"Cocktails",aktiv:false}]), vorschau (true: wie im Board-Rahmen, vorschauSetzen() nimmt Entwürfe), optionen (Objekt wie betriebe.optionen: Gruppen für Extras/Beilagen), bloecke (Liste wie betriebe.hub_bloecke, null = ohne Aufbau), dist (anderer dist-Ordner, auch HUB_DIST), texte (Objekt wie betriebe.hub_texte), startgrafik (Objekt wie markenblatt.startgrafik, null = ohne), zeilen (Funktion: ändert die nachgestellten Gerichtzeilen — Preis, Allergene, Merkmale), gerichteFehler (true: die
         Datenbank antwortet 500), initSkript (Text, läuft vor der Seite), hubstil (Objekt: weitere Schlüssel von betriebe.hub_stil), liefer (Objekt wie betriebe.liefer),
-        routen (async p => …: weitere page.route vor dem Laden) */
+        routen (async p => …: weitere page.route vor dem Laden), hubKacheln (Liste wie betriebe.hub_kacheln, ersetzt kachelFoto),
+        banner (Liste wie betriebe.hub_banner) */
 async function oeffneHub(browser, opt){
   opt = opt || {};
   const haus = opt.haus || "chocolamour";
@@ -73,7 +74,7 @@ async function oeffneHub(browser, opt){
       return r.fulfill({ status: 200, contentType: "image/jpeg", body: BILD[n] || BILD.gericht });
     }
     if(/\/rest\/v1\/betriebe\?/.test(u)) return r.fulfill({ status: 200, contentType: "application/json",
-      body: JSON.stringify([{ id: "b1", bestell_pause: false, hub_texte: opt.texte || {}, hub_stil: stil, hub_kacheln: kacheln, hub_bloecke: opt.bloecke || null, optionen: opt.optionen || null, hub_banner: null, hub_avatar: null,
+      body: JSON.stringify([{ id: "b1", bestell_pause: false, hub_texte: opt.texte || {}, hub_stil: stil, hub_kacheln: opt.hubKacheln !== undefined ? opt.hubKacheln : kacheln, hub_bloecke: opt.bloecke || null, optionen: opt.optionen || null, hub_banner: opt.banner || null, hub_avatar: null,
         karten: opt.karten || null, liefer: opt.liefer || null }]) });
     if(/\/rest\/v1\/gerichte\?/.test(u)){
       if(opt.gerichteFehler) return r.fulfill({ status: 500, contentType: "application/json", body: '{"message":"boom"}' });
