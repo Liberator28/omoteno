@@ -13,7 +13,7 @@
    Gemessen wird am GEMALTEN Bild über eine EIGENE Umkehr der Projektion
    (zweite Quelle, nicht saalWelt()).
 
-   1 · BLATT. Meterfelder eingeklappt („Genaue Maße eintippen“ ≥ 44 px),
+   1 · BLATT. Meterfelder eingeklappt („Maße genau eingeben“ ≥ 44 px),
        bleiben nach einem Zug offen, wenn sie offen waren; Satz zur
        Fingerbedienung; ohne Einrichten weder Griffe noch ziehbare Körper.
    2 · KÜCHE. Griff → Größe im 10-cm-Raster, endet an der Wand, nicht unter
@@ -27,10 +27,16 @@
        eines Tisches daneben (§3.17); Pfeiltaste ändert um einen Schritt,
        der Fokus bleibt; Speichern trägt die gezogenen Werte.
    6 · BILD. Stand als schmaler Ring (kein Verlauf, Deckkraft ≤ 0,16, liegt
-       an den Stühlen an), im Einrichten nur im Reiter „Stufen“; Stühle
+       an den Stühlen an), im Einrichten nur im Reiter „Signale“ (id stufen); Stühle
        0,42 m, so viele wie Plätze, überlappen nicht; warmer Boden; eng
        (Telefon, ganzer Raum) ohne Belegungsschilder, herangezoomt mit;
        Maßschild und Griff ≥ 4,5:1 in beiden Fassungen; kein Seitenfehler.
+   7 · S1/S2 (03.11.). Maßschild nur während des Zugs und 1,5 s danach
+       (dann opacity 0, nach dem nächsten Zeichnen weg), Raummaß unter dem
+       Namen nur beim Raum-Griff, außerhalb des Einrichtens nie; ↻ dreht
+       Küche und Theke um 90° (Breite ↔ Tiefe um die Mitte, am gemalten
+       Bild), am Rand wird an die Wand geschoben; „↻ Drehen“ im Blatt und
+       „R“ auf dem Körper drehen ebenso, der Fokus bleibt.
    ═════════════════════════════════════════════════════════════════════ */
 const { chromium } = require("playwright");
 const path = require("path");
@@ -101,7 +107,7 @@ async function fahren(br, breite, hoehe, finger){
   const blatt = await p.evaluate(() => { const d = document.querySelector("#spEdit [data-sp-genau]"), s = d && d.querySelector("summary");
     return { da: !!d, offen: d && d.open, felderSichtbar: [...document.querySelectorAll("#spEdit input[data-sp-kf],#spEdit input[data-sp-rm]")].filter(i => i.checkVisibility({ contentVisibilityAuto: true, opacityProperty: true, visibilityProperty: true })).length,
       h: s ? s.getBoundingClientRect().height : 0, satz: /mit dem Finger/.test(document.getElementById("spEdit").textContent) }; });
-  pruef(blatt.da && !blatt.offen && blatt.felderSichtbar === 0 && blatt.h >= 44 && blatt.satz, name + ": Meterfelder eingeklappt unter „Genaue Maße eintippen“ (≥ 44 px), oben der Satz zur Fingerbedienung", JSON.stringify(blatt));
+  pruef(blatt.da && !blatt.offen && blatt.felderSichtbar === 0 && blatt.h >= 44 && blatt.satz, name + ": Meterfelder eingeklappt unter „Maße genau eingeben“ (≥ 44 px), oben der Satz zur Fingerbedienung", JSON.stringify(blatt));
   const griffe = await p.evaluate(() => [...document.querySelectorAll("#spSvg [data-sp-griff]")].map(g => { const r = g.querySelector(".sp-griff-treffer").getBoundingClientRect(); return g.dataset.spGriff + ":" + Math.round(r.width); }));
   pruef(griffe.map(g => g.slice(0, g.lastIndexOf(":"))).sort().join() === "kueche,raum,raumlage,theke:0" && griffe.every(g => +g.slice(g.lastIndexOf(":") + 1) >= 44), name + ": Griffe für Raum, Lage (zwei Bereiche), Theke und Küche, jeder ≥ 44 px", griffe.join(" "));
 
@@ -141,6 +147,69 @@ async function fahren(br, breite, hoehe, finger){
   r1 = await raum0(p);
   pruef(nah(r1.kueche.x + r1.kueche.b, r1.b, 1e-6) && nah(r1.kueche.y + r1.kueche.t, r1.t, 1e-6), name + ": weit hinausgezogen bleibt die Küche im Raum (Ecke)", JSON.stringify(r1.kueche));
   await p.evaluate(() => { const r = SAAL.konfigEntwurf.raeume[0]; r.kueche = { x: 0.2, y: 0.2, b: 2.6, t: 1.8 }; SAAL.konfigEntwurf.raeume[0] = saalRaum(r); saalNeuBauen(); });
+
+  /* 7 · S3–S12: Reiter und Sätze — jeder Reiter einmal gezeichnet, alte Wörter nirgends */
+  {
+    const texte = [];
+    for(const t of ["tische", "bereiche", "masse", "stufen"]){ await p.click('[data-sp-tab="' + t + '"]'); texte.push(await p.evaluate(() => document.getElementById("spEdit").textContent)); }
+    const reiter = await p.evaluate(() => [...document.querySelectorAll(".sp-tabs .aw-seg")].map(b => b.textContent).join("|"));
+    const alle = texte.join(" ") + " " + await p.evaluate(() => document.getElementById("spZeile").textContent);
+    const alt = ["Theke / Bar", "Gebäudeumrandung", "Genaue Maße", "Lage im Gebäude", "Der Pass", "Stufe 2 ab", "Stufe 3 ab", "Wann leuchtet", "Ziehen verschiebt"].filter(w => alle.includes(w));
+    pruef(reiter === "Tische|Bereiche|Theke & Küche|Signale", name + ": S3/S4 — Reiter „Tische · Bereiche · Theke & Küche · Signale“", reiter);
+    pruef(/\d+(,\d)? × \d+(,\d)? m/.test(texte[1]) && /Wo liegt dieser Bereich\?/.test(texte[1]) && /Meter vom linken Rand/.test(texte[1]), name + ": S3/S7 — die Raumgröße steht beim Bereich, „Wo liegt dieser Bereich?“");
+    pruef(/Durchreiche/.test(texte[2]) && /＋ Theke dazu|Theke 1/.test(texte[2]) && /Deutlicher ab/.test(texte[3]) && /Dringend ab/.test(texte[3]) && /aufmerksam macht/.test(texte[3]),
+      name + ": S4/S8/S9 — „Durchreiche“, „Theke dazu“, „Deutlicher ab“, „Dringend ab“");
+    pruef(!alt.length, name + ": S5–S9 — keines der alten Wörter steht mehr im Blatt oder in der Zeile", alt.join(", "));
+    await p.click('[data-sp-tab="masse"]'); await planZeigen(p);
+  }
+
+  /* 7 · S1: das Maß nur beim Ziehen */
+  await p.evaluate(() => { SAAL.ding = null; SAAL.massBis = 0; saalNeuBauen(); });
+  pruef(await p.evaluate(() => !document.querySelector("#spSvg .sp-massschild") && !document.querySelector("#spSvg .sp-raumdim")),
+    name + ": S1 — ohne Zug kein Maßschild und kein Raummaß unter dem Namen");
+  g = await griffMitte(p, "kueche");
+  await zug(p, cdp, g, plus(g, await versatz(p, 0.4, 0)));
+  const s1 = await p.evaluate(() => { const e = document.querySelector("#spSvg .sp-massschild"); return e ? { da:true, o:getComputedStyle(e).opacity, t:e.textContent } : { da:false }; });
+  pruef(s1.da && s1.o === "1" && /^Küche/.test(s1.t), name + ": S1 — direkt nach dem Zug steht das Maßschild da", JSON.stringify(s1));
+  await p.waitForTimeout(1900);
+  const s2 = await p.evaluate(() => { const e = document.querySelector("#spSvg .sp-massschild"); return e ? getComputedStyle(e).opacity : "weg"; });
+  pruef(s2 === "0" || s2 === "weg", name + ": S1 — 1,5 s nach dem Loslassen ist es ausgeblendet", s2);
+  await p.evaluate(() => saalNeuBauen());
+  pruef(await p.evaluate(() => !document.querySelector("#spSvg .sp-massschild")), name + ": S1 — nach dem nächsten Zeichnen ist es weg (die Küche bleibt gewählt)");
+  pruef(await p.evaluate(() => /Küche · \d/.test(document.getElementById("spEdit").textContent)), name + ": S1 — im Blatt steht das Maß weiter als Text");
+  g = await griffMitte(p, "raum");
+  await zug(p, cdp, g, plus(g, await versatz(p, 0.6, 0)));
+  const dim = await p.evaluate(() => [...document.querySelectorAll("#spSvg .sp-raumdim")].map(e => e.textContent));
+  pruef(dim.length === 1 && /^\d+(,\d)? × \d+(,\d)? m$/.test(dim[0]), name + ": S1 — beim Raum-Griff steht das Raummaß unter DIESEM Raumnamen", dim.join(" | "));
+  await p.evaluate(() => { const r = SAAL.konfigEntwurf.raeume[0]; r.b = 12; r.t = 9; r.kueche = { x: 0.2, y: 0.2, b: 2.6, t: 1.8 }; r.theken = [{ x: 2.5, y: 7.6, b: 7, t: 0.8 }]; SAAL.konfigEntwurf.raeume[0] = saalRaum(r); SAAL.ding = null; SAAL.massBis = 0; saalNeuBauen(); saalAlles(false); });
+
+  /* 7 · S2: Drehen um 90° */
+  pruef(await p.evaluate(() => !document.querySelector('#spSvg [data-sp-griff^="drehen:"]')), name + ": S2 — ohne gewählte Sache kein Drehen-Knopf");
+  let kz = await p.evaluate(() => { const k = SAAL.konfigEntwurf.raeume[0].kueche; return window.__bild(k.x + k.b * 0.5, k.y + k.t * 0.35, SAAL_BODEN + 1.57); });
+  await zug(p, cdp, kz, kz);
+  const dg = await p.evaluate(() => { const e = document.querySelector('#spSvg [data-sp-griff="drehen:kueche"] .sp-griff-treffer'); if(!e) return null; const r = e.getBoundingClientRect(); return { w:r.width, x:r.left + r.width / 2, y:r.top + r.height / 2, oben:!!(document.elementFromPoint(r.left + r.width / 2, r.top + r.height / 2) || { closest:() => null }).closest('[data-sp-griff="drehen:kueche"]') }; });
+  pruef(dg && Math.round(dg.w) >= 44 && dg.oben, name + ": S2 — Küche angetippt → Drehen-Knopf ↻ ≥ 44 px, obenauf", JSON.stringify(dg));
+  let k0d = (await raum0(p)).kueche;
+  if(dg) await zug(p, cdp, dg, dg);
+  let k1d = (await raum0(p)).kueche;
+  const mitte = k => [k.x + k.b / 2, k.y + k.t / 2];
+  pruef(nah(k1d.b, k0d.t, 1e-6) && nah(k1d.t, k0d.b, 1e-6) && nah(mitte(k1d)[0], mitte(k0d)[0], 0.051) && nah(mitte(k1d)[1], mitte(k0d)[1], 0.051) || (nah(k1d.b, k0d.t, 1e-6) && (k1d.x === 0 || k1d.y === 0)),
+    name + ": S2 — ein Tipp auf ↻: Breite und Tiefe getauscht, um die Mitte (oder an die Wand geschoben)", JSON.stringify(k0d) + " → " + JSON.stringify(k1d));
+  const kG = await p.evaluate(() => { const e = window.__ecken(document.querySelector("#spSvg .sp-k-kueche .o"), SAAL_BODEN + 1.5); return { b: Math.hypot(e[1].x - e[0].x, e[1].y - e[0].y), t: Math.hypot(e[2].x - e[1].x, e[2].y - e[1].y) }; });
+  pruef(nah(kG.b, k1d.b, 0.06) && nah(kG.t, k1d.t, 0.06), name + ": S2 — die gemalte Küche ist gedreht", kG.b.toFixed(2) + " × " + kG.t.toFixed(2));
+  /* am Rand: eine 4 × 1 m-Küche in der Ecke dreht sich in den Raum hinein */
+  await p.evaluate(() => { const r = SAAL.konfigEntwurf.raeume[0]; r.kueche = { x: 0, y: 0, b: 4, t: 1 }; SAAL.konfigEntwurf.raeume[0] = saalRaum(r); SAAL.ding = "kueche"; saalNeuBauen(); });
+  await p.click('#spEdit [data-sp-drehen-knopf="kueche"]');
+  const ecke = await p.evaluate(() => ({ k: SAAL.konfigEntwurf.raeume[0].kueche, fokus: document.activeElement && document.activeElement.dataset.spDrehenKnopf,
+    h: document.querySelector('#spEdit [data-sp-drehen-knopf="kueche"]').getBoundingClientRect().height }));
+  pruef(ecke.k.b === 1 && ecke.k.t === 4 && ecke.k.y === 0 && ecke.k.x >= 0 && ecke.fokus === "kueche" && ecke.h >= 44,
+    name + ": S2 — „↻ Drehen“ im Blatt (≥ 44 px): 4 × 1 m in der Ecke wird 1 × 4 m und an die Wand geschoben, der Fokus bleibt", JSON.stringify(ecke));
+  /* Tastatur „R“ auf der Theke */
+  const th0 = (await raum0(p)).theken[0];
+  await p.focus('#spSvg [data-sp-ding="theke:0"]'); await p.keyboard.press("r");
+  const th1 = (await raum0(p)).theken[0];
+  pruef(nah(th1.b, th0.t, 1e-6) && nah(th1.t, Math.min(th0.b, 9), 1e-6), name + ": S2 — „R“ auf der Theke dreht sie (7 × 0,8 → 0,8 × 7)", JSON.stringify(th0) + " → " + JSON.stringify(th1));
+  await p.evaluate(() => { const r = SAAL.konfigEntwurf.raeume[0]; r.b = 12; r.t = 9; r.kueche = { x: 0.2, y: 0.2, b: 2.6, t: 1.8 }; r.theken = [{ x: 2.5, y: 7.6, b: 7, t: 0.8 }]; SAAL.konfigEntwurf.raeume[0] = saalRaum(r); SAAL.ding = null; SAAL.massBis = 0; saalNeuBauen(); saalAlles(false); });
 
   /* 3 · Theke */
   r0 = await raum0(p);
@@ -311,7 +380,8 @@ async function fahren(br, breite, hoehe, finger){
     pruef(ruhig === 0 && vorschau >= 2, "Einrichten: ohne Ring und Abzeichen — im Reiter „Stufen“ zeigt der Plan die Vorschau", ruhig + " / " + vorschau);
     /* Kontrast: Maßschild und Griff */
     await p.click('[data-sp-tab="masse"]');
-    await p.evaluate(() => { SAAL.ding = "kueche"; saalNeuBauen(); });
+    /* Das Schild steht seit S1 nur kurz nach einem Zug da — für die Farbmessung so gestellt. */
+    await p.evaluate(() => { SAAL.ding = "kueche"; SAAL.massBis = Date.now() + 60000; saalNeuBauen(); });
     const k = await p.evaluate(() => { const r = document.querySelector("#spSvg .sp-massschild rect"), t = document.querySelector("#spSvg .sp-massschild text"), pu = document.querySelector('#spSvg [data-sp-griff="raum"] .sp-griff-punkt'), z = document.querySelector('#spSvg [data-sp-griff="raum"] .sp-griff-zeichen');
       return { r: getComputedStyle(r).fill, t: getComputedStyle(t).fill, pu: getComputedStyle(pu).fill, z: getComputedStyle(z).stroke }; });
     pruef(kontrast(k.r, k.t) >= 4.5 && kontrast(k.pu, k.z) >= 4.5, "Maßschild und Griff ≥ 4,5:1", kontrast(k.r, k.t).toFixed(1) + " / " + kontrast(k.pu, k.z).toFixed(1));

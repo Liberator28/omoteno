@@ -45,7 +45,7 @@ const ADMIN = "file://" + (process.env.ADMIN_DATEI ? path.resolve(process.env.AD
 let fehler = 0;
 const pruef = (g, t, z) => { console.log((g ? "  ok   " : "  FEHL ") + t + (z !== undefined && z !== "" ? "  → " + z : "")); if(!g) fehler++; };
 const nah = (a, b, tol) => Math.abs(a - b) <= tol;
-/* Seit 02.11. liegen die Meterfelder eingeklappt unter „Genaue Maße eintippen“ — geöffnet wird mit einem echten Tipp. */
+/* Seit 02.11. liegen die Meterfelder eingeklappt unter „Maße genau eingeben“ — geöffnet wird mit einem echten Tipp. */
 const genau = async p => { if(!(await p.evaluate(() => { const d = document.querySelector("#spEdit [data-sp-genau]"); return !d || d.open; }))) await p.click("#spEdit [data-sp-genau] > summary"); };
 
 async function neu(br, breite, hoehe, extra){
@@ -286,13 +286,14 @@ const imBild = (p, sel) => p.evaluate(s => {
       betriebId = "b-1";
     });
     await p.click('[data-sp-wz="einrichten"]');
-    pruef(await p.evaluate(() => !!document.querySelector('[data-sp-tab="masse"]')), "der Reiter „Maße“ ist da");
-    pruef(await p.evaluate(() => [...document.querySelectorAll(".sp-tabs .aw-seg")].map(b => b.getAttribute("aria-label")).join("|")) === "Tische|Bereiche|Maße von Raum und Theke|Leuchtstufen", "vier Reiter in einer Zeile, jeder mit vollem Namen für Vorleser");
+    pruef(await p.evaluate(() => !!document.querySelector('[data-sp-tab="masse"]')), "der Reiter „Theke & Küche“ ist da (die id „masse“ bleibt)");
+    pruef(await p.evaluate(() => [...document.querySelectorAll(".sp-tabs .aw-seg")].map(b => b.getAttribute("aria-label")).join("|")) === "Tische|Bereiche und ihre Größe|Theke und Küche|Wann ein Tisch auf sich aufmerksam macht", "vier Reiter in einer Zeile, jeder mit vollem Namen für Vorleser");
     const tabH = await p.evaluate(() => { const l = [...document.querySelectorAll(".sp-tabs .aw-seg")].map(b => b.getBoundingClientRect()); return { h: Math.min(...l.map(r => r.height)), b: Math.min(...l.map(r => r.width)), zeilen: new Set(l.map(r => Math.round(r.top))).size }; });
     pruef(tabH.h >= 44 && tabH.zeilen === 1, "die Reiter sind ≥ 44 px hoch und stehen in einer Zeile", JSON.stringify(tabH));
     const glider = await p.evaluate(() => { const t = document.querySelector(".sp-tabs"); return { w: parseFloat(getComputedStyle(t, "::before").width), gesamt: t.getBoundingClientRect().width }; });
     pruef(nah(glider.w, (glider.gesamt - 8) / 4, 3), "die Auswahl-Pille ist ein Viertel breit (nicht ein Drittel wie bei drei Reitern)", glider.w.toFixed(1) + " von " + glider.gesamt.toFixed(1));
-    await p.click('[data-sp-tab="masse"]');
+    /* S3 (03.11.): Größe und Lage eines Raums stehen beim Bereich. */
+    await p.click('[data-sp-tab="bereiche"]');
     await genau(p);
     const felder = await p.evaluate(() => [...document.querySelectorAll('#spEdit input[data-sp-rm]')].map(i => ({ f: i.dataset.spRm, v: i.value, fs: parseFloat(getComputedStyle(i).fontSize), h: i.getBoundingClientRect().height, ph: i.placeholder })));
     pruef(felder.length === 4 && felder.every(f => f.fs >= 16 && f.h >= 44), "vier Maßfelder (Breite, Tiefe, Lage links/hinten), 16 px, ≥ 44 px hoch", JSON.stringify(felder.map(f => f.f + "=" + f.v)));
@@ -327,9 +328,10 @@ const imBild = (p, sel) => p.evaluate(s => {
       return { x: ((e[0].x + e[2].x) / 2 - bo[0].x) / 15.5 * 100, y: ((e[0].y + e[2].y) / 2 - bo[0].y) / 7.5 * 100, soll: [t.x, t.y] }; });
     pruef(nah(anteil.x, anteil.soll[0], 0.8) && nah(anteil.y, anteil.soll[1], 0.8), "Tisch 2 bleibt bei " + anteil.soll[0] + " % × " + anteil.soll[1] + " % — er wandert mit dem Raum", anteil.x.toFixed(1) + " % × " + anteil.y.toFixed(1) + " %");
     /* Theke anlegen und klemmen */
+    await p.click('[data-sp-tab="masse"]'); await genau(p);
     await p.click("[data-sp-theke-neu]");
     const th2 = await p.evaluate(() => SAAL.konfigEntwurf.raeume[0].theken);
-    pruef(th2.length === 2 && th2[1].b === 6 && th2[1].t === 0.8 && th2[1].x >= 0 && th2[1].x + th2[1].b <= 15.5, "„＋ Theke / Bar“ legt eine zweite an (6 × 0,8 m, im Raum)", JSON.stringify(th2[1]));
+    pruef(th2.length === 2 && th2[1].b === 6 && th2[1].t === 0.8 && th2[1].x >= 0 && th2[1].x + th2[1].b <= 15.5, "„＋ Theke dazu“ legt eine zweite an (6 × 0,8 m, im Raum)", JSON.stringify(th2[1]));
     await p.fill('#spEdit [data-sp-th="1"][data-sp-thf="b"]', "30"); await p.waitForTimeout(60);
     const th3 = await p.evaluate(() => SAAL.konfigEntwurf.raeume[0].theken[1]);
     pruef(th3.b <= 15.5 - th3.x + 0.001 && th3.x + th3.b <= 15.5 + 0.001, "eine 30 m lange Theke wird an die 15,5 m des Raumes geklemmt", JSON.stringify(th3));
@@ -339,6 +341,7 @@ const imBild = (p, sel) => p.evaluate(s => {
     pruef(await p.evaluate(() => SAAL.konfigEntwurf.raeume[0].theken.length === 3 && !document.querySelector("[data-sp-theke-neu]")), "höchstens drei Theken: danach verschwindet der Knopf");
     await p.click('[data-sp-theke-weg="2"]'); await p.click('[data-sp-theke-weg="1"]');
     /* Lage im Gebäude */
+    await p.click('[data-sp-tab="bereiche"]');
     await p.click('[data-sp-zone="Terrasse"]');
     await p.evaluate(() => window.__fest());
     await p.fill('#spEdit [data-sp-rm="x"]', "20"); await p.fill('#spEdit [data-sp-rm="y"]', "12");
@@ -390,8 +393,9 @@ const imBild = (p, sel) => p.evaluate(s => {
     pruef(pf.length === 0, "kein Seitenfehler im Einrichten", pf.join(" | "));
     /* Speichern: Nutzlast, Gründe */
     await p.click("[data-sp-abbrechen]");
-    await p.click('[data-sp-wz="einrichten"]'); await p.click('[data-sp-tab="masse"]'); await genau(p);
+    await p.click('[data-sp-wz="einrichten"]'); await p.click('[data-sp-tab="bereiche"]'); await genau(p);
     await p.fill('#spEdit [data-sp-rm="b"]', "14"); await p.fill('#spEdit [data-sp-rm="t"]', "8,5");
+    await p.click('[data-sp-tab="masse"]');
     await p.click("[data-sp-theke-neu]");
     await p.evaluate(() => { window.__rpc.length = 0; window.__antwort = { data: { ok: false, grund: "form" }, error: null }; });
     await p.click("[data-sp-speichern]"); await p.waitForTimeout(250);

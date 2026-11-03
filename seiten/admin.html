@@ -1675,7 +1675,10 @@ body.hell .sp-buehne{--sp-himmel1:#f6f2ec;--sp-himmel2:#e6dfd4;--sp-boden:#EADBC
 .sp-griff-zeichen{fill:none;stroke:var(--nacht);stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
 .sp-griff.an .sp-griff-punkt,.sp-griff:focus-visible .sp-griff-punkt{fill:var(--messing)}
 .sp-griff:focus-visible .sp-griff-treffer{stroke:var(--messing);stroke-width:2}
-.sp-massschild{pointer-events:none}
+.sp-massschild{pointer-events:none;transition:opacity .3s ease}
+.sp-massschild.aus,.sp-raumdim.aus{opacity:0}
+.sp-raumdim{transition:opacity .3s ease}
+.sp-zmass{flex:0 0 auto;font-size:14px;color:var(--kreide);font-variant-numeric:tabular-nums;white-space:nowrap}
 .sp-massschild rect{fill:var(--kreide);stroke:rgba(10,20,30,.35);stroke-width:1}
 .sp-massschild text{font:700 12px/1 system-ui,-apple-system,sans-serif;fill:var(--nacht)}
 .sp-dingzeile{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;font-size:14px}
@@ -14296,7 +14299,7 @@ const SAAL = {
   zone: null,                /* gezeigter Bereich */
   einst: null, einstFehlt: false, konfig: null, konfigEntwurf: null,
   edit: false, editTab: "tische", entwurf: null, gewaehlt: null,
-  ding: null, zieht: false, genauOffen: false,   /* Einrichten mit dem Finger: angetippte Sache ("raum", "theke:0", "kueche", "tisch:<id>"), Zug läuft, Felder offen */
+  ding: null, zieht: false, genauOffen: false, massBis: 0, massUhr: 0,   /* Einrichten mit dem Finger: angetippte Sache ("raum", "theke:0", "kueche", "tisch:<id>"), Zug läuft, Felder offen */
   sig: "", gross: false, hebt: null, liste: "alle", stand: null, restIds: [], liefIds: [],
   /* Belegung (01.11.): normierte Tischnummer → { personen, stand, seit, geaendert_um } bzw. { letzte, offen } */
   beleg: new Map(), anw: new Map(), belegFehlt: false, anwFehlt: false, belegSatz: "", belegNr: new Map()
@@ -14549,7 +14552,7 @@ function saalTischSVG(roh, st, gewaehlt, ort){
     platte = saalKiste(-m.hx, -m.hy, m.hx, m.hy, zU, zO, "platte").replace(/<polygon class="o"[^>]*\/>/, "");
     oben = [saalP(-m.hx, -m.hy, zO), saalP(m.hx, -m.hy, zO), saalP(m.hx, m.hy, zO), saalP(-m.hx, m.hy, zO)];
   }
-  /* Im Einrichten zählt die Lage, nicht der Stand: kein Ring, kein Abzeichen — außer im Reiter „Stufen“, dort ist der Plan die Vorschau. */
+  /* Im Einrichten zählt die Lage, nicht der Stand: kein Ring, kein Abzeichen — außer im Reiter „Signale“, dort ist der Plan die Vorschau. */
   const ruhe = SAAL.edit && SAAL.editTab !== "stufen";
   const art = !ruhe && st && st.haupt ? SAAL_ART[st.haupt] : null, stufe = st ? st.stufe : 0;
   const farbe = art ? saalFarbe(st.haupt) : null, glyph = farbe ? saalGlyph(farbe) : "#10151C";
@@ -14767,14 +14770,15 @@ function saalRaumSVG(r, pl, stand){
   const lp = saalP(r.ox + r.b / 2, r.oy + r.t + 0.95, z);
   s += '<g class="sp-raumschild ' + (aktuell ? "an" : "fern") + '" data-sp-raum="' + sicher(r.zone) + '" transform="translate(' + lp[0].toFixed(1) + ' ' + lp[1].toFixed(1) + ')">' +
     '<g class="sp-skala"><text class="sp-raumname" text-anchor="middle">' + sicher(r.zone) + '</text>' +
-    '<text class="sp-raumdim" y="16" text-anchor="middle">' + saalZ(r.b) + ' × ' + saalZ(r.t) + ' m</text></g></g>';
+    (SAAL.edit && aktuell && (SAAL.ding === "raum" || SAAL.ding === "raumlage") && saalMassZeigen()
+      ? '<text class="sp-raumdim" y="16" text-anchor="middle">' + saalZ(r.b) + ' × ' + saalZ(r.t) + ' m</text>' : "") + '</g></g>';
   return s;
 }
 /* ── Mit dem Finger einrichten (Wunsch 01.11.) ──────────────────────
    Im Einrichten trägt der gezeigte Raum Griffe: Theke und Küche zieht man am Körper an ihren Platz; der runde Griff an
    der vorderen Ecke ändert die Größe (Raum, Theke, Küche), der Griff neben dem gewählten Tisch die Zahl der Stühle.
    Gerastert wird auf 10 cm, beim Raum auf 50 cm; die Grenzen setzt saalRaum (dieselben wie die Schranke der Migration).
-   Die Felder in Metern bleiben, eingeklappt unter „Genaue Maße eintippen“. */
+   Die Felder in Metern bleiben, eingeklappt unter „Maße genau eingeben“. Theke und Küche drehen um 90° (saalDrehen). */
 function saalDingSVG(art, name, innen){
   return '<g class="sp-ding' + (SAAL.ding === art ? " an" : "") + '" data-sp-ding="' + art + '" role="button" tabindex="0" aria-label="' + sicher(name) +
     ': ziehen oder Pfeiltasten">' + innen + '</g>';
@@ -14787,7 +14791,15 @@ function saalGriffSVG(art, p, name, zeichen, ab){
     '<g class="sp-skala"><path class="sp-griff-stiel" d="M0 0L' + o[0] + ' ' + o[1] + '"/><g transform="translate(' + o[0] + ' ' + o[1] + ')"><circle class="sp-griff-treffer" r="22"/><circle class="sp-griff-punkt" r="10"/>' +
     '<path class="sp-griff-zeichen" d="' + (zeichen || "M-4 -4L4 4M-4 -4h3.4M-4 -4v3.4M4 4h-3.4M4 4v-3.4") + '"/></g></g></g>';
 }
-/* Ein Maßschild über dem, was gerade gezogen oder angetippt wurde (fängt keinen Tipp). */
+/* Ein Maßschild über dem, was gerade gezogen oder angetippt wurde (fängt keinen Tipp). S1 (03.11., „man soll nicht die
+   ganze Zeit die Meter-Anzeige sehen“): nur während des Zugs und 1,5 s danach; dann blendet es aus (nur opacity). Das Maß
+   steht dauerhaft als Text im Blatt. */
+function saalMassZeigen(){ return SAAL.zieht || Date.now() < SAAL.massBis; }
+function saalMassNachZug(){
+  SAAL.massBis = Date.now() + 1500;
+  clearTimeout(SAAL.massUhr);
+  SAAL.massUhr = setTimeout(() => { if(SAAL.zieht) return; document.querySelectorAll("#spSvg .sp-massschild, #spSvg .sp-raumdim").forEach(e => e.classList.add("aus")); }, 1500);
+}
 function saalMassSVG(p, text){
   const w = text.length * 6.9 + 18;
   return '<g class="sp-massschild" transform="translate(' + p[0].toFixed(1) + ' ' + p[1].toFixed(1) + ')"><g class="sp-skala">' +
@@ -14802,18 +14814,20 @@ function saalGriffeSVG(r, pl){
   let schild = "";
   r.theken.forEach((th, j) => {
     g += saalGriffSVG("theke:" + j, saalP(r.ox + th.x + th.b, r.oy + th.y + th.t, z + 1.07), "Größe der Theke " + (j + 1) + " ändern, jetzt " + mal(th.b, th.t));
-    if(SAAL.ding === "theke:" + j) schild = saalMassSVG(saalP(r.ox + th.x + th.b / 2, r.oy + th.y + th.t / 2, z + 1.07), "Theke " + mal(th.b, th.t));
+    if(SAAL.ding === "theke:" + j) g += saalGriffSVG("drehen:theke:" + j, saalP(r.ox + th.x + th.b, r.oy + th.y, z + 1.07), "Theke " + (j + 1) + " um 90 Grad drehen", "M5.2 -1.6A5.4 5.4 0 1 1 1.6 -5.2M1.6 -5.2L4.6 -6.4M1.6 -5.2L2.6 -2.2", [26, -18]);
+    if(SAAL.ding === "theke:" + j && saalMassZeigen()) schild = saalMassSVG(saalP(r.ox + th.x + th.b / 2, r.oy + th.y + th.t / 2, z + 1.07), "Theke " + mal(th.b, th.t));
   });
   if(r.kueche){
     const k = r.kueche;
     g += saalGriffSVG("kueche", saalP(r.ox + k.x + k.b, r.oy + k.y + k.t, z + 1.57), "Größe der Küche ändern, jetzt " + mal(k.b, k.t));
-    if(SAAL.ding === "kueche") schild = saalMassSVG(saalP(r.ox + k.x + k.b / 2, r.oy + k.y + k.t / 2, z + 1.57), "Küche " + mal(k.b, k.t));
+    if(SAAL.ding === "kueche") g += saalGriffSVG("drehen:kueche", saalP(r.ox + k.x + k.b, r.oy + k.y, z + 1.57), "Küche um 90 Grad drehen", "M5.2 -1.6A5.4 5.4 0 1 1 1.6 -5.2M1.6 -5.2L4.6 -6.4M1.6 -5.2L2.6 -2.2", [26, -18]);
+    if(SAAL.ding === "kueche" && saalMassZeigen()) schild = saalMassSVG(saalP(r.ox + k.x + k.b / 2, r.oy + k.y + k.t / 2, z + 1.57), "Küche " + mal(k.b, k.t));
   }
   const sel = SAAL.gewaehlt ? pl.find(t => t.id === SAAL.gewaehlt && saalTischZone(t) === r.zone) : null;
   if(sel){
     const w = saalTischWelt(sel), n = sel.plaetze || 4;
     g += saalGriffSVG("tisch:" + sel.id, saalP(w.X, w.Y, z + 0.4), "Stühle an Tisch " + sel.nummer + " ändern, jetzt " + n, "M-5 0H5M-5 0l3 -3M-5 0l3 3M5 0l-3 -3M5 0l-3 3", [52, 0]);
-    if(SAAL.ding === "tisch:" + sel.id) schild = saalMassSVG(saalP(w.X, w.Y, z + 0.8), n + (n === 1 ? " Stuhl" : " Stühle"));
+    if(SAAL.ding === "tisch:" + sel.id && saalMassZeigen()) schild = saalMassSVG(saalP(w.X, w.Y, z + 0.8), n + (n === 1 ? " Stuhl" : " Stühle"));
   }
   return '<g class="sp-griffe">' + g + schild + '</g>';
 }
@@ -14859,8 +14873,29 @@ function saalGriffZiehen(art, istGriff, s, dx, dy, w){
   SAAL.konfigEntwurf.raeume[s.i] = neu;
   saalNeuBauen();
 }
-/* Tastatur: Pfeile verschieben bzw. ändern um einen Rasterschritt; danach liegt der Fokus wieder auf demselben Griff. */
+/* S2 (03.11.): Theke und Küche um 90° drehen — Breite und Tiefe tauschen, um die eigene Mitte; was nicht mehr passt,
+   schiebt (bzw. kürzt) saalRaum an die Wand. Gespeichert werden die vertauschten Maße (keine neue Spalte). */
+function saalDrehen(art){
+  const s = saalGriffStart(art); if(!s) return false;
+  const r = JSON.parse(JSON.stringify(s.raum));
+  const o = art === "kueche" ? r.kueche : r.theken[Number(String(art).slice(6))]; if(!o) return false;
+  const mx = o.x + o.b / 2, my = o.y + o.t / 2, b = o.t, t = o.b;
+  o.b = b; o.t = t; o.x = Math.max(0, saalAuf(mx - b / 2, 0.1)); o.y = Math.max(0, saalAuf(my - t / 2, 0.1));
+  SAAL.konfigEntwurf.raeume[s.i] = saalRaum(r);
+  SAAL.ding = art; saalMassNachZug(); saalNeuBauen();
+  return true;
+}
+/* Tastatur: Pfeile verschieben bzw. ändern um einen Rasterschritt; danach liegt der Fokus wieder auf demselben Griff.
+   „R“ an Theke oder Küche dreht; Enter/Leertaste am Drehen-Knopf ebenso. */
 function saalGriffTaste(el, e){
+  const dr = el.dataset.spGriff && el.dataset.spGriff.startsWith("drehen:") ? el.dataset.spGriff.slice(7)
+    : (el.dataset.spDing && (e.key === "r" || e.key === "R") ? el.dataset.spDing : null);
+  if(dr && (e.key === "Enter" || e.key === " " || e.key === "r" || e.key === "R")){
+    e.preventDefault(); saalDrehen(dr);
+    const neu = document.querySelector('#spSvg [data-sp-griff="drehen:' + CSS.escape(dr) + '"]'); if(neu) neu.focus();
+    return true;
+  }
+  if(dr) return false;
   const d = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] }[e.key]; if(!d) return false;
   e.preventDefault();
   const istGriff = el.hasAttribute("data-sp-griff"), art = istGriff ? el.dataset.spGriff : el.dataset.spDing, s = saalGriffStart(art);
@@ -14871,6 +14906,7 @@ function saalGriffTaste(el, e){
     const q = art === "raum" || art === "raumlage" ? 0.5 : 0.1;
     saalGriffZiehen(art, istGriff, s, d[0] * q, d[1] * q, null);
   }
+  saalMassNachZug();
   const sel = (istGriff ? '[data-sp-griff="' : '[data-sp-ding="') + CSS.escape(art) + '"]', neu = document.querySelector("#spSvg " + sel);
   if(neu) neu.focus();
   return true;
@@ -14983,7 +15019,7 @@ function saalZeichnen(){
        Nur neu schreiben, wenn sich etwas ändert — sonst verlöre ein Feld beim nächsten Neuzeichnen, was getippt wurde. */
     const n = SAAL.tische.filter(t => t.aktiv).length;
     const html = !hatTische
-      ? '<b>Noch keine Tische angelegt</b><span>Omoteno legt sie mit den Untersetzer-Codes an. Danach stellst du sie hier auf.</span>'
+      ? '<b>Noch keine Tische angelegt</b><span>Omoteno legt sie mit den Untersetzer-Codes an. Danach stellen Sie sie hier auf.</span>'
       : '<b>Der Saal ist noch leer</b><span>' + (istInhaberRolle() ? 'Geben Sie die Maße Ihres Gastraums ein: Er wird in 1×1-m-Feldern angelegt und Ihre ' + n + ' Tische werden darin verteilt. Danach ziehen Sie jeden an seinen Platz und speichern.' : 'Der Besitzer richtet den Saalplan noch ein.') + '</span>' +
         (istInhaberRolle() && !SAAL.fehlt ?
           '<div class="sp-as">' +
@@ -15056,7 +15092,7 @@ function saalLeiste(stand){
 }
 function saalZeile(stand){
   const z = $("#spZeile");
-  let text = SAAL.edit ? "Ziehen verschiebt · der runde Griff ändert die Größe · zwei Finger oder ± zoomen."
+  let text = SAAL.edit ? "Mit dem Finger verschieben · am runden Punkt größer oder kleiner ziehen · ↻ dreht · mit zwei Fingern zoomen."
     : "Tisch antippen — dann stehen seine Bestellungen darunter. Zwei Finger oder ± zoomen.";
   if(SAAL.edit){}
   else if(SAAL.auswahl && SAAL.auswahl !== "__rest" && SAAL.auswahl !== "__auto"){
@@ -15105,7 +15141,7 @@ function saalListe(stand){
     const ohne = eingetragen.filter(x => x.b.art !== "frei" && !bedarf.has(x.t.id))
       .sort((a, b) => String(a.t.nummer).localeCompare(String(b.t.nummer), "de", { numeric: true }));
     ruhig = ohne.map(({ t, b }) => {
-      const neben = [b.art === "zahlt" ? "zahlt gerade" : "alles gut", b.still != null && b.still >= SAAL_STILL_AB ? "still seit " + b.still + " Min" : ""].filter(Boolean).join(" · ");
+      const neben = [b.art === "zahlt" ? "zahlt gerade" : "alles gut", b.still != null && b.still >= SAAL_STILL_AB ? "seit " + b.still + " Min keine Bestellung" : ""].filter(Boolean).join(" · ");
       return '<button type="button" class="sp-tr' + (SAAL.auswahl === saalNk(t.nummer) ? " gewaehlt" : "") + '" data-sp-listetisch="' + sicher(t.id) + '">' +
         '<b>Tisch ' + sicher(t.nummer) + saalBelegKurz(t) + '</b><span>' + sicher(neben) + '</span></button>';
     }).join("");
@@ -15178,7 +15214,7 @@ function saalBelegSatzText(b){
   if(b.quelle === "eingetragen" && b.art !== "frei") teile.push(b.personen === 1 ? "1 Person" : b.personen + " Personen");
   if(b.art === "zahlt") teile.push("zahlt gerade");
   if(b.art === "frei") teile.push("als frei eingetragen");
-  if(b.still != null && b.still >= SAAL_STILL_AB) teile.push("still seit " + b.still + " Min");
+  if(b.still != null && b.still >= SAAL_STILL_AB) teile.push("seit " + b.still + " Min keine Bestellung");
   return teile.join(", ");
 }
 async function saalBelegLaden(id){
@@ -15268,7 +15304,7 @@ function saalBelegBlatt(t){
   else{
     if(b.seit) info.push("Besetzt seit " + uhr(b.seit));
     if(b.still != null) info.push(b.still < 1 ? "gerade aktiv" : "zuletzt aktiv vor " + b.still + " Min");
-    info.push(b.quelle === "eingetragen" ? "vom Service eingetragen" : b.quelle === "sitzung" ? "Tischsitzung offen (Untersetzer gescannt)" : b.quelle === "bestellung" ? "vermutet aus den Bestellungen" : "niemand eingetragen");
+    info.push(b.quelle === "eingetragen" ? "vom Service eingetragen" : b.quelle === "sitzung" ? "Gast hat den Tisch-Code gescannt" : b.quelle === "bestellung" ? "vermutet aus den Bestellungen" : "niemand eingetragen");
   }
   const offenText = b.art && b.art !== "frei"
     ? (b.offen.length ? b.offen.length + (b.offen.length === 1 ? " Bestellung" : " Bestellungen") + " · " + gerichte + (gerichte === 1 ? " Gericht" : " Gerichte") + " · " + euro(summe) : "Noch keine Bestellung in diesem Besuch")
@@ -15402,6 +15438,7 @@ function saalDingUnter(e){
       pinch = { d: Math.hypot(a.x - b.x, a.y - b.y), k: SAAL.kamera.k }; ziehen = null; bewegt = true; return;
     }
     const griff = SAAL.edit && SAAL.konfigEntwurf && e.target.closest("[data-sp-griff]"), ding = SAAL.edit && SAAL.konfigEntwurf && !griff && saalDingUnter(e);
+    if(griff && griff.dataset.spGriff.startsWith("drehen:")){ bewegt = true; ziehen = null; saalDrehen(griff.dataset.spGriff.slice(7)); return; }
     if(griff || ding){
       const art = griff ? griff.dataset.spGriff : ding.dataset.spDing;
       ziehen = { x: e.clientX, y: e.clientY, art, istGriff: !!griff, start: saalGriffStart(art), w0: saalWelt(e.clientX, e.clientY, SAAL_BODEN) };
@@ -15450,7 +15487,7 @@ function saalDingUnter(e){
     if(zeiger.size === 0){
       if(ziehen && ziehen.art){
         /* Antippen ohne Zug: die Sache zeigt ihr Maß; nach einem Zug bleibt sie gewählt. */
-        SAAL.zieht = false; SAAL.ding = ziehen.art; ziehen = null; saalNeuBauen(); return;
+        SAAL.zieht = false; SAAL.ding = ziehen.art; ziehen = null; saalMassNachZug(); saalNeuBauen(); return;
       }
       if(!bewegt && ziehen && ziehen.ziel && e.type === "pointerup"){
         /* Im Gebäudebild sind die Tische klein und dicht; wer einen Tisch eines ANDEREN Raums antippt, zoomt in diesen Raum und wählt dort. */
@@ -15591,7 +15628,8 @@ function saalEditZeichnen(){
   const el = $("#spEdit"); if(!el) return;
   el.hidden = !SAAL.edit;
   if(!SAAL.edit || SAAL.tippt) return;
-  const tabs = [["tische", "Tische", "Tische"], ["bereiche", "Bereiche", "Bereiche"], ["masse", "Maße", "Maße von Raum und Theke"], ["stufen", "Stufen", "Leuchtstufen"]];
+  /* S3/S4 (03.11.): „Theke & Küche“ statt „Maße“ (die Raumgröße steht beim Bereich), „Signale“ statt „Stufen“. Die ids bleiben. */
+  const tabs = [["tische", "Tische", "Tische"], ["bereiche", "Bereiche", "Bereiche und ihre Größe"], ["masse", "Theke & Küche", "Theke und Küche"], ["stufen", "Signale", "Wann ein Tisch auf sich aufmerksam macht"]];
   const k = SAAL.konfigEntwurf, zonen = saalZonen();
   let innen = "";
   if(SAAL.editTab === "tische"){
@@ -15610,57 +15648,66 @@ function saalEditZeichnen(){
           (zonen.length > 1 ? '<label class="sp-feld"><span>Bereich</span><select class="kbkarte" data-sp-tischzone aria-label="Bereich dieses Tisches">' +
             zonen.map(z => '<option value="' + sicher(z) + '"' + (saalTischZone(sel) === z ? " selected" : "") + '>' + sicher(z) + '</option>').join("") + '</select></label>' : "") +
           '<button type="button" class="knopf leise" data-sp-nehmen>Vom Plan nehmen</button></div>'
-        : '<p class="sp-hinweis">Tippen Sie einen Tisch auf dem Plan an, um Form, Stühle und Bereich zu ändern. Ziehen verschiebt ihn; am runden Griff daneben ziehen Sie Stühle dazu oder weg.</p>');
-  }else if(SAAL.editTab === "bereiche"){
-    const roh = k.zonen.length ? k.zonen : ["Haupt-Raum"];
-    innen = '<div class="sp-editblock"><span class="sp-editname">Bereiche des Lokals</span>' +
-      roh.map((z, i) => '<div class="sp-zeile-edit"><input class="sp-text" data-sp-zname="' + i + '" value="' + sicher(z) + '" maxlength="24" aria-label="Name des Bereichs ' + (i + 1) + '">' +
-        '<button type="button" class="sp-pm" data-sp-zweg="' + i + '" aria-label="Bereich ' + sicher(z) + ' entfernen"' + (roh.length < 2 ? " disabled" : "") + '>✕</button></div>').join("") +
-      (roh.length < SAAL_MAX_ZONEN ? '<button type="button" class="knopf leise" data-sp-zneu>＋ Bereich</button>' : "") +
-      '<p class="sp-hinweis">Z. B. Haupt-Raum, Terrasse, Bar. Ein entfernter Bereich schiebt seine Tische in den ersten.</p></div>';
-  }else if(SAAL.editTab === "masse"){
+        : '<p class="sp-hinweis">Tippen Sie einen Tisch auf dem Plan an, um Form, Stühle und Bereich zu ändern. Mit dem Finger verschieben Sie ihn; am runden Punkt daneben ziehen Sie Stühle dazu oder weg.</p>');
+  }else if(SAAL.editTab === "bereiche" || SAAL.editTab === "masse"){
     const i = Math.max(0, zonen.indexOf(SAAL.zone)), r = k.raeume[i] || saalRaum(null), li = saalLay()[i] || { ox: 0, oy: 0 };
     const feld = (attr, text, wert, platz) => '<label class="sp-feld"><span>' + text + '</span><input class="sp-text" inputmode="decimal" autocomplete="off" ' + attr +
       (platz != null ? ' placeholder="' + sicher(saalZ(platz)) + '"' : "") + ' value="' + (wert == null ? "" : sicher(saalZ(wert))) + '" aria-label="' + sicher(text + ", " + zonen[i]) + '"></label>';
     const mal = (b, t) => saalZ(b) + " × " + saalZ(t) + " m";
-    const kr = saalKuecheRaum(k);
-    /* Zuerst die Bedienung mit dem Finger; die Felder in Metern stehen eingeklappt darunter (für genaue Maße). */
-    innen = '<div class="sp-editblock"><span class="sp-editname">Raum „' + sicher(zonen[i]) + '“ · ' + mal(r.b, r.t) + '</span>' +
-      '<p class="sp-hinweis">Ziehen Sie Theke und Küche mit dem Finger an ihren Platz. Der runde Griff an der vorderen Ecke ändert die Größe — beim Raum, bei der Theke und bei der Küche. Ein Kästchen ist 1 × 1 m.</p></div>' +
-      '<div class="sp-editblock"><span class="sp-editname">Theke / Bar</span>' +
-      r.theken.map((th, j) => '<div class="sp-dingzeile"><span>Theke ' + (j + 1) + ' · ' + mal(th.b, th.t) + '</span>' +
-        '<button type="button" class="knopf leise" data-sp-theke-weg="' + j + '">Theke ' + (j + 1) + ' entfernen</button></div>').join("") +
-      (r.theken.length < SAAL_MAX_THEKEN ? '<button type="button" class="knopf leise" data-sp-theke-neu>＋ Theke / Bar</button>' : "") + '</div>' +
-      '<div class="sp-editblock"><span class="sp-editname">Küche</span>' +
-      (r.kueche
-        ? '<div class="sp-dingzeile"><span>Küche · ' + mal(r.kueche.b, r.kueche.t) + '</span><button type="button" class="knopf leise" data-sp-kueche-weg>Küche entfernen</button></div>' +
-          '<p class="sp-hinweis">Der Pass — hier holt der Service ab — liegt automatisch auf der Seite zur Raummitte. Ist an einem Tisch ein Gericht fertig, führt eine gestrichelte Linie vom Pass dorthin.</p>'
-        : (kr > -1
-          ? '<p class="sp-hinweis">Die Küche steht im Bereich „' + sicher(zonen[kr]) + '“. Dort lässt sie sich ändern oder entfernen.</p>'
-          : '<button type="button" class="knopf leise" data-sp-kueche-neu>＋ Küche einzeichnen</button>' +
-            '<p class="sp-hinweis">Zeichnen Sie ein, wo Ihre Küche steht. Der Koch meldet im Küchenboard jedes fertige Gericht — auf dem Plan sehen Sie dann, an welchen Tisch es gebracht werden soll.</p>')) + '</div>' +
-      '<details class="sp-genau" data-sp-genau' + (SAAL.genauOffen ? " open" : "") + '><summary>Genaue Maße eintippen</summary>' +
-      '<div class="sp-editblock"><span class="sp-editname">Raum in Metern</span>' +
-      '<div class="sp-zahlen">' + feld('data-sp-rm="b"', "Breite (m)", r.b) + feld('data-sp-rm="t"', "Tiefe (m)", r.t) + '</div>' +
-      '<p class="sp-hinweis">Die Tische bleiben anteilig an ihrer Stelle, wenn sich das Maß ändert.</p></div>' +
-      '<div class="sp-editblock"><span class="sp-editname">Lage im Gebäude</span>' +
-      '<div class="sp-zahlen">' + feld('data-sp-rm="x"', "von links (m)", r.x, li.ox) + feld('data-sp-rm="y"', "von hinten (m)", r.y, li.oy) + '</div>' +
-      '<p class="sp-hinweis">Leer lassen: Der Raum steht automatisch neben dem vorigen. Die Wände um alle Räume zeichnet der Plan selbst — Gebäudeumrandung.</p></div>' +
-      r.theken.map((th, j) => '<div class="sp-theke-edit"><b>Theke ' + (j + 1) + '</b>' +
-        '<div class="sp-zahlen">' + ["x", "y", "b", "t"].map(f => feld('data-sp-th="' + j + '" data-sp-thf="' + f + '"',
-          ({ x: "von links (m)", y: "von hinten (m)", b: "Länge (m)", t: "Tiefe (m)" })[f], th[f])).join("") + '</div></div>').join("") +
-      (r.kueche ? '<div class="sp-theke-edit"><b>Küche</b><div class="sp-zahlen">' + ["x", "y", "b", "t"].map(f => feld('data-sp-kf="' + f + '"',
-          ({ x: "von links (m)", y: "von hinten (m)", b: "Breite (m)", t: "Tiefe (m)" })[f], r.kueche[f])).join("") + '</div></div>' : "") +
-      '</details>';
+    const genau = inhalt => '<details class="sp-genau" data-sp-genau' + (SAAL.genauOffen ? " open" : "") + '><summary>Maße genau eingeben</summary>' + inhalt + '</details>';
+    if(SAAL.editTab === "bereiche"){
+      /* S3: Name und Größe eines Bereichs an EINER Stelle. */
+      const roh = k.zonen.length ? k.zonen : ["Haupt-Raum"];
+      innen = '<div class="sp-editblock"><span class="sp-editname">Bereiche des Lokals</span>' +
+        roh.map((z, j) => { const rj = k.raeume[j] || saalRaum(null);
+          return '<div class="sp-zeile-edit"><input class="sp-text" data-sp-zname="' + j + '" value="' + sicher(z) + '" maxlength="24" aria-label="Name des Bereichs ' + (j + 1) + '">' +
+          '<span class="sp-zmass">' + mal(rj.b, rj.t) + '</span>' +
+          '<button type="button" class="sp-pm" data-sp-zweg="' + j + '" aria-label="Bereich ' + sicher(z) + ' entfernen"' + (roh.length < 2 ? " disabled" : "") + '>✕</button></div>'; }).join("") +
+        (roh.length < SAAL_MAX_ZONEN ? '<button type="button" class="knopf leise" data-sp-zneu>＋ Bereich</button>' : "") +
+        '<p class="sp-hinweis">Z. B. Haupt-Raum, Terrasse, Bar. Ein entfernter Bereich schiebt seine Tische in den ersten.</p></div>' +
+        '<div class="sp-editblock"><span class="sp-editname">Raum „' + sicher(zonen[i]) + '“ · ' + mal(r.b, r.t) + '</span>' +
+        '<p class="sp-hinweis">Die Größe ziehen Sie am runden Punkt an der vorderen Ecke des Raums. Ein Kästchen ist 1 × 1 m.</p></div>' +
+        genau('<div class="sp-editblock"><span class="sp-editname">Raum in Metern</span>' +
+          '<div class="sp-zahlen">' + feld('data-sp-rm="b"', "Breite (m)", r.b) + feld('data-sp-rm="t"', "Tiefe (m)", r.t) + '</div>' +
+          '<p class="sp-hinweis">Die Tische bleiben anteilig an ihrer Stelle, wenn sich das Maß ändert.</p></div>' +
+          '<div class="sp-editblock"><span class="sp-editname">Wo liegt dieser Bereich?</span>' +
+          '<div class="sp-zahlen">' + feld('data-sp-rm="x"', "Meter vom linken Rand", r.x, li.ox) + feld('data-sp-rm="y"', "Meter von der Rückwand", r.y, li.oy) + '</div>' +
+          '<p class="sp-hinweis">Leer lassen: Der Bereich steht automatisch neben dem vorigen. Die Außenwände zeichnet der Plan selbst.</p></div>');
+    }else{
+      const kr = saalKuecheRaum(k);
+      innen = '<div class="sp-editblock"><span class="sp-editname">Theke &amp; Küche in „' + sicher(zonen[i]) + '“</span>' +
+        '<p class="sp-hinweis">Ziehen Sie Theke und Küche mit dem Finger an ihren Platz. Am runden Punkt ändern Sie die Größe, ↻ dreht um 90 Grad.</p></div>' +
+        '<div class="sp-editblock"><span class="sp-editname">Theke</span>' +
+        r.theken.map((th, j) => '<div class="sp-dingzeile"><span>Theke ' + (j + 1) + ' · ' + mal(th.b, th.t) + '</span>' +
+          '<button type="button" class="knopf leise" data-sp-drehen-knopf="theke:' + j + '">↻ Drehen</button>' +
+          '<button type="button" class="knopf leise" data-sp-theke-weg="' + j + '">Theke ' + (j + 1) + ' entfernen</button></div>').join("") +
+        (r.theken.length < SAAL_MAX_THEKEN ? '<button type="button" class="knopf leise" data-sp-theke-neu>＋ Theke dazu</button>' : "") + '</div>' +
+        '<div class="sp-editblock"><span class="sp-editname">Küche</span>' +
+        (r.kueche
+          ? '<div class="sp-dingzeile"><span>Küche · ' + mal(r.kueche.b, r.kueche.t) + '</span>' +
+            '<button type="button" class="knopf leise" data-sp-drehen-knopf="kueche">↻ Drehen</button>' +
+            '<button type="button" class="knopf leise" data-sp-kueche-weg>Küche entfernen</button></div>' +
+            '<p class="sp-hinweis">Die Durchreiche (hier holt der Service ab) liegt automatisch auf der Seite zur Raummitte. Ist an einem Tisch ein Gericht fertig, führt eine gestrichelte Linie von der Durchreiche dorthin.</p>'
+          : (kr > -1
+            ? '<p class="sp-hinweis">Die Küche steht im Bereich „' + sicher(zonen[kr]) + '“. Dort lässt sie sich ändern oder entfernen.</p>'
+            : '<button type="button" class="knopf leise" data-sp-kueche-neu>＋ Küche einzeichnen</button>' +
+              '<p class="sp-hinweis">Zeichnen Sie ein, wo Ihre Küche steht. Der Koch meldet im Küchenboard jedes fertige Gericht — auf dem Plan sehen Sie dann, an welchen Tisch es gebracht werden soll.</p>')) + '</div>' +
+        ((r.theken.length || r.kueche) ? genau(
+          r.theken.map((th, j) => '<div class="sp-theke-edit"><b>Theke ' + (j + 1) + '</b>' +
+            '<div class="sp-zahlen">' + ["x", "y", "b", "t"].map(f => feld('data-sp-th="' + j + '" data-sp-thf="' + f + '"',
+              ({ x: "Meter vom linken Rand", y: "Meter von der Rückwand", b: "Länge (m)", t: "Tiefe (m)" })[f], th[f])).join("") + '</div></div>').join("") +
+          (r.kueche ? '<div class="sp-theke-edit"><b>Küche</b><div class="sp-zahlen">' + ["x", "y", "b", "t"].map(f => feld('data-sp-kf="' + f + '"',
+              ({ x: "Meter vom linken Rand", y: "Meter von der Rückwand", b: "Breite (m)", t: "Tiefe (m)" })[f], r.kueche[f])).join("") + '</div></div>' : "")) : "");
+    }
   }else{
-    innen = '<div class="sp-editblock"><span class="sp-editname">Wann leuchtet was wie stark</span>' +
+    innen = '<div class="sp-editblock"><span class="sp-editname">Wann ein Tisch auf sich aufmerksam macht</span>' +
       SAAL_EINSTELLBAR.map(a => {
         const s = k.stufen[a], d = SAAL_ART[a];
         return '<div class="sp-stufe" data-sp-stufe="' + a + '"><label class="sp-farbwahl" style="--c:' + s.farbe + ';--g:' + saalGlyph(s.farbe) + '"><input type="color" data-sp-farbe="' + a + '" value="' + s.farbe.toLowerCase() + '" aria-label="Farbe für ' + d.name + '"><span>' + d.name + '</span></label>' +
           (d.grenzen
-            ? '<label class="sp-min"><span>Stufe 2 ab</span><input class="sp-text" inputmode="numeric" data-sp-min="2" value="' + s.min2 + '" aria-label="' + d.name + ': Stufe 2 ab Minuten"><em>Min</em></label>' +
-              '<label class="sp-min"><span>Stufe 3 ab</span><input class="sp-text" inputmode="numeric" data-sp-min="3" value="' + s.min3 + '" aria-label="' + d.name + ': Stufe 3 ab Minuten"><em>Min</em></label>'
-            : '<p class="sp-hinweis">Stufe folgt der zugesagten Zeit: kurz vor Ablauf 2, überzogen 3.</p>') + '</div>';
+            ? '<label class="sp-min"><span>Deutlicher ab</span><input class="sp-text" inputmode="numeric" data-sp-min="2" value="' + s.min2 + '" aria-label="' + d.name + ': deutlicher ab Minuten"><em>Min</em></label>' +
+              '<label class="sp-min"><span>Dringend ab</span><input class="sp-text" inputmode="numeric" data-sp-min="3" value="' + s.min3 + '" aria-label="' + d.name + ': dringend ab Minuten"><em>Min</em></label>'
+            : '<p class="sp-hinweis">Folgt der zugesagten Zeit: kurz vor Ablauf deutlicher, überzogen dringend.</p>') + '</div>';
       }).join("") +
       '<button type="button" class="knopf leise" data-sp-vorgabe>Vorgabe wiederherstellen</button></div>';
   }
@@ -15754,6 +15801,8 @@ function saalEditKlick(e){
     if(r) r.kueche = null;
     SAAL.konfigEntwurf.raeume[i] = saalRaum(r); saalNeuBauen(); return;
   }
+  const dk = e.target.closest("[data-sp-drehen-knopf]");
+  if(dk){ saalDrehen(dk.dataset.spDrehenKnopf); const f = document.querySelector('#spEdit [data-sp-drehen-knopf="' + CSS.escape(dk.dataset.spDrehenKnopf) + '"]'); if(f) f.focus(); return; }
   const tw = e.target.closest("[data-sp-theke-weg]");
   if(tw){
     const i = Math.max(0, saalZonen().indexOf(SAAL.zone)), r = SAAL.konfigEntwurf.raeume[i];
@@ -18684,14 +18733,14 @@ const AN_WIKI = [
   { id:"tische", kapitel:"Tagesgeschäft", titel:"Tische, Saalplan und Reservierungen", ort:"Reiter Tische",
     text:["Links stehen die Tische mit Bedarf („Am Tisch · jetzt“), nach Dringlichkeit geordnet, und die Reservierungen. Rechts ist der Plan: Jeder Tisch zeigt seinen Stand als Farbe und als Wort — Ruf, Servieren, Neu, Zahlung oder In Arbeit; je länger es dauert, desto stärker leuchtet er.",
       "Ein Tipp auf einen Tisch holt dessen Bestellkarten unter den Plan. Lieferungen, Telefonbestellungen und Tische ohne Platz im Plan stehen unter „Außerhalb des Plans“ — nichts wird unsichtbar.",
-      "Der Plan ist maßstäblich: Jeder Bereich ist ein Raum in Metern, in Kästchen von 1 × 1 m unterteilt, mit Theke / Bar und einer Umrandung um das Gebäude. Mit „Ganzes Gebäude zeigen“ oder durch Herauszoomen sehen Sie alle Bereiche samt ihren Bestellungen; ein Tipp auf einen anderen Raum zoomt dorthin.",
+      "Der Plan ist maßstäblich: Jeder Bereich ist ein Raum in Metern, in Kästchen von 1 × 1 m unterteilt, mit Theke und den Außenwänden des Gebäudes. Mit „Ganzes Gebäude zeigen“ oder durch Herauszoomen sehen Sie alle Bereiche samt ihren Bestellungen; ein Tipp auf einen anderen Raum zoomt dorthin.",
       "Das Lieferauto vor dem Gebäude zählt die offenen Lieferungen. Ein Tipp darauf — oder auf „Lieferungen zeigen“ in der Leiste am Plan — listet alle Lieferungen unter dem Plan auf.",
-      "Reservierungen nehmen Sie mit „Annehmen“ an oder lehnen sie mit „Ablehnen“ ab. Einrichten darf nur der Besitzer, in vier Reitern: Tische (ziehen, Form, Stühle), Bereiche, Maße (Breite und Tiefe in Metern, Lage im Gebäude, Theke / Bar, Küche) und die Leuchtstufen je Zustand.",
-      "Theke und Küche ziehen Sie im Einrichten mit dem Finger an ihren Platz; der runde Griff an der vorderen Ecke ändert die Größe von Raum, Theke und Küche, der Griff neben einem angetippten Tisch die Zahl der Stühle. Wer es genau braucht, tippt die Meter unter „Genaue Maße eintippen“ ein.",
-      "Die Küche zeichnen Sie unter „Maße“ ein („Küche einzeichnen“). Meldet der Koch im Küchenboard ein Gericht als fertig, steht der Tisch auf „Servieren“ und eine gestrichelte Linie führt vom Pass der Küche dorthin; in der Bestellkarte steht „Bitte servieren“ — mit „Gebracht“ haken Sie es ab.",
+      "Reservierungen nehmen Sie mit „Annehmen“ an oder lehnen sie mit „Ablehnen“ ab. Einrichten darf nur der Besitzer, in vier Reitern: Tische (ziehen, Form, Stühle), Bereiche (Name und Größe in Metern, Lage im Gebäude), Theke & Küche und Signale (wann ein Tisch auf sich aufmerksam macht).",
+      "Theke und Küche ziehen Sie im Einrichten mit dem Finger an ihren Platz; der runde Punkt an der vorderen Ecke ändert die Größe von Raum, Theke und Küche, ↻ dreht Theke und Küche um 90 Grad, der Punkt neben einem angetippten Tisch ändert die Zahl der Stühle. Das Maß zeigt der Plan nur beim Ziehen; im Blatt steht es immer. Wer es genau braucht, tippt die Meter unter „Maße genau eingeben“ ein.",
+      "Die Küche zeichnen Sie unter „Theke & Küche“ ein („Küche einzeichnen“). Meldet der Koch im Küchenboard ein Gericht als fertig, steht der Tisch auf „Servieren“ und eine gestrichelte Linie führt von der Durchreiche der Küche dorthin; in der Bestellkarte steht „Bitte servieren“ — mit „Gebracht“ haken Sie es ab.",
       "Wie viele Gäste an einem Tisch sitzen, tragen Sie im Blatt des Tisches mit − und + ein; „Zahlt gerade“ und „Gäste gegangen · Tisch frei“ setzen den Stand. Am Tisch im Plan steht dann z. B. „3/4“, und „still“, wenn am Tisch seit 20 Minuten niemand mehr etwas getan hat. Oben in der Liste stehen die Gäste im Haus und die freien Plätze.",
       "Ist der Saal noch leer, legt „Raum anlegen und Tische verteilen“ einen Raum mit Breite und Tiefe in Metern an und verteilt die Tische im 1 × 1-m-Raster; verschieben Sie sie danach im Editor."],
-    labels:["Am Tisch · jetzt", "Annehmen", "Ablehnen", "Außerhalb des Plans", "Ganzes Gebäude zeigen", "Lieferungen zeigen", "Theke / Bar", "Küche einzeichnen", "Gebracht", "Saal einrichten", "Zahlt gerade", "Gäste gegangen · Tisch frei", "Raum anlegen und Tische verteilen"], tafel:"reservierungen", tour:"tische" },
+    labels:["Am Tisch · jetzt", "Annehmen", "Ablehnen", "Außerhalb des Plans", "Ganzes Gebäude zeigen", "Lieferungen zeigen", "Theke dazu", "Theke & Küche", "Küche einzeichnen", "Drehen", "Maße genau eingeben", "Gebracht", "Saal einrichten", "Zahlt gerade", "Gäste gegangen · Tisch frei", "Raum anlegen und Tische verteilen"], tafel:"reservierungen", tour:"tische" },
   { id:"verfuegbar", kapitel:"Tagesgeschäft", titel:"Verfügbar schalten", ort:"Mehr → Verfügbar, oder der Schalter an jedem Gericht in der Karte",
     text:["Ist etwas aus, schalten Sie es hier aus. Der Gast sieht das Gericht dann nicht mehr in der Karte. Am nächsten Morgen wieder einschalten — die Änderung gilt sofort, ohne Speichern. „Alle wieder an“ holt alles auf einmal zurück.",
       "Denselben Schalter gibt es in der Karte an jedem Gericht (Liste und Kacheln). Auch das Team darf ihn bedienen. Ausverkauftes stellen Sie auf „nicht verfügbar“ statt es zu löschen."],
