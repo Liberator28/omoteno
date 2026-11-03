@@ -1,6 +1,6 @@
 # Admin-Board: Formulierungen und Saal — Befund und Vorschlag (02.11.)
 
-Noch nichts davon ist umgesetzt. Jede Zeile hat eine Nummer; ein „Go“ kann einzelne ausnehmen („Go außer W12, W20“).
+**Stand 03.11.:** Go für alles. S1–S12 umgesetzt (S2b entfällt, wie empfohlen: nur 90°); W1–W40 folgen in zwei Blöcken.
 
 **So wurde gesucht:** Alle sichtbaren Texte aus `seiten/admin.html` wurden maschinell herausgezogen: Beschriftungen, Knöpfe, Hilfesätze, Platzhalter, Vorlesetexte und Meldungen aus dem Skript, zusammen **3 423 Stellen**. Danach liefen drei Suchen darüber:
 
