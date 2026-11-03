@@ -13,11 +13,12 @@
    Stück: was das Board schreibt, liest der Hub; was der Hub bestellt,
    rechnet die ECHTE positionen_pruefen nach.
 
-   A · Hub: der Vorschlag ist vorgewählt (Aufpreis, Bon-Text, Etikett
-       „Vorschlag“), die Wahl des Gastes schlägt ihn, auch eine leere
-       Wahl; „genau eine“ startet auf dem Vorschlag, nicht auf der ersten
-       Zeile; kein Vorschlag → wie vorher; „vor“ als Text zählt nicht;
-       Neuladen behält die Wahl; die Bestellung trägt Text und Preis.
+   A · Hub: ein Vorschlag OHNE Aufpreis ist vorgewählt (Etikett
+       „Vorschlag“), einer MIT Aufpreis nicht (Etikett „Empfohlen“, seit
+       03.11., § 312a Abs. 3 BGB); die Wahl des Gastes schlägt beides,
+       auch eine leere Wahl; „genau eine“ startet auf dem freien
+       Vorschlag, sonst auf der ersten freien Zeile; „vor“ als Text zählt
+       nicht; Neuladen behält die Wahl; die Bestellung trägt Text und Preis.
    B · Board, Gericht-Blatt: Beilage/Extras anlegen, Titel ändern, Zutaten
        mit Preis, Vorschlag (bei „genau eine“ nur einer); Speichern:
        ERST die Gruppen, DANN das Gericht (Reihenfolge der Schreibzugriffe
@@ -69,7 +70,8 @@ async function hubAuf(browser, optionen, id, opt){
   return h;
 }
 const zeilenText = p => p.evaluate(() => [...document.querySelectorAll("#warenkarte .ozeile")].map(e => ({
-  n:decodeURIComponent(e.dataset.ozeile), an:e.classList.contains("an"), vor:!!e.querySelector(".ovor") })));
+  n:decodeURIComponent(e.dataset.ozeile), an:e.classList.contains("an"), vor:!!e.querySelector(".ovor"),
+  empf:!!e.querySelector(".ovor.empf"), vorschlag:!!e.querySelector(".ovor:not(.empf)") })));
 async function bestellen(h){
   await h.p.evaluate(() => { location.hash = "#/auswahl"; });
   await h.p.waitForTimeout(500);
@@ -84,36 +86,41 @@ async function bestellen(h){
 /* ── A · Hub ───────────────────────────────────────────────────── */
 async function teilA(browser){
   console.log("\n══ A · Hub: der Vorschlag ══");
+  /* Seit 03.11. (§ 312a Abs. 3 BGB): Ein Vorschlag MIT Aufpreis ist nicht vorgewählt, er steht als „Empfohlen“ da und
+     kostet erst nach einem Tipp. Vorgewählt wird nur, was nichts kostet; „genau eine“ + Pflicht ohne freien Vorschlag
+     startet auf der ersten Zeile ohne Aufpreis. */
   let h = await hubAuf(browser, OPT_HUB);
   await h.p.evaluate(() => detailOeffnen("Burger"));
   await h.p.waitForTimeout(400);
   let z = await zeilenText(h.p);
   const wahl = k => z.filter(x => x.an).map(x => x.n).join(",");
+  const etikett = art => z.filter(x => x[art]).map(x => x.n).join(",");
   pruef(z.length === 5, "Voraussetzung: die Karte des Burgers zeigt beide Gruppen (5 Zeilen)", z.length);
-  pruef(wahl() === "Salat,Speck", "ungetippt sind genau die Vorschläge gewählt (Salat statt der ersten Zeile „Pommes“)", wahl());
-  pruef(z.filter(x => x.vor).map(x => x.n).join(",") === "Salat,Speck", "das Etikett „Vorschlag“ steht nur an den Vorschlägen", z.filter(x => x.vor).map(x => x.n).join(","));
+  pruef(wahl() === "Pommes", "ungetippt: die bezahlten Vorschläge (Salat, Speck) sind NICHT gewählt, die Pflichtgruppe steht auf der freien Zeile", wahl());
+  pruef(etikett("empf") === "Salat,Speck" && !etikett("vorschlag"), "das Etikett „Empfohlen“ steht an den bezahlten Vorschlägen, „Vorschlag“ nirgends", etikett("empf") + " / " + etikett("vorschlag"));
   let w = await h.p.evaluate(() => ({ auf:optAufpreis("Burger"), text:optText("Burger") }));
-  pruef(w.auf === 3 && w.text === "Salat · Speck", "Aufpreis und Bon-Text tragen den Vorschlag", JSON.stringify(w));
-  /* Gast tippt Pommes (genau eine): der Vorschlag weicht, das Etikett dieser Gruppe auch */
-  await h.p.click('#warenkarte [data-ozeile="Pommes"]'); await h.p.waitForTimeout(150);
+  pruef(w.auf === 0 && w.text === "Pommes", "Aufpreis 0 und Bon-Text ohne die Empfehlungen", JSON.stringify(w));
+  await h.p.click('#warenkarte [data-ozeile="Salat"]'); await h.p.waitForTimeout(150);
   z = await zeilenText(h.p);
-  pruef(wahl() === "Pommes,Speck", "Pommes angetippt: Salat weicht, der Vorschlag der anderen Gruppe bleibt", wahl());
-  pruef(z.filter(x => x.vor).map(x => x.n).join(",") === "Speck", "das Etikett der angefassten Gruppe ist weg, das der unberührten bleibt");
-  /* Gast nimmt Speck heraus: leer ist eine Wahl, der Vorschlag kommt nicht zurück */
+  pruef(wahl() === "Salat" && etikett("empf") === "Speck", "Salat angetippt: gewählt, sein Etikett ist weg, das der unberührten Gruppe bleibt", wahl() + " / " + etikett("empf"));
   await h.p.click('#warenkarte [data-ozeile="Speck"]'); await h.p.waitForTimeout(150);
   z = await zeilenText(h.p);
   w = await h.p.evaluate(() => ({ auf:optAufpreis("Burger"), text:optText("Burger") }));
-  pruef(wahl() === "Pommes" && w.auf === 0 && w.text === "Pommes", "Speck abgewählt: bleibt aus (kein Wiederauferstehen), Aufpreis 0", JSON.stringify(w));
+  pruef(wahl() === "Salat,Speck" && w.auf === 3 && w.text === "Salat · Speck", "Speck dazu: Aufpreis 3,00, Bon-Text mit beiden", JSON.stringify(w));
+  await h.p.click('#warenkarte [data-ozeile="Speck"]'); await h.p.waitForTimeout(150);
+  z = await zeilenText(h.p);
+  w = await h.p.evaluate(() => ({ auf:optAufpreis("Burger"), text:optText("Burger") }));
+  pruef(wahl() === "Salat" && w.auf === 1.5 && w.text === "Salat", "Speck wieder abgewählt: bleibt aus (kein Wiederauferstehen)", JSON.stringify(w));
   /* Neuladen behält die Wahl des Gastes */
   await h.p.click('#warenkarte [data-wmerk]'); await h.p.waitForTimeout(200);
   await h.p.reload(); await h.p.waitForTimeout(1300);
   await h.p.evaluate(() => { ZEITEN.length = 0; for(let i = 0; i < 7; i++) ZEITEN.push("00:00 - 23:59"); });
   w = await h.p.evaluate(() => ({ auf:optAufpreis("Burger"), text:optText("Burger"), da:!!merk["Burger"] }));
-  pruef(w.da && w.text === "Pommes" && w.auf === 0, "Neuladen: Gericht UND die Wahl des Gastes (nicht der Vorschlag) stehen im Korb", JSON.stringify(w));
+  pruef(w.da && w.text === "Salat" && w.auf === 1.5, "Neuladen: Gericht UND die Wahl des Gastes stehen im Korb", JSON.stringify(w));
   pruef(!h.fehler.length, "Hub: keine Seitenfehler", h.fehler.join(" | ") || "–");
   await h.ctx.close();
 
-  /* ungetippt in den Korb und bestellen: der Vorschlag geht an die Küche, mit Preis */
+  /* ungetippt in den Korb und bestellen: an die Küche geht die freie Zeile, zum Preis des Gerichts */
   h = await hubAuf(browser, OPT_HUB);
   await h.p.evaluate(() => detailOeffnen("Burger")); await h.p.waitForTimeout(400);
   await h.p.click('#warenkarte [data-wmerk]'); await h.p.waitForTimeout(200);
@@ -121,12 +128,21 @@ async function teilA(browser){
   await h.p.reload(); await h.p.waitForTimeout(1300);
   await h.p.evaluate(() => { ZEITEN.length = 0; for(let i = 0; i < 7; i++) ZEITEN.push("00:00 - 23:59"); });
   w = await h.p.evaluate(() => ({ text:optText("Burger"), da:!!merk["Burger"] }));
-  pruef(w.da && w.text === "Salat · Speck", "ungetippt in den Korb, Neuladen: der Vorschlag steht noch da", w.text);
+  pruef(w.da && w.text === "Pommes", "ungetippt in den Korb, Neuladen: die freie Zeile steht noch da", w.text);
   const b = await bestellen(h);
   const pos = b && b.p_positionen && b.p_positionen[0];
-  pruef(pos && pos.name === "Burger (Salat · Speck)" && Math.abs(pos.preis - (grund + 3)) < 0.005,
-    "Bestellung: Name trägt den Vorschlag, Preis = Gericht + 3,00", pos && (pos.name + " " + pos.preis + " (Gericht " + grund + ")"));
+  pruef(pos && pos.name === "Burger (Pommes)" && Math.abs(pos.preis - grund) < 0.005,
+    "Bestellung: Name trägt die freie Zeile, Preis = Gericht (keine Empfehlung mitbezahlt)", pos && (pos.name + " " + pos.preis + " (Gericht " + grund + ")"));
   h.letzte = b;
+  await h.ctx.close();
+
+  /* ein Vorschlag OHNE Aufpreis ist vorgewählt, mit Etikett „Vorschlag“ — wie bisher */
+  h = await hubAuf(browser, {
+    [PRAEFIX + "beilage"]: { titel:"Beilage", art:"eine", pflicht:true, zeilen:[{ n:"Pommes", auf:0 }, { n:"Salat", auf:0, vor:true }] },
+    [PRAEFIX + "extras"]: { titel:"Extras dazu", art:"mehrere", zeilen:[{ n:"Ketchup", auf:0, vor:true }, { n:"Käse", auf:1 }] } });
+  await h.p.evaluate(() => detailOeffnen("Burger")); await h.p.waitForTimeout(400);
+  z = await zeilenText(h.p);
+  pruef(wahl() === "Salat,Ketchup" && etikett("vorschlag") === "Salat,Ketchup", "freie Vorschläge: ungetippt gewählt, Etikett „Vorschlag“ (Salat statt der ersten Zeile)", wahl() + " / " + etikett("vorschlag"));
   await h.ctx.close();
 
   /* kein Vorschlag → wie vorher: „genau eine“ + Pflicht = erste Zeile, „mehrere“ = nichts */
@@ -140,7 +156,7 @@ async function teilA(browser){
 
   /* „vor“ muss ein echtes true sein: Text und Zahl zählen nicht */
   h = await hubAuf(browser, {
-    [PRAEFIX + "extras"]: { titel:"Extras dazu", art:"mehrere", zeilen:[{ n:"Käse", auf:1, vor:"true" }, { n:"Speck", auf:1.5, vor:1 }, { n:"Ei", auf:1, vor:true }] } });
+    [PRAEFIX + "extras"]: { titel:"Extras dazu", art:"mehrere", zeilen:[{ n:"Käse", auf:0, vor:"true" }, { n:"Speck", auf:0, vor:1 }, { n:"Ei", auf:0, vor:true }] } });
   await h.p.evaluate(() => detailOeffnen("Burger")); await h.p.waitForTimeout(400);
   z = await zeilenText(h.p);
   pruef(wahl() === "Ei", "„vor“ als Text oder Zahl wählt nichts vor — nur ein echtes true", wahl());
@@ -313,10 +329,10 @@ async function teilB(browser){
   const gelesen = await p.evaluate(() => [...document.querySelectorAll("#egListe .eo-karte")].map(k => ({ t:k.querySelector('[data-eo-feld="titel"]').value,
     z:[...k.querySelectorAll('[data-eo-z]')].map(z => z.querySelector('[data-eo-zfeld="n"]').value + "=" + z.querySelector('[data-eo-zfeld="auf"]').value +
        (z.querySelector("[data-eo-zvor]").getAttribute("aria-pressed") === "true" ? "*" : "")).join("|") })));
-  pruef(gelesen.length === 2 && gelesen[0].z === "Pommes=0,00|Salat=1,50*|Suppe=2,20" && gelesen[1].z === "Käse=1,00*|Speck=1,50*",
-    "Öffnen zeigt den gespeicherten Stand (Preise mit Komma, Vorschläge markiert)", JSON.stringify(gelesen));
-  const chips = await p.evaluate(() => [...document.querySelectorAll("#fOpt [data-opt-wahl]")].map(b => b.dataset.optWahl));
-  pruef(chips.join(",") === "belag-kaese", "die Chips der gemeinsamen Gruppen zeigen KEINE Gruppen einzelner Gerichte", chips.join(","));
+  pruef(gelesen.length === 3 && gelesen[0].z === "Pommes=0,00|Salat=1,50*|Suppe=2,20" && gelesen[1].z === "Käse=1,00*|Speck=1,50*" &&
+        gelesen[2].t === "Käserand", "Öffnen zeigt den gespeicherten Stand (Preise mit Komma, Vorschläge markiert) UND die Vorlagen-Gruppe „Käserand“ (seit 03.11. sichtbar)", JSON.stringify(gelesen));
+  const chips = await p.evaluate(() => [...document.querySelectorAll("#egDazu [data-eg-dazu]")].map(b => b.dataset.egDazu));
+  pruef(chips.join(",") === "belag-kaese", "„Vorhandene dazunehmen“ bietet nur die gemeinsame Gruppe an — keine Gruppe einzelner Gerichte, nichts schon Angehängtes", chips.join(","));
   const vorher = (await ALLE(p)).length;
   await p.evaluate(() => sichern(false)); await p.waitForTimeout(400);
   const rest = (await ALLE(p)).slice(vorher);
@@ -361,7 +377,8 @@ async function teilB(browser){
   /* sechs sind das Höchste */
   await p.evaluate(() => { blattOeffnen(window.__g); mehrAufZu(true); }); await p.waitForTimeout(150);
   for(let i = 0; i < 4; i++){ await p.click("#egNeu"); await p.waitForTimeout(40); }
-  const sechs = await p.evaluate(() => ({ karten:document.querySelectorAll("#egListe .eo-karte").length, aus:document.getElementById("egNeu").disabled && document.getElementById("egNeuBeilage").disabled }));
+  const sechs = await p.evaluate(() => ({ karten:[...document.querySelectorAll("#egListe .eo-karte")].filter(k => /Nur an diesem Gericht/.test(k.textContent)).length,
+    aus:document.getElementById("egNeu").disabled && document.getElementById("egNeuBeilage").disabled }));
   pruef(sechs.karten === 6 && sechs.aus, "höchstens 6 Gruppen je Gericht: beide Anlegen-Knöpfe gesperrt", JSON.stringify(sechs));
   /* zwei „genau eine“-Vorschläge (nur von Hand in den Zustand gesetzt): der Prüfer weist ab */
   const zwei = await p.evaluate(() => eoNachDb([{ k:"", titel:"X", art:"eine", pflicht:false, hinweis:"", zeilen:[{ n:"A", auf:"", vor:true }, { n:"B", auf:"", vor:true }] }]).fehler);
@@ -384,7 +401,7 @@ async function teilB(browser){
     opt:"g-ffffffff-zusatzlang,kaeserand,g-ffffffff-ab" }; gerichte.push(g); window.__g = g; blattOeffnen(g); mehrAufZu(true); });
   await p.waitForTimeout(250);
   const titel = await p.evaluate(() => [...document.querySelectorAll('#egListe [data-eo-feld="titel"]')].map(e => e.value).join(","));
-  pruef(titel === "Erste,Zweite", "der Editor zeigt die Gruppen in der Reihenfolge, in der der Gast sie sieht (nicht in der der Spalte)", titel);
+  pruef(titel === "Erste,Käserand,Zweite", "der Editor zeigt die Gruppen in der Reihenfolge, in der der Gast sie sieht (nicht in der der Spalte)", titel);
   await eingeben(p, '#egListe [data-eo-zfeld="auf"]', "1,20", 1);
   await p.evaluate(() => sichern(false)); await p.waitForTimeout(500);
   const ord = (await SCHREIB(p, "gerichte", "update")).pop();
@@ -562,15 +579,17 @@ async function teilC(browser){
   psql(db_, "insert into public.gerichte(id, betrieb_id, name, preis, opt) values ('cccccccc-0000-0000-0000-000000000009','" + BID + "','Schnitzel',12,'g-cccccccc-beilage')");
   await h.p.evaluate(() => detailOeffnen("Burger")); await h.p.waitForTimeout(400);
   const z = await zeilenText(h.p);
-  pruef(z.filter(x => x.an).map(x => x.n).join(",") === "Salat,Käse,Speck" || z.filter(x => x.an).map(x => x.n).sort().join(",") === "Käse,Salat,Speck",
-    "der Hub zeigt, was das Board geschrieben hat: Vorschläge Salat, Käse, Speck gewählt", z.filter(x => x.an).map(x => x.n).join(","));
+  /* Die Vorschläge des Boards kosten alle etwas → nicht vorgewählt, „Empfohlen“ (seit 03.11.); der Gast tippt sie an. */
+  pruef(z.filter(x => x.an).map(x => x.n).join(",") === "Pommes" && z.filter(x => x.empf).map(x => x.n).sort().join(",") === "Käse,Salat,Speck",
+    "der Hub zeigt, was das Board geschrieben hat: Salat, Käse, Speck als „Empfohlen“, gewählt nur die freie Pflichtzeile", z.filter(x => x.an).map(x => x.n).join(",") + " / " + z.filter(x => x.empf).map(x => x.n).join(","));
+  for(const n_ of ["Salat", "Käse", "Speck"]){ await h.p.click('#warenkarte [data-ozeile="' + encodeURIComponent(n_) + '"]'); await h.p.waitForTimeout(150); }
   await h.p.click('#warenkarte [data-wmerk]'); await h.p.waitForTimeout(200);
   const b = await bestellen(h);
   const pos = b && b.p_positionen && b.p_positionen[0];
   pruef(!!pos, "Voraussetzung: der Hub hat bestellt", pos && pos.name);
   if(pos){
     const erwartet = Math.round((preis + 1.5 + 1 + 1.5) * 100) / 100;
-    pruef(Math.abs(pos.preis - erwartet) < 0.005, "der Hub rechnet Gericht + Vorschläge (" + erwartet.toFixed(2) + ")", pos.preis);
+    pruef(Math.abs(pos.preis - erwartet) < 0.005, "der Hub rechnet Gericht + die angetippten Zeilen (" + erwartet.toFixed(2) + ")", pos.preis);
     const antw = (name, gast, menge) => psql(db_, "select (public.positionen_pruefen('" + BID + "'::uuid, jsonb_build_array(jsonb_build_object('name', $q$" + name + "$q$, 'preis', " + gast + ", 'menge', " + (menge || 1) + ")))->'positionen'->0->>'preis')");
     const s1 = Number(antw(pos.name, pos.preis));
     pruef(Math.abs(s1 - pos.preis) < 0.005, "ECHTE positionen_pruefen rechnet denselben Betrag wie der Hub (" + pos.name + ")", s1 + " vs " + pos.preis);

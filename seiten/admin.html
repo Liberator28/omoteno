@@ -2149,8 +2149,6 @@ body.hell .schritt[aria-pressed=true]{
 /* Mehrfachwahl „Gehört zu“ im Gericht-Blatt */
 .kartenchips{display:flex;flex-wrap:wrap;gap:8px}
 /* Extras & Beläge (17.10.) */
-.eo-wahl{margin:16px 0 4px}
-.eo-wahl .kartenchips{margin-top:8px}
 .eo-liste{display:grid;gap:12px;margin:6px 0 10px}
 .eo-karte{border:1px solid var(--linie);border-radius:12px;padding:12px;display:grid;gap:10px;background:var(--flaeche)}
 .eo-kopf{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:end}
@@ -2169,6 +2167,15 @@ body.hell .eo-vor[aria-pressed=true]{color:var(--flaeche)}
 .eg-block{margin:16px 0 4px}
 .eg-block .eo-liste{margin-top:8px}
 .eg-stand{font-size:13px;line-height:1.45;margin:6px 0 0;color:var(--gedaempft)}
+/* 03.11.: Herkunft und Reichweite je Gruppe, Vorschlag vom letzten Gericht, Vorhandenes dazunehmen. */
+.eo-herkunft,.eg-geteilt{font-size:13px;line-height:1.45;margin:0;color:var(--kreide)}
+.eg-vorschlag{display:flex;flex-wrap:wrap;align-items:center;gap:8px 12px;margin:8px 0;padding:10px 12px;border-radius:12px;
+  border:1px dashed var(--linie);background:var(--flaeche)}
+.eg-vorschlag p{flex:1 1 220px;margin:0;font-size:14px;line-height:1.45;color:var(--kreide)}
+.eg-dazu{margin:10px 0 8px}
+.eg-dazu-titel{display:block;font-size:13px;color:var(--kreide);margin-bottom:6px}
+.eg-zahl{font-variant-numeric:tabular-nums}
+.knopf.eo-scharf{border-color:var(--warn, #E0685A)}
 .eo-weg{min-width:44px;min-height:44px;border-radius:10px;border:1px solid var(--linie);background:none;color:var(--kreide);font-size:18px;cursor:pointer}
 .eo-fuss{display:flex;flex-wrap:wrap;gap:8px}
 .eo-fuss .knopf{flex:1 1 140px}
@@ -4703,10 +4710,10 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
          der Server rechnet die Aufpreise aus derselben Spalte nach. -->
     <div class="egruppe" data-nur-inhaber id="eoGruppe">
       <h2 class="etitel">Extras &amp; Beläge</h2>
-      <p class="ehilfe">Gruppen, die Gäste zu einem Gericht dazuwählen — etwa Beläge für Pizza.
-        Welche Gruppen ein Gericht hat, stellen Sie im Gericht unter „Mehr Angaben“ ein — dort legen Sie auch
-        Beilagen und Extras an, die nur zu diesem einen Gericht gehören.
-        Der Aufpreis wird beim Bestellen vom Server nachgerechnet.</p>
+      <p class="ehilfe">Gruppen, die Gäste zu mehreren Gerichten dazuwählen — etwa Beläge für Pizza. Hier stehen auch die
+        Gruppen aus der Vorlage, die an Ihren Gerichten hängen; jede Gruppe sagt, an wie vielen. Eine Änderung gilt für jedes
+        dieser Gerichte; „Gruppe entfernen“ nimmt sie auch von den Gerichten. Welche Gruppen ein Gericht hat und welche nur ihm
+        gehören, stellen Sie im Gericht unter „Mehr Angaben“ ein. Der Aufpreis wird beim Bestellen vom Server nachgerechnet.</p>
       <div class="eo-liste" id="eoListe"></div>
       <p class="eo-satz" id="eoSatz" aria-live="polite" hidden></p>
       <div class="kbknoepfe">
@@ -6649,25 +6656,27 @@ input[type=search]::-webkit-search-cancel-button{-webkit-appearance:none}
         Der Gast bestätigt einmal; den Ausweis prüft das Personal.</p>
     </div>
 
-    <!-- Extras & Beläge des Betriebs (17.10.): nur sichtbar, wenn der
-         Betrieb eigene Gruppen hat. Gruppen aus der Vorlage (z. B.
-         Käserand) bleiben am Gericht, auch wenn sie hier nicht stehen. -->
-    <div class="eo-wahl" id="fOptBlock" hidden>
-      <span class="lname">Extras &amp; Beläge <span class="lzusatz">der Gast wählt sie im Gericht dazu</span></span>
-      <div class="kartenchips" id="fOpt" role="group" aria-label="Extras und Beläge"></div>
-    </div>
-
-    <!-- Beilagen & Extras NUR dieses Gerichts (24.10.): eigene Gruppen mit Überschrift, Zutaten, Aufpreis und
-         „Vorschlag“. Gespeichert in betriebe.optionen unter g-<Gericht>-<Name>; das Gericht zeigt mit opt darauf. -->
+    <!-- Beilagen & Extras (03.11., EINE Liste): die gemeinsamen Gruppen des Hauses UND der Vorlage (bearbeitbar; gilt für
+         alle Gerichte, die sie nutzen, oder „Nur für dieses Gericht ändern“) und die Gruppen nur dieses Gerichts
+         (betriebe.optionen unter g-<Gericht>-<Name>). Ein neues Gericht startet mit denen des zuletzt gespeicherten. -->
     <div class="eg-block" id="egBlock">
-      <span class="lname">Beilagen &amp; Extras dieses Gerichts <span class="lzusatz">nur hier, mit eigenen Überschriften und Preisen</span></span>
+      <span class="lname">Beilagen &amp; Extras <span class="lzusatz">der Gast wählt sie im Gericht dazu</span></span>
+      <div class="eg-vorschlag" id="egVorschlag" hidden>
+        <p id="egVorschlagText"></p>
+        <button type="button" class="knopf leise" id="egLeeren">Leeren</button>
+      </div>
       <div class="eo-liste" id="egListe"></div>
       <p class="eo-satz" id="egSatz" aria-live="polite" hidden></p>
-      <div class="eo-fuss">
-        <button type="button" class="knopf leise" id="egNeuBeilage">+ Beilage (genau eine)</button>
-        <button type="button" class="knopf leise" id="egNeu">+ Extras (mehrere)</button>
+      <div class="eg-dazu" id="egDazuBlock" hidden>
+        <span class="eg-dazu-titel">Vorhandene dazunehmen</span>
+        <div class="kartenchips" id="egDazu" role="group" aria-label="Vorhandene Beilagen und Extras dazunehmen"></div>
       </div>
-      <p class="eg-stand">„Vorschlag“ wählt eine Zutat für den Gast vor — er ändert sie mit einem Tipp. Der Aufpreis wird beim Bestellen vom Server nachgerechnet.</p>
+      <div class="eo-fuss">
+        <button type="button" class="knopf leise" id="egNeuBeilage">+ Neue Beilage (genau eine)</button>
+        <button type="button" class="knopf leise" id="egNeu">+ Neue Extras (mehrere)</button>
+      </div>
+      <p class="eg-stand">„Vorschlag“ ohne Aufpreis ist für den Gast schon gewählt. Ein Vorschlag mit Aufpreis steht als „Empfohlen“ da
+        und kostet erst, wenn der Gast ihn antippt. Der Aufpreis wird beim Bestellen vom Server nachgerechnet.</p>
     </div>
 
     <!-- Rabatt direkt am Gericht (Wunsch 07.10.): schreibt eine Zeile in
@@ -11204,6 +11213,80 @@ $("#ksSichern").onclick = async () => {
   melde(text);
 };
 
+/* ══ OPTIONEN-VORLAGE ══ geteilt: vorlagen/hub.vorlage.html = seiten/admin.html, Zeichen für Zeichen (pruef-extras-alle).
+   Die festen Gruppen der Vorlage. Ein Gericht zeigt mit gerichte.opt auf sie; dieselbe Gruppe in betriebe.optionen
+   (gleicher Schlüssel) ersetzt sie. Das Board zeigt sie darum zum Bearbeiten und Löschen (03.11.). */
+const OPT_VORLAGE = {
+
+  milch: {
+    titel: "Milch wählen", art: "eine", pflicht: true,
+    zeilen: [
+      { n: "Kuhmilch",   auf: 0 },
+      { n: "Hafermilch", auf: 0.50 }
+    ]
+  },
+
+  kaeserand: {
+    titel: "Käserand", art: "eine", pflicht: true,
+    zeilen: [
+      { n: "Ohne Käserand", auf: 0 },
+      { n: "Mit Käserand",  auf: 2.50 }
+    ]
+  },
+
+  stueckzahl: {
+    titel: "Größe wählen", art: "eine", pflicht: true,
+    zeilen: [
+      { n: "10 Stück", auf: 0 },
+      { n: "15 Stück", auf: 3.10 }
+    ]
+  },
+
+  suess: {
+    titel: "Make it extra sweet", art: "mehrere", pflicht: false,
+    hinweis: "Frisches Obst und Süßes obendrauf",
+    zeilen: [
+      { n: "Erdbeere",     auf: 2.00 },
+      { n: "Banane",       auf: 2.00 },
+      { n: "Mango",        auf: 2.00 },
+      { n: "Kiwi",         auf: 2.00 },
+      { n: "Bueno",        auf: 2.00 },
+      { n: "Oreo",         auf: 2.00 },
+      { n: "Kitkat",       auf: 2.00 },
+      { n: "Bounty",       auf: 2.00 },
+      { n: "Marshmallow",  auf: 2.00 }
+    ]
+  },
+
+  sauce: {
+    titel: "Favorite Sauce on top", art: "mehrere", pflicht: false,
+    hinweis: "Eine warme Sauce über alles",
+    zeilen: [
+      { n: "Nutella",            auf: 2.00 },
+      { n: "Pistazien-Sauce",    auf: 2.00 },
+      { n: "Lotus-Sauce",        auf: 2.00 },
+      { n: "Weiße Schoko-Sauce", auf: 2.00 }
+    ]
+  },
+
+  sahne: {
+    titel: "Oriental Touch", art: "mehrere", pflicht: false,
+    zeilen: [
+      { n: "Arabische Sahne (Ashta) on top", auf: 2.50 }
+    ]
+  },
+
+  softdrink: {
+    titel: "Softdrink wählen", art: "eine", pflicht: true,
+    zeilen: [
+      { n: "Durstlöscher Multivitamin", auf: 0 },
+      { n: "Durstlöscher Zitrone",      auf: 0 },
+      { n: "Durstlöscher Pfirsich",     auf: 0 }
+    ]
+  }
+};
+/* ══ Ende OPTIONEN-VORLAGE ══ */
+
 /* ══ Extras & Beläge (betriebe.optionen, 17.10.) ═════════════════════
    Eigene Gruppen des Betriebs, z. B. Pizzabeläge in Preisstufen. Die
    Form prüft die Schranke betriebe_optionen_form (optionen_form_ok);
@@ -11214,7 +11297,19 @@ $("#ksSichern").onclick = async () => {
    Preise mit Komma (preisAusFeld). Namen ohne „, · ( )“: Sie stehen
    später im Bon als „Pizza (Extra, Extra · Extra)“ und der Server
    zerlegt genau daran (positionen_pruefen). */
-let eoGelesen = undefined, eoEntwurf = [];
+let eoGelesen = undefined, eoEntwurf = [], eoWeg = new Set(), eoWegScharf = null;
+const EO_HAUS_MAX = 24;
+/* 03.11.: Der Haus-Editor zeigt auch die Gruppen der Vorlage, auf die ein Gericht dieses Betriebs zeigt (vorher unsichtbar
+   und nicht zu ändern). Bearbeitet → unter ihrem Schlüssel in betriebe.optionen; entfernt → auch aus gerichte.opt jedes
+   Gerichts, sonst fiele der Hub auf die Vorlage zurück. */
+function eoHausListe(gelesen){ return eoAusDb(gelesen).concat(eoVorlageGenutzt(gelesen, []).map(eoVorlageForm)); }
+/* Gerichte kommen oft nach den Extras: neu genutzte Vorlage-Gruppen in den Entwurf nehmen (außer der Wirt hat sie entfernt). */
+function eoSync(){
+  if(eoGelesen === undefined) return false;
+  let neu = false;
+  eoVorlageGenutzt(eoGelesen, []).forEach(k => { if(!eoWeg.has(k) && !eoEntwurf.some(g => g.k === k)){ eoEntwurf.push(eoVorlageForm(k)); neu = true; } });
+  return neu;
+}
 /* Beilagen & Extras JE GERICHT (24.10.) liegen in derselben Spalte unter g-<8 Zeichen der Gericht-id>-<Name>.
    Dieser Editor zeigt nur die GEMEINSAMEN Gruppen des Hauses; die eines einzelnen Gerichts stehen im Gericht-Blatt
    („Beilagen & Extras dieses Gerichts“). Beim Übernehmen bleiben sie unangetastet stehen (eoZusammen). */
@@ -11303,12 +11398,19 @@ function eoSatz(text, schief){ const el = $("#eoSatz"); el.hidden = !text; el.te
    Die Gruppen einzelner Gerichte gehören nicht hierher. */
 function eoGeaendert(){
   if(eoGelesen === undefined) return false;
-  const r = eoNachDb(eoEntwurf), basis = eoNachDb(eoAusDb(eoGelesen));
+  eoSync();
+  const r = eoNachDb(eoEntwurf, { max:EO_HAUS_MAX }), basis = eoNachDb(eoHausListe(eoGelesen), { max:EO_HAUS_MAX });
   return !!r.fehler || JSON.stringify(r.wert) !== JSON.stringify(basis.fehler ? eoTeilen(eoGelesen).gemeinsam : basis.wert);
 }
+function eoKopfHTML(g){
+  const n = g.k ? eoGerichteMit(g.k).length : 0;
+  return '<p class="eo-herkunft">' + (g.herkunft === "vorlage" ? "Aus der Vorlage · " : (!g.k ? "Neu · " : "")) +
+    (n ? "an " + n + (n === 1 ? " Gericht" : " Gerichten") : "an keinem Gericht") + '</p>';
+}
 /* Eine Karte = eine Gruppe. Dieselbe Zeichnung im Haus-Editor (#eoListe) und im Gericht-Blatt (#egListe). */
-function eoGruppeHTML(g, i){
-  return '<div class="eo-karte" data-eo="' + i + '">' +
+function eoGruppeHTML(g, i, x){
+  x = x || {};
+  return '<div class="eo-karte" data-eo="' + i + '">' + (x.kopf || "") +
       '<div class="eo-kopf"><label>Titel<input type="text" maxlength="40" data-eo-feld="titel" value="' + sicher(g.titel) + '" placeholder="z. B. Käse extra"></label>' +
         '<label>Wahl<select data-eo-feld="art"><option value="mehrere"' + (g.art !== "eine" ? " selected" : "") + '>mehrere</option>' +
         '<option value="eine"' + (g.art === "eine" ? " selected" : "") + '>genau eine</option></select></label></div>' +
@@ -11319,18 +11421,19 @@ function eoGruppeHTML(g, i){
         '<div class="eo-unten"><label>Aufpreis €<input type="text" inputmode="decimal" data-eo-zfeld="auf" value="' + sicher(z.auf) + '" placeholder="1,50"></label>' +
         '<button type="button" class="eo-vor" data-eo-zvor="' + j + '" aria-pressed="' + (z.vor === true) + '" aria-label="Vorschlag: ' +
           sicher(z.n || String(j + 1)) + ' für den Gast vorwählen">' + (z.vor === true ? "✓ " : "") + 'Vorschlag</button></div></div>').join("") + '</div>' +
-      '<div class="eo-fuss"><button type="button" class="knopf leise" data-eo-zneu>+ Zeile</button>' +
-        '<button type="button" class="knopf leise" data-eo-weg>Gruppe entfernen</button></div>' +
+      '<div class="eo-fuss"><button type="button" class="knopf leise" data-eo-zneu>+ Zeile</button>' + (x.fuss || "") +
+        '<button type="button" class="knopf leise" data-eo-weg>' + (x.weg || "Gruppe entfernen") + '</button></div>' +
     '</div>';
 }
 function eoZeichnen(){
   const liste = $("#eoListe"); if(!liste) return;
   if(eoGelesen === undefined){ liste.innerHTML = '<p class="ehilfe">Wird geladen …</p>'; $("#eoSichern").disabled = true; return; }
-  liste.innerHTML = eoEntwurf.map(eoGruppeHTML).join("") || '<p class="ehilfe">Noch keine Gruppe.</p>';
+  eoSync(); eoWegScharf = null;
+  liste.innerHTML = eoEntwurf.map((g, i) => eoGruppeHTML(g, i, { kopf:eoKopfHTML(g) })).join("") || '<p class="ehilfe">Noch keine Gruppe.</p>';
   $("#eoSichern").disabled = !eoGeaendert();
 }
 async function eoLaden(id){
-  eoGelesen = undefined; eoEntwurf = []; eoSatz(""); eoZeichnen(); fOptZeichnen();
+  eoGelesen = undefined; eoEntwurf = []; eoWeg = new Set(); eoSatz(""); eoZeichnen(); fOptZeichnen();
   if(demo || !db){ eoGelesen = null; eoZeichnen(); fOptZeichnen(); return; }
   const marke = id;
   const { data, error } = await db.from("betriebe").select("optionen").eq("id", id).maybeSingle();
@@ -11341,7 +11444,7 @@ async function eoLaden(id){
     eoZeichnen(); return;
   }
   eoGelesen = (data && data.optionen && typeof data.optionen === "object") ? data.optionen : null;
-  eoEntwurf = eoAusDb(eoGelesen);
+  eoEntwurf = eoHausListe(eoGelesen);
   eoZeichnen(); fOptZeichnen();
 }
 /* Frisch aus der Datenbank, unmittelbar vor dem Schreiben: Wer ein Gericht speichert, soll die Gruppen eines anderen
@@ -11361,7 +11464,7 @@ function eoBinden(el, c){
     if(e.target.dataset.eoFeld) g[e.target.dataset.eoFeld] = e.target.value;
     const zeile = e.target.closest("[data-eo-z]");
     if(zeile && e.target.dataset.eoZfeld) g.zeilen[+zeile.dataset.eoZ][e.target.dataset.eoZfeld] = e.target.value;
-    c.satz(""); c.geaendert();
+    c.satz(""); c.geaendert(+karte.dataset.eo);
   });
   el.addEventListener("change", e => {
     if(e.target.dataset.eoFeld !== "art") return;
@@ -11369,52 +11472,99 @@ function eoBinden(el, c){
     const karte = e.target.closest("[data-eo]"), g = karte && c.liste()[+karte.dataset.eo];
     if(g && g.art === "eine"){
       const vorn = g.zeilen.filter(z => z.vor === true);
-      if(vorn.length > 1){ vorn.slice(1).forEach(z => { z.vor = false; }); c.neu(); return; }
+      if(vorn.length > 1){ vorn.slice(1).forEach(z => { z.vor = false; }); c.neu(+karte.dataset.eo); return; }
     }
-    c.geaendert();
+    if(karte) c.geaendert(+karte.dataset.eo);
   });
   el.addEventListener("click", e => {
     const karte = e.target.closest("[data-eo]"); if(!karte || !c.bereit()) return;
     const i = +karte.dataset.eo, g = c.liste()[i]; if(!g) return;
-    if(e.target.closest("[data-eo-zneu]")){ g.zeilen.push({ n:"", auf:"", vor:false }); c.neu();
+    if(e.target.closest("[data-eo-zneu]")){ g.zeilen.push({ n:"", auf:"", vor:false }); c.neu(i);
       const f = el.querySelectorAll('[data-eo="' + i + '"] [data-eo-zfeld="n"]'); if(f.length) f[f.length - 1].focus(); return; }
     const zw = e.target.closest("[data-eo-zweg]");
-    if(zw){ g.zeilen.splice(+zw.dataset.eoZweg, 1); c.neu(); return; }
+    if(zw){ g.zeilen.splice(+zw.dataset.eoZweg, 1); c.neu(i); return; }
     const zv = e.target.closest("[data-eo-zvor]");
     if(zv){
       const j = +zv.dataset.eoZvor, z = g.zeilen[j]; if(!z) return;
       z.vor = z.vor !== true;
       /* „genau eine“: nur ein Vorschlag — der Tipp nimmt den bisherigen heraus. */
       if(z.vor && g.art === "eine") g.zeilen.forEach((x, m) => { if(m !== j) x.vor = false; });
-      c.neu();
+      c.neu(i);
       const f = el.querySelector('[data-eo="' + i + '"] [data-eo-zvor="' + j + '"]'); if(f) f.focus();
       return; }
-    if(e.target.closest("[data-eo-weg]")){ c.liste().splice(i, 1); c.neu(); }
+    const wg = e.target.closest("[data-eo-weg]");
+    if(wg){ if(c.weg) c.weg(i, wg); else { c.liste().splice(i, 1); c.neu(i); } }
   });
 }
 eoBinden($("#eoListe"), { liste:() => eoEntwurf, bereit:() => eoGelesen !== undefined, satz:eoSatz,
-  geaendert:() => { $("#eoSichern").disabled = !eoGeaendert(); }, neu:eoZeichnen });
+  geaendert:() => { $("#eoSichern").disabled = !eoGeaendert(); }, neu:eoZeichnen,
+  /* Entfernen einer Gruppe, die an Gerichten hängt, erst beim zweiten Tipp — mit der Zahl. */
+  weg:(i, knopf) => {
+    const g = eoEntwurf[i]; if(!g) return;
+    const n = g.k ? eoGerichteMit(g.k).length : 0;
+    if(n && eoWegScharf !== i){
+      eoWegScharf = i;
+      knopf.textContent = "Wirklich entfernen? Steht an " + n + (n === 1 ? " Gericht" : " Gerichten");
+      knopf.classList.add("eo-scharf");
+      eoSatz("„" + (g.titel || "Gruppe") + "“ verschwindet beim Speichern auch von " + (n === 1 ? "diesem Gericht" : "diesen " + n + " Gerichten") + ".");
+      return;
+    }
+    if(g.k) eoWeg.add(g.k);
+    eoEntwurf.splice(i, 1); eoZeichnen();
+  } });
 $("#eoNeu").onclick = () => {
   if(eoGelesen === undefined) return;
-  if(eoEntwurf.length >= 12) return eoSatz("Höchstens 12 Gruppen.", true);
+  if(eoEntwurf.length >= EO_HAUS_MAX) return eoSatz("Höchstens " + EO_HAUS_MAX + " Gruppen.", true);
   eoEntwurf.push({ k:"", titel:"", art:"mehrere", pflicht:false, hinweis:"", zeilen:[{ n:"", auf:"", vor:false }] });
   eoZeichnen();
   const f = $("#eoListe").querySelectorAll('[data-eo-feld="titel"]'); if(f.length) f[f.length - 1].focus();
 };
 $("#eoSichern").onclick = async () => {
   if(eoGelesen === undefined) return;
-  const r = eoNachDb(eoEntwurf);
+  eoSync();
+  const r = eoNachDb(eoEntwurf, { max:EO_HAUS_MAX });
   if(r.fehler) return eoSatz(r.fehler, true);
-  if(demo || !db){
-    const z = eoZusammen(r.wert, eoTeilen(eoGelesen).einzel);
-    if(z.fehler) return eoSatz(z.fehler, true);
-    eoGelesen = z.wert; eoEntwurf = eoAusDb(r.wert); eoZeichnen(); fOptZeichnen(); return eoSatz("Im Vorführmodus nur hier gespeichert.");
-  }
+  const live = !demo && db;
+  /* Eine unveränderte Gruppe der Vorlage wird nicht in die Datenbank kopiert — sie gilt ohnehin. */
+  const wert = Object.assign({}, r.wert || {});
+  Object.keys(wert).forEach(k => {
+    if(!OPT_VORLAGE[k] || (eoGelesen && Object.prototype.hasOwnProperty.call(eoGelesen, k))) return;
+    const v = eoNachDb([eoVorlageForm(k)], { max:1 }).wert;
+    if(v && JSON.stringify(v[k]) === JSON.stringify(wert[k])) delete wert[k];
+  });
+  /* Entfernte Gruppen: zuerst die Verweise an den Gerichten (§2.3b: Zeilen gezählt), dann die Gruppe selbst. */
+  const jetzt = new Set(Object.keys(r.wert || {}));
+  const weg = eoHausListe(eoGelesen).map(g => g.k).filter(k => k && !jetzt.has(k));
+  const betroffen = weg.length ? gerichte.filter(g => optKeysVon(g).some(k => weg.includes(k))) : [];
   $("#eoSichern").disabled = true;
+  let ok = 0;
+  for(const g of betroffen){
+    const neuOpt = optKeysVon(g).filter(k => !weg.includes(k)).join(",") || null;
+    if(live){
+      const { data, error } = await db.from("gerichte").update({ opt:neuOpt }).eq("id", g.id).eq("betrieb_id", betriebId).select("id");
+      if(error || !data || !data.length) continue;
+    }
+    g.opt = neuOpt; ok++;
+  }
+  if(ok < betroffen.length){
+    eoSatz((ok ? "Nur an " + ok + " von " + betroffen.length + " Gerichten entfernt" : "An den Gerichten nicht entfernt") +
+      " — bitte noch einmal „Übernehmen“ tippen. " + (ok ? "" : "Nur der Besitzer kann das ändern, oder die Verbindung fehlt. ") + "Sonst wurde nichts gespeichert.", true);
+    $("#eoSichern").disabled = false; zeichneKarte(); return;
+  }
+  const fertig = () => {
+    eoWeg = new Set(); eoEntwurf = eoHausListe(eoGelesen); eoZeichnen(); fOptZeichnen();
+    if(betroffen.length) zeichneKarte();
+  };
+  const entfernt = betroffen.length ? " An " + betroffen.length + (betroffen.length === 1 ? " Gericht" : " Gerichten") + " entfernt." : "";
+  if(!live){
+    const z = eoZusammen(Object.keys(wert).length ? wert : null, eoTeilen(eoGelesen).einzel);
+    if(z.fehler){ eoSatz(z.fehler, true); $("#eoSichern").disabled = false; return; }
+    eoGelesen = z.wert; fertig(); return eoSatz("Im Vorführmodus nur hier gespeichert." + entfernt);
+  }
   /* Die Gruppen einzelner Gerichte bleiben stehen: frisch lesen, nur den gemeinsamen Teil ersetzen. */
   const fr = await eoFrisch();
-  if(!fr.ok){ eoSatz("Nicht gespeichert, bitte Verbindung prüfen.", true); $("#eoSichern").disabled = false; return; }
-  const z = eoZusammen(r.wert, eoTeilen(fr.wert).einzel);
+  if(!fr.ok){ eoSatz("Nicht gespeichert, bitte Verbindung prüfen." + entfernt, true); $("#eoSichern").disabled = false; return; }
+  const z = eoZusammen(Object.keys(wert).length ? wert : null, eoTeilen(fr.wert).einzel);
   if(z.fehler){ eoSatz(z.fehler, true); $("#eoSichern").disabled = false; return; }
   const { error } = await db.from("betriebe").update({ optionen: z.wert }).eq("id", betriebId);
   if(error){
@@ -11423,17 +11573,10 @@ $("#eoSichern").onclick = async () => {
          : "Nicht gespeichert, bitte Verbindung prüfen.", true);
     $("#eoSichern").disabled = false; return;
   }
-  eoGelesen = z.wert; eoEntwurf = eoAusDb(r.wert);
-  eoZeichnen(); fOptZeichnen();
-  eoSatz("Gespeichert. Gäste sehen die Extras beim nächsten Abgleich, spätestens nach fünf Minuten.");
+  eoGelesen = z.wert; fertig();
+  eoSatz("Gespeichert." + entfernt + " Gäste sehen die Extras beim nächsten Abgleich, spätestens nach fünf Minuten.");
 };
 
-/* Im Gericht-Blatt: welche Gruppen DES BETRIEBS hängen am Gericht?
-   Fremde Schlüssel (Gruppen aus der Vorlage, etwa „kaeserand“) bleiben
-   unangetastet in fOptFremd und werden beim Speichern wieder angehängt.
-   Die eigenen Gruppen DIESES Gerichts (g-…) gehören dem Editor darunter und
-   werden beim Speichern aus ihm neu gebildet — nie aus dem alten Text. */
-let fOptWahl = [], fOptFremd = [], fOptHatteEinzel = false, fOptRoh = [];
 /* Die Reihenfolge in gerichte.opt IST die Reihenfolge der Gruppen beim Gast. Der Editor zeigt die Gruppen eines Gerichts
    in dieser Reihenfolge (die Spalte selbst ordnet jsonb nach Länge, nicht nach Anlegen). */
 function eoNachOpt(keys, opt){
@@ -11441,113 +11584,248 @@ function eoNachOpt(keys, opt){
   const platz = k => { const i = reihe.indexOf(k); return i < 0 ? 1e6 : i; };
   return keys.map((k, i) => ({ k, i })).sort((a, b) => platz(a.k) - platz(b.k) || a.i - b.i).map(x => x.k);
 }
+/* ── Beilagen & Extras im Gericht-Blatt: EINE Liste (03.11.) ─────────
+   Wunsch: „alle Beilagen bearbeitbar, einfacher, und dieselben wieder vorschlagen“. Vorher gab es zwei Teile (Knöpfe für die
+   Gruppen des Hauses, darunter ein Editor für die Gruppen DIESES Gerichts) — und die Gruppen der Vorlage (OPT_VORLAGE, z. B.
+   „Favorite Sauce on top“) standen gar nicht da, blieben aber am Gericht. Jetzt eine Liste in der Reihenfolge des Gastes:
+     geteilt  eine Gruppe des Hauses oder der Vorlage. Eine Änderung gilt für jedes Gericht, das sie nutzt (Wunsch „Gilt für
+              alle, mit Wahl“) — „Nur für dieses Gericht ändern“ macht daraus eine eigene Kopie an derselben Stelle.
+     eigen    eine Gruppe nur dieses Gerichts (g-<id8>-…, höchstens 6).
+     fremd    ein Schlüssel, den das Board nicht kennt — unsichtbar, bleibt an seinem Platz.
+   Gespeichert wird wie bisher: ERST betriebe.optionen (eigene Gruppen und geänderte geteilte, frisch gelesen), DANN das Gericht.
+   Eine bearbeitete Gruppe der Vorlage wird unter IHREM Schlüssel in betriebe.optionen geschrieben — der Hub nimmt dann diese
+   Fassung, und der Server rechnet ihre Preise genau nach. */
+let fListe = [], fGeteilt = {}, fGeteiltBasis = {}, fListeNutzer = false, fListeVorschlag = null;
+let fOptRoh = [], fOptHatteEinzel = false, fEigenFuer = null;
+const EG_EIGEN_MAX = 6;
+function egSatz(text, schief){ const el = $("#egSatz"); if(!el) return; el.hidden = !text; el.textContent = text || ""; el.classList.toggle("schief", !!schief); }
+function optKeysVon(g){ return String((g && g.opt) || "").split(",").map(x => x.trim()).filter(Boolean); }
+/* Gerichte des Betriebs, die auf eine Gruppe zeigen (ohne das gerade offene). */
+function eoGerichteMit(k, ohneId){ return (typeof gerichte !== "undefined" ? gerichte : []).filter(g => g && g.id !== ohneId && optKeysVon(g).includes(k)); }
+/* Die Gruppen der Vorlage, auf die in diesem Betrieb ein Gericht zeigt (oder das offene, roh) und die nicht in der Datenbank
+   stehen — nur die betreffen ihn. */
+function eoVorlageGenutzt(gelesen, roh){
+  const db0 = (gelesen && typeof gelesen === "object") ? gelesen : {};
+  const genutzt = new Set((roh || []).concat(...(typeof gerichte !== "undefined" ? gerichte : []).map(optKeysVon)));
+  return Object.keys(OPT_VORLAGE).filter(k => genutzt.has(k) && !Object.prototype.hasOwnProperty.call(db0, k));
+}
+function eoVorlageForm(k){ const g = eoAusDb({ [k]:OPT_VORLAGE[k] })[0]; g.herkunft = "vorlage"; return g; }
+/* Alle geteilten Gruppen: die des Hauses aus der Datenbank, dazu die genutzten der Vorlage. k → Entwurfs-Form (eoAusDb). */
+function fGeteiltAlle(roh){
+  const aus = {};
+  eoAusDb(eoGelesen).forEach(g => { aus[g.k] = g; });
+  eoVorlageGenutzt(eoGelesen, roh).forEach(k => { aus[k] = eoVorlageForm(k); });
+  return aus;
+}
+/* Die Liste aus dem opt eines Gerichts. kopie: für ein NEUES Gericht (Vorschlag vom letzten) — eigene Gruppen werden Kopien
+   ohne Schlüssel, Unbekanntes bleibt weg. */
+function fListeAus(roh, eigenPraefix, kopie){
+  const aus = [], gesehen = new Set();
+  roh.forEach(k => {
+    if(gesehen.has(k)) return; gesehen.add(k);
+    if(eoEinzelKey(k)){
+      if(eigenPraefix && k.indexOf(eigenPraefix) === 0 && eoGelesen && eoGelesen[k]){
+        const g = eoAusDb({ [k]:eoGelesen[k] }, () => true)[0];
+        if(kopie) g.k = "";
+        aus.push({ typ:"eigen", g });
+      }else if(!kopie && !(eigenPraefix && k.indexOf(eigenPraefix) === 0)) aus.push({ typ:"fremd", k });
+      return;
+    }
+    if(fGeteilt[k]) aus.push({ typ:"geteilt", k });
+    else if(!kopie) aus.push({ typ:"fremd", k });
+  });
+  return aus;
+}
+/* Vorschlag vom letzten Gericht (Board, nur in diesem Gerät): gemerkt wird nur die id des zuletzt gespeicherten Gerichts. */
+function extrasLetztSchluessel(){ return "omoteno-extras-letzt-" + (betriebId || ""); }
+function extrasLetztMerken(id){ try{ if(id) localStorage.setItem(extrasLetztSchluessel(), String(id)); }catch(e){} }
+function extrasLetztGericht(){
+  let id = null; try{ id = localStorage.getItem(extrasLetztSchluessel()); }catch(e){}
+  return id ? (typeof gerichte !== "undefined" ? gerichte : []).find(g => g && String(g.id) === id) || null : null;
+}
+function fSichtbar(){ return fListe.filter(e => e.typ !== "fremd"); }
+function fKarten(){ return fSichtbar().map(e => e.typ === "geteilt" ? fGeteilt[e.k] : e.g); }
+function fEigenListe(){ return fListe.filter(e => e.typ === "eigen").map(e => e.g); }
+function fListeAufbauen(){
+  if(eoGelesen === undefined){ fListe = []; fGeteilt = {}; fGeteiltBasis = {}; fListeVorschlag = null; return; }
+  fGeteilt = fGeteiltAlle(fOptRoh); fGeteiltBasis = {};
+  Object.keys(fGeteilt).forEach(k => { fGeteiltBasis[k] = JSON.stringify(fGeteilt[k]); });
+  fListeVorschlag = null;
+  if(fEigenFuer){ fListe = fListeAus(fOptRoh, fEigenFuer.id ? eoPraefix(fEigenFuer.id) : null, false); return; }
+  /* Neues Gericht: dieselben Beilagen wie beim zuletzt gespeicherten — als Vorschlag mit „Leeren“. */
+  const letzt = extrasLetztGericht();
+  if(letzt){
+    const roh = optKeysVon(letzt);
+    fGeteilt = fGeteiltAlle(roh.concat(fOptRoh));
+    Object.keys(fGeteilt).forEach(k => { fGeteiltBasis[k] = JSON.stringify(fGeteilt[k]); });
+    fListe = fListeAus(roh, eoPraefix(letzt.id), true);
+    if(fSichtbar().length) fListeVorschlag = { name:String(letzt.name || ""), titel:fKarten().map(g => g.titel).filter(Boolean) };
+    else fListe = [];
+  }else fListe = [];
+}
+/* Wird beim Öffnen des Blatts gerufen (bisheriger Name). */
 function fOptSetzen(g){
-  const roh = String((g && g.opt) || "").split(",").map(x => x.trim()).filter(Boolean);
-  fOptRoh = roh;
-  const eigen = Object.keys(eoGelesen || {}).filter(k => !eoEinzelKey(k));
-  fOptHatteEinzel = roh.some(eoEinzelKey);
-  fOptWahl = roh.filter(k => eigen.includes(k));
-  fOptFremd = roh.filter(k => !eigen.includes(k) && !eoEinzelKey(k));
+  fOptRoh = optKeysVon(g);
+  fOptHatteEinzel = fOptRoh.some(eoEinzelKey);
+  fListeNutzer = false;
+  fListeAufbauen();
   fOptZeichnen();
 }
-function fOptZeichnen(){
-  const block = $("#fOptBlock"); if(!block) return;
-  const gr = eoTeilen(eoGelesen).gemeinsam || {}, keys = Object.keys(gr);
-  block.hidden = !keys.length;
-  $("#fOpt").innerHTML = keys.map(k => '<button type="button" data-opt-wahl="' + sicher(k) + '" aria-pressed="' + fOptWahl.includes(k) + '">' +
-    sicher(gr[k].titel || k) + '</button>').join("");
-  fEigenNachziehen();
-}
-$("#fOpt").onclick = e => {
-  const b = e.target.closest("[data-opt-wahl]"); if(!b) return;
-  const k = b.dataset.optWahl;
-  fOptWahl = fOptWahl.includes(k) ? fOptWahl.filter(x => x !== k) : fOptWahl.concat([k]);
-  b.setAttribute("aria-pressed", String(fOptWahl.includes(k)));
-};
-/* Nur Betriebe mit eigenen Gruppen schreiben opt — bei allen anderen
-   bleibt das Feld, wie es ist (Chocos Vorlagen-Extras). eigene: die
-   Schlüssel der Gruppen DIESES Gerichts (fEigenVorbereiten). */
-function fOptFuerSatz(eigene){
-  if(eoGelesen === undefined) return undefined;
-  eigene = eigene || [];
-  if(!eoTeilen(eoGelesen).gemeinsam && !eigene.length && !fOptHatteEinzel) return undefined;
-  /* Die Reihenfolge bleibt, wie sie war: gemeinsame und fremde Gruppen an ihrer Stelle, die eigenen DIESES Gerichts der
-     Reihe nach in die Plätze, die ihre Vorgänger hatten; Neues hinten. */
-  const eig = eigene.slice(), rest = new Set(fOptWahl.concat(fOptFremd)), aus = [];
-  fOptRoh.forEach(k => {
-    if(eoEinzelKey(k)){ if(eig.length) aus.push(eig.shift()); }
-    else if(rest.has(k)){ aus.push(k); rest.delete(k); }
-  });
-  rest.forEach(k => aus.push(k)); eig.forEach(k => aus.push(k));
-  return aus.length ? aus.join(",") : null;
-}
-
-/* ── Beilagen & Extras DIESES Gerichts (24.10.) ────────────────────
-   Höchstens 6 Gruppen je Gericht, jede mit Überschrift, Zutaten, Aufpreis und „Vorschlag“. Gespeichert in
-   betriebe.optionen (derselbe Weg, den der Server beim Bestellen schon nachrechnet); das Gericht zeigt mit
-   gerichte.opt darauf. Reihenfolge beim Speichern: ERST die Gruppen (unsichtbar, solange kein Gericht auf sie zeigt),
-   DANN das Gericht — scheitert das zweite, steht höchstens eine Gruppe ohne Gericht da. */
-let fEigen = [], fEigenFuer = null, fEigenAngefasst = false;
-function egSatz(text, schief){ const el = $("#egSatz"); if(!el) return; el.hidden = !text; el.textContent = text || ""; el.classList.toggle("schief", !!schief); }
+function fOptZeichnen(){ fEigenNachziehen(); }
 /* Solange der Wirt nichts angefasst hat, folgt die Liste dem gelesenen Stand (Blatt vor dem Laden geöffnet). */
 function fEigenNachziehen(){
-  if(!fEigenAngefasst){
-    const p = fEigenFuer && fEigenFuer.id ? eoPraefix(fEigenFuer.id) : null;
-    const kk = p && eoGelesen ? eoNachOpt(Object.keys(eoGelesen).filter(k => k.indexOf(p) === 0 && eoEinzelKey(k)), fEigenFuer.opt) : [];
-    fEigen = eoAusDb(eoGelesen, k => kk.indexOf(k) > -1).sort((a, b) => kk.indexOf(a.k) - kk.indexOf(b.k));
-  }
+  if(!fListeNutzer) fListeAufbauen();
   fEigenZeichnen();
   if(typeof mehrStandSetzen === "function") mehrStandSetzen();
 }
+function egKopfHTML(e){
+  if(e.typ === "eigen") return '<p class="eg-geteilt">Nur an diesem Gericht.</p>';
+  const n = eoGerichteMit(e.k, fEigenFuer && fEigenFuer.id).length + 1;
+  const vorlage = fGeteilt[e.k] && fGeteilt[e.k].herkunft === "vorlage";
+  return '<p class="eg-geteilt">' + (vorlage ? "Aus der Vorlage · " : "Gemeinsame Gruppe · ") +
+    (n > 1 ? "gilt für " + n + " Gerichte — eine Änderung hier gilt für alle." : "eine Änderung hier gilt für jedes Gericht, das sie nutzt.") + '</p>';
+}
 function fEigenZeichnen(){
   const liste = $("#egListe"); if(!liste) return;
-  const neuAus = $("#egNeu"), neuBeil = $("#egNeuBeilage");
+  const neuAus = $("#egNeu"), neuBeil = $("#egNeuBeilage"), dazuB = $("#egDazuBlock"), dazu = $("#egDazu"), vb = $("#egVorschlag");
   if(eoGelesen === undefined){
-    liste.innerHTML = '<p class="ehilfe">Wird geladen …</p>'; neuAus.disabled = neuBeil.disabled = true; return; }
-  liste.innerHTML = fEigen.map(eoGruppeHTML).join("");
-  neuAus.disabled = neuBeil.disabled = fEigen.length >= 6;
+    liste.innerHTML = '<p class="ehilfe">Wird geladen …</p>'; neuAus.disabled = neuBeil.disabled = true;
+    if(dazuB) dazuB.hidden = true; if(vb) vb.hidden = true; return; }
+  const sicht = fSichtbar();
+  liste.innerHTML = sicht.map((e, i) => {
+    const g = e.typ === "geteilt" ? fGeteilt[e.k] : e.g;
+    return eoGruppeHTML(g, i, e.typ === "geteilt"
+      ? { kopf:egKopfHTML(e), fuss:'<button type="button" class="knopf leise" data-eg-nurhier>Nur für dieses Gericht ändern</button>', weg:"Von diesem Gericht entfernen" }
+      : { kopf:egKopfHTML(e) });
+  }).join("");
+  neuAus.disabled = neuBeil.disabled = fEigenListe().length >= EG_EIGEN_MAX;
+  const frei = Object.keys(fGeteilt).filter(k => !fListe.some(e => e.typ === "geteilt" && e.k === k));
+  if(dazuB) dazuB.hidden = !frei.length;
+  if(dazu) dazu.innerHTML = frei.map(k => {
+    const n = eoGerichteMit(k, fEigenFuer && fEigenFuer.id).length;
+    return '<button type="button" data-eg-dazu="' + sicher(k) + '" aria-pressed="false">＋ ' + sicher(fGeteilt[k].titel || k) +
+      (n ? ' <span class="eg-zahl">· an ' + n + '</span>' : "") + '</button>'; }).join("");
+  if(vb){
+    vb.hidden = !fListeVorschlag;
+    if(fListeVorschlag) $("#egVorschlagText").textContent = "Vom zuletzt gespeicherten Gericht" +
+      (fListeVorschlag.name ? " „" + fListeVorschlag.name + "“" : "") + " übernommen: " + fListeVorschlag.titel.join(", ") +
+      ". Ändern, entfernen oder dazunehmen geht wie immer.";
+  }
 }
+function egGeaendert(){ fListeNutzer = true; fListeVorschlag = null; const vb = $("#egVorschlag"); if(vb) vb.hidden = true; }
 function fEigenNeu(art, titel){
   if(eoGelesen === undefined) return;
-  if(fEigen.length >= 6) return egSatz("Höchstens 6 Gruppen je Gericht.", true);
-  fEigenAngefasst = true;
-  fEigen.push({ k:"", titel, art, pflicht:false, hinweis:"", zeilen:[{ n:"", auf:"", vor:false }] });
+  if(fEigenListe().length >= EG_EIGEN_MAX) return egSatz("Höchstens " + EG_EIGEN_MAX + " eigene Gruppen je Gericht.", true);
+  egGeaendert();
+  fListe.push({ typ:"eigen", g:{ k:"", titel, art, pflicht:false, hinweis:"", zeilen:[{ n:"", auf:"", vor:false }] } });
   fEigenZeichnen(); mehrStandSetzen(); egSatz("");
   const f = $("#egListe").querySelectorAll('[data-eo-zfeld="n"]'); if(f.length) f[f.length - 1].focus();
 }
 $("#egNeu").onclick = () => fEigenNeu("mehrere", "Extras");
 $("#egNeuBeilage").onclick = () => fEigenNeu("eine", "Beilage");
-eoBinden($("#egListe"), { liste:() => fEigen, bereit:() => eoGelesen !== undefined, satz:egSatz,
-  geaendert:() => { fEigenAngefasst = true; mehrStandSetzen(); },
-  neu:() => { fEigenAngefasst = true; fEigenZeichnen(); mehrStandSetzen(); } });
+$("#egLeeren").onclick = () => {
+  egGeaendert(); fListe = fListe.filter(e => e.typ === "fremd"); fEigenZeichnen(); mehrStandSetzen();
+  egSatz("Geleert — dieses Gericht hat jetzt keine Beilagen und Extras.");
+};
+$("#egDazu").onclick = e => {
+  const b = e.target.closest("[data-eg-dazu]"); if(!b || eoGelesen === undefined) return;
+  const k = b.dataset.egDazu; if(!fGeteilt[k] || fListe.some(x => x.typ === "geteilt" && x.k === k)) return;
+  egGeaendert(); fListe.push({ typ:"geteilt", k }); fEigenZeichnen(); mehrStandSetzen(); egSatz("");
+  const karten = $("#egListe").querySelectorAll(".eo-karte"); if(karten.length) karten[karten.length - 1].querySelector('[data-eo-feld="titel"]').focus();
+};
+/* Nur für dieses Gericht: die geteilte Gruppe wird hier eine eigene Kopie, an derselben Stelle. Was am Entwurf der geteilten
+   Gruppe schon getippt war, nimmt die Kopie mit; die geteilte Gruppe bleibt, wie sie gelesen wurde. */
+$("#egListe").addEventListener("click", e => {
+  const nh = e.target.closest("[data-eg-nurhier]"); if(!nh) return;
+  const karte = nh.closest("[data-eo]"); const eintrag = karte && fSichtbar()[+karte.dataset.eo];
+  if(!eintrag || eintrag.typ !== "geteilt") return;
+  if(fEigenListe().length >= EG_EIGEN_MAX) return egSatz("Höchstens " + EG_EIGEN_MAX + " eigene Gruppen je Gericht.", true);
+  const kopie = JSON.parse(JSON.stringify(fGeteilt[eintrag.k])); kopie.k = ""; delete kopie.herkunft;
+  fGeteilt[eintrag.k] = JSON.parse(fGeteiltBasis[eintrag.k]);
+  egGeaendert();
+  fListe[fListe.indexOf(eintrag)] = { typ:"eigen", g:kopie };
+  fEigenZeichnen(); mehrStandSetzen();
+  egSatz("„" + (kopie.titel || "Gruppe") + "“ gilt jetzt nur für dieses Gericht — die anderen Gerichte behalten die gemeinsame.");
+  const k2 = $("#egListe").querySelector('[data-eo="' + karte.dataset.eo + '"] [data-eo-feld="titel"]'); if(k2) k2.focus();
+});
+eoBinden($("#egListe"), { liste:fKarten, bereit:() => eoGelesen !== undefined, satz:egSatz,
+  geaendert:i => { const e = fSichtbar()[i]; if(e && e.typ === "eigen") egGeaendert(); mehrStandSetzen(); },
+  neu:i => { const e = fSichtbar()[i]; if(e && e.typ === "eigen") egGeaendert(); fEigenZeichnen(); mehrStandSetzen(); },
+  weg:i => { const e = fSichtbar()[i]; if(!e) return; egGeaendert(); fListe.splice(fListe.indexOf(e), 1); fEigenZeichnen(); mehrStandSetzen(); } });
+/* opt für den Satz. Unberührt: wie bisher (nur Betriebe mit eigenen Gruppen schreiben opt; Chocos Vorlagen-Extras bleiben,
+   wie sie sind). Angefasst oder vom letzten Gericht vorgeschlagen: genau die Liste, in ihrer Reihenfolge. */
+function fOptFuerSatz(eigene){
+  if(eoGelesen === undefined) return undefined;
+  eigene = eigene || [];
+  if(fListeNutzer || (!bearbeite && fSichtbar().length)){
+    let j = 0;
+    const aus = fListe.map(e => e.typ === "eigen" ? eigene[j++] : e.k).filter(Boolean);
+    return aus.length ? aus.join(",") : null;
+  }
+  if(!eoTeilen(eoGelesen).gemeinsam && !eigene.length && !fOptHatteEinzel) return undefined;
+  const eig = eigene.slice(), gesehen = new Set(), aus = [];
+  fOptRoh.forEach(k => {
+    if(eoEinzelKey(k)){ if(eig.length) aus.push(eig.shift()); }
+    else if(!gesehen.has(k)){ aus.push(k); gesehen.add(k); }
+  });
+  eig.forEach(k => aus.push(k));
+  return aus.length ? aus.join(",") : null;
+}
 /* Vor dem Speichern des Gerichts: prüfen und die Schlüssel bilden. { fehler } | { keys, aendern, id, praefix, wert }. */
 function fEigenVorbereiten(alsKopie){
   const neu = alsKopie || !bearbeite;
   if(eoGelesen === undefined) return { keys:[], aendern:false };          /* nie gelesen: nichts anfassen (§8.1m) */
-  if(!neu && !fEigenAngefasst){
+  const eigen = fEigenListe();
+  if(!neu && !fListeNutzer){
     const p = eoPraefix(bearbeite.id);
     return { keys:eoNachOpt(Object.keys(eoGelesen || {}).filter(k => k.indexOf(p) === 0 && eoEinzelKey(k)), bearbeite.opt), aendern:false };
   }
-  if(neu && !fEigen.length) return { keys:[], aendern:false };
+  if(neu && !eigen.length) return { keys:[], aendern:false };
   let id = neu ? null : bearbeite.id;
   if(neu){
     id = demo ? "g" + Date.now() : (window.crypto && crypto.randomUUID ? crypto.randomUUID() : null);
     if(!id) return { fehler:"Dieses Gerät kann die Extras gerade nicht speichern — bitte den Browser aktualisieren." };
   }
-  const praefix = eoPraefix(id), r = eoNachDb(fEigen, { praefix, max:6 });
+  const praefix = eoPraefix(id), r = eoNachDb(eigen, { praefix, max:EG_EIGEN_MAX });
   if(r.fehler) return { fehler:r.fehler };
   const wert = r.wert || {};
+  /* Nur eine geteilte Gruppe dazugenommen oder entfernt: die eigenen sind dieselben wie gelesen — kein Schreiben. */
+  if(!neu){
+    const vorher = {};
+    Object.keys(eoGelesen || {}).forEach(k => { if(k.indexOf(praefix) === 0 && eoEinzelKey(k)) vorher[k] = eoGelesen[k]; });
+    const geformt = eoNachDb(eoAusDb(vorher, () => true), { praefix, max:EG_EIGEN_MAX });
+    const sortiert = o => JSON.stringify(Object.keys(o || {}).sort().map(k => [k, o[k]]));
+    if(!geformt.fehler && sortiert(geformt.wert) === sortiert(wert)) return { keys:Object.keys(wert), aendern:false };
+  }
   return { id: neu ? id : null, praefix, wert, keys:Object.keys(wert), aendern:true };
 }
-/* Schreibt die Gruppen dieses Gerichts in betriebe.optionen (frisch gelesen, alles andere bleibt). null = geschrieben,
-   sonst der Satz für den Wirt. */
-async function fEigenSchreiben(eigen){
+/* Geänderte geteilte Gruppen, die noch an diesem Gericht hängen: { wert:{ k:Gruppe } } | { fehler }. */
+function fGeteiltAenderungen(){
+  const wert = {};
+  for(const e of fListe){
+    if(e.typ !== "geteilt" || wert[e.k] || !fGeteilt[e.k] || JSON.stringify(fGeteilt[e.k]) === fGeteiltBasis[e.k]) continue;
+    const g = Object.assign({}, fGeteilt[e.k], { k:e.k }), r = eoNachDb([g], { max:1 });
+    if(r.fehler) return { fehler:r.fehler };
+    const k0 = Object.keys(r.wert || {})[0]; if(!k0) continue;
+    wert[e.k] = r.wert[k0];
+  }
+  return { wert };
+}
+/* Schreibt die Gruppen dieses Gerichts und geänderte geteilte Gruppen in betriebe.optionen (frisch gelesen, alles andere
+   bleibt). null = geschrieben, sonst der Satz für den Wirt. */
+async function fEigenSchreiben(eigen, geteilt){
   const live = !demo && db;
   let basis = eoGelesen;
   if(live){ const fr = await eoFrisch(); if(!fr.ok) return "Nicht gespeichert — Verbindung prüfen"; basis = fr.wert; }
-  const t = eoTeilen(basis), rest = {};
-  Object.keys(t.einzel).forEach(k => { if(k.indexOf(eigen.praefix) !== 0) rest[k] = t.einzel[k]; });
-  const z = eoZusammen(t.gemeinsam, Object.assign(rest, eigen.wert));
+  const t = eoTeilen(basis);
+  let einzel = t.einzel;
+  if(eigen && eigen.aendern){
+    const rest = {};
+    Object.keys(t.einzel).forEach(k => { if(k.indexOf(eigen.praefix) !== 0) rest[k] = t.einzel[k]; });
+    einzel = Object.assign(rest, eigen.wert);
+  }
+  const gemein = Object.assign({}, t.gemeinsam || {}, geteilt || {});
+  const z = eoZusammen(Object.keys(gemein).length ? gemein : null, einzel);
   if(z.fehler) return z.fehler;
   if(live){
     const { data, error } = await db.from("betriebe").update({ optionen:z.wert }).eq("id", betriebId).select("id");
@@ -11557,9 +11835,13 @@ async function fEigenSchreiben(eigen){
     /* RLS meldet „keine Zeile getroffen“ als Erfolg (§2.3b). */
     if(!data || !data.length) return "Nur der Besitzer kann die Extras eines Gerichts ändern.";
   }
+  const hausUnberuehrt = !eoGeaendert();
   eoGelesen = z.wert;
+  /* Der Haus-Editor folgt, solange dort nichts getippt ist. */
+  if(hausUnberuehrt){ eoEntwurf = eoHausListe(eoGelesen); eoZeichnen(); }
   return null;
 }
+
 /* Gericht gelöscht: seine Gruppen räumen sich mit auf. Fehlschlag ist harmlos (eine Gruppe ohne Gericht ist unsichtbar). */
 async function fEigenAufraeumen(id){
   const p = eoPraefix(id);
@@ -16023,6 +16305,8 @@ function katKopfHtml(k, ki, anzahlKats, n, aus, schiebbar){
 }
 
 function zeichneKarte(){
+  /* Neu geladene Gerichte können Gruppen der Vorlage nutzen, die der Haus-Editor noch nicht zeigt (03.11.). */
+  if(typeof eoSync === "function" && eoSync()) eoZeichnen();
   const ziel = $("#karteListe");
   kartenWahlZeichnen();
   const leereKats = karteLeereKategorien(welcheKarte);
@@ -18451,9 +18735,11 @@ const AN_WIKI = [
       "Ein Tipp zeigt den Stil oben in der Vorschau; Gäste sehen ihn nach „Übernehmen“ beim nächsten Abgleich, spätestens nach fünf Minuten."],
     labels:["Liste", "Bühne", "Raster", "Flink", "Teller", "Übernehmen"], gruppe:"Stil der Speisekarte" },
   { id:"gh-extras", kapitel:"Gast-Hub gestalten", titel:"Extras & Beläge", ort:"Gast-Hub → Extras",
-    text:["Gruppen, die Gäste zu einem Gericht dazuwählen — etwa Beläge für Pizza. Welche Gruppen ein Gericht hat, stellen Sie im Gericht unter „Mehr Angaben“ ein; dort legen Sie auch Beilagen und Extras an, die nur zu diesem einen Gericht gehören.",
+    text:["Gruppen, die Gäste zu einem Gericht dazuwählen — etwa Beläge für Pizza. Hier stehen auch die Gruppen aus der Vorlage, die an Ihren Gerichten hängen; jede Gruppe sagt, an wie vielen. Eine Änderung gilt für jedes dieser Gerichte; „Gruppe entfernen“ fragt nach und nimmt sie auch von den Gerichten.",
+      "Im Gericht unter „Mehr Angaben“ stehen alle Gruppen des Gerichts in einer Liste. „Nur für dieses Gericht ändern“ macht aus einer gemeinsamen Gruppe eine eigene Kopie; „Vorhandene dazunehmen“ hängt eine weitere an. Ein neues Gericht startet mit den Beilagen des zuletzt gespeicherten — „Leeren“ nimmt sie wieder weg.",
+      "„Vorschlag“ ohne Aufpreis ist für den Gast schon gewählt; ein Vorschlag mit Aufpreis heißt beim Gast „Empfohlen“ und kostet erst nach einem Tipp. Bestellt ein Gast ein Gericht wieder, sind seine Zutaten ohne Aufpreis von damals vorgewählt, den Rest bietet „Wie letztes Mal“ an.",
       "Der Aufpreis wird beim Bestellen vom Server nachgerechnet — ein Gast kann ihn nicht verändern."],
-    labels:["+ Gruppe", "Mehr Angaben"], gruppe:"Extras & Beläge" },
+    labels:["+ Gruppe", "Mehr Angaben", "Nur für dieses Gericht ändern", "Vorhandene dazunehmen", "Leeren"], gruppe:"Extras & Beläge" },
   { id:"gh-willkommen", kapitel:"Gast-Hub gestalten", titel:"Willkommen-Animation", ort:"Gast-Hub → Willkommen",
     text:["Was der Gast beim ersten Öffnen über dem Namen Ihres Hauses sieht. Ein Tipp zeigt die Szene oben in der Vorschau; Gäste sehen sie nach „Übernehmen“, ab dem nächsten Besuch.",
       "„Nochmal abspielen“ startet die Szene in der Vorschau von vorn. Mit „Zufällig aus mehreren“ haken Sie zwei oder mehr Szenen an — jeder Besuch zeigt eine davon. Unter „Am Abend“ wählen Sie eine eigene Szene ab der Abendstunde Ihres Hauses."],
@@ -18586,7 +18872,8 @@ const AN_NEU = [
   { datum:"02.11.", titel:"Banner: Laufzeit, duplizieren, selbst weiterblättern", id:"gh-banner" },
   { datum:"02.11.", titel:"Willkommen: nochmal abspielen, Szene am Abend, zufällig", id:"gh-willkommen" },
   { datum:"02.11.", titel:"Schrift: Textgröße, passende Paare, eigener Probesatz", id:"gh-schrift" },
-  { datum:"02.11.", titel:"Farben: fertige Paletten, Farben aus dem Logo, Ampel für die Lesbarkeit", id:"gh-farben" }
+  { datum:"02.11.", titel:"Farben: fertige Paletten, Farben aus dem Logo, Ampel für die Lesbarkeit", id:"gh-farben" },
+  { datum:"03.11.", titel:"Alle Beilagen und Extras bearbeitbar, auch die der Vorlage — neue Gerichte übernehmen die des letzten", id:"gh-extras" }
 ];
 /* Merkliste: nur auf diesem Gerät, nur ids, die es im Wiki gibt (alles andere fällt beim Lesen weg). */
 const AN_MERK = "omoteno-an-merk";
@@ -26297,7 +26584,8 @@ function mehrStandSetzen(){
   const rbl = rbLaufend(bearbeite);
   if(rbl) teile.push("Rabatt −" + Math.round((1 - rbl.preis_neu / rbl.preis_alt) * 100) + " %");
   if(typeof gExtraStand === "function"){ const z = gExtraStand(); if(z) teile.push(z); }
-  if(fEigen.length) teile.push(fEigen.length === 1 ? "1 Extra-Gruppe" : fEigen.length + " Extra-Gruppen");
+  const egN = fSichtbar().length;
+  if(egN) teile.push(egN === 1 ? "1 Extra-Gruppe" : egN + " Extra-Gruppen");
   $("#mehrStand").textContent = teile.join(" · ");
 }
 function mehrAufZu(offen){
@@ -26864,7 +27152,7 @@ function blattOeffnen(g){
   $("#kopie").hidden     = !g;
   $("#speichernWeiter").hidden = !!g;
   alterSetzen(g ? g.ab_alter : null);
-  fEigenFuer = g || null; fEigenAngefasst = false; fEigen = []; egSatz("");
+  fEigenFuer = g || null; egSatz("");
   fOptSetzen(g);
   rbArtWert = "prozent"; rbDauerWert = "heute"; $("#rbWert").value = ""; rbZeichnen();
   /* Kluge Vorgabe: ein neues Gericht landet in der Kategorie, in die
@@ -27684,6 +27972,10 @@ async function sichern(alsKopie, weiter){
   /* Beilagen & Extras dieses Gerichts: erst prüfen, vor jedem Schreiben. */
   const eigen = fEigenVorbereiten(alsKopie);
   if(eigen.fehler){ melde(eigen.fehler, true); return; }
+  /* Geänderte gemeinsame Gruppen (auch eine der Vorlage) gelten für jedes Gericht, das sie nutzt. */
+  const geteilt = fGeteiltAenderungen();
+  if(geteilt.fehler){ melde(geteilt.fehler, true); return; }
+  const geteiltN = Object.keys(geteilt.wert).length;
   const optWert = fOptFuerSatz(eigen.keys);
   if(optWert !== undefined) satz.opt = optWert;
 
@@ -27707,8 +27999,8 @@ async function sichern(alsKopie, weiter){
   const neuAnlegen = alsKopie || !bearbeite;
 
   /* Erst die Gruppen, dann das Gericht (siehe fEigenSchreiben). */
-  if(eigen.aendern){
-    const grund = await fEigenSchreiben(eigen);
+  if(eigen.aendern || geteiltN){
+    const grund = await fEigenSchreiben(eigen, geteilt.wert);
     if(grund){ melde(grund, true); return; }
   }
 
@@ -27734,6 +28026,8 @@ async function sichern(alsKopie, weiter){
 
   entwurfLoeschen(entwurfWar);
   letzteKat[satz.karte] = kat;
+  /* Vorschlag fürs nächste neue Gericht: dieselben Beilagen und Extras (nur die id, nur in diesem Gerät). */
+  extrasLetztMerken(neuAnlegen ? (gerichte[gerichte.length - 1] || {}).id : (bearbeite && bearbeite.id));
   if(weiter && neuAnlegen && !alsKopie){
     /* „Speichern & nächstes“: Blatt bleibt offen, Karte(n) und Kategorie
        bleiben, der Rest ist leer — Serienanlage ohne Schließen. */

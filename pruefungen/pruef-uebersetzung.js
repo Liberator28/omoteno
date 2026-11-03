@@ -154,8 +154,8 @@ const merke = (wo, t) => { if(t && t.trim() && !ausDaten.has(t)) ausDaten.set(t,
 blockText("const KACHELARTEN", /titel:"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("KACHELARTEN.titel", t));
 blockText("const KACHELARTEN", /unter:"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("KACHELARTEN.unter", t));
 blockText("const AVATAR_TEXTE", /:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("AVATAR_TEXTE", t));
-blockText("const OPTIONEN", /titel:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("OPTIONEN.titel", t));
-blockText("const OPTIONEN", /hinweis:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("OPTIONEN.hinweis", t));
+blockText("const OPT_VORLAGE", /titel:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("OPTIONEN.titel", t));
+blockText("const OPT_VORLAGE", /hinweis:\s*"((?:[^"\\]|\\.)*)"/g).forEach(t => merke("OPTIONEN.hinweis", t));
 
 /* Die Karte im Gerüst: b: ist die Beschreibung, gruppe: die Kategorie.
    Der Name (n:) bleibt draußen — das sind Eigennamen. */

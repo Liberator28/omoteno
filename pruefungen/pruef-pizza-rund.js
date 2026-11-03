@@ -518,18 +518,23 @@ async function teilE(browser){
   await p.evaluate(() => blattOeffnen({ id:"g1", name:"Pizza Liam", kategorie:"Pizza", preis:13, karte:"speisekarte", verfuegbar:true,
     opt:"belag-kaese,kaeserand" }));
   await p.waitForTimeout(300);
-  const chips = await p.evaluate(() => ({ da:!document.getElementById("fOptBlock").hidden,
-    wahl:[...document.querySelectorAll("#fOpt [data-opt-wahl]")].map(b => b.dataset.optWahl + ":" + b.getAttribute("aria-pressed")),
-    hoehe:Math.min(...[...document.querySelectorAll("#fOpt button")].map(b => b.getBoundingClientRect().height)) }));
-  pruef(chips.da && chips.wahl.length === 2 && chips.wahl[0] === "belag-kaese:true", "Gericht-Blatt: Chips der eigenen Gruppen, gesetzte gedrückt", chips.wahl.join(" "));
-  await p.evaluate(() => { const b = [...document.querySelectorAll("#fOpt [data-opt-wahl]")];
-    b[0].click(); b[1].click(); });
+  /* Seit 03.11. EINE Liste: die angehängten Gruppen als Karten (auch „Käserand“ aus der Vorlage), die übrigen als
+     „Vorhandene dazunehmen“. */
+  const chips = await p.evaluate(() => ({
+    karten:[...document.querySelectorAll('#egListe [data-eo-feld="titel"]')].map(e => e.value),
+    dazu:[...document.querySelectorAll("#egDazu [data-eg-dazu]")].map(b => b.dataset.egDazu),
+    hoehe:Math.min(...[...document.querySelectorAll("#egDazu button, #egListe button")].map(b => b.getBoundingClientRect().height)) }));
+  pruef(chips.karten.length === 2 && chips.karten[1] === "Käserand" && chips.dazu.length === 1 && chips.hoehe >= 43.5,
+    "Gericht-Blatt: angehängte Gruppen als Karten (mit der Vorlagen-Gruppe), die zweite unter „dazunehmen“, ≥ 44 px", JSON.stringify(chips));
+  await p.evaluate(k => { document.querySelector('#egListe [data-eo="0"] [data-eo-weg]').click();
+    document.querySelector('#egDazu [data-eg-dazu="' + k + '"]').click(); }, chips.dazu[0]);
   await p.evaluate(() => sichern(false)); await p.waitForTimeout(300);
+  const meldung = await p.evaluate(() => (document.getElementById("meldung") || {}).textContent || "");
   const g = await p.evaluate(() => window.__schreib.filter(w => w.tab === "gerichte" && w.op === "update").pop());
   const zweite = keys[1];
   /* Die Reihenfolge in opt ist die der Gruppen beim Gast: Bestehendes behält seinen Platz (die Vorlagen-Gruppe), Neues kommt hinten. */
   pruef(g && String(g.daten.opt).split(",").sort().join(",") === [zweite, "kaeserand"].sort().join(",") && g.daten.opt === "kaeserand," + zweite,
-    "Speichern schreibt opt = gewählte Gruppe + Vorlagen-Gruppe bleibt (Vorlagen-Gruppe behält ihren Platz, Neues hinten)", g && g.daten.opt);
+    "Speichern schreibt opt = gewählte Gruppe + Vorlagen-Gruppe bleibt (Vorlagen-Gruppe behält ihren Platz, Neues hinten)", g ? g.daten.opt : "kein Schreiben: " + meldung);
   pruef(!fehler.length, "Board: keine Seitenfehler", fehler.join(" | ") || "–");
   await ctx.close();
 
@@ -539,10 +544,11 @@ async function teilE(browser){
   await p.evaluate(() => { const s = document.getElementById("scharf"); if(s) s.hidden = true;
     blattOeffnen({ id:"g2", name:"Dubai Crêpe", kategorie:"Crêpe", preis:15.9, karte:"speisekarte", verfuegbar:true, opt:"suess,sauce" }); });
   await p.waitForTimeout(300);
-  const ohne = await p.evaluate(() => document.getElementById("fOptBlock").hidden);
+  const ohne = await p.evaluate(() => document.querySelectorAll("#egListe .eo-karte").length === 2 &&
+    [...document.querySelectorAll('#egListe [data-eo-feld="titel"]')].map(e => e.value).join("|") === "Make it extra sweet|Favorite Sauce on top");
   await p.evaluate(() => sichern(false)); await p.waitForTimeout(300);
   const g2 = await p.evaluate(() => window.__schreib.filter(w => w.tab === "gerichte" && w.op === "update").pop());
-  pruef(ohne && g2 && !("opt" in g2.daten), "ohne eigene Gruppen: keine Chips, opt bleibt unberührt", g2 && Object.keys(g2.daten).join(","));
+  pruef(ohne && g2 && !("opt" in g2.daten), "ohne eigene Gruppen: die Vorlagen-Gruppen stehen als Karten da, unberührt gespeichert bleibt opt unberührt", g2 && Object.keys(g2.daten).join(","));
   await ctx.close();
 }
 
